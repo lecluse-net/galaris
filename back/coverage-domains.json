@@ -1,0 +1,73 @@
+{
+  "dbadmin": {
+    "prefixes": [
+      "core/dbadmin/"
+    ],
+    "line_min": 91.68,
+    "branch_min": 79.53
+  },
+  "task": {
+    "prefixes": [
+      "app/task/"
+    ],
+    "line_min": 94.3,
+    "branch_min": 88.88
+  },
+  "process": {
+    "prefixes": [
+      "app/process/"
+    ],
+    "line_min": 66.37,
+    "branch_min": 48.46
+  },
+  "multimedia": {
+    "prefixes": [
+      "app/multimedia/"
+    ],
+    "line_min": 83.71,
+    "branch_min": 61.53
+  },
+  "memory": {
+    "prefixes": [
+      "app/memory/"
+    ],
+    "line_min": 89.47,
+    "branch_min": 72.22
+  },
+  "lab": {
+    "prefixes": [
+      "app/lab/"
+    ],
+    "line_min": 90.84,
+    "branch_min": 75.8
+  },
+  "session": {
+    "prefixes": [
+      "core/user/"
+    ],
+    "line_min": 91.79,
+    "branch_min": 66.66
+  },
+  "runtime": {
+    "prefixes": [
+      "core/runtime.py",
+      "core/database/"
+    ],
+    "line_min": 84.09,
+    "branch_min": 73.07
+  },
+  "resources": {
+    "prefixes": [
+      "core/util/"
+    ],
+    "line_min": 93.16,
+    "branch_min": 76.78
+  },
+  "voice": {
+    "prefixes": [
+      "app/voice/"
+    ],
+    "line_min": 77.11,
+    "branch_min": 56.25
+  }
+}

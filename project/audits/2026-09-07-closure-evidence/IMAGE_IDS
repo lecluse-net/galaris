@@ -1,0 +1,4 @@
+sha256:22e719d7c3d4577de81c1cc241bb9e7e3b25869fccdb377321bc7ed697f4f1c5 galaris-release-back:audit-close-20260907
+sha256:5da7fa74fb073851526c042248a58d425fafdeab8b5181c5c24f4a1ee22f8417 galaris-release-front:audit-close-20260907
+sha256:42ac4428a421cd024856ecb8c834719fa47a01ae62275db5a46ae347cbb86b43 galaris-release-browser-executor:audit-close-20260907
+sha256:50febd72f4c72dbccf703d663c8f74469463b53fc476b71bf5229123be24eca0 galaris-release-ssh-executor:audit-close-20260907

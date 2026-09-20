@@ -1,0 +1,12 @@
+/* Keep collapsed outside borders inside the printable area, including fractional pixels. */
+@page { size: A4; margin: 10mm; }
+body { margin: 0; font: 12pt/1.6 Arial,sans-serif; color: #202124; background: #fff; }
+.rich-content { box-sizing: border-box; padding-inline: 1px; print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+.rich-content.ck-content figure.table:not(.layout-table) { display: block; max-width: 100%; width: auto; height: auto; overflow: visible; }
+.rich-content.ck-content figure.table > table,
+.rich-content.ck-content table { box-sizing: border-box; max-width: 100%; border: 1px solid var(--rich-border); }
+.rich-content.ck-content figure.table > table { width: 100%; height: auto; }
+.rich-content.ck-content :is(td, th) { overflow-wrap: anywhere; }
+h1,h2,h3,h4,h5,h6 { break-after: avoid; }
+tr,figure,.galaris-callout { break-inside: avoid; }
+thead { display: table-header-group; }

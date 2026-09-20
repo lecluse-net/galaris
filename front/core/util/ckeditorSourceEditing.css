@@ -1,0 +1,85 @@
+/* The textarea, its native sizing replica and the highlight layer must share exact metrics. */
+.ck-source-editing-area.galaris-source-editing {
+  --source-background: #FFFFFF;
+  --source-foreground: #292C30;
+  --source-tag: var(--solaire-iris-accent);
+  --source-attribute: var(--solaire-violet-accent);
+  --source-string: var(--solaire-green-dark);
+  --source-keyword: var(--solaire-violet-accent);
+  --source-number: var(--solaire-red-dark);
+  --source-comment: #666666;
+  background: var(--source-background);
+}
+.body--dark .ck-source-editing-area.galaris-source-editing {
+  --source-background: #101010;
+  --source-foreground: #EEEEF0;
+  --source-tag: var(--solaire-blue-accent);
+  --source-attribute: var(--solaire-orange-accent);
+  --source-string: var(--solaire-green-accent);
+  --source-keyword: var(--solaire-red-accent);
+  --source-number: var(--solaire-salmon-accent);
+  --source-comment: #B5B5B5;
+}
+.ck-source-editing-area.galaris-source-editing::after,
+.ck-source-editing-area.galaris-source-editing textarea,
+.ck-source-editing-area.galaris-source-editing .galaris-source-highlight {
+  box-sizing: border-box;
+  margin: 0;
+  padding: var(--ck-spacing-large);
+  border: 1px solid transparent;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  font-size: 12px;
+  line-height: 18px;
+  font-weight: 400;
+  font-style: normal;
+  font-variant-ligatures: none;
+  letter-spacing: normal;
+  text-align: left;
+  direction: ltr;
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
+  word-break: normal;
+  tab-size: 4;
+}
+.ck-source-editing-area.galaris-source-editing::after {
+  min-height: var(--editor-min-height, 240px);
+}
+.ck-source-editing-area.galaris-source-editing .galaris-source-highlight {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  pointer-events: none;
+  user-select: none;
+  color: var(--source-foreground);
+  background: transparent;
+}
+.ck-source-editing-area.galaris-source-editing .galaris-source-highlight code,
+.ck-source-editing-area.galaris-source-editing .galaris-source-highlight span {
+  font: inherit;
+  white-space: inherit;
+  padding: 0;
+  background: transparent;
+}
+.ck-source-editing-area.galaris-source-editing textarea {
+  z-index: 1;
+  color: transparent;
+  -webkit-text-fill-color: transparent;
+  caret-color: var(--source-foreground);
+  background: transparent;
+  border-color: var(--ck-color-base-border);
+}
+.galaris-source-highlight .hljs-name,
+.galaris-source-highlight .hljs-selector-tag { color: var(--source-tag); }
+.galaris-source-highlight .hljs-attr,
+.galaris-source-highlight .hljs-attribute,
+.galaris-source-highlight .hljs-selector-class { color: var(--source-attribute); }
+.galaris-source-highlight .hljs-string,
+.galaris-source-highlight .hljs-regexp { color: var(--source-string); }
+.galaris-source-highlight .hljs-keyword,
+.galaris-source-highlight .hljs-meta,
+.galaris-source-highlight .hljs-literal { color: var(--source-keyword); }
+.galaris-source-highlight .hljs-number,
+.galaris-source-highlight .hljs-title { color: var(--source-number); }
+.galaris-source-highlight .hljs-comment { color: var(--source-comment); }

@@ -1,0 +1,5 @@
+name: galaris-memory
+label: Galaris Memory
+kind: exclusive
+version: 1.0.0
+description: Governed cross-session memory provided by the Galaris agent platform.

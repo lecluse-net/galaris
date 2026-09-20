@@ -1,0 +1,7 @@
+[
+  {"query": "Quel outil faut-il pour assembler le robot de démonstration ?", "expected": ["00000000-0000-4000-8000-000000000001"]},
+  {"query": "Which tool is needed to assemble the demonstration robot?", "expected": ["00000000-0000-4000-8000-000000000001"]},
+  {"query": "assemblage roboot démonstration", "expected": ["00000000-0000-4000-8000-000000000001"]},
+  {"query": "Quel fichier PDF décrit le circuit de démonstration ?", "expected": ["00000000-0000-4000-8000-000000000002"]},
+  {"query": "Quel composant équipe le circuit fictif ZEPHYR-404 ?", "expected": []}
+]

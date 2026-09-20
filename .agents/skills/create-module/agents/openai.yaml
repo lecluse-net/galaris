@@ -1,0 +1,4 @@
+interface:
+  display_name: "Create a Galaris Module"
+  short_description: "Scaffold an activated backend or frontend domain"
+  default_prompt: "Use $create-module to design and implement this new Galaris module end to end."

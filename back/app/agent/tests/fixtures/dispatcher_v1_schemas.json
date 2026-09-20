@@ -1,0 +1,76 @@
+{
+  "active": {
+    "description": "Structured decision emitted by the current Task dispatcher.",
+    "properties": {
+      "effort": {
+        "default": "standard",
+        "description": "Executor effort policy. Drivers may map high to both a stronger model and a different managed execution strategy. Use standard for a bounded, explicit, deterministic operation with straightforward checks, including multiple tool calls, existing artifacts, named recipients, external side effects, or an authorized destructive action. Operational risk requires safety controls but does not itself require high. Use high only for material cognitive complexity: ambiguity, substantial context recovery, competing hypotheses, complex diagnosis or recovery, many coupled decisions, or challenging creative or technical work.",
+        "enum": [
+          "standard",
+          "high"
+        ],
+        "title": "Effort",
+        "type": "string"
+      },
+      "language": {
+        "default": "en",
+        "title": "Language",
+        "type": "string"
+      },
+      "requires_action": {
+        "default": false,
+        "title": "Requires Action",
+        "type": "boolean"
+      },
+      "route": {
+        "description": "Active Task routing path. EXEC high is preferred for one cohesive outcome; PLAN requires several independently executable units needing durable coordination.",
+        "enum": [
+          "EXEC",
+          "PLAN"
+        ],
+        "title": "Route",
+        "type": "string"
+      }
+    },
+    "required": [
+      "route"
+    ],
+    "title": "ActiveDispatchDecision",
+    "type": "object"
+  },
+  "conversation": {
+    "description": "Reply-gate decision that cannot select planning or elevated execution.",
+    "properties": {
+      "route": {
+        "description": "Conversation reply path.",
+        "enum": [
+          "EXEC",
+          "END"
+        ],
+        "title": "Route",
+        "type": "string"
+      },
+      "effort": {
+        "const": "standard",
+        "default": "standard",
+        "title": "Effort",
+        "type": "string"
+      },
+      "language": {
+        "default": "en",
+        "title": "Language",
+        "type": "string"
+      },
+      "requires_action": {
+        "default": false,
+        "title": "Requires Action",
+        "type": "boolean"
+      }
+    },
+    "required": [
+      "route"
+    ],
+    "title": "ConversationDispatchDecision",
+    "type": "object"
+  }
+}

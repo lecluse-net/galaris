@@ -1,0 +1,502 @@
+fichier,definitions,lignes,sha256_copie,identique_au_depot_en_fin_audit,candidats_sources_seules,decisions,constats
+back/app/agent/tests/test_action_guard.py,29,560,82b915a1fdb2f5dd1de88ad17c17bec1d159f5d320d110aeaa7e32e0c896943e,True,0,conserver provisoirement: 29,
+back/app/agent/tests/test_active_run.py,3,37,127ff47e27dc12118210779f1d96d0da916f155a3b838ad66e17ee9a473fc8dc,True,0,conserver: 1 | conserver provisoirement: 2,
+back/app/agent/tests/test_agentic_evals.py,2,184,ae8620f3ffbee0f9d41a8afe5718e041b32d76cd6210c7df69659c1862317869,True,0,conserver en precisant la portee: 2,A08
+back/app/agent/tests/test_agents.py,11,311,39cb699238d32b54309ed6683a1a4c553b879ae3368e3d574cfae47591ef2aa1,True,0,conserver provisoirement: 11,
+back/app/agent/tests/test_architecture.py,7,112,06eda3da5929997fa50dcb014b508819bb17633750e1cf32965bc2d4a86bda82,True,0,conserver: 7,A10
+back/app/agent/tests/test_background_submission.py,1,29,24f0aadf56459239cbeaed0caaef8959206705d63133dd9d5d560d81e96dd46f,True,0,conserver provisoirement: 1,
+back/app/agent/tests/test_briefing_service.py,9,258,bde47e055a66773a54d9bed4544b7dac122ccddaea00d2b04c1135312307f86a,True,0,conserver provisoirement: 9,
+back/app/agent/tests/test_conversation_context.py,8,104,53a2714df7f1f5fb6730d6ac980b94e8b4df754659201c9609f1d19621485e26,True,0,conserver provisoirement: 8,
+back/app/agent/tests/test_dbadmin.py,1,21,3fc9a2caf9af3923e5cfbadd6281120e8d3dc8d2f1675ba946032a7642e27324,True,0,conserver provisoirement: 1,
+back/app/agent/tests/test_dispatcher_planning.py,51,1410,14421ee1a631a80cd6a001d87cc1da5bbb5d7f87d7ee44a41c9c9d60f91f434d,True,0,conserver provisoirement: 51,
+back/app/agent/tests/test_driver_testkit.py,5,136,64ce2ad9b70ace9796c6e50e81649c08bf06ea57b89f9e07e70e179b5cec6c47,True,0,conserver provisoirement: 5,
+back/app/agent/tests/test_durable_compatibility.py,2,22,6ea5d8faa8a27324c58921aa298344236aa3dbd23777e136f8a6f462c18912b1,True,0,conserver provisoirement: 2,
+back/app/agent/tests/test_executor_lifecycle.py,5,239,35461bf5331cb2b10d96f64425ce74b9354f7175eef2c2bb90e36d11d47ad31d,True,0,conserver provisoirement: 5,
+back/app/agent/tests/test_executor_prompt.py,5,117,fa8bb9878d38702239b5f584ca4183774dfeb22af886c64ee7c216a756cd32c1,True,0,conserver provisoirement: 5,
+back/app/agent/tests/test_facade.py,25,934,cde63b28b5d70647767698f111d7ede2d8829b33b6ece711152098e3e272642d,True,0,conserver provisoirement: 25,
+back/app/agent/tests/test_janus.py,7,206,fb75a5fbf6e40e9f3d0d5bc40304ba17f3979f5043917950b41f7a079187330e,True,0,conserver provisoirement: 7,
+back/app/agent/tests/test_llm_call_purpose_wiring.py,3,157,ebb930f5b5edfd8473fc298a23f6642027f2730c57da9b24004562bb2c1c8708,True,0,conserver provisoirement: 3,
+back/app/agent/tests/test_management_scope.py,5,99,0c28bc000412ae14109d99d22944586f3e40101717401dcfebc1babecf8bbc1d,True,0,conserver provisoirement: 5,
+back/app/agent/tests/test_message_contracts.py,7,149,245de64f53db1c57b208c56ec4e0c38d420fb85c36c7967949e5a4f8ea12cb78,True,0,conserver provisoirement: 7,
+back/app/agent/tests/test_model_resolver.py,8,164,f9e901c21f508adb111259ab1b3670dea1df39c001792ee9f82218acca8e9202,True,0,conserver provisoirement: 8,
+back/app/agent/tests/test_openai_service_stream.py,3,139,eda6225c35b83e2f9583c63c63cc12eea44cfaaf9a9c6b3295cbbc8b120187bc,True,0,conserver provisoirement: 3,
+back/app/agent/tests/test_planner_service.py,82,2296,5da09cedcaff8e8ebd3a5f8e7e4c05198ed70378f8b09e424b1d4dc0cc6d28f5,True,0,conserver provisoirement: 82,
+back/app/agent/tests/test_prompt_tree.py,9,181,1ffd05c439f91d0677f42cc913bca7e045abcd26ddf7640145f71cd669c77cb4,True,0,conserver provisoirement: 9,
+back/app/agent/tests/test_realtime.py,5,354,2db6466a13d45860a3dd1fc05f024a96b3a81174a9779002b2f8485d26138987,True,0,conserver provisoirement: 5,
+back/app/agent/tests/test_reasoning_guard.py,10,233,6e6a16ac80b2c001ce9a4b9863dd6f26b22b84bdc255feee58a9b7e94ca53902,True,0,conserver: 3 | conserver provisoirement: 7,
+back/app/agent/tests/test_registry.py,6,107,c5ee73507b107e887a05cb7806f2a33b3d560cb1e063ee66f84ff173da1701ed,True,0,conserver provisoirement: 6,
+back/app/agent/tests/test_tools.py,1,45,f36079e5a24a11f5ac86f54e1541ccdb6214b9204648107a14019d33c103d7f1,True,0,conserver provisoirement: 1,
+back/app/audio/tests/test_audio_mcp.py,9,472,4411618fbd0823b3494e19894b15329c79fde543a6d125d9c4df73f1fa2525f0,True,0,conserver provisoirement: 9,
+back/app/audio/tests/test_audio_service.py,3,124,33bba4caad2cc7cc812b5d06cea885ac6cf166a070e25b8729be73b58aefe980,True,0,conserver provisoirement: 3,
+back/app/audio/tests/test_summary_service.py,6,214,19f3e1d27f837dbd788b3e16f6835b5a1b7c2ca3780cf4ab00115c7cd9b74ba5,True,0,conserver provisoirement: 6,
+back/app/browser/tests/test_mcp.py,10,346,0f2df76435e0a7d7db3ff9e87a0e2adac602c2a4b00bc5583e28fb508b644cd4,True,0,conserver provisoirement: 10,
+back/app/browser/tests/test_service.py,12,464,73588e9d9bc5f612b31f0f6749b5a7481cf2b9d1c578770b1b811c110f911144,True,0,conserver provisoirement: 12,
+back/app/chat/tests/test_authorization.py,32,1120,eba48ed08d4c8df9b76bc1dc82d94002599e11c12a1ea41c1c654dbcd74e2783,True,0,conserver provisoirement: 32,
+back/app/chat/tests/test_dbadmin.py,4,109,7eb37c2cddafe1840d8ca96132c11ab4b94cb731eaf846efdfae934deb9e5cc4,True,0,conserver provisoirement: 4,
+back/app/chat/tests/test_emoji_service.py,3,71,1e8ef8de88320258fc74aa72d0b371c156bfedf143d889ac4e98b3f24fc3fd25,True,0,conserver provisoirement: 3,
+back/app/chat/tests/test_events.py,4,216,437c438ed35e036dc37cef943e794053f4af672e385dfb15c0a42c73f10f1386,True,0,conserver provisoirement: 4,
+back/app/chat/tests/test_html_preview.py,6,130,314dcf87e4cc1788f951fe9b4c8a63581ad0e25971aeb4a377704eb2ac212fd4,True,0,conserver provisoirement: 6,
+back/app/chat/tests/test_native_facade.py,22,1555,3e08f133546cec7419cbf70510eab2febaa93738674516a5fa13f259cdd26d59,True,0,conserver provisoirement: 22,
+back/app/chat/tests/test_provider.py,2,48,1d1fe821917037a959feb8ff49bc883264b2547fefcbddc61e2266eef13e75e4,True,0,conserver provisoirement: 2,
+back/app/chat/tests/test_push_service.py,3,228,3e8f8a92acb1aa375434976a4827cf2b7923b83316c1a094775c5eb72d220266,True,0,conserver provisoirement: 3,
+back/app/chat/tests/test_storage.py,9,208,f28f83f8d9675afc9dfc72b221b27301027726406dce60053019dd1cbae2ea59,True,0,conserver provisoirement: 9,
+back/app/chat/tests/test_thumbnail_service.py,2,68,43ea80323dc815112c1896eaef4071929bce310e696e73448b4d10dbd0fd1f7c,True,0,conserver provisoirement: 2,
+back/app/chat/tests/test_webrtc.py,14,385,324d358df91210ccf4c86131bb48998a9ea1c532c6049cdae435e35280081d57,True,0,conserver provisoirement: 14,
+back/app/connection/tests/test_connections.py,4,190,0b415b99ff99a1a3af27595a12f1dd2658a9d0995145a2f02600605368c4d2a2,True,0,conserver provisoirement: 4,
+back/app/connection/tests/test_encryption.py,8,120,658f3e1e87088366d044f4845e78a9915c81ba5087efcfeee66b92719ecf9d15,True,0,conserver provisoirement: 8,
+back/app/connection/tests/test_function_states.py,10,249,80a46924391f80f496e1ca8096924b8c65312ee01a2e07a2bd89fffba44540eb,True,0,conserver provisoirement: 10,
+back/app/connection/tests/test_service.py,23,509,f923ab5ed853237f0653b6f8ea891a40b70f9191b13bd395e7fe255b7abef270,True,0,conserver provisoirement: 23,
+back/app/console/tests/test_console.py,9,337,4e52549fc431df19f4805de3b3989c307e405c22a0f36a19a2b02eb2f27253f0,True,0,conserver provisoirement: 9,
+back/app/contact/tests/test_router.py,1,15,3baf61c8265531983c296c3685534a07c6af1dfb55928e3a457136e157352f1f,True,0,conserver provisoirement: 1,
+back/app/contact/tests/test_service.py,3,461,b2631feecc5409b5fdb29fd5527d4147541caeb49b3762bdbf7f4dd9ccb233c5,True,0,conserver provisoirement: 3,
+back/app/conversation/tests/test_activity_facade.py,3,155,2ae18775460de342db2c18ef434ecb53de3d7957e723b8118e74aece070e0ed0,True,0,conserver provisoirement: 3,
+back/app/conversation/tests/test_artifact_delivery.py,7,147,feca22278e5b131258728fd3030429d0a41a0151cdfdda85804138a9476a70b9,True,0,conserver provisoirement: 7,
+back/app/conversation/tests/test_context.py,2,167,30fff4719fb7fa74ff91fa2f3a1cc2f48e795c9619ed47cad39521e172e26732,True,0,conserver provisoirement: 2,
+back/app/conversation/tests/test_delivery_resolution_http.py,1,80,f91eb4cdb537f4c353269f10dd51017e77e246189f320390279eff5dee42d891,True,0,conserver provisoirement: 1,
+back/app/conversation/tests/test_directives.py,9,98,e481ba2f82e79c97679d43ed17beaeadf4382de97046e0b12bfa1d805d2ee19d,True,0,conserver provisoirement: 9,
+back/app/conversation/tests/test_monitoring_service.py,7,423,3e2caaa9c698c2f5df7d1e4dca858820e6986245a1a3cbdd98cec19f4693fa58,True,0,conserver provisoirement: 7,
+back/app/conversation/tests/test_resource_facade.py,3,206,7e4b174cf66586c5724db9a5b0950490934e41fb6643e561b546ad43ff590589,True,0,conserver provisoirement: 3,
+back/app/conversation/tests/test_runtime_stream.py,3,80,1b65eeb55dca999871f3349a72f84578d285f31cdc70ed14f3157acab8c95710,True,0,conserver provisoirement: 3,
+back/app/conversation/tests/test_scheduler.py,6,259,db78aec808fc84bcbba77eeae723a39f240e4fea64968571ecc4f0d599cb35ef,True,0,conserver provisoirement: 6,
+back/app/conversation/tests/test_service.py,35,1995,82ab87be12ab6e6f1f52cb55d920486842ea4a34854e7c0969a250623828f988,True,0,conserver et rendre independant du fuseau ambiant: 1 | conserver provisoirement: 34,A05
+back/app/conversation/tests/test_task_admission.py,18,702,8f0716246d78025349231260d6142f9073356bcedd39a440ed40e372d3813896,True,0,conserver provisoirement: 18,
+back/app/conversation/tests/test_task_objective.py,3,220,673aed5d0f9a0aedc4c343764a0bdba7db8a4b0ec13a56d8a06e55be736333c7,True,0,conserver provisoirement: 3,
+back/app/dashboard/tests/test_dashboard_service.py,3,198,4a1bda614e464cdc807b09d525ef289a2da13a31335d83d5e55d9501b06bfda2,True,0,conserver provisoirement: 3,
+back/app/dream/tests/test_claim_timeout.py,4,257,9203951f38374454fe9219902fc255da0d2fa24e7eaa7b9a54cf3c1303fe475c,True,0,conserver provisoirement: 4,
+back/app/dream/tests/test_conversation_memory.py,2,208,8e7b79d92418097dd65acbfd4894820d190efae84f343cc3fbd1dfea872f98d2,True,0,conserver provisoirement: 2,
+back/app/dream/tests/test_dream_scheduler.py,24,1427,e037cf2074d1c49f5ff7f517d0d0bc4fff20dc8d58ee57b3c5bd70bcccff4a04,True,0,conserver provisoirement: 24,
+back/app/dream/tests/test_memory_extraction.py,15,536,2420cbfdafdaa19dbeea8852cc9890a0caa9c5c27598c71b261336a9076b4841,True,0,conserver provisoirement: 15,
+back/app/dream/tests/test_skill_learning.py,3,112,dc5238ea0082c09581cece64444113634885656fa9d81e9c9e582ee373254905,True,0,conserver provisoirement: 3,
+back/app/dream/tests/test_stale_memory.py,2,140,85c5f38aede3617a3d56a6d61757fdb02006e5a76e098a4d5d47a3780c442d83,True,0,conserver provisoirement: 2,
+back/app/dream/tests/test_task_memory_prompt.py,3,66,1f426097b59a534f6eea125fbb3c2a51aa00f73fa83616e3f6465596b9e064e9,True,0,conserver provisoirement: 3,
+back/app/dream/tests/test_task_outcome_reflection.py,4,137,c979608ef74670418c952f5668d57d207725bbe65a34d7a911281cc10941d581,True,0,conserver provisoirement: 4,
+back/app/dream/tests/test_topic_classification.py,8,757,a8f293069666f62a926d2e1541ce7af0874d1dbeb82aa12cafc4322323c6a6b4,True,0,conserver provisoirement: 8,
+back/app/dream/tests/test_voice_memory.py,3,288,5db22664c65795defe5337c95e9879fa848630ab75e999dda894c98dd105aab8,True,0,conserver provisoirement: 3,
+back/app/file_share/tests/test_file_share.py,15,390,a2efe59c2454282a36c46d4d71d7d49b5ade00e3bad187572a2441b52569ab49,True,0,conserver provisoirement: 15,
+back/app/file_share/tests/test_galaris_provider.py,12,414,3135519c3918d2d54c9d24db1b24504c3f1bf839a93012fd6dd3abf033ae4e41,True,0,conserver provisoirement: 12,
+back/app/file_share/tests/test_mcp_paths.py,10,333,0da5442fd9cdcac19b2f954dced2f0b01ff5ca427b89b0dfdfb20ebba234e90c,True,0,conserver provisoirement: 10,
+back/app/file_share/tests/test_path_normalization.py,6,115,0cec656a3a32f1895713e3e1320b4e3e02f5bcd54a7f7c5740db9464f04c7f9c,True,0,conserver provisoirement: 6,
+back/app/file_share/tests/test_resource_service.py,24,950,76a595caa9d2ad06783c10b7129c0c3be32908a1550e024ffc3df9331cf91b3a,True,0,conserver provisoirement: 24,
+back/app/file_share/tests/test_resource_uri.py,9,97,3080e09ba6e2f1aa1bb5060ca051d4646985e8cc189983d4df17331f57a4129a,True,0,conserver provisoirement: 9,
+back/app/file_share/tests/test_service_references.py,6,76,f404719961bdadb36274fdae788bbdbe915e3d34e64c7a56973bf0500e2cf97e,True,0,conserver provisoirement: 6,
+back/app/file_share/tests/test_transport.py,1,60,f375e5e28edb1383191fcb9d63826ffec378f6c7a0d1c7a6c1be698a7480e81d,True,0,conserver provisoirement: 1,
+back/app/file_share/tests/test_web_transport.py,4,106,1ce1d0dbdabe0471d2edfab56079945b04d0730740183eccc35f13f9df5eba35,True,0,conserver provisoirement: 4,
+back/app/goal/tests/test_goal_runner.py,43,2030,2a2569825ae85bc114e0a0d51868a7220ede135f6de19f0a6a497a4172d39dd5,True,0,conserver provisoirement: 43,
+back/app/goal/tests/test_goal_settings.py,12,309,f7ec167ae9d578e014d8eb7b67b66d7a151d6d5796a884d40102310680f763c6,True,0,conserver provisoirement: 12,
+back/app/goal/tests/test_mcp.py,14,497,e5d6e97302f1721ec52c4802ca3f5407172f5c86c021c0953abd0f7529d3c6b9,True,0,conserver provisoirement: 14,
+back/app/goal/tests/test_referrer_wait.py,1,249,42daa00701ffefd13c7079fd7dfe7e7e342ee04058c37d258fec06c6b47c06b5,True,0,conserver provisoirement: 1,
+back/app/goal/tests/test_resource_facade.py,1,77,492119b35d05ea7e39924b5952d2f1000452ef4756cba55de6d9501da2847df1,True,0,conserver provisoirement: 1,
+back/app/harness/tests/test_agent_history_compaction.py,11,344,00b76dd4693ac063bd4224feb9ae532188a0af0a90eadd844dd0c5904280b440,True,0,conserver provisoirement: 11,
+back/app/harness/tests/test_checkpoint.py,11,465,4c1c34745b1cdaa83dc3a93a1653475313490ce7378ca18f031e0c506cc8254c,True,0,conserver provisoirement: 11,
+back/app/harness/tests/test_conversation_prompt.py,19,1431,cde8b1086b5e560728ef695fa74e09648e946b2064c6645ab4b0404f7aefd4f9,True,0,conserver provisoirement: 19,
+back/app/harness/tests/test_executor_prompt.py,5,90,9fd2d3967c7e36ee783cd9a21e7d5a344fe35adb17f9094c395f5ffb45596665,True,0,conserver provisoirement: 5,
+back/app/harness/tests/test_executor_streaming.py,7,458,7704cacdca415028618ee778facb828487150c2b7141e71791b2007fe4bed845,True,0,conserver provisoirement: 7,
+back/app/harness/tests/test_facade.py,2,56,ba184fe3123fb2ac4a5612c3d42d605dd0e06e4342567109ae8ce91e4e08a1de,True,0,conserver provisoirement: 2,
+back/app/harness/tests/test_local_executor_history.py,12,263,05f89389c816a4a47804efdf601c450e71d6f2932a61026a97eb9b879008b4f9,True,0,conserver provisoirement: 12,
+back/app/harness/tests/test_media_resource_policy.py,5,136,fa0a692e96e9a0806d972c9a5b5fa6165ff9a59444ef0bf7a658f158986edd77,True,0,conserver provisoirement: 5,
+back/app/harness/tests/test_message_fragments.py,2,46,b5123264617a2071dd05c7ccc3bbe1466718ec670cef5d10c793bcbafdff6d54,True,0,conserver provisoirement: 2,
+back/app/harness/tests/test_run_control.py,3,77,e468e65210ba3891be29522739b50bbd1b5bd2b37c02b65b12ca6bcbbad6d03a,True,0,conserver provisoirement: 2 | renforcer le scenario annonce: 1,A04
+back/app/harness/tests/test_runtime_budget_wrapup.py,5,237,6d8fcf8bff43ec2e1d335f565d6539ad63c5c19db02bf55f36044bac9a8ce1ff,True,0,conserver provisoirement: 5,
+back/app/harness/tests/test_runtime_cancellation.py,2,171,139c8223fd0548b2dfae5635b2a69af5eaf7165a7059cd834339e932f9539849,True,0,conserver provisoirement: 2,
+back/app/harness/tests/test_runtime_guards.py,18,476,2d8d4adcbea43ddd05c96b7df16fa61413fe9d8608503edefa5f6fbb57cd52eb,True,0,conserver: 3 | conserver provisoirement: 15,
+back/app/harness/tests/test_runtime_instructions.py,4,179,efe368556a0064e1cefa004c571630eae77602d71e471d9eefc5504868efcd55,True,0,conserver provisoirement: 4,
+back/app/harness/tests/test_skills.py,6,260,c54b4e0205351cfac30ed5e3fd0079e2079d85e57945ca1a5dacba8d6684eecf,True,0,conserver provisoirement: 6,
+back/app/harness/tests/test_tool_discovery.py,3,115,6bbe36a4d85b69d927025065d7ac70c6e2aa4226b1412421302b412227a7f4a4,True,0,conserver provisoirement: 3,
+back/app/harnesses/tests/test_contracts.py,8,147,2f30629b01339b2cec7a06e7bacc3900f584eef798c2733c330334eadbbb1889,True,0,conserver provisoirement: 8,
+back/app/harnesses/tests/test_openai_client.py,14,536,e8ef0c366e89fc1f08f6f4c2a6103465dd3def75f7b4acf5b2f3e65d44c9dd74,True,0,conserver provisoirement: 14,
+back/app/harnesses/tests/test_router.py,4,119,d0e9b4b1a468f3a66e415e8e17e48f71c443a9739a94d4419d1f57d9d37f0f0f,True,0,conserver provisoirement: 4,
+back/app/harnesses/tests/test_runtime_actions.py,4,79,98780bf84789ed72f20df48a26a2ccc1af542f961fd459d5b45ae33dbe369979,True,0,conserver provisoirement: 4,
+back/app/harnesses/tests/test_selection_schema.py,3,37,de1eefeece3ca54ecba478b6015774e39f2aca64edc9f40d13059374f556b9e2,True,0,conserver provisoirement: 3,
+back/app/harnesses/tests/test_service.py,10,454,8f3fa66adc3f1e92e6c1f590949b8b16d3bc374865655a9135431fd278391b14,True,0,conserver provisoirement: 10,
+back/app/image/tests/test_image_mcp.py,9,319,7c199c3b145b4c6f9e2a0e059ac14134c7e0e4a66037172b045f65e70e0a7084,True,0,conserver provisoirement: 9,
+back/app/image/tests/test_image_service_trace.py,7,263,f99f99a054621a56d0d767ef4da62be325758717402f061da37fbf82d5afef80,True,0,conserver provisoirement: 7,
+back/app/incident/tests/test_capture.py,2,92,45b59d8376a704901bfaa3ca0adcfe37db5727beb1c79483fca7ddd6c7659624,True,0,conserver provisoirement: 2,
+back/app/incident/tests/test_incident_service.py,5,194,38103cf62fa3a1206b27d5c3bd4298a76f7a4804d0c67248b07452b926d1248b,True,0,conserver provisoirement: 5,
+back/app/incident/tests/test_retention.py,1,37,c0acc0ef045302f614a72d8e6c188fffd456a759df957fe9c520d06d9acd7176,True,0,conserver provisoirement: 1,
+back/app/incident/tests/test_router.py,4,89,bfccf118eda84040fdfbce2c09c31881464bb74bd8711c0986fe9c3614ab991b,True,0,conserver provisoirement: 4,
+back/app/llm/tests/test_anthropic_api.py,21,646,393548211b41eb4b0ed15f1025e13ded052507495de0d508c0cb6a4407014985,True,0,conserver provisoirement: 21,
+back/app/llm/tests/test_call_lineage.py,11,312,7df60a0317097906f7a381068fa5dfd2437b00d956fd42b9ea3bf63ab0a13ed7,True,0,conserver provisoirement: 11,
+back/app/llm/tests/test_call_router_lineage.py,5,106,b80fc2da89434258fa6ba147ddc597bfc4791312e02e5b6e684d0513494d2da1,True,0,conserver provisoirement: 5,
+back/app/llm/tests/test_embedding_facade.py,2,84,09b5b219b8535bc65034d08191bfc7e88d2eddc6a42b9ad4c917acdfd454655e,True,0,conserver provisoirement: 2,
+back/app/llm/tests/test_llm_profiles.py,20,482,654352106ba48729099cf03d1b8787f4615089175077c057e8b417ac332694cc,True,0,conserver provisoirement: 20,
+back/app/llm/tests/test_mammouth_provider.py,11,227,b9c734bcd083ac7c4b6665608819369fa12f4548c09bc4ea75ab7a2329c52d0b,True,0,conserver provisoirement: 11,
+back/app/llm/tests/test_native_image_generation.py,16,341,bb6d45087a8594532b1cf27a550921e7bcaa28c3dec789bec0ad795407d42f5a,True,0,conserver provisoirement: 16,
+back/app/llm/tests/test_pydantic_ai_utils.py,6,198,4804fd1c5fade7ec499f58ed7346dcc4b9e1b96124a656d513e589ba97a114f3,True,0,conserver provisoirement: 6,
+back/app/llm/tests/test_reasoning.py,3,27,a7e09627df708769fdc2b11838e1b98d6814f91bc354594c59d6563648118c3c,True,0,conserver provisoirement: 3,
+back/app/llm/tests/test_retention.py,4,106,dfaecdcccd48f8468e92d55c10451e218d2e799441434f0f996c92bf49fb0d0f,True,0,conserver provisoirement: 4,
+back/app/llm/tests/test_retention_growth.py,1,117,6e244fdcd8fdb3af73ef6e115b40a93edfdcaecac2f94389f5f97552b9c9a463,True,0,conserver provisoirement: 1,
+back/app/llm/tests/test_structured_service.py,6,286,7398657b9701ecd015cbea53f52aef9f56bae28ff6dee32a69b34b596f8bcfd1,True,0,conserver provisoirement: 6,
+back/app/llm/tests/test_subscription_policy.py,6,133,55b91e64f749904655b715c641c9b80c73b930107d765ec65977fc60a4d19840,True,0,conserver provisoirement: 6,
+back/app/llm/tests/test_transcription_service.py,2,42,c898216a822d4fb3d7c0e788a4822d4cb4be3dbe4cf67daf851474fc16c2d3b2,True,0,conserver provisoirement: 2,
+back/app/memory/tests/test_acquisition_automation.py,22,895,c94a9b4a3bff40c8459c7d196b2731b3b448855673b7ecaae6bd775880c23bf9,True,0,conserver provisoirement: 22,
+back/app/memory/tests/test_agent_correction_eval.py,2,134,1b5ff7b20a2d39d733d0474a4c963d8e9b889dd0a64d3b6248798efda983affa,True,0,conserver en precisant la portee: 2,A08
+back/app/memory/tests/test_browse_filters.py,1,169,d08cd1875087fd4f99b9ebd7b618bb5b35ae663cbdb0f376053c932eef85fdeb,True,0,conserver provisoirement: 1,
+back/app/memory/tests/test_context.py,19,841,26c5a335cc3e266774037f83503583aea11a8feab3481ee4f3554bc1ffc029cc,True,0,conserver provisoirement: 19,
+back/app/memory/tests/test_creation_cancellation.py,1,31,b0672252295e19dd95191e863432c63a5b1cc3ce5ef5c2fd76f436644248c005,True,0,conserver provisoirement: 1,
+back/app/memory/tests/test_document_grants.py,1,22,41bee95825922d89faa8b7468705170fee1dd245025d57e06a4ab161301374d1,True,0,conserver provisoirement: 1,
+back/app/memory/tests/test_document_library.py,15,736,9a3e17d16b7733b2fa0892d1888f142e53cc649ce0effae25bff7d4f9a72fe5f,True,0,conserver provisoirement: 15,
+back/app/memory/tests/test_document_thumbnails.py,4,88,984aa97e77d8c836e7eb74a2eb239b37616c0f5bcc0bcc72721fc72c93392882,True,0,conserver provisoirement: 4,
+back/app/memory/tests/test_facade.py,4,127,eeaa70c3f6a108e0adba736290b41510721f4e8d24db397133e0553da61ede22,True,0,conserver provisoirement: 4,
+back/app/memory/tests/test_library_performance.py,1,80,d4daa66a6afc92d442263069de9a741ed47e2df12f616206990378d7711e4d16,True,0,conserver: 1,
+back/app/memory/tests/test_link_reconciliation.py,9,508,f8f4a9650927ba1e21f8f107e12b206f715d7ee1a8c734b85ac3359da05b44d2,True,0,conserver provisoirement: 9,
+back/app/memory/tests/test_maintenance.py,8,475,6c8572301879576af0379bdeaa0d41fd36100e644b851ac96a5615a95cf6ed05,True,0,conserver provisoirement: 8,
+back/app/memory/tests/test_mcp.py,7,534,c1de0952ad321367395d3f3044d214bfa699d03544e5a9d848f2673a3381daaf,True,0,conserver provisoirement: 7,
+back/app/memory/tests/test_messenger_contact.py,7,403,71dfbaabb5b9bb3f1eb3fd3099326354eb43a6eb171754762773c37f77dd8838,True,0,conserver provisoirement: 7,
+back/app/memory/tests/test_metrics.py,1,42,cdf659f58e1f10273669d66fe9a4a6a82bb01972c6dbc9ecab5a5df15c3fdf73,True,0,conserver provisoirement: 1,
+back/app/memory/tests/test_process_projection.py,1,91,da8fe730bc851f8ab86713e61510dfb6a76278d1a49830b5a7a77aca09a0763c,True,0,conserver provisoirement: 1,
+back/app/memory/tests/test_recall_evaluation.py,4,278,0aa00e595970aed00ab09e82aa865030ac337e1af5ea52eff736132e4124b2d0,True,0,conserver en precisant la portee: 4,A08
+back/app/memory/tests/test_revision_pagination.py,1,24,ad883d18887e592cdee22684044f4162729c62756fd6c5173b63e12042216d41,True,0,conserver provisoirement: 1,
+back/app/memory/tests/test_search_performance.py,1,66,f75b4427351fb732eebc77883b8b5bda42121e094cf322dc2e79f4813045e6d5,True,0,conserver provisoirement: 1,
+back/app/memory/tests/test_semantic_search.py,25,1496,002156f45f214b34c62f3d44784f7bafce6c93102362dbb81d35006c69f440ea,True,0,conserver provisoirement: 25,
+back/app/memory/tests/test_service.py,30,1538,54598fe633b51d605820ccd319747d11d2fe11f06bb3fdda6f1af46470f4a673,True,0,conserver provisoirement: 30,
+back/app/memory/tests/test_source_associations.py,1,217,50f7438c40417f83c85615480ee5a375dbc2b657c33e0ac3d38b17cd6cd09b3c,True,0,conserver provisoirement: 1,
+back/app/memory/tests/test_source_projection.py,3,327,35ca10ab0a31c3e4937f71b04c18a2e9a0afdb7b09197e8f966d6109ad52ed0b,True,0,conserver provisoirement: 3,
+back/app/memory/tests/test_storage.py,5,118,ce60dbc444e60cbc8bdb30f58fcdb17176e9ab63a491804424f7d2004a156394,True,0,conserver: 5,
+back/app/memory/tests/test_storage_reconciliation.py,2,40,cdf4a7de2b31ea47a31e94f9e9a511665adad9fb11bb6bb06178f9628ccbf693,True,0,conserver provisoirement: 2,
+back/app/memory/tests/test_topic_contact_scope.py,5,417,4fe1eef6c336427c8362469e68fa9bfa5e0f63ebf8b59c28d995640abb6f763f,True,0,conserver provisoirement: 5,
+back/app/memory/tests/test_topic_maintenance.py,1,197,7b6624849372fe05fe3efe3d9ee8fdfeed42023eddeee7bf112568e43aabdfef,True,0,conserver provisoirement: 1,
+back/app/messenger/tests/test_bridge_configuration.py,4,159,a46e872e2a299665709c4e69d42a34bd1091c0f37113c70625025889fe81c64e,True,0,conserver provisoirement: 4,
+back/app/messenger/tests/test_contracts.py,4,44,c8ab1b6e880a22b33ab8d6534733a00da434230de68f57568a24a1059628f2b9,True,0,conserver provisoirement: 4,
+back/app/messenger/tests/test_dbadmin.py,3,281,0594ae91a99f9b1c3ee1e20910cc55b27d886c07bab27126a8865df00722148e,True,0,conserver provisoirement: 3,
+back/app/messenger/tests/test_extraction_limits.py,3,54,1a638696cb1b745daf44f3e2cd331a7e5e42042f41be981856ce0cca77656865,True,0,conserver provisoirement: 3,
+back/app/messenger/tests/test_facade_activation.py,1,25,6dd776fae643aebfab525449f882fcc3608217156daf7346549d425145427aac,True,0,conserver provisoirement: 1,
+back/app/messenger/tests/test_inbound_task_admission.py,6,229,486d23a2efab6a785f0b0e7cd67ec12c81100559292d6ce6f6f73fb7992b1d3c,True,0,conserver provisoirement: 6,
+back/app/messenger/tests/test_ingest.py,3,130,6f74f7fd898d067e97522ec868c1a0cdaf62b5f0a08de44c8e9fdf9e02905ce9,True,0,conserver provisoirement: 3,
+back/app/messenger/tests/test_interactions.py,15,445,d4ba5ae54871bb681c89103f74ecaffd6236054dc44b996bef07fac6f3fb50b5,True,0,conserver: 14 | reecrire; supprimer si le scenario est abandonne: 1,A01
+back/app/messenger/tests/test_journal.py,16,869,c69c1e398dc9c2d6987a712953e1bc1390474f7c8960f79021a82fc5f769231f,True,0,conserver: 16,
+back/app/messenger/tests/test_link_preview.py,7,226,c22b951bd88090087619aca53376135ad86b277835710039502d45d9e414165d,True,0,conserver provisoirement: 7,
+back/app/messenger/tests/test_mcp_files.py,7,332,f748fa60353fd55a7a271a051604974a97f96942a78da144b91bd7237702f6cd,True,0,conserver provisoirement: 7,
+back/app/messenger/tests/test_mcp_routing.py,8,384,014b391107396ced4f92174dd8e406c30cc9e594e399710ef7e7d01f9eae52d2,True,0,conserver provisoirement: 8,
+back/app/messenger/tests/test_media.py,3,73,2b356d20deac0e9dcec00d0e24e864dcece4f204c726ab970dc3a63e676d4aea,True,0,conserver provisoirement: 3,
+back/app/messenger/tests/test_memory_boundary.py,2,52,cdb9b929d90b0269e0ce214d486e7616e4211442ade4b0e6bd612fc191e97de0,True,0,conserver provisoirement: 2,
+back/app/messenger/tests/test_reply_guard.py,3,56,1d0501360cc74d1239a8e5037b3f1fc91b2d4964a68556216ba9f3315a773332,True,0,conserver provisoirement: 3,
+back/app/messenger/tests/test_resource_reference.py,2,27,ce666a75d29d4486ea595c18ba091dbdf1cd195de5980c1b3c061682b8fc3150,True,0,conserver provisoirement: 2,
+back/app/messenger/tests/test_service_incoming.py,16,508,f7d4cbd5b233f33bd6580bc1dc4a269fce8a0a035f8b72df08573a85aed4a612,True,0,conserver provisoirement: 16,
+back/app/messenger/tests/test_service_listeners.py,8,289,3aef2723a6120c944861048adeb71323348331a70a6390de66219a21017fe608,True,0,conserver provisoirement: 8,
+back/app/messenger/tests/test_service_routing.py,5,264,9a3acb65963883b5889ebbf615424fe01bca204431ba1dc1a5b11e73622a9c33,True,0,conserver provisoirement: 5,
+back/app/messenger/tests/test_session.py,9,643,22a63a5f113063d4227cd4a316b4b451c342cb74fd14e5dfcf4b7c5811d66383,True,0,conserver provisoirement: 9,
+back/app/messenger/tests/test_signals.py,1,24,edab6039803bf4af933b410437727e14cdf00983b33691e0343de720476fae79,True,0,conserver provisoirement: 1,
+back/app/messenger/tests/test_sync.py,4,284,41a4baf52460c401ca65252fa62e45f18076342d8726b6ad3064a77ff4ea18f1,True,0,conserver provisoirement: 4,
+back/app/multimedia/tests/test_callback_security.py,3,63,8e41b6996d613088670ac30aff6efea70f54aa11b2c996b547520878b3a72af9,True,0,conserver provisoirement: 3,
+back/app/multimedia/tests/test_multimedia.py,13,308,6034554fe03b28e43a7f1bd96c4a6de259fb300770fa08c5263056a5ffb7527a,True,0,conserver et preciser le refus attendu: 1 | conserver provisoirement: 12,A04
+back/app/multimedia/tests/test_providers.py,6,116,da08429a6c06a82c5e4395d4b29befcedf416dfa5393f4b9248451868390e588,True,0,conserver provisoirement: 6,
+back/app/onboarding/tests/test_services.py,6,241,79c8b1353dc1c3106af7cedb5616ed35e138b435776a98e6440cb1d9d083231a,True,0,conserver provisoirement: 6,
+back/app/process/tests/test_agent_capabilities.py,8,225,f103966c44926bda4819ac5b2b0acc68e234f0d7cd4e02c99452d2df675826ac,True,0,conserver provisoirement: 8,
+back/app/process/tests/test_mcp.py,5,191,ce5ff91cb742c1539781124a387178c634438d37fdd49a176466edfd737f0df2,True,0,conserver provisoirement: 5,
+back/app/process/tests/test_process_core.py,22,849,5d15c044ad8471583c7663e767e1b4bde282b6148a4a73a3b56635402fb9c807,True,0,conserver provisoirement: 22,
+back/app/process/tests/test_recovery.py,13,315,2687cdfe681caeed1259a6371f419d9613131f702e6b60ef8dc150ac86f644b0,True,0,conserver: 13,
+back/app/process/tests/test_router_scope.py,5,102,91dbb6e00c04fca421cf8d28bebb3e8f9f9bbac5be93605fc9974a78e13e28f0,True,0,conserver provisoirement: 5,
+back/app/process/tests/test_worker_concurrency.py,1,71,1dc531830e6ec1b27b975beae1777102869363e27620db3a0795a677ad65b4ee,True,0,conserver: 1,
+back/app/skill/tests/test_learning.py,3,180,f137b97b4d513f13910b498c7c519f0e00ee44209f11e28748f8d52ab0b10a70,True,0,conserver provisoirement: 3,
+back/app/skill/tests/test_mcp.py,2,76,86cef69b1bb0691ee075ff299123a70a101045a52cec3757c86e7ae2ee31d570,True,0,conserver provisoirement: 2,
+back/app/skill/tests/test_projection.py,1,54,05a9d4cbb6ece9ac1afef8e94f637b5526b136ece3057571d95a1bb01ec0cad8,True,0,conserver provisoirement: 1,
+back/app/skill/tests/test_resource_facade.py,2,42,d6c70dc17a8feabb38855be3feaa1bf671ece9c3b670406c731bcfe767d32bf4,True,0,conserver provisoirement: 2,
+back/app/skill/tests/test_service.py,5,440,10f4fc3605ca016110f49686cd7b01bd25acd8022a00f81f4a63182db1119744,True,0,conserver provisoirement: 5,
+back/app/skill/tests/test_storage.py,8,181,1b6877b04aa2ea290ae3bac839ea72fb0b2940bfa9d9a1d8e0cd5b5bf3f7e46e,True,0,conserver provisoirement: 8,
+back/app/task/tests/test_active_lease.py,1,62,6811274b6e1ad605b2a54a39555b3ee956101b2910d1eeffe30c637459448c78,True,0,conserver provisoirement: 1,
+back/app/task/tests/test_activity.py,1,30,116585f648f30d7af2e4a0027d3cb8c4e6e3536ac5c91b18bff532486478a803,True,0,conserver provisoirement: 1,
+back/app/task/tests/test_agent_run_trace.py,4,199,13ab410c7546fb51a6835e289ff2670a7d7e45a4dd0c41b38c401b2a3c8e19c3,True,0,conserver provisoirement: 4,
+back/app/task/tests/test_amendment_service.py,5,189,15cd2f3f3a6bf56d3fd7bae2588b44d8c140f826fccd6557dfb77f26be522fd8,True,0,conserver provisoirement: 5,
+back/app/task/tests/test_budget.py,6,228,9c70f8c0088afa2150e8c296048fe8c5c7378f083f989cfd73e0d22729e1486d,True,0,conserver: 6,
+back/app/task/tests/test_collab.py,16,433,92b9c9e185f676805f14a79315fce2d55073d09f7d53a19cfe6c8dfe27f0bd1f,True,0,conserver provisoirement: 16,
+back/app/task/tests/test_conversation.py,3,146,4c4bc09014bf3251b404e6e4129db1a6419ea107ec0a6af68492d1c42c060d15,True,0,conserver provisoirement: 3,
+back/app/task/tests/test_harness_blockers.py,3,164,f1797839164e50f955e782363399c595c2dbf30e581403e3157405f71545ebf1,True,0,conserver provisoirement: 3,
+back/app/task/tests/test_inspection_mcp.py,4,269,80c2a9dd65063c0b286975efd62b7780b6fb671da1a4fe8b28030bde5cc4e98c,True,0,conserver provisoirement: 4,
+back/app/task/tests/test_mcp.py,16,574,d0d83b0448f151674c3d674b4121a5b6e7152acb94042825e2f548a578f78301,True,0,conserver provisoirement: 16,
+back/app/task/tests/test_operational_state.py,3,92,3a8cb4d98031fe16d5db54dc7f7ed2abab7187d5563bb7b467a2fa507d5c7f73,True,0,conserver provisoirement: 3,
+back/app/task/tests/test_resource_facade.py,1,70,2d403788604766fdc5af94e65e809d6a08d2a8b8ffd970d4ae8363acd670eef0,True,0,conserver provisoirement: 1,
+back/app/task/tests/test_run_events.py,3,117,bfe1301f4f85d26aa09ed7de0a1cb6042d380948bc4321da8f38b04ff429589e,True,0,conserver provisoirement: 3,
+back/app/task/tests/test_scheduler.py,29,1033,fe185a646badea0a4455d7b8b524b10d7e2f294145c64581649759042ee5f743,True,0,conserver provisoirement: 29,
+back/app/task/tests/test_schemas.py,5,104,1c8dba6dda6f059b9465d1b5bf5dc4ca6517d56caeee964650e887ffb4734556,True,0,conserver provisoirement: 5,
+back/app/task/tests/test_settings_service.py,2,33,d0b9d64ec12f10a337b35c7337fe42572678a0f88a6bffd301bb6a596df5fef7,True,0,conserver provisoirement: 2,
+back/app/task/tests/test_task_service.py,35,1015,bf91f42c5a9294302b59b50466271fc4782c912ea15c87637ed0e5a89460218b,True,0,conserver provisoirement: 35,
+back/app/task/tests/test_workflow.py,12,222,00dfdf191526fe0e5e50e532340aec623cc8bd638d9c9d72175d00e30bf8be3c,True,0,conserver: 12,
+back/app/task/tests/test_working_set.py,6,269,df1d8587d0db8e0b3afc9ff32e35d89639c7403988919f4c361faac50a01ed3f,True,0,conserver provisoirement: 6,
+back/app/tools/tests/test_admin_access.py,2,32,1939dc7daf3054b0c6433ac0a935ca8c19118a776bf80600da4fc68e90728956,True,0,conserver: 1 | conserver provisoirement: 1,
+back/app/tools/tests/test_agent_registry.py,12,477,bcba3cf45d60d8ead15f7828251859b043cb11c5f5e6430c777e04ba3ad95b75,True,0,conserver provisoirement: 12,
+back/app/tools/tests/test_catalog_refresh_service.py,2,122,760715faf7f06c6c061821d0a2095b3fc60d346cb91deeae64f417d71f4055e2,True,0,conserver provisoirement: 2,
+back/app/tools/tests/test_conversation_admin_mcp.py,3,68,ff37b5c15403c4200c572ccd073eb8809fdca5f69f510b6cbf8fbd7057dc453a,True,0,conserver provisoirement: 3,
+back/app/tools/tests/test_global_params.py,3,95,1c1dc6381bfdcafb376f480237ddf3ad6d0b23f4fbf024c658344582b788ad1e,True,0,conserver provisoirement: 3,
+back/app/tools/tests/test_mandatory_tools.py,11,282,5ee5d130e4c59f0a04bd33ca84997439a7c7e4b9e937fcd5be824c0f406cf634,True,0,conserver provisoirement: 11,
+back/app/tools/tests/test_mcp.py,1,67,250eaf6064b0d009ea4e6f1f0c59318395f8a23c038f6129987868030a5031f9,True,0,conserver provisoirement: 1,
+back/app/tools/tests/test_mcp_diagnostics.py,4,219,d50e642f3f07b837775f626adeeae5db9ee90d4dd37bf0ccc59331210c7b8fe7,True,0,conserver provisoirement: 4,
+back/app/tools/tests/test_mcp_loader.py,24,923,26a20c86cbc8cabe350f226b57785098fac2e45a4c3cce8ae9822c7059c127cb,True,0,conserver provisoirement: 24,
+back/app/tools/tests/test_nextcloud_configuration.py,1,103,74c233c08bba0fc764ae6909cf6f64c204d063e413d598812b5b9d6ff0a23b16,True,0,conserver provisoirement: 1,
+back/app/tools/tests/test_resource_effects.py,9,291,627d23f16f882314cf23bd50060892b59e64a06f32f112d7e269b4e108969bac,True,0,conserver provisoirement: 9,
+back/app/tools/tests/test_router.py,2,79,0d207f4566ac8bb618f43b79fccda0f3db802e06e2c429270dcc6dc95b1a84c6,True,0,conserver provisoirement: 2,
+back/app/tools/tests/test_secrets.py,6,205,75f01a297514f621a1da6050225cfa762682412f10bf1099a99d02484d07e6aa,True,0,conserver provisoirement: 6,
+back/app/tools/tests/test_tool_catalog.py,3,117,e49ec7e4b077bffc45892628c1fe963d5b43086ac9fa0b2b0ddd70045759aa35,True,0,conserver provisoirement: 3,
+back/app/tools/tests/test_tool_search_service.py,6,303,554e04a3e9e3097b2f442fe54befacc4cc9fa8b2909a48755b9deb85b6e0db08,True,0,conserver provisoirement: 6,
+back/app/topic/tests/test_classifier.py,5,223,7328d57756191c8b77a85eaf9eb7fdee1b4d6a58c86bd15f5e2213eb94e17b77,True,0,conserver provisoirement: 5,
+back/app/topic/tests/test_mcp.py,3,85,6f9ce296033c5ed58d09daeffb27ad5d957d02c6aed76416435ec57c316a8e66,True,0,conserver provisoirement: 3,
+back/app/topic/tests/test_qualification.py,2,90,381bc6ebf9f84feac5253d13482679fd9fab637c577b46f0ca6b65384a66b564,True,0,conserver provisoirement: 2,
+back/app/topic/tests/test_router.py,3,24,627c79118ad529b62b5a140e5dc15d8436984463337aac8b167c26839df479dd,True,0,conserver provisoirement: 3,
+back/app/topic/tests/test_sequential_detection.py,15,521,f17a099949904f9fdd73a3375c0ec0e5ac704ff7233e4c98e13ff586b4cf2287,True,0,conserver provisoirement: 15,
+back/app/topic/tests/test_service.py,11,867,59797e7b08df0ffe9edca7d565a6a279a804394727b92c796248bf632ba6d598,True,0,conserver provisoirement: 11,
+back/app/topic/tests/test_unicode_reuse.py,1,25,733ab1fc5d7f3b9842dcd450798185cdd0b7a398de1ccd461ac49c36b9433648,True,0,conserver provisoirement: 1,
+back/app/voice/tests/test_audio_streaming.py,2,36,533cbdc4589d142a5d857f0a0d6895cdb959ecfb78691e081a32f1b516513029,True,0,conserver provisoirement: 2,
+back/app/voice/tests/test_conversation_service.py,7,577,47d9660246fddd3769b2cf85d3f2f57e3eb1d2bc2aaa9cb7cad770e4106b6102,True,0,conserver provisoirement: 7,
+back/app/voice/tests/test_engine.py,15,772,b5400b47765a4521e5a42a7127c97f103ebf71049f457b1cf911b36b0075367a,True,0,conserver provisoirement: 15,
+back/app/voice/tests/test_facade.py,8,222,826caf0f4be7e0970dfd716183cda135325e1cf2e3ed87e2580386eddfae908b,True,0,conserver provisoirement: 8,
+back/app/voice/tests/test_monitoring_service.py,8,463,6d3973033637634142fe3e6caa7849439f20d142ffdfcaad3f4c4975a195cff8,True,0,conserver provisoirement: 8,
+back/app/voice/tests/test_multichannel_routing.py,8,357,a1402983e457364ab8928dc9f02fc2766600e09c4885c1319525a400a4e4f875,True,0,conserver provisoirement: 8,
+back/app/voice/tests/test_realtime_engine.py,3,200,2b8fa64ab30172a3b65f9ec2c7e0165caa71d4f692285a1057bc5d68af84029a,True,0,conserver provisoirement: 3,
+back/app/voice/tests/test_realtime_tools.py,6,263,5a61955da829d37bc8e3b0a0b8235a0df9e3e00f191e79ee6c4f679d1337894f,True,0,conserver provisoirement: 6,
+back/app/voice/tests/test_session.py,1,111,138d762589c45b320cd5387e87ea774f7b000db84210cd9a57eb8635f25aadcb,True,0,conserver provisoirement: 1,
+back/app/voice/tests/test_turn_detection.py,10,165,944d8f138049db861c99741386d43f2846711134b195b48722100d6ad8f211ce,True,0,conserver provisoirement: 10,
+back/app/webhook/tests/test_delivery_identity.py,1,35,a3265efcd968e15dcf545fd60824ada98608c1c40abfe6190f4a138bc9d53367,True,0,conserver provisoirement: 1,
+back/app/webhook/tests/test_router.py,5,85,d72224147953f44d622cb5b2cbe328404eecfb1c2b7030c4ded8e6078d3f6fae,True,0,conserver provisoirement: 5,
+back/bridge/calendar/tests/test_calculation_limits.py,2,51,a62da5812d80e7f0edcbb751b080f5337e734b04302d554031d2ffa1cdc436ca,True,0,conserver provisoirement: 2,A07
+back/bridge/calendar/tests/test_ical.py,2,83,dbf85d4ed632f87967e2e46dc50d81e82c31133b29b8cb3c7f679ebf3f7260fc,True,0,conserver provisoirement: 2,A07
+back/bridge/calendar/tests/test_mcp.py,2,43,897402f7a7ef45347e954746e60faa32315e764b53ebf404c5371a3cede8cdc5,True,0,conserver provisoirement: 2,A07
+back/bridge/calendar/tests/test_service.py,11,323,3d0ff7df7842c29ed4e33c00b0b3a9e0eeea0b9ab67b7e9ffb44791eef6e3ddc,True,0,conserver provisoirement: 11,A07
+back/bridge/claude_agent/tests/test_harness_provider.py,4,155,ca54afd77620564bb5b28485be2ae502232f8b03454418edf90764e652dc2cab,True,0,conserver provisoirement: 4,A07
+back/bridge/claude_agent/tests/test_runtime_template.py,4,53,2b36025c7c355a1acc338c9eb27bc355a6d58034b84cf975a2aefc0e8e442503,True,0,conserver provisoirement: 4,A07
+back/bridge/claude_agent/tests/test_stream_trace.py,2,35,27eed939d74e33cb32f93624253f114bf6653e432aca20717d8d0187467c6925,True,0,conserver provisoirement: 2,A07
+back/bridge/codex/tests/test_harness_provider.py,6,237,da706cff67a654315ec0183e684c061a238319bf186f12df7c7ce2afd937045a,True,0,conserver provisoirement: 6,A07
+back/bridge/codex/tests/test_runtime_credentials.py,3,79,0726022049197e46bde3f25d32b5fcfc2f9dbfef596d22bed7231bfb16abe882,True,0,conserver provisoirement: 3,A07
+back/bridge/codex/tests/test_runtime_template.py,2,22,8069df4f7525de0b39221e39f939693704ced332b5477f0aad9ebfc3fbc5a0ea,True,0,conserver provisoirement: 2,A07
+back/bridge/codex/tests/test_stream_trace.py,8,174,211b8d55f5de8a43136673112baedfd2a2a958eb72601e492fb90e1be583bec3,True,0,conserver provisoirement: 8,A07
+back/bridge/deepseek_harness/tests/test_harness_provider.py,7,150,c670e0a942fbc2122b5b4fac9c290cd452d4730f298b859f041dc34983477969,True,0,conserver provisoirement: 7,A07
+back/bridge/deepseek_harness/tests/test_runtime_adapter.py,10,330,6e06d9cb864fadf2721e35aca63df8535eab13dbf8823c3d81959f4055b47473,True,0,conserver provisoirement: 10,A07
+back/bridge/harness/tests/test_compose.py,4,52,b57aead37fd8e40646d973a30627f21c4dc899177a49c7e1591fcec9f62dd300,True,0,conserver provisoirement: 4,A07
+back/bridge/harness/tests/test_diagnostics.py,9,142,ec30be04b4b916d51d95ffd8e113b33ca16e727b19404bc02d53664bde487e20,True,0,conserver provisoirement: 9,A07
+back/bridge/harness/tests/test_manager.py,7,155,460e8b06df904279933089bac9c7c5ad0caaf4409fba9805a27d11ec25a59cb9,True,0,conserver provisoirement: 7,A07
+back/bridge/hermes/tests/test_approvals.py,1,86,d331175a1cdbd087682a94d8678c9bffb7491b5e134398c8f5e6dc4477c6078d,True,0,conserver provisoirement: 1,A07
+back/bridge/hermes/tests/test_client_runs.py,4,142,4375c073d1b8504db4b07384e935de19751f58a131d8a9da3d18b9197eee6fb4,True,0,conserver provisoirement: 4,A07
+back/bridge/hermes/tests/test_config_service.py,3,135,85aa00c1daf3c5b4894eca6bc5f4225164d492378bc085023b607089c09cf9cb,True,0,conserver provisoirement: 3,A07
+back/bridge/hermes/tests/test_executor_cancellation.py,2,48,9d1123cbf85609cd6e3dbbf8169cb5c21c5aa609de1b478ff1e16303cb3e5c87,True,0,conserver provisoirement: 2,A07
+back/bridge/hermes/tests/test_executor_history.py,4,117,cedd2800d8ff6cf9ac10fc724de3f8791bf5091b2ade5b46b239b1de32f99ab8,True,0,conserver provisoirement: 4,A07
+back/bridge/hermes/tests/test_executor_llm_tools.py,13,585,6ba59f3797d137f5ebbfc7d626b0dd7524d489145c65e41b13a5b7a98e9c3adf,True,0,conserver provisoirement: 13,A07
+back/bridge/hermes/tests/test_galaris_tts.py,1,62,a9688b029e68a61572b2d8c2f1bfe91ce690797da5b40e1dd1e3ab1a90196497,True,0,conserver provisoirement: 1,A07
+back/bridge/hermes/tests/test_kanban_executor.py,7,503,b5dd5d12c2d888001e881b20b7096ee3aabb727cfb42b780730841b10a22e2ec,True,0,conserver provisoirement: 7,A07
+back/bridge/hermes/tests/test_manager_config.py,39,1040,87062a3e204ae144b5338faff62cfa90c3e1d9e7467f0de040d5aa02e0fda2c0,True,0,conserver provisoirement: 39,A07
+back/bridge/hermes/tests/test_manager_soul.py,2,31,7cf8cefe7526bfa723b3a179b5de7287fa2788939bdc73653ae97437051a791d,True,0,conserver provisoirement: 2,A07
+back/bridge/hermes/tests/test_memory_context.py,3,77,da6eef99636d8fac06ede94ca9d3192a483e8bcdf23c2f49080c658d4a113394,True,0,conserver provisoirement: 3,A07
+back/bridge/hermes/tests/test_memory_provider.py,2,73,e275377774dc0c732bb54b99b6fbeedaa02a8a490defa78bd5c276015638aab9,True,0,conserver provisoirement: 2,A07
+back/bridge/hermes/tests/test_prompt.py,2,114,9ae5ca1d7c0e4ff14647304c799413e946d97fb34103e4e9e6f2f2ed803630df,True,0,conserver provisoirement: 2,A07
+back/bridge/hermes/tests/test_router.py,3,81,b218ac72e106937fa1e1208f48fcd83325482feba8fc6f6bb1c61ad320e934ea,True,0,conserver provisoirement: 3,A07
+back/bridge/hermes/tests/test_session_binding.py,7,118,43349e77aca25b3ff7084509c588235d4a17a0cd95e55d5efe7733e28ba850ef,True,0,conserver provisoirement: 7,A07
+back/bridge/hermes/tests/test_skill_sync.py,3,142,f504d2cb8d92007006f4799d985167ae384cfe34216db59a553897a48caa7773,True,0,conserver provisoirement: 3,A07
+back/bridge/mail/tests/test_assertions.py,2,56,ddfefb764aed599be058d5837e50eb712c1b033cf3a7f42e7726e84b15ab8bfd,True,0,conserver provisoirement: 2,A07
+back/bridge/mail/tests/test_connection_resolution.py,1,58,4330f37ee6c1bcce92a4b700aa345372543a9a285db1beb79ba78fb05612b043,True,0,conserver provisoirement: 1,A07
+back/bridge/mail/tests/test_contracts.py,3,31,15c7eef2b02c93e01571b34f1ba4a07604828cc8ee1a789cf44e9411bc016e2a,True,0,conserver provisoirement: 3,A07
+back/bridge/mail/tests/test_dbadmin.py,2,71,c55189d62b7c247d186644ac2b728bf7aff1e9b7fef42b069e3a9ca77e9fa489,True,0,conserver provisoirement: 2,A07
+back/bridge/mail/tests/test_file_transport.py,1,34,4a87321077dfaab8c705d04597e5e189e57a5e731e331ecda3184fd306e06bd6,True,0,conserver provisoirement: 1,A07
+back/bridge/mail/tests/test_imap_client.py,6,141,8bf253c50bfb3fe531e861008dbb5cb03984dfa553a1f6e8d42076d5a7dec693,True,0,conserver provisoirement: 6,A07
+back/bridge/mail/tests/test_messenger.py,4,138,98361a4d1754333b347adf36176805b6d6b7d0bc01ea886eab15be55b9ccef3b,True,0,conserver provisoirement: 4,A07
+back/bridge/mail/tests/test_mime.py,3,119,7bbecdc1866adf909eb1f769cb0db83706527a5006f5bfeef25a6afd994d574e,True,0,conserver provisoirement: 3,A07
+back/bridge/mail/tests/test_registration.py,5,89,b33e83c15e4eec4ead374bddb399a607c087b1a7b1e96c7b60b5444185a58142,True,0,conserver provisoirement: 5,A07
+back/bridge/mail/tests/test_service.py,4,276,e7fdb57ce2471fb95e5c5d26f8310d1acda1a00b9932cb119284b5534d42e365,True,0,conserver provisoirement: 4,A07
+back/bridge/matrix/tests/test_client.py,8,261,78cf8b5bb90f2708d75e213d5c0d81c2acca7927cb8f35f0beac583f67676895,True,0,conserver provisoirement: 8,A07
+back/bridge/matrix/tests/test_messenger.py,15,621,2939844f7ab01b05ec437cc72a684c1548b2c9f3ca791a6d94630a4934f85d81,True,0,conserver provisoirement: 15,A07
+back/bridge/matrix/tests/test_user_search.py,1,42,04937c94b9ef1dcfee7f974ee21d4f55e767b131334c1d999d4eb7753fa71770,True,0,conserver provisoirement: 1,A07
+back/bridge/matrix/tests/test_voice.py,9,239,6977e26f760fe2b29e2bdc303983999572201b105bf39001098c1b3a5ef0b8de,True,0,conserver provisoirement: 9,A07
+back/bridge/n8n/tests/test_n8n_bridge.py,11,355,228e4c4236ab5f5316531a41722ed48148867d4d8f34e6f5d913a828c8538afe,True,0,conserver provisoirement: 11,A07
+back/bridge/nextcloud/tests/test_call.py,29,931,bdc5e996290580b4fa1ae8a2cf13df5dd3dd58ca37bf2d8d92f205a97ec59b57,True,0,conserver provisoirement: 29,A07
+back/bridge/nextcloud/tests/test_call_listener.py,9,261,2de7b13b62ff7bddf1d9b8d35b074fbbacc8ccb6f4d3cd0db9e61b602bb73463,True,0,conserver provisoirement: 9,A07
+back/bridge/nextcloud/tests/test_client.py,12,387,890739e7db7d1ed3109dd8f25e20a880efe00e281947d2471480eb2025fd8e6a,True,0,conserver provisoirement: 12,A07
+back/bridge/nextcloud/tests/test_credentials.py,2,84,2c6f9d82568a39ce3df512ab318dadc308f16525be9b6253463b4f882db90f28,True,0,conserver provisoirement: 2,A07
+back/bridge/nextcloud/tests/test_messenger.py,18,584,a27c683c5b6db4f1d1d4ee2e2c9628792e6eec7414a0c6fd038614db266962c5,True,0,conserver provisoirement: 18,A07
+back/bridge/nextcloud/tests/test_registration.py,1,28,4cd25ed790311773372b2c239b222f876319ee483a3ae5253df92fa4380759ce,True,0,conserver provisoirement: 1,A07
+back/bridge/nextcloud/tests/test_signaling.py,10,351,dd31912b732976bafa57c8dd86f4729dbc827e7088558728cb730648265df308,True,0,conserver provisoirement: 10,A07
+back/bridge/one_bot/tests/test_hub.py,2,31,7c091c227a87f74c75a5cf35787c54019fda7ccb9271f4150e808ec2b02b68f1,True,0,conserver provisoirement: 2,A07
+back/bridge/one_bot/tests/test_messenger_routing.py,4,120,dcf917cc071793dd9c259c7f6c9ef54f83bec0cd40ffb08da0b8056ff3395398,True,0,conserver provisoirement: 4,A07
+back/bridge/one_bot/tests/test_messenger_search.py,1,39,25c115a314edc382db2ce6aa204b02dbe934d86c6b09eb8812d239b5ca5e6cf0,True,0,conserver provisoirement: 1,A07
+back/bridge/one_bot/tests/test_router_routing.py,3,124,ae6249a85e2306e2e0882c5cc546c6f4094e6c6511423a47dd418550c7ce57c0,True,0,conserver provisoirement: 3,A07
+back/bridge/openai/tests/test_realtime.py,3,166,7ae8c142823fe68fc19e338e44ad928308dea6879fd4135d0b306c6d38676ac7,True,0,conserver provisoirement: 3,A07
+back/bridge/openai/tests/test_resources.py,1,60,a992bf8716e73aa58257c805badefb7ba53d57368558080011361e7dedc42ea0,True,0,conserver provisoirement: 1,A07
+back/bridge/openai/tests/test_runtime_auth.py,1,24,a269b134402890d839f39c37a9d9689517155984236ae6181a34893c63c9b078,True,0,conserver provisoirement: 1,A07
+back/bridge/telegram/tests/test_delivery_retry.py,2,28,fcf1eb1e74c83346b580adecb3edd52cf67f873731e61f875311431a92e933ef,True,0,conserver provisoirement: 2,A07
+back/bridge/telegram/tests/test_messenger.py,5,142,11dff790fa7393008f665fe7a83f9245329b2d2b695c2835605e8e0b729e2c6d,True,0,conserver provisoirement: 5,A07
+back/bridge/whatsapp/tests/test_bridge.py,3,52,56bdd19a3fb10a6cfa97a2b31771eb678cc5eee6724816a0c5888d494763bf0a,True,0,conserver provisoirement: 3,A07
+back/bridge/whatsapp/tests/test_client.py,5,120,3be6ac6bb308cc5ec310fd1798eb7b6a81b591cf00f4daf647d9cde70860fcf1,True,0,conserver provisoirement: 5,A07
+back/bridge/whatsapp/tests/test_messenger_send.py,4,98,4c5617c5116b4d0252bdbceece48e40b0d281d46f584efdc7edd5c9f6acbde6f,True,0,conserver provisoirement: 4,A07
+back/bridge/whatsapp/tests/test_router.py,6,163,795d813911ae02c3dcc51778c98fa331621bf9bcf203a0eff6e3c81c96c05fbb,True,0,conserver provisoirement: 6,A07
+back/bridge/youtube/tests/test_transcript_service.py,6,173,e4ae2b32c2da5b8e23c0141a7f251762bab68f70bc6928a1e4fe9835223521aa,True,0,conserver provisoirement: 6,A07
+back/core/authorize/tests/test_assertions.py,30,414,ae28eefab350d8a832a728c1c92cfefc79384fa198da536d6bceb7a8a70abcea,True,0,conserver provisoirement: 30,
+back/core/authorize/tests/test_authorize_service.py,13,200,fdc4469e594ddb6e87669348f16aa696c5ba0a1d218fe27f60d89489f20ae64f,True,0,conserver provisoirement: 13,
+back/core/authorize/tests/test_decorators.py,21,275,b2ac261e80b40453c508667beab80b027fb8e55ab746d9040b5adbabe57f0a8b,True,0,conserver provisoirement: 21,
+back/core/authorize/tests/test_guard_provider.py,20,294,987df825bacef44a8ba185d2c79bebde47b40a97c66205a38460fa285bb07e3e,True,0,conserver: 2 | conserver provisoirement: 18,
+back/core/authorize/tests/test_model_scanner.py,8,145,4c3478b1ae9537b7fe1a7b9c42ecfd616a3f6d2417677cc4f27fe45c74a4c225,True,0,conserver provisoirement: 8,
+back/core/authorize/tests/test_reference_labels.py,1,14,ec32d5f2257e3b95147ee2a13aa8ba507413bfe69957c1308f0c22245533bdd6,True,0,conserver provisoirement: 1,
+back/core/authorize/tests/test_resource_rules.py,15,172,d5bb15a74736b3620e214787612bd9086385eb2660cb9c52dab47bb385c7cba5,True,0,conserver provisoirement: 15,
+back/core/authorize/tests/test_route_security.py,6,266,3028ac0017a91554619fbafed19d1ca5141f1fa09ff7dde700b92912a1996d55,True,0,conserver provisoirement: 6,
+back/core/dbadmin/tests/test_actions.py,4,176,b0221bfcdd21708d9e7e06f5c7ca2492c462c65e70aee467cd995669aeb342e3,True,0,conserver provisoirement: 4,
+back/core/dbadmin/tests/test_architecture.py,5,71,b3717d15f41c39ab459a27936aac1802c6f9beb7ec47ac724894c4f51fe5cd2a,True,0,conserver: 5,A10
+back/core/dbadmin/tests/test_credentials.py,1,17,ee135e6d75c2a13cad0f7c3c66d5c9300aef4a9870d001fe917dc39a2fe280b0,True,0,conserver provisoirement: 1,
+back/core/dbadmin/tests/test_postgresql_transitions.py,12,522,481d8fd9a8e14290f544f0d6eb2f86f4b9031fa077142e3c35bba3c405e19ff6,True,0,conserver: 12,
+back/core/dbadmin/tests/test_registry.py,5,112,67c41b0231cfe539d7b5abd6b1e31a4e7ba37a308c01ad41a956f8ebb6a420e6,True,0,conserver provisoirement: 5,
+back/core/dbadmin/tests/test_scope.py,2,23,d599fad90b4d641a0929e0a83d2705a4a0c588acbb0b1b9bbb1391fd4701efee,True,0,conserver provisoirement: 2,
+back/core/dbadmin/tests/test_subprocess_lifecycle.py,1,24,c937699c3e3bcefd6e45933b3e3f4a8cffacccfe720cf84e1342cb13545745b1,True,0,conserver provisoirement: 1,
+back/core/dbadmin/tests/test_transitions.py,6,109,430c72e1e6d270d07fa69a0622ffed071b996fe808cd65385aede6f4c993c860,True,0,conserver: 1 | conserver provisoirement: 5,
+back/core/dbadmin/tests/test_volume_transitions.py,1,130,1b21004406449a3157178810f9571ce2525e870fb9fa889064e558448b16a17e,False,0,conserver provisoirement: 1,
+back/core/i18n/tests/test_i18n.py,12,162,f909e23ab3d062924594572f9df7a76f8d388a2cd5218f1541880d5fc1cb1eae,True,0,conserver provisoirement: 12,
+back/core/params/tests/test_dbadmin.py,3,78,d33290ad9135229e42452819ea8a14fea0bd224da7b69e176090fc5d510ed04c,True,0,conserver provisoirement: 3,
+back/core/params/tests/test_prompt_defaults.py,4,62,cddcbb83ba4c1843c624864c7471ad3845996e5b5d58378b94cc5bc20b58a76e,True,0,conserver provisoirement: 4,
+back/core/params/tests/test_router.py,11,216,9df0d63ffb21c946bd9ed05d1a629632651ac804cec4b6d5e4ee8cf166ccd890,True,0,conserver provisoirement: 9 | conserver un exemplaire du scenario: 1 | fusionner le doublon: 1,A03
+back/core/params/tests/test_services.py,30,629,efbca1bb0ca97085f8cec726ab2afb763b29f155689b67af5aa5f85a1989a272,True,0,conserver provisoirement: 28 | conserver un exemplaire du scenario: 1 | fusionner le doublon: 1,A03
+back/core/tests/test_database_boundaries.py,2,110,f6c3b11a0da5492c98f83f0fa8ffaf7e4e66515aaebaf63b8bbd9b07a8f56d07,True,0,conserver: 2,A10
+back/core/tests/test_database_context.py,2,24,290098c440c2469ca7dc9a3f98b0782f473a56cbb4d1359a81209143489de98e,True,0,conserver provisoirement: 2,
+back/core/tests/test_database_json.py,1,25,c2e5278d778c4677ae0ada59e9b43e40bc91cb47776e095fa5988a333a3fa495,True,0,conserver provisoirement: 1,
+back/core/tests/test_database_startup.py,4,104,22d18eb9fec670669be8d6ef8adcc672a394f144db1ab53780c3d20fcc678b26,True,0,conserver provisoirement: 4,
+back/core/tests/test_observability.py,3,53,6922212147d2e3fc466aa6ad706dae14e7690fc00132df723e6c6eb176f32058,True,0,conserver provisoirement: 3,
+back/core/tests/test_pagination_contract.py,1,36,2ab7ddbc58ded5dc7b7bec25dcfd22e51a00a62ed34de8def8b7cf16e1774f54,True,0,conserver provisoirement: 1,
+back/core/tests/test_pool_pressure.py,2,52,a78b518429e58967c678bad5522923893e34b615856bbff39953660a3638eb39,True,0,conserver provisoirement: 2,
+back/core/tests/test_runtime.py,7,248,bf50d0fc513e9203150fdd56c0488ac555c269ac6c63ece2e5e8599cc5e834ca,True,0,conserver provisoirement: 7,
+back/core/tests/test_runtime_timeouts.py,2,68,2002e4d4bfe8b1bf5393afc3221e90d8eab56aa66b4d6e7bcb317dd052e7cafc,True,0,conserver provisoirement: 2,
+back/core/tests/test_server_mode.py,2,13,08af6d2518d661a81dcffb3e1124d54cfaaf7b2e8d45471a4bf62883abd3c1c4,True,0,conserver: 1 | conserver provisoirement: 1,
+back/core/tests/test_websocket.py,12,359,c58daaad16d5f19f858fc72d750298b67b2cc623c1e56d73b6df8ec66caf7969,True,0,conserver provisoirement: 12,
+back/core/user/tests/test_admin_invariants.py,7,160,2281db6418e425bcc3af52d0d7005d4a147911a59433f432c662ccfb1a4da554,True,0,conserver provisoirement: 7,
+back/core/user/tests/test_mfa.py,2,111,f3ed29d59e0d1fdd5c9d657688a05ac0e33c9974a87581d6efd374cd66721edd,True,0,conserver provisoirement: 2,
+back/core/user/tests/test_refresh_concurrency.py,1,109,89afc5427e29a849b9de9918c3f78c30d24e17d9837c428ddb2f1e999d04085b,True,0,conserver: 1,
+back/core/user/tests/test_refresh_session.py,2,103,7e5901a3306671f4aa7c27806e63b99fbd68a10bb448648212b8743469678679,True,0,conserver provisoirement: 2,
+back/core/user/tests/test_security_unit.py,5,89,05773e923cbd6ccaf2ff8166c817211afc6b1388b54fea74ee499aa2c1a19d35,True,0,conserver provisoirement: 5,
+back/core/user/tests/test_session_retention.py,2,35,dc4f6c8213d44c6f10c8ebb081f7456e3f72b98211f6118a3173050349af6cdf,True,0,conserver provisoirement: 2,
+back/core/user/tests/test_user.py,13,301,1f2a75e2b42dcc053c510f277fda6e151c07b7ee5bb22f7ccccb01a5c0bbf1bd,True,0,conserver provisoirement: 13,
+back/core/user/tests/test_user_flow.py,1,17,74dd90346e063e6beee3cc7a008357a8551719983f441959ba9add775bfeaa3a,True,0,conserver provisoirement: 1,
+back/core/util/tests/test_byte_budget.py,5,87,dbcac989fdf29eed6c0a0635f6a73c36e1dbf551a7715721da761bdaac88fc7c,True,0,conserver provisoirement: 5,
+back/core/util/tests/test_http_buffer.py,4,55,9d30b684611ab863aba8ec6c9c9edf8ac505f835fd1f4f64d41450b555e47890,True,0,conserver provisoirement: 4,
+back/core/util/tests/test_transfers.py,4,57,7b9f10c009f32db488cb83c527823cff62f4fb82a41d24f144cd12c7a49ce072,True,0,conserver provisoirement: 4,
+back/core/util/tests/test_yaml.py,58,739,f7ff1982c4fd54cc4a9bf4b92efc88c9cbd8193c75ee3a7c4a83eaf31f05de0b,True,0,conserver: 1 | conserver provisoirement: 54 | conserver un exemplaire du scenario: 1 | corriger le scenario ou fusionner: 1 | fusionner le doublon: 1,"A03,A04"
+back/scripts/manual_test.py,0,88,992eb40af1f565d27646597188bfdbb9f88c24f03a533867b4d3faab41b498a4,True,0,support/diagnostic sans definition de test; voir dispositifs-hors-inventaire.md,
+back/scripts/test_bridge_harness.py,0,27,131fce9638bb566e60b97417ddec1e31b8a27cf979a5351e122122d323724266,True,0,support/diagnostic sans definition de test; voir dispositifs-hors-inventaire.md,
+back/scripts/test_bridge_hermes.py,0,22,ebae70d1e22c214d6a7607a3f4974714d3c92f8e473e59342148f330e3f933eb,True,0,support/diagnostic sans definition de test; voir dispositifs-hors-inventaire.md,
+back/tests/manual/test1.py,0,2,8d42594fbc1b66c266d41cc60693c9ff42639eee2e02893e9b70218495510c23,True,0,support/diagnostic sans definition de test; voir dispositifs-hors-inventaire.md,
+back/tests/manual/test_message_history.py,2,157,d3ab635af56c10346642f7f56369de2e8df0da94c103d391fcb199ff2fb347c4,True,0,"garder comme diagnostic, exclure des garanties CI: 2",A11
+back/tests/test_ai_resource_capabilities.py,5,63,aed516b55fc2028f61785b5b208c01678697bb54bee6b08a5726909a173331fb,True,0,conserver provisoirement: 5,
+back/tests/test_architecture_tooling.py,16,325,88eb3de76277c05c43094a075dac8e274f171ce735b371b5db24240cb59670bd,True,0,conserver: 16,A10
+back/tests/test_audio_resource_discovery.py,4,240,b076b6c64fa452294cbdec69e1de3684dc6f6fff35498b1925555ead7a27f3b4,True,0,conserver provisoirement: 4,
+back/tests/test_bootstrap_settings.py,3,27,7ecc956517d834c50b329dd3670b9abda6b3134527c588437c04e772ef55e7c7,True,0,conserver provisoirement: 3,
+back/tests/test_codex_provider.py,13,691,604a3f6694e8f63a4bb5dbd7828d2f898bb61e45d7c888b0535b533ae3b4c17a,True,0,conserver provisoirement: 13,
+back/tests/test_conversation_concurrency.py,6,216,594dbbf0e150ae2a4671132873fc245c3ef1ff7d53141190914c1148d86c5201,True,0,conserver: 6,
+back/tests/test_deployment_compose.py,8,261,35446bf176d714e89558f118b61b1bd14538c87b42cd42c4fd679b1cd1374ec5,True,0,conserver: 8,A10
+back/tests/test_driver_conformance.py,2,68,4e699bda2f9fbd50efc47d5f21228f67ae405fe595f7785d338cb62149511c8f,True,0,conserver provisoirement: 2,
+back/tests/test_durable_concurrency.py,5,265,de711a6dfa47d85ea592b4b73e251d9bac2236d173e5378e62533f036bb7f2bf,True,0,conserver: 5,
+back/tests/test_e2e_isolation.py,3,77,014e89cdd199c8319a9c589b2bd51e0fb83a8343110b1f362e2624213cdcef7b,True,0,conserver provisoirement: 3,
+back/tests/test_frontend_architecture_tooling.py,4,109,52bb0b632c75f51f8475110e314dd5c1558f1849738f8192b501f83013bfb3d3,True,0,conserver: 4,A10
+back/tests/test_harness_api_url.py,3,34,b37169fda132cf4863c93d1593e5c50fe8cf1786305944a139ccda1854f25225,True,0,conserver provisoirement: 3,
+back/tests/test_health.py,3,42,d6ee6f5f493b43c3782dd6d8a45f4479795dd7b63a45ebd91109be7b1aacda07,True,0,conserver provisoirement: 3,
+back/tests/test_hermes_llm_gateway.py,16,361,f5745a5c88f17e5cc09923836b40899442ad59f128d66854c1c416491c094091,True,0,conserver provisoirement: 16,
+back/tests/test_llm_call_public_trace.py,1,58,abbdee63302d2074343731189652a469db0baa80e268cb8ff4dfb751af57dc23,True,0,conserver provisoirement: 1,
+back/tests/test_llm_call_service.py,13,490,36b2a4c17c279aa594408f24db91a2d434530db6ac677551c529ff0b7869cbac,True,0,conserver provisoirement: 13,
+back/tests/test_llm_call_trace.py,38,1419,6f2ac99c2a396468250140b26930406dd86639296b1bb1bd8bc2e2a7ad33fd6a,True,0,conserver provisoirement: 38,
+back/tests/test_llm_costing.py,6,102,9e721ec1be76d652f04adf3e5c99d436c75d551028a8bfbad9b31071706a1d5a,True,0,conserver provisoirement: 6,
+back/tests/test_llm_deletion.py,3,155,714a17c2156f899214c845be40b4d8870d0ca2fadff577de55aedab851ee093f,True,0,conserver provisoirement: 3,
+back/tests/test_llm_image_trace.py,4,95,41bc6bb7ddca993436fe7a1f87c1fc44c60d466efaa16fff759663770718948f,True,0,conserver provisoirement: 4,
+back/tests/test_llm_vision_config.py,5,135,852c1f531f4fbe4648d62146dd6db9f0978b610850fa8003dda006e50d1e3839,True,0,conserver provisoirement: 5,
+back/tests/test_message_cleanup.py,10,250,a2ff6acf7ab2b7d37b8d3894613b8b71f6a505103c1baf5f6241bee0a8cae3f9,True,0,conserver provisoirement: 10,
+back/tests/test_module_loading.py,4,64,6dca38cc58979a0d73949ba0bf6919ba1951c01f144a2c51c09f85fb55297345,True,0,conserver: 4,A10
+back/tests/test_provider_catalog.py,7,353,974e81517d8a3b08db3ec6c4ad709fe0470ae7884937670345c60e09d3dc974f,True,0,conserver provisoirement: 7,
+back/tests/test_pydantic_ai_internal_model.py,7,494,0d9dfa55959136aceaa98750b9f01d912d0f1bc8ae9ccdb4fe55dd0bccaca3fb,True,0,conserver provisoirement: 7,
+back/tests/test_realtime_security.py,2,145,23b650c30fbb1f8deed726e3c0feb2f63b20cca1a0bf417e058784706884a232,True,0,conserver provisoirement: 2,
+back/tests/test_release_qualification.py,3,45,98ebde2423486455f6e68967a1db0997b25641fb50757461642e671001b7ca9c,True,0,conserver provisoirement: 3,
+back/tests/test_task_activity_service.py,1,44,624e27715a9aae2bbf1a2f87d968095f203624ba5423aff3e43cc2ba248389a4,True,0,conserver provisoirement: 1,
+back/tests/test_tool_import_export.py,6,239,8e22c6ce13f1f2c42fba466fa47bbc67482323e60a8b571ce87f04f89dc9fd90,True,0,conserver provisoirement: 6,
+back/tests/test_transcription_service.py,5,378,a38fc99134a259befc616188bca07ac5b6294d70140ff8058883030b375cbfda,True,0,conserver provisoirement: 5,
+back/tests/test_tts_service.py,5,287,b90b3553459a537e79ffc1ad4ab2529cc42ee2b2e5aad172e85f06e0018351b7,True,0,conserver provisoirement: 5,
+harness_manager/tests/test_main.py,21,461,9d4e77c3fbd23a65404c3b0e96c28e436d05f614475cef9d5a43c274f0680909,True,0,conserver: 21,
+ssh-executor/tests/test_executord.py,9,135,4e2b37d4b777d998a04f3fe49f41a336fda10e3fd04e5dbaa9b5b8a04075f88a,True,0,conserver: 9,
+browser-executor/browser-lifecycle.test.mjs,4,75,e1a9599eec7e67956ebad709b92b0e9c593fb9d67d317dafcbc54a5bb6427d5d,True,0,conserver: 4,
+browser-executor/lib.test.mjs,7,80,43c4c19522b18daa4936c22b4721853506696eb2664414204dc0fb07d0a6e8ed,True,0,conserver: 7,
+browser-executor/server.integration.test.mjs,2,129,cb58069be2fe350bf5bd7dfab5db6ecdd8ebff9c3976e6d4348cf9f683c57cf8,True,0,conserver: 2,
+browser-executor/sessions.test.mjs,4,72,2ddf5a58b02eda26c37e9dcf12c7341b90ca38bf1678437732a78baf115c368a,True,0,conserver: 4,
+e2e/playwright.config.mjs,0,29,a2b2dacbaa27869a68f80a7f90120959bdd81ed422fb7029fa423ba674dccc84,True,0,support/diagnostic sans definition de test; voir dispositifs-hors-inventaire.md,
+e2e/specs/chat.spec.mjs,10,211,026b36265a78865c0f55ec944dd54d4e6d3263ce7c77f5c4b6f1ec8b16012ba1,True,0,conserver: 10,
+e2e/specs/pwa.spec.mjs,1,58,34145fd41ee2bc37e47956a960087ebae10e6db00740fe66d7c365994d60db23,True,0,conserver: 1,
+e2e/specs/reliability.spec.mjs,2,83,b2dfb0ede3dc13a149e0c9da84cacb28f10529c556f9e2caf229ef9810706406,True,0,conserver: 2,
+e2e/specs/sanitizer.spec.mjs,1,34,4b347b37b533b4c007437b80fa9647f9191b921c20e15ba8fc6d4e91da86bcf2,True,0,conserver: 1,
+e2e/specs/session-races.spec.mjs,2,73,484b5c7c0b70421a849d3c9b8acdf40b81376d3d8f57d458c2819e36a2298433,True,0,conserver: 2,
+front/app/agent/agentDialogTabs.test.mjs,1,18,03bb3e71649ac34ba7e220eb731a1f1d53d9a3330920f8e1c0599c37f5ba2b69,True,1,renforcer ou remplacer l oracle: 1,A02
+front/app/agent/agentSelectPresentation.test.mjs,3,36,b572432af891c97c93b89dc38ead0f23c2977a5e87f77a89c50ed5a479101e9a,True,3,renforcer ou remplacer l oracle: 3,A02
+front/app/agent/harnessActions.test.mjs,3,46,38bdac69647e5de80d85d6de871a48faecc57fff1108f937de5684f83bd28ade,True,2,renforcer ou remplacer l oracle: 3,A02
+front/app/agent/harnessBlockers.test.mjs,5,82,1c461cd956632a3a81b626cc0c61065703f5df1bd5f6931b947f9f8c3c64f13c,True,0,conserver: 5,
+front/app/agent/harnessLogs.test.mjs,1,31,34150512d111d56c6935c84064ddd198433b5213d58c0b6da18c5cdd604d9c0f,True,0,conserver provisoirement: 1,
+front/app/agent/harnessManagerAvailability.test.mjs,1,15,2326096d5ea541ba02f9eef4841cd11f0fce210338fa60afecf85c906c310507,True,1,renforcer ou remplacer l oracle: 1,A02
+front/app/agent/harnessTaskBlockers.test.mjs,1,18,c5acfa1a32d75b1759972b6c88a09f0cca5aa04bfdc7fb10eb698a1e01d8ea2b,True,1,renforcer ou remplacer l oracle: 1,A02
+front/app/agent/responsiveAgentCards.test.mjs,1,20,279e58a9464fdece24004aca727487685b5f99e7a5f15a692157175ccbf03ef9,True,1,renforcer ou remplacer l oracle: 1,A02
+front/app/agent/services/agentService.test.mjs,2,35,9dc7b71d165c5d16d6719e87b35cfe1301f2e2750ee64b8862e75beead06afb1,True,0,conserver provisoirement: 2,
+front/app/chat/agentExecutionTrace.test.mjs,2,23,48e3ad609bce9110e8d3d15836fcc603480d2b7f54b5a465429a2d7ac39ce3fa,True,2,renforcer ou remplacer l oracle: 2,A02
+front/app/chat/compactTaskOperations.test.mjs,8,66,fe4ca9d79aa89c722ccc21713fe7499a2df212750d1f66e7cd11da75d3820a33,True,6,conserver provisoirement: 2 | renforcer ou remplacer l oracle: 6,A02
+front/app/chat/conversationArchiving.test.mjs,3,45,db17fbc77924f54c8b63f042b0db55d7134efcd728f72a8b6d2bc2f48f75de6b,True,3,renforcer ou remplacer l oracle: 3,A02
+front/app/chat/conversationProcesses.test.mjs,2,31,df4f69cef2fddc658a23e99eb406c360447d8caa839940b0886755976dc79594,True,2,renforcer ou remplacer l oracle: 2,A02
+front/app/chat/inboxSubscription.test.mjs,4,89,62296ee65496fcbfb6d5a4ade04a33895690ff86033de55b27ac21cca8174fe9,True,0,conserver: 4,
+front/app/chat/liveState.test.mjs,23,474,e0b5ac5c11a7b3541a4c2e924816e6fb702cd5f3df8de93f3eb35d735b50ac24,True,0,conserver: 23,
+front/app/chat/pageScroll.test.mjs,13,138,388150d9ed48b699c9f38cbe736d2eec449a20961719b34a250381dbc494e686,True,13,renforcer ou remplacer l oracle: 13,A02
+front/app/chat/reflectionFallbackTheme.test.mjs,2,64,494783e9e63a3fb6244903f4d695579972174aa1a99285a47b87b1553b4d67bf,True,1,conserver provisoirement: 1 | renforcer ou remplacer l oracle: 1,A02
+front/app/chat/resourceViewer.test.mjs,4,49,6f5a95f8592a700771aea2cc79041cf8da7cfbb8db1ea8e56e66cb86b4ef3b75,True,2,conserver provisoirement: 2 | renforcer ou remplacer l oracle: 2,A02
+front/app/chat/roomCreation.test.mjs,4,47,da86f0fb560fbe2226e5c95361e5a01bb71d52848128413596ba302c53ac70b3,True,4,renforcer ou remplacer l oracle: 4,A02
+front/app/chat/roomThreads.test.mjs,2,21,1c6e5bda50cc9ad75f729e887b7da9d96c5f9a61761dc38c0fa83e1b89ec526c,True,2,renforcer ou remplacer l oracle: 2,A02
+front/app/chat/runtimeState.test.mjs,7,148,c859148fca8074bba9ffe926e23a4b14a8e9cca60f2d89c09c88d5fd7de01f3a,True,0,conserver: 7,
+front/app/chat/storeCatchUp.test.mjs,2,65,6325798d2c17bdede6675cf7334c33636107a4fa63058af7bb9c6332d7d6ea83,True,0,conserver: 2,
+front/app/chat/taskReasoningEffort.test.mjs,4,57,85169a79c0302338029448375ad2b8e966d7d9272eae6d1a87a6a287196f6bd2,True,3,conserver provisoirement: 1 | renforcer ou remplacer l oracle: 3,A02
+front/app/chat/unreadNotifications.test.mjs,7,87,c9ff223ec134e2d97b0caf139e17da6d8dcc83baaec6cae7943d6eccade9df20,True,7,renforcer ou remplacer l oracle: 7,A02
+front/app/chat/voiceCall.test.mjs,10,198,607722b290ef6088506365c411c2713e9cbd49688595f9d3fecf344f327a9970,True,0,conserver provisoirement: 10,
+front/app/chat/voiceCallPlayback.test.mjs,4,130,11d7ebd9f1071c82b3d5651637cfea73753e21fa44771b5962407df90ca4e199,True,0,conserver: 4,
+front/app/chat/voiceCallResponsive.test.mjs,7,55,de4502350b3cd8bbfe7b531450ff0e2bec1892151e500a07b9688c042b05c0c5,True,7,renforcer ou remplacer l oracle: 7,A02
+front/app/dream/i18n.test.mjs,1,17,ab1ebbccef3e3fe0880cb8c067084d3eeef62842e972e81d6e0dc5781353bfc1,True,1,conserver le contrat; assouplir la syntaxe: 1,A10
+front/app/goal/goalDialogTabs.test.mjs,2,39,ffa17b140a667b31b51a8ab17fd391ae10012b46e9b7c46b749cfb55521a1471,True,2,renforcer ou remplacer l oracle: 2,A02
+front/app/goal/goalHierarchy.test.mjs,5,188,f22897e942ad2d53673e49546ba48a0262f1462212d457de29ea695020b6a36f,True,5,renforcer ou remplacer l oracle: 5,A02
+front/app/goal/goalStore.test.mjs,2,48,efc2b99ae83a91e78c2ceb9981370aaecd0dfc6ceaba7d5086eff27d041af7dc,True,0,conserver: 2,
+front/app/goal/lifecycleActions.test.mjs,5,103,3892d706bdf2f0a6f5ed739b157fe17fe6811d5781ac0116ca2ead7f384c3ced,True,5,renforcer ou remplacer l oracle: 5,A02
+front/app/goal/scheduleGrid.test.mjs,1,23,8ec517e4a6e87d30723f2c8ab14227e117e62850c4f8da9f014ecd5cb0f1e611,True,0,conserver provisoirement: 1,
+front/app/goal/scheduleOwnership.test.mjs,6,117,e90f6496b03bec53fab9e23e2637bbec0fcc764718098334ef58bc1c5f9c9d39,True,6,renforcer ou remplacer l oracle: 6,A02
+front/app/harnesses/composeSettings.test.mjs,1,15,d7843526cd8e0ba39909dfa19ef51856c614ad9df3caa2d13eaf283b99ea1ac8,True,1,renforcer ou remplacer l oracle: 1,A02
+front/app/harnesses/managerHelp.test.mjs,5,86,2353d9e8611829337d8e8a53bf559f1f23098becba316e8abc0bbd8ebb125048,True,2,conserver: 3 | renforcer ou remplacer l oracle: 2,A02
+front/app/harnesses/navigation.test.mjs,9,166,a58a86036e86310ad2f2711c6d7a5ac384666cb285bf95e3e9b7cfc8f1d77be2,True,0,conserver: 9,
+front/app/index/homePage.test.mjs,16,140,efe4e1c1f39a47851270c3a2c46b7a5d845a65441c18e316d4f187906daadbb8,True,16,remplacer l oracle de sources: 1 | renforcer ou remplacer l oracle: 15,A02
+front/app/index/homePublic.test.mjs,4,59,d93c8078bdfe92a786bf8c3229ca7005c86d974156b7ac889894efd0863c533f,True,4,renforcer ou remplacer l oracle: 4,A02
+front/app/index/navigationSections.test.mjs,6,51,e5e0a2b854867c4b68eb60143bfe8cd6278c44103de57987afaade8d8e6e6da9,True,6,conserver le contrat; assouplir la syntaxe: 6,A10
+front/app/index/publicLinks.test.mjs,2,27,0278f70535bc7e90cba69b51f5fd4259a520204668e99d8dd92945bb24f5b7c3,True,2,conserver le contrat; assouplir la syntaxe: 2,A10
+front/app/llm/components/ConfiguredLlmManager.test.mjs,1,17,b224ca4d2af062d90c7fe4e6c3ea7a76f678a55867bddabbc15b1f2df6a366e3,True,1,renforcer ou remplacer l oracle: 1,A02
+front/app/llm/components/LlmCall.test.mjs,13,225,1e9aff1852cf6ff4a040ae1bce0ef00cf3b2f1a3b278b46ecf41bfc7a977992c,True,13,renforcer ou remplacer l oracle: 13,A02
+front/app/llm/components/LlmCallDetails.test.mjs,1,60,4e5bf59128cd1404778d38ff769311e8f5a8be9342f7622de8c42bfd73ab2371,True,1,renforcer ou remplacer l oracle: 1,A02
+front/app/llm/components/LlmCalls.test.mjs,1,56,db2dbdcb19c8b3c1a7f3059276c12e23ca1219215720f5dbe4bc1129357d13c2,True,0,conserver: 1,
+front/app/llm/components/LlmUsageManager.test.mjs,5,99,b1d2a620910a1b2c56c6b4a8030d38b7636a99aee0c59e9a76a72fd4768fcc72,True,2,conserver: 3 | renforcer ou remplacer l oracle: 2,A02
+front/app/llm/components/ProviderConfigPanel.test.mjs,2,37,6a8d604296f03b787ca00b2937f966d36c93fe3cb953e89e540d0038898e74cb,True,2,renforcer ou remplacer l oracle: 2,A02
+front/app/memory/components/searchResults.test.mjs,2,26,5507e0a51fdfbc22967d7a882ed5cb56eb635aed2351317595cc68891c596ded,True,0,conserver provisoirement: 2,
+front/app/memory/contactDirectory.test.mjs,3,38,d61fe5c2ca1c630d0c9523d96fe9772065f73be87fdcf1d74d22bc65f743d9cc,True,3,renforcer ou remplacer l oracle: 3,A02
+front/app/memory/documentEditorReuse.test.mjs,13,257,29f7dc6b4daa5f674d8363f63c4d43ed14368484a7ffbcd39bb260495d7d59bb,True,13,renforcer ou remplacer l oracle: 13,A02
+front/app/memory/documentTree.test.mjs,7,77,56e05a61ac856bf4201863dd6e1d785e631e2cb58f97cfbf6de610d822fa7f9d,True,7,renforcer ou remplacer l oracle: 7,A02
+front/app/memory/memoryGraphMobileDetail.test.mjs,1,33,1f345b500744d3a424e7264806775960cab1016a18d75a22d770ecea0e2efd14,True,1,renforcer ou remplacer l oracle: 1,A02
+front/app/memory/memorySearchLayout.test.mjs,4,45,7849a27917f808732315ef8bb3b32da7076726fca248af0dd0cb70e527c87e28,True,4,renforcer ou remplacer l oracle: 4,A02
+front/app/memory/memorySelectBehavior.test.mjs,1,21,5e0ed90d73afcdbd50b21e111992f5e059aab463a8424604224c3c743148aae1,True,1,renforcer ou remplacer l oracle: 1,A02
+front/app/memory/revisionPagination.test.mjs,1,35,7f4175b2625e824b561514c0c403306933cb30fc7ab3228089db1ab5eb5a0fe4,True,0,conserver provisoirement: 1,
+front/app/process/agentFilter.test.mjs,2,29,fa5c6aca658a0f753580de002e9e77b6559b135ff8e7ac9aad1c2175d4bde156,True,2,renforcer ou remplacer l oracle: 2,A02
+front/app/process/runDetailDialog.test.mjs,3,47,1712c727c96825f1a9730781fae9273cbb94bdc90da8e974d283a5d9b6172d1f,False,3,renforcer ou remplacer l oracle: 3,A02
+front/app/process/storeConcurrency.test.mjs,5,89,fe7a452323816d8c30d6255ff96202b613d2bab5a632daba2d9ca0fd75204fb2,True,0,conserver: 5,
+front/app/skill/frenchTerminology.test.mjs,1,45,53dd7cb460ed5dab103ea374d4c9a6b3a8f42156f41df2500cbf35b797396705,True,0,conserver le contrat; assouplir la syntaxe: 1,A10
+front/app/skill/skillActionLayout.test.mjs,1,13,a607948701178183af1df70cd3dada5c6b69d24050f4fe7c5f33019b31d292eb,True,1,remplacer l oracle de sources: 1,A02
+front/app/skill/skillEditorMobileSpacing.test.mjs,2,19,2a3bff056afe47ad8562e130aae2439f59660f8d7c3c005933dfc90761e8b443,True,2,renforcer ou remplacer l oracle: 2,A02
+front/app/skill/skillFrontmatterPreview.test.mjs,1,25,869b1b2aee85d32e0b3c2765462b11dd9eb33715e54bff8b7eee29d954ee7bc4,True,1,renforcer ou remplacer l oracle: 1,A02
+front/app/task/aiResult.test.mjs,13,255,d2799fb6e384e4ea2390fdca08d6a238652c45f28301585978141d1061e2b9cc,True,0,conserver: 13,
+front/app/task/executionMemoryVisibility.test.mjs,2,37,3266e0ac143cfada2400469d1201d84b77b74b1379797a7edffdd255877f1488,True,2,renforcer ou remplacer l oracle: 2,A02
+front/app/task/liveTaskRun.test.mjs,7,155,e517aa86e731dd0faeb335a3100fa4f2ce8de7f615e2fb9171a4201f9b78b01c,True,0,conserver: 7,
+front/app/task/reasoningStepsVisibility.test.mjs,1,24,54e635ae35e707a6823e07e5a1c7a43a10c3c8b124351056ba5d9a72a1085243,True,1,renforcer ou remplacer l oracle: 1,A02
+front/app/task/recentTaskFilters.test.mjs,3,34,e17080195653432c9fa78cafd819c1f1f6c0c2137d283ebad9f4563fd8da46cc,True,3,renforcer ou remplacer l oracle: 3,A02
+front/app/task/storeConcurrency.test.mjs,1,29,239ec430b33ac22aec68cb1b11a6d951a575d2a6c43dc55dff1c8d95d33f2b63,True,0,conserver: 1,
+front/app/task/taskActivity.test.mjs,5,46,798ad5b214aa064f8707793d5ac9ead8c5c4276d4808b477253100bc04b0881c,True,2,conserver provisoirement: 3 | renforcer ou remplacer l oracle: 2,A02
+front/app/tools/responsiveToolDialog.test.mjs,1,16,575e902e9139993bc722e410b15d7ccc018191b0b2963b26c191483ae1aa63f6,True,1,renforcer ou remplacer l oracle: 1,A02
+front/app/topic/components/TopicSelect.test.mjs,3,65,f52fa5c433e2fcc04cec48a6918007492beec56f19fcf39660cd4f37a271c5c0,True,0,conserver: 3,
+front/core/api.test.mjs,6,111,fb055d11a6c682c6025324f29a5b2cfd5e47f35fd2c04287f6bee7a6e67e6cf0,True,0,conserver: 6,
+front/core/authorize/authorizationLabels.test.mjs,2,26,52fa2346868cc17e59c68fd7885b613f3d05ceb30c46191b317cb92d7827256f,True,2,renforcer ou remplacer l oracle: 2,A02
+front/core/i18n/merge.test.mjs,1,36,8034d008d18b5f5592bee01f267543ea3e07487a4dee1fed5dd3e79f8e6d7497,True,0,conserver provisoirement: 1,
+front/core/navigation/leftMenuDescriptions.test.mjs,2,24,f401162267c42aa2e15d6c039afc426c0aa7036ce4d37795d7b856ee4d4fefc2,True,2,renforcer ou remplacer l oracle: 2,A02
+front/core/navigation/tree.test.mjs,1,45,14bb5e872cc59b3fbb4f6d92637668b2241ef889f29c8433c51ed49a8e9797e5,True,0,conserver provisoirement: 1,
+front/core/params/harnessSettings.test.mjs,6,101,1b7151ea7ffc23d042ec6d2c2a55df66b48ef0de6030eb0e3be3133edbc363a0,True,0,conserver provisoirement: 5 | renforcer ou remplacer l oracle: 1,A02
+front/core/params/promptSettings.test.mjs,3,57,3b209c7be560a43e129c148d50ef9d892c2aedf64f3c4a416dad0f95fd10222e,True,3,conserver le contrat; assouplir la syntaxe: 3,A10
+front/core/themePageBackground.test.mjs,1,24,cab976c480559c4beff86df20c35af0d442612d0a18a8db6593048ed8d31d764,True,1,remplacer l oracle de sources: 1,A02
+front/core/user/authStore.test.mjs,2,61,68ec117145fdefb9583bb3e443404629c4de46702be61add359452b3f2fe00e7,True,0,conserver: 2,
+front/core/user/loginDarkMode.test.mjs,1,22,ab74af1bf9a203048f6dc791d8fa4e7e617ec77d1e73cc0ed0665b55b535717a,True,1,renforcer ou remplacer l oracle: 1,A02
+front/core/user/userMenuPreferences.test.mjs,5,68,4c208354143c8a5b9470cdf57656ded104563d928a575b4bbe7e9deac0b73fad,True,5,renforcer ou remplacer l oracle: 5,A02
+front/core/util/components/pageHeaderNavigation.test.mjs,2,25,ff6a96125cdfbab9a511bd74142308544b233222cbd9a03ded915b3416fc4ea6,True,2,renforcer ou remplacer l oracle: 2,A02
+front/core/util/markdownWysiwygTableBorders.test.mjs,1,24,e0dee011053abaa828512bd14cc2230008e41b7aa030b36c0f1b0c226014a845,True,1,renforcer ou remplacer l oracle: 1,A02
+front/core/util/model3d.test.mjs,7,105,07cb65bca60cbb56232386bff6ce6e02f66a630f1d8519864d0f59f43b9f7767,True,0,conserver: 1 | conserver provisoirement: 6,
+front/core/util/model3dNavigation.test.mjs,5,80,9f35868e3e6829d20b71b18b40f5f2c2e5e946abfc400d2bf4f3943d5a41d917,True,0,conserver provisoirement: 5,
+front/core/util/statusBadge.test.mjs,4,48,cb0065545e66490a7f7ab2049f4974357028076b90852282c4affed1f8bbdcc0,True,4,renforcer ou remplacer l oracle: 4,A02
+front/core/util/visiblePolling.test.mjs,4,79,c8f8744fbe16dc1e751ca370da429d575595ab62de52600f8f15db26ab3903df,True,0,conserver provisoirement: 4,
+front/core/websocket.test.mjs,10,181,d3ed37829208a02ee90895323ae60bae45f0d93d9b65ed91a265d61109c610db,True,0,conserver: 10,
+front/pwa/deploymentCache.test.mjs,3,33,0a6d8035f03d28ea8b3f494e97081d970bf8fc905a702bf18072574725d6b677,True,3,renforcer ou remplacer l oracle: 3,A02
+front/scripts/catalog-syntax.test.mjs,1,9,a707db87223f2d0498d951cd3c352f259bc83f9f58a072ea4d0f3bfcd401a4be,True,0,conserver: 1,A10
+front/scripts/lint-gate.test.mjs,2,20,cedd2c875cb6b790505f5feeb24e5c9510f690340a74c07e9a1f7e49d39c8f92,True,0,conserver: 2,A10
+front/scripts/typecheck-gate.test.mjs,1,36,70774d487965c2f82ac63dfdabff00914edac446d9b234069035c29092931bea,True,0,conserver; isoler du cycle unitaire rapide: 1,A06

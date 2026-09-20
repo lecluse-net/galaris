@@ -1,0 +1,16 @@
+use_default_settings: true
+search:
+    formats:
+        - html
+        - json
+server:
+    port: 8080
+    bind_address: "0.0.0.0"
+    secret_key: "__GALARIS_SEARCH_SECRET__"
+engines:
+    - name: wikidata
+      disabled: false
+    - name: ahmia
+      disabled: true
+    - name: torch
+      disabled: true

@@ -1,0 +1,47 @@
+export default {
+  fr: {
+    nav: { executor: 'Console', executor_desc: 'Exécuteur SSH persistant des agents' },
+    console: {
+      title: 'Exécuteur SSH', unavailable: 'Exécuteur embarqué indisponible', refresh: 'Actualiser',
+      version: 'Version', ssh: 'SSH', disk: 'Disque', memory: 'Mémoire', processes: 'Processus', users: 'Utilisateurs', sessions: 'Sessions actives', load: 'Charge',
+      provisionTitle: 'Provisionner un agent', provisionHint: 'Crée le compte Unix portant exactement le code immuable de l’agent et active sa connexion console.',
+      agent: 'Agent', provision: 'Provisionner', provisioned: 'Compte et connexion SSH créés pour {code}',
+      code: 'Code', uid: 'UID', state: 'État', usage: 'Espace utilisé', home: 'Home', actions: 'Actions',
+      enabled: 'Actif', disabled: 'Désactivé', enable: 'Activer', disable: 'Désactiver', rotateKey: 'Tourner la clé SSH', clearCache: 'Vider le cache',
+      noUsers: 'Aucun utilisateur provisionné', noSessions: 'Aucune session d’exécution', command: 'Commande', cwd: 'Répertoire', started: 'Démarrée', running: 'En cours', finished: 'Terminée', stop: 'Arrêter',
+      maintenance: 'Maintenance', cleanPartials: 'Nettoyer les transferts partiels', recycle: 'Recycler le service',
+      confirmDisable: 'Désactiver l’accès SSH de {code} ?', confirmRotate: 'Générer et activer une nouvelle clé SSH pour {code} ?', confirmStop: 'Arrêter cette session et son groupe de processus ?', confirmRecycle: 'Recycler le service executor ? Les volumes persistants sont conservés.',
+      success: 'Opération terminée', error: 'Échec de l’opération', internalOnly: 'Le service embarqué reste privé : aucun port SSH n’est publié sur la machine hôte.',
+    },
+  },
+  en: {
+    nav: { executor: 'Console', executor_desc: 'Persistent SSH executor for agents' },
+    console: {
+      title: 'SSH executor', unavailable: 'Embedded executor unavailable', refresh: 'Refresh',
+      version: 'Version', ssh: 'SSH', disk: 'Disk', memory: 'Memory', processes: 'Processes', users: 'Users', sessions: 'Active sessions', load: 'Load',
+      provisionTitle: 'Provision an agent', provisionHint: 'Creates a Unix account using the immutable agent code verbatim and activates its console connection.',
+      agent: 'Agent', provision: 'Provision', provisioned: 'SSH account and connection created for {code}',
+      code: 'Code', uid: 'UID', state: 'State', usage: 'Disk usage', home: 'Home', actions: 'Actions',
+      enabled: 'Enabled', disabled: 'Disabled', enable: 'Enable', disable: 'Disable', rotateKey: 'Rotate SSH key', clearCache: 'Clear cache',
+      noUsers: 'No provisioned users', noSessions: 'No execution session', command: 'Command', cwd: 'Directory', started: 'Started', running: 'Running', finished: 'Finished', stop: 'Stop',
+      maintenance: 'Maintenance', cleanPartials: 'Clean partial transfers', recycle: 'Recycle service',
+      confirmDisable: 'Disable SSH access for {code}?', confirmRotate: 'Generate and activate a new SSH key for {code}?', confirmStop: 'Stop this session and its process group?', confirmRecycle: 'Recycle the executor service? Persistent volumes are preserved.',
+      success: 'Operation completed', error: 'Operation failed', internalOnly: 'The embedded service remains private: no SSH port is published on the host.',
+    },
+  },
+  zh: {
+    nav: { executor: '控制台', executor_desc: '智能体的持久 SSH 执行器' },
+    console: {
+      title: 'SSH 执行器', unavailable: '嵌入式执行器不可用', refresh: '刷新',
+      version: '版本', ssh: 'SSH', disk: '磁盘', memory: '内存', processes: '进程', users: '用户', sessions: '活动会话', load: '负载',
+      provisionTitle: '配置智能体', provisionHint: '使用不可变的智能体代码原样创建 Unix 账户，并启用其控制台连接。',
+      agent: '智能体', provision: '配置', provisioned: '已为 {code} 创建 SSH 账户和连接',
+      code: '代码', uid: 'UID', state: '状态', usage: '磁盘用量', home: '主目录', actions: '操作',
+      enabled: '已启用', disabled: '已停用', enable: '启用', disable: '停用', rotateKey: '轮换 SSH 密钥', clearCache: '清除缓存',
+      noUsers: '没有已配置的用户', noSessions: '没有执行会话', command: '命令', cwd: '目录', started: '已开始', running: '运行中', finished: '已完成', stop: '停止',
+      maintenance: '维护', cleanPartials: '清理未完成的传输', recycle: '重启服务',
+      confirmDisable: '停用 {code} 的 SSH 访问权限？', confirmRotate: '为 {code} 生成并启用新的 SSH 密钥？', confirmStop: '停止此会话及其进程组？', confirmRecycle: '重启执行器服务？持久卷将保留。',
+      success: '操作已完成', error: '操作失败', internalOnly: '嵌入式服务保持私有：主机不会公开任何 SSH 端口。',
+    },
+  },
+}

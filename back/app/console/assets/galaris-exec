@@ -1,0 +1,372 @@
+#!/usr/bin/env python3
+"""Durable per-user process helper used by the enhanced SSH console."""
+
+from __future__ import annotations
+
+import argparse
+import fcntl
+import hashlib
+import json
+import os
+import signal
+import subprocess
+import sys
+import time
+from pathlib import Path
+from typing import Any
+from uuid import UUID, uuid4
+
+# Keep the JSON envelope well below the 512 KiB SSH response cap even when
+# control characters expand during JSON encoding.
+_READ_LIMIT = 32 * 1024
+_VERSION = "2"
+
+
+def _sync_directory(path: Path) -> None:
+    descriptor = os.open(path, os.O_RDONLY | os.O_DIRECTORY)
+    try:
+        os.fsync(descriptor)
+    finally:
+        os.close(descriptor)
+
+
+def _root() -> Path:
+    home = Path.home().resolve()
+    root = home / ".galaris" / "sessions"
+    root.mkdir(parents=True, exist_ok=True, mode=0o700)
+    # Persist newly created ancestor entries before any accepted command can run.
+    _sync_directory(root.parent)
+    _sync_directory(home)
+    return root
+
+
+def _session(run_id: str) -> Path:
+    canonical = str(UUID(run_id))
+    path = (_root() / canonical).resolve()
+    if path.parent != _root():
+        raise ValueError("Invalid run id")
+    return path
+
+
+def _read_json(path: Path) -> dict[str, Any]:
+    return json.loads(path.read_text(encoding="utf-8"))
+
+
+def _write_json(path: Path, value: dict[str, Any]) -> None:
+    temporary = path.with_suffix(".tmp")
+    with temporary.open("w", encoding="utf-8") as output:
+        os.chmod(temporary, 0o600)
+        json.dump(value, output, separators=(",", ":"))
+        output.flush()
+        os.fsync(output.fileno())
+    temporary.replace(path)
+    for directory in (path.parent, path.parent.parent):
+        _sync_directory(directory)
+
+
+def _process_identity(pid: int) -> str | None:
+    try:
+        # The command name may contain spaces or parentheses.
+        fields = Path(f"/proc/{pid}/stat").read_text().rsplit(")", 1)[1].split()
+        if fields[0] == "Z":
+            return None
+        boot = Path("/proc/sys/kernel/random/boot_id").read_text().strip()
+        return f"{boot}:{fields[19]}"
+    except (OSError, IndexError):
+        return None
+
+
+def _owner_alive(metadata: dict[str, Any]) -> bool:
+    pid = metadata.get("pid")
+    if not isinstance(pid, int):
+        return False
+    identity = metadata.get("process_identity")
+    # Legacy receipts remain readable, but never signal a PID without its identity.
+    return identity is not None and _process_identity(pid) == identity
+
+
+def _running(pid: int) -> bool:
+    try:
+        os.kill(pid, 0)
+        return True
+    except ProcessLookupError:
+        return False
+
+
+def _cursor(stdout_offset: int, stderr_offset: int) -> int:
+    return (stdout_offset << 32) | stderr_offset
+
+
+def _offsets(cursor: int) -> tuple[int, int]:
+    value = max(0, cursor)
+    return value >> 32, value & 0xFFFFFFFF
+
+
+def _read_from(path: Path, offset: int) -> tuple[str, int, bool]:
+    if not path.exists():
+        return "", offset, False
+    size = path.stat().st_size
+    start = min(max(0, offset), size)
+    with path.open("rb") as source:
+        source.seek(start)
+        data = source.read(_READ_LIMIT)
+    end = start + len(data)
+    return data.decode("utf-8", errors="replace"), end, end < size
+
+
+def _result(
+    session: Path,
+    metadata: dict[str, Any],
+    *,
+    cursor: int = 0,
+    forced_status: str | None = None,
+) -> dict[str, Any]:
+    stdout_offset, stderr_offset = _offsets(cursor)
+    stdout, stdout_end, stdout_truncated = _read_from(session / "stdout", stdout_offset)
+    stderr, stderr_end, stderr_truncated = _read_from(session / "stderr", stderr_offset)
+    status_file = session / "exit_code"
+    pid = int(metadata.get("pid") or 0)
+    if forced_status is not None:
+        status = forced_status
+        exit_code = None
+    elif metadata.get("state") in {"completed", "failed", "cancelled"}:
+        status = metadata["state"]
+        exit_code = metadata.get("exit_code")
+    elif status_file.exists():
+        exit_code = int(status_file.read_text(encoding="ascii").strip() or "1")
+        status = "completed" if exit_code == 0 else "failed"
+    elif (
+        metadata.get("state") == "prepared"
+        or _owner_alive(metadata)
+        or ("state" not in metadata and pid > 0 and _running(pid))
+    ):
+        exit_code = None
+        status = "running"
+    else:
+        exit_code = None
+        status = "outcome_unknown"
+    return {
+        "run_id": metadata["run_id"],
+        "status": status,
+        "exit_code": exit_code,
+        "stdout": stdout,
+        "stderr": stderr,
+        "stdout_truncated": stdout_truncated,
+        "stderr_truncated": stderr_truncated,
+        "duration_ms": int(
+            (float(metadata.get("finished_at") or time.time()) - float(metadata["started_at"]))
+            * 1000
+        ),
+        "cwd": metadata["cwd_relative"],
+        "cursor": _cursor(stdout_end, stderr_end),
+        "files": [],
+    }
+
+
+def start(args: argparse.Namespace) -> dict[str, Any]:
+    home = Path.home().resolve()
+    cwd = Path(args.cwd).resolve()
+    if cwd != home and home not in cwd.parents:
+        raise ValueError("cwd is outside the Unix home")
+    if not cwd.is_dir():
+        raise ValueError("cwd does not exist")
+    command = str(args.command or "").strip()
+    if not command:
+        raise ValueError("command is empty")
+    run_id = str(UUID(args.run_id)) if args.run_id else str(uuid4())
+    session = _session(run_id)
+    session.mkdir(mode=0o700, exist_ok=True)
+    fingerprint = hashlib.sha256(
+        json.dumps([command, str(cwd), args.task_id], separators=(",", ":")).encode()
+    ).hexdigest()
+    with (session / "intent.lock").open("a") as lock:
+        fcntl.flock(lock, fcntl.LOCK_EX)
+        path = session / "metadata.json"
+        if path.exists():
+            metadata = _read_json(path)
+            if metadata.get("fingerprint") != fingerprint:
+                raise ValueError(
+                    "Operation id already belongs to a different command, directory or task"
+                )
+        else:
+            metadata = {
+                "version": 2,
+                "state": "prepared",
+                "run_id": run_id,
+                "command": command,
+                "fingerprint": fingerprint,
+                "cwd": str(cwd),
+                "cwd_relative": cwd.relative_to(home).as_posix() or ".",
+                "started_at": time.time(),
+                "task_id": args.task_id,
+            }
+            _write_json(path, metadata)
+        if metadata.get("state") == "prepared":
+            _launch_supervisor(run_id)
+    return _result(session, metadata)
+
+
+def _launch_supervisor(run_id: str) -> None:
+    # Multiple launches are harmless: the durable claim below permits only one execution.
+    subprocess.Popen(
+        [sys.executable, str(Path(__file__).resolve()), "supervise", "--run-id", run_id],
+        stdin=subprocess.DEVNULL,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+        start_new_session=True,
+        close_fds=True,
+    )
+
+
+def supervise(args: argparse.Namespace) -> dict[str, Any]:
+    session = _session(args.run_id)
+    with (session / "execution.lock").open("a") as lock:
+        try:
+            fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except BlockingIOError:
+            return {}
+        with (session / "intent.lock").open("a") as intent:
+            fcntl.flock(intent, fcntl.LOCK_EX)
+            metadata = _read_json(session / "metadata.json")
+            if metadata.get("state") != "prepared":
+                return {}
+            metadata.update(
+                state="running", pid=os.getpid(), process_identity=_process_identity(os.getpid())
+            )
+            # Persist before executing. A crash after this claim is ambiguous, never replayed.
+            _write_json(session / "metadata.json", metadata)
+        cancelled = False
+        process: subprocess.Popen[bytes] | None = None
+
+        def on_stop(_signal: int, _frame: Any) -> None:
+            nonlocal cancelled
+            cancelled = True
+            if process is not None:
+                # Cover SIGTERM arriving immediately before the child was spawned.
+                signal.signal(signal.SIGTERM, signal.SIG_IGN)
+                os.killpg(os.getpgrp(), signal.SIGTERM)
+
+        signal.signal(signal.SIGTERM, on_stop)
+        if cancelled:
+            metadata.update(state="cancelled", exit_code=None, finished_at=time.time())
+            _write_json(session / "metadata.json", metadata)
+            return {}
+        fifo = session / "stdin"
+        if not fifo.exists():
+            os.mkfifo(fifo, 0o600)
+        stdin_fd = os.open(fifo, os.O_RDWR | os.O_NONBLOCK)
+        try:
+            with (
+                (session / "stdout").open("ab", buffering=0) as stdout,
+                (session / "stderr").open("ab", buffering=0) as stderr,
+            ):
+                process = subprocess.Popen(
+                    ["/bin/bash", "-c", metadata["command"]],
+                    cwd=metadata["cwd"],
+                    stdin=stdin_fd,
+                    stdout=stdout,
+                    stderr=stderr,
+                    close_fds=True,
+                )
+                if cancelled:
+                    on_stop(signal.SIGTERM, None)
+                code = process.wait()
+                os.fsync(stdout.fileno())
+                os.fsync(stderr.fileno())
+            metadata.update(
+                state="cancelled" if cancelled else "completed" if code == 0 else "failed",
+                exit_code=code,
+                finished_at=time.time(),
+            )
+            _write_json(session / "metadata.json", metadata)
+        finally:
+            os.close(stdin_fd)
+    return {}
+
+
+def poll(args: argparse.Namespace) -> dict[str, Any]:
+    session = _session(args.run_id)
+    metadata = _read_json(session / "metadata.json")
+    if metadata.get("state") == "prepared":
+        # Recover a launcher killed after intent persistence, before spawning its supervisor.
+        _launch_supervisor(str(metadata["run_id"]))
+    return _result(session, metadata, cursor=args.cursor)
+
+
+def write(args: argparse.Namespace) -> dict[str, Any]:
+    session = _session(args.run_id)
+    metadata = _read_json(session / "metadata.json")
+    if not _owner_alive(metadata):
+        raise RuntimeError("session is not running")
+    data = sys.stdin.buffer.read(_READ_LIMIT)
+    fd = os.open(session / "stdin", os.O_WRONLY | os.O_NONBLOCK)
+    try:
+        os.write(fd, data)
+    finally:
+        os.close(fd)
+    return _result(session, metadata)
+
+
+def stop(args: argparse.Namespace) -> dict[str, Any]:
+    session = _session(args.run_id)
+    metadata = _read_json(session / "metadata.json")
+    pid = int(metadata.get("pid") or 0)
+    if metadata.get("state") == "prepared":
+        with (session / "intent.lock").open("a") as lock:
+            fcntl.flock(lock, fcntl.LOCK_EX)
+            metadata = _read_json(session / "metadata.json")
+            if metadata.get("state") == "prepared":
+                metadata.update(state="cancelled", exit_code=None, finished_at=time.time())
+                _write_json(session / "metadata.json", metadata)
+                return _result(session, metadata)
+            pid = int(metadata.get("pid") or 0)
+    if _owner_alive(metadata):
+        try:
+            os.killpg(pid, signal.SIGTERM)
+        except ProcessLookupError:
+            pass
+        deadline = time.monotonic() + 3
+        while _owner_alive(metadata) and time.monotonic() < deadline:
+            time.sleep(0.05)
+        if _owner_alive(metadata):
+            try:
+                os.killpg(pid, signal.SIGKILL)
+            except ProcessLookupError:
+                pass
+    return _result(session, _read_json(session / "metadata.json"))
+
+
+def parser() -> argparse.ArgumentParser:
+    root = argparse.ArgumentParser(prog="galaris-exec")
+    root.add_argument("--version", action="version", version=f"%(prog)s {_VERSION}")
+    commands = root.add_subparsers(dest="operation", required=True)
+    start_parser = commands.add_parser("start")
+    start_parser.add_argument("--cwd", required=True)
+    start_parser.add_argument("--task-id")
+    start_parser.add_argument("--run-id")
+    start_parser.add_argument("command")
+    poll_parser = commands.add_parser("poll")
+    poll_parser.add_argument("--run-id", required=True)
+    poll_parser.add_argument("--cursor", type=int, default=0)
+    write_parser = commands.add_parser("write")
+    write_parser.add_argument("--run-id", required=True)
+    stop_parser = commands.add_parser("stop")
+    stop_parser.add_argument("--run-id", required=True)
+    supervisor_parser = commands.add_parser("supervise")
+    supervisor_parser.add_argument("--run-id", required=True)
+    return root
+
+
+def main() -> int:
+    args = parser().parse_args()
+    try:
+        result = globals()[str(args.operation)](args)
+        print(json.dumps(result, separators=(",", ":")))
+        return 0
+    except Exception as exc:
+        print(f"{type(exc).__name__}: {exc}", file=sys.stderr)
+        return 1
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

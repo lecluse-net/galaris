@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <defs>
+    <mask id="artwork" x="0" y="0" width="32" height="32" maskUnits="userSpaceOnUse" style="mask-type: luminance">
+      <g fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="3" y="3" width="11" height="15" rx="3" fill="#fff" stroke="none" />
+        <rect x="18" y="3" width="11" height="9" rx="3" fill="#fff" stroke="none" />
+        <rect x="3" y="22" width="11" height="7" rx="3" fill="#fff" stroke="none" />
+        <rect x="18" y="16" width="11" height="13" rx="3" fill="#fff" stroke="none" />
+        <path d="M22 25v-3m3 3v-5M7 8h3" stroke="#000" />
+      </g>
+    </mask>
+  </defs>
+  <rect width="32" height="32" fill="#000" mask="url(#artwork)"/>
+</svg>

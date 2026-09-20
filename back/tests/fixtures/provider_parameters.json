@@ -1,0 +1,139 @@
+{
+  "reviewed_on": "2026-09-12",
+  "sources": "docs/fr/dev/provider-parameters.md#matrice-auditée",
+  "sdk_request_fields": {
+    "chat": "audio frequency_penalty function_call functions logit_bias logprobs max_completion_tokens max_tokens messages metadata modalities model moderation n parallel_tool_calls prediction presence_penalty prompt_cache_key prompt_cache_options prompt_cache_retention reasoning_effort response_format safety_identifier seed service_tier stop store stream stream_options temperature tool_choice tools top_logprobs top_p user verbosity web_search_options",
+    "responses": "background context_management conversation include input instructions max_output_tokens max_tool_calls metadata model moderation parallel_tool_calls previous_response_id prompt prompt_cache_key prompt_cache_options prompt_cache_retention reasoning safety_identifier service_tier store stream stream_options temperature text tool_choice tools top_logprobs top_p truncation user"
+  },
+  "sdk_blocked_fields": {
+    "moderation": "No shared Galaris provider contract; refuse explicit use until endpoint-specific review.",
+    "max_tool_calls": "No shared Galaris provider contract; refuse explicit use until endpoint-specific review."
+  },
+  "controls": {
+    "temperature": 0.2,
+    "top_p": 0.9,
+    "presence_penalty": 0.1,
+    "frequency_penalty": 0.1,
+    "logit_bias": {"1": 1},
+    "logprobs": true,
+    "top_logprobs": 2,
+    "seed": 42,
+    "stop": ["END"],
+    "parallel_tool_calls": true,
+    "stream_options": {"include_usage": true},
+    "user": "offline-test",
+    "store": false,
+    "metadata": {"source": "offline-test"},
+    "service_tier": "auto",
+    "prediction": {"type": "content", "content": "draft"},
+    "reasoning_effort": "high",
+    "reasoning": {"effort": "high"},
+    "max_tokens": 256,
+    "max_completion_tokens": 256,
+    "max_output_tokens": 256,
+    "verbosity": "low",
+    "prompt_cache_key": "offline-test",
+    "prompt_cache_retention": "in_memory",
+    "prompt_cache_options": {"mode": "auto"},
+    "background": false,
+    "truncation": "disabled",
+    "context_management": [{"type": "compaction", "compact_threshold": 10000}],
+    "safety_identifier": "offline-test",
+    "thinking": {"type": "enabled"}
+  },
+  "nested": {
+    "reasoning": {"effort": "high", "summary": "auto", "context": "all_turns", "mode": "standard", "enabled": true, "exclude": false, "max_tokens": 256},
+    "text": {"format": {"type": "json_object"}, "verbosity": "low"},
+    "stream_options": {"include_usage": true, "include_obfuscation": false},
+    "thinking": {"type": "enabled", "budget_tokens": 256, "display": "summarized"}
+  },
+  "payload": "model messages input instructions stream tools tool_choice response_format text include previous_response_id conversation prompt audio modalities n functions function_call web_search_options",
+  "envelopes": {
+    "chat": "model messages stream tools tool_choice response_format text include",
+    "responses": "model input instructions stream tools tool_choice text include previous_response_id conversation prompt"
+  },
+  "providers": {
+    "openai-api": {
+      "chat": "max_completion_tokens temperature top_p presence_penalty frequency_penalty logit_bias logprobs top_logprobs seed stop parallel_tool_calls stream_options user metadata store service_tier prediction safety_identifier reasoning_effort",
+      "responses": "max_output_tokens temperature top_p top_logprobs parallel_tool_calls store metadata user truncation service_tier prompt_cache_key prompt_cache_retention background safety_identifier reasoning",
+      "preserve": "metadata store safety_identifier"
+    },
+    "openai-codex": {
+      "responses": "parallel_tool_calls store service_tier prompt_cache_key reasoning",
+      "preserve": "store"
+    },
+    "anthropic-api": {
+      "chat": "max_tokens temperature top_p stop parallel_tool_calls stream_options",
+      "preserve": "stop"
+    },
+    "deepseek": {
+      "chat": "max_tokens temperature top_p presence_penalty frequency_penalty logprobs top_logprobs stop stream_options reasoning_effort thinking",
+      "responses": "max_output_tokens temperature top_p parallel_tool_calls reasoning",
+      "preserve": ""
+    },
+    "gemini": {
+      "chat": "max_tokens temperature top_p presence_penalty frequency_penalty seed stop parallel_tool_calls stream_options reasoning_effort",
+      "preserve": "seed stop"
+    },
+    "xai": {
+      "chat": "max_tokens temperature top_p presence_penalty frequency_penalty logit_bias logprobs top_logprobs seed stop parallel_tool_calls stream_options user reasoning_effort",
+      "responses": "max_output_tokens temperature top_p top_logprobs parallel_tool_calls store metadata user truncation reasoning",
+      "preserve": "temperature"
+    },
+    "groq": {
+      "chat": "max_tokens temperature top_p seed stop parallel_tool_calls stream_options user reasoning_effort",
+      "responses": "max_output_tokens temperature top_p parallel_tool_calls store metadata truncation reasoning",
+      "preserve": "temperature"
+    },
+    "cerebras": {
+      "chat": "max_tokens temperature top_p presence_penalty frequency_penalty logprobs top_logprobs seed stop parallel_tool_calls stream_options reasoning_effort",
+      "preserve": "temperature seed"
+    },
+    "mistral": {
+      "chat": "max_tokens temperature top_p presence_penalty frequency_penalty stop parallel_tool_calls reasoning_effort",
+      "preserve": "temperature stop"
+    },
+    "cohere": {
+      "chat": "max_tokens temperature top_p presence_penalty frequency_penalty seed stop reasoning_effort",
+      "preserve": "temperature seed"
+    },
+    "together": {
+      "chat": "max_tokens temperature top_p presence_penalty frequency_penalty logit_bias logprobs top_logprobs seed stop parallel_tool_calls stream_options reasoning_effort",
+      "preserve": "temperature seed"
+    },
+    "fireworks": {
+      "chat": "max_tokens temperature top_p presence_penalty frequency_penalty logit_bias logprobs top_logprobs seed stop parallel_tool_calls stream_options user prediction metadata reasoning_effort",
+      "responses": "max_output_tokens temperature top_p top_logprobs parallel_tool_calls store metadata user truncation reasoning",
+      "preserve": "temperature metadata"
+    },
+    "nvidia": {
+      "chat": "max_tokens temperature top_p presence_penalty frequency_penalty logit_bias logprobs top_logprobs seed stop parallel_tool_calls stream_options reasoning_effort",
+      "responses": "max_output_tokens temperature top_p top_logprobs parallel_tool_calls truncation reasoning",
+      "preserve": "temperature"
+    },
+    "ollama": {
+      "chat": "max_tokens temperature top_p presence_penalty frequency_penalty logit_bias logprobs top_logprobs seed stop stream_options user reasoning_effort",
+      "preserve": "temperature seed"
+    },
+    "openrouter": {
+      "chat": "max_tokens temperature top_p presence_penalty frequency_penalty logit_bias logprobs top_logprobs seed stop parallel_tool_calls stream_options user reasoning",
+      "responses": "max_output_tokens temperature top_p top_logprobs parallel_tool_calls store metadata user truncation reasoning",
+      "preserve": ""
+    },
+    "huggingface": {
+      "chat": "max_tokens temperature top_p presence_penalty frequency_penalty logit_bias logprobs top_logprobs seed stop parallel_tool_calls stream_options user reasoning_effort",
+      "responses": "max_output_tokens temperature top_p top_logprobs parallel_tool_calls store metadata user truncation reasoning",
+      "preserve": "temperature"
+    },
+    "mammouth": {
+      "chat": "max_tokens temperature top_p presence_penalty frequency_penalty logit_bias logprobs top_logprobs seed stop parallel_tool_calls stream_options user metadata store service_tier prediction safety_identifier reasoning_effort",
+      "responses": "max_output_tokens temperature top_p top_logprobs parallel_tool_calls store metadata user truncation service_tier prompt_cache_key prompt_cache_retention background safety_identifier reasoning",
+      "preserve": ""
+    },
+    "perplexity": {
+      "chat": "max_tokens temperature top_p presence_penalty frequency_penalty stop stream_options",
+      "responses": "max_output_tokens temperature top_p top_logprobs parallel_tool_calls store metadata user truncation reasoning",
+      "preserve": ""
+    }
+  }
+}

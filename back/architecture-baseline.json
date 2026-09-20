@@ -1,0 +1,1150 @@
+{
+  "private_imports": [
+    {
+      "source": "back/app/agent/agent_service.py",
+      "target": "app.tools.mandatory_tools"
+    },
+    {
+      "source": "back/app/agent/briefing_service.py",
+      "target": "app.llm.structured_service"
+    },
+    {
+      "source": "back/app/agent/dispatcher.py",
+      "target": "app.llm.provider_models"
+    },
+    {
+      "source": "back/app/agent/dispatcher.py",
+      "target": "app.llm.structured_service"
+    },
+    {
+      "source": "back/app/agent/mcp.py",
+      "target": "app.tools.mcp_loader"
+    },
+    {
+      "source": "back/app/agent/model_resolver.py",
+      "target": "app.llm.provider_models"
+    },
+    {
+      "source": "back/app/agent/models.py",
+      "target": "app.llm.profile_models"
+    },
+    {
+      "source": "back/app/agent/models.py",
+      "target": "app.skill.models"
+    },
+    {
+      "source": "back/app/agent/openai_router.py",
+      "target": "app.llm.trace"
+    },
+    {
+      "source": "back/app/agent/planner_service.py",
+      "target": "app.llm.structured_service"
+    },
+    {
+      "source": "back/app/agent/planner_service.py",
+      "target": "app.messenger.interactions"
+    },
+    {
+      "source": "back/app/agent/planner_service.py",
+      "target": "app.tools.metrics"
+    },
+    {
+      "source": "back/app/audio/mcp.py",
+      "target": "app.tools.mcp_loader"
+    },
+    {
+      "source": "back/app/audio/summary_service.py",
+      "target": "app.llm.structured_service"
+    },
+    {
+      "source": "back/app/browser/mcp.py",
+      "target": "app.tools.mcp_loader"
+    },
+    {
+      "source": "back/app/connection/router.py",
+      "target": "app.tools.mcp"
+    },
+    {
+      "source": "back/app/console/file_transport.py",
+      "target": "app.file_share.file_contracts"
+    },
+    {
+      "source": "back/app/console/file_transport.py",
+      "target": "app.file_share.path_normalization"
+    },
+    {
+      "source": "back/app/console/file_transport.py",
+      "target": "app.file_share.transport"
+    },
+    {
+      "source": "back/app/console/mcp.py",
+      "target": "app.tools.mcp_loader"
+    },
+    {
+      "source": "back/app/conversation/mcp.py",
+      "target": "app.task.amendment_service"
+    },
+    {
+      "source": "back/app/conversation/mcp.py",
+      "target": "app.task.operational_state"
+    },
+    {
+      "source": "back/app/conversation/mcp.py",
+      "target": "app.task.runner"
+    },
+    {
+      "source": "back/app/conversation/mcp.py",
+      "target": "app.task.task_service"
+    },
+    {
+      "source": "back/app/conversation/mcp.py",
+      "target": "app.task.working_set"
+    },
+    {
+      "source": "back/app/conversation/service.py",
+      "target": "app.task.models"
+    },
+    {
+      "source": "back/app/conversation/service.py",
+      "target": "app.task.operational_state"
+    },
+    {
+      "source": "back/app/conversation/service.py",
+      "target": "app.task.working_set"
+    },
+    {
+      "source": "back/app/dashboard/dashboard_service.py",
+      "target": "app.agent.models"
+    },
+    {
+      "source": "back/app/dashboard/dashboard_service.py",
+      "target": "app.llm.models"
+    },
+    {
+      "source": "back/app/dashboard/dashboard_service.py",
+      "target": "app.llm.provider_models"
+    },
+    {
+      "source": "back/app/dashboard/dashboard_service.py",
+      "target": "app.task.models"
+    },
+    {
+      "source": "back/app/dream/mechanisms/memory_extraction.py",
+      "target": "app.llm.provider_models"
+    },
+    {
+      "source": "back/app/dream/mechanisms/memory_extraction.py",
+      "target": "app.llm.structured_service"
+    },
+    {
+      "source": "back/app/dream/mechanisms/process_memory.py",
+      "target": "app.memory.process_projection"
+    },
+    {
+      "source": "back/app/dream/mechanisms/sequential_topic_classification.py",
+      "target": "app.topic.sequential_detection"
+    },
+    {
+      "source": "back/app/dream/mechanisms/stale_memory.py",
+      "target": "app.memory.service"
+    },
+    {
+      "source": "back/app/dream/mechanisms/task_outcome_reflection.py",
+      "target": "app.llm.structured_service"
+    },
+    {
+      "source": "back/app/dream/mechanisms/topic_classification.py",
+      "target": "app.topic.classifier"
+    },
+    {
+      "source": "back/app/dream/monitoring_service.py",
+      "target": "app.llm.schemas"
+    },
+    {
+      "source": "back/app/dream/scheduler.py",
+      "target": "app.memory.automation"
+    },
+    {
+      "source": "back/app/dream/schemas.py",
+      "target": "app.llm.schemas"
+    },
+    {
+      "source": "back/app/file_share/mcp.py",
+      "target": "app.tools.mcp_loader"
+    },
+    {
+      "source": "back/app/goal/goal_service.py",
+      "target": "app.agent.models"
+    },
+    {
+      "source": "back/app/goal/goal_service.py",
+      "target": "app.task.models"
+    },
+    {
+      "source": "back/app/goal/mcp.py",
+      "target": "app.tools.mcp_loader"
+    },
+    {
+      "source": "back/app/goal/models.py",
+      "target": "app.agent.models"
+    },
+    {
+      "source": "back/app/goal/models.py",
+      "target": "app.connection.models"
+    },
+    {
+      "source": "back/app/goal/models.py",
+      "target": "app.llm.provider_models"
+    },
+    {
+      "source": "back/app/goal/models.py",
+      "target": "app.task.models"
+    },
+    {
+      "source": "back/app/goal/referrer_wait.py",
+      "target": "app.messenger.interactions"
+    },
+    {
+      "source": "back/app/goal/referrer_wait.py",
+      "target": "app.messenger.models"
+    },
+    {
+      "source": "back/app/goal/referrer_wait.py",
+      "target": "app.task.models"
+    },
+    {
+      "source": "back/app/goal/runner.py",
+      "target": "app.agent.models"
+    },
+    {
+      "source": "back/app/goal/runner.py",
+      "target": "app.llm.models"
+    },
+    {
+      "source": "back/app/goal/runner.py",
+      "target": "app.llm.structured_service"
+    },
+    {
+      "source": "back/app/goal/runner.py",
+      "target": "app.task.models"
+    },
+    {
+      "source": "back/app/goal/runner.py",
+      "target": "app.task.schemas"
+    },
+    {
+      "source": "back/app/harness/checkpoint.py",
+      "target": "app.tools.mcp_loader"
+    },
+    {
+      "source": "back/app/harness/conversation.py",
+      "target": "app.agent.conversation_context"
+    },
+    {
+      "source": "back/app/harness/conversation.py",
+      "target": "app.agent.executor_prompts"
+    },
+    {
+      "source": "back/app/harness/conversation.py",
+      "target": "app.agent.prompt_tree"
+    },
+    {
+      "source": "back/app/harness/conversation.py",
+      "target": "app.conversation.mcp"
+    },
+    {
+      "source": "back/app/harness/conversation.py",
+      "target": "app.tools.agent_registry"
+    },
+    {
+      "source": "back/app/harness/conversation.py",
+      "target": "app.tools.mcp_loader"
+    },
+    {
+      "source": "back/app/harness/driver.py",
+      "target": "app.agent.registry"
+    },
+    {
+      "source": "back/app/harness/executor.py",
+      "target": "app.agent.conversation_context"
+    },
+    {
+      "source": "back/app/harness/executor.py",
+      "target": "app.messenger.models"
+    },
+    {
+      "source": "back/app/harness/executor.py",
+      "target": "app.tools.agent_registry"
+    },
+    {
+      "source": "back/app/harness/mcp_toolset.py",
+      "target": "app.tools.agent_registry"
+    },
+    {
+      "source": "back/app/harness/mcp_toolset.py",
+      "target": "app.tools.metrics"
+    },
+    {
+      "source": "back/app/harness/prompt.py",
+      "target": "app.agent.prompt_tree"
+    },
+    {
+      "source": "back/app/harness/runtime.py",
+      "target": "app.agent.conversation_context"
+    },
+    {
+      "source": "back/app/harness/runtime.py",
+      "target": "app.llm.provider_facade"
+    },
+    {
+      "source": "back/app/harness/runtime.py",
+      "target": "app.llm.resource_discovery"
+    },
+    {
+      "source": "back/app/image/mcp.py",
+      "target": "app.tools.mcp_loader"
+    },
+    {
+      "source": "back/app/lab/analysis_service.py",
+      "target": "app.llm.pydantic_ai_utils"
+    },
+    {
+      "source": "back/app/lab/dispatcher_evaluation_service.py",
+      "target": "app.llm.structured_service"
+    },
+    {
+      "source": "back/app/lab/evidence_service.py",
+      "target": "app.task.models"
+    },
+    {
+      "source": "back/app/lab/executor_prompt_service.py",
+      "target": "app.agent.prompt_tree"
+    },
+    {
+      "source": "back/app/lab/mechanism_evaluation_service.py",
+      "target": "app.agent.evaluation"
+    },
+    {
+      "source": "back/app/lab/mechanism_evaluation_service.py",
+      "target": "app.dream.evaluation"
+    },
+    {
+      "source": "back/app/lab/mechanism_evaluation_service.py",
+      "target": "app.dream.mechanisms.conversation_memory"
+    },
+    {
+      "source": "back/app/lab/mechanism_evaluation_service.py",
+      "target": "app.dream.mechanisms.memory_extraction"
+    },
+    {
+      "source": "back/app/lab/mechanism_evaluation_service.py",
+      "target": "app.dream.mechanisms.task_memory"
+    },
+    {
+      "source": "back/app/lab/mechanism_evaluation_service.py",
+      "target": "app.topic.evaluation"
+    },
+    {
+      "source": "back/app/lab/mechanism_evaluation_service.py",
+      "target": "app.topic.sequential_detection"
+    },
+    {
+      "source": "back/app/lab/mechanism_registry.py",
+      "target": "app.agent.evaluation"
+    },
+    {
+      "source": "back/app/lab/mechanism_registry.py",
+      "target": "app.dream.evaluation"
+    },
+    {
+      "source": "back/app/lab/mechanism_registry.py",
+      "target": "app.goal.evaluation"
+    },
+    {
+      "source": "back/app/lab/mechanism_registry.py",
+      "target": "app.llm.structured_service"
+    },
+    {
+      "source": "back/app/lab/mechanism_registry.py",
+      "target": "app.topic.evaluation"
+    },
+    {
+      "source": "back/app/lab/schemas.py",
+      "target": "app.agent.evaluation"
+    },
+    {
+      "source": "back/app/lab/schemas.py",
+      "target": "app.dream.evaluation"
+    },
+    {
+      "source": "back/app/lab/schemas.py",
+      "target": "app.topic.evaluation"
+    },
+    {
+      "source": "back/app/llm/anthropic_router.py",
+      "target": "core.authorize.logic"
+    },
+    {
+      "source": "back/app/llm/call_router.py",
+      "target": "core.authorize.logic"
+    },
+    {
+      "source": "back/app/llm/llm_call_service.py",
+      "target": "app.agent.models"
+    },
+    {
+      "source": "back/app/llm/llm_call_service.py",
+      "target": "app.process.models"
+    },
+    {
+      "source": "back/app/llm/llm_call_service.py",
+      "target": "app.task.models"
+    },
+    {
+      "source": "back/app/llm/llm_service.py",
+      "target": "app.agent.models"
+    },
+    {
+      "source": "back/app/llm/mcp.py",
+      "target": "app.agent.models"
+    },
+    {
+      "source": "back/app/llm/mcp.py",
+      "target": "app.process.models"
+    },
+    {
+      "source": "back/app/llm/mcp.py",
+      "target": "app.task.models"
+    },
+    {
+      "source": "back/app/llm/mcp.py",
+      "target": "app.tools.mcp_loader"
+    },
+    {
+      "source": "back/app/llm/profile_service.py",
+      "target": "core.params.consts"
+    },
+    {
+      "source": "back/app/llm/tts_service.py",
+      "target": "app.agent.voice"
+    },
+    {
+      "source": "back/app/mcp/models.py",
+      "target": "core.util.encryption"
+    },
+    {
+      "source": "back/app/mcp/router.py",
+      "target": "app.tools.mcp_loader"
+    },
+    {
+      "source": "back/app/mcp/service.py",
+      "target": "core.util.encryption"
+    },
+    {
+      "source": "back/app/mcp/service.py",
+      "target": "core.util.token_hash"
+    },
+    {
+      "source": "back/app/memory/bootstrap.py",
+      "target": "app.goal.goal_service"
+    },
+    {
+      "source": "back/app/memory/bootstrap.py",
+      "target": "core.params.consts"
+    },
+    {
+      "source": "back/app/memory/embedding.py",
+      "target": "app.llm.provider_facade"
+    },
+    {
+      "source": "back/app/memory/embedding.py",
+      "target": "app.llm.resource_discovery"
+    },
+    {
+      "source": "back/app/memory/mcp.py",
+      "target": "app.tools.mcp_loader"
+    },
+    {
+      "source": "back/app/memory/vector.py",
+      "target": "core.database.vector"
+    },
+    {
+      "source": "back/app/messenger/ingest.py",
+      "target": "app.llm.transcription_service"
+    },
+    {
+      "source": "back/app/messenger/mcp.py",
+      "target": "app.llm.tts_service"
+    },
+    {
+      "source": "back/app/messenger/mcp.py",
+      "target": "app.tools.mcp_loader"
+    },
+    {
+      "source": "back/app/onboarding/router.py",
+      "target": "core.authorize.logic"
+    },
+    {
+      "source": "back/app/onboarding/router.py",
+      "target": "core.user.models"
+    },
+    {
+      "source": "back/app/onboarding/router.py",
+      "target": "core.user.user_service"
+    },
+    {
+      "source": "back/app/onboarding/services.py",
+      "target": "app.agent.models"
+    },
+    {
+      "source": "back/app/onboarding/services.py",
+      "target": "app.connection.models"
+    },
+    {
+      "source": "back/app/onboarding/services.py",
+      "target": "app.tools.models"
+    },
+    {
+      "source": "back/app/process/mcp.py",
+      "target": "app.tools.mcp_loader"
+    },
+    {
+      "source": "back/app/process/process_service.py",
+      "target": "app.llm.models"
+    },
+    {
+      "source": "back/app/skill/mcp.py",
+      "target": "app.tools.mcp_loader"
+    },
+    {
+      "source": "back/app/skill/models.py",
+      "target": "app.agent.models"
+    },
+    {
+      "source": "back/app/skill/skill_service.py",
+      "target": "app.agent.models"
+    },
+    {
+      "source": "back/app/task/agent_adapter.py",
+      "target": "app.agent.task_port"
+    },
+    {
+      "source": "back/app/task/mcp.py",
+      "target": "app.agent.models"
+    },
+    {
+      "source": "back/app/task/mcp.py",
+      "target": "app.tools.mcp_loader"
+    },
+    {
+      "source": "back/app/task/mcp.py",
+      "target": "core.user.models"
+    },
+    {
+      "source": "back/app/task/models.py",
+      "target": "app.agent.models"
+    },
+    {
+      "source": "back/app/task/models.py",
+      "target": "app.goal.models"
+    },
+    {
+      "source": "back/app/tools/catalog_refresh_service.py",
+      "target": "app.agent.models"
+    },
+    {
+      "source": "back/app/tools/mcp_loader.py",
+      "target": "app.console.console_service"
+    },
+    {
+      "source": "back/app/tools/models.py",
+      "target": "core.database.vector"
+    },
+    {
+      "source": "back/app/tools/resource_effects.py",
+      "target": "app.agent.task_port"
+    },
+    {
+      "source": "back/app/tools/tool_search_service.py",
+      "target": "app.llm.provider_facade"
+    },
+    {
+      "source": "back/app/tools/tool_search_service.py",
+      "target": "app.llm.resource_discovery"
+    },
+    {
+      "source": "back/app/topic/classifier.py",
+      "target": "app.llm.structured_service"
+    },
+    {
+      "source": "back/app/topic/sequential_detection.py",
+      "target": "app.llm.structured_service"
+    },
+    {
+      "source": "back/app/voice/mcp.py",
+      "target": "app.tools.mcp_loader"
+    },
+    {
+      "source": "back/app/voice/realtime_engine.py",
+      "target": "app.agent.voice"
+    },
+    {
+      "source": "back/app/voice/realtime_engine.py",
+      "target": "app.llm.provider_facade"
+    },
+    {
+      "source": "back/app/voice/realtime_engine.py",
+      "target": "app.llm.resource_discovery"
+    },
+    {
+      "source": "back/app/voice/realtime_tools.py",
+      "target": "app.llm.provider_facade"
+    },
+    {
+      "source": "back/app/voice/realtime_tools.py",
+      "target": "app.memory.service"
+    },
+    {
+      "source": "back/app/webhook/functions.py",
+      "target": "app.agent.models"
+    },
+    {
+      "source": "back/app/webhook/functions.py",
+      "target": "app.connection.models"
+    },
+    {
+      "source": "back/app/webhook/functions.py",
+      "target": "app.tools.schemas"
+    },
+    {
+      "source": "back/app/webhook/functions.py",
+      "target": "app.tools.tool_service"
+    },
+    {
+      "source": "back/bridge/anthropic/__init__.py",
+      "target": "app.llm.provider_catalog"
+    },
+    {
+      "source": "back/bridge/anthropic/__init__.py",
+      "target": "app.llm.provider_facade"
+    },
+    {
+      "source": "back/bridge/anthropic/resources.py",
+      "target": "app.llm.capabilities"
+    },
+    {
+      "source": "back/bridge/anthropic/resources.py",
+      "target": "app.llm.handlers"
+    },
+    {
+      "source": "back/bridge/anthropic/resources.py",
+      "target": "app.llm.handlers.openai_compatible"
+    },
+    {
+      "source": "back/bridge/anthropic/resources.py",
+      "target": "app.llm.provider_facade"
+    },
+    {
+      "source": "back/bridge/azure_speech/__init__.py",
+      "target": "app.llm.provider_catalog"
+    },
+    {
+      "source": "back/bridge/azure_speech/__init__.py",
+      "target": "app.llm.provider_facade"
+    },
+    {
+      "source": "back/bridge/azure_speech/resources.py",
+      "target": "app.llm.capabilities"
+    },
+    {
+      "source": "back/bridge/azure_speech/resources.py",
+      "target": "app.llm.handlers"
+    },
+    {
+      "source": "back/bridge/azure_speech/resources.py",
+      "target": "app.llm.provider_facade"
+    },
+    {
+      "source": "back/bridge/azure_speech/speech.py",
+      "target": "app.llm.provider_facade"
+    },
+    {
+      "source": "back/bridge/cerebras/__init__.py",
+      "target": "app.llm.provider_catalog"
+    },
+    {
+      "source": "back/bridge/cerebras/__init__.py",
+      "target": "app.llm.provider_facade"
+    },
+    {
+      "source": "back/bridge/cohere/__init__.py",
+      "target": "app.llm.provider_catalog"
+    },
+    {
+      "source": "back/bridge/cohere/__init__.py",
+      "target": "app.llm.provider_facade"
+    },
+    {
+      "source": "back/bridge/deepseek/__init__.py",
+      "target": "app.llm.provider_catalog"
+    },
+    {
+      "source": "back/bridge/deepseek/__init__.py",
+      "target": "app.llm.provider_facade"
+    },
+    {
+      "source": "back/bridge/elevenlabs/__init__.py",
+      "target": "app.llm.provider_catalog"
+    },
+    {
+      "source": "back/bridge/elevenlabs/__init__.py",
+      "target": "app.llm.provider_facade"
+    },
+    {
+      "source": "back/bridge/elevenlabs/resources.py",
+      "target": "app.llm.capabilities"
+    },
+    {
+      "source": "back/bridge/elevenlabs/resources.py",
+      "target": "app.llm.handlers"
+    },
+    {
+      "source": "back/bridge/elevenlabs/resources.py",
+      "target": "app.llm.provider_facade"
+    },
+    {
+      "source": "back/bridge/elevenlabs/speech.py",
+      "target": "app.llm.provider_facade"
+    },
+    {
+      "source": "back/bridge/elevenlabs/transcription.py",
+      "target": "app.llm.provider_facade"
+    },
+    {
+      "source": "back/bridge/fireworks/__init__.py",
+      "target": "app.llm.provider_catalog"
+    },
+    {
+      "source": "back/bridge/fireworks/__init__.py",
+      "target": "app.llm.provider_facade"
+    },
+    {
+      "source": "back/bridge/google/__init__.py",
+      "target": "app.llm.provider_catalog"
+    },
+    {
+      "source": "back/bridge/google/__init__.py",
+      "target": "app.llm.provider_facade"
+    },
+    {
+      "source": "back/bridge/google/resources.py",
+      "target": "app.llm.capabilities"
+    },
+    {
+      "source": "back/bridge/google/resources.py",
+      "target": "app.llm.handlers"
+    },
+    {
+      "source": "back/bridge/google/resources.py",
+      "target": "app.llm.provider_facade"
+    },
+    {
+      "source": "back/bridge/google/speech.py",
+      "target": "app.llm.provider_facade"
+    },
+    {
+      "source": "back/bridge/groq/__init__.py",
+      "target": "app.llm.provider_catalog"
+    },
+    {
+      "source": "back/bridge/groq/__init__.py",
+      "target": "app.llm.provider_facade"
+    },
+    {
+      "source": "back/bridge/hermes/approvals.py",
+      "target": "app.messenger.interactions"
+    },
+    {
+      "source": "back/bridge/hermes/executor.py",
+      "target": "app.messenger.interactions"
+    },
+    {
+      "source": "back/bridge/hermes/paths.py",
+      "target": "app.file_share.path_normalization"
+    },
+    {
+      "source": "back/bridge/hermes/prompt.py",
+      "target": "app.tools.agent_registry"
+    },
+    {
+      "source": "back/bridge/huggingface/__init__.py",
+      "target": "app.llm.provider_catalog"
+    },
+    {
+      "source": "back/bridge/huggingface/__init__.py",
+      "target": "app.llm.provider_facade"
+    },
+    {
+      "source": "back/bridge/mail/mcp.py",
+      "target": "app.tools.mcp_loader"
+    },
+    {
+      "source": "back/bridge/mail/messenger.py",
+      "target": "app.messenger._observations"
+    },
+    {
+      "source": "back/bridge/mail/messenger.py",
+      "target": "app.messenger.inbound"
+    },
+    {
+      "source": "back/bridge/matrix/call.py",
+      "target": "app.voice.models"
+    },
+    {
+      "source": "back/bridge/matrix/client.py",
+      "target": "app.connection.connection_service"
+    },
+    {
+      "source": "back/bridge/matrix/messenger.py",
+      "target": "app.messenger._observations"
+    },
+    {
+      "source": "back/bridge/matrix/messenger.py",
+      "target": "app.messenger.inbound"
+    },
+    {
+      "source": "back/bridge/matrix/messenger.py",
+      "target": "app.messenger.media"
+    },
+    {
+      "source": "back/bridge/matrix/messenger.py",
+      "target": "app.messenger.models"
+    },
+    {
+      "source": "back/bridge/matrix/voice_listener.py",
+      "target": "app.agent.models"
+    },
+    {
+      "source": "back/bridge/matrix/voice_listener.py",
+      "target": "app.connection.models"
+    },
+    {
+      "source": "back/bridge/matrix/voice_listener.py",
+      "target": "app.voice.call_manager"
+    },
+    {
+      "source": "back/bridge/matrix/voice_provider.py",
+      "target": "app.connection.models"
+    },
+    {
+      "source": "back/bridge/mistral/__init__.py",
+      "target": "app.llm.provider_catalog"
+    },
+    {
+      "source": "back/bridge/mistral/__init__.py",
+      "target": "app.llm.provider_facade"
+    },
+    {
+      "source": "back/bridge/models_dev/__init__.py",
+      "target": "app.llm.provider_facade"
+    },
+    {
+      "source": "back/bridge/models_dev/service.py",
+      "target": "app.llm.handlers"
+    },
+    {
+      "source": "back/bridge/models_dev/service.py",
+      "target": "app.llm.provider_catalog"
+    },
+    {
+      "source": "back/bridge/models_dev/service.py",
+      "target": "app.llm.provider_facade"
+    },
+    {
+      "source": "back/bridge/nextcloud/call.py",
+      "target": "app.voice.models"
+    },
+    {
+      "source": "back/bridge/nextcloud/call_listener.py",
+      "target": "app.agent.models"
+    },
+    {
+      "source": "back/bridge/nextcloud/call_listener.py",
+      "target": "app.connection.models"
+    },
+    {
+      "source": "back/bridge/nextcloud/call_listener.py",
+      "target": "app.voice.call_manager"
+    },
+    {
+      "source": "back/bridge/nextcloud/messenger.py",
+      "target": "app.messenger._observations"
+    },
+    {
+      "source": "back/bridge/nextcloud/messenger.py",
+      "target": "app.messenger.inbound"
+    },
+    {
+      "source": "back/bridge/nextcloud/messenger.py",
+      "target": "app.messenger.models"
+    },
+    {
+      "source": "back/bridge/nextcloud/voice_provider.py",
+      "target": "app.connection.models"
+    },
+    {
+      "source": "back/bridge/nvidia/__init__.py",
+      "target": "app.llm.provider_catalog"
+    },
+    {
+      "source": "back/bridge/nvidia/__init__.py",
+      "target": "app.llm.provider_facade"
+    },
+    {
+      "source": "back/bridge/ollama/__init__.py",
+      "target": "app.llm.provider_facade"
+    },
+    {
+      "source": "back/bridge/ollama/services.py",
+      "target": "app.llm.capabilities"
+    },
+    {
+      "source": "back/bridge/ollama/services.py",
+      "target": "app.llm.handlers"
+    },
+    {
+      "source": "back/bridge/ollama/services.py",
+      "target": "app.llm.provider_facade"
+    },
+    {
+      "source": "back/bridge/one_bot/messenger.py",
+      "target": "app.messenger._observations"
+    },
+    {
+      "source": "back/bridge/one_bot/messenger.py",
+      "target": "app.messenger.models"
+    },
+    {
+      "source": "back/bridge/one_bot/router.py",
+      "target": "app.messenger.inbound"
+    },
+    {
+      "source": "back/bridge/openai/__init__.py",
+      "target": "app.llm.provider_catalog"
+    },
+    {
+      "source": "back/bridge/openai/__init__.py",
+      "target": "app.llm.provider_facade"
+    },
+    {
+      "source": "back/bridge/openai/codex.py",
+      "target": "app.llm.capabilities"
+    },
+    {
+      "source": "back/bridge/openai/codex.py",
+      "target": "app.llm.handlers"
+    },
+    {
+      "source": "back/bridge/openai/codex.py",
+      "target": "app.llm.provider_facade"
+    },
+    {
+      "source": "back/bridge/openai/codex_oauth.py",
+      "target": "app.llm.handlers"
+    },
+    {
+      "source": "back/bridge/openai/codex_oauth.py",
+      "target": "app.llm.provider_facade"
+    },
+    {
+      "source": "back/bridge/openai/codex_oauth.py",
+      "target": "app.llm.provider_models"
+    },
+    {
+      "source": "back/bridge/openai/realtime.py",
+      "target": "app.llm.provider_facade"
+    },
+    {
+      "source": "back/bridge/openai/resources.py",
+      "target": "app.llm.capabilities"
+    },
+    {
+      "source": "back/bridge/openai/resources.py",
+      "target": "app.llm.handlers"
+    },
+    {
+      "source": "back/bridge/openai/resources.py",
+      "target": "app.llm.handlers.openai_compatible"
+    },
+    {
+      "source": "back/bridge/openai/resources.py",
+      "target": "app.llm.provider_facade"
+    },
+    {
+      "source": "back/bridge/openrouter/__init__.py",
+      "target": "app.llm.provider_catalog"
+    },
+    {
+      "source": "back/bridge/openrouter/__init__.py",
+      "target": "app.llm.provider_facade"
+    },
+    {
+      "source": "back/bridge/openrouter/resources.py",
+      "target": "app.llm.capabilities"
+    },
+    {
+      "source": "back/bridge/openrouter/resources.py",
+      "target": "app.llm.handlers"
+    },
+    {
+      "source": "back/bridge/openrouter/resources.py",
+      "target": "app.llm.handlers.openai_compatible"
+    },
+    {
+      "source": "back/bridge/openrouter/resources.py",
+      "target": "app.llm.provider_facade"
+    },
+    {
+      "source": "back/bridge/openrouter/transcription.py",
+      "target": "app.llm.provider_facade"
+    },
+    {
+      "source": "back/bridge/perplexity/__init__.py",
+      "target": "app.llm.provider_catalog"
+    },
+    {
+      "source": "back/bridge/perplexity/__init__.py",
+      "target": "app.llm.provider_facade"
+    },
+    {
+      "source": "back/bridge/telegram/messenger.py",
+      "target": "app.messenger._observations"
+    },
+    {
+      "source": "back/bridge/telegram/messenger.py",
+      "target": "app.messenger.inbound"
+    },
+    {
+      "source": "back/bridge/telegram/messenger.py",
+      "target": "app.messenger.media"
+    },
+    {
+      "source": "back/bridge/telegram/messenger.py",
+      "target": "app.messenger.models"
+    },
+    {
+      "source": "back/bridge/together/__init__.py",
+      "target": "app.llm.provider_catalog"
+    },
+    {
+      "source": "back/bridge/together/__init__.py",
+      "target": "app.llm.provider_facade"
+    },
+    {
+      "source": "back/bridge/whatsapp/messenger.py",
+      "target": "app.messenger._observations"
+    },
+    {
+      "source": "back/bridge/whatsapp/messenger.py",
+      "target": "app.messenger.media"
+    },
+    {
+      "source": "back/bridge/whatsapp/messenger.py",
+      "target": "app.messenger.models"
+    },
+    {
+      "source": "back/bridge/whatsapp/router.py",
+      "target": "app.messenger.inbound"
+    },
+    {
+      "source": "back/bridge/xai/__init__.py",
+      "target": "app.llm.provider_catalog"
+    },
+    {
+      "source": "back/bridge/xai/__init__.py",
+      "target": "app.llm.provider_facade"
+    },
+    {
+      "source": "back/core/api.py",
+      "target": "core.database.middleware"
+    },
+    {
+      "source": "back/core/authorize/assertions.py",
+      "target": "core.user.models"
+    },
+    {
+      "source": "back/core/authorize/authorize_service.py",
+      "target": "core.user.models"
+    },
+    {
+      "source": "back/core/authorize/guard_provider.py",
+      "target": "core.user.models"
+    },
+    {
+      "source": "back/core/authorize/logic.py",
+      "target": "core.user.models"
+    },
+    {
+      "source": "back/core/authorize/models.py",
+      "target": "core.user.models"
+    },
+    {
+      "source": "back/core/authorize/router.py",
+      "target": "core.user.auth_service"
+    },
+    {
+      "source": "back/core/i18n/i18n_service.py",
+      "target": "core.params.runtime_settings"
+    },
+    {
+      "source": "back/core/user/mfa_service.py",
+      "target": "core.util.encryption"
+    },
+    {
+      "source": "back/core/user/models.py",
+      "target": "core.util.encryption"
+    },
+    {
+      "source": "back/core/user/router.py",
+      "target": "core.authorize.context"
+    },
+    {
+      "source": "back/core/user/token_service.py",
+      "target": "core.util.encryption"
+    },
+    {
+      "source": "back/core/user/token_service.py",
+      "target": "core.util.token_hash"
+    },
+    {
+      "source": "back/core/user/user_service.py",
+      "target": "core.authorize.models"
+    },
+    {
+      "source": "back/core/user/user_service.py",
+      "target": "core.authorize.update_admin_role"
+    }
+  ],
+  "schema_version": 1,
+  "strongly_connected_components": [
+    [
+      "app.agent",
+      "app.connection",
+      "app.console",
+      "app.conversation",
+      "app.file_share",
+      "app.goal",
+      "app.image",
+      "app.llm",
+      "app.mcp",
+      "app.memory",
+      "app.messenger",
+      "app.process",
+      "app.skill",
+      "app.task",
+      "app.tools",
+      "app.topic",
+      "app.voice"
+    ]
+  ]
+}

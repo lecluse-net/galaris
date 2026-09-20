@@ -1,0 +1,151 @@
+[project]
+name = "app"
+version = "0.1.0"
+description = "Backend API"
+requires-python = ">=3.14"
+
+dependencies = [
+    "nh3>=0.3,<0.4",
+    "markdown-it-py>=4,<5",
+    # ════════════════════════════════════════════════════════════════
+    # CORE — required infrastructure used by back/core
+    # ════════════════════════════════════════════════════════════════
+    # Web framework and ASGI server
+    "fastapi~=0.141",
+    "starlette~=1.6",
+    "uvicorn~=0.52",
+    "python-multipart~=0.0",          # parsing form/upload (FastAPI)
+    "slowapi~=0.1",                   # rate limiting
+    # Database (PostgreSQL, SQLAlchemy 2.0, and Atlas schema management)
+    "SQLAlchemy~=2.0",
+    "asyncpg~=0.31",                  # driver async PostgreSQL
+    "greenlet~=3.5",                  # required by asynchronous SQLAlchemy
+    # Validation and configuration (Pydantic v2)
+    "pydantic~=2.13",
+    "pydantic-settings~=2.15",
+    "pydantic_core~=2.46",           # version required by latest stable Pydantic
+    "python-dotenv~=1.2",
+    "email-validator~=2.3",           # Pydantic EmailStr validation
+    # Authentication and cryptography
+    "python-jose~=3.5",              # JWT
+    "pwdlib~=0.3",                   # password hashing
+    "bcrypt~=5.0",                   # pwdlib hashing backend
+    "cryptography~=50.0",            # encryption (core/util/encryption)
+    # Real-time frontend transport and HTTP client
+    "python-socketio~=5.16",
+    "httpx~=0.28",
+    "httpx2~=2.12",                  # blocking sentinel transport; bounded response decompression
+    # Logging and serialization
+    "loguru~=0.7",
+    "logfire[fastapi,httpx,sqlalchemy,asyncpg,system-metrics]~=4.40",
+    "PyYAML~=6.0",
+    # ════════════════════════════════════════════════════════════════
+    # APP — business features used by back/app and back/bridge
+    # ════════════════════════════════════════════════════════════════
+    # AI and LLM
+    "pydantic-ai[groq]~=2.43",
+    # Messaging (OneBot/Matrix sockets and Telegram Bot API)
+    "websockets~=16.0",              # latest series compatible with google-genai (<17)
+    "python-telegram-bot~=22.7",
+    "pywebpush~=2.4",               # standards-based encrypted PWA Web Push
+    # Persistent remote execution and SFTP workspaces
+    "asyncssh~=2.24",
+    # MCP — FastMCP servers exposed by Galaris
+    "fastmcp>=3.4.2",
+    # Media — PDF documents
+    "pypdf~=6.16",
+    "pypdfium2~=5.13",
+    # Media — images
+    "pillow~=12.3",
+    # Media — public YouTube captions
+    "requests~=2.34",
+    "youtube-transcript-api~=1.2",
+    # Calendar — RFC 5545 parsing, recurrence and VALARM expansion
+    "icalendar~=7.0",
+    "recurring-ical-events~=3.8.2",
+    # Voice — WebRTC audio calls
+    "aiortc~=1.15",
+    # Directly imported for voice-note and WebRTC frame conversion.
+    "av~=17.1",                     # latest series compatible with aiortc 1.15 (<18)
+    # ════════════════════════════════════════════════════════════════
+    # Pinned transitive dependencies (not imported directly)
+    # ════════════════════════════════════════════════════════════════
+    "annotated-doc~=0.0",
+    "annotated-types~=0.8",
+    "anyio~=4.13",
+    "cffi~=2.0",
+    "click~=8.4",
+    "dnspython~=2.8",
+    "ecdsa~=0.19",
+    "h11~=0.16",
+    "httptools~=0.8",
+    "idna~=3.18",
+    "Mako~=1.4",
+    "MarkupSafe~=3.0",
+    "pyasn1~=0.6",
+    "pycparser~=3.0",
+    "rsa~=4.9",
+    "six~=1.17",
+    "typing-inspection~=0.4",
+    "typing_extensions~=4.16",
+    "uvloop~=0.22",
+    "watchfiles~=1.2",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["."]
+
+[dependency-groups]
+dev = [
+    "defusedxml~=0.7",                # safely read coverage and JUnit evidence
+    "types-defusedxml~=0.7",
+    "debugpy~=1.8",
+    "pytest~=9.1",
+    "pytest-asyncio~=1.4",
+    "pytest-cov==7.0.0",
+    "ruff==0.15.0",
+    "devtools~=0.12",
+    "pyright~=1.1",                   # strict type checking (Pylance engine)
+]
+
+# ════════════════════════════════════════════════════════════════════
+# Type checking — Pyright (the Pylance engine in VS Code)
+# Strict mode matches .vscode/settings.json. Run: make typecheck
+# ════════════════════════════════════════════════════════════════════
+[tool.pyright]
+typeCheckingMode = "strict"
+pythonVersion = "3.14"
+include = [
+    "app",
+    "core",
+    "bridge",
+    "scripts",
+    "tests",
+    "main.py",
+    "modules.py",
+    "conftest.py",
+]
+
+exclude = [
+    "**/__pycache__",
+    "**/.venv",
+    ".venv",
+    # Production remains strict. Test doubles are validated by pytest and deliberately
+    # use dynamic monkeypatch/mocks that do not represent the runtime type surface.
+    "**/tests/**",
+    "tests/**",
+    "conftest.py",
+]
+
+[tool.ruff]
+target-version = "py314"
+line-length = 100
+extend-exclude = ["tests", "conftest.py"]
+
+[tool.ruff.lint]
+# Establish a small blocking floor before adding style rules to historical files.
+select = ["E9", "F", "B023"]

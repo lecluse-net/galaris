@@ -1,0 +1,4 @@
+interface:
+  display_name: "Galaris Frontend Conventions"
+  short_description: "Build consistent Vue and Quasar application UI"
+  default_prompt: "Use $front-ui-conventions to implement this Galaris frontend change consistently."

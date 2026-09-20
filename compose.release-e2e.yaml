@@ -1,0 +1,15 @@
+# Test the actual production filesystem and dependencies, with no application bind mount.
+services:
+  backend:
+    image: ${GALARIS_RELEASE_BACKEND_IMAGE:?required}
+    build: !reset null
+    volumes: !override
+      - ./e2e/fixtures/browser-token:/run/galaris-browser/token:ro
+    working_dir: /app
+    environment:
+      PYTHONPATH: /app
+    # Production's system UID differs from the development image's UID.
+    tmpfs: !override [ '/data:mode=1777' ]
+  frontend:
+    image: ${GALARIS_RELEASE_FRONTEND_IMAGE:?required}
+    build: !reset null

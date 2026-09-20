@@ -1,0 +1,3 @@
+TEAM_ACCESS = "privilege.TEAM_ACCESS"
+TEAM_EDIT = "privilege.TEAM_EDIT"
+TEAM_MEMBERS_EDIT = "privilege.TEAM_MEMBERS_EDIT"

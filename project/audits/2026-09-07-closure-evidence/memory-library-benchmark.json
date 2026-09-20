@@ -1,0 +1,24 @@
+{
+  "measurements": [
+    {
+      "documents": 100,
+      "revisions": 10000,
+      "page_size": 50,
+      "queries": 4,
+      "python_peak_bytes": 2219350,
+      "seconds": 0.016839513002196327,
+      "loaded_revisions": 0
+    },
+    {
+      "documents": 1000,
+      "revisions": 100000,
+      "page_size": 50,
+      "queries": 4,
+      "python_peak_bytes": 1996048,
+      "seconds": 0.017458551010349765,
+      "loaded_revisions": 0
+    }
+  ],
+  "revision_table_bytes": 35913728,
+  "memory_scope": "Peak Python allocations during one page, not total process RSS or database memory."
+}

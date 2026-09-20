@@ -1,0 +1,4 @@
+interface:
+  display_name: "Galaris Agent Execution"
+  short_description: "Navigate agent tasks, drivers, and recovery"
+  default_prompt: "Use $galaris-agent-execution to trace and change this Galaris agent execution flow safely."

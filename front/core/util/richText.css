@@ -1,0 +1,108 @@
+@import './richCode.css';
+@import './resourcePreviewCard.css';
+
+/* Editorial HTML follows the application theme. */
+.rich-content,
+.rich-editor {
+  --rich-background: #ffffff;
+  --rich-foreground: #202124;
+  --rich-surface: #f1f3f5;
+  --rich-border: #8a9199;
+  --rich-link: #0759a5;
+  --rich-selection-background: #c5defa;
+  --rich-selection-foreground: #142c49;
+  --rich-editor-border: #e2e8f0;
+  --rich-editor-toolbar: #f7f9fc;
+  --rich-editor-ink: #53647a;
+  --rich-editor-active: #e8f1fc;
+  --ck-content-font-color: var(--rich-foreground);
+  --ck-content-list-marker-color: var(--rich-foreground);
+  color-scheme: light;
+  color: var(--rich-foreground);
+  background-color: var(--rich-background);
+}
+
+/* Outside the editor, let the containing page or card provide the background. */
+.rich-content-reader > .rich-content {
+  background-color: transparent;
+}
+
+.body--dark .rich-content,
+.body--dark .rich-editor {
+  --rich-background: #1d1d1d;
+  --rich-foreground: #f1f3f5;
+  --rich-surface: #30343b;
+  --rich-border: #858e99;
+  --rich-link: #90caf9;
+  --rich-selection-background: #315b85;
+  --rich-selection-foreground: #ffffff;
+  --rich-editor-border: #354153;
+  --rich-editor-toolbar: #242a33;
+  --rich-editor-ink: #aebed2;
+  --rich-editor-active: #243e57;
+  color-scheme: dark;
+}
+
+.rich-content { overflow-wrap: anywhere; line-height: 1.6; caret-color: var(--rich-foreground); }
+.rich-content p { margin: .4em 0; }
+.rich-content h1 { font-size: 1.8em; line-height: 1.3; }
+.rich-content h2 { font-size: 1.5em; line-height: 1.3; }
+.rich-content h3 { font-size: 1.3em; line-height: 1.3; }
+.rich-content h4,.rich-content h5,.rich-content h6 { font-size: 1.1em; line-height: 1.3; }
+/* The page inset already provides the space above an opening heading. */
+.rich-content.ck-content > :is(h1, h2, h3, h4, h5, h6):first-child { margin-top: 0; }
+.rich-content a { color: var(--rich-link); text-decoration: underline; }
+.rich-content a:focus-visible { outline: 2px solid var(--rich-link); outline-offset: 2px; }
+.rich-content table { border-collapse: collapse; table-layout: fixed; width: 100%; margin: 1em 0; }
+.rich-content td,.rich-content th { border: 1px solid var(--rich-border); padding: 6px 8px; position: relative; vertical-align: top; min-width: 25px; }
+.rich-content th { background: var(--rich-surface); }
+.rich-content.ck-content pre { white-space: pre-wrap; padding: 12px; }
+.rich-content code { color: inherit; background: var(--rich-surface); border-radius: 3px; padding: .1em .25em; }
+.rich-content pre code { white-space: pre-wrap; background: transparent; padding: 0; }
+.rich-content blockquote { border-left: 3px solid var(--rich-border); padding-left: 1em; margin-left: 0; }
+.rich-content hr { border: 0; border-top: 1px solid var(--rich-border); }
+/* Legacy pastel highlights retain their readable foreground in either theme. */
+.rich-content :is(mark, [style*="background-color: #fff59d"], [style*="background-color: #a5d6a7"], [style*="background-color: #90caf9"], [style*="background-color: #f48fb1"]) { color: #202124 !important; }
+.rich-content mark { background-color: #fff59d; }
+.rich-content :is(mark, [style*="background-color: #fff59d"], [style*="background-color: #a5d6a7"], [style*="background-color: #90caf9"], [style*="background-color: #f48fb1"]) * { color: inherit; }
+.rich-content :is(mark, [style*="background-color: #fff59d"], [style*="background-color: #a5d6a7"], [style*="background-color: #90caf9"], [style*="background-color: #f48fb1"]) code { background: transparent; }
+.rich-content :is(mark, [style*="background-color: #fff59d"], [style*="background-color: #a5d6a7"], [style*="background-color: #90caf9"], [style*="background-color: #f48fb1"]) a { color: #123a69; }
+.rich-content ::selection { color: var(--rich-selection-foreground); background: var(--rich-selection-background); }
+.rich-content img { max-width: 100%; height: auto; }
+
+.rich-content .table > table { margin: 0; }
+.rich-content figure { max-width: 100%; }
+.rich-content.ck-content .table table th { background: var(--rich-surface); }
+.rich-content :is([style*="background-color:#fff59d"], [style*="background-color:#a5d6a7"], [style*="background-color:#90caf9"], [style*="background-color:#f48fb1"]) { color: #202124 !important; }
+.rich-content :is([style*="background-color:#fff59d"], [style*="background-color:#a5d6a7"], [style*="background-color:#90caf9"], [style*="background-color:#f48fb1"]) * { color: inherit; }
+
+/* Shared by the document reader, native editor and native style previews.
+   Keep illustrated SVGs embedded so sandboxed documents also render them offline. */
+:is(.rich-content, .ck-style-grid__button__preview) .galaris-callout {
+  --callout-background: #eaf4ff; --callout-ink: #123b60; --callout-accent: #1976d2;
+  --callout-icon: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2040%2040%22%20fill%3D%22none%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Ccircle%20cx%3D%2220%22%20cy%3D%2219%22%20r%3D%2216%22%20fill%3D%22%230866ed%22%20stroke%3D%22%230045bd%22%20stroke-width%3D%221.2%22%2F%3E%3Ccircle%20cx%3D%2220%22%20cy%3D%2212%22%20r%3D%222%22%20fill%3D%22%23fff%22%2F%3E%3Cpath%20d%3D%22M18%2019h2v9m-3%200h6%22%20stroke%3D%22%23fff%22%20stroke-width%3D%223%22%2F%3E%3C%2Fsvg%3E");
+  position: relative; padding: 16px 20px 16px 64px; margin: 16px 0;
+  min-height: 66px; border: 1px solid color-mix(in srgb, var(--callout-accent) 30%, transparent);
+  border-left: 4px solid var(--callout-accent); border-radius: 10px;
+  background: var(--callout-background); color: var(--callout-ink); font-style: normal;
+}
+:is(.rich-content, .ck-style-grid__button__preview) .galaris-callout::before {
+  content: ''; position: absolute; top: 14px; left: 14px; width: 36px; height: 36px;
+  pointer-events: none;
+  background: var(--callout-icon) center / contain no-repeat;
+}
+:is(.rich-content, .ck-style-grid__button__preview) .galaris-callout > :first-child { margin-top: 0; }
+:is(.rich-content, .ck-style-grid__button__preview) .galaris-callout > :last-child { margin-bottom: 0; }
+:is(.rich-content, .ck-style-grid__button__preview) .galaris-callout-warning { --callout-background: #fff5dc; --callout-ink: #62400b; --callout-accent: #aa6500; --callout-icon: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2040%2040%22%20fill%3D%22none%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M17%204a3.5%203.5%200%200%201%206%200l14%2025a3.5%203.5%200%200%201-3%205H6a3.5%203.5%200%200%201-3-5Z%22%20fill%3D%22%23ffc400%22%20stroke%3D%22%23cc8500%22%20stroke-width%3D%221.2%22%2F%3E%3Cpath%20d%3D%22M20%2013v10%22%20stroke%3D%22%23563500%22%20stroke-width%3D%223.5%22%2F%3E%3Ccircle%20cx%3D%2220%22%20cy%3D%2228%22%20r%3D%221.8%22%20fill%3D%22%23563500%22%2F%3E%3C%2Fsvg%3E"); }
+:is(.rich-content, .ck-style-grid__button__preview) .galaris-callout-question { --callout-background: #f3edff; --callout-ink: #4a286e; --callout-accent: #7846b3; --callout-icon: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2040%2040%22%20fill%3D%22none%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M8%204h23a6%206%200%200%201%206%206v14a6%206%200%200%201-6%206H18l-8%206v-6H8a5%205%200%200%201-5-5V9a5%205%200%200%201%205-5Z%22%20fill%3D%22%238000ed%22%20stroke%3D%22%235900b3%22%20stroke-width%3D%221.2%22%2F%3E%3Cpath%20d%3D%22M16%2013a4%204%200%200%201%208%200c0%203-4%203-4%206%22%20stroke%3D%22%23fff%22%20stroke-width%3D%222.8%22%2F%3E%3Ccircle%20cx%3D%2220%22%20cy%3D%2224%22%20r%3D%221.5%22%20fill%3D%22%23fff%22%2F%3E%3C%2Fsvg%3E"); }
+:is(.rich-content, .ck-style-grid__button__preview) .galaris-callout-error { --callout-background: #fff0f1; --callout-ink: #782632; --callout-accent: #c83b50; --callout-icon: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2040%2040%22%20fill%3D%22none%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M20%202%2035%208v11c0%208-9%2014-15%2017C14%2033%205%2027%205%2019V8Z%22%20fill%3D%22%23ed1010%22%20stroke%3D%22%23ad0000%22%20stroke-width%3D%221.2%22%2F%3E%3Cpath%20d%3D%22m15%2015%2010%2010m0-10L15%2025%22%20stroke%3D%22%23fff%22%20stroke-width%3D%223.2%22%2F%3E%3C%2Fsvg%3E"); }
+:is(.rich-content, .ck-style-grid__button__preview) .galaris-callout-stop { --callout-background: #fff0ed; --callout-ink: #742b20; --callout-accent: #b73f2a; --callout-icon: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2040%2040%22%20fill%3D%22none%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M12%202h16l10%2010v14L28%2036H12L2%2026V12Z%22%20fill%3D%22%23f0240c%22%20stroke%3D%22%23b31300%22%20stroke-width%3D%221.2%22%2F%3E%3Cpath%20d%3D%22M14%2021v-7a1.5%201.5%200%200%201%203%200v5-8a1.5%201.5%200%200%201%203%200v8-7a1.5%201.5%200%200%201%203%200v7-4a1.5%201.5%200%200%201%203%200v9c0%204-2%206-6%206h-1c-2%200-3.5-1-5-3l-4-5a1.7%201.7%200%200%201%202.5-2Z%22%20fill%3D%22%23fff%22%2F%3E%3C%2Fsvg%3E"); }
+:is(.rich-content, .ck-style-grid__button__preview) .galaris-callout-forbidden { --callout-background: #f5edf1; --callout-ink: #64233e; --callout-accent: #a53362; --callout-icon: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2040%2040%22%20fill%3D%22none%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Ccircle%20cx%3D%2220%22%20cy%3D%2219%22%20r%3D%2216%22%20fill%3D%22%23ed1010%22%20stroke%3D%22%23ad0000%22%20stroke-width%3D%221.2%22%2F%3E%3Ccircle%20cx%3D%2220%22%20cy%3D%2219%22%20r%3D%2210%22%20fill%3D%22%23fff%22%2F%3E%3Cpath%20d%3D%22m13%2012%2014%2014%22%20stroke%3D%22%23ed1010%22%20stroke-width%3D%224%22%2F%3E%3C%2Fsvg%3E"); }
+:is(.rich-content, .ck-style-grid__button__preview) .galaris-callout-search { --callout-background: #e8f7f4; --callout-ink: #164a43; --callout-accent: #147b6d; --callout-icon: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2040%2040%22%20fill%3D%22none%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22m25%2025%2010%2010%22%20stroke%3D%22%23006b28%22%20stroke-width%3D%227%22%2F%3E%3Ccircle%20cx%3D%2217%22%20cy%3D%2216%22%20r%3D%2213%22%20fill%3D%22%2300ad40%22%20stroke%3D%22%2300752c%22%20stroke-width%3D%221.2%22%2F%3E%3Ccircle%20cx%3D%2217%22%20cy%3D%2216%22%20r%3D%229%22%20fill%3D%22%23eaffef%22%2F%3E%3Cpath%20d%3D%22M32%203v6m-3-3h6%22%20stroke%3D%22%23009638%22%20stroke-width%3D%221.8%22%2F%3E%3C%2Fsvg%3E"); }
+.body--dark :is(.rich-content, .ck-style-grid__button__preview) .galaris-callout { --callout-background: #192e42; --callout-ink: #d2eaff; --callout-accent: #90caf9; }
+.body--dark :is(.rich-content, .ck-style-grid__button__preview) .galaris-callout-warning { --callout-background: #3a2d16; --callout-ink: #ffe4b0; --callout-accent: #ffd180; }
+.body--dark :is(.rich-content, .ck-style-grid__button__preview) .galaris-callout-question { --callout-background: #302441; --callout-ink: #ecd9ff; --callout-accent: #cba0ff; }
+.body--dark :is(.rich-content, .ck-style-grid__button__preview) .galaris-callout-error { --callout-background: #40242b; --callout-ink: #ffdadf; --callout-accent: #ff9aab; }
+.body--dark :is(.rich-content, .ck-style-grid__button__preview) .galaris-callout-stop { --callout-background: #3e2721; --callout-ink: #ffded4; --callout-accent: #ffac94; }
+.body--dark :is(.rich-content, .ck-style-grid__button__preview) .galaris-callout-forbidden { --callout-background: #382632; --callout-ink: #ffdbed; --callout-accent: #f3a3c8; }
+.body--dark :is(.rich-content, .ck-style-grid__button__preview) .galaris-callout-search { --callout-background: #193631; --callout-ink: #d0f4ec; --callout-accent: #80ddca; }

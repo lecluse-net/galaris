@@ -1,0 +1,4 @@
+interface:
+  display_name: "Galaris Backend Conventions"
+  short_description: "Write typed Python, SQLAlchemy, RBAC, and tests"
+  default_prompt: "Use $back-conventions to implement this Galaris backend change with the project conventions."

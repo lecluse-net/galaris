@@ -1,0 +1,52 @@
+{
+  "frontend": [
+    {
+      "id": "equivalent-theme-color",
+      "file": "app/style.scss",
+      "test": "core/themePageBackground.test.mjs",
+      "old": "--galaris-page-background: rgb(250, 250, 250);",
+      "value": "--galaris-page-background: #fafafa;",
+      "expected": "same CSS color",
+      "baseline_status": 0,
+      "mutated_status": 1
+    },
+    {
+      "id": "skill-wrap-regression",
+      "file": "app/skill/pages/index.vue",
+      "test": "app/skill/skillActionLayout.test.mjs",
+      "old": "</style>",
+      "value": ".skill-actions, .skill-mobile-actions { flex-wrap: wrap !important; white-space: normal !important; }\n</style>",
+      "expected": "effective flex-wrap becomes wrap",
+      "baseline_status": 0,
+      "mutated_status": 0
+    },
+    {
+      "id": "home-privilege-check-commented",
+      "file": "app/index/components/HomeActionCenter.vue",
+      "test": "app/index/homePage.test.mjs",
+      "pattern": "home cards are hidden",
+      "old": "<q-card v-if=\"canReadChat\" flat class=\"home-card attention-card\">",
+      "value": "<!-- <q-card v-if=\"canReadChat\" flat class=\"home-card attention-card\"> -->\n<q-card flat class=\"home-card attention-card\">",
+      "expected": "the attention card no longer has the v-if directive",
+      "baseline_status": 0,
+      "mutated_status": 0
+    }
+  ],
+  "css_computed": {
+    "baseline": {
+      "wrap": "nowrap",
+      "whiteSpace": "nowrap"
+    },
+    "mutation": {
+      "wrap": "wrap",
+      "whiteSpace": "normal"
+    }
+  },
+  "backend_guards": [
+    "invalid-transition-accepted",
+    "terminal-collaboration-reopened",
+    "child-budget-overrun",
+    "duplicate-runtime-start"
+  ],
+  "backend_result": "baseline verified; all four mutations verified"
+}

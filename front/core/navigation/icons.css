@@ -1,0 +1,8 @@
+/* Shared SVG artwork is black, with transparent cutouts for its details. */
+img[src^="/menu-icons/"] {
+  filter: none;
+}
+
+.body--dark img[src^="/menu-icons/"] {
+  filter: invert(1);
+}

@@ -1,0 +1,285 @@
+version = 1
+public_suffixes = ["contracts", "facade", "interface"]
+
+# This manifest is a ceiling, not a wish list. Lower allowed_dependencies and fan-out
+# whenever an edge disappears; adding an edge requires an explicit architecture review.
+
+[module."core.user"]
+allowed_dependencies = []
+max_domain_fan_out = 0
+
+[module."core.team"]
+allowed_dependencies = []
+max_domain_fan_out = 0
+
+[module."core.authorize"]
+allowed_dependencies = []
+max_domain_fan_out = 0
+
+[module."core.params"]
+allowed_dependencies = []
+max_domain_fan_out = 0
+
+[module."core.dbadmin"]
+allowed_dependencies = []
+max_domain_fan_out = 0
+
+[module."app.incident"]
+allowed_dependencies = []
+max_domain_fan_out = 0
+
+[module."app.tools"]
+allowed_dependencies = ["app.agent", "app.connection", "app.console", "app.file_share", "app.llm", "app.messenger", "app.task", "app.util"]
+max_domain_fan_out = 8
+
+[module."app.agent"]
+allowed_dependencies = ["app.llm", "app.messenger", "app.process", "app.skill", "app.tools"]
+max_domain_fan_out = 5
+
+[module."app.harness"]
+allowed_dependencies = ["app.agent", "app.console", "app.conversation", "app.file_share", "app.llm", "app.messenger", "app.process", "app.skill", "app.tools"]
+max_domain_fan_out = 9
+
+[module."app.harnesses"]
+allowed_dependencies = ["app.agent"]
+max_domain_fan_out = 1
+
+[module."app.connection"]
+allowed_dependencies = ["app.agent", "app.tools"]
+max_domain_fan_out = 2
+
+[module."app.skill"]
+allowed_dependencies = ["app.agent", "app.connection", "app.tools"]
+max_domain_fan_out = 3
+
+[module."app.webhook"]
+allowed_dependencies = ["app.agent", "app.connection", "app.task", "app.tools"]
+max_domain_fan_out = 4
+
+[module."app.llm"]
+allowed_dependencies = ["app.agent", "app.connection", "app.conversation", "app.mcp", "app.messenger", "app.process", "app.task", "app.tools"]
+max_domain_fan_out = 8
+
+[module."app.topic"]
+allowed_dependencies = ["app.agent", "app.connection", "app.conversation", "app.llm", "app.memory", "app.messenger", "app.process", "app.task", "app.tools"]
+max_domain_fan_out = 9
+
+[module."app.memory"]
+allowed_dependencies = ["app.agent", "app.conversation", "app.goal", "app.llm", "app.process", "app.task", "app.tools", "app.topic", "app.voice"]
+max_domain_fan_out = 9
+
+[module."app.contact"]
+allowed_dependencies = ["app.agent", "app.conversation", "app.memory", "app.messenger", "app.task"]
+max_domain_fan_out = 5
+
+[module."app.dream"]
+allowed_dependencies = ["app.agent", "app.connection", "app.conversation", "app.goal", "app.llm", "app.memory", "app.messenger", "app.process", "app.skill", "app.task", "app.topic", "app.voice"]
+max_domain_fan_out = 12
+
+[module."app.task"]
+allowed_dependencies = ["app.agent", "app.goal", "app.llm", "app.messenger", "app.tools"]
+max_domain_fan_out = 5
+
+[module."app.goal"]
+allowed_dependencies = ["app.agent", "app.connection", "app.llm", "app.messenger", "app.task", "app.tools"]
+max_domain_fan_out = 6
+
+[module."app.dashboard"]
+allowed_dependencies = ["app.agent", "app.llm", "app.task"]
+max_domain_fan_out = 3
+
+[module."app.lab"]
+allowed_dependencies = ["app.agent", "app.connection", "app.conversation", "app.dream", "app.goal", "app.llm", "app.memory", "app.messenger", "app.process", "app.skill", "app.task", "app.tools", "app.topic", "app.voice"]
+max_domain_fan_out = 14
+
+[module."app.messenger"]
+allowed_dependencies = ["app.agent", "app.connection", "app.conversation", "app.file_share", "app.llm", "app.memory", "app.task", "app.tools"]
+max_domain_fan_out = 8
+
+[module."app.chat"]
+allowed_dependencies = ["app.agent", "app.browser", "app.conversation", "app.messenger", "app.topic", "app.voice"]
+max_domain_fan_out = 6
+
+[module."app.conversation"]
+allowed_dependencies = ["app.agent", "app.connection", "app.file_share", "app.llm", "app.messenger", "app.process", "app.task", "app.tools"]
+max_domain_fan_out = 8
+
+[module."app.browser"]
+allowed_dependencies = ["app.connection", "app.file_share", "app.tools"]
+max_domain_fan_out = 3
+
+[module."app.image"]
+allowed_dependencies = ["app.file_share", "app.llm", "app.tools"]
+max_domain_fan_out = 3
+
+[module."app.audio"]
+allowed_dependencies = ["app.file_share", "app.llm", "app.messenger", "app.task", "app.tools", "bridge.youtube"]
+max_domain_fan_out = 6
+
+[module."app.onboarding"]
+allowed_dependencies = ["app.agent", "app.connection", "app.llm", "app.messenger", "app.process", "app.skill", "app.tools"]
+max_domain_fan_out = 7
+
+[module."app.voice"]
+allowed_dependencies = ["app.agent", "app.connection", "app.conversation", "app.llm", "app.memory", "app.messenger", "app.process", "app.task", "app.tools"]
+max_domain_fan_out = 9
+
+[module."app.file_share"]
+allowed_dependencies = ["app.agent", "app.connection", "app.console", "app.conversation", "app.goal", "app.image", "app.memory", "app.messenger", "app.process", "app.skill", "app.task", "app.tools", "bridge.affine", "bridge.grav"]
+max_domain_fan_out = 14
+
+[module."app.console"]
+allowed_dependencies = ["app.agent", "app.connection", "app.file_share", "app.tools"]
+max_domain_fan_out = 4
+
+[module."app.process"]
+allowed_dependencies = ["app.agent", "app.console", "app.file_share", "app.llm", "app.task", "app.tools"]
+max_domain_fan_out = 6
+
+[module."app.multimedia"]
+allowed_dependencies = ["app.agent", "app.file_share", "app.llm", "app.process", "app.tools"]
+max_domain_fan_out = 5
+
+[module."bridge.sunoapi"]
+allowed_dependencies = ["app.llm"]
+max_domain_fan_out = 1
+
+[module."bridge.mammouth"]
+allowed_dependencies = ["app.llm"]
+max_domain_fan_out = 1
+
+[module."bridge.byteplus"]
+allowed_dependencies = ["app.llm"]
+max_domain_fan_out = 1
+
+[module."app.mcp"]
+allowed_dependencies = ["app.agent", "app.tools"]
+max_domain_fan_out = 2
+
+[module."bridge.harness"]
+allowed_dependencies = []
+max_domain_fan_out = 0
+
+[module."bridge.claude_agent"]
+allowed_dependencies = ["app.agent", "app.harnesses", "app.mcp", "app.skill", "bridge.harness"]
+max_domain_fan_out = 5
+
+[module."bridge.codex"]
+allowed_dependencies = ["app.agent", "app.harnesses", "app.llm", "app.mcp", "app.skill", "bridge.harness"]
+max_domain_fan_out = 6
+
+[module."bridge.deepseek_harness"]
+allowed_dependencies = ["app.agent", "app.harnesses", "app.llm", "app.mcp", "app.skill", "bridge.harness"]
+max_domain_fan_out = 6
+
+[module."bridge.n8n"]
+allowed_dependencies = ["app.process"]
+max_domain_fan_out = 1
+
+[module."bridge.mail"]
+allowed_dependencies = ["app.agent", "app.connection", "app.file_share", "app.messenger", "app.tools"]
+max_domain_fan_out = 5
+
+[module."bridge.calendar"]
+allowed_dependencies = ["app.agent", "app.connection", "app.file_share", "app.process", "app.tools"]
+max_domain_fan_out = 5
+
+[module."bridge.hermes"]
+allowed_dependencies = ["app.agent", "app.connection", "app.file_share", "app.harnesses", "app.llm", "app.mcp", "app.memory", "app.messenger", "app.process", "app.skill", "app.tools", "bridge.harness"]
+max_domain_fan_out = 12
+
+[module."bridge.one_bot"]
+allowed_dependencies = ["app.connection", "app.messenger"]
+max_domain_fan_out = 2
+
+[module."bridge.matrix"]
+allowed_dependencies = ["app.agent", "app.connection", "app.messenger", "app.tools", "app.voice"]
+max_domain_fan_out = 5
+
+[module."bridge.nextcloud"]
+allowed_dependencies = ["app.agent", "app.connection", "app.file_share", "app.messenger", "app.tools", "app.voice"]
+max_domain_fan_out = 6
+
+[module."bridge.telegram"]
+allowed_dependencies = ["app.messenger"]
+max_domain_fan_out = 1
+
+[module."bridge.whatsapp"]
+allowed_dependencies = ["app.connection", "app.messenger", "app.tools"]
+max_domain_fan_out = 3
+
+[module."bridge.openrouter"]
+allowed_dependencies = ["app.llm"]
+max_domain_fan_out = 1
+
+[module."bridge.openai"]
+allowed_dependencies = ["app.llm"]
+max_domain_fan_out = 1
+
+[module."bridge.anthropic"]
+allowed_dependencies = ["app.llm"]
+max_domain_fan_out = 1
+
+[module."bridge.deepseek"]
+allowed_dependencies = ["app.llm"]
+max_domain_fan_out = 1
+
+[module."bridge.fireworks"]
+allowed_dependencies = ["app.llm"]
+max_domain_fan_out = 1
+
+[module."bridge.groq"]
+allowed_dependencies = ["app.llm"]
+max_domain_fan_out = 1
+
+[module."bridge.mistral"]
+allowed_dependencies = ["app.llm"]
+max_domain_fan_out = 1
+
+[module."bridge.models_dev"]
+allowed_dependencies = ["app.llm"]
+max_domain_fan_out = 1
+
+[module."bridge.together"]
+allowed_dependencies = ["app.llm"]
+max_domain_fan_out = 1
+
+[module."bridge.cerebras"]
+allowed_dependencies = ["app.llm"]
+max_domain_fan_out = 1
+
+[module."bridge.google"]
+allowed_dependencies = ["app.llm"]
+max_domain_fan_out = 1
+
+[module."bridge.xai"]
+allowed_dependencies = ["app.llm"]
+max_domain_fan_out = 1
+
+[module."bridge.nvidia"]
+allowed_dependencies = ["app.llm"]
+max_domain_fan_out = 1
+
+[module."bridge.huggingface"]
+allowed_dependencies = ["app.llm"]
+max_domain_fan_out = 1
+
+[module."bridge.cohere"]
+allowed_dependencies = ["app.llm"]
+max_domain_fan_out = 1
+
+[module."bridge.perplexity"]
+allowed_dependencies = ["app.llm"]
+max_domain_fan_out = 1
+
+[module."bridge.elevenlabs"]
+allowed_dependencies = ["app.llm"]
+max_domain_fan_out = 1
+
+[module."bridge.azure_speech"]
+allowed_dependencies = ["app.llm"]
+max_domain_fan_out = 1
+
+[module."bridge.ollama"]
+allowed_dependencies = ["app.llm"]
+max_domain_fan_out = 1

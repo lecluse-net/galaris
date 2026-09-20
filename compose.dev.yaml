@@ -1,0 +1,53 @@
+# =============================================================================
+# Docker Compose - Development configuration
+# =============================================================================
+#
+# IMPORTANT: this file extends compose.yaml and must not be used alone.
+#
+# Correct usage:
+#   docker compose -f compose.yaml -f compose.dev.yaml up -d
+#
+# The Makefile provides these commands:
+#   make start   - Start in development mode when APP_ENV=dev
+#   make logs    - Show logs
+#   make stop    - Stop services
+#
+# This file extends compose.yaml with:
+#   - Debug port (5678)
+#   - Hot-reload volumes
+#   - Development commands (debugpy, watchmedo, npm run dev)
+#   - Less frequent health checks (300 seconds instead of 30)
+#
+# =============================================================================
+
+services:
+    backend:
+        build:
+            target: builder
+            args:
+                USER_ID: ${DEV_HOST_USER_ID:-1000}
+        ports:
+            - "${DEV_DEBUGPY_PORT:-5678}:5678"
+        volumes:
+            - ./back:/app
+            - ./harness_manager:/opt/galaris-harness-manager:ro
+            - ./front/core/authorize:/app-front/core/authorize
+        command:
+            - bash
+            - -c
+            - |
+              uv sync --frozen &&
+              python -m core.dbadmin synchronize --mode development &&
+              python -m debugpy --listen 0.0.0.0:5678 -m uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+        healthcheck:
+            interval: 300s
+            # Keep probing during the full update timeout, even when DbAdmin is slow.
+            start_period: 300s
+            start_interval: 5s
+
+    frontend:
+        build:
+            target: dev-stage
+        volumes:
+            - ./front:/app
+            - /app/node_modules

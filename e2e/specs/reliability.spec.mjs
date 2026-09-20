@@ -1,0 +1,86 @@
+import { test, expect } from '@playwright/test'
+
+async function login(page, request, mfa = false) {
+  const response = await request.post(`/api/__test/seed?mfa=${mfa}`)
+  expect(response.ok()).toBeTruthy()
+  const fixture = await response.json()
+  const refresh = page.waitForResponse(r => r.url().endsWith('/api/auth/refresh'))
+  await page.goto('/user/login')
+  await refresh
+  await page.locator('input[type=email]').fill(fixture.email)
+  await page.locator('input[type=password]').fill(fixture.password)
+  await page.locator('button[type=submit]').click()
+  return fixture
+}
+
+test('MFA rejects an invalid code, accepts the second factor and restores the session', async ({ page, request }) => {
+  await login(page, request, true)
+  const otp = page.locator('input[autocomplete="one-time-code"]')
+  await expect(otp).toBeVisible()
+  await otp.fill('invalid')
+  await expect(otp).toHaveValue('invalid')
+  const denied = page.waitForResponse(r => r.url().includes('/api/auth/login'))
+  await otp.press('Enter')
+  expect((await denied).ok()).toBe(false)
+  await expect(otp).toBeVisible()
+  const { code } = await (await request.get('/api/__test/otp')).json()
+  await otp.fill(code)
+  await otp.press('Enter')
+  await expect(page.locator('input[type=password]')).toHaveCount(0)
+  const refresh = page.waitForResponse(r => r.url().endsWith('/api/auth/refresh'))
+  await page.reload()
+  expect((await refresh).status()).toBe(200)
+  await expect(page.locator('input[type=password]')).toHaveCount(0)
+})
+
+test('keyboard resolution preserves work and message counts after reopening', async ({ page, request }) => {
+  const fixture = await login(page, request)
+  await expect(page.locator('input[type=password]')).toHaveCount(0)
+  await page.goto(`/chat?room=${fixture.rooms[0]}`)
+  const composer = page.locator('.composer-fields textarea')
+  await expect(composer).toBeVisible()
+  const marker = `Notification verification ${fixture.agent_id}`
+  await composer.fill(marker)
+  await composer.press('Enter')
+  await expect(page.locator('.message-timeline')).toContainText('Réponse progressive')
+  await request.post(`/api/__test/release/${fixture.rooms[0]}`)
+  await expect.poll(async () => (await (await request.get(`/api/__test/rounds/${fixture.rooms[0]}`)).json())[0]?.status).toBe('SUCCEEDED')
+  const [round] = await (await request.get(`/api/__test/rounds/${fixture.rooms[0]}`)).json()
+  expect((await request.post(`/api/__test/notifications/${round.id}`)).ok()).toBeTruthy()
+  const initial = await (await request.get(`/api/__test/notification-resolutions/${round.id}`)).json()
+  await page.goto('/task')
+  const row = page.locator('.conversation-message-row').filter({ hasText: marker })
+  await expect(row).toHaveCount(1)
+  await row.focus()
+  await page.keyboard.press('Enter')
+  await expect(page.getByRole('button', { name: 'Résoudre la livraison', exact: true })).toHaveCount(2)
+  for (let i = 0; i < 2; i++) {
+    const open = page.getByRole('button', { name: 'Résoudre la livraison', exact: true }).first()
+    await open.focus()
+    await page.keyboard.press('Enter')
+    const dialog = page.getByRole('dialog').last()
+    await expect(dialog.locator('textarea')).toBeVisible()
+    await dialog.locator('textarea').fill('Vérification E2E sans renvoi de message')
+    if (i === 0) {
+      // Dismissal must preserve the unresolved state and return focus to its trigger.
+      await page.keyboard.press('Escape')
+      await expect(open).toBeFocused()
+      await page.keyboard.press('Enter')
+    }
+    await dialog.getByRole('button', { name: 'Enregistrer', exact: true }).click()
+    await expect(page.getByRole('button', { name: 'Résoudre la livraison', exact: true })).toHaveCount(1 - i)
+  }
+  const final = await (await request.get(`/api/__test/notification-resolutions/${round.id}`)).json()
+  expect(final.states).toEqual(['DELIVERED', 'DELIVERED'])
+  expect(final.work_states).toEqual(initial.work_states)
+  expect(final.messages).toBe(initial.messages)
+  expect(final.evidence).toHaveLength(2)
+  await page.keyboard.press('Escape')
+  await page.reload()
+  await row.focus()
+  await page.keyboard.press('Enter')
+  await expect(page.getByRole('dialog')).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Résoudre la livraison', exact: true })).toHaveCount(0)
+  const persisted = await (await request.get(`/api/__test/notification-resolutions/${round.id}`)).json()
+  expect(persisted).toEqual(final)
+})

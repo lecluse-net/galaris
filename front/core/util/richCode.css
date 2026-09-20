@@ -1,0 +1,54 @@
+/* Solaire reference: docs/fr/dev/palette-solaire.md. Shared with reading and print. */
+.rich-content {
+  --code-background: #ffffff;
+  --code-foreground: #292c30;
+  --code-keyword: var(--solaire-violet-accent);
+  --code-name: var(--solaire-iris-accent);
+  --code-string: var(--solaire-green-dark);
+  --code-number: var(--solaire-red-dark);
+  --code-attribute: var(--solaire-violet-accent);
+  --code-comment: #666666;
+}
+.body--dark .rich-content {
+  --code-background: #101010;
+  --code-foreground: #eeeef0;
+  --code-keyword: var(--solaire-red-accent);
+  --code-name: var(--solaire-blue-accent);
+  --code-string: var(--solaire-green-accent);
+  --code-number: var(--solaire-salmon-accent);
+  --code-attribute: var(--solaire-orange-accent);
+  --code-comment: #b5b5b5;
+}
+.rich-content.ck-content pre,
+.rich-content.ck-content code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  font-size: 12px;
+  font-weight: 400;
+  font-variant-ligatures: none;
+  line-height: 18px;
+  tab-size: 4;
+}
+.rich-content.ck-content pre {
+  position: relative;
+  color: var(--code-foreground);
+  background: var(--code-background);
+}
+.rich-content.ck-content pre code { color: inherit; }
+.rich-content pre :is(.hljs-keyword, .hljs-meta, .hljs-literal, .hljs-built_in) { color: var(--code-keyword); }
+.rich-content pre :is(.hljs-name, .hljs-title, .hljs-selector-tag, .hljs-type, .hljs-section) { color: var(--code-name); }
+.rich-content pre :is(.hljs-string, .hljs-regexp, .hljs-addition) { color: var(--code-string); }
+.rich-content pre :is(.hljs-number, .hljs-symbol, .hljs-deletion) { color: var(--code-number); }
+.rich-content pre :is(.hljs-attr, .hljs-attribute, .hljs-selector-class, .hljs-variable) { color: var(--code-attribute); }
+.rich-content pre :is(.hljs-comment, .hljs-quote) { color: var(--code-comment); }
+
+.rich-content.ck-content pre:has(> code[data-code-lines="true"]) { padding-inline-start: 4.5em; }
+.rich-content.ck-content pre:has(> code[data-code-nowrap="true"]),
+.rich-content.ck-content pre > code[data-code-nowrap="true"] { white-space: pre; overflow-wrap: normal; word-break: normal; }
+.rich-content.ck-content pre:has(> code[data-code-nowrap="true"]) { overflow-x: auto; }
+.rich-content .galaris-code-line { user-select: none; pointer-events: none; }
+.rich-content .galaris-code-line::before { content: attr(data-code-line); position: absolute; inset-inline-start: 0; width: 3.5em; text-align: right; color: var(--code-comment); }
+.ck.ck-toolbar.galaris-code-toolbar { max-width: calc(100vw - 24px); }
+.ck.ck-toolbar.galaris-code-toolbar > .ck-toolbar__items { flex-wrap: wrap; }
+.galaris-code-language .ck-list { max-height: min(320px, 45vh); overflow-y: auto; }
+/* CKEditor's return arrow is a stroked icon, unlike the other filled toolbar icons. */
+.galaris-code-toolbar .ck-icon[viewBox="0 0 10 8"] path { fill: none; stroke: currentColor; stroke-width: 1.2; }

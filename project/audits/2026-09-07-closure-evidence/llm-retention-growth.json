@@ -1,0 +1,164 @@
+{
+  "simulated_days": 84,
+  "retention_days": 14,
+  "consumer_delay_days": 21,
+  "daily_calls": 24,
+  "batch_limit": 31,
+  "measurements": [
+    {
+      "week": 1,
+      "calls": 168,
+      "raw_traces": 168,
+      "logical_trace_bytes": 688128,
+      "physical_table_bytes": 319488,
+      "protected_reasons": {
+        "recent": 168
+      }
+    },
+    {
+      "week": 2,
+      "calls": 336,
+      "raw_traces": 336,
+      "logical_trace_bytes": 1376256,
+      "physical_table_bytes": 417792,
+      "protected_reasons": {
+        "recent": 336
+      }
+    },
+    {
+      "week": 3,
+      "calls": 504,
+      "raw_traces": 420,
+      "logical_trace_bytes": 1720320,
+      "physical_table_bytes": 499712,
+      "protected_reasons": {
+        "conversation": 28,
+        "process": 28,
+        "task": 28,
+        "recent": 336
+      }
+    },
+    {
+      "week": 4,
+      "calls": 672,
+      "raw_traces": 420,
+      "logical_trace_bytes": 1720320,
+      "physical_table_bytes": 614400,
+      "protected_reasons": {
+        "conversation": 28,
+        "process": 28,
+        "recent": 336,
+        "task": 28
+      }
+    },
+    {
+      "week": 5,
+      "calls": 840,
+      "raw_traces": 420,
+      "logical_trace_bytes": 1720320,
+      "physical_table_bytes": 811008,
+      "protected_reasons": {
+        "conversation": 28,
+        "process": 28,
+        "recent": 336,
+        "task": 28
+      }
+    },
+    {
+      "week": 6,
+      "calls": 1008,
+      "raw_traces": 420,
+      "logical_trace_bytes": 1720320,
+      "physical_table_bytes": 1081344,
+      "protected_reasons": {
+        "conversation": 28,
+        "process": 28,
+        "recent": 336,
+        "task": 28
+      }
+    },
+    {
+      "week": 7,
+      "calls": 1176,
+      "raw_traces": 420,
+      "logical_trace_bytes": 1720320,
+      "physical_table_bytes": 1171456,
+      "protected_reasons": {
+        "conversation": 28,
+        "process": 28,
+        "recent": 336,
+        "task": 28
+      }
+    },
+    {
+      "week": 8,
+      "calls": 1344,
+      "raw_traces": 420,
+      "logical_trace_bytes": 1720320,
+      "physical_table_bytes": 1286144,
+      "protected_reasons": {
+        "conversation": 28,
+        "process": 28,
+        "recent": 336,
+        "task": 28
+      }
+    },
+    {
+      "week": 9,
+      "calls": 1512,
+      "raw_traces": 420,
+      "logical_trace_bytes": 1720320,
+      "physical_table_bytes": 1425408,
+      "protected_reasons": {
+        "conversation": 28,
+        "process": 28,
+        "recent": 336,
+        "task": 28
+      }
+    },
+    {
+      "week": 10,
+      "calls": 1680,
+      "raw_traces": 420,
+      "logical_trace_bytes": 1720320,
+      "physical_table_bytes": 1597440,
+      "protected_reasons": {
+        "conversation": 28,
+        "process": 28,
+        "recent": 336,
+        "task": 28
+      }
+    },
+    {
+      "week": 11,
+      "calls": 1848,
+      "raw_traces": 420,
+      "logical_trace_bytes": 1720320,
+      "physical_table_bytes": 1744896,
+      "protected_reasons": {
+        "conversation": 28,
+        "process": 28,
+        "recent": 336,
+        "task": 28
+      }
+    },
+    {
+      "week": 12,
+      "calls": 2016,
+      "raw_traces": 420,
+      "logical_trace_bytes": 1720320,
+      "physical_table_bytes": 1867776,
+      "protected_reasons": {
+        "conversation": 28,
+        "process": 28,
+        "recent": 336,
+        "task": 28
+      }
+    }
+  ],
+  "final_calls": 2016,
+  "final_tokens": 84672,
+  "final_cost": 252.0,
+  "raw_traces_after_all_consumers_release": 0,
+  "physical_storage_note": "MVCC pages include dead tuples; logical expiry does not promise filesystem shrinkage."
+}

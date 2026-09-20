@@ -1,0 +1,18 @@
+{
+  "scope": "Mise en œuvre de l'audit hors Lab ; travail concurrent préservé ; aucun compte externe",
+  "backend": {"command": "make tests-coverage COVERAGE_TEST_ARGS='--ignore=app/lab -q'", "passed": 3313, "skipped": 1, "failed": 0, "seconds": 162.10, "critical_coverage_percent": 73.87, "coverage_is_global": false},
+  "frontend_units": {"command": "make typecheck", "passed": 218, "failed": 0, "seconds": 1.8603, "note": "Collecte transversale Node ; aucune conclusion spécifique sur Lab"},
+  "frontend_tooling": {"command": "make tests-front-tooling", "passed": 1, "failed": 0, "seconds": 40.4834},
+  "frontend_components": {"command": "make tests-front-components", "passed": 55, "failed": 0, "retries": 0, "browser": "Chromium", "source_snapshot": true, "http": "fixtures explicites"},
+  "e2e": {"command": "make tests-e2e ARGS='chat.spec.mjs reliability.spec.mjs session-races.spec.mjs sanitizer.spec.mjs pwa.spec.mjs incident.spec.mjs'", "passed": 51, "failed": 0, "scenarios": 17, "browsers": ["Chromium", "Firefox", "WebKit"], "repeat_each": 1},
+  "backend_mutations": {"baseline_passed": true, "detected": 4, "attempted": 4},
+  "frontend_oracle_experiments": {
+    "isolated_copy": true,
+    "baseline_scenarios_passed": 8,
+    "equivalent_color": {"exit": 0, "expected": 0, "oracle": "computed backgroundColor"},
+    "wrapping_regression": {"exit": 1, "expected": 1, "oracle": "flex-wrap at 375px"},
+    "permission_regression": {"exit": 1, "expected": 1, "oracle": "attention card count after privilege revocation"}
+  },
+  "static": {"pyright": "passed", "vue_tsc": "passed", "i18n": "passed", "ruff": "passed", "eslint": "passed", "architecture_tests_passed": 27, "format_check": "Latest run reports only back/app/lab/run_inference.py; concurrent Lab rewrite left unchanged"},
+  "traceability": {"frontend_ui_definitions": 191, "additional_structural_contracts": 13, "one_to_one_coverage_claim": false}
+}

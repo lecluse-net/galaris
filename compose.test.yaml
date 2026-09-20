@@ -1,0 +1,72 @@
+# ====================================================================================
+# Docker Compose - Backend test isolation
+# ====================================================================================
+#
+# This file is dedicated exclusively to automated backend tests.
+#
+# It is intentionally self-contained so a test run never loads or creates the
+# application networks declared by compose.yaml.
+#
+# It configures:
+#   - An ephemeral PostgreSQL database in tmpfs
+#   - A one-shot backend using that isolated database
+#
+# Do not use it to deploy a functional test instance. Use the standard,
+# production-equivalent configuration instead: APP_ENV=prod make start.
+#
+# Available test command:
+#   make tests  - Run backend tests in an isolated environment
+# ====================================================================================
+
+name: ${APP_NAME:-galaris}-tests
+
+services:
+  # Ephemeral database used only by the one-off backend test container.
+  db-test:
+    image: pgvector/pgvector:pg17
+    environment:
+      TZ: ${TZ:-UTC}
+      POSTGRES_USER: testuser
+      POSTGRES_PASSWORD: testpassword
+      POSTGRES_DB: test_db
+    tmpfs:
+      - /var/lib/postgresql/data
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U testuser -d test_db" ]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # One-shot backend dedicated to tests.
+  backend:
+    build:
+      context: ./back
+      additional_contexts:
+        harness_manager: ./harness_manager
+      target: builder
+      args:
+        USER_ID: ${DEV_HOST_USER_ID:-1000}
+    env_file:
+      - .env
+    environment:
+      - PYTHONPATH=/repo/back
+      - TZ=${TZ:-UTC}
+      # Settings builds DATABASE_URL from these fields, so overriding only a
+      # DATABASE_URL variable would leave tests connected to the development DB.
+      - APP_ENV=test
+      - AUTH_SECRET_KEY=isolated-tests-auth-secret-00000001
+      - ENCRYPTION_MASTER_KEY=isolated-tests-encryption-key-0001
+      - BROWSER_EXECUTOR_TOKEN=isolated-tests-browser-token-0001
+      - LOGFIRE_TOKEN=
+      - LOGFIRE_SEND_TO_LOGFIRE=false
+      - POSTGRES_USER=testuser
+      - POSTGRES_PASSWORD=testpassword
+      - POSTGRES_HOST=db-test
+      - POSTGRES_PORT=5432
+      - POSTGRES_DB=test_db
+    volumes:
+      - .:/repo
+    working_dir: /repo/back
+    depends_on:
+      db-test:
+        condition: service_healthy

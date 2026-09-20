@@ -1,0 +1,6 @@
+"""Privileges for the LLM module."""
+
+LLM_PROVIDER_ACCESS = "privilege.LLM_PROVIDER_ACCESS"
+LLM_PROVIDER_EDIT = "privilege.LLM_PROVIDER_EDIT"
+LLM_API_ACCESS = "privilege.LLM_API_ACCESS"
+LLM_CALL_PURGE = "privilege.LLM_CALL_PURGE"

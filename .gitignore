@@ -1,0 +1,37 @@
+# Distribution / packaging
+build/
+*.egg-info/
+*.egg
+
+# IDE
+.idea/
+*.swp
+*.swo
+
+# Environment variables
+.env
+/.codex/config.toml
+compose.override.yaml
+compose.override.yml
+docker-compose.override.yaml
+docker-compose.override.yml
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Testing
+.coverage
+.coverage.*
+htmlcov/
+/artifacts/
+# Local diagnostics can contain live conversation and connection data.
+/back/tests/manual/*.log
+/back/tests/manual/*.jsonl
+/back/tests/manual/*.local.json
+
+/refs/
+
+# Data directory - ignore root /data but keep /back/data
+/data/
+!/back/data/

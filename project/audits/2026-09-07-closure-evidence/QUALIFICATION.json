@@ -1,0 +1,15 @@
+{
+  "version": 1,
+  "images": {
+    "galaris-release-back:audit-close-20260907": "sha256:22e719d7c3d4577de81c1cc241bb9e7e3b25869fccdb377321bc7ed697f4f1c5",
+    "galaris-release-front:audit-close-20260907": "sha256:5da7fa74fb073851526c042248a58d425fafdeab8b5181c5c24f4a1ee22f8417",
+    "galaris-release-browser-executor:audit-close-20260907": "sha256:42ac4428a421cd024856ecb8c834719fa47a01ae62275db5a46ae347cbb86b43",
+    "galaris-release-ssh-executor:audit-close-20260907": "sha256:50febd72f4c72dbccf703d663c8f74469463b53fc476b71bf5229123be24eca0"
+  },
+  "tests_commit": "db1092d1c5ac278a642d3d7d30c45abc411d68eb",
+  "tests_sha256": "8a543072a146c7bad2d50128ae64d59d761882548f6ad802843eb3b9415f17fc",
+  "upgrade_sha256": "1a051224183226f8af6193fa6eecfb92c88a678a26b9ceb52f949e263afc274f",
+  "browser_workflows": "passed",
+  "image_checks": "passed",
+  "managed_harnesses": "# Managed agent harnesses are external to this bundle and require separate qualification.\n"
+}

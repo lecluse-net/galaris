@@ -1,0 +1,4 @@
+interface:
+  display_name: "Galaris Process Tools"
+  short_description: "Work on MCP tools, processes, and files"
+  default_prompt: "Use $galaris-process-tools to trace and change this Galaris tools or process flow safely."

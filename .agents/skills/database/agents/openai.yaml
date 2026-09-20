@@ -1,0 +1,4 @@
+interface:
+  display_name: "Galaris Database and Atlas"
+  short_description: "Change SQLAlchemy models through declarative Atlas"
+  default_prompt: "Use $database to make this Galaris schema change safely with declarative Atlas."

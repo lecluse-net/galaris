@@ -1,0 +1,4 @@
+interface:
+  display_name: "OneBot v11 for Galaris"
+  short_description: "Implement OneBot protocol adapters and messages"
+  default_prompt: "Use $onebot-11 to implement or diagnose this OneBot v11 integration in Galaris."

@@ -1,0 +1,219 @@
+name: Quality
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: quality-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  required:
+    name: Quality required
+    if: always()
+    needs: [static, providers, backend-tests, frontend-components, chat-e2e, dependency-review]
+    runs-on: ubuntu-latest
+    steps:
+      - env:
+          RESULTS: ${{ toJSON(needs) }}
+          EVENT: ${{ github.event_name }}
+        run: >-
+          jq -e --arg event "$EVENT"
+          'to_entries | all(.[];
+          .value.result == "success" or
+          (.key == "dependency-review" and $event != "pull_request" and .value.result == "skipped"))'
+          <<< "$RESULTS"
+
+  static:
+    name: Types, build, architecture
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Prepare non-production secrets
+        run: |
+          cp .env.example .env
+          sed -i 's/^APP_ENV=prod$/APP_ENV=test/' .env
+          bash bin/update-secrets.sh
+
+      - name: Build backend quality image
+        run: docker build --build-context harness_manager=./harness_manager --target builder --tag galaris-back-quality back
+
+      - name: Backend strict typing
+        run: >-
+          docker run --rm
+          --env APP_ENV=test
+          --env AUTH_SECRET_KEY=ci-auth-secret-ci-auth-secret-0001
+          --env BROWSER_EXECUTOR_TOKEN=ci-browser-token-ci-browser-00001
+          --env ENCRYPTION_MASTER_KEY=ci-encryption-secret-ci-encryption-01
+          galaris-back-quality
+          python -m pyright
+
+      - name: High-confidence Python lint
+        run: docker run --rm galaris-back-quality ruff check app core bridge scripts main.py
+      - name: Format extracted reliability modules
+        run: docker run --rm galaris-back-quality python scripts/check_format.py --check
+
+      - name: Generated map is current
+        run: >-
+          docker run --rm
+          --volume "$PWD:/repo"
+          --workdir /repo
+          galaris-back-quality
+          python back/scripts/project_context.py --root /repo --check
+
+      - name: Architecture contracts
+        run: >-
+          docker run --rm
+          --volume "$PWD:/repo"
+          --workdir /repo
+          galaris-back-quality
+          python back/scripts/architecture_check.py --root /repo
+
+      - name: Frontend production build and strict typing
+        run: docker build --target build-stage --tag galaris-front-quality front
+
+      - name: Frontend unit tests
+        run: docker run --rm galaris-front-quality npm test
+
+      - name: Type checking rejects application and build configuration regressions
+        run: docker run --rm galaris-front-quality npm run test:tooling
+
+      - name: Frontend TypeScript and Vue lint
+        run: docker run --rm galaris-front-quality npm run lint
+
+      - name: Frontend translation catalogs
+        run: docker run --rm galaris-front-quality npm run i18n-check
+
+      - name: Focused browser tests cannot bypass the suite
+        run: make tests-focus-gates
+
+      - name: Development and production update commands
+        run: make tests-update
+
+      - name: Audit shipped frontend dependencies
+        run: >-
+          docker run --rm
+          galaris-front-quality
+          npm audit --omit=dev --audit-level=high
+
+      - name: Browser executor build and tests
+        run: |
+          docker build --tag galaris-browser-quality browser-executor
+          docker run --rm galaris-browser-quality npm test
+          docker run --rm galaris-browser-quality npm audit --omit=dev --audit-level=high
+
+  providers:
+    name: Provider SDK and admission contracts
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Prepare isolated configuration
+        run: |
+          cp .env.example .env
+          sed -i 's/^APP_ENV=prod$/APP_ENV=test/' .env
+          bash bin/update-secrets.sh
+      - name: Exercise SDK requests, provider policies and Task admission
+        run: make tests-providers
+      - name: Preserve provider contract results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: provider-contracts
+          path: artifacts/provider-contracts.xml
+          retention-days: 14
+
+  backend-tests:
+    name: Backend tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Prepare isolated test configuration
+        run: |
+          cp .env.example .env
+          sed -i 's/^APP_ENV=prod$/APP_ENV=test/' .env
+          bash bin/update-secrets.sh
+
+      - name: Run complete backend suite with critical branch coverage
+        env:
+          COVERAGE_DIFF_BASE: ${{ github.event.pull_request.base.sha || github.event.before }}
+        run: |
+          if [[ "$COVERAGE_DIFF_BASE" =~ ^0+$ ]]; then unset COVERAGE_DIFF_BASE; fi
+          make tests-coverage
+      - name: Lifecycle tests detect weakened guards
+        run: make tests-mutations
+      - name: Regression evidence remains executable
+        run: make regression-check
+      - name: Preserve coverage report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: critical-branch-coverage
+          path: |
+            artifacts/coverage.xml
+            artifacts/coverage-domains.json
+            artifacts/coverage-full.xml
+            artifacts/coverage-full.json
+            artifacts/coverage-all-floors.json
+            artifacts/coverage-html/
+            artifacts/backend-junit.xml
+            artifacts/mutations.json
+            artifacts/regression-evidence.json
+          retention-days: 14
+
+  frontend-components:
+    name: Vue component behaviors
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Exercise Vue components in an isolated browser
+        run: make tests-front-components
+      - name: Preserve component traces and service logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-components
+          path: artifacts/front-components/
+          retention-days: 7
+
+  chat-e2e:
+    name: Browser workflows and PWA
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run isolated workflows on Chromium, Firefox and WebKit
+        run: make tests-e2e ARGS='--repeat-each=3'
+      - name: Preserve browser traces and service logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: chat-e2e
+          path: artifacts/e2e/
+          retention-days: 7
+
+  dependency-review:
+    name: Dependency review
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/dependency-review-action@v4
+        with:
+          fail-on-severity: high

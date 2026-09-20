@@ -1,0 +1,34 @@
+"""English task-analysis Lab messages."""
+
+default = {
+    "evaluation_api": {
+        "errors": {
+            "review_authentication": "An authenticated reviewer is required",
+            "review_campaign_missing": "No judgment campaign available",
+            "review_output_missing": "Candidate output not available",
+            "review_submitted": "This review is already submitted and cannot be changed after disclosure",
+            "review_dimensions": "Score every rubric dimension exactly once",
+            "budget_exhausted": "Benchmark budget exhausted; create a new benchmark",
+            "suite_not_found": "Suite not found",
+            "task_not_found": "Task not found",
+            "lab_task_not_found": "This task is not registered in the AI Lab",
+            "conversation_turn_not_found": "This conversation turn does not exist",
+            "dataset_not_found": "This evaluation dataset does not exist",
+            "case_not_found": "This evaluation case does not exist",
+            "run_not_found": "This evaluation run does not exist",
+            "revision_conflict": "This item was modified by another user; reload it before saving",
+            "dispatch_result_missing": "This task has no dispatcher result to capture",
+            "source_capture_missing": "This case has no original capture to restore",
+            "message_range_empty": "No message matches this AI, person and time range",
+            "message_range_too_large": "This selection exceeds 500 messages; reduce the range before importing",
+            "expected_topic_count": "One expected Topic is required for every message in the exchange",
+            "run_llm_invalid": "The selected test LLM is unavailable or does not support chat",
+            "no_ready_cases": "This dataset has no enabled, ready case",
+            "run_not_terminal": "The benchmark must be finished before it can be analyzed",
+            "run_delete_active": "Stop the benchmark before deleting it",
+            "run_has_no_results": "This benchmark has no result to analyze",
+            "lab_llm_not_chat": "The AI Lab LLM must support text chat",
+            "lab_llm_not_configured": "Configure the AI Lab analysis model in Providers & models first",
+        },
+    },
+}

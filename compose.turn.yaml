@@ -1,0 +1,75 @@
+# =============================================================================
+# Optional WebRTC TURN relay
+#
+# Included by Make when WEBRTC_TURN_MODE=embedded (the default). Set the mode
+# to external or disabled to leave this compose file out entirely.
+# =============================================================================
+
+services:
+    turn:
+        container_name: ${APP_NAME:-galaris}-turn
+        image: ${WEBRTC_TURN_IMAGE:-coturn/coturn:4.17.2-r0}
+        restart: unless-stopped
+        network_mode: host
+        environment:
+            - TZ=${TZ:-UTC}
+            - WEBRTC_TURN_SHARED_SECRET=${WEBRTC_TURN_SHARED_SECRET:-}
+            - WEBRTC_TURN_RELAY_IP=${WEBRTC_TURN_RELAY_IP:-auto}
+            - WEBRTC_TURN_RELAY_IP_RESOLVED=${WEBRTC_TURN_RELAY_IP_RESOLVED:-}
+        entrypoint:
+            - /bin/sh
+            - -ec
+            - |
+                if [ -z "$${WEBRTC_TURN_SHARED_SECRET}" ]; then
+                    echo "WEBRTC_TURN_SHARED_SECRET is required for embedded TURN" >&2
+                    exit 1
+                fi
+                turn_relay_ip="$${WEBRTC_TURN_RELAY_IP_RESOLVED:-}"
+                if [ -z "$${turn_relay_ip}" ]; then
+                    turn_relay_ip="$${WEBRTC_TURN_RELAY_IP:-auto}"
+                fi
+                if [ "$${turn_relay_ip}" = "auto" ]; then
+                    turn_relay_ip=$$(hostname -I | awk '{print $$1}')
+                fi
+                if [ -z "$${turn_relay_ip}" ]; then
+                    echo "WEBRTC_TURN_RELAY_IP could not be detected" >&2
+                    exit 1
+                fi
+                turn_external_ip=$$(detect-external-ip)
+                exec /usr/local/bin/docker-entrypoint.sh \
+                    "--relay-ip=$${turn_relay_ip}" \
+                    "--external-ip=$${turn_external_ip}/$${turn_relay_ip}" \
+                    "$$@"
+            - --
+        command:
+            - --log-file=stdout
+            - --listening-port=${WEBRTC_TURN_PORT:-3479}
+            - --min-port=${WEBRTC_TURN_MIN_PORT:-47000}
+            - --max-port=${WEBRTC_TURN_MAX_PORT:-47100}
+            - --realm=${APP_NAME:-galaris}
+            - --fingerprint
+            - --use-auth-secret
+            - --static-auth-secret=${WEBRTC_TURN_SHARED_SECRET:-}
+            - --no-multicast-peers
+            - --unauthorized-ratelimit
+            - --user-quota=20
+            - --total-quota=100
+        cap_drop:
+            - ALL
+        cap_add:
+            - NET_BIND_SERVICE
+        security_opt:
+            - no-new-privileges:true
+        pids_limit: 256
+        cpus: ${WEBRTC_TURN_CPUS:-1.0}
+        mem_limit: ${WEBRTC_TURN_MEMORY_LIMIT:-512m}
+        healthcheck:
+            test:
+                [
+                    "CMD-SHELL",
+                    "turnutils_stunclient -p ${WEBRTC_TURN_PORT:-3479} 127.0.0.1 >/dev/null 2>&1",
+                ]
+            interval: 30s
+            timeout: 5s
+            retries: 3
+            start_period: 10s

@@ -1,0 +1,90 @@
+# Patch layer for the pinned SDK profile. Existing entries are addressed by id;
+# new entries MUST use insert, otherwise DSH skips them with a warning.
+- id: sdk-jsonrpc-server
+  config:
+    maxTokensAsSuccess: true
+
+- id: llm-deepseek
+  config:
+    # Galaris exposes the OpenAI gateway; upstream now defaults to Messages.
+    protocol: chat-completions
+    thinking: enabled
+    reasoningEffort: !!js process.env.DSH_REASONING_EFFORT ?? 'high'
+    maxTokens: 32768
+
+- id: sandbox-policy
+  config:
+    mode: workspace-write
+    workspaceRoot: !!js process.env.DSH_CWD
+
+- id: bash-sandbox
+  config:
+    timeoutMs: 60000
+
+- id: system-prompt
+  config:
+    persona: >-
+      You execute bounded Galaris tasks. Galaris remains authoritative for memory,
+      files, messages, permissions, and external effects. Use the galaris MCP tools
+      for durable work and never treat your final prose as proof that an effect happened.
+
+- id: skill-filesystem
+  config:
+    includeDefaultRoots: false
+    customSkillDirs: [/skills]
+    watch: false
+
+- id: tools
+  config:
+    maxParallelSubCalls: 1
+
+# These independent workflows were absent from Galaris's former composition.
+# Durable work, goals, subagents and external calls belong to Galaris's MCP API.
+- id: tool-jobs
+  disabled: true
+- id: tool-subagent
+  disabled: true
+- id: tool-subagent-fork
+  disabled: true
+- id: tool-subagent-control
+  disabled: true
+- id: tool-subagent-list-agents
+  disabled: true
+- id: tool-workflow
+  disabled: true
+- id: tool-goal
+  disabled: true
+- id: tool-ralph
+  disabled: true
+- id: tool-web
+  disabled: true
+- id: session-telemetry-otel
+  disabled: true
+
+- id: session-persistence-jsonl
+  config:
+    root: !!js process.env.DSH_SESSION_ROOT
+    compression: zstd
+
+- id: tool-todo
+  config:
+    allowParallelInProgress: false
+
+- id: compaction-basic
+  config:
+    thresholdRatio: 0.8
+    retainRatio: 0.16
+    maxTokens: 8192
+    compactionRetries: 1
+
+- insert:
+    - id: mcp-galaris
+      name: '@deepseek-ai/dsh-mcp-client'
+      config:
+        serverName: galaris
+        transport: streamable-http
+        url: !!js process.env.GALARIS_MCP_URL
+        headers:
+          Authorization: !!js '`Bearer ${process.env.GALARIS_MCP_TOKEN}`'
+        toolCallTimeoutMs: 120000
+        failOnStartupError: true

@@ -1,0 +1,90 @@
+{
+  "status": "historical_v9_candidate_superseded_by_v10_without_thresholds",
+  "production_changed": false,
+  "model": "nomic",
+  "summary": [
+    {
+      "set": "development",
+      "variant": "v8",
+      "cases": 47,
+      "positive": 44,
+      "top1": 41,
+      "top10": 42,
+      "negative_with_hits": 0
+    },
+    {
+      "set": "development",
+      "variant": "v9",
+      "cases": 47,
+      "positive": 44,
+      "top1": 41,
+      "top10": 42,
+      "negative_with_hits": 1
+    },
+    {
+      "set": "holdout",
+      "variant": "v8",
+      "cases": 18,
+      "positive": 13,
+      "top1": 10,
+      "top10": 12,
+      "negative_with_hits": 0
+    },
+    {
+      "set": "holdout",
+      "variant": "v9",
+      "cases": 18,
+      "positive": 13,
+      "top1": 10,
+      "top10": 12,
+      "negative_with_hits": 0
+    },
+    {
+      "set": "validation",
+      "variant": "v8",
+      "cases": 13,
+      "positive": 10,
+      "top1": 9,
+      "top10": 10,
+      "negative_with_hits": 1
+    },
+    {
+      "set": "validation",
+      "variant": "v9",
+      "cases": 13,
+      "positive": 10,
+      "top1": 9,
+      "top10": 10,
+      "negative_with_hits": 2
+    }
+  ],
+  "index_coverage": {
+    "eligible": 1145,
+    "indexed": 1145
+  },
+  "publication_scope": "Aggregate historical measurements only. Queries, document titles, excerpts, identities, resource references and per-case results have been removed. The private corpus is not distributed; these measurements do not describe the synthetic examples now included in the repository.",
+  "incident_metrics": {
+    "best_similarity": 0.7491978032225521,
+    "shortlist_median": 0.6763370255935095,
+    "v8_threshold": 0.7763370255935095,
+    "population_median": 0.6113628596742738,
+    "v9_threshold": 0.7113628596742738,
+    "old_hits": 0,
+    "candidate_hits": 4,
+    "useful_item_rank": 3
+  },
+  "timing_summary": [
+    {
+      "variant": "v8",
+      "samples": 6,
+      "median_total_ms": 401.5,
+      "median_candidate_sql_ms": 106.0
+    },
+    {
+      "variant": "v9",
+      "samples": 6,
+      "median_total_ms": 447.5,
+      "median_candidate_sql_ms": 111.0
+    }
+  ]
+}

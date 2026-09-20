@@ -1,0 +1,44 @@
+[
+  {
+    "id": "2026-09-12-unknown-tool-outcome",
+    "guarantee": "An MCP timeout after an external effect never becomes proof of rejection or permission to replay it.",
+    "evidence": "project/decisions/0093-tool-outcome-evidence-and-console-recovery.md",
+    "test": "app/harness/tests/test_execution_evidence.py::test_real_mcp_validation_is_distinct_from_failure_after_side_effect[False]",
+    "mutation": "mcp-timeout-treated-as-rejection"
+  },
+  {
+    "id": "2026-09-12-provider-sdk-task-admission",
+    "guarantee": "SDK-generated structured requests preserve reasoning and output validation while respecting the final provider's tool-choice restrictions.",
+    "evidence": "project/audits/2026-09-12-provider-inference-composition.md",
+    "test": "tests/test_provider_parameters.py::test_sdk_inference_composes_with_provider_contract[tool-None-deepseek-deepseek-v4-pro-responses]",
+    "mutation": "provider-sdk-ignores-thinking-tool-restriction"
+  },
+  {
+    "id": "2026-09-11-token-reservation-test-gap",
+    "guarantee": "A leased descendant consumes the root token reservation even when the monetary budget is disabled.",
+    "evidence": "project/audits/2026-09-11-regression-hardening.md",
+    "test": "app/task/tests/test_budget.py::test_causal_descendants_share_accounting_and_lease_reservations[tokens-only]",
+    "mutation": "task-reservation-ignored"
+  },
+  {
+    "id": "2026-09-12-terminal-callback-start-response",
+    "guarantee": "A terminal callback survives a late successful or failed start response without changing its output, error or remote identity.",
+    "evidence": "project/audits/2026-09-12-functional-regressions.md",
+    "test": "app/process/tests/test_lifecycle_workflows.py::test_lost_start_response_cannot_overwrite_a_terminal_callback[lost-success]",
+    "mutation": "late-start-failure-overwrites-callback"
+  },
+  {
+    "id": "2026-09-12-dbadmin-diagnostic-persistence",
+    "guarantee": "A synchronization with issues persists its latest verdict and bounded issue records.",
+    "evidence": "project/audits/2026-09-12-functional-regressions.md",
+    "test": "core/dbadmin/tests/test_operator_guarantees.py::test_operator_summary_is_bounded_and_returns_latest_persisted_verdict",
+    "mutation": "dbadmin-issues-before-parent"
+  },
+  {
+    "id": "2026-09-12-concurrent-execution-discovery",
+    "guarantee": "Concurrent discovery returns one canonical execution and rejects cross-workflow collisions after rollback.",
+    "evidence": "project/audits/2026-09-12-functional-regressions.md",
+    "test": "app/process/tests/test_worker_concurrency.py::test_parallel_external_execution_discovery_creates_one_canonical_run[False]",
+    "mutation": "concurrent-discovery-uses-expired-owner"
+  }
+]

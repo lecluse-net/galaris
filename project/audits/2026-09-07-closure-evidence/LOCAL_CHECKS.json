@@ -1,0 +1,17 @@
+{
+  "scope": "Local worktree snapshot built before the concurrent Lab redesign; not a production qualification",
+  "source_snapshot": "/tmp/galaris-close-source",
+  "source_files_manifest_sha256": "57e76a0c0071f390d87aba10d4e103613d920cdc27fcce3d6984a0b39f87e429",
+  "backend": {"passed": 3360, "skipped_opt_in": 1, "seconds": 170.73},
+  "frontend": {"passed": 398, "translation_pairs": 4517},
+  "types": "Pyright and vue-tsc passed",
+  "lint": "Python and frontend passed",
+  "format_manifest_files": 36,
+  "architecture": {"tests_passed": 27, "resolved_private_imports": 1, "new_baseline_entries": 0},
+  "critical_coverage": {"percent": 78.30, "minimum_percent": 70, "passed": 579, "skipped_opt_in": 1},
+  "source_security": {"trivy": "passed", "semgrep_rules": 79, "semgrep_files": 1147, "findings": 0},
+  "exact_images": {"upgrade": "passed", "restoration": "passed", "e2e_passed": 48, "browser_executor_passed": 17, "ssh_executor_passed": 9, "image_scans": "passed; unfixed advisories retained in SECURITY_IMAGES.json"},
+  "dbadmin_volume": {"rows": 100000, "writer_commits": 423, "seconds": 3.936908246992971},
+  "retention": {"simulated_days": 84, "calls": 2016, "plateau_raw_traces": 420, "remaining_raw_after_release": 0},
+  "not_qualified": ["Actual installed backend digest", "Production-scale restore", "Remote monitoring alert activation", "External provider services", "Concurrent Lab redesign"]
+}

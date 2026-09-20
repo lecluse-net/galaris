@@ -1,0 +1,290 @@
+app/agent/pages/index.vue(73,50): error TS7053: Element implicitly has an 'any' type because expression of type 'number' can't be used to index type '{}'.
+  No index signature with a parameter of type 'number' was found on type '{}'.
+app/agent/pages/index.vue(75,29): error TS7053: Element implicitly has an 'any' type because expression of type 'number' can't be used to index type '{}'.
+  No index signature with a parameter of type 'number' was found on type '{}'.
+app/agent/pages/index.vue(224,45): error TS2345: Argument of type '{ id: number; user_id: number; user: { id: number; email: string; display_name: string | null; is_current_user: boolean; }; is_owner: boolean; memory_item_id: string | null; title_id: number; ... 13 more ...; title?: { ...; } | undefined; }' is not assignable to parameter of type 'null | undefined'.
+app/agent/pages/index.vue(257,12): error TS2322: Type '({ name: string; label: string; field: string; sortable: boolean; align: string; style?: undefined; } | { name: string; label: string; field: string; align: string; sortable?: undefined; style?: undefined; } | { ...; })[]' is not assignable to type '{ name: string; label: string; field: string | ((row: any) => any); required?: boolean | undefined; align?: "left" | "center" | "right" | undefined; sortable?: boolean | undefined; sort?: ((a: any, b: any, rowA: any, rowB: any) => number) | undefined; ... 6 more ...; headerClasses?: string | undefined; }[]'.
+  Type '{ name: string; label: string; field: string; sortable: boolean; align: string; style?: undefined; } | { name: string; label: string; field: string; align: string; sortable?: undefined; style?: undefined; } | { ...; }' is not assignable to type '{ name: string; label: string; field: string | ((row: any) => any); required?: boolean | undefined; align?: "left" | "center" | "right" | undefined; sortable?: boolean | undefined; sort?: ((a: any, b: any, rowA: any, rowB: any) => number) | undefined; ... 6 more ...; headerClasses?: string | undefined; }'.
+    Type '{ name: string; label: string; field: string; sortable: boolean; align: string; style?: undefined; }' is not assignable to type '{ name: string; label: string; field: string | ((row: any) => any); required?: boolean | undefined; align?: "left" | "center" | "right" | undefined; sortable?: boolean | undefined; sort?: ((a: any, b: any, rowA: any, rowB: any) => number) | undefined; ... 6 more ...; headerClasses?: string | undefined; }'.
+      Types of property 'align' are incompatible.
+        Type 'string' is not assignable to type '"left" | "center" | "right" | undefined'.
+app/agent/pages/index.vue(299,12): error TS2322: Type '({ name: string; label: string; field: string; sortable: boolean; align: string; style?: undefined; } | { name: string; label: string; field: string; align: string; style: string; sortable?: undefined; })[]' is not assignable to type '{ name: string; label: string; field: string | ((row: any) => any); required?: boolean | undefined; align?: "left" | "center" | "right" | undefined; sortable?: boolean | undefined; sort?: ((a: any, b: any, rowA: any, rowB: any) => number) | undefined; ... 6 more ...; headerClasses?: string | undefined; }[]'.
+  Type '{ name: string; label: string; field: string; sortable: boolean; align: string; style?: undefined; } | { name: string; label: string; field: string; align: string; style: string; sortable?: undefined; }' is not assignable to type '{ name: string; label: string; field: string | ((row: any) => any); required?: boolean | undefined; align?: "left" | "center" | "right" | undefined; sortable?: boolean | undefined; sort?: ((a: any, b: any, rowA: any, rowB: any) => number) | undefined; ... 6 more ...; headerClasses?: string | undefined; }'.
+    Type '{ name: string; label: string; field: string; sortable: boolean; align: string; style?: undefined; }' is not assignable to type '{ name: string; label: string; field: string | ((row: any) => any); required?: boolean | undefined; align?: "left" | "center" | "right" | undefined; sortable?: boolean | undefined; sort?: ((a: any, b: any, rowA: any, rowB: any) => number) | undefined; ... 6 more ...; headerClasses?: string | undefined; }'.
+      Types of property 'align' are incompatible.
+        Type 'string' is not assignable to type '"left" | "center" | "right" | undefined'.
+app/agent/pages/index.vue(452,67): error TS2538: Type 'null' cannot be used as an index type.
+app/agent/pages/index.vue(452,99): error TS2538: Type 'null' cannot be used as an index type.
+app/agent/pages/index.vue(674,18): error TS2322: Type '{ name: string; label: string; field: string; align: string; }[]' is not assignable to type '{ name: string; label: string; field: string | ((row: any) => any); required?: boolean | undefined; align?: "left" | "center" | "right" | undefined; sortable?: boolean | undefined; sort?: ((a: any, b: any, rowA: any, rowB: any) => number) | undefined; ... 6 more ...; headerClasses?: string | undefined; }[]'.
+  Type '{ name: string; label: string; field: string; align: string; }' is not assignable to type '{ name: string; label: string; field: string | ((row: any) => any); required?: boolean | undefined; align?: "left" | "center" | "right" | undefined; sortable?: boolean | undefined; sort?: ((a: any, b: any, rowA: any, rowB: any) => number) | undefined; ... 6 more ...; headerClasses?: string | undefined; }'.
+    Types of property 'align' are incompatible.
+      Type 'string' is not assignable to type '"left" | "center" | "right" | undefined'.
+app/agent/pages/index.vue(858,31): error TS2339: Property 'first_name' does not exist on type 'never'.
+app/agent/pages/index.vue(858,63): error TS2339: Property 'last_name' does not exist on type 'never'.
+app/agent/pages/index.vue(1007,25): error TS7006: Parameter 'dateStr' implicitly has an 'any' type.
+app/agent/pages/index.vue(1011,19): error TS7006: Parameter 'value' implicitly has an 'any' type.
+app/agent/pages/index.vue(1024,5): error TS2322: Type 'AgentMcpToken[]' is not assignable to type 'never[]'.
+  Type 'AgentMcpToken' is not assignable to type 'never'.
+app/agent/pages/index.vue(1060,31): error TS7006: Parameter 'token' implicitly has an 'any' type.
+app/agent/pages/index.vue(1064,52): error TS2339: Property 'id' does not exist on type 'never'.
+app/agent/pages/index.vue(1065,21): error TS2322: Type 'AgentMcpToken' is not assignable to type 'never'.
+app/agent/pages/index.vue(1072,31): error TS7006: Parameter 'token' implicitly has an 'any' type.
+app/agent/pages/index.vue(1080,41): error TS2345: Argument of type 'null' is not assignable to parameter of type 'number'.
+app/agent/pages/index.vue(1081,57): error TS2339: Property 'id' does not exist on type 'never'.
+app/agent/pages/index.vue(1104,24): error TS7006: Parameter 'agent' implicitly has an 'any' type.
+app/agent/pages/index.vue(1119,30): error TS7053: Element implicitly has an 'any' type because expression of type 'number' can't be used to index type '{}'.
+  No index signature with a parameter of type 'number' was found on type '{}'.
+app/agent/pages/index.vue(1122,9): error TS7053: Element implicitly has an 'any' type because expression of type 'number' can't be used to index type '{}'.
+  No index signature with a parameter of type 'number' was found on type '{}'.
+app/agent/pages/index.vue(1471,3): error TS7006: Parameter 'val' implicitly has an 'any' type.
+app/agent/pages/index.vue(1472,3): error TS7006: Parameter 'val' implicitly has an 'any' type.
+app/agent/pages/index.vue(1473,3): error TS7006: Parameter 'val' implicitly has an 'any' type.
+app/agent/pages/index.vue(1493,28): error TS7006: Parameter 'groupId' implicitly has an 'any' type.
+app/agent/pages/index.vue(1643,9): error TS6133: 'selected' is declared but its value is never read.
+app/agent/pages/index.vue(1693,73): error TS2339: Property 'first_name' does not exist on type 'never'.
+app/agent/pages/index.vue(1693,113): error TS2339: Property 'last_name' does not exist on type 'never'.
+app/agent/pages/index.vue(1696,70): error TS2339: Property 'name' does not exist on type 'never'.
+app/agent/pages/index.vue(1698,68): error TS2339: Property 'label' does not exist on type 'never'.
+app/agent/pages/index.vue(1703,3): error TS2322: Type 'number | null' is not assignable to type 'null'.
+  Type 'number' is not assignable to type 'null'.
+app/agent/pages/index.vue(1752,17): error TS2339: Property 'id' does not exist on type 'never'.
+app/agent/pages/index.vue(1753,22): error TS2339: Property 'user_id' does not exist on type 'never'.
+app/agent/pages/index.vue(1754,23): error TS2339: Property 'title_id' does not exist on type 'never'.
+app/agent/pages/index.vue(1755,23): error TS2339: Property 'group_id' does not exist on type 'never'.
+app/agent/pages/index.vue(1756,19): error TS2339: Property 'code' does not exist on type 'never'.
+app/agent/pages/index.vue(1757,25): error TS2339: Property 'first_name' does not exist on type 'never'.
+app/agent/pages/index.vue(1758,24): error TS2339: Property 'last_name' does not exist on type 'never'.
+app/agent/pages/index.vue(1759,24): error TS2339: Property 'job_title' does not exist on type 'never'.
+app/agent/pages/index.vue(1760,27): error TS2339: Property 'agent_driver' does not exist on type 'never'.
+app/agent/pages/index.vue(1761,25): error TS2339: Property 'has_avatar' does not exist on type 'never'.
+app/agent/pages/index.vue(1762,25): error TS2339: Property 'profile_id' does not exist on type 'never'.
+app/agent/pages/index.vue(1767,15): error TS2339: Property 'has_avatar' does not exist on type 'never'.
+app/agent/pages/index.vue(1767,30): error TS7053: Element implicitly has an 'any' type because expression of type 'any' can't be used to index type '{}'.
+app/agent/pages/index.vue(1767,47): error TS2339: Property 'id' does not exist on type 'never'.
+app/agent/pages/index.vue(1769,63): error TS2339: Property 'id' does not exist on type 'never'.
+app/agent/pages/index.vue(1770,9): error TS7053: Element implicitly has an 'any' type because expression of type 'any' can't be used to index type '{}'.
+app/agent/pages/index.vue(1770,26): error TS2339: Property 'id' does not exist on type 'never'.
+app/agent/pages/index.vue(1772,64): error TS2339: Property 'id' does not exist on type 'never'.
+app/agent/pages/index.vue(1783,29): error TS7006: Parameter 'agent' implicitly has an 'any' type.
+app/agent/pages/index.vue(1783,36): error TS7006: Parameter 'field' implicitly has an 'any' type.
+app/agent/pages/index.vue(1799,54): error TS2339: Property 'id' does not exist on type 'never'.
+app/agent/pages/index.vue(1832,42): error TS2339: Property 'id' does not exist on type 'never'.
+app/agent/pages/index.vue(1832,58): error TS2339: Property 'name' does not exist on type 'never'.
+app/agent/pages/index.vue(1832,77): error TS2339: Property 'order' does not exist on type 'never'.
+app/agent/pages/index.vue(1849,36): error TS2345: Argument of type 'null' is not assignable to parameter of type 'number'.
+app/agent/pages/index.vue(1861,29): error TS7006: Parameter 'group' implicitly has an 'any' type.
+app/agent/pages/index.vue(1867,29): error TS7006: Parameter 'agent' implicitly has an 'any' type.
+app/agent/pages/index.vue(1873,29): error TS7006: Parameter 'title' implicitly has an 'any' type.
+app/agent/pages/index.vue(1884,55): error TS2339: Property 'id' does not exist on type 'never'.
+app/agent/pages/index.vue(1887,55): error TS2339: Property 'id' does not exist on type 'never'.
+app/agent/pages/index.vue(1890,55): error TS2339: Property 'id' does not exist on type 'never'.
+app/agent/pages/index.vue(1899,44): error TS7053: Element implicitly has an 'any' type because expression of type 'string' can't be used to index type '{ agent: string; group: string; title: string; }'.
+  No index signature with a parameter of type 'string' was found on type '{ agent: string; group: string; title: string; }'.
+app/agent/pages/index.vue(1915,36): error TS2345: Argument of type 'null' is not assignable to parameter of type 'number'.
+app/agent/pages/index.vue(1930,43): error TS2345: Argument of type 'null' is not assignable to parameter of type 'number'.
+app/agent/pages/index.vue(1963,36): error TS2345: Argument of type 'null' is not assignable to parameter of type 'number'.
+app/agent/pages/index.vue(1966,49): error TS2345: Argument of type 'null' is not assignable to parameter of type 'number'.
+app/agent/pages/index.vue(1967,42): error TS2345: Argument of type 'null' is not assignable to parameter of type 'number'.
+app/agent/pages/index.vue(1970,23): error TS2538: Type 'null' cannot be used as an index type.
+app/agent/pages/index.vue(1970,57): error TS2352: Conversion of type '{ id: null; }' to type 'Agent' may be a mistake because neither type sufficiently overlaps with the other. If this was intentional, convert the expression to 'unknown' first.
+  Type '{ id: null; }' is missing the following properties from type 'Agent': user_id, user, is_owner, memory_item_id, and 13 more.
+app/agent/pages/index.vue(1983,36): error TS2345: Argument of type '{ code: string; user_id: null; title_id: null; group_id: null; first_name: string; last_name: string; job_title: string | null; profile_id: null; voice: string | null; }' is not assignable to parameter of type 'AgentCreate'.
+  Types of property 'title_id' are incompatible.
+    Type 'null' is not assignable to type 'number'.
+app/agent/pages/index.vue(1991,27): error TS2339: Property 'response' does not exist on type '{}'.
+app/agent/pages/index.vue(2002,24): error TS2339: Property 'response' does not exist on type '{}'.
+app/agent/pages/index.vue(2017,33): error TS7006: Parameter 'field' implicitly has an 'any' type.
+app/agent/pages/index.vue(2040,36): error TS2345: Argument of type 'null' is not assignable to parameter of type 'number'.
+app/agent/pages/index.vue(2043,36): error TS2345: Argument of type '{ label: string; gender: null; }' is not assignable to parameter of type 'TitleCreate'.
+  Types of property 'gender' are incompatible.
+    Type 'null' is not assignable to type '"M" | "F"'.
+app/agent/pages/index.vue(2058,20): error TS7006: Parameter 'html' implicitly has an 'any' type.
+app/agent/pages/index.vue(2065,24): error TS7006: Parameter 'markdown' implicitly has an 'any' type.
+app/agent/pages/index.vue(2090,23): error TS7006: Parameter 'text' implicitly has an 'any' type.
+app/agent/pages/index.vue(2090,29): error TS7006: Parameter 'maxLength' implicitly has an 'any' type.
+app/agent/pages/index.vue(2096,7): error TS6133: 'getAvatarUrl' is declared but its value is never read.
+app/agent/pages/index.vue(2096,23): error TS7006: Parameter 'id' implicitly has an 'any' type.
+app/agent/pages/index.vue(2100,33): error TS7006: Parameter 'file' implicitly has an 'any' type.
+app/agent/pages/index.vue(2109,5): error TS2322: Type 'string' is not assignable to type 'never'.
+app/agent/pages/index.vue(2132,39): error TS2345: Argument of type 'null' is not assignable to parameter of type 'number'.
+app/chat/components/AgentTasksPanel.vue(682,3): error TS2322: Type 'number' is not assignable to type 'Timeout'.
+app/chat/components/ConversationDocumentsPanel.vue(288,3): error TS2322: Type 'number' is not assignable to type 'Timeout'.
+app/chat/components/ConversationProcessesPanel.vue(267,3): error TS2322: Type 'number' is not assignable to type 'Timeout'.
+app/chat/components/VoiceCallPanel.vue(253,56): error TS2345: Argument of type 'string | undefined' is not assignable to parameter of type 'string'.
+  Type 'undefined' is not assignable to type 'string'.
+app/chat/i18n.ts(132,7): error TS1117: An object literal cannot have multiple properties with the same name.
+app/chat/i18n.ts(430,7): error TS1117: An object literal cannot have multiple properties with the same name.
+app/chat/i18n.ts(638,66): error TS1117: An object literal cannot have multiple properties with the same name.
+app/chat/runtimeState.ts(20,31): error TS18047: 'current' is possibly 'null'.
+app/chat/runtimeState.ts(21,31): error TS18047: 'current' is possibly 'null'.
+app/chat/runtimeState.ts(22,5): error TS2322: Type '{ attempt: number; active: true; success: true; terminal_received: false; last_sequence: number; ai_result: AIResult; room_id?: string | undefined; round_id?: string | undefined; topic_id?: string | ... 1 more ... | undefined; }' is not assignable to type 'LiveAgentRound'.
+  Types of property 'room_id' are incompatible.
+    Type 'string | undefined' is not assignable to type 'string'.
+      Type 'undefined' is not assignable to type 'string'.
+app/chat/runtimeState.ts(29,36): error TS18047: 'current' is possibly 'null'.
+app/chat/runtimeState.ts(32,16): error TS2322: Type '{ last_sequence: number; room_id?: string | undefined; round_id?: string | undefined; attempt?: number; terminal_received?: boolean; topic_id?: string | null | undefined; active?: boolean | undefined; success?: boolean | undefined; ai_result?: AIResult | undefined; }' is not assignable to type 'LiveAgentRound'.
+  Types of property 'room_id' are incompatible.
+    Type 'string | undefined' is not assignable to type 'string'.
+      Type 'undefined' is not assignable to type 'string'.
+app/chat/runtimeState.ts(69,39): error TS2322: Type 'AIResult | null' is not assignable to type 'AIResult'.
+  Type 'null' is not assignable to type 'AIResult'.
+app/chat/stores/chat.ts(10,191): error TS6196: 'Page' is declared but never used.
+app/connection/components/ConnectionForm.vue(961,12): error TS2345: Argument of type 'Record<string, unknown> | Connection | undefined' is not assignable to parameter of type 'Connection | undefined'.
+  Type 'Record<string, unknown>' is missing the following properties from type 'Connection': id, agent_id, tool_id, active
+app/connection/components/ConnectionList.vue(295,7): error TS6133: 'connectionFormRef' is declared but its value is never read.
+app/connection/components/ConnectionList.vue(413,10): error TS2869: Right operand of ?? is unreachable because the left operand is never nullish.
+app/connection/components/ConnectionList.vue(418,10): error TS2869: Right operand of ?? is unreachable because the left operand is never nullish.
+app/conversation/components/ConversationHistory.vue(447,3): error TS2322: Type '{ sortBy: string; descending: boolean; page: number; rowsPerPage: number; rowsNumber?: number | undefined; }' is not assignable to type '{ page: number; rowsPerPage: number; rowsNumber: number; } | { page: number; rowsPerPage: number; rowsNumber: number; }'.
+  Type '{ sortBy: string; descending: boolean; page: number; rowsPerPage: number; rowsNumber?: number | undefined; }' is not assignable to type '{ page: number; rowsPerPage: number; rowsNumber: number; }'.
+    Types of property 'rowsNumber' are incompatible.
+      Type 'number | undefined' is not assignable to type 'number'.
+        Type 'undefined' is not assignable to type 'number'.
+app/dream/pages/index.vue(496,71): error TS2339: Property 'target_memory_id' does not exist on type 'MemoryExtractionOperation'.
+  Property 'target_memory_id' does not exist on type 'ProposedMemory'.
+app/dream/pages/index.vue(510,54): error TS2339: Property 'reason' does not exist on type 'MemoryExtractionOperation'.
+  Property 'reason' does not exist on type 'ProposedMemory'.
+app/dream/pages/index.vue(511,34): error TS2339: Property 'reason' does not exist on type 'MemoryExtractionOperation'.
+  Property 'reason' does not exist on type 'ProposedMemory'.
+app/dream/pages/index.vue(587,3): error TS2353: Object literal may only specify known properties, and ''skill.learn_task_outcome'' does not exist in type 'Record<DreamMechanismKey, string>'.
+app/index/components/DashboardLiveActivity.vue(340,71): error TS2345: Argument of type 'Record<string, any>' is not assignable to parameter of type 'Task'.
+  Type 'Record<string, any>' is missing the following properties from type 'Task': id, revision, label, status, and 3 more.
+app/index/components/DashboardLiveActivity.vue(341,71): error TS2345: Argument of type 'Record<string, any>' is not assignable to parameter of type 'Task'.
+  Type 'Record<string, any>' is missing the following properties from type 'Task': id, revision, label, status, and 3 more.
+app/index/components/HomeConnected.vue(200,22): error TS2345: Argument of type '{ activeKey: string | null; slices: ModelBreakdown[]; 'aria-label': string; }' is not assignable to parameter of type '{ readonly slices: ModelPieSlice[]; readonly ariaLabel: string; readonly activeKey?: string | null | undefined; readonly "onUpdate:activeKey"?: ((value: string | null) => any) | undefined; } & VNodeProps & AllowedComponentProps & ComponentCustomProps & Record<...>'.
+  Property 'ariaLabel' is missing in type '{ activeKey: string | null; slices: ModelBreakdown[]; 'aria-label': string; }' but required in type '{ readonly slices: ModelPieSlice[]; readonly ariaLabel: string; readonly activeKey?: string | null | undefined; readonly "onUpdate:activeKey"?: ((value: string | null) => any) | undefined; }'.
+app/index/router.ts(2,1): error TS2578: Unused '@ts-expect-error' directive.
+app/index/stores/dashboardStore.ts(25,42): error TS2683: 'this' implicitly has type 'any' because it does not have a type annotation.
+app/lab/components/MechanismEvaluationTab.vue(1484,70): error TS7053: Element implicitly has an 'any' type because expression of type 'number' can't be used to index type '{}'.
+  No index signature with a parameter of type 'number' was found on type '{}'.
+app/lab/components/MechanismEvaluationTab.vue(1484,106): error TS7053: Element implicitly has an 'any' type because expression of type 'number' can't be used to index type '{}'.
+  No index signature with a parameter of type 'number' was found on type '{}'.
+app/lab/components/MemoryExtractionDecisionPreview.vue(59,32): error TS2345: Argument of type '(this: undefined, rawOperation: any) => { action: "LINK"; label: string; meta: string; reason: string; targetId: string; }[] | { action: "CREATE"; label: string; meta: string; reason: string; targetId: string; }[]' is not assignable to parameter of type '(this: undefined, value: any, index: number, array: any[]) => { action: "LINK"; label: string; meta: string; reason: string; targetId: string; } | readonly { action: "LINK"; label: string; meta: string; reason: string; targetId: string; }[]'.
+  Type '{ action: "LINK"; label: string; meta: string; reason: string; targetId: string; }[] | { action: "CREATE"; label: string; meta: string; reason: string; targetId: string; }[]' is not assignable to type '{ action: "LINK"; label: string; meta: string; reason: string; targetId: string; } | readonly { action: "LINK"; label: string; meta: string; reason: string; targetId: string; }[]'.
+    Type '{ action: "CREATE"; label: string; meta: string; reason: string; targetId: string; }[]' is not assignable to type '{ action: "LINK"; label: string; meta: string; reason: string; targetId: string; } | readonly { action: "LINK"; label: string; meta: string; reason: string; targetId: string; }[]'.
+      Type '{ action: "CREATE"; label: string; meta: string; reason: string; targetId: string; }[]' is not assignable to type 'readonly { action: "LINK"; label: string; meta: string; reason: string; targetId: string; }[]'.
+        Type '{ action: "CREATE"; label: string; meta: string; reason: string; targetId: string; }' is not assignable to type '{ action: "LINK"; label: string; meta: string; reason: string; targetId: string; }'.
+          Types of property 'action' are incompatible.
+            Type '"CREATE"' is not assignable to type '"LINK"'.
+app/lab/pages/ai-evaluations.vue(266,85): error TS2339: Property 'description' does not exist on type '{ task_id: string; revision: number; label: string; objective?: string | null | undefined; status: string; paused: boolean; effort: string; forced_route?: string | null | undefined; forced_effort?: string | ... 1 more ... | undefined; ... 9 more ...; updated_at?: string | ... 1 more ... | undefined; }'.
+app/lab/pages/incidents.vue(427,3): error TS2322: Type '{ sortBy: string; descending: boolean; page: number; rowsPerPage: number; rowsNumber?: number | undefined; }' is not assignable to type '{ page: number; rowsPerPage: number; rowsNumber: number; } | { page: number; rowsPerPage: number; rowsNumber: number; }'.
+  Type '{ sortBy: string; descending: boolean; page: number; rowsPerPage: number; rowsNumber?: number | undefined; }' is not assignable to type '{ page: number; rowsPerPage: number; rowsNumber: number; }'.
+    Types of property 'rowsNumber' are incompatible.
+      Type 'number | undefined' is not assignable to type 'number'.
+        Type 'undefined' is not assignable to type 'number'.
+app/lab/pages/incidents.vue(432,3): error TS2322: Type '{ sortBy: string; descending: boolean; page: number; rowsPerPage: number; rowsNumber?: number | undefined; }' is not assignable to type '{ page: number; rowsPerPage: number; rowsNumber: number; } | { page: number; rowsPerPage: number; rowsNumber: number; }'.
+  Type '{ sortBy: string; descending: boolean; page: number; rowsPerPage: number; rowsNumber?: number | undefined; }' is not assignable to type '{ page: number; rowsPerPage: number; rowsNumber: number; }'.
+    Types of property 'rowsNumber' are incompatible.
+      Type 'number | undefined' is not assignable to type 'number'.
+        Type 'undefined' is not assignable to type 'number'.
+app/llm/components/LlmUsageManager.vue(297,88): error TS2345: Argument of type 'ReasoningField | null' is not assignable to parameter of type 'ReasoningField'.
+  Type 'null' is not assignable to type 'ReasoningField'.
+app/llm/components/LlmUsageManager.vue(298,93): error TS2345: Argument of type 'ReasoningField | null' is not assignable to parameter of type 'ReasoningField'.
+  Type 'null' is not assignable to type 'ReasoningField'.
+app/llm/components/ProviderListPanel.vue(138,48): error TS2550: Property 'toSorted' does not exist on type 'ProviderCatalogItem[]'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2023' or later.
+app/llm/components/ProviderListPanel.vue(138,58): error TS7006: Parameter 'a' implicitly has an 'any' type.
+app/llm/components/ProviderListPanel.vue(138,61): error TS7006: Parameter 'b' implicitly has an 'any' type.
+app/llm/components/ProviderListPanel.vue(141,61): error TS7006: Parameter 'item' implicitly has an 'any' type.
+app/llm/components/ProviderListPanel.vue(142,64): error TS7006: Parameter 'item' implicitly has an 'any' type.
+app/llm/components/ProviderModelsPanel.vue(8,53): error TS18047: '__VLS_ctx.item' is possibly 'null'.
+app/llm/components/ProviderWorkspace.vue(292,7): error TS2353: Object literal may only specify known properties, and 'configuration' does not exist in type 'LLMProviderTestRequest'.
+app/memory/components/DocumentEditor.vue(391,38): error TS2367: This comparison appears to be unintentional because the types '1 | 2' and '0' have no overlap.
+app/memory/components/DocumentEditor.vue(853,8): error TS2769: No overload matches this call.
+  Overload 1 of 3, '(evt: "updated", document: MemoryItemDetail): void', gave the following error.
+    Argument of type '"updated" | "loaded"' is not assignable to parameter of type '"updated"'.
+      Type '"loaded"' is not assignable to type '"updated"'.
+  Overload 2 of 3, '(evt: "loaded", document: MemoryItemDetail): void', gave the following error.
+    Argument of type '"updated" | "loaded"' is not assignable to parameter of type '"loaded"'.
+      Type '"updated"' is not assignable to type '"loaded"'.
+  Overload 3 of 3, '(evt: "unavailable", documentId: string): void', gave the following error.
+    Argument of type '"updated" | "loaded"' is not assignable to parameter of type '"unavailable"'.
+      Type '"updated"' is not assignable to type '"unavailable"'.
+app/memory/components/MemoryGraph.vue(457,57): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(getter: ComputedGetter<Record<string, string>>, debugOptions?: DebuggerOptions | undefined): ComputedRef<Record<string, string>>', gave the following error.
+    Argument of type '() => { right?: undefined; bottom?: undefined; left?: undefined; maxHeight?: undefined; top?: undefined; width?: undefined; } | { right: string; bottom: string; left: string; maxHeight: string; top?: undefined; width?: undefined; } | { ...; }' is not assignable to parameter of type 'ComputedGetter<Record<string, string>>'.
+      Type '{ right?: undefined; bottom?: undefined; left?: undefined; maxHeight?: undefined; top?: undefined; width?: undefined; } | { right: string; bottom: string; left: string; maxHeight: string; top?: undefined; width?: undefined; } | { ...; }' is not assignable to type 'Record<string, string>'.
+        Type '{ right?: undefined; bottom?: undefined; left?: undefined; maxHeight?: undefined; top?: undefined; width?: undefined; }' is not assignable to type 'Record<string, string>'.
+          Property 'right' is incompatible with index signature.
+            Type 'undefined' is not assignable to type 'string'.
+  Overload 2 of 2, '(options: WritableComputedOptions<Record<string, string>, Record<string, string>>, debugOptions?: DebuggerOptions | undefined): WritableComputedRef<...>', gave the following error.
+    Argument of type '() => { right?: undefined; bottom?: undefined; left?: undefined; maxHeight?: undefined; top?: undefined; width?: undefined; } | { right: string; bottom: string; left: string; maxHeight: string; top?: undefined; width?: undefined; } | { ...; }' is not assignable to parameter of type 'WritableComputedOptions<Record<string, string>, Record<string, string>>'.
+app/memory/pages/index.vue(55,15): error TS2367: This comparison appears to be unintentional because the types '"list" | "graph"' and '"search"' have no overlap.
+app/memory/pages/index.vue(161,70): error TS2322: Type '(resetPage?: boolean) => Promise<void>' is not assignable to type '(evt: Event, go?: ((opts?: { to?: any; replace?: boolean | undefined; returnRouterError?: boolean | undefined; } | undefined) => Promise<any>) | undefined) => void'.
+  Types of parameters 'resetPage' and 'evt' are incompatible.
+    Type 'Event' is not assignable to type 'boolean | undefined'.
+app/process/stores/processStore.ts(86,40): error TS2683: 'this' implicitly has type 'any' because it does not have a type annotation.
+app/process/stores/processStore.ts(87,22): error TS2683: 'this' implicitly has type 'any' because it does not have a type annotation.
+app/process/stores/processStore.ts(88,26): error TS2683: 'this' implicitly has type 'any' because it does not have a type annotation.
+app/process/stores/processStore.ts(89,24): error TS2683: 'this' implicitly has type 'any' because it does not have a type annotation.
+app/process/stores/processStore.ts(90,24): error TS2683: 'this' implicitly has type 'any' because it does not have a type annotation.
+app/process/stores/processStore.ts(91,29): error TS2683: 'this' implicitly has type 'any' because it does not have a type annotation.
+app/task/components/ActiveTasksPanel.vue(188,10): error TS6133: 'buildChildrenMap' is declared but its value is never read.
+app/task/components/TaskDetail.vue(1252,10): error TS6133: 'getStatusIcon' is declared but its value is never read.
+app/task/components/TaskDetail.vue(1256,10): error TS6133: 'getStatusColor' is declared but its value is never read.
+app/task/components/TaskFormDialog.vue(25,13): error TS2322: Type 'number | undefined' is not assignable to type 'number | null'.
+  Type 'undefined' is not assignable to type 'number | null'.
+app/topic/pages/index.vue(136,65): error TS7006: Parameter 'agent' implicitly has an 'any' type.
+app/topic/pages/index.vue(156,64): error TS7006: Parameter 'user' implicitly has an 'any' type.
+app/topic/pages/index.vue(176,68): error TS7006: Parameter 'document' implicitly has an 'any' type.
+app/topic/pages/index.vue(275,71): error TS7006: Parameter 'agent' implicitly has an 'any' type.
+app/topic/pages/index.vue(295,70): error TS7006: Parameter 'user' implicitly has an 'any' type.
+app/topic/pages/index.vue(315,74): error TS7006: Parameter 'document' implicitly has an 'any' type.
+core/api.ts(132,39): error TS2345: Argument of type 'undefined' is not assignable to parameter of type 'ContentType'.
+core/authorize/stores/authorizeStore.ts(60,19): error TS6133: 'updated' is declared but its value is never read.
+core/i18n/index.ts(69,3): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(options: I18nOptions<{ message: LocaleMessage<VueMessageType>; datetime: DateTimeFormat; number: NumberFormat; }, string, ComposerOptions<{ ...; }, ... 9 more ..., NumberFormats<...>> | VueI18nOptions<...>>): I18n<...>', gave the following error.
+    Type 'Record<AppLocale, LocaleMessages>' is not assignable to type '{ [x: string]: LocaleMessage<VueMessageType>; }'.
+      Property 'fr' is incompatible with index signature.
+        Type 'LocaleMessages' is not assignable to type 'LocaleMessage<VueMessageType>'.
+          'string' index signatures are incompatible.
+            Type 'unknown' is not assignable to type 'LocaleMessageValue<VueMessageType>'.
+  Overload 2 of 2, '(options: I18nOptions<{ message: LocaleMessage<VueMessageType>; datetime: DateTimeFormat; number: NumberFormat; }, { messages: "en-US"; datetimeFormats: "en-US"; numberFormats: "en-US"; }, ComposerOptions<...> | VueI18nOptions<...>>): I18n<...>', gave the following error.
+    Property '"en-US"' is missing in type 'Record<AppLocale, LocaleMessages>' but required in type '{ "en-US": LocaleMessage<VueMessageType>; }'.
+core/i18n/index.ts(74,22): error TS2551: Property 'value' does not exist on type 'string'. Did you mean 'valueOf'?
+core/i18n/index.ts(88,29): error TS2551: Property 'value' does not exist on type 'string'. Did you mean 'valueOf'?
+core/navigation/components/FooterMenu.vue(10,54): error TS2345: Argument of type 'string | undefined' is not assignable to parameter of type 'string'.
+  Type 'undefined' is not assignable to type 'string'.
+core/navigation/components/FooterMenu.vue(13,53): error TS2345: Argument of type 'string | undefined' is not assignable to parameter of type 'string'.
+  Type 'undefined' is not assignable to type 'string'.
+core/navigation/components/FooterMenu.vue(21,54): error TS2345: Argument of type 'string | undefined' is not assignable to parameter of type 'string'.
+  Type 'undefined' is not assignable to type 'string'.
+core/navigation/components/FooterMenu.vue(24,53): error TS2345: Argument of type 'string | undefined' is not assignable to parameter of type 'string'.
+  Type 'undefined' is not assignable to type 'string'.
+core/navigation/components/LeftMenuItems.vue(19,31): error TS2345: Argument of type 'string | undefined' is not assignable to parameter of type 'string'.
+  Type 'undefined' is not assignable to type 'string'.
+core/navigation/components/LeftMenuItems.vue(19,48): error TS2345: Argument of type 'string | undefined' is not assignable to parameter of type 'string'.
+  Type 'undefined' is not assignable to type 'string'.
+core/navigation/components/LeftMenuItems.vue(48,36): error TS2345: Argument of type 'string | undefined' is not assignable to parameter of type 'string'.
+  Type 'undefined' is not assignable to type 'string'.
+core/navigation/components/LeftMenuItems.vue(48,53): error TS2345: Argument of type 'string | undefined' is not assignable to parameter of type 'string'.
+  Type 'undefined' is not assignable to type 'string'.
+core/navigation/components/LeftMenuItems.vue(65,36): error TS2345: Argument of type 'string | undefined' is not assignable to parameter of type 'string'.
+  Type 'undefined' is not assignable to type 'string'.
+core/navigation/components/LeftMenuItems.vue(65,53): error TS2345: Argument of type 'string | undefined' is not assignable to parameter of type 'string'.
+  Type 'undefined' is not assignable to type 'string'.
+core/navigation/components/LeftMenuItems.vue(112,32): error TS2345: Argument of type 'string | undefined' is not assignable to parameter of type 'string'.
+  Type 'undefined' is not assignable to type 'string'.
+core/navigation/components/LeftMenuItems.vue(112,49): error TS2345: Argument of type 'string | undefined' is not assignable to parameter of type 'string'.
+  Type 'undefined' is not assignable to type 'string'.
+core/navigation/components/TopMenuItems.vue(14,32): error TS2345: Argument of type 'string | undefined' is not assignable to parameter of type 'string'.
+  Type 'undefined' is not assignable to type 'string'.
+core/navigation/components/TopMenuItems.vue(14,50): error TS2345: Argument of type 'string | undefined' is not assignable to parameter of type 'string'.
+  Type 'undefined' is not assignable to type 'string'.
+core/navigation/components/TopMenuItems.vue(47,30): error TS2345: Argument of type 'string | undefined' is not assignable to parameter of type 'string'.
+  Type 'undefined' is not assignable to type 'string'.
+core/navigation/components/TopMenuItems.vue(47,48): error TS2345: Argument of type 'string | undefined' is not assignable to parameter of type 'string'.
+  Type 'undefined' is not assignable to type 'string'.
+core/navigation/composables/useNavigation.ts(11,89): error TS6196: 'MenuConfig' is declared but never used.
+core/params/components/MessagingSettingsPanel.vue(71,72): error TS18048: '__VLS_ctx.selectedBridge' is possibly 'undefined'.
+core/util/components/CodeEditor.vue(284,9): error TS6133: 'currentIndent' is declared but its value is never read.
+core/util/components/HtmlPreview.vue(28,7): error TS2322: Type 'boolean' is not assignable to type 'string'.
+core/util/components/TileTexture.vue(2,4): error TS2345: Argument of type '{ style: { width: string; height: string; backgroundImage: string; backgroundRepeat: string; backgroundSize: string; imageRendering: string; }; class: string; ref: string; }' is not assignable to parameter of type 'HTMLAttributes & ReservedProps & Record<string, unknown>'.
+  Type '{ style: { width: string; height: string; backgroundImage: string; backgroundRepeat: string; backgroundSize: string; imageRendering: string; }; class: string; ref: string; }' is not assignable to type 'HTMLAttributes'.
+    Types of property 'style' are incompatible.
+      Type '{ width: string; height: string; backgroundImage: string; backgroundRepeat: string; backgroundSize: string; imageRendering: string; }' is not assignable to type 'StyleValue'.
+        Type '{ width: string; height: string; backgroundImage: string; backgroundRepeat: string; backgroundSize: string; imageRendering: string; }' is not assignable to type 'CSSProperties'.
+          Types of property 'imageRendering' are incompatible.
+            Type 'string' is not assignable to type 'ImageRendering | undefined'.
+core/util/components/TileTexture.vue(30,7): error TS6133: 'root' is declared but its value is never read.
+core/websocket.ts(78,20): error TS7006: Parameter 'callback' implicitly has an 'any' type.
+core/websocket.ts(97,40): error TS7006: Parameter 'reason' implicitly has an 'any' type.
+core/websocket.ts(110,37): error TS6133: 'data' is declared but its value is never read.

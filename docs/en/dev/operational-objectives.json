@@ -1,0 +1,44 @@
+{
+  "version": 1,
+  "scope": "Initial local objectives; qualify on the target installation before adopting production SLOs",
+  "alerts": [
+    {
+      "name": "process_admission_delay",
+      "metric": "process_oldest_pending_seconds",
+      "greater_than": 60,
+      "for_seconds": 120,
+      "diagnostic": "Check local byte admission, engine health and queue workers; local saturation does not consume provider attempts",
+      "repair": "Restore capacity or the failed worker; keep existing start-job identities"
+    },
+    {
+      "name": "process_observation_stalled",
+      "metric": "process_oldest_observation_seconds",
+      "greater_than": 120,
+      "for_seconds": 120,
+      "diagnostic": "Inspect the last observation and provider status; export the Process before retention",
+      "repair": "Resume polling; repair uncertain delivery only with destination evidence, never resubmit generation blindly"
+    },
+    {
+      "name": "uncertain_delivery",
+      "metric": "process_unknown_runs",
+      "greater_than": 0,
+      "for_seconds": 120,
+      "diagnostic": "Distinguish unconfirmed submission from delivery_unknown in the Process error code",
+      "repair": "Use the existing audited delivery-resolution action after inspecting the destination"
+    },
+    {
+      "name": "event_loop_delay",
+      "metric": "runtime_event_loop_lag_seconds",
+      "greater_than": 1,
+      "for_seconds": 60,
+      "diagnostic": "Correlate CPU, file IO and provider buffering; the calendar calculator is independently bounded",
+      "repair": "Reduce competing work and restore failed components; do not weaken resource limits"
+    }
+  ],
+  "recovery": {
+    "quiescent_backup_rpo_committed_writes": 0,
+    "initial_small_installation_rto_seconds": 900,
+    "includes_detection_and_remote_backup_transfer": false,
+    "hot_backup_consistency_qualified": false
+  }
+}

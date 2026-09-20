@@ -1,0 +1,4 @@
+interface:
+  display_name: "Galaris Module Architecture"
+  short_description: "Navigate core, app, bridge, and module loading"
+  default_prompt: "Use $modules to place and connect this Galaris module behind stable public boundaries."

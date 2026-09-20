@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <defs>
+    <mask id="artwork" x="0" y="0" width="32" height="32" maskUnits="userSpaceOnUse" style="mask-type: luminance">
+      <g fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="15" cy="17" r="12" fill="#fff" stroke="none" />
+        <path d="m9 16 5 5L27 5" fill="none" stroke="#000" stroke-width="3" />
+        <circle cx="26" cy="25" r="4" fill="#fff" stroke="none" />
+      </g>
+    </mask>
+  </defs>
+  <rect width="32" height="32" fill="#000" mask="url(#artwork)"/>
+</svg>

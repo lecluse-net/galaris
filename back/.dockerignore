@@ -1,0 +1,10 @@
+# Never ship host virtual environments, credentials or developer caches.
+.venv
+**/__pycache__
+.pytest_cache
+.env
+.env.*
+*.pyc
+.ruff_cache
+.coverage
+coverage.xml

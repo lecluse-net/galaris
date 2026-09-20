@@ -1,0 +1,210 @@
+# ====================================================================================
+# Docker Compose - Production configuration
+# ====================================================================================
+#
+# This file defines the production stack and builds the prod-stage image targets.
+#
+# Make commands for container management:
+#   make start       - Start the complete application
+#   make stop        - Stop the application
+#   make restart     - Restart the application
+#   make logs        - Show logs from all containers
+#   make logs-front  - Show frontend logs only
+#   make logs-back   - Show backend logs only
+#   make clean       - Remove containers and volumes
+#
+# Run 'make help' to list every available command.
+# ====================================================================================
+
+name: ${APP_NAME:-galaris}
+
+services:
+    backend:
+        # Reserved control-plane group; executor agents never receive this GID.
+        group_add:
+            - "19999"
+            - "19998"
+        container_name: ${APP_NAME:-galaris}-back
+        restart: unless-stopped
+        build:
+            context: ./back
+            additional_contexts:
+                harness_manager: ./harness_manager
+            target: prod-stage
+            args:
+                GALARIS_BUILD_VERSION: ${GALARIS_BUILD_VERSION:-unknown}
+        env_file:
+            - .env
+        volumes:
+            - browser_credentials:/run/galaris-browser:ro
+        depends_on:
+            browser-secrets:
+                condition: service_completed_successfully
+        environment:
+            - APP_ENV=${APP_ENV-prod}
+            - UV_CACHE_DIR=/tmp/uv-cache
+            - PYTHONPATH=/app
+            - TZ=${TZ:-UTC}
+            - GALARIS_EXECUTOR_CONTROL_SOCKET=/data/ssh-executor/run/control.sock
+        extra_hosts:
+            - "host.docker.internal:host-gateway"
+        networks:
+            - galaris_net
+            - executor_net
+        healthcheck:
+            test: [ "CMD", "python", "scripts/healthcheck.py" ]
+            interval: 30s
+            timeout: 5s
+            retries: 3
+            start_period: 10s
+
+    frontend:
+        container_name: ${APP_NAME:-galaris}-front
+        restart: unless-stopped
+        build:
+            context: ./front
+            target: prod-stage
+            args:
+                - VITE_APP_NAME=${APP_NAME:-galaris}
+                - VITE_APP_ENV=${APP_ENV-prod}
+        environment:
+            - APP_NAME=${APP_NAME:-galaris}
+            - TZ=${TZ:-UTC}
+        depends_on:
+            - backend
+        networks:
+            - galaris_net
+        healthcheck:
+            test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8484/"]
+            interval: 30s
+            timeout: 5s
+            retries: 3
+            start_period: 30s
+            start_interval: 5s
+
+    search:
+        container_name: ${APP_NAME:-galaris}-search
+        image: searxng/searxng:2026.9.19-367fb6537
+        # Required by search_web's JSON API, including on upgraded installations
+        # whose operator override only adds networks or ports.
+        volumes:
+            - ./data/search/settings.yml:/etc/searxng/settings.yml:ro
+            - ./data/search/limiter.toml:/etc/searxng/limiter.toml:ro
+        environment:
+            - BASE_URL=http://localhost:8080/
+            - TZ=${TZ:-UTC}
+        restart: unless-stopped
+        networks:
+            - galaris_net
+        healthcheck:
+            test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8080/healthz"]
+            interval: 30s
+            timeout: 5s
+            retries: 3
+            start_period: 30s
+            start_interval: 5s
+
+    browser-secrets:
+        # The initializer generates its own credential without receiving the
+        # backend environment or its encryption master key.
+        build:
+            context: ./browser-executor
+        user: "0:19998"
+        command: ["node", "provision-credential.mjs"]
+        volumes:
+            - browser_credentials:/run/galaris-browser
+        network_mode: none
+        read_only: true
+        cap_drop: [ALL]
+        security_opt:
+            - no-new-privileges:true
+        restart: "no"
+
+    browser-executor:
+        container_name: ${APP_NAME:-galaris}-browser
+        build:
+            context: ./browser-executor
+        restart: unless-stopped
+        environment:
+            - TZ=${TZ:-UTC}
+        group_add: ["19998"]
+        volumes:
+            - browser_credentials:/run/galaris-browser:ro
+        depends_on:
+            browser-secrets:
+                condition: service_completed_successfully
+        networks:
+            - executor_net
+            - browser_egress
+        extra_hosts:
+            - "host.docker.internal:host-gateway"
+        init: true
+        read_only: true
+        tmpfs:
+            - /tmp:size=512m,mode=1777
+        shm_size: 1gb
+        cap_drop:
+            - ALL
+        security_opt:
+            - no-new-privileges:true
+        pids_limit: 512
+        cpus: ${BROWSER_EXECUTOR_CPUS:-2.0}
+        mem_limit: ${BROWSER_EXECUTOR_MEMORY_LIMIT:-2g}
+        healthcheck:
+            test:
+                [
+                    "CMD",
+                    "node",
+                    "-e",
+                    "fetch('http://127.0.0.1:3000/health').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))",
+                ]
+            interval: 30s
+            timeout: 5s
+            retries: 3
+            start_period: 20s
+
+    ssh-executor:
+        container_name: ${APP_NAME:-galaris}-ssh-executor
+        build:
+            context: ./ssh-executor
+            additional_contexts:
+                console_assets: ./back/app/console/assets
+        restart: unless-stopped
+        environment:
+            - TZ=${TZ:-UTC}
+        networks:
+            - executor_net
+            - browser_egress
+        cap_drop:
+            - ALL
+        cap_add:
+            - CHOWN
+            - DAC_OVERRIDE
+            - FOWNER
+            - KILL
+            - NET_BIND_SERVICE
+            - SETGID
+            - SETUID
+            - SYS_CHROOT
+        security_opt:
+            - no-new-privileges:true
+        pids_limit: 2048
+        cpus: ${SSH_EXECUTOR_CPUS:-4.0}
+        mem_limit: ${SSH_EXECUTOR_MEMORY_LIMIT:-8g}
+        healthcheck:
+            test: ["CMD", "python3", "/opt/galaris-executor/executord.py", "healthcheck"]
+            interval: 30s
+            timeout: 5s
+            retries: 3
+            start_period: 10s
+
+volumes:
+    browser_credentials:
+
+networks:
+    galaris_net:
+        name: ${APP_NAME:-galaris}-net
+    executor_net:
+        name: ${APP_NAME:-galaris}-executor-net
+        internal: true
+    browser_egress:

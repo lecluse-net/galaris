@@ -1,0 +1,118 @@
+{
+  "date": "2026-09-17",
+  "instance": "development",
+  "model": "nomic",
+  "dimensions": 768,
+  "searches": 493,
+  "corpus": {
+    "readable": 355,
+    "indexed_memories": 308,
+    "indexed_documents": 23,
+    "empty_attachments": 16,
+    "folders": 8,
+    "canonical_eligible": 269,
+    "canonical_indexed": 269
+  },
+  "summary": [
+    {
+      "variant": "content_only",
+      "cases": 47,
+      "positive_cases": 44,
+      "anchor_at_1": 35,
+      "anchor_at_5": 42,
+      "anchor_at_10": 42,
+      "anchor_mrr_at_10": 0.8606060606060605
+    },
+    {
+      "variant": "hybrid_configured",
+      "cases": 47,
+      "positive_cases": 44,
+      "anchor_at_1": 29,
+      "anchor_at_5": 40,
+      "anchor_at_10": 40,
+      "anchor_mrr_at_10": 0.7534090909090909
+    },
+    {
+      "variant": "hybrid_excerpt_fixed",
+      "cases": 47,
+      "positive_cases": 44,
+      "anchor_at_1": 29,
+      "anchor_at_5": 40,
+      "anchor_at_10": 40,
+      "anchor_mrr_at_10": 0.7534090909090909
+    },
+    {
+      "variant": "lexical_before",
+      "cases": 47,
+      "positive_cases": 44,
+      "anchor_at_1": 27,
+      "anchor_at_5": 27,
+      "anchor_at_10": 28,
+      "anchor_mrr_at_10": 0.6174242424242423
+    },
+    {
+      "variant": "lexical_fixed",
+      "cases": 47,
+      "positive_cases": 44,
+      "anchor_at_1": 37,
+      "anchor_at_5": 38,
+      "anchor_at_10": 40,
+      "anchor_mrr_at_10": 0.8583333333333333
+    },
+    {
+      "variant": "without_graph_bonuses",
+      "cases": 47,
+      "positive_cases": 44,
+      "anchor_at_1": 34,
+      "anchor_at_5": 41,
+      "anchor_at_10": 41,
+      "anchor_mrr_at_10": 0.8454545454545456
+    },
+    {
+      "variant": "without_topic",
+      "cases": 47,
+      "positive_cases": 44,
+      "anchor_at_1": 30,
+      "anchor_at_5": 40,
+      "anchor_at_10": 41,
+      "anchor_mrr_at_10": 0.7696969696969697
+    }
+  ],
+  "publication_scope": "Aggregate historical measurements only. Queries, document titles, excerpts, identities, resource references and per-case results have been removed. The private corpus is not distributed; these measurements do not describe the synthetic examples now included in the repository.",
+  "checks": {
+    "lexical": {
+      "document": {
+        "checked": 23,
+        "exact_passed": 23,
+        "checksum_matches_passed": 23,
+        "projection_matches_passed": 23
+      },
+      "acl": {
+        "checked": 10,
+        "exact_denied_passed": 10,
+        "title_denied_passed": 10
+      },
+      "contact_scope": {
+        "checked": 16,
+        "checks_with_foreign_hits": 0
+      }
+    },
+    "hybrid": {
+      "document": {
+        "checked": 23,
+        "exact_passed": 23,
+        "checksum_matches_passed": 23,
+        "projection_matches_passed": 23
+      },
+      "acl": {
+        "checked": 10,
+        "exact_denied_passed": 10,
+        "title_denied_passed": 10
+      },
+      "contact_scope": {
+        "checked": 16,
+        "checks_with_foreign_hits": 0
+      }
+    }
+  }
+}

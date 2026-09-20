@@ -1,0 +1,2038 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1008" height="1264" viewBox="0 0 1008 1264">
+<rect width="1008" height="1264" fill="#F5F5F5"/>
+<g font-family="sans-serif" fill="#292C30">
+<text x="34" y="48" font-size="28" font-weight="700">Galaris · Icônes de navigation</text>
+<text x="34" y="79" font-size="14">37 dessins SVG · Noir et blanc · Détails transparents</text>
+<text x="34" y="103" font-size="13">Fonds clair et sombre · Tailles 38 px et 24 px</text>
+<rect x="24" y="130" width="224" height="100" rx="12" fill="#FFFFFF"/>
+<rect x="140" y="137" width="100" height="63" rx="10" fill="#101010"/>
+<svg x="34" y="149.0" width="38" height="38" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <defs>
+    <mask id="artwork_0" x="0" y="0" width="32" height="32" maskUnits="userSpaceOnUse" style="mask-type: luminance">
+      <g fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="6" y="9" width="20" height="17" rx="6" fill="#fff" />
+        <path d="M16 9V5" stroke="#fff" />
+        <circle cx="16" cy="4" r="2" fill="#fff" stroke="none" />
+        <rect x="9" y="13" width="14" height="8" rx="4" fill="#000" stroke="none" />
+        <path d="M12 16v2m8-2v2" stroke="#fff" />
+        <path d="M3 15v5m26-5v5" stroke="#fff" />
+        <path d="M13 24h6" stroke="#000" />
+      </g>
+    </mask>
+  </defs>
+  <rect width="32" height="32" fill="#000" mask="url(#artwork_0)"/>
+</svg>
+<svg x="90" y="156.0" width="24" height="24" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <defs>
+    <mask id="artwork_1" x="0" y="0" width="32" height="32" maskUnits="userSpaceOnUse" style="mask-type: luminance">
+      <g fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="6" y="9" width="20" height="17" rx="6" fill="#fff" />
+        <path d="M16 9V5" stroke="#fff" />
+        <circle cx="16" cy="4" r="2" fill="#fff" stroke="none" />
+        <rect x="9" y="13" width="14" height="8" rx="4" fill="#000" stroke="none" />
+        <path d="M12 16v2m8-2v2" stroke="#fff" />
+        <path d="M3 15v5m26-5v5" stroke="#fff" />
+        <path d="M13 24h6" stroke="#000" />
+      </g>
+    </mask>
+  </defs>
+  <rect width="32" height="32" fill="#000" mask="url(#artwork_1)"/>
+</svg>
+<svg x="150" y="149.0" width="38" height="38" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <defs>
+    <mask id="artwork_2" x="0" y="0" width="32" height="32" maskUnits="userSpaceOnUse" style="mask-type: luminance">
+      <g fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="6" y="9" width="20" height="17" rx="6" fill="#fff" />
+        <path d="M16 9V5" stroke="#fff" />
+        <circle cx="16" cy="4" r="2" fill="#fff" stroke="none" />
+        <rect x="9" y="13" width="14" height="8" rx="4" fill="#000" stroke="none" />
+        <path d="M12 16v2m8-2v2" stroke="#fff" />
+        <path d="M3 15v5m26-5v5" stroke="#fff" />
+        <path d="M13 24h6" stroke="#000" />
+      </g>
+    </mask>
+  </defs>
+  <rect width="32" height="32" fill="#fff" mask="url(#artwork_2)"/>
+</svg>
+<svg x="202" y="156.0" width="24" height="24" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <defs>
+    <mask id="artwork_3" x="0" y="0" width="32" height="32" maskUnits="userSpaceOnUse" style="mask-type: luminance">
+      <g fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="6" y="9" width="20" height="17" rx="6" fill="#fff" />
+        <path d="M16 9V5" stroke="#fff" />
+        <circle cx="16" cy="4" r="2" fill="#fff" stroke="none" />
+        <rect x="9" y="13" width="14" height="8" rx="4" fill="#000" stroke="none" />
+        <path d="M12 16v2m8-2v2" stroke="#fff" />
+        <path d="M3 15v5m26-5v5" stroke="#fff" />
+        <path d="M13 24h6" stroke="#000" />
+      </g>
+    </mask>
+  </defs>
+  <rect width="32" height="32" fill="#fff" mask="url(#artwork_3)"/>
+</svg>
+<text x="34" y="219" font-size="12">Intelligence artificielle</text>
+<rect x="264" y="130" width="224" height="100" rx="12" fill="#FFFFFF"/>
+<rect x="380" y="137" width="100" height="63" rx="10" fill="#101010"/>
+<svg x="274" y="149.0" width="38" height="38" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <defs>
+    <mask id="artwork_4" x="0" y="0" width="32" height="32" maskUnits="userSpaceOnUse" style="mask-type: luminance">
+      <g fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="21.5" cy="10" r="4" fill="#fff" stroke="none" />
+        <path d="M21 17c6 0 8 4 8 8H18" fill="#fff" stroke="none" />
+        <circle cx="12" cy="10" r="5" fill="#fff" stroke="none" />
+        <path d="M2 26c0-7 3-11 10-11s10 4 10 11Z" fill="#fff" stroke="#000" stroke-width="1" />
+        <path d="m9 21 3 3 3-3" stroke="#000" />
+      </g>
+    </mask>
+  </defs>
+  <rect width="32" height="32" fill="#000" mask="url(#artwork_4)"/>
+</svg>
+<svg x="330" y="156.0" width="24" height="24" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <defs>
+    <mask id="artwork_5" x="0" y="0" width="32" height="32" maskUnits="userSpaceOnUse" style="mask-type: luminance">
+      <g fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="21.5" cy="10" r="4" fill="#fff" stroke="none" />
+        <path d="M21 17c6 0 8 4 8 8H18" fill="#fff" stroke="none" />
+        <circle cx="12" cy="10" r="5" fill="#fff" stroke="none" />
+        <path d="M2 26c0-7 3-11 10-11s10 4 10 11Z" fill="#fff" stroke="#000" stroke-width="1" />
+        <path d="m9 21 3 3 3-3" stroke="#000" />
+      </g>
+    </mask>
+  </defs>
+  <rect width="32" height="32" fill="#000" mask="url(#artwork_5)"/>
+</svg>
+<svg x="390" y="149.0" width="38" height="38" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <defs>
+    <mask id="artwork_6" x="0" y="0" width="32" height="32" maskUnits="userSpaceOnUse" style="mask-type: luminance">
+      <g fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="21.5" cy="10" r="4" fill="#fff" stroke="none" />
+        <path d="M21 17c6 0 8 4 8 8H18" fill="#fff" stroke="none" />
+        <circle cx="12" cy="10" r="5" fill="#fff" stroke="none" />
+        <path d="M2 26c0-7 3-11 10-11s10 4 10 11Z" fill="#fff" stroke="#000" stroke-width="1" />
+        <path d="m9 21 3 3 3-3" stroke="#000" />
+      </g>
+    </mask>
+  </defs>
+  <rect width="32" height="32" fill="#fff" mask="url(#artwork_6)"/>
+</svg>
+<svg x="442" y="156.0" width="24" height="24" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <defs>
+    <mask id="artwork_7" x="0" y="0" width="32" height="32" maskUnits="userSpaceOnUse" style="mask-type: luminance">
+      <g fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="21.5" cy="10" r="4" fill="#fff" stroke="none" />
+        <path d="M21 17c6 0 8 4 8 8H18" fill="#fff" stroke="none" />
+        <circle cx="12" cy="10" r="5" fill="#fff" stroke="none" />
+        <path d="M2 26c0-7 3-11 10-11s10 4 10 11Z" fill="#fff" stroke="#000" stroke-width="1" />
+        <path d="m9 21 3 3 3-3" stroke="#000" />
+      </g>
+    </mask>
+  </defs>
+  <rect width="32" height="32" fill="#fff" mask="url(#artwork_7)"/>
+</svg>
+<text x="274" y="219" font-size="12">Agents et utilisateurs</text>
+<rect x="504" y="130" width="224" height="100" rx="12" fill="#FFFFFF"/>
+<rect x="620" y="137" width="100" height="63" rx="10" fill="#101010"/>
+<svg x="514" y="149.0" width="38" height="38" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <defs>
+    <mask id="artwork_8" x="0" y="0" width="32" height="32" maskUnits="userSpaceOnUse" style="mask-type: luminance">
+      <g fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="6.5" cy="11.5" r="3.5" fill="#fff" />
+        <circle cx="25.5" cy="11.5" r="3.5" fill="#fff" />
+        <path d="M1 24v-2a5.5 5.5 0 0 1 11 0v2a1 1 0 0 1-1 1H2a1 1 0 0 1-1-1Z" fill="#fff" />
+        <path d="M20 24v-2a5.5 5.5 0 0 1 11 0v2a1 1 0 0 1-1 1h-9a1 1 0 0 1-1-1Z" fill="#fff" />
+        <circle cx="16" cy="8.5" r="4.5" fill="#000" stroke="#fff" />
+        <path d="M7 27v-2a9 9 0 0 1 18 0v2a1 1 0 0 1-1 1H8a1 1 0 0 1-1-1Z" fill="#fff" stroke="#000" stroke-width="1" />
+        <path d="m13 22 3 3 3-3" stroke="#000" />
+      </g>
+    </mask>
+  </defs>
+  <rect width="32" height="32" fill="#000" mask="url(#artwork_8)"/>
+</svg>
+<svg x="570" y="156.0" width="24" height="24" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <defs>
+    <mask id="artwork_9" x="0" y="0" width="32" height="32" maskUnits="userSpaceOnUse" style="mask-type: luminance">
+      <g fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="6.5" cy="11.5" r="3.5" fill="#fff" />
+        <circle cx="25.5" cy="11.5" r="3.5" fill="#fff" />
+        <path d="M1 24v-2a5.5 5.5 0 0 1 11 0v2a1 1 0 0 1-1 1H2a1 1 0 0 1-1-1Z" fill="#fff" />
+        <path d="M20 24v-2a5.5 5.5 0 0 1 11 0v2a1 1 0 0 1-1 1h-9a1 1 0 0 1-1-1Z" fill="#fff" />
+        <circle cx="16" cy="8.5" r="4.5" fill="#000" stroke="#fff" />
+        <path d="M7 27v-2a9 9 0 0 1 18 0v2a1 1 0 0 1-1 1H8a1 1 0 0 1-1-1Z" fill="#fff" stroke="#000" stroke-width="1" />
+        <path d="m13 22 3 3 3-3" stroke="#000" />
+      </g>
+    </mask>
+  </defs>
+  <rect width="32" height="32" fill="#000" mask="url(#artwork_9)"/>
+</svg>
+<svg x="630" y="149.0" width="38" height="38" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <defs>
+    <mask id="artwork_10" x="0" y="0" width="32" height="32" maskUnits="userSpaceOnUse" style="mask-type: luminance">
+      <g fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="6.5" cy="11.5" r="3.5" fill="#fff" />
+        <circle cx="25.5" cy="11.5" r="3.5" fill="#fff" />
+        <path d="M1 24v-2a5.5 5.5 0 0 1 11 0v2a1 1 0 0 1-1 1H2a1 1 0 0 1-1-1Z" fill="#fff" />
+        <path d="M20 24v-2a5.5 5.5 0 0 1 11 0v2a1 1 0 0 1-1 1h-9a1 1 0 0 1-1-1Z" fill="#fff" />
+        <circle cx="16" cy="8.5" r="4.5" fill="#000" stroke="#fff" />
+        <path d="M7 27v-2a9 9 0 0 1 18 0v2a1 1 0 0 1-1 1H8a1 1 0 0 1-1-1Z" fill="#fff" stroke="#000" stroke-width="1" />
+        <path d="m13 22 3 3 3-3" stroke="#000" />
+      </g>
+    </mask>
+  </defs>
+  <rect width="32" height="32" fill="#fff" mask="url(#artwork_10)"/>
+</svg>
+<svg x="682" y="156.0" width="24" height="24" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <defs>
+    <mask id="artwork_11" x="0" y="0" width="32" height="32" maskUnits="userSpaceOnUse" style="mask-type: luminance">
+      <g fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="6.5" cy="11.5" r="3.5" fill="#fff" />
+        <circle cx="25.5" cy="11.5" r="3.5" fill="#fff" />
+        <path d="M1 24v-2a5.5 5.5 0 0 1 11 0v2a1 1 0 0 1-1 1H2a1 1 0 0 1-1-1Z" fill="#fff" />
+        <path d="M20 24v-2a5.5 5.5 0 0 1 11 0v2a1 1 0 0 1-1 1h-9a1 1 0 0 1-1-1Z" fill="#fff" />
+        <circle cx="16" cy="8.5" r="4.5" fill="#000" stroke="#fff" />
+        <path d="M7 27v-2a9 9 0 0 1 18 0v2a1 1 0 0 1-1 1H8a1 1 0 0 1-1-1Z" fill="#fff" stroke="#000" stroke-width="1" />
+        <path d="m13 22 3 3 3-3" stroke="#000" />
+      </g>
+    </mask>
+  </defs>
+  <rect width="32" height="32" fill="#fff" mask="url(#artwork_11)"/>
+</svg>
+<text x="514" y="219" font-size="12">Équipes</text>
+<rect x="744" y="130" width="224" height="100" rx="12" fill="#FFFFFF"/>
+<rect x="860" y="137" width="100" height="63" rx="10" fill="#101010"/>
+<svg x="754" y="149.0" width="38" height="38" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <defs>
+    <mask id="artwork_12" x="0" y="0" width="32" height="32" maskUnits="userSpaceOnUse" style="mask-type: luminance">
+      <g fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="m8 5 3 3-3 3-3-3-2 2 4 5 4-1 13 13a3 3 0 0 0 4-4L15 10l1-4-5-4Z" fill="#fff" stroke="none" />
+        <path d="M28 4a8 8 0 0 1-10 10L8 27a3.5 3.5 0 0 1-5-5l13-10A8 8 0 0 1 26 2l-5 5 4 3Z" fill="#fff" stroke="#000" stroke-width="1" />
+        <circle cx="6" cy="24" r="1.5" fill="#000" stroke="none" />
+      </g>
+    </mask>
+  </defs>
+  <rect width="32" height="32" fill="#000" mask="url(#artwork_12)"/>
+</svg>
+<svg x="810" y="156.0" width="24" height="24" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <defs>
+    <mask id="artwork_13" x="0" y="0" width="32" height="32" maskUnits="userSpaceOnUse" style="mask-type: luminance">
+      <g fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="m8 5 3 3-3 3-3-3-2 2 4 5 4-1 13 13a3 3 0 0 0 4-4L15 10l1-4-5-4Z" fill="#fff" stroke="none" />
+        <path d="M28 4a8 8 0 0 1-10 10L8 27a3.5 3.5 0 0 1-5-5l13-10A8 8 0 0 1 26 2l-5 5 4 3Z" fill="#fff" stroke="#000" stroke-width="1" />
+        <circle cx="6" cy="24" r="1.5" fill="#000" stroke="none" />
+      </g>
+    </mask>
+  </defs>
+  <rect width="32" height="32" fill="#000" mask="url(#artwork_13)"/>
+</svg>
+<svg x="870" y="149.0" width="38" height="38" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <defs>
+    <mask id="artwork_14" x="0" y="0" width="32" height="32" maskUnits="userSpaceOnUse" style="mask-type: luminance">
+      <g fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="m8 5 3 3-3 3-3-3-2 2 4 5 4-1 13 13a3 3 0 0 0 4-4L15 10l1-4-5-4Z" fill="#fff" stroke="none" />
+        <path d="M28 4a8 8 0 0 1-10 10L8 27a3.5 3.5 0 0 1-5-5l13-10A8 8 0 0 1 26 2l-5 5 4 3Z" fill="#fff" stroke="#000" stroke-width="1" />
+        <circle cx="6" cy="24" r="1.5" fill="#000" stroke="none" />
+      </g>
+    </mask>
+  </defs>
+  <rect width="32" height="32" fill="#fff" mask="url(#artwork_14)"/>
+</svg>
+<svg x="922" y="156.0" width="24" height="24" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <defs>
+    <mask id="artwork_15" x="0" y="0" width="32" height="32" maskUnits="userSpaceOnUse" style="mask-type: luminance">
+      <g fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="m8 5 3 3-3 3-3-3-2 2 4 5 4-1 13 13a3 3 0 0 0 4-4L15 10l1-4-5-4Z" fill="#fff" stroke="none" />
+        <path d="M28 4a8 8 0 0 1-10 10L8 27a3.5 3.5 0 0 1-5-5l13-10A8 8 0 0 1 26 2l-5 5 4 3Z" fill="#fff" stroke="#000" stroke-width="1" />
+        <circle cx="6" cy="24" r="1.5" fill="#000" stroke="none" />
+      </g>
+    </mask>
+  </defs>
+  <rect width="32" height="32" fill="#fff" mask="url(#artwork_15)"/>
+</svg>
+<text x="754" y="219" font-size="12">Outils</text>
+<rect x="24" y="242" width="224" height="100" rx="12" fill="#FFFFFF"/>
+<rect x="140" y="249" width="100" height="63" rx="10" fill="#101010"/>
+<svg x="34" y="261.0" width="38" height="38" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <defs>
+    <mask id="artwork_16" x="0" y="0" width="32" height="32" maskUnits="userSpaceOnUse" style="mask-type: luminance">
+      <g fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M11 28v-6c-4-2-6-5-6-9a10 10 0 0 1 20 0l3 5h-4v5h-6v5" fill="#fff" stroke="none" />
+        <path d="m15 7 1.8 4.2L21 13l-4.2 1.8L15 19l-1.8-4.2L9 13l4.2-1.8Z" fill="#000" stroke="none" />
+        <circle cx="25" cy="5" r="2" fill="#fff" stroke="none" />
+      </g>
+    </mask>
+  </defs>
+  <rect width="32" height="32" fill="#000" mask="url(#artwork_16)"/>
+</svg>
+<svg x="90" y="268.0" width="24" height="24" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <defs>
+    <mask id="artwork_17" x="0" y="0" width="32" height="32" maskUnits="userSpaceOnUse" style="mask-type: luminance">
+      <g fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M11 28v-6c-4-2-6-5-6-9a10 10 0 0 1 20 0l3 5h-4v5h-6v5" fill="#fff" stroke="none" />
+        <path d="m15 7 1.8 4.2L21 13l-4.2 1.8L15 19l-1.8-4.2L9 13l4.2-1.8Z" fill="#000" stroke="none" />
+        <circle cx="25" cy="5" r="2" fill="#fff" stroke="none" />
+      </g>
+    </mask>
+  </defs>
+  <rect width="32" height="32" fill="#000" mask="url(#artwork_17)"/>
+</svg>
+<svg x="150" y="261.0" width="38" height="38" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <defs>
+    <mask id="artwork_18" x="0" y="0" width="32" height="32" maskUnits="userSpaceOnUse" style="mask-type: luminance">
+      <g fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M11 28v-6c-4-2-6-5-6-9a10 10 0 0 1 20 0l3 5h-4v5h-6v5" fill="#fff" stroke="none" />
+        <path d="m15 7 1.8 4.2L21 13l-4.2 1.8L15 19l-1.8-4.2L9 13l4.2-1.8Z" fill="#000" stroke="none" />
+        <circle cx="25" cy="5" r="2" fill="#fff" stroke="none" />
+      </g>
+    </mask>
+  </defs>
+  <rect width="32" height="32" fill="#fff" mask="url(#artwork_18)"/>
+</svg>
+<svg x="202" y="268.0" width="24" height="24" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <defs>
+    <mask id="artwork_19" x="0" y="0" width="32" height="32" maskUnits="userSpaceOnUse" style="mask-type: luminance">
+      <g fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M11 28v-6c-4-2-6-5-6-9a10 10 0 0 1 20 0l3 5h-4v5h-6v5" fill="#fff" stroke="none" />
+        <path d="m15 7 1.8 4.2L21 13l-4.2 1.8L15 19l-1.8-4.2L9 13l4.2-1.8Z" fill="#000" stroke="none" />
+        <circle cx="25" cy="5" r="2" fill="#fff" stroke="none" />
+      </g>
+    </mask>
+  </defs>
+  <rect width="32" height="32" fill="#fff" mask="url(#artwork_19)"/>
+</svg>
+<text x="34" y="331" font-size="12">Compétences</text>
+<rect x="264" y="242" width="224" height="100" rx="12" fill="#FFFFFF"/>
+<rect x="380" y="249" width="100" height="63" rx="10" fill="#101010"/>
+<svg x="274" y="261.0" width="38" height="38" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <defs>
+    <mask id="artwork_20" x="0" y="0" width="32" height="32" maskUnits="userSpaceOnUse" style="mask-type: luminance">
+      <g fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M14 12h11a4 4 0 0 1 4 4v12l-6-4h-9a4 4 0 0 1-4-4v-4a4 4 0 0 1 4-4" fill="#fff" stroke="none" />
+        <path d="M7 4h14a4 4 0 0 1 4 4v8a4 4 0 0 1-4 4H11l-8 5V8a4 4 0 0 1 4-4" fill="#fff" stroke="none" />
+        <path d="M8 10h12M8 15h8" stroke="#000" />
+      </g>
+    </mask>
+  </defs>
+  <rect width="32" height="32" fill="#000" mask="url(#artwork_20)"/>
+</svg>
+<svg x="330" y="268.0" width="24" height="24" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <defs>
+    <mask id="artwork_21" x="0" y="0" width="32" height="32" maskUnits="userSpaceOnUse" style="mask-type: luminance">
+      <g fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M14 12h11a4 4 0 0 1 4 4v12l-6-4h-9a4 4 0 0 1-4-4v-4a4 4 0 0 1 4-4" fill="#fff" stroke="none" />
+        <path d="M7 4h14a4 4 0 0 1 4 4v8a4 4 0 0 1-4 4H11l-8 5V8a4 4 0 0 1 4-4" fill="#fff" stroke="none" />
+        <path d="M8 10h12M8 15h8" stroke="#000" />
+      </g>
+    </mask>
+  </defs>
+  <rect width="32" height="32" fill="#000" mask="url(#artwork_21)"/>
+</svg>
+<svg x="390" y="261.0" width="38" height="38" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <defs>
+    <mask id="artwork_22" x="0" y="0" width="32" height="32" maskUnits="userSpaceOnUse" style="mask-type: luminance">
+      <g fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M14 12h11a4 4 0 0 1 4 4v12l-6-4h-9a4 4 0 0 1-4-4v-4a4 4 0 0 1 4-4" fill="#fff" stroke="none" />
+        <path d="M7 4h14a4 4 0 0 1 4 4v8a4 4 0 0 1-4 4H11l-8 5V8a4 4 0 0 1 4-4" fill="#fff" stroke="none" />
+        <path d="M8 10h12M8 15h8" stroke="#000" />
+      </g>
+    </mask>
+  </defs>
+  <rect width="32" height="32" fill="#fff" mask="url(#artwork_22)"/>
+</svg>
+<svg x="442" y="268.0" width="24" height="24" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <defs>
+    <mask id="artwork_23" x="0" y="0" width="32" height="32" maskUnits="userSpaceOnUse" style="mask-type: luminance">
+      <g fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M14 12h11a4 4 0 0 1 4 4v12l-6-4h-9a4 4 0 0 1-4-4v-4a4 4 0 0 1 4-4" fill="#fff" stroke="none" />
+        <path d="M7 4h14a4 4 0 0 1 4 4v8a4 4 0 0 1-4 4H11l-8 5V8a4 4 0 0 1 4-4" fill="#fff" stroke="none" />
+        <path d="M8 10h12M8 15h8" stroke="#000" />
+      </g>
+    </mask>
+  </defs>
+  <rect width="32" height="32" fill="#fff" mask="url(#artwork_23)"/>
+</svg>
+<text x="274" y="331" font-size="12">Conversations</text>
+<rect x="504" y="242" width="224" height="100" rx="12" fill="#FFFFFF"/>
+<rect x="620" y="249" width="100" height="63" rx="10" fill="#101010"/>
+<svg x="514" y="261.0" width="38" height="38" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <defs>
+    <mask id="artwork_24" x="0" y="0" width="32" height="32" maskUnits="userSpaceOnUse" style="mask-type: luminance">
+      <g fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="16" cy="17" r="12" fill="#fff" stroke="none" />
+        <circle cx="16" cy="17" r="8" fill="none" stroke="#000" />
+        <path d="M14 23V5" stroke="#000" />
+        <path d="m15 5 11 3-11 5Z" fill="#fff" stroke="none" />
+      </g>
+    </mask>
+  </defs>
+  <rect width="32" height="32" fill="#000" mask="url(#artwork_24)"/>
+</svg>
+<svg x="570" y="268.0" width="24" height="24" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <defs>
+    <mask id="artwork_25" x="0" y="0" width="32" height="32" maskUnits="userSpaceOnUse" style="mask-type: luminance">
+      <g fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="16" cy="17" r="12" fill="#fff" stroke="none" />
+        <circle cx="16" cy="17" r="8" fill="none" stroke="#000" />
+        <path d="M14 23V5" stroke="#000" />
+        <path d="m15 5 11 3-11 5Z" fill="#fff" stroke="none" />
+      </g>
+    </mask>
+  </defs>
+  <rect width="32" height="32" fill="#000" mask="url(#artwork_25)"/>
+</svg>
+<svg x="630" y="261.0" width="38" height="38" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <defs>
+    <mask id="artwork_26" x="0" y="0" width="32" height="32" maskUnits="userSpaceOnUse" style="mask-type: luminance">
+      <g fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="16" cy="17" r="12" fill="#fff" stroke="none" />
+        <circle cx="16" cy="17" r="8" fill="none" stroke="#000" />
+        <path d="M14 23V5" stroke="#000" />
+        <path d="m15 5 11 3-11 5Z" fill="#fff" stroke="none" />
+      </g>
+    </mask>
+  </defs>
+  <rect width="32" height="32" fill="#fff" mask="url(#artwork_26)"/>
+</svg>
+<svg x="682" y="268.0" width="24" height="24" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <defs>
+    <mask id="artwork_27" x="0" y="0" width="32" height="32" maskUnits="userSpaceOnUse" style="mask-type: luminance">
+      <g fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="16" cy="17" r="12" fill="#fff" stroke="none" />
+        <circle cx="16" cy="17" r="8" fill="none" stroke="#000" />
+        <path d="M14 23V5" stroke="#000" />
+        <path d="m15 5 11 3-11 5Z" fill="#fff" stroke="none" />
+      </g>
+    </mask>
+  </defs>
+  <rect width="32" height="32" fill="#fff" mask="url(#artwork_27)"/>
+</svg>
+<text x="514" y="331" font-size="12">Objectifs</text>
+<rect x="744" y="242" width="224" height="100" rx="12" fill="#FFFFFF"/>
+<rect x="860" y="249" width="100" height="63" rx="10" fill="#101010"/>
+<svg x="754" y="261.0" width="38" height="38" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <defs>
+    <mask id="artwork_28" x="0" y="0" width="32" height="32" maskUnits="userSpaceOnUse" style="mask-type: luminance">
+      <g fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M16 10v7M7 22v-5h18v5" fill="none" stroke="#fff" />
+        <rect x="10" y="3" width="12" height="9" rx="3" fill="#fff" stroke="none" />
+        <rect x="2" y="21" width="10" height="8" rx="3" fill="#fff" stroke="none" />
+        <rect x="20" y="21" width="10" height="8" rx="3" fill="#fff" stroke="none" />
+        <path d="M14 7h4" stroke="#000" />
+      </g>
+    </mask>
+  </defs>
+  <rect width="32" height="32" fill="#000" mask="url(#artwork_28)"/>
+</svg>
+<svg x="810" y="268.0" width="24" height="24" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <defs>
+    <mask id="artwork_29" x="0" y="0" width="32" height="32" maskUnits="userSpaceOnUse" style="mask-type: luminance">
+      <g fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M16 10v7M7 22v-5h18v5" fill="none" stroke="#fff" />
+        <rect x="10" y="3" width="12" height="9" rx="3" fill="#fff" stroke="none" />
+        <rect x="2" y="21" width="10" height="8" rx="3" fill="#fff" stroke="none" />
+        <rect x="20" y="21" width="10" height="8" rx="3" fill="#fff" stroke="none" />
+        <path d="M14 7h4" stroke="#000" />
+      </g>
+    </mask>
+  </defs>
+  <rect width="32" height="32" fill="#000" mask="url(#artwork_29)"/>
+</svg>
+<svg x="870" y="261.0" width="38" height="38" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <defs>
+    <mask id="artwork_30" x="0" y="0" width="32" height="32" maskUnits="userSpaceOnUse" style="mask-type: luminance">
+      <g fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M16 10v7M7 22v-5h18v5" fill="none" stroke="#fff" />
+        <rect x="10" y="3" width="12" height="9" rx="3" fill="#fff" stroke="none" />
+        <rect x="2" y="21" width="10" height="8" rx="3" fill="#fff" stroke="none" />
+        <rect x="20" y="21" width="10" height="8" rx="3" fill="#fff" stroke="none" />
+        <path d="M14 7h4" stroke="#000" />
+      </g>
+    </mask>
+  </defs>
+  <rect width="32" height="32" fill="#fff" mask="url(#artwork_30)"/>
+</svg>
+<svg x="922" y="268.0" width="24" height="24" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <defs>
+    <mask id="artwork_31" x="0" y="0" width="32" height="32" maskUnits="userSpaceOnUse" style="mask-type: luminance">
+      <g fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M16 10v7M7 22v-5h18v5" fill="none" stroke="#fff" />
+        <rect x="10" y="3" width="12" height="9" rx="3" fill="#fff" stroke="none" />
+        <rect x="2" y="21" width="10" height="8" rx="3" fill="#fff" stroke="none" />
+        <rect x="20" y="21" width="10" height="8" rx="3" fill="#fff" stroke="none" />
+        <path d="M14 7h4" stroke="#000" />
+      </g>
+    </mask>
+  </defs>
+  <rect width="32" height="32" fill="#fff" mask="url(#artwork_31)"/>
+</svg>
+<text x="754" y="331" font-size="12">Processus</text>
+<rect x="24" y="354" width="224" height="100" rx="12" fill="#FFFFFF"/>
+<rect x="140" y="361" width="100" height="63" rx="10" fill="#101010"/>
+<svg x="34" y="373.0" width="38" height="38" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <defs>
+    <mask id="artwork_32" x="0" y="0" width="32" height="32" maskUnits="userSpaceOnUse" style="mask-type: luminance">
+      <g fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M8 3h11l7 7v16a3 3 0 0 1-3 3H8a3 3 0 0 1-3-3V6a3 3 0 0 1 3-3" fill="#fff" stroke="none" />
+        <path d="M19 3v7h7" fill="#000" stroke="none" />
+        <path d="M10 15h11M10 20h11M10 25h6" stroke="#000" />
+      </g>
+    </mask>
+  </defs>
+  <rect width="32" height="32" fill="#000" mask="url(#artwork_32)"/>
+</svg>
+<svg x="90" y="380.0" width="24" height="24" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <defs>
+    <mask id="artwork_33" x="0" y="0" width="32" height="32" maskUnits="userSpaceOnUse" style="mask-type: luminance">
+      <g fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M8 3h11l7 7v16a3 3 0 0 1-3 3H8a3 3 0 0 1-3-3V6a3 3 0 0 1 3-3" fill="#fff" stroke="none" />
+        <path d="M19 3v7h7" fill="#000" stroke="none" />
+        <path d="M10 15h11M10 20h11M10 25h6" stroke="#000" />
+      </g>
+    </mask>
+  </defs>
+  <rect width="32" height="32" fill="#000" mask="url(#artwork_33)"/>
+</svg>
+<svg x="150" y="373.0" width="38" height="38" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <defs>
+    <mask id="artwork_34" x="0" y="0" width="32" height="32" maskUnits="userSpaceOnUse" style="mask-type: luminance">
+      <g fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M8 3h11l7 7v16a3 3 0 0 1-3 3H8a3 3 0 0 1-3-3V6a3 3 0 0 1 3-3" fill="#fff" stroke="none" />
+        <path d="M19 3v7h7" fill="#000" stroke="none" />
+        <path d="M10 15h11M10 20h11M10 25h6" stroke="#000" />
+      </g>
+    </mask>
+  </defs>
+  <rect width="32" height="32" fill="#fff" mask="url(#artwork_34)"/>
+</svg>
+<svg x="202" y="380.0" width="24" height="24" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <defs>
+    <mask id="artwork_35" x="0" y="0" width="32" height="32" maskUnits="userSpaceOnUse" style="mask-type: luminance">
+      <g fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M8 3h11l7 7v16a3 3 0 0 1-3 3H8a3 3 0 0 1-3-3V6a3 3 0 0 1 3-3" fill="#fff" stroke="none" />
+        <path d="M19 3v7h7" fill="#000" stroke="none" />
+        <path d="M10 15h11M10 20h11M10 25h6" stroke="#000" />
+      </g>
+    </mask>
+  </defs>
+  <rect width="32" height="32" fill="#fff" mask="url(#artwork_35)"/>
+</svg>
+<text x="34" y="443" font-size="12">Documents</text>
+<rect x="264" y="354" width="224" height="100" rx="12" fill="#FFFFFF"/>
+<rect x="380" y="361" width="100" height="63" rx="10" fill="#101010"/>
+<svg x="274" y="373.0" width="38" height="38" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <defs>
+    <mask id="artwork_36" x="0" y="0" width="32" height="32" maskUnits="userSpaceOnUse" style="mask-type: luminance">
+      <g fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M10 3v4m6-4v4m6-4v4M10 25v4m6-4v4m6-4v4M3 10h4m-4 6h4m-4 6h4m18-12h4m-4 6h4m-4 6h4" stroke="#fff" />
+        <rect x="6" y="6" width="20" height="20" rx="6" fill="#fff" stroke="none" />
+        <path d="m12 12 4-2 4 2v8l-4 2-4-2Z" fill="#000" stroke="none" />
+        <path d="M16 10v12" stroke="#fff" />
+        <circle cx="25" cy="7" r="3" fill="#fff" stroke="none" />
+      </g>
+    </mask>
+  </defs>
+  <rect width="32" height="32" fill="#000" mask="url(#artwork_36)"/>
+</svg>
+<svg x="330" y="380.0" width="24" height="24" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <defs>
+    <mask id="artwork_37" x="0" y="0" width="32" height="32" maskUnits="userSpaceOnUse" style="mask-type: luminance">
+      <g fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M10 3v4m6-4v4m6-4v4M10 25v4m6-4v4m6-4v4M3 10h4m-4 6h4m-4 6h4m18-12h4m-4 6h4m-4 6h4" stroke="#fff" />
+        <rect x="6" y="6" width="20" height="20" rx="6" fill="#fff" stroke="none" />
+        <path d="m12 12 4-2 4 2v8l-4 2-4-2Z" fill="#000" stroke="none" />
+        <path d="M16 10v12" stroke="#fff" />
+        <circle cx="25" cy="7" r="3" fill="#fff" stroke="none" />
+      </g>
+    </mask>
+  </defs>
+  <rect width="32" height="32" fill="#000" mask="url(#artwork_37)"/>
+</svg>
+<svg x="390" y="373.0" width="38" height="38" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <defs>
+    <mask id="artwork_38" x="0" y="0" width="32" height="32" maskUnits="userSpaceOnUse" style="mask-type: luminance">
+      <g fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M10 3v4m6-4v4m6-4v4M10 25v4m6-4v4m6-4v4M3 10h4m-4 6h4m-4 6h4m18-12h4m-4 6h4m-4 6h4" stroke="#fff" />
+        <rect x="6" y="6" width="20" height="20" rx="6" fill="#fff" stroke="none" />
+        <path d="m12 12 4-2 4 2v8l-4 2-4-2Z" fill="#000" stroke="none" />
+        <path d="M16 10v12" stroke="#fff" />
+        <circle cx="25" cy="7" r="3" fill="#fff" stroke="none" />
+      </g>
+    </mask>
+  </defs>
+  <rect width="32" height="32" fill="#fff" mask="url(#artwork_38)"/>
+</svg>
+<svg x="442" y="380.0" width="24" height="24" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <defs>
+    <mask id="artwork_39" x="0" y="0" width="32" height="32" maskUnits="userSpaceOnUse" style="mask-type: luminance">
+      <g fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M10 3v4m6-4v4m6-4v4M10 25v4m6-4v4m6-4v4M3 10h4m-4 6h4m-4 6h4m18-12h4m-4 6h4m-4 6h4" stroke="#fff" />
+        <rect x="6" y="6" width="20" height="20" rx="6" fill="#fff" stroke="none" />
+        <path d="m12 12 4-2 4 2v8l-4 2-4-2Z" fill="#000" stroke="none" />
+        <path d="M16 10v12" stroke="#fff" />
+        <circle cx="25" cy="7" r="3" fill="#fff" stroke="none" />
+      </g>
+    </mask>
+  </defs>
+  <rect width="32" height="32" fill="#fff" mask="url(#artwork_39)"/>
+</svg>
+<text x="274" y="443" font-size="12">Mémoire</text>
+<rect x="504" y="354" width="224" height="100" rx="12" fill="#FFFFFF"/>
+<rect x="620" y="361" width="100" height="63" rx="10" fill="#101010"/>
+<svg x="514" y="373.0" width="38" height="38" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <defs>
+    <mask id="artwork_40" x="0" y="0" width="32" height="32" maskUnits="userSpaceOnUse" style="mask-type: luminance">
+      <g fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="6" y="3" width="21" height="26" rx="5" fill="#fff" stroke="none" />
+        <path d="M4 9h4M4 16h4M4 23h4" stroke="#fff" />
+        <circle cx="17" cy="12" r="4" fill="#000" stroke="none" />
+        <path d="M11 24v-2a6 6 0 0 1 12 0v2Z" fill="#000" stroke="none" />
+        <path d="M27 10h2m-2 6h2m-2 6h2" stroke="#fff" />
+      </g>
+    </mask>
+  </defs>
+  <rect width="32" height="32" fill="#000" mask="url(#artwork_40)"/>
+</svg>
+<svg x="570" y="380.0" width="24" height="24" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <defs>
+    <mask id="artwork_41" x="0" y="0" width="32" height="32" maskUnits="userSpaceOnUse" style="mask-type: luminance">
+      <g fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="6" y="3" width="21" height="26" rx="5" fill="#fff" stroke="none" />
+        <path d="M4 9h4M4 16h4M4 23h4" stroke="#fff" />
+        <circle cx="17" cy="12" r="4" fill="#000" stroke="none" />
+        <path d="M11 24v-2a6 6 0 0 1 12 0v2Z" fill="#000" stroke="none" />
+        <path d="M27 10h2m-2 6h2m-2 6h2" stroke="#fff" />
+      </g>
+    </mask>
+  </defs>
+  <rect width="32" height="32" fill="#000" mask="url(#artwork_41)"/>
+</svg>
+<svg x="630" y="373.0" width="38" height="38" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <defs>
+    <mask id="artwork_42" x="0" y="0" width="32" height="32" maskUnits="userSpaceOnUse" style="mask-type: luminance">
+      <g fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="6" y="3" width="21" height="26" rx="5" fill="#fff" stroke="none" />
+        <path d="M4 9h4M4 16h4M4 23h4" stroke="#fff" />
+        <circle cx="17" cy="12" r="4" fill="#000" stroke="none" />
+        <path d="M11 24v-2a6 6 0 0 1 12 0v2Z" fill="#000" stroke="none" />
+        <path d="M27 10h2m-2 6h2m-2 6h2" stroke="#fff" />
+      </g>
+    </mask>
+  </defs>
+  <rect width="32" height="32" fill="#fff" mask="url(#artwork_42)"/>
+</svg>
+<svg x="682" y="380.0" width="24" height="24" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <defs>
+    <mask id="artwork_43" x="0" y="0" width="32" height="32" maskUnits="userSpaceOnUse" style="mask-type: luminance">
+      <g fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="6" y="3" width="21" height="26" rx="5" fill="#fff" stroke="none" />
+        <path d="M4 9h4M4 16h4M4 23h4" stroke="#fff" />
+        <circle cx="17" cy="12" r="4" fill="#000" stroke="none" />
+        <path d="M11 24v-2a6 6 0 0 1 12 0v2Z" fill="#000" stroke="none" />
+        <path d="M27 10h2m-2 6h2m-2 6h2" stroke="#fff" />
+      </g>
+    </mask>
+  </defs>
+  <rect width="32" height="32" fill="#fff" mask="url(#artwork_43)"/>
+</svg>
+<text x="514" y="443" font-size="12">Contacts</text>
+<rect x="744" y="354" width="224" height="100" rx="12" fill="#FFFFFF"/>
+<rect x="860" y="361" width="100" height="63" rx="10" fill="#101010"/>
+<svg x="754" y="373.0" width="38" height="38" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <defs>
+    <mask id="artwork_44" x="0" y="0" width="32" height="32" maskUnits="userSpaceOnUse" style="mask-type: luminance">
+      <g fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M6 4h8l3 4h10a3 3 0 0 1 3 3v12H6Z" fill="#fff" stroke="none" />
+        <path d="M3 9h9l3 4h11a3 3 0 0 1 3 3l-2 10a3 3 0 0 1-3 3H5a3 3 0 0 1-3-3V12Z" fill="#fff" stroke="#000" stroke-width="1.5" />
+        <path d="M8 20h12" stroke="#000" />
+        <circle cx="23" cy="23" r="5" fill="#fff" stroke="#000" stroke-width="1" />
+        <path d="M21 23h4" stroke="#000" />
+      </g>
+    </mask>
+  </defs>
+  <rect width="32" height="32" fill="#000" mask="url(#artwork_44)"/>
+</svg>
+<svg x="810" y="380.0" width="24" height="24" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <defs>
+    <mask id="artwork_45" x="0" y="0" width="32" height="32" maskUnits="userSpaceOnUse" style="mask-type: luminance">
+      <g fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M6 4h8l3 4h10a3 3 0 0 1 3 3v12H6Z" fill="#fff" stroke="none" />
+        <path d="M3 9h9l3 4h11a3 3 0 0 1 3 3l-2 10a3 3 0 0 1-3 3H5a3 3 0 0 1-3-3V12Z" fill="#fff" stroke="#000" stroke-width="1.5" />
+        <path d="M8 20h12" stroke="#000" />
+        <circle cx="23" cy="23" r="5" fill="#fff" stroke="#000" stroke-width="1" />
+        <path d="M21 23h4" stroke="#000" />
+      </g>
+    </mask>
+  </defs>
+  <rect width="32" height="32" fill="#000" mask="url(#artwork_45)"/>
+</svg>
+<svg x="870" y="373.0" width="38" height="38" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <defs>
+    <mask id="artwork_46" x="0" y="0" width="32" height="32" maskUnits="userSpaceOnUse" style="mask-type: luminance">
+      <g fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M6 4h8l3 4h10a3 3 0 0 1 3 3v12H6Z" fill="#fff" stroke="none" />
+        <path d="M3 9h9l3 4h11a3 3 0 0 1 3 3l-2 10a3 3 0 0 1-3 3H5a3 3 0 0 1-3-3V12Z" fill="#fff" stroke="#000" stroke-width="1.5" />
+        <path d="M8 20h12" stroke="#000" />
+        <circle cx="23" cy="23" r="5" fill="#fff" stroke="#000" stroke-width="1" />
+        <path d="M21 23h4" stroke="#000" />
+      </g>
+    </mask>
+  </defs>
+  <rect width="32" height="32" fill="#fff" mask="url(#artwork_46)"/>
+</svg>
+<svg x="922" y="380.0" width="24" height="24" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <defs>
+    <mask id="artwork_47" x="0" y="0" width="32" height="32" maskUnits="userSpaceOnUse" style="mask-type: luminance">
+      <g fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M6 4h8l3 4h10a3 3 0 0 1 3 3v12H6Z" fill="#fff" stroke="none" />
+        <path d="M3 9h9l3 4h11a3 3 0 0 1 3 3l-2 10a3 3 0 0 1-3 3H5a3 3 0 0 1-3-3V12Z" fill="#fff" stroke="#000" stroke-width="1.5" />
+        <path d="M8 20h12" stroke="#000" />
+        <circle cx="23" cy="23" r="5" fill="#fff" stroke="#000" stroke-width="1" />
+        <path d="M21 23h4" stroke="#000" />
+      </g>
+    </mask>
+  </defs>
+  <rect width="32" height="32" fill="#fff" mask="url(#artwork_47)"/>
+</svg>
+<text x="754" y="443" font-size="12">Sujets</text>
+<rect x="24" y="466" width="224" height="100" rx="12" fill="#FFFFFF"/>
+<rect x="140" y="473" width="100" height="63" rx="10" fill="#101010"/>
+<svg x="34" y="485.0" width="38" height="38" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <defs>
+    <mask id="artwork_48" x="0" y="0" width="32" height="32" maskUnits="userSpaceOnUse" style="mask-type: luminance">
+      <g fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="3" y="3" width="11" height="15" rx="3" fill="#fff" stroke="none" />
+        <rect x="18" y="3" width="11" height="9" rx="3" fill="#fff" stroke="none" />
+        <rect x="3" y="22" width="11" height="7" rx="3" fill="#fff" stroke="none" />
+        <rect x="18" y="16" width="11" height="13" rx="3" fill="#fff" stroke="none" />
+        <path d="M22 25v-3m3 3v-5M7 8h3" stroke="#000" />
+      </g>
+    </mask>
+  </defs>
+  <rect width="32" height="32" fill="#000" mask="url(#artwork_48)"/>
+</svg>
+<svg x="90" y="492.0" width="24" height="24" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <defs>
+    <mask id="artwork_49" x="0" y="0" width="32" height="32" maskUnits="userSpaceOnUse" style="mask-type: luminance">
+      <g fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="3" y="3" width="11" height="15" rx="3" fill="#fff" stroke="none" />
+        <rect x="18" y="3" width="11" height="9" rx="3" fill="#fff" stroke="none" />
+        <rect x="3" y="22" width="11" height="7" rx="3" fill="#fff" stroke="none" />
+        <rect x="18" y="16" width="11" height="13" rx="3" fill="#fff" stroke="none" />
+        <path d="M22 25v-3m3 3v-5M7 8h3" stroke="#000" />
+      </g>
+    </mask>
+  </defs>
+  <rect width="32" height="32" fill="#000" mask="url(#artwork_49)"/>
+</svg>
+<svg x="150" y="485.0" width="38" height="38" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <defs>
+    <mask id="artwork_50" x="0" y="0" width="32" height="32" maskUnits="userSpaceOnUse" style="mask-type: luminance">
+      <g fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="3" y="3" width="11" height="15" rx="3" fill="#fff" stroke="none" />
+        <rect x="18" y="3" width="11" height="9" rx="3" fill="#fff" stroke="none" />
+        <rect x="3" y="22" width="11" height="7" rx="3" fill="#fff" stroke="none" />
+        <rect x="18" y="16" width="11" height="13" rx="3" fill="#fff" stroke="none" />
+        <path d="M22 25v-3m3 3v-5M7 8h3" stroke="#000" />
+      </g>
+    </mask>
+  </defs>
+  <rect width="32" height="32" fill="#fff" mask="url(#artwork_50)"/>
+</svg>
+<svg x="202" y="492.0" width="24" height="24" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <defs>
+    <mask id="artwork_51" x="0" y="0" width="32" height="32" maskUnits="userSpaceOnUse" style="mask-type: luminance">
+      <g fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="3" y="3" width="11" height="15" rx="3" fill="#fff" stroke="none" />
+        <rect x="18" y="3" width="11" height="9" rx="3" fill="#fff" stroke="none" />
+        <rect x="3" y="22" width="11" height="7" rx="3" fill="#fff" stroke="none" />
+        <rect x="18" y="16" width="11" height="13" rx="3" fill="#fff" stroke="none" />
+        <path d="M22 25v-3m3 3v-5M7 8h3" stroke="#000" />
+      </g>
+    </mask>
+  </defs>
+  <rect width="32" height="32" fill="#fff" mask="url(#artwork_51)"/>
+</svg>
+<text x="34" y="555" font-size="12">Tableau de bord</text>
+<rect x="264" y="466" width="224" height="100" rx="12" fill="#FFFFFF"/>
+<rect x="380" y="473" width="100" height="63" rx="10" fill="#101010"/>
+<svg x="274" y="485.0" width="38" height="38" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <defs>
+    <mask id="artwork_52" x="0" y="0" width="32" height="32" maskUnits="userSpaceOnUse" style="mask-type: luminance">
+      <g fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="3" y="5" width="26" height="20" rx="5" fill="#fff" stroke="none" />
+        <path d="M7 16h4l3-6 4 11 3-5h4" fill="none" stroke="#000" />
+        <path d="M12 29h8m-4-4v4" stroke="#fff" />
+        <circle cx="26" cy="6" r="4" fill="#fff" stroke="none" />
+      </g>
+    </mask>
+  </defs>
+  <rect width="32" height="32" fill="#000" mask="url(#artwork_52)"/>
+</svg>
+<svg x="330" y="492.0" width="24" height="24" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <defs>
+    <mask id="artwork_53" x="0" y="0" width="32" height="32" maskUnits="userSpaceOnUse" style="mask-type: luminance">
+      <g fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="3" y="5" width="26" height="20" rx="5" fill="#fff" stroke="none" />
+        <path d="M7 16h4l3-6 4 11 3-5h4" fill="none" stroke="#000" />
+        <path d="M12 29h8m-4-4v4" stroke="#fff" />
+        <circle cx="26" cy="6" r="4" fill="#fff" stroke="none" />
+      </g>
+    </mask>
+  </defs>
+  <rect width="32" height="32" fill="#000" mask="url(#artwork_53)"/>
+</svg>
+<svg x="390" y="485.0" width="38" height="38" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <defs>
+    <mask id="artwork_54" x="0" y="0" width="32" height="32" maskUnits="userSpaceOnUse" style="mask-type: luminance">
+      <g fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="3" y="5" width="26" height="20" rx="5" fill="#fff" stroke="none" />
+        <path d="M7 16h4l3-6 4 11 3-5h4" fill="none" stroke="#000" />
+        <path d="M12 29h8m-4-4v4" stroke="#fff" />
+        <circle cx="26" cy="6" r="4" fill="#fff" stroke="none" />
+      </g>
+    </mask>
+  </defs>
+  <rect width="32" height="32" fill="#fff" mask="url(#artwork_54)"/>
+</svg>
+<svg x="442" y="492.0" width="24" height="24" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <defs>
+    <mask id="artwork_55" x="0" y="0" width="32" height="32" maskUnits="userSpaceOnUse" style="mask-type: luminance">
+      <g fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="3" y="5" width="26" height="20" rx="5" fill="#fff" stroke="none" />
+        <path d="M7 16h4l3-6 4 11 3-5h4" fill="none" stroke="#000" />
+        <path d="M12 29h8m-4-4v4" stroke="#fff" />
+        <circle cx="26" cy="6" r="4" fill="#fff" stroke="none" />
+      </g>
+    </mask>
+  </defs>
+  <rect width="32" height="32" fill="#fff" mask="url(#artwork_55)"/>
+</svg>
+<text x="274" y="555" font-size="12">Tâches</text>
+<rect x="504" y="466" width="224" height="100" rx="12" fill="#FFFFFF"/>
+<rect x="620" y="473" width="100" height="63" rx="10" fill="#101010"/>
+<svg x="514" y="485.0" width="38" height="38" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <defs>
+    <mask id="artwork_56" x="0" y="0" width="32" height="32" maskUnits="userSpaceOnUse" style="mask-type: luminance">
+      <g fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M22 3A13 13 0 1 0 29 22 12 12 0 0 1 22 3" fill="#fff" stroke="none" />
+        <path d="m25 5 1.2 3.8L30 10l-3.8 1.2L25 15l-1.2-3.8L20 10l3.8-1.2Z" fill="#fff" stroke="none" />
+        <circle cx="15" cy="6" r="1.5" fill="#fff" stroke="none" />
+        <circle cx="25" cy="20" r="1.5" fill="#fff" stroke="none" />
+      </g>
+    </mask>
+  </defs>
+  <rect width="32" height="32" fill="#000" mask="url(#artwork_56)"/>
+</svg>
+<svg x="570" y="492.0" width="24" height="24" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <defs>
+    <mask id="artwork_57" x="0" y="0" width="32" height="32" maskUnits="userSpaceOnUse" style="mask-type: luminance">
+      <g fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M22 3A13 13 0 1 0 29 22 12 12 0 0 1 22 3" fill="#fff" stroke="none" />
+        <path d="m25 5 1.2 3.8L30 10l-3.8 1.2L25 15l-1.2-3.8L20 10l3.8-1.2Z" fill="#fff" stroke="none" />
+        <circle cx="15" cy="6" r="1.5" fill="#fff" stroke="none" />
+        <circle cx="25" cy="20" r="1.5" fill="#fff" stroke="none" />
+      </g>
+    </mask>
+  </defs>
+  <rect width="32" height="32" fill="#000" mask="url(#artwork_57)"/>
+</svg>
+<svg x="630" y="485.0" width="38" height="38" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <defs>
+    <mask id="artwork_58" x="0" y="0" width="32" height="32" maskUnits="userSpaceOnUse" style="mask-type: luminance">
+      <g fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M22 3A13 13 0 1 0 29 22 12 12 0 0 1 22 3" fill="#fff" stroke="none" />
+        <path d="m25 5 1.2 3.8L30 10l-3.8 1.2L25 15l-1.2-3.8L20 10l3.8-1.2Z" fill="#fff" stroke="none" />
+        <circle cx="15" cy="6" r="1.5" fill="#fff" stroke="none" />
+        <circle cx="25" cy="20" r="1.5" fill="#fff" stroke="none" />
+      </g>
+    </mask>
+  </defs>
+  <rect width="32" height="32" fill="#fff" mask="url(#artwork_58)"/>
+</svg>
+<svg x="682" y="492.0" width="24" height="24" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <defs>
+    <mask id="artwork_59" x="0" y="0" width="32" height="32" maskUnits="userSpaceOnUse" style="mask-type: luminance">
+      <g fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M22 3A13 13 0 1 0 29 22 12 12 0 0 1 22 3" fill="#fff" stroke="none" />
+        <path d="m25 5 1.2 3.8L30 10l-3.8 1.2L25 15l-1.2-3.8L20 10l3.8-1.2Z" fill="#fff" stroke="none" />
+        <circle cx="15" cy="6" r="1.5" fill="#fff" stroke="none" />
+        <circle cx="25" cy="20" r="1.5" fill="#fff" stroke="none" />
+      </g>
+    </mask>
+  </defs>
+  <rect width="32" height="32" fill="#fff" mask="url(#artwork_59)"/>
+</svg>
+<text x="514" y="555" font-size="12">Rêves</text>
+<rect x="744" y="466" width="224" height="100" rx="12" fill="#FFFFFF"/>
+<rect x="860" y="473" width="100" height="63" rx="10" fill="#101010"/>
+<svg x="754" y="485.0" width="38" height="38" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <defs>
+    <mask id="artwork_60" x="0" y="0" width="32" height="32" maskUnits="userSpaceOnUse" style="mask-type: luminance">
+      <g fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="3" y="9" width="26" height="19" rx="4" fill="#fff" stroke="none" />
+        <path d="m4 11 12 9 12-9" fill="none" stroke="#000" />
+        <circle cx="24" cy="8" r="7" fill="#fff" stroke="#000" stroke-width="1" />
+        <path d="M24 11V5m-3 3 3-3 3 3" fill="none" stroke="#000" />
+      </g>
+    </mask>
+  </defs>
+  <rect width="32" height="32" fill="#000" mask="url(#artwork_60)"/>
+</svg>
+<svg x="810" y="492.0" width="24" height="24" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <defs>
+    <mask id="artwork_61" x="0" y="0" width="32" height="32" maskUnits="userSpaceOnUse" style="mask-type: luminance">
+      <g fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="3" y="9" width="26" height="19" rx="4" fill="#fff" stroke="none" />
+        <path d="m4 11 12 9 12-9" fill="none" stroke="#000" />
+        <circle cx="24" cy="8" r="7" fill="#fff" stroke="#000" stroke-width="1" />
+        <path d="M24 11V5m-3 3 3-3 3 3" fill="none" stroke="#000" />
+      </g>
+    </mask>
+  </defs>
+  <rect width="32" height="32" fill="#000" mask="url(#artwork_61)"/>
+</svg>
+<svg x="870" y="485.0" width="38" height="38" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <defs>
+    <mask id="artwork_62" x="0" y="0" width="32" height="32" maskUnits="userSpaceOnUse" style="mask-type: luminance">
+      <g fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="3" y="9" width="26" height="19" rx="4" fill="#fff" stroke="none" />
+        <path d="m4 11 12 9 12-9" fill="none" stroke="#000" />
+        <circle cx="24" cy="8" r="7" fill="#fff" stroke="#000" stroke-width="1" />
+        <path d="M24 11V5m-3 3 3-3 3 3" fill="none" stroke="#000" />
+      </g>
+    </mask>
+  </defs>
+  <rect width="32" height="32" fill="#fff" mask="url(#artwork_62)"/>
+</svg>
+<svg x="922" y="492.0" width="24" height="24" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <defs>
+    <mask id="artwork_63" x="0" y="0" width="32" height="32" maskUnits="userSpaceOnUse" style="mask-type: luminance">
+      <g fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="3" y="9" width="26" height="19" rx="4" fill="#fff" stroke="none" />
+        <path d="m4 11 12 9 12-9" fill="none" stroke="#000" />
+        <circle cx="24" cy="8" r="7" fill="#fff" stroke="#000" stroke-width="1" />
+        <path d="M24 11V5m-3 3 3-3 3 3" fill="none" stroke="#000" />
+      </g>
+    </mask>
+  </defs>
+  <rect width="32" height="32" fill="#fff" mask="url(#artwork_63)"/>
+</svg>
+<text x="754" y="555" font-size="12">Journal des courriels</text>
+<rect x="24" y="578" width="224" height="100" rx="12" fill="#FFFFFF"/>
+<rect x="140" y="585" width="100" height="63" rx="10" fill="#101010"/>
+<svg x="34" y="597.0" width="38" height="38" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <defs>
+    <mask id="artwork_64" x="0" y="0" width="32" height="32" maskUnits="userSpaceOnUse" style="mask-type: luminance">
+      <g fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="m12 2 8 0 1 5 4-1 4 7-4 3 4 3-4 7-4-1-1 5h-8l-1-5-4 1-4-7 4-3-4-3 4-7 4 1Z" fill="#fff" stroke="none" />
+        <circle cx="16" cy="16" r="7" fill="#000" stroke="none" />
+        <circle cx="16" cy="16" r="3" fill="#fff" stroke="none" />
+        <circle cx="26" cy="6" r="4" fill="#fff" stroke="none" />
+      </g>
+    </mask>
+  </defs>
+  <rect width="32" height="32" fill="#000" mask="url(#artwork_64)"/>
+</svg>
+<svg x="90" y="604.0" width="24" height="24" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <defs>
+    <mask id="artwork_65" x="0" y="0" width="32" height="32" maskUnits="userSpaceOnUse" style="mask-type: luminance">
+      <g fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="m12 2 8 0 1 5 4-1 4 7-4 3 4 3-4 7-4-1-1 5h-8l-1-5-4 1-4-7 4-3-4-3 4-7 4 1Z" fill="#fff" stroke="none" />
+        <circle cx="16" cy="16" r="7" fill="#000" stroke="none" />
+        <circle cx="16" cy="16" r="3" fill="#fff" stroke="none" />
+        <circle cx="26" cy="6" r="4" fill="#fff" stroke="none" />
+      </g>
+    </mask>
+  </defs>
+  <rect width="32" height="32" fill="#000" mask="url(#artwork_65)"/>
+</svg>
+<svg x="150" y="597.0" width="38" height="38" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <defs>
+    <mask id="artwork_66" x="0" y="0" width="32" height="32" maskUnits="userSpaceOnUse" style="mask-type: luminance">
+      <g fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="m12 2 8 0 1 5 4-1 4 7-4 3 4 3-4 7-4-1-1 5h-8l-1-5-4 1-4-7 4-3-4-3 4-7 4 1Z" fill="#fff" stroke="none" />
+        <circle cx="16" cy="16" r="7" fill="#000" stroke="none" />
+        <circle cx="16" cy="16" r="3" fill="#fff" stroke="none" />
+        <circle cx="26" cy="6" r="4" fill="#fff" stroke="none" />
+      </g>
+    </mask>
+  </defs>
+  <rect width="32" height="32" fill="#fff" mask="url(#artwork_66)"/>
+</svg>
+<svg x="202" y="604.0" width="24" height="24" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <defs>
+    <mask id="artwork_67" x="0" y="0" width="32" height="32" maskUnits="userSpaceOnUse" style="mask-type: luminance">
+      <g fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="m12 2 8 0 1 5 4-1 4 7-4 3 4 3-4 7-4-1-1 5h-8l-1-5-4 1-4-7 4-3-4-3 4-7 4 1Z" fill="#fff" stroke="none" />
+        <circle cx="16" cy="16" r="7" fill="#000" stroke="none" />
+        <circle cx="16" cy="16" r="3" fill="#fff" stroke="none" />
+        <circle cx="26" cy="6" r="4" fill="#fff" stroke="none" />
+      </g>
+    </mask>
+  </defs>
+  <rect width="32" height="32" fill="#fff" mask="url(#artwork_67)"/>
+</svg>
+<text x="34" y="667" font-size="12">Préférences</text>
+<rect x="264" y="578" width="224" height="100" rx="12" fill="#FFFFFF"/>
+<rect x="380" y="585" width="100" height="63" rx="10" fill="#101010"/>
+<svg x="274" y="597.0" width="38" height="38" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <defs>
+    <mask id="artwork_68" x="0" y="0" width="32" height="32" maskUnits="userSpaceOnUse" style="mask-type: luminance">
+      <g fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M12 4v9L4 25a3 3 0 0 0 3 4h18a3 3 0 0 0 3-4l-8-12V4" fill="#000" stroke="#fff" stroke-width="1.5" />
+        <path d="m9 19-5 7a2 2 0 0 0 2 3h20a2 2 0 0 0 2-3l-5-7Z" fill="#fff" stroke="none" />
+        <path d="M10 4h12" stroke="#fff" />
+        <circle cx="12" cy="24" r="2" fill="#000" stroke="none" />
+        <circle cx="20" cy="21" r="1.5" fill="#000" stroke="none" />
+        <circle cx="26" cy="10" r="3" fill="#fff" stroke="none" />
+      </g>
+    </mask>
+  </defs>
+  <rect width="32" height="32" fill="#000" mask="url(#artwork_68)"/>
+</svg>
+<svg x="330" y="604.0" width="24" height="24" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <defs>
+    <mask id="artwork_69" x="0" y="0" width="32" height="32" maskUnits="userSpaceOnUse" style="mask-type: luminance">
+      <g fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M12 4v9L4 25a3 3 0 0 0 3 4h18a3 3 0 0 0 3-4l-8-12V4" fill="#000" stroke="#fff" stroke-width="1.5" />
+        <path d="m9 19-5 7a2 2 0 0 0 2 3h20a2 2 0 0 0 2-3l-5-7Z" fill="#fff" stroke="none" />
+        <path d="M10 4h12" stroke="#fff" />
+        <circle cx="12" cy="24" r="2" fill="#000" stroke="none" />
+        <circle cx="20" cy="21" r="1.5" fill="#000" stroke="none" />
+        <circle cx="26" cy="10" r="3" fill="#fff" stroke="none" />
+      </g>
+    </mask>
+  </defs>
+  <rect width="32" height="32" fill="#000" mask="url(#artwork_69)"/>
+</svg>
+<svg x="390" y="597.0" width="38" height="38" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <defs>
+    <mask id="artwork_70" x="0" y="0" width="32" height="32" maskUnits="userSpaceOnUse" style="mask-type: luminance">
+      <g fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M12 4v9L4 25a3 3 0 0 0 3 4h18a3 3 0 0 0 3-4l-8-12V4" fill="#000" stroke="#fff" stroke-width="1.5" />
+        <path d="m9 19-5 7a2 2 0 0 0 2 3h20a2 2 0 0 0 2-3l-5-7Z" fill="#fff" stroke="none" />
+        <path d="M10 4h12" stroke="#fff" />
+        <circle cx="12" cy="24" r="2" fill="#000" stroke="none" />
+        <circle cx="20" cy="21" r="1.5" fill="#000" stroke="none" />
+        <circle cx="26" cy="10" r="3" fill="#fff" stroke="none" />
+      </g>
+    </mask>
+  </defs>
+  <rect width="32" height="32" fill="#fff" mask="url(#artwork_70)"/>
+</svg>
+<svg x="442" y="604.0" width="24" height="24" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <defs>
+    <mask id="artwork_71" x="0" y="0" width="32" height="32" maskUnits="userSpaceOnUse" style="mask-type: luminance">
+      <g fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M12 4v9L4 25a3 3 0 0 0 3 4h18a3 3 0 0 0 3-4l-8-12V4" fill="#000" stroke="#fff" stroke-width="1.5" />
+        <path d="m9 19-5 7a2 2 0 0 0 2 3h20a2 2 0 0 0 2-3l-5-7Z" fill="#fff" stroke="none" />
+        <path d="M10 4h12" stroke="#fff" />
+        <circle cx="12" cy="24" r="2" fill="#000" stroke="none" />
+        <circle cx="20" cy="21" r="1.5" fill="#000" stroke="none" />
+        <circle cx="26" cy="10" r="3" fill="#fff" stroke="none" />
+      </g>
+    </mask>
+  </defs>
+  <rect width="32" height="32" fill="#fff" mask="url(#artwork_71)"/>
+</svg>
+<text x="274" y="667" font-size="12">Laboratoire</text>
+<rect x="504" y="578" width="224" height="100" rx="12" fill="#FFFFFF"/>
+<rect x="620" y="585" width="100" height="63" rx="10" fill="#101010"/>
+<svg x="514" y="597.0" width="38" height="38" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <defs>
+    <mask id="artwork_72" x="0" y="0" width="32" height="32" maskUnits="userSpaceOnUse" style="mask-type: luminance">
+      <g fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="2" y="4" width="28" height="24" rx="5" fill="#fff" stroke="none" />
+        <path d="M3 10h26" stroke="#000" />
+        <circle cx="7" cy="7" r="1" fill="#000" stroke="none" />
+        <circle cx="11" cy="7" r="1" fill="#000" stroke="none" />
+        <path d="m8 15 4 4-4 4m9 0h6" fill="none" stroke="#000" />
+      </g>
+    </mask>
+  </defs>
+  <rect width="32" height="32" fill="#000" mask="url(#artwork_72)"/>
+</svg>
+<svg x="570" y="604.0" width="24" height="24" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <defs>
+    <mask id="artwork_73" x="0" y="0" width="32" height="32" maskUnits="userSpaceOnUse" style="mask-type: luminance">
+      <g fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="2" y="4" width="28" height="24" rx="5" fill="#fff" stroke="none" />
+        <path d="M3 10h26" stroke="#000" />
+        <circle cx="7" cy="7" r="1" fill="#000" stroke="none" />
+        <circle cx="11" cy="7" r="1" fill="#000" stroke="none" />
+        <path d="m8 15 4 4-4 4m9 0h6" fill="none" stroke="#000" />
+      </g>
+    </mask>
+  </defs>
+  <rect width="32" height="32" fill="#000" mask="url(#artwork_73)"/>
+</svg>
+<svg x="630" y="597.0" width="38" height="38" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <defs>
+    <mask id="artwork_74" x="0" y="0" width="32" height="32" maskUnits="userSpaceOnUse" style="mask-type: luminance">
+      <g fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="2" y="4" width="28" height="24" rx="5" fill="#fff" stroke="none" />
+        <path d="M3 10h26" stroke="#000" />
+        <circle cx="7" cy="7" r="1" fill="#000" stroke="none" />
+        <circle cx="11" cy="7" r="1" fill="#000" stroke="none" />
+        <path d="m8 15 4 4-4 4m9 0h6" fill="none" stroke="#000" />
+      </g>
+    </mask>
+  </defs>
+  <rect width="32" height="32" fill="#fff" mask="url(#artwork_74)"/>
+</svg>
+<svg x="682" y="604.0" width="24" height="24" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <defs>
+    <mask id="artwork_75" x="0" y="0" width="32" height="32" maskUnits="userSpaceOnUse" style="mask-type: luminance">
+      <g fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="2" y="4" width="28" height="24" rx="5" fill="#fff" stroke="none" />
+        <path d="M3 10h26" stroke="#000" />
+        <circle cx="7" cy="7" r="1" fill="#000" stroke="none" />
+        <circle cx="11" cy="7" r="1" fill="#000" stroke="none" />
+        <path d="m8 15 4 4-4 4m9 0h6" fill="none" stroke="#000" />
+      </g>
+    </mask>
+  </defs>
+  <rect width="32" height="32" fill="#fff" mask="url(#artwork_75)"/>
+</svg>
+<text x="514" y="667" font-size="12">Console</text>
+<rect x="744" y="578" width="224" height="100" rx="12" fill="#FFFFFF"/>
+<rect x="860" y="585" width="100" height="63" rx="10" fill="#101010"/>
+<svg x="754" y="597.0" width="38" height="38" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <defs>
+    <mask id="artwork_76" x="0" y="0" width="32" height="32" maskUnits="userSpaceOnUse" style="mask-type: luminance">
+      <g fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="m16 2 12 5v9c0 7-7 12-12 14C11 28 4 23 4 16V7Z" fill="#fff" stroke="none" />
+        <path d="m10 16 4 4 8-9" fill="none" stroke="#000" />
+      </g>
+    </mask>
+  </defs>
+  <rect width="32" height="32" fill="#000" mask="url(#artwork_76)"/>
+</svg>
+<svg x="810" y="604.0" width="24" height="24" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <defs>
+    <mask id="artwork_77" x="0" y="0" width="32" height="32" maskUnits="userSpaceOnUse" style="mask-type: luminance">
+      <g fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="m16 2 12 5v9c0 7-7 12-12 14C11 28 4 23 4 16V7Z" fill="#fff" stroke="none" />
+        <path d="m10 16 4 4 8-9" fill="none" stroke="#000" />
+      </g>
+    </mask>
+  </defs>
+  <rect width="32" height="32" fill="#000" mask="url(#artwork_77)"/>
+</svg>
+<svg x="870" y="597.0" width="38" height="38" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <defs>
+    <mask id="artwork_78" x="0" y="0" width="32" height="32" maskUnits="userSpaceOnUse" style="mask-type: luminance">
+      <g fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="m16 2 12 5v9c0 7-7 12-12 14C11 28 4 23 4 16V7Z" fill="#fff" stroke="none" />
+        <path d="m10 16 4 4 8-9" fill="none" stroke="#000" />
+      </g>
+    </mask>
+  </defs>
+  <rect width="32" height="32" fill="#fff" mask="url(#artwork_78)"/>
+</svg>
+<svg x="922" y="604.0" width="24" height="24" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <defs>
+    <mask id="artwork_79" x="0" y="0" width="32" height="32" maskUnits="userSpaceOnUse" style="mask-type: luminance">
+      <g fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="m16 2 12 5v9c0 7-7 12-12 14C11 28 4 23 4 16V7Z" fill="#fff" stroke="none" />
+        <path d="m10 16 4 4 8-9" fill="none" stroke="#000" />
+      </g>
+    </mask>
+  </defs>
+  <rect width="32" height="32" fill="#fff" mask="url(#artwork_79)"/>
+</svg>
+<text x="754" y="667" font-size="12">Autorisations</text>
+<rect x="24" y="690" width="224" height="100" rx="12" fill="#FFFFFF"/>
+<rect x="140" y="697" width="100" height="63" rx="10" fill="#101010"/>
+<svg x="34" y="709.0" width="38" height="38" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <defs>
+    <mask id="artwork_80" x="0" y="0" width="32" height="32" maskUnits="userSpaceOnUse" style="mask-type: luminance">
+      <g fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="16" cy="16" r="13" fill="#fff" stroke="none" />
+        <ellipse cx="16" cy="16" rx="6" ry="13" fill="none" stroke="#000" />
+        <path d="M3 16h26M6 8h20M6 24h20" stroke="#000" />
+        <circle cx="25" cy="25" r="5" fill="#fff" stroke="none" />
+      </g>
+    </mask>
+  </defs>
+  <rect width="32" height="32" fill="#000" mask="url(#artwork_80)"/>
+</svg>
+<svg x="90" y="716.0" width="24" height="24" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <defs>
+    <mask id="artwork_81" x="0" y="0" width="32" height="32" maskUnits="userSpaceOnUse" style="mask-type: luminance">
+      <g fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="16" cy="16" r="13" fill="#fff" stroke="none" />
+        <ellipse cx="16" cy="16" rx="6" ry="13" fill="none" stroke="#000" />
+        <path d="M3 16h26M6 8h20M6 24h20" stroke="#000" />
+        <circle cx="25" cy="25" r="5" fill="#fff" stroke="none" />
+      </g>
+    </mask>
+  </defs>
+  <rect width="32" height="32" fill="#000" mask="url(#artwork_81)"/>
+</svg>
+<svg x="150" y="709.0" width="38" height="38" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <defs>
+    <mask id="artwork_82" x="0" y="0" width="32" height="32" maskUnits="userSpaceOnUse" style="mask-type: luminance">
+      <g fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="16" cy="16" r="13" fill="#fff" stroke="none" />
+        <ellipse cx="16" cy="16" rx="6" ry="13" fill="none" stroke="#000" />
+        <path d="M3 16h26M6 8h20M6 24h20" stroke="#000" />
+        <circle cx="25" cy="25" r="5" fill="#fff" stroke="none" />
+      </g>
+    </mask>
+  </defs>
+  <rect width="32" height="32" fill="#fff" mask="url(#artwork_82)"/>
+</svg>
+<svg x="202" y="716.0" width="24" height="24" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <defs>
+    <mask id="artwork_83" x="0" y="0" width="32" height="32" maskUnits="userSpaceOnUse" style="mask-type: luminance">
+      <g fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="16" cy="16" r="13" fill="#fff" stroke="none" />
+        <ellipse cx="16" cy="16" rx="6" ry="13" fill="none" stroke="#000" />
+        <path d="M3 16h26M6 8h20M6 24h20" stroke="#000" />
+        <circle cx="25" cy="25" r="5" fill="#fff" stroke="none" />
+      </g>
+    </mask>
+  </defs>
+  <rect width="32" height="32" fill="#fff" mask="url(#artwork_83)"/>
+</svg>
+<text x="34" y="779" font-size="12">Langue</text>
+<rect x="264" y="690" width="224" height="100" rx="12" fill="#FFFFFF"/>
+<rect x="380" y="697" width="100" height="63" rx="10" fill="#101010"/>
+<svg x="274" y="709.0" width="38" height="38" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <defs>
+    <mask id="artwork_84" x="0" y="0" width="32" height="32" maskUnits="userSpaceOnUse" style="mask-type: luminance">
+      <g fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="m8 3 6 7-4 4c2 4 4 6 8 8l4-4 7 6c-1 4-4 6-7 5C12 27 5 20 3 10 2 7 4 4 8 3" fill="#fff" stroke="none" />
+        <path d="M20 4a9 9 0 0 1 8 8M20 9a4 4 0 0 1 3 3" fill="none" stroke="#fff" />
+      </g>
+    </mask>
+  </defs>
+  <rect width="32" height="32" fill="#000" mask="url(#artwork_84)"/>
+</svg>
+<svg x="330" y="716.0" width="24" height="24" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <defs>
+    <mask id="artwork_85" x="0" y="0" width="32" height="32" maskUnits="userSpaceOnUse" style="mask-type: luminance">
+      <g fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="m8 3 6 7-4 4c2 4 4 6 8 8l4-4 7 6c-1 4-4 6-7 5C12 27 5 20 3 10 2 7 4 4 8 3" fill="#fff" stroke="none" />
+        <path d="M20 4a9 9 0 0 1 8 8M20 9a4 4 0 0 1 3 3" fill="none" stroke="#fff" />
+      </g>
+    </mask>
+  </defs>
+  <rect width="32" height="32" fill="#000" mask="url(#artwork_85)"/>
+</svg>
+<svg x="390" y="709.0" width="38" height="38" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <defs>
+    <mask id="artwork_86" x="0" y="0" width="32" height="32" maskUnits="userSpaceOnUse" style="mask-type: luminance">
+      <g fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="m8 3 6 7-4 4c2 4 4 6 8 8l4-4 7 6c-1 4-4 6-7 5C12 27 5 20 3 10 2 7 4 4 8 3" fill="#fff" stroke="none" />
+        <path d="M20 4a9 9 0 0 1 8 8M20 9a4 4 0 0 1 3 3" fill="none" stroke="#fff" />
+      </g>
+    </mask>
+  </defs>
+  <rect width="32" height="32" fill="#fff" mask="url(#artwork_86)"/>
+</svg>
+<svg x="442" y="716.0" width="24" height="24" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <defs>
+    <mask id="artwork_87" x="0" y="0" width="32" height="32" maskUnits="userSpaceOnUse" style="mask-type: luminance">
+      <g fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="m8 3 6 7-4 4c2 4 4 6 8 8l4-4 7 6c-1 4-4 6-7 5C12 27 5 20 3 10 2 7 4 4 8 3" fill="#fff" stroke="none" />
+        <path d="M20 4a9 9 0 0 1 8 8M20 9a4 4 0 0 1 3 3" fill="none" stroke="#fff" />
+      </g>
+    </mask>
+  </defs>
+  <rect width="32" height="32" fill="#fff" mask="url(#artwork_87)"/>
+</svg>
+<text x="274" y="779" font-size="12">Voix</text>
+<rect x="504" y="690" width="224" height="100" rx="12" fill="#FFFFFF"/>
+<rect x="620" y="697" width="100" height="63" rx="10" fill="#101010"/>
+<svg x="514" y="709.0" width="38" height="38" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <defs>
+    <mask id="artwork_88" x="0" y="0" width="32" height="32" maskUnits="userSpaceOnUse" style="mask-type: luminance">
+      <g fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M6 14v4m5-9v14m5-18v22m5-16v10m5-7v4" stroke="#fff" stroke-width="3" />
+      </g>
+    </mask>
+  </defs>
+  <rect width="32" height="32" fill="#000" mask="url(#artwork_88)"/>
+</svg>
+<svg x="570" y="716.0" width="24" height="24" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <defs>
+    <mask id="artwork_89" x="0" y="0" width="32" height="32" maskUnits="userSpaceOnUse" style="mask-type: luminance">
+      <g fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M6 14v4m5-9v14m5-18v22m5-16v10m5-7v4" stroke="#fff" stroke-width="3" />
+      </g>
+    </mask>
+  </defs>
+  <rect width="32" height="32" fill="#000" mask="url(#artwork_89)"/>
+</svg>
+<svg x="630" y="709.0" width="38" height="38" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <defs>
+    <mask id="artwork_90" x="0" y="0" width="32" height="32" maskUnits="userSpaceOnUse" style="mask-type: luminance">
+      <g fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M6 14v4m5-9v14m5-18v22m5-16v10m5-7v4" stroke="#fff" stroke-width="3" />
+      </g>
+    </mask>
+  </defs>
+  <rect width="32" height="32" fill="#fff" mask="url(#artwork_90)"/>
+</svg>
+<svg x="682" y="716.0" width="24" height="24" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <defs>
+    <mask id="artwork_91" x="0" y="0" width="32" height="32" maskUnits="userSpaceOnUse" style="mask-type: luminance">
+      <g fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M6 14v4m5-9v14m5-18v22m5-16v10m5-7v4" stroke="#fff" stroke-width="3" />
+      </g>
+    </mask>
+  </defs>
+  <rect width="32" height="32" fill="#fff" mask="url(#artwork_91)"/>
+</svg>
+<text x="514" y="779" font-size="12">Audio</text>
+<rect x="744" y="690" width="224" height="100" rx="12" fill="#FFFFFF"/>
+<rect x="860" y="697" width="100" height="63" rx="10" fill="#101010"/>
+<svg x="754" y="709.0" width="38" height="38" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <defs>
+    <mask id="artwork_92" x="0" y="0" width="32" height="32" maskUnits="userSpaceOnUse" style="mask-type: luminance">
+      <g fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="15" cy="17" r="12" fill="#fff" stroke="none" />
+        <path d="m9 16 5 5L27 5" fill="none" stroke="#000" stroke-width="3" />
+        <circle cx="26" cy="25" r="4" fill="#fff" stroke="none" />
+      </g>
+    </mask>
+  </defs>
+  <rect width="32" height="32" fill="#000" mask="url(#artwork_92)"/>
+</svg>
+<svg x="810" y="716.0" width="24" height="24" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <defs>
+    <mask id="artwork_93" x="0" y="0" width="32" height="32" maskUnits="userSpaceOnUse" style="mask-type: luminance">
+      <g fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="15" cy="17" r="12" fill="#fff" stroke="none" />
+        <path d="m9 16 5 5L27 5" fill="none" stroke="#000" stroke-width="3" />
+        <circle cx="26" cy="25" r="4" fill="#fff" stroke="none" />
+      </g>
+    </mask>
+  </defs>
+  <rect width="32" height="32" fill="#000" mask="url(#artwork_93)"/>
+</svg>
+<svg x="870" y="709.0" width="38" height="38" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <defs>
+    <mask id="artwork_94" x="0" y="0" width="32" height="32" maskUnits="userSpaceOnUse" style="mask-type: luminance">
+      <g fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="15" cy="17" r="12" fill="#fff" stroke="none" />
+        <path d="m9 16 5 5L27 5" fill="none" stroke="#000" stroke-width="3" />
+        <circle cx="26" cy="25" r="4" fill="#fff" stroke="none" />
+      </g>
+    </mask>
+  </defs>
+  <rect width="32" height="32" fill="#fff" mask="url(#artwork_94)"/>
+</svg>
+<svg x="922" y="716.0" width="24" height="24" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <defs>
+    <mask id="artwork_95" x="0" y="0" width="32" height="32" maskUnits="userSpaceOnUse" style="mask-type: luminance">
+      <g fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="15" cy="17" r="12" fill="#fff" stroke="none" />
+        <path d="m9 16 5 5L27 5" fill="none" stroke="#000" stroke-width="3" />
+        <circle cx="26" cy="25" r="4" fill="#fff" stroke="none" />
+      </g>
+    </mask>
+  </defs>
+  <rect width="32" height="32" fill="#fff" mask="url(#artwork_95)"/>
+</svg>
+<text x="754" y="779" font-size="12">Planification des tâches</text>
+<rect x="24" y="802" width="224" height="100" rx="12" fill="#FFFFFF"/>
+<rect x="140" y="809" width="100" height="63" rx="10" fill="#101010"/>
+<svg x="34" y="821.0" width="38" height="38" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <defs>
+    <mask id="artwork_96" x="0" y="0" width="32" height="32" maskUnits="userSpaceOnUse" style="mask-type: luminance">
+      <g fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="m21 21 7 7" stroke="#fff" stroke-width="5" />
+        <circle cx="13" cy="13" r="10" fill="#fff" stroke="none" />
+        <circle cx="13" cy="13" r="6" fill="#000" stroke="none" />
+        <path d="M10 13a3 3 0 0 1 3-3" fill="none" stroke="#fff" />
+      </g>
+    </mask>
+  </defs>
+  <rect width="32" height="32" fill="#000" mask="url(#artwork_96)"/>
+</svg>
+<svg x="90" y="828.0" width="24" height="24" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <defs>
+    <mask id="artwork_97" x="0" y="0" width="32" height="32" maskUnits="userSpaceOnUse" style="mask-type: luminance">
+      <g fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="m21 21 7 7" stroke="#fff" stroke-width="5" />
+        <circle cx="13" cy="13" r="10" fill="#fff" stroke="none" />
+        <circle cx="13" cy="13" r="6" fill="#000" stroke="none" />
+        <path d="M10 13a3 3 0 0 1 3-3" fill="none" stroke="#fff" />
+      </g>
+    </mask>
+  </defs>
+  <rect width="32" height="32" fill="#000" mask="url(#artwork_97)"/>
+</svg>
+<svg x="150" y="821.0" width="38" height="38" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <defs>
+    <mask id="artwork_98" x="0" y="0" width="32" height="32" maskUnits="userSpaceOnUse" style="mask-type: luminance">
+      <g fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="m21 21 7 7" stroke="#fff" stroke-width="5" />
+        <circle cx="13" cy="13" r="10" fill="#fff" stroke="none" />
+        <circle cx="13" cy="13" r="6" fill="#000" stroke="none" />
+        <path d="M10 13a3 3 0 0 1 3-3" fill="none" stroke="#fff" />
+      </g>
+    </mask>
+  </defs>
+  <rect width="32" height="32" fill="#fff" mask="url(#artwork_98)"/>
+</svg>
+<svg x="202" y="828.0" width="24" height="24" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <defs>
+    <mask id="artwork_99" x="0" y="0" width="32" height="32" maskUnits="userSpaceOnUse" style="mask-type: luminance">
+      <g fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="m21 21 7 7" stroke="#fff" stroke-width="5" />
+        <circle cx="13" cy="13" r="10" fill="#fff" stroke="none" />
+        <circle cx="13" cy="13" r="6" fill="#000" stroke="none" />
+        <path d="M10 13a3 3 0 0 1 3-3" fill="none" stroke="#fff" />
+      </g>
+    </mask>
+  </defs>
+  <rect width="32" height="32" fill="#fff" mask="url(#artwork_99)"/>
+</svg>
+<text x="34" y="891" font-size="12">Recherche</text>
+<rect x="264" y="802" width="224" height="100" rx="12" fill="#FFFFFF"/>
+<rect x="380" y="809" width="100" height="63" rx="10" fill="#101010"/>
+<svg x="274" y="821.0" width="38" height="38" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <defs>
+    <mask id="artwork_100" x="0" y="0" width="32" height="32" maskUnits="userSpaceOnUse" style="mask-type: luminance">
+      <g fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="m16 16-9-9m9 9 9-9m-9 9-9 9m9-9 9 9" stroke="#fff" stroke-width="3" />
+        <circle cx="16" cy="16" r="6" fill="#fff" stroke="none" />
+        <circle cx="6" cy="6" r="4" fill="#fff" stroke="none" />
+        <circle cx="26" cy="6" r="4" fill="#fff" stroke="none" />
+        <circle cx="6" cy="26" r="4" fill="#fff" stroke="none" />
+        <circle cx="26" cy="26" r="4" fill="#fff" stroke="none" />
+        <circle cx="16" cy="16" r="2" fill="#000" stroke="none" />
+      </g>
+    </mask>
+  </defs>
+  <rect width="32" height="32" fill="#000" mask="url(#artwork_100)"/>
+</svg>
+<svg x="330" y="828.0" width="24" height="24" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <defs>
+    <mask id="artwork_101" x="0" y="0" width="32" height="32" maskUnits="userSpaceOnUse" style="mask-type: luminance">
+      <g fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="m16 16-9-9m9 9 9-9m-9 9-9 9m9-9 9 9" stroke="#fff" stroke-width="3" />
+        <circle cx="16" cy="16" r="6" fill="#fff" stroke="none" />
+        <circle cx="6" cy="6" r="4" fill="#fff" stroke="none" />
+        <circle cx="26" cy="6" r="4" fill="#fff" stroke="none" />
+        <circle cx="6" cy="26" r="4" fill="#fff" stroke="none" />
+        <circle cx="26" cy="26" r="4" fill="#fff" stroke="none" />
+        <circle cx="16" cy="16" r="2" fill="#000" stroke="none" />
+      </g>
+    </mask>
+  </defs>
+  <rect width="32" height="32" fill="#000" mask="url(#artwork_101)"/>
+</svg>
+<svg x="390" y="821.0" width="38" height="38" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <defs>
+    <mask id="artwork_102" x="0" y="0" width="32" height="32" maskUnits="userSpaceOnUse" style="mask-type: luminance">
+      <g fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="m16 16-9-9m9 9 9-9m-9 9-9 9m9-9 9 9" stroke="#fff" stroke-width="3" />
+        <circle cx="16" cy="16" r="6" fill="#fff" stroke="none" />
+        <circle cx="6" cy="6" r="4" fill="#fff" stroke="none" />
+        <circle cx="26" cy="6" r="4" fill="#fff" stroke="none" />
+        <circle cx="6" cy="26" r="4" fill="#fff" stroke="none" />
+        <circle cx="26" cy="26" r="4" fill="#fff" stroke="none" />
+        <circle cx="16" cy="16" r="2" fill="#000" stroke="none" />
+      </g>
+    </mask>
+  </defs>
+  <rect width="32" height="32" fill="#fff" mask="url(#artwork_102)"/>
+</svg>
+<svg x="442" y="828.0" width="24" height="24" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <defs>
+    <mask id="artwork_103" x="0" y="0" width="32" height="32" maskUnits="userSpaceOnUse" style="mask-type: luminance">
+      <g fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="m16 16-9-9m9 9 9-9m-9 9-9 9m9-9 9 9" stroke="#fff" stroke-width="3" />
+        <circle cx="16" cy="16" r="6" fill="#fff" stroke="none" />
+        <circle cx="6" cy="6" r="4" fill="#fff" stroke="none" />
+        <circle cx="26" cy="6" r="4" fill="#fff" stroke="none" />
+        <circle cx="6" cy="26" r="4" fill="#fff" stroke="none" />
+        <circle cx="26" cy="26" r="4" fill="#fff" stroke="none" />
+        <circle cx="16" cy="16" r="2" fill="#000" stroke="none" />
+      </g>
+    </mask>
+  </defs>
+  <rect width="32" height="32" fill="#fff" mask="url(#artwork_103)"/>
+</svg>
+<text x="274" y="891" font-size="12">Janus</text>
+<rect x="504" y="802" width="224" height="100" rx="12" fill="#FFFFFF"/>
+<rect x="620" y="809" width="100" height="63" rx="10" fill="#101010"/>
+<svg x="514" y="821.0" width="38" height="38" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <defs>
+    <mask id="artwork_104" x="0" y="0" width="32" height="32" maskUnits="userSpaceOnUse" style="mask-type: luminance">
+      <g fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="m6 2 4 3 3-3 3 3 3-3 3 3 4-3v28l-4-3-3 3-3-3-3 3-3-3-4 3Z" fill="#fff" stroke="none" />
+        <path d="M11 10h10M11 15h10M11 20h6" stroke="#000" />
+        <circle cx="25" cy="24" r="5" fill="#fff" stroke="none" />
+      </g>
+    </mask>
+  </defs>
+  <rect width="32" height="32" fill="#000" mask="url(#artwork_104)"/>
+</svg>
+<svg x="570" y="828.0" width="24" height="24" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <defs>
+    <mask id="artwork_105" x="0" y="0" width="32" height="32" maskUnits="userSpaceOnUse" style="mask-type: luminance">
+      <g fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="m6 2 4 3 3-3 3 3 3-3 3 3 4-3v28l-4-3-3 3-3-3-3 3-3-3-4 3Z" fill="#fff" stroke="none" />
+        <path d="M11 10h10M11 15h10M11 20h6" stroke="#000" />
+        <circle cx="25" cy="24" r="5" fill="#fff" stroke="none" />
+      </g>
+    </mask>
+  </defs>
+  <rect width="32" height="32" fill="#000" mask="url(#artwork_105)"/>
+</svg>
+<svg x="630" y="821.0" width="38" height="38" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <defs>
+    <mask id="artwork_106" x="0" y="0" width="32" height="32" maskUnits="userSpaceOnUse" style="mask-type: luminance">
+      <g fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="m6 2 4 3 3-3 3 3 3-3 3 3 4-3v28l-4-3-3 3-3-3-3 3-3-3-4 3Z" fill="#fff" stroke="none" />
+        <path d="M11 10h10M11 15h10M11 20h6" stroke="#000" />
+        <circle cx="25" cy="24" r="5" fill="#fff" stroke="none" />
+      </g>
+    </mask>
+  </defs>
+  <rect width="32" height="32" fill="#fff" mask="url(#artwork_106)"/>
+</svg>
+<svg x="682" y="828.0" width="24" height="24" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <defs>
+    <mask id="artwork_107" x="0" y="0" width="32" height="32" maskUnits="userSpaceOnUse" style="mask-type: luminance">
+      <g fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="m6 2 4 3 3-3 3 3 3-3 3 3 4-3v28l-4-3-3 3-3-3-3 3-3-3-4 3Z" fill="#fff" stroke="none" />
+        <path d="M11 10h10M11 15h10M11 20h6" stroke="#000" />
+        <circle cx="25" cy="24" r="5" fill="#fff" stroke="none" />
+      </g>
+    </mask>
+  </defs>
+  <rect width="32" height="32" fill="#fff" mask="url(#artwork_107)"/>
+</svg>
+<text x="514" y="891" font-size="12">Journaux</text>
+<rect x="744" y="802" width="224" height="100" rx="12" fill="#FFFFFF"/>
+<rect x="860" y="809" width="100" height="63" rx="10" fill="#101010"/>
+<svg x="754" y="821.0" width="38" height="38" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <defs>
+    <mask id="artwork_108" x="0" y="0" width="32" height="32" maskUnits="userSpaceOnUse" style="mask-type: luminance">
+      <g fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="3" y="3" width="20" height="25" rx="4" fill="#fff" stroke="none" />
+        <path d="M8 9h10M8 14h6M8 19h3" stroke="#000" />
+        <circle cx="22" cy="21" r="6" fill="#000" stroke="#fff" />
+        <path d="m26 26 3 3" stroke="#fff" stroke-width="3" />
+      </g>
+    </mask>
+  </defs>
+  <rect width="32" height="32" fill="#000" mask="url(#artwork_108)"/>
+</svg>
+<svg x="810" y="828.0" width="24" height="24" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <defs>
+    <mask id="artwork_109" x="0" y="0" width="32" height="32" maskUnits="userSpaceOnUse" style="mask-type: luminance">
+      <g fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="3" y="3" width="20" height="25" rx="4" fill="#fff" stroke="none" />
+        <path d="M8 9h10M8 14h6M8 19h3" stroke="#000" />
+        <circle cx="22" cy="21" r="6" fill="#000" stroke="#fff" />
+        <path d="m26 26 3 3" stroke="#fff" stroke-width="3" />
+      </g>
+    </mask>
+  </defs>
+  <rect width="32" height="32" fill="#000" mask="url(#artwork_109)"/>
+</svg>
+<svg x="870" y="821.0" width="38" height="38" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <defs>
+    <mask id="artwork_110" x="0" y="0" width="32" height="32" maskUnits="userSpaceOnUse" style="mask-type: luminance">
+      <g fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="3" y="3" width="20" height="25" rx="4" fill="#fff" stroke="none" />
+        <path d="M8 9h10M8 14h6M8 19h3" stroke="#000" />
+        <circle cx="22" cy="21" r="6" fill="#000" stroke="#fff" />
+        <path d="m26 26 3 3" stroke="#fff" stroke-width="3" />
+      </g>
+    </mask>
+  </defs>
+  <rect width="32" height="32" fill="#fff" mask="url(#artwork_110)"/>
+</svg>
+<svg x="922" y="828.0" width="24" height="24" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <defs>
+    <mask id="artwork_111" x="0" y="0" width="32" height="32" maskUnits="userSpaceOnUse" style="mask-type: luminance">
+      <g fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="3" y="3" width="20" height="25" rx="4" fill="#fff" stroke="none" />
+        <path d="M8 9h10M8 14h6M8 19h3" stroke="#000" />
+        <circle cx="22" cy="21" r="6" fill="#000" stroke="#fff" />
+        <path d="m26 26 3 3" stroke="#fff" stroke-width="3" />
+      </g>
+    </mask>
+  </defs>
+  <rect width="32" height="32" fill="#fff" mask="url(#artwork_111)"/>
+</svg>
+<text x="754" y="891" font-size="12">Analyse des tâches</text>
+<rect x="24" y="914" width="224" height="100" rx="12" fill="#FFFFFF"/>
+<rect x="140" y="921" width="100" height="63" rx="10" fill="#101010"/>
+<svg x="34" y="933.0" width="38" height="38" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <defs>
+    <mask id="artwork_112" x="0" y="0" width="32" height="32" maskUnits="userSpaceOnUse" style="mask-type: luminance">
+      <g fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M15 28V16c0-5-5-5-8-10m8 13c0-6 10-6 10-13" fill="none" stroke="#fff" stroke-width="4" />
+        <path d="m3 9 4-5 5 3m8-1 5-3 4 5" fill="none" stroke="#fff" stroke-width="3" />
+        <circle cx="15" cy="27" r="4" fill="#fff" stroke="none" />
+      </g>
+    </mask>
+  </defs>
+  <rect width="32" height="32" fill="#000" mask="url(#artwork_112)"/>
+</svg>
+<svg x="90" y="940.0" width="24" height="24" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <defs>
+    <mask id="artwork_113" x="0" y="0" width="32" height="32" maskUnits="userSpaceOnUse" style="mask-type: luminance">
+      <g fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M15 28V16c0-5-5-5-8-10m8 13c0-6 10-6 10-13" fill="none" stroke="#fff" stroke-width="4" />
+        <path d="m3 9 4-5 5 3m8-1 5-3 4 5" fill="none" stroke="#fff" stroke-width="3" />
+        <circle cx="15" cy="27" r="4" fill="#fff" stroke="none" />
+      </g>
+    </mask>
+  </defs>
+  <rect width="32" height="32" fill="#000" mask="url(#artwork_113)"/>
+</svg>
+<svg x="150" y="933.0" width="38" height="38" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <defs>
+    <mask id="artwork_114" x="0" y="0" width="32" height="32" maskUnits="userSpaceOnUse" style="mask-type: luminance">
+      <g fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M15 28V16c0-5-5-5-8-10m8 13c0-6 10-6 10-13" fill="none" stroke="#fff" stroke-width="4" />
+        <path d="m3 9 4-5 5 3m8-1 5-3 4 5" fill="none" stroke="#fff" stroke-width="3" />
+        <circle cx="15" cy="27" r="4" fill="#fff" stroke="none" />
+      </g>
+    </mask>
+  </defs>
+  <rect width="32" height="32" fill="#fff" mask="url(#artwork_114)"/>
+</svg>
+<svg x="202" y="940.0" width="24" height="24" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <defs>
+    <mask id="artwork_115" x="0" y="0" width="32" height="32" maskUnits="userSpaceOnUse" style="mask-type: luminance">
+      <g fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M15 28V16c0-5-5-5-8-10m8 13c0-6 10-6 10-13" fill="none" stroke="#fff" stroke-width="4" />
+        <path d="m3 9 4-5 5 3m8-1 5-3 4 5" fill="none" stroke="#fff" stroke-width="3" />
+        <circle cx="15" cy="27" r="4" fill="#fff" stroke="none" />
+      </g>
+    </mask>
+  </defs>
+  <rect width="32" height="32" fill="#fff" mask="url(#artwork_115)"/>
+</svg>
+<text x="34" y="1003" font-size="12">Répartition</text>
+<rect x="264" y="914" width="224" height="100" rx="12" fill="#FFFFFF"/>
+<rect x="380" y="921" width="100" height="63" rx="10" fill="#101010"/>
+<svg x="274" y="933.0" width="38" height="38" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <defs>
+    <mask id="artwork_116" x="0" y="0" width="32" height="32" maskUnits="userSpaceOnUse" style="mask-type: luminance">
+      <g fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="5" y="5" width="22" height="25" rx="4" fill="#fff" stroke="none" />
+        <rect x="10" y="2" width="12" height="7" rx="3" fill="#fff" stroke="#000" stroke-width="1" />
+        <path d="M11 15h10M11 20h10M11 25h6" stroke="#000" />
+      </g>
+    </mask>
+  </defs>
+  <rect width="32" height="32" fill="#000" mask="url(#artwork_116)"/>
+</svg>
+<svg x="330" y="940.0" width="24" height="24" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <defs>
+    <mask id="artwork_117" x="0" y="0" width="32" height="32" maskUnits="userSpaceOnUse" style="mask-type: luminance">
+      <g fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="5" y="5" width="22" height="25" rx="4" fill="#fff" stroke="none" />
+        <rect x="10" y="2" width="12" height="7" rx="3" fill="#fff" stroke="#000" stroke-width="1" />
+        <path d="M11 15h10M11 20h10M11 25h6" stroke="#000" />
+      </g>
+    </mask>
+  </defs>
+  <rect width="32" height="32" fill="#000" mask="url(#artwork_117)"/>
+</svg>
+<svg x="390" y="933.0" width="38" height="38" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <defs>
+    <mask id="artwork_118" x="0" y="0" width="32" height="32" maskUnits="userSpaceOnUse" style="mask-type: luminance">
+      <g fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="5" y="5" width="22" height="25" rx="4" fill="#fff" stroke="none" />
+        <rect x="10" y="2" width="12" height="7" rx="3" fill="#fff" stroke="#000" stroke-width="1" />
+        <path d="M11 15h10M11 20h10M11 25h6" stroke="#000" />
+      </g>
+    </mask>
+  </defs>
+  <rect width="32" height="32" fill="#fff" mask="url(#artwork_118)"/>
+</svg>
+<svg x="442" y="940.0" width="24" height="24" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <defs>
+    <mask id="artwork_119" x="0" y="0" width="32" height="32" maskUnits="userSpaceOnUse" style="mask-type: luminance">
+      <g fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="5" y="5" width="22" height="25" rx="4" fill="#fff" stroke="none" />
+        <rect x="10" y="2" width="12" height="7" rx="3" fill="#fff" stroke="#000" stroke-width="1" />
+        <path d="M11 15h10M11 20h10M11 25h6" stroke="#000" />
+      </g>
+    </mask>
+  </defs>
+  <rect width="32" height="32" fill="#fff" mask="url(#artwork_119)"/>
+</svg>
+<text x="274" y="1003" font-size="12">Briefing</text>
+<rect x="504" y="914" width="224" height="100" rx="12" fill="#FFFFFF"/>
+<rect x="620" y="921" width="100" height="63" rx="10" fill="#101010"/>
+<svg x="514" y="933.0" width="38" height="38" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <defs>
+    <mask id="artwork_120" x="0" y="0" width="32" height="32" maskUnits="userSpaceOnUse" style="mask-type: luminance">
+      <g fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M3 5h10l3 4h10a3 3 0 0 1 3 3v14a3 3 0 0 1-3 3H6a3 3 0 0 1-3-3Z" fill="#fff" stroke="none" />
+        <path d="m10 15 8 0 6 6-6 6-8-8Z" fill="#000" stroke="none" />
+        <circle cx="14" cy="18" r="1.5" fill="#fff" stroke="none" />
+      </g>
+    </mask>
+  </defs>
+  <rect width="32" height="32" fill="#000" mask="url(#artwork_120)"/>
+</svg>
+<svg x="570" y="940.0" width="24" height="24" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <defs>
+    <mask id="artwork_121" x="0" y="0" width="32" height="32" maskUnits="userSpaceOnUse" style="mask-type: luminance">
+      <g fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M3 5h10l3 4h10a3 3 0 0 1 3 3v14a3 3 0 0 1-3 3H6a3 3 0 0 1-3-3Z" fill="#fff" stroke="none" />
+        <path d="m10 15 8 0 6 6-6 6-8-8Z" fill="#000" stroke="none" />
+        <circle cx="14" cy="18" r="1.5" fill="#fff" stroke="none" />
+      </g>
+    </mask>
+  </defs>
+  <rect width="32" height="32" fill="#000" mask="url(#artwork_121)"/>
+</svg>
+<svg x="630" y="933.0" width="38" height="38" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <defs>
+    <mask id="artwork_122" x="0" y="0" width="32" height="32" maskUnits="userSpaceOnUse" style="mask-type: luminance">
+      <g fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M3 5h10l3 4h10a3 3 0 0 1 3 3v14a3 3 0 0 1-3 3H6a3 3 0 0 1-3-3Z" fill="#fff" stroke="none" />
+        <path d="m10 15 8 0 6 6-6 6-8-8Z" fill="#000" stroke="none" />
+        <circle cx="14" cy="18" r="1.5" fill="#fff" stroke="none" />
+      </g>
+    </mask>
+  </defs>
+  <rect width="32" height="32" fill="#fff" mask="url(#artwork_122)"/>
+</svg>
+<svg x="682" y="940.0" width="24" height="24" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <defs>
+    <mask id="artwork_123" x="0" y="0" width="32" height="32" maskUnits="userSpaceOnUse" style="mask-type: luminance">
+      <g fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M3 5h10l3 4h10a3 3 0 0 1 3 3v14a3 3 0 0 1-3 3H6a3 3 0 0 1-3-3Z" fill="#fff" stroke="none" />
+        <path d="m10 15 8 0 6 6-6 6-8-8Z" fill="#000" stroke="none" />
+        <circle cx="14" cy="18" r="1.5" fill="#fff" stroke="none" />
+      </g>
+    </mask>
+  </defs>
+  <rect width="32" height="32" fill="#fff" mask="url(#artwork_123)"/>
+</svg>
+<text x="514" y="1003" font-size="12">Classification des sujets</text>
+<rect x="744" y="914" width="224" height="100" rx="12" fill="#FFFFFF"/>
+<rect x="860" y="921" width="100" height="63" rx="10" fill="#101010"/>
+<svg x="754" y="933.0" width="38" height="38" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <defs>
+    <mask id="artwork_124" x="0" y="0" width="32" height="32" maskUnits="userSpaceOnUse" style="mask-type: luminance">
+      <g fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M11 28v-6c-4-2-6-5-6-9a10 10 0 0 1 20 0l3 5h-4v5h-6v5" fill="#fff" stroke="none" />
+        <circle cx="14" cy="12" r="4" fill="#000" stroke="none" />
+        <path d="M14 9v6m-3-3h6" stroke="#fff" />
+        <path d="M24 3v7m-3-3 3 3 3-3" fill="none" stroke="#fff" />
+      </g>
+    </mask>
+  </defs>
+  <rect width="32" height="32" fill="#000" mask="url(#artwork_124)"/>
+</svg>
+<svg x="810" y="940.0" width="24" height="24" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <defs>
+    <mask id="artwork_125" x="0" y="0" width="32" height="32" maskUnits="userSpaceOnUse" style="mask-type: luminance">
+      <g fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M11 28v-6c-4-2-6-5-6-9a10 10 0 0 1 20 0l3 5h-4v5h-6v5" fill="#fff" stroke="none" />
+        <circle cx="14" cy="12" r="4" fill="#000" stroke="none" />
+        <path d="M14 9v6m-3-3h6" stroke="#fff" />
+        <path d="M24 3v7m-3-3 3 3 3-3" fill="none" stroke="#fff" />
+      </g>
+    </mask>
+  </defs>
+  <rect width="32" height="32" fill="#000" mask="url(#artwork_125)"/>
+</svg>
+<svg x="870" y="933.0" width="38" height="38" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <defs>
+    <mask id="artwork_126" x="0" y="0" width="32" height="32" maskUnits="userSpaceOnUse" style="mask-type: luminance">
+      <g fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M11 28v-6c-4-2-6-5-6-9a10 10 0 0 1 20 0l3 5h-4v5h-6v5" fill="#fff" stroke="none" />
+        <circle cx="14" cy="12" r="4" fill="#000" stroke="none" />
+        <path d="M14 9v6m-3-3h6" stroke="#fff" />
+        <path d="M24 3v7m-3-3 3 3 3-3" fill="none" stroke="#fff" />
+      </g>
+    </mask>
+  </defs>
+  <rect width="32" height="32" fill="#fff" mask="url(#artwork_126)"/>
+</svg>
+<svg x="922" y="940.0" width="24" height="24" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <defs>
+    <mask id="artwork_127" x="0" y="0" width="32" height="32" maskUnits="userSpaceOnUse" style="mask-type: luminance">
+      <g fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M11 28v-6c-4-2-6-5-6-9a10 10 0 0 1 20 0l3 5h-4v5h-6v5" fill="#fff" stroke="none" />
+        <circle cx="14" cy="12" r="4" fill="#000" stroke="none" />
+        <path d="M14 9v6m-3-3h6" stroke="#fff" />
+        <path d="M24 3v7m-3-3 3 3 3-3" fill="none" stroke="#fff" />
+      </g>
+    </mask>
+  </defs>
+  <rect width="32" height="32" fill="#fff" mask="url(#artwork_127)"/>
+</svg>
+<text x="754" y="1003" font-size="12">Extraction de mémoire</text>
+<rect x="24" y="1026" width="224" height="100" rx="12" fill="#FFFFFF"/>
+<rect x="140" y="1033" width="100" height="63" rx="10" fill="#101010"/>
+<svg x="34" y="1045.0" width="38" height="38" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <defs>
+    <mask id="artwork_128" x="0" y="0" width="32" height="32" maskUnits="userSpaceOnUse" style="mask-type: luminance">
+      <g fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M27 13A12 12 0 0 0 6 7L3 11m0-7v7h7M5 19a12 12 0 0 0 21 6l3-4m0 7v-7h-7" fill="none" stroke="#fff" stroke-width="3" />
+        <path d="m16 8 2.5 5.5L24 16l-5.5 2.5L16 24l-2.5-5.5L8 16l5.5-2.5Z" fill="#fff" stroke="none" />
+      </g>
+    </mask>
+  </defs>
+  <rect width="32" height="32" fill="#000" mask="url(#artwork_128)"/>
+</svg>
+<svg x="90" y="1052.0" width="24" height="24" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <defs>
+    <mask id="artwork_129" x="0" y="0" width="32" height="32" maskUnits="userSpaceOnUse" style="mask-type: luminance">
+      <g fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M27 13A12 12 0 0 0 6 7L3 11m0-7v7h7M5 19a12 12 0 0 0 21 6l3-4m0 7v-7h-7" fill="none" stroke="#fff" stroke-width="3" />
+        <path d="m16 8 2.5 5.5L24 16l-5.5 2.5L16 24l-2.5-5.5L8 16l5.5-2.5Z" fill="#fff" stroke="none" />
+      </g>
+    </mask>
+  </defs>
+  <rect width="32" height="32" fill="#000" mask="url(#artwork_129)"/>
+</svg>
+<svg x="150" y="1045.0" width="38" height="38" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <defs>
+    <mask id="artwork_130" x="0" y="0" width="32" height="32" maskUnits="userSpaceOnUse" style="mask-type: luminance">
+      <g fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M27 13A12 12 0 0 0 6 7L3 11m0-7v7h7M5 19a12 12 0 0 0 21 6l3-4m0 7v-7h-7" fill="none" stroke="#fff" stroke-width="3" />
+        <path d="m16 8 2.5 5.5L24 16l-5.5 2.5L16 24l-2.5-5.5L8 16l5.5-2.5Z" fill="#fff" stroke="none" />
+      </g>
+    </mask>
+  </defs>
+  <rect width="32" height="32" fill="#fff" mask="url(#artwork_130)"/>
+</svg>
+<svg x="202" y="1052.0" width="24" height="24" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <defs>
+    <mask id="artwork_131" x="0" y="0" width="32" height="32" maskUnits="userSpaceOnUse" style="mask-type: luminance">
+      <g fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M27 13A12 12 0 0 0 6 7L3 11m0-7v7h7M5 19a12 12 0 0 0 21 6l3-4m0 7v-7h-7" fill="none" stroke="#fff" stroke-width="3" />
+        <path d="m16 8 2.5 5.5L24 16l-5.5 2.5L16 24l-2.5-5.5L8 16l5.5-2.5Z" fill="#fff" stroke="none" />
+      </g>
+    </mask>
+  </defs>
+  <rect width="32" height="32" fill="#fff" mask="url(#artwork_131)"/>
+</svg>
+<text x="34" y="1115" font-size="12">Apprentissage</text>
+<rect x="264" y="1026" width="224" height="100" rx="12" fill="#FFFFFF"/>
+<rect x="380" y="1033" width="100" height="63" rx="10" fill="#101010"/>
+<svg x="274" y="1045.0" width="38" height="38" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <defs>
+    <mask id="artwork_132" x="0" y="0" width="32" height="32" maskUnits="userSpaceOnUse" style="mask-type: luminance">
+      <g fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="15" cy="17" r="12" fill="#fff" stroke="none" />
+        <circle cx="15" cy="17" r="7" fill="none" stroke="#000" />
+        <circle cx="15" cy="17" r="2" fill="#000" stroke="none" />
+        <path d="m16 16 11-11m-5 0h5v5" fill="none" stroke="#fff" stroke-width="3" />
+      </g>
+    </mask>
+  </defs>
+  <rect width="32" height="32" fill="#000" mask="url(#artwork_132)"/>
+</svg>
+<svg x="330" y="1052.0" width="24" height="24" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <defs>
+    <mask id="artwork_133" x="0" y="0" width="32" height="32" maskUnits="userSpaceOnUse" style="mask-type: luminance">
+      <g fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="15" cy="17" r="12" fill="#fff" stroke="none" />
+        <circle cx="15" cy="17" r="7" fill="none" stroke="#000" />
+        <circle cx="15" cy="17" r="2" fill="#000" stroke="none" />
+        <path d="m16 16 11-11m-5 0h5v5" fill="none" stroke="#fff" stroke-width="3" />
+      </g>
+    </mask>
+  </defs>
+  <rect width="32" height="32" fill="#000" mask="url(#artwork_133)"/>
+</svg>
+<svg x="390" y="1045.0" width="38" height="38" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <defs>
+    <mask id="artwork_134" x="0" y="0" width="32" height="32" maskUnits="userSpaceOnUse" style="mask-type: luminance">
+      <g fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="15" cy="17" r="12" fill="#fff" stroke="none" />
+        <circle cx="15" cy="17" r="7" fill="none" stroke="#000" />
+        <circle cx="15" cy="17" r="2" fill="#000" stroke="none" />
+        <path d="m16 16 11-11m-5 0h5v5" fill="none" stroke="#fff" stroke-width="3" />
+      </g>
+    </mask>
+  </defs>
+  <rect width="32" height="32" fill="#fff" mask="url(#artwork_134)"/>
+</svg>
+<svg x="442" y="1052.0" width="24" height="24" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <defs>
+    <mask id="artwork_135" x="0" y="0" width="32" height="32" maskUnits="userSpaceOnUse" style="mask-type: luminance">
+      <g fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="15" cy="17" r="12" fill="#fff" stroke="none" />
+        <circle cx="15" cy="17" r="7" fill="none" stroke="#000" />
+        <circle cx="15" cy="17" r="2" fill="#000" stroke="none" />
+        <path d="m16 16 11-11m-5 0h5v5" fill="none" stroke="#fff" stroke-width="3" />
+      </g>
+    </mask>
+  </defs>
+  <rect width="32" height="32" fill="#fff" mask="url(#artwork_135)"/>
+</svg>
+<text x="274" y="1115" font-size="12">Suivi des objectifs</text>
+<rect x="504" y="1026" width="224" height="100" rx="12" fill="#FFFFFF"/>
+<rect x="620" y="1033" width="100" height="63" rx="10" fill="#101010"/>
+<svg x="514" y="1045.0" width="38" height="38" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <defs>
+    <mask id="artwork_136" x="0" y="0" width="32" height="32" maskUnits="userSpaceOnUse" style="mask-type: luminance">
+      <g fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="10" cy="10" r="5" fill="#fff" stroke="none" />
+        <path d="M2 28v-5a8 8 0 0 1 16 0v5Z" fill="#fff" stroke="none" />
+        <path d="M21 7a8 8 0 0 1 0 12m4-16a13 13 0 0 1 0 20" fill="none" stroke="#fff" />
+      </g>
+    </mask>
+  </defs>
+  <rect width="32" height="32" fill="#000" mask="url(#artwork_136)"/>
+</svg>
+<svg x="570" y="1052.0" width="24" height="24" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <defs>
+    <mask id="artwork_137" x="0" y="0" width="32" height="32" maskUnits="userSpaceOnUse" style="mask-type: luminance">
+      <g fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="10" cy="10" r="5" fill="#fff" stroke="none" />
+        <path d="M2 28v-5a8 8 0 0 1 16 0v5Z" fill="#fff" stroke="none" />
+        <path d="M21 7a8 8 0 0 1 0 12m4-16a13 13 0 0 1 0 20" fill="none" stroke="#fff" />
+      </g>
+    </mask>
+  </defs>
+  <rect width="32" height="32" fill="#000" mask="url(#artwork_137)"/>
+</svg>
+<svg x="630" y="1045.0" width="38" height="38" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <defs>
+    <mask id="artwork_138" x="0" y="0" width="32" height="32" maskUnits="userSpaceOnUse" style="mask-type: luminance">
+      <g fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="10" cy="10" r="5" fill="#fff" stroke="none" />
+        <path d="M2 28v-5a8 8 0 0 1 16 0v5Z" fill="#fff" stroke="none" />
+        <path d="M21 7a8 8 0 0 1 0 12m4-16a13 13 0 0 1 0 20" fill="none" stroke="#fff" />
+      </g>
+    </mask>
+  </defs>
+  <rect width="32" height="32" fill="#fff" mask="url(#artwork_138)"/>
+</svg>
+<svg x="682" y="1052.0" width="24" height="24" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <defs>
+    <mask id="artwork_139" x="0" y="0" width="32" height="32" maskUnits="userSpaceOnUse" style="mask-type: luminance">
+      <g fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="10" cy="10" r="5" fill="#fff" stroke="none" />
+        <path d="M2 28v-5a8 8 0 0 1 16 0v5Z" fill="#fff" stroke="none" />
+        <path d="M21 7a8 8 0 0 1 0 12m4-16a13 13 0 0 1 0 20" fill="none" stroke="#fff" />
+      </g>
+    </mask>
+  </defs>
+  <rect width="32" height="32" fill="#fff" mask="url(#artwork_139)"/>
+</svg>
+<text x="514" y="1115" font-size="12">Exécution vocale</text>
+<rect x="744" y="1026" width="224" height="100" rx="12" fill="#FFFFFF"/>
+<rect x="860" y="1033" width="100" height="63" rx="10" fill="#101010"/>
+<svg x="754" y="1045.0" width="38" height="38" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <defs>
+    <mask id="artwork_140" x="0" y="0" width="32" height="32" maskUnits="userSpaceOnUse" style="mask-type: luminance">
+      <g fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="m9 11-4-4m18 4 4-4M7 17H3m22 0h4M8 24l-4 3m20-3 4 3" stroke="#fff" />
+        <rect x="8" y="9" width="16" height="20" rx="8" fill="#fff" stroke="none" />
+        <path d="M12 9V7a4 4 0 0 1 8 0v2" fill="none" stroke="#fff" />
+        <path d="M16 15v6" stroke="#000" />
+        <circle cx="16" cy="25" r="1" fill="#000" stroke="none" />
+      </g>
+    </mask>
+  </defs>
+  <rect width="32" height="32" fill="#000" mask="url(#artwork_140)"/>
+</svg>
+<svg x="810" y="1052.0" width="24" height="24" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <defs>
+    <mask id="artwork_141" x="0" y="0" width="32" height="32" maskUnits="userSpaceOnUse" style="mask-type: luminance">
+      <g fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="m9 11-4-4m18 4 4-4M7 17H3m22 0h4M8 24l-4 3m20-3 4 3" stroke="#fff" />
+        <rect x="8" y="9" width="16" height="20" rx="8" fill="#fff" stroke="none" />
+        <path d="M12 9V7a4 4 0 0 1 8 0v2" fill="none" stroke="#fff" />
+        <path d="M16 15v6" stroke="#000" />
+        <circle cx="16" cy="25" r="1" fill="#000" stroke="none" />
+      </g>
+    </mask>
+  </defs>
+  <rect width="32" height="32" fill="#000" mask="url(#artwork_141)"/>
+</svg>
+<svg x="870" y="1045.0" width="38" height="38" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <defs>
+    <mask id="artwork_142" x="0" y="0" width="32" height="32" maskUnits="userSpaceOnUse" style="mask-type: luminance">
+      <g fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="m9 11-4-4m18 4 4-4M7 17H3m22 0h4M8 24l-4 3m20-3 4 3" stroke="#fff" />
+        <rect x="8" y="9" width="16" height="20" rx="8" fill="#fff" stroke="none" />
+        <path d="M12 9V7a4 4 0 0 1 8 0v2" fill="none" stroke="#fff" />
+        <path d="M16 15v6" stroke="#000" />
+        <circle cx="16" cy="25" r="1" fill="#000" stroke="none" />
+      </g>
+    </mask>
+  </defs>
+  <rect width="32" height="32" fill="#fff" mask="url(#artwork_142)"/>
+</svg>
+<svg x="922" y="1052.0" width="24" height="24" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <defs>
+    <mask id="artwork_143" x="0" y="0" width="32" height="32" maskUnits="userSpaceOnUse" style="mask-type: luminance">
+      <g fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="m9 11-4-4m18 4 4-4M7 17H3m22 0h4M8 24l-4 3m20-3 4 3" stroke="#fff" />
+        <rect x="8" y="9" width="16" height="20" rx="8" fill="#fff" stroke="none" />
+        <path d="M12 9V7a4 4 0 0 1 8 0v2" fill="none" stroke="#fff" />
+        <path d="M16 15v6" stroke="#000" />
+        <circle cx="16" cy="25" r="1" fill="#000" stroke="none" />
+      </g>
+    </mask>
+  </defs>
+  <rect width="32" height="32" fill="#fff" mask="url(#artwork_143)"/>
+</svg>
+<text x="754" y="1115" font-size="12">Incidents</text>
+<rect x="24" y="1138" width="224" height="100" rx="12" fill="#FFFFFF"/>
+<rect x="140" y="1145" width="100" height="63" rx="10" fill="#101010"/>
+<svg x="34" y="1157.0" width="38" height="38" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <defs>
+    <mask id="artwork_144" x="0" y="0" width="32" height="32" maskUnits="userSpaceOnUse" style="mask-type: luminance">
+      <g fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="16" cy="16" r="13" fill="#fff" stroke="none" />
+        <path d="M16 10v12M10 16h12" stroke="#000" stroke-width="3" />
+        <circle cx="26" cy="6" r="4" fill="#000" stroke="none" />
+      </g>
+    </mask>
+  </defs>
+  <rect width="32" height="32" fill="#000" mask="url(#artwork_144)"/>
+</svg>
+<svg x="90" y="1164.0" width="24" height="24" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <defs>
+    <mask id="artwork_145" x="0" y="0" width="32" height="32" maskUnits="userSpaceOnUse" style="mask-type: luminance">
+      <g fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="16" cy="16" r="13" fill="#fff" stroke="none" />
+        <path d="M16 10v12M10 16h12" stroke="#000" stroke-width="3" />
+        <circle cx="26" cy="6" r="4" fill="#000" stroke="none" />
+      </g>
+    </mask>
+  </defs>
+  <rect width="32" height="32" fill="#000" mask="url(#artwork_145)"/>
+</svg>
+<svg x="150" y="1157.0" width="38" height="38" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <defs>
+    <mask id="artwork_146" x="0" y="0" width="32" height="32" maskUnits="userSpaceOnUse" style="mask-type: luminance">
+      <g fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="16" cy="16" r="13" fill="#fff" stroke="none" />
+        <path d="M16 10v12M10 16h12" stroke="#000" stroke-width="3" />
+        <circle cx="26" cy="6" r="4" fill="#000" stroke="none" />
+      </g>
+    </mask>
+  </defs>
+  <rect width="32" height="32" fill="#fff" mask="url(#artwork_146)"/>
+</svg>
+<svg x="202" y="1164.0" width="24" height="24" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <defs>
+    <mask id="artwork_147" x="0" y="0" width="32" height="32" maskUnits="userSpaceOnUse" style="mask-type: luminance">
+      <g fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="16" cy="16" r="13" fill="#fff" stroke="none" />
+        <path d="M16 10v12M10 16h12" stroke="#000" stroke-width="3" />
+        <circle cx="26" cy="6" r="4" fill="#000" stroke="none" />
+      </g>
+    </mask>
+  </defs>
+  <rect width="32" height="32" fill="#fff" mask="url(#artwork_147)"/>
+</svg>
+<text x="34" y="1227" font-size="12">Ajouter un harnais</text>
+</g></svg>

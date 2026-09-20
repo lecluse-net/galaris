@@ -1,0 +1,33 @@
+# Component tests execute actual Vue/Quasar modules in Chromium, with explicit HTTP fixtures.
+services:
+  frontend:
+    build:
+      context: ${GALARIS_FRONT_TEST_SOURCE_DIR:-./front}
+      target: dev-stage
+    environment:
+      TZ: ${TZ:-UTC}
+    command: [npm, run, dev, --, --config, test-support/browser/vite.config.mjs]
+    volumes:
+      - ${GALARIS_FRONT_TEST_SOURCE_DIR:-./front}:/app:ro
+      - dependencies:/app/node_modules
+    tmpfs: [/tmp]
+    healthcheck:
+      test: [CMD, wget, -q, --spider, http://127.0.0.1:8000/test-support/browser/index.html]
+      interval: 2s
+      timeout: 3s
+      retries: 45
+  runner:
+    build: ./e2e
+    init: true
+    environment:
+      TZ: ${TZ:-UTC}
+    network_mode: service:frontend
+    volumes:
+      - ${GALARIS_FRONT_TEST_SOURCE_DIR:-./front}/browser-tests:/tests/components:ro
+      - ${GALARIS_FRONT_TEST_ARTIFACT_DIR:-./artifacts/front-components}:/artifacts
+    command: [npx, playwright, test, --config, components/playwright.config.mjs]
+networks:
+  default:
+    internal: true
+volumes:
+  dependencies:

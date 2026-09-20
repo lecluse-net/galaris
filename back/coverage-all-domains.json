@@ -1,0 +1,625 @@
+{
+  "app/agent/": {
+    "prefixes": [
+      "app/agent/"
+    ],
+    "line_min": 79,
+    "branch_min": 64
+  },
+  "app/audio/": {
+    "prefixes": [
+      "app/audio/"
+    ],
+    "line_min": 84,
+    "branch_min": 71
+  },
+  "app/browser/": {
+    "prefixes": [
+      "app/browser/"
+    ],
+    "line_min": 75,
+    "branch_min": 69
+  },
+  "app/chat/": {
+    "prefixes": [
+      "app/chat/"
+    ],
+    "line_min": 73,
+    "branch_min": 49
+  },
+  "app/connection/": {
+    "prefixes": [
+      "app/connection/"
+    ],
+    "line_min": 66,
+    "branch_min": 37
+  },
+  "app/console/": {
+    "prefixes": [
+      "app/console/"
+    ],
+    "line_min": 42,
+    "branch_min": 12
+  },
+  "app/contact/": {
+    "prefixes": [
+      "app/contact/"
+    ],
+    "line_min": 81,
+    "branch_min": 50
+  },
+  "app/conversation/": {
+    "prefixes": [
+      "app/conversation/"
+    ],
+    "line_min": 79,
+    "branch_min": 62
+  },
+  "app/dashboard/": {
+    "prefixes": [
+      "app/dashboard/"
+    ],
+    "line_min": 92,
+    "branch_min": 61
+  },
+  "app/dream/": {
+    "prefixes": [
+      "app/dream/"
+    ],
+    "line_min": 73,
+    "branch_min": 47
+  },
+  "app/file_share/": {
+    "prefixes": [
+      "app/file_share/"
+    ],
+    "line_min": 71,
+    "branch_min": 54
+  },
+  "app/goal/": {
+    "prefixes": [
+      "app/goal/"
+    ],
+    "line_min": 78,
+    "branch_min": 58
+  },
+  "app/harness/": {
+    "prefixes": [
+      "app/harness/"
+    ],
+    "line_min": 79,
+    "branch_min": 68
+  },
+  "app/harnesses/": {
+    "prefixes": [
+      "app/harnesses/"
+    ],
+    "line_min": 69,
+    "branch_min": 47
+  },
+  "app/image/": {
+    "prefixes": [
+      "app/image/"
+    ],
+    "line_min": 74,
+    "branch_min": 45
+  },
+  "app/incident/": {
+    "prefixes": [
+      "app/incident/"
+    ],
+    "line_min": 87,
+    "branch_min": 63
+  },
+  "app/lab/": {
+    "prefixes": [
+      "app/lab/"
+    ],
+    "line_min": 74,
+    "branch_min": 52
+  },
+  "app/llm/": {
+    "prefixes": [
+      "app/llm/"
+    ],
+    "line_min": 78,
+    "branch_min": 62
+  },
+  "app/mcp/": {
+    "prefixes": [
+      "app/mcp/"
+    ],
+    "line_min": 45,
+    "branch_min": 0
+  },
+  "app/memory/": {
+    "prefixes": [
+      "app/memory/"
+    ],
+    "line_min": 80,
+    "branch_min": 65
+  },
+  "app/messenger/": {
+    "prefixes": [
+      "app/messenger/"
+    ],
+    "line_min": 72,
+    "branch_min": 53
+  },
+  "app/multimedia/": {
+    "prefixes": [
+      "app/multimedia/"
+    ],
+    "line_min": 82,
+    "branch_min": 59
+  },
+  "app/onboarding/": {
+    "prefixes": [
+      "app/onboarding/"
+    ],
+    "line_min": 83,
+    "branch_min": 33
+  },
+  "app/process/": {
+    "prefixes": [
+      "app/process/"
+    ],
+    "line_min": 69,
+    "branch_min": 48
+  },
+  "app/skill/": {
+    "prefixes": [
+      "app/skill/"
+    ],
+    "line_min": 73,
+    "branch_min": 51
+  },
+  "app/task/": {
+    "prefixes": [
+      "app/task/"
+    ],
+    "line_min": 77,
+    "branch_min": 62
+  },
+  "app/tools/": {
+    "prefixes": [
+      "app/tools/"
+    ],
+    "line_min": 75,
+    "branch_min": 58
+  },
+  "app/topic/": {
+    "prefixes": [
+      "app/topic/"
+    ],
+    "line_min": 83,
+    "branch_min": 60
+  },
+  "app/util/": {
+    "prefixes": [
+      "app/util/"
+    ],
+    "line_min": 0,
+    "branch_min": 100
+  },
+  "app/voice/": {
+    "prefixes": [
+      "app/voice/"
+    ],
+    "line_min": 68,
+    "branch_min": 44
+  },
+  "app/webhook/": {
+    "prefixes": [
+      "app/webhook/"
+    ],
+    "line_min": 70,
+    "branch_min": 50
+  },
+  "bridge/affine/": {
+    "prefixes": [
+      "bridge/affine/"
+    ],
+    "line_min": 29,
+    "branch_min": 0
+  },
+  "bridge/anthropic/": {
+    "prefixes": [
+      "bridge/anthropic/"
+    ],
+    "line_min": 84,
+    "branch_min": 0
+  },
+  "bridge/azure_speech/": {
+    "prefixes": [
+      "bridge/azure_speech/"
+    ],
+    "line_min": 71,
+    "branch_min": 40
+  },
+  "bridge/byteplus/": {
+    "prefixes": [
+      "bridge/byteplus/"
+    ],
+    "line_min": 84,
+    "branch_min": 61
+  },
+  "bridge/calendar/": {
+    "prefixes": [
+      "bridge/calendar/"
+    ],
+    "line_min": 67,
+    "branch_min": 43
+  },
+  "bridge/cerebras/": {
+    "prefixes": [
+      "bridge/cerebras/"
+    ],
+    "line_min": 100,
+    "branch_min": 100
+  },
+  "bridge/claude_agent/": {
+    "prefixes": [
+      "bridge/claude_agent/"
+    ],
+    "line_min": 63,
+    "branch_min": 36
+  },
+  "bridge/codex/": {
+    "prefixes": [
+      "bridge/codex/"
+    ],
+    "line_min": 82,
+    "branch_min": 70
+  },
+  "bridge/cohere/": {
+    "prefixes": [
+      "bridge/cohere/"
+    ],
+    "line_min": 100,
+    "branch_min": 100
+  },
+  "bridge/deepseek/": {
+    "prefixes": [
+      "bridge/deepseek/"
+    ],
+    "line_min": 100,
+    "branch_min": 100
+  },
+  "bridge/deepseek_harness/": {
+    "prefixes": [
+      "bridge/deepseek_harness/"
+    ],
+    "line_min": 58,
+    "branch_min": 36
+  },
+  "bridge/elevenlabs/": {
+    "prefixes": [
+      "bridge/elevenlabs/"
+    ],
+    "line_min": 79,
+    "branch_min": 60
+  },
+  "bridge/fireworks/": {
+    "prefixes": [
+      "bridge/fireworks/"
+    ],
+    "line_min": 88,
+    "branch_min": 50
+  },
+  "bridge/google/": {
+    "prefixes": [
+      "bridge/google/"
+    ],
+    "line_min": 86,
+    "branch_min": 66
+  },
+  "bridge/grav/": {
+    "prefixes": [
+      "bridge/grav/"
+    ],
+    "line_min": 30,
+    "branch_min": 0
+  },
+  "bridge/groq/": {
+    "prefixes": [
+      "bridge/groq/"
+    ],
+    "line_min": 75,
+    "branch_min": 35
+  },
+  "bridge/harness/": {
+    "prefixes": [
+      "bridge/harness/"
+    ],
+    "line_min": 75,
+    "branch_min": 64
+  },
+  "bridge/hermes/": {
+    "prefixes": [
+      "bridge/hermes/"
+    ],
+    "line_min": 68,
+    "branch_min": 51
+  },
+  "bridge/huggingface/": {
+    "prefixes": [
+      "bridge/huggingface/"
+    ],
+    "line_min": 69,
+    "branch_min": 12
+  },
+  "bridge/mail/": {
+    "prefixes": [
+      "bridge/mail/"
+    ],
+    "line_min": 63,
+    "branch_min": 35
+  },
+  "bridge/mammouth/": {
+    "prefixes": [
+      "bridge/mammouth/"
+    ],
+    "line_min": 96,
+    "branch_min": 90
+  },
+  "bridge/matrix/": {
+    "prefixes": [
+      "bridge/matrix/"
+    ],
+    "line_min": 65,
+    "branch_min": 44
+  },
+  "bridge/mistral/": {
+    "prefixes": [
+      "bridge/mistral/"
+    ],
+    "line_min": 100,
+    "branch_min": 100
+  },
+  "bridge/models_dev/": {
+    "prefixes": [
+      "bridge/models_dev/"
+    ],
+    "line_min": 73,
+    "branch_min": 55
+  },
+  "bridge/n8n/": {
+    "prefixes": [
+      "bridge/n8n/"
+    ],
+    "line_min": 80,
+    "branch_min": 61
+  },
+  "bridge/nextcloud/": {
+    "prefixes": [
+      "bridge/nextcloud/"
+    ],
+    "line_min": 51,
+    "branch_min": 38
+  },
+  "bridge/nvidia/": {
+    "prefixes": [
+      "bridge/nvidia/"
+    ],
+    "line_min": 70,
+    "branch_min": 14
+  },
+  "bridge/ollama/": {
+    "prefixes": [
+      "bridge/ollama/"
+    ],
+    "line_min": 43,
+    "branch_min": 0
+  },
+  "bridge/one_bot/": {
+    "prefixes": [
+      "bridge/one_bot/"
+    ],
+    "line_min": 55,
+    "branch_min": 32
+  },
+  "bridge/openai/": {
+    "prefixes": [
+      "bridge/openai/"
+    ],
+    "line_min": 57,
+    "branch_min": 41
+  },
+  "bridge/openrouter/": {
+    "prefixes": [
+      "bridge/openrouter/"
+    ],
+    "line_min": 66,
+    "branch_min": 38
+  },
+  "bridge/perplexity/": {
+    "prefixes": [
+      "bridge/perplexity/"
+    ],
+    "line_min": 84,
+    "branch_min": 30
+  },
+  "bridge/sunoapi/": {
+    "prefixes": [
+      "bridge/sunoapi/"
+    ],
+    "line_min": 75,
+    "branch_min": 50
+  },
+  "bridge/telegram/": {
+    "prefixes": [
+      "bridge/telegram/"
+    ],
+    "line_min": 54,
+    "branch_min": 37
+  },
+  "bridge/together/": {
+    "prefixes": [
+      "bridge/together/"
+    ],
+    "line_min": 100,
+    "branch_min": 100
+  },
+  "bridge/whatsapp/": {
+    "prefixes": [
+      "bridge/whatsapp/"
+    ],
+    "line_min": 62,
+    "branch_min": 42
+  },
+  "bridge/xai/": {
+    "prefixes": [
+      "bridge/xai/"
+    ],
+    "line_min": 97,
+    "branch_min": 75
+  },
+  "bridge/youtube/": {
+    "prefixes": [
+      "bridge/youtube/"
+    ],
+    "line_min": 88,
+    "branch_min": 82
+  },
+  "core/__init__.py": {
+    "prefixes": [
+      "core/__init__.py"
+    ],
+    "line_min": 100,
+    "branch_min": 100
+  },
+  "core/api.py": {
+    "prefixes": [
+      "core/api.py"
+    ],
+    "line_min": 80,
+    "branch_min": 60
+  },
+  "core/authorize/": {
+    "prefixes": [
+      "core/authorize/"
+    ],
+    "line_min": 75,
+    "branch_min": 54
+  },
+  "core/database/": {
+    "prefixes": [
+      "core/database/"
+    ],
+    "line_min": 91,
+    "branch_min": 80
+  },
+  "core/dbadmin/": {
+    "prefixes": [
+      "core/dbadmin/"
+    ],
+    "line_min": 87,
+    "branch_min": 76
+  },
+  "core/failure_journal.py": {
+    "prefixes": [
+      "core/failure_journal.py"
+    ],
+    "line_min": 91,
+    "branch_min": 50
+  },
+  "core/i18n/": {
+    "prefixes": [
+      "core/i18n/"
+    ],
+    "line_min": 94,
+    "branch_min": 91
+  },
+  "core/logging.py": {
+    "prefixes": [
+      "core/logging.py"
+    ],
+    "line_min": 75,
+    "branch_min": 83
+  },
+  "core/observability.py": {
+    "prefixes": [
+      "core/observability.py"
+    ],
+    "line_min": 58,
+    "branch_min": 58
+  },
+  "core/params/": {
+    "prefixes": [
+      "core/params/"
+    ],
+    "line_min": 95,
+    "branch_min": 81
+  },
+  "core/preview/": {
+    "prefixes": [
+      "core/preview/"
+    ],
+    "line_min": 97,
+    "branch_min": 83
+  },
+  "core/rate_limit.py": {
+    "prefixes": [
+      "core/rate_limit.py"
+    ],
+    "line_min": 100,
+    "branch_min": 100
+  },
+  "core/runtime.py": {
+    "prefixes": [
+      "core/runtime.py"
+    ],
+    "line_min": 83,
+    "branch_min": 73
+  },
+  "core/secrets.py": {
+    "prefixes": [
+      "core/secrets.py"
+    ],
+    "line_min": 100,
+    "branch_min": 100
+  },
+  "core/server_mode.py": {
+    "prefixes": [
+      "core/server_mode.py"
+    ],
+    "line_min": 81,
+    "branch_min": 91
+  },
+  "core/settings.py": {
+    "prefixes": [
+      "core/settings.py"
+    ],
+    "line_min": 94,
+    "branch_min": 64
+  },
+  "core/team/": {
+    "prefixes": [
+      "core/team/"
+    ],
+    "line_min": 87,
+    "branch_min": 78
+  },
+  "core/user/": {
+    "prefixes": [
+      "core/user/"
+    ],
+    "line_min": 81,
+    "branch_min": 57
+  },
+  "core/util/": {
+    "prefixes": [
+      "core/util/"
+    ],
+    "line_min": 89,
+    "branch_min": 79
+  },
+  "core/websocket.py": {
+    "prefixes": [
+      "core/websocket.py"
+    ],
+    "line_min": 87,
+    "branch_min": 70
+  }
+}

@@ -1,0 +1,20 @@
+{
+  "publication_scope": "Technical summary only. Production identities, timestamps, commands, paths, receipts and remote repository metadata removed.",
+  "observed_on": "2026-09-14",
+  "observations": {
+    "initial_tool": "console_exec",
+    "initial_outcome": "outcome_unknown",
+    "recovery_available": false,
+    "automatic_replay_refused": true,
+    "separate_diagnostic_tool": "file_copy",
+    "separate_diagnostic_outcome": "outcome_unknown",
+    "git_receipt_false_positive": true,
+    "first_interruption_cause": "undetermined"
+  },
+  "validation": {
+    "exit_code": 0,
+    "passed": 411,
+    "pytest_seconds": 7.35,
+    "warnings": 2
+  }
+}

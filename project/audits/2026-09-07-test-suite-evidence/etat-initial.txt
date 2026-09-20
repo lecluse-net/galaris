@@ -1,0 +1,115 @@
+ M .github/workflows/quality.yml
+ M .github/workflows/release-artifact.yml
+ M Makefile
+ M back/app/conversation/facade.py
+ M back/app/dream/contracts.py
+ M back/app/dream/evaluation.py
+ M back/app/lab/mechanism_evaluation_service.py
+ M back/app/lab/tests/test_evaluation.py
+ M back/app/llm/__init__.py
+ M back/app/llm/call_router.py
+ M back/app/llm/llm_call_service.py
+ M back/app/llm/media_facade.py
+ M back/app/llm/media_transport.py
+ M back/app/llm/retention.py
+ M back/app/llm/tests/test_retention.py
+ M back/app/llm/tts_service.py
+ M back/app/memory/router.py
+ M back/app/memory/service.py
+ M back/app/memory/storage.py
+ M back/app/memory/tests/test_document_library.py
+ M back/app/memory/tests/test_messenger_contact.py
+ M back/app/memory/tests/test_storage.py
+ M back/app/multimedia/engine.py
+ M back/app/multimedia/tests/test_multimedia.py
+ M back/app/process/__init__.py
+ M back/app/process/interface.py
+ M back/app/process/process_service.py
+ M back/app/process/retention.py
+ M back/app/process/tests/test_recovery.py
+ M back/app/task/retention.py
+ M back/app/webhook/functions.py
+ M back/app/webhook/router.py
+ M back/app/webhook/tests/test_router.py
+ M back/bridge/azure_speech/speech.py
+ M back/bridge/calendar/ical.py
+ M back/bridge/calendar/service.py
+ M back/bridge/calendar/tests/test_service.py
+ M back/bridge/elevenlabs/speech.py
+ M back/bridge/google/speech.py
+ M back/core/dbadmin/_internal/atlas.py
+ M back/core/dbadmin/snapshot.py
+ M back/core/dbadmin/tests/test_postgresql_transitions.py
+ M back/core/runtime.py
+ M back/core/util/__init__.py
+ M back/core/util/byte_budget.py
+ M back/core/util/tests/test_byte_budget.py
+ M back/core/util/transfers.py
+ M back/coverage-critical.ini
+ M back/scripts/check_workflow_mutations.py
+ M back/tests/test_durable_concurrency.py
+ M back/tests/test_llm_call_service.py
+ M back/tests/test_tts_service.py
+ M bin/test-back.sh
+ M bin/test-release.sh
+ M bin/test-upgrade.sh
+ M bin/update-release.sh
+ M docs/en/architecture/generated/project-map.json
+ M docs/en/architecture/generated/project-map.md
+ M docs/en/dev/reliability-operations.md
+ M docs/fr/architecture/generated/project-map.json
+ M docs/fr/architecture/generated/project-map.md
+ M docs/fr/dev/reliability-operations.md
+ M front/app/memory/memorySelectBehavior.test.mjs
+ M front/app/memory/pages/index.vue
+ M front/app/memory/services/memoryService.ts
+ M front/app/memory/stores/memoryStore.ts
+ M front/app/process/pages/index.vue
+ M front/app/process/storeConcurrency.test.mjs
+ M front/app/process/stores/processStore.ts
+ M front/core/websocket.test.mjs
+ M front/core/websocket.ts
+ M front/eslint.config.mjs
+ M project/decisions/README.md
+ M project/plans/README.md
+ M project/plans/lab-evaluation-mecanismes-ia.md
+?? back/app/lab/run_claims.py
+?? back/app/lab/run_contracts.py
+?? back/app/lab/run_inference.py
+?? back/app/lab/run_publication.py
+?? back/app/lab/tests/test_run_publication.py
+?? back/app/llm/tests/test_retention_growth.py
+?? back/app/memory/item_projection.py
+?? back/app/memory/library_queries.py
+?? back/app/memory/revision_queries.py
+?? back/app/memory/storage_reconciliation.py
+?? back/app/memory/tests/test_creation_cancellation.py
+?? back/app/memory/tests/test_library_performance.py
+?? back/app/memory/tests/test_revision_pagination.py
+?? back/app/memory/tests/test_storage_reconciliation.py
+?? back/app/multimedia/provider_results.py
+?? back/app/webhook/tests/test_delivery_identity.py
+?? back/bridge/calendar/calculation.py
+?? back/bridge/calendar/ical_worker.py
+?? back/bridge/calendar/tests/test_calculation_limits.py
+?? back/core/dbadmin/tests/test_credentials.py
+?? back/core/dbadmin/tests/test_volume_transitions.py
+?? back/core/tests/test_runtime_timeouts.py
+?? back/core/util/http_buffer.py
+?? back/core/util/tests/test_http_buffer.py
+?? back/core/util/thread_io.py
+?? back/scripts/check_format.py
+?? back/scripts/format_targets.txt
+?? back/scripts/memory_orphans.py
+?? back/scripts/release_qualification.py
+?? back/tests/test_release_qualification.py
+?? docs/en/dev/operational-objectives.json
+?? docs/fr/dev/operational-objectives.json
+?? front/app/memory/revisionPagination.test.mjs
+?? front/app/process/composables/
+?? project/audits/2026-09-07-correction-evidence/
+?? project/audits/2026-09-07-postcommit-corrections.md
+?? project/audits/2026-09-07-postcommit-evidence/
+?? project/audits/2026-09-07-postcommit-quality-review.md
+?? project/decisions/0077-composable-resource-and-publication-guards.md
+?? project/plans/refonte-labs-intrants-et-double-controle.md

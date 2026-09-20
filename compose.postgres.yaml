@@ -1,0 +1,35 @@
+# =============================================================================
+# Optional embedded PostgreSQL service
+#
+# Included by Make when POSTGRES_MODE=embedded (the default). Set it to external
+# to use the connection configured through POSTGRES_* without running
+# a PostgreSQL container in this Compose project.
+# =============================================================================
+
+services:
+  postgres:
+    image: pgvector/pgvector:pg17
+    container_name: ${APP_NAME:-galaris}-postgres
+    restart: unless-stopped
+    environment:
+      TZ: ${TZ:-UTC}
+      POSTGRES_USER: ${POSTGRES_USER:-galaris}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB:-galaris}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-galaris} -d ${POSTGRES_DB:-galaris}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - galaris_net
+
+  backend:
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+volumes:
+  postgres_data:

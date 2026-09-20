@@ -1,0 +1,130 @@
+# Dedicated shell runner with Docker/Compose, Make, Bash, Git and jq.
+# Runtime toolchains remain inside Docker. Do not run this on the production host.
+workflow:
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+    - if: '$CI_PIPELINE_SOURCE == "schedule"'
+    - if: '$CI_PIPELINE_SOURCE == "web"'
+
+stages: [verify, release]
+
+default:
+  tags: [galaris-quality]
+  interruptible: true
+  timeout: 45m
+  before_script:
+    - cp .env.example .env
+    - sed -i 's/^APP_ENV=prod$/APP_ENV=test/' .env
+    - bash bin/update-secrets.sh
+
+variables:
+  GIT_DEPTH: "0"
+
+static:
+  stage: verify
+  script: ["bash bin/check-static.sh"]
+
+providers:
+  stage: verify
+  script: ["make tests-providers"]
+  artifacts:
+    when: always
+    expire_in: 30 days
+    paths: [artifacts/provider-contracts.xml]
+    reports:
+      junit: artifacts/provider-contracts.xml
+
+backend:
+  stage: verify
+  script:
+    - export COVERAGE_DIFF_BASE="${CI_MERGE_REQUEST_DIFF_BASE_SHA:-}"
+    - make tests-coverage
+    - make tests-mutations
+    - make regression-check
+  artifacts:
+    when: always
+    expire_in: 30 days
+    paths: [artifacts/coverage.xml, artifacts/coverage-domains.json, artifacts/coverage-full.xml, artifacts/coverage-full.json, artifacts/coverage-all-floors.json, artifacts/coverage-html/, artifacts/backend-junit.xml, artifacts/mutations.json, artifacts/regression-evidence.json]
+    reports:
+      junit: artifacts/backend-junit.xml
+      coverage_report:
+        coverage_format: cobertura
+        path: artifacts/coverage.xml
+
+components:
+  stage: verify
+  script: ["make tests-front-components"]
+  artifacts:
+    when: always
+    expire_in: 14 days
+    paths: [artifacts/front-components/]
+    reports:
+      junit: artifacts/front-components/*/junit.xml
+
+e2e:
+  stage: verify
+  timeout: 45m
+  script: ["make tests-e2e ARGS='--repeat-each=3'"]
+  artifacts:
+    when: always
+    expire_in: 14 days
+    paths: [artifacts/e2e/]
+    reports:
+      junit: artifacts/e2e/*/junit.xml
+
+security:
+  stage: verify
+  script: ["make security-check"]
+
+images:
+  stage: verify
+  parallel:
+    matrix:
+      - BUILD_CONTEXT: [back, front, browser-executor, ssh-executor]
+  script:
+    - |
+      image_tag="galaris-security-${CI_JOB_ID}"
+      trap 'docker image rm "$image_tag" >/dev/null 2>&1 || true' EXIT
+      extra=()
+      if [[ "$BUILD_CONTEXT" == back ]]; then extra+=(--build-context harness_manager=./harness_manager); fi
+      if [[ "$BUILD_CONTEXT" == ssh-executor ]]; then extra+=(--build-context console_assets=./back/app/console/assets); fi
+      docker build --pull "${extra[@]}" -t "$image_tag" "$BUILD_CONTEXT"
+      bash bin/security-check.sh image "$image_tag"
+  artifacts:
+    when: always
+    expire_in: 30 days
+    paths: [artifacts/security/]
+
+recovery:
+  stage: verify
+  script:
+    - make tests-restore
+    - UPGRADE_FROM=HEAD^ make tests-upgrade
+    - make tests-harness-manager
+    - make tests-executor
+
+sustained-load:
+  stage: verify
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "schedule"'
+  script:
+    - make tests-dbadmin-load
+    - make tests-load
+
+release:
+  stage: release
+  timeout: 2h
+  interruptible: false
+  rules:
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+      when: manual
+      allow_failure: true
+  script:
+    - test -n "${UPGRADE_PREVIOUS_IMAGE:-}"
+    - RELEASE_DIR=artifacts/release make build-release
+    - UPGRADE_CANDIDATE_IMAGE="galaris-release-back:${CI_COMMIT_SHA}" UPGRADE_EVIDENCE_DIR=artifacts/release make tests-upgrade
+    - RELEASE_DIR=artifacts/release make tests-release
+  artifacts:
+    expire_in: 30 days
+    paths: [artifacts/release/]

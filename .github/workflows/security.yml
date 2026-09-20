@@ -1,0 +1,85 @@
+name: Security
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+  schedule:
+    - cron: '23 4 * * 1'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: security-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  source:
+    name: Dependencies, secrets and SAST
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - run: make security-check
+
+  images:
+    name: Image / ${{ matrix.context }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        context: [back, front, browser-executor, ssh-executor]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build shipped image
+        env:
+          BUILD_CONTEXT: ${{ matrix.context }}
+        run: |
+          extra=()
+          if [[ "$BUILD_CONTEXT" == back ]]; then
+            extra+=(--build-context harness_manager=./harness_manager)
+          fi
+          if [[ "$BUILD_CONTEXT" == ssh-executor ]]; then
+            extra+=(--build-context console_assets=./back/app/console/assets)
+          fi
+          docker build --pull "${extra[@]}" -t galaris-security-image "$BUILD_CONTEXT"
+      - run: bash bin/security-check.sh image galaris-security-image
+      - name: Preserve complete vulnerability inventory
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: security-${{ matrix.context }}
+          path: artifacts/security/
+          retention-days: 30
+
+  restore:
+    name: Restore rehearsal
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Prepare isolated test configuration
+        run: |
+          cp .env.example .env
+          sed -i 's/^APP_ENV=prod$/APP_ENV=test/' .env
+          bash bin/update-secrets.sh
+      - run: make tests-restore
+      - name: Fetch previous release source
+        run: git fetch --no-tags --depth=2 origin "${{ github.sha }}"
+      - name: Rehearse populated database upgrade
+        run: UPGRADE_FROM=HEAD^ make tests-upgrade
+      - run: make tests-harness-manager
+      - run: make tests-executor
+
+  required:
+    name: Security required
+    if: always()
+    needs: [source, images, restore]
+    runs-on: ubuntu-latest
+    steps:
+      - env:
+          RESULTS: ${{ toJSON(needs) }}
+        run: jq -e 'all(.[]; .result == "success")' <<< "$RESULTS"

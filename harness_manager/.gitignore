@@ -1,0 +1,8 @@
+__pycache__/
+.pytest_cache/
+.local/
+.env
+# Fichier unit systemd généré par `make service-file` / `make service-install`
+galaris-harness-manager.service
+# Local unit left by installations made before the manager rename.
+galaris-bridge-hermes.service

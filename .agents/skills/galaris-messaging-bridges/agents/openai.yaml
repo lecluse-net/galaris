@@ -1,0 +1,4 @@
+interface:
+  display_name: "Galaris Messaging Bridges"
+  short_description: "Work on canonical messaging and bridges"
+  default_prompt: "Use $galaris-messaging-bridges to implement or diagnose this Galaris messaging change."

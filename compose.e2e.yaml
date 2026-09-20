@@ -1,0 +1,104 @@
+# Independent project: no production credentials, host ports, data volumes or networks.
+name: galaris-e2e
+services:
+  db-e2e:
+    image: pgvector/pgvector:pg17
+    environment:
+      TZ: ${TZ:-UTC}
+      POSTGRES_USER: testuser
+      POSTGRES_PASSWORD: testpassword
+      POSTGRES_DB: test_db
+    tmpfs: [ /var/lib/postgresql/data ]
+    healthcheck:
+      test: [ CMD-SHELL, "pg_isready -U testuser -d test_db" ]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+  backend:
+    build:
+      context: ./back
+      additional_contexts:
+        harness_manager: ./harness_manager
+      target: builder
+    environment:
+      TZ: ${TZ:-UTC}
+      APP_ENV: test
+      APP_NAME: galaris
+      APP_HOST: http://localhost:8484
+      POSTGRES_USER: testuser
+      POSTGRES_PASSWORD: testpassword
+      POSTGRES_HOST: db-e2e
+      POSTGRES_DB: test_db
+      AUTH_SECRET_KEY: e2e-auth-secret-only-for-isolated-tests
+      ENCRYPTION_MASTER_KEY: e2e-encryption-only-for-isolated-tests
+      PYTHONPATH: /repo/back
+      LOGFIRE_SEND_TO_LOGFIRE: 'false'
+    volumes:
+      - ./back:/repo/back:ro
+      - ./e2e/fixtures/browser-token:/run/galaris-browser/token:ro
+    tmpfs: [ '/data:uid=1000,gid=1000,mode=0700' ]
+    working_dir: /repo/back
+    command: [ bash, -c, "python -m core.dbadmin synchronize --mode test && exec uvicorn tests.e2e_app:app --host 0.0.0.0 --port 8000 --proxy-headers --forwarded-allow-ips '*'" ]
+    networks:
+      default:
+        aliases: [ galaris-back ]
+    depends_on:
+      db-e2e:
+        condition: service_healthy
+      browser-executor:
+        condition: service_healthy
+    healthcheck:
+      test: [ CMD, python, -c, "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/__test/ready')" ]
+      interval: 3s
+      timeout: 3s
+      retries: 80
+  browser-executor:
+    build: ./browser-executor
+    init: true
+    read_only: true
+    tmpfs: [/tmp]
+    shm_size: 1gb
+    volumes:
+      - ./e2e/fixtures/browser-token:/run/galaris-browser/token:ro
+    healthcheck:
+      test: [CMD, node, -e, "fetch('http://127.0.0.1:3000/health').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+  frontend:
+    build:
+      context: ./front
+      target: prod-stage
+    environment:
+      TZ: ${TZ:-UTC}
+      APP_NAME: galaris
+    volumes:
+      - pwa-site:/usr/share/nginx/html
+    depends_on:
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: [ CMD, wget, -q, --spider, http://127.0.0.1:8484/ ]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+  runner:
+    build: ./e2e
+    init: true
+    environment:
+      TZ: ${TZ:-UTC}
+      DEBUG: ${GALARIS_E2E_DEBUG:-}
+    # localhost is a browser secure context, without test-only crypto polyfills.
+    network_mode: service:frontend
+    volumes:
+      - ${GALARIS_E2E_ARTIFACT_DIR:-./artifacts/e2e}:/artifacts
+      - ./front/core/util/sanitizeHtml.ts:/front/core/util/sanitizeHtml.ts:ro
+      - pwa-site:/pwa-site
+    depends_on:
+      frontend:
+        condition: service_healthy
+networks:
+  default:
+    internal: true
+volumes:
+  pwa-site:

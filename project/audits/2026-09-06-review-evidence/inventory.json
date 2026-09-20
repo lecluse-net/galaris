@@ -1,0 +1,990 @@
+{
+  "groups": {
+    "back": {
+      "files": 32,
+      "lines": 5944,
+      "test_files": 34,
+      "test_lines": 7679
+    },
+    "back/app/agent": {
+      "files": 45,
+      "lines": 15066,
+      "test_files": 28,
+      "test_lines": 8605
+    },
+    "back/app/audio": {
+      "files": 7,
+      "lines": 1179,
+      "test_files": 3,
+      "test_lines": 810
+    },
+    "back/app/browser": {
+      "files": 7,
+      "lines": 1137,
+      "test_files": 3,
+      "test_lines": 811
+    },
+    "back/app/chat": {
+      "files": 15,
+      "lines": 4160,
+      "test_files": 11,
+      "test_lines": 4138
+    },
+    "back/app/connection": {
+      "files": 11,
+      "lines": 1558,
+      "test_files": 5,
+      "test_lines": 1068
+    },
+    "back/app/console": {
+      "files": 16,
+      "lines": 1757,
+      "test_files": 2,
+      "test_lines": 338
+    },
+    "back/app/contact": {
+      "files": 6,
+      "lines": 449,
+      "test_files": 3,
+      "test_lines": 476
+    },
+    "back/app/conversation": {
+      "files": 27,
+      "lines": 7321,
+      "test_files": 13,
+      "test_lines": 4533
+    },
+    "back/app/dashboard": {
+      "files": 4,
+      "lines": 487,
+      "test_files": 2,
+      "test_lines": 199
+    },
+    "back/app/dream": {
+      "files": 29,
+      "lines": 7309,
+      "test_files": 11,
+      "test_lines": 3929
+    },
+    "back/app/file_share": {
+      "files": 19,
+      "lines": 5901,
+      "test_files": 10,
+      "test_lines": 2772
+    },
+    "back/app/goal": {
+      "files": 20,
+      "lines": 5236,
+      "test_files": 8,
+      "test_lines": 3230
+    },
+    "back/app/harness": {
+      "files": 15,
+      "lines": 5510,
+      "test_files": 17,
+      "test_lines": 4805
+    },
+    "back/app/harnesses": {
+      "files": 14,
+      "lines": 2776,
+      "test_files": 7,
+      "test_lines": 1373
+    },
+    "back/app/image": {
+      "files": 9,
+      "lines": 631,
+      "test_files": 2,
+      "test_lines": 582
+    },
+    "back/app/incident": {
+      "files": 9,
+      "lines": 1196,
+      "test_files": 4,
+      "test_lines": 412
+    },
+    "back/app/lab": {
+      "files": 20,
+      "lines": 8185,
+      "test_files": 3,
+      "test_lines": 2348
+    },
+    "back/app/llm": {
+      "files": 58,
+      "lines": 14414,
+      "test_files": 14,
+      "test_lines": 2919
+    },
+    "back/app/mcp": {
+      "files": 9,
+      "lines": 566,
+      "test_files": 0,
+      "test_lines": 0
+    },
+    "back/app/memory": {
+      "files": 46,
+      "lines": 20061,
+      "test_files": 25,
+      "test_lines": 9649
+    },
+    "back/app/messenger": {
+      "files": 32,
+      "lines": 12169,
+      "test_files": 23,
+      "test_lines": 5398
+    },
+    "back/app/multimedia": {
+      "files": 6,
+      "lines": 370,
+      "test_files": 3,
+      "test_lines": 357
+    },
+    "back/app/onboarding": {
+      "files": 5,
+      "lines": 277,
+      "test_files": 1,
+      "test_lines": 241
+    },
+    "back/app/process": {
+      "files": 19,
+      "lines": 3961,
+      "test_files": 6,
+      "test_lines": 1468
+    },
+    "back/app/skill": {
+      "files": 16,
+      "lines": 3474,
+      "test_files": 7,
+      "test_lines": 973
+    },
+    "back/app/task": {
+      "files": 27,
+      "lines": 8090,
+      "test_files": 20,
+      "test_lines": 5250
+    },
+    "back/app/tools": {
+      "files": 26,
+      "lines": 7610,
+      "test_files": 16,
+      "test_lines": 3384
+    },
+    "back/app/topic": {
+      "files": 15,
+      "lines": 4550,
+      "test_files": 7,
+      "test_lines": 1835
+    },
+    "back/app/util": {
+      "files": 2,
+      "lines": 130,
+      "test_files": 0,
+      "test_lines": 0
+    },
+    "back/app/voice": {
+      "files": 25,
+      "lines": 6331,
+      "test_files": 9,
+      "test_lines": 3130
+    },
+    "back/app/webhook": {
+      "files": 7,
+      "lines": 358,
+      "test_files": 1,
+      "test_lines": 72
+    },
+    "back/bridge/affine": {
+      "files": 2,
+      "lines": 187,
+      "test_files": 0,
+      "test_lines": 0
+    },
+    "back/bridge/anthropic": {
+      "files": 2,
+      "lines": 57,
+      "test_files": 0,
+      "test_lines": 0
+    },
+    "back/bridge/azure_speech": {
+      "files": 3,
+      "lines": 238,
+      "test_files": 0,
+      "test_lines": 0
+    },
+    "back/bridge/byteplus": {
+      "files": 2,
+      "lines": 74,
+      "test_files": 0,
+      "test_lines": 0
+    },
+    "back/bridge/calendar": {
+      "files": 8,
+      "lines": 1798,
+      "test_files": 4,
+      "test_lines": 450
+    },
+    "back/bridge/cerebras": {
+      "files": 1,
+      "lines": 22,
+      "test_files": 0,
+      "test_lines": 0
+    },
+    "back/bridge/claude_agent": {
+      "files": 3,
+      "lines": 360,
+      "test_files": 4,
+      "test_lines": 243
+    },
+    "back/bridge/codex": {
+      "files": 6,
+      "lines": 1227,
+      "test_files": 4,
+      "test_lines": 512
+    },
+    "back/bridge/cohere": {
+      "files": 1,
+      "lines": 23,
+      "test_files": 0,
+      "test_lines": 0
+    },
+    "back/bridge/deepseek": {
+      "files": 1,
+      "lines": 43,
+      "test_files": 0,
+      "test_lines": 0
+    },
+    "back/bridge/deepseek_harness": {
+      "files": 3,
+      "lines": 1011,
+      "test_files": 3,
+      "test_lines": 481
+    },
+    "back/bridge/elevenlabs": {
+      "files": 5,
+      "lines": 857,
+      "test_files": 0,
+      "test_lines": 0
+    },
+    "back/bridge/fireworks": {
+      "files": 2,
+      "lines": 95,
+      "test_files": 0,
+      "test_lines": 0
+    },
+    "back/bridge/google": {
+      "files": 4,
+      "lines": 393,
+      "test_files": 0,
+      "test_lines": 0
+    },
+    "back/bridge/grav": {
+      "files": 2,
+      "lines": 194,
+      "test_files": 0,
+      "test_lines": 0
+    },
+    "back/bridge/groq": {
+      "files": 1,
+      "lines": 74,
+      "test_files": 0,
+      "test_lines": 0
+    },
+    "back/bridge/harness": {
+      "files": 8,
+      "lines": 526,
+      "test_files": 3,
+      "test_lines": 349
+    },
+    "back/bridge/hermes": {
+      "files": 26,
+      "lines": 6726,
+      "test_files": 16,
+      "test_lines": 3354
+    },
+    "back/bridge/huggingface": {
+      "files": 1,
+      "lines": 70,
+      "test_files": 0,
+      "test_lines": 0
+    },
+    "back/bridge/mail": {
+      "files": 15,
+      "lines": 3529,
+      "test_files": 11,
+      "test_lines": 996
+    },
+    "back/bridge/mammouth": {
+      "files": 5,
+      "lines": 322,
+      "test_files": 0,
+      "test_lines": 0
+    },
+    "back/bridge/matrix": {
+      "files": 9,
+      "lines": 2530,
+      "test_files": 4,
+      "test_lines": 1163
+    },
+    "back/bridge/mistral": {
+      "files": 1,
+      "lines": 23,
+      "test_files": 0,
+      "test_lines": 0
+    },
+    "back/bridge/models_dev": {
+      "files": 2,
+      "lines": 276,
+      "test_files": 0,
+      "test_lines": 0
+    },
+    "back/bridge/n8n": {
+      "files": 7,
+      "lines": 480,
+      "test_files": 2,
+      "test_lines": 356
+    },
+    "back/bridge/nextcloud": {
+      "files": 10,
+      "lines": 5888,
+      "test_files": 7,
+      "test_lines": 2588
+    },
+    "back/bridge/nvidia": {
+      "files": 1,
+      "lines": 67,
+      "test_files": 0,
+      "test_lines": 0
+    },
+    "back/bridge/ollama": {
+      "files": 2,
+      "lines": 116,
+      "test_files": 0,
+      "test_lines": 0
+    },
+    "back/bridge/one_bot": {
+      "files": 4,
+      "lines": 955,
+      "test_files": 4,
+      "test_lines": 314
+    },
+    "back/bridge/openai": {
+      "files": 10,
+      "lines": 2007,
+      "test_files": 4,
+      "test_lines": 251
+    },
+    "back/bridge/openrouter": {
+      "files": 6,
+      "lines": 494,
+      "test_files": 0,
+      "test_lines": 0
+    },
+    "back/bridge/perplexity": {
+      "files": 1,
+      "lines": 77,
+      "test_files": 0,
+      "test_lines": 0
+    },
+    "back/bridge/sunoapi": {
+      "files": 2,
+      "lines": 109,
+      "test_files": 0,
+      "test_lines": 0
+    },
+    "back/bridge/telegram": {
+      "files": 6,
+      "lines": 808,
+      "test_files": 1,
+      "test_lines": 142
+    },
+    "back/bridge/together": {
+      "files": 1,
+      "lines": 22,
+      "test_files": 0,
+      "test_lines": 0
+    },
+    "back/bridge/whatsapp": {
+      "files": 6,
+      "lines": 1060,
+      "test_files": 4,
+      "test_lines": 400
+    },
+    "back/bridge/xai": {
+      "files": 2,
+      "lines": 108,
+      "test_files": 0,
+      "test_lines": 0
+    },
+    "back/bridge/youtube": {
+      "files": 2,
+      "lines": 326,
+      "test_files": 2,
+      "test_lines": 174
+    },
+    "back/core/authorize": {
+      "files": 22,
+      "lines": 2672,
+      "test_files": 10,
+      "test_lines": 1839
+    },
+    "back/core/database": {
+      "files": 6,
+      "lines": 473,
+      "test_files": 0,
+      "test_lines": 0
+    },
+    "back/core/dbadmin": {
+      "files": 16,
+      "lines": 2100,
+      "test_files": 7,
+      "test_lines": 900
+    },
+    "back/core/i18n": {
+      "files": 3,
+      "lines": 232,
+      "test_files": 2,
+      "test_lines": 162
+    },
+    "back/core/params": {
+      "files": 14,
+      "lines": 1833,
+      "test_files": 5,
+      "test_lines": 986
+    },
+    "back/core/tests": {
+      "files": 0,
+      "lines": 0,
+      "test_files": 10,
+      "test_lines": 972
+    },
+    "back/core/user": {
+      "files": 16,
+      "lines": 2632,
+      "test_files": 6,
+      "test_lines": 811
+    },
+    "back/core/util": {
+      "files": 8,
+      "lines": 803,
+      "test_files": 2,
+      "test_lines": 740
+    },
+    "back/tests/manual": {
+      "files": 0,
+      "lines": 0,
+      "test_files": 20,
+      "test_lines": 1713
+    },
+    "bin": {
+      "files": 10,
+      "lines": 409,
+      "test_files": 0,
+      "test_lines": 0
+    },
+    "browser-executor": {
+      "files": 3,
+      "lines": 736,
+      "test_files": 3,
+      "test_lines": 201
+    },
+    "e2e": {
+      "files": 0,
+      "lines": 0,
+      "test_files": 5,
+      "test_lines": 410
+    },
+    "front": {
+      "files": 14,
+      "lines": 1661,
+      "test_files": 4,
+      "test_lines": 295
+    },
+    "front/app/agent": {
+      "files": 11,
+      "lines": 3931,
+      "test_files": 8,
+      "test_lines": 262
+    },
+    "front/app/chat": {
+      "files": 42,
+      "lines": 9993,
+      "test_files": 17,
+      "test_lines": 1636
+    },
+    "front/app/connection": {
+      "files": 13,
+      "lines": 4567,
+      "test_files": 0,
+      "test_lines": 0
+    },
+    "front/app/console": {
+      "files": 6,
+      "lines": 424,
+      "test_files": 0,
+      "test_lines": 0
+    },
+    "front/app/conversation": {
+      "files": 7,
+      "lines": 1911,
+      "test_files": 0,
+      "test_lines": 0
+    },
+    "front/app/dream": {
+      "files": 5,
+      "lines": 1777,
+      "test_files": 1,
+      "test_lines": 16
+    },
+    "front/app/goal": {
+      "files": 8,
+      "lines": 4622,
+      "test_files": 5,
+      "test_lines": 465
+    },
+    "front/app/harnesses": {
+      "files": 10,
+      "lines": 1428,
+      "test_files": 3,
+      "test_lines": 264
+    },
+    "front/app/index": {
+      "files": 28,
+      "lines": 5016,
+      "test_files": 4,
+      "test_lines": 273
+    },
+    "front/app/lab": {
+      "files": 25,
+      "lines": 8421,
+      "test_files": 1,
+      "test_lines": 37
+    },
+    "front/app/llm": {
+      "files": 29,
+      "lines": 9575,
+      "test_files": 5,
+      "test_lines": 433
+    },
+    "front/app/memory": {
+      "files": 22,
+      "lines": 9718,
+      "test_files": 7,
+      "test_lines": 490
+    },
+    "front/app/onboarding": {
+      "files": 5,
+      "lines": 1286,
+      "test_files": 0,
+      "test_lines": 0
+    },
+    "front/app/process": {
+      "files": 7,
+      "lines": 2114,
+      "test_files": 3,
+      "test_lines": 117
+    },
+    "front/app/skill": {
+      "files": 8,
+      "lines": 3534,
+      "test_files": 4,
+      "test_lines": 98
+    },
+    "front/app/task": {
+      "files": 24,
+      "lines": 7365,
+      "test_files": 7,
+      "test_lines": 573
+    },
+    "front/app/tools": {
+      "files": 7,
+      "lines": 2705,
+      "test_files": 1,
+      "test_lines": 15
+    },
+    "front/app/topic": {
+      "files": 12,
+      "lines": 2765,
+      "test_files": 1,
+      "test_lines": 64
+    },
+    "front/app/voice": {
+      "files": 5,
+      "lines": 1799,
+      "test_files": 0,
+      "test_lines": 0
+    },
+    "front/bridge/calendar": {
+      "files": 1,
+      "lines": 122,
+      "test_files": 0,
+      "test_lines": 0
+    },
+    "front/bridge/claude_agent": {
+      "files": 1,
+      "lines": 8,
+      "test_files": 0,
+      "test_lines": 0
+    },
+    "front/bridge/codex": {
+      "files": 1,
+      "lines": 8,
+      "test_files": 0,
+      "test_lines": 0
+    },
+    "front/bridge/deepseek_harness": {
+      "files": 1,
+      "lines": 8,
+      "test_files": 0,
+      "test_lines": 0
+    },
+    "front/bridge/hermes": {
+      "files": 7,
+      "lines": 614,
+      "test_files": 0,
+      "test_lines": 0
+    },
+    "front/bridge/matrix": {
+      "files": 2,
+      "lines": 70,
+      "test_files": 0,
+      "test_lines": 0
+    },
+    "front/bridge/n8n": {
+      "files": 2,
+      "lines": 33,
+      "test_files": 0,
+      "test_lines": 0
+    },
+    "front/bridge/nextcloud": {
+      "files": 2,
+      "lines": 92,
+      "test_files": 0,
+      "test_lines": 0
+    },
+    "front/bridge/ollama": {
+      "files": 2,
+      "lines": 51,
+      "test_files": 0,
+      "test_lines": 0
+    },
+    "front/bridge/one_bot": {
+      "files": 2,
+      "lines": 60,
+      "test_files": 0,
+      "test_lines": 0
+    },
+    "front/bridge/telegram": {
+      "files": 2,
+      "lines": 71,
+      "test_files": 0,
+      "test_lines": 0
+    },
+    "front/bridge/whatsapp": {
+      "files": 2,
+      "lines": 90,
+      "test_files": 0,
+      "test_lines": 0
+    },
+    "front/core/authorize": {
+      "files": 19,
+      "lines": 3413,
+      "test_files": 1,
+      "test_lines": 25
+    },
+    "front/core/i18n": {
+      "files": 5,
+      "lines": 280,
+      "test_files": 1,
+      "test_lines": 35
+    },
+    "front/core/navigation": {
+      "files": 15,
+      "lines": 1633,
+      "test_files": 2,
+      "test_lines": 67
+    },
+    "front/core/params": {
+      "files": 26,
+      "lines": 4399,
+      "test_files": 2,
+      "test_lines": 156
+    },
+    "front/core/user": {
+      "files": 17,
+      "lines": 3712,
+      "test_files": 2,
+      "test_lines": 88
+    },
+    "front/core/util": {
+      "files": 28,
+      "lines": 3842,
+      "test_files": 5,
+      "test_lines": 277
+    },
+    "harness_manager": {
+      "files": 1,
+      "lines": 630,
+      "test_files": 1,
+      "test_lines": 283
+    },
+    "ssh-executor": {
+      "files": 2,
+      "lines": 534,
+      "test_files": 1,
+      "test_lines": 135
+    }
+  },
+  "largest_files": [
+    [
+      4075,
+      "back/app/memory/service.py"
+    ],
+    [
+      2963,
+      "back/app/lab/mechanism_evaluation_service.py"
+    ],
+    [
+      2822,
+      "front/app/goal/pages/index.vue"
+    ],
+    [
+      2478,
+      "front/app/agent/pages/index.vue"
+    ],
+    [
+      2325,
+      "back/app/agent/planner_service.py"
+    ],
+    [
+      2307,
+      "back/app/file_share/resource_service.py"
+    ],
+    [
+      2266,
+      "back/bridge/nextcloud/call.py"
+    ],
+    [
+      2199,
+      "back/app/messenger/native_facade.py"
+    ],
+    [
+      1981,
+      "back/app/topic/service.py"
+    ],
+    [
+      1841,
+      "front/app/lab/components/MechanismEvaluationTab.vue"
+    ],
+    [
+      1794,
+      "back/app/harness/runtime.py"
+    ],
+    [
+      1777,
+      "back/bridge/hermes/manager.py"
+    ],
+    [
+      1748,
+      "back/app/conversation/service.py"
+    ],
+    [
+      1742,
+      "back/app/process/process_service.py"
+    ],
+    [
+      1739,
+      "front/app/memory/components/MemoryGraph.vue"
+    ],
+    [
+      1685,
+      "front/app/tools/components/ToolsList.vue"
+    ],
+    [
+      1628,
+      "back/app/agent/facade.py"
+    ],
+    [
+      1562,
+      "back/app/agent/contracts.py"
+    ],
+    [
+      1436,
+      "back/app/messenger/service.py"
+    ],
+    [
+      1423,
+      "front/app/memory/pages/index.vue"
+    ],
+    [
+      1420,
+      "back/app/memory/retrieval.py"
+    ],
+    [
+      1405,
+      "front/app/task/components/TaskDetail.vue"
+    ],
+    [
+      1390,
+      "front/app/memory/components/DocumentEditor.vue"
+    ],
+    [
+      1389,
+      "back/app/agent/dispatcher.py"
+    ],
+    [
+      1383,
+      "back/app/chat/router.py"
+    ]
+  ],
+  "largest_functions": [
+    [
+      649,
+      "back/bridge/hermes/executor.py",
+      624,
+      "_stream"
+    ],
+    [
+      547,
+      "back/app/harness/conversation.py",
+      567,
+      "run"
+    ],
+    [
+      468,
+      "back/app/llm/proxy_service.py",
+      336,
+      "proxy_chat_completion"
+    ],
+    [
+      464,
+      "back/app/voice/realtime_tools.py",
+      21,
+      "realtime_tools"
+    ],
+    [
+      428,
+      "back/scripts/project_context.py",
+      792,
+      "render_markdown"
+    ],
+    [
+      390,
+      "back/app/tools/resource_effects.py",
+      65,
+      "record_tool_resources"
+    ],
+    [
+      375,
+      "back/app/llm/proxy_service.py",
+      806,
+      "proxy_responses"
+    ],
+    [
+      325,
+      "back/app/messenger/service.py",
+      311,
+      "_process_incoming"
+    ],
+    [
+      318,
+      "back/app/voice/engine.py",
+      487,
+      "_respond"
+    ],
+    [
+      314,
+      "back/app/memory/retrieval.py",
+      1080,
+      "_recall_items"
+    ],
+    [
+      288,
+      "back/app/agent/facade.py",
+      517,
+      "build_run_request"
+    ],
+    [
+      279,
+      "back/app/messenger/contact_memory.py",
+      178,
+      "rebuild_messenger_contacts"
+    ],
+    [
+      271,
+      "back/app/conversation/monitoring_service.py",
+      65,
+      "list_messages"
+    ],
+    [
+      268,
+      "back/app/topic/service.py",
+      704,
+      "get_content"
+    ],
+    [
+      263,
+      "back/app/harness/executor.py",
+      513,
+      "_stream"
+    ],
+    [
+      257,
+      "back/app/memory/retrieval.py",
+      642,
+      "_weighted_rank"
+    ],
+    [
+      239,
+      "back/app/file_share/resource_service.py",
+      1747,
+      "resource_copy"
+    ],
+    [
+      233,
+      "back/app/goal/runner.py",
+      587,
+      "start_due_cycle"
+    ],
+    [
+      232,
+      "back/app/memory/service.py",
+      2384,
+      "search_items"
+    ],
+    [
+      216,
+      "back/app/memory/service.py",
+      1499,
+      "update_item"
+    ],
+    [
+      213,
+      "back/app/memory/service.py",
+      858,
+      "upsert_source_managed_item"
+    ],
+    [
+      212,
+      "back/app/topic/service.py",
+      979,
+      "list_items"
+    ],
+    [
+      202,
+      "back/app/tools/mcp_diagnostics.py",
+      439,
+      "diagnose_mcp_connection"
+    ],
+    [
+      200,
+      "back/app/memory/service.py",
+      3154,
+      "expand_graph_node"
+    ],
+    [
+      200,
+      "back/app/lab/mechanism_evaluation_service.py",
+      2514,
+      "process_runs"
+    ]
+  ]
+}

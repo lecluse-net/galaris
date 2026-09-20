@@ -1,0 +1,726 @@
+[
+  {
+    "file": "front/app/agent/agentDialogTabs.test.mjs",
+    "name": "agent dialog tabs use the page tab layout with horizontal icons"
+  },
+  {
+    "file": "front/app/agent/harnessActions.test.mjs",
+    "name": "the Agents page recreates managed Harnesses through restart only"
+  },
+  {
+    "file": "front/app/agent/harnessActions.test.mjs",
+    "name": "the absent card uses the server restart action and labels it Create"
+  },
+  {
+    "file": "front/app/agent/harnessActions.test.mjs",
+    "name": "DSH detail warns about limited testing and uses preference page width"
+  },
+  {
+    "file": "front/app/agent/harnessManagerAvailability.test.mjs",
+    "name": "the Agents page reports and automatically clears Harness Manager outages"
+  },
+  {
+    "file": "front/app/agent/harnessTaskBlockers.test.mjs",
+    "name": "a Harness change offers to terminate paused task blockers explicitly"
+  },
+  {
+    "file": "front/app/agent/responsiveAgentCards.test.mjs",
+    "name": "agent cards reserve the full card width for summaries on mobile"
+  },
+  {
+    "file": "front/app/chat/agentExecutionTrace.test.mjs",
+    "name": "conversation details preserve live trace while auxiliary data loads"
+  },
+  {
+    "file": "front/app/chat/agentExecutionTrace.test.mjs",
+    "name": "the conversation summary hides an empty cost"
+  },
+  {
+    "file": "front/app/chat/conversationArchiving.test.mjs",
+    "name": "conversation list options expose independent external and archive filters"
+  },
+  {
+    "file": "front/app/chat/conversationArchiving.test.mjs",
+    "name": "room listing forwards the archived filter to the server"
+  },
+  {
+    "file": "front/app/chat/conversationArchiving.test.mjs",
+    "name": "conversation preferences archive and restore the selected room"
+  },
+  {
+    "file": "front/app/chat/conversationProcesses.test.mjs",
+    "name": "queued and running conversation processes look active without requiring an action"
+  },
+  {
+    "file": "front/app/chat/conversationProcesses.test.mjs",
+    "name": "clicking a conversation process opens its detail dialog"
+  },
+  {
+    "file": "front/app/chat/pageScroll.test.mjs",
+    "name": "displaying an existing chat initially scrolls every live chat zone to the bottom"
+  },
+  {
+    "file": "front/app/chat/pageScroll.test.mjs",
+    "name": "task updates preserve the reading position and only a newly visible task scrolls to the bottom"
+  },
+  {
+    "file": "front/app/chat/pageScroll.test.mjs",
+    "name": "new task, process, and document items each request a bottom scroll"
+  },
+  {
+    "file": "front/app/chat/pageScroll.test.mjs",
+    "name": "tasks offer the same bottom-right scroll shortcut as the conversation"
+  },
+  {
+    "file": "front/app/chat/pageScroll.test.mjs",
+    "name": "an empty task tree stays stable during background refreshes"
+  },
+  {
+    "file": "front/app/chat/pageScroll.test.mjs",
+    "name": "a live task refresh clears an invalidated older-page loading indicator"
+  },
+  {
+    "file": "front/app/chat/pageScroll.test.mjs",
+    "name": "displaying a new message block always scrolls the conversation to the bottom"
+  },
+  {
+    "file": "front/app/chat/pageScroll.test.mjs",
+    "name": "the initial conversation stays at the bottom while its rendered height grows"
+  },
+  {
+    "file": "front/app/chat/pageScroll.test.mjs",
+    "name": "chat history loads the latest fifty messages and paginates older messages"
+  },
+  {
+    "file": "front/app/chat/pageScroll.test.mjs",
+    "name": "a discreet shortcut appears away from the bottom and scrolls to the latest message"
+  },
+  {
+    "file": "front/app/chat/pageScroll.test.mjs",
+    "name": "application and conversation navigation stay outside the message scroll zone"
+  },
+  {
+    "file": "front/app/chat/pageScroll.test.mjs",
+    "name": "the centered conversation list stays open while the regular sidebar remains collapsible"
+  },
+  {
+    "file": "front/app/chat/pageScroll.test.mjs",
+    "name": "working documents scroll inside the height assigned by the sidebar accordion"
+  },
+  {
+    "file": "front/app/chat/roomCreation.test.mjs",
+    "name": "new conversations collect the complete editable presentation"
+  },
+  {
+    "file": "front/app/chat/roomCreation.test.mjs",
+    "name": "conversation creation sends all preferences atomically"
+  },
+  {
+    "file": "front/app/chat/roomCreation.test.mjs",
+    "name": "topic selection is hidden and cleared without topic editing rights"
+  },
+  {
+    "file": "front/app/chat/roomCreation.test.mjs",
+    "name": "Dream topic detection is explained only while no topic is selected"
+  },
+  {
+    "file": "front/app/chat/roomThreads.test.mjs",
+    "name": "the selected conversation exposes its room identifier for copying"
+  },
+  {
+    "file": "front/app/chat/roomThreads.test.mjs",
+    "name": "all locales describe the room identifier copy action"
+  },
+  {
+    "file": "front/app/chat/unreadNotifications.test.mjs",
+    "name": "the conversation list exposes unread messages accessibly"
+  },
+  {
+    "file": "front/app/chat/unreadNotifications.test.mjs",
+    "name": "only a rendered conversation marks its latest durable message as read"
+  },
+  {
+    "file": "front/app/chat/unreadNotifications.test.mjs",
+    "name": "global notifications use Web Push with an unread-aware in-app fallback"
+  },
+  {
+    "file": "front/app/chat/unreadNotifications.test.mjs",
+    "name": "chat notifications exclude the conversation currently displayed"
+  },
+  {
+    "file": "front/app/chat/unreadNotifications.test.mjs",
+    "name": "the injected PWA worker receives push while the application is closed"
+  },
+  {
+    "file": "front/app/chat/unreadNotifications.test.mjs",
+    "name": "all locales describe unread counts"
+  },
+  {
+    "file": "front/app/chat/unreadNotifications.test.mjs",
+    "name": "a home-page room link opens the requested conversation"
+  },
+  {
+    "file": "front/app/chat/voiceCallResponsive.test.mjs",
+    "name": "the mobile hang-up action keeps only its accessible round icon"
+  },
+  {
+    "file": "front/app/chat/voiceCallResponsive.test.mjs",
+    "name": "an audio call can be cancelled while it is still connecting"
+  },
+  {
+    "file": "front/app/chat/voiceCallResponsive.test.mjs",
+    "name": "calls keep native audio and expose a playback action when autoplay is blocked"
+  },
+  {
+    "file": "front/app/chat/voiceCallResponsive.test.mjs",
+    "name": "mobile calls send the offer immediately and trickle every ICE candidate"
+  },
+  {
+    "file": "front/app/chat/voiceCallResponsive.test.mjs",
+    "name": "a server-side call ending closes the matching local peer immediately"
+  },
+  {
+    "file": "front/app/chat/voiceCallResponsive.test.mjs",
+    "name": "hang-up remains visibly busy until the server confirms the call ended"
+  },
+  {
+    "file": "front/app/chat/voiceCallResponsive.test.mjs",
+    "name": "the call websocket event updates the store before its HTTP catch-up"
+  },
+  {
+    "file": "front/app/goal/goalDialogTabs.test.mjs",
+    "name": "goal dialog tabs use horizontal icons and put editing second"
+  },
+  {
+    "file": "front/app/goal/goalDialogTabs.test.mjs",
+    "name": "goal overview stacks identities above actions below desktop width"
+  },
+  {
+    "file": "front/app/goal/goalHierarchy.test.mjs",
+    "name": "Goal form exposes one default, custom, or relational trigger mode"
+  },
+  {
+    "file": "front/app/goal/goalHierarchy.test.mjs",
+    "name": "Goal page indents sub-goals in its only list and keeps them in details"
+  },
+  {
+    "file": "front/app/goal/goalHierarchy.test.mjs",
+    "name": "Goal rows expose every action directly and align them to the right"
+  },
+  {
+    "file": "front/app/goal/goalHierarchy.test.mjs",
+    "name": "Goal creation and consultation share one four-tab modal"
+  },
+  {
+    "file": "front/app/goal/goalHierarchy.test.mjs",
+    "name": "Goal cycles retain their detailed timeline presentation"
+  },
+  {
+    "file": "front/app/goal/lifecycleActions.test.mjs",
+    "name": "active Goals expose pause from the list and overview tab"
+  },
+  {
+    "file": "front/app/goal/lifecycleActions.test.mjs",
+    "name": "completed Goals expose restart through the resume lifecycle command"
+  },
+  {
+    "file": "front/app/goal/lifecycleActions.test.mjs",
+    "name": "Goal details keep identity visible and prioritize the primary lifecycle action"
+  },
+  {
+    "file": "front/app/goal/lifecycleActions.test.mjs",
+    "name": "Goal summary metrics strictly reuse the Activity card presentation"
+  },
+  {
+    "file": "front/app/goal/lifecycleActions.test.mjs",
+    "name": "Goal cycle timeline and pagination adapt to mobile widths"
+  },
+  {
+    "file": "front/app/goal/scheduleOwnership.test.mjs",
+    "name": "global availability has its control while each Goal schedule stays in its edit form"
+  },
+  {
+    "file": "front/app/goal/scheduleOwnership.test.mjs",
+    "name": "schedule row and column headers toggle only allowed slots"
+  },
+  {
+    "file": "front/app/goal/scheduleOwnership.test.mjs",
+    "name": "schedule headers paint whole rows or columns while the pointer is held"
+  },
+  {
+    "file": "front/app/goal/scheduleOwnership.test.mjs",
+    "name": "schedule slots paint by pointer and render status icons instead of inputs"
+  },
+  {
+    "file": "front/app/goal/scheduleOwnership.test.mjs",
+    "name": "mobile schedule grid fits its container and lets touch gestures scroll the dialog"
+  },
+  {
+    "file": "front/app/goal/scheduleOwnership.test.mjs",
+    "name": "new global and Goal schedule drafts enable every hourly slot by default"
+  },
+  {
+    "file": "front/app/index/homePage.test.mjs",
+    "name": "home and dashboard are separate routes with separate responsibilities"
+  },
+  {
+    "file": "front/app/index/homePage.test.mjs",
+    "name": "the authenticated home displays the shared page title"
+  },
+  {
+    "file": "front/app/index/homePage.test.mjs",
+    "name": "the action center derives its accents from the application theme"
+  },
+  {
+    "file": "front/app/index/homePage.test.mjs",
+    "name": "the action center loads recent unread conversations and links to their room"
+  },
+  {
+    "file": "front/app/index/homePage.test.mjs",
+    "name": "recent activity is assembled from each authorized domain"
+  },
+  {
+    "file": "front/app/index/homePage.test.mjs",
+    "name": "home cards are hidden when their privileges are absent"
+  },
+  {
+    "file": "front/app/index/homePage.test.mjs",
+    "name": "quick access links to agents only with agent access"
+  },
+  {
+    "file": "front/app/index/homePage.test.mjs",
+    "name": "the error log uses a detail-free summary contract"
+  },
+  {
+    "file": "front/app/index/homePage.test.mjs",
+    "name": "the greeting hero keeps its photographic background visible"
+  },
+  {
+    "file": "front/app/index/homePage.test.mjs",
+    "name": "the greeting hero uses a darker photographic treatment in dark mode"
+  },
+  {
+    "file": "front/app/index/homePage.test.mjs",
+    "name": "the greeting hero follows the navy and turquoise palette of its photograph"
+  },
+  {
+    "file": "front/app/index/homePage.test.mjs",
+    "name": "the home reuses the dashboard monthly cost and token metrics"
+  },
+  {
+    "file": "front/app/index/homePage.test.mjs",
+    "name": "initial setup separates the foundation from recommended capabilities"
+  },
+  {
+    "file": "front/app/index/homePage.test.mjs",
+    "name": "incomplete configuration remains exclusively in the welcome flow"
+  },
+  {
+    "file": "front/app/index/homePage.test.mjs",
+    "name": "all locales expose home and dashboard copy"
+  },
+  {
+    "file": "front/app/index/homePage.test.mjs",
+    "name": "legal and license pages provide dedicated Chinese content"
+  },
+  {
+    "file": "front/app/index/homePublic.test.mjs",
+    "name": "public home presents the product directly"
+  },
+  {
+    "file": "front/app/index/homePublic.test.mjs",
+    "name": "public home presents every product strength"
+  },
+  {
+    "file": "front/app/index/homePublic.test.mjs",
+    "name": "public home gives the login action exclusive prominence"
+  },
+  {
+    "file": "front/app/index/homePublic.test.mjs",
+    "name": "public home supports dark mode and responsive layouts"
+  },
+  {
+    "file": "front/app/llm/components/ConfiguredLlmManager.test.mjs",
+    "name": "configured LLM rows reuse the availability check and update their status"
+  },
+  {
+    "file": "front/app/llm/components/LlmCall.test.mjs",
+    "name": "LLM calls show only billed cost and expose a distinct API equivalent in the title"
+  },
+  {
+    "file": "front/app/llm/components/LlmCall.test.mjs",
+    "name": "LLM call cost precision is compact and API-only when different"
+  },
+  {
+    "file": "front/app/llm/components/LlmCall.test.mjs",
+    "name": "every LLM call shows output tokens before cost and details usage in the title"
+  },
+  {
+    "file": "front/app/llm/components/LlmCall.test.mjs",
+    "name": "Dream receipts reuse the shared LLM call list"
+  },
+  {
+    "file": "front/app/llm/components/LlmCall.test.mjs",
+    "name": "the live dashboard also shows output tokens before cost for each LLM call"
+  },
+  {
+    "file": "front/app/llm/components/LlmCall.test.mjs",
+    "name": "response tab shows only the normalized terminal result"
+  },
+  {
+    "file": "front/app/llm/components/LlmCall.test.mjs",
+    "name": "embedded task calls keep a tight model header without the generic label"
+  },
+  {
+    "file": "front/app/llm/components/LlmCall.test.mjs",
+    "name": "embedded task and conversation call lists stay responsive"
+  },
+  {
+    "file": "front/app/llm/components/LlmCall.test.mjs",
+    "name": "every LLM call list shows the persisted semantic purpose"
+  },
+  {
+    "file": "front/app/llm/components/LlmCall.test.mjs",
+    "name": "task lists retain agent calls that also belong to a process"
+  },
+  {
+    "file": "front/app/llm/components/LlmCall.test.mjs",
+    "name": "LLM call surfaces show reasoning effort immediately after the model"
+  },
+  {
+    "file": "front/app/llm/components/LlmCall.test.mjs",
+    "name": "each reasoning effort has a distinct badge color"
+  },
+  {
+    "file": "front/app/llm/components/LlmCall.test.mjs",
+    "name": "all LLM call surfaces use the shared compact detail tabs"
+  },
+  {
+    "file": "front/app/llm/components/LlmCallDetails.test.mjs",
+    "name": "LLM calls show only the normalized terminal response"
+  },
+  {
+    "file": "front/app/llm/components/ProviderConfigPanel.test.mjs",
+    "name": "ChatGPT subscription acknowledgement gates every save and survives its reload"
+  },
+  {
+    "file": "front/app/llm/components/ProviderConfigPanel.test.mjs",
+    "name": "ChatGPT policy links to the official OpenAI terms"
+  },
+  {
+    "file": "front/app/memory/contactDirectory.test.mjs",
+    "name": "contact directory keeps server pagination and an explicit merge target"
+  },
+  {
+    "file": "front/app/memory/contactDirectory.test.mjs",
+    "name": "contact directory uses the canonical contact API and links back to scoped memory"
+  },
+  {
+    "file": "front/app/memory/contactDirectory.test.mjs",
+    "name": "contact directory confirms permanent forgetting and normalizes filter heights"
+  },
+  {
+    "file": "front/app/memory/documentEditorReuse.test.mjs",
+    "name": "Chat reuses the complete contributed document editor"
+  },
+  {
+    "file": "front/app/memory/documentEditorReuse.test.mjs",
+    "name": "message document previews use the Chat document dialog instead of fullscreen"
+  },
+  {
+    "file": "front/app/memory/documentEditorReuse.test.mjs",
+    "name": "the Documents page mounts the managed library and reuses the editor"
+  },
+  {
+    "file": "front/app/memory/documentEditorReuse.test.mjs",
+    "name": "the shared editor owns its folder picker, copyable URI and attachments"
+  },
+  {
+    "file": "front/app/memory/documentEditorReuse.test.mjs",
+    "name": "documents can be created from both tree and Chat document zone"
+  },
+  {
+    "file": "front/app/memory/documentEditorReuse.test.mjs",
+    "name": "the shared editor searches one grouped Agent and User owner selector"
+  },
+  {
+    "file": "front/app/memory/documentEditorReuse.test.mjs",
+    "name": "the shared editor presents document metadata without repeating its owner"
+  },
+  {
+    "file": "front/app/memory/documentEditorReuse.test.mjs",
+    "name": "the shared editor combines its revision with the history action after the URI"
+  },
+  {
+    "file": "front/app/memory/documentEditorReuse.test.mjs",
+    "name": "the shared editor presents compact visual and durable global sharing rights"
+  },
+  {
+    "file": "front/app/memory/documentEditorReuse.test.mjs",
+    "name": "the shared editor reconciles revisions received over WebSocket"
+  },
+  {
+    "file": "front/app/memory/documentEditorReuse.test.mjs",
+    "name": "the shared editor exposes Agent content history, diff and content-only restoration"
+  },
+  {
+    "file": "front/app/memory/documentEditorReuse.test.mjs",
+    "name": "document history keeps revisions and diffs readable on mobile"
+  },
+  {
+    "file": "front/app/memory/documentEditorReuse.test.mjs",
+    "name": "the Chat document list never uses an UUID as its visual fallback"
+  },
+  {
+    "file": "front/app/memory/documentTree.test.mjs",
+    "name": "the document tree exposes every readable document under managed agents"
+  },
+  {
+    "file": "front/app/memory/documentTree.test.mjs",
+    "name": "the tree loads every page internally without displaying pagination"
+  },
+  {
+    "file": "front/app/memory/documentTree.test.mjs",
+    "name": "the document splitter uses the same visible drag handle as Chat"
+  },
+  {
+    "file": "front/app/memory/documentTree.test.mjs",
+    "name": "mobile shows only the tree and opens documents in a full-screen dialog"
+  },
+  {
+    "file": "front/app/memory/documentTree.test.mjs",
+    "name": "folders are collapsible, colored, and documents have no tree icon"
+  },
+  {
+    "file": "front/app/memory/documentTree.test.mjs",
+    "name": "documents can be dropped on a folder or the agent root"
+  },
+  {
+    "file": "front/app/memory/documentTree.test.mjs",
+    "name": "Goal-owned documents cannot be dragged out of their managed folder"
+  },
+  {
+    "file": "front/app/memory/memoryGraphMobileDetail.test.mjs",
+    "name": "mobile memory graph clicks open the page full-screen detail dialog"
+  },
+  {
+    "file": "front/app/memory/memorySearchLayout.test.mjs",
+    "name": "memory search keeps only the useful controls above results"
+  },
+  {
+    "file": "front/app/memory/memorySearchLayout.test.mjs",
+    "name": "memory search uses one compact desktop row and responsive stacking"
+  },
+  {
+    "file": "front/app/memory/memorySearchLayout.test.mjs",
+    "name": "memory search fields share one fixed desktop height"
+  },
+  {
+    "file": "front/app/memory/memorySearchLayout.test.mjs",
+    "name": "memory list filters use one consistent responsive gutter"
+  },
+  {
+    "file": "front/app/memory/memorySelectBehavior.test.mjs",
+    "name": "every select on the Memory page opens as an anchored menu"
+  },
+  {
+    "file": "front/app/process/agentFilter.test.mjs",
+    "name": "process definitions expose an agent filter backed by the scoped API"
+  },
+  {
+    "file": "front/app/process/agentFilter.test.mjs",
+    "name": "process run filter applies to history, active runs, and metrics"
+  },
+  {
+    "file": "front/app/process/runDetailDialog.test.mjs",
+    "name": "process runs open in a responsive detail dialog"
+  },
+  {
+    "file": "front/app/process/runDetailDialog.test.mjs",
+    "name": "process LLM calls show output tokens before cost with usage in the title"
+  },
+  {
+    "file": "front/app/process/runDetailDialog.test.mjs",
+    "name": "process LLM calls expose their persisted semantic purpose"
+  },
+  {
+    "file": "front/app/skill/skillActionLayout.test.mjs",
+    "name": "skill action icons stay on one row"
+  },
+  {
+    "file": "front/app/skill/skillEditorMobileSpacing.test.mjs",
+    "name": "skill editor removes only the mobile vertical field gutter"
+  },
+  {
+    "file": "front/app/skill/skillEditorMobileSpacing.test.mjs",
+    "name": "skill editor compacts fields and tabs at every viewport width"
+  },
+  {
+    "file": "front/app/skill/skillFrontmatterPreview.test.mjs",
+    "name": "skill previews render YAML frontmatter as compact metadata"
+  },
+  {
+    "file": "front/app/task/executionMemoryVisibility.test.mjs",
+    "name": "memory visibility is explicitly controlled by the execution-result caller"
+  },
+  {
+    "file": "front/app/task/executionMemoryVisibility.test.mjs",
+    "name": "tasks hide memory while conversation surfaces keep it"
+  },
+  {
+    "file": "front/app/task/reasoningStepsVisibility.test.mjs",
+    "name": "reasoning steps are always visible and selected by default"
+  },
+  {
+    "file": "front/app/task/recentTaskFilters.test.mjs",
+    "name": "the recent-task service sends the paused-only server filter"
+  },
+  {
+    "file": "front/app/task/recentTaskFilters.test.mjs",
+    "name": "running, paused and error filters remain mutually exclusive"
+  },
+  {
+    "file": "front/app/task/recentTaskFilters.test.mjs",
+    "name": "the paused and running overview metrics expose mouse and keyboard filtering"
+  },
+  {
+    "file": "front/app/tools/responsiveToolDialog.test.mjs",
+    "name": "the tool editor uses readable stacked layouts on mobile"
+  },
+  {
+    "file": "front/core/navigation/leftMenuDescriptions.test.mjs",
+    "name": "left menu descriptions are translated hover titles rather than visible captions"
+  },
+  {
+    "file": "front/core/navigation/leftMenuDescriptions.test.mjs",
+    "name": "left menu items use the compact requested height"
+  },
+  {
+    "file": "front/core/themePageBackground.test.mjs",
+    "name": "the complete application shell follows the active page theme"
+  },
+  {
+    "file": "front/core/user/loginDarkMode.test.mjs",
+    "name": "login page uses dark surfaces when the application theme is dark"
+  },
+  {
+    "file": "front/core/user/userMenuPreferences.test.mjs",
+    "name": "the user menu exposes the profile language choices"
+  },
+  {
+    "file": "front/core/user/userMenuPreferences.test.mjs",
+    "name": "the user menu exposes and persists every theme mode"
+  },
+  {
+    "file": "front/core/user/userMenuPreferences.test.mjs",
+    "name": "the user menu uses balanced one-line item spacing"
+  },
+  {
+    "file": "front/core/user/userMenuPreferences.test.mjs",
+    "name": "the user menu keeps neutral icons and section styling"
+  },
+  {
+    "file": "front/core/user/userMenuPreferences.test.mjs",
+    "name": "the user button keeps its solid primary blue styling"
+  },
+  {
+    "file": "front/core/util/markdownWysiwygTableBorders.test.mjs",
+    "name": "the document editor displays bordered Markdown tables in both themes"
+  },
+  {
+    "file": "front/core/util/statusBadge.test.mjs",
+    "name": "status badges use one solid background and border with light text"
+  },
+  {
+    "file": "front/core/util/statusBadge.test.mjs",
+    "name": "status badges keep the original compact Quasar typography and corners"
+  },
+  {
+    "file": "front/core/util/statusBadge.test.mjs",
+    "name": "every Activity domain uses the shared status badge"
+  },
+  {
+    "file": "front/core/util/statusBadge.test.mjs",
+    "name": "the shared palette covers every Activity status meaning"
+  },
+  {
+    "file": "front/pwa/deploymentCache.test.mjs",
+    "name": "the PWA keeps its historical service worker URL"
+  },
+  {
+    "file": "front/pwa/deploymentCache.test.mjs",
+    "name": "stable frontend bootstrap files are never served from HTTP cache"
+  },
+  {
+    "file": "front/pwa/deploymentCache.test.mjs",
+    "name": "the development worker does not bind a missing precached application shell"
+  },
+  {
+    "file": "front/app/chat/compactTaskOperations.test.mjs",
+    "name": "only AI messages and thinking use the two-line streaming tail"
+  },
+  {
+    "file": "front/app/chat/compactTaskOperations.test.mjs",
+    "name": "Chat task operations display the tool name without a redundant prefix"
+  },
+  {
+    "file": "front/app/chat/compactTaskOperations.test.mjs",
+    "name": "the last operation spinner follows the suspension-aware Task activity rule"
+  },
+  {
+    "file": "front/app/chat/compactTaskOperations.test.mjs",
+    "name": "Chat shows the pause or wait icon instead of animating the resume phase"
+  },
+  {
+    "file": "front/app/chat/compactTaskOperations.test.mjs",
+    "name": "completed Chat tasks start collapsed and their title toggles only that row inline"
+  },
+  {
+    "file": "front/app/chat/compactTaskOperations.test.mjs",
+    "name": "TaskDetail opens from the whole task row while nested controls remain independent"
+  },
+  {
+    "file": "front/app/chat/reflectionFallbackTheme.test.mjs",
+    "name": "compact reflection keeps its original background and orange accents"
+  },
+  {
+    "file": "front/app/chat/resourceViewer.test.mjs",
+    "name": "message blocks own standalone actions while fullscreen keeps download only"
+  },
+  {
+    "file": "front/app/chat/resourceViewer.test.mjs",
+    "name": "HTML preview keeps external dependencies and isolates the standalone document"
+  },
+  {
+    "file": "front/app/chat/taskReasoningEffort.test.mjs",
+    "name": "@effort implies a Task and uses an inline forced-value slider"
+  },
+  {
+    "file": "front/app/chat/taskReasoningEffort.test.mjs",
+    "name": "composer posts Task controls and sends their intent as metadata too"
+  },
+  {
+    "file": "front/app/chat/taskReasoningEffort.test.mjs",
+    "name": "command completion replaces the active directive prefix"
+  },
+  {
+    "file": "front/app/task/taskActivity.test.mjs",
+    "name": "task statuses expose the shared semantic badge tones"
+  },
+  {
+    "file": "front/app/task/taskActivity.test.mjs",
+    "name": "Task detail gives the pause or wait icon precedence over the resume phase"
+  },
+  {
+    "file": "front/app/harnesses/managerHelp.test.mjs",
+    "name": "manager help offers two guides and never binds a secret value"
+  },
+  {
+    "file": "front/app/harnesses/managerHelp.test.mjs",
+    "name": "diagnostics precede the shared compose editor"
+  },
+  {
+    "file": "front/core/params/harnessSettings.test.mjs",
+    "name": "global fields are embedded in the catalogue detail, outside the activation form"
+  }
+]

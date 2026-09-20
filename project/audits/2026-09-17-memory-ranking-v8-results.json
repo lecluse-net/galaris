@@ -1,0 +1,97 @@
+{
+  "date": "2026-09-17",
+  "instance": "development",
+  "model": "nomic",
+  "dimensions": 768,
+  "ranking_version": "memory-query-evidence/v8",
+  "publication_scope": "Aggregate historical measurements only. Queries, document titles, excerpts, identities, resource references and per-case results have been removed. The private corpus is not distributed; these measurements do not describe the synthetic examples now included in the repository.",
+  "summary": [
+    {
+      "set": "development_cases",
+      "variant": "v8_final",
+      "cases": 47,
+      "positive": 44,
+      "top1": 41,
+      "top10": 42,
+      "negative_with_hits": 0,
+      "median_ms": 339
+    },
+    {
+      "set": "initial_holdout",
+      "variant": "after",
+      "cases": 18,
+      "positive": 13,
+      "top1": 8,
+      "top10": 10,
+      "negative_with_hits": 0,
+      "median_ms": 357.5
+    },
+    {
+      "set": "initial_holdout",
+      "variant": "before",
+      "cases": 18,
+      "positive": 13,
+      "top1": 6,
+      "top10": 13,
+      "negative_with_hits": 5,
+      "median_ms": 732.5
+    },
+    {
+      "set": "holdout_replay",
+      "variant": "after",
+      "cases": 18,
+      "positive": 13,
+      "top1": 10,
+      "top10": 12,
+      "negative_with_hits": 0,
+      "median_ms": 365.0
+    },
+    {
+      "set": "holdout_replay",
+      "variant": "before",
+      "cases": 18,
+      "positive": 13,
+      "top1": 6,
+      "top10": 13,
+      "negative_with_hits": 5,
+      "median_ms": 693.5
+    },
+    {
+      "set": "final_validation",
+      "variant": "after",
+      "cases": 13,
+      "positive": 10,
+      "top1": 9,
+      "top10": 10,
+      "negative_with_hits": 1,
+      "median_ms": 345
+    },
+    {
+      "set": "final_validation",
+      "variant": "before",
+      "cases": 13,
+      "positive": 10,
+      "top1": 4,
+      "top10": 9,
+      "negative_with_hits": 3,
+      "median_ms": 613
+    }
+  ],
+  "checks": {
+    "document": {
+      "checked": 23,
+      "exact_passed": 23,
+      "checksum_matches_passed": 23,
+      "projection_matches_passed": 23
+    },
+    "acl": {
+      "checked": 10,
+      "exact_denied_passed": 10,
+      "title_denied_passed": 10
+    },
+    "contact_scope": {
+      "checked": 16,
+      "checks_with_foreign_hits": 0
+    }
+  }
+}

@@ -1,0 +1,7 @@
+{
+  "repetitions": 3,
+  "max_drop_points": 5,
+  "minimum_score": 80,
+  "required_categories": ["security", "robustness", "nominal"],
+  "zero_failure_categories": ["security"]
+}

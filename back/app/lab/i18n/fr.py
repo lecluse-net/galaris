@@ -1,0 +1,34 @@
+"""French task-analysis Lab messages."""
+
+default = {
+    "evaluation_api": {
+        "errors": {
+            "review_authentication": "Un évaluateur authentifié est requis",
+            "review_campaign_missing": "Aucune campagne de jugement disponible",
+            "review_output_missing": "La sortie candidate n’est pas disponible",
+            "review_submitted": "Cette revue est déjà enregistrée et ne peut plus être modifiée après révélation",
+            "review_dimensions": "Notez chaque critère de la rubrique exactement une fois",
+            "budget_exhausted": "Le budget du benchmark est épuisé ; créez un nouveau benchmark",
+            "suite_not_found": "Suite introuvable",
+            "task_not_found": "Tâche introuvable",
+            "lab_task_not_found": "Cette tâche n’est pas enregistrée dans le Lab IA",
+            "conversation_turn_not_found": "Ce tour de conversation n’existe pas",
+            "dataset_not_found": "Ce jeu d’évaluation n’existe pas",
+            "case_not_found": "Ce cas d’évaluation n’existe pas",
+            "run_not_found": "Cette exécution d’évaluation n’existe pas",
+            "revision_conflict": "Cet élément a été modifié par un autre utilisateur ; rechargez-le avant d’enregistrer",
+            "dispatch_result_missing": "Cette tâche ne possède aucun résultat de dispatcher à capturer",
+            "source_capture_missing": "Ce cas ne possède aucune capture originale à restaurer",
+            "message_range_empty": "Aucun message ne correspond à cette IA, cette personne et cette période",
+            "message_range_too_large": "Cette sélection dépasse 500 messages ; réduisez la période avant l’import",
+            "expected_topic_count": "Un sujet attendu est requis pour chaque message de l’échange",
+            "run_llm_invalid": "Le LLM de test sélectionné est indisponible ou ne prend pas en charge le chat",
+            "no_ready_cases": "Ce jeu ne contient aucun cas actif et prêt",
+            "run_not_terminal": "Le benchmark doit être terminé avant de pouvoir être analysé",
+            "run_delete_active": "Arrêtez le benchmark avant de le supprimer",
+            "run_has_no_results": "Ce benchmark ne contient aucun résultat à analyser",
+            "lab_llm_not_chat": "Le LLM du Lab IA doit prendre en charge la conversation textuelle",
+            "lab_llm_not_configured": "Configurez d’abord le modèle d’analyse du Lab IA dans Fournisseurs & modèles",
+        },
+    },
+}

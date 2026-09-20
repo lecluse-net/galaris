@@ -1,0 +1,29 @@
+<h2>Une scène Three.js interactive</h2>
+<p>Le cube tourne dans l’aperçu du document.</p>
+<script type="module">
+import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.185.1/build/three.module.js';
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color('#182334');
+const camera = new THREE.PerspectiveCamera(45, 1, 0.1, 100);
+camera.position.z = 4;
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+document.body.append(renderer.domElement);
+const cube = new THREE.Mesh(new THREE.BoxGeometry(), new THREE.MeshNormalMaterial());
+scene.add(cube);
+
+function resize() {
+  const width = Math.max(240, document.body.clientWidth - 40);
+  renderer.setSize(width, 360);
+  camera.aspect = width / 360;
+  camera.updateProjectionMatrix();
+}
+addEventListener('resize', resize);
+resize();
+renderer.setAnimationLoop(() => {
+  cube.rotation.x += 0.006;
+  cube.rotation.y += 0.01;
+  renderer.render(scene, camera);
+});
+</script>

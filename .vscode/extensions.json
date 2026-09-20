@@ -1,0 +1,14 @@
+{
+    "recommendations": [
+        "abdelaziz18003.quasar-snippets",
+        "firefox-devtools.vscode-firefox-debug",
+        "ms-python.vscode-pylance",
+        "ms-python.python",
+        "ms-python.debugpy",
+        "rooveterinaryinc.roo-cline",
+        "vue.volar",
+        "tushortz.python-extended-snippets",
+        "ms-python.black-formatter",
+        "yzhang.markdown-all-in-one"
+    ]
+}

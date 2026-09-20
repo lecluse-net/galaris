@@ -1,0 +1,69 @@
+{
+  "environment": "development",
+  "production_changed": false,
+  "model": "configured nomic",
+  "ranking_version": "memory-query-evidence/v10",
+  "summary": [
+    {
+      "set": "development",
+      "variant": "v8",
+      "cases": 47,
+      "positive": 44,
+      "top1": 41,
+      "top10": 42,
+      "negative_with_hits": 0,
+      "median_ms": 293
+    },
+    {
+      "set": "development",
+      "variant": "v10",
+      "cases": 47,
+      "positive": 44,
+      "top1": 41,
+      "top10": 43,
+      "negative_with_hits": 3,
+      "median_ms": 437
+    },
+    {
+      "set": "holdout",
+      "variant": "v8",
+      "cases": 18,
+      "positive": 13,
+      "top1": 10,
+      "top10": 12,
+      "negative_with_hits": 0,
+      "median_ms": 337
+    },
+    {
+      "set": "holdout",
+      "variant": "v10",
+      "cases": 18,
+      "positive": 13,
+      "top1": 10,
+      "top10": 13,
+      "negative_with_hits": 5,
+      "median_ms": 485
+    },
+    {
+      "set": "validation",
+      "variant": "v8",
+      "cases": 13,
+      "positive": 10,
+      "top1": 9,
+      "top10": 10,
+      "negative_with_hits": 1,
+      "median_ms": 297
+    },
+    {
+      "set": "validation",
+      "variant": "v10",
+      "cases": 13,
+      "positive": 10,
+      "top1": 10,
+      "top10": 10,
+      "negative_with_hits": 3,
+      "median_ms": 463
+    }
+  ],
+  "publication_scope": "Aggregate historical measurements only. Queries, document titles, excerpts, identities, resource references and per-case results have been removed. The private corpus is not distributed; these measurements do not describe the synthetic examples now included in the repository."
+}

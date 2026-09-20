@@ -1,0 +1,19 @@
+# Customize host ports, volume mounts and networks here.
+# Application settings belong in .env.
+services:
+  # make install selects the host port; the container port remains 8484.
+  frontend:
+    ports:
+      - "8484:8484"
+
+  backend:
+    volumes:
+      - galaris_data:/data
+
+  ssh-executor:
+    volumes:
+      - galaris_data:/data
+
+volumes:
+  galaris_data:
+    name: ${APP_NAME:-galaris}_data

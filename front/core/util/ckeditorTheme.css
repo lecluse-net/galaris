@@ -1,0 +1,156 @@
+/* One CSS entry for readers and editors: Vite bundles the native styles before
+   our overrides instead of loading them in independent lazy component chunks. */
+@import 'ckeditor5/ckeditor5.css';
+@import './richText.css';
+
+/* CKEditor owns its UI. These tokens connect its native theme to Quasar. */
+body {
+  --ck-color-text: var(--ck-color-base-text);
+  --ck-color-dropdown-panel-background: var(--ck-color-base-background);
+  --ck-color-dropdown-panel-border: var(--ck-color-base-border);
+  --ck-color-input-background: var(--ck-color-base-background);
+  --ck-color-input-border: var(--ck-color-base-border);
+  --ck-color-input-text: var(--ck-color-base-text);
+  --ck-color-list-background: var(--ck-color-base-background);
+  --ck-color-list-button-hover-background: var(--ck-color-button-default-hover-background);
+  --ck-color-list-button-on-background: var(--ck-color-button-on-color);
+  --ck-color-list-button-on-background-focus: var(--ck-color-button-on-color);
+  --ck-color-panel-background: var(--ck-color-base-background);
+  --ck-color-panel-border: var(--ck-color-base-border);
+  --ck-color-toolbar-border: var(--ck-color-base-border);
+  --ck-color-tooltip-background: var(--ck-color-base-text);
+  --ck-color-tooltip-text: var(--ck-color-base-background);
+  --ck-color-dialog-background: var(--ck-color-base-background);
+  --ck-color-dialog-form-header-border: var(--ck-color-base-border);
+  --ck-color-base-border: #dbe1e8;
+  --ck-color-toolbar-background: #f7f9fc;
+  --ck-color-link-default: #0759a5;
+  --ck-z-default: 2000;
+  --ck-z-panel: 7000;
+  --ck-z-dialog: 7100;
+}
+.body--dark {
+  --ck-color-base-background: #1d1d1d;
+  --ck-color-base-foreground: #292e36;
+  --ck-color-base-border: #414a58;
+  --ck-color-base-text: #f1f3f5;
+  --ck-color-toolbar-background: #242a33;
+  --ck-color-button-default-hover-background: #354153;
+  --ck-color-button-default-active-background: #354153;
+  --ck-color-button-on-background: #243e57;
+  --ck-color-button-on-hover-background: #31516f;
+  --ck-color-button-on-active-background: #31516f;
+  --ck-color-button-on-disabled-background: #30343b;
+  --ck-color-button-on-color: #90caf9;
+  --ck-color-input-disabled-background: #30343b;
+  --ck-color-input-disabled-text: #b5bdc8;
+  --ck-color-engine-placeholder-text: #b5bdc8;
+  --ck-color-link-default: #90caf9;
+  --ck-color-list-button-on-text: #17232d;
+  --ck-custom-background: #1d1d1d;
+  --ck-custom-border: #414a58;
+}
+/* Keep toolbar and dropdown layers local to their editor, below application
+   dialogs. CKEditor's body-mounted panels retain their own overlay layer. */
+.ck-galaris-editor { width: 100%; min-width: 0; isolation: isolate; }
+:is(.ck-editor__main, .ck-fullscreen__editable):has([data-document-layout="fixed"]) { padding-top: 5px; }
+/* Broad tonal bands follow the toolbar surface in both themes. */
+.ck.ck-toolbar.galaris-toolbar {
+  --galaris-toolbar-hatch: color-mix(in srgb, var(--ck-color-toolbar-background) 98%, #000);
+  padding: 2px;
+  background-image: repeating-linear-gradient(135deg, transparent 0 6px, var(--galaris-toolbar-hatch) 6px 12px);
+}
+.ck.ck-toolbar.galaris-toolbar > .ck-toolbar__items { justify-content: center; align-items: stretch; gap: 3px; padding: 0; }
+.ck.ck-toolbar.galaris-toolbar > .ck-toolbar__items > .galaris-toolbar-group { margin: 0; }
+.ck.ck-editor__top .ck-sticky-panel .ck-sticky-panel__content:has(.galaris-toolbar) { border-bottom-width: 0; }
+.ck.ck-editor:has([data-document-layout="fixed"]) > .ck-editor__top .ck-sticky-panel .ck-sticky-panel__content:has(.galaris-toolbar) { border-bottom-width: 1px; }
+.ck.ck-sticky-panel .ck-sticky-panel__content_sticky:has(.galaris-toolbar) { box-shadow: none; }
+/* Outrank CKEditor's reset even when its lazy-loaded CSS arrives after the reader theme. */
+.ck.galaris-toolbar .galaris-toolbar-group {
+  display: flex;
+  flex-direction: column;
+  flex: 0 1 auto;
+  gap: 1px;
+  width: max-content;
+  min-width: 0;
+  max-width: 100%;
+  padding: 2px 4px;
+  border: 1px solid var(--ck-color-base-border);
+  border-radius: 4px;
+  background-color: var(--ck-color-toolbar-background);
+}
+.ck.galaris-toolbar .galaris-toolbar-group__title { align-self: flex-start; font-size: 10px; line-height: 1.2; font-weight: 400; text-transform: uppercase; color: var(--ck-color-base-text); }
+.ck.galaris-toolbar-group__commands { display: flex; flex-direction: column; gap: 2px; }
+.ck.galaris-toolbar-group__row { display: flex; flex-wrap: wrap; align-items: center; gap: 2px; }
+.ck.galaris-toolbar--single-row .galaris-toolbar-group__commands { flex-direction: row; }
+.ck.galaris-toolbar--single-row .galaris-toolbar-group__row { flex-wrap: nowrap; }
+.ck.galaris-toolbar .galaris-mobile-toolbar { display: none; }
+@media (max-width: 1023.98px) {
+  .ck.ck-toolbar.galaris-toolbar { padding-block: 0; background-image: none; }
+  .ck.ck-toolbar.galaris-toolbar > .ck-toolbar__items { min-width: 0; width: 100%; flex-wrap: nowrap; }
+  .ck.galaris-toolbar .galaris-toolbar-group { display: none; }
+  .ck.galaris-toolbar .galaris-mobile-toolbar { display: flex; flex: 1; min-width: 0; max-width: 100%; border: 0; padding: 0; }
+  .ck.ck-toolbar.galaris-toolbar > .ck-toolbar__items > .galaris-mobile-toolbar,
+  .ck.galaris-mobile-toolbar > .ck-toolbar__items > .ck,
+  .ck.galaris-mobile-toolbar > .ck-toolbar__grouped-dropdown { margin-block: 0; }
+  .ck.galaris-mobile-toolbar > .ck-toolbar__items { display: flex; flex: 1; min-width: 0; flex-wrap: wrap; justify-content: flex-start; gap: 0; }
+  .ck.galaris-mobile-toolbar > .ck-toolbar__items > .ck { flex: 0 0 auto; min-width: 0; margin: 0; }
+  .ck.ck-style-panel { --ck-style-panel-columns: 2; }
+  .ck.galaris-mobile-toolbar > .ck-toolbar__items > .ck-button,
+  .ck.galaris-mobile-toolbar > .ck-toolbar__items > .ck-dropdown > .ck-button,
+  .ck.galaris-mobile-toolbar > .ck-toolbar__items > .ck-dropdown > .ck-splitbutton > .ck-button,
+  .ck.galaris-mobile-toolbar > .ck-toolbar__grouped-dropdown > .ck-button { min-width: 0; min-height: 28px; padding: 0; }
+}
+/* GNOME icons keep their own palette; a light tile preserves dark lettering in dark mode. */
+.ck.ck-icon:has(image[data-gnome-icon]) { width: 24px; height: 24px; }
+.body--dark .ck.ck-icon:has(image[data-gnome-icon]) { background: #f5f5f5; border-radius: 3px; }
+.ck-galaris-editor .ck-editor__editable_inline { min-height: var(--editor-min-height); max-height: var(--editor-max-height); }
+.ck.ck-editor__editable_inline { color: var(--ck-color-base-text); background: var(--ck-color-base-background); }
+/* Focusing the document keeps its neutral border; toolbar keyboard focus stays native. */
+.ck.ck-editor__editable.ck-focused:not(.ck-editor__nested-editable) { border-color: var(--ck-color-base-border); box-shadow: none; }
+.ck.ck-heading-dropdown .ck-heading_heading1 .ck-button__label { font-size: 28px; }
+.ck.ck-heading-dropdown .ck-heading_heading2 .ck-button__label { font-size: 24px; }
+.ck.ck-heading-dropdown .ck-heading_heading3 .ck-button__label { font-size: 21px; }
+.ck.ck-heading-dropdown .ck-heading_heading4 .ck-button__label { font-size: 18px; }
+.ck.ck-heading-dropdown .ck-heading_heading5 .ck-button__label { font-size: 16px; }
+.ck.ck-heading-dropdown .ck-heading_heading6 .ck-button__label { font-size: 14px; }
+.ck.ck-content .table table { margin: 0; }
+.ck.ck-source-editing-area textarea { color: var(--ck-color-base-text); background: var(--ck-color-base-background); }
+.ck-content .image > figcaption, .ck-content .table > figcaption { color: var(--rich-foreground); background: var(--rich-surface); }
+.body--dark .ck-fullscreen__main-wrapper { background: #171a20; }
+.body--dark .ck-fullscreen__main-wrapper .ck-fullscreen__editable .ck.ck-editor__editable:not(.ck-editor__nested-editable) { background: var(--rich-background); }
+/* Quasar dialogues remain usable while CKEditor is in fullscreen. */
+body.ck-fullscreen { --ck-z-fullscreen: 5000; --ck-z-panel: 7000; --ck-z-dialog: 7100; }
+
+/* The fixed page has the same 190 mm writing area as A4 with 10 mm print margins. */
+.ck-editor__main:has([data-document-layout]) {
+  background: var(--ck-color-base-foreground);
+}
+.ck.ck-editor__editable_inline[data-document-layout],
+.ck-fullscreen__main-wrapper .ck-fullscreen__editable .ck.ck-editor__editable[data-document-layout] {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 210mm;
+  margin-inline: auto;
+  padding: 10mm;
+}
+.ck.ck-editor__editable_inline[data-document-layout="full"],
+.ck-fullscreen__main-wrapper .ck-fullscreen__editable .ck.ck-editor__editable[data-document-layout="full"] {
+  max-width: none;
+  padding: 16px;
+}
+.ck-fullscreen__main-wrapper .ck-fullscreen__editable:has([data-document-layout]) {
+  width: 100%;
+  min-width: 0;
+  margin-right: auto;
+}
+:is(.ck-editor__main, .ck-fullscreen__editable):has([data-document-layout="fixed"]) .ck-source-editing-area {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 210mm;
+  margin-inline: auto;
+}
+:is(.ck-editor__main, .ck-fullscreen__editable):has([data-document-layout="full"]) .ck-source-editing-area {
+  width: 100%;
+  max-width: none;
+}

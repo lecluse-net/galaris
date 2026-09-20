@@ -1,0 +1,9 @@
+# Local data and diagnostic outputs must not enter source release archives.
+/.env export-ignore
+/.codex/config.toml export-ignore
+/artifacts export-ignore
+/data export-ignore
+/refs export-ignore
+/back/tests/manual/*.log export-ignore
+/back/tests/manual/*.jsonl export-ignore
+/back/tests/manual/*.local.json export-ignore

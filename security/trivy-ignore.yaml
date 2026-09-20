@@ -1,0 +1,9 @@
+# Reviewed 2026-09-05. Reassess on expiry; source scans include unfixed findings.
+vulnerabilities:
+  - id: CVE-2024-23342
+    statement: >-
+      python-jose pulls ecdsa transitively. Galaris fixes JWT algorithms to HS256
+      and does not perform ECDSA signing; provider signatures use cryptography.
+      The advisory concerns non-constant-time ECDSA signing. Remove this exception
+      if ECDSA signing is introduced or python-jose no longer requires ecdsa.
+    expired_at: 2026-12-05

@@ -1,0 +1,383 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#061222">
+    <meta
+      name="description"
+      content="Galaris se prépare. Une nouvelle façon de faire avancer vos idées arrive bientôt."
+    >
+    <link rel="icon" type="image/png" href="logo/32.png">
+    <title>Galaris — Stay tuned</title>
+
+    <style>
+      :root {
+        color-scheme: dark;
+        --bg: #061222;
+        --bg-deep: #030914;
+        --surface: rgba(9, 28, 48, 0.7);
+        --line: rgba(117, 222, 255, 0.18);
+        --text: #f5fbff;
+        --muted: #9db1c5;
+        --blue: #119be5;
+        --green: #0bd29a;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html,
+      body {
+        min-height: 100%;
+        margin: 0;
+      }
+
+      body {
+        display: grid;
+        min-height: 100svh;
+        overflow: hidden;
+        color: var(--text);
+        background:
+          linear-gradient(90deg, rgba(2, 9, 20, 0.68) 0%, rgba(2, 11, 23, 0.43) 52%, rgba(2, 8, 18, 0.78) 100%),
+          linear-gradient(180deg, rgba(3, 10, 22, 0.2) 0%, rgba(2, 8, 18, 0.64) 100%),
+          url("background.jpg") center 54% / cover no-repeat fixed;
+        font-family:
+          Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        -webkit-font-smoothing: antialiased;
+      }
+
+      body::before {
+        position: fixed;
+        inset: 0;
+        z-index: 0;
+        background:
+          radial-gradient(circle at 18% 18%, rgba(17, 155, 229, 0.15), transparent 30rem),
+          radial-gradient(circle at 82% 78%, rgba(11, 210, 154, 0.13), transparent 28rem),
+          radial-gradient(ellipse at center, transparent 30%, rgba(1, 5, 13, 0.45) 100%);
+        content: "";
+      }
+
+      body::after {
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        z-index: 0;
+        width: min(76vw, 70rem);
+        aspect-ratio: 1;
+        border: 1px solid rgba(83, 211, 255, 0.09);
+        border-radius: 50%;
+        box-shadow:
+          0 0 0 6rem rgba(52, 171, 229, 0.015),
+          0 0 0 12rem rgba(11, 210, 154, 0.012);
+        content: "";
+        transform: translate(-50%, -50%);
+      }
+
+      .page {
+        position: relative;
+        z-index: 1;
+        display: grid;
+        grid-template-rows: auto 1fr auto;
+        width: min(100%, 92rem);
+        min-height: 100svh;
+        margin: 0 auto;
+        padding: clamp(1.5rem, 4vw, 3.5rem);
+      }
+
+      .brand {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.85rem;
+        width: fit-content;
+        color: var(--text);
+        font-size: 1rem;
+        font-weight: 700;
+        letter-spacing: 0.2em;
+        text-decoration: none;
+        text-transform: uppercase;
+      }
+
+      .brand img {
+        width: 2.5rem;
+        height: 2.5rem;
+        object-fit: contain;
+        filter: drop-shadow(0 0 1rem rgba(17, 155, 229, 0.28));
+      }
+
+      main {
+        display: grid;
+        place-items: center;
+        padding: 3rem 0;
+      }
+
+      .hero {
+        display: grid;
+        grid-template-columns: minmax(15rem, 0.72fr) minmax(20rem, 1.28fr);
+        align-items: center;
+        gap: clamp(3rem, 8vw, 8rem);
+        width: min(100%, 68rem);
+      }
+
+      .emblem {
+        position: relative;
+        display: grid;
+        place-items: center;
+        justify-self: center;
+        width: min(100%, 24rem);
+        aspect-ratio: 1;
+        border-radius: 50%;
+        background: radial-gradient(circle, rgba(3, 14, 28, 0.84), rgba(3, 14, 28, 0.48) 58%, transparent 72%);
+        backdrop-filter: blur(3px);
+      }
+
+      .emblem::before,
+      .emblem::after {
+        position: absolute;
+        border-radius: 50%;
+        content: "";
+      }
+
+      .emblem::before {
+        inset: 2%;
+        border: 1px solid rgba(84, 216, 255, 0.25);
+        box-shadow:
+          inset 0 0 4rem rgba(17, 155, 229, 0.05),
+          0 0 5rem rgba(11, 210, 154, 0.07);
+        animation: breathe 5s ease-in-out infinite;
+      }
+
+      .emblem::after {
+        inset: -5%;
+        border-top: 1px solid rgba(11, 210, 154, 0.62);
+        border-right: 1px solid transparent;
+        border-bottom: 1px solid rgba(17, 155, 229, 0.55);
+        border-left: 1px solid transparent;
+        animation: orbit 18s linear infinite;
+      }
+
+      .emblem img {
+        z-index: 1;
+        width: 73%;
+        height: 73%;
+        object-fit: contain;
+        filter: drop-shadow(0 1.2rem 2.5rem rgba(0, 7, 16, 0.5));
+      }
+
+      .content {
+        max-width: 39rem;
+        padding: clamp(1.5rem, 3vw, 2.5rem);
+        border: 1px solid rgba(143, 225, 255, 0.1);
+        border-radius: 1.5rem;
+        background: linear-gradient(135deg, rgba(4, 18, 35, 0.64), rgba(4, 14, 28, 0.26));
+        box-shadow: 0 2rem 5rem rgba(0, 4, 12, 0.2);
+        backdrop-filter: blur(10px);
+      }
+
+      .eyebrow {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.65rem;
+        margin: 0 0 1.5rem;
+        color: #91ddff;
+        font-size: 0.75rem;
+        font-weight: 700;
+        letter-spacing: 0.2em;
+        text-transform: uppercase;
+      }
+
+      .eyebrow::before {
+        width: 0.5rem;
+        height: 0.5rem;
+        border-radius: 50%;
+        background: var(--green);
+        box-shadow: 0 0 1rem rgba(11, 210, 154, 0.9);
+        content: "";
+      }
+
+      h1 {
+        max-width: 9ch;
+        margin: 0;
+        font-size: clamp(3.6rem, 8vw, 7rem);
+        font-weight: 750;
+        letter-spacing: -0.065em;
+        line-height: 0.88;
+        text-wrap: balance;
+      }
+
+      h1 span {
+        display: block;
+        color: transparent;
+        background: linear-gradient(100deg, #ffffff 8%, #82dfff 47%, #1ce5ae 100%);
+        background-clip: text;
+        -webkit-background-clip: text;
+      }
+
+      .lead {
+        max-width: 35rem;
+        margin: 2rem 0 0;
+        color: var(--muted);
+        font-size: clamp(1.05rem, 1.8vw, 1.28rem);
+        line-height: 1.72;
+      }
+
+      .lead strong {
+        color: #dff7ff;
+        font-weight: 600;
+      }
+
+      .signal {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        margin-top: 2.25rem;
+        color: #6f879c;
+        font-size: 0.75rem;
+        font-weight: 650;
+        letter-spacing: 0.16em;
+        text-transform: uppercase;
+      }
+
+      .signal::before {
+        width: 3.5rem;
+        height: 1px;
+        background: linear-gradient(90deg, var(--blue), var(--green));
+        content: "";
+      }
+
+      footer {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1.5rem;
+        color: #65798d;
+        font-size: 0.72rem;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+      }
+
+      footer p {
+        margin: 0;
+      }
+
+      .status {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.6rem;
+      }
+
+      .status::before {
+        width: 0.35rem;
+        height: 0.35rem;
+        border-radius: 50%;
+        background: var(--green);
+        content: "";
+      }
+
+      @keyframes orbit {
+        to {
+          transform: rotate(1turn);
+        }
+      }
+
+      @keyframes breathe {
+        50% {
+          opacity: 0.55;
+          transform: scale(0.98);
+        }
+      }
+
+      @media (max-width: 760px) {
+        body {
+          overflow: auto;
+          background-attachment: scroll;
+          background-position: 48% center;
+        }
+
+        .hero {
+          grid-template-columns: 1fr;
+          gap: 2rem;
+          text-align: center;
+        }
+
+        .emblem {
+          width: min(58vw, 14rem);
+        }
+
+        .content,
+        h1,
+        .lead {
+          margin-right: auto;
+          margin-left: auto;
+        }
+
+        .eyebrow,
+        .signal {
+          justify-content: center;
+        }
+
+        footer {
+          flex-direction: column;
+          text-align: center;
+        }
+      }
+
+      @media (max-height: 700px) and (min-width: 761px) {
+        .emblem {
+          width: min(42vh, 19rem);
+        }
+
+        h1 {
+          font-size: clamp(3rem, 10vh, 5.5rem);
+        }
+
+        .lead {
+          margin-top: 1.35rem;
+        }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        .emblem::before,
+        .emblem::after {
+          animation: none;
+        }
+      }
+    </style>
+  </head>
+
+  <body>
+    <div class="page">
+      <header>
+        <a class="brand" href="." aria-label="Galaris, accueil">
+          <img src="logo/64.png" alt="">
+          <span>Galaris</span>
+        </a>
+      </header>
+
+      <main>
+        <section class="hero" aria-labelledby="main-title">
+          <div class="emblem" aria-hidden="true">
+            <img src="logo/512.png" alt="">
+          </div>
+
+          <div class="content">
+            <p class="eyebrow">Quelque chose se prépare</p>
+            <h1 id="main-title">Stay <span>tuned.</span></h1>
+            <p class="lead">
+              Galaris donnera à vos agents un espace pour
+              <strong>comprendre, se souvenir et agir</strong> — tout en restant chez vous,
+              sous votre contrôle.
+            </p>
+            <p class="signal">Bientôt disponible</p>
+          </div>
+        </section>
+      </main>
+
+      <footer>
+        <p>Intelligence · Mémoire · Action</p>
+        <p class="status">Système en préparation</p>
+      </footer>
+    </div>
+  </body>
+</html>

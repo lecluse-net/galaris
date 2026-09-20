@@ -1,0 +1,4 @@
+interface:
+  display_name: "Galaris General Workflow"
+  short_description: "Use Docker, Make, and safe project validation"
+  default_prompt: "Use $general to work safely in the Galaris repository and choose the correct validation commands."

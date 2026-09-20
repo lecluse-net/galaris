@@ -1,0 +1,318 @@
+/* Global application styles. */
+
+body {
+    --galaris-page-background: rgb(250, 250, 250);
+    background-color: var(--galaris-page-background);
+}
+
+/*
+ * Keep every full-page shell layer on the active theme surface. Some pages do
+ * not paint their whole q-page (for example while loading or when their
+ * content has a constrained width), so relying on the body alone can expose
+ * the browser's white canvas behind QLayout.
+ */
+.q-layout,
+.q-page-container {
+    background-color: var(--galaris-page-background);
+}
+
+h1 {
+  font-size: 2rem;
+  font-weight: 100;
+  line-height: 1.1;
+  margin-top: 0.5rem;
+  margin-bottom: 1.2rem;
+}
+
+.q-tab-panels {
+    background-color: inherit;
+}
+
+/* One title bar for forms, details, confirmations and fullscreen viewers. */
+.galaris-dialog-title {
+    display: flex;
+    flex: 0 0 auto;
+    flex-wrap: nowrap;
+    align-items: center;
+    gap: 8px;
+    min-height: 56px;
+    padding: 12px 16px !important;
+    margin: 0 !important;
+    background: var(--q-primary) !important;
+    color: white !important;
+    font-size: 20px;
+    font-weight: 600;
+    line-height: 28px;
+    letter-spacing: normal;
+    overflow-wrap: anywhere;
+
+    > * {
+        min-width: 0;
+        margin: 0 !important;
+    }
+
+    :is(.text-h6, .text-subtitle1, .q-toolbar__title) {
+        min-width: 0;
+        padding: 0;
+        font-size: 20px;
+        font-weight: 600 !important;
+        line-height: 28px;
+        letter-spacing: normal;
+        white-space: normal;
+        overflow-wrap: anywhere;
+    }
+
+    .text-caption {
+        color: white !important;
+        font-weight: 400;
+        white-space: normal;
+        overflow-wrap: anywhere;
+    }
+
+    > .q-btn,
+    > .q-icon {
+        flex-shrink: 0;
+    }
+
+    > .q-icon {
+        font-size: 24px !important;
+    }
+
+    .q-btn,
+    .q-icon {
+        color: white !important;
+    }
+}
+
+/* Override Quasar's 560px cap for shared task and conversation detail dialogs. */
+.q-dialog__inner--minimized > .galaris-detail-dialog {
+    width: min(90vw, calc(100vw - 48px));
+    max-width: min(90vw, calc(100vw - 48px));
+    max-height: calc(100vh - 32px);
+}
+
+/* Match Quasar's maximized dialog treatment whenever the layout is mobile. */
+@media (max-width: 1023.98px) {
+    .q-dialog__inner {
+        padding: 0 !important;
+    }
+
+    .q-dialog__inner > div {
+        top: 0 !important;
+        left: 0 !important;
+        width: 100% !important;
+        min-width: 0 !important;
+        max-width: 100% !important;
+        height: 100% !important;
+        min-height: 0 !important;
+        max-height: 100% !important;
+        margin: 0 !important;
+        border-radius: 0 !important;
+    }
+
+    /* Compact Quasar's default component spacing on constrained screens. */
+    .q-card__section--vert,
+    .q-tab-panel {
+        padding: 8px;
+    }
+
+    .q-card__actions {
+        padding: 4px;
+    }
+
+    /* Modal actions keep Quasar's native button padding on mobile. */
+    .q-card__actions:not(.galaris-dialog-actions) .q-btn--rectangle {
+        padding-right: 4px;
+        padding-left: 4px;
+    }
+
+    .q-item {
+        min-height: 40px;
+        padding: 4px 8px;
+    }
+
+    .q-item__section--side {
+        padding-right: 8px;
+    }
+
+    .q-item__section--avatar {
+        min-width: 40px;
+    }
+
+    .q-list--padding {
+        padding: 4px 0;
+    }
+
+    .q-table th,
+    .q-table td {
+        padding: 4px 8px;
+    }
+
+    .mobile-taskbar .user-menu-wrapper {
+        gap: 4px;
+        padding-left: 8px;
+    }
+
+    .page-header {
+        gap: 8px !important;
+    }
+
+    .page-header__title-line {
+        gap: 6px !important;
+    }
+
+    .page-header + .q-separator + br {
+        display: none;
+    }
+
+    .page-container .q-tabs .q-tab {
+        min-height: 44px !important;
+        padding-right: 8px !important;
+        padding-left: 8px !important;
+    }
+
+    .page-container .q-tabs .q-tab__content {
+        gap: 4px !important;
+    }
+
+    /* Scale every Quasar margin, padding and gutter utility down for mobile. */
+    $galaris-mobile-spaces: (
+        none: 0,
+        xs: 2px,
+        sm: 4px,
+        md: 8px,
+        lg: 12px,
+        xl: 16px
+    );
+
+    @each $name, $space in $galaris-mobile-spaces {
+        .q-pa-#{$name} { padding: $space !important; }
+        .q-pl-#{$name} { padding-left: $space !important; }
+        .q-pr-#{$name} { padding-right: $space !important; }
+        .q-pt-#{$name} { padding-top: $space !important; }
+        .q-pb-#{$name} { padding-bottom: $space !important; }
+        .q-px-#{$name} {
+            padding-right: $space !important;
+            padding-left: $space !important;
+        }
+        .q-py-#{$name} {
+            padding-top: $space !important;
+            padding-bottom: $space !important;
+        }
+
+        .q-ma-#{$name} { margin: $space !important; }
+        .q-ml-#{$name} { margin-left: $space !important; }
+        .q-mr-#{$name} { margin-right: $space !important; }
+        .q-mt-#{$name} { margin-top: $space !important; }
+        .q-mb-#{$name} { margin-bottom: $space !important; }
+        .q-mx-#{$name} {
+            margin-right: $space !important;
+            margin-left: $space !important;
+        }
+        .q-my-#{$name} {
+            margin-top: $space !important;
+            margin-bottom: $space !important;
+        }
+
+        .q-gutter-x-#{$name},
+        .q-gutter-#{$name} {
+            margin-left: -$space !important;
+
+            > * { margin-left: $space !important; }
+        }
+
+        .q-gutter-y-#{$name},
+        .q-gutter-#{$name} {
+            margin-top: -$space !important;
+
+            > * { margin-top: $space !important; }
+        }
+
+        .q-col-gutter-x-#{$name},
+        .q-col-gutter-#{$name} {
+            margin-left: -$space !important;
+
+            > * { padding-left: $space !important; }
+        }
+
+        .q-col-gutter-y-#{$name},
+        .q-col-gutter-#{$name} {
+            margin-top: -$space !important;
+
+            > * { padding-top: $space !important; }
+        }
+    }
+}
+
+/* Dark mode: remap hardcoded light utility backgrounds to dark surfaces. */
+.body--dark {
+    --galaris-page-background: var(--q-dark-page);
+    --q-background: #1d1d1d;
+
+    .bg-white {
+        background: #1d1d1d !important;
+    }
+
+    .bg-grey-1 {
+        background: #232323 !important;
+    }
+
+    .bg-grey-2 {
+        background: #2a2a2a !important;
+    }
+
+    .bg-grey-3 {
+        background: #333333 !important;
+    }
+
+    .bg-grey-4 {
+        background: #3d3d3d !important;
+    }
+
+    /* Light color tints become dark tints of the same hue. */
+    .bg-blue-1 { background: #1e2a3d !important; }
+    .bg-light-blue-1 { background: #1b2d3a !important; }
+    .bg-red-1 { background: #3a2328 !important; }
+    .bg-pink-1 { background: #38232e !important; }
+    .bg-green-1 { background: #1f3324 !important; }
+    .bg-light-green-1 { background: #263320 !important; }
+    .bg-lime-1 { background: #2e3320 !important; }
+    .bg-yellow-1 { background: #34301a !important; }
+    .bg-amber-1 { background: #362e17 !important; }
+    .bg-orange-1 { background: #382b18 !important; }
+    .bg-deep-orange-1 { background: #382520 !important; }
+    .bg-purple-1 { background: #33243a !important; }
+    .bg-deep-purple-1 { background: #2c2440 !important; }
+    .bg-indigo-1 { background: #252a45 !important; }
+    .bg-teal-1 { background: #1a302e !important; }
+    .bg-cyan-1 { background: #1a3138 !important; }
+    .bg-blue-grey-1 { background: #262c31 !important; }
+    .bg-brown-1 { background: #2e2723 !important; }
+
+    /* Bright status backgrounds are dimmed to keep white text readable without glare. */
+    .bg-info { background: #14586b !important; }
+    .bg-warning { background: #7d641a !important; }
+
+    /* Dark text shades placed on the tints above become light shades. */
+    .text-blue-9, .text-blue-10 { color: #8ec5ff !important; }
+    .text-green-9, .text-green-10 { color: #a5d6a7 !important; }
+    .text-red-9, .text-red-10 { color: #ef9a9a !important; }
+    .text-orange-9, .text-orange-10 { color: #ffcc80 !important; }
+    .text-amber-9, .text-amber-10 { color: #ffd54f !important; }
+    .text-cyan-9, .text-cyan-10 { color: #80deea !important; }
+    .text-purple-9, .text-purple-10 { color: #ce93d8 !important; }
+    .text-teal-9, .text-teal-10 { color: #80cbc4 !important; }
+    .text-blue-grey-9, .text-blue-grey-10 { color: #b0bec5 !important; }
+
+    .text-grey-7,
+    .text-grey-8,
+    .text-grey-9,
+    .text-grey-10 {
+        color: #b5b5b5 !important;
+    }
+
+    .text-dark,
+    .text-black {
+        color: #e0e0e0 !important;
+    }
+}

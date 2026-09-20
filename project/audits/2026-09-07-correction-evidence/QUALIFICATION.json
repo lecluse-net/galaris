@@ -1,0 +1,15 @@
+{
+  "version": 1,
+  "images": {
+    "galaris-release-back:audit-working-20260907": "sha256:fe6d6402f39893360c7f2bc12929a3c62a624a6483050c057f3116f32ad62767",
+    "galaris-release-front:audit-working-20260907": "sha256:16d6202bbf0c219241e3b04728b123975e5920ab0766297c618bfb6ec4ce5d0e",
+    "galaris-release-browser-executor:audit-working-20260907": "sha256:42ac4428a421cd024856ecb8c834719fa47a01ae62275db5a46ae347cbb86b43",
+    "galaris-release-ssh-executor:audit-working-20260907": "sha256:50febd72f4c72dbccf703d663c8f74469463b53fc476b71bf5229123be24eca0"
+  },
+  "tests_commit": "15881f3c9368c55744db22486dd1022d81504bbb",
+  "tests_sha256": "8a543072a146c7bad2d50128ae64d59d761882548f6ad802843eb3b9415f17fc",
+  "upgrade_sha256": "eed1aa131cf3ba204b97f0f12dbac3597702d6084847dba639c6177713e6019f",
+  "browser_workflows": "passed",
+  "image_checks": "passed",
+  "managed_harnesses": "# External managed harnesses not exercised in this local qualification.\n"
+}

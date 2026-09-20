@@ -1,0 +1,15 @@
+[project]
+name = "galaris-harness-manager"
+version = "1.1.0"
+description = "FastAPI service managing generic harness Docker Compose instances"
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi",
+    "uvicorn",
+    "python-dotenv",
+    "cryptography",
+    "loguru"
+]
+
+[tool.uv]
+package = false

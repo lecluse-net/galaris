@@ -1,0 +1,137 @@
+{
+  "definitions_initiales": 3284,
+  "definitions_delta": 3293,
+  "nouvelles_definitions": 9,
+  "definitions_modifiees": 2,
+  "execution_backend": {
+    "selection_auditee": "core/dbadmin/tests/test_volume_transitions.py",
+    "commande_reproduction_hors_lab": "make tests-dbadmin-load",
+    "reussis": 1,
+    "echecs": 0,
+    "secondes_cas_dbadmin": 4.336,
+    "scope": "Cas active via DBADMIN_LOAD_TEST=1 dans une commande make tests; resultat Lab exclu sur demande utilisateur"
+  },
+  "execution_frontend": {
+    "commande": "node --test --test-reporter=junit app/process/runActions.test.mjs app/process/runDetailDialog.test.mjs",
+    "reussis": 8,
+    "echecs": 0
+  },
+  "execution_preview": {
+    "commande": "make tests ARGS='core/preview/tests/test_conversion.py -q'",
+    "reussis": 8,
+    "echecs": 0,
+    "secondes": 0.03
+  },
+  "cas": [
+    {
+      "suite": "backend",
+      "classe": "core.dbadmin.tests.test_volume_transitions",
+      "nom": "test_populated_table_nullable_backfill_contract_and_concurrent_writes",
+      "fichier": null,
+      "secondes": 4.336,
+      "statut": "reussi",
+      "detail": ""
+    },
+    {
+      "suite": "frontend",
+      "classe": "test",
+      "nom": "closing pending run details clears loading and discards late failures",
+      "fichier": "/repo/front/app/process/runActions.test.mjs",
+      "secondes": 0.056991,
+      "statut": "reussi",
+      "detail": ""
+    },
+    {
+      "suite": "frontend",
+      "classe": "test",
+      "nom": "late retry failure cannot notify a newer selection",
+      "fichier": "/repo/front/app/process/runActions.test.mjs",
+      "secondes": 0.010675,
+      "statut": "reussi",
+      "detail": ""
+    },
+    {
+      "suite": "frontend",
+      "classe": "test",
+      "nom": "refresh failure still notifies after its own detail reload",
+      "fichier": "/repo/front/app/process/runActions.test.mjs",
+      "secondes": 0.00972,
+      "statut": "reussi",
+      "detail": ""
+    },
+    {
+      "suite": "frontend",
+      "classe": "test",
+      "nom": "automatic refresh is single flight and stops when the scope is disposed",
+      "fichier": "/repo/front/app/process/runActions.test.mjs",
+      "secondes": 0.010584,
+      "statut": "reussi",
+      "detail": ""
+    },
+    {
+      "suite": "frontend",
+      "classe": "test",
+      "nom": "removal rechecks privileges after confirmation",
+      "fichier": "/repo/front/app/process/runActions.test.mjs",
+      "secondes": 0.007309,
+      "statut": "reussi",
+      "detail": ""
+    },
+    {
+      "suite": "frontend",
+      "classe": "test",
+      "nom": "process runs open in a responsive detail dialog",
+      "fichier": "/repo/front/app/process/runDetailDialog.test.mjs",
+      "secondes": 0.000787,
+      "statut": "reussi",
+      "detail": ""
+    },
+    {
+      "suite": "frontend",
+      "classe": "test",
+      "nom": "process LLM calls show output tokens before cost with usage in the title",
+      "fichier": "/repo/front/app/process/runDetailDialog.test.mjs",
+      "secondes": 0.000249,
+      "statut": "reussi",
+      "detail": ""
+    },
+    {
+      "suite": "frontend",
+      "classe": "test",
+      "nom": "process LLM calls expose their persisted semantic purpose",
+      "fichier": "/repo/front/app/process/runDetailDialog.test.mjs",
+      "secondes": 6.8e-05,
+      "statut": "reussi",
+      "detail": ""
+    }
+  ],
+  "charge": {
+    "commande": "make tests-load",
+    "reussis": 1,
+    "echecs": 0,
+    "secondes": 60.46,
+    "mesures": {
+      "identity_p95_seconds": 0.022251492002396844,
+      "peak_rss_growth_bytes": 64360448,
+      "loop_max_lag_seconds": 0.10929007300408557,
+      "received_webrtc_frames": 2728,
+      "lease_renewed": true,
+      "file_bytes": 4194304
+    }
+  },
+  "restauration": {
+    "commande": "make tests-restore",
+    "statut": "reussi",
+    "secondes": 49,
+    "ecritures_avant": 28,
+    "ecritures_restaurees": 28,
+    "ecritures_perdues": 0,
+    "preuves": [
+      "QUIESCED_WRITES=28",
+      "database.dump: OK",
+      "files-and-keys.tar.gz: OK",
+      "RESTORED_WRITES=28; LOST_COMMITTED_WRITES=0",
+      "Restore verified: PostgreSQL, persistent files, managed-runtime canaries and encryption master key. Rehearsal duration: 49 seconds."
+    ]
+  }
+}

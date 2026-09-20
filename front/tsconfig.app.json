@@ -1,0 +1,51 @@
+{ // type: ignore
+    "compilerOptions": {
+        "target": "ES2022",
+        "useDefineForClassFields": true,
+        "module": "ESNext",
+        "lib": [
+            "ES2022",
+            "DOM",
+            "DOM.Iterable"
+        ],
+        "skipLibCheck": true,
+        /* Bundler mode */
+        "moduleResolution": "bundler",
+        "allowImportingTsExtensions": true,
+        "isolatedModules": true,
+        "moduleDetection": "force",
+        "noEmit": true,
+        "jsx": "preserve",
+        /* Linting */
+        "strict": true,
+        "noUnusedLocals": true,
+        "noUnusedParameters": true,
+        "noFallthroughCasesInSwitch": true,
+        "ignoreDeprecations": "6.0",
+        /* Paths */
+        "baseUrl": ".",
+        "paths": {
+            "@/*": [
+                "./*"
+            ]
+        },
+        /* Types */
+        "types": [
+            "vite/client"
+        ]
+    },
+    "include": [
+        "core/**/*.ts",
+        "core/**/*.vue",
+        "app/**/*.ts",
+        "app/**/*.vue",
+        "bridge/**/*.ts",
+        "bridge/**/*.vue",
+        "modules.ts",
+        "env.d.ts"
+    ],
+    "exclude": [
+        "node_modules",
+        "dist"
+    ]
+}

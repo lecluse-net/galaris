@@ -1,0 +1,4 @@
+interface:
+  display_name: "Galaris Core DbAdmin"
+  short_description: "Piloter migrations et données avec DbAdmin"
+  default_prompt: "Utilise $core-dbadmin pour concevoir cette migration ou ce jeu de données Galaris de façon sûre et idempotente."

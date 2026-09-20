@@ -1,0 +1,29 @@
+# Build immutable source snapshots; never starts application services.
+services:
+  backend:
+    image: galaris-release-back:${RELEASE_BUILD_REF:?required}
+    build:
+      context: ${RELEASE_BUILD_SOURCE:?required}/back
+      additional_contexts:
+        harness_manager: ${RELEASE_BUILD_SOURCE}/harness_manager
+      target: prod-stage
+      args:
+        GALARIS_BUILD_VERSION: ${RELEASE_BUILD_REF}
+  frontend:
+    image: galaris-release-front:${RELEASE_BUILD_REF}
+    build:
+      context: ${RELEASE_BUILD_SOURCE}/front
+      target: prod-stage
+      args:
+        VITE_APP_ENV: prod
+        VITE_APP_NAME: ${APP_NAME:-galaris}
+  browser-executor:
+    image: galaris-release-browser-executor:${RELEASE_BUILD_REF}
+    build:
+      context: ${RELEASE_BUILD_SOURCE}/browser-executor
+  ssh-executor:
+    image: galaris-release-ssh-executor:${RELEASE_BUILD_REF}
+    build:
+      context: ${RELEASE_BUILD_SOURCE}/ssh-executor
+      additional_contexts:
+        console_assets: ${RELEASE_BUILD_SOURCE}/back/app/console/assets

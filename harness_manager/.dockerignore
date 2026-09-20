@@ -1,0 +1,8 @@
+*
+!main.py
+!update.py
+!Makefile
+!pyproject.toml
+!uv.lock
+!README.md
+!.env.example
