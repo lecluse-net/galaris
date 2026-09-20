@@ -10,10 +10,10 @@ Un hôte Linux avec Docker démarré, le plugin Docker Compose, Git, GNU Make, O
 et `ss` (paquet `iproute2`) pour vérifier les ports.
 Python, Node.js et PostgreSQL sont fournis dans les conteneurs.
 
-Remplacez `<repository-url>` par l’URL du dépôt à publier, puis récupérez les sources :
+Récupérez les sources depuis le dépôt officiel :
 
 ```bash
-git clone '<repository-url>' galaris
+git clone https://github.com/lecluse-net/galaris.git galaris
 cd galaris
 ```
 
@@ -108,11 +108,17 @@ depuis l’hôte et les bases ou volumes externes restent conservés. Si les vol
 conservés, un prochain `make start` réutilise leurs données.
 `make clean` supprime aussi les volumes : cette commande est destructive.
 
-Pour mettre à jour les sources et les services :
+Pour mettre à jour la branche courante, récupérez les sources puis déployez-les :
 
 ```bash
-make update                       # Construire et déployer les sources présentes
-make update VERSION=v1.2.3         # Sélectionner un tag exact, sinon une branche distante
+git pull --ff-only
+make update
+```
+
+Ou récupérez et déployez un tag ou une branche en une commande (remplacez `v1.2.3` par la référence souhaitée) :
+
+```bash
+make update VERSION=v1.2.3
 ```
 
 Sans `VERSION`, aucune récupération ni sélection Git n’est effectuée : les sources présentes

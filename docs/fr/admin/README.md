@@ -6,7 +6,7 @@ Ce guide couvre le déploiement, la configuration et l’exploitation de Galaris
 commandes partent de la racine du dépôt.
 
 Pour une première installation, suivez le [guide en trois étapes](installation.md) :
-**`make install` → configurer `.env` → `make update`**. Les sections suivantes détaillent
+**`make install` → configurer `.env` → `make start`**. Les sections suivantes détaillent
 les options d’administration.
 
 ## 1. Préparer l’hôte
@@ -58,7 +58,7 @@ comprises. Cette borne laisse les modèles à raisonnement long terminer après 
 d'outils ; l'annulation et la perte de lease continuent d'arrêter immédiatement le round.
 
 ```bash
-git clone <repository-url> galaris
+git clone https://github.com/lecluse-net/galaris.git galaris
 cd galaris
 make install
 ```
@@ -71,7 +71,7 @@ make install
 4. initialise SearXNG ;
 5. génère les secrets absents.
 
-Configurez ensuite `.env`, puis lancez `make update` pour construire les images et démarrer
+Configurez ensuite `.env`, puis lancez `make start` pour construire les images au premier démarrage et lancer
 Galaris. L’override fourni convient à l’installation standard.
 
 L’installation ne remplace jamais un `.env` existant. Lors d’une mise à niveau,

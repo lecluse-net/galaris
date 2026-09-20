@@ -20,6 +20,8 @@ Avant toute intervention :
 - lire `git status --short` et préserver les changements sans rapport ;
 - ne jamais créer de commit sans une demande explicite de l’utilisateur dans le message courant ;
   une autorisation antérieure ne vaut pas pour les changements suivants ;
+- rédiger tous les nouveaux messages de commit exclusivement en anglais, titre et corps compris,
+  afin de faciliter les contributions internationales ;
 - consulter la cartographie générée, puis les contrats et tests du domaine concerné ;
 - utiliser `rg` ou `rg --files` pour localiser les surfaces réelles ;
 - vérifier les hypothèses dans le code : un plan ou un exemple historique ne fait pas foi.

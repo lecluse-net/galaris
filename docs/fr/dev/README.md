@@ -1542,6 +1542,9 @@ Tests attendus pour une modification agentique :
 5. vérifier `git diff --check` et relire les changements de schéma/configuration ;
 6. documenter tout choix d’architecture ou nouvelle variable.
 
+Tous les nouveaux messages de commit doivent être rédigés exclusivement en anglais,
+titre et corps compris, afin de faciliter les contributions internationales.
+
 Format de commit conseillé :
 
 ```text

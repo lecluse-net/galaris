@@ -10,10 +10,10 @@ A Linux host with Docker running, the Docker Compose plugin, Git, GNU Make, Open
 and `ss` (the `iproute2` package) to check ports.
 Python, Node.js and PostgreSQL are provided in containers.
 
-Replace `<repository-url>` with the repository URL, then get the sources:
+Get the sources from the official repository:
 
 ```bash
-git clone '<repository-url>' galaris
+git clone https://github.com/lecluse-net/galaris.git galaris
 cd galaris
 ```
 
@@ -106,11 +106,17 @@ is run. Configuration, host-mounted directories and external databases or volume
 preserved. If volumes are retained, a later `make start` reuses their data.
 `make clean` also removes volumes: this command is destructive.
 
-To update sources and services:
+To update the current branch, fetch the sources and deploy them:
 
 ```bash
-make update                       # Build and deploy existing sources
-make update VERSION=v1.2.3         # Select an exact tag, otherwise a remote branch
+git pull --ff-only
+make update
+```
+
+Or fetch and deploy a specific tag or branch in one command (replace `v1.2.3` with the desired reference):
+
+```bash
+make update VERSION=v1.2.3
 ```
 
 Without `VERSION`, no Git fetching or selection takes place: existing sources are used,

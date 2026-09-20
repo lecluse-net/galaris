@@ -1510,6 +1510,9 @@ Expected tests for an agentic change:
 5. check `git diff --check` and review schema/configuration changes;
 6. document any architectural choice or new variable.
 
+All new commit messages must be written exclusively in English, including the subject
+and body, to support international contributions.
+
 Suggested commit format:
 
 ```text

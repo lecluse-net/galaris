@@ -2,17 +2,17 @@
 
 # Installer Galaris
 
-**`make install` → configurer `.env` → `make update`.**
+**`make install` → configurer `.env` → `make start`.**
 
 ## Prérequis
 
 Un hôte Linux avec Docker démarré, le plugin Docker Compose, Git, GNU Make et OpenSSL.
 Python, Node.js et PostgreSQL sont fournis dans les conteneurs.
 
-Remplacez `<repository-url>` par l’URL du dépôt à publier, puis récupérez les sources :
+Récupérez les sources depuis le dépôt officiel :
 
 ```bash
-git clone '<repository-url>' galaris
+git clone https://github.com/lecluse-net/galaris.git galaris
 cd galaris
 ```
 
@@ -52,11 +52,12 @@ Les fournisseurs IA et leurs clés se configurent ensuite dans l’interface.
 ## 3. Démarrer Galaris
 
 ```bash
-make update
+make start
 ```
 
-La commande construit les images avec votre configuration, démarre les services, initialise
+Au premier démarrage, la commande construit les images avec votre configuration, démarre les services, initialise
 la base de données et attend leur disponibilité. Le premier lancement peut prendre plusieurs minutes.
+Ensuite, `make start` permet de relancer les conteneurs existants.
 
 Ouvrez l’adresse définie dans `APP_HOST` — <http://localhost:8484> avec les valeurs ci-dessus.
 Créez votre compte : le premier utilisateur devient administrateur. Le parcours de bienvenue
@@ -64,9 +65,22 @@ vous guide pour connecter un modèle et créer votre premier agent.
 
 ## Ensuite
 
-Après une modification de `.env` ou la récupération d’une nouvelle version du dépôt,
-relancez **`make update`**. Cette commande utilise les sources présentes dans votre copie du dépôt ;
-elle ne fait pas de `git pull`.
+Pour mettre à jour la branche courante, récupérez les sources puis déployez-les :
+
+```bash
+git pull --ff-only
+make update
+```
+
+Ou récupérez et déployez un tag ou une branche en une commande (remplacez `v1.2.3` par la référence souhaitée) :
+
+```bash
+make update VERSION=v1.2.3
+```
+
+`make update` reconstruit les images, synchronise la base et attend la disponibilité des services.
+Sans `VERSION`, elle utilise les sources présentes sans récupération Git. Utilisez-la aussi après
+une modification de `.env`.
 
 Si le démarrage échoue, consultez `make logs-back` ou `make logs`.
 

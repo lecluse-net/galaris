@@ -104,10 +104,10 @@ rights.
 
 Prerequisites: Docker with Compose, GNU Make, Git and OpenSSL.
 
-Replace `<repository-url>` with the repository URL.
+Clone the official repository:
 
 ```bash
-git clone '<repository-url>' galaris
+git clone https://github.com/lecluse-net/galaris.git galaris
 cd galaris
 make install
 ```
@@ -116,7 +116,7 @@ Open `.env` in your editor: check `APP_HOST` (the Galaris address) and `TZ` (you
 Keep the other defaults and generated secrets.
 
 ```bash
-make update
+make start
 ```
 
 Open the address set in `APP_HOST` (<http://localhost:8484> by default).
@@ -124,8 +124,24 @@ The first account becomes the administrator. The onboarding journey
 then guides you through connecting a model, creating an agent, granting tools and adding a
 messaging channel.
 
-`make update` builds images, starts services, synchronizes the database and waits for readiness.
-Reuse it after editing `.env` or fetching a new repository version.
+On first start, `make start` builds images, starts services, initializes the database and waits
+for readiness. Use it again to start existing containers.
+
+To update the current branch, fetch the sources and deploy them:
+
+```bash
+git pull --ff-only
+make update
+```
+
+Or fetch and deploy a specific tag or branch in one command (replace `v1.2.3` with the desired reference):
+
+```bash
+make update VERSION=v1.2.3
+```
+
+`make update` rebuilds images, synchronizes the database and waits for service readiness.
+Without `VERSION`, it uses existing sources without fetching Git changes. Use it after editing `.env` too.
 
 No host-level Python, Node.js or PostgreSQL installation is required. For a production deployment,
 read the [installation and operations guide](docs/en/admin/installation.md) before exposing the instance.
