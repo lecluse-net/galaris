@@ -5,7 +5,7 @@
 This guide covers the deployment, configuration, and operation of Galaris. Commands are run from the repository root.
 
 For a first installation, follow the [three-step guide](installation.md):
-**`make install` → configure `.env` → `make start`**. The following sections detail
+**`make install` → customize `.env` and `compose.override.yaml` if needed → `make start`**. The following sections detail
 administration options.
 
 ## 1. Prepare the Host
@@ -69,8 +69,9 @@ make install
 4. initializes SearXNG;
 5. generates missing secrets.
 
-Then configure `.env` and run `make start` to build images on first start and launch Galaris.
-The supplied override fits the standard installation.
+The generated configuration is ready for a local installation. Customize `.env` and
+`compose.override.yaml` (Docker ports, volumes and networks) if needed, then run `make start`
+to build images on first start and launch Galaris.
 
 The installation never replaces an existing `.env`. During an upgrade, an existing
 `docker-compose.override.yaml` is automatically renamed to `compose.override.yaml`

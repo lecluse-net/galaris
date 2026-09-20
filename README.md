@@ -112,8 +112,13 @@ cd galaris
 make install
 ```
 
-Open `.env` in your editor: check `APP_HOST` (the Galaris address) and `TZ` (your time zone).
-Keep the other defaults and generated secrets.
+The generated configuration is ready for a local installation. Customize it only if needed:
+
+- `.env`: Galaris address (`APP_HOST`), time zone (`TZ`) and application settings;
+- `compose.override.yaml`: Docker ports, volumes and networks. If you change the exposed port,
+  update `APP_HOST` accordingly.
+
+Keep the generated secrets, then start Galaris:
 
 ```bash
 make start
@@ -141,7 +146,8 @@ make update VERSION=v1.2.3
 ```
 
 `make update` rebuilds images, synchronizes the database and waits for service readiness.
-Without `VERSION`, it uses existing sources without fetching Git changes. Use it after editing `.env` too.
+Without `VERSION`, it uses existing sources without fetching Git changes. Use it after editing
+`.env` or `compose.override.yaml` too.
 
 No host-level Python, Node.js or PostgreSQL installation is required. For a production deployment,
 read the [installation and operations guide](docs/en/admin/installation.md) before exposing the instance.

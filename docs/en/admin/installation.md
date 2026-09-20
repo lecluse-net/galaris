@@ -2,7 +2,7 @@
 
 # Install Galaris
 
-**`make install` → customize configuration → `make start`.**
+**`make install` → customize `.env` and `compose.override.yaml` if needed → `make start`.**
 
 ## Prerequisites
 
@@ -43,7 +43,8 @@ or end of input without a usable port, fails before creating configuration.
 
 ## 2. Customize configuration if needed
 
-Open `.env` in your editor. To get started on the local machine:
+The generated configuration is ready for a local installation; this step is optional.
+Edit `.env` only if needed. Example local configuration:
 
 ```dotenv
 APP_HOST=http://localhost:8484
@@ -60,8 +61,7 @@ TZ=Europe/Paris
 By default, `compose.postgres.yaml` provides the database. With `POSTGRES_MODE=external`,
 this file is not loaded: configure `POSTGRES_HOST`, `POSTGRES_PORT`, `POSTGRES_DB`,
 `POSTGRES_USER` and `POSTGRES_PASSWORD` for your PostgreSQL database with pgvector.
-No other file needs editing for the standard installation.
-`compose.override.yaml` primarily configures **ports, volumes and networks**.
+If needed, customize Docker **ports, volumes and networks** in `compose.override.yaml`.
 To change the exposed port later, edit this file before starting
 (for example `8585:8484`) and set the corresponding address in `APP_HOST`.
 AI providers and their keys are configured later in the interface.

@@ -2,7 +2,7 @@
 
 # Installer Galaris
 
-**`make install` → configurer `.env` → `make start`.**
+**`make install` → personnaliser si besoin `.env` et `compose.override.yaml` → `make start`.**
 
 ## Prérequis
 
@@ -27,9 +27,10 @@ la configuration Docker et génère les secrets.
 Elle préserve les réglages existants. La construction et le démarrage auront lieu à l’étape 3.
 Pour automatiser une installation avec une base externe : `make install POSTGRES_MODE=external`.
 
-## 2. Configurer `.env`
+## 2. Personnaliser la configuration si besoin
 
-Ouvrez `.env` dans votre éditeur. Pour commencer sur la machine locale :
+La configuration générée suffit pour une installation locale ; cette étape est facultative.
+Modifiez `.env` uniquement si besoin. Exemple de configuration locale :
 
 ```dotenv
 APP_HOST=http://localhost:8484
@@ -46,7 +47,8 @@ TZ=Europe/Paris
 Par défaut, `compose.postgres.yaml` fournit la base de données. Avec `POSTGRES_MODE=external`,
 ce fichier n’est pas chargé : renseignez `POSTGRES_HOST`, `POSTGRES_PORT`, `POSTGRES_DB`,
 `POSTGRES_USER` et `POSTGRES_PASSWORD` pour votre base PostgreSQL avec pgvector.
-Pour l’installation standard, aucun autre fichier n’est à modifier.
+Si besoin, personnalisez les ports, volumes et réseaux Docker dans `compose.override.yaml`.
+Si vous changez le port exposé, adaptez aussi l’adresse dans `APP_HOST`.
 Les fournisseurs IA et leurs clés se configurent ensuite dans l’interface.
 
 ## 3. Démarrer Galaris
@@ -80,7 +82,7 @@ make update VERSION=v1.2.3
 
 `make update` reconstruit les images, synchronise la base et attend la disponibilité des services.
 Sans `VERSION`, elle utilise les sources présentes sans récupération Git. Utilisez-la aussi après
-une modification de `.env`.
+une modification de `.env` ou de `compose.override.yaml`.
 
 Si le démarrage échoue, consultez `make logs-back` ou `make logs`.
 
