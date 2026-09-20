@@ -15630,6 +15630,7 @@
           "front/app/index/components/HomeActionCenter.vue",
           "front/app/index/components/HomeConnected.vue",
           "front/app/index/environmentPresentation.ts",
+          "front/app/index/pages/about.vue",
           "front/app/index/pages/license.vue"
         ],
         "source": "app/index",

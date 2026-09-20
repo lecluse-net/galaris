@@ -94,8 +94,9 @@ test('sidebar footer exposes its build version and About remains reachable in co
 
 test('About provides public access to the license and preserves safe author attribution', async ({ page }) => {
   await mount(page, 'app/index/pages/about.vue', { authenticated: false })
-  await expect(page.getByRole('heading', { name: 'About', exact: true })).toBeVisible()
-  await expect(page.getByText('Version: test-release', { exact: true })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Galaris', exact: true })).toBeVisible()
+  await expect(page.getByText('Current version', { exact: true })).toBeVisible()
+  await expect(page.getByText('test-release', { exact: true })).toBeVisible()
   await page.getByRole('link', { name: 'License', exact: true }).press('Enter')
   await expect.poll(() => page.evaluate(() => window.testApp.router.currentRoute.value.path)).toBe('/license')
   await expect(page.locator('a[href="https://lecluse.net"]')).toHaveAttribute('rel', 'noopener noreferrer')
