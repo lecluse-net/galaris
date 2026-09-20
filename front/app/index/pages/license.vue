@@ -30,7 +30,6 @@ const content = computed(() => locale.value === 'fr' ? licenseFr : locale.value 
 .license-page {
   max-width: 800px;
   margin: 0 auto;
-  min-height: calc(100vh - 50px); /* Full viewport height minus the footer. */
   display: flex;
   flex-direction: column;
 }

@@ -17,6 +17,7 @@ services:
       args:
         VITE_APP_ENV: prod
         VITE_APP_NAME: ${APP_NAME:-galaris}
+        GALARIS_BUILD_VERSION: ${RELEASE_BUILD_REF}
   browser-executor:
     image: galaris-release-browser-executor:${RELEASE_BUILD_REF}
     build:

@@ -36,6 +36,7 @@ const legacyWorkerFixture = {
 
 // A component host only: no application bootstrap, backend proxy or production route.
 export default defineConfig({
+  define: { 'import.meta.env.VITE_BUILD_VERSION': JSON.stringify('test-release') },
   root: fileURLToPath(new URL('../..', import.meta.url)),
   envDir: fileURLToPath(new URL('.', import.meta.url)),
   cacheDir: '/tmp/galaris-component-vite',

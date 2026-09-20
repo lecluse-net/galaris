@@ -44,8 +44,6 @@
           :key="index"
         />
       </template>
-      <!-- Compact page footer. -->
-      <PageFooter v-if="!isChatPage" />
     </q-page-container>
   </q-layout>
 </template>
@@ -53,7 +51,6 @@
 <script setup lang="ts">
 import Sidebar from './Sidebar.vue'
 import UserMenu from '@/core/user/components/UserMenu.vue'
-import PageFooter from './PageFooter.vue'
 import { shellContributions } from '../shellContributions'
 import { useAppStore } from '@/app/index/stores/appStore'
 import { useAuthStore } from '@/core/user/stores/authStore'
@@ -76,7 +73,6 @@ const showTopRightUserMenu = computed(() => {
   return authStore.isAuthenticated || !guestLoginHiddenPaths.has(normalizedPath.value)
 })
 const showMobileTaskbar = computed(() => isMobileLayout.value && showTopRightUserMenu.value)
-const isChatPage = computed(() => normalizedPath.value === '/chat')
 </script>
 
 <style scoped>

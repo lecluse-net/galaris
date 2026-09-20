@@ -77,6 +77,7 @@
           </template>
         </div>
       </div>
+      <SidebarFooter :compact="isMini" />
     </div>
   </q-drawer>
 </template>
@@ -89,6 +90,7 @@ import { useNavigation } from '@/core/navigation'
 import { settings } from '@/core/settings'
 import { navigationSections } from '../navigationSections'
 import EnvironmentBadge from './EnvironmentBadge.vue'
+import SidebarFooter from './SidebarFooter.vue'
 import { environmentLabel, environmentStyle } from '../environmentPresentation'
 
 const appStore = useAppStore()
@@ -260,6 +262,7 @@ body.body--dark .sidebar-header {
 
 .sidebar-content {
   flex: 1;
+  min-height: 0;
   overflow-y: auto;
 }
 

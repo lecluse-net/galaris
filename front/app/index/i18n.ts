@@ -5,7 +5,7 @@ export default {
       home_desc: 'Vos conversations à suivre et vos principaux raccourcis',
       dashboard: 'Tableau de bord',
       dashboard_desc: 'Vue d’ensemble de l’activité et des performances de Galaris',
-      legal: 'Mentions légales',
+      about: 'À propos',
       license: 'Licence',
     },
     index: {
@@ -29,7 +29,10 @@ export default {
         collapse: 'Réduire la sidebar',
         expand: 'Déployer la sidebar',
       },
-      footer: {
+      about: {
+        description: 'Galaris est une plateforme auto-hébergée qui orchestre des agents IA autonomes, leurs tâches, outils, objectifs et canaux de messagerie.',
+        version: 'Version : {version}',
+        unknownVersion: 'Version inconnue',
         copyright: '© 2026 Lécluse.net',
       },
       notFound: {
@@ -274,7 +277,7 @@ export default {
       home_desc: 'Conversations requiring attention and your main shortcuts',
       dashboard: 'Dashboard',
       dashboard_desc: 'Overview of Galaris activity and performance',
-      legal: 'Legal notice',
+      about: 'About',
       license: 'License',
     },
     index: {
@@ -298,7 +301,10 @@ export default {
         collapse: 'Collapse sidebar',
         expand: 'Expand sidebar',
       },
-      footer: {
+      about: {
+        description: 'Galaris is a self-hosted platform that orchestrates autonomous AI agents, their tasks, tools, goals and messaging channels.',
+        version: 'Version: {version}',
+        unknownVersion: 'Unknown version',
         copyright: '© 2026 Lécluse.net',
       },
       notFound: {
@@ -543,7 +549,7 @@ export default {
       home_desc: '需要关注的对话和主要快捷入口',
       dashboard: '仪表板',
       dashboard_desc: 'Galaris 活动和性能概览',
-      legal: '法律声明',
+      about: '关于',
       license: '许可证',
     },
     index: {
@@ -567,7 +573,12 @@ export default {
         collapse: '收起侧边栏',
         expand: '展开侧边栏',
       },
-      footer: { copyright: '© 2026 Lécluse.net' },
+      about: {
+        description: 'Galaris 是一个自托管平台，用于编排自主 AI 智能体及其任务、工具、目标和消息渠道。',
+        version: '版本：{version}',
+        unknownVersion: '未知版本',
+        copyright: '© 2026 Lécluse.net',
+      },
       notFound: { message: '哎呀，这里什么也没有…' },
       home: {
         welcome: '欢迎使用 Galaris',

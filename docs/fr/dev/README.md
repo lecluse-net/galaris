@@ -40,6 +40,10 @@ En production, la reconstruction réutilise aussi le cache Docker et vérifie le
 `make update` construit et déploie les sources présentes sans récupération Git.
 Avec un `.git`, `VERSION=<référence>` récupère et sélectionne un tag exact, sinon une branche
 distante. Les changements locaux bloquent uniquement cette sélection explicite.
+Le bas du menu affiche la référence Git de construction (tag exact, sinon branche, puis
+commit court en HEAD détachée) et un lien « À propos ». Cette page conserve les crédits et
+l’accès à la licence ; la page générique de mentions légales a été retirée. La référence
+est injectée dans les images par `GALARIS_BUILD_VERSION`, sans réglage utilisateur.
 Pour déployer son travail local ou une configuration, utiliser `make update`. `make start` conserve toujours
 les sources présentes, y compris lorsqu’il doit reconstruire une installation incomplète.
 

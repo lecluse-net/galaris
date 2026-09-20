@@ -73,7 +73,10 @@ const precacheRevision = randomUUID()
 
 // https://vitejs.dev/config/
 export default defineConfig({
-    define: { 'import.meta.env.VITE_APP_ENV': JSON.stringify(appEnv) },
+    define: {
+        'import.meta.env.VITE_APP_ENV': JSON.stringify(appEnv),
+        'import.meta.env.VITE_BUILD_VERSION': JSON.stringify(process.env.GALARIS_BUILD_VERSION || 'unknown'),
+    },
     build: { manifest: true },
     plugins: [
         developmentWorkerRecovery(),

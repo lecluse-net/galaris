@@ -15605,7 +15605,9 @@
           "front/app/index/components/HomePublic.vue",
           "front/app/index/components/MainLayout.vue",
           "front/app/index/components/Sidebar.vue",
-          "front/app/index/environmentPresentation.ts"
+          "front/app/index/components/SidebarFooter.vue",
+          "front/app/index/environmentPresentation.ts",
+          "front/app/index/pages/about.vue"
         ],
         "source": "app/index",
         "target": "core/settings"
@@ -15628,7 +15630,6 @@
           "front/app/index/components/HomeActionCenter.vue",
           "front/app/index/components/HomeConnected.vue",
           "front/app/index/environmentPresentation.ts",
-          "front/app/index/pages/legal.vue",
           "front/app/index/pages/license.vue"
         ],
         "source": "app/index",
@@ -17122,6 +17123,11 @@
             "route_hint": "/index/:all(.*)*"
           },
           {
+            "file": "front/app/index/pages/about.vue",
+            "module": "app/index",
+            "route_hint": "/index/about"
+          },
+          {
             "file": "front/app/index/pages/dashboard.vue",
             "module": "app/index",
             "route_hint": "/index/dashboard"
@@ -17130,11 +17136,6 @@
             "file": "front/app/index/pages/index.vue",
             "module": "app/index",
             "route_hint": "/index"
-          },
-          {
-            "file": "front/app/index/pages/legal.vue",
-            "module": "app/index",
-            "route_hint": "/index/legal"
           },
           {
             "file": "front/app/index/pages/license.vue",
@@ -17740,14 +17741,14 @@
         "route_hint": "/index/:all(.*)*"
       },
       {
+        "file": "front/app/index/pages/about.vue",
+        "module": "app/index",
+        "route_hint": "/index/about"
+      },
+      {
         "file": "front/app/index/pages/dashboard.vue",
         "module": "app/index",
         "route_hint": "/index/dashboard"
-      },
-      {
-        "file": "front/app/index/pages/legal.vue",
-        "module": "app/index",
-        "route_hint": "/index/legal"
       },
       {
         "file": "front/app/index/pages/license.vue",

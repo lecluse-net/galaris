@@ -48,6 +48,11 @@ branch. Local modifications block only this explicit selection. Use plain `make 
 to deploy local work or configuration. `make start` always keeps existing sources, including when
 it needs to rebuild an incomplete installation.
 
+The bottom of the menu displays the build's Git reference (exact tag, otherwise branch,
+then short commit for detached HEAD) and an About link. About preserves attribution and
+access to the license; the generic legal notice page has been removed. The reference is
+injected into the images through `GALARIS_BUILD_VERSION`, with no user setting.
+
 ```bash
 make install
 # Configure .env, including APP_ENV=dev, APP_HOST and TZ.

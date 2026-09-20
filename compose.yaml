@@ -67,6 +67,7 @@ services:
             args:
                 - VITE_APP_NAME=${APP_NAME:-galaris}
                 - VITE_APP_ENV=${APP_ENV-prod}
+                - GALARIS_BUILD_VERSION=${GALARIS_BUILD_VERSION:-unknown}
         environment:
             - APP_NAME=${APP_NAME:-galaris}
             - TZ=${TZ:-UTC}

@@ -80,14 +80,25 @@ test('prompt customization displays a diff, persists choices and respects revoke
   await expect(page.getByRole('button', { name: 'Save customization', exact: true })).toBeDisabled()
 })
 
-test('footer links navigate by keyboard and external attribution isolates its opener', async ({ page }) => {
-  await mount(page, 'app/index/components/PageFooter.vue')
-  for (const destination of ['/legal', '/license']) {
-    await page.locator(`a[href="${destination}"]`).press('Enter')
-    await expect.poll(() => page.evaluate(() => window.testApp.router.currentRoute.value.path)).toBe(destination)
-  }
+// Keyboard navigation and attribution safety move with the links to About.
+test('sidebar footer exposes its build version and About remains reachable in compact mode', async ({ page }) => {
+  await mount(page, 'app/index/components/SidebarFooter.vue')
+  await expect(page.getByText('test-release', { exact: true })).toBeVisible()
+  await page.getByRole('link', { name: 'About', exact: true }).press('Enter')
+  await expect.poll(() => page.evaluate(() => window.testApp.router.currentRoute.value.path)).toBe('/about')
+  await page.evaluate(() => window.testApp.setProps({ compact: true }))
+  await page.evaluate(() => window.testApp.navigate('/'))
+  await page.getByRole('link', { name: 'About', exact: true }).press('Enter')
+  await expect.poll(() => page.evaluate(() => window.testApp.router.currentRoute.value.path)).toBe('/about')
+})
+
+test('About provides public access to the license and preserves safe author attribution', async ({ page }) => {
+  await mount(page, 'app/index/pages/about.vue', { authenticated: false })
+  await expect(page.getByRole('heading', { name: 'About', exact: true })).toBeVisible()
+  await expect(page.getByText('Version: test-release', { exact: true })).toBeVisible()
+  await page.getByRole('link', { name: 'License', exact: true }).press('Enter')
+  await expect.poll(() => page.evaluate(() => window.testApp.router.currentRoute.value.path)).toBe('/license')
   await expect(page.locator('a[href="https://lecluse.net"]')).toHaveAttribute('rel', 'noopener noreferrer')
-  await expect(page.locator('a[href="/about"]')).toHaveCount(0)
 })
 
 test('sidebar logo navigates home and compact mode changes the rendered drawer', async ({ page }) => {
@@ -102,4 +113,6 @@ test('sidebar logo navigates home and compact mode changes the rendered drawer',
   await expect.poll(async () => (await drawer.boundingBox()).width).toBeLessThan(expanded)
   await page.getByRole('button', { name: 'Expand sidebar', exact: true }).click()
   await expect.poll(async () => (await drawer.boundingBox()).width).toBe(expanded)
+  await page.getByRole('link', { name: 'About', exact: true }).press('Enter')
+  await expect.poll(() => page.evaluate(() => window.testApp.router.currentRoute.value.path)).toBe('/about')
 })

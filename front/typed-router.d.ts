@@ -45,16 +45,16 @@ declare module 'vue-router/auto-routes' {
       { all: ParamValue<false> },
       | never
     >,
-    '///dashboard': RouteRecordInfo<
-      '///dashboard',
-      '/dashboard',
+    '///about': RouteRecordInfo<
+      '///about',
+      '/about',
       Record<never, never>,
       Record<never, never>,
       | never
     >,
-    '///legal': RouteRecordInfo<
-      '///legal',
-      '/legal',
+    '///dashboard': RouteRecordInfo<
+      '///dashboard',
+      '/dashboard',
       Record<never, never>,
       Record<never, never>,
       | never
@@ -333,17 +333,17 @@ declare module 'vue-router/auto-routes' {
       pathParamNames:
         | 'all'
     }
-    'app/index/pages/dashboard.vue': {
+    'app/index/pages/about.vue': {
       routes:
-        | '///dashboard'
+        | '///about'
       views:
         | never
       pathParamNames:
         | never
     }
-    'app/index/pages/legal.vue': {
+    'app/index/pages/dashboard.vue': {
       routes:
-        | '///legal'
+        | '///dashboard'
       views:
         | never
       pathParamNames:

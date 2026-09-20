@@ -741,9 +741,9 @@ tests remain authoritative for behavior.
 | `app/index` | `core/api` | `front/app/index/services/dashboardService.ts`, `front/app/index/services/homeService.ts`, `front/app/index/stores/dashboardStore.ts` |
 | `app/index` | `core/authorize` | `front/app/index/components/HomeActionCenter.vue`, `front/app/index/components/HomeConnected.vue`, `front/app/index/navigation.ts`, `front/app/index/stores/dashboardStore.ts` |
 | `app/index` | `core/navigation` | `front/app/index/components/HomeActionCenter.vue`, `front/app/index/components/HomeConnected.vue`, `front/app/index/components/Sidebar.vue`, `front/app/index/navigation.ts` |
-| `app/index` | `core/settings` | `front/app/index/components/HomePublic.vue`, `front/app/index/components/MainLayout.vue`, `front/app/index/components/Sidebar.vue`, `front/app/index/environmentPresentation.ts` |
+| `app/index` | `core/settings` | `front/app/index/components/HomePublic.vue`, `front/app/index/components/MainLayout.vue`, `front/app/index/components/Sidebar.vue`, `front/app/index/components/SidebarFooter.vue`, `front/app/index/environmentPresentation.ts`, `front/app/index/pages/about.vue` |
 | `app/index` | `core/user` | `front/app/index/components/HomeActionCenter.vue`, `front/app/index/components/HomePublic.vue`, `front/app/index/components/MainLayout.vue`, `front/app/index/pages/index.vue`, `front/app/index/pages/welcome.vue`, `front/app/index/stores/dashboardStore.ts` |
-| `app/index` | `core/util` | `front/app/index/components/DashboardLiveActivity.vue`, `front/app/index/components/HomeActionCenter.vue`, `front/app/index/components/HomeConnected.vue`, `front/app/index/environmentPresentation.ts`, `front/app/index/pages/legal.vue`, `front/app/index/pages/license.vue` |
+| `app/index` | `core/util` | `front/app/index/components/DashboardLiveActivity.vue`, `front/app/index/components/HomeActionCenter.vue`, `front/app/index/components/HomeConnected.vue`, `front/app/index/environmentPresentation.ts`, `front/app/index/pages/license.vue` |
 | `app/index` | `core/websocket` | `front/app/index/components/DashboardLiveActivity.vue` |
 | `app/lab` | `app/task` | `front/app/lab/pages/ai-evaluations.vue` |
 | `app/lab` | `core/api` | `front/app/lab/components/LabHumanReviewDialog.vue`, `front/app/lab/components/LabWorkbench.vue`, `front/app/lab/services/dispatcherEvaluationService.ts`, `front/app/lab/services/evaluationService.ts`, `front/app/lab/services/labWorkbenchService.ts`, `front/app/lab/services/mechanismEvaluationService.ts` |
@@ -1997,8 +1997,8 @@ tests remain authoritative for behavior.
 | `/incident` | `app/incident` | `front/app/incident/pages/index.vue` |
 | `/index` | `app/index` | `front/app/index/pages/index.vue` |
 | `/index/:all(.*)*` | `app/index` | `front/app/index/pages/[...all].vue` |
+| `/index/about` | `app/index` | `front/app/index/pages/about.vue` |
 | `/index/dashboard` | `app/index` | `front/app/index/pages/dashboard.vue` |
-| `/index/legal` | `app/index` | `front/app/index/pages/legal.vue` |
 | `/index/license` | `app/index` | `front/app/index/pages/license.vue` |
 | `/index/welcome` | `app/index` | `front/app/index/pages/welcome.vue` |
 | `/lab` | `app/lab` | `front/app/lab/pages/index.vue` |

@@ -17,10 +17,10 @@ const navigation: NavigationTree = {
     admin: {},
     pageFooter: {
         children: {
-            legal: {
-                label: 'nav.legal',
-                icon: 'gavel',
-                to: '/legal',
+            about: {
+                label: 'nav.about',
+                icon: 'info',
+                to: '/about',
                 order: 1,
             },
             license: {

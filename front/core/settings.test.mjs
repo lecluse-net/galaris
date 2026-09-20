@@ -24,3 +24,14 @@ test('an absent environment defaults to prod', () => {
     assert.equal(settings.APP_ENV, 'prod')
     assert.equal(settings.is_dev, false)
 })
+
+for (const version of ['v2.1.0', 'feature/sidebar']) {
+    test(`the build reference ${version} is displayed unchanged`, () => {
+        assert.equal(new Settings({ VITE_BUILD_VERSION: version }).APP_VERSION, version)
+    })
+}
+
+test('missing build metadata does not invent a release version', () => {
+    assert.equal(new Settings().APP_VERSION, '')
+    assert.equal(new Settings({ VITE_BUILD_VERSION: 'unknown' }).APP_VERSION, '')
+})
