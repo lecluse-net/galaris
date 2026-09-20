@@ -1271,6 +1271,7 @@ class Agent(AgentRuntime):
         """Persist the tool error before its user-facing trace is compacted."""
 
         from core.failure_journal import FailureEvent, record_failure_event
+        from app.tools import native_failure_key
 
         call_part = tool_call_event.part if tool_call_event is not None else None
         result_part = event.part
@@ -1297,7 +1298,10 @@ class Agent(AgentRuntime):
         error_type = _tool_failure_error_type(result_part, error_message)
         await record_failure_event(
             FailureEvent(
-                idempotency_key=f"tool-call:{self._agent_run_id or 'unscoped'}:{key}",
+                idempotency_key=(
+                    native_failure_key(error_message)
+                    or f"tool-call:{self._agent_run_id or 'unscoped'}:{key}"
+                ),
                 kind="tool",
                 phase="tool_execution",
                 error_type=error_type,

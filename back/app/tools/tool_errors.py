@@ -58,6 +58,39 @@ _PRIVATE_KEY = re.compile(
     r"-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----",
     re.IGNORECASE,
 )
+_FAILURE_REFERENCE = re.compile(
+    r"(?:Error reference|Référence d[’']erreur)\s*:\s*([0-9a-f]{12})\b",
+    re.IGNORECASE,
+)
+_DIAGNOSTIC_SECRET = re.compile(
+    r'''(?i)(["']?(?:api[_-]?key|authorization|cookie|password|passwd|credential|'''
+    r'''(?:access[_-]?|refresh[_-]?)?token|secret)["']?\s*[:=]\s*)'''
+    r'''(?:"[^"]*"|'[^']*'|[^\s,;]+)'''
+)
+
+
+def native_failure_key(message: str) -> str | None:
+    """Correlate a native diagnostic across MCP, the runtime and the facade."""
+
+    match = _FAILURE_REFERENCE.search(message)
+    return f"native-tool:{match.group(1).lower()}" if match is not None else None
+
+
+def exception_diagnostic(exc: BaseException) -> list[dict[str, str]]:
+    """Bounded administrative evidence, never included in an MCP response."""
+
+    result: list[dict[str, str]] = []
+    for item in _exception_chain(exc)[:8]:
+        # Provider URLs may contain credentials and opaque signed query parameters.
+        detail = re.sub(r"https?://[^\s<>\"']+", "[redacted URL]", str(item))
+        detail = re.sub(r"(?i)\bBearer\s+[^\s,;\"']+", "Bearer [redacted]", detail)
+        detail = _DIAGNOSTIC_SECRET.sub(r"\1[redacted]", detail)
+        result.append({
+            "type": type(item).__name__,
+            "message": _public_error_detail(detail),
+            "locations": safe_trace(item),
+        })
+    return result
 
 
 def _public_error_detail(value: object, *, limit: int = 2_000) -> str:
@@ -137,12 +170,21 @@ def classify_tool_failure(exc: Exception) -> ToolFailure:
         )
 
     chain = _exception_chain(exc)
-    if _has_exception_name(
-        chain,
+    safe_domain_errors = {
         "GoalRevisionConflict",
         "MemoryConflictError",
-    ):
-        return ToolFailure("actionable", error_type, _public_error_detail(exc))
+        "ResourceValidationError",
+        "ResourceRevisionConflict",
+        "ResourceUriError",
+        "RichTextError",
+    }
+    for cause in chain:
+        if type(cause).__name__ in safe_domain_errors:
+            return ToolFailure("actionable", error_type, _public_error_detail(cause))
+    if _has_exception_name(chain, "MemoryPermissionError"):
+        return ToolFailure("permission_denied", error_type)
+    if _has_exception_name(chain, "MemoryNotFoundError"):
+        return ToolFailure("not_found", error_type)
     status_code = _http_status(chain)
     if _has_exception_name(chain, "ModelHTTPError") and status_code in {400, 412, 422}:
         # An internal model request is not the caller's MCP argument contract.
@@ -315,4 +357,6 @@ __all__ = [
     "classify_tool_failure",
     "render_tool_failure",
     "safe_trace",
+    "exception_diagnostic",
+    "native_failure_key",
 ]

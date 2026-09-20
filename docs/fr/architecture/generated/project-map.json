@@ -49,6 +49,7 @@
           "back/app/agent/agent_service.py",
           "back/app/agent/briefing_service.py",
           "back/app/agent/executor_service.py",
+          "back/app/agent/facade.py",
           "back/app/agent/mcp.py",
           "back/app/agent/planner_service.py"
         ],
@@ -2913,6 +2914,13 @@
         ],
         "source": "app.tools",
         "target": "core.dbadmin"
+      },
+      {
+        "files": [
+          "back/app/tools/mcp_loader.py"
+        ],
+        "source": "app.tools",
+        "target": "core.failure_journal"
       },
       {
         "files": [

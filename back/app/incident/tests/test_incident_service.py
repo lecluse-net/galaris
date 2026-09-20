@@ -124,7 +124,7 @@ async def test_error_references_do_not_fragment_failure_patterns(
             error_type="ValueError",
             error_message=(
                 "Tool 'task_get' failed.\nTechnical type: ValueError.\n"
-                "Error reference: fedcba987654"
+                "Error reference: fed403987654"
             ),
             tool_name="task_get",
         ),
@@ -136,6 +136,24 @@ async def test_error_references_do_not_fragment_failure_patterns(
     assert pattern is not None
     assert pattern.fingerprint_version == 2
     assert pattern.occurrence_count == 2
+
+
+@pytest.mark.parametrize("message,kind,error_type,expected", [
+    ("{'schema': 'galaris.tool-error/v1', 'error': 'Execution failed'}", "tool", "ToolError", "tool_runtime"),
+    ("Reasoning pattern repeated", "llm", "ReasoningDegenerationError", "model_output"),
+    ("the Responses stream ended before its terminal event", "llm", "LLMCallError", "protocol"),
+    ("HTTP 403 Forbidden", "tool", "HTTPStatusError", "permission"),
+    ("Error code: 429 - provider request rejected", "llm", "LLMCallError", "rate_limit"),
+    ('{"status_code": 503, "message": "request failed"}', "llm", "LLMCallError", "unavailable"),
+    ("HTTPS resource resolves to a non-public network", "tool", "RecoverableToolError", "permission"),
+    ("timeout while connecting", "tool", "ReadTimeout", "timeout"),
+])
+def test_failure_classification_uses_the_error_not_its_envelope(message, kind, error_type, expected):
+    from app.incident.sanitizer import categorize_failure
+
+    assert categorize_failure(FailureEvent(
+        idempotency_key="synthetic", kind=kind, error_type=error_type, error_message=message,
+    )) == expected
 
 
 @pytest.mark.asyncio

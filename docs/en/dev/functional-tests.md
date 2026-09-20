@@ -13,6 +13,15 @@ contracts and tests, then select the least expensive layer that proves the obser
 
 ## Cross-domain workflows
 
+Journal and streaming stabilization is covered by
+`back/app/agent/tests/test_reasoning_guard.py` (irregular fragments, replayed snapshots,
+no false positive on a fragmented word) and `back/app/incident/tests/test_capture.py`
+(distinct attempts, historical keys, diagnostics after rollback, enrichment without duplicates
+or disclosure in MCP results). Retention tests prevent a late observation from restoring an
+expired trace. `test_editorial_html.py` preserves content and revision after rejected mutations;
+`app/image/tests/test_image_mcp.py` keeps private URLs blocked and guides the caller to the
+canonical URI without contacting the image provider.
+
 Contextual help on business screens remains visible until explicitly dismissed,
 permanently stored per account and help key. Familiar screens and the Preferences
 menu have no help. The Lab explains its philosophy on its landing page only;

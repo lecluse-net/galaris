@@ -66,10 +66,15 @@ def _enrich_existing_incident(
 async def record_failure(db: AsyncSession, event: FailureEvent) -> FailureIncident:
     """Append an occurrence and trace exactly once inside the caller transaction."""
 
+    legacy_terminal_key = (
+        f"agent-run:{event.run_uuid}:terminal"
+        if event.phase == "agent_run" and event.run_uuid is not None
+        else None
+    )
     await db.execute(
         select(
             func.pg_advisory_xact_lock(
-                func.hashtextextended(event.idempotency_key, 0)
+                func.hashtextextended(legacy_terminal_key or event.idempotency_key, 0)
             )
         )
     )
@@ -78,8 +83,36 @@ async def record_failure(db: AsyncSession, event: FailureEvent) -> FailureIncide
             FailureIncident.idempotency_key == event.idempotency_key
         )
     )
+    if existing is None and legacy_terminal_key and event.task_attempt_id is not None:
+        # An installation upgraded between two observations of the same attempt
+        # can already have the old run-scoped key. Never reuse it for a new attempt.
+        existing = await db.scalar(select(FailureIncident).where(
+            FailureIncident.idempotency_key == legacy_terminal_key,
+            FailureIncident.task_attempt_id == event.task_attempt_id,
+        ))
+    if (
+        existing is None and event.idempotency_key.startswith("native-tool:")
+        and event.run_uuid is not None and event.tool_call_external_id
+    ):
+        legacy_tool_key = f"tool-call:{event.run_uuid}:{event.tool_call_external_id}"
+        await db.execute(select(func.pg_advisory_xact_lock(func.hashtextextended(legacy_tool_key, 0))))
+        existing = await db.scalar(select(FailureIncident).where(
+            FailureIncident.idempotency_key == legacy_tool_key,
+        ))
     if existing is not None:
         _enrich_existing_incident(existing, event)
+        trace = await db.get(FailureIncidentTrace, existing.id)
+        if trace is not None and event.trace and not trace.truncated_fields:
+            additions = {key: value for key, value in event.trace.items() if key not in trace.payload}
+            if additions:
+                payload, redacted, truncated, content_hash, byte_size = sanitize_trace({
+                    **trace.payload, **additions,
+                })
+                trace.payload = payload
+                trace.redacted_fields = sorted(set(trace.redacted_fields) | set(redacted))
+                trace.truncated_fields = truncated
+                trace.content_hash = content_hash
+                trace.byte_size = byte_size
         await db.flush()
         return existing
 

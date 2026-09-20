@@ -58,3 +58,20 @@ est supprimée ; le budget sortant du LAB revient de 15 à 14.
 - Les annulations explicites ne sont pas classées comme des échecs.
 - La file de revue ne remplace ni `LLMCall`, ni les événements de Task, ni Logfire : elle les relie
   et fournit le cycle durable de prévention des récidives.
+
+## Stabilisation des observations — 20 septembre 2026
+
+L'identité d'un échec terminal inclut la tentative lorsqu'elle existe : deux tentatives du
+même run peuvent échouer pour des causes différentes. Une ancienne clé limitée au run reste
+reconnue lorsqu'elle porte la même tentative. Les occurrences historiques ne sont pas réécrites.
+
+La frontière MCP native conserve séparément, après rollback de sa transaction, les types,
+messages expurgés et emplacements de code de la chaîne d'exceptions. Ces détails sont réservés
+au journal administratif ; le modèle conserve son diagnostic public borné. La référence publique
+permet aux observations du harnais et de la façade d'enrichir la même occurrence, sans nouveau
+comptage. Les clés historiques des appels d'outils restent reconnues à la reprise. L'enrichissement
+ajoute uniquement les champs manquants, conserve les masquages et respecte la rétention des traces.
+
+La catégorie privilégie le code structuré de la frontière. Le fallback historique ignore
+l'enveloppe d'erreur et les références aléatoires. Une politique de retry inconnue reste inconnue :
+la capture d'un résultat terminal ne décide pas à la place du scheduler.

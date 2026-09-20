@@ -37,6 +37,7 @@ from app.tools.secrets import (
 )
 from app.tools.tool_errors import (
     classify_tool_failure,
+    exception_diagnostic,
     render_tool_failure,
     safe_trace,
 )
@@ -413,6 +414,26 @@ def _wrap_tool(definition: McpToolDefinition, ctx: McpToolContext) -> Callable[.
                 language=language,
                 reference=error_reference,
             )
+            from core.failure_journal import FailureEvent, record_failure_event
+
+            # The tool transaction has rolled back. Persist its original diagnostic
+            # separately before FastMCP replaces the exception with model-safe text.
+            await record_failure_event(FailureEvent(
+                idempotency_key=f"native-tool:{error_reference}",
+                kind="tool",
+                phase="tool_execution",
+                error_type=failure.error_type,
+                error_code=failure.kind,
+                error_message=message,
+                task_id=ctx.task_id,
+                agent_id=ctx.agent_id,
+                driver_code=ctx.runtime,
+                tool_name=definition.name,
+                trace={"native_failure": {
+                    "reference": error_reference,
+                    "exceptions": exception_diagnostic(exc),
+                }},
+            ))
             # FastMCP validates successful return values against the function's annotated
             # output schema. Returning this message as a string breaks every tool annotated
             # with a structured result and masks the original recoverable tool error behind

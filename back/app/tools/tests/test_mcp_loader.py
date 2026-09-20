@@ -953,6 +953,17 @@ def test_http_forbidden_distinguishes_remote_refusal_without_exposing_secrets(
     assert "HTTP 403" not in local_message
 
 
+def test_safe_domain_cause_does_not_expose_an_arbitrary_wrapper() -> None:
+    from app.file_share.resource_uri import ResourceValidationError
+    from app.tools.tool_errors import classify_tool_failure
+
+    failure = ValueError("private provider wrapper")
+    failure.__cause__ = ResourceValidationError("Read the current revision before editing.")
+    diagnostic = classify_tool_failure(failure)
+    assert diagnostic.kind == "actionable"
+    assert diagnostic.detail == "Read the current revision before editing."
+
+
 def test_native_mcp_validation_detail_is_precise_and_secret_redacted() -> None:
     from app.file_share.mcp import _decode_content
     from app.tools import tool_errors

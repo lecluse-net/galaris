@@ -1036,13 +1036,19 @@ async def _record_run_outcome(
     )
     await record_failure_event(
         FailureEvent(
-            idempotency_key=f"agent-run:{request.run_id}:terminal",
+            idempotency_key=(
+                f"agent-run:{request.run_id}:attempt:{request.attempt_id}:terminal"
+                if request.attempt_id is not None
+                else f"agent-run:{request.run_id}:terminal"
+            ),
             kind="llm",
             phase="agent_run",
             error_type=error_type,
             error_message=error_message,
             retryable=None,
-            will_retry=False,
+            will_retry=(
+                False if result.failure is not None and result.failure.retry == "never" else None
+            ),
             task_id=request.task_id,
             task_attempt_id=request.attempt_id,
             agent_id=request.agent.id,
@@ -1079,12 +1085,15 @@ async def _record_tool_failure(
     """Driver-neutral fallback when a concrete runtime lacks a richer hook."""
 
     from core.failure_journal import FailureEvent, record_failure_event
+    from app.tools import native_failure_key
 
     external_id = message.tool_call_external_id
     key = external_id or f"sequence-{sequence}"
     await record_failure_event(
         FailureEvent(
-            idempotency_key=f"tool-call:{request.run_id}:{key}",
+            idempotency_key=(
+                native_failure_key(message.content or "") or f"tool-call:{request.run_id}:{key}"
+            ),
             kind="tool",
             phase="tool_execution",
             error_type="ToolCallError",
@@ -1092,7 +1101,7 @@ async def _record_tool_failure(
             retryable=True,
             attempt_number=message.tool_retry_number,
             retry_limit=message.tool_retry_limit,
-            will_retry=True,
+            will_retry=True if message.tool_retry_limit is not None else None,
             task_id=request.task_id,
             task_attempt_id=request.attempt_id,
             agent_id=request.agent.id,

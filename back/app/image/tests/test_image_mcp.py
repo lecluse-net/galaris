@@ -30,6 +30,28 @@ def test_generate_image_keeps_paths_for_transport_aware_normalization() -> None:
     ]
 
 
+@pytest.mark.asyncio
+async def test_private_image_url_is_rejected_with_canonical_uri_guidance(monkeypatch):
+    from app.file_share import web_transport
+
+    class Resolver:
+        async def getaddrinfo(self, *_args, **_kwargs):
+            return [(None, None, None, None, ("127.0.0.1", 443))]
+
+    monkeypatch.setattr(image_mcp, "_context_language", AsyncMock(return_value="en"))
+    monkeypatch.setattr(web_transport.asyncio, "get_running_loop", lambda: Resolver())
+    connection = AsyncMock()
+    describe = AsyncMock()
+    monkeypatch.setattr(web_transport, "_new_client", connection)
+    monkeypatch.setattr(image_mcp.image_service, "describe_image", describe)
+    with pytest.raises(RecoverableToolError) as failure:
+        await image_mcp.describe_image(McpToolContext(agent_id=17, runtime="internal"), "https://files.example/image.png")
+    assert "non-public" in str(failure.value)
+    assert "canonical file URI" in str(failure.value)
+    connection.assert_not_called()
+    describe.assert_not_awaited()
+
+
 def test_generated_image_defaults_to_console_or_requires_a_destination() -> None:
     console_context = ResourceContext(
         agent_id=17,

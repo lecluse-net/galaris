@@ -79,9 +79,10 @@ from .mcp_loader import (
     native_tool_codes_for_connection,
     native_tool_codes_for_tool,
 )
-from .tool_errors import RecoverableToolError
+from .tool_errors import RecoverableToolError, native_failure_key
 
 __all__ = [
+    "native_failure_key",
     "get_tool_codes",
     "ToolModel",
     "ToolSearchDocument",

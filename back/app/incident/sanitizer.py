@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import ast
 from collections.abc import Iterable
 from dataclasses import asdict, is_dataclass
 from datetime import date, datetime
@@ -125,20 +126,56 @@ def sanitize_trace(trace: dict[str, Any]) -> tuple[dict[str, Any], list[str], li
 def categorize_failure(event: FailureEvent) -> str:
     if event.category:
         return event.category
-    text = f"{event.error_type} {event.error_code or ''} {event.error_message}".lower()
+    # Native boundaries supply a structured code; do not infer its meaning from
+    # translated instructions, envelope keys or randomly generated references.
+    code_categories = {
+        "invalid_arguments": "validation", "not_found": "validation",
+        "already_exists": "validation", "unsupported": "validation",
+        "permission_denied": "permission", "authentication": "authentication",
+        "timeout": "timeout", "connection": "unavailable", "capacity": "unavailable",
+        "rate_limited": "rate_limit", "provider": "unavailable",
+        "401": "authentication", "403": "permission", "429": "rate_limit",
+        "502": "unavailable", "503": "unavailable", "504": "timeout",
+    }
+    if event.error_code in code_categories:
+        return code_categories[event.error_code]
+    message = event.error_message
+    if message.lstrip().startswith("{"):
+        try:
+            envelope = json.loads(message)
+        except (ValueError, RecursionError):
+            try:
+                # Older tool traces store Python's repr of the error envelope.
+                envelope = ast.literal_eval(message)
+            except (ValueError, SyntaxError, RecursionError):
+                envelope = None
+        if isinstance(envelope, dict):
+            fields = cast(dict[str, Any], envelope)
+            if fields.get("schema") == "galaris.tool-error/v1":
+                message = str(fields.get("error", ""))
+    message = _ERROR_REFERENCE_RE.sub("", message)
+    message = _UUID_RE.sub("", message)
+    message = _HEX_RE.sub("", message)
+    text = f"{event.error_type} {message}".lower()
     rules = (
-        ("rate_limit", ("rate limit", "too many requests", "429")),
-        ("authentication", ("unauthorized", "authentication", "invalid api key", "401")),
-        ("permission", ("forbidden", "permission", "403")),
+        ("rate_limit", ("rate limit", "too many requests")),
+        ("authentication", ("unauthorized", "authentication", "invalid api key")),
+        ("permission", ("forbidden", "permission", "non-public network")),
         ("timeout", ("timeout", "timed out", "deadline")),
-        ("validation", ("validation", "invalid argument", "schema", "retry prompt")),
-        ("model_output", ("unexpectedmodelbehavior", "max retries", "content_filter", "finish_reason=length")),
-        ("protocol", ("protocol", "malformed", "decode", "parse")),
-        ("unavailable", ("unavailable", "connection", "502", "503", "504")),
+        ("validation", ("validation", "valueerror", "resourceurierror", "resourcerevisionconflict", "richtexterror", "memoryconflicterror", "invalid argument", "schema", "retry prompt")),
+        ("model_output", ("reasoningdegenerationerror", "unexpectedmodelbehavior", "max retries", "content_filter", "finish_reason=length")),
+        ("protocol", ("protocol", "malformed", "decode", "parse", "stream ended before its terminal event")),
+        ("unavailable", ("unavailable", "connection")),
     )
     for category, needles in rules:
         if any(needle in text for needle in needles):
             return category
+    status = re.search(
+        r'''\b(?:http(?: status)?|status(?:_code)?|(?:error\s+)?code)["']?\s*[:=]?\s*["']?'''
+        r"(401|403|429|502|503|504)\b", text,
+    )
+    if status is not None:
+        return code_categories[status.group(1)]
     return "tool_runtime" if event.kind == "tool" else "unknown"
 
 

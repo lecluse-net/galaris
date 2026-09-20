@@ -18,6 +18,39 @@ def png():
 
 
 @pytest.mark.asyncio
+async def test_file_mutation_diagnostics_preserve_document_content_and_revision(agents, memory_storage):
+    from app.file_share.resource_contracts import ResourceContext
+    from app.file_share import resource_service
+    from app.file_share.resource_uri import ResourceRevisionConflict, ResourceValidationError
+    from app.tools.tool_errors import classify_tool_failure
+
+    owner, peer = agents
+    document = await create_document(owner_agent_id=owner.id, title="Editable report", content="<p>First</p><p>Second</p>", task_id=None)
+    uri = f"document://{document.id}"
+    ctx = ResourceContext(agent_id=owner.id, runtime="internal")
+    before = await resource_service.resource_read(ctx, uri)
+    await resource_service.resource_append(ctx, uri, "<p>Third</p>", expected_revision=before.revision)
+    current = await resource_service.resource_read(ctx, uri)
+    assert current.revision == before.revision + 1
+    assert "Third" in current.content
+
+    with pytest.raises(ResourceRevisionConflict) as stale:
+        await resource_service.resource_edit(ctx, uri, start_line=1, end_line=1, content="<p>Stale</p>", expected_revision=before.revision)
+    assert "file_read" in classify_tool_failure(stale.value).detail
+    with pytest.raises(ResourceValidationError) as missing:
+        await resource_service.resource_append(ctx, uri, "<p>No revision</p>")
+    assert "expected_revision" in classify_tool_failure(missing.value).detail
+    with pytest.raises(ResourceValidationError) as bounds:
+        await resource_service.resource_edit(ctx, uri, start_line=99, end_line=99, content="<p>Outside</p>", expected_revision=current.revision)
+    assert "99-99" in classify_tool_failure(bounds.value).detail
+    with pytest.raises(service.MemoryPermissionError):
+        await resource_service.resource_append(ResourceContext(agent_id=peer.id, runtime="internal"), uri, "<p>Forbidden</p>", expected_revision=current.revision)
+    unchanged = await resource_service.resource_read(ctx, uri)
+    assert unchanged.content == current.content
+    assert unchanged.revision == current.revision
+
+
+@pytest.mark.asyncio
 @pytest.mark.parametrize(
     "memory_type,node_kind", [(kind, "memory") for kind in ["core", "working", "episodic", "semantic", "procedural", "social"]] + [("working", "document")]
 )

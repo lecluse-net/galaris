@@ -101,6 +101,14 @@ class ResourceUriError(ValueError):
     """A resource URI cannot be represented safely or canonically."""
 
 
+class ResourceValidationError(ValueError):
+    """A model-safe explanation of a rejected resource operation."""
+
+
+class ResourceRevisionConflict(RuntimeError):
+    """The caller must reread a resource before attempting its mutation."""
+
+
 @dataclass(frozen=True, slots=True)
 class ResourceUri:
     """One normalized URI split into a scheme and an opaque provider locator."""
@@ -286,6 +294,8 @@ __all__ = [
     "RESOURCE_SCHEME_PATTERN",
     "ResourceUri",
     "ResourceUriError",
+    "ResourceValidationError",
+    "ResourceRevisionConflict",
     "parse_resource_uri",
     "validate_external_tool_code",
 ]

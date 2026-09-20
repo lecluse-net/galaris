@@ -11,7 +11,7 @@ tests restent l’autorité sur le comportement.
 
 - 70 modules backend déclarés ;
 - 36 modules frontend déclarés ;
-- 521 arêtes de dépendance backend ;
+- 522 arêtes de dépendance backend ;
 - 192 arêtes de dépendance frontend ;
 - 263 arêtes entre domaines `app`/`bridge` ;
 - 25 paires de domaines directement bidirectionnelles ;
@@ -146,7 +146,7 @@ tests restent l’autorité sur le comportement.
 | `app.agent` | `app.messenger` | `back/app/agent/planner_service.py` |
 | `app.agent` | `app.process` | `back/app/agent/briefing_service.py`, `back/app/agent/janus.py`, `back/app/agent/openai_router.py`, `back/app/agent/realtime.py` |
 | `app.agent` | `app.skill` | `back/app/agent/agent_service.py`, `back/app/agent/facade.py`, `back/app/agent/models.py` |
-| `app.agent` | `app.tools` | `back/app/agent/agent_service.py`, `back/app/agent/briefing_service.py`, `back/app/agent/executor_service.py`, `back/app/agent/mcp.py`, `back/app/agent/planner_service.py` |
+| `app.agent` | `app.tools` | `back/app/agent/agent_service.py`, `back/app/agent/briefing_service.py`, `back/app/agent/executor_service.py`, `back/app/agent/facade.py`, `back/app/agent/mcp.py`, `back/app/agent/planner_service.py` |
 | `app.agent` | `core.authorize` | `back/app/agent/agent_service.py`, `back/app/agent/assertions.py`, `back/app/agent/dialogue_service.py`, `back/app/agent/management_scope.py`, `back/app/agent/openai_router.py`, `back/app/agent/openai_service.py`, `back/app/agent/router.py`, `back/app/agent/team_router.py` |
 | `app.agent` | `core.database` | `back/app/agent/agent_group_service.py`, `back/app/agent/agent_service.py`, `back/app/agent/dialogue_service.py`, `back/app/agent/janus.py`, `back/app/agent/management_scope.py`, `back/app/agent/models.py`, `back/app/agent/openai_service.py`, `back/app/agent/resource_facade.py`, `back/app/agent/router.py`, `back/app/agent/team_router.py`, `back/app/agent/title_service.py` |
 | `app.agent` | `core.dbadmin` | `back/app/agent/dbadmin.py`, `back/app/agent/html_migration.py` |
@@ -442,6 +442,7 @@ tests restent l’autorité sur le comportement.
 | `app.tools` | `core.authorize` | `back/app/tools/assertions.py`, `back/app/tools/router.py` |
 | `app.tools` | `core.database` | `back/app/tools/catalog_refresh_service.py`, `back/app/tools/mandatory_tools.py`, `back/app/tools/mcp_loader.py`, `back/app/tools/models.py`, `back/app/tools/tool_search_service.py`, `back/app/tools/tool_service.py` |
 | `app.tools` | `core.dbadmin` | `back/app/tools/dbadmin.py`, `back/app/tools/mandatory_tools.py` |
+| `app.tools` | `core.failure_journal` | `back/app/tools/mcp_loader.py` |
 | `app.tools` | `core.i18n` | `back/app/tools/agent_registry.py`, `back/app/tools/connection_functions.py`, `back/app/tools/mcp.py`, `back/app/tools/mcp_diagnostics.py`, `back/app/tools/mcp_loader.py`, `back/app/tools/router.py`, `back/app/tools/search_tool.py`, `back/app/tools/tool_errors.py`, `back/app/tools/tool_service.py` |
 | `app.tools` | `core.params` | `back/app/tools/mandatory_tools.py`, `back/app/tools/mcp_loader.py` |
 | `app.tools` | `core.util` | `back/app/tools/agent_registry.py`, `back/app/tools/assertions.py`, `back/app/tools/catalog.py`, `back/app/tools/secrets.py`, `back/app/tools/tool_service.py` |

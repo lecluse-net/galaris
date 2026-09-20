@@ -740,8 +740,13 @@ async def test_resource_read_rejects_large_binary_with_console_guidance(
         b"\x00" * (resource_service._BINARY_READ_LIMIT + 1),
     )
 
-    with pytest.raises(ValueError, match="console software"):
+    with pytest.raises(ValueError, match="console software") as failure:
         await resource_service.resource_read(ctx, "console://large.bin")
+    from app.tools import tool_errors
+
+    diagnostic = tool_errors.classify_tool_failure(failure.value)
+    assert diagnostic.kind == "actionable"
+    assert "specialized" in diagnostic.detail
 
 
 @pytest.mark.asyncio
@@ -799,7 +804,7 @@ async def test_resource_edit_replaces_one_inclusive_text_line_range(
     assert edited.operation == "edit"
     assert read.content == "one\nnew two\nnew three\nfive\n"
 
-    with pytest.raises(ValueError, match="exceeds"):
+    with pytest.raises(ValueError, match="exceeds") as failure:
         await resource_service.resource_edit(
             ctx,
             "console://plan.md",
@@ -807,6 +812,12 @@ async def test_resource_edit_replaces_one_inclusive_text_line_range(
             end_line=12,
             content="impossible",
         )
+    from app.tools import tool_errors
+
+    diagnostic = tool_errors.classify_tool_failure(failure.value)
+    assert diagnostic.kind == "actionable"
+    assert "10-12" in diagnostic.detail
+    assert (await resource_service.resource_read(ctx, edited.uri)).content == read.content
 
 
 @pytest.mark.asyncio

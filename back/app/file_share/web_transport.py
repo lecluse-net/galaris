@@ -68,7 +68,12 @@ async def _resolve_public_https(value: str) -> _ResolvedHttpsTarget:
         raise ResourceUriError("The HTTPS resource hostname cannot be resolved.") from exc
     resolved = tuple(dict.fromkeys(str(entry[4][0]) for entry in addresses))
     if not resolved or not all(_public_address(address) for address in resolved):
-        raise ResourceUriError("The HTTPS resource resolves to a non-public network.")
+        raise ResourceUriError(
+            "The HTTPS resource resolves to a non-public network. "
+            "Pass the original canonical file URI returned by the authorized provider "
+            "directly to this tool. Use file_list or file_search to retrieve that URI; "
+            "do not invent a URI or retry the blocked HTTPS URL."
+        )
     return _ResolvedHttpsTarget(
         url=url,
         hostname=hostname,

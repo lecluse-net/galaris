@@ -13,6 +13,15 @@ est une décision à part entière : aucun quota de tests nouveaux par module.
 
 ## Parcours traversant plusieurs domaines
 
+La stabilisation du journal et du streaming est couverte par
+`back/app/agent/tests/test_reasoning_guard.py` (fragments irréguliers, snapshots rejoués,
+absence de faux positif sur un mot découpé) et `back/app/incident/tests/test_capture.py`
+(tentatives distinctes, clés historiques, diagnostic après rollback, enrichissement sans doublon
+ni fuite dans le résultat MCP). Les tests de rétention empêchent une observation tardive de
+restaurer une trace expirée. `test_editorial_html.py` conserve le contenu et la révision après
+refus de mutation ; `app/image/tests/test_image_mcp.py` conserve le rejet des URL privées et
+le guidage vers l'URI canonique, sans contacter le fournisseur d'images.
+
 Les aides contextuelles des écrans métier restent visibles jusqu’à une fermeture
 explicite, mémorisée définitivement par compte et par aide. Les écrans courants et le
 menu Préférences restent sans aide. Le Lab porte une explication de sa philosophie

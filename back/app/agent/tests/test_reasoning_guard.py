@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import random
 from unittest.mock import AsyncMock
 from uuid import uuid4
 
@@ -86,6 +87,35 @@ def test_reasoning_guard_detects_a_pattern_inside_one_block() -> None:
                 )
             )
         )
+
+
+@pytest.mark.parametrize("snapshots", [False, True])
+def test_reasoning_guard_detects_repetition_independently_of_stream_fragments(snapshots: bool) -> None:
+    text = "I am checking the same hypothesis. " * 80
+    rng = random.Random(19)
+    guard = ReasoningPatternGuard()
+    offset = 0
+    with pytest.raises(ReasoningDegenerationError):
+        while offset < len(text):
+            end = min(len(text), offset + rng.randint(1, 11))
+            guard.observe(AIMessage(
+                type="tool", tool_name="thinking", stream_id="thought",
+                stream_mode="snapshot" if snapshots else "delta",
+                content=text[:end] if snapshots else text[offset:end],
+            ))
+            offset = end
+
+
+@pytest.mark.parametrize("replay", [False, True])
+def test_repeated_fragments_inside_one_word_are_not_repeated_reasoning(replay: bool) -> None:
+    guard = ReasoningPatternGuard()
+    old = AIMessage(type="text", content="Earlier reply.", stream_id="earlier", stream_mode="snapshot", stream_complete=True)
+    guard.observe(old)
+    for _ in range(80):
+        guard.observe(AIMessage(type="text", content="a", stream_id="word"))
+        if replay:
+            guard.observe(old)
+    guard.observe(AIMessage(type="text", content=" ", stream_id="word", stream_complete=True))
 
 
 def test_reasoning_guard_does_not_count_replayed_snapshots_as_generated_prose() -> None:

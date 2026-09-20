@@ -38,7 +38,10 @@ from .resource_contracts import (
     EditorialResourceRead,
     ResourceTransfer,
 )
-from .resource_uri import ResourceUri, ResourceUriError, parse_resource_uri
+from .resource_uri import (
+    ResourceUri, ResourceUriError, ResourceValidationError,
+    ResourceRevisionConflict, parse_resource_uri,
+)
 from .service_references import (
     normalize_destination_reference,
     normalize_source_reference,
@@ -206,7 +209,7 @@ def _resource_read_from_bytes(
             textual = False
     if not textual:
         if len(content) > _BINARY_READ_LIMIT:
-            raise ValueError(
+            raise ResourceValidationError(
                 f"Binary resource is {len(content)} bytes; file_read can return base64 only "
                 f"up to {_BINARY_READ_LIMIT} bytes. Pass its URI to a specialized "
                 "tool, or copy it to console:// when console software must handle it."
@@ -1109,7 +1112,7 @@ async def resource_read(
         )
         if is_binary:
             if size > _BINARY_READ_LIMIT:
-                raise ValueError(
+                raise ResourceValidationError(
                     f"Binary resource is {size} bytes; file_read can return base64 only "
                     f"up to {_BINARY_READ_LIMIT} bytes. Pass its URI to a specialized "
                     "tool, or copy it to console:// when console software must handle it."
@@ -1443,7 +1446,7 @@ async def resource_write(
         try:
             text = content.decode("utf-8")
         except UnicodeDecodeError as exc:
-            raise ValueError(
+            raise ResourceValidationError(
                 "document:// stores UTF-8 text only; write binary content to console:// "
                 "or a connected file provider."
             ) from exc
@@ -1557,7 +1560,7 @@ async def resource_append(
     expected_revision: int | None = None,
 ) -> ResourceMutation:
     if len(content) > _TEXT_WRITE_LIMIT:
-        raise ValueError(f"Text content exceeds {_TEXT_WRITE_LIMIT} characters.")
+        raise ResourceValidationError(f"Text content exceeds {_TEXT_WRITE_LIMIT} characters.")
     reference = parse_resource_uri(uri)
     if reference.scheme == "console":
         transport, path = await _console_reference(ctx, reference)
@@ -1574,7 +1577,7 @@ async def resource_append(
                 "Document attachments are immutable; create a new attachment instead."
             )
         if expected_revision is None:
-            raise ValueError("expected_revision is required for document appends.")
+            raise ResourceValidationError("expected_revision is required for document appends; call file_read first.")
         from app.memory import append_document_resource_text
 
         data = await append_document_resource_text(
@@ -1625,11 +1628,11 @@ async def _read_complete_text_and_revision(
             max_chars=2_000_000 if reference.scheme in {"document", "memory"} else _TEXT_READ_LIMIT,
         )
         if part.encoding != "utf-8":
-            raise ValueError("This operation supports UTF-8 text resources only.")
+            raise ResourceValidationError("This operation supports UTF-8 text resources only.")
         if revision is None:
             revision = part.revision
         elif part.revision is not None and part.revision != revision:
-            raise RuntimeError("The resource changed while it was being read; retry the edit.")
+            raise ResourceRevisionConflict("The resource changed while it was being read; read it again before retrying the edit.")
         chunks.append(part.content)
         if part.next_offset is None:
             return "".join(chunks), revision
@@ -1730,12 +1733,12 @@ async def resource_edit(
     """Replace a 1-based inclusive line range in one UTF-8 text resource."""
 
     if start_line < 1 or end_line < start_line:
-        raise ValueError("start_line and end_line must define a 1-based inclusive range.")
+        raise ResourceValidationError("start_line and end_line must define a 1-based inclusive range.")
     if len(content) > _TEXT_WRITE_LIMIT:
-        raise ValueError(f"Text content exceeds {_TEXT_WRITE_LIMIT} characters.")
+        raise ResourceValidationError(f"Text content exceeds {_TEXT_WRITE_LIMIT} characters.")
     reference = parse_resource_uri(uri)
     if reference.scheme == "document" and expected_revision is None:
-        raise ValueError("Document edits require expected_revision from file_read.")
+        raise ResourceValidationError("Document edits require expected_revision from file_read.")
     text, observed_revision = await _read_complete_text_and_revision(ctx, reference)
     descriptor = await resource_info(ctx, reference) if reference.scheme == "document" else None
     if descriptor is not None and descriptor.media_type == "text/html":
@@ -1745,17 +1748,18 @@ async def resource_edit(
     else:
         lines = text.splitlines(keepends=True)
     if end_line > len(lines):
-        raise ValueError(
-            f"Line range {start_line}-{end_line} exceeds the resource's {len(lines)} lines."
+        raise ResourceValidationError(
+            f"Line range {start_line}-{end_line} exceeds the resource's {len(lines)} lines/blocks; "
+            "use the complete blocks returned by file_read for HTML documents."
         )
     if (
         reference.scheme == "document"
         and expected_revision is not None
         and observed_revision != expected_revision
     ):
-        raise RuntimeError(
+        raise ResourceRevisionConflict(
             f"Document revision conflict: expected {expected_revision}, "
-            f"current revision is {observed_revision}."
+            f"current revision is {observed_revision}; call file_read before retrying."
         )
     replacement = content
     replaced_block = "".join(lines[start_line - 1 : end_line])
