@@ -6693,7 +6693,7 @@
       {
         "file": "back/app/memory/mcp.py",
         "handler": "memory_forget",
-        "line": 564,
+        "line": 567,
         "module": "app.memory",
         "name": "memory_forget",
         "namespace": "memory"
@@ -6701,7 +6701,7 @@
       {
         "file": "back/app/memory/mcp.py",
         "handler": "memory_remember",
-        "line": 459,
+        "line": 462,
         "module": "app.memory",
         "name": "memory_remember",
         "namespace": "memory"
@@ -6725,7 +6725,7 @@
       {
         "file": "back/app/memory/mcp.py",
         "handler": "memory_summarize",
-        "line": 585,
+        "line": 588,
         "module": "app.memory",
         "name": "memory_summarize",
         "namespace": "memory"

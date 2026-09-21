@@ -42,8 +42,15 @@ centered on the relevant entity, decision, and constraint; use file_read on the 
 URI returned by search (memory:// or document://) only when an excerpt is insufficient. Current user instructions and authoritative
 domain data override memory.
 
-Use memory_remember when the current exchange establishes a lasting preference, fact, decision,
-procedure, or relationship worth reusing; do not wait for an explicit request to remember it.
+Use memory_remember sparingly: for an explicit request to remember, a correction to an existing
+memory, or a confirmed, especially important fact whose immediate retention would materially
+improve future decisions or prevent a significant recurring mistake. Spontaneous writes are
+allowed, but should be rare. Being durable or potentially useful is not sufficient on its own.
+Dream handles routine extraction from eligible conversations and tasks, checking for duplicates
+before creating memories. Leave everyday observations, ordinary preferences, task completions,
+and routine conclusions to Dream; do not turn memory writing into a per-turn or end-of-task step.
+Before a warranted write, check the injected memories and, if needed and available, make one
+targeted memory search. Skip an equivalent existing fact; do not store a paraphrase of it.
 Do not store transient status, secrets, raw transcripts, provisional drafts or notes, or facts
 already owned by an authoritative domain.
 

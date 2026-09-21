@@ -156,6 +156,15 @@ association à l'UUID retenu. Les écritures courantes renseignent directement l
 source canonique existe ; une source disparue reste une provenance textuelle sans inventer de cible.
 
 Les écritures explicites `memory_remember` et `memory_summarize` restent immédiatement appliquées.
+Les consignes de `memory_remember` réservent son usage à des appels rares : demande explicite de
+mémorisation, correction d'un souvenir existant ou information confirmée particulièrement importante
+dont la conservation immédiate améliore les décisions futures ou évite une erreur récurrente
+significative. Une écriture spontanée reste possible, sans quota fixe. La seule utilité potentielle
+ou durabilité ne suffit pas : les observations courantes et conclusions ordinaires relèvent de
+l'extraction différée de Dream et de sa recherche de doublons. Avant une écriture justifiée, l'agent
+vérifie le contexte mémoire et, si nécessaire et disponible, effectue une recherche ciblée pour
+éviter de réenregistrer un fait équivalent. Cette politique est une consigne au modèle, pas un
+nouveau filtre serveur.
 Les relations structurelles certaines sont des projections de `MemorySource`, des Topics, des
 contacts, des Goals et des Process. `app.memory.link_reconciliation` les reconstruit globalement ou
 autour d'un nœud, sans LLM, et ne possède jamais un lien explicite. Le scope Topic/contact

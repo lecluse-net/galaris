@@ -452,7 +452,10 @@ async def memory_share(
     "memory",
     name="memory_remember",
     description=(
-        "Store one durable governed memory as semantic HTML (paragraphs, lists, tables, links; no images). Storage is immediate and auditable. Keywords may be "
+        "Store one durable governed memory as semantic HTML (paragraphs, lists, tables, links; no images). "
+        "Use sparingly for an explicit memory request, a correction, or an especially important "
+        "confirmed fact worth retaining immediately. Leave routine extraction and duplicate checking "
+        "to Dream; skip equivalent known memories. Storage is immediate and auditable. Keywords may be "
         "an array of strings or a JSON-encoded array string."
     ),
 )

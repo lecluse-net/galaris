@@ -738,7 +738,6 @@ def test_memory_policy_requires_a_relevance_check_not_an_automatic_search() -> N
     assert "requires this relevance check, not an automatic search" in normalized
     assert "one short query" in normalized
     assert "memory_remember" in normalized
-    assert "do not wait for an explicit request to remember it" in normalized
     assert "working document" not in normalized
     assert "provisional drafts or notes" in normalized
     assert "written first" in normalized

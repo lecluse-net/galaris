@@ -331,9 +331,11 @@ def realtime_tools(
             definition=RealtimeToolDefinition(
                 name="memory_remember",
                 description=(
-                    "Store one lasting governed fact, preference, decision, procedure, or "
-                    "relationship from this call. Do not store transient status, secrets, or "
-                    "raw transcripts."
+                    "Store one lasting governed memory from this call. Use sparingly for an "
+                    "explicit memory request, a correction, or an especially important confirmed "
+                    "fact worth retaining immediately. Leave routine extraction and duplicate "
+                    "checking to Dream; skip equivalent known memories. Do not store transient "
+                    "status, secrets, or raw transcripts."
                 ),
                 parameters={
                     "type": "object",

@@ -53,7 +53,7 @@ def test_memory_mcp_family_is_discovered_once() -> None:
     assert "full_search" not in inspect.signature(mcp.memory_search).parameters
 
 
-def test_memory_remember_description_stays_transport_focused() -> None:
+def test_memory_remember_description_preserves_storage_contract() -> None:
     definition = next(
         item for item in load_mcp_tools() if item.name == "memory_remember"
     )
