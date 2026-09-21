@@ -448,6 +448,15 @@
                     {{ badge.label }}
                   </q-chip>
                 </div>
+                <LlmCapabilityRefresh
+                  v-if="editing && dialogOpen && canEdit && form.llm_provider_id"
+                  :provider-id="form.llm_provider_id"
+                  :model-name="form.llm_name"
+                  :capability="form.primary_capability"
+                  :modalities="modalitiesPayload()"
+                  :service-capabilities="form.service_capabilities"
+                  @apply="applyRefreshedCapabilities"
+                />
               </div>
             </div>
           </q-card-section>
@@ -493,6 +502,7 @@ import { useI18n } from 'vue-i18n'
 import { privileges, usePrivilegeStore } from '@/core/authorize'
 import { solaireCss } from '@/core/util'
 import { useLLMProviderStore } from '../stores/llmProviderStore'
+import LlmCapabilityRefresh from './LlmCapabilityRefresh.vue'
 import type {
   LLMModalities,
   LLMModelInfo,
@@ -972,6 +982,12 @@ function uniqueCode(modelId: string): string {
   let suffix = 2
   while (existing.has(`${normalized.slice(0, 95)}-${suffix}`)) suffix += 1
   return `${normalized.slice(0, 95)}-${suffix}`
+}
+
+function applyRefreshedCapabilities(modalities: Partial<LLMModalities>, capabilities: AICapability[]) {
+  if (!canEdit.value) return
+  Object.assign(form, modalities)
+  form.service_capabilities = capabilities
 }
 
 function modalitiesPayload(): LLMModalities {

@@ -107,6 +107,16 @@ the SDK; WAV/MP3 audio uses Chat Completions. OpenRouter additionally declares A
 audio and MP4/MPEG/MOV/WebM video. Other video transports, unknown formats and unavailable files
 remain explicit references. Hermes retains its text/image transport and existing fallbacks.
 
+During model discovery, an absent modality stays unknown until catalog enrichment. Chat defaults
+must not fabricate image, file, audio or video refusals; explicit provider values take precedence.
+The API exposes known modalities separately from booleans filled with response defaults.
+
+Reading a catalog never changes configured models. In the model editor, “Refresh capabilities”
+reloads metadata and previews differences. “Apply to form”, followed by saving the resource,
+makes those choices effective. Unknown modalities keep their saved values. Prices, context limits
+and other settings are preserved. Newly created models use the discovered capabilities directly.
+No schema change or automatic migration is required.
+
 `PYDANTIC_AI_BINARY_INPUT_MAX_BYTES` bounds the total unique native bytes per run (20,000,000 by
 default), prioritizing current messages. Unsupported, oversized or inaccessible files carry an
 explicit notice. `image_read`, `audio_read`, `video_read`, `audio_transcribe` and appropriate file

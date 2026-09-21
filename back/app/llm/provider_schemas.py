@@ -232,6 +232,7 @@ class LLMModelInfo(BaseModel):
     context_length: Optional[int] = None  # Context size in tokens.
     pricing: Optional[Dict[str, Any]] = None  # Input and output token prices.
     modalities: Optional["LLMModalities"] = None  # Provider-reported I/O capabilities.
+    known_modalities: List[str] = Field(default_factory=list)
     capabilities: Optional[Dict[str, bool]] = None
     release_date: Optional[str] = None
     status: Optional[str] = None

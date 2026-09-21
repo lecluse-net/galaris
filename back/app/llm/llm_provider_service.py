@@ -633,8 +633,8 @@ async def _list_provider_resources(
             f"{provider.name} ne prend pas en charge la capacité {capability}"
         )
     models = await discover_resources(provider, api_key, capability)
-    normalized = [with_capability(model, capability) for model in models]
-    return await enrich_models(provider, normalized, force_refresh=force_refresh)
+    enriched = await enrich_models(provider, models, force_refresh=force_refresh)
+    return [with_capability(model, capability) for model in enriched]
 
 
 async def list_transcription_models(provider_id: int) -> list[LLMModelInfo]:

@@ -444,3 +444,71 @@ async def test_models_dev_fills_prices_context_modalities_and_capabilities(
     assert model.modalities and model.modalities["input_file"] is True
     assert model.capabilities and model.capabilities["tools"] is True
     assert model.metadata_source == "models.dev"
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("catalog_available", [True, False])
+@pytest.mark.parametrize("provider_inputs", [None, ["text"], ["text", "image", "file", "audio", "video"]])
+async def test_discovered_modalities_survive_configuration_and_native_admission(
+    db: AsyncSession, monkeypatch: pytest.MonkeyPatch, provider_inputs: list[str] | None,
+    catalog_available: bool,
+) -> None:
+    """Discover, persist and reopen a model without losing catalog inputs or explicit refusals."""
+    from app.llm import llm_service, supports_native_input
+    from app.llm.provider_schemas import LLMCreate, LLMUpdate
+
+    model_name = "accounts/fireworks/models/synthetic-multimodal"
+    live: dict[str, Any] = {"id": model_name}
+    if provider_inputs is not None:
+        live["architecture"] = {"input_modalities": provider_inputs, "output_modalities": ["text"]}
+
+    def respond(request: httpx.Request) -> httpx.Response:
+        if request.url.host == "models.dev":
+            if not catalog_available:
+                return httpx.Response(503)
+            return httpx.Response(200, json={"fireworks-ai": {"models": {model_name: {
+                "modalities": {"input": ["text", "image", "file", "audio", "video"], "output": ["text"]},
+            }}}})
+        assert request.url.path == "/inference/v1/models"
+        return httpx.Response(200, json={"data": [live]})
+
+    models_dev_service.clear_cache()
+    client = httpx.AsyncClient
+    monkeypatch.setattr(httpx, "AsyncClient", lambda **kwargs: client(transport=httpx.MockTransport(respond), **kwargs))
+    provider = await llm_provider_service.create_provider(LLMProviderCreate(
+        name="Synthetic media provider", catalog_code="fireworks", base_url="https://provider.example/v1",
+    ))
+    try:
+        discovered = await llm_provider_service.list_resources(provider.id, "chat", force_refresh=True)
+        model = provider_router._model_info_response(discovered[0])
+        assert model.modalities is not None
+        expected = provider_inputs == ["text", "image", "file", "audio", "video"] or (
+            provider_inputs is None and catalog_available
+        )
+        for field in ("input_image", "input_file", "input_audio", "input_video"):
+            assert getattr(model.modalities, field) is expected
+        assert ("vision" in model.service_capabilities) is expected
+        assert ("input_image" in model.known_modalities) is (provider_inputs is not None or catalog_available)
+
+        configured = await llm_service.create_llm(LLMCreate(
+            llm_provider_id=provider.id, code="synthetic-multimodal", llm_name=model_name,
+            label="Synthetic multimodal", service_capabilities=model.service_capabilities,
+            **model.modalities.model_dump(),
+        ))
+        model_id = configured.id
+        db.expunge(configured)
+        reopened = await llm_service.get_llm(model_id)
+        assert reopened is not None
+        assert supports_native_input(reopened, "image/png") is expected
+        assert supports_native_input(reopened, "application/pdf") is expected
+        assert supports_native_input(reopened, "audio/wav") is expected
+        # Discovery must not bypass the selected transport's format restrictions.
+        assert not supports_native_input(reopened, "audio/ogg")
+        assert not supports_native_input(reopened, "video/mp4")
+
+        await llm_service.update_llm(model_id, LLMUpdate(input_image=False))
+        await llm_provider_service.list_resources(provider.id, "chat", force_refresh=True)
+        await db.refresh(reopened)
+        assert reopened.input_image is False
+    finally:
+        models_dev_service.clear_cache()

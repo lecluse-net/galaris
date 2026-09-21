@@ -77,6 +77,7 @@ export interface LLMModelInfo {
     context_length: number | null
     pricing: Record<string, unknown> | null
     modalities?: LLMModalities | null
+    known_modalities?: (keyof LLMModalities)[]
     capabilities?: Record<string, boolean> | null
     release_date?: string | null
     status?: string | null

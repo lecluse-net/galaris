@@ -4,6 +4,7 @@ import pytest
 
 from app.llm.handlers import LLMModelInfo
 from app.llm.provider_facade import ProviderConnection
+from app.llm.provider_router import _model_info_response
 from bridge.openai.resources import OpenAIResourceDiscovery
 
 
@@ -43,7 +44,12 @@ async def test_openai_discovery_exposes_realtime_models_and_voices(
     speech = await discovery.list_resources(connection, "speech")
 
     assert [resource.id for resource in realtime] == ["gpt-realtime-2.1"]
-    assert realtime[0].modalities == {
+    # Unknown inputs must remain enrichable internally; the public catalog
+    # still supplies the complete, conservative directional boolean contract.
+    response = _model_info_response(realtime[0])
+    assert "input_image" not in response.known_modalities
+    assert response.modalities is not None
+    assert response.modalities.model_dump() == {
         "input_text": True,
         "input_image": False,
         "input_file": False,

@@ -154,6 +154,18 @@ OpenRouter déclare en plus AIFF/AAC/OGG/FLAC/M4A et les vidéos MP4/MPEG/MOV/We
 transports, les formats inconnus et les fichiers inaccessibles restent des références explicites.
 Hermès conserve son transport texte/image et ses replis propres.
 
+À la découverte des modèles, une modalité absente reste inconnue jusqu'à l'enrichissement
+par le catalogue. Un défaut de conversation ne doit pas fabriquer un refus d'image, de fichier,
+d'audio ou de vidéo : les valeurs explicites du fournisseur restent prioritaires. L'API expose
+les modalités connues séparément des booléens complétés par défaut.
+
+Les modèles déjà enregistrés ne sont pas modifiés par une consultation du catalogue. Dans leur
+fiche, « Actualiser les capacités » recharge les métadonnées et présente les différences ;
+« Appliquer au formulaire » puis l'enregistrement rendent ces choix effectifs. Les modalités
+inconnues conservent leur valeur enregistrée. Les tarifs, le contexte et les autres réglages ne
+sont pas actualisés par cette action. Les modèles créés ensuite utilisent directement les
+capacités découvertes. Aucun changement de schéma ni migration automatique n'est nécessaire.
+
 `PYDANTIC_AI_BINARY_INPUT_MAX_BYTES` borne le total des octets natifs uniques préparés pour un run
 (20 000 000 par défaut). La priorité va aux messages courants. Un dépassement ou une incompatibilité
 produit un avis explicite dans le contexte ; l'agent peut appeler `image_read`, `audio_read`,

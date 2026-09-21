@@ -38,6 +38,24 @@ def test_capability_defaults_are_directional_witnesses() -> None:
     assert speech.modalities is not None
     assert speech.modalities["input_text"] is True
     assert speech.modalities["output_audio"] is True
+    # A default for one service must not fabricate refusals for unknown inputs.
+    assert "input_image" not in speech.modalities
+    assert "input_file" not in transcription.modalities
+
+    refused = with_capability(LLMModelInfo(
+        id="restricted-model", modalities={"input_image": False},
+    ), "vision")
+    assert refused.modalities["input_image"] is False
+
+    from app.llm.provider_router import _model_info_response
+
+    # Public discovery must keep STT and TTS directional when unknown fields
+    # are filled for clients that expect a complete boolean object.
+    stt_response = _model_info_response(transcription)
+    tts_response = _model_info_response(speech)
+    assert stt_response.modalities.input_text is False
+    assert tts_response.modalities.output_text is False
+    assert "output_text" not in tts_response.known_modalities
 
 
 def test_legacy_whisper_audio_output_does_not_turn_it_into_tts() -> None:

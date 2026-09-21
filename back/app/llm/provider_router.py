@@ -84,11 +84,15 @@ def _model_info_response(model: Any) -> LLMModelInfoResponse:
         context_length=model.context_length,
         pricing=model.pricing,
         modalities=(
-            LLMModalities.model_validate(model.modalities)
+            LLMModalities.model_validate({
+                **dict.fromkeys(LLMModalities.model_fields, False),
+                **model.modalities,
+            })
             if model.modalities
             else None
         ),
         capabilities=model.capabilities,
+        known_modalities=list(model.modalities or {}),
         release_date=model.release_date,
         status=model.status,
         metadata_source=model.metadata_source,

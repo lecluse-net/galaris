@@ -12770,7 +12770,7 @@
         "declared_path": "/llm-providers",
         "file": "back/app/llm/provider_router.py",
         "handler": "list_providers",
-        "line": 252,
+        "line": 256,
         "method": "GET",
         "module": "app.llm"
       },
@@ -12779,7 +12779,7 @@
         "declared_path": "/llm-providers",
         "file": "back/app/llm/provider_router.py",
         "handler": "create_provider",
-        "line": 260,
+        "line": 264,
         "method": "POST",
         "module": "app.llm"
       },
@@ -12788,7 +12788,7 @@
         "declared_path": "/llm-providers/catalog",
         "file": "back/app/llm/provider_router.py",
         "handler": "get_provider_catalog",
-        "line": 274,
+        "line": 278,
         "method": "GET",
         "module": "app.llm"
       },
@@ -12797,7 +12797,7 @@
         "declared_path": "/llm-providers/catalog/{catalog_code}",
         "file": "back/app/llm/provider_router.py",
         "handler": "configure_catalog_provider",
-        "line": 315,
+        "line": 319,
         "method": "PUT",
         "module": "app.llm"
       },
@@ -12806,7 +12806,7 @@
         "declared_path": "/llm-providers/catalog/{catalog_code}/resources",
         "file": "back/app/llm/provider_router.py",
         "handler": "list_catalog_resources",
-        "line": 281,
+        "line": 285,
         "method": "GET",
         "module": "app.llm"
       },
@@ -12815,7 +12815,7 @@
         "declared_path": "/llm-providers/fetch-pricing",
         "file": "back/app/llm/provider_router.py",
         "handler": "fetch_pricing",
-        "line": 145,
+        "line": 149,
         "method": "POST",
         "module": "app.llm"
       },
@@ -12824,7 +12824,7 @@
         "declared_path": "/llm-providers/llms",
         "file": "back/app/llm/provider_router.py",
         "handler": "list_llms",
-        "line": 106,
+        "line": 110,
         "method": "GET",
         "module": "app.llm"
       },
@@ -12833,7 +12833,7 @@
         "declared_path": "/llm-providers/llms",
         "file": "back/app/llm/provider_router.py",
         "handler": "create_llm",
-        "line": 118,
+        "line": 122,
         "method": "POST",
         "module": "app.llm"
       },
@@ -12842,7 +12842,7 @@
         "declared_path": "/llm-providers/llms/{llm_id}",
         "file": "back/app/llm/provider_router.py",
         "handler": "delete_llm",
-        "line": 233,
+        "line": 237,
         "method": "DELETE",
         "module": "app.llm"
       },
@@ -12851,7 +12851,7 @@
         "declared_path": "/llm-providers/llms/{llm_id}",
         "file": "back/app/llm/provider_router.py",
         "handler": "get_llm",
-        "line": 185,
+        "line": 189,
         "method": "GET",
         "module": "app.llm"
       },
@@ -12860,7 +12860,7 @@
         "declared_path": "/llm-providers/llms/{llm_id}",
         "file": "back/app/llm/provider_router.py",
         "handler": "update_llm",
-        "line": 200,
+        "line": 204,
         "method": "PUT",
         "module": "app.llm"
       },
@@ -12869,7 +12869,7 @@
         "declared_path": "/llm-providers/test",
         "file": "back/app/llm/provider_router.py",
         "handler": "test_provider_connection",
-        "line": 332,
+        "line": 336,
         "method": "POST",
         "module": "app.llm"
       },
@@ -12878,7 +12878,7 @@
         "declared_path": "/llm-providers/{provider_id}",
         "file": "back/app/llm/provider_router.py",
         "handler": "delete_provider",
-        "line": 511,
+        "line": 515,
         "method": "DELETE",
         "module": "app.llm"
       },
@@ -12887,7 +12887,7 @@
         "declared_path": "/llm-providers/{provider_id}",
         "file": "back/app/llm/provider_router.py",
         "handler": "get_provider",
-        "line": 468,
+        "line": 472,
         "method": "GET",
         "module": "app.llm"
       },
@@ -12896,7 +12896,7 @@
         "declared_path": "/llm-providers/{provider_id}",
         "file": "back/app/llm/provider_router.py",
         "handler": "update_provider",
-        "line": 487,
+        "line": 491,
         "method": "PUT",
         "module": "app.llm"
       },
@@ -12905,7 +12905,7 @@
         "declared_path": "/llm-providers/{provider_id}/models",
         "file": "back/app/llm/provider_router.py",
         "handler": "list_provider_models",
-        "line": 526,
+        "line": 530,
         "method": "GET",
         "module": "app.llm"
       },
@@ -12914,7 +12914,7 @@
         "declared_path": "/llm-providers/{provider_id}/models/delete",
         "file": "back/app/llm/provider_router.py",
         "handler": "delete_model",
-        "line": 700,
+        "line": 704,
         "method": "POST",
         "module": "app.llm"
       },
@@ -12923,7 +12923,7 @@
         "declared_path": "/llm-providers/{provider_id}/models/pull",
         "file": "back/app/llm/provider_router.py",
         "handler": "pull_model",
-        "line": 661,
+        "line": 665,
         "method": "POST",
         "module": "app.llm"
       },
@@ -12932,7 +12932,7 @@
         "declared_path": "/llm-providers/{provider_id}/oauth",
         "file": "back/app/llm/provider_router.py",
         "handler": "disconnect_provider_authentication",
-        "line": 449,
+        "line": 453,
         "method": "DELETE",
         "module": "app.llm"
       },
@@ -12941,7 +12941,7 @@
         "declared_path": "/llm-providers/{provider_id}/oauth/device",
         "file": "back/app/llm/provider_router.py",
         "handler": "start_provider_device_login",
-        "line": 387,
+        "line": 391,
         "method": "POST",
         "module": "app.llm"
       },
@@ -12950,7 +12950,7 @@
         "declared_path": "/llm-providers/{provider_id}/oauth/device/poll",
         "file": "back/app/llm/provider_router.py",
         "handler": "poll_provider_device_login",
-        "line": 417,
+        "line": 421,
         "method": "POST",
         "module": "app.llm"
       },
@@ -12959,7 +12959,7 @@
         "declared_path": "/llm-providers/{provider_id}/resources",
         "file": "back/app/llm/provider_router.py",
         "handler": "list_provider_resources",
-        "line": 578,
+        "line": 582,
         "method": "GET",
         "module": "app.llm"
       },
@@ -12968,7 +12968,7 @@
         "declared_path": "/llm-providers/{provider_id}/transcription-models",
         "file": "back/app/llm/provider_router.py",
         "handler": "list_provider_transcription_models",
-        "line": 624,
+        "line": 628,
         "method": "GET",
         "module": "app.llm"
       },

@@ -119,6 +119,18 @@ def infer_capabilities(model: LLMModelInfo) -> list[AICapability]:
         if value in AI_CAPABILITIES
     ]
     if declared:
+        # Catalog enrichment can add native inputs to a provider's chat entry.
+        # Keep specialized services (transcription, speech, etc.) as declared.
+        flags = model.modalities or {}
+        if "chat" in declared and flags.get("output_text"):
+            native_inputs: tuple[tuple[str, AICapability], ...] = (
+                ("input_image", "vision"),
+                ("input_audio", "audio_understanding"),
+                ("input_video", "video_understanding"),
+            )
+            for field, capability in native_inputs:
+                if flags.get(field):
+                    declared.append(capability)
         return list(dict.fromkeys(declared))
 
     result: list[AICapability] = []
@@ -178,9 +190,11 @@ def with_capability(
     model.service_capabilities = [str(value) for value in capabilities]
     model.resource_type = resource_type or model.resource_type
     defaults = default_modalities(capability)
-    modalities = dict(model.modalities or defaults)
+    # Absence means unknown, not an explicit provider refusal. Keep unknown
+    # fields absent until catalog enrichment and API response serialization.
+    modalities = dict(model.modalities or {})
     for key, enabled in defaults.items():
         if enabled:
-            modalities[key] = True
+            modalities.setdefault(key, True)
     model.modalities = modalities
     return model
