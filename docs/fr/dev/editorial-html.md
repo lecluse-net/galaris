@@ -12,6 +12,11 @@ ne passent pas dans cette conversion.
 
 ## Documents comme pivot de l'information
 
+Les profils d'agents sont des ressources virtuelles `galaris://agent/<id>`, sans document
+ni dossier dans la bibliothèque. `agent_list`, `agent_get` et le champ API `resource_uri`
+fournissent cette URI. `file_read` renvoie directement la personnalité et la fiche de poste
+actuelles, en HTML `rich-text` dans leur enveloppe JSON, avec les droits d'accès existants.
+
 Les documents possèdent un type immuable : `html` (défaut, y compris les documents existants)
 ou `dataset`. Un Dataset est un document JSON, visible, filtrable et triable dans la même
 bibliothèque, avec titre, icône, classement, partage et historique identiques. CodeEditor

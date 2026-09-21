@@ -12,6 +12,11 @@ retain their formats.
 
 ## Documents as the information hub
 
+Agent profiles are virtual `galaris://agent/<id>` resources, without documents or folders
+in the library. `agent_list`, `agent_get` and the Agent API's `resource_uri` field return
+this URI. `file_read` reads the current personality and job description directly, preserving
+their `rich-text` HTML inside the JSON snapshot and applying existing access rights.
+
 Documents have an immutable type: `html` (the default, including existing documents) or
 `dataset`. A Dataset is a JSON document in the same library, with the same title, icon,
 classification, sharing and history. The library filters and sorts by type. CodeEditor in

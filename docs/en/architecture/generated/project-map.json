@@ -6389,7 +6389,7 @@
       {
         "file": "back/app/agent/mcp.py",
         "handler": "get_agent",
-        "line": 36,
+        "line": 38,
         "module": "app.agent",
         "name": "agent_get",
         "namespace": "galaris"
@@ -6397,7 +6397,7 @@
       {
         "file": "back/app/agent/mcp.py",
         "handler": "list_agents",
-        "line": 18,
+        "line": 19,
         "module": "app.agent",
         "name": "agent_list",
         "namespace": "galaris"

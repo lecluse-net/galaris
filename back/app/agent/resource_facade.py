@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 from typing import Any
+from sqlalchemy import select
 from core.database import get_db
 from .models import Agent
 
@@ -9,7 +10,9 @@ from .models import Agent
 async def read_agent_resource(agent_id: int, *, actor_agent_id: int) -> dict[str, Any] | None:
     if agent_id != actor_agent_id:
         return None
-    agent = await get_db().get(Agent, agent_id)
+    agent = await get_db().scalar(select(Agent).where(
+        Agent.id == agent_id, Agent.deleted_at.is_(None),
+    ).execution_options(populate_existing=True))
     if agent is None:
         return None
     return {

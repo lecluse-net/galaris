@@ -42,4 +42,5 @@ async def test_list_agents_resolves_assigned_llms_sequentially(
     result = await tools.list_agents(language="en")
 
     assert "Agent 1 Test" in result
+    assert "galaris://agent/1" in result
     assert max_active_resolutions == 1

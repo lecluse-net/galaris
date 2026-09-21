@@ -332,6 +332,9 @@ Example — run and monitor a long Python job:
 - `agent_list(limit: int = 50) -> str` lists agents with a short preview of their text fields.
 - `agent_get(agent_id: int) -> str` returns the complete job, mission, and personality of an
   agent selected from `agent_list`.
+  Both tools include the stable `galaris://agent/<id>` URI. `file_read` reads the current
+  personality and job description directly from the Agent, under existing access rights.
+  This is a virtual read-only resource; no document or folder is created.
 - `file_list("galaris://task/")` lists recent Tasks visible to you as owner or requester.
 - `file_search("galaris://task/", query)` finds Tasks by URI, UUID, label, objective, or feedback.
 - `file_read("galaris://task/<uuid>")` returns the complete authorized Task snapshot as

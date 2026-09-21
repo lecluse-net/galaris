@@ -186,11 +186,17 @@ bornée des paires vectoriellement proches ; elle ne fusionne ni ne supprime le
 historiques.
 
 Les données métier déjà structurées ne deviennent pas une seconde autorité dans Memory. Galaris
-projette `Agent`, `Goal` et `GoalCycle` en Markdown déterministe : profil professionnel
+projette `Agent`, `Goal` et `GoalCycle` en HTML déterministe : profil professionnel
 sans secret, description et suivi du Goal, puis compte rendu et résultat de chaque cycle. Les UUID
 des `MemoryItem` sont conservés directement sur les trois lignes sources. Chaque item porte aussi
 une identité de source unique, afin qu'une reconstruction rattache un item existant lorsqu'un UUID
 manque au lieu de le dupliquer.
+
+Les outils `agent_list` et `agent_get`, ainsi que le champ API `resource_uri`, exposent
+`galaris://agent/<id>`. Cette ressource virtuelle lit directement les champs de l'Agent,
+sans créer de document ni de dossier dans la bibliothèque et sans attendre de projection.
+Les contrôles d'accès du provider restent applicables. Les projections Memory internes
+conservent leur rôle existant ; elles ne deviennent pas des documents de profils.
 
 Ces items sont `source_managed`, privés et en lecture seule. Cette protection ne dépend ni du rôle
 administrateur ni de l'IHM : les opérations publiques de modification, oubli, grant,

@@ -121,6 +121,7 @@ default = {
         "job_title": "Intitulé du poste : ${value}",
         "description": "Description : ${value}",
         "personality": "Personnalité : ${value}",
+        "profile_uri": "URI du profil : ${value}",
         "assigned_llm": "LLM attribué : ${label} (${model})",
         "driver": "Driver de l’agent : ${value}",
         "planner_enabled": "Planner activé : ${value}",

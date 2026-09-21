@@ -1819,8 +1819,8 @@ tests remain authoritative for behavior.
 | `file_schemes` | `file_sharing` | `app.file_share` | `file_schemes` | `back/app/file_share/mcp.py:71` |
 | `file_search` | `file_sharing` | `app.file_share` | `search_files` | `back/app/file_share/mcp.py:150` |
 | `file_write` | `file_sharing` | `app.file_share` | `write_file` | `back/app/file_share/mcp.py:260` |
-| `agent_get` | `galaris` | `app.agent` | `get_agent` | `back/app/agent/mcp.py:36` |
-| `agent_list` | `galaris` | `app.agent` | `list_agents` | `back/app/agent/mcp.py:18` |
+| `agent_get` | `galaris` | `app.agent` | `get_agent` | `back/app/agent/mcp.py:38` |
+| `agent_list` | `galaris` | `app.agent` | `list_agents` | `back/app/agent/mcp.py:19` |
 | `goal_ask_referrer` | `galaris` | `app.goal` | `mcp_goal_ask_referrer` | `back/app/goal/mcp.py:130` |
 | `goal_run_now` | `galaris` | `app.goal` | `mcp_goal_run_now` | `back/app/goal/mcp.py:443` |
 | `goal_update_suivi` | `galaris` | `app.goal` | `mcp_goal_update_suivi` | `back/app/goal/mcp.py:269` |

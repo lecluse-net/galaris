@@ -62,6 +62,7 @@ async def list_agents(limit: int = 50, *, language: str | None = None) -> str:
     ]
     for agent, resolved_llm in zip(agents, resolved_llms):
         lines.append(_message(lang, "id", value=agent.id))
+        lines.append("  " + _message(lang, "profile_uri", value=f"galaris://agent/{agent.id}"))
         lines.append("  " + _message(
             lang, "name", value=f"{agent.first_name} {agent.last_name}"
         ))
@@ -117,6 +118,7 @@ async def get_agent_details(
 
     if agent.code:
         lines.append(_message(lang, "code", value=agent.code))
+    lines.append(_message(lang, "profile_uri", value=f"galaris://agent/{agent.id}"))
     lines.append(_message(
         lang, "name", value=f"{agent.first_name} {agent.last_name}"
     ))

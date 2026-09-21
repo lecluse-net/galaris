@@ -10,6 +10,7 @@ from app.tools.mcp_loader import McpToolContext, context_language, mcp_tool
     name="agent_list",
     description=(
         "List Galaris agents with profile text truncated to 100 characters. "
+        "Includes each profile's galaris://agent/<id> URI for file_read under existing access rights. "
         "Use agent_get for a complete profile."
     ),
     effect_policy="read",
@@ -28,7 +29,8 @@ async def list_agents(ctx: McpToolContext, limit: int = 50) -> str:
     name="agent_get",
     description=(
         "Return a complete agent profile, including full job and personality text, "
-        "using an ID obtained from agent_list."
+        "using an ID obtained from agent_list. Includes its live galaris://agent/<id> URI "
+        "for file_read under existing access rights; no document is created."
     ),
     effect_policy="read",
     concurrency_policy="safe",

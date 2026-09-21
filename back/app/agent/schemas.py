@@ -1,5 +1,5 @@
 from core.util import normalize_html
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, computed_field, field_validator
 from typing import Optional
 from uuid import UUID
 
@@ -170,5 +170,10 @@ class Agent(AgentBase):
     has_avatar: bool = False
     is_owner: bool = False
     profile: Optional[LlmProfileInfo] = None
+
+    @computed_field
+    @property
+    def resource_uri(self) -> str:
+        return f"galaris://agent/{self.id}"
 
     model_config = ConfigDict(from_attributes=True, arbitrary_types_allowed=True)
