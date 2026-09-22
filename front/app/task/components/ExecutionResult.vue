@@ -129,7 +129,7 @@
                                             <span v-else class="text-caption text-grey">{{ $t('task.execution.ai') }}</span>
                                         </div>
                                         <div class="timeline-header-right">
-                                            <span class="text-caption text-grey q-mr-sm">{{ truncateContent(step.content) }}</span>
+                                            <span class="text-caption text-grey q-mr-sm gt-sm">{{ truncateContent(step.content) }}</span>
                                             <StatusBadge
                                                 v-if="step.type === 'tool' && stepKind(step) !== 'thinking'"
                                                 :tone="step.success === false ? 'error' : 'success'"
@@ -872,6 +872,39 @@ body.body--dark .timeline-header--pending:hover {
 .timeline-header-right {
     display: flex;
     align-items: center;
+}
+
+@media (max-width: 1023px) {
+    .timeline-content-col {
+        min-width: 0;
+    }
+
+    .timeline-header {
+        flex-wrap: wrap;
+        gap: 4px 8px;
+    }
+
+    .timeline-header-left,
+    .timeline-header-right {
+        max-width: 100%;
+        min-width: 0;
+    }
+
+    .timeline-header-left .q-icon {
+        flex-shrink: 0;
+    }
+
+    .tool-name {
+        overflow-wrap: anywhere;
+        min-width: 0;
+    }
+
+    .timeline-header-right {
+        flex-wrap: wrap;
+        justify-content: flex-end;
+        row-gap: 4px;
+        margin-left: auto;
+    }
 }
 
 .timeline-expanded {
