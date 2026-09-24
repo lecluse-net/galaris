@@ -37,6 +37,7 @@
       },
       {
         "files": [
+          "back/app/agent/__init__.py",
           "back/app/agent/agent_service.py",
           "back/app/agent/facade.py",
           "back/app/agent/models.py"
@@ -1395,7 +1396,8 @@
           "back/app/harnesses/openai_client.py",
           "back/app/harnesses/openai_provider.py",
           "back/app/harnesses/router.py",
-          "back/app/harnesses/service.py"
+          "back/app/harnesses/service.py",
+          "back/app/harnesses/skill_sync.py"
         ],
         "source": "app.harnesses",
         "target": "app.agent"
@@ -1411,7 +1413,8 @@
         "files": [
           "back/app/harnesses/configuration.py",
           "back/app/harnesses/models.py",
-          "back/app/harnesses/service.py"
+          "back/app/harnesses/service.py",
+          "back/app/harnesses/skill_sync.py"
         ],
         "source": "app.harnesses",
         "target": "core.database"
@@ -12383,7 +12386,7 @@
         "declared_path": "/harnesses/agents/{id}/actions/{action}",
         "file": "back/app/harnesses/router.py",
         "handler": "run_harness_action",
-        "line": 332,
+        "line": 338,
         "method": "POST",
         "module": "app.harnesses"
       },
@@ -12401,7 +12404,7 @@
         "declared_path": "/harnesses/agents/{id}/logs",
         "file": "back/app/harnesses/router.py",
         "handler": "harness_logs",
-        "line": 361,
+        "line": 367,
         "method": "GET",
         "module": "app.harnesses"
       },

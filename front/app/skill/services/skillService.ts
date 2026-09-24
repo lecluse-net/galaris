@@ -305,7 +305,4 @@ export const skillService = {
     ): Promise<AxiosResponse<SkillAuthorizationResult>> {
         return api.put(`/skills/${skillId}/authorization/agents/${agentId}`, { state })
     },
-    syncAgent(agentId: number): Promise<AxiosResponse<{ status: string; agent_id: number }>> {
-        return api.post(`/runtime-agents/${agentId}/sync-skills`)
-    },
 }

@@ -42,13 +42,11 @@ def _skill_agent_drivers() -> tuple[str, ...]:
     return tuple(spec.code for spec in list_driver_specs())
 
 
-def runtime_requires_skill_sync(driver_code: str) -> bool:
-    """Tell API clients whether a driver manages an external skill projection."""
+async def runtime_requires_skill_sync(agent_id: int) -> bool:
+    """Resolve the selected provider, independently of its transport driver."""
+    from app.agent import projected_skill_agent_ids
 
-    return any(
-        spec.code == driver_code and spec.manages_runtime
-        for spec in list_driver_specs()
-    )
+    return bool(await projected_skill_agent_ids([agent_id]))
 
 
 async def get(skill_id: int) -> Skill | None:
@@ -607,7 +605,7 @@ async def set_category_authorization(
     await db.commit()
     affected = (
         [agent_id]
-        if changed and runtime_requires_skill_sync(agent.agent_driver)
+        if changed and await runtime_requires_skill_sync(agent.id)
         else []
     )
     return state, affected
@@ -653,15 +651,15 @@ async def delete_category(category_id: int) -> tuple[list[int], list[int]]:
 
 
 async def list_managed_runtime_agents() -> list[Agent]:
+    from app.agent import projected_skill_agent_ids
+
     db = get_db()
-    driver_codes = tuple(
-        spec.code for spec in list_driver_specs() if spec.manages_runtime
-    )
-    if not driver_codes:
+    agent_ids = await projected_skill_agent_ids()
+    if not agent_ids:
         return []
     result = await db.execute(
         select(Agent)
-        .where(Agent.agent_driver.in_(driver_codes))
+        .where(Agent.id.in_(agent_ids))
         .order_by(Agent.first_name, Agent.last_name)
     )
     return list(result.scalars().all())

@@ -9,7 +9,7 @@ export default {
         },
         skills: {
             title: 'Compétences',
-            subtitle: 'Bibliothèque centralisée pour tous les agents',
+            subtitle: 'Bibliothèque centralisée · Les modifications s’appliquent à la prochaine exécution, sans interrompre les tâches en cours.',
             tabSkills: 'Compétences',
             tabLearned: 'Auto-apprentissage',
             tabAuthorizations: 'Autorisations',
@@ -158,7 +158,7 @@ export default {
         },
         skills: {
             title: 'Skills',
-            subtitle: 'Central library for all agents',
+            subtitle: 'Central library · Changes apply at the next execution without interrupting running tasks.',
             tabSkills: 'Skills',
             tabLearned: 'Self-learning',
             tabAuthorizations: 'Authorizations',
@@ -303,7 +303,7 @@ export default {
       },
         nav: { skills: '技能', skills_desc: '智能体知识库' },
         skills: {
-            title: '技能', subtitle: '所有智能体的中央技能库', tabSkills: '技能', tabLearned: '自主学习', tabAuthorizations: '授权',
+            title: '技能', subtitle: '中央技能库 · 更改将在下次执行时生效，不会中断正在运行的任务。', tabSkills: '技能', tabLearned: '自主学习', tabAuthorizations: '授权',
             create: '新建技能', import: '导入', rescan: '重新扫描目录', search: '搜索技能', code: '代码', label: '名称', description: '描述',
             files: '文件', size: '大小', agents: '智能体', status: '状态', actions: '操作', valid: '有效', invalid: '无效', missing: '目录缺失', system: '系统',
             view: '查看', edit: '编辑', download: '下载', assign: '分发', delete: '删除', cancel: '取消', save: '保存', source: '源文件', preview: '预览',

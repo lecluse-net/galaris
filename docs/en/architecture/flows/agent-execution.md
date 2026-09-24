@@ -2,6 +2,15 @@
 
 # Agentic Execution Flow
 
+Before each fresh execution, the facade checks the selected
+provider's skill revision. Content and authorization changes are projected before
+the driver starts, without interrupting an active Task. The receipt is invalidated
+before copying; a failed projection prevents stale execution. Refresh requests are
+persisted independently of the UI, and runtime status includes skill readiness.
+A checkpoint continuation retains the skills and credentials of the remote
+operation it reconciles.
+See [0127](../../../../project/decisions/0127-harness-skill-reconciliation.md).
+
 The shared harness validator holds the candidate result until the stream ends normally
 and adapter cleanup completes. Messages are still forwarded immediately. An invalid
 or stalled tail fails before any success is published;

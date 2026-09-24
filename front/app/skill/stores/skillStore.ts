@@ -96,7 +96,7 @@ export const useSkillStore = defineStore('skill', {
             return result.category
         },
         async deleteCategory(id: number): Promise<void> {
-            const result = (await skillService.deleteCategory(id)).data
+            await skillService.deleteCategory(id)
             this.categories = this.categories.filter(category => category.id !== id)
             for (const skill of this.skills) {
                 if (skill.category_id === id) {
@@ -104,14 +104,11 @@ export const useSkillStore = defineStore('skill', {
                     skill.category_label = null
                 }
             }
-            await Promise.all(
-                result.affected_agent_ids.map(agentId => skillService.syncAgent(agentId))
-            )
         },
         async assignCategory(
             skillId: number,
             categoryId: number | null,
-        ): Promise<{ skill: Skill; synchronized: boolean }> {
+        ): Promise<Skill> {
             const previousCategoryId = this.skills.find(skill => skill.id === skillId)?.category_id
             const result = (await skillService.assignCategory(skillId, categoryId)).data
             this._replaceSkill(result.skill)
@@ -129,12 +126,7 @@ export const useSkillStore = defineStore('skill', {
                 if (nextCategory) nextCategory.skill_count += 1
             }
 
-            const syncResults = await Promise.allSettled(
-                result.affected_agent_ids.map(agentId => skillService.syncAgent(agentId))
-            )
-            const synchronized = syncResults.every(syncResult => syncResult.status === 'fulfilled')
-            if (!synchronized) console.error('Error synchronizing agents after category assignment')
-            return { skill: result.skill, synchronized }
+            return result.skill
         },
         async createSkill(data: SkillCreate): Promise<Skill> {
             this.loading = true
@@ -167,12 +159,9 @@ export const useSkillStore = defineStore('skill', {
         async deleteSkill(id: number): Promise<void> {
             this.loading = true
             try {
-                const result = (await skillService.deleteSkill(id)).data
+                await skillService.deleteSkill(id)
                 this.skills = this.skills.filter(skill => skill.id !== id)
                 if (this.currentSkill?.id === id) this.clearCurrent()
-                await Promise.all(
-                    result.affected_agent_ids.map(agentId => skillService.syncAgent(agentId))
-                )
             } catch (error) {
                 this.error = error
                 console.error('Error deleting skill:', error)
@@ -247,23 +236,6 @@ export const useSkillStore = defineStore('skill', {
             } finally {
                 this.contentLoading = false
             }
-        },
-        async syncAgent(agentId: number): Promise<void> {
-            await skillService.syncAgent(agentId)
-        },
-        async syncExternalAgents(): Promise<boolean> {
-            const results = await Promise.allSettled(
-                this.agents
-                    .filter(agent => agent.driver !== 'internal')
-                    .map(agent => skillService.syncAgent(agent.id)),
-            )
-            const failures = results.filter(result => result.status === 'rejected')
-            if (failures.length) {
-                console.error(
-                    `Error synchronizing updated skill to ${failures.length} external agent(s)`,
-                )
-            }
-            return failures.length === 0
         },
         clearCurrent(): void {
             this.currentSkill = null

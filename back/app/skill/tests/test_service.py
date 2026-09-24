@@ -5,6 +5,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.agent.models import Agent, Title
+from app.harnesses.models import AgentHarness
 from app.skill import skill_service, storage
 from app.skill.models import AgentSkill, AgentSkillCategory
 from app.skill.schemas import (
@@ -88,6 +89,8 @@ async def test_authorization_cascade_resolves_global_and_agent_overrides(
         agent_driver="internal",
     )
     db.add_all([first, second, internal])
+    await db.flush()
+    db.add_all([AgentHarness(agent_id=agent.id, provider_code="hermes") for agent in (first, second)])
     await db.commit()
 
     initial = (await skill_service.list_authorizations(first.id))[0]
@@ -208,6 +211,8 @@ async def test_category_authorization_is_scoped_by_agent(
         agent_driver="hermes",
     )
     db.add_all([agent, other_agent])
+    await db.flush()
+    db.add_all([AgentHarness(agent_id=item.id, provider_code="hermes") for item in (agent, other_agent)])
     await db.commit()
 
     category = await skill_service.create_category(

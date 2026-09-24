@@ -150,6 +150,25 @@ from .live import AgentLiveEvent, register_live_listener
 from .harness_port import register_harness_selection_port
 
 
+async def agent_skill_revision(agent_id: int) -> str:
+    """Desired skill revision shared by every concrete Harness adapter."""
+    from app.skill import build_skill_projection
+
+    return (await build_skill_projection(agent_id)).revision
+
+
+async def projected_skill_agent_ids(agent_ids: list[int] | None = None) -> list[int]:
+    from .harness_port import harness_selection_port
+
+    return await harness_selection_port.projected_skill_agent_ids(agent_ids)
+
+
+async def request_skill_sync(agent_id: int) -> None:
+    from .harness_port import harness_selection_port
+
+    await harness_selection_port.request_skill_sync(agent_id)
+
+
 async def get_agent_record(agent_id: int) -> Agent | None:
     """Return one agent record through the public agent-domain surface."""
 
@@ -301,6 +320,9 @@ __all__ = [
     "register_agent_profile_observer",
     "register_live_listener",
     "register_harness_selection_port",
+    "agent_skill_revision",
+    "projected_skill_agent_ids",
+    "request_skill_sync",
     "registered_context_providers",
     "register_terminal_task_observer",
     "resolve_execution_model",

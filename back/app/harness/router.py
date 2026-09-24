@@ -102,9 +102,13 @@ async def sync_harness_skills(
 ) -> HarnessActionResult:
     """Reconcile driver-projected skills through the generic harness facade."""
 
-    agent = await _supervised_agent_or_404(id)
-    background_tasks.add_task(facade.refresh, agent)
-    return HarnessActionResult(status="synchronizing")
+    from app.agent import request_skill_sync
+
+    del background_tasks
+    if await get_agent_record(id) is None:
+        raise HTTPException(status_code=404, detail="Agent not found.")
+    await request_skill_sync(id)
+    return HarnessActionResult(status="pending")
 
 
 # Configurable selection and supervision moved to ``app.harnesses``. Keep only the

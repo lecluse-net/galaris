@@ -293,6 +293,9 @@ async def harness_status(id: int) -> HarnessRuntimeState:
             capabilities=[],
         )
     provider = get_provider(target.provider_code)
+    from .skill_sync import skill_sync_status
+
+    skills_status, skills_error = await skill_sync_status(id)
     capabilities = sorted(await configured_provider_capabilities(target.provider_code))
     if target.status != "ready":
         return HarnessRuntimeState(
@@ -300,7 +303,8 @@ async def harness_status(id: int) -> HarnessRuntimeState:
             lifecycle_status=target.status,
             managed=provider.containerized,
             capabilities=capabilities,
-            last_error=target.last_error,
+            last_error=target.last_error or skills_error,
+            skills_status=skills_status,
         )
     if "status" not in capabilities:
         return HarnessRuntimeState(
@@ -308,7 +312,8 @@ async def harness_status(id: int) -> HarnessRuntimeState:
             lifecycle_status=target.status,
             managed=provider.containerized,
             capabilities=capabilities,
-            last_error=target.last_error,
+            last_error=target.last_error or skills_error,
+            skills_status=skills_status,
         )
     try:
         runtime_status = await provider.status(agent)
@@ -319,7 +324,8 @@ async def harness_status(id: int) -> HarnessRuntimeState:
         lifecycle_status=target.status,
         managed=provider.containerized,
         capabilities=capabilities,
-        last_error=target.last_error,
+        last_error=target.last_error or skills_error,
+        skills_status=skills_status,
     )
 
 

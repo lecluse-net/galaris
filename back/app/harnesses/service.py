@@ -58,7 +58,7 @@ class HarnessCleanup:
     request: HarnessProvisioningRequest
 
 
-def _agent_lock(agent_id: int) -> asyncio.Lock:
+def agent_lock(agent_id: int) -> asyncio.Lock:
     return _agent_locks.setdefault(agent_id, asyncio.Lock())
 
 
@@ -609,7 +609,7 @@ async def _return_assignments_to_internal(
         await _require_switchable(assignment.agent_id)
     async with AsyncExitStack() as stack:
         for assignment in ordered:
-            await stack.enter_async_context(_agent_lock(assignment.agent_id))
+            await stack.enter_async_context(agent_lock(assignment.agent_id))
         for assignment in ordered:
             current = await _assignment_for_agent(assignment.agent_id)
             if current is None or not _assignment_matches(current, harness):
@@ -639,7 +639,7 @@ async def install(
     ``absent`` until an explicit restart or update action provisions it.
     """
 
-    async with _agent_lock(agent_id):
+    async with agent_lock(agent_id):
         await _require_switchable(agent_id)
         agent = await get_agent_record(agent_id)
         if agent is None:
@@ -752,7 +752,7 @@ async def select_internal(
 ) -> tuple[HarnessRead, HarnessCleanup | None]:
     """Persist the local Harness preference and defer external cleanup."""
 
-    async with _agent_lock(agent_id):
+    async with agent_lock(agent_id):
         await _require_switchable(agent_id)
         agent = await get_agent_record(agent_id)
         if agent is None:
@@ -824,7 +824,7 @@ async def cleanup_previous_runtime(cleanup: HarnessCleanup) -> None:
     """Destroy the replaced runtime after the selection response has been sent."""
 
     async with get_db_session():
-        async with _agent_lock(cleanup.agent_id):
+        async with agent_lock(cleanup.agent_id):
             agent = await get_agent_record(cleanup.agent_id)
             if agent is None:
                 logger.error(
@@ -923,7 +923,12 @@ async def run_action_in_background(agent_id: int, action: HarnessAction) -> None
     """Run long lifecycle work in an isolated database context."""
 
     async with get_db_session():
-        async with _agent_lock(agent_id):
+        if action == "refresh":
+            from .skill_sync import request_skill_sync
+
+            await request_skill_sync(agent_id)
+            return
+        async with agent_lock(agent_id):
             try:
                 assignment = await _assignment_for_agent(agent_id)
                 if assignment is None:

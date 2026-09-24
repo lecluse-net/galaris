@@ -12,6 +12,9 @@ from app.harnesses.contracts import HarnessTarget
 
 @pytest.fixture(autouse=True)
 def default_configuration(monkeypatch):
+    from app.harnesses import skill_sync
+
+    monkeypatch.setattr(skill_sync, "skill_sync_status", AsyncMock(return_value=("not_applicable", None)))
     from app.harnesses import configuration
     from app.agent import HarnessExecutionPolicy
 

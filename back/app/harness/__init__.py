@@ -4,10 +4,7 @@ Runtime bridges contribute operational supervision through this package's public
 the UI and other application domains never call a concrete runtime manager directly.
 """
 
-from loguru import logger
-
-from app.agent import get_agent_record
-from app.skill import register_learned_skill_runtime_refresher, skill_service
+from app.skill import register_learned_skill_runtime_refresher
 
 from .contracts import HarnessAction, HarnessCapability, HarnessSupervisor
 from .facade import (
@@ -24,16 +21,9 @@ from .facade import (
 
 
 async def _refresh_learned_skill_projection(agent_id: int) -> None:
-    agent = await get_agent_record(agent_id)
-    if agent is None or not skill_service.runtime_requires_skill_sync(agent.agent_driver):
-        return
-    try:
-        await refresh(agent)
-    except Exception:
-        logger.exception(
-            "Learned skill runtime refresh failed for agent {}",
-            agent_id,
-        )
+    from app.agent import request_skill_sync
+
+    await request_skill_sync(agent_id)
 
 
 register_learned_skill_runtime_refresher(_refresh_learned_skill_projection)

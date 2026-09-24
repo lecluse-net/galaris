@@ -562,15 +562,6 @@ function applyCategoryResult(result: SkillCategoryAuthorizationResult): void {
   }
 }
 
-async function syncAffectedAgents(agentIds: number[]): Promise<void> {
-  try {
-    await Promise.all(agentIds.map(agentId => skillService.syncAgent(agentId)))
-  } catch (error) {
-    console.error('Error synchronizing skill authorizations to external runtimes:', error)
-    $q.notify({ type: 'warning', message: t('skills.auth.syncError') })
-  }
-}
-
 async function onGlobalState(
   row: SkillAuthorization,
   state: SkillGlobalAuthorizationState,
@@ -581,7 +572,6 @@ async function onGlobalState(
     ).data
     applyGlobalResult(result)
     $q.notify({ type: 'positive', message: t('skills.auth.updated') })
-    await syncAffectedAgents(result.affected_agent_ids)
   } catch (error) {
     console.error('Error updating global skill authorization:', error)
     $q.notify({ type: 'negative', message: t('skills.auth.updateError') })
@@ -599,7 +589,6 @@ async function onAgentState(
     ).data
     applyResult(row, result)
     $q.notify({ type: 'positive', message: t('skills.auth.updated') })
-    await syncAffectedAgents(result.affected_agent_ids)
   } catch (error) {
     console.error('Error updating agent skill authorization:', error)
     $q.notify({ type: 'negative', message: t('skills.auth.updateError') })
@@ -618,7 +607,6 @@ async function onCategoryState(
     ).data
     applyCategoryResult(result)
     $q.notify({ type: 'positive', message: t('skills.auth.updated') })
-    await syncAffectedAgents(result.affected_agent_ids)
   } catch (error) {
     console.error('Error updating skill category authorization:', error)
     $q.notify({ type: 'negative', message: t('skills.auth.updateError') })

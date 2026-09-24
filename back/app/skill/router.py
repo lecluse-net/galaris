@@ -457,7 +457,7 @@ async def update_agent_authorization(
         **authorization.model_dump(),
         affected_agent_ids=(
             [agent_id]
-            if skill_service.runtime_requires_skill_sync(authorization.agent_driver)
+            if await skill_service.runtime_requires_skill_sync(authorization.agent_id)
             else []
         ),
     )

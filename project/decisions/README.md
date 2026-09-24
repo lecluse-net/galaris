@@ -1,5 +1,7 @@
 # Décisions d’architecture
 
+- [0127 — Réconciliation des skills avant exécution](0127-harness-skill-reconciliation.md)
+
 - [0126 — Entrées multimodales natives du chat et des Tasks](0126-native-multimodal-inputs.md)
 - [0125 — Applications isolées dans les documents HTML](0125-document-applications.md)
 

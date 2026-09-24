@@ -1169,6 +1169,9 @@ async def _stream_driver(
     await _publish_run_event(request, sequence=sequence, kind="run.started")
     driver_stream = validated_driver_stream(driver, request, spec=spec)
     try:
+        from .harness_port import harness_selection_port
+
+        await harness_selection_port.prepare_execution(request)
         async for raw_event in driver_stream:
             event = AgentEvent.model_validate(raw_event)
             if event.message is not None:

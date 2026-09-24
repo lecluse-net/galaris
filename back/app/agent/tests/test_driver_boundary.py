@@ -60,6 +60,34 @@ def terminal():
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("entrypoint", ["run", "stream"])
+async def test_failed_harness_preparation_prevents_driver_effects(boundary, monkeypatch, entrypoint):
+    from app.agent.harness_port import harness_selection_port
+
+    monkeypatch.setattr(
+        harness_selection_port, "prepare_execution",
+        AsyncMock(side_effect=RuntimeError("Skill synchronization failed")),
+    )
+    invoked = False
+
+    async def forbidden_stream(_request):
+        nonlocal invoked
+        invoked = True
+        yield terminal()
+
+    monkeypatch.setattr(boundary.driver, "stream", forbidden_stream)
+    with pytest.raises(RuntimeError, match="Skill synchronization failed"):
+        if entrypoint == "run":
+            await facade.run(boundary.request)
+        else:
+            async for _event in facade.stream(boundary.request):
+                pass
+    assert not invoked
+    assert [c.kwargs["kind"] for c in boundary.semantic.await_args_list] == ["run.started", "run.failed"]
+    assert boundary.outcome.await_args.args[1].success is False
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("entrypoint", ["run", "stream"])
 @pytest.mark.parametrize("tail", ["message", "result", "exception"])
 async def test_invalid_tail_never_publishes_success(boundary, entrypoint, tail):
     extra = {

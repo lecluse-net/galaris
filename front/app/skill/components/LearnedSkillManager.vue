@@ -261,7 +261,6 @@ async function setSuspended(skill: LearnedSkill, suspended: boolean): Promise<vo
   mutatingId.value = skill.id
   try {
     const result = (await skillService.setLearnedSkillSuspended(skill.id, suspended)).data
-    await Promise.all(result.affected_agent_ids.map(agentId => skillService.syncAgent(agentId)))
     const index = rows.value.findIndex(item => item.id === result.skill.id)
     if (index !== -1) rows.value.splice(index, 1, result.skill)
     $q.notify({ type: 'positive', message: t('skills.learning.updated') })

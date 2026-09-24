@@ -43,6 +43,7 @@ export interface HarnessExecutionConfiguration {
 }
 
 export interface HarnessRuntimeState {
+    skills_status?: 'not_applicable' | 'pending' | 'current' | 'error'
     available_actions?: HarnessCapability[]
     status: string
     capabilities: HarnessCapability[]

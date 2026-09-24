@@ -145,7 +145,7 @@ tests restent l’autorité sur le comportement.
 | `app.agent` | `app.llm` | `back/app/agent/agent_service.py`, `back/app/agent/briefing_service.py`, `back/app/agent/dispatcher.py`, `back/app/agent/facade.py`, `back/app/agent/janus.py`, `back/app/agent/model_resolver.py`, `back/app/agent/models.py`, `back/app/agent/openai_router.py`, `back/app/agent/planner_service.py`, `back/app/agent/realtime.py`, `back/app/agent/tools.py` |
 | `app.agent` | `app.messenger` | `back/app/agent/planner_service.py` |
 | `app.agent` | `app.process` | `back/app/agent/briefing_service.py`, `back/app/agent/janus.py`, `back/app/agent/openai_router.py`, `back/app/agent/realtime.py` |
-| `app.agent` | `app.skill` | `back/app/agent/agent_service.py`, `back/app/agent/facade.py`, `back/app/agent/models.py` |
+| `app.agent` | `app.skill` | `back/app/agent/__init__.py`, `back/app/agent/agent_service.py`, `back/app/agent/facade.py`, `back/app/agent/models.py` |
 | `app.agent` | `app.tools` | `back/app/agent/agent_service.py`, `back/app/agent/briefing_service.py`, `back/app/agent/executor_service.py`, `back/app/agent/facade.py`, `back/app/agent/mcp.py`, `back/app/agent/planner_service.py` |
 | `app.agent` | `core.authorize` | `back/app/agent/agent_service.py`, `back/app/agent/assertions.py`, `back/app/agent/dialogue_service.py`, `back/app/agent/management_scope.py`, `back/app/agent/openai_router.py`, `back/app/agent/openai_service.py`, `back/app/agent/router.py`, `back/app/agent/team_router.py` |
 | `app.agent` | `core.database` | `back/app/agent/agent_group_service.py`, `back/app/agent/agent_service.py`, `back/app/agent/dialogue_service.py`, `back/app/agent/janus.py`, `back/app/agent/management_scope.py`, `back/app/agent/models.py`, `back/app/agent/openai_service.py`, `back/app/agent/resource_facade.py`, `back/app/agent/router.py`, `back/app/agent/team_router.py`, `back/app/agent/title_service.py` |
@@ -291,9 +291,9 @@ tests restent l’autorité sur le comportement.
 | `app.harness` | `core.failure_journal` | `back/app/harness/runtime.py` |
 | `app.harness` | `core.i18n` | `back/app/harness/conversation.py`, `back/app/harness/executor.py`, `back/app/harness/runtime.py` |
 | `app.harness` | `core.params` | `back/app/harness/conversation.py`, `back/app/harness/executor.py`, `back/app/harness/media.py`, `back/app/harness/runtime.py` |
-| `app.harnesses` | `app.agent` | `back/app/harnesses/agent_adapter.py`, `back/app/harnesses/agent_driver.py`, `back/app/harnesses/configuration.py`, `back/app/harnesses/contracts.py`, `back/app/harnesses/dbadmin.py`, `back/app/harnesses/driver.py`, `back/app/harnesses/facade.py`, `back/app/harnesses/models.py`, `back/app/harnesses/openai_client.py`, `back/app/harnesses/openai_provider.py`, `back/app/harnesses/router.py`, `back/app/harnesses/service.py` |
+| `app.harnesses` | `app.agent` | `back/app/harnesses/agent_adapter.py`, `back/app/harnesses/agent_driver.py`, `back/app/harnesses/configuration.py`, `back/app/harnesses/contracts.py`, `back/app/harnesses/dbadmin.py`, `back/app/harnesses/driver.py`, `back/app/harnesses/facade.py`, `back/app/harnesses/models.py`, `back/app/harnesses/openai_client.py`, `back/app/harnesses/openai_provider.py`, `back/app/harnesses/router.py`, `back/app/harnesses/service.py`, `back/app/harnesses/skill_sync.py` |
 | `app.harnesses` | `core.authorize` | `back/app/harnesses/router.py` |
-| `app.harnesses` | `core.database` | `back/app/harnesses/configuration.py`, `back/app/harnesses/models.py`, `back/app/harnesses/service.py` |
+| `app.harnesses` | `core.database` | `back/app/harnesses/configuration.py`, `back/app/harnesses/models.py`, `back/app/harnesses/service.py`, `back/app/harnesses/skill_sync.py` |
 | `app.harnesses` | `core.dbadmin` | `back/app/harnesses/dbadmin.py` |
 | `app.harnesses` | `core.params` | `back/app/harnesses/service.py` |
 | `app.harnesses` | `core.util` | `back/app/harnesses/service.py` |
@@ -1344,9 +1344,9 @@ tests restent l’autorité sur le comportement.
 | GET | `/harnesses/agents/{id}` | `app.harnesses` | `read_agent_harness` | oui | `back/app/harnesses/router.py:201` |
 | PUT | `/harnesses/agents/{id}` | `app.harnesses` | `install_agent_harness` | oui | `back/app/harnesses/router.py:214` |
 | POST | `/harnesses/agents/{id}/actions/{action}` | `app.harness` | `run_harness_action` | oui | `back/app/harness/router.py:60` |
-| POST | `/harnesses/agents/{id}/actions/{action}` | `app.harnesses` | `run_harness_action` | oui | `back/app/harnesses/router.py:332` |
+| POST | `/harnesses/agents/{id}/actions/{action}` | `app.harnesses` | `run_harness_action` | oui | `back/app/harnesses/router.py:338` |
 | GET | `/harnesses/agents/{id}/logs` | `app.harness` | `harness_logs` | oui | `back/app/harness/router.py:74` |
-| GET | `/harnesses/agents/{id}/logs` | `app.harnesses` | `harness_logs` | oui | `back/app/harnesses/router.py:361` |
+| GET | `/harnesses/agents/{id}/logs` | `app.harnesses` | `harness_logs` | oui | `back/app/harnesses/router.py:367` |
 | POST | `/harnesses/agents/{id}/refresh` | `app.harness` | `refresh_harness` | oui | `back/app/harness/router.py:84` |
 | GET | `/harnesses/agents/{id}/status` | `app.harness` | `harness_status` | oui | `back/app/harness/router.py:46` |
 | GET | `/harnesses/agents/{id}/status` | `app.harnesses` | `harness_status` | oui | `back/app/harnesses/router.py:283` |

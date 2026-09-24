@@ -2,6 +2,15 @@
 
 # Flux d’exécution agentique
 
+Avant chaque nouvelle exécution, la façade vérifie la révision des skills du
+provider sélectionné. Un changement de contenu ou d'autorisation est projeté avant
+le démarrage du driver, sans interrompre une Task en cours. Le reçu est invalidé
+avant copie et une erreur empêche l'exécution avec une projection périmée. Les
+demandes de rafraîchissement sont persistées, indépendamment de l'interface ; le
+statut du runtime expose l'état des skills. Une reprise avec checkpoint conserve
+les skills et credentials de l'opération distante qu'elle réconcilie. Voir
+[0127](../../../../project/decisions/0127-harness-skill-reconciliation.md).
+
 La validation commune des harnais retient le résultat candidat jusqu’à la fermeture
 normale du flux et au nettoyage de l’adaptateur. Les messages restent diffusés
 immédiatement. Une queue invalide ou bloquée produit un échec avant toute publication

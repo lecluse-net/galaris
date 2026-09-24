@@ -189,6 +189,7 @@ class HarnessRuntimeState(BaseModel):
     lifecycle_status: HarnessLifecycleStatus | Literal["internal"]
     managed: bool = True
     last_error: str | None = None
+    skills_status: Literal["not_applicable", "pending", "current", "error"] = "not_applicable"
 
     @computed_field
     @property

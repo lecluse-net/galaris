@@ -820,11 +820,8 @@ async function onCategoryChange(skill: Skill, categoryId: number | null): Promis
   if (skill.category_id === categoryId) return
   assigningSkillId.value = skill.id
   try {
-    const { synchronized } = await store.assignCategory(skill.id, categoryId)
+    await store.assignCategory(skill.id, categoryId)
     $q.notify({ type: 'positive', message: t('skills.categories.assigned') })
-    if (!synchronized) {
-      $q.notify({ type: 'warning', message: t('skills.auth.syncError') })
-    }
   } catch (error) {
     console.error('Error assigning skill category:', error)
     notifyError(error)
@@ -919,12 +916,6 @@ async function saveEditor(): Promise<void> {
         await store.assignCategory(editingSkill.value.id, editorForm.category_id)
       }
       $q.notify({ type: 'positive', message: t('skills.updated') })
-      if (markdownChanged) {
-        const synchronized = await store.syncExternalAgents()
-        if (!synchronized) {
-          $q.notify({ type: 'warning', message: t('skills.auth.syncError') })
-        }
-      }
     } else {
       await store.createSkill({ ...editorForm })
       await store.fetchCategories()
@@ -1092,12 +1083,10 @@ async function submitImport(): Promise<void> {
     }
 
     let categoryFailures = 0
-    let synchronizationFailed = false
     if (options.categoryId !== null) {
       for (const { result } of imported) {
         try {
-          const assignment = await store.assignCategory(result.skill.id, options.categoryId)
-          synchronizationFailed ||= !assignment.synchronized
+          await store.assignCategory(result.skill.id, options.categoryId)
         } catch (error) {
           categoryFailures += 1
           console.error('Error assigning category after skill import:', error)
@@ -1131,9 +1120,6 @@ async function submitImport(): Promise<void> {
         type: 'warning',
         message: t('skills.importCategoryFailed', { count: categoryFailures }),
       })
-    }
-    if (synchronizationFailed) {
-      $q.notify({ type: 'warning', message: t('skills.auth.syncError') })
     }
   } finally {
     importing.value = false
