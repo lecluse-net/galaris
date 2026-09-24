@@ -23,7 +23,9 @@ function setupUsageManager(t) {
     quasar: { useQuasar: () => ({ notify() {} }) },
     'vue-i18n': { useI18n: () => ({ t: key => key }) },
     '../stores/llmProviderStore': { useLLMProviderStore: () => llmStore },
-    '../stores/llmProfileStore': { useLLMProfileStore: () => ({ getProfileById: () => profile }) },
+    '../stores/llmProfileStore': { useLLMProfileStore: () => ({ getProfileById: () => profile,
+      async saveProfileValues(id, values) { assert.equal(id, profile.id); Object.assign(profile, values) },
+    }) },
     '@/core/authorize': { privileges: {}, usePrivilegeStore: () => ({ hasPrivilege: () => true }) },
     '@/core/util': { solaireCss },
   }
@@ -88,17 +90,31 @@ test('every LLM usage is assigned once to the appropriate category', t => {
   const { state } = setupUsageManager(t)
   const groups = state.modelGroups.value
   const rows = groups.flatMap(group => group.rows)
-  assert.equal(rows.length, 14)
+  assert.equal(rows.length, 15)
   assert.equal(new Set(rows.map(row => row.modelField)).size, rows.length)
   assert.deepEqual(
     new Set(groups.map(group => group.key)),
-    new Set(['text', 'image', 'audio', 'multimedia', 'embedding']),
+    new Set(['text', 'image', 'audio', 'multimedia', 'embedding', 'decision']),
   )
   const categories = Object.fromEntries(groups.flatMap(group => group.rows.map(row => [row.modelField, group.key])))
   assert.equal(categories.transcription_llm_id, 'audio')
   for (const column of ['audio_llm_id', 'video_llm_id', 'sound_generation_llm_id', 'music_generation_llm_id', 'video_generation_llm_id']) {
     assert.equal(categories[column], 'multimedia')
   }
+})
+
+test('decision selection saves and clears independently of text models and fallback policy', async t => {
+  const { state, profile, llmStore } = setupUsageManager(t)
+  llmStore.llms.push({ id: 45, label: 'Decision', provider_name: 'Provider', primary_capability: 'decision', service_capabilities: ['decision'] })
+  assert.deepEqual(state.optionsForRow('decision_llm_id').map(option => option.value), [45])
+  assert.ok(!state.optionsForRow('text_low_llm_id').some(option => option.value === 45))
+  await state.onModelChange('decision_llm_id', 45)
+  assert.equal(profile.decision_llm_id, 45)
+  await state.onDecisionFallbackChange(false)
+  assert.equal(profile.decision_fallback_policy, 'disabled')
+  await state.onModelChange('decision_llm_id', null)
+  assert.equal(profile.decision_llm_id, null)
+  assert.equal(profile.video_llm_id, 37)
 })
 
 test('profile reasoning maps automatic and explicit efforts to the canonical scale', t => {

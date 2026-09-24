@@ -181,18 +181,9 @@ def _conversation_task_data(turn: ConversationTurn) -> dict[str, Any]:
 
 async def _turn_lineage(turn: ConversationTurn) -> tuple[UUID | None, UUID | None]:
     """Resolve the latest durable Topic/contact attached to the launching turn."""
+    from .facade import current_turn_scope
 
-    topic_id = turn.topic_id
-    contact_memory_item_id = turn.contact_memory_item_id
-    if turn.origin == "text":
-        round_ = await get_db().get(ConversationRound, turn.round_id)
-        if round_ is not None:
-            # The durable round is authoritative, including an explicit absence of Topic.
-            # Retaining the frozen turn's former value after the round was cleared would
-            # attach the newly admitted Task to a Topic its originating round does not have.
-            topic_id = round_.topic_id
-            contact_memory_item_id = round_.contact_memory_item_id
-    return topic_id, contact_memory_item_id
+    return await current_turn_scope(turn)
 
 
 def _round_id(value: str) -> UUID:

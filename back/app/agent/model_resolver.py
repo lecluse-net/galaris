@@ -7,7 +7,7 @@ from app.llm import model_usages
 from typing import Any
 
 from core.i18n import render_prompt, t
-from app.llm import llm_service
+from app.llm import llm_service, profile_service
 from app.llm.provider_models import LLM
 
 from .contracts import (
@@ -16,6 +16,21 @@ from .contracts import (
     ReasoningEffort,
     ResolvedModel,
 )
+
+
+async def resolve_agent_decision_models(agent: Any) -> tuple[LLM | None, LLM | None, bool]:
+    """Read one profile snapshot so a current-profile change cannot mix models."""
+    profile_id = getattr(agent, "profile_id", None)
+    if profile_id is None:
+        profile_id = await profile_service.get_current_profile_id()
+    profile = await profile_service.get_profile(profile_id) if profile_id is not None else None
+    if profile is None or profile.decision_llm_id is None:
+        return None, None, False
+    model = await llm_service.get_llm(profile.decision_llm_id)
+    allow_fallback = profile.decision_fallback_policy != "disabled"
+    fallback = (await llm_service.get_llm(profile.text_low_llm_id)
+                if allow_fallback and profile.text_low_llm_id is not None else None)
+    return model, fallback, allow_fallback
 
 
 async def resolve_agent_profile_model(

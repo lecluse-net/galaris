@@ -36,6 +36,7 @@ VIDEO_GENERATION = "video_generation_llm_id"
 IMAGE = "image_llm_id"
 TRANSCRIPTION = "transcription_llm_id"
 VECTOR = "vector_llm_id"
+DECISION = "decision_llm_id"
 
 TEXT_TIERS: tuple[str, ...] = (
     TEXT_ULTRA_LOW,
@@ -97,6 +98,7 @@ def text_tier_for_alias(value: str) -> str | None:
 
 
 ALL: tuple[str, ...] = (
+    DECISION,
     *TEXT_TIERS,
     VISION,
     DOCUMENT,

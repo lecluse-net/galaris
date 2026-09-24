@@ -28,8 +28,10 @@ from .contracts import (
     InferenceRequest,
     StructuredInferenceRequest,
     ProtocolInferenceRequest,
+    DecisionInferenceRequest,
 )
 from .correlation import current_llm_correlation_ref, llm_correlation_scope
+from .decision_contracts import DecisionResult
 
 if TYPE_CHECKING:
     from .structured_service import StructuredInferenceResult
@@ -92,6 +94,15 @@ async def submit(request: InferenceRequest, *, inference_id: UUID | None = None)
         elif requester is not None:
             authority = LLMExecutionAuthority(requester_user_id=requester)
         resolved = request.model_copy(deep=True)
+        if isinstance(resolved, DecisionInferenceRequest):
+            from .decision_binding import model_binding
+
+            resolved.model_bindings = {str(llm.id): model_binding(llm)}
+            if resolved.allow_text_fallback and resolved.fallback_llm_id is not None:
+                fallback = await get_llm(resolved.fallback_llm_id)
+                if fallback is None:
+                    raise LookupError("Decision fallback model not found.")
+                resolved.model_bindings[str(fallback.id)] = model_binding(fallback)
         resolved.correlation_ref = request.correlation_ref or current_llm_correlation_ref()
         if request.model_field is not None and request.reasoning_effort is None:
             resolved.reasoning_effort = await resolve_reasoning_effort(
@@ -108,6 +119,10 @@ async def submit(request: InferenceRequest, *, inference_id: UUID | None = None)
 
 async def run_text(request: TextInferenceRequest) -> StructuredInferenceResult[str]:
     return await _run(request, lambda result: result.result)
+
+
+async def run_decision(request: DecisionInferenceRequest) -> StructuredInferenceResult[DecisionResult]:
+    return await _run(request, lambda result: DecisionResult.model_validate(result.structured_output))
 
 
 async def run_structured(
@@ -244,6 +259,10 @@ async def execute(inference_id: UUID) -> None:
                         from .protocol_inference import run_protocol
 
                         return await run_protocol(snapshot.request, on_event=receive)
+                    if isinstance(snapshot.request, DecisionInferenceRequest):
+                        from .decision_service import execute_decision
+
+                        return await execute_decision(snapshot.request, on_event=receive)
                     return await run_inference(snapshot.request, on_event=receive)
         finally:
             inference_owner.reset(token)

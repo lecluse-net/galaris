@@ -1,5 +1,9 @@
 # Décisions d’architecture
 
+- [0130 — Classement du topic en parallèle de l'admission](0130-live-message-topic-decisions.md)
+
+- [0129 — Décisions spécialisées pour les topics et la mémoire](0129-shared-decision-model-workflows.md)
+
 - [0126 — Entrées multimodales natives du chat et des Tasks](0126-native-multimodal-inputs.md)
 - [0125 — Applications isolées dans les documents HTML](0125-document-applications.md)
 
@@ -142,3 +146,5 @@ nouvelle décision plutôt que réécrite silencieusement si le choix change.
 - [0117 — Distribution et mises à jour du Harness Manager](0117-harness-manager-distribution-and-updates.md)
 - [0121 — Aides contextuelles acquittées par compte](0121-account-context-help.md)
 - [0122 — Outils disponibles par défaut aux nouveaux agents](0122-default-agent-tools.md)
+- [0127 — Modèle de décision facultatif pour le dispatcher Task](0127-optional-dispatcher-decision-model.md)
+- [0128 — Requêtes HTTP de l'interface sans délai maximal](0128-http-client-without-deadline.md)

@@ -26,6 +26,8 @@ class TextCallCapture:
     results: list[dict[str, Any]] = field(default_factory=list[dict[str, Any]])
     durable: bool = False
     structured: bool = False
+    call_limit: int | None = None
+    calls_started: int = 0
 
 
 text_call_capture: ContextVar[TextCallCapture | None] = ContextVar(

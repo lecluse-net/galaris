@@ -677,34 +677,41 @@ async def evaluate_mechanism(
     llm: LLM,
     system_prompt_override: str | None = None,
     topic_configuration: dict[str, Any] | None = None,
+    decision_llm: LLM | None = None,
 ) -> tuple[Any, float]:
     if definition.key == "dispatcher":
         result = await evaluate_dispatcher_input(
             input_data=input_data, llm=llm, system_prompt=system_prompt_override
         )
-        return result.decision.model_dump(mode="json"), result.cost
+        output = result.decision.model_dump(mode="json")
+        if result.decision_inference is not None:
+            output["decision_inference"] = result.decision_inference
+        return output, result.cost
     if definition.key == "topic_classification":
         configuration = (
             TopicDetectionLabConfiguration.model_validate(topic_configuration)
             if topic_configuration is not None
             else None
         )
-        return await evaluate_topic_detection(
-            input_data=input_data,
-            llm=llm,
-            configuration=configuration,
-        )
+        from app.llm.facade import use_decision_models
+        with use_decision_models(decision_llm, llm):
+            return await evaluate_topic_detection(
+                input_data=input_data, llm=llm, configuration=configuration,
+                use_decision_profile=decision_llm is not None,
+            )
     if definition.key == "memory_extraction":
         configuration = (
             MemoryExtractionLabConfiguration.model_validate(topic_configuration)
             if topic_configuration is not None
             else None
         )
-        with record_text_inferences(durable=True):
+        from app.llm.facade import use_decision_models
+        with record_text_inferences(durable=True), use_decision_models(decision_llm, llm):
             return await evaluate_memory_extraction(
                 input_data=input_data,
                 llm=llm,
                 configuration=configuration,
+                use_decision_profile=decision_llm is not None,
             )
     if definition.key == "planner":
         system_prompt_override = planner_evaluation_system_prompt(

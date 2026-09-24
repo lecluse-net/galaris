@@ -19,6 +19,7 @@ from core.database import get_db
 from core.i18n import render_prompt, tr
 from core.params import params_service
 from core.params.consts import Params
+from . import model_usages
 from .profile_models import (
     LlmProfile,
     PROFILE_MODEL_FIELDS,
@@ -212,6 +213,10 @@ async def _validate_profile_values(values: dict[str, Optional[str]]) -> None:
     from . import llm_service
 
     for model_field, raw_value in values.items():
+        if model_field == "decision_fallback_policy":
+            if raw_value not in {"text_on_failure", "disabled"}:
+                raise ValueError("Invalid decision fallback policy.")
+            continue
         if model_field in PROFILE_REASONING_FIELDS:
             if raw_value is None or not raw_value.strip():
                 continue
@@ -243,6 +248,8 @@ async def _validate_profile_values(values: dict[str, Optional[str]]) -> None:
             ) from e
         resource = await llm_service.get_llm(llm_id)
         generation_capability = {
+            **{field: "chat" for field in model_usages.TEXT_TIERS},
+            "decision_llm_id": "decision",
             "sound_generation_llm_id": "sound_generation",
             "music_generation_llm_id": "music_generation",
             "video_generation_llm_id": "video_generation",
@@ -294,6 +301,9 @@ async def update_profile(
     if values is not None:
         await _validate_profile_values(values)
         for model_field, raw_value in values.items():
+            if model_field == "decision_fallback_policy":
+                profile.decision_fallback_policy = str(raw_value)
+                continue
             if raw_value is None or not raw_value.strip():
                 setattr(profile, model_field, None)
                 continue

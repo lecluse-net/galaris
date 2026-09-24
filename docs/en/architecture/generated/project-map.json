@@ -617,6 +617,7 @@
       {
         "files": [
           "back/app/conversation/context.py",
+          "back/app/conversation/facade.py",
           "back/app/conversation/inspection_service.py",
           "back/app/conversation/monitoring_service.py",
           "back/app/conversation/resource_facade.py",
@@ -836,8 +837,10 @@
         "files": [
           "back/app/dream/attachment_processing.py",
           "back/app/dream/evaluation.py",
+          "back/app/dream/live_topics.py",
           "back/app/dream/mechanisms/attachment_memory.py",
           "back/app/dream/mechanisms/conversation_memory.py",
+          "back/app/dream/mechanisms/memory_decisions.py",
           "back/app/dream/mechanisms/memory_extraction.py",
           "back/app/dream/mechanisms/sequential_topic_classification.py",
           "back/app/dream/mechanisms/skill_learning.py",
@@ -872,6 +875,7 @@
       {
         "files": [
           "back/app/dream/dbadmin.py",
+          "back/app/dream/live_topics.py",
           "back/app/dream/mechanisms/conversation_memory.py",
           "back/app/dream/mechanisms/sequential_topic_classification.py",
           "back/app/dream/mechanisms/topic_classification.py",
@@ -1694,6 +1698,7 @@
           "back/app/llm/anthropic_router.py",
           "back/app/llm/call_router.py",
           "back/app/llm/contracts.py",
+          "back/app/llm/decision_service.py",
           "back/app/llm/events.py",
           "back/app/llm/facade.py",
           "back/app/llm/inference_execution.py",
@@ -1969,6 +1974,7 @@
           "back/app/memory/bootstrap.py",
           "back/app/memory/conversation_document_adapter.py",
           "back/app/memory/link_reconciliation.py",
+          "back/app/memory/mcp.py",
           "back/app/memory/service.py"
         ],
         "source": "app.memory",
@@ -1989,6 +1995,7 @@
       {
         "files": [
           "back/app/memory/__init__.py",
+          "back/app/memory/acquisition_service.py",
           "back/app/memory/conversation_summary.py",
           "back/app/memory/embedding.py"
         ],
@@ -4284,6 +4291,7 @@
       {
         "files": [
           "back/bridge/openrouter/__init__.py",
+          "back/bridge/openrouter/decisions.py",
           "back/bridge/openrouter/image.py",
           "back/bridge/openrouter/multimedia.py",
           "back/bridge/openrouter/resources.py",
@@ -4294,6 +4302,7 @@
       },
       {
         "files": [
+          "back/bridge/openrouter/decisions.py",
           "back/bridge/openrouter/image.py",
           "back/bridge/openrouter/multimedia.py",
           "back/bridge/openrouter/transcription.py",
@@ -6213,7 +6222,7 @@
       {
         "file": "back/app/conversation/mcp.py",
         "handler": "conversation_choice_resolve",
-        "line": 921,
+        "line": 912,
         "module": "app.conversation",
         "name": "conversation_choice_resolve",
         "namespace": "conversation"
@@ -6221,7 +6230,7 @@
       {
         "file": "back/app/conversation/mcp.py",
         "handler": "conversation_process_start",
-        "line": 1049,
+        "line": 1040,
         "module": "app.conversation",
         "name": "conversation_process_start",
         "namespace": "conversation"
@@ -6229,7 +6238,7 @@
       {
         "file": "back/app/conversation/mcp.py",
         "handler": "conversation_task_list",
-        "line": 861,
+        "line": 852,
         "module": "app.conversation",
         "name": "conversation_task_list",
         "namespace": "conversation"
@@ -6237,7 +6246,7 @@
       {
         "file": "back/app/conversation/mcp.py",
         "handler": "conversation_task_pause",
-        "line": 1000,
+        "line": 991,
         "module": "app.conversation",
         "name": "conversation_task_pause",
         "namespace": "conversation"
@@ -6245,7 +6254,7 @@
       {
         "file": "back/app/conversation/mcp.py",
         "handler": "conversation_task_resume",
-        "line": 1011,
+        "line": 1002,
         "module": "app.conversation",
         "name": "conversation_task_resume",
         "namespace": "conversation"
@@ -6253,7 +6262,7 @@
       {
         "file": "back/app/conversation/mcp.py",
         "handler": "conversation_task_retry",
-        "line": 1022,
+        "line": 1013,
         "module": "app.conversation",
         "name": "conversation_task_retry",
         "namespace": "conversation"
@@ -6261,7 +6270,7 @@
       {
         "file": "back/app/conversation/mcp.py",
         "handler": "conversation_task_status",
-        "line": 901,
+        "line": 892,
         "module": "app.conversation",
         "name": "conversation_task_status",
         "namespace": "conversation"
@@ -6269,7 +6278,7 @@
       {
         "file": "back/app/conversation/mcp.py",
         "handler": "conversation_task_stop",
-        "line": 1033,
+        "line": 1024,
         "module": "app.conversation",
         "name": "conversation_task_stop",
         "namespace": "conversation"
@@ -6277,7 +6286,7 @@
       {
         "file": "back/app/conversation/mcp.py",
         "handler": "conversation_task_submit",
-        "line": 600,
+        "line": 591,
         "module": "app.conversation",
         "name": "conversation_task_submit",
         "namespace": "conversation"
@@ -6509,7 +6518,7 @@
       {
         "file": "back/app/conversation/mcp.py",
         "handler": "conversation_round_get",
-        "line": 291,
+        "line": 282,
         "module": "app.conversation",
         "name": "conversation_round_get",
         "namespace": "galaris_admin"
@@ -6685,7 +6694,7 @@
       {
         "file": "back/app/memory/mcp.py",
         "handler": "document_share",
-        "line": 343,
+        "line": 356,
         "module": "app.memory",
         "name": "document_share",
         "namespace": "memory"
@@ -6693,7 +6702,7 @@
       {
         "file": "back/app/memory/mcp.py",
         "handler": "memory_forget",
-        "line": 567,
+        "line": 580,
         "module": "app.memory",
         "name": "memory_forget",
         "namespace": "memory"
@@ -6701,7 +6710,7 @@
       {
         "file": "back/app/memory/mcp.py",
         "handler": "memory_remember",
-        "line": 462,
+        "line": 475,
         "module": "app.memory",
         "name": "memory_remember",
         "namespace": "memory"
@@ -6709,7 +6718,7 @@
       {
         "file": "back/app/memory/mcp.py",
         "handler": "memory_share",
-        "line": 438,
+        "line": 451,
         "module": "app.memory",
         "name": "memory_share",
         "namespace": "memory"
@@ -6717,7 +6726,7 @@
       {
         "file": "back/app/memory/mcp.py",
         "handler": "memory_sharing",
-        "line": 410,
+        "line": 423,
         "module": "app.memory",
         "name": "memory_sharing",
         "namespace": "memory"
@@ -6725,7 +6734,7 @@
       {
         "file": "back/app/memory/mcp.py",
         "handler": "memory_summarize",
-        "line": 588,
+        "line": 601,
         "module": "app.memory",
         "name": "memory_summarize",
         "namespace": "memory"
@@ -8393,7 +8402,7 @@
           "users.id"
         ],
         "history_mixin": false,
-        "line": 103,
+        "line": 109,
         "module": "app.llm",
         "table": "user_llm_preferences"
       },

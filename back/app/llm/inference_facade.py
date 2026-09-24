@@ -53,6 +53,7 @@ async def run_inference(
     request: InferenceRequest,
     *,
     on_event: Callable[[InferenceEvent], Awaitable[None]] | None = None,
+    physical_call_limit: int | None = None,
 ) -> AIResult:
     """Run the SDK agent; deliver committed messages and per-call results.
 
@@ -73,6 +74,7 @@ async def run_inference(
         publish=publish,
         parameters=dict(request.parameters),
         structured=isinstance(request, StructuredInferenceRequest),
+        call_limit=physical_call_limit,
     )
     token = text_call_capture.set(capture)
     try:

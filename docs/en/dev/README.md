@@ -12,6 +12,11 @@ from all chunks. The HTML editor loads asynchronously. Fonts, API calls and PWA 
 downloads are excluded from the eager graph; offline installation still precaches all assets.
 Budget inspection and these measurements are described in the [operations guide](reliability-operations.md).
 
+The frontend HTTP client imposes no API request deadline, including Lab analyses, document
+transfers and harness operations. Slow local operations can wait for their response;
+explicit cancellation uses `AbortSignal`, and responses from a previous session remain
+rejected. No browser timeout setting is needed. Server, provider and proxy limits are independent.
+
 This document describes the architecture that exists in the repository. It serves as a contribution
 contract: when an implementation requires a different flow, correct either the code or this
 guide, but do not create a second implicit architecture.
@@ -902,6 +907,37 @@ is applied only after routes exposed by the driver's policy have been resolved; 
 activate an absent planner. A creation `forced_route`, on the other hand, remains a strict
 constraint and is explicitly incompatible if the driver does not expose it. `@briefing` remains
 recognized for compatibility but is refused while no driver exposes it.
+
+The Task dispatcher supports an optional **Decision** model in the LLM profile. Add Jev from
+the OpenRouter catalog under the Decision capability, then select it in the profile usages.
+An empty selection preserves the Low text model. The fallback setting permits one text call
+after a recoverable specialized failure; access refusals, exhausted budgets and cancellations
+never trigger that fallback. No additional SDK or service is needed. The Dispatcher Lab accepts
+both candidate categories and freezes each run's model. Candidate comparisons disable fallback;
+Task traces expose fallback during normal operation.
+See [ADR 0127](../../../project/decisions/0127-optional-dispatcher-decision-model.md).
+
+The same **Decision** selection now handles message topic continuity, existing-topic selection
+for activities and Tasks, and Dream memory retention: ignore, link source evidence to existing
+memories, or request extraction. It also verifies semantic equivalence before treating a new
+memory as a vector-retrieved duplicate. Linking preserves existing content. New facts,
+contradictions and partial coverage go to the text extractor with the complete source; new
+topic titles also require text generation. An empty Decision selection preserves the previous
+paths, allowing a single local text model to serve all these usages.
+
+The Topics and Memory Extraction Lab also accepts Jev. The accompanying Dream text model is
+frozen with the candidate, and costs include both models' calls. Text candidates are tested
+alone even when the profile selects a Decision model. Specialized requests add no deadline by
+default; existing workflow limits still apply. Performance for the new paths needs measuring,
+especially when filtering is followed by generation.
+See [ADR 0129](../../../project/decisions/0129-shared-decision-model-workflows.md).
+
+When Decision is configured, authorized incoming text messages start topic classification
+alongside admission and dispatch, without waiting for Dream's idle maintenance cycle. The
+shared receipt prevents duplicate classification; Dream recovers failures. Manual and room
+topics retain priority. Context preparation and memory tools read an available late topic
+without waiting for classification or replaying an already completed search. No additional
+setting is required. See [ADR 0130](../../../project/decisions/0130-live-message-topic-decisions.md).
 
 Each agent references a personal LLM profile or retains `profile_id = NULL` to follow the
 current profile. Text usages share four levels: `ultra-low` for Dream; `low` for the

@@ -31,6 +31,8 @@ export interface LlmProfile {
     image_llm_id: number | null
     transcription_llm_id: number | null
     vector_llm_id: number | null
+    decision_llm_id: number | null
+    decision_fallback_policy: 'text_on_failure' | 'disabled'
 }
 
 export interface LlmProfileListResponse {
@@ -63,6 +65,8 @@ export interface LlmProfileUpdate {
     image_llm_id?: number | null
     transcription_llm_id?: number | null
     vector_llm_id?: number | null
+    decision_llm_id?: number | null
+    decision_fallback_policy?: 'text_on_failure' | 'disabled'
 }
 
 export interface LlmProfileUseResponse {

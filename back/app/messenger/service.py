@@ -405,6 +405,11 @@ async def _process_incoming(message: Message) -> None:
             )
 
     from app.messenger import interactions
+    from .events import message_admitting
+
+    # Optional classification begins only after the contact and bridge checks.
+    # Its receiver schedules independent work; admission never awaits a model.
+    await message_admitting.send_async(message)
 
     resolved_choice = await interactions.resolve_from_message(
         message,

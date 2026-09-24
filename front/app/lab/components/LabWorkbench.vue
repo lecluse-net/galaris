@@ -81,7 +81,7 @@
           <p>{{ t('evaluation.insights.budgetHelp') }}</p>
           <p>{{ t('evaluation.insights.planned', { count: cases.filter(row => row.readiness === 'ready' && row.enabled).length * repetitions }) }}</p>
           <div class="row q-col-gutter-md q-mb-md">
-            <q-select v-model="candidateId" :options="config?.llms ?? []" option-value="id" option-label="label" emit-value map-options outlined class="col-12 col-md-5" :label="t('evaluation.contract.candidate')" />
+            <q-select v-model="candidateId" :options="[...(config?.llms ?? []), ...(['dispatcher', 'topic_classification', 'memory_extraction'].includes(mechanism) ? config?.decision_llms ?? [] : [])]" option-value="id" option-label="label" emit-value map-options outlined class="col-12 col-md-5" :label="t('evaluation.contract.candidate')" />
             <q-select v-model="judgeId" :options="config?.llms ?? []" option-value="id" option-label="label" emit-value map-options outlined class="col-12 col-md-5" :label="t('evaluation.contract.judge')" />
             <div class="col-12 col-md-2"><q-btn v-if="canEdit" icon="play_arrow" color="primary" :label="t('evaluation.contract.start')" :loading="busy" :disable="!runSettingsValid || datasetDirty || candidateId == null || judgeId == null || !cases.some(row => row.readiness === 'ready')" @click="startRun" /></div>
           </div>
@@ -318,7 +318,8 @@ async function reload() {
     const [all, settings, list] = await Promise.all([api.descriptors(), api.config(), api.datasets(key)])
     if (current !== generation) return
     descriptors.value = all; config.value = settings; datasets.value = list
-    candidateId.value ??= settings.lab_llm_id; judgeId.value ??= settings.lab_llm_id
+    candidateId.value ??= mechanism === 'dispatcher' ? settings.dispatcher_llm_id : settings.lab_llm_id
+    judgeId.value ??= settings.lab_llm_id
     const id = list.some(item => item.id === datasetId.value) ? datasetId.value : list[0]?.id ?? null
     if (id !== datasetId.value) datasetId.value = id
     else await refreshDataset()

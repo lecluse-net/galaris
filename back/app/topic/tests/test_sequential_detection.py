@@ -118,6 +118,48 @@ def _dependencies(
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("known_topic", [True, False])
+async def test_agent_reply_inherits_topic_without_model_calls(known_topic: bool) -> None:
+    current = _topic("Gardening")
+    dependencies, catalog, model = _dependencies([current], probability=0.0)
+    run = await detect_topic_with_diagnostics(
+        [Message(text="How do I water tomatoes?"),
+         Message(text="Let me tell you about astronomy.", sender_is_ai=True)],
+        1,
+        current.id if known_topic else None,
+        dependencies=dependencies,
+    )
+    assert run.evaluation.topic_id == (current.id if known_topic else None)
+    assert run.cost == 0
+    assert model.continuity_calls == model.classification_calls == 0
+    assert not catalog.list_calls and not catalog.resolve_calls
+
+
+@pytest.mark.asyncio
+async def test_lab_only_classifies_human_inputs_and_keeps_unknown_greeting(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    model = FakeModel(
+        continuity_probability=0.0,
+        classification=TopicClassification(action="create", title="Gardening"),
+    )
+    monkeypatch.setattr(topic_evaluation, "PromptedTopicDetectionModel", lambda *_a, **_kw: model)
+    output, cost = await topic_evaluation.evaluate_topic_detection(
+        input_data={"messages": [
+            {"text": "Hello!", "sender_is_ai": True},
+            {"text": "How do I water tomatoes?"},
+            {"text": "Water in the morning.", "sender_is_ai": True},
+            {"text": "And what about compost?"},
+            {"text": "Use mature compost.", "sender_is_ai": True},
+        ]},
+        llm=cast(LLM, object()),
+    )
+    assert output == {"topics": [None, "Gardening", "Gardening", "Gardening", "Gardening"]}
+    assert model.classification_calls == 2 and model.continuity_calls == 1
+    assert cost == pytest.approx(0.05)
+
+
+@pytest.mark.asyncio
 async def test_lab_contract_exposes_topic_text_without_internal_ids(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -473,7 +515,7 @@ async def test_prompted_model_uses_strict_temperature_zero_calls(
     async def fake_run_prompted(**kwargs: Any) -> StructuredInferenceResult[Any]:
         captured.append(kwargs)
         output_type = kwargs["output_type"]
-        if output_type is TopicContinuityInterpretation:
+        if "same_topic_probability" in output_type.model_fields:
             output = output_type(
                 same_topic_probability=0.8,
                 reason="The reference still concerns gardening.",
@@ -490,6 +532,8 @@ async def test_prompted_model_uses_strict_temperature_zero_calls(
         raise AssertionError(name)
 
     monkeypatch.setattr(sequential_detection, "run_prompted", fake_run_prompted)
+    from app.topic import classifier
+    monkeypatch.setattr(classifier, "run_prompted", fake_run_prompted)
     monkeypatch.setattr(
         sequential_detection.params_service,
         "get_or_default",

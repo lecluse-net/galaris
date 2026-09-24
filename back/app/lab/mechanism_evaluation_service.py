@@ -2070,8 +2070,14 @@ async def start_run(
 ) -> EvaluationRunRead:
     dataset = await _dataset(mechanism, dataset_id)
     llm = await llm_service.get_llm(data.llm_id)
-    if llm is None or "chat" not in llm.service_capabilities:
+    allowed_capabilities = {"chat", "decision"} if mechanism in {"dispatcher", "topic_classification", "memory_extraction"} else {"chat"}
+    if llm is None or not allowed_capabilities.intersection(llm.service_capabilities):
         raise ValueError(await tr("evaluation_api.errors.run_llm_invalid"))
+    generation_model: LLM | None = None
+    if "decision" in llm.service_capabilities and mechanism in {"topic_classification", "memory_extraction"}:
+        generation_model = await llm_service.get_profile_llm(model_usages.DREAM)
+        if generation_model is None or "chat" not in generation_model.service_capabilities:
+            raise ValueError(await tr("evaluation_api.errors.run_llm_invalid"))
     judge = (
         await llm_service.get_llm(data.judge_llm_id)
         if data.judge_llm_id is not None
@@ -2184,6 +2190,7 @@ async def start_run(
         judge_llm_snapshot=_llm_snapshot(judge),
         configuration_snapshot={
             **configuration_snapshot,
+            **({"generation_llm_snapshot": _llm_snapshot(generation_model)} if generation_model is not None else {}),
             "dataset_purpose": dataset.purpose,
             "parameters": validate_parameters(mechanism, dataset.parameters),
             "contract": CONTRACTS[mechanism].descriptor(),

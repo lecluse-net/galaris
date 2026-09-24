@@ -86,6 +86,30 @@ async def test_text_usages_share_the_expected_profile_tiers() -> None:
     assert model_usages.LAB == model_usages.TEXT_HIGH
 
 
+async def test_decision_selection_is_optional_independent_and_capability_checked(db: AsyncSession) -> None:
+    text_model, decision = await _seed_llms(db)
+    decision.primary_capability = "decision"
+    decision.service_capabilities = ["decision"]
+    await db.commit()
+    profile = await profile_service.create_profile("Decisions")
+    assert profile.decision_llm_id is None
+    assert profile.decision_fallback_policy == "text_on_failure"
+    with pytest.raises(ValueError):
+        await profile_service.update_profile(profile.id, values={model_usages.DECISION: str(text_model.id)})
+    with pytest.raises(ValueError):
+        await profile_service.update_profile(profile.id, values={model_usages.TEXT_LOW: str(decision.id)})
+    await profile_service.update_profile(profile.id, values={
+        model_usages.TEXT_LOW: str(text_model.id), model_usages.DECISION: str(decision.id),
+        "decision_fallback_policy": "disabled",
+    })
+    agent = SimpleNamespace(profile_id=profile.id)
+    assert (await llm_service.get_profile_llm(model_usages.DECISION, agent=agent)).id == decision.id
+    await profile_service.update_profile(profile.id, values={model_usages.DECISION: None})
+    assert await llm_service.get_profile_llm(model_usages.DECISION, agent=agent) is None
+    assert (await llm_service.get_profile_llm(model_usages.DISPATCHER, agent=agent)).id == text_model.id
+    assert (await profile_service.get_profile(profile.id)).decision_fallback_policy == "disabled"
+
+
 async def test_llm_subscription_flag_is_persisted_and_editable(db: AsyncSession) -> None:
     provider = _provider("Subscription provider")
     db.add(provider)

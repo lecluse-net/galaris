@@ -37,6 +37,7 @@ from ..contracts import (
     MemoryExtractionPrepared,
     MemoryLinkOperation,
 )
+from .memory_decisions import decide_memory_retention
 
 
 MAX_RANKED_MEMORIES = MAX_MEMORY_EXTRACTION_CANDIDATES
@@ -248,12 +249,23 @@ async def run_memory_extraction(
     agent_id: int | None,
     language_instruction: str,
     output_attempts: int = MEMORY_OUTPUT_ATTEMPTS,
+    use_decision_profile: bool = True,
 ) -> tuple[MemoryExtractionPrepared, float]:
-    """Run the sole memory decision inference over already-ranked candidates."""
+    """Decide retention first when configured, and write only genuinely new facts."""
 
     ranked_input = input_data.model_copy(
         update={"existing_memories": input_data.existing_memories[:MAX_RANKED_MEMORIES]}
     )
+    decision: MemoryExtractionDecision | None = None
+    total_cost = 0.0
+    decision_metadata: dict[str, Any] | None = None
+    if use_decision_profile:
+        decision, total_cost, native = await decide_memory_retention(
+            llm=llm, input_data=ranked_input,
+            system_prompt=f"{system_prompt}\n\n{language_instruction}",
+            task_id=task_id, agent_id=agent_id,
+        )
+        decision_metadata = native.model_dump(mode="json") if native is not None else None
     output_schema = json.dumps(
         MemoryExtractionDecision.model_json_schema(),
         ensure_ascii=False,
@@ -271,10 +283,10 @@ async def run_memory_extraction(
     base_system_prompt = (
         f"{system_prompt}\n\n{language_instruction}\n\n{output_instructions}"
     ).strip()
-    decision: MemoryExtractionDecision | None = None
     last_error: ValueError | None = None
-    total_cost = 0.0
     for attempt in range(1, output_attempts + 1):
+        if decision is not None:
+            break
         retry_instruction = (
             "\n\nYour previous response was rejected because it was not one complete valid "
             "JSON object. Return only the raw object now."
@@ -322,6 +334,7 @@ async def run_memory_extraction(
     return (
         MemoryExtractionPrepared(
             decision=decision,
+            decision_inference=decision_metadata,
             candidate_memory_ids=candidate_ids,
         ),
         total_cost,

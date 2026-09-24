@@ -7,12 +7,12 @@ from collections.abc import Awaitable, Callable
 from uuid import UUID
 
 from loguru import logger
-from sqlalchemy import Select, select
+from sqlalchemy import Select, select, update
 
 from core.database import get_db, get_db_session
 from app.messenger import Message
 
-from .contracts import ConversationRuntimeEvent
+from .contracts import ConversationRuntimeEvent, ConversationTurn
 
 
 ConversationActivityListener = Callable[[UUID, UUID], Awaitable[None]]
@@ -21,6 +21,71 @@ ConversationRuntimeListener = Callable[
 ]
 _activity_listeners: set[ConversationActivityListener] = set()
 _runtime_listeners: set[ConversationRuntimeListener] = set()
+
+
+async def inherit_reply_topics(round_id: UUID) -> None:
+    """Copy the last input's exact Topic to every text/audio response, without AI.
+
+    The caller commits the input/output links and this projection together. The
+    round lock serializes response publication with delayed classification.
+    """
+    from .models import ConversationRound, ConversationRoundMessage
+
+    db = get_db()
+    await db.scalar(
+        select(ConversationRound.id)
+        .where(ConversationRound.id == round_id)
+        .with_for_update()
+    )
+    source = (
+        await db.execute(
+            select(Message.topic_id, Message.topic_overridden)
+            .join(ConversationRoundMessage, ConversationRoundMessage.message_id == Message.id)
+            .where(
+                ConversationRoundMessage.round_id == round_id,
+                ConversationRoundMessage.role == "input",
+            )
+            .order_by(ConversationRoundMessage.sequence.desc())
+            .limit(1)
+        )
+    ).one_or_none()
+    output_ids = select(ConversationRoundMessage.message_id).where(
+        ConversationRoundMessage.round_id == round_id,
+        ConversationRoundMessage.role == "output",
+    )
+    await db.execute(
+        update(Message)
+        .where(Message.id.in_(output_ids))
+        .values(
+            topic_id=source.topic_id if source is not None else None,
+            topic_overridden=source.topic_overridden if source is not None else False,
+        )
+    )
+
+
+async def current_turn_scope(turn: ConversationTurn) -> tuple[UUID | None, UUID | None]:
+    """Read late topic classification without waiting for its worker."""
+    if turn.origin != "text":
+        return turn.topic_id, turn.contact_memory_item_id
+    from .models import ConversationRound
+    from app.messenger import Room
+    from app.connection import Connection
+
+    scope = (
+        await get_db().execute(
+            select(ConversationRound.topic_id, ConversationRound.contact_memory_item_id)
+            .join(Room, Room.id == ConversationRound.room_id)
+            .join(Connection, Connection.id == Room.connection_id)
+            .where(
+                ConversationRound.id == turn.round_id,
+                Room.id == turn.room_id,
+                Connection.agent_id == turn.agent_id,
+            )
+        )
+    ).one_or_none()
+    if scope is None:
+        return turn.topic_id, turn.contact_memory_item_id
+    return scope.topic_id, scope.contact_memory_item_id
 
 
 async def admit_messenger_input(
@@ -148,9 +213,11 @@ async def publish_round_activity(round_id: UUID) -> None:
 
 
 __all__ = [
+    "inherit_reply_topics",
     "ConversationActivityListener",
     "ConversationRuntimeListener",
     "admit_messenger_input",
+    "current_turn_scope",
     "publish_round_activity",
     "publish_runtime_event",
     "register_activity_listener",

@@ -262,6 +262,7 @@ class MemoryExtractionPrepared(BaseModel):
     """Checkpointed decision, LINK allow-list, and durable application proof."""
 
     decision: MemoryExtractionDecision
+    decision_inference: dict[str, Any] | None = None
     candidate_memory_ids: list[UUID] = Field(
         default_factory=lambda: list[UUID](), max_length=20
     )

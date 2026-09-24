@@ -71,6 +71,7 @@ async def runtime_topic_detection_dependencies(
             llm,
             task_id=task_id,
             agent_id=agent_id,
+            use_decision_profile=True,
         ),
     )
 

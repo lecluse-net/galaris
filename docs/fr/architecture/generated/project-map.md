@@ -209,7 +209,7 @@ tests restent l’autorité sur le comportement.
 | `app.contact` | `core.authorize` | `back/app/contact/router.py` |
 | `app.contact` | `core.database` | `back/app/contact/service.py` |
 | `app.conversation` | `app.agent` | `back/app/conversation/artifact_delivery.py`, `back/app/conversation/context.py`, `back/app/conversation/contracts.py`, `back/app/conversation/directives.py`, `back/app/conversation/inspection_service.py`, `back/app/conversation/mcp.py`, `back/app/conversation/monitoring_service.py`, `back/app/conversation/router.py`, `back/app/conversation/runtime.py`, `back/app/conversation/scheduler.py`, `back/app/conversation/service.py`, `back/app/conversation/task_objective.py` |
-| `app.conversation` | `app.connection` | `back/app/conversation/context.py`, `back/app/conversation/inspection_service.py`, `back/app/conversation/monitoring_service.py`, `back/app/conversation/resource_facade.py`, `back/app/conversation/service.py` |
+| `app.conversation` | `app.connection` | `back/app/conversation/context.py`, `back/app/conversation/facade.py`, `back/app/conversation/inspection_service.py`, `back/app/conversation/monitoring_service.py`, `back/app/conversation/resource_facade.py`, `back/app/conversation/service.py` |
 | `app.conversation` | `app.file_share` | `back/app/conversation/artifact_delivery.py`, `back/app/conversation/context.py`, `back/app/conversation/service.py` |
 | `app.conversation` | `app.llm` | `back/app/conversation/facade.py`, `back/app/conversation/inspection_service.py`, `back/app/conversation/management_service.py`, `back/app/conversation/service.py`, `back/app/conversation/task_objective.py` |
 | `app.conversation` | `app.messenger` | `back/app/conversation/context.py`, `back/app/conversation/document_display.py`, `back/app/conversation/facade.py`, `back/app/conversation/inspection_service.py`, `back/app/conversation/mcp.py`, `back/app/conversation/monitoring_service.py`, `back/app/conversation/resource_facade.py`, `back/app/conversation/service.py`, `back/app/conversation/task_projection.py`, `back/app/conversation/work_projection.py` |
@@ -232,9 +232,9 @@ tests restent l’autorité sur le comportement.
 | `app.dream` | `app.connection` | `back/app/dream/dbadmin.py`, `back/app/dream/mechanisms/conversation_memory.py`, `back/app/dream/mechanisms/sequential_topic_classification.py`, `back/app/dream/mechanisms/topic_classification.py`, `back/app/dream/monitoring_service.py` |
 | `app.dream` | `app.conversation` | `back/app/dream/mechanisms/conversation_memory.py`, `back/app/dream/mechanisms/sequential_topic_classification.py`, `back/app/dream/mechanisms/topic_classification.py`, `back/app/dream/monitoring_service.py` |
 | `app.dream` | `app.goal` | `back/app/dream/outcome_evidence.py` |
-| `app.dream` | `app.llm` | `back/app/dream/attachment_processing.py`, `back/app/dream/evaluation.py`, `back/app/dream/mechanisms/attachment_memory.py`, `back/app/dream/mechanisms/conversation_memory.py`, `back/app/dream/mechanisms/memory_extraction.py`, `back/app/dream/mechanisms/sequential_topic_classification.py`, `back/app/dream/mechanisms/skill_learning.py`, `back/app/dream/mechanisms/task_memory.py`, `back/app/dream/mechanisms/task_outcome_reflection.py`, `back/app/dream/mechanisms/topic_classification.py`, `back/app/dream/monitoring_service.py`, `back/app/dream/scheduler.py`, `back/app/dream/schemas.py` |
+| `app.dream` | `app.llm` | `back/app/dream/attachment_processing.py`, `back/app/dream/evaluation.py`, `back/app/dream/live_topics.py`, `back/app/dream/mechanisms/attachment_memory.py`, `back/app/dream/mechanisms/conversation_memory.py`, `back/app/dream/mechanisms/memory_decisions.py`, `back/app/dream/mechanisms/memory_extraction.py`, `back/app/dream/mechanisms/sequential_topic_classification.py`, `back/app/dream/mechanisms/skill_learning.py`, `back/app/dream/mechanisms/task_memory.py`, `back/app/dream/mechanisms/task_outcome_reflection.py`, `back/app/dream/mechanisms/topic_classification.py`, `back/app/dream/monitoring_service.py`, `back/app/dream/scheduler.py`, `back/app/dream/schemas.py` |
 | `app.dream` | `app.memory` | `back/app/dream/attachment_processing.py`, `back/app/dream/mechanisms/attachment_memory.py`, `back/app/dream/mechanisms/conversation_memory.py`, `back/app/dream/mechanisms/document_structure.py`, `back/app/dream/mechanisms/memory_extraction.py`, `back/app/dream/mechanisms/memory_maintenance.py`, `back/app/dream/mechanisms/process_memory.py`, `back/app/dream/mechanisms/stale_memory.py`, `back/app/dream/mechanisms/task_memory.py`, `back/app/dream/mechanisms/task_outcome_reflection.py`, `back/app/dream/outcome_evidence.py`, `back/app/dream/scheduler.py` |
-| `app.dream` | `app.messenger` | `back/app/dream/dbadmin.py`, `back/app/dream/mechanisms/conversation_memory.py`, `back/app/dream/mechanisms/sequential_topic_classification.py`, `back/app/dream/mechanisms/topic_classification.py`, `back/app/dream/monitoring_service.py` |
+| `app.dream` | `app.messenger` | `back/app/dream/dbadmin.py`, `back/app/dream/live_topics.py`, `back/app/dream/mechanisms/conversation_memory.py`, `back/app/dream/mechanisms/sequential_topic_classification.py`, `back/app/dream/mechanisms/topic_classification.py`, `back/app/dream/monitoring_service.py` |
 | `app.dream` | `app.process` | `back/app/dream/mechanisms/process_memory.py` |
 | `app.dream` | `app.skill` | `back/app/dream/mechanisms/skill_learning.py` |
 | `app.dream` | `app.task` | `back/app/dream/dbadmin.py`, `back/app/dream/mechanisms/sequential_topic_classification.py`, `back/app/dream/mechanisms/skill_learning.py`, `back/app/dream/mechanisms/task_memory.py`, `back/app/dream/mechanisms/task_outcome_reflection.py`, `back/app/dream/mechanisms/topic_classification.py`, `back/app/dream/monitoring_service.py`, `back/app/dream/outcome_evidence.py`, `back/app/dream/scheduler.py` |
@@ -325,7 +325,7 @@ tests restent l’autorité sur le comportement.
 | `app.lab` | `core.i18n` | `back/app/lab/analysis_service.py`, `back/app/lab/diagnosis_service.py`, `back/app/lab/dispatcher_evaluation_service.py`, `back/app/lab/evaluation_service.py`, `back/app/lab/human_review_service.py`, `back/app/lab/judgment_service.py`, `back/app/lab/mechanism_evaluation_service.py`, `back/app/lab/router.py` |
 | `app.lab` | `core.params` | `back/app/lab/evidence_service.py`, `back/app/lab/executor_prompt_service.py` |
 | `app.lab` | `core.user` | `back/app/lab/human_review_service.py` |
-| `app.llm` | `app.agent` | `back/app/llm/anthropic_router.py`, `back/app/llm/call_router.py`, `back/app/llm/contracts.py`, `back/app/llm/events.py`, `back/app/llm/facade.py`, `back/app/llm/inference_execution.py`, `back/app/llm/inference_facade.py`, `back/app/llm/inference_journal.py`, `back/app/llm/inference_store.py`, `back/app/llm/llm_call_service.py`, `back/app/llm/llm_service.py`, `back/app/llm/mcp.py`, `back/app/llm/protocol_inference.py`, `back/app/llm/runtime_correlation.py`, `back/app/llm/text_inference.py`, `back/app/llm/tts_service.py` |
+| `app.llm` | `app.agent` | `back/app/llm/anthropic_router.py`, `back/app/llm/call_router.py`, `back/app/llm/contracts.py`, `back/app/llm/decision_service.py`, `back/app/llm/events.py`, `back/app/llm/facade.py`, `back/app/llm/inference_execution.py`, `back/app/llm/inference_facade.py`, `back/app/llm/inference_journal.py`, `back/app/llm/inference_store.py`, `back/app/llm/llm_call_service.py`, `back/app/llm/llm_service.py`, `back/app/llm/mcp.py`, `back/app/llm/protocol_inference.py`, `back/app/llm/runtime_correlation.py`, `back/app/llm/text_inference.py`, `back/app/llm/tts_service.py` |
 | `app.llm` | `app.connection` | `back/app/llm/events.py`, `back/app/llm/llm_call_service.py` |
 | `app.llm` | `app.conversation` | `back/app/llm/events.py`, `back/app/llm/facade.py`, `back/app/llm/llm_call_service.py`, `back/app/llm/subscription_policy.py` |
 | `app.llm` | `app.mcp` | `back/app/llm/anthropic_router.py`, `back/app/llm/call_router.py` |
@@ -348,9 +348,9 @@ tests restent l’autorité sur le comportement.
 | `app.mcp` | `core.i18n` | `back/app/mcp/router.py` |
 | `app.mcp` | `core.util` | `back/app/mcp/models.py`, `back/app/mcp/service.py` |
 | `app.memory` | `app.agent` | `back/app/memory/access.py`, `back/app/memory/assertions.py`, `back/app/memory/automation.py`, `back/app/memory/bootstrap.py`, `back/app/memory/conversation_summary.py`, `back/app/memory/document_app_service.py`, `back/app/memory/document_icons.py`, `back/app/memory/document_order.py`, `back/app/memory/document_service.py`, `back/app/memory/document_sharing.py`, `back/app/memory/document_tags.py`, `back/app/memory/events.py`, `back/app/memory/goal_document_adapter.py`, `back/app/memory/goal_folders.py`, `back/app/memory/item_sharing.py`, `back/app/memory/library_queries.py`, `back/app/memory/router.py`, `back/app/memory/service.py`, `back/app/memory/source_projection.py` |
-| `app.memory` | `app.conversation` | `back/app/memory/bootstrap.py`, `back/app/memory/conversation_document_adapter.py`, `back/app/memory/link_reconciliation.py`, `back/app/memory/service.py` |
+| `app.memory` | `app.conversation` | `back/app/memory/bootstrap.py`, `back/app/memory/conversation_document_adapter.py`, `back/app/memory/link_reconciliation.py`, `back/app/memory/mcp.py`, `back/app/memory/service.py` |
 | `app.memory` | `app.goal` | `back/app/memory/bootstrap.py`, `back/app/memory/dbadmin.py`, `back/app/memory/goal_document_adapter.py`, `back/app/memory/goal_folders.py`, `back/app/memory/link_reconciliation.py`, `back/app/memory/source_projection.py` |
-| `app.memory` | `app.llm` | `back/app/memory/__init__.py`, `back/app/memory/conversation_summary.py`, `back/app/memory/embedding.py` |
+| `app.memory` | `app.llm` | `back/app/memory/__init__.py`, `back/app/memory/acquisition_service.py`, `back/app/memory/conversation_summary.py`, `back/app/memory/embedding.py` |
 | `app.memory` | `app.process` | `back/app/memory/link_reconciliation.py`, `back/app/memory/process_projection.py` |
 | `app.memory` | `app.task` | `back/app/memory/automation.py`, `back/app/memory/goal_folders.py`, `back/app/memory/link_reconciliation.py`, `back/app/memory/mcp.py`, `back/app/memory/service.py` |
 | `app.memory` | `app.tools` | `back/app/memory/item_sharing.py`, `back/app/memory/mcp.py` |
@@ -604,8 +604,8 @@ tests restent l’autorité sur le comportement.
 | `bridge.openai` | `core.database` | `back/bridge/openai/codex_oauth.py` |
 | `bridge.openai` | `core.i18n` | `back/bridge/openai/codex_oauth.py` |
 | `bridge.openai` | `core.util` | `back/bridge/openai/codex_oauth.py`, `back/bridge/openai/codex_responses.py`, `back/bridge/openai/image.py`, `back/bridge/openai/realtime.py` |
-| `bridge.openrouter` | `app.llm` | `back/bridge/openrouter/__init__.py`, `back/bridge/openrouter/image.py`, `back/bridge/openrouter/multimedia.py`, `back/bridge/openrouter/resources.py`, `back/bridge/openrouter/transcription.py` |
-| `bridge.openrouter` | `core.util` | `back/bridge/openrouter/image.py`, `back/bridge/openrouter/multimedia.py`, `back/bridge/openrouter/transcription.py`, `back/bridge/openrouter/usage.py` |
+| `bridge.openrouter` | `app.llm` | `back/bridge/openrouter/__init__.py`, `back/bridge/openrouter/decisions.py`, `back/bridge/openrouter/image.py`, `back/bridge/openrouter/multimedia.py`, `back/bridge/openrouter/resources.py`, `back/bridge/openrouter/transcription.py` |
+| `bridge.openrouter` | `core.util` | `back/bridge/openrouter/decisions.py`, `back/bridge/openrouter/image.py`, `back/bridge/openrouter/multimedia.py`, `back/bridge/openrouter/transcription.py`, `back/bridge/openrouter/usage.py` |
 | `bridge.perplexity` | `app.llm` | `back/bridge/perplexity/__init__.py` |
 | `bridge.sunoapi` | `app.llm` | `back/bridge/sunoapi/__init__.py`, `back/bridge/sunoapi/media.py` |
 | `bridge.sunoapi` | `core.util` | `back/bridge/sunoapi/media.py` |
@@ -1755,7 +1755,7 @@ tests restent l’autorité sur le comportement.
 | `tools` | `Tool` | `app.tools` | non | — | `back/app/tools/models.py:21` |
 | `topics` | `Topic` | `app.topic` | oui | `memory_items.id` | `back/app/topic/models.py:15` |
 | `user_help_dismissals` | `UserHelpDismissal` | `core.user` | non | `users.id` | `back/core/user/models.py:80` |
-| `user_llm_preferences` | `UserLlmPreferences` | `app.llm` | non | `llm_profiles.id`, `llms.id`, `users.id` | `back/app/llm/profile_models.py:103` |
+| `user_llm_preferences` | `UserLlmPreferences` | `app.llm` | non | `llm_profiles.id`, `llms.id`, `users.id` | `back/app/llm/profile_models.py:109` |
 | `user_refresh_sessions` | `UserRefreshSession` | `core.user` | non | `users.id` | `back/core/user/models.py:119` |
 | `user_tokens` | `UserToken` | `core.user` | non | `users.id` | `back/core/user/models.py:92` |
 | `users` | `User` | `core.user` | non | — | `back/core/user/models.py:13` |
@@ -1797,15 +1797,15 @@ tests restent l’autorité sur le comportement.
 | `console_status` | `console` | `app.console` | `console_status` | `back/app/console/mcp.py:35` |
 | `console_stop` | `console` | `app.console` | `console_stop` | `back/app/console/mcp.py:127` |
 | `console_write` | `console` | `app.console` | `console_write` | `back/app/console/mcp.py:112` |
-| `conversation_choice_resolve` | `conversation` | `app.conversation` | `conversation_choice_resolve` | `back/app/conversation/mcp.py:921` |
-| `conversation_process_start` | `conversation` | `app.conversation` | `conversation_process_start` | `back/app/conversation/mcp.py:1049` |
-| `conversation_task_list` | `conversation` | `app.conversation` | `conversation_task_list` | `back/app/conversation/mcp.py:861` |
-| `conversation_task_pause` | `conversation` | `app.conversation` | `conversation_task_pause` | `back/app/conversation/mcp.py:1000` |
-| `conversation_task_resume` | `conversation` | `app.conversation` | `conversation_task_resume` | `back/app/conversation/mcp.py:1011` |
-| `conversation_task_retry` | `conversation` | `app.conversation` | `conversation_task_retry` | `back/app/conversation/mcp.py:1022` |
-| `conversation_task_status` | `conversation` | `app.conversation` | `conversation_task_status` | `back/app/conversation/mcp.py:901` |
-| `conversation_task_stop` | `conversation` | `app.conversation` | `conversation_task_stop` | `back/app/conversation/mcp.py:1033` |
-| `conversation_task_submit` | `conversation` | `app.conversation` | `conversation_task_submit` | `back/app/conversation/mcp.py:600` |
+| `conversation_choice_resolve` | `conversation` | `app.conversation` | `conversation_choice_resolve` | `back/app/conversation/mcp.py:912` |
+| `conversation_process_start` | `conversation` | `app.conversation` | `conversation_process_start` | `back/app/conversation/mcp.py:1040` |
+| `conversation_task_list` | `conversation` | `app.conversation` | `conversation_task_list` | `back/app/conversation/mcp.py:852` |
+| `conversation_task_pause` | `conversation` | `app.conversation` | `conversation_task_pause` | `back/app/conversation/mcp.py:991` |
+| `conversation_task_resume` | `conversation` | `app.conversation` | `conversation_task_resume` | `back/app/conversation/mcp.py:1002` |
+| `conversation_task_retry` | `conversation` | `app.conversation` | `conversation_task_retry` | `back/app/conversation/mcp.py:1013` |
+| `conversation_task_status` | `conversation` | `app.conversation` | `conversation_task_status` | `back/app/conversation/mcp.py:892` |
+| `conversation_task_stop` | `conversation` | `app.conversation` | `conversation_task_stop` | `back/app/conversation/mcp.py:1024` |
+| `conversation_task_submit` | `conversation` | `app.conversation` | `conversation_task_submit` | `back/app/conversation/mcp.py:591` |
 | `document_show` | `conversation` | `app.conversation` | `document_show` | `back/app/conversation/mcp.py:107` |
 | `file_append` | `file_sharing` | `app.file_share` | `append_file` | `back/app/file_share/mcp.py:289` |
 | `file_copy` | `file_sharing` | `app.file_share` | `copy_file` | `back/app/file_share/mcp.py:344` |
@@ -1834,7 +1834,7 @@ tests restent l’autorité sur le comportement.
 | `task_run` | `galaris` | `app.task` | `mcp_run_task` | `back/app/task/mcp.py:176` |
 | `task_stop` | `galaris` | `app.task` | `mcp_stop_task` | `back/app/task/mcp.py:155` |
 | `tools_list` | `galaris` | `app.tools` | `list_mcp_tools` | `back/app/tools/mcp.py:60` |
-| `conversation_round_get` | `galaris_admin` | `app.conversation` | `conversation_round_get` | `back/app/conversation/mcp.py:291` |
+| `conversation_round_get` | `galaris_admin` | `app.conversation` | `conversation_round_get` | `back/app/conversation/mcp.py:282` |
 | `llm_call` | `galaris_admin` | `app.llm` | `mcp_llm_call` | `back/app/llm/mcp.py:30` |
 | `llm_calls` | `galaris_admin` | `app.llm` | `mcp_llm_calls` | `back/app/llm/mcp.py:48` |
 | `voice_turn_get` | `galaris_admin` | `app.voice` | `voice_turn_get` | `back/app/voice/mcp.py:53` |
@@ -1856,12 +1856,12 @@ tests restent l’autorité sur le comportement.
 | `mail_send` | `mail` | `bridge.mail` | `mail_send` | `back/bridge/mail/mcp.py:110` |
 | `mail_set_flags` | `mail` | `bridge.mail` | `mail_set_flags` | `back/bridge/mail/mcp.py:219` |
 | `mail_trash` | `mail` | `bridge.mail` | `mail_trash` | `back/bridge/mail/mcp.py:251` |
-| `document_share` | `memory` | `app.memory` | `document_share` | `back/app/memory/mcp.py:343` |
-| `memory_forget` | `memory` | `app.memory` | `memory_forget` | `back/app/memory/mcp.py:567` |
-| `memory_remember` | `memory` | `app.memory` | `memory_remember` | `back/app/memory/mcp.py:462` |
-| `memory_share` | `memory` | `app.memory` | `memory_share` | `back/app/memory/mcp.py:438` |
-| `memory_sharing` | `memory` | `app.memory` | `memory_sharing` | `back/app/memory/mcp.py:410` |
-| `memory_summarize` | `memory` | `app.memory` | `memory_summarize` | `back/app/memory/mcp.py:588` |
+| `document_share` | `memory` | `app.memory` | `document_share` | `back/app/memory/mcp.py:356` |
+| `memory_forget` | `memory` | `app.memory` | `memory_forget` | `back/app/memory/mcp.py:580` |
+| `memory_remember` | `memory` | `app.memory` | `memory_remember` | `back/app/memory/mcp.py:475` |
+| `memory_share` | `memory` | `app.memory` | `memory_share` | `back/app/memory/mcp.py:451` |
+| `memory_sharing` | `memory` | `app.memory` | `memory_sharing` | `back/app/memory/mcp.py:423` |
+| `memory_summarize` | `memory` | `app.memory` | `memory_summarize` | `back/app/memory/mcp.py:601` |
 | `messenger_list_rooms` | `messenger` | `app.messenger` | `mcp_list_rooms` | `back/app/messenger/mcp.py:630` |
 | `messenger_room_history` | `messenger` | `app.messenger` | `mcp_room_history` | `back/app/messenger/mcp.py:668` |
 | `messenger_room_send_file` | `messenger` | `app.messenger` | `mcp_room_send_file` | `back/app/messenger/mcp.py:878` |

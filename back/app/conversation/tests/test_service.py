@@ -1766,22 +1766,26 @@ async def test_successful_retry_clears_the_previous_round_error(
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("topic_mode", ["manual", "detected", "unknown", "cleared"])
 async def test_completed_round_links_persisted_outgoing_message(
     db: AsyncSession,
     monkeypatch: pytest.MonkeyPatch,
+    topic_mode: str,
 ) -> None:
     agent, connection, room = await _scope(db)
     topic = Topic(title="Sujet explicite", description="", keywords=[])
     db.add(topic)
     await db.flush()
     message = await _message(db, connection, room, 1, "bonjour")
-    message.topic_id = topic.id
-    message.topic_overridden = True
+    expected_topic_id = topic.id if topic_mode in {"manual", "detected"} else None
+    expected_override = topic_mode in {"manual", "cleared"}
+    message.topic_id = expected_topic_id
+    message.topic_overridden = expected_override
     await db.flush()
     assert await admit_message(message, agent_id=agent.id, connection_id=connection.id)
     round_ = await claim_next_round("output-worker")
     assert round_ is not None
-    assert round_.topic_id == topic.id
+    assert round_.topic_id == expected_topic_id
     sent: list[tuple[UUID | str, str]] = []
     publish_events: list[bool] = []
     _install_messenger(
@@ -1829,8 +1833,8 @@ async def test_completed_round_links_persisted_outgoing_message(
     assert output is not None and output.response_sequence == 1
     stored = await db.get(Message, output.message_id)
     assert stored is not None and stored.text == "salut"
-    assert stored.topic_id == topic.id
-    assert stored.topic_overridden is True
+    assert stored.topic_id == expected_topic_id
+    assert stored.topic_overridden is expected_override
     assert stored.metadata_[CONVERSATION_ROUND_METADATA_KEY] == str(round_.id)
     assert CONVERSATION_OUTPUT_PENDING_METADATA_KEY not in stored.metadata_
     assert published == [stored.id]

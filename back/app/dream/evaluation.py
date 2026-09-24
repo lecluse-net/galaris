@@ -70,6 +70,7 @@ async def evaluate_memory_extraction(
     input_data: object,
     llm: LLM,
     configuration: MemoryExtractionLabConfiguration | None = None,
+    use_decision_profile: bool = False,
 ) -> tuple[dict[str, object], float]:
     """Run production extraction using only the case-local memory corpus."""
 
@@ -106,6 +107,7 @@ async def evaluate_memory_extraction(
         agent_id=None,
         language_instruction=resolved.language_instruction,
         output_attempts=resolved.output_attempts,
+        use_decision_profile=use_decision_profile,
     )
     output = MemoryExtractionLabOutput(
         operations=prepared.decision.operations,

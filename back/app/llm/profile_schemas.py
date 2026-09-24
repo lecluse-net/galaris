@@ -1,7 +1,7 @@
 """API schemas for LLM configuration profiles."""
 
 from datetime import datetime
-from typing import Optional
+from typing import Literal, Optional
 
 from pydantic import BaseModel, ConfigDict, field_validator
 
@@ -50,6 +50,8 @@ class LlmProfileUpdate(BaseModel):
     image_llm_id: Optional[int] = None
     transcription_llm_id: Optional[int] = None
     vector_llm_id: Optional[int] = None
+    decision_llm_id: Optional[int] = None
+    decision_fallback_policy: Literal["text_on_failure", "disabled"] = "text_on_failure"
 
     @field_validator("label")
     @classmethod
@@ -89,6 +91,8 @@ class LlmProfileOut(BaseModel):
     image_llm_id: Optional[int] = None
     transcription_llm_id: Optional[int] = None
     vector_llm_id: Optional[int] = None
+    decision_llm_id: Optional[int] = None
+    decision_fallback_policy: Literal["text_on_failure", "disabled"] = "text_on_failure"
 
     model_config = ConfigDict(from_attributes=True)
 

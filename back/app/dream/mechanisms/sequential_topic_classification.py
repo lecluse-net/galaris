@@ -9,6 +9,7 @@ from typing import Any
 from uuid import UUID
 
 from sqlalchemy import String, and_, cast as sql_cast, exists, func, or_, select, update
+from sqlalchemy.orm import aliased
 
 from app.connection import Connection
 from app.conversation import (
@@ -131,32 +132,26 @@ async def propagate_classified_subject(
     """Project a classified message to its rounds and directly derived Tasks."""
 
     db = get_db()
+    await db.scalar(select(Room.id).where(Room.id == subject.messenger_room_id).with_for_update())
+    await db.refresh(subject)
+    newer_input = aliased(ConversationRoundMessage)
     linked_ids = set(
         (
             await db.scalars(
                 select(ConversationRoundMessage.round_id).where(
-                    ConversationRoundMessage.message_id == subject.id
+                    ConversationRoundMessage.message_id == subject.id,
+                    ConversationRoundMessage.role == "input",
+                    ~exists(select(newer_input.message_id).where(
+                        newer_input.round_id == ConversationRoundMessage.round_id,
+                        newer_input.role == "input",
+                        newer_input.sequence > ConversationRoundMessage.sequence,
+                    )),
                 )
             )
         ).all()
     )
     round_ids = list(linked_ids)
     if round_ids:
-        output_message_ids = select(ConversationRoundMessage.message_id).where(
-            ConversationRoundMessage.round_id.in_(round_ids),
-            ConversationRoundMessage.role == "output",
-        )
-        await db.execute(
-            update(Message)
-            .where(
-                Message.id.in_(output_message_ids),
-                Message.topic_overridden.is_(False),
-            )
-            .values(
-                topic_id=subject.topic_id,
-                contact_memory_item_id=subject.contact_memory_item_id,
-            )
-        )
         await db.execute(
             update(ConversationRound)
             .where(ConversationRound.id.in_(round_ids))
@@ -164,6 +159,18 @@ async def propagate_classified_subject(
                 topic_id=subject.topic_id,
                 contact_memory_item_id=subject.contact_memory_item_id,
             )
+        )
+        from app.conversation.facade import inherit_reply_topics
+
+        for round_id in round_ids:
+            await inherit_reply_topics(round_id)
+        await db.execute(
+            update(Message)
+            .where(Message.id.in_(select(ConversationRoundMessage.message_id).where(
+                ConversationRoundMessage.round_id.in_(round_ids),
+                ConversationRoundMessage.role == "output",
+            )))
+            .values(contact_memory_item_id=subject.contact_memory_item_id)
         )
         task_ids = select(ConversationTaskLink.task_id).where(
             ConversationTaskLink.round_id.in_(round_ids)
@@ -176,11 +183,74 @@ async def propagate_classified_subject(
                 contact_memory_item_id=subject.contact_memory_item_id,
             )
         )
+    await db.execute(update(Task).where(
+        Task.messenger_message_id == subject.id, Task.topic_id.is_(None),
+    ).values(topic_id=subject.topic_id, contact_memory_item_id=subject.contact_memory_item_id))
     await db.commit()
 
 
 class MessageTopicClassificationMechanism:
     key = "topic.classify_message"
+
+    async def claim_message(self, message_id: UUID) -> DreamClaim | None:
+        """Claim live input only when its effective profile selects Decision."""
+        async with get_db_session():
+            return await self._claim_message(message_id, require_decision=True)
+
+    async def _claim_message(
+        self, message_id: UUID, *, require_decision: bool,
+    ) -> DreamClaim | None:
+        db = get_db()
+        room_id = await db.scalar(select(Message.messenger_room_id).where(Message.id == message_id))
+        if room_id is None:
+            return None
+        # Admission also owns the room before linking inputs. Serialize claims
+        # within that scope without retaining a SQL lock during inference.
+        room = await db.scalar(select(Room).where(Room.id == room_id).with_for_update(
+            skip_locked=not require_decision,
+        ))
+        if room is None or room.topic_id is not None:
+            return None
+        row = await db.scalar(select(Message).where(
+            Message.id == message_id, Message.direction == "inbound",
+            Message.topic_id.is_(None), Message.topic_overridden.is_(False),
+            func.length(func.trim(Message.text)) > 0,
+            ~_pending_topic_approval(connection_id=Message.connection_id,
+                                    room_id=sql_cast(Message.messenger_room_id, String)),
+            ~exists(select(DreamReceipt.id).where(
+                DreamReceipt.mechanism_key == self.key,
+                DreamReceipt.subject_kind == "message",
+                DreamReceipt.subject_id == sql_cast(Message.id, String),
+            )),
+        ).with_for_update(skip_locked=True).execution_options(populate_existing=True))
+        if row is None:
+            return None
+        active = await db.scalar(select(DreamReceipt.id).join(
+            Message, DreamReceipt.subject_id == sql_cast(Message.id, String),
+        ).where(
+            DreamReceipt.mechanism_key == self.key,
+            DreamReceipt.subject_kind == "message",
+            DreamReceipt.status == "running", DreamReceipt.lease_expires_at > func.now(),
+            Message.messenger_room_id == room_id,
+        ).limit(1))
+        if active is not None:
+            return None
+        if require_decision:
+            from app.llm import llm_service
+
+            connection = await db.get(Connection, row.connection_id)
+            if connection is None or not connection.active:
+                return None
+            decision, companion, _ = await llm_service.get_decision_models_for_agent_id(
+                connection.agent_id, model_usages.DREAM,
+            )
+            if decision is None or companion is None:
+                return None
+        claim = create_running_receipt(
+            mechanism_key=self.key, subject_kind="message", subject_id=str(row.id),
+        )
+        await db.flush()
+        return claim
 
     async def is_available(self) -> bool:
         async with get_db_session():
@@ -212,6 +282,7 @@ class MessageTopicClassificationMechanism:
                         Message.direction == "inbound",
                         func.length(func.trim(Message.text)) > 0,
                         Message.topic_id.is_(None),
+                        Message.topic_overridden.is_(False),
                         ~_room_has_default_topic(Message.messenger_room_id),
                         ~_pending_topic_approval(
                             connection_id=Message.connection_id,
@@ -237,6 +308,7 @@ class MessageTopicClassificationMechanism:
                     Message.direction == "inbound",
                     func.length(func.trim(Message.text)) > 0,
                     Message.topic_id.is_(None),
+                    Message.topic_overridden.is_(False),
                     ~_room_has_default_topic(Message.messenger_room_id),
                     ~_pending_topic_approval(
                         connection_id=Message.connection_id,
@@ -255,6 +327,7 @@ class MessageTopicClassificationMechanism:
                     Message.direction == "inbound",
                     func.length(func.trim(Message.text)) > 0,
                     Message.topic_id.is_(None),
+                    Message.topic_overridden.is_(False),
                     ~_room_has_default_topic(Message.messenger_room_id),
                     ~_pending_topic_approval(
                         connection_id=Message.connection_id,
@@ -270,23 +343,16 @@ class MessageTopicClassificationMechanism:
                     ),
                 )
                 .order_by(Message.created_at, Message.id)
-                .with_for_update(skip_locked=True)
                 .limit(1)
             )
             if row is None:
                 return None
-            claim = create_running_receipt(
-                mechanism_key=self.key,
-                subject_kind="message",
-                subject_id=str(row.id),
-            )
-            await get_db().flush()
-            return claim
+            return await self._claim_message(row.id, require_decision=False)
 
     async def prepare(self, claim: DreamClaim) -> DreamPrepared:
         async with get_db_session():
             row = await get_db().get(Message, UUID(claim.subject_id))
-            if row is None or row.direction != "inbound":
+            if row is None or row.direction != "inbound" or row.topic_id is not None or row.topic_overridden:
                 return DreamPrepared(payload={})
             room = await get_db().get(Room, row.messenger_room_id)
             if room is not None and room.topic_id is not None:
@@ -306,6 +372,8 @@ class MessageTopicClassificationMechanism:
                 current_topic_id,
                 dependencies=dependencies,
             )
+            if run.evaluation.topic_id is None:
+                return DreamPrepared(payload={}, cost=run.cost)
             decision = _decision(run.evaluation.topic_id, run.evaluation.classification)
             candidates = await dependencies.catalog.list_candidates(activity=row.text)
             language = await get_db().scalar(
@@ -337,7 +405,10 @@ class MessageTopicClassificationMechanism:
             row = await get_db().get(Message, UUID(claim.subject_id))
             if row is None or row.direction != "inbound" or not payload:
                 return 0
-            room = await get_db().get(Room, row.messenger_room_id)
+            room = await get_db().scalar(select(Room).where(Room.id == row.messenger_room_id).with_for_update())
+            await get_db().refresh(row, with_for_update=True)
+            if row.topic_id is not None or row.topic_overridden:
+                return 0
             if room is not None and room.topic_id is not None:
                 return 0
             return await apply_topic_classification(

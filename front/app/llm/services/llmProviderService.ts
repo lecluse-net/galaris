@@ -13,6 +13,7 @@ export type AICapability =
     | 'vision'
     | 'image_generation'
     | 'embedding'
+    | 'decision'
     | 'transcription'
     | 'speech'
     | 'realtime_conversation'

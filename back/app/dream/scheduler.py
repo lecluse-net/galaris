@@ -8,6 +8,7 @@ from datetime import datetime, timedelta, timezone
 from loguru import logger
 
 from app.llm import llm_correlation_scope, llm_execution_scope
+from app.llm.facade import llm_call_accounting
 from app.task import has_active_task_work
 from app.voice import (
     has_active_voice_calls,
@@ -30,6 +31,8 @@ from .registry import mechanisms, register_default_mechanisms
 from .service import (
     mark_failure,
     mark_success,
+    add_application_cost,
+    claim_execution_timeout,
     reconcile_expired_receipts,
     receipt_correlation_ref,
     release_interrupted,
@@ -295,10 +298,7 @@ def _claim_timeout() -> float:
     """Claim execution budget clamped below the lease so the lease cannot
     expire while a healthy claim is still applying in another worker."""
 
-    return min(
-        runtime_settings.DREAM_CLAIM_TIMEOUT_SECONDS,
-        max(5.0, float(runtime_settings.DREAM_LEASE_SECONDS) - 60.0),
-    )
+    return claim_execution_timeout()
 
 
 async def _run_claim(mechanism: DreamMechanism, claim: DreamClaim) -> None:
@@ -331,7 +331,19 @@ async def _run_claim(mechanism: DreamMechanism, claim: DreamClaim) -> None:
         )
         phase = "applying"
         async with asyncio.timeout(_claim_timeout()):
-            result_count = await mechanism.apply(claim, payload)
+            with (
+                llm_call_accounting() as accounting,
+                llm_correlation_scope(receipt_correlation_ref(claim.receipt_id)),
+                llm_execution_scope(
+                    source_kind=claim.subject_kind,
+                    source_id=claim.subject_id,
+                    messenger_origin=claim.subject_kind in {"message", "conversation_round"},
+                ),
+            ):
+                try:
+                    result_count = await mechanism.apply(claim, payload)
+                finally:
+                    await add_application_cost(claim, accounting.cost)
             await mark_success(claim, result_count=result_count)
         if mechanism.key == "memory.maintain_findings" and result_count == 0:
             # Scanning an unchanged item cannot affect graph membership. During
@@ -505,12 +517,18 @@ async def start() -> None:
         )
         raise RuntimeError("Dream worker did not start within one second.")
     logger.info("Dream scheduler started mechanisms={}", len(mechanisms()))
+    from .live_topics import start as start_live_topics
+
+    start_live_topics()
 
 
 async def stop() -> None:
     global _worker_started_event, _worker_task, _current_work, _wake_event, _stopping
     global _runtime_update_task, _runtime_update_pending
     _stopping = True
+    from .live_topics import stop as stop_live_topics
+
+    await stop_live_topics()
     _set_runtime_state(
         status="stopped",
         phase="stopped",

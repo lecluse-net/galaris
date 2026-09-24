@@ -156,6 +156,14 @@ prevents a later room change from overwriting choices made with `@topic`. Conver
 without an override immediately reflect the room’s new Topic, without rewriting their durable
 journal. In the absence of a room Topic, historical classification retains its behavior.
 
+When the effective profile selects a Decision model, authorized incoming text messages also
+start topic classification alongside admission. This uses Dream's existing mechanism and
+receipt without waiting for idle maintenance; Dream skips applied results and recovers failures.
+Manual and room topics keep priority, and a late result from an older input cannot replace a
+newer input's topic. The harness and memory tools read an available late topic without waiting
+for the model or replaying a completed search.
+See [ADR 0130](../../../../project/decisions/0130-live-message-topic-decisions.md).
+
 Creating an internal conversation atomically persists the recipient agent, its label, its optional
 Topic, and the owner’s preference indicating whether the last message may be displayed in the
 list. Older clients that provide only the agent retain the numbered label derived from it and
@@ -766,10 +774,13 @@ the same identity and scope, without capturing a decision. Chat sends its UI lan
 and attachment messages; the journal preserves it for admission and recovery. Dream proposals use
 the source round's language, then the message language, and finally the instance default.
 
-Each journal text message and each completed Voice turn separately receives a `topic_id` from the
-sequential detector. The text collector isolates connection plus room, retains at most ten
-messages, and does not invent a remote timestamp during backfill. The Voice collector isolates
-the session and projects at most five Human/AI turns within the same limit. A proposed new Topic
+Only human inputs in a round can trigger a `topic_id` choice.
+Text and audio replies inherit the last input's topic without any LLM call, even when their
+content appears to change the subject. When the topic is unknown, outputs remain unclassified
+until classification or the human transcript arrives and synchronizes them.
+The Lab detector applies the same free inheritance; a greeting without a known topic produces `null`.
+The canonical journal collector retains at most ten room messages, including voice transcripts,
+without inventing remote timestamps during backfill. A proposed new Topic
 blocks the remainder of this stream until human resolution, but only for the approval’s validity
 period. An expired `PENDING` interaction remains in the audit and can no longer immobilize the
 room or its message backlog; a `PROCESSING` interaction remains blocking until its idempotent

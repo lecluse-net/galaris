@@ -43,7 +43,9 @@ export interface LabTaskReference {
 
 export interface LabConfig {
   lab_llm_id: number | null
+  dispatcher_llm_id: number | null
   llms: Array<{ id: number; code: string; label: string; model: string }>
+  decision_llms: Array<{ id: number; code: string; label: string; model: string }>
 }
 
 export interface EvidenceCoverage {

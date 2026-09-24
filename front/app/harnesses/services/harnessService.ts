@@ -161,10 +161,10 @@ export const harnessService = {
         return api.get(`/harnesses/agents/${agentId}`)
     },
     install(agentId: number, harnessId: string): Promise<AxiosResponse<HarnessSelection>> {
-        return api.put(`/harnesses/agents/${agentId}`, { harness_id: harnessId }, { timeout: 1_260_000 })
+        return api.put(`/harnesses/agents/${agentId}`, { harness_id: harnessId })
     },
     selectInternal(agentId: number): Promise<AxiosResponse<HarnessSelection>> {
-        return api.delete(`/harnesses/agents/${agentId}`, { timeout: 1_260_000 })
+        return api.delete(`/harnesses/agents/${agentId}`)
     },
     taskBlockers(agentId: number): Promise<AxiosResponse<HarnessTaskBlockers>> {
         return api.get(`/harnesses/agents/${agentId}/task-blockers`)
@@ -179,7 +179,7 @@ export const harnessService = {
         agentId: number,
         action: HarnessAction,
     ): Promise<AxiosResponse<{ status: string; output: string }>> {
-        return api.post(`/harnesses/agents/${agentId}/actions/${action}`, undefined, { timeout: 1_260_000 })
+        return api.post(`/harnesses/agents/${agentId}/actions/${action}`)
     },
     logs(agentId: number, lines = 300): Promise<AxiosResponse<{ lines: string[] }>> {
         return api.get(`/harnesses/agents/${agentId}/logs`, { params: { lines } })

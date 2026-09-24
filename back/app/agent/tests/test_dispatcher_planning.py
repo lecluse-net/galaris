@@ -172,6 +172,7 @@ def test_dispatcher_contract_upgrade_preserves_frozen_inferences(kind, output_ty
 @pytest.fixture(autouse=True)
 def configured_dispatcher_model(monkeypatch):
     monkeypatch.setattr(dispatcher_mod, "has_agent_profile_model", AsyncMock(return_value=True))
+    monkeypatch.setattr(dispatcher_mod, "resolve_agent_decision_models", AsyncMock(return_value=(None, None, False)))
 
 
 def _task(**kw) -> Task:

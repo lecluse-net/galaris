@@ -34,7 +34,7 @@ from .contracts import (
     OBJECTIVE_IS_STANDALONE_DATA_KEY,
 )
 from .conversation_context import conversation_context_block, current_message_data
-from .model_resolver import has_agent_profile_model, require_agent_profile_model
+from .model_resolver import has_agent_profile_model, require_agent_profile_model, resolve_agent_decision_models
 from .registry import get_driver_spec
 
 
@@ -424,6 +424,12 @@ class Dispatcher:
             return finish(result)
 
         # Resolve the model only after capabilities and explicit constraints.
+        decision_selected = False
+        decision_fallback: LLM | None = None
+        allow_decision_fallback = False
+        if llm_override is None:
+            llm_override, decision_fallback, allow_decision_fallback = await resolve_agent_decision_models(task.agent)
+            decision_selected = llm_override is not None
         if llm_override is None and not await has_agent_profile_model(task.agent, model_usages.DISPATCHER):
             route, effort = choices[0]
             result = self._forced_decision_result(
@@ -442,6 +448,10 @@ class Dispatcher:
             spec=spec, choices=choices,
         )
         inference_options: dict[str, Any] = {}
+        if llm_override is not None and (decision_selected or "decision" in (llm_override.service_capabilities or [])):
+            inference_options["decision_choices"] = choices
+            inference_options["decision_fallback_llm_id"] = decision_fallback.id if decision_fallback else None
+            inference_options["allow_decision_fallback"] = allow_decision_fallback and record_task_trace
         if llm_override is not None:
             inference_options["llm_override"] = llm_override
         if not record_task_trace:
@@ -890,6 +900,9 @@ class Dispatcher:
         allow_end: bool = False,
         agent_run_id: UUID | None = None,
         conversation_round_id: UUID | None = None,
+        decision_choices: tuple[tuple[ForcedRoute, Effort], ...] | None = None,
+        decision_fallback_llm_id: int | None = None,
+        allow_decision_fallback: bool = False,
     ) -> "DispatchResult":
         """Run structured inference and degrade gracefully to EXEC on provider failure.
 
@@ -910,7 +923,38 @@ class Dispatcher:
                 ReasoningEffort | None,
                 getattr(task, "reasoning_effort_override", None),
             )
-            if allow_end:
+            decision_metadata: dict[str, Any] = {}
+            if decision_choices is not None and not allow_end:
+                from app.llm.facade import ChoiceQuestion, DecisionInferenceRequest, run_decision
+                native = await run_decision(DecisionInferenceRequest(
+                    llm_id=llm.id, fallback_llm_id=decision_fallback_llm_id,
+                    allow_text_fallback=allow_decision_fallback,
+                    prompt=human_prompt, system_prompt=system_prompt,
+                    task_id=task.id if record_task_trace else None, agent_id=task.agent_id,
+                    agent_run_id=agent_run_id, purpose=inference_purpose,
+                    model_field=model_usages.DISPATCHER,
+                    reasoning_effort=reasoning_effort_override, count_tokens_before_request=False,
+                    parameters={"temperature": 0.0, "max_tokens": 256},
+                    questions={
+                        "dispatch": ChoiceQuestion(
+                            instructions="Choose the permitted route and effort best suited to the task, following the dispatch policy.",
+                            criteria={f"{route}:{effort}": f"Route {route}, effort {effort}"
+                                      for route, effort in decision_choices},
+                        ),
+                        "language": ChoiceQuestion(
+                            instructions="Choose the response language matching the user's task.",
+                            criteria={language: language for language in SUPPORTED_LANGUAGES},
+                        ),
+                    },
+                ))
+                route, effort = native.output.answers["dispatch"].choice.split(":")
+                decision = DispatchDecision.model_validate({
+                    "route": route, "effort": effort,
+                    "language": native.output.answers["language"].choice,
+                })
+                inference_cost = native.cost
+                decision_metadata = native.output.model_dump(mode="json")
+            elif allow_end:
                 inference = await _run_dispatch_inference(
                     llm=llm,
                     output_type=ConversationDispatchDecision,
@@ -955,6 +999,7 @@ class Dispatcher:
                 tools_used=[],
                 success=True,
                 execution_time=time.time() - start_time,
+                decision_inference=decision_metadata or None,
             )
 
         except ContentFilterFinishReasonError as e:
@@ -970,6 +1015,10 @@ class Dispatcher:
                 f"filter; falling back to {fallback_route}."
             )
         except Exception as e:
+            if decision_choices is not None:
+                # The decision service owns its bounded fallback policy, including
+                # access refusals. Do not conceal its terminal failure with a route.
+                raise
             # Malformed provider responses must not strand a human conversation. For an
             # AI peer, END is the bounded fallback so a provider failure cannot sustain a
             # reply loop.

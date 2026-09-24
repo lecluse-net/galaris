@@ -29,6 +29,7 @@ d'implémentation ni nouvel ordre de priorité produit.
 | [optimisation-prompts-agentiques.md](optimisation-prompts-agentiques.md) | `partial` | Mesures sur corpus multilingue et sélection du contexte selon les résultats, sans modifier le contrat des sessions de Task. |
 | [amelioration-globale-memoire.md](amelioration-globale-memoire.md) | `partial` | Qualification multilingue et sur d'autres corpus, utilité aval, nouvelles extractions de PJ, provenance fine, observation et expériences Memory/Dream/Topics. |
 | [outils-mcp-multimedia.md](outils-mcp-multimedia.md) | `partial` | Qualification des comptes et livraisons réels ; accès officiel Suno, références média, composition avancée et extensions locales à concevoir séparément. |
+| [modeles-decision.md](modeles-decision.md) | `partial` | Dispatcher qualifié sur 14 cas synthétiques. Topics, rétention et dédoublonnage mémoire branchés, avec Lab hybride ; classement des messages en parallèle de l'admission ([ADR 0130](../decisions/0130-live-message-topic-decisions.md)). Qualifier ces nouveaux usages avec Jev réel ; adaptateurs locaux différés. |
 
 ## Conceptions conservées
 

@@ -342,9 +342,20 @@ async def create_from_messenger(
     await apply_goal_lineage(task_data)
     new_task = build(task_data)
     new_task.messenger_message_id = messenger_message_id
-    from app.messenger import Message
+    from app.messenger import Message, Room, resolve_effective_topic_id
 
-    message = await db.get(Message, messenger_message_id)
+    message = await db.get(Message, messenger_message_id, populate_existing=True)
+    if message is not None:
+        # Classification can finish while the admission payload is being built.
+        # The journal lock owned by the caller makes this projection authoritative.
+        new_task.topic_id = resolve_effective_topic_id(
+            message.topic_id,
+            topic_overridden=message.topic_overridden,
+            room_topic_id=await db.scalar(
+                select(Room.topic_id).where(Room.id == message.messenger_room_id)
+            ),
+        )
+        new_task.contact_memory_item_id = message.contact_memory_item_id
     new_task.requester_user_id = (
         message.requester_user_id if message is not None else None
     )

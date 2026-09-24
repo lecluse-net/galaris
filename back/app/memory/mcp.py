@@ -8,6 +8,7 @@ from typing import Any, Literal, cast
 from uuid import UUID
 
 from loguru import logger
+from sqlalchemy import select
 
 from app.task import Task
 from app.tools.mcp_loader import McpToolContext, context_language, mcp_tool
@@ -86,13 +87,25 @@ async def _recall_scope(
     topic_id: UUID | None = None
     contact_item_id: UUID | None = None
     if ctx.task_id is not None:
-        task = await get_db().get(Task, ctx.task_id)
-        if task is not None and task.agent_id == ctx.agent_id:
+        task = (
+            await get_db().execute(
+                select(Task.topic_id, Task.contact_memory_item_id).where(
+                    Task.id == ctx.task_id, Task.agent_id == ctx.agent_id,
+                )
+            )
+        ).one_or_none()
+        if task is not None:
             topic_id = task.topic_id
             contact_item_id = task.contact_memory_item_id
     else:
         turn = ctx.resource("conversation_turn")
         if turn is not None and getattr(turn, "agent_id", None) == ctx.agent_id:
+            from app.conversation.contracts import ConversationTurn
+            from app.conversation.facade import current_turn_scope
+
+            if isinstance(turn, ConversationTurn):
+                topic_id, contact_item_id = await current_turn_scope(turn)
+                return await service.projected_topic_item_id(topic_id), contact_item_id
             raw_topic_id = getattr(turn, "topic_id", None)
             raw_contact_item_id = getattr(turn, "contact_memory_item_id", None)
             topic_id = raw_topic_id if isinstance(raw_topic_id, UUID) else None

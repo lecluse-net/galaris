@@ -24,7 +24,7 @@ from .models import (
     kind_from_mime,
 )
 from .interface import HistoryPage, BridgeSpec, ParamDef, NotSupported
-from .events import Signal, message_journaled, message_received, message_sent, interaction_changed
+from .events import Signal, message_journaled, message_received, message_sent, interaction_changed, message_admitting
 from .native_interactions import read_internal_interaction, answer_internal_interaction
 from .inbound import on_message, dispatch_incoming
 from .facade import (
@@ -217,6 +217,7 @@ __all__ = [
     "Signal",
     "message_journaled",
     "message_received",
+    "message_admitting",
     "message_sent",
     "on_message",
     "dispatch_incoming",

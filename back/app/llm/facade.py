@@ -36,7 +36,11 @@ from .provider_facade import (
 
 if TYPE_CHECKING:
     from app.agent.contracts import AIResult
-from .contracts import InferenceEvent, InferenceRequest, TextInferenceRequest, StructuredOutputSpec, InferenceRead, InferenceCommand, InferenceAction, InferenceRunEvent
+from .contracts import InferenceEvent, InferenceRequest, TextInferenceRequest, StructuredOutputSpec, InferenceRead, InferenceCommand, InferenceAction, InferenceRunEvent, DecisionInferenceRequest
+from .decision_contracts import ChoiceQuestion, DecisionResult, DecisionUnavailable, ProviderDecisionResponse
+from .provider_facade import ProviderConnection, ProviderAuthenticationError, register_decision_provider
+from .inference_execution import run_decision
+from .profile_decisions import run_profile_decision, use_decision_models
 
 
 async def proxy_chat_completion(body: dict[str, Any], **options: Any) -> JSONResponse | StreamingResponse:
@@ -291,6 +295,9 @@ async def get_managed_runtime_credential(
 
 
 __all__ = [
+    "ChoiceQuestion", "DecisionResult", "DecisionInferenceRequest", "run_decision", "run_profile_decision", "use_decision_models",
+    "DecisionUnavailable", "ProviderDecisionResponse", "ProviderConnection",
+    "ProviderAuthenticationError", "register_decision_provider",
     "register_inference_output", "inference_output_spec", "record_structured_inferences",
     "start_inference", "read_inference", "control_inference", "stream_inference",
     "start_inference_worker", "stop_inference_worker", "inference_worker_running",

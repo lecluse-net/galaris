@@ -109,6 +109,8 @@ class OpenAICompatibleHandler(BaseLLMHandler):
         inputs = {str(value).lower() for value in as_list(arch.get("input_modalities"))}
         outputs = {str(value).lower() for value in as_list(arch.get("output_modalities"))}
         service_capabilities: List[str] = []
+        if "decisions" in outputs:
+            service_capabilities.append("decision")
         if "embeddings" in outputs:
             service_capabilities.append("embedding")
         if "image" in outputs:

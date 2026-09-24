@@ -35,7 +35,12 @@ class OpenRouterResourceDiscovery:
         capability: AICapability,
     ) -> list[LLMModelInfo]:
         base = connection.base_url.rstrip("/")
-        if capability == "video_generation":
+        if capability == "decision":
+            models = await self._models_at(
+                connection, f"{base}/models", params={"output_modalities": "decisions"},
+            )
+            models = [model for model in models if "decision" in model.service_capabilities]
+        elif capability == "video_generation":
             models = await self._models_at(connection, f"{base}/videos/models")
         elif capability == "music_generation":
             models = await self._models_at(connection, f"{base}/models", params={"output_modalities": "audio"})

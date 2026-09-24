@@ -169,6 +169,33 @@ async def get_profile_llm_for_agent_id(
     return await get_llm_from_value(value, model_field) if value is not None else None
 
 
+async def get_decision_models_for_agent_id(
+    agent_id: int | None, model_field: str,
+) -> tuple[LLM | None, LLM | None, bool]:
+    """Freeze the decision model and its text companion from one effective profile."""
+    from . import profile_service
+
+    profile_id: int | None = None
+    if agent_id is not None:
+        row = (await get_db().execute(select(Agent.profile_id).where(
+            Agent.id == agent_id, Agent.deleted_at.is_(None),
+        ))).one_or_none()
+        if row is None:
+            return None, None, False
+        profile_id = row.profile_id
+    if profile_id is None:
+        profile_id = await profile_service.get_current_profile_id()
+    profile = await profile_service.get_profile(profile_id) if profile_id is not None else None
+    if profile is None or profile.decision_llm_id is None:
+        return None, None, False
+    decision = await get_llm(profile.decision_llm_id)
+    if decision is None:
+        raise ValueError("Configured decision model is unavailable.")
+    text_id: int | None = getattr(profile, model_field)
+    companion = await get_llm(text_id) if text_id is not None else None
+    return decision, companion, profile.decision_fallback_policy != "disabled"
+
+
 async def get_profile_reasoning_effort(
     model_field: str,
     *,
