@@ -29,6 +29,14 @@ def receipt_correlation_ref(receipt_id: UUID) -> str:
     return f"dream-receipt:{receipt_id}"
 
 
+def claim_execution_timeout() -> float:
+    """Share the existing Dream execution budget, below its durable lease."""
+    return min(
+        runtime_settings.DREAM_CLAIM_TIMEOUT_SECONDS,
+        max(5.0, float(runtime_settings.DREAM_LEASE_SECONDS) - 60.0),
+    )
+
+
 def _lease_expiry(now: datetime) -> datetime:
     return now + timedelta(seconds=runtime_settings.DREAM_LEASE_SECONDS)
 
@@ -347,6 +355,14 @@ async def store_prepared(
         record = await _owned_receipt(claim)
         record.prepared_payload = dict(payload)
         record.cost = float(cost)
+
+
+async def add_application_cost(claim: DreamClaim, cost: float) -> None:
+    """Retain application inference costs, including a failed application attempt."""
+    if cost:
+        async with get_db_session():
+            record = await _owned_receipt(claim)
+            record.cost += cost
 
 
 async def mark_success(claim: DreamClaim, *, result_count: int) -> None:

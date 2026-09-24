@@ -1,4 +1,4 @@
-# 0127 — Réconciliation des skills avant exécution
+# 0131 — Réconciliation des skills avant exécution
 
 Statut : accepté. Date : 2026-09-24.
 

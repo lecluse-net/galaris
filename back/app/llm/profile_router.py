@@ -49,7 +49,7 @@ def _update_values(payload: LlmProfileUpdate) -> dict[str, str | None] | None:
     data = payload.model_dump(exclude_unset=True)
     explicit_columns = [
         column
-        for column in (*PROFILE_MODEL_FIELDS, *PROFILE_REASONING_FIELDS)
+        for column in (*PROFILE_MODEL_FIELDS, *PROFILE_REASONING_FIELDS, "decision_fallback_policy")
         if column in data
     ]
     if not explicit_columns:

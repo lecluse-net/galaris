@@ -6,7 +6,6 @@ const API_URL = '/api'
 const ACCESS_TOKEN_KEY = 'access_token'
 const USER_KEY = 'user'
 const SESSION_GENERATION_KEY = 'galaris:session-generation'
-const REQUEST_TIMEOUT_MS = 60_000
 
 export const AUTH_TOKEN_CHANGED_EVENT = 'galaris:auth-token-changed'
 
@@ -198,7 +197,6 @@ export function refreshAccessToken(): Promise<string> {
             // rotation. The server's existing replay policy stays unchanged.
             adapter: 'fetch',
             fetchOptions: { keepalive: true },
-            timeout: 15_000,
             headers: previousToken
                 ? { Authorization: `Bearer ${previousToken}` }
                 : undefined
@@ -226,7 +224,8 @@ function redirectToGuestHome(): void {
 const api: AxiosInstance = axios.create({
     baseURL: API_URL,
     withCredentials: true,
-    timeout: REQUEST_TIMEOUT_MS,
+    // Axios defaults to no deadline. Slow local processing must be allowed to
+    // finish; callers use AbortSignal for explicit cancellation.
     headers: {
         'Content-Type': 'application/json'
     }
@@ -242,10 +241,6 @@ api.interceptors.request.use((config: RetryableRequestConfig) => {
     // application/json header would serialize FormData and drop uploaded files.
     if (config.data instanceof FormData) {
         config.headers.delete('Content-Type')
-        if (config.timeout === REQUEST_TIMEOUT_MS) config.timeout = 600_000
-    }
-    if (config.responseType === 'blob' && config.timeout === REQUEST_TIMEOUT_MS) {
-        config.timeout = 600_000
     }
     const token = getStoredAccessToken()
     if (token) {

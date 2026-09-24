@@ -287,6 +287,7 @@ async def test_memory_extraction_retries_invalid_json_before_success(
     monkeypatch.setattr(memory_extraction, "run_text", fake_run_text)
     prepared, cost = await run_memory_extraction(
         llm=cast(LLM, object()),
+        use_decision_profile=False,
         input_data=MemoryExtractionInput(
             source_kind="task",
             topic={"title": "Préférences"},
@@ -330,6 +331,7 @@ async def test_memory_extraction_fails_when_every_json_attempt_is_invalid(
     with pytest.raises(ValueError, match="exhausted its valid-JSON attempts"):
         await run_memory_extraction(
             llm=cast(LLM, object()),
+            use_decision_profile=False,
             input_data=MemoryExtractionInput(
                 source_kind="task",
                 topic={"title": "Préférences"},

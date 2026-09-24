@@ -303,14 +303,11 @@ async def test_turn_lineage_respects_a_cleared_durable_round_topic(
 ) -> None:
     turn = _turn(topic_id=uuid4(), contact_memory_item_id=uuid4())
     db = SimpleNamespace(
-        get=AsyncMock(
-            return_value=SimpleNamespace(
-                topic_id=None,
-                contact_memory_item_id=None,
-            )
-        )
+        execute=AsyncMock(return_value=SimpleNamespace(one_or_none=lambda: SimpleNamespace(
+            topic_id=None, contact_memory_item_id=None,
+        ))),
     )
-    monkeypatch.setattr(conversation_mcp, "get_db", lambda: db)
+    monkeypatch.setattr("app.conversation.facade.get_db", lambda: db)
 
     assert await conversation_mcp._turn_lineage(turn) == (None, None)
 
@@ -464,6 +461,11 @@ async def test_created_task_inherits_latest_round_topic(
         refresh=AsyncMock(),
     )
     monkeypatch.setattr(conversation_mcp, "get_db", lambda: db)
+    monkeypatch.setattr("app.conversation.facade.get_db", lambda: SimpleNamespace(
+        execute=AsyncMock(return_value=SimpleNamespace(one_or_none=lambda: SimpleNamespace(
+            topic_id=topic_id, contact_memory_item_id=contact_id,
+        ))),
+    ))
     monkeypatch.setattr(
         "app.task.task_service.build",
         lambda task_data: built.append(task_data) or created_task,

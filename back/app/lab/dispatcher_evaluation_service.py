@@ -596,7 +596,7 @@ async def start_run(dataset_id: UUID, data: EvaluationRunStart) -> EvaluationRun
     if dataset is None:
         raise LookupError(await tr("evaluation_api.errors.dataset_not_found"))
     llm = await llm_service.get_llm(data.llm_id)
-    if llm is None or "chat" not in llm.service_capabilities:
+    if llm is None or not {"chat", "decision"}.intersection(llm.service_capabilities):
         raise ValueError(await tr("evaluation_api.errors.run_llm_invalid"))
     judge = (
         await llm_service.get_llm(data.judge_llm_id)

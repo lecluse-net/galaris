@@ -23,6 +23,7 @@ class LLMCallPurpose(StrEnum):
     DREAM_TOPIC_REUSE = "dream.topic_reuse"
     DREAM_TOPIC_CREATION = "dream.topic_creation"
     DREAM_MEMORY_EXTRACTION = "dream.memory_extraction"
+    MEMORY_DUPLICATE_DECISION = "memory.duplicate_decision"
     DREAM_TASK_OUTCOME_REFLECTION = "dream.task_outcome_reflection"
     DREAM_SKILL_LEARNING = "dream.skill_learning"
 

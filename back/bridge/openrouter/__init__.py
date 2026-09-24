@@ -24,6 +24,8 @@ from .transcription import OpenRouterTranscription
 from .usage import OpenRouterUsageAccounting
 from .image import OpenRouterImageGeneration
 from .multimedia import OpenRouterMedia
+from .decisions import OpenRouterDecisions
+from app.llm.facade import register_decision_provider
 
 
 def _request_parameters(model: str) -> RequestParameterPolicy:
@@ -51,6 +53,7 @@ PROFILE = ProviderProfile(
     supports_transcription=True,
     supports_responses=True,
     capabilities=(
+        "decision",
         "chat",
         "vision",
         "image_generation",
@@ -65,6 +68,7 @@ PROFILE = ProviderProfile(
 )
 
 register_provider(PROFILE)
+register_decision_provider(PROFILE.code, OpenRouterDecisions())
 register_media_input_policy(PROFILE.code, ProviderMediaInputPolicy(
     audio_types=frozenset({"audio/wav", "audio/mpeg", "audio/aiff", "audio/aac",
                            "audio/ogg", "audio/flac", "audio/mp4"}),

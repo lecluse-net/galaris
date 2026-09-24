@@ -8,6 +8,7 @@ from .handlers import LLMModelInfo
 
 
 AICapability = Literal[
+    "decision",
     "chat",
     "vision",
     "image_generation",
@@ -24,6 +25,7 @@ AICapability = Literal[
 AIResourceType = Literal["model", "voice", "preset", "service"]
 
 AI_CAPABILITIES: tuple[AICapability, ...] = (
+    "decision",
     "chat",
     "vision",
     "image_generation",
@@ -87,7 +89,7 @@ def default_modalities(capability: AICapability) -> dict[str, bool]:
         flags.update(input_text=True, input_image=True, output_text=True)
     elif capability == "image_generation":
         flags.update(input_text=True, output_image=True)
-    elif capability == "embedding":
+    elif capability in {"embedding", "decision"}:
         flags.update(input_text=True)
     elif capability == "transcription":
         flags.update(input_audio=True, output_text=True)

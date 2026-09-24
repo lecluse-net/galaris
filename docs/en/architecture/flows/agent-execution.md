@@ -9,7 +9,7 @@ before copying; a failed projection prevents stale execution. Refresh requests a
 persisted independently of the UI, and runtime status includes skill readiness.
 A checkpoint continuation retains the skills and credentials of the remote
 operation it reconciles.
-See [0127](../../../../project/decisions/0127-harness-skill-reconciliation.md).
+See [0131](../../../../project/decisions/0131-harness-skill-reconciliation.md).
 
 The shared harness validator holds the candidate result until the stream ends normally
 and adapter cleanup completes. Messages are still forwarded immediately. An invalid

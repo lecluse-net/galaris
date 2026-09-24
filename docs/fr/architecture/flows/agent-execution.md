@@ -9,7 +9,7 @@ avant copie et une erreur empêche l'exécution avec une projection périmée. L
 demandes de rafraîchissement sont persistées, indépendamment de l'interface ; le
 statut du runtime expose l'état des skills. Une reprise avec checkpoint conserve
 les skills et credentials de l'opération distante qu'elle réconcilie. Voir
-[0127](../../../../project/decisions/0127-harness-skill-reconciliation.md).
+[0131](../../../../project/decisions/0131-harness-skill-reconciliation.md).
 
 La validation commune des harnais retient le résultat candidat jusqu’à la fermeture
 normale du flux et au nettoyage de l’adaptateur. Les messages restent diffusés

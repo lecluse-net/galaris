@@ -96,6 +96,49 @@ async def _start_test_session(
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("output_first", [False, True])
+async def test_voice_replies_inherit_the_human_topic_including_late_input(
+    db: AsyncSession, monkeypatch: pytest.MonkeyPatch, output_first: bool,
+) -> None:
+    from app.topic import Topic
+    from app.dream.mechanisms.sequential_topic_classification import propagate_classified_subject
+
+    session = await _start_test_session(
+        db, monkeypatch, agent_id=await _agent_id(db), room_id="synthetic-gardening",
+    )
+    topic = Topic(title="Gardening")
+    db.add(topic)
+    await db.flush()
+    turn = await conversation_service.start_audio_turn(
+        session_id=session.id, run_id=uuid4(), topic_id=topic.id,
+    )
+    if output_first:
+        await conversation_service.record_turn_outputs(turn.id, ["Water in the morning."])
+    input_id = await conversation_service.record_turn_input(turn.id, "How do I water tomatoes?")
+    output_ids = await conversation_service.record_turn_outputs(
+        turn.id, ["Water in the morning.", "Keep the soil moist."],
+    )
+    source = await db.get(Message, input_id, populate_existing=True)
+    assert source is not None and source.topic_id == topic.id
+    for message_id in output_ids:
+        reply = await db.get(Message, message_id, populate_existing=True)
+        assert reply is not None and reply.topic_id == source.topic_id
+
+    # A late classification (or explicit clearing) reaches every response chunk.
+    source.topic_id = None
+    source.topic_overridden = True
+    await db.commit()
+    await propagate_classified_subject(source)
+    await conversation_service.record_turn_outputs(turn.id, ["A final detail."], response_sequence=2)
+    replies = list((await db.scalars(select(Message).join(ConversationRoundMessage).where(
+        ConversationRoundMessage.round_id == turn.id,
+        ConversationRoundMessage.role == "output",
+    ).execution_options(populate_existing=True))).all())
+    assert len(replies) == 3
+    assert all(reply.topic_id is None and reply.topic_overridden for reply in replies)
+
+
+@pytest.mark.asyncio
 async def test_audio_call_is_journaled_as_distinct_canonical_messages(
     db: AsyncSession,
     monkeypatch: pytest.MonkeyPatch,

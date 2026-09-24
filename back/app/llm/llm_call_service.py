@@ -934,6 +934,13 @@ async def create_running_call(
     requester_user_id: int | None = None,
     is_subscription: bool = False,
 ) -> LLMCall:
+    from .call_capture import text_call_capture
+
+    capture = text_call_capture.get()
+    if capture is not None and capture.call_limit is not None:
+        if capture.calls_started >= capture.call_limit:
+            raise RuntimeError("Inference physical call budget exhausted.")
+        capture.calls_started += 1
     messages = as_list(request_body.get("messages"))
     typed_messages = [as_dict(m) for m in messages if isinstance(m, dict)]
     task_objective = ""
@@ -1047,9 +1054,6 @@ async def create_running_call(
         await owned(owner)
         call.inference_attempt_id = owner.attempt_id
     db.add(call)
-    from .call_capture import text_call_capture
-
-    capture = text_call_capture.get()
     if capture is not None:
         from .models import LLMCallEvent
 
@@ -1158,6 +1162,7 @@ async def finalize_call(
     output_rate: float | None = None,
     first_token_at: Optional[datetime] = None,
     preserve_completed: bool = False,
+    effective_model: str | None = None,
 ) -> None:
     """Finalize from an independent session, including after a streaming response."""
     async with AsyncSessionLocal() as db:
@@ -1166,6 +1171,8 @@ async def finalize_call(
             return
         if preserve_completed and call.status == "completed":
             return
+        if effective_model is not None:
+            call.effective_model = effective_model
         now = datetime.now(timezone.utc)
         usage = as_dict(trace.get("usage"))
         call.status = status

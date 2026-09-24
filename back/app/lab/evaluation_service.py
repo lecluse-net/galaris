@@ -172,8 +172,14 @@ async def is_registered(task_id: UUID) -> bool:
 async def config() -> LabConfig:
     llms = await llm_service.list_llms(capability="chat")
     lab_llm = await llm_service.get_profile_llm(model_usages.LAB)
+    decision_llms = await llm_service.list_llms(capability="decision")
+    dispatcher_llm = (await llm_service.get_profile_llm(model_usages.DECISION)
+                      or await llm_service.get_profile_llm(model_usages.DISPATCHER))
     return LabConfig(
         lab_llm_id=lab_llm.id if lab_llm is not None else None,
+        dispatcher_llm_id=dispatcher_llm.id if dispatcher_llm is not None else None,
+        decision_llms=[LabLlmOption(id=llm.id, code=llm.code, label=llm.label, model=llm.llm_name)
+                       for llm in decision_llms],
         llms=[
             LabLlmOption(
                 id=llm.id,

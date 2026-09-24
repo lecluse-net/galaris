@@ -68,14 +68,14 @@ class TopicDetectionLabOutput(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    topics: list[str] = Field(min_length=1, max_length=500)
+    topics: list[str | None] = Field(min_length=1, max_length=500)
 
     @field_validator("topics")
     @classmethod
-    def normalize_topics(cls, values: list[str]) -> list[str]:
-        topics = [value.strip() for value in values]
-        if any(not value for value in topics):
-            raise ValueError("Every message must have an expected Topic.")
+    def normalize_topics(cls, values: list[str | None]) -> list[str | None]:
+        topics = [value.strip() if value is not None else None for value in values]
+        if any(value == "" for value in topics):
+            raise ValueError("A Topic must be a non-empty title or null when not yet known.")
         return topics
 
 
@@ -243,7 +243,8 @@ async def evaluate_topic_detection(
     input_data: Any,
     llm: LLM,
     configuration: TopicDetectionLabConfiguration | None = None,
-) -> tuple[dict[str, list[str]], float]:
+    use_decision_profile: bool = False,
+) -> tuple[dict[str, list[str | None]], float]:
     """Execute the production detector sequentially for a complete exchange."""
 
     detector_input = TopicDetectionLabInput.model_validate(input_data)
@@ -256,12 +257,13 @@ async def evaluate_topic_detection(
         catalog=catalog,
         model=PromptedTopicDetectionModel(
             llm,
+            use_decision_profile=use_decision_profile,
             continuity_system_prompt=configuration.prompts.continuity_system_prompt,
             resolution_system_prompt=configuration.prompts.resolution_system_prompt,
         ),
     )
     current_topics: dict[tuple[str, str], UUID | None] = {}
-    detected_topics: list[str] = []
+    detected_topics: list[str | None] = []
     cost = 0.0
     for index, message in enumerate(detector_input.messages):
         scope = (
@@ -280,6 +282,11 @@ async def evaluate_topic_detection(
             prior_parameters=configuration.prior,
             context_characters=configuration.context_characters,
         )
+        if run.evaluation.topic_id is None:
+            current_topics[scope] = None
+            detected_topics.append(None)
+            cost += run.cost
+            continue
         selected_topic = await catalog.get_candidate(run.evaluation.topic_id)
         if selected_topic is None:
             raise ValueError("The Lab detector returned an unknown Topic.")

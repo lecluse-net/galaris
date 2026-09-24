@@ -3,6 +3,16 @@
 from app.llm.capabilities import infer_capabilities, with_capability
 from app.llm.handlers import LLMModelInfo
 from app.llm.provider_catalog import get_provider_profile
+from app.llm.handlers.openai_compatible import OpenAICompatibleHandler
+
+
+def test_decision_metadata_never_advertises_text_generation() -> None:
+    model = OpenAICompatibleHandler().parse_models({"data": [{
+        "id": "opaque-model", "architecture": {"input_modalities": ["text"], "output_modalities": ["decisions"]},
+    }]})[0]
+    assert infer_capabilities(model) == ["decision"]
+    assert model.modalities["input_text"] is True
+    assert model.modalities["output_text"] is False
 
 
 def test_specialized_models_are_not_classified_as_chat() -> None:

@@ -76,6 +76,10 @@ class Signal:
 # Canonical, deduplicated inbound message.
 message_received = Signal("message_received")
 
+# Live, persisted input about to enter business admission. Optional consumers
+# schedule independent work and must never delay or reject admission.
+message_admitting = Signal("message_admitting")
+
 # Confirmed outbound message, available for optional logging and auditing.
 message_sent = Signal("message_sent")
 

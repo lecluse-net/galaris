@@ -29,6 +29,9 @@ class LlmProfile(Base):
     """
 
     __tablename__ = "llm_profiles"
+    decision_fallback_policy: Mapped[str] = mapped_column(
+        String(24), default="text_on_failure", server_default="text_on_failure",
+    )
 
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
     label: Mapped[str] = mapped_column(String(100), nullable=False)
@@ -96,6 +99,9 @@ class LlmProfile(Base):
         ForeignKey("llms.id"), nullable=True
     )
     vector_llm_id: Mapped[Optional[int]] = mapped_column(
+        ForeignKey("llms.id"), nullable=True
+    )
+    decision_llm_id: Mapped[Optional[int]] = mapped_column(
         ForeignKey("llms.id"), nullable=True
     )
 

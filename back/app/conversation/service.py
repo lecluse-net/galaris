@@ -150,9 +150,13 @@ async def admit_message(
         return False
 
     language = language or str((message.metadata_ or {}).get("language") or "")
+    # A concurrent classifier may have committed after the inbound event was
+    # loaded. Read the canonical projection while admission owns the room.
+    current_message = await get_db().get(Message, message.id, populate_existing=True)
+    topic_source = current_message if current_message is not None else message
     effective_topic_id = resolve_effective_topic_id(
-        message.topic_id,
-        topic_overridden=message.topic_overridden,
+        topic_source.topic_id,
+        topic_overridden=topic_source.topic_overridden,
         room_topic_id=room.topic_id,
     )
 
@@ -171,7 +175,7 @@ async def admit_message(
             language=await current_language(language, user_id=message.requester_user_id),
             status="FROZEN",
             topic_id=effective_topic_id,
-            contact_memory_item_id=message.contact_memory_item_id,
+            contact_memory_item_id=topic_source.contact_memory_item_id,
             requester_user_id=message.requester_user_id,
         )
         get_db().add(round_)
@@ -182,7 +186,7 @@ async def admit_message(
         )
         round_.topic_id = effective_topic_id
         round_.contact_memory_item_id = (
-            message.contact_memory_item_id or round_.contact_memory_item_id
+            topic_source.contact_memory_item_id or round_.contact_memory_item_id
         )
         if round_.requester_user_id != message.requester_user_id:
             round_.requester_user_id = None
@@ -931,34 +935,10 @@ async def _link_output(round_id: UUID, message_id: UUID) -> None:
             ConversationRound.id == round_id
         )
     )
-    input_topic = (
-        await get_db().execute(
-            select(
-                Message.topic_id,
-                Message.topic_overridden,
-            )
-            .join(
-                ConversationRoundMessage,
-                ConversationRoundMessage.message_id == Message.id,
-            )
-            .where(
-                ConversationRoundMessage.round_id == round_id,
-                ConversationRoundMessage.role == "input",
-            )
-            .order_by(ConversationRoundMessage.sequence.desc())
-            .limit(1)
-        )
-    ).one_or_none()
-    topic_id = input_topic.topic_id if input_topic is not None else None
-    topic_overridden = (
-        input_topic.topic_overridden if input_topic is not None else False
-    )
     await get_db().execute(
         update(Message)
         .where(Message.id == message_id)
         .values(
-            topic_id=topic_id,
-            topic_overridden=topic_overridden,
             contact_memory_item_id=contact_memory_item_id,
             metadata_=Message.metadata_.op("-")(
                 CONVERSATION_OUTPUT_PENDING_METADATA_KEY
@@ -990,6 +970,9 @@ async def _link_output(round_id: UUID, message_id: UUID) -> None:
             ]
         )
     )
+    from .facade import inherit_reply_topics
+
+    await inherit_reply_topics(round_id)
 
 
 def _merge_failed_execution_result(

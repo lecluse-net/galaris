@@ -275,7 +275,7 @@ class TopicClassification(BaseModel):
     title: str = Field(default="", max_length=500)
     description: str = Field(default="", max_length=4_000)
     keywords: list[str] = Field(default_factory=list, max_length=20)
-    confidence: float = Field(default=1.0, ge=0.0, le=1.0)
+    confidence: float | None = Field(default=None, ge=0.0, le=1.0)
     reason: str = Field(default="", max_length=500)
 
     @field_validator("title", "description", "reason")

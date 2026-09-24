@@ -434,6 +434,7 @@
                     outline
                     :icon="capabilityMeta(capability).icon"
                     :color="capabilityMeta(capability).color"
+                    :style="capability === 'decision' ? { color: 'var(--solaire-blue-accent)' } : undefined"
                   >
                     {{ capabilityMeta(capability).label }}
                   </q-chip>
@@ -927,6 +928,7 @@ function capabilityMeta(capability: AICapability): { label: string; icon: string
     vision: { label: t('llm.capabilities.vision'), icon: 'visibility', color: 'blue' },
     image_generation: { label: t('llm.capabilities.image_generation'), icon: 'image', color: 'pink' },
     embedding: { label: t('llm.capabilities.embedding'), icon: 'scatter_plot', color: 'indigo' },
+    decision: { label: t('llm.capabilities.decision'), icon: 'alt_route', color: '' },
     transcription: { label: t('llm.capabilities.transcription'), icon: 'graphic_eq', color: 'orange' },
     speech: { label: t('llm.capabilities.speech'), icon: 'record_voice_over', color: 'purple' },
     realtime_conversation: { label: t('llm.capabilities.realtime_conversation'), icon: 'spatial_audio', color: 'teal' },
@@ -955,7 +957,7 @@ function defaultModalities(capability: AICapability): LLMModalities {
   if (capability === 'chat') Object.assign(values, { input_text: true, output_text: true })
   if (capability === 'vision') Object.assign(values, { input_text: true, input_image: true, output_text: true })
   if (capability === 'image_generation') Object.assign(values, { input_text: true, output_image: true })
-  if (capability === 'embedding') values.input_text = true
+  if (capability === 'embedding' || capability === 'decision') values.input_text = true
   if (capability === 'transcription') Object.assign(values, { input_audio: true, output_text: true })
   if (capability === 'speech') Object.assign(values, { input_text: true, output_audio: true })
   if (capability === 'realtime_conversation') Object.assign(values, {

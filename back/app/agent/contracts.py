@@ -825,6 +825,7 @@ class ConversationDispatchDecision(BaseModel):
 
 
 class DispatchResult(BaseModel):
+    decision_inference: dict[str, Any] | None = None
     prompt: str
     system_prompt: str = ""
     messages: list[dict[str, Any]] = Field(default_factory=list[dict[str, Any]])

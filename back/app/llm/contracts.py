@@ -8,6 +8,7 @@ from pydantic import BaseModel, Field, JsonValue, TypeAdapter, model_validator
 
 from app.agent.contracts import AIMessage, AIResult
 from .provider_facade import ReasoningEffort
+from .decision_contracts import ChoiceQuestion
 
 
 class InferenceInput(BaseModel):
@@ -62,8 +63,17 @@ class ProtocolInferenceRequest(InferenceInput):
     request_timeout: dict[str, float | None] | None = None
 
 
+class DecisionInferenceRequest(InferenceInput):
+    schema_version: Literal["galaris.decision-inference-request/v1"] = "galaris.decision-inference-request/v1"
+    questions: dict[str, ChoiceQuestion] = Field(min_length=1)
+    fallback_llm_id: int | None = None
+    allow_text_fallback: bool = True
+    timeout_seconds: float | None = Field(default=None, gt=0, allow_inf_nan=False)
+    model_bindings: dict[str, str] = Field(default_factory=dict)
+
+
 InferenceRequest = Annotated[
-    TextInferenceRequest | StructuredInferenceRequest | ProtocolInferenceRequest,
+    TextInferenceRequest | StructuredInferenceRequest | ProtocolInferenceRequest | DecisionInferenceRequest,
     Field(discriminator="schema_version")
 ]
 InferenceRequestAdapter: TypeAdapter[InferenceRequest] = TypeAdapter(InferenceRequest)

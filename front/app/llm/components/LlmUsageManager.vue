@@ -251,6 +251,15 @@
                                             </q-item>
                                         </template>
                                     </q-select>
+                                    <template v-if="row.modelField === 'decision_llm_id'">
+                                        <div class="text-caption q-mt-xs">{{ t('llm.decisionTextModel', { dispatcher: selectedModelLabel('text_low_llm_id') ?? t('llm.unavailable'), dream: selectedModelLabel('text_ultra_low_llm_id') ?? t('llm.unavailable') }) }}</div>
+                                        <q-checkbox
+                                            :model-value="selectedProfile?.decision_fallback_policy !== 'disabled'"
+                                            :label="t('llm.decisionFallback')"
+                                            :disable="!canEdit || savingField !== null"
+                                            @update:model-value="onDecisionFallbackChange"
+                                        />
+                                    </template>
                                 </td>
                                 <td class="usage-effort" :class="{ 'usage-effort--empty': row.reasoningField === null }">
                                     <div
@@ -315,7 +324,7 @@ import type {
 import { privileges, usePrivilegeStore } from '@/core/authorize'
 import { solaireCss, type SolaireColor } from '@/core/util'
 
-type ModelCategory = 'text' | 'image' | 'audio' | 'multimedia' | 'embedding'
+type ModelCategory = 'text' | 'image' | 'audio' | 'multimedia' | 'embedding' | 'decision'
 
 // One row per model column of the llm_profiles table, grouped in display order.
 const PROFILE_MODEL_ROWS = [
@@ -333,6 +342,7 @@ const PROFILE_MODEL_ROWS = [
     { column: 'music_generation_llm_id', category: 'multimedia' },
     { column: 'video_generation_llm_id', category: 'multimedia' },
     { column: 'vector_llm_id', category: 'embedding' },
+    { column: 'decision_llm_id', category: 'decision' },
 ] as const
 
 type ModelField = typeof PROFILE_MODEL_ROWS[number]['column']
@@ -383,6 +393,7 @@ const CATEGORY_VISUALS: readonly CategoryVisual[] = [
     { key: 'audio', icon: 'graphic_eq', color: 'fuchsia' },
     { key: 'multimedia', icon: 'perm_media', color: 'orange' },
     { key: 'embedding', icon: 'hub', color: 'green' },
+    { key: 'decision', icon: 'alt_route', color: 'blue' },
 ]
 
 const TRANSCRIPTION_MODEL_FIELD: ModelField = 'transcription_llm_id'
@@ -553,6 +564,9 @@ const configuredCount = computed(() => PROFILE_MODEL_ROWS.filter(
 ).length)
 
 function optionsForRow(modelField: ModelField): ModelOption[] {
+    if (modelField === 'decision_llm_id') {
+        return llmStore.llms.filter(llm => llm.service_capabilities.includes('decision')).map(toModelOption)
+    }
     if (modelField === TRANSCRIPTION_MODEL_FIELD) return transcriptionLlmOptions.value
     if (modelField === AUDIO_MODEL_FIELD) return audioLlmOptions.value
     if (modelField === 'sound_generation_llm_id') return llmStore.llms.filter(llm => llm.service_capabilities.includes('sound_generation')).map(toModelOption)
@@ -735,6 +749,20 @@ async function onModelChange(modelField: ModelField, value: number | null): Prom
             message: t('llm.profileUsageUpdateError', { name: usageLabel(modelField) }),
             timeout: 3000,
         })
+    } finally {
+        savingField.value = null
+    }
+}
+
+async function onDecisionFallbackChange(enabled: boolean): Promise<void> {
+    if (!canEdit.value || selectedProfileId.value === null) return
+    savingField.value = 'decision_llm_id'
+    try {
+        await profileStore.saveProfileValues(selectedProfileId.value, {
+            decision_fallback_policy: enabled ? 'text_on_failure' : 'disabled',
+        })
+    } catch {
+        $q.notify({ type: 'negative', message: t('llm.profileUsageUpdateError', { name: usageLabel('decision_llm_id') }) })
     } finally {
         savingField.value = null
     }

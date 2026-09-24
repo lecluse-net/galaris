@@ -17,6 +17,12 @@ Le [corpus de référence du Lab](lab-reference-corpus.md) fournit des cas repro
 les contraintes éditoriales et les ressources. Les mesures de chargement frontend et la
 lecture des budgets sont décrites dans le [guide d'exploitation](reliability-operations.md).
 
+Le client HTTP frontend n'impose aucun délai maximal aux requêtes API, y compris aux
+analyses du Lab, aux transferts de documents et aux opérations de harnais. Une opération
+locale lente peut attendre sa réponse ; l'annulation explicite utilise `AbortSignal`, et
+une réponse issue d'une ancienne session reste rejetée. Aucun paramètre de délai navigateur
+n'est nécessaire. Les limites du serveur, du fournisseur et des proxys sont indépendantes.
+
 ## 1. Environnement de développement
 
 Le [catalogue des commandes Make](make-commands.md) recense toutes les cibles du dépôt,
@@ -927,6 +933,38 @@ la synthèse finale du plan. Les gateways reconnaissent également les familles 
 explicitement garde priorité.
 La politique du driver reste prioritaire sur l’activation :
 configurer un modèle de briefing ou de planner ne les active pas pour Hermès.
+
+Le dispatcher Task peut utiliser la sélection facultative **Décision** du profil. Ajouter Jev
+dans le catalogue OpenRouter, capacité Décision, puis le sélectionner dans les usages du profil.
+Une sélection vide conserve le modèle Texte Low. Le réglage de repli autorise un appel texte
+après un échec récupérable du modèle spécialisé ; les refus d'accès, budgets épuisés et annulations
+ne déclenchent pas ce repli. Aucun SDK ni service supplémentaire n'est requis.
+Le Lab Dispatcher propose les deux catégories de candidats et fige le modèle de chaque run.
+Ses essais de candidat désactivent le repli ; les traces des tâches exposent le repli en usage
+normal. Voir l'[ADR 0127](../../../project/decisions/0127-optional-dispatcher-decision-model.md).
+
+La même sélection **Décision** traite désormais la continuité des topics des messages,
+le choix d'un topic existant pour une activité ou Task, et les décisions de rétention mémoire
+du Dream : ignorer, rattacher une source à des souvenirs existants ou demander une extraction.
+Elle vérifie aussi l'équivalence sémantique avant de rattacher un nouveau souvenir à un doublon
+vectoriel. Ce rattachement conserve le contenu existant. Les faits nouveaux, contradictions et
+couvertures partielles passent à l'extracteur texte avec la source complète ; les nouveaux titres
+de topics restent rédigés par le texte. Décision vide conserve les parcours antérieurs et permet
+de travailler avec un seul LLM local.
+
+Le Lab Topics et Extraction mémoire accepte également Jev. Le modèle texte Dream servant aux
+rédactions est figé avec le candidat ; le coût inclut leurs appels respectifs. Un candidat texte
+est testé seul, même si le profil possède un modèle Décision. Les choix spécialisés n'ajoutent
+aucun délai par défaut ; les limites générales des workflows restent applicables. Les gains
+des nouveaux parcours doivent être mesurés, notamment lorsque le filtre appelle ensuite une
+rédaction. Voir l'[ADR 0129](../../../project/decisions/0129-shared-decision-model-workflows.md).
+
+Avec Décision configuré, le classement des messages entrants textuels commence dès leur
+admission autorisée, en parallèle du dispatch. Il n'attend plus le passage à vide de Dream.
+Le reçu partagé évite un second classement ; Dream assure le rattrapage en cas d'échec.
+Les topics manuels/de room restent prioritaires. Le contexte et les outils mémoire consultent
+le topic actualisé lorsqu'il est disponible, sans retarder une réponse pour l'obtenir ni rejouer
+une recherche déjà effectuée. Aucun nouveau réglage n'est nécessaire. Voir l'[ADR 0130](../../../project/decisions/0130-live-message-topic-decisions.md).
 
 Le planner produit un brief de mission puis un arbre borné. Toutes les tâches sont
 matérialisées durablement, mais une seule feuille est activée à la fois. Les résultats des

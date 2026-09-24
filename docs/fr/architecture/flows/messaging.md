@@ -158,6 +158,14 @@ avec `@topic`. À l'inverse, les messages sans surcharge reflètent immédiateme
 de la room, sans réécriture de leur journal durable. En l'absence de Topic de room, la
 classification historique conserve son comportement.
 
+Avec un modèle Décision configuré dans le profil effectif, un message textuel entrant autorisé
+déclenche aussi un classement de topic en parallèle de son admission. Ce traitement utilise le
+même reçu et le même mécanisme que Dream, sans attendre l'inactivité : Dream saute les résultats
+déjà appliqués et récupère les échecs. Les topics de room et surcharges manuelles restent
+prioritaires ; un résultat tardif d'un ancien input ne remplace pas le topic d'un input plus
+récent. Le harnais et les outils mémoire relisent la portée actualisée sans attendre le modèle.
+Les recherches déjà exécutées ne sont pas rejouées. Voir l'[ADR 0130](../../../../project/decisions/0130-live-message-topic-decisions.md).
+
 La création d'une conversation interne persiste atomiquement l'agent destinataire, son libellé,
 son Topic facultatif et la préférence du propriétaire indiquant si le dernier message peut être
 affiché dans la liste. Les anciens clients qui ne fournissent que l'agent conservent le libellé
@@ -794,10 +802,13 @@ une dernière réponse brève, attend la vidange audio, puis quitte réellement 
 Un appel n'a pas de durée maximale applicative : il reste actif jusqu'au raccrochage d'un participant,
 à une demande `voice_call_stop` ou à l'arrêt du service qui possède la session.
 
-Chaque message textuel du journal et chaque tour Voice terminé reçoit séparément un `topic_id` par
-le détecteur séquentiel. Le collecteur texte isole connexion+salon, conserve au plus dix messages
-et n'invente pas d'heure distante lors d'un backfill. Le collecteur Voice isole la session et
-projette au plus cinq tours Humain/IA dans la même limite. Une proposition de nouveau Topic bloque
+Seules les entrées humaines des rounds peuvent déclencher un choix de `topic_id`.
+Les réponses texte et audio héritent du topic du dernier input, sans appel LLM, même si leur
+contenu semble changer de sujet. Si le sujet est encore inconnu, les sorties restent sans topic
+puis sont resynchronisées lors du classement ou de l'arrivée de la transcription humaine.
+Le détecteur du Lab applique le même héritage gratuit ; un salut sans sujet connu produit `null`.
+Le collecteur du journal canonique conserve au plus dix messages du salon, y compris les
+transcriptions vocales, sans inventer d'heure distante lors d'un backfill. Une proposition de nouveau Topic bloque
 la suite de ce flux jusqu'à sa résolution humaine, mais uniquement pendant la durée de validité de
 l'approbation. Une interaction `PENDING` expirée reste dans l'audit et ne peut plus immobiliser le
 salon ni son backlog de messages ; une interaction `PROCESSING` reste bloquante jusqu'à la reprise

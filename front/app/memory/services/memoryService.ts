@@ -48,7 +48,7 @@ export const memoryService = {
   async appDataset(documentId: string, revision: number, appId: string, alias: string, data: AppDatasetRequest, signal: AbortSignal): Promise<AppDatasetResult> {
     return (await api.post<AppDatasetResult>(`/memory/documents/${documentId}/apps/${encodeURIComponent(appId)}/datasets/${encodeURIComponent(alias)}`, {
       ...data, document_revision: revision,
-    }, { signal, timeout: 15_000 })).data
+    }, { signal })).data
   },
   async documentThumbnail(id: string, agentId: number | null, signal: AbortSignal): Promise<Blob | null> {
     const item = agentId === null
@@ -61,7 +61,7 @@ export const memoryService = {
     const response = await api.post<Blob>(`/memory/documents/${id}/thumbnail`, {
       html, revision: item.revision, lock_version: item.lock_version,
     }, {
-      params: { agent_id: agentId }, responseType: 'blob', signal, timeout: 60_000,
+      params: { agent_id: agentId }, responseType: 'blob', signal,
     })
     return response.status === 200 && response.data.type === 'image/png' ? response.data : null
   },
@@ -71,16 +71,16 @@ export const memoryService = {
   async documentSharing(id: string): Promise<DocumentSharing> { return (await api.get<DocumentSharing>(`/memory/documents/${id}/sharing`)).data },
   async updateDocumentSharing(id: string, data: DocumentSharingUpdate): Promise<DocumentSharing> { return (await api.put<DocumentSharing>(`/memory/documents/${id}/sharing`, data)).data },
   async createDocumentLinkCard(id: string, agentId: number | null, url: string): Promise<{ html: string; attachment: DocumentAttachment | null }> {
-    const response = await api.post<{ html: string; attachment: DocumentAttachment | null }>(`/memory/documents/${id}/link-card`, { url }, { params: { actor_agent_id: agentId }, timeout: 120_000 })
+    const response = await api.post<{ html: string; attachment: DocumentAttachment | null }>(`/memory/documents/${id}/link-card`, { url }, { params: { actor_agent_id: agentId } })
     return response.data
   },
   async exportDocumentBundle(id: string, agentId: number | null, html: string, signal: AbortSignal): Promise<Blob> {
-    const response = await api.post<Blob>(`/memory/documents/${id}/export-bundle`, { html }, { params: { agent_id: agentId }, responseType: 'blob', signal, timeout: 60_000 })
+    const response = await api.post<Blob>(`/memory/documents/${id}/export-bundle`, { html }, { params: { agent_id: agentId }, responseType: 'blob', signal })
     return response.data
   },
   async exportDocumentPdf(id: string, html: string, signal: AbortSignal): Promise<Blob> {
     const response = await api.post<Blob>(`/memory/documents/${id}/export-pdf`, { html }, {
-      responseType: 'blob', signal, timeout: 45_000,
+      responseType: 'blob', signal,
     })
     return response.data
   },

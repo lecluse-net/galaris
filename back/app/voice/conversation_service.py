@@ -190,6 +190,18 @@ async def _record_message(
         ),
     )
     if round_ is not None:
+        if role == "input" and round_.topic_id is not None:
+            from app.messenger import Message
+
+            await get_db().execute(
+                update(Message)
+                .where(
+                    Message.id == message.id,
+                    Message.topic_id.is_(None),
+                    Message.topic_overridden.is_(False),
+                )
+                .values(topic_id=round_.topic_id)
+            )
         await get_db().execute(
             pg_insert(ConversationRoundMessage)
             .values(
@@ -236,7 +248,12 @@ async def record_initial_greeting(
 async def _round_and_session(
     round_id: UUID,
 ) -> tuple[ConversationRound, VoiceConversationSession]:
-    round_ = await get_db().get(ConversationRound, round_id)
+    round_ = await get_db().scalar(
+        select(ConversationRound)
+        .where(ConversationRound.id == round_id)
+        .with_for_update()
+        .execution_options(populate_existing=True)
+    )
     if round_ is None or round_.voice_session_id is None:
         raise LookupError(f"Voice conversation round {round_id} not found.")
     session = await get_db().get(VoiceConversationSession, round_.voice_session_id)
@@ -263,6 +280,9 @@ async def record_turn_input(
         sequence=1,
         occurred_at=occurred_at,
     )
+    from app.conversation.facade import inherit_reply_topics
+
+    await inherit_reply_topics(round_.id)
     await get_db().commit()
     return message_id
 
@@ -289,6 +309,9 @@ async def record_turn_outputs(
             occurred_at=occurred_at,
         )
         message_ids.append(message_id)
+    from app.conversation.facade import inherit_reply_topics
+
+    await inherit_reply_topics(round_.id)
     await get_db().commit()
     return tuple(message_ids)
 

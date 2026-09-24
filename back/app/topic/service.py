@@ -665,7 +665,7 @@ async def prefer_reuse(
         TopicClassification(
             action="reuse",
             topic_id=candidate.id,
-            confidence=max(decision.confidence, score),
+            confidence=max(decision.confidence, score) if decision.confidence is not None else score,
             reason=(
                 decision.reason
                 or "An existing dossier has equivalent normalized thematic metadata."

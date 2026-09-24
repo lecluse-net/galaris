@@ -773,6 +773,9 @@ class HarnessConversationController:
                     "No conversation model is configured in the agent's effective profile."
                 )
             title = getattr(agent, "title", None)
+            from app.conversation.facade import current_turn_scope
+
+            topic_id, contact_memory_item_id = await current_turn_scope(turn)
             context = await build_agent_run_context(
                 AgentContextRequest(
                     task_id=None,
@@ -801,8 +804,8 @@ class HarnessConversationController:
                         turn.messaging_context.get("platform") or "messenger"
                     ),
                     message_group_id=str(turn.messaging_context.get("room_id") or ""),
-                    topic_id=turn.topic_id,
-                    contact_memory_item_id=turn.contact_memory_item_id,
+                    topic_id=topic_id,
+                    contact_memory_item_id=contact_memory_item_id,
                     task_data=_context_task_data(turn),
                 )
             )

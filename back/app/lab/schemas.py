@@ -74,7 +74,9 @@ class LabLlmOption(BaseModel):
 
 class LabConfig(BaseModel):
     lab_llm_id: int | None = None
+    dispatcher_llm_id: int | None = None
     llms: list[LabLlmOption] = Field(default_factory=list[LabLlmOption])
+    decision_llms: list[LabLlmOption] = Field(default_factory=list[LabLlmOption])
 
 
 class TaskAnalysisRequest(BaseModel):

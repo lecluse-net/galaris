@@ -8,6 +8,7 @@ from collections.abc import AsyncIterator, Callable, Iterable
 from typing import Annotated, Any, Literal, Protocol, TypeAlias
 
 import httpx
+from .decision_contracts import ChoiceQuestion, DecisionUnavailable, ProviderDecisionResponse
 from pydantic import BeforeValidator
 from pydantic_ai.profiles import ModelProfile
 
@@ -84,6 +85,25 @@ class ResourceDiscovery(Protocol):
         connection: ProviderConnection,
         capability: AICapability,
     ) -> list[LLMModelInfo]: ...
+
+
+class DecisionProvider(Protocol):
+    async def decide(
+        self, connection: ProviderConnection, *, model: str, state: str,
+        questions: dict[str, ChoiceQuestion], timeout_seconds: float | None,
+    ) -> ProviderDecisionResponse: ...
+
+
+_decision_providers: dict[str, DecisionProvider] = {}
+
+
+def register_decision_provider(code: str, service: DecisionProvider) -> None:
+    _decision_providers[code] = service
+
+
+def decision_provider_for(connection: ProviderConnection) -> DecisionProvider | None:
+    profile = resolve_provider_profile(catalog_code=connection.catalog_code, base_url=connection.base_url)
+    return _decision_providers.get(profile.code if profile else _service_key(connection) or "")
 
 
 class ModelManagement(Protocol):
@@ -793,6 +813,8 @@ def usage_accounting_for(code: str | None) -> ProviderUsageAccounting | None:
 
 
 __all__ = [
+    "ChoiceQuestion", "DecisionUnavailable", "ProviderDecisionResponse", "DecisionProvider",
+    "register_decision_provider", "decision_provider_for",
     "ProviderMediaInputPolicy", "register_media_input_policy", "media_input_policy_for",
     "BASIC_PARAMETERS", "CHAT_PARAMETERS", "RESPONSES_PARAMETERS", "SAMPLING_PARAMETERS",
     "RequestParameterPolicy", "RequestProtocol", "ParameterPolicyResolver",

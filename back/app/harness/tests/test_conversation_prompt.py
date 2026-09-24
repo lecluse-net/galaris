@@ -38,6 +38,15 @@ from app.harness.conversation import (
 _ACTION_POLICY = prompt_default(Params.AI_CONVERSATION_ACTION_POLICY) or ""
 
 
+@pytest.fixture(autouse=True)
+def frozen_topic_scope(monkeypatch):
+    """These controller units replace domain I/O; live scope has DB integration coverage."""
+    async def current_scope(turn):
+        return turn.topic_id, turn.contact_memory_item_id
+
+    monkeypatch.setattr("app.conversation.facade.current_turn_scope", current_scope)
+
+
 @pytest.mark.asyncio
 async def test_live_text_buffer_flushes_while_the_provider_stream_is_idle() -> None:
     published: list[str] = []
