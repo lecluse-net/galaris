@@ -1,10 +1,11 @@
 import asyncio
+import threading
 from datetime import datetime, timedelta, timezone
 from uuid import uuid4
 
 import pytest
 import pytest_asyncio
-from sqlalchemy import select, update
+from sqlalchemy import select, text, update
 
 from core.database import get_db_session
 from app.llm import llm_call_service
@@ -129,6 +130,56 @@ async def test_concurrent_executors_claim_only_one_provider_request(runtime):
     assert result.status == "completed"
     assert len(requests) == 1
     assert len(result.attempts[0].call_ids) == 1
+
+
+@pytest.mark.asyncio
+async def test_trace_preparation_does_not_block_inference_journal(runtime, monkeypatch):
+    _, llm, _, mode = runtime
+    mode["gate"] = asyncio.Event()
+    key = await start_inference(request_for(llm))
+    stream = stream_inference(key)
+    first = await asyncio.wait_for(anext(stream), 10)
+    async with get_db_session() as db:
+        attempt = await db.get(LLMInferenceAttempt, first.attempt_id)
+        owner = InferenceOwner(key, attempt.id, attempt.lease_token)
+
+    preparing = asyncio.Event()
+    release = threading.Event()
+    loop = asyncio.get_running_loop()
+    original = llm_call_service._compact_trace_output
+
+    def prepare(trace):
+        loop.call_soon_threadsafe(preparing.set)
+        if not release.wait(10):
+            raise TimeoutError("Test did not release trace preparation")
+        return original(trace)
+
+    monkeypatch.setattr(llm_call_service, "_compact_trace_output", prepare)
+    finalizer = asyncio.create_task(
+        llm_call_service.finalize_call(first.call_id, trace={})
+    )
+    try:
+        await asyncio.wait_for(preparing.wait(), 10)
+        token = inference_owner.set(owner)
+        try:
+            async with get_db_session() as db:
+                await db.execute(text("SET LOCAL lock_timeout = '200ms'"))
+                written = await append_events(first.call_id, [{
+                    "kind": "message",
+                    "message": first.message.model_copy(
+                        update={"content": "Additional progress"}
+                    ).model_dump(mode="json"),
+                }])
+            assert len(written) == 1
+            assert await execution.transaction(lambda: store.heartbeat(owner)) == "running"
+        finally:
+            inference_owner.reset(token)
+    finally:
+        release.set()
+        await asyncio.wait_for(finalizer, 10)
+        await stream.aclose()
+        await control_inference(key, "stop")
+        await state(key, "stopped")
 
 
 @pytest.mark.asyncio

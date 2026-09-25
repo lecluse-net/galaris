@@ -1172,6 +1172,13 @@ async def finalize_call(
     effective_model: str | None = None,
 ) -> None:
     """Finalize from an independent session, including after a streaming response."""
+    # Trace preparation may wait on the thread pool or process large payloads.
+    # Do not hold the call lock: journal writers need it while owning the
+    # inference lock, which would also stall heartbeats and lifecycle commands.
+    response_text, reasoning, current_tools = await asyncio.to_thread(
+        _compact_trace_output, trace
+    )
+    stored_error = await asyncio.to_thread(compact_trace_images, error)
     async with AsyncSessionLocal() as db:
         call = await db.scalar(select(LLMCall).where(LLMCall.id == call_id).with_for_update())
         if call is None:
@@ -1183,10 +1190,6 @@ async def finalize_call(
         now = datetime.now(timezone.utc)
         usage = as_dict(trace.get("usage"))
         call.status = status
-        response_text, reasoning, current_tools = await asyncio.to_thread(
-            _compact_trace_output,
-            trace,
-        )
         if response_text or not call.response_text:
             call.response_text = response_text
         if reasoning or not call.reasoning:
@@ -1219,7 +1222,6 @@ async def finalize_call(
         call.upstream_request_id = (
             trace.get("upstream_request_id") or call.upstream_request_id
         )
-        stored_error = await asyncio.to_thread(compact_trace_images, error)
         call.error = stored_error if isinstance(stored_error, str) else None
         call.first_token_at = first_token_at or call.first_token_at
         call.completed_at = now
