@@ -46,6 +46,12 @@ pas autant de menus supplémentaires.
 | Modèles disponibles | Gérer les modèles exposés à Galaris | `/llm?tab=models` |
 | Modèles utilisés | Choisir les modèles employés par les usages et profils | `/llm?tab=usage` |
 
+Dans **Fournisseurs → Ressources disponibles**, la liste **Type de ressources** conserve
+les icônes et filtre le catalogue du fournisseur. **Documents / PDF** présente les modèles
+de chat déclarant les fichiers en entrée et le texte en sortie. Ajoutez un modèle, puis
+affectez-le à **Modèle d’analyse de document** dans **Modèles utilisés**. Si les métadonnées
+du fournisseur sont incomplètes, un modèle compatible peut manquer à cette liste.
+
 L’onglet **Modèles utilisés** demande `PARAMS_ACCESS` ou `PARAMS_EDIT`, en plus des
 droits nécessaires pour atteindre l’écran. Il est sélectionné par défaut pour les comptes
 autorisés ; sinon l’écran ouvre **Fournisseurs**.

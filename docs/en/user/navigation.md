@@ -43,6 +43,11 @@ They are not additional sidebar menus. Use the generated map for labels in each 
 | Available models | Manage models exposed to Galaris | `/llm?tab=models` |
 | Models in use | Choose models for usages and profiles | `/llm?tab=usage` |
 
+Under **Providers → Available resources**, the **Resource type** dropdown keeps the icons
+and filters the provider catalog. **Documents / PDF** lists chat models declaring file
+input and text output. Add a model, then assign it to **Document analysis model** under
+**Models in use**. Incomplete provider metadata may leave a compatible model out of this list.
+
 **Models in use** requires `PARAMS_ACCESS` or `PARAMS_EDIT`, in addition to access to
 the screen. It is the default tab for authorized accounts; other accounts start on **Providers**.
 

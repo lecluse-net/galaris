@@ -121,9 +121,8 @@ import type {
   LLMProviderDetail,
   LLMProviderTestResponse,
   ProviderCatalogItem,
-  AICapability,
 } from '../services/llmProviderService'
-import type { ProviderConfigurationDraft } from '../providerUi'
+import { providerResourceCategories, providerResourceCapability, type ProviderConfigurationDraft, type ProviderResourceCategory } from '../providerUi'
 
 const emit = defineEmits<{
   'create-llm': [payload: { providerId: number; model: LLMModelInfo }]
@@ -139,7 +138,7 @@ const { registerInterval, removeInterval } = useInterval()
 const selectedKey = ref<string | null>(null)
 const selectedDetail = ref<LLMProviderDetail | null>(null)
 const models = ref<LLMModelInfo[]>([])
-const selectedCapability = ref<AICapability>('chat')
+const selectedCapability = ref<ProviderResourceCategory>('chat')
 const modelError = ref<string | null>(null)
 const initialLoading = ref(true)
 const loadingModels = ref(false)
@@ -154,6 +153,7 @@ const oauthLoading = ref(false)
 const oauthDialog = ref(false)
 const oauthChallenge = ref<ProviderDeviceStartResponse | null>(null)
 let selectionGeneration = 0
+let modelGeneration = 0
 let oauthPollInFlight = false
 let oauthExpiresAt = 0
 
@@ -181,11 +181,13 @@ function canLoadModels(item: ProviderCatalogItem | null): boolean {
 
 async function loadSelection(item: ProviderCatalogItem | null): Promise<void> {
   const generation = ++selectionGeneration
+  ++modelGeneration
+  loadingModels.value = false
   selectedDetail.value = null
   models.value = []
   modelError.value = null
   testResult.value = null
-  if (item && !item.capabilities.includes(selectedCapability.value)) {
+  if (item && !providerResourceCategories(item.capabilities).includes(selectedCapability.value)) {
     selectedCapability.value = item.capabilities[0] || 'chat'
   }
   if (!item?.connection) {
@@ -210,6 +212,9 @@ async function loadSelection(item: ProviderCatalogItem | null): Promise<void> {
 }
 
 async function loadModels(force = false, expectedGeneration = selectionGeneration): Promise<void> {
+  const requestGeneration = ++modelGeneration
+  const category = selectedCapability.value
+  const capability = providerResourceCapability(category)
   const item = selectedItem.value
   const providerId = item?.connection?.id
   if (!item || !canLoadModels(item)) {
@@ -221,21 +226,23 @@ async function loadModels(force = false, expectedGeneration = selectionGeneratio
   modelError.value = null
   try {
     const result = providerId
-      ? await store.fetchProviderResources(providerId, selectedCapability.value, force)
-      : await store.fetchCatalogResources(item.code!, selectedCapability.value, force)
-    if (expectedGeneration !== selectionGeneration) return
-    models.value = result.models
+      ? await store.fetchProviderResources(providerId, capability, force)
+      : await store.fetchCatalogResources(item.code!, capability, force)
+    if (expectedGeneration !== selectionGeneration || requestGeneration !== modelGeneration) return
+    models.value = category === 'documents'
+      ? result.models.filter(model => model.modalities?.input_file && model.modalities.output_text)
+      : result.models
   } catch (error) {
-    if (expectedGeneration === selectionGeneration) {
+    if (expectedGeneration === selectionGeneration && requestGeneration === modelGeneration) {
       models.value = []
       modelError.value = errorMessage(error)
     }
   } finally {
-    if (expectedGeneration === selectionGeneration) loadingModels.value = false
+    if (expectedGeneration === selectionGeneration && requestGeneration === modelGeneration) loadingModels.value = false
   }
 }
 
-function changeCapability(capability: AICapability): void {
+function changeCapability(capability: ProviderResourceCategory): void {
   if (selectedCapability.value === capability) return
   selectedCapability.value = capability
   models.value = []
@@ -449,7 +456,7 @@ function createLlm(model: LLMModelInfo): void {
         ...model,
         service_capabilities: model.service_capabilities.length
           ? model.service_capabilities
-          : [selectedCapability.value],
+          : [providerResourceCapability(selectedCapability.value)],
       },
     })
   }

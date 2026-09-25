@@ -1,4 +1,15 @@
-import type { LLMProviderType } from './services/llmProviderService'
+import type { AICapability, LLMProviderType } from './services/llmProviderService'
+
+// Documents are a catalog view of chat models with native file input.
+export type ProviderResourceCategory = AICapability | 'documents'
+
+export function providerResourceCategories(capabilities: AICapability[]): ProviderResourceCategory[] {
+    return capabilities.flatMap<ProviderResourceCategory>(value => value === 'chat' ? [value, 'documents'] : [value])
+}
+
+export function providerResourceCapability(category: ProviderResourceCategory): AICapability {
+    return category === 'documents' ? 'chat' : category
+}
 
 // Local assets: the provider catalog must not contact third-party logo services.
 const PROVIDER_LOGOS: Record<string, string> = {

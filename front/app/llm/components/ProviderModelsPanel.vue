@@ -34,27 +34,36 @@
       </q-btn>
     </div>
 
-    <q-tabs
+    <div
       v-if="item?.capabilities.length"
-      v-model="selectedCapability"
-      dense
-      inline-label
-      outside-arrows
-      mobile-arrows
-      no-caps
-      align="left"
-      active-color="primary"
-      indicator-color="primary"
-      class="capability-tabs"
+      class="resource-category q-pa-sm"
     >
-      <q-tab
-        v-for="option in capabilityOptions"
-        :key="option.value"
-        :name="option.value"
-        :icon="option.icon"
-        :label="option.label"
-      />
-    </q-tabs>
+      <q-select
+        v-model="selectedCapability"
+        :options="capabilityOptions"
+        :label="t('llm.resourceCategory')"
+        dense
+        outlined
+        emit-value
+        map-options
+        behavior="menu"
+      >
+        <template #prepend>
+          <q-icon :name="capabilityMeta(capability).icon" class="resource-category-icon" />
+        </template>
+        <template #option="scope">
+          <q-item v-bind="scope.itemProps">
+            <q-item-section avatar>
+              <q-icon :name="scope.opt.icon" class="resource-category-icon" />
+            </q-item-section>
+            <q-item-section>{{ scope.opt.label }}</q-item-section>
+          </q-item>
+        </template>
+      </q-select>
+      <div v-if="capability === 'documents'" class="text-caption text-grey-7 q-mt-xs">
+        {{ t('llm.documentResourcesHint') }}
+      </div>
+    </div>
 
     <div v-if="canLoad" class="q-pa-sm model-search column">
       <q-input
@@ -117,6 +126,11 @@
       </div>
 
     </q-scroll-area>
+
+    <div v-else-if="loading" class="col column flex-center" role="status">
+      <q-spinner color="primary" size="34px" />
+      <span class="text-caption q-mt-sm">{{ t('llm.loading') }}</span>
+    </div>
 
     <q-scroll-area
       v-else
@@ -249,10 +263,6 @@
       </q-virtual-scroll>
     </q-scroll-area>
 
-    <q-inner-loading :showing="loading">
-      <q-spinner color="primary" size="34px" />
-    </q-inner-loading>
-
     <q-dialog v-model="pullDialog">
       <q-card style="width: 520px; max-width: 92vw">
         <q-card-section class="galaris-dialog-title row items-center">
@@ -318,11 +328,11 @@ import type { QScrollArea } from 'quasar'
 import { useI18n } from 'vue-i18n'
 import { privileges, usePrivilegeStore } from '@/core/authorize'
 import type { LLMModelInfo, LLMWithProvider, ProviderCatalogItem } from '../services/llmProviderService'
-import type { AICapability } from '../services/llmProviderService'
+import { providerResourceCategories, providerResourceCapability, type ProviderResourceCategory } from '../providerUi'
 
 const props = defineProps<{
   item: ProviderCatalogItem | null
-  capability: AICapability
+  capability: ProviderResourceCategory
   models: LLMModelInfo[]
   configuredLlms: LLMWithProvider[]
   loading?: boolean
@@ -332,7 +342,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   refresh: []
-  'update:capability': [capability: AICapability]
+  'update:capability': [capability: ProviderResourceCategory]
   'create-llm': [model: LLMModelInfo]
   pull: [modelName: string]
   'delete-model': [modelName: string]
@@ -343,7 +353,7 @@ const privilegeStore = usePrivilegeStore()
 const canEdit = computed(() => privilegeStore.hasPrivilege(privileges.LLM_PROVIDER_EDIT))
 const selectedCapability = computed({
   get: () => props.capability,
-  set: (value: AICapability) => emit('update:capability', value),
+  set: (value: ProviderResourceCategory) => emit('update:capability', value),
 })
 const search = ref<string | null>('')
 const modelScrollArea = useTemplateRef<QScrollArea>('modelScrollArea')
@@ -365,7 +375,7 @@ const manualModelValue = computed(() => manualModelId.value?.trim() || '')
 const manualModelDisabled = computed(() => (
   !props.item?.connection || !manualModelValue.value || isConfigured(manualModelValue.value)
 ))
-const capabilityOptions = computed(() => (props.item?.capabilities || []).map(value => ({
+const capabilityOptions = computed(() => providerResourceCategories(props.item?.capabilities || []).map(value => ({
   value,
   ...capabilityMeta(value),
 })))
@@ -422,7 +432,7 @@ function requestManualCreate(): void {
     context_length: null,
     pricing: null,
     resource_type: 'model',
-    service_capabilities: [props.capability],
+    service_capabilities: [providerResourceCapability(props.capability)],
   })
 }
 
@@ -509,8 +519,9 @@ function modalityBadges(model: LLMModelInfo): { key: string; label: string; colo
   return result
 }
 
-function capabilityMeta(capability: AICapability): { label: string; icon: string; color: string } {
-  const values: Record<AICapability, { label: string; icon: string; color: string }> = {
+function capabilityMeta(capability: ProviderResourceCategory): { label: string; icon: string; color: string } {
+  const values: Record<ProviderResourceCategory, { label: string; icon: string; color: string }> = {
+    documents: { label: t('llm.documentResources'), icon: 'description', color: 'primary' },
     chat: { label: t('llm.capabilities.chat'), icon: 'chat', color: 'primary' },
     vision: { label: t('llm.capabilities.vision'), icon: 'visibility', color: 'blue' },
     image_generation: { label: t('llm.capabilities.image_generation'), icon: 'image', color: 'pink' },
@@ -577,13 +588,17 @@ function requestDelete(): void {
 }
 
 .provider-panel-header,
-.capability-tabs,
+.resource-category,
 .model-search {
   border-bottom: 1px solid rgba(0, 0, 0, 0.08);
 }
 
 .provider-panel-header {
   gap: 8px;
+}
+
+.resource-category-icon {
+  color: var(--solaire-blue-accent);
 }
 
 .model-search {
@@ -611,7 +626,7 @@ function requestDelete(): void {
 }
 
 body.body--dark .provider-panel-header,
-body.body--dark .capability-tabs,
+body.body--dark .resource-category,
 body.body--dark .model-search {
   border-color: rgba(255, 255, 255, 0.12);
 }
@@ -624,7 +639,7 @@ body.body--dark .model-search {
   }
 
   .provider-panel-header,
-  .capability-tabs,
+  .resource-category,
   .model-search {
     flex-shrink: 0;
   }
