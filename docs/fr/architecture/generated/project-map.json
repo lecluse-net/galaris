@@ -1517,11 +1517,13 @@
         "files": [
           "back/app/lab/contracts.py",
           "back/app/lab/dispatcher_evaluation_service.py",
+          "back/app/lab/engine.py",
           "back/app/lab/evidence_service.py",
           "back/app/lab/executor_prompt_service.py",
           "back/app/lab/mechanism_evaluation_service.py",
           "back/app/lab/mechanism_registry.py",
           "back/app/lab/objective_checks.py",
+          "back/app/lab/operations.py",
           "back/app/lab/router.py",
           "back/app/lab/schemas.py"
         ],
@@ -1530,14 +1532,17 @@
       },
       {
         "files": [
-          "back/app/lab/mechanism_evaluation_service.py"
+          "back/app/lab/mcp_access.py",
+          "back/app/lab/mechanism_evaluation_service.py",
+          "back/app/lab/operations.py"
         ],
         "source": "app.lab",
         "target": "app.connection"
       },
       {
         "files": [
-          "back/app/lab/mechanism_evaluation_service.py"
+          "back/app/lab/mechanism_evaluation_service.py",
+          "back/app/lab/operations.py"
         ],
         "source": "app.lab",
         "target": "app.conversation"
@@ -1565,12 +1570,14 @@
         "files": [
           "back/app/lab/analysis_service.py",
           "back/app/lab/dispatcher_evaluation_service.py",
+          "back/app/lab/engine.py",
           "back/app/lab/evaluation_service.py",
           "back/app/lab/evidence_service.py",
           "back/app/lab/inference_profile.py",
           "back/app/lab/judgment_service.py",
           "back/app/lab/mechanism_evaluation_service.py",
           "back/app/lab/mechanism_registry.py",
+          "back/app/lab/operations.py",
           "back/app/lab/run_inference.py",
           "back/app/lab/synthetic_service.py"
         ],
@@ -1586,15 +1593,19 @@
       },
       {
         "files": [
-          "back/app/lab/mechanism_evaluation_service.py"
+          "back/app/lab/mechanism_evaluation_service.py",
+          "back/app/lab/operations.py"
         ],
         "source": "app.lab",
         "target": "app.messenger"
       },
       {
         "files": [
+          "back/app/lab/__init__.py",
+          "back/app/lab/engine.py",
           "back/app/lab/evidence_service.py",
-          "back/app/lab/mechanism_evaluation_service.py"
+          "back/app/lab/mechanism_evaluation_service.py",
+          "back/app/lab/operations.py"
         ],
         "source": "app.lab",
         "target": "app.process"
@@ -1613,14 +1624,21 @@
           "back/app/lab/evaluation_service.py",
           "back/app/lab/evidence_service.py",
           "back/app/lab/judgment_service.py",
-          "back/app/lab/mechanism_evaluation_service.py"
+          "back/app/lab/mechanism_evaluation_service.py",
+          "back/app/lab/operations.py"
         ],
         "source": "app.lab",
         "target": "app.task"
       },
       {
         "files": [
-          "back/app/lab/evidence_service.py"
+          "back/app/lab/engine.py",
+          "back/app/lab/evidence_service.py",
+          "back/app/lab/mcp.py",
+          "back/app/lab/mcp_access.py",
+          "back/app/lab/mcp_service.py",
+          "back/app/lab/operations.py",
+          "back/app/lab/run_claims.py"
         ],
         "source": "app.lab",
         "target": "app.tools"
@@ -1654,19 +1672,25 @@
       },
       {
         "files": [
+          "back/app/lab/agent_review_service.py",
           "back/app/lab/capture_service.py",
           "back/app/lab/diagnosis_service.py",
           "back/app/lab/dispatcher_evaluation_service.py",
+          "back/app/lab/engine.py",
           "back/app/lab/evaluation_service.py",
           "back/app/lab/evidence_service.py",
           "back/app/lab/human_review_service.py",
           "back/app/lab/judgment_service.py",
+          "back/app/lab/mcp_access.py",
+          "back/app/lab/mcp_service.py",
           "back/app/lab/mechanism_evaluation_service.py",
           "back/app/lab/models.py",
+          "back/app/lab/operations.py",
           "back/app/lab/run_claims.py",
           "back/app/lab/run_lease.py",
           "back/app/lab/run_publication.py",
-          "back/app/lab/synthetic_service.py"
+          "back/app/lab/synthetic_service.py",
+          "back/app/lab/transactions.py"
         ],
         "source": "app.lab",
         "target": "core.database"
@@ -6629,6 +6653,406 @@
         "namespace": "image"
       },
       {
+        "file": "back/app/lab/mcp.py",
+        "handler": "lab_campaign_get",
+        "line": 563,
+        "module": "app.lab",
+        "name": "lab_campaign_get",
+        "namespace": "lab"
+      },
+      {
+        "file": "back/app/lab/mcp.py",
+        "handler": "lab_campaign_list",
+        "line": 550,
+        "module": "app.lab",
+        "name": "lab_campaign_list",
+        "namespace": "lab"
+      },
+      {
+        "file": "back/app/lab/mcp.py",
+        "handler": "lab_case_create",
+        "line": 242,
+        "module": "app.lab",
+        "name": "lab_case_create",
+        "namespace": "lab"
+      },
+      {
+        "file": "back/app/lab/mcp.py",
+        "handler": "lab_case_delete",
+        "line": 294,
+        "module": "app.lab",
+        "name": "lab_case_delete",
+        "namespace": "lab"
+      },
+      {
+        "file": "back/app/lab/mcp.py",
+        "handler": "lab_case_duplicate",
+        "line": 276,
+        "module": "app.lab",
+        "name": "lab_case_duplicate",
+        "namespace": "lab"
+      },
+      {
+        "file": "back/app/lab/mcp.py",
+        "handler": "lab_case_get",
+        "line": 229,
+        "module": "app.lab",
+        "name": "lab_case_get",
+        "namespace": "lab"
+      },
+      {
+        "file": "back/app/lab/mcp.py",
+        "handler": "lab_case_import",
+        "line": 360,
+        "module": "app.lab",
+        "name": "lab_case_import",
+        "namespace": "lab"
+      },
+      {
+        "file": "back/app/lab/mcp.py",
+        "handler": "lab_case_list",
+        "line": 216,
+        "module": "app.lab",
+        "name": "lab_case_list",
+        "namespace": "lab"
+      },
+      {
+        "file": "back/app/lab/mcp.py",
+        "handler": "lab_case_restore_source",
+        "line": 313,
+        "module": "app.lab",
+        "name": "lab_case_restore_source",
+        "namespace": "lab"
+      },
+      {
+        "file": "back/app/lab/mcp.py",
+        "handler": "lab_case_update",
+        "line": 259,
+        "module": "app.lab",
+        "name": "lab_case_update",
+        "namespace": "lab"
+      },
+      {
+        "file": "back/app/lab/mcp.py",
+        "handler": "lab_content_read",
+        "line": 809,
+        "module": "app.lab",
+        "name": "lab_content_read",
+        "namespace": "lab"
+      },
+      {
+        "file": "back/app/lab/mcp.py",
+        "handler": "lab_dataset_clone",
+        "line": 181,
+        "module": "app.lab",
+        "name": "lab_dataset_clone",
+        "namespace": "lab"
+      },
+      {
+        "file": "back/app/lab/mcp.py",
+        "handler": "lab_dataset_create",
+        "line": 148,
+        "module": "app.lab",
+        "name": "lab_dataset_create",
+        "namespace": "lab"
+      },
+      {
+        "file": "back/app/lab/mcp.py",
+        "handler": "lab_dataset_delete",
+        "line": 199,
+        "module": "app.lab",
+        "name": "lab_dataset_delete",
+        "namespace": "lab"
+      },
+      {
+        "file": "back/app/lab/mcp.py",
+        "handler": "lab_dataset_generate",
+        "line": 594,
+        "module": "app.lab",
+        "name": "lab_dataset_generate",
+        "namespace": "lab"
+      },
+      {
+        "file": "back/app/lab/mcp.py",
+        "handler": "lab_dataset_get",
+        "line": 133,
+        "module": "app.lab",
+        "name": "lab_dataset_get",
+        "namespace": "lab"
+      },
+      {
+        "file": "back/app/lab/mcp.py",
+        "handler": "lab_dataset_list",
+        "line": 120,
+        "module": "app.lab",
+        "name": "lab_dataset_list",
+        "namespace": "lab"
+      },
+      {
+        "file": "back/app/lab/mcp.py",
+        "handler": "lab_dataset_update",
+        "line": 164,
+        "module": "app.lab",
+        "name": "lab_dataset_update",
+        "namespace": "lab"
+      },
+      {
+        "file": "back/app/lab/mcp.py",
+        "handler": "lab_expected_generate",
+        "line": 612,
+        "module": "app.lab",
+        "name": "lab_expected_generate",
+        "namespace": "lab"
+      },
+      {
+        "file": "back/app/lab/mcp.py",
+        "handler": "lab_get",
+        "line": 57,
+        "module": "app.lab",
+        "name": "lab_get",
+        "namespace": "lab"
+      },
+      {
+        "file": "back/app/lab/mcp.py",
+        "handler": "lab_input_preview",
+        "line": 334,
+        "module": "app.lab",
+        "name": "lab_input_preview",
+        "namespace": "lab"
+      },
+      {
+        "file": "back/app/lab/mcp.py",
+        "handler": "lab_list",
+        "line": 40,
+        "module": "app.lab",
+        "name": "lab_list",
+        "namespace": "lab"
+      },
+      {
+        "file": "back/app/lab/mcp.py",
+        "handler": "lab_models",
+        "line": 75,
+        "module": "app.lab",
+        "name": "lab_models",
+        "namespace": "lab"
+      },
+      {
+        "file": "back/app/lab/mcp.py",
+        "handler": "lab_operation_cancel",
+        "line": 691,
+        "module": "app.lab",
+        "name": "lab_operation_cancel",
+        "namespace": "lab"
+      },
+      {
+        "file": "back/app/lab/mcp.py",
+        "handler": "lab_operation_get",
+        "line": 678,
+        "module": "app.lab",
+        "name": "lab_operation_get",
+        "namespace": "lab"
+      },
+      {
+        "file": "back/app/lab/mcp.py",
+        "handler": "lab_prompt_defaults",
+        "line": 100,
+        "module": "app.lab",
+        "name": "lab_prompt_defaults",
+        "namespace": "lab"
+      },
+      {
+        "file": "back/app/lab/mcp.py",
+        "handler": "lab_review_get",
+        "line": 780,
+        "module": "app.lab",
+        "name": "lab_review_get",
+        "namespace": "lab"
+      },
+      {
+        "file": "back/app/lab/mcp.py",
+        "handler": "lab_review_list",
+        "line": 767,
+        "module": "app.lab",
+        "name": "lab_review_list",
+        "namespace": "lab"
+      },
+      {
+        "file": "back/app/lab/mcp.py",
+        "handler": "lab_review_submit",
+        "line": 793,
+        "module": "app.lab",
+        "name": "lab_review_submit",
+        "namespace": "lab"
+      },
+      {
+        "file": "back/app/lab/mcp.py",
+        "handler": "lab_run_analyze",
+        "line": 636,
+        "module": "app.lab",
+        "name": "lab_run_analyze",
+        "namespace": "lab"
+      },
+      {
+        "file": "back/app/lab/mcp.py",
+        "handler": "lab_run_cancel",
+        "line": 482,
+        "module": "app.lab",
+        "name": "lab_run_cancel",
+        "namespace": "lab"
+      },
+      {
+        "file": "back/app/lab/mcp.py",
+        "handler": "lab_run_compare",
+        "line": 576,
+        "module": "app.lab",
+        "name": "lab_run_compare",
+        "namespace": "lab"
+      },
+      {
+        "file": "back/app/lab/mcp.py",
+        "handler": "lab_run_delete",
+        "line": 529,
+        "module": "app.lab",
+        "name": "lab_run_delete",
+        "namespace": "lab"
+      },
+      {
+        "file": "back/app/lab/mcp.py",
+        "handler": "lab_run_get",
+        "line": 456,
+        "module": "app.lab",
+        "name": "lab_run_get",
+        "namespace": "lab"
+      },
+      {
+        "file": "back/app/lab/mcp.py",
+        "handler": "lab_run_list",
+        "line": 443,
+        "module": "app.lab",
+        "name": "lab_run_list",
+        "namespace": "lab"
+      },
+      {
+        "file": "back/app/lab/mcp.py",
+        "handler": "lab_run_rejudge",
+        "line": 510,
+        "module": "app.lab",
+        "name": "lab_run_rejudge",
+        "namespace": "lab"
+      },
+      {
+        "file": "back/app/lab/mcp.py",
+        "handler": "lab_run_results",
+        "line": 469,
+        "module": "app.lab",
+        "name": "lab_run_results",
+        "namespace": "lab"
+      },
+      {
+        "file": "back/app/lab/mcp.py",
+        "handler": "lab_run_resume",
+        "line": 495,
+        "module": "app.lab",
+        "name": "lab_run_resume",
+        "namespace": "lab"
+      },
+      {
+        "file": "back/app/lab/mcp.py",
+        "handler": "lab_run_start",
+        "line": 427,
+        "module": "app.lab",
+        "name": "lab_run_start",
+        "namespace": "lab"
+      },
+      {
+        "file": "back/app/lab/mcp.py",
+        "handler": "lab_source_list",
+        "line": 347,
+        "module": "app.lab",
+        "name": "lab_source_list",
+        "namespace": "lab"
+      },
+      {
+        "file": "back/app/lab/mcp.py",
+        "handler": "lab_task_add",
+        "line": 728,
+        "module": "app.lab",
+        "name": "lab_task_add",
+        "namespace": "lab"
+      },
+      {
+        "file": "back/app/lab/mcp.py",
+        "handler": "lab_task_analyze",
+        "line": 659,
+        "module": "app.lab",
+        "name": "lab_task_analyze",
+        "namespace": "lab"
+      },
+      {
+        "file": "back/app/lab/mcp.py",
+        "handler": "lab_task_candidates",
+        "line": 702,
+        "module": "app.lab",
+        "name": "lab_task_candidates",
+        "namespace": "lab"
+      },
+      {
+        "file": "back/app/lab/mcp.py",
+        "handler": "lab_task_diagnoses",
+        "line": 754,
+        "module": "app.lab",
+        "name": "lab_task_diagnoses",
+        "namespace": "lab"
+      },
+      {
+        "file": "back/app/lab/mcp.py",
+        "handler": "lab_task_list",
+        "line": 715,
+        "module": "app.lab",
+        "name": "lab_task_list",
+        "namespace": "lab"
+      },
+      {
+        "file": "back/app/lab/mcp.py",
+        "handler": "lab_task_remove",
+        "line": 740,
+        "module": "app.lab",
+        "name": "lab_task_remove",
+        "namespace": "lab"
+      },
+      {
+        "file": "back/app/lab/mcp.py",
+        "handler": "lab_topic_agent_list",
+        "line": 377,
+        "module": "app.lab",
+        "name": "lab_topic_agent_list",
+        "namespace": "lab"
+      },
+      {
+        "file": "back/app/lab/mcp.py",
+        "handler": "lab_topic_messages_import",
+        "line": 414,
+        "module": "app.lab",
+        "name": "lab_topic_messages_import",
+        "namespace": "lab"
+      },
+      {
+        "file": "back/app/lab/mcp.py",
+        "handler": "lab_topic_messages_preview",
+        "line": 401,
+        "module": "app.lab",
+        "name": "lab_topic_messages_preview",
+        "namespace": "lab"
+      },
+      {
+        "file": "back/app/lab/mcp.py",
+        "handler": "lab_topic_person_list",
+        "line": 388,
+        "module": "app.lab",
+        "name": "lab_topic_person_list",
+        "namespace": "lab"
+      },
+      {
         "file": "back/bridge/mail/mcp.py",
         "handler": "mail_connection_status",
         "line": 21,
@@ -7600,6 +8024,32 @@
         "table": "hermes_session_bindings"
       },
       {
+        "class_name": "LabAgentReview",
+        "file": "back/app/lab/models.py",
+        "foreign_keys": [
+          "agents.id",
+          "lab_evaluation_run_cases.id",
+          "lab_judgment_campaigns.id",
+          "tasks.id"
+        ],
+        "history_mixin": true,
+        "line": 425,
+        "module": "app.lab",
+        "table": "lab_agent_reviews"
+      },
+      {
+        "class_name": "LabCommand",
+        "file": "back/app/lab/models.py",
+        "foreign_keys": [
+          "agents.id",
+          "tasks.id"
+        ],
+        "history_mixin": true,
+        "line": 411,
+        "module": "app.lab",
+        "table": "lab_commands"
+      },
+      {
         "class_name": "LabEvaluationCase",
         "file": "back/app/lab/models.py",
         "foreign_keys": [
@@ -7628,7 +8078,7 @@
           "lab_evaluation_runs.id"
         ],
         "history_mixin": true,
-        "line": 285,
+        "line": 289,
         "module": "app.lab",
         "table": "lab_evaluation_run_cases"
       },
@@ -7636,8 +8086,10 @@
         "class_name": "LabEvaluationRun",
         "file": "back/app/lab/models.py",
         "foreign_keys": [
+          "agents.id",
           "lab_evaluation_datasets.id",
-          "llms.id"
+          "llms.id",
+          "tasks.id"
         ],
         "history_mixin": true,
         "line": 191,
@@ -7653,7 +8105,7 @@
           "users.id"
         ],
         "history_mixin": true,
-        "line": 385,
+        "line": 389,
         "module": "app.lab",
         "table": "lab_human_reviews"
       },
@@ -7665,7 +8117,7 @@
           "llms.id"
         ],
         "history_mixin": true,
-        "line": 333,
+        "line": 337,
         "module": "app.lab",
         "table": "lab_judgment_campaigns"
       },
@@ -7677,9 +8129,20 @@
           "lab_judgment_campaigns.id"
         ],
         "history_mixin": true,
-        "line": 360,
+        "line": 364,
         "module": "app.lab",
         "table": "lab_judgment_results"
+      },
+      {
+        "class_name": "LabOperationResult",
+        "file": "back/app/lab/models.py",
+        "foreign_keys": [
+          "process_runs.id"
+        ],
+        "history_mixin": true,
+        "line": 440,
+        "module": "app.lab",
+        "table": "lab_operation_results"
       },
       {
         "class_name": "LabTaskDiagnosis",
@@ -8795,6 +9258,7 @@
         "capabilities": [
           "contracts.py",
           "i18n/",
+          "mcp.py",
           "models.py",
           "privileges.py",
           "router.py",

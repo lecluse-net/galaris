@@ -51,6 +51,14 @@
             </div>
           </section>
         </div>
+        <section v-if="run.agent_reviews?.some(review => review.result_id === result.id)">
+          <h3>{{ t('evaluation.insights.agentReviews') }}</h3>
+          <q-expansion-item v-for="review in run.agent_reviews.filter(review => review.result_id === result.id)" :key="review.id"
+            :label="t('evaluation.insights.agentReviewAuthor', { agent: review.agent_id, campaign: review.campaign_id })"
+            :caption="percent(review.score_percent)">
+            <LabReadableValue :value="review.assessment" />
+          </q-expansion-item>
+        </section>
         <q-expansion-item :label="t('evaluation.contract.effectiveInput')"><LabReadableValue :value="result.case_snapshot.resolved_input ?? result.case_snapshot.input_data" /></q-expansion-item>
         <q-expansion-item :label="t('evaluation.contract.reference')"><LabReadableValue :value="result.case_snapshot.expected_output" /></q-expansion-item>
         <q-expansion-item :label="t('evaluation.insights.raw')"><JsonEditor :model-value="JSON.stringify(result, null, 2)" language="json" readonly :visible-lines="12" /></q-expansion-item>

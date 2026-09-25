@@ -14,7 +14,9 @@ test.describe('Lab at ' + viewport.width, () => {
   test.use({ viewport })
 
 test('results expose evidence, filter failures and distinguish missing judgments in stability', async ({ page }) => {
-  const run = { repetitions: 3, total_cases: 3, configuration_snapshot: { rubric }, results: [
+  const run = { repetitions: 3, total_cases: 3, configuration_snapshot: { rubric }, agent_reviews: [
+    { id: 'agent-review', agent_id: 42, campaign_id: 'campaign-one', result_id: 'Successful', score_percent: 65, assessment: { explanation: 'Agent found missing supporting detail' } },
+  ], results: [
     result('Successful'),
     result('Critical', { repetition: 2, verdict: 'fail', score_percent: 40, judge_output: { explanation: 'Unsupported claims', critical_failures: ['Invented evidence'] } }),
     result('Unjudged', { repetition: 3, score_percent: null, verdict: 'inconclusive', judge_output: { error: 'Judge unavailable' } }),
@@ -30,6 +32,10 @@ test('results expose evidence, filter failures and distinguish missing judgments
   await page.getByText('Successful', { exact: true }).last().click()
   await expect(page.getByText('Readable candidate answer', { exact: true }).first()).toBeVisible()
   await expect(page.getByText('Sources are present', { exact: true })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Agent assessments' })).toBeVisible()
+  await page.getByText('Agent 42 · Campaign campaign-one', { exact: true }).click()
+  await expect(page.getByText('Agent found missing supporting detail', { exact: true })).toBeVisible()
+  await expect(page.getByLabel('Coherence: 90.0%', { exact: true })).toBeVisible()
   await page.getByLabel('Filter results', { exact: true }).click()
   await page.getByRole('option', { name: 'Critical failures', exact: true }).click()
   await expect(page.getByRole('status')).toHaveText('1/3 results displayed')

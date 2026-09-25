@@ -24,6 +24,29 @@ Une séquence de messages Topics constitue un item. Son historique et son catalo
 sont pas des tests supplémentaires. Le lab vocal travaille sur du texte transcrit ;
 il ne mesure pas la reconnaissance ou la synthèse audio.
 
+## Confier les Labs à un agent
+
+Activez sa connexion **Lab Galaris**, puis attribuez-lui le skill système **Galaris Lab**
+(`galaris-lab`) dans les autorisations des compétences. Ils sont désactivés par défaut.
+L'agent dispose alors de cinquante outils pour découvrir les onze labs, préparer et
+copier leurs jeux, modifier les prompts expérimentaux, lancer, suivre, arrêter, reprendre,
+rejuger et comparer les benchmarks, puis déposer ses propres évaluations.
+
+Pour capturer des Tasks, messages, conversations, tours vocaux ou appels LLM réels,
+activez également **Galaris Admin** avec ses fonctions d'inspection des exécutions.
+L'accès à la seule documentation produit ne suffit pas. Les diagnostics de Tasks
+nécessitent ce même accès supplémentaire.
+
+Les jeux et résultats sont ceux du Lab habituel. Les générations synthétiques restent
+des brouillons à vérifier. Les opérations longues renvoient une référence durable ;
+l'agent peut en consulter le résultat sans les relancer. Les évaluations d'agents sont
+identifiées par leur auteur et leur campagne, séparément des revues humaines et du juge.
+
+Donnez à l'agent une question expérimentale, un budget et une condition d'arrêt.
+Les réglages modifiés restent propres aux expériences. Ce mandat ne modifie pas les
+prompts ou modèles de production. Une connexion ou une fonction révoquée bloque le
+nouveau travail ; une inférence déjà partie peut encore être facturée.
+
 ## Créer le jeu
 
 1. Ouvrez le lab et cliquez sur **Nouveau jeu**.

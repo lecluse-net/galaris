@@ -1,4 +1,5 @@
 const insightsFr = {
+  agentReviews: 'Évaluations par des agents', agentReviewAuthor: 'Agent {agent} · Campagne {campaign}',
   coherence: 'Cohérence', averageCoherence: 'Cohérence moyenne', coherenceValue: 'Cohérence : {value}',
   scoredCount: '{count}/{total} évaluations notées',
   coherenceHelp: 'Moyenne des scores de cohérence selon les critères du lab, toutes répétitions confondues. Les résultats sans note sont exclus ; les filtres ne modifient pas cette moyenne.',
@@ -21,6 +22,7 @@ const insightsFr = {
   comparison: 'Votre note : {human} · Juge : {judge}', dimensionComparison: 'Vous : {human} · Juge : {judge} · Écart juge − humain : {delta}', agreement: '{count} comparaisons · {disagreements} désaccords de verdict · écart absolu moyen {error}',
 }
 const insightsEn: typeof insightsFr = {
+  agentReviews: 'Agent assessments', agentReviewAuthor: 'Agent {agent} · Campaign {campaign}',
   coherence: 'Coherence', averageCoherence: 'Average coherence', coherenceValue: 'Coherence: {value}',
   scoredCount: '{count}/{total} evaluations scored',
   coherenceHelp: 'Mean coherence score using the lab criteria, across all repetitions. Unscored results are excluded; filters do not change this mean.',
@@ -43,6 +45,7 @@ const insightsEn: typeof insightsFr = {
   comparison: 'Your score: {human} · Judge: {judge}', dimensionComparison: 'You: {human} · Judge: {judge} · Judge − human: {delta}', agreement: '{count} comparisons · {disagreements} verdict disagreements · mean absolute difference {error}',
 }
 const insightsZh: typeof insightsFr = {
+  agentReviews: '智能体评估', agentReviewAuthor: '智能体 {agent} · 评判批次 {campaign}',
   coherence: '一致性', averageCoherence: '平均一致性', coherenceValue: '一致性：{value}',
   scoredCount: '{count}/{total} 次评估已评分',
   coherenceHelp: '按实验室标准计算所有重复评估的一致性平均分。未评分结果不计入平均分；筛选不会改变此平均分。',

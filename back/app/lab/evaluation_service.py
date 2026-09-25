@@ -16,6 +16,7 @@ from sqlalchemy.orm import selectinload
 from app.llm import llm_service
 from app.task import Task
 from core.database import get_db
+from .transactions import publish
 from core.i18n import tr
 
 from .models import LabTask
@@ -145,7 +146,7 @@ async def add_task(
         .values(task_id=task_id)
         .on_conflict_do_nothing(index_elements=[LabTask.task_id])
     )
-    await db.commit()
+    await publish()
     return LabTaskReference(task_id=task_id, task=task_summary(task))
 
 
@@ -161,7 +162,7 @@ async def remove_task(
     if row is None:
         return False
     await db.delete(row)
-    await db.commit()
+    await publish()
     return True
 
 

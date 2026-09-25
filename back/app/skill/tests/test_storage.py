@@ -80,7 +80,8 @@ async def test_system_skill_uses_bundled_read_only_storage(skill_root: Path) -> 
 def test_system_skill_documents_every_native_mcp_tool(skill_root: Path) -> None:
     from app.tools.mcp_loader import load_mcp_tools
 
-    markdown = storage.read_text("galaris", "SKILL.md")
+    # Native operations may live in a dedicated system guide linked by the general skill.
+    markdown = storage.read_text("galaris", "SKILL.md") + storage.read_text("galaris-lab", "SKILL.md")
     missing = sorted(
         f"{definition.tool_code}:{definition.name}"
         for definition in load_mcp_tools()

@@ -193,6 +193,10 @@ class LabEvaluationRun(HistoryMixin, Base):
 
     __tablename__ = "lab_evaluation_runs"
 
+    requester_agent_id: Mapped[int | None] = mapped_column(ForeignKey("agents.id", ondelete="SET NULL"), nullable=True)
+    requester_task_id: Mapped[UUID | None] = mapped_column(ForeignKey("tasks.id", ondelete="SET NULL"), nullable=True)
+    requester_action: Mapped[str | None] = mapped_column(String(100), nullable=True)
+
     repetitions: Mapped[int] = mapped_column(Integer, nullable=False, default=1, server_default="1")
     max_cost: Mapped[float | None] = mapped_column(Float, nullable=True)
     stop_reason: Mapped[str | None] = mapped_column(String(40), nullable=True)
@@ -402,3 +406,41 @@ class LabHumanReview(HistoryMixin, Base):
     __table_args__ = (
         UniqueConstraint("campaign_id", "result_id", "reviewer_id", name="uq_lab_human_review"),
     )
+
+
+class LabCommand(HistoryMixin, Base):
+    """Atomic command receipt and attributable agent audit, without user impersonation."""
+
+    __tablename__ = "lab_commands"
+    id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), primary_key=True, default=uuid4)
+    agent_id: Mapped[int] = mapped_column(ForeignKey("agents.id"), index=True)
+    task_id: Mapped[UUID | None] = mapped_column(ForeignKey("tasks.id", ondelete="SET NULL"))
+    action: Mapped[str] = mapped_column(String(100))
+    invocation_key: Mapped[str] = mapped_column(String(200))
+    fingerprint: Mapped[str] = mapped_column(String(64))
+    response: Mapped[dict[str, Any]] = mapped_column(JSONB)
+    __table_args__ = (UniqueConstraint("agent_id", "action", "invocation_key", name="uq_lab_command"),)
+
+
+class LabAgentReview(HistoryMixin, Base):
+    """Agent assessment, never counted as a human review or automatic judgment."""
+
+    __tablename__ = "lab_agent_reviews"
+    id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), primary_key=True, default=uuid4)
+    agent_id: Mapped[int] = mapped_column(ForeignKey("agents.id"), index=True)
+    task_id: Mapped[UUID | None] = mapped_column(ForeignKey("tasks.id", ondelete="SET NULL"))
+    result_id: Mapped[UUID] = mapped_column(ForeignKey("lab_evaluation_run_cases.id", ondelete="CASCADE"), index=True)
+    campaign_id: Mapped[UUID] = mapped_column(ForeignKey("lab_judgment_campaigns.id", ondelete="CASCADE"), index=True)
+    assessment: Mapped[dict[str, Any]] = mapped_column(JSONB)
+    score_percent: Mapped[float] = mapped_column(Float)
+    verdict: Mapped[str] = mapped_column(String(20))
+    __table_args__ = (UniqueConstraint("agent_id", "campaign_id", "result_id", name="uq_lab_agent_review"),)
+
+
+class LabOperationResult(HistoryMixin, Base):
+    """Full result published atomically with the effects of an integrated Process."""
+
+    __tablename__ = "lab_operation_results"
+    id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), primary_key=True, default=uuid4)
+    process_run_id: Mapped[UUID] = mapped_column(ForeignKey("process_runs.id", ondelete="CASCADE"), unique=True)
+    payload: Mapped[dict[str, Any]] = mapped_column(JSONB)

@@ -48,6 +48,7 @@ export interface JudgmentCampaign {
   results: Array<{ result_id: string; status: string; verdict: string; output: unknown; cost: number; duration: number }>
 }
 export interface LabRun {
+  agent_reviews?: Array<{ id: string; agent_id: number; campaign_id: string; result_id: string; assessment: unknown; score_percent: number; verdict: string }>
   repetitions: number; max_cost: number | null; stop_reason: string | null
   id: string; status: string; phase: string; completed_cases: number; judged_cases: number
   total_cases: number; score_percent: number | null; candidate_cost: number; judge_cost: number

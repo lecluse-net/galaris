@@ -6,6 +6,7 @@ from sqlalchemy import func, select
 
 from app.llm import llm_service, model_usages
 from core.database import get_db
+from .transactions import publish
 from core.i18n import tr
 from .models import (
     LabEvaluationDataset,
@@ -139,7 +140,7 @@ async def rejudge(
     run.analysis_markdown = None
     run.lease_token = None
     run.lease_expires_at = None
-    await get_db().commit()
+    await publish()
     await get_db().refresh(run)
     from app.task import scheduler
 
@@ -179,7 +180,7 @@ async def resume(mechanism: EvaluationMechanism, run_id: UUID) -> EvaluationRunR
     if campaign is not None:
         campaign.status = "queued"
         campaign.finished_at = None
-    await get_db().commit()
+    await publish()
     await get_db().refresh(run)
     from app.task import scheduler
 

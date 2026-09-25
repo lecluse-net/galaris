@@ -23,6 +23,27 @@ its context and expected output, with a name and optional provenance.
 A Topic sequence is one item. History and catalogs do not add tests. The voice lab
 evaluates transcribed text, not speech recognition or audio synthesis.
 
+## Assign the Labs to an agent
+
+Enable the agent's **Lab Galaris** connection and assign the **Galaris Lab** system skill
+(`galaris-lab`) in its skill authorizations. Both are disabled by default. Fifty tools
+cover all eleven labs: discover contracts, create and clone datasets, edit experimental
+prompts, start, monitor, cancel, resume, rejudge and compare benchmarks, and submit
+attributed agent assessments.
+
+Capturing real Tasks, messages, conversations, voice turns or LLM calls also requires
+**Galaris Admin** with its execution-inspection functions. Documentation-only access
+does not grant this permission. Real Task diagnoses require the same additional access.
+
+The agent operates the same datasets and results as the Workbench. Synthetic datasets
+remain drafts to review. Long operations return durable references whose results can
+be retrieved without repeating the operation. Agent assessments display their author
+and campaign separately from human reviews and automatic judgments.
+
+Provide an experimental question, a budget and a stopping condition. Changes affect
+the experiments; they do not update production prompts or models. Revoking a connection
+or function prevents new work, although an inference already sent may still be billed.
+
 ## Create the dataset
 
 Select **New dataset**, edit shared parameters and instructions under **Dataset settings**,

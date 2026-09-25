@@ -353,6 +353,9 @@ class EvaluationExpectedGenerated(BaseModel):
 
 
 class EvaluationRunRead(BaseModel):
+    requester_agent_id: int | None = None
+    requester_task_id: UUID | None = None
+    requester_action: str | None = None
     repetitions: int = 1
     max_cost: float | None = None
     stop_reason: str | None = None
@@ -431,7 +434,21 @@ class JudgmentCampaignRead(BaseModel):
     results: list[JudgmentResultRead] = Field(default_factory=list[JudgmentResultRead])
 
 
+class AgentReviewRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: UUID
+    agent_id: int
+    task_id: UUID | None
+    result_id: UUID
+    campaign_id: UUID
+    assessment: dict[str, Any]
+    score_percent: float
+    verdict: str
+    created_at: datetime
+
+
 class EvaluationRunDetail(EvaluationRunRead):
+    agent_reviews: list[AgentReviewRead] = Field(default_factory=list[AgentReviewRead])
     campaigns: list[JudgmentCampaignRead] = Field(default_factory=list[JudgmentCampaignRead])
     results: list[EvaluationRunCaseRead] = Field(default_factory=list[EvaluationRunCaseRead])
 

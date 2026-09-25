@@ -67,6 +67,17 @@ _DETAILS: dict[str, str] = {
     "affine": "## Capabilities\n\n- **Upload files:** transfer binary content to an authorized AFFiNE workspace.\n- **Retrieve resources:** download known files using their reference and workspace.\n- **Exchange across storage:** use File sharing to transfer resources between AFFiNE and another accessible space.\n\n## When to use it\n\nUse it when files produced or consumed by an agent belong in an existing AFFiNE workspace. **Example:** upload an image or binary document to the intended workspace and retain the returned reference.\n\n## Requirements and limits\n\nRequires a configured account and an explicit, authorized workspace. The bridge handles binary files, not AFFiNE document blocks, databases or layouts. Uploading a file does not mean it was inserted into a page or shared with new users.",
 }
 
+OVERVIEWS["lab"] = "Operate all eleven AI Labs, compare experiments and diagnose Tasks."
+_DETAILS["lab"] = (
+    "## Capabilities\n\nCreate and clone datasets, capture cases, generate synthetic drafts, "
+    "edit experimental prompts, run repeated benchmarks, cancel/resume, rejudge, compare and review results. "
+    "Long analyses and generations return durable Process references.\n\n"
+    "## Access\n\nDisabled by default. Enable this connection and assign the galaris-lab skill to an "
+    "experimenting agent. Real-source capture and Task diagnostics additionally require the "
+    "execution-inspection functions of galaris_admin. Agent assessments are attributed separately "
+    "from human reviews. Experimental edits do not promote production settings."
+)
+
 DESCRIPTIONS: dict[str, str] = {
     code: f"## Purpose\n\n{overview}\n\n{_DETAILS[code]}" for code, overview in OVERVIEWS.items()
 }

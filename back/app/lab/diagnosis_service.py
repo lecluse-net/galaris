@@ -9,6 +9,7 @@ from uuid import UUID
 from sqlalchemy import select
 
 from core.database import get_db
+from .transactions import publish
 from core.i18n import tr
 
 from . import evaluation_service
@@ -21,7 +22,7 @@ from .schemas import (
 )
 
 
-def _to_schema(row: LabTaskDiagnosis) -> TaskAnalysis:
+def to_schema(row: LabTaskDiagnosis) -> TaskAnalysis:
     content = TaskAnalysisContent.model_validate(row.content)
     evidence = EvidenceCoverage.model_validate(row.evidence_coverage)
     return TaskAnalysis(
@@ -71,9 +72,9 @@ async def create_diagnosis(
     )
     db = get_db()
     db.add(row)
-    await db.commit()
+    await publish()
     await db.refresh(row)
-    return _to_schema(row)
+    return to_schema(row)
 
 
 async def list_diagnoses(
@@ -97,7 +98,7 @@ async def list_diagnoses(
     rows = list(
         (await get_db().scalars(LabTaskDiagnosis.histo_filter(query))).all()
     )
-    return [_to_schema(row) for row in rows]
+    return [to_schema(row) for row in rows]
 
 
 __all__ = ["create_diagnosis", "list_diagnoses"]

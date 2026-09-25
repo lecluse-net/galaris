@@ -18,8 +18,8 @@ tests restent l’autorité sur le comportement.
 - 1 composantes fortement connexes ;
 - 7 paires frontend directement bidirectionnelles ;
 - 579 handlers HTTP/WebSocket détectés ;
-- 123 tables SQLAlchemy détectées ;
-- 131 outils MCP natifs détectés ;
+- 126 tables SQLAlchemy détectées ;
+- 181 outils MCP natifs détectés ;
 - 39 pages Vue détectées.
 
 ## Modules backend
@@ -47,7 +47,7 @@ tests restent l’autorité sur le comportement.
 | `app.task` | app | non | oui | `i18n/`, `mcp.py`, `models.py`, `privileges.py`, `router.py`, `schemas.py`, `tests/` |
 | `app.goal` | app | non | oui | `facade.py`, `i18n/`, `mcp.py`, `models.py`, `privileges.py`, `router.py`, `schemas.py`, `tests/` |
 | `app.dashboard` | app | non | oui | `router.py`, `schemas.py`, `tests/` |
-| `app.lab` | app | non | oui | `contracts.py`, `i18n/`, `models.py`, `privileges.py`, `router.py`, `schemas.py`, `tests/` |
+| `app.lab` | app | non | oui | `contracts.py`, `i18n/`, `mcp.py`, `models.py`, `privileges.py`, `router.py`, `schemas.py`, `tests/` |
 | `app.messenger` | app | non | oui | `contracts.py`, `facade.py`, `i18n/`, `interface.py`, `mcp.py`, `models.py`, `router.py`, `schemas.py`, `tests/` |
 | `app.chat` | app | non | oui | `models.py`, `privileges.py`, `router.py`, `schemas.py`, `tests/` |
 | `app.conversation` | app | non | oui | `contracts.py`, `facade.py`, `i18n/`, `mcp.py`, `models.py`, `router.py`, `schemas.py`, `tests/` |
@@ -306,22 +306,22 @@ tests restent l’autorité sur le comportement.
 | `app.incident` | `core.database` | `back/app/incident/models.py`, `back/app/incident/retention.py`, `back/app/incident/service.py` |
 | `app.incident` | `core.failure_journal` | `back/app/incident/__init__.py`, `back/app/incident/contracts.py` |
 | `app.incident` | `core.params` | `back/app/incident/retention.py` |
-| `app.lab` | `app.agent` | `back/app/lab/contracts.py`, `back/app/lab/dispatcher_evaluation_service.py`, `back/app/lab/evidence_service.py`, `back/app/lab/executor_prompt_service.py`, `back/app/lab/mechanism_evaluation_service.py`, `back/app/lab/mechanism_registry.py`, `back/app/lab/objective_checks.py`, `back/app/lab/router.py`, `back/app/lab/schemas.py` |
-| `app.lab` | `app.connection` | `back/app/lab/mechanism_evaluation_service.py` |
-| `app.lab` | `app.conversation` | `back/app/lab/mechanism_evaluation_service.py` |
+| `app.lab` | `app.agent` | `back/app/lab/contracts.py`, `back/app/lab/dispatcher_evaluation_service.py`, `back/app/lab/engine.py`, `back/app/lab/evidence_service.py`, `back/app/lab/executor_prompt_service.py`, `back/app/lab/mechanism_evaluation_service.py`, `back/app/lab/mechanism_registry.py`, `back/app/lab/objective_checks.py`, `back/app/lab/operations.py`, `back/app/lab/router.py`, `back/app/lab/schemas.py` |
+| `app.lab` | `app.connection` | `back/app/lab/mcp_access.py`, `back/app/lab/mechanism_evaluation_service.py`, `back/app/lab/operations.py` |
+| `app.lab` | `app.conversation` | `back/app/lab/mechanism_evaluation_service.py`, `back/app/lab/operations.py` |
 | `app.lab` | `app.dream` | `back/app/lab/contracts.py`, `back/app/lab/mechanism_evaluation_service.py`, `back/app/lab/mechanism_registry.py`, `back/app/lab/run_inference.py`, `back/app/lab/schemas.py`, `back/app/lab/synthetic_service.py` |
 | `app.lab` | `app.goal` | `back/app/lab/mechanism_registry.py` |
-| `app.lab` | `app.llm` | `back/app/lab/analysis_service.py`, `back/app/lab/dispatcher_evaluation_service.py`, `back/app/lab/evaluation_service.py`, `back/app/lab/evidence_service.py`, `back/app/lab/inference_profile.py`, `back/app/lab/judgment_service.py`, `back/app/lab/mechanism_evaluation_service.py`, `back/app/lab/mechanism_registry.py`, `back/app/lab/run_inference.py`, `back/app/lab/synthetic_service.py` |
+| `app.lab` | `app.llm` | `back/app/lab/analysis_service.py`, `back/app/lab/dispatcher_evaluation_service.py`, `back/app/lab/engine.py`, `back/app/lab/evaluation_service.py`, `back/app/lab/evidence_service.py`, `back/app/lab/inference_profile.py`, `back/app/lab/judgment_service.py`, `back/app/lab/mechanism_evaluation_service.py`, `back/app/lab/mechanism_registry.py`, `back/app/lab/operations.py`, `back/app/lab/run_inference.py`, `back/app/lab/synthetic_service.py` |
 | `app.lab` | `app.memory` | `back/app/lab/mechanism_evaluation_service.py` |
-| `app.lab` | `app.messenger` | `back/app/lab/mechanism_evaluation_service.py` |
-| `app.lab` | `app.process` | `back/app/lab/evidence_service.py`, `back/app/lab/mechanism_evaluation_service.py` |
+| `app.lab` | `app.messenger` | `back/app/lab/mechanism_evaluation_service.py`, `back/app/lab/operations.py` |
+| `app.lab` | `app.process` | `back/app/lab/__init__.py`, `back/app/lab/engine.py`, `back/app/lab/evidence_service.py`, `back/app/lab/mechanism_evaluation_service.py`, `back/app/lab/operations.py` |
 | `app.lab` | `app.skill` | `back/app/lab/evidence_service.py` |
-| `app.lab` | `app.task` | `back/app/lab/__init__.py`, `back/app/lab/dispatcher_evaluation_service.py`, `back/app/lab/evaluation_service.py`, `back/app/lab/evidence_service.py`, `back/app/lab/judgment_service.py`, `back/app/lab/mechanism_evaluation_service.py` |
-| `app.lab` | `app.tools` | `back/app/lab/evidence_service.py` |
+| `app.lab` | `app.task` | `back/app/lab/__init__.py`, `back/app/lab/dispatcher_evaluation_service.py`, `back/app/lab/evaluation_service.py`, `back/app/lab/evidence_service.py`, `back/app/lab/judgment_service.py`, `back/app/lab/mechanism_evaluation_service.py`, `back/app/lab/operations.py` |
+| `app.lab` | `app.tools` | `back/app/lab/engine.py`, `back/app/lab/evidence_service.py`, `back/app/lab/mcp.py`, `back/app/lab/mcp_access.py`, `back/app/lab/mcp_service.py`, `back/app/lab/operations.py`, `back/app/lab/run_claims.py` |
 | `app.lab` | `app.topic` | `back/app/lab/contracts.py`, `back/app/lab/mechanism_evaluation_service.py`, `back/app/lab/mechanism_registry.py`, `back/app/lab/schemas.py`, `back/app/lab/synthetic_service.py` |
 | `app.lab` | `app.voice` | `back/app/lab/mechanism_evaluation_service.py` |
 | `app.lab` | `core.authorize` | `back/app/lab/access.py`, `back/app/lab/assertions.py`, `back/app/lab/router.py` |
-| `app.lab` | `core.database` | `back/app/lab/capture_service.py`, `back/app/lab/diagnosis_service.py`, `back/app/lab/dispatcher_evaluation_service.py`, `back/app/lab/evaluation_service.py`, `back/app/lab/evidence_service.py`, `back/app/lab/human_review_service.py`, `back/app/lab/judgment_service.py`, `back/app/lab/mechanism_evaluation_service.py`, `back/app/lab/models.py`, `back/app/lab/run_claims.py`, `back/app/lab/run_lease.py`, `back/app/lab/run_publication.py`, `back/app/lab/synthetic_service.py` |
+| `app.lab` | `core.database` | `back/app/lab/agent_review_service.py`, `back/app/lab/capture_service.py`, `back/app/lab/diagnosis_service.py`, `back/app/lab/dispatcher_evaluation_service.py`, `back/app/lab/engine.py`, `back/app/lab/evaluation_service.py`, `back/app/lab/evidence_service.py`, `back/app/lab/human_review_service.py`, `back/app/lab/judgment_service.py`, `back/app/lab/mcp_access.py`, `back/app/lab/mcp_service.py`, `back/app/lab/mechanism_evaluation_service.py`, `back/app/lab/models.py`, `back/app/lab/operations.py`, `back/app/lab/run_claims.py`, `back/app/lab/run_lease.py`, `back/app/lab/run_publication.py`, `back/app/lab/synthetic_service.py`, `back/app/lab/transactions.py` |
 | `app.lab` | `core.i18n` | `back/app/lab/analysis_service.py`, `back/app/lab/diagnosis_service.py`, `back/app/lab/dispatcher_evaluation_service.py`, `back/app/lab/evaluation_service.py`, `back/app/lab/human_review_service.py`, `back/app/lab/judgment_service.py`, `back/app/lab/mechanism_evaluation_service.py`, `back/app/lab/router.py`, `back/app/lab/synthetic_service.py` |
 | `app.lab` | `core.params` | `back/app/lab/evidence_service.py`, `back/app/lab/executor_prompt_service.py` |
 | `app.lab` | `core.user` | `back/app/lab/human_review_service.py` |
@@ -1697,13 +1697,16 @@ tests restent l’autorité sur le comportement.
 | `harnesses` | `Harness` | `app.harnesses` | oui | — | `back/app/harnesses/models.py:29` |
 | `hermes_agent_configs` | `HermesAgentConfig` | `bridge.hermes` | non | `agents.id` | `back/bridge/hermes/models.py:14` |
 | `hermes_session_bindings` | `HermesSessionBinding` | `bridge.hermes` | non | `agents.id` | `back/bridge/hermes/models.py:73` |
+| `lab_agent_reviews` | `LabAgentReview` | `app.lab` | oui | `agents.id`, `lab_evaluation_run_cases.id`, `lab_judgment_campaigns.id`, `tasks.id` | `back/app/lab/models.py:425` |
+| `lab_commands` | `LabCommand` | `app.lab` | oui | `agents.id`, `tasks.id` | `back/app/lab/models.py:411` |
 | `lab_evaluation_cases` | `LabEvaluationCase` | `app.lab` | oui | `lab_evaluation_cases.id`, `lab_evaluation_datasets.id` | `back/app/lab/models.py:130` |
 | `lab_evaluation_datasets` | `LabEvaluationDataset` | `app.lab` | oui | — | `back/app/lab/models.py:89` |
-| `lab_evaluation_run_cases` | `LabEvaluationRunCase` | `app.lab` | oui | `lab_evaluation_cases.id`, `lab_evaluation_runs.id` | `back/app/lab/models.py:285` |
-| `lab_evaluation_runs` | `LabEvaluationRun` | `app.lab` | oui | `lab_evaluation_datasets.id`, `llms.id` | `back/app/lab/models.py:191` |
-| `lab_human_reviews` | `LabHumanReview` | `app.lab` | oui | `lab_evaluation_run_cases.id`, `lab_judgment_campaigns.id`, `users.id` | `back/app/lab/models.py:385` |
-| `lab_judgment_campaigns` | `LabJudgmentCampaign` | `app.lab` | oui | `lab_evaluation_runs.id`, `llms.id` | `back/app/lab/models.py:333` |
-| `lab_judgment_results` | `LabJudgmentResult` | `app.lab` | oui | `lab_evaluation_run_cases.id`, `lab_judgment_campaigns.id` | `back/app/lab/models.py:360` |
+| `lab_evaluation_run_cases` | `LabEvaluationRunCase` | `app.lab` | oui | `lab_evaluation_cases.id`, `lab_evaluation_runs.id` | `back/app/lab/models.py:289` |
+| `lab_evaluation_runs` | `LabEvaluationRun` | `app.lab` | oui | `agents.id`, `lab_evaluation_datasets.id`, `llms.id`, `tasks.id` | `back/app/lab/models.py:191` |
+| `lab_human_reviews` | `LabHumanReview` | `app.lab` | oui | `lab_evaluation_run_cases.id`, `lab_judgment_campaigns.id`, `users.id` | `back/app/lab/models.py:389` |
+| `lab_judgment_campaigns` | `LabJudgmentCampaign` | `app.lab` | oui | `lab_evaluation_runs.id`, `llms.id` | `back/app/lab/models.py:337` |
+| `lab_judgment_results` | `LabJudgmentResult` | `app.lab` | oui | `lab_evaluation_run_cases.id`, `lab_judgment_campaigns.id` | `back/app/lab/models.py:364` |
+| `lab_operation_results` | `LabOperationResult` | `app.lab` | oui | `process_runs.id` | `back/app/lab/models.py:440` |
 | `lab_task_diagnoses` | `LabTaskDiagnosis` | `app.lab` | oui | `tasks.id` | `back/app/lab/models.py:43` |
 | `lab_tasks` | `LabTask` | `app.lab` | non | `tasks.id` | `back/app/lab/models.py:27` |
 | `learned_skill_evidences` | `LearnedSkillEvidence` | `app.skill` | non | `learned_skills.id` | `back/app/skill/models.py:204` |
@@ -1858,6 +1861,56 @@ tests restent l’autorité sur le comportement.
 | `goal_update` | `goal_management` | `app.goal` | `mcp_goal_update` | `back/app/goal/mcp.py:304` |
 | `image_generate` | `image` | `app.image` | `generate_image` | `back/app/image/mcp.py:123` |
 | `image_read` | `image` | `app.image` | `describe_image` | `back/app/image/mcp.py:205` |
+| `lab_campaign_get` | `lab` | `app.lab` | `lab_campaign_get` | `back/app/lab/mcp.py:563` |
+| `lab_campaign_list` | `lab` | `app.lab` | `lab_campaign_list` | `back/app/lab/mcp.py:550` |
+| `lab_case_create` | `lab` | `app.lab` | `lab_case_create` | `back/app/lab/mcp.py:242` |
+| `lab_case_delete` | `lab` | `app.lab` | `lab_case_delete` | `back/app/lab/mcp.py:294` |
+| `lab_case_duplicate` | `lab` | `app.lab` | `lab_case_duplicate` | `back/app/lab/mcp.py:276` |
+| `lab_case_get` | `lab` | `app.lab` | `lab_case_get` | `back/app/lab/mcp.py:229` |
+| `lab_case_import` | `lab` | `app.lab` | `lab_case_import` | `back/app/lab/mcp.py:360` |
+| `lab_case_list` | `lab` | `app.lab` | `lab_case_list` | `back/app/lab/mcp.py:216` |
+| `lab_case_restore_source` | `lab` | `app.lab` | `lab_case_restore_source` | `back/app/lab/mcp.py:313` |
+| `lab_case_update` | `lab` | `app.lab` | `lab_case_update` | `back/app/lab/mcp.py:259` |
+| `lab_content_read` | `lab` | `app.lab` | `lab_content_read` | `back/app/lab/mcp.py:809` |
+| `lab_dataset_clone` | `lab` | `app.lab` | `lab_dataset_clone` | `back/app/lab/mcp.py:181` |
+| `lab_dataset_create` | `lab` | `app.lab` | `lab_dataset_create` | `back/app/lab/mcp.py:148` |
+| `lab_dataset_delete` | `lab` | `app.lab` | `lab_dataset_delete` | `back/app/lab/mcp.py:199` |
+| `lab_dataset_generate` | `lab` | `app.lab` | `lab_dataset_generate` | `back/app/lab/mcp.py:594` |
+| `lab_dataset_get` | `lab` | `app.lab` | `lab_dataset_get` | `back/app/lab/mcp.py:133` |
+| `lab_dataset_list` | `lab` | `app.lab` | `lab_dataset_list` | `back/app/lab/mcp.py:120` |
+| `lab_dataset_update` | `lab` | `app.lab` | `lab_dataset_update` | `back/app/lab/mcp.py:164` |
+| `lab_expected_generate` | `lab` | `app.lab` | `lab_expected_generate` | `back/app/lab/mcp.py:612` |
+| `lab_get` | `lab` | `app.lab` | `lab_get` | `back/app/lab/mcp.py:57` |
+| `lab_input_preview` | `lab` | `app.lab` | `lab_input_preview` | `back/app/lab/mcp.py:334` |
+| `lab_list` | `lab` | `app.lab` | `lab_list` | `back/app/lab/mcp.py:40` |
+| `lab_models` | `lab` | `app.lab` | `lab_models` | `back/app/lab/mcp.py:75` |
+| `lab_operation_cancel` | `lab` | `app.lab` | `lab_operation_cancel` | `back/app/lab/mcp.py:691` |
+| `lab_operation_get` | `lab` | `app.lab` | `lab_operation_get` | `back/app/lab/mcp.py:678` |
+| `lab_prompt_defaults` | `lab` | `app.lab` | `lab_prompt_defaults` | `back/app/lab/mcp.py:100` |
+| `lab_review_get` | `lab` | `app.lab` | `lab_review_get` | `back/app/lab/mcp.py:780` |
+| `lab_review_list` | `lab` | `app.lab` | `lab_review_list` | `back/app/lab/mcp.py:767` |
+| `lab_review_submit` | `lab` | `app.lab` | `lab_review_submit` | `back/app/lab/mcp.py:793` |
+| `lab_run_analyze` | `lab` | `app.lab` | `lab_run_analyze` | `back/app/lab/mcp.py:636` |
+| `lab_run_cancel` | `lab` | `app.lab` | `lab_run_cancel` | `back/app/lab/mcp.py:482` |
+| `lab_run_compare` | `lab` | `app.lab` | `lab_run_compare` | `back/app/lab/mcp.py:576` |
+| `lab_run_delete` | `lab` | `app.lab` | `lab_run_delete` | `back/app/lab/mcp.py:529` |
+| `lab_run_get` | `lab` | `app.lab` | `lab_run_get` | `back/app/lab/mcp.py:456` |
+| `lab_run_list` | `lab` | `app.lab` | `lab_run_list` | `back/app/lab/mcp.py:443` |
+| `lab_run_rejudge` | `lab` | `app.lab` | `lab_run_rejudge` | `back/app/lab/mcp.py:510` |
+| `lab_run_results` | `lab` | `app.lab` | `lab_run_results` | `back/app/lab/mcp.py:469` |
+| `lab_run_resume` | `lab` | `app.lab` | `lab_run_resume` | `back/app/lab/mcp.py:495` |
+| `lab_run_start` | `lab` | `app.lab` | `lab_run_start` | `back/app/lab/mcp.py:427` |
+| `lab_source_list` | `lab` | `app.lab` | `lab_source_list` | `back/app/lab/mcp.py:347` |
+| `lab_task_add` | `lab` | `app.lab` | `lab_task_add` | `back/app/lab/mcp.py:728` |
+| `lab_task_analyze` | `lab` | `app.lab` | `lab_task_analyze` | `back/app/lab/mcp.py:659` |
+| `lab_task_candidates` | `lab` | `app.lab` | `lab_task_candidates` | `back/app/lab/mcp.py:702` |
+| `lab_task_diagnoses` | `lab` | `app.lab` | `lab_task_diagnoses` | `back/app/lab/mcp.py:754` |
+| `lab_task_list` | `lab` | `app.lab` | `lab_task_list` | `back/app/lab/mcp.py:715` |
+| `lab_task_remove` | `lab` | `app.lab` | `lab_task_remove` | `back/app/lab/mcp.py:740` |
+| `lab_topic_agent_list` | `lab` | `app.lab` | `lab_topic_agent_list` | `back/app/lab/mcp.py:377` |
+| `lab_topic_messages_import` | `lab` | `app.lab` | `lab_topic_messages_import` | `back/app/lab/mcp.py:414` |
+| `lab_topic_messages_preview` | `lab` | `app.lab` | `lab_topic_messages_preview` | `back/app/lab/mcp.py:401` |
+| `lab_topic_person_list` | `lab` | `app.lab` | `lab_topic_person_list` | `back/app/lab/mcp.py:388` |
 | `mail_connection_status` | `mail` | `bridge.mail` | `mail_connection_status` | `back/bridge/mail/mcp.py:21` |
 | `mail_forward` | `mail` | `bridge.mail` | `mail_forward` | `back/bridge/mail/mcp.py:182` |
 | `mail_get` | `mail` | `bridge.mail` | `mail_get` | `back/bridge/mail/mcp.py:86` |

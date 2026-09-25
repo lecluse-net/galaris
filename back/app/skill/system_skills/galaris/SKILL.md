@@ -22,6 +22,15 @@ that inventory is not authorized for you.
 Unless stated otherwise, each tool returns a **text value** (`str`). Failures may be MCP errors
 or readable error text; inspect both the error flag and the returned value before continuing.
 
+## AI Labs
+
+The optional `lab` connection exposes `lab_*` tools for all eleven AI Labs and Task diagnosis.
+Use the dedicated `galaris-lab` skill for datasets, experimental prompts, benchmarks,
+comparisons and attributed agent assessments. Start with `lab_list` and `lab_get`;
+generation and analysis return durable operations. Real-source capture additionally requires
+the execution-inspection functions of `galaris_admin`. These tools operate canonical Lab
+records and do not promote experimental settings to production.
+
 ## Documents: the shared information hub
 
 Galaris, Conversation, Memory and File Sharing are mandatory system services: their connections

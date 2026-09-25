@@ -61,6 +61,7 @@ from app.topic.evaluation import (
 from app.topic.sequential_detection import MAX_MESSAGES
 from app.voice import inspect_voice_turn
 from core.database import get_db
+from .transactions import publish
 from core.i18n import tr
 
 from .mechanism_registry import (
@@ -300,7 +301,7 @@ async def create_dataset(
 ) -> EvaluationDatasetRead:
     dataset = await prepare_dataset(mechanism, data)
     get_db().add(dataset)
-    await get_db().commit()
+    await publish()
     await get_db().refresh(dataset)
     return await dataset_read(dataset)
 
@@ -359,7 +360,7 @@ async def update_dataset(
         dataset.prompt_suffix = (
             data.prompt_suffix.strip() if data.prompt_suffix is not None else None
         )
-    await get_db().commit()
+    await publish()
     await get_db().refresh(dataset)
     return await dataset_read(dataset)
 
@@ -372,7 +373,7 @@ async def update_topic_dataset_configuration(
     if dataset.revision != data.revision:
         raise RevisionConflictError(await tr("evaluation_api.errors.revision_conflict"))
     dataset.configuration = _topic_configuration_dump(data.configuration)
-    await get_db().commit()
+    await publish()
     await get_db().refresh(dataset)
     return await dataset_read(dataset)
 
@@ -385,7 +386,7 @@ async def update_planner_dataset_configuration(
     if dataset.revision != data.revision:
         raise RevisionConflictError(await tr("evaluation_api.errors.revision_conflict"))
     dataset.configuration = _planner_configuration_dump(data.configuration)
-    await get_db().commit()
+    await publish()
     await get_db().refresh(dataset)
     return await dataset_read(dataset)
 
@@ -402,7 +403,7 @@ async def update_memory_extraction_dataset_configuration(
     if dataset.revision != data.revision:
         raise RevisionConflictError(await tr("evaluation_api.errors.revision_conflict"))
     dataset.configuration = _memory_extraction_configuration_dump(data.configuration)
-    await get_db().commit()
+    await publish()
     await get_db().refresh(dataset)
     return await dataset_read(dataset)
 
@@ -430,7 +431,7 @@ async def delete_dataset(mechanism: EvaluationMechanism, dataset_id: UUID) -> bo
     )
     for row in rows:
         row.soft_delete()
-    await get_db().commit()
+    await publish()
     return True
 
 
@@ -466,7 +467,7 @@ async def create_case(
         source_capture={},
     )
     get_db().add(row)
-    await get_db().commit()
+    await publish()
     await get_db().refresh(row)
     return EvaluationCaseRead.model_validate(row)
 
@@ -1011,7 +1012,7 @@ async def import_topic_message_range(
     )
     await check_capture(row, data.confirmation_token)
     get_db().add(row)
-    await get_db().commit()
+    await publish()
     await get_db().refresh(row)
     return EvaluationCaseRead.model_validate(row)
 
@@ -1234,7 +1235,7 @@ async def _import_topic_message_case(
     )
     await check_capture(row, data.confirmation_token)
     get_db().add(row)
-    await get_db().commit()
+    await publish()
     await get_db().refresh(row)
     return EvaluationCaseRead.model_validate(row)
 
@@ -1369,7 +1370,7 @@ async def _import_memory_extraction_source_case(
     )
     await check_capture(row, data.confirmation_token)
     get_db().add(row)
-    await get_db().commit()
+    await publish()
     await get_db().refresh(row)
     return EvaluationCaseRead.model_validate(row)
 
@@ -1461,7 +1462,7 @@ async def import_source_case(
     )
     await check_capture(row, data.confirmation_token)
     get_db().add(row)
-    await get_db().commit()
+    await publish()
     await get_db().refresh(row)
     return EvaluationCaseRead.model_validate(row)
 
@@ -1488,7 +1489,7 @@ async def import_task_case(
         )
         await check_capture(row, data.confirmation_token)
         get_db().add(row)
-        await get_db().commit()
+        await publish()
         await get_db().refresh(row)
         return EvaluationCaseRead.model_validate(row)
     if mechanism == "memory_extraction":
@@ -1585,7 +1586,7 @@ async def import_task_case(
     )
     await check_capture(row, data.confirmation_token)
     get_db().add(row)
-    await get_db().commit()
+    await publish()
     await get_db().refresh(row)
     return EvaluationCaseRead.model_validate(row)
 
@@ -1893,7 +1894,7 @@ async def import_executor_case(
     )
     await check_capture(row, data.confirmation_token)
     get_db().add(row)
-    await get_db().commit()
+    await publish()
     await get_db().refresh(row)
     return EvaluationCaseRead.model_validate(row)
 
@@ -1939,7 +1940,7 @@ async def update_case(
     row.readiness = "ready"
     if "categories" in data.model_fields_set:
         row.categories = list(dict.fromkeys(data.categories))
-    await get_db().commit()
+    await publish()
     await get_db().refresh(row)
     return EvaluationCaseRead.model_validate(row)
 
@@ -1961,7 +1962,7 @@ async def duplicate_case(mechanism: EvaluationMechanism, case_id: UUID) -> Evalu
         source_capture=json.loads(json.dumps(source.source_capture)),
     )
     get_db().add(duplicate)
-    await get_db().commit()
+    await publish()
     await get_db().refresh(duplicate)
     return EvaluationCaseRead.model_validate(duplicate)
 
@@ -1997,7 +1998,7 @@ async def restore_case_source(
     row.source_capture = restored.source_capture
     row.reference = cast(dict[str, Any], row.source_capture.get("llm") or {})
     row.readiness = restored.readiness
-    await get_db().commit()
+    await publish()
     await get_db().refresh(row)
     return EvaluationCaseRead.model_validate(row)
 
@@ -2008,7 +2009,7 @@ async def delete_case(mechanism: EvaluationMechanism, case_id: UUID) -> bool:
     except LookupError:
         return False
     row.soft_delete()
-    await get_db().commit()
+    await publish()
     return True
 
 
@@ -2016,9 +2017,10 @@ async def generate_expected(
     mechanism: EvaluationMechanism,
     case_id: UUID,
     data: MechanismExpectedGenerate,
+    *, llm_id: int | None = None,
 ) -> MechanismExpectedGenerated:
     row = await _case(mechanism, case_id)
-    llm = await llm_service.get_profile_llm(model_usages.LAB)
+    llm = await llm_service.get_llm(llm_id) if llm_id is not None else await llm_service.get_profile_llm(model_usages.LAB)
     if llm is None:
         raise ValueError(await tr("evaluation_api.errors.lab_llm_not_configured"))
     dataset = await _dataset(mechanism, row.dataset_id)
@@ -2217,7 +2219,7 @@ async def start_run(
         ),
     }
     get_db().add(run)
-    await get_db().commit()
+    await publish()
     await get_db().refresh(run)
     from app.task import scheduler
 
@@ -2273,8 +2275,10 @@ async def get_run(mechanism: EvaluationMechanism, run_id: UUID) -> EvaluationRun
         ).all()
     )
     from .judgment_service import list_campaigns
+    from .agent_review_service import list_run_reviews
 
     return EvaluationRunDetail(
+        agent_reviews=await list_run_reviews(run.id),
         campaigns=await list_campaigns(run.id),
         **EvaluationRunRead.model_validate(run).model_dump(),
         results=[EvaluationRunCaseRead.model_validate(result) for result in results],
@@ -2300,7 +2304,7 @@ async def delete_run(mechanism: EvaluationMechanism, run_id: UUID) -> bool:
     for result in results:
         result.soft_delete()
     run.soft_delete()
-    await get_db().commit()
+    await publish()
     return True
 
 
@@ -2389,6 +2393,7 @@ async def analyze_run(
     mechanism: EvaluationMechanism,
     run_id: UUID,
     data: EvaluationRunAnalysisRequest,
+    *, llm_id: int | None = None, expected_state: dict[str, Any] | None = None,
 ) -> EvaluationRunDetail:
     run = await _run(mechanism, run_id)
     if run.status not in _TERMINAL_RUN_STATUSES:
@@ -2405,7 +2410,7 @@ async def analyze_run(
     if not results:
         raise ValueError(await tr("evaluation_api.errors.run_has_no_results"))
     dataset = await _dataset(mechanism, run.dataset_id)
-    llm = await llm_service.get_profile_llm(model_usages.LAB)
+    llm = await llm_service.get_llm(llm_id) if llm_id is not None else await llm_service.get_profile_llm(model_usages.LAB)
     if llm is None or "chat" not in llm.service_capabilities:
         raise ValueError(await tr("evaluation_api.errors.lab_llm_not_configured"))
     rubric = get_rubric(mechanism)
@@ -2513,6 +2518,12 @@ async def analyze_run(
     for case_analysis, result in zip(inference.output.case_analyses, results, strict=True):
         case_analysis.case_name = str(result.case_snapshot.get("name") or result.case_id)
         case_analysis.score_percent = result.score_percent if semantic_scoring else None
+    if expected_state is not None:
+        current = await get_db().scalar(select(LabEvaluationRun).where(LabEvaluationRun.id == run_id)
+            .with_for_update().execution_options(populate_existing=True))
+        if current is None or EvaluationRunRead.model_validate(current).model_dump(mode="json") != expected_state:
+            raise RevisionConflictError("Benchmark changed during analysis; start a new analysis.")
+        run = current
     run.analysis_markdown = _analysis_markdown(
         inference.output, language=data.language, mechanism=mechanism
     )
@@ -2520,7 +2531,7 @@ async def analyze_run(
     run.analysis_cost = inference.cost
     run.analysis_language = data.language
     run.analysis_created_at = _utcnow()
-    await get_db().commit()
+    await publish()
     detail = await get_run(mechanism, run.id)
     if detail is None:
         raise LookupError(await tr("evaluation_api.errors.run_not_found"))
@@ -2534,7 +2545,7 @@ async def cancel_run(mechanism: EvaluationMechanism, run_id: UUID) -> Evaluation
         if run.status == "queued":
             run.status = "cancelled"
             run.finished_at = _utcnow()
-        await get_db().commit()
+        await publish()
     return EvaluationRunRead.model_validate(run)
 
 

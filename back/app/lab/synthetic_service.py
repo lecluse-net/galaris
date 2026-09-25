@@ -13,6 +13,7 @@ from app.llm import StructuredOutputRetry, llm_service, model_usages, run_struct
 from app.dream.contracts import MemoryExtractionInput
 from app.topic import TopicDetectionLabInput
 from core.database import get_db
+from .transactions import publish
 from core.i18n import tr
 
 from .contracts import CONTRACTS, resolve_input, validate_parameters
@@ -250,7 +251,7 @@ async def generate_dataset(
                 source_capture={**provenance, "input_data": native,
                                 "output": case.expected_output},
             ))
-        await db.commit()
+        await publish()
     except IntegrityError:
         await db.rollback()
         raise ValueError(await tr("evaluation_api.errors.synthetic_name_exists")) from None

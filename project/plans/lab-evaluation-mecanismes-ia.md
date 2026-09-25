@@ -47,10 +47,13 @@ indépendantes ; un nombre insuffisant de cas reste signalé.
 
 ### G — Comparabilité et tendances
 
-- Exploiter les empreintes existantes pour expliquer pourquoi deux runs sont comparables ou non.
-- Définir les différences autorisées selon la variable testée : modèle, prompt, paramètres,
-  rubrique, corpus ou juge.
-- Ajouter la comparaison par cas et dimension, les régressions/améliorations et les tendances.
+Le comparateur MCP de deux runs (axes modèle, prompt et paramètres), ses blocages explicites
+et ses écarts par cas sont décrits par l'[ADR 0134](../decisions/0134-agent-lab-control.md).
+
+- Étendre les politiques de comparaison aux expériences portant sur la rubrique, le corpus
+  ou le juge et les qualifier sur des campagnes réelles.
+- Compléter les sorties dimensionnelles par des agrégats de régressions/améliorations et
+  des tendances dans le temps, avec les règles d'incertitude du lot F.
 
 Réception : une modification du corpus ou du juge ne peut pas être présentée silencieusement
 comme un gain du candidat ; les résultats restent rattachés aux snapshots d'origine.

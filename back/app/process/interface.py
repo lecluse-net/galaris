@@ -16,7 +16,7 @@ async def ensure_integrated_definition(agent_id: int, tool_code: str, operation:
     workflow_id = f"{tool_code}:{agent_id}:{operation}"
     await get_db().execute(insert(ProcessDefinition).values(
         agent_id=agent_id, tool_id=tool.id, engine_process_id=workflow_id,
-        label=operation, description="Integrated media operation",
+        label=operation, description=f"Integrated {tool_code} operation",
     ).on_conflict_do_nothing())
     await get_db().commit()
     return workflow_id

@@ -376,6 +376,7 @@ async def list_for_agent(agent_id: int) -> list[dict[str, Any]]:
         .where(
             ProcessDefinition.agent_id == agent_id,
             ~ProcessDefinition.engine_process_id.startswith("multimedia:"),
+            ~ProcessDefinition.engine_process_id.startswith("lab:"),
         )
         .order_by(ProcessDefinition.label)
     )
@@ -403,6 +404,7 @@ async def list_resource_definitions_for_agent(
     statement = select(ProcessDefinition).where(
         ProcessDefinition.agent_id == agent_id,
         ~ProcessDefinition.engine_process_id.startswith("multimedia:"),
+        ~ProcessDefinition.engine_process_id.startswith("lab:"),
     )
     normalized_query = query.strip()
     if normalized_query:

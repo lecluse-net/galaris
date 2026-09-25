@@ -65,6 +65,7 @@ class SystemSkill:
 
 SYSTEM_SKILLS = (
     SystemSkill(code="galaris", label="Galaris", default_enabled=True),
+    SystemSkill(code="galaris-lab", label="Galaris Lab", default_enabled=False),
 )
 
 

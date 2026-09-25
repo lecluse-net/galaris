@@ -18,6 +18,7 @@ from app.llm import LLM, LLMCall, LLMCallPurpose, llm_service
 from app.llm.structured_service import run_structured
 from app.task import Task
 from core.database import get_db
+from .transactions import publish
 from core.i18n import tr
 
 from .capture_service import check_capture
@@ -146,7 +147,7 @@ async def create_dataset(data: EvaluationDatasetCreate) -> EvaluationDatasetRead
         purpose=data.purpose,
     )
     get_db().add(dataset)
-    await get_db().commit()
+    await publish()
     await get_db().refresh(dataset)
     return await _dataset_read(dataset)
 
@@ -170,7 +171,7 @@ async def update_dataset(dataset_id: UUID, data: EvaluationDatasetUpdate) -> Eva
         from .mechanism_evaluation_service import validate_configuration
 
         dataset.configuration = validate_configuration("dispatcher", data.configuration)
-    await get_db().commit()
+    await publish()
     await get_db().refresh(dataset)
     return await _dataset_read(dataset)
 
@@ -195,7 +196,7 @@ async def delete_dataset(dataset_id: UUID) -> bool:
     )
     for case in cases:
         case.soft_delete()
-    await get_db().commit()
+    await publish()
     return True
 
 
@@ -265,7 +266,7 @@ async def create_case(dataset_id: UUID, data: EvaluationCaseCreate) -> Evaluatio
         source_capture={},
     )
     get_db().add(case)
-    await get_db().commit()
+    await publish()
     await get_db().refresh(case)
     return _case_read(case)
 
@@ -446,7 +447,7 @@ async def import_task_case(dataset_id: UUID, data: DispatcherCaseImport) -> Eval
     )
     await check_capture(case, data.confirmation_token)
     get_db().add(case)
-    await get_db().commit()
+    await publish()
     await get_db().refresh(case)
     return _case_read(case)
 
@@ -472,7 +473,7 @@ async def update_case(case_id: UUID, data: EvaluationCaseUpdate) -> EvaluationCa
     case.readiness = "ready"
     if "categories" in data.model_fields_set:
         case.categories = list(dict.fromkeys(data.categories))
-    await get_db().commit()
+    await publish()
     await get_db().refresh(case)
     return _case_read(case)
 
@@ -500,7 +501,7 @@ async def duplicate_case(case_id: UUID) -> EvaluationCaseRead:
         source_capture=json.loads(json.dumps(source.source_capture)),
     )
     get_db().add(duplicate)
-    await get_db().commit()
+    await publish()
     await get_db().refresh(duplicate)
     return _case_read(duplicate)
 
@@ -532,7 +533,7 @@ async def restore_case_source(
     case.source_capture = restored.source_capture
     case.reference = cast(dict[str, Any], source.get("llm") or {})
     case.readiness = restored.readiness
-    await get_db().commit()
+    await publish()
     await get_db().refresh(case)
     return _case_read(case)
 
@@ -546,7 +547,7 @@ async def delete_case(case_id: UUID) -> bool:
     if case is None:
         return False
     case.soft_delete()
-    await get_db().commit()
+    await publish()
     return True
 
 
@@ -664,7 +665,7 @@ async def start_run(dataset_id: UUID, data: EvaluationRunStart) -> EvaluationRun
         ),
     }
     get_db().add(run)
-    await get_db().commit()
+    await publish()
     await get_db().refresh(run)
     from app.task import scheduler
 
@@ -709,8 +710,10 @@ async def get_run(run_id: UUID) -> EvaluationRunDetail | None:
         ).all()
     )
     from .judgment_service import list_campaigns
+    from .agent_review_service import list_run_reviews
 
     return EvaluationRunDetail(
+        agent_reviews=await list_run_reviews(run.id),
         campaigns=await list_campaigns(run.id),
         **EvaluationRunRead.model_validate(run).model_dump(),
         results=[EvaluationRunCaseRead.model_validate(result) for result in results],
@@ -892,7 +895,7 @@ async def analyze_run(run_id: UUID, data: EvaluationRunAnalysisRequest) -> Evalu
     run.analysis_cost = inference.cost
     run.analysis_language = data.language
     run.analysis_created_at = _utcnow()
-    await get_db().commit()
+    await publish()
     detail = await get_run(run.id)
     if detail is None:
         raise LookupError(await tr("evaluation_api.errors.run_not_found"))
@@ -910,5 +913,5 @@ async def cancel_run(run_id: UUID) -> EvaluationRunRead:
         if run.status == "queued":
             run.status = "cancelled"
             run.finished_at = _utcnow()
-        await get_db().commit()
+        await publish()
     return EvaluationRunRead.model_validate(run)

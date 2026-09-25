@@ -155,6 +155,19 @@ async def has_active_tool_connection(
     return result.scalar_one_or_none() is not None
 
 
+async def has_active_tool_function(agent_id: int, tool_code: str, function_name: str) -> bool:
+    """Check the live connection and its effective function authorization."""
+    from app.tools import ToolModel
+
+    connections = (await get_db().scalars(select(Connection).join(ToolModel).where(
+        Connection.agent_id == agent_id, Connection.active.is_(True), ToolModel.code == tool_code,
+    ))).all()
+    for connection in connections:
+        if function_name not in await get_disabled_function_names(connection):
+            return True
+    return False
+
+
 async def has_any_active_tool_connection(
     tool_code: str,
     *,

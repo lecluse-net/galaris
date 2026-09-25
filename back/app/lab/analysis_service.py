@@ -11,7 +11,7 @@ from uuid import UUID
 
 from pydantic_ai import Agent as PydanticAgent
 
-from app.llm import LLMCallPurpose, llm_service
+from app.llm import LLMCallPurpose, llm_service, ReasoningEffort
 from app.llm.pydantic_ai_utils import build_model_for_llm, estimate_cost_from_usage
 from core.i18n import tr
 
@@ -94,6 +94,8 @@ async def analyze_task(
     task_id: UUID,
     language: AnalysisLanguage,
     user_context: str,
+    llm_id: int | None = None,
+    reasoning_effort: ReasoningEffort | None = None,
 ) -> TaskAnalysis:
     """Analyze one selected task without starting any Galaris task pipeline."""
 
@@ -104,13 +106,13 @@ async def analyze_task(
     except LookupError as exc:
         raise LookupError(await tr("evaluation_api.errors.task_not_found")) from exc
 
-    llm = await llm_service.get_profile_llm(model_usages.LAB)
+    llm = await llm_service.get_llm(llm_id) if llm_id is not None else await llm_service.get_profile_llm(model_usages.LAB)
     if llm is None:
         raise ValueError(await tr("evaluation_api.errors.lab_llm_not_configured"))
     model = await build_model_for_llm(
         llm,
         purpose=LLMCallPurpose.LAB_TASK_ANALYSIS,
-        reasoning_effort=await llm_service.get_profile_reasoning_effort(model_usages.LAB),
+        reasoning_effort=reasoning_effort if llm_id is not None else await llm_service.get_profile_reasoning_effort(model_usages.LAB),
     )
     agent: PydanticAgent[None, TaskAnalysisContent] = PydanticAgent(
         model,

@@ -9,6 +9,14 @@ Repository contracts and tests remain authoritative.
 
 ## 1. Treatment contracts
 
+The native `lab` Tool exposes fifty `lab_*` functions, guided by the optional `galaris-lab`
+system skill. It reuses Workbench services and records. Short commands have atomic,
+idempotent receipts; long operations outside benchmarks use an integrated `app.process`
+engine. Agent assessments retain their identity separately from human reviews. Real-source
+access also requires the execution-inspection functions of `galaris_admin`.
+[ADR 0134](../../../project/decisions/0134-agent-lab-control.md) documents authorization,
+durable publication, pagination and comparison limits.
+
 The complete typed inventory lives in `back/app/lab/contracts.py`. Descriptors expose the
 treatment, variable schema, result and editable parameters. The registry adds the algorithm
 configuration schema, inference limits, output schema and rubric.
