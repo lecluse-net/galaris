@@ -28,7 +28,10 @@ from .capabilities import AICapability, with_capability
 from .resource_discovery import list_resources as discover_resources
 from .resource_discovery import provider_connection
 from .provider_facade import (
+    ProviderAuthenticationError,
     ProviderConnection,
+    ProviderQuota,
+    provider_quota_reader_for,
     model_management_for,
     model_metadata_for,
 )
@@ -53,6 +56,23 @@ class TestConnectionResult(TypedDict):
     provider_name: Optional[str]
     models_count: Optional[int]
     error_details: Optional[str]
+
+
+async def get_provider_quota(provider_id: int) -> ProviderQuota:
+    provider = await get_provider(provider_id)
+    if provider is None:
+        raise ProviderAuthenticationError(
+            render_prompt(await tr("llm_api.errors.provider_not_found"), provider_id=provider_id),
+            code="provider_not_found", status_code=404,
+        )
+    reader = provider_quota_reader_for(provider_connection(provider, None))
+    if reader is None:
+        raise ProviderAuthenticationError(
+            await tr("llm_api.errors.provider_quota_unsupported"),
+            code="provider_quota_unsupported", status_code=400,
+        )
+    await ensure_subscription_owner(provider)
+    return await reader.get_quota(provider_id)
 
 
 # ==========================================================================

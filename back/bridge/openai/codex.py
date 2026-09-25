@@ -11,10 +11,12 @@ from app.llm.provider_facade import (
     ManagedRuntimeCredential,
     PreparedChatRequest,
     ProviderConnection,
+    ProviderQuota,
     ResponsesOperation,
 )
 
 from . import codex_oauth
+from .codex_quota import get_quota
 from .codex_responses import (
     CodexSSEAdapter,
     chat_completions_to_responses,
@@ -24,6 +26,9 @@ from .codex_responses import (
 
 class CodexBridge:
     stream_only = True
+
+    async def get_quota(self, provider_id: int) -> ProviderQuota:
+        return await get_quota(provider_id)
 
     async def list_resources(
         self,

@@ -32,6 +32,15 @@ export default {
       llmCalls_desc: 'Appels LLM en cours et récemment terminés',
     },
     llm: {
+      quota: {
+        title: 'Limites d’usage ChatGPT', refresh: 'Actualiser les limites',
+        accountWide: 'Usage Codex du compte connecté, tous clients confondus.',
+        loading: 'Chargement des limites…', unavailable: 'Limites indisponibles. Réessayez ou reconnectez le compte.',
+        empty: 'Aucune fenêtre de quota communiquée par le fournisseur.',
+        primary: 'Fenêtre principale', secondary: 'Fenêtre secondaire',
+        days: 'Sur {count} j', hours: 'Sur {count} h', minutes: 'Sur {count} min',
+        used: '{percent} % utilisés', resets: 'Réinitialisation : {date}', checked: 'Actualisé le {date}',
+      },
       title: 'Fournisseurs',
       providerCatalog: 'Fournisseurs',
       providerCatalogHint: 'Activez un service, configurez sa connexion, puis choisissez ses modèles.',
@@ -519,6 +528,15 @@ export default {
       llmCalls_desc: 'Running and recently completed LLM calls',
     },
     llm: {
+      quota: {
+        title: 'ChatGPT usage limits', refresh: 'Refresh limits',
+        accountWide: 'Codex usage for the connected account, across all clients.',
+        loading: 'Loading limits…', unavailable: 'Limits unavailable. Try again or reconnect the account.',
+        empty: 'The provider did not report any quota windows.',
+        primary: 'Primary window', secondary: 'Secondary window',
+        days: 'Over {count} d', hours: 'Over {count} h', minutes: 'Over {count} min',
+        used: '{percent}% used', resets: 'Resets: {date}', checked: 'Updated: {date}',
+      },
       title: 'Providers',
       providerCatalog: 'Providers',
       providerCatalogHint: 'Enable a service, configure its connection, then choose its models.',
@@ -1001,6 +1019,14 @@ export default {
     },
     nav: { llm: '服务商与模型', llm_desc: '管理 AI 服务商、模型和服务', llmCalls: 'LLM 活动', llmCalls_desc: '正在运行和最近完成的 LLM 调用' },
     llm: {
+      quota: {
+        title: 'ChatGPT 使用限额', refresh: '刷新限额',
+        accountWide: '已连接账户在所有客户端的 Codex 使用量。',
+        loading: '正在加载限额…', unavailable: '限额不可用。请重试或重新连接账户。',
+        empty: '服务商未提供配额窗口。', primary: '主要窗口', secondary: '次要窗口',
+        days: '{count} 天内', hours: '{count} 小时内', minutes: '{count} 分钟内',
+        used: '已使用 {percent}%', resets: '重置时间：{date}', checked: '更新时间：{date}',
+      },
       title: '服务商', providerCatalog: '服务商', providerCatalogHint: '启用服务、配置连接，然后选择其模型。', addCustomProvider: '添加自定义服务商',
       newCustomProvider: '新建自定义服务商',
       addCustomProviderHint: '连接兼容 OpenAI 的 API 或桥接提供的类型。', activeProviders: '已启用', availableProviders: '可用', customProvider: '自定义服务商',

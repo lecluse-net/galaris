@@ -17,6 +17,7 @@ from app.llm.provider_facade import (
     register_image_generation_provider,
     register_image_size_resolver,
     register_provider_authentication,
+    register_provider_quota_reader,
     register_realtime_conversation_provider,
     register_resource_discovery,
     register_runtime_policy,
@@ -79,6 +80,7 @@ register_realtime_conversation_provider(API_PROFILE.code, OpenAIRealtime())
 CODEX_BRIDGE = CodexBridge()
 register_resource_discovery(CODEX_PROFILE.code, CODEX_BRIDGE)
 register_provider_authentication(CODEX_PROFILE.code, CODEX_BRIDGE)
+register_provider_quota_reader(CODEX_PROFILE.code, CODEX_BRIDGE)
 register_managed_runtime_authentication(CODEX_PROFILE.code, CODEX_BRIDGE)
 register_chat_transport(CODEX_PROFILE.code, CODEX_BRIDGE)
 register_responses_transport(CODEX_PROFILE.code, CODEX_BRIDGE)

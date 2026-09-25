@@ -201,6 +201,11 @@
             </q-card-section>
           </q-card>
 
+          <ProviderQuotaPanel
+            v-if="isChatGptSubscription && oauthConnected && item.connection"
+            :provider-id="item.connection.id"
+          />
+
           <q-banner
             v-if="testResult"
             rounded
@@ -273,6 +278,7 @@ import type {
 import type { ProviderConfigurationDraft } from '../providerUi'
 import { customProviderType } from '../customProviderTypes'
 import ProviderAvatar from './ProviderAvatar.vue'
+import ProviderQuotaPanel from './ProviderQuotaPanel.vue'
 
 const $q = useQuasar()
 

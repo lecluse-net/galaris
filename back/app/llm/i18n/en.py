@@ -39,6 +39,7 @@ default: dict[str, object] = {
         "model_deleted": "Model ${model_name} deleted successfully",
         "client_disconnected": "Client disconnected during streaming",
         "errors": {
+            "provider_quota_unsupported": "This provider does not expose subscription usage limits.",
             "inference_not_found": "Inference not found.",
             "inference_attempt_not_found": "Inference attempt not found.",
             "inference_runtime_required": "Use the correlated runtime gateway for runtime work.",

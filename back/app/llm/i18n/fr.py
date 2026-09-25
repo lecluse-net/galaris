@@ -44,6 +44,7 @@ default: dict[str, object] = {
         "model_deleted": "Modèle ${model_name} supprimé avec succès",
         "client_disconnected": "Le client s’est déconnecté pendant le streaming",
         "errors": {
+            "provider_quota_unsupported": "Ce fournisseur n’expose pas les limites d’usage de l’abonnement.",
             "inference_not_found": "Inférence introuvable.",
             "inference_attempt_not_found": "Tentative d’inférence introuvable.",
             "inference_runtime_required": "Utilisez la passerelle du runtime pour les appels liés à une exécution.",

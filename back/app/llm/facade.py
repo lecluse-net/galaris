@@ -14,6 +14,8 @@ from .accounting_scope import llm_call_accounting
 from . import llm_call_service, llm_provider_service
 from .provider_facade import (
     ManagedRuntimeCredential,
+    ProviderQuota,
+    ProviderQuotaWindow,
     managed_runtime_authentication_for,
 )
 from .resource_discovery import provider_connection
@@ -295,6 +297,7 @@ async def get_managed_runtime_credential(
 
 
 __all__ = [
+    "ProviderQuota", "ProviderQuotaWindow",
     "ChoiceQuestion", "DecisionResult", "DecisionInferenceRequest", "run_decision", "run_profile_decision", "use_decision_models",
     "DecisionUnavailable", "ProviderDecisionResponse", "ProviderConnection",
     "ProviderAuthenticationError", "register_decision_provider",

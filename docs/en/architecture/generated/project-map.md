@@ -17,7 +17,7 @@ tests remain authoritative for behavior.
 - 25 directly bidirectional domain pairs;
 - 1 strongly connected components;
 - 7 directly bidirectional frontend pairs;
-- 568 detected HTTP/WebSocket handlers;
+- 569 detected HTTP/WebSocket handlers;
 - 123 detected SQLAlchemy tables;
 - 131 detected native MCP tools;
 - 39 detected Vue pages.
@@ -600,10 +600,10 @@ tests remain authoritative for behavior.
 | `bridge.one_bot` | `core.database` | `back/bridge/one_bot/router.py` |
 | `bridge.one_bot` | `core.i18n` | `back/bridge/one_bot/client.py`, `back/bridge/one_bot/messenger.py` |
 | `bridge.one_bot` | `core.util` | `back/bridge/one_bot/client.py`, `back/bridge/one_bot/messenger.py` |
-| `bridge.openai` | `app.llm` | `back/bridge/openai/__init__.py`, `back/bridge/openai/codex.py`, `back/bridge/openai/codex_oauth.py`, `back/bridge/openai/image.py`, `back/bridge/openai/parameters.py`, `back/bridge/openai/realtime.py`, `back/bridge/openai/resources.py` |
+| `bridge.openai` | `app.llm` | `back/bridge/openai/__init__.py`, `back/bridge/openai/codex.py`, `back/bridge/openai/codex_oauth.py`, `back/bridge/openai/codex_quota.py`, `back/bridge/openai/image.py`, `back/bridge/openai/parameters.py`, `back/bridge/openai/realtime.py`, `back/bridge/openai/resources.py` |
 | `bridge.openai` | `core.database` | `back/bridge/openai/codex_oauth.py` |
-| `bridge.openai` | `core.i18n` | `back/bridge/openai/codex_oauth.py` |
-| `bridge.openai` | `core.util` | `back/bridge/openai/codex_oauth.py`, `back/bridge/openai/codex_responses.py`, `back/bridge/openai/image.py`, `back/bridge/openai/realtime.py` |
+| `bridge.openai` | `core.i18n` | `back/bridge/openai/codex_oauth.py`, `back/bridge/openai/codex_quota.py` |
+| `bridge.openai` | `core.util` | `back/bridge/openai/codex_oauth.py`, `back/bridge/openai/codex_quota.py`, `back/bridge/openai/codex_responses.py`, `back/bridge/openai/image.py`, `back/bridge/openai/realtime.py` |
 | `bridge.openrouter` | `app.llm` | `back/bridge/openrouter/__init__.py`, `back/bridge/openrouter/decisions.py`, `back/bridge/openrouter/image.py`, `back/bridge/openrouter/multimedia.py`, `back/bridge/openrouter/resources.py`, `back/bridge/openrouter/transcription.py` |
 | `bridge.openrouter` | `core.util` | `back/bridge/openrouter/decisions.py`, `back/bridge/openrouter/image.py`, `back/bridge/openrouter/multimedia.py`, `back/bridge/openrouter/transcription.py`, `back/bridge/openrouter/usage.py` |
 | `bridge.perplexity` | `app.llm` | `back/bridge/perplexity/__init__.py` |
@@ -757,7 +757,7 @@ tests remain authoritative for behavior.
 | `app/llm` | `core/authorize` | `front/app/llm/components/ConfiguredLlmManager.vue`, `front/app/llm/components/CustomProviderDialog.vue`, `front/app/llm/components/LlmActivityPanel.vue`, `front/app/llm/components/LlmCalls.vue`, `front/app/llm/components/LlmUsageManager.vue`, `front/app/llm/components/ProviderConfigPanel.vue`, `front/app/llm/components/ProviderListPanel.vue`, `front/app/llm/components/ProviderModelsPanel.vue`, `front/app/llm/components/ProviderWorkspace.vue`, `front/app/llm/navigation.ts`, `front/app/llm/pages/index.vue` |
 | `app/llm` | `core/navigation` | `front/app/llm/navigation.ts`, `front/app/llm/pages/index.vue` |
 | `app/llm` | `core/user` | `front/app/llm/userTab.ts` |
-| `app/llm` | `core/util` | `front/app/llm/components/ConfiguredLlmManager.vue`, `front/app/llm/components/LlmActivityPanel.vue`, `front/app/llm/components/LlmCall.vue`, `front/app/llm/components/LlmCallDetails.vue`, `front/app/llm/components/LlmCallTaskDetail.vue`, `front/app/llm/components/LlmCalls.vue`, `front/app/llm/components/LlmUsageManager.vue`, `front/app/llm/pages/index.vue`, `front/app/llm/useEditorVoice.ts` |
+| `app/llm` | `core/util` | `front/app/llm/components/ConfiguredLlmManager.vue`, `front/app/llm/components/LlmActivityPanel.vue`, `front/app/llm/components/LlmCall.vue`, `front/app/llm/components/LlmCallDetails.vue`, `front/app/llm/components/LlmCallTaskDetail.vue`, `front/app/llm/components/LlmCalls.vue`, `front/app/llm/components/LlmUsageManager.vue`, `front/app/llm/components/ProviderQuotaPanel.vue`, `front/app/llm/pages/index.vue`, `front/app/llm/useEditorVoice.ts` |
 | `app/llm` | `core/websocket` | `front/app/llm/components/LlmActivityPanel.vue`, `front/app/llm/components/LlmCalls.vue` |
 | `app/memory` | `app/agent` | `front/app/memory/components/DocumentEditor.vue`, `front/app/memory/components/DocumentHistoryDialog.vue`, `front/app/memory/components/DocumentLibraryPage.vue`, `front/app/memory/components/MemorySharingPanel.vue`, `front/app/memory/pages/contacts.vue`, `front/app/memory/pages/index.vue` |
 | `app/memory` | `core/api` | `front/app/memory/components/DocumentAttachments.vue`, `front/app/memory/components/DocumentLibraryNavigation.vue`, `front/app/memory/components/DocumentThumbnail.vue`, `front/app/memory/pages/contacts.vue`, `front/app/memory/pages/index.vue`, `front/app/memory/richContent.ts`, `front/app/memory/services/contactService.ts`, `front/app/memory/services/memoryService.ts`, `front/app/memory/stores/documentIcons.ts` |
@@ -1388,29 +1388,30 @@ tests remain authoritative for behavior.
 | GET | `/llm-profiles/{profile_id}` | `app.llm` | `get_profile` | yes | `back/app/llm/profile_router.py:78` |
 | PUT | `/llm-profiles/{profile_id}` | `app.llm` | `update_profile` | yes | `back/app/llm/profile_router.py:100` |
 | POST | `/llm-profiles/{profile_id}/use` | `app.llm` | `use_profile` | yes | `back/app/llm/profile_router.py:134` |
-| GET | `/llm-providers` | `app.llm` | `list_providers` | yes | `back/app/llm/provider_router.py:256` |
-| POST | `/llm-providers` | `app.llm` | `create_provider` | yes | `back/app/llm/provider_router.py:264` |
-| GET | `/llm-providers/catalog` | `app.llm` | `get_provider_catalog` | yes | `back/app/llm/provider_router.py:278` |
-| PUT | `/llm-providers/catalog/{catalog_code}` | `app.llm` | `configure_catalog_provider` | yes | `back/app/llm/provider_router.py:319` |
-| GET | `/llm-providers/catalog/{catalog_code}/resources` | `app.llm` | `list_catalog_resources` | yes | `back/app/llm/provider_router.py:285` |
-| POST | `/llm-providers/fetch-pricing` | `app.llm` | `fetch_pricing` | yes | `back/app/llm/provider_router.py:149` |
-| GET | `/llm-providers/llms` | `app.llm` | `list_llms` | yes | `back/app/llm/provider_router.py:110` |
-| POST | `/llm-providers/llms` | `app.llm` | `create_llm` | yes | `back/app/llm/provider_router.py:122` |
-| DELETE | `/llm-providers/llms/{llm_id}` | `app.llm` | `delete_llm` | yes | `back/app/llm/provider_router.py:237` |
-| GET | `/llm-providers/llms/{llm_id}` | `app.llm` | `get_llm` | yes | `back/app/llm/provider_router.py:189` |
-| PUT | `/llm-providers/llms/{llm_id}` | `app.llm` | `update_llm` | yes | `back/app/llm/provider_router.py:204` |
-| POST | `/llm-providers/test` | `app.llm` | `test_provider_connection` | yes | `back/app/llm/provider_router.py:336` |
-| DELETE | `/llm-providers/{provider_id}` | `app.llm` | `delete_provider` | yes | `back/app/llm/provider_router.py:515` |
-| GET | `/llm-providers/{provider_id}` | `app.llm` | `get_provider` | yes | `back/app/llm/provider_router.py:472` |
-| PUT | `/llm-providers/{provider_id}` | `app.llm` | `update_provider` | yes | `back/app/llm/provider_router.py:491` |
-| GET | `/llm-providers/{provider_id}/models` | `app.llm` | `list_provider_models` | yes | `back/app/llm/provider_router.py:530` |
-| POST | `/llm-providers/{provider_id}/models/delete` | `app.llm` | `delete_model` | yes | `back/app/llm/provider_router.py:704` |
-| POST | `/llm-providers/{provider_id}/models/pull` | `app.llm` | `pull_model` | yes | `back/app/llm/provider_router.py:665` |
-| DELETE | `/llm-providers/{provider_id}/oauth` | `app.llm` | `disconnect_provider_authentication` | yes | `back/app/llm/provider_router.py:453` |
-| POST | `/llm-providers/{provider_id}/oauth/device` | `app.llm` | `start_provider_device_login` | yes | `back/app/llm/provider_router.py:391` |
-| POST | `/llm-providers/{provider_id}/oauth/device/poll` | `app.llm` | `poll_provider_device_login` | yes | `back/app/llm/provider_router.py:421` |
-| GET | `/llm-providers/{provider_id}/resources` | `app.llm` | `list_provider_resources` | yes | `back/app/llm/provider_router.py:582` |
-| GET | `/llm-providers/{provider_id}/transcription-models` | `app.llm` | `list_provider_transcription_models` | yes | `back/app/llm/provider_router.py:628` |
+| GET | `/llm-providers` | `app.llm` | `list_providers` | yes | `back/app/llm/provider_router.py:257` |
+| POST | `/llm-providers` | `app.llm` | `create_provider` | yes | `back/app/llm/provider_router.py:265` |
+| GET | `/llm-providers/catalog` | `app.llm` | `get_provider_catalog` | yes | `back/app/llm/provider_router.py:279` |
+| PUT | `/llm-providers/catalog/{catalog_code}` | `app.llm` | `configure_catalog_provider` | yes | `back/app/llm/provider_router.py:320` |
+| GET | `/llm-providers/catalog/{catalog_code}/resources` | `app.llm` | `list_catalog_resources` | yes | `back/app/llm/provider_router.py:286` |
+| POST | `/llm-providers/fetch-pricing` | `app.llm` | `fetch_pricing` | yes | `back/app/llm/provider_router.py:150` |
+| GET | `/llm-providers/llms` | `app.llm` | `list_llms` | yes | `back/app/llm/provider_router.py:111` |
+| POST | `/llm-providers/llms` | `app.llm` | `create_llm` | yes | `back/app/llm/provider_router.py:123` |
+| DELETE | `/llm-providers/llms/{llm_id}` | `app.llm` | `delete_llm` | yes | `back/app/llm/provider_router.py:238` |
+| GET | `/llm-providers/llms/{llm_id}` | `app.llm` | `get_llm` | yes | `back/app/llm/provider_router.py:190` |
+| PUT | `/llm-providers/llms/{llm_id}` | `app.llm` | `update_llm` | yes | `back/app/llm/provider_router.py:205` |
+| POST | `/llm-providers/test` | `app.llm` | `test_provider_connection` | yes | `back/app/llm/provider_router.py:337` |
+| DELETE | `/llm-providers/{provider_id}` | `app.llm` | `delete_provider` | yes | `back/app/llm/provider_router.py:531` |
+| GET | `/llm-providers/{provider_id}` | `app.llm` | `get_provider` | yes | `back/app/llm/provider_router.py:488` |
+| PUT | `/llm-providers/{provider_id}` | `app.llm` | `update_provider` | yes | `back/app/llm/provider_router.py:507` |
+| GET | `/llm-providers/{provider_id}/models` | `app.llm` | `list_provider_models` | yes | `back/app/llm/provider_router.py:546` |
+| POST | `/llm-providers/{provider_id}/models/delete` | `app.llm` | `delete_model` | yes | `back/app/llm/provider_router.py:720` |
+| POST | `/llm-providers/{provider_id}/models/pull` | `app.llm` | `pull_model` | yes | `back/app/llm/provider_router.py:681` |
+| DELETE | `/llm-providers/{provider_id}/oauth` | `app.llm` | `disconnect_provider_authentication` | yes | `back/app/llm/provider_router.py:454` |
+| POST | `/llm-providers/{provider_id}/oauth/device` | `app.llm` | `start_provider_device_login` | yes | `back/app/llm/provider_router.py:392` |
+| POST | `/llm-providers/{provider_id}/oauth/device/poll` | `app.llm` | `poll_provider_device_login` | yes | `back/app/llm/provider_router.py:422` |
+| GET | `/llm-providers/{provider_id}/quota` | `app.llm` | `get_provider_quota` | yes | `back/app/llm/provider_router.py:473` |
+| GET | `/llm-providers/{provider_id}/resources` | `app.llm` | `list_provider_resources` | yes | `back/app/llm/provider_router.py:598` |
+| GET | `/llm-providers/{provider_id}/transcription-models` | `app.llm` | `list_provider_transcription_models` | yes | `back/app/llm/provider_router.py:644` |
 | POST | `/llm/anthropic/v1/messages` | `app.llm` | `anthropic_messages` | no | `back/app/llm/anthropic_router.py:228` |
 | POST | `/llm/anthropic/v1/messages/count_tokens` | `app.llm` | `anthropic_count_tokens` | no | `back/app/llm/anthropic_router.py:202` |
 | GET | `/llm/anthropic/v1/models` | `app.llm` | `anthropic_models` | no | `back/app/llm/anthropic_router.py:176` |

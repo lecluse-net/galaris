@@ -46,6 +46,18 @@ export interface LLMProviderDetail extends LLMProvider {
     api_key: string | null
 }
 
+export interface ProviderQuotaWindow {
+    name: 'primary' | 'secondary'
+    used_percent: number
+    window_seconds: number | null
+    resets_at: string | null
+}
+
+export interface ProviderQuota {
+    windows: ProviderQuotaWindow[]
+    checked_at: string
+}
+
 export interface LLMProviderCreate {
     name: string
     catalog_code?: string | null
@@ -295,6 +307,10 @@ export default {
 
     getProvider(id: number): Promise<AxiosResponse<LLMProviderDetail>> {
         return api.get(`/llm-providers/${id}`)
+    },
+
+    getProviderQuota(id: number, signal?: AbortSignal): Promise<AxiosResponse<ProviderQuota>> {
+        return api.get(`/llm-providers/${id}/quota`, { signal })
     },
 
     createProvider(data: LLMProviderCreate): Promise<AxiosResponse<LLMProvider>> {

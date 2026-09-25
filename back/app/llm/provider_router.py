@@ -9,6 +9,7 @@ from . import llm_service
 from .provider_catalog import get_provider_profile
 from .provider_facade import (
     ProviderAuthenticationError,
+    ProviderQuota,
     provider_authentication_for,
 )
 from .resource_discovery import provider_connection
@@ -465,6 +466,21 @@ async def disconnect_provider_authentication(provider_id: int) -> None:
             },
         ) from exc
     return None
+
+
+@router.get("/{provider_id}/quota", response_model=ProviderQuota)
+@authorize(privileges=[Privileges.LLM_PROVIDER_ACCESS, Privileges.LLM_PROVIDER_EDIT])
+async def get_provider_quota(provider_id: int) -> ProviderQuota:
+    """Read provider-owned subscription windows without exposing credentials."""
+    try:
+        return await llm_provider_service.get_provider_quota(provider_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    except ProviderAuthenticationError as exc:
+        raise HTTPException(
+            status_code=exc.status_code,
+            detail={"message": str(exc), "code": exc.code, "relogin_required": exc.relogin_required},
+        ) from exc
 
 
 @router.get("/{provider_id}", response_model=LLMProviderDetailResponse)

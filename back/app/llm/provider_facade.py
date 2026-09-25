@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from datetime import datetime
 from pathlib import Path
 from collections.abc import AsyncIterator, Callable, Iterable
 from typing import Annotated, Any, Literal, Protocol, TypeAlias
@@ -294,6 +295,24 @@ class ProviderAuthentication(Protocol):
 
 
 @dataclass(frozen=True, slots=True)
+class ProviderQuotaWindow:
+    name: Literal["primary", "secondary"]
+    used_percent: float
+    window_seconds: int | None
+    resets_at: datetime | None
+
+
+@dataclass(frozen=True, slots=True)
+class ProviderQuota:
+    windows: list[ProviderQuotaWindow]
+    checked_at: datetime
+
+
+class ProviderQuotaReader(Protocol):
+    async def get_quota(self, provider_id: int) -> ProviderQuota: ...
+
+
+@dataclass(frozen=True, slots=True)
 class ManagedRuntimeCredential:
     """Short-lived provider credential delivered only to a managed runtime."""
 
@@ -547,6 +566,7 @@ _realtime_transcription: dict[str, RealtimeTranscriptionProvider] = {}
 _realtime_conversation: dict[str, RealtimeConversationProvider] = {}
 _speech: dict[str, SpeechProvider] = {}
 _authentication: dict[str, ProviderAuthentication] = {}
+_quota_readers: dict[str, ProviderQuotaReader] = {}
 _managed_runtime_authentication: dict[str, ManagedRuntimeAuthentication] = {}
 _chat_transport: dict[str, ProviderChatTransport] = {}
 _responses_transport: dict[str, ProviderResponsesTransport] = {}
@@ -652,6 +672,15 @@ def register_provider_authentication(
     service: ProviderAuthentication,
 ) -> None:
     _authentication[code] = service
+
+
+def register_provider_quota_reader(code: str, service: ProviderQuotaReader) -> None:
+    _quota_readers[code] = service
+
+
+def provider_quota_reader_for(connection: ProviderConnection) -> ProviderQuotaReader | None:
+    key = _service_key(connection)
+    return _quota_readers.get(key) if key else None
 
 
 def register_managed_runtime_authentication(
@@ -813,6 +842,8 @@ def usage_accounting_for(code: str | None) -> ProviderUsageAccounting | None:
 
 
 __all__ = [
+    "ProviderQuota", "ProviderQuotaWindow", "ProviderQuotaReader",
+    "register_provider_quota_reader", "provider_quota_reader_for",
     "ChoiceQuestion", "DecisionUnavailable", "ProviderDecisionResponse", "DecisionProvider",
     "register_decision_provider", "decision_provider_for",
     "ProviderMediaInputPolicy", "register_media_input_policy", "media_input_policy_for",

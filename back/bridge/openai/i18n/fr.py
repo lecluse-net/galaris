@@ -3,6 +3,7 @@
 default: dict[str, object] = {
     "llm_api": {
         "codex": {
+            "quota_unavailable": "Les limites d’usage ChatGPT sont temporairement indisponibles.",
             "provider_not_found": "Fournisseur LLM introuvable.",
             "not_codex_provider": "Ce fournisseur n’utilise pas l’authentification OpenAI Codex.",
             "credentials_invalid": "Les identifiants Codex enregistrés sont illisibles. Reconnectez ce fournisseur.",
