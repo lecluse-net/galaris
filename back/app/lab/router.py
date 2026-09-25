@@ -34,6 +34,8 @@ from .assertions import (
 from .dispatcher_evaluation_service import RevisionConflictError
 from . import judgment_service, human_review_service
 from .contracts import LabInput
+from . import synthetic_service
+from .synthetic_schemas import SyntheticDatasetRequest, SyntheticDatasetResult
 from .capture_service import CaptureParametersMismatch
 from .schemas import CaptureRequest, LabInputPreview, HumanReviewCreate, HumanReviewQueue
 from .schemas import (
@@ -80,6 +82,21 @@ from .schemas import (
 )
 
 router = APIRouter(prefix="/evaluation", tags=["task-analysis-lab"])
+
+
+@router.post("/{mechanism}/datasets/synthetic", response_model=SyntheticDatasetResult, status_code=201)
+@authorize(privileges=MECHANISM_EDIT_PRIVILEGES, assertion=LabMechanismEditPrivilegeAssertion)
+async def generate_synthetic_dataset(
+    mechanism: EvaluationMechanism, data: SyntheticDatasetRequest
+) -> SyntheticDatasetResult:
+    try:
+        return await synthetic_service.generate_dataset(mechanism, data)
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except RevisionConflictError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
 
 
 @router.get("/{mechanism}/runs/{run_id}/human-review", response_model=HumanReviewQueue)

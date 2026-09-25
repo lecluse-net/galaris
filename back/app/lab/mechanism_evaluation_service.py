@@ -207,7 +207,7 @@ def list_mechanisms() -> list[MechanismDescriptorRead]:
     ]
 
 
-async def _dataset_read(dataset: LabEvaluationDataset) -> EvaluationDatasetRead:
+async def dataset_read(dataset: LabEvaluationDataset) -> EvaluationDatasetRead:
     counts = (
         await get_db().execute(
             select(
@@ -292,12 +292,23 @@ async def list_datasets(mechanism: EvaluationMechanism) -> list[EvaluationDatase
             )
         ).all()
     )
-    return [await _dataset_read(row) for row in rows]
+    return [await dataset_read(row) for row in rows]
 
 
 async def create_dataset(
     mechanism: EvaluationMechanism, data: MechanismDatasetCreate
 ) -> EvaluationDatasetRead:
+    dataset = await prepare_dataset(mechanism, data)
+    get_db().add(dataset)
+    await get_db().commit()
+    await get_db().refresh(dataset)
+    return await dataset_read(dataset)
+
+
+async def prepare_dataset(
+    mechanism: EvaluationMechanism, data: MechanismDatasetCreate
+) -> LabEvaluationDataset:
+    """Build the current Lab defaults without publishing an empty dataset."""
     definition = get_mechanism(mechanism)
     prompt_suffix: str | None = None
     if definition.executor is not None:
@@ -315,7 +326,7 @@ async def create_dataset(
         configuration = _memory_extraction_configuration_dump(
             await default_memory_extraction_lab_configuration()
         )
-    dataset = LabEvaluationDataset(
+    return LabEvaluationDataset(
         mechanism=mechanism,
         name=data.name.strip(),
         description=data.description.strip(),
@@ -326,10 +337,6 @@ async def create_dataset(
         else configuration or {"system_prompt": definition.system_prompt},
         parameters=validate_parameters(mechanism, {}),
     )
-    get_db().add(dataset)
-    await get_db().commit()
-    await get_db().refresh(dataset)
-    return await _dataset_read(dataset)
 
 
 async def update_dataset(
@@ -354,7 +361,7 @@ async def update_dataset(
         )
     await get_db().commit()
     await get_db().refresh(dataset)
-    return await _dataset_read(dataset)
+    return await dataset_read(dataset)
 
 
 async def update_topic_dataset_configuration(
@@ -367,7 +374,7 @@ async def update_topic_dataset_configuration(
     dataset.configuration = _topic_configuration_dump(data.configuration)
     await get_db().commit()
     await get_db().refresh(dataset)
-    return await _dataset_read(dataset)
+    return await dataset_read(dataset)
 
 
 async def update_planner_dataset_configuration(
@@ -380,7 +387,7 @@ async def update_planner_dataset_configuration(
     dataset.configuration = _planner_configuration_dump(data.configuration)
     await get_db().commit()
     await get_db().refresh(dataset)
-    return await _dataset_read(dataset)
+    return await dataset_read(dataset)
 
 
 async def planner_prompt_default() -> PlannerPromptDefaultRead:
@@ -397,7 +404,7 @@ async def update_memory_extraction_dataset_configuration(
     dataset.configuration = _memory_extraction_configuration_dump(data.configuration)
     await get_db().commit()
     await get_db().refresh(dataset)
-    return await _dataset_read(dataset)
+    return await dataset_read(dataset)
 
 
 async def memory_extraction_prompt_default() -> MemoryExtractionPromptDefaultRead:

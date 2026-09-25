@@ -39,6 +39,38 @@ Les champs dépendent réellement du traitement : catalogue et fenêtre pour Top
 corpus et classement pour mémoire, ressources pour Briefing, limites de plan pour
 Planner, contexte et réponses simulées des outils pour les exécuteurs.
 
+## Générer un jeu synthétique
+
+Dans chacun des onze labs, **Générer un jeu synthétique** crée un nouveau jeu adapté au
+traitement. Choisissez son nom, le modèle générateur, la langue, 1 à 20 cas et les catégories
+à couvrir. Décrivez le domaine, les situations et les contraintes souhaitées : le formulaire
+précise les points testables propres au lab. Prévoyez au moins un cas par catégorie.
+
+Le modèle propose les paramètres communs, les entrées, leur contexte et les références.
+Si un jeu est sélectionné, **Reprendre le contexte du jeu** est activé par défaut : le nouveau
+jeu conserve ses paramètres, ses corpus et outils, sa configuration d’algorithme et ses consignes.
+Les cas existants ne sont pas copiés. Enregistrez d’abord les modifications du jeu ; une révision
+dépassée est refusée. Vous pouvez désactiver cette option pour créer un environnement fictif
+distinct. La génération conserve la référence et la révision du contexte utilisé.
+
+Les situations suivent les usages de chaque lab : échanges avec continuité et reprises pour
+les sujets, faits durables et corpus pour la mémoire, dépendances et livrables pour le planner,
+preuves d’exécution pour l’apprentissage et le diagnostic, cycles d’un même objectif pour son
+suivi, historique et délégation pour la conversation, transcriptions et interruptions pour la
+voix. Les références doivent respecter les outils disponibles et leurs réponses simulées.
+
+La génération utilise les contrats et la rubrique du lab, sans importer de conversations ou
+de Tasks réelles. Les appels d’outils des exécuteurs sont simulés. Les contrats et la cohérence
+des références sont contrôlés avant l’enregistrement du jeu complet ; un échec ne crée pas de
+jeu partiel. Les jeux existants sont conservés.
+
+Tous les cas arrivent en **brouillon**. Relisez les paramètres communs, puis ouvrez chaque cas,
+corrigez-le si nécessaire et enregistrez-le pour le rendre utilisable. Une référence générée
+reste une proposition à examiner. La provenance conserve le modèle, les consignes de génération
+et le coût. Vous pouvez fermer et rouvrir la fenêtre pendant la génération ; un changement de
+lab ne déplace pas le résultat dans le nouveau lab. En cas de délai dépassé, réduisez le nombre
+de cas ou choisissez un autre modèle.
+
 ## Préparer les items
 
 Dans **Items**, créez un item ou capturez une source réelle. L’éditeur sépare :
@@ -117,7 +149,16 @@ Voir le [contrat d’architecture](../architecture/ai-lab-evaluation.md).
 
 ## Lire, répéter et revoir
 
-Le détail d'un benchmark affiche d'abord la sortie, les scores par critère, leurs
+Les listes d'items affichent le texte sans balises HTML, y compris dans les messages
+imbriqués. Les entrées originales restent intactes dans l'éditeur et pour les tests.
+
+La cohérence de chaque résultat est visible en pourcentage sans ouvrir son détail.
+La cohérence moyenne du benchmark est la moyenne arithmétique des scores disponibles,
+toutes répétitions confondues, avec le nombre d'évaluations notées sur le total prévu.
+Un score de 0 % compte dans la moyenne ; un résultat sans jugement en est exclu.
+Filtrer les résultats ne change pas cette moyenne. Les critères restent propres au lab.
+
+Le détail d'un résultat affiche la sortie, les scores par critère, leurs
 justifications et les contrôles objectifs. Filtrez les échecs, défaillances critiques
 ou résultats non jugés. Les entrées, références et données brutes restent dépliables.
 

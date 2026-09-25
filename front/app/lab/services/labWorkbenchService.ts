@@ -21,6 +21,11 @@ export interface LabDescriptor {
   executor: 'task' | 'conversation' | 'voice' | null
 }
 export interface LabInput { variable_value: unknown; context?: Record<string, unknown> }
+export interface SyntheticDatasetRequest {
+  name: string; instructions: string; count: number; language: 'fr' | 'en' | 'zh'
+  llm_id: number | null; categories: string[]
+  source_dataset_id?: string; source_revision?: number
+}
 export interface LabDataset {
   purpose: DatasetPurpose
   id: string; revision: number; name: string; description: string
@@ -58,6 +63,9 @@ export interface LabPreview {
 }
 const base = (key: LabKey) => `/evaluation/${key}`
 export const labWorkbenchService = {
+  async generateDataset(key: LabKey, data: SyntheticDatasetRequest) {
+    return (await api.post<{ dataset: LabDataset; cost: number }>(`${base(key)}/datasets/synthetic`, data, { timeout: 200000 })).data
+  },
   async review(key: LabKey, id: string, campaign_id?: string) { return (await api.get<ReviewQueue>(`${base(key)}/runs/${id}/human-review`, { params: { campaign_id } })).data },
   async submitReview(key: LabKey, id: string, data: ReviewSubmission) { return (await api.post<ReviewQueue>(`${base(key)}/runs/${id}/human-review`, data)).data },
   async config() { return (await api.get<LabConfig>('/evaluation/config')).data },

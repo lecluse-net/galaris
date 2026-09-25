@@ -1,7 +1,10 @@
 const insightsFr = {
+  coherence: 'Cohérence', averageCoherence: 'Cohérence moyenne', coherenceValue: 'Cohérence : {value}',
+  scoredCount: '{count}/{total} évaluations notées',
+  coherenceHelp: 'Moyenne des scores de cohérence selon les critères du lab, toutes répétitions confondues. Les résultats sans note sont exclus ; les filtres ne modifient pas cette moyenne.',
   stability: 'Stabilité par item', stabilityHelp: 'Les notes décrivent les répétitions jugées. Les absences de jugement restent visibles ; cette dispersion ne mesure pas la généralisation à de nouveaux items.',
   stabilityCount: '{passed}/{repetitions} réussites · {attempts} exécutions · {judged} jugements · {failed} échecs',
-  spread: 'Moyenne {mean} · minimum {min} · maximum {max} · écart-type {deviation}',
+  spread: 'Moyenne {mean} · minimum {min} · maximum {max} · écart-type {deviation} points',
   resultFilter: 'Filtrer les résultats', filters: { all: 'Tous les résultats', failed: 'Échecs', critical: 'Défaillances critiques', unjudged: 'Non jugés' },
   displayed: '{count}/{total} résultats affichés', attempt: 'Passage {number}', critical: 'Défaillance critique', dimensions: 'Scores par critère', checks: 'Contrôles objectifs', checkPassed: 'Réussi', checkFailed: 'Échoué', raw: 'Données brutes',
   repetitions: 'Répétitions par item (1 à 20)', budget: 'Budget candidat + juge (USD, facultatif)',
@@ -18,9 +21,12 @@ const insightsFr = {
   comparison: 'Votre note : {human} · Juge : {judge}', dimensionComparison: 'Vous : {human} · Juge : {judge} · Écart juge − humain : {delta}', agreement: '{count} comparaisons · {disagreements} désaccords de verdict · écart absolu moyen {error}',
 }
 const insightsEn: typeof insightsFr = {
+  coherence: 'Coherence', averageCoherence: 'Average coherence', coherenceValue: 'Coherence: {value}',
+  scoredCount: '{count}/{total} evaluations scored',
+  coherenceHelp: 'Mean coherence score using the lab criteria, across all repetitions. Unscored results are excluded; filters do not change this mean.',
   stability: 'Stability by item', stabilityHelp: 'Scores describe judged repetitions. Missing judgments remain visible; this spread does not measure generalization to new items.',
   stabilityCount: '{passed}/{repetitions} passes · {attempts} executions · {judged} judgments · {failed} failures',
-  spread: 'Mean {mean} · minimum {min} · maximum {max} · standard deviation {deviation}',
+  spread: 'Mean {mean} · minimum {min} · maximum {max} · standard deviation {deviation} points',
   resultFilter: 'Filter results', filters: { all: 'All results', failed: 'Failures', critical: 'Critical failures', unjudged: 'Unjudged' },
   displayed: '{count}/{total} results displayed', attempt: 'Attempt {number}', critical: 'Critical failure', dimensions: 'Scores by criterion', checks: 'Objective checks', checkPassed: 'Passed', checkFailed: 'Failed', raw: 'Raw data',
   repetitions: 'Repetitions per item (1 to 20)', budget: 'Candidate + judge budget (USD, optional)',
@@ -37,9 +43,12 @@ const insightsEn: typeof insightsFr = {
   comparison: 'Your score: {human} · Judge: {judge}', dimensionComparison: 'You: {human} · Judge: {judge} · Judge − human: {delta}', agreement: '{count} comparisons · {disagreements} verdict disagreements · mean absolute difference {error}',
 }
 const insightsZh: typeof insightsFr = {
+  coherence: '一致性', averageCoherence: '平均一致性', coherenceValue: '一致性：{value}',
+  scoredCount: '{count}/{total} 次评估已评分',
+  coherenceHelp: '按实验室标准计算所有重复评估的一致性平均分。未评分结果不计入平均分；筛选不会改变此平均分。',
   stability: '各测试项的稳定性', stabilityHelp: '分数反映已评判的重复测试。缺失的评判保持可见；离散程度不代表对新测试项的泛化能力。',
   stabilityCount: '{passed}/{repetitions} 通过 · {attempts} 次执行 · {judged} 次评判 · {failed} 次失败',
-  spread: '平均 {mean} · 最低 {min} · 最高 {max} · 标准差 {deviation}',
+  spread: '平均 {mean} · 最低 {min} · 最高 {max} · 标准差 {deviation} 分',
   resultFilter: '筛选结果', filters: { all: '所有结果', failed: '失败', critical: '严重失败', unjudged: '未评判' },
   displayed: '显示 {count}/{total} 个结果', attempt: '第 {number} 次', critical: '严重失败', dimensions: '各标准评分', checks: '客观检查', checkPassed: '通过', checkFailed: '失败', raw: '原始数据',
   repetitions: '每项重复次数（1 至 20）', budget: '候选模型与评判预算（美元，可选）',
@@ -56,6 +65,81 @@ const insightsZh: typeof insightsFr = {
   comparison: '您的评分：{human} · 评判：{judge}', dimensionComparison: '您：{human} · 评判：{judge} · 评判减人工：{delta}', agreement: '{count} 次对比 · {disagreements} 次结论分歧 · 平均绝对差 {error}',
 }
 
+const syntheticFr = {
+  useContext: 'Reprendre le contexte du jeu « {name} »',
+  contextHelp: 'Les paramètres, outils, corpus et consignes du jeu sélectionné seront conservés. De nouvelles situations fictives seront créées pour ce contexte.',
+  saveContext: 'Enregistrez vos modifications du jeu avant de générer des cas dans ce contexte.',
+  freshContext: 'Un environnement fictif cohérent sera créé pour ce lab. Précisez le métier, le canal et les situations à tester pour guider les cas.',
+  title: 'Générer un jeu synthétique', generate: 'Générer',
+  help: 'Créez un nouveau jeu adapté à ce laboratoire, avec des paramètres communs et des cas entièrement fictifs.',
+  instructions: 'Domaine, situations et contraintes à tester', model: 'Modèle générateur', count: 'Nombre de cas (1 à 20)', language: 'Langue des cas',
+  languages: { fr: 'Français', en: 'Anglais', zh: 'Chinois' },
+  review: 'Les références sont des propositions de l’IA. Chaque cas sera enregistré en brouillon : ouvrez-le, relisez-le et enregistrez-le pour le rendre utilisable. Prévoyez au moins un cas par catégorie choisie.',
+  generating: 'Génération en cours… Vous pouvez fermer cette fenêtre et la rouvrir pour suivre la demande.',
+  error: 'La génération a échoué. Réessayez avec moins de cas ou un autre modèle.',
+  created: 'Jeu « {name} » créé : {count} brouillons à relire · coût : {cost} $',
+  focus: {
+    dispatcher: 'Cibles : choix de route, effort, ambiguïtés et contraintes du moteur d’exécution.',
+    briefing: 'Cibles : sélection des ressources, preuves manquantes et consignes utiles à l’exécution.',
+    planner: 'Cibles : décomposition, dépendances, demandes de précision et limites du plan.',
+    topic_classification: 'Cibles : continuité, changement et reprise de sujet au fil des messages.',
+    memory_extraction: 'Cibles : faits durables, bavardage, corrections et liens avec les souvenirs existants.',
+    outcome_reflection: 'Cibles : leçons justifiées par les preuves de réussite, d’échec ou de résultat incomplet.',
+    goal_tracking: 'Cibles : progrès vérifié, achèvement, blocages et prochaine action utile.',
+    task_executor: 'Cibles : exécution bornée, outils simulés, erreurs et preuves de réalisation.',
+    conversation_executor: 'Cibles : réponse directe, clarification, délégation et suivi sans actions répétées.',
+    voice_executor: 'Cibles : réponses orales concises, transcriptions ambiguës, interruptions et délégation.',
+    task_analysis: 'Cibles : diagnostic de dossiers fictifs, causes étayées et preuves insuffisantes.',
+  },
+}
+const syntheticEn = {
+  useContext: 'Use the context of dataset “{name}”',
+  contextHelp: 'The selected dataset’s settings, tools, corpus and instructions will be preserved. New fictional situations will be created for this context.',
+  saveContext: 'Save your dataset changes before generating cases in this context.',
+  freshContext: 'A coherent fictional environment will be created for this lab. Describe the role, channel and situations to guide the cases.',
+  title: 'Generate a synthetic dataset', generate: 'Generate',
+  help: 'Create a new dataset tailored to this lab, with shared settings and entirely fictional cases.',
+  instructions: 'Domain, scenarios and constraints to test', model: 'Generator model', count: 'Number of cases (1–20)', language: 'Case language',
+  languages: { fr: 'French', en: 'English', zh: 'Chinese' },
+  review: 'References are AI suggestions. Each case will be saved as a draft: open, review and save it to make it usable. Request at least one case per selected category.',
+  generating: 'Generating… You can close this window and reopen it to follow the request.',
+  error: 'Generation failed. Try fewer cases or another model.',
+  created: 'Dataset “{name}” created: {count} drafts to review · cost: ${cost}',
+  focus: {
+    dispatcher: 'Focus: routing, effort, ambiguity and execution engine constraints.',
+    briefing: 'Focus: resource selection, missing evidence and useful execution guidance.',
+    planner: 'Focus: decomposition, dependencies, clarification and plan limits.',
+    topic_classification: 'Focus: topic continuity, changes and returns across messages.',
+    memory_extraction: 'Focus: durable facts, chatter, corrections and links to existing memories.',
+    outcome_reflection: 'Focus: lessons grounded in success, failure and incomplete outcome evidence.',
+    goal_tracking: 'Focus: verified progress, completion, blockers and the next useful action.',
+    task_executor: 'Focus: bounded execution, simulated tools, errors and completion evidence.',
+    conversation_executor: 'Focus: direct replies, clarification, delegation and follow-up without repeated actions.',
+    voice_executor: 'Focus: concise spoken replies, ambiguous transcripts, interruptions and delegation.',
+    task_analysis: 'Focus: fictional execution dossiers, supported causes and insufficient evidence.',
+  },
+}
+const syntheticZh = {
+  useContext: '使用测试集“{name}”的上下文',
+  contextHelp: '保留所选测试集的设置、工具、语料库和指令，并为此上下文创建新的虚构场景。',
+  saveContext: '请先保存测试集的修改，再根据此上下文生成案例。',
+  freshContext: '为此实验室创建一致的虚构环境。请描述角色、渠道和待测试场景以指导案例生成。',
+  title: '生成合成测试集', generate: '生成', help: '为此实验室创建包含共享设置和完全虚构案例的新测试集。',
+  instructions: '要测试的领域、场景和约束', model: '生成模型', count: '案例数量（1–20）', language: '案例语言',
+  languages: { fr: '法语', en: '英语', zh: '中文' },
+  review: '参考答案是 AI 建议。每个案例将保存为草稿：打开、审阅并保存后即可使用。每个所选类别至少需要一个案例。',
+  generating: '正在生成…您可以关闭此窗口并重新打开以跟踪请求。', error: '生成失败。请减少案例数量或选择其他模型。',
+  created: '已创建测试集“{name}”：{count} 个草稿待审阅 · 费用：{cost} 美元',
+  focus: {
+    dispatcher: '重点：路由、推理强度、歧义和执行引擎约束。', briefing: '重点：资源选择、证据缺失和有用的执行指导。',
+    planner: '重点：分解、依赖、澄清和计划限制。', topic_classification: '重点：消息中的话题延续、切换和回归。',
+    memory_extraction: '重点：长期事实、闲聊、更正和现有记忆关联。', outcome_reflection: '重点：以成功、失败和不完整结果证据为依据的经验。',
+    goal_tracking: '重点：已验证的进展、完成、阻碍和下一步有用行动。', task_executor: '重点：有界执行、模拟工具、错误和完成证据。',
+    conversation_executor: '重点：直接回复、澄清、委派和避免重复操作的跟进。', voice_executor: '重点：简洁口语回复、模糊转录、打断和委派。',
+    task_analysis: '重点：虚构执行档案、有依据的原因和证据不足。',
+  },
+}
+
 export default {
   fr: {
     contextHelpPages: {
@@ -67,6 +151,7 @@ export default {
     },
     evaluation: {
       insights: insightsFr,
+      synthetic: syntheticFr,
       contract: {
         "variable": "Variable testée",
         "result": "Résultat à tester",
@@ -737,6 +822,7 @@ export default {
     },
     evaluation: {
       insights: insightsEn,
+      synthetic: syntheticEn,
       contract: {
         "variable": "Tested variable",
         "result": "Result to evaluate",
@@ -1404,6 +1490,7 @@ export default {
     nav: { lab: '实验室', lab_desc: '测试并比较 AI 机制' },
     evaluation: {
       insights: insightsZh,
+      synthetic: syntheticZh,
       contract: {
   "variable": "测试变量",
   "result": "待评估结果",

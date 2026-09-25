@@ -37,6 +37,34 @@ changes.
 Fields follow the treatment: Topic catalog and context window, memory corpus and ranking,
 Briefing resources, Planner limits, or executor context and simulated tool responses.
 
+## Generate a synthetic dataset
+
+Each of the eleven labs offers **Generate a synthetic dataset**. Choose a new name, generator
+model, language, 1–20 cases and coverage categories. Describe the domain, scenarios and
+constraints; the dialog explains the lab's specific focus. Request at least one case per category.
+
+The model proposes shared parameters, inputs, contexts and reference outputs using the lab's
+contracts and rubric. With a dataset selected, **Use the context of dataset** is enabled by
+default: the new dataset preserves its parameters, corpora, tools, algorithm configuration and
+instructions, without copying its cases. Save edits first; stale revisions are rejected.
+Disable this option to create a separate fictional environment. Provenance records the source
+context and its revision.
+
+Scenarios follow each lab's workload: natural topic continuity and returns, durable facts and
+memory corpora, planning dependencies and deliverables, outcome evidence, cycles against one
+goal, conversational history and delegation, or voice transcripts and interruptions. Reference
+outputs must respect available tools and configured response fixtures.
+
+Generation does not import real conversations or Tasks. Executor tool calls are
+simulated. Contract and reference consistency checks precede atomic publication: a failure
+creates no partial dataset, and existing datasets remain intact.
+
+All cases start as **drafts**. Review shared settings, then open, correct and save each case to
+make it usable. Generated references remain suggestions. Provenance records the generator,
+instructions and cost. You can close and reopen the dialog while generation is pending;
+switching labs never inserts its result into the new lab. If generation times out, request
+fewer cases or select another model.
+
 ## Prepare items
 
 Create an item or capture a real source. The editor separates the named variable,
@@ -103,7 +131,16 @@ See the [architecture contract](../architecture/ai-lab-evaluation.md).
 
 ## Read, repeat and review
 
-Benchmark details display readable output, criterion scores, assessments and objective
+Item lists display text without HTML tags, including nested messages. Original inputs
+remain unchanged in the editor and in benchmark execution.
+
+Each result shows its coherence percentage without expanding its details. Average
+benchmark coherence is the arithmetic mean of available scores across all repetitions,
+with the number of scored evaluations out of the planned total. A score of 0% counts;
+an unjudged result is excluded. Filtering does not change the mean. Criteria remain
+specific to each lab.
+
+Result details display readable output, criterion scores, assessments and objective
 checks. Filter failures, critical failures or unjudged results. Inputs, references and
 raw data remain expandable.
 

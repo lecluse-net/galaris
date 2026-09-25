@@ -14,20 +14,26 @@ test.describe('Lab at ' + viewport.width, () => {
   test.use({ viewport })
 
 test('results expose evidence, filter failures and distinguish missing judgments in stability', async ({ page }) => {
-  const run = { repetitions: 3, configuration_snapshot: { rubric }, results: [
+  const run = { repetitions: 3, total_cases: 3, configuration_snapshot: { rubric }, results: [
     result('Successful'),
     result('Critical', { repetition: 2, verdict: 'fail', score_percent: 40, judge_output: { explanation: 'Unsupported claims', critical_failures: ['Invented evidence'] } }),
     result('Unjudged', { repetition: 3, score_percent: null, verdict: 'inconclusive', judge_output: { error: 'Judge unavailable' } }),
   ] }
   await mount(page, 'app/lab/components/LabResultsPanel.vue', { props: { run } })
+  const summary = page.getByRole('region', { name: 'Average coherence' })
+  await expect(summary).toContainText('65.0%')
+  await expect(summary).toContainText('2/3 evaluations scored')
+  await expect(page.getByLabel('Coherence: 90.0%', { exact: true })).toBeVisible()
+  await expect(page.getByLabel('Coherence: 40.0%', { exact: true })).toBeVisible()
   await expect(page.getByText('1/3 passes · 3 executions · 2 judgments · 1 failures')).toBeVisible()
-  await expect(page.getByText('Mean 65.0 · minimum 40.0 · maximum 90.0 · standard deviation 25.0')).toBeVisible()
+  await expect(page.getByText('Mean 65.0% · minimum 40.0% · maximum 90.0% · standard deviation 25.0 points')).toBeVisible()
   await page.getByText('Successful', { exact: true }).last().click()
   await expect(page.getByText('Readable candidate answer', { exact: true }).first()).toBeVisible()
   await expect(page.getByText('Sources are present', { exact: true })).toBeVisible()
   await page.getByLabel('Filter results', { exact: true }).click()
   await page.getByRole('option', { name: 'Critical failures', exact: true }).click()
   await expect(page.getByRole('status')).toHaveText('1/3 results displayed')
+  await expect(summary).toContainText('65.0%')
   await expect(page.getByText('Unjudged', { exact: true })).not.toBeVisible()
   await page.getByText('Critical', { exact: true }).click()
   await expect(page.getByText('Invented evidence', { exact: true })).toBeVisible()
@@ -36,6 +42,12 @@ test('results expose evidence, filter failures and distinguish missing judgments
   await page.locator('.q-expansion-item__container > .q-item').filter({ hasText: /^Unjudged/ }).click()
   await expect(page.getByText('Judge unavailable', { exact: true })).toBeVisible()
   await page.screenshot({ path: test.info().outputPath('lab-results.png'), fullPage: true, animations: 'disabled' })
+  await page.evaluate(run => window.testApp.setProps({ run }), { ...run, results: [result('Zero', { score_percent: 0 }), result('Pending', { score_percent: null })] })
+  await expect(summary).toContainText('0.0%')
+  await expect(summary).toContainText('1/3 evaluations scored')
+  await page.evaluate(run => window.testApp.setProps({ run }), { ...run, results: [result('Pending', { score_percent: null })] })
+  await expect(summary).not.toContainText('0.0%')
+  await expect(summary).toContainText('0/3 evaluations scored')
 })
 
 test('human review saves independent notes before disclosing the judge and preserves them on reopening', async ({ page }) => {
@@ -106,6 +118,31 @@ test('workbench saves dataset roles and item categories and submits bounded repe
   await page.getByLabel('Candidate + judge budget (USD, optional)', { exact: true }).fill('0.5')
   await page.getByRole('button', { name: 'Run both passes', exact: true }).click()
   await expect.poll(() => started).toEqual({ llm_id: 1, judge_llm_id: 1, repetitions: 3, max_cost: 0.5 })
+})
+
+test('item lists show readable text for HTML strings and nested messages without changing stored inputs', async ({ page }) => {
+  const html = '<p>Read &amp; compare</p><p>2 &lt; 3</p><script>hiddenScript()</script>'
+  const values = [html, [{ role: 'user', content: html }], { message: html, nested: { count: 0, enabled: false } }]
+  const items = values.map((value, index) => ({ id: `case-${index}`, name: `Item ${index}`, revision: 1, input_data: { variable_value: value }, categories: [], readiness: 'draft', enabled: true, expected_output: null, source_capture: {} }))
+  await jsonRoute(page, '**/api/evaluation/mechanisms', [{ key: 'briefing', configuration_schema: {}, algorithm: {}, contract: { variable_name: 'objective', variable_schema: {}, parameters_schema: {}, parameter_defaults: {}, result_name: 'briefing_and_resources' } }])
+  await jsonRoute(page, '**/api/evaluation/config', { lab_llm_id: null, llms: [] })
+  await jsonRoute(page, '**/api/evaluation/briefing/datasets', [{ id: 'dataset', name: 'HTML inputs', parameters: {}, configuration: {} }])
+  await jsonRoute(page, '**/api/evaluation/briefing/datasets/dataset/cases', items)
+  await jsonRoute(page, '**/api/evaluation/briefing/datasets/dataset/runs?*', [])
+  await mount(page, 'app/lab/components/LabWorkbench.vue', { props: { mechanism: 'briefing', canEdit: false } })
+  await page.getByRole('tab', { name: 'Items', exact: true }).click()
+  const previews = page.locator('.value-preview')
+  await expect(previews).toHaveCount(3)
+  for (let index = 0; index < values.length; index++) {
+    await expect(previews.nth(index)).toContainText('Read & compare 2 < 3')
+    await expect(previews.nth(index)).not.toContainText('<p>')
+    await expect(previews.nth(index)).not.toContainText('hiddenScript')
+    await page.getByRole('button', { name: 'View', exact: true }).nth(index).click()
+    const dialog = page.getByRole('dialog')
+    await expect(dialog.locator('textarea').first()).toHaveValue(JSON.stringify(values[index], null, 2))
+    await dialog.getByRole('button', { name: 'Close', exact: true }).first().click()
+  }
+  await expect(previews.nth(2)).toContainText('"count":0,"enabled":false')
 })
 
 })

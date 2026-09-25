@@ -10,6 +10,7 @@
     <div class="row items-center q-gutter-sm">
       <q-select v-model="datasetId" :options="datasets" option-value="id" option-label="name" emit-value map-options outlined class="col" :label="t('evaluation.contract.dataset')" :loading="loading" :disable="busy" />
       <q-btn v-if="canEdit" icon="add" color="primary" :label="t('evaluation.contract.newDataset')" :disable="loading || busy" @click="openName('dataset')" />
+      <q-btn v-if="canEdit" icon="auto_awesome" outline color="primary" :label="t('evaluation.synthetic.title')" :disable="loading || busy" @click="syntheticDialog = true" />
       <q-btn flat icon="refresh" :aria-label="t('evaluation.refresh')" @click="reload" />
       <q-chip v-if="dataset">{{ t('evaluation.insights.purposes.' + (dataset.purpose ?? 'work')) }}</q-chip>
     </div>
@@ -67,7 +68,7 @@
               <q-btn v-if="canEdit" flat icon="delete_outline" color="negative" :aria-label="t('evaluation.contract.delete')" @click="confirmDelete('item', scope.row.id)" />
             </q-td></template>
             <template #item="scope"><div class="col-12 q-mb-sm"><q-card flat bordered @click="openCase(scope.row)"><q-card-section>
-              <strong>{{ scope.row.name }}</strong><p class="value-preview">{{ previewText(scope.row.input_data.variable_value) }}</p>
+              <strong>{{ previewText(scope.row.name) }}</strong><p class="value-preview">{{ previewText(scope.row.input_data.variable_value) }}</p>
               <q-btn flat icon="edit_note" :label="t('evaluation.view')" @click.stop="openCase(scope.row)" />
               <q-btn v-if="canEdit" flat icon="delete_outline" color="negative" :aria-label="t('evaluation.contract.delete')" @click.stop="confirmDelete('item', scope.row.id)" />
             </q-card-section></q-card></div></template>
@@ -91,10 +92,11 @@
               {{ t('evaluation.contract.execution') }} {{ scope.row.completed_cases }}/{{ scope.row.total_cases }}<br />
               {{ t('evaluation.contract.judgment') }} {{ scope.row.judged_cases }}/{{ scope.row.total_cases }}
             </q-td></template>
-            <template #body-cell-score="scope"><q-td :props="scope">{{ score(scope.row.score_percent) }}</q-td></template>
+            <template #body-cell-score="scope"><q-td :props="scope"><strong class="text-h6">{{ score(scope.row.score_percent) }}</strong></q-td></template>
             <template #body-cell-actions="scope"><q-td :props="scope"><q-btn flat icon="visibility" :aria-label="t('evaluation.view')" @click="openRun(scope.row.id)" /><q-btn v-if="!active(scope.row) && scope.row.completed_cases" flat icon="rate_review" :aria-label="t('evaluation.insights.review')" @click="openReview(scope.row.id)" /></q-td></template>
             <template #item="scope"><div class="col-12 q-mb-sm"><q-card flat bordered><q-card-section>
-              <div>{{ t('evaluation.contract.status.' + scope.row.status) }} · {{ score(scope.row.score_percent) }}</div>
+              <div>{{ t('evaluation.contract.status.' + scope.row.status) }}</div>
+              <div>{{ t('evaluation.insights.averageCoherence') }} · <strong class="text-h6">{{ score(scope.row.score_percent) }}</strong></div>
               <div>{{ t('evaluation.contract.execution') }} {{ scope.row.completed_cases }}/{{ scope.row.total_cases }}</div>
               <div>{{ t('evaluation.contract.judgment') }} {{ scope.row.judged_cases }}/{{ scope.row.total_cases }}</div>
               <q-btn flat icon="visibility" :label="t('evaluation.view')" @click="openRun(scope.row.id)" /><q-btn v-if="!active(scope.row) && scope.row.completed_cases" flat icon="rate_review" :label="t('evaluation.insights.review')" @click="openReview(scope.row.id)" />
@@ -109,6 +111,7 @@
       </div>
     </q-card>
 
+    <LabSyntheticDatasetDialog v-if="canEdit" v-model="syntheticDialog" :mechanism="mechanism" :models="config?.llms ?? []" :default-model="config?.lab_llm_id ?? null" :source-dataset="savedDataset" :context-dirty="Boolean(datasetDirty)" @generated="onSyntheticGenerated" />
     <q-dialog v-model="caseDialog">
       <q-card v-if="editingCase && descriptor && dataset" class="wide-dialog">
         <q-card-section class="galaris-dialog-title row items-center"><div class="text-h6">{{ editingCase.name }}</div><q-space /><q-btn v-close-popup flat round dense icon="close" :aria-label="t('common.close')" /></q-card-section>
@@ -205,6 +208,7 @@
 
 <script setup lang="ts">
 import LabResultsPanel from './LabResultsPanel.vue'
+import LabSyntheticDatasetDialog from './LabSyntheticDatasetDialog.vue'
 import LabHumanReviewDialog from './LabHumanReviewDialog.vue'
 import { categories } from '../services/labWorkbenchService'
 import LabCaptureConfirmation from './LabCaptureConfirmation.vue'
@@ -214,6 +218,7 @@ import { useQuasar, type QTableColumn } from 'quasar'
 import { useI18n } from 'vue-i18n'
 import { apiErrorDetail } from '@/core/api'
 import { JsonEditor, Markdown, startVisiblePolling } from '@/core/util'
+import { labPreviewText as previewText } from '../textPresentation'
 import LabValueEditor from './LabValueEditor.vue'
 import LabParameterEditor from './LabParameterEditor.vue'
 import TopicMessageRangeImportDialog from './TopicMessageRangeImportDialog.vue'
@@ -264,6 +269,13 @@ const runCoverage = computed(() => ({
   total: selectedRun.value?.total_cases ?? 0,
 }))
 const nameDialog = ref(false)
+const syntheticDialog = ref(false)
+function onSyntheticGenerated(value: LabDataset, cost: number, select: boolean) {
+  datasets.value.unshift(value)
+  // Keep an existing unsaved experiment open; the generated dataset stays selectable.
+  if (select && !datasetDirty.value && !caseDialog.value && !runDialog.value) { datasetId.value = value.id; tab.value = 'items' }
+  $q.notify({ type: 'positive', message: t('evaluation.synthetic.created', { name: value.name, count: value.case_count, cost: cost.toFixed(4) }) })
+}
 const nameKind = ref<'dataset' | 'item'>('dataset')
 const newName = ref('')
 const deleteDialog = ref(false)
@@ -278,9 +290,8 @@ const pretty = (value: unknown) => JSON.stringify(value ?? null, null, 2)
 const clone = <T,>(value: T): T => JSON.parse(JSON.stringify(value)) as T
 const active = (run: LabRun) => ['queued', 'running'].includes(run.status)
 const score = (value: number | null) => value == null ? t('evaluation.contract.unjudged') : t('evaluation.contract.score', { value: value.toFixed(1) })
-const previewText = (value: unknown) => (typeof value === 'string' ? value : pretty(value)).slice(0, 160)
 const caseColumns = computed<QTableColumn[]>(() => [
-  { name: 'name', field: 'name', label: t('evaluation.contract.name'), align: 'left' },
+  { name: 'name', field: 'name', format: previewText, label: t('evaluation.contract.name'), align: 'left' },
   { name: 'variable', field: 'input_data', label: variableLabel.value, align: 'left' },
   { name: 'readiness', field: 'readiness', label: t('evaluation.contract.state'), align: 'left' },
   { name: 'actions', field: 'id', label: '', align: 'right' },
@@ -290,7 +301,7 @@ const runColumns = computed<QTableColumn[]>(() => [
   { name: 'created', field: 'created_at', label: t('evaluation.contract.date'), align: 'left', sortable: true },
   { name: 'status', field: 'status', label: t('evaluation.contract.state'), align: 'left' },
   { name: 'progress', field: 'completed_cases', label: t('evaluation.contract.progress'), align: 'left' },
-  { name: 'score', field: 'score_percent', label: t('evaluation.contract.judgment'), align: 'left' },
+  { name: 'score', field: 'score_percent', label: t('evaluation.insights.averageCoherence'), align: 'left', sortable: true },
   { name: 'actions', field: 'id', label: '', align: 'right' },
 ])
 function report(reason: unknown) {

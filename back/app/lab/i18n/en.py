@@ -3,6 +3,8 @@
 default = {
     "evaluation_api": {
         "errors": {
+            "synthetic_name_exists": "A dataset with this name already exists in this lab; choose another name",
+            "synthetic_timeout": "Generation exceeded three minutes; request fewer cases or choose another model",
             "review_authentication": "An authenticated reviewer is required",
             "review_campaign_missing": "No judgment campaign available",
             "review_output_missing": "Candidate output not available",

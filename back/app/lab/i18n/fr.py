@@ -3,6 +3,8 @@
 default = {
     "evaluation_api": {
         "errors": {
+            "synthetic_name_exists": "Un jeu de ce nom existe déjà dans ce laboratoire ; choisissez un autre nom",
+            "synthetic_timeout": "La génération a dépassé trois minutes ; réduisez le nombre de cas ou choisissez un autre modèle",
             "review_authentication": "Un évaluateur authentifié est requis",
             "review_campaign_missing": "Aucune campagne de jugement disponible",
             "review_output_missing": "La sortie candidate n’est pas disponible",

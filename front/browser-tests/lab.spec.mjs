@@ -170,9 +170,10 @@ test('Lab input actions show dismissible error toasts without changing the modal
 
 test('each item edits and sends its own history for previews, references and saving', async ({ page }) => {
   const dataset = { id: 'dataset', name: 'History dataset', revision: 1, parameters: { language: 'en' }, configuration: {} }
+  const original = '<p>Continue &amp; verify</p><p>2 &lt; 3</p>'
   const items = ['First', 'Second'].map((name, index) => ({
     id: `item-${index}`, name, revision: 1, enabled: true, readiness: 'draft',
-    input_data: { variable_value: 'Continue', context: { history: [{ text: `${name} conversation` }] } },
+    input_data: { variable_value: original, context: { history: [{ text: `${name} conversation` }] } },
     expected_output: {}, source_capture: {},
   }))
   await jsonRoute(page, '**/api/evaluation/mechanisms', [{
@@ -203,6 +204,7 @@ test('each item edits and sends its own history for previews, references and sav
   await page.getByRole('tab', { name: 'Dataset settings', exact: true }).click()
   await expect(page.locator('[data-parameter="history"]')).toHaveCount(0)
   await page.getByRole('tab', { name: 'Items', exact: true }).click()
+  await expect(page.locator('.value-preview').first()).toHaveText('Continue & verify 2 < 3')
   await page.getByRole('button', { name: 'View', exact: true }).first().click()
   const dialog = page.getByRole('dialog')
   const history = dialog.locator('[data-parameter="history"]')
@@ -215,7 +217,7 @@ test('each item edits and sends its own history for previews, references and sav
   }
   const context = { history: [{ text: 'Edited first conversation', attachments: ['tool://files/report'] }] }
   await history.locator('textarea').fill(JSON.stringify(context.history))
-  const input = { variable_value: 'Continue', context }
+  const input = { variable_value: original, context }
   await dialog.getByRole('button', { name: 'Preview inputs', exact: true }).click()
   await expect.poll(() => sent[0]).toEqual(input)
   await dialog.getByRole('button', { name: 'Suggest a reference for review', exact: true }).click()
