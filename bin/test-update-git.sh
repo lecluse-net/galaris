@@ -16,6 +16,7 @@ cat > "$case_dir/tools/docker" <<'SH'
 #!/usr/bin/env bash
 printf '%s\n' "$*" >> "$GIT_UPDATE_TEST_LOG"
 case " $* " in
+    *" app.documentation revision "*) printf '%064d\n' 1 ;;
     *" config --services "*) echo backend ;;
 esac
 SH
@@ -24,7 +25,7 @@ export PATH="$case_dir/tools:$PATH"
 git init --quiet --bare --initial-branch=main "$case_dir/origin.git"
 git init --quiet --initial-branch=main "$case_dir/seed"
 cp "$repo_dir/Makefile" "$case_dir/seed/"
-cp "$repo_dir/bin/"{update-source,start,init-data-volume}.sh "$case_dir/seed/bin/"
+cp "$repo_dir/bin/"{update-source,start,init-data-volume,refresh-documentation}.sh "$case_dir/seed/bin/"
 for script in update-secrets init-search-config finalize-internal-secrets update-release; do
     printf '#!/usr/bin/env bash\nexit 0\n' > "$case_dir/seed/bin/$script.sh"
 done

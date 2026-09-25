@@ -6,6 +6,8 @@ services:
       context: ${RELEASE_BUILD_SOURCE:?required}/back
       additional_contexts:
         harness_manager: ${RELEASE_BUILD_SOURCE}/harness_manager
+        product_docs: ${RELEASE_BUILD_SOURCE}/docs
+        project_docs: ${RELEASE_BUILD_SOURCE}/project
       target: prod-stage
       args:
         GALARIS_BUILD_VERSION: ${RELEASE_BUILD_REF}

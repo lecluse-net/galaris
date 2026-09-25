@@ -12,7 +12,7 @@ from app.file_share.resource_uri import parse_resource_uri
 
 
 @pytest.mark.asyncio
-async def test_galaris_root_lists_the_supported_business_collections() -> None:
+async def test_galaris_root_lists_the_supported_business_collections(db) -> None:
     result = await galaris_provider.galaris_resource_list(
         ResourceContext(agent_id=7, runtime="internal"),
         parse_resource_uri("galaris://", allow_empty=True),
@@ -31,7 +31,7 @@ async def test_galaris_root_lists_the_supported_business_collections() -> None:
 
 
 @pytest.mark.asyncio
-async def test_galaris_root_listing_is_paginated() -> None:
+async def test_galaris_root_listing_is_paginated(db) -> None:
     ctx = ResourceContext(agent_id=7, runtime="internal")
 
     first = await resource_service.resource_list(
@@ -74,6 +74,7 @@ async def test_galaris_root_listing_is_paginated() -> None:
 
 @pytest.mark.asyncio
 async def test_galaris_root_exposes_skills_only_with_management_access(
+    db,
 ) -> None:
     result = await resource_service.resource_list(
         ResourceContext(agent_id=7, runtime="internal", skill_management=True),

@@ -30,6 +30,8 @@ services:
             context: ./back
             additional_contexts:
                 harness_manager: ./harness_manager
+                product_docs: ./docs
+                project_docs: ./project
             target: prod-stage
             args:
                 GALARIS_BUILD_VERSION: ${GALARIS_BUILD_VERSION:-unknown}

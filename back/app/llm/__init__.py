@@ -54,7 +54,7 @@ from .facade import (
     aggregate_agent_run_usage,
     get_managed_runtime_credential,
 )
-from .embedding_facade import rank_texts_by_semantic_similarity
+from .embedding_facade import rank_texts_by_semantic_similarity, configured_embedding_model, ConfiguredEmbeddingModel
 from .image_generation_service import generate_image_native
 from .handlers import get_handler_for_url
 from .structured_service import (
@@ -93,6 +93,7 @@ from .media_facade import available_media_functions, resolve_media_resource
 from .retention import register_trace_release
 
 __all__ = [
+    "configured_embedding_model", "ConfiguredEmbeddingModel",
     "normalized_media_type", "supports_native_input",
     "CHAT_PARAMETERS",
     "RESPONSES_PARAMETERS",

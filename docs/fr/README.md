@@ -19,6 +19,8 @@ fonctions qui demandent un modèle, un bridge ou une activation spécifique.
 
 [Lire le guide utilisateur](user/README.md)
 
+[Trouver un écran, un menu ou un onglet](user/navigation.md)
+
 Ce parcours explique avec des exemples :
 
 - ce qu’est un agent et ce que Galaris orchestre réellement ;
@@ -39,6 +41,8 @@ Ce parcours explique avec des exemples :
 [Lire le guide administrateur](admin/README.md)
 
 [Installer et exploiter Galaris](admin/installation.md)
+
+[Donner la connaissance de Galaris à n'importe quel agent](admin/product-knowledge.md)
 
 Ce parcours couvre l’installation et l’exploitation :
 

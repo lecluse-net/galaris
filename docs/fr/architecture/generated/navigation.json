@@ -1,0 +1,2013 @@
+{
+  "schema_version": 1,
+  "generated_by": "front/scripts/navigation-context.mjs",
+  "entries": [
+    {
+      "id": "configure.llm",
+      "labels": {
+        "fr": "Fournisseurs & modèles",
+        "en": "Providers & models"
+      },
+      "breadcrumbs": {
+        "fr": [
+          "Configurer",
+          "Fournisseurs & modèles"
+        ],
+        "en": [
+          "Configure",
+          "Providers & models"
+        ]
+      },
+      "route": "/llm",
+      "href": null,
+      "description": {
+        "fr": "Gestion des fournisseurs, modèles et services IA",
+        "en": "AI provider, model and service management"
+      },
+      "privilege_groups": [
+        [
+          "LLM_PROVIDER_ACCESS"
+        ]
+      ],
+      "conditions": [],
+      "sources": [
+        "front/app/llm/navigation.ts"
+      ]
+    },
+    {
+      "id": "configure.agent",
+      "labels": {
+        "fr": "Agents",
+        "en": "Agents"
+      },
+      "breadcrumbs": {
+        "fr": [
+          "Configurer",
+          "Agents"
+        ],
+        "en": [
+          "Configure",
+          "Agents"
+        ]
+      },
+      "route": "/agent",
+      "href": null,
+      "description": {
+        "fr": "Gestion des agents",
+        "en": "Agent management"
+      },
+      "privilege_groups": [
+        [
+          "AGENT_ACCESS"
+        ]
+      ],
+      "conditions": [],
+      "sources": [
+        "front/app/agent/navigation.ts"
+      ]
+    },
+    {
+      "id": "configure.tools",
+      "labels": {
+        "fr": "Outils & connexions",
+        "en": "Tools & connections"
+      },
+      "breadcrumbs": {
+        "fr": [
+          "Configurer",
+          "Outils & connexions"
+        ],
+        "en": [
+          "Configure",
+          "Tools & connections"
+        ]
+      },
+      "route": "/tools",
+      "href": null,
+      "description": {
+        "fr": "Gestion des outils",
+        "en": "Tool management"
+      },
+      "privilege_groups": [
+        [
+          "TOOL_ACCESS"
+        ]
+      ],
+      "conditions": [],
+      "sources": [
+        "front/app/tools/navigation.ts"
+      ]
+    },
+    {
+      "id": "configure.skills",
+      "labels": {
+        "fr": "Compétences",
+        "en": "Skills"
+      },
+      "breadcrumbs": {
+        "fr": [
+          "Configurer",
+          "Compétences"
+        ],
+        "en": [
+          "Configure",
+          "Skills"
+        ]
+      },
+      "route": "/skill",
+      "href": null,
+      "description": {
+        "fr": "Bibliothèque de compétences pour les agents",
+        "en": "Knowledge library for agents"
+      },
+      "privilege_groups": [
+        [
+          "SKILL_ACCESS"
+        ]
+      ],
+      "conditions": [],
+      "sources": [
+        "front/app/skill/navigation.ts"
+      ]
+    },
+    {
+      "id": "act.chat",
+      "labels": {
+        "fr": "Discussion",
+        "en": "Chat"
+      },
+      "breadcrumbs": {
+        "fr": [
+          "Agir",
+          "Discussion"
+        ],
+        "en": [
+          "Act",
+          "Chat"
+        ]
+      },
+      "route": "/chat",
+      "href": null,
+      "description": {
+        "fr": "Toutes vos conversations, quelle que soit leur source",
+        "en": "All your conversations, whatever their source"
+      },
+      "privilege_groups": [
+        [
+          "CHAT_ACCESS"
+        ]
+      ],
+      "conditions": [
+        {
+          "node": "act.chat",
+          "visibility": "dynamic"
+        }
+      ],
+      "sources": [
+        "front/app/chat/navigation.ts"
+      ]
+    },
+    {
+      "id": "act.goals",
+      "labels": {
+        "fr": "Objectifs",
+        "en": "Goals"
+      },
+      "breadcrumbs": {
+        "fr": [
+          "Agir",
+          "Objectifs"
+        ],
+        "en": [
+          "Act",
+          "Goals"
+        ]
+      },
+      "route": "/goal",
+      "href": null,
+      "description": {
+        "fr": "Piloter les objectifs long terme confiés aux agents",
+        "en": "Supervise long-running objectives assigned to agents"
+      },
+      "privilege_groups": [
+        [
+          "GOAL_ACCESS"
+        ]
+      ],
+      "conditions": [],
+      "sources": [
+        "front/app/goal/navigation.ts"
+      ]
+    },
+    {
+      "id": "act.processes",
+      "labels": {
+        "fr": "Processus",
+        "en": "Processes"
+      },
+      "breadcrumbs": {
+        "fr": [
+          "Agir",
+          "Processus"
+        ],
+        "en": [
+          "Act",
+          "Processes"
+        ]
+      },
+      "route": "/process",
+      "href": null,
+      "description": {
+        "fr": "Processus métier et exécutions externes",
+        "en": "Business processes and external runs"
+      },
+      "privilege_groups": [
+        [
+          "PROCESS_READ"
+        ]
+      ],
+      "conditions": [],
+      "sources": [
+        "front/app/process/navigation.ts"
+      ]
+    },
+    {
+      "id": "knowledge.documents",
+      "labels": {
+        "fr": "Documents",
+        "en": "Documents"
+      },
+      "breadcrumbs": {
+        "fr": [
+          "Connaissances",
+          "Documents"
+        ],
+        "en": [
+          "Knowledge",
+          "Documents"
+        ]
+      },
+      "route": "/memory/documents",
+      "href": null,
+      "description": {
+        "fr": "Retrouver et classer vos documents accessibles",
+        "en": "Find and organize your accessible documents"
+      },
+      "privilege_groups": [
+        [
+          "MEMORY_ACCESS"
+        ]
+      ],
+      "conditions": [],
+      "sources": [
+        "front/app/memory/navigation.ts"
+      ]
+    },
+    {
+      "id": "knowledge.memory",
+      "labels": {
+        "fr": "Mémoire",
+        "en": "Memory"
+      },
+      "breadcrumbs": {
+        "fr": [
+          "Connaissances",
+          "Mémoire"
+        ],
+        "en": [
+          "Knowledge",
+          "Memory"
+        ]
+      },
+      "route": "/memory",
+      "href": null,
+      "description": {
+        "fr": "Conserver, retrouver et gouverner la mémoire durable des agents",
+        "en": "Store, retrieve, and govern durable agent memory"
+      },
+      "privilege_groups": [
+        [
+          "MEMORY_ACCESS"
+        ]
+      ],
+      "conditions": [],
+      "sources": [
+        "front/app/memory/navigation.ts"
+      ]
+    },
+    {
+      "id": "knowledge.contacts",
+      "labels": {
+        "fr": "Contacts",
+        "en": "Contacts"
+      },
+      "breadcrumbs": {
+        "fr": [
+          "Connaissances",
+          "Contacts"
+        ],
+        "en": [
+          "Knowledge",
+          "Contacts"
+        ]
+      },
+      "route": "/memory/contacts",
+      "href": null,
+      "description": {
+        "fr": "Réunir les identités multicanales et leurs souvenirs",
+        "en": "Unify multichannel identities and their memories"
+      },
+      "privilege_groups": [
+        [
+          "MEMORY_ACCESS"
+        ]
+      ],
+      "conditions": [],
+      "sources": [
+        "front/app/memory/navigation.ts"
+      ]
+    },
+    {
+      "id": "knowledge.topics",
+      "labels": {
+        "fr": "Sujets",
+        "en": "Thematic dossiers"
+      },
+      "breadcrumbs": {
+        "fr": [
+          "Connaissances",
+          "Sujets"
+        ],
+        "en": [
+          "Knowledge",
+          "Thematic dossiers"
+        ]
+      },
+      "route": "/topic",
+      "href": null,
+      "description": {
+        "fr": "Parcourir les sujets durables organisés par Dream",
+        "en": "Browse durable themes organized by Dream"
+      },
+      "privilege_groups": [
+        [
+          "TOPIC_ACCESS",
+          "TOPIC_EDIT"
+        ]
+      ],
+      "conditions": [],
+      "sources": [
+        "front/app/topic/navigation.ts"
+      ]
+    },
+    {
+      "id": "monitor.dashboard",
+      "labels": {
+        "fr": "Tableau de bord",
+        "en": "Dashboard"
+      },
+      "breadcrumbs": {
+        "fr": [
+          "Superviser",
+          "Tableau de bord"
+        ],
+        "en": [
+          "Monitor",
+          "Dashboard"
+        ]
+      },
+      "route": "/dashboard",
+      "href": null,
+      "description": {
+        "fr": "Vue d’ensemble de l’activité et des performances de Galaris",
+        "en": "Overview of Galaris activity and performance"
+      },
+      "privilege_groups": [
+        [
+          "TASK_ACCESS",
+          "TASK_EDIT"
+        ]
+      ],
+      "conditions": [],
+      "sources": [
+        "front/app/index/navigation.ts"
+      ]
+    },
+    {
+      "id": "monitor.tasks",
+      "labels": {
+        "fr": "Activité",
+        "en": "Activity"
+      },
+      "breadcrumbs": {
+        "fr": [
+          "Superviser",
+          "Activité"
+        ],
+        "en": [
+          "Monitor",
+          "Activity"
+        ]
+      },
+      "route": "/task",
+      "href": null,
+      "description": {
+        "fr": "Suivi des conversation, tâches, appels LLM & processus",
+        "en": "Task, text-conversation, phone-call, LLM activity and process tracking"
+      },
+      "privilege_groups": [
+        [
+          "TASK_ACCESS"
+        ]
+      ],
+      "conditions": [],
+      "sources": [
+        "front/app/task/navigation.ts"
+      ]
+    },
+    {
+      "id": "monitor.dream",
+      "labels": {
+        "fr": "Dream",
+        "en": "Dream"
+      },
+      "breadcrumbs": {
+        "fr": [
+          "Superviser",
+          "Dream"
+        ],
+        "en": [
+          "Monitor",
+          "Dream"
+        ]
+      },
+      "route": "/dream",
+      "href": null,
+      "description": {
+        "fr": "Suivi des travaux en arrière-plan",
+        "en": "Track background work"
+      },
+      "privilege_groups": [
+        [
+          "TASK_ACCESS",
+          "AGENT_MANAGE_ALL"
+        ]
+      ],
+      "conditions": [],
+      "sources": [
+        "front/app/dream/navigation.ts"
+      ]
+    },
+    {
+      "id": "monitor.mailJournal",
+      "labels": {
+        "fr": "Journal des mails",
+        "en": "Mail journal"
+      },
+      "breadcrumbs": {
+        "fr": [
+          "Superviser",
+          "Journal des mails"
+        ],
+        "en": [
+          "Monitor",
+          "Mail journal"
+        ]
+      },
+      "route": "/connection/mail",
+      "href": null,
+      "description": {
+        "fr": "Validation et journal des courriels envoyés par les agents",
+        "en": "Approval and journal of emails sent by agents"
+      },
+      "privilege_groups": [
+        [
+          "CONNECTION_ACCESS"
+        ]
+      ],
+      "conditions": [
+        {
+          "node": "monitor.mailJournal",
+          "visibility": "dynamic"
+        }
+      ],
+      "sources": [
+        "front/app/connection/navigation.ts"
+      ]
+    },
+    {
+      "id": "monitor.incidents",
+      "labels": {
+        "fr": "Journal des échecs",
+        "en": "Failure journal"
+      },
+      "breadcrumbs": {
+        "fr": [
+          "Superviser",
+          "Journal des échecs"
+        ],
+        "en": [
+          "Monitor",
+          "Failure journal"
+        ]
+      },
+      "route": "/incident",
+      "href": null,
+      "description": {
+        "fr": "Examinez chaque appel LLM ou outil en échec, sa trace complète et les motifs récurrents à corriger.",
+        "en": "Inspect every failed LLM or tool call, its complete trace, and recurring patterns to fix."
+      },
+      "privilege_groups": [
+        [
+          "INCIDENT_ACCESS",
+          "INCIDENT_EDIT"
+        ]
+      ],
+      "conditions": [],
+      "sources": [
+        "front/app/incident/navigation.ts"
+      ]
+    },
+    {
+      "id": "admin.params",
+      "labels": {
+        "fr": "Préférences",
+        "en": "Preferences"
+      },
+      "breadcrumbs": {
+        "fr": [
+          "Administrer",
+          "Préférences"
+        ],
+        "en": [
+          "Administer",
+          "Preferences"
+        ]
+      },
+      "route": "/params",
+      "href": null,
+      "description": {
+        "fr": "Configuration guidée de l’application",
+        "en": "Guided application configuration"
+      },
+      "privilege_groups": [
+        [
+          "PARAMS_ACCESS"
+        ]
+      ],
+      "conditions": [],
+      "sources": [
+        "front/core/params/navigation.ts",
+        "front/app/browser/navigation.ts"
+      ]
+    },
+    {
+      "id": "admin.params.system",
+      "labels": {
+        "fr": "Système",
+        "en": "System"
+      },
+      "breadcrumbs": {
+        "fr": [
+          "Administrer",
+          "Préférences",
+          "Système"
+        ],
+        "en": [
+          "Administer",
+          "Preferences",
+          "System"
+        ]
+      },
+      "route": "/params/system",
+      "href": null,
+      "description": {
+        "fr": "Inscriptions, limites d’accès à l’API et diagnostics de l’instance.",
+        "en": "Registration, instance API access limits and diagnostics."
+      },
+      "privilege_groups": [
+        [
+          "PARAMS_ACCESS"
+        ],
+        [
+          "PARAMS_ACCESS"
+        ]
+      ],
+      "conditions": [],
+      "sources": [
+        "front/core/params/navigation.ts"
+      ]
+    },
+    {
+      "id": "admin.params.language",
+      "labels": {
+        "fr": "Langue",
+        "en": "Language"
+      },
+      "breadcrumbs": {
+        "fr": [
+          "Administrer",
+          "Préférences",
+          "Langue"
+        ],
+        "en": [
+          "Administer",
+          "Preferences",
+          "Language"
+        ]
+      },
+      "route": "/params/language",
+      "href": null,
+      "description": {
+        "fr": "Définissez la langue de repli du système et le lieu utilisé pour contextualiser les réponses des agents.",
+        "en": "Set the system fallback language and the place used to contextualize agent responses."
+      },
+      "privilege_groups": [
+        [
+          "PARAMS_ACCESS"
+        ],
+        [
+          "PARAMS_ACCESS"
+        ]
+      ],
+      "conditions": [],
+      "sources": [
+        "front/core/params/navigation.ts"
+      ]
+    },
+    {
+      "id": "admin.params.messaging",
+      "labels": {
+        "fr": "Messagerie",
+        "en": "Messaging"
+      },
+      "breadcrumbs": {
+        "fr": [
+          "Administrer",
+          "Préférences",
+          "Messagerie"
+        ],
+        "en": [
+          "Administer",
+          "Preferences",
+          "Messaging"
+        ]
+      },
+      "route": "/params/messaging",
+      "href": null,
+      "description": {
+        "fr": "Configurez tous les canaux que les agents peuvent écouter et utiliser simultanément.",
+        "en": "Configure every channel that agents can listen to and use simultaneously."
+      },
+      "privilege_groups": [
+        [
+          "PARAMS_ACCESS"
+        ],
+        [
+          "PARAMS_ACCESS"
+        ]
+      ],
+      "conditions": [],
+      "sources": [
+        "front/core/params/navigation.ts"
+      ]
+    },
+    {
+      "id": "admin.params.memory",
+      "labels": {
+        "fr": "Mémoire",
+        "en": "Memory"
+      },
+      "breadcrumbs": {
+        "fr": [
+          "Administrer",
+          "Préférences",
+          "Mémoire"
+        ],
+        "en": [
+          "Administer",
+          "Preferences",
+          "Memory"
+        ]
+      },
+      "route": "/params/memory",
+      "href": null,
+      "description": {
+        "fr": "Réglez la mémoire de session, le rappel durable et l’acquisition autonome pour tous les drivers.",
+        "en": "Configure session memory, durable recall, and autonomous acquisition for every driver."
+      },
+      "privilege_groups": [
+        [
+          "PARAMS_ACCESS"
+        ],
+        [
+          "PARAMS_ACCESS"
+        ]
+      ],
+      "conditions": [],
+      "sources": [
+        "front/core/params/navigation.ts"
+      ]
+    },
+    {
+      "id": "admin.params.dream",
+      "labels": {
+        "fr": "Dream",
+        "en": "Dream"
+      },
+      "breadcrumbs": {
+        "fr": [
+          "Administrer",
+          "Préférences",
+          "Dream"
+        ],
+        "en": [
+          "Administer",
+          "Preferences",
+          "Dream"
+        ]
+      },
+      "route": "/params/dream",
+      "href": null,
+      "description": {
+        "fr": "Exécute séquentiellement des travaux d’entretien lorsque Galaris est inactif.",
+        "en": "Runs maintenance mechanisms sequentially while Galaris is idle."
+      },
+      "privilege_groups": [
+        [
+          "PARAMS_ACCESS"
+        ],
+        [
+          "PARAMS_ACCESS"
+        ]
+      ],
+      "conditions": [],
+      "sources": [
+        "front/core/params/navigation.ts"
+      ]
+    },
+    {
+      "id": "admin.params.voice",
+      "labels": {
+        "fr": "Voix",
+        "en": "Voice"
+      },
+      "breadcrumbs": {
+        "fr": [
+          "Administrer",
+          "Préférences",
+          "Voix"
+        ],
+        "en": [
+          "Administer",
+          "Preferences",
+          "Voice"
+        ]
+      },
+      "route": "/params/voice",
+      "href": null,
+      "description": {
+        "fr": "Réglages généraux des appels en temps réel, indépendants du fournisseur.",
+        "en": "General real-time call settings independent from a provider."
+      },
+      "privilege_groups": [
+        [
+          "PARAMS_ACCESS"
+        ],
+        [
+          "PARAMS_ACCESS"
+        ]
+      ],
+      "conditions": [],
+      "sources": [
+        "front/core/params/navigation.ts"
+      ]
+    },
+    {
+      "id": "admin.params.audio",
+      "labels": {
+        "fr": "Audio",
+        "en": "Audio"
+      },
+      "breadcrumbs": {
+        "fr": [
+          "Administrer",
+          "Préférences",
+          "Audio"
+        ],
+        "en": [
+          "Administer",
+          "Preferences",
+          "Audio"
+        ]
+      },
+      "route": "/params/audio",
+      "href": null,
+      "description": {
+        "fr": "Personnalisez les prompts utilisés pour résumer les transcriptions longues et les sous-titres YouTube.",
+        "en": "Customize the prompts used to summarize long transcripts and YouTube captions."
+      },
+      "privilege_groups": [
+        [
+          "PARAMS_ACCESS"
+        ],
+        [
+          "PARAMS_ACCESS"
+        ]
+      ],
+      "conditions": [],
+      "sources": [
+        "front/core/params/navigation.ts"
+      ]
+    },
+    {
+      "id": "admin.params.process",
+      "labels": {
+        "fr": "Processus",
+        "en": "Processes"
+      },
+      "breadcrumbs": {
+        "fr": [
+          "Administrer",
+          "Préférences",
+          "Processus"
+        ],
+        "en": [
+          "Administer",
+          "Preferences",
+          "Processes"
+        ]
+      },
+      "route": "/params/processes",
+      "href": null,
+      "description": {
+        "fr": "Connectez Galaris à son moteur de processus. Un seul moteur peut être actif.",
+        "en": "Connect Galaris to its process engine. Only one engine can be active."
+      },
+      "privilege_groups": [
+        [
+          "PARAMS_ACCESS"
+        ],
+        [
+          "PARAMS_ACCESS"
+        ]
+      ],
+      "conditions": [],
+      "sources": [
+        "front/core/params/navigation.ts"
+      ]
+    },
+    {
+      "id": "admin.params.tasks",
+      "labels": {
+        "fr": "Tâches et exécution",
+        "en": "Tasks and execution"
+      },
+      "breadcrumbs": {
+        "fr": [
+          "Administrer",
+          "Préférences",
+          "Tâches et exécution"
+        ],
+        "en": [
+          "Administer",
+          "Preferences",
+          "Tasks and execution"
+        ]
+      },
+      "route": "/params/tasks",
+      "href": null,
+      "description": {
+        "fr": "Ajustez l’ordonnanceur, la reprise, la planification et les garde-fous des exécutions agentiques.",
+        "en": "Tune scheduling, recovery, planning, and safety limits for agent executions."
+      },
+      "privilege_groups": [
+        [
+          "PARAMS_ACCESS"
+        ],
+        [
+          "PARAMS_ACCESS"
+        ]
+      ],
+      "conditions": [],
+      "sources": [
+        "front/core/params/navigation.ts"
+      ]
+    },
+    {
+      "id": "admin.params.harnesses",
+      "labels": {
+        "fr": "Harnais",
+        "en": "Harnesses"
+      },
+      "breadcrumbs": {
+        "fr": [
+          "Administrer",
+          "Préférences",
+          "Harnais"
+        ],
+        "en": [
+          "Administer",
+          "Preferences",
+          "Harnesses"
+        ]
+      },
+      "route": "/params/harnesses",
+      "href": null,
+      "description": {
+        "fr": "Configurez le harnais interne, les harnais managés, les services externes et leurs limites d’exécution.",
+        "en": "Configure the internal engine, managed harnesses, external services and their execution limits."
+      },
+      "privilege_groups": [
+        [
+          "PARAMS_ACCESS"
+        ],
+        [
+          "PARAMS_ACCESS"
+        ]
+      ],
+      "conditions": [],
+      "sources": [
+        "front/core/params/navigation.ts"
+      ]
+    },
+    {
+      "id": "admin.params.search",
+      "labels": {
+        "fr": "Recherche",
+        "en": "Search"
+      },
+      "breadcrumbs": {
+        "fr": [
+          "Administrer",
+          "Préférences",
+          "Recherche"
+        ],
+        "en": [
+          "Administer",
+          "Preferences",
+          "Search"
+        ]
+      },
+      "route": "/params/search",
+      "href": null,
+      "description": {
+        "fr": "Réglages du moteur SearXNG utilisé par les agents.",
+        "en": "Settings for the SearXNG engine used by agents."
+      },
+      "privilege_groups": [
+        [
+          "PARAMS_ACCESS"
+        ],
+        [
+          "PARAMS_ACCESS"
+        ]
+      ],
+      "conditions": [],
+      "sources": [
+        "front/core/params/navigation.ts"
+      ]
+    },
+    {
+      "id": "admin.params.browser",
+      "labels": {
+        "fr": "Navigateur",
+        "en": "Browser"
+      },
+      "breadcrumbs": {
+        "fr": [
+          "Administrer",
+          "Préférences",
+          "Navigateur"
+        ],
+        "en": [
+          "Administer",
+          "Preferences",
+          "Browser"
+        ]
+      },
+      "route": "/browser/settings",
+      "href": null,
+      "description": {
+        "fr": "Réglez les délais, l’extraction et les captures du Tool Navigateur. Les changements s’appliquent aux prochaines opérations ; les dimensions par défaut concernent les nouvelles fenêtres.",
+        "en": "Configure Browser Tool timeouts, extraction and screenshots. Changes apply to subsequent operations; default dimensions apply to new windows."
+      },
+      "privilege_groups": [
+        [
+          "PARAMS_ACCESS"
+        ],
+        [
+          "PARAMS_ACCESS",
+          "PARAMS_EDIT"
+        ]
+      ],
+      "conditions": [
+        {
+          "node": "admin.params.browser",
+          "visibility": "dynamic"
+        }
+      ],
+      "sources": [
+        "front/app/browser/navigation.ts"
+      ]
+    },
+    {
+      "id": "admin.params.janus",
+      "labels": {
+        "fr": "Janus",
+        "en": "Janus"
+      },
+      "breadcrumbs": {
+        "fr": [
+          "Administrer",
+          "Préférences",
+          "Janus"
+        ],
+        "en": [
+          "Administer",
+          "Preferences",
+          "Janus"
+        ]
+      },
+      "route": "/params/janus",
+      "href": null,
+      "description": {
+        "fr": "Janus expose une API compatible OpenAI. Il propose les agents disponibles puis transmet directement la conversation à l’agent choisi avec son {'@'}code.",
+        "en": "Janus exposes an OpenAI-compatible API. It lists the available agents, then directly forwards the conversation to the agent selected with its {'@'}code."
+      },
+      "privilege_groups": [
+        [
+          "PARAMS_ACCESS"
+        ],
+        [
+          "PARAMS_ACCESS"
+        ]
+      ],
+      "conditions": [],
+      "sources": [
+        "front/core/params/navigation.ts"
+      ]
+    },
+    {
+      "id": "admin.params.instructions",
+      "labels": {
+        "fr": "Instructions",
+        "en": "Instructions"
+      },
+      "breadcrumbs": {
+        "fr": [
+          "Administrer",
+          "Préférences",
+          "Instructions"
+        ],
+        "en": [
+          "Administer",
+          "Preferences",
+          "Instructions"
+        ]
+      },
+      "route": "/params/instructions",
+      "href": null,
+      "description": {
+        "fr": "Les trois premiers textes Markdown sont ajoutés comme dernier nœud du prompt de leur exécuteur. La politique conversationnelle remplace la règle par défaut commune au texte et à la voix.",
+        "en": "The first three Markdown texts are appended as the final node of their executor prompt. The conversation policy replaces the default rule shared by text and voice."
+      },
+      "privilege_groups": [
+        [
+          "PARAMS_ACCESS"
+        ],
+        [
+          "PARAMS_ACCESS"
+        ]
+      ],
+      "conditions": [],
+      "sources": [
+        "front/core/params/navigation.ts"
+      ]
+    },
+    {
+      "id": "admin.params.logs",
+      "labels": {
+        "fr": "Journaux",
+        "en": "Logs"
+      },
+      "breadcrumbs": {
+        "fr": [
+          "Administrer",
+          "Préférences",
+          "Journaux"
+        ],
+        "en": [
+          "Administer",
+          "Preferences",
+          "Logs"
+        ]
+      },
+      "route": "/params/logs",
+      "href": null,
+      "description": {
+        "fr": "Réglez la conservation des traces et le nettoyage des historiques techniques.",
+        "en": "Configure trace retention and technical history cleanup."
+      },
+      "privilege_groups": [
+        [
+          "PARAMS_ACCESS"
+        ],
+        [
+          "PARAMS_ACCESS"
+        ]
+      ],
+      "conditions": [],
+      "sources": [
+        "front/core/params/navigation.ts"
+      ]
+    },
+    {
+      "id": "admin.lab",
+      "labels": {
+        "fr": "Laboratoire",
+        "en": "Laboratory"
+      },
+      "breadcrumbs": {
+        "fr": [
+          "Administrer",
+          "Laboratoire"
+        ],
+        "en": [
+          "Administer",
+          "Laboratory"
+        ]
+      },
+      "route": "/lab",
+      "href": null,
+      "description": {
+        "fr": "Tester et comparer les mécanismes IA",
+        "en": "Test and compare AI mechanisms"
+      },
+      "privilege_groups": [
+        [
+          "EVALUATION_ACCESS",
+          "EVALUATION_EDIT",
+          "DISPATCHER_EVALUATION_ACCESS",
+          "DISPATCHER_EVALUATION_EDIT",
+          "BRIEFING_EVALUATION_ACCESS",
+          "BRIEFING_EVALUATION_EDIT",
+          "PLANNER_EVALUATION_ACCESS",
+          "PLANNER_EVALUATION_EDIT",
+          "TOPIC_CLASSIFICATION_EVALUATION_ACCESS",
+          "TOPIC_CLASSIFICATION_EVALUATION_EDIT",
+          "MEMORY_EXTRACTION_EVALUATION_ACCESS",
+          "MEMORY_EXTRACTION_EVALUATION_EDIT",
+          "OUTCOME_REFLECTION_EVALUATION_ACCESS",
+          "OUTCOME_REFLECTION_EVALUATION_EDIT",
+          "GOAL_TRACKING_EVALUATION_ACCESS",
+          "GOAL_TRACKING_EVALUATION_EDIT",
+          "TASK_EXECUTOR_EVALUATION_ACCESS",
+          "TASK_EXECUTOR_EVALUATION_EDIT",
+          "CONVERSATION_EXECUTOR_EVALUATION_ACCESS",
+          "CONVERSATION_EXECUTOR_EVALUATION_EDIT",
+          "VOICE_EXECUTOR_EVALUATION_ACCESS",
+          "VOICE_EXECUTOR_EVALUATION_EDIT"
+        ]
+      ],
+      "conditions": [],
+      "sources": [
+        "front/app/lab/navigation.ts"
+      ]
+    },
+    {
+      "id": "admin.lab.tasks",
+      "labels": {
+        "fr": "Analyse de tâches",
+        "en": "Task analysis"
+      },
+      "breadcrumbs": {
+        "fr": [
+          "Administrer",
+          "Laboratoire",
+          "Analyse de tâches"
+        ],
+        "en": [
+          "Administer",
+          "Laboratory",
+          "Task analysis"
+        ]
+      },
+      "route": "/lab/ai-evaluations",
+      "href": null,
+      "description": {
+        "fr": "",
+        "en": ""
+      },
+      "privilege_groups": [
+        [
+          "EVALUATION_ACCESS",
+          "EVALUATION_EDIT",
+          "DISPATCHER_EVALUATION_ACCESS",
+          "DISPATCHER_EVALUATION_EDIT",
+          "BRIEFING_EVALUATION_ACCESS",
+          "BRIEFING_EVALUATION_EDIT",
+          "PLANNER_EVALUATION_ACCESS",
+          "PLANNER_EVALUATION_EDIT",
+          "TOPIC_CLASSIFICATION_EVALUATION_ACCESS",
+          "TOPIC_CLASSIFICATION_EVALUATION_EDIT",
+          "MEMORY_EXTRACTION_EVALUATION_ACCESS",
+          "MEMORY_EXTRACTION_EVALUATION_EDIT",
+          "OUTCOME_REFLECTION_EVALUATION_ACCESS",
+          "OUTCOME_REFLECTION_EVALUATION_EDIT",
+          "GOAL_TRACKING_EVALUATION_ACCESS",
+          "GOAL_TRACKING_EVALUATION_EDIT",
+          "TASK_EXECUTOR_EVALUATION_ACCESS",
+          "TASK_EXECUTOR_EVALUATION_EDIT",
+          "CONVERSATION_EXECUTOR_EVALUATION_ACCESS",
+          "CONVERSATION_EXECUTOR_EVALUATION_EDIT",
+          "VOICE_EXECUTOR_EVALUATION_ACCESS",
+          "VOICE_EXECUTOR_EVALUATION_EDIT"
+        ],
+        [
+          "EVALUATION_ACCESS",
+          "EVALUATION_EDIT"
+        ]
+      ],
+      "conditions": [],
+      "sources": [
+        "front/app/lab/navigation.ts"
+      ]
+    },
+    {
+      "id": "admin.lab.dispatcher",
+      "labels": {
+        "fr": "Dispatcher",
+        "en": "Dispatcher"
+      },
+      "breadcrumbs": {
+        "fr": [
+          "Administrer",
+          "Laboratoire",
+          "Dispatcher"
+        ],
+        "en": [
+          "Administer",
+          "Laboratory",
+          "Dispatcher"
+        ]
+      },
+      "route": "/lab/dispatcher",
+      "href": null,
+      "description": {
+        "fr": "",
+        "en": ""
+      },
+      "privilege_groups": [
+        [
+          "EVALUATION_ACCESS",
+          "EVALUATION_EDIT",
+          "DISPATCHER_EVALUATION_ACCESS",
+          "DISPATCHER_EVALUATION_EDIT",
+          "BRIEFING_EVALUATION_ACCESS",
+          "BRIEFING_EVALUATION_EDIT",
+          "PLANNER_EVALUATION_ACCESS",
+          "PLANNER_EVALUATION_EDIT",
+          "TOPIC_CLASSIFICATION_EVALUATION_ACCESS",
+          "TOPIC_CLASSIFICATION_EVALUATION_EDIT",
+          "MEMORY_EXTRACTION_EVALUATION_ACCESS",
+          "MEMORY_EXTRACTION_EVALUATION_EDIT",
+          "OUTCOME_REFLECTION_EVALUATION_ACCESS",
+          "OUTCOME_REFLECTION_EVALUATION_EDIT",
+          "GOAL_TRACKING_EVALUATION_ACCESS",
+          "GOAL_TRACKING_EVALUATION_EDIT",
+          "TASK_EXECUTOR_EVALUATION_ACCESS",
+          "TASK_EXECUTOR_EVALUATION_EDIT",
+          "CONVERSATION_EXECUTOR_EVALUATION_ACCESS",
+          "CONVERSATION_EXECUTOR_EVALUATION_EDIT",
+          "VOICE_EXECUTOR_EVALUATION_ACCESS",
+          "VOICE_EXECUTOR_EVALUATION_EDIT"
+        ],
+        [
+          "DISPATCHER_EVALUATION_ACCESS",
+          "DISPATCHER_EVALUATION_EDIT"
+        ]
+      ],
+      "conditions": [],
+      "sources": [
+        "front/app/lab/navigation.ts"
+      ]
+    },
+    {
+      "id": "admin.lab.briefing",
+      "labels": {
+        "fr": "Briefing",
+        "en": "Briefing"
+      },
+      "breadcrumbs": {
+        "fr": [
+          "Administrer",
+          "Laboratoire",
+          "Briefing"
+        ],
+        "en": [
+          "Administer",
+          "Laboratory",
+          "Briefing"
+        ]
+      },
+      "route": "/lab/briefing",
+      "href": null,
+      "description": {
+        "fr": "",
+        "en": ""
+      },
+      "privilege_groups": [
+        [
+          "EVALUATION_ACCESS",
+          "EVALUATION_EDIT",
+          "DISPATCHER_EVALUATION_ACCESS",
+          "DISPATCHER_EVALUATION_EDIT",
+          "BRIEFING_EVALUATION_ACCESS",
+          "BRIEFING_EVALUATION_EDIT",
+          "PLANNER_EVALUATION_ACCESS",
+          "PLANNER_EVALUATION_EDIT",
+          "TOPIC_CLASSIFICATION_EVALUATION_ACCESS",
+          "TOPIC_CLASSIFICATION_EVALUATION_EDIT",
+          "MEMORY_EXTRACTION_EVALUATION_ACCESS",
+          "MEMORY_EXTRACTION_EVALUATION_EDIT",
+          "OUTCOME_REFLECTION_EVALUATION_ACCESS",
+          "OUTCOME_REFLECTION_EVALUATION_EDIT",
+          "GOAL_TRACKING_EVALUATION_ACCESS",
+          "GOAL_TRACKING_EVALUATION_EDIT",
+          "TASK_EXECUTOR_EVALUATION_ACCESS",
+          "TASK_EXECUTOR_EVALUATION_EDIT",
+          "CONVERSATION_EXECUTOR_EVALUATION_ACCESS",
+          "CONVERSATION_EXECUTOR_EVALUATION_EDIT",
+          "VOICE_EXECUTOR_EVALUATION_ACCESS",
+          "VOICE_EXECUTOR_EVALUATION_EDIT"
+        ],
+        [
+          "BRIEFING_EVALUATION_ACCESS",
+          "BRIEFING_EVALUATION_EDIT"
+        ]
+      ],
+      "conditions": [],
+      "sources": [
+        "front/app/lab/navigation.ts"
+      ]
+    },
+    {
+      "id": "admin.lab.planner",
+      "labels": {
+        "fr": "Planner",
+        "en": "Planner"
+      },
+      "breadcrumbs": {
+        "fr": [
+          "Administrer",
+          "Laboratoire",
+          "Planner"
+        ],
+        "en": [
+          "Administer",
+          "Laboratory",
+          "Planner"
+        ]
+      },
+      "route": "/lab/planner",
+      "href": null,
+      "description": {
+        "fr": "",
+        "en": ""
+      },
+      "privilege_groups": [
+        [
+          "EVALUATION_ACCESS",
+          "EVALUATION_EDIT",
+          "DISPATCHER_EVALUATION_ACCESS",
+          "DISPATCHER_EVALUATION_EDIT",
+          "BRIEFING_EVALUATION_ACCESS",
+          "BRIEFING_EVALUATION_EDIT",
+          "PLANNER_EVALUATION_ACCESS",
+          "PLANNER_EVALUATION_EDIT",
+          "TOPIC_CLASSIFICATION_EVALUATION_ACCESS",
+          "TOPIC_CLASSIFICATION_EVALUATION_EDIT",
+          "MEMORY_EXTRACTION_EVALUATION_ACCESS",
+          "MEMORY_EXTRACTION_EVALUATION_EDIT",
+          "OUTCOME_REFLECTION_EVALUATION_ACCESS",
+          "OUTCOME_REFLECTION_EVALUATION_EDIT",
+          "GOAL_TRACKING_EVALUATION_ACCESS",
+          "GOAL_TRACKING_EVALUATION_EDIT",
+          "TASK_EXECUTOR_EVALUATION_ACCESS",
+          "TASK_EXECUTOR_EVALUATION_EDIT",
+          "CONVERSATION_EXECUTOR_EVALUATION_ACCESS",
+          "CONVERSATION_EXECUTOR_EVALUATION_EDIT",
+          "VOICE_EXECUTOR_EVALUATION_ACCESS",
+          "VOICE_EXECUTOR_EVALUATION_EDIT"
+        ],
+        [
+          "PLANNER_EVALUATION_ACCESS",
+          "PLANNER_EVALUATION_EDIT"
+        ]
+      ],
+      "conditions": [],
+      "sources": [
+        "front/app/lab/navigation.ts"
+      ]
+    },
+    {
+      "id": "admin.lab.topic_classification",
+      "labels": {
+        "fr": "Détection des sujets",
+        "en": "Thematic dossier detection"
+      },
+      "breadcrumbs": {
+        "fr": [
+          "Administrer",
+          "Laboratoire",
+          "Détection des sujets"
+        ],
+        "en": [
+          "Administer",
+          "Laboratory",
+          "Thematic dossier detection"
+        ]
+      },
+      "route": "/lab/topic-detection",
+      "href": null,
+      "description": {
+        "fr": "",
+        "en": ""
+      },
+      "privilege_groups": [
+        [
+          "EVALUATION_ACCESS",
+          "EVALUATION_EDIT",
+          "DISPATCHER_EVALUATION_ACCESS",
+          "DISPATCHER_EVALUATION_EDIT",
+          "BRIEFING_EVALUATION_ACCESS",
+          "BRIEFING_EVALUATION_EDIT",
+          "PLANNER_EVALUATION_ACCESS",
+          "PLANNER_EVALUATION_EDIT",
+          "TOPIC_CLASSIFICATION_EVALUATION_ACCESS",
+          "TOPIC_CLASSIFICATION_EVALUATION_EDIT",
+          "MEMORY_EXTRACTION_EVALUATION_ACCESS",
+          "MEMORY_EXTRACTION_EVALUATION_EDIT",
+          "OUTCOME_REFLECTION_EVALUATION_ACCESS",
+          "OUTCOME_REFLECTION_EVALUATION_EDIT",
+          "GOAL_TRACKING_EVALUATION_ACCESS",
+          "GOAL_TRACKING_EVALUATION_EDIT",
+          "TASK_EXECUTOR_EVALUATION_ACCESS",
+          "TASK_EXECUTOR_EVALUATION_EDIT",
+          "CONVERSATION_EXECUTOR_EVALUATION_ACCESS",
+          "CONVERSATION_EXECUTOR_EVALUATION_EDIT",
+          "VOICE_EXECUTOR_EVALUATION_ACCESS",
+          "VOICE_EXECUTOR_EVALUATION_EDIT"
+        ],
+        [
+          "TOPIC_CLASSIFICATION_EVALUATION_ACCESS",
+          "TOPIC_CLASSIFICATION_EVALUATION_EDIT"
+        ]
+      ],
+      "conditions": [],
+      "sources": [
+        "front/app/lab/navigation.ts"
+      ]
+    },
+    {
+      "id": "admin.lab.memory_extraction",
+      "labels": {
+        "fr": "Extraction mémoire",
+        "en": "Memory extraction"
+      },
+      "breadcrumbs": {
+        "fr": [
+          "Administrer",
+          "Laboratoire",
+          "Extraction mémoire"
+        ],
+        "en": [
+          "Administer",
+          "Laboratory",
+          "Memory extraction"
+        ]
+      },
+      "route": "/lab/memory-extraction",
+      "href": null,
+      "description": {
+        "fr": "",
+        "en": ""
+      },
+      "privilege_groups": [
+        [
+          "EVALUATION_ACCESS",
+          "EVALUATION_EDIT",
+          "DISPATCHER_EVALUATION_ACCESS",
+          "DISPATCHER_EVALUATION_EDIT",
+          "BRIEFING_EVALUATION_ACCESS",
+          "BRIEFING_EVALUATION_EDIT",
+          "PLANNER_EVALUATION_ACCESS",
+          "PLANNER_EVALUATION_EDIT",
+          "TOPIC_CLASSIFICATION_EVALUATION_ACCESS",
+          "TOPIC_CLASSIFICATION_EVALUATION_EDIT",
+          "MEMORY_EXTRACTION_EVALUATION_ACCESS",
+          "MEMORY_EXTRACTION_EVALUATION_EDIT",
+          "OUTCOME_REFLECTION_EVALUATION_ACCESS",
+          "OUTCOME_REFLECTION_EVALUATION_EDIT",
+          "GOAL_TRACKING_EVALUATION_ACCESS",
+          "GOAL_TRACKING_EVALUATION_EDIT",
+          "TASK_EXECUTOR_EVALUATION_ACCESS",
+          "TASK_EXECUTOR_EVALUATION_EDIT",
+          "CONVERSATION_EXECUTOR_EVALUATION_ACCESS",
+          "CONVERSATION_EXECUTOR_EVALUATION_EDIT",
+          "VOICE_EXECUTOR_EVALUATION_ACCESS",
+          "VOICE_EXECUTOR_EVALUATION_EDIT"
+        ],
+        [
+          "MEMORY_EXTRACTION_EVALUATION_ACCESS",
+          "MEMORY_EXTRACTION_EVALUATION_EDIT"
+        ]
+      ],
+      "conditions": [],
+      "sources": [
+        "front/app/lab/navigation.ts"
+      ]
+    },
+    {
+      "id": "admin.lab.outcome_reflection",
+      "labels": {
+        "fr": "Apprentissage",
+        "en": "Learning"
+      },
+      "breadcrumbs": {
+        "fr": [
+          "Administrer",
+          "Laboratoire",
+          "Apprentissage"
+        ],
+        "en": [
+          "Administer",
+          "Laboratory",
+          "Learning"
+        ]
+      },
+      "route": "/lab/learning",
+      "href": null,
+      "description": {
+        "fr": "",
+        "en": ""
+      },
+      "privilege_groups": [
+        [
+          "EVALUATION_ACCESS",
+          "EVALUATION_EDIT",
+          "DISPATCHER_EVALUATION_ACCESS",
+          "DISPATCHER_EVALUATION_EDIT",
+          "BRIEFING_EVALUATION_ACCESS",
+          "BRIEFING_EVALUATION_EDIT",
+          "PLANNER_EVALUATION_ACCESS",
+          "PLANNER_EVALUATION_EDIT",
+          "TOPIC_CLASSIFICATION_EVALUATION_ACCESS",
+          "TOPIC_CLASSIFICATION_EVALUATION_EDIT",
+          "MEMORY_EXTRACTION_EVALUATION_ACCESS",
+          "MEMORY_EXTRACTION_EVALUATION_EDIT",
+          "OUTCOME_REFLECTION_EVALUATION_ACCESS",
+          "OUTCOME_REFLECTION_EVALUATION_EDIT",
+          "GOAL_TRACKING_EVALUATION_ACCESS",
+          "GOAL_TRACKING_EVALUATION_EDIT",
+          "TASK_EXECUTOR_EVALUATION_ACCESS",
+          "TASK_EXECUTOR_EVALUATION_EDIT",
+          "CONVERSATION_EXECUTOR_EVALUATION_ACCESS",
+          "CONVERSATION_EXECUTOR_EVALUATION_EDIT",
+          "VOICE_EXECUTOR_EVALUATION_ACCESS",
+          "VOICE_EXECUTOR_EVALUATION_EDIT"
+        ],
+        [
+          "OUTCOME_REFLECTION_EVALUATION_ACCESS",
+          "OUTCOME_REFLECTION_EVALUATION_EDIT"
+        ]
+      ],
+      "conditions": [],
+      "sources": [
+        "front/app/lab/navigation.ts"
+      ]
+    },
+    {
+      "id": "admin.lab.goal_tracking",
+      "labels": {
+        "fr": "Suivi d’objectif",
+        "en": "Goal tracking"
+      },
+      "breadcrumbs": {
+        "fr": [
+          "Administrer",
+          "Laboratoire",
+          "Suivi d’objectif"
+        ],
+        "en": [
+          "Administer",
+          "Laboratory",
+          "Goal tracking"
+        ]
+      },
+      "route": "/lab/goal-tracking",
+      "href": null,
+      "description": {
+        "fr": "",
+        "en": ""
+      },
+      "privilege_groups": [
+        [
+          "EVALUATION_ACCESS",
+          "EVALUATION_EDIT",
+          "DISPATCHER_EVALUATION_ACCESS",
+          "DISPATCHER_EVALUATION_EDIT",
+          "BRIEFING_EVALUATION_ACCESS",
+          "BRIEFING_EVALUATION_EDIT",
+          "PLANNER_EVALUATION_ACCESS",
+          "PLANNER_EVALUATION_EDIT",
+          "TOPIC_CLASSIFICATION_EVALUATION_ACCESS",
+          "TOPIC_CLASSIFICATION_EVALUATION_EDIT",
+          "MEMORY_EXTRACTION_EVALUATION_ACCESS",
+          "MEMORY_EXTRACTION_EVALUATION_EDIT",
+          "OUTCOME_REFLECTION_EVALUATION_ACCESS",
+          "OUTCOME_REFLECTION_EVALUATION_EDIT",
+          "GOAL_TRACKING_EVALUATION_ACCESS",
+          "GOAL_TRACKING_EVALUATION_EDIT",
+          "TASK_EXECUTOR_EVALUATION_ACCESS",
+          "TASK_EXECUTOR_EVALUATION_EDIT",
+          "CONVERSATION_EXECUTOR_EVALUATION_ACCESS",
+          "CONVERSATION_EXECUTOR_EVALUATION_EDIT",
+          "VOICE_EXECUTOR_EVALUATION_ACCESS",
+          "VOICE_EXECUTOR_EVALUATION_EDIT"
+        ],
+        [
+          "GOAL_TRACKING_EVALUATION_ACCESS",
+          "GOAL_TRACKING_EVALUATION_EDIT"
+        ]
+      ],
+      "conditions": [],
+      "sources": [
+        "front/app/lab/navigation.ts"
+      ]
+    },
+    {
+      "id": "admin.lab.task_executor",
+      "labels": {
+        "fr": "Exécuteur de tâches",
+        "en": "Task executor"
+      },
+      "breadcrumbs": {
+        "fr": [
+          "Administrer",
+          "Laboratoire",
+          "Exécuteur de tâches"
+        ],
+        "en": [
+          "Administer",
+          "Laboratory",
+          "Task executor"
+        ]
+      },
+      "route": "/lab/task-executor",
+      "href": null,
+      "description": {
+        "fr": "",
+        "en": ""
+      },
+      "privilege_groups": [
+        [
+          "EVALUATION_ACCESS",
+          "EVALUATION_EDIT",
+          "DISPATCHER_EVALUATION_ACCESS",
+          "DISPATCHER_EVALUATION_EDIT",
+          "BRIEFING_EVALUATION_ACCESS",
+          "BRIEFING_EVALUATION_EDIT",
+          "PLANNER_EVALUATION_ACCESS",
+          "PLANNER_EVALUATION_EDIT",
+          "TOPIC_CLASSIFICATION_EVALUATION_ACCESS",
+          "TOPIC_CLASSIFICATION_EVALUATION_EDIT",
+          "MEMORY_EXTRACTION_EVALUATION_ACCESS",
+          "MEMORY_EXTRACTION_EVALUATION_EDIT",
+          "OUTCOME_REFLECTION_EVALUATION_ACCESS",
+          "OUTCOME_REFLECTION_EVALUATION_EDIT",
+          "GOAL_TRACKING_EVALUATION_ACCESS",
+          "GOAL_TRACKING_EVALUATION_EDIT",
+          "TASK_EXECUTOR_EVALUATION_ACCESS",
+          "TASK_EXECUTOR_EVALUATION_EDIT",
+          "CONVERSATION_EXECUTOR_EVALUATION_ACCESS",
+          "CONVERSATION_EXECUTOR_EVALUATION_EDIT",
+          "VOICE_EXECUTOR_EVALUATION_ACCESS",
+          "VOICE_EXECUTOR_EVALUATION_EDIT"
+        ],
+        [
+          "TASK_EXECUTOR_EVALUATION_ACCESS",
+          "TASK_EXECUTOR_EVALUATION_EDIT"
+        ]
+      ],
+      "conditions": [],
+      "sources": [
+        "front/app/lab/navigation.ts"
+      ]
+    },
+    {
+      "id": "admin.lab.conversation_executor",
+      "labels": {
+        "fr": "Exécuteur conversationnel",
+        "en": "Conversation executor"
+      },
+      "breadcrumbs": {
+        "fr": [
+          "Administrer",
+          "Laboratoire",
+          "Exécuteur conversationnel"
+        ],
+        "en": [
+          "Administer",
+          "Laboratory",
+          "Conversation executor"
+        ]
+      },
+      "route": "/lab/conversation-executor",
+      "href": null,
+      "description": {
+        "fr": "",
+        "en": ""
+      },
+      "privilege_groups": [
+        [
+          "EVALUATION_ACCESS",
+          "EVALUATION_EDIT",
+          "DISPATCHER_EVALUATION_ACCESS",
+          "DISPATCHER_EVALUATION_EDIT",
+          "BRIEFING_EVALUATION_ACCESS",
+          "BRIEFING_EVALUATION_EDIT",
+          "PLANNER_EVALUATION_ACCESS",
+          "PLANNER_EVALUATION_EDIT",
+          "TOPIC_CLASSIFICATION_EVALUATION_ACCESS",
+          "TOPIC_CLASSIFICATION_EVALUATION_EDIT",
+          "MEMORY_EXTRACTION_EVALUATION_ACCESS",
+          "MEMORY_EXTRACTION_EVALUATION_EDIT",
+          "OUTCOME_REFLECTION_EVALUATION_ACCESS",
+          "OUTCOME_REFLECTION_EVALUATION_EDIT",
+          "GOAL_TRACKING_EVALUATION_ACCESS",
+          "GOAL_TRACKING_EVALUATION_EDIT",
+          "TASK_EXECUTOR_EVALUATION_ACCESS",
+          "TASK_EXECUTOR_EVALUATION_EDIT",
+          "CONVERSATION_EXECUTOR_EVALUATION_ACCESS",
+          "CONVERSATION_EXECUTOR_EVALUATION_EDIT",
+          "VOICE_EXECUTOR_EVALUATION_ACCESS",
+          "VOICE_EXECUTOR_EVALUATION_EDIT"
+        ],
+        [
+          "CONVERSATION_EXECUTOR_EVALUATION_ACCESS",
+          "CONVERSATION_EXECUTOR_EVALUATION_EDIT"
+        ]
+      ],
+      "conditions": [],
+      "sources": [
+        "front/app/lab/navigation.ts"
+      ]
+    },
+    {
+      "id": "admin.lab.voice_executor",
+      "labels": {
+        "fr": "Exécuteur vocal",
+        "en": "Voice executor"
+      },
+      "breadcrumbs": {
+        "fr": [
+          "Administrer",
+          "Laboratoire",
+          "Exécuteur vocal"
+        ],
+        "en": [
+          "Administer",
+          "Laboratory",
+          "Voice executor"
+        ]
+      },
+      "route": "/lab/voice-executor",
+      "href": null,
+      "description": {
+        "fr": "",
+        "en": ""
+      },
+      "privilege_groups": [
+        [
+          "EVALUATION_ACCESS",
+          "EVALUATION_EDIT",
+          "DISPATCHER_EVALUATION_ACCESS",
+          "DISPATCHER_EVALUATION_EDIT",
+          "BRIEFING_EVALUATION_ACCESS",
+          "BRIEFING_EVALUATION_EDIT",
+          "PLANNER_EVALUATION_ACCESS",
+          "PLANNER_EVALUATION_EDIT",
+          "TOPIC_CLASSIFICATION_EVALUATION_ACCESS",
+          "TOPIC_CLASSIFICATION_EVALUATION_EDIT",
+          "MEMORY_EXTRACTION_EVALUATION_ACCESS",
+          "MEMORY_EXTRACTION_EVALUATION_EDIT",
+          "OUTCOME_REFLECTION_EVALUATION_ACCESS",
+          "OUTCOME_REFLECTION_EVALUATION_EDIT",
+          "GOAL_TRACKING_EVALUATION_ACCESS",
+          "GOAL_TRACKING_EVALUATION_EDIT",
+          "TASK_EXECUTOR_EVALUATION_ACCESS",
+          "TASK_EXECUTOR_EVALUATION_EDIT",
+          "CONVERSATION_EXECUTOR_EVALUATION_ACCESS",
+          "CONVERSATION_EXECUTOR_EVALUATION_EDIT",
+          "VOICE_EXECUTOR_EVALUATION_ACCESS",
+          "VOICE_EXECUTOR_EVALUATION_EDIT"
+        ],
+        [
+          "VOICE_EXECUTOR_EVALUATION_ACCESS",
+          "VOICE_EXECUTOR_EVALUATION_EDIT"
+        ]
+      ],
+      "conditions": [],
+      "sources": [
+        "front/app/lab/navigation.ts"
+      ]
+    },
+    {
+      "id": "admin.executor",
+      "labels": {
+        "fr": "Console",
+        "en": "Console"
+      },
+      "breadcrumbs": {
+        "fr": [
+          "Administrer",
+          "Console"
+        ],
+        "en": [
+          "Administer",
+          "Console"
+        ]
+      },
+      "route": "/console/executor",
+      "href": null,
+      "description": {
+        "fr": "Exécuteur SSH persistant des agents",
+        "en": "Persistent SSH executor for agents"
+      },
+      "privilege_groups": [
+        [
+          "CONSOLE_ACCESS"
+        ]
+      ],
+      "conditions": [
+        {
+          "node": "admin.executor",
+          "visibility": "dynamic"
+        }
+      ],
+      "sources": [
+        "front/app/console/navigation.ts"
+      ]
+    },
+    {
+      "id": "admin.users",
+      "labels": {
+        "fr": "Utilisateurs",
+        "en": "Users"
+      },
+      "breadcrumbs": {
+        "fr": [
+          "Administrer",
+          "Utilisateurs"
+        ],
+        "en": [
+          "Administer",
+          "Users"
+        ]
+      },
+      "route": "/user/users",
+      "href": null,
+      "description": {
+        "fr": "Gestion des utilisateurs",
+        "en": "User management"
+      },
+      "privilege_groups": [
+        [
+          "READ_USER"
+        ]
+      ],
+      "conditions": [],
+      "sources": [
+        "front/core/user/navigation.ts"
+      ]
+    },
+    {
+      "id": "admin.teams",
+      "labels": {
+        "fr": "Équipes",
+        "en": "Teams"
+      },
+      "breadcrumbs": {
+        "fr": [
+          "Administrer",
+          "Équipes"
+        ],
+        "en": [
+          "Administer",
+          "Teams"
+        ]
+      },
+      "route": "/team",
+      "href": null,
+      "description": {
+        "fr": "Les humains et les agents de vos équipes.",
+        "en": "The humans and agents in your teams."
+      },
+      "privilege_groups": [
+        [
+          "TEAM_ACCESS"
+        ]
+      ],
+      "conditions": [],
+      "sources": [
+        "front/core/team/navigation.ts"
+      ]
+    },
+    {
+      "id": "admin.authorizations",
+      "labels": {
+        "fr": "Rôles & autorisations",
+        "en": "Roles & permissions"
+      },
+      "breadcrumbs": {
+        "fr": [
+          "Administrer",
+          "Rôles & autorisations"
+        ],
+        "en": [
+          "Administer",
+          "Roles & permissions"
+        ]
+      },
+      "route": "/authorize",
+      "href": null,
+      "description": {
+        "fr": "Gestion des rôles et privilèges",
+        "en": "Role and privilege management"
+      },
+      "privilege_groups": [
+        [
+          "READ_ROLE"
+        ]
+      ],
+      "conditions": [],
+      "sources": [
+        "front/core/authorize/navigation.ts"
+      ]
+    },
+    {
+      "id": "pageFooter.about",
+      "labels": {
+        "fr": "À propos",
+        "en": "About"
+      },
+      "breadcrumbs": {
+        "fr": [
+          "À propos"
+        ],
+        "en": [
+          "About"
+        ]
+      },
+      "route": "/about",
+      "href": null,
+      "description": {
+        "fr": "",
+        "en": ""
+      },
+      "privilege_groups": [],
+      "conditions": [],
+      "sources": [
+        "front/app/index/navigation.ts"
+      ]
+    },
+    {
+      "id": "pageFooter.license",
+      "labels": {
+        "fr": "Licence",
+        "en": "License"
+      },
+      "breadcrumbs": {
+        "fr": [
+          "Licence"
+        ],
+        "en": [
+          "License"
+        ]
+      },
+      "route": "/license",
+      "href": null,
+      "description": {
+        "fr": "",
+        "en": ""
+      },
+      "privilege_groups": [],
+      "conditions": [],
+      "sources": [
+        "front/app/index/navigation.ts"
+      ]
+    }
+  ]
+}

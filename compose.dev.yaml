@@ -31,6 +31,9 @@ services:
         volumes:
             - ./back:/app
             - ./harness_manager:/opt/galaris-harness-manager:ro
+            - ./docs:/opt/galaris-documentation/docs:ro
+            - ./project/decisions:/opt/galaris-documentation/project/decisions:ro
+            - ./project/plans:/opt/galaris-documentation/project/plans:ro
             - ./front/core/authorize:/app-front/core/authorize
         command:
             - bash

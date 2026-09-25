@@ -255,7 +255,8 @@ INTEGRATED_TOOL_SPECS: tuple[IntegratedToolSpec, ...] = (
         code="galaris_admin",
         label="Galaris Admin",
         description=DESCRIPTIONS["galaris_admin"],
-        mcp_tools=("conversation_round_get", "voice_turn_get", "llm_call", "llm_calls"),
+        mcp_tools=("conversation_round_get", "voice_turn_get", "llm_call", "llm_calls",
+                   "documentation_catalog", "documentation_search"),
         default_active=False,
     ),
     IntegratedToolSpec(

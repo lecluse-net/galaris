@@ -6,7 +6,7 @@ case_dir=$(mktemp -d)
 trap 'rm -rf "$case_dir"' EXIT
 cp "$repo_dir/Makefile" "$case_dir/Makefile"
 mkdir -p "$case_dir/bin"
-cp "$repo_dir/bin/"{start,update-source,init-data-volume,uninstall}.sh "$case_dir/bin/"
+cp "$repo_dir/bin/"{start,update-source,init-data-volume,uninstall,refresh-documentation}.sh "$case_dir/bin/"
 for script in update-secrets init-search-config update-release finalize-internal-secrets; do
     printf '#!/usr/bin/env bash\nexit 0\n' > "$case_dir/bin/$script.sh"
 done
@@ -16,6 +16,21 @@ set -euo pipefail
 printf '%s\n' "$*" >> "$UPDATE_TEST_LOG"
 printf '%s\n' "${APP_ENV-unset}" >> "$UPDATE_TEST_LOG.env"
 case " $* " in
+    *"project_context.py --root /repo"*|*"navigation-context.mjs --root /repo"*)
+        if [[ "${UPDATE_TEST_STALE_DOCS:-}" == 1 ]]; then
+            if [[ "$*" == *project_context.py* ]]; then map=project; else map=navigation; fi
+            if [[ " $* " == *" --check "* ]]; then
+                test -f "$UPDATE_TEST_LOG.$map" || { echo "Stale $map documentation" >&2; exit 1; }
+            else
+                touch "$UPDATE_TEST_LOG.$map"
+            fi
+        fi
+        ;;
+    *" app.documentation revision "*)
+        [[ "${UPDATE_TEST_FAILURE:-}" != documentation_revision ]] || exit 1
+        printf '%064d\n' 1 ;;
+    *" app.documentation refresh "*) [[ "${UPDATE_TEST_FAILURE:-}" != documentation ]] ;;
+    *" app.documentation check "*) [[ "${UPDATE_TEST_FAILURE:-}" != documentation_sources ]] ;;
     *" config --services "*)
         [[ "${UPDATE_TEST_FAILURE:-}" != config ]] || exit 1
         printf '%s\n' backend frontend browser-secrets browser-executor search ssh-executor
@@ -81,6 +96,7 @@ export UPDATE_TEST_LOG="$case_dir/docker.log"
 run_update() {
     : > "$UPDATE_TEST_LOG"
     : > "$UPDATE_TEST_LOG.env"
+    rm -f "$UPDATE_TEST_LOG.project" "$UPDATE_TEST_LOG.navigation"
     env -u APP_ENV -u RELEASE_DIR -u MAKEOVERRIDES MAKEFLAGS= make --no-print-directory -C "$case_dir" update \
         WEBRTC_TURN_MODE=disabled POSTGRES_MODE=embedded "$@" > "$case_dir/output.log" 2>&1
 }
@@ -111,14 +127,30 @@ for app_mode in prod preprod pp test demo custom DEV ''; do
     fi
 done
 
+# Stale generated docs are repaired automatically before building in both modes.
+# Docker is the only substituted boundary; the real Make targets orchestrate the update.
 for app_mode in dev prod; do
-    for failure in build data_permissions reset readiness; do
+    UPDATE_TEST_STALE_DOCS=1 run_update APP_ENV="$app_mode"
+    test -f "$UPDATE_TEST_LOG.project"
+    test -f "$UPDATE_TEST_LOG.navigation"
+    awk '
+        /project_context.py --root \/repo$/ { project = NR }
+        /navigation-context.mjs --root \/repo$/ { navigation = NR }
+        / build( --pull)?$/ { build = NR }
+        / up -d --wait / { ready = NR }
+        /app.documentation refresh --expected-revision/ { refresh = NR }
+        END { exit !(project && navigation && build > project && build > navigation && ready > build && refresh > ready) }
+    ' "$UPDATE_TEST_LOG"
+done
+
+for app_mode in dev prod; do
+    for failure in build data_permissions reset readiness documentation documentation_sources documentation_revision; do
         export UPDATE_TEST_FAILURE="$failure"
         if run_update APP_ENV="$app_mode"; then
             echo "FAIL: $app_mode update hid a $failure failure" >&2
             exit 1
         fi
-        if [[ "$failure" == build || "$failure" == data_permissions ]]; then
+        if [[ "$failure" == build || "$failure" == data_permissions || "$failure" == documentation_sources ]]; then
             # A failed build must leave the currently running application alone.
             if grep -Eq ' (down|up|rm|stop)( |$)' "$UPDATE_TEST_LOG"; then
                 echo "FAIL: $app_mode update restarted after a failed build" >&2
@@ -129,12 +161,34 @@ for app_mode in dev prod; do
                 echo 'FAIL: update started services after a failed backend reset' >&2
                 exit 1
             fi
-        else
+        elif [[ "$failure" == readiness ]]; then
             grep -q ' logs --tail=200$' "$UPDATE_TEST_LOG"
+        elif grep -q 'Update complete' "$case_dir/output.log"; then
+            echo 'FAIL: update reported success with unavailable documentation' >&2
+            exit 1
         fi
     done
 done
 unset UPDATE_TEST_FAILURE
+
+# The documentation-only workflow never recreates services or grants new capabilities.
+: > "$UPDATE_TEST_LOG"
+env -u MAKEOVERRIDES MAKEFLAGS= make --no-print-directory -C "$case_dir" docs-update APP_ENV=dev \
+    WEBRTC_TURN_MODE=disabled POSTGRES_MODE=embedded > "$case_dir/output.log" 2>&1
+grep -q 'app.documentation refresh --expected-revision' "$UPDATE_TEST_LOG"
+if grep -Eq ' (up|stop|rm|restart)( |$)' "$UPDATE_TEST_LOG"; then
+    echo 'FAIL: documentation refresh disrupted application services' >&2
+    exit 1
+fi
+for app_mode in prod test ''; do
+    : > "$UPDATE_TEST_LOG"
+    if env -u MAKEOVERRIDES MAKEFLAGS= make --no-print-directory -C "$case_dir" docs-update APP_ENV="$app_mode" \
+        > "$case_dir/output.log" 2>&1; then
+        echo 'FAIL: documentation-only update bypassed the production release path' >&2
+        exit 1
+    fi
+    test ! -s "$UPDATE_TEST_LOG"
+done
 
 for args in RELEASE_DIR=/unused-release; do
     if run_update "$args"; then
@@ -338,7 +392,9 @@ for app_mode in dev prod; do
                 echo 'FAIL: external PostgreSQL loaded the embedded Compose file' >&2
                 exit 1
             fi
-        elif grep '^compose ' "$UPDATE_TEST_LOG" | grep -v 'compose.postgres.yaml'; then
+        # Documentation generation uses an independent frontend-only tooling project.
+        # The application's lifecycle commands must still select the same database.
+        elif grep '^compose ' "$UPDATE_TEST_LOG" | grep ' -f compose.yaml' | grep -v 'compose.postgres.yaml'; then
             echo 'FAIL: embedded PostgreSQL was omitted from a lifecycle command' >&2
             exit 1
         fi
@@ -350,7 +406,8 @@ UPDATE_TEST_POSTGRES_CONTAINER=0123456789ab run_update POSTGRES_MODE=external
 grep -q '^ps -aq --filter label=com.docker.compose.project=galaris --filter label=com.docker.compose.service=postgres$' "$UPDATE_TEST_LOG"
 grep -q '^stop 0123456789ab$' "$UPDATE_TEST_LOG"
 grep -q '^rm 0123456789ab$' "$UPDATE_TEST_LOG"
-if grep -Eq -- '--remove-orphans|compose.postgres.yaml| -v( |$)' "$UPDATE_TEST_LOG"; then
+# Bind mounts used by documentation checks are not volume deletion flags.
+if grep -Eq -- '--remove-orphans|compose.postgres.yaml| down .*--volumes| down .*-v( |$)|volume rm' "$UPDATE_TEST_LOG"; then
     echo 'FAIL: external update removed unrelated containers/volumes or loaded embedded PostgreSQL' >&2
     exit 1
 fi
@@ -378,7 +435,7 @@ echo 'PASS: optional PostgreSQL in dev/prod, default inclusion and invalid confi
 install_dir="$case_dir/install"
 mkdir -p "$install_dir/bin" "$install_dir/resources"
 cp "$repo_dir/Makefile" "$repo_dir/.env.example" "$repo_dir/compose.override.yaml.example" "$install_dir/"
-cp "$repo_dir/bin/"{install,start,update-source,init-data-volume,update-secrets,init-search-config,finalize-internal-secrets}.sh "$install_dir/bin/"
+cp "$repo_dir/bin/"{install,start,update-source,init-data-volume,update-secrets,init-search-config,finalize-internal-secrets,refresh-documentation}.sh "$install_dir/bin/"
 cp -R "$repo_dir/resources/search" "$install_dir/resources/"
 cat > "$case_dir/bin/ip" <<'SH'
 #!/usr/bin/env bash

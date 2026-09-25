@@ -67,6 +67,9 @@ RUN uv sync --frozen --no-cache
 
 # Keep manager-only changes outside the dependency installation layers.
 COPY --from=harness_manager main.py update.py Makefile pyproject.toml uv.lock README.md .env.example /opt/galaris-harness-manager/
+COPY --from=product_docs . /opt/galaris-documentation/docs/
+COPY --from=project_docs decisions/ /opt/galaris-documentation/project/decisions/
+COPY --from=project_docs plans/ /opt/galaris-documentation/project/plans/
 
 # -----------------------------
 # Production dependencies, cached independently of application source changes.
@@ -101,6 +104,9 @@ COPY --from=prod-builder --chown=app:app /opt/venv /opt/venv
 COPY --chown=app:app . /app/
 # Only distributable files, never host .env, instances or local environments.
 COPY --from=harness_manager main.py update.py Makefile pyproject.toml uv.lock README.md .env.example /opt/galaris-harness-manager/
+COPY --from=product_docs . /opt/galaris-documentation/docs/
+COPY --from=project_docs decisions/ /opt/galaris-documentation/project/decisions/
+COPY --from=project_docs plans/ /opt/galaris-documentation/project/plans/
 
 RUN chmod +x /app/entrypoint.sh && \
     /usr/local/bin/python -m pip uninstall -y pip

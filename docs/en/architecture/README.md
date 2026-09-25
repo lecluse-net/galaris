@@ -22,6 +22,7 @@ knowledge: invariants explained by humans and a map automatically reconstructed 
 | Understand the scores, rubrics, and biases of the AI Lab | [AI Lab Evaluation](ai-lab-evaluation.md) |
 | Verify durable states | [State Machines](state-machines.md) |
 | Find modules, routes, tables, and tools | [Generated Map](generated/project-map.md) |
+| Connect frontend menus, screens, routes and permissions | [Frontend navigation](frontend-navigation.md) and [menu map](generated/navigation.md) |
 | Understand why a boundary exists | [Decisions](../../../project/decisions/) |
 | Evaluate a proposal not yet delivered | [Plans Index](../../../project/plans/README.md) |
 

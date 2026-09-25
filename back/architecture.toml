@@ -29,8 +29,12 @@ allowed_dependencies = []
 max_domain_fan_out = 0
 
 [module."app.tools"]
-allowed_dependencies = ["app.agent", "app.connection", "app.console", "app.file_share", "app.llm", "app.messenger", "app.task", "app.util"]
-max_domain_fan_out = 8
+allowed_dependencies = ["app.agent", "app.connection", "app.console", "app.documentation", "app.file_share", "app.llm", "app.messenger", "app.task", "app.util"]
+max_domain_fan_out = 9
+
+[module."app.documentation"]
+allowed_dependencies = []
+max_domain_fan_out = 0
 
 [module."app.agent"]
 allowed_dependencies = ["app.llm", "app.messenger", "app.process", "app.skill", "app.tools"]
@@ -125,8 +129,8 @@ allowed_dependencies = ["app.agent", "app.connection", "app.conversation", "app.
 max_domain_fan_out = 9
 
 [module."app.file_share"]
-allowed_dependencies = ["app.agent", "app.connection", "app.console", "app.conversation", "app.goal", "app.image", "app.memory", "app.messenger", "app.process", "app.skill", "app.task", "app.tools", "bridge.affine", "bridge.grav"]
-max_domain_fan_out = 14
+allowed_dependencies = ["app.agent", "app.connection", "app.console", "app.conversation", "app.documentation", "app.goal", "app.image", "app.memory", "app.messenger", "app.process", "app.skill", "app.task", "app.tools", "bridge.affine", "bridge.grav"]
+max_domain_fan_out = 15
 
 [module."app.console"]
 allowed_dependencies = ["app.agent", "app.connection", "app.file_share", "app.tools"]

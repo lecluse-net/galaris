@@ -800,6 +800,15 @@
       },
       {
         "files": [
+          "back/app/documentation/__main__.py",
+          "back/app/documentation/models.py",
+          "back/app/documentation/search.py"
+        ],
+        "source": "app.documentation",
+        "target": "core.database"
+      },
+      {
+        "files": [
           "back/app/dream/events.py",
           "back/app/dream/router.py"
         ],
@@ -1039,6 +1048,13 @@
       },
       {
         "files": [
+          "back/app/file_share/documentation_provider.py"
+        ],
+        "source": "app.file_share",
+        "target": "app.documentation"
+      },
+      {
+        "files": [
           "back/app/file_share/galaris_provider.py"
         ],
         "source": "app.file_share",
@@ -1091,7 +1107,9 @@
       },
       {
         "files": [
+          "back/app/file_share/documentation_provider.py",
           "back/app/file_share/file_share_service.py",
+          "back/app/file_share/galaris_provider.py",
           "back/app/file_share/mcp.py",
           "back/app/file_share/transport.py"
         ],
@@ -2680,7 +2698,8 @@
       },
       {
         "files": [
-          "back/app/skill/mcp.py"
+          "back/app/skill/mcp.py",
+          "back/app/skill/skill_service.py"
         ],
         "source": "app.skill",
         "target": "app.tools"
@@ -2882,6 +2901,7 @@
           "back/app/tools/agent_registry.py",
           "back/app/tools/connection_functions.py",
           "back/app/tools/dbadmin.py",
+          "back/app/tools/documentation_service.py",
           "back/app/tools/mcp_loader.py"
         ],
         "source": "app.tools",
@@ -2896,6 +2916,13 @@
       },
       {
         "files": [
+          "back/app/tools/documentation_service.py"
+        ],
+        "source": "app.tools",
+        "target": "app.documentation"
+      },
+      {
+        "files": [
           "back/app/tools/resource_effects.py",
           "back/app/tools/tool_service.py"
         ],
@@ -2904,6 +2931,7 @@
       },
       {
         "files": [
+          "back/app/tools/documentation_service.py",
           "back/app/tools/mcp_loader.py",
           "back/app/tools/tool_search_service.py"
         ],
@@ -2943,6 +2971,7 @@
       {
         "files": [
           "back/app/tools/catalog_refresh_service.py",
+          "back/app/tools/documentation_service.py",
           "back/app/tools/mandatory_tools.py",
           "back/app/tools/mcp_loader.py",
           "back/app/tools/models.py",
@@ -4922,7 +4951,7 @@
           "app.tools"
         ]
       ],
-      "domain_edges": 263,
+      "domain_edges": 265,
       "fan_in": [
         {
           "count": 43,
@@ -5289,6 +5318,14 @@
           ]
         },
         {
+          "count": 2,
+          "module": "app.documentation",
+          "modules": [
+            "app.file_share",
+            "app.tools"
+          ]
+        },
+        {
           "count": 1,
           "module": "app.browser",
           "modules": [
@@ -5340,13 +5377,14 @@
       ],
       "fan_out": [
         {
-          "count": 14,
+          "count": 15,
           "module": "app.file_share",
           "modules": [
             "app.agent",
             "app.connection",
             "app.console",
             "app.conversation",
+            "app.documentation",
             "app.goal",
             "app.image",
             "app.memory",
@@ -5447,6 +5485,21 @@
         },
         {
           "count": 9,
+          "module": "app.tools",
+          "modules": [
+            "app.agent",
+            "app.connection",
+            "app.console",
+            "app.documentation",
+            "app.file_share",
+            "app.llm",
+            "app.messenger",
+            "app.task",
+            "app.util"
+          ]
+        },
+        {
+          "count": 9,
           "module": "app.topic",
           "modules": [
             "app.agent",
@@ -5515,20 +5568,6 @@
             "app.memory",
             "app.task",
             "app.tools"
-          ]
-        },
-        {
-          "count": 8,
-          "module": "app.tools",
-          "modules": [
-            "app.agent",
-            "app.connection",
-            "app.console",
-            "app.file_share",
-            "app.llm",
-            "app.messenger",
-            "app.task",
-            "app.util"
           ]
         },
         {
@@ -6551,7 +6590,7 @@
       {
         "file": "back/app/tools/mcp.py",
         "handler": "list_mcp_tools",
-        "line": 60,
+        "line": 88,
         "module": "app.tools",
         "name": "tools_list",
         "namespace": "galaris"
@@ -6562,6 +6601,22 @@
         "line": 282,
         "module": "app.conversation",
         "name": "conversation_round_get",
+        "namespace": "galaris_admin"
+      },
+      {
+        "file": "back/app/tools/mcp.py",
+        "handler": "documentation_catalog",
+        "line": 36,
+        "module": "app.tools",
+        "name": "documentation_catalog",
+        "namespace": "galaris_admin"
+      },
+      {
+        "file": "back/app/tools/mcp.py",
+        "handler": "documentation_search",
+        "line": 49,
+        "module": "app.tools",
+        "name": "documentation_search",
         "namespace": "galaris_admin"
       },
       {
@@ -7407,7 +7462,7 @@
       {
         "file": "back/app/tools/mcp.py",
         "handler": "search_web",
-        "line": 45,
+        "line": 73,
         "module": "app.tools",
         "name": "search_web",
         "namespace": "search"
@@ -7893,6 +7948,15 @@
         "line": 417,
         "module": "app.memory",
         "table": "document_user_grants"
+      },
+      {
+        "class_name": "DocumentationPassage",
+        "file": "back/app/documentation/models.py",
+        "foreign_keys": [],
+        "history_mixin": false,
+        "line": 12,
+        "module": "app.documentation",
+        "table": "documentation_passages"
       },
       {
         "class_name": "DreamReceipt",
@@ -9034,6 +9098,19 @@
         "layer": "app",
         "name": "app.tools",
         "path": "back/app/tools"
+      },
+      {
+        "capabilities": [
+          "contracts.py",
+          "facade.py",
+          "models.py",
+          "tests/"
+        ],
+        "conditional": false,
+        "exists": true,
+        "layer": "app",
+        "name": "app.documentation",
+        "path": "back/app/documentation"
       },
       {
         "capabilities": [

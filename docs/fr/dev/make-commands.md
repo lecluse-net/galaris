@@ -20,7 +20,7 @@ Le `Makefile` reste la référence. Installation standard : **`make install` →
 | `restart` | Enchaîner `stop` puis `start`. |
 | `restart-service` | Redémarrer un seul service sans reconstruire ; `SERVICE` obligatoire. |
 | `status` | Afficher l'état des conteneurs ; filtrer avec `SERVICE` si nécessaire. |
-| `update` | Construire et déployer les sources présentes ; seul `VERSION` déclenche la récupération d’un tag ou d’une branche Git. Accepte `RELEASE_DIR` hors dev, sans Git. |
+| `update` | Régénérer la documentation, construire et déployer les sources présentes, puis actualiser l’index documentaire ; seul `VERSION` déclenche la récupération d’un tag ou d’une branche Git. Accepte `RELEASE_DIR` hors dev, sans Git, avec la documentation embarquée du paquet. |
 | `logs` | Suivre tous les journaux. |
 | `logs-back`, `logs-front`, `logs-search` | Suivre les journaux du service désigné. |
 | `check-search` | Vérifier les sources et dégradations sur quatre requêtes publiques réelles ; diagnostic volontaire, distinct du healthcheck. |
@@ -59,8 +59,11 @@ Ces commandes utilisent les fichiers Compose sélectionnés pour l'environnement
 | `rebuild-messenger-contacts` | Reconstruire les mémoires de contacts à partir du journal Messenger. |
 | `rebuild-memory-index` | Mettre en file la reconstruction de l'index sémantique ; options via `ARGS`. |
 | `rebuild-memory-links` | Réconcilier les liens mémoire dérivés ; options via `ARGS`. |
-| `project-context` | Régénérer la cartographie issue du code. |
-| `project-context-check` | Vérifier la fraîcheur de la cartographie. |
+| `project-context` | Régénérer les cartographies du projet et des menus frontend depuis le code. |
+| `project-context-check` | Vérifier la fraîcheur des cartographies du projet et des menus. |
+| `docs-prepare` | Régénérer les cartes et vérifier le corpus FR/EN avant validation. |
+| `docs-check` | Vérifier cartes, sources documentaires et liens sans régénération. |
+| `docs-update` | En développement, préparer la documentation puis vérifier le corpus actif et synchroniser sa recherche textuelle. |
 | `architecture-baseline` | Actualiser les baselines de dette après revue du diff. |
 | `architecture-check` | Vérifier cartographie, frontières et tests d'architecture. |
 | `test-hermes-management` | Diagnostiquer la configuration et la connectivité de l'adaptateur Hermès. |

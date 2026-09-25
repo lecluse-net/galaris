@@ -220,6 +220,8 @@ ifneq ($(if $(filter 0,$(GIT_UPDATE)),,$(strip $(VERSION))),)
 else
 	@bash bin/update-secrets.sh
 	@bash bin/init-search-config.sh
+	@echo "📚 Updating generated documentation before building images..."
+	@$(MAKE) docs-prepare
 ifeq ($(APP_ENV),dev)
 	@echo "🔨 Rebuilding development images with cache..."
 	docker compose $(COMPOSE_FILES) build
@@ -240,6 +242,8 @@ endif
 		exit 1; \
 	fi
 	@bash bin/finalize-internal-secrets.sh $(COMPOSE_FILES)
+	@echo "📚 Updating the shared documentation search index..."
+	@bash bin/refresh-documentation.sh $(COMPOSE_FILES)
 	@echo "✅ Update complete ($(APP_ENV))."
 	@echo "Open $(APP_HOST) in your browser."
 endif
@@ -312,13 +316,33 @@ upgrade-deps-front: ## Update frontend dependencies
 project-context: ## Regenerate the deterministic code-derived project map
 	@echo "🗺️  Regenerating project context..."
 	docker compose $(COMPOSE_FILES) run --rm --no-deps -T -v $(CURDIR):/repo -w /repo backend python back/scripts/project_context.py --root /repo
+	docker compose -p $(APP_NAME)-context -f compose.front-tests.yaml run --build --rm --no-deps -T -v /app/node_modules -v $(CURDIR):/repo frontend node scripts/navigation-context.mjs --root /repo
 .PHONY: project-context
 
 
 project-context-check: ## Check that the generated project map matches the code
 	@echo "🧭 Checking generated project context..."
 	docker compose $(COMPOSE_FILES) run --rm --no-deps -T -v $(CURDIR):/repo -w /repo backend python back/scripts/project_context.py --root /repo --check
+	docker compose -p $(APP_NAME)-context -f compose.front-tests.yaml run --build --rm --no-deps -T -v /app/node_modules -v $(CURDIR):/repo:ro frontend node scripts/navigation-context.mjs --root /repo --check
 .PHONY: project-context-check
+
+docs-check: project-context-check ## Verify generated maps and the bilingual agent documentation corpus
+	docker compose $(COMPOSE_FILES) run --rm --no-deps -T -v $(CURDIR):/repo:ro -w /repo/back backend python -m app.documentation check --root /repo
+	docker compose $(COMPOSE_FILES) run --rm --no-deps -T -v $(CURDIR):/repo:ro -w /repo backend python back/scripts/architecture_check.py --root /repo
+.PHONY: docs-check
+
+docs-prepare: ## Regenerate and verify documentation before validation or publication
+	@$(MAKE) project-context
+	@$(MAKE) docs-check
+.PHONY: docs-prepare
+
+docs-update: ## Development only: prepare docs and synchronize the live shared search index
+	@if [ "$(APP_ENV)" != "dev" ]; then \
+		echo "Use make docs-prepare in the source checkout, then the normal make update deployment."; exit 2; \
+	fi
+	@$(MAKE) docs-prepare
+	@bash bin/refresh-documentation.sh $(COMPOSE_FILES)
+.PHONY: docs-update
 
 
 architecture-baseline: ## Update reviewed backend/frontend architecture debt baselines

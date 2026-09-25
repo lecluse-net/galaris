@@ -2,6 +2,9 @@
 
 # Guide utilisateur et découverte
 
+Pour trouver un écran, consultez le [guide des menus et parcours](navigation.md) et la
+[carte de navigation générée](../architecture/generated/navigation.md).
+
 Ce guide s’adresse à une personne qui veut utiliser Galaris sans connaître les modèles de
 langage, les API ou Docker. Les écrans accessibles dépendent des droits attribués à votre
 compte.

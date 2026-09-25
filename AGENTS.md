@@ -54,6 +54,8 @@ make typecheck
 make architecture-check
 make project-context        # régénère la cartographie déterministe
 make project-context-check  # vérifie qu’elle suit encore le code
+make docs-prepare           # régénère les cartes et vérifie le corpus documentaire FR/EN
+make docs-update            # dev : préparation + contrôle du corpus actif + index textuel
 make architecture-baseline  # réduit/actualise la dette de couplage après revue du diff
 make sync-db                # dev uniquement : schéma/datasets DbAdmin, sans restart
 make update                 # dev/prod : images + restart + synchronisation DB + attente de disponibilité
@@ -234,6 +236,12 @@ l’interface mérite un libellé ou un prompt explicite.
 - Régénérer `docs/fr/architecture/generated/` et `docs/en/architecture/generated/` avec
   `make project-context`; ne pas éditer leurs
   fichiers à la main.
+- Après une évolution de documentation ou de navigation, actualiser les parcours FR/EN et
+  exécuter `make docs-prepare` avant validation. Utiliser `make docs-update` pour propager
+  ces sources à la recherche partagée en développement. `make update` depuis les sources
+  lance automatiquement `docs-prepare` avant le build, puis actualise l’index du backend actif
+  et vérifie le résultat avant d'annoncer son succès ; ne pas contourner un échec documentaire
+  en copiant des fichiers dans un conteneur ni en modifiant les droits des agents.
 - Réduire `back/architecture.toml` et `back/architecture-baseline.json` lorsqu’une dépendance,
   un import privé ou un cycle disparaît. Ne jamais augmenter la baseline sans revue explicite.
 - Ajouter ou modifier une décision dans `project/decisions/` lorsqu’un choix structurel change.

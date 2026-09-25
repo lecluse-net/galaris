@@ -18,6 +18,8 @@ require a model, bridge, or specific activation.
 
 [Read the user guide](user/README.md)
 
+[Find a screen, menu or tab](user/navigation.md)
+
 This path explains, with examples:
 
 - what an Agent is and what Galaris actually orchestrates;
@@ -38,6 +40,8 @@ This path explains, with examples:
 [Read the administrator guide](admin/README.md)
 
 [Install and operate Galaris](admin/installation.md)
+
+[Give any agent knowledge of Galaris](admin/product-knowledge.md)
 
 This path covers installation and operations:
 

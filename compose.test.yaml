@@ -43,6 +43,8 @@ services:
       context: ./back
       additional_contexts:
         harness_manager: ./harness_manager
+        product_docs: ./docs
+        project_docs: ./project
       target: builder
       args:
         USER_ID: ${DEV_HOST_USER_ID:-1000}

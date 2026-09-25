@@ -20,7 +20,7 @@ The `Makefile` remains authoritative. Standard installation: **`make install` â†
 | `restart` | Run `stop`, then `start`. |
 | `restart-service` | Restart one service without rebuilding; `SERVICE` is required. |
 | `status` | Display container status; optionally filter with `SERVICE`. |
-| `update` | Build and deploy existing sources; only `VERSION` triggers fetching a Git tag or branch. Accepts `RELEASE_DIR` outside dev, without Git. |
+| `update` | Regenerate documentation, build and deploy existing sources, then refresh the documentation index; only `VERSION` triggers fetching a Git tag or branch. Accepts `RELEASE_DIR` outside dev, without Git, using the bundle's packaged documentation. |
 | `logs` | Follow all logs. |
 | `logs-back`, `logs-front`, `logs-search` | Follow the selected service's logs. |
 | `check-search` | Probe sources and degradation using four real public queries; opt-in diagnostic, separate from the healthcheck. |
@@ -58,8 +58,11 @@ These commands use the Compose files selected for the current environment.
 | `rebuild-messenger-contacts` | Rebuild contact memories from the Messenger journal. |
 | `rebuild-memory-index` | Queue semantic index rebuilds; options through `ARGS`. |
 | `rebuild-memory-links` | Reconcile derived memory links; options through `ARGS`. |
-| `project-context` | Regenerate the code-derived project map. |
-| `project-context-check` | Check project map freshness. |
+| `project-context` | Regenerate the project and frontend menu maps from code. |
+| `project-context-check` | Check project and menu map freshness. |
+| `docs-prepare` | Regenerate maps and check the FR/EN corpus before validation. |
+| `docs-check` | Check maps, documentation sources and links without regeneration. |
+| `docs-update` | In development, prepare documentation, verify the live corpus and synchronize lexical retrieval. |
 | `architecture-baseline` | Update debt baselines after reviewing the diff. |
 | `architecture-check` | Check the map, boundaries and architecture tests. |
 | `test-hermes-management` | Diagnose Hermes adapter configuration and connectivity. |

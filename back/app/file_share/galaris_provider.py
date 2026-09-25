@@ -71,6 +71,8 @@ def _route(reference: ResourceUri) -> _Route:
     if not segments:
         return _Route(kind=None)
     raw_kind = segments[0]
+    if raw_kind == "documentation":
+        raise PermissionError("Official Galaris documentation is read-only; use documentation_search or file_read.")
     if raw_kind not in _KINDS:
         raise ResourceUriError(
             "galaris:// supports task, voice, text, goal, goal_cycle, process, and skill."
@@ -439,6 +441,9 @@ async def galaris_resource_info(
     ctx: ResourceContext,
     reference: ResourceUri,
 ) -> ResourceDescriptor:
+    if reference.segments[:1] == ("documentation",):
+        from . import documentation_provider
+        return await documentation_provider.info(ctx, reference)
     route = _route(reference)
     if route.kind is None:
         capabilities = list(_COLLECTION_CAPABILITIES)
@@ -502,6 +507,9 @@ async def galaris_resource_list(
     max_entries: int,
     cursor: str | None = None,
 ) -> ResourceListing:
+    if reference.segments[:1] == ("documentation",):
+        from . import documentation_provider
+        return await documentation_provider.list_pages(ctx, reference, max_entries=max_entries, cursor=cursor)
     route = _route(reference)
     offset = _listing_offset(cursor)
     if route.kind is None:
@@ -511,12 +519,17 @@ async def galaris_resource_list(
             if skill_access
             else tuple(kind for kind in _KINDS if kind != "skill")
         )
-        selected_kinds = visible_kinds[offset : offset + max_entries]
-        next_offset = offset + len(selected_kinds)
-        truncated = next_offset < len(visible_kinds)
+        from app.tools import has_documentation_access
+        from .documentation_provider import collection_descriptor
+        entries = [_collection_descriptor(kind) for kind in visible_kinds]
+        if await has_documentation_access(ctx.agent_id):
+            entries.append(collection_descriptor())
+        selected = entries[offset : offset + max_entries]
+        next_offset = offset + len(selected)
+        truncated = next_offset < len(entries)
         return ResourceListing(
             uri="galaris://",
-            entries=[_collection_descriptor(kind) for kind in selected_kinds],
+            entries=selected,
             truncated=truncated,
             next_cursor=str(next_offset) if truncated else None,
         )
@@ -582,6 +595,9 @@ async def galaris_resource_read(
     offset: int,
     max_chars: int,
 ) -> ResourceRead:
+    if reference.segments[:1] == ("documentation",):
+        from . import documentation_provider
+        return await documentation_provider.read(ctx, reference, offset=offset, max_chars=max_chars)
     route = _route(reference)
     if route.kind == "skill":
         if route.skill_code is None or route.skill_path is None:
@@ -688,6 +704,10 @@ async def galaris_resource_search(
     max_results: int,
     cursor: str | None,
 ) -> ResourceSearchResult:
+    if reference.segments[:1] == ("documentation",):
+        from app.tools import require_documentation_access
+        await require_documentation_access(ctx.agent_id)
+        raise NotImplementedError("Use documentation_search for the versioned Galaris documentation corpus.")
     if mode == "semantic":
         raise NotImplementedError("galaris:// does not expose semantic search.")
     route = _route(reference)

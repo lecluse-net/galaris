@@ -483,7 +483,13 @@ async def get_assigned_codes(agent_id: int) -> list[str]:
         )
         .order_by(Skill.code)
     )
-    return list(result.scalars().all())
+    codes = list(result.scalars().all())
+    if "galaris-knowledge" in codes:
+        from app.tools import has_documentation_access
+
+        if not await has_documentation_access(agent_id):
+            codes.remove("galaris-knowledge")
+    return codes
 
 
 def to_category_public(category: SkillCategory) -> SkillCategoryPublic:

@@ -2,6 +2,9 @@
 
 # User and Discovery Guide
 
+To find a screen, see the [menu and workflow guide](navigation.md) and the
+[generated navigation map](../architecture/generated/navigation.md).
+
 This guide is intended for anyone who wants to use Galaris without knowing about language models, APIs, or Docker. The screens available depend on the permissions assigned to your account.
 
 For an overview, see the

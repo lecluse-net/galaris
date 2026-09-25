@@ -42,5 +42,7 @@ else
   "${compose[@]}" build
   "${compose[@]}" up -d --wait frontend
 fi
+# The exact running backend must contain readable, searchable FR/EN documentation.
+"${compose[@]}" exec -T backend python -m app.documentation refresh
 # WebKit uses its GTK port; Xvfb supplies a display inside the isolated runner.
 "${compose[@]}" run --rm --no-deps runner xvfb-run -a npm test -- "$@"

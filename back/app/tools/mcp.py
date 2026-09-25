@@ -28,6 +28,34 @@ from core.i18n import render_prompt, t
 _MCP_TOOL_MAX_RETRIES = 3
 
 
+@mcp_tool("galaris_admin", name="documentation_catalog", description=(
+    "Discover the official Galaris documentation shipped with this installation: version, languages, "
+    "domains and entrypoints. This function also grants read-only file access below galaris://documentation/. "
+    "Use documentation_search for questions and file_read to verify sources."
+), effect_policy="read", concurrency_policy="safe", conversation_policy="short")
+async def documentation_catalog(ctx: McpToolContext) -> str:
+    import json
+    from . import documentation_service
+
+    return json.dumps(await documentation_service.documentation_catalog(ctx.agent_id), ensure_ascii=False)
+
+
+@mcp_tool("galaris_admin", name="documentation_search", description=(
+    "Search official Galaris product knowledge to explain features, guide users and troubleshoot usage. "
+    "Returns source URIs, sections, excerpts and character offsets for file_read. "
+    "Hybrid retrieval falls back to text search without embeddings. Filters: language fr/en, domain user/admin/dev/architecture, "
+    "kind documentation/decision/plan and source path prefix. Plans are prospective. Requires documentation_catalog too."
+), effect_policy="read", concurrency_policy="safe", conversation_policy="short")
+async def documentation_search(ctx: McpToolContext, query: str, language: str = "", domain: str = "",
+                               kind: str = "", path_prefix: str = "", limit: int = 10) -> str:
+    import json
+    from . import documentation_service
+
+    return json.dumps(await documentation_service.documentation_search(
+        ctx.agent_id, query, language=language, domain=domain, kind=kind, path_prefix=path_prefix, limit=limit,
+    ), ensure_ascii=False)
+
+
 def _error(key: str, **values: Any) -> str:
     return render_prompt(t(f"tools.errors.{key}"), **values)
 

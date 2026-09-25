@@ -303,7 +303,7 @@ def test_mcp_loader_discovers_decorated_tools_by_tool_code() -> None:
         "process_admin_analyze_run",
         "process_admin_delete_run",
     } == set(names["process_admin"])
-    assert {"conversation_round_get", "voice_turn_get", "llm_call", "llm_calls"} == set(
+    assert {"conversation_round_get", "voice_turn_get", "llm_call", "llm_calls", "documentation_catalog", "documentation_search"} == set(
         names["galaris_admin"]
     )
     assert {

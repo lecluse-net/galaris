@@ -31,6 +31,19 @@ generation and analysis return durable operations. Real-source capture additiona
 the execution-inspection functions of `galaris_admin`. These tools operate canonical Lab
 records and do not promote experimental settings to production.
 
+## Official product knowledge
+
+When authorized, `documentation_catalog` and `documentation_search` under Galaris Admin provide
+the documentation shipped with this installation. Read returned source URIs under
+`galaris://documentation/` with `file_read`; these sources remain read-only Markdown, JSON or
+HTML. The `galaris-knowledge` system skill explains the product concepts and support workflow.
+Documentation permissions do not require enabling conversation or model-call inspections.
+
+Before giving Galaris menu paths or click-by-click instructions, read the current navigation
+guide or menu map through these authorized documentation tools. Do not substitute remembered
+layouts or generic administration conventions. If documentation is unavailable or access is
+denied, say that you cannot verify the path; do not present a guessed location as an instruction.
+
 ## Documents: the shared information hub
 
 Galaris, Conversation, Memory and File Sharing are mandatory system services: their connections

@@ -144,6 +144,8 @@ def test_management_tool_packages_are_connected_inactive_by_default() -> None:
         "voice_turn_get",
         "llm_call",
         "llm_calls",
+        "documentation_catalog",
+        "documentation_search",
     }
     assert {
         "goal_management",

@@ -8,7 +8,7 @@ OVERVIEWS: dict[str, str] = {
     "conversation": "Turn a conversation into tracked work: create or amend Tasks, inspect their results, pause, resume, retry or stop them, and launch assigned Processes. Resolve pending choices and show documents already accessible to the recipient. These actions are available in conversation context.",
     "memory": "Retain durable facts, decisions and attributed conversation summaries for future work. Inspect and manage sharing of owned memories and documents with humans, agents and teams, or permanently forget an eligible memory. Reading and searching use the File sharing Tool.",
     "file_sharing": "Discover and manipulate authorized resources through canonical URIs: files, documents, memories, attachments and Galaris business records. Read, search, create, edit or transfer content where the provider supports it. This service grants neither access to other agents’ private resources nor an implicit local filesystem.",
-    "galaris_admin": "Inspect complete persisted text and voice conversation rounds and LLM calls, including requests, responses, reasoning, tool activity, usage, costs and errors across agents. This optional administrative capability is checked again at each call.",
+    "galaris_admin": "Understand Galaris using its versioned official documentation, with hybrid search and read-only source access. Separately authorized inspection functions expose persisted conversation rounds and LLM calls across agents. This optional capability is checked again at each call.",
     "goal_management": "Create, modify, pause, resume, complete and delete long-running Goals for all agents. Enabling this Tool also extends shared Goal commands beyond the caller’s own objectives; concurrent edits remain protected by revisions.",
     "skill_management": "Inspect available skills and read their instructions. Manage authorized skill package files through File sharing at galaris://skill/; system skill packages remain read-only.",
     "process_admin": "Synchronize external workflow definitions and assign Processes to agents. Create, modify and delete definitions, inspect all runs, refresh their state, cancel or retry them and delete terminal runs. Ordinary execution of assigned Processes remains in Galaris.",
@@ -66,6 +66,18 @@ _DETAILS: dict[str, str] = {
     "grav": "## Capabilities\n\n- **Upload media:** send files to a configured Grav page or destination.\n- **Retrieve known files:** read accessible remote resources when their address is known.\n- **Connect creation and publication:** use File sharing to copy an artifact from another space to Grav.\n\n## When to use it\n\nUse it to supply media for a Grav website. **Example:** produce an illustration or PDF and upload it as a resource for an existing page.\n\n## Requirements and limits\n\nRequires a compatible Grav API, authentication and a configured destination. This bridge focuses on media files; it is not a page editor, theme manager or complete website deployment tool. Unsupported listing, move and delete operations are not advertised.",
     "affine": "## Capabilities\n\n- **Upload files:** transfer binary content to an authorized AFFiNE workspace.\n- **Retrieve resources:** download known files using their reference and workspace.\n- **Exchange across storage:** use File sharing to transfer resources between AFFiNE and another accessible space.\n\n## When to use it\n\nUse it when files produced or consumed by an agent belong in an existing AFFiNE workspace. **Example:** upload an image or binary document to the intended workspace and retain the returned reference.\n\n## Requirements and limits\n\nRequires a configured account and an explicit, authorized workspace. The bridge handles binary files, not AFFiNE document blocks, databases or layouts. Uploading a file does not mean it was inserted into a page or shared with new users.",
 }
+
+_DETAILS["galaris_admin"] = (
+    "## Product knowledge\n\nEnable documentation_catalog and documentation_search to let any agent explain Galaris. "
+    "Read sources with File sharing below galaris://documentation/. The galaris-knowledge system skill "
+    "is available to authorized agents under their skill assignment policy. Documentation includes current guides, "
+    "architecture decisions and explicitly prospective plans for the shipped version. Semantic search falls back "
+    "to text search when the vector model or its index is unavailable.\n\n"
+    "For documentation-only access, disable conversation_round_get, voice_turn_get, llm_call and llm_calls "
+    "in the connection's function permissions. Keep documentation_catalog enabled: it also controls direct "
+    "source URI access. Enable conversation availability when this capability should be usable in Chat.\n\n"
+    + _DETAILS["galaris_admin"]
+)
 
 OVERVIEWS["lab"] = "Operate all eleven AI Labs, compare experiments and diagnose Tasks."
 _DETAILS["lab"] = (

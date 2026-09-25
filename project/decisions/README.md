@@ -2,6 +2,8 @@
 
 - [0134 — Pilotage des Labs par les agents](0134-agent-lab-control.md)
 
+- [0133 — Connaissance du produit attribuable aux agents](0133-agent-product-knowledge.md)
+
 - [0132 — Modèles publics sélectionnés par profil et usage](0132-public-profile-models.md)
 
 - [0131 — Réconciliation des skills avant exécution](0131-harness-skill-reconciliation.md)

@@ -23,6 +23,7 @@ automatiquement depuis le code.
 | Comprendre les scores, rubriques et biais du Lab IA | [Évaluation du Lab IA](ai-lab-evaluation.md) |
 | Vérifier les états durables | [Machines d’état](state-machines.md) |
 | Trouver modules, routes, tables et outils | [Cartographie générée](generated/project-map.md) |
+| Relier menus, écrans, routes et droits du frontend | [Navigation frontend](frontend-navigation.md) et [carte des menus](generated/navigation.md) |
 | Comprendre pourquoi une frontière existe | [Décisions](../../../project/decisions/) |
 | Évaluer une proposition encore non livrée | [Index des plans](../../../project/plans/README.md) |
 
