@@ -130,7 +130,7 @@
                     />
                 </q-card-section>
 
-                <q-card-section class="q-pt-none">
+                <q-card-section>
                     <q-input
                         v-model="draftLabel"
                         :label="t('llm.profileLabelField')"
@@ -138,7 +138,6 @@
                         dense
                         maxlength="100"
                         autofocus
-                        class="q-mb-md"
                     />
                 </q-card-section>
 
