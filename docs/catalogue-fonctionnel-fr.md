@@ -8,7 +8,7 @@ les objectifs, les documents, la mémoire, les modèles IA et les intégrations 
 Un même agent peut discuter avec une personne, consulter ses informations autorisées, produire un
 livrable, solliciter un collègue, déclencher un workflow externe et conserver les connaissances utiles.
 
-Ce catalogue décrit les fonctionnalités présentes dans le dépôt au **19 septembre 2026, en fin de journée**, y compris
+Ce catalogue décrit les fonctionnalités présentes dans le dépôt au **25 septembre 2026**, y compris
 les fonctions destinées aux agents, les écrans d’administration et les mécanismes de fond. Il est
 organisé par usages, puis complété par un inventaire des fonctions MCP et une correspondance avec
 **tous les modules déclarés**. Les sources de chaque domaine sont indiquées pour rendre la couverture
@@ -19,7 +19,11 @@ des connexions, du modèle et, pour un service externe, du compte configuré. Ce
 sur l’implémentation actuelle et ses usages accessibles. Il décrit le logiciel, sans attester la
 configuration ou la qualification de tous les fournisseurs d’une installation particulière.
 
-Les inventaires couvrent **131 fonctions MCP natives, 70 modules backend et 36 modules frontend**.
+La présente actualisation examine les changements des **trois derniers jours, du 22 au 25 septembre
+2026**, jusqu’au commit `9dc6d03`, et les confronte aux contrats et tests courants. Elle intègre les
+nouveautés dans leurs sections métier, leurs conditions de disponibilité et les inventaires.
+
+Les inventaires couvrent **183 fonctions MCP natives, 71 modules backend et 36 modules frontend**.
 Les fonctionnalités réalisées restent distinctes des intentions du
 [registre des plans](../project/plans/README.md) ; les contrôles de
 qualité figurent dans [l’exploitation](#exploitation).
@@ -70,6 +74,7 @@ qualité figurent dans [l’exploitation](#exploitation).
 | **Équipe** | Un groupe d’humains et d’agents | Organise les appartenances, autorise les dialogues prévus et peut recevoir un partage documentaire. |
 | **Modèle / ressource IA** | Une capacité d’inférence chez un fournisseur | Produit du texte, des embeddings, des images, une transcription, une voix ou un média selon ses capacités. |
 | **Profil de modèles** | Une sélection cohérente de ressources IA | Affecte des modèles aux quatre niveaux de texte et aux usages spécialisés. Peut être courant, propre à un agent ou choisi par un humain. |
+| **Modèle de décision** | Une ressource spécialisée dans les choix fermés | Choisit parmi des réponses autorisées pour le routage, les sujets ou la mémoire ; la rédaction reste confiée au modèle texte du même profil. |
 | **Harnais** | Le programme qui fait travailler l’agent | Exécute la boucle modèle–outils, restitue sa progression et rend son résultat à Galaris. |
 | **Tool / outil** | Une intégration ou un ensemble de capacités | Déclare ses fonctions, ses paramètres et éventuellement ses services de messagerie, de fichiers ou de réception d’événements. |
 | **Connexion** | L’accès d’un agent à un Tool | Porte l’activation, la configuration, les credentials et les fonctions autorisées pour cet agent ; les connexions des quatre services système sont obligatoires et protégées. |
@@ -94,6 +99,7 @@ qualité figurent dans [l’exploitation](#exploitation).
 | **URI de ressource** | L’adresse canonique d’un objet ou fichier | Permet aux outils de lire et transmettre la même ressource sans inventer de chemin local. |
 | **Dream** | Le travail de fond de la plateforme | Classe les sujets, extrait des connaissances, entretient la mémoire et, si activé, apprend des procédures. |
 | **Lab IA** | L’espace d’expérimentation | Capture des cas, compare des modèles et mesure les mécanismes avec des jugements et des preuves conservés. |
+| **Connaissance de Galaris** | La documentation de la version installée, recherchable par les agents autorisés | Réunit guides, navigation, architecture, décisions et plans avec leur provenance ; les plans restent identifiés comme prospectifs. |
 | **Incident** | Une défaillance enregistrée | Relie l’erreur à son contexte, regroupe les occurrences et conserve le diagnostic et le correctif. |
 
 ### Du message au résultat
@@ -164,11 +170,20 @@ son résultat et, lorsqu’il existe, le reçu de livraison.
   erreur. Les filtres concernés écartent les réponses tardives d’un ancien contexte.
 - **Diagnostics compréhensibles.** Les erreurs API précisent le problème reçu, la route concernée
   et le statut HTTP disponibles ; elles distinguent aussi délai dépassé et problème réseau.
+- **Attente des opérations longues.** Le client HTTP de l’interface n’impose plus de délai maximal
+  général, notamment pour les analyses du Lab, transferts documentaires et opérations de harnais.
+  L’annulation explicite reste possible et les réponses d’une ancienne session sont rejetées.
+  Les limites propres au serveur, au fournisseur et aux proxys continuent de s’appliquer.
 - **Ouverture des ressources.** Les liens internes, références de tâches et pièces jointes ouvrent
   le bon détail ou la visionneuse sous contrôle des droits ; les références et données JSON peuvent
   être copiées dans les vues d’inspection concernées.
-- **Pages d’information.** Mentions légales, licence, bienvenue et traitement des routes inconnues
+- **Pages d’information.** La page « À propos » présente Galaris, ses fonctionnalités, crédits et
+  licence. Le bas du menu donne accès à cette page et affiche la référence Git de construction
+  (tag exact, sinon branche ou commit court). Bienvenue et traitement des routes inconnues
   complètent le shell applicatif.
+- **Guidage documenté.** Le guide de navigation décrit les parcours par section, écran et onglet ;
+  une carte générée depuis le frontend conserve routes, libellés FR/EN et conditions de visibilité.
+  Les agents disposant de la connaissance du produit peuvent s’y référer pour guider l’utilisateur.
 
 La PWA ne transforme pas les agents en logiciel autonome hors connexion : les actions métier ont
 besoin du serveur Galaris et des services qu’elles utilisent.
@@ -180,7 +195,9 @@ réponses d’une ancienne session pour éviter les rafales de requêtes et les 
 
 Sources : [guide utilisateur](fr/user/README.md), [PWA](fr/user/pwa.md),
 [onboarding](../back/app/onboarding/), [shell](../front/app/index/),
-[aides par compte](../back/core/user/help_service.py).
+[aides par compte](../back/core/user/help_service.py), [navigation](fr/user/navigation.md),
+[carte des menus](fr/architecture/generated/navigation.md),
+[attente HTTP](../front/core/apiWaiting.test.mjs).
 
 <a id="comptes"></a>
 ## 3. Comptes, rôles et équipes
@@ -264,12 +281,36 @@ Les agents peuvent découvrir les collègues disponibles et lire leur fiche dét
 outils `agent_list` et `agent_get`. Une délégation conserve l’auteur de la demande et le destinataire ;
 elle ne transforme pas silencieusement l’agent exécutant en un autre agent.
 
+Les résultats de l’annuaire exposent aussi une URI `galaris://agent/<id>` permettant de relire
+le profil courant, notamment sa fiche de poste et sa personnalité, sous les droits applicables.
+
 La fiche donne également accès au statut du harnais, aux opérations de cycle de vie disponibles,
 aux logs et aux tâches qui empêchent un changement d’environnement. Elle fournit l’URL MCP et les
 tokens à utiliser pour connecter un client externe au périmètre de cet agent.
 
+### Assistant Galaris proposé à l’installation
+
+Un agent **Galaris** est proposé une seule fois, avec une mission d’aide à la compréhension,
+à la configuration et à l’administration de la plateforme. Il utilise le **harnais interne**,
+suit le **profil LLM courant** et dépend du premier administrateur actif. Sur une installation
+vierge, sa création attend l’inscription de cet administrateur ; une installation existante
+reçoit également la proposition à la synchronisation de la base.
+
+Ses connexions et compétences ordinaires sont initialisées. Sa connexion **Galaris Admin** est
+activée lors de cette création, notamment pour consulter la documentation ; elle peut aussi
+autoriser les inspections d’exécution selon les fonctions accordées. Ce cas diffère du défaut
+inactif de cette connexion pour les autres agents. Il n’accorde pas automatiquement l’accès au Lab.
+
+L’agent reste entièrement personnalisable : identité, mission, profil, harnais et autorisations.
+Les synchronisations suivantes préservent ces choix, les révocations et sa suppression ; elles ne
+le recréent pas après renommage ou suppression dans l’application. Si le code `galaris` existe
+déjà, un suffixe permet de créer la proposition sans modifier l’agent préexistant. L’assistant
+exige toujours un modèle utilisable et les connexions nécessaires pour agir.
+
 Sources : [schémas Agent](../back/app/agent/schemas.py),
-[API Agent](../back/app/agent/router.py), [interface Agent](../front/app/agent/).
+[API Agent](../back/app/agent/router.py), [interface Agent](../front/app/agent/),
+[initialisation](../back/app/agent/defaults.py),
+[garanties de personnalisation](../back/app/agent/tests/test_default_agent.py).
 
 <a id="modeles"></a>
 ## 5. Modèles IA, profils et fournisseurs
@@ -283,7 +324,7 @@ L’administration des modèles permet de :
 - tester la connexion, découvrir ses modèles et ressources, puis sélectionner celles à utiliser ;
 - enregistrer un code Galaris stable, un libellé, le nom technique du modèle et ses capacités ;
 - consulter ou renseigner contexte maximal, modalités d’entrée/sortie et informations tarifaires ;
-- distinguer les ressources texte, vision, documents, embeddings, images, transcription, voix,
+- distinguer les ressources texte, décision, vision, documents, embeddings, images, transcription, voix,
   analyse audio/vidéo, musique, bruitages et génération vidéo ;
 - récupérer des métadonnées tarifaires disponibles ; le bridge `models_dev` enrichit le catalogue ;
 - installer ou supprimer un modèle lorsque le fournisseur expose cette gestion, notamment Ollama ;
@@ -293,6 +334,40 @@ Une capacité déclarée par un fournisseur n’est pas une promesse pour tous s
 et la ressource choisie déterminent les fonctions effectivement disponibles.
 Une même ressource peut cumuler plusieurs capacités, par exemple texte, vision et documents ;
 leur sélection est conservée lors de l’enregistrement et de la réouverture du modèle.
+
+Le catalogue du fournisseur propose un sélecteur de type de ressource, incluant **Documents / PDF**
+et **Décision**. Le filtre documentaire retient les modèles déclarant des **fichiers en entrée et
+du texte en sortie** ; des métadonnées incomplètes peuvent masquer un modèle compatible. La
+découverte multimodale conserve toutes les capacités d’un même modèle ; le rafraîchissement
+explicite permet de renouveler les métadonnées disponibles.
+
+### Configuration initiale facultative OpenRouter
+
+Une **installation neuve** reçoit un fournisseur OpenRouter sans clé API, neuf modèles et un
+profil **Défaut** prérempli. Cette proposition ne fait aucun appel réseau et ne fournit aucun
+compte, secret ou tarif propre à une installation. Il faut configurer l’accès au fournisseur ou
+remplacer les affectations avant de pouvoir utiliser les ressources concernées.
+
+| Ressource livrée dans la configuration | Affectation initiale |
+|---|---|
+| DeepSeek V4.1 Flash | Les quatre niveaux texte et la vision |
+| GPT 5.4 Nano | Documents |
+| Whisper large v3 | Transcription |
+| MiniMax Hailuo 3 Max | Génération vidéo |
+| Google Lyria 3 Clip Preview | Génération musicale |
+| TypeSafe Jev 1.13 | Décision |
+| Qwen3 Embedding 4B | Embeddings |
+| Google Nano Banana Pro / Gemini 3 Pro Image | Génération d’images |
+| NVIDIA Nemotron 3 Nano Omni (free) | Compréhension audio et vidéo |
+
+Les niveaux texte ont respectivement les efforts `none`, `low`, `medium` et `high`. Le repli
+des décisions vers le texte est autorisé initialement. Ce tableau décrit les références
+enregistrées par Galaris, sans garantir leur disponibilité commerciale distante.
+
+La proposition appartient ensuite à l’administrateur : modifications, renommages et suppressions
+sont conservés. **Les bases existantes ne sont pas préremplies.** Pour supprimer le dernier profil,
+il faut d’abord en créer un remplaçant, éventuellement vide. Les prix peuvent être actualisés
+avec le mécanisme habituel du fournisseur.
 
 ### Profils et choix des modèles
 
@@ -314,6 +389,10 @@ de la complexité `standard` ou `high` de la Task. Les usages spécialisés disp
 sélections : vision, documents, audio, vidéo, génération sonore, musicale et vidéo, images,
 transcription et embeddings. La voix se choisit sur l’agent ou l’utilisateur.
 
+Le profil comporte également une sélection **Décision**, facultative et réservée aux ressources
+annonçant cette capacité, avec sa politique de repli. Les niveaux texte du tableau restent les
+modèles génératifs utilisés en l’absence de spécialisation ou lorsque le traitement doit rédiger.
+
 **Un profil explicitement sélectionné est exclusif.** S’il manque une ressource, Galaris ne la prend
 pas silencieusement dans un autre profil. Sans sélection particulière, l’agent ou l’humain suit le
 profil courant. L’interface permet de créer, modifier, supprimer et activer les profils.
@@ -328,6 +407,42 @@ un quota ou un flux partiel ne déclenche pas ce retrait. Les incompatibilités 
 restent des erreurs explicites. L’activité conserve l’effort demandé même si sa valeur est
 traduite. La [matrice des paramètres](fr/dev/provider-parameters.md) décrit les contrats vérifiés
 par des transports simulés, sans appel facturable aux services externes.
+
+### Décisions spécialisées et repli gouverné
+
+Le modèle Décision traite des questions à choix fermés et ses réponses sont validées avant
+application. L’adaptateur disponible passe par OpenRouter ; une ressource limitée aux décisions
+n’est pas utilisable comme modèle de chat. Sans sélection Décision, les parcours texte existants
+restent utilisables, y compris avec un unique modèle local.
+
+| Parcours | Rôle de Décision | Rôle conservé pour le texte ou les règles |
+|---|---|---|
+| Dispatcher Task et admission des pairs IA | Choisir parmi les routes, efforts et autres choix autorisés | Droits, politique du harnais et choix déterministe sans appel si une seule route/effort reste possible |
+| Sujets des activités et messages | Réutiliser un sujet, détecter une continuité ou demander un nouveau dossier | Rédiger le titre, la description et les mots-clés d’un nouveau sujet ; appliquer la politique de création |
+| Extraction Memory par Dream | Ignorer une source sans fait durable, rattacher des faits déjà couverts ou demander l’extraction | Rédiger et valider les connaissances nouvelles ou incomplètement couvertes |
+| Acquisition Memory | Confirmer l’équivalence complète avec un candidat proche | Recherche, droits, conservation des faits et rattachement idempotent de provenance |
+
+Planner, Briefing, suivi de Goal et apprentissage restent génératifs. Les règles déterministes de
+maintenance et de transition n’ajoutent pas d’appel de décision.
+
+La politique **repli texte en cas d’échec** peut autoriser un seul appel au modèle du **même
+profil** : niveau low pour le dispatcher, ultra low pour Dream. Elle peut être désactivée.
+Un profil personnel sans spécialisation n’emprunte pas celle du profil global. Les refus
+d’authentification, d’autorisation ou de paiement, l’annulation, l’arrêt et la perte de lease ne
+deviennent pas un contournement par un autre modèle. Une confiance faible ne déclenche pas à elle
+seule un repli ; les probabilités absentes ne sont jamais inventées.
+
+La requête durable fige les choix, modèles et paramètres. La trace distingue l’appel spécialisé
+du repli éventuel, conserve leurs coûts et précise l’origine de la réponse et la raison du repli.
+Une reprise refuse une configuration de modèle ou de connexion devenue incompatible. Il n’y a
+pas de délai propre à Décision imposé par défaut ; les échéances explicites et limites du workflow
+restent appliquées. Le gain de qualité, de coût ou de rapidité se mesure dans le Lab : une décision
+suivie d’une rédaction peut ajouter un appel.
+
+Sources : [décisions par profil](../back/app/llm/profile_decisions.py),
+[inférence spécialisée](../back/app/llm/decision_service.py),
+[garanties des workflows](../back/tests/test_decision_workflows.py),
+[configuration initiale](../back/app/llm/initial_configuration.py).
 
 ### Fournisseurs présents dans le dépôt
 
@@ -376,6 +491,77 @@ L’utilisation de la connexion personnelle ChatGPT exige une confirmation expli
 dans la configuration du fournisseur. Sa révocation bloque les appels, même si l’authentification
 est encore connectée ; un changement de propriétaire exige une nouvelle confirmation.
 
+### Limites de l’abonnement ChatGPT
+
+La configuration du fournisseur connecté par authentification d’appareil affiche les fenêtres
+d’utilisation renvoyées par le compte ChatGPT : **pourcentage consommé**, durée de la fenêtre et
+date de réinitialisation lorsqu’elles sont disponibles. L’heure de vérification et une action
+d’actualisation permettent de distinguer la donnée consultée d’un suivi permanent.
+
+Ces limites portent sur **l’ensemble du compte**, y compris ses usages hors de Galaris. Leur
+consultation ne lance pas d’inférence. Elle exige les droits d’administration du fournisseur,
+un titulaire valide et une authentification utilisable. Une erreur ou une fenêtre absente est
+signalée comme indisponible, sans fabriquer un quota de remplacement. Cette vue ne constitue
+ni un budget par agent ni une mesure de la facture des modèles API.
+
+Sources : [lecture des quotas](../back/bridge/openai/codex_quota.py),
+[contrôles et erreurs](../back/bridge/openai/tests/test_quota.py).
+
+### API publiques fondées sur les profils
+
+Chaque profil possède un **Code API stable**, généré à sa création et conservé lors d’un renommage.
+Les profils existants reçoivent ce code à la synchronisation de la base. Le client choisit un
+usage du profil plutôt qu’un fournisseur concret ; une nouvelle affectation s’applique aux appels
+suivants, sans rediriger un appel déjà admis.
+
+| Sélecteur de modèle | Usage |
+|---|---|
+| `<profil>/text/ultra-low`, `<profil>/text/low` | Niveaux texte ultra low et low |
+| `<profil>/text/standard`, `<profil>/text/high` | Niveaux texte standard et high |
+| `<profil>/text/default` | Alias du niveau standard |
+| `<profil>/embedding/default` | Modèle vectoriel du profil |
+| `<profil>/decision/default` | Modèle de décision du profil |
+
+Les URL communes sont `/api/profile/openai` et `/api/profile/anthropic`. Leurs catalogues
+`/models` et `/v1/models` présentent les affectations disponibles de **tous les profils**, y compris
+ceux qui ne sont pas courants ; `/api/profile/models` inclut aussi les usages spécialisés.
+L’authentification utilise un **jeton API utilisateur** avec le droit d’accès à l’API LLM,
+transmis en Bearer dans les deux protocoles.
+
+- **Texte :** Chat Completions, Responses et compaction selon le support du fournisseur ; Messages
+  et comptage de tokens côté Anthropic. Réponses ordinaires et flux restent disponibles.
+- **Embeddings :** `/api/profile/openai/embeddings` accepte un texte ou de 1 à 2 048 textes non
+  vides, conserve leur ordre et restitue l’usage disponible. Les formats sont `float` ou `base64` ;
+  les dimensions dépendent du fournisseur. Les entrées déjà tokenisées ne sont pas acceptées.
+- **Décisions :** `/api/profile/decisions` accepte les questions et critères fermés, puis renvoie
+  les choix et leur origine spécialisée ou texte. Un échec récupérable peut utiliser le
+  `text/standard` du même profil si la politique l’autorise ; la raison du repli est conservée.
+
+Un usage absent, indisponible ou incompatible avec le protocole produit une erreur, sans emprunt
+à un autre profil. Les messages et résultats d’outils fournis par un client utilisateur restent
+du contenu : une URI de Task ou un nom de modèle dans ce contenu ne modifie ni le routage ni
+la corrélation de l’appel. Les routes historiques `/api/llm/openai` et `/api/llm/anthropic` restent
+disponibles pour les codes des modèles concrets.
+
+### Préparer un client externe depuis l’interface
+
+Depuis les usages LLM ou la page des jetons utilisateur, le configurateur **Claude Code / Codex**
+propose les profils et niveaux texte actuellement disponibles. Il génère le contenu à copier
+pour `.claude/settings.json` ou `~/.codex/config.toml`, avec l’URL de l’instance et le sélecteur
+choisi. Le placement du secret est présenté séparément : configuration locale Claude Code ou
+variable `GALARIS_API_TOKEN` pour Codex. Aucun secret existant n’est inséré dans le modèle de fichier.
+
+La configuration Codex utilise Responses ; celle de Claude Code utilise Messages et affecte les
+alias de familles aux niveaux du profil. Dans le fichier Claude généré, un niveau non configuré
+reprend explicitement le modèle choisi ; cela ne crée aucun repli implicite côté serveur.
+L’utilisateur fusionne ces extraits avec sa configuration locale. Le configurateur permet de
+réessayer un chargement échoué et signale l’absence de modèles disponibles.
+
+Sources : [API par profil](fr/user/profile-api.md), [guide Codex](fr/user/codex.md),
+[guide Claude Code](fr/user/claude-code.md),
+[garanties des passerelles](../back/tests/test_profile_gateway.py),
+[configurations client](../front/browser-tests/client-config.spec.mjs).
+
 ### Inférences durables : lancer, suivre et contrôler une requête
 
 Les requêtes texte, structurées et de protocole peuvent être enregistrées comme **inférences
@@ -404,6 +590,11 @@ ordinaires conservent leur propre contrat d’annulation lors de l’abandon de 
 de lease ferme les appels abandonnés et rejette les écritures tardives, sans relancer implicitement
 le fournisseur. Les résultats des anciennes tentatives restent immuables et leurs traces sont
 préservées pour la relecture.
+
+La préparation des traces volumineuses ne conserve plus le verrou de finalisation des appels :
+le journal peut continuer à enregistrer la progression et renouveler le lease pendant cette
+préparation. Cette garantie de concurrence est couverte par les
+[tests du cycle d’inférence](../back/tests/test_inference_lifecycle.py).
 
 La reprise soumet de nouveau la requête et peut être facturée : elle ne reprend pas le calcul
 interne du fournisseur token par token. Cette couche n’exécute pas d’effets d’outils. La création
@@ -1093,6 +1284,10 @@ Les acquisitions automatiques commencent privées. Une projection gérée par un
 être en lecture seule ou protégée ; modifier sa copie n’est pas une manière de modifier l’objet
 métier d’origine.
 
+L’écriture immédiate par `memory_remember` est destinée aux faits rares et importants dont la
+conservation ne doit pas attendre Dream. L’extraction ordinaire appartient au travail de fond ;
+la présence de l’outil n’invite pas l’agent à mémoriser chaque échange ou chaque action.
+
 Une déduplication par contenu respecte aussi les dates de validité : un même fait confirmé sur
 une nouvelle période ne réutilise pas silencieusement un souvenir expiré. Celui-ci conserve ses
 dates et sa provenance et reste exclu du rappel tant qu’il est invalide.
@@ -1101,7 +1296,18 @@ dates et sa provenance et reste exclu du rappel tant qu’il est invalide.
 caractères. Le résultat suit le contrat HTML et l’acquisition Memory habituelle ; les souvenirs
 existants de la salle ne sont pas remplacés en bloc. Un historique vide ou une erreur de modèle
 ne stocke pas un faux résumé ni une copie brute de secours. L’ancien argument inopérant
-Le contrat d’acquisition conserve les souvenirs existants sans option de remplacement global.
+de remplacement global n’est plus proposé : le contrat d’acquisition conserve les souvenirs existants.
+
+Si le profil effectif dispose d’un modèle Décision, la similarité vectorielle ne suffit plus
+à convertir une acquisition en simple rattachement : le choix spécialisé doit confirmer
+l’équivalence complète avec le souvenir candidat. Une information nouvelle, une contradiction
+ou une couverture partielle reste distincte. La révision du candidat est revérifiée après
+l’attente du modèle ; un changement concurrent préserve la nouvelle connaissance. Le rattachement
+ajoute une provenance sans réécrire ni supprimer le souvenir existant. Sans spécialisation,
+le parcours de dédoublonnage existant reste utilisé.
+
+Sources : [acquisition Memory](../back/app/memory/acquisition_service.py),
+[équivalence et concurrence](../back/tests/test_decision_workflows.py).
 
 ### Recherche hybride et rappel contextuel
 
@@ -1640,6 +1846,41 @@ bloquée, soumise à validation humaine ou automatique. Un sujet fixé explicite
 conversation évite de reclasser inutilement ses messages. Les corrections humaines et les choix
 Dream disposent d’une trace consultable.
 
+### Classement dès l’admission d’un message
+
+Quand le profil effectif possède un modèle **Décision** et son compagnon texte Dream, le classement
+d’un nouveau message entrant textuel peut démarrer **en parallèle de son admission**. Chat et
+bridges utilisant l’admission Messenger commune en bénéficient. La réponse et l’exécution n’attendent
+pas le résultat du classement ; sans spécialisation, le traitement différé Dream reste actif.
+
+Les messages d’un même salon sont traités successivement, tandis que des salons distincts peuvent
+avancer en parallèle. Le traitement partage les reçus et reprises de Dream : un classement déjà
+appliqué n’est pas recalculé par la maintenance. Un échec, une annulation ou une réservation
+indisponible laisse le message au rattrapage de fond. L’historique importé écarté de l’admission
+ne déclenche pas artificiellement ce classement immédiat.
+
+Le résultat respecte le sujet du salon, les affectations manuelles et la politique de création
+(interdite, proposée ou automatique). Un résultat ancien ne remplace pas le sujet d’une entrée
+plus récente. Le dernier message d’entrée peut transmettre son sujet au round ; les Tasks issues
+directement du message peuvent le recevoir si elles n’en possèdent pas déjà un.
+
+Le harnais, les outils mémoire et la création de Tasks peuvent relire un classement arrivé après
+l’ouverture du tour. Une recherche déjà effectuée n’est pas relancée ; les opérations suivantes
+peuvent utiliser le sujet disponible. Celui-ci n’accorde aucun droit et ne remplace pas la portée
+contact du rappel humain par un filtre thématique excluant les autres connaissances autorisées.
+
+### Héritage du sujet dans les réponses
+
+Les réponses de l’agent héritent du sujet de la dernière entrée du round, y compris ses réponses
+textuelles et ses segments audio successifs. Aucun modèle supplémentaire ne classe chaque réponse.
+Une transcription ou un classement tardif resynchronise également les sorties déjà présentes,
+en conservant les choix explicites et la résolution du sujet du salon. Un sujet inconnu reste
+inconnu ; un sujet explicitement retiré n’est pas réinventé.
+
+Le Lab Topics applique le même principe : les messages IA héritent du sujet courant avec un coût
+de classement nul. Un échange initial sans sujet peut produire `null`, qui représente une absence
+de sujet plutôt qu’un dossier artificiel.
+
 Le sujet public rend possible une organisation commune. Les contenus privés et les contacts qu’il
 relie restent soumis à leurs droits ; « même sujet » ne signifie pas « mêmes accès ».
 
@@ -1656,7 +1897,10 @@ Annulation, erreur, retrait de droits et changement de contexte ne permettent pa
 tardive de remplacer une sélection plus récente.
 
 Sources : [contrats Topic](../back/app/topic/schemas.py), [API](../back/app/topic/router.py),
-[outils](../back/app/topic/mcp.py), [détection et tests](../back/app/topic/tests/).
+[outils](../back/app/topic/mcp.py), [détection et tests](../back/app/topic/tests/),
+[classement à l’admission](../back/app/dream/live_topics.py),
+[garanties de publication](../back/tests/test_live_topic_decisions.py),
+[héritage vocal](../back/app/voice/tests/test_conversation_service.py).
 
 <a id="dream"></a>
 ## 15. Dream et apprentissage
@@ -1684,6 +1928,15 @@ conversationnelles. Ils produisent une décision structurée : **CREATE** pour u
 **LINK** pour ajouter une provenance à une connaissance existante ou **IGNORE**. Relier une source
 ne réécrit pas automatiquement le souvenir existant. La normalisation et les seuils côté serveur
 peuvent écarter une proposition insuffisamment étayée.
+
+Avec **Décision** configurée, Dream peut éviter une rédaction inutile : ignorer si aucun fait
+durable n’est présent, ou rattacher des provenances si **tous** les faits durables sont déjà
+couverts. Une nouveauté, une contradiction, une couverture partielle, une incertitude ou un choix
+incohérent — par exemple un rattachement sans cible — conduit à l’extracteur texte avec l’entrée
+complète. Les droits et les cibles admissibles restent vérifiés avant écriture. Les appels
+spécialisés et les appels nécessaires pendant l’acquisition restent rattachés au reçu avec leurs
+coûts, y compris si l’application échoue. Le classement déclenché dès l’admission des messages
+réutilise ces mêmes reçus ; Dream assure le rattrapage des messages restant à traiter.
 
 ### Analyser les pièces jointes encore sans description
 
@@ -1776,8 +2029,36 @@ et opérations sur le fichier principal restent protégés selon le contrat.
 Les compétences apprises par Dream constituent une collection séparée, avec score et preuves.
 Elles s’ajoutent aux compétences ordinaires lorsque leur état le permet.
 
+### Application des changements à la prochaine exécution
+
+Avant chaque nouvelle Task, Galaris compare les compétences autorisées et leurs fichiers à la
+dernière projection réussie dans le harnais managé sélectionné. Éditions, imports, changements
+de catégories ou d’autorisations, fichiers annexes et compétences apprises sont pris en compte
+sans action de rafraîchissement depuis le navigateur. Les modifications successives sont
+regroupées jusqu’à l’exécution suivante.
+
+Les commandes de rafraîchissement enregistrent une demande durable. Elles ne redémarrent pas
+immédiatement un harnais sous une Task en cours et ne provisionnent pas un runtime absent.
+Le statut technique distingue **en attente**, **à jour**, **erreur** et **non applicable**.
+Une copie interrompue ou échouée ne vaut pas synchronisation réussie : elle empêche le démarrage
+du driver avec une projection périmée et reste à réessayer. Un changement pendant la copie
+provoque une nouvelle vérification ; une modification continuelle peut faire échouer la préparation.
+
+Une exécution déjà lancée garde son contexte chargé. Une reprise avec checkpoint conserve aussi
+les compétences et credentials de l’opération distante qu’elle réconcilie ; les changements restent
+en attente pour la prochaine exécution nouvelle. Le harnais interne recharge ses capacités selon
+son mécanisme habituel ; un harnais réseau sans projection garde son injection bornée de `SKILL.md`.
+La présence d’une compétence ne garantit pas que le modèle décide de la consulter.
+
+Les skills système **Connaissance de Galaris** (`galaris-knowledge`) et **Galaris Lab**
+(`galaris-lab`) accompagnent respectivement la documentation produit et le pilotage des expériences.
+Le premier est activé globalement par défaut, mais exige l’accès documentaire effectif ; le second
+est désactivé par défaut. Leur attribution ne remplace pas les droits sur leurs Tools.
+
 Sources : [API Skill](../back/app/skill/router.py), [schémas](../back/app/skill/schemas.py),
-[bibliothèque et tests](../back/app/skill/).
+[bibliothèque et tests](../back/app/skill/),
+[réconciliation avant exécution](../back/app/harnesses/skill_sync.py),
+[garanties des harnais](../back/app/harnesses/tests/test_skill_sync.py).
 
 <a id="outils"></a>
 ## 17. Outils, connexions et serveur MCP
@@ -1868,12 +2149,60 @@ nommé, activé/désactivé et révoqué. Le secret est présenté à la créati
 MCP externes accèdent au périmètre réellement autorisé, pas à une administration implicite de
 l’ensemble de Galaris.
 
-Les outils **Galaris Admin**, **Gestion des objectifs**, **Gestion des compétences**, **Topics** et
-**Administration des processus** séparent les fonctions spécialisées des usages ordinaires.
+Les outils **Galaris Admin**, **Lab Galaris**, **Gestion des objectifs**, **Gestion des compétences**,
+**Topics** et **Administration des processus** séparent les fonctions spécialisées des usages
+ordinaires. La connexion Lab reste inactive par défaut ; ses cinquante fonctions sont détaillées
+dans [le Lab](#lab) et [l’inventaire MCP](#mcp).
+
+### Documentation produit consultable par les agents
+
+Tout agent autorisé peut rechercher la **documentation de la version installée** et expliquer
+Galaris à son utilisateur, sans changer de personnalité ou de mission. Un index commun réunit
+les guides utilisateur, d’administration et de développement, les cartes de navigation et
+d’architecture, ainsi que les décisions et les plans du projet.
+
+- `documentation_catalog` donne la version, les langues, domaines et points d’entrée ; son
+  autorisation conditionne aussi la lecture de `galaris://documentation/`.
+- `documentation_search` recherche une question avec filtres de langue, domaine, nature de
+  source et préfixe de chemin. Elle renvoie titres, sections, extraits, URI, statuts et empreintes.
+- Les opérations génériques `file_list`, `file_info` et `file_read` permettent ensuite de parcourir
+  et lire les sources autorisées, conservées dans leur format natif Markdown, JSON ou HTML.
+  Ces sources sont **en lecture seule**. La recherche spécialisée passe par `documentation_search`.
+- Les lectures longues continuent par offsets de caractères Unicode, à partir de zéro. La liste
+  utilise un curseur ; une modification du corpus invalide les anciens curseurs.
+- La recherche textuelle et les correspondances exactes fonctionnent sans modèle vectoriel.
+  Avec un modèle configuré, l’index s’enrichit progressivement et la recherche devient hybride ;
+  l’absence de modèle, une panne ou un index incomplet sont signalés, sans supprimer la voie texte.
+
+L’activation requiert la connexion **Galaris Admin**, les fonctions documentaires autorisées et,
+pour le Chat, le mode conversation du Tool. Le skill `galaris-knowledge` apporte les concepts et
+la méthode de recherche ; sa projection exige aussi `documentation_catalog` et les autorisations
+de compétence/catégorie. Il peut guider par **section → écran → onglet → action**, à partir des
+parcours et menus documentés, sans présumer des droits de l’utilisateur accompagné.
+
+Pour un agent consacré à l’aide produit, on peut désactiver séparément `conversation_round_get`,
+`voice_turn_get`, `llm_call` et `llm_calls` : lire la documentation n’exige pas d’inspecter les
+exécutions réelles. La connexion Admin reste inactive par défaut, sauf lors de la création initiale
+de l’assistant Galaris. L’activer sans restrictions conserve les autres autorisations usuelles
+de ses fonctions.
+
+Révoquer la connexion ou `documentation_catalog` bloque aussi les lectures, métadonnées et copies
+d’URI déjà connues. Révoquer seulement `documentation_search` bloque la recherche tout en laissant
+la lecture autorisée. La documentation n’autorise aucune mutation, ne révèle pas la configuration
+réelle du compte et distingue les plans prospectifs des fonctions effectivement réalisées.
+Les guides courants priment sur les intentions historiques ; les résultats conservent leur provenance.
+
+Le corpus est embarqué dans les images et actualisé lors des mises à jour ; les sources de
+développement peuvent être rafraîchies sans redémarrage. L’empreinte identifie les sources même
+si la référence de build manque. Les réponses déjà écrites dans une conversation ne sont pas
+réécrites rétroactivement ; une nouvelle lecture utilise les sources actualisées.
 
 Sources : [contrats Tool](../back/app/tools/schemas.py), [API Tool](../back/app/tools/router.py),
 [connexions](../back/app/connection/router.py), [MCP](../back/app/mcp/router.py),
-[outils intégrés](../back/app/tools/mandatory_tools.py).
+[outils intégrés](../back/app/tools/mandatory_tools.py),
+[activation de la connaissance produit](fr/admin/product-knowledge.md),
+[contrats documentaires](../back/app/documentation/contracts.py),
+[tests d’accès et de recherche](../back/app/documentation/tests/test_documentation.py).
 
 <a id="fichiers"></a>
 ## 18. Fichiers et ressources
@@ -1891,6 +2220,8 @@ contrôle l’accès** ; le nom affiché ne remplace pas son identité.
 | `memory://` | Recherche et lecture des connaissances autorisées. |
 | `galaris://` | Projections d’objets métier : Tasks, rounds texte, tours vocaux, Goals, cycles et processus selon les collections exposées. |
 | `galaris://skill/` | Fichiers des skills administrées, uniquement avec la connexion spécialisée active. |
+| `galaris://agent/<id>` | Profil courant d’un agent accessible, dont les champs éditoriaux d’identité et de mission ; l’identifiant entier est fourni par l’annuaire. |
+| `galaris://documentation/` | Corpus officiel installé, en lecture seule, soumis à la connexion Galaris Admin et à `documentation_catalog`. |
 | URI d’un Tool de fichiers connecté | Fichiers et collections du provider, par exemple Nextcloud. Le code exact du Tool constitue le schéma. |
 | URI d’une pièce jointe Messenger | Fichier conservant le Tool et le salon d’origine ; lecture selon l’accès à la conversation. |
 | `mail://` | Pièces jointes identifiées par message/partie MIME ; lecture et copie, sans mutation générique. |
@@ -2377,10 +2708,43 @@ capture la politique effective du provider et utilise les mêmes couples route/e
 runtime, dont `BRIEFING` lorsqu’il est déclaré et le choix déterministe lorsqu’un seul couple
 subsiste. Ses jugements suivent le contrat de production.
 
+### Générer des jeux synthétiques contextualisés
+
+Les **onze labs** proposent une génération de jeu synthétique : choisir son nom, le modèle
+générateur, la langue, **1 à 20 cas**, les catégories et les situations ou contraintes métier.
+Le formulaire explique les points testables du mécanisme ; il faut prévoir au moins un cas
+par catégorie demandée. Le modèle propose paramètres communs, variables, contextes et références.
+
+Si un jeu est sélectionné, l’option **Reprendre le contexte du jeu**, activée par défaut, conserve
+ses paramètres enregistrés, corpus, outils, configuration d’algorithme et consignes. Ses cas ne
+sont pas copiés. Le nouveau jeu conserve la référence et la révision du contexte utilisé ; une
+révision dépassée est refusée. Désactiver l’option permet de générer un environnement fictif distinct.
+Les modifications non enregistrées du jeu source doivent donc être sauvegardées auparavant.
+
+Les situations sont adaptées au mécanisme : continuité et reprises de sujets, faits et corpus
+mémoire, dépendances d’un plan, preuves d’apprentissage ou de diagnostic, cycles d’objectif,
+historique conversationnel, délégation ou interruptions vocales transcrites. Les références
+doivent respecter les outils et leurs réponses simulées, sans transformer un échec configuré
+en succès attendu. La génération n’importe pas de conversations ou de Tasks réelles.
+
+Le jeu complet est validé avant enregistrement : un cas invalide ou une erreur fournisseur ne
+laisse pas de jeu partiel et préserve les jeux existants. Tous les nouveaux cas restent **brouillons**,
+à relire, corriger et enregistrer pour participer aux benchmarks. La provenance conserve modèle,
+consignes et coût de génération. Fermer et rouvrir la fenêtre permet de retrouver une génération
+en cours ; changer de lab ne déplace pas son résultat vers un autre mécanisme.
+
 ### Exécuter et comparer
 
 Le candidat et le juge sont choisis séparément. Le lancement fige les items prêts, les paramètres,
 les modèles et les données nécessaires à la comparaison.
+
+Les labs **Dispatcher**, **Détection des sujets** et **Extraction mémoire** acceptent également
+les candidats Décision. Pour les deux derniers, le modèle texte Dream nécessaire aux rédactions
+est figé avec le candidat spécialisé et son empreinte. Un changement ultérieur de profil ne
+redirige pas l’essai ; un modèle figé devenu incompatible fait échouer le candidat. Le **repli
+texte du candidat spécialisé est désactivé**, afin de ne pas attribuer au modèle Décision le
+résultat d’un autre candidat. Inversement, un candidat texte n’utilise pas implicitement le
+modèle Décision courant. Le coût inclut les décisions et les rédactions réellement nécessaires.
 
 La **première passe** exécute les cas et publie les sorties et contrôles objectifs. La **seconde
 passe** juge ces sorties. Le candidat ne reçoit jamais l’attendu ; le juge le considère comme un
@@ -2389,6 +2753,13 @@ exemple et examine les contraintes, afin d’accepter plusieurs réponses valide
 Le détail présente sorties, scores par dimension, justifications, contrôles, échecs critiques,
 cas non jugés, couverture, coûts et temps. Les entrées/références et données brutes restent
 consultables. Une analyse narrative optionnelle résume la campagne sans réécrire les scores.
+
+La **cohérence** de chaque résultat est visible en pourcentage dans la liste. La cohérence moyenne
+est la moyenne arithmétique des scores disponibles, toutes répétitions confondues, accompagnée
+du nombre d’évaluations notées sur le total prévu. Un score de 0 % compte ; une note absente est
+exclue, sans être remplacée par zéro ou par une similarité. Filtrer les lignes ne change pas
+cette moyenne. Les critères restent propres au mécanisme. Les aperçus textuels des items retirent
+les balises HTML pour la lecture, tout en conservant les entrées originales dans l’éditeur et les tests.
 
 - Annuler en conservant les résultats publiés.
 - Reprendre les items restants avec le snapshot figé.
@@ -2418,8 +2789,69 @@ Les simulations de réponses d’outils au Lab ne prouvent pas un effet externe 
 n’évalue pas la reconnaissance audio. Les tests et qualifications de services externes restent
 complémentaires.
 
+### Confier une campagne à un agent
+
+La connexion **Lab Galaris** donne accès à **50 fonctions MCP** pour découvrir les onze mécanismes,
+lire leurs contrats et rubriques, préparer les jeux et cas, régler leurs prompts expérimentaux,
+lancer les benchmarks et examiner leurs preuves. La connexion et le skill système **Galaris Lab**
+(`galaris-lab`) sont **désactivés par défaut** et s’activent séparément. Les opérations portent sur
+les mêmes objets que l’interface du Lab ; modifier une expérience ne change pas les prompts ou
+les modèles de production.
+
+| Domaine de pilotage | Capacités de l’agent autorisé |
+|---|---|
+| Découverte | Mécanismes, schémas d’entrée/sortie, rubriques, modèles compatibles et réglages par défaut |
+| Jeux et cas | Créer, lire, modifier à la révision attendue, cloner une expérience avec ses cas, dupliquer un cas, restaurer sa source et supprimer selon l’état |
+| Préparation | Prévisualiser les entrées résolues et prompts sans inférence ; générer un jeu synthétique ou proposer un attendu à revoir |
+| Capture | Découvrir et importer des preuves réelles, prévisualiser puis capturer une plage complète de messages Topics |
+| Exécution | Lancer, suivre, annuler, reprendre les items restants, rejuger les sorties conservées et consulter les campagnes |
+| Comparaison | Comparer deux runs selon un axe explicite : modèle, prompt ou paramètres, en signalant les différences qui limitent la comparaison |
+| Diagnostic | Inscrire une Task existante dans le Lab, analyser ses preuves et relire les diagnostics sans rejouer la Task |
+| Évaluation | Déposer une appréciation attribuée à l’agent, distincte de la revue humaine et du score du juge |
+
+Les sources réelles et diagnostics demandent **en plus** Galaris Admin et les quatre fonctions
+d’inspection des exécutions. Un accès limité à la documentation ne suffit pas. Les captures
+conservent leur provenance ; des paramètres de source différents exigent la confirmation des
+écarts. Une plage de messages tronquée est refusée plutôt qu’importée comme complète.
+
+Les commandes répétées avec la même clé d’invocation et les mêmes arguments retrouvent leur reçu ;
+réutiliser cette clé pour une commande différente produit un conflit. Les révisions protègent les
+éditions concurrentes et la suppression d’un jeu attend la fin de ses benchmarks actifs.
+Les autorisations sont revérifiées à l’appel et avant de nouvelles unités de travail : révoquer
+une connexion ou une fonction bloque la suite, sans garantir l’arrêt d’un appel fournisseur déjà parti.
+
+Les générations, propositions d’attendus et analyses longues renvoient une **opération durable**
+à consulter ou annuler. Leur résultat se relit sans relancer le modèle. Une interruption dont les
+effets sont incertains peut laisser un état inconnu, sans répétition aveugle. Les opérations
+techniques du Lab ne polluent pas le catalogue des processus personnels. Elles figent les modèles
+et révisions nécessaires ; leurs coûts de génération ou d’analyse sont séparés du budget de benchmark.
+
+Les listes sont paginées, avec 50 éléments par défaut et 10, 20, 50, 100 ou 500 au choix.
+Les sorties MCP sont bornées à **1 Mo** ; les résumés et `lab_content_read` permettent de lire les
+grands contenus par caractères en vérifiant leur empreinte. Les résultats d’opérations disposent
+également d’une continuation, sans troncature silencieuse des preuves.
+
+Le comparateur signale changements de corpus, contexte, réglages ou juge, sorties manquantes et
+appariements ambigus. Les écarts sont descriptifs ; ils ne démontrent pas à eux seuls une
+supériorité statistique. L’agent doit recevoir une question expérimentale, un budget et une
+condition d’arrêt ; aucune promotion automatique vers les réglages de production n’est annoncée.
+
+### Revues attribuées aux agents
+
+Un agent peut lire une sortie avec sa rubrique figée, proposer des notes et justifications,
+puis déposer une revue **immuable**, attribuée à son identité, à la campagne et au résultat.
+L’interface les présente avec leur provenance, séparément des avis humains et du jugement automatique.
+La revue ne remplace aucun de ces deux autres types d’évaluation.
+
+La route de revue masque le jugement automatique jusqu’au dépôt de l’avis de cet agent. Ce
+masquage ne prouve pas que l’agent n’a jamais consulté les scores par une autre route. Le run
+conserve également l’agent et la Task à l’origine de son lancement pour suivre la campagne.
+
 Sources : [guide du Lab](fr/user/lab-ai.md), [contrats](../back/app/lab/contracts.py),
-[API](../back/app/lab/router.py), [architecture](fr/architecture/ai-lab-evaluation.md).
+[API](../back/app/lab/router.py), [architecture](fr/architecture/ai-lab-evaluation.md),
+[génération synthétique](../back/app/lab/tests/test_synthetic_datasets.py),
+[fonctions MCP](../back/app/lab/mcp.py), [contrôles d’accès](../back/app/lab/mcp_access.py),
+[parcours agentiques testés](../back/app/lab/tests/test_mcp.py).
 
 <a id="supervision"></a>
 ## 26. Activité, coûts et incidents
@@ -2456,6 +2888,12 @@ conversation ou Process, but de l’appel, fournisseur, modèle demandé/effecti
 messages, prompt système, réponse, raisonnement public retourné, outils, réponse brute conservée,
 raison de fin, erreur, durée et instant du premier token.
 
+Pour les appels authentifiés par jeton API utilisateur, le journal conserve aussi le **nom du
+jeton au moment de l’appel**, même après son renommage ou sa suppression. Un jeton sans libellé
+est présenté comme tel ; les appels historiques dépourvus de cette information ne reçoivent
+pas d’attribution reconstituée. Les traces de décision distinguent le modèle spécialisé et son
+éventuel repli texte, sans masquer les coûts des deux appels.
+
 Le suivi des tokens distingue entrées, sorties, cache et raisonnement lorsqu’ils sont fournis.
 Les coûts portent leur qualification : estimation, montant connu, abonnement ou usage partiel.
 Les messages publics de progression d’un harnais sont distingués du résultat terminal autoritaire.
@@ -2472,6 +2910,10 @@ avec leurs droits actuels. Les appels exposent leur but, leur effort et leurs do
 Une erreur de chargement peut être reprise ; un détail tardif d’un ancien round ou un snapshot
 plus ancien ne remplace pas l’activité en direct. Les temps et coûts conservés se retrouvent
 après fermeture et réouverture.
+
+Sur mobile, les en-têtes des étapes se répartissent sur plusieurs lignes et les noms d’outils
+longs peuvent revenir à la ligne. L’aperçu de contenu dans l’en-tête est masqué pour laisser les
+statuts lisibles ; le contenu complet reste accessible dans l’étape dépliée.
 
 ### Journal durable des incidents
 
@@ -2639,13 +3081,27 @@ existence n’équivaut pas à une certification de toutes les combinaisons de f
 - **Récupération des effets.** `make tests-recovery` couvre notamment perte d’acquittement SSH,
   relecture PostgreSQL, reçus et absence de répétition des mutations à l’issue inconnue.
 - **Documentation et cartographie.** Les cartes générées ne dépendent pas du chemin du checkout.
-  Le contrôle d’architecture vérifie leur fraîcheur, les frontières et les liens documentaires.
+  `make docs-prepare` régénère les cartes du projet et des menus, puis vérifie leur fraîcheur,
+  les guides FR/EN, le corpus actif, les frontières et les liens documentaires. `make docs-check`
+  effectue les contrôles sans régénération. Ces commandes détectent des traductions absentes,
+  mais ne les rédigent pas et n’en valident pas automatiquement le sens.
+- **Recherche documentaire commune.** En développement, `make docs-update` prépare les sources,
+  vérifie leur concordance avec celles du backend actif, synchronise l’index textuel partagé
+  et contrôle recherche et lecture des parcours FR/EN. Aucun droit d’agent ni affectation de
+  compétence n’est modifié. Un ancien montage ou une image périmée provoque un échec explicite.
+- **Documentation embarquée dans la mise à jour.** Depuis les sources, `make update` lance
+  `docs-prepare` avant le build, puis actualise et vérifie l’index commun après démarrage.
+  Avec `RELEASE_DIR`, l’index utilise le corpus déjà embarqué dans les images qualifiées.
+  Un échec documentaire empêche d’annoncer le succès de la mise à jour ; il ne restaure pas
+  automatiquement une ancienne version déjà remplacée. L’indexation vectorielle progresse
+  séparément : son achèvement ne bloque pas la recherche textuelle ni la mise à jour.
 
 Sources : [préférences](../front/core/params/presentation.ts),
 [champs configurables](../front/core/params/settingsCatalog.ts), [paramètres](../back/core/params/),
 [administration](fr/admin/README.md), [installation](fr/admin/installation.md),
 [DbAdmin](fr/dev/dbadmin.md), [exploitation](fr/dev/reliability-operations.md),
-[tests fonctionnels](fr/dev/functional-tests.md).
+[tests fonctionnels](fr/dev/functional-tests.md),
+[actualisation de la connaissance produit](fr/admin/product-knowledge.md).
 
 <a id="parcours"></a>
 ## 28. Exemples de parcours complets
@@ -2737,6 +3193,32 @@ le même contexte et les mêmes paramètres, puis les sorties sont jugées et r�
 humaine confronte le jugement aux critères métier. Le diagnostic de l’incident conserve les preuves
 du correctif et son test ; les changements de configuration sont décidés à partir de ces résultats.
 
+### Demander à un agent comment utiliser Galaris
+
+Un agent équipé de la connexion Galaris Admin et de l’accès documentaire recherche la question,
+lit les passages de la version installée, puis indique le parcours **section → écran → onglet →
+action** avec sa source. Il distingue une fonction implémentée d’un plan et vérifie séparément
+les droits ou réglages du compte. L’assistant Galaris proposé à l’installation peut remplir cette
+mission ; un agent métier existant peut aussi recevoir cette capacité sans changer de personnalité.
+
+### Organiser une comparaison autonome dans le Lab
+
+Un agent équipé de Lab Galaris et du skill associé lit le contrat du mécanisme, prépare ou clone
+un jeu, puis fait générer des cas synthétiques adaptés à son contexte. Les brouillons sont revus
+avant benchmark. Il fait varier un axe, lance les essais avec des modèles et budgets explicites,
+suit les références durables, compare les résultats et dépose son appréciation attribuée.
+Les coûts, manques de jugement et limites de comparabilité restent visibles ; toute décision de
+modifier la production appartient à un parcours distinct. Capturer des traces réelles exige
+en plus les autorisations d’inspection administratives.
+
+### Utiliser le même profil depuis un client de développement
+
+Un utilisateur choisit un profil et son niveau texte dans le configurateur, copie les réglages
+de Codex ou de Claude Code, puis configure un jeton personnel autorisé à l’API LLM. Le client
+appelle le sélecteur stable du profil ; l’administrateur peut changer le modèle affecté pour les
+appels suivants sans retoucher les fichiers du client. Le journal retrouve les appels sous le
+nom du jeton utilisé et conserve le fournisseur et le modèle réellement sollicités.
+
 <a id="limites"></a>
 ## 29. Conditions de disponibilité et limites
 
@@ -2744,7 +3226,13 @@ du correctif et son test ; les changements de configuration sont décidés à pa
 |---|---|
 | Fonction intégrée | Peut nécessiter un privilège, une connexion active, des credentials et une ressource compatible. |
 | Services système | Galaris, Conversation, Memory et File Sharing sont obligatoires ; cette activation n’accorde pas de nouveaux droits sur les ressources. |
+| Assistant initial | Galaris est proposé une seule fois, avec le harnais interne et Galaris Admin actif à sa création ; modifications, révocations et suppression sont conservées. Un modèle utilisable reste requis. |
+| Préconfiguration OpenRouter | Réservée aux bases neuves, sans clé ni appel réseau ; les neuf références livrées restent modifiables et leur disponibilité distante n’est pas garantie. |
+| API de profils | Code stable, usages disponibles de tous les profils, jeton utilisateur autorisé ; un usage manquant n’emprunte pas un autre profil. |
+| Décisions spécialisées | Facultatives, via l’adaptateur OpenRouter disponible ; repli gouverné dans le même profil, sans probabilités inventées ni gain systématique promis. |
+| Quotas ChatGPT | Fenêtres fournies pour l’ensemble du compte, consultées à un instant donné ; ni quota par agent ni budget de facture API. |
 | Harnais gérés | Standard/high via la passerelle Galaris ; un run simultané par instance externe ; le transport générique reste standard. |
+| Synchronisation des skills | Appliquée avant une nouvelle exécution, sans interrompre une Task ; une continuation distante conserve son contexte antérieur et un échec de projection bloque le démarrage. |
 | Routage | Seuls les couples déclarés par le harnais sont disponibles ; Briefing reste désactivé dans les politiques actuelles. |
 | Inférence durable | Reconnexion au flux sans nouvelle génération ; reprise explicite par nouvelle tentative potentiellement facturée, sans continuation interne du calcul fournisseur. |
 | Chat natif | Humain–agent ; les salons de groupe de transports externes ne constituent pas une messagerie native universelle entre humains. |
@@ -2772,6 +3260,11 @@ du correctif et son test ; les changements de configuration sont décidés à pa
 | Stockage local | Disponible pour l’agent seulement si une console est configurée et active. |
 | PWA | Installation et session persistante ; les traitements requièrent le serveur. |
 | Mémoire | Rappel borné et gouverné ; pas une garantie de rappeler chaque souvenir à chaque demande. |
+| Sujet précoce | Classement parallèle si Décision et texte Dream sont configurés ; aucune attente d’admission, aucun droit supplémentaire et aucun rejeu automatique d’une recherche déjà faite. |
+| Documentation produit | Accès Galaris Admin et fonctions documentaires nécessaires ; lecture seule, recherche texte sans embeddings, plans identifiés comme prospectifs et configuration réelle à vérifier séparément. |
+| Lab agentique | Connexion et skill optionnels, inactifs par défaut ; 50 fonctions sur les expériences communes, sans modification automatique de la production. Captures et diagnostics exigent l’inspection Admin. |
+| Génération synthétique | De 1 à 20 cas adaptés au mécanisme et éventuellement au contexte d’un jeu ; tous restent brouillons et le jeu est enregistré intégralement ou pas du tout. |
+| Notes et revues du Lab | Une note absente ne vaut pas zéro ; avis agents, revues humaines et juge restent distincts. Les comparaisons descriptives ne prouvent pas une supériorité statistique. |
 | Webhook générique | Aucun endpoint actif ; les callbacks et entrées des intégrations dédiées gardent leurs contrats propres. |
 | Traces | Restitution de ce que le provider/runtime expose, avec limites et expurgation. |
 
@@ -2781,7 +3274,7 @@ d’aperçu, les bridges, les harnais, les mécanismes Dream et les contribution
 <a id="mcp"></a>
 ## 30. Inventaire des fonctions accessibles aux agents
 
-Cet inventaire reprend les **131 fonctions natives déclarées par `@mcp_tool` dans le code inspecté**.
+Cet inventaire reprend les **183 fonctions natives déclarées par `@mcp_tool` dans le code inspecté**.
 Il couvre aussi les fonctions réservées aux contrôleurs conversationnels ou à l’administration.
 Toutes ne sont donc pas visibles simultanément par chaque agent. Les schémas d’arguments complets
 sont exposés par MCP ; leurs sources sont reliées aux sections métier ci-dessus.
@@ -2794,7 +3287,9 @@ fonctions natives dans cette table.
 
 Les familles sont celles du catalogue effectif : les commandes conversationnelles appartiennent
 à **Conversation** ; les inspections détaillées des rounds, tours vocaux et appels LLM à
-**Galaris Admin**, optionnel et inactif par défaut. Les commandes système restent soumises à
+**Galaris Admin**, optionnel et inactif par défaut, sauf pour l’assistant Galaris à sa création.
+Les fonctions documentaires appartiennent aussi à Galaris Admin ; le pilotage des expériences
+appartient au Tool optionnel **Lab Galaris**. Les commandes système restent soumises à
 leur contexte : un service obligatoire n’expose pas ses fonctions de conversation aux Tasks.
 Les colonnes « Famille » indiquent le namespace déclaré ou le Tool Topics qui sélectionne ses
 fonctions explicitement. Pour Messenger, la connexion de transport détermine le Tool concret.
@@ -2803,8 +3298,8 @@ fonctions explicitement. Pour Messenger, la connexion de transport détermine le
 
 | Fonction | Famille | Action et résultat |
 |---|---|---|
-| `agent_list` | `galaris` | Lister les agents disponibles avec une fiche abrégée. |
-| `agent_get` | `galaris` | Lire l’identité, la personnalité et la fiche de poste complètes d’un agent. |
+| `agent_list` | `galaris` | Lister les agents disponibles avec une fiche abrégée et l’URI de leur profil courant. |
+| `agent_get` | `galaris` | Lire l’identité, la personnalité et la fiche de poste complètes d’un agent, avec son URI relisible via `file_read`. |
 | `task_run` | `galaris` | Créer une tâche enfant déléguée à un collègue autorisé et renvoyer son URI canonique ; l’agent ne peut pas se cibler lui-même. |
 | `task_get` | `galaris` | Lire l’état opérationnel compact, la progression, les attentes et le résultat disponible. |
 | `task_stop` | `galaris` | Arrêter définitivement une autre tâche racine active et ses descendants inachevés ; refuse la tâche courante, ses ancêtres et une sous-tâche comme cible. |
@@ -2842,7 +3337,7 @@ ordinaires restent dans le périmètre de l’agent.
 
 | Fonction | Famille | Action et résultat |
 |---|---|---|
-| `memory_remember` | `memory` | Enregistrer immédiatement une connaissance durable en HTML, avec ses métadonnées et sources. |
+| `memory_remember` | `memory` | Enregistrer immédiatement un fait durable rare et important en HTML, avec métadonnées et sources ; l’extraction ordinaire reste confiée à Dream. |
 | `memory_forget` | `memory` | Oublier définitivement une mémoire/document propriétaire et ses versions admissibles ; oublier le document supprime aussi les descriptions et révisions de ses pièces jointes. |
 | `memory_summarize` | `memory` | Synthétiser avec le modèle de l’agent faits attribués, décisions, engagements et questions ouvertes, au maximum 200 messages et 32 000 caractères, sans remplacement des souvenirs existants ni stockage après erreur modèle. |
 | `memory_sharing` | `memory` | Lire partages, destinataires possibles et version de verrouillage ; recherche/filtre/pagination des destinataires. |
@@ -2996,6 +3491,94 @@ l’interface humaine et ne sont pas exposés comme fonctions MCP.
 | `process_admin_analyze_run` | `process_admin` | Analyser le dossier d’une exécution. |
 | `process_admin_delete_run` | `process_admin` | Supprimer un run selon les règles de conservation et d’état. |
 
+### Documentation de Galaris
+
+| Fonction | Famille | Action et résultat |
+|---|---|---|
+| `documentation_catalog` | `galaris_admin` | Découvrir version, langues, domaines et points d’entrée ; son autorisation ouvre aussi la lecture du corpus sous `galaris://documentation/`. |
+| `documentation_search` | `galaris_admin` | Rechercher une question dans le corpus installé avec filtres, extraits, URI, sections, statuts et provenance ; repli textuel lorsque la recherche sémantique manque. |
+
+### Lab : découverte, jeux et cas
+
+Les jeux de tests du Lab sont des expériences propres à un mécanisme ; ils sont distincts des
+documents JSON de type Dataset de la bibliothèque documentaire. Les cinquante fonctions ci-dessous
+appartiennent toutes au Tool optionnel `lab`.
+
+| Fonction | Famille | Action et résultat |
+|---|---|---|
+| `lab_list` | `lab` | Découvrir les onze mécanismes et savoir si l’inspection des sources réelles est autorisée. |
+| `lab_get` | `lab` | Lire les contrats d’entrée, de configuration et de sortie, un exemple et la rubrique de jugement. |
+| `lab_models` | `lab` | Lister les modèles candidats et juges compatibles, les défauts et le besoin éventuel de génération hybride, sans credentials. |
+| `lab_prompt_defaults` | `lab` | Lire prompts et paramètres effectifs par défaut sans créer de jeu. |
+| `lab_dataset_list` | `lab` | Lister les jeux d’un mécanisme avec pagination serveur. |
+| `lab_dataset_get` | `lab` | Lire un jeu, sa révision, sa configuration et sa couverture. |
+| `lab_dataset_create` | `lab` | Créer une expérience avec une clé d’invocation idempotente. |
+| `lab_dataset_update` | `lab` | Modifier les champs choisis à la révision attendue, en conservant les champs omis. |
+| `lab_dataset_clone` | `lab` | Copier atomiquement une expérience et ses cas, avec leur provenance pour comparaison. |
+| `lab_dataset_delete` | `lab` | Supprimer logiquement une expérience à la révision attendue ; les benchmarks actifs doivent être terminés. |
+| `lab_case_list` | `lab` | Lister les cas d’un jeu avec pagination. |
+| `lab_case_get` | `lab` | Lire le contenu et la révision d’un cas. |
+| `lab_case_create` | `lab` | Créer un cas avec variable, contexte et référence selon le contrat du mécanisme. |
+| `lab_case_update` | `lab` | Modifier un cas à la révision attendue et préserver les champs non fournis. |
+| `lab_case_duplicate` | `lab` | Dupliquer un cas à partir de sa révision connue. |
+| `lab_case_delete` | `lab` | Supprimer un cas à la révision attendue. |
+| `lab_case_restore_source` | `lab` | Restaurer un cas depuis sa source ; les écarts de paramètres peuvent demander un jeton de confirmation. |
+| `lab_input_preview` | `lab` | Prévisualiser l’entrée résolue et les prompts exacts sans appeler le modèle. |
+
+### Lab : capture de preuves réelles
+
+Ces fonctions exigent également les autorisations d’inspection de Galaris Admin.
+
+| Fonction | Famille | Action et résultat |
+|---|---|---|
+| `lab_source_list` | `lab` | Découvrir les sources réelles capturables pour un mécanisme. |
+| `lab_case_import` | `lab` | Importer une source typée ; en cas d’écart de paramètres, inspecter puis confirmer explicitement avec le jeton retourné. |
+| `lab_topic_agent_list` | `lab` | Lister les agents disposant de sources de capture Topics. |
+| `lab_topic_person_list` | `lab` | Lister les interlocuteurs des sources Topics d’un agent. |
+| `lab_topic_messages_preview` | `lab` | Prévisualiser une plage bornée de messages réels avant capture. |
+| `lab_topic_messages_import` | `lab` | Capturer une plage complète comme cas Topics, en refusant les plages tronquées. |
+
+### Lab : benchmarks, campagnes et comparaison
+
+| Fonction | Famille | Action et résultat |
+|---|---|---|
+| `lab_run_start` | `lab` | Lancer un benchmark durable en figeant jeu et modèles, avec répétitions et budget éventuel. |
+| `lab_run_list` | `lab` | Lister les benchmarks d’un jeu du mécanisme choisi. |
+| `lab_run_get` | `lab` | Lire un benchmark, ses paramètres figés, son état et sa progression. |
+| `lab_run_results` | `lab` | Lire les résultats conservés d’un benchmark avec pagination. |
+| `lab_run_cancel` | `lab` | Demander l’annulation du benchmark en conservant les résultats publiés. |
+| `lab_run_resume` | `lab` | Reprendre les items restants d’un benchmark annulé avec ses réglages figés. |
+| `lab_run_rejudge` | `lab` | Ouvrir une campagne de jugement des sorties conservées sans rappeler le candidat. |
+| `lab_run_delete` | `lab` | Supprimer un benchmark terminal selon ses contrôles d’état. |
+| `lab_campaign_list` | `lab` | Lister les campagnes de jugement indépendantes d’un benchmark. |
+| `lab_campaign_get` | `lab` | Lire une campagne et ses jugements paginés. |
+| `lab_run_compare` | `lab` | Comparer deux runs selon l’axe modèle, prompt ou paramètres ; signaler les différences de corpus, contexte, juge et les preuves non appariables. |
+
+### Lab : opérations longues et diagnostics
+
+| Fonction | Famille | Action et résultat |
+|---|---|---|
+| `lab_dataset_generate` | `lab` | Lancer une génération synthétique de jeu brouillon ; rendre une référence d’opération durable. |
+| `lab_expected_generate` | `lab` | Proposer de façon asynchrone une référence pour un cas, sans la valider automatiquement. |
+| `lab_run_analyze` | `lab` | Analyser un benchmark terminal dans une opération distincte, facturée hors budget du run. |
+| `lab_task_analyze` | `lab` | Diagnostiquer de façon asynchrone une Task inscrite à partir de ses preuves ; accès Admin requis. |
+| `lab_operation_get` | `lab` | Consulter l’état d’une opération et relire son résultat complet par pages de caractères. |
+| `lab_operation_cancel` | `lab` | Annuler une opération en attente ou demander l’arrêt du travail engagé, sans présumer de l’arrêt du fournisseur. |
+| `lab_task_candidates` | `lab` | Découvrir les Tasks disponibles pour diagnostic, avec recherche et pagination ; accès Admin requis. |
+| `lab_task_list` | `lab` | Lister les Tasks déjà inscrites au Lab ; accès Admin requis. |
+| `lab_task_add` | `lab` | Inscrire une Task existante sans l’exécuter, avec restitution de son URI canonique ; accès Admin requis. |
+| `lab_task_remove` | `lab` | Retirer la référence Lab tout en conservant la Task canonique et ses diagnostics ; accès Admin requis. |
+| `lab_task_diagnoses` | `lab` | Lister les diagnostics immuables d’une Task ; accès Admin requis. |
+
+### Lab : appréciations et contenus volumineux
+
+| Fonction | Famille | Action et résultat |
+|---|---|---|
+| `lab_review_list` | `lab` | Lister les appréciations attribuées aux agents et distinguer les revues humaines. |
+| `lab_review_get` | `lab` | Lire la sortie et sa rubrique pour évaluation indépendante ; masquer le jugement automatique jusqu’au dépôt de l’avis de cet agent. |
+| `lab_review_submit` | `lab` | Enregistrer une revue immuable attribuée à l’agent, sans écrire de revue humaine ni modifier le juge. |
+| `lab_content_read` | `lab` | Lire par pages de caractères les grands objets JSON du Lab, avec empreinte pour vérifier la continuité de la lecture. |
+
 ### Inspection des modèles
 
 | Fonction | Famille | Action et résultat |
@@ -3021,7 +3604,7 @@ les [garanties fonctionnelles testées](fr/dev/functional-tests.md) et les sourc
 
 ### Modules backend déclarés
 
-Les **70 modules déclarés** sont tous rattachés à une ou plusieurs sections. Les conditions
+Les **71 modules déclarés** sont tous rattachés à une ou plusieurs sections. Les conditions
 d’activation et de configuration restent celles du runtime.
 
 | Module | Fonction couverte / section |
@@ -3033,6 +3616,7 @@ d’activation et de configuration restent celles du runtime.
 | `core.dbadmin` | [Convergence de schéma, datasets et mises à jour](#exploitation) |
 | `app.incident` | [Journal de défaillances et suivi des correctifs](#supervision) |
 | `app.tools` | [Catalogue, intégrations, recherche et restrictions de fonctions](#outils) |
+| `app.documentation` | [Corpus produit installé, provenance, recherche hybride et accès agentique](#outils), [actualisation de l’index partagé](#exploitation) |
 | `app.agent` | [Identité](#agents), [orchestration](#taches), [API agents et Janus](#modeles) |
 | `app.harness` | [Exécution interne Pydantic AI](#harnais) |
 | `app.harnesses` | [Catalogue, sélection et cycle de vie des harnais](#harnais) |
@@ -3047,7 +3631,7 @@ d’activation et de configuration restent celles du runtime.
 | `app.task` | [Travail durable, scheduler, tentatives, commandes et budgets](#taches) |
 | `app.goal` | [Objectifs, cycles, référents et suivi](#objectifs) |
 | `app.dashboard` | [Indicateurs mensuels et répartition de charge](#supervision) |
-| `app.lab` | [Jeux, benchmarks, jugements et revue humaine](#lab) |
+| `app.lab` | [Jeux synthétiques contextualisés, benchmarks texte/décision, jugements, revues humaines et agents, pilotage MCP](#lab) |
 | `app.messenger` | [Journal, canaux, transport et répertoire](#messageries) |
 | `app.chat` | [Discussion, non-lus, fichiers, push](#chat), [appels natifs](#voix) |
 | `app.conversation` | [Rounds, admission, commandes et retours de travaux](#chat) |
@@ -3108,14 +3692,14 @@ des formulaires/guides aux écrans communs, plutôt qu’une application indépe
 | `core/team` | Équipes et composition des membres |
 | `core/authorize` | Rôles, privilèges, affectations et profil |
 | `core/params` | Préférences par rubrique et harnais |
-| `app/index` | Accueil, bienvenue, dashboard, mentions légales, licence et page inconnue |
+| `app/index` | Accueil, bienvenue, dashboard, À propos, crédits, licence et page inconnue |
 | `app/agent` | Fiches, avatars, équipes, civilités et configuration des agents |
 | `app/harnesses` | Catalogue de harnais, détails, Compose et diagnostic du manager |
 | `app/tools` | Catalogue, édition, import/export, paramètres et fonctions |
 | `app/browser` | Préférences des sessions, actions, lectures et captures du navigateur |
 | `app/connection` | Configuration des connexions et page Mails |
 | `app/skill` | Bibliothèque, catégories, autorisations, fichiers et procédures apprises |
-| `app/llm` | Fournisseurs, modèles utilisés, profils, préférences personnelles et appels |
+| `app/llm` | Fournisseurs, ressources et filtres, quotas d’abonnement, profils texte/décision, configurations de clients externes, préférences et appels |
 | `app/task` | Activité, tâches, détails, arborescences, commandes et budgets |
 | `app/conversation` | Historique des rounds, détails d’exécution communs et résolution de livraison |
 | `app/chat` | Discussion, salons, éditeur de messages, aperçus, espace documentaire adaptatif, tâches/documents/processus liés |
@@ -3124,7 +3708,7 @@ des formulaires/guides aux écrans communs, plutôt qu’une application indépe
 | `app/topic` | Liste, détail et réorganisation des sujets |
 | `app/goal` | Objectifs, arbre, cycles, référents, horaires et suivi |
 | `app/memory` | Recherche, graphe documentaire, contacts, bibliothèque HTML/Dataset, CodeEditor JSON, applications et permissions, dossiers personnels, icônes, miniatures et partage |
-| `app/lab` | Analyse de tâches et pages d’évaluation par mécanisme |
+| `app/lab` | Analyse de tâches, jeux synthétiques contextualisés, évaluation par mécanisme, cohérence et revues attribuées |
 | `app/incident` | Incidents, familles et revue |
 | `app/process` | Définitions, exécutions, diagnostic et administration |
 | `app/console` | Terminal et gestion de l’exécuteur |
