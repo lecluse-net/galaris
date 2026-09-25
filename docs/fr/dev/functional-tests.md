@@ -33,6 +33,24 @@ réponses tardives et changement de compte avec les composants Vue/Quasar réels
 Les textes restent dans les catalogues des domaines ; modifier une traduction ne
 réinitialise jamais le statut « vu ».
 
+`front/browser-tests/client-config.spec.mjs` couvre la génération Codex/Claude Code
+depuis les jetons utilisateur : sélection de profils disponibles, copie sans secret,
+profils incomplets, droits, états vide/erreur, réouverture et réponses tardives.
+Le parcours utilise la vraie page et les composants Quasar sur mobile et desktop.
+
+`back/tests/test_profile_gateway.py` vérifie que les références à des tâches,
+modèles ou runs dans les résultats d'outils des clients externes restent du contenu
+sur les API de profils OpenAI et Anthropic : streaming terminé, modèle conservé,
+aucune corrélation déduite du texte. `test_anthropic_api.py` et
+`test_call_router_lineage.py` préservent la corrélation des runtimes gérés.
+
+Le nom du jeton API est figé dans les traces LLM : `test_profile_gateway.py`
+couvre Messages, Chat Completions, Responses, embeddings et décisions, ainsi que
+renommage/suppression, jeton sans nom et alternance avec une session navigateur.
+`test_inference_lifecycle.py` vérifie sa transmission au worker sans hériter du
+jeton d'un autre appel. `front/browser-tests/llm-calls.spec.mjs` couvre son affichage
+et les appels historiques ou rattachés à un agent.
+
 La structure documentaire de la #168 est couverte par
 `back/app/memory/tests/test_document_structure.py` : une mémoire par PJ, conservation obligatoire
 des descriptions d'images, projection sans modèle, dossiers visibles récursivement depuis les

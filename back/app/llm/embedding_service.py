@@ -25,6 +25,13 @@ class EmbeddingEndpoint:
     api_key: str | None = field(default=None, repr=False)
 
 
+@dataclass(frozen=True)
+class EmbeddingResult:
+    embeddings: list[list[float]]
+    model: str
+    usage: dict[str, Any] | None
+
+
 def _parse_response(data: dict[str, Any]) -> list[list[float]]:
     raw_items = data.get("data")
     if isinstance(raw_items, list):
@@ -84,18 +91,29 @@ async def embed_many(
     endpoint: EmbeddingEndpoint,
     timeout_seconds: float,
 ) -> list[list[float]]:
+    result = await embed_many_with_usage(texts, endpoint=endpoint, timeout_seconds=timeout_seconds)
+    return result.embeddings
+
+
+async def embed_many_with_usage(
+    texts: list[str], *, endpoint: EmbeddingEndpoint, timeout_seconds: float,
+    dimensions: int | None = None,
+) -> EmbeddingResult:
     normalized = [text.strip() for text in texts]
     if not normalized or any(not text for text in normalized):
         raise EmbeddingError("Embedding inputs must be non-empty.")
     headers = {"Content-Type": "application/json"}
     if endpoint.api_key:
         headers["Authorization"] = f"Bearer {endpoint.api_key}"
+    body: dict[str, Any] = {"model": endpoint.model_name, "input": normalized}
+    if dimensions is not None:
+        body["dimensions"] = dimensions
     try:
         async with httpx.AsyncClient(timeout=timeout_seconds) as client:
             response = await client.post(
                 f"{endpoint.base_url.rstrip('/')}/embeddings",
                 headers=headers,
-                json={"model": endpoint.model_name, "input": normalized},
+                json=body,
             )
             response.raise_for_status()
             payload = response.json()
@@ -117,7 +135,13 @@ async def embed_many(
         )
     embeddings = _parse_response(as_dict(payload))
     _validate(embeddings, expected_count=len(normalized))
-    return embeddings
+    if dimensions is not None and any(len(vector) != dimensions for vector in embeddings):
+        raise EmbeddingError("The embedding provider returned unexpected dimensions.")
+    data = as_dict(payload)
+    return EmbeddingResult(
+        embeddings=embeddings, model=str(data.get("model") or endpoint.model_name),
+        usage=as_dict(data["usage"]) if isinstance(data.get("usage"), dict) else None,
+    )
 
 
-__all__ = ["EmbeddingEndpoint", "EmbeddingError", "embed_many"]
+__all__ = ["EmbeddingEndpoint", "EmbeddingError", "EmbeddingResult", "embed_many", "embed_many_with_usage"]

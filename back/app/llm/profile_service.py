@@ -13,7 +13,7 @@ from __future__ import annotations
 from typing import Any, Optional
 
 from loguru import logger
-from sqlalchemy import func, select
+from sqlalchemy import func, select, text
 
 from core.database import get_db
 from core.i18n import render_prompt, tr
@@ -28,6 +28,7 @@ from .profile_models import (
 from .provider_facade import ReasoningEffort
 from .reasoning import normalize_reasoning_effort
 from .embedding_events import notify_embedding_change
+from .profile_codes import profile_code
 
 DEFAULT_PROFILE_LABEL = "Défaut"
 
@@ -268,7 +269,7 @@ async def create_profile(label: str) -> LlmProfile:
     """Create a profile; values are added afterwards via update."""
     label = await _validate_label(label)
     db = get_db()
-    profile = LlmProfile(label=label)
+    profile = LlmProfile(label=label, code=await allocate_profile_code(label))
     db.add(profile)
     await db.flush()
     profile_id = profile.id
@@ -276,6 +277,14 @@ async def create_profile(label: str) -> LlmProfile:
     created = await get_profile(profile_id)
     assert created is not None  # just inserted above
     return created
+
+
+async def allocate_profile_code(label: str) -> str:
+    """Serialize public creations so normalized label collisions receive stable suffixes."""
+    db = get_db()
+    await db.execute(text("SELECT pg_advisory_xact_lock(hashtext('app.llm.profile-code'))"))
+    occupied = set((await db.scalars(select(LlmProfile.code))).all())
+    return profile_code(label, occupied)
 
 
 async def update_profile(
@@ -423,7 +432,9 @@ async def ensure_default_profile_id() -> int:
             )
         ).scalar_one_or_none()
     if profile_id is None:
-        profile = LlmProfile(label=DEFAULT_PROFILE_LABEL)
+        profile = LlmProfile(
+            label=DEFAULT_PROFILE_LABEL, code=await allocate_profile_code(DEFAULT_PROFILE_LABEL),
+        )
         db.add(profile)
         await db.flush()
         profile_id = profile.id

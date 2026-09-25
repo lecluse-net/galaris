@@ -56,6 +56,9 @@
 
         <div class="call-meta row items-center q-gutter-xs text-caption text-grey-7 no-wrap">
           <span>{{ formatDate(call.started_at) }}</span>
+          <q-badge v-if="apiTokenDisplayName && agentDisplayName !== apiTokenDisplayName" outline :color="taskColor.name">
+            {{ apiTokenDisplayName }}
+          </q-badge>
           <q-badge class="llm-purpose-badge" outline :color="taskColor.name">
             {{ callPurposeLabel }}
           </q-badge>
@@ -187,12 +190,18 @@ const callTitle = computed(() => (
   || callPurposeLabel.value
 ))
 
+const apiTokenDisplayName = computed(() => {
+  if (props.call.api_token_label == null) return null
+  return props.call.api_token_label.trim()
+    ? t('llmCalls.apiToken', { name: props.call.api_token_label })
+    : t('llmCalls.unnamedApiToken')
+})
 const agentDisplayName = computed(() => {
   const agent = props.call.agent_id
     ? agentStore.agents.find(item => item.id === props.call.agent_id)
     : undefined
   if (!agent) {
-    return props.call.agent_name || props.agentName || t('llmCalls.internalService')
+    return props.call.agent_name || props.agentName || apiTokenDisplayName.value || t('llmCalls.internalService')
   }
   return `${agent.first_name} ${agent.last_name}`.trim()
 })

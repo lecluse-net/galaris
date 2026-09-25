@@ -258,16 +258,17 @@ async def test_execution_restores_saved_authority_instead_of_first_caller_contex
     llm.provider.subscription_acknowledged = True
     await db.commit()
     # Start the shared worker from an unrelated authority. It must inherit none.
-    with llm_execution_scope(requester_user_id=other.id):
+    with llm_execution_scope(requester_user_id=other.id, api_token_label="Unrelated client"):
         await execution.start()
         with pytest.raises(SubscriptionAccessError):
             await start_inference(request_for(llm))
     assert not requests
-    with llm_execution_scope(requester_user_id=owner.id):
+    with llm_execution_scope(requester_user_id=owner.id, api_token_label="Original client"):
         key = await start_inference(request_for(llm))
     completed = await state(key, "completed")
     call = await db.get(LLMCall, completed.attempts[0].call_ids[0])
     assert call.requester_user_id == owner.id
+    assert call.api_token_label == "Original client"
     assert len(requests) == 1
 
 

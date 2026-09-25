@@ -1798,6 +1798,7 @@
           "back/app/llm/anthropic_router.py",
           "back/app/llm/call_router.py",
           "back/app/llm/personal_router.py",
+          "back/app/llm/profile_inference_router.py",
           "back/app/llm/profile_router.py",
           "back/app/llm/provider_router.py"
         ],
@@ -1819,6 +1820,7 @@
           "back/app/llm/mcp.py",
           "back/app/llm/models.py",
           "back/app/llm/personal_service.py",
+          "back/app/llm/profile_gateway.py",
           "back/app/llm/profile_models.py",
           "back/app/llm/profile_service.py",
           "back/app/llm/protocol_inference.py",
@@ -1855,6 +1857,8 @@
           "back/app/llm/llm_provider_service.py",
           "back/app/llm/llm_service.py",
           "back/app/llm/personal_router.py",
+          "back/app/llm/profile_gateway.py",
+          "back/app/llm/profile_inference_router.py",
           "back/app/llm/profile_router.py",
           "back/app/llm/profile_service.py",
           "back/app/llm/protocol_inference.py",
@@ -1881,8 +1885,10 @@
           "back/app/llm/call_router.py",
           "back/app/llm/events.py",
           "back/app/llm/inference_execution.py",
+          "back/app/llm/llm_call_service.py",
           "back/app/llm/llm_provider_service.py",
           "back/app/llm/personal_router.py",
+          "back/app/llm/profile_inference.py",
           "back/app/llm/subscription_policy.py"
         ],
         "source": "app.llm",
@@ -7791,7 +7797,7 @@
           "llms.id"
         ],
         "history_mixin": false,
-        "line": 18,
+        "line": 19,
         "module": "app.llm",
         "table": "llm_profiles"
       },
@@ -8413,7 +8419,7 @@
           "users.id"
         ],
         "history_mixin": false,
-        "line": 109,
+        "line": 111,
         "module": "app.llm",
         "table": "user_llm_preferences"
       },
@@ -12682,7 +12688,7 @@
         "declared_path": "/llm-calls",
         "file": "back/app/llm/call_router.py",
         "handler": "read_calls",
-        "line": 415,
+        "line": 437,
         "method": "GET",
         "module": "app.llm"
       },
@@ -12691,7 +12697,7 @@
         "declared_path": "/llm-calls/cleanup",
         "file": "back/app/llm/call_router.py",
         "handler": "cleanup_calls",
-        "line": 485,
+        "line": 507,
         "method": "DELETE",
         "module": "app.llm"
       },
@@ -12700,7 +12706,7 @@
         "declared_path": "/llm-calls/history",
         "file": "back/app/llm/call_router.py",
         "handler": "read_call_history",
-        "line": 458,
+        "line": 480,
         "method": "GET",
         "module": "app.llm"
       },
@@ -12709,7 +12715,7 @@
         "declared_path": "/llm-calls/retention/preview",
         "file": "back/app/llm/call_router.py",
         "handler": "preview_call_retention",
-        "line": 494,
+        "line": 516,
         "method": "GET",
         "module": "app.llm"
       },
@@ -12718,7 +12724,7 @@
         "declared_path": "/llm-calls/running",
         "file": "back/app/llm/call_router.py",
         "handler": "read_running_calls",
-        "line": 440,
+        "line": 462,
         "method": "GET",
         "module": "app.llm"
       },
@@ -12727,7 +12733,7 @@
         "declared_path": "/llm-calls/{call_id}",
         "file": "back/app/llm/call_router.py",
         "handler": "delete_call",
-        "line": 503,
+        "line": 525,
         "method": "DELETE",
         "module": "app.llm"
       },
@@ -12736,7 +12742,7 @@
         "declared_path": "/llm-calls/{call_id}",
         "file": "back/app/llm/call_router.py",
         "handler": "read_call",
-        "line": 522,
+        "line": 544,
         "method": "GET",
         "module": "app.llm"
       },
@@ -13015,7 +13021,7 @@
         "declared_path": "/llm/anthropic/v1/messages",
         "file": "back/app/llm/anthropic_router.py",
         "handler": "anthropic_messages",
-        "line": 228,
+        "line": 252,
         "method": "POST",
         "module": "app.llm"
       },
@@ -13024,7 +13030,7 @@
         "declared_path": "/llm/anthropic/v1/messages/count_tokens",
         "file": "back/app/llm/anthropic_router.py",
         "handler": "anthropic_count_tokens",
-        "line": 202,
+        "line": 218,
         "method": "POST",
         "module": "app.llm"
       },
@@ -13033,7 +13039,7 @@
         "declared_path": "/llm/anthropic/v1/models",
         "file": "back/app/llm/anthropic_router.py",
         "handler": "anthropic_models",
-        "line": 176,
+        "line": 184,
         "method": "GET",
         "module": "app.llm"
       },
@@ -13087,7 +13093,7 @@
         "declared_path": "/llm/openai/chat/completions",
         "file": "back/app/llm/call_router.py",
         "handler": "llm_completion",
-        "line": 189,
+        "line": 203,
         "method": "POST",
         "module": "app.llm"
       },
@@ -13096,7 +13102,7 @@
         "declared_path": "/llm/openai/inferences",
         "file": "back/app/llm/call_router.py",
         "handler": "create_inference",
-        "line": 106,
+        "line": 116,
         "method": "POST",
         "module": "app.llm"
       },
@@ -13105,7 +13111,7 @@
         "declared_path": "/llm/openai/inferences/{inference_id}",
         "file": "back/app/llm/call_router.py",
         "handler": "get_inference",
-        "line": 130,
+        "line": 140,
         "method": "GET",
         "module": "app.llm"
       },
@@ -13114,7 +13120,7 @@
         "declared_path": "/llm/openai/inferences/{inference_id}/commands",
         "file": "back/app/llm/call_router.py",
         "handler": "command_inference",
-        "line": 136,
+        "line": 146,
         "method": "POST",
         "module": "app.llm"
       },
@@ -13123,7 +13129,7 @@
         "declared_path": "/llm/openai/inferences/{inference_id}/events",
         "file": "back/app/llm/call_router.py",
         "handler": "inference_events",
-        "line": 150,
+        "line": 160,
         "method": "GET",
         "module": "app.llm"
       },
@@ -13132,7 +13138,7 @@
         "declared_path": "/llm/openai/models",
         "file": "back/app/llm/call_router.py",
         "handler": "llm_models",
-        "line": 172,
+        "line": 183,
         "method": "GET",
         "module": "app.llm"
       },
@@ -13141,7 +13147,7 @@
         "declared_path": "/llm/openai/responses",
         "file": "back/app/llm/call_router.py",
         "handler": "llm_responses",
-        "line": 306,
+        "line": 327,
         "method": "POST",
         "module": "app.llm"
       },
@@ -13150,7 +13156,7 @@
         "declared_path": "/llm/openai/responses/compact",
         "file": "back/app/llm/call_router.py",
         "handler": "llm_responses",
-        "line": 306,
+        "line": 327,
         "method": "POST",
         "module": "app.llm"
       },
@@ -13159,7 +13165,7 @@
         "declared_path": "/llm/openai/runs/{agent_run_id}/usage",
         "file": "back/app/llm/call_router.py",
         "handler": "llm_run_usage",
-        "line": 397,
+        "line": 419,
         "method": "GET",
         "module": "app.llm"
       },
@@ -14062,6 +14068,96 @@
         "line": 83,
         "method": "PUT",
         "module": "core.params"
+      },
+      {
+        "authorized": false,
+        "declared_path": "/profile/anthropic/v1/messages",
+        "file": "back/app/llm/anthropic_router.py",
+        "handler": "anthropic_messages",
+        "line": 252,
+        "method": "POST",
+        "module": "app.llm"
+      },
+      {
+        "authorized": false,
+        "declared_path": "/profile/anthropic/v1/messages/count_tokens",
+        "file": "back/app/llm/anthropic_router.py",
+        "handler": "anthropic_count_tokens",
+        "line": 218,
+        "method": "POST",
+        "module": "app.llm"
+      },
+      {
+        "authorized": false,
+        "declared_path": "/profile/anthropic/v1/models",
+        "file": "back/app/llm/anthropic_router.py",
+        "handler": "anthropic_models",
+        "line": 184,
+        "method": "GET",
+        "module": "app.llm"
+      },
+      {
+        "authorized": false,
+        "declared_path": "/profile/decisions",
+        "file": "back/app/llm/profile_inference_router.py",
+        "handler": "decisions",
+        "line": 52,
+        "method": "POST",
+        "module": "app.llm"
+      },
+      {
+        "authorized": false,
+        "declared_path": "/profile/models",
+        "file": "back/app/llm/profile_inference_router.py",
+        "handler": "models",
+        "line": 28,
+        "method": "GET",
+        "module": "app.llm"
+      },
+      {
+        "authorized": false,
+        "declared_path": "/profile/openai/chat/completions",
+        "file": "back/app/llm/call_router.py",
+        "handler": "llm_completion",
+        "line": 203,
+        "method": "POST",
+        "module": "app.llm"
+      },
+      {
+        "authorized": false,
+        "declared_path": "/profile/openai/embeddings",
+        "file": "back/app/llm/profile_inference_router.py",
+        "handler": "embeddings",
+        "line": 35,
+        "method": "POST",
+        "module": "app.llm"
+      },
+      {
+        "authorized": false,
+        "declared_path": "/profile/openai/models",
+        "file": "back/app/llm/call_router.py",
+        "handler": "llm_models",
+        "line": 183,
+        "method": "GET",
+        "module": "app.llm"
+      },
+      {
+        "authorized": false,
+        "declared_path": "/profile/openai/responses",
+        "file": "back/app/llm/call_router.py",
+        "handler": "llm_responses",
+        "line": 327,
+        "method": "POST",
+        "module": "app.llm"
+      },
+      {
+        "authorized": false,
+        "declared_path": "/profile/openai/responses/compact",
+        "file": "back/app/llm/call_router.py",
+        "handler": "llm_responses",
+        "line": 327,
+        "method": "POST",
+        "module": "app.llm"
       },
       {
         "authorized": true,
@@ -15761,11 +15857,13 @@
       },
       {
         "files": [
+          "front/app/llm/components/ExternalClientConfigDialog.vue",
           "front/app/llm/components/LlmCalls.vue",
           "front/app/llm/services/llmCallService.ts",
           "front/app/llm/services/llmProfileService.ts",
           "front/app/llm/services/llmProviderService.ts",
-          "front/app/llm/services/personalLlmService.ts"
+          "front/app/llm/services/personalLlmService.ts",
+          "front/app/llm/services/profileCatalogService.ts"
         ],
         "source": "app/llm",
         "target": "core/api"
@@ -15774,6 +15872,7 @@
         "files": [
           "front/app/llm/components/ConfiguredLlmManager.vue",
           "front/app/llm/components/CustomProviderDialog.vue",
+          "front/app/llm/components/ExternalClientConfigButton.vue",
           "front/app/llm/components/LlmActivityPanel.vue",
           "front/app/llm/components/LlmCalls.vue",
           "front/app/llm/components/LlmUsageManager.vue",
@@ -15797,6 +15896,7 @@
       },
       {
         "files": [
+          "front/app/llm/tokenAction.ts",
           "front/app/llm/userTab.ts"
         ],
         "source": "app/llm",

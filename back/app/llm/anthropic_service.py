@@ -736,10 +736,12 @@ async def call_proxy(
     agent_id: int | None = None,
     reasoning_effort: ReasoningEffort | None = None,
     force_reasoning_effort: bool = False,
+    profile_model: bool = False,
 ) -> JSONResponse | StreamingResponse:
     """Delegate the translated body to the shared proxy seam."""
     return await proxy_chat_completion(
         body,
+        profile_model=profile_model,
         task_id=task_id,
         agent_run_id=agent_run_id,
         conversation_round_id=conversation_round_id,

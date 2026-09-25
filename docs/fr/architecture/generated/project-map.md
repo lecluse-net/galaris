@@ -17,7 +17,7 @@ tests restent l’autorité sur le comportement.
 - 25 paires de domaines directement bidirectionnelles ;
 - 1 composantes fortement connexes ;
 - 7 paires frontend directement bidirectionnelles ;
-- 569 handlers HTTP/WebSocket détectés ;
+- 579 handlers HTTP/WebSocket détectés ;
 - 123 tables SQLAlchemy détectées ;
 - 131 outils MCP natifs détectés ;
 - 39 pages Vue détectées.
@@ -333,13 +333,13 @@ tests restent l’autorité sur le comportement.
 | `app.llm` | `app.process` | `back/app/llm/anthropic_router.py`, `back/app/llm/call_router.py`, `back/app/llm/events.py`, `back/app/llm/llm_call_service.py`, `back/app/llm/mcp.py`, `back/app/llm/runtime_correlation.py`, `back/app/llm/subscription_policy.py` |
 | `app.llm` | `app.task` | `back/app/llm/__init__.py`, `back/app/llm/events.py`, `back/app/llm/llm_call_service.py`, `back/app/llm/mcp.py`, `back/app/llm/proxy_service.py`, `back/app/llm/retention.py`, `back/app/llm/runtime_correlation.py`, `back/app/llm/subscription_policy.py` |
 | `app.llm` | `app.tools` | `back/app/llm/mcp.py` |
-| `app.llm` | `core.authorize` | `back/app/llm/anthropic_router.py`, `back/app/llm/call_router.py`, `back/app/llm/personal_router.py`, `back/app/llm/profile_router.py`, `back/app/llm/provider_router.py` |
-| `app.llm` | `core.database` | `back/app/llm/anthropic_router.py`, `back/app/llm/call_router.py`, `back/app/llm/events.py`, `back/app/llm/facade.py`, `back/app/llm/inference_execution.py`, `back/app/llm/inference_journal.py`, `back/app/llm/inference_store.py`, `back/app/llm/llm_call_service.py`, `back/app/llm/llm_provider_service.py`, `back/app/llm/llm_service.py`, `back/app/llm/mcp.py`, `back/app/llm/models.py`, `back/app/llm/personal_service.py`, `back/app/llm/profile_models.py`, `back/app/llm/profile_service.py`, `back/app/llm/protocol_inference.py`, `back/app/llm/provider_models.py`, `back/app/llm/proxy_service.py`, `back/app/llm/retention.py`, `back/app/llm/structured_service.py`, `back/app/llm/subscription_policy.py`, `back/app/llm/text_inference.py` |
+| `app.llm` | `core.authorize` | `back/app/llm/anthropic_router.py`, `back/app/llm/call_router.py`, `back/app/llm/personal_router.py`, `back/app/llm/profile_inference_router.py`, `back/app/llm/profile_router.py`, `back/app/llm/provider_router.py` |
+| `app.llm` | `core.database` | `back/app/llm/anthropic_router.py`, `back/app/llm/call_router.py`, `back/app/llm/events.py`, `back/app/llm/facade.py`, `back/app/llm/inference_execution.py`, `back/app/llm/inference_journal.py`, `back/app/llm/inference_store.py`, `back/app/llm/llm_call_service.py`, `back/app/llm/llm_provider_service.py`, `back/app/llm/llm_service.py`, `back/app/llm/mcp.py`, `back/app/llm/models.py`, `back/app/llm/personal_service.py`, `back/app/llm/profile_gateway.py`, `back/app/llm/profile_models.py`, `back/app/llm/profile_service.py`, `back/app/llm/protocol_inference.py`, `back/app/llm/provider_models.py`, `back/app/llm/proxy_service.py`, `back/app/llm/retention.py`, `back/app/llm/structured_service.py`, `back/app/llm/subscription_policy.py`, `back/app/llm/text_inference.py` |
 | `app.llm` | `core.dbadmin` | `back/app/llm/dbadmin.py` |
 | `app.llm` | `core.failure_journal` | `back/app/llm/llm_call_service.py` |
-| `app.llm` | `core.i18n` | `back/app/llm/anthropic_router.py`, `back/app/llm/anthropic_service.py`, `back/app/llm/call_router.py`, `back/app/llm/llm_call_service.py`, `back/app/llm/llm_provider_service.py`, `back/app/llm/llm_service.py`, `back/app/llm/personal_router.py`, `back/app/llm/profile_router.py`, `back/app/llm/profile_service.py`, `back/app/llm/protocol_inference.py`, `back/app/llm/provider_router.py`, `back/app/llm/proxy_service.py`, `back/app/llm/subscription_policy.py` |
+| `app.llm` | `core.i18n` | `back/app/llm/anthropic_router.py`, `back/app/llm/anthropic_service.py`, `back/app/llm/call_router.py`, `back/app/llm/llm_call_service.py`, `back/app/llm/llm_provider_service.py`, `back/app/llm/llm_service.py`, `back/app/llm/personal_router.py`, `back/app/llm/profile_gateway.py`, `back/app/llm/profile_inference_router.py`, `back/app/llm/profile_router.py`, `back/app/llm/profile_service.py`, `back/app/llm/protocol_inference.py`, `back/app/llm/provider_router.py`, `back/app/llm/proxy_service.py`, `back/app/llm/subscription_policy.py` |
 | `app.llm` | `core.params` | `back/app/llm/dbadmin.py`, `back/app/llm/llm_call_service.py`, `back/app/llm/profile_service.py`, `back/app/llm/retention.py` |
-| `app.llm` | `core.user` | `back/app/llm/anthropic_router.py`, `back/app/llm/call_router.py`, `back/app/llm/events.py`, `back/app/llm/inference_execution.py`, `back/app/llm/llm_provider_service.py`, `back/app/llm/personal_router.py`, `back/app/llm/subscription_policy.py` |
+| `app.llm` | `core.user` | `back/app/llm/anthropic_router.py`, `back/app/llm/call_router.py`, `back/app/llm/events.py`, `back/app/llm/inference_execution.py`, `back/app/llm/llm_call_service.py`, `back/app/llm/llm_provider_service.py`, `back/app/llm/personal_router.py`, `back/app/llm/profile_inference.py`, `back/app/llm/subscription_policy.py` |
 | `app.llm` | `core.util` | `back/app/llm/embedding_service.py`, `back/app/llm/handlers/openai_compatible.py`, `back/app/llm/image_trace.py`, `back/app/llm/llm_call_service.py`, `back/app/llm/llm_provider_service.py`, `back/app/llm/media_transport.py`, `back/app/llm/message_cleanup.py`, `back/app/llm/personal_service.py`, `back/app/llm/proxy_service.py`, `back/app/llm/responses_trace.py`, `back/app/llm/trace.py`, `back/app/llm/transcription_service.py`, `back/app/llm/tts_service.py` |
 | `app.mcp` | `app.agent` | `back/app/mcp/router.py` |
 | `app.mcp` | `app.tools` | `back/app/mcp/router.py` |
@@ -753,10 +753,10 @@ tests restent l’autorité sur le comportement.
 | `app/lab` | `core/util` | `front/app/lab/components/LabResultsPanel.vue`, `front/app/lab/components/LabValueEditor.vue`, `front/app/lab/components/LabWorkbench.vue`, `front/app/lab/components/MemoryExtractionCaseEditor.vue`, `front/app/lab/pages/ai-evaluations.vue`, `front/app/lab/pages/index.vue`, `front/app/lab/textPresentation.ts` |
 | `app/llm` | `app/agent` | `front/app/llm/components/LlmActivityPanel.vue`, `front/app/llm/components/LlmCall.vue` |
 | `app/llm` | `app/task` | `front/app/llm/components/LlmCall.vue`, `front/app/llm/components/LlmCallDetails.vue`, `front/app/llm/presentation.ts` |
-| `app/llm` | `core/api` | `front/app/llm/components/LlmCalls.vue`, `front/app/llm/services/llmCallService.ts`, `front/app/llm/services/llmProfileService.ts`, `front/app/llm/services/llmProviderService.ts`, `front/app/llm/services/personalLlmService.ts` |
-| `app/llm` | `core/authorize` | `front/app/llm/components/ConfiguredLlmManager.vue`, `front/app/llm/components/CustomProviderDialog.vue`, `front/app/llm/components/LlmActivityPanel.vue`, `front/app/llm/components/LlmCalls.vue`, `front/app/llm/components/LlmUsageManager.vue`, `front/app/llm/components/ProviderConfigPanel.vue`, `front/app/llm/components/ProviderListPanel.vue`, `front/app/llm/components/ProviderModelsPanel.vue`, `front/app/llm/components/ProviderWorkspace.vue`, `front/app/llm/navigation.ts`, `front/app/llm/pages/index.vue` |
+| `app/llm` | `core/api` | `front/app/llm/components/ExternalClientConfigDialog.vue`, `front/app/llm/components/LlmCalls.vue`, `front/app/llm/services/llmCallService.ts`, `front/app/llm/services/llmProfileService.ts`, `front/app/llm/services/llmProviderService.ts`, `front/app/llm/services/personalLlmService.ts`, `front/app/llm/services/profileCatalogService.ts` |
+| `app/llm` | `core/authorize` | `front/app/llm/components/ConfiguredLlmManager.vue`, `front/app/llm/components/CustomProviderDialog.vue`, `front/app/llm/components/ExternalClientConfigButton.vue`, `front/app/llm/components/LlmActivityPanel.vue`, `front/app/llm/components/LlmCalls.vue`, `front/app/llm/components/LlmUsageManager.vue`, `front/app/llm/components/ProviderConfigPanel.vue`, `front/app/llm/components/ProviderListPanel.vue`, `front/app/llm/components/ProviderModelsPanel.vue`, `front/app/llm/components/ProviderWorkspace.vue`, `front/app/llm/navigation.ts`, `front/app/llm/pages/index.vue` |
 | `app/llm` | `core/navigation` | `front/app/llm/navigation.ts`, `front/app/llm/pages/index.vue` |
-| `app/llm` | `core/user` | `front/app/llm/userTab.ts` |
+| `app/llm` | `core/user` | `front/app/llm/tokenAction.ts`, `front/app/llm/userTab.ts` |
 | `app/llm` | `core/util` | `front/app/llm/components/ConfiguredLlmManager.vue`, `front/app/llm/components/LlmActivityPanel.vue`, `front/app/llm/components/LlmCall.vue`, `front/app/llm/components/LlmCallDetails.vue`, `front/app/llm/components/LlmCallTaskDetail.vue`, `front/app/llm/components/LlmCalls.vue`, `front/app/llm/components/LlmUsageManager.vue`, `front/app/llm/components/ProviderQuotaPanel.vue`, `front/app/llm/pages/index.vue`, `front/app/llm/useEditorVoice.ts` |
 | `app/llm` | `core/websocket` | `front/app/llm/components/LlmActivityPanel.vue`, `front/app/llm/components/LlmCalls.vue` |
 | `app/memory` | `app/agent` | `front/app/memory/components/DocumentEditor.vue`, `front/app/memory/components/DocumentHistoryDialog.vue`, `front/app/memory/components/DocumentLibraryPage.vue`, `front/app/memory/components/MemorySharingPanel.vue`, `front/app/memory/pages/contacts.vue`, `front/app/memory/pages/index.vue` |
@@ -1375,13 +1375,13 @@ tests restent l’autorité sur le comportement.
 | GET | `/incidents/{incident_id}` | `app.incident` | `read_incident` | oui | `back/app/incident/router.py:152` |
 | POST | `/janus/openai/chat/completions` | `app.agent` | `janus_chat_completions` | oui | `back/app/agent/openai_router.py:179` |
 | GET | `/janus/openai/models` | `app.agent` | `get_janus_models` | oui | `back/app/agent/openai_router.py:163` |
-| GET | `/llm-calls` | `app.llm` | `read_calls` | oui | `back/app/llm/call_router.py:415` |
-| DELETE | `/llm-calls/cleanup` | `app.llm` | `cleanup_calls` | oui | `back/app/llm/call_router.py:485` |
-| GET | `/llm-calls/history` | `app.llm` | `read_call_history` | oui | `back/app/llm/call_router.py:458` |
-| GET | `/llm-calls/retention/preview` | `app.llm` | `preview_call_retention` | oui | `back/app/llm/call_router.py:494` |
-| GET | `/llm-calls/running` | `app.llm` | `read_running_calls` | oui | `back/app/llm/call_router.py:440` |
-| DELETE | `/llm-calls/{call_id}` | `app.llm` | `delete_call` | oui | `back/app/llm/call_router.py:503` |
-| GET | `/llm-calls/{call_id}` | `app.llm` | `read_call` | oui | `back/app/llm/call_router.py:522` |
+| GET | `/llm-calls` | `app.llm` | `read_calls` | oui | `back/app/llm/call_router.py:437` |
+| DELETE | `/llm-calls/cleanup` | `app.llm` | `cleanup_calls` | oui | `back/app/llm/call_router.py:507` |
+| GET | `/llm-calls/history` | `app.llm` | `read_call_history` | oui | `back/app/llm/call_router.py:480` |
+| GET | `/llm-calls/retention/preview` | `app.llm` | `preview_call_retention` | oui | `back/app/llm/call_router.py:516` |
+| GET | `/llm-calls/running` | `app.llm` | `read_running_calls` | oui | `back/app/llm/call_router.py:462` |
+| DELETE | `/llm-calls/{call_id}` | `app.llm` | `delete_call` | oui | `back/app/llm/call_router.py:525` |
+| GET | `/llm-calls/{call_id}` | `app.llm` | `read_call` | oui | `back/app/llm/call_router.py:544` |
 | GET | `/llm-profiles` | `app.llm` | `list_profiles` | oui | `back/app/llm/profile_router.py:67` |
 | POST | `/llm-profiles` | `app.llm` | `create_profile` | oui | `back/app/llm/profile_router.py:88` |
 | DELETE | `/llm-profiles/{profile_id}` | `app.llm` | `delete_profile` | oui | `back/app/llm/profile_router.py:119` |
@@ -1412,23 +1412,23 @@ tests restent l’autorité sur le comportement.
 | GET | `/llm-providers/{provider_id}/quota` | `app.llm` | `get_provider_quota` | oui | `back/app/llm/provider_router.py:473` |
 | GET | `/llm-providers/{provider_id}/resources` | `app.llm` | `list_provider_resources` | oui | `back/app/llm/provider_router.py:598` |
 | GET | `/llm-providers/{provider_id}/transcription-models` | `app.llm` | `list_provider_transcription_models` | oui | `back/app/llm/provider_router.py:644` |
-| POST | `/llm/anthropic/v1/messages` | `app.llm` | `anthropic_messages` | non | `back/app/llm/anthropic_router.py:228` |
-| POST | `/llm/anthropic/v1/messages/count_tokens` | `app.llm` | `anthropic_count_tokens` | non | `back/app/llm/anthropic_router.py:202` |
-| GET | `/llm/anthropic/v1/models` | `app.llm` | `anthropic_models` | non | `back/app/llm/anthropic_router.py:176` |
+| POST | `/llm/anthropic/v1/messages` | `app.llm` | `anthropic_messages` | non | `back/app/llm/anthropic_router.py:252` |
+| POST | `/llm/anthropic/v1/messages/count_tokens` | `app.llm` | `anthropic_count_tokens` | non | `back/app/llm/anthropic_router.py:218` |
+| GET | `/llm/anthropic/v1/models` | `app.llm` | `anthropic_models` | non | `back/app/llm/anthropic_router.py:184` |
 | GET | `/llm/me/options` | `app.llm` | `get_options` | oui | `back/app/llm/personal_router.py:56` |
 | GET | `/llm/me/preferences` | `app.llm` | `get_preferences` | oui | `back/app/llm/personal_router.py:41` |
 | PUT | `/llm/me/preferences` | `app.llm` | `put_preferences` | oui | `back/app/llm/personal_router.py:47` |
 | POST | `/llm/me/speech` | `app.llm` | `speech` | oui | `back/app/llm/personal_router.py:122` |
 | POST | `/llm/me/transcription` | `app.llm` | `transcribe` | oui | `back/app/llm/personal_router.py:85` |
-| POST | `/llm/openai/chat/completions` | `app.llm` | `llm_completion` | non | `back/app/llm/call_router.py:189` |
-| POST | `/llm/openai/inferences` | `app.llm` | `create_inference` | non | `back/app/llm/call_router.py:106` |
-| GET | `/llm/openai/inferences/{inference_id}` | `app.llm` | `get_inference` | non | `back/app/llm/call_router.py:130` |
-| POST | `/llm/openai/inferences/{inference_id}/commands` | `app.llm` | `command_inference` | non | `back/app/llm/call_router.py:136` |
-| GET | `/llm/openai/inferences/{inference_id}/events` | `app.llm` | `inference_events` | non | `back/app/llm/call_router.py:150` |
-| GET | `/llm/openai/models` | `app.llm` | `llm_models` | non | `back/app/llm/call_router.py:172` |
-| POST | `/llm/openai/responses` | `app.llm` | `llm_responses` | non | `back/app/llm/call_router.py:306` |
-| POST | `/llm/openai/responses/compact` | `app.llm` | `llm_responses` | non | `back/app/llm/call_router.py:306` |
-| GET | `/llm/openai/runs/{agent_run_id}/usage` | `app.llm` | `llm_run_usage` | non | `back/app/llm/call_router.py:397` |
+| POST | `/llm/openai/chat/completions` | `app.llm` | `llm_completion` | non | `back/app/llm/call_router.py:203` |
+| POST | `/llm/openai/inferences` | `app.llm` | `create_inference` | non | `back/app/llm/call_router.py:116` |
+| GET | `/llm/openai/inferences/{inference_id}` | `app.llm` | `get_inference` | non | `back/app/llm/call_router.py:140` |
+| POST | `/llm/openai/inferences/{inference_id}/commands` | `app.llm` | `command_inference` | non | `back/app/llm/call_router.py:146` |
+| GET | `/llm/openai/inferences/{inference_id}/events` | `app.llm` | `inference_events` | non | `back/app/llm/call_router.py:160` |
+| GET | `/llm/openai/models` | `app.llm` | `llm_models` | non | `back/app/llm/call_router.py:183` |
+| POST | `/llm/openai/responses` | `app.llm` | `llm_responses` | non | `back/app/llm/call_router.py:327` |
+| POST | `/llm/openai/responses/compact` | `app.llm` | `llm_responses` | non | `back/app/llm/call_router.py:327` |
+| GET | `/llm/openai/runs/{agent_run_id}/usage` | `app.llm` | `llm_run_usage` | non | `back/app/llm/call_router.py:419` |
 | GET | `/llm/users/{user_id}/preferences` | `app.llm` | `get_user_preferences` | oui | `back/app/llm/personal_router.py:68` |
 | PUT | `/llm/users/{user_id}/preferences` | `app.llm` | `put_user_preferences` | oui | `back/app/llm/personal_router.py:75` |
 | GET | `/mail/approvers` | `bridge.mail` | `list_mail_approvers` | oui | `back/bridge/mail/router.py:100` |
@@ -1529,6 +1529,16 @@ tests restent l’autorité sur le comportement.
 | GET | `/operations` | `app.process` | `read_process_operations` | oui | `back/app/process/router.py:114` |
 | GET | `/params` | `core.params` | `read_params` | oui | `back/core/params/router.py:46` |
 | PUT | `/params/{name}` | `core.params` | `update_param` | oui | `back/core/params/router.py:83` |
+| POST | `/profile/anthropic/v1/messages` | `app.llm` | `anthropic_messages` | non | `back/app/llm/anthropic_router.py:252` |
+| POST | `/profile/anthropic/v1/messages/count_tokens` | `app.llm` | `anthropic_count_tokens` | non | `back/app/llm/anthropic_router.py:218` |
+| GET | `/profile/anthropic/v1/models` | `app.llm` | `anthropic_models` | non | `back/app/llm/anthropic_router.py:184` |
+| POST | `/profile/decisions` | `app.llm` | `decisions` | non | `back/app/llm/profile_inference_router.py:52` |
+| GET | `/profile/models` | `app.llm` | `models` | non | `back/app/llm/profile_inference_router.py:28` |
+| POST | `/profile/openai/chat/completions` | `app.llm` | `llm_completion` | non | `back/app/llm/call_router.py:203` |
+| POST | `/profile/openai/embeddings` | `app.llm` | `embeddings` | non | `back/app/llm/profile_inference_router.py:35` |
+| GET | `/profile/openai/models` | `app.llm` | `llm_models` | non | `back/app/llm/call_router.py:183` |
+| POST | `/profile/openai/responses` | `app.llm` | `llm_responses` | non | `back/app/llm/call_router.py:327` |
+| POST | `/profile/openai/responses/compact` | `app.llm` | `llm_responses` | non | `back/app/llm/call_router.py:327` |
 | GET | `/retention/preview` | `app.process` | `preview_retention` | oui | `back/app/process/router.py:79` |
 | GET | `/runs` | `app.process` | `read_runs` | oui | `back/app/process/router.py:237` |
 | POST | `/runs` | `app.process` | `create_run` | oui | `back/app/process/router.py:191` |
@@ -1703,7 +1713,7 @@ tests restent l’autorité sur le comportement.
 | `llm_inference_attempts` | `LLMInferenceAttempt` | `app.llm` | non | `llm_inferences.id` | `back/app/llm/models.py:30` |
 | `llm_inference_commands` | `LLMInferenceCommand` | `app.llm` | non | `llm_inference_attempts.id`, `llm_inferences.id` | `back/app/llm/models.py:46` |
 | `llm_inferences` | `LLMInference` | `app.llm` | non | `llm_inferences.id`, `users.id` | `back/app/llm/models.py:16` |
-| `llm_profiles` | `LlmProfile` | `app.llm` | non | `llms.id` | `back/app/llm/profile_models.py:18` |
+| `llm_profiles` | `LlmProfile` | `app.llm` | non | `llms.id` | `back/app/llm/profile_models.py:19` |
 | `llm_providers` | `LLMProvider` | `app.llm` | oui | `users.id` | `back/app/llm/provider_models.py:9` |
 | `llms` | `LLM` | `app.llm` | oui | `llm_providers.id` | `back/app/llm/provider_models.py:103` |
 | `mail_outbound_deliveries` | `MailOutboundDelivery` | `bridge.mail` | non | `agents.id`, `connections.id`, `users.id` | `back/bridge/mail/models.py:28` |
@@ -1757,7 +1767,7 @@ tests restent l’autorité sur le comportement.
 | `tools` | `Tool` | `app.tools` | non | — | `back/app/tools/models.py:21` |
 | `topics` | `Topic` | `app.topic` | oui | `memory_items.id` | `back/app/topic/models.py:15` |
 | `user_help_dismissals` | `UserHelpDismissal` | `core.user` | non | `users.id` | `back/core/user/models.py:80` |
-| `user_llm_preferences` | `UserLlmPreferences` | `app.llm` | non | `llm_profiles.id`, `llms.id`, `users.id` | `back/app/llm/profile_models.py:109` |
+| `user_llm_preferences` | `UserLlmPreferences` | `app.llm` | non | `llm_profiles.id`, `llms.id`, `users.id` | `back/app/llm/profile_models.py:111` |
 | `user_refresh_sessions` | `UserRefreshSession` | `core.user` | non | `users.id` | `back/core/user/models.py:119` |
 | `user_tokens` | `UserToken` | `core.user` | non | `users.id` | `back/core/user/models.py:92` |
 | `users` | `User` | `core.user` | non | — | `back/core/user/models.py:13` |

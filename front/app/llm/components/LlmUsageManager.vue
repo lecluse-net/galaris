@@ -18,6 +18,9 @@
                         :disable="renamingProfile"
                         class="profile-select"
                     />
+                    <div v-if="selectedProfile" class="text-caption q-mt-xs">
+                        {{ t('llm.profileApiCode') }}: <code>{{ selectedProfile.code }}</code>
+                    </div>
                 </div>
                 <q-chip
                     v-if="currentProfileLabel !== null"
@@ -114,6 +117,16 @@
                     <span class="text-caption text-grey-7">{{ usageHintText }}</span>
                 </div>
             </q-card-section>
+            <q-expansion-item v-if="selectedProfile" icon="api" :label="t('llm.profileApiTitle')">
+                <q-card-section class="q-pt-none">
+                    <p class="text-caption">{{ t('llm.profileApiHint') }}</p>
+                    <div><code>/api/profile/openai</code></div>
+                    <div><code>/api/profile/anthropic</code></div>
+                    <p class="q-mt-sm q-mb-none">
+                        <code>{{ selectedProfile.code }}/text/high</code>
+                    </p>
+                </q-card-section>
+            </q-expansion-item>
         </q-card>
 
         <q-dialog v-model="profileDialog">

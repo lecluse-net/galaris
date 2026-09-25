@@ -70,6 +70,7 @@ class LlmProfileOut(BaseModel):
     """Complete profile with one field per model column (never auto-applied)."""
 
     id: int
+    code: str
     label: str
     created_at: datetime
     updated_at: datetime

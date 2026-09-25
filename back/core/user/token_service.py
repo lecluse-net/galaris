@@ -66,6 +66,20 @@ async def get_token_by_value(token_value: str) -> Optional[UserToken]:
     return result.scalar_one_or_none()
 
 
+async def get_current_token_label() -> str | None:
+    """Return only the authenticated API token's label; empty means unnamed."""
+    from .user_service import get_current_raw_token, get_current_user_id
+
+    raw_token = get_current_raw_token()
+    user_id = get_current_user_id()
+    if raw_token is None or user_id is None:
+        return None
+    token = await get_token_by_value(raw_token)
+    if token is None or token.user_id != user_id:
+        return None
+    return token.label or ""
+
+
 async def create_token_for_user(user_id: int, data: Optional[UserTokenCreate] = None) -> tuple[UserToken, str]:
     """
     Create a token for a user.

@@ -54,6 +54,13 @@
         <q-icon name="security" color="primary" size="sm" />
         <span class="text-body2">{{ $t('tokens.authHint') }}</span>
       </div>
+      <template #action>
+        <component
+          v-for="action in tokenActions"
+          :key="action.name"
+          :is="action.component"
+        />
+      </template>
     </q-banner>
 
     <q-banner v-if="loadError" rounded class="bg-red-1 text-negative q-mb-md">
@@ -347,6 +354,7 @@ import { useTokenStore, type UserToken } from '../stores/tokenStore'
 import { useQuasar } from 'quasar'
 import { useI18n } from 'vue-i18n'
 import { PageHeader } from '@/core/util'
+import { tokenActions } from '../tokenActions'
 
 const $q = useQuasar()
 const { t, locale } = useI18n()
@@ -395,6 +403,22 @@ const openAiEndpoints = computed(() => [
     label: t('tokens.claudeApiLabel'),
     description: t('tokens.claudeApiDescription'),
     url: `${apiOrigin}/api/llm/anthropic`,
+    routesText: t('tokens.anthropicRoutes'),
+  },
+  {
+    key: 'profiles-openai',
+    icon: 'tune',
+    label: t('tokens.profilesOpenAiLabel'),
+    description: t('tokens.profilesApiDescription'),
+    url: `${apiOrigin}/api/profile/openai`,
+    routesText: t('tokens.profilesOpenAiRoutes'),
+  },
+  {
+    key: 'profiles-anthropic',
+    icon: 'tune',
+    label: t('tokens.profilesAnthropicLabel'),
+    description: t('tokens.profilesApiDescription'),
+    url: `${apiOrigin}/api/profile/anthropic`,
     routesText: t('tokens.anthropicRoutes'),
   },
 ])

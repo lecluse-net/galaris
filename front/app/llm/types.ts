@@ -12,6 +12,7 @@ export type ReasoningEffort = 'none' | 'low' | 'medium' | 'high' | 'xhigh' | 'ma
 
 export interface LLMCall {
   id: string
+  api_token_label?: string | null
   task_id?: string
   task_attempt_id?: string
   agent_run_id?: string

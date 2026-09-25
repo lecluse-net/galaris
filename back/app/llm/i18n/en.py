@@ -40,6 +40,9 @@ default: dict[str, object] = {
         "client_disconnected": "Client disconnected during streaming",
         "errors": {
             "provider_quota_unsupported": "This provider does not expose subscription usage limits.",
+            "profile_selector_invalid": "Invalid profile model '${model}' for this endpoint. Use profile/usage/level.",
+            "profile_selector_unavailable": "Profile model '${model}' is not configured or is unavailable.",
+            "profile_selector_conflict": "Profile model '${model}' conflicts with the model frozen for this request.",
             "inference_not_found": "Inference not found.",
             "inference_attempt_not_found": "Inference attempt not found.",
             "inference_runtime_required": "Use the correlated runtime gateway for runtime work.",

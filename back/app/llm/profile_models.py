@@ -10,6 +10,7 @@ from sqlalchemy.orm import Mapped, mapped_column
 
 from core.database import Base
 from . import model_usages
+from .profile_codes import default_profile_code
 
 PROFILE_MODEL_FIELDS = model_usages.ALL
 PROFILE_REASONING_FIELDS = model_usages.TEXT_REASONING_FIELDS
@@ -34,6 +35,7 @@ class LlmProfile(Base):
     )
 
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
+    code: Mapped[str] = mapped_column(String(100), unique=True, default=default_profile_code)
     label: Mapped[str] = mapped_column(String(100), nullable=False)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),

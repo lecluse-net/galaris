@@ -19,7 +19,7 @@ import json
 from typing import Any, Optional, cast
 from uuid import UUID
 
-from fastapi import APIRouter, Header, HTTPException, Request, status
+from fastapi import APIRouter, Depends, Header, HTTPException, Request, status
 from fastapi.responses import JSONResponse, StreamingResponse
 from pydantic import ValidationError
 
@@ -47,6 +47,9 @@ from .anthropic_service import (
     translate_to_openai,
 )
 from .provider_facade import ProviderAuthenticationError
+from .profile_gateway import (
+    is_profile_api, mark_profile_api, profile_models, resolve_profile_model,
+)
 from .reasoning import normalize_reasoning_effort, parse_force_reasoning_effort
 from .runtime_correlation import (
     resolve_runtime_process_run_id,
@@ -89,6 +92,10 @@ def _http_exception_response(exc: HTTPException) -> JSONResponse:
 anthropic_router = APIRouter(
     prefix="/llm/anthropic",
     tags=["Anthropic-like LLM"],
+)
+profile_api_router = APIRouter(
+    prefix="/profile/anthropic", tags=["Anthropic-like profiles"],
+    dependencies=[Depends(mark_profile_api)],
 )
 
 
@@ -170,12 +177,20 @@ def _call_id_headers(response: JSONResponse | StreamingResponse) -> dict[str, st
 
 
 @anthropic_router.get("/v1/models")
+@profile_api_router.get("/v1/models")
 @independent_auth(
     reason="Managed-runtime capability token or user with LLM_API_ACCESS"
 )
 async def anthropic_models(request: Request):
     try:
         await _anthropic_api_auth(request)
+        if is_profile_api(request):
+            models = await profile_models(("chat",))
+            data = [{"type": "model", "id": item.id, "display_name": item.id,
+                     "created_at": "1970-01-01T00:00:00Z"} for item in models]
+            return {"data": data, "has_more": False,
+                    "first_id": models[0].id if models else None,
+                    "last_id": models[-1].id if models else None}
         llms = await llm_service.list_llms(capability="chat")
         data = [{
             "type": "model",
@@ -196,6 +211,7 @@ async def anthropic_models(request: Request):
 
 
 @anthropic_router.post("/v1/messages/count_tokens")
+@profile_api_router.post("/v1/messages/count_tokens")
 @independent_auth(
     reason="Managed-runtime capability token or user with LLM_API_ACCESS"
 )
@@ -209,6 +225,8 @@ async def anthropic_count_tokens(request: Request):
                 detail=await tr("anthropic_api.errors.invalid_request"),
             )
         parsed = MessageRequest.model_validate(body)
+        if is_profile_api(request):
+            await resolve_profile_model(parsed.model, "chat")
         return {"input_tokens": anthropic_input_tokens(parsed)}
     except ValidationError as exc:
         return _http_exception_response(
@@ -220,8 +238,14 @@ async def anthropic_count_tokens(request: Request):
     except HTTPException as exc:
         return _http_exception_response(exc)
 
+    except (ValueError, LookupError) as exc:
+        return _http_exception_response(HTTPException(
+            status_code=404 if isinstance(exc, LookupError) else 400, detail=str(exc),
+        ))
+
 
 @anthropic_router.post("/v1/messages")
+@profile_api_router.post("/v1/messages")
 @independent_auth(
     reason="Managed-runtime capability token or user with LLM_API_ACCESS"
 )
@@ -259,7 +283,10 @@ async def _anthropic_messages_body(
 ):
     agent_id = await _anthropic_api_auth(request)
     body: dict[str, Any] = await request.json()
-    extract_process_context(body)
+    # External profile clients may discuss unrelated Galaris records in tools.
+    use_prompt_context = not is_profile_api(request) or agent_id is not None
+    if use_prompt_context:
+        extract_process_context(body)
     try:
         parsed = MessageRequest.model_validate(body)
     except ValidationError as exc:
@@ -279,6 +306,7 @@ async def _anthropic_messages_body(
         )
 
     openai_body = translate_to_openai(parsed)
+    correlation_messages = openai_body.get("messages") if use_prompt_context else None
     input_tokens = estimate_openai_body_tokens(openai_body)
 
     raw_conversation_round_id = (
@@ -295,7 +323,7 @@ async def _anthropic_messages_body(
     raw_task_id = x_galaris_task_id or body.get("galaris_task_id")
     task_id = await resolve_runtime_task_id(
         raw_task_id=raw_task_id,
-        messages=openai_body.get("messages"),
+        messages=correlation_messages,
         agent_id=(None if conversation_round_id is not None else agent_id),
     )
 
@@ -303,11 +331,11 @@ async def _anthropic_messages_body(
     agent_run_id = (
         UUID(str(raw_agent_run_id))
         if raw_agent_run_id
-        else agent_run_id_from_messages(openai_body.get("messages"))
+        else agent_run_id_from_messages(correlation_messages)
     )
 
     explicit_llm_id = body.get("galaris_llm_id") or llm_id_from_messages(
-        openai_body.get("messages")
+        correlation_messages
     )
     llm_override = None
     if explicit_llm_id is not None:
@@ -354,6 +382,7 @@ async def _anthropic_messages_body(
     try:
         proxy_response = await call_proxy(
             openai_body,
+            profile_model=is_profile_api(request),
             task_id=task_id,
             agent_run_id=agent_run_id,
             conversation_round_id=conversation_round_id,
@@ -436,3 +465,4 @@ async def _anthropic_messages_body(
 
 
 router.include_router(anthropic_router)
+router.include_router(profile_api_router)

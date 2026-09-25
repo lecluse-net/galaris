@@ -6,7 +6,7 @@ from datetime import date
 from typing import Any, Optional
 from uuid import UUID
 
-from fastapi import APIRouter, Header, HTTPException, Query, Request, status
+from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request, status
 from fastapi.responses import StreamingResponse
 
 from core.authorize import Privileges, authorize, independent_auth
@@ -25,6 +25,7 @@ from .contracts import (
 from .facade import AgentRunUsage, aggregate_agent_run_usage
 from .protocol_inference import proxy_chat_completion, proxy_responses
 from .provider_facade import ProviderAuthenticationError
+from .profile_gateway import is_profile_api, mark_profile_api, profile_models
 from .reasoning import normalize_reasoning_effort, parse_force_reasoning_effort
 from .schemas import LLMCallPage, LLMCallRead, ProxyModel, ProxyModelList
 from .runtime_correlation import (
@@ -40,6 +41,10 @@ from .trace import (
 
 router = APIRouter()
 llm_api_router = APIRouter(prefix="/llm/openai", tags=["OpenAI-like LLM"])
+profile_api_router = APIRouter(
+    prefix="/profile/openai", tags=["OpenAI-like profiles"],
+    dependencies=[Depends(mark_profile_api)],
+)
 calls_router = APIRouter(prefix="/llm-calls", tags=["llm-calls"])
 
 
@@ -87,6 +92,11 @@ async def _llm_api_agent_ids(agent_id: int | None) -> frozenset[int] | None:
     if agent_id is not None:
         return frozenset((agent_id,))
     return (await current_management_scope()).agent_ids
+
+
+async def authenticate_llm_api(request: Request) -> int | None:
+    """Share the gateway's authentication with specialized inference endpoints."""
+    return await _llm_api_auth(request)
 
 
 async def _visible_inference(request: Request, inference_id: UUID) -> InferenceRead:
@@ -166,11 +176,14 @@ async def inference_events(
 
 
 @llm_api_router.get("/models", response_model=ProxyModelList)
+@profile_api_router.get("/models", response_model=ProxyModelList)
 @independent_auth(
     reason="Managed-runtime capability token or user with LLM_API_ACCESS"
 )
 async def llm_models(request: Request) -> ProxyModelList:
     await _llm_api_auth(request)
+    if is_profile_api(request):
+        return ProxyModelList(data=await profile_models(("chat", "embedding")))
     llms = await llm_service.list_llms(capability="chat")
     return ProxyModelList(data=[
         ProxyModel(
@@ -183,6 +196,7 @@ async def llm_models(request: Request) -> ProxyModelList:
 
 
 @llm_api_router.post("/chat/completions")
+@profile_api_router.post("/chat/completions")
 @independent_auth(
     reason="Managed-runtime capability token or user with LLM_API_ACCESS"
 )
@@ -198,7 +212,11 @@ async def llm_completion(
     try:
         agent_id = await _llm_api_auth(request)
         body: dict[str, Any] = await request.json()
-        extract_process_context(body)
+        # External profile clients may discuss unrelated Galaris records in tools.
+        use_prompt_context = not is_profile_api(request) or agent_id is not None
+        if use_prompt_context:
+            extract_process_context(body)
+        correlation_messages = body.get("messages") if use_prompt_context else None
         raw_task_id = x_galaris_task_id or body.get("galaris_task_id")
         raw_conversation_round_id = (
             x_galaris_conversation_round_id
@@ -213,7 +231,7 @@ async def llm_completion(
         # The final fallback captures subagent calls without Galaris message context.
         task_id = await _resolve_llm_task_id(
             raw_task_id=raw_task_id,
-            messages=body.get("messages"),
+            messages=correlation_messages,
             agent_id=(
                 None if conversation_round_id is not None else agent_id
             ),
@@ -224,10 +242,10 @@ async def llm_completion(
         agent_run_id = (
             UUID(str(raw_agent_run_id))
             if raw_agent_run_id
-            else agent_run_id_from_messages(body.get("messages"))
+            else agent_run_id_from_messages(correlation_messages)
         )
         explicit_llm_id = body.get("galaris_llm_id") or llm_id_from_messages(
-            body.get("messages")
+            correlation_messages
         )
         llm_override = None
         if explicit_llm_id is not None:
@@ -269,6 +287,7 @@ async def llm_completion(
             )
         return await proxy_chat_completion(
             body,
+            profile_model=is_profile_api(request),
             task_id=task_id,
             agent_run_id=agent_run_id,
             conversation_round_id=conversation_round_id,
@@ -300,6 +319,8 @@ async def llm_completion(
 
 @llm_api_router.post("/responses")
 @llm_api_router.post("/responses/compact")
+@profile_api_router.post("/responses")
+@profile_api_router.post("/responses/compact")
 @independent_auth(
     reason="Managed-runtime capability token or user with LLM_API_ACCESS"
 )
@@ -360,6 +381,7 @@ async def llm_responses(
             )
         return await proxy_responses(
             body,
+            profile_model=is_profile_api(request),
             operation=(
                 "compact" if request.url.path.endswith("/responses/compact") else "create"
             ),
@@ -531,4 +553,5 @@ async def read_call(call_id: UUID) -> LLMCallRead:
 
 
 router.include_router(llm_api_router)
+router.include_router(profile_api_router)
 router.include_router(calls_router)

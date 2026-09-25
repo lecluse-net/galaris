@@ -30,6 +30,7 @@ from .contracts import InferenceEvent, ProtocolInferenceRequest
 from .models import LLMCall, LLMCallEvent
 from .provider_models import LLM
 from .provider_facade import ProviderAuthenticationError, ReasoningEffort
+from .profile_gateway import profile_error, resolve_profile_model
 from .text_inference import RecordedTextModel, persist_events, message_for_part
 from .trace import extract_prompts
 
@@ -308,12 +309,24 @@ async def _request(
     reasoning_effort: ReasoningEffort | None = None, force_reasoning_effort: bool = False,
     sdk_request: bool = False, unwrap_deferred_tools: bool = False,
     request_timeout: dict[str, float | None] | None = None,
+    profile_model: bool = False,
 ) -> JSONResponse | StreamingResponse:
     if managed_runtime_request and task_id is None:
         from core.i18n import tr
 
         raise ValueError(await tr("llm_api.errors.managed_runtime_task_required"))
     async def resolve() -> tuple[LLM, ReasoningEffort | None]:
+        if profile_model:
+            selection = await resolve_profile_model(body.get("model"), "chat")
+            task_llm = await proxy_service.resolve_task_executor_llm(task_id) if task_id else None
+            if ((llm_override is not None and llm_override.id != selection.llm.id)
+                    or (model_code is not None and model_code != selection.selector)
+                    or (task_llm is not None and task_llm.id != selection.llm.id)):
+                raise ValueError(await profile_error("profile_selector_conflict", model=selection.selector))
+            policy = await proxy_service.resolve_task_reasoning_effort(task_id, agent_run_id)
+            effort = (reasoning_effort if force_reasoning_effort and reasoning_effort is not None
+                      else policy.effort if policy.resolved else selection.reasoning_effort)
+            return selection.llm, effort
         task_llm = (await proxy_service.resolve_task_executor_llm(task_id)
                     if route_executor_model and llm_override is None and model_code is None else None)
         llm = llm_override or task_llm or await proxy_service.resolve_proxy_llm(
@@ -339,6 +352,7 @@ async def _request(
         sdk_request=sdk_request, managed_runtime_request=managed_runtime_request,
         force_reasoning_effort=force_reasoning_effort, unwrap_deferred_tools=unwrap_deferred_tools,
         request_timeout=request_timeout,
+        correlation_ref=str(body.get("model")) if profile_model else None,
     )
     return await protocol_response(request)
 

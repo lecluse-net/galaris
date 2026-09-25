@@ -17,6 +17,7 @@ from sqlalchemy.sql.elements import ColumnElement
 from core import websocket
 from core.database import AsyncSessionLocal, get_db
 from core.i18n import render_prompt, tr
+from core.user import get_current_token_label
 from .correlation import current_llm_correlation_ref
 from .accounting_scope import record_persisted_call_cost
 from .costing import token_cost
@@ -26,6 +27,7 @@ from .purposes import LLMCallPurpose
 from .provider_facade import ReasoningEffort, usage_accounting_for
 from core.util import as_dict, as_list
 from .schemas import LLMCallRead, LLMCallSummary
+from .subscription_policy import current_execution_authority
 from .trace import (
     content_to_text,
     extract_prompts,
@@ -1021,6 +1023,10 @@ async def create_running_call(
         prompt,
         system_prompt,
     )
+    authority = current_execution_authority()
+    api_token_label = authority.api_token_label if authority is not None else None
+    if api_token_label is None:
+        api_token_label = await get_current_token_label()
     call = LLMCall(
         purpose=purpose,
         task_id=task_id,
@@ -1029,6 +1035,7 @@ async def create_running_call(
         conversation_round_id=conversation_round_id,
         process_run_id=process_run_id,
         requester_user_id=requester_user_id,
+        api_token_label=api_token_label,
         correlation_ref=current_llm_correlation_ref(),
         agent_id=agent_id,
         llm_id=llm_id,

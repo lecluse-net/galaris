@@ -74,6 +74,38 @@ async def _clear_profiles(db: AsyncSession) -> None:
     await db.commit()
 
 
+async def test_public_profile_codes_are_ascii_unique_and_survive_rename(db: AsyncSession) -> None:
+    first = await profile_service.create_profile("Équipe CŒUR_GPU")
+    second = await profile_service.create_profile("Equipe coeur_gpu")
+    assert first.code == "equipe-coeur_gpu"
+    assert second.code == "equipe-coeur_gpu-2"
+    assert (await profile_service.update_profile(first.id, label="Nouveau nom")).code == first.code
+    empty = await profile_service.create_profile("✨")
+    assert empty.code == "profil"
+
+
+async def test_existing_profile_code_backfill_preserves_allocations_and_is_idempotent(db: AsyncSession) -> None:
+    from sqlalchemy import select, text
+    from app.llm import dbadmin
+    from core.dbadmin import SchemaTransitionSet
+    from core.dbadmin.contracts import RequiredColumnTransition
+
+    first = await profile_service.create_profile("Héritage")
+    second = await profile_service.create_profile("Heritage")
+    await db.execute(text("ALTER TABLE llm_profiles ALTER COLUMN code DROP NOT NULL"))
+    await db.execute(text("UPDATE llm_profiles SET code = NULL WHERE id = :id"), {"id": first.id})
+    transitions = SchemaTransitionSet(required_columns=(RequiredColumnTransition("llm_profiles", "code"),))
+    assert dbadmin._needs_profile_codes(transitions)
+    assert not dbadmin._needs_profile_codes(SchemaTransitionSet())
+    assert not await dbadmin._profile_codes_complete(db, transitions)
+    await dbadmin._backfill_profile_codes(db, transitions)
+    assert await dbadmin._profile_codes_complete(db, transitions)
+    codes = dict((await db.execute(select(LlmProfile.id, LlmProfile.code))).all())
+    assert codes[first.id] == "heritage" and codes[second.id] == "heritage-2"
+    await dbadmin._backfill_profile_codes(db, transitions)
+    assert dict((await db.execute(select(LlmProfile.id, LlmProfile.code))).all()) == codes
+
+
 async def test_text_usages_share_the_expected_profile_tiers() -> None:
     assert model_usages.DREAM == model_usages.TEXT_ULTRA_LOW
     assert model_usages.DISPATCHER == model_usages.TEXT_LOW

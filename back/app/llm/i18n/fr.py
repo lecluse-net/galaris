@@ -45,6 +45,9 @@ default: dict[str, object] = {
         "client_disconnected": "Le client s’est déconnecté pendant le streaming",
         "errors": {
             "provider_quota_unsupported": "Ce fournisseur n’expose pas les limites d’usage de l’abonnement.",
+            "profile_selector_invalid": "Modèle de profil '${model}' invalide pour cet endpoint. Utilisez profil/usage/niveau.",
+            "profile_selector_unavailable": "Le modèle de profil '${model}' n’est pas configuré ou est indisponible.",
+            "profile_selector_conflict": "Le modèle de profil '${model}' ne correspond pas au modèle figé pour cette requête.",
             "inference_not_found": "Inférence introuvable.",
             "inference_attempt_not_found": "Tentative d’inférence introuvable.",
             "inference_runtime_required": "Utilisez la passerelle du runtime pour les appels liés à une exécution.",

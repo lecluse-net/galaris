@@ -414,12 +414,18 @@ référence, lancer un modèle candidat, lire la pertinence et étalonner le jug
 pourcentage du Lab n’est jamais une preuve suffisante à lui seul : il doit être interprété avec les
 dimensions, la couverture, les erreurs et le dataset.
 
-## Utiliser Galaris avec Claude Code
+## Connecter un client Codex ou Claude Code externe
 
-L’API compatible Anthropic de Galaris (`/api/llm/anthropic`) permet à [Claude Code](claude-code.md)
-d’utiliser les modèles Galaris comme fournisseur. Le [guide dédié](claude-code.md) explique la
-connexion et la correspondance entre les niveaux Opus, Sonnet, Haiku, Fable et les codes des LLM
-configurés dans Galaris.
+Pour sélectionner un usage tel que `profil1/text/high` dans un catalogue commun à
+tous les profils, consultez le [guide de l’API par profil](profile-api.md).
+
+Les guides suivants donnent les configurations, l’authentification par jeton API
+utilisateur et les commandes de vérification :
+
+- [Codex CLI](codex.md) : `~/.codex/config.toml`, fournisseur Responses sur `/api/profile/openai`.
+- [Claude Code](claude-code.md) : `.claude/settings.json`, alias des quatre paliers et catalogue sur `/api/profile/anthropic`.
+
+Les URL restent communes à tous les profils ; le champ `model` porte le sélecteur complet.
 
 Claude Agent peut aussi être choisi directement comme **Moteur des Tasks** dans la fiche d'un
 agent. Galaris provisionne alors un conteneur Claude Agent SDK isolé, lui fournit le modèle interne

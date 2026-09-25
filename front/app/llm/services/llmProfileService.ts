@@ -10,6 +10,7 @@ export type { ReasoningEffort } from '../types'
 // A profile holds four shared text tiers plus specialized model usages.
 export interface LlmProfile {
     id: number
+    code: string
     label: string
     created_at: string
     updated_at: string | null

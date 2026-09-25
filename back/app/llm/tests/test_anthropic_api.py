@@ -416,9 +416,11 @@ async def test_messages_route_returns_anthropic_message(
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("path", ["/api/llm/anthropic/v1/messages", "/api/profile/anthropic/v1/messages"])
 async def test_managed_anthropic_runtime_uses_shared_task_correlation(
     client: AsyncClient,
     monkeypatch: pytest.MonkeyPatch,
+    path: str,
 ) -> None:
     task_id = uuid4()
     auth = AsyncMock(return_value=42)
@@ -440,13 +442,16 @@ async def test_managed_anthropic_runtime_uses_shared_task_correlation(
     proxy = _patch_proxy(monkeypatch, upstream)
 
     response = await client.post(
-        "/api/llm/anthropic/v1/messages",
+        path,
         json=BASIC_REQUEST,
     )
 
     assert response.status_code == 200
     correlate.assert_awaited_once()
     assert correlate.await_args.kwargs["agent_id"] == 42
+    assert correlate.await_args.kwargs["messages"] == translate_to_openai(
+        MessageRequest.model_validate(BASIC_REQUEST)
+    )["messages"]
     assert proxy.await_args.kwargs["task_id"] == task_id
 
 

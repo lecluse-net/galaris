@@ -1,5 +1,7 @@
 # Décisions d’architecture
 
+- [0132 — Modèles publics sélectionnés par profil et usage](0132-public-profile-models.md)
+
 - [0131 — Réconciliation des skills avant exécution](0131-harness-skill-reconciliation.md)
 
 - [0130 — Classement du topic en parallèle de l'admission](0130-live-message-topic-decisions.md)

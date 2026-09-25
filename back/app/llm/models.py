@@ -119,6 +119,9 @@ class LLMCall(Base):
     correlation_ref: Mapped[Optional[str]] = mapped_column(
         String(300), nullable=True, index=True
     )
+    # Snapshot the label, never the credential; survives token rename/deletion.
+    # NULL: no recorded API token. Empty: an authenticated token without a label.
+    api_token_label: Mapped[str | None] = mapped_column(Text, nullable=True)
     purpose: Mapped[Optional[str]] = mapped_column(
         String(120), nullable=True, index=True
     )

@@ -16,7 +16,7 @@ from loguru import logger
 
 from app.agent.contracts import AIResult
 from core.database import get_db_session
-from core.user import get_current_user_id
+from core.user import get_current_token_label, get_current_user_id
 from . import inference_store
 from .call_capture import inference_owner
 from .contracts import (
@@ -93,6 +93,9 @@ async def submit(request: InferenceRequest, *, inference_id: UUID | None = None)
             authority = replace(authority, requester_user_id=requester)
         elif requester is not None:
             authority = LLMExecutionAuthority(requester_user_id=requester)
+        api_token_label = await get_current_token_label()
+        if api_token_label is not None and authority is not None:
+            authority = replace(authority, api_token_label=api_token_label)
         resolved = request.model_copy(deep=True)
         if isinstance(resolved, DecisionInferenceRequest):
             from .decision_binding import model_binding
@@ -246,6 +249,7 @@ async def execute(inference_id: UUID) -> None:
                         source_kind=authority.source_kind,
                         source_id=authority.source_id,
                         messenger_origin=authority.messenger_origin,
+                        api_token_label=authority.api_token_label,
                     ),
                 ):
 

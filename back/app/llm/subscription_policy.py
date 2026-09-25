@@ -55,6 +55,7 @@ class LLMExecutionAuthority:
     source_kind: str | None = None
     source_id: str | None = None
     messenger_origin: bool = False
+    api_token_label: str | None = None
 
 
 @dataclass(slots=True)
@@ -92,6 +93,7 @@ def llm_execution_scope(
     source_kind: str | None = None,
     source_id: str | None = None,
     messenger_origin: bool = False,
+    api_token_label: str | None = None,
 ) -> Generator[None]:
     """Restore trusted identity provenance around deferred inference work."""
 
@@ -101,6 +103,7 @@ def llm_execution_scope(
             source_kind=source_kind,
             source_id=source_id,
             messenger_origin=messenger_origin,
+            api_token_label=api_token_label,
         )
     )
     try:

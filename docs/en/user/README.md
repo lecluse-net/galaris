@@ -271,9 +271,18 @@ Authorized accounts have access to an **AI Lab** that separates two uses: full a
 
 The [complete AI Lab guide](lab-ai.md) explains how to import a real case, build a reference, run a candidate model, assess relevance, and calibrate the automatic judge. A percentage in the Lab is never sufficient proof on its own: it must be interpreted together with the dimensions, coverage, errors, and dataset.
 
-## Using Galaris with Claude Code
+## Connect an external Codex or Claude Code client
 
-Galaris’s Anthropic-compatible API (`/api/llm/anthropic`) allows [Claude Code](claude-code.md) to use Galaris models as its provider. The [dedicated guide](claude-code.md) explains the connection and the mapping between the Opus, Sonnet, Haiku, and Fable levels and the LLM codes configured in Galaris.
+To select usages such as `profile1/text/high` from a shared catalog of all profiles,
+see the [profile API guide](profile-api.md).
+
+These guides provide configuration examples, user API token authentication, and
+verification commands:
+
+- [Codex CLI](codex.md): `~/.codex/config.toml`, Responses provider at `/api/profile/openai`.
+- [Claude Code](claude-code.md): `.claude/settings.json`, four tier aliases and catalog at `/api/profile/anthropic`.
+
+All profiles share the URLs; the `model` field carries the complete selector.
 
 Claude Agent can also be selected directly as the **Task Engine** on an Agent’s profile. Galaris then provisions an isolated Claude Agent SDK container, provides it with the resolved internal model, the Agent’s Skills and MCP, and displays the text, Tool calls, LLM calls, and terminal result live. No direct Anthropic account or token is required.
 
