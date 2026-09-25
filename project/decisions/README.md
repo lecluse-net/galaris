@@ -1,5 +1,7 @@
 # Décisions d’architecture
 
+- [0136 — Configuration OpenRouter proposée à l'installation](0136-initial-openrouter-configuration.md)
+
 - [0134 — Pilotage des Labs par les agents](0134-agent-lab-control.md)
 
 - [0133 — Connaissance du produit attribuable aux agents](0133-agent-product-knowledge.md)

@@ -1878,7 +1878,8 @@
       },
       {
         "files": [
-          "back/app/llm/dbadmin.py"
+          "back/app/llm/dbadmin.py",
+          "back/app/llm/initial_configuration.py"
         ],
         "source": "app.llm",
         "target": "core.dbadmin"

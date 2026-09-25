@@ -21,6 +21,11 @@ from core.params import Param, Params, params_service
 from .profile_models import LlmProfile
 from .profile_service import DEFAULT_PROFILE_LABEL
 from .profile_codes import profile_code
+from .initial_configuration import (
+    initial_configuration_complete,
+    initialize_configuration,
+    needs_initial_configuration,
+)
 
 
 async def _default_profile_rows(
@@ -111,6 +116,11 @@ async def _profile_codes_complete(session: AsyncSession, _transitions: SchemaTra
 
 def register_dbadmin(registry: DbAdminRegistry) -> None:
     registry.register_data_source(DATA_SOURCE)
+    registry.register_action(DbAdminAction(
+        key="app.llm.initial_configuration", phase=DbAdminPhase.AFTER_EXPAND,
+        checksum="openrouter-reference-v1", predicate=needs_initial_configuration,
+        handler=initialize_configuration, postcondition=initial_configuration_complete,
+    ))
     registry.register_action(DbAdminAction(
         key="app.llm.profile_codes", phase=DbAdminPhase.AFTER_EXPAND,
         checksum="ascii-stable-codes-v1", predicate=_needs_profile_codes,

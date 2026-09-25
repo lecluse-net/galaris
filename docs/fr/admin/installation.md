@@ -88,6 +88,22 @@ Cliquez sur **Connexion** : tant qu’aucun utilisateur n’existe, ce bouton ou
 de création du premier compte administrateur. Ensuite, il ouvre la connexion habituelle. Le parcours de bienvenue
 vous guide pour connecter un modèle et créer votre premier agent.
 
+Sur une base neuve, **OpenRouter** et neuf modèles sont déjà configurés dans le profil
+**Défaut**. Ouvrez **Modèles IA**, renseignez votre clé API dans le fournisseur OpenRouter,
+puis enregistrez. Aucune clé ni aucun compte n'est fourni avec Galaris.
+
+Les quatre niveaux texte utilisent DeepSeek V4.1 Flash avec les efforts de raisonnement
+`none`, `low`, `medium` et `high`. Le profil propose également GPT 5.4 Nano pour les documents,
+Nemotron 3 Nano Omni pour l'audio et la vidéo, Nano Banana Pro pour les images, Whisper pour
+la transcription, Qwen3 Embedding 4B pour les vecteurs, Jev 1.13 pour les décisions,
+Lyria 3 Clip Preview pour la musique et Hailuo 3 Max pour la génération vidéo.
+La génération de sons reste non configurée. Les tarifs peuvent être actualisés depuis le fournisseur.
+
+Cette sélection est une proposition modifiable et supprimable. Pour supprimer le profil,
+créez d'abord un autre profil, éventuellement vide : Galaris conserve toujours au moins un profil.
+Les mises à jour ne réinstallent pas les éléments supprimés et ne remplacent pas vos réglages.
+Les bases déjà installées ne reçoivent pas cette configuration rétroactivement.
+
 ## Ensuite
 
 `make stop` arrête les conteneurs sans les supprimer ; `make start` les relance.

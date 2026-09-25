@@ -87,6 +87,22 @@ Click **Log in**: while no user exists, this button opens registration for the f
 administrator account. Afterwards it opens the usual login form. Onboarding guides you
 through connecting a model and creating your first agent.
 
+On a fresh database, **OpenRouter** and nine models are already configured in the
+**Défaut** profile. Open **AI Models**, enter your API key in the OpenRouter provider,
+then save. Galaris ships no key or account.
+
+All four text tiers use DeepSeek V4.1 Flash with reasoning efforts `none`, `low`,
+`medium` and `high`. The profile also proposes GPT 5.4 Nano for documents, Nemotron 3
+Nano Omni for audio and video, Nano Banana Pro for images, Whisper for transcription,
+Qwen3 Embedding 4B for embeddings, Jev 1.13 for decisions, Lyria 3 Clip Preview for music
+and Hailuo 3 Max for video generation. Sound generation remains unconfigured.
+Pricing can be refreshed from the provider.
+
+These defaults can be edited or deleted. Before deleting the profile, create another
+one, which may be empty: Galaris always retains at least one profile. Updates do not
+restore deleted items or overwrite your settings. Existing installations do not receive
+this configuration retroactively.
+
 ## Afterwards
 
 `make stop` stops containers without removing them; `make start` starts them again.
