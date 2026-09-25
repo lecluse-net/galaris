@@ -1,6 +1,7 @@
 # Décisions d’architecture
 
 - [0136 — Configuration OpenRouter proposée à l'installation](0136-initial-openrouter-configuration.md)
+- [0135 — Agent Galaris proposé une seule fois](0135-default-galaris-agent.md)
 
 - [0134 — Pilotage des Labs par les agents](0134-agent-lab-control.md)
 

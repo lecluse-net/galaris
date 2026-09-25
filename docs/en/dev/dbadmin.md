@@ -269,6 +269,15 @@ Datasets are ordered by `depends_on`. Reconcilers then run and may also depend o
 
 ### Initial data subsequently owned by administrators
 
+The `app.agent.initial_galaris` dataset proposes **Galaris** once, managed by the
+first active administrator, using the internal Harness, the current default LLM
+profile and an active `galaris_admin` connection (including documentation access).
+If no administrator exists yet, the first signup replays the same dataset.
+The internal `agents.initialization_key` marker survives renaming and soft deletion:
+later synchronizations neither recreate the agent nor reset its settings or revoked
+grants. Existing installations also receive this proposal. See
+[decision 0135](../../../project/decisions/0135-default-galaris-agent.md).
+
 Agent titles (`titles`) are initialized with i18n keys `agent_titles.mr` (`M`) and
 `agent_titles.ms` (`F`) in the existing `label` field by
 `app.agent.initial_titles`, in the `AFTER_EXPAND` phase, only when the table is first created.

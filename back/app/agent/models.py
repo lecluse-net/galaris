@@ -100,6 +100,9 @@ class Agent(HistoryMixin, Base):
     # Exact value emitted by the single Voice/TTS picker.
     voice: Mapped[Optional[str]] = mapped_column(String(512), nullable=True)
     code: Mapped[str] = mapped_column(String(50), nullable=False, index=True, unique=True)
+    # Internal seed identity, deliberately absent from editable API schemas.
+    # HistoryMixin retains it after deletion so defaults are never recreated.
+    initialization_key: Mapped[Optional[str]] = mapped_column(String(50), nullable=True, unique=True)
     # Contraction-only compatibility columns. No Agent API or service reads or writes
     # these values; bridge.hermes imports them only when a driver-owned row is missing.
     hermes_url: Mapped[Optional[str]] = mapped_column(String, nullable=True, default=None)

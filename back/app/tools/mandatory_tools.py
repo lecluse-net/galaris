@@ -686,6 +686,22 @@ async def sync_mandatory_tools() -> list[ToolModel]:
     return synced
 
 
+async def initialize_admin_agent_connections(agent_id: int) -> None:
+    """Initialize the optional administration grant for a newly seeded agent."""
+    from sqlalchemy import update
+    from app.connection import Connection
+
+    await sync_integrated_tool_connections(agent_id)
+    await get_db().execute(
+        update(Connection).where(
+            Connection.agent_id == agent_id,
+            Connection.tool_id == select(ToolModel.id).where(
+                ToolModel.code == "galaris_admin"
+            ).scalar_subquery(),
+        ).values(active=True)
+    )
+
+
 async def sync_integrated_tool_connections(agent_id: int | None = None) -> int:
     """Merge missing auto-connected agent-to-tool connections.
 

@@ -39,6 +39,7 @@
         "files": [
           "back/app/agent/__init__.py",
           "back/app/agent/agent_service.py",
+          "back/app/agent/defaults.py",
           "back/app/agent/facade.py",
           "back/app/agent/models.py"
         ],
@@ -49,6 +50,7 @@
         "files": [
           "back/app/agent/agent_service.py",
           "back/app/agent/briefing_service.py",
+          "back/app/agent/defaults.py",
           "back/app/agent/executor_service.py",
           "back/app/agent/facade.py",
           "back/app/agent/mcp.py",
@@ -61,6 +63,7 @@
         "files": [
           "back/app/agent/agent_service.py",
           "back/app/agent/assertions.py",
+          "back/app/agent/defaults.py",
           "back/app/agent/dialogue_service.py",
           "back/app/agent/management_scope.py",
           "back/app/agent/openai_router.py",
@@ -75,6 +78,7 @@
         "files": [
           "back/app/agent/agent_group_service.py",
           "back/app/agent/agent_service.py",
+          "back/app/agent/defaults.py",
           "back/app/agent/dialogue_service.py",
           "back/app/agent/janus.py",
           "back/app/agent/management_scope.py",
@@ -91,6 +95,7 @@
       {
         "files": [
           "back/app/agent/dbadmin.py",
+          "back/app/agent/defaults.py",
           "back/app/agent/html_migration.py"
         ],
         "source": "app.agent",
@@ -152,6 +157,7 @@
         "files": [
           "back/app/agent/agent_service.py",
           "back/app/agent/dbadmin.py",
+          "back/app/agent/defaults.py",
           "back/app/agent/dialogue_service.py",
           "back/app/agent/janus.py",
           "back/app/agent/management_scope.py",
@@ -2903,6 +2909,7 @@
           "back/app/tools/connection_functions.py",
           "back/app/tools/dbadmin.py",
           "back/app/tools/documentation_service.py",
+          "back/app/tools/mandatory_tools.py",
           "back/app/tools/mcp_loader.py"
         ],
         "source": "app.tools",

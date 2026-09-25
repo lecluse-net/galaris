@@ -64,6 +64,7 @@ from .agent_registry import (
     get_enabled_integrated_tool_codes,
 )
 from .mandatory_tools import sync_integrated_tool_connections, sync_mandatory_tools
+from .mandatory_tools import initialize_admin_agent_connections
 from .admin_access import GALARIS_ADMIN_TOOL_CODE, has_galaris_admin_access, require_galaris_admin_access
 from .admin_access import has_documentation_access, require_documentation_access
 from .connection_functions import list_available_connection_functions
@@ -83,6 +84,7 @@ from .mcp_loader import (
 from .tool_errors import RecoverableToolError, native_failure_key
 
 __all__ = [
+    "initialize_admin_agent_connections",
     "native_failure_key",
     "get_tool_codes",
     "ToolModel",

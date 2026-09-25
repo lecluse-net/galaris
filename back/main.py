@@ -285,6 +285,8 @@ register_goal_contact_directory(GoalContactDirectoryAdapter())
 # the same governed long-term and Messenger-session snapshots.
 from app.memory import register_memory
 register_memory()
+from app.agent import register_default_agent
+register_default_agent()
 from app.browser import capture_html_page_thumbnail, capture_public_page_thumbnail
 from app.memory.document_thumbnail_service import register_web_thumbnail_capture
 

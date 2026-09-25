@@ -8,6 +8,7 @@ from sqlalchemy.dialects.postgresql import insert
 
 from core.dbadmin import (
     DbAdminAction,
+    DbAdminDataSource,
     DbAdminPhase,
     DbAdminRegistry,
     SchemaTransitionSet,
@@ -90,6 +91,11 @@ async def _all_agents_have_managers(
 
 
 def register_dbadmin(registry: DbAdminRegistry) -> None:
+    from .defaults import default_agent_dataset
+
+    registry.register_data_source(DbAdminDataSource(
+        key="app.agent", factory=lambda: (default_agent_dataset(),),
+    ))
     # A permanent dataset would recreate deleted/renamed titles on every sync.
     # These defaults belong exclusively to the creation of the titles table.
     registry.register_action(DbAdminAction(

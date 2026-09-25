@@ -310,6 +310,15 @@ lieu de dépendre artificiellement du tri lexical.
 
 ### Données initiales laissées à l’administrateur
 
+Le dataset `app.agent.initial_galaris` propose une seule fois l'agent **Galaris**,
+rattaché au premier administrateur actif, avec le harnais interne, le profil courant
+par défaut et la connexion `galaris_admin` active (documentation comprise). S'il n'y a
+pas encore d'administrateur, la première inscription rejoue ce même dataset.
+Le marqueur interne `agents.initialization_key` est conservé après renommage et
+suppression logique : les synchronisations suivantes ne recréent pas cet agent et
+ne rétablissent ni ses réglages ni les droits révoqués. Ce comportement s'applique
+aussi aux installations existantes. Voir la [décision 0135](../../../project/decisions/0135-default-galaris-agent.md).
+
 Les civilités des agents (`titles`) sont initialisées avec les clés i18n
 `agent_titles.mr` (`M`) et `agent_titles.ms` (`F`) dans le champ `label` existant,
 par l’action `app.agent.initial_titles`, en phase `AFTER_EXPAND`, uniquement lorsque la table
