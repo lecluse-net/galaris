@@ -24,7 +24,7 @@ from .learning_service import (
     list_learning_context,
 )
 from .schemas import SkillCreate, SkillPublic, SkillUpdate
-from .skill_service import has_configured_skills
+from .skill_service import has_configured_skills, initialize_galaris_agent_skills
 from . import skill_service, storage
 from .resource_facade import (
     append_skill_file,
@@ -70,6 +70,7 @@ __all__ = [
     "delete_skill_file",
     "get_skill_resource",
     "has_configured_skills",
+    "initialize_galaris_agent_skills",
     "list_skill_files",
     "list_injectable",
     "list_learning_context",

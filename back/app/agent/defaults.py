@@ -59,14 +59,14 @@ async def _rows(session: AsyncSession) -> tuple[dict[str, object], ...]:
 async def _after_merge(session: AsyncSession, result: DbAdminDatasetResult) -> None:
     if not result.inserted:
         return
-    from app.skill import skill_service
+    from app.skill import initialize_galaris_agent_skills
     from app.tools import initialize_admin_agent_connections
 
     agent_id = (await session.scalars(
         select(Agent.id).where(Agent.initialization_key == "galaris")
     )).one()
     await initialize_admin_agent_connections(agent_id)
-    await skill_service.ensure_assignment_matrix(agent_id=agent_id)
+    await initialize_galaris_agent_skills(agent_id)
 
 
 def default_agent_dataset() -> DbAdminDataset:

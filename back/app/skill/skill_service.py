@@ -7,7 +7,7 @@ from collections.abc import Collection
 from typing import Sequence, TypedDict
 
 from loguru import logger
-from sqlalchemy import and_, func, or_, select
+from sqlalchemy import and_, func, or_, select, update as sql_update
 from sqlalchemy.orm import selectinload
 
 from app.agent.models import Agent
@@ -134,6 +134,19 @@ async def ensure_assignment_matrix(
         await db.flush()
         logger.info("Skill assignment matrix: created={} association(s)", len(missing))
     return len(missing)
+
+
+async def initialize_galaris_agent_skills(agent_id: int) -> None:
+    """Grant initial skills to the newly seeded assistant in its creation transaction."""
+    await ensure_assignment_matrix(agent_id=agent_id)
+    await get_db().execute(
+        sql_update(AgentSkill).where(
+            AgentSkill.agent_id == agent_id,
+            AgentSkill.skill_id == select(Skill.id).where(
+                Skill.code == "galaris-lab"
+            ).scalar_subquery(),
+        ).values(active=True)
+    )
 
 
 def to_public(skill: Skill) -> SkillPublic:

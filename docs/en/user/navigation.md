@@ -79,6 +79,10 @@ A skill provides instructions; actual function access also depends on authorized
 (`?tab=learned`) when learning is enabled, and **Authorizations** (`?tab=authorizations`)
 with `SKILL_ASSIGN`. Skill assignments do not replace Tool permissions or human account roles.
 
+The bundled **Galaris**, **Galaris Lab**, and **Connaissance de Galaris** skills belong to
+the **Galaris** category by default. Synchronization also groups existing uncategorized
+skills while preserving your custom classifications.
+
 ## Chatting, tracking work and finding results
 
 Use **Act → Chat** (`/chat`) to talk with an agent, **Act → Goals** (`/goal`) for a durable

@@ -443,8 +443,8 @@ const columns = computed<QTableProps['columns']>(() => [
     field: 'label',
     align: 'left',
     sortable: true,
-    style: 'vertical-align: top; width: 190px;',
-    headerStyle: 'width: 190px;',
+    style: 'width: 15%;',
+    headerStyle: 'width: 15%;',
   },
   {
     name: 'agentIdentity',
@@ -452,39 +452,40 @@ const columns = computed<QTableProps['columns']>(() => [
     field: 'agent_label',
     align: 'left',
     sortable: true,
-    style: 'vertical-align: top; width: 190px;',
-    headerStyle: 'width: 190px;',
+    style: 'width: 15%;',
+    headerStyle: 'width: 15%;',
   },
   {
     name: 'description',
     label: t('skills.auth.colDescription'),
     field: 'description',
     align: 'left',
-    style: 'white-space: normal; word-break: break-word; vertical-align: top; max-width: 0;',
+    style: 'width: 26%;',
+    headerStyle: 'width: 26%;',
   },
   {
     name: 'global',
     label: t('skills.auth.colGlobal'),
     field: 'global_state',
     align: 'center',
-    style: 'vertical-align: top; width: 180px;',
-    headerStyle: 'width: 180px;',
+    style: 'width: 10%;',
+    headerStyle: 'width: 10%;',
   },
   {
     name: 'category',
     label: t('skills.auth.colCategory'),
     field: 'category_state',
     align: 'center',
-    style: 'vertical-align: top; width: 230px;',
-    headerStyle: 'width: 230px;',
+    style: 'width: 13%;',
+    headerStyle: 'width: 13%;',
   },
   {
     name: 'agent',
     label: t('skills.auth.colAgent'),
     field: 'agent_state',
     align: 'center',
-    style: 'vertical-align: top; width: 230px;',
-    headerStyle: 'width: 230px;',
+    style: 'width: 13%;',
+    headerStyle: 'width: 13%;',
   },
   {
     name: 'effective',
@@ -492,8 +493,8 @@ const columns = computed<QTableProps['columns']>(() => [
     field: 'effective',
     align: 'center',
     sortable: true,
-    style: 'vertical-align: top; width: 90px;',
-    headerStyle: 'width: 90px;',
+    style: 'width: 8%;',
+    headerStyle: 'width: 8%;',
   },
 ])
 
@@ -745,12 +746,23 @@ onMounted(async () => {
 :deep(.q-table) {
   table-layout: fixed;
   width: 100%;
+  min-width: 1000px;
 }
 
 :deep(.q-table th),
 :deep(.q-table td) {
+  padding: 12px;
   white-space: normal;
   word-break: break-word;
+  vertical-align: top;
+}
+
+:deep(.q-table .q-btn-toggle) {
+  flex-wrap: wrap;
+}
+
+:deep(.q-table .q-btn-toggle .q-btn) {
+  flex: 1 1 auto;
 }
 
 @media (max-width: 1023px) {

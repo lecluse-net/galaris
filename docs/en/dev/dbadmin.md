@@ -271,12 +271,19 @@ Datasets are ordered by `depends_on`. Reconcilers then run and may also depend o
 
 The `app.agent.initial_galaris` dataset proposes **Galaris** once, managed by the
 first active administrator, using the internal Harness, the current default LLM
-profile and an active `galaris_admin` connection (including documentation access).
+profile, an active `galaris_admin` connection (including documentation access), and an
+individual authorization for the `galaris-lab` skill. Its global default remains disabled.
 If no administrator exists yet, the first signup replays the same dataset.
 The internal `agents.initialization_key` marker survives renaming and soft deletion:
 later synchronizations neither recreate the agent nor reset its settings or revoked
 grants. Existing installations also receive this proposal. See
 [decision 0135](../../../project/decisions/0135-default-galaris-agent.md).
+
+The `app.skill.galaris_category` and `app.skill.galaris_category_assignments` datasets
+create the **Galaris** category and assign uncategorized Galaris system skills to it.
+Assignments use `update_only_null=True` to preserve custom classifications.
+Global and individual authorizations are preserved; any existing Galaris category rules
+apply to skills joining that category.
 
 Agent titles (`titles`) are initialized with i18n keys `agent_titles.mr` (`M`) and
 `agent_titles.ms` (`F`) in the existing `label` field by

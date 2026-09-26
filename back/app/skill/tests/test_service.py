@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.agent.models import Agent, Title
 from app.harnesses.models import AgentHarness
 from app.skill import skill_service, storage
-from app.skill.models import AgentSkill, AgentSkillCategory
+from app.skill.models import AgentSkill, AgentSkillCategory, Skill, SkillCategory
 from app.skill.schemas import (
     SkillCategoryCreate,
     SkillCategoryUpdate,
@@ -48,6 +48,44 @@ async def test_disk_reconciliation_creates_and_restores_database_index(
 
     assert second == {"created": 0, "restored": 1, "invalid_directories": []}
     assert await skill_service.get_by_code("manual-skill") is not None
+
+
+@pytest.mark.asyncio
+async def test_bundled_galaris_skills_receive_default_category_without_reclassifying_custom_skills(
+    db: AsyncSession,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    root = tmp_path / "skills"
+    monkeypatch.setattr(type(storage.settings), "GALARIS_SKILLS_ROOT", str(root))
+    write_skill(root, "galaris-custom")
+    await skill_service.sync_from_disk()
+    codes = ("galaris", "galaris-lab", "galaris-knowledge")
+    skills = list((await db.scalars(select(Skill).where(Skill.code.in_(codes)))).all())
+    category = await db.scalar(select(SkillCategory).where(SkillCategory.label == "Galaris"))
+    assert category is not None
+    assert len(skills) == 3
+    assert {skill.category_id for skill in skills} == {category.id}
+    imported = await skill_service.get_by_code("galaris-custom")
+    assert imported is not None and imported.category_id is None
+
+    custom_category = await skill_service.create_category(SkillCategoryCreate(label="Internal guides"))
+    for skill in skills:
+        skill.category_id = custom_category.id if skill.code == "galaris-knowledge" else None
+    enabled_before = {skill.code: skill.global_enabled for skill in skills}
+    await db.commit()
+
+    # Existing uncategorized skills are filled in; an administrator's choice survives rescans.
+    for _ in range(2):
+        result = await skill_service.sync_from_disk()
+        assert result == {"created": 0, "restored": 0, "invalid_directories": []}
+        for skill in skills:
+            await db.refresh(skill)
+            expected_category = custom_category.id if skill.code == "galaris-knowledge" else category.id
+            assert skill.category_id == expected_category
+            assert skill.global_enabled is enabled_before[skill.code]
+        categories = await db.scalars(select(SkillCategory).where(SkillCategory.label == "Galaris"))
+        assert len(categories.all()) == 1
 
 
 @pytest.mark.asyncio

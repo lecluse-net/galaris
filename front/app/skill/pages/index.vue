@@ -747,15 +747,16 @@ const columns = computed<QTableProps['columns']>(() => [
     field: 'label',
     align: 'left',
     sortable: true,
-    style: 'vertical-align: top; width: 220px;',
-    headerStyle: 'width: 220px;',
+    style: 'width: 22%;',
+    headerStyle: 'width: 22%;',
   },
   {
     name: 'description',
     label: t('skills.description'),
     field: 'description',
     align: 'left',
-    style: 'white-space: normal; overflow-wrap: anywhere; vertical-align: top;',
+    style: 'width: 38%;',
+    headerStyle: 'width: 38%;',
   },
   {
     name: 'status',
@@ -763,8 +764,8 @@ const columns = computed<QTableProps['columns']>(() => [
     field: 'valid',
     align: 'center',
     sortable: true,
-    style: 'vertical-align: top; width: 130px;',
-    headerStyle: 'width: 130px;',
+    style: 'width: 14%;',
+    headerStyle: 'width: 14%;',
   },
   {
     name: 'files',
@@ -772,16 +773,16 @@ const columns = computed<QTableProps['columns']>(() => [
     field: 'file_count',
     align: 'right',
     sortable: true,
-    style: 'vertical-align: top; width: 140px;',
-    headerStyle: 'width: 140px;',
+    style: 'width: 10%;',
+    headerStyle: 'width: 10%;',
   },
   {
     name: 'actions',
     label: t('skills.actions'),
     field: 'actions',
     align: 'right',
-    style: 'vertical-align: top; width: 200px; min-width: 200px;',
-    headerStyle: 'width: 200px; min-width: 200px;',
+    style: 'width: 16%;',
+    headerStyle: 'width: 16%;',
   },
 ])
 
@@ -1188,8 +1189,23 @@ onMounted(async () => {
   width: 100%;
 }
 
-:deep(.skills-table .q-table__middle) {
-  overflow-x: hidden;
+:deep(.skills-table .q-table th),
+:deep(.skills-table .q-table td) {
+  padding: 12px;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  vertical-align: top;
+}
+
+:deep(.skills-table .q-table .q-chip) {
+  max-width: 100%;
+  height: auto;
+  min-height: 2em;
+}
+
+:deep(.skills-table .q-table .q-chip__content) {
+  white-space: normal;
+  min-width: 0;
 }
 
 :deep(.skills-table .q-table__grid-content) {
@@ -1230,17 +1246,11 @@ onMounted(async () => {
   white-space: nowrap;
 }
 
-.skill-actions-cell {
-  white-space: nowrap;
-}
-
 .skill-actions {
   display: flex;
-  flex-wrap: nowrap;
+  flex-wrap: wrap;
   justify-content: flex-end;
   gap: 2px;
-  min-width: max-content;
-  white-space: nowrap;
 }
 
 .skill-category-heading {

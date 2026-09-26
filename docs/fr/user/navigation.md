@@ -88,6 +88,10 @@ des Tools et connexions autorisés.
 Cette dernière page gère l’affectation des skills ; elle ne remplace pas les autorisations
 des Tools ni les rôles du compte humain.
 
+Les compétences fournies **Galaris**, **Galaris Lab** et **Connaissance de Galaris** sont
+regroupées par défaut dans la catégorie **Galaris**. La synchronisation classe aussi les
+compétences existantes sans catégorie, en conservant vos classements personnalisés.
+
 ## Discuter, suivre une tâche et retrouver son résultat
 
 Pour échanger avec un agent, ouvrez **Agir → Discussion** (`/chat`). Pour un objectif

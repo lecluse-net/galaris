@@ -9,6 +9,7 @@ from sqlalchemy import select
 from app.agent.defaults import default_agent_dataset
 from app.agent.models import Agent, Title
 from app.connection import Connection
+from app.skill import AgentSkill, skill_service
 from app.tools import ToolModel, has_documentation_access, has_galaris_admin_access
 from app.tools.dbadmin import datasets as tool_datasets
 from core.authorize import Assignment, Role
@@ -50,6 +51,9 @@ async def test_seed_waits_for_manager_then_preserves_edits_revocations_and_delet
     assert agent.profile_media_type == "text/html"
     assert await has_galaris_admin_access(agent.id)
     assert await has_documentation_access(agent.id)
+    lab_skill = await skill_service.get_by_code("galaris-lab")
+    assert lab_skill is not None and not lab_skill.global_enabled
+    assert "galaris-lab" in await skill_service.get_assigned_codes(agent.id)
 
     agent.first_name = "Custom assistant"
     agent.code = "custom-assistant"
@@ -67,6 +71,7 @@ async def test_seed_waits_for_manager_then_preserves_edits_revocations_and_delet
     ))).one()
     connection.active = False
     await db.commit()
+    await skill_service.set_agent_authorization(lab_skill.id, agent.id, "disabled")
 
     # Replay the complete set of ordinary connection defaults as on an update.
     for definition in tool_datasets():
@@ -78,6 +83,7 @@ async def test_seed_waits_for_manager_then_preserves_edits_revocations_and_delet
     )
     assert not await has_galaris_admin_access(agent.id)
     assert not await has_documentation_access(agent.id)
+    assert "galaris-lab" not in await skill_service.get_assigned_codes(agent.id)
     assert agent.profile_id == custom_profile.id and agent.agent_driver == "hermes"
 
     agent.soft_delete()
@@ -102,22 +108,28 @@ async def test_seed_preserves_existing_galaris_agent(db):
     await db.refresh(existing)
     assert existing.first_name == "Existing" and existing.initialization_key is None
     assert not await has_galaris_admin_access(existing.id)
+    assert "galaris-lab" not in await skill_service.get_assigned_codes(existing.id)
+    assert "galaris-lab" in await skill_service.get_assigned_codes(proposal.id)
 
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("entrypoint", ["dataset", "user_observer"])
-async def test_seed_failure_rolls_back_agent_and_grants_and_can_retry(db, monkeypatch, entrypoint):
+@pytest.mark.parametrize("grant", ["connections", "skills"])
+async def test_seed_failure_rolls_back_agent_and_grants_and_can_retry(db, monkeypatch, entrypoint, grant):
     import app.tools
+    import app.skill
 
     user = await _admin(db)
     await db.commit()
-    initialize = app.tools.initialize_admin_agent_connections
+    module = app.tools if grant == "connections" else app.skill
+    method = "initialize_admin_agent_connections" if grant == "connections" else "initialize_galaris_agent_skills"
+    initialize = getattr(module, method)
 
     async def fail_after_grant(agent_id):
         await initialize(agent_id)
         raise RuntimeError("Synthetic initialization failure")
 
-    monkeypatch.setattr(app.tools, "initialize_admin_agent_connections", fail_after_grant)
+    monkeypatch.setattr(module, method, fail_after_grant)
     if entrypoint == "dataset":
         with pytest.raises(RuntimeError, match="Synthetic"):
             async with db.begin_nested():
@@ -125,9 +137,11 @@ async def test_seed_failure_rolls_back_agent_and_grants_and_can_retry(db, monkey
     else:
         await notify_user_access_changed(user.id)
     assert await db.scalar(select(Agent.id)) is None
-    monkeypatch.setattr(app.tools, "initialize_admin_agent_connections", initialize)
+    assert await db.scalar(select(AgentSkill.id)) is None
+    monkeypatch.setattr(module, method, initialize)
     assert (await reconcile_dataset(db, default_agent_dataset())).inserted == 1
     assert await has_documentation_access((await _proposal(db)).id)
+    assert "galaris-lab" in await skill_service.get_assigned_codes((await _proposal(db)).id)
 
 
 @pytest.mark.asyncio
@@ -172,6 +186,13 @@ async def test_first_signup_immediately_proposes_manageable_galaris(client, monk
     assert agent["first_name"] == "Galaris"
     assert agent["agent_driver"] == "internal" and agent["profile_id"] is None
     assert "initialization_key" not in agent
+    authorizations = await client.get(
+        "/api/skills/authorizations", headers=headers, params={"agent_id": agent["id"]},
+    )
+    assert authorizations.status_code == 200, authorizations.text
+    lab = next(row for row in authorizations.json()["authorizations"] if row["code"] == "galaris-lab")
+    assert lab["agent_state"] == "enabled" and lab["effective"] is True
+    assert lab["global_state"] == "disabled"
     changed = await client.put(f"/api/agents/{agent['id']}", headers=headers,
                                json={"first_name": "My assistant"})
     assert changed.status_code == 200, changed.text

@@ -26,8 +26,10 @@ ce marqueur. La suppression physique hors contrat applicatif n'est pas couverte.
 Le profil reste `NULL` pour suivre le profil courant, le driver vaut `internal`,
 et aucun harnais externe n'est affecté. Les connexions et skills ordinaires sont
 initialisés ; seule la création active en plus `galaris_admin`, qui autorise
-notamment la consultation de la documentation. Les synchronisations ultérieures
-respectent la révocation de ce droit et les réglages utilisateur.
+notamment la consultation de la documentation, et l’autorisation individuelle du
+skill `galaris-lab`. Le défaut global de ce skill et la connexion Lab restent désactivés.
+Les synchronisations ultérieures respectent la révocation de ces droits et les réglages
+utilisateur ; elles n’ajoutent pas ce nouveau défaut aux agents déjà initialisés.
 
 Sur une installation neuve, aucun responsable humain n'existe encore pendant
 DbAdmin. Un observateur du cycle de vie utilisateur rejoue le même dataset après

@@ -26,7 +26,9 @@ evaluates transcribed text, not speech recognition or audio synthesis.
 ## Assign the Labs to an agent
 
 Enable the agent's **Lab Galaris** connection and assign the **Galaris Lab** system skill
-(`galaris-lab`) in its skill authorizations. Both are disabled by default. Fifty tools
+(`galaris-lab`) in its skill authorizations. The **Galaris** agent created during installation
+already has this skill enabled. Other agents inherit its disabled default; the Lab connection
+still requires explicit activation in every case. Fifty tools
 cover all eleven labs: discover contracts, create and clone datasets, edit experimental
 prompts, start, monitor, cancel, resume, rejudge and compare benchmarks, and submit
 attributed agent assessments.

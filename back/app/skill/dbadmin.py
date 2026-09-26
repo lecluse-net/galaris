@@ -12,7 +12,7 @@ from app.agent import Agent, list_driver_specs
 from core.dbadmin import DbAdminDataSource, DbAdminDataset, DbAdminRegistry
 
 from . import storage
-from .models import AgentSkill, Skill
+from .models import AgentSkill, Skill, SkillCategory
 
 
 def compile_skill_rows() -> tuple[
@@ -89,6 +89,21 @@ async def _assignment_rows(
     )
 
 
+async def _galaris_category_rows(
+    session: AsyncSession,
+) -> tuple[dict[str, object], ...]:
+    category_id = await session.scalar(
+        select(SkillCategory.id).where(SkillCategory.label == "Galaris")
+    )
+    if category_id is None:
+        raise RuntimeError("DbAdmin could not resolve the Galaris skill category")
+    return tuple(
+        {"code": definition.code, "category_id": category_id}
+        for definition in storage.SYSTEM_SKILLS
+        if definition.code == "galaris" or definition.code.startswith("galaris-")
+    )
+
+
 def datasets() -> tuple[DbAdminDataset, ...]:
     return (
         DbAdminDataset(
@@ -110,12 +125,30 @@ def datasets() -> tuple[DbAdminDataset, ...]:
             depends_on=("app.skill.system",),
         ),
         DbAdminDataset(
+            key="app.skill.galaris_category",
+            table=cast(Table, SkillCategory.__table__),
+            natural_key=("label",),
+            rows=({"label": "Galaris"},),
+            update_columns=(),
+            depends_on=("app.skill.installed",),
+        ),
+        DbAdminDataset(
+            key="app.skill.galaris_category_assignments",
+            table=cast(Table, Skill.__table__),
+            natural_key=("code",),
+            rows=_galaris_category_rows,
+            update_columns=("category_id",),
+            # Fill missing defaults while preserving administrator classifications.
+            update_only_null=True,
+            depends_on=("app.skill.galaris_category",),
+        ),
+        DbAdminDataset(
             key="app.skill.assignments",
             table=cast(Table, AgentSkill.__table__),
             natural_key=("agent_id", "skill_id"),
             rows=_assignment_rows,
             update_columns=(),
-            depends_on=("app.skill.installed",),
+            depends_on=("app.skill.galaris_category_assignments",),
         ),
     )
 

@@ -68,7 +68,7 @@ function tabFromQuery(value: unknown): LlmTab {
   if (value === 'usage' && !canViewUsage.value) return 'providers'
   return value === 'providers' || value === 'models' || value === 'usage'
     ? value
-    : (canViewUsage.value ? 'usage' : 'providers')
+    : 'providers'
 }
 
 const activeTab = ref<LlmTab>(tabFromQuery(route.query.tab))
