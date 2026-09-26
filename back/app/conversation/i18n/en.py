@@ -10,7 +10,6 @@ default: dict[str, object] = {
         "task_directive_conflicting_route": "Choose exactly one of @exec, @plan, or @briefing for this Task.",
         "task_directive_conflicting_effort": "Choose either @standard or @high, and do not combine @standard with @plan or @briefing.",
         "task_stopped": "Stopped. The current Task will not continue.",
-        "existing_file_resent": "I re-sent the existing file '${name}' without regenerating it.",
         "failure_notification": {
             "message": (
                 "Sorry, I could not finish processing this message.\n\n"

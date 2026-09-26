@@ -283,7 +283,7 @@ tests restent l’autorité sur le comportement.
 | `app.harness` | `app.agent` | `back/app/harness/__init__.py`, `back/app/harness/checkpoint.py`, `back/app/harness/checkpoint_policy.py`, `back/app/harness/contracts.py`, `back/app/harness/conversation.py`, `back/app/harness/driver.py`, `back/app/harness/executor.py`, `back/app/harness/facade.py`, `back/app/harness/mcp_toolset.py`, `back/app/harness/media.py`, `back/app/harness/prompt.py`, `back/app/harness/router.py`, `back/app/harness/runtime.py` |
 | `app.harness` | `app.console` | `back/app/harness/executor.py` |
 | `app.harness` | `app.conversation` | `back/app/harness/conversation.py` |
-| `app.harness` | `app.file_share` | `back/app/harness/conversation.py`, `back/app/harness/media.py`, `back/app/harness/runtime.py` |
+| `app.harness` | `app.file_share` | `back/app/harness/media.py`, `back/app/harness/runtime.py` |
 | `app.harness` | `app.llm` | `back/app/harness/conversation.py`, `back/app/harness/executor.py`, `back/app/harness/media.py`, `back/app/harness/runtime.py` |
 | `app.harness` | `app.messenger` | `back/app/harness/conversation.py`, `back/app/harness/executor.py` |
 | `app.harness` | `app.process` | `back/app/harness/conversation.py`, `back/app/harness/executor.py` |
@@ -1819,15 +1819,15 @@ tests restent l’autorité sur le comportement.
 | `console_status` | `console` | `app.console` | `console_status` | `back/app/console/mcp.py:35` |
 | `console_stop` | `console` | `app.console` | `console_stop` | `back/app/console/mcp.py:127` |
 | `console_write` | `console` | `app.console` | `console_write` | `back/app/console/mcp.py:112` |
-| `conversation_choice_resolve` | `conversation` | `app.conversation` | `conversation_choice_resolve` | `back/app/conversation/mcp.py:912` |
-| `conversation_process_start` | `conversation` | `app.conversation` | `conversation_process_start` | `back/app/conversation/mcp.py:1040` |
-| `conversation_task_list` | `conversation` | `app.conversation` | `conversation_task_list` | `back/app/conversation/mcp.py:852` |
-| `conversation_task_pause` | `conversation` | `app.conversation` | `conversation_task_pause` | `back/app/conversation/mcp.py:991` |
-| `conversation_task_resume` | `conversation` | `app.conversation` | `conversation_task_resume` | `back/app/conversation/mcp.py:1002` |
-| `conversation_task_retry` | `conversation` | `app.conversation` | `conversation_task_retry` | `back/app/conversation/mcp.py:1013` |
-| `conversation_task_status` | `conversation` | `app.conversation` | `conversation_task_status` | `back/app/conversation/mcp.py:892` |
-| `conversation_task_stop` | `conversation` | `app.conversation` | `conversation_task_stop` | `back/app/conversation/mcp.py:1024` |
-| `conversation_task_submit` | `conversation` | `app.conversation` | `conversation_task_submit` | `back/app/conversation/mcp.py:591` |
+| `conversation_choice_resolve` | `conversation` | `app.conversation` | `conversation_choice_resolve` | `back/app/conversation/mcp.py:859` |
+| `conversation_process_start` | `conversation` | `app.conversation` | `conversation_process_start` | `back/app/conversation/mcp.py:987` |
+| `conversation_task_list` | `conversation` | `app.conversation` | `conversation_task_list` | `back/app/conversation/mcp.py:799` |
+| `conversation_task_pause` | `conversation` | `app.conversation` | `conversation_task_pause` | `back/app/conversation/mcp.py:938` |
+| `conversation_task_resume` | `conversation` | `app.conversation` | `conversation_task_resume` | `back/app/conversation/mcp.py:949` |
+| `conversation_task_retry` | `conversation` | `app.conversation` | `conversation_task_retry` | `back/app/conversation/mcp.py:960` |
+| `conversation_task_status` | `conversation` | `app.conversation` | `conversation_task_status` | `back/app/conversation/mcp.py:839` |
+| `conversation_task_stop` | `conversation` | `app.conversation` | `conversation_task_stop` | `back/app/conversation/mcp.py:971` |
+| `conversation_task_submit` | `conversation` | `app.conversation` | `conversation_task_submit` | `back/app/conversation/mcp.py:550` |
 | `document_show` | `conversation` | `app.conversation` | `document_show` | `back/app/conversation/mcp.py:107` |
 | `file_append` | `file_sharing` | `app.file_share` | `append_file` | `back/app/file_share/mcp.py:289` |
 | `file_copy` | `file_sharing` | `app.file_share` | `copy_file` | `back/app/file_share/mcp.py:344` |
@@ -1856,7 +1856,7 @@ tests restent l’autorité sur le comportement.
 | `task_run` | `galaris` | `app.task` | `mcp_run_task` | `back/app/task/mcp.py:176` |
 | `task_stop` | `galaris` | `app.task` | `mcp_stop_task` | `back/app/task/mcp.py:155` |
 | `tools_list` | `galaris` | `app.tools` | `list_mcp_tools` | `back/app/tools/mcp.py:88` |
-| `conversation_round_get` | `galaris_admin` | `app.conversation` | `conversation_round_get` | `back/app/conversation/mcp.py:282` |
+| `conversation_round_get` | `galaris_admin` | `app.conversation` | `conversation_round_get` | `back/app/conversation/mcp.py:241` |
 | `documentation_catalog` | `galaris_admin` | `app.tools` | `documentation_catalog` | `back/app/tools/mcp.py:36` |
 | `documentation_search` | `galaris_admin` | `app.tools` | `documentation_search` | `back/app/tools/mcp.py:49` |
 | `llm_call` | `galaris_admin` | `app.llm` | `mcp_llm_call` | `back/app/llm/mcp.py:30` |

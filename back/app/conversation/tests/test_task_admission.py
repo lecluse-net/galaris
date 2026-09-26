@@ -353,14 +353,15 @@ async def test_free_form_choice_resolution_uses_the_exact_turn_scope(
 
 
 @pytest.mark.asyncio
-async def test_existing_attachment_delivery_cannot_create_a_generation_task() -> None:
+@pytest.mark.parametrize("direct", [False, True])
+async def test_attachment_words_do_not_override_task_admission(monkeypatch, direct) -> None:
     base = _turn()
     turn = ConversationTurn(
         room_id=base.room_id,
         round_id=base.round_id,
         agent_id=base.agent_id,
         language=base.language,
-        objective="Joins-moi le fichier HTML V2 déjà créé.",
+        objective="Joins le fichier existant au document après sa correction.",
         messages=base.messages,
         messaging_context=base.messaging_context,
     )
@@ -370,12 +371,20 @@ async def test_existing_attachment_delivery_cannot_create_a_generation_task() ->
         resources={"conversation_turn": turn},
     )
 
-    with pytest.raises(ValueError, match="existing attachment"):
-        await conversation_mcp.conversation_task_submit(
-            ctx,
-            label="Générer une nouvelle V3",
-            objective="Crée une nouvelle page HTML 3D et livre-la.",
+    create = AsyncMock(return_value={"created": True})
+    monkeypatch.setattr(conversation_mcp, "_create_conversation_task", create)
+    monkeypatch.setattr(conversation_mcp, "_validate_dispatch_mode", AsyncMock())
+    if direct:
+        result = await conversation_mcp.admit_background_task(
+            turn, "Corrige le document et joins le fichier existant.",
         )
+    else:
+        result = await conversation_mcp.conversation_task_submit(
+            ctx,
+            objective="Corrige le document et joins le fichier existant.",
+        )
+    assert result == {"created": True}
+    create.assert_awaited_once()
 
 
 @pytest.mark.asyncio

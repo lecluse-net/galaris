@@ -417,10 +417,11 @@ routing and tracing. The system prompt renders language, channel, room, current 
 location, and continuity once in `Turn context` or `Call context`; the output parser
 continues removing old envelopes for session compatibility.
 
-Commands to stop an active Task and resend an existing attachment bypass the model: the
-controller uses canonical Messenger room links and UUIDs, executes the idempotent effect, then
-responds from its receipt. Admission refuses to convert a simple resend of an existing version
-into a new generation Task. A dispatcher inference failure for an AI peer produces `END`;
+Simple commands to stop an active Task bypass the model when their target is unique.
+Attachment resend requests go through the conversational model: it interprets the request,
+selects the file and destination, then calls authorized tools. No keyword detector triggers
+delivery or rejects Task admission. Displayed document context remains descriptive data.
+A dispatcher inference failure for an AI peer produces `END`;
 other execution errors propagate to the scheduler. Narrations preceding a tool call remain only
 in the audit trace.
 

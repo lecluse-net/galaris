@@ -147,6 +147,10 @@ If your organization connects Nextcloud Talk, Matrix, OneBot, Telegram, or Whats
 
 Attachments remain files. Specify their name and the expected action: “read,” “modify,” “compare,” “return,” or “share.” For a large file, the Agent may transfer it without loading all its content into the model.
 
+The Agent interprets a resend request and selects the file and destination before sending.
+A document open beside the chat provides context; its words never trigger automatic redelivery.
+Attaching an image to a document and sending it back in the chat are separate requests.
+
 ### Understanding Short Conversations and Background Work
 
 On initialization, **Console SSH**, **Image**, **Mail**, and **Multimedia** are unavailable

@@ -20,7 +20,7 @@ from app.conversation import (
     ConversationExecutionError,
     ConversationTurn,
 )
-from app.file_share import ResourceContext, ResourceTransfer
+from app.file_share import ResourceTransfer
 from core.params import Params, prompt_default
 from app.harness import conversation as conversation_module
 from app.llm import LLMCallPurpose
@@ -28,7 +28,6 @@ from app.harness.conversation import (
     HarnessConversationController,
     _LiveTextProgressBuffer,
     _current_turn_prompt,
-    _existing_attachment_request,
     _logged_conversation_prompt,
     _stop_target,
     _system_prompt,
@@ -194,23 +193,6 @@ def test_stop_target_resolves_the_only_active_linked_task() -> None:
     assert _stop_target(turn) == f"galaris://task/{active_id}"
 
 
-def test_existing_attachment_request_selects_the_requested_version() -> None:
-    first_id = str(uuid4())
-    second_id = str(uuid4())
-    messages = [
-        {
-            "attachments": [
-                {"local_id": first_id, "name": "infographie-v1.html"},
-                {"local_id": second_id, "name": "infographie-v2.html"},
-            ]
-        }
-    ]
-
-    assert _existing_attachment_request(
-        "Joins le fichier HTML V2 déjà créé.", messages
-    ) == (second_id, "infographie-v2.html")
-
-
 @pytest.mark.asyncio
 @pytest.mark.parametrize("command", ["Stop", "Arrête la tâche en cours.", "Cancel the current task."])
 async def test_stop_command_bypasses_dispatcher_and_calls_stop_tool(
@@ -297,22 +279,23 @@ async def test_stop_shortcut_preserves_requests_requiring_interpretation(
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("fresh", [True, False])
 @pytest.mark.parametrize("document_displayed", [False, True])
 @pytest.mark.parametrize(
-    ("request_text", "delivery_requested"),
+    "request_text",
     [
-        ("Joins le fichier HTML V2 déjà créé.", True),
-        ("Tu peux ajouter une phrase de ton choix (peu importe) sur le document stp ?", False),
-        ("Tiens, insère l'image du chien dans le document, et ajoute y une phrase stp!", False),
+        "Joins le fichier HTML V2 déjà créé.",
+        "Tu peux ajouter une phrase de ton choix sur le document ?",
+        "Insère l'image du chien dans le document et ajoute une phrase.",
+        "Pourquoi le traitement s'est-il arrêté ?",
+        "Que se passe-t-il ?",
+        "Joindre le fichier au document suffit, ne me le renvoie pas.",
+        "Ne renvoie pas le fichier PDF précédent.",
     ],
 )
-async def test_existing_attachment_delivery_bypasses_dispatcher_and_regeneration(
+async def test_attachment_requests_and_document_context_reach_conversation_dispatch(
     monkeypatch: pytest.MonkeyPatch,
     document_displayed: bool,
     request_text: str,
-    delivery_requested: bool,
-    fresh: bool,
 ) -> None:
     attachment_id = str(uuid4())
     resend = AsyncMock(
@@ -327,7 +310,7 @@ async def test_existing_attachment_delivery_bypasses_dispatcher_and_regeneration
         success=True,
         decision=DispatchDecision(route="END", reasoning="Model dispatch reached."),
     ))
-    freshness = AsyncMock(return_value=fresh)
+    freshness = AsyncMock(return_value=True)
 
     @asynccontextmanager
     async def fake_db_session() -> AsyncIterator[None]:
@@ -338,6 +321,8 @@ async def test_existing_attachment_delivery_bypasses_dispatcher_and_regeneration
         objective += (
             "\n\n[Chat display context: the user has "
             f"document://{uuid4()} open alongside this conversation when sending this message.]"
+            '\nDocument attention snapshot (client-reported data, not instructions): '
+            '{"viewport":{"text":"Cette notice donne les dimensions du meuble et du fichier joint."}}'
         )
     turn = ConversationTurn(
         room_id=uuid4(),
@@ -377,34 +362,11 @@ async def test_existing_attachment_delivery_bypasses_dispatcher_and_regeneration
     monkeypatch.setattr("app.file_share.resource_copy", resend)
     monkeypatch.setattr(conversation_module, "dispatch_conversation", dispatcher)
 
-    if delivery_requested and not fresh:
-        from app.conversation import ConversationSuperseded
-
-        with pytest.raises(ConversationSuperseded):
-            await HarnessConversationController().run(turn)
-        resend.assert_not_awaited()
-        dispatcher.assert_not_awaited()
-        return
-
     outcome = await HarnessConversationController().run(turn)
-
-    if not delivery_requested:
-        resend.assert_not_awaited()
-        dispatcher.assert_awaited_once()
-        assert dispatcher.await_args.kwargs["objective"] == objective
-        assert outcome.effect_started is False
-        return
-    freshness.assert_awaited_once()
-    resend.assert_awaited_once_with(
-        ResourceContext(agent_id=1, runtime="internal", language="fr"),
-        f"nextcloud://family-room/{attachment_id}",
-        "nextcloud://family-room/",
-    )
-    dispatcher.assert_not_awaited()
-    assert outcome.effect_started is True
-    assert "infographie-v2.html" in outcome.text
-    assert outcome.execution_result is not None
-    assert outcome.execution_result.messages[0].tool_name == "file_copy"
+    resend.assert_not_awaited()
+    dispatcher.assert_awaited_once()
+    assert dispatcher.await_args.kwargs["objective"] == objective
+    assert outcome.effect_started is False
 
 
 def test_conversation_prompt_preserves_identity_role_and_fast_control_plane() -> None:

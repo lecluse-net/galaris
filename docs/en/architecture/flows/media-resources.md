@@ -60,7 +60,10 @@ For Hermes, the bridge streams binaries over the `raw` channel of the generic ha
 `MessengerFileTransport` resolves a room or direct recipient, then delegates to the
 `Messenger`. An attachment search is bounded to recent history. Bridges that support large files override upload/download to stream the bytes.
 
-For a conversational resend request, the server first resolves the canonical `local_id` of the attachment in the authorized session, retrieves its bytes through the Messenger façade, verifies the announced and actual sizes, then uploads them to the same room. The file is neither regenerated nor converted, and no production Task is allowed for this operation.
+For a conversational resend request, the model selects the attachment and destination, then
+calls an authorized tool with its canonical reference. The transport checks access and size
+before copying existing bytes without regeneration. No keyword shortcut triggers delivery or
+blocks Task creation for a broader request.
 
 In a Task, each produced file is registered with the exact URI of the provider that owns it.
 A successful delivery preserves the source, the final artifact at the destination provider, and a receipt (tool, destination, and source). Messenger sending is an outgoing copy and never deletes the source. File labels and names remain untrusted data; only identifiers and references validated by the server are reinjected into subsequent steps.

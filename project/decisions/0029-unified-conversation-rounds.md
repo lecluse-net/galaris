@@ -93,9 +93,9 @@ Le remplacement durable arrêt → confirmation → successeur reste un chantier
 Le raccourci d'arrêt ne consomme qu'une commande entière, sans autres entrées ou pièces
 jointes, et dont la cible active est unique. Toute demande nécessitant une interprétation
 traverse le contrôleur normal avec son texte complet. Aucun découpage par conjonction ni
-liste d'exceptions métier n'est ajouté. La garde de fraîcheur avant un renvoi de fichier
-propage également `ConversationSuperseded`, avant le transport, pour conserver les entrées
-au lieu de terminer le round en erreur. Les prompts ne changent pas ; la description de
+liste d'exceptions métier n'est ajouté. Les demandes de renvoi passent par le modèle et les
+outils autorisés, sans raccourci lexical. Les gardes de fraîcheur de préparation et d'outils
+conservent les entrées d'un round supplanté avant tout effet. Les prompts ne changent pas ; la description de
 l'outil est alignée sur le contrat général d'amendement.
 
 Lors de la préparation d'un objectif, le Working Set lié est une projection de contexte,

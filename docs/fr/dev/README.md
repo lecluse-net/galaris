@@ -422,10 +422,11 @@ internes au routage et à la trace. Le prompt système rend langue, canal, room,
 localisation et continuité une seule fois dans `Turn context` ou `Call context` ; le parseur de
 sortie continue de retirer les anciennes enveloppes pour assurer la compatibilité des sessions.
 
-Les commandes d'arrêt d'une Task active et de renvoi d'une pièce jointe existante contournent le
-modèle : le contrôleur utilise les liens de room et UUID Messenger canoniques, exécute l'effet
-idempotent, puis répond depuis son reçu. L'admission refuse de convertir un simple renvoi de
-version existante en nouvelle Task de génération. Une erreur d'inférence du dispatcher pour un pair
+Les commandes simples d'arrêt d'une Task active contournent le modèle lorsque leur cible est unique.
+Les demandes de renvoi de pièce jointe passent par le modèle conversationnel : il interprète
+la demande, choisit le fichier et la destination, puis appelle les outils autorisés. Aucun
+détecteur lexical ne déclenche un envoi ni ne refuse une admission de Task. Le contexte du
+document affiché reste une donnée descriptive. Une erreur d'inférence du dispatcher pour un pair
 IA produit `END`; les autres erreurs d'exécution remontent au scheduler. Les narrations précédant un appel
 d'outil restent uniquement dans la trace d'audit.
 

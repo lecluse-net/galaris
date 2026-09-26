@@ -80,7 +80,14 @@ La projection de session Messenger résout enfin une room par UUID local ou iden
 toujours dans la portée de sa connexion, puis interroge les deux références canoniques.
 Elle projette également les UUID canoniques des messages, rooms et pièces jointes dans
 `TaskMessage`. Une demande de renvoi d'une version existante réutilise directement ces octets par
-UUID et l'admission interdit de créer une Task de régénération pour ce tour.
+UUID. Le modèle conversationnel interprète la demande et choisit l'outil, la ressource et la
+destination. Les anciens détecteurs lexicaux de renvoi et de refus d'admission sont supprimés :
+un document affiché, une négation ou une demande d'édition ne doit jamais devenir une commande
+d'envoi. La réutilisation des octets et les contrôles d'accès restent garantis par le transport.
+Le test de sélection lexicale de version est retiré avec ce comportement ; les scénarios du
+contrôleur vérifient désormais que la demande complète atteint le routage conversationnel sans
+envoi anticipé. Les tests Messenger conservent la garantie de copie des octets existants et les
+tests de service couvrent la conservation des entrées lors d'une préparation supplantée.
 Pour Nextcloud Talk, le partage OCS est rapproché du message de fichier créé dans l'historique par
 son nom DAV unique ; le bridge ne renvoie plus l'identifiant vide qui empêchait la journalisation.
 

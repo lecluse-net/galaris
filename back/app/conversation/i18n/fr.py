@@ -10,7 +10,6 @@ default: dict[str, object] = {
         "task_directive_conflicting_route": "Choisis exactement un mode parmi @exec, @plan ou @briefing pour cette tâche.",
         "task_directive_conflicting_effort": "Choisis soit @standard, soit @high, et ne combine pas @standard avec @plan ou @briefing.",
         "task_stopped": "C’est arrêté. La tâche en cours ne continuera pas.",
-        "existing_file_resent": "Voilà, j’ai renvoyé le fichier existant « ${name} » sans le régénérer.",
         "failure_notification": {
             "message": (
                 "Désolé, je n’ai pas pu terminer le traitement de ce message.\n\n"

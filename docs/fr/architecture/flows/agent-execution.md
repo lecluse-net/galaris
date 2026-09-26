@@ -637,10 +637,11 @@ que le driver n'expose pas. `@briefing` est actuellement indisponible puisque au
 n'expose le briefing. Seul un
 `forced_route` de création explicite reste une contrainte stricte.
 
-Les commandes explicites d'arrêt et de renvoi d'une pièce jointe existante sont également des
-contrôles déterministes exécutés avant le dispatcher et avant le modèle conversationnel. L'arrêt
-cible la Task active la plus récente déjà liée à la room ; le renvoi cible l'UUID canonique du
-fichier demandé. Une panne du modèle dispatcher applique immédiatement la route de secours bornée :
+Une commande simple d'arrêt avec une cible active unique peut être exécutée avant le dispatcher
+et le modèle conversationnel. Les demandes de renvoi de pièce jointe sont interprétées par le
+modèle, qui choisit la ressource canonique et sa destination avant d'appeler un outil autorisé.
+Le texte documentaire ne peut pas déclencher un envoi par détection de mots-clés.
+Une panne du modèle dispatcher applique immédiatement la route de secours bornée :
 `EXEC` pour un humain et `END` pour une IA. Les textes émis avant un appel d'outil
 restent dans la trace d'audit mais sont retirés de la réponse Messenger ; seule la réponse produite
 après le dernier effet réussi est visible.

@@ -228,47 +228,6 @@ async def _validate_dispatch_mode(
         raise ValueError("briefing is unavailable for the selected Task harness")
 
 
-def _requests_existing_attachment_delivery(objective: str) -> bool:
-    """Reject Task admission for a turn that only asks to resend an existing file."""
-
-    lowered = objective.casefold()
-    delivery_marker = any(
-        marker in lowered
-        for marker in (
-            "attach",
-            "envoie",
-            "joins",
-            "joindre",
-            "renvoie",
-            "send",
-            "transmet",
-        )
-    )
-    file_marker = any(
-        marker in lowered for marker in ("fichier", "file", "html", "pdf", "document")
-    )
-    existing_marker = any(
-        marker in lowered
-        for marker in (
-            "déjà",
-            "deja",
-            "existant",
-            "existing",
-            "précédent",
-            "precedent",
-            "previous",
-            "v1",
-            "v2",
-            "v3",
-        )
-    )
-    regeneration_marker = any(
-        marker in lowered
-        for marker in ("génère", "genere", "generate", "recrée", "recree", "recreate")
-    )
-    return delivery_marker and file_marker and existing_marker and not regeneration_marker
-
-
 @mcp_tool(
     "galaris_admin",
     name="conversation_round_get",
@@ -608,13 +567,6 @@ async def conversation_task_submit(
     normalized_effort: Literal["standard", "high"] = forced_effort or "standard"
     await _validate_dispatch_mode(turn, mode)
 
-    existing_attachment_delivery = _requests_existing_attachment_delivery(turn.objective)
-    if disposition in {"CREATE_NEW", "REPLACE"} and existing_attachment_delivery:
-        raise ValueError(
-            "This turn asks to deliver an existing attachment. Re-send that attachment "
-            "directly; do not create a new Task or regenerate the artifact."
-        )
-
     clean_target = str(target_task_id or "").strip()
     if disposition == "REPLACE":
         from app.task.task_service import TaskEditConflict, TaskRevisionConflict
@@ -799,11 +751,6 @@ async def admit_background_task(
     clean_objective = objective.strip()
     if not clean_objective:
         raise ValueError("objective is required")
-    if _requests_existing_attachment_delivery(fresh_turn.objective):
-        raise ValueError(
-            "This turn asks to deliver an existing attachment. Re-send that attachment "
-            "directly; do not create a new Task or regenerate the artifact."
-        )
     direct_mode: Literal["auto", "exec", "plan", "briefing"] = "auto"
     if require_briefing or forced_route == "BRIEFING":
         direct_mode = "briefing"

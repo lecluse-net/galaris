@@ -212,6 +212,11 @@ Les pièces jointes restent des fichiers. Précisez leur nom et l’action atten
 « modifie », « compare », « renvoie » ou « partage ». Pour un fichier volumineux, l’agent peut
 le transférer sans charger tout son contenu dans le modèle.
 
+L’agent interprète la demande de renvoi et choisit le fichier et sa destination avant l’envoi.
+Le contenu d’un document ouvert à côté du chat sert de contexte ; ses mots ne déclenchent
+aucun renvoi automatique. Joindre une image à un document et la renvoyer dans le chat sont
+deux demandes distinctes.
+
 ### Comprendre les conversations courtes et le travail de fond
 
 À l’initialisation, **Console SSH**, **Image**, **Mail** et **Multimédia** ne sont pas

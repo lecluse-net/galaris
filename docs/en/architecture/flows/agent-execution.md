@@ -605,10 +605,11 @@ activate a step that the driver does not expose. `@briefing` is currently unavai
 active driver exposes briefing. Only an explicit creation `forced_route` remains a strict
 constraint.
 
-Explicit stop commands and commands to resend an existing attachment are also deterministic
-controls executed before the dispatcher and before the conversational model. Stopping targets
-the most recent active Task already linked to the room; resending targets the canonical UUID of
-the requested file. A dispatcher-model failure immediately applies the bounded fallback route:
+A simple stop command with a unique active target can execute before the dispatcher and
+conversational model. Attachment resend requests are interpreted by the model, which selects
+the canonical resource and destination before calling an authorized tool. Document text cannot
+trigger delivery through keyword detection.
+A dispatcher-model failure immediately applies the bounded fallback route:
 `EXEC` for a human and `END` for an AI peer. Text emitted before a tool call remains in the
 audit trace but is removed from the Messenger response; only the response produced after the last
 successful effect is visible.

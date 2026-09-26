@@ -37,7 +37,6 @@ from app.agent.conversation_context import (
 from app.conversation import (
     ConversationExecutionError,
     ConversationOutcome,
-    ConversationSuperseded,
     ConversationTurn,
     parse_direct_task_directive,
     run_preparation,
@@ -218,67 +217,6 @@ def _stop_target(turn: ConversationTurn) -> str | None:
         and str(item.get("task_id") or "").strip()
     }
     return next(iter(targets)) if len(targets) == 1 else None
-
-
-def _existing_attachment_request(
-    objective: str,
-    messages: list[Mapping[str, object]],
-) -> tuple[str, str] | None:
-    """Return the newest matching attachment for an explicit delivery-only request."""
-
-    lowered = objective.casefold()
-    if any(marker in lowered for marker in ("régén", "regen", "recrée", "recreate")):
-        return None
-    # Contextual prose such as "when sending this message" is not a send command.
-    if not any(
-        re.search(rf"\b{re.escape(marker)}\b", lowered)
-        for marker in (
-            "joins",
-            "joindre",
-            "donne",
-            "transmet",
-            "renvoie",
-            "envoie",
-            "attach",
-            "send",
-        )
-    ):
-        return None
-    if not any(marker in lowered for marker in ("fichier", "doc", "html", "pdf", "file")):
-        return None
-    candidates: list[tuple[str, str]] = []
-    for raw_message in reversed(messages):
-        raw_attachments = raw_message.get("attachments")
-        if not isinstance(raw_attachments, list):
-            continue
-        for raw_attachment in reversed(cast(list[object], raw_attachments)):
-            if not isinstance(raw_attachment, Mapping):
-                continue
-            attachment = cast(Mapping[str, object], raw_attachment)
-            attachment_id = str(attachment.get("local_id") or "").strip()
-            name = str(attachment.get("name") or "").strip()
-            if attachment_id:
-                candidates.append((attachment_id, name))
-    if not candidates:
-        return None
-    version_match = re.search(r"\bv\d+\b", lowered)
-    for extension in ("html", "pdf"):
-        if extension in lowered:
-            matching = next(
-                (
-                    candidate
-                    for candidate in candidates
-                    if candidate[1].casefold().endswith(f".{extension}")
-                    and (
-                        version_match is None
-                        or version_match.group(0) in candidate[1].casefold()
-                    )
-                ),
-                None,
-            )
-            if matching is not None:
-                return matching
-    return candidates[0]
 
 
 def _deterministic_effect_outcome(
@@ -622,44 +560,6 @@ class HarnessConversationController:
                 excluded_message_ids=current_ids,
                 preserve_complete_messages=True,
             ))
-            requested_attachment = _existing_attachment_request(
-                turn.objective,
-                [cast(Mapping[str, object], raw) for raw in snapshot.messages],
-            )
-            if requested_attachment is not None:
-                from app.file_share import ResourceContext, resource_copy
-                attachment_id, attachment_name = requested_attachment
-                guard = turn.assert_fresh_before_effect
-                if guard is not None and not await guard():
-                    raise ConversationSuperseded(
-                        "A newer user message arrived before the attachment could be re-sent."
-                    )
-                room_locator = str(turn.messaging_context["room_locator"])
-                tool_code = str(turn.messaging_context["tool_code"])
-                started_at = time.monotonic()
-                result = await resource_copy(
-                    ResourceContext(
-                        agent_id=turn.agent_id,
-                        runtime="internal",
-                        language=turn.language,
-                    ),
-                    f"{tool_code}://{room_locator}/{attachment_id}",
-                    f"{tool_code}://{room_locator}/",
-                )
-                text = t("conversation.existing_file_resent", turn.language).replace(
-                    "${name}", attachment_name
-                )
-                return _deterministic_effect_outcome(
-                    turn,
-                    text=text,
-                    tool_name="file_copy",
-                    arguments={
-                        "source": f"{tool_code}://{room_locator}/{attachment_id}",
-                        "destination": f"{tool_code}://{room_locator}/",
-                    },
-                    content=result.model_dump_json(),
-                    started_at=started_at,
-                )
             history: list[Message] = []
             dispatch_messages: list[Mapping[str, object]] = []
             for raw in snapshot.messages:

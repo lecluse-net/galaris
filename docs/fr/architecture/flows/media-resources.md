@@ -71,10 +71,10 @@ média restent applicables ; le transport interne du runtime n’ajoute pas de p
 `Messenger`. Une recherche de pièce jointe est bornée à l’historique récent. Les bridges qui
 supportent de gros fichiers surchargent l’upload/download afin de streamer les octets.
 
-Pour une demande conversationnelle de renvoi, le serveur résout d'abord le `local_id` canonique de
-la pièce jointe dans la session autorisée, récupère ses octets par la façade Messenger, vérifie la
-taille annoncée et réelle, puis les téléverse dans la même room. Le fichier n'est ni régénéré ni
-converti et aucune Task de production n'est admise pour cette opération.
+Pour une demande conversationnelle de renvoi, le modèle choisit la pièce jointe et la destination,
+puis appelle l'outil autorisé avec sa référence canonique. Le transport contrôle l'accès et la
+taille avant de copier les octets existants, sans régénération. Aucun raccourci lexical ne
+déclenche l'envoi ni ne bloque la création d'une Task pour une demande plus large.
 
 Dans une Task, chaque fichier produit est inscrit avec l'URI exacte du provider qui le possède.
 Une livraison réussie conserve la source, l'artefact final chez le provider de destination et un
