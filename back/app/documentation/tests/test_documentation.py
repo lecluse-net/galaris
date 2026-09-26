@@ -227,6 +227,10 @@ async def test_documentation_access_can_exclude_audits_and_is_revoked_live(db, s
     navigation_uri = "galaris://documentation/docs/fr/user/navigation.md"
     assert navigation_uri in catalog["entrypoints"]
     assert "/sample/stations" in (await resource_service.resource_read(ctx, navigation_uri)).content
+    knowledge = await skill_service.get_by_code("galaris-knowledge")
+    assert knowledge is not None and not knowledge.global_enabled
+    assert "galaris-knowledge" not in await skill_service.get_assigned_codes(agent.id)
+    await skill_service.set_agent_authorization(knowledge.id, agent.id, "enabled")
     assert "galaris-knowledge" in await skill_service.get_assigned_codes(agent.id)
     root = await resource_service.resource_list(ctx, "galaris://")
     assert "galaris://documentation/" in {entry.uri for entry in root.entries}
@@ -241,10 +245,11 @@ async def test_documentation_access_can_exclude_audits_and_is_revoked_live(db, s
     source.write_text(source.read_text() + "\nUne précision ajoutée.\n")
     with pytest.raises(ValueError, match="changed"):
         await resource_service.resource_list(ctx, "galaris://documentation/", cursor=listing.next_cursor)
-    knowledge = await skill_service.get_by_code("galaris-knowledge")
     await skill_service.set_agent_authorization(knowledge.id, agent.id, "disabled")
     assert "galaris-knowledge" not in await skill_service.get_assigned_codes(agent.id)
     await skill_service.set_agent_authorization(knowledge.id, agent.id, "default")
+    assert "galaris-knowledge" not in await skill_service.get_assigned_codes(agent.id)
+    await skill_service.set_agent_authorization(knowledge.id, agent.id, "enabled")
     assert "galaris-knowledge" in await skill_service.get_assigned_codes(agent.id)
     disabled = ConnectionFunctionState(connection_id=connection.id, function_name="documentation_catalog", enabled=False)
     db.add(disabled)

@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.agent.models import Agent, Title
 from app.connection.models import Connection
-from app.tools import mandatory_tools
+from app.tools import mandatory_tools, tool_service
 from app.tools import dbadmin as tools_dbadmin
 from app.tools.models import Tool
 import core.dbadmin as core_dbadmin
@@ -76,7 +76,8 @@ async def test_connection_dataset_is_idempotent_and_preserves_admin_activation(
     assert topic_connection is None
     assert integrated_connection.active is True
     tool = await db.get(Tool, integrated_connection.tool_id)
-    assert tool is not None and tool.conversation_enabled is True
+    assert tool is not None
+    assert tool.conversation_enabled is (tool_code not in {"image", "multimedia"})
     integrated_connection.active = False
     await db.commit()
 
@@ -157,13 +158,25 @@ def test_management_tool_packages_are_connected_inactive_by_default() -> None:
     )
 
 
-def test_default_tools_are_enabled_for_new_conversation_installations() -> None:
-    assert {
-        "galaris", "memory", "file_sharing",
-        "browser", "console", "search", "image", "multimedia",
-    } <= (
-        mandatory_tools.DEFAULT_CONVERSATION_TOOL_CODES
-    )
+@pytest.mark.asyncio
+@pytest.mark.parametrize(("tool_code", "default_enabled"), [
+    ("console", False), ("image", False), ("mail", False), ("multimedia", False),
+    ("chat", True),
+])
+async def test_conversation_defaults_preserve_admin_choice(
+    db: AsyncSession,
+    tool_code: str,
+    default_enabled: bool,
+) -> None:
+    tool = await db.scalar(select(Tool).where(Tool.code == tool_code))
+    assert tool is not None
+    assert tool.conversation_enabled is default_enabled
+
+    for enabled in (True, False):
+        await tool_service.update_conversation_access(tool.id, enabled=enabled)
+        await mandatory_tools.sync_mandatory_tools()
+        await db.refresh(tool)
+        assert tool.conversation_enabled is enabled
 
 
 def test_chat_is_auto_connected_active_without_mcp_tools() -> None:

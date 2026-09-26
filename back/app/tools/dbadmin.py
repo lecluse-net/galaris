@@ -54,7 +54,8 @@ async def _tool_rows(
             row["conversation_enabled"] = (
                 code in SYSTEM_TOOL_CODES
                 or code in DEFAULT_CONVERSATION_TOOL_CODES
-                or messenger_config is not None
+                # Mail remains opt-in even though it provides a messaging transport.
+                or (messenger_config is not None and code != "mail")
             )
         else:
             # Omit administrator-owned values entirely, including during concurrent edits.

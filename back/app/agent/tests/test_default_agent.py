@@ -10,7 +10,7 @@ from app.agent.defaults import default_agent_dataset
 from app.agent.models import Agent, Title
 from app.connection import Connection
 from app.skill import AgentSkill, skill_service
-from app.tools import ToolModel, has_documentation_access, has_galaris_admin_access
+from app.tools import ToolModel, has_documentation_access, has_galaris_admin_access, initialize_admin_agent_connections
 from app.tools.dbadmin import datasets as tool_datasets
 from core.authorize import Assignment, Role
 from core.database import get_db_session
@@ -33,7 +33,8 @@ async def _proposal(db):
 
 
 @pytest.mark.asyncio
-async def test_seed_waits_for_manager_then_preserves_edits_revocations_and_deletion(db):
+@pytest.mark.parametrize("skill_code", ["galaris-lab", "galaris-knowledge"])
+async def test_seed_waits_for_manager_then_preserves_edits_revocations_and_deletion(db, skill_code):
     dataset = default_agent_dataset()
     assert await reconcile_dataset(db, dataset) == DbAdminDatasetResult()
     user = await _admin(db)
@@ -51,9 +52,9 @@ async def test_seed_waits_for_manager_then_preserves_edits_revocations_and_delet
     assert agent.profile_media_type == "text/html"
     assert await has_galaris_admin_access(agent.id)
     assert await has_documentation_access(agent.id)
-    lab_skill = await skill_service.get_by_code("galaris-lab")
-    assert lab_skill is not None and not lab_skill.global_enabled
-    assert "galaris-lab" in await skill_service.get_assigned_codes(agent.id)
+    skill = await skill_service.get_by_code(skill_code)
+    assert skill is not None and not skill.global_enabled
+    assert skill_code in await skill_service.get_assigned_codes(agent.id)
 
     agent.first_name = "Custom assistant"
     agent.code = "custom-assistant"
@@ -71,7 +72,7 @@ async def test_seed_waits_for_manager_then_preserves_edits_revocations_and_delet
     ))).one()
     connection.active = False
     await db.commit()
-    await skill_service.set_agent_authorization(lab_skill.id, agent.id, "disabled")
+    await skill_service.set_agent_authorization(skill.id, agent.id, "disabled")
 
     # Replay the complete set of ordinary connection defaults as on an update.
     for definition in tool_datasets():
@@ -83,7 +84,11 @@ async def test_seed_waits_for_manager_then_preserves_edits_revocations_and_delet
     )
     assert not await has_galaris_admin_access(agent.id)
     assert not await has_documentation_access(agent.id)
-    assert "galaris-lab" not in await skill_service.get_assigned_codes(agent.id)
+    assert skill_code not in await skill_service.get_assigned_codes(agent.id)
+    assignment = await db.scalar(select(AgentSkill).where(
+        AgentSkill.agent_id == agent.id, AgentSkill.skill_id == skill.id,
+    ))
+    assert assignment.active is False
     assert agent.profile_id == custom_profile.id and agent.agent_driver == "hermes"
 
     agent.soft_delete()
@@ -108,8 +113,14 @@ async def test_seed_preserves_existing_galaris_agent(db):
     await db.refresh(existing)
     assert existing.first_name == "Existing" and existing.initialization_key is None
     assert not await has_galaris_admin_access(existing.id)
-    assert "galaris-lab" not in await skill_service.get_assigned_codes(existing.id)
-    assert "galaris-lab" in await skill_service.get_assigned_codes(proposal.id)
+    # Documentation access alone must not grant the bundled assistant's skills.
+    await initialize_admin_agent_connections(existing.id)
+    assert await has_documentation_access(existing.id)
+    existing_skills = await skill_service.get_assigned_codes(existing.id)
+    proposal_skills = await skill_service.get_assigned_codes(proposal.id)
+    for code in ("galaris-lab", "galaris-knowledge"):
+        assert code not in existing_skills
+        assert code in proposal_skills
 
 
 @pytest.mark.asyncio
@@ -141,7 +152,9 @@ async def test_seed_failure_rolls_back_agent_and_grants_and_can_retry(db, monkey
     monkeypatch.setattr(module, method, initialize)
     assert (await reconcile_dataset(db, default_agent_dataset())).inserted == 1
     assert await has_documentation_access((await _proposal(db)).id)
-    assert "galaris-lab" in await skill_service.get_assigned_codes((await _proposal(db)).id)
+    assert {"galaris-lab", "galaris-knowledge"} <= set(
+        await skill_service.get_assigned_codes((await _proposal(db)).id)
+    )
 
 
 @pytest.mark.asyncio
@@ -190,9 +203,10 @@ async def test_first_signup_immediately_proposes_manageable_galaris(client, monk
         "/api/skills/authorizations", headers=headers, params={"agent_id": agent["id"]},
     )
     assert authorizations.status_code == 200, authorizations.text
-    lab = next(row for row in authorizations.json()["authorizations"] if row["code"] == "galaris-lab")
-    assert lab["agent_state"] == "enabled" and lab["effective"] is True
-    assert lab["global_state"] == "disabled"
+    for code in ("galaris-lab", "galaris-knowledge"):
+        skill = next(row for row in authorizations.json()["authorizations"] if row["code"] == code)
+        assert skill["agent_state"] == "enabled" and skill["effective"] is True
+        assert skill["global_state"] == "disabled"
     changed = await client.put(f"/api/agents/{agent['id']}", headers=headers,
                                json={"first_name": "My assistant"})
     assert changed.status_code == 200, changed.text

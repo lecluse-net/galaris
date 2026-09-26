@@ -142,9 +142,9 @@ async def initialize_galaris_agent_skills(agent_id: int) -> None:
     await get_db().execute(
         sql_update(AgentSkill).where(
             AgentSkill.agent_id == agent_id,
-            AgentSkill.skill_id == select(Skill.id).where(
-                Skill.code == "galaris-lab"
-            ).scalar_subquery(),
+            AgentSkill.skill_id.in_(select(Skill.id).where(
+                Skill.code.in_(("galaris-lab", "galaris-knowledge"))
+            )),
         ).values(active=True)
     )
 

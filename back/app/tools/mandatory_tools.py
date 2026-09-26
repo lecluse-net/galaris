@@ -22,7 +22,7 @@ from .descriptions import DESCRIPTIONS
 DEFAULT_CONVERSATION_TOOL_CODES = frozenset(
     {
         "galaris", "conversation", "memory", "file_sharing",
-        "browser", "console", "search", "image", "multimedia",
+        "browser", "search",
     }
 )
 SYSTEM_TOOL_CODES = frozenset({"galaris", "conversation", "memory", "file_sharing"})
