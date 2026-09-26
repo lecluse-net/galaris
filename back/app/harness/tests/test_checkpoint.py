@@ -568,6 +568,8 @@ def test_unknown_internal_checkpoint_version_is_not_replayed() -> None:
 
 @pytest.mark.asyncio
 async def test_interrupted_read_is_closed_and_may_be_retried() -> None:
+    from app.agent.checkpoints import assess_checkpoint
+
     save = AsyncMock()
     first = HarnessRunCheckpoint(_request(save_checkpoint=save))
     await first.started(
@@ -588,6 +590,8 @@ async def test_interrupted_read_is_closed_and_may_be_retried() -> None:
     repaired = cast(AgentRunCheckpoint, save.await_args.args[0])
     assert repaired.data["resume_safe"] is True
     assert repaired.data["effects"][0]["status"] == "interrupted"
+    # A later retry must pass the same preflight that admits the original run.
+    assert assess_checkpoint(repaired).resumable
     restored = resumed.restored_messages()
     assert isinstance(restored[-1], ModelRequest)
     retry_return = cast(ToolReturnPart, restored[-1].parts[0])

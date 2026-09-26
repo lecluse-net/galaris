@@ -440,8 +440,10 @@ async def test_hermes_high_uses_direct_without_inheriting_a_briefing(
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("interrupted_policy", [None, "read", "idempotent"])
 async def test_run_checkpoint_updates_live_trace_and_is_loaded_on_resume(
     monkeypatch: pytest.MonkeyPatch,
+    interrupted_policy: str | None,
 ) -> None:
     task = _task()
     monkeypatch.setattr(facade, "resolve_execution_model", AsyncMock(return_value=_model()))
@@ -462,7 +464,10 @@ async def test_run_checkpoint_updates_live_trace_and_is_loaded_on_resume(
             messages=[AIMessage(type="tool", tool_name="file_write", content="created")],
             tools_used=["file_write"],
         ),
-        data={"version": 1, "resume_safe": True, "session_id": "session-1"},
+        data={"version": 4 if interrupted_policy else 1, "resume_safe": True, "session_id": "session-1",
+            "effects": [{"status": "completed", "tool_name": "file_write"},
+                {"status": "interrupted", "tool_name": "file_read", "effect_policy": interrupted_policy}]
+            if interrupted_policy else []},
     ))
 
     persist.assert_awaited_once()

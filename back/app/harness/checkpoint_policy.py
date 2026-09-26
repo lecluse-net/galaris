@@ -21,9 +21,14 @@ class InternalCheckpointPolicy:
             if not isinstance(item, Mapping):
                 return CheckpointAssessment(state="unsafe", reason="Invalid internal effect record.")
             effect = cast(Mapping[str, object], item)
-            if (effect.get("status") not in {"started", "outcome_unknown", "completed", "failed", "error_reported"}
+            if (effect.get("status") not in {"started", "outcome_unknown", "completed", "failed", "error_reported", "interrupted"}
                 or effect.get("effect_policy", "non_idempotent") not in {"read", "idempotent", "non_idempotent"}):
                 return CheckpointAssessment(state="unsafe", reason="Unknown effect state or safety policy.")
+            # prepare_resume persists this state after closing a retryable call.
+            # It is not evidence that an uncertain mutation can be replayed.
+            if (effect.get("status") == "interrupted"
+                and effect.get("effect_policy") not in {"read", "idempotent"}):
+                return CheckpointAssessment(state="unsafe", reason="Interrupted effect is not replay-safe.")
             if effect.get("status") == "error_reported":
                 result = effect.get("result")
                 reported: Mapping[str, object] = (
