@@ -233,17 +233,16 @@ def compact_completed_tool_arguments(
     their size and digest.
     """
     compacted: list[_pydantic_messages.ModelMessage] = []
-    answered = {
-        (part.tool_name, part.tool_call_id)
-        for message in messages
-        if isinstance(message, _pydantic_messages.ModelRequest)
-        for part in message.parts
-        if isinstance(part, (_pydantic_messages.ToolReturnPart, _pydantic_messages.RetryPromptPart))
-    }
-    for message in messages:
+    for index, message in enumerate(messages):
         if not isinstance(message, _pydantic_messages.ModelResponse):
             compacted.append(message)
             continue
+        following = messages[index + 1] if index + 1 < len(messages) else None
+        answered: set[tuple[str | None, str]] = {
+            (part.tool_name, part.tool_call_id)
+            for part in following.parts
+            if isinstance(part, (_pydantic_messages.ToolReturnPart, _pydantic_messages.RetryPromptPart))
+        } if isinstance(following, _pydantic_messages.ModelRequest) else set()
         parts: list[_pydantic_messages.ModelResponsePart] = []
         changed = False
         for part in message.parts:
@@ -1085,7 +1084,9 @@ class Agent(AgentRuntime):
                     tool_call_event,
                     self._language,
                 )
-                msg.stream_id = f"tool:{msg.tool_call_external_id or uuid4().hex}"
+                # Provider call IDs are local to a model response, not to this run.
+                # Keep them for correlation, but give each emitted result its own identity.
+                msg.stream_id = f"tool:{uuid4().hex}"
                 if not msg.success:
                     await self._record_tool_failure(event, tool_call_event, msg)
                 _observe_tool_result(state, msg)

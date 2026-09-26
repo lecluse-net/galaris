@@ -11,6 +11,31 @@ from app.harness.runtime import Agent, _StreamState
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("same_tool", [False, True])
+async def test_reused_provider_call_ids_keep_each_tool_result_distinct(same_tool):
+    from pydantic_ai import FunctionToolCallEvent, FunctionToolResultEvent
+    from pydantic_ai.messages import ToolCallPart, ToolReturnPart
+
+    names = ["lookup", "lookup" if same_tool else "read_file"]
+
+    async def events() -> AsyncIterator[Any]:
+        for index, name in enumerate(names):
+            yield FunctionToolCallEvent(ToolCallPart(name, {"page": index}, "call_0"))
+            yield FunctionToolResultEvent(ToolReturnPart(name, f"result {index}", "call_0"))
+
+    agent = Agent(cast(Any, SimpleNamespace()))
+    result = AIResult(prompt="")
+    async for message in agent._emit_stream_messages(events(), _StreamState(), None):
+        result.add_message(message.model_copy(deep=True))
+
+    assert [message.tool_name for message in result.messages] == names
+    assert [message.tool_arguments for message in result.messages] == [{"page": 0}, {"page": 1}]
+    assert all(message.tool_call_external_id == "call_0" for message in result.messages)
+    assert "result 0" in result.messages[0].content
+    assert "result 1" in result.messages[1].content
+
+
+@pytest.mark.asyncio
 async def test_thinking_is_live_and_each_model_part_keeps_its_identity():
     async def events() -> AsyncIterator[Any]:
         yield PartStartEvent(index=0, part=ThinkingPart(content="Je "))

@@ -76,6 +76,39 @@ def _signature(name: str, arguments: dict[str, Any]) -> str:
     return hashlib.sha256(payload.encode("utf-8")).hexdigest()
 
 
+def _response_ref(message: Any) -> str:
+    """Stable across serialization and history compaction, unlike a list index."""
+    return json.dumps([message.run_id, message.timestamp.isoformat(), message.provider_response_id])
+
+
+def _is_interruption(content: object) -> bool:
+    return isinstance(content, dict) and cast(dict[str, object], content).get("status") == "interrupted"
+
+
+def _effect_response_index(effect: dict[str, Any], history: list[Any]) -> int | None:
+    from pydantic_ai import messages
+
+    reference = effect.get("response_ref")
+    started_at = datetime.fromisoformat(effect["started_at"]) if effect.get("started_at") else None
+    for index in range(len(history) - 1, -1, -1):
+        response = history[index]
+        if not isinstance(response, messages.ModelResponse):
+            continue
+        if reference is not None:
+            if _response_ref(response) == reference:
+                return index
+            continue
+        # Legacy checkpoints have no response reference. An effect cannot belong
+        # to a response produced after it started, even if the provider reused its ID.
+        if started_at is not None and response.timestamp > started_at:
+            continue
+        if any(isinstance(part, messages.ToolCallPart)
+               and part.tool_call_id == effect.get("tool_call_id")
+               and part.tool_name == effect.get("tool_name") for part in response.parts):
+            return index
+    return None
+
+
 def _execution_policy_for_toolset_tool(
     name: str,
     tool: Any,
@@ -204,21 +237,20 @@ class HarnessRunCheckpoint:
 
         from pydantic_ai import messages
 
-        failures = {
-            (part.tool_name, part.tool_call_id): part
-            for message in self.restored_messages()
-            if isinstance(message, messages.ModelRequest)
-            for part in message.parts
-            if isinstance(part, messages.RetryPromptPart)
-            and part.tool_name
-            and isinstance(part.content, list)
-        }
+        history = self.restored_messages()
         for effect in self.effects:
             if effect.get("status") not in {"started", "outcome_unknown"}:
                 continue
-            failure = failures.get(
-                (str(effect.get("tool_name") or ""), str(effect.get("tool_call_id") or ""))
-            )
+            index = _effect_response_index(effect, history)
+            if index is None or index + 1 >= len(history):
+                continue
+            following = history[index + 1]
+            failure = next((part for part in following.parts
+                if isinstance(following, messages.ModelRequest)
+                and isinstance(part, messages.RetryPromptPart)
+                and part.tool_name == effect.get("tool_name")
+                and part.tool_call_id == effect.get("tool_call_id")
+                and isinstance(part.content, list)), None)
             if failure is None:
                 continue
             effect["status"] = "failed"
@@ -283,6 +315,7 @@ class HarnessRunCheckpoint:
                             operation_id=str(effect["operation_id"]),
                         )
             self.ensure_resumable()
+            self._close_unanswered_calls()
         finally:
             if self._repaired:
                 await self._save()
@@ -296,52 +329,99 @@ class HarnessRunCheckpoint:
                 tool_name=str(effect["tool_name"]),
                 tool_call_id=call_id,
                 content=effect["result"],
-            )
+            ),
+            effect,
         )
 
-    def _replace_tool_return(self, replacement: Any) -> None:
+    def _replace_tool_return(self, replacement: Any, effect: dict[str, Any]) -> None:
         """Keep one response beside its call, even after cancellation placeholders."""
         from dataclasses import replace
         from pydantic_ai import messages
 
         restored = self.restored_messages()
-        repaired: list[Any] = []
-        inserted = False
-        for message in restored:
-            if isinstance(message, messages.ModelRequest):
-                parts: list[Any] = []
-                for part in message.parts:
-                    if (
-                        isinstance(part, (messages.ToolReturnPart, messages.RetryPromptPart))
-                        and part.tool_call_id == replacement.tool_call_id
-                    ):
-                        if not inserted:
-                            parts.append(replacement)
-                            inserted = True
-                    else:
-                        parts.append(part)
-                if parts:
-                    repaired.append(replace(message, parts=parts))
-            else:
-                repaired.append(message)
-        if not inserted:
-            for index, message in enumerate(repaired):
-                if any(
-                    isinstance(part, messages.ToolCallPart)
-                    and part.tool_call_id == replacement.tool_call_id
-                    for part in message.parts
+        index = _effect_response_index(effect, restored)
+        if index is None:
+            return
+        index += 1
+        if index < len(restored) and isinstance(restored[index], messages.ModelRequest):
+            following = restored[index]
+            parts = [part for part in following.parts if not (
+                isinstance(part, (messages.ToolReturnPart, messages.RetryPromptPart))
+                and part.tool_call_id == replacement.tool_call_id
+                and part.tool_name == replacement.tool_name
+            )]
+            restored[index] = replace(following, parts=[*parts, replacement])
+        else:
+            restored.insert(index, messages.ModelRequest(parts=[replacement]))
+        self.history = self._dump_messages(restored)
+
+    def _close_unanswered_calls(self) -> None:
+        """Let the model reconsider unstarted calls, including native skill tools.
+
+        Effect reconciliation must run first: unknown mutations block resume, and
+        recorded results must never be replaced with invented acknowledgements.
+        """
+        from dataclasses import replace
+        from pydantic_ai import messages
+
+        history = self.restored_messages()
+        for index, response in enumerate(history):
+            if not isinstance(response, messages.ModelResponse):
+                continue
+            following = history[index + 1] if index + 1 < len(history) else None
+            calls = {(part.tool_name, part.tool_call_id) for part in response.parts
+                if isinstance(part, messages.ToolCallPart)}
+            if isinstance(following, messages.ModelRequest):
+                # Older recovery matched IDs globally and could put an interrupted
+                # return beside a different tool in an earlier response.
+                parts = [part for part in following.parts if not (
+                    isinstance(part, messages.ToolReturnPart)
+                    and _is_interruption(part.content)
+                    and (part.tool_name, part.tool_call_id) not in calls
+                )]
+                if len(parts) != len(following.parts):
+                    following = replace(following, parts=parts)
+                    history[index + 1] = following
+                    self._repaired = True
+        self.history = self._dump_messages(history)
+        for index, response in enumerate(history):
+            if not isinstance(response, messages.ModelResponse):
+                continue
+            following = history[index + 1] if index + 1 < len(history) else None
+            answered: dict[tuple[str | None, str], Any] = {
+                (part.tool_name, part.tool_call_id): part
+                for part in following.parts
+                if isinstance(part, (messages.ToolReturnPart, messages.RetryPromptPart))
+            } if isinstance(following, messages.ModelRequest) else {}
+            for part in response.parts:
+                if not isinstance(part, messages.ToolCallPart):
+                    continue
+                effect = next((item for item in reversed(self.effects)
+                    if item.get("tool_name") == part.tool_name
+                    and item.get("tool_call_id") == part.tool_call_id
+                    and _effect_response_index(item, history) == index), None)
+                previous = answered.get((part.tool_name, part.tool_call_id))
+                if previous is not None and not (
+                    isinstance(previous, messages.ToolReturnPart)
+                    and _is_interruption(previous.content)
+                    and effect is not None
+                    and effect.get("status") in {"completed", "error_reported", "failed"}
                 ):
-                    if index + 1 < len(repaired) and isinstance(
-                        repaired[index + 1], messages.ModelRequest
-                    ):
-                        following = repaired[index + 1]
-                        repaired[index + 1] = replace(
-                            following, parts=[*following.parts, replacement]
-                        )
-                    else:
-                        repaired.insert(index + 1, messages.ModelRequest(parts=[replacement]))
-                    break
-        self.history = self._dump_messages(repaired)
+                    continue
+                if effect is not None and effect.get("status") in {"completed", "error_reported"}:
+                    self._append_recovered_result(effect)
+                elif effect is not None and effect.get("status") == "failed":
+                    self._replace_tool_return(messages.RetryPromptPart(
+                        tool_name=part.tool_name, tool_call_id=part.tool_call_id,
+                        content=str(effect["error"]),
+                    ), effect)
+                else:
+                    self._replace_tool_return(messages.ToolReturnPart(
+                        tool_name=part.tool_name, tool_call_id=part.tool_call_id,
+                        content={"status": "interrupted", "retryable": True,
+                            "instruction": "No result was recorded. Call this tool again if still needed."},
+                    ), {"response_ref": _response_ref(response)})
+                self._repaired = True
 
     def _close_retryable_effects(self, effects: list[dict[str, Any]]) -> None:
         if not self.history:
@@ -360,8 +440,8 @@ class HarnessRunCheckpoint:
             )
             for effect in effects
         ]
-        for result in returns:
-            self._replace_tool_return(result)
+        for effect, result in zip(effects, returns, strict=True):
+            self._replace_tool_return(result, effect)
 
     def take_replay(self, name: str, arguments: dict[str, Any]) -> tuple[bool, Any]:
         queue = self._replay.get(_signature(name, arguments))
@@ -386,6 +466,10 @@ class HarnessRunCheckpoint:
         concurrency_policy: ToolConcurrencyPolicy = "exclusive",
     ) -> str:
         async with self._lock:
+            from pydantic_ai import messages as model_messages
+
+            response = next((message for message in reversed(messages)
+                if isinstance(message, model_messages.ModelResponse)), None)
             effect_id = str(uuid4())
             self.effects.append(
                 {
@@ -397,6 +481,7 @@ class HarnessRunCheckpoint:
                     "started_at": datetime.now(timezone.utc).isoformat(),
                     "tool_name": name,
                     "tool_call_id": tool_call_id or effect_id,
+                    "response_ref": _response_ref(response) if response is not None else None,
                     "arguments": _jsonable(arguments),
                     "signature": _signature(name, arguments),
                     "status": "started",
@@ -439,16 +524,8 @@ class HarnessRunCheckpoint:
 
             from pydantic_ai import messages as model_messages
 
-            response_call_ids: set[str] = set()
-            for message in reversed(messages):
-                if not isinstance(message, model_messages.ModelResponse):
-                    continue
-                response_call_ids = {
-                    part.tool_call_id
-                    for part in message.parts
-                    if isinstance(part, model_messages.ToolCallPart)
-                }
-                break
+            response_index = next((index for index in range(len(messages) - 1, -1, -1)
+                if isinstance(messages[index], model_messages.ModelResponse)), None)
             returns = [
                 model_messages.RetryPromptPart(
                     tool_name=str(effect.get("tool_name") or "?"),
@@ -463,7 +540,8 @@ class HarnessRunCheckpoint:
                 )
                 for effect in self.effects
                 if effect.get("status") in {"completed", "failed", "error_reported"}
-                and str(effect.get("tool_call_id") or "") in response_call_ids
+                and response_index is not None
+                and _effect_response_index(effect, messages) == response_index
             ]
             if not returns:
                 returns = [
@@ -479,10 +557,21 @@ class HarnessRunCheckpoint:
                         tool_call_id=tool_call_id or effect_id,
                     )
                 ]
-            completed_history = [
-                *messages,
-                model_messages.ModelRequest(parts=returns),
-            ]
+            # Preserve native capability returns/deltas that are not in our effect
+            # journal, and collect only results belonging to the current response.
+            completed_history = list(messages)
+            if completed_history and isinstance(completed_history[-1], model_messages.ModelRequest):
+                from dataclasses import replace
+
+                following = completed_history[-1]
+                identities = {(part.tool_name, part.tool_call_id) for part in returns}
+                parts = [part for part in following.parts if not (
+                    isinstance(part, (model_messages.ToolReturnPart, model_messages.RetryPromptPart))
+                    and (part.tool_name, part.tool_call_id) in identities
+                )]
+                completed_history[-1] = replace(following, parts=[*parts, *returns])
+            else:
+                completed_history.append(model_messages.ModelRequest(parts=returns))
             self.history = self._dump_messages(completed_history)
             await self._save()
             observe_recovery(

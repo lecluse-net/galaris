@@ -109,6 +109,12 @@ def test_large_completed_tool_arguments_are_compacted_without_mutating_trace() -
     assert "content omitted after execution" in compacted_part.args["content"]
     assert compacted[1] is tool_return
 
+    # The same provider ID in a later, unanswered turn is still executable input.
+    pending = ModelResponse(parts=[ToolCallPart("file_write", {"content": content}, "call-1")])
+    resumed = compact_completed_tool_arguments([response, tool_return, pending])
+    assert resumed[-1] is pending
+    assert pending.parts[0].args["content"] == content
+
 
 def test_large_raw_json_arguments_remain_valid_json_after_compaction() -> None:
     raw_args = json.dumps({"path": "report.md", "content": "x" * 10_000})

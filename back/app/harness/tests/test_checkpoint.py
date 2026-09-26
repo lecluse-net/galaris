@@ -66,6 +66,94 @@ async def test_resumed_read_can_observe_new_state_instead_of_cached_result():
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("same_tool", [False, True])
+@pytest.mark.parametrize("complete", [False, True])
+@pytest.mark.parametrize("legacy", [False, True, "misplaced_return"])
+async def test_reused_call_ids_preserve_results_from_each_model_turn(same_tool, complete, legacy):
+    save = AsyncMock()
+    journal = HarnessRunCheckpoint(_request(save_checkpoint=save))
+    first_name = "file_read" if same_tool else "lookup"
+    first = ModelResponse(parts=[ToolCallPart(first_name, {"page": 1}, "call_0")])
+    history = [first]
+    effect = await journal.started(name=first_name, arguments={"page": 1}, messages=history,
+        tool_call_id="call_0", effect_policy="read")
+    await journal.completed(effect_id=effect, name=first_name, result="first result",
+        messages=history, tool_call_id="call_0")
+    history = journal.restored_messages()
+    history.append(ModelResponse(parts=[ToolCallPart("file_read", {"page": 2}, "call_0")]))
+    effect = await journal.started(name="file_read", arguments={"page": 2}, messages=history,
+        tool_call_id="call_0", effect_policy="read")
+    if complete:
+        await journal.completed(effect_id=effect, name="file_read", result="second result",
+            messages=history, tool_call_id="call_0")
+    saved = save.await_args.args[0]
+    if legacy:
+        for item in saved.data["effects"]:
+            item.pop("response_ref", None)
+    if legacy == "misplaced_return":
+        if not complete:
+            saved.data["effects"][-1]["status"] = "interrupted"
+        damaged = journal.restored_messages()
+        damaged[1] = ModelRequest(parts=[ToolReturnPart("file_read", {"status": "interrupted"}, "call_0")])
+        saved.data["message_history"] = journal._dump_messages(damaged)
+    resumed = HarnessRunCheckpoint(_request(resume_checkpoint=saved))
+    await resumed.prepare_resume()
+    restored = resumed.restored_messages()
+    assert len(restored[1].parts) == 1
+    assert restored[1].parts[0].tool_name == first_name
+    assert restored[1].parts[0].content == "first result"
+    assert len(restored) == 4
+    assert len(restored[-1].parts) == 1
+    returned = restored[-1].parts[0]
+    assert returned.tool_name == "file_read"
+    if complete:
+        assert returned.content == "second result"
+    else:
+        assert returned.content["status"] == "interrupted"
+
+
+@pytest.mark.asyncio
+async def test_resume_closes_unstarted_native_calls_without_replaying_completed_effects():
+    save = AsyncMock()
+    journal = HarnessRunCheckpoint(_request(save_checkpoint=save))
+    history = [ModelResponse(parts=[
+        ToolCallPart("file_write", {"path": "report"}, "call_0"),
+        ToolCallPart("skill_guide_read_file", {"path": "SKILL.md"}, "call_1"),
+    ])]
+    effect = await journal.started(name="file_write", arguments={"path": "report"},
+        messages=history, tool_call_id="call_0")
+    await journal.completed(effect_id=effect, name="file_write", result="saved",
+        messages=history, tool_call_id="call_0")
+    resumed = HarnessRunCheckpoint(_request(resume_checkpoint=save.await_args.args[0]))
+    await resumed.prepare_resume()
+    restored = resumed.restored_messages()
+    returns = {part.tool_name: part.content for part in restored[-1].parts}
+    assert returns["file_write"] == "saved"
+    assert returns["skill_guide_read_file"]["status"] == "interrupted"
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("legacy", [False, True])
+async def test_old_rejection_cannot_acknowledge_a_new_mutation_with_reused_id(legacy):
+    save = AsyncMock()
+    journal = HarnessRunCheckpoint(_request(save_checkpoint=save))
+    history = [
+        ModelResponse(parts=[ToolCallPart("console_exec", {}, "call_0")]),
+        ModelRequest(parts=[RetryPromptPart(tool_name="console_exec", tool_call_id="call_0",
+            content=[{"type": "missing", "loc": ("command",), "msg": "required", "input": {}}])]),
+        ModelResponse(parts=[ToolCallPart("console_exec", {"command": "send"}, "call_0")]),
+    ]
+    await journal.started(name="console_exec", arguments={"command": "send"},
+        messages=history, tool_call_id="call_0")
+    saved = save.await_args.args[0]
+    if legacy:
+        saved.data["effects"][0].pop("response_ref", None)
+    resumed = HarnessRunCheckpoint(_request(resume_checkpoint=saved))
+    with pytest.raises(UnsafeCheckpointError, match="outcome is unknown"):
+        await resumed.prepare_resume()
+
+
+@pytest.mark.asyncio
 async def test_legacy_text_error_is_not_proof_of_rejection():
     checkpoint = AgentRunCheckpoint(driver_code="internal", runtime_run_id="legacy", status="interrupted", data={
         "version": 2, "resume_safe": True,

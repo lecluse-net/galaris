@@ -16,6 +16,8 @@ from pydantic_ai.messages import (
     ModelRequest,
     ModelResponse,
     TextPart,
+    ToolCallPart,
+    ToolReturnPart,
     UserPromptPart,
 )
 from pydantic_ai.models import ModelRequestParameters
@@ -30,7 +32,7 @@ from app.agent.contracts import (
     AgentSnapshot,
     ResolvedModel,
 )
-from app.harness.checkpoint import HarnessRunCheckpoint
+from app.harness.checkpoint import HarnessRunCheckpoint, wrap_toolsets
 from app.harness.runtime import Agent
 from app.llm import LLM
 
@@ -169,3 +171,64 @@ async def test_request_cancel_uses_pydantic_cancellation_token() -> None:
     ).restored_messages()
     response = cast(ModelResponse, restored[-1])
     assert response.state == "interrupted"
+
+
+@pytest.mark.asyncio
+async def test_resume_finishes_with_reused_ids_and_pending_native_tool() -> None:
+    """A saved mutation is kept once; the model can retry an unstarted skill read."""
+    from pydantic_ai.models.function import DeltaToolCall
+    from pydantic_ai.toolsets import FunctionToolset
+    from app.agent import AIResult
+
+    save = AsyncMock()
+    journal = HarnessRunCheckpoint(_request(save))
+    history = [
+        ModelRequest(parts=[UserPromptPart("Write a report after reading the guide")]),
+        ModelResponse(parts=[ToolCallPart("write_report", {}, "call_0")]),
+    ]
+    effect = await journal.started(name="write_report", arguments={}, messages=history, tool_call_id="call_0")
+    await journal.completed(effect_id=effect, name="write_report", result="report saved",
+        messages=history, tool_call_id="call_0")
+    history = journal.restored_messages()
+    history.append(ModelResponse(parts=[ToolCallPart("read_guide", {}, "call_0")]))
+    await journal.interrupted(history)
+    resumed = HarnessRunCheckpoint(_request(AsyncMock(), resume_checkpoint=save.await_args.args[0]))
+    writes = AsyncMock(return_value="unexpected second write")
+    reads = AsyncMock(return_value="guide content")
+    tools = FunctionToolset()
+
+    @tools.tool_plain
+    async def write_report() -> str:
+        return await writes()
+
+    @tools.tool_plain
+    async def read_guide() -> str:
+        return await reads()
+
+    requests = 0
+
+    async def model_stream(messages: list[ModelMessage], _info: AgentInfo) -> AsyncIterator[str | dict[int, DeltaToolCall]]:
+        nonlocal requests
+        requests += 1
+        returns = [part for message in messages if isinstance(message, ModelRequest)
+            for part in message.parts if isinstance(part, ToolReturnPart)]
+        assert [part.content for part in returns if part.tool_name == "write_report"] == ["report saved"]
+        if requests == 1:
+            assert returns[-1].content["status"] == "interrupted"
+            yield {0: DeltaToolCall(name="read_guide", json_args="{}", tool_call_id="call_0")}
+        else:
+            assert returns[-1].content == "guide content"
+            yield "Report complete."
+
+    llm = SimpleNamespace(provider=None, cost_per_input_token=0, cost_per_output_token=0,
+        cost_per_cached_input_token=None)
+    agent = Agent(cast(LLM, llm), checkpoint=resumed)
+    agent._agent = PydanticAgent(_CountingFunctionModel(stream_function=model_stream),
+        toolsets=wrap_toolsets([tools], resumed))
+    result = AIResult(prompt="")
+    async for message in agent.run("Write a report after reading the guide"):
+        result.add_message(message.model_copy(deep=True))
+    assert result.success
+    assert result.result == "Report complete."
+    writes.assert_not_awaited()
+    reads.assert_awaited_once()
