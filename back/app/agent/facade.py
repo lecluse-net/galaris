@@ -1211,7 +1211,7 @@ async def _stream_driver(
                     sequence=sequence,
                     kind="run.completed" if event.result.success else "run.failed",
                     result=event.result,
-                    payload={"execution_stopped": True},
+                    payload={"execution_stopped": event.result.metadata.get("execution_stopped", True) is True},
                 )
                 await _record_run_outcome(request, event.result)
             elif (
@@ -1521,17 +1521,30 @@ async def stream_conversation_turn(
             yield AIMessage.model_validate(event.message)
 
 
-async def cancel(driver_code: str, run_id: UUID) -> HarnessCancellationReceipt:
+async def cancel(
+    driver_code: str, run_id: UUID, *, task_id: UUID | None = None,
+) -> HarnessCancellationReceipt:
     """Cancel a run only when the selected driver explicitly supports it."""
 
     spec = resolve_driver(driver_code)
     if not spec.supports_cancellation:
         raise RuntimeError(f"Driver {spec.code!r} does not support cancellation.")
     from .run_control import active_driver, request_cancellation
+    from .contracts import DriverCheckpointCancellationControl
+    from .task_port import task_port
 
     driver = active_driver(spec.code, run_id) or create_driver(spec)
 
-    return await request_cancellation(driver, run_id)
+    checkpoint = None
+    if task_id is not None and isinstance(driver, DriverCheckpointCancellationControl):
+        task = await task_port.get_by_id(task_id)
+        data = _string_keyed_dict(getattr(task, "data", None))
+        raw = data.get(RUN_CHECKPOINT_DATA_KEY)
+        if isinstance(raw, Mapping) and _string_keyed_dict(cast(object, raw)).get("request_run_id") == str(run_id):
+            candidate = _read_run_checkpoint(data)
+            if candidate is not None and candidate.driver_code == spec.code:
+                checkpoint = candidate
+    return await request_cancellation(driver, run_id, checkpoint=checkpoint)
 
 
 async def stream_task(task: AgentTask) -> AsyncIterator[AIMessage]:

@@ -13,7 +13,7 @@ from uuid import UUID, uuid4
 from loguru import logger
 from core.i18n import is_supported, render_prompt, t
 from core.params import runtime_settings
-from core.util import as_dict, as_list
+from core.util import as_dict, as_list, get_encryption_service
 from app.agent.contracts import (
     AgentEvent,
     AgentRunCheckpoint,
@@ -22,6 +22,7 @@ from app.agent.contracts import (
     AIResult,
     AgentUsage,
     ExecutionResult,
+    HarnessCancellationReceipt,
     normalize_tool_name,
 )
 from app.agent import message_prompt
@@ -74,6 +75,38 @@ async def cancel(run_id: UUID) -> None:
         await client.stop_run(target, runtime_run_id)
     except client.HermesRunNotFound:
         logger.info("Hermes run {} was already absent while cancelling", runtime_run_id)
+
+
+def _cancellation_target(target: HermesTarget) -> dict[str, str]:
+    """Keep the original control endpoint with encrypted credentials in the checkpoint."""
+    return {"url": target.url, "model": target.model,
+            "api_key": get_encryption_service().encrypt(target.api_key)}
+
+
+async def request_cancellation(
+    run_id: UUID, *, checkpoint: AgentRunCheckpoint | None = None,
+) -> HarnessCancellationReceipt:
+    async with _ACTIVE_RUNS_LOCK:
+        active = _ACTIVE_RUNS.get(run_id)
+    if active is None and checkpoint is not None and checkpoint.driver_code == "hermes":
+        snapshot = checkpoint.data.get("cancellation_target")
+        if checkpoint.data.get("execution_strategy") == "direct" and isinstance(snapshot, dict):
+            active = (HermesTarget.from_config(as_dict(snapshot), agent_code="hermes"), checkpoint.runtime_run_id)
+    if active is None:
+        return HarnessCancellationReceipt(run_id=run_id, scope="remote", state="unknown")
+    target, runtime_run_id = active
+    status = await client.get_run_status(target, runtime_run_id)
+    if status.get("run_id") != runtime_run_id:
+        return HarnessCancellationReceipt(run_id=run_id, scope="remote", state="unknown")
+    if status.get("status") in _TERMINAL_RUN_STATUSES and status.get("execution_stopped") is True:
+        return HarnessCancellationReceipt(run_id=run_id, scope="remote", state="confirmed")
+    response = await client.stop_run(target, runtime_run_id)
+    accepted = response.get("run_id") == runtime_run_id and response.get("status") in (
+        _TERMINAL_RUN_STATUSES | {"stopping"}
+    )
+    return HarnessCancellationReceipt(
+        run_id=run_id, scope="remote", state="requested" if accepted else "unknown",
+    )
 
 
 async def _cancel_if_active(request: AgentRunRequest) -> None:
@@ -648,8 +681,13 @@ async def _stream(task: AgentRunRequest) -> AsyncIterator[AgentEvent]:
 
     # Decrypt and validate the immutable driver configuration snapshot.
     try:
+        configuration = task.agent.driver_config
+        if task.resume_checkpoint is not None and task.resume_checkpoint.driver_code == task.driver_code:
+            saved_target = task.resume_checkpoint.data.get("cancellation_target")
+            if isinstance(saved_target, dict):
+                configuration = as_dict(saved_target)
         target = HermesTarget.from_config(
-            task.agent.driver_config,
+            configuration,
             agent_code=task.agent.code,
         )
     except ValueError as e:
@@ -824,6 +862,7 @@ async def _stream(task: AgentRunRequest) -> AsyncIterator[AgentEvent]:
             return
 
     await _register_active_run(task, target, run_id)
+    cancellation_target = _cancellation_target(target)
 
     # Convert structured SSE events into the same trace contract as the internal harness.
     ai_result = (
@@ -852,6 +891,7 @@ async def _stream(task: AgentRunRequest) -> AsyncIterator[AgentEvent]:
                 hermes_tool_messages[str(tool_call_id)] = ai_result.messages[raw_index]
     last_persist = 0.0
     runtime_status = checkpoint.status if checkpoint is not None else "running"
+    execution_stopped = False
     live_semantic_signatures: dict[int, tuple[str, str, bool, str]] = {}
 
     # Attribute each inter-event interval to its resulting block so trace timing accounts for
@@ -911,6 +951,7 @@ async def _stream(task: AgentRunRequest) -> AsyncIterator[AgentEvent]:
             result=partial_result,
             data={
                 "execution_strategy": "direct",
+                "cancellation_target": cancellation_target,
                 "session_id": session_id,
                 "effective_session_id": effective_session_id,
                 "cost_before": cost_before,
@@ -954,6 +995,9 @@ async def _stream(task: AgentRunRequest) -> AsyncIterator[AgentEvent]:
     ):
         name: str = event["event"]
         data: dict[str, Any] = as_dict(event["data"])
+
+        if name in {"run.completed", "run.failed", "run.cancelled"}:
+            execution_stopped = data.get("run_id") == run_id and data.get("execution_stopped") is True
 
         # Session compaction may return a new tip ID in terminal events.
         effective_session_id = session_binding.effective_session_id(
@@ -1127,8 +1171,8 @@ async def _stream(task: AgentRunRequest) -> AsyncIterator[AgentEvent]:
 
         elif name == "error":
             error_text = data.get("message") or _message(language, "errors.generic")
-        elif name == "run.failed":
-            runtime_status = str(data.get("status") or "failed")
+        elif name in {"run.failed", "run.cancelled"}:
+            runtime_status = str(data.get("status") or name.removeprefix("run."))
             error_text = data.get("error") or _message(language, "errors.generic")
             terminal_event = "failed"
             terminal_llm_call_ids = {
@@ -1253,6 +1297,7 @@ async def _stream(task: AgentRunRequest) -> AsyncIterator[AgentEvent]:
         **result.metadata,
         "runtime_run_id": run_id,
         "runtime_status": runtime_status,
+        "execution_stopped": execution_stopped,
     }
     yield AgentEvent.from_result(result)
 
@@ -1270,6 +1315,8 @@ async def stream(task: AgentRunRequest) -> AsyncIterator[AgentEvent]:
         )
     try:
         async for event in _stream(task):
+            if event.result is not None:
+                event.result.metadata.setdefault("execution_stopped", False)
             yield event
     except (asyncio.CancelledError, GeneratorExit):
         await asyncio.shield(_cancel_if_active(task))

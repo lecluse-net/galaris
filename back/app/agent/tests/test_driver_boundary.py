@@ -400,6 +400,19 @@ async def test_acknowledging_driver_can_progress_from_requested_to_confirmed(bou
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("stopped", [False, True])
+async def test_valid_remote_result_preserves_explicit_stop_uncertainty(boundary, stopped):
+    async def remote_stream(_request):
+        yield AgentEvent.from_result(ExecutionResult(
+            prompt="", success=False, result="Remote result", metadata={"execution_stopped": stopped},
+        ))
+    boundary.driver.stream = remote_stream
+    events = [event async for event in facade.stream(boundary.request)]
+    assert events[-1].kind == "result"
+    assert boundary.semantic.await_args.kwargs["payload"]["execution_stopped"] is stopped
+
+
+@pytest.mark.asyncio
 async def test_lost_cancellation_reply_is_unknown(boundary, monkeypatch):
     spec = replace(boundary.driver.spec, supports_cancellation=True, stream_close_timeout_seconds=0.01)
     boundary.driver.spec = spec

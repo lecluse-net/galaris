@@ -61,3 +61,38 @@ préparation ne changent pas ; seules les descriptions des outils suivent le con
 
 Voir `back/app/task/replacement.py`, `back/app/task/tests/test_replacement.py`,
 `back/app/conversation/tests/test_service.py` et la décision 0100.
+
+## Complément du 26 septembre 2026 — arrêt Hermès direct
+
+Les consommateurs de l'arrêt restent la façade agentique, le nettoyage du stream Hermès
+et le réconciliateur de remplacement. Les garanties conservées sont la libération du lease,
+la corrélation au run capturé, les pauses utilisateur, les travaux indépendants et les
+contrats d'annulation des autres drivers. Aucun schéma SQL ni statut métier n'est ajouté.
+
+Hermès fournit désormais un reçu typé. Une lecture du run doit porter son identifiant exact,
+un statut terminal et `execution_stopped=true`. Un accusé `stopping`, une réponse perdue,
+un refus, un 404 ou un ancien runtime sans preuve ne confirme jamais l'arrêt. Un résultat
+normalisé peut également préciser `metadata.execution_stopped=false` ; la façade conserve
+cette incertitude dans l'événement terminal au lieu de produire une preuve artificielle.
+L'absence de ce champ conserve le contrat historique des autres drivers.
+
+L'image Hermès épinglée reçoit à la construction une adaptation vérifiée de son exécuteur :
+la preuve n'est publiée qu'après la sortie du thread de travail, ou avant son lancement
+lorsqu'une annulation est déjà demandée. La seule annulation de sa tâche asyncio ne suffit
+pas. Un changement de la source attendue bloque la construction et impose une nouvelle revue.
+Cette preuve concerne le worker du run ; les effets déjà envoyés à des services externes
+restent soumis aux barrières Process et au contrat de remplacement simple.
+
+Le checkpoint direct conserve l'URL, le modèle et le secret chiffré de la cible d'origine.
+La façade accepte une référence de Task pour retrouver ce checkpoint via son port existant,
+vérifie l'identité du run et du driver, puis confie le contrôle au driver. La reprise ne
+consulte pas une nouvelle configuration d'agent et ne crée pas de run distant. Les anciens
+checkpoints sans cible et les admissions interrompues avant sa persistance restent sans
+preuve récupérable. Le Kanban historique conserve son accusé sans confirmation.
+
+Les tests PostgreSQL/HTTP couvrent le remplacement après perte du registre local et la
+conservation des pauses. La qualification dans l'image réelle couvre arrêt coopératif,
+annulation asyncio pendant que le thread reste actif, et fin naturelle. Elle emploie un
+agent synthétique sans outil ni fournisseur externe. La mise à jour du harnais managé est
+nécessaire pour installer l'adaptation ; les instances externes non adaptées restent
+conservatrices. Aucun déploiement n'est impliqué par ce changement.

@@ -79,6 +79,12 @@ The auto-approval option authorizes certain actions in advance that would normal
 
 From the list, click a Task to open its details. There you will find the current phase, subtasks, Tool calls, related Processes, known LLM costs, and final response. The pause and resume buttons act on the work tree. **Force finish** is an administrative recovery action for a genuinely blocked execution: it marks the Task as failed and releases its lease; it is not an ordinary cancellation of the external work.
 
+If you ask to replace a running Hermes task, the new work waits for confirmation that its
+predecessor has stopped. A network outage or Galaris restart does not automatically launch
+the replacement: verification resumes from the saved information. A pause you requested
+still applies after confirmation. If an older Hermes instance remains waiting, ask your
+administrator to check its update status.
+
 With the internal harness, three identical errors or three repeated calls without progress
 prompt the agent to change approach, reread relevant skills, or check arguments. Tools remain
 available so the agent can continue; if it cannot proceed, it explains the repeated errors

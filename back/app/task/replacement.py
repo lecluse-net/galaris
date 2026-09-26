@@ -181,7 +181,9 @@ async def reconcile_replacements() -> None:
         await db.commit()  # No database lock spans a driver control request.
         if matches and not stopped and run.get("request_run_id") and run.get("driver_code"):
             try:
-                receipt = await cancel_agent_run(str(run["driver_code"]), UUID(str(run["request_run_id"])))
+                receipt = await cancel_agent_run(
+                    str(run["driver_code"]), UUID(str(run["request_run_id"])), task_id=source_id,
+                )
             except (RuntimeError, ValueError):
                 receipt = None
             if receipt is not None:

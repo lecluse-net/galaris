@@ -13,6 +13,8 @@ from app.agent.contracts import (
     AgentDriverSpec,
     AgentEvent,
     AgentRunRequest,
+    AgentRunCheckpoint,
+    HarnessCancellationReceipt,
     ExecutionResult,
     ResolvedExecutionTarget,
     ResolvedExecutionCapabilities,
@@ -112,6 +114,21 @@ class HermesAgentDriver:
         from .executor import cancel
 
         await cancel(run_id)
+
+    async def request_cancellation(self, run_id: UUID) -> HarnessCancellationReceipt:
+        from .kanban import cancel_if_active
+        from .executor import request_cancellation
+
+        if await cancel_if_active(run_id):
+            return HarnessCancellationReceipt(run_id=run_id, scope="remote", state="requested")
+        return await request_cancellation(run_id)
+
+    async def request_checkpoint_cancellation(
+        self, run_id: UUID, checkpoint: AgentRunCheckpoint,
+    ) -> HarnessCancellationReceipt:
+        from .executor import request_cancellation
+
+        return await request_cancellation(run_id, checkpoint=checkpoint)
 
     async def execution_configuration(self, agent: Any) -> dict[str, Any]:
         """Build the run snapshot from the driver-owned configuration table."""

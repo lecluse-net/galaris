@@ -34,6 +34,11 @@ sur une conversation réelle ni présenter une mesure locale comme une preuve de
 
 ### L1–L3 — Arrêt externe, reprise et remplacement coordonné
 
+Le contrôle Hermès direct dispose d'une preuve de sortie du worker et d'une récupération
+par checkpoint, qualifiées avec un agent synthétique dans l'image épinglée ; voir le
+complément du 26 septembre de l'ADR 0123. Cela ne qualifie pas les effets distants réels,
+les autres runtimes ou le remplacement coordonné d'un arbre.
+
 - Qualifier l'arrêt physique des runtimes externes, au-delà des probes de démarrage et de
   terminaison normale : demande refusée, accusé sans arrêt, perte réseau et crash/reprise.
 - Concevoir séparément le remplacement d'un arbre Task/Goal/Process avec ses propriétaires :

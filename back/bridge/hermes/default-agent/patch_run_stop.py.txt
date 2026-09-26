@@ -1,0 +1,40 @@
+"""Add worker-exit evidence to the pinned Hermes run protocol at image build time.
+
+Upstream cancellation can finish the asyncio task before its executor thread exits.
+Only that thread's return may prove that the run can no longer execute agent work.
+No cancellation, scheduling or result behavior is changed here.
+"""
+
+from pathlib import Path
+
+path = Path("/opt/hermes/gateway/platforms/api_server_runs.py")
+source = path.read_text()
+original = """        result, usage = await loop.run_in_executor(
+            None, lambda: _run_agent_sync(self, run, agent, approval_notify, _api_server=_api_server))"""
+replacement = """        def mark_execution_stopped():
+            current = self._run_statuses.get(run_id)
+            if current is not None:
+                self._set_run_status(run_id, current['status'], execution_stopped=True)
+
+        def tracked_execution():
+            try:
+                return _run_agent_sync(self, run, agent, approval_notify, _api_server=_api_server)
+            finally:
+                loop.call_soon_threadsafe(mark_execution_stopped)
+
+        result, usage = await loop.run_in_executor(None, tracked_execution)"""
+early_stop = """        if run_id in self._stopping_run_ids:
+            _finish("cancelled")
+            return"""
+assert source.count(original) == 1, "Hermes worker boundary changed; review the stop evidence adapter."
+assert source.count(early_stop) == 1, "Hermes early stop changed; review the stop evidence adapter."
+terminal_extra = "        extra = extra or {}"
+assert source.count(terminal_extra) == 1, "Hermes terminal envelope changed; review the stop evidence adapter."
+source = source.replace(original, replacement).replace(
+    early_stop, early_stop.replace('_finish("cancelled")', '_finish("cancelled", {"execution_stopped": True})')
+).replace(
+    terminal_extra,
+    '        extra = {"execution_stopped": self._run_statuses.get(run_id, {}).get("execution_stopped") is True, **(extra or {})}',
+)
+compile(source, str(path), "exec")
+path.write_text(source)

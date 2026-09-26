@@ -29,6 +29,8 @@ for runtime in codex claude_agent hermes deepseek_harness; do
     revision=$(sed -n 's/^_DSH_REF = "\([a-f0-9]*\)"$/\1/p' back/bridge/deepseek_harness/harness_provider.py)
     [[ $revision =~ ^[a-f0-9]{40}$ ]]
     build_args+=(--build-arg "DSH_REF=$revision")
+  elif [[ $runtime == hermes ]]; then
+    cp back/bridge/hermes/default-agent/patch_run_stop.py.txt "$context/"
   fi
   context_hash=$(tar --sort=name --mtime='UTC 1970-01-01' --owner=0 --group=0 --numeric-owner -cf - -C "$context" . | sha256sum | cut -d ' ' -f1)
   image="galaris-qualification/$runtime:${context_hash:0:16}"
@@ -46,6 +48,7 @@ for runtime in codex claude_agent hermes deepseek_harness; do
       --tmpfs /var/lib/codex:mode=1777 --tmpfs /workspace:mode=1777 \
       --tmpfs /sessions:mode=1777 --tmpfs /data:mode=1777 \
       --mount "type=bind,src=$source_root/back/scripts/qualify_harness_runtime.py,dst=/probe.py,readonly" \
+      --mount "type=bind,src=$source_root/back/scripts/qualify_hermes_cancellation.py,dst=/probe_hermes_cancellation.py,readonly" \
       --entrypoint python "$image" /probe.py "$runtime" > "$report_dir/$runtime.log" 2>&1; then
     printf 'PASS %s %s source=%s\n' "$runtime" "$digest" "$context_hash" >> "$report"
   else

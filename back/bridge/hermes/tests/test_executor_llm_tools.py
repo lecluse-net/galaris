@@ -411,8 +411,10 @@ def test_checkpoint_with_real_tool_effects_cannot_be_replayed() -> None:
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("saved_target", [False, True])
 async def test_executor_resumes_checkpoint_without_starting_another_hermes_run(
     monkeypatch: pytest.MonkeyPatch,
+    saved_target: bool,
 ) -> None:
     task_id = uuid4()
     save_checkpoint = AsyncMock()
@@ -428,6 +430,10 @@ async def test_executor_resumes_checkpoint_without_starting_another_hermes_run(
             "prior_llm_call_ids": [],
         },
     )
+    if saved_target:
+        checkpoint.data["cancellation_target"] = executor._cancellation_target(
+            executor.HermesTarget("http://original-runtime/v1", "original-key", "original-model")
+        )
     request = AgentRunRequest(
         run_id=uuid4(),
         task_id=task_id,
@@ -545,6 +551,12 @@ async def test_executor_resumes_checkpoint_without_starting_another_hermes_run(
     sync_llm_tools.assert_not_awaited()
     last_checkpoint = save_checkpoint.await_args.args[0]
     assert last_checkpoint.data["effective_session_id"] == "session-tip-2"
+    if saved_target:
+        selected = executor.client.ensure_session.await_args.args[0]
+        assert (selected.url, selected.api_key, selected.model) == (
+            "http://original-runtime/v1", "original-key", "original-model",
+        )
+        assert last_checkpoint.data["cancellation_target"]["api_key"] != "original-key"
     assert [
         event.message.tool_name
         for event in events

@@ -940,6 +940,15 @@ class DriverCancellationControl(Protocol):
     async def request_cancellation(self, run_id: UUID) -> HarnessCancellationReceipt: ...
 
 
+@runtime_checkable
+class DriverCheckpointCancellationControl(Protocol):
+    """Recover control of the exact remote run without starting an execution."""
+
+    async def request_checkpoint_cancellation(
+        self, run_id: UUID, checkpoint: AgentRunCheckpoint,
+    ) -> HarnessCancellationReceipt: ...
+
+
 class HarnessCapabilityDescriptor(BaseModel):
     """Versioned negotiation result shared by execution, configuration and presentation."""
 

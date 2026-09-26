@@ -27,6 +27,19 @@ L'exécution passe par les API structurées Hermès (`/api/sessions`, `/v1/runs`
 Le harness manager ne reçoit jamais une commande Hermès, un payload Kanban ou une décision
 d'exécution agentique.
 
+Pour remplacer une tâche, Galaris attend la libération du worker local et une confirmation
+du run Hermès d'origine. « Arrêt demandé » ne suffit pas : l'API doit confirmer la fin du
+thread de travail. Un refus, une perte réseau ou un run introuvable laisse le remplacement
+en attente. Le checkpoint conserve la cible et son secret chiffré pour reprendre cette
+vérification après redémarrage du backend, même si la configuration de l'agent a changé.
+Une pause utilisateur reste appliquée après la confirmation.
+
+La preuve de fin du thread est ajoutée à l'image Hermès épinglée lors de sa construction.
+Les instances managées existantes doivent passer par leur action **Mettre à jour** pour
+recevoir cette adaptation, y compris le renouvellement du volume de code prévu par cette
+action. Un ancien runtime ou checkpoint sans preuve reste en attente ; il ne faut pas
+interpréter son état logique « annulé » comme une confirmation d'arrêt physique.
+
 ## Configuration du harness manager
 
 Configurez l’URL du manager, l’URL API facultative et le secret partagé dans

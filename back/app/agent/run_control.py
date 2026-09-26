@@ -7,7 +7,8 @@ from collections.abc import Generator
 from uuid import UUID
 
 from .contracts import (
-    AgentDriver, AgentRunRequest, DriverCancellationControl, HarnessCancellationReceipt,
+    AgentDriver, AgentRunCheckpoint, AgentRunRequest, DriverCancellationControl,
+    DriverCheckpointCancellationControl, HarnessCancellationReceipt,
 )
 from .execution_errors import HarnessProtocolError
 
@@ -37,17 +38,21 @@ def own_run(driver: AgentDriver, request: AgentRunRequest) -> Generator[None]:
         _active.pop(request.run_id, None)
 
 
-async def request_cancellation(driver: AgentDriver, run_id: UUID) -> HarnessCancellationReceipt:
+async def request_cancellation(
+    driver: AgentDriver, run_id: UUID, *, checkpoint: AgentRunCheckpoint | None = None,
+) -> HarnessCancellationReceipt:
     key = (driver.spec.code, run_id)
     pending = _pending.get(key)
     if pending is None:
-        pending = asyncio.create_task(_perform_cancellation(driver, run_id))
+        pending = asyncio.create_task(_perform_cancellation(driver, run_id, checkpoint=checkpoint))
         _pending[key] = pending
         pending.add_done_callback(lambda _: _pending.pop(key, None))
     return await asyncio.shield(pending)
 
 
-async def _perform_cancellation(driver: AgentDriver, run_id: UUID) -> HarnessCancellationReceipt:
+async def _perform_cancellation(
+    driver: AgentDriver, run_id: UUID, *, checkpoint: AgentRunCheckpoint | None = None,
+) -> HarnessCancellationReceipt:
     key = (driver.spec.code, run_id)
     cached = _receipts.get(key)
     if cached is not None and (cached.state == "confirmed" or (
@@ -67,14 +72,17 @@ async def _perform_cancellation(driver: AgentDriver, run_id: UUID) -> HarnessCan
             timeout = min(timeout, descriptor.policy.stream_close_timeout_seconds)
     try:
         async with asyncio.timeout(timeout):
-            if isinstance(driver, DriverCancellationControl):
+            if checkpoint is not None and isinstance(driver, DriverCheckpointCancellationControl):
+                receipt = await driver.request_checkpoint_cancellation(run_id, checkpoint)
+            elif isinstance(driver, DriverCancellationControl):
                 receipt = await driver.request_cancellation(run_id)
-                receipt = HarnessCancellationReceipt.model_validate(receipt.model_dump())
-                if receipt.run_id != run_id:
-                    raise HarnessProtocolError("Cancellation acknowledged a different run.")
             else:
                 await driver.cancel(run_id)
                 receipt = HarnessCancellationReceipt(run_id=run_id, scope="remote", state="requested")
+            if isinstance(driver, (DriverCancellationControl, DriverCheckpointCancellationControl)):
+                receipt = HarnessCancellationReceipt.model_validate(receipt.model_dump())
+                if receipt.run_id != run_id:
+                    raise HarnessProtocolError("Cancellation acknowledged a different run.")
     except HarnessProtocolError:
         raise
     except Exception:

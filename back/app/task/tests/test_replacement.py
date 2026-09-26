@@ -79,6 +79,73 @@ async def test_remote_replacement_requires_confirmed_stop_and_released_lease(db,
 
 
 @pytest.mark.asyncio
+async def test_hermes_replacement_recovers_remote_stop_after_restart(committed_database, monkeypatch):
+    """Real facade, driver, persistence and HTTP client; only the remote server is replaced."""
+    from functools import partial
+    import httpx
+    from app.agent import run_control
+    from bridge.hermes import client, executor
+
+    run_id, token = uuid4(), uuid4()
+    target = client.HermesTarget("http://synthetic-hermes/v1", "synthetic-key", "test-model")
+    checkpoint_target = executor._cancellation_target(target)
+    assert checkpoint_target["api_key"] != target.api_key
+    remote = {"run_id": "original-remote-run", "status": "running"}
+    posts = []
+
+    def handle(request):
+        assert request.url.host == "synthetic-hermes"
+        assert request.headers["Authorization"] == "Bearer synthetic-key"
+        if request.method == "POST":
+            posts.append(str(request.url))
+            return httpx.Response(200, json={**remote, "status": "stopping"})
+        return httpx.Response(200, json=remote)
+
+    monkeypatch.setattr(client.httpx, "AsyncClient", partial(httpx.AsyncClient, transport=httpx.MockTransport(handle)))
+    monkeypatch.setattr(scheduler, "wake", lambda *_: None)
+    async with get_db_session() as db:
+        original = task(status=TaskStatus.EXEC, lease_token=token,
+            lease_expires_at=datetime.now(timezone.utc) + timedelta(minutes=1), data={
+                "_agent_run_identity": {"driver_code": "hermes", "request_run_id": str(run_id)},
+                "_agent_run_checkpoint": {"request_run_id": str(run_id), "driver_code": "hermes",
+                    "runtime_run_id": remote["run_id"], "status": "running",
+                    "data": {"execution_strategy": "direct", "cancellation_target": checkpoint_target}},
+            })
+        db.add(original)
+        await db.flush()
+        original_id, revision = original.id, original.revision
+    async with get_db_session():
+        successor = await replacement.prepare_replacement(task(), predecessor_id=original_id,
+            expected_revision=revision, action_key="restart-once")
+        successor_id = successor.id
+    # No process-local run registration survives. Reconciliation must use the saved endpoint.
+    assert run_id not in executor._ACTIVE_RUNS
+    async with get_db_session():
+        await replacement.reconcile_replacements()
+    assert len(posts) == 1
+    async with get_db_session() as db:
+        original = await db.get(Task, original_id)
+        original.lease_token = None
+        original.lease_expires_at = None
+    remote.update(status="cancelled", execution_stopped=False)
+    run_control._receipts.pop(("hermes", run_id), None)
+    async with get_db_session():
+        await replacement.reconcile_replacements()
+    async with get_db_session() as db:
+        successor = await db.get(Task, successor_id)
+        assert replacement.replacement_pending(successor)
+        task_service.suspend(successor, "user")
+    remote["execution_stopped"] = True
+    run_control._receipts.pop(("hermes", run_id), None)
+    async with get_db_session():
+        await replacement.reconcile_replacements()
+    async with get_db_session() as db:
+        successor = await db.get(Task, successor_id)
+        assert replacement.replacement_state(successor)["state"] == "confirmed"
+        assert task_service.pause_reasons(successor) == ["user"]
+
+
+@pytest.mark.asyncio
 @pytest.mark.parametrize("blocker", ["scope", "revision", "child", "process", "leased_child", "grandchild"])
 async def test_replacement_conflict_never_stops_or_creates_work(db, blocker):
     original = task(message_group_id="room-a")

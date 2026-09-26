@@ -192,6 +192,8 @@ def main() -> None:
     if runtime in {"codex", "claude_agent"}:
         asyncio.run(http_adapter(runtime))
     elif runtime == "hermes":
+        cancellation_probe = module_from_file("/probe_hermes_cancellation.py")
+        asyncio.run(cancellation_probe.qualify())
         agent = importlib.import_module("run_agent").AIAgent(
             base_url=origin + "/v1", api_key="qualification-token", provider="custom", api_mode="chat_completions",
             model="qualification", max_iterations=2, enabled_toolsets=[], quiet_mode=True,
