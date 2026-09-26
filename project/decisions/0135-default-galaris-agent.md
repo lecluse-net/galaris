@@ -26,8 +26,8 @@ ce marqueur. La suppression physique hors contrat applicatif n'est pas couverte.
 Le profil reste `NULL` pour suivre le profil courant, le driver vaut `internal`,
 et aucun harnais externe n'est affecté. Les connexions et skills ordinaires sont
 initialisés ; seule la création active en plus `galaris_admin`, qui autorise
-notamment la consultation de la documentation, et l’autorisation individuelle du
-skill `galaris-lab`. Le défaut global de ce skill et la connexion Lab restent désactivés.
+notamment la consultation de la documentation, et l’autorisation individuelle des
+skills `galaris-lab` et `galaris-knowledge`. Leurs défauts globaux et la connexion Lab restent désactivés.
 Les synchronisations ultérieures respectent la révocation de ces droits et les réglages
 utilisateur ; elles n’ajoutent pas ce nouveau défaut aux agents déjà initialisés.
 

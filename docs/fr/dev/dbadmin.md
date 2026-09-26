@@ -312,8 +312,8 @@ lieu de dépendre artificiellement du tri lexical.
 
 Le dataset `app.agent.initial_galaris` propose une seule fois l'agent **Galaris**,
 rattaché au premier administrateur actif, avec le harnais interne, le profil courant
-par défaut, la connexion `galaris_admin` active (documentation comprise) et le skill
-`galaris-lab` autorisé individuellement. Le défaut global du skill reste désactivé.
+par défaut, la connexion `galaris_admin` active (documentation comprise) et les skills
+`galaris-lab` et `galaris-knowledge` autorisés individuellement. Leur défaut global reste désactivé.
 S'il n'y a pas encore d'administrateur, la première inscription rejoue ce même dataset.
 Le marqueur interne `agents.initialization_key` est conservé après renommage et
 suppression logique : les synchronisations suivantes ne recréent pas cet agent et

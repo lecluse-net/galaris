@@ -110,7 +110,17 @@ The same HR Agent can audit the Skills available to an Agent and read a Skill’
 
 ### Using a Messaging System
 
+In the default installation, `galaris-lab` and `galaris-knowledge` are globally disabled
+and individually enabled only for the **Galaris** Agent created during setup.
+Permissions remain configurable, and updates preserve previously saved choices.
+
 The **Messenger** entry opens Galaris’s native messaging system when it is enabled and your role has the necessary permissions. You can create a direct conversation with an Agent, or a group containing that Agent and colleagues, search rooms, track unread messages, reply, attach a file, record a voice note, and start a browser call. The **Activity** panel shows publishable steps and the round’s Tools, never the Agent’s private reasoning. Leaving a conversation removes your access without deleting its history for the other members.
+
+The panel sections appear in this order: **Conversations, Documents, Tasks, Processes**.
+They open automatically when they contain items and collapse when empty. You can collapse them
+manually; an ordinary refresh does not reopen them.
+The **+** button in the **Working documents** header creates a document even when the section
+is collapsed, provided you have edit permission.
 
 On desktop, when a document is open alongside the conversation, each message also gives the
 Agent the last text selection in that document, the last cursor position, and an excerpt of
@@ -121,6 +131,16 @@ Switching documents or replacing content invalidates previous positions; closing
 sending this context. The internals of embedded applications are not inspected. The Agent’s
 document permissions remain unchanged.
 
+In the **Conversations** header, the filter button to the left of **+** shows or hides
+the **Me / agents** selector, search field, and external and archived conversation checkboxes.
+This area is hidden by default; hiding it preserves the filters. **+** creates a conversation
+subject to your permissions.
+The **Tasks** section retains Tasks linked to the displayed messages and their subtasks.
+It also shows the Agent’s ongoing Tasks and Tasks awaiting a reply, including work created
+elsewhere or before the visible messages, even in an empty conversation. Queued Tasks and
+automatic waits remain visible; completed or manually paused work from elsewhere is not
+added. The list updates live, and clicking a Task opens its details, subject to your read permissions.
+
 A native conversation never opens a Task, even if the message explicitly requests it. It can, however, launch a configured Process. To delegate durable work to a Task, use the Tasks page or another channel whose admission policy allows it.
 
 If your organization connects Nextcloud Talk, Matrix, OneBot, Telegram, or WhatsApp Business, send your request to the Agent’s account in the designated room. Configured platforms can operate simultaneously, and the response returns through the original connection and conversation. Avoid resending a slow request multiple times: instead, open the created Task or Process, or ask for its status.
@@ -128,6 +148,11 @@ If your organization connects Nextcloud Talk, Matrix, OneBot, Telegram, or Whats
 Attachments remain files. Specify their name and the expected action: “read,” “modify,” “compare,” “return,” or “share.” For a large file, the Agent may transfer it without loading all its content into the model.
 
 ### Understanding Short Conversations and Background Work
+
+On initialization, **Console SSH**, **Image**, **Mail**, and **Multimedia** are unavailable
+in conversation mode by default. An administrator can enable each Tool for conversations
+in the Tool catalog. This setting does not change access in Tasks; updates preserve
+previously saved choices.
 
 A received message is no longer systematically turned into a Task. The conversational controller aggregates messages arriving in bursts, reconstructs the useful history, and prepares a short response. When a Tool must produce a lasting effect or work will take time, it creates a background Task or Process and gives you its reference.
 

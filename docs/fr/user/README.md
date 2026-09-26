@@ -158,6 +158,11 @@ tool. Ces capacités spécialisées ne sont accordées à aucun agent par défau
 
 ### Passer par une messagerie
 
+Dans l’installation par défaut, les skills `galaris-lab` et `galaris-knowledge` sont
+bloqués globalement et autorisés individuellement pour le seul agent **Galaris** créé
+à l’installation. Les autorisations restent modifiables et les mises à jour conservent
+les choix déjà enregistrés.
+
 L'entrée **Messenger** ouvre la messagerie native de Galaris lorsqu'elle est activée et que votre
 rôle possède les droits nécessaires. Vous pouvez créer une conversation directe avec un agent, ou
 un groupe contenant cet agent et des collègues, rechercher les rooms, suivre les non-lus, répondre,
@@ -165,6 +170,12 @@ joindre un fichier, enregistrer une note vocale et démarrer un appel navigateur
 **Activité** montre les étapes publiables et les outils du round, jamais le raisonnement privé de
 l'agent. Quitter une conversation retire votre accès sans effacer son historique pour les autres
 membres.
+
+Les rubriques du panneau sont présentées dans l’ordre **Conversations, Documents, Tâches, Processus**.
+Elles s’ouvrent automatiquement lorsqu’elles contiennent des éléments et se replient lorsqu’elles
+deviennent vides. Vous pouvez les replier manuellement ; une simple actualisation ne les rouvre pas.
+Le bouton **+** de l’en-tête **Documents de travail** permet de créer un document, même lorsque
+la rubrique est repliée, si vous disposez du droit de modification.
 
 Sur ordinateur, lorsqu’un document est ouvert à côté de la conversation, chaque message
 transmet aussi à l’agent la dernière sélection de texte dans ce document, la dernière position
@@ -175,6 +186,17 @@ Datasets JSON. Les extraits longs sont tronqués et accompagnés de la révision
 Un changement de document ou de contenu invalide les anciens repères ; fermer le panneau
 cesse de transmettre ce contexte. Les zones internes des applications intégrées ne sont pas
 inspectées. Les droits de l’agent sur le document restent inchangés.
+
+Dans l’en-tête **Conversations**, le bouton de filtres à gauche du **+** affiche ou masque
+le sélecteur **Moi / agents**, la recherche et les cases **conversations externes** et
+**conversations archivées**. Cette zone est masquée par défaut ; la masquer conserve les filtres.
+Le **+** permet de créer une conversation selon vos droits.
+La rubrique **Tâches** conserve les tâches liées aux messages affichés et leurs sous-tâches.
+Elle affiche aussi les tâches en cours ou en attente de réponse de l’agent, même créées
+ailleurs ou avant les messages visibles, y compris dans une conversation encore vide.
+Les tâches en file et les attentes automatiques restent visibles ; les tâches extérieures
+terminées ou mises en pause manuellement ne sont pas ajoutées. La liste se met à jour en direct
+et un clic ouvre le détail de la tâche, selon vos droits de consultation.
 
 Une conversation native n'ouvre jamais de Task, même si le message le demande explicitement. Elle
 peut toutefois lancer un Processus configuré. Pour confier un travail durable à une Task, utilisez
@@ -191,6 +213,11 @@ Les pièces jointes restent des fichiers. Précisez leur nom et l’action atten
 le transférer sans charger tout son contenu dans le modèle.
 
 ### Comprendre les conversations courtes et le travail de fond
+
+À l’initialisation, **Console SSH**, **Image**, **Mail** et **Multimédia** ne sont pas
+accessibles en mode conversation par défaut. Un administrateur peut autoriser chaque outil
+pour les conversations depuis le catalogue des outils. Ce réglage ne change pas leur accès
+dans les Tasks ; les mises à jour conservent les choix déjà enregistrés.
 
 Un message reçu n’est plus systématiquement transformé en Task. Le contrôleur conversationnel
 agrège les messages arrivés en rafale, reconstruit l’historique utile et prépare une réponse courte.
