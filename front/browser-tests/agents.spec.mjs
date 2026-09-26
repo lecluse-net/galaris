@@ -9,6 +9,34 @@ async function agentFixtures(page) {
   await jsonRoute(page, '**/api/harnesses/agents/7', { containerized: true })
 }
 
+test('agent creation requires a first name but accepts an empty last name', async ({ page }) => {
+  await agentFixtures(page)
+  await jsonRoute(page, '**/api/agents?*', [])
+  await jsonRoute(page, '**/api/agents/managers', [agent.user])
+  await jsonRoute(page, '**/api/agents/titles?*', [{ id: 1, label: 'agent_titles.ms', gender: 'F' }])
+  const saves = []
+  await page.route('**/api/agents', route => {
+    const data = route.request().postDataJSON()
+    saves.push(data)
+    return route.fulfill({ status: 201, json: { ...agent, ...data } })
+  })
+  await mount(page, 'app/agent/pages/index.vue', { privileges: ['AGENT_EDIT'] })
+  await page.getByRole('button', { name: 'New Agent', exact: true }).click()
+  const dialog = page.getByRole('dialog')
+  await dialog.getByLabel('Agent code', { exact: true }).fill('lyra')
+  await dialog.getByLabel('Title *', { exact: true }).click()
+  await page.getByRole('option', { name: 'Ms (F)', exact: true }).click()
+  await dialog.getByLabel('First name *', { exact: true }).fill('   ')
+  await dialog.getByRole('button', { name: 'Create', exact: true }).click()
+  await expect(dialog.getByText('First name is required', { exact: true })).toBeVisible()
+  expect(saves).toEqual([])
+  await dialog.getByLabel('First name *', { exact: true }).fill('Lyra')
+  await dialog.getByRole('button', { name: 'Create', exact: true }).click()
+  await expect(dialog).toHaveCount(0)
+  expect(saves).toHaveLength(1)
+  expect(saves[0]).toMatchObject({ first_name: 'Lyra', last_name: '' })
+})
+
 test('built-in titles follow the locale and remain keys until renamed', async ({ page }) => {
   await agentFixtures(page)
   await jsonRoute(page, '**/api/harnesses/agents/7/status', { status: 'running', managed: true, lifecycle_status: 'ready', capabilities: [], available_actions: [], last_error: null })

@@ -87,6 +87,13 @@ _STR_NULLABLE = ["personality", "job_description", "job_title"]
 
 class AgentCreate(AgentBase):
     user_id: Optional[int] = None
+    first_name: str = Field(min_length=1, pattern=r"\S")
+    last_name: str = ""
+
+    @field_validator("last_name", mode="before")
+    @classmethod
+    def normalize_last_name(cls, value: str | None) -> str:
+        return "" if value is None else value
 
     @field_validator(*_STR_NULLABLE, mode='before')
     @classmethod
@@ -104,7 +111,7 @@ class AgentUpdate(BaseModel):
     title_id: Optional[int] = None
     group_id: Optional[int] = None
     code: Optional[str] = None
-    first_name: Optional[str] = None
+    first_name: Optional[str] = Field(default=None, min_length=1, pattern=r"\S")
     last_name: Optional[str] = None
     personality: Optional[str] = None
     job_description: Optional[str] = None
@@ -112,6 +119,18 @@ class AgentUpdate(BaseModel):
     agent_driver: Optional[str] = None
     profile_id: Optional[int] = None
     voice: Optional[str] = Field(default=None, max_length=512)
+
+    @field_validator("first_name")
+    @classmethod
+    def require_first_name_when_provided(cls, value: str | None) -> str:
+        if value is None:
+            raise ValueError("first_name cannot be null")
+        return value
+
+    @field_validator("last_name", mode="before")
+    @classmethod
+    def normalize_last_name(cls, value: str | None) -> str:
+        return "" if value is None else value
 
     @field_validator(*_STR_NULLABLE, mode='before')
     @classmethod

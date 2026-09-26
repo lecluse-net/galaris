@@ -18,7 +18,7 @@ Pour organiser les accès aux agents, consultez [Équipes et autorisations de di
 
 Un agent Galaris est un collaborateur logiciel avec :
 
-- un nom, un rôle et des consignes de comportement ;
+- un prénom obligatoire, un nom de famille facultatif, un rôle et des consignes de comportement ;
 - un modèle de langage pour comprendre et rédiger ;
 - des outils autorisés pour chercher, lire, créer, envoyer ou lancer un processus ;
 - une mémoire gouvernée, des documents de travail et un historique d’activité ;

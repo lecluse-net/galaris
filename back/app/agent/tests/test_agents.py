@@ -16,6 +16,34 @@ from pydantic import ValidationError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 
+@pytest.mark.parametrize("names", [{}, {"last_name": ""}, {"last_name": None}])
+def test_agent_creation_accepts_no_last_name(names: dict[str, object]) -> None:
+    agent = AgentCreate.model_validate(
+        {"title_id": 1, "code": "lyra", "first_name": "Lyra", **names}
+    )
+    assert agent.last_name == ""
+
+
+@pytest.mark.parametrize("schema", [AgentCreate, AgentUpdate])
+@pytest.mark.parametrize("first_name", [None, "", " \t\n"])
+def test_agent_requires_a_nonblank_first_name(schema, first_name) -> None:
+    with pytest.raises(ValidationError):
+        schema.model_validate(
+            {"title_id": 1, "code": "lyra", "first_name": first_name, "last_name": "Example"}
+        )
+
+
+def test_agent_creation_requires_first_name() -> None:
+    with pytest.raises(ValidationError):
+        AgentCreate.model_validate({"title_id": 1, "code": "lyra", "last_name": "Example"})
+
+
+@pytest.mark.parametrize("last_name", [None, ""])
+def test_agent_update_can_clear_last_name_without_changing_first_name(last_name) -> None:
+    update = AgentUpdate(last_name=last_name)
+    assert update.model_dump(exclude_unset=True) == {"last_name": ""}
+
+
 @pytest.mark.asyncio
 async def test_get_all_can_filter_by_driver(
     monkeypatch: pytest.MonkeyPatch,
@@ -170,8 +198,10 @@ async def test_owner_assertion_allows_only_the_human_manager(
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("last_name", ["Agent", ""])
 async def test_agent_persists_its_required_human_manager(
     db: AsyncSession,
+    last_name: str,
 ) -> None:
     manager = UserModel(
         email="agent-manager@example.test",
@@ -189,7 +219,7 @@ async def test_agent_persists_its_required_human_manager(
         title_id=title.id,
         code="managed-agent-contract",
         first_name="Managed",
-        last_name="Agent",
+        last_name=last_name,
         agent_driver="internal",
     )
     db.add(agent)
@@ -198,6 +228,8 @@ async def test_agent_persists_its_required_human_manager(
     loaded = await agent_service.get(agent.id)
 
     assert loaded is not None
+    assert loaded.first_name == "Managed"
+    assert loaded.last_name == last_name
     assert loaded.user_id == manager.id
     assert loaded.user.display_name == "Agent Manager"
     foreign_key = next(iter(Agent.__table__.c.user_id.foreign_keys))

@@ -88,7 +88,7 @@ export interface AgentCreate {
     group_id?: number | null
     code: string
     first_name: string
-    last_name: string
+    last_name?: string
     personality?: string | null
     job_description?: string | null
     job_title?: string | null

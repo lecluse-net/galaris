@@ -502,7 +502,7 @@
                   v-model="agentForm.first_name"
                   :label="$t('agent.firstName')"
                   filled
-                  :rules="[val => !!val || $t('agent.firstNameRule')]"
+                  :rules="[val => !!val?.trim() || $t('agent.firstNameRule')]"
                 />
               </div>
               <div class="col-12 col-sm-6">
@@ -510,7 +510,6 @@
                   v-model="agentForm.last_name"
                   :label="$t('agent.lastName')"
                   filled
-                  :rules="[val => !!val || $t('agent.lastNameRule')]"
                 />
               </div>
             </div>

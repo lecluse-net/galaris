@@ -16,7 +16,7 @@ To organize access to agents, see [Teams and dialogue permissions](teams.md).
 
 A Galaris Agent is a software collaborator with:
 
-- a name, role, and behavioral instructions;
+- a required first name, an optional last name, a role, and behavioral instructions;
 - a language model for understanding and drafting;
 - authorized tools for searching, reading, creating, sending, or running a Process;
 - governed memory, Working Set documents, and an activity history;
