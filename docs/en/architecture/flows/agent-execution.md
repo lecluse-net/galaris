@@ -509,9 +509,16 @@ a `delivery_recovery` marker with the path, destination, and producing leaf. An 
 reopens only that leaf, preserves its effect journal, and directly executes the single authorized
 native tool with those verified arguments, without an LLM request. This deterministic execution
 reuses the MCP authorization projection and effect record. A delivery already attempted without a
-receipt remains ambiguous and is never blindly replayed. The terminal pass triggered by a budget or
-no-progress guard is strictly tool-free and limited to one request: it reports persisted facts
+receipt remains ambiguous and is never blindly replayed. The terminal pass triggered by a budget
+guard is strictly tool-free and limited to one request: it reports persisted facts
 without performing new work.
+
+After three consecutive identical tool results, the internal runtime asks the model to change
+approach, reread relevant skills, or check arguments. It distinguishes repeated errors from
+successful calls without progress. All results in the current batch are preserved before this
+guidance; tools remain available within the same run and budget. If no alternative can proceed,
+the agent explains the three errors and what remains blocked.
+See [0103](../../../../project/decisions/0103-tool-errors-return-to-agent.md).
 
 ## Conversational Rounds and Real-Time Audio Sessions
 

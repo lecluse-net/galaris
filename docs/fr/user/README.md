@@ -106,6 +106,12 @@ retour final. Les boutons de pause et de reprise agissent sur l’arbre de trava
 est une récupération administrative pour une exécution réellement bloquée : elle marque la Task
 en erreur et libère sa lease, elle ne constitue pas une annulation ordinaire du travail externe.
 
+Avec le harnais interne, trois erreurs identiques ou trois appels répétés sans progrès
+déclenchent une consigne à l’agent : changer de méthode, relire les skills pertinents ou
+vérifier les arguments. L’agent garde ses outils pour poursuivre ; s’il ne peut pas avancer,
+il explique les erreurs répétées et ce qui reste bloqué. Les limites globales d’exécution
+restent applicables.
+
 Pour un agent Hermès configuré avec son propre fournisseur LLM, la tâche et son résultat
 restent visibles, mais Galaris ne peut pas afficher les appels LLM intermédiaires ni leur coût
 détaillé. Ce n’est pas une perte de tâche : ces appels ont lieu directement dans Hermès.

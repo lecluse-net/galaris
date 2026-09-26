@@ -256,5 +256,5 @@ async def test_runtime_registers_skill_capabilities_with_pydantic_ai(
     await agent.init()
 
     capabilities = cast(list[Any], captured["capabilities"])
-    assert len(capabilities) == 3
-    assert capabilities[-1] is capability
+    # The supplied skill must survive registration of additional runtime capabilities.
+    assert capability in capabilities

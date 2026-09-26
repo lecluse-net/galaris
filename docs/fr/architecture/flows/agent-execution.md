@@ -541,9 +541,16 @@ productrice. Un retry explicite rouvre uniquement cette feuille, conserve son jo
 exécute directement l'unique outil natif autorisé avec ces arguments vérifiés, sans requête LLM.
 Cette exécution déterministe réutilise la projection d'autorisation et l'enregistrement d'effets du
 MCP. Une livraison déjà tentée sans reçu reste ambiguë et n'est jamais rejouée aveuglément. La passe
-terminale déclenchée par un garde de budget ou de non-progrès
+terminale déclenchée par un garde de budget
 est, elle, strictement sans outils et limitée à une requête : elle rapporte les faits persistés sans
 effectuer de nouveau travail.
+
+Après trois résultats d’outil identiques consécutifs, le runtime interne demande au modèle de
+changer d’approche, de relire les skills pertinents ou de vérifier les arguments. Il distingue
+les erreurs répétées des appels réussis sans progrès. Tous les résultats du lot courant sont
+conservés avant cette consigne ; les outils restent disponibles dans le même run et le même
+budget. Si aucune alternative ne permet de continuer, l’agent explique les trois erreurs et
+ce qui reste bloqué. Voir [0103](../../../../project/decisions/0103-tool-errors-return-to-agent.md).
 
 ## Tours conversationnels et sessions audio temps réel
 

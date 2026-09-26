@@ -7,7 +7,6 @@ from typing import Any, AsyncIterator, Iterator, cast
 import pytest
 from pydantic_ai import AgentRunResultEvent, PartDeltaEvent, PartStartEvent
 from pydantic_ai.messages import (
-    ModelRequest,
     ModelResponse,
     TextPart,
     TextPartDelta,
@@ -17,6 +16,108 @@ from pydantic_ai.messages import (
 from app.agent.contracts import AIMessage
 from app.harness import runtime
 from app.harness.runtime import Agent
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("failed", [False, True])
+@pytest.mark.parametrize("decision", ["adapt", "report"])
+@pytest.mark.parametrize("transport", ["native", "mcp"])
+@pytest.mark.parametrize("durable", [False, True])
+async def test_repeated_tools_allow_skill_reread_or_an_honest_report(
+    monkeypatch, failed, decision, transport, durable,
+):
+    """A whole tool batch finishes before advice; the same run can still do work."""
+    from unittest.mock import AsyncMock
+
+    from fastmcp import FastMCP
+    from pydantic_ai.messages import ToolReturnPart
+    from pydantic_ai.models.function import DeltaToolCall
+    from pydantic_ai.toolsets import FunctionToolset
+
+    from app.harness.checkpoint import TOOL_ERROR_SCHEMA, HarnessRunCheckpoint
+    from app.harness.mcp_toolset import ExecutionEvidenceClient
+    from pydantic_ai.mcp import MCPToolset
+    from app.harness.tests.test_runtime_cancellation import _CountingFunctionModel, _request
+
+    calls = []
+
+    def probe() -> dict[str, str]:
+        calls.append("probe")
+        if failed:
+            return {
+                "schema": TOOL_ERROR_SCHEMA, "status": "error", "outcome": "unknown",
+                "error": f"Source unavailable.\nError reference: {len(calls):012x}",
+                "instruction": "Verify the current state before retrying.",
+            }
+        return {"content": "Unchanged document"}
+
+    def pending() -> str:
+        calls.append("pending")
+        return "Pending operation completed once"
+
+    def read_skill() -> str:
+        calls.append("read_skill")
+        return "Use the alternative method."
+
+    def alternative() -> str:
+        calls.append("alternative")
+        return "Work completed"
+
+    async def model(messages, info):
+        returns = [part for message in messages for part in message.parts
+                   if isinstance(part, ToolReturnPart)]
+        if not returns:
+            yield {index: DeltaToolCall(name, "{}", tool_call_id=f"call_{index}")
+                   for index, name in enumerate(["probe", "probe", "probe", "pending"])}
+            return
+        prompts = [part.content for message in messages for part in message.parts
+                   if isinstance(part, UserPromptPart) and isinstance(part.content, str)]
+        advice = "\n".join(prompts[1:])
+        assert "three" in advice and "skill" in advice
+        assert ("same error" if failed else "without new progress") in advice
+        assert {tool.name for tool in info.function_tools} >= {"read_skill", "alternative"}
+        assert len([part for part in returns if part.tool_name == "probe"]) == 3
+        assert len([part for part in returns if part.tool_name == "pending"]) == 1
+        if decision == "report":
+            yield "The same error occurred three times; work remains blocked." if failed else "Repeated reads did not advance the work."
+        elif returns[-1].tool_name == "pending":
+            yield {0: DeltaToolCall("read_skill", "{}", tool_call_id="skill")}
+        elif returns[-1].tool_name == "read_skill":
+            yield {0: DeltaToolCall("alternative", "{}", tool_call_id="alternative")}
+        else:
+            yield "Work completed after rereading the skill."
+
+    if transport == "mcp":
+        server = FastMCP("repetition-guidance")
+        for tool in [probe, pending, read_skill, alternative]:
+            server.tool()(tool)
+        toolset = MCPToolset(ExecutionEvidenceClient(server))
+    else:
+        toolset = FunctionToolset([probe, pending, read_skill, alternative])
+    save = AsyncMock()
+    checkpoint = HarnessRunCheckpoint(_request(save))
+    monkeypatch.setattr(runtime, "build_model_for_llm", AsyncMock(return_value=_CountingFunctionModel(stream_function=model)))
+    monkeypatch.setattr(runtime, "estimate_cost_from_usage", lambda *_args: 0.0)
+    agent = Agent(
+        cast(Any, SimpleNamespace()), mcp_servers=[toolset],
+        checkpoint=checkpoint if durable else None, real_time=not durable,
+        reasoning_effort="low",
+    )
+    await agent.init()
+
+    messages = [message async for message in agent.run("Complete the work")]
+
+    assert agent.error == ""
+    assert calls == ["probe", "probe", "probe", "pending"] + (
+        ["read_skill", "alternative"] if decision == "adapt" else []
+    )
+    assert messages[-1].success is True
+    assert len([message for message in messages if message.tool_name == "no_progress_guard"]) == 1
+    assert agent.budget_exhausted is False
+    # No completed operation is left pending or lost from the durable journal.
+    if durable:
+        assert len(checkpoint.effects) == len(calls)
+        assert all(effect["status"] in {"completed", "error_reported"} for effect in checkpoint.effects)
 
 
 def test_trace_tool_result_keeps_only_bounded_outcome_fields() -> None:
@@ -73,11 +174,9 @@ def test_repeated_tool_errors_remain_available_for_the_agent_to_decide() -> None
         success=False,
     )
 
-    for _ in range(5):
-        runtime._observe_tool_result(  # pyright: ignore[reportPrivateUsage]
-            state,
-            failure,
-        )
+    assert [runtime._observe_tool_result(state, failure) for _ in range(6)] == [
+        False, False, True, False, False, True,
+    ]
 
 
 def test_tool_error_resets_the_successful_no_progress_streak() -> None:
@@ -90,10 +189,17 @@ def test_tool_error_resets_the_successful_no_progress_streak() -> None:
     runtime._observe_tool_result(state, success)  # pyright: ignore[reportPrivateUsage]
     runtime._observe_tool_result(state, failure)  # pyright: ignore[reportPrivateUsage]
 
-    assert state.repeated_success_count == 0
+    assert state.repeated_tool_count == 1
 
 
-def test_repeated_identical_successful_tool_call_stops_on_third_result() -> None:
+def test_new_results_beyond_the_trace_preview_count_as_progress() -> None:
+    state = runtime._StreamState()
+    message = AIMessage(type="tool", tool_name="file_read", content="Same trace preview")
+    for index in range(4):
+        assert runtime._observe_tool_result(state, message, "x" * 600 + str(index)) is False
+
+
+def test_repeated_identical_successful_tool_call_advises_on_third_result() -> None:
     state = runtime._StreamState()  # pyright: ignore[reportPrivateUsage]
     success = AIMessage(
         type="tool",
@@ -105,8 +211,7 @@ def test_repeated_identical_successful_tool_call_stops_on_third_result() -> None
 
     runtime._observe_tool_result(state, success)  # pyright: ignore[reportPrivateUsage]
     runtime._observe_tool_result(state, success)  # pyright: ignore[reportPrivateUsage]
-    with pytest.raises(runtime.RepeatedToolNoProgressError, match="no new progress"):
-        runtime._observe_tool_result(state, success)  # pyright: ignore[reportPrivateUsage]
+    assert runtime._observe_tool_result(state, success) is True  # pyright: ignore[reportPrivateUsage]
 
 
 def test_file_create_ignores_generated_content_for_no_progress_signature() -> None:
@@ -126,24 +231,23 @@ def test_file_create_ignores_generated_content_for_no_progress_signature() -> No
                 success=True,
             ),
         )
-    with pytest.raises(runtime.RepeatedToolNoProgressError):
-        runtime._observe_tool_result(  # pyright: ignore[reportPrivateUsage]
-            state,
-            AIMessage(
-                type="tool",
-                tool_name="file_create",
-                tool_arguments={
-                    "title": "Draft",
-                    "role": "primary_working_document",
-                    "content": "variant 3",
-                },
-                content='{"document_id":"same","state":"reused"}',
-                success=True,
-            ),
-        )
+    assert runtime._observe_tool_result(  # pyright: ignore[reportPrivateUsage]
+        state,
+        AIMessage(
+            type="tool",
+            tool_name="file_create",
+            tool_arguments={
+                "title": "Draft",
+                "role": "primary_working_document",
+                "content": "variant 3",
+            },
+            content='{"document_id":"same","state":"reused"}',
+            success=True,
+        ),
+    ) is True
 
 
-def test_repeated_append_stops_even_when_reported_size_changes() -> None:
+def test_repeated_append_advises_even_when_reported_size_changes() -> None:
     state = runtime._StreamState()  # pyright: ignore[reportPrivateUsage]
     for size in (100, 200):
         runtime._observe_tool_result(  # pyright: ignore[reportPrivateUsage]
@@ -156,17 +260,16 @@ def test_repeated_append_stops_even_when_reported_size_changes() -> None:
                 success=True,
             ),
         )
-    with pytest.raises(runtime.RepeatedToolNoProgressError):
-        runtime._observe_tool_result(  # pyright: ignore[reportPrivateUsage]
-            state,
-            AIMessage(
-                type="tool",
-                tool_name="file_append",
-                tool_arguments={"uri": "document://doc-1", "content": "same section"},
-                content='{"state":"appended","size_bytes":300}',
-                success=True,
-            ),
-        )
+    assert runtime._observe_tool_result(  # pyright: ignore[reportPrivateUsage]
+        state,
+        AIMessage(
+            type="tool",
+            tool_name="file_append",
+            tool_arguments={"uri": "document://doc-1", "content": "same section"},
+            content='{"state":"appended","size_bytes":300}',
+            success=True,
+        ),
+    ) is True
 
 
 def test_repeated_realtime_text_is_reset_by_tool_result() -> None:
@@ -222,20 +325,19 @@ def test_file_rewrite_ignores_generated_content_for_no_progress_signature(
                 success=True,
             ),
         )
-    with pytest.raises(runtime.RepeatedToolNoProgressError):
-        runtime._observe_tool_result(  # pyright: ignore[reportPrivateUsage]
-            state,
-            AIMessage(
-                type="tool",
-                tool_name=tool_name,
-                tool_arguments={
-                    "uri": "console://work/www-lecluse-net/src/pages/index.astro",
-                    "content": "variant 3",
-                },
-                content="written",
-                success=True,
-            ),
-        )
+    assert runtime._observe_tool_result(  # pyright: ignore[reportPrivateUsage]
+        state,
+        AIMessage(
+            type="tool",
+            tool_name=tool_name,
+            tool_arguments={
+                "uri": "console://work/www-lecluse-net/src/pages/index.astro",
+                "content": "variant 3",
+            },
+            content="written",
+            success=True,
+        ),
+    ) is True
 
 
 def test_repeated_realtime_text_stops_on_third_meaningful_line() -> None:
@@ -393,99 +495,3 @@ async def test_agent_run_turns_length_limited_stream_into_terminal_failure() -> 
     assert messages[-1].success is False
     assert "finish_reason=length" in messages[-1].content
     assert "finish_reason=length" in agent.error
-
-
-@pytest.mark.asyncio
-async def test_agent_run_turns_no_progress_stop_into_bounded_wrapup(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    class StubPydanticAgent:
-        @contextmanager
-        def override(self, **_kwargs: Any) -> Iterator[None]:
-            yield
-
-        @contextmanager
-        def parallel_tool_call_execution_mode(self, _mode: str) -> Iterator[None]:
-            yield
-
-        @asynccontextmanager
-        async def run_stream_events(self, *_args: Any, **_kwargs: Any) -> AsyncIterator[Any]:
-            async def events() -> AsyncIterator[Any]:
-                if False:
-                    yield None
-
-            yield events()
-
-    async def stop_for_no_progress(
-        self: Agent,
-        _event_stream: AsyncIterator[Any],
-        _state: Any,
-        _output_transport: Any,
-    ) -> AsyncIterator[AIMessage]:
-        if False:
-            yield AIMessage(type="text", content="")
-        raise runtime.RepeatedToolNoProgressError("no new progress")
-
-    async def wrap_up(
-        self: Agent,
-        error: runtime.RepeatedToolNoProgressError,
-        _captured: list[Any],
-        _state: Any,
-        _output_transport: Any,
-    ) -> AsyncIterator[AIMessage]:
-        assert "no new progress" in str(error)
-        yield AIMessage(type="text", content="Produced final.html", success=True)
-
-    monkeypatch.setattr(Agent, "_emit_stream_messages", stop_for_no_progress)
-    monkeypatch.setattr(Agent, "_wrap_up_no_progress_run", wrap_up)
-    agent = Agent(cast(Any, SimpleNamespace()), language="en")
-    agent._agent = cast(Any, StubPydanticAgent())  # pyright: ignore[reportPrivateUsage]
-
-    messages = [message async for message in agent.run("do the work")]
-
-    assert [(message.content, message.success) for message in messages] == [
-        ("Produced final.html", True)
-    ]
-
-
-@pytest.mark.asyncio
-async def test_no_progress_wrapup_emits_final_output_after_prior_streamed_text(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    result = SimpleNamespace(output="Final artifact: final.html", new_messages=lambda: [])
-
-    class StubPydanticAgent:
-        @contextmanager
-        def override(self, **_kwargs: Any) -> Iterator[None]:
-            yield
-
-        @contextmanager
-        def parallel_tool_call_execution_mode(self, _mode: str) -> Iterator[None]:
-            yield
-
-        @asynccontextmanager
-        async def run_stream_events(self, *_args: Any, **_kwargs: Any) -> AsyncIterator[Any]:
-            async def events() -> AsyncIterator[Any]:
-                yield AgentRunResultEvent(result=cast(Any, result))
-
-            yield events()
-
-    monkeypatch.setattr(runtime, "estimate_cost_from_usage", lambda *_args: 0.0)
-    agent = Agent(cast(Any, SimpleNamespace()), language="en")
-    agent._agent = cast(Any, StubPydanticAgent())  # pyright: ignore[reportPrivateUsage]
-    prior_state = runtime._StreamState(streamed_text=True)  # pyright: ignore[reportPrivateUsage]
-    captured = [ModelRequest(parts=[UserPromptPart(content="Create the artifact")])]
-
-    messages = [
-        message
-        async for message in agent._wrap_up_no_progress_run(  # pyright: ignore[reportPrivateUsage]
-            runtime.RepeatedToolNoProgressError("no progress"),
-            captured,
-            prior_state,
-            None,
-        )
-    ]
-
-    assert messages[0].tool_name == "no_progress_guard"
-    assert messages[-1].content == "Final artifact: final.html"
-    assert messages[-1].success is True

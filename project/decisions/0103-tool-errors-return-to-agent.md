@@ -53,3 +53,25 @@ publication reste incertaine.
 Les tests qui exigeaient une exception terminale après une erreur MCP observée sont
 remplacés par ces garanties. Les tests de crash sans réponse, d’annulation, de format
 inconnu et de préservation des effets restent en place.
+
+## Complément du 26 septembre 2026 — réorienter après trois répétitions
+
+Trois résultats d’outil identiques consécutifs déclenchent une consigne au modèle,
+pas une interruption ni un bilan forcé sans outils. La consigne distingue une même
+erreur répétée d’un appel réussi sans progrès. Elle demande de changer d’approche,
+de relire les skills pertinents ou de vérifier les arguments ; si aucune voie ne
+permet de poursuivre, l’agent explique les trois erreurs et le travail restant.
+Les références de diagnostic propres à chaque erreur ne constituent pas un progrès.
+
+Les consommateurs sont les Tasks, conversations texte et sessions temps réel utilisant
+le runtime interne, avec outils natifs ou MCP, avec ou sans checkpoint. Les drivers
+externes conservent leur propre politique. Garanties à préserver : terminer le lot
+d’outils courant, conserver chaque résultat et effet durable, ne pas rejouer d’effet,
+ne pas redémarrer le run ni son budget, et maintenir annulation et reprise. Le bilan
+sans outils reste réservé à l’épuisement du budget global. Le garde de répétition de
+prose temps réel est distinct et reste inchangé.
+
+Les tests qui exigeaient un arrêt au troisième succès sont remplacés par la détection
+au même seuil et par un dialogue réel modèle/outils : après trois répétitions, le
+modèle reçoit la consigne, peut relire un skill puis exécuter une alternative, ou
+choisir un compte rendu honnête. Un autre appel du même lot doit toujours se terminer.

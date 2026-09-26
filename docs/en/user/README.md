@@ -76,6 +76,11 @@ The auto-approval option authorizes certain actions in advance that would normal
 
 From the list, click a Task to open its details. There you will find the current phase, subtasks, Tool calls, related Processes, known LLM costs, and final response. The pause and resume buttons act on the work tree. **Force finish** is an administrative recovery action for a genuinely blocked execution: it marks the Task as failed and releases its lease; it is not an ordinary cancellation of the external work.
 
+With the internal harness, three identical errors or three repeated calls without progress
+prompt the agent to change approach, reread relevant skills, or check arguments. Tools remain
+available so the agent can continue; if it cannot proceed, it explains the repeated errors
+and what remains blocked. Overall execution limits still apply.
+
 For a Hermès Agent configured with its own LLM provider, the Task and its result remain visible, but Galaris cannot display intermediate LLM calls or their detailed cost. This does not mean the Task was lost: these calls take place directly within Hermès.
 
 ## The Three Forms of Request

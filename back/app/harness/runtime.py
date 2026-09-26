@@ -117,10 +117,6 @@ def _trace_tool_result(value: object) -> dict[str, Any] | None:
     return tool_result or None
 
 
-class RepeatedToolNoProgressError(RuntimeError):
-    """Raised when successful calls repeat without producing a new effect."""
-
-
 class RepeatedTextNoProgressError(RuntimeError):
     """Raised when a real-time model repeats prose without reaching an action."""
 
@@ -513,8 +509,8 @@ class _StreamState:
         default_factory=dict[str, FunctionToolCallEvent]
     )
     next_missing_tool_call_index: int = 0
-    repeated_success_signature: str | None = None
-    repeated_success_count: int = 0
+    repeated_tool_signature: str | None = None
+    repeated_tool_count: int = 0
     observe_text_no_progress: bool = False
     text_progress_buffer: str = ""
     recent_text_units: deque[str] = field(
@@ -558,60 +554,48 @@ def _take_tool_call(
     return None
 
 
-def _observe_tool_result(state: _StreamState, message: AIMessage) -> None:
-    """Track progress without turning tool errors into a terminal run failure."""
+def _observe_tool_result(
+    state: _StreamState, message: AIMessage, result: object = None,
+) -> bool:
+    """Signal each group of three identical results without interrupting tools."""
     # Any tool result breaks a text-repetition streak: the no-progress text guard only
     # stops streams that repeat without interleaved tool activity, so its "without any
     # tool action" claim must stay accurate across the whole run.
     state.recent_text_units.clear()
     state.text_progress_buffer = ""
-    if message.success:
-        arguments = dict(message.tool_arguments or {})
-        # Rewriting the same file or path with another generated body is still the
-        # same operation. The working-set layer makes it idempotent; this guard then
-        # stops a model that keeps asking for replacements instead of making progress.
-        if message.tool_name in {"file_create", "file_write", "file_edit"}:
-            arguments.pop("content", None)
-        mutating_repeat_guard_tools = {
-            "file_create",
-            "file_edit",
-            "file_write",
-            "file_append",
-            "file_copy",
-            "file_move",
-            "messenger_room_send_file",
-            "messenger_send_file_to_user",
-            "messenger_room_send_message",
-            "messenger_send_message_to_user",
+    arguments = dict(message.tool_arguments or {})
+    if message.success and message.tool_name in {"file_create", "file_write", "file_edit"}:
+        arguments.pop("content", None)
+    mutating_repeat_guard_tools = {
+        "file_create", "file_edit", "file_write", "file_append", "file_copy", "file_move",
+        "messenger_room_send_file", "messenger_send_file_to_user",
+        "messenger_room_send_message", "messenger_send_message_to_user",
+    }
+    outcome = result if result is not None else message.content
+    if message.success and message.tool_name in mutating_repeat_guard_tools:
+        outcome = "mutating_call"
+    elif not message.success and isinstance(outcome, dict):
+        # Diagnostic references change on each occurrence of the same error.
+        error = cast(dict[str, object], outcome)
+        outcome = {
+            "outcome": error.get("outcome"),
+            "error": re.sub(
+                r"(?:Error reference|Référence d[’']erreur)\s*:\s*[a-fA-F0-9]+",
+                "", str(error.get("error", error)),
+            ),
         }
-        payload = json.dumps(
-            {
-                "tool_name": message.tool_name,
-                "arguments": _compact_history_value(arguments),
-                "result": (
-                    "mutating_call"
-                    if message.tool_name in mutating_repeat_guard_tools
-                    else message.content
-                ),
-            },
-            ensure_ascii=False,
-            sort_keys=True,
-            default=str,
-        )
-        signature = hashlib.sha256(payload.encode("utf-8")).hexdigest()
-        if signature == state.repeated_success_signature:
-            state.repeated_success_count += 1
-        else:
-            state.repeated_success_signature = signature
-            state.repeated_success_count = 1
-        if state.repeated_success_count >= _REPEATED_TOOL_NO_PROGRESS_LIMIT:
-            raise RepeatedToolNoProgressError(
-                "Stopped after three identical successful or no-op calls to "
-                f"{message.tool_name or 'an unknown tool'}; no new progress was made."
-            )
-        return
-    state.repeated_success_signature = None
-    state.repeated_success_count = 0
+    payload = json.dumps(
+        {"tool_name": message.tool_name, "arguments": arguments,
+         "success": message.success, "result": outcome},
+        ensure_ascii=False, sort_keys=True, default=str,
+    )
+    signature = hashlib.sha256(payload.encode("utf-8")).hexdigest()
+    if signature == state.repeated_tool_signature:
+        state.repeated_tool_count += 1
+    else:
+        state.repeated_tool_signature = signature
+        state.repeated_tool_count = 1
+    return state.repeated_tool_count % _REPEATED_TOOL_NO_PROGRESS_LIMIT == 0
 
 
 def _observe_text_progress(state: _StreamState, content: str) -> None:
@@ -729,6 +713,7 @@ class Agent(AgentRuntime):
         self.budget_exhausted: bool = False
         self.terminal_failure_kind: str | None = None
         self.terminal_output: str | None = None
+        self._pending_tool_guidance: list[str] = []
 
     async def init(self) -> None:
         """Initialize the Pydantic AI model and tools."""
@@ -865,6 +850,10 @@ class Agent(AgentRuntime):
             ),
             capabilities=[
                 history_capability,
+                Hooks(
+                    before_model_request=self._guide_repeated_tools,
+                    id="galaris-tool-progress-guidance",
+                ),
                 ToolSearch(
                     strategy=self._search_deferred_tools,
                     max_results=10,
@@ -914,6 +903,21 @@ class Agent(AgentRuntime):
         )
         return [hit.entry.name for hit in result.hits]
 
+    async def _guide_repeated_tools(
+        self, _ctx: Any, request_context: ModelRequestContext,
+    ) -> ModelRequestContext:
+        """Advise after the whole tool batch, with its original results intact."""
+        if not self._pending_tool_guidance:
+            return request_context
+        guidance = "\n\n".join(self._pending_tool_guidance)
+        self._pending_tool_guidance.clear()
+        return replace(request_context, messages=[
+            *request_context.messages,
+            _pydantic_messages.ModelRequest(parts=[
+                _pydantic_messages.UserPromptPart(content=guidance),
+            ]),
+        ])
+
     async def run(
         self,
         prompt: str,
@@ -961,6 +965,7 @@ class Agent(AgentRuntime):
 
         self.prompt = prompt
         self.terminal_output = None
+        self._pending_tool_guidance.clear()
         # Canonical attachment resources become bounded native content for this run.
         agent_input: Union[str, Sequence[Any]] = (
             (
@@ -1034,14 +1039,6 @@ class Agent(AgentRuntime):
                 output_transport,
             ):
                 yield message
-        except RepeatedToolNoProgressError as no_progress_error:
-            async for message in self._wrap_up_no_progress_run(
-                no_progress_error,
-                list(captured_messages),
-                state,
-                output_transport,
-            ):
-                yield message
         except Exception as e:
             yield self._stream_failure(e, captured_messages)
 
@@ -1089,11 +1086,21 @@ class Agent(AgentRuntime):
                 msg.stream_id = f"tool:{uuid4().hex}"
                 if not msg.success:
                     await self._record_tool_failure(event, tool_call_event, msg)
-                _observe_tool_result(state, msg)
+                repeated = _observe_tool_result(state, msg, event.part.content)
                 msg.execution_time = state.elapsed()
                 self.messages.append(msg)
                 self.cost += msg.cost
                 yield msg
+                if repeated:
+                    key = "repeated_success_guidance" if msg.success else "repeated_error_guidance"
+                    guidance = render_prompt(
+                        t(f"agent_runtime.{key}", self._language),
+                        tool_name=msg.tool_name or "?",
+                    )
+                    self._pending_tool_guidance.append(guidance)
+                    notice = AIMessage(type="tool", tool_name="no_progress_guard", content=guidance)
+                    self.messages.append(notice)
+                    yield notice
                 continue
 
             # 3. Append text and reasoning deltas to their own identified messages.
@@ -1361,26 +1368,6 @@ class Agent(AgentRuntime):
         ):
             yield message
 
-    async def _wrap_up_no_progress_run(
-        self,
-        no_progress_error: RepeatedToolNoProgressError,
-        captured: list[_pydantic_messages.ModelMessage],
-        _state: _StreamState,
-        output_transport: Any | None,
-    ) -> AsyncIterator[AIMessage]:
-        """Turn an anti-loop stop into one bounded finalization attempt."""
-
-        async for message in self._wrap_up_guarded_run(
-            no_progress_error,
-            captured,
-            output_transport,
-            tool_name="no_progress_guard",
-            notice_key="agent_runtime.no_progress_wrapup_notice",
-            prompt_key="agent_runtime.no_progress_wrapup_prompt",
-            budget_exhausted=False,
-        ):
-            yield message
-
     async def _wrap_up_guarded_run(
         self,
         guard_error: Exception,
@@ -1399,6 +1386,7 @@ class Agent(AgentRuntime):
             return
 
         self.budget_exhausted = budget_exhausted
+        self._pending_tool_guidance.clear()
         logger.warning(
             "Agent run guard fired; requesting a final wrap-up: {}",
             guard_error,
