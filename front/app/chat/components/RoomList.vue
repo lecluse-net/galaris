@@ -159,9 +159,8 @@ function onScroll(event: Event): void {
 .room-list-empty { display: flex; align-items: center; justify-content: center; min-height: 200px; height: 100%; padding: 24px 12px; }
 .room-list-empty .q-btn { max-width: 100%; }
 .room-list-loader { display: flex; justify-content: center; padding: 10px; }
-.room-item { min-height: 62px; padding: 1px 16px 1px 4px; margin: 2px 0; border-radius: 10px; transition: background-color .16s ease, transform .16s ease; }
+.room-item { min-height: 62px; padding: 1px 16px 1px 4px; margin: 2px 0; border-radius: 0; transition: background-color .16s ease, transform .16s ease; }
 .room-avatar { padding-right: 12px; }
-.room-item:hover { background: var(--chat-surface-hover, #f4f6fa); }
 .room-item.room-item--active { color: inherit; background: var(--solaire-blue-light); border-radius: 0; box-shadow: inset 3px 0 var(--solaire-blue-accent); }
 :global(.body--dark) .room-item.room-item--active { background: var(--solaire-blue-dark); }
 .room-item--unread:not(.room-item--active) { background: color-mix(in srgb, var(--q-primary) 7%, var(--chat-surface, #fff)); }
