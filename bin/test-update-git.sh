@@ -15,6 +15,16 @@ mkdir -p "$case_dir/tools" "$case_dir/seed/bin"
 cat > "$case_dir/tools/docker" <<'SH'
 #!/usr/bin/env bash
 printf '%s\n' "$*" >> "$GIT_UPDATE_TEST_LOG"
+if [[ " $* " == *" --output /output "* ]]; then
+    for arg in "$@"; do
+        if [[ "$arg" == type=bind,src=*,dst=/output ]]; then output=${arg#type=bind,src=}; output=${output%,dst=/output}; fi
+    done
+    if [[ "$*" == *project_context.py* ]]; then name=project-map; else name=navigation; fi
+    for locale in fr en; do
+        mkdir -p "$output/docs/$locale/architecture/generated"
+        for extension in json md; do printf 'synthetic output\n' > "$output/docs/$locale/architecture/generated/$name.$extension"; done
+    done
+fi
 case " $* " in
     *" app.documentation revision "*) printf '%064d\n' 1 ;;
     *" config --services "*) echo backend ;;
@@ -25,11 +35,18 @@ export PATH="$case_dir/tools:$PATH"
 git init --quiet --bare --initial-branch=main "$case_dir/origin.git"
 git init --quiet --initial-branch=main "$case_dir/seed"
 cp "$repo_dir/Makefile" "$case_dir/seed/"
-cp "$repo_dir/bin/"{update-source,start,init-data-volume,refresh-documentation}.sh "$case_dir/seed/bin/"
+cp "$repo_dir/bin/"{update-source,start,init-data-volume,refresh-documentation,documentation}.sh "$case_dir/seed/bin/"
+cp -R "$repo_dir/tooling" "$case_dir/seed/tooling"
 for script in update-secrets init-search-config finalize-internal-secrets update-release; do
     printf '#!/usr/bin/env bash\nexit 0\n' > "$case_dir/seed/bin/$script.sh"
 done
 printf '.env\ncompose.override.yaml\n' > "$case_dir/seed/.gitignore"
+for locale in fr en; do
+    mkdir -p "$case_dir/seed/docs/$locale/architecture/generated"
+    for name in project-map navigation; do
+        for extension in json md; do printf 'synthetic output\n' > "$case_dir/seed/docs/$locale/architecture/generated/$name.$extension"; done
+    done
+done
 printf 'initial\n' > "$case_dir/seed/version.txt"
 git -C "$case_dir/seed" add .
 git -C "$case_dir/seed" commit --quiet -m 'Initial test fixture'

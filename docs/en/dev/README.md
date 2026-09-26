@@ -1542,6 +1542,32 @@ Expected tests for an agentic change:
 - driver behavior with simulated dependencies;
 - DB integration test for any new persistence.
 
+### Offline documentation confinement
+
+The `project-context`, `docs-prepare`, `docs-check`, `architecture-check` and
+`architecture-baseline` commands go through `bin/documentation.sh`. They start neither the
+application stack nor read its `.env`: a temporary snapshot of the needed sources, filtered
+by positive list, replaces the repository root as a read-only mount. Git, secrets, caches,
+dependencies and artifacts are not part of it, and selected or parent symbolic links are
+rejected without being dereferenced.
+
+Filtering retains the corpus's Markdown, JSON and HTML formats, as well as documentation
+assets required by parity and link checks (text, images, PDF and CSS).
+
+Executed code — including the navigation generator, which evaluates repository TypeScript —
+runs without network, with a read-only root filesystem, the operator's UID/GID and the
+explicit Python or Node entrypoint of the `tooling/documentation` images. Dependency
+downloads happen only while building those images. Only the eight `project-map.{json,md}`
+and `navigation.{json,md}` FR/EN files are published, by atomic replacement and after
+detecting any concurrent source change; `architecture-baseline` writes only its two JSON
+files. Docker remains the isolation boundary: it does not make TypeScript safe on its own.
+Details and limits in decision
+[0137](../../../project/decisions/0137-offline-documentation-toolchain.md).
+
+```bash
+make tests-documentation   # runner contracts, then real container confinement
+```
+
 ## 10. Contribution Workflow
 
 1. inspect `git status` and preserve unrelated changes;

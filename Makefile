@@ -255,6 +255,11 @@ tests-update: ## Verify installation and development/production updates without 
 	@bash bin/test-update-git.sh
 .PHONY: tests-update
 
+tests-documentation: ## Verify the offline documentation runner and its real container confinement
+	@bash bin/test-documentation.sh
+	@bash bin/test-documentation-confinement.sh
+.PHONY: tests-documentation
+
 tests-install: ## Test a real fresh installation and stop/start with disposable volumes
 	@bash bin/test-install.sh
 .PHONY: tests-install
@@ -314,26 +319,20 @@ upgrade-deps-front: ## Update frontend dependencies
 # ====================================================================================
 
 project-context: ## Regenerate the deterministic code-derived project map
-	@echo "🗺️  Regenerating project context..."
-	docker compose $(COMPOSE_FILES) run --rm --no-deps -T -v $(CURDIR):/repo -w /repo backend python back/scripts/project_context.py --root /repo
-	docker compose -p $(APP_NAME)-context -f compose.front-tests.yaml run --build --rm --no-deps -T -v /app/node_modules -v $(CURDIR):/repo frontend node scripts/navigation-context.mjs --root /repo
+	@bash bin/documentation.sh generate
 .PHONY: project-context
 
 
 project-context-check: ## Check that the generated project map matches the code
-	@echo "🧭 Checking generated project context..."
-	docker compose $(COMPOSE_FILES) run --rm --no-deps -T -v $(CURDIR):/repo -w /repo backend python back/scripts/project_context.py --root /repo --check
-	docker compose -p $(APP_NAME)-context -f compose.front-tests.yaml run --build --rm --no-deps -T -v /app/node_modules -v $(CURDIR):/repo:ro frontend node scripts/navigation-context.mjs --root /repo --check
+	@bash bin/documentation.sh maps-check
 .PHONY: project-context-check
 
-docs-check: project-context-check ## Verify generated maps and the bilingual agent documentation corpus
-	docker compose $(COMPOSE_FILES) run --rm --no-deps -T -v $(CURDIR):/repo:ro -w /repo/back backend python -m app.documentation check --root /repo
-	docker compose $(COMPOSE_FILES) run --rm --no-deps -T -v $(CURDIR):/repo:ro -w /repo backend python back/scripts/architecture_check.py --root /repo
+docs-check: ## Verify generated maps and the bilingual agent documentation corpus
+	@bash bin/documentation.sh check
 .PHONY: docs-check
 
 docs-prepare: ## Regenerate and verify documentation before validation or publication
-	@$(MAKE) project-context
-	@$(MAKE) docs-check
+	@bash bin/documentation.sh prepare
 .PHONY: docs-prepare
 
 docs-update: ## Development only: prepare docs and synchronize the live shared search index
@@ -346,14 +345,13 @@ docs-update: ## Development only: prepare docs and synchronize the live shared s
 
 
 architecture-baseline: ## Update reviewed backend/frontend architecture debt baselines
-	@echo "📐 Updating progressive architecture baseline..."
-	docker compose $(COMPOSE_FILES) run --rm --no-deps -T -v $(CURDIR):/repo -w /repo backend python back/scripts/architecture_check.py --root /repo --update-baseline
+	@bash bin/documentation.sh architecture-baseline
 .PHONY: architecture-baseline
 
 
 architecture-check: project-context-check ## Check project boundaries and documentation drift
 	@echo "🏛️  Checking architecture contracts..."
-	docker compose $(COMPOSE_FILES) run --rm --no-deps -T -v $(CURDIR):/repo -w /repo backend python back/scripts/architecture_check.py --root /repo
+	@bash bin/documentation.sh architecture-check
 	@$(MAKE) tests ARGS='app/agent/tests/test_architecture.py tests/test_architecture_tooling.py tests/test_frontend_architecture_tooling.py'
 .PHONY: architecture-check
 

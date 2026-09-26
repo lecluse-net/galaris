@@ -59,12 +59,12 @@ Ces commandes utilisent les fichiers Compose sélectionnés pour l'environnement
 | `rebuild-messenger-contacts` | Reconstruire les mémoires de contacts à partir du journal Messenger. |
 | `rebuild-memory-index` | Mettre en file la reconstruction de l'index sémantique ; options via `ARGS`. |
 | `rebuild-memory-links` | Réconcilier les liens mémoire dérivés ; options via `ARGS`. |
-| `project-context` | Régénérer les cartographies du projet et des menus frontend depuis le code. |
+| `project-context` | Régénérer les cartographies du projet et des menus frontend depuis le code, hors ligne. |
 | `project-context-check` | Vérifier la fraîcheur des cartographies du projet et des menus. |
-| `docs-prepare` | Régénérer les cartes et vérifier le corpus FR/EN avant validation. |
+| `docs-prepare` | Régénérer les cartes et vérifier le corpus FR/EN hors ligne avant validation. |
 | `docs-check` | Vérifier cartes, sources documentaires et liens sans régénération. |
 | `docs-update` | En développement, préparer la documentation puis vérifier le corpus actif et synchroniser sa recherche textuelle. |
-| `architecture-baseline` | Actualiser les baselines de dette après revue du diff. |
+| `architecture-baseline` | Actualiser les baselines de dette après revue du diff ; seules ces deux sorties JSON sont inscriptibles. |
 | `architecture-check` | Vérifier cartographie, frontières et tests d'architecture. |
 | `test-hermes-management` | Diagnostiquer la configuration et la connectivité de l'adaptateur Hermès. |
 | `test-harness-management` | Diagnostiquer le gestionnaire générique de harnais. |
@@ -104,6 +104,7 @@ Voir [Tester les comportements](testing.md).
 | `tests-focus-gates` | Vérifier que les configurations Playwright refusent les tests focalisés. |
 | `tests-e2e` | Parcours navigateur et mises à jour PWA dans une stack isolée. |
 | `tests-update` | Vérifier installation, configuration conservée, mises à jour et échecs avec Docker simulé. |
+| `tests-documentation` | Vérifier le lanceur documentaire hors ligne, puis son confinement dans de vrais conteneurs. |
 | `tests-install` | Installer réellement une copie isolée avec volumes neufs, vérifier la disponibilité HTTP et la conservation des conteneurs après stop/start. Port de test : `INSTALL_TEST_PORT=18484` par défaut. |
 | `tests-validation-source` | Vérifier la conservation et l'empreinte des changements non committés lors de la validation. |
 | `tests-coverage` | Exécuter la couverture backend, produire les rapports et appliquer les seuils. |
@@ -154,3 +155,8 @@ Les commandes de reconstruction réparent des données ; les diagnostics Hermès
 générique visent deux couches distinctes. Les cibles de test servent aux contrôles ciblés, à la
 CI ou à la qualification des releases. Une cible appelée par une autre reste utile pour
 relancer un contrôle isolément.
+
+Les commandes documentaires hors ligne ne passent ni par le Compose applicatif ni par son
+`.env` : elles analysent un instantané filtré des sources et n'écrivent que les sorties
+attendues. Détails dans [Tests et typage](README.md) et décision
+[0137](../../../project/decisions/0137-offline-documentation-toolchain.md).

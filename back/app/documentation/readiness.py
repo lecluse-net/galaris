@@ -7,7 +7,6 @@ from dataclasses import dataclass
 
 from .contracts import Corpus
 from .corpus import page_at
-from .search import index_status, search, synchronize
 
 
 REQUIRED_SOURCES = (
@@ -58,6 +57,8 @@ async def refresh_and_check(corpus: Corpus, *, expected_revision: str | None = N
     Runs in the caller's transaction. Semantic indexing remains incremental and never
     makes deployment depend on an external model. No agent/Tool permissions are changed.
     """
+    from .search import index_status, search, synchronize
+
     revision = check_corpus(corpus, expected_revision=expected_revision)
     await synchronize(corpus)
     for language in ("fr", "en"):

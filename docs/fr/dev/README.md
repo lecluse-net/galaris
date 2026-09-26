@@ -1575,6 +1575,32 @@ Tests attendus pour une modification agentique :
 - comportement du driver avec dépendances simulées ;
 - test d’intégration DB pour toute persistance nouvelle.
 
+### Confinement documentaire hors ligne
+
+Les commandes `project-context`, `docs-prepare`, `docs-check`, `architecture-check` et
+`architecture-baseline` passent par `bin/documentation.sh`. Elles ne démarrent pas la stack
+applicative et ne lisent jamais son `.env` : un instantané temporaire des sources
+nécessaires, filtré par liste positive, remplace la racine du dépôt en lecture seule. Git,
+secrets, caches, dépendances et artifacts n’en font pas partie, et les liens symboliques
+sélectionnés ou parents sont refusés sans être déréférencés.
+
+Le filtrage conserve les formats Markdown, JSON et HTML du corpus, ainsi que les annexes
+documentaires nécessaires aux contrôles de parité et de liens (texte, images, PDF et CSS).
+
+Le code exécuté — dont le générateur de navigation, qui évalue du TypeScript du dépôt —
+tourne sans réseau, avec un système de fichiers racine en lecture seule, l’UID/GID de
+l’opérateur et l’entrypoint Python ou Node explicite des images `tooling/documentation`.
+Les téléchargements de dépendances ont lieu uniquement à la construction de ces images.
+Seuls les huit fichiers `project-map.{json,md}` et `navigation.{json,md}` FR/EN sont publiés,
+par remplacement atomique et après détection de toute modification concurrente des sources ;
+`architecture-baseline` n’écrit que ses deux JSON. Docker reste la frontière d’isolation :
+elle ne rend pas le TypeScript sûr par lui-même. Détails et limites dans la décision
+[0137](../../../project/decisions/0137-offline-documentation-toolchain.md).
+
+```bash
+make tests-documentation   # contrats du lanceur, puis confinement réel en conteneurs
+```
+
 ## 10. Workflow de contribution
 
 1. inspecter `git status` et préserver les changements sans rapport ;

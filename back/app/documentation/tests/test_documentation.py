@@ -57,6 +57,45 @@ def test_offline_release_check_needs_no_database_or_provider(release_sources):
     assert '"content_revision"' in result.stdout
 
 
+@pytest.mark.parametrize("command", ["check", "revision"])
+def test_offline_commands_never_import_the_orm_or_settings(release_sources, command):
+    import os
+    import subprocess
+    import sys
+
+    # The minimal documentation image ships neither SQLAlchemy nor application settings.
+    # Blocking those imports proves the offline commands stay usable there, while the
+    # ORM export below still works for every runtime caller.
+    blocker = (
+        "import sys\n"
+        "class Absent:\n"
+        "    def find_spec(self, name, path=None, target=None):\n"
+        "        if name.split('.')[0] in {'sqlalchemy', 'core'}:\n"
+        "            raise ModuleNotFoundError(f'absent in the documentation image: {name}')\n"
+        "        return None\n"
+        "sys.meta_path.insert(0, Absent())\n"
+        "import runpy\n"
+        "sys.argv = ['app.documentation', %r, '--root', %r]\n"
+        "runpy.run_module('app.documentation', run_name='__main__')\n"
+    ) % (command, str(release_sources))
+    result = subprocess.run(
+        [sys.executable, "-c", blocker], cwd=os.getcwd(),
+        env={"PATH": os.environ["PATH"]}, capture_output=True, text=True, timeout=30,
+    )
+    assert result.returncode == 0, result.stderr
+    assert "sqlalchemy" not in result.stderr.lower()
+
+
+def test_orm_export_stays_available_to_runtime_callers():
+    # The package keeps its public model export: a lazy module __getattr__ must not
+    # break model registration or the documented import path.
+    from app import documentation
+
+    assert documentation.DocumentationPassage is DocumentationPassage
+    with pytest.raises(AttributeError):
+        getattr(documentation, "Missing")
+
+
 @pytest.mark.asyncio
 async def test_refresh_makes_new_sources_searchable_without_model_or_agent_grants(db, release_sources):
     from app.documentation.readiness import check_corpus, refresh_and_check

@@ -58,12 +58,12 @@ These commands use the Compose files selected for the current environment.
 | `rebuild-messenger-contacts` | Rebuild contact memories from the Messenger journal. |
 | `rebuild-memory-index` | Queue semantic index rebuilds; options through `ARGS`. |
 | `rebuild-memory-links` | Reconcile derived memory links; options through `ARGS`. |
-| `project-context` | Regenerate the project and frontend menu maps from code. |
+| `project-context` | Regenerate the project and frontend menu maps from code, offline. |
 | `project-context-check` | Check project and menu map freshness. |
-| `docs-prepare` | Regenerate maps and check the FR/EN corpus before validation. |
+| `docs-prepare` | Regenerate maps and check the FR/EN corpus offline before validation. |
 | `docs-check` | Check maps, documentation sources and links without regeneration. |
 | `docs-update` | In development, prepare documentation, verify the live corpus and synchronize lexical retrieval. |
-| `architecture-baseline` | Update debt baselines after reviewing the diff. |
+| `architecture-baseline` | Update debt baselines after reviewing the diff; only these two JSON outputs are writable. |
 | `architecture-check` | Check the map, boundaries and architecture tests. |
 | `test-hermes-management` | Diagnose Hermes adapter configuration and connectivity. |
 | `test-harness-management` | Diagnose the generic harness manager. |
@@ -103,6 +103,7 @@ See [Testing behavior](testing.md).
 | `tests-focus-gates` | Verify that Playwright configurations reject focused tests. |
 | `tests-e2e` | Browser workflows and PWA updates in an isolated stack. |
 | `tests-update` | Verify installation, preserved configuration, updates and failures with simulated Docker. |
+| `tests-documentation` | Verify the offline documentation runner, then its confinement in real containers. |
 | `tests-install` | Install an isolated copy with new volumes, check HTTP readiness and preserve containers across stop/start. Test port defaults to `INSTALL_TEST_PORT=18484`. |
 | `tests-validation-source` | Verify preservation and fingerprinting of uncommitted changes during validation. |
 | `tests-coverage` | Run backend coverage, produce reports and enforce thresholds. |
@@ -152,3 +153,8 @@ These workflows are not aliases.
 Rebuild commands repair data; Hermes and generic manager diagnostics target distinct layers.
 Test targets support focused checks, CI or release qualification. A target called by another
 target remains useful for rerunning a single check.
+
+The offline documentation commands go through neither the application Compose file nor its
+`.env`: they analyse a filtered snapshot of the sources and write only the expected outputs.
+Details in [Tests and typing](README.md) and decision
+[0137](../../../project/decisions/0137-offline-documentation-toolchain.md).

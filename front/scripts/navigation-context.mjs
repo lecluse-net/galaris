@@ -159,18 +159,21 @@ export function generatedNavigationFiles(root) {
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   const index = process.argv.indexOf('--root')
+  const outputIndex = process.argv.indexOf('--output')
   const root = index >= 0 ? path.resolve(process.argv[index + 1]) : path.resolve(import.meta.dirname, '../..')
+  const output = outputIndex >= 0 ? path.resolve(process.argv[outputIndex + 1]) : root
   const check = process.argv.includes('--check')
   for (const [file, content] of generatedNavigationFiles(root)) {
+    const target = output === root ? file : path.join(output, path.relative(root, file))
     if (check) {
-      if (!fs.existsSync(file) || fs.readFileSync(file, 'utf8') !== content) {
-        console.error(`Stale navigation documentation: ${file}. Run make project-context.`)
+      if (!fs.existsSync(target) || fs.readFileSync(target, 'utf8') !== content) {
+        console.error(`Stale navigation documentation: ${target}. Run make project-context.`)
         process.exitCode = 1
       }
     } else {
-      fs.mkdirSync(path.dirname(file), { recursive: true })
-      fs.writeFileSync(file, content)
-      console.log(`generated ${file}`)
+      fs.mkdirSync(path.dirname(target), { recursive: true })
+      fs.writeFileSync(target, content)
+      console.log(`generated ${target}`)
     }
   }
 }

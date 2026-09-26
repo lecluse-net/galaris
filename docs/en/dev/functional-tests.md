@@ -189,6 +189,7 @@ and ignoring requests for a different conversation.
 | i18n / navigation / API | Consistent catalogs, authorized navigation and responses bound to the correct account/request | `make typecheck`, `front/core/api.test.mjs`, `front/browser-tests/lab-access.spec.mjs`, `e2e/specs/session-races.spec.mjs` |
 | Content / previews / files | Edit, read and print without corruption or unintended execution; adapt page width automatically to the container, including fullscreen and read-only views, while preserving content and the manual preference; release attachments | `back/core/util/tests/test_rich_text.py`, `back/core/preview/tests/test_conversion.py`, `front/browser-tests/rich-text.spec.mjs`, `document-print.spec.mjs`, `document-layout.spec.mjs`, `model3d.spec.mjs` |
 | PWA / release | Version updates, exact release images, backups and restoration | `e2e/specs/pwa.spec.mjs`, `back/tests/test_release_qualification.py`, `make tests-release`, `make tests-restore` |
+| Offline documentation tooling | Generate the FR/EN maps from the current checkout without access to secrets, application volumes or the network; refuse forbidden reads, source writes and connections from executed code; publish only the expected outputs and preserve the checkout on failure | `bin/test-documentation.sh`, `bin/test-documentation-confinement.sh`, `make tests-documentation` |
 
 ## Bridges: test each protocol adaptation once
 

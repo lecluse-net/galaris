@@ -50,15 +50,11 @@ docker run --rm --network none --entrypoint python \
   -e ENCRYPTION_MASTER_KEY=release-smoke-encryption-key-00001 \
   "galaris-release-back:$release_ref" -c 'import importlib.util; import main; assert importlib.util.find_spec("pytest") is None'
 # Never regenerate after freezing sources: reject stale maps or incomplete packaged docs.
-docker run --rm --network none --entrypoint python \
-  -e ENCRYPTION_MASTER_KEY=documentation-offline-check-key-0001 "galaris-release-back:$release_ref" \
-  -m app.documentation check
-docker run --rm --network none --entrypoint python -v "$release_source:/repo:ro" \
-  "galaris-release-back:$release_ref" /repo/back/scripts/project_context.py --root /repo --check
-GALARIS_FRONT_TEST_SOURCE_DIR="$release_source/front" \
-  docker compose -p galaris-release-context -f "$release_source/compose.front-tests.yaml" run --build --rm --no-deps -T \
-  -v /app/node_modules -v "$release_source:/repo:ro" frontend \
-  node scripts/navigation-context.mjs --root /repo --check
+docker run --rm --network none --read-only --cap-drop=ALL \
+  --security-opt no-new-privileges:true --pids-limit 128 --memory 1g \
+  --tmpfs /tmp:size=128m,mode=1777 --user "$(id -u):$(id -g)" \
+  --entrypoint python "galaris-release-back:$release_ref" -m app.documentation check
+bash "$release_source/bin/documentation.sh" check
 docker save "${images[@]}" | gzip > "$release_output/images.tar.gz"
 (
   cd "$release_output"

@@ -13,12 +13,11 @@ docker run --rm -e APP_ENV=test -e AUTH_SECRET_KEY=ci-auth-secret-ci-auth-secret
   -e ENCRYPTION_MASTER_KEY=ci-encryption-secret-ci-encryption-01 "$tag-back" python -m pyright
 docker run --rm "$tag-back" ruff check app core bridge scripts main.py
 docker run --rm "$tag-back" python scripts/check_format.py --check
-docker run --rm -v "$PWD:/repo" -w /repo "$tag-back" python back/scripts/project_context.py --root /repo --check
-docker run --rm -v "$PWD:/repo" -w /repo "$tag-back" python back/scripts/architecture_check.py --root /repo
-docker run --rm --network none -e ENCRYPTION_MASTER_KEY=documentation-offline-check-key-0001 \
-  "$tag-back" python -m app.documentation check
+bash bin/test-documentation.sh
+bash bin/documentation.sh check
+# A real container run, so it belongs to the static gate rather than the mocked contract test.
+bash bin/test-documentation-confinement.sh
 docker build --target build-stage -t "$tag-front" front
-docker run --rm -v "$PWD:/repo:ro" "$tag-front" node scripts/navigation-context.mjs --root /repo --check
 for script in test test:tooling lint i18n-check; do
   docker run --rm "$tag-front" npm run "$script"
 done

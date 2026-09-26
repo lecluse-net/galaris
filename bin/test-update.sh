@@ -6,7 +6,8 @@ case_dir=$(mktemp -d)
 trap 'rm -rf "$case_dir"' EXIT
 cp "$repo_dir/Makefile" "$case_dir/Makefile"
 mkdir -p "$case_dir/bin"
-cp "$repo_dir/bin/"{start,update-source,init-data-volume,uninstall,refresh-documentation}.sh "$case_dir/bin/"
+cp "$repo_dir/bin/"{start,update-source,init-data-volume,uninstall,refresh-documentation,documentation}.sh "$case_dir/bin/"
+cp -R "$repo_dir/tooling" "$case_dir/tooling"
 for script in update-secrets init-search-config update-release finalize-internal-secrets; do
     printf '#!/usr/bin/env bash\nexit 0\n' > "$case_dir/bin/$script.sh"
 done
@@ -15,8 +16,26 @@ cat > "$case_dir/bin/docker" <<'SH'
 set -euo pipefail
 printf '%s\n' "$*" >> "$UPDATE_TEST_LOG"
 printf '%s\n' "${APP_ENV-unset}" >> "$UPDATE_TEST_LOG.env"
+# Offline documentation commands must never run the application entrypoint.
+if [[ " $* " == *" run "* ]] && [[ "$*" == *project_context.py* || "$*" == *architecture_check.py* || "$*" == *"app.documentation "* ]]; then
+    [[ " $* " == *" --entrypoint python "* ]] || { echo 'Documentation would start the application entrypoint' >&2; exit 1; }
+fi
+# Generated files belong to the operator, not the image's runtime user.
+if [[ "$*" == *project_context.py* || "$*" == *navigation-context.mjs* ]] && [[ " $* " != *" --check "* ]]; then
+    [[ " $* " == *" --user $(id -u):$(id -g) "* ]] || { echo 'Generated documentation would use the image user' >&2; exit 1; }
+fi
 case " $* " in
     *"project_context.py --root /repo"*|*"navigation-context.mjs --root /repo"*)
+        if [[ " $* " == *" --output /output "* ]]; then
+            for arg in "$@"; do
+                if [[ "$arg" == type=bind,src=*,dst=/output ]]; then output=${arg#type=bind,src=}; output=${output%,dst=/output}; fi
+            done
+            if [[ "$*" == *project_context.py* ]]; then name=project-map; else name=navigation; fi
+            for locale in fr en; do
+                mkdir -p "$output/docs/$locale/architecture/generated"
+                for extension in json md; do printf 'synthetic output\n' > "$output/docs/$locale/architecture/generated/$name.$extension"; done
+            done
+        fi
         if [[ "${UPDATE_TEST_STALE_DOCS:-}" == 1 ]]; then
             if [[ "$*" == *project_context.py* ]]; then map=project; else map=navigation; fi
             if [[ " $* " == *" --check "* ]]; then
@@ -80,7 +99,12 @@ case " $* " in
     *" ps -aq "*"service=turn"*) printf '%s' "${UPDATE_TEST_TURN_CONTAINER:-}" ;;
     *" compose version "*) [[ "${UPDATE_TEST_FAILURE:-}" != compose ]] ;;
     *" info "*) [[ "${UPDATE_TEST_FAILURE:-}" != daemon ]] ;;
-    *" build "*) [[ "${UPDATE_TEST_FAILURE:-}" != build ]] ;;
+    *" build "*)
+        if [[ "$1" == build ]]; then
+            [[ "${UPDATE_TEST_FAILURE:-}" != tooling_build ]]
+        else
+            [[ "${UPDATE_TEST_FAILURE:-}" != build ]]
+        fi ;;
     *" down "*) [[ "${UPDATE_TEST_FAILURE:-}" != down ]] ;;
     *"chown app:app /data"*) [[ "${UPDATE_TEST_FAILURE:-}" != data_permissions ]] ;;
     *" rm --stop --force backend frontend "*) [[ "${UPDATE_TEST_FAILURE:-}" != reset ]] ;;
@@ -134,8 +158,8 @@ for app_mode in dev prod; do
     test -f "$UPDATE_TEST_LOG.project"
     test -f "$UPDATE_TEST_LOG.navigation"
     awk '
-        /project_context.py --root \/repo$/ { project = NR }
-        /navigation-context.mjs --root \/repo$/ { navigation = NR }
+        /project_context.py --root \/repo --output \/output$/ { project = NR }
+        /navigation-context.mjs --root \/repo --output \/output$/ { navigation = NR }
         / build( --pull)?$/ { build = NR }
         / up -d --wait / { ready = NR }
         /app.documentation refresh --expected-revision/ { refresh = NR }
@@ -435,7 +459,8 @@ echo 'PASS: optional PostgreSQL in dev/prod, default inclusion and invalid confi
 install_dir="$case_dir/install"
 mkdir -p "$install_dir/bin" "$install_dir/resources"
 cp "$repo_dir/Makefile" "$repo_dir/.env.example" "$repo_dir/compose.override.yaml.example" "$install_dir/"
-cp "$repo_dir/bin/"{install,start,update-source,init-data-volume,update-secrets,init-search-config,finalize-internal-secrets,refresh-documentation}.sh "$install_dir/bin/"
+cp "$repo_dir/bin/"{install,start,update-source,init-data-volume,update-secrets,init-search-config,finalize-internal-secrets,refresh-documentation,documentation}.sh "$install_dir/bin/"
+cp -R "$repo_dir/tooling" "$install_dir/tooling"
 cp -R "$repo_dir/resources/search" "$install_dir/resources/"
 cat > "$case_dir/bin/ip" <<'SH'
 #!/usr/bin/env bash

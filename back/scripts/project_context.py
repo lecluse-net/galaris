@@ -1269,6 +1269,7 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="Fail instead of writing when output differs",
     )
+    parser.add_argument("--output", type=Path, help="Output root (defaults to --root)")
     return parser.parse_args()
 
 
@@ -1276,7 +1277,10 @@ def main() -> int:
     args = parse_args()
     raw_root = cast(str | None, args.root)
     root = Path(raw_root).resolve() if raw_root else Path(__file__).resolve().parents[2]
+    output_root = Path(args.output).resolve() if args.output else root
     outputs = rendered_files(root)
+    if output_root != root:
+        outputs = {output_root / path.relative_to(root): content for path, content in outputs.items()}
     if cast(bool, args.check):
         return 0 if check_outputs(outputs) else 1
     write_outputs(outputs)

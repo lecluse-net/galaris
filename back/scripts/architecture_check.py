@@ -231,6 +231,11 @@ def _contains_versioned_path(
         }
         return bool(local_files - allowed_local_files)
 
+    manifest = root / ".documentation-tracked-paths"
+    if manifest.is_file():
+        paths = manifest.read_text(encoding="utf-8").split("\0")
+        return any(item == path or item.startswith(f"{path}/") for item in paths)
+
     try:
         result = subprocess.run(
             ["git", "-C", str(root), "ls-files", "--", path],
@@ -385,6 +390,7 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="Replace the progressive architecture baseline with the current graph",
     )
+    parser.add_argument("--output", type=Path, help="Output root (defaults to --root)")
     return parser.parse_args()
 
 
@@ -392,15 +398,17 @@ def main() -> int:
     args = parse_args()
     raw_root = cast(str | None, args.root)
     root = Path(raw_root).resolve() if raw_root else Path(__file__).resolve().parents[2]
+    output_root = Path(args.output).resolve() if args.output else root
     if cast(bool, args.update_baseline):
         policy = load_architecture_policy(root)
         baseline = build_architecture_baseline(root, policy)
-        (root / BASELINE_PATH).write_text(
+        (output_root / BASELINE_PATH).parent.mkdir(parents=True, exist_ok=True)
+        (output_root / BASELINE_PATH).write_text(
             serialize_architecture_baseline(baseline), encoding="utf-8"
         )
         print(f"updated {BASELINE_PATH}")
         frontend_baseline = build_frontend_architecture_baseline(root)
-        frontend_path = root / FRONTEND_BASELINE_PATH
+        frontend_path = output_root / FRONTEND_BASELINE_PATH
         frontend_path.parent.mkdir(parents=True, exist_ok=True)
         frontend_path.write_text(
             serialize_frontend_architecture_baseline(frontend_baseline),
