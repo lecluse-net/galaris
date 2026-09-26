@@ -1585,6 +1585,12 @@ async def test_message_publish_preserves_an_explicit_topic(
     monkeypatch: pytest.MonkeyPatch,
     displayed_document_id: UUID | None,
 ) -> None:
+    from app.messenger.contracts import DocumentFocus
+
+    focus = DocumentFocus.model_validate({
+        "revision": 7, "surface": "rendered",
+        "cursor": {"offset": 3, "before": "abc", "after": "def"},
+    })
     agent, owner, _member = await _scope(db)
     room = await create_internal_room(actor_user_id=owner.id, agent_id=agent.id)
     assert room is not None
@@ -1616,6 +1622,7 @@ async def test_message_publish_preserves_an_explicit_topic(
         topic_id=topic.id,
         reasoning_effort_override="xhigh",
         displayed_document_id=displayed_document_id,
+        document_focus=focus,
         language="fr-CA",
     )
 
@@ -1637,8 +1644,10 @@ async def test_message_publish_preserves_an_explicit_topic(
     assert stored.metadata_["language"] == "fr"
     if displayed_document_id is None:
         assert "displayed_document_uri" not in stored.metadata_
+        assert "document_focus" not in stored.metadata_
     else:
         assert stored.metadata_["displayed_document_uri"] == f"document://{displayed_document_id}"
+        assert stored.metadata_["document_focus"] == focus.model_dump(mode="json")
 
     outbound = await native_facade.internal_outbound_observation(
         room.connection_id,

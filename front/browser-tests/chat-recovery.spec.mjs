@@ -47,6 +47,9 @@ async function settled(page, key) {
 for (const status of [403, 404]) {
   test(`a late ${status} from a previous room cannot clear the current conversation`, async ({ page }) => {
     await conversation(page)
+    const currentRoom = page.locator('.conversation-list [aria-current="true"]')
+    await expect(currentRoom).toHaveCount(1)
+    await expect(currentRoom).toContainText('Conversation a')
     let release
     await page.route('**/api/chat/rooms/room-a', async route => {
       await new Promise(resolve => { release = resolve })
@@ -59,6 +62,8 @@ for (const status of [403, 404]) {
     release()
     await settled(page, 'old')
     await expect(page.locator('.conversation-pane')).toContainText('Content room-b')
+    await expect(currentRoom).toHaveCount(1)
+    await expect(currentRoom).toContainText('Conversation b')
     await expect(page.locator('.composer-fields textarea')).toBeEditable()
   })
 }

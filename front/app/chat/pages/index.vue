@@ -82,7 +82,7 @@
             <div class="sidebar-section-content"><ConversationProcessesPanel ref="conversationProcessesPanel" :room-id="store.selectedRoom.id" :from-message-id="visibleFromMessageId" :viewer-agent-id="store.viewerAgentId" :can-read="canReadProcesses" /></div>
           </q-expansion-item>
           <q-expansion-item v-if="store.selectedRoom" v-model="documentsExpanded" dense-toggle expand-separator icon="description" :label="t('chat.workingDocuments')" class="sidebar-accordion-item" :class="{ 'sidebar-accordion-item--open': documentsExpanded }" header-class="sidebar-accordion-header">
-            <div class="sidebar-section-content"><ConversationDocumentsPanel embedded @open="openConversationDocument" ref="conversationDocumentsPanel" :room-id="store.selectedRoom.id" :from-message-id="visibleFromMessageId" :conversation-agent-id="store.selectedRoom.agent_id" :viewer-agent-id="store.viewerAgentId" :can-read="canReadDocuments" :can-edit="canEditDocuments" /></div>
+            <div class="sidebar-section-content"><ConversationDocumentsPanel embedded :displayed-document-id="selectedDocument?.id === displayedDocumentId ? displayedDocumentId : null" @open="openConversationDocument" ref="conversationDocumentsPanel" :room-id="store.selectedRoom.id" :from-message-id="visibleFromMessageId" :conversation-agent-id="store.selectedRoom.agent_id" :viewer-agent-id="store.viewerAgentId" :can-read="canReadDocuments" :can-edit="canEditDocuments" /></div>
           </q-expansion-item>
         </q-list>
       </aside>
@@ -91,7 +91,7 @@
     <RoomCreateDialog v-model="createDialog" :agents="recipients.agents" :saving="creatingRoom" :can-edit-topic="canEditConversationTopic" @create="createRoom" />
     <RoomPreferencesDialog v-model="preferencesDialog" :room="store.selectedRoom" :saving="savingRoomPreferences" :archiving="archivingRoom" :can-edit-topic="canEditConversationTopic" @save="saveRoomPreferences" @archive="setRoomArchived" />
     <ConversationDocumentDialog ref="mobileDocument" v-model="mobileDocumentOpen" :document-id="selectedDocument?.id ?? null"
-      :agent-id="selectedDocumentAgentId" :title="selectedDocument?.title ?? t('chat.workingDocument')" :editable="canEditDocuments" />
+      :agent-id="selectedDocumentAgentId" :title="selectedDocument?.title ?? t('chat.workingDocument')" :editable="canEditDocuments" @changed="displayedDocumentId = $event.id" @unavailable="displayedDocumentId = null" />
     <ChatDocumentSearchDialog v-if="canReadDocuments && store.viewerAgentId === null" v-model="documentSearchOpen" @select="openLibraryDocument" />
   </q-page>
 </template>
@@ -312,7 +312,7 @@ async function sendMessage(text:string,files?:File[],reasoningEffortOverride?:Re
   try {
     const documentId = integratedDocument.value?.id === displayedDocumentId.value
       ? displayedDocumentId.value : null
-    await store.send(text,files,replyingTo.value?.id ?? null,selectedTopicId.value,reasoningEffortOverride ?? null,taskRequested,documentId,locale.value)
+    await store.send(text,files,replyingTo.value?.id ?? null,selectedTopicId.value,reasoningEffortOverride ?? null,taskRequested,documentId,locale.value,documentId ? documentPane.value?.captureFocus() ?? null : null)
     replyingTo.value=null;selectedTopicId.value=null
   } catch(error) { reportError(error) }
 }

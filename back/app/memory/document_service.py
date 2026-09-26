@@ -183,7 +183,7 @@ async def create_document(
             content_type="text",
             document_type=document_type,
             media_type="application/json" if document_type == "dataset" else "text/html",
-            keywords=keywords or ["document", "working"],
+            keywords=keywords or [],
             metadata={
                 **(metadata or {}),
                 **(
@@ -227,7 +227,7 @@ async def create_user_document(
             content_type="text",
             document_type=document_type,
             media_type="application/json" if document_type == "dataset" else "text/html",
-            keywords=["document", "working"],
+            keywords=[],
             metadata=(
                 {"document_path": normalized_folder}
                 if normalized_folder

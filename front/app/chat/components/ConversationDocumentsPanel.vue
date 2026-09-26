@@ -32,14 +32,22 @@
       <q-item
         v-for="document in documents"
         :key="document.id"
+        class="conversation-document"
         clickable
         v-ripple
+        :active="document.id === activeDocumentId"
+        active-class="conversation-document--selected"
+        :aria-current="document.id === activeDocumentId ? 'true' : undefined"
         :aria-label="t('chat.openDocument', { label: documentLabel(document) })"
         @click="openDocument(document)"
       >
-        <q-item-section avatar><WorkingDocumentThumbnail :document-id="document.id" :revision="document.revision" :updated-at="document.updated_at" :agent-id="documentAgentId" /></q-item-section>
+        <q-item-section avatar class="conversation-document-preview">
+          <span class="conversation-document-thumbnail">
+            <WorkingDocumentThumbnail fill :document-id="document.id" :revision="document.revision" :updated-at="document.updated_at" :agent-id="documentAgentId" />
+          </span>
+        </q-item-section>
         <q-item-section>
-          <q-item-label class="text-weight-medium"><DocumentIcon :document-id="document.id" :title="documentLabel(document)" /> {{ documentLabel(document) }}</q-item-label>
+          <q-item-label class="text-weight-medium"><DocumentIcon readonly :document-id="document.id" :title="documentLabel(document)" /> {{ documentLabel(document) }}</q-item-label>
           <q-item-label caption>
             <span v-if="document.revision">{{ t('chat.documentRevision', { revision: document.revision }) }}</span>
             <span v-if="document.updated_at"> · {{ formatDate(document.updated_at) }}</span>
@@ -116,6 +124,7 @@ import ConversationDocumentDialog from './ConversationDocumentDialog.vue'
 
 const props = withDefaults(defineProps<{
   embedded?: boolean
+  displayedDocumentId?: string | null
   roomId: string
   fromMessageId?: string | null
   conversationAgentId?: number | null
@@ -141,6 +150,8 @@ const loading = ref(false)
 const loadingMore = ref(false)
 const error = ref('')
 const dialogOpen = ref(false)
+const dialogDocumentId = ref<string | null>(null)
+const activeDocumentId = computed(() => dialogOpen.value ? dialogDocumentId.value : props.displayedDocumentId)
 const selectedReference = ref<ConversationDocumentReference | null>(null)
 const selectedDocumentTitle = ref('')
 const createOpen = ref(false)
@@ -328,6 +339,7 @@ function openDocument(reference: ConversationDocumentReference): void {
 }
 
 function openDocumentInDialog(reference: ConversationDocumentReference): void {
+  dialogDocumentId.value = null
   selectedReference.value = reference
   selectedDocumentTitle.value = documentLabel(reference)
   dialogOpen.value = true
@@ -365,6 +377,7 @@ async function createDocument(): Promise<void> {
 
 function onDocumentChanged(document: WorkingDocumentSnapshot): void {
   if (selectedReference.value?.id !== document.id) return
+  dialogDocumentId.value = document.id
   selectedDocumentTitle.value = document.title
   documents.value = documents.value.map(item => item.id === document.id
       ? { ...item, label: document.title, revision: document.revision, updated_at: document.updated_at }
@@ -373,6 +386,7 @@ function onDocumentChanged(document: WorkingDocumentSnapshot): void {
 
 function onDocumentUnavailable(documentId: string): void {
   if (selectedReference.value?.id !== documentId) return
+  dialogDocumentId.value = null
   void load(true)
 }
 
@@ -405,6 +419,11 @@ onBeforeUnmount(() => {
 .conversation-documents-toolbar { min-height: 36px; flex: 0 0 auto; border-bottom: 1px solid var(--chat-border, rgba(0, 0, 0, .12)); }
 .conversation-work-state { display: flex; min-height: 120px; align-items: center; justify-content: center; flex-direction: column; gap: 8px; padding: 18px; text-align: center; font-size: .78rem; }
 .conversation-work-list { flex: 1 1 auto; min-height: 0; overflow-y: auto; }
+.conversation-document { min-height: 78px; padding: 1px 16px 1px 4px; }
+.conversation-document-preview { padding-right: 8px; }
+.conversation-document-thumbnail { position: relative; width: 108px; height: 76px; }
+.conversation-document--selected { color: inherit; background: var(--solaire-blue-light); box-shadow: inset 3px 0 var(--solaire-blue-accent); }
+:global(.body--dark) .conversation-document--selected { background: var(--solaire-blue-dark); }
 .conversation-work-loader { display: flex; min-height: 36px; align-items: center; justify-content: center; }
 .conversation-work-inline-error { padding: 7px 10px; font-size: .75rem; }
 .conversation-document-create-dialog { width: min(520px, calc(100vw - 32px)); }

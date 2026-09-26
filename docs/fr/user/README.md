@@ -166,6 +166,16 @@ joindre un fichier, enregistrer une note vocale et démarrer un appel navigateur
 l'agent. Quitter une conversation retire votre accès sans effacer son historique pour les autres
 membres.
 
+Sur ordinateur, lorsqu’un document est ouvert à côté de la conversation, chaque message
+transmet aussi à l’agent la dernière sélection de texte dans ce document, la dernière position
+du curseur et un extrait de la zone visible au moment de l’envoi. Vous pouvez sélectionner
+un passage, puis écrire « reformule ce passage » sans perdre ce repère en passant au champ
+de message. Cela fonctionne en lecture seule, dans le contenu HTML, dans Source et dans les
+Datasets JSON. Les extraits longs sont tronqués et accompagnés de la révision du document.
+Un changement de document ou de contenu invalide les anciens repères ; fermer le panneau
+cesse de transmettre ce contexte. Les zones internes des applications intégrées ne sont pas
+inspectées. Les droits de l’agent sur le document restent inchangés.
+
 Une conversation native n'ouvre jamais de Task, même si le message le demande explicitement. Elle
 peut toutefois lancer un Processus configuré. Pour confier un travail durable à une Task, utilisez
 la page Tasks ou un autre canal dont la politique d'admission l'autorise.

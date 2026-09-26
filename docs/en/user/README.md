@@ -112,6 +112,15 @@ The same HR Agent can audit the Skills available to an Agent and read a Skill’
 
 The **Messenger** entry opens Galaris’s native messaging system when it is enabled and your role has the necessary permissions. You can create a direct conversation with an Agent, or a group containing that Agent and colleagues, search rooms, track unread messages, reply, attach a file, record a voice note, and start a browser call. The **Activity** panel shows publishable steps and the round’s Tools, never the Agent’s private reasoning. Leaving a conversation removes your access without deleting its history for the other members.
 
+On desktop, when a document is open alongside the conversation, each message also gives the
+Agent the last text selection in that document, the last cursor position, and an excerpt of
+the area visible when you send. Select a passage, then write “rephrase this passage”; moving
+to the message field preserves that reference. This works in read-only documents, HTML content,
+Source, and JSON Datasets. Long excerpts are truncated and include the document revision.
+Switching documents or replacing content invalidates previous positions; closing the pane stops
+sending this context. The internals of embedded applications are not inspected. The Agent’s
+document permissions remain unchanged.
+
 A native conversation never opens a Task, even if the message explicitly requests it. It can, however, launch a configured Process. To delegate durable work to a Task, use the Tasks page or another channel whose admission policy allows it.
 
 If your organization connects Nextcloud Talk, Matrix, OneBot, Telegram, or WhatsApp Business, send your request to the Agent’s account in the designated room. Configured platforms can operate simultaneously, and the response returns through the original connection and conversation. Avoid resending a slow request multiple times: instead, open the created Task or Process, or ask for its status.

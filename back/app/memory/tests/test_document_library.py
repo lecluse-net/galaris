@@ -388,6 +388,7 @@ async def test_user_owned_document_is_created_with_a_writable_agent(
     assert document.owner_agent_id is None
     assert document.owner_user_id == user.id
     assert document.metadata_["document_path"] == "Projects"
+    assert document.keywords == []
     assert document.grants == []
     assert not (await service.effective_access(document, editor.id)).can_read
     assert access.can_write is True
@@ -685,6 +686,7 @@ async def test_chat_created_document_is_durable_and_follows_document_acl(
         agent_id=owner.id,
     )
     assert item.metadata_["conversation_room_id"] == str(room_id)
+    assert item.keywords == []
     await service.set_item_grant(
         created.id,
         peer.id,

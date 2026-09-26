@@ -100,11 +100,12 @@
         clickable
         :active="room.id === selectedId"
         active-class="room-item--active"
+        :aria-current="room.id === selectedId ? 'true' : undefined"
         class="room-item"
         :class="{ 'room-item--unread': room.unread_count > 0 }"
         @click="$emit('select', room)"
       >
-        <q-item-section avatar><InternalAgentAvatar :agent-id="room.agent_id" :name="room.agent_name" size="38px" /></q-item-section>
+        <q-item-section avatar class="room-avatar"><InternalAgentAvatar :agent-id="room.agent_id" :name="room.agent_name" size="54px" /></q-item-section>
         <q-item-section><q-item-label class="room-agent-name row items-center q-gutter-xs"><span class="ellipsis">{{ room.label }}</span><q-icon v-if="room.archived" name="archive" size="15px" class="archived-room-icon"><q-tooltip>{{ t('chat.archivedRoom') }}</q-tooltip></q-icon><q-badge v-if="room.source" outline color="grey-7" class="source-badge" :label="t(sourceTranslationKey(room.source))" /></q-item-label><q-item-label v-if="room.show_last_message" class="room-message-preview" lines="1">{{ lastMessageText(room) || t('chat.emptyRoom') }}</q-item-label></q-item-section>
         <q-item-section v-if="room.unread_count > 0" side>
           <q-badge
@@ -183,13 +184,15 @@ function onScroll(event: Event): void {
 .room-list-options { flex: 0 0 auto; }
 :global(.room-list-options-menu) { min-width: 280px; }
 .viewer-select { max-width: 100%; }
-.conversation-list { min-width: 0; max-width: 100%; padding: 5px; }
+.conversation-list { min-width: 0; max-width: 100%; padding: 0; }
 .room-list-empty { display: flex; align-items: center; justify-content: center; min-height: 200px; height: 100%; padding: 24px 12px; }
 .room-list-empty .q-btn { max-width: 100%; }
 .room-list-loader { display: flex; justify-content: center; padding: 10px; }
-.room-item { min-height: 62px; margin: 2px 0; border-radius: 10px; transition: background-color .16s ease, transform .16s ease; }
+.room-item { min-height: 62px; padding: 1px 16px 1px 4px; margin: 2px 0; border-radius: 10px; transition: background-color .16s ease, transform .16s ease; }
+.room-avatar { padding-right: 12px; }
 .room-item:hover { background: var(--chat-surface-hover, #f4f6fa); }
-.room-item--active { background: var(--chat-surface-selected, #e9efff) !important; }
+.room-item.room-item--active { color: inherit; background: var(--solaire-blue-light); border-radius: 0; box-shadow: inset 3px 0 var(--solaire-blue-accent); }
+:global(.body--dark) .room-item.room-item--active { background: var(--solaire-blue-dark); }
 .room-item--unread:not(.room-item--active) { background: color-mix(in srgb, var(--q-primary) 7%, var(--chat-surface, #fff)); }
 .room-item--unread .room-agent-name { color: var(--chat-text, #252b36); font-weight: 700; }
 .room-item--unread .room-message-preview { font-weight: 600; }

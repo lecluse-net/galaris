@@ -6,7 +6,7 @@
       <slot name="actions" />
       <q-btn flat round dense icon="close" :aria-label="t('chat.closeWorkingDocument')" @click="close" />
     </q-toolbar>
-    <div class="chat-document-content">
+    <div ref="content" class="chat-document-content">
       <WorkingDocumentEditor ref="editor" :key="`${agentId}:${document.id}`" :document-id="document.id" :agent-id="agentId"
         :editable="editable" content-min-height="100px" @loaded="changed" @updated="changed" @unavailable="unavailable" />
     </div>
@@ -18,21 +18,27 @@ import { WorkingDocumentIcon as DocumentIcon } from '@/core/util'
 import { ref, useTemplateRef, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { WorkingDocumentEditor, type WorkingDocumentReference, type WorkingDocumentSnapshot } from '@/core/util'
+import { useDocumentFocus } from '../documentFocus'
 const { document, agentId, editable } = defineProps<{ document: WorkingDocumentReference; agentId: number | null; editable: boolean }>()
 const emit = defineEmits<{ close: []; available: [documentId: string]; unavailable: [] }>()
 const { t } = useI18n()
 const title = ref(document.title)
 const editor = useTemplateRef<InstanceType<typeof WorkingDocumentEditor>>('editor')
+const content = useTemplateRef<HTMLElement>('content')
+const focus = useDocumentFocus(content)
+const revision = ref(0)
 async function flush(): Promise<boolean> { return await editor.value?.flush() ?? true }
 async function close(): Promise<void> { if (await flush()) emit('close') }
-defineExpose({ flush })
+defineExpose({ flush, captureFocus: () => focus.capture(revision.value) })
+watch(() => [document.id, agentId], () => { focus.reset(); revision.value = 0 }, { flush: 'sync' })
 watch(() => document, value => { title.value = value.title })
 function changed(value: WorkingDocumentSnapshot): void {
   if (value.id !== document.id) return
   title.value = value.title
+  revision.value = value.revision
   emit('available', value.id)
 }
-function unavailable(): void { title.value = t('chat.workingDocument'); emit('unavailable') }
+function unavailable(): void { focus.reset(); title.value = t('chat.workingDocument'); emit('unavailable') }
 </script>
 
 <style scoped>

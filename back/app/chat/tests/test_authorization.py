@@ -457,6 +457,23 @@ def test_message_create_rejects_unknown_reasoning_effort() -> None:
         )
 
 
+@pytest.mark.parametrize("invalid", [
+    {"revision": -1},
+    {"surface": "unknown"},
+    {"selection": {"start": 9, "end": 2, "text": "reversed"}},
+    {"viewport": {"start": 0, "end": 6001, "text": "x" * 6001}},
+    {"cursor": {"offset": -1, "before": "", "after": ""}},
+    {"cursor": {"offset": 0, "before": "", "after": "x" * 161}},
+])
+def test_message_rejects_invalid_or_unbounded_document_attention(invalid: dict[str, object]) -> None:
+    with pytest.raises(ValidationError):
+        MessageCreate.model_validate({
+            "client_message_id": str(uuid4()), "text": "Review this passage",
+            "displayed_document_id": str(uuid4()),
+            "document_focus": {"revision": 3, "surface": "rendered", **invalid},
+        })
+
+
 @pytest.mark.parametrize(
     ("requested", "expected"),
     [("minimal", "low"), ("max", "max")],
@@ -530,6 +547,9 @@ async def test_attachment_message_publishes_all_uploaded_files_together(
     monkeypatch: pytest.MonkeyPatch,
     displayed_document_id: UUID | None,
 ) -> None:
+    from app.messenger.contracts import DocumentFocus
+
+    focus = DocumentFocus(revision=7, surface="rendered")
     room_id = uuid4()
     client_message_id = uuid4()
     uploads = [
@@ -565,10 +585,12 @@ async def test_attachment_message_publishes_all_uploaded_files_together(
         True,
         displayed_document_id,
         "fr",
+        focus,
     )
 
     assert result is publish.return_value
     assert publish.await_args.kwargs["language"] == "fr"
+    assert publish.await_args.kwargs["document_focus"] == focus
     assert store_upload.await_count == 2
     attachments = publish.await_args.kwargs["attachments"]
     assert [attachment.name for attachment in attachments] == [

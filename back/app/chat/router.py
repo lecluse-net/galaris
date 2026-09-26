@@ -4,10 +4,12 @@ from __future__ import annotations
 
 from collections.abc import AsyncIterator
 from pathlib import Path
+from typing import Annotated
 from uuid import UUID, uuid4
 
 from fastapi import APIRouter, File, Form, HTTPException, Query, Response, UploadFile, status
 from fastapi.responses import FileResponse, StreamingResponse
+from pydantic import Json
 from starlette.background import BackgroundTask
 
 from core.authorize import authorize, check_privilege, independent_auth
@@ -67,6 +69,7 @@ from app.messenger import (
     set_chat_identity_mapping,
 )
 from app.messenger.interface import ObservedMessengerFile
+from app.messenger.contracts import DocumentFocus
 from app.conversation import (
     ConversationActivityDetail,
     ConversationActivityPage,
@@ -1067,6 +1070,7 @@ async def create_message(room_id: UUID, data: MessageCreate) -> NativeMessengerM
             reasoning_effort_override=data.reasoning_effort_override,
             task_requested=data.task_requested,
             displayed_document_id=data.displayed_document_id,
+            document_focus=data.document_focus,
             language=data.language or await current_language(),
         )
     except PermissionError as exc:
@@ -1142,6 +1146,7 @@ async def create_attachment_message(
     task_requested: bool = Form(default=False),
     displayed_document_id: UUID | None = Form(default=None),
     language: str = Form(default="", max_length=10),
+    document_focus: Annotated[Json[DocumentFocus] | None, Form()] = None,
 ) -> NativeMessengerMessage:
     _require_enabled()
     await _validate_topic(topic_id)
@@ -1185,6 +1190,7 @@ async def create_attachment_message(
             reasoning_effort_override=reasoning_effort_override,
             task_requested=task_requested,
             displayed_document_id=displayed_document_id,
+            document_focus=document_focus,
             language=language or await current_language(),
         )
     except BaseException:

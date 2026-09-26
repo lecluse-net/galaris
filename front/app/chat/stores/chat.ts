@@ -1,4 +1,5 @@
 import axios from 'axios'
+import type { DocumentFocus } from '../documentFocus'
 import { computed, onScopeDispose, ref, watch } from 'vue'
 import { defineStore } from 'pinia'
 import { usePrivilegeStore } from '@/core/authorize'
@@ -411,7 +412,7 @@ export const useChatStore = defineStore('chat', () => {
     } catch (error) { if (request.canApply()) handleScopeError(error) }
     finally { loadingRecentMessages.value = false }
   }
-  async function send(text: string, files?: readonly File[], replyToMessageId: string | null = null, topicId: string | null = null, reasoningEffortOverride: ReasoningEffort | null = null, taskRequested = false, displayedDocumentId: string | null = null, language = ''): Promise<void> {
+  async function send(text: string, files?: readonly File[], replyToMessageId: string | null = null, topicId: string | null = null, reasoningEffortOverride: ReasoningEffort | null = null, taskRequested = false, displayedDocumentId: string | null = null, language = '', documentFocus: DocumentFocus | null = null): Promise<void> {
     if (!selectedRoom.value?.writable || viewerAgentId.value !== null || sending.value) return
     const room = selectedRoom.value
     const clientMessageId = crypto.randomUUID()
@@ -442,8 +443,8 @@ export const useChatStore = defineStore('chat', () => {
     sending.value = true
     try {
       const sentMessage = files?.length
-        ? await service.upload(room.id, files, text, replyToMessageId, topicId, clientMessageId, reasoningEffortOverride, taskRequested, displayedDocumentId, language)
-        : await service.send(room.id, text, replyToMessageId, topicId, clientMessageId, reasoningEffortOverride, taskRequested, displayedDocumentId, language)
+        ? await service.upload(room.id, files, text, replyToMessageId, topicId, clientMessageId, reasoningEffortOverride, taskRequested, displayedDocumentId, language, documentFocus)
+        : await service.send(room.id, text, replyToMessageId, topicId, clientMessageId, reasoningEffortOverride, taskRequested, displayedDocumentId, language, documentFocus)
       if (selectedRoom.value?.id === room.id) mergeSentMessage(sentMessage)
       messagesPage.value = 1
       await refreshSelected()

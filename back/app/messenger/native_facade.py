@@ -27,6 +27,7 @@ from app.connection import Connection
 from app.tools import ToolModel as Tool
 
 from . import journal
+from .document_focus import DocumentFocus
 from ._observations import (
     ObservedMessengerFile,
     ObservedMessengerMessage,
@@ -1816,6 +1817,7 @@ async def publish_internal_message(
     reasoning_effort_override: str | None = None,
     task_requested: bool = False,
     displayed_document_id: UUID | None = None,
+    document_focus: DocumentFocus | None = None,
     language: str | None = None,
 ) -> NativeMessengerMessage | None:
     # Admission runs in its own durable database session and locks the canonical
@@ -1900,6 +1902,8 @@ async def publish_internal_message(
         metadata["language"] = normalize_language(language)
     if displayed_document_id is not None:
         metadata[DISPLAYED_DOCUMENT_METADATA_KEY] = f"document://{displayed_document_id}"
+        if document_focus is not None:
+            metadata["document_focus"] = document_focus.model_dump(mode="json")
     if direct_task_requested:
         metadata[TASK_REQUESTED_METADATA_KEY] = True
     if reasoning_effort_override is not None:

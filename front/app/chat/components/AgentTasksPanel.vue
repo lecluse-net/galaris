@@ -48,14 +48,14 @@
           >
             <q-item-section class="agent-task-main">
               <div class="agent-task-header" :class="{ 'agent-task-header--collapsed': !isTaskExpanded(row.task) }">
-              <div v-if="isTaskExpanded(row.task)" class="agent-task-avatar">
+              <div class="agent-task-avatar" :class="{ 'agent-task-avatar--collapsed': !isTaskExpanded(row.task) }">
                 <InternalAgentAvatar
-                  v-if="row.task.agent_id != null"
+                  v-if="isTaskExpanded(row.task) && row.task.agent_id != null"
                   :agent-id="row.task.agent_id"
                   :name="taskAgentName(row.task)"
                   size="42px"
                 />
-                <q-avatar v-else size="42px" color="grey-3" text-color="grey-7" icon="person_off" />
+                <q-avatar v-else-if="isTaskExpanded(row.task)" size="42px" color="grey-3" text-color="grey-7" icon="person_off" />
                 <span
                   class="agent-task-status-dot"
                   role="img"
@@ -839,8 +839,10 @@ onBeforeUnmount(() => {
 .agent-task-row--error { border-left-color: var(--q-negative); background: var(--chat-danger-soft, rgba(193, 0, 21, .035)); }
 .agent-task-main { min-width: 0; max-width: 100%; overflow: hidden; }
 .agent-task-header { display: grid; min-width: 0; grid-template-columns: 42px minmax(0, 1fr); align-items: start; column-gap: 7px; }
-.agent-task-header--collapsed { grid-template-columns: minmax(0, 1fr); }
+.agent-task-header--collapsed { grid-template-columns: 18px minmax(0, 1fr); }
 .agent-task-avatar { position: relative; width: 42px; height: 42px; }
+.agent-task-avatar--collapsed { width: 18px; height: 18px; margin-top: 2px; }
+.agent-task-avatar--collapsed .agent-task-status-dot { position: static; background: transparent; box-shadow: none; }
 .agent-task-status-dot { position: absolute; right: -3px; bottom: -3px; display: flex; width: 18px; height: 18px; align-items: center; justify-content: center; border-radius: 50%; background: var(--chat-surface, #fff); box-shadow: 0 0 0 1px var(--chat-border-strong, rgba(35, 46, 66, .12)); }
 .agent-task-heading { min-width: 0; }
 .agent-task-title-row { display: flex; min-width: 0; align-items: flex-start; gap: 3px; }

@@ -52,15 +52,18 @@ test('text and attachment messages preserve task intent, effort and idempotency 
 
 test('displayed document context is optional for both text and attachment messages', async () => {
   const { service, requests } = setup()
+  const focus = { revision: 3, surface: 'rendered', selection: { start: 0, end: 4, text: 'Look', truncated: false }, cursor: { offset: 4, before: 'Look', after: ' here' }, viewport: null }
   for (const documentId of ['doc-a', null]) {
-    await service.send('room-a', 'Look here', null, null, 'client-a', null, false, documentId)
+    await service.send('room-a', 'Look here', null, null, 'client-a', null, false, documentId, 'en', focus)
     const body = requests.pop().args[1]
     assert.equal(body.displayed_document_id, documentId ?? undefined)
     assert.equal(body.text, 'Look here')
-    await service.upload('room-a', [new File(['example'], 'example.txt')], 'Look here', null, null, 'client-b', null, false, documentId)
+    assert.deepEqual(body.document_focus, documentId ? focus : undefined)
+    await service.upload('room-a', [new File(['example'], 'example.txt')], 'Look here', null, null, 'client-b', null, false, documentId, 'en', focus)
     const form = requests.pop().args[1]
     assert.equal(form.get('displayed_document_id'), documentId)
     assert.equal(form.get('text'), 'Look here')
+    assert.equal(form.get('document_focus'), documentId ? JSON.stringify(focus) : null)
   }
 })
 

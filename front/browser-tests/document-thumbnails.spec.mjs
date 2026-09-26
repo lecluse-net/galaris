@@ -166,5 +166,11 @@ for (const surface of ['chat', 'library']) test(`rendered thumbnail keeps the ${
   await expect(image).toHaveJSProperty('naturalWidth', 1)
   await image.click()
   await expect.poll(() => page.evaluate(() => window.testApp.events.filter(event => ['select', 'open'].includes(event.name)).length)).toBe(1)
-  await expect(page.getByRole('button', { name: 'Icon for document Report', exact: true })).toBeVisible()
+  const icon = page.getByRole(surface === 'chat' ? 'img' : 'button', { name: 'Icon for document Report', exact: true })
+  await expect(icon).toBeVisible()
+  if (surface === 'chat') {
+    await icon.click()
+    await expect.poll(() => page.evaluate(() => window.testApp.events.filter(event => event.name === 'open').length)).toBe(2)
+    await expect(page.locator('.tag-icon-picker')).toHaveCount(0)
+  }
 })

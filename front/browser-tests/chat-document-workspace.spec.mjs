@@ -69,6 +69,129 @@ async function openFromSearch(page) {
   await expect(page.locator('.chat-document-pane')).toContainText('document body')
 }
 
+for (const editable of [true, false]) {
+  test(`document selection, last cursor and visible passage survive composer focus (editable=${editable})`, async ({ page }) => {
+    await page.setViewportSize({ width: 1600, height: 1000 })
+    const state = await workspace(page, editable)
+    await jsonRoute(page, '**/api/memory/documents/doc-b', { item: {
+      ...documentFixture, id: 'doc-b', title: 'Off-list document', media_type: 'text/html', content_profile: 'document',
+      payload: { text: Array.from({ length: 100 }, (_, i) => `<p>Section ${i}: Initial document body with a distinct passage.</p>`).join('') },
+    }, agent_id: null })
+    await openFromSearch(page)
+    const content = page.locator('.chat-document-pane .ck-editor__editable')
+    const paragraph = content.locator('p').nth(50)
+    await paragraph.scrollIntoViewIfNeeded()
+    await paragraph.evaluate(element => {
+      const text = element.firstChild
+      const range = document.createRange()
+      range.setStart(text, 0); range.setEnd(text, 10)
+      window.getSelection().removeAllRanges(); window.getSelection().addRange(range)
+      document.dispatchEvent(new Event('selectionchange'))
+    })
+    const draft = page.locator('.conversation-pane textarea')
+    await draft.fill('Improve this passage')
+    await page.getByRole('button', { name: 'Post', exact: true }).click()
+    await expect.poll(() => state.writes.length).toBe(1)
+    const focus = state.writes[0].document_focus
+    expect(focus.selection.text).toBe('Section 50')
+    expect(focus.cursor.before).toContain('Section 50')
+    expect(focus.viewport.text).toContain('Section 50')
+    expect(focus.viewport.text).not.toContain('Section 0:')
+    expect(focus.viewport.text).not.toContain('Section 99:')
+
+    await paragraph.evaluate(element => {
+      const selection = window.getSelection()
+      selection.collapse(element.firstChild, 3)
+      document.dispatchEvent(new Event('selectionchange'))
+    })
+    await draft.fill('Insert here')
+    await page.getByRole('button', { name: 'Post', exact: true }).click()
+    await expect.poll(() => state.writes.length).toBe(2)
+    expect(state.writes[1].document_focus.selection).toBeNull()
+    expect(state.writes[1].document_focus.cursor.offset).toBe(focus.selection.start + 3)
+
+    const documentsHeader = page.locator('.sidebar-accordion-header').filter({ hasText: 'Working documents' })
+    if (await documentsHeader.getAttribute('aria-expanded') !== 'true') await documentsHeader.click()
+    await page.getByLabel('Open document Test document', { exact: true }).click()
+    await expect(content).toHaveText('Initial document body')
+    await draft.fill('A different document')
+    await page.getByRole('button', { name: 'Post', exact: true }).click()
+    await expect.poll(() => state.writes.length).toBe(3)
+    expect(state.writes[2].document_focus.selection).toBeNull()
+    expect(state.writes[2].document_focus.cursor).toBeNull()
+  })
+}
+
+test('document attention bounds long selections and clears positions after a remote replacement', async ({ page }) => {
+  const state = await workspace(page, false)
+  await openFromSearch(page)
+  const content = page.locator('.chat-document-pane .ck-editor__editable')
+  await state.update('Long passage '.repeat(307) + 'abcdefgh😀' + 'Long passage '.repeat(700))
+  await expect(content).toContainText('Long passage')
+  const renderedLength = (await content.textContent()).length
+  await content.evaluate(element => {
+    const range = document.createRange()
+    range.selectNodeContents(element)
+    const selection = window.getSelection()
+    selection.removeAllRanges(); selection.addRange(range)
+    document.dispatchEvent(new Event('selectionchange'))
+  })
+  const draft = page.locator('.conversation-pane textarea')
+  await draft.fill('Summarize the selection')
+  await page.getByRole('button', { name: 'Post', exact: true }).click()
+  await expect.poll(() => state.writes.length).toBe(1)
+  expect(state.writes[0].document_focus.selection).toMatchObject({ start: 0, end: renderedLength, truncated: true })
+  expect(state.writes[0].document_focus.selection.text).toHaveLength(3999)
+  expect(state.writes[0].document_focus.selection.text.isWellFormed()).toBe(true)
+  expect(state.writes[0].document_focus.viewport.text.length).toBeLessThanOrEqual(6000)
+  await state.update('Replacement from a collaborator')
+  await expect(content).toHaveText('Replacement from a collaborator')
+  await draft.fill('Review the replacement')
+  await page.getByRole('button', { name: 'Post', exact: true }).click()
+  await expect.poll(() => state.writes.length).toBe(2)
+  expect(state.writes[1].document_focus.selection).toBeNull()
+  expect(state.writes[1].document_focus.cursor).toBeNull()
+  expect(state.writes[1].document_focus.revision).toBeGreaterThan(state.writes[0].document_focus.revision)
+})
+
+for (const surface of ['source', 'dataset']) {
+  test(`document attention captures ${surface} text without markup conversion`, async ({ page }) => {
+    const state = await workspace(page)
+    if (surface === 'dataset') {
+      await jsonRoute(page, '**/api/memory/documents/doc-b', { item: {
+        ...documentFixture, id: 'doc-b', title: 'Off-list document', document_type: 'dataset', media_type: 'application/json',
+        payload: { text: JSON.stringify({ label: 'Initial document body', literal: '<b>keep literal</b>', rows: Array.from({ length: 100 }, (_, i) => `Row ${i}`) }, null, 2) },
+      }, agent_id: null })
+      await page.getByRole('button', { name: 'Search accessible documents', exact: true }).click()
+      await page.getByLabel('Open document Off-list document', { exact: true }).click()
+    } else {
+      await openFromSearch(page)
+      await page.locator('.chat-document-pane').getByRole('button', { name: 'Source', exact: true }).click()
+    }
+    const input = page.locator('.chat-document-pane .document-editor-fields textarea')
+    await expect(input).toBeVisible()
+    await input.evaluate(element => {
+      element.focus()
+      const start = element.value.indexOf('document body')
+      element.setSelectionRange(start, start + 'document body'.length)
+      element.dispatchEvent(new Event('select', { bubbles: true }))
+    })
+    if (surface === 'dataset') {
+      // Scrolling independently of the selection must report what is on screen.
+      await input.evaluate(element => {
+        element.scrollTop = element.scrollHeight
+        element.dispatchEvent(new Event('scroll'))
+      })
+    }
+    await page.locator('.conversation-pane textarea').fill('Review this text')
+    await page.getByRole('button', { name: 'Post', exact: true }).click()
+    await expect.poll(() => state.writes.length).toBe(1)
+    expect(state.writes[0].document_focus).toMatchObject({ surface, selection: { text: 'document body' } })
+    expect(state.writes[0].document_focus.viewport.text).toContain(surface === 'dataset' ? '"Row 99"' : 'Initial document body')
+    if (surface === 'dataset') expect(state.writes[0].document_focus.viewport.text).not.toContain('Initial document body')
+  })
+}
+
 test('document dialogs cover the split editor toolbar and keep their own formatting usable', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 })
   await workspace(page)
@@ -89,6 +212,7 @@ test('document dialogs cover the split editor toolbar and keep their own formatt
   for (let attempt = 0; attempt < 2; attempt += 1) {
     await page.getByRole('button', { name: 'Open document Test document in a dialog', exact: true }).click()
     await expect(dialog.locator('.ck-editor__editable')).toBeVisible()
+    await expect(page.getByLabel('Open document Test document', { exact: true })).toHaveAttribute('aria-current', 'true')
     // Hit testing proves that the dialog or its backdrop covers the background toolbar.
     await expect.poll(() => toolbar.evaluate(element => {
       const box = element.getBoundingClientRect()
@@ -102,6 +226,7 @@ test('document dialogs cover the split editor toolbar and keep their own formatt
     await expect(editor.locator('h2')).toContainText('Initial document body')
     await page.locator('.q-dialog__backdrop').click({ position: { x: 2, y: 2 } })
     await expect(dialog).toHaveCount(0)
+    await expect(page.getByLabel('Open document Test document', { exact: true })).not.toHaveAttribute('aria-current', 'true')
     await expect(background.locator('.ck-editor__editable')).toContainText('Initial document body')
     await toolbar.getByRole('button', { name: 'Bold', exact: true }).click()
   }
@@ -116,6 +241,7 @@ for (const width of [1440, 390]) {
     const show = roomId => page.evaluate(room_id => window.testApp.emitSocket('chat.document_show', {
       data: { room_id, document_id: 'doc-a' },
     }), roomId)
+    const documentRow = page.getByLabel('Open document Test document', { exact: true })
     await show('other-room')
     await expect(page.locator('.chat-document-pane')).toHaveCount(0)
     await expect(page.getByRole('dialog')).toHaveCount(0)
@@ -123,8 +249,10 @@ for (const width of [1440, 390]) {
       await show('room-a')
       const viewer = width < 1024 ? page.getByRole('dialog') : page.locator('.chat-document-pane')
       await expect(viewer).toContainText('Initial document body')
+      await expect(documentRow).toHaveAttribute('aria-current', 'true')
       await viewer.getByRole('button', { name: width < 1024 ? 'Close' : 'Close working document', exact: true }).click()
       await expect(viewer).toHaveCount(0)
+      await expect(documentRow).not.toHaveAttribute('aria-current', 'true')
     }
     await expect(draft).toHaveValue('Keep my message')
   })

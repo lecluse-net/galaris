@@ -8,6 +8,8 @@ from uuid import UUID
 
 from pydantic import BaseModel, Field
 
+from .document_focus import DocumentFocus as DocumentFocus
+
 
 def resolve_effective_topic_id(
     message_topic_id: UUID | None,

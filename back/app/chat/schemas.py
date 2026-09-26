@@ -8,6 +8,7 @@ from uuid import UUID
 from pydantic import BaseModel, ConfigDict, Field
 
 from app.agent.contracts import ReasoningEffort
+from app.messenger.contracts import DocumentFocus
 from app.messenger import (
     ChatViewerAgent,
     NativeMessengerAgent,
@@ -84,6 +85,7 @@ class MessageCreate(BaseModel):
     reasoning_effort_override: ReasoningEffort | None = None
     task_requested: bool = False
     displayed_document_id: UUID | None = None
+    document_focus: DocumentFocus | None = None
 
 
 class InteractionAnswer(BaseModel):
