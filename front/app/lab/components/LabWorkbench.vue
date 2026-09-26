@@ -86,6 +86,7 @@
             <q-select v-model="judgeId" :options="config?.llms ?? []" option-value="id" option-label="label" emit-value map-options outlined class="col-12 col-md-5" :label="t('evaluation.contract.judge')" />
             <div class="col-12 col-md-2"><q-btn v-if="canEdit" icon="play_arrow" color="primary" :label="t('evaluation.contract.start')" :loading="busy" :disable="!runSettingsValid || datasetDirty || candidateId == null || judgeId == null || !cases.some(row => row.readiness === 'ready')" @click="startRun" /></div>
           </div>
+          <q-btn unelevated icon="compare_arrows" :label="t('evaluation.comparison.title')" class="comparison-button q-mb-md" @click="comparisonOpen = true" />
           <q-table :rows="runs" :columns="runColumns" row-key="id" :pagination="{ rowsPerPage: 50 }" :rows-per-page-options="[10, 20, 50, 100, 500]" :grid="$q.screen.lt.md" flat>
             <template #body-cell-status="scope"><q-td :props="scope">{{ t('evaluation.contract.status.' + scope.row.status) }}</q-td></template>
             <template #body-cell-progress="scope"><q-td :props="scope">
@@ -204,12 +205,14 @@
   </div>
   <LabHumanReviewDialog v-if="reviewId" v-model="reviewOpen" :mechanism="mechanism" :run-id="reviewId" :campaign-id="reviewCampaignId" :can-edit="canEdit" />
   <LabCaptureConfirmation :mismatch="captureMismatch" @confirm="confirmCapture" @cancel="cancelCapture" />
+  <LabComparisonDialog v-model="comparisonOpen" :mechanism="mechanism" :datasets="datasets" :initial-dataset-id="datasetId" />
 </template>
 
 <script setup lang="ts">
 import LabResultsPanel from './LabResultsPanel.vue'
 import LabSyntheticDatasetDialog from './LabSyntheticDatasetDialog.vue'
 import LabHumanReviewDialog from './LabHumanReviewDialog.vue'
+import LabComparisonDialog from './LabComparisonDialog.vue'
 import { categories } from '../services/labWorkbenchService'
 import LabCaptureConfirmation from './LabCaptureConfirmation.vue'
 import { useCaptureConfirmation } from '../services/useCaptureConfirmation'
@@ -241,6 +244,7 @@ const savedDataset = computed(() => datasets.value.find(item => item.id === data
 const datasetDirty = computed(() => dataset.value && savedDataset.value && JSON.stringify(dataset.value) !== JSON.stringify(savedDataset.value))
 const cases = ref<LabCase[]>([])
 const runs = ref<LabRun[]>([])
+const comparisonOpen = ref(false)
 const repetitions = ref(1), maxCost = ref<number | string | null>(null)
 const budgetValue = computed(() => maxCost.value == null || maxCost.value === '' ? null : Number(maxCost.value))
 const reviewId = ref<string | null>(null), reviewOpen = ref(false), categoryFilter = ref<string | null>(null)
@@ -346,7 +350,7 @@ async function refreshDataset() {
   cases.value = items; runs.value = history
 }
 watch(() => mechanism, () => { datasetId.value = null; dataset.value = null; caseDialog.value = false; runDialog.value = false; reviewOpen.value = false; reviewId.value = null; void reload() }, { immediate: true })
-watch(datasetId, () => { caseDialog.value = false; runDialog.value = false; void refreshDataset().catch(report) })
+watch(datasetId, () => { caseDialog.value = false; runDialog.value = false; comparisonOpen.value = false; void refreshDataset().catch(report) })
 const stopPolling = startVisiblePolling(async () => {
   const id = datasetId.value, key = mechanism
   if (!id || !runs.value.some(active)) return
@@ -464,6 +468,7 @@ async function captureSource() { await action(async () => {
 </script>
 
 <style scoped>
+.comparison-button { background: var(--solaire-iris-accent); color: #fff; font-weight: 600; }
 .lab-workbench { display: grid; gap: 16px; }
 .dataset-settings { overflow: visible; }
 .dataset-settings-content { max-width: 1080px; margin-inline: auto; display: grid; gap: 32px; }

@@ -47,8 +47,10 @@ indépendantes ; un nombre insuffisant de cas reste signalé.
 
 ### G — Comparabilité et tendances
 
-Le comparateur MCP de deux runs (axes modèle, prompt et paramètres), ses blocages explicites
-et ses écarts par cas sont décrits par l'[ADR 0134](../decisions/0134-agent-lab-control.md).
+Le comparateur MCP et le dialogue « Avant / après » des onze Labs partagent la comparaison
+de deux runs (axes modèle, prompt et paramètres), les blocages explicites et les écarts par
+cas décrits par l'[ADR 0134](../decisions/0134-agent-lab-control.md). Les compteurs de l'interface
+décrivent uniquement la page affichée ; ils ne constituent pas un bilan global ni statistique.
 
 - Étendre les politiques de comparaison aux expériences portant sur la rubrique, le corpus
   ou le juge et les qualifier sur des campagnes réelles.

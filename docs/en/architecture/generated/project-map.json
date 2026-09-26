@@ -1699,6 +1699,7 @@
         "files": [
           "back/app/lab/agent_review_service.py",
           "back/app/lab/capture_service.py",
+          "back/app/lab/comparison_service.py",
           "back/app/lab/diagnosis_service.py",
           "back/app/lab/dispatcher_evaluation_service.py",
           "back/app/lab/engine.py",
@@ -12142,7 +12143,7 @@
         "declared_path": "/evaluation/candidates",
         "file": "back/app/lab/router.py",
         "handler": "read_candidates",
-        "line": 189,
+        "line": 210,
         "method": "GET",
         "module": "app.lab"
       },
@@ -12151,7 +12152,7 @@
         "declared_path": "/evaluation/config",
         "file": "back/app/lab/router.py",
         "handler": "read_config",
-        "line": 183,
+        "line": 204,
         "method": "GET",
         "module": "app.lab"
       },
@@ -12160,7 +12161,7 @@
         "declared_path": "/evaluation/dispatcher/candidates",
         "file": "back/app/lab/router.py",
         "handler": "read_dispatcher_candidates",
-        "line": 351,
+        "line": 372,
         "method": "GET",
         "module": "app.lab"
       },
@@ -12169,7 +12170,7 @@
         "declared_path": "/evaluation/dispatcher/cases/{case_id}",
         "file": "back/app/lab/router.py",
         "handler": "delete_dispatcher_case",
-        "line": 396,
+        "line": 417,
         "method": "DELETE",
         "module": "app.lab"
       },
@@ -12178,7 +12179,7 @@
         "declared_path": "/evaluation/dispatcher/cases/{case_id}",
         "file": "back/app/lab/router.py",
         "handler": "update_dispatcher_case",
-        "line": 385,
+        "line": 406,
         "method": "PATCH",
         "module": "app.lab"
       },
@@ -12187,7 +12188,7 @@
         "declared_path": "/evaluation/dispatcher/cases/{case_id}/duplicate",
         "file": "back/app/lab/router.py",
         "handler": "duplicate_dispatcher_case",
-        "line": 407,
+        "line": 428,
         "method": "POST",
         "module": "app.lab"
       },
@@ -12196,7 +12197,7 @@
         "declared_path": "/evaluation/dispatcher/cases/{case_id}/generate-expected",
         "file": "back/app/lab/router.py",
         "handler": "generate_dispatcher_expected",
-        "line": 436,
+        "line": 457,
         "method": "POST",
         "module": "app.lab"
       },
@@ -12205,7 +12206,7 @@
         "declared_path": "/evaluation/dispatcher/cases/{case_id}/restore-source",
         "file": "back/app/lab/router.py",
         "handler": "restore_dispatcher_case",
-        "line": 416,
+        "line": 437,
         "method": "POST",
         "module": "app.lab"
       },
@@ -12214,7 +12215,7 @@
         "declared_path": "/evaluation/dispatcher/datasets",
         "file": "back/app/lab/router.py",
         "handler": "read_dispatcher_datasets",
-        "line": 269,
+        "line": 290,
         "method": "GET",
         "module": "app.lab"
       },
@@ -12223,7 +12224,7 @@
         "declared_path": "/evaluation/dispatcher/datasets",
         "file": "back/app/lab/router.py",
         "handler": "create_dispatcher_dataset",
-        "line": 279,
+        "line": 300,
         "method": "POST",
         "module": "app.lab"
       },
@@ -12232,7 +12233,7 @@
         "declared_path": "/evaluation/dispatcher/datasets/{dataset_id}",
         "file": "back/app/lab/router.py",
         "handler": "delete_dispatcher_dataset",
-        "line": 318,
+        "line": 339,
         "method": "DELETE",
         "module": "app.lab"
       },
@@ -12241,7 +12242,7 @@
         "declared_path": "/evaluation/dispatcher/datasets/{dataset_id}",
         "file": "back/app/lab/router.py",
         "handler": "update_dispatcher_dataset",
-        "line": 287,
+        "line": 308,
         "method": "PATCH",
         "module": "app.lab"
       },
@@ -12250,7 +12251,7 @@
         "declared_path": "/evaluation/dispatcher/datasets/{dataset_id}/cases",
         "file": "back/app/lab/router.py",
         "handler": "read_dispatcher_cases",
-        "line": 325,
+        "line": 346,
         "method": "GET",
         "module": "app.lab"
       },
@@ -12259,7 +12260,7 @@
         "declared_path": "/evaluation/dispatcher/datasets/{dataset_id}/cases",
         "file": "back/app/lab/router.py",
         "handler": "create_dispatcher_case",
-        "line": 338,
+        "line": 359,
         "method": "POST",
         "module": "app.lab"
       },
@@ -12268,7 +12269,7 @@
         "declared_path": "/evaluation/dispatcher/datasets/{dataset_id}/cases/from-task",
         "file": "back/app/lab/router.py",
         "handler": "import_dispatcher_case",
-        "line": 369,
+        "line": 390,
         "method": "POST",
         "module": "app.lab"
       },
@@ -12277,7 +12278,7 @@
         "declared_path": "/evaluation/dispatcher/datasets/{dataset_id}/runs",
         "file": "back/app/lab/router.py",
         "handler": "read_dispatcher_runs",
-        "line": 464,
+        "line": 485,
         "method": "GET",
         "module": "app.lab"
       },
@@ -12286,7 +12287,7 @@
         "declared_path": "/evaluation/dispatcher/datasets/{dataset_id}/runs",
         "file": "back/app/lab/router.py",
         "handler": "start_dispatcher_run",
-        "line": 453,
+        "line": 474,
         "method": "POST",
         "module": "app.lab"
       },
@@ -12295,7 +12296,7 @@
         "declared_path": "/evaluation/dispatcher/runs/{run_id}",
         "file": "back/app/lab/router.py",
         "handler": "read_dispatcher_run",
-        "line": 476,
+        "line": 497,
         "method": "GET",
         "module": "app.lab"
       },
@@ -12304,7 +12305,7 @@
         "declared_path": "/evaluation/dispatcher/runs/{run_id}/analyze",
         "file": "back/app/lab/router.py",
         "handler": "analyze_dispatcher_run",
-        "line": 485,
+        "line": 506,
         "method": "POST",
         "module": "app.lab"
       },
@@ -12313,7 +12314,7 @@
         "declared_path": "/evaluation/dispatcher/runs/{run_id}/cancel",
         "file": "back/app/lab/router.py",
         "handler": "cancel_dispatcher_run",
-        "line": 498,
+        "line": 519,
         "method": "POST",
         "module": "app.lab"
       },
@@ -12322,7 +12323,7 @@
         "declared_path": "/evaluation/executor-prompts/defaults",
         "file": "back/app/lab/router.py",
         "handler": "read_executor_prompt_defaults",
-        "line": 513,
+        "line": 534,
         "method": "GET",
         "module": "app.lab"
       },
@@ -12331,7 +12332,7 @@
         "declared_path": "/evaluation/mechanisms",
         "file": "back/app/lab/router.py",
         "handler": "read_mechanisms",
-        "line": 519,
+        "line": 540,
         "method": "GET",
         "module": "app.lab"
       },
@@ -12340,7 +12341,7 @@
         "declared_path": "/evaluation/memory_extraction/datasets/{dataset_id}/configuration",
         "file": "back/app/lab/router.py",
         "handler": "update_memory_extraction_dataset_configuration",
-        "line": 620,
+        "line": 641,
         "method": "PATCH",
         "module": "app.lab"
       },
@@ -12349,7 +12350,7 @@
         "declared_path": "/evaluation/memory_extraction/prompt-default",
         "file": "back/app/lab/router.py",
         "handler": "read_memory_extraction_prompt_default",
-        "line": 303,
+        "line": 324,
         "method": "GET",
         "module": "app.lab"
       },
@@ -12358,7 +12359,7 @@
         "declared_path": "/evaluation/planner/datasets/{dataset_id}/configuration",
         "file": "back/app/lab/router.py",
         "handler": "update_planner_dataset_configuration",
-        "line": 639,
+        "line": 660,
         "method": "PATCH",
         "module": "app.lab"
       },
@@ -12367,7 +12368,7 @@
         "declared_path": "/evaluation/planner/prompt-default",
         "file": "back/app/lab/router.py",
         "handler": "read_planner_prompt_default",
-        "line": 312,
+        "line": 333,
         "method": "GET",
         "module": "app.lab"
       },
@@ -12376,7 +12377,7 @@
         "declared_path": "/evaluation/tasks",
         "file": "back/app/lab/router.py",
         "handler": "read_lab_tasks",
-        "line": 203,
+        "line": 224,
         "method": "GET",
         "module": "app.lab"
       },
@@ -12385,7 +12386,7 @@
         "declared_path": "/evaluation/tasks",
         "file": "back/app/lab/router.py",
         "handler": "add_lab_task",
-        "line": 214,
+        "line": 235,
         "method": "POST",
         "module": "app.lab"
       },
@@ -12394,7 +12395,7 @@
         "declared_path": "/evaluation/tasks/{task_id}",
         "file": "back/app/lab/router.py",
         "handler": "remove_lab_task",
-        "line": 229,
+        "line": 250,
         "method": "DELETE",
         "module": "app.lab"
       },
@@ -12403,7 +12404,7 @@
         "declared_path": "/evaluation/tasks/{task_id}/analyze",
         "file": "back/app/lab/router.py",
         "handler": "analyze_task",
-        "line": 253,
+        "line": 274,
         "method": "POST",
         "module": "app.lab"
       },
@@ -12412,7 +12413,7 @@
         "declared_path": "/evaluation/tasks/{task_id}/diagnoses",
         "file": "back/app/lab/router.py",
         "handler": "read_task_diagnoses",
-        "line": 240,
+        "line": 261,
         "method": "GET",
         "module": "app.lab"
       },
@@ -12421,7 +12422,7 @@
         "declared_path": "/evaluation/topic-classification/datasets/{dataset_id}/cases/from-message-range",
         "file": "back/app/lab/router.py",
         "handler": "import_topic_messages",
-        "line": 582,
+        "line": 603,
         "method": "POST",
         "module": "app.lab"
       },
@@ -12430,7 +12431,7 @@
         "declared_path": "/evaluation/topic-classification/datasets/{dataset_id}/configuration",
         "file": "back/app/lab/router.py",
         "handler": "update_topic_dataset_configuration",
-        "line": 601,
+        "line": 622,
         "method": "PATCH",
         "module": "app.lab"
       },
@@ -12439,7 +12440,7 @@
         "declared_path": "/evaluation/topic-classification/message-agents",
         "file": "back/app/lab/router.py",
         "handler": "read_topic_message_agents",
-        "line": 528,
+        "line": 549,
         "method": "GET",
         "module": "app.lab"
       },
@@ -12448,7 +12449,7 @@
         "declared_path": "/evaluation/topic-classification/message-people",
         "file": "back/app/lab/router.py",
         "handler": "read_topic_message_people",
-        "line": 538,
+        "line": 559,
         "method": "GET",
         "module": "app.lab"
       },
@@ -12457,7 +12458,7 @@
         "declared_path": "/evaluation/topic-classification/message-preview",
         "file": "back/app/lab/router.py",
         "handler": "preview_topic_messages",
-        "line": 552,
+        "line": 573,
         "method": "GET",
         "module": "app.lab"
       },
@@ -12466,7 +12467,7 @@
         "declared_path": "/evaluation/{mechanism}/candidates",
         "file": "back/app/lab/router.py",
         "handler": "read_mechanism_candidates",
-        "line": 751,
+        "line": 772,
         "method": "GET",
         "module": "app.lab"
       },
@@ -12475,7 +12476,7 @@
         "declared_path": "/evaluation/{mechanism}/cases/{case_id}",
         "file": "back/app/lab/router.py",
         "handler": "delete_mechanism_case",
-        "line": 873,
+        "line": 894,
         "method": "DELETE",
         "module": "app.lab"
       },
@@ -12484,7 +12485,7 @@
         "declared_path": "/evaluation/{mechanism}/cases/{case_id}",
         "file": "back/app/lab/router.py",
         "handler": "update_mechanism_case",
-        "line": 855,
+        "line": 876,
         "method": "PATCH",
         "module": "app.lab"
       },
@@ -12493,7 +12494,7 @@
         "declared_path": "/evaluation/{mechanism}/cases/{case_id}/duplicate",
         "file": "back/app/lab/router.py",
         "handler": "duplicate_mechanism_case",
-        "line": 887,
+        "line": 908,
         "method": "POST",
         "module": "app.lab"
       },
@@ -12502,7 +12503,7 @@
         "declared_path": "/evaluation/{mechanism}/cases/{case_id}/generate-expected",
         "file": "back/app/lab/router.py",
         "handler": "generate_mechanism_expected",
-        "line": 929,
+        "line": 950,
         "method": "POST",
         "module": "app.lab"
       },
@@ -12511,7 +12512,7 @@
         "declared_path": "/evaluation/{mechanism}/cases/{case_id}/restore-source",
         "file": "back/app/lab/router.py",
         "handler": "restore_mechanism_case",
-        "line": 904,
+        "line": 925,
         "method": "POST",
         "module": "app.lab"
       },
@@ -12520,7 +12521,7 @@
         "declared_path": "/evaluation/{mechanism}/datasets",
         "file": "back/app/lab/router.py",
         "handler": "read_mechanism_datasets",
-        "line": 658,
+        "line": 679,
         "method": "GET",
         "module": "app.lab"
       },
@@ -12529,7 +12530,7 @@
         "declared_path": "/evaluation/{mechanism}/datasets",
         "file": "back/app/lab/router.py",
         "handler": "create_mechanism_dataset",
-        "line": 673,
+        "line": 694,
         "method": "POST",
         "module": "app.lab"
       },
@@ -12538,7 +12539,7 @@
         "declared_path": "/evaluation/{mechanism}/datasets/synthetic",
         "file": "back/app/lab/router.py",
         "handler": "generate_synthetic_dataset",
-        "line": 89,
+        "line": 110,
         "method": "POST",
         "module": "app.lab"
       },
@@ -12547,7 +12548,7 @@
         "declared_path": "/evaluation/{mechanism}/datasets/{dataset_id}",
         "file": "back/app/lab/router.py",
         "handler": "delete_mechanism_dataset",
-        "line": 702,
+        "line": 723,
         "method": "DELETE",
         "module": "app.lab"
       },
@@ -12556,7 +12557,7 @@
         "declared_path": "/evaluation/{mechanism}/datasets/{dataset_id}",
         "file": "back/app/lab/router.py",
         "handler": "update_mechanism_dataset",
-        "line": 684,
+        "line": 705,
         "method": "PATCH",
         "module": "app.lab"
       },
@@ -12565,7 +12566,7 @@
         "declared_path": "/evaluation/{mechanism}/datasets/{dataset_id}/cases",
         "file": "back/app/lab/router.py",
         "handler": "read_mechanism_cases",
-        "line": 715,
+        "line": 736,
         "method": "GET",
         "module": "app.lab"
       },
@@ -12574,7 +12575,7 @@
         "declared_path": "/evaluation/{mechanism}/datasets/{dataset_id}/cases",
         "file": "back/app/lab/router.py",
         "handler": "create_mechanism_case",
-        "line": 733,
+        "line": 754,
         "method": "POST",
         "module": "app.lab"
       },
@@ -12583,7 +12584,7 @@
         "declared_path": "/evaluation/{mechanism}/datasets/{dataset_id}/cases/from-execution",
         "file": "back/app/lab/router.py",
         "handler": "import_executor_execution_case",
-        "line": 829,
+        "line": 850,
         "method": "POST",
         "module": "app.lab"
       },
@@ -12592,7 +12593,7 @@
         "declared_path": "/evaluation/{mechanism}/datasets/{dataset_id}/cases/from-source",
         "file": "back/app/lab/router.py",
         "handler": "import_mechanism_case",
-        "line": 774,
+        "line": 795,
         "method": "POST",
         "module": "app.lab"
       },
@@ -12601,7 +12602,7 @@
         "declared_path": "/evaluation/{mechanism}/datasets/{dataset_id}/cases/from-task",
         "file": "back/app/lab/router.py",
         "handler": "import_mechanism_task_case",
-        "line": 804,
+        "line": 825,
         "method": "POST",
         "module": "app.lab"
       },
@@ -12610,7 +12611,7 @@
         "declared_path": "/evaluation/{mechanism}/datasets/{dataset_id}/preview",
         "file": "back/app/lab/router.py",
         "handler": "preview_lab_input",
-        "line": 130,
+        "line": 151,
         "method": "POST",
         "module": "app.lab"
       },
@@ -12619,7 +12620,7 @@
         "declared_path": "/evaluation/{mechanism}/datasets/{dataset_id}/runs",
         "file": "back/app/lab/router.py",
         "handler": "read_mechanism_runs",
-        "line": 972,
+        "line": 993,
         "method": "GET",
         "module": "app.lab"
       },
@@ -12628,8 +12629,17 @@
         "declared_path": "/evaluation/{mechanism}/datasets/{dataset_id}/runs",
         "file": "back/app/lab/router.py",
         "handler": "start_mechanism_run",
-        "line": 951,
+        "line": 972,
         "method": "POST",
+        "module": "app.lab"
+      },
+      {
+        "authorized": true,
+        "declared_path": "/evaluation/{mechanism}/runs/compare",
+        "file": "back/app/lab/router.py",
+        "handler": "compare_benchmarks",
+        "line": 91,
+        "method": "GET",
         "module": "app.lab"
       },
       {
@@ -12637,7 +12647,7 @@
         "declared_path": "/evaluation/{mechanism}/runs/{run_id}",
         "file": "back/app/lab/router.py",
         "handler": "delete_mechanism_run",
-        "line": 1000,
+        "line": 1021,
         "method": "DELETE",
         "module": "app.lab"
       },
@@ -12646,7 +12656,7 @@
         "declared_path": "/evaluation/{mechanism}/runs/{run_id}",
         "file": "back/app/lab/router.py",
         "handler": "read_mechanism_run",
-        "line": 988,
+        "line": 1009,
         "method": "GET",
         "module": "app.lab"
       },
@@ -12655,7 +12665,7 @@
         "declared_path": "/evaluation/{mechanism}/runs/{run_id}/analyze",
         "file": "back/app/lab/router.py",
         "handler": "analyze_mechanism_run",
-        "line": 1014,
+        "line": 1035,
         "method": "POST",
         "module": "app.lab"
       },
@@ -12664,7 +12674,7 @@
         "declared_path": "/evaluation/{mechanism}/runs/{run_id}/cancel",
         "file": "back/app/lab/router.py",
         "handler": "cancel_mechanism_run",
-        "line": 1032,
+        "line": 1053,
         "method": "POST",
         "module": "app.lab"
       },
@@ -12673,7 +12683,7 @@
         "declared_path": "/evaluation/{mechanism}/runs/{run_id}/human-review",
         "file": "back/app/lab/router.py",
         "handler": "read_human_review",
-        "line": 104,
+        "line": 125,
         "method": "GET",
         "module": "app.lab"
       },
@@ -12682,7 +12692,7 @@
         "declared_path": "/evaluation/{mechanism}/runs/{run_id}/human-review",
         "file": "back/app/lab/router.py",
         "handler": "submit_human_review",
-        "line": 117,
+        "line": 138,
         "method": "POST",
         "module": "app.lab"
       },
@@ -12691,7 +12701,7 @@
         "declared_path": "/evaluation/{mechanism}/runs/{run_id}/rejudge",
         "file": "back/app/lab/router.py",
         "handler": "rejudge_benchmark",
-        "line": 143,
+        "line": 164,
         "method": "POST",
         "module": "app.lab"
       },
@@ -12700,7 +12710,7 @@
         "declared_path": "/evaluation/{mechanism}/runs/{run_id}/resume",
         "file": "back/app/lab/router.py",
         "handler": "resume_benchmark",
-        "line": 156,
+        "line": 177,
         "method": "POST",
         "module": "app.lab"
       },
@@ -16355,6 +16365,7 @@
       },
       {
         "files": [
+          "front/app/lab/components/LabComparisonDialog.vue",
           "front/app/lab/components/LabHumanReviewDialog.vue",
           "front/app/lab/components/LabSyntheticDatasetDialog.vue",
           "front/app/lab/components/LabWorkbench.vue",
@@ -16388,6 +16399,7 @@
       },
       {
         "files": [
+          "front/app/lab/components/LabComparisonDialog.vue",
           "front/app/lab/components/LabResultsPanel.vue",
           "front/app/lab/components/LabValueEditor.vue",
           "front/app/lab/components/LabWorkbench.vue",

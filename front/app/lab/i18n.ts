@@ -1,3 +1,62 @@
+const comparisonFr = {
+  title: 'Avant / après', before: 'Avant', after: 'Après', dataset: 'Jeu de données', run: 'Évaluation',
+  help: 'Choisissez deux évaluations et le changement étudié. Les cas sont appariés par entrée, référence et répétition, même dans des jeux de données différents.',
+  recentRuns: 'Les 500 évaluations les plus récentes du jeu de données sont proposées.',
+  noRuns: 'Aucune évaluation dans ce jeu de données.', retry: 'Réessayer', axis: 'Changement étudié',
+  axes: { model: 'Modèle', prompt: 'Prompt', parameters: 'Paramètres' }, compare: 'Comparer', swap: 'Inverser avant et après',
+  compatible: 'Configurations compatibles pour le changement étudié sur cette page.',
+  incompatible: 'Comparaison non isolée ou appariement ambigu : les écarts ne prouvent pas une amélioration.',
+  blockers: { corpus: 'Corpus différents ou empreinte absente.', candidate: 'Modèles candidats différents ou empreinte absente.', judge: 'Juges différents ou campagne absente.', context: 'Contexte différent.', other_configuration: 'D’autres réglages ont changé.', ambiguous_case_pairing: 'Plusieurs résultats correspondent au même cas.' },
+  descriptive: 'Les écarts sont descriptifs (après − avant), sans garantie statistique. Cette liste part des cas exécutés « avant » : inversez les évaluations pour voir les cas présents uniquement « après ».',
+  incomplete: 'Au moins une évaluation est incomplète. Des exécutions ou jugements peuvent manquer ; relancez la comparaison après leur achèvement.',
+  progress: 'Cas exécutés : avant {before}/{beforeTotal} · après {after}/{afterTotal}.',
+  counts: 'Page affichée : {increased} scores en hausse · {decreased} en baisse · {equal} identiques · {unknown} sans score comparable.',
+  noSummary: 'Aucun bilan de progression n’est calculé pour ces configurations.',
+  empty: 'Aucun cas exécuté à comparer sur cette page.', unnamed: 'Cas sans nom',
+  pairing: { missing: 'Aucun résultat correspondant après.', ambiguous: 'Appariement ambigu : aucun résultat après n’a été choisi.' },
+  deltas: 'Écarts observés : score {score} points · coût {cost} USD · durée {duration} s.',
+  metrics: 'Score {score} % · coût {cost} USD · durée {duration} s.', unjudged: 'Sans jugement', evidence: 'Contrôles et jugement',
+  pageSize: 'Cas par page', previous: 'Précédent', next: 'Suivant', page: 'Page {number}', loadError: 'Impossible de charger la comparaison.',
+}
+const comparisonEn: typeof comparisonFr = {
+  title: 'Before / after', before: 'Before', after: 'After', dataset: 'Dataset', run: 'Evaluation',
+  help: 'Choose two evaluations and the change being studied. Cases are paired by input, reference and repetition, including across different datasets.',
+  recentRuns: 'The 500 most recent evaluations of the dataset are available.',
+  noRuns: 'No evaluations in this dataset.', retry: 'Retry', axis: 'Change being studied',
+  axes: { model: 'Model', prompt: 'Prompt', parameters: 'Parameters' }, compare: 'Compare', swap: 'Swap before and after',
+  compatible: 'Compatible configurations for the selected change on this page.',
+  incompatible: 'The comparison is not isolated or pairing is ambiguous: differences do not prove an improvement.',
+  blockers: { corpus: 'Different corpora or missing fingerprint.', candidate: 'Different candidate models or missing fingerprint.', judge: 'Different judges or missing campaign.', context: 'Different context.', other_configuration: 'Other settings have changed.', ambiguous_case_pairing: 'Multiple results match the same case.' },
+  descriptive: 'Differences are descriptive (after − before), without statistical guarantees. This list starts from cases executed “before”: swap evaluations to see cases present only “after”.',
+  incomplete: 'At least one evaluation is incomplete. Executions or judgments may be missing; compare again after completion.',
+  progress: 'Executed cases: before {before}/{beforeTotal} · after {after}/{afterTotal}.',
+  counts: 'Displayed page: {increased} scores increased · {decreased} decreased · {equal} unchanged · {unknown} without comparable scores.',
+  noSummary: 'No progress summary is calculated for these configurations.',
+  empty: 'No executed cases to compare on this page.', unnamed: 'Unnamed case',
+  pairing: { missing: 'No matching result after.', ambiguous: 'Ambiguous pairing: no after result was selected.' },
+  deltas: 'Observed differences: score {score} points · cost {cost} USD · duration {duration} s.',
+  metrics: 'Score {score} % · cost {cost} USD · duration {duration} s.', unjudged: 'Unjudged', evidence: 'Checks and judgment',
+  pageSize: 'Cases per page', previous: 'Previous', next: 'Next', page: 'Page {number}', loadError: 'Unable to load the comparison.',
+}
+const comparisonZh: typeof comparisonFr = {
+  title: '前后对比', before: '之前', after: '之后', dataset: '数据集', run: '评估',
+  help: '选择两次评估及研究的变更。案例按输入、参考答案和重复次数配对，也可跨数据集比较。',
+  recentRuns: '可选择该数据集最近的 500 次评估。',
+  noRuns: '此数据集没有评估。', retry: '重试', axis: '研究的变更',
+  axes: { model: '模型', prompt: '提示词', parameters: '参数' }, compare: '比较', swap: '交换前后',
+  compatible: '本页的配置与所选变更兼容。', incompatible: '比较未隔离变更或配对存在歧义：差异不能证明有所改善。',
+  blockers: { corpus: '语料不同或缺少指纹。', candidate: '候选模型不同或缺少指纹。', judge: '评审模型不同或缺少评审批次。', context: '上下文不同。', other_configuration: '其他设置已更改。', ambiguous_case_pairing: '同一案例匹配到多个结果。' },
+  descriptive: '差异仅描述观察值（之后减之前），不提供统计保证。列表以“之前”执行的案例为准：交换评估可查看仅在“之后”存在的案例。',
+  incomplete: '至少一次评估尚未完成，可能缺少执行结果或评审。完成后请重新比较。',
+  progress: '已执行案例：之前 {before}/{beforeTotal} · 之后 {after}/{afterTotal}。',
+  counts: '当前页：{increased} 项分数上升 · {decreased} 项下降 · {equal} 项不变 · {unknown} 项无可比分数。',
+  noSummary: '不为这些配置计算进展汇总。', empty: '本页没有可比较的已执行案例。', unnamed: '未命名案例',
+  pairing: { missing: '之后没有匹配结果。', ambiguous: '配对存在歧义：未选择之后的结果。' },
+  deltas: '观察差异：分数 {score} 分 · 费用 {cost} 美元 · 耗时 {duration} 秒。',
+  metrics: '分数 {score} % · 费用 {cost} 美元 · 耗时 {duration} 秒。', unjudged: '未评审', evidence: '检查与评审',
+  pageSize: '每页案例', previous: '上一页', next: '下一页', page: '第 {number} 页', loadError: '无法加载比较。',
+}
+
 const insightsFr = {
   agentReviews: 'Évaluations par des agents', agentReviewAuthor: 'Agent {agent} · Campagne {campaign}',
   coherence: 'Cohérence', averageCoherence: 'Cohérence moyenne', coherenceValue: 'Cohérence : {value}',
@@ -154,6 +213,7 @@ export default {
     },
     evaluation: {
       insights: insightsFr,
+      comparison: comparisonFr,
       synthetic: syntheticFr,
       contract: {
         "variable": "Variable testée",
@@ -825,6 +885,7 @@ export default {
     },
     evaluation: {
       insights: insightsEn,
+      comparison: comparisonEn,
       synthetic: syntheticEn,
       contract: {
         "variable": "Tested variable",
@@ -1493,6 +1554,7 @@ export default {
     nav: { lab: '实验室', lab_desc: '测试并比较 AI 机制' },
     evaluation: {
       insights: insightsZh,
+      comparison: comparisonZh,
       synthetic: syntheticZh,
       contract: {
   "variable": "测试变量",

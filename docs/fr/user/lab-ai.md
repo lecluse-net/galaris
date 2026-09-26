@@ -154,6 +154,28 @@ continue un benchmark annulé avec ses réglages figés. **Rejuger les sorties c
 crée une campagne indépendante et ne rappelle pas le candidat. Les campagnes
 précédentes restent consultables. Relancer depuis le jeu crée une nouvelle exécution.
 
+## Comparer avant et après
+
+Dans **Benchmarks**, ouvrez **Avant / après**, disponible dans les onze labs avec le droit
+de lecture. Choisissez le jeu et l'évaluation de chaque côté, puis le changement étudié :
+modèle, prompt ou paramètres. Les sélecteurs proposent les 500 évaluations les plus récentes
+de chaque jeu. Cliquez sur **Comparer** : les entrées, références et répétitions identiques
+sont appariées, même entre deux jeux distincts.
+
+Les réponses sont côte à côte sur ordinateur et empilées sur mobile, avec leurs scores,
+verdicts, coûts, durées et défaillances critiques. Dépliez les contrôles et jugements pour
+lire les preuves. Un score nul reste zéro ; un jugement absent reste absent. Les écarts
+affichent **après moins avant**, sans garantie statistique ni décision automatique de promotion.
+Les changements de corpus, de juge ou d'autres réglages incompatibles sont signalés ; aucun
+bilan de progression n'est alors calculé. Les évaluations incomplètes portent un avertissement.
+
+Les compteurs décrivent uniquement la page affichée, avec 50 cas par défaut et les choix
+10, 20, 50, 100 ou 500. Un appariement ambigu ne choisit pas arbitrairement une réponse.
+La liste part des cas exécutés avant : utilisez **Inverser avant et après**, puis **Comparer**
+pour examiner les cas présents uniquement après. Relancez la comparaison après un nouveau
+résultat ou jugement ; elle ne se rafraîchit pas automatiquement. La lecture ne lance aucune
+inférence et ne modifie ni les évaluations ni les réglages de production.
+
 ## Tasks
 
 L’analyse interactive d’une Task reste disponible : sélectionnez la Task, ajoutez

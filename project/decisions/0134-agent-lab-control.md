@@ -52,6 +52,13 @@ Les résultats des opérations longues possèdent aussi une continuation par car
 Le comparateur explicite l'axe étudié, les différences de corpus/configuration/juge,
 les sorties manquantes et les appariements ambigus. Ses écarts restent descriptifs.
 
+Le Workbench des onze Labs expose aussi ce comparateur en lecture via HTTP et un dialogue
+commun « Avant / après ». HTTP et MCP délèguent au même service de comparaison ; seule la
+réponse HTTP ajoute les sorties et erreurs nécessaires à la lecture côte à côte. La route
+exige le droit de lecture ou d'édition du mécanisme demandé et vérifie l'appartenance des
+deux runs. Aucun appel de modèle ni écriture n'intervient. Les compteurs restent limités
+à la page courante ; l'inversion permet d'examiner les cas présents uniquement à droite.
+
 ## Limites et validation
 
 Le budget des benchmarks reste un seuil entre évaluations, susceptible d'être dépassé
@@ -65,6 +72,9 @@ onze contrats, les doublons, conflits, révocations, générations durables, com
 revues et la projection du skill. Les tests existants des captures, deux passes, budgets,
 publications et revues humaines restent applicables. `lab-insights.spec.mjs` vérifie la
 distinction des avis d'agents et des scores automatiques sur ordinateur et mobile.
+`test_comparison.py` couvre le contrat HTTP des onze mécanismes, les droits, les scores
+absents ou nuls et la pagination. `lab-comparison.spec.mjs` traverse le dialogue commun,
+les deux formats d'écran, les erreurs, les réponses tardives et l'ouverture dans chaque Lab.
 
 L'étalonnage statistique, les tendances, les gardes de promotion et la qualification
 avec des fournisseurs réels restent dans le plan qualité du Lab.

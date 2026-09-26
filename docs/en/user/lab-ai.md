@@ -136,6 +136,26 @@ benchmark with its frozen settings. **Rejudge saved outputs** creates an indepen
 campaign without calling the candidate. Previous campaigns remain available. Starting
 again from the dataset creates a new execution.
 
+## Compare before and after
+
+Under **Benchmarks**, open **Before / after**, available in all eleven labs with read access.
+Choose a dataset and evaluation on each side, then the change being studied: model, prompt,
+or parameters. Selectors offer the 500 most recent evaluations in each dataset. Click
+**Compare**: identical inputs, references and repetitions are paired, even across datasets.
+
+Answers appear side by side on desktop and stacked on mobile, with scores, verdicts, costs,
+durations and critical failures. Expand checks and judgments to inspect the evidence. Zero
+scores remain zero; missing judgments remain missing. Differences show **after minus before**,
+without statistical guarantees or automatic promotion decisions. Changes to corpora, judges
+or other incompatible settings are flagged and suppress the progress summary. Incomplete
+evaluations carry a warning.
+
+Counts describe only the displayed page, with 50 cases by default and options of 10, 20, 50,
+100 or 500. Ambiguous pairing never arbitrarily selects an answer. The list starts from cases
+executed before: use **Swap before and after**, then **Compare** to inspect cases present only
+after. Compare again after new results or judgments; the view does not refresh automatically.
+Reading starts no inference and changes neither evaluations nor production settings.
+
 ## Tasks
 
 Interactive Task analysis remains available: select a Task, optionally supply human

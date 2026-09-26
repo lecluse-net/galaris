@@ -36,6 +36,8 @@ from . import judgment_service, human_review_service
 from .contracts import LabInput
 from . import synthetic_service
 from .synthetic_schemas import SyntheticDatasetRequest, SyntheticDatasetResult
+from . import comparison_service
+from .comparison_schemas import ComparisonAxis, RunComparison
 from .capture_service import CaptureParametersMismatch
 from .schemas import CaptureRequest, LabInputPreview, HumanReviewCreate, HumanReviewQueue
 from .schemas import (
@@ -82,6 +84,25 @@ from .schemas import (
 )
 
 router = APIRouter(prefix="/evaluation", tags=["task-analysis-lab"])
+
+
+@router.get("/{mechanism}/runs/compare", response_model=RunComparison)
+@authorize(privileges=MECHANISM_READ_PRIVILEGES, assertion=LabMechanismReadPrivilegeAssertion)
+async def compare_benchmarks(
+    mechanism: EvaluationMechanism,
+    left_run_id: UUID,
+    right_run_id: UUID,
+    axis: ComparisonAxis = "model",
+    offset: Annotated[int, Query(ge=0)] = 0,
+    limit: Annotated[int, Query(ge=1, le=500)] = 50,
+) -> RunComparison:
+    try:
+        return RunComparison.model_validate(await comparison_service.compare(
+            mechanism, left_run_id, right_run_id, axis,
+            offset=offset, limit=limit, include_outputs=True,
+        ))
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
 
 
 @router.post("/{mechanism}/datasets/synthetic", response_model=SyntheticDatasetResult, status_code=201)

@@ -62,8 +62,28 @@ export interface LabPreview {
   parameters: Record<string, unknown>
   origins: Record<string, 'dataset' | 'item'>
 }
+export type ComparisonAxis = 'model' | 'prompt' | 'parameters'
+export interface ComparisonItem {
+  left_result_id: string; right_result_id: string | null; name: string | null; repetition: number
+  pairing: 'matched' | 'missing' | 'ambiguous'
+  score_delta: number | null; cost_delta: number | null; duration_delta: number | null
+  left_score: number | null; right_score: number | null
+  left_verdict: string | null; right_verdict: string | null
+  left_cost: number; right_cost: number | null; left_duration: number; right_duration: number | null
+  left_checks: Record<string, unknown>; right_checks: Record<string, unknown> | null
+  left_judgment: JudgeOutput | null; right_judgment: JudgeOutput | null
+  input: unknown; reference: unknown; left_output: unknown; right_output: unknown
+  left_error: string | null; right_error: string | null
+}
+export interface RunComparison {
+  axis: ComparisonAxis; comparable: boolean; differences: string[]; blockers: string[]
+  left: LabRun; right: LabRun; items: ComparisonItem[]; next_offset: number | null
+}
 const base = (key: LabKey) => `/evaluation/${key}`
 export const labWorkbenchService = {
+  async compare(key: LabKey, left_run_id: string, right_run_id: string, axis: ComparisonAxis, offset: number, limit: number, signal?: AbortSignal) {
+    return (await api.get<RunComparison>(`${base(key)}/runs/compare`, { params: { left_run_id, right_run_id, axis, offset, limit }, signal })).data
+  },
   async generateDataset(key: LabKey, data: SyntheticDatasetRequest) {
     return (await api.post<{ dataset: LabDataset; cost: number }>(`${base(key)}/datasets/synthetic`, data, { timeout: 200000 })).data
   },
