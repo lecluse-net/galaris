@@ -2291,7 +2291,9 @@ is not certification of every provider combination.
 - Development `make docs-update` prepares sources, checks agreement with the live backend, synchronises
   shared text search and verifies FR/EN journey search/read. It changes no agent rights/skills;
   stale mounts/images fail explicitly.
-- Source-based `make update` prepares docs before build then refreshes/verifies the common index.
+- Maps are generated and checked in development with `make docs-prepare`, then committed
+  with their source changes. In every environment, source-based `make update` packages the
+  prepared docs without generation or static checks, then refreshes/verifies the common index.
   `RELEASE_DIR` uses the qualified embedded corpus. Documentary failure prevents success reporting,
   but does not automatically restore a replaced version. Vector indexing progresses separately
   without blocking text search or update completion.

@@ -83,9 +83,11 @@ sémantique : actualiser les guides et parcours concernés en français et en an
 
 Avant publication, lancer `make validate` sur les sources préparées. En production, utiliser
 la mise à jour normale de la version validée : `make update`, ou `make update RELEASE_DIR=…`
-pour un paquet d’images qualifié. Depuis les sources, `make update` lance automatiquement
-`docs-prepare` avant la construction : les cartes du projet et des menus sont régénérées,
-puis embarquées dans les images. Après démarrage, la commande actualise l’index textuel commun
+pour un paquet d’images qualifié. Générer et vérifier les cartes avec `make docs-prepare`
+en développement, puis les committer avec les changements de sources. Dans tous les
+environnements, dont `dev`, `demo` et `prod`, `make update` embarque cette documentation
+préparée, sans régénérer les cartes ni relancer les contrôles documentaires statiques.
+Après démarrage, la commande actualise l’index textuel commun
 et vérifie le résultat. Aucun `docs-update` préalable n’est nécessaire.
 Avec `RELEASE_DIR`, elle actualise cet index depuis la documentation déjà générée et embarquée
 dans les images qualifiées, sans modifier ces images. Un échec de l’actualisation ou de son

@@ -8,8 +8,8 @@ Les commandes documentaires hors ligne produisent les mêmes cartes déterminist
 à partir du checkout courant, sans accès aux secrets, aux volumes applicatifs ni au
 réseau, et sans dépendre de la stack applicative. Le générateur de navigation évalue du
 TypeScript du dépôt : il est traité comme du code exécutable, jamais comme une entrée
-inerte. Une préparation documentaire en échec bloque la mise à jour avant le build
-applicatif plutôt que de publier un état partiel.
+inerte. Une préparation documentaire en échec ne publie aucun état partiel et empêche
+la qualification de la version en développement.
 
 ## Décision
 
@@ -54,6 +54,13 @@ de qualifier un état obsolète.
 backend actif avant de rafraîchir son index : ce dernier accès à la base reste légitime. Les
 contrôles statiques et la qualification de release exécutent les mêmes contrôles confinés,
 sans régénération silencieuse.
+
+Les cartes sont générées et vérifiées en développement avec `make docs-prepare`, puis
+committées avec les changements de sources. Dans tous les environnements, `make update`
+consomme cette documentation préparée sans génération ni contrôle documentaire statique.
+La qualification avant publication porte ces contrôles ; le déploiement actualise seulement
+l'index documentaire et vérifie son résultat. Cette séparation évite qu'une mise à jour
+laisse des modifications locales empêchant la sélection Git suivante.
 
 ## Limites
 

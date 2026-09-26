@@ -21,7 +21,7 @@ The `Makefile` remains authoritative. Standard installation: **`make install` â†
 | `restart` | Run `stop`, then `start`. |
 | `restart-service` | Restart one service without rebuilding; `SERVICE` is required. |
 | `status` | Display container status; optionally filter with `SERVICE`. |
-| `update` | Regenerate documentation, build and deploy existing sources, then refresh the documentation index; only `VERSION` triggers fetching a Git tag or branch. Accepts `RELEASE_DIR` outside dev, without Git, using the bundle's packaged documentation. |
+| `update` | Build and deploy existing sources with their prepared documentation, then refresh the documentation index; no map generation or static documentation checks. Only `VERSION` triggers fetching a Git tag or branch. Accepts `RELEASE_DIR` outside dev, without Git, using the bundle's packaged documentation. |
 | `update VERSIONS` | List all tags (highest versions first), then all branches alphabetically, from the configured Git remote, without deploying or modifying local sources. |
 | `logs` | Follow all logs. |
 | `logs-back`, `logs-front`, `logs-search` | Follow the selected service's logs. |

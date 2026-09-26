@@ -238,11 +238,12 @@ an explicit label or prompt.
 - Regenerate `docs/fr/architecture/generated/` and `docs/en/architecture/generated/` with
   `make project-context`; do not edit their files by hand.
 - After documentation or navigation changes, update the FR/EN user journeys and run
-  `make docs-prepare` before validation. Use `make docs-update` to propagate these sources to
-  shared search in development. When running from source, `make update` automatically runs
-  `docs-prepare` before the build, then refreshes the active backend's index and checks the
-  result before reporting success; do not bypass documentation failures by copying files into
-  a container or changing agent permissions.
+  `make docs-prepare` in development before committing and validation. Commit generated maps
+  with their source changes. Use `make docs-update` to propagate these sources to shared search
+  in development. In every environment, `make update` consumes prepared documentation without
+  regenerating it or running static documentation checks. After startup, it refreshes the active
+  backend's index and checks the result before reporting success; do not bypass indexing failures
+  by copying files into a container or changing agent permissions.
 - Reduce `back/architecture.toml` and `back/architecture-baseline.json` when a dependency,
   private import, or cycle disappears. Never increase the baseline without explicit review.
 - Add or update a decision in `project/decisions/` when a structural choice changes.

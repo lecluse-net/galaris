@@ -151,30 +151,44 @@ for app_mode in prod preprod pp test demo custom DEV ''; do
     fi
 done
 
-# Stale generated docs are repaired automatically before building in both modes.
+# Updates consume prepared documentation in every environment, even if maps are stale.
+# Freshness and corpus validation belong to development and release qualification.
 # Docker is the only substituted boundary; the real Make targets orchestrate the update.
-for app_mode in dev prod; do
-    UPDATE_TEST_STALE_DOCS=1 run_update APP_ENV="$app_mode"
-    test -f "$UPDATE_TEST_LOG.project"
-    test -f "$UPDATE_TEST_LOG.navigation"
+map_files=()
+for locale in fr en; do
+    mkdir -p "$case_dir/docs/$locale/architecture/generated"
+    for name in project-map navigation; do
+        for extension in json md; do
+            map_file="$case_dir/docs/$locale/architecture/generated/$name.$extension"
+            printf 'synthetic committed %s %s %s\n' "$locale" "$name" "$extension" > "$map_file"
+            map_files+=("$map_file")
+        done
+    done
+done
+sha256sum "${map_files[@]}" > "$case_dir/maps.before"
+for app_mode in dev prod demo pp test custom DEV ''; do
+    UPDATE_TEST_STALE_DOCS=1 UPDATE_TEST_FAILURE=documentation_sources run_update APP_ENV="$app_mode"
+    sha256sum --status --check "$case_dir/maps.before"
+    if grep -Eq 'project_context.py|navigation-context.mjs|architecture_check.py|app.documentation check' "$UPDATE_TEST_LOG"; then
+        echo 'FAIL: update reran development documentation generation or checks' >&2
+        exit 1
+    fi
     awk '
-        /project_context.py --root \/repo --output \/output$/ { project = NR }
-        /navigation-context.mjs --root \/repo --output \/output$/ { navigation = NR }
         / build( --pull)?$/ { build = NR }
         / up -d --wait / { ready = NR }
         /app.documentation refresh --expected-revision/ { refresh = NR }
-        END { exit !(project && navigation && build > project && build > navigation && ready > build && refresh > ready) }
+        END { exit !(build && ready > build && refresh > ready) }
     ' "$UPDATE_TEST_LOG"
 done
 
 for app_mode in dev prod; do
-    for failure in build data_permissions reset readiness documentation documentation_sources documentation_revision; do
+    for failure in build data_permissions reset readiness documentation documentation_revision; do
         export UPDATE_TEST_FAILURE="$failure"
         if run_update APP_ENV="$app_mode"; then
             echo "FAIL: $app_mode update hid a $failure failure" >&2
             exit 1
         fi
-        if [[ "$failure" == build || "$failure" == data_permissions || "$failure" == documentation_sources ]]; then
+        if [[ "$failure" == build || "$failure" == data_permissions ]]; then
             # A failed build must leave the currently running application alone.
             if grep -Eq ' (down|up|rm|stop)( |$)' "$UPDATE_TEST_LOG"; then
                 echo "FAIL: $app_mode update restarted after a failed build" >&2

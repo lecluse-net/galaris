@@ -3206,8 +3206,10 @@ existence n’équivaut pas à une certification de toutes les combinaisons de f
   vérifie leur concordance avec celles du backend actif, synchronise l’index textuel partagé
   et contrôle recherche et lecture des parcours FR/EN. Aucun droit d’agent ni affectation de
   compétence n’est modifié. Un ancien montage ou une image périmée provoque un échec explicite.
-- **Documentation embarquée dans la mise à jour.** Depuis les sources, `make update` lance
-  `docs-prepare` avant le build, puis actualise et vérifie l’index commun après démarrage.
+- **Documentation embarquée dans la mise à jour.** Les cartes sont générées et vérifiées
+  en développement avec `make docs-prepare`, puis committées avec leurs sources. Dans tous
+  les environnements, `make update` embarque cette documentation sans génération ni contrôle
+  statique, puis actualise et vérifie l’index commun après démarrage.
   Avec `RELEASE_DIR`, l’index utilise le corpus déjà embarqué dans les images qualifiées.
   Un échec documentaire empêche d’annoncer le succès de la mise à jour ; il ne restaure pas
   automatiquement une ancienne version déjà remplacée. L’indexation vectorielle progresse

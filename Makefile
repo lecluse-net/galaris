@@ -231,8 +231,6 @@ ifneq ($(if $(filter 0,$(GIT_UPDATE)),,$(strip $(VERSION))),)
 else
 	@bash bin/update-secrets.sh
 	@bash bin/init-search-config.sh
-	@echo "📚 Updating generated documentation before building images..."
-	@$(MAKE) docs-prepare
 ifeq ($(APP_ENV),dev)
 	@echo "🔨 Rebuilding development images with cache..."
 	docker compose $(COMPOSE_FILES) build

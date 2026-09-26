@@ -78,8 +78,10 @@ in both French and English.
 
 Before publication, run `make validate` on prepared sources. In production, use the normal
 update of the validated version: `make update`, or `make update RELEASE_DIR=…` for a qualified
-image bundle. From sources, `make update` automatically runs `docs-prepare` before building:
-project and menu maps are regenerated, then packaged in the images. After startup, it updates
+image bundle. Generate and check maps with `make docs-prepare` in development, then commit
+them with their source changes. In every environment, including `dev`, `demo` and `prod`,
+`make update` packages this prepared documentation without regenerating maps or rerunning
+static documentation checks. After startup, it updates
 the shared lexical index and verifies the result. No prior `docs-update` is needed.
 With `RELEASE_DIR`, it updates that index from the documentation already generated and packaged
 in the qualified images, without modifying those images. A failed refresh or verification
