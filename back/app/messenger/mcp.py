@@ -19,6 +19,7 @@ from uuid import UUID
 from loguru import logger
 
 from app.tools.mcp_loader import McpToolContext, context_language, mcp_tool
+from core.database import release_db_transaction
 from core.i18n import default_language, is_supported, render_prompt, t
 from .facade import MessengerFacade, normalize_kind
 from .interface import NotSupported
@@ -346,6 +347,9 @@ async def mcp_send_message_to_user(
                 if collab.collab_rounds(parent) >= runtime_settings.TASK_ASK_AGENT_MAX_ROUNDS:
                     return _message(_task_language(parent), "round_limit")
                 room = await messenger.ensure_direct_room(user_id)
+                # Directory/room synchronization must be visible to the independent
+                # outbound journal transaction before the provider accepts a message.
+                await release_db_transaction()
                 await messenger.send_to_room(room.id, message)
                 await collab.dispatch_question(
                     parent=parent,
@@ -361,6 +365,10 @@ async def mcp_send_message_to_user(
                 )
                 return _message(_task_language(parent), "peer_waiting")
 
+        # Recipient search refreshes messenger_users in this tool's transaction.
+        # The outbound journal uses another transaction and resolves those same
+        # identities; keeping the search locks would block our own receipt.
+        await release_db_transaction()
         await messenger.send_to_user(user_id, message)
         return _message(language, "message_sent")
     except NotSupported as exc:

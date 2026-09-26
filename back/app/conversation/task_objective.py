@@ -91,6 +91,9 @@ class _GeneratedTaskFields(BaseModel):
         clean = value.strip()
         if not clean:
             raise ValueError("Task objective cannot be empty.")
+        # Reject invalid editorial HTML while structured output can still retry,
+        # before Task admission invokes the same content contract.
+        normalize_html(clean)
         return clean
 
 

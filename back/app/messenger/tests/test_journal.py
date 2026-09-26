@@ -68,6 +68,86 @@ async def _connection(db: AsyncSession) -> Connection:
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("delivery", ["accepted", "denied", "provider_error"])
+async def test_private_message_search_and_delivery_keep_a_durable_receipt(
+    committed_database, monkeypatch, delivery,
+):
+    import asyncio
+    from app.messenger import mcp, events
+    from app.messenger.models import Capability
+    from app.tools.mcp_loader import McpToolContext
+    from core.database import get_db_session
+
+    async with get_db_session() as db:
+        owner = GalarisUser(email=f"sender-{uuid4().hex}@example.test", hashed_password="synthetic")
+        recipient = GalarisUser(email=f"recipient-{uuid4().hex}@example.test", hashed_password="synthetic")
+        db.add_all([owner, recipient])
+        await db.flush()
+        title = Title(label="Synthetic messenger", gender="X")
+        db.add(title)
+        await db.flush()
+        agent = Agent(user_id=owner.id if delivery == "denied" else recipient.id,
+                      title_id=title.id, first_name="Test", last_name="Sender",
+                      code=f"receipt-{uuid4().hex}", agent_driver="internal")
+        tool = Tool(code=f"receipt-{uuid4().hex}", label="Synthetic messenger",
+                    description="", connection_schema={})
+        db.add_all([agent, tool])
+        await db.flush()
+        connection = Connection(tool_id=tool.id, agent_id=agent.id, active=True)
+        db.add(connection)
+        await db.flush()
+        db.add(MessengerUser(tool_id=tool.id, external_id="human", display_name="Old name",
+                             galaris_user_id=recipient.id))
+        agent_id, tool_id, connection_id = agent.id, tool.id, connection.id
+
+    class Provider:
+        kind = "telegram"
+        self_id = "bot"
+        users_snapshot_complete = False
+        sent = 0
+
+        def supports(self, capability):
+            return capability in {Capability.SEND, Capability.SEARCH_USERS}
+
+        async def search_users(self, query):
+            return [User(id="human", display_name="Synthetic recipient", tool_id=tool_id)]
+
+        async def send_to_user(self, user_id, message):
+            if delivery == "provider_error":
+                raise ConnectionError("Synthetic provider unavailable")
+            self.sent += 1
+            return Message(id="accepted-message", platform=self.kind, tool_id=tool_id,
+                           recipient=User(id=user_id, tool_id=tool_id),
+                           room=Room(id="direct-room", kind="direct"), text=message)
+
+    provider = Provider()
+    provider.tool_id = tool_id
+    messenger = facade.MessengerFacade(provider, connection_id)
+    monkeypatch.setattr(mcp, "_resolve_context_messenger", AsyncMock(return_value=messenger))
+    monkeypatch.setattr(events, "message_sent", Signal("synthetic_outbound"))
+    async with get_db_session():
+        call = mcp.mcp_send_message_to_user(
+            McpToolContext(agent_id=agent_id, runtime="internal"),
+            "Synthetic recipient", "Synthetic message",
+        )
+        if delivery == "accepted":
+            await asyncio.wait_for(call, 3)
+        else:
+            with pytest.raises(RuntimeError, match="not authorized|Synthetic provider unavailable"):
+                await asyncio.wait_for(call, 3)
+
+    async with get_db_session() as db:
+        receipts = list(await db.scalars(select(MessageModel).where(
+            MessageModel.connection_id == connection_id,
+            MessageModel.direction == "outbound",
+        )))
+        assert len(receipts) == provider.sent == (1 if delivery == "accepted" else 0)
+        if receipts:
+            assert receipts[0].remote_message_id == "accepted-message"
+            assert receipts[0].text == "Synthetic message"
+
+
+@pytest.mark.asyncio
 async def test_journal_deduplicates_and_returns_chronological_history(
     db: AsyncSession,
 ) -> None:

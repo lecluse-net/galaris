@@ -13,6 +13,43 @@ from core.params import Params
 from core.util import visible_text
 
 
+@pytest.mark.asyncio
+@pytest.mark.parametrize("invalid_html", [
+    "<unsupported>Keep the request</unsupported>",
+    "<p><strong>Keep the request</p>",
+])
+async def test_generated_task_html_is_corrected_before_admission(monkeypatch, invalid_html):
+    from pydantic_ai.messages import ModelResponse, ToolCallPart
+    from pydantic_ai.models.function import FunctionModel
+    from app.llm import structured_service
+
+    requests = 0
+    valid_html = "<p>Preserve <strong>all requirements</strong> &amp; the source.</p>"
+
+    def respond(messages, info):
+        nonlocal requests
+        requests += 1
+        return ModelResponse(parts=[ToolCallPart(info.output_tools[0].name, {
+            "label": "Synthetic report",
+            "objective": invalid_html if requests == 1 else valid_html,
+        })])
+
+    monkeypatch.setattr(structured_service, "build_model_for_llm",
+                        AsyncMock(return_value=FunctionModel(respond)))
+    monkeypatch.setattr(structured_service, "estimate_cost_from_usage", lambda *_: 0.0)
+    result = await structured_service.run_structured(
+        llm=SimpleNamespace(), output_type=task_objective._GeneratedTaskFields,
+        prompt="Prepare the report.", system_prompt="Return editorial HTML.",
+        task_id=None, agent_id=None, temperature=0, request_limit=3,
+        output_retries=2, count_tokens_before_request=False,
+    )
+
+    objective = task_objective.compose_task_objective(_turn(), result.output.objective)
+    assert requests == 2
+    assert visible_text(valid_html) in visible_text(objective)
+    assert _turn().objective in visible_text(objective)
+
+
 def _turn() -> ConversationTurn:
     return ConversationTurn(
         room_id=uuid4(),
