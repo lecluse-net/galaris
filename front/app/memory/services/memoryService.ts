@@ -300,6 +300,13 @@ export const memoryService = {
     return response.data
   },
 
+  async importDocumentImage(id: string, agentId: number | null, url: string, signal: AbortSignal): Promise<DocumentAttachment> {
+    const response = await api.post<DocumentAttachment>(`/memory/documents/${id}/import-image`, { url }, {
+      params: { actor_agent_id: agentId }, signal,
+    })
+    return response.data
+  },
+
   async documentAttachmentInfo(id: string, attachmentId: string, agentId: number | null): Promise<DocumentAttachment> {
     const response = await api.get<DocumentAttachment>(`/memory/documents/${id}/attachments/${attachmentId}/info`, { params: { agent_id: agentId } })
     return response.data

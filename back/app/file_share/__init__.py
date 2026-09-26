@@ -144,3 +144,7 @@ __all__ = [
 from .web_preview import WebMetadata, web_metadata
 
 from .web_preview import document_web_preview as document_web_preview
+from .web_preview import document_web_image
+from core.preview import register_web_image_provider
+
+register_web_image_provider(document_web_image)

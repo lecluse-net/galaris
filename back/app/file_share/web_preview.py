@@ -17,6 +17,14 @@ _RESOURCE_PREVIEW_BYTES = 64 * 1_048_576
 _YOUTUBE_ID_PATTERN = re.compile(r"^[A-Za-z0-9_-]{11}$")
 _HTML_MEDIA_TYPES = {"text/html", "application/xhtml+xml"}
 
+
+async def document_web_image(url: str) -> bytes:
+    try:
+        response = await _read_web_bytes(url, max_bytes=10_000_000)
+    except (httpx.HTTPError, TimeoutError) as exc:
+        raise ValueError("The pasted image could not be downloaded") from exc
+    return response.content
+
 class _MetadataParser(HTMLParser):
     def __init__(self) -> None:
         super().__init__(convert_charrefs=True)

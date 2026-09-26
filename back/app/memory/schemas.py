@@ -205,7 +205,7 @@ class DocumentLinkRequest(BaseModel):
         from urllib.parse import urlsplit
         uri = urlsplit(value)
         if uri.scheme != "https" or not uri.hostname or uri.username or uri.password:
-            raise ValueError("Link cards require a public HTTPS URL")
+            raise ValueError("Document resources require a public HTTPS URL")
         return value
 
 

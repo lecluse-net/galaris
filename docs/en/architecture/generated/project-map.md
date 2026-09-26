@@ -17,7 +17,7 @@ tests remain authoritative for behavior.
 - 25 directly bidirectional domain pairs;
 - 1 strongly connected components;
 - 7 directly bidirectional frontend pairs;
-- 579 detected HTTP/WebSocket handlers;
+- 580 detected HTTP/WebSocket handlers;
 - 127 detected SQLAlchemy tables;
 - 183 detected native MCP tools;
 - 39 detected Vue pages.
@@ -266,7 +266,7 @@ tests remain authoritative for behavior.
 | `app.file_share` | `core.authorize` | `back/app/file_share/router.py` |
 | `app.file_share` | `core.i18n` | `back/app/file_share/bridges.py`, `back/app/file_share/file_share_service.py`, `back/app/file_share/messenger_transport.py` |
 | `app.file_share` | `core.params` | `back/app/file_share/resource_delivery.py` |
-| `app.file_share` | `core.preview` | `back/app/file_share/web_preview.py` |
+| `app.file_share` | `core.preview` | `back/app/file_share/__init__.py`, `back/app/file_share/web_preview.py` |
 | `app.file_share` | `core.util` | `back/app/file_share/messenger_transport.py`, `back/app/file_share/resource_service.py`, `back/app/file_share/transport.py`, `back/app/file_share/web_transport.py` |
 | `app.goal` | `app.agent` | `back/app/goal/events.py`, `back/app/goal/goal_service.py`, `back/app/goal/models.py`, `back/app/goal/router.py`, `back/app/goal/runner.py` |
 | `app.goal` | `app.connection` | `back/app/goal/mcp.py`, `back/app/goal/models.py`, `back/app/goal/resource_facade.py` |
@@ -364,10 +364,10 @@ tests remain authoritative for behavior.
 | `app.memory` | `core.dbadmin` | `back/app/memory/dbadmin.py`, `back/app/memory/html_migration.py` |
 | `app.memory` | `core.i18n` | `back/app/memory/automation.py`, `back/app/memory/goal_document_adapter.py`, `back/app/memory/goal_folders.py`, `back/app/memory/mcp.py` |
 | `app.memory` | `core.params` | `back/app/memory/acquisition_service.py`, `back/app/memory/automation.py`, `back/app/memory/bootstrap.py`, `back/app/memory/context.py`, `back/app/memory/deduplication.py`, `back/app/memory/document_attachment_service.py`, `back/app/memory/document_thumbnail_service.py`, `back/app/memory/maintenance.py`, `back/app/memory/retrieval.py`, `back/app/memory/router.py`, `back/app/memory/storage.py` |
-| `app.memory` | `core.preview` | `back/app/memory/document_export.py`, `back/app/memory/document_links.py`, `back/app/memory/document_thumbnail_cache.py`, `back/app/memory/document_thumbnail_service.py`, `back/app/memory/router.py` |
+| `app.memory` | `core.preview` | `back/app/memory/document_export.py`, `back/app/memory/document_image_import.py`, `back/app/memory/document_links.py`, `back/app/memory/document_thumbnail_cache.py`, `back/app/memory/document_thumbnail_service.py`, `back/app/memory/router.py` |
 | `app.memory` | `core.settings` | `back/app/memory/document_thumbnail_cache.py` |
 | `app.memory` | `core.team` | `back/app/memory/access.py`, `back/app/memory/bootstrap.py`, `back/app/memory/item_sharing.py` |
-| `app.memory` | `core.user` | `back/app/memory/access.py`, `back/app/memory/bootstrap.py`, `back/app/memory/document_attachment_service.py`, `back/app/memory/document_export.py`, `back/app/memory/document_links.py`, `back/app/memory/document_sharing.py`, `back/app/memory/document_thumbnail_service.py`, `back/app/memory/events.py`, `back/app/memory/goal_document_adapter.py`, `back/app/memory/goal_folders.py`, `back/app/memory/item_sharing.py`, `back/app/memory/library_queries.py`, `back/app/memory/maintenance.py`, `back/app/memory/router.py`, `back/app/memory/service.py` |
+| `app.memory` | `core.user` | `back/app/memory/access.py`, `back/app/memory/bootstrap.py`, `back/app/memory/document_attachment_service.py`, `back/app/memory/document_export.py`, `back/app/memory/document_image_import.py`, `back/app/memory/document_links.py`, `back/app/memory/document_sharing.py`, `back/app/memory/document_thumbnail_service.py`, `back/app/memory/events.py`, `back/app/memory/goal_document_adapter.py`, `back/app/memory/goal_folders.py`, `back/app/memory/item_sharing.py`, `back/app/memory/library_queries.py`, `back/app/memory/maintenance.py`, `back/app/memory/router.py`, `back/app/memory/service.py` |
 | `app.memory` | `core.util` | `back/app/memory/acquisition_service.py`, `back/app/memory/attachment_analysis.py`, `back/app/memory/attachment_description.py`, `back/app/memory/document_links.py`, `back/app/memory/document_service.py`, `back/app/memory/file_facade.py`, `back/app/memory/html_migration.py`, `back/app/memory/models.py`, `back/app/memory/passages.py`, `back/app/memory/router.py`, `back/app/memory/service.py`, `back/app/memory/source_projection.py`, `back/app/memory/storage.py`, `back/app/memory/storage_reconciliation.py` |
 | `app.messenger` | `app.agent` | `back/app/messenger/contact_access.py`, `back/app/messenger/native_facade.py`, `back/app/messenger/router.py`, `back/app/messenger/schemas.py`, `back/app/messenger/service.py`, `back/app/messenger/session.py` |
 | `app.messenger` | `app.connection` | `back/app/messenger/configuration.py`, `back/app/messenger/contact_access.py`, `back/app/messenger/contact_memory.py`, `back/app/messenger/directory.py`, `back/app/messenger/ingest.py`, `back/app/messenger/native_facade.py`, `back/app/messenger/native_interactions.py`, `back/app/messenger/service.py`, `back/app/messenger/session.py` |
@@ -1459,39 +1459,40 @@ tests remain authoritative for behavior.
 | POST | `/memory/documents/tags` | `app.memory` | `create_personal_document_tag` | yes | `back/app/memory/router.py:745` |
 | DELETE | `/memory/documents/tags/{tag_id}` | `app.memory` | `delete_personal_document_tag` | yes | `back/app/memory/router.py:763` |
 | PUT | `/memory/documents/tags/{tag_id}` | `app.memory` | `update_personal_document_tag` | yes | `back/app/memory/router.py:754` |
-| GET | `/memory/documents/{document_id}` | `app.memory` | `read_managed_document` | yes | `back/app/memory/router.py:1031` |
-| PATCH | `/memory/documents/{document_id}` | `app.memory` | `update_human_document` | yes | `back/app/memory/router.py:1046` |
+| GET | `/memory/documents/{document_id}` | `app.memory` | `read_managed_document` | yes | `back/app/memory/router.py:1042` |
+| PATCH | `/memory/documents/{document_id}` | `app.memory` | `update_human_document` | yes | `back/app/memory/router.py:1057` |
 | GET | `/memory/documents/{document_id}/app-permissions` | `app.memory` | `read_app_permissions` | yes | `back/app/memory/router.py:117` |
 | PUT | `/memory/documents/{document_id}/app-permissions/{app_key}/{alias}` | `app.memory` | `update_app_permission` | yes | `back/app/memory/router.py:126` |
 | POST | `/memory/documents/{document_id}/apps/{app_id}/datasets/{alias}` | `app.memory` | `access_app_dataset` | yes | `back/app/memory/router.py:138` |
-| GET | `/memory/documents/{document_id}/attachments` | `app.memory` | `list_document_attachments` | yes | `back/app/memory/router.py:1282` |
-| POST | `/memory/documents/{document_id}/attachments` | `app.memory` | `add_document_attachment` | yes | `back/app/memory/router.py:1302` |
-| DELETE | `/memory/documents/{document_id}/attachments/{attachment_id}` | `app.memory` | `delete_document_attachment` | yes | `back/app/memory/router.py:1405` |
-| GET | `/memory/documents/{document_id}/attachments/{attachment_id}` | `app.memory` | `read_document_attachment` | yes | `back/app/memory/router.py:1374` |
-| GET | `/memory/documents/{document_id}/attachments/{attachment_id}/info` | `app.memory` | `read_document_attachment_info` | yes | `back/app/memory/router.py:1356` |
-| GET | `/memory/documents/{document_id}/attachments/{attachment_id}/thumbnail` | `app.memory` | `read_document_attachment_thumbnail` | yes | `back/app/memory/router.py:1323` |
-| DELETE | `/memory/documents/{document_id}/collaborators/{agent_id}` | `app.memory` | `remove_managed_document_grant` | yes | `back/app/memory/router.py:1251` |
-| PUT | `/memory/documents/{document_id}/collaborators/{agent_id}` | `app.memory` | `set_managed_document_grant` | yes | `back/app/memory/router.py:1217` |
+| GET | `/memory/documents/{document_id}/attachments` | `app.memory` | `list_document_attachments` | yes | `back/app/memory/router.py:1293` |
+| POST | `/memory/documents/{document_id}/attachments` | `app.memory` | `add_document_attachment` | yes | `back/app/memory/router.py:1313` |
+| DELETE | `/memory/documents/{document_id}/attachments/{attachment_id}` | `app.memory` | `delete_document_attachment` | yes | `back/app/memory/router.py:1416` |
+| GET | `/memory/documents/{document_id}/attachments/{attachment_id}` | `app.memory` | `read_document_attachment` | yes | `back/app/memory/router.py:1385` |
+| GET | `/memory/documents/{document_id}/attachments/{attachment_id}/info` | `app.memory` | `read_document_attachment_info` | yes | `back/app/memory/router.py:1367` |
+| GET | `/memory/documents/{document_id}/attachments/{attachment_id}/thumbnail` | `app.memory` | `read_document_attachment_thumbnail` | yes | `back/app/memory/router.py:1334` |
+| DELETE | `/memory/documents/{document_id}/collaborators/{agent_id}` | `app.memory` | `remove_managed_document_grant` | yes | `back/app/memory/router.py:1262` |
+| PUT | `/memory/documents/{document_id}/collaborators/{agent_id}` | `app.memory` | `set_managed_document_grant` | yes | `back/app/memory/router.py:1228` |
 | GET | `/memory/documents/{document_id}/content-revisions` | `app.memory` | `list_managed_document_content_revisions` | yes | `back/app/memory/router.py:854` |
 | GET | `/memory/documents/{document_id}/content-revisions/{revision}` | `app.memory` | `read_managed_document_content_revision` | yes | `back/app/memory/router.py:881` |
 | GET | `/memory/documents/{document_id}/content-revisions/{revision}/diff` | `app.memory` | `diff_managed_document_content_revision` | yes | `back/app/memory/router.py:906` |
 | POST | `/memory/documents/{document_id}/content-revisions/{revision}/restore` | `app.memory` | `restore_managed_document_content_revision` | yes | `back/app/memory/router.py:931` |
-| POST | `/memory/documents/{document_id}/export-bundle` | `app.memory` | `export_document_bundle` | yes | `back/app/memory/router.py:970` |
-| POST | `/memory/documents/{document_id}/export-pdf` | `app.memory` | `export_managed_document_pdf` | yes | `back/app/memory/router.py:984` |
-| PATCH | `/memory/documents/{document_id}/folder` | `app.memory` | `move_managed_document` | yes | `back/app/memory/router.py:1088` |
-| PATCH | `/memory/documents/{document_id}/global-access` | `app.memory` | `set_managed_document_global_access` | yes | `back/app/memory/router.py:1188` |
-| DELETE | `/memory/documents/{document_id}/grants/{agent_id}` | `app.memory` | `remove_document_grant` | yes | `back/app/memory/router.py:1464` |
-| PUT | `/memory/documents/{document_id}/grants/{agent_id}` | `app.memory` | `set_document_grant` | yes | `back/app/memory/router.py:1431` |
+| POST | `/memory/documents/{document_id}/export-bundle` | `app.memory` | `export_document_bundle` | yes | `back/app/memory/router.py:981` |
+| POST | `/memory/documents/{document_id}/export-pdf` | `app.memory` | `export_managed_document_pdf` | yes | `back/app/memory/router.py:995` |
+| PATCH | `/memory/documents/{document_id}/folder` | `app.memory` | `move_managed_document` | yes | `back/app/memory/router.py:1099` |
+| PATCH | `/memory/documents/{document_id}/global-access` | `app.memory` | `set_managed_document_global_access` | yes | `back/app/memory/router.py:1199` |
+| DELETE | `/memory/documents/{document_id}/grants/{agent_id}` | `app.memory` | `remove_document_grant` | yes | `back/app/memory/router.py:1475` |
+| PUT | `/memory/documents/{document_id}/grants/{agent_id}` | `app.memory` | `set_document_grant` | yes | `back/app/memory/router.py:1442` |
 | PUT | `/memory/documents/{document_id}/icon` | `app.memory` | `save_document_icon` | yes | `back/app/memory/router.py:681` |
-| POST | `/memory/documents/{document_id}/link-card` | `app.memory` | `create_document_link_card` | yes | `back/app/memory/router.py:959` |
-| PATCH | `/memory/documents/{document_id}/owner` | `app.memory` | `change_document_owner` | yes | `back/app/memory/router.py:1125` |
-| GET | `/memory/documents/{document_id}/sharing` | `app.memory` | `read_document_sharing` | yes | `back/app/memory/router.py:1058` |
-| PUT | `/memory/documents/{document_id}/sharing` | `app.memory` | `update_document_sharing` | yes | `back/app/memory/router.py:1067` |
-| PUT | `/memory/documents/{document_id}/sharing-level` | `app.memory` | `update_document_sharing_level` | yes | `back/app/memory/router.py:1076` |
+| POST | `/memory/documents/{document_id}/import-image` | `app.memory` | `import_document_image` | yes | `back/app/memory/router.py:959` |
+| POST | `/memory/documents/{document_id}/link-card` | `app.memory` | `create_document_link_card` | yes | `back/app/memory/router.py:970` |
+| PATCH | `/memory/documents/{document_id}/owner` | `app.memory` | `change_document_owner` | yes | `back/app/memory/router.py:1136` |
+| GET | `/memory/documents/{document_id}/sharing` | `app.memory` | `read_document_sharing` | yes | `back/app/memory/router.py:1069` |
+| PUT | `/memory/documents/{document_id}/sharing` | `app.memory` | `update_document_sharing` | yes | `back/app/memory/router.py:1078` |
+| PUT | `/memory/documents/{document_id}/sharing-level` | `app.memory` | `update_document_sharing_level` | yes | `back/app/memory/router.py:1087` |
 | PUT | `/memory/documents/{document_id}/tags` | `app.memory` | `move_personal_document` | yes | `back/app/memory/router.py:729` |
 | DELETE | `/memory/documents/{document_id}/tags/{tag_id}` | `app.memory` | `remove_personal_document_tag` | yes | `back/app/memory/router.py:781` |
 | PUT | `/memory/documents/{document_id}/tags/{tag_id}` | `app.memory` | `add_personal_document_tag` | yes | `back/app/memory/router.py:772` |
-| POST | `/memory/documents/{document_id}/thumbnail` | `app.memory` | `read_document_thumbnail` | yes | `back/app/memory/router.py:1002` |
+| POST | `/memory/documents/{document_id}/thumbnail` | `app.memory` | `read_document_thumbnail` | yes | `back/app/memory/router.py:1013` |
 | GET | `/memory/duplicates/preview` | `app.memory` | `estimate_memory_duplicates` | yes | `back/app/memory/router.py:363` |
 | GET | `/memory/filter-options` | `app.memory` | `read_memory_filter_options` | yes | `back/app/memory/router.py:474` |
 | GET | `/memory/findings` | `app.memory` | `list_memory_findings` | yes | `back/app/memory/router.py:385` |
@@ -1504,15 +1505,15 @@ tests remain authoritative for behavior.
 | DELETE | `/memory/items/{item_id}` | `app.memory` | `forget_memory_item` | yes | `back/app/memory/router.py:620` |
 | GET | `/memory/items/{item_id}` | `app.memory` | `get_memory_item` | yes | `back/app/memory/router.py:552` |
 | PUT | `/memory/items/{item_id}` | `app.memory` | `update_memory_item` | yes | `back/app/memory/router.py:597` |
-| DELETE | `/memory/items/{item_id}/grants/{agent_id}` | `app.memory` | `remove_memory_item_grant` | yes | `back/app/memory/router.py:1508` |
-| PUT | `/memory/items/{item_id}/grants/{agent_id}` | `app.memory` | `set_memory_item_grant` | yes | `back/app/memory/router.py:1493` |
-| GET | `/memory/items/{item_id}/links` | `app.memory` | `list_memory_links` | yes | `back/app/memory/router.py:1543` |
+| DELETE | `/memory/items/{item_id}/grants/{agent_id}` | `app.memory` | `remove_memory_item_grant` | yes | `back/app/memory/router.py:1519` |
+| PUT | `/memory/items/{item_id}/grants/{agent_id}` | `app.memory` | `set_memory_item_grant` | yes | `back/app/memory/router.py:1504` |
+| GET | `/memory/items/{item_id}/links` | `app.memory` | `list_memory_links` | yes | `back/app/memory/router.py:1554` |
 | GET | `/memory/items/{item_id}/revisions` | `app.memory` | `list_memory_revisions` | yes | `back/app/memory/router.py:582` |
 | GET | `/memory/items/{item_id}/sharing` | `app.memory` | `read_item_sharing` | yes | `back/app/memory/router.py:526` |
 | PUT | `/memory/items/{item_id}/sharing` | `app.memory` | `update_item_sharing` | yes | `back/app/memory/router.py:535` |
 | GET | `/memory/link-reconciliation` | `app.memory` | `read_link_reconciliation_status` | yes | `back/app/memory/router.py:307` |
 | POST | `/memory/link-reconciliation` | `app.memory` | `launch_link_reconciliation` | yes | `back/app/memory/router.py:319` |
-| POST | `/memory/links` | `app.memory` | `create_memory_link` | yes | `back/app/memory/router.py:1525` |
+| POST | `/memory/links` | `app.memory` | `create_memory_link` | yes | `back/app/memory/router.py:1536` |
 | GET | `/memory/metrics` | `app.memory` | `read_memory_metrics` | yes | `back/app/memory/router.py:289` |
 | POST | `/memory/provider/remember` | `bridge.hermes` | `hermes_provider_remember` | no | `back/bridge/hermes/router.py:192` |
 | POST | `/memory/provider/search` | `bridge.hermes` | `hermes_provider_search` | no | `back/bridge/hermes/router.py:168` |

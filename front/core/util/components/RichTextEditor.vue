@@ -11,15 +11,10 @@
       <span class="text-caption">{{ fileUploadProgress.name }} · {{ Math.round(fileUploadProgress.progress * 100) }}% · {{ fileUploadProgress.index }}/{{ fileUploadProgress.total }}</span>
       <q-btn flat round dense icon="close" :aria-label="t('richEditor.resources.cancelUpload')" @click="cancelFileUpload?.()"><q-tooltip>{{ t('richEditor.resources.cancelUpload') }}</q-tooltip></q-btn>
     </div>
-    <q-dialog v-model="htmlImportOpen"><q-card style="width: 560px; max-width: 95vw">
-      <q-card-section class="galaris-dialog-title row items-center"><div class="text-h6">{{ t('richEditor.resources.htmlTitle') }}</div><q-space /><q-btn v-close-popup flat round dense icon="close" :aria-label="t('common.close')" /></q-card-section>
-      <q-card-section>{{ t('richEditor.resources.htmlExplanation') }}</q-card-section>
-      <q-card-actions class="galaris-dialog-actions" align="right">
-        <q-btn v-close-popup flat :label="t('common.cancel')" />
-        <q-btn flat :label="t('richEditor.resources.extractText')" :disable="importingHtml" @click="importHtml(false)" />
-        <q-btn v-if="uploadFile" color="primary" :label="t('richEditor.resources.attachHtml')" :loading="importingHtml" @click="importHtml(true)" />
-      </q-card-actions>
-    </q-card></q-dialog>
+    <div v-if="importingHtml" role="status" class="row items-center q-gutter-sm q-pa-sm">
+      <q-spinner /><span>{{ t('richEditor.resources.importingHtml') }}</span>
+      <q-btn flat round dense icon="close" :aria-label="t('common.cancel')" @click="importRequest?.abort()" />
+    </div>
     <GalarisLinkDialog v-model="linkOpen" :initial-label="linkLabel" @insert="insertGalarisLink" @hide="editor?.editing.view.focus()" />
     <PdfPreview v-model="pdfPreview" />
     <q-dialog v-model="shareOpen" @hide="cancelDocumentShare">
@@ -47,13 +42,15 @@ import {
   SpecialCharactersEssentials, SourceEditing, Fullscreen, GeneralHtmlSupport, PasteFromOffice, Style,
   Table, TableToolbar, TableProperties, TableCellProperties, TableColumnResize, TableCaption,
   Image, ImageCaption, ImageStyle, ImageToolbar, ImageResize, ImageUpload, ImageUtils, LinkImage,
-  Plugin, LinkUI, ButtonView, DropdownView, ContextualBalloon, IconBrowseFiles, IconBoxWithMarker, type ModelSelection, type LinkPreviewButtonNavigateEvent, type EditorConfig, type Editor,
+  Plugin, LinkUI, ButtonView, DropdownView, ContextualBalloon, IconBrowseFiles, IconBoxWithMarker, ModelLiveRange, type ModelSelection, type LinkPreviewButtonNavigateEvent, type EditorConfig, type Editor,
 } from 'ckeditor5'
 import fr from 'ckeditor5/translations/fr.js'
 import zh from 'ckeditor5/translations/zh-cn.js'
 import { marked } from 'marked'
 import { richLinkHref, sanitizeRichHtml, validRichLink, type ContentProfile } from '../richText'
 import { attachDocumentImages } from '../ckeditorAttachments'
+import { pasteDocumentHtml } from '../pasteDocumentHtml'
+import { pastedMarkdownHtml } from '../pasteMarkdown'
 import { attachDocumentFileUpload, type DocumentUploadProgress } from '../ckeditorFileUpload'
 import PdfPreview from './PdfPreview.vue'
 import type { PdfPreviewSource } from '../documentMedia'
@@ -81,7 +78,7 @@ import type { RenderedDocumentCapture, RenderedDocumentResolver } from '../rende
 import { createDocumentPdf, exportDocumentPdf } from '../exportDocumentPdf'
 import { saveBlobAsResource } from '../resourceViewer'
 import '../ckeditorTheme.css'
-const { modelValue, mediaType = 'text/html', profile = 'rich-text', readonly = false, minHeight = '240px', maxHeight = '70vh', autoGrow = false, ariaLabel = '', documentTitle = '', documentUrl = '', exportPdf, exportBundle, uploadImage, uploadFile, resolveImage, attachments = [], createLinkCard, manageAttachments = false } = defineProps<{
+const { modelValue, mediaType = 'text/html', profile = 'rich-text', readonly = false, minHeight = '240px', maxHeight = '70vh', autoGrow = false, ariaLabel = '', documentTitle = '', documentUrl = '', exportPdf, exportBundle, uploadImage, uploadFile, importImage, resolveImage, attachments = [], createLinkCard, manageAttachments = false } = defineProps<{
   modelValue: string; mediaType?: string; profile?: ContentProfile; readonly?: boolean; minHeight?: string; maxHeight?: string; autoGrow?: boolean; ariaLabel?: string
   attachments?: DocumentResource[]
   manageAttachments?: boolean
@@ -92,6 +89,7 @@ const { modelValue, mediaType = 'text/html', profile = 'rich-text', readonly = f
   documentUrl?: string
   exportPdf?: (html: string, signal: AbortSignal) => Promise<Blob>
   uploadImage?: (file: File, signal: AbortSignal, progress: (value: number) => void) => Promise<string>
+  importImage?: (url: string, signal: AbortSignal) => Promise<string>
   resolveImage?: (documentId: string, attachmentId: string) => Promise<Blob>
 }>()
 const emit = defineEmits<{ 'manage-attachments': []; 'update:modelValue': [value: string]; 'open-attachment': [documentId: string, attachmentId: string] }>()
@@ -116,8 +114,8 @@ const resolveRenderedContent = computed(() => slots['embedded-code'] ? captureRe
 const documentLayout = ref<'fixed' | 'full'>('fixed')
 const documentFitsFixedWidth = ref(true)
 const effectiveDocumentLayout = computed(() => documentFitsFixedWidth.value ? documentLayout.value : 'full')
-const htmlImportOpen = ref(false), importingHtml = ref(false)
-let pendingHtml = '', importRequest: AbortController | undefined
+const importingHtml = ref(false)
+let importRequest: AbortController | undefined
 let resourceSelection: ModelSelection | undefined
 const linkOpen = ref(false), linkLabel = ref('')
 const pdfPreview = shallowRef<PdfPreviewSource | null>(null)
@@ -288,16 +286,27 @@ class GalarisIntegration extends Plugin {
     // HTML entering through paste, drag/drop or source mode uses the storage contract.
     current.editing.view.document.on('clipboardInput', (event, data) => {
       if (current.model.document.selection.getFirstPosition()?.parent.is('element', 'codeBlock') || current.model.document.selection.hasAttribute('code')) return
-      const text = data.dataTransfer.getData('text/plain').trim()
+      const plain = data.dataTransfer.getData('text/plain') || data.dataTransfer.getData('text/markdown')
+      const text = plain.trim()
       if (!current.isReadOnly && profile === 'document' && data.method === 'paste'
         && !data.dataTransfer.files.length && /^https?:\/\/\S+$/i.test(text) && validRichLink(text)) {
         const link = document.createElement('a'); link.href = text; link.textContent = text
         data.content = current.data.processor.toView(link.outerHTML)
         return
       }
-      const html = data.dataTransfer.getData('text/html') || data.dataTransfer.getData('text/plain')
-      if (profile === 'document' && complexHtml(html) && !data.dataTransfer.files.length) {
-        event.stop(); promptHtml(html, current); return
+      const clipboardHtml = data.dataTransfer.getData('text/html')
+      if (data.method === 'paste' && !current.isReadOnly && !data.dataTransfer.files.length) {
+        const markdown = pastedMarkdownHtml(plain, clipboardHtml)
+        if (markdown !== null) {
+          if (profile === 'document') { event.stop(); void importHtml(markdown, current) }
+          else data.content = current.data.processor.toView(sanitizeRichHtml(markdown, profile))
+          return
+        }
+      }
+      const html = clipboardHtml || plain
+      if (profile === 'document' && data.method === 'paste' && !current.isReadOnly && !data.dataTransfer.files.length
+        && (data.dataTransfer.getData('text/html') || /^\s*(?:<!doctype\b|<(?:html|head|body|p|div|h[1-6]|table|section|article)\b)/i.test(html))) {
+        event.stop(); void importHtml(html, current); return
       }
       if (html && !data.dataTransfer.files.length) {
         const filtered = sourceHtml(html)
@@ -305,10 +314,8 @@ class GalarisIntegration extends Plugin {
       }
     }, { priority: 'high' })
     current.data.on('set', (_event, args) => {
+      importRequest?.abort()
       const filter = (html: string): string => {
-        if (!applyingExternal && editor.value && profile === 'document' && complexHtml(html)) {
-          promptHtml(html, current); return lastEditorData
-        }
         return sourceHtml(html)
       }
       if (typeof args[0] === 'string') args[0] = filter(args[0])
@@ -343,8 +350,8 @@ const config = computed<EditorConfig>(() => ({
   toolbar: { items: [...editorToolbarGroups(profile === 'document', Boolean(personalVoice)).map(group => 'galarisGroup' + group.name), 'galarisMobileToolbar'], shouldNotGroupWhenFull: true },
   style: { definitions: calloutKinds.map(kind => ({ name: t('richEditor.callouts.' + kind), element: 'blockquote', classes: ['galaris-callout', 'galaris-callout-' + kind] })) },
   heading: { options: [{ model: 'paragraph', title: 'Paragraph', class: 'ck-heading_paragraph' }, ...([1, 2, 3, 4, 5, 6] as const).map(level => ({ model: `heading${level}` as const, view: `h${level}`, title: `Heading ${level}`, class: `ck-heading_heading${level}` }))] },
-  fontFamily: { options: ['default', 'Arial, Helvetica, sans-serif', 'Georgia, serif', 'Times New Roman, serif', 'Courier New, Courier, monospace'] },
-  fontSize: { options: [10, 12, 14, 'default', 18, 24, 32, 48] },
+  fontFamily: { options: ['default', 'Arial, Helvetica, sans-serif', 'Georgia, serif', 'Times New Roman, serif', 'Courier New, Courier, monospace'], supportAllValues: true },
+  fontSize: { options: [10, 12, 14, 'default', 18, 24, 32, 48], supportAllValues: true },
   link: { toolbar: ['linkPreview', 'editLink', 'unlink', ...(profile === 'document' && createLinkCard ? ['|', 'documentLinkAppearance'] : [])], decorators: { newTab: { mode: 'automatic', callback: () => true, attributes: { target: '_blank', rel: 'noopener noreferrer' } } }, allowedProtocols: ['http', 'https', 'mailto', 'document', 'memory', 'galaris'], addTargetToExternalLinks: false },
   list: { properties: { styles: true, startIndex: true, reversed: true } },
   table: { contentToolbar: ['tableColumn', 'tableRow', 'mergeTableCells', 'tableProperties', 'tableCellProperties', 'toggleTableCaption'] },
@@ -463,28 +470,27 @@ function insertResource(html: string): void {
   resourceSelection = undefined
   current.editing.view.focus()
 }
-function complexHtml(html: string): boolean { return /<!doctype\b|<(?:html|head|body)(?:\s|>)/i.test(html) }
-function promptHtml(html: string, current: Editor): void {
-  pendingHtml = html; resourceSelection = current.model.createSelection(current.model.document.selection); htmlImportOpen.value = true
-}
-async function importHtml(asAttachment: boolean): Promise<void> {
-  const current = editor.value
-  if (!current || readonly || importingHtml.value) return
-  const html = pendingHtml
+async function importHtml(html: string, current: Editor): Promise<void> {
+  if (readonly) return
+  const ranges = [...current.model.document.selection.getRanges()].map(range => ModelLiveRange.fromRange(range))
   importingHtml.value = true
   importRequest?.abort(); const request = new AbortController(); importRequest = request
+  let imageFailed = false
   try {
-    if (asAttachment && uploadFile) {
-      const uri = await uploadFile(new File([html], 'page.html', { type: 'text/html' }), request.signal, () => {})
-      if (request.signal.aborted || current !== editor.value || !htmlImportOpen.value) return
-      const a = document.createElement('a'); a.href = uri; a.textContent = 'page.html'; insertResource('<p>' + a.outerHTML + '</p>')
-    } else {
-      const parsed = new DOMParser().parseFromString(html, 'text/html'); parsed.querySelectorAll('script,style').forEach(node => node.remove())
-      insertResource(parsed.body.innerHTML)
-    }
-    htmlImportOpen.value = false
+    const imported = await pasteDocumentHtml(html, { signal: request.signal, upload: uploadImage, importImage,
+      imageFailed: () => { imageFailed = true }, imageLabel: t('richEditor.resources.unavailableImage'),
+    })
+    if (request.signal.aborted || current !== editor.value || current.isReadOnly || ranges.some(range => range.root.rootName === '$graveyard')) return
+    current.model.change(writer => {
+      const fragment = current.data.toModel(current.data.processor.toView(imported))
+      const selection = current.model.createSelection(ranges)
+      current.model.insertContent(fragment, selection)
+      writer.setSelection(selection)
+    })
+    if (imageFailed) $q.notify({ type: 'warning', message: t('richEditor.resources.pasteImagesFailed') })
+    current.editing.view.focus()
   } catch { if (!request.signal.aborted) $q.notify({ type: 'negative', message: t('richEditor.resources.failed') }) }
-  finally { importingHtml.value = false }
+  finally { ranges.forEach(range => range.detach()); if (importRequest === request) importingHtml.value = false }
 }
 async function prepareDocumentShare(): Promise<void> {
   const current = editor.value
@@ -569,7 +575,7 @@ watch(() => modelValue, value => {
   exportingPdf?.abort()
   exportingBundle?.abort()
   linkOpen.value = false
-  htmlImportOpen.value = false; importRequest?.abort(); resourceSelection = undefined
+  importRequest?.abort(); resourceSelection = undefined
   linkSelection = undefined
   applyingExternal = true
   lastEmitted = value
@@ -585,12 +591,12 @@ watch([() => profile, locale], () => {
   exportingPdf?.abort()
   exportingBundle?.abort()
   linkOpen.value = false
-  htmlImportOpen.value = false; importRequest?.abort(); resourceSelection = undefined
+  importRequest?.abort(); resourceSelection = undefined
   linkSelection = undefined
   editor.value = undefined
   editorData.value = sourceHtml(modelValue)
 })
-watch(() => readonly, value => { if (value) { linkOpen.value = false; htmlImportOpen.value = false; importRequest?.abort() } })
+watch(() => readonly, value => { if (value) { linkOpen.value = false; importRequest?.abort() } })
 watch(() => attachments, () => editor.value?.ui.update())
 onBeforeUnmount(() => { printing?.abort(); exportingPdf?.abort(); exportingBundle?.abort(); importRequest?.abort(); cancelDocumentShare() })
 /** Insert literal speech at the current model selection, retaining inline formatting. */

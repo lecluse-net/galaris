@@ -187,9 +187,28 @@ Le service de rendu doit être reconstruit lors d’une modification de son code
 
 Le profil documentaire accepte les formulaires et scripts dans un contexte isolé, avec la
 barre d'outils et le texte éditable habituels. Leur code n'apparaît que dans Source ; les
-historiques et exports restent inertes. La restauration conserve la source. Les pages
-complètes collées dans le texte ou la source
-ouvrent un choix explicite avant toute perte de structure.
+historiques et exports restent inertes. La restauration conserve la source. Le mode Source
+permet toujours de saisir explicitement du HTML interactif.
+
+Coller une page HTML ou du contenu copié depuis une page dans le corps importe directement
+des blocs éditables, sans dialogue ni bloc de page isolé. Les titres, paragraphes, listes,
+liens et tableaux sont conservés ; les styles présents dans le presse-papiers sont convertis
+en mise en forme éditoriale autorisée. Scripts, contrôles interactifs et feuilles de style
+externes ne sont pas importés. Dans un bloc de code, le collage reste littéral.
+Le Markdown collé est également converti en HTML éditable : titres, listes, citations,
+tableaux, emphase, liens et blocs de code. Le HTML déjà mis en forme garde la priorité ;
+les enveloppes de texte brut copiées depuis un éditeur de source ne bloquent pas cette
+conversion. Le texte ordinaire, le code en ligne, les blocs de code et la saisie dans Source
+gardent leur comportement littéral. Les images Markdown suivent le même import en PJ.
+Les images raster intégrées en base64 passent par l’upload des pièces jointes. Les images
+HTTPS publiques passent par `POST /memory/documents/{document_id}/import-image` : vérification
+du périmètre utilisateur et du droit d’écriture avant téléchargement, port
+`core.preview.read_web_image`, transport File Share protégé contre les adresses privées et
+redirections internes, limite de 10 Mo et 15 secondes, puis validation et stockage comme PJ.
+Chaque source n’est importée qu’une fois par collage (50 sources maximum), et le corps conserve
+uniquement son URI canonique `document://…/attachments/…`. Une image inaccessible conserve
+sa description et déclenche un avertissement sans perdre le texte. L’annulation ou le changement
+de document empêche une réponse tardive de modifier le corps ; une PJ déjà créée reste disponible.
 
 Les fichiers HTML sont autorisés comme pièces jointes et ouverts par la visionneuse HTML
 existante, isolée de l'origine applicative. Les liens canoniques de pièces jointes sont

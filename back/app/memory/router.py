@@ -954,6 +954,17 @@ async def restore_managed_document_content_revision(
         raise _http_error(exc) from exc
 
 
+@router.post("/documents/{document_id}/import-image", response_model=DocumentAttachmentPublic)
+@authorize(privileges=Privileges.MEMORY_EDIT)
+async def import_document_image(document_id: UUID, data: DocumentLinkRequest, actor_agent_id: int | None = Query(default=None, gt=0)) -> DocumentAttachmentPublic:
+    from .document_image_import import import_document_image as import_image
+    try:
+        actor = await _document_request_actor(document_id, actor_agent_id)
+        return await import_image(document_id, data.url, actor=actor)
+    except Exception as exc:
+        raise _http_error(exc) from exc
+
+
 @router.post("/documents/{document_id}/link-card", response_model=DocumentLinkCard)
 @authorize(privileges=Privileges.MEMORY_EDIT)
 async def create_document_link_card(document_id: UUID, data: DocumentLinkRequest, actor_agent_id: int | None = Query(default=None, gt=0)) -> DocumentLinkCard:

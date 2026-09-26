@@ -12,13 +12,14 @@ test('scripts stay out of the host and their source is visible only in Source mo
  await expect(page.locator('.rich-content script,iframe')).toHaveCount(0)
  expect(await page.evaluate(()=>window.documentScriptRan)).toBeUndefined()
 })
-test('full HTML source offers a choice and cancelling preserves the document', async ({page})=>{
+test('explicit full HTML source stays available without running scripts in the editor', async ({page})=>{
  await mount(page,'core/util/components/RichTextEditor.vue',{props:{profile:'document',modelValue:'<p>Keep me</p>'}})
  await page.getByRole('button',{name:'Source',exact:true}).click()
  await page.locator('.ck-source-editing-area textarea').fill('<!doctype html><html><body><h1>Page</h1><script>window.ran=true</script></body></html>')
  await page.getByRole('button',{name:'Source',exact:true}).click()
- await expect(page.getByText('This page exceeds the rich text format')).toBeVisible()
- await page.getByRole('button',{name:'Cancel',exact:true}).click()
- await expect(page.locator('.ck-editor__editable')).toHaveText('Keep me')
+ await expect(page.getByRole('dialog')).toHaveCount(0)
+ await expect(page.locator('.ck-editor__editable')).toContainText('Page')
+ await page.getByRole('button',{name:'Source',exact:true}).click()
+ await expect(page.locator('.ck-source-editing-area textarea')).toHaveValue(/window.ran=true/)
  expect(await page.evaluate(()=>window.ran)).toBeUndefined()
 })

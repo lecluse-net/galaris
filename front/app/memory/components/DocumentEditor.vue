@@ -225,6 +225,7 @@
             :media-type="currentDocument.media_type"
             :profile="currentDocument.content_profile ?? (isGoalDocument(currentDocument) ? 'rich-text' : 'document')"
             :upload-image="isGoalDocument(currentDocument) ? undefined : uploadInlineImage"
+            :import-image="isGoalDocument(currentDocument) ? undefined : importPastedImage"
             :resolve-image="resolveInlineImage"
             :document-title="editorTitle"
             :document-url="documentShareUrl"
@@ -426,6 +427,13 @@ async function uploadDocumentFile(file: File, signal: AbortSignal, progress: (va
   const documentId = props.documentId
   const attachment = await memoryService.addDocumentAttachment(documentId, props.agentId, file, signal, progress)
   if (props.documentId !== documentId) throw new Error('Document changed')
+  onAttachmentAdded(attachment)
+  return 'document://' + documentId + '/attachments/' + attachment.id
+}
+async function importPastedImage(url: string, signal: AbortSignal): Promise<string> {
+  const documentId = props.documentId, agentId = props.agentId
+  const attachment = await memoryService.importDocumentImage(documentId, agentId, url, signal)
+  if (signal.aborted || props.documentId !== documentId || props.agentId !== agentId) throw new Error('Document changed')
   onAttachmentAdded(attachment)
   return 'document://' + documentId + '/attachments/' + attachment.id
 }
@@ -1246,8 +1254,10 @@ async function exportCurrentDocumentPdf(html: string, signal: AbortSignal): Prom
 }
 async function uploadInlineImage(file: File, signal: AbortSignal, progress: (value: number) => void): Promise<string> {
   const document = currentDocument.value
+  const agentId = props.agentId
   if (!document || isGoalDocument(document)) throw new Error('Images unavailable')
-  const attachment = await memoryService.addDocumentAttachment(document.id, props.agentId, file, signal, progress)
+  const attachment = await memoryService.addDocumentAttachment(document.id, agentId, file, signal, progress)
+  if (signal.aborted || props.documentId !== document.id || props.agentId !== agentId) throw new Error('Document changed')
   await onAttachmentAdded(attachment)
   return 'document://' + document.id + '/attachments/' + attachment.id
 }

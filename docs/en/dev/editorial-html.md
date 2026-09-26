@@ -178,8 +178,28 @@ rendering service when its code changes.
 ## Attachments, link cards and portable export
 
 Documents support forms and scripts in isolation, retaining the usual toolbar and editable
-prose. Source is the only code view; history and exports stay inert. Restoration preserves source. Complete
-pages pasted into the editor or its source require an explicit attachment/extraction choice.
+prose. Source is the only code view; history and exports stay inert. Restoration preserves source.
+Source mode still accepts explicitly authored interactive HTML.
+
+Pasting HTML source or content copied from a page into the body directly imports editable
+blocks, without a dialog or isolated page block. Headings, paragraphs, lists, links and tables
+are preserved; styles included in the clipboard become supported editorial formatting.
+Scripts, interactive controls and external stylesheets are not imported. Pasting into a code
+block remains literal. Pasted Markdown also becomes editable HTML: headings, lists,
+quotations, tables, emphasis, links and code blocks. Already formatted HTML takes precedence;
+plain source wrappers copied from a source editor do not prevent Markdown conversion.
+Ordinary prose, inline code, code blocks and input in Source mode retain their literal
+behavior. Markdown images follow the same attachment import path.
+Embedded base64 raster images use attachment uploads. Public HTTPS
+images use `POST /memory/documents/{document_id}/import-image`: user scope and write access
+are checked before downloading through `core.preview.read_web_image` and File Share's
+transport, which rejects private addresses and internal redirects. Downloads are bounded to
+10 MB and 15 seconds, then validated and stored as attachments. Each source is imported once
+per paste (at most 50 sources), and the body only retains its canonical
+`document://…/attachments/…` URI. Unavailable images retain their descriptions and trigger a
+warning without losing text. Cancellation or a document change prevents late responses from
+changing the body; attachments already created remain available.
+
 HTML files are accepted as attachments and opened by the existing isolated resource viewer.
 Canonical attachment links are supported in `<a href>`. The attachment `/info` endpoint also
 resolves retained files under current document permissions.

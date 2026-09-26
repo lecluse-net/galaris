@@ -3,6 +3,19 @@ import httpx
 
 from app.file_share import PublicHttpsContent, web_preview
 from app.file_share.web_preview import document_web_preview as preview_web_link
+from core.preview import read_web_image
+
+
+@pytest.mark.asyncio
+async def test_pasted_image_uses_registered_bounded_transport(monkeypatch):
+    async def fetch(url, *, max_bytes, truncate=False):
+        assert url == "https://example.org/image.png"
+        assert max_bytes == 10_000_000
+        assert truncate is False
+        return PublicHttpsContent(url=url, media_type="image/png", content=b"original image")
+
+    monkeypatch.setattr(web_preview, "read_public_https_bytes", fetch)
+    assert await read_web_image("https://example.org/image.png") == b"original image"
 
 
 @pytest.mark.asyncio

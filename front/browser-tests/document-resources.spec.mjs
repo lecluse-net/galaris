@@ -162,7 +162,7 @@ for (const directUpload of [false, true]) test(`the document ${directUpload ? 'u
     return route.fulfill({ json: current })
   })
   await mount(page, 'core/util/components/WorkingDocumentEditor.vue', { props: { documentId, agentId: 7 }, privileges: ['MEMORY_EDIT'] })
-  await expect(page.locator('.ck-editor__editable')).toContainText('Report')
+  await expect(page.getByRole('textbox', { name: 'Content', exact: true })).toContainText('Report')
   if (!directUpload) {
     await expect(page.locator('.document-attachments')).toContainText('scene.html')
     await expect(page.locator('.document-attachments')).toContainText('0.850305 MB')
@@ -547,22 +547,110 @@ test('URLs pasted into code and text containing URLs do not prompt for cards', a
   await expect(page.locator('.ck-editor__editable')).toContainText('Read https://example.org for details')
 })
 
-test('a full HTML paste becomes an attachment without losing its source', async ({ page }) => {
+test('a full HTML paste becomes editable styled content with owned images', async ({ page }) => {
   await mount(page, component)
   await page.evaluate(async uri => window.testApp.mount({ component: 'core/util/components/RichTextEditor.vue', props: {
-    profile: 'document', modelValue: '<p>Report</p>', uploadFile: async file => { window.uploadedHtml = await file.text(); return uri },
+    profile: 'document', modelValue: '<p>Report</p>',
+    importImage: async url => { (window.importedImages ??= []).push(url); return uri },
+    uploadImage: async file => { window.pastedImage = { type: file.type, size: file.size }; return uri },
+    resolveImage: async () => new Blob([], { type: 'image/png' }),
   } }), uri)
-  const html = '<!doctype html><html><head><style>body{background:red}</style></head><body><canvas></canvas><script>window.ran=true</script></body></html>'
+  const html = `<!doctype html><html><head><style>.intro{color:#123456;font-size:20px;font-weight:bold}</style></head><body><main><h1>Page title</h1><p class="intro">Editable paragraph</p><table><tr><td>Cell content</td></tr></table><img src="https://example.org/picture.png"><img src="https://example.org/picture.png"><img src="data:image/png;base64,${png}"></main><script>window.ran=true</script></body></html>`
   await page.locator('.ck-editor__editable').click()
+  await page.keyboard.press('End'); await page.keyboard.press('Enter')
   await page.locator('.ck-editor__editable').evaluate((root, html) => {
     const data = new DataTransfer(); data.setData('text/plain', html)
     root.dispatchEvent(new ClipboardEvent('paste', { clipboardData: data, bubbles: true, cancelable: true }))
   }, html)
-  await page.getByRole('button', { name: 'Attach HTML page', exact: true }).click()
-  await expect.poll(() => page.evaluate(() => window.uploadedHtml)).toBe(html)
-  await expect(page.locator('.ck-editor__editable a')).toHaveText('page.html')
-  await expect(page.locator('.ck-editor__editable')).toContainText('Report')
+  await expect(page.locator('.ck-editor__editable h1')).toHaveText('Page title')
+  await expect(page.getByRole('dialog')).toHaveCount(0)
+  const paragraph = page.locator('.ck-editor__editable p').filter({ hasText: 'Editable paragraph' })
+  await expect(paragraph.locator('strong')).toHaveText('Editable paragraph')
+  await expect(paragraph.locator('strong')).toHaveCSS('color', 'rgb(18, 52, 86)')
+  await expect(page.locator('.ck-editor__editable td')).toHaveText('Cell content')
+  expect(await page.evaluate(() => window.importedImages)).toEqual(['https://example.org/picture.png'])
+  expect(await page.evaluate(() => window.pastedImage)).toEqual({ type: 'image/png', size: Buffer.from(png, 'base64').length })
+  await expect(page.getByRole('textbox', { name: 'Content', exact: true })).toContainText('Report')
   expect(await page.evaluate(() => window.ran)).toBeUndefined()
+  await paragraph.click(); await page.keyboard.press('End'); await page.keyboard.type(' changed')
+  const saved = await page.evaluate(() => window.testApp.events.filter(x => x.name === 'update:modelValue').at(-1)?.value)
+  expect(saved).not.toMatch(/galaris-raw-html|<script|<style|class="intro"|https:\/\/example.org\/picture/)
+  expect(saved.match(/document:\/\//g)).toHaveLength(3)
+  await page.evaluate(content => window.testApp.mount({ component: 'core/util/components/RichTextEditor.vue', props: { profile: 'document', modelValue: content } }), saved)
+  await expect(page.getByRole('textbox', { name: 'Content', exact: true })).toContainText('Editable paragraph changed')
+  await expect(page.locator('.ck-editor__editable p').filter({ hasText: 'Editable paragraph changed' }).locator('strong')).toHaveCSS('color', 'rgb(18, 52, 86)')
+  await expect(page.locator('.ck-editor__editable td')).toHaveText('Cell content')
+})
+
+for (const format of ['HTML', 'Markdown']) test(`pasted ${format} document images are saved through the attachment API and reopen locally`, async ({ page }) => {
+  const current = { ...documentFixture, id: documentId, media_type: 'text/html', content_profile: 'document', payload: { text: '<p>Report</p>' } }
+  const attachment = { id: attachmentId, name: 'pasted-image.png', media_type: 'image/png', size_bytes: 68 }
+  let imported = false
+  await jsonRoute(page, '**/api/agents?*', [agent])
+  await jsonRoute(page, '**/api/memory/documents/owner-options?*', { agents: [{ id: 7, kind: 'agent', label: 'Alice' }], users: [] })
+  await jsonRoute(page, '**/api/memory/documents/keywords?*', [])
+  await jsonRoute(page, '**/api/memory/documents/folders?*', [])
+  await page.route(`**/api/memory/documents/${documentId}/attachments?*`, route => route.fulfill({ json: imported ? [attachment] : [] }))
+  await page.route(`**/api/memory/documents/${documentId}/import-image?*`, route => {
+    expect(route.request().postDataJSON()).toEqual({ url: 'https://example.org/picture.png' })
+    expect(new URL(route.request().url()).searchParams.get('actor_agent_id')).toBe('7')
+    imported = true
+    return route.fulfill({ json: attachment })
+  })
+  await page.route(`**/api/memory/documents/${documentId}/attachments/${attachmentId}?*`, route => route.fulfill({ contentType: 'image/png', body: Buffer.from(png, 'base64') }))
+  await page.route(`**/api/memory/documents/${documentId}/attachments/${attachmentId}/thumbnail?*`, route => route.fulfill({ contentType: 'image/png', body: Buffer.from(png, 'base64') }))
+  await page.route(`**/api/memory/items/${documentId}?*`, route => {
+    if (route.request().method() !== 'GET') Object.assign(current, route.request().postDataJSON(), { revision: current.revision + 1, lock_version: current.lock_version + 1 })
+    return route.fulfill({ json: current })
+  })
+  const options = { props: { documentId, agentId: 7 }, privileges: ['MEMORY_EDIT'] }
+  await mount(page, 'core/util/components/WorkingDocumentEditor.vue', options)
+  await page.locator('.ck-editor__editable').click()
+  await paste(page, format === 'HTML' ? '<p>Illustration</p><p><img src="https://example.org/picture.png" alt="Diagram"></p>' : 'Illustration\n\n![Diagram](https://example.org/picture.png)')
+  await expect(page.locator('.ck-editor__editable img')).toHaveJSProperty('naturalWidth', 1)
+  await expect.poll(() => current.payload.text).toContain(uri)
+  expect(current.payload.text).not.toMatch(/blob:|https:\/\/example.org\/picture/)
+  await mount(page, 'core/util/components/WorkingDocumentEditor.vue', options)
+  await expect(page.locator('.ck-editor__editable')).toContainText('Illustration')
+  await expect(page.locator('.ck-editor__editable img')).toHaveJSProperty('naturalWidth', 1)
+})
+
+for (const action of ['cancel', 'switch', 'readonly']) test(`pending HTML paste discards late images after ${action}`, async ({ page }) => {
+  await mount(page, component)
+  await page.evaluate(async uri => window.testApp.mount({ component: 'core/util/components/RichTextEditor.vue', props: {
+    profile: 'document', modelValue: '<p>Keep this</p>',
+    importImage: (_url, signal) => new Promise(resolve => {
+      window.finishPaste = () => resolve(uri)
+      signal.addEventListener('abort', () => { window.pasteAborted = true })
+    }),
+  } }), uri)
+  await page.locator('.ck-editor__editable').click()
+  await paste(page, '<p>Late content</p><img src="https://example.org/picture.png">')
+  await expect.poll(() => page.evaluate(() => typeof window.finishPaste)).toBe('function')
+  if (action === 'cancel') await page.getByRole('button', { name: 'Cancel', exact: true }).click()
+  else await page.evaluate(action => window.testApp.setProps(action === 'switch' ? { modelValue: '<p>New document</p>' } : { readonly: true }), action)
+  await expect.poll(() => page.evaluate(() => window.pasteAborted)).toBe(true)
+  await page.evaluate(() => window.finishPaste())
+  await expect(page.getByRole('status')).toHaveCount(0)
+  await expect(page.locator('.ck-editor__editable')).toHaveText(action === 'switch' ? 'New document' : 'Keep this')
+})
+
+test('HTML paste preserves typing during image download and remains one undo step', async ({ page }) => {
+  await mount(page, component)
+  await page.evaluate(async uri => window.testApp.mount({ component: 'core/util/components/RichTextEditor.vue', props: {
+    profile: 'document', modelValue: '<p>Before</p>',
+    importImage: () => new Promise(resolve => { window.finishPaste = () => resolve(uri) }),
+  } }), uri)
+  const editor = page.getByRole('textbox', { name: 'Content', exact: true })
+  await editor.click(); await page.keyboard.press('End')
+  await paste(page, '<div style="background-color:#123456;color:#ffffff"><p>Inserted</p></div><img src="https://example.org/picture.png">')
+  await expect.poll(() => page.evaluate(() => typeof window.finishPaste)).toBe('function')
+  await page.keyboard.type(' while waiting')
+  await page.evaluate(() => window.finishPaste())
+  await expect(editor).toContainText('Inserted')
+  await expect(editor).toContainText('Before while waiting')
+  await page.keyboard.press('Control+z')
+  await expect(editor).toHaveText('Before while waiting')
 })
 
 test('HTML attachments show loading then run in their isolated viewer', async ({ page }) => {
