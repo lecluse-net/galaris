@@ -1,5 +1,6 @@
 """Shared backend fixtures with hard database-isolation guarantees."""
 
+from asyncio import Lock
 from typing import Any, AsyncIterator
 from uuid import uuid4
 
@@ -35,17 +36,24 @@ def isolated_internal_secrets(monkeypatch, tmp_path_factory):
 
 
 async def _load_internal_test_secrets(session: AsyncSession) -> None:
-    """Hydrate the generated baseline identity for tests that use the database."""
-    from sqlalchemy import select
-    from core.params.consts import Params
-    from core.params.models import Param
-    from core.params.params_service import reveal
-    from core.params.web_push import load_web_push_keys
-    from core.secrets import load_auth_secret_key
+    """Hydrate this database's parameters and identity before the scenario starts."""
+    from core.params.params_service import load_params
 
-    for name, loader in ((Params.AUTH_SECRET_KEY, load_auth_secret_key), (Params.WEB_PUSH_VAPID_KEYS, load_web_push_keys)):
-        value = await session.scalar(select(Param.value).where(Param.name == name))
-        loader(reveal(name, value) or "")
+    token = db_session_ctx.set(session)
+    try:
+        await load_params()
+    finally:
+        db_session_ctx.reset(token)
+
+
+@pytest.fixture(autouse=True)
+def isolate_parameter_cache(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Parameter values and async locks cannot outlive a test's database and loop."""
+    from core.params import params_service
+
+    monkeypatch.setattr(params_service, "_params_cache", {})
+    monkeypatch.setattr(params_service, "_cache_loaded", False)
+    monkeypatch.setattr(params_service, "_cache_lock", Lock())
 
 
 @pytest.fixture(autouse=True)

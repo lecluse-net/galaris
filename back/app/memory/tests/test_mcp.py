@@ -11,6 +11,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.agent.models import Agent
+from app.llm import LlmProfile
 from app.file_share.resource_contracts import ResourceContext
 from app.file_share import resource_service
 from app.memory import MessengerContactObservation, mcp, observe_messenger_contact, service
@@ -199,13 +200,19 @@ async def test_memory_remember_seals_identical_facts_to_the_exact_contact(
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("embedding_configured", [False, True])
 async def test_memory_mcp_index_search_get_and_store(
     db: AsyncSession,
     agents: tuple[Agent, Agent],
     memory_storage: Path,
     monkeypatch: pytest.MonkeyPatch,
+    embedding_configured: bool,
 ) -> None:
     del memory_storage
+    if not embedding_configured:
+        profile = (await db.scalars(select(LlmProfile))).one()
+        profile.vector_llm_id = None
+        await db.flush()
     owner, _peer = agents
     start = datetime(2026, 7, 30, 9, 0, tzinfo=timezone.utc)
     previous_task = Task(
@@ -276,7 +283,7 @@ async def test_memory_mcp_index_search_get_and_store(
         "requested": "hybrid",
         "used": "lexical",
         "degraded": True,
-        "reason": "embedding_not_configured",
+        "reason": "embedding_index_empty" if embedding_configured else "embedding_not_configured",
     }
 
     loaded = json.loads(await mcp.memory_get(ctx, memory_id))

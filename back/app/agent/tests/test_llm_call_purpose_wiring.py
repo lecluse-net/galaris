@@ -102,6 +102,7 @@ async def test_briefing_inference_is_task_owned_and_identified(
     result = await briefing_service.generate(
         task,
         llm_override=cast(LLM, object()),
+        system_prompt_override="Briefing",
     )
 
     assert result.success is True

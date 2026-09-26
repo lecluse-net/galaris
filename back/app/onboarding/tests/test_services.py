@@ -5,7 +5,8 @@ from types import SimpleNamespace
 from unittest.mock import AsyncMock
 
 import pytest
-from sqlalchemy import select
+import pytest_asyncio
+from sqlalchemy import select, update
 
 from app.agent.models import Agent, Title
 from app.agent import AgentManagementScope
@@ -23,8 +24,16 @@ from ..services import (
 )
 
 
+@pytest_asyncio.fixture
+async def unconfigured_llm_db(db):
+    # These scenarios start without an active model, including installation defaults.
+    await db.execute(update(LLMProvider).values(is_active=False))
+    return db
+
+
 @pytest.mark.asyncio
-async def test_llm_status_requires_a_configured_model(db) -> None:
+async def test_llm_status_requires_a_configured_model(unconfigured_llm_db) -> None:
+    db = unconfigured_llm_db
     provider = LLMProvider(
         name="Welcome provider",
         base_url="https://example.test/v1",
@@ -49,7 +58,8 @@ async def test_llm_status_requires_a_configured_model(db) -> None:
 
 
 @pytest.mark.asyncio
-async def test_llm_status_ignores_models_from_inactive_providers(db) -> None:
+async def test_llm_status_ignores_models_from_inactive_providers(unconfigured_llm_db) -> None:
+    db = unconfigured_llm_db
     provider = LLMProvider(
         name="Inactive welcome provider",
         base_url="https://example.test/v1",
@@ -71,7 +81,8 @@ async def test_llm_status_ignores_models_from_inactive_providers(db) -> None:
 
 
 @pytest.mark.asyncio
-async def test_llm_status_ignores_resources_without_chat_capability(db) -> None:
+async def test_llm_status_ignores_resources_without_chat_capability(unconfigured_llm_db) -> None:
+    db = unconfigured_llm_db
     provider = LLMProvider(
         name="Embedding welcome provider",
         base_url="https://example.test/v1",

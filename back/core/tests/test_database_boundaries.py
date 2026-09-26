@@ -23,6 +23,7 @@ ALLOWED_DATABASE_SESSION_BOUNDARIES = {
     "app/conversation/facade.py",
     "app/conversation/scheduler.py",
     "app/conversation/service.py",
+    "app/documentation/__main__.py",  # Standalone CLI owns the documentation index refresh transaction.
     "app/dream/attachment_processing.py",  # Attachment worker opens a session per model/media operation.
     "app/dream/mechanisms/attachment_memory.py",  # Scheduler claim/prepare/apply run without an ambient session.
     "app/dream/mechanisms/conversation_memory.py",

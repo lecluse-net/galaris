@@ -13,6 +13,7 @@ from app.conversation import ConversationRound, ConversationRoundMessage, Conver
 from app.conversation.contracts import ConversationTurn
 from app.conversation.facade import current_turn_scope
 from app.dream import live_topics
+from app.llm import LlmProfile
 from app.dream.models import DreamReceipt
 from app.dream.mechanisms.sequential_topic_classification import (
     message_topic_classification_mechanism as mechanism,
@@ -26,6 +27,9 @@ from tests.test_decision_workflows import profile_context, memory_extraction_sto
 
 async def context(decisions, runtime, *, specialized=True):
     db, _, _, _, mode = decisions
+    # These scenarios use lexical candidates and stub only decision/text providers.
+    initial_profile = (await db.scalars(select(LlmProfile))).one()
+    initial_profile.vector_llm_id = None
     task, profile = await profile_context(
         decisions, runtime, specialized=specialized, fallback=False
     )

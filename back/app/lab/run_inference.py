@@ -200,8 +200,13 @@ async def evaluate_claim(run: RunClaim) -> CaseEvaluation:
             raise LookupError("Candidate LLM is no longer available")
         validate_binding(llm, run.llm_snapshot or {})
         decision_llm: LLM | None = None
-        if mechanism in {"topic_classification", "memory_extraction"} and "decision" in llm.service_capabilities:
-            generation_snapshot = cast(dict[str, Any], run.configuration_snapshot.get("generation_llm_snapshot") or {})
+        if (
+            mechanism in {"topic_classification", "memory_extraction"}
+            and "decision" in llm.service_capabilities
+        ):
+            generation_snapshot = cast(
+                dict[str, Any], run.configuration_snapshot.get("generation_llm_snapshot") or {}
+            )
             generation_model = await llm_service.get_llm(int(generation_snapshot["id"]))
             if generation_model is None:
                 raise LookupError("Frozen generation model is no longer available")

@@ -23,11 +23,10 @@ HttpClient = httpx.AsyncClient
 @pytest_asyncio.fixture
 async def decisions(runtime, monkeypatch):
     db, text_model, text_requests, text_mode = runtime
-    connection = LLMProvider(name=f"decision-{uuid4()}", catalog_code="openrouter",
-                             base_url="https://openrouter.ai/api/v1", is_active=True,
-                             provider_type="openai_compatible")
-    db.add(connection)
-    await db.flush()
+    # Use the provider seeded by DbAdmin in each isolated test database.
+    connection = (await db.scalars(select(LLMProvider).where(
+        LLMProvider.catalog_code == "openrouter",
+    ))).one()
     llm = LLM(llm_provider_id=connection.id, provider=connection, code=f"decision-{uuid4()}",
               label="Decision test", llm_name="test/decision", primary_capability="decision",
               service_capabilities=["decision"], input_text=True, output_text=False)

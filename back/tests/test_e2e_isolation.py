@@ -22,6 +22,7 @@ def test_browser_stack_has_no_live_credentials_or_external_network():
             assert volume in {
                 "./back:/repo/back:ro", "${GALARIS_E2E_ARTIFACT_DIR:-./artifacts/e2e}:/artifacts",
                 "./front/core/util/sanitizeHtml.ts:/front/core/util/sanitizeHtml.ts:ro",
+                "./e2e/fixtures/browser-token:/run/galaris-browser/token:ro",
                 "pwa-site:/usr/share/nginx/html", "pwa-site:/pwa-site",
             }
     assert compose["volumes"] == {"pwa-site": None}

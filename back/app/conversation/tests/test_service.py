@@ -589,11 +589,14 @@ async def test_internal_messenger_turn_exposes_background_task_admission(
 
     db = inference_db
     agent, connection, room = await _scope(db)
-    provider = LLMProvider(name=f"OpenRouter {uuid4()}", catalog_code="openrouter",
-        provider_type="openai_compatible", base_url="https://openrouter.ai/api/v1", api_key="test-key")
+    # Fresh test databases already contain the installation's OpenRouter proposal.
+    provider = (await db.scalars(select(LLMProvider).where(
+        LLMProvider.catalog_code == "openrouter",
+    ))).one()
+    provider.api_key = "test-key"
     llm = LLM(code=f"admission-{uuid4()}", label="DeepSeek", llm_name="deepseek/deepseek-v4-flash-0731",
         provider=provider, cost_per_input_token=0, cost_per_output_token=0)
-    db.add_all([provider, llm])
+    db.add(llm)
     await db.flush()
     profile = LlmProfile(label="Admission", text_standard_llm_id=llm.id)
     db.add(profile)

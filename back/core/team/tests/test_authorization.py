@@ -69,7 +69,8 @@ async def test_team_membership_controls_chat_without_granting_management_over_ht
     assert avatar.headers["content-type"] == "image/png"
     catalogue = await client.get("/api/agents/teams/agents", headers=human)
     assert catalogue.status_code == 200, catalogue.text
-    assert catalogue.json()[0]["has_avatar"] is True
+    listed_agent = next(item for item in catalogue.json() if item["id"] == agent_id)
+    assert listed_agent["has_avatar"] is True
     assert (await client.post("/api/chat/rooms", headers=human, json={"agent_id": agent_id})).status_code == 404
     # The manager can contact their agent without sharing a team.
     assert (await client.post("/api/chat/rooms", headers=admin, json={"agent_id": agent_id})).status_code == 201

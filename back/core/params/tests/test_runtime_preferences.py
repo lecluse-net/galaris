@@ -194,6 +194,7 @@ async def test_http_limit_can_be_saved_and_applied_without_restarting(client, ad
 
 @pytest.mark.asyncio
 async def test_browser_preferences_follow_active_usage_and_parameter_rights(client, administrator):
+    from sqlalchemy import update
     from app.agent.models import Agent, Title
     from app.connection import Connection
     from app.tools import ToolModel
@@ -202,6 +203,10 @@ async def test_browser_preferences_follow_active_usage_and_parameter_rights(clie
 
     path = '/api/browser/status'
     assert (await client.get(path)).status_code == 401
+    # Start without browser usage, including the default assistant's connection.
+    async with get_db_session() as db:
+        tool = await db.scalar(select(ToolModel).where(ToolModel.code == 'browser'))
+        await db.execute(update(Connection).where(Connection.tool_id == tool.id).values(active=False))
     assert (await client.get(path, headers=administrator)).json() == {"enabled": False}
     user_id = (await client.get('/api/auth/me', headers=administrator)).json()['id']
     async with get_db_session() as db:

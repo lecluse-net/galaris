@@ -10,7 +10,7 @@ from unittest.mock import AsyncMock
 from uuid import UUID, uuid4
 
 import pytest
-from sqlalchemy import delete
+from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.lab import (
@@ -23,6 +23,7 @@ from app.lab import (
     mechanism_evaluation_service,
 )
 from app.agent.models import Agent, Title
+from app.llm import LlmProfile
 from app.connection import Connection
 from app.agent.contracts import BriefingChoice, BriefingResult, DispatchDecision, DispatchResult
 from app.agent.evaluation import PlannerLabConfiguration
@@ -2049,10 +2050,15 @@ async def test_live_evidence_contains_attempts_llm_calls_and_related_tasks(
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("reasoning_effort", [None, "low", "high"])
 async def test_analysis_is_a_direct_structured_llm_call_without_task_pipeline(
     db: AsyncSession,
     monkeypatch: pytest.MonkeyPatch,
+    reasoning_effort: str | None,
 ) -> None:
+    profile = (await db.scalars(select(LlmProfile))).one()
+    profile.text_high_reasoning_effort = reasoning_effort
+    await db.flush()
     task = Task(
         label="Independent analysis",
         objective="Return a sourced answer",
@@ -2105,7 +2111,7 @@ async def test_analysis_is_a_direct_structured_llm_call_without_task_pipeline(
     build_model.assert_awaited_once_with(
         fake_llm,
         purpose=LLMCallPurpose.LAB_TASK_ANALYSIS,
-        reasoning_effort=None,
+        reasoning_effort=reasoning_effort,
     )
     assert captured["agent_kwargs"]["system_prompt"] == ANALYST_SYSTEM_PROMPT
     assert "SELECTED_TASK" in str(captured["prompt"])

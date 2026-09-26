@@ -29,6 +29,8 @@ async def test_selection_scopes_and_task_management_follow_authenticated_authori
     created = await client.post('/api/auth/users', headers=admin, json={'email': email, 'password': password})
     user_id = created.json()['id']
     async with get_db_session() as db:
+        # Signup also creates the administrator's default Galaris assistant.
+        initial_agent_ids = list(await db.scalars(select(Agent.id)))
         privileges = list((await db.scalars(select(Privilege).where(Privilege.code.in_(['TASK_ACCESS', 'TASK_EDIT', 'TEAM_ACCESS', 'CHAT_ACCESS'])))).all())
         role = Role(code=f"selection-{uuid4().hex}", display_name="Local manager", privileges=privileges)
         title = Title(label="Mx", gender="M")
@@ -56,7 +58,7 @@ async def test_selection_scopes_and_task_management_follow_authenticated_authori
     client.cookies.clear()
     login = await client.post('/api/auth/login-json', json={'email': email, 'password': password})
     human = {'Authorization': 'Bearer ' + login.json()['access_token'], 'X-Editorial-Profile-Version': '1'}
-    for scope, expected in [('management', ids[:1]), ('dialogue', ids[:2]), ('teams', ids)]:
+    for scope, expected in [('management', ids[:1]), ('dialogue', ids[:2]), ('teams', initial_agent_ids + ids)]:
         response = await client.get('/api/agents/selection', params={'scope': scope}, headers=human)
         assert response.status_code == 200
         assert {item['id'] for item in response.json()} == set(expected)

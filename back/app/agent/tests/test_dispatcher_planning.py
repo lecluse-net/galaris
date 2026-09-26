@@ -1319,6 +1319,7 @@ async def test_human_conversation_executes_without_dispatch_inference(
 async def test_conversation_profile_keeps_current_attachment_in_dispatch_prompt(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    monkeypatch.setattr(dispatcher_mod.params_service, "get", AsyncMock(return_value="on"))
     file_id = uuid4()
     attachment_uri = f"chat://chat:direct:1:7/{file_id}"
     captured: dict[str, str] = {}

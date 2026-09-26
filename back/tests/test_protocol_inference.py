@@ -13,6 +13,7 @@ from pydantic_ai import Agent
 from sqlalchemy import select
 
 from app.llm import protocol_inference
+from app.llm import LLMProvider
 from app.llm.facade import read_inference, stream_inference, control_inference, llm_call_accounting
 from app.llm.models import LLMInference, LLMCall
 from app.llm.pydantic_ai_utils import build_model_for_llm
@@ -38,7 +39,9 @@ async def test_optional_parameter_rejection_is_best_effort_without_losing_requir
     runtime, monkeypatch, status, parameter, retries,
 ):
     _, llm, _, _ = runtime
-    llm.provider.catalog_code = "openrouter"
+    llm.provider = (await runtime[0].scalars(select(LLMProvider).where(
+        LLMProvider.catalog_code == "openrouter",
+    ))).one()
     await runtime[0].commit()
     sent = []
     def upstream(request):
@@ -77,7 +80,9 @@ async def test_nested_optional_parameter_rejection_preserves_schema_and_reasonin
     runtime, monkeypatch, parameter, retry,
 ):
     _, llm, _, _ = runtime
-    llm.provider.catalog_code = "openrouter"
+    llm.provider = (await runtime[0].scalars(select(LLMProvider).where(
+        LLMProvider.catalog_code == "openrouter",
+    ))).one()
     await runtime[0].commit()
     sent = []
 

@@ -11,6 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.agent.contracts import ExecutionResult
 from app.agent.models import Agent
+from app.llm import LlmProfile
 from app.memory import acquisition_service, automation, service
 from app.memory.contracts import SourceMemoryDocument
 from app.memory.models import MemoryAcquisition, MemoryAutomationJob, MemoryItem
@@ -154,6 +155,10 @@ async def test_acquisition_uses_global_threshold_to_link_instead_of_create(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     del memory_storage
+    # Exercise threshold-only merging when no decision model is configured.
+    profile = (await db.scalars(select(LlmProfile))).one()
+    profile.decision_llm_id = None
+    await db.flush()
     owner, _peer = agents
     existing, _created = await service.create_item(
         MemoryItemCreate(
@@ -215,6 +220,10 @@ async def test_manual_memory_creation_uses_the_same_global_merge_threshold(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     del memory_storage
+    # Exercise the same threshold-only configuration through manual creation.
+    profile = (await db.scalars(select(LlmProfile))).one()
+    profile.decision_llm_id = None
+    await db.flush()
     owner, _peer = agents
     existing, _created = await service.create_item(
         MemoryItemCreate(

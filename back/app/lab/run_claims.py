@@ -48,7 +48,10 @@ async def claim_next_run() -> ClaimResult:
         try:
             if run.requester_agent_id is None:
                 raise PermissionError("The requesting agent was removed.")
-            await authorize(McpToolContext(run.requester_agent_id, "internal"), run.requester_action or "lab_run_start")
+            await authorize(
+                McpToolContext(run.requester_agent_id, "internal"),
+                run.requester_action or "lab_run_start",
+            )
         except PermissionError:
             run.cancel_requested = True
             run.stop_reason = "authorization_revoked"

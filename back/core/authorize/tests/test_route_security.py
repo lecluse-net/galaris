@@ -98,6 +98,10 @@ def test_independent_auth_route_allowlist_is_exact() -> None:
         ("app.llm.anthropic_router", "anthropic_models"),
         ("app.llm.anthropic_router", "anthropic_count_tokens"),
         ("app.llm.anthropic_router", "anthropic_messages"),
+        # LLM_API_ACCESS and denial paths are exercised in test_profile_gateway.
+        ("app.llm.profile_inference_router", "models"),
+        ("app.llm.profile_inference_router", "embeddings"),
+        ("app.llm.profile_inference_router", "decisions"),
         ("app.mcp.router", "agent_mcp_endpoint"),
         ("app.multimedia.router", "acknowledge_callback"),
         ("bridge.codex.router", "runtime_credential"),

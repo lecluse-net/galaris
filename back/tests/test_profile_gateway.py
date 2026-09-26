@@ -16,7 +16,7 @@ from core.database import middleware
 from app.llm import inference_execution, llm_service, profile_service
 from app.llm.models import LLMCall, LLMInference
 from app.llm.profile_models import LlmProfile
-from app.llm.provider_models import LLM
+from app.llm.provider_models import LLM, LLMProvider
 from tests.test_inference_lifecycle import runtime
 from tests.test_decision_inference import decisions
 
@@ -54,6 +54,11 @@ async def gateway(runtime, committed_database, monkeypatch):
 @pytest.mark.asyncio
 async def test_catalogs_include_all_profiles_and_only_supported_available_usages(gateway):
     client, db, llm, _, profile, other = gateway
+    # Limit available resources to this scenario; the installation proposal remains present.
+    initial_provider = (await db.scalars(select(LLMProvider).where(
+        LLMProvider.catalog_code == "openrouter",
+    ))).one()
+    initial_provider.is_active = False
     embedding = LLM(llm_provider_id=llm.llm_provider_id, code="catalog-embedding", label="Vector",
                     llm_name="vector", primary_capability="embedding", service_capabilities=["embedding"])
     db.add(embedding)
@@ -68,7 +73,8 @@ async def test_catalogs_include_all_profiles_and_only_supported_available_usages
         response = await client.get(path)
         assert response.status_code == 200, response.text
         assert {item["id"] for item in response.json()["data"]} == expected
-    assert (await client.get("/api/llm/openai/models")).json()["data"][0]["id"] == llm.code
+    catalog = (await client.get("/api/llm/openai/models")).json()["data"]
+    assert llm.code in {item["id"] for item in catalog}
     llm.provider.is_active = False
     await db.commit()
     assert (await client.get("/api/profile/models")).json()["data"] == []
