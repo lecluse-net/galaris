@@ -3,7 +3,7 @@ from typing import Any, Sequence, Optional
 import re
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy.orm import selectinload
+from sqlalchemy.orm import defer, selectinload
 from loguru import logger
 
 from core.database import get_db
@@ -120,7 +120,11 @@ async def get_all(
     """Get all agents with pagination."""
     logger.info("Listing agents")
     db = get_db()
-    query = select(Agent).options(*_agent_load_options())
+    query = (
+        select(Agent, Agent.avatar.is_not(None), AgentGroup.id)
+        .outerjoin(AgentGroup, AgentGroup.id == Agent.group_id)
+        .options(*_agent_load_options(), defer(Agent.avatar, raiseload=True))
+    )
     if agent_driver is not None:
         query = query.where(Agent.agent_driver == agent_driver)
     if agent_ids is not None:
@@ -128,9 +132,26 @@ async def get_all(
     query = query.order_by(Agent.code, Agent.id).offset(skip).limit(limit)
     query = Agent.histo_filter(query)
     result = await db.execute(query)
-    agents = result.scalars().all()
-    for agent in agents:
-        await _set_transient_flags(agent)
+    rows = result.all()
+    agents = [agent for agent, _has_avatar, _legacy_team in rows]
+    if not agents:
+        return agents
+    memberships = await db.execute(
+        select(AgentTeam.agent_id, AgentTeam.team_id)
+        .join(AgentGroup, AgentGroup.id == AgentTeam.team_id)
+        .where(AgentTeam.agent_id.in_([agent.id for agent in agents]))
+    )
+    teams_by_agent: dict[int, set[int]] = {}
+    for agent_id, team_id in memberships:
+        teams_by_agent.setdefault(agent_id, set()).add(team_id)
+    current_user_id = user_service.get_current_user_id()
+    for agent, has_avatar, legacy_team in rows:
+        teams = teams_by_agent.get(agent.id, set())
+        if legacy_team is not None:
+            teams.add(legacy_team)
+        agent.team_ids = sorted(teams)
+        agent.has_avatar = has_avatar
+        agent.is_owner = agent.user_id == current_user_id
     return agents
 
 

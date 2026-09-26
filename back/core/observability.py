@@ -86,7 +86,8 @@ def _configure_observability() -> None:
     )
     from core.database import engine
 
-    logfire.instrument_sqlalchemy(engine=engine, enable_commenter=True)
+    # Keep SQL spans, but keep the SQL text stable for asyncpg's prepared cache.
+    logfire.instrument_sqlalchemy(engine=engine, enable_commenter=False)
     logfire.instrument_pydantic_ai(
         include_content=False,
         include_binary_content=False,

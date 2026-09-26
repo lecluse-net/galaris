@@ -1,5 +1,6 @@
 """Unit tests for the backend parameter service."""
 
+import asyncio
 import pytest
 from unittest.mock import Mock, AsyncMock, patch
 from pydantic_settings import BaseSettings
@@ -68,6 +69,7 @@ def reset_params_cache(monkeypatch):
     # lifecycle is covered by the database and HTTP integration scenarios.
     monkeypatch.setattr(ps, "load_auth_secret_key", lambda value: None)
     monkeypatch.setattr(ps, "load_web_push_keys", lambda value: None)
+    monkeypatch.setattr(ps, "_cache_lock", asyncio.Lock())
     ps._params_cache = {}
     ps._cache_loaded = False
     yield
@@ -138,6 +140,22 @@ class TestLazyLoading:
             # Loading does not call execute again.
             mock_db.execute.assert_not_called()
             assert result == "30"
+
+    @pytest.mark.asyncio
+    async def test_concurrent_cold_reads_share_one_load(self, mock_param_objects, monkeypatch):
+        result = Mock()
+        result.scalars.return_value.all.return_value = mock_param_objects
+
+        async def query(_statement):
+            await asyncio.sleep(0)
+            return result
+
+        db = AsyncMock()
+        db.execute.side_effect = query
+        monkeypatch.setattr(params_service, "get_db", lambda: db)
+        values = await asyncio.gather(*(params_service.get("app.timeout") for _ in range(8)))
+        assert values == ["30"] * 8
+        db.execute.assert_awaited_once()
 
 
 # =============================================================================
@@ -593,6 +611,112 @@ class TestRefresh:
 
             # Verify that reloading called execute.
             mock_db.execute.assert_called()
+
+    @pytest.mark.asyncio
+    async def test_failed_reload_preserves_the_last_complete_snapshot(self, monkeypatch):
+        params_service._params_cache = {"app.timeout": "30"}
+        params_service._cache_loaded = True
+        started, release = asyncio.Event(), asyncio.Event()
+
+        async def query(_statement):
+            started.set()
+            await release.wait()
+            result = Mock()
+            result.scalars.return_value.all.return_value = [Param(name="app.timeout", value="60")]
+            return result
+
+        db = AsyncMock()
+        db.execute.side_effect = query
+        monkeypatch.setattr(params_service, "get_db", lambda: db)
+        # Failure after the rows were read must not publish them partially.
+        monkeypatch.setattr(params_service, "load_web_push_keys", Mock(side_effect=ValueError("invalid keys")))
+        task = asyncio.create_task(params_service.refresh())
+        await started.wait()
+        try:
+            assert await params_service.get("app.timeout") == "30"
+        finally:
+            release.set()
+        with pytest.raises(ValueError, match="invalid keys"):
+            await task
+        assert await params_service.get("app.timeout") == "30"
+        db.execute.assert_awaited_once()
+
+    @pytest.mark.asyncio
+    async def test_late_reload_cannot_overwrite_a_new_saved_value(self, monkeypatch):
+        params_service._params_cache = {"app.timeout": "30"}
+        params_service._cache_loaded = True
+        started, release = asyncio.Event(), asyncio.Event()
+        calls = 0
+
+        async def query(_statement):
+            nonlocal calls
+            calls += 1
+            result = Mock()
+            if calls == 1:
+                result.scalars.return_value.all.return_value = [Param(name="app.timeout", value="30")]
+                started.set()
+                await release.wait()
+            else:
+                result.scalar_one.return_value = Param(name="app.timeout", value="30")
+            return result
+
+        db = AsyncMock()
+        db.execute.side_effect = query
+        monkeypatch.setattr(params_service, "get_db", lambda: db)
+        reload = asyncio.create_task(params_service.refresh())
+        await started.wait()
+        save = asyncio.create_task(params_service.set("app.timeout", "60"))
+        await asyncio.sleep(0)
+        release.set()
+        await asyncio.gather(reload, save)
+        assert await params_service.get("app.timeout") == "60"
+        db.commit.assert_awaited_once()
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("grouped", [False, True])
+    async def test_failed_commit_never_publishes_values_or_notifies(self, monkeypatch, grouped):
+        name = Params.SEARCH_TIMEOUT
+        params_service._params_cache = {name: "30"}
+        params_service._cache_loaded = True
+        monkeypatch.setattr(runtime_settings, "SEARCH_TIMEOUT", 30)
+        listener = AsyncMock()
+        monkeypatch.setattr(params_service, "_change_listeners", [listener])
+        db = AsyncMock()
+        result = Mock()
+        param = Param(name=name, value="30")
+        result.scalar_one.return_value = param
+        db.execute.return_value = result
+        db.scalars.return_value = [param]
+        db.commit.side_effect = RuntimeError("commit failed")
+        monkeypatch.setattr(params_service, "get_db", lambda: db)
+        with pytest.raises(RuntimeError, match="commit failed"):
+            if grouped:
+                await params_service.set_runtime_values({name: "60"})
+            else:
+                await params_service.set(name, "60")
+        assert await params_service.get(name) == "30"
+        assert runtime_settings.SEARCH_TIMEOUT == 30
+        listener.assert_not_awaited()
+
+    @pytest.mark.asyncio
+    async def test_listener_can_read_and_update_the_committed_cache(self, monkeypatch):
+        params_service._params_cache = {"app.timeout": "30", "app.other": "old"}
+        params_service._cache_loaded = True
+        db = AsyncMock()
+        result = Mock()
+        result.scalar_one.return_value = Param(name="app.timeout", value="30")
+        db.execute.return_value = result
+        monkeypatch.setattr(params_service, "get_db", lambda: db)
+        observed = []
+
+        async def listener(name, value):
+            observed.append((name, await params_service.get(name)))
+            if name == "app.timeout":
+                await params_service.set("app.other", "new")
+
+        monkeypatch.setattr(params_service, "_change_listeners", [listener])
+        await asyncio.wait_for(params_service.set("app.timeout", "60"), timeout=2)
+        assert observed == [("app.timeout", "60"), ("app.other", "new")]
 
 
 # =============================================================================

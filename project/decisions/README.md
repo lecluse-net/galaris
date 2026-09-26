@@ -1,5 +1,7 @@
 # Décisions d’architecture
 
+- [0138 — Caches API bornés par leur domaine d’invalidation](0138-request-authorization-cache.md)
+
 - [0137 — Outillage documentaire hors ligne et confiné](0137-offline-documentation-toolchain.md)
 
 - [0136 — Configuration OpenRouter proposée à l'installation](0136-initial-openrouter-configuration.md)

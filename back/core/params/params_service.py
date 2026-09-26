@@ -7,6 +7,7 @@ Usage:
     >>> all_params = await params_service.get_all()
 """
 from collections.abc import Awaitable, Callable
+from asyncio import Lock
 import hashlib
 import json
 from typing import Any, Dict, Optional, Sequence
@@ -27,6 +28,7 @@ from .web_push import load_web_push_keys
 # In-memory parameter cache.
 _params_cache: Dict[str, Optional[str]] = {}
 _cache_loaded: bool = False
+_cache_lock = Lock()
 _change_listeners: list[Callable[[str, Optional[str]], Awaitable[None]]] = []
 
 
@@ -167,18 +169,26 @@ async def _ensure_loaded() -> None:
     """
     global _cache_loaded
     if not _cache_loaded:
-        await load_params()
+        async with _cache_lock:
+            if not _cache_loaded:
+                await _load_params()
 
 
 async def load_params() -> None:
     """Load all parameters from the database into memory."""
+    async with _cache_lock:
+        await _load_params()
+
+
+async def _load_params() -> None:
+    """Prepare a full snapshot before publishing it; caller owns the cache lock."""
     global _params_cache, _cache_loaded
-    result = await get_db().execute(select(Param))
+    result = await get_db().execute(select(Param).execution_options(populate_existing=True))
     params = result.scalars().all()
-    _params_cache = {param.name: reveal(param.name, param.value) for param in params}
-    load_auth_secret_key(_params_cache.get(Params.AUTH_SECRET_KEY) or "")
-    load_web_push_keys(_params_cache.get(Params.WEB_PUSH_VAPID_KEYS) or "")
-    for name, value in _params_cache.items():
+    snapshot = {param.name: reveal(param.name, param.value) for param in params}
+    load_auth_secret_key(snapshot.get(Params.AUTH_SECRET_KEY) or "")
+    load_web_push_keys(snapshot.get(Params.WEB_PUSH_VAPID_KEYS) or "")
+    for name, value in snapshot.items():
         try:
             _apply_runtime_setting(name, value)
         except (ValidationError, ValueError):
@@ -186,6 +196,7 @@ async def load_params() -> None:
                 "Ignoring invalid persisted runtime parameter {}; keeping current value",
                 name,
             )
+    _params_cache = snapshot
     _cache_loaded = True
     logger.info("Loaded {} parameters into memory", len(_params_cache))
 
@@ -282,28 +293,26 @@ async def set(name: str, value: Optional[str]) -> bool:
         logger.warning("Attempted to update nonexistent parameter {}", name)
         return False
 
-    normalized_value = normalize(name, value)
-    if is_prompt(name) and normalized_value == await declared_default(name):
-        normalized_value = None
-    db = get_db()
+    async with _cache_lock:
+        normalized_value = normalize(name, value)
+        if is_prompt(name) and normalized_value == await declared_default(name):
+            normalized_value = None
+        db = get_db()
+        result = await db.execute(select(Param).where(Param.name == name))
+        param = result.scalar_one()
 
-    result = await db.execute(select(Param).where(Param.name == name))
-    param = result.scalar_one()
+        # The database stores encrypted secrets while the cache retains plaintext.
+        param.value = _encrypt_for_storage(name, normalized_value)
+        if is_prompt(name):
+            param.default_digest = prompt_default_digest(name)
 
-    # The database stores encrypted secrets while the cache retains plaintext.
-    param.value = _encrypt_for_storage(name, normalized_value)
-    if is_prompt(name):
-        # Saving, resetting, or explicitly keeping a prompt acknowledges the
-        # packaged default currently presented to the administrator.
-        param.default_digest = prompt_default_digest(name)
-
-    await db.commit()
-    await db.refresh(param)
-
-    if _cache_loaded:
+        await db.commit()
+        # No awaited refresh between commit and publication: a failure there
+        # would leave the cache stale despite a successful durable write.
         _params_cache[name] = normalized_value
+        _apply_runtime_setting(name, normalized_value)
 
-    _apply_runtime_setting(name, normalized_value)
+    # Listeners can read or update parameters; never invoke them under the lock.
     await _notify_change(name, normalized_value)
 
     return True
@@ -314,31 +323,31 @@ async def refresh() -> None:
 
     This forces the in-memory cache to synchronize with persistent values.
     """
-    global _cache_loaded
-    _cache_loaded = False
+    # Readers keep the previous complete snapshot during reload (or failure).
     await load_params()
 
 
 async def set_runtime_values(values: dict[str, str]) -> None:
     """Commit a coherent group of runtime preferences before publishing to readers."""
     await _ensure_loaded()
-    normalized: dict[str, Optional[str]] = {}
-    for name, value in values.items():
-        config = DEFAULT_PARAMS.get(name)
-        if is_internal(name) or config is None or not config.get("runtime_field"):
-            raise ValueError("Only administrable runtime parameters can be grouped")
-        normalized[name] = normalize(name, value)
-    db = get_db()
-    rows = list(await db.scalars(select(Param).where(Param.name.in_(normalized))))
-    if len(rows) != len(normalized):
-        raise ValueError("Runtime parameters have not been initialized")
-    for row in rows:
-        row.value = _encrypt_for_storage(row.name, normalized[row.name])
-    await db.commit()
-    # No awaits while switching the in-process view of a configuration group.
-    for name, value in normalized.items():
-        _params_cache[name] = value
-        _apply_runtime_setting(name, value)
+    async with _cache_lock:
+        normalized: dict[str, Optional[str]] = {}
+        for name, value in values.items():
+            config = DEFAULT_PARAMS.get(name)
+            if is_internal(name) or config is None or not config.get("runtime_field"):
+                raise ValueError("Only administrable runtime parameters can be grouped")
+            normalized[name] = normalize(name, value)
+        db = get_db()
+        rows = list(await db.scalars(select(Param).where(Param.name.in_(normalized))))
+        if len(rows) != len(normalized):
+            raise ValueError("Runtime parameters have not been initialized")
+        for row in rows:
+            row.value = _encrypt_for_storage(row.name, normalized[row.name])
+        await db.commit()
+        # No awaits while switching the in-process view of a configuration group.
+        for name, value in normalized.items():
+            _params_cache[name] = value
+            _apply_runtime_setting(name, value)
     for name, value in normalized.items():
         await _notify_change(name, value)
 

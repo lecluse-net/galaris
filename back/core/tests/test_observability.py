@@ -117,3 +117,61 @@ def test_test_harness_does_not_export_or_join_external_traces(monkeypatch):
         pass
     assert configure.call_args.kwargs["send_to_logfire"] is False
     assert configure.call_args.kwargs["distributed_tracing"] is False
+
+
+def test_sql_traces_keep_parent_duration_and_errors_without_varying_query_text(monkeypatch):
+    """The configured SQL instrumentation preserves diagnostics and reusable SQL."""
+    import json
+    import subprocess
+    import sys
+
+    configure = Mock()
+    sql_instrument = Mock()
+    monkeypatch.setattr(observability, "_configured", False)
+    monkeypatch.setattr(runtime_settings, "LOGFIRE_TOKEN", "")
+    monkeypatch.setattr(observability.logfire, "configure", configure)
+    monkeypatch.setattr(observability.logfire, "instrument_sqlalchemy", sql_instrument)
+    for name in ("instrument_httpx", "instrument_pydantic_ai", "instrument_system_metrics"):
+        monkeypatch.setattr(observability.logfire, name, Mock())
+    observability.configure_observability()
+    options = {key: value for key, value in sql_instrument.call_args.kwargs.items() if key != "engine"}
+    # A separate interpreter avoids replacing the test application's global OTel
+    # instrumentor. SQLite and the span exporter are entirely in memory.
+    subprocess.run([sys.executable, "-c", '''
+import json, sys
+from sqlalchemy import create_engine, event, text
+from sqlalchemy.exc import DBAPIError
+from opentelemetry.sdk.trace import TracerProvider
+from opentelemetry.sdk.trace.export import SimpleSpanProcessor
+from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanExporter
+from opentelemetry.instrumentation.sqlalchemy import SQLAlchemyInstrumentor
+from opentelemetry.trace import SpanKind, StatusCode
+provider = TracerProvider()
+exporter = InMemorySpanExporter()
+provider.add_span_processor(SimpleSpanProcessor(exporter))
+engine = create_engine("sqlite:///:memory:")
+SQLAlchemyInstrumentor().instrument(engine=engine, tracer_provider=provider, **json.loads(sys.argv[1]))
+statements = []
+@event.listens_for(engine, "before_cursor_execute")
+def capture(conn, cursor, statement, parameters, context, executemany):
+    statements.append(statement)
+with engine.connect() as connection:
+    with provider.get_tracer("synthetic").start_as_current_span("request") as parent:
+        parent_context = parent.get_span_context()
+        for _ in range(2):
+            assert connection.scalar(text("SELECT 1")) == 1
+        try:
+            connection.execute(text("SELECT * FROM synthetic_missing_table"))
+        except DBAPIError:
+            pass
+spans = [span for span in exporter.get_finished_spans()
+         if span.kind == SpanKind.CLIENT and span.parent and span.parent.span_id == parent_context.span_id]
+assert len(spans) == 3
+assert all(span.context.trace_id == parent_context.trace_id for span in spans)
+assert all(span.end_time > span.start_time for span in spans)
+assert all("db.statement" in span.attributes or "db.query.text" in span.attributes for span in spans)
+assert sum(span.status.status_code == StatusCode.ERROR for span in spans) == 1
+assert len(set(statements[:2])) == 1, "Repeated SQL must reuse the same query text"
+engine.dispose()
+provider.shutdown()
+''', json.dumps(options)], check=True, capture_output=True, text=True, timeout=30)

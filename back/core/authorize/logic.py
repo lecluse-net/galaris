@@ -1,88 +1,57 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
-from sqlalchemy.orm import selectinload
 from loguru import logger
 
 from core.user.models import User
-from core.authorize import Assignment, Role
+from .models import Assignment, Privilege, RolePrivilege
+from .cache import cached_privileges
 from .context import role_id_ctx
 
-from typing import List, Union, Optional
 
-async def check_privilege(user: Optional[User], privilege_code: Union[str, List[str]], db: AsyncSession, role_id: Optional[int] = None) -> bool:
+async def check_privilege(
+    user: User | None,
+    privilege_code: str | list[str],
+    db: AsyncSession,
+    role_id: int | None = None,
+) -> bool:
+    """Check OR privileges for the active role, or all assignments without a role.
+
+    Active users have the special ``user`` privilege; anonymous callers have
+    ``guest``. HTTP callers share role codes within the request, invalidated on
+    database mutations and transaction boundaries. Other callers always query.
     """
-    Checks if the user has the specified privilege code(s) for the current role.
-    
-    Handles special privileges:
-    - "user": Any authenticated active user has this privilege automatically
-    - "guest": Any non-authenticated user has this privilege automatically
-    
-    Args:
-        user: The user to check.
-        privilege_code: A single code (str) or a list of codes (List[str]).
-        db: Database session.
-        role_id: Optional role ID to check. If not provided, uses the role from context.
-        
-    Returns:
-        bool:
-        - If privilege_code is str: True if user has it.
-        - If privilege_code is List[str]: True if user has AT LEAST ONE of them (OR logic).
-    """
-    # Build the effective privileges set
-    effective_privileges: set[str] = set()
-    
-    # Add special privilege based on authentication status
+    requested = {privilege_code} if isinstance(privilege_code, str) else set(privilege_code)
+    if not requested:
+        return False
     if user is None:
-        effective_privileges.add("guest")
-    elif user.is_active:
-        effective_privileges.add("user")
-    
-    # If user is active, add privileges from their assignments
-    if user is not None and user.is_active:
-        # Get the current role_id from context if not provided
-        if role_id is None:
-            role_id = role_id_ctx.get()
-        
-        if role_id is None:
-            # Load all assignments with Roles and Privileges
-            stmt = (
-                select(Assignment)
-                .where(Assignment.user_id == user.id)
-                .options(
-                    selectinload(Assignment.role).selectinload(Role.privileges)
-                )
-            )
-            result = await db.execute(stmt)
-            assignments = result.scalars().all()
-            
-            for assignment in assignments:
-                if assignment.role and assignment.role.privileges:
-                    for priv in assignment.role.privileges:
-                        effective_privileges.add(priv.code)
-        else:
-            # Load only the specific assignment for the current role
-            stmt = (
-                select(Assignment)
-                .where(Assignment.user_id == user.id)
-                .where(Assignment.role_id == role_id)
-                .options(
-                    selectinload(Assignment.role).selectinload(Role.privileges)
-                )
-            )
-            result = await db.execute(stmt)
-            assignment = result.scalar_one_or_none()
-            
-            if assignment and assignment.role and assignment.role.privileges:
-                for priv in assignment.role.privileges:
-                    effective_privileges.add(priv.code)
-    
-    # Check if requested privilege is in effective privileges
-    if isinstance(privilege_code, list):
-        is_allowed = any(code in effective_privileges for code in privilege_code)
-    else:
-        is_allowed = privilege_code in effective_privileges
-    
-    if not is_allowed and user is not None:
-        logger.debug(f"User {user.email} denied access to {privilege_code}. Has: {effective_privileges}")
-    
-    return is_allowed
+        return "guest" in requested
+    if not user.is_active:
+        return False
+    if "user" in requested:
+        return True
+
+    effective_role = role_id if role_id is not None else role_id_ctx.get()
+    key = (user.id, effective_role)
+    cache = cached_privileges(db.sync_session)
+    effective = cache.get(key) if cache is not None else None
+    if effective is None:
+        # Fetch immutable codes directly, avoiding repeated ORM relationship
+        # loading and stale identity-map collections after a role mutation.
+        statement = (
+            select(Privilege.code)
+            .join(RolePrivilege, RolePrivilege.privilege_id == Privilege.id)
+            .join(Assignment, Assignment.role_id == RolePrivilege.role_id)
+            .where(Assignment.user_id == user.id, Assignment.deleted_at.is_(None))
+        )
+        if effective_role is not None:
+            statement = statement.where(Assignment.role_id == effective_role)
+        effective = frozenset(await db.scalars(statement))
+        # The SELECT may have autoflushed, which invalidates the earlier cache.
+        cache = cached_privileges(db.sync_session)
+        if cache is not None:
+            cache[key] = effective
+
+    allowed = not requested.isdisjoint(effective)
+    if not allowed:
+        logger.debug("User {} denied access to {}", user.id, privilege_code)
+    return allowed

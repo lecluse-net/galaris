@@ -1118,6 +1118,19 @@ Declare privileges with stable codes. `make sync-db` regenerates and synchronize
 definitions. Do not rename an existing code as a simple translation:
 codes are persisted identifiers; labels are translatable.
 
+Permissions are cached only during one HTTP request, separately for each SQL session,
+user, and active role. A flush, SQL write, or transaction end invalidates the cache,
+including rollbacks and savepoints. WebSocket checks and autonomous jobs do not cache
+permissions. The validated account is reused within the request; its active state,
+authentication version, and session are checked again on the next request.
+
+Params already have a process-local memory cache and a typed `runtime_settings` view.
+Ordinary reads do not query PostgreSQL. Loads and writes are serialized; writes publish
+after commit, while reloads publish a complete snapshot and retain the previous one on
+failure. Notifications run outside the lock. This cache does not propagate external SQL
+changes to other processes: those changes require an explicit reload in each process or
+a restart. See the [API cache decision](../../../project/decisions/0138-request-authorization-cache.md).
+
 ### Agentic Management MCP Packages
 
 Native MCP functions are discovered in the `mcp.py` of each declared module. The decorator
@@ -1466,6 +1479,11 @@ Loguru logs. Headers, HTTP bodies, prompt contents, and binary contents are not 
 Without a token, instrumentation remains local. `APP_ENV=test` retains normal instrumentation.
 Only automated test compositions explicitly isolate telemetry and HTTP quotas, supply their
 own secrets, and request DbAdmin's `--mode test`.
+
+SQL spans retain their parent, duration, errors, and query text. SQL trace comments are
+disabled so asyncpg's prepared-statement cache can reuse stable SQL text. The trace ID
+is therefore no longer injected into SQL visible in PostgreSQL logs; correlation remains
+available in Logfire.
 
 `app.incident` complements this telemetry with a durable PostgreSQL journal of every failed LLM
 or tool call. Capture occurs before harness event compaction and retains correlations for Task,

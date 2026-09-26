@@ -23,6 +23,7 @@ from . import service
 from .document_service import create_document
 from .models import MemoryItem, MemoryItemGrant
 from .schemas import MemoryItemUpdate
+from .storage import get_storage
 
 
 def _document_title(kind: GoalDocumentKind, goal_title: str) -> str:
@@ -122,16 +123,7 @@ class MemoryGoalDocumentStore(GoalDocumentStore):
         return item.id
 
     async def read(self, document_id: UUID) -> str:
-        item, content, _access, content_type, media_type = await service.get_item(
-            document_id,
-            agent_id=None,
-            administrative=True,
-        )
-        if item.node_kind != "document":
-            raise service.MemoryConflictError("A Goal Markdown reference is not a document.")
-        if content_type != "text" and not media_type.startswith("text/"):
-            raise service.MemoryConflictError("A Goal document must contain UTF-8 text.")
-        return content.decode("utf-8")
+        return (await self.read_many((document_id,)))[document_id]
 
     async def revision(self, document_id: UUID) -> int:
         item = await service._get_item_record(document_id)  # pyright: ignore[reportPrivateUsage]
@@ -140,9 +132,31 @@ class MemoryGoalDocumentStore(GoalDocumentStore):
         return item.revision
 
     async def read_many(self, document_ids: tuple[UUID, ...]) -> dict[UUID, str]:
+        identities = tuple(dict.fromkeys(document_ids))
+        if not identities:
+            return {}
+        # This Goal-owned port already reads administratively, after its caller
+        # authorizes the Goal. Current content needs neither grants nor revisions.
+        # Read scalar metadata so an existing ORM instance cannot retain an older
+        # resource pointer after another writer publishes a revision.
+        rows = await get_db().execute(
+            select(
+                MemoryItem.id, MemoryItem.node_kind, MemoryItem.provider_code,
+                MemoryItem.resource_id, MemoryItem.content_type, MemoryItem.media_type,
+            ).where(MemoryItem.id.in_(identities), MemoryItem.deleted_at.is_(None))
+        )
+        records = {row.id: row for row in rows}
         contents: dict[UUID, str] = {}
-        for document_id in dict.fromkeys(document_ids):
-            contents[document_id] = await self.read(document_id)
+        for document_id in identities:
+            item = records.get(document_id)
+            if item is None:
+                raise service.MemoryNotFoundError("Memory not found.")
+            content = await get_storage(item.provider_code).read(item.resource_id)
+            if item.node_kind != "document":
+                raise service.MemoryConflictError("A Goal Markdown reference is not a document.")
+            if item.content_type != "text" and not item.media_type.startswith("text/"):
+                raise service.MemoryConflictError("A Goal document must contain UTF-8 text.")
+            contents[document_id] = content.decode("utf-8")
         return contents
 
     async def update(

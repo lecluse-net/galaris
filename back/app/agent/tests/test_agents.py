@@ -49,7 +49,7 @@ async def test_get_all_can_filter_by_driver(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     result = MagicMock()
-    result.scalars.return_value.all.return_value = []
+    result.all.return_value = []
     db = MagicMock()
     db.execute = AsyncMock(return_value=result)
     monkeypatch.setattr(agent_service, "get_db", lambda: db)
@@ -344,3 +344,65 @@ async def test_create_internal_harness_materializes_skill_assignments(
     assert created is created_agents[0]
     ensure_skill_assignment_matrix.assert_awaited_once_with(42)
     sync_integrated_tool_connections.assert_awaited_once_with(42)
+
+
+@pytest.mark.asyncio
+async def test_agent_list_batches_teams_and_reopens_avatar_flags(db, monkeypatch):
+    from datetime import datetime, timezone
+    from sqlalchemy import delete, event, inspect, update
+    from app.agent.models import AgentGroup, AgentTeam, Title
+    from app.agent.schemas import Agent as AgentRead
+
+    title = Title(label="List performance", gender="M")
+    teams = [AgentGroup(name=f"Synthetic list team {index}") for index in range(3)]
+    db.add_all([title, *teams])
+    await db.flush()
+    agents = [Agent(title_id=title.id, code=f"batch-agent-{index}", first_name="Synthetic",
+                    last_name=str(index), group_id=teams[0].id, avatar=b"synthetic-avatar" if index == 0 else None)
+              for index in range(8)]
+    db.add_all(agents)
+    await db.flush()
+    for agent in agents:
+        db.add_all([AgentTeam(agent_id=agent.id, team_id=team.id) for team in teams])
+    teams[2].deleted_at = datetime.now(timezone.utc)
+    await db.commit()
+    ids = [agent.id for agent in agents]
+    manager_id = agents[0].user_id
+    expected_teams = sorted([teams[0].id, teams[1].id])
+    monkeypatch.setattr(agent_service.user_service, "get_current_user_id", lambda: manager_id)
+    db.expunge_all()
+    statements = []
+    def count(_conn, _cursor, statement, _parameters, _context, _many):
+        if statement.lstrip().upper().startswith("SELECT"):
+            statements.append(statement)
+    engine = db.bind.sync_engine
+    event.listen(engine, "before_cursor_execute", count)
+    try:
+        listed = await agent_service.get_all(agent_ids=ids, limit=50)
+        assert [agent.id for agent in listed] == ids
+        assert len(statements) <= 6
+        assert all("avatar" in inspect(agent).unloaded for agent in listed)
+        serialized = [AgentRead.model_validate(agent) for agent in listed]
+        assert all(agent.team_ids == expected_teams and agent.is_owner for agent in serialized)
+        assert [agent.has_avatar for agent in serialized] == [True, *([False] * 7)]
+    finally:
+        event.remove(engine, "before_cursor_execute", count)
+    assert await agent_service.get_avatar(ids[0]) == b"synthetic-avatar"
+    assert await agent_service.delete_avatar(ids[0])
+    assert await agent_service.update_avatar(ids[1], b"new-avatar")
+    monkeypatch.setattr(agent_service.user_service, "get_current_user_id", lambda: None)
+    reopened = await agent_service.get_all(agent_ids=ids, skip=0, limit=2)
+    assert [agent.has_avatar for agent in reopened] == [False, True]
+    assert all(not agent.is_owner for agent in reopened)
+    assert [agent.id for agent in await agent_service.get_all(agent_ids=ids, skip=2, limit=2)] == ids[2:4]
+    assert await agent_service.get_all(agent_ids=[], limit=50) == []
+    assert await agent_service.get_all(agent_ids=ids, agent_driver="hermes") == []
+    await db.execute(delete(AgentTeam).where(AgentTeam.team_id == expected_teams[1]))
+    await db.execute(update(AgentGroup).where(AgentGroup.id == expected_teams[0]).values(deleted_at=datetime.now(timezone.utc)))
+    await db.commit()
+    reopened = await agent_service.get_all(agent_ids=ids)
+    assert len(reopened) == len(ids)
+    assert all(agent.team_ids == [] for agent in reopened)
+    await db.execute(update(Agent).where(Agent.id == ids[0]).values(deleted_at=datetime.now(timezone.utc)))
+    await db.commit()
+    assert ids[0] not in [agent.id for agent in await agent_service.get_all(agent_ids=ids)]

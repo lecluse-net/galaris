@@ -9,7 +9,7 @@ from core.secrets import auth_secret_key
 from contextvars import Token
 from typing import Optional
 from .models import User
-from core.authorize import role_id_ctx, assignment_id_ctx
+from core.authorize import role_id_ctx, assignment_id_ctx, request_privilege_cache
 
 
 class AuthContextMiddleware(BaseHTTPMiddleware):
@@ -24,6 +24,7 @@ class AuthContextMiddleware(BaseHTTPMiddleware):
         assignment_id: Optional[int] = None
         raw_token: Optional[str] = None
         session_family: str | None = None
+        validated_user: User | None = None
 
         # Agent MCP endpoints own their bearer-capability authentication and
         # deliberately run without the request-scoped database middleware.
@@ -45,20 +46,22 @@ class AuthContextMiddleware(BaseHTTPMiddleware):
                     try:
                         await validate_access_claims(payload, user)
                         session_family = payload.get("session_family")
+                        validated_user = user
                     except AuthenticationError:
                         user_id = None
             except JWTError:
                 # A non-JWT token may still be a database-backed UserToken.
-                user_id = await self._resolve_user_token(token)
-                if user_id:
+                validated_user = await self._resolve_user_token(token)
+                user_id = validated_user.id if validated_user is not None else None
+                if validated_user is not None:
                     raw_token = token
 
         # Use the shared user_service ContextVar directly. The underscore remains
         # conventional even though middleware and service intentionally share it.
         from .user_service import _user_id_ctx as uid_ctx, _cached_user as cached_ctx, _raw_token_ctx as rawtok_ctx  # pyright: ignore[reportPrivateUsage]
         user_token: Token[Optional[int]] = uid_ctx.set(user_id)
-        # Reset the user cache for every request.
-        cached_token: Token[Optional[User]] = cached_ctx.set(None)
+        # Seed only after successful validation; never share with another request.
+        cached_token: Token[Optional[User]] = cached_ctx.set(validated_user)
         role_ctx: Token[Optional[int]] = role_id_ctx.set(role_id)
         assignment_ctx: Token[Optional[int]] = assignment_id_ctx.set(assignment_id)
         raw_token_ctx: Token[Optional[str]] = rawtok_ctx.set(raw_token)
@@ -66,8 +69,8 @@ class AuthContextMiddleware(BaseHTTPMiddleware):
         family_ctx = session_family_ctx.set(session_family)
 
         try:
-            response = await call_next(request)
-            return response
+            with request_privilege_cache():
+                return await call_next(request)
         finally:
             uid_ctx.reset(user_token)
             cached_ctx.reset(cached_token)
@@ -76,9 +79,9 @@ class AuthContextMiddleware(BaseHTTPMiddleware):
             rawtok_ctx.reset(raw_token_ctx)
             session_family_ctx.reset(family_ctx)
 
-    async def _resolve_user_token(self, token_value: str) -> Optional[int]:
+    async def _resolve_user_token(self, token_value: str) -> Optional[User]:
         """
-        Resolve a valid, enabled UserToken to its user ID.
+        Resolve a valid, enabled UserToken to its active user.
         """
         try:
             from .token_service import get_token_by_value
@@ -88,7 +91,7 @@ class AuthContextMiddleware(BaseHTTPMiddleware):
                 # Verify that the user exists and is active.
                 user = await get_user_by_id(user_token.user_id)
                 if user and user.is_active:
-                    return user.id
+                    return user
         except Exception:
             logger.exception("User-token resolution failed")
         return None

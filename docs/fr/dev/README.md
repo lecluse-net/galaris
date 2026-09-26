@@ -1136,6 +1136,21 @@ Déclarez les privilèges avec des codes stables. `make sync-db` régénère et 
 définitions backend/frontend. Ne renommez pas un code existant comme une simple traduction :
 les codes sont des identifiants persistés, les libellés sont traduisibles.
 
+Les droits sont mis en cache uniquement pendant une requête HTTP, séparément par session
+SQL, utilisateur et rôle actif. Le cache est invalidé après un flush, une écriture SQL ou
+une fin de transaction, y compris un rollback ou un savepoint. Les contrôles WebSocket et
+les traitements autonomes restent sans cache de droits. Le compte déjà validé est réutilisé
+dans la requête, mais son activité, sa version d’authentification et sa session sont
+revérifiées à la requête suivante.
+
+Les Params disposent déjà d’un cache mémoire par processus et d’une vue typée
+`runtime_settings`. Leurs lectures courantes ne consultent pas PostgreSQL. Chargements et
+écritures sont sérialisés ; les écritures publient après commit, les rechargements publient
+une vue complète et conservent la précédente en cas d’échec. Les notifications s’exécutent
+hors verrou. Ce cache ne propage pas une modification SQL externe vers les autres processus :
+une telle modification nécessite un rechargement explicite dans chacun d’eux ou un redémarrage.
+Voir la [décision sur les caches API](../../../project/decisions/0138-request-authorization-cache.md).
+
 ### Packages MCP de management agentique
 
 Les fonctions MCP natives sont découvertes dans le `mcp.py` de chaque module déclaré. Le décorateur
@@ -1496,6 +1511,11 @@ contenus binaires ne sont pas collectés. Sans jeton, l’instrumentation reste 
 `APP_ENV=test` conserve l’instrumentation normale. Seules les compositions de tests
 automatisés isolent explicitement la télémétrie et les quotas HTTP, fournissent leurs
 propres secrets et demandent `--mode test` à DbAdmin.
+
+Les spans SQL conservent leur parent, leur durée, leurs erreurs et le texte de la requête.
+Les commentaires SQL de trace sont désactivés pour que le cache de requêtes préparées
+asyncpg réutilise un texte stable. L’identifiant de trace n’est donc plus injecté dans
+le SQL visible dans les journaux PostgreSQL ; la corrélation reste disponible dans Logfire.
 
 `app.incident` complète cette télémétrie par un journal PostgreSQL durable de chaque appel LLM ou
 outil en échec. La capture intervient avant le compactage des événements du harnais, conserve les

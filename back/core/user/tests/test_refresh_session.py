@@ -5,9 +5,11 @@ from httpx import AsyncClient
 
 from core import settings
 from datetime import datetime, timedelta, timezone
-from sqlalchemy import select
+from sqlalchemy import event, select
+from sqlalchemy.engine import Engine
 from core.user import refresh_session_service as sessions
 from core.user.models import User, UserRefreshSession
+from core.database import get_db_session
 
 
 async def _register_and_login(client: AsyncClient, email: str) -> tuple[str, str]:
@@ -52,11 +54,26 @@ async def test_login_refresh_and_logout_browser_session(
     assert rotated_refresh_token
     assert rotated_refresh_token != initial_refresh_token
 
-    current_user = await client.get(
-        "/api/auth/me",
-        headers={"Authorization": f"Bearer {refreshed.json()['access_token']}"},
-    )
-    assert current_user.status_code == 200
+    # Reopening the identity endpoint must still validate the account and the
+    # session, without reloading the account or its unrelated role graph.
+    statements: list[str] = []
+
+    def record_sql(_conn, _cursor, statement, _parameters, _context, _many):
+        if statement.lstrip().upper().startswith("SELECT"):
+            statements.append(statement)
+
+    event.listen(Engine, "before_cursor_execute", record_sql)
+    try:
+        for _ in range(2):
+            statements.clear()
+            current_user = await client.get(
+                "/api/auth/me",
+                headers={"Authorization": f"Bearer {refreshed.json()['access_token']}"},
+            )
+            assert current_user.status_code == 200
+            assert 0 < len(statements) <= 2, "Identity checks must avoid redundant SQL"
+    finally:
+        event.remove(Engine, "before_cursor_execute", record_sql)
 
     logged_out = await client.post("/api/auth/logout")
     assert logged_out.status_code == 200
@@ -147,3 +164,42 @@ async def test_inactive_or_missing_account_cannot_create_refresh_credentials(db,
     with pytest.raises(sessions.InvalidRefreshTokenError):
         await sessions.create_refresh_session(2147483647 if missing else user.id)
     assert list(await db.scalars(select(UserRefreshSession))) == []
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("change", ["inactive", "version", "session", "user_token"])
+async def test_warm_identity_never_survives_credential_revocation(client, change):
+    from core.user import auth_service, token_service
+
+    async with get_db_session() as db:
+        user = User(email=f"cache-{change}@example.com", hashed_password="unused", is_active=True)
+        db.add(user)
+        await db.commit()
+        if change == "user_token":
+            record, token = await token_service.create_token_for_user(user.id)
+        else:
+            refresh = await sessions.create_refresh_session(user.id)
+            family = await sessions.family_for_token(refresh)
+            token = await auth_service.create_access_token_for_user(user, session_family=family)
+        user_id = user.id
+
+    headers = {"Authorization": f"Bearer {token}"}
+    for _ in range(2):
+        response = await client.get("/api/auth/me", headers=headers)
+        assert response.status_code == 200
+        assert response.json()["id"] == user_id
+
+    async with get_db_session() as db:
+        user = await db.get(User, user_id)
+        if change == "inactive":
+            user.is_active = False
+        elif change == "version":
+            user.auth_version += 1
+        elif change == "session":
+            await sessions.revoke_all_user_sessions(user_id)
+        else:
+            await db.merge(record)
+            stored = await db.get(type(record), record.id)
+            stored.enabled = False
+        await db.commit()
+    assert (await client.get("/api/auth/me", headers=headers)).status_code == 401
