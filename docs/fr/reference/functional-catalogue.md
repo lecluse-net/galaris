@@ -8,7 +8,7 @@ les objectifs, les documents, la mémoire, les modèles IA et les intégrations 
 Un même agent peut discuter avec une personne, consulter ses informations autorisées, produire un
 livrable, solliciter un collègue, déclencher un workflow externe et conserver les connaissances utiles.
 
-Ce catalogue décrit les fonctionnalités présentes dans le dépôt au **25 septembre 2026**, y compris
+Ce catalogue décrit les fonctionnalités présentes dans le dépôt au **26 septembre 2026**, y compris
 les fonctions destinées aux agents, les écrans d’administration et les mécanismes de fond. Il est
 organisé par usages, puis complété par un inventaire des fonctions MCP et une correspondance avec
 **tous les modules déclarés**. Les sources de chaque domaine sont indiquées pour rendre la couverture
@@ -20,9 +20,10 @@ des connexions, du modèle et, pour un service externe, du compte configuré. Ce
 sur l’implémentation actuelle et ses usages accessibles. Il décrit le logiciel, sans attester la
 configuration ou la qualification de tous les fournisseurs d’une installation particulière.
 
-La présente actualisation examine les changements des **trois derniers jours, du 22 au 25 septembre
-2026**, jusqu’au commit `9dc6d03`, et les confronte aux contrats et tests courants. Elle intègre les
-nouveautés dans leurs sections métier, leurs conditions de disponibilité et les inventaires.
+La présente actualisation examine les changements des **deux derniers jours, du 24 au 26 septembre
+2026**, jusqu’au commit `66a3100`, et les confronte aux contrats et tests courants. Elle complète
+le catalogue précédent sans en retirer les capacités : nouveautés, changements de comportement
+et conditions d’accès sont intégrés à leurs sections métier et aux inventaires.
 
 Les inventaires couvrent **183 fonctions MCP natives, 71 modules backend et 36 modules frontend**.
 Les fonctionnalités réalisées restent distinctes des intentions du
@@ -264,11 +265,14 @@ Sources : [comptes](../../../back/core/user/router.py), [autorisations](../../..
 Un agent garde son identité à travers les conversations, les tâches et les changements de modèle.
 Sa fiche permet de renseigner :
 
-- son code système stable, son prénom, son nom, sa civilité et son avatar ;
+- son code système stable, son prénom obligatoire, son nom facultatif, sa civilité et son avatar ;
 - son intitulé de poste, sa fiche de poste et sa personnalité en texte enrichi ;
 - son manager humain et ses appartenances aux équipes ;
 - son profil de modèles, sa voix et son harnais d’exécution ;
 - ses connexions aux outils, ses compétences autorisées et son accès MCP.
+
+Un agent peut porter seulement un prénom. La création et les modifications refusent un prénom
+vide ou composé d’espaces ; le nom peut être omis ou effacé sans empêcher l’enregistrement.
 
 Les fiches, avatars et civilités sont administrables selon les droits. Le code permanent sert aux
 intégrations et aux espaces de travail ; il ne change pas après création. Les sélecteurs d’agents
@@ -300,7 +304,9 @@ reçoit également la proposition à la synchronisation de la base.
 Ses connexions et compétences ordinaires sont initialisées. Sa connexion **Galaris Admin** est
 activée lors de cette création, notamment pour consulter la documentation ; elle peut aussi
 autoriser les inspections d’exécution selon les fonctions accordées. Ce cas diffère du défaut
-inactif de cette connexion pour les autres agents. Il n’accorde pas automatiquement l’accès au Lab.
+inactif de cette connexion pour les autres agents. Les skills `galaris-knowledge` et `galaris-lab`
+sont autorisés individuellement pour cet assistant à sa création, tout en restant désactivés
+globalement. La connexion Lab reste inactive : disposer du skill ne suffit pas à exécuter ses outils.
 
 L’agent reste entièrement personnalisable : identité, mission, profil, harnais et autorisations.
 Les synchronisations suivantes préservent ces choix, les révocations et sa suppression ; elles ne
@@ -341,6 +347,11 @@ et **Décision**. Le filtre documentaire retient les modèles déclarant des **f
 du texte en sortie** ; des métadonnées incomplètes peuvent masquer un modèle compatible. La
 découverte multimodale conserve toutes les capacités d’un même modèle ; le rafraîchissement
 explicite permet de renouveler les métadonnées disponibles.
+
+La page **Fournisseurs & Modèles** s’ouvre par défaut sur **Fournisseurs**, sauf si le lien demande
+un autre onglet autorisé. L’onglet **Modèles utilisés** conserve la configuration des profils et
+le configurateur de clients externes ; le bloc explicatif déroulant sur l’accès API par profil
+a été retiré, sans supprimer l’API ni les configurations de clients.
 
 ### Configuration initiale facultative OpenRouter
 
@@ -785,6 +796,21 @@ de » permet de consulter le périmètre d’un agent autorisé avec le privilè
 restent soumises aux droits et au caractère éventuellement non modifiable de la conversation.
 La disposition permet de redimensionner les colonnes et de retrouver le dernier message.
 
+Le panneau latéral organise **Conversations, Documents, Tâches et Processus**. Une rubrique
+s’ouvre lorsqu’elle reçoit des éléments et se replie lorsqu’elle devient vide ; un repli manuel
+est conservé lors des actualisations ordinaires. Les actions de création de conversation et
+de document restent accessibles dans les en-têtes, même repliés, selon les droits. Les filtres
+de conversations — Moi/agents, recherche, externes et archives — sont masqués au départ et
+peuvent être affichés ou masqués sans perdre leurs valeurs.
+
+Le panneau Tâches réunit les travaux liés aux messages affichés et leurs sous-tâches, ainsi que
+les tâches en cours, en file ou en attente automatique de l’agent, même créées ailleurs ou avant
+les messages visibles. Il fonctionne aussi dans une conversation vide. Les travaux extérieurs
+terminés, supprimés ou en pause manuelle ne sont pas ajoutés. La liste s’actualise en direct,
+ouvre les détails autorisés et conserve un indicateur d’état sur une tâche repliée.
+Le document affiché est repéré dans la liste ; les aperçus restent visibles et les icônes de
+cette liste sont consultables sans modification depuis le Chat.
+
 Les marqueurs de lecture sont persistés côté serveur. Les **notifications Web Push**, lorsqu’elles
 sont configurées et autorisées par le navigateur, avertissent des nouveaux messages. La consultation
 d’un message ou du salon peut retirer une notification encore en attente. La mise en sourdine et
@@ -810,6 +836,20 @@ document effectivement chargé et affiché, sans modifier le texte envoyé. Si l
 échoue, les brouillons restent disponibles. Fermer le document ou perdre son accès retire
 cette indication des envois suivants. Seul le dernier message entrant fournit ce contexte
 d’affichage ; une ancienne référence ne devient pas une sélection courante implicite.
+
+Dans l’espace documentaire intégré sur desktop, le message transmet aussi la dernière sélection,
+la dernière position du curseur et un extrait du texte actuellement visible. Ces repères concernent
+le rendu éditable, le mode Source ou le JSON d’un Dataset, avec la révision observée. L’utilisateur
+peut sélectionner un passage puis écrire « reformule ce passage » : le focus dans le champ de chat
+ne fait pas perdre la sélection du document.
+
+Le contexte est borné : jusqu’à 4 000 caractères sélectionnés, 6 000 caractères visibles et
+160 caractères de chaque côté du curseur, avec indication des extraits tronqués. Les positions
+portent sur le texte affiché en unités UTF-16, pas sur des offsets dans le HTML enregistré.
+Un changement de document ou de contenu invalide les anciens repères ; fermer le document cesse
+leur transmission. Les applications intégrées ne sont pas inspectées. Il s’agit de données de
+contexte fournies par le client, sans droit supplémentaire : l’agent doit vérifier le contenu et
+la révision courante avant toute modification.
 
 Le Tool Conversation expose `document_show` pour demander l’ouverture d’un document dans le salon
 texte interne de l’agent. Il accepte une URI `document://`, un UUID ou une URL Galaris documentaire.
@@ -891,6 +931,11 @@ Quand la Task ou le Process se termine, une notification peut revenir dans la co
 Task a déjà livré son résultat avec une preuve de transport, le système évite un second envoi du
 même résultat. Une livraison à l’issue inconnue est distinguée d’un échec certain ; un opérateur
 peut résoudre explicitement les cas prévus sans relancer aveuglément les effets.
+
+Sources complémentaires : [contexte documentaire](../../../back/app/messenger/document_focus.py),
+[contexte et sauvegardes testés](../../../front/browser-tests/chat-document-workspace.spec.mjs),
+[panneaux et reprises](../../../front/browser-tests/chat-recovery.spec.mjs),
+[projection des tâches](../../../back/app/conversation/tests/test_service.py).
 
 Sources : [contrats Chat](../../../back/app/chat/schemas.py), [API Chat](../../../back/app/chat/router.py),
 [contrats Conversation](../../../back/app/conversation/contracts.py),
@@ -1034,6 +1079,10 @@ Pour une Task admise depuis une conversation, la demande source reste distincte 
 de contexte. Les messages et fichiers déclencheurs sont conservés même si ce complément omet une
 contrainte ou une ressource. Le cadrage ne réécrit pas la demande initiale et ne s’appuie pas sur
 des événements survenus après l’entrée qu’il doit traiter.
+
+Les objectifs de Task rédigés par un modèle sont validés comme HTML éditorial pendant les essais
+de sortie structurée. Une sortie invalide peut ainsi être corrigée avant l’admission de la tâche,
+sans attendre un échec lors de son enregistrement.
 
 ### Planifier et déléguer
 
@@ -1726,21 +1775,56 @@ code malveillant.
 - Lire les PDF, vidéos et sons insérés ; ouvrir les autres formats dans leur visionneuse.
 - Transformer volontairement un lien web en carte avec titre, description et miniature, puis revenir
   au lien. YouTube peut présenter son lecteur dans le document.
-- Lors du collage d’une page HTML complète, choisir de joindre la page intacte, d’en récupérer
-  seulement le texte enrichi ou d’annuler.
+- Coller du HTML ou du Markdown comme contenu directement éditable, avec import des images
+  admissibles en pièces jointes du document.
 - Joindre une page HTML interactive ou une scène 3D et l’ouvrir séparément, ou créer une application
   directement dans le corps du document HTML lorsque ce format convient au résultat.
 
 Les images intégrées sont réservées aux documents ordinaires. Les mémoires, profils et contenus
 Task/Goal ne les acceptent pas ; les documents Goal gardent cette restriction même dans la
-bibliothèque. Les images distantes et SVG ne sont pas acceptées comme images éditoriales intégrées.
-Les aperçus automatiques de liens exigent les URL publiques prises en charge.
+bibliothèque. Une image distante n’est pas conservée comme dépendance éditoriale : le collage peut importer une
+image HTTPS publique admissible dans les pièces jointes. Les SVG restent exclus des images
+éditoriales intégrées. Les aperçus automatiques de liens exigent les URL publiques prises en charge.
 
 Les images documentaires peuvent s’ouvrir en plein écran, sans barre de titre additionnelle.
 Les pièces jointes Markdown ont un lecteur rendu ; code, JSON et texte utilisent une vue source
 en lecture seule avec copie et téléchargement de l’original. Les HTML conservent leur aperçu
 isolé et ne sont pas injectés comme code dans l’éditeur. Une erreur de lecture peut être réessayée ;
 une réponse tardive d’un autre fichier est écartée.
+
+### Coller du contenu existant
+
+Le collage d’un fragment ou d’une page HTML produit du contenu ordinaire que l’on peut modifier,
+sauvegarder et rouvrir : titres, listes, tableaux, liens, code et styles éditoriaux pris en charge.
+Les couleurs, fonds, polices et mises en forme compatibles sont conservés ; les scripts, contenus
+actifs et chargements externes ne sont pas repris. Le collage n’importe donc pas une application
+interactive comme une application exécutable ; un fichier HTML joint conserve son parcours distinct.
+
+Le Markdown reconnu est converti en HTML éditable dans les documents et les champs riches :
+titres, emphase, citations, listes, tableaux, liens et blocs de code. Les cases de tâches deviennent
+des symboles cochés ou non cochés. Un HTML déjà mis en forme garde la priorité ; le texte ordinaire
+n’est pas réinterprété. Dans le code en ligne, les blocs de code et le mode Source, le collage
+reste littéral.
+
+Les images PNG, JPEG, WebP et GIF peuvent être importées depuis une URL HTTPS publique admissible
+ou des données embarquées. Elles deviennent des pièces jointes appartenant au document, soumises
+à ses droits et quotas, et restent disponibles après réouverture. Les accès privés/locaux et les
+formats non admis sont refusés ; une image inaccessible laisse son texte alternatif ou un libellé,
+avec avertissement, sans perdre le texte du collage. Une même source est réutilisée pendant l’import.
+Les limites comprennent 50 sources d’images distinctes, 10 Mo par image, 20 millions de caractères
+avant extraction des images, puis 2 millions de caractères de balisage et 20 000 éléments HTML.
+
+Le téléchargement affiche une opération annulable et préserve ce que l’utilisateur saisit pendant
+l’attente. Le contenu inséré forme une seule étape d’annulation. Annuler, changer de document ou
+passer en lecture seule écarte une réponse tardive ; aucun contenu préparé ne remplace alors le
+nouveau document. La création d’un document ne lui attribue plus automatiquement les mots-clés
+« document » et « working » : ils sont choisis explicitement.
+
+Sources : [conversion HTML](../../../front/core/util/pasteDocumentHtml.ts),
+[conversion Markdown](../../../front/core/util/pasteMarkdown.ts),
+[parcours de collage](../../../front/browser-tests/markdown-paste.spec.mjs),
+[images et persistance](../../../front/browser-tests/document-resources.spec.mjs),
+[droits d’import](../../../back/app/memory/tests/test_document_resources.py).
 
 ### Miniatures liées aux révisions
 
@@ -2053,8 +2137,16 @@ La présence d’une compétence ne garantit pas que le modèle décide de la co
 
 Les skills système **Connaissance de Galaris** (`galaris-knowledge`) et **Galaris Lab**
 (`galaris-lab`) accompagnent respectivement la documentation produit et le pilotage des expériences.
-Le premier est activé globalement par défaut, mais exige l’accès documentaire effectif ; le second
-est désactivé par défaut. Leur attribution ne remplace pas les droits sur leurs Tools.
+Ils sont tous deux désactivés globalement par défaut et autorisés individuellement lors de la
+création de l’assistant Galaris. Les autres agents ne les reçoivent pas par le seul accès à la
+documentation. Les affectations et révocations déjà enregistrées sont conservées lors des mises
+à jour ; l’administrateur peut régler ces autorisations. Leur attribution ne remplace pas les
+droits sur leurs Tools, notamment la connexion Lab qui reste inactive par défaut.
+
+Une catégorie **Galaris** regroupe initialement les skills système `galaris` et `galaris-*`
+lorsqu’elles n’ont pas encore de catégorie ; les classements personnalisés sont préservés.
+Les descriptions et les commandes de classement ou d’autorisation restent utilisables dans
+les panneaux desktop étroits.
 
 Sources : [API Skill](../../../back/app/skill/router.py), [schémas](../../../back/app/skill/schemas.py),
 [bibliothèque et tests](../../../back/app/skill/),
@@ -2120,9 +2212,12 @@ Les opérations de configuration suivantes concernent les **Tools optionnels** :
   les erreurs de découverte.
 
 **Browser, Search, Image et Multimedia** disposent de connexions intégrées actives par défaut.
-Ces outils et Console sont autorisés en conversation lors de leur première initialisation.
-Ils restent optionnels : les désactivations explicites, restrictions et credentials existants
-sont conservés. Les fonctions multimédias exigent les ressources IA compatibles du profil ;
+Browser et Search sont autorisés en conversation à leur première initialisation. **Console SSH,
+Image, Mail et Multimedia** demandent au contraire une activation explicite du mode conversation
+dans le catalogue des Tools ; cette règle ne désactive pas leur accès dans les Tasks.
+Ces outils restent optionnels : les choix déjà enregistrés, restrictions et credentials sont
+conservés lors des mises à jour. L’activation d’une connexion et son autorisation en conversation
+sont deux réglages distincts. Les fonctions multimédias exigent les ressources IA compatibles du profil ;
 leur présence dans le catalogue ne garantit pas leur disponibilité sur tous les agents.
 
 ### Chargement à la demande
@@ -2268,6 +2363,18 @@ Après début d’upload, ou pendant un transfert direct, une erreur peut laisse
 qui interdit le rejeu aveugle. Le temporaire est nettoyé dans les deux cas. Les transports SFTP
 créent les parents manquants après résolution des chemins et conservent le confinement au home ;
 une réponse perdue après publication par renommage reste une issue incertaine.
+
+Le transport de fichiers **AFFiNE**, lorsqu’un Tool connecté le configure, permet de lire les
+métadonnées, télécharger et copier les blobs d’un workspace, ou d’y téléverser un fichier.
+La référence utilise le code du Tool, le workspace et la clé du blob, y compris les préfixes
+`blob/` ou `blobs/` issus d’exports. Le type MIME et la taille proviennent de la réponse distante ;
+une extension peut compléter le nom lors d’une copie sans changer l’URI d’origine. Les accès
+refusés et les limites de téléchargement restent contrôlés. Une page HTML d’accueil renvoyée à
+la place d’un blob est refusée ; une véritable pièce jointe HTML reste lisible. Ce transport ne
+constitue pas une synchronisation générale des pages AFFiNE.
+
+Sources : [transport AFFiNE](../../../back/app/file_share/bridges.py),
+[garanties de lecture et de copie](../../../back/app/file_share/tests/test_affine_blobs.py).
 
 ### Aperçus et visionneuses
 
@@ -2796,7 +2903,9 @@ complémentaires.
 La connexion **Lab Galaris** donne accès à **50 fonctions MCP** pour découvrir les onze mécanismes,
 lire leurs contrats et rubriques, préparer les jeux et cas, régler leurs prompts expérimentaux,
 lancer les benchmarks et examiner leurs preuves. La connexion et le skill système **Galaris Lab**
-(`galaris-lab`) sont **désactivés par défaut** et s’activent séparément. Les opérations portent sur
+(`galaris-lab`) sont **désactivés globalement par défaut** et s’activent séparément. Le skill est
+accordé individuellement à l’assistant Galaris lors de sa création, sans activer la connexion Lab.
+Les opérations portent sur
 les mêmes objets que l’interface du Lab ; modifier une expérience ne change pas les prompts ou
 les modèles de production.
 
@@ -3084,7 +3193,11 @@ existence n’équivaut pas à une certification de toutes les combinaisons de f
   abonnement réel ni garantie absolue sur un service tiers.
 - **Récupération des effets.** `make tests-recovery` couvre notamment perte d’acquittement SSH,
   relecture PostgreSQL, reçus et absence de répétition des mutations à l’issue inconnue.
-- **Documentation et cartographie.** Les cartes générées ne dépendent pas du chemin du checkout.
+- **Documentation et cartographie.** La préparation utilise des conteneurs d’outillage dédiés,
+  sans démarrer l’application ni accéder à PostgreSQL et sans Python ou Node sur l’hôte. Après
+  construction des images d’outillage, l’analyse s’exécute hors réseau sur une copie bornée des
+  sources, montée en lecture seule ; seuls les fichiers générés prévus sont publiés, après
+  contrôle que les sources n’ont pas changé. Les cartes ne dépendent pas du chemin du checkout.
   `make docs-prepare` régénère les cartes du projet et des menus, puis vérifie leur fraîcheur,
   les guides FR/EN, le corpus actif, les frontières et les liens documentaires. `make docs-check`
   effectue les contrôles sans régénération. Ces commandes détectent des traductions absentes,
@@ -3266,7 +3379,7 @@ nom du jeton utilisé et conserve le fournisseur et le modèle réellement solli
 | Mémoire | Rappel borné et gouverné ; pas une garantie de rappeler chaque souvenir à chaque demande. |
 | Sujet précoce | Classement parallèle si Décision et texte Dream sont configurés ; aucune attente d’admission, aucun droit supplémentaire et aucun rejeu automatique d’une recherche déjà faite. |
 | Documentation produit | Accès Galaris Admin et fonctions documentaires nécessaires ; lecture seule, recherche texte sans embeddings, plans identifiés comme prospectifs et configuration réelle à vérifier séparément. |
-| Lab agentique | Connexion et skill optionnels, inactifs par défaut ; 50 fonctions sur les expériences communes, sans modification automatique de la production. Captures et diagnostics exigent l’inspection Admin. |
+| Lab agentique | Connexion et skill optionnels, inactifs globalement par défaut ; seul le skill est attribué individuellement à l’assistant Galaris initial. 50 fonctions sur les expériences communes, sans modification automatique de la production. Captures et diagnostics exigent l’inspection Admin. |
 | Génération synthétique | De 1 à 20 cas adaptés au mécanisme et éventuellement au contexte d’un jeu ; tous restent brouillons et le jeu est enregistré intégralement ou pas du tout. |
 | Notes et revues du Lab | Une note absente ne vaut pas zéro ; avis agents, revues humaines et juge restent distincts. Les comparaisons descriptives ne prouvent pas une supériorité statistique. |
 | Webhook générique | Aucun endpoint actif ; les callbacks et entrées des intégrations dédiées gardent leurs contrats propres. |

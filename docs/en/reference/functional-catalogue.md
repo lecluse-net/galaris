@@ -7,7 +7,7 @@ following their work over time. Conversations, tasks, goals, documents, memory, 
 integrations form a common system. An agent can converse, consult authorized information,
 produce deliverables, involve colleagues, trigger external workflows and retain useful knowledge.
 
-This catalogue describes features present in the repository as of **25 September 2026**,
+This catalogue describes features present in the repository as of **26 September 2026**,
 including agent functions, administration screens and background mechanisms. It is organized
 by use, followed by a native MCP inventory and coverage of **every declared module**. Sources
 make that coverage verifiable. This is the exhaustive reference for preparing the product website.
@@ -16,8 +16,10 @@ make that coverage verifiable. This is the exhaustive reference for preparing th
 connections, models and external accounts. This describes the software without certifying
 every provider or installation configuration.
 
-The underlying review covers **22–25 September 2026**, through commit `9dc6d03`, against current
-contracts and tests. New features appear in their domain sections, conditions and inventories.
+This update reviews changes over the **last two days, 24–26 September 2026**, through commit
+`66a3100`, against current contracts and tests. It preserves the previous catalogue's coverage
+and integrates additions, changed behaviour and access conditions into their domain sections
+and inventories.
 The inventory covers **183 native MCP functions, 71 backend modules and 36 frontend modules**.
 Implemented features remain distinct from intentions in the [plan register](../../../project/plans/README.md).
 Quality controls appear under [operations](#exploitation).
@@ -230,6 +232,9 @@ workspaces and never change after creation. Selectors filter by action: manageab
 authorized chat partners or eligible team members. Standard titles follow UI language; custom
 labels, deletions and customizations survive initialization.
 
+An agent can have only a first name. Creation and updates require a non-empty first name that
+is not whitespace-only; the last name is optional and can be omitted or cleared.
+
 `agent_list`/`agent_get` expose colleagues and detailed profiles. Delegation retains requester
 and recipient rather than silently changing executor identity. Directory results include
 `galaris://agent/<id>` for authorized rereading of current job/personality. Profiles also expose
@@ -243,7 +248,9 @@ administrator. Fresh installs wait for registration; existing installs receive t
 
 Ordinary skills/connections are initialized. **Galaris Admin** is enabled at creation for
 product documentation and permitted execution inspections, unlike its inactive default for other
-agents. This does not automatically grant Lab access.
+agents. The assistant individually receives `galaris-knowledge` and `galaris-lab` at creation,
+while both remain globally disabled. The Lab connection stays inactive: having its skill does
+not grant permission to execute Lab tools.
 
 Identity, mission, profile, harness and permissions remain editable. Subsequent sync preserves
 choices, revocations and deletion, without recreating renamed/deleted agents. A preexisting
@@ -271,6 +278,10 @@ does not guarantee every model's capabilities. Multiple capabilities on one reso
 save/reopen. Discovery filters include **Documents / PDF** and **Decision**; document discovery
 selects file-input/text-output resources, so incomplete metadata can hide compatible models.
 Multimodal discovery retains all capabilities; explicit refresh updates metadata.
+
+**Providers & Models** opens on **Providers** by default unless a link requests another permitted
+tab. **Used models** retains profile settings and external-client configuration. The expandable
+profile-API explanation has been removed; the API and client configuration remain available.
 
 ### Optional initial OpenRouter configuration
 
@@ -609,6 +620,18 @@ The supervisory “view conversations of” selector respects agent-management r
 not automatically permit sending or other mutations. Columns can be resized and the list shows the
 latest message.
 
+The sidebar groups **Conversations, Documents, Tasks and Processes**. Sections open when they
+receive items and collapse when empty; ordinary refreshes preserve manual collapse. Header actions
+create conversations/documents even when collapsed, subject to rights. Conversation filters—Me/agents,
+search, external and archived rooms—start hidden and can toggle without losing their values.
+
+The Task panel combines work linked to displayed messages and its children with the agent's
+ongoing, queued and automatically waiting Tasks, even from elsewhere or before the visible history.
+It also works in an empty conversation. Unrelated completed, deleted or manually paused work is
+not added. Live updates preserve authorised detail access, and collapsed Tasks retain a status
+indicator. The currently displayed document is marked in the list; previews remain visible and
+list icons cannot be changed from Chat.
+
 Read markers are server-side. Web Push requires installation configuration and browser permission;
 notifications respect mute settings and access rights and are cleared when read. Notification keys
 are persisted, and contact notification delays are configurable.
@@ -625,6 +648,17 @@ The editor uses the library's access and save rules. Sending a message waits for
 and attaches the URI and visible loaded-document context separately from the message text. A failed
 save retains the draft. Closing the document or losing access clears this context. Only the latest
 incoming message can supply an active focus; historic messages do not silently restore it.
+
+In the integrated desktop workspace, a message also carries the last document selection, cursor
+position and an excerpt of currently visible text. This covers rendered editing, Source mode and
+Dataset JSON, with the observed revision. Selecting a passage then typing “rephrase this passage”
+keeps the document selection even after focus moves to the chat composer.
+
+Context is bounded to 4,000 selected characters, 6,000 visible characters and 160 characters on
+each side of the cursor, with truncation markers. Positions use UTF-16 units of displayed text,
+not saved-HTML offsets. Changing document/content invalidates old positions; closing stops
+transmission. Embedded applications are not inspected. These are client-reported contextual data,
+not additional rights: the agent must check current content and revision before editing.
 
 `document_show` lets an agent request document opening during an internal textual Conversation run.
 It checks round freshness, room scope, access and the canonical URI, UUID or local URL. A dirty
@@ -669,6 +703,11 @@ Task and Process results return to the conversation. If a previous delivery rece
 outcome unknown, automatic redelivery is suppressed until explicitly resolved rather than sending
 blind duplicates.
 
+
+Additional evidence: [document context](../../../back/app/messenger/document_focus.py),
+[context and saving tests](../../../front/browser-tests/chat-document-workspace.spec.mjs),
+[panels and recovery](../../../front/browser-tests/chat-recovery.spec.mjs),
+[Task projection](../../../back/app/conversation/tests/test_service.py).
 
 Additional references: [Chat schemas](../../../back/app/chat/schemas.py),
 [Chat API](../../../back/app/chat/router.py),
@@ -769,6 +808,9 @@ not an invented PLAN-standard fallback. Disabled historical Briefing runs remain
 The execution capsule keeps original source material separate from contextual supplements,
 pre-message facts and their provenance, truncation notices, role instructions, skills and tool
 catalogues.
+
+Model-authored Task objectives validate editorial HTML during structured-output retries. Invalid
+content can therefore be corrected before admission rather than failing only when the Task is saved.
 
 ### Plans and collaboration between agents
 
@@ -1222,16 +1264,49 @@ remove an embedding without necessarily deleting its file; and manage all attach
 dialog. Images support captions, alt text, proportional resizing, wrapping and movement. PDF,
 video and audio render inline, with other formats in viewers. A deliberate web-link conversion
 creates a title/description/thumbnail card and can revert to a link; YouTube can display its player.
-Pasting a full HTML page offers intact attachment, rich-text extraction or cancellation. Interactive
-HTML/3D can be attached and opened separately, or authored as a native document application.
+Pasted HTML/Markdown becomes directly editable content with eligible images imported as document
+attachments. Interactive HTML/3D can still be attached and opened separately, or authored as a
+native document application.
 
 Embedded editorial images are restricted to ordinary documents, not memory, profiles or Task/Goal
-content, even when Goal documents appear in the library. Remote images and SVG are not accepted as
-embedded editorial images. Automatic link previews require supported public URLs.
+content, even when Goal documents appear in the library. Remote images are not retained as editorial
+dependencies: paste can import eligible public HTTPS images into attachments. SVG remains excluded
+from embedded editorial images. Automatic link previews require supported public URLs.
 
 Images open full screen without an extra title bar. Markdown attachments render; code, JSON and
 text use read-only source views with copy/original download. HTML retains isolated preview rather
 than injection into the editor. Failed reads can retry and stale responses for other files are ignored.
+
+### Pasting existing content
+
+Pasting an HTML fragment or page produces ordinary content that can be edited, saved and reopened:
+headings, lists, tables, links, code and supported editorial styles. Compatible colours, backgrounds,
+fonts and formatting survive; scripts, active content and external loading do not. Paste therefore
+does not import an interactive application as executable code; attached HTML files retain their
+separate workflow.
+
+Recognised Markdown becomes editable HTML in documents and rich fields: headings, emphasis, quotes,
+lists, tables, links and code blocks. Task checkboxes become checked/unchecked symbols. Already
+formatted HTML takes precedence and ordinary prose is not reinterpreted. Inline code, code blocks
+and Source mode retain literal pasted text.
+
+PNG, JPEG, WebP and GIF can be imported from eligible public HTTPS URLs or embedded data. They become
+document-owned attachments under its rights/quotas and survive reopening. Private/local addresses
+and unsupported formats are refused. Unavailable images leave alt text or a label plus a warning,
+preserving the pasted text. Repeated sources are reused within the import. Limits include 50 distinct
+image sources, 10 MB per image, 20 million characters before image extraction, then 2 million markup
+characters and 20,000 HTML elements.
+
+Downloads show a cancellable operation and preserve typing during the wait. Insertion is one undo
+step. Cancellation, document changes or becoming read-only discard late results without replacing
+the new document. New documents no longer automatically receive “document” and “working” keywords;
+keywords are chosen explicitly.
+
+Sources: [HTML conversion](../../../front/core/util/pasteDocumentHtml.ts),
+[Markdown conversion](../../../front/core/util/pasteMarkdown.ts),
+[paste workflows](../../../front/browser-tests/markdown-paste.spec.mjs),
+[images and persistence](../../../front/browser-tests/document-resources.spec.mjs),
+[import permissions](../../../back/app/memory/tests/test_document_resources.py).
 
 ### Revision-linked thumbnails
 
@@ -1458,8 +1533,14 @@ harness reloads capabilities normally; a network harness without projection reta
 `SKILL.md` injection. Availability does not guarantee the model consults a skill.
 
 System skills `galaris-knowledge` and `galaris-lab` support product documentation and experiments.
-The first is globally on by default but still requires documentation access; the second is off by
-default. Assignment never replaces Tool permissions.
+Both are globally off by default and individually granted when the initial Galaris assistant is
+created. Documentation access alone does not assign them to other agents. Updates preserve saved
+assignments/revocations, and administrators can change permissions. Assignment does not replace Tool
+permissions, particularly the Lab connection, which remains inactive by default.
+
+A **Galaris** category initially groups system `galaris` and `galaris-*` skills without a category,
+preserving custom classifications. Descriptions and classification/permission controls remain
+usable in narrow desktop panels.
 
 Sources: [API](../../../back/app/skill/router.py), [schemas](../../../back/app/skill/schemas.py),
 [library](../../../back/app/skill/), [synchronisation](../../../back/app/harnesses/skill_sync.py),
@@ -1503,9 +1584,11 @@ individual functions and global function rules, refresh catalogues/connections a
 missing built-ins. Secrets are encrypted and masked. Per-agent diagnostics show native/external/mixed
 origins, availability and discovery errors.
 
-Browser, Search, Image and Multimedia connections start active; these and Console receive
-conversation eligibility at first initialisation. Explicit disablement, restrictions and credentials
-are preserved. Multimedia still needs compatible profile resources.
+Browser, Search, Image and Multimedia connections start active. Browser and Search receive
+conversation eligibility at first initialisation. **Console SSH, Image, Mail and Multimedia**
+require explicit conversation-mode activation in the Tool catalogue; this does not disable their
+Task access. Updates preserve saved choices, restrictions and credentials. Connection activation
+and conversation permission are distinct settings. Multimedia still needs compatible profile resources.
 
 ### On-demand loading
 
@@ -1619,6 +1702,16 @@ rejection so the agent corrects the source. After upload begins, or during direc
 can leave an unknown outcome that forbids blind replay. Both paths clean temporary files. SFTP creates
 missing parents after path resolution, confined to the home; losing a response after rename publication
 still leaves an uncertain outcome.
+
+When configured through a connected Tool, the **AFFiNE** file transport reads metadata, downloads
+and copies workspace blobs, and uploads files. References use the Tool code, workspace and blob key,
+including exported `blob/` or `blobs/` prefixes. Remote headers supply MIME type/size; copying may add
+an extension to the name without changing the source URI. Access refusals and download limits remain
+enforced. An application HTML shell returned instead of a blob is rejected; genuine HTML attachments
+remain readable. This is not general AFFiNE page synchronisation.
+
+Sources: [AFFiNE transport](../../../back/app/file_share/bridges.py),
+[read/copy guarantees](../../../back/app/file_share/tests/test_affine_blobs.py).
 
 ### Previews and viewers
 
@@ -1985,7 +2078,9 @@ evaluate audio recognition. External-service qualification remains complementary
 ### Agent-operated experiments
 
 Optional Galaris Lab connection exposes 50 MCP functions over the same UI objects; both connection
-and `galaris-lab` system skill are independently off by default. Experiment edits never change
+and `galaris-lab` system skill are independently off by default globally. The initial Galaris
+assistant receives the skill individually at creation, without activating its Lab connection.
+Experiment edits never change
 production prompts/models. Authorised agents can:
 
 - Discover eleven mechanisms, schemas, rubrics, compatible models and defaults.
@@ -2186,7 +2281,11 @@ is not certification of every provider combination.
   guarantee third-party services.
 - `make tests-recovery` covers lost SSH acknowledgements, PostgreSQL rereads, receipts and avoiding
   repeated mutations with unknown outcomes.
-- Generated maps are checkout-path-independent. `make docs-prepare` regenerates project/menu maps
+- Documentation preparation uses dedicated tooling containers without starting the application,
+  accessing PostgreSQL or requiring host Python/Node. After tooling-image builds, analysis runs
+  offline on a bounded read-only source snapshot; only designated generated files are published,
+  after checking sources remained unchanged. Maps are checkout-path-independent.
+  `make docs-prepare` regenerates project/menu maps
   and checks freshness, FR/EN guides, active corpus, boundaries and links; `make docs-check` checks
   without regeneration. These detect missing translations, not automatically validate their meaning.
 - Development `make docs-update` prepares sources, checks agreement with the live backend, synchronises
@@ -2340,7 +2439,7 @@ for subsequent calls without editing client files. Logs retain token name and ac
 | Memory | Bounded governed recall, not every memory on every request. |
 | Early Topics | Parallel with Decision/Dream text, no admission wait/new rights/replay of completed search. |
 | Product knowledge | Admin/documentation permissions, read-only text search without embeddings, plans marked prospective; actual configuration separately verified. |
-| Agent Lab | Optional off-by-default connection/skill, 50 shared-object functions, no automatic production changes; captures/diagnosis need Admin. |
+| Agent Lab | Optional globally off-by-default connection/skill; only the skill is individually granted to the initial Galaris assistant. 50 shared-object functions, no automatic production changes; captures/diagnosis need Admin. |
 | Synthetic cases | 1–20 contextual cases, all drafts, saved wholly or not at all. |
 | Lab assessments | Missing scores are not zero; agent/human/judge reviews separate; descriptive comparison is not statistical superiority. |
 | Generic webhook | No active endpoint; dedicated integrations retain their own contracts. |
