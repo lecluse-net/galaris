@@ -61,7 +61,7 @@ def normalize_source_reference(service: str, reference: object) -> SourceReferen
     normalized_service = (service or "").strip().lower()
     if normalized_service == "affine" and not _is_http_url(clean):
         target, separator, remote = clean.strip("/").partition("/")
-        if not separator or not target or not remote:
+        if not separator or not target or not remote or target in {"blob", "blobs"}:
             raise FileServiceReferenceError("AFFiNE", reference, "workspace/file-key")
         return SourceReference(remote=remote, target=target)
     if normalized_service == "messenger":

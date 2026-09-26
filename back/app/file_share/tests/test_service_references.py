@@ -32,6 +32,12 @@ def test_affine_references_split_workspace_from_file() -> None:
     ).filename == "source.pdf"
 
 
+@pytest.mark.parametrize("reference", ["blob/key", "blobs/key"])
+def test_affine_export_reference_requires_explicit_workspace(reference: str) -> None:
+    with pytest.raises(FileServiceReferenceError, match="workspace/file-key"):
+        normalize_source_reference("affine", reference)
+
+
 def test_messenger_references_split_room_from_attachment() -> None:
     source = normalize_source_reference("messenger", "messenger:room-7/attachment-9")
     destination = normalize_destination_reference(

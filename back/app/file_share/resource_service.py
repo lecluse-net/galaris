@@ -561,6 +561,8 @@ async def list_schemes(ctx: ResourceContext) -> list[ResourceSchemeDescription]:
                 else f"{scheme}://path/file.ext"
             )
         )
+        if target["service"] == "affine":
+            example = f"{scheme}://<workspace-id>/<blob-key>"
         schemes.append(
             ResourceSchemeDescription(
                 scheme=scheme,
@@ -693,13 +695,16 @@ async def resource_info(
                 modified_at=entry.modified_at or None,
                 capabilities=list(_WEB_CAPABILITIES),
             )
-        return _entry_descriptor(
+        descriptor = _entry_descriptor(
             reference.scheme,
             entry,
             capabilities=(
                 _MAIL_CAPABILITIES if service == "mail" else _TRANSPORT_CAPABILITIES
             ),
         )
+        if service == "affine" and not PurePosixPath(descriptor.name).suffix:
+            descriptor.name += mimetypes.guess_extension(entry.mime_type) or ""
+        return descriptor
     return ResourceDescriptor(
         uri=str(reference),
         name=_resource_name(reference),
@@ -1075,6 +1080,7 @@ async def resource_read(
             return EditorialResourceRead.model_validate({**values, "content_profile": data.get("content_profile", "rich-text"), "blocks": data.get("blocks", [])})
         return ResourceRead.model_validate(values)
 
+    affine_media_type: str | None = None
     if reference.scheme == "console":
         rich_transport, remote = await _console_reference(ctx, reference)
         transport = cast(FileTransport, rich_transport)
@@ -1083,6 +1089,8 @@ async def resource_read(
     else:
         transport, _service, remote, target = await _connected_transport(ctx, reference)
         result_uri = str(reference)
+        if _service == "affine":
+            affine_media_type = (await resource_info(ctx, reference)).media_type
     fd, temporary_name = tempfile.mkstemp(prefix="galaris_resource_read_")
     os.close(fd)
     temporary = Path(temporary_name)
@@ -1091,7 +1099,7 @@ async def resource_read(
         await transport.download_to(remote, temporary, target=target)
         size = temporary.stat().st_size
         sample = temporary.read_bytes()[:8192]
-        guessed_media_type = mimetypes.guess_type(_resource_name(reference))[0]
+        guessed_media_type = affine_media_type or mimetypes.guess_type(_resource_name(reference))[0]
         explicitly_textual = bool(
             guessed_media_type
             and (

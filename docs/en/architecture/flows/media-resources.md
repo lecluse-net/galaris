@@ -82,6 +82,14 @@ and the other `file_*` functions belong to the built-in `file_sharing` Tool, eve
 The `galaris://` provider exposes only name and text search; semantic search belongs to `memory://`. A copy from `galaris://`, `memory://`, or `document://`
 uses the file's general binary limit rather than the limit for a single text write.
 
+AFFiNE images and attachments use `<tool-code>://<workspace-id>/<blob-key>`:
+the key comes from the block's `sourceId`, and the workspace belongs to the source document.
+The `<workspace-id>/blob/<blob-key>` and `<workspace-id>/blobs/<blob-key>` variants
+are accepted; `blob/<blob-key>` alone does not identify a workspace.
+The bridge checks remote access and metadata for `file_info` and rejects application HTML
+returned with HTTP 200 instead of a blob. HTML files explicitly served as attachments
+remain downloadable.
+
 A collection destination of `file_copy` or `file_move` preserves the source name. Provider metadata makes it possible to recognize an existing directory even when the caller omits the trailing `/`. A provider space such as an AFFiNE workspace or a Messenger room is likewise completed with the source name; `/` remains necessary to unambiguously declare a collection that does not yet exist. A move rejects, before copying, any source that the generic façade cannot delete, so as never to produce a partial move presented as a failure.
 
 The preserved name is that of the source `ResourceDescriptor`, not necessarily the last segment of the locator: an attachment addressed by UUID thus retains its actual name. Specialized image, audio, and Messenger tools also receive canonical URIs. If they require a local path, they call `materialize_resource` into a bounded temporary file that they delete after the call. A `nextcloud://`, `console://`, HTTPS, Mail, or Messenger URI is therefore consumed directly. Outputs are written by `resource_create`/`resource_write`

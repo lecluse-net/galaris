@@ -82,6 +82,11 @@ default: dict[str, object] = {
             "affine_blob_key_missing": (
                 "AFFiNE upload response contains no blob key."
             ),
+            "affine_blob_reference_invalid": "AFFiNE requires a single blob key after the workspace ID.",
+            "affine_blob_html_response": (
+                "AFFiNE returned an HTML page instead of a blob. Check the workspace ID and blob key; "
+                "use <tool-code>://<workspace-id>/<blob-key>."
+            ),
             "grav_target_required": (
                 "Grav upload has no target page. Use destination='page/file.ext' or configure "
                 "the optional default_page parameter."

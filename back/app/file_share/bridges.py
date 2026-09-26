@@ -16,6 +16,20 @@ from bridge.grav import GravFileClient
 from core.i18n import render_prompt, t
 
 from .transport import FileTransport
+from .file_contracts import FileEntry
+from .service_references import normalize_source_reference
+
+
+class AffineResourceTransport(AffineFileClient):
+    """Adapt AFFiNE blob headers to the file facade's metadata contract."""
+
+    async def resource_info(self, path: str, *, include_sha256: bool = False) -> FileEntry:
+        if "/" not in path.strip("/"):
+            # A workspace is an upload target, not a blob that this API can stat.
+            raise FileNotFoundError(path)
+        source = normalize_source_reference("affine", path)
+        blob = await self.blob_metadata(source.remote, target=source.target)
+        return FileEntry(path=path, is_dir=False, size=blob.size, mime_type=blob.media_type)
 
 
 # =============================================================================
@@ -120,7 +134,7 @@ register(
             FileShareParamInfo(key="email", label="AFFiNE account email", type="string"),
             FileShareParamInfo(key="password", label="AFFiNE password", type="password"),
         ),
-        build=lambda base_url, p: AffineFileClient(
+        build=lambda base_url, p: AffineResourceTransport(
             base_url=base_url,
             email=p["email"],
             password=p["password"],

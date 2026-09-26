@@ -105,6 +105,14 @@ Le provider `galaris://` expose uniquement la recherche par nom et par texte ; l
 sémantique appartient à `memory://`. Une copie depuis `galaris://`, `memory://` ou `document://`
 utilise la limite binaire générale du fichier et non la limite d'une écriture texte unitaire.
 
+Les images et pièces jointes AFFiNE utilisent `<code-tool>://<workspace-id>/<blob-key>` :
+la clé vient du `sourceId` du bloc et le workspace est celui du document source.
+Les variantes `<workspace-id>/blob/<blob-key>` et `<workspace-id>/blobs/<blob-key>`
+sont acceptées ; `blob/<blob-key>` seul ne fournit pas de workspace.
+Le bridge vérifie l'accès et les métadonnées distantes pour `file_info`, et refuse une
+page HTML applicative renvoyée avec HTTP 200 au lieu d'un blob. Les fichiers HTML servis
+explicitement comme pièces jointes restent téléchargeables.
+
 Une destination collection de `file_copy` ou `file_move` conserve le nom de la source. Les
 métadonnées du provider permettent de reconnaître un répertoire existant même lorsque l'appelant
 omet le `/` final. Un espace provider tel qu'un workspace AFFiNE ou une room Messenger est lui
