@@ -5,10 +5,11 @@ from __future__ import annotations
 from collections.abc import Sequence
 from uuid import UUID
 
-from sqlalchemy import and_, or_, select
+from sqlalchemy import and_, func, or_, select
 
-from app.messenger import Message
-from app.task import Task, TaskRead
+from app.connection import Connection
+from app.messenger import Message, Room
+from app.task import Task, TaskRead, TaskStatus
 from core.database import get_db
 
 from .contracts import ConversationTask, ConversationTaskTree
@@ -124,10 +125,28 @@ async def list_room_tasks_for_rounds(
     page: int = 1,
     page_size: int = 10,
 ) -> ConversationTaskTree:
-    """Return one recent-first page of the Task tree rooted in conversation rounds."""
+    """Page linked work together with the room agent's ongoing and waiting Tasks."""
 
     normalized_round_ids = tuple(dict.fromkeys(round_ids))
     tree_ids = await list_room_task_ids_for_rounds(room_id, normalized_round_ids)
+    agent_id = select(Connection.agent_id).join(
+        Room, Room.connection_id == Connection.id
+    ).where(Room.id == room_id).scalar_subquery()
+    ongoing_ids = await get_db().scalars(
+        Task.histo_filter(
+            select(Task.id).where(
+                Task.agent_id == agent_id,
+                Task.status.not_in((TaskStatus.SUCCESS, TaskStatus.ERROR, TaskStatus.PAUSE)),
+                # Automatic waits retain their resume phase and may be paused.
+                # A manual pause alone does not add unrelated work to Chat.
+                or_(
+                    Task.paused.is_(False),
+                    ~func.coalesce(Task.data["pause_reasons"].contains(["user"]), False),
+                ),
+            )
+        )
+    )
+    tree_ids = tuple(dict.fromkeys((*tree_ids, *ongoing_ids.all())))
     if not tree_ids:
         return ConversationTaskTree(total=0, page=page, page_size=page_size)
     rows = list(
@@ -196,7 +215,7 @@ async def list_room_tasks(
     page: int = 1,
     page_size: int = 10,
 ) -> ConversationTaskTree:
-    """Return linked Tasks, optionally limited to the Chat message window."""
+    """Return window-linked Tasks plus ongoing work owned by the room's agent."""
 
     if from_message_id is None:
         round_ids = tuple(

@@ -269,7 +269,7 @@ const props = withDefaults(defineProps<{ roomId: string; fromMessageId?: string 
   showBack: false,
   embedded: false,
 })
-defineEmits<{ back: [] }>()
+const emit = defineEmits<{ back: []; 'has-items': [value: boolean] }>()
 
 const $q = useQuasar()
 const { t, locale } = useI18n()
@@ -547,11 +547,12 @@ async function load(reset = true, scrollAfterLoad = false): Promise<void> {
   const sequence = ++requestSequence
   // This request supersedes any older-page request, including on live refresh.
   loadingOlder.value = false
-  if (!props.canRead || !props.fromMessageId) {
+  if (!props.canRead) {
     tasks.value = []
     total.value = 0
     page.value = 1
     error.value = ''
+    loading.value = false
     hasCompletedInitialTaskLoad.value = true
     return
   }
@@ -586,7 +587,7 @@ async function load(reset = true, scrollAfterLoad = false): Promise<void> {
 }
 
 async function loadOlderTasks(): Promise<void> {
-  if (loading.value || loadingOlder.value || !hasOlderTasks.value || !props.fromMessageId) return
+  if (loading.value || loadingOlder.value || !hasOlderTasks.value) return
   const sequence = requestSequence
   const scrollTarget = taskScrollArea.value?.getScrollTarget()
   const previousHeight = scrollTarget?.scrollHeight ?? 0
@@ -785,9 +786,15 @@ async function deleteTask(task: Task): Promise<void> {
   }
 }
 
+watch(() => props.canRead && tasks.value.length > 0, value => emit('has-items', value), { immediate: true, flush: 'sync' })
+
 watch(
   () => [props.roomId, props.fromMessageId, props.viewerAgentId, props.canRead] as const,
-  ([, , , canRead]) => {
+  ([roomId, , viewerAgentId, canRead], previous) => {
+    if (roomId !== previous?.[0] || viewerAgentId !== previous?.[2] || canRead !== previous?.[3]) {
+      tasks.value = []
+      total.value = 0
+    }
     detailDialogOpen.value = false
     selectedTaskId.value = null
     taskExpansionOverrides.value = {}

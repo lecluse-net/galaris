@@ -1,84 +1,56 @@
 <template>
   <div class="column full-height room-list-shell">
-    <q-select
-      ref="viewerSelect"
-      v-if="canImpersonate"
-      :model-value="viewerAgentId"
-      :options="viewerOptions"
-      emit-value
-      map-options
-      dense
-      outlined
-      :clearable="false"
-      menu-shrink
-      class="q-px-sm q-pt-xs viewer-select"
-      :aria-label="t('chat.viewAs')"
-      :popup-content-style="viewerPopupStyle"
-      @pointerdown="syncViewerPopupWidth"
-      @keydown="syncViewerPopupWidth"
-      @popup-show="syncViewerPopupWidth"
-      @update:model-value="$emit('view-agent', $event ?? null)"
-    >
-      <template #prepend>
-        <InternalAgentAvatar
-          v-if="selectedViewer"
-          :agent-id="selectedViewer.agent_id"
-          :name="selectedViewer.display_name"
-          size="26px"
-        />
-        <q-icon v-else name="visibility" />
-      </template>
-      <template #option="scope">
-        <q-item v-bind="scope.itemProps">
-          <q-item-section avatar>
-            <InternalAgentAvatar
-              v-if="scope.opt.value !== null"
-              :agent-id="scope.opt.value"
-              :name="scope.opt.label"
-              size="30px"
-            />
-            <q-icon v-else name="person" />
-          </q-item-section>
-          <q-item-section><q-item-label>{{ scope.opt.label }}</q-item-label></q-item-section>
-        </q-item>
-      </template>
-    </q-select>
-    <div class="row q-px-sm q-py-xs q-gutter-x-sm room-search">
-      <q-btn
-        round
-        :flat="!includeExternal && !includeArchived"
-        :unelevated="includeExternal || includeArchived"
-        :color="includeExternal || includeArchived ? 'primary' : 'grey-7'"
-        icon="filter_list"
-        class="room-list-options"
-        :aria-label="t('chat.listOptions')"
+    <div id="chat-room-filters" v-show="showFilters" class="room-filters">
+      <q-select
+        ref="viewerSelect"
+        v-if="canImpersonate"
+        :model-value="viewerAgentId"
+        :options="viewerOptions"
+        emit-value
+        map-options
+        dense
+        outlined
+        :clearable="false"
+        menu-shrink
+        class="q-px-sm q-pt-xs viewer-select"
+        :aria-label="t('chat.viewAs')"
+        :popup-content-style="viewerPopupStyle"
+        @pointerdown="syncViewerPopupWidth"
+        @keydown="syncViewerPopupWidth"
+        @popup-show="syncViewerPopupWidth"
+        @update:model-value="$emit('view-agent', $event ?? null)"
       >
-        <q-tooltip>{{ t('chat.listOptions') }}</q-tooltip>
-        <q-menu>
-          <q-list class="room-list-options-menu">
-            <q-item tag="label">
-              <q-item-section avatar>
-                <q-checkbox
-                  :model-value="includeExternal"
-                  @update:model-value="$emit('toggle-external', $event)"
-                />
-              </q-item-section>
-              <q-item-section>{{ t('chat.showExternalRooms') }}</q-item-section>
-            </q-item>
-            <q-item tag="label">
-              <q-item-section avatar>
-                <q-checkbox
-                  :model-value="includeArchived"
-                  @update:model-value="$emit('toggle-archived', $event)"
-                />
-              </q-item-section>
-              <q-item-section>{{ t('chat.showArchivedRooms') }}</q-item-section>
-            </q-item>
-          </q-list>
-        </q-menu>
-      </q-btn>
-      <q-input v-model="search" dense outlined clearable debounce="250" class="col" :placeholder="t('chat.search')" @update:model-value="$emit('search', search)" />
-      <q-btn v-if="canCreate && (rooms.length > 0 || loadingMore)" round flat icon="add" :aria-label="t('chat.newRoom')" @click="$emit('create')" />
+        <template #prepend>
+          <InternalAgentAvatar
+            v-if="selectedViewer"
+            :agent-id="selectedViewer.agent_id"
+            :name="selectedViewer.display_name"
+            size="26px"
+          />
+          <q-icon v-else name="visibility" />
+        </template>
+        <template #option="scope">
+          <q-item v-bind="scope.itemProps">
+            <q-item-section avatar>
+              <InternalAgentAvatar
+                v-if="scope.opt.value !== null"
+                :agent-id="scope.opt.value"
+                :name="scope.opt.label"
+                size="30px"
+              />
+              <q-icon v-else name="person" />
+            </q-item-section>
+            <q-item-section><q-item-label>{{ scope.opt.label }}</q-item-label></q-item-section>
+          </q-item>
+        </template>
+      </q-select>
+      <div class="q-px-sm q-py-xs">
+        <q-input v-model="search" dense outlined clearable debounce="250" :placeholder="t('chat.search')" :aria-label="t('chat.search')" @update:model-value="emit('search', search ?? '')" />
+      </div>
+      <div class="room-filter-options q-px-sm q-pb-xs">
+        <q-checkbox dense :model-value="includeExternal" :label="t('chat.showExternalRooms')" @update:model-value="emit('toggle-external', $event)" />
+        <q-checkbox dense :model-value="includeArchived" :label="t('chat.showArchivedRooms')" @update:model-value="emit('toggle-archived', $event)" />
+      </div>
     </div>
     <q-list class="col scroll conversation-list" @scroll.passive="onScroll">
       <div v-if="canCreate && rooms.length === 0 && !loadingMore" class="room-list-empty">
@@ -132,7 +104,7 @@ import { visibleMessageText } from '../messageDirectives'
 import type { ChatViewerAgent, MessengerRoom } from '../types'
 import InternalAgentAvatar from './InternalAgentAvatar.vue'
 
-const props = defineProps<{ rooms: MessengerRoom[]; selectedId?: string; canCreate: boolean; canImpersonate: boolean; viewerAgentId: number | null; viewerAgents: ChatViewerAgent[]; includeExternal: boolean; includeArchived: boolean; hasMore: boolean; loadingMore: boolean }>()
+const props = defineProps<{ showFilters?: boolean; rooms: MessengerRoom[]; selectedId?: string; canCreate: boolean; canImpersonate: boolean; viewerAgentId: number | null; viewerAgents: ChatViewerAgent[]; includeExternal: boolean; includeArchived: boolean; hasMore: boolean; loadingMore: boolean }>()
 const emit = defineEmits<{ select: [room: MessengerRoom]; search: [value: string]; create: []; 'load-more': []; 'view-agent': [value: number | null]; 'toggle-external': [value: boolean]; 'toggle-archived': [value: boolean] }>()
 const search = ref('')
 const { t } = useI18n()
@@ -180,9 +152,8 @@ function onScroll(event: Event): void {
 
 <style scoped>
 .room-list-shell { width: 100%; min-width: 0; overflow: hidden; color: var(--chat-text, #252b36); background: var(--chat-surface, #fff); }
-.room-search { min-width: 0; flex-wrap: nowrap; border-bottom: 1px solid var(--chat-border, rgba(35, 46, 66, .08)); }
-.room-list-options { flex: 0 0 auto; }
-:global(.room-list-options-menu) { min-width: 280px; }
+.room-filters { flex: 0 0 auto; min-width: 0; border-bottom: 1px solid var(--chat-border); }
+.room-filter-options { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: start; gap: 8px; font-size: .75rem; }
 .viewer-select { max-width: 100%; }
 .conversation-list { min-width: 0; max-width: 100%; padding: 0; }
 .room-list-empty { display: flex; align-items: center; justify-content: center; min-height: 200px; height: 100%; padding: 24px 12px; }

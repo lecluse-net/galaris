@@ -1,6 +1,6 @@
 <template>
   <section class="conversation-documents-panel">
-    <header v-if="canRead" class="conversation-documents-toolbar row items-center q-px-sm q-py-xs">
+    <header v-if="canRead && !embedded" class="conversation-documents-toolbar row items-center q-px-sm q-py-xs">
       <span class="text-caption text-weight-medium">{{ t('chat.workingDocuments') }}</span>
       <q-space />
       <q-btn
@@ -139,7 +139,7 @@ const props = withDefaults(defineProps<{
   canEdit: false,
 })
 
-const emit = defineEmits<{ open: [document: ConversationDocumentReference] }>()
+const emit = defineEmits<{ open: [document: ConversationDocumentReference]; 'has-items': [value: boolean] }>()
 
 const { t, locale } = useI18n()
 const $q = useQuasar()
@@ -303,7 +303,7 @@ function scrollDocumentsToBottom(): void {
   })
 }
 
-defineExpose({ scrollToBottom: scrollDocumentsToBottom })
+defineExpose({ scrollToBottom: scrollDocumentsToBottom, openCreateDocument })
 
 function scheduleRefresh(): void {
   if (!props.canRead) return
@@ -346,6 +346,7 @@ function openDocumentInDialog(reference: ConversationDocumentReference): void {
 }
 
 function openCreateDocument(): void {
+  if (!props.canRead || !documentEditable.value) return
   createTitle.value = ''
   createOpen.value = true
 }
@@ -390,9 +391,15 @@ function onDocumentUnavailable(documentId: string): void {
   void load(true)
 }
 
+watch(() => props.canRead && documents.value.length > 0, value => emit('has-items', value), { immediate: true, flush: 'sync' })
+
 watch(
   () => [props.roomId, props.fromMessageId, props.viewerAgentId, props.canRead] as const,
-  ([, , , canRead]) => {
+  ([roomId, , viewerAgentId, canRead], previous) => {
+    if (roomId !== previous?.[0] || viewerAgentId !== previous?.[2] || canRead !== previous?.[3]) {
+      documents.value = []
+      total.value = 0
+    }
     createOpen.value = false
     dialogOpen.value = false
     selectedReference.value = null

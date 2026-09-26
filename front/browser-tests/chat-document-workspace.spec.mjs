@@ -203,7 +203,7 @@ test('document dialogs cover the split editor toolbar and keep their own formatt
     payload: { text: '<p>Initial document body</p>'.repeat(60) },
   }, agent_id: null })
   await openFromSearch(page)
-  await page.getByText('Working documents', { exact: true }).first().click()
+  await expect(page.getByLabel('Open document Test document', { exact: true })).toBeVisible()
   const background = page.locator('.chat-document-pane')
   const toolbar = background.getByRole('toolbar', { name: 'Editor toolbar', exact: true })
   const dialog = page.getByRole('dialog')
@@ -479,7 +479,7 @@ test('a late response from the previous document cannot overwrite the selected d
   })
   await page.evaluate(() => window.testApp.emitSocket('memory.update', { data: { id: 'doc-b', node_kind: 'document', revision: 4 } }))
   await expect.poll(() => Boolean(release)).toBeTruthy()
-  await page.getByText('Working documents', { exact: true }).first().click()
+  await expect(page.getByLabel('Open document Test document', { exact: true })).toBeVisible()
   await page.getByLabel('Open document Test document', { exact: true }).click()
   await expect(page.locator('.chat-document-pane')).toContainText('Initial document body')
   release()
@@ -613,8 +613,12 @@ test('denied document and reconnect recover authorized current content while cha
 test('creation cancellation and rejection preserve chat without opening a fictitious document', async ({ page }) => {
   await workspace(page)
   await page.locator('.conversation-pane textarea').fill('Keep draft')
-  await page.getByText('Working documents', { exact: true }).first().click()
-  await page.getByRole('button', { name: 'Create document', exact: true }).click()
+  await expect(page.getByLabel('Open document Test document', { exact: true })).toBeVisible()
+  const header = page.locator('.sidebar-accordion-header').filter({ hasText: 'Working documents' })
+  await header.click()
+  await expect(header).toHaveAttribute('aria-expanded', 'false')
+  await header.getByRole('button', { name: 'Create document', exact: true }).click()
+  await expect(header).toHaveAttribute('aria-expanded', 'false')
   await page.getByRole('textbox', { name: 'Title', exact: true }).fill('Cancelled')
   await page.getByRole('button', { name: 'Cancel', exact: true }).click()
   await expect(page.getByRole('dialog')).toHaveCount(0)
@@ -686,7 +690,7 @@ for (const access of ['list', 'create', 'search']) {
         await page.getByRole('textbox', { name: 'Search accessible documents' }).fill('Test')
         await page.getByLabel('Open document Off-list document', { exact: true }).click()
       } else {
-        await page.getByText('Working documents', { exact: true }).first().click()
+        await expect(page.getByLabel('Open document Test document', { exact: true })).toBeVisible()
         if (access === 'create') {
           await page.getByRole('button', { name: 'Create document', exact: true }).click()
           await page.getByRole('textbox', { name: 'Title', exact: true }).fill('Created document')

@@ -1149,7 +1149,7 @@ async def test_room_task_projection_keeps_the_full_cross_agent_hierarchy(
         agent_id=agent.id,
         topic_id=stale_topic.id,
     )
-    unrelated_parent = Task(label="Outside parent", status=TaskStatus.EXEC, agent_id=agent.id)
+    unrelated_parent = Task(label="Outside parent", status=TaskStatus.SUCCESS, agent_id=agent.id)
     unrelated = Task(label="Unrelated", status=TaskStatus.EXEC, agent_id=agent.id)
     db.add_all([round_, root, unrelated_parent, unrelated])
     await db.flush()
@@ -1190,10 +1190,12 @@ async def test_room_task_projection_keeps_the_full_cross_agent_hierarchy(
 
     first_page = await task_projection.list_room_tasks(room.id, page=1, page_size=2)
     second_page = await task_projection.list_room_tasks(room.id, page=2, page_size=2)
+    third_page = await task_projection.list_room_tasks(room.id, page=3, page_size=2)
 
-    by_id = {item.id: item for item in [*first_page.items, *second_page.items]}
-    assert set(by_id) == {root.id, delegated.id, causal_only.id, grandchild.id}
-    assert first_page.total == second_page.total == 4
+    by_id = {item.id: item for item in [*first_page.items, *second_page.items, *third_page.items]}
+    assert set(by_id) == {root.id, delegated.id, causal_only.id, grandchild.id, unrelated.id}
+    assert first_page.total == second_page.total == third_page.total == 5
+    assert by_id[unrelated.id].directly_linked is False
     assert first_page.page == 1
     assert second_page.page == 2
     assert first_page.page_size == second_page.page_size == 2
@@ -1204,6 +1206,49 @@ async def test_room_task_projection_keeps_the_full_cross_agent_hierarchy(
     assert by_id[delegated.id].agent_id == other_agent.id
     assert by_id[causal_only.id].tree_parent_id == delegated.id
     assert by_id[grandchild.id].tree_parent_id == causal_only.id
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("with_message", [False, True])
+async def test_room_tasks_include_agent_work_outside_the_message_window(
+    db: AsyncSession, with_message: bool,
+) -> None:
+    agent, connection, room = await _scope(db)
+    other_agent, _other_connection, other_room = await _scope(db)
+    message = await _message(db, connection, room, 1, "Current exchange") if with_message else None
+    ongoing = [
+        Task(label=f"Ongoing {status.value}", agent_id=agent.id, status=status)
+        for status in (TaskStatus.CREATE, TaskStatus.DISPATCH, TaskStatus.BRIEFING, TaskStatus.PLAN, TaskStatus.EXEC)
+    ]
+    waiting = Task(
+        label="Waiting for a reply", agent_id=agent.id, status=TaskStatus.EXEC,
+        paused=True, data={"pause_reasons": ["await"], "awaiting_reply": {"kind": "goal_referrer"}},
+    )
+    excluded = [
+        Task(label="Completed elsewhere", agent_id=agent.id, status=TaskStatus.SUCCESS),
+        Task(label="Failed elsewhere", agent_id=agent.id, status=TaskStatus.ERROR),
+        Task(label="Manually paused", agent_id=agent.id, status=TaskStatus.EXEC,
+             paused=True, data={"pause_reasons": ["user"]}),
+        Task(label="Deleted work", agent_id=agent.id, status=TaskStatus.EXEC,
+             deleted_at=datetime.now(timezone.utc)),
+    ]
+    foreign = Task(label="Other agent work", agent_id=other_agent.id, status=TaskStatus.EXEC)
+    db.add_all([*ongoing, waiting, *excluded, foreign])
+    await db.flush()
+    anchor = message.id if message else None
+
+    tree = await task_projection.list_room_tasks(room.id, anchor)
+    assert {item.id for item in tree.items} == {task.id for task in [*ongoing, waiting]}
+    assert tree.total == len(ongoing) + 1
+    assert all(not item.directly_linked for item in tree.items)
+    other_tree = await task_projection.list_room_tasks(other_room.id)
+    assert [item.id for item in other_tree.items] == [foreign.id]
+
+    ongoing[-1].status = TaskStatus.SUCCESS
+    waiting.status = TaskStatus.SUCCESS
+    await db.flush()
+    refreshed = await task_projection.list_room_tasks(room.id, anchor)
+    assert {item.id for item in refreshed.items} == {task.id for task in ongoing[:-1]}
 
 
 @pytest.mark.asyncio

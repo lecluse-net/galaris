@@ -1,8 +1,18 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+assume_yes=false
+if [[ "${1:-}" == --yes ]]; then
+    assume_yes=true
+    shift
+fi
+
 confirm() {
     local answer
+    if [[ "$assume_yes" == true ]]; then
+        printf '%s [y/N] y (FORCE)\n' "$1"
+        return 0
+    fi
     while true; do
         printf '%s [y/N] ' "$1"
         if ! IFS= read -r answer; then

@@ -66,23 +66,48 @@
         <ContextHelp help-key="chat" :text="t('contextHelpPages.chat')" />
         <q-list id="chat-sidebar-content" v-show="sidebarVisible || !store.selectedRoom" class="sidebar-accordion" :class="{ 'sidebar-accordion--empty': !store.selectedRoom }">
           <q-expansion-item v-if="store.selectedRoom" v-model="conversationsExpanded" dense-toggle expand-separator icon="forum" :label="t('chat.conversations')" class="sidebar-accordion-item" :class="{ 'sidebar-accordion-item--open': conversationsExpanded }" header-class="sidebar-accordion-header">
-            <div class="sidebar-section-content"><RoomList :rooms="store.rooms" :selected-id="store.selectedRoom?.id" :can-create="canCreateRoom" :can-impersonate="canImpersonate" :viewer-agent-id="store.viewerAgentId" :viewer-agents="viewerAgents" :include-external="store.includeExternalRooms" :include-archived="store.includeArchivedRooms" :has-more="store.hasMoreRooms" :loading-more="store.loadingMoreRooms" @select="selectRoom" @search="searchRooms" @toggle-external="toggleExternalRooms" @toggle-archived="toggleArchivedRooms" @load-more="loadMoreRooms" @view-agent="changeViewerAgent" @create="openCreate" /></div>
+            <template #header>
+              <q-item-section avatar><q-icon name="forum" /></q-item-section>
+              <q-item-section>{{ t('chat.conversations') }}</q-item-section>
+              <q-item-section side>
+                <div class="row no-wrap">
+                  <q-btn flat round dense icon="filter_list" class="room-list-options" :color="roomFiltersVisible ? 'primary' : undefined" :aria-label="t('chat.listOptions')" :aria-expanded="roomFiltersVisible" aria-controls="chat-room-filters" @click.stop="toggleRoomFilters" @keydown.stop><q-tooltip>{{ t('chat.listOptions') }}</q-tooltip></q-btn>
+                  <q-btn v-if="canCreateRoom" flat round dense color="primary" icon="add" :aria-label="t('chat.newRoom')" @click.stop="openCreate" @keydown.stop><q-tooltip>{{ t('chat.newRoom') }}</q-tooltip></q-btn>
+                </div>
+              </q-item-section>
+            </template>
+            <div class="sidebar-section-content"><RoomList :show-filters="roomFiltersVisible" :rooms="store.rooms" :selected-id="store.selectedRoom?.id" :can-create="canCreateRoom" :can-impersonate="canImpersonate" :viewer-agent-id="store.viewerAgentId" :viewer-agents="viewerAgents" :include-external="store.includeExternalRooms" :include-archived="store.includeArchivedRooms" :has-more="store.hasMoreRooms" :loading-more="store.loadingMoreRooms" @select="selectRoom" @search="searchRooms" @toggle-external="toggleExternalRooms" @toggle-archived="toggleArchivedRooms" @load-more="loadMoreRooms" @view-agent="changeViewerAgent" @create="openCreate" /></div>
           </q-expansion-item>
           <section v-else class="sidebar-accordion-item sidebar-accordion-item--open conversations-section">
             <q-item dense class="sidebar-accordion-header">
               <q-item-section avatar><q-icon name="forum" /></q-item-section>
               <q-item-section><q-item-label>{{ t('chat.conversations') }}</q-item-label></q-item-section>
+              <q-item-section side>
+                <div class="row no-wrap">
+                  <q-btn flat round dense icon="filter_list" class="room-list-options" :color="roomFiltersVisible ? 'primary' : undefined" :aria-label="t('chat.listOptions')" :aria-expanded="roomFiltersVisible" aria-controls="chat-room-filters" @click.stop="toggleRoomFilters" @keydown.stop><q-tooltip>{{ t('chat.listOptions') }}</q-tooltip></q-btn>
+                  <q-btn v-if="canCreateRoom" flat round dense color="primary" icon="add" :aria-label="t('chat.newRoom')" @click.stop="openCreate" @keydown.stop><q-tooltip>{{ t('chat.newRoom') }}</q-tooltip></q-btn>
+                </div>
+              </q-item-section>
             </q-item>
-            <div class="sidebar-section-content"><RoomList :rooms="store.rooms" :can-create="canCreateRoom" :can-impersonate="canImpersonate" :viewer-agent-id="store.viewerAgentId" :viewer-agents="viewerAgents" :include-external="store.includeExternalRooms" :include-archived="store.includeArchivedRooms" :has-more="store.hasMoreRooms" :loading-more="store.loadingMoreRooms" @select="selectRoom" @search="searchRooms" @toggle-external="toggleExternalRooms" @toggle-archived="toggleArchivedRooms" @load-more="loadMoreRooms" @view-agent="changeViewerAgent" @create="openCreate" /></div>
+            <div class="sidebar-section-content"><RoomList :show-filters="roomFiltersVisible" :rooms="store.rooms" :can-create="canCreateRoom" :can-impersonate="canImpersonate" :viewer-agent-id="store.viewerAgentId" :viewer-agents="viewerAgents" :include-external="store.includeExternalRooms" :include-archived="store.includeArchivedRooms" :has-more="store.hasMoreRooms" :loading-more="store.loadingMoreRooms" @select="selectRoom" @search="searchRooms" @toggle-external="toggleExternalRooms" @toggle-archived="toggleArchivedRooms" @load-more="loadMoreRooms" @view-agent="changeViewerAgent" @create="openCreate" /></div>
           </section>
+          <q-expansion-item v-if="store.selectedRoom" v-model="documentsExpanded" dense-toggle expand-separator icon="description" :label="t('chat.workingDocuments')" class="sidebar-accordion-item" :class="{ 'sidebar-accordion-item--open': documentsExpanded }" header-class="sidebar-accordion-header">
+            <template #header>
+              <q-item-section avatar><q-icon name="description" /></q-item-section>
+              <q-item-section>{{ t('chat.workingDocuments') }}</q-item-section>
+              <q-item-section v-if="canReadDocuments && canEditDocuments" side>
+                <q-btn flat round dense color="primary" icon="add" :aria-label="t('chat.createDocument')" @click.stop="conversationDocumentsPanel?.openCreateDocument()" @keydown.stop>
+                  <q-tooltip>{{ t('chat.createDocument') }}</q-tooltip>
+                </q-btn>
+              </q-item-section>
+            </template>
+            <div class="sidebar-section-content"><ConversationDocumentsPanel embedded :displayed-document-id="selectedDocument?.id === displayedDocumentId ? displayedDocumentId : null" @has-items="documentsExpanded = $event" @open="openConversationDocument" ref="conversationDocumentsPanel" :room-id="store.selectedRoom.id" :from-message-id="visibleFromMessageId" :conversation-agent-id="store.selectedRoom.agent_id" :viewer-agent-id="store.viewerAgentId" :can-read="canReadDocuments" :can-edit="canEditDocuments" /></div>
+          </q-expansion-item>
           <q-expansion-item v-if="store.selectedRoom" v-model="tasksExpanded" dense-toggle expand-separator icon="account_tree" :label="t('chat.tasks')" class="sidebar-accordion-item" :class="{ 'sidebar-accordion-item--open': tasksExpanded }" header-class="sidebar-accordion-header">
-            <div class="sidebar-section-content"><AgentTasksPanel ref="agentTasksPanel" embedded :room-id="store.selectedRoom.id" :from-message-id="visibleFromMessageId" :conversation-agent-id="store.selectedRoom.agent_id" :viewer-agent-id="store.viewerAgentId" :can-read="canReadTasks" /></div>
+            <div class="sidebar-section-content"><AgentTasksPanel @has-items="tasksExpanded = $event" ref="agentTasksPanel" embedded :room-id="store.selectedRoom.id" :from-message-id="visibleFromMessageId" :conversation-agent-id="store.selectedRoom.agent_id" :viewer-agent-id="store.viewerAgentId" :can-read="canReadTasks" /></div>
           </q-expansion-item>
           <q-expansion-item v-if="store.selectedRoom" v-model="processesExpanded" dense-toggle expand-separator icon="schema" :label="t('chat.processes')" class="sidebar-accordion-item" :class="{ 'sidebar-accordion-item--open': processesExpanded }" header-class="sidebar-accordion-header">
-            <div class="sidebar-section-content"><ConversationProcessesPanel ref="conversationProcessesPanel" :room-id="store.selectedRoom.id" :from-message-id="visibleFromMessageId" :viewer-agent-id="store.viewerAgentId" :can-read="canReadProcesses" /></div>
-          </q-expansion-item>
-          <q-expansion-item v-if="store.selectedRoom" v-model="documentsExpanded" dense-toggle expand-separator icon="description" :label="t('chat.workingDocuments')" class="sidebar-accordion-item" :class="{ 'sidebar-accordion-item--open': documentsExpanded }" header-class="sidebar-accordion-header">
-            <div class="sidebar-section-content"><ConversationDocumentsPanel embedded :displayed-document-id="selectedDocument?.id === displayedDocumentId ? displayedDocumentId : null" @open="openConversationDocument" ref="conversationDocumentsPanel" :room-id="store.selectedRoom.id" :from-message-id="visibleFromMessageId" :conversation-agent-id="store.selectedRoom.agent_id" :viewer-agent-id="store.viewerAgentId" :can-read="canReadDocuments" :can-edit="canEditDocuments" /></div>
+            <div class="sidebar-section-content"><ConversationProcessesPanel @has-items="processesExpanded = $event" ref="conversationProcessesPanel" :room-id="store.selectedRoom.id" :from-message-id="visibleFromMessageId" :viewer-agent-id="store.viewerAgentId" :can-read="canReadProcesses" /></div>
           </q-expansion-item>
         </q-list>
       </aside>
@@ -120,7 +145,13 @@ import { useChatInboxStore } from '../stores/inbox'
 import { sourceTranslationKey } from '../sourcePresentation'
 import { useChatStore } from '../stores/chat'; import { chatService as service } from '../services/chatService'; import type { ChatViewerAgent, MessageTopicChange, MessengerMessage, MessengerRoom, ReasoningEffort, RecipientCatalog } from '../types'
 
-const $q=useQuasar(); const {t,locale}=useI18n(); const route=useRoute(); const store=useChatStore(); const inboxStore=useChatInboxStore(); const privilegeStore=usePrivilegeStore(); const mobileView=ref<'conversation'|'details'>('details'); const createDialog=ref(false); const creatingRoom=ref(false); const preferencesDialog=ref(false); const savingRoomPreferences=ref(false); const archivingRoom=ref(false); const conversationsExpanded=ref(true); const tasksExpanded=ref(true); const documentsExpanded=ref(false); const processesExpanded=ref(false); const recipients=ref<RecipientCatalog>({agents:[]}); const viewerAgents=ref<ChatViewerAgent[]>([]); const roomSearch=ref(''); const replyingTo=ref<MessengerMessage|null>(null); const selectedTopicId=ref<string|null>(null)
+const $q=useQuasar(); const {t,locale}=useI18n(); const route=useRoute(); const store=useChatStore(); const inboxStore=useChatInboxStore(); const privilegeStore=usePrivilegeStore(); const mobileView=ref<'conversation'|'details'>('details'); const createDialog=ref(false); const creatingRoom=ref(false); const preferencesDialog=ref(false); const savingRoomPreferences=ref(false); const archivingRoom=ref(false); const conversationsExpanded=ref(false); const tasksExpanded=ref(false); const documentsExpanded=ref(false); const processesExpanded=ref(false); const recipients=ref<RecipientCatalog>({agents:[]}); const viewerAgents=ref<ChatViewerAgent[]>([]); const roomSearch=ref(''); const replyingTo=ref<MessengerMessage|null>(null); const selectedTopicId=ref<string|null>(null)
+const roomFiltersVisible = ref(false)
+function toggleRoomFilters(): void {
+  roomFiltersVisible.value = !roomFiltersVisible.value
+  if (roomFiltersVisible.value) conversationsExpanded.value = true
+  else if (!store.rooms.length) conversationsExpanded.value = false
+}
 const chatPageVisible=ref(document.visibilityState==='visible')
 const selectedDocument = ref<WorkingDocumentReference | null>(null)
 const selectedDocumentAgentId = ref<number | null>(null)
@@ -253,7 +284,7 @@ type BottomScrollablePanelHandle = { scrollToBottom: () => void }
 const messageScrollArea=ref<MessageScrollArea|null>(null)
 const agentTasksPanel=ref<BottomScrollablePanelHandle|null>(null)
 const conversationProcessesPanel=ref<BottomScrollablePanelHandle|null>(null)
-const conversationDocumentsPanel=ref<BottomScrollablePanelHandle|null>(null)
+const conversationDocumentsPanel=ref<(BottomScrollablePanelHandle & { openCreateDocument: () => void })|null>(null)
 const messengerGrid=ref<HTMLElement|null>(null)
 const conversationRatio=ref(68)
 const resizingColumns=ref(false)
@@ -327,6 +358,7 @@ function retryVisibleRead(){const messageId=latestIntersectingMessageId.value;if
 function updateChatPageVisibility(){chatPageVisible.value=document.visibilityState==='visible';if(chatPageVisible.value)retryVisibleRead()}
 function updateChatPageFocus(){chatPageFocused.value=document.hasFocus();if(chatPageFocused.value)retryVisibleRead()}
 async function markVisibleMessageRead(messageId:string):Promise<void>{latestIntersectingMessageId.value=messageId;if(!chatPageVisible.value||!chatPageFocused.value||!conversationSurfaceVisible.value||store.loadingSelectedRoom||store.viewerAgentId!==null||!store.messages.some(message=>message.id===messageId))return;await store.markSelectedRoomRead(messageId).catch(()=>undefined);await inboxStore.refreshSummary().catch(()=>undefined)}
+watch(() => store.rooms.length > 0, value => { conversationsExpanded.value = value || roomFiltersVisible.value }, { immediate: true })
 watch(() => store.selectedRoom?.id ?? null, () => { selectedTopicId.value=null;latestIntersectingMessageId.value=null })
 watch(conversationSurfaceVisible, visible => {if(visible)retryVisibleRead()})
 watch(displayedConversationRoomId, roomId => {inboxStore.setDisplayedRoom(roomId);store.setDisplayedRoom(roomId)}, {immediate:true})

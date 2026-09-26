@@ -397,6 +397,25 @@ for answer in 'no\nno\nno' 'yes\nyes\nyes'; do
         exit 1
     fi
 done
+# FORCE accepts all three cleanup choices without reading stdin, in both modes.
+# Docker is replaced by the test executable; no running stack is removed.
+for app_mode in dev prod; do
+    : > "$UPDATE_TEST_LOG"
+    env -u MAKEOVERRIDES MAKEFLAGS= APP_ENV="$app_mode" \
+        make --no-print-directory -C "$case_dir" uninstall FORCE </dev/null > "$case_dir/output.log" 2>&1
+    grep -q ' down --volumes --rmi local --remove-orphans$' "$UPDATE_TEST_LOG"
+    test "$(grep -c ' down' "$UPDATE_TEST_LOG")" -eq 1
+    ! grep -Eq 'prune|image rm|volume rm|--force|--rmi all' "$UPDATE_TEST_LOG"
+    cmp "$case_dir/env.before" "$case_dir/.env"
+    cmp "$case_dir/override.before" "$case_dir/compose.override.yaml"
+done
+: > "$UPDATE_TEST_LOG"
+if UPDATE_TEST_FAILURE=down env -u APP_ENV -u MAKEOVERRIDES MAKEFLAGS= \
+    make --no-print-directory -C "$case_dir" uninstall FORCE </dev/null > "$case_dir/output.log" 2>&1; then
+    echo 'FAIL: forced uninstall hid a Docker removal failure' >&2
+    exit 1
+fi
+grep -q ' down --volumes --rmi local --remove-orphans$' "$UPDATE_TEST_LOG"
 rm "$case_dir/compose.override.yaml"
 echo 'PASS: uninstall confirms volumes, local Compose images and project orphans separately; preserves configuration and propagates failures'
 

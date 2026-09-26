@@ -87,9 +87,57 @@ MAKE
 git -C "$case_dir/seed" add .
 git -C "$case_dir/seed" commit --quiet -m 'Updated test fixture'
 git -C "$case_dir/seed" tag -a v1 -m 'Annotated test release'
+git -C "$case_dir/seed" tag v2
+git -C "$case_dir/seed" tag v10
 git -C "$case_dir/seed" branch v1 HEAD~1
 git -C "$case_dir/seed" branch feature/demo
 git -C "$case_dir/seed" push --quiet origin main refs/heads/v1 feature/demo --tags
+
+# Listing queries remote refs, even before installation and with local edits.
+# It must not fetch, checkout, deploy, or change the worktree/index.
+before=$(git -C "$install_dir" rev-parse HEAD)
+git -C "$install_dir" show-ref > "$case_dir/refs.before"
+printf 'local edit\n' >> "$install_dir/version.txt"
+git -C "$install_dir" add version.txt
+printf 'untracked\n' > "$install_dir/untracked.txt"
+git -C "$install_dir" status --porcelain > "$case_dir/status.before"
+mv "$install_dir/.env" "$case_dir/env.saved"
+run_update VERSIONS
+cat > "$case_dir/versions.expected" <<'OUTPUT'
+Tags:
+v10
+v2
+v1
+
+Branches:
+feature/demo
+main
+v1
+
+Select a target with: make update VERSION=<tag-or-branch>
+OUTPUT
+cmp "$case_dir/versions.expected" "$case_dir/output.log"
+test "$before" = "$(git -C "$install_dir" rev-parse HEAD)"
+git -C "$install_dir" show-ref > "$case_dir/refs.after"
+git -C "$install_dir" status --porcelain > "$case_dir/status.after"
+cmp "$case_dir/refs.before" "$case_dir/refs.after"
+cmp "$case_dir/status.before" "$case_dir/status.after"
+test "$(cat "$install_dir/version.txt")" = $'initial\nlocal edit'
+test "$(cat "$install_dir/untracked.txt")" = untracked
+test ! -f "$install_dir/.git/FETCH_HEAD"
+test ! -f "$GIT_UPDATE_TEST_MARKER"
+test ! -s "$GIT_UPDATE_TEST_LOG"
+expect_failure VERSIONS VERSION=v1
+expect_failure VERSIONS RELEASE_DIR=/unused-release
+# The current branch's configured remote takes precedence over origin.
+git -C "$install_dir" remote rename origin upstream
+run_update VERSIONS
+cmp "$case_dir/versions.expected" "$case_dir/output.log"
+git -C "$install_dir" remote rename upstream origin
+git -C "$install_dir" restore --staged --worktree version.txt
+rm "$install_dir/untracked.txt"
+mv "$case_dir/env.saved" "$install_dir/.env"
+
 run_update
 test "$(cat "$install_dir/version.txt")" = initial
 test ! -f "$GIT_UPDATE_TEST_MARKER"
@@ -160,6 +208,8 @@ test "$(git -C "$install_dir" rev-parse --abbrev-ref '@{upstream}')" = origin/ma
 
 # Failed resolution/fetch and divergent branches must not touch containers.
 git -C "$install_dir" remote set-url origin "$case_dir/absent.git"
+expect_failure VERSIONS
+grep -q 'Cannot list versions' "$case_dir/output.log"
 run_update
 expect_failure VERSION=v1
 git -C "$install_dir" remote set-url origin "$case_dir/origin.git"
@@ -179,6 +229,8 @@ expect_failure VERSION=main
 git clone --quiet --single-branch --branch main "$case_dir/origin.git" "$case_dir/single-branch"
 install_dir="$case_dir/single-branch"
 cp "$case_dir/env.before" "$install_dir/.env"
+run_update VERSIONS
+grep -qx 'feature/demo' "$case_dir/output.log"
 run_update VERSION=feature/demo
 test "$(git -C "$install_dir" rev-parse --abbrev-ref '@{upstream}')" = origin/feature/demo
 run_update
@@ -200,6 +252,9 @@ run_update
 grep -q ' build$' "$GIT_UPDATE_TEST_LOG"
 if run_update VERSION=v1; then exit 1; fi
 grep -q 'VERSION requires a Git checkout' "$case_dir/output.log"
+test ! -s "$GIT_UPDATE_TEST_LOG"
+if run_update VERSIONS; then exit 1; fi
+grep -q 'VERSIONS requires a Git checkout' "$case_dir/output.log"
 test ! -s "$GIT_UPDATE_TEST_LOG"
 mkdir "$install_dir/.git"
 run_update

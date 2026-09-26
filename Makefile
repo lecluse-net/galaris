@@ -95,10 +95,14 @@ stop: ## Stop containers without removing them
 	docker compose $(COMPOSE_STOP_FILES) stop
 .PHONY: stop
 
-uninstall: ## Remove containers and networks; ask before purging volumes, images and orphans
+uninstall: ## Remove containers and networks; FORCE accepts volume, image and orphan deletion
 	$(STOP_UNUSED_SERVICES)
-	@bash bin/uninstall.sh $(COMPOSE_STOP_FILES)
+	@bash bin/uninstall.sh $(if $(filter FORCE,$(MAKECMDGOALS)),--yes) $(COMPOSE_STOP_FILES)
 .PHONY: uninstall
+
+FORCE:
+	@$(if $(filter uninstall,$(MAKECMDGOALS)),:,echo "Use make uninstall FORCE."; exit 2)
+.PHONY: FORCE
 
 
 
@@ -203,7 +207,14 @@ build: ## Build current images with cache without changing containers
 
 # Both backend startup paths run DbAdmin before Uvicorn. Wait for readiness so
 # startup failures also fail the update command.
-update: ## Build and deploy local sources; VERSION explicitly fetches a Git tag or branch first
+update: ## Build and deploy sources; VERSION selects a tag/branch, VERSIONS lists available targets
+ifneq ($(filter VERSIONS,$(MAKECMDGOALS)),)
+ifneq ($(strip $(VERSION)$(RELEASE_DIR)),)
+	@echo "VERSIONS cannot be combined with VERSION or RELEASE_DIR."; exit 2
+else
+	@bash bin/update-source.sh --list
+endif
+else
 	@test -f .env || { echo "Run make install, configure .env, then run make update."; exit 2; }
 ifneq ($(strip $(RELEASE_DIR)),)
 	@test -z "$${VERSION:-}" || { echo "VERSION and RELEASE_DIR cannot be combined."; exit 2; }
@@ -248,7 +259,12 @@ endif
 	@echo "Open $(APP_HOST) in your browser."
 endif
 endif
+endif
 .PHONY: update
+
+VERSIONS:
+	@$(if $(filter update,$(MAKECMDGOALS)),:,echo "Use make update VERSIONS."; exit 2)
+.PHONY: VERSIONS
 
 tests-update: ## Verify installation and development/production updates without changing the running stack
 	@bash bin/test-update.sh

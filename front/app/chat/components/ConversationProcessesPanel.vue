@@ -78,6 +78,7 @@ const props = withDefaults(defineProps<{
   canRead: false,
 })
 
+const emit = defineEmits<{ 'has-items': [value: boolean] }>()
 const { t, te, locale } = useI18n()
 const processes = ref<ConversationProcess[]>([])
 const total = ref(0)
@@ -286,9 +287,15 @@ function unsubscribe(): void {
   subscribed = false
 }
 
+watch(() => props.canRead && processes.value.length > 0, value => emit('has-items', value), { immediate: true, flush: 'sync' })
+
 watch(
   () => [props.roomId, props.fromMessageId, props.viewerAgentId, props.canRead] as const,
-  ([, , , canRead]) => {
+  ([roomId, , viewerAgentId, canRead], previous) => {
+    if (roomId !== previous?.[0] || viewerAgentId !== previous?.[2] || canRead !== previous?.[3]) {
+      processes.value = []
+      total.value = 0
+    }
     if (canRead) subscribe()
     else unsubscribe()
     page.value = 1

@@ -1,6 +1,7 @@
 import { test, expect, mount, jsonRoute } from './fixtures.mjs'
+import { document as documentFixture } from './data.mjs'
 
-async function conversation(page) {
+async function conversation(page, privileges = ['CHAT_SEND']) {
   const rooms = ['a', 'b'].map(code => ({ id: `room-${code}`, label: `Conversation ${code}`,
     agent_id: 7, agent_name: 'Alice', agent_active: false, source: null, writable: true,
     members: [], muted: false, archived: false, unread_count: 0, conversation_type: 'text' }))
@@ -24,7 +25,7 @@ async function conversation(page) {
   await jsonRoute(page, '**/api/chat/inbox', { unread_count: 0 })
   await jsonRoute(page, '**/api/chat/emojis/frequent', { items: [] })
   await jsonRoute(page, '**/api/chat/agents/7/avatar', {})
-  await mount(page, 'app/chat/pages/index.vue', { route: '/chat?room=room-a', privileges: ['CHAT_SEND'] })
+  await mount(page, 'app/chat/pages/index.vue', { route: '/chat?room=room-a', privileges })
   await expect(page.locator('.conversation-pane')).toContainText('Content room-a')
   return { rooms, messages }
 }
@@ -42,6 +43,92 @@ async function refresh(page, key, method = 'refreshSelected') {
 
 async function settled(page, key) {
   await expect.poll(() => page.evaluate(key => window.refreshResults[key], key)).toBeTruthy()
+}
+
+for (const width of [1280, 390]) {
+  test(`conversation header toggles all filters and creates a conversation at ${width}px`, async ({ page }, testInfo) => {
+    await page.setViewportSize({ width, height: 900 })
+    const agents = [{ agent_id: 7, display_name: 'Alice', has_avatar: false }]
+    await jsonRoute(page, '**/api/chat/viewer-agents', agents)
+    await jsonRoute(page, '**/api/chat/recipients?*', { agents })
+    await conversation(page, ['CHAT_SEND', 'CHAT_MANAGE', 'CHAT_IMPERSONATE'])
+    if (width < 1024) await page.getByRole('button', { name: 'Details', exact: true }).click()
+    const header = page.locator('.sidebar-accordion-header').filter({ hasText: 'Conversations' })
+    const toggle = header.getByRole('button', { name: 'Conversation display options', exact: true })
+    const search = page.getByRole('textbox', { name: 'Search conversations…', exact: true })
+    await expect(toggle).toHaveAttribute('aria-expanded', 'false')
+    await expect(search).toBeHidden()
+    await toggle.click()
+    await expect(search).toBeVisible()
+    await expect(page.locator('.viewer-select')).toBeVisible()
+    await expect(page.getByRole('checkbox')).toHaveCount(2)
+    await page.getByRole('checkbox', { name: 'Show archived conversations' }).click()
+    await expect(page.getByRole('checkbox', { name: 'Show archived conversations' })).toBeChecked()
+    await jsonRoute(page, '**/api/chat/rooms?*', { items: [], total: 0 })
+    await search.fill('No matching conversation')
+    await expect(page.locator('.room-item')).toHaveCount(0)
+    await expect(search).toBeVisible()
+    await toggle.click()
+    await expect(search).toBeHidden()
+    await toggle.click()
+    await expect(search).toHaveValue('No matching conversation')
+    await expect(page.getByRole('checkbox', { name: 'Show archived conversations' })).toBeChecked()
+    await page.screenshot({ path: testInfo.outputPath('conversation-filters.png'), fullPage: true })
+    await toggle.click()
+    await header.getByRole('button', { name: 'New conversation with an agent', exact: true }).click()
+    await expect(page.getByRole('dialog')).toBeVisible()
+    await expect(page.getByRole('combobox', { name: 'Agent', exact: true })).toBeVisible()
+    await page.getByRole('dialog').getByRole('button', { name: 'Close', exact: true }).click()
+    await expect(page.getByRole('dialog')).toHaveCount(0)
+  })
+}
+
+for (const section of [
+  { path: 'documents', label: 'Working documents', privilege: 'MEMORY_ACCESS', event: 'memory.update',
+    item: { id: 'doc-a', label: 'Available document', uri: 'document://doc-a', revision: 1 } },
+  { path: 'tasks', label: 'Tasks', privilege: 'TASK_ACCESS', event: 'task.update',
+    item: { id: 'task-a', label: 'Available task', status: 'SUCCESS', agent_id: null, data: {}, revision: 1,
+      tree_parent_id: null, created_at: '2026-09-01T12:00:00Z' } },
+  { path: 'processes', label: 'Processes', privilege: 'PROCESS_READ', event: 'process_run.update',
+    item: { id: 'process-a', process_label: 'Available process', status: 'success', created_at: '2026-09-01T12:00:00Z' } },
+]) {
+  test(`${section.path} expand with content, preserve manual collapse and reset on room changes`, async ({ page }) => {
+    let items = []
+    let reads = 0
+    await page.route(`**/api/chat/rooms/room-a/${section.path}?*`, route => {
+      reads += 1
+      return route.fulfill({ json: { items, total: items.length, page: 1, page_size: 50 } })
+    })
+    await jsonRoute(page, `**/api/chat/rooms/room-b/${section.path}?*`, { items: [], total: 0 })
+    await jsonRoute(page, '**/api/chat/recipients?*', { agents: [] })
+    await jsonRoute(page, '**/api/tasks/activity', [])
+    await jsonRoute(page, '**/api/memory/items/doc-a?*', documentFixture)
+    await conversation(page, ['CHAT_SEND', section.privilege])
+    const header = page.locator('.sidebar-accordion-header').filter({ hasText: section.label })
+    await expect.poll(() => reads).toBeGreaterThan(0)
+    await expect(header).toHaveAttribute('aria-expanded', 'false')
+    const refreshSection = async () => {
+      const previous = reads
+      await page.evaluate(event => window.testApp.emitSocket(event, { data: {} }), section.event)
+      await expect.poll(() => reads).toBeGreaterThan(previous)
+    }
+    items = [section.item]
+    await refreshSection()
+    await expect(header).toHaveAttribute('aria-expanded', 'true')
+    await header.click()
+    await refreshSection()
+    await expect(header).toHaveAttribute('aria-expanded', 'false')
+    await header.click()
+    items = []
+    await refreshSection()
+    await expect(header).toHaveAttribute('aria-expanded', 'false')
+    items = [section.item]
+    await refreshSection()
+    await expect(header).toHaveAttribute('aria-expanded', 'true')
+    await page.evaluate(() => window.testApp.navigate('/chat?room=room-b'))
+    await expect(page.locator('.conversation-pane')).toContainText('Content room-b')
+    await expect(header).toHaveAttribute('aria-expanded', 'false')
+  })
 }
 
 for (const status of [403, 404]) {

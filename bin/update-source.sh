@@ -8,8 +8,26 @@ fail() {
 }
 
 main() {
-    local version=${VERSION:-} branch remote target local_ref changes fetch_specs spec
+    local version=${VERSION:-} branch remote target local_ref changes fetch_specs spec refs
     local tracked=false
+    if [[ "${1:-}" == --list ]]; then
+        [[ -e .git ]] || fail 'VERSIONS requires a Git checkout in this installation.'
+        git rev-parse --git-dir >/dev/null || fail 'Invalid .git metadata.'
+        branch=$(git symbolic-ref --quiet --short HEAD) || branch=''
+        remote=$(git config --get "branch.$branch.remote") || remote=origin
+        [[ "$remote" != . ]] || remote=origin
+        git remote get-url "$remote" >/dev/null || fail 'No usable Git remote configured.'
+        # Query the server without fetching objects or changing local refs/files.
+        # --refs suppresses peeled entries for annotated tags.
+        refs=$(git ls-remote --refs "$remote" 'refs/tags/*' 'refs/heads/*') || \
+            fail 'Cannot list versions from the Git remote.'
+        printf 'Tags:\n'
+        printf '%s\n' "$refs" | awk '$2 ~ /^refs\/tags\// {print substr($2, 11)}' | LC_ALL=C sort -Vr
+        printf '\nBranches:\n'
+        printf '%s\n' "$refs" | awk '$2 ~ /^refs\/heads\// {print substr($2, 12)}' | LC_ALL=C sort
+        printf '\nSelect a target with: make update VERSION=<tag-or-branch>\n'
+        return
+    fi
     [[ -n "$version" ]] || return 0
     if [[ ! -e .git ]]; then
         fail 'VERSION requires a Git checkout in this installation.'

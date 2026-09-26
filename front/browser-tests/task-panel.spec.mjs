@@ -33,6 +33,21 @@ test('completed task expansion is local to the row and does not open task detail
   await expect(page.getByRole('dialog')).toHaveCount(0)
 })
 
+test('agent work loads without messages, refreshes and follows the selected conversation', async ({ page }) => {
+  const items = [{ ...task(1), status: 'EXEC', directly_linked: false }]
+  const requests = await panel(page, items)
+  await page.evaluate(() => window.testApp.setProps({ fromMessageId: null }))
+  await expect.poll(() => requests.at(-1)?.has('from_message_id')).toBe(false)
+  await expect(page.getByText('Task 1', { exact: true })).toBeVisible()
+  items.splice(0)
+  await page.evaluate(() => window.testApp.emitSocket('task.update', { data: { id: 'task-1', status: 'SUCCESS' } }))
+  await expect(page.locator('.agent-task-row')).toHaveCount(0)
+  await jsonRoute(page, '**/api/chat/rooms/room-b/tasks?*', { items: [task(2)], total: 1, page: 1, page_size: 10 })
+  await page.evaluate(() => window.testApp.setProps({ roomId: 'room-b' }))
+  await expect(page.getByText('Task 2', { exact: true })).toBeVisible()
+  await expect(page.getByText('Task 1', { exact: true })).toHaveCount(0)
+})
+
 const activityFor = (task, streams = true) => ({
   task_id: task.id, revision: task.revision, run_id: 'run', streams_ai_messages: streams,
   operational: { operational_state: 'RUNNING', resume_phase: 'EXEC', waits: [] },

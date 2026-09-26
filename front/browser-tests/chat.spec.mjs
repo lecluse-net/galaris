@@ -183,7 +183,7 @@ test('conversation documents hide UUID labels and respect read and edit permissi
 test('conversation viewer always keeps a person selected and can return to myself', async ({ page }) => {
   await page.route('**/api/chat/agents/7/avatar', route => route.fulfill({ status: 404, body: '' }))
   await mount(page, 'app/chat/components/RoomList.vue', { props: {
-    rooms: [], canCreate: false, canImpersonate: true, viewerAgentId: null,
+    rooms: [], showFilters: true, canCreate: false, canImpersonate: true, viewerAgentId: null,
     viewerAgents: [{ agent_id: 7, display_name: 'Alice', has_avatar: false }],
     includeExternal: false, includeArchived: false, hasMore: false, loadingMore: false,
   } })
@@ -213,9 +213,14 @@ test('unread room badges and archive filters expose actionable, independent cont
   } })
   await expect(page.locator('.room-item--unread')).toHaveCount(1)
   await expect(page.locator('.room-item--unread .q-badge')).toHaveAttribute('aria-label', /4/)
-  await page.locator('.room-list-options').click()
+  await expect(page.getByRole('checkbox')).toHaveCount(0)
+  await page.evaluate(() => window.testApp.setProps({ showFilters: true }))
   await expect(page.getByRole('checkbox')).toHaveCount(2)
   await page.getByRole('checkbox').last().click()
   await expect.poll(() => events(page, 'toggle-archived')).toEqual([[true]])
   expect(await events(page, 'toggle-external')).toEqual([])
+  await page.evaluate(() => window.testApp.setProps({ includeArchived: true, showFilters: false }))
+  await expect(page.getByRole('checkbox')).toHaveCount(0)
+  await page.evaluate(() => window.testApp.setProps({ showFilters: true }))
+  await expect(page.getByRole('checkbox').last()).toBeChecked()
 })
