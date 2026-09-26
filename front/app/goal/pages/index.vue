@@ -570,7 +570,7 @@
 
 
     <q-dialog v-model="globalScheduleDialogOpen">
-      <q-card class="goal-schedule-dialog-card">
+      <q-card class="goal-schedule-dialog-card galaris-dialog-card">
         <q-card-section class="galaris-dialog-title row items-center justify-between">
           <div class="text-h6">{{ t('goal.runtime.globalScheduleTitle') }}</div>
           <q-btn
@@ -582,8 +582,8 @@
             v-close-popup
           />
         </q-card-section>
-        <q-form class="goal-form" @submit="submitGlobalScheduleDialog">
-          <q-card-section class="goal-form-content q-pa-lg scroll">
+        <q-form class="goal-form galaris-dialog-form" @submit="submitGlobalScheduleDialog">
+          <q-card-section class="goal-form-content q-pa-lg scroll galaris-dialog-body">
             <GoalScheduleEditor
               v-model:enabled="globalScheduleEnabledDraft"
               v-model:slots="globalScheduleDraft"
@@ -611,7 +611,7 @@
       transition-show="slide-up"
       transition-hide="slide-down"
     >
-      <q-card class="goal-detail-dialog">
+      <q-card class="goal-detail-dialog galaris-dialog-card">
         <q-card-section class="galaris-dialog-title row items-center no-wrap">
           <div class="goal-detail-title col row items-center">
             <div class="text-h6">
@@ -671,7 +671,7 @@
           />
         </q-tabs>
         <q-separator />
-        <q-tab-panels v-model="goalDialogTab" animated class="goal-dialog-panels">
+        <q-tab-panels v-model="goalDialogTab" animated class="goal-dialog-panels galaris-dialog-body">
         <q-tab-panel
           v-if="store.currentGoal && editingGoal && store.currentGoal.id === editingGoal.id"
           name="overview"

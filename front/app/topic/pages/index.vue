@@ -238,14 +238,14 @@
     </q-card>
 
     <q-dialog v-model="formDialog">
-      <q-card class="topic-dialog-card">
+      <q-card class="topic-dialog-card galaris-dialog-card">
         <q-card-section class="galaris-dialog-title row items-center no-wrap">
           <div class="text-h6">{{ editingTopic ? t('topic.editTitle') : t('topic.createTitle') }}</div>
           <q-space />
           <q-btn v-close-popup flat round dense icon="close" :aria-label="t('topic.cancel')" />
         </q-card-section>
-        <q-form @submit.prevent="saveTopic">
-          <q-card-section class="q-gutter-md">
+        <q-form class="galaris-dialog-form" @submit.prevent="saveTopic">
+          <q-card-section class="q-gutter-md galaris-dialog-body">
             <q-input v-model="topicForm.title" outlined autofocus :label="t('topic.title')" :rules="[requiredRule]" />
             <q-input v-model="topicForm.description" outlined type="textarea" autogrow :label="t('topic.description')" />
             <q-select
@@ -280,13 +280,13 @@
     </q-dialog>
 
     <q-dialog v-model="mergeDialog">
-      <q-card class="topic-dialog-card">
+      <q-card class="topic-dialog-card galaris-dialog-card">
         <q-card-section class="galaris-dialog-title row items-center no-wrap">
           <div class="text-h6">{{ t('topic.mergeTitle', { title: activeTopic?.title || '' }) }}</div>
           <q-space />
           <q-btn v-close-popup flat round dense icon="close" :aria-label="t('topic.cancel')" />
         </q-card-section>
-        <q-card-section class="q-gutter-md">
+        <q-card-section class="q-gutter-md galaris-dialog-body">
           <q-banner rounded class="bg-blue-1 text-primary">{{ t('topic.mergeHelp') }}</q-banner>
           <TopicSelect
             v-if="mergeDialog"
@@ -307,13 +307,13 @@
     </q-dialog>
 
     <q-dialog v-model="splitDialog">
-      <q-card class="topic-split-card">
+      <q-card class="topic-split-card galaris-dialog-card">
         <q-card-section class="galaris-dialog-title row items-center no-wrap">
           <div class="text-h6">{{ t('topic.splitTitle', { title: activeTopic?.title || '' }) }}</div>
           <q-space />
           <q-btn v-close-popup flat round dense icon="close" :aria-label="t('topic.cancel')" />
         </q-card-section>
-        <q-card-section>
+        <q-card-section class="galaris-dialog-body">
           <q-banner rounded class="bg-blue-1 text-primary">{{ t('topic.splitHelp') }}</q-banner>
           <q-card flat bordered class="topic-split-editor q-mt-md">
             <q-card-section>
@@ -379,13 +379,13 @@
     </q-dialog>
 
     <q-dialog v-model="deleteDialog">
-      <q-card class="topic-dialog-card">
+      <q-card class="topic-dialog-card galaris-dialog-card">
         <q-card-section class="galaris-dialog-title row items-center no-wrap">
           <div class="text-h6">{{ t('topic.deleteTitle', { title: activeTopic?.title || '' }) }}</div>
           <q-space />
           <q-btn v-close-popup flat round dense icon="close" :aria-label="t('topic.cancel')" />
         </q-card-section>
-        <q-card-section>{{ t('topic.deleteHelp') }}</q-card-section>
+        <q-card-section class="galaris-dialog-body">{{ t('topic.deleteHelp') }}</q-card-section>
         <q-separator />
         <q-card-actions align="right" class="q-pa-md galaris-dialog-actions">
           <q-btn v-close-popup flat :label="t('topic.cancel')" />

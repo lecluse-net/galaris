@@ -20,7 +20,7 @@ window.testApp = {
     this.pendingMount = this.mountComponent(options)
     return this.pendingMount
   },
-  async mountComponent({ component, props = {}, setProps = [], containerStyle = {}, route = '/', authenticated = true, dark = false, locale = 'en' }) {
+  async mountComponent({ component, props = {}, slots = {}, setProps = [], containerStyle = {}, route = '/', authenticated = true, dark = false, locale = 'en' }) {
     this.unmount?.()
     errors.length = 0
     const pinia = createPinia()
@@ -51,7 +51,9 @@ window.testApp = {
       render: () => h(QLayout, {}, () => h(QPageContainer, { style: containerStyle }, () => h(target, {
         ...currentProps.value,
         ...listeners,
-      }))),
+      }, Object.fromEntries(Object.entries(slots).map(([name, paragraphs]) => [
+        name, () => paragraphs.map(text => h('p', text)),
+      ]))))),
     })
     app.config.errorHandler = error => errors.push(String(error.stack ?? error))
     app.use(pinia).use(router).use(i18n).use(Quasar, { plugins: { Dialog, Notify, Loading }, config: { dark } })

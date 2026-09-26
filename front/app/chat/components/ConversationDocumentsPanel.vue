@@ -78,14 +78,14 @@
     />
 
     <q-dialog v-model="createOpen">
-      <q-card class="conversation-document-create-dialog">
+      <q-card class="conversation-document-create-dialog galaris-dialog-card">
         <q-card-section class="galaris-dialog-title row items-center no-wrap">
           <q-icon name="note_add" size="24px" class="q-mr-sm" />
           <div class="text-h6">{{ t('chat.createDocument') }}</div>
           <q-space />
           <q-btn v-close-popup flat round dense icon="close" :aria-label="t('common.close')" />
         </q-card-section>
-        <q-card-section>
+        <q-card-section class="galaris-dialog-body">
           <q-input
             v-model="createTitle"
             outlined autofocus

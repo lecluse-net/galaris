@@ -1,6 +1,6 @@
 <template>
   <q-dialog v-model="open">
-    <q-card class="conversation-turn-dialog galaris-detail-dialog">
+    <q-card class="conversation-turn-dialog galaris-detail-dialog galaris-dialog-card">
       <q-card-section class="galaris-dialog-title row items-center no-wrap">
         <q-icon :name="icon" size="sm" class="q-mr-sm" />
         <div class="text-h6 ellipsis">{{ title }}</div>
@@ -15,7 +15,9 @@
         />
       </q-card-section>
       <q-separator />
-      <slot />
+      <div class="galaris-dialog-body">
+        <slot />
+      </div>
     </q-card>
   </q-dialog>
 </template>
@@ -28,9 +30,3 @@ defineProps<{
   icon: string
 }>()
 </script>
-
-<style scoped>
-.conversation-turn-dialog {
-  overflow-y: auto;
-}
-</style>

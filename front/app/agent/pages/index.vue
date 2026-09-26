@@ -298,7 +298,7 @@
 
     <!-- AGENT DIALOG -->
     <q-dialog v-model="showAgentDialog">
-      <q-card class="agent-dialog-card">
+      <q-card class="agent-dialog-card galaris-dialog-card">
         <q-card-section class="galaris-dialog-title row items-center">
           <div class="text-h6">{{ isAgentEdit ? $t('agent.editAgent') : $t('agent.addAgent') }}</div>
           <q-space />
@@ -326,7 +326,7 @@
         </q-tabs>
         <q-separator v-if="isAgentEdit" />
 
-        <q-card-section class="q-pt-md q-px-md">
+        <q-card-section class="q-pt-md q-px-md galaris-dialog-body">
           <q-form
             @submit="onAgentSubmit"
             @validation-error="onAgentValidationError"
@@ -676,7 +676,7 @@
       v-model="showHarnessChangeConfirm"
       @hide="settleHarnessChangeConfirmation(false)"
     >
-      <q-card style="width: 560px; max-width: 92vw">
+      <q-card class="galaris-dialog-card" style="width: 560px; max-width: 92vw">
         <q-card-section class="galaris-dialog-title row items-center">
           <div class="text-h6">{{ $t('agent.harness.changeConfirmTitle') }}</div>
           <q-space />
@@ -689,7 +689,7 @@
             @click="settleHarnessChangeConfirmation(false)"
           />
         </q-card-section>
-        <q-card-section>
+        <q-card-section class="galaris-dialog-body">
           <q-banner rounded class="bg-warning text-dark">
             <template v-slot:avatar><q-icon name="warning" /></template>
             {{ $t('agent.harness.changeConfirmMessage') }}
@@ -718,7 +718,7 @@
       v-model="showPausedHarnessTasksConfirm"
       @hide="settlePausedHarnessTasksConfirmation(false)"
     >
-      <q-card style="width: 620px; max-width: 92vw">
+      <q-card class="galaris-dialog-card" style="width: 620px; max-width: 92vw">
         <q-card-section class="galaris-dialog-title row items-center">
           <div class="text-h6">{{ $t('agent.harness.blockingTasksTitle') }}</div>
           <q-space />
@@ -731,7 +731,7 @@
             @click="settlePausedHarnessTasksConfirmation(false)"
           />
         </q-card-section>
-        <q-card-section>
+        <q-card-section class="galaris-dialog-body">
           <q-banner v-if="pausedHarnessTasks.length > 0" rounded class="bg-warning text-dark">
             <template v-slot:avatar><q-icon name="pause_circle" /></template>
             {{ $t('agent.harness.pausedTasksMessage', { count: pausedHarnessTasks.length }) }}
@@ -796,7 +796,7 @@
 
     <!-- RICH TEXT EDITOR DIALOG -->
     <q-dialog allow-focus-outside v-model="showRichTextDialog" style="max-width: 1400px">
-      <q-card style="min-width: 1000px; max-width: 1400px; width: 90vw; max-height: 92vh">
+      <q-card class="galaris-dialog-card" style="min-width: 1000px; max-width: 1400px; width: 90vw; max-height: 92vh">
         <q-card-section class="galaris-dialog-title row items-center">
           <div class="text-h6">
             <q-icon :name="richTextField === 'personality' ? 'psychology' : 'work'" class="q-mr-sm" />
@@ -809,7 +809,7 @@
           <q-btn icon="close" :aria-label="$t('common.close')" flat round dense v-close-popup />
         </q-card-section>
 
-        <q-card-section class="q-pa-md" style="max-height: 75vh; overflow: auto">
+        <q-card-section class="q-pa-md galaris-dialog-body" style="max-height: 75vh; overflow: auto">
           <RichTextEditor
             v-model="richTextContent"
             min-height="500px"

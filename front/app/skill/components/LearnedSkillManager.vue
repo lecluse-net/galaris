@@ -99,65 +99,67 @@
     </q-table>
 
     <q-dialog v-model="detailDialog">
-      <q-card class="column no-wrap learned-detail-dialog">
+      <q-card class="column no-wrap learned-detail-dialog galaris-dialog-card">
         <q-toolbar class="galaris-dialog-title bg-primary text-white">
           <q-toolbar-title>{{ selected?.label || t('skills.learning.detail') }}</q-toolbar-title>
           <q-btn v-close-popup flat round dense icon="close" :aria-label="t('skills.cancel')" />
         </q-toolbar>
-        <q-card-section v-if="detailLoading" class="row justify-center q-pa-xl">
-          <q-spinner color="primary" size="42px" />
-        </q-card-section>
-        <template v-else-if="selected">
-          <q-card-section>
-            <div class="row q-col-gutter-md">
-              <div class="col-6 col-md-3">
-                <div class="text-caption text-grey-7">{{ t('skills.learning.score') }}</div>
-                <div class="text-h6">{{ formatScore(selected.score) }}</div>
-              </div>
-              <div class="col-6 col-md-3">
-                <div class="text-caption text-grey-7">{{ t('skills.learning.positive') }}</div>
-                <div>{{ selected.positive_weight.toFixed(2) }}</div>
-              </div>
-              <div class="col-6 col-md-3">
-                <div class="text-caption text-grey-7">{{ t('skills.learning.negative') }}</div>
-                <div>{{ selected.negative_weight.toFixed(2) }}</div>
-              </div>
-              <div class="col-6 col-md-3">
-                <div class="text-caption text-grey-7">{{ t('skills.learning.revision') }}</div>
-                <div>{{ selected.revision }}</div>
-              </div>
-            </div>
+        <div class="galaris-dialog-body galaris-dialog-body--layout">
+          <q-card-section v-if="detailLoading" class="row justify-center q-pa-xl">
+            <q-spinner color="primary" size="42px" />
           </q-card-section>
-          <q-separator />
-          <q-tabs v-model="detailTab" dense align="left" class="text-primary">
-            <q-tab name="instructions" icon="description" :label="t('skills.learning.instructions')" />
-            <q-tab name="evidence" icon="fact_check" :label="t('skills.learning.evidence')" />
-          </q-tabs>
-          <q-tab-panels v-model="detailTab" animated class="col scroll">
-            <q-tab-panel name="instructions">
-              <Markdown :content="selected.markdown" compact-frontmatter />
-            </q-tab-panel>
-            <q-tab-panel name="evidence">
-              <q-list bordered separator>
-                <q-item v-for="item in selected.evidences" :key="item.id">
-                  <q-item-section>
-                    <q-item-label>
-                      <q-chip
-                        dense
-                        :color="item.polarity === 'positive' ? 'positive' : 'negative'"
-                        text-color="white"
-                      >
-                        {{ item.operation }} · {{ item.weight.toFixed(2) }}
-                      </q-chip>
-                      <code class="text-caption q-ml-sm">{{ item.source_ref }}</code>
-                    </q-item-label>
-                    <q-item-label caption class="q-mt-sm">{{ item.rationale }}</q-item-label>
-                  </q-item-section>
-                </q-item>
-              </q-list>
-            </q-tab-panel>
-          </q-tab-panels>
-        </template>
+          <template v-else-if="selected">
+            <q-card-section>
+              <div class="row q-col-gutter-md">
+                <div class="col-6 col-md-3">
+                  <div class="text-caption text-grey-7">{{ t('skills.learning.score') }}</div>
+                  <div class="text-h6">{{ formatScore(selected.score) }}</div>
+                </div>
+                <div class="col-6 col-md-3">
+                  <div class="text-caption text-grey-7">{{ t('skills.learning.positive') }}</div>
+                  <div>{{ selected.positive_weight.toFixed(2) }}</div>
+                </div>
+                <div class="col-6 col-md-3">
+                  <div class="text-caption text-grey-7">{{ t('skills.learning.negative') }}</div>
+                  <div>{{ selected.negative_weight.toFixed(2) }}</div>
+                </div>
+                <div class="col-6 col-md-3">
+                  <div class="text-caption text-grey-7">{{ t('skills.learning.revision') }}</div>
+                  <div>{{ selected.revision }}</div>
+                </div>
+              </div>
+            </q-card-section>
+            <q-separator />
+            <q-tabs v-model="detailTab" dense align="left" class="text-primary">
+              <q-tab name="instructions" icon="description" :label="t('skills.learning.instructions')" />
+              <q-tab name="evidence" icon="fact_check" :label="t('skills.learning.evidence')" />
+            </q-tabs>
+            <q-tab-panels v-model="detailTab" animated class="col scroll">
+              <q-tab-panel name="instructions">
+                <Markdown :content="selected.markdown" compact-frontmatter />
+              </q-tab-panel>
+              <q-tab-panel name="evidence">
+                <q-list bordered separator>
+                  <q-item v-for="item in selected.evidences" :key="item.id">
+                    <q-item-section>
+                      <q-item-label>
+                        <q-chip
+                          dense
+                          :color="item.polarity === 'positive' ? 'positive' : 'negative'"
+                          text-color="white"
+                        >
+                          {{ item.operation }} · {{ item.weight.toFixed(2) }}
+                        </q-chip>
+                        <code class="text-caption q-ml-sm">{{ item.source_ref }}</code>
+                      </q-item-label>
+                      <q-item-label caption class="q-mt-sm">{{ item.rationale }}</q-item-label>
+                    </q-item-section>
+                  </q-item>
+                </q-list>
+              </q-tab-panel>
+            </q-tab-panels>
+          </template>
+        </div>
       </q-card>
     </q-dialog>
   </div>

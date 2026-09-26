@@ -216,12 +216,12 @@
     </div>
 
     <q-dialog v-model="detailDialogOpen" transition-show="slide-up" transition-hide="slide-down">
-      <q-card class="task-detail-dialog galaris-detail-dialog">
+      <q-card class="task-detail-dialog galaris-detail-dialog galaris-dialog-card">
         <q-card-section class="galaris-dialog-title row items-center justify-between">
           <div class="text-h6">{{ t('task.detailTitle') }}</div>
           <q-btn v-close-popup icon="close" flat round dense :aria-label="t('common.close')" />
         </q-card-section>
-        <q-card-section class="task-detail-content">
+        <q-card-section class="task-detail-content galaris-dialog-body">
           <TaskDetail
             :task-id="selectedTaskId"
             @refresh="refreshTaskDetail"

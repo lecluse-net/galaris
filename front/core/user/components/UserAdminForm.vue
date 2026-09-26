@@ -1,5 +1,5 @@
 <template>
-  <q-card class="user-admin-dialog">
+  <q-card class="user-admin-dialog galaris-dialog-card">
     <q-card-section class="galaris-dialog-title row items-center no-wrap">
       <q-icon name="manage_accounts" size="sm" />
       <div class="text-h6 ellipsis q-ml-sm">{{ isEdit ? $t('userAdmin.editTitle') : $t('userAdmin.createTitle') }}</div>
@@ -8,54 +8,56 @@
     </q-card-section>
 
     <q-tabs v-if="user && tabs.length" v-model="tab" align="left" class="text-primary"><q-tab name="account" :label="$t('userAdmin.editTitle')" /><q-tab v-for="item in tabs" :key="item.name" :name="item.name" :label="$t(item.labelKey)" :icon="item.icon" /></q-tabs>
-    <q-card-section v-if="user && tab !== 'account'"><component :is="item.component" v-for="item in tabs.filter(x=>x.name===tab)" :key="item.name" :user-id="user.id" /></q-card-section>
-    <q-card-section v-show="tab === 'account'" class="q-pt-md">
-      <q-form @submit.prevent="onSubmit" class="q-gutter-md">
-        <q-input
-          v-model="form.email"
-          :label="$t('auth.email')"
-          type="email"
-          outlined
-          autofocus
-          :rules="[val => !!val || $t('auth.emailRequired')]"
-        />
+    <div class="galaris-dialog-body">
+      <q-card-section v-if="user && tab !== 'account'"><component :is="item.component" v-for="item in tabs.filter(x=>x.name===tab)" :key="item.name" :user-id="user.id" /></q-card-section>
+      <q-card-section v-show="tab === 'account'" class="q-pt-md">
+        <q-form @submit.prevent="onSubmit" class="q-gutter-md">
+          <q-input
+            v-model="form.email"
+            :label="$t('auth.email')"
+            type="email"
+            outlined
+            autofocus
+            :rules="[val => !!val || $t('auth.emailRequired')]"
+          />
 
-        <q-input
-          v-model="form.display_name"
-          :label="$t('userAdmin.displayName')"
-          outlined
-        />
+          <q-input
+            v-model="form.display_name"
+            :label="$t('userAdmin.displayName')"
+            outlined
+          />
 
-        <q-input
-          v-model="form.password"
-          :label="$t('auth.password')"
-          :type="showPassword ? 'text' : 'password'"
-          outlined
-          maxlength="72"
-          :rules="isEdit ? [val => !val || val.length >= 12 || $t('userAdmin.passwordMin')] : [val => !!val || $t('auth.passwordRequired'), val => val.length >= 12 || $t('userAdmin.passwordMin')]"
-          :hint="isEdit ? $t('userAdmin.passwordKeep') : ''"
-        >
-          <template v-slot:append>
-            <q-icon
-              :name="showPassword ? 'visibility_off' : 'visibility'"
-              class="cursor-pointer"
-              @click="showPassword = !showPassword"
-            />
-          </template>
-        </q-input>
+          <q-input
+            v-model="form.password"
+            :label="$t('auth.password')"
+            :type="showPassword ? 'text' : 'password'"
+            outlined
+            maxlength="72"
+            :rules="isEdit ? [val => !val || val.length >= 12 || $t('userAdmin.passwordMin')] : [val => !!val || $t('auth.passwordRequired'), val => val.length >= 12 || $t('userAdmin.passwordMin')]"
+            :hint="isEdit ? $t('userAdmin.passwordKeep') : ''"
+          >
+            <template v-slot:append>
+              <q-icon
+                :name="showPassword ? 'visibility_off' : 'visibility'"
+                class="cursor-pointer"
+                @click="showPassword = !showPassword"
+              />
+            </template>
+          </q-input>
 
-        <q-toggle
-          v-model="form.is_active"
-          :label="$t('userAdmin.accountActive')"
-          color="green"
-        />
+          <q-toggle
+            v-model="form.is_active"
+            :label="$t('userAdmin.accountActive')"
+            color="green"
+          />
 
-        <div class="user-admin-actions">
-          <q-btn :label="$t('common.cancel')" color="primary" flat v-close-popup />
-          <q-btn v-if="canSubmit" :label="isEdit ? $t('common.edit') : $t('common.create')" type="submit" color="primary" :loading="loading" />
-        </div>
-      </q-form>
-    </q-card-section>
+          <div class="user-admin-actions">
+            <q-btn :label="$t('common.cancel')" color="primary" flat v-close-popup />
+            <q-btn v-if="canSubmit" :label="isEdit ? $t('common.edit') : $t('common.create')" type="submit" color="primary" :loading="loading" />
+          </div>
+        </q-form>
+      </q-card-section>
+    </div>
   </q-card>
 </template>
 

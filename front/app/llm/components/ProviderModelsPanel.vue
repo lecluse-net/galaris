@@ -264,13 +264,13 @@
     </q-scroll-area>
 
     <q-dialog v-model="pullDialog">
-      <q-card style="width: 520px; max-width: 92vw">
+      <q-card class="galaris-dialog-card" style="width: 520px; max-width: 92vw">
         <q-card-section class="galaris-dialog-title row items-center">
           <div class="text-h6">{{ t('llm.addModelFor', { name: item?.display_name }) }}</div>
           <q-space />
           <q-btn v-close-popup flat round dense icon="close" :aria-label="$t('common.close')" />
         </q-card-section>
-        <q-card-section>
+        <q-card-section class="galaris-dialog-body">
           <q-input
             v-model="pullModelName"
             autofocus
@@ -297,13 +297,13 @@
     </q-dialog>
 
     <q-dialog v-model="deleteDialog">
-      <q-card style="width: 480px; max-width: 92vw">
+      <q-card class="galaris-dialog-card" style="width: 480px; max-width: 92vw">
         <q-card-section class="galaris-dialog-title">
           <div class="text-h6">{{ t('common.confirm') }}</div>
           <q-space />
           <q-btn v-close-popup flat round dense icon="close" :aria-label="$t('common.close')" />
         </q-card-section>
-        <q-card-section>
+        <q-card-section class="galaris-dialog-body">
           {{ t('llm.deleteModelConfirm', { model: modelToDelete, provider: item?.display_name }) }}
           <div class="text-negative text-caption q-mt-sm">{{ t('llm.deleteModelWarning') }}</div>
         </q-card-section>

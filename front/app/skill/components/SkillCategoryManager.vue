@@ -1,6 +1,6 @@
 <template>
   <q-dialog v-model="open">
-    <q-card class="category-dialog">
+    <q-card class="category-dialog galaris-dialog-card">
       <q-toolbar class="galaris-dialog-title bg-primary text-white">
         <q-toolbar-title>{{ t('skills.categories.manageTitle') }}</q-toolbar-title>
         <q-btn
@@ -13,73 +13,75 @@
         />
       </q-toolbar>
 
-      <q-card-section>
-        <div class="row q-col-gutter-sm items-start">
-          <div class="col">
-            <q-input
-              v-model="newLabel"
-              outlined
-              dense
-              :label="t('skills.categories.newLabel')"
-              @keydown.enter.prevent="createCategory"
-            />
-          </div>
-          <div class="col-auto">
-            <q-btn
-              color="primary"
-              icon="add"
-              :label="t('skills.categories.create')"
-              :disable="!newLabel.trim()"
-              @click="createCategory"
-            />
-          </div>
-        </div>
-      </q-card-section>
-
-      <q-separator />
-
-      <q-list v-if="store.categories.length" separator class="category-list scroll">
-        <q-item v-for="category in store.categories" :key="category.id">
-          <q-item-section>
-            <q-input
-              v-model="draftLabels[category.id]"
-              dense
-              borderless
-              :aria-label="t('skills.categories.label')"
-              @keydown.enter.prevent="saveCategory(category)"
-            />
-            <q-item-label caption>
-              {{ t('skills.categories.skillCount', { count: category.skill_count }) }}
-            </q-item-label>
-          </q-item-section>
-          <q-item-section side>
-            <div class="row no-wrap q-gutter-xs">
-              <q-btn
-                flat
-                round
-                color="primary"
-                icon="save"
-                :disable="!canSave(category)"
-                @click="saveCategory(category)"
-              >
-                <q-tooltip>{{ t('skills.save') }}</q-tooltip>
-              </q-btn>
-              <q-btn
-                flat
-                round
-                color="negative"
-                icon="delete"
-                @click="categoryToDelete = category"
-              >
-                <q-tooltip>{{ t('skills.delete') }}</q-tooltip>
-              </q-btn>
+      <div class="galaris-dialog-body">
+        <q-card-section>
+          <div class="row q-col-gutter-sm items-start">
+            <div class="col">
+              <q-input
+                v-model="newLabel"
+                outlined
+                dense
+                :label="t('skills.categories.newLabel')"
+                @keydown.enter.prevent="createCategory"
+              />
             </div>
-          </q-item-section>
-        </q-item>
-      </q-list>
-      <q-card-section v-else class="text-grey-7 text-center">
-        {{ t('skills.categories.empty') }}
-      </q-card-section>
+            <div class="col-auto">
+              <q-btn
+                color="primary"
+                icon="add"
+                :label="t('skills.categories.create')"
+                :disable="!newLabel.trim()"
+                @click="createCategory"
+              />
+            </div>
+          </div>
+        </q-card-section>
+
+        <q-separator />
+
+        <q-list v-if="store.categories.length" separator class="category-list scroll">
+          <q-item v-for="category in store.categories" :key="category.id">
+            <q-item-section>
+              <q-input
+                v-model="draftLabels[category.id]"
+                dense
+                borderless
+                :aria-label="t('skills.categories.label')"
+                @keydown.enter.prevent="saveCategory(category)"
+              />
+              <q-item-label caption>
+                {{ t('skills.categories.skillCount', { count: category.skill_count }) }}
+              </q-item-label>
+            </q-item-section>
+            <q-item-section side>
+              <div class="row no-wrap q-gutter-xs">
+                <q-btn
+                  flat
+                  round
+                  color="primary"
+                  icon="save"
+                  :disable="!canSave(category)"
+                  @click="saveCategory(category)"
+                >
+                  <q-tooltip>{{ t('skills.save') }}</q-tooltip>
+                </q-btn>
+                <q-btn
+                  flat
+                  round
+                  color="negative"
+                  icon="delete"
+                  @click="categoryToDelete = category"
+                >
+                  <q-tooltip>{{ t('skills.delete') }}</q-tooltip>
+                </q-btn>
+              </div>
+            </q-item-section>
+          </q-item>
+        </q-list>
+        <q-card-section v-else class="text-grey-7 text-center">
+          {{ t('skills.categories.empty') }}
+        </q-card-section>
+      </div>
 
       <q-separator />
       <q-card-actions class="galaris-dialog-actions" align="right">
@@ -89,7 +91,7 @@
   </q-dialog>
 
   <q-dialog :model-value="categoryToDelete !== null" @hide="categoryToDelete = null">
-    <q-card style="width: 520px; max-width: 95vw">
+    <q-card class="galaris-dialog-card" style="width: 520px; max-width: 95vw">
       <q-toolbar class="galaris-dialog-title bg-primary text-white">
         <q-toolbar-title>{{ t('skills.categories.deleteTitle') }}</q-toolbar-title>
         <q-btn
@@ -101,7 +103,7 @@
           :aria-label="t('skills.cancel')"
         />
       </q-toolbar>
-      <q-card-section>
+      <q-card-section class="galaris-dialog-body">
         {{ t('skills.categories.deleteConfirm', { label: categoryToDelete?.label || '' }) }}
       </q-card-section>
       <q-card-actions class="galaris-dialog-actions" align="right">

@@ -1,6 +1,6 @@
 <template>
   <q-dialog v-model="open">
-    <q-card class="custom-provider-dialog">
+    <q-card class="custom-provider-dialog galaris-dialog-card">
       <q-card-section class="galaris-dialog-title row items-center">
         <q-icon name="add_link" size="28px" class="q-mr-sm" />
         <div class="col">
@@ -12,8 +12,8 @@
 
       <q-separator />
 
-      <q-form ref="customForm" @submit.prevent="submit">
-        <q-card-section class="custom-provider-form">
+      <q-form class="galaris-dialog-form" ref="customForm" @submit.prevent="submit">
+        <q-card-section class="custom-provider-form galaris-dialog-body">
           <div>
             <div class="text-caption text-weight-medium text-grey-7 q-mb-xs">
               {{ t('llm.providerType') }}

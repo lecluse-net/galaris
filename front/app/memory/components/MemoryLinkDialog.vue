@@ -1,6 +1,6 @@
 <template>
   <q-dialog :model-value="true" :maximized="$q.screen.lt.md" @hide="emit('close')">
-    <q-card class="memory-link-dialog column no-wrap">
+    <q-card class="memory-link-dialog column no-wrap galaris-dialog-card">
       <q-toolbar class="galaris-dialog-title">
         <q-icon name="add_link" size="sm" class="q-mr-sm" />
         <q-toolbar-title>{{ t('memory.addLink') }}</q-toolbar-title>
@@ -14,7 +14,7 @@
         />
       </q-toolbar>
 
-      <q-card-section class="q-gutter-md col scroll">
+      <q-card-section class="q-gutter-md col scroll galaris-dialog-body">
         <div>
           <q-input
             v-model="searchQuery"

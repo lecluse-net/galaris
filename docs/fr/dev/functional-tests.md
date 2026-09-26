@@ -313,6 +313,15 @@ applicative vers l’infrastructure utilisateur n’ajoute ni import privé ni c
 - `front/browser-tests/memory.spec.mjs` et `document-sharing.spec.mjs` : pagination à la demande,
   ouverture mobile, création et sauvegarde avec l'identité humaine.
 
+### Défilement des modales
+
+Le contenu long défile sans déplacer le titre ni masquer sa fermeture, sur ordinateur et
+mobile. Les actions de pied restent accessibles et les formulaires conservent leurs
+brouillons, leur validation et leur sauvegarde après défilement. Garanties :
+`front/browser-tests/dialogs.spec.mjs`, `teams.spec.mjs`, `lab-comparison.spec.mjs` et
+`lab-insights.spec.mjs`. Les parcours `skills.spec.mjs`, `galaris-links.spec.mjs` et
+`chat-document-workspace.spec.mjs` couvrent les panneaux, éditeurs et dialogues imbriqués.
+
 ### Barre d’édition mobile
 
 Les modales et leur arrière-plan couvrent la barre d’outils du document ouvert en écran

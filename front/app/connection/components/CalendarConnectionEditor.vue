@@ -47,7 +47,7 @@
     </q-table>
 
     <q-dialog v-model="formDialog" @hide="resetForm">
-      <q-card class="calendar-feed-dialog">
+      <q-card class="calendar-feed-dialog galaris-dialog-card">
         <q-card-section class="galaris-dialog-title row items-center no-wrap">
           <q-icon name="calendar_month" size="sm" />
           <div class="text-subtitle1 text-weight-medium q-ml-sm">
@@ -57,7 +57,7 @@
           <q-btn v-close-popup flat round dense icon="close" :aria-label="t('common.close')" />
         </q-card-section>
         <q-separator />
-        <q-card-section class="calendar-feed-form q-gutter-y-md">
+        <q-card-section class="calendar-feed-form q-gutter-y-md galaris-dialog-body">
           <div class="row q-col-gutter-md">
             <div class="col-12 col-sm-6">
               <q-input v-model="form.label" outlined :label="t('calendars.label')" />
@@ -121,7 +121,7 @@
     </q-dialog>
 
     <q-dialog v-model="testDialog">
-      <q-card class="calendar-test-dialog">
+      <q-card class="calendar-test-dialog galaris-dialog-card">
         <q-card-section class="galaris-dialog-title row items-center no-wrap">
           <q-icon name="event_available" size="sm" />
           <div class="text-subtitle1 text-weight-medium q-ml-sm">{{ t('calendars.testTitle') }}</div>
@@ -129,7 +129,7 @@
           <q-btn v-close-popup flat round dense icon="close" :aria-label="t('common.close')" />
         </q-card-section>
         <q-separator />
-        <q-card-section v-if="testResult" class="q-gutter-md">
+        <q-card-section v-if="testResult" class="q-gutter-md galaris-dialog-body">
           <q-banner dense rounded class="bg-green-1 text-positive">
             {{ t('calendars.testSuccess', { count: testResult.events_seen }) }}
           </q-banner>
@@ -154,13 +154,13 @@
     </q-dialog>
 
     <q-dialog v-model="deleteDialog">
-      <q-card class="calendar-delete-dialog">
+      <q-card class="calendar-delete-dialog galaris-dialog-card">
         <q-card-section class="galaris-dialog-title row items-center no-wrap">
           <div class="text-subtitle1 text-weight-medium">{{ t('calendars.deleteTitle') }}</div>
           <q-space />
           <q-btn v-close-popup flat round dense icon="close" :aria-label="t('common.close')" />
         </q-card-section>
-        <q-card-section>{{ t('calendars.deleteMessage') }}</q-card-section>
+        <q-card-section class="galaris-dialog-body">{{ t('calendars.deleteMessage') }}</q-card-section>
         <q-card-actions class="galaris-dialog-actions" align="right">
           <q-btn v-close-popup flat :label="t('common.cancel')" />
           <q-btn color="negative" :loading="deleting" :label="t('common.delete')" @click="remove" />

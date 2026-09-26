@@ -1,11 +1,11 @@
 <template>
   <q-dialog v-model="open">
-    <q-card class="synthetic-dialog">
+    <q-card class="synthetic-dialog galaris-dialog-card">
       <q-card-section class="galaris-dialog-title row items-center no-wrap">
         <div class="text-h6 col">{{ t('evaluation.synthetic.title') }}</div>
         <q-btn v-close-popup flat round dense icon="close" :aria-label="t('common.close')" />
       </q-card-section>
-      <q-card-section class="synthetic-fields">
+      <q-card-section class="synthetic-fields galaris-dialog-body">
         <p class="q-mb-none">{{ t('evaluation.synthetic.help') }}</p>
         <p class="q-mb-none">{{ t('evaluation.synthetic.focus.' + mechanism) }}</p>
         <template v-if="contextSource">

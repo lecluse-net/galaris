@@ -92,13 +92,13 @@
             transition-show="slide-up"
             transition-hide="slide-down"
           >
-            <q-card class="task-detail-dialog galaris-detail-dialog">
+            <q-card class="task-detail-dialog galaris-detail-dialog galaris-dialog-card">
               <q-card-section class="galaris-dialog-title row items-center justify-between">
                 <div class="text-h6">{{ $t('task.detailTitle') }}</div>
                 <q-btn icon="close" :aria-label="$t('common.close')" flat round dense v-close-popup />
               </q-card-section>
 
-              <q-card-section class="task-detail-content">
+              <q-card-section class="task-detail-content galaris-dialog-body">
                 <TaskDetail
                   :task-id="selectedTaskId"
                   @refresh="refreshTaskDetail"
@@ -111,14 +111,14 @@
 
           <!-- Deletion confirmation dialog. -->
           <q-dialog v-model="deleteDialogOpen">
-            <q-card>
+            <q-card class="galaris-dialog-card">
               <q-card-section class="galaris-dialog-title row items-center">
                 <q-icon name="warning" size="28px" />
                 <span class="q-ml-sm text-h6">{{ $t('task.deleteConfirm') }}</span>
                 <q-space />
                 <q-btn v-close-popup flat round dense icon="close" :aria-label="$t('common.close')" />
               </q-card-section>
-              <q-card-section>
+              <q-card-section class="galaris-dialog-body">
                 <p>{{ $t('task.deleteMessage', { label: taskToDelete?.label }) }}</p>
                 <p class="text-caption text-grey">{{ $t('task.deleteReversible') }}</p>
               </q-card-section>

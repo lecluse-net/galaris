@@ -422,7 +422,7 @@
     </q-tab-panels>
 
     <q-dialog v-model="detailDialog" allow-focus-outside :maximized="$q.screen.lt.md">
-      <q-card class="memory-detail column no-wrap">
+      <q-card class="memory-detail column no-wrap galaris-dialog-card">
         <q-toolbar class="galaris-dialog-title">
           <DocumentIcon v-if="store.currentItem?.node_kind === 'document'" :document-id="store.currentItem.id" :title="store.currentItem.title" class="q-mr-sm" />
           <q-icon v-else
@@ -442,7 +442,7 @@
           <q-tab name="history" icon="history" :label="t('memory.detailHistory')" />
         </q-tabs>
         <q-separator />
-        <q-tab-panels v-if="store.currentItem" v-model="detailTab" class="col memory-detail-panels">
+        <q-tab-panels v-if="store.currentItem" v-model="detailTab" class="col memory-detail-panels galaris-dialog-body">
           <q-tab-panel name="memory" class="q-pa-none">
             <div v-if="store.currentItem.old_at || store.findingsFor(store.currentItem.id).length || store.currentItem.source_managed || store.currentItem.deletion_protected" class="q-px-sm q-pt-sm">
               <div v-if="store.currentItem.old_at || store.findingsFor(store.currentItem.id).length" class="row items-center q-gutter-xs q-mb-sm">
@@ -556,16 +556,18 @@
     </q-dialog>
 
     <q-dialog allow-focus-outside v-model="editorDialog" :maximized="$q.screen.lt.md">
-      <q-card class="memory-editor">
+      <q-card class="memory-editor galaris-dialog-card">
         <q-toolbar class="galaris-dialog-title">
           <q-toolbar-title>{{ editingId ? t('memory.editTitle') : t('memory.createTitle') }}</q-toolbar-title>
           <q-btn flat round dense icon="close" :aria-label="t('memory.close')" v-close-popup />
         </q-toolbar>
-        <MemoryItemForm :draft="editor" :editing-id="editingId" :lock-version="store.currentItem?.lock_version"
-          :readonly="editorSaving"
-          :owner-label="agentLabel(store.selectedAgentId)" :sources="[]"
-          :keyword-options="memoryKeywordOptions"
-          :sharing-editable="canEdit || canAdminister" @update:draft="Object.assign(editor, $event)" @sharing-changed="onSharingChanged" />
+        <div class="galaris-dialog-body">
+          <MemoryItemForm :draft="editor" :editing-id="editingId" :lock-version="store.currentItem?.lock_version"
+            :readonly="editorSaving"
+            :owner-label="agentLabel(store.selectedAgentId)" :sources="[]"
+            :keyword-options="memoryKeywordOptions"
+            :sharing-editable="canEdit || canAdminister" @update:draft="Object.assign(editor, $event)" @sharing-changed="onSharingChanged" />
+        </div>
         <q-card-actions class="galaris-dialog-actions" align="right">
           <q-btn flat :label="t('memory.cancel')" v-close-popup />
           <q-btn

@@ -188,13 +188,13 @@
     </div>
 
     <q-dialog v-model="mergeDialog">
-      <q-card class="contact-merge-dialog">
+      <q-card class="contact-merge-dialog galaris-dialog-card">
         <q-card-section class="galaris-dialog-title row items-center no-wrap">
           <div class="text-h6">{{ t('contacts.mergeTitle') }}</div>
           <q-space />
           <q-btn flat round dense icon="close" v-close-popup :aria-label="t('contacts.close')" />
         </q-card-section>
-        <q-card-section>
+        <q-card-section class="galaris-dialog-body">
           <p class="q-mt-none">{{ t('contacts.mergeHelp') }}</p>
           <div class="text-subtitle2 q-mb-sm">{{ t('contacts.canonical') }}</div>
           <q-list bordered separator>
@@ -236,13 +236,13 @@
     </q-dialog>
 
     <q-dialog v-model="forgetDialog">
-      <q-card class="contact-forget-dialog">
+      <q-card class="contact-forget-dialog galaris-dialog-card">
         <q-card-section class="galaris-dialog-title row items-center no-wrap">
           <div class="text-h6">{{ t('contacts.forgetTitle') }}</div>
           <q-space />
           <q-btn flat round dense icon="close" v-close-popup :aria-label="t('contacts.close')" />
         </q-card-section>
-        <q-card-section v-if="contactToForget">
+        <q-card-section class="galaris-dialog-body" v-if="contactToForget">
           <p class="q-mt-none">
             {{ t('contacts.forgetHelp', {
               name: contactToForget.display_name,

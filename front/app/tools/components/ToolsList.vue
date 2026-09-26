@@ -179,13 +179,13 @@
       </template>
     </q-table>
     <q-dialog v-model="descriptionOpen">
-      <q-card class="tool-description-dialog">
+      <q-card class="tool-description-dialog galaris-dialog-card">
         <q-card-section class="galaris-dialog-title row items-center">
           <div class="text-h6">{{ descriptionTool ? localizedToolLabel(descriptionTool) : '' }}</div>
           <q-space />
           <q-btn icon="close" flat round dense v-close-popup :aria-label="$t('common.close')" />
         </q-card-section>
-        <q-card-section class="scroll">
+        <q-card-section class="scroll galaris-dialog-body">
           <p v-if="descriptionTool?.can_disable === false"><SystemToolIcon /> {{ $t('tools.systemServiceHint') }}</p>
           <Markdown :content="descriptionTool ? toolDescription(descriptionTool) : ''" />
         </q-card-section>
@@ -198,7 +198,7 @@
     <input ref="fileInput" type="file" accept=".yaml,.yml" class="hidden" @change="onFileSelected" />
 
     <q-dialog v-model="importDialogOpen">
-      <q-card style="min-width: 480px; max-width: 600px; width: 100%">
+      <q-card class="galaris-dialog-card" style="min-width: 480px; max-width: 600px; width: 100%">
         <q-card-section class="galaris-dialog-title row items-center">
           <div class="text-h6">{{ $t('tools.importTool') }}</div>
           <q-space />
@@ -207,7 +207,7 @@
 
         <!-- Step 1: file selection -->
         <template v-if="!importConflict">
-          <q-card-section class="q-gutter-y-md">
+          <q-card-section class="q-gutter-y-md galaris-dialog-body">
             <!-- Drop and selection area -->
             <div
               class="import-dropzone column items-center justify-center q-pa-xl cursor-pointer"
@@ -244,7 +244,7 @@
 
         <!-- Step 2: overwrite confirmation -->
         <template v-else>
-          <q-card-section>
+          <q-card-section class="galaris-dialog-body">
             <q-banner class="bg-warning text-white q-mb-md" rounded>
               <template v-slot:avatar><q-icon name="warning" /></template>
               {{ $t('tools.overwriteTitle', { name: importConflict }) }}
@@ -263,14 +263,14 @@
     </q-dialog>
 
     <q-dialog v-model="globalParamsDialogOpen">
-      <q-card style="min-width: 620px; max-width: 820px; width: 100%; max-height: 90vh; overflow-y: auto">
+      <q-card class="galaris-dialog-card" style="min-width: 620px; max-width: 820px; width: 100%; max-height: 90vh; overflow-y: auto">
         <q-card-section class="galaris-dialog-title row items-center">
           <div class="text-h6">{{ $t('tools.globalParamsFor', { name: globalParamsTool ? localizedToolLabel(globalParamsTool) : '' }) }}</div>
           <q-space />
           <q-btn icon="close" flat round dense v-close-popup class="text-white" :aria-label="$t('common.close')" />
         </q-card-section>
 
-        <q-card-section>
+        <q-card-section class="galaris-dialog-body">
           <q-banner dense rounded class="bg-blue-1 text-blue-9 q-mb-md">
             <template #avatar><q-icon name="info" /></template>
             {{ $t('tools.globalParamsHint') }}
@@ -343,14 +343,14 @@
          Create or edit dialog
     ============================================================ -->
     <q-dialog v-model="dialogOpen" maximized>
-      <q-card style="max-width: 860px; width: 100%; margin: auto; height: fit-content; max-height: 95vh; overflow-y: auto;">
+      <q-card class="galaris-dialog-card" style="max-width: 860px; width: 100%; margin: auto; height: fit-content; max-height: 95vh; overflow-y: auto;">
         <q-card-section class="galaris-dialog-title row items-center">
           <div class="text-h6">{{ editingTool ? $t('tools.editTool') : $t('tools.newTool') }}</div>
           <q-space />
           <q-btn icon="close" :aria-label="$t('common.close')" flat round dense v-close-popup class="text-white" />
         </q-card-section>
 
-        <q-card-section>
+        <q-card-section class="galaris-dialog-body">
           <q-form @submit.prevent="saveTool" class="q-gutter-y-md">
 
             <section class="tool-section">
@@ -590,7 +590,7 @@
               </q-tab-panels>
             </section>
 
-            
+
 
           </q-form>
         </q-card-section>
@@ -604,14 +604,14 @@
 
     <!-- Non-persistent MCP connection test dialog. -->
     <q-dialog v-model="mcpTestDialogOpen" @hide="clearMcpTest">
-      <q-card class="mcp-test-dialog" style="min-width: 480px; max-width: 720px; width: 100%">
+      <q-card class="mcp-test-dialog galaris-dialog-card" style="min-width: 480px; max-width: 720px; width: 100%">
         <q-card-section class="galaris-dialog-title row items-center">
           <div class="text-h6">{{ $t('tools.testMcpTitle') }}</div>
           <q-space />
           <q-btn icon="close" :aria-label="$t('common.close')" flat round dense v-close-popup class="text-white" />
         </q-card-section>
 
-        <q-card-section class="q-gutter-y-md mcp-test-dialog__body">
+        <q-card-section class="q-gutter-y-md mcp-test-dialog__body galaris-dialog-body">
           <div class="text-body2 text-grey-7">{{ $t('tools.testMcpIntro') }}</div>
 
           <div v-if="mcpTestConnectionParams.length" class="q-gutter-y-sm">
@@ -709,13 +709,13 @@
 
     <!-- Deletion dialog. -->
     <q-dialog v-model="deleteDialogOpen">
-      <q-card style="min-width: 340px">
+      <q-card class="galaris-dialog-card" style="min-width: 340px">
         <q-card-section class="galaris-dialog-title">
           <div class="text-h6">{{ $t('tools.deleteTool') }}</div>
           <q-space />
           <q-btn v-close-popup flat round dense icon="close" :aria-label="$t('common.close')" />
         </q-card-section>
-        <q-card-section>
+        <q-card-section class="galaris-dialog-body">
           {{ $t('tools.deleteMessage', { name: deletingTool ? localizedToolLabel(deletingTool) : '' }) }}
         </q-card-section>
         <q-card-actions class="galaris-dialog-actions" align="right">

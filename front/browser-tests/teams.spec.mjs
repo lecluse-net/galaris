@@ -110,9 +110,14 @@ test('team list shows members with avatars and readers can inspect the dialog wi
 for (const viewport of [{ width: 1400, height: 1000 }, { width: 390, height: 850 }]) {
   test(`team editing stages both types of members until save and preserves cancellation at ${viewport.width}`, async ({ page }) => {
     await page.setViewportSize(viewport)
-    const writes = await teamFixtures(page)
+    const writes = await teamFixtures(page, { many: true })
     await mount(page, 'core/team/components/TeamManager.vue', { privileges: ['TEAM_ACCESS', 'TEAM_EDIT', 'TEAM_MEMBERS_EDIT'] })
     await page.getByRole('button', { name: 'Sales', exact: true }).click()
+    const dialog = page.getByRole('dialog')
+    await dialog.getByLabel('Description', { exact: true }).fill('A detailed team description\n'.repeat(35))
+    await dialog.getByRole('region', { name: 'AI agents', exact: true }).scrollIntoViewIfNeeded()
+    await expect(dialog.getByRole('button', { name: 'Close', exact: true })).toBeInViewport()
+    await expect(dialog.getByRole('button', { name: 'Save', exact: true })).toBeInViewport()
     await addMember(page, 'Humans', 'Nicolas')
     await addMember(page, 'AI agents', 'Ada')
     expect(writes).toEqual([])

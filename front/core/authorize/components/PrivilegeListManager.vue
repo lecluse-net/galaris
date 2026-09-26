@@ -16,7 +16,7 @@
 
     <!-- Drag and Drop Interface -->
     <div class="row q-col-gutter-md">
-        
+
       <!-- Left Column: Unassigned Privileges -->
       <div class="col-12 col-md-4">
         <q-card class="unassigned-privileges-card column full-height bg-grey-1">
@@ -44,7 +44,7 @@
                 {{ localizedAuthorizeLabel(priv) }}
                 <q-tooltip>{{ priv.code }}</q-tooltip>
              </q-chip>
-             
+
              <div v-if="unassignedPrivileges.length === 0" class="full-width text-center text-grey italic q-mt-lg">
                 {{ $t('authorize.privilegeLists.noneUnassigned') }}
              </div>
@@ -55,7 +55,7 @@
       <!-- Right Column: Lists -->
       <div class="col-12 col-md-8">
         <div class="privilege-lists-title text-subtitle1 q-mb-sm text-grey-8">{{ $t('authorize.privilegeLists.lists') }}</div>
-        
+
         <div v-if="loading" class="row justify-center">
             <q-spinner color="primary" size="2em" />
         </div>
@@ -69,7 +69,7 @@
                         <q-btn v-if="canManage" flat round dense icon="edit" size="sm" @click="openEditDialog(list)" />
                         <q-btn v-if="canManage" flat round dense icon="delete" size="sm" @click="confirmDelete(list)" />
                     </q-card-section>
-                    
+
                     <q-card-section 
                         class="privilege-list-drop-zone q-pa-sm"
                         @dragover.prevent
@@ -90,7 +90,7 @@
                                 {{ localizedAuthorizeLabel(priv) }}
                              </q-chip>
                          </div>
-                         
+
                          <div v-if="list.privileges.length === 0" class="text-center text-grey-5 italic q-mt-sm">
                             {{ $t('authorize.privilegeLists.dropHere') }}
                          </div>
@@ -103,7 +103,7 @@
 
     <!-- Create/Edit Dialog (Only for List Name) -->
     <q-dialog v-model="showDialog">
-      <q-card class="privilege-list-dialog">
+      <q-card class="privilege-list-dialog galaris-dialog-card">
         <q-card-section class="galaris-dialog-title row items-center no-wrap">
           <q-icon name="list_alt" size="sm" />
           <div class="text-h6 ellipsis q-ml-sm">{{ isEdit ? $t('authorize.privilegeLists.editList') : $t('authorize.privilegeLists.newListTitle') }}</div>
@@ -111,7 +111,7 @@
           <q-btn v-close-popup flat round dense icon="close" :aria-label="$t('common.close')" />
         </q-card-section>
 
-        <q-card-section class="q-pt-md">
+        <q-card-section class="q-pt-md galaris-dialog-body">
           <q-form @submit="saveList" class="q-gutter-md">
             <q-input
               v-model="editedItem.display_name"

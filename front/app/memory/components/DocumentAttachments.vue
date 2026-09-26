@@ -1,5 +1,5 @@
 <template>
-  <q-dialog v-if="managerMode" v-model="managerOpen"><q-card style="width: 920px; max-width: 95vw"><q-card-section class="galaris-dialog-title row items-center"><div class="text-h6">{{ t('documents.attachments') }}</div><q-space /><q-btn v-close-popup flat round dense icon="close" :aria-label="t('common.close')" /></q-card-section><div ref="managerContent" class="q-pa-md" /></q-card></q-dialog>
+  <q-dialog v-if="managerMode" v-model="managerOpen"><q-card class="galaris-dialog-card" style="width: 920px; max-width: 95vw"><q-card-section class="galaris-dialog-title row items-center"><div class="text-h6">{{ t('documents.attachments') }}</div><q-space /><q-btn v-close-popup flat round dense icon="close" :aria-label="t('common.close')" /></q-card-section><div ref="managerContent" class="q-pa-md galaris-dialog-body" /></q-card></q-dialog>
   <Teleport :to="managerContent || 'body'" :disabled="!managerMode || !managerOpen">
   <section v-if="!previewOnly" v-show="!managerMode || managerOpen || displayedAttachments.length" class="document-attachments" :class="{ 'document-attachments--drag': dragging }" @dragover.prevent="dragging = editable" @dragleave.self="dragging = false" @drop.prevent="dropFiles" :aria-label="attachmentsTitle">
     <div class="row items-center q-mb-sm">
@@ -182,13 +182,13 @@
   </FullscreenPreview>
 
   <q-dialog v-model="removeOpen">
-    <q-card class="document-attachments__confirm">
+    <q-card class="document-attachments__confirm galaris-dialog-card">
       <q-card-section class="galaris-dialog-title row items-center no-wrap">
         <div class="text-h6">{{ t('documents.removeAttachmentTitle') }}</div>
         <q-space />
         <q-btn v-close-popup flat round dense icon="close" :aria-label="t('common.close')" />
       </q-card-section>
-      <q-card-section>{{ t('documents.removeAttachmentConfirm', { name: removalAttachment?.name }) }}<p v-if="removalInUse" class="text-warning q-mt-sm">{{ t('documents.attachmentInUse') }}</p></q-card-section>
+      <q-card-section class="galaris-dialog-body">{{ t('documents.removeAttachmentConfirm', { name: removalAttachment?.name }) }}<p v-if="removalInUse" class="text-warning q-mt-sm">{{ t('documents.attachmentInUse') }}</p></q-card-section>
       <q-separator />
       <q-card-actions class="galaris-dialog-actions" align="right">
         <q-btn v-close-popup flat :label="t('memory.cancel')" />

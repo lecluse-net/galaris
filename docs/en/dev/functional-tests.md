@@ -281,6 +281,15 @@ user infrastructure adds neither private imports nor cycles.
 - `front/browser-tests/memory.spec.mjs` and `document-sharing.spec.mjs`: on-demand pagination,
   mobile opening, creation and saving with a human identity.
 
+### Dialog scrolling
+
+Long content scrolls without moving the title or hiding its close button, on desktop and
+mobile. Footer actions remain reachable and forms preserve drafts, validation and saving
+after scrolling. Coverage: `front/browser-tests/dialogs.spec.mjs`, `teams.spec.mjs`,
+`lab-comparison.spec.mjs` and `lab-insights.spec.mjs`. The `skills.spec.mjs`,
+`galaris-links.spec.mjs` and `chat-document-workspace.spec.mjs` journeys cover panels,
+editors and nested dialogs.
+
 ### Mobile editing toolbar
 
 Dialogs and their backdrop cover the split document's toolbar, including its sticky state

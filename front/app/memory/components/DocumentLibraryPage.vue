@@ -33,14 +33,14 @@
       @before-hide="flushMobileDocumentEditor"
       @hide="clearMobileDocument"
     >
-      <q-card class="documents-mobile-dialog">
+      <q-card class="documents-mobile-dialog galaris-dialog-card">
         <q-card-section class="galaris-dialog-title row items-center no-wrap">
           <DocumentIcon v-if="mobileDocumentId" :document-id="mobileDocumentId" :title="mobileDocumentTitle" size="36px" class="q-mr-sm" />
           <div class="text-h6 ellipsis">{{ mobileDocumentTitle }}</div>
           <q-space />
           <q-btn v-close-popup flat round dense icon="close" :aria-label="t('common.close')" />
         </q-card-section>
-        <div class="documents-mobile-editor">
+        <div class="documents-mobile-editor galaris-dialog-body">
           <DocumentEditor
             v-if="$q.screen.lt.md && mobileDocumentId !== null"
             :key="`${mobileDocumentAgentId}:${mobileDocumentId}`"
@@ -56,14 +56,14 @@
     </q-dialog>
 
     <q-dialog v-model="createDocumentOpen">
-      <q-card class="documents-create-dialog">
+      <q-card class="documents-create-dialog galaris-dialog-card">
         <q-card-section class="galaris-dialog-title row items-center no-wrap">
           <q-icon name="note_add" size="24px" class="q-mr-sm" />
           <div class="text-h6">{{ t('documents.createDocument') }}</div>
           <q-space />
           <q-btn v-close-popup flat round dense icon="close" :aria-label="t('common.close')" />
         </q-card-section>
-        <q-card-section class="q-gutter-md">
+        <q-card-section class="q-gutter-md galaris-dialog-body">
           <q-select
             v-model="createDocumentOwner"
             :options="filteredCreateOwnerOptions"

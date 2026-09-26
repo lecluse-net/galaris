@@ -36,13 +36,13 @@
     </section>
 
     <q-dialog :model-value="pending !== null" @update:model-value="!$event && (pending = null)">
-      <q-card class="managed-providers__confirm">
+      <q-card class="managed-providers__confirm galaris-dialog-card">
         <q-card-section class="galaris-dialog-title row items-center no-wrap">
           <div class="text-h6">{{ t('harnesses.catalog.disableTitle') }}</div>
           <q-space />
           <q-btn v-close-popup flat round dense icon="close" :aria-label="t('common.close')" />
         </q-card-section>
-        <q-card-section>{{ t('harnesses.catalog.disableConfirm', { name: pending?.name ?? '', count: pending?.assigned_agents ?? 0 }) }}</q-card-section>
+        <q-card-section class="galaris-dialog-body">{{ t('harnesses.catalog.disableConfirm', { name: pending?.name ?? '', count: pending?.assigned_agents ?? 0 }) }}</q-card-section>
         <q-card-actions align="right" class="galaris-dialog-actions">
           <q-btn v-close-popup flat :label="t('common.cancel')" />
           <q-btn color="warning" :label="t('harnesses.catalog.disable')" :loading="busy !== null" :disable="!canEdit" @click="confirmDisable" />

@@ -1,6 +1,6 @@
 <template>
   <q-dialog :model-value="modelValue" @update:model-value="$emit('update:modelValue', $event)">
-    <q-card class="room-preferences-card">
+    <q-card class="room-preferences-card galaris-dialog-card">
       <q-card-section class="galaris-dialog-title row items-center no-wrap">
         <div class="text-h6">{{ t('chat.roomPreferences.title') }}</div>
         <q-space />
@@ -14,7 +14,7 @@
         />
       </q-card-section>
 
-      <q-card-section class="q-gutter-md">
+      <q-card-section class="q-gutter-md galaris-dialog-body">
         <q-input
           v-model="label"
           outlined

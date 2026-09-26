@@ -270,13 +270,13 @@
       />
     </template>
     <q-dialog v-model="deleteDialogOpen">
-      <q-card style="width: 440px; max-width: 90vw">
+      <q-card class="galaris-dialog-card" style="width: 440px; max-width: 90vw">
         <q-card-section class="galaris-dialog-title row items-center no-wrap">
           <div class="text-h6">{{ t('documents.deleteDocument') }}</div>
           <q-space />
           <q-btn v-close-popup flat round dense icon="close" :aria-label="t('common.close')" />
         </q-card-section>
-        <q-card-section>{{ t('documents.deleteConfirm', { title: editorTitle || currentDocument?.title }) }}</q-card-section>
+        <q-card-section class="galaris-dialog-body">{{ t('documents.deleteConfirm', { title: editorTitle || currentDocument?.title }) }}</q-card-section>
         <q-card-actions align="right">
           <q-btn v-close-popup flat :label="t('common.cancel')" />
           <q-btn flat style="color: var(--solaire-red-accent)" :label="t('documents.deleteDocument')" :loading="deletingDocument" :disable="!canDeleteDocument" @click="deleteDocument" />

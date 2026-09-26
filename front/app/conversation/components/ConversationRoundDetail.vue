@@ -198,14 +198,14 @@
       </q-card-section>
 
       <q-dialog v-model="deleteDialog">
-        <q-card class="confirm-dialog">
+        <q-card class="confirm-dialog galaris-dialog-card">
           <q-card-section class="galaris-dialog-title row items-center no-wrap">
             <div class="text-h6">{{ t('conversation.history.detail.deleteTitle') }}</div>
             <q-space />
             <q-btn v-close-popup flat round dense icon="close" :aria-label="t('common.close')" />
           </q-card-section>
           <q-separator />
-          <q-card-section>{{ t('conversation.history.detail.deleteConfirm') }}</q-card-section>
+          <q-card-section class="galaris-dialog-body">{{ t('conversation.history.detail.deleteConfirm') }}</q-card-section>
           <q-card-actions align="right" class="q-px-md q-pb-md galaris-dialog-actions">
             <q-btn v-close-popup flat :label="t('common.cancel')" />
             <q-btn

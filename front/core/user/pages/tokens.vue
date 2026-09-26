@@ -251,7 +251,7 @@
 
     <!-- Token creation dialog with a label. -->
     <q-dialog v-model="showCreateDialog">
-      <q-card class="token-dialog token-dialog--small">
+      <q-card class="token-dialog token-dialog--small galaris-dialog-card">
         <q-card-section class="galaris-dialog-title row items-center no-wrap">
           <div class="text-h6">{{ $t('tokens.newToken') }}</div>
           <q-space />
@@ -264,7 +264,7 @@
             v-close-popup
           />
         </q-card-section>
-        <q-card-section>
+        <q-card-section class="galaris-dialog-body">
           <q-input
             v-model="newTokenLabel"
             :label="$t('tokens.labelOptional')"
@@ -283,7 +283,7 @@
 
     <!-- Dialog displaying the newly created token. -->
     <q-dialog v-model="showNewTokenDialog">
-      <q-card class="token-dialog">
+      <q-card class="token-dialog galaris-dialog-card">
         <q-card-section class="galaris-dialog-title row items-center no-wrap">
           <div class="text-h6">{{ $t('tokens.createdTitle') }}</div>
           <q-space />
@@ -296,7 +296,7 @@
             v-close-popup
           />
         </q-card-section>
-        <q-card-section>
+        <q-card-section class="galaris-dialog-body">
           <p class="text-body2">
             {{ $t('tokens.copyHint') }}
           </p>
@@ -319,7 +319,7 @@
     </q-dialog>
 
     <q-dialog v-model="showDeleteDialog">
-      <q-card class="token-dialog token-dialog--small">
+      <q-card class="token-dialog token-dialog--small galaris-dialog-card">
         <q-card-section class="galaris-dialog-title row items-center no-wrap">
           <div class="text-h6">{{ $t('common.deleteConfirmTitle') }}</div>
           <q-space />
@@ -332,7 +332,7 @@
             v-close-popup
           />
         </q-card-section>
-        <q-card-section>
+        <q-card-section class="galaris-dialog-body">
           {{ $t('tokens.deleteConfirm') }}
           <br />
           <code class="q-mt-sm block">{{ tokenToDelete ? maskToken(tokenToDelete.token) : '' }}</code>

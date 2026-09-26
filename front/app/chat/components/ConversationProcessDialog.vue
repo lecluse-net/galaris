@@ -1,6 +1,6 @@
 <template>
   <q-dialog v-model="open">
-    <q-card class="conversation-process-dialog galaris-detail-dialog">
+    <q-card class="conversation-process-dialog galaris-detail-dialog galaris-dialog-card">
       <q-card-section class="galaris-dialog-title row items-center no-wrap">
         <q-icon name="account_tree" size="sm" />
         <div class="text-h6 ellipsis q-ml-sm">
@@ -10,7 +10,7 @@
         <q-btn v-close-popup flat round dense icon="close" :aria-label="t('common.close')" />
       </q-card-section>
 
-      <q-card-section v-if="process" class="q-gutter-md">
+      <q-card-section v-if="process" class="q-gutter-md galaris-dialog-body">
         <div class="row items-center q-gutter-sm">
           <q-chip :color="statusColor(process.status)" text-color="white">
             <q-spinner v-if="isActive(process.status)" color="white" size="1em" class="q-mr-xs" />

@@ -1,58 +1,60 @@
 <template>
   <q-dialog v-model="open" :maximized="$q.screen.lt.md" @hide="emit('hide')">
-    <q-card class="galaris-link-dialog column no-wrap">
+    <q-card class="galaris-link-dialog column no-wrap galaris-dialog-card">
       <q-toolbar class="galaris-dialog-title">
         <q-icon name="add_link" size="sm" class="q-mr-sm" />
         <q-toolbar-title>{{ t('richEditor.galarisLink') }}</q-toolbar-title>
         <q-btn v-close-popup flat round dense icon="close" :aria-label="t('richEditor.close')" />
       </q-toolbar>
 
-      <q-card-section class="q-pb-sm">
-        <q-input v-model="query" autofocus outlined clearable :label="t('richEditor.searchContents')" :hint="t('richEditor.searchHint')">
-          <template #prepend><q-icon name="search" /></template>
-        </q-input>
-        <div class="row q-gutter-xs q-mt-sm" role="group" :aria-label="t('richEditor.contentType')">
-          <q-btn v-for="kind in kinds" :key="kind" dense no-caps rounded :flat="filter !== kind" :unelevated="filter === kind"
-            :color="filter === kind ? 'primary' : undefined" :label="t('richEditor.targetTypes.' + kind)"
-            :aria-pressed="filter === kind" @click="filter = kind" />
-        </div>
-      </q-card-section>
-      <q-separator />
+      <div class="galaris-dialog-body galaris-dialog-body--layout">
+        <q-card-section class="q-pb-sm">
+          <q-input v-model="query" autofocus outlined clearable :label="t('richEditor.searchContents')" :hint="t('richEditor.searchHint')">
+            <template #prepend><q-icon name="search" /></template>
+          </q-input>
+          <div class="row q-gutter-xs q-mt-sm" role="group" :aria-label="t('richEditor.contentType')">
+            <q-btn v-for="kind in kinds" :key="kind" dense no-caps rounded :flat="filter !== kind" :unelevated="filter === kind"
+              :color="filter === kind ? 'primary' : undefined" :label="t('richEditor.targetTypes.' + kind)"
+              :aria-pressed="filter === kind" @click="filter = kind" />
+          </div>
+        </q-card-section>
+        <q-separator />
 
-      <div class="galaris-link-results col scroll" :aria-busy="searching">
-        <div v-if="searching" class="galaris-link-state text-grey-7" role="status">
-          <q-spinner color="primary" size="28px" />
-          <span>{{ t('richEditor.searching') }}</span>
+        <div class="galaris-link-results col scroll" :aria-busy="searching">
+          <div v-if="searching" class="galaris-link-state text-grey-7" role="status">
+            <q-spinner color="primary" size="28px" />
+            <span>{{ t('richEditor.searching') }}</span>
+          </div>
+          <div v-else-if="error" class="galaris-link-state" role="alert">
+            <q-icon name="search_off" color="negative" size="32px" />
+            <span>{{ t('richEditor.searchError') }}</span>
+            <q-btn flat color="primary" :label="t('richEditor.retrySearch')" @click="scheduleSearch" />
+          </div>
+          <div v-else-if="!results.length" class="galaris-link-state text-grey-7" role="status">
+            <q-icon name="search" size="32px" />
+            <span>{{ t(normalizedQuery.length < 2 ? 'richEditor.searchHint' : 'richEditor.noResults') }}</span>
+          </div>
+          <q-list v-else separator :aria-label="t('richEditor.searchResults')">
+            <q-item v-for="target in results" :key="target.uri" clickable :active="selected?.uri === target.uri"
+              :aria-pressed="selected?.uri === target.uri" @click="select(target)">
+              <q-item-section avatar><q-icon :name="icons[targetKind(target.uri)]" /></q-item-section>
+              <q-item-section>
+                <q-item-label class="galaris-link-result-title">{{ target.title }}</q-item-label>
+                <q-item-label caption>{{ t('richEditor.targetTypes.' + targetKind(target.uri)) }}<span v-if="target.context"> · {{ target.context }}</span></q-item-label>
+              </q-item-section>
+              <q-item-section side><q-icon :name="selected?.uri === target.uri ? 'check_circle' : 'radio_button_unchecked'" :color="selected?.uri === target.uri ? 'primary' : 'grey-5'" /></q-item-section>
+            </q-item>
+          </q-list>
         </div>
-        <div v-else-if="error" class="galaris-link-state" role="alert">
-          <q-icon name="search_off" color="negative" size="32px" />
-          <span>{{ t('richEditor.searchError') }}</span>
-          <q-btn flat color="primary" :label="t('richEditor.retrySearch')" @click="scheduleSearch" />
-        </div>
-        <div v-else-if="!results.length" class="galaris-link-state text-grey-7" role="status">
-          <q-icon name="search" size="32px" />
-          <span>{{ t(normalizedQuery.length < 2 ? 'richEditor.searchHint' : 'richEditor.noResults') }}</span>
-        </div>
-        <q-list v-else separator :aria-label="t('richEditor.searchResults')">
-          <q-item v-for="target in results" :key="target.uri" clickable :active="selected?.uri === target.uri"
-            :aria-pressed="selected?.uri === target.uri" @click="select(target)">
-            <q-item-section avatar><q-icon :name="icons[targetKind(target.uri)]" /></q-item-section>
-            <q-item-section>
-              <q-item-label class="galaris-link-result-title">{{ target.title }}</q-item-label>
-              <q-item-label caption>{{ t('richEditor.targetTypes.' + targetKind(target.uri)) }}<span v-if="target.context"> · {{ target.context }}</span></q-item-label>
-            </q-item-section>
-            <q-item-section side><q-icon :name="selected?.uri === target.uri ? 'check_circle' : 'radio_button_unchecked'" :color="selected?.uri === target.uri ? 'primary' : 'grey-5'" /></q-item-section>
-          </q-item>
-        </q-list>
+
+        <q-separator />
+        <q-card-section class="q-pb-sm">
+          <div class="text-caption q-mb-sm galaris-link-selection" :title="selected?.title">
+            {{ selected ? t('richEditor.selectedTarget', { title: selected.title }) : t('richEditor.selectTarget') }}
+          </div>
+          <q-input v-model="label" outlined dense :label="t('richEditor.linkText')" :disable="!selected" @update:model-value="labelEdited = true" @keydown.enter.prevent="insert" />
+        </q-card-section>
       </div>
-
-      <q-separator />
-      <q-card-section class="q-pb-sm">
-        <div class="text-caption q-mb-sm galaris-link-selection" :title="selected?.title">
-          {{ selected ? t('richEditor.selectedTarget', { title: selected.title }) : t('richEditor.selectTarget') }}
-        </div>
-        <q-input v-model="label" outlined dense :label="t('richEditor.linkText')" :disable="!selected" @update:model-value="labelEdited = true" @keydown.enter.prevent="insert" />
-      </q-card-section>
       <q-card-actions align="right" class="q-px-md q-pb-md galaris-dialog-actions">
         <q-btn v-close-popup flat :label="t('richEditor.cancel')" />
         <q-btn unelevated color="primary" icon="add_link" :label="t('richEditor.insertLink')" :disable="!selected || !label.trim() || searching" @click="insert" />

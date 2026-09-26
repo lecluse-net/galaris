@@ -22,12 +22,12 @@
         <div v-if="saved.secret_configured && secret" class="text-caption">{{ t('harnesses.setup.rotation') }}</div>
       </q-form>
       <q-dialog v-if="canEdit" v-model="installationOpen">
-        <q-card class="manager-config__dialog">
+        <q-card class="manager-config__dialog galaris-dialog-card">
           <q-card-section class="galaris-dialog-title row items-center no-wrap">
             <div class="text-h6">{{ t('harnesses.preferences.prepareInstallation') }}</div>
             <q-space /><q-btn v-close-popup flat round dense icon="close" :aria-label="t('common.close')" />
           </q-card-section>
-          <q-card-section>
+          <q-card-section class="galaris-dialog-body">
         <p class="text-body2 q-mt-none">{{ t('harnesses.setup.exportHint') }}</p>
         <q-form class="q-gutter-y-md" @submit="exportEnv">
           <div class="row q-col-gutter-md">

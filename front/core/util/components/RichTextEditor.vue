@@ -18,9 +18,9 @@
     <GalarisLinkDialog v-model="linkOpen" :initial-label="linkLabel" @insert="insertGalarisLink" @hide="editor?.editing.view.focus()" />
     <PdfPreview v-model="pdfPreview" />
     <q-dialog v-model="shareOpen" @hide="cancelDocumentShare">
-      <q-card style="width: 420px; max-width: 95vw">
+      <q-card class="galaris-dialog-card" style="width: 420px; max-width: 95vw">
         <q-card-section class="galaris-dialog-title row items-center"><div class="text-h6">{{ t('richEditor.share.title') }}</div><q-space /><q-btn v-close-popup flat round dense icon="close" :aria-label="t('common.close')" /></q-card-section>
-        <q-card-section>
+        <q-card-section class="galaris-dialog-body">
           <div v-if="sharePreparing" role="status" class="row items-center q-gutter-sm"><q-spinner /><span>{{ t('richEditor.share.preparing') }}</span></div>
           <div v-else-if="shareError" role="alert">{{ shareError }}</div>
           <div v-else-if="shareFile">{{ shareFile.name }}</div>

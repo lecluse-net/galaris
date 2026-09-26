@@ -116,7 +116,7 @@
     </q-card>
 
     <q-dialog v-model="detailOpen" @hide="clearDetail">
-      <q-card class="mail-detail-card">
+      <q-card class="mail-detail-card galaris-dialog-card">
         <q-card-section class="galaris-dialog-title row items-center no-wrap">
           <q-icon name="mail" size="sm" class="q-mr-sm" />
           <div class="text-h6 ellipsis">{{ selected?.subject || t('mailJournal.noSubject') }}</div>
@@ -125,7 +125,7 @@
         </q-card-section>
         <q-linear-progress v-if="detailLoading" indeterminate />
 
-        <q-card-section v-if="selected" class="q-gutter-md">
+        <q-card-section v-if="selected" class="q-gutter-md galaris-dialog-body">
           <div class="row q-col-gutter-md">
             <div class="col-12 col-sm-6"><strong>{{ t('mailJournal.agent') }}:</strong> {{ selected.agent_label }}</div>
             <div class="col-12 col-sm-6"><strong>{{ t('mailJournal.sender') }}:</strong> {{ selected.sender_address }}</div>

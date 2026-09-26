@@ -18,7 +18,7 @@
   </q-card>
 
   <q-dialog v-model="confirmationOpen">
-    <q-card class="account-deletion-dialog">
+    <q-card class="account-deletion-dialog galaris-dialog-card">
       <q-card-section class="galaris-dialog-title row items-center no-wrap">
         <div class="text-h6">{{ t('userEdit.deleteAccountTitle') }}</div>
         <q-space />
@@ -32,7 +32,7 @@
         />
       </q-card-section>
 
-      <q-card-section>
+      <q-card-section class="galaris-dialog-body">
         {{ t('userEdit.deleteAccountConfirm') }}
       </q-card-section>
 

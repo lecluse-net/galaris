@@ -60,12 +60,12 @@
         @close="editing = false" @saved="editing = false" @changed="changed = true" />
     </q-dialog>
     <q-dialog :model-value="!!pendingDelete" @update:model-value="value => { if (!value) pendingDelete = null }">
-      <q-card style="width: 500px; max-width: 95vw">
+      <q-card class="galaris-dialog-card" style="width: 500px; max-width: 95vw">
         <q-card-section class="galaris-dialog-title row items-center">
           <div class="text-h6">{{ t('team.deleteTitle') }}</div><q-space />
           <q-btn v-close-popup flat round dense icon="close" :aria-label="t('common.close')" />
         </q-card-section>
-        <q-card-section>{{ t('team.deleteImpact', { name: pendingDelete?.name }) }}</q-card-section>
+        <q-card-section class="galaris-dialog-body">{{ t('team.deleteImpact', { name: pendingDelete?.name }) }}</q-card-section>
         <q-card-actions class="galaris-dialog-actions" align="right">
           <q-btn flat v-close-popup :label="t('common.cancel')" />
           <q-btn color="primary" :loading="deleting" :label="t('common.delete')" @click="remove" />

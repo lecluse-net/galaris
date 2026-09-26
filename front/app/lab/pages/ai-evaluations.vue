@@ -209,14 +209,14 @@
     </div>
 
     <q-dialog v-model="removeTaskDialog">
-      <q-card class="confirm-dialog">
+      <q-card class="confirm-dialog galaris-dialog-card">
         <q-card-section class="galaris-dialog-title row items-center no-wrap">
           <div class="text-h6">{{ t('evaluation.removeTask') }}</div>
           <q-space />
           <q-btn v-close-popup flat round dense icon="close" :aria-label="t('common.close')" />
         </q-card-section>
         <q-separator />
-        <q-card-section>{{ t('evaluation.removeTaskConfirm') }}</q-card-section>
+        <q-card-section class="galaris-dialog-body">{{ t('evaluation.removeTaskConfirm') }}</q-card-section>
         <q-card-actions align="right" class="q-px-md q-pb-md galaris-dialog-actions">
           <q-btn v-close-popup flat :label="t('common.cancel')" />
           <q-btn
@@ -231,7 +231,7 @@
     </q-dialog>
 
     <q-dialog v-model="candidateDialog">
-      <q-card class="candidate-dialog">
+      <q-card class="candidate-dialog galaris-dialog-card">
         <q-card-section class="galaris-dialog-title row items-center no-wrap">
           <div class="col">
             <div class="text-h6">{{ t('evaluation.addTask') }}</div>
@@ -240,49 +240,51 @@
           <q-btn v-close-popup flat round dense icon="close" :aria-label="t('common.close')" />
         </q-card-section>
         <q-separator />
-        <q-card-section>
-          <q-input
-            v-model="candidateSearch"
-            debounce="300"
-            outlined
-            dense
-            clearable
-            :placeholder="t('evaluation.searchCandidates')"
-          >
-            <template #prepend><q-icon name="search" /></template>
-          </q-input>
-        </q-card-section>
-        <q-separator />
-        <q-scroll-area class="candidate-scroll">
-          <div v-if="store.candidatesLoading" class="flex flex-center q-pa-xl">
-            <q-spinner color="deep-purple" size="40px" />
-          </div>
-          <q-list v-else-if="store.candidates.length" separator>
-            <q-item v-for="candidate in store.candidates" :key="candidate.task_id">
-              <q-item-section avatar>
-                <q-avatar :color="statusColor(candidate.status)" text-color="white">
-                  <q-icon :name="statusIcon(candidate.status)" />
-                </q-avatar>
-              </q-item-section>
-              <q-item-section>
-                <q-item-label>{{ candidate.label }}</q-item-label>
-                <q-item-label caption lines="2">{{ richTextExcerpt(candidate.objective ?? '') || t('evaluation.notProvided') }}</q-item-label>
-                <q-item-label caption>{{ candidate.agent_name ?? t('evaluation.noAgent') }} · {{ formatDate(candidate.updated_at) }}</q-item-label>
-              </q-item-section>
-              <q-item-section side>
-                <q-btn
-                  v-if="canEdit"
-                  color="deep-purple"
-                  icon="add"
-                  :label="t('evaluation.add')"
-                  :loading="addingTaskId === candidate.task_id"
-                  @click="addCandidate(candidate.task_id)"
-                />
-              </q-item-section>
-            </q-item>
-          </q-list>
-          <div v-else class="text-center text-grey-7 q-pa-xl">{{ t('evaluation.noCandidates') }}</div>
-        </q-scroll-area>
+        <div class="galaris-dialog-body galaris-dialog-body--layout">
+          <q-card-section>
+            <q-input
+              v-model="candidateSearch"
+              debounce="300"
+              outlined
+              dense
+              clearable
+              :placeholder="t('evaluation.searchCandidates')"
+            >
+              <template #prepend><q-icon name="search" /></template>
+            </q-input>
+          </q-card-section>
+          <q-separator />
+          <q-scroll-area class="candidate-scroll">
+            <div v-if="store.candidatesLoading" class="flex flex-center q-pa-xl">
+              <q-spinner color="deep-purple" size="40px" />
+            </div>
+            <q-list v-else-if="store.candidates.length" separator>
+              <q-item v-for="candidate in store.candidates" :key="candidate.task_id">
+                <q-item-section avatar>
+                  <q-avatar :color="statusColor(candidate.status)" text-color="white">
+                    <q-icon :name="statusIcon(candidate.status)" />
+                  </q-avatar>
+                </q-item-section>
+                <q-item-section>
+                  <q-item-label>{{ candidate.label }}</q-item-label>
+                  <q-item-label caption lines="2">{{ richTextExcerpt(candidate.objective ?? '') || t('evaluation.notProvided') }}</q-item-label>
+                  <q-item-label caption>{{ candidate.agent_name ?? t('evaluation.noAgent') }} · {{ formatDate(candidate.updated_at) }}</q-item-label>
+                </q-item-section>
+                <q-item-section side>
+                  <q-btn
+                    v-if="canEdit"
+                    color="deep-purple"
+                    icon="add"
+                    :label="t('evaluation.add')"
+                    :loading="addingTaskId === candidate.task_id"
+                    @click="addCandidate(candidate.task_id)"
+                  />
+                </q-item-section>
+              </q-item>
+            </q-list>
+            <div v-else class="text-center text-grey-7 q-pa-xl">{{ t('evaluation.noCandidates') }}</div>
+          </q-scroll-area>
+        </div>
       </q-card>
     </q-dialog>
       </template>

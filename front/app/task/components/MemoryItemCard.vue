@@ -52,14 +52,14 @@
     </q-card>
 
     <q-dialog v-if="documentOpen && documentId && agentId != null" v-model="documentOpen" allow-focus-outside :maximized="$q.screen.lt.md" @before-hide="flushDocument">
-        <q-card class="memory-document-dialog galaris-detail-dialog column no-wrap">
+        <q-card class="memory-document-dialog galaris-detail-dialog column no-wrap galaris-dialog-card">
             <q-card-section class="galaris-dialog-title row items-center no-wrap">
                 <DocumentIcon :document-id="documentId" :title="displayedItem?.title ?? ''" size="24px" class="q-mr-sm" />
                 <div class="text-h6 ellipsis">{{ displayedItem?.title }}</div>
                 <q-space />
                 <q-btn v-close-popup flat round dense icon="close" :aria-label="t('common.close')" />
             </q-card-section>
-            <div class="memory-document-reader">
+            <div class="memory-document-reader galaris-dialog-body">
                 <WorkingDocumentEditor ref="documentEditor" :document-id="documentId" :agent-id="agentId"
                     content-min-height="min(42vh, 440px)" content-max-height="52vh" />
             </div>

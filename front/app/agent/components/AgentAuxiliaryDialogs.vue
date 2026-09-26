@@ -1,12 +1,12 @@
 <template>
   <q-dialog v-model="showCreateMcpToken">
-    <q-card style="min-width: 400px">
+    <q-card class="galaris-dialog-card" style="min-width: 400px">
       <q-card-section class="galaris-dialog-title row items-center">
         <div class="text-h6">{{ $t('agent.mcp.newToken') }}</div>
         <q-space />
         <q-btn icon="close" flat round dense v-close-popup class="text-white" :aria-label="$t('common.close')" />
       </q-card-section>
-      <q-card-section>
+      <q-card-section class="galaris-dialog-body">
         <q-input
           v-model="newMcpTokenLabel"
           :label="$t('agent.mcp.labelOptional')"
@@ -31,13 +31,13 @@
   </q-dialog>
 
   <q-dialog v-model="showNewMcpToken">
-    <q-card style="min-width: 500px">
+    <q-card class="galaris-dialog-card" style="min-width: 500px">
       <q-card-section class="galaris-dialog-title row items-center">
         <div class="text-h6">{{ $t('agent.mcp.createdTitle') }}</div>
         <q-space />
         <q-btn icon="close" flat round dense v-close-popup class="text-white" :aria-label="$t('common.close')" />
       </q-card-section>
-      <q-card-section>
+      <q-card-section class="galaris-dialog-body">
         <p class="text-body2">{{ $t('agent.mcp.copyHint') }}</p>
         <q-input v-model="newMcpTokenValue" readonly outlined type="textarea" autogrow>
           <template #append>
@@ -52,13 +52,13 @@
   </q-dialog>
 
   <q-dialog v-model="showTitle">
-    <q-card style="min-width: 400px">
+    <q-card class="galaris-dialog-card" style="min-width: 400px">
       <q-card-section class="galaris-dialog-title row items-center">
         <div class="text-h6">{{ isTitleEdit ? $t('agent.editTitleDialog') : $t('agent.addTitleDialog') }}</div>
         <q-space />
         <q-btn icon="close" flat round dense v-close-popup class="text-white" :aria-label="$t('common.close')" />
       </q-card-section>
-      <q-card-section class="q-pt-md">
+      <q-card-section class="q-pt-md galaris-dialog-body">
         <q-form class="q-gutter-md" @submit="$emit('submit-title')">
           <q-input
             :model-value="titleLabel(titleForm.label, $t)"
@@ -95,13 +95,13 @@
   </q-dialog>
 
   <q-dialog v-model="showGroup">
-    <q-card style="min-width: 400px">
+    <q-card class="galaris-dialog-card" style="min-width: 400px">
       <q-card-section class="galaris-dialog-title row items-center">
         <div class="text-h6">{{ isGroupEdit ? $t('agent.editGroupDialog') : $t('agent.addGroupDialog') }}</div>
         <q-space />
         <q-btn icon="close" flat round dense v-close-popup class="text-white" :aria-label="$t('common.close')" />
       </q-card-section>
-      <q-card-section class="q-pt-md">
+      <q-card-section class="q-pt-md galaris-dialog-body">
         <q-form class="q-gutter-md" @submit="$emit('submit-group')">
           <q-input
             :model-value="groupForm.name"
@@ -136,7 +136,7 @@
   </q-dialog>
 
   <q-dialog v-model="showHarnessLogs" @hide="$emit('close-harness-logs')">
-    <q-card class="logs-dialog-card">
+    <q-card class="logs-dialog-card galaris-dialog-card">
       <q-card-section class="galaris-dialog-title row items-center">
         <div class="text-h6">{{ $t('agent.harness.logsTitle') }} — {{ harnessLogsAgentName }}</div>
         <q-space />
@@ -152,7 +152,7 @@
         />
         <q-btn icon="close" flat round dense class="text-white" :aria-label="$t('common.close')" v-close-popup />
       </q-card-section>
-      <q-card-section class="logs-container q-pa-none">
+      <q-card-section class="logs-container q-pa-none galaris-dialog-body">
         <div v-if="!harnessLogs.length" class="text-grey-5 q-pa-md">
           {{ $t('agent.harness.logsEmpty') }}
         </div>
@@ -169,14 +169,14 @@
   </q-dialog>
 
   <q-dialog v-model="showDelete">
-    <q-card>
+    <q-card class="galaris-dialog-card">
       <q-card-section class="galaris-dialog-title row items-center">
         <q-icon name="warning" size="28px" />
         <span class="q-ml-sm text-h6">{{ $t('common.deleteConfirmTitle') }}</span>
         <q-space />
         <q-btn icon="close" flat round dense v-close-popup class="text-white" :aria-label="$t('common.close')" />
       </q-card-section>
-      <q-card-section>{{ deleteMessage }}</q-card-section>
+      <q-card-section class="galaris-dialog-body">{{ deleteMessage }}</q-card-section>
       <q-card-actions class="galaris-dialog-actions" align="right">
         <q-btn flat :label="$t('common.cancel')" color="primary" v-close-popup />
         <q-btn

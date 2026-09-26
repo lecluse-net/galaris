@@ -1414,6 +1414,16 @@ Utilisez `<script setup lang="ts">`, des props typées et les composants Quasar.
 Pinia regroupent l’état partagé et les actions ; les services ne contiennent pas d’état UI.
 Le routage est basé sur les fichiers : n’ajoutez pas une seconde table de routes manuelle.
 
+Chaque carte de modale porte `galaris-dialog-card`. Sa barre `galaris-dialog-title` reste
+hors du conteneur `galaris-dialog-body`, seul responsable du défilement du contenu.
+Les actions de pied de modale restent également hors de ce corps. Si un `q-form` englobe
+le corps et les actions, lui donner `galaris-dialog-form` pour conserver la soumission et
+la validation natives. Regrouper les sections et les états conditionnels dans un même corps ;
+utiliser `galaris-dialog-body--layout` pour un corps contenant des panneaux flexibles,
+ou `galaris-dialog-body--contained` lorsque le composant gère lui-même son défilement.
+Ne pas remettre de défilement sur la carte entière. Vérifier les longs contenus sur mobile,
+la fermeture toujours accessible et la soumission après défilement.
+
 Les actions des modales utilisent les dimensions et les formes natives de Quasar : boutons
 avec texte standards, boutons d’icône ronds, fermeture d’en-tête `flat round dense`.
 Ne pas imposer de hauteur, de `size` ou de variante `dense` aux actions ordinaires.

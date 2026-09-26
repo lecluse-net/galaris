@@ -1387,6 +1387,15 @@ Use `<script setup lang="ts">`, typed props, and Quasar components. Pinia stores
 group shared state and actions; services contain no UI state.
 Routing is file-based: do not add a second manual route table.
 
+Every modal card uses `galaris-dialog-card`. Its `galaris-dialog-title` bar stays outside
+the `galaris-dialog-body` container, which owns content scrolling. Footer actions also stay
+outside this body. When a `q-form` wraps the body and actions, give it `galaris-dialog-form`
+to preserve native submission and validation. Group sections and conditional states in one
+body; use `galaris-dialog-body--layout` for bodies containing flexible panels, or
+`galaris-dialog-body--contained` when the component manages its own scrolling. Never
+restore scrolling on the whole card. Check long content on mobile, an always reachable
+close button, and form submission after scrolling.
+
 Modal actions use Quasar's native dimensions and shapes: standard text buttons, round
 icon buttons, and `flat round dense` header close buttons. Do not impose a height, `size`,
 or `dense` variant on ordinary actions. Add `galaris-dialog-actions` to modal

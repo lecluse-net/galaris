@@ -9,6 +9,9 @@ Ce guide s’adresse à une personne qui veut utiliser Galaris sans connaître l
 langage, les API ou Docker. Les écrans accessibles dépendent des droits attribués à votre
 compte.
 
+Dans les fenêtres de détail, de formulaire ou de benchmark du Lab, seul le contenu défile :
+le titre et sa croix de fermeture restent visibles, même lorsque le contenu est long.
+
 Pour commencer par une vue d’ensemble, consultez le
 [tour complet des fonctionnalités](../features.md).
 

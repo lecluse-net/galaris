@@ -209,7 +209,7 @@
     </q-table>
 
     <q-dialog v-model="dialogOpen">
-      <q-card class="llm-dialog column no-wrap">
+      <q-card class="llm-dialog column no-wrap galaris-dialog-card">
         <q-card-section class="galaris-dialog-title row items-center no-wrap">
           <div class="llm-dialog__heading">
             <div class="text-h6">{{ editing ? t('llm.editLlm') : t('llm.addLlm') }}</div>
@@ -220,8 +220,8 @@
         </q-card-section>
         <q-separator />
 
-        <q-form class="llm-dialog__form column no-wrap col" @submit="saveLlm">
-          <q-card-section class="llm-dialog__body scroll">
+        <q-form class="llm-dialog__form column no-wrap col galaris-dialog-form" @submit="saveLlm">
+          <q-card-section class="llm-dialog__body scroll galaris-dialog-body">
             <div class="llm-form-grid">
               <div class="llm-form-field llm-form-field--provider">
                 <div class="llm-form-field__label">{{ t('llm.colProvider') }} *</div>
@@ -480,13 +480,13 @@
     </q-dialog>
 
     <q-dialog v-model="deleteDialog">
-      <q-card style="width: 480px; max-width: 92vw">
+      <q-card class="galaris-dialog-card" style="width: 480px; max-width: 92vw">
         <q-card-section class="galaris-dialog-title">
           <div class="text-h6">{{ t('common.confirm') }}</div>
           <q-space />
           <q-btn v-close-popup flat round dense icon="close" :aria-label="$t('common.close')" />
         </q-card-section>
-        <q-card-section>{{ t('llm.confirmDeleteLlm', { name: llmToDelete?.label }) }}</q-card-section>
+        <q-card-section class="galaris-dialog-body">{{ t('llm.confirmDeleteLlm', { name: llmToDelete?.label }) }}</q-card-section>
         <q-card-actions class="galaris-dialog-actions" align="right">
           <q-btn v-close-popup flat :label="t('common.cancel')" />
           <q-btn v-if="canEdit" color="negative" :label="t('common.delete')" :loading="store.loading" @click="deleteLlm" />

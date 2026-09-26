@@ -196,13 +196,13 @@
     </q-card>
 
     <q-dialog v-model="disableDialog">
-      <q-card class="harness-detail__confirm">
+      <q-card class="harness-detail__confirm galaris-dialog-card">
         <q-card-section class="galaris-dialog-title row items-center no-wrap">
           <div class="text-h6">{{ t('harnesses.catalog.disableTitle') }}</div>
           <q-space />
           <q-btn v-close-popup flat round dense icon="close" :aria-label="t('common.close')" />
         </q-card-section>
-        <q-card-section>
+        <q-card-section class="galaris-dialog-body">
           {{ t('harnesses.catalog.disableConfirm', {
             name: form.name,
             count: entry?.assigned_agents ?? 0,
@@ -221,13 +221,13 @@
     </q-dialog>
 
     <q-dialog v-model="deleteDialog">
-      <q-card class="harness-detail__confirm">
+      <q-card class="harness-detail__confirm galaris-dialog-card">
         <q-card-section class="galaris-dialog-title row items-center no-wrap">
           <div class="text-h6">{{ t('harnesses.catalog.deleteTitle') }}</div>
           <q-space />
           <q-btn v-close-popup flat round dense icon="close" :aria-label="t('common.close')" />
         </q-card-section>
-        <q-card-section>
+        <q-card-section class="galaris-dialog-body">
           {{ t('harnesses.catalog.deleteConfirm', {
             name: form.name,
             count: entry?.assigned_agents ?? 0,

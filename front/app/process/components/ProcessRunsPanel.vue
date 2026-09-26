@@ -202,7 +202,7 @@
     </q-card>
 
     <q-dialog v-model="detailDialogOpen">
-      <q-card class="process-run-dialog galaris-detail-dialog">
+      <q-card class="process-run-dialog galaris-detail-dialog galaris-dialog-card">
         <q-card-section class="galaris-dialog-title row items-center no-wrap">
           <q-icon name="account_tree" size="sm" />
           <div class="text-h6 ellipsis q-ml-sm">
@@ -219,77 +219,79 @@
           />
         </q-card-section>
 
-        <q-card-section v-if="detailLoading" class="text-center q-pa-xl">
-          <q-spinner color="primary" size="2.5em" />
-        </q-card-section>
-        <q-card-section v-else-if="selectedRun" class="q-gutter-md">
-          <div class="row items-center q-gutter-sm">
-            <StatusBadge
-              :tone="statusTone(selectedRun.status)"
-              :label="statusLabel(selectedRun.status)"
-              :icon="statusIcon(selectedRun.status)"
-            />
-            <span v-if="selectedRun.summary" class="text-subtitle1">{{ selectedRun.summary }}</span>
-          </div>
+        <div class="galaris-dialog-body">
+          <q-card-section v-if="detailLoading" class="text-center q-pa-xl">
+            <q-spinner color="primary" size="2.5em" />
+          </q-card-section>
+          <q-card-section v-else-if="selectedRun" class="q-gutter-md">
+            <div class="row items-center q-gutter-sm">
+              <StatusBadge
+                :tone="statusTone(selectedRun.status)"
+                :label="statusLabel(selectedRun.status)"
+                :icon="statusIcon(selectedRun.status)"
+              />
+              <span v-if="selectedRun.summary" class="text-subtitle1">{{ selectedRun.summary }}</span>
+            </div>
 
-          <div class="process-run-metadata">
-            <div>
-              <div class="metadata-label">{{ t('processes.runId') }}</div>
-              <div class="text-body2 text-mono">{{ selectedRun.id }}</div>
+            <div class="process-run-metadata">
+              <div>
+                <div class="metadata-label">{{ t('processes.runId') }}</div>
+                <div class="text-body2 text-mono">{{ selectedRun.id }}</div>
+              </div>
+              <div>
+                <div class="metadata-label">{{ t('processes.agent') }}</div>
+                <div class="text-body2">{{ agentLabel(selectedRun) }}</div>
+              </div>
+              <div>
+                <div class="metadata-label">{{ t('processes.tool') }}</div>
+                <div class="text-body2">{{ selectedRun.tool_code }}</div>
+              </div>
+              <div>
+                <div class="metadata-label">{{ t('processes.createdAt') }}</div>
+                <div class="text-body2">{{ formatDate(selectedRun.created_at) }}</div>
+              </div>
+              <div>
+                <div class="metadata-label">{{ t('processes.finishedAt') }}</div>
+                <div class="text-body2">{{ formatDate(selectedRun.finished_at) }}</div>
+              </div>
+              <div>
+                <div class="metadata-label">{{ t('processes.duration') }}</div>
+                <div class="text-body2">{{ formatRunDuration(selectedRun) }}</div>
+              </div>
             </div>
-            <div>
-              <div class="metadata-label">{{ t('processes.agent') }}</div>
-              <div class="text-body2">{{ agentLabel(selectedRun) }}</div>
-            </div>
-            <div>
-              <div class="metadata-label">{{ t('processes.tool') }}</div>
-              <div class="text-body2">{{ selectedRun.tool_code }}</div>
-            </div>
-            <div>
-              <div class="metadata-label">{{ t('processes.createdAt') }}</div>
-              <div class="text-body2">{{ formatDate(selectedRun.created_at) }}</div>
-            </div>
-            <div>
-              <div class="metadata-label">{{ t('processes.finishedAt') }}</div>
-              <div class="text-body2">{{ formatDate(selectedRun.finished_at) }}</div>
-            </div>
-            <div>
-              <div class="metadata-label">{{ t('processes.duration') }}</div>
-              <div class="text-body2">{{ formatRunDuration(selectedRun) }}</div>
-            </div>
-          </div>
 
-          <q-banner v-if="selectedRun.error_message" rounded class="bg-red-1 text-negative">
-            <template #avatar><q-icon name="error" /></template>
-            <span v-if="selectedRun.error_code">{{ selectedRun.error_code }} — </span>
-            {{ selectedRun.error_message }}
-          </q-banner>
+            <q-banner v-if="selectedRun.error_message" rounded class="bg-red-1 text-negative">
+              <template #avatar><q-icon name="error" /></template>
+              <span v-if="selectedRun.error_code">{{ selectedRun.error_code }} — </span>
+              {{ selectedRun.error_message }}
+            </q-banner>
 
-          <q-expansion-item bordered icon="input" :label="t('processes.input')">
-            <CodeEditor
-              :model-value="pretty(selectedRun.input)"
-              language="json"
-              :label="t('processes.input')"
-              readonly
-              :show-error="false"
-              :visible-lines="10"
-              :min-lines="5"
-              class="q-pa-md"
-            />
-          </q-expansion-item>
-          <q-expansion-item bordered icon="output" :label="t('processes.output')">
-            <CodeEditor
-              :model-value="pretty(selectedRun.output)"
-              language="json"
-              :label="t('processes.output')"
-              readonly
-              :show-error="false"
-              :visible-lines="10"
-              :min-lines="5"
-              class="q-pa-md"
-            />
-          </q-expansion-item>
-        </q-card-section>
+            <q-expansion-item bordered icon="input" :label="t('processes.input')">
+              <CodeEditor
+                :model-value="pretty(selectedRun.input)"
+                language="json"
+                :label="t('processes.input')"
+                readonly
+                :show-error="false"
+                :visible-lines="10"
+                :min-lines="5"
+                class="q-pa-md"
+              />
+            </q-expansion-item>
+            <q-expansion-item bordered icon="output" :label="t('processes.output')">
+              <CodeEditor
+                :model-value="pretty(selectedRun.output)"
+                language="json"
+                :label="t('processes.output')"
+                readonly
+                :show-error="false"
+                :visible-lines="10"
+                :min-lines="5"
+                class="q-pa-md"
+              />
+            </q-expansion-item>
+          </q-card-section>
+        </div>
       </q-card>
     </q-dialog>
   </div>

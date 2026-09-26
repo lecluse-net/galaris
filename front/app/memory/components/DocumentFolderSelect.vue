@@ -81,13 +81,13 @@
   </q-field>
 
   <q-dialog v-model="createOpen">
-    <q-card class="document-folder-select__dialog">
+    <q-card class="document-folder-select__dialog galaris-dialog-card">
       <q-card-section class="galaris-dialog-title row items-center no-wrap">
         <div class="text-h6">{{ t('documents.createSubfolder') }}</div>
         <q-space />
         <q-btn v-close-popup flat round dense icon="close" :aria-label="t('common.close')" />
       </q-card-section>
-      <q-card-section>
+      <q-card-section class="galaris-dialog-body">
         <div class="text-caption text-grey-7 q-mb-sm">
           {{ t('documents.folderParent', { folder: createParent || t('documents.folderRoot') }) }}
         </div>

@@ -1,11 +1,11 @@
 <template>
   <q-dialog v-model="opened">
-    <q-card class="comparison-dialog">
+    <q-card class="comparison-dialog galaris-dialog-card">
       <q-card-section class="galaris-dialog-title row items-center">
         <div class="text-h6">{{ t('evaluation.comparison.title') }}</div><q-space />
         <q-btn v-close-popup flat round dense icon="close" :aria-label="t('common.close')" />
       </q-card-section>
-      <q-card-section>
+      <q-card-section class="galaris-dialog-body">
         <p>{{ t('evaluation.comparison.help') }}</p>
         <div class="comparison-columns">
           <section v-for="side in sides" :key="side.key">

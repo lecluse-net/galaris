@@ -1,12 +1,12 @@
 <template>
   <q-dialog :model-value="mismatch !== null" @update:model-value="!$event && emit('cancel')">
-    <q-card v-if="mismatch" class="capture-confirmation">
+    <q-card v-if="mismatch" class="capture-confirmation galaris-dialog-card">
       <q-card-section class="galaris-dialog-title row items-center">
         <div class="text-h6">{{ t('evaluation.capture.parametersMismatch') }}</div>
         <q-space />
         <q-btn flat round dense icon="close" :aria-label="t('common.close')" @click="emit('cancel')" />
       </q-card-section>
-      <q-card-section>
+      <q-card-section class="galaris-dialog-body">
         <p>{{ t('evaluation.capture.parametersMismatchHelp', { dataset: mismatch.dataset_name }) }}</p>
         <div v-for="difference in mismatch.differences" :key="difference.name" class="q-mb-md">
           <strong>{{ label(difference.name) }}</strong>

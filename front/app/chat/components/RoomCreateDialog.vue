@@ -3,7 +3,7 @@
     :model-value="modelValue"
     @update:model-value="$emit('update:modelValue', $event)"
   >
-    <q-card class="room-create-card">
+    <q-card class="room-create-card galaris-dialog-card">
       <q-card-section class="galaris-dialog-title row items-center no-wrap">
         <div class="text-h6">{{ t('chat.newRoom') }}</div>
         <q-space />
@@ -17,7 +17,7 @@
         />
       </q-card-section>
 
-      <q-card-section class="q-gutter-md">
+      <q-card-section class="q-gutter-md galaris-dialog-body">
         <AgentSelect
           v-model="agentId"
           :options="agentOptions"

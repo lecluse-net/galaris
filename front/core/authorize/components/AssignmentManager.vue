@@ -62,7 +62,7 @@
 
     <!-- Create Dialog -->
     <q-dialog v-model="showDialog">
-      <q-card class="assignment-dialog">
+      <q-card class="assignment-dialog galaris-dialog-card">
         <q-card-section class="galaris-dialog-title row items-center no-wrap">
           <q-icon name="person_add" size="sm" />
           <div class="text-h6 ellipsis q-ml-sm">{{ $t('authorize.assignments.new') }}</div>
@@ -70,7 +70,7 @@
           <q-btn v-close-popup flat round dense icon="close" :aria-label="$t('common.close')" />
         </q-card-section>
 
-        <q-card-section class="q-pt-md">
+        <q-card-section class="q-pt-md galaris-dialog-body">
           <q-form @submit="saveAssignment" class="q-gutter-md">
             <!-- User Select -->
             <q-select

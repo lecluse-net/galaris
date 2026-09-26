@@ -106,7 +106,7 @@
     </q-slide-transition>
 
     <q-dialog v-model="taskDialog">
-      <q-card class="task-dialog">
+      <q-card class="task-dialog galaris-dialog-card">
         <q-card-section class="galaris-dialog-title row items-center">
           <div class="text-h6">{{ $t('llmCalls.task') }}</div>
           <q-space />
@@ -115,7 +115,7 @@
 
         <q-separator />
 
-        <q-card-section>
+        <q-card-section class="galaris-dialog-body">
           <TaskDetail :task-id="call.task_id ?? null" />
         </q-card-section>
       </q-card>

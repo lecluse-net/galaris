@@ -25,12 +25,12 @@
       <q-separator />
       <HarnessManagerRelease :diagnostics="diagnostics" />
       <q-dialog v-model="helpOpen">
-        <q-card class="manager-help__dialog">
+        <q-card class="manager-help__dialog galaris-dialog-card">
           <q-card-section class="galaris-dialog-title row items-center no-wrap">
             <div class="text-h6">{{ t('harnesses.preferences.help') }}</div>
             <q-space /><q-btn v-close-popup flat round dense icon="close" :aria-label="t('common.close')" />
           </q-card-section>
-          <q-card-section>
+          <q-card-section class="galaris-dialog-body">
         <p>{{ t('harnesses.setup.intro') }}</p>
         <template v-if="diagnostics">
           <div class="text-caption q-mb-md">{{ t('harnesses.manager.loadedConfig') }}</div>

@@ -2,6 +2,9 @@
 
 # User and Discovery Guide
 
+In detail windows, forms and Lab benchmarks, only the content scrolls: the title and its
+close button remain visible even with long content.
+
 To find a screen, see the [menu and workflow guide](navigation.md) and the
 [generated navigation map](../architecture/generated/navigation.md).
 

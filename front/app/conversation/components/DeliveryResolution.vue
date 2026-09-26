@@ -9,12 +9,12 @@
     </template>
   </q-banner>
   <q-dialog v-model="show">
-    <q-card style="width: 560px; max-width: 95vw">
+    <q-card class="galaris-dialog-card" style="width: 560px; max-width: 95vw">
       <q-card-section class="galaris-dialog-title row items-center">
         <span class="text-h6">{{ t('conversation.delivery.resolve') }}</span><q-space />
         <q-btn v-close-popup icon="close" flat round dense :aria-label="t('common.close')" />
       </q-card-section>
-      <q-card-section>
+      <q-card-section class="galaris-dialog-body">
         <p>{{ t('conversation.delivery.explanation') }}</p>
         <q-select v-model="decision" :options="options" emit-value map-options :label="t('conversation.delivery.decision')" />
         <q-input v-model="evidence" type="textarea" maxlength="2000" :label="t('conversation.delivery.evidence')" />

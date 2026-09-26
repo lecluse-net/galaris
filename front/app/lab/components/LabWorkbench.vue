@@ -114,9 +114,9 @@
 
     <LabSyntheticDatasetDialog v-if="canEdit" v-model="syntheticDialog" :mechanism="mechanism" :models="config?.llms ?? []" :default-model="config?.lab_llm_id ?? null" :source-dataset="savedDataset" :context-dirty="Boolean(datasetDirty)" @generated="onSyntheticGenerated" />
     <q-dialog v-model="caseDialog">
-      <q-card v-if="editingCase && descriptor && dataset" class="wide-dialog">
+      <q-card v-if="editingCase && descriptor && dataset" class="wide-dialog galaris-dialog-card">
         <q-card-section class="galaris-dialog-title row items-center"><div class="text-h6">{{ editingCase.name }}</div><q-space /><q-btn v-close-popup flat round dense icon="close" :aria-label="t('common.close')" /></q-card-section>
-        <q-card-section class="q-gutter-md">
+        <q-card-section class="q-gutter-md galaris-dialog-body">
           <q-input v-model="editingCase.name" outlined :label="t('evaluation.contract.name')" :readonly="!canEdit" />
           <q-select v-model="editingCase.categories" multiple use-chips :options="categoryOptions" emit-value map-options outlined :label="t('evaluation.insights.categoryLabel')" :readonly="!canEdit" />
           <LabValueEditor v-model="editingCase.input_data.variable_value" :schema="descriptor.contract.variable_schema" :label="t('evaluation.contract.testedValue', { name: variableLabel })" :readonly="!canEdit" @invalid="variableInvalid = $event" />
@@ -147,9 +147,9 @@
     </q-dialog>
 
     <q-dialog v-model="runDialog">
-      <q-card v-if="selectedRun" class="wide-dialog">
+      <q-card v-if="selectedRun" class="wide-dialog galaris-dialog-card">
         <q-card-section class="galaris-dialog-title row items-center"><div class="text-h6">{{ t('evaluation.contract.benchmarkResult') }}</div><q-space /><q-btn v-close-popup flat round dense icon="close" :aria-label="t('common.close')" /></q-card-section>
-        <q-card-section>
+        <q-card-section class="galaris-dialog-body">
           <div class="text-subtitle1">{{ t('evaluation.contract.status.' + selectedRun.status) }} · {{ score(selectedRun.score_percent) }}</div>
           <div>{{ t('evaluation.contract.candidate') }}: {{ selectedRun.llm_snapshot.label }}</div>
           <div>{{ t('evaluation.contract.judge') }}: {{ selectedRun.judge_llm_snapshot.label }}</div>
@@ -178,19 +178,19 @@
       </q-card>
     </q-dialog>
 
-    <q-dialog v-model="nameDialog"><q-card class="small-dialog">
+    <q-dialog v-model="nameDialog"><q-card class="small-dialog galaris-dialog-card">
         <q-card-section class="galaris-dialog-title row items-center"><div>{{ t(nameKind === 'dataset' ? 'evaluation.contract.newDataset' : 'evaluation.contract.newItem') }}</div><q-space /><q-btn v-close-popup flat round dense icon="close" :aria-label="t('common.close')" /></q-card-section>
-      <q-card-section><q-input v-model="newName" outlined autofocus :label="t('evaluation.contract.name')" /></q-card-section>
+      <q-card-section class="galaris-dialog-body"><q-input v-model="newName" outlined autofocus :label="t('evaluation.contract.name')" /></q-card-section>
       <q-card-actions class="galaris-dialog-actions" align="right"><q-btn v-close-popup flat :label="t('common.cancel')" /><q-btn color="primary" :label="t('evaluation.contract.create')" :loading="busy" :disable="!newName.trim()" @click="createNamed" /></q-card-actions>
     </q-card></q-dialog>
-    <q-dialog v-model="deleteDialog"><q-card class="small-dialog">
+    <q-dialog v-model="deleteDialog"><q-card class="small-dialog galaris-dialog-card">
         <q-card-section class="galaris-dialog-title row items-center"><div>{{ t('evaluation.contract.delete') }}</div><q-space /><q-btn v-close-popup flat round dense icon="close" :aria-label="t('common.close')" /></q-card-section>
-      <q-card-section>{{ t('evaluation.contract.deleteConfirm') }}</q-card-section>
+      <q-card-section class="galaris-dialog-body">{{ t('evaluation.contract.deleteConfirm') }}</q-card-section>
       <q-card-actions class="galaris-dialog-actions" align="right"><q-btn v-close-popup flat :label="t('common.cancel')" /><q-btn color="negative" :label="t('evaluation.contract.delete')" :loading="busy" @click="deleteConfirmed" /></q-card-actions>
     </q-card></q-dialog>
-    <q-dialog v-model="captureDialog"><q-card class="small-dialog">
+    <q-dialog v-model="captureDialog"><q-card class="small-dialog galaris-dialog-card">
         <q-card-section class="galaris-dialog-title row items-center"><div>{{ t('evaluation.contract.capture') }}</div><q-space /><q-btn v-close-popup flat round dense icon="close" :aria-label="t('common.close')" /></q-card-section>
-      <q-card-section class="q-gutter-md">
+      <q-card-section class="q-gutter-md galaris-dialog-body">
         <q-input v-model="taskUri" outlined :label="t('evaluation.contract.taskUri')" />
         <q-btn outline :label="t('evaluation.contract.captureTask')" :loading="busy" :disable="!taskUri.trim()" @click="captureTask" />
         <template v-if="descriptor?.source_import && mechanism !== 'task_analysis'">

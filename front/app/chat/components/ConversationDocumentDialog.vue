@@ -1,13 +1,13 @@
 <template>
   <q-dialog allow-focus-outside v-model="open" @before-hide="flushDocument">
-    <q-card class="conversation-document-dialog galaris-detail-dialog">
+    <q-card class="conversation-document-dialog galaris-detail-dialog galaris-dialog-card">
       <q-card-section class="galaris-dialog-title row items-center no-wrap">
         <DocumentIcon v-if="documentId" :document-id="documentId" :title="title" size="24px" class="q-mr-sm" />
         <div class="text-h6 ellipsis">{{ title || t('chat.workingDocument') }}</div>
         <q-space />
         <q-btn v-close-popup flat round dense icon="close" :aria-label="t('common.close')" />
       </q-card-section>
-      <div class="conversation-document-editor">
+      <div class="conversation-document-editor galaris-dialog-body">
         <WorkingDocumentEditor
           v-if="documentId"
           ref="workingDocumentEditor"

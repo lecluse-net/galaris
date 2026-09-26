@@ -1,6 +1,6 @@
 <template>
   <q-dialog :model-value="true" :maximized="$q.screen.lt.md" @hide="emit('close')">
-    <q-card class="finding-dialog column no-wrap">
+    <q-card class="finding-dialog column no-wrap galaris-dialog-card">
       <q-toolbar class="galaris-dialog-title">
         <q-icon :name="kindIcon" size="sm" class="q-mr-sm" />
         <q-toolbar-title>{{ t(`memory.findings.kinds.${finding.kind}`) }}</q-toolbar-title>
@@ -8,7 +8,7 @@
       </q-toolbar>
 
       <q-inner-loading :showing="loading" />
-      <q-scroll-area class="col">
+      <q-scroll-area class="col galaris-dialog-body--contained galaris-dialog-body">
         <q-card-section>
           <q-banner rounded class="bg-blue-1 text-primary q-mb-md">
             {{ explanation }}

@@ -165,13 +165,13 @@
   </section>
 
   <q-dialog v-model="restoreOpen">
-    <q-card class="document-history-confirm">
+    <q-card class="document-history-confirm galaris-dialog-card">
       <q-card-section class="galaris-dialog-title row items-center no-wrap">
         <div class="text-h6">{{ t('documents.historyRestoreTitle') }}</div>
         <q-space />
         <q-btn v-close-popup flat round dense icon="close" :aria-label="t('documents.historyClose')" />
       </q-card-section>
-      <q-card-section>
+      <q-card-section class="galaris-dialog-body">
         {{ t('documents.historyRestoreConfirm', { revision: selectedRevision }) }}
       </q-card-section>
       <q-card-actions class="galaris-dialog-actions" align="right">

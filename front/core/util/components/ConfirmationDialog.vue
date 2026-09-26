@@ -1,12 +1,12 @@
 <template>
   <q-dialog :ref="dialog.dialogRef" :aria-labelledby="titleId" @hide="dialog.onDialogHide">
-    <q-card class="q-dialog-plugin">
+    <q-card class="q-dialog-plugin galaris-dialog-card">
       <q-card-section class="galaris-dialog-title">
         <div :id="titleId" class="text-h6">{{ title || t('common.confirm') }}</div>
         <q-space />
         <q-btn v-close-popup flat round dense icon="close" :aria-label="t('common.close')" />
       </q-card-section>
-      <q-card-section class="confirmation-message">{{ message }}</q-card-section>
+      <q-card-section class="confirmation-message galaris-dialog-body">{{ message }}</q-card-section>
       <q-card-actions class="galaris-dialog-actions" align="right">
         <q-btn v-if="cancel" v-bind="cancelProps" :data-autofocus="focus === 'cancel' || undefined" @click="dialog.onDialogCancel" />
         <q-btn v-if="ok" v-bind="okProps" :data-autofocus="focus === 'ok' || undefined" @click="dialog.onDialogOK()" />

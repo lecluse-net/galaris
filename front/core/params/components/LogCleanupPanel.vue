@@ -104,14 +104,14 @@
     </div>
 
     <q-dialog :model-value="cleanupTarget !== null" @update:model-value="closeDialog">
-      <q-card class="cleanup-dialog">
+      <q-card class="cleanup-dialog galaris-dialog-card">
         <q-card-section class="galaris-dialog-title row items-center no-wrap">
           <q-icon name="warning" size="28px" />
           <span class="q-ml-sm text-h6">{{ confirmationTitle }}</span>
           <q-space />
           <q-btn v-close-popup flat round dense icon="close" :aria-label="t('common.close')" />
         </q-card-section>
-        <q-card-section>
+        <q-card-section class="galaris-dialog-body">
           <p>{{ confirmationMessage }}</p>
           <p class="text-caption text-grey-7">{{ t('params.logs.irreversible') }}</p>
         </q-card-section>

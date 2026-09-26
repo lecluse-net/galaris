@@ -1,28 +1,30 @@
 <template>
   <q-dialog v-model="open">
-    <q-card class="chat-document-search">
+    <q-card class="chat-document-search galaris-dialog-card">
       <q-toolbar class="galaris-dialog-title">
         <q-toolbar-title>{{ t('chat.searchDocuments') }}</q-toolbar-title>
         <q-btn v-close-popup flat round dense icon="close" :aria-label="t('common.close')" />
       </q-toolbar>
-      <q-card-section>
-        <q-input v-model="query" outlined autofocus clearable :label="t('chat.searchDocuments')">
-          <template #prepend><q-icon name="search" /></template>
-        </q-input>
-      </q-card-section>
-      <div class="chat-document-results" :aria-busy="loading">
-        <div v-if="loading" class="q-pa-md" role="status"><q-spinner color="primary" /></div>
-        <div v-else-if="error" class="q-pa-md" role="alert">
-          {{ t('chat.documentSearchError') }}
-          <q-btn flat :label="t('chat.retryDocuments')" @click="search" />
+      <div class="galaris-dialog-body galaris-dialog-body--layout">
+        <q-card-section>
+          <q-input v-model="query" outlined autofocus clearable :label="t('chat.searchDocuments')">
+            <template #prepend><q-icon name="search" /></template>
+          </q-input>
+        </q-card-section>
+        <div class="chat-document-results" :aria-busy="loading">
+          <div v-if="loading" class="q-pa-md" role="status"><q-spinner color="primary" /></div>
+          <div v-else-if="error" class="q-pa-md" role="alert">
+            {{ t('chat.documentSearchError') }}
+            <q-btn flat :label="t('chat.retryDocuments')" @click="search" />
+          </div>
+          <div v-else-if="!items.length" class="q-pa-md" role="status">{{ t('chat.noDocumentResults') }}</div>
+          <q-list v-else separator>
+            <q-item v-for="item in items" :key="item.id" clickable :aria-label="t('chat.openDocument', { label: item.title })" @click="select(item)">
+              <q-item-section avatar><DocumentIcon :document-id="item.id" :title="item.title" /></q-item-section>
+              <q-item-section><q-item-label>{{ item.title }}</q-item-label><q-item-label caption>{{ item.id }}</q-item-label></q-item-section>
+            </q-item>
+          </q-list>
         </div>
-        <div v-else-if="!items.length" class="q-pa-md" role="status">{{ t('chat.noDocumentResults') }}</div>
-        <q-list v-else separator>
-          <q-item v-for="item in items" :key="item.id" clickable :aria-label="t('chat.openDocument', { label: item.title })" @click="select(item)">
-            <q-item-section avatar><DocumentIcon :document-id="item.id" :title="item.title" /></q-item-section>
-            <q-item-section><q-item-label>{{ item.title }}</q-item-label><q-item-label caption>{{ item.id }}</q-item-label></q-item-section>
-          </q-item>
-        </q-list>
       </div>
       <q-card-actions align="right">
         <q-select v-model="pageSize" dense outlined :options="[10, 20, 50, 100, 500]" :label="t('chat.documentsPerPage')" />

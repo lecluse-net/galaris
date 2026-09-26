@@ -16,12 +16,12 @@
         {{ t(`harnesses.release.states.${diagnostics.version_status}`) }}
       </q-banner>
       <q-dialog v-model="updateOpen">
-        <q-card class="manager-release__dialog">
+        <q-card class="manager-release__dialog galaris-dialog-card">
           <q-card-section class="galaris-dialog-title row items-center no-wrap">
             <div class="text-h6">{{ t('harnesses.preferences.updateManager') }}</div>
             <q-space /><q-btn v-close-popup flat round dense icon="close" :aria-label="t('common.close')" />
           </q-card-section>
-          <q-card-section>
+          <q-card-section class="galaris-dialog-body">
       <p>{{ t('harnesses.release.updateHint') }}</p>
       <pre class="manager-release__command">make update</pre>
       <p class="text-caption">{{ t('harnesses.release.firstUpdate') }}</p>

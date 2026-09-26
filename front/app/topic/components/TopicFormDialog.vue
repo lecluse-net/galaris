@@ -1,13 +1,13 @@
 <template>
   <q-dialog :model-value="modelValue" @update:model-value="emit('update:modelValue', $event)">
-    <q-card class="topic-form-dialog">
+    <q-card class="topic-form-dialog galaris-dialog-card">
       <q-card-section class="galaris-dialog-title row items-center no-wrap">
         <div class="text-h6">{{ topic ? t('topic.editTitle') : t('topic.createTitle') }}</div>
         <q-space />
         <q-btn v-close-popup flat round dense icon="close" :aria-label="t('topic.cancel')" />
       </q-card-section>
-      <q-form @submit.prevent="save">
-        <q-card-section class="q-gutter-md">
+      <q-form class="galaris-dialog-form" @submit.prevent="save">
+        <q-card-section class="q-gutter-md galaris-dialog-body">
           <q-input v-model="form.title" outlined autofocus :label="t('topic.title')" :rules="[requiredRule]" />
           <q-input v-model="form.description" outlined type="textarea" autogrow :label="t('topic.description')" />
           <q-select

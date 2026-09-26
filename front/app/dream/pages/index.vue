@@ -334,7 +334,7 @@
     </q-card>
 
     <q-dialog v-model="detailOpen">
-      <q-card class="dream-detail-card">
+      <q-card class="dream-detail-card galaris-dialog-card">
         <q-card-section class="galaris-dialog-title row items-center no-wrap">
           <q-icon name="bedtime" size="sm" />
           <div class="text-subtitle1 text-weight-medium q-ml-sm">
@@ -346,185 +346,187 @@
 
         <q-separator />
 
-        <q-card-section v-if="detailLoading" class="row justify-center q-pa-xl">
-          <q-spinner color="primary" size="42px" />
-        </q-card-section>
+        <div class="galaris-dialog-body">
+          <q-card-section v-if="detailLoading" class="row justify-center q-pa-xl">
+            <q-spinner color="primary" size="42px" />
+          </q-card-section>
 
-        <template v-else-if="selectedReceipt">
-          <q-card-section>
-            <div class="row q-col-gutter-md">
-              <div class="col-12 col-md-6">
-                <div class="text-caption text-grey-7">{{ t('dream.detail.mechanism') }}</div>
-                <div>{{ mechanismLabel(selectedReceipt.mechanism_key) }}</div>
-              </div>
-              <div class="col-12 col-md-6">
-                <div class="text-caption text-grey-7">{{ t('dream.history.status') }}</div>
-                <q-badge
-                  :color="receiptStatusVisual(selectedReceipt.status).color"
-                  :label="t(`dream.statuses.${selectedReceipt.status}`)"
-                />
-              </div>
-              <div class="col-12">
-                <div class="text-caption text-grey-7">{{ t('dream.detail.subject') }}</div>
-                <div class="text-weight-medium">{{ receiptSubjectPreview(selectedReceipt) }}</div>
-                <div class="text-caption text-grey-7">{{ selectedReceipt.subject_id }}</div>
-                <div v-if="selectedReceipt.agent_id !== null" class="text-caption">
-                  {{ t('dream.detail.agent', { id: selectedReceipt.agent_id }) }}
+          <template v-else-if="selectedReceipt">
+            <q-card-section>
+              <div class="row q-col-gutter-md">
+                <div class="col-12 col-md-6">
+                  <div class="text-caption text-grey-7">{{ t('dream.detail.mechanism') }}</div>
+                  <div>{{ mechanismLabel(selectedReceipt.mechanism_key) }}</div>
+                </div>
+                <div class="col-12 col-md-6">
+                  <div class="text-caption text-grey-7">{{ t('dream.history.status') }}</div>
+                  <q-badge
+                    :color="receiptStatusVisual(selectedReceipt.status).color"
+                    :label="t(`dream.statuses.${selectedReceipt.status}`)"
+                  />
+                </div>
+                <div class="col-12">
+                  <div class="text-caption text-grey-7">{{ t('dream.detail.subject') }}</div>
+                  <div class="text-weight-medium">{{ receiptSubjectPreview(selectedReceipt) }}</div>
+                  <div class="text-caption text-grey-7">{{ selectedReceipt.subject_id }}</div>
+                  <div v-if="selectedReceipt.agent_id !== null" class="text-caption">
+                    {{ t('dream.detail.agent', { id: selectedReceipt.agent_id }) }}
+                  </div>
+                </div>
+                <div class="col-6 col-md-3">
+                  <div class="text-caption text-grey-7">{{ t('dream.detail.created') }}</div>
+                  <div>{{ formatDate(selectedReceipt.created_at) }}</div>
+                </div>
+                <div class="col-6 col-md-3">
+                  <div class="text-caption text-grey-7">{{ t('dream.detail.updated') }}</div>
+                  <div>{{ formatDate(selectedReceipt.updated_at) }}</div>
+                </div>
+                <div class="col-6 col-md-3">
+                  <div class="text-caption text-grey-7">{{ t('dream.detail.attempts') }}</div>
+                  <div>{{ selectedReceipt.attempts }}</div>
+                </div>
+                <div class="col-6 col-md-3">
+                  <div class="text-caption text-grey-7">{{ t('dream.history.cost') }}</div>
+                  <div>{{ formatCost(selectedReceipt.cost) }}</div>
                 </div>
               </div>
-              <div class="col-6 col-md-3">
-                <div class="text-caption text-grey-7">{{ t('dream.detail.created') }}</div>
-                <div>{{ formatDate(selectedReceipt.created_at) }}</div>
+
+              <q-btn
+                v-if="selectedTaskId"
+                class="q-mt-md"
+                outline
+                color="primary"
+                icon="open_in_new"
+                :label="t('dream.detail.task')"
+                :to="{ path: '/task', query: { task_id: selectedTaskId } }"
+              />
+            </q-card-section>
+
+            <q-separator />
+
+            <q-card-section v-if="outcomeDiagnostics">
+              <div class="text-subtitle1 text-weight-medium">
+                {{ t('dream.detail.outcomeDiagnostics') }}
               </div>
-              <div class="col-6 col-md-3">
-                <div class="text-caption text-grey-7">{{ t('dream.detail.updated') }}</div>
-                <div>{{ formatDate(selectedReceipt.updated_at) }}</div>
+              <div class="text-caption text-grey-7 q-mb-sm">
+                {{ t('dream.detail.outcomeDiagnosticsHint') }}
               </div>
-              <div class="col-6 col-md-3">
-                <div class="text-caption text-grey-7">{{ t('dream.detail.attempts') }}</div>
-                <div>{{ selectedReceipt.attempts }}</div>
+              <div class="row q-gutter-xs q-mb-md">
+                <q-chip dense icon="rule">
+                  {{ t('dream.detail.significance', { reason: outcomeDiagnostics.significanceReason }) }}
+                </q-chip>
+                <q-chip dense icon="visibility">
+                  {{ t('dream.detail.applicationMode', { mode: outcomeDiagnostics.applicationMode }) }}
+                </q-chip>
+                <q-chip
+                  dense
+                  :color="outcomeDiagnostics.included ? 'positive' : 'grey-6'"
+                  text-color="white"
+                >
+                  {{ outcomeDiagnostics.included ? t('dream.detail.included') : t('dream.detail.excluded') }}
+                </q-chip>
               </div>
-              <div class="col-6 col-md-3">
-                <div class="text-caption text-grey-7">{{ t('dream.history.cost') }}</div>
-                <div>{{ formatCost(selectedReceipt.cost) }}</div>
-              </div>
-            </div>
-
-            <q-btn
-              v-if="selectedTaskId"
-              class="q-mt-md"
-              outline
-              color="primary"
-              icon="open_in_new"
-              :label="t('dream.detail.task')"
-              :to="{ path: '/task', query: { task_id: selectedTaskId } }"
-            />
-          </q-card-section>
-
-          <q-separator />
-
-          <q-card-section v-if="outcomeDiagnostics">
-            <div class="text-subtitle1 text-weight-medium">
-              {{ t('dream.detail.outcomeDiagnostics') }}
-            </div>
-            <div class="text-caption text-grey-7 q-mb-sm">
-              {{ t('dream.detail.outcomeDiagnosticsHint') }}
-            </div>
-            <div class="row q-gutter-xs q-mb-md">
-              <q-chip dense icon="rule">
-                {{ t('dream.detail.significance', { reason: outcomeDiagnostics.significanceReason }) }}
-              </q-chip>
-              <q-chip dense icon="visibility">
-                {{ t('dream.detail.applicationMode', { mode: outcomeDiagnostics.applicationMode }) }}
-              </q-chip>
-              <q-chip
-                dense
-                :color="outcomeDiagnostics.included ? 'positive' : 'grey-6'"
-                text-color="white"
-              >
-                {{ outcomeDiagnostics.included ? t('dream.detail.included') : t('dream.detail.excluded') }}
-              </q-chip>
-            </div>
-            <q-list v-if="outcomeDiagnostics.observations.length" bordered separator dense>
-              <q-item
-                v-for="observation in outcomeDiagnostics.observations"
-                :key="`${observation.reference}-${observation.status ?? ''}`"
-              >
-                <q-item-section>
-                  <q-item-label>
-                    {{ observation.name || observation.kind }}
-                  </q-item-label>
-                  <q-item-label caption>
-                    {{ observation.kind }} · {{ observation.status || t('dream.detail.noStatus') }}
-                  </q-item-label>
-                  <q-item-label v-if="observation.detail" caption class="q-mt-xs">
-                    {{ observation.detail }}
-                  </q-item-label>
-                  <q-item-label caption class="text-mono q-mt-xs">
-                    {{ observation.reference }}
-                  </q-item-label>
-                </q-item-section>
-              </q-item>
-            </q-list>
-            <q-banner v-else rounded class="bg-grey-2 text-grey-8">
-              {{ t('dream.detail.noEvidence') }}
-            </q-banner>
-          </q-card-section>
-
-          <q-separator v-if="outcomeDiagnostics" />
-
-          <q-card-section>
-            <div class="text-subtitle1 text-weight-medium">
-              {{ t('dream.detail.inference', { count: selectedReceipt.llm_calls.length }) }}
-            </div>
-            <div class="text-caption text-grey-7 q-mb-md">
-              {{ t('dream.detail.inferenceHint') }}
-            </div>
-
-            <LlmCalls
-              v-if="selectedReceipt.llm_calls.length"
-              :external-calls="selectedReceipt.llm_calls"
-            />
-            <q-banner v-else rounded class="bg-grey-2 text-grey-8">
-              {{ t('dream.detail.noInference') }}
-            </q-banner>
-          </q-card-section>
-
-          <q-separator v-if="isMemoryExtractionMechanism(selectedReceipt.mechanism_key)" />
-
-          <q-card-section v-if="isMemoryExtractionMechanism(selectedReceipt.mechanism_key)">
-            <div class="text-subtitle1 text-weight-medium">{{ t('dream.detail.proposed') }}</div>
-            <div class="text-caption text-grey-7 q-mb-md">{{ t('dream.detail.proposedHint') }}</div>
-
-            <q-list v-if="extractionOperations.length" bordered separator>
-              <q-item
-                v-for="(operation, index) in extractionOperations"
-                :key="`${index}-${operation.action}-${operation.action === 'LINK' ? operation.target_memory_id : operation.title}`"
-              >
-                <q-item-section>
-                  <q-item-label>
-                    <q-badge
-                      outline
-                      :color="operation.action === 'LINK' ? 'secondary' : 'primary'"
-                      :label="t(operation.action === 'LINK' ? 'dream.detail.linkAction' : 'dream.detail.createAction')"
-                      class="q-mr-sm"
-                    />
-                    <span v-if="operation.action !== 'LINK'" class="text-weight-medium">
-                      {{ operation.title }}
-                    </span>
-                    <span v-else class="text-weight-medium">
-                      {{ t('dream.detail.linkTarget', { id: operation.target_memory_id }) }}
-                    </span>
-                  </q-item-label>
-                  <template v-if="operation.action !== 'LINK'">
-                    <q-item-label caption>{{ operation.content }}</q-item-label>
-                    <q-item-label v-if="operation.memory_type" caption class="q-mt-xs">
-                      {{ t('dream.detail.memoryType', { type: memoryTypeLabel(operation.memory_type) }) }}
+              <q-list v-if="outcomeDiagnostics.observations.length" bordered separator dense>
+                <q-item
+                  v-for="observation in outcomeDiagnostics.observations"
+                  :key="`${observation.reference}-${observation.status ?? ''}`"
+                >
+                  <q-item-section>
+                    <q-item-label>
+                      {{ observation.name || observation.kind }}
                     </q-item-label>
-                    <div v-if="operation.keywords?.length" class="row q-gutter-xs q-mt-sm">
-                      <q-chip v-for="keyword in operation.keywords" :key="keyword" dense size="sm">
-                        {{ keyword }}
-                      </q-chip>
-                    </div>
-                  </template>
-                  <q-item-label v-else-if="operation.reason" caption class="q-mt-xs">
-                    {{ operation.reason }}
-                  </q-item-label>
-                </q-item-section>
-              </q-item>
-            </q-list>
-            <q-banner v-else rounded class="bg-grey-2 text-grey-8">
-              {{ t('dream.detail.noProposal') }}
-            </q-banner>
-          </q-card-section>
+                    <q-item-label caption>
+                      {{ observation.kind }} · {{ observation.status || t('dream.detail.noStatus') }}
+                    </q-item-label>
+                    <q-item-label v-if="observation.detail" caption class="q-mt-xs">
+                      {{ observation.detail }}
+                    </q-item-label>
+                    <q-item-label caption class="text-mono q-mt-xs">
+                      {{ observation.reference }}
+                    </q-item-label>
+                  </q-item-section>
+                </q-item>
+              </q-list>
+              <q-banner v-else rounded class="bg-grey-2 text-grey-8">
+                {{ t('dream.detail.noEvidence') }}
+              </q-banner>
+            </q-card-section>
 
-          <q-card-section v-if="selectedReceipt.last_error">
-            <q-banner rounded class="bg-red-1 text-negative">
-              <div class="text-weight-medium">{{ t('dream.detail.error') }}</div>
-              <div class="text-caption">{{ selectedReceipt.last_error }}</div>
-            </q-banner>
-          </q-card-section>
-        </template>
+            <q-separator v-if="outcomeDiagnostics" />
+
+            <q-card-section>
+              <div class="text-subtitle1 text-weight-medium">
+                {{ t('dream.detail.inference', { count: selectedReceipt.llm_calls.length }) }}
+              </div>
+              <div class="text-caption text-grey-7 q-mb-md">
+                {{ t('dream.detail.inferenceHint') }}
+              </div>
+
+              <LlmCalls
+                v-if="selectedReceipt.llm_calls.length"
+                :external-calls="selectedReceipt.llm_calls"
+              />
+              <q-banner v-else rounded class="bg-grey-2 text-grey-8">
+                {{ t('dream.detail.noInference') }}
+              </q-banner>
+            </q-card-section>
+
+            <q-separator v-if="isMemoryExtractionMechanism(selectedReceipt.mechanism_key)" />
+
+            <q-card-section v-if="isMemoryExtractionMechanism(selectedReceipt.mechanism_key)">
+              <div class="text-subtitle1 text-weight-medium">{{ t('dream.detail.proposed') }}</div>
+              <div class="text-caption text-grey-7 q-mb-md">{{ t('dream.detail.proposedHint') }}</div>
+
+              <q-list v-if="extractionOperations.length" bordered separator>
+                <q-item
+                  v-for="(operation, index) in extractionOperations"
+                  :key="`${index}-${operation.action}-${operation.action === 'LINK' ? operation.target_memory_id : operation.title}`"
+                >
+                  <q-item-section>
+                    <q-item-label>
+                      <q-badge
+                        outline
+                        :color="operation.action === 'LINK' ? 'secondary' : 'primary'"
+                        :label="t(operation.action === 'LINK' ? 'dream.detail.linkAction' : 'dream.detail.createAction')"
+                        class="q-mr-sm"
+                      />
+                      <span v-if="operation.action !== 'LINK'" class="text-weight-medium">
+                        {{ operation.title }}
+                      </span>
+                      <span v-else class="text-weight-medium">
+                        {{ t('dream.detail.linkTarget', { id: operation.target_memory_id }) }}
+                      </span>
+                    </q-item-label>
+                    <template v-if="operation.action !== 'LINK'">
+                      <q-item-label caption>{{ operation.content }}</q-item-label>
+                      <q-item-label v-if="operation.memory_type" caption class="q-mt-xs">
+                        {{ t('dream.detail.memoryType', { type: memoryTypeLabel(operation.memory_type) }) }}
+                      </q-item-label>
+                      <div v-if="operation.keywords?.length" class="row q-gutter-xs q-mt-sm">
+                        <q-chip v-for="keyword in operation.keywords" :key="keyword" dense size="sm">
+                          {{ keyword }}
+                        </q-chip>
+                      </div>
+                    </template>
+                    <q-item-label v-else-if="operation.reason" caption class="q-mt-xs">
+                      {{ operation.reason }}
+                    </q-item-label>
+                  </q-item-section>
+                </q-item>
+              </q-list>
+              <q-banner v-else rounded class="bg-grey-2 text-grey-8">
+                {{ t('dream.detail.noProposal') }}
+              </q-banner>
+            </q-card-section>
+
+            <q-card-section v-if="selectedReceipt.last_error">
+              <q-banner rounded class="bg-red-1 text-negative">
+                <div class="text-weight-medium">{{ t('dream.detail.error') }}</div>
+                <div class="text-caption">{{ selectedReceipt.last_error }}</div>
+              </q-banner>
+            </q-card-section>
+          </template>
+        </div>
       </q-card>
     </q-dialog>
   </q-page>

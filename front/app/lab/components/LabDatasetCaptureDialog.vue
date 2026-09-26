@@ -1,6 +1,6 @@
 <template>
   <q-dialog v-model="open">
-    <q-card class="dataset-dialog">
+    <q-card class="dataset-dialog galaris-dialog-card">
       <q-card-section class="galaris-dialog-title row items-center no-wrap">
         <div class="col">
           <div class="text-h6">{{ t('evaluation.capture.chooseDatasetFor', { mechanism: targetLabel }) }}</div>
@@ -13,43 +13,45 @@
 
       <q-separator />
 
-      <q-card-section v-if="datasetsLoading" class="flex flex-center q-pa-xl">
-        <q-spinner color="deep-purple" size="40px" />
-      </q-card-section>
+      <div class="galaris-dialog-body">
+        <q-card-section v-if="datasetsLoading" class="flex flex-center q-pa-xl">
+          <q-spinner color="deep-purple" size="40px" />
+        </q-card-section>
 
-      <q-list v-else-if="datasets.length" separator>
-        <q-item
-          v-for="dataset in datasets"
-          :key="dataset.id"
-          clickable
-          :disable="importingDatasetId !== null"
-          @click="captureInDataset(dataset)"
-        >
-          <q-item-section avatar>
-            <q-avatar color="deep-purple" text-color="white" icon="dataset" />
-          </q-item-section>
-          <q-item-section>
-            <q-item-label>{{ dataset.name }}</q-item-label>
-            <q-item-label caption>
-              {{ t('evaluation.capture.datasetCases', {
-                ready: dataset.ready_case_count,
-                total: dataset.case_count,
-              }) }}
-            </q-item-label>
-          </q-item-section>
-          <q-item-section side>
-            <q-spinner v-if="importingDatasetId === dataset.id" color="deep-purple" />
-            <q-icon v-else name="chevron_right" />
-          </q-item-section>
-        </q-item>
-      </q-list>
+        <q-list v-else-if="datasets.length" separator>
+          <q-item
+            v-for="dataset in datasets"
+            :key="dataset.id"
+            clickable
+            :disable="importingDatasetId !== null"
+            @click="captureInDataset(dataset)"
+          >
+            <q-item-section avatar>
+              <q-avatar color="deep-purple" text-color="white" icon="dataset" />
+            </q-item-section>
+            <q-item-section>
+              <q-item-label>{{ dataset.name }}</q-item-label>
+              <q-item-label caption>
+                {{ t('evaluation.capture.datasetCases', {
+                  ready: dataset.ready_case_count,
+                  total: dataset.case_count,
+                }) }}
+              </q-item-label>
+            </q-item-section>
+            <q-item-section side>
+              <q-spinner v-if="importingDatasetId === dataset.id" color="deep-purple" />
+              <q-icon v-else name="chevron_right" />
+            </q-item-section>
+          </q-item>
+        </q-list>
 
-      <q-card-section v-else class="text-center text-grey-7 q-py-xl">
-        <q-icon name="dataset" color="grey-5" size="48px" />
-        <div class="q-mt-sm">
-          {{ t('evaluation.capture.noDatasetsFor', { mechanism: targetLabel }) }}
-        </div>
-      </q-card-section>
+        <q-card-section v-else class="text-center text-grey-7 q-py-xl">
+          <q-icon name="dataset" color="grey-5" size="48px" />
+          <div class="q-mt-sm">
+            {{ t('evaluation.capture.noDatasetsFor', { mechanism: targetLabel }) }}
+          </div>
+        </q-card-section>
+      </div>
 
       <q-separator />
       <q-card-actions class="galaris-dialog-actions" align="between">
@@ -67,15 +69,15 @@
   </q-dialog>
 
   <q-dialog v-model="createDatasetDialog">
-    <q-card class="create-dataset-dialog">
+    <q-card class="create-dataset-dialog galaris-dialog-card">
       <q-card-section class="galaris-dialog-title row items-center no-wrap">
         <div class="text-h6">{{ t('evaluation.capture.createDataset') }}</div>
         <q-space />
         <q-btn v-close-popup flat round dense icon="close" :aria-label="t('common.close')" />
       </q-card-section>
       <q-separator />
-      <q-form @submit="createDatasetAndCapture">
-        <q-card-section>
+      <q-form class="galaris-dialog-form" @submit="createDatasetAndCapture">
+        <q-card-section class="galaris-dialog-body">
           <q-input
             v-model="newDatasetName"
             autofocus

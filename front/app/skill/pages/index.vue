@@ -321,7 +321,7 @@
 
     <!-- Markdown creation and editing. -->
     <q-dialog v-model="editorDialog">
-      <q-card class="column no-wrap skill-editor-dialog">
+      <q-card class="column no-wrap skill-editor-dialog galaris-dialog-card">
         <q-toolbar class="galaris-dialog-title bg-primary text-white">
           <q-toolbar-title>
             {{ editingSkill ? t('skills.editTitle', { label: editingSkill.label }) : t('skills.createTitle') }}
@@ -335,60 +335,62 @@
             :aria-label="t('skills.cancel')"
           />
         </q-toolbar>
-        <q-card-section class="row q-col-gutter-md skill-editor-fields">
-          <div class="col-12 col-md-4">
-            <q-input
-              v-model="editorForm.code"
-              outlined
-              dense
-              hide-bottom-space
-              :readonly="editingSkill !== null"
-              :label="t('skills.code')"
-              :rules="[requiredRule, codeRule]"
-            />
-          </div>
-          <div class="col-12 col-md-4">
-            <q-input
-              v-model="editorForm.label"
-              outlined
-              dense
-              hide-bottom-space
-              :label="t('skills.label')"
-              :rules="[requiredRule]"
-            />
-          </div>
-          <div class="col-12 col-md-4">
-            <q-select
-              v-model="editorForm.category_id"
-              :options="categoryOptions"
-              outlined
-              dense
-              clearable
-              emit-value
-              map-options
-              :label="t('skills.categories.category')"
-            />
-          </div>
-        </q-card-section>
-        <q-tabs
-          v-model="editorTab"
-          dense
-          inline-label
-          class="text-primary"
-          align="left"
-        >
-          <q-tab name="source" icon="code" :label="t('skills.source')" />
-          <q-tab name="preview" icon="visibility" :label="t('skills.preview')" />
-        </q-tabs>
-        <q-separator />
-        <q-tab-panels v-model="editorTab" animated class="col scroll">
-          <q-tab-panel name="source">
-            <CodeEditor v-model="editorForm.markdown" language="markdown" :visible-lines="30" />
-          </q-tab-panel>
-          <q-tab-panel name="preview">
-            <Markdown :content="editorForm.markdown" compact-frontmatter />
-          </q-tab-panel>
-        </q-tab-panels>
+        <div class="galaris-dialog-body galaris-dialog-body--layout">
+          <q-card-section class="row q-col-gutter-md skill-editor-fields">
+            <div class="col-12 col-md-4">
+              <q-input
+                v-model="editorForm.code"
+                outlined
+                dense
+                hide-bottom-space
+                :readonly="editingSkill !== null"
+                :label="t('skills.code')"
+                :rules="[requiredRule, codeRule]"
+              />
+            </div>
+            <div class="col-12 col-md-4">
+              <q-input
+                v-model="editorForm.label"
+                outlined
+                dense
+                hide-bottom-space
+                :label="t('skills.label')"
+                :rules="[requiredRule]"
+              />
+            </div>
+            <div class="col-12 col-md-4">
+              <q-select
+                v-model="editorForm.category_id"
+                :options="categoryOptions"
+                outlined
+                dense
+                clearable
+                emit-value
+                map-options
+                :label="t('skills.categories.category')"
+              />
+            </div>
+          </q-card-section>
+          <q-tabs
+            v-model="editorTab"
+            dense
+            inline-label
+            class="text-primary"
+            align="left"
+          >
+            <q-tab name="source" icon="code" :label="t('skills.source')" />
+            <q-tab name="preview" icon="visibility" :label="t('skills.preview')" />
+          </q-tabs>
+          <q-separator />
+          <q-tab-panels v-model="editorTab" animated class="col scroll">
+            <q-tab-panel name="source">
+              <CodeEditor v-model="editorForm.markdown" language="markdown" :visible-lines="30" />
+            </q-tab-panel>
+            <q-tab-panel name="preview">
+              <Markdown :content="editorForm.markdown" compact-frontmatter />
+            </q-tab-panel>
+          </q-tab-panels>
+        </div>
         <q-separator />
         <q-card-actions align="right" class="q-px-md q-py-sm galaris-dialog-actions">
           <q-btn flat :label="t('skills.cancel')" v-close-popup />
@@ -406,7 +408,7 @@
 
     <!-- Full package viewer. -->
     <q-dialog v-model="viewerDialog" maximized transition-show="slide-up" transition-hide="slide-down">
-      <q-card class="column no-wrap">
+      <q-card class="column no-wrap galaris-dialog-card">
         <q-toolbar class="galaris-dialog-title bg-primary text-white">
           <q-toolbar-title>{{ t('skills.viewTitle', { label: store.currentSkill?.label || '' }) }}</q-toolbar-title>
           <q-btn flat icon="download" :label="t('skills.download')" @click="store.currentSkill && downloadSkill(store.currentSkill)" />
@@ -419,7 +421,7 @@
             :aria-label="t('skills.cancel')"
           />
         </q-toolbar>
-        <q-splitter v-model="splitter" class="col">
+        <q-splitter v-model="splitter" class="col galaris-dialog-body--contained galaris-dialog-body">
           <template #before>
             <q-scroll-area class="fit q-pa-sm">
               <q-tree
@@ -473,7 +475,7 @@
 
     <!-- ZIP / Markdown drag and drop import. -->
     <q-dialog v-model="importDialog" @hide="resetImport">
-      <q-card class="column no-wrap" style="width: 680px; max-width: 95vw; max-height: 90vh">
+      <q-card class="column no-wrap galaris-dialog-card" style="width: 680px; max-width: 95vw; max-height: 90vh">
         <q-toolbar class="galaris-dialog-title bg-primary text-white">
           <q-toolbar-title>{{ t('skills.importTitle') }}</q-toolbar-title>
           <q-btn
@@ -485,7 +487,7 @@
             :aria-label="t('skills.cancel')"
           />
         </q-toolbar>
-        <q-card-section class="import-dialog-content">
+        <q-card-section class="import-dialog-content galaris-dialog-body">
           <div
             class="drop-zone column flex-center text-center"
             :class="importFiles.length ? 'q-pa-md' : 'q-pa-xl'"

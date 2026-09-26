@@ -1,6 +1,6 @@
 <template>
   <q-dialog v-model="dialogOpen">
-    <q-card class="range-dialog">
+    <q-card class="range-dialog galaris-dialog-card">
       <q-card-section class="galaris-dialog-title row items-center no-wrap">
         <div class="col dialog-heading">
           <div class="text-subtitle1 text-weight-medium">{{ t('evaluation.topicImport.title') }}</div>
@@ -10,102 +10,104 @@
       </q-card-section>
       <q-separator />
 
-      <q-card-section class="filters">
-        <q-select
-          v-model="agentId"
-          :options="agentOptions"
-          emit-value
-          map-options
-          outlined
-          :loading="agentsLoading"
-          :aria-label="t('evaluation.topicImport.ai')"
-        >
-          <template #prepend>
-            <q-avatar v-if="selectedAgent" color="deep-purple" text-color="white" size="28px">
-              {{ agentInitials(selectedAgent.label) }}
-            </q-avatar>
-          </template>
-          <template #option="scope">
-            <q-item v-bind="scope.itemProps">
-              <q-item-section avatar>
-                <q-avatar color="deep-purple" text-color="white" size="32px">
-                  {{ agentInitials(scope.opt.label) }}
-                </q-avatar>
-              </q-item-section>
-              <q-item-section><q-item-label>{{ scope.opt.label }}</q-item-label></q-item-section>
-            </q-item>
-          </template>
-        </q-select>
-        <q-select
-          v-model="personKey"
-          :options="personOptions"
-          emit-value
-          map-options
-          outlined
-          :loading="peopleLoading"
-          :disable="agentId == null"
-          :label="t('evaluation.topicImport.person')"
-        />
-        <q-input v-model="dateFrom" type="datetime-local" outlined stack-label :label="t('evaluation.topicImport.dateFrom')" />
-        <q-input v-model="dateTo" type="datetime-local" outlined stack-label :label="t('evaluation.topicImport.dateTo')" />
-        <q-btn
-          color="deep-purple"
-          outline
-          icon="preview"
-          :label="t('evaluation.topicImport.preview')"
-          :loading="previewLoading"
-          :disable="!canPreview"
-          @click="loadPreview"
-        />
-      </q-card-section>
-
-      <q-separator />
-      <q-scroll-area class="preview-scroll">
-        <div v-if="previewLoading" class="flex flex-center q-pa-xl">
-          <q-spinner color="deep-purple" size="42px" />
-        </div>
-        <div v-else-if="preview" class="preview-content">
-          <q-banner v-if="preview.truncated" rounded class="bg-orange-1 text-orange-10">
-            <template #avatar><q-icon name="warning_amber" /></template>
-            {{ t('evaluation.topicImport.tooMany', { count: preview.total_count }) }}
-          </q-banner>
-          <div class="row items-center justify-between q-gutter-sm">
-            <div class="text-subtitle2">{{ t('evaluation.topicImport.messageCount', { count: preview.total_count }) }}</div>
-            <div class="text-caption text-grey-7">{{ t('evaluation.topicImport.rolesHelp') }}</div>
-          </div>
-          <div v-if="preview.messages.length" class="message-thread">
-            <article
-              v-for="(item, index) in preview.messages"
-              :key="item.journal_message_id"
-              class="message-row"
-              :class="{ 'message-row--assistant': item.role === 'assistant' }"
-            >
-              <div v-if="index > 0" class="message-gap">
-                <q-icon name="schedule" size="14px" />
-                {{ elapsedTime(preview.messages[index - 1]?.message.time ?? 0, item.message.time) }}
-              </div>
-              <div class="message-bubble">
-                <div class="row items-center q-gutter-sm">
-                  <q-avatar :color="item.role === 'assistant' ? 'deep-purple' : 'blue-grey'" text-color="white" size="28px">
-                    <q-icon :name="item.role === 'assistant' ? 'smart_toy' : 'person'" size="17px" />
+      <div class="galaris-dialog-body galaris-dialog-body--layout">
+        <q-card-section class="filters">
+          <q-select
+            v-model="agentId"
+            :options="agentOptions"
+            emit-value
+            map-options
+            outlined
+            :loading="agentsLoading"
+            :aria-label="t('evaluation.topicImport.ai')"
+          >
+            <template #prepend>
+              <q-avatar v-if="selectedAgent" color="deep-purple" text-color="white" size="28px">
+                {{ agentInitials(selectedAgent.label) }}
+              </q-avatar>
+            </template>
+            <template #option="scope">
+              <q-item v-bind="scope.itemProps">
+                <q-item-section avatar>
+                  <q-avatar color="deep-purple" text-color="white" size="32px">
+                    {{ agentInitials(scope.opt.label) }}
                   </q-avatar>
-                  <strong>{{ item.role === 'assistant' ? t('evaluation.topicImport.aiRole') : t('evaluation.topicImport.humanRole') }}</strong>
-                  <span class="text-caption text-grey-7">{{ formatDate(item.occurred_at) }}</span>
-                </div>
-                <div class="message-text">{{ item.message.text }}</div>
-                <q-chip v-if="item.detected_topic" dense outline color="deep-purple" icon="label">
-                  {{ t('evaluation.topicImport.detectedTopic') }} · {{ item.detected_topic }}
-                </q-chip>
-              </div>
-            </article>
+                </q-item-section>
+                <q-item-section><q-item-label>{{ scope.opt.label }}</q-item-label></q-item-section>
+              </q-item>
+            </template>
+          </q-select>
+          <q-select
+            v-model="personKey"
+            :options="personOptions"
+            emit-value
+            map-options
+            outlined
+            :loading="peopleLoading"
+            :disable="agentId == null"
+            :label="t('evaluation.topicImport.person')"
+          />
+          <q-input v-model="dateFrom" type="datetime-local" outlined stack-label :label="t('evaluation.topicImport.dateFrom')" />
+          <q-input v-model="dateTo" type="datetime-local" outlined stack-label :label="t('evaluation.topicImport.dateTo')" />
+          <q-btn
+            color="deep-purple"
+            outline
+            icon="preview"
+            :label="t('evaluation.topicImport.preview')"
+            :loading="previewLoading"
+            :disable="!canPreview"
+            @click="loadPreview"
+          />
+        </q-card-section>
+
+        <q-separator />
+        <q-scroll-area class="preview-scroll">
+          <div v-if="previewLoading" class="flex flex-center q-pa-xl">
+            <q-spinner color="deep-purple" size="42px" />
           </div>
-          <div v-else class="text-center text-grey-7 q-pa-xl">{{ t('evaluation.topicImport.noMessages') }}</div>
-        </div>
-        <div v-else class="preview-empty">
-          <q-icon name="forum" size="56px" color="grey-5" />
-          <div>{{ t('evaluation.topicImport.previewEmpty') }}</div>
-        </div>
-      </q-scroll-area>
+          <div v-else-if="preview" class="preview-content">
+            <q-banner v-if="preview.truncated" rounded class="bg-orange-1 text-orange-10">
+              <template #avatar><q-icon name="warning_amber" /></template>
+              {{ t('evaluation.topicImport.tooMany', { count: preview.total_count }) }}
+            </q-banner>
+            <div class="row items-center justify-between q-gutter-sm">
+              <div class="text-subtitle2">{{ t('evaluation.topicImport.messageCount', { count: preview.total_count }) }}</div>
+              <div class="text-caption text-grey-7">{{ t('evaluation.topicImport.rolesHelp') }}</div>
+            </div>
+            <div v-if="preview.messages.length" class="message-thread">
+              <article
+                v-for="(item, index) in preview.messages"
+                :key="item.journal_message_id"
+                class="message-row"
+                :class="{ 'message-row--assistant': item.role === 'assistant' }"
+              >
+                <div v-if="index > 0" class="message-gap">
+                  <q-icon name="schedule" size="14px" />
+                  {{ elapsedTime(preview.messages[index - 1]?.message.time ?? 0, item.message.time) }}
+                </div>
+                <div class="message-bubble">
+                  <div class="row items-center q-gutter-sm">
+                    <q-avatar :color="item.role === 'assistant' ? 'deep-purple' : 'blue-grey'" text-color="white" size="28px">
+                      <q-icon :name="item.role === 'assistant' ? 'smart_toy' : 'person'" size="17px" />
+                    </q-avatar>
+                    <strong>{{ item.role === 'assistant' ? t('evaluation.topicImport.aiRole') : t('evaluation.topicImport.humanRole') }}</strong>
+                    <span class="text-caption text-grey-7">{{ formatDate(item.occurred_at) }}</span>
+                  </div>
+                  <div class="message-text">{{ item.message.text }}</div>
+                  <q-chip v-if="item.detected_topic" dense outline color="deep-purple" icon="label">
+                    {{ t('evaluation.topicImport.detectedTopic') }} · {{ item.detected_topic }}
+                  </q-chip>
+                </div>
+              </article>
+            </div>
+            <div v-else class="text-center text-grey-7 q-pa-xl">{{ t('evaluation.topicImport.noMessages') }}</div>
+          </div>
+          <div v-else class="preview-empty">
+            <q-icon name="forum" size="56px" color="grey-5" />
+            <div>{{ t('evaluation.topicImport.previewEmpty') }}</div>
+          </div>
+        </q-scroll-area>
+      </div>
 
       <q-separator />
       <q-card-actions align="right" class="q-px-md galaris-dialog-actions">

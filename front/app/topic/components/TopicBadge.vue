@@ -13,7 +13,7 @@
   </button>
 
   <q-dialog v-model="auditOpen">
-    <q-card class="topic-assignment-audit-card">
+    <q-card class="topic-assignment-audit-card galaris-dialog-card">
       <q-card-section class="galaris-dialog-title row items-center no-wrap">
         <q-icon name="rule_folder" size="22px" class="q-mr-sm" />
         <div class="text-h6 ellipsis">{{ t('topic.assignmentAudit.title') }}</div>
@@ -30,138 +30,140 @@
 
       <q-separator />
 
-      <q-card-section v-if="auditLoading" class="row justify-center q-pa-xl">
-        <q-spinner color="primary" size="36px" />
-      </q-card-section>
+      <div class="galaris-dialog-body">
+        <q-card-section v-if="auditLoading" class="row justify-center q-pa-xl">
+          <q-spinner color="primary" size="36px" />
+        </q-card-section>
 
-      <q-card-section v-else-if="auditError">
-        <q-banner rounded class="bg-red-1 text-negative">
-          <q-icon name="error_outline" class="q-mr-xs" />
-          {{ auditError }}
-        </q-banner>
-      </q-card-section>
-
-      <template v-else-if="audit">
-        <q-card-section>
-          <div class="row items-center q-gutter-sm q-mb-md">
-            <q-badge outline color="deep-purple" class="topic-badge no-wrap">
-              <q-icon name="folder" size="12px" class="q-mr-xs" />
-              {{ displayTitle }}
-            </q-badge>
-            <q-chip
-              dense
-              :color="audit.origin === 'dream' ? 'primary' : 'grey-7'"
-              text-color="white"
-              :icon="audit.origin === 'dream' ? 'bedtime' : 'person'"
-            >
-              {{ t(`topic.assignmentAudit.origins.${audit.origin}`) }}
-            </q-chip>
-            <q-chip v-if="audit.human_confirmed" dense outline color="secondary" icon="how_to_reg">
-              {{ t('topic.assignmentAudit.humanConfirmed') }}
-            </q-chip>
-          </div>
-
-          <template v-if="audit.origin === 'dream'">
-            <div class="topic-assignment-field">
-              <div class="text-caption text-grey-7">{{ t('topic.assignmentAudit.action') }}</div>
-              <div class="text-weight-medium">
-                {{ audit.action ? t(`topic.assignmentAudit.actions.${audit.action}`) : t('topic.assignmentAudit.unknownAction') }}
-              </div>
-            </div>
-            <div class="topic-assignment-field">
-              <div class="text-caption text-grey-7">{{ t('topic.assignmentAudit.reason') }}</div>
-              <div>{{ audit.reason || t('topic.assignmentAudit.noReason') }}</div>
-            </div>
-            <div v-if="audit.confidence !== null" class="topic-assignment-field">
-              <div class="text-caption text-grey-7">{{ t('topic.assignmentAudit.confidence') }}</div>
-              <div>{{ formatConfidence(audit.confidence) }}</div>
-            </div>
-            <div v-if="audit.decided_at" class="topic-assignment-field">
-              <div class="text-caption text-grey-7">{{ t('topic.assignmentAudit.decidedAt') }}</div>
-              <div>{{ formatDate(audit.decided_at) }}</div>
-            </div>
-            <div v-if="audit.dream_receipt_id" class="topic-assignment-field">
-              <div class="text-caption text-grey-7">{{ t('topic.assignmentAudit.dreamAction') }}</div>
-              <div class="text-mono text-caption">{{ audit.dream_receipt_id }}</div>
-            </div>
-          </template>
-
-          <q-banner v-else rounded class="bg-grey-2 text-grey-8">
-            <q-icon name="person" class="q-mr-xs" />
-            {{ t('topic.assignmentAudit.manualHint') }}
+        <q-card-section v-else-if="auditError">
+          <q-banner rounded class="bg-red-1 text-negative">
+            <q-icon name="error_outline" class="q-mr-xs" />
+            {{ auditError }}
           </q-banner>
         </q-card-section>
 
-        <template v-if="canReassignTopic">
-          <q-separator />
-          <q-card-section class="topic-reassignment">
-            <div class="text-subtitle2 q-mb-sm">
-              {{ t('topic.assignmentAudit.changeTopic') }}
+        <template v-else-if="audit">
+          <q-card-section>
+            <div class="row items-center q-gutter-sm q-mb-md">
+              <q-badge outline color="deep-purple" class="topic-badge no-wrap">
+                <q-icon name="folder" size="12px" class="q-mr-xs" />
+                {{ displayTitle }}
+              </q-badge>
+              <q-chip
+                dense
+                :color="audit.origin === 'dream' ? 'primary' : 'grey-7'"
+                text-color="white"
+                :icon="audit.origin === 'dream' ? 'bedtime' : 'person'"
+              >
+                {{ t(`topic.assignmentAudit.origins.${audit.origin}`) }}
+              </q-chip>
+              <q-chip v-if="audit.human_confirmed" dense outline color="secondary" icon="how_to_reg">
+                {{ t('topic.assignmentAudit.humanConfirmed') }}
+              </q-chip>
             </div>
-            <TopicSelect
-              :key="subjectId"
-              v-model="selectedTopicId"
-              allow-create
-              :label="t('topic.assignment')"
-              :clearable="false"
-              :disable="topicChangeLoading"
-            />
-            <q-banner
-              v-if="topicChangeError"
-              rounded
-              class="bg-red-1 text-negative q-mt-sm"
-            >
-              <q-icon name="error_outline" class="q-mr-xs" />
-              {{ topicChangeError }}
+
+            <template v-if="audit.origin === 'dream'">
+              <div class="topic-assignment-field">
+                <div class="text-caption text-grey-7">{{ t('topic.assignmentAudit.action') }}</div>
+                <div class="text-weight-medium">
+                  {{ audit.action ? t(`topic.assignmentAudit.actions.${audit.action}`) : t('topic.assignmentAudit.unknownAction') }}
+                </div>
+              </div>
+              <div class="topic-assignment-field">
+                <div class="text-caption text-grey-7">{{ t('topic.assignmentAudit.reason') }}</div>
+                <div>{{ audit.reason || t('topic.assignmentAudit.noReason') }}</div>
+              </div>
+              <div v-if="audit.confidence !== null" class="topic-assignment-field">
+                <div class="text-caption text-grey-7">{{ t('topic.assignmentAudit.confidence') }}</div>
+                <div>{{ formatConfidence(audit.confidence) }}</div>
+              </div>
+              <div v-if="audit.decided_at" class="topic-assignment-field">
+                <div class="text-caption text-grey-7">{{ t('topic.assignmentAudit.decidedAt') }}</div>
+                <div>{{ formatDate(audit.decided_at) }}</div>
+              </div>
+              <div v-if="audit.dream_receipt_id" class="topic-assignment-field">
+                <div class="text-caption text-grey-7">{{ t('topic.assignmentAudit.dreamAction') }}</div>
+                <div class="text-mono text-caption">{{ audit.dream_receipt_id }}</div>
+              </div>
+            </template>
+
+            <q-banner v-else rounded class="bg-grey-2 text-grey-8">
+              <q-icon name="person" class="q-mr-xs" />
+              {{ t('topic.assignmentAudit.manualHint') }}
             </q-banner>
-            <div class="topic-reassignment-actions q-mt-md">
-              <q-btn
-                outline
-                no-caps
-                color="primary"
-                icon="edit"
-                :label="t('topic.assignmentAudit.changeThisMessage')"
-                :disable="!canSubmitTopicChange"
-                :loading="topicChangeLoading && topicChangeScope === 'message'"
-                @click="changeTopic('message')"
-              />
-              <q-btn
-                unelevated
-                no-caps
-                color="primary"
-                icon="playlist_add_check"
-                :label="t('topic.assignmentAudit.changeFollowingSameTopic')"
-                :disable="!canSubmitTopicChange"
-                :loading="topicChangeLoading && topicChangeScope === 'following_same_topic'"
-                @click="changeTopic('following_same_topic')"
-              />
-            </div>
           </q-card-section>
+
+          <template v-if="canReassignTopic">
+            <q-separator />
+            <q-card-section class="topic-reassignment">
+              <div class="text-subtitle2 q-mb-sm">
+                {{ t('topic.assignmentAudit.changeTopic') }}
+              </div>
+              <TopicSelect
+                :key="subjectId"
+                v-model="selectedTopicId"
+                allow-create
+                :label="t('topic.assignment')"
+                :clearable="false"
+                :disable="topicChangeLoading"
+              />
+              <q-banner
+                v-if="topicChangeError"
+                rounded
+                class="bg-red-1 text-negative q-mt-sm"
+              >
+                <q-icon name="error_outline" class="q-mr-xs" />
+                {{ topicChangeError }}
+              </q-banner>
+              <div class="topic-reassignment-actions q-mt-md">
+                <q-btn
+                  outline
+                  no-caps
+                  color="primary"
+                  icon="edit"
+                  :label="t('topic.assignmentAudit.changeThisMessage')"
+                  :disable="!canSubmitTopicChange"
+                  :loading="topicChangeLoading && topicChangeScope === 'message'"
+                  @click="changeTopic('message')"
+                />
+                <q-btn
+                  unelevated
+                  no-caps
+                  color="primary"
+                  icon="playlist_add_check"
+                  :label="t('topic.assignmentAudit.changeFollowingSameTopic')"
+                  :disable="!canSubmitTopicChange"
+                  :loading="topicChangeLoading && topicChangeScope === 'following_same_topic'"
+                  @click="changeTopic('following_same_topic')"
+                />
+              </div>
+            </q-card-section>
+          </template>
+
+          <q-separator />
+
+          <q-card-actions align="right" class="q-pa-md galaris-dialog-actions">
+            <q-btn
+              v-if="canOpenTopic"
+              flat
+              no-caps
+              color="deep-purple"
+              icon="folder_open"
+              :label="t('topic.assignmentAudit.openTopic')"
+              @click="openTopic"
+            />
+            <q-btn
+              v-if="audit.dream_receipt_id && canOpenDream"
+              unelevated
+              no-caps
+              color="primary"
+              icon="bedtime"
+              :label="t('topic.assignmentAudit.openDreamAction')"
+              @click="openDreamAction(audit.dream_receipt_id)"
+            />
+          </q-card-actions>
         </template>
-
-        <q-separator />
-
-        <q-card-actions align="right" class="q-pa-md galaris-dialog-actions">
-          <q-btn
-            v-if="canOpenTopic"
-            flat
-            no-caps
-            color="deep-purple"
-            icon="folder_open"
-            :label="t('topic.assignmentAudit.openTopic')"
-            @click="openTopic"
-          />
-          <q-btn
-            v-if="audit.dream_receipt_id && canOpenDream"
-            unelevated
-            no-caps
-            color="primary"
-            icon="bedtime"
-            :label="t('topic.assignmentAudit.openDreamAction')"
-            @click="openDreamAction(audit.dream_receipt_id)"
-          />
-        </q-card-actions>
-      </template>
+      </div>
     </q-card>
   </q-dialog>
 </template>

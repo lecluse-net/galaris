@@ -3,13 +3,13 @@
     <q-tooltip>{{ t('documents.apps.permissions') }}</q-tooltip>
   </q-btn>
   <q-dialog v-model="open">
-    <q-card style="width: 700px; max-width: 95vw">
+    <q-card class="galaris-dialog-card" style="width: 700px; max-width: 95vw">
       <q-card-section class="galaris-dialog-title row items-center">
         <div class="text-h6">{{ t('documents.apps.permissions') }}</div>
         <q-space />
         <q-btn v-close-popup flat round dense icon="close" :aria-label="t('common.close')" />
       </q-card-section>
-      <q-card-section>
+      <q-card-section class="galaris-dialog-body">
         <p>{{ t('documents.apps.permissionsHint') }}</p>
         <q-spinner v-if="loading" />
         <div v-if="error" role="alert">{{ error }}</div>

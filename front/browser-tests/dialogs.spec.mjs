@@ -33,7 +33,15 @@ for (const locale of ['en', 'fr']) test(`confirmations cancel safely, reopen and
 
   await page.setViewportSize({ width: 390, height: 844 })
   await page.evaluate(() => window.testApp.dark(true))
-  await open({ title: 'A long resource title '.repeat(8) })
+  await open({ title: 'A long resource title '.repeat(8), message: 'A long confirmation message\n'.repeat(80) + 'End of confirmation' })
+  await close().click({ trial: true })
+  const closeBefore = await close().boundingBox()
+  const message = dialog.getByText(/A long confirmation message/)
+  expect(await message.evaluate(element => {
+    element.scrollTop = element.scrollHeight
+    return element.scrollTop > 0 && element.scrollHeight - element.scrollTop <= element.clientHeight + 1
+  })).toBe(true)
+  expect((await close().boundingBox()).y).toBeCloseTo(closeBefore.y, 0)
   await expect(close()).toBeInViewport()
   await expect(dialog.getByRole('button', { name: 'Proceed', exact: true })).toBeInViewport()
   await page.screenshot({ animations: 'disabled', path: testInfo.outputPath('confirmation-mobile-dark.png') })
@@ -45,12 +53,18 @@ for (const locale of ['en', 'fr']) test(`confirmations cancel safely, reopen and
 test('detail headers keep long titles readable and can close and reopen', async ({ page }, testInfo) => {
   await mount(page, 'core/util/components/ConversationTurnDialog.vue', {
     props: { modelValue: true, title: 'An existing conversation '.repeat(8), closeLabel: 'Close', icon: 'chat' },
+    slots: { default: [...Array.from({ length: 80 }, (_, i) => `Conversation paragraph ${i}`), 'Last turn remains readable'] },
   })
   const dialog = page.getByRole('dialog')
   for (const [width, dark] of [[1440, false], [390, true]]) {
     await page.setViewportSize({ width, height: 1000 })
     await page.evaluate(dark => window.testApp.dark(dark), dark)
     await expect(dialog).toContainText('An existing conversation')
+    await dialog.getByRole('button', { name: 'Close', exact: true }).click({ trial: true })
+    const closeBefore = await dialog.getByRole('button', { name: 'Close', exact: true }).boundingBox()
+    await dialog.getByText('Last turn remains readable', { exact: true }).scrollIntoViewIfNeeded()
+    await expect(dialog.getByText('Last turn remains readable', { exact: true })).toBeInViewport()
+    expect((await dialog.getByRole('button', { name: 'Close', exact: true }).boundingBox()).y).toBeCloseTo(closeBefore.y, 0)
     await expect(dialog.getByRole('button', { name: 'Close', exact: true })).toBeInViewport()
     await page.screenshot({ animations: 'disabled', path: testInfo.outputPath(`detail-${width}.png`) })
     await dialog.getByRole('button', { name: 'Close', exact: true }).click()

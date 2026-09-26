@@ -180,58 +180,60 @@
     </q-table>
 
     <q-dialog v-model="showDialog">
-      <q-card class="connection-dialog-card">
+      <q-card class="connection-dialog-card galaris-dialog-card">
         <q-card-section class="galaris-dialog-title row items-center">
           <div class="text-h6">{{ isEdit ? $t('connection.editDialogTitle') : $t('connection.addDialogTitle') }}</div>
           <q-space />
           <q-btn icon="close" :aria-label="$t('common.close')" flat round dense v-close-popup />
         </q-card-section>
 
-        <q-banner v-if="saveError" dense inline-actions class="bg-negative text-white">
-          <template #avatar>
-            <q-icon name="error" />
-          </template>
-          {{ saveError }}
-          <template #action>
-            <q-btn
-              v-if="existingConnectionTarget"
-              flat
-              color="white"
-              :label="t('connection.showExisting')"
-              @click="showExistingConnection"
+        <div class="galaris-dialog-body">
+          <q-banner v-if="saveError" dense inline-actions class="bg-negative text-white">
+            <template #avatar>
+              <q-icon name="error" />
+            </template>
+            {{ saveError }}
+            <template #action>
+              <q-btn
+                v-if="existingConnectionTarget"
+                flat
+                color="white"
+                :label="t('connection.showExisting')"
+                @click="showExistingConnection"
+              />
+            </template>
+          </q-banner>
+
+          <q-card-section class="connection-dialog-body q-pt-md scroll">
+            <ConnectionForm
+
+              :connection="currentConnection"
+              :connection-params="currentConnectionParams"
+              :configured-params="currentConnectionConfiguredParams"
+              :loading="connectionStore.loading"
+              :agent-options="agentOptions"
+              :tool-options="toolOptions"
+              :tools="toolStore.tools"
+              :default-agent-id="filterAgent"
+              :default-tool-id="filterTool"
+              :persist-for-action="persistForAction"
+              @submit="onSubmit"
+              @configured="onEmbeddedConfigured"
+              @cancel="showDialog = false"
             />
-          </template>
-        </q-banner>
-
-        <q-card-section class="connection-dialog-body q-pt-md scroll">
-          <ConnectionForm
-
-            :connection="currentConnection"
-            :connection-params="currentConnectionParams"
-            :configured-params="currentConnectionConfiguredParams"
-            :loading="connectionStore.loading"
-            :agent-options="agentOptions"
-            :tool-options="toolOptions"
-            :tools="toolStore.tools"
-            :default-agent-id="filterAgent"
-            :default-tool-id="filterTool"
-            :persist-for-action="persistForAction"
-            @submit="onSubmit"
-            @configured="onEmbeddedConfigured"
-            @cancel="showDialog = false"
-          />
-        </q-card-section>
+          </q-card-section>
+        </div>
       </q-card>
     </q-dialog>
 
     <q-dialog v-model="showDeleteDialog">
-      <q-card>
+      <q-card class="galaris-dialog-card">
         <q-card-section class="galaris-dialog-title">
           <div class="text-h6">{{ $t('connection.deleteTitle') }}</div>
           <q-space />
           <q-btn v-close-popup flat round dense icon="close" :aria-label="$t('common.close')" />
         </q-card-section>
-        <q-card-section>
+        <q-card-section class="galaris-dialog-body">
           {{ $t('connection.deleteMessage') }}
         </q-card-section>
         <q-card-actions class="galaris-dialog-actions" align="right">

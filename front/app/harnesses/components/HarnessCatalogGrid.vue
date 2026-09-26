@@ -32,17 +32,19 @@
       {{ t(entries.length ? 'harnesses.preferences.noResults' : 'harnesses.preferences.empty') }}
     </q-banner>
     <q-dialog v-model="editing">
-      <q-card class="external-harnesses__dialog">
+      <q-card class="external-harnesses__dialog galaris-dialog-card">
         <q-card-section class="galaris-dialog-title row items-center no-wrap">
           <div class="text-h6">{{ selected?.name ?? t('harnesses.catalog.addApi') }}</div>
           <q-space />
           <q-btn v-close-popup flat round dense icon="close" :aria-label="t('common.close')" />
         </q-card-section>
-        <HarnessEditor v-if="editing" :key="editorSession" :harness-id="selected?.id ?? 'new'" embedded
-          @close="editing = false" @done="editing = false" @mutation="trackMutation" />
-        <q-card-section v-if="editing && selected && canEdit">
-          <HarnessExecutionSettings :key="editorSession" :provider-code="selected.provider_code" />
-        </q-card-section>
+        <div class="galaris-dialog-body">
+          <HarnessEditor v-if="editing" :key="editorSession" :harness-id="selected?.id ?? 'new'" embedded
+            @close="editing = false" @done="editing = false" @mutation="trackMutation" />
+          <q-card-section v-if="editing && selected && canEdit">
+            <HarnessExecutionSettings :key="editorSession" :provider-code="selected.provider_code" />
+          </q-card-section>
+        </div>
       </q-card>
     </q-dialog>
   </section>

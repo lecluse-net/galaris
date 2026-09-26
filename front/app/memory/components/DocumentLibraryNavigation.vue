@@ -71,9 +71,9 @@
     </template>
   </q-splitter>
   <q-dialog v-model="deleteDialog">
-    <q-card class="tag-dialog">
+    <q-card class="tag-dialog galaris-dialog-card">
       <q-card-section class="galaris-dialog-title row items-center"><span class="text-h6">{{ t('documents.library.deleteTag') }}</span><q-space /><q-btn v-close-popup flat round dense icon="close" :aria-label="t('common.close')" /></q-card-section>
-      <q-card-section>{{ t('documents.library.deleteExplanation', { name: editingTag?.name }) }}</q-card-section>
+      <q-card-section class="galaris-dialog-body">{{ t('documents.library.deleteExplanation', { name: editingTag?.name }) }}</q-card-section>
       <q-card-actions align="right"><q-btn v-close-popup flat :label="t('documents.library.cancel')" /><q-btn color="primary" :loading="busy" :label="t('documents.library.deleteTag')" @click="editingTag && requestDelete(editingTag, true)" /></q-card-actions>
     </q-card>
   </q-dialog>

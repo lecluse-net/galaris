@@ -28,6 +28,54 @@ h1 {
     background-color: inherit;
 }
 
+/* Dialog chrome never belongs to the content's scroll viewport. */
+.q-dialog__inner > .galaris-dialog-card {
+    display: flex;
+    flex-direction: column;
+    flex-wrap: nowrap;
+    overflow: hidden !important;
+    min-height: 0;
+}
+
+.galaris-dialog-body {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow: auto;
+    overscroll-behavior: contain;
+}
+
+.galaris-dialog-form {
+    display: flex;
+    flex: 1 1 auto;
+    flex-direction: column;
+    flex-wrap: nowrap;
+    min-height: 0;
+    overflow: hidden;
+}
+
+/* Keep existing split views and scroll areas sized inside the body. */
+.galaris-dialog-body--layout {
+    display: flex;
+    flex-direction: column;
+    flex-wrap: nowrap;
+
+    > :is(.q-card__section, .q-separator, .q-tabs) {
+        flex-shrink: 0;
+    }
+
+    > :is(.q-scrollarea, .q-tab-panels, .col) {
+        min-height: 120px;
+    }
+}
+
+.galaris-dialog-body--contained {
+    overflow: hidden;
+}
+
+:is(.galaris-dialog-card, .galaris-dialog-form) > :is(.galaris-dialog-title, .q-card__actions, .q-separator, .q-tabs, .role-dialog-actions) {
+    flex-shrink: 0;
+}
+
 /* One title bar for forms, details, confirmations and fullscreen viewers. */
 .galaris-dialog-title {
     display: flex;

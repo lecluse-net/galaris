@@ -99,7 +99,7 @@ test('workbench saves dataset roles and item categories and submits bounded repe
   let savedDataset, savedItem, started
   await page.route('**/api/evaluation/briefing/datasets/dataset', async route => { savedDataset = route.request().postDataJSON(); await route.fulfill({ json: { ...dataset, ...savedDataset, revision: 2 } }) })
   await page.route('**/api/evaluation/briefing/cases/case', async route => { savedItem = route.request().postDataJSON(); await route.fulfill({ json: { ...item, ...savedItem, revision: 2 } }) })
-  const run = { id: 'run', status: 'completed', repetitions: 3, total_cases: 3, completed_cases: 3, judged_cases: 3, candidate_cost: 0.3, judge_cost: 0.06, llm_snapshot: {}, judge_llm_snapshot: {}, configuration_snapshot: {}, results: [], campaigns: [] }
+  const run = { id: 'run', status: 'completed', repetitions: 3, total_cases: 3, completed_cases: 3, judged_cases: 3, candidate_cost: 0.3, judge_cost: 0.06, llm_snapshot: {}, judge_llm_snapshot: {}, configuration_snapshot: {}, results: [result('Synthetic benchmark case')], campaigns: [], analysis_markdown: 'A detailed benchmark analysis.\n\n'.repeat(80) }
   await page.route('**/api/evaluation/briefing/datasets/dataset/runs', async route => { started = route.request().postDataJSON(); await route.fulfill({ json: run }) })
   await jsonRoute(page, '**/api/evaluation/briefing/runs/run', run)
   await mount(page, 'app/lab/components/LabWorkbench.vue', { props: { mechanism: 'briefing', canEdit: true } })
@@ -124,6 +124,14 @@ test('workbench saves dataset roles and item categories and submits bounded repe
   await page.getByLabel('Candidate + judge budget (USD, optional)', { exact: true }).fill('0.5')
   await page.getByRole('button', { name: 'Run both passes', exact: true }).click()
   await expect.poll(() => started).toEqual({ llm_id: 1, judge_llm_id: 1, repetitions: 3, max_cost: 0.5 })
+  const benchmark = page.getByRole('dialog')
+  await benchmark.getByText('Synthetic benchmark case', { exact: true }).last().click()
+  await benchmark.getByText('Sources are present', { exact: true }).click({ trial: true })
+  await expect(benchmark.getByText('Sources are present', { exact: true })).toBeInViewport({ ratio: 1 })
+  await expect(benchmark.getByRole('button', { name: 'Close', exact: true })).toBeInViewport({ ratio: 1 })
+  await page.screenshot({ path: test.info().outputPath('lab-benchmark-scroll.png') })
+  await benchmark.getByRole('button', { name: 'Close', exact: true }).click()
+  await expect(benchmark).toHaveCount(0)
 })
 
 test('item lists show readable text for HTML strings and nested messages without changing stored inputs', async ({ page }) => {

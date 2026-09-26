@@ -99,7 +99,7 @@
     </q-table>
 
     <q-dialog v-model="definitionDialog">
-      <q-card class="process-detail-card">
+      <q-card class="process-detail-card galaris-dialog-card">
         <q-card-section class="galaris-dialog-title row items-center no-wrap">
           <q-icon name="account_tree" size="sm" />
           <div class="text-subtitle1 text-weight-medium ellipsis q-ml-sm">
@@ -111,7 +111,7 @@
 
         <q-separator />
 
-        <q-card-section class="process-detail-content">
+        <q-card-section class="process-detail-content galaris-dialog-body">
           <q-form class="q-gutter-md" @submit.prevent="saveDefinition">
             <template v-if="!definitionId">
               <q-banner dense rounded class="bg-blue-1 text-blue-9">
@@ -267,7 +267,7 @@
     </q-dialog>
 
     <q-dialog v-model="runDetailDialog" :maximized="$q.screen.lt.md">
-      <q-card class="process-run-detail-dialog">
+      <q-card class="process-run-detail-dialog galaris-dialog-card">
         <q-card-section class="galaris-dialog-title row items-center no-wrap">
           <q-icon name="account_tree" size="sm" />
           <div class="text-subtitle1 text-weight-medium ellipsis q-ml-sm">{{ t('processes.details') }}</div>
@@ -275,24 +275,26 @@
           <q-btn v-close-popup flat round dense icon="close" :aria-label="t('processes.close')" />
         </q-card-section>
         <q-separator />
-        <div v-if="runDetailLoading" class="col flex flex-center">
-          <q-spinner color="primary" size="2.5em" />
-        </div>
-        <div v-else-if="store.currentRun" class="process-run-detail-content">
-          <ProcessRunDetailContent
-            :run="store.currentRun"
-            :analysis="store.currentAnalysis"
-            :can-operate-runs="canOperateRuns"
-            :can-analyze="canAnalyze"
-            :can-admin="canAdmin"
-            :can-read-tasks="canReadTasks"
-            @refresh="refreshCurrent"
-            @analyze="analyzeCurrent"
-            @retry="retryCurrent"
-            @cancel="cancelCurrent"
-            @delete="removeRun"
-            @copy-id="copyRunId"
-          />
+        <div class="galaris-dialog-body galaris-dialog-body--layout">
+          <div v-if="runDetailLoading" class="col flex flex-center">
+            <q-spinner color="primary" size="2.5em" />
+          </div>
+          <div v-else-if="store.currentRun" class="process-run-detail-content">
+            <ProcessRunDetailContent
+              :run="store.currentRun"
+              :analysis="store.currentAnalysis"
+              :can-operate-runs="canOperateRuns"
+              :can-analyze="canAnalyze"
+              :can-admin="canAdmin"
+              :can-read-tasks="canReadTasks"
+              @refresh="refreshCurrent"
+              @analyze="analyzeCurrent"
+              @retry="retryCurrent"
+              @cancel="cancelCurrent"
+              @delete="removeRun"
+              @copy-id="copyRunId"
+            />
+          </div>
         </div>
       </q-card>
     </q-dialog>

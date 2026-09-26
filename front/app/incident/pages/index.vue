@@ -240,7 +240,7 @@
     </q-tab-panels>
 
     <q-dialog v-model="detailOpen">
-      <q-card class="incident-dialog">
+      <q-card class="incident-dialog galaris-dialog-card">
         <q-card-section class="galaris-dialog-title row items-center justify-between">
           <div class="col">
             <div class="text-h6">{{ t('incidents.detailTitle') }}</div>
@@ -251,34 +251,36 @@
           <q-btn v-close-popup flat round dense icon="close" :aria-label="t('incidents.close')" />
         </q-card-section>
         <q-separator />
-        <q-card-section v-if="detailLoading" class="text-center q-pa-xl"><q-spinner size="40px" /></q-card-section>
-        <q-card-section v-else-if="selectedIncident" class="scroll incident-dialog__body">
-          <q-banner class="bg-red-1 text-negative q-mb-md" rounded>
-            <div class="text-weight-bold">{{ selectedIncident.error_type }}</div>
-            <div class="pre-wrap">{{ selectedIncident.error_message }}</div>
-          </q-banner>
-          <div class="row q-col-gutter-md q-mb-md">
-            <div class="col-12 col-md-4"><strong>{{ t('incidents.category') }}</strong><br>{{ selectedIncident.category }}</div>
-            <div class="col-12 col-md-4"><strong>{{ t('incidents.phase') }}</strong><br>{{ selectedIncident.phase }}</div>
-            <div class="col-12 col-md-4"><strong>{{ t('incidents.context') }}</strong><br>{{ contextLabel(selectedIncident) }}</div>
-          </div>
-          <q-banner v-if="selectedIncident.redacted_fields.length" rounded class="bg-orange-1 q-mb-sm">
-            {{ t('incidents.redacted', { count: selectedIncident.redacted_fields.length }) }}
-          </q-banner>
-          <q-banner v-if="selectedIncident.truncated_fields.length" rounded class="bg-orange-1 q-mb-sm">
-            {{ t('incidents.truncated', { count: selectedIncident.truncated_fields.length }) }}
-          </q-banner>
-          <div class="row items-center justify-between q-mb-sm">
-            <div class="text-subtitle1 text-weight-bold">{{ t('incidents.fullTrace') }}</div>
-            <div class="text-caption text-grey-7">{{ formatBytes(selectedIncident.trace_byte_size) }} · {{ selectedIncident.trace_content_hash }}</div>
-          </div>
-          <pre class="trace-view">{{ JSON.stringify(selectedIncident.trace, null, 2) }}</pre>
-        </q-card-section>
+        <div class="galaris-dialog-body">
+          <q-card-section v-if="detailLoading" class="text-center q-pa-xl"><q-spinner size="40px" /></q-card-section>
+          <q-card-section v-else-if="selectedIncident" class="scroll incident-dialog__body">
+            <q-banner class="bg-red-1 text-negative q-mb-md" rounded>
+              <div class="text-weight-bold">{{ selectedIncident.error_type }}</div>
+              <div class="pre-wrap">{{ selectedIncident.error_message }}</div>
+            </q-banner>
+            <div class="row q-col-gutter-md q-mb-md">
+              <div class="col-12 col-md-4"><strong>{{ t('incidents.category') }}</strong><br>{{ selectedIncident.category }}</div>
+              <div class="col-12 col-md-4"><strong>{{ t('incidents.phase') }}</strong><br>{{ selectedIncident.phase }}</div>
+              <div class="col-12 col-md-4"><strong>{{ t('incidents.context') }}</strong><br>{{ contextLabel(selectedIncident) }}</div>
+            </div>
+            <q-banner v-if="selectedIncident.redacted_fields.length" rounded class="bg-orange-1 q-mb-sm">
+              {{ t('incidents.redacted', { count: selectedIncident.redacted_fields.length }) }}
+            </q-banner>
+            <q-banner v-if="selectedIncident.truncated_fields.length" rounded class="bg-orange-1 q-mb-sm">
+              {{ t('incidents.truncated', { count: selectedIncident.truncated_fields.length }) }}
+            </q-banner>
+            <div class="row items-center justify-between q-mb-sm">
+              <div class="text-subtitle1 text-weight-bold">{{ t('incidents.fullTrace') }}</div>
+              <div class="text-caption text-grey-7">{{ formatBytes(selectedIncident.trace_byte_size) }} · {{ selectedIncident.trace_content_hash }}</div>
+            </div>
+            <pre class="trace-view">{{ JSON.stringify(selectedIncident.trace, null, 2) }}</pre>
+          </q-card-section>
+        </div>
       </q-card>
     </q-dialog>
 
     <q-dialog v-model="patternOpen">
-      <q-card class="incident-dialog">
+      <q-card class="incident-dialog galaris-dialog-card">
         <q-card-section class="galaris-dialog-title row items-center justify-between">
           <div class="col">
             <div class="text-h6">{{ t('incidents.patternReview') }}</div>
@@ -287,7 +289,7 @@
           <q-btn v-close-popup flat round dense icon="close" :aria-label="t('incidents.close')" />
         </q-card-section>
         <q-separator />
-        <q-card-section v-if="patternForm" class="scroll incident-dialog__body q-gutter-md">
+        <q-card-section v-if="patternForm" class="scroll incident-dialog__body q-gutter-md galaris-dialog-body">
           <q-select
             v-model="patternForm.status"
             outlined

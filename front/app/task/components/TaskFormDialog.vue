@@ -1,6 +1,6 @@
 <template>
   <q-dialog allow-focus-outside v-model="dialogOpen">
-    <q-card class="task-form-dialog">
+    <q-card class="task-form-dialog galaris-dialog-card">
       <q-card-section class="galaris-dialog-title row items-center">
         <div class="text-h6">{{ isEdit ? $t('task.form.editTitle') : $t('task.form.createTitle') }}</div>
         <q-space />
@@ -9,7 +9,7 @@
 
       <q-separator />
 
-      <q-card-section>
+      <q-card-section class="galaris-dialog-body">
         <q-form @submit="onSubmit()" class="q-gutter-y-md">
           <q-input
             v-model="form.label"

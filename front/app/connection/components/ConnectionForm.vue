@@ -270,7 +270,7 @@
   </q-form>
 
   <q-dialog v-model="showHostKeyConfirmation" @hide="clearPendingHostKey">
-    <q-card class="host-key-confirmation-dialog">
+    <q-card class="host-key-confirmation-dialog galaris-dialog-card">
       <q-card-section class="galaris-dialog-title row items-center no-wrap">
         <q-icon name="fingerprint" size="sm" class="q-mr-sm" />
         <div class="text-h6">{{ t('connection.console.confirmHostKey') }}</div>
@@ -285,7 +285,7 @@
         />
       </q-card-section>
       <q-separator />
-      <q-card-section v-if="pendingHostKey" class="host-key-confirmation-content scroll">
+      <q-card-section v-if="pendingHostKey" class="host-key-confirmation-content scroll galaris-dialog-body">
         <q-banner rounded class="bg-orange-1 text-orange-10 q-mb-lg">
           <template #avatar><q-icon name="verified_user" color="orange-9" /></template>
           {{ t('connection.console.hostKeyVerificationHint') }}
@@ -330,7 +330,7 @@
   </q-dialog>
 
   <q-dialog v-model="showConsoleTestResult">
-    <q-card class="console-test-result-dialog">
+    <q-card class="console-test-result-dialog galaris-dialog-card">
       <q-card-section class="galaris-dialog-title row items-center no-wrap">
         <q-icon name="lan" size="sm" class="q-mr-sm" />
         <div class="text-h6">{{ t('connection.console.testResult') }}</div>
@@ -345,7 +345,7 @@
         />
       </q-card-section>
       <q-separator />
-      <q-card-section class="console-test-result-content scroll">
+      <q-card-section class="console-test-result-content scroll galaris-dialog-body">
         <pre class="console-test-result-json"><code>{{ consoleTestResult }}</code></pre>
       </q-card-section>
       <q-separator />
@@ -365,7 +365,7 @@
   </q-dialog>
 
   <q-dialog v-model="showMailTestResult">
-    <q-card class="console-test-result-dialog">
+    <q-card class="console-test-result-dialog galaris-dialog-card">
       <q-card-section class="galaris-dialog-title row items-center no-wrap">
         <q-icon name="mark_email_read" size="sm" class="q-mr-sm" />
         <div class="text-h6">{{ t('connection.mail.testResult') }}</div>
@@ -373,7 +373,7 @@
         <q-btn v-close-popup flat round dense icon="close" :aria-label="t('common.close')" />
       </q-card-section>
       <q-separator />
-      <q-card-section class="console-test-result-content scroll">
+      <q-card-section class="console-test-result-content scroll galaris-dialog-body">
         <pre class="console-test-result-json"><code>{{ mailTestResult }}</code></pre>
       </q-card-section>
       <q-separator />

@@ -104,7 +104,7 @@
     </q-card>
 
     <q-dialog v-model="useDefaultDialog">
-        <q-card class="prompt-editor__dialog">
+        <q-card class="prompt-editor__dialog galaris-dialog-card">
             <q-card-section class="galaris-dialog-title row items-center">
                 <div class="text-h6">{{ t('promptEditor.restoreTitle') }}</div>
                 <q-space />
@@ -117,7 +117,7 @@
                     :aria-label="t('common.close')"
                 />
             </q-card-section>
-            <q-card-section>{{ t('promptEditor.restoreMessage') }}</q-card-section>
+            <q-card-section class="galaris-dialog-body">{{ t('promptEditor.restoreMessage') }}</q-card-section>
             <q-separator />
             <q-card-actions class="galaris-dialog-actions" align="right">
                 <q-btn v-close-popup flat no-caps :label="t('common.cancel')" />

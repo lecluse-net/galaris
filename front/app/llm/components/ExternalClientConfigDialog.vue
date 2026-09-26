@@ -1,12 +1,12 @@
 <template>
   <q-dialog :model-value="true" @hide="emit('close')">
-    <q-card class="client-config-dialog">
+    <q-card class="client-config-dialog galaris-dialog-card">
       <q-card-section class="galaris-dialog-title row items-center no-wrap">
         <div class="text-h6">{{ t('clientConfig.title') }}</div>
         <q-space />
         <q-btn flat round dense icon="close" :aria-label="t('common.close')" v-close-popup />
       </q-card-section>
-      <q-card-section>
+      <q-card-section class="galaris-dialog-body">
         <p>{{ t('clientConfig.intro') }}</p>
         <div v-if="loading" role="status" class="row items-center q-gutter-sm">
           <q-spinner color="primary" />

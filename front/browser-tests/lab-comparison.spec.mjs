@@ -52,6 +52,8 @@ for (const viewport of [{ width: 1440, height: 1000 }, { width: 390, height: 844
       await page.screenshot({ path: test.info().outputPath('comparison.png'), fullPage: true })
       await dialog.getByText('Changed answer', { exact: true }).first().scrollIntoViewIfNeeded()
       await page.screenshot({ path: test.info().outputPath('comparison-answers.png'), fullPage: true })
+      await dialog.getByText('Unjudged', { exact: true }).scrollIntoViewIfNeeded()
+      await expect(dialog.getByRole('button', { name: 'Close', exact: true })).toBeInViewport()
       await dialog.getByRole('button', { name: 'Next', exact: true }).click()
       await expect(dialog.getByRole('heading', { name: /Next case/ })).toBeVisible()
       expect(requests.at(-1)).toMatchObject({ offset: '50', limit: '50', left_run_id: before.id, right_run_id: after.id })

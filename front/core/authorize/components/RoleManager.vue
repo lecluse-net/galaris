@@ -10,7 +10,7 @@
       <div v-if="loading" class="row justify-center q-pa-md">
           <q-spinner color="primary" size="2em" />
       </div>
-      
+
       <q-expansion-item
         v-for="role in roles"
         :key="role.id"
@@ -46,7 +46,7 @@
         <q-card>
           <q-card-section>
             <div class="text-subtitle2 q-mb-sm">{{ $t('authorize.roles.associatedPrivileges') }}</div>
-            
+
             <!-- Grouped Display -->
             <div v-if="role.privileges.length > 0">
                 <div v-for="(group, listName) in groupPrivileges(role.privileges)" :key="listName" class="q-mb-md">
@@ -92,7 +92,7 @@
 
     <!-- Create/Edit Dialog -->
     <q-dialog v-model="showDialog">
-      <q-card class="role-dialog">
+      <q-card class="role-dialog galaris-dialog-card">
         <q-card-section class="galaris-dialog-title row items-center no-wrap">
           <q-icon name="security" size="sm" />
           <div class="text-h6 ellipsis q-ml-sm">{{ isEdit ? $t('authorize.roles.edit') : $t('authorize.roles.new') }}</div>
@@ -100,7 +100,7 @@
           <q-btn v-close-popup flat round dense icon="close" :aria-label="$t('common.close')" />
         </q-card-section>
 
-        <q-card-section class="q-pt-md">
+        <q-card-section class="q-pt-md galaris-dialog-body">
           <q-form @submit="saveRole" class="q-gutter-md">
             <q-input
               v-model="editedItem.code"
@@ -125,7 +125,7 @@
 
     <!-- Privileges Dialog -->
     <q-dialog v-model="showPrivilegesDialog">
-      <q-card class="role-privileges-dialog">
+      <q-card class="role-privileges-dialog galaris-dialog-card">
         <q-card-section class="galaris-dialog-title row items-center no-wrap">
           <q-icon name="vpn_key" size="sm" />
           <div class="text-h6 ellipsis q-ml-sm">{{ $t('authorize.roles.privilegesOf', { role: currentRole ? localizedAuthorizeLabel(currentRole) : '' }) }}</div>
@@ -133,7 +133,7 @@
           <q-btn v-close-popup flat round dense icon="close" :aria-label="$t('common.close')" />
         </q-card-section>
 
-        <q-card-section class="q-pt-md">
+        <q-card-section class="q-pt-md galaris-dialog-body">
             <div v-if="loadingPrivileges" class="row justify-center">
                 <q-spinner color="primary" size="2em" />
             </div>
@@ -160,7 +160,7 @@
                                 {{ getPrivilegeListName(scope.opt) }}
                             </q-item-label>
                         </template>
-                        
+
                         <q-item v-bind="scope.itemProps">
                             <q-item-section>
                                 <q-item-label>{{ localizedAuthorizeLabel(scope.opt) }}</q-item-label>
@@ -171,7 +171,7 @@
                 </q-select>
             </div>
         </q-card-section>
-        
+
         <q-card-section class="role-dialog-actions">
             <q-btn flat :label="$t('common.close')" color="primary" v-close-popup />
             <q-btn v-if="canManage" flat :label="$t('common.save')" color="primary" @click="savePrivileges" />

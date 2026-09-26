@@ -120,7 +120,7 @@
         </q-card>
 
         <q-dialog v-model="profileDialog">
-            <q-card class="profile-dialog">
+            <q-card class="profile-dialog galaris-dialog-card">
                 <q-card-section class="galaris-dialog-title row items-center no-wrap">
                     <div class="text-h6 col">{{ t('llm.profileDialogCreateTitle') }}</div>
                     <q-btn
@@ -133,7 +133,7 @@
                     />
                 </q-card-section>
 
-                <q-card-section>
+                <q-card-section class="galaris-dialog-body">
                     <q-input
                         v-model="draftLabel"
                         :label="t('llm.profileLabelField')"
