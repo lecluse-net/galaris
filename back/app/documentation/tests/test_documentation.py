@@ -119,6 +119,109 @@ async def test_refresh_makes_new_sources_searchable_without_model_or_agent_grant
     assert all(hit.checksum != facade.page_at(initial, "docs/fr/user/navigation.md").checksum for hit in result.hits)
 
 
+@pytest.mark.asyncio
+@pytest.mark.parametrize("outcome", ["commit", "rollback", "held", "source_changed"])
+async def test_refresh_recovers_from_concurrent_uncommitted_index(
+    committed_database, release_sources, monkeypatch, outcome,
+):
+    import asyncio
+    from contextlib import asynccontextmanager
+
+    from sqlalchemy import text
+    from sqlalchemy.exc import DBAPIError
+
+    from core import database
+    from app.documentation import __main__ as cli
+    from app.documentation.readiness import check_corpus
+    from app.documentation.search import synchronize
+
+    snapshot = facade.load_corpus(root=release_sources)
+    monkeypatch.setattr(cli, "load_corpus", lambda: facade.load_corpus(root=release_sources))
+    if outcome == "held":
+        monkeypatch.setattr(cli, "_REFRESH_TIMEOUT_SECONDS", 1)
+    managed_session = database.get_db_session
+    lock_failed = asyncio.Event()
+
+    @asynccontextmanager
+    async def short_lock_session():
+        async with managed_session() as session:
+            await session.execute(text("SET LOCAL lock_timeout = '50ms'"))
+            try:
+                yield session
+            except DBAPIError as exc:
+                if getattr(exc.orig, "sqlstate", None) == "55P03":
+                    lock_failed.set()
+                raise
+
+    monkeypatch.setattr(database, "get_db_session", short_lock_session)
+    async with managed_session() as writer:
+        # A background embedding batch has inserted the new corpus but has not
+        # committed yet. Exercise PostgreSQL's unique-key lock with real sessions.
+        await synchronize(snapshot)
+        refresh = asyncio.create_task(cli._refresh(check_corpus(snapshot)))
+        try:
+            await asyncio.wait_for(lock_failed.wait(), timeout=5)
+            if outcome == "held":
+                async with asyncio.timeout(5):
+                    with pytest.raises(TimeoutError):
+                        await refresh
+                await writer.rollback()
+                assert await writer.scalar(select(func.count()).select_from(DocumentationPassage)) == 0
+                return
+            if outcome == "source_changed":
+                target = release_sources / "docs/fr/user/navigation.md"
+                target.write_text(target.read_text() + "\nChanged during refresh.\n")
+            if outcome != "rollback":
+                await writer.commit()
+            else:
+                await writer.rollback()
+            if outcome == "source_changed":
+                with pytest.raises(ValueError, match="differs from the prepared"):
+                    await asyncio.wait_for(refresh, timeout=5)
+                return
+            report = await asyncio.wait_for(refresh, timeout=5)
+        finally:
+            refresh.cancel()
+            await asyncio.gather(refresh, return_exceptions=True)
+
+    assert report["indexed_passages"] == len(snapshot.passages)
+    assert report["checked_languages"] == ("fr", "en")
+    async with managed_session() as reader:
+        assert await reader.scalar(select(func.count()).select_from(DocumentationPassage)) == len(snapshot.passages)
+        result = await facade.search(snapshot, "Stations", language="fr", path_prefix="docs/fr/user/navigation.md")
+        assert result.hits[0].uri.endswith("docs/fr/user/navigation.md")
+    assert await cli._refresh(check_corpus(snapshot)) == report
+
+
+@pytest.mark.asyncio
+async def test_refresh_does_not_retry_unrelated_database_errors(committed_database, release_sources, monkeypatch):
+    from contextlib import asynccontextmanager
+
+    from sqlalchemy import text
+    from sqlalchemy.exc import DBAPIError
+
+    from core import database
+    from app.documentation import __main__ as cli
+
+    monkeypatch.setattr(cli, "load_corpus", lambda: facade.load_corpus(root=release_sources))
+    managed_session = database.get_db_session
+    attempts = 0
+
+    @asynccontextmanager
+    async def invalid_session():
+        nonlocal attempts
+        attempts += 1
+        async with managed_session() as session:
+            await session.execute(text("SELECT * FROM synthetic_missing_documentation_table"))
+            yield session
+
+    monkeypatch.setattr(database, "get_db_session", invalid_session)
+    with pytest.raises(DBAPIError) as error:
+        await cli._refresh(None)
+    assert getattr(error.value.orig, "sqlstate", None) == "42P01"
+    assert attempts == 1
+
+
 @pytest.fixture
 def sources(tmp_path, monkeypatch):
     pages = {
