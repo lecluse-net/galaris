@@ -43,6 +43,10 @@ des services. PostgreSQL et TURN ne sont retirés que lorsqu’ils deviennent ex
 En production, la reconstruction réutilise aussi le cache Docker et vérifie les images de base ;
 `RELEASE_DIR` reste réservé aux environnements dont `APP_ENV` diffère de `dev`.
 
+`make update VERSIONS` liste tous les tags (versions les plus élevées d’abord), puis les branches
+par ordre alphabétique, depuis le dépôt distant de la branche courante (`origin` par défaut).
+Elle fonctionne sans `.env` et avec des changements locaux, sans fetch, changement de version ni déploiement.
+
 `make update` construit et déploie les sources présentes sans récupération Git.
 Avec un `.git`, `VERSION=<référence>` récupère et sélectionne un tag exact, sinon une branche
 distante. Les changements locaux bloquent uniquement cette sélection explicite.
@@ -1609,6 +1613,16 @@ make tests-documentation   # contrats du lanceur, puis confinement réel en cont
 4. exécuter les tests ciblés puis `make typecheck` et `make tests` ;
 5. vérifier `git diff --check` et relire les changements de schéma/configuration ;
 6. documenter tout choix d’architecture ou nouvelle variable.
+
+Les fichiers racine `AGENTS.md`, `INSTALL.md` et `CHANGELOG.md` sont rédigés exclusivement en anglais.
+
+`CHANGELOG.md` commence à la première version effectivement publiée. Avant celle-ci,
+aucune entrée de changements, version anticipée ou reconstitution d’historique n’est ajoutée.
+La première publication y inscrit sa version et sa date réelle. Ensuite, chaque changement
+notable pour les utilisateurs ou administrateurs ajoute une entrée en anglais dans `Unreleased` ;
+ces entrées sont regroupées sous la version et la date lors de sa publication. Décrire les effets
+observables, les incompatibilités et les actions de mise à jour nécessaires, sans recopier le
+journal Git.
 
 Tous les nouveaux messages de commit doivent être rédigés exclusivement en anglais,
 titre et corps compris, afin de faciliter les contributions internationales.

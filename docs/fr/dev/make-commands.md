@@ -17,10 +17,12 @@ Le `Makefile` reste la référence. Installation standard : **`make install` →
 | `start` | Relancer les conteneurs existants ; appeler `update` s’ils sont absents, incomplets ou en échec. |
 | `stop` | Arrêter la stack en conservant les conteneurs. |
 | `uninstall` | Supprimer conteneurs et réseaux du projet ; proposer séparément la purge des volumes, images Compose locales et conteneurs orphelins (non par défaut). |
+| `uninstall FORCE` | Accepter automatiquement les trois confirmations : supprimer les volumes et leurs données, les images Compose locales et les conteneurs orphelins du projet. |
 | `restart` | Enchaîner `stop` puis `start`. |
 | `restart-service` | Redémarrer un seul service sans reconstruire ; `SERVICE` obligatoire. |
 | `status` | Afficher l'état des conteneurs ; filtrer avec `SERVICE` si nécessaire. |
 | `update` | Régénérer la documentation, construire et déployer les sources présentes, puis actualiser l’index documentaire ; seul `VERSION` déclenche la récupération d’un tag ou d’une branche Git. Accepte `RELEASE_DIR` hors dev, sans Git, avec la documentation embarquée du paquet. |
+| `update VERSIONS` | Lister tous les tags (versions les plus élevées d’abord), puis toutes les branches par ordre alphabétique, depuis le dépôt Git distant configuré, sans déploiement ni modification des sources locales. |
 | `logs` | Suivre tous les journaux. |
 | `logs-back`, `logs-front`, `logs-search` | Suivre les journaux du service désigné. |
 | `check-search` | Vérifier les sources et dégradations sur quatre requêtes publiques réelles ; diagnostic volontaire, distinct du healthcheck. |
@@ -37,6 +39,8 @@ les conteneurs sont réutilisables ; une relance qui échoue déclenche au plus 
 distincte pour les volumes, les images locales (`--rmi local`) et les conteneurs orphelins du
 projet. Les images avec un tag explicite et le cache partagé restent conservés ; aucun `prune`
 global n’est exécuté. `clean` supprime les volumes sans confirmation.
+`make uninstall FORCE` accepte automatiquement toutes les suppressions proposées, sans
+entrée utilisateur, y compris l’effacement définitif des données des volumes.
 
 ```bash
 make status

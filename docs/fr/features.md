@@ -1,262 +1,184 @@
 <p align="right"><strong>Français</strong> · <a href="../en/features.md">English</a></p>
 
-# Tour des fonctionnalités de Galaris
+# Découvrir ce que l’on peut faire avec Galaris
 
-Galaris est un centre de contrôle auto-hébergé pour agents IA. Il réunit dans une même plateforme
-les modèles, les runtimes agentiques, les outils, les conversations, les tâches durables, la
-mémoire et les processus métier. L’objectif n’est pas seulement d’obtenir une réponse : il est de
-transformer une demande en résultat traçable, récupérable et gouverné.
+Galaris réunit une équipe d’agents IA et un espace de travail commun. Ce tour présente les usages
+et la manière dont ils se combinent : de la discussion quotidienne à un travail collectif suivi
+sur plusieurs semaines. Les procédures appartiennent aux guides ; l’inventaire exhaustif, destiné
+notamment à préparer le site web, reste dans le [catalogue fonctionnel](reference/functional-catalogue.md).
 
-Cette synthèse reprend la revue du **12 septembre 2026**, avec une mise à jour du contrat
-d’inférence le 14 septembre. Le [catalogue français détaillé](../catalogue-fonctionnel-fr.md)
-conserve l’inventaire des modules et fonctions MCP. Certaines capacités demandent un modèle,
-un bridge ou une connexion explicitement configurés ; les fonctions expérimentales ou futures
-restent décrites séparément dans l’[index des plans](../../project/plans/README.md).
+## Commencer par une conversation, élargir ensuite
 
-## Du message au résultat
+Après l’installation et la saisie du token OpenRouter, l’agent Galaris et ses modèles sont déjà
+préconfigurés. On peut commencer à discuter, puis ajouter progressivement des agents, des outils
+et des intégrations depuis l’interface graphique. Il n’est pas nécessaire de construire une équipe
+ou un workflow pour poser sa première question.
 
-Galaris sépare trois rythmes de travail qui peuvent se relayer sans perdre leur contexte :
+L’application s’utilise sur ordinateur et mobile, avec une interface française ou anglaise,
+un thème clair ou sombre et une installation possible comme PWA. La navigation, la recherche,
+les notifications et les écrans de suivi gardent les opérations courantes accessibles.
 
-| Rythme | Usage | Contrôle apporté par Galaris |
-|---|---|---|
-| **Conversation** | question, échange court, orientation | agrégation des messages, historique durable, anti-boucle, appels LLM et effets inspectables |
-| **Task** | action, recherche, production d’un livrable | routage, effort, outils, plan éventuel, délégation, reprise, résultat et coûts persistés |
-| **Goal** | objectif de fond mené sur plusieurs cycles | propriétaire, référent, planning, verdicts, preuves, suivi riche, pause et déclenchement manuel |
+Pour les commandes d’installation et de mise à jour, suivre la [guide d’installation](admin/installation.md).
 
-Une conversation peut lancer une Task ou un Processus de fond puis répondre immédiatement avec sa
-référence. Une Task complexe peut devenir un plan de vraies sous-tâches et solliciter d’autres
-agents. Un Goal crée des cycles successifs jusqu’à réussite ou arrêt explicite.
+## Discuter avec un agent qui peut poursuivre le travail
 
-## Agents, modèles et runtimes
+Une conversation peut rester un échange simple ou devenir le point de départ d’une recherche,
+d’une analyse ou d’une production. On y joint des fichiers, utilise la dictée, envoie une note
+vocale et retrouve les documents, tâches et processus qui en sont issus. Un travail long peut
+continuer pendant que la discussion reprend.
 
-Chaque agent possède une identité stable, un rôle, des instructions, un niveau d’accès, un modèle,
-des skills et des connexions d’outils. Galaris conserve cette identité pendant
-les délégations et refuse qu’un appel modifie silencieusement l’agent qui exécute le travail.
+Cette séparation forme deux boucles complémentaires : la boucle conversationnelle entretient
+l’échange et son contexte ; la boucle de travail confie les tâches aux harnais d’exécution.
+Un traitement déjà défini peut aussi partir vers un moteur de processus, comme n8n.
 
-Deux runtimes partagent la même façade métier :
+Le texte n’est pas le seul canal : des appels vocaux sont possibles avec les ressources adaptées.
+Matrix, Nextcloud Talk, Telegram, WhatsApp et OneBot permettent également de rejoindre des canaux
+externes configurés. Les possibilités de fichiers, d’historique et de voix dépendent du canal.
 
-- le driver **interne Pydantic AI**, avec Dispatcher, Planner, streaming,
-  checkpoints d’outils et annulation sûre ;
-- le driver **Hermès**, utilisé comme runtime autonome dans un conteneur isolé par agent, avec
-  modèles Hermès ou modèles servis par Galaris et projection de la mémoire commune.
+## Constituer une équipe et déléguer réellement
 
-Les fournisseurs LLM sont des bridges remplaçables. OpenAI, Anthropic, Google, Mistral,
-OpenRouter, Ollama et de nombreux fournisseurs compatibles peuvent cohabiter. Des modèles distincts
-peuvent être affectés à l’exécution standard ou high, aux conversations rapides, au Planner, au
-Dispatcher, au Briefing, aux Goals, au Lab, à Dream, aux embeddings, aux médias et aux images.
+Chaque agent possède une identité durable, une mission, une personnalité, des compétences et des
+moyens d’action. On peut organiser des spécialistes dans des équipes réunissant humains et agents,
+puis leur donner les accès utiles à leur rôle.
 
-Les appels texte utilisent les profils SDK et les contraintes de l’endpoint pour le raisonnement,
-les plafonds et le sampling. Les extensions inconnues sont transmises ; seul un rejet explicite
-avant génération permet de retirer un réglage optionnel. Messages, outils, budgets et formats de
-sortie sont préservés. La [matrice des paramètres](dev/provider-parameters.md) est vérifiée avec
-des transports simulés, sans appel fournisseur payant.
+Pour préparer une étude, un agent peut solliciter un collègue chargé d’une recherche ou d’une revue.
+La contribution devient une tâche identifiable : on voit qui travaille, ce qui est attendu,
+les dépendances, les questions en suspens et le résultat. Un plan peut décomposer une demande
+complexe en plusieurs sous-tâches, puis rassembler leurs conclusions.
 
-## Orchestration durable et collaboration
+Les documents partagés forment le support commun de cette collaboration. Les agents ne doivent
+pas se contenter d’échanger des résumés successifs d’un livrable que personne ne peut retrouver.
 
-Une Task enregistre son objectif, l’agent affecté, le routage, l’effort, les tentatives, les appels
-LLM et outils, les processus liés, les sous-tâches et le résultat terminal. L’ordonnanceur utilise
-des leases persistées : un incident de processus ne fait pas disparaître le travail et une
-exécution bloquée peut être libérée explicitement.
+## Écrire avec les agents, puis réutiliser le savoir
 
-Le détail des Tasks et leur panneau Chat restaurent l’activité à l’ouverture et à la reconnexion :
-pause demandée ou effective, attentes, dernière tentative, prochain essai et progression bornée.
-Les nouvelles Tasks conservent la demande initiale, la provenance, les ressources et les reçus.
-`task_get` expose aussi les états actifs et terminaux ; un événement tardif ne remplace pas un résultat terminal.
+Rapports, notes, analyses et brouillons vivent dans une bibliothèque documentaire commune.
+L’humain peut ouvrir un document à côté du chat, le corriger et demander à l’agent d’enrichir
+le même contenu. Les sauvegardes et les versions permettent de suivre les contributions,
+de comparer les changements et de restaurer un état antérieur. Les conflits de modification
+restent explicites ; il ne s’agit pas d’une fusion des frappes en temps réel.
 
-Le Dispatcher choisit entre exécution directe et planification. Le Planner crée des étapes bornées
-avec livrables et critères de succès, puis synthétise le résultat. Le Briefing reste disponible
-comme mécanisme d’évaluation, mais son activation en production est suspendue. Les agents peuvent
-déléguer une sous-tâche ou attendre la réponse d’un collègue sans créer une boucle infinie.
+Le texte enrichi accueille tableaux, encadrés, images, pièces jointes et liens vers d’autres
+ressources. Dictée, lecture vocale, impression, PDF et archive HTML facilitent son utilisation
+au-delà du chat. Chacun classe les documents dans ses propres dossiers et choisit ses icônes,
+sans imposer ce rangement aux autres lecteurs.
 
-Le harnais interne checkpoint chaque effet MCP avant et après l’appel. Après une annulation ou une
-reprise, un résultat déjà obtenu peut être réutilisé au lieu de répéter aveuglément un effet externe.
+Ces documents sont aussi une **base de connaissance** : leur contenu, leurs références et leurs
+pièces jointes peuvent être retrouvés dans les recherches autorisées. Partager avec une personne,
+un agent ou une équipe rend le travail commun accessible sans le recopier partout.
 
-## Conversations texte et voix
+## Faire d’un document un outil utilisable
 
-Le journal Messenger est le point d’entrée canonique de tous les canaux. Le Messenger interne,
-Nextcloud Talk, Matrix, OneBot, Telegram et WhatsApp Business peuvent être actifs simultanément.
-Une réponse repart par la connexion et la conversation d’origine ; un nouveau message vers un
-autre canal exige une cible explicite. Le canal interne fournit des rooms privées ou de groupe,
-des fichiers, des notes vocales, une activité expurgée et des appels WebRTC ; ses rounds sont
-strictement isolés des Tasks.
+Un document peut contenir un formulaire, un calculateur, un graphique ou une petite application.
+L’agent écrit la page ; l’humain garde un texte explicatif éditable et accède au code par Source.
+On peut ainsi conserver une méthode et son outil de calcul dans le même espace documentaire.
 
-Les conversations texte courtes disposent de leur propre control plane : messages reçus,
-agrégations, rounds, tentatives, livraisons, appels LLM et erreurs sont visibles en temps réel. Le
-contrôleur répond directement ou crée une Task/Processus durable pour un travail asynchrone. Les
-réponses entre agents sont filtrées afin d’éviter les échanges automatiques sans fin.
+Des documents Dataset stockent les données JSON séparément. Plusieurs pages peuvent partager
+un référentiel, recueillir des réponses ou consulter les mêmes résultats. Par exemple, une équipe
+peut utiliser une page de saisie et une page de suivi autour d’un jeu de données commun.
 
-Pour la voix en direct, Galaris sait utiliser :
+Les droits sur la page, ceux sur les données et l’accord personnel autorisant l’application sont
+distincts. Les exports conservent une représentation statique du résultat affiché, utile pour
+transmettre ou archiver un état du travail.
 
-- un pipeline **STT → agent → TTS**, qui permet de composer librement les fournisseurs ;
-- une session **speech-to-speech** native, qui conserve la prosodie et réduit la latence lorsque
-  le fournisseur et la voix sélectionnés le permettent.
+## Retrouver le contexte au fil du temps
 
-Les appels Matrix et Nextcloud Talk sont suivis avec leurs tours, interruptions, transcriptions
-éventuelles, réponses et incidents. Les notes vocales reçues par les autres messageries suivent le
-parcours média canonique.
+La mémoire aide l’agent à retrouver des faits, des décisions et des connaissances utiles à la
+demande actuelle. La recherche combine mots, sens et relations entre les ressources, en respectant
+les droits et la validité des informations. Les contacts relient les échanges à leurs interlocuteurs ;
+les sujets rassemblent une activité dispersée entre conversations, tâches et documents.
 
-## Mémoire gouvernée et dossiers thématiques
+Dream utilise les périodes disponibles pour classer et consolider les connaissances. Il peut
+extraire les éléments durables d’un travail terminé, repérer doublons ou contradictions et,
+si on l’active, décrire des pièces jointes encore sans texte. L’apprentissage procédural peut
+également faire émerger des méthodes à partir de plusieurs expériences étayées.
 
-Galaris distingue la session récente de la mémoire durable. La session est reconstruite depuis le
-journal canonique et transmise de la même manière aux différents drivers. La mémoire durable est
-privée par défaut et associe à chaque élément :
+L’utilisateur conserve un regard sur cette mémoire : consultation, correction, partage, historique,
+graphe et oubli explicite. L’apprentissage et les analyses facultatives ne sont pas tous activés
+par défaut, et le rappel ne garantit pas de retrouver chaque information à chaque échange.
 
-- un propriétaire, un type et un rôle mémoire ;
-- des révisions, une provenance et des relations ;
-- des accès directs en lecture ou édition ;
-- des traces d’usage et un oubli définitif explicite.
+## Confier un objectif qui dure
 
-Le rappel combine recherche plein texte et similarité vectorielle lorsque le modèle d’embedding est
-configuré. Les ACL et bornes sont appliquées avant le classement ; en cas d’indisponibilité de
-l’index sémantique, le repli lexical est annoncé au lieu d’être masqué.
+Une tâche vise un résultat ; un Goal organise des cycles de travail autour d’un objectif de fond.
+On peut confier une veille ou un suivi régulier, définir des horaires, désigner un référent humain
+et consulter les résultats successifs. Le suivi et les documents produits restent liés à l’objectif.
 
-Les **documents de travail** utilisent du HTML sémantique versionné et un éditeur riche pour les notes,
-brouillons et livrables qui évoluent sur plusieurs Tasks. Les **dossiers thématiques** relient
-les souvenirs, tâches et conversations autour d’un même sujet global, indépendamment du canal ou
-du salon qui les a produits. Le graphe de mémoire permet d’explorer ces relations et leur période.
+À chaque cycle, Galaris examine le résultat pour continuer ou s’arrêter. L’agent peut interroger
+son référent lorsqu’une décision manque. L’humain peut suspendre, reprendre, terminer ou demander
+un cycle immédiat. Des calendriers peuvent aussi déclencher des tâches ou des processus à partir
+d’événements ou d’alarmes.
 
-La recherche utilise le titre, les mots-clés et le contenu courant ; les aperçus sont des extraits.
-Les résumés séparés et motifs libres de modification ont disparu, tandis que révisions, dates,
-auteurs, Tasks et sources restent traçables. La déduplication respecte les dates de validité.
+## Donner des moyens d’action concrets
 
-Le formulaire mémoire permet consultation, création, édition, saisie des mots-clés et sauvegarde
-sans fermeture. L’historique préserve le brouillon, reste accessible aux lecteurs et peut être
-rechargé après erreur. Les résultats distinguent documents et souvenirs, avec des relations traduites.
+Les outils couvrent la recherche web, la navigation interactive, les fichiers et, pour les agents
+équipés, une console Linux. Un agent peut consulter des sources, manipuler des ressources,
+travailler sur un dépôt, lancer une commande longue et vérifier un résultat dans le navigateur.
+Les URI permettent de retrouver les mêmes fichiers d’un outil à l’autre.
 
-Agents, Goals, cycles, contacts de messagerie et résultats de processus peuvent être projetés de
-façon idempotente dans cette mémoire sans remplacer leur source métier.
+Les compétences apportent des méthodes réutilisables ; les serveurs MCP connectés étendent les
+capacités. À l’inverse, Galaris peut exposer les outils autorisés d’un agent à un client MCP externe.
+Les processus n8n apportent des traitements métier réutilisables, suivis depuis leur lancement
+jusqu’à leur résultat.
 
-## Dream : entretien et apprentissage
+Le courrier complète ces moyens d’action : lire et rechercher des mails, traiter les pièces jointes,
+préparer une réponse et, si la connexion l’exige, attendre que l’humain approuve exactement ce qui
+sera envoyé. Les calendriers ajoutent disponibilités, recherche de créneaux et événements.
 
-Dream exploite uniquement la capacité de fond disponible et exécute un mécanisme à la fois. Il peut
-classer les sujets, extraire et consolider les souvenirs, relier les dossiers thématiques, projeter
-les processus et oublier les éléments devenus inactifs. Sa page de suivi expose en direct le
-mécanisme courant, le sujet, la phase, les tentatives et les éventuelles erreurs.
+## Travailler avec des contenus multimédias
 
-L’apprentissage va plus loin qu’un résumé de réponse. Il examine des preuves observables —
-tentatives, outils, sous-tâches, verdict Goal, corrections humaines et usages Memory — puis crée ou
-renforce une candidate dédiée à l'agent, y compris en parcourant progressivement les Tasks
-historiques. Chaque procédure possède un score et un journal de preuves positives ou négatives.
-Elle devient une skill injectée en plus des skills affectées seulement lorsque plusieurs Tasks
-distinctes confirment la même action — 3 par défaut, seuil réglable — et que sa note atteint le
-minimum configuré. Cette fonction est **désactivée par défaut** et sépare les modes d'observation et
-d'apprentissage ; son onglet est alors masqué et elle n'écrit aucun nœud dans Memory.
+Un enregistrement de réunion peut devenir un verbatim et une synthèse, puis un compte rendu que
+l’on corrige avec l’agent. Une vidéo YouTube disposant de sous-titres publics peut alimenter le même
+travail. Les visionneuses permettent d’examiner PDF, images, sons, vidéos, Markdown, code et plusieurs
+formats 3D sans transformer chaque consultation en téléchargement externe.
 
-## Outils et connexions
+Avec les modèles compatibles, les agents peuvent analyser des images, des sons et des vidéos,
+générer ou modifier une illustration et lancer une génération de musique, d’effets sonores ou de
+vidéo. Les productions longues sont suivies comme des processus ; leurs fichiers restent reliés
+au travail d’origine. Chaque fournisseur conserve ses capacités et ses limites.
 
-Les fonctions ne sont pas toutes envoyées au modèle à chaque tour. Galaris construit un catalogue,
-filtre d’abord selon les droits et connexions actives, puis charge à la demande les capacités
-pertinentes. Un administrateur peut désactiver une connexion complète ou seulement certaines de
-ses fonctions.
+## Choisir les modèles et les harnais selon le travail
 
-Les surfaces livrées couvrent notamment :
+Les profils regroupent les ressources de conversation, d’exécution et les usages spécialisés.
+Ils permettent de faire cohabiter plusieurs fournisseurs ou des modèles locaux. Les harnais
+assurent l’exécution : Galaris propose son harnais interne et des intégrations comme Hermès,
+Claude Agent, Codex ou DeepSeek Harness, avec leurs capacités propres.
 
-| Domaine | Capacités |
-|---|---|
-| **Web** | métarecherche SearXNG locale, navigateur Chromium interactif isolé, snapshots accessibles et captures visuelles bornées |
-| **Fichiers** | URI canoniques, providers connectés, transferts en flux et pièces jointes entrantes/sortantes |
-| **Médias** | transcription audio/vidéo, sous-titres YouTube publics, segmentation longue, verbatim et synthèse hiérarchique |
-| **Images** | génération, modification, description et transport par identifiants de fichiers |
-| **Console** | sessions SSH contrôlées, exécuteur embarqué et fichiers du home sans exposer les credentials au modèle |
-| **MCP** | outils natifs Galaris et serveurs distants, diagnostics de connexion, restrictions par fonction |
-| **Processus** | définitions personnelles, administration séparée, runs durables, événements, callbacks, annulation et bridge n8n |
-| **Organisation** | gestion spécialisée des agents, Goals, skills, Tasks et inspections LLM selon les droits accordés |
+Certaines décisions bornées — orienter une tâche, choisir un sujet, reconnaître une connaissance
+déjà couverte — peuvent utiliser un **modèle décisionnel**, comme JEV via OpenRouter. La rédaction
+reste confiée à un modèle texte. Cette distinction se retrouve dans les traces et les évaluations ;
+elle ne suppose pas qu’un modèle spécialisé soit toujours meilleur ou moins coûteux.
 
-Le navigateur utilise un sidecar Chromium partagé, mais chaque couple agent/Task reçoit un contexte
-isolé et éphémère. Il peut ouvrir toute URL HTTP(S) joignable depuis les réseaux du sidecar, y
-compris les services Docker, le réseau local et l’hôte via `host.docker.internal`, afin de produire
-des aperçus d’outils en cours de construction.
+Les profils peuvent également être utilisés depuis des clients de développement compatibles,
+avec des identifiants stables et un suivi des appels dans Galaris.
 
-## Fichiers, audio, vidéo et images
+## Comprendre ce qui s’est passé et mesurer les améliorations
 
-Les médias entrants sont bornés et conservent l’URI exacte du Tool qui les a reçus. Un consommateur
-peut les matérialiser dans un temporaire serveur nettoyé après l’appel, sans créer de nouvelle
-ressource ni modifier l’identité présentée au modèle. Les fichiers volumineux restent référencés
-par URI et ne sont pas copiés dans chaque message du modèle.
+Les vues d’activité montrent les tâches, étapes, délégations, appels de modèles et d’outils,
+attentes, résultats et erreurs. Elles permettent d’intervenir sur un travail en cours et de
+retrouver son historique après reconnexion. Les coûts et consommations restent qualifiés selon
+les informations réellement fournies ; les incidents disposent d’un dossier de diagnostic durable.
 
-`audio_transcribe` accepte un fichier audio, un fichier vidéo ou une URL YouTube publique. Pour un
-fichier local, Galaris extrait la première piste audio, la normalise, segmente les longues durées,
-conserve le verbatim et produit une synthèse hiérarchique. Pour YouTube, il récupère les sous-titres
-disponibles sans télécharger la vidéo ni appeler le STT. L’analyse et la génération d’images passent
-également par des modèles dédiés et le transport de fichiers commun.
+Le Lab transforme une difficulté observée en cas d’évaluation, ou prépare des cas synthétiques
+à relire. On peut comparer modèles, consignes ou paramètres, répéter les essais, séparer candidat
+et juge et confronter leurs résultats à une revue humaine. Des agents autorisés peuvent aussi
+conduire une campagne et déposer leur propre appréciation, distincte des autres évaluations.
 
-## Processus métier et n8n
+Cela permet de décider d’un changement sur des résultats examinables. Le Lab ne modifie pas
+automatiquement les réglages de production et un benchmark ne prouve pas tous les usages possibles.
 
-Une définition de processus décrit son entrée, son propriétaire et son moteur. Chaque lancement
-crée un run persistant avec statut, événements, sortie, erreur et liens vers les Tasks concernées.
-Le bridge n8n fournit clés d’idempotence, callbacks authentifiés et états terminaux immuables. Les
-processus personnels et leur administration globale utilisent des permissions distinctes.
+## Garder la maîtrise de son installation
 
-Un callback terminal conserve résultat, erreur et identité externe même si la réponse initiale
-arrive tardivement ou se perd. Les découvertes concurrentes convergent vers un run unique et
-refusent les collisions avec un autre workflow.
+L’auto-hébergement rassemble comptes, rôles, équipes, connexions et partage des ressources dans
+une administration commune. Les tâches et processus conservent leur état ; les mécanismes de
+reprise utilisent les preuves disponibles pour éviter de répéter aveuglément un effet externe.
+Une opération dont l’issue est inconnue peut nécessiter une décision humaine.
 
-## Lab IA et observabilité
+Les fonctions disponibles dépendent donc des droits, connexions et modèles configurés. Choisir
+un modèle local ne rend pas automatiquement locaux les autres services utilisés. L’interface
+permet de régler les usages et d’en suivre l’activité ; les sauvegardes, mises à jour et contrôles
+d’exploitation relèvent de l’administrateur.
 
-Le Lab IA sert à comprendre et comparer les mécanismes réellement utilisés par Galaris. Il peut
-importer une Task, un round de conversation ou un tour vocal dans un dataset, figer une référence,
-exécuter un modèle candidat et produire un jugement sémantique détaillé. Dispatcher, Briefing,
-Planner, exécuteurs et mécanismes Dream/Goal disposent de jeux de données séparés afin de ne pas
-mélanger des contrats différents.
+## Passer à l’usage
 
-Les runs sont persistés par cas, reprenables et analysables. Un score n’est jamais présenté comme
-une vérité absolue : dimensions, couverture, erreurs, similarité stricte et calibration du juge
-restent visibles.
-
-Dans l’exploitation quotidienne, les écrans de suivi temps réel regroupent Tasks, conversations,
-appels vocaux, activité LLM, processus et Dream. Les identifiants de run relient les appels et
-effets à leur origine. Les journaux applicatifs et traces Logfire complètent cette vue lorsqu’ils
-sont configurés.
-
-Un round qui réussit après reprise est présenté comme réussi ; ses erreurs antérieures restent
-dans l’historique. Les diagnostics API exposent détail, route et statut disponibles, et distinguent
-les erreurs réseau des délais dépassés.
-
-## Sécurité et maîtrise des données
-
-- déploiement Docker auto-hébergé avec PostgreSQL 17 et pgvector ;
-- RBAC par privilèges, rôles et affectations, appliqué dans l’API comme dans la navigation ;
-- secrets de connexion chiffrés et jamais relus en clair par l’API ;
-- second facteur TOTP facultatif, codes de secours à usage unique et verrouillage progressif des
-  connexions échouées ;
-- sessions PWA persistantes par refresh token rotatif, cookie protégé et révocation de famille ;
-- connexion explicite en attente de l’identité courante ; une erreur garde le formulaire ouvert,
-  et une réponse obsolète ne remplace pas le compte actuel ;
-- outils et fonctions explicitement autorisés par agent ;
-- approbations non transmissibles automatiquement aux agents délégués ;
-- workspaces, sessions navigateur et mémoires isolés par propriétaire ;
-- annulation, limites, idempotence et états terminaux pour réduire les doubles effets.
-
-Galaris reste une plateforme d’agents probabilistes : les traces et contrôles rendent le travail
-auditable, mais une action importante doit toujours être vérifiée au niveau approprié.
-
-## Expérience utilisateur et exploitation
-
-L’interface Vue/Quasar est bilingue français/anglais, compatible clair/sombre et installable en PWA
-sur Android et iPhone. Le parcours de bienvenue vérifie le modèle, le premier agent, ses outils et
-la messagerie. Les listes et tableaux de bord utilisent les droits courants et les flux actifs sont
-mis à jour en temps réel.
-
-Les sélecteurs d’agents et de sujets chargent leurs options à l’ouverture, préservent les valeurs
-existantes et permettent une reprise après erreur. Les filtres concernés écartent les réponses
-d’un contexte précédent. Les mises à jour PWA renouvellent le cache et rechargent les onglets en
-conservant la session ; sauvegarder les formulaires ouverts avant déploiement. Les mises à jour
-de production ordinaires réutilisent le cache Docker et préservent HTTPS ; `RELEASE_DIR`
-déploie les images qualifiées sans modification. DbAdmin conserve les erreurs bornées avec son verdict.
-
-`make validate` vérifie un instantané isolé incluant les changements non committés, avec empreinte
-et rapports dans `artifacts/validation/`, sans commit ni déploiement. `make tests-coverage` mesure
-toutes les sources backend, même non importées. Le seuil de **95 %** lignes et branches concerne
-le sous-ensemble critique ; des planchers par domaine et contrôles des branches critiques modifiées
-le complètent. Les scénarios fonctionnels et mutations couvrent reprises, concurrence, sessions,
-documents, Lab, médias, stockage, transferts et DbAdmin. Voir les [garanties fonctionnelles](dev/functional-tests.md)
-et le [guide de tests](dev/testing.md).
-
-Pour aller plus loin :
-
-- [guide utilisateur](user/README.md) ;
-- [installation et exploitation](admin/installation.md) ;
-- [guide administrateur](admin/README.md) ;
-- [guide développeur](dev/README.md) ;
-- [flux d’architecture](architecture/README.md) et
-  [décisions du projet](../../project/decisions/README.md).
+- [Guide utilisateur](user/README.md) : réaliser les actions dans l’interface.
+- [Guide administrateur](admin/README.md) : connecter les services et exploiter l’installation.
+- [Guide développeur](dev/README.md) : comprendre les contrats et étendre la plateforme.

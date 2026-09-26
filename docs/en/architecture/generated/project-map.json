@@ -628,7 +628,8 @@
           "back/app/conversation/inspection_service.py",
           "back/app/conversation/monitoring_service.py",
           "back/app/conversation/resource_facade.py",
-          "back/app/conversation/service.py"
+          "back/app/conversation/service.py",
+          "back/app/conversation/task_projection.py"
         ],
         "source": "app.conversation",
         "target": "app.connection"

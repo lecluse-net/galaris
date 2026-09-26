@@ -17,10 +17,12 @@ The `Makefile` remains authoritative. Standard installation: **`make install` â†
 | `start` | Start existing containers; call `update` if absent, incomplete or failed. |
 | `stop` | Stop the stack while preserving containers. |
 | `uninstall` | Remove project containers and networks; separately offer deletion of volumes, local Compose images and orphan containers (default: no). |
+| `uninstall FORCE` | Automatically accept all three confirmations: delete volumes and their data, local Compose images and orphan containers belonging to the project. |
 | `restart` | Run `stop`, then `start`. |
 | `restart-service` | Restart one service without rebuilding; `SERVICE` is required. |
 | `status` | Display container status; optionally filter with `SERVICE`. |
 | `update` | Regenerate documentation, build and deploy existing sources, then refresh the documentation index; only `VERSION` triggers fetching a Git tag or branch. Accepts `RELEASE_DIR` outside dev, without Git, using the bundle's packaged documentation. |
+| `update VERSIONS` | List all tags (highest versions first), then all branches alphabetically, from the configured Git remote, without deploying or modifying local sources. |
 | `logs` | Follow all logs. |
 | `logs-back`, `logs-front`, `logs-search` | Follow the selected service's logs. |
 | `check-search` | Probe sources and degradation using four real public queries; opt-in diagnostic, separate from the healthcheck. |
@@ -36,6 +38,8 @@ start triggers at most one `update GIT_UPDATE=0`. `restart-service` restarts one
 `uninstall` asks separately before deleting volumes, local images (`--rmi local`) and orphan
 containers of the project. Explicitly tagged images and shared cache are preserved; no global
 `prune` is run. `clean` deletes volumes without confirmation.
+`make uninstall FORCE` automatically accepts every proposed deletion without user input,
+including permanent deletion of volume data.
 
 ```bash
 make status

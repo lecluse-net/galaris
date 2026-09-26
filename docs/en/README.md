@@ -7,12 +7,13 @@ not necessary to understand the architecture to use Galaris, nor to know the cod
 
 ## Discover the Platform
 
-[Browse all features](features.md)
+[Discover Galaris in use](features.md)
 
-This overview connects use cases to the capabilities actually delivered: agents and runtimes,
-text and voice conversations, durable Tasks and Goals, Tools, governed memory, thematic folders,
-Dream, business processes, AI Lab, security, and operations. It also indicates which features
-require a model, bridge, or specific activation.
+This tour shows how capabilities combine in everyday work. The guides below explain the actions
+to perform and remain the home of their respective procedures.
+
+The [exhaustive functional catalogue](reference/functional-catalogue.md) remains a separate reference,
+particularly for preparing the product website: detailed capabilities, conditions, limits and inventories.
 
 ## 1. User and Beginner
 
@@ -47,7 +48,7 @@ This path covers installation and operations:
 
 - Docker, `.env`, secrets, the PostgreSQL database, and Atlas updates;
 - LLM providers and the models used by each function;
-- activation of the internal and Hermes drivers;
+- execution harness selection and configuration;
 - messaging, Tools, durable Goals, Skills, multimedia and YouTube transcription, n8n, voice,
   permissions, and accounts;
 - hybrid memory, Dream, learning, isolated browser, and real-time supervision;

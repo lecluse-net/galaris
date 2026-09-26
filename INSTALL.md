@@ -1,90 +1,79 @@
-<p align="right"><a href="docs/en/admin/installation.md">English</a> · <strong>Français</strong></p>
+# Galaris installation and operations
 
-# Installer Galaris
+Requirements: Linux, Docker with Compose, Git, GNU Make, OpenSSL and `ss` (`iproute2`).
+Python, Node.js and PostgreSQL run in Docker. Run all commands from the `galaris` directory.
 
-**`make install` → personnaliser si besoin `.env` et `compose.override.yaml` → `make start`.**
-
-## Prérequis
-
-Un hôte Linux avec Docker démarré, le plugin Docker Compose, Git, GNU Make et OpenSSL.
-Python, Node.js et PostgreSQL sont fournis dans les conteneurs.
-
-Récupérez les sources depuis le dépôt officiel :
+## INSTALL
 
 ```bash
 git clone https://github.com/lecluse-net/galaris.git galaris
 cd galaris
-```
-
-## 1. Préparer l’installation
-
-```bash
 make install
 ```
 
-La commande propose d’inclure PostgreSQL (**oui par défaut**), crée `.env`, prépare
-la configuration Docker et génère les secrets.
-Elle préserve les réglages existants. La construction et le démarrage auront lieu à l’étape 3.
-Pour automatiser une installation avec une base externe : `make install POSTGRES_MODE=external`.
-
-## 2. Personnaliser la configuration si besoin
-
-La configuration générée suffit pour une installation locale ; cette étape est facultative.
-Modifiez `.env` uniquement si besoin. Exemple de configuration locale :
-
-```dotenv
-APP_HOST=http://localhost:8484
-APP_ENV=prod
-TZ=Europe/Paris
-```
-
-- **`APP_HOST`** : l’adresse utilisée pour ouvrir Galaris. Pour un serveur, indiquez votre URL
-  publique, par exemple `https://galaris.example.org`, et configurez votre proxy HTTPS vers
-  le port 8484. Cette variable ne crée ni le domaine ni le certificat.
-- **`TZ`** : votre fuseau horaire.
-- Gardez les autres valeurs par défaut, notamment `POSTGRES_MODE=embedded`, et les secrets générés.
-
-Par défaut, `compose.postgres.yaml` fournit la base de données. Avec `POSTGRES_MODE=external`,
-ce fichier n’est pas chargé : renseignez `POSTGRES_HOST`, `POSTGRES_PORT`, `POSTGRES_DB`,
-`POSTGRES_USER` et `POSTGRES_PASSWORD` pour votre base PostgreSQL avec pgvector.
-Si besoin, personnalisez les ports, volumes et réseaux Docker dans `compose.override.yaml`.
-Si vous changez le port exposé, adaptez aussi l’adresse dans `APP_HOST`.
-Les fournisseurs IA et leurs clés se configurent ensuite dans l’interface.
-
-## 3. Démarrer Galaris
+> **Optional configuration — before starting:** edit `.env` and `compose.override.yaml`
+> now if you need to customize the public URL, ports, database or other settings.
+> Otherwise, keep the defaults: embedded PostgreSQL and port **8484**.
 
 ```bash
 make start
 ```
 
-Au premier démarrage, la commande construit les images avec votre configuration, démarre les services, initialise
-la base de données et attend leur disponibilité. Le premier lancement peut prendre plusieurs minutes.
-Ensuite, `make start` permet de relancer les conteneurs existants.
+The first start builds images and initializes the database; allow a few minutes.
 
-Ouvrez l’adresse définie dans `APP_HOST` — <http://localhost:8484> avec les valeurs ci-dessus.
-Créez votre compte : le premier utilisateur devient administrateur. Le parcours de bienvenue
-vous guide pour connecter un modèle et créer votre premier agent.
+1. Open <http://localhost:8484> (or your configured address).
+2. Click **Log in** and create the first administrator account.
+3. In **Providers**, select **OpenRouter**, enter your API token and save.
+4. Open **Chat**, select **Galaris** and send a message.
 
-## Ensuite
+**The agent, models and default profile are preconfigured.** Only your OpenRouter token
+is needed after account creation.
 
-Pour mettre à jour la branche courante, récupérez les sources puis déployez-les :
+## UPDATE
+
+Update the current branch:
 
 ```bash
 git pull --ff-only
 make update
 ```
 
-Ou récupérez et déployez un tag ou une branche en une commande (remplacez `v1.2.3` par la référence souhaitée) :
+Or list available tags and branches, then deploy your chosen reference:
 
 ```bash
-make update VERSION=v1.2.3
+make update VERSIONS
+make update VERSION=<reference>
 ```
 
-`make update` reconstruit les images, synchronise la base et attend la disponibilité des services.
-Sans `VERSION`, elle utilise les sources présentes sans récupération Git. Utilisez-la aussi après
-une modification de `.env` ou de `compose.override.yaml`.
+After configuration changes, run `make update` to apply them.
 
-Si le démarrage échoue, consultez `make logs-back` ou `make logs`.
+## UNINSTALL
 
-[Configuration avancée et exploitation](docs/fr/admin/README.md) ·
-[Guide utilisateur](docs/fr/user/README.md) · [Toutes les commandes Make](docs/fr/dev/make-commands.md)
+Remove Galaris containers and networks, choosing which additional resources to delete:
+
+```bash
+make uninstall
+```
+
+To accept all cleanup options automatically:
+
+```bash
+make uninstall FORCE
+```
+
+**FORCE permanently deletes Compose-managed volumes and their data**, local Compose images
+and orphan containers. Configuration files, host-mounted directories and external databases
+or volumes are preserved.
+
+## OPERATIONS
+
+Stop services without deleting data, then start them again when needed:
+
+```bash
+make stop
+make start
+```
+
+View service logs with `make logs`.
+
+See the [detailed installation guide](docs/en/admin/installation.md) for advanced configuration.

@@ -2,7 +2,11 @@
 
 # Install Galaris
 
-**`make install` → customize `.env` and `compose.override.yaml` if needed → `make start`.**
+**Clone the repository → `make install` → `make start` → enter your OpenRouter token
+in Providers → chat with Galaris.**
+
+On a fresh installation, the models and default profile are preconfigured, and the
+**Galaris** agent is created with the first administrator account.
 
 ## Prerequisites
 
@@ -82,14 +86,23 @@ has failed or does not become ready, it attempts one full update. Docker access 
 configuration inspection errors stop the command.
 Recovery uses the sources already present: `start` never changes the Git version.
 
-Open the address set in `APP_HOST` — <http://localhost:8484> with the values above.
-Click **Log in**: while no user exists, this button opens registration for the first
-administrator account. Afterwards it opens the usual login form. Onboarding guides you
-through connecting a model and creating your first agent.
+## 4. Enter the OpenRouter token and start chatting
 
-On a fresh database, **OpenRouter** and nine models are already configured in the
-**Défaut** profile. Open **AI Models**, enter your API key in the OpenRouter provider,
-then save. Galaris ships no key or account.
+1. Open the address set in `APP_HOST` — <http://localhost:8484> with the values above.
+2. Click **Log in** to create the first administrator account. While no user exists,
+   this button opens registration; afterwards it opens the usual login form.
+   The **Galaris** agent is created automatically for this first administrator.
+3. Open **Providers** (`/llm?tab=providers`) and select **OpenRouter**.
+4. Enter your **OpenRouter token / API key**, then save.
+5. Open **Chat** (`/chat`), choose **Galaris** and send your first message.
+
+**Galaris is ready to chat: your OpenRouter token is the final setting needed.**
+On a fresh database, the **OpenRouter** provider, nine models and the **Défaut** profile
+are already configured; the Galaris agent uses that profile. You can customize this
+configuration later. Use the token from your own OpenRouter account; Galaris ships
+no OpenRouter key or account.
+
+### Bundled configuration
 
 All four text tiers use DeepSeek V4.1 Flash with reasoning efforts `none`, `low`,
 `medium` and `high`. The profile also proposes GPT 5.4 Nano for documents, Nemotron 3
@@ -120,6 +133,11 @@ Enter, refusal or no input preserves each optional resource. Images with explici
 including PostgreSQL and search, and shared build cache are preserved. No global `prune`
 is run. Configuration, host-mounted directories and external databases or volumes are
 preserved. If volumes are retained, a later `make start` reuses their data.
+
+`make uninstall FORCE` automatically answers **yes to all three confirmations**, without
+reading user input. This permanently deletes volumes and their data, along with the
+project's local Compose images and orphan containers.
+
 `make clean` also removes volumes: this command is destructive.
 
 To update the current branch, fetch the sources and deploy them:
@@ -134,6 +152,16 @@ Or fetch and deploy a specific tag or branch in one command (replace `v1.2.3` wi
 ```bash
 make update VERSION=v1.2.3
 ```
+
+To list available targets before choosing one:
+
+```bash
+make update VERSIONS
+```
+
+This queries the configured Git remote and lists all tags (highest versions first), then
+all branches alphabetically. It does not modify local sources or start a deployment, and
+works before `make install` or with local changes. A Git checkout and remote access are required.
 
 Without `VERSION`, no Git fetching or selection takes place: existing sources are used,
 including local changes, detached tags or branches without an upstream.

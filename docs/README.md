@@ -9,6 +9,7 @@ relative path to switch languages from any page.
 Les deux arborescences linguistiques ont la même structure. Choisissez une langue ci-dessus, puis
 conservez le même chemin relatif pour changer de langue depuis n’importe quelle page.
 
-Le [catalogue fonctionnel détaillé en français](catalogue-fonctionnel-fr.md) est une référence
-complémentaire distincte des synthèses traduites. The detailed catalogue is a French-language
-reference; both localized feature tours link to it.
+Each document has a distinct role: repository READMEs introduce the product; feature tours explain
+combined uses; guides own procedures; architecture pages explain contracts. The standalone functional
+catalogue under each language's `reference/` directory is the exhaustive inventory for product-site
+preparation. Keep detailed capability coverage there without scattering catalogue links across guides.

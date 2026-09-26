@@ -1,5 +1,5 @@
 <p align="right">
-  <strong>English</strong> · <a href="README-fr.md">Français</a>
+  <strong>English</strong> · <a href="README-fr.md">Français</a> · <a href="README-zh.md">简体中文</a>
 </p>
 
 <p align="center">
@@ -16,7 +16,7 @@
 </p>
 
 <p align="center">
-  <a href="#quick-start"><strong>Launch Galaris</strong></a> ·
+  <a href="INSTALL.md"><strong>Launch Galaris</strong></a> ·
   <a href="#what-galaris-delivers">Explore the platform</a> ·
   <a href="docs/en/features.md">Full feature tour</a> ·
   <a href="docs/en/README.md">Documentation</a>
@@ -48,10 +48,31 @@ systems, recover from failures, and build governed knowledge from completed work
 | Ephemeral chat | Text and voice conversations with durable history, live supervision and background-task handoff |
 | One-shot answers | Persisted tasks, multi-step plans, delegation, retries, cancellation, safe checkpoints and recovery |
 | Rebuilt context | Shared session context plus governed long-term memory, revisions, provenance, ACLs and hybrid recall |
-| Scattered notes | Collaborative working documents and global thematic dossiers that connect knowledge across channels |
+| Scattered notes | A living knowledge base built from documents coauthored by people and agents, organized into thematic dossiers |
 | Static agents | Optional Dream maintenance that consolidates memories and learns evidence-backed experience from outcomes |
 | Opaque automation | Inspectable LLM/tool traces, process runs, costs, failures and reproducible AI Lab benchmarks |
-| One provider’s ecosystem | Internal Pydantic AI or Hermès runtimes, provider bridges, MCP tools and n8n behind one control plane |
+| One provider’s ecosystem | Internal or external task harnesses, provider bridges, MCP tools and processes such as n8n |
+
+### Under the hood
+
+1. **Two complementary agent loops** — keep talking with your agent while it manages tasks
+   and processes in the background.
+2. **Agents that collaborate** — delegate subtasks to other agents, track their progress
+   and build on their results.
+3. **Documents coauthored by people and agents** — create, review and enrich documents
+   together to build a lasting knowledge base.
+4. **Memory that maintains continuity** — recall context, consolidate knowledge and learn
+   from experience through Dream.
+5. **Specialized models for decisions** — combine generative LLMs with models such as Jev
+   to route tasks and organize knowledge.
+6. **Work that survives interruptions** — persist tasks, resume execution and track
+   attempts through to the result.
+7. **Observable and evaluable AI** — inspect decisions, calls and costs; compare models
+   and mechanisms in the Lab.
+8. **An open architecture under your control** — self-hosting, a choice of models and
+   harnesses, MCP tools, n8n workflows and multiple communication channels.
+9. **Accessible setup and operation** — simple Docker installation, a preconfigured app
+   and everyday operation through a graphical interface designed for ease of use.
 
 ### Turn complex work into a durable operation
 
@@ -63,15 +84,16 @@ attempts, process runs and deliverables remain linked and inspectable.
 ### Make every conversation actionable
 
 Agents can respond through the web app, the Android/iOS PWA, Matrix, Nextcloud Talk, OneBot,
-Telegram and WhatsApp Business. Short exchanges use a dedicated conversation control plane that
-aggregates bursts and prevents reply loops; real work becomes a durable Task or Process without
-blocking the conversation. Live voice supports both a composable STT → agent → TTS pipeline and
-native speech-to-speech providers where configured.
+Telegram and WhatsApp Business. The conversation loop aggregates bursts, prevents reply loops
+and maintains the thread of the discussion. It can hand tasks to execution harnesses or start
+processes such as n8n workflows, then track their results without blocking the conversation.
+Live voice supports both a composable STT → agent → TTS pipeline and native speech-to-speech
+providers where configured.
 
 ### Build knowledge instead of losing context
 
 Galaris combines recent conversation context with private, governed memory. Agents can search
-lexically or semantically, maintain collaborative Markdown documents, preserve provenance and
+lexically or semantically, maintain collaborative working documents, preserve provenance and
 organize knowledge into thematic dossiers independent of a single room. Dream can use idle time to
 deduplicate and consolidate memories, then retain lessons only when task evidence supports them.
 
@@ -80,6 +102,12 @@ deduplicate and consolidate memories, then retain lessons only when task evidenc
 The AI Lab turns real Tasks, text rounds and voice turns into versioned datasets. Benchmark the
 Dispatcher, Briefing, Planner, Task/Conversation/Voice executors and Dream/Goal mechanisms with
 semantic rubrics, frozen cases, resumable runs and explicit judge diagnostics.
+
+## Specialized models for decisions
+
+Galaris combines generative LLMs with **decision models such as [Jev](https://openrouter.ai/blog/insights/what-is-jev/)**
+to route tasks, classify topics and select information worth remembering.
+Choices are constrained, validated and traceable.
 
 ## Built-in action surface
 
@@ -102,76 +130,59 @@ rights.
 
 ## Quick start
 
-Prerequisites: Docker with Compose, GNU Make, Git and OpenSSL.
+**Getting started is very simple: Galaris runs in Docker and comes preconfigured.**
+Everyday configuration and operation happen through a graphical interface designed
+for simplicity and ease of use.
 
-Clone the official repository:
+Follow [INSTALL.md](INSTALL.md) for a short guide to installation, your first chat,
+updates, stopping and starting services, and uninstallation.
 
-```bash
-git clone https://github.com/lecluse-net/galaris.git galaris
-cd galaris
-make install
+## Two agent loops, collaborative work
+
+Galaris connects two complementary agent loops:
+
+- **The conversation loop** talks with you, relies on memory to maintain context and recall
+  useful knowledge, uses authorized tools and follows ongoing work. It can hand a task to
+  a harness or start a process such as an n8n workflow.
+- **The task execution loop** runs through the selected internal or external harness. The
+  agent reasons, acts, checks results and can **delegate subtasks to other agents**, then
+  use their results to continue its work.
+
+**People and agents coauthor documents**, review them and build on each other's work.
+These documents form a **living knowledge base**, with sources, revisions and access rights.
+The conversation stays linked to this shared work, while memory provides continuity
+across exchanges.
+
+```mermaid
+flowchart TD
+    channels["Web · PWA · API · Messaging channels"] <--> conversation["Conversation loop"]
+    memory[("Long-term memory<br/>Context · Memories · Knowledge")] <--> conversation
+
+    subgraph collaboration["Collaboration between people and agents"]
+        tasks["Agent responsible for the task<br/>Execution loop · Internal or external harness"]
+        peers["Other agents<br/>Subtasks · Execution harnesses"]
+        documents["Shared documents · Knowledge base<br/>Coauthoring · Review · Revisions · Deliverables"]
+        humans["People · Graphical interface"] <--> documents
+        tasks -->|Delegate subtasks| peers
+        peers -->|Results| tasks
+        tasks <--> documents
+        peers <--> documents
+    end
+
+    conversation -->|Assign a task| tasks
+    tasks -->|Progress and results| conversation
+    conversation <--> documents
+    conversation -->|Start a process| processes["Processes · n8n and other workflows"]
+    processes -->|Results| conversation
+    conversation <--> tools["Authorized tools · MCP · Web · Files"]
+    tasks <--> tools
+    peers <--> tools
 ```
 
-The generated configuration is ready for a local installation. Customize it only if needed:
-
-- `.env`: Galaris address (`APP_HOST`), time zone (`TZ`) and application settings;
-- `compose.override.yaml`: Docker ports, volumes and networks. If you change the exposed port,
-  update `APP_HOST` accordingly.
-
-Keep the generated secrets, then start Galaris:
-
-```bash
-make start
-```
-
-Open the address set in `APP_HOST` (<http://localhost:8484> by default).
-The first account becomes the administrator. The onboarding journey
-then guides you through connecting a model, creating an agent, granting tools and adding a
-messaging channel.
-
-On first start, `make start` builds images, starts services, initializes the database and waits
-for readiness. Use it again to start existing containers.
-
-To update the current branch, fetch the sources and deploy them:
-
-```bash
-git pull --ff-only
-make update
-```
-
-Or fetch and deploy a specific tag or branch in one command (replace `v1.2.3` with the desired reference):
-
-```bash
-make update VERSION=v1.2.3
-```
-
-`make update` rebuilds images, synchronizes the database and waits for service readiness.
-Without `VERSION`, it uses existing sources without fetching Git changes. Use it after editing
-`.env` or `compose.override.yaml` too.
-
-No host-level Python, Node.js or PostgreSQL installation is required. For a production deployment,
-read the [installation and operations guide](docs/en/admin/installation.md) before exposing the instance.
-
-## One control plane, the whole AI stack
-
-```text
-Web · PWA · API · Matrix · Nextcloud · OneBot · Telegram · WhatsApp
-                              │
-                              ▼
-                    GALARIS CONTROL PLANE
-       identity · RBAC · conversations · tasks · goals · processes
-          planning · delegation · recovery · approvals · traces
-                 memory · topics · Dream · evaluation
-                              │
-             ┌────────────────┼─────────────────┐
-             ▼                ▼                 ▼
-       Pydantic AI         Hermès          MCP · n8n · files
-      internal agents   external runtime   browser · media · SSH
-             └────────────────┴─────────────────┘
-                              │
-                              ▼
-              cloud or local models · your infrastructure
-```
+Tasks and processes run in the background while the conversation remains available.
+Galaris preserves states, attempts, traces and recovery options. Each agent accesses memory,
+documents and tools according to its permissions; sharing enables collaboration.
+Harnesses provide the execution capability within this architecture.
 
 Galaris provides native bridges for major model ecosystems—including OpenAI, Anthropic, Google,
 Mistral, OpenRouter, Ollama and other compatible providers—without making provider choice the
@@ -181,7 +192,7 @@ architecture of your agents.
 
 - [Complete feature tour](docs/en/features.md)
 - [French product overview](README-fr.md)
-- [Installation and operations](docs/en/admin/installation.md)
+- [Installation and operations](INSTALL.md)
 - [Documentation portal](docs/en/README.md)
 - [User guide](docs/en/user/README.md)
 - [Administrator guide](docs/en/admin/README.md)

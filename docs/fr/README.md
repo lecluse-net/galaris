@@ -8,12 +8,13 @@ le code pour l’administrer.
 
 ## Découvrir la plateforme
 
-[Parcourir toutes les fonctionnalités](features.md)
+[Découvrir les usages de Galaris](features.md)
 
-Cette vue d’ensemble relie les usages aux capacités réellement livrées : agents et runtimes,
-conversations texte et voix, tâches et objectifs durables, outils, mémoire gouvernée, dossiers
-thématiques, Dream, processus métier, Lab IA, sécurité et exploitation. Elle signale aussi les
-fonctions qui demandent un modèle, un bridge ou une activation spécifique.
+Ce tour montre comment les capacités se combinent dans le travail quotidien. Les guides ci-dessous
+expliquent les actions à réaliser ; ils conservent chacun leurs procédures.
+
+Le [catalogue fonctionnel exhaustif](reference/functional-catalogue.md) reste une référence à part,
+notamment pour préparer le site web : capacités détaillées, conditions, limites et inventaires.
 
 ## 1. Utilisateur et néophyte
 
@@ -48,7 +49,7 @@ Ce parcours couvre l’installation et l’exploitation :
 
 - Docker, `.env`, secrets, base PostgreSQL et mises à jour Atlas ;
 - fournisseurs LLM et modèles utilisés par chaque fonction ;
-- activation des drivers interne et Hermès ;
+- sélection et configuration des harnais d’exécution ;
 - messageries, outils, objectifs durables, skills, transcription multimédia et YouTube, n8n, voix,
   permissions et comptes ;
 - mémoire hybride, Dream, apprentissage, navigateur isolé et supervision temps réel ;

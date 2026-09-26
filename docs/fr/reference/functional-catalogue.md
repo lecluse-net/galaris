@@ -1,4 +1,4 @@
-<p align="right"><a href="fr/features.md">Synthèse française</a> · <a href="en/features.md">English overview</a></p>
+<p align="right"><strong>Français</strong> · <a href="../../en/reference/functional-catalogue.md">English</a></p>
 
 # Galaris — catalogue détaillé des fonctionnalités et des concepts
 
@@ -12,7 +12,8 @@ Ce catalogue décrit les fonctionnalités présentes dans le dépôt au **25 sep
 les fonctions destinées aux agents, les écrans d’administration et les mécanismes de fond. Il est
 organisé par usages, puis complété par un inventaire des fonctions MCP et une correspondance avec
 **tous les modules déclarés**. Les sources de chaque domaine sont indiquées pour rendre la couverture
-vérifiable et faciliter les mises à jour.
+vérifiable et faciliter les mises à jour. Il constitue la référence exhaustive pour préparer le site web
+du produit ; les guides plus courts ne remplacent pas cet inventaire.
 
 « Disponible » signifie implémenté : l’accès effectif dépend des droits, de l’activation du module,
 des connexions, du modèle et, pour un service externe, du compte configuré. Ce catalogue se fonde
@@ -25,7 +26,7 @@ nouveautés dans leurs sections métier, leurs conditions de disponibilité et l
 
 Les inventaires couvrent **183 fonctions MCP natives, 71 modules backend et 36 modules frontend**.
 Les fonctionnalités réalisées restent distinctes des intentions du
-[registre des plans](../project/plans/README.md) ; les contrôles de
+[registre des plans](../../../project/plans/README.md) ; les contrôles de
 qualité figurent dans [l’exploitation](#exploitation).
 
 ## Sommaire
@@ -193,11 +194,11 @@ Les vérifications de mise à jour sont réessayées même si l’indicateur ré
 d’identité, d’agents et de privilèges mutualisent les demandes concurrentes et ignorent les
 réponses d’une ancienne session pour éviter les rafales de requêtes et les remplacements tardifs.
 
-Sources : [guide utilisateur](fr/user/README.md), [PWA](fr/user/pwa.md),
-[onboarding](../back/app/onboarding/), [shell](../front/app/index/),
-[aides par compte](../back/core/user/help_service.py), [navigation](fr/user/navigation.md),
-[carte des menus](fr/architecture/generated/navigation.md),
-[attente HTTP](../front/core/apiWaiting.test.mjs).
+Sources : [guide utilisateur](../user/README.md), [PWA](../user/pwa.md),
+[onboarding](../../../back/app/onboarding/), [shell](../../../front/app/index/),
+[aides par compte](../../../back/core/user/help_service.py), [navigation](../user/navigation.md),
+[carte des menus](../architecture/generated/navigation.md),
+[attente HTTP](../../../front/core/apiWaiting.test.mjs).
 
 <a id="comptes"></a>
 ## 3. Comptes, rôles et équipes
@@ -254,8 +255,8 @@ complémentaires : elles ne donnent pas automatiquement tous les droits d’admi
 Les appels vocaux natifs utilisent leur privilège spécifique `CHAT_CALL` dans une conversation
 personnelle ; les règles d’équipes ne doivent pas être interprétées comme leur seul contrôle.
 
-Sources : [comptes](../back/core/user/router.py), [autorisations](../back/core/authorize/router.py),
-[équipes](fr/user/teams.md), [contrat des équipes](../back/core/team/contracts.py).
+Sources : [comptes](../../../back/core/user/router.py), [autorisations](../../../back/core/authorize/router.py),
+[équipes](../user/teams.md), [contrat des équipes](../../../back/core/team/contracts.py).
 
 <a id="agents"></a>
 ## 4. Identité et gestion des agents
@@ -307,10 +308,10 @@ le recréent pas après renommage ou suppression dans l’application. Si le cod
 déjà, un suffixe permet de créer la proposition sans modifier l’agent préexistant. L’assistant
 exige toujours un modèle utilisable et les connexions nécessaires pour agir.
 
-Sources : [schémas Agent](../back/app/agent/schemas.py),
-[API Agent](../back/app/agent/router.py), [interface Agent](../front/app/agent/),
-[initialisation](../back/app/agent/defaults.py),
-[garanties de personnalisation](../back/app/agent/tests/test_default_agent.py).
+Sources : [schémas Agent](../../../back/app/agent/schemas.py),
+[API Agent](../../../back/app/agent/router.py), [interface Agent](../../../front/app/agent/),
+[initialisation](../../../back/app/agent/defaults.py),
+[garanties de personnalisation](../../../back/app/agent/tests/test_default_agent.py).
 
 <a id="modeles"></a>
 ## 5. Modèles IA, profils et fournisseurs
@@ -405,7 +406,7 @@ génération peut autoriser le retrait du réglage optionnel concerné, puis un 
 Cette négociation ne retire ni messages, ni outils, ni budget, ni format de sortie ; un timeout,
 un quota ou un flux partiel ne déclenche pas ce retrait. Les incompatibilités fonctionnelles
 restent des erreurs explicites. L’activité conserve l’effort demandé même si sa valeur est
-traduite. La [matrice des paramètres](fr/dev/provider-parameters.md) décrit les contrats vérifiés
+traduite. La [matrice des paramètres](../dev/provider-parameters.md) décrit les contrats vérifiés
 par des transports simulés, sans appel facturable aux services externes.
 
 ### Décisions spécialisées et repli gouverné
@@ -439,10 +440,10 @@ pas de délai propre à Décision imposé par défaut ; les échéances explicit
 restent appliquées. Le gain de qualité, de coût ou de rapidité se mesure dans le Lab : une décision
 suivie d’une rédaction peut ajouter un appel.
 
-Sources : [décisions par profil](../back/app/llm/profile_decisions.py),
-[inférence spécialisée](../back/app/llm/decision_service.py),
-[garanties des workflows](../back/tests/test_decision_workflows.py),
-[configuration initiale](../back/app/llm/initial_configuration.py).
+Sources : [décisions par profil](../../../back/app/llm/profile_decisions.py),
+[inférence spécialisée](../../../back/app/llm/decision_service.py),
+[garanties des workflows](../../../back/tests/test_decision_workflows.py),
+[configuration initiale](../../../back/app/llm/initial_configuration.py).
 
 ### Fournisseurs présents dans le dépôt
 
@@ -467,7 +468,7 @@ Sources : [décisions par profil](../back/app/llm/profile_decisions.py),
 | **Ollama** | Modèles locaux, découverte et gestion des modèles. |
 | **models.dev** | Métadonnées de modèles ; ce n’est pas un moteur d’exécution. |
 
-Les intégrations sont détaillées dans les [bridges fournisseurs](fr/architecture/flows/llm-provider-bridges.md).
+Les intégrations sont détaillées dans les [bridges fournisseurs](../architecture/flows/llm-provider-bridges.md).
 Les capacités commerciales, quotas et modèles disponibles restent ceux du compte externe configuré.
 
 ### Utiliser Galaris comme passerelle de modèles
@@ -504,8 +505,8 @@ un titulaire valide et une authentification utilisable. Une erreur ou une fenêt
 signalée comme indisponible, sans fabriquer un quota de remplacement. Cette vue ne constitue
 ni un budget par agent ni une mesure de la facture des modèles API.
 
-Sources : [lecture des quotas](../back/bridge/openai/codex_quota.py),
-[contrôles et erreurs](../back/bridge/openai/tests/test_quota.py).
+Sources : [lecture des quotas](../../../back/bridge/openai/codex_quota.py),
+[contrôles et erreurs](../../../back/bridge/openai/tests/test_quota.py).
 
 ### API publiques fondées sur les profils
 
@@ -557,10 +558,10 @@ reprend explicitement le modèle choisi ; cela ne crée aucun repli implicite c�
 L’utilisateur fusionne ces extraits avec sa configuration locale. Le configurateur permet de
 réessayer un chargement échoué et signale l’absence de modèles disponibles.
 
-Sources : [API par profil](fr/user/profile-api.md), [guide Codex](fr/user/codex.md),
-[guide Claude Code](fr/user/claude-code.md),
-[garanties des passerelles](../back/tests/test_profile_gateway.py),
-[configurations client](../front/browser-tests/client-config.spec.mjs).
+Sources : [API par profil](../user/profile-api.md), [guide Codex](../user/codex.md),
+[guide Claude Code](../user/claude-code.md),
+[garanties des passerelles](../../../back/tests/test_profile_gateway.py),
+[configurations client](../../../front/browser-tests/client-config.spec.mjs).
 
 ### Inférences durables : lancer, suivre et contrôler une requête
 
@@ -594,16 +595,16 @@ préservées pour la relecture.
 La préparation des traces volumineuses ne conserve plus le verrou de finalisation des appels :
 le journal peut continuer à enregistrer la progression et renouveler le lease pendant cette
 préparation. Cette garantie de concurrence est couverte par les
-[tests du cycle d’inférence](../back/tests/test_inference_lifecycle.py).
+[tests du cycle d’inférence](../../../back/tests/test_inference_lifecycle.py).
 
 La reprise soumet de nouveau la requête et peut être facturée : elle ne reprend pas le calcul
 interne du fournisseur token par token. Cette couche n’exécute pas d’effets d’outils. La création
 différée, une échéance globale et la généralisation de ce cycle de vie aux médias ne sont pas
 annoncées comme réalisées.
 
-Sources : [contrats d’inférence](../back/app/llm/contracts.py),
-[façade](../back/app/llm/facade.py),
-[décision sur le cycle de vie durable](../project/decisions/0097-durable-inference-lifecycle.md).
+Sources : [contrats d’inférence](../../../back/app/llm/contracts.py),
+[façade](../../../back/app/llm/facade.py),
+[décision sur le cycle de vie durable](../../../project/decisions/0097-durable-inference-lifecycle.md).
 
 ### Appeler un agent depuis un client compatible et utiliser Janus
 
@@ -619,10 +620,10 @@ Le routage peut retrouver la sélection dans l’historique quand le client ne c
 l’identifiant de conversation. Le guide des préférences fournit l’URL et l’authentification par
 token personnel.
 
-Sources : [API des agents et Janus](../back/app/agent/openai_router.py),
-[routage Janus](../back/app/agent/janus.py), [catalogue et API](../back/app/llm/provider_router.py),
-[profils](../back/app/llm/profile_schemas.py), [affectation des usages](../back/app/llm/model_usages.py),
-[politique d’abonnement](../back/app/llm/subscription_policy.py), [Claude Code](fr/user/claude-code.md).
+Sources : [API des agents et Janus](../../../back/app/agent/openai_router.py),
+[routage Janus](../../../back/app/agent/janus.py), [catalogue et API](../../../back/app/llm/provider_router.py),
+[profils](../../../back/app/llm/profile_schemas.py), [affectation des usages](../../../back/app/llm/model_usages.py),
+[politique d’abonnement](../../../back/app/llm/subscription_policy.py), [Claude Code](../user/claude-code.md).
 
 <a id="harnais"></a>
 ## 6. Harnais et environnements d’exécution
@@ -676,7 +677,7 @@ en cas d’échec. Cette opération ne reconstruit pas les conteneurs des agents
 
 Les runtimes externes sont épinglés dans leurs images. DeepSeek Harness utilise explicitement
 le protocole **Chat Completions** pour communiquer avec la passerelle Galaris. Voir le
-[guide DeepSeek Harness](fr/components/deepseek-harness.md).
+[guide DeepSeek Harness](../components/deepseek-harness.md).
 
 ### Capacités effectives et choix d’exécution
 
@@ -720,9 +721,9 @@ Les outils Image, Audio et Multimedia restent disponibles pour les analyses déd
 des descriptions/transcriptions et les replis. Une URI citée dans du texte ne déclenche pas à elle
 seule le téléchargement d’un média.
 
-Sources : [flux des médias](fr/architecture/flows/media-resources.md),
-[capacités natives effectives](../back/app/llm/native_media.py),
-[tests du parcours multimodal](../back/app/harness/tests/test_native_media.py).
+Sources : [flux des médias](../architecture/flows/media-resources.md),
+[capacités natives effectives](../../../back/app/llm/native_media.py),
+[tests du parcours multimodal](../../../back/app/harness/tests/test_native_media.py).
 
 ### Politique, annulation et acceptation du résultat
 
@@ -743,13 +744,13 @@ Sources : [flux des médias](fr/architecture/flows/media-resources.md),
   interdite ; une identité incompatible, une enveloppe invalide ou l’absence de preuve requise
   empêche un redémarrage automatique. Une modification de la consigne conserve les preuves d’effets.
 
-Sources complémentaires : [contrat commun de harnais](../project/decisions/0100-harness-capability-and-recovery-contract.md),
-[choix du dispatcher](../project/decisions/0102-harness-dispatch-choices.md).
+Sources complémentaires : [contrat commun de harnais](../../../project/decisions/0100-harness-capability-and-recovery-contract.md),
+[choix du dispatcher](../../../project/decisions/0102-harness-dispatch-choices.md).
 
-Sources : [contrats](../back/app/harnesses/contracts.py), [API](../back/app/harnesses/router.py),
-[manager](fr/components/harness-manager.md), [Hermès](fr/components/hermes.md),
-[Claude Agent](fr/components/claude-agent.md), [Codex](../back/bridge/codex/),
-[DeepSeek Harness](fr/components/deepseek-harness.md).
+Sources : [contrats](../../../back/app/harnesses/contracts.py), [API](../../../back/app/harnesses/router.py),
+[manager](../components/harness-manager.md), [Hermès](../components/hermes.md),
+[Claude Agent](../components/claude-agent.md), [Codex](../../../back/bridge/codex/),
+[DeepSeek Harness](../components/deepseek-harness.md).
 
 <a id="chat"></a>
 ## 7. Conversations et chat natif
@@ -891,10 +892,10 @@ Task a déjà livré son résultat avec une preuve de transport, le système év
 même résultat. Une livraison à l’issue inconnue est distinguée d’un échec certain ; un opérateur
 peut résoudre explicitement les cas prévus sans relancer aveuglément les effets.
 
-Sources : [contrats Chat](../back/app/chat/schemas.py), [API Chat](../back/app/chat/router.py),
-[contrats Conversation](../back/app/conversation/contracts.py),
-[admission et commandes](../back/app/conversation/mcp.py),
-[états et remplacement](fr/architecture/state-machines.md), [flux](fr/architecture/flows/messaging.md).
+Sources : [contrats Chat](../../../back/app/chat/schemas.py), [API Chat](../../../back/app/chat/router.py),
+[contrats Conversation](../../../back/app/conversation/contracts.py),
+[admission et commandes](../../../back/app/conversation/mcp.py),
+[états et remplacement](../architecture/state-machines.md), [flux](../architecture/flows/messaging.md).
 
 <a id="messageries"></a>
 ## 8. Messageries externes et contacts
@@ -947,9 +948,9 @@ La fusion réaffecte les références et la portée conversationnelle ; l’oubl
 associés selon le contrat et nettoie les références de contact. Les contacts restent isolés entre
 les périmètres des agents ; deux noms identiques ne constituent pas une preuve d’identité.
 
-Sources : [interface Messenger](../back/app/messenger/interface.py),
-[fonctions Messenger](../back/app/messenger/mcp.py), [bridges](fr/architecture/flows/messaging.md),
-[Telegram/WhatsApp](fr/bridges/telegram-whatsapp.md), [contacts](../back/app/contact/router.py).
+Sources : [interface Messenger](../../../back/app/messenger/interface.py),
+[fonctions Messenger](../../../back/app/messenger/mcp.py), [bridges](../architecture/flows/messaging.md),
+[Telegram/WhatsApp](../bridges/telegram-whatsapp.md), [contacts](../../../back/app/contact/router.py).
 
 <a id="voix"></a>
 ## 9. Voix et appels en direct
@@ -996,8 +997,8 @@ est affichée mais ne coupe pas automatiquement une route WebRTC qui fonctionne 
 Le début de parole conservé avant confirmation est borné par la durée du son PCM et non par
 le nombre de trames : changer leur taille ne fait pas perdre les premiers mots.
 
-Sources : [voix](../back/app/voice/), [appels natifs](../back/app/chat/router.py),
-[flux voix](fr/architecture/flows/messaging.md#médias-et-voix).
+Sources : [voix](../../../back/app/voice/), [appels natifs](../../../back/app/chat/router.py),
+[flux voix](../architecture/flows/messaging.md).
 
 <a id="taches"></a>
 ## 10. Tâches, planification et collaboration
@@ -1158,9 +1159,9 @@ l’équité du scheduler.
 Ces limites contrôlent l’admission de nouvelles phases. Elles ne sont pas un plafond contractuel
 sur la facture fournisseur : une phase en cours peut dépasser sa réservation.
 
-Sources : [contrat Task](../back/app/task/schemas.py), [commandes](../back/app/task/router.py),
-[contrats agentiques](../back/app/agent/contracts.py), [flux](fr/architecture/flows/agent-execution.md),
-[machines d’état](fr/architecture/state-machines.md), [tests métier](../back/app/task/tests/).
+Sources : [contrat Task](../../../back/app/task/schemas.py), [commandes](../../../back/app/task/router.py),
+[contrats agentiques](../../../back/app/agent/contracts.py), [flux](../architecture/flows/agent-execution.md),
+[machines d’état](../architecture/state-machines.md), [tests métier](../../../back/app/task/tests/).
 
 <a id="objectifs"></a>
 ## 11. Objectifs durables
@@ -1228,7 +1229,7 @@ Une simple mention ou un titre ressemblant ne suffit pas à rattacher un documen
 
 Ce rangement ne change ni contenu, ni versions, ni accès. Les mutations manuelles et automatiques
 utilisent le même verrou d’arborescence et mettent à jour les relations documentaires ensemble.
-Voir la [décision et les garanties de classement des Goals](../project/decisions/0107-personal-goal-folders.md).
+Voir la [décision et les garanties de classement des Goals](../../../project/decisions/0107-personal-goal-folders.md).
 
 ### Solliciter le référent
 
@@ -1238,8 +1239,8 @@ par défaut. En l’absence de réponse au terme prévu, le Goal se met en pause
 reprendre le travail selon l’état courant. Une simple information de progression utilise un envoi
 Messenger sans ouvrir cette attente.
 
-Sources : [schémas Goal](../back/app/goal/schemas.py), [API](../back/app/goal/router.py),
-[outils](../back/app/goal/mcp.py), [tests](../back/app/goal/tests/).
+Sources : [schémas Goal](../../../back/app/goal/schemas.py), [API](../../../back/app/goal/router.py),
+[outils](../../../back/app/goal/mcp.py), [tests](../../../back/app/goal/tests/).
 
 <a id="memoire"></a>
 ## 12. Mémoire et recherche de connaissances
@@ -1306,8 +1307,8 @@ l’attente du modèle ; un changement concurrent préserve la nouvelle connaiss
 ajoute une provenance sans réécrire ni supprimer le souvenir existant. Sans spécialisation,
 le parcours de dédoublonnage existant reste utilisé.
 
-Sources : [acquisition Memory](../back/app/memory/acquisition_service.py),
-[équivalence et concurrence](../back/tests/test_decision_workflows.py).
+Sources : [acquisition Memory](../../../back/app/memory/acquisition_service.py),
+[équivalence et concurrence](../../../back/tests/test_decision_workflows.py).
 
 ### Recherche hybride et rappel contextuel
 
@@ -1404,8 +1405,8 @@ Mémoire, graphe et éditeur réactualisent leurs données ; une réponse engag�
 ne peut pas repeupler une vue invalidée. Une reconnexion revalide les accès sans retirer ceux qui
 restent accordés par ailleurs.
 
-Sources : [structure documentaire](../project/decisions/0106-document-structure-memory.md),
-[tests de structure et de droits](../back/app/memory/tests/test_document_structure.py).
+Sources : [structure documentaire](../../../project/decisions/0106-document-structure-memory.md),
+[tests de structure et de droits](../../../back/app/memory/tests/test_document_structure.py).
 
 ### Portée des interlocuteurs
 
@@ -1445,10 +1446,10 @@ Une réconciliation répare les liens structurels, de façon ciblée après cert
 périodiquement pendant l’inactivité ou sur lancement manuel. La prévisualisation de la rétention
 est une estimation sans suppression. L’oubli explicite permet de supprimer une connaissance.
 
-Sources : [API Memory](../back/app/memory/router.py), [schémas](../back/app/memory/schemas.py),
-[parcours de consultation et d’aperçu](../front/browser-tests/memory.spec.mjs),
-[partage](../back/app/memory/item_sharing.py), [rappel et maintenance](fr/architecture/flows/memory.md),
-[garanties de recherche documentaire](../back/app/memory/tests/test_document_retrieval.py).
+Sources : [API Memory](../../../back/app/memory/router.py), [schémas](../../../back/app/memory/schemas.py),
+[parcours de consultation et d’aperçu](../../../front/browser-tests/memory.spec.mjs),
+[partage](../../../back/app/memory/item_sharing.py), [rappel et maintenance](../architecture/flows/memory.md),
+[garanties de recherche documentaire](../../../back/app/memory/tests/test_document_retrieval.py).
 
 <a id="documents"></a>
 ## 13. Documents, Datasets et applications
@@ -1591,7 +1592,7 @@ et suppressions de dossiers ; le rétablissement de l’icône par défaut reste
 
 Une sauvegarde échouée conserve le choix confirmé et peut être réessayée. Les caches sont vidés
 au changement de session ; une ancienne réponse ne remplace pas une icône nouvellement enregistrée.
-Voir le [contrat de classement personnel](../project/decisions/0099-personal-document-classification.md).
+Voir le [contrat de classement personnel](../../../project/decisions/0099-personal-document-classification.md).
 
 ### Édition riche
 
@@ -1812,15 +1813,15 @@ en cours. Les exports ne deviennent pas des applications connectées aux Dataset
 jointe et ouverte séparément conserve son propre périmètre ; son rendu ne s’ajoute pas implicitement
 à l’impression du document parent.
 
-Sources : [guide complet d’édition](fr/user/rich-content.md),
-[API documentaire](../back/app/memory/router.py), [contrats HTML](fr/dev/editorial-html.md),
-[composants documentaires](../front/app/memory/),
-[contrat des applications et Datasets](fr/dev/document-apps.md),
-[tests des Datasets](../back/app/memory/tests/test_dataset_documents.py),
-[tests des accès et quotas applicatifs](../back/app/memory/tests/test_document_apps.py),
-[tests de l’éditeur, de l’isolation et des exports](../front/browser-tests/document-apps.spec.mjs),
-[classement](../front/browser-tests/document-classification.spec.mjs),
-[suppression et aperçus historiques](../front/browser-tests/document-deletion.spec.mjs).
+Sources : [guide complet d’édition](../user/rich-content.md),
+[API documentaire](../../../back/app/memory/router.py), [contrats HTML](../dev/editorial-html.md),
+[composants documentaires](../../../front/app/memory/),
+[contrat des applications et Datasets](../dev/document-apps.md),
+[tests des Datasets](../../../back/app/memory/tests/test_dataset_documents.py),
+[tests des accès et quotas applicatifs](../../../back/app/memory/tests/test_document_apps.py),
+[tests de l’éditeur, de l’isolation et des exports](../../../front/browser-tests/document-apps.spec.mjs),
+[classement](../../../front/browser-tests/document-classification.spec.mjs),
+[suppression et aperçus historiques](../../../front/browser-tests/document-deletion.spec.mjs).
 
 <a id="sujets"></a>
 ## 14. Dossiers thématiques
@@ -1896,11 +1897,11 @@ pas les identifiants bruts des Topics. Les sujets du Lab restent des enregistrem
 Annulation, erreur, retrait de droits et changement de contexte ne permettent pas à une réponse
 tardive de remplacer une sélection plus récente.
 
-Sources : [contrats Topic](../back/app/topic/schemas.py), [API](../back/app/topic/router.py),
-[outils](../back/app/topic/mcp.py), [détection et tests](../back/app/topic/tests/),
-[classement à l’admission](../back/app/dream/live_topics.py),
-[garanties de publication](../back/tests/test_live_topic_decisions.py),
-[héritage vocal](../back/app/voice/tests/test_conversation_service.py).
+Sources : [contrats Topic](../../../back/app/topic/schemas.py), [API](../../../back/app/topic/router.py),
+[outils](../../../back/app/topic/mcp.py), [détection et tests](../../../back/app/topic/tests/),
+[classement à l’admission](../../../back/app/dream/live_topics.py),
+[garanties de publication](../../../back/tests/test_live_topic_decisions.py),
+[héritage vocal](../../../back/app/voice/tests/test_conversation_service.py).
 
 <a id="dream"></a>
 ## 15. Dream et apprentissage
@@ -1961,9 +1962,9 @@ du document empêche l’application du résultat préparé. Les reçus permette
 description déjà calculée sans rappeler le modèle ; les droits du document continuent de gouverner
 la consultation de son compagnon.
 
-Sources : [analyses et formats](../back/app/dream/attachment_processing.py),
-[garanties de persistance et de reprise](../back/app/memory/tests/test_dream_attachments.py),
-[réglages indépendants](../front/browser-tests/dream-settings.spec.mjs).
+Sources : [analyses et formats](../../../back/app/dream/attachment_processing.py),
+[garanties de persistance et de reprise](../../../back/app/memory/tests/test_dream_attachments.py),
+[réglages indépendants](../../../front/browser-tests/dream-settings.spec.mjs).
 
 ### Suivi et reprise
 
@@ -2000,9 +2001,9 @@ limite du nombre de compétences actives. Les tâches historiques sont parcourue
 L’interface permet de lire les procédures apprises, leurs preuves et leur score, puis de les
 suspendre ou réactiver.
 
-Sources : [flux Dream](fr/architecture/flows/dream.md), [registre actif](../back/app/dream/registry.py),
-[mécanismes](../back/app/dream/),
-[apprentissage](../back/app/skill/learning_service.py), [suivi Dream](../back/app/dream/router.py).
+Sources : [flux Dream](../architecture/flows/dream.md), [registre actif](../../../back/app/dream/registry.py),
+[mécanismes](../../../back/app/dream/),
+[apprentissage](../../../back/app/skill/learning_service.py), [suivi Dream](../../../back/app/dream/router.py).
 
 <a id="skills"></a>
 ## 16. Bibliothèque de compétences
@@ -2055,10 +2056,10 @@ Les skills système **Connaissance de Galaris** (`galaris-knowledge`) et **Galar
 Le premier est activé globalement par défaut, mais exige l’accès documentaire effectif ; le second
 est désactivé par défaut. Leur attribution ne remplace pas les droits sur leurs Tools.
 
-Sources : [API Skill](../back/app/skill/router.py), [schémas](../back/app/skill/schemas.py),
-[bibliothèque et tests](../back/app/skill/),
-[réconciliation avant exécution](../back/app/harnesses/skill_sync.py),
-[garanties des harnais](../back/app/harnesses/tests/test_skill_sync.py).
+Sources : [API Skill](../../../back/app/skill/router.py), [schémas](../../../back/app/skill/schemas.py),
+[bibliothèque et tests](../../../back/app/skill/),
+[réconciliation avant exécution](../../../back/app/harnesses/skill_sync.py),
+[garanties des harnais](../../../back/app/harnesses/tests/test_skill_sync.py).
 
 <a id="outils"></a>
 ## 17. Outils, connexions et serveur MCP
@@ -2102,7 +2103,7 @@ même si le catalogue a été construit avant sa révocation.
 
 La synchronisation fournit les descriptions standard manquantes aux intégrations connues,
 actualise les anciennes descriptions standard reconnues et conserve les descriptions
-personnalisées. Voir la [décision sur les services système](../project/decisions/0105-mandatory-system-tools.md).
+personnalisées. Voir la [décision sur les services système](../../../project/decisions/0105-mandatory-system-tools.md).
 
 ### Connexions par agent et paramètres communs
 
@@ -2197,12 +2198,12 @@ développement peuvent être rafraîchies sans redémarrage. L’empreinte ident
 si la référence de build manque. Les réponses déjà écrites dans une conversation ne sont pas
 réécrites rétroactivement ; une nouvelle lecture utilise les sources actualisées.
 
-Sources : [contrats Tool](../back/app/tools/schemas.py), [API Tool](../back/app/tools/router.py),
-[connexions](../back/app/connection/router.py), [MCP](../back/app/mcp/router.py),
-[outils intégrés](../back/app/tools/mandatory_tools.py),
-[activation de la connaissance produit](fr/admin/product-knowledge.md),
-[contrats documentaires](../back/app/documentation/contracts.py),
-[tests d’accès et de recherche](../back/app/documentation/tests/test_documentation.py).
+Sources : [contrats Tool](../../../back/app/tools/schemas.py), [API Tool](../../../back/app/tools/router.py),
+[connexions](../../../back/app/connection/router.py), [MCP](../../../back/app/mcp/router.py),
+[outils intégrés](../../../back/app/tools/mandatory_tools.py),
+[activation de la connaissance produit](../admin/product-knowledge.md),
+[contrats documentaires](../../../back/app/documentation/contracts.py),
+[tests d’accès et de recherche](../../../back/app/documentation/tests/test_documentation.py).
 
 <a id="fichiers"></a>
 ## 18. Fichiers et ressources
@@ -2293,9 +2294,9 @@ Ses limites sont 32 Mo et deux millions de sommets par aperçu. Elle ne joue pas
 animations, ne charge pas les dépendances externes d’un glTF, ne lit pas STEP/IFC/FBX et ne remplace
 pas une application de CAO. Meshopt est pris en charge ; Draco/KTX2 ne le sont pas.
 
-Sources : [façade et outils](../back/app/file_share/mcp.py),
-[flux des ressources](fr/architecture/flows/media-resources.md), [aperçus 3D](fr/components/resource-previews.md),
-[visionneuses](../front/core/util/resourceViewer.ts).
+Sources : [façade et outils](../../../back/app/file_share/mcp.py),
+[flux des ressources](../architecture/flows/media-resources.md), [aperçus 3D](../components/resource-previews.md),
+[visionneuses](../../../front/core/util/resourceViewer.ts).
 
 <a id="web"></a>
 ## 19. Recherche web et navigateur
@@ -2339,8 +2340,8 @@ Les sessions expirent et ne constituent pas un profil personnel permanent de nav
 catalogue de fonctions exposées reste limité aux actions ci-dessus : il ne faut pas supposer une
 API d’automatisation arbitraire simplement parce que Chromium est présent.
 
-Sources : [outils navigateur](../back/app/browser/mcp.py),
-[flux et limites](fr/architecture/flows/browser.md), [recherche](../back/app/tools/mcp.py).
+Sources : [outils navigateur](../../../back/app/browser/mcp.py),
+[flux et limites](../architecture/flows/browser.md), [recherche](../../../back/app/tools/mcp.py).
 
 <a id="console"></a>
 ## 20. Console et environnement Linux
@@ -2398,8 +2399,8 @@ Un reçu `running` confirme le démarrage de `console_start`, mais ne termine pa
 `console_poll` avec le même identifiant. Sans reçu ni politique autorisant le rejeu, l’issue reste
 bloquée ; une mise à jour du helper ne reconstruit pas les reçus manquants d’anciennes opérations.
 
-Sources : [Console](../back/app/console/), [exécuteur embarqué](fr/components/ssh-executor.md),
-[terminal](../front/app/console/).
+Sources : [Console](../../../back/app/console/), [exécuteur embarqué](../components/ssh-executor.md),
+[terminal](../../../front/app/console/).
 
 <a id="medias"></a>
 ## 21. Images, audio, musique et vidéo
@@ -2488,12 +2489,13 @@ conservée, ou autoriser une nouvelle écriture après constat explicite de son 
 et sa preuve sont enregistrées ; cette réparation ne soumet pas une nouvelle génération au provider.
 
 Les fonctions avancées non exposées — par exemple certains remixes, personas et plans de composition
-de providers — ne font pas partie de cette surface. La connexion Multimedia est créée inactive par
-défaut ; sans ressource compatible, la fonction concernée reste absente du catalogue de l’agent.
+de providers — ne font pas partie de cette surface. La connexion Multimedia est créée active par
+défaut ; les désactivations explicites sont conservées. Sans ressource compatible, la fonction
+concernée reste absente du catalogue de l’agent.
 
-Sources : [image](../back/app/image/mcp.py), [audio](../back/app/audio/mcp.py),
-[Multimedia](fr/components/multimedia.md), [contrats Multimedia](../back/app/multimedia/mcp.py),
-[YouTube](../back/bridge/youtube/).
+Sources : [image](../../../back/app/image/mcp.py), [audio](../../../back/app/audio/mcp.py),
+[Multimedia](../components/multimedia.md), [contrats Multimedia](../../../back/app/multimedia/mcp.py),
+[YouTube](../../../back/bridge/youtube/).
 
 <a id="mail"></a>
 ## 22. Courrier électronique
@@ -2553,8 +2555,8 @@ Les destinataires Bcc restent dans l’enveloppe SMTP, sans apparaître dans les
 Si une personne est désignée uniquement par son nom, la recherche des contacts précède l’envoi ;
 un résultat absent ou ambigu exige une précision.
 
-Sources : [flux Mail](fr/architecture/flows/mail.md), [fonctions](../back/bridge/mail/mcp.py),
-[validation et historique](../back/bridge/mail/router.py).
+Sources : [flux Mail](../architecture/flows/mail.md), [fonctions](../../../back/bridge/mail/mcp.py),
+[validation et historique](../../../back/bridge/mail/router.py).
 
 <a id="calendrier"></a>
 ## 23. Calendriers et déclenchements
@@ -2581,8 +2583,8 @@ code courant. Une empreinte durable évite de déclencher deux fois la même occ
 après indisponibilité relit une fenêtre bornée, au plus sept jours. Désactiver la connexion retire
 les fonctions et ses calendriers du traitement automatique.
 
-Sources : [calendrier](fr/architecture/flows/calendar.md), [API](../back/bridge/calendar/router.py),
-[fonctions](../back/bridge/calendar/mcp.py).
+Sources : [calendrier](../architecture/flows/calendar.md), [API](../../../back/bridge/calendar/router.py),
+[fonctions](../../../back/bridge/calendar/mcp.py).
 
 <a id="processus"></a>
 ## 24. Processus métier, n8n et webhooks
@@ -2652,9 +2654,9 @@ disponibles passent par les intégrations dédiées : callbacks Process, canaux 
 API authentifiées. Les callbacks des bridges conservent leurs propres contrôles ; les messages
 conversationnels sont normalisés et admis par Messenger.
 
-Sources : [Process](../back/app/process/router.py), [contrats](../back/app/process/schemas.py),
-[flux](fr/architecture/flows/process.md), [n8n](../back/bridge/n8n/),
-[webhook](../back/app/webhook/router.py), [exemple n8n](fr/n8n/README.md).
+Sources : [Process](../../../back/app/process/router.py), [contrats](../../../back/app/process/schemas.py),
+[flux](../architecture/flows/process.md), [n8n](../../../back/bridge/n8n/),
+[webhook](../../../back/app/webhook/router.py), [exemple n8n](../n8n/README.md).
 
 <a id="lab"></a>
 ## 25. Lab IA et évaluation
@@ -2847,11 +2849,11 @@ La route de revue masque le jugement automatique jusqu’au dépôt de l’avis 
 masquage ne prouve pas que l’agent n’a jamais consulté les scores par une autre route. Le run
 conserve également l’agent et la Task à l’origine de son lancement pour suivre la campagne.
 
-Sources : [guide du Lab](fr/user/lab-ai.md), [contrats](../back/app/lab/contracts.py),
-[API](../back/app/lab/router.py), [architecture](fr/architecture/ai-lab-evaluation.md),
-[génération synthétique](../back/app/lab/tests/test_synthetic_datasets.py),
-[fonctions MCP](../back/app/lab/mcp.py), [contrôles d’accès](../back/app/lab/mcp_access.py),
-[parcours agentiques testés](../back/app/lab/tests/test_mcp.py).
+Sources : [guide du Lab](../user/lab-ai.md), [contrats](../../../back/app/lab/contracts.py),
+[API](../../../back/app/lab/router.py), [architecture](../architecture/ai-lab-evaluation.md),
+[génération synthétique](../../../back/app/lab/tests/test_synthetic_datasets.py),
+[fonctions MCP](../../../back/app/lab/mcp.py), [contrôles d’accès](../../../back/app/lab/mcp_access.py),
+[parcours agentiques testés](../../../back/app/lab/tests/test_mcp.py).
 
 <a id="supervision"></a>
 ## 26. Activité, coûts et incidents
@@ -2934,9 +2936,9 @@ droits de consultation ou d’édition des incidents, permet de :
 Le journal n’est pas une auto-correction de code : il constitue le dossier durable du problème.
 La reprise opérationnelle et la résolution d’un incident sont deux actions différentes.
 
-Sources : [dashboard](../back/app/dashboard/schemas.py), [appels LLM](../back/app/llm/schemas.py),
-[API d’inspection](../back/app/llm/call_router.py),
-[incidents](../back/app/incident/schemas.py), [API Incidents](../back/app/incident/router.py).
+Sources : [dashboard](../../../back/app/dashboard/schemas.py), [appels LLM](../../../back/app/llm/schemas.py),
+[API d’inspection](../../../back/app/llm/call_router.py),
+[incidents](../../../back/app/incident/schemas.py), [API Incidents](../../../back/app/incident/router.py).
 
 <a id="exploitation"></a>
 ## 27. Réglages, hébergement et exploitation
@@ -2998,7 +3000,8 @@ Ces plafonds sont administrables dans les préférences concernées.
 - Désinstallation limitée au projet avec `make uninstall`. Trois confirmations séparées,
   négatives par défaut, permettent de supprimer les volumes et leurs données, les images
   locales générées et les conteneurs orphelins. Configuration, montages hôte, ressources externes
-  et cache de construction partagé restent conservés.
+  et cache de construction partagé restent conservés. `make uninstall FORCE` accepte automatiquement
+  les trois suppressions, y compris celle des données des volumes gérés par Compose.
 - Déploiement Docker Compose auto-hébergé, avec frontend, backend, PostgreSQL/pgvector et services
   auxiliaires requis par les capacités activées.
 - Modèles distants ou locaux via les providers ; choisir un modèle local ne rend pas automatiquement
@@ -3022,7 +3025,8 @@ Ces plafonds sont administrables dans les préférences concernées.
 - `make update` construit et déploie les sources présentes, y compris les modifications locales,
   sans opération Git implicite. Avec `VERSION`, il sélectionne un tag exact ou une branche distante ;
   les sources modifiées localement empêchent ce changement de version. Les réglages privés de
-  l’installation sont conservés.
+  l’installation sont conservés. `make update VERSIONS` liste les tags disponibles puis les branches,
+  sans déployer de version.
 - Le journal DbAdmin conserve le verdict et les détails bornés d’une synchronisation en échec,
   pour permettre le diagnostic et la reprise.
 - Sauvegarde et restauration de la base, des fichiers, de l’exécuteur et des éléments nécessaires au
@@ -3048,7 +3052,7 @@ Les guides précisent les limites de ressources, chargements, rétention, mainte
 
 `make status` inspecte la stack, ou un seul service avec `SERVICE=…`. Un redémarrage ciblé sans
 reconstruction passe par `make restart-service SERVICE=…` ; les commandes `logs-*` et le diagnostic
-SSH `make status-executor` restent disponibles. Le [catalogue des commandes Make](fr/dev/make-commands.md)
+SSH `make status-executor` restent disponibles. Le [catalogue des commandes Make](../dev/make-commands.md)
 répertorie les opérations d’exploitation, de maintenance, de test et de qualification.
 
 Les contrôles de livraison incluent typage, frontières d’architecture, tests métier sur base éphémère,
@@ -3068,8 +3072,8 @@ existence n’équivaut pas à une certification de toutes les combinaisons de f
   réouverture des sélecteurs et onglets, versions documentaires, concurrence des processus,
   publication du Lab, médias, stockage, transferts et diagnostics DbAdmin. Les mutations
   réintroduisent des défauts dans une copie jetable et vérifient qu’un scénario auparavant vert
-  les détecte. Le [catalogue des garanties](fr/dev/functional-tests.md) et le
-  [guide de tests](fr/dev/testing.md) précisent le périmètre et les commandes.
+  les détecte. Le [catalogue des garanties](../dev/functional-tests.md) et le
+  [guide de tests](../dev/testing.md) précisent le périmètre et les commandes.
 - **Contrats des harnais.** `make tests-harness-contracts` vérifie acceptation terminale,
   capacités, politiques, checkpoints, annulation et frontières. Les mutations doivent détecter
   les régressions de protocole, d’isolation et de reprise.
@@ -3096,12 +3100,12 @@ existence n’équivaut pas à une certification de toutes les combinaisons de f
   automatiquement une ancienne version déjà remplacée. L’indexation vectorielle progresse
   séparément : son achèvement ne bloque pas la recherche textuelle ni la mise à jour.
 
-Sources : [préférences](../front/core/params/presentation.ts),
-[champs configurables](../front/core/params/settingsCatalog.ts), [paramètres](../back/core/params/),
-[administration](fr/admin/README.md), [installation](fr/admin/installation.md),
-[DbAdmin](fr/dev/dbadmin.md), [exploitation](fr/dev/reliability-operations.md),
-[tests fonctionnels](fr/dev/functional-tests.md),
-[actualisation de la connaissance produit](fr/admin/product-knowledge.md).
+Sources : [préférences](../../../front/core/params/presentation.ts),
+[champs configurables](../../../front/core/params/settingsCatalog.ts), [paramètres](../../../back/core/params/),
+[administration](../admin/README.md), [installation](../admin/installation.md),
+[DbAdmin](../dev/dbadmin.md), [exploitation](../dev/reliability-operations.md),
+[tests fonctionnels](../dev/functional-tests.md),
+[actualisation de la connaissance produit](../admin/product-knowledge.md).
 
 <a id="parcours"></a>
 ## 28. Exemples de parcours complets
@@ -3599,8 +3603,8 @@ intention utilisateur et mécanisme.
 
 Les inventaires ci-dessous permettent de vérifier qu’un domaine n’est pas absent du catalogue.
 La présence d’un nom dans une table ne remplace pas l’examen de ses comportements. Les références
-techniques détaillées restent la [cartographie générée](fr/architecture/generated/project-map.md),
-les [garanties fonctionnelles testées](fr/dev/functional-tests.md) et les sources de chaque section.
+techniques détaillées restent la [cartographie générée](../architecture/generated/project-map.md),
+les [garanties fonctionnelles testées](../dev/functional-tests.md) et les sources de chaque section.
 
 ### Modules backend déclarés
 
@@ -3746,7 +3750,7 @@ Les fonctions communes ne sont pas toutes des modules activables :
 ### Mettre le catalogue à jour
 
 À chaque ajout ou retrait fonctionnel : mettre à jour la section métier, ses conditions d’accès,
-les fonctions MCP concernées et la ligne de module. Vérifier ensuite les déclarations, les routes,
+les fonctions MCP concernées et la ligne de module dans les deux langues. Vérifier ensuite les déclarations, les routes,
 les composants et les tests du parcours. Régénérer la cartographie lorsque les surfaces de code
 changent, puis contrôler les liens et la cohérence des statuts. La date de revue doit évoluer avec
 une nouvelle vérification du périmètre, pas seulement avec une correction typographique.

@@ -5,9 +5,11 @@
 Ce guide couvre le déploiement, la configuration et l’exploitation de Galaris. Les
 commandes partent de la racine du dépôt.
 
-Pour une première installation, suivez le [guide en trois étapes](installation.md) :
-**`make install` → personnaliser si besoin `.env` et `compose.override.yaml` → `make start`**. Les sections suivantes détaillent
-les options d’administration.
+Pour une première installation, suivez le [guide d’installation](installation.md) :
+**cloner le dépôt → `make install` → `make start` → token OpenRouter dans Fournisseurs
+→ Chat avec Galaris**. Après la création du premier compte administrateur, l’agent Galaris,
+les modèles et le profil par défaut sont déjà prêts ; renseignez votre token pour discuter.
+Les sections suivantes détaillent les options d’administration.
 
 ## 1. Préparer l’hôte
 

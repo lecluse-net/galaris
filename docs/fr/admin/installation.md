@@ -2,7 +2,11 @@
 
 # Installer Galaris
 
-**`make install` → personnaliser si besoin `.env` et `compose.override.yaml` → `make start`.**
+**Cloner le dépôt → `make install` → `make start` → renseigner le token OpenRouter
+dans Fournisseurs → discuter avec Galaris.**
+
+Sur une installation neuve, les modèles et le profil par défaut sont préconfigurés, et
+l’agent **Galaris** est créé avec le premier compte administrateur.
 
 ## Prérequis
 
@@ -83,14 +87,23 @@ est en échec ou ne devient pas disponible, il tente une seule mise à jour comp
 d’accès à Docker ou de lecture de la configuration arrête la commande.
 Cette récupération utilise les sources déjà présentes : `start` ne change pas de version Git.
 
-Ouvrez l’adresse définie dans `APP_HOST` — <http://localhost:8484> avec les valeurs ci-dessus.
-Cliquez sur **Connexion** : tant qu’aucun utilisateur n’existe, ce bouton ouvre le formulaire
-de création du premier compte administrateur. Ensuite, il ouvre la connexion habituelle. Le parcours de bienvenue
-vous guide pour connecter un modèle et créer votre premier agent.
+## 4. Renseigner le token OpenRouter et discuter
 
-Sur une base neuve, **OpenRouter** et neuf modèles sont déjà configurés dans le profil
-**Défaut**. Ouvrez **Modèles IA**, renseignez votre clé API dans le fournisseur OpenRouter,
-puis enregistrez. Aucune clé ni aucun compte n'est fourni avec Galaris.
+1. Ouvrez l’adresse définie dans `APP_HOST` — <http://localhost:8484> avec les valeurs ci-dessus.
+2. Cliquez sur **Connexion** pour créer le premier compte administrateur. Tant qu’aucun
+   utilisateur n’existe, ce bouton ouvre l’inscription ; ensuite, il ouvre la connexion habituelle.
+   L’agent **Galaris** est créé automatiquement pour ce premier administrateur.
+3. Ouvrez **Fournisseurs** (`/llm?tab=providers`) et sélectionnez **OpenRouter**.
+4. Renseignez votre **token / clé API OpenRouter**, puis enregistrez.
+5. Ouvrez **Chat** (`/chat`), choisissez **Galaris** et envoyez votre premier message.
+
+**Galaris est prêt à discuter : votre token OpenRouter est le dernier réglage nécessaire.**
+Sur une base neuve, le fournisseur **OpenRouter**, neuf modèles et le profil **Défaut** sont
+déjà configurés ; l’agent Galaris utilise ce profil. Vous pourrez ensuite personnaliser cette
+configuration. Le token est celui de votre compte OpenRouter ; aucune clé ni aucun compte
+OpenRouter n’est fourni avec Galaris.
+
+### Configuration fournie
 
 Les quatre niveaux texte utilisent DeepSeek V4.1 Flash avec les efforts de raisonnement
 `none`, `low`, `medium` et `high`. Le profil propose également GPT 5.4 Nano pour les documents,
@@ -122,6 +135,11 @@ avec un tag explicite, notamment PostgreSQL et search, et le cache de constructi
 sont conservés. Aucun `prune` global n’est exécuté. La configuration, les dossiers montés
 depuis l’hôte et les bases ou volumes externes restent conservés. Si les volumes sont
 conservés, un prochain `make start` réutilise leurs données.
+
+`make uninstall FORCE` répond automatiquement **oui aux trois confirmations**, sans lire
+l’entrée utilisateur. Les volumes et leurs données sont donc définitivement supprimés,
+ainsi que les images locales Compose et les conteneurs orphelins du projet.
+
 `make clean` supprime aussi les volumes : cette commande est destructive.
 
 Pour mettre à jour la branche courante, récupérez les sources puis déployez-les :
@@ -136,6 +154,17 @@ Ou récupérez et déployez un tag ou une branche en une commande (remplacez `v1
 ```bash
 make update VERSION=v1.2.3
 ```
+
+Pour consulter les cibles disponibles avant de choisir :
+
+```bash
+make update VERSIONS
+```
+
+Cette commande interroge le dépôt Git distant configuré et liste tous les tags (versions les
+plus élevées d’abord), puis toutes les branches par ordre alphabétique. Elle ne modifie pas les
+sources locales et ne lance aucun déploiement, même avant `make install` ou avec des changements
+locaux. Un checkout Git et l’accès au dépôt distant sont nécessaires.
 
 Sans `VERSION`, aucune récupération ni sélection Git n’est effectuée : les sources présentes
 sont utilisées, y compris avec des modifications locales, un tag détaché ou sans upstream.

@@ -47,6 +47,10 @@ PostgreSQL and TURN are removed only when switched to external or disabled mode.
 Production also reuses the Docker cache and checks base images for updates; `RELEASE_DIR` remains
 restricted to environments whose `APP_ENV` differs from `dev`.
 
+`make update VERSIONS` lists all tags (highest versions first), then branches alphabetically,
+from the current branch's configured remote (falling back to `origin`). It requires no `.env`
+and works with local changes, without fetching objects, switching versions, or deploying.
+
 `make update` builds and deploys existing sources without fetching Git changes.
 With a `.git` entry, `VERSION=<reference>` fetches and selects an exact tag, otherwise a remote
 branch. Local modifications block only this explicit selection. Use plain `make update`
@@ -1576,6 +1580,15 @@ make tests-documentation   # runner contracts, then real container confinement
 4. run targeted tests, then `make typecheck` and `make tests`;
 5. check `git diff --check` and review schema/configuration changes;
 6. document any architectural choice or new variable.
+
+The root `AGENTS.md`, `INSTALL.md`, and `CHANGELOG.md` files are written exclusively in English.
+
+`CHANGELOG.md` starts with the first version actually released. Until then, do not add
+change entries, anticipated versions or reconstructed history. Record the first release's
+version and actual publication date. Afterwards, every notable change for users or
+administrators adds an English entry under `Unreleased`; group these entries under the
+version and date when it is released. Describe observable effects, breaking changes and
+required upgrade actions, without copying the Git log.
 
 All new commit messages must be written exclusively in English, including the subject
 and body, to support international contributions.

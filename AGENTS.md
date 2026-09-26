@@ -1,49 +1,48 @@
-# Galaris — guide des agents de développement
+# Galaris — development agent guide
 
-Galaris est une plateforme auto-hébergée qui orchestre des agents IA autonomes, leurs
-tâches, outils, objectifs, espaces de travail et canaux de messagerie. Ce fichier est le
-point d’entrée durable pour tout agent qui modifie le dépôt.
+Galaris is a self-hosted platform that orchestrates autonomous AI agents, their tasks,
+tools, goals, workspaces, and messaging channels. This file is the lasting entry point
+for any agent modifying the repository.
 
-## Commencer par les bonnes sources
+## Start with the right sources
 
-En cas de divergence, utiliser cet ordre de confiance :
+When sources disagree, use this order of authority:
 
-1. contrats, modèles, implémentation et tests présents dans le dépôt ;
-2. `.env.example`, `back/core/settings.py` et déclarations de modules ;
-3. `docs/fr/dev/README.md` et les décisions acceptées dans `project/decisions/` ;
-4. `docs/fr/architecture/generated/project-map.md`, régénéré depuis le code ;
-5. les fichiers de `project/plans/`, qui expriment une intention et dont le statut est indexé dans
+1. Contracts, models, implementation, and tests in the repository.
+2. `.env.example`, `back/core/settings.py`, and module declarations.
+3. `docs/fr/dev/README.md` and accepted decisions in `project/decisions/`.
+4. `docs/fr/architecture/generated/project-map.md`, regenerated from the code.
+5. Files in `project/plans/`, which describe intent and whose status is indexed in
    `project/plans/README.md`.
 
-Avant toute intervention :
+Before any work:
 
-- lire `git status --short` et préserver les changements sans rapport ;
-- ne jamais créer de commit sans une demande explicite de l’utilisateur dans le message courant ;
-  une autorisation antérieure ne vaut pas pour les changements suivants ;
-- rédiger tous les nouveaux messages de commit exclusivement en anglais, titre et corps compris,
-  afin de faciliter les contributions internationales ;
-- consulter la cartographie générée, puis les contrats et tests du domaine concerné ;
-- utiliser `rg` ou `rg --files` pour localiser les surfaces réelles ;
-- vérifier les hypothèses dans le code : un plan ou un exemple historique ne fait pas foi.
+- Read `git status --short` and preserve unrelated changes.
+- Never create a commit without an explicit user request in the current message;
+  earlier authorization does not cover subsequent changes.
+- Write all new commit messages exclusively in English, including both subject and body,
+  to make international contributions easier.
+- Consult the generated project map, then the contracts and tests for the relevant domain.
+- Use `rg` or `rg --files` to locate the actual implementation surfaces.
+- Verify assumptions against the code: a plan or historical example is not authoritative.
 
-## Environnement et commandes
+## Environment and commands
 
-Ne JAMAIS modifier directement des fichiers sur le serveur de production, y compris
-pour une correction urgente, un diagnostic ou une restauration. Préparer tous les
-changements dans le dépôt de développement. Toute intervention en production exige
-une demande explicite de l’utilisateur ; une demande de correction ou la documentation
-des commandes de production ne constitue pas cette autorisation. Une demande de
-déploiement n’autorise pas l’édition directe de fichiers sur le serveur.
+NEVER edit files directly on the production server, even for an urgent fix, diagnosis,
+or recovery. Prepare all changes in the development repository. Any production
+intervention requires an explicit user request; a request to fix an issue or documentation
+of production commands does not grant that permission. A deployment request does not
+authorize direct file edits on the server.
 
-`APP_ENV` est un libellé libre, avec `prod` par défaut. Le seul mode applicatif dérivé
-est `is_dev = (APP_ENV == "dev")` : seule la valeur exacte `dev` active le développement.
-Toute autre valeur (`prod`, `pp`, `test`, `demo`, inconnue ou vide) applique les comportements
-et protections de production. Conserver le libellé `APP_ENV` pour les futures chartes graphiques
-propres à chaque environnement. Les adaptations des tests automatisés appartiennent à leur
-infrastructure isolée ; `APP_ENV=test` ne désactive aucune protection applicative.
+`APP_ENV` is a free-form label that defaults to `prod`. The only derived application mode
+is `is_dev = (APP_ENV == "dev")`: only the exact value `dev` enables development mode.
+Any other value (`prod`, `pp`, `test`, `demo`, unknown, or empty) applies production behavior
+and protections. Preserve the `APP_ENV` label for future environment-specific branding.
+Automated test adaptations belong in their isolated infrastructure; `APP_ENV=test` does
+not disable any application protection.
 
-Le développement est entièrement conteneurisé. Ne pas chercher ni lancer Python, Node,
-npm, uv, Atlas ou PostgreSQL sur l’hôte.
+Development is fully containerized. Do not look for or run Python, Node, npm, uv, Atlas,
+or PostgreSQL on the host.
 
 ```bash
 APP_ENV=dev make start
@@ -52,199 +51,201 @@ make tests
 make tests ARGS='app/agent/tests/test_registry.py'
 make typecheck
 make architecture-check
-make project-context        # régénère la cartographie déterministe
-make project-context-check  # vérifie qu’elle suit encore le code
-make docs-prepare           # régénère les cartes et vérifie le corpus documentaire FR/EN
-make docs-update            # dev : préparation + contrôle du corpus actif + index textuel
-make architecture-baseline  # réduit/actualise la dette de couplage après revue du diff
-make sync-db                # dev uniquement : schéma/datasets DbAdmin, sans restart
-make update                 # dev/prod : images + restart + synchronisation DB + attente de disponibilité
+make project-context        # Regenerate the deterministic project map
+make project-context-check  # Check that it still matches the code
+make docs-prepare           # Regenerate maps and check the FR/EN documentation corpus
+make docs-update            # Dev: preparation + active corpus check + text index
+make architecture-baseline  # Reduce/update coupling debt after reviewing the diff
+make sync-db                # Dev only: DbAdmin schema/datasets, without restarting
+make update                 # Dev/prod: images + restart + DB sync + readiness check
 ```
 
-- Utiliser les cibles `make` lorsqu’elles existent.
-- Le backend et le frontend ont le hot reload : ne pas redémarrer pour une simple édition.
-- Les tests backend utilisent une base PostgreSQL éphémère. Ne jamais lancer `pytest` dans
-  le conteneur de développement.
-- Le schéma `public` est déclaratif et dérivé des modèles SQLAlchemy par `core.dbadmin`, qui
-  encapsule Atlas. Il n’y a ni Alembic,
-  ni migration manuscrite, ni cible `make migration`. En développement, `make sync-db` applique
-  les changements sans redémarrer la stack ; en production, `make update` les applique au
-  redémarrage du backend et attend que celui-ci soit sain.
-- `make clean` supprime les volumes et n’est jamais une étape de diagnostic ordinaire.
+- Use `make` targets whenever they exist.
+- The backend and frontend support hot reload: do not restart after a simple edit.
+- Backend tests use an ephemeral PostgreSQL database. Never run `pytest` in the development
+  container.
+- The `public` schema is declarative and derived from SQLAlchemy models by `core.dbadmin`,
+  which wraps Atlas. There is no Alembic, handwritten migration, or `make migration` target.
+  In development, `make sync-db` applies changes without restarting the stack; in production,
+  `make update` applies them when the backend restarts and waits until it is healthy.
+- `make clean` deletes volumes and is never a routine diagnostic step.
 
-Stack de référence : Python 3.14, FastAPI, Pydantic 2, SQLAlchemy 2 async, PostgreSQL 17 et
-pgvector ; Vue 3, Quasar 2, Pinia 3, Vue Router 5, vue-i18n 11 et TypeScript ; Pydantic AI,
-MCP/FastMCP et Docker Compose.
+Reference stack: Python 3.14, FastAPI, Pydantic 2, SQLAlchemy 2 async, PostgreSQL 17 and
+pgvector; Vue 3, Quasar 2, Pinia 3, Vue Router 5, vue-i18n 11 and TypeScript; Pydantic AI,
+MCP/FastMCP and Docker Compose.
 
-## Architecture du dépôt
+## Repository architecture
 
-Les deux listes d’activation font foi : `back/modules.py` et `front/modules.ts`.
+The two activation lists are authoritative: `back/modules.py` and `front/modules.ts`.
 
-| Couche | Responsabilité | Règle de dépendance |
+| Layer | Responsibility | Dependency rule |
 |---|---|---|
-| `back/core` | Infrastructure réutilisable : DB, API, auth, RBAC, i18n, websocket | Ne dépend jamais de `app` ni de `bridge` |
-| `back/app` | Domaines métier Galaris | Consomme les surfaces publiques des autres domaines |
-| `back/bridge` | Adaptation de systèmes externes | Traduit les protocoles externes vers les contrats Galaris |
-| `front/core` | Shell, API, auth, navigation, i18n | Ne contient pas de logique métier applicative |
-| `front/app` | Pages et états des domaines | Modules déclarés et routes basées sur les fichiers |
-| `front/bridge` | Configuration et guides des systèmes externes | Contribue aux écrans génériques sans dupliquer les domaines métier |
+| `back/core` | Reusable infrastructure: DB, API, auth, RBAC, i18n, websocket | Never depends on `app` or `bridge` |
+| `back/app` | Galaris business domains | Consumes other domains' public interfaces |
+| `back/bridge` | External system adapters | Translates external protocols into Galaris contracts |
+| `front/core` | Shell, API, auth, navigation, i18n | Contains no application business logic |
+| `front/app` | Domain pages and state | Declared modules and file-based routes |
+| `front/bridge` | External system configuration and guides | Contributes to generic screens without duplicating business domains |
 
-Une surface inter-module stable est exposée par le package racine ou un module public nommé
-`contracts.py`, `facade.py` ou `interface.py`. Éviter les imports vers un service interne ou
-un modèle ORM d’un autre domaine. Les imports de composition au bootstrap sont une exception,
-pas un précédent pour la logique métier.
+A stable cross-module interface is exposed through the root package or a public module named
+`contracts.py`, `facade.py`, or `interface.py`. Avoid importing another domain's internal
+service or ORM model. Composition imports during bootstrap are an exception, not a precedent
+for business logic.
 
-### Exécution agentique
+### Agent execution
 
-- `app.agent` est la façade et le contrat uniques : drivers, registre, dispatcher, planner,
-  briefing, résolution du modèle, streaming et application du résultat.
-- `app.harness` est l’implémentation concrète Pydantic AI.
-- `app.task` possède la persistance, les transitions, leases, tentatives et le scheduler. Il
-  fournit un port à `app.agent`; `app.agent` n’importe jamais `app.task`.
-- `bridge.hermes` adapte Hermès au contrat `AgentDriver` ; un bridge ne contourne pas la
-  façade agentique.
-- Un stream produit zéro ou plusieurs événements de message, puis exactement un résultat
-  terminal, et aucun événement après celui-ci.
+- `app.agent` is the single facade and contract: drivers, registry, dispatcher, planner,
+  briefing, model resolution, streaming, and result application.
+- `app.harness` is the concrete Pydantic AI implementation.
+- `app.task` owns persistence, transitions, leases, attempts, and the scheduler. It provides
+  a port to `app.agent`; `app.agent` never imports `app.task`.
+- `bridge.hermes` adapts Hermes to the `AgentDriver` contract; a bridge must not bypass the
+  agent facade.
+- A stream produces zero or more message events, followed by exactly one terminal result,
+  with no events after that result.
 
-Consulter `docs/fr/architecture/flows/agent-execution.md`,
-`docs/fr/architecture/state-machines.md` et le skill `galaris-agent-execution` avant de modifier
-ce chemin critique.
+Read `docs/fr/architecture/flows/agent-execution.md`,
+`docs/fr/architecture/state-machines.md`, and the `galaris-agent-execution` skill before
+modifying this critical path.
 
-### Messagerie et médias
+### Messaging and media
 
-`app.messenger` est le modèle canonique des conversations, messages, capacités, journal
-entrant et dispatch. Matrix, Nextcloud Talk, OneBot, Telegram et WhatsApp sont des bridges :
-ils convertissent leur protocole, puis appellent la façade canonique. Ne pas réimplémenter le
-workflow de tâches dans un bridge.
+`app.messenger` is the canonical model for conversations, messages, capabilities, the inbound
+journal, and dispatch. Matrix, Nextcloud Talk, OneBot, Telegram, and WhatsApp are bridges:
+they convert their protocol, then call the canonical facade. Do not reimplement the task
+workflow inside a bridge.
 
-Les fichiers et médias entrants conservent l’URI du Tool qui les a reçus. Un runtime ne reçoit
-qu’une matérialisation temporaire bornée lorsqu’une bibliothèque exige des octets ; ce temporaire
-n’est ni durable ni adressable par l’agent. Consulter le skill `galaris-messaging-bridges`
-et les flux `messaging.md` et `media-resources.md`.
+Incoming files and media retain the URI of the Tool that received them. A runtime receives
+only a bounded temporary materialization when a library requires bytes; that temporary
+materialization is neither durable nor addressable by the agent. Consult the
+`galaris-messaging-bridges` skill and the `messaging.md` and `media-resources.md` flows.
 
-### Outils et processus
+### Tools and processes
 
-Les outils MCP, connexions, fichiers et exécutions longues traversent les contrats de
-`app.tools`, `app.mcp`, `app.connection`, `app.file_share` et `app.process`. n8n reste un
-bridge externe. Les callbacks et transitions de processus doivent être idempotents et les
-états terminaux immuables. Consulter le skill `galaris-process-tools`.
+MCP tools, connections, files, and long-running executions use the contracts of `app.tools`,
+`app.mcp`, `app.connection`, `app.file_share`, and `app.process`. n8n remains an external
+bridge. Callbacks and process transitions must be idempotent, and terminal states must be
+immutable. Consult the `galaris-process-tools` skill.
 
-## Skills du dépôt
+## Repository skills
 
-Les skills Codex sont versionnés dans `.agents/skills/`. Lire complètement le `SKILL.md`
-applicable avant d’agir, puis ne charger que ses références utiles.
+Codex skills are versioned in `.agents/skills/`. Read the applicable `SKILL.md` in full
+before acting, then load only the references you need.
 
-| Travail | Skills à utiliser |
+| Work | Skills to use |
 |---|---|
-| Toute modification | `general` |
-| Architecture ou déclaration d’un module | `modules` ; `create-module` pour un CRUD complet |
-| Python backend, SQLAlchemy, RBAC | `back-conventions` ; ajouter `database` si le schéma change |
-| Migration de données, datasets permanents ou actions sur delta de modèle | `core-dbadmin` avec `database` et `back-conventions` |
+| Any modification | `general` |
+| Module architecture or declaration | `modules`; `create-module` for complete CRUD functionality |
+| Backend Python, SQLAlchemy, RBAC | `back-conventions`; add `database` when the schema changes |
+| Data migrations, permanent datasets, or actions triggered by model deltas | `core-dbadmin` with `database` and `back-conventions` |
 | Vue/Quasar | `front-ui-conventions`, `vue-skilld`, `quasar-skilld` |
-| Pinia, routes ou traductions | `pinia-skilld`, `vue-router-skilld`, `vue-i18n-skilld` selon les imports |
-| Agent, tâche, driver, planner, briefing | `galaris-agent-execution` ; ajouter `building-pydantic-ai-agents` pour le harnais interne |
-| Messagerie ou bridge conversationnel | `galaris-messaging-bridges` ; ajouter `onebot-11` pour OneBot |
-| MCP, outils, process, n8n, fichiers | `galaris-process-tools` |
-| Logfire | le skill `logfire-*` correspondant à instrumentation, requête ou interface |
+| Pinia, routes, or translations | `pinia-skilld`, `vue-router-skilld`, `vue-i18n-skilld` depending on imports |
+| Agent, task, driver, planner, briefing | `galaris-agent-execution`; add `building-pydantic-ai-agents` for the internal harness |
+| Messaging or conversational bridges | `galaris-messaging-bridges`; add `onebot-11` for OneBot |
+| MCP, tools, processes, n8n, files | `galaris-process-tools` |
+| Logfire | The `logfire-*` skill matching instrumentation, querying, or UI work |
 
-Créer ou faire évoluer un skill avec le skill système `skill-creator`; ne pas dupliquer ce
-skill dans le dépôt. Un skill local contient au minimum `SKILL.md` avec uniquement `name` et
-`description` dans son frontmatter. Ajouter `agents/openai.yaml` lorsque sa découverte dans
-l’interface mérite un libellé ou un prompt explicite.
+Use the system `skill-creator` skill to create or evolve a skill; do not duplicate that skill
+in the repository. A local skill contains at least `SKILL.md`, with only `name` and
+`description` in its frontmatter. Add `agents/openai.yaml` when discovery in the UI warrants
+an explicit label or prompt.
 
-## Conventions de code
+## Code conventions
 
 ### Backend
 
-- Pyright est strict sur le code de production : typer les paramètres et retours, et réduire
-  les `Any` aux frontières réellement dynamiques.
-- Utiliser SQLAlchemy 2 avec `Mapped[T]`, `mapped_column`, requêtes async et la session
-  contextuelle fournie par `core.database`.
-- Un identifiant primaire est soit un entier auto-incrémenté, soit un UUID. Une colonne dont le
-  nom se termine par `_id` est exclusivement une clé étrangère réelle vers l’identifiant primaire
-  d’une autre table, avec le même type. Les identifiants fournis par un système externe utilisent
-  un nom explicite tel que `external_id` et jamais le suffixe `_id` sur une table qui ne les porte
-  pas comme clé primaire.
-- La logique métier vit dans des fonctions/services du domaine ; les routers valident,
-  autorisent et délèguent.
-- Protéger les endpoints avec le mécanisme RBAC existant et tester les refus autant que les
-  succès.
-- Utiliser Loguru pour les journaux applicatifs ; ne pas laisser de `print` en production.
+- Pyright is strict for production code: type parameters and return values, and restrict
+  `Any` to genuinely dynamic boundaries.
+- Use SQLAlchemy 2 with `Mapped[T]`, `mapped_column`, async queries, and the contextual session
+  provided by `core.database`.
+- A primary key is either an auto-incrementing integer or a UUID. A column whose name ends
+  in `_id` is exclusively a real foreign key to another table's primary key, with the same
+  type. Identifiers provided by an external system use an explicit name such as `external_id`,
+  and never the `_id` suffix on a table that does not carry them as its primary key.
+- Business logic belongs in domain functions/services; routers validate, authorize,
+  and delegate.
+- Protect endpoints with the existing RBAC mechanism and test denials as well as successes.
+- Use Loguru for application logs; do not leave `print` calls in production.
 
 ### Frontend
 
-- La palette **Solaire** est la référence chromatique obligatoire pour toute l’application :
-  [valeurs et règles d’usage](docs/fr/dev/palette-solaire.md). Utiliser ses 11 accents et leurs
-  fonds clairs/sombres exacts pour les icônes, composants, états et graphiques. Ne pas reprendre
-  une couleur historique ou une teinte Quasar approchante comme référence, ni réintroduire les
-  couleurs écartées. Toute évolution de la palette doit être portée par cette référence commune.
-- Conserver les composants et pages focalisés ; mettre les appels API dans les services et
-  l’état partagé dans Pinia.
-- Les routes sont dérivées de `pages/`; ne pas maintenir une seconde table de routes.
-- Le mode `mobile` correspond exclusivement à une largeur de viewport inférieure à
-  1024 px CSS (`$q.screen.lt.md`) ; le mode `desktop` commence à 1024 px, sans tenir compte
-  de l’orientation ni du type d’appareil.
-- Toute chaîne visible passe par vue-i18n. Les catalogues anglais et français conservent les
-  mêmes clés, types et paramètres.
-- Respecter les privilèges dans la navigation et dans l’API ; masquer un bouton ne remplace
-  jamais l’autorisation backend.
-- Toute modale doit pouvoir être fermée en cliquant sur l’arrière-plan. Ne jamais utiliser
-  `persistent`, `no-backdrop-dismiss` ou une option équivalente sur un dialogue Quasar.
-- Toute liste paginée utilise 50 éléments par défaut et propose exactement
-  `[10, 20, 50, 100, 500]`. Pour une pagination serveur, le contrat API doit accepter 500 éléments.
+- The **Solaire** palette is the mandatory color reference throughout the application:
+  [values and usage rules](docs/fr/dev/palette-solaire.md). Use its 11 accents and their exact
+  light/dark backgrounds for icons, components, states, and charts. Do not use historical
+  colors or approximate Quasar shades as a reference, or reintroduce discarded colors.
+  Any palette change must be reflected in this shared reference.
+- Keep components and pages focused; place API calls in services and shared state in Pinia.
+- Routes are derived from `pages/`; do not maintain a second route table.
+- `mobile` mode means exclusively a viewport width below 1024 CSS px (`$q.screen.lt.md`);
+  `desktop` mode starts at 1024 px, regardless of orientation or device type.
+- Every visible string goes through vue-i18n. English and French catalogs must retain
+  matching keys, types, and parameters.
+- Enforce privileges in navigation and in the API; hiding a button never replaces backend
+  authorization.
+- Every modal must close when its backdrop is clicked. Never use `persistent`,
+  `no-backdrop-dismiss`, or an equivalent option on a Quasar dialog.
+- Every paginated list defaults to 50 items and offers exactly `[10, 20, 50, 100, 500]`.
+  For server-side pagination, the API contract must accept 500 items.
 
-## Tests, documentation et livraison
+## Tests, documentation, and delivery
 
-- Les jeux de test destinés au dépôt doivent être entièrement synthétiques. Ne pas copier
-  des conversations, profils, titres de documents ou captures de production puis seulement
-  changer les noms. Les audits publics conservent les mesures agrégées et les conclusions
-  techniques ; retirer les données individuelles, identifiants réels, commandes capturées
-  et chemins propres à une installation. Les diagnostics locaux écrivent hors des sources
-  ou sous `artifacts/`, jamais dans un fichier versionné. Conserver les crédits et copyrights.
+- Write the root `AGENTS.md`, `INSTALL.md`, and `CHANGELOG.md` files exclusively in English.
+- Maintain `CHANGELOG.md` starting with the first actually published release. Before that
+  release, do not add change entries, an anticipated version, or reconstructed history.
+  At the first release, record its version and actual publication date. From then on,
+  systematically accompany every notable user- or administrator-facing change with an English
+  entry under `Unreleased`, then group these entries under the version and date when it is
+  published. Describe observable effects, incompatibilities, and required upgrade actions
+  without copying the Git log.
+- Test fixtures intended for the repository must be entirely synthetic. Do not copy production
+  conversations, profiles, document titles, or screenshots and merely change their names.
+  Public audits retain aggregate measurements and technical conclusions; remove individual
+  data, real identifiers, captured commands, and installation-specific paths. Local diagnostics
+  write outside the source tree or under `artifacts/`, never into a versioned file. Preserve
+  credits and copyrights.
 
-- Pour une optimisation ou correction transversale (API, chargement différé, cache, session,
-  composant partagé), inventorier ses consommateurs et écrire les garanties à préserver avant
-  de généraliser le changement. Vérifier un premier parcours complet, puis étendre par groupes
-  de consommateurs. Couvrir ouverture, réouverture, données préexistantes, erreurs, réponses
-  tardives et changement de contexte lorsque ces états s'appliquent.
-- Une correction de stabilisation garde un périmètre limité : séparer les refontes connexes.
-  Une suite ciblée verte ne qualifie pas un changement transversal pour publication.
-- Sans CI, lancer `make validate` avant publication : la commande teste un instantané isolé
-  incluant les changements non committés. Toute édition ultérieure invalide la qualification
-  du code courant. Lire `artifacts/validation/*/summary.txt` et les échecs, sans assimiler un
-  passage partiel à une validation complète. Aucun commit ni déploiement n'est effectué.
-- Partir du métier : formuler d’abord une garantie observable, puis choisir le test le
-  plus direct qui la prouve. Consulter le catalogue `docs/fr/dev/functional-tests.md`.
-- Un test doit survivre à une réorganisation du code qui préserve cette garantie. Ne pas
-  figer une largeur, une couleur, un ordre de boutons ou la présence d’un fragment source
-  pour immortaliser une ancienne demande de présentation. Tester l’action utilisable,
-  le contenu préservé, les droits et les effets durables. Une dimension n’est une assertion
-  que si elle porte un contrat fonctionnel, par exemple l’absence de contenu coupé à l’impression.
-- Garder les unités pour les règles pures, les intégrations avec vrais services/DB pour les
-  workflows, les composants réels pour les interactions et quelques E2E pour l’assemblage.
-  Remplacer les frontières externes, pas les services internes du parcours testé.
-- Avant d’ajouter un test, chercher la garantie existante. Renforcer ou paramétrer un scénario
-  pertinent plutôt que le dupliquer. Avant d’en supprimer un, consigner la garantie reprise
-  ou la contrainte accessoire abandonnée. Ne pas fabriquer un test par fonction ou par module.
-- Un test rouge exige un diagnostic : corriger le produit si la garantie est rompue ; ne
-  modifier l’attente que si le changement de contrat est volontaire et documenté. Pour un bug,
-  vérifier que le scénario reproduit le défaut avant correction.
-- Ajouter un test au niveau du contrat modifié : unité pour la logique, intégration DB pour
-  la persistance, AST pour une frontière d’architecture.
-- Exécuter d’abord les tests ciblés, puis `make typecheck`, `make architecture-check` et les
-  suites proportionnées au risque.
-- Régénérer `docs/fr/architecture/generated/` et `docs/en/architecture/generated/` avec
-  `make project-context`; ne pas éditer leurs
-  fichiers à la main.
-- Après une évolution de documentation ou de navigation, actualiser les parcours FR/EN et
-  exécuter `make docs-prepare` avant validation. Utiliser `make docs-update` pour propager
-  ces sources à la recherche partagée en développement. `make update` depuis les sources
-  lance automatiquement `docs-prepare` avant le build, puis actualise l’index du backend actif
-  et vérifie le résultat avant d'annoncer son succès ; ne pas contourner un échec documentaire
-  en copiant des fichiers dans un conteneur ni en modifiant les droits des agents.
-- Réduire `back/architecture.toml` et `back/architecture-baseline.json` lorsqu’une dépendance,
-  un import privé ou un cycle disparaît. Ne jamais augmenter la baseline sans revue explicite.
-- Ajouter ou modifier une décision dans `project/decisions/` lorsqu’un choix structurel change.
-- Mettre à jour `project/plans/README.md` lorsqu’un plan change de statut. Un plan `design` ou
-  `approved` ne décrit pas encore nécessairement le runtime.
-- Terminer par `git diff --check` et relire le diff sans écraser les modifications d’autrui.
+- For an optimization or cross-cutting fix (API, lazy loading, cache, session, shared component),
+  inventory its consumers and write down the guarantees to preserve before generalizing the
+  change. Verify one complete user journey first, then expand by groups of consumers. Cover
+  opening, reopening, existing data, errors, late responses, and context changes where relevant.
+- Keep stabilization fixes narrowly scoped: separate related refactors. A passing targeted suite
+  does not qualify a cross-cutting change for publication.
+- Without CI, run `make validate` before publication: it tests an isolated snapshot including
+  uncommitted changes. Any subsequent edit invalidates validation of the current code. Read
+  `artifacts/validation/*/summary.txt` and the failures; do not treat a partial run as complete
+  validation. The command neither commits nor deploys.
+- Start from business behavior: first state an observable guarantee, then choose the most direct
+  test that proves it. Consult the catalog in `docs/fr/dev/functional-tests.md`.
+- A test must survive code reorganization that preserves its guarantee. Do not freeze a width,
+  color, button order, or the presence of a source fragment to immortalize an old presentation
+  request. Test usable actions, preserved content, permissions, and durable effects. A dimension
+  is a valid assertion only when it represents a functional contract, such as no clipped content
+  when printing.
+- Use unit tests for pure rules, integration tests with real services/DB for workflows, real
+  components for interactions, and a few E2E tests for the assembled system. Replace external
+  boundaries, not internal services in the tested workflow.
+- Before adding a test, look for existing coverage of the guarantee. Strengthen or parameterize
+  a relevant scenario instead of duplicating it. Before deleting a test, document where its
+  guarantee is covered or which incidental constraint is being dropped. Do not create one test
+  per function or module.
+- A failing test requires diagnosis: fix the product if the guarantee is broken; change the
+  expectation only when the contract change is intentional and documented. For a bug, verify
+  that the scenario reproduces the defect before fixing it.
+- Add tests at the level of the changed contract: unit tests for logic, DB integration tests
+  for persistence, AST tests for architecture boundaries.
+- Run targeted tests first, then `make typecheck`, `make architecture-check`, and suites
+  proportionate to the risk.
+- Regenerate `docs/fr/architecture/generated/` and `docs/en/architecture/generated/` with
+  `make project-context`; do not edit their files by hand.
+- After documentation or navigation changes, update the FR/EN user journeys and run
+  `make docs-prepare` before validation. Use `make docs-update` to propagate these sources to
+  shared search in development. When running from source, `make update` automatically runs
+  `docs-prepare` before the build, then refreshes the active backend's index and checks the
+  result before reporting success; do not bypass documentation failures by copying files into
+  a container or changing agent permissions.
+- Reduce `back/architecture.toml` and `back/architecture-baseline.json` when a dependency,
+  private import, or cycle disappears. Never increase the baseline without explicit review.
+- Add or update a decision in `project/decisions/` when a structural choice changes.
+- Update `project/plans/README.md` when a plan changes status. A `design` or `approved` plan
+  does not necessarily describe the current runtime yet.
+- Finish with `git diff --check` and review the diff without overwriting others' changes.
