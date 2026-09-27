@@ -265,14 +265,24 @@ watch(canAccessParams, allowed => {
   if (allowed) void loadLanguage()
 }, { immediate: true })
 
+// Only persisted values update onboarding; failed saves leave Welcome visible.
+watch(
+  [languageLoading, languageLoadError, () => paramsStore.getParamValue('DEFAULT_LANGUAGE'), canAccessParams],
+  ([loading, failed, value, allowed]) => {
+    if (allowed && !loading && !failed && value !== null) {
+      onboardingStore.languageConfigured = Boolean(value.trim())
+    }
+  },
+)
+
 const steps = computed<SetupStep[]>(() => [
   {
     name: 1,
     key: 'language',
     icon: 'translate',
     route: null,
-    required: false,
-    complete: canAccessParams.value && !languageLoading.value && !languageLoadError.value && Boolean(configuredLanguage.value),
+    required: true,
+    complete: onboardingStore.languageConfigured === true,
     canEdit: canAccessParams.value && privilegeStore.hasPrivilege(privileges.PARAMS_EDIT),
     tipKeys: [],
   },

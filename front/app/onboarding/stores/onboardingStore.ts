@@ -13,6 +13,7 @@ import onboardingService, {
 export type { OnboardingStatusResponse, OnboardingOverviewResponse }
 
 interface OnboardingState {
+  languageConfigured: boolean | null
   llmProvider: OnboardingStatusResponse | null
   tools: OnboardingStatusResponse | null
   connections: OnboardingStatusResponse | null
@@ -25,6 +26,7 @@ interface OnboardingState {
 
 export const useOnboardingStore = defineStore('onboarding', {
   state: (): OnboardingState => ({
+    languageConfigured: null,
     llmProvider: null,
     tools: null,
     connections: null,
@@ -93,7 +95,8 @@ export const useOnboardingStore = defineStore('onboarding', {
         || state.agents === null
       ) return false
       return (
-        !state.llmProvider.has_data
+        state.languageConfigured === false
+        || !state.llmProvider.has_data
         || !state.agents.has_data
       )
     },
@@ -116,6 +119,7 @@ export const useOnboardingStore = defineStore('onboarding', {
       try {
         const response = await onboardingService.getOverview()
         this.$patch((state) => {
+          state.languageConfigured = response.language_configured
           state.llmProvider = response.llm_provider
           state.tools = response.tools
           state.connections = response.connections
@@ -136,6 +140,7 @@ export const useOnboardingStore = defineStore('onboarding', {
      */
     clearState(): void {
       this.$patch((state) => {
+        state.languageConfigured = null
         state.llmProvider = null
         state.tools = null
         state.connections = null

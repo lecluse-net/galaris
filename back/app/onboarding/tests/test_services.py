@@ -200,10 +200,13 @@ async def test_optional_capability_statuses_report_existing_configuration(db) ->
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("language", ["", "en", "fr", "zh"])
 async def test_overview_reports_configuration_without_edit_privileges(
     monkeypatch: pytest.MonkeyPatch,
+    language: str,
 ) -> None:
     router = import_module("app.onboarding.router")
+    monkeypatch.setattr(router.runtime_settings, "DEFAULT_LANGUAGE", language)
     monkeypatch.setattr(
         router,
         "check_privilege",
@@ -246,6 +249,7 @@ async def test_overview_reports_configuration_without_edit_privileges(
         assert item.has_data is True
         assert item.show is False
     assert overview.skills_access is False
+    assert overview.language_configured is bool(language)
     assert overview.processes_access is False
     assert router.check_privilege.await_count == 6
     for check in checks:

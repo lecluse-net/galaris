@@ -11,7 +11,7 @@ tests restent l’autorité sur le comportement.
 
 - 71 modules backend déclarés ;
 - 36 modules frontend déclarés ;
-- 528 arêtes de dépendance backend ;
+- 529 arêtes de dépendance backend ;
 - 194 arêtes de dépendance frontend ;
 - 266 arêtes entre domaines `app`/`bridge` ;
 - 25 paires de domaines directement bidirectionnelles ;
@@ -405,6 +405,7 @@ tests restent l’autorité sur le comportement.
 | `app.onboarding` | `app.tools` | `back/app/onboarding/services.py` |
 | `app.onboarding` | `core.authorize` | `back/app/onboarding/router.py` |
 | `app.onboarding` | `core.database` | `back/app/onboarding/router.py`, `back/app/onboarding/services.py` |
+| `app.onboarding` | `core.params` | `back/app/onboarding/router.py` |
 | `app.onboarding` | `core.user` | `back/app/onboarding/router.py` |
 | `app.process` | `app.agent` | `back/app/process/events.py`, `back/app/process/process_service.py`, `back/app/process/router.py` |
 | `app.process` | `app.console` | `back/app/process/process_service.py`, `back/app/process/router.py` |
@@ -1540,7 +1541,7 @@ tests restent l’autorité sur le comportement.
 | POST | `/multimedia/runs/{run_id}/deliveries/{receipt_id}/resolve` | `app.multimedia` | `resolve_delivery` | oui | `back/app/multimedia/router.py:41` |
 | GET | `/n8n/settings` | `bridge.n8n` | `read_settings` | oui | `back/bridge/n8n/router.py:14` |
 | POST | `/n8n/test` | `bridge.n8n` | `check_connection` | oui | `back/bridge/n8n/router.py:20` |
-| GET | `/onboarding/overview` | `app.onboarding` | `get_onboarding_overview` | oui | `back/app/onboarding/router.py:25` |
+| GET | `/onboarding/overview` | `app.onboarding` | `get_onboarding_overview` | oui | `back/app/onboarding/router.py:26` |
 | GET | `/operations` | `app.process` | `read_process_operations` | oui | `back/app/process/router.py:114` |
 | GET | `/params` | `core.params` | `read_params` | oui | `back/core/params/router.py:46` |
 | PUT | `/params/{name}` | `core.params` | `update_param` | oui | `back/core/params/router.py:83` |

@@ -12,6 +12,7 @@ from core.authorize.logic import check_privilege
 from core.user.user_service import get_current_user
 from core.user.models import User
 from core.database import get_db
+from core.params import runtime_settings
 from app.agent import management_scope_for
 
 from .schemas import OnboardingStatusResponse, OnboardingOverviewResponse
@@ -68,6 +69,7 @@ async def get_onboarding_overview(
     )
 
     return OnboardingOverviewResponse(
+        language_configured=bool(runtime_settings.DEFAULT_LANGUAGE),
         llm_provider=OnboardingStatusResponse(
             show=has_llm_privilege and not has_llm_data,
             has_privilege=has_llm_privilege,

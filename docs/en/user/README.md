@@ -36,6 +36,11 @@ then closes by default. **Preferences → System → Allow users to create their
 reopens it immediately; new accounts have no permissions until a role is assigned.
 Disabling this setting closes the signup form and API while existing accounts can still log in.
 
+After login, Home displays Welcome when the instance default language, a usable LLM, or an agent
+is missing, even if your profile already has a language. Without configuration permissions, the
+journey explains the required access. Saving the language restores the normal home page when
+the other required items are configured; `/welcome` remains accessible.
+
 The welcome journey presents seven steps in a timeline that wraps to fit the available width,
 without horizontal scrolling. Select a step to display its content
 below, or use **Previous step** and **Next step**. The first step, **Default language**, uses the

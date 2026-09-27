@@ -27,6 +27,7 @@ class OnboardingOverviewResponse(BaseModel):
     ``connections`` is likewise stable and specifically represents an active
     connection owned by an enabled messaging bridge.
     """
+    language_configured: bool
     llm_provider: OnboardingStatusResponse
     tools: OnboardingStatusResponse
     connections: OnboardingStatusResponse

@@ -2619,6 +2619,13 @@
           "back/app/onboarding/router.py"
         ],
         "source": "app.onboarding",
+        "target": "core.params"
+      },
+      {
+        "files": [
+          "back/app/onboarding/router.py"
+        ],
+        "source": "app.onboarding",
         "target": "core.user"
       },
       {
@@ -14687,7 +14694,7 @@
         "declared_path": "/onboarding/overview",
         "file": "back/app/onboarding/router.py",
         "handler": "get_onboarding_overview",
-        "line": 25,
+        "line": 26,
         "method": "GET",
         "module": "app.onboarding"
       },

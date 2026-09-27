@@ -44,6 +44,11 @@ aux utilisateurs de créer leur compte** les ouvre immédiatement ; les nouveaux
 restent sans droits jusqu’à l’attribution d’un rôle. Sa désactivation ferme le formulaire
 et l’API d’inscription, sans empêcher les comptes existants de se connecter.
 
+À la connexion, l’accueil affiche Welcome si la langue par défaut de l’instance, un LLM utilisable
+ou un agent manque, même si la langue de votre profil est déjà renseignée. Sans droits de
+configuration, le parcours indique les permissions nécessaires. Une fois la langue enregistrée,
+l’accueil normal revient si les autres éléments requis sont configurés ; `/welcome` reste accessible.
+
 Le parcours de bienvenue présente sept étapes dans une timeline qui revient à la ligne selon
 la largeur disponible, sans défilement horizontal. Sélectionnez une étape pour
 afficher son contenu en dessous, ou utilisez **Étape précédente** et **Étape suivante**.

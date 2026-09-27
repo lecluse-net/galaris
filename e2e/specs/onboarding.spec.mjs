@@ -33,7 +33,15 @@ welcomeTest('welcome persists the default language and opens configuration pages
   const session = await (await login).json()
   await languageSetting(session.access_token)
   await expect(page.locator('.user-menu-wrapper').first()).toBeVisible()
-  await page.goto('/welcome')
+  const overview = await request.get('/api/onboarding/overview', { headers: { Authorization: `Bearer ${session.access_token}` } })
+  expect(overview.ok()).toBeTruthy()
+  expect(await overview.json()).toMatchObject({
+    language_configured: false,
+    llm_provider: { has_data: true },
+    agents: { has_data: true },
+  })
+  // The profile is already French; missing instance language must still open Welcome.
+  await page.goto('/')
 
   const errors = []
   page.on('pageerror', error => errors.push(error.message))
@@ -48,7 +56,11 @@ welcomeTest('welcome persists the default language and opens configuration pages
   const saved = page.waitForResponse(response => response.url().endsWith('/api/params/DEFAULT_LANGUAGE') && response.request().method() === 'PUT')
   await page.getByRole('option', { name: 'Français', exact: true }).click()
   expect((await saved).ok()).toBeTruthy()
+  await expect(page.locator('.home-page')).toBeVisible()
   await page.reload()
+  await expect(page.locator('.home-page')).toBeVisible()
+  await expect(language).toHaveCount(0)
+  await page.goto('/welcome')
   const languageStep = page.getByRole('article', { name: 'Langue par défaut' })
   await expect(languageStep.getByRole('status')).toContainText('Français')
   await expect(language).toHaveCount(0)

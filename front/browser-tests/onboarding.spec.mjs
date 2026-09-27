@@ -11,11 +11,42 @@ const routes = [
 
 async function welcome(page, privileges = ['PARAMS_ACCESS', 'PARAMS_EDIT'], allowed = true) {
   const status = { has_data: false, has_privilege: allowed, show: allowed }
-  await jsonRoute(page, '**/api/onboarding/overview', Object.fromEntries(
+  await jsonRoute(page, '**/api/onboarding/overview', { language_configured: false, ...Object.fromEntries(
     ['llm_provider', 'agents', 'connections', 'tools', 'skills', 'processes'].map(key => [key, status]),
-  ))
+  ) })
   await mount(page, 'app/index/pages/welcome.vue', { route: '/welcome', privileges })
   await expect(page.getByRole('heading', { name: 'Welcome to Galaris' })).toBeVisible()
+}
+
+for (const canEdit of [true, false]) {
+  test(`home opens Welcome when only the instance language is missing (editable: ${canEdit})`, async ({ page }) => {
+    const param = { name: 'DEFAULT_LANGUAGE', value: '', secret: false, configured: false, prompt: null }
+    const ready = { has_data: true, has_privilege: false, show: false }
+    await page.route('**/api/onboarding/overview', route => route.fulfill({ json: {
+      language_configured: Boolean(param.value),
+      ...Object.fromEntries(['llm_provider', 'agents', 'connections', 'tools', 'skills', 'processes'].map(key => [key, ready])),
+    } }))
+    await page.route('**/api/params', route => route.fulfill({ json: { params: [param] } }))
+    await page.route('**/api/params/DEFAULT_LANGUAGE', route => {
+      param.value = route.request().postDataJSON().value
+      return route.fulfill({ json: { ...param, status: 'ok' } })
+    })
+    const privileges = canEdit ? ['PARAMS_ACCESS', 'PARAMS_EDIT'] : []
+    await mount(page, 'app/index/pages/index.vue', { privileges })
+    await expect(page.getByRole('heading', { name: 'Welcome to Galaris' })).toBeVisible()
+    if (!canEdit) {
+      await expect(page.getByRole('combobox', { name: 'Default language' })).toHaveCount(0)
+      await expect(page.getByText('Your account does not have the permission', { exact: false })).toBeVisible()
+      return
+    }
+    await page.getByRole('combobox', { name: 'Default language' }).click()
+    await page.getByRole('option', { name: 'English', exact: true }).click()
+    await expect.poll(() => param.value).toBe('en')
+    await expect(page.getByRole('heading', { name: 'Welcome to Galaris' })).toHaveCount(0)
+    await mount(page, 'app/index/pages/index.vue', { privileges })
+    await expect(page.locator('.home-page')).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Welcome to Galaris' })).toHaveCount(0)
+  })
 }
 
 for (const width of [320, 390, 768, 1024, 1440]) {

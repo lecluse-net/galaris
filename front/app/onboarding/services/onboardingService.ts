@@ -22,6 +22,8 @@ export interface OnboardingStatusResponse {
  * Combined onboarding state for all modules.
  */
 export interface OnboardingOverviewResponse {
+  /** Whether the instance has an explicitly configured default language. */
+  language_configured: boolean
   llm_provider: OnboardingStatusResponse
   tools: OnboardingStatusResponse
   /** Active connection owned by an enabled messaging bridge. */
