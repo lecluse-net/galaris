@@ -763,7 +763,7 @@ DEFAULT_PARAMS: dict[str, ParamConfig] = {
         "value": "24", "runtime_field": "TASK_PLAN_MAX_NODES", "kind": "integer"
     },
     Params.TASK_PLAN_MAX_LEAVES: {
-        "value": "12", "runtime_field": "TASK_PLAN_MAX_LEAVES", "kind": "integer"
+        "value": "200", "runtime_field": "TASK_PLAN_MAX_LEAVES", "kind": "integer"
     },
     Params.TASK_AGENT_MAX_REQUESTS: {
         "value": "200", "runtime_field": "TASK_AGENT_MAX_REQUESTS", "kind": "integer"
