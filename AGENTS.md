@@ -4,7 +4,7 @@ Galaris is a self-hosted platform that orchestrates autonomous AI agents, their 
 tools, goals, workspaces, and messaging channels. This file is the lasting entry point
 for any agent modifying the repository.
 
-## Start with the right sources
+## Sources and initial inspection
 
 When sources disagree, use this order of authority:
 
@@ -18,21 +18,97 @@ When sources disagree, use this order of authority:
 Before any work:
 
 - Read `git status --short` and preserve unrelated changes.
-- Never create a commit without an explicit user request in the current message;
-  earlier authorization does not cover subsequent changes.
-- Write all new commit messages exclusively in English, including both subject and body,
-  to make international contributions easier.
 - Consult the generated project map, then the contracts and tests for the relevant domain.
 - Use `rg` or `rg --files` to locate the actual implementation surfaces.
 - Verify assumptions against the code: a plan or historical example is not authoritative.
 
-## Environment and commands
+## Authorization and data protection
+
+- Never create a commit without an explicit user request in the current message;
+  earlier authorization does not cover subsequent changes.
+- Write all new commit messages exclusively in English, including both subject and body,
+  to make international contributions easier.
 
 NEVER edit files directly on the production server, even for an urgent fix, diagnosis,
 or recovery. Prepare all changes in the development repository. Any production
 intervention requires an explicit user request; a request to fix an issue or documentation
 of production commands does not grant that permission. A deployment request does not
 authorize direct file edits on the server.
+
+- Test fixtures intended for the repository must be entirely synthetic. Do not copy production
+  conversations, profiles, document titles, or screenshots and merely change their names.
+  Public audits retain aggregate measurements and technical conclusions; remove individual
+  data, real identifiers, captured commands, and installation-specific paths. Local diagnostics
+  write outside the source tree or under `artifacts/`, never into a versioned file. Preserve
+  credits and copyrights.
+
+## Repository skills
+
+Codex skills are versioned in `.agents/skills/`. Read the applicable `SKILL.md` in full
+before acting, then load only the references you need.
+
+| Work | Skills to use |
+|---|---|
+| Any modification | `general` |
+| Module architecture or declaration | `modules`; `create-module` for complete CRUD functionality |
+| Backend Python, SQLAlchemy, RBAC | `back-conventions`; add `database` when the schema changes |
+| Data migrations, permanent datasets, or actions triggered by model deltas | `core-dbadmin` with `database` and `back-conventions` |
+| Vue/Quasar | `front-ui-conventions`, `vue-skilld`, `quasar-skilld` |
+| Pinia, routes, or translations | `pinia-skilld`, `vue-router-skilld`, `vue-i18n-skilld` depending on imports |
+| Agent, task, driver, planner, briefing | `galaris-agent-execution`; add `building-pydantic-ai-agents` for the internal harness |
+| Messaging or conversational bridges | `galaris-messaging-bridges`; add `onebot-11` for OneBot |
+| MCP, tools, processes, n8n, files | `galaris-process-tools` |
+| Logfire | The `logfire-*` skill matching instrumentation, querying, or UI work |
+
+Use the system `skill-creator` skill to create or evolve a skill; do not duplicate that skill
+in the repository. A local skill contains at least `SKILL.md`, with only `name` and
+`description` in its frontmatter. Add `agents/openai.yaml` when discovery in the UI warrants
+an explicit label or prompt.
+
+## Engineering workflow
+
+Apply this workflow in proportion to the changed contract and its risks. Keep evidence concise;
+a small change does not require a separate planning document.
+
+### Define success and establish the cause
+
+- Start from business behavior: first state an observable guarantee, then choose the most direct
+  test that proves it. Consult the catalog in `docs/fr/dev/functional-tests.md`.
+- For a significant change, identify acceptance criteria and how each will be verified before
+  coding. Include the existing behavior that must remain valid.
+- Distinguish facts supported by code or observations from hypotheses and unknowns. Check the
+  assumption most likely to invalidate the proposed solution before building on it.
+- For a bug, reproduce the defect before fixing it, then verify the same scenario after the
+  correction. If reproduction is unavailable, state the diagnostic limits and the remaining
+  uncertainty; do not present a plausible cause as proven.
+
+### Bound the change and preserve consumers
+
+- For an optimization or cross-cutting fix (API, lazy loading, cache, session, shared component),
+  inventory its consumers and write down the guarantees to preserve before generalizing the
+  change. Verify one complete user journey first, then expand by groups of consumers. Cover
+  opening, reopening, existing data, errors, late responses, and context changes where relevant.
+- Keep stabilization fixes narrowly scoped: separate related refactors. A passing targeted suite
+  does not qualify a cross-cutting change for publication.
+- Justify new abstractions, dependencies, and configuration by a concrete need. Prefer existing
+  public contracts and the simplest implementation that preserves the required behavior.
+
+### Check failure behavior and performance
+
+- For asynchronous work, consider duplicate calls, concurrent updates, out-of-order or late
+  responses, cancellation, interruption, and recovery. Verify applicable guarantees for tasks,
+  streams, callbacks, and caches, including idempotency and immutable terminal states.
+- Before claiming an optimization, compare relevant measurements before and after under the
+  same conditions: latency, query counts, transferred data, or resource consumption. Verify
+  cache freshness, invalidation, and isolation between users and contexts as well as speed.
+- For UI behavior changes, exercise the affected journey in the assembled application: loading,
+  empty and existing data, errors, retry, navigation, and reopening as applicable. Include
+  keyboard use and small viewports when affected; inspect browser errors and failed requests.
+- After implementation, review the diff again specifically for failure modes: data loss,
+  unauthorized access, stuck states, unbounded resource growth, and regressions in consumers.
+  Resolve findings and rerun the affected checks before reporting completion.
+
+## Environment and commands
 
 `APP_ENV` is a free-form label that defaults to `prod`. The only derived application mode
 is `is_dev = (APP_ENV == "dev")`: only the exact value `dev` enables development mode.
@@ -127,29 +203,6 @@ MCP tools, connections, files, and long-running executions use the contracts of 
 bridge. Callbacks and process transitions must be idempotent, and terminal states must be
 immutable. Consult the `galaris-process-tools` skill.
 
-## Repository skills
-
-Codex skills are versioned in `.agents/skills/`. Read the applicable `SKILL.md` in full
-before acting, then load only the references you need.
-
-| Work | Skills to use |
-|---|---|
-| Any modification | `general` |
-| Module architecture or declaration | `modules`; `create-module` for complete CRUD functionality |
-| Backend Python, SQLAlchemy, RBAC | `back-conventions`; add `database` when the schema changes |
-| Data migrations, permanent datasets, or actions triggered by model deltas | `core-dbadmin` with `database` and `back-conventions` |
-| Vue/Quasar | `front-ui-conventions`, `vue-skilld`, `quasar-skilld` |
-| Pinia, routes, or translations | `pinia-skilld`, `vue-router-skilld`, `vue-i18n-skilld` depending on imports |
-| Agent, task, driver, planner, briefing | `galaris-agent-execution`; add `building-pydantic-ai-agents` for the internal harness |
-| Messaging or conversational bridges | `galaris-messaging-bridges`; add `onebot-11` for OneBot |
-| MCP, tools, processes, n8n, files | `galaris-process-tools` |
-| Logfire | The `logfire-*` skill matching instrumentation, querying, or UI work |
-
-Use the system `skill-creator` skill to create or evolve a skill; do not duplicate that skill
-in the repository. A local skill contains at least `SKILL.md`, with only `name` and
-`description` in its frontmatter. Add `agents/openai.yaml` when discovery in the UI warrants
-an explicit label or prompt.
-
 ## Code conventions
 
 ### Backend
@@ -187,35 +240,10 @@ an explicit label or prompt.
 - Every paginated list defaults to 50 items and offers exactly `[10, 20, 50, 100, 500]`.
   For server-side pagination, the API contract must accept 500 items.
 
-## Tests, documentation, and delivery
+## Tests and validation
 
-- Write the root `AGENTS.md`, `INSTALL.md`, and `CHANGELOG.md` files exclusively in English.
-- Maintain `CHANGELOG.md` starting with the first actually published release. Before that
-  release, do not add change entries, an anticipated version, or reconstructed history.
-  At the first release, record its version and actual publication date. From then on,
-  systematically accompany every notable user- or administrator-facing change with an English
-  entry under `Unreleased`, then group these entries under the version and date when it is
-  published. Describe observable effects, incompatibilities, and required upgrade actions
-  without copying the Git log.
-- Test fixtures intended for the repository must be entirely synthetic. Do not copy production
-  conversations, profiles, document titles, or screenshots and merely change their names.
-  Public audits retain aggregate measurements and technical conclusions; remove individual
-  data, real identifiers, captured commands, and installation-specific paths. Local diagnostics
-  write outside the source tree or under `artifacts/`, never into a versioned file. Preserve
-  credits and copyrights.
+### Test quality
 
-- For an optimization or cross-cutting fix (API, lazy loading, cache, session, shared component),
-  inventory its consumers and write down the guarantees to preserve before generalizing the
-  change. Verify one complete user journey first, then expand by groups of consumers. Cover
-  opening, reopening, existing data, errors, late responses, and context changes where relevant.
-- Keep stabilization fixes narrowly scoped: separate related refactors. A passing targeted suite
-  does not qualify a cross-cutting change for publication.
-- Without CI, run `make validate` before publication: it tests an isolated snapshot including
-  uncommitted changes. Any subsequent edit invalidates validation of the current code. Read
-  `artifacts/validation/*/summary.txt` and the failures; do not treat a partial run as complete
-  validation. The command neither commits nor deploys.
-- Start from business behavior: first state an observable guarantee, then choose the most direct
-  test that proves it. Consult the catalog in `docs/fr/dev/functional-tests.md`.
 - A test must survive code reorganization that preserves its guarantee. Do not freeze a width,
   color, button order, or the presence of a source fragment to immortalize an old presentation
   request. Test usable actions, preserved content, permissions, and durable effects. A dimension
@@ -229,12 +257,35 @@ an explicit label or prompt.
   guarantee is covered or which incidental constraint is being dropped. Do not create one test
   per function or module.
 - A failing test requires diagnosis: fix the product if the guarantee is broken; change the
-  expectation only when the contract change is intentional and documented. For a bug, verify
-  that the scenario reproduces the defect before fixing it.
+  expectation only when the contract change is intentional and documented.
 - Add tests at the level of the changed contract: unit tests for logic, DB integration tests
   for persistence, AST tests for architecture boundaries.
+- Check that a test would detect the behavior it claims to protect. For a regression, its
+  failure before the fix and success afterward provide that evidence; avoid assertions that
+  merely mirror implementation details or mocks that hide the failure being tested.
+
+### Validation scope
+
 - Run targeted tests first, then `make typecheck`, `make architecture-check`, and suites
   proportionate to the risk.
+- Without CI, run `make validate` before publication: it tests an isolated snapshot including
+  uncommitted changes. Any subsequent edit invalidates validation of the current code. Read
+  `artifacts/validation/*/summary.txt` and the failures; do not treat a partial run as complete
+  validation. The command neither commits nor deploys.
+- Finish with `git diff --check` and review the diff without overwriting others' changes.
+
+## Documentation and delivery
+
+### Documentation maintenance
+
+- Write the root `AGENTS.md`, `INSTALL.md`, and `CHANGELOG.md` files exclusively in English.
+- Maintain `CHANGELOG.md` starting with the first actually published release. Before that
+  release, do not add change entries, an anticipated version, or reconstructed history.
+  At the first release, record its version and actual publication date. From then on,
+  systematically accompany every notable user- or administrator-facing change with an English
+  entry under `Unreleased`, then group these entries under the version and date when it is
+  published. Describe observable effects, incompatibilities, and required upgrade actions
+  without copying the Git log.
 - Regenerate `docs/fr/architecture/generated/` and `docs/en/architecture/generated/` with
   `make project-context`; do not edit their files by hand.
 - After documentation or navigation changes, update the FR/EN user journeys and run
@@ -249,4 +300,24 @@ an explicit label or prompt.
 - Add or update a decision in `project/decisions/` when a structural choice changes.
 - Update `project/plans/README.md` when a plan changes status. A `design` or `approved` plan
   does not necessarily describe the current runtime yet.
-- Finish with `git diff --check` and review the diff without overwriting others' changes.
+
+### Evidence in the handoff
+
+- Distinguish what was implemented, what automated checks verified, and what was exercised in
+  the application. Support important claims with the relevant result or measurement; do not
+  equate a passing targeted test with complete system validation.
+- Report checks not run, blocked checks, and remaining uncertainty explicitly. Describe the
+  observable outcome, the scope of the change, and material limitations without claiming more
+  than the evidence establishes.
+
+## Continuous improvement
+
+- After a regression or recurring mistake, identify both its technical cause and why the
+  development or validation process missed it. Strengthen the relevant existing test,
+  automated check, or skill to prevent recurrence; retain only synthetic reproduction data.
+- Evaluate improvement through escaped regressions, recurring failures, and rework needed,
+  rather than the number of rules or tests added. Recheck whether the protection is effective.
+- Keep this file focused on durable repository rules, place specialized procedures in the
+  relevant skills, and automate mechanically verifiable requirements where useful. When
+  updating guidance, consolidate duplicates and remove obsolete instructions only after
+  verifying that their guarantees remain covered or are intentionally retired.
