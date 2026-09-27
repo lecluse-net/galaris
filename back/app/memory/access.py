@@ -274,13 +274,14 @@ def human_document_clause(user_id: int, *, write: bool = False) -> ColumnElement
 
 
 async def human_item_access(item: MemoryItem, user_id: int) -> MemoryAccess:
-    readable = await get_db().scalar(select(MemoryItem.id).where(
+    readable = select(MemoryItem.id).where(
         MemoryItem.id == item.id, human_item_clause(user_id),
-    ))
-    writable = await get_db().scalar(select(MemoryItem.id).where(
+    ).exists()
+    writable = select(MemoryItem.id).where(
         MemoryItem.id == item.id, human_item_clause(user_id, write=True),
-    ))
-    return MemoryAccess(can_read=readable is not None, can_write=writable is not None)
+    ).exists()
+    row = (await get_db().execute(select(readable, writable))).one()
+    return MemoryAccess(can_read=bool(row[0]), can_write=bool(row[1]))
 
 
 async def human_document_access(item: MemoryItem, user_id: int) -> MemoryAccess:

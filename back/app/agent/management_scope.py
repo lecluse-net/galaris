@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from core.authorize import check_privilege
+from core.authorize import RequestAuthorizationCache, check_privilege, role_id_ctx
 from core.database import get_db
 from core.user import user_service
 from core.user import UserModel as User
@@ -16,6 +16,7 @@ from .models import Agent
 
 
 MANAGE_ALL_AGENTS_PRIVILEGE = "AGENT_MANAGE_ALL"
+_managed_agents = RequestAuthorizationCache[tuple[int, int | None], frozenset[int]]()
 
 
 class AgentScopeDeniedError(PermissionError):
@@ -55,12 +56,19 @@ async def management_scope_for(
 
     if await check_privilege(user, MANAGE_ALL_AGENTS_PRIVILEGE, db):
         return AgentManagementScope(user_id=user.id, agent_ids=None)
+    key = (user.id, role_id_ctx.get())
+    cache = _managed_agents.entries(db.sync_session)
+    if cache is not None and key in cache:
+        return AgentManagementScope(user_id=user.id, agent_ids=cache[key])
     ids = frozenset(
         int(agent_id)
         for agent_id in (
             await db.scalars(select(Agent.id).where(Agent.user_id == user.id))
         ).all()
     )
+    cache = _managed_agents.entries(db.sync_session)
+    if cache is not None:
+        cache[key] = ids
     return AgentManagementScope(user_id=user.id, agent_ids=ids)
 
 

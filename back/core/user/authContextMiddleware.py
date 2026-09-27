@@ -36,15 +36,17 @@ class AuthContextMiddleware(BaseHTTPMiddleware):
                 user_id = payload.get("user_id")
                 role_id = payload.get("role_id")
                 assignment_id = payload.get("assignment_id")
-                from .auth_service import AuthenticationError, validate_access_claims
-                from .user_service import get_user_by_id
+                from .auth_service import AuthenticationError, load_access_user, validate_access_claims
 
-                user = await get_user_by_id(user_id) if isinstance(user_id, int) else None
+                user, family_active = (
+                    await load_access_user(user_id, payload.get("session_family"))
+                    if isinstance(user_id, int) else (None, None)
+                )
                 if user is None or not user.is_active:
                     user_id = None
                 else:
                     try:
-                        await validate_access_claims(payload, user)
+                        await validate_access_claims(payload, user, family_active=family_active)
                         session_family = payload.get("session_family")
                         validated_user = user
                     except AuthenticationError:

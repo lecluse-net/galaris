@@ -44,16 +44,15 @@ def _conflict(exc: Exception) -> HTTPException:
 
 async def _goal_scope_or_404(
     goal_id: UUID,
-) -> tuple[GoalDetail, AgentManagementScope]:
+) -> tuple[goal_service.GoalAccess, AgentManagementScope]:
     scope = await current_management_scope()
-    goal = await goal_service.get_detail(goal_id)
+    goal = await goal_service.get_access(goal_id)
     if (
         goal is None
         or not scope.allows(goal.agent_id)
         or (
-            goal.referrer is not None
-            and goal.referrer.type == "AGENT"
-            and not scope.allows(goal.referrer.agent_id)
+            goal.referrer_agent_id is not None
+            and not scope.allows(goal.referrer_agent_id)
         )
     ):
         raise _not_found()
@@ -74,7 +73,7 @@ async def _require_parent_scope(
 ) -> None:
     if parent_goal_id is None:
         return
-    parent = await goal_service.get_read(parent_goal_id)
+    parent = await goal_service.get_access(parent_goal_id)
     if parent is None or not scope.allows(parent.agent_id):
         raise _not_found()
 
@@ -147,7 +146,14 @@ async def read_goal_tree() -> GoalTreePage:
 @router.get("/{goal_id}", response_model=GoalDetail)
 @authorize(privileges=[Privileges.GOAL_ACCESS, Privileges.GOAL_EDIT])
 async def read_goal(goal_id: UUID) -> GoalDetail:
-    goal, _ = await _goal_scope_or_404(goal_id)
+    scope = await current_management_scope()
+    goal = await goal_service.get_detail(goal_id)
+    if (
+        goal is None or not scope.allows(goal.agent_id)
+        or (goal.referrer is not None and goal.referrer.type == "AGENT"
+            and not scope.allows(goal.referrer.agent_id))
+    ):
+        raise _not_found()
     return goal
 
 
@@ -158,11 +164,12 @@ async def read_goal_cycles(
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=50, ge=1, le=500),
 ) -> GoalCyclePage:
-    await _goal_scope_or_404(goal_id)
+    scope = await current_management_scope()
     cycles = await goal_service.list_cycles(
         goal_id,
         page=page,
         page_size=page_size,
+        managed_agent_ids=scope.agent_ids,
     )
     if cycles is None:
         raise _not_found()

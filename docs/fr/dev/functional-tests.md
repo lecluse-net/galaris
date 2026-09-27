@@ -20,6 +20,18 @@ est une décision à part entière : aucun quota de tests nouveaux par module.
 
 ## Parcours traversant plusieurs domaines
 
+`back/tests/test_api_read_cost.py` ouvre et réouvre les Documents via HTTP avec 1 puis
+1 000 révisions : contenu courant frais sans matérialiser l’historique, ancienne version
+lisible et pagination bornée. Il mesure aussi identité, Agents, bibliothèque, propriétaires
+et cycles Goal, puis vérifie les refus après retrait du gestionnaire et du rôle.
+`app/agent/tests/test_management_scope.py` couvre l’invalidation du périmètre à l’écriture,
+aux changements de rôle, aux fins de transaction et après la réponse ;
+`core/user/tests/test_refresh_session.py` couvre le contrôle compte/session regroupé,
+les jetons historiques, l’expiration, la révocation et les UserToken.
+Les cycles restent lisibles si un document Goal manque, tandis que le détail conserve
+son erreur ; `app/goal/tests/test_goal_runner.py` vérifie aussi propriétaire et référent.
+Ces budgets SQL synthétiques ne constituent pas une mesure de latence en production.
+
 La stabilisation du journal et du streaming est couverte par
 `back/app/agent/tests/test_reasoning_guard.py` (fragments irréguliers, snapshots rejoués,
 absence de faux positif sur un mot découpé) et `back/app/incident/tests/test_capture.py`

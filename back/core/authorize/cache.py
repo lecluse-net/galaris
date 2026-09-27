@@ -4,6 +4,7 @@ from collections.abc import Generator
 from contextlib import contextmanager
 from contextvars import ContextVar
 from dataclasses import dataclass, field
+from typing import cast
 
 from sqlalchemy import event
 from sqlalchemy.orm import ORMExecuteState, Session, SessionTransaction, UOWTransaction
@@ -12,15 +13,15 @@ from sqlalchemy.orm import ORMExecuteState, Session, SessionTransaction, UOWTran
 @dataclass
 class PrivilegeCache:
     active: bool = True
-    entries: dict[Session, dict[tuple[int, int | None], frozenset[str]]] = field(
-        default_factory=dict[Session, dict[tuple[int, int | None], frozenset[str]]],
+    entries: dict[Session, dict[object, object]] = field(
+        default_factory=dict[Session, dict[object, object]],
     )
 
 
 _cache: ContextVar[PrivilegeCache | None] = ContextVar("request_privileges", default=None)
 
 
-def cached_privileges(session: Session) -> dict[tuple[int, int | None], frozenset[str]] | None:
+def _session_entries(session: Session) -> dict[object, object] | None:
     cache = _cache.get()
     if cache is None or not cache.active:
         return None
@@ -29,6 +30,28 @@ def cached_privileges(session: Session) -> dict[tuple[int, int | None], frozense
         cache.entries.pop(session, None)
         return None
     return cache.entries.setdefault(session, {})
+
+
+class RequestAuthorizationCache[K, V]:
+    """Typed namespace sharing HTTP authorization invalidation, never its lifetime.
+
+    Each namespace owns its value type. Call entries again after a SELECT because
+    autoflush may have invalidated the previous dictionary during that query.
+    """
+
+    def entries(self, session: Session) -> dict[K, V] | None:
+        entries = _session_entries(session)
+        if entries is None:
+            return None
+        # The namespace instance uniquely identifies this dictionary's key/value types.
+        return cast(dict[K, V], entries.setdefault(self, {}))
+
+
+_privileges = RequestAuthorizationCache[tuple[int, int | None], frozenset[str]]()
+
+
+def cached_privileges(session: Session) -> dict[tuple[int, int | None], frozenset[str]] | None:
+    return _privileges.entries(session)
 
 
 @contextmanager

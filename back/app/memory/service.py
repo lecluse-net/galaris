@@ -566,14 +566,14 @@ async def _get_item_record(
     return result.scalar_one_or_none()
 
 
-async def item_record(item_id: UUID) -> MemoryItem | None:
+async def item_record(item_id: UUID, *, revisions: bool = True) -> MemoryItem | None:
     """Load a current memory resource and its grants for domain services."""
-    return await _get_item_record(item_id)
+    return await _get_item_record(item_id, revisions=revisions)
 
 
-async def document_record(document_id: UUID) -> MemoryItem | None:
+async def document_record(document_id: UUID, *, revisions: bool = True) -> MemoryItem | None:
     """Load the current document, including its grants, for document services."""
-    item = await _get_item_record(document_id)
+    item = await _get_item_record(document_id, revisions=revisions)
     return item if item is not None and item.node_kind == "document" else None
 
 
@@ -1126,8 +1126,9 @@ async def get_item(
     revision: int | None = None,
     record_llm_access: bool = False,
     task_id: UUID | None = None,
+    include_revisions: bool = True,
 ) -> tuple[MemoryItem, bytes, MemoryAccess, str, str]:
-    item = await _get_item_record(item_id)
+    item = await _get_item_record(item_id, revisions=include_revisions)
     if item is None:
         raise MemoryNotFoundError("Memory not found.")
     access = await assert_item_access(item, agent_id, administrative=administrative)
@@ -1136,7 +1137,7 @@ async def get_item(
     content_type = item.content_type
     media_type = item.media_type
     if revision is not None and revision != item.revision:
-        snapshot = next((entry for entry in item.revisions if entry.revision == revision), None)
+        snapshot = await _read_revision(item.id, revision)
         if snapshot is None:
             raise MemoryNotFoundError("Memory revision not found.")
         provider_code = snapshot.provider_code
@@ -1244,6 +1245,12 @@ async def link_item_source(
     await notify_memory_item(item.id, "source")
 
 
+async def _read_revision(item_id: UUID, revision: int) -> MemoryRevision | None:
+    return await get_db().scalar(select(MemoryRevision).where(
+        MemoryRevision.item_id == item_id, MemoryRevision.revision == revision,
+    ))
+
+
 async def item_to_detail(
     item: MemoryItem,
     content: bytes,
@@ -1261,7 +1268,7 @@ async def item_to_detail(
         item.content_profile_version if values["media_type"] == "text/html" else None
     )
     if revision is not None and revision != item.revision:
-        selected = next((entry for entry in item.revisions if entry.revision == revision), None)
+        selected = await _read_revision(item.id, revision)
         if selected is None:
             raise MemoryNotFoundError("Memory revision not found.")
         values.update(
@@ -1309,29 +1316,6 @@ async def list_revisions(
     return [MemoryRevisionPublic.model_validate(entry) for entry in rows]
 
 
-def _document_content_revision_rows(item: MemoryItem) -> list[MemoryRevision]:
-    """Return explicit content versions plus recoverable legacy Agent versions."""
-
-    rows: list[MemoryRevision] = []
-    previous_hash: str | None = None
-    for entry in item.revisions:
-        legacy_content_version = bool(
-            entry.document_content_version is None
-            and (
-                entry.revision == 1
-                or (
-                    entry.task_id is not None
-                    and previous_hash is not None
-                    and entry.content_hash != previous_hash
-                )
-            )
-        )
-        if entry.document_content_version is True or legacy_content_version:
-            rows.append(entry)
-        previous_hash = entry.content_hash
-    return rows
-
-
 async def list_document_content_revisions(
     item_id: UUID,
     *,
@@ -1363,18 +1347,13 @@ async def _document_content_revision(
     *,
     actor_agent_id: int | HumanActor,
 ) -> tuple[MemoryItem, MemoryRevision, bytes]:
-    item = await _get_item_record(item_id)
+    item = await _get_item_record(item_id, revisions=False)
     if item is None or item.node_kind != "document":
         raise MemoryNotFoundError("Document not found.")
     await assert_item_access(item, actor_agent_id)
-    entry = next(
-        (
-            candidate
-            for candidate in _document_content_revision_rows(item)
-            if candidate.revision == revision
-        ),
-        None,
-    )
+    from .revision_queries import content_revision
+
+    entry = await content_revision(item_id, revision)
     if entry is None:
         raise MemoryNotFoundError("Document content revision not found.")
     content = await get_storage(entry.provider_code).read(entry.resource_id)

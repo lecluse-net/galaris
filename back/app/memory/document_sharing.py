@@ -13,13 +13,12 @@ __all__ = ["can_manage", "document_actor", "sharing", "update_level", "update_sh
 
 
 async def _require_document(document_id: UUID) -> None:
-    if await service.document_record(document_id) is None:
+    if await service.document_record(document_id, revisions=False) is None:
         raise service.MemoryNotFoundError("Document not found")
 
 
 async def document_actor(document_id: UUID, scope: AgentManagementScope, *, write: bool = False) -> int | HumanActor:
-    await _require_document(document_id)
-    return await item_sharing.item_actor(document_id, scope, write=write)
+    return await item_sharing.item_actor(document_id, scope, write=write, document_only=True)
 
 
 async def sharing(document_id: UUID, scope: AgentManagementScope) -> DocumentSharing:

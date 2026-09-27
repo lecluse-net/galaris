@@ -19,8 +19,13 @@ from .models import DocumentTeamGrant, DocumentUserGrant, MemoryItem, MemoryItem
 from .schemas import DocumentCollaborator, DocumentSharing, DocumentSharingUpdate, DocumentSharingLevelUpdate
 
 
-async def item_actor(document_id: UUID, scope: AgentManagementScope, *, write: bool = False) -> int | HumanActor:
-    item = await service.item_record(document_id)
+async def item_actor(
+    document_id: UUID, scope: AgentManagementScope, *, write: bool = False,
+    document_only: bool = False,
+) -> int | HumanActor:
+    item = await service.item_record(document_id, revisions=False)
+    if document_only and (item is None or item.node_kind != "document"):
+        raise service.MemoryNotFoundError("Document not found")
     if item is None:
         raise service.MemoryNotFoundError("Memory not found")
     human = await human_item_access(item, scope.user_id)

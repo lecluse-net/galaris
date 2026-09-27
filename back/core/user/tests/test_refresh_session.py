@@ -71,7 +71,7 @@ async def test_login_refresh_and_logout_browser_session(
                 headers={"Authorization": f"Bearer {refreshed.json()['access_token']}"},
             )
             assert current_user.status_code == 200
-            assert 0 < len(statements) <= 2, "Identity checks must avoid redundant SQL"
+            assert len(statements) == 1, "Account and session must share one SQL snapshot"
     finally:
         event.remove(Engine, "before_cursor_execute", record_sql)
 
@@ -167,7 +167,7 @@ async def test_inactive_or_missing_account_cannot_create_refresh_credentials(db,
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("change", ["inactive", "version", "session", "user_token"])
+@pytest.mark.parametrize("change", ["inactive", "version", "session", "expired", "user_token"])
 async def test_warm_identity_never_survives_credential_revocation(client, change):
     from core.user import auth_service, token_service
 
@@ -197,9 +197,34 @@ async def test_warm_identity_never_survives_credential_revocation(client, change
             user.auth_version += 1
         elif change == "session":
             await sessions.revoke_all_user_sessions(user_id)
+        elif change == "expired":
+            stored = await db.scalar(select(UserRefreshSession).where(UserRefreshSession.user_id == user_id))
+            stored.expires_at = datetime.now(timezone.utc) - timedelta(seconds=1)
         else:
             await db.merge(record)
             stored = await db.get(type(record), record.id)
             stored.enabled = False
         await db.commit()
     assert (await client.get("/api/auth/me", headers=headers)).status_code == 401
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("claims,expected", [
+    ({}, 200),  # Legacy JWT with neither a family nor an explicit auth version.
+    ({"session_family": "unknown"}, 401),
+    ({"session_family": 123}, 401),
+    ({"user_id": 2147483647}, 401),
+    ({"auth_version": 1}, 401),
+])
+async def test_access_claims_keep_legacy_compatibility_without_accepting_invalid_families(client, claims, expected):
+    from core.user import auth_service
+
+    email = "access-claims@example.com"
+    async with get_db_session() as db:
+        user = User(email=email, hashed_password="unused", is_active=True)
+        db.add(user)
+        await db.commit()
+        user_id = user.id
+    token = auth_service.create_access_token({"sub": email, "user_id": user_id, **claims})
+    response = await client.get("/api/auth/me", headers={"Authorization": f"Bearer {token}"})
+    assert response.status_code == expected

@@ -13,6 +13,8 @@ from uuid import uuid4
 
 from loguru import logger
 from sqlalchemy import delete, select, update
+from sqlalchemy.orm import InstrumentedAttribute
+from sqlalchemy.sql.elements import ColumnElement
 
 from core import settings
 from core.secrets import auth_secret_key
@@ -211,15 +213,22 @@ async def family_for_token(token: str) -> str:
     return family
 
 
-async def is_family_active(user_id: int, family: str) -> bool:
-    return await get_db().scalar(
+def active_family_clause(
+    user_id: int | InstrumentedAttribute[int], family: str,
+) -> ColumnElement[bool]:
+    """Shared predicate for standalone and correlated access-token validation."""
+    return (
         select(UserRefreshSession.id).where(
             UserRefreshSession.user_id == user_id,
             UserRefreshSession.family_id == family,
             UserRefreshSession.revoked_at.is_(None),
             UserRefreshSession.expires_at > _utcnow(),
-        ).limit(1)
-    ) is not None
+        ).exists()
+    )
+
+
+async def is_family_active(user_id: int, family: str) -> bool:
+    return bool(await get_db().scalar(select(active_family_clause(user_id, family))))
 
 
 async def revoke_refresh_token(token: str) -> bool:

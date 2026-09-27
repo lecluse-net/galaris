@@ -16,7 +16,7 @@ from app.agent import AgentManagementScope, current_management_scope
 from core.database import get_db
 from core.params import runtime_settings
 from core.preview import PdfRenderError
-from core.user import get_user_record, HumanActor
+from core.user import get_current_user, get_user_record, HumanActor
 
 from . import (
     item_sharing,
@@ -562,6 +562,7 @@ async def get_memory_item(
             administrative=administrative,
             revision=revision,
             record_llm_access=False,
+            include_revisions=False,
         )
         return await service.item_to_detail(
             item,
@@ -810,7 +811,7 @@ async def read_document_owner_options(
 
     try:
         scope = await current_management_scope()
-        current_user = await get_user_record(scope.user_id)
+        current_user = await get_current_user()
         if current_user is None:
             raise HTTPException(status_code=401, detail="Authentication required")
         include_all_users = await check_privilege(
@@ -820,6 +821,7 @@ async def read_document_owner_options(
         )
         return await service.list_document_owner_options(
             current_user_id=current_user.id,
+            current_user=current_user,
             include_all_users=include_all_users,
             managed_agent_ids=scope.agent_ids,
             search=search,
@@ -1043,7 +1045,9 @@ async def read_managed_document(document_id: UUID) -> ManagedDocumentDetail:
     try:
         scope = await current_management_scope()
         actor = await document_sharing.document_actor(document_id, scope)
-        item, content, access, content_type, media_type = await service.get_item(document_id, agent_id=actor)
+        item, content, access, content_type, media_type = await service.get_item(
+            document_id, agent_id=actor, include_revisions=False,
+        )
         return ManagedDocumentDetail(
             item=await service.item_to_detail(item, content, access, content_type=content_type, media_type=media_type),
             agent_id=actor if isinstance(actor, int) else None,

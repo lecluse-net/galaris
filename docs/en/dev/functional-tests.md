@@ -20,6 +20,17 @@ contracts and tests, then select the least expensive layer that proves the obser
 
 ## Cross-domain workflows
 
+`back/tests/test_api_read_cost.py` opens and reopens Documents through HTTP with 1 then
+1,000 revisions: fresh current content without materializing history, readable older versions
+and bounded pagination. It also measures identity, Agents, the library, owners and Goal
+cycles, then checks denials after manager reassignment and role removal.
+`app/agent/tests/test_management_scope.py` covers scope invalidation on writes, role changes,
+transaction boundaries and after the response; `core/user/tests/test_refresh_session.py`
+covers combined account/session validation, legacy tokens, expiry, revocation and UserToken.
+Cycles remain readable when a Goal document is missing, while detail still reports the error;
+`app/goal/tests/test_goal_runner.py` also checks owner and referrer restrictions.
+These synthetic SQL budgets are not production latency measurements.
+
 Journal and streaming stabilization is covered by
 `back/app/agent/tests/test_reasoning_guard.py` (irregular fragments, replayed snapshots,
 no false positive on a fragmented word) and `back/app/incident/tests/test_capture.py`

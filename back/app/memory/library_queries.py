@@ -89,6 +89,7 @@ async def list_document_owner_options(
     include_all_users: bool,
     managed_agent_ids: Collection[int] | None,
     search: str = "",
+    current_user: UserModel | None = None,
 ) -> DocumentOwnerOptions:
     """Return owner choices without leaking users outside the caller's scope."""
 
@@ -115,7 +116,8 @@ async def list_document_owner_options(
     if include_all_users:
         users = await list_user_records(limit=500, search=search or None)
     else:
-        current_user = await get_user_record(current_user_id)
+        if current_user is None or current_user.id != current_user_id:
+            current_user = await get_user_record(current_user_id)
         users = [current_user] if current_user is not None else []
     user_options = [
         DocumentOwnerOption(

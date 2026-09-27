@@ -4,7 +4,7 @@
 # Context variables (leaf module, no dependencies — imported first to keep
 # the public API available even during circular import resolution)
 from .context import role_id_ctx, assignment_id_ctx
-from .cache import request_privilege_cache
+from .cache import RequestAuthorizationCache, request_privilege_cache
 
 # Models
 from .models import Role, Privilege, PrivilegeList, RolePrivilege, Assignment
@@ -49,6 +49,7 @@ __all__ = [
     "role_id_ctx",
     "assignment_id_ctx",
     "request_privilege_cache",
+    "RequestAuthorizationCache",
     "Role",
     "Privilege",
     "PrivilegeList",

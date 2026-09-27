@@ -67,6 +67,23 @@ class GoalRevisionConflict(GoalConflictError):
 
 
 @dataclass(frozen=True)
+class GoalAccess:
+    agent_id: int
+    referrer_agent_id: int | None
+
+
+async def get_access(
+    goal_id: UUID, *, owner_agent_id: int | None = None,
+) -> GoalAccess | None:
+    """Project authorization fields without documents, metrics or relationships."""
+    query = select(Goal.agent_id, Goal.referrer_agent_id).where(Goal.id == goal_id)
+    if owner_agent_id is not None:
+        query = query.where(Goal.agent_id == owner_agent_id)
+    row = (await get_db().execute(Goal.histo_filter(query))).one_or_none()
+    return GoalAccess(*row) if row is not None else None
+
+
+@dataclass(frozen=True)
 class GoalMetrics:
     cycle_count: int = 0
     task_cost: float = 0.0
@@ -387,10 +404,19 @@ async def list_cycles(
     page: int = 1,
     page_size: int = 20,
     owner_agent_id: int | None = None,
+    managed_agent_ids: Collection[int] | None = None,
 ) -> GoalCyclePage | None:
     """Return one newest-first page without loading the Goal's full history."""
 
-    if await get_by_id(goal_id, owner_agent_id=owner_agent_id) is None:
+    access = await get_access(goal_id, owner_agent_id=owner_agent_id)
+    if access is None or (
+        managed_agent_ids is not None
+        and (
+            access.agent_id not in managed_agent_ids
+            or (access.referrer_agent_id is not None
+                and access.referrer_agent_id not in managed_agent_ids)
+        )
+    ):
         return None
     db = get_db()
     total = int(

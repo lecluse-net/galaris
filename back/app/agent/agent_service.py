@@ -3,7 +3,7 @@ from typing import Any, Sequence, Optional
 import re
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy.orm import defer, selectinload
+from sqlalchemy.orm import defer, joinedload, selectinload
 from loguru import logger
 
 from core.database import get_db
@@ -92,9 +92,9 @@ async def _validate_voice_selection(value: str | None) -> None:
 
 def _agent_load_options() -> tuple[Any, ...]:
     return (
-        selectinload(Agent.title),
+        joinedload(Agent.title),
         selectinload(Agent.profile),
-        selectinload(Agent.user),
+        joinedload(Agent.user),
     )
 
 

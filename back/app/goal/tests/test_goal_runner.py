@@ -909,6 +909,32 @@ async def test_goal_cycles_are_paginated_newest_first(db) -> None:
     assert detail.tracking_content == "<h1>Current tracking</h1>"
     assert "cycles" not in detail.model_dump()
 
+    # The owner and an Agent referrer must both be managed. An unrelated caller,
+    # including an MCP caller constrained to another owner, cannot read cycles.
+    referrer = await _new_agent(db)
+    goal.referrer_type = GoalReferrerType.AGENT
+    goal.referrer_agent_id = referrer.id
+    await db.commit()
+    assert await goal_service.list_cycles(goal.id, managed_agent_ids=[]) is None
+    assert await goal_service.list_cycles(goal.id, managed_agent_ids=[agent.id]) is None
+    assert await goal_service.list_cycles(goal.id, owner_agent_id=referrer.id) is None
+    allowed = await goal_service.list_cycles(goal.id, managed_agent_ids=[agent.id, referrer.id])
+    assert allowed is not None and allowed.total == 55
+
+    # Cycle evidence is independent of document storage. Full detail still
+    # reports a missing document instead of silently returning incomplete text.
+    description = await db.get(MemoryItem, goal.description_document_id)
+    assert description is not None
+    description.soft_delete()
+    await db.commit()
+    allowed = await goal_service.list_cycles(goal.id, managed_agent_ids=[agent.id, referrer.id])
+    assert allowed is not None and allowed.total == 55
+    with pytest.raises(memory_service.MemoryNotFoundError):
+        await goal_service.get_detail(goal.id)
+    goal.soft_delete()
+    await db.commit()
+    assert await goal_service.list_cycles(goal.id) is None
+
 
 @pytest.mark.asyncio
 async def test_continue_schedules_from_task_finish_and_keeps_paused_goal_paused(

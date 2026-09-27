@@ -261,8 +261,7 @@ async def authenticate_from_jwt_token(token: str, *, set_context: bool = True) -
         logger.warning("Authentication attempt with token missing 'sub'")
         raise InvalidTokenError(await tr("user_api.errors.malformed_token"))
 
-    # Find the user by email.
-    user: Optional[User] = await user_service.get_user_by_email(email)
+    user, family_active = await load_access_user(email, payload.get("session_family"))
 
     if user is None:
         logger.warning("Token authentication attempt for an unknown account")
@@ -273,7 +272,7 @@ async def authenticate_from_jwt_token(token: str, *, set_context: bool = True) -
         logger.warning("Token authentication attempt for disabled user_id={}", user.id)
         raise UserInactiveError(await tr("user_api.errors.account_disabled"))
 
-    await validate_access_claims(payload, user)
+    await validate_access_claims(payload, user, family_active=family_active)
 
     # Set the current user context.
     if set_context:
@@ -284,7 +283,28 @@ async def authenticate_from_jwt_token(token: str, *, set_context: bool = True) -
     return user
 
 
-async def validate_access_claims(payload: dict[str, Any], user: User) -> None:
+async def load_access_user(
+    identity: int | str, family: object,
+) -> tuple[User | None, bool | None]:
+    """Read an account by ID or email and its optional family in one SQL snapshot.
+
+    HTTP requires a user ID; the standalone JWT authenticator also supports
+    legacy tokens identified by email. No validation or caching is skipped.
+    """
+    criterion = User.id == identity if isinstance(identity, int) else User.email == identity
+    if isinstance(family, str):
+        from .refresh_session_service import active_family_clause
+
+        row = (await get_db().execute(
+            select(User, active_family_clause(User.id, family)).where(criterion)
+        )).one_or_none()
+        return (row[0], bool(row[1])) if row is not None else (None, False)
+    return await get_db().scalar(select(User).where(criterion)), None
+
+
+async def validate_access_claims(
+    payload: dict[str, Any], user: User, *, family_active: bool | None = None,
+) -> None:
     """Shared HTTP/socket revocation checks, including legacy version-zero JWTs."""
     from .refresh_session_service import is_family_active
 
@@ -294,7 +314,10 @@ async def validate_access_claims(payload: dict[str, Any], user: User) -> None:
         or (payload.get("user_id") is not None and payload["user_id"] != user.id)
         or payload.get("sub") != user.email
         or (family is not None and (
-            not isinstance(family, str) or not await is_family_active(user.id, family)
+            not isinstance(family, str) or not (
+                family_active if family_active is not None
+                else await is_family_active(user.id, family)
+            )
         ))
     ):
         raise InvalidTokenError(await tr("user_api.errors.invalid_or_expired_token"))
