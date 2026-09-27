@@ -57,6 +57,10 @@ class LLMCallService {
   async delete(callId: string): Promise<void> {
     await api.delete(`/llm-calls/${encodeURIComponent(callId)}`)
   }
+
+  async stop(callId: string): Promise<void> {
+    await api.post(`/llm-calls/${encodeURIComponent(callId)}/stop`)
+  }
 }
 
 export const llmCallService = new LLMCallService()

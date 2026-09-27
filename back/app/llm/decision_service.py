@@ -12,6 +12,7 @@ from pydantic_ai import ModelRetry
 from app.agent import AIResult
 from . import llm_call_service, llm_provider_service, llm_service, output_registry
 from .call_capture import TextCallCapture, inference_owner, text_call_capture
+from .call_deadline import LLMCallDeadline
 from .contracts import DecisionInferenceRequest, InferenceEvent, StructuredInferenceRequest
 from .decision_binding import model_binding
 from .decision_contracts import (
@@ -83,7 +84,7 @@ async def _native(request: DecisionInferenceRequest, timeout: float | None) -> D
         ))
         result.metadata["llm_call_id"] = str(call.id)
         try:
-            async with asyncio.timeout(timeout):
+            async with LLMCallDeadline(call.started_at).enforce(), asyncio.timeout(timeout):
                 response = await provider.decide(
                     connection, model=llm.llm_name,
                     state=f"{request.system_prompt}\n\n{request.prompt}",

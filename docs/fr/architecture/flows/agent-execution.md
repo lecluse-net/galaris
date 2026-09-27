@@ -46,6 +46,15 @@ l’arrêt lors de leur annulation ; fermer un simple abonnement au journal lais
 autonome se poursuivre. Voir les [états d’inférence](../state-machines.md) et
 [0097](../../../../project/decisions/0097-durable-inference-lifecycle.md).
 
+Chaque appel physique Chat/Responses possède en outre une échéance absolue, figée à son
+admission par `LLM_CALL_TIMEOUT_MINUTES` (30 minutes par défaut, réglable dans les
+préférences des tâches). Texte, réflexion et arguments d’outils partiels ne réarment pas
+ce délai. Sans résultat terminal à l’échéance, le transport est fermé et la trace passe
+en erreur ; l’inférence durable termine en échec en conservant son journal et ses coûts.
+Les appels de décision natifs respectent également cette limite et leurs délais plus courts.
+Un résultat terminal déjà reçu reste terminal même si la fin du transport tarde.
+Chaque nouvel appel reçoit son propre budget ; la durée totale d’une Task n’est pas bornée.
+
 ## Activité des tâches et provenance
 
 Les inférences et les files Task/Conversation sont réveillées après commit. Le suivi interne
@@ -384,6 +393,7 @@ leur fin.
    résultat terminal unique et projette les événements sémantiques dans la timeline de la
    `TaskAttempt`. Les deltas de tokens ne sont pas persistés. Un garde-fou commun observe les
    blocs de réflexion et le texte généré : au-delà de 30 répétitions consécutives d'un même motif
+   de 128 éléments lexicaux au maximum (y compris un motif fragmenté par le transport),
    sans activité d'outil, il ferme le stream et fait échouer le run pour dégénérescence sans
    nouvelle tentative automatique.
    Les surfaces live Conversation et Task partagent strictement le même contrat de contenu :

@@ -282,6 +282,7 @@ class RuntimeSettings(BaseModel):
     )
     # Stall deadline, rearmed by each durable Task checkpoint or semantic event.
     TASK_ACTION_TIMEOUT_SECONDS: int = Field(default=1_800, ge=30, le=86_400)
+    LLM_CALL_TIMEOUT_MINUTES: int = Field(default=30, ge=1, le=1_440)
     TASK_TOOL_TIMEOUT_SECONDS: float = Field(default=300.0, ge=1.0, le=3_600.0)
     TASK_PLAN_MAX_DEPTH: int = Field(default=3, ge=1, le=10)
     TASK_PLAN_MAX_NODES: int = Field(default=24, ge=1, le=500)

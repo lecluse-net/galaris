@@ -21,6 +21,7 @@ from .trace import infer_call_purpose, infer_call_type
 
 class LLMCallRead(BaseModel):
     id: UUID
+    inference_attempt_id: UUID | None = None
     api_token_label: str | None = None
     requester_user_id: Optional[int] = None
     task_id: Optional[UUID] = None

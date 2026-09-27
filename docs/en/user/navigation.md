@@ -130,6 +130,18 @@ There is no separate sidebar menu for Tasks or conversation histories: these are
 inside **Activity**. **Chat** is for interaction; **Activity** is for monitoring executions.
 Access to the screen does not grant access to every conversation or agent.
 
+In **LLM activity** and task details, **Stop this LLM call** interrupts a running
+inference with `TASK_EDIT`, within your managed agents. Confirm the request, then wait
+for its terminal state: acceptance does not yet confirm that the provider has stopped.
+The trace and costs are retained; these inferences do not offer a delete button.
+The waiting task or conversation may report an interruption. To suspend work while
+keeping it resumable, use the task’s pause action instead.
+
+Under **Preferences → Tasks**, **Maximum LLM call duration (minutes)** defaults to 30.
+A call without a terminal result is interrupted and marked as an error at that deadline,
+even if the model keeps reasoning or producing a partial answer. Calls are timed separately:
+a task with multiple calls may run for hours. Changes apply to new calls.
+
 ## Documents and knowledge
 
 **Knowledge → Documents** (`/memory/documents`) holds authored content and Datasets.

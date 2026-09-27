@@ -85,8 +85,9 @@
             :label="$t('llmCalls.details')"
             @click="detailsExpanded = !detailsExpanded"
           />
+          <LlmCallStopButton :call="call" />
           <q-btn
-            v-if="deletable"
+            v-if="deletable && !call.inference_attempt_id"
             flat
             dense
             round
@@ -133,6 +134,7 @@ import TaskDetail from '@/app/task/components/TaskDetail.vue'
 import { taskResourceUri } from '@/app/task/resourceUri'
 import LlmCallDetails from './LlmCallDetails.vue'
 import LlmCallTokenBadge from './LlmCallTokenBadge.vue'
+import LlmCallStopButton from './LlmCallStopButton.vue'
 import { formatApiCost, formatBilledCost, reasoningEffortColor } from '../presentation'
 import { useLLMProviderStore } from '../stores/llmProviderStore'
 import type { LlmTaskColor } from '../taskColors'

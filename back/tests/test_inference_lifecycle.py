@@ -5,6 +5,7 @@ from uuid import uuid4
 
 import pytest
 import pytest_asyncio
+from httpx import ASGITransport, AsyncClient
 from sqlalchemy import event, select, text, update
 
 from core.database import get_db_session
@@ -176,6 +177,92 @@ async def test_silent_provider_commands_do_not_wait_for_heartbeat(runtime, monke
             await state(key, "running")
             await control_inference(key, "stop")
             await state(key, "stopped")
+    finally:
+        await stream.aclose()
+
+
+@pytest.mark.asyncio
+async def test_call_stop_preserves_trace_is_scoped_and_never_stops_a_new_attempt(runtime):
+    _, llm, requests, mode = runtime
+    mode["gate"] = asyncio.Event()
+    key = await start_inference(request_for(llm))
+    stream = stream_inference(key)
+    first = await anext(stream)
+    try:
+        async with get_db_session():
+            assert not await llm_call_service.stop_call(first.call_id, agent_ids=frozenset())
+        assert (await read_inference(key)).status == "running"
+        await control_inference(key, "pause")
+        await state(key, "paused")
+        await control_inference(key, "resume")
+        second_stream = stream_inference(key)
+        second = await anext(second_stream)
+        try:
+            async with get_db_session():
+                assert await llm_call_service.stop_call(first.call_id)
+            assert (await read_inference(key)).status == "running"
+            async with get_db_session():
+                assert await llm_call_service.stop_call(second.call_id)
+            stopped = await state(key, "stopped")
+            async with get_db_session():
+                assert await llm_call_service.stop_call(second.call_id)
+                call = await llm_call_service.get_call(second.call_id)
+                assert call.status == "cancelled"
+                assert call.completed_at is not None
+                assert call.inference_attempt_id == second.attempt_id
+                assert (await read_inference_result(second.call_id)).success is False
+            assert (await read_inference(key)) == stopped
+            assert len(requests) == 2
+        finally:
+            await second_stream.aclose()
+    finally:
+        await stream.aclose()
+
+
+@pytest.mark.asyncio
+async def test_call_stop_http_requires_edit_privilege_and_management_scope(runtime, monkeypatch):
+    import importlib
+    from types import SimpleNamespace
+    from unittest.mock import AsyncMock
+    from fastapi import Depends, FastAPI, Request
+    from core.authorize import GuardProvider, Privileges
+    from app.llm import call_router
+
+    _, llm, _, mode = runtime
+    mode["gate"] = asyncio.Event()
+    key = await start_inference(request_for(llm))
+    stream = stream_inference(key)
+    first = await anext(stream)
+    guards_module = importlib.import_module("core.authorize.guard_provider")
+    identity = SimpleNamespace(id=1, is_active=True)
+
+    async def guard(request: Request):
+        await guards_module.global_authorization_guard(request, current_user=identity)
+
+    api = FastAPI(dependencies=[Depends(guard)])
+    api.include_router(call_router.calls_router)
+    guards = GuardProvider()
+    guards.scan_app(api)
+    monkeypatch.setattr(guards_module, "guard_provider", guards)
+    privilege = AsyncMock(return_value=False)
+    monkeypatch.setattr(guards_module, "check_privilege", privilege)
+    scope = AsyncMock(return_value=SimpleNamespace(agent_ids=frozenset()))
+    monkeypatch.setattr(call_router, "current_management_scope", scope)
+    try:
+        async with AsyncClient(transport=ASGITransport(app=api), base_url="http://test") as client:
+            url = f"/llm-calls/{first.call_id}/stop"
+            assert (await client.post(url)).status_code == 403
+            assert privilege.await_args.args[1] == [Privileges.TASK_EDIT]
+            privilege.return_value = True
+            assert (await client.post(url)).status_code == 404
+            assert (await read_inference(key)).status == "running"
+            scope.return_value = SimpleNamespace(agent_ids=None)
+            trace = (await client.get(f"/llm-calls/{first.call_id}")).json()
+            assert trace["inference_attempt_id"] == str(first.attempt_id)
+            assert (await client.post(url)).status_code == 202
+            await state(key, "stopped")
+            assert (await client.post(url)).status_code == 202
+            assert (await client.delete(f"/llm-calls/{first.call_id}")).status_code == 409
     finally:
         await stream.aclose()
 

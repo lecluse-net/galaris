@@ -72,6 +72,7 @@ default: dict[str, object] = {
             "install_failed": "Impossible d’installer le modèle : ${error}",
             "delete_failed": "Impossible de supprimer le modèle : ${error}",
             "call_not_found": "Appel LLM introuvable",
+            "call_stop_unavailable": "Cet appel ne dispose pas d’une commande d’arrêt. Utilisez les commandes de la tâche ou du processus associé.",
             "inference_call_protected": "Cet appel appartient à une inférence enregistrée. Son historique et ses coûts doivent être conservés.",
             "invalid_llm_token": "Jeton LLM absent ou invalide",
             "code_in_use": "Le code LLM « ${code} » est déjà utilisé",

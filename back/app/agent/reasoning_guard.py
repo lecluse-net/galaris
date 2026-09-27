@@ -9,7 +9,7 @@ from .contracts import AIMessage, ReasoningDegenerationError
 
 
 MAX_REASONING_PATTERN_REPETITIONS = 30
-_MAX_PATTERN_TOKENS = 64
+_MAX_PATTERN_TOKENS = 128
 _MAX_WORD_CHARS = 1024
 _TOKEN_PATTERN = re.compile(r"\w+|[^\w\s]", flags=re.UNICODE)
 

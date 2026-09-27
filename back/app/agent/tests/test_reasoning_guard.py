@@ -90,8 +90,11 @@ def test_reasoning_guard_detects_a_pattern_inside_one_block() -> None:
 
 
 @pytest.mark.parametrize("snapshots", [False, True])
-def test_reasoning_guard_detects_repetition_independently_of_stream_fragments(snapshots: bool) -> None:
-    text = "I am checking the same hypothesis. " * 80
+@pytest.mark.parametrize("pattern_words", [7, 77, 128])
+def test_reasoning_guard_detects_repetition_independently_of_stream_fragments(snapshots: bool, pattern_words: int) -> None:
+    # Synthetic long cycles must survive arbitrary transport fragmentation too.
+    pattern = " ".join(f"synthetic{index}" for index in range(pattern_words)) + " "
+    text = pattern * 32
     rng = random.Random(19)
     guard = ReasoningPatternGuard()
     offset = 0

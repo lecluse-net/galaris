@@ -520,6 +520,21 @@ async def preview_call_retention() -> dict[str, int]:
     return await preview_trace_retention(agent_ids=scope.agent_ids)
 
 
+@calls_router.post("/{call_id}/stop", status_code=status.HTTP_202_ACCEPTED)
+@authorize(privileges=Privileges.TASK_EDIT)
+async def stop_llm_call(call_id: UUID) -> None:
+    """Accept a stop request; the worker publishes the terminal call state."""
+    scope = await current_management_scope()
+    try:
+        found = await llm_call_service.stop_call(call_id, agent_ids=scope.agent_ids)
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=409, detail=await tr("llm_api.errors.call_stop_unavailable"),
+        ) from exc
+    if not found:
+        raise HTTPException(status_code=404, detail=await tr("llm_api.errors.call_not_found"))
+
+
 @calls_router.delete("/{call_id}", status_code=status.HTTP_204_NO_CONTENT)
 @authorize(privileges=Privileges.LLM_CALL_PURGE)
 async def delete_call(call_id: UUID) -> None:

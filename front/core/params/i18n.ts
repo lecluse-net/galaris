@@ -366,6 +366,7 @@ export default {
         concurrency: 'Tâches exécutées simultanément', concurrencyHint: 'Chaque tâche utilise des ressources backend ; ses opérations durables et outils natifs utilisent des transactions courtes et isolées.',
         lease: 'Durée du lease (secondes)', leaseHint: 'Délai de propriété durable avant qu’une exécution interrompue puisse être récupérée.',
         actionTimeout: 'Délai d’inactivité d’une action (secondes)', actionTimeoutHint: 'Réinitialisé à chaque progression durable ; la durée totale d’une tâche n’est pas limitée.',
+        llmCallTimeout: 'Durée maximale d’un appel LLM (minutes)', llmCallTimeoutHint: '30 minutes par défaut. Sans résultat terminal, l’appel est interrompu et mis en erreur, même si du texte ou du raisonnement arrive. Chaque appel a son propre délai ; la durée totale de la tâche reste libre.',
         actionAttempts: 'Tentatives sur erreur applicative', actionAttemptsHint: 'Nombre total de tentatives autorisées pour une erreur qui n’est pas identifiée comme réseau.',
         actionRetryBase: 'Délai initial des erreurs applicatives (secondes)', actionRetryBaseHint: 'Le délai augmente exponentiellement après chaque échec consécutif.',
         networkAttempts: 'Tentatives sur erreur réseau', networkAttemptsHint: 'Fenêtre plus longue pour traverser une panne DNS, fournisseur ou connexion.',
@@ -771,6 +772,7 @@ export default {
         concurrency: 'Tasks executed concurrently', concurrencyHint: 'Each task uses backend resources; its durable operations and native tools use short isolated transactions.',
         lease: 'Lease duration (seconds)', leaseHint: 'Durable ownership period before an interrupted execution may be recovered.',
         actionTimeout: 'Action inactivity timeout (seconds)', actionTimeoutHint: 'Reset by each durable progress update; total task duration is not limited.',
+        llmCallTimeout: 'Maximum LLM call duration (minutes)', llmCallTimeoutHint: 'Defaults to 30 minutes. Without a terminal result, the call is interrupted and marked as an error even while text or reasoning arrives. Each call has its own deadline; total task duration is not limited.',
         actionAttempts: 'Application-error attempts', actionAttemptsHint: 'Total attempts allowed for a failure that is not classified as a network error.',
         actionRetryBase: 'Initial application-error delay (seconds)', actionRetryBaseHint: 'The delay grows exponentially after each consecutive failure.',
         networkAttempts: 'Network-error attempts', networkAttemptsHint: 'Longer retry window for DNS, provider, or connection outages.',
@@ -958,6 +960,7 @@ export default {
       fields: {
         concurrency: '并发执行任务数', concurrencyHint: '每个任务都会使用后端资源；其持久操作和原生工具使用短时隔离事务。', lease: '租约时长（秒）', leaseHint: '中断执行可恢复前的持久所有权时间。',
         actionTimeout: '操作无活动超时（秒）', actionTimeoutHint: '每次持久进度更新都会重置；不限制任务总时长。', actionAttempts: '应用错误尝试次数', actionAttemptsHint: '非网络错误允许的总尝试次数。',
+        llmCallTimeout: '单次 LLM 调用最长时长（分钟）', llmCallTimeoutHint: '默认为 30 分钟。没有最终结果的调用将被中断并标记为错误，即使仍在生成文本或推理。每次调用单独计时，不限制任务总时长。',
         actionRetryBase: '应用错误初始延迟（秒）', actionRetryBaseHint: '每次连续失败后延迟按指数增长。', networkAttempts: '网络错误尝试次数', networkAttemptsHint: '为 DNS、服务商或连接中断提供更长重试窗口。',
         networkRetryBase: '网络重试初始延迟（秒）', networkRetryBaseHint: '首次重试前的延迟，之后按指数增长。', networkRetryMax: '网络重试最大延迟（秒）', networkRetryMaxHint: '两次网络尝试间应用的最大延迟。',
         rootTokens: '根任务令牌预算', rootTokensHint: '0 表示禁用。每个阶段开始前检查，包括子任务和委派。',

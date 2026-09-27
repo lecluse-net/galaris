@@ -142,6 +142,20 @@ Ne cherchez pas un menu latéral « Conversations » ou « Tâches » séparé :
 d’**Activité**. **Discussion** sert à échanger ; **Activité** sert à suivre les exécutions.
 L’accès à cet écran ne donne pas accès à toutes les conversations ni à tous les agents.
 
+Dans **Activité LLM** et le détail d’une tâche, **Arrêter cet appel LLM** interrompt une
+inférence en cours avec le droit `TASK_EDIT`, dans le périmètre des agents gérés.
+Confirmez la demande puis attendez son état terminal : l’accusé de réception ne signifie
+pas encore que le fournisseur est arrêté. La trace et les coûts sont conservés ; ces
+inférences ne proposent pas de corbeille. La tâche ou conversation en attente peut signaler
+une interruption. Pour suspendre un travail en conservant sa reprise, utilisez plutôt la
+pause de la tâche.
+
+Dans **Préférences → Tâches**, **Durée maximale d’un appel LLM (minutes)** vaut 30 par
+défaut. Un appel sans résultat terminal est interrompu et mis en erreur à cette échéance,
+même si le modèle continue à réfléchir ou à produire une réponse partielle. Chaque appel
+est chronométré séparément : une tâche comprenant plusieurs appels peut durer des heures.
+Les changements s’appliquent aux nouveaux appels.
+
 ## Documents et connaissances
 
 **Connaissances → Documents** (`/memory/documents`) sert à retrouver les contenus rédigés

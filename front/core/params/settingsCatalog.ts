@@ -535,6 +535,14 @@ export const taskSchedulerFields: SettingField[] = [
         min: 30,
         max: 86400,
     },
+    {
+        name: 'LLM_CALL_TIMEOUT_MINUTES',
+        labelKey: 'taskSettings.fields.llmCallTimeout',
+        descriptionKey: 'taskSettings.fields.llmCallTimeoutHint',
+        input: 'integer',
+        min: 1,
+        max: 1440,
+    },
 ]
 
 export const taskRetryFields: SettingField[] = [

@@ -540,6 +540,7 @@ class TestSet:
         defaults = RuntimeSettings()
 
         assert defaults.TASK_AGENT_MAX_REQUESTS == 200
+        assert defaults.LLM_CALL_TIMEOUT_MINUTES == 30
         assert defaults.TASK_AGENT_MAX_TOOL_CALLS == 5_000
         assert defaults.TASK_TOOL_TIMEOUT_SECONDS == 300.0
 

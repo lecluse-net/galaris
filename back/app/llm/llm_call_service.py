@@ -7,7 +7,7 @@ import math
 from collections.abc import Collection, Sequence
 from datetime import date, datetime, time, timedelta, timezone
 from typing import Any, Optional
-from uuid import UUID
+from uuid import UUID, uuid4
 
 from loguru import logger
 from sqlalchemy import Select, and_, delete as sa_delete, exists, false, func, or_, select
@@ -770,6 +770,42 @@ async def delete_call(
     await db.delete(call)
     await db.commit()
     await websocket.emit("llm_call", "delete", event, None)
+    return True
+
+
+async def stop_call(
+    call_id: UUID, *, agent_ids: Collection[int] | None = None,
+) -> bool:
+    """Request provider cancellation while retaining accounting and journal events.
+
+    Lock the inference before checking its generation: a stale UI must never stop
+    a replacement attempt. Repeated stops and calls already finished are harmless.
+    """
+    from . import inference_store
+    from .models import LLMInferenceAttempt
+
+    db = get_db()
+    call = await get_call(call_id, agent_ids=agent_ids)
+    if call is None:
+        return False
+    if call.inference_attempt_id is None:
+        raise ValueError("This call has no controllable inference.")
+    inference_id = await db.scalar(
+        select(LLMInferenceAttempt.inference_id).where(
+            LLMInferenceAttempt.id == call.inference_attempt_id,
+        )
+    )
+    if inference_id is None:
+        return False
+    operation, attempt = await inference_store.locked(inference_id)
+    await db.refresh(call)
+    if (
+        attempt.id == call.inference_attempt_id
+        and call.status == "running"
+        and operation.status in {"running", "pausing"}
+    ):
+        await inference_store.command(inference_id, "stop", uuid4())
+    await db.commit()
     return True
 
 

@@ -34,6 +34,7 @@ from .provider_facade import (
 )
 from .resource_discovery import provider_connection
 from .generation_capacity import apply_generation_capacity
+from .call_deadline import LLMCallDeadline
 from .responses_trace import (
     ResponsesStreamTrace,
     request_messages as responses_request_messages,
@@ -375,10 +376,11 @@ async def _consume_adapted_stream_as_completion(
     *,
     model: str,
     adapter: ChatStreamAdapter,
+    deadline: LLMCallDeadline,
 ) -> tuple[dict[str, Any], str]:
     """Consume an adapted SSE response while preserving a non-streaming contract."""
     trace = StreamTrace()
-    async for line in upstream.aiter_lines():
+    async for line in deadline.iterate(upstream.aiter_lines(), completed=lambda: adapter.terminal):
         decoded_event: dict[str, Any] | None = None
         if line.startswith("data:"):
             data = line[5:].strip()
@@ -517,6 +519,7 @@ async def proxy_chat_completion(
 
                 purpose = LLMCallPurpose.PROCESS_EXEC
 
+        deadline = LLMCallDeadline()
         call = await llm_call_service.create_running_call(
             purpose=purpose,
             task_id=task_id,
@@ -562,43 +565,44 @@ async def proxy_chat_completion(
     )
     upstream_stream = stream or bridge_transport_nonstream
     try:
-        if transport is not None:
-            prepared = await transport.prepare_request(
-                provider.id,
-                connection,
-                canonical_forwarded,
-                force_stream=bridge_transport_nonstream,
-            )
-            headers = prepared.headers
-            forwarded = prepared.body
-            endpoint = prepared.endpoint
-            if bridge_transport_nonstream:
-                logger.info(
-                    "LLM proxy: bridging a non-streaming call through a stream-only "
-                    "provider task={} agent={}",
-                    task_id,
-                    agent_id,
-                )
-        else:
-            headers = {"Content-Type": "application/json"}
-            if api_key:
-                headers["Authorization"] = f"Bearer {api_key}"
-            endpoint = f"{base_url}/chat/completions"
-        upstream = await _send_best_effort(client, endpoint, headers, forwarded, stream=upstream_stream)
-        if transport is not None and upstream.status_code == 401:
-            await upstream.aclose()
-            async with get_db_session():
+        async with deadline.enforce():
+            if transport is not None:
                 prepared = await transport.prepare_request(
                     provider.id,
                     connection,
                     canonical_forwarded,
-                    force_refresh=True,
                     force_stream=bridge_transport_nonstream,
                 )
-            headers = prepared.headers
-            forwarded = prepared.body
-            endpoint = prepared.endpoint
+                headers = prepared.headers
+                forwarded = prepared.body
+                endpoint = prepared.endpoint
+                if bridge_transport_nonstream:
+                    logger.info(
+                        "LLM proxy: bridging a non-streaming call through a stream-only "
+                        "provider task={} agent={}",
+                        task_id,
+                        agent_id,
+                    )
+            else:
+                headers = {"Content-Type": "application/json"}
+                if api_key:
+                    headers["Authorization"] = f"Bearer {api_key}"
+                endpoint = f"{base_url}/chat/completions"
             upstream = await _send_best_effort(client, endpoint, headers, forwarded, stream=upstream_stream)
+            if transport is not None and upstream.status_code == 401:
+                await upstream.aclose()
+                async with get_db_session():
+                    prepared = await transport.prepare_request(
+                        provider.id,
+                        connection,
+                        canonical_forwarded,
+                        force_refresh=True,
+                        force_stream=bridge_transport_nonstream,
+                    )
+                headers = prepared.headers
+                forwarded = prepared.body
+                endpoint = prepared.endpoint
+                upstream = await _send_best_effort(client, endpoint, headers, forwarded, stream=upstream_stream)
     except asyncio.CancelledError:
         await _finish_cancelled_request(client, call.id, llm)
         raise
@@ -648,6 +652,7 @@ async def proxy_chat_completion(
                         upstream,
                         model=llm.llm_name,
                         adapter=adapter,
+                        deadline=deadline,
                     )
                 except Exception as exc:
                     await llm_call_service.finalize_call(
@@ -780,7 +785,7 @@ async def proxy_chat_completion(
 
         try:
             if stream_adapter is not None:
-                async for line in upstream.aiter_lines():
+                async for line in deadline.iterate(upstream.aiter_lines(), completed=lambda: bool(stream_adapter and stream_adapter.terminal)):
                     decoded_event: dict[str, Any] | None = None
                     if line.startswith("data:"):
                         data = line[5:].strip()
@@ -811,7 +816,7 @@ async def proxy_chat_completion(
                 yield b"data: [DONE]\n\n"
             else:
                 received_done = False
-                async for line in upstream.aiter_lines():
+                async for line in deadline.iterate(upstream.aiter_lines(), completed=lambda: bool(trace.finish_reason)):
                     if line.startswith("data:") and line[5:].strip() == "[DONE]":
                         received_done = True
                         stream_completed = True
@@ -1014,6 +1019,7 @@ async def proxy_responses(
 
                 purpose = LLMCallPurpose.PROCESS_EXEC
 
+        deadline = LLMCallDeadline()
         call = await llm_call_service.create_running_call(
             purpose=purpose,
             task_id=task_id,
@@ -1044,38 +1050,39 @@ async def proxy_responses(
         timeout=PROXY_TIMEOUT if request_timeout is None else httpx.Timeout(**request_timeout),
     )
     try:
-        if transport is not None:
-            prepared = await transport.prepare_responses_request(
-                provider.id,
-                connection,
-                canonical_forwarded,
-                operation=operation,
-            )
-            endpoint = prepared.endpoint
-            headers = prepared.headers
-            forwarded = prepared.body
-        else:
-            suffix = "/responses/compact" if operation == "compact" else "/responses"
-            endpoint = f"{openai_protocol_base_url(connection)}{suffix}"
-            headers = {"Content-Type": "application/json"}
-            if api_key:
-                headers["Authorization"] = f"Bearer {api_key}"
-        upstream_stream = operation == "create" and bool(forwarded.get("stream", False))
-        upstream = await _send_best_effort(client, endpoint, headers, forwarded, stream=upstream_stream)
-        if transport is not None and upstream.status_code == 401:
-            await upstream.aclose()
-            async with get_db_session():
+        async with deadline.enforce():
+            if transport is not None:
                 prepared = await transport.prepare_responses_request(
                     provider.id,
                     connection,
                     canonical_forwarded,
                     operation=operation,
-                    force_refresh=True,
                 )
-            upstream_stream = operation == "create" and bool(prepared.body.get("stream", False))
-            upstream = await _send_best_effort(
-                client, prepared.endpoint, prepared.headers, prepared.body, stream=upstream_stream,
-            )
+                endpoint = prepared.endpoint
+                headers = prepared.headers
+                forwarded = prepared.body
+            else:
+                suffix = "/responses/compact" if operation == "compact" else "/responses"
+                endpoint = f"{openai_protocol_base_url(connection)}{suffix}"
+                headers = {"Content-Type": "application/json"}
+                if api_key:
+                    headers["Authorization"] = f"Bearer {api_key}"
+            upstream_stream = operation == "create" and bool(forwarded.get("stream", False))
+            upstream = await _send_best_effort(client, endpoint, headers, forwarded, stream=upstream_stream)
+            if transport is not None and upstream.status_code == 401:
+                await upstream.aclose()
+                async with get_db_session():
+                    prepared = await transport.prepare_responses_request(
+                        provider.id,
+                        connection,
+                        canonical_forwarded,
+                        operation=operation,
+                        force_refresh=True,
+                    )
+                upstream_stream = operation == "create" and bool(prepared.body.get("stream", False))
+                upstream = await _send_best_effort(
+                    client, prepared.endpoint, prepared.headers, prepared.body, stream=upstream_stream,
+                )
     except asyncio.CancelledError:
         await _finish_cancelled_request(client, call.id, llm)
         raise
@@ -1175,7 +1182,7 @@ async def proxy_responses(
         stream_completed = False
         last_partial_update = 0.0
         try:
-            async for line in upstream.aiter_lines():
+            async for line in deadline.iterate(upstream.aiter_lines(), completed=lambda: stream_trace.terminal):
                 decoded_event: dict[str, Any] | None = None
                 if line.startswith("data:"):
                     data = line[5:].strip()

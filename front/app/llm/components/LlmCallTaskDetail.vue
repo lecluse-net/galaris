@@ -55,8 +55,9 @@
               <q-icon name="attach_money" size="xs" class="q-mr-xs" />
               {{ formatBilledCost(call.cost) }}
             </q-badge>
+            <LlmCallStopButton :call="call" />
             <q-btn
-              v-if="deletable"
+              v-if="deletable && !call.inference_attempt_id"
               flat
               dense
               round
@@ -88,6 +89,7 @@
 import { computed, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { StatusBadge } from '@/core/util'
+import LlmCallStopButton from './LlmCallStopButton.vue'
 import LlmCallDetails from './LlmCallDetails.vue'
 import LlmCallTokenBadge from './LlmCallTokenBadge.vue'
 import {

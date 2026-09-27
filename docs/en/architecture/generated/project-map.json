@@ -1937,6 +1937,7 @@
       },
       {
         "files": [
+          "back/app/llm/call_deadline.py",
           "back/app/llm/dbadmin.py",
           "back/app/llm/llm_call_service.py",
           "back/app/llm/profile_service.py",
@@ -13336,7 +13337,7 @@
         "declared_path": "/llm-calls/{call_id}",
         "file": "back/app/llm/call_router.py",
         "handler": "delete_call",
-        "line": 525,
+        "line": 540,
         "method": "DELETE",
         "module": "app.llm"
       },
@@ -13345,8 +13346,17 @@
         "declared_path": "/llm-calls/{call_id}",
         "file": "back/app/llm/call_router.py",
         "handler": "read_call",
-        "line": 544,
+        "line": 559,
         "method": "GET",
+        "module": "app.llm"
+      },
+      {
+        "authorized": true,
+        "declared_path": "/llm-calls/{call_id}/stop",
+        "file": "back/app/llm/call_router.py",
+        "handler": "stop_llm_call",
+        "line": 525,
+        "method": "POST",
         "module": "app.llm"
       },
       {
@@ -16504,6 +16514,7 @@
       {
         "files": [
           "front/app/llm/components/ExternalClientConfigDialog.vue",
+          "front/app/llm/components/LlmCallStopButton.vue",
           "front/app/llm/components/LlmCalls.vue",
           "front/app/llm/services/llmCallService.ts",
           "front/app/llm/services/llmProfileService.ts",
@@ -16520,6 +16531,7 @@
           "front/app/llm/components/CustomProviderDialog.vue",
           "front/app/llm/components/ExternalClientConfigButton.vue",
           "front/app/llm/components/LlmActivityPanel.vue",
+          "front/app/llm/components/LlmCallStopButton.vue",
           "front/app/llm/components/LlmCalls.vue",
           "front/app/llm/components/LlmUsageManager.vue",
           "front/app/llm/components/ProviderConfigPanel.vue",
@@ -16554,6 +16566,7 @@
           "front/app/llm/components/LlmActivityPanel.vue",
           "front/app/llm/components/LlmCall.vue",
           "front/app/llm/components/LlmCallDetails.vue",
+          "front/app/llm/components/LlmCallStopButton.vue",
           "front/app/llm/components/LlmCallTaskDetail.vue",
           "front/app/llm/components/LlmCalls.vue",
           "front/app/llm/components/LlmUsageManager.vue",
@@ -16672,6 +16685,20 @@
           "front/app/onboarding/components/WelcomePage.vue"
         ],
         "source": "app/onboarding",
+        "target": "core/authorize"
+      },
+      {
+        "files": [
+          "front/app/onboarding/components/WelcomePage.vue"
+        ],
+        "source": "app/onboarding",
+        "target": "core/params"
+      },
+      {
+        "files": [
+          "front/app/onboarding/components/WelcomePage.vue"
+        ],
+        "source": "app/onboarding",
         "target": "core/user"
       },
       {
@@ -16694,20 +16721,6 @@
           "front/app/process/services/processService.ts"
         ],
         "source": "app/process",
-      {
-        "files": [
-          "front/app/onboarding/components/WelcomePage.vue"
-        ],
-        "source": "app/onboarding",
-        "target": "core/authorize"
-      },
-      {
-        "files": [
-          "front/app/onboarding/components/WelcomePage.vue"
-        ],
-        "source": "app/onboarding",
-        "target": "core/params"
-      },
         "target": "core/api"
       },
       {

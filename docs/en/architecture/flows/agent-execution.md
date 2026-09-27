@@ -45,6 +45,14 @@ plain journal subscription leaves autonomous inference running. See the
 [inference states](../state-machines.md) and
 [0097](../../../../project/decisions/0097-durable-inference-lifecycle.md).
 
+Each physical Chat/Responses call also has an absolute deadline, fixed at admission by
+`LLM_CALL_TIMEOUT_MINUTES` (30 minutes by default, configurable in Task preferences).
+Partial text, reasoning and tool arguments do not reset this deadline. Without a terminal
+result at expiry, the transport closes and the trace becomes an error; the durable inference
+fails while retaining its journal and costs. Native decision calls also respect this limit
+and their shorter deadlines. A terminal result already received remains terminal even if
+the transport trailer stalls. Each new call gets its own budget; total Task duration is unbounded.
+
 ## Task activity and provenance
 
 Inferences and the Task/Conversation queues wake after commit. Internal and Chat/Responses
@@ -367,7 +375,8 @@ automatically; they remain flagged as blockers until completion.
 7. The facade invokes the registered driver, normalizes its streamed or nonstreamed mode, enforces
    a single terminal result, and projects semantic events into the `TaskAttempt` timeline. Token
    deltas are not persisted. A shared safeguard observes reasoning blocks and generated text:
-   beyond 30 consecutive repetitions of the same pattern without tool activity, it closes the
+   beyond 30 consecutive repetitions of the same pattern (up to 128 lexical elements,
+   including patterns split across transport fragments) without tool activity, it closes the
    stream and fails the run for degeneration without an automatic retry.
    The live Conversation and Task surfaces strictly share the same content contract: each
    interaction is an `AIMessage`, their accumulation is an `AIResult`, and the authoritative

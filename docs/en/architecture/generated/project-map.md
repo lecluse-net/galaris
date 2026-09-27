@@ -17,7 +17,7 @@ tests remain authoritative for behavior.
 - 25 directly bidirectional domain pairs;
 - 1 strongly connected components;
 - 7 directly bidirectional frontend pairs;
-- 584 detected HTTP/WebSocket handlers;
+- 585 detected HTTP/WebSocket handlers;
 - 128 detected SQLAlchemy tables;
 - 183 detected native MCP tools;
 - 40 detected Vue pages.
@@ -342,7 +342,7 @@ tests remain authoritative for behavior.
 | `app.llm` | `core.dbadmin` | `back/app/llm/dbadmin.py`, `back/app/llm/initial_configuration.py` |
 | `app.llm` | `core.failure_journal` | `back/app/llm/llm_call_service.py` |
 | `app.llm` | `core.i18n` | `back/app/llm/anthropic_router.py`, `back/app/llm/anthropic_service.py`, `back/app/llm/call_router.py`, `back/app/llm/llm_call_service.py`, `back/app/llm/llm_provider_service.py`, `back/app/llm/llm_service.py`, `back/app/llm/personal_router.py`, `back/app/llm/profile_gateway.py`, `back/app/llm/profile_inference_router.py`, `back/app/llm/profile_router.py`, `back/app/llm/profile_service.py`, `back/app/llm/protocol_inference.py`, `back/app/llm/provider_router.py`, `back/app/llm/proxy_service.py`, `back/app/llm/subscription_policy.py` |
-| `app.llm` | `core.params` | `back/app/llm/dbadmin.py`, `back/app/llm/llm_call_service.py`, `back/app/llm/profile_service.py`, `back/app/llm/retention.py` |
+| `app.llm` | `core.params` | `back/app/llm/call_deadline.py`, `back/app/llm/dbadmin.py`, `back/app/llm/llm_call_service.py`, `back/app/llm/profile_service.py`, `back/app/llm/retention.py` |
 | `app.llm` | `core.user` | `back/app/llm/anthropic_router.py`, `back/app/llm/call_router.py`, `back/app/llm/events.py`, `back/app/llm/inference_execution.py`, `back/app/llm/llm_call_service.py`, `back/app/llm/llm_provider_service.py`, `back/app/llm/personal_router.py`, `back/app/llm/profile_inference.py`, `back/app/llm/subscription_policy.py` |
 | `app.llm` | `core.util` | `back/app/llm/embedding_service.py`, `back/app/llm/generation_capacity.py`, `back/app/llm/handlers/openai_compatible.py`, `back/app/llm/image_trace.py`, `back/app/llm/llm_call_service.py`, `back/app/llm/llm_provider_service.py`, `back/app/llm/media_transport.py`, `back/app/llm/message_cleanup.py`, `back/app/llm/personal_service.py`, `back/app/llm/proxy_service.py`, `back/app/llm/responses_trace.py`, `back/app/llm/trace.py`, `back/app/llm/transcription_service.py`, `back/app/llm/tts_service.py` |
 | `app.mcp` | `app.agent` | `back/app/mcp/router.py` |
@@ -759,11 +759,11 @@ tests remain authoritative for behavior.
 | `app/lab` | `core/util` | `front/app/lab/components/LabComparisonDialog.vue`, `front/app/lab/components/LabResultsPanel.vue`, `front/app/lab/components/LabValueEditor.vue`, `front/app/lab/components/LabWorkbench.vue`, `front/app/lab/components/MemoryExtractionCaseEditor.vue`, `front/app/lab/pages/ai-evaluations.vue`, `front/app/lab/pages/index.vue`, `front/app/lab/textPresentation.ts` |
 | `app/llm` | `app/agent` | `front/app/llm/components/LlmActivityPanel.vue`, `front/app/llm/components/LlmCall.vue` |
 | `app/llm` | `app/task` | `front/app/llm/components/LlmCall.vue`, `front/app/llm/components/LlmCallDetails.vue`, `front/app/llm/presentation.ts` |
-| `app/llm` | `core/api` | `front/app/llm/components/ExternalClientConfigDialog.vue`, `front/app/llm/components/LlmCalls.vue`, `front/app/llm/services/llmCallService.ts`, `front/app/llm/services/llmProfileService.ts`, `front/app/llm/services/llmProviderService.ts`, `front/app/llm/services/personalLlmService.ts`, `front/app/llm/services/profileCatalogService.ts` |
-| `app/llm` | `core/authorize` | `front/app/llm/components/ConfiguredLlmManager.vue`, `front/app/llm/components/CustomProviderDialog.vue`, `front/app/llm/components/ExternalClientConfigButton.vue`, `front/app/llm/components/LlmActivityPanel.vue`, `front/app/llm/components/LlmCalls.vue`, `front/app/llm/components/LlmUsageManager.vue`, `front/app/llm/components/ProviderConfigPanel.vue`, `front/app/llm/components/ProviderListPanel.vue`, `front/app/llm/components/ProviderModelsPanel.vue`, `front/app/llm/components/ProviderWorkspace.vue`, `front/app/llm/navigation.ts`, `front/app/llm/pages/index.vue` |
+| `app/llm` | `core/api` | `front/app/llm/components/ExternalClientConfigDialog.vue`, `front/app/llm/components/LlmCallStopButton.vue`, `front/app/llm/components/LlmCalls.vue`, `front/app/llm/services/llmCallService.ts`, `front/app/llm/services/llmProfileService.ts`, `front/app/llm/services/llmProviderService.ts`, `front/app/llm/services/personalLlmService.ts`, `front/app/llm/services/profileCatalogService.ts` |
+| `app/llm` | `core/authorize` | `front/app/llm/components/ConfiguredLlmManager.vue`, `front/app/llm/components/CustomProviderDialog.vue`, `front/app/llm/components/ExternalClientConfigButton.vue`, `front/app/llm/components/LlmActivityPanel.vue`, `front/app/llm/components/LlmCallStopButton.vue`, `front/app/llm/components/LlmCalls.vue`, `front/app/llm/components/LlmUsageManager.vue`, `front/app/llm/components/ProviderConfigPanel.vue`, `front/app/llm/components/ProviderListPanel.vue`, `front/app/llm/components/ProviderModelsPanel.vue`, `front/app/llm/components/ProviderWorkspace.vue`, `front/app/llm/navigation.ts`, `front/app/llm/pages/index.vue` |
 | `app/llm` | `core/navigation` | `front/app/llm/navigation.ts`, `front/app/llm/pages/index.vue` |
 | `app/llm` | `core/user` | `front/app/llm/tokenAction.ts`, `front/app/llm/userTab.ts` |
-| `app/llm` | `core/util` | `front/app/llm/components/ConfiguredLlmManager.vue`, `front/app/llm/components/LlmActivityPanel.vue`, `front/app/llm/components/LlmCall.vue`, `front/app/llm/components/LlmCallDetails.vue`, `front/app/llm/components/LlmCallTaskDetail.vue`, `front/app/llm/components/LlmCalls.vue`, `front/app/llm/components/LlmUsageManager.vue`, `front/app/llm/components/ProviderQuotaPanel.vue`, `front/app/llm/pages/index.vue`, `front/app/llm/useEditorVoice.ts` |
+| `app/llm` | `core/util` | `front/app/llm/components/ConfiguredLlmManager.vue`, `front/app/llm/components/LlmActivityPanel.vue`, `front/app/llm/components/LlmCall.vue`, `front/app/llm/components/LlmCallDetails.vue`, `front/app/llm/components/LlmCallStopButton.vue`, `front/app/llm/components/LlmCallTaskDetail.vue`, `front/app/llm/components/LlmCalls.vue`, `front/app/llm/components/LlmUsageManager.vue`, `front/app/llm/components/ProviderQuotaPanel.vue`, `front/app/llm/pages/index.vue`, `front/app/llm/useEditorVoice.ts` |
 | `app/llm` | `core/websocket` | `front/app/llm/components/LlmActivityPanel.vue`, `front/app/llm/components/LlmCalls.vue` |
 | `app/memory` | `app/agent` | `front/app/memory/components/DocumentEditor.vue`, `front/app/memory/components/DocumentHistoryDialog.vue`, `front/app/memory/components/DocumentLibraryPage.vue`, `front/app/memory/components/MemorySharingPanel.vue`, `front/app/memory/pages/contacts.vue`, `front/app/memory/pages/index.vue` |
 | `app/memory` | `core/api` | `front/app/memory/components/DocumentAttachments.vue`, `front/app/memory/components/DocumentLibraryNavigation.vue`, `front/app/memory/components/DocumentThumbnail.vue`, `front/app/memory/pages/contacts.vue`, `front/app/memory/pages/index.vue`, `front/app/memory/richContent.ts`, `front/app/memory/services/contactService.ts`, `front/app/memory/services/memoryService.ts`, `front/app/memory/stores/documentIcons.ts` |
@@ -772,9 +772,9 @@ tests remain authoritative for behavior.
 | `app/memory` | `core/util` | `front/app/memory/components/DocumentApplication.vue`, `front/app/memory/components/DocumentApplicationBlock.vue`, `front/app/memory/components/DocumentAttachments.vue`, `front/app/memory/components/DocumentEditor.vue`, `front/app/memory/components/DocumentFolderSelect.vue`, `front/app/memory/components/DocumentHistoryDialog.vue`, `front/app/memory/components/DocumentLibraryPage.vue`, `front/app/memory/components/DocumentTagIcon.vue`, `front/app/memory/components/DocumentTagIconPicker.vue`, `front/app/memory/components/DocumentThumbnail.vue`, `front/app/memory/components/MemoryAttachmentButton.vue`, `front/app/memory/components/MemoryGraph.vue`, `front/app/memory/components/MemoryItemForm.vue`, `front/app/memory/components/MemoryItemHistory.vue`, `front/app/memory/components/MemorySharingPanel.vue`, `front/app/memory/documentEditor.ts`, `front/app/memory/documentFolders.ts`, `front/app/memory/pages/contacts.vue`, `front/app/memory/pages/index.vue`, `front/app/memory/richContent.ts`, `front/app/memory/services/memoryService.ts` |
 | `app/memory` | `core/websocket` | `front/app/memory/components/DocumentApplication.vue`, `front/app/memory/components/DocumentEditor.vue`, `front/app/memory/components/DocumentLibraryNavigation.vue`, `front/app/memory/components/DocumentLibraryPage.vue`, `front/app/memory/components/DocumentThumbnail.vue`, `front/app/memory/components/MemoryGraph.vue`, `front/app/memory/components/MemorySearchTester.vue`, `front/app/memory/stores/memoryStore.ts` |
 | `app/onboarding` | `core/api` | `front/app/onboarding/services/onboardingService.ts` |
-| `app/onboarding` | `core/user` | `front/app/onboarding/components/WelcomePage.vue` |
 | `app/onboarding` | `core/authorize` | `front/app/onboarding/components/WelcomePage.vue` |
 | `app/onboarding` | `core/params` | `front/app/onboarding/components/WelcomePage.vue` |
+| `app/onboarding` | `core/user` | `front/app/onboarding/components/WelcomePage.vue` |
 | `app/process` | `app/agent` | `front/app/process/components/ProcessRunsPanel.vue`, `front/app/process/pages/index.vue` |
 | `app/process` | `app/task` | `front/app/process/components/ProcessRunDetailContent.vue` |
 | `app/process` | `core/api` | `front/app/process/services/processService.ts` |
@@ -1391,8 +1391,9 @@ tests remain authoritative for behavior.
 | GET | `/llm-calls/history` | `app.llm` | `read_call_history` | yes | `back/app/llm/call_router.py:480` |
 | GET | `/llm-calls/retention/preview` | `app.llm` | `preview_call_retention` | yes | `back/app/llm/call_router.py:516` |
 | GET | `/llm-calls/running` | `app.llm` | `read_running_calls` | yes | `back/app/llm/call_router.py:462` |
-| DELETE | `/llm-calls/{call_id}` | `app.llm` | `delete_call` | yes | `back/app/llm/call_router.py:525` |
-| GET | `/llm-calls/{call_id}` | `app.llm` | `read_call` | yes | `back/app/llm/call_router.py:544` |
+| DELETE | `/llm-calls/{call_id}` | `app.llm` | `delete_call` | yes | `back/app/llm/call_router.py:540` |
+| GET | `/llm-calls/{call_id}` | `app.llm` | `read_call` | yes | `back/app/llm/call_router.py:559` |
+| POST | `/llm-calls/{call_id}/stop` | `app.llm` | `stop_llm_call` | yes | `back/app/llm/call_router.py:525` |
 | GET | `/llm-profiles` | `app.llm` | `list_profiles` | yes | `back/app/llm/profile_router.py:67` |
 | POST | `/llm-profiles` | `app.llm` | `create_profile` | yes | `back/app/llm/profile_router.py:88` |
 | DELETE | `/llm-profiles/{profile_id}` | `app.llm` | `delete_profile` | yes | `back/app/llm/profile_router.py:119` |

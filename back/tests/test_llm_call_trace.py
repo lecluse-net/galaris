@@ -1108,6 +1108,7 @@ async def test_adapted_responses_stream_persists_reconstructed_final_result() ->
         FakeUpstream(),  # type: ignore[arg-type]
         model="provider-model",
         adapter=FakeAdapter(),  # type: ignore[arg-type]
+        deadline=proxy_service.LLMCallDeadline(),
     )
 
     assert json.loads(raw_response) == payload

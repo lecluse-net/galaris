@@ -23,6 +23,84 @@ runtime = lifecycle.runtime
 state = lifecycle.state
 
 
+@pytest.mark.asyncio
+@pytest.mark.parametrize("protocol", ["chat", "responses"])
+@pytest.mark.parametrize("streaming,outcome", [(False, "busy"), (True, "busy"), (True, "silent"), (True, "terminal")])
+async def test_one_call_deadline_closes_provider_and_preserves_terminal_outcome(
+    runtime, monkeypatch, protocol, streaming, outcome,
+):
+    from core.params import runtime_settings
+    from app.llm.contracts import ProtocolInferenceRequest
+    from app.llm.facade import start_inference
+
+    _, llm, _, _ = runtime
+    monkeypatch.setitem(runtime_settings.__dict__, "LLM_CALL_TIMEOUT_MINUTES", 0.01)
+    closed = asyncio.Event()
+    chunks = []
+
+    class EndlessProvider(httpx.AsyncByteStream):
+        async def __aiter__(self):
+            while True:
+                if outcome == "silent":
+                    await asyncio.Event().wait()
+                await asyncio.sleep(0.02)
+                chunks.append(True)
+                event = ({"id": "synthetic", "object": "chat.completion.chunk", "created": 1,
+                          "choices": [{"index": 0, "delta": {"reasoning_content": "Still considering. "}}]}
+                         if protocol == "chat" else
+                         {"type": "response.reasoning_summary_text.delta", "item_id": "thought",
+                          "output_index": 0, "summary_index": 0, "delta": "Still considering. "})
+                yield f"data: {json.dumps(event)}\n\n".encode()
+                if outcome == "terminal":
+                    terminal = ({"id": "synthetic", "object": "chat.completion.chunk", "created": 1,
+                                 "model": llm.code, "choices": [{"index": 0,
+                                     "delta": {"content": "Finished."}, "finish_reason": "stop"}]}
+                                if protocol == "chat" else
+                                {"type": "response.completed", "response": {
+                                    "id": "synthetic", "object": "response", "created_at": 1,
+                                    "model": llm.code, "status": "completed", "output": [{
+                                        "id": "answer", "type": "message", "role": "assistant",
+                                        "status": "completed", "content": [{"type": "output_text",
+                                            "text": "Finished.", "annotations": []}],
+                                    }],
+                                }})
+                    yield f"data: {json.dumps(terminal)}\n\n".encode()
+                    await asyncio.Event().wait()
+
+        async def aclose(self):
+            closed.set()
+
+    provider_http(monkeypatch, lambda request: httpx.Response(
+        200, stream=EndlessProvider(), headers={"content-type": "text/event-stream"},
+    ))
+    body = {"model": llm.code, "stream": streaming}
+    body.update({"messages": [{"role": "user", "content": "Synthetic question"}]} if protocol == "chat"
+                else {"input": "Synthetic question"})
+    key = await start_inference(ProtocolInferenceRequest(
+        llm_id=llm.id, prompt="Synthetic question", purpose="lab.mechanism_run", protocol=protocol, body=body,
+    ))
+    succeeded = outcome == "terminal"
+    finished = await state(key, "completed" if succeeded else "failed")
+    await asyncio.wait_for(closed.wait(), 2)
+    if outcome == "busy":
+        assert len(chunks) >= 2
+    assert len(finished.attempts) == 1
+    async with lifecycle.get_db_session() as db:
+        call = await db.get(LLMCall, finished.attempts[0].call_ids[0])
+        assert call.status == ("completed" if succeeded else "error")
+        assert call.completed_at is not None
+        if succeeded:
+            assert not call.error
+            assert call.response_text == "Finished."
+        else:
+            assert "absolute limit" in call.error
+        if streaming and outcome != "silent":
+            assert call.reasoning
+    events = [event async for event in stream_inference(key)]
+    assert sum(event.kind == "result" for event in events) == 1
+    assert events[-1].result.success is succeeded
+
+
 def provider_http(monkeypatch, handler):
     class ProviderClient(AsyncClient):
         def __init__(self, **kwargs):

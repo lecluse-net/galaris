@@ -67,6 +67,7 @@ default: dict[str, object] = {
             "install_failed": "Could not install the model: ${error}",
             "delete_failed": "Could not delete the model: ${error}",
             "call_not_found": "LLM call not found",
+            "call_stop_unavailable": "This call has no stop command. Use the controls of its associated task or process.",
             "inference_call_protected": "This call belongs to a saved inference. Its history and costs must be preserved.",
             "invalid_llm_token": "Invalid or missing LLM token",
             "code_in_use": "LLM code '${code}' is already in use",
