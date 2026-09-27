@@ -76,6 +76,7 @@ from .service import (
     messaging_tool_records,
     search_agent_users,
 )
+from .permissions import request_permission as request_permission
 from .reply_guard import (
     clear_room,
     note_reply,

@@ -83,6 +83,7 @@ def test_public_route_allowlist_is_exact() -> None:
 
 def test_independent_auth_route_allowlist_is_exact() -> None:
     expected = {
+        ("app.browser.router", "network_authorization"),
         ("core.user.router", "logout"),
         ("core.user.router", "refresh_session"),
         ("app.chat.router", "read_standalone_html_preview"),

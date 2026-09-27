@@ -1,6 +1,11 @@
 """French messages for agent-facing messaging tools."""
 
 default: dict[str, object] = {
+    "permissions": {
+        "title": "Demande d’autorisation",
+        "allow": "Autoriser et mémoriser",
+        "deny": "Refuser et mémoriser",
+    },
     "messenger_mcp": {
         "no_messenger": "Aucune messagerie n’est configurée pour cet agent.",
         "invalid_path": "URI de ressource de destination ou nom de fichier invalide.",

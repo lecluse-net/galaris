@@ -71,6 +71,15 @@ on the server catalog: use the displayed link without inventing an identifier.
 | Connections | Configure connections associated with agents | `/tools?tab=connections` |
 | Authorizations | Administer access rules for tools and functions | `/tools?tab=authorizations` |
 
+For browser access, open the agent's **Browser** connection. Local networking is blocked by
+default; enable `allow_local_network` to allow a permission request. Destination filters stay
+authoritative. Answer through messaging or the internal-chat buttons: both approvals and denials
+are remembered per agent, access type and origin (domain, protocol, port). Public GET requests
+need no question with the default settings. **Monitor → Remembered permissions**
+(`/connection/permissions`) shows the original question and answer, filters by agent or decision,
+and lets you delete a choice. The agent asks again on its next attempt allowed by configuration.
+A blocked action requires a new attempt after your reply; forms are not resubmitted automatically.
+
 To give an agent product knowledge, start in **Connections**, find its **Galaris Admin**
 connection, then follow the [product knowledge guide](../admin/product-knowledge.md).
 A skill provides instructions; actual function access also depends on authorized Tools and connections.
@@ -128,6 +137,13 @@ Useful distinctions:
   filtered by permissions. See the [Lab guide](lab-ai.md).
 - The account menu opens your profile (`/authorize/profile`) and **My API Tokens**
   (`/user/tokens`). It also changes language, theme and active role.
+  Managing personal tokens and agents' MCP tokens requires an authenticated web
+  session. An API token cannot list, create, update or delete them, or obtain a web
+  JWT through renewal or role switching, even when its owner is an administrator.
+  Passwords, profiles, avatars, MFA, dismissed help, the default role and personal
+  LLM/voice preferences are also managed through a web session. API tokens cannot
+  create, update or delete accounts through administrative routes. The usual
+  privileges are still required in the web application.
 - **Administer → Roles & permissions** (`/authorize`) manages user permissions;
   agent dialogue permissions also involve [teams](teams.md), accessible at `/team`.
 

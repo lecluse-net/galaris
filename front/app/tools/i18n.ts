@@ -256,6 +256,10 @@ export default {
       connectionParamDescriptions: {
         browser: {
           default_output: 'Réponse par défaut après une action : content ou screenshot',
+          allow_local_network: 'Permettre les demandes d’accès au réseau local (bloqué par défaut)',
+          network_filter_mode: 'Filtre : block pour bloquer la liste, allow pour autoriser uniquement la liste',
+          network_filter: 'Domaines, *.sous-domaines, IP ou réseaux CIDR séparés par des virgules ; port facultatif :port, IPv6 entre crochets',
+          permission_methods: 'Méthodes nécessitant un accord mémorisé, séparées par des espaces : POST PUT PATCH DELETE WEBSOCKET',
         },
         mail: {
           email_address: 'Adresse de la boîte utilisée comme expéditeur SMTP',
@@ -588,6 +592,10 @@ export default {
       connectionParamDescriptions: {
         browser: {
           default_output: 'Default response after an action: content or screenshot',
+          allow_local_network: 'Allow local network permission requests (blocked by default)',
+          network_filter_mode: 'Filter: block to deny the list, allow to permit only the list',
+          network_filter: 'Comma-separated domains, *.subdomains, IPs or CIDRs; optional :port, IPv6 in brackets',
+          permission_methods: 'Methods requiring remembered approval, separated by spaces: POST PUT PATCH DELETE WEBSOCKET',
         },
         mail: {
           email_address: 'Mailbox address used as the SMTP sender',
@@ -819,7 +827,12 @@ export default {
         },
       },
       connectionParamDescriptions: {
-        browser: { default_output: '操作后的默认回复：内容或截图' },
+        browser: { default_output: '操作后的默认回复：内容或截图',
+          allow_local_network: '允许请求本地网络访问权限（默认阻止）',
+          network_filter_mode: '过滤：block 拒绝列表，allow 仅允许列表',
+          network_filter: '逗号分隔的域名、*.子域名、IP 或 CIDR；可选 :端口，IPv6 使用方括号',
+          permission_methods: '需要记住批准的方法，以空格分隔：POST PUT PATCH DELETE WEBSOCKET',
+        },
         mail: {
           email_address: '用作 SMTP 发件人的邮箱地址', password: 'IMAP 和 SMTP 使用的邮箱密码或应用密码', imap_host: 'IMAP 服务器 DNS 名称', imap_port: 'IMAP 服务器端口',
           imap_security: 'IMAP 安全方式：tls 或 starttls', smtp_host: 'SMTP 提交服务器 DNS 名称', smtp_port: 'SMTP 提交端口', smtp_security: 'SMTP 安全方式：tls 或 starttls',

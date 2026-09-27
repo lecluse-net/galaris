@@ -4,7 +4,7 @@ ENV NODE_ENV=production
 WORKDIR /opt/galaris-browser
 
 COPY package.json package-lock.json ./
-RUN apt-get update && apt-get upgrade -y && rm -rf /var/lib/apt/lists/* \
+RUN apt-get update && apt-get upgrade -y && apt-get install -y --no-install-recommends openssl && rm -rf /var/lib/apt/lists/* \
     && npm install --global npm@12.0.2 --no-audit --no-fund \
     && npm --prefix /usr/lib/node_modules/npm pkg delete devDependencies \
     && npm --prefix /usr/lib/node_modules/npm update --omit=dev --ignore-scripts --no-audit --no-fund \

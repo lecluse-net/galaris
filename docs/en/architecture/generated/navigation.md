@@ -128,6 +128,14 @@ The [navigation guide](../../user/navigation.md) explains tabs, the account menu
 - Additional conditions : monitor.mailJournal: dynamic
 - Sources : `front/app/connection/navigation.ts`
 
+## Monitor → Remembered permissions
+
+- Route : `/connection/permissions`
+- Purpose : Saved approvals and denials for agents
+- Menu visibility (privileges) : (CONNECTION_ACCESS OR CONNECTION_EDIT)
+- Additional conditions : —
+- Sources : `front/app/connection/navigation.ts`
+
 ## Monitor → Failure journal
 
 - Route : `/incident`

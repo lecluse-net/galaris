@@ -1,5 +1,13 @@
 export default {
   fr: {
+    permissions: {
+      title: 'Permissions mémorisées', description: 'Autorisations et refus enregistrés pour les agents',
+      agent: 'Agent', decision: 'Décision', question: 'Question', key: 'Permission', date: 'Date de réponse', approver: 'Utilisateur responsable',
+      allowed: 'Autorisé', denied: 'Refusé', pending: 'En attente', empty: 'Aucune permission enregistrée',
+      refresh: 'Actualiser', error: 'Impossible de charger ou modifier les permissions', retry: 'Réessayer', actions: 'Actions',
+      delete: 'Supprimer la décision', cancel: 'Annuler',
+      deleteExplanation: 'La prochaine demande équivalente reposera la question. L’historique sera conservé.',
+    },
     nav: {
       connection: 'Connexions',
       connection_desc: 'Gestion des connexions',
@@ -157,6 +165,14 @@ export default {
     },
   },
   en: {
+    permissions: {
+      title: 'Remembered permissions', description: 'Saved approvals and denials for agents',
+      agent: 'Agent', decision: 'Decision', question: 'Question', key: 'Permission', date: 'Answered at', approver: 'Responsible user',
+      allowed: 'Allowed', denied: 'Denied', pending: 'Pending', empty: 'No remembered permissions',
+      refresh: 'Refresh', error: 'Could not load or change permissions', retry: 'Retry', actions: 'Actions',
+      delete: 'Delete decision', cancel: 'Cancel',
+      deleteExplanation: 'The next equivalent request will ask again. History will be preserved.',
+    },
     nav: {
       connection: 'Connections',
       connection_desc: 'Connection management',
@@ -314,6 +330,14 @@ export default {
     },
   },
   zh: {
+    permissions: {
+      title: '已记住的权限', description: '智能体已保存的批准和拒绝',
+      agent: '智能体', decision: '决定', question: '问题', key: '权限', date: '回复时间', approver: '负责用户',
+      allowed: '已允许', denied: '已拒绝', pending: '待处理', empty: '没有已保存的权限',
+      refresh: '刷新', error: '无法加载或修改权限', retry: '重试', actions: '操作',
+      delete: '删除决定', cancel: '取消',
+      deleteExplanation: '下次同类请求会再次询问。历史记录将被保留。',
+    },
     nav: { connection: '连接', connection_desc: '连接管理', mailJournal: '邮件日志', mailJournal_desc: '审批并记录智能体发送的邮件' },
     connection: {
       title: '连接', filterAgent: '按智能体筛选', filterTool: '按工具筛选', stateActive: '启用', stateInactive: '停用', stateAll: '全部', newConnection: '新建连接',

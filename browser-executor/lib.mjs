@@ -83,7 +83,7 @@ export async function resolveTarget(raw) {
   // Docker services, including this sidecar, commonly listen on IPv4 only while
   // localhost resolves to ::1 first. Prefer an available IPv4 record and retain
   // IPv6 support for IPv6-only names and literals.
-  return { url, address: addresses.find((address) => net.isIPv4(address)) ?? addresses[0] };
+  return { url, addresses, address: addresses.find((address) => net.isIPv4(address)) ?? addresses[0] };
 }
 
 export async function assertHttpUrl(raw) {

@@ -128,6 +128,14 @@ Le [guide de navigation](../../user/navigation.md) détaille les onglets, le men
 - Conditions supplémentaires : monitor.mailJournal: dynamic
 - Sources : `front/app/connection/navigation.ts`
 
+## Superviser → Permissions mémorisées
+
+- Route : `/connection/permissions`
+- Usage : Autorisations et refus enregistrés pour les agents
+- Visibilité du menu (privilèges) : (CONNECTION_ACCESS OR CONNECTION_EDIT)
+- Conditions supplémentaires : —
+- Sources : `front/app/connection/navigation.ts`
+
 ## Superviser → Journal des échecs
 
 - Route : `/incident`

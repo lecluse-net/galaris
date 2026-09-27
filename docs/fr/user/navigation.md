@@ -77,6 +77,16 @@ dépendent du catalogue serveur : utilisez le lien affiché, sans inventer leur 
 | Connexions | Configurer les connexions associées aux agents | `/tools?tab=connections` |
 | Autorisations | Administrer les règles d’accès aux outils et fonctions | `/tools?tab=authorizations` |
 
+Pour les accès du navigateur, ouvrez la connexion **Navigateur** de l’agent. Le réseau local
+est bloqué par défaut ; activez `allow_local_network` pour permettre une demande de permission.
+Le filtre de destinations reste prioritaire. Répondez à la question dans la messagerie ou avec
+les boutons du chat interne : accord et refus sont mémorisés par agent, type d’accès et origine
+(domaine, protocole, port). Les GET publics ne posent pas de question avec les réglages par défaut.
+**Superviser → Permissions mémorisées** (`/connection/permissions`) permet de retrouver la
+question et la réponse, filtrer par agent ou décision et supprimer un choix. L’agent redemandera
+à sa prochaine tentative autorisée par la configuration. Une action bloquée attend une nouvelle
+tentative après votre réponse ; les formulaires ne sont pas resoumis automatiquement.
+
 Pour donner la connaissance du produit à un agent, partez de **Connexions**, trouvez sa
 connexion **Galaris Admin**, puis suivez le [guide de connaissance produit](../admin/product-knowledge.md).
 Une compétence fournit des instructions ; l’accès effectif aux fonctions dépend aussi
@@ -138,6 +148,13 @@ Quelques distinctions utiles :
   par mécanisme, filtrées selon les droits. Voir le [guide du Lab](lab-ai.md).
 - Le menu du compte ouvre le profil (`/authorize/profile`) et **Mes Tokens API**
   (`/user/tokens`). Il sert aussi à changer la langue, le thème et le rôle actif.
+  La gestion des jetons personnels et des jetons MCP des agents exige une session
+  web authentifiée. Un jeton API ne peut ni les lister, créer, modifier ou supprimer,
+  ni obtenir un JWT web par renouvellement ou changement de rôle, même pour un administrateur.
+  Le mot de passe, le profil, l’avatar, le MFA, les aides masquées, le rôle par défaut
+  et les préférences personnelles LLM/voix se gèrent également en session web.
+  Les jetons API ne peuvent pas créer, modifier ou supprimer un compte via les routes
+  d’administration. Les privilèges habituels restent nécessaires dans l’interface web.
 - **Administrer → Rôles & autorisations** (`/authorize`) gère les autorisations des
   utilisateurs ; les droits de dialogue avec les agents passent aussi par les
   [équipes](teams.md), accessibles dans `/team`.

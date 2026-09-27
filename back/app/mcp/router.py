@@ -11,7 +11,7 @@ Two endpoint families are exposed:
 
 from typing import List
 
-from fastapi import APIRouter, HTTPException, Request, Response, status
+from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from loguru import logger
 from starlette.types import Receive, Scope, Send
 
@@ -23,6 +23,7 @@ from core.authorize import (
 )
 from core.database import get_db_session
 from core.i18n import tr
+from core.user import require_web_session
 from app.agent import agent_service, current_management_scope
 
 from . import service as mcp_token_service
@@ -52,7 +53,10 @@ async def _get_agent_or_404(agent_id: int):
     return agent
 
 
-@router.get("/agents/{agent_id}/mcp-tokens", response_model=List[AgentMcpTokenResponse])
+@router.get(
+    "/agents/{agent_id}/mcp-tokens", response_model=List[AgentMcpTokenResponse],
+    dependencies=[Depends(require_web_session)],
+)
 @authorize(
     privileges=[Privileges.AGENT_EDIT, Privileges.MCP_API_ACCESS],
     assertion=RequireAllPrivilegesAssertion,
@@ -73,6 +77,7 @@ async def list_agent_mcp_tokens(agent_id: int):
     "/agents/{agent_id}/mcp-tokens",
     response_model=AgentMcpTokenCreateResponse,
     status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(require_web_session)],
 )
 @authorize(
     privileges=[Privileges.AGENT_EDIT, Privileges.MCP_API_ACCESS],
@@ -98,7 +103,10 @@ async def create_agent_mcp_token(agent_id: int, data: AgentMcpTokenCreate = Agen
     )
 
 
-@router.put("/agents/{agent_id}/mcp-tokens/{token_id}", response_model=AgentMcpTokenResponse)
+@router.put(
+    "/agents/{agent_id}/mcp-tokens/{token_id}", response_model=AgentMcpTokenResponse,
+    dependencies=[Depends(require_web_session)],
+)
 @authorize(
     privileges=[Privileges.AGENT_EDIT, Privileges.MCP_API_ACCESS],
     assertion=RequireAllPrivilegesAssertion,
@@ -122,7 +130,8 @@ async def update_agent_mcp_token(agent_id: int, token_id: int, data: AgentMcpTok
 
 
 @router.delete(
-    "/agents/{agent_id}/mcp-tokens/{token_id}", status_code=status.HTTP_204_NO_CONTENT
+    "/agents/{agent_id}/mcp-tokens/{token_id}", status_code=status.HTTP_204_NO_CONTENT,
+    dependencies=[Depends(require_web_session)],
 )
 @authorize(
     privileges=[Privileges.AGENT_EDIT, Privileges.MCP_API_ACCESS],

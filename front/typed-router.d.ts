@@ -115,6 +115,13 @@ declare module 'vue-router/auto-routes' {
       Record<never, never>,
       | never
     >,
+    '//connection/permissions': RouteRecordInfo<
+      '//connection/permissions',
+      '/connection/permissions',
+      Record<never, never>,
+      Record<never, never>,
+      | never
+    >,
     '//console/executor': RouteRecordInfo<
       '//console/executor',
       '/console/executor',
@@ -408,6 +415,14 @@ declare module 'vue-router/auto-routes' {
     'app/connection/pages/mail.vue': {
       routes:
         | '//connection/mail'
+      views:
+        | never
+      pathParamNames:
+        | never
+    }
+    'app/connection/pages/permissions.vue': {
+      routes:
+        | '//connection/permissions'
       views:
         | never
       pathParamNames:

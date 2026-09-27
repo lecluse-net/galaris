@@ -25,6 +25,9 @@ class AuthContextMiddleware(BaseHTTPMiddleware):
         raw_token: Optional[str] = None
         session_family: str | None = None
         validated_user: User | None = None
+        # Only a successfully validated frontend JWT can establish this marker.
+        # A UserToken, cookie, query parameter or header cannot opt into it.
+        request.state.web_session_user_id = None
 
         # Agent MCP endpoints own their bearer-capability authentication and
         # deliberately run without the request-scoped database middleware.
@@ -49,6 +52,7 @@ class AuthContextMiddleware(BaseHTTPMiddleware):
                         await validate_access_claims(payload, user, family_active=family_active)
                         session_family = payload.get("session_family")
                         validated_user = user
+                        request.state.web_session_user_id = user.id
                     except AuthenticationError:
                         user_id = None
             except JWTError:

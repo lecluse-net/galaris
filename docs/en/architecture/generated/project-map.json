@@ -239,6 +239,7 @@
       },
       {
         "files": [
+          "back/app/browser/network.py",
           "back/app/browser/router.py",
           "back/app/browser/service.py"
         ],
@@ -255,7 +256,15 @@
       },
       {
         "files": [
+          "back/app/browser/network.py"
+        ],
+        "source": "app.browser",
+        "target": "app.messenger"
+      },
+      {
+        "files": [
           "back/app/browser/mcp.py",
+          "back/app/browser/network.py",
           "back/app/browser/service.py"
         ],
         "source": "app.browser",
@@ -270,7 +279,8 @@
       },
       {
         "files": [
-          "back/app/browser/mcp.py"
+          "back/app/browser/mcp.py",
+          "back/app/browser/network.py"
         ],
         "source": "app.browser",
         "target": "core.i18n"
@@ -293,6 +303,7 @@
       },
       {
         "files": [
+          "back/app/browser/router.py",
           "back/app/browser/service.py"
         ],
         "source": "app.browser",
@@ -2009,6 +2020,13 @@
       },
       {
         "files": [
+          "back/app/mcp/router.py"
+        ],
+        "source": "app.mcp",
+        "target": "core.user"
+      },
+      {
+        "files": [
           "back/app/mcp/models.py",
           "back/app/mcp/service.py"
         ],
@@ -2280,6 +2298,8 @@
         "files": [
           "back/app/messenger/contact_access.py",
           "back/app/messenger/native_facade.py",
+          "back/app/messenger/permission_router.py",
+          "back/app/messenger/permissions.py",
           "back/app/messenger/router.py",
           "back/app/messenger/schemas.py",
           "back/app/messenger/service.py",
@@ -2361,6 +2381,7 @@
       },
       {
         "files": [
+          "back/app/messenger/permission_router.py",
           "back/app/messenger/router.py"
         ],
         "source": "app.messenger",
@@ -2378,6 +2399,7 @@
           "back/app/messenger/models.py",
           "back/app/messenger/native_facade.py",
           "back/app/messenger/native_interactions.py",
+          "back/app/messenger/permissions.py",
           "back/app/messenger/room_service.py",
           "back/app/messenger/service.py",
           "back/app/messenger/session.py",
@@ -2401,6 +2423,7 @@
           "back/app/messenger/mcp.py",
           "back/app/messenger/native_facade.py",
           "back/app/messenger/native_interactions.py",
+          "back/app/messenger/permissions.py",
           "back/app/messenger/service.py"
         ],
         "source": "app.messenger",
@@ -2421,7 +2444,8 @@
       },
       {
         "files": [
-          "back/app/messenger/native_facade.py"
+          "back/app/messenger/native_facade.py",
+          "back/app/messenger/permissions.py"
         ],
         "source": "app.messenger",
         "target": "core.user"
@@ -4826,6 +4850,7 @@
       {
         "files": [
           "back/core/user/auth_service.py",
+          "back/core/user/dependencies.py",
           "back/core/user/router.py",
           "back/core/user/user_service.py"
         ],
@@ -4970,7 +4995,7 @@
           "app.tools"
         ]
       ],
-      "domain_edges": 265,
+      "domain_edges": 266,
       "fan_in": [
         {
           "count": 43,
@@ -5096,11 +5121,12 @@
           ]
         },
         {
-          "count": 23,
+          "count": 24,
           "module": "app.messenger",
           "modules": [
             "app.agent",
             "app.audio",
+            "app.browser",
             "app.chat",
             "app.contact",
             "app.conversation",
@@ -5776,6 +5802,16 @@
         },
         {
           "count": 4,
+          "module": "app.browser",
+          "modules": [
+            "app.connection",
+            "app.file_share",
+            "app.messenger",
+            "app.tools"
+          ]
+        },
+        {
+          "count": 4,
           "module": "app.console",
           "modules": [
             "app.agent",
@@ -5791,15 +5827,6 @@
             "app.agent",
             "app.connection",
             "app.task",
-            "app.tools"
-          ]
-        },
-        {
-          "count": 3,
-          "module": "app.browser",
-          "modules": [
-            "app.connection",
-            "app.file_share",
             "app.tools"
           ]
         },
@@ -6137,7 +6164,7 @@
       {
         "file": "back/app/browser/mcp.py",
         "handler": "browser_back",
-        "line": 414,
+        "line": 420,
         "module": "app.browser",
         "name": "browser_back",
         "namespace": "browser"
@@ -6145,7 +6172,7 @@
       {
         "file": "back/app/browser/mcp.py",
         "handler": "browser_click",
-        "line": 348,
+        "line": 354,
         "module": "app.browser",
         "name": "browser_click",
         "namespace": "browser"
@@ -6153,7 +6180,7 @@
       {
         "file": "back/app/browser/mcp.py",
         "handler": "browser_close",
-        "line": 427,
+        "line": 433,
         "module": "app.browser",
         "name": "browser_close",
         "namespace": "browser"
@@ -6161,7 +6188,7 @@
       {
         "file": "back/app/browser/mcp.py",
         "handler": "browser_content",
-        "line": 269,
+        "line": 275,
         "module": "app.browser",
         "name": "browser_content",
         "namespace": "browser"
@@ -6169,7 +6196,7 @@
       {
         "file": "back/app/browser/mcp.py",
         "handler": "browser_navigate",
-        "line": 253,
+        "line": 259,
         "module": "app.browser",
         "name": "browser_navigate",
         "namespace": "browser"
@@ -6177,7 +6204,7 @@
       {
         "file": "back/app/browser/mcp.py",
         "handler": "browser_open",
-        "line": 220,
+        "line": 226,
         "module": "app.browser",
         "name": "browser_open",
         "namespace": "browser"
@@ -6185,7 +6212,7 @@
       {
         "file": "back/app/browser/mcp.py",
         "handler": "browser_press",
-        "line": 386,
+        "line": 392,
         "module": "app.browser",
         "name": "browser_press",
         "namespace": "browser"
@@ -6193,7 +6220,7 @@
       {
         "file": "back/app/browser/mcp.py",
         "handler": "browser_screenshot",
-        "line": 314,
+        "line": 320,
         "module": "app.browser",
         "name": "browser_screenshot",
         "namespace": "browser"
@@ -6201,7 +6228,7 @@
       {
         "file": "back/app/browser/mcp.py",
         "handler": "browser_scroll",
-        "line": 400,
+        "line": 406,
         "module": "app.browser",
         "name": "browser_scroll",
         "namespace": "browser"
@@ -6209,7 +6236,7 @@
       {
         "file": "back/app/browser/mcp.py",
         "handler": "browser_type",
-        "line": 362,
+        "line": 368,
         "module": "app.browser",
         "name": "browser_type",
         "namespace": "browser"
@@ -8603,7 +8630,7 @@
           "connections.id"
         ],
         "history_mixin": true,
-        "line": 407,
+        "line": 428,
         "module": "app.messenger",
         "table": "messenger_files"
       },
@@ -8614,7 +8641,7 @@
           "connections.id"
         ],
         "history_mixin": false,
-        "line": 191,
+        "line": 192,
         "module": "app.messenger",
         "table": "messenger_interactions"
       },
@@ -8625,7 +8652,7 @@
           "connections.id"
         ],
         "history_mixin": false,
-        "line": 463,
+        "line": 484,
         "module": "app.messenger",
         "table": "messenger_listener_state"
       },
@@ -8637,7 +8664,7 @@
           "messenger_messages.id"
         ],
         "history_mixin": false,
-        "line": 444,
+        "line": 465,
         "module": "app.messenger",
         "table": "messenger_message_files"
       },
@@ -8653,7 +8680,7 @@
           "users.id"
         ],
         "history_mixin": true,
-        "line": 233,
+        "line": 254,
         "module": "app.messenger",
         "table": "messenger_messages"
       },
@@ -8666,7 +8693,7 @@
           "messenger_users.id"
         ],
         "history_mixin": false,
-        "line": 138,
+        "line": 139,
         "module": "app.messenger",
         "table": "messenger_room_users"
       },
@@ -8678,7 +8705,7 @@
           "topics.id"
         ],
         "history_mixin": true,
-        "line": 62,
+        "line": 63,
         "module": "app.messenger",
         "table": "messenger_rooms"
       },
@@ -8691,7 +8718,7 @@
           "users.id"
         ],
         "history_mixin": true,
-        "line": 95,
+        "line": 96,
         "module": "app.messenger",
         "table": "messenger_users"
       },
@@ -8726,6 +8753,19 @@
         "line": 7,
         "module": "core.params",
         "table": "params"
+      },
+      {
+        "class_name": "PermissionDecision",
+        "file": "back/app/messenger/models.py",
+        "foreign_keys": [
+          "agents.id",
+          "messenger_interactions.id",
+          "users.id"
+        ],
+        "history_mixin": true,
+        "line": 234,
+        "module": "app.messenger",
+        "table": "permission_decisions"
       },
       {
         "class_name": "PrivilegeList",
@@ -10629,7 +10669,7 @@
         "declared_path": "/agents/{agent_id}/mcp-tokens",
         "file": "back/app/mcp/router.py",
         "handler": "list_agent_mcp_tokens",
-        "line": 66,
+        "line": 70,
         "method": "GET",
         "module": "app.mcp"
       },
@@ -10638,7 +10678,7 @@
         "declared_path": "/agents/{agent_id}/mcp-tokens",
         "file": "back/app/mcp/router.py",
         "handler": "create_agent_mcp_token",
-        "line": 87,
+        "line": 92,
         "method": "POST",
         "module": "app.mcp"
       },
@@ -10647,7 +10687,7 @@
         "declared_path": "/agents/{agent_id}/mcp-tokens/{token_id}",
         "file": "back/app/mcp/router.py",
         "handler": "delete_agent_mcp_token",
-        "line": 137,
+        "line": 146,
         "method": "DELETE",
         "module": "app.mcp"
       },
@@ -10656,7 +10696,7 @@
         "declared_path": "/agents/{agent_id}/mcp-tokens/{token_id}",
         "file": "back/app/mcp/router.py",
         "handler": "update_agent_mcp_token",
-        "line": 112,
+        "line": 120,
         "method": "PUT",
         "module": "app.mcp"
       },
@@ -10764,7 +10804,7 @@
         "declared_path": "/auth/avatars/{avatar_key}",
         "file": "back/core/user/router.py",
         "handler": "read_user_avatar",
-        "line": 409,
+        "line": 410,
         "method": "GET",
         "module": "core.user"
       },
@@ -10773,7 +10813,7 @@
         "declared_path": "/auth/keep-alive",
         "file": "back/core/user/router.py",
         "handler": "keep_alive",
-        "line": 382,
+        "line": 383,
         "method": "POST",
         "module": "core.user"
       },
@@ -10782,7 +10822,7 @@
         "declared_path": "/auth/login",
         "file": "back/core/user/router.py",
         "handler": "login",
-        "line": 207,
+        "line": 208,
         "method": "POST",
         "module": "core.user"
       },
@@ -10791,7 +10831,7 @@
         "declared_path": "/auth/login-json",
         "file": "back/core/user/router.py",
         "handler": "login_json",
-        "line": 231,
+        "line": 232,
         "method": "POST",
         "module": "core.user"
       },
@@ -10800,7 +10840,7 @@
         "declared_path": "/auth/logout",
         "file": "back/core/user/router.py",
         "handler": "logout",
-        "line": 324,
+        "line": 325,
         "method": "POST",
         "module": "core.user"
       },
@@ -10809,7 +10849,7 @@
         "declared_path": "/auth/me",
         "file": "back/core/user/router.py",
         "handler": "delete_user_me",
-        "line": 475,
+        "line": 476,
         "method": "DELETE",
         "module": "core.user"
       },
@@ -10818,7 +10858,7 @@
         "declared_path": "/auth/me",
         "file": "back/core/user/router.py",
         "handler": "read_users_me",
-        "line": 401,
+        "line": 402,
         "method": "GET",
         "module": "core.user"
       },
@@ -10827,7 +10867,7 @@
         "declared_path": "/auth/me",
         "file": "back/core/user/router.py",
         "handler": "update_user_me",
-        "line": 516,
+        "line": 520,
         "method": "PUT",
         "module": "core.user"
       },
@@ -10836,7 +10876,7 @@
         "declared_path": "/auth/me/avatar",
         "file": "back/core/user/router.py",
         "handler": "delete_user_avatar",
-        "line": 463,
+        "line": 464,
         "method": "DELETE",
         "module": "core.user"
       },
@@ -10845,7 +10885,7 @@
         "declared_path": "/auth/me/avatar",
         "file": "back/core/user/router.py",
         "handler": "upload_user_avatar",
-        "line": 426,
+        "line": 427,
         "method": "POST",
         "module": "core.user"
       },
@@ -10854,7 +10894,7 @@
         "declared_path": "/auth/me/help-dismissals",
         "file": "back/core/user/router.py",
         "handler": "list_help_dismissals",
-        "line": 495,
+        "line": 496,
         "method": "GET",
         "module": "core.user"
       },
@@ -10863,7 +10903,7 @@
         "declared_path": "/auth/me/help-dismissals/{help_key}",
         "file": "back/core/user/router.py",
         "handler": "dismiss_help",
-        "line": 505,
+        "line": 509,
         "method": "PUT",
         "module": "core.user"
       },
@@ -10872,7 +10912,7 @@
         "declared_path": "/auth/me/tokens",
         "file": "back/core/user/router.py",
         "handler": "list_my_tokens",
-        "line": 610,
+        "line": 620,
         "method": "GET",
         "module": "core.user"
       },
@@ -10881,7 +10921,7 @@
         "declared_path": "/auth/me/tokens",
         "file": "back/core/user/router.py",
         "handler": "create_my_token",
-        "line": 623,
+        "line": 636,
         "method": "POST",
         "module": "core.user"
       },
@@ -10890,7 +10930,7 @@
         "declared_path": "/auth/me/tokens/{token_id}",
         "file": "back/core/user/router.py",
         "handler": "delete_my_token",
-        "line": 663,
+        "line": 679,
         "method": "DELETE",
         "module": "core.user"
       },
@@ -10899,7 +10939,7 @@
         "declared_path": "/auth/me/tokens/{token_id}",
         "file": "back/core/user/router.py",
         "handler": "update_my_token",
-        "line": 644,
+        "line": 657,
         "method": "PUT",
         "module": "core.user"
       },
@@ -10908,7 +10948,7 @@
         "declared_path": "/auth/mfa/confirm",
         "file": "back/core/user/router.py",
         "handler": "confirm_mfa",
-        "line": 285,
+        "line": 286,
         "method": "POST",
         "module": "core.user"
       },
@@ -10917,7 +10957,7 @@
         "declared_path": "/auth/mfa/disable",
         "file": "back/core/user/router.py",
         "handler": "disable_mfa",
-        "line": 298,
+        "line": 299,
         "method": "POST",
         "module": "core.user"
       },
@@ -10926,7 +10966,7 @@
         "declared_path": "/auth/mfa/recovery-codes",
         "file": "back/core/user/router.py",
         "handler": "regenerate_mfa_recovery_codes",
-        "line": 311,
+        "line": 312,
         "method": "POST",
         "module": "core.user"
       },
@@ -10935,7 +10975,7 @@
         "declared_path": "/auth/mfa/setup",
         "file": "back/core/user/router.py",
         "handler": "setup_mfa",
-        "line": 273,
+        "line": 274,
         "method": "POST",
         "module": "core.user"
       },
@@ -10944,7 +10984,7 @@
         "declared_path": "/auth/mfa/status",
         "file": "back/core/user/router.py",
         "handler": "read_mfa_status",
-        "line": 260,
+        "line": 261,
         "method": "GET",
         "module": "core.user"
       },
@@ -10953,7 +10993,7 @@
         "declared_path": "/auth/refresh",
         "file": "back/core/user/router.py",
         "handler": "refresh_session",
-        "line": 342,
+        "line": 343,
         "method": "POST",
         "module": "core.user"
       },
@@ -10962,7 +11002,7 @@
         "declared_path": "/auth/register",
         "file": "back/core/user/router.py",
         "handler": "register",
-        "line": 132,
+        "line": 133,
         "method": "POST",
         "module": "core.user"
       },
@@ -10971,7 +11011,7 @@
         "declared_path": "/auth/registration-status",
         "file": "back/core/user/router.py",
         "handler": "registration_status",
-        "line": 120,
+        "line": 121,
         "method": "GET",
         "module": "core.user"
       },
@@ -10980,7 +11020,7 @@
         "declared_path": "/auth/users",
         "file": "back/core/user/router.py",
         "handler": "list_users",
-        "line": 546,
+        "line": 550,
         "method": "GET",
         "module": "core.user"
       },
@@ -10989,7 +11029,7 @@
         "declared_path": "/auth/users",
         "file": "back/core/user/router.py",
         "handler": "create_user_endpoint",
-        "line": 560,
+        "line": 567,
         "method": "POST",
         "module": "core.user"
       },
@@ -10998,7 +11038,7 @@
         "declared_path": "/auth/users/{user_id}",
         "file": "back/core/user/router.py",
         "handler": "delete_user_endpoint",
-        "line": 594,
+        "line": 604,
         "method": "DELETE",
         "module": "core.user"
       },
@@ -11007,7 +11047,7 @@
         "declared_path": "/auth/users/{user_id}",
         "file": "back/core/user/router.py",
         "handler": "read_user",
-        "line": 571,
+        "line": 578,
         "method": "GET",
         "module": "core.user"
       },
@@ -11016,7 +11056,7 @@
         "declared_path": "/auth/users/{user_id}",
         "file": "back/core/user/router.py",
         "handler": "update_user_endpoint",
-        "line": 580,
+        "line": 587,
         "method": "PUT",
         "module": "core.user"
       },
@@ -11052,7 +11092,7 @@
         "declared_path": "/authorize/assignments/{id}/default",
         "file": "back/core/authorize/router.py",
         "handler": "set_default_assignment",
-        "line": 399,
+        "line": 402,
         "method": "PUT",
         "module": "core.authorize"
       },
@@ -11070,7 +11110,7 @@
         "declared_path": "/authorize/privilege-lists",
         "file": "back/core/authorize/router.py",
         "handler": "list_privilege_lists",
-        "line": 451,
+        "line": 454,
         "method": "GET",
         "module": "core.authorize"
       },
@@ -11079,7 +11119,7 @@
         "declared_path": "/authorize/privilege-lists",
         "file": "back/core/authorize/router.py",
         "handler": "create_privilege_list",
-        "line": 462,
+        "line": 465,
         "method": "POST",
         "module": "core.authorize"
       },
@@ -11088,7 +11128,7 @@
         "declared_path": "/authorize/privilege-lists/{id}",
         "file": "back/core/authorize/router.py",
         "handler": "delete_privilege_list",
-        "line": 508,
+        "line": 511,
         "method": "DELETE",
         "module": "core.authorize"
       },
@@ -11097,7 +11137,7 @@
         "declared_path": "/authorize/privilege-lists/{id}",
         "file": "back/core/authorize/router.py",
         "handler": "update_privilege_list",
-        "line": 487,
+        "line": 490,
         "method": "PUT",
         "module": "core.authorize"
       },
@@ -11106,7 +11146,7 @@
         "declared_path": "/authorize/privilege-lists/{id}/privileges",
         "file": "back/core/authorize/router.py",
         "handler": "remove_privileges_from_list",
-        "line": 560,
+        "line": 563,
         "method": "DELETE",
         "module": "core.authorize"
       },
@@ -11115,7 +11155,7 @@
         "declared_path": "/authorize/privilege-lists/{id}/privileges",
         "file": "back/core/authorize/router.py",
         "handler": "add_privileges_to_list",
-        "line": 529,
+        "line": 532,
         "method": "POST",
         "module": "core.authorize"
       },
@@ -11228,11 +11268,20 @@
         "module": "core.authorize"
       },
       {
+        "authorized": false,
+        "declared_path": "/browser/network/authorize",
+        "file": "back/app/browser/router.py",
+        "handler": "network_authorization",
+        "line": 17,
+        "method": "POST",
+        "module": "app.browser"
+      },
+      {
         "authorized": true,
         "declared_path": "/browser/status",
         "file": "back/app/browser/router.py",
         "handler": "status",
-        "line": 18,
+        "line": 34,
         "method": "GET",
         "module": "app.browser"
       },
@@ -14526,7 +14575,7 @@
         "declared_path": "/messenger/bridges",
         "file": "back/app/messenger/router.py",
         "handler": "list_messenger_bridges",
-        "line": 20,
+        "line": 23,
         "method": "GET",
         "module": "app.messenger"
       },
@@ -14535,7 +14584,7 @@
         "declared_path": "/messenger/channels",
         "file": "back/app/messenger/router.py",
         "handler": "list_enabled_messenger_channels",
-        "line": 68,
+        "line": 71,
         "method": "GET",
         "module": "app.messenger"
       },
@@ -14544,7 +14593,7 @@
         "declared_path": "/messenger/configuration/test",
         "file": "back/app/messenger/router.py",
         "handler": "test_messenger_configuration",
-        "line": 31,
+        "line": 34,
         "method": "POST",
         "module": "app.messenger"
       },
@@ -14553,7 +14602,7 @@
         "declared_path": "/messenger/users",
         "file": "back/app/messenger/router.py",
         "handler": "search_messenger_users",
-        "line": 41,
+        "line": 44,
         "method": "GET",
         "module": "app.messenger"
       },
@@ -14646,6 +14695,24 @@
         "line": 83,
         "method": "PUT",
         "module": "core.params"
+      },
+      {
+        "authorized": true,
+        "declared_path": "/permissions",
+        "file": "back/app/messenger/permission_router.py",
+        "handler": "list_permissions",
+        "line": 16,
+        "method": "GET",
+        "module": "app.messenger"
+      },
+      {
+        "authorized": true,
+        "declared_path": "/permissions/{permission_id}",
+        "file": "back/app/messenger/permission_router.py",
+        "handler": "delete_permission",
+        "line": 29,
+        "method": "DELETE",
+        "module": "app.messenger"
       },
       {
         "authorized": false,
@@ -15932,7 +15999,8 @@
           "front/app/connection/components/AuthorizationManager.vue",
           "front/app/connection/components/ConnectionForm.vue",
           "front/app/connection/components/ConnectionList.vue",
-          "front/app/connection/pages/mail.vue"
+          "front/app/connection/pages/mail.vue",
+          "front/app/connection/pages/permissions.vue"
         ],
         "source": "app/connection",
         "target": "app/agent"
@@ -15959,7 +16027,8 @@
           "front/app/connection/components/CalendarConnectionEditor.vue",
           "front/app/connection/services/calendarService.ts",
           "front/app/connection/services/connectionService.ts",
-          "front/app/connection/services/mailService.ts"
+          "front/app/connection/services/mailService.ts",
+          "front/app/connection/services/permissionService.ts"
         ],
         "source": "app/connection",
         "target": "core/api"
@@ -15970,7 +16039,8 @@
           "front/app/connection/components/CalendarConnectionEditor.vue",
           "front/app/connection/components/ConnectionForm.vue",
           "front/app/connection/components/ConnectionList.vue",
-          "front/app/connection/navigation.ts"
+          "front/app/connection/navigation.ts",
+          "front/app/connection/pages/permissions.vue"
         ],
         "source": "app/connection",
         "target": "core/authorize"
@@ -15986,7 +16056,8 @@
       {
         "files": [
           "front/app/connection/components/ConnectionForm.vue",
-          "front/app/connection/pages/mail.vue"
+          "front/app/connection/pages/mail.vue",
+          "front/app/connection/pages/permissions.vue"
         ],
         "source": "app/connection",
         "target": "core/util"
@@ -17981,6 +18052,11 @@
             "file": "front/app/connection/pages/mail.vue",
             "module": "app/connection",
             "route_hint": "/connection/mail"
+          },
+          {
+            "file": "front/app/connection/pages/permissions.vue",
+            "module": "app/connection",
+            "route_hint": "/connection/permissions"
           }
         ],
         "path": "front/app/connection"
@@ -18436,6 +18512,11 @@
         "file": "front/app/connection/pages/mail.vue",
         "module": "app/connection",
         "route_hint": "/connection/mail"
+      },
+      {
+        "file": "front/app/connection/pages/permissions.vue",
+        "module": "app/connection",
+        "route_hint": "/connection/permissions"
       },
       {
         "file": "front/app/console/pages/executor.vue",

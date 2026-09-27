@@ -496,6 +496,39 @@
       ]
     },
     {
+      "id": "monitor.permissions",
+      "labels": {
+        "fr": "Permissions mémorisées",
+        "en": "Remembered permissions"
+      },
+      "breadcrumbs": {
+        "fr": [
+          "Superviser",
+          "Permissions mémorisées"
+        ],
+        "en": [
+          "Monitor",
+          "Remembered permissions"
+        ]
+      },
+      "route": "/connection/permissions",
+      "href": null,
+      "description": {
+        "fr": "Autorisations et refus enregistrés pour les agents",
+        "en": "Saved approvals and denials for agents"
+      },
+      "privilege_groups": [
+        [
+          "CONNECTION_ACCESS",
+          "CONNECTION_EDIT"
+        ]
+      ],
+      "conditions": [],
+      "sources": [
+        "front/app/connection/navigation.ts"
+      ]
+    },
+    {
       "id": "monitor.incidents",
       "labels": {
         "fr": "Journal des échecs",

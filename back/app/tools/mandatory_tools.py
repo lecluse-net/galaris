@@ -501,6 +501,14 @@ def _console_connection_params() -> dict[str, dict[str, Any]]:
 
 def _browser_connection_params() -> dict[str, dict[str, Any]]:
     return {
+        "allow_local_network": _param("boolean", required=False, default="false",
+            description="Allow asking permission for local network access; otherwise block it"),
+        "network_filter_mode": _param(required=False, default="block",
+            description="block: deny listed destinations; allow: permit only listed destinations"),
+        "network_filter": _param(required=False,
+            description="Domains, *.subdomains, IPs or CIDRs separated by commas; optional :port (IPv6 in brackets)"),
+        "permission_methods": _param(required=False, default="POST PUT PATCH DELETE WEBSOCKET",
+            description="HTTP methods requiring remembered approval, separated by spaces"),
         "default_output": _param(
             required=False,
             default="content",

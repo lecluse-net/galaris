@@ -29,7 +29,7 @@ from .schemas import (
     PrivilegeListAction
 )
 from core.user.auth_service import create_access_token_for_user
-from core.user import Token
+from core.user import Token, require_web_session
 from .assertions import OwnUserOrPrivilegeAssertion
 from .decorators import authorize
 from .definitions import Privileges
@@ -361,7 +361,7 @@ async def delete_assignment(
 
 # ==================== Context Switching ====================
 
-@router.post("/switch-role", response_model=Token)
+@router.post("/switch-role", response_model=Token, dependencies=[Depends(require_web_session)])
 @authorize(privileges=[])  # Any authenticated user can switch their own role
 async def switch_role(
     request: SwitchRoleRequest,
@@ -394,7 +394,10 @@ async def switch_role(
     return {"access_token": access_token, "token_type": "bearer"}
 
 
-@router.put("/assignments/{id}/default", response_model=AssignmentSchema)
+@router.put(
+    "/assignments/{id}/default", response_model=AssignmentSchema,
+    dependencies=[Depends(require_web_session)],
+)
 @authorize(privileges=[])
 async def set_default_assignment(
     id: int,

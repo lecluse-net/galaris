@@ -16,6 +16,7 @@ default = {
             "malformed_token": "Malformed token: missing email",
             "user_not_found": "User not found",
             "not_authenticated": "Not authenticated",
+            "web_session_required": "Sign in to the web application to perform this action. API tokens are not accepted.",
             "registration_closed": "Public registration is closed",
             "token_not_found": "Token not found",
             "email_registered": "Email is already registered: ${email}",

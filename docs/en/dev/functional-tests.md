@@ -27,9 +27,27 @@ cycles, then checks denials after manager reassignment and role removal.
 `app/agent/tests/test_management_scope.py` covers scope invalidation on writes, role changes,
 transaction boundaries and after the response; `core/user/tests/test_refresh_session.py`
 covers combined account/session validation, legacy tokens, expiry, revocation and UserToken.
+`core/user/tests/test_token_management.py` exercises real HTTP routes: personal and MCP
+token management restricted to web JWTs, rejection of UserToken even for administrators,
+no mutation on denial, owner isolation, and blocked UserToken-to-JWT conversion through
+`keep-alive` or role switching. The web journey retains creation, listing, updates,
+revocation and renewal; ordinary API calls remain available.
+The same suite rejects API tokens for accounts, passwords, avatars, MFA, dismissed
+help, default roles and LLM/voice preferences, including administrative routes.
+Web password changes remain available and revoke the old session.
+`core/user/tests/test_user.py`, `test_help_dismissals.py`, `test_mfa.py` and
+`app/llm/tests/test_personal_speech.py` preserve the web journeys for these settings.
 Cycles remain readable when a Goal document is missing, while detail still reports the error;
 `app/goal/tests/test_goal_runner.py` also checks owner and referrer restrictions.
 These synthetic SQL budgets are not production latency measurements.
+
+`app/browser/tests/test_network_permissions.py` covers durable permissions per agent/origin,
+text and button responses, denials, renewed questions after deletion or expiry, concurrent SQL
+sessions, connection priority, mixed DNS, filters and managers' HTTP rights.
+`browser-executor/network-proxy.test.mjs` uses Chromium and synthetic servers to verify POST,
+redirects, owner isolation, HTTPS certificate validation, WebSockets and revocation.
+`front/browser-tests/permissions.spec.mjs` exercises the real list, filters, deletion,
+dialog backdrop dismissal and retry after failure.
 
 Journal and streaming stabilization is covered by
 `back/app/agent/tests/test_reasoning_guard.py` (irregular fragments, replayed snapshots,

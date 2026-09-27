@@ -819,7 +819,7 @@ audio turn and its function calls rather than waiting for intermediate text.
 
 ### Isolated Agent Browser
 
-The integrated **Browser** connection is inactive by default and must be enabled per Agent.
+The integrated **Browser** connection is configured per Agent.
 The `browser-executor` sidecar hosts Chromium, but each Agent/Task pair receives a
 private, ephemeral `BrowserContext`. Sessions expire automatically and are closed when
 the run is canceled.
@@ -833,9 +833,22 @@ timeouts, content and HTML limits, screenshots and default dimensions are config
 under **Preferences → Browser**, visible when an agent has an active Browser connection.
 Changes apply to subsequent operations without restarting; default dimensions affect new windows.
 Lowering capacity preserves existing sessions and limits new admissions. Each session adopts
-the current idle timeout on its next action. The
-`browser_egress` network and the sidecar's proxy reject private or reserved destinations after
-DNS resolution; do not connect the container directly to an administration network.
+the current idle timeout on its next action.
+
+Under **Tools & connections → Connections**, the Browser connection's `allow_local_network`
+parameter blocks local access by default. Enable it to allow a permission request, then
+answer through the agent's messaging channel. `network_filter_mode` (`block` or `allow`)
+and `network_filter` constrain destinations; `permission_methods` defaults to requiring approval
+for `POST PUT PATCH DELETE WEBSOCKET`. Public GET requests pass when the filter allows them.
+An approval never overrides a connection denial. See the
+[browser network contract](../architecture/flows/browser.md) for domains, ports,
+CIDRs, HTTPS and WebSockets.
+
+**Monitor → Remembered permissions** (`/connection/permissions`) lists questions, decisions,
+agents, responsible users and dates. Filter by agent or answer, then delete a decision to ask
+again on the next attempt. `CONNECTION_ACCESS`/`CONNECTION_EDIT` and the managed-agent scope
+apply; deletion requires `CONNECTION_EDIT`. DbAdmin converges the `permission_decisions` table.
+An update also requires rebuilding the `browser-executor` image to activate the new proxy.
 
 The normal text result is an accessible paginated snapshot. Visual captures are split
 into tiles, written under `console://browser/…` when a Console is active, and

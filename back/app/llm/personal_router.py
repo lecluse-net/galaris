@@ -1,12 +1,12 @@
 """Authenticated self-service preferences and bounded document audio operations."""
 
 import httpx
-from fastapi import APIRouter, File, Form, HTTPException, Response, UploadFile
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Response, UploadFile
 from pydantic import BaseModel, Field
 
 from core.authorize import Privileges, authorize
 from core.i18n import tr
-from core.user import get_current_user_id, get_user_record
+from core.user import get_current_user_id, get_user_record, require_web_session
 
 from . import personal_service, transcription_service
 from .personal_service import PersonalOptions, PersonalPreferences, PersonalSpeechError
@@ -36,13 +36,13 @@ async def _error(code: str, status_code: int = 400) -> HTTPException:
     return HTTPException(status_code=status_code, detail=await tr(f"personal_speech.{code}"))
 
 
-@router.get("/preferences")
+@router.get("/preferences", dependencies=[Depends(require_web_session)])
 @authorize()
 async def get_preferences() -> PersonalPreferences:
     return await personal_service.preferences(_user_id())
 
 
-@router.put("/preferences")
+@router.put("/preferences", dependencies=[Depends(require_web_session)])
 @authorize()
 async def put_preferences(values: PersonalPreferences) -> PersonalPreferences:
     try:
@@ -51,7 +51,7 @@ async def put_preferences(values: PersonalPreferences) -> PersonalPreferences:
         raise await _error(str(exc)) from exc
 
 
-@router.get("/options")
+@router.get("/options", dependencies=[Depends(require_web_session)])
 @authorize()
 async def get_options() -> PersonalOptions:
     _user_id()
@@ -63,14 +63,14 @@ async def _require_user(user_id: int) -> None:
         raise await _error("user_unavailable", 404)
 
 
-@user_router.get("/{user_id}/preferences")
+@user_router.get("/{user_id}/preferences", dependencies=[Depends(require_web_session)])
 @authorize(privileges=[Privileges.READ_USER, Privileges.UPDATE_USER])
 async def get_user_preferences(user_id: int) -> PersonalPreferences:
     await _require_user(user_id)
     return await personal_service.preferences(user_id)
 
 
-@user_router.put("/{user_id}/preferences")
+@user_router.put("/{user_id}/preferences", dependencies=[Depends(require_web_session)])
 @authorize(privileges=Privileges.UPDATE_USER)
 async def put_user_preferences(user_id: int, values: PersonalPreferences) -> PersonalPreferences:
     await _require_user(user_id)

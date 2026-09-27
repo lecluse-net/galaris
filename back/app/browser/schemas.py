@@ -31,6 +31,7 @@ class BrowserPageBase(BaseModel):
     description: str = ""
     site_name: str = ""
     revision: int = Field(ge=0)
+    network_issues: list[dict[str, str | list[str]]] = Field(default_factory=list[dict[str, str | list[str]]])
 
 
 class BrowserPageMetadata(BaseModel):

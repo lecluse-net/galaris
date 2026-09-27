@@ -28,9 +28,27 @@ et cycles Goal, puis vérifie les refus après retrait du gestionnaire et du rô
 aux changements de rôle, aux fins de transaction et après la réponse ;
 `core/user/tests/test_refresh_session.py` couvre le contrôle compte/session regroupé,
 les jetons historiques, l’expiration, la révocation et les UserToken.
+`core/user/tests/test_token_management.py` exerce les routes HTTP réelles : gestion
+des jetons personnels et MCP réservée aux JWT web, refus des UserToken même administrateurs,
+absence de mutation après refus, isolation entre propriétaires et fermeture des conversions
+UserToken → JWT par `keep-alive` ou changement de rôle. Le parcours web conserve création,
+consultation, modification, révocation et renouvellement ; les appels API ordinaires restent possibles.
+La même suite vérifie le refus des jetons API pour les comptes, mots de passe, avatars,
+MFA, aides masquées, rôle par défaut et préférences LLM/voix, y compris les routes administratives.
+Le changement de mot de passe en session web reste possible et révoque l’ancienne session.
+`core/user/tests/test_user.py`, `test_help_dismissals.py`, `test_mfa.py` et
+`app/llm/tests/test_personal_speech.py` conservent les parcours web de ces réglages.
 Les cycles restent lisibles si un document Goal manque, tandis que le détail conserve
 son erreur ; `app/goal/tests/test_goal_runner.py` vérifie aussi propriétaire et référent.
 Ces budgets SQL synthétiques ne constituent pas une mesure de latence en production.
+
+`app/browser/tests/test_network_permissions.py` couvre permissions durables par agent/origine,
+réponses par texte et boutons, refus, nouvelle demande après suppression ou expiration,
+concurrence entre sessions SQL, priorité de la connexion, DNS mixtes, filtres et droits HTTP
+des gestionnaires. `browser-executor/network-proxy.test.mjs` utilise Chromium et des serveurs
+synthétiques pour vérifier POST, redirections, isolation, HTTPS avec validation du certificat,
+WebSocket et révocation. `front/browser-tests/permissions.spec.mjs` vérifie la liste réelle,
+ses filtres, la suppression, la fermeture par fond de modale et le réessai après erreur.
 
 La stabilisation du journal et du streaming est couverte par
 `back/app/agent/tests/test_reasoning_guard.py` (fragments irréguliers, snapshots rejoués,

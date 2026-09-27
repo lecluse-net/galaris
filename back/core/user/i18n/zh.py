@@ -16,6 +16,7 @@ default = {
             "malformed_token": "令牌格式错误：缺少电子邮箱",
             "user_not_found": "未找到用户",
             "not_authenticated": "尚未通过身份验证",
+            "web_session_required": "请登录 Web 应用后执行此操作。此操作不接受 API 令牌。",
             "registration_closed": "公开注册已关闭",
             "token_not_found": "未找到令牌",
             "email_registered": "电子邮箱已注册：${email}",

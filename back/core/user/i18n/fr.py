@@ -16,6 +16,7 @@ default = {
             "malformed_token": "Jeton mal formé : adresse e-mail absente",
             "user_not_found": "Utilisateur introuvable",
             "not_authenticated": "Authentification requise",
+            "web_session_required": "Connectez-vous à l’application web pour effectuer cette action. Les jetons API ne sont pas acceptés.",
             "registration_closed": "L’inscription publique est fermée",
             "token_not_found": "Jeton introuvable",
             "email_registered": "Cette adresse e-mail est déjà inscrite : ${email}",

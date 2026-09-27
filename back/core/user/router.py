@@ -36,6 +36,7 @@ from .models import User as UserModel
 from . import refresh_session_service
 from . import token_service
 from . import mfa_service
+from .dependencies import require_web_session
 from .auth_service import (
     authenticate_from_login,
     InvalidCredentialsError,
@@ -255,7 +256,7 @@ async def _current_user_id() -> int:
     return current_user.id
 
 
-@router.get("/mfa/status", response_model=MfaStatus)
+@router.get("/mfa/status", response_model=MfaStatus, dependencies=[Depends(require_web_session)])
 @authorize(privileges=[])
 async def read_mfa_status() -> MfaStatus:
     enabled, setup_pending, recovery_codes_remaining = await mfa_service.status(
@@ -268,7 +269,7 @@ async def read_mfa_status() -> MfaStatus:
     )
 
 
-@router.post("/mfa/setup", response_model=MfaSetup)
+@router.post("/mfa/setup", response_model=MfaSetup, dependencies=[Depends(require_web_session)])
 @authorize(privileges=[])
 async def setup_mfa() -> MfaSetup:
     try:
@@ -280,7 +281,7 @@ async def setup_mfa() -> MfaSetup:
     return MfaSetup(secret=secret, provisioning_uri=provisioning_uri)
 
 
-@router.post("/mfa/confirm", response_model=MfaRecoveryCodes)
+@router.post("/mfa/confirm", response_model=MfaRecoveryCodes, dependencies=[Depends(require_web_session)])
 @authorize(privileges=[])
 async def confirm_mfa(data: MfaCode) -> MfaRecoveryCodes:
     try:
@@ -293,7 +294,7 @@ async def confirm_mfa(data: MfaCode) -> MfaRecoveryCodes:
     return MfaRecoveryCodes(recovery_codes=recovery_codes)
 
 
-@router.post("/mfa/disable", status_code=status.HTTP_204_NO_CONTENT)
+@router.post("/mfa/disable", status_code=status.HTTP_204_NO_CONTENT, dependencies=[Depends(require_web_session)])
 @authorize(privileges=[])
 async def disable_mfa(data: MfaDisable) -> None:
     try:
@@ -306,7 +307,7 @@ async def disable_mfa(data: MfaDisable) -> None:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
-@router.post("/mfa/recovery-codes", response_model=MfaRecoveryCodes)
+@router.post("/mfa/recovery-codes", response_model=MfaRecoveryCodes, dependencies=[Depends(require_web_session)])
 @authorize(privileges=[])
 async def regenerate_mfa_recovery_codes(data: MfaCode) -> MfaRecoveryCodes:
     try:
@@ -377,7 +378,7 @@ async def refresh_session(
     return Token(access_token=access_token, token_type="bearer")
 
 
-@router.post("/keep-alive", response_model=Token)
+@router.post("/keep-alive", response_model=Token, dependencies=[Depends(require_web_session)])
 @authorize(privileges=[])
 async def keep_alive(db: AsyncSession = Depends(get_db)):
     """Refresh the JWT while the current user remains authenticated."""
@@ -421,7 +422,7 @@ async def read_user_avatar(avatar_key: UUID) -> Response:
     )
 
 
-@router.post("/me/avatar", response_model=UserSchema)
+@router.post("/me/avatar", response_model=UserSchema, dependencies=[Depends(require_web_session)])
 @authorize(privileges=[])
 async def upload_user_avatar(file: UploadFile = File(...)) -> UserModel:
     current_user_id = await _current_user_id()
@@ -458,7 +459,7 @@ async def upload_user_avatar(file: UploadFile = File(...)) -> UserModel:
     return user
 
 
-@router.delete("/me/avatar", response_model=UserSchema)
+@router.delete("/me/avatar", response_model=UserSchema, dependencies=[Depends(require_web_session)])
 @authorize(privileges=[])
 async def delete_user_avatar() -> UserModel:
     user = await user_service.delete_avatar(await _current_user_id())
@@ -470,7 +471,7 @@ async def delete_user_avatar() -> UserModel:
     return user
 
 
-@router.delete("/me", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete("/me", status_code=status.HTTP_204_NO_CONTENT, dependencies=[Depends(require_web_session)])
 @authorize(privileges=["user"])
 async def delete_user_me():
     """Delete the current user's account."""
@@ -490,7 +491,7 @@ async def delete_user_me():
     return None
 
 
-@router.get("/me/help-dismissals", response_model=list[str])
+@router.get("/me/help-dismissals", response_model=list[str], dependencies=[Depends(require_web_session)])
 @authorize(privileges=[])
 async def list_help_dismissals(response: Response) -> list[str]:
     current_user = await user_service.get_current_user()
@@ -500,7 +501,10 @@ async def list_help_dismissals(response: Response) -> list[str]:
     return await help_service.list_dismissed(current_user.id)
 
 
-@router.put("/me/help-dismissals/{help_key}", status_code=status.HTTP_204_NO_CONTENT)
+@router.put(
+    "/me/help-dismissals/{help_key}", status_code=status.HTTP_204_NO_CONTENT,
+    dependencies=[Depends(require_web_session)],
+)
 @authorize(privileges=[])
 async def dismiss_help(
     help_key: Annotated[str, Path(min_length=1, max_length=100, pattern=r"^[a-z0-9][a-z0-9._-]*$")],
@@ -511,7 +515,7 @@ async def dismiss_help(
     await help_service.dismiss(current_user.id, help_key)
 
 
-@router.put("/me", response_model=UserSchema)
+@router.put("/me", response_model=UserSchema, dependencies=[Depends(require_web_session)])
 @authorize(privileges=[])  # Any authenticated user can update their own profile
 async def update_user_me(user_update: UserUpdate):
     """Update the current user's profile."""
@@ -555,7 +559,10 @@ async def list_users(
     return await user_service.get_users(skip, limit, search, sort_by=sort_by, descending=descending)
 
 
-@router.post("/users", response_model=UserSchema, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/users", response_model=UserSchema, status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(require_web_session)],
+)
 @authorize(privileges=Privileges.CREATE_USER)
 async def create_user_endpoint(user: UserCreate):
     try:
@@ -575,7 +582,7 @@ async def read_user(user_id: int):
     return user
 
 
-@router.put("/users/{user_id}", response_model=UserSchema)
+@router.put("/users/{user_id}", response_model=UserSchema, dependencies=[Depends(require_web_session)])
 @authorize(privileges=Privileges.UPDATE_USER)
 async def update_user_endpoint(user_id: int, user_update: UserUpdate):
     try:
@@ -589,7 +596,10 @@ async def update_user_endpoint(user_id: int, user_update: UserUpdate):
         raise HTTPException(status_code=400, detail=str(e))
 
 
-@router.delete("/users/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete(
+    "/users/{user_id}", status_code=status.HTTP_204_NO_CONTENT,
+    dependencies=[Depends(require_web_session)],
+)
 @authorize(privileges=Privileges.DELETE_USER)
 async def delete_user_endpoint(user_id: int):
     try:
@@ -605,7 +615,7 @@ async def delete_user_endpoint(user_id: int):
 # UserToken CRUD for the current user.
 # ============================================================================
 
-@router.get("/me/tokens", response_model=List[UserTokenResponse])
+@router.get("/me/tokens", response_model=List[UserTokenResponse], dependencies=[Depends(require_web_session)])
 @authorize(privileges=["user"])
 async def list_my_tokens():
     """List the current user's tokens."""
@@ -618,7 +628,10 @@ async def list_my_tokens():
     return await token_service.list_tokens_for_user(int(current_user.id))
 
 
-@router.post("/me/tokens", response_model=UserTokenCreateResponse, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/me/tokens", response_model=UserTokenCreateResponse,
+    status_code=status.HTTP_201_CREATED, dependencies=[Depends(require_web_session)],
+)
 @authorize(privileges=["user"])
 async def create_my_token(data: UserTokenCreate = UserTokenCreate()):
     """Create a token for the current user."""
@@ -639,7 +652,7 @@ async def create_my_token(data: UserTokenCreate = UserTokenCreate()):
     )
 
 
-@router.put("/me/tokens/{token_id}", response_model=UserTokenResponse)
+@router.put("/me/tokens/{token_id}", response_model=UserTokenResponse, dependencies=[Depends(require_web_session)])
 @authorize(privileges=["user"])
 async def update_my_token(token_id: int, data: UserTokenUpdate):
     """Update one of the current user's tokens."""
@@ -658,7 +671,10 @@ async def update_my_token(token_id: int, data: UserTokenUpdate):
     return token
 
 
-@router.delete("/me/tokens/{token_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete(
+    "/me/tokens/{token_id}", status_code=status.HTTP_204_NO_CONTENT,
+    dependencies=[Depends(require_web_session)],
+)
 @authorize(privileges=["user"])
 async def delete_my_token(token_id: int):
     """Delete one of the current user's tokens."""

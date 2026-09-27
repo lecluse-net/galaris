@@ -11,8 +11,11 @@ from .schemas import (
     MessengerUserSearchResult,
 )
 from .service import check_configuration, search_agent_users
+from .permission_router import router as permission_router
 
 router = APIRouter(prefix="/messenger", tags=["messenger"])
+
+router.include_router(permission_router)
 
 
 @router.get("/bridges", response_model=list[MessengerBridgeInfo])

@@ -838,7 +838,7 @@ tour audio natif et ses appels de fonctions plutôt que d’attendre un texte in
 
 ### Navigateur agentique isolé
 
-La connexion intégrée **Navigateur** est inactive par défaut et doit être activée agent par agent.
+La connexion intégrée **Navigateur** se configure agent par agent.
 Le sidecar `browser-executor` héberge Chromium, mais chaque couple agent/Task reçoit un
 `BrowserContext` privé et éphémère. Les sessions expirent automatiquement et sont fermées lors de
 l’annulation du run.
@@ -853,9 +853,23 @@ se règlent dans **Préférences → Navigateur**, visible dès qu’un agent a 
 Navigateur active. Ces réglages prennent effet aux prochaines opérations sans redémarrage ;
 les dimensions par défaut concernent les nouvelles fenêtres. Réduire la capacité ne ferme
 pas les sessions existantes : seules les nouvelles ouvertures sont limitées. Une session
-reprend le délai d’inactivité courant lors de sa prochaine action. Le réseau
-`browser_egress` et le proxy du sidecar refusent les destinations privées ou réservées après
-résolution DNS ; ne raccordez pas directement le conteneur à un réseau d’administration.
+reprend le délai d’inactivité courant lors de sa prochaine action.
+
+Dans **Outils & connexions → Connexions**, le paramètre `allow_local_network` de la connexion
+Navigateur interdit le réseau local par défaut. Activez-le pour permettre une demande de
+permission, puis répondez depuis la messagerie de l’agent. `network_filter_mode` (`block` ou
+`allow`) et `network_filter` limitent les destinations ; `permission_methods` demande par défaut
+un accord pour `POST PUT PATCH DELETE WEBSOCKET`. Un GET public passe si le filtre le permet.
+Un accord ne contourne jamais une interdiction de connexion. Voir le
+[contrat réseau du navigateur](../architecture/flows/browser.md) pour les domaines,
+ports, CIDR, HTTPS et WebSocket.
+
+**Superviser → Permissions mémorisées** (`/connection/permissions`) liste questions, décisions,
+agents, responsables et dates. Filtrez par agent ou réponse, puis supprimez une décision pour
+faire redemander à la prochaine tentative. Les privilèges `CONNECTION_ACCESS`/`CONNECTION_EDIT`
+et le périmètre des agents gérés s’appliquent ; la suppression exige `CONNECTION_EDIT`.
+La table `permission_decisions` converge avec DbAdmin. Une mise à jour nécessite aussi l’image
+`browser-executor` reconstruite afin d’activer le nouveau proxy.
 
 Le résultat textuel normal est un snapshot accessible paginé. Les captures visuelles sont
 découpées en tuiles, écrites sous `console://browser/…` lorsqu’une console est active et

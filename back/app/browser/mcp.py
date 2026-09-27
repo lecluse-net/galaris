@@ -78,6 +78,7 @@ def _content_text(result: BrowserContent) -> str:
         "url": result.url,
         "title": result.title,
         "revision": result.revision,
+        "network_issues": result.network_issues,
         "slice": {
             "start": result.start,
             "end": result.end,
@@ -157,6 +158,7 @@ async def _screenshot_result(
         "captured_height": result.captured_height,
         "truncated": result.truncated,
         "parts": files,
+        "network_issues": result.network_issues,
     }
     blocks.insert(
         0,
@@ -214,7 +216,11 @@ async def _action(
         "Open any reachable HTTP(S) page, including local and private-network URLs, in a new "
         "isolated session. Returns the accessible page "
         "content by default, including stable element refs such as e12. Optional viewport "
-        "dimensions in CSS pixels select a responsive desktop or mobile layout."
+        "dimensions in CSS pixels select a responsive desktop or mobile layout. "
+        "Connection policy applies to every network request: local access is blocked by default. "
+        "network_issues reports blocked requests and pending remembered human permissions. "
+        "When permission_required is reported, wait for the human decision before retrying; "
+        "never repeatedly submit a form or automatically replay an uncertain write."
     ),
 )
 async def browser_open(
@@ -247,7 +253,7 @@ async def browser_open(
     name="browser_navigate",
     description=(
         "Navigate an existing browser session to another reachable HTTP(S) URL, including "
-        "local and private-network destinations."
+        "local and private-network destinations when connection policy and human permissions allow them."
     ),
 )
 async def browser_navigate(

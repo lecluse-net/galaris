@@ -1,6 +1,6 @@
 import crypto from "node:crypto";
 import http from "node:http";
-import net from "node:net";
+import { startNetworkProxy } from "./network-proxy.mjs";
 
 import { operationSettings } from './settings.mjs';
 import { readCredential } from './credential.mjs';
@@ -15,7 +15,6 @@ import {
   assertHttpUrl,
   parseOptionalBoundedInt,
   parsePositiveInt,
-  resolveTarget,
   safeReference,
   screenshotCaptureWidth,
   screenshotSlices,
@@ -28,13 +27,12 @@ const NAVIGATION_TIMEOUT_MS =
 
 const sessions = new SessionPool(32);
 const browsers = new BrowserLifecycle(
-  () => chromium.launch({ headless: true }),
+  () => chromium.launch({ headless: true, args: ['--disable-quic', '--force-webrtc-ip-handling-policy=disable_non_proxied_udp'] }),
   () => {
     console.error("browser disconnected unexpectedly; terminating for recovery");
     void shutdown(1);
   },
 );
-let proxy;
 let pdfJobs = 0;
 
 function sendJson(response, status, payload) {
@@ -113,62 +111,6 @@ async function installNetworkRouting(context) {
   });
 }
 
-async function startNetworkProxy() {
-  const networkProxy = http.createServer((request, response) => {
-    void (async () => {
-      const { url, address } = await resolveTarget(request.url);
-      const headers = { ...request.headers, host: url.host };
-      delete headers["proxy-authorization"];
-      const upstream = http.request(
-        {
-          host: address,
-          port: url.port || 80,
-          method: request.method,
-          path: `${url.pathname}${url.search}`,
-          headers,
-        },
-        (upstreamResponse) => {
-          upstreamResponse.on("error", () => response.destroy());
-          response.writeHead(
-            upstreamResponse.statusCode || 502,
-            upstreamResponse.statusMessage,
-            upstreamResponse.headers,
-          );
-          upstreamResponse.pipe(response);
-        },
-      );
-      response.on("error", () => upstream.destroy());
-      request.on("error", () => upstream.destroy());
-      upstream.on("error", () => response.destroy());
-      request.pipe(upstream);
-    })().catch(() => {
-      response.writeHead(403, { connection: "close" });
-      response.end();
-    });
-  });
-  networkProxy.on("connect", (request, clientSocket, head) => {
-    void (async () => {
-      const { url, address } = await resolveTarget(`https://${request.url}`);
-      const upstream = net.connect(Number(url.port || 443), address, () => {
-        clientSocket.write("HTTP/1.1 200 Connection Established\r\n\r\n");
-        if (head.length > 0) upstream.write(head);
-        upstream.pipe(clientSocket);
-        clientSocket.pipe(upstream);
-      });
-      clientSocket.on("error", () => upstream.destroy());
-      upstream.on("error", () => clientSocket.destroy());
-    })().catch(() => {
-      clientSocket.end("HTTP/1.1 403 Forbidden\r\nConnection: close\r\n\r\n");
-    });
-  });
-  networkProxy.on("clientError", (_error, socket) => socket.destroy());
-  await new Promise((resolve, reject) => {
-    networkProxy.once("error", reject);
-    networkProxy.listen(0, "127.0.0.1", resolve);
-  });
-  return networkProxy;
-}
-
 async function pageSummary(session) {
   const metadata = await session.page.evaluate(() => {
     const meta = (...keys) => {
@@ -189,6 +131,7 @@ async function pageSummary(session) {
     title: await session.page.title(),
     ...metadata,
     revision: session.revision,
+    network_issues: session.network.issues(),
   };
 }
 
@@ -342,24 +285,31 @@ async function requestedOutput(session, body) {
 
 async function createSession(owner, viewport, config) {
   const browser = await browsers.get();
-  const context = await browser.newContext({
-    viewport,
-    serviceWorkers: "block",
-    acceptDownloads: false,
-    proxy: { server: `http://127.0.0.1:${proxy.address().port}` },
-  });
+  const network = await startNetworkProxy({ owner, token: AUTH_TOKEN });
+  let context;
   try {
+    context = await browser.newContext({
+      viewport,
+      serviceWorkers: "block",
+      acceptDownloads: false,
+      // Only the in-process filtering proxy terminates browser TLS. Its upstream
+      // HTTPS requests always validate the remote certificate and hostname.
+      ignoreHTTPSErrors: true,
+      proxy: { server: network.server, bypass: '<-loopback>' },
+    });
+    context.on('close', () => network.close());
     await installNetworkRouting(context);
     const page = await context.newPage();
     page.setDefaultTimeout(15_000);
     page.setDefaultNavigationTimeout(NAVIGATION_TIMEOUT_MS);
     return {
-      id: crypto.randomUUID(), owner, context, page,
+      id: crypto.randomUUID(), owner, context, page, network,
       revision: 1, touchedAt: Date.now(),
       idleTtlMs: config.session_ttl_seconds * 1_000,
     };
   } catch (error) {
-    await context.close().catch(() => {});
+    network.close();
+    await context?.close().catch(() => {});
     throw error;
   }
 }
@@ -408,6 +358,7 @@ async function performAction(body) {
 }
 
 async function performSessionAction(session, body) {
+  session.network.clearIssues();
   const action = String(body.action ?? "");
   await applyRequestedViewport(session, body);
   if (action === "content") return contentResult(session, body.settings, body.offset, body.max_chars);
@@ -504,7 +455,6 @@ async function route(request, response) {
   }
 }
 
-proxy = await startNetworkProxy();
 const server = http.createServer((request, response) => {
   route(request, response).catch((error) => {
     const known = error instanceof BrowserRequestError;
@@ -542,7 +492,6 @@ async function shutdown(exitCode = 0) {
   const deadline = setTimeout(() => process.exit(exitCode), 3000);
   server.close();
   server.closeAllConnections();
-  proxy.close();
   try {
     await Promise.allSettled([...sessions.keys()].map(closeSession));
     await browsers.stop();

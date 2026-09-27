@@ -2,6 +2,7 @@
 
 default: dict[str, object] = {
     "browser": {
+        "permission_question": "Autoriser le navigateur de cet agent à effectuer un accès ${action} vers ${origin} ? Cette décision couvre tous les chemins de cette destination et sera mémorisée pour cet agent.",
         "errors": {
             "invalid_url": "L’URL est invalide. Utilisez une URL HTTP(S) sans identifiants intégrés.",
             "invalid_viewport": (

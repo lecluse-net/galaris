@@ -11,16 +11,16 @@ tests restent l’autorité sur le comportement.
 
 - 71 modules backend déclarés ;
 - 36 modules frontend déclarés ;
-- 525 arêtes de dépendance backend ;
+- 527 arêtes de dépendance backend ;
 - 192 arêtes de dépendance frontend ;
-- 265 arêtes entre domaines `app`/`bridge` ;
+- 266 arêtes entre domaines `app`/`bridge` ;
 - 25 paires de domaines directement bidirectionnelles ;
 - 1 composantes fortement connexes ;
 - 7 paires frontend directement bidirectionnelles ;
-- 581 handlers HTTP/WebSocket détectés ;
-- 127 tables SQLAlchemy détectées ;
+- 584 handlers HTTP/WebSocket détectés ;
+- 128 tables SQLAlchemy détectées ;
 - 183 outils MCP natifs détectés ;
-- 39 pages Vue détectées.
+- 40 pages Vue détectées.
 
 ## Modules backend
 
@@ -111,7 +111,7 @@ tests restent l’autorité sur le comportement.
 | `app/harnesses` | oui | `components`, `i18n.ts`, `pages`, `services` | 1 |
 | `app/tools` | oui | `components`, `i18n.ts`, `navigation.ts`, `pages`, `presentation.ts`, `services`, `stores` | 1 |
 | `app/browser` | oui | `i18n.ts`, `navigation.ts`, `pages`, `services`, `stores` | 1 |
-| `app/connection` | oui | `components`, `i18n.ts`, `navigation.ts`, `pages`, `services`, `stores` | 1 |
+| `app/connection` | oui | `components`, `i18n.ts`, `navigation.ts`, `pages`, `services`, `stores` | 2 |
 | `app/skill` | oui | `components`, `i18n.ts`, `navigation.ts`, `pages`, `services`, `stores` | 1 |
 | `app/llm` | oui | `components`, `i18n.ts`, `navigation.ts`, `pages`, `presentation.ts`, `services`, `stores` | 2 |
 | `app/task` | oui | `components`, `i18n.ts`, `navigation.ts`, `pages`, `services`, `stores` | 1 |
@@ -165,14 +165,15 @@ tests restent l’autorité sur le comportement.
 | `app.audio` | `bridge.youtube` | `back/app/audio/mcp.py` |
 | `app.audio` | `core.i18n` | `back/app/audio/mcp.py` |
 | `app.audio` | `core.params` | `back/app/audio/summary_service.py` |
-| `app.browser` | `app.connection` | `back/app/browser/router.py`, `back/app/browser/service.py` |
+| `app.browser` | `app.connection` | `back/app/browser/network.py`, `back/app/browser/router.py`, `back/app/browser/service.py` |
 | `app.browser` | `app.file_share` | `back/app/browser/__init__.py`, `back/app/browser/mcp.py` |
-| `app.browser` | `app.tools` | `back/app/browser/mcp.py`, `back/app/browser/service.py` |
+| `app.browser` | `app.messenger` | `back/app/browser/network.py` |
+| `app.browser` | `app.tools` | `back/app/browser/mcp.py`, `back/app/browser/network.py`, `back/app/browser/service.py` |
 | `app.browser` | `core.authorize` | `back/app/browser/router.py` |
-| `app.browser` | `core.i18n` | `back/app/browser/mcp.py` |
+| `app.browser` | `core.i18n` | `back/app/browser/mcp.py`, `back/app/browser/network.py` |
 | `app.browser` | `core.params` | `back/app/browser/mcp.py`, `back/app/browser/service.py` |
 | `app.browser` | `core.preview` | `back/app/browser/__init__.py`, `back/app/browser/service.py` |
-| `app.browser` | `core.secrets` | `back/app/browser/service.py` |
+| `app.browser` | `core.secrets` | `back/app/browser/router.py`, `back/app/browser/service.py` |
 | `app.browser` | `core.settings` | `back/app/browser/service.py` |
 | `app.browser` | `core.user` | `back/app/browser/__init__.py`, `back/app/browser/service.py` |
 | `app.chat` | `app.agent` | `back/app/chat/assertions.py`, `back/app/chat/events.py`, `back/app/chat/router.py`, `back/app/chat/schemas.py` |
@@ -349,6 +350,7 @@ tests restent l’autorité sur le comportement.
 | `app.mcp` | `core.authorize` | `back/app/mcp/router.py` |
 | `app.mcp` | `core.database` | `back/app/mcp/models.py`, `back/app/mcp/router.py`, `back/app/mcp/service.py` |
 | `app.mcp` | `core.i18n` | `back/app/mcp/router.py` |
+| `app.mcp` | `core.user` | `back/app/mcp/router.py` |
 | `app.mcp` | `core.util` | `back/app/mcp/models.py`, `back/app/mcp/service.py` |
 | `app.memory` | `app.agent` | `back/app/memory/access.py`, `back/app/memory/assertions.py`, `back/app/memory/automation.py`, `back/app/memory/bootstrap.py`, `back/app/memory/conversation_summary.py`, `back/app/memory/document_app_service.py`, `back/app/memory/document_icons.py`, `back/app/memory/document_order.py`, `back/app/memory/document_service.py`, `back/app/memory/document_sharing.py`, `back/app/memory/document_tags.py`, `back/app/memory/events.py`, `back/app/memory/goal_document_adapter.py`, `back/app/memory/goal_folders.py`, `back/app/memory/item_sharing.py`, `back/app/memory/library_queries.py`, `back/app/memory/router.py`, `back/app/memory/service.py`, `back/app/memory/source_projection.py` |
 | `app.memory` | `app.conversation` | `back/app/memory/bootstrap.py`, `back/app/memory/conversation_document_adapter.py`, `back/app/memory/link_reconciliation.py`, `back/app/memory/mcp.py`, `back/app/memory/service.py` |
@@ -369,7 +371,7 @@ tests restent l’autorité sur le comportement.
 | `app.memory` | `core.team` | `back/app/memory/access.py`, `back/app/memory/bootstrap.py`, `back/app/memory/item_sharing.py` |
 | `app.memory` | `core.user` | `back/app/memory/access.py`, `back/app/memory/bootstrap.py`, `back/app/memory/document_attachment_service.py`, `back/app/memory/document_export.py`, `back/app/memory/document_image_import.py`, `back/app/memory/document_links.py`, `back/app/memory/document_sharing.py`, `back/app/memory/document_thumbnail_service.py`, `back/app/memory/events.py`, `back/app/memory/goal_document_adapter.py`, `back/app/memory/goal_folders.py`, `back/app/memory/item_sharing.py`, `back/app/memory/library_queries.py`, `back/app/memory/maintenance.py`, `back/app/memory/router.py`, `back/app/memory/service.py` |
 | `app.memory` | `core.util` | `back/app/memory/acquisition_service.py`, `back/app/memory/attachment_analysis.py`, `back/app/memory/attachment_description.py`, `back/app/memory/document_links.py`, `back/app/memory/document_service.py`, `back/app/memory/file_facade.py`, `back/app/memory/html_migration.py`, `back/app/memory/models.py`, `back/app/memory/passages.py`, `back/app/memory/router.py`, `back/app/memory/service.py`, `back/app/memory/source_projection.py`, `back/app/memory/storage.py`, `back/app/memory/storage_reconciliation.py` |
-| `app.messenger` | `app.agent` | `back/app/messenger/contact_access.py`, `back/app/messenger/native_facade.py`, `back/app/messenger/router.py`, `back/app/messenger/schemas.py`, `back/app/messenger/service.py`, `back/app/messenger/session.py` |
+| `app.messenger` | `app.agent` | `back/app/messenger/contact_access.py`, `back/app/messenger/native_facade.py`, `back/app/messenger/permission_router.py`, `back/app/messenger/permissions.py`, `back/app/messenger/router.py`, `back/app/messenger/schemas.py`, `back/app/messenger/service.py`, `back/app/messenger/session.py` |
 | `app.messenger` | `app.connection` | `back/app/messenger/configuration.py`, `back/app/messenger/contact_access.py`, `back/app/messenger/contact_memory.py`, `back/app/messenger/directory.py`, `back/app/messenger/ingest.py`, `back/app/messenger/native_facade.py`, `back/app/messenger/native_interactions.py`, `back/app/messenger/service.py`, `back/app/messenger/session.py` |
 | `app.messenger` | `app.conversation` | `back/app/messenger/contact_memory.py`, `back/app/messenger/service.py` |
 | `app.messenger` | `app.file_share` | `back/app/messenger/link_preview.py`, `back/app/messenger/mcp.py` |
@@ -377,12 +379,12 @@ tests restent l’autorité sur le comportement.
 | `app.messenger` | `app.memory` | `back/app/messenger/contact_memory.py`, `back/app/messenger/service.py` |
 | `app.messenger` | `app.task` | `back/app/messenger/contact_memory.py`, `back/app/messenger/mcp.py`, `back/app/messenger/service.py` |
 | `app.messenger` | `app.tools` | `back/app/messenger/configuration.py`, `back/app/messenger/contact_memory.py`, `back/app/messenger/directory.py`, `back/app/messenger/journal.py`, `back/app/messenger/mcp.py`, `back/app/messenger/native_facade.py`, `back/app/messenger/service.py`, `back/app/messenger/session.py`, `back/app/messenger/user_service.py` |
-| `app.messenger` | `core.authorize` | `back/app/messenger/router.py` |
-| `app.messenger` | `core.database` | `back/app/messenger/contact_access.py`, `back/app/messenger/contact_memory.py`, `back/app/messenger/facade.py`, `back/app/messenger/ingest.py`, `back/app/messenger/interactions.py`, `back/app/messenger/journal.py`, `back/app/messenger/mcp.py`, `back/app/messenger/models.py`, `back/app/messenger/native_facade.py`, `back/app/messenger/native_interactions.py`, `back/app/messenger/room_service.py`, `back/app/messenger/service.py`, `back/app/messenger/session.py`, `back/app/messenger/user_service.py`, `back/app/messenger/voice_journal.py` |
+| `app.messenger` | `core.authorize` | `back/app/messenger/permission_router.py`, `back/app/messenger/router.py` |
+| `app.messenger` | `core.database` | `back/app/messenger/contact_access.py`, `back/app/messenger/contact_memory.py`, `back/app/messenger/facade.py`, `back/app/messenger/ingest.py`, `back/app/messenger/interactions.py`, `back/app/messenger/journal.py`, `back/app/messenger/mcp.py`, `back/app/messenger/models.py`, `back/app/messenger/native_facade.py`, `back/app/messenger/native_interactions.py`, `back/app/messenger/permissions.py`, `back/app/messenger/room_service.py`, `back/app/messenger/service.py`, `back/app/messenger/session.py`, `back/app/messenger/user_service.py`, `back/app/messenger/voice_journal.py` |
 | `app.messenger` | `core.dbadmin` | `back/app/messenger/dbadmin.py` |
-| `app.messenger` | `core.i18n` | `back/app/messenger/ingest.py`, `back/app/messenger/interactions.py`, `back/app/messenger/mcp.py`, `back/app/messenger/native_facade.py`, `back/app/messenger/native_interactions.py`, `back/app/messenger/service.py` |
+| `app.messenger` | `core.i18n` | `back/app/messenger/ingest.py`, `back/app/messenger/interactions.py`, `back/app/messenger/mcp.py`, `back/app/messenger/native_facade.py`, `back/app/messenger/native_interactions.py`, `back/app/messenger/permissions.py`, `back/app/messenger/service.py` |
 | `app.messenger` | `core.params` | `back/app/messenger/configuration.py`, `back/app/messenger/facade.py`, `back/app/messenger/ingest.py`, `back/app/messenger/link_preview.py`, `back/app/messenger/mcp.py`, `back/app/messenger/service.py`, `back/app/messenger/session.py` |
-| `app.messenger` | `core.user` | `back/app/messenger/native_facade.py` |
+| `app.messenger` | `core.user` | `back/app/messenger/native_facade.py`, `back/app/messenger/permissions.py` |
 | `app.messenger` | `core.util` | `back/app/messenger/link_preview.py` |
 | `app.multimedia` | `app.agent` | `back/app/multimedia/engine.py`, `back/app/multimedia/router.py` |
 | `app.multimedia` | `app.file_share` | `back/app/multimedia/delivery.py`, `back/app/multimedia/engine.py`, `back/app/multimedia/provider_results.py`, `back/app/multimedia/service.py` |
@@ -663,7 +665,7 @@ tests restent l’autorité sur le comportement.
 | `core.team` | `core.user` | `back/core/team/service.py` |
 | `core.user` | `core.authorize` | `back/core/user/authContextMiddleware.py`, `back/core/user/auth_service.py`, `back/core/user/router.py`, `back/core/user/user_service.py` |
 | `core.user` | `core.database` | `back/core/user/auth_service.py`, `back/core/user/help_service.py`, `back/core/user/mfa_service.py`, `back/core/user/models.py`, `back/core/user/refresh_session_service.py`, `back/core/user/router.py`, `back/core/user/token_service.py`, `back/core/user/user_service.py` |
-| `core.user` | `core.i18n` | `back/core/user/auth_service.py`, `back/core/user/router.py`, `back/core/user/user_service.py` |
+| `core.user` | `core.i18n` | `back/core/user/auth_service.py`, `back/core/user/dependencies.py`, `back/core/user/router.py`, `back/core/user/user_service.py` |
 | `core.user` | `core.params` | `back/core/user/user_service.py` |
 | `core.user` | `core.rate_limit` | `back/core/user/router.py` |
 | `core.user` | `core.secrets` | `back/core/user/authContextMiddleware.py`, `back/core/user/auth_service.py`, `back/core/user/mfa_service.py`, `back/core/user/refresh_session_service.py`, `back/core/user/router.py` |
@@ -699,13 +701,13 @@ tests restent l’autorité sur le comportement.
 | `app/chat` | `core/user` | `front/app/chat/components/ChatProfilePreferences.vue`, `front/app/chat/components/MessageResourcePreviews.vue` |
 | `app/chat` | `core/util` | `front/app/chat/components/AgentTasksPanel.vue`, `front/app/chat/components/ChatDocumentPane.vue`, `front/app/chat/components/ChatDocumentSearchDialog.vue`, `front/app/chat/components/ConversationDocumentDialog.vue`, `front/app/chat/components/ConversationDocumentsPanel.vue`, `front/app/chat/components/ConversationProcessDialog.vue`, `front/app/chat/components/MarkdownAttachmentPreview.vue`, `front/app/chat/components/MessageResourcePreviews.vue`, `front/app/chat/components/MessageTimeline.vue`, `front/app/chat/components/SafeMessageContent.vue`, `front/app/chat/pages/index.vue` |
 | `app/chat` | `core/websocket` | `front/app/chat/components/AgentExecutionTrace.vue`, `front/app/chat/components/AgentTasksPanel.vue`, `front/app/chat/components/ConversationDocumentsPanel.vue`, `front/app/chat/components/ConversationProcessesPanel.vue`, `front/app/chat/components/MessageResourcePreviews.vue`, `front/app/chat/pages/index.vue`, `front/app/chat/stores/chat.ts`, `front/app/chat/stores/inbox.ts` |
-| `app/connection` | `app/agent` | `front/app/connection/components/AuthorizationManager.vue`, `front/app/connection/components/ConnectionForm.vue`, `front/app/connection/components/ConnectionList.vue`, `front/app/connection/pages/mail.vue` |
+| `app/connection` | `app/agent` | `front/app/connection/components/AuthorizationManager.vue`, `front/app/connection/components/ConnectionForm.vue`, `front/app/connection/components/ConnectionList.vue`, `front/app/connection/pages/mail.vue`, `front/app/connection/pages/permissions.vue` |
 | `app/connection` | `app/console` | `front/app/connection/components/ConnectionForm.vue` |
 | `app/connection` | `app/tools` | `front/app/connection/components/AuthorizationManager.vue`, `front/app/connection/components/ConnectionForm.vue`, `front/app/connection/components/ConnectionList.vue` |
-| `app/connection` | `core/api` | `front/app/connection/availability.ts`, `front/app/connection/components/CalendarConnectionEditor.vue`, `front/app/connection/services/calendarService.ts`, `front/app/connection/services/connectionService.ts`, `front/app/connection/services/mailService.ts` |
-| `app/connection` | `core/authorize` | `front/app/connection/components/AuthorizationManager.vue`, `front/app/connection/components/CalendarConnectionEditor.vue`, `front/app/connection/components/ConnectionForm.vue`, `front/app/connection/components/ConnectionList.vue`, `front/app/connection/navigation.ts` |
+| `app/connection` | `core/api` | `front/app/connection/availability.ts`, `front/app/connection/components/CalendarConnectionEditor.vue`, `front/app/connection/services/calendarService.ts`, `front/app/connection/services/connectionService.ts`, `front/app/connection/services/mailService.ts`, `front/app/connection/services/permissionService.ts` |
+| `app/connection` | `core/authorize` | `front/app/connection/components/AuthorizationManager.vue`, `front/app/connection/components/CalendarConnectionEditor.vue`, `front/app/connection/components/ConnectionForm.vue`, `front/app/connection/components/ConnectionList.vue`, `front/app/connection/navigation.ts`, `front/app/connection/pages/permissions.vue` |
 | `app/connection` | `core/navigation` | `front/app/connection/navigation.ts`, `front/app/connection/pages/mail.vue` |
-| `app/connection` | `core/util` | `front/app/connection/components/ConnectionForm.vue`, `front/app/connection/pages/mail.vue` |
+| `app/connection` | `core/util` | `front/app/connection/components/ConnectionForm.vue`, `front/app/connection/pages/mail.vue`, `front/app/connection/pages/permissions.vue` |
 | `app/console` | `core/api` | `front/app/console/services/consoleService.ts` |
 | `app/console` | `core/authorize` | `front/app/console/navigation.ts`, `front/app/console/pages/executor.vue` |
 | `app/console` | `core/navigation` | `front/app/console/navigation.ts`, `front/app/console/pages/executor.vue` |
@@ -903,9 +905,9 @@ tests restent l’autorité sur le comportement.
 | `bridge.claude_agent` | 5 | `app.agent`, `app.harnesses`, `app.mcp`, `app.skill`, `bridge.harness` |
 | `bridge.mail` | 5 | `app.agent`, `app.connection`, `app.file_share`, `app.messenger`, `app.tools` |
 | `bridge.matrix` | 5 | `app.agent`, `app.connection`, `app.messenger`, `app.tools`, `app.voice` |
+| `app.browser` | 4 | `app.connection`, `app.file_share`, `app.messenger`, `app.tools` |
 | `app.console` | 4 | `app.agent`, `app.connection`, `app.file_share`, `app.tools` |
 | `app.webhook` | 4 | `app.agent`, `app.connection`, `app.task`, `app.tools` |
-| `app.browser` | 3 | `app.connection`, `app.file_share`, `app.tools` |
 | `app.dashboard` | 3 | `app.agent`, `app.llm`, `app.task` |
 | `app.image` | 3 | `app.file_share`, `app.llm`, `app.tools` |
 | `app.skill` | 3 | `app.agent`, `app.connection`, `app.tools` |
@@ -946,7 +948,7 @@ tests restent l’autorité sur le comportement.
 | `app.llm` | 43 | `app.agent`, `app.audio`, `app.conversation`, `app.dashboard`, `app.dream`, `app.goal`, `app.harness`, `app.image`, `app.lab`, `app.memory`, `app.messenger`, `app.multimedia`, `app.onboarding`, `app.process`, `app.task`, `app.tools`, `app.topic`, `app.voice`, `bridge.anthropic`, `bridge.azure_speech`, `bridge.byteplus`, `bridge.cerebras`, `bridge.codex`, `bridge.cohere`, `bridge.deepseek`, `bridge.deepseek_harness`, `bridge.elevenlabs`, `bridge.fireworks`, `bridge.google`, `bridge.groq`, `bridge.hermes`, `bridge.huggingface`, `bridge.mammouth`, `bridge.mistral`, `bridge.models_dev`, `bridge.nvidia`, `bridge.ollama`, `bridge.openai`, `bridge.openrouter`, `bridge.perplexity`, `bridge.sunoapi`, `bridge.together`, `bridge.xai` |
 | `app.agent` | 33 | `app.chat`, `app.connection`, `app.console`, `app.contact`, `app.conversation`, `app.dashboard`, `app.dream`, `app.file_share`, `app.goal`, `app.harness`, `app.harnesses`, `app.lab`, `app.llm`, `app.mcp`, `app.memory`, `app.messenger`, `app.multimedia`, `app.onboarding`, `app.process`, `app.skill`, `app.task`, `app.tools`, `app.topic`, `app.voice`, `app.webhook`, `bridge.calendar`, `bridge.claude_agent`, `bridge.codex`, `bridge.deepseek_harness`, `bridge.hermes`, `bridge.mail`, `bridge.matrix`, `bridge.nextcloud` |
 | `app.tools` | 29 | `app.agent`, `app.audio`, `app.browser`, `app.connection`, `app.console`, `app.conversation`, `app.file_share`, `app.goal`, `app.harness`, `app.image`, `app.lab`, `app.llm`, `app.mcp`, `app.memory`, `app.messenger`, `app.multimedia`, `app.onboarding`, `app.process`, `app.skill`, `app.task`, `app.topic`, `app.voice`, `app.webhook`, `bridge.calendar`, `bridge.hermes`, `bridge.mail`, `bridge.matrix`, `bridge.nextcloud`, `bridge.whatsapp` |
-| `app.messenger` | 23 | `app.agent`, `app.audio`, `app.chat`, `app.contact`, `app.conversation`, `app.dream`, `app.file_share`, `app.goal`, `app.harness`, `app.lab`, `app.llm`, `app.onboarding`, `app.task`, `app.tools`, `app.topic`, `app.voice`, `bridge.hermes`, `bridge.mail`, `bridge.matrix`, `bridge.nextcloud`, `bridge.one_bot`, `bridge.telegram`, `bridge.whatsapp` |
+| `app.messenger` | 24 | `app.agent`, `app.audio`, `app.browser`, `app.chat`, `app.contact`, `app.conversation`, `app.dream`, `app.file_share`, `app.goal`, `app.harness`, `app.lab`, `app.llm`, `app.onboarding`, `app.task`, `app.tools`, `app.topic`, `app.voice`, `bridge.hermes`, `bridge.mail`, `bridge.matrix`, `bridge.nextcloud`, `bridge.one_bot`, `bridge.telegram`, `bridge.whatsapp` |
 | `app.connection` | 22 | `app.browser`, `app.console`, `app.conversation`, `app.dream`, `app.file_share`, `app.goal`, `app.lab`, `app.llm`, `app.messenger`, `app.onboarding`, `app.skill`, `app.tools`, `app.topic`, `app.voice`, `app.webhook`, `bridge.calendar`, `bridge.hermes`, `bridge.mail`, `bridge.matrix`, `bridge.nextcloud`, `bridge.one_bot`, `bridge.whatsapp` |
 | `app.task` | 16 | `app.audio`, `app.contact`, `app.conversation`, `app.dashboard`, `app.dream`, `app.file_share`, `app.goal`, `app.lab`, `app.llm`, `app.memory`, `app.messenger`, `app.process`, `app.tools`, `app.topic`, `app.voice`, `app.webhook` |
 | `app.process` | 15 | `app.agent`, `app.conversation`, `app.dream`, `app.file_share`, `app.harness`, `app.lab`, `app.llm`, `app.memory`, `app.multimedia`, `app.onboarding`, `app.topic`, `app.voice`, `bridge.calendar`, `bridge.hermes`, `bridge.n8n` |
@@ -1089,10 +1091,10 @@ tests restent l’autorité sur le comportement.
 | DELETE | `/agents/titles/{id}` | `app.agent` | `delete_title` | oui | `back/app/agent/router.py:99` |
 | GET | `/agents/titles/{id}` | `app.agent` | `read_title` | oui | `back/app/agent/router.py:66` |
 | PUT | `/agents/titles/{id}` | `app.agent` | `update_title` | oui | `back/app/agent/router.py:86` |
-| GET | `/agents/{agent_id}/mcp-tokens` | `app.mcp` | `list_agent_mcp_tokens` | oui | `back/app/mcp/router.py:66` |
-| POST | `/agents/{agent_id}/mcp-tokens` | `app.mcp` | `create_agent_mcp_token` | oui | `back/app/mcp/router.py:87` |
-| DELETE | `/agents/{agent_id}/mcp-tokens/{token_id}` | `app.mcp` | `delete_agent_mcp_token` | oui | `back/app/mcp/router.py:137` |
-| PUT | `/agents/{agent_id}/mcp-tokens/{token_id}` | `app.mcp` | `update_agent_mcp_token` | oui | `back/app/mcp/router.py:112` |
+| GET | `/agents/{agent_id}/mcp-tokens` | `app.mcp` | `list_agent_mcp_tokens` | oui | `back/app/mcp/router.py:70` |
+| POST | `/agents/{agent_id}/mcp-tokens` | `app.mcp` | `create_agent_mcp_token` | oui | `back/app/mcp/router.py:92` |
+| DELETE | `/agents/{agent_id}/mcp-tokens/{token_id}` | `app.mcp` | `delete_agent_mcp_token` | oui | `back/app/mcp/router.py:146` |
+| PUT | `/agents/{agent_id}/mcp-tokens/{token_id}` | `app.mcp` | `update_agent_mcp_token` | oui | `back/app/mcp/router.py:120` |
 | DELETE | `/agents/{id}` | `app.agent` | `delete_agent` | oui | `back/app/agent/router.py:309` |
 | GET | `/agents/{id}` | `app.agent` | `read_agent` | oui | `back/app/agent/router.py:242` |
 | PUT | `/agents/{id}` | `app.agent` | `update_agent` | oui | `back/app/agent/router.py:282` |
@@ -1104,46 +1106,46 @@ tests restent l’autorité sur le comportement.
 | GET | `/api/health/live` | `core.api` | `liveness_check` | non | `back/core/api.py:271` |
 | GET | `/api/health/ready` | `core.api` | `readiness_check` | non | `back/core/api.py:277` |
 | GET | `/api/openapi.json` | `core.api` | `get_public_openapi_endpoint` | non | `back/core/api.py:229` |
-| GET | `/auth/avatars/{avatar_key}` | `core.user` | `read_user_avatar` | non | `back/core/user/router.py:409` |
-| POST | `/auth/keep-alive` | `core.user` | `keep_alive` | oui | `back/core/user/router.py:382` |
-| POST | `/auth/login` | `core.user` | `login` | non | `back/core/user/router.py:207` |
-| POST | `/auth/login-json` | `core.user` | `login_json` | non | `back/core/user/router.py:231` |
-| POST | `/auth/logout` | `core.user` | `logout` | non | `back/core/user/router.py:324` |
-| DELETE | `/auth/me` | `core.user` | `delete_user_me` | oui | `back/core/user/router.py:475` |
-| GET | `/auth/me` | `core.user` | `read_users_me` | oui | `back/core/user/router.py:401` |
-| PUT | `/auth/me` | `core.user` | `update_user_me` | oui | `back/core/user/router.py:516` |
-| DELETE | `/auth/me/avatar` | `core.user` | `delete_user_avatar` | oui | `back/core/user/router.py:463` |
-| POST | `/auth/me/avatar` | `core.user` | `upload_user_avatar` | oui | `back/core/user/router.py:426` |
-| GET | `/auth/me/help-dismissals` | `core.user` | `list_help_dismissals` | oui | `back/core/user/router.py:495` |
-| PUT | `/auth/me/help-dismissals/{help_key}` | `core.user` | `dismiss_help` | oui | `back/core/user/router.py:505` |
-| GET | `/auth/me/tokens` | `core.user` | `list_my_tokens` | oui | `back/core/user/router.py:610` |
-| POST | `/auth/me/tokens` | `core.user` | `create_my_token` | oui | `back/core/user/router.py:623` |
-| DELETE | `/auth/me/tokens/{token_id}` | `core.user` | `delete_my_token` | oui | `back/core/user/router.py:663` |
-| PUT | `/auth/me/tokens/{token_id}` | `core.user` | `update_my_token` | oui | `back/core/user/router.py:644` |
-| POST | `/auth/mfa/confirm` | `core.user` | `confirm_mfa` | oui | `back/core/user/router.py:285` |
-| POST | `/auth/mfa/disable` | `core.user` | `disable_mfa` | oui | `back/core/user/router.py:298` |
-| POST | `/auth/mfa/recovery-codes` | `core.user` | `regenerate_mfa_recovery_codes` | oui | `back/core/user/router.py:311` |
-| POST | `/auth/mfa/setup` | `core.user` | `setup_mfa` | oui | `back/core/user/router.py:273` |
-| GET | `/auth/mfa/status` | `core.user` | `read_mfa_status` | oui | `back/core/user/router.py:260` |
-| POST | `/auth/refresh` | `core.user` | `refresh_session` | non | `back/core/user/router.py:342` |
-| POST | `/auth/register` | `core.user` | `register` | non | `back/core/user/router.py:132` |
-| GET | `/auth/registration-status` | `core.user` | `registration_status` | non | `back/core/user/router.py:120` |
-| GET | `/auth/users` | `core.user` | `list_users` | oui | `back/core/user/router.py:546` |
-| POST | `/auth/users` | `core.user` | `create_user_endpoint` | oui | `back/core/user/router.py:560` |
-| DELETE | `/auth/users/{user_id}` | `core.user` | `delete_user_endpoint` | oui | `back/core/user/router.py:594` |
-| GET | `/auth/users/{user_id}` | `core.user` | `read_user` | oui | `back/core/user/router.py:571` |
-| PUT | `/auth/users/{user_id}` | `core.user` | `update_user_endpoint` | oui | `back/core/user/router.py:580` |
+| GET | `/auth/avatars/{avatar_key}` | `core.user` | `read_user_avatar` | non | `back/core/user/router.py:410` |
+| POST | `/auth/keep-alive` | `core.user` | `keep_alive` | oui | `back/core/user/router.py:383` |
+| POST | `/auth/login` | `core.user` | `login` | non | `back/core/user/router.py:208` |
+| POST | `/auth/login-json` | `core.user` | `login_json` | non | `back/core/user/router.py:232` |
+| POST | `/auth/logout` | `core.user` | `logout` | non | `back/core/user/router.py:325` |
+| DELETE | `/auth/me` | `core.user` | `delete_user_me` | oui | `back/core/user/router.py:476` |
+| GET | `/auth/me` | `core.user` | `read_users_me` | oui | `back/core/user/router.py:402` |
+| PUT | `/auth/me` | `core.user` | `update_user_me` | oui | `back/core/user/router.py:520` |
+| DELETE | `/auth/me/avatar` | `core.user` | `delete_user_avatar` | oui | `back/core/user/router.py:464` |
+| POST | `/auth/me/avatar` | `core.user` | `upload_user_avatar` | oui | `back/core/user/router.py:427` |
+| GET | `/auth/me/help-dismissals` | `core.user` | `list_help_dismissals` | oui | `back/core/user/router.py:496` |
+| PUT | `/auth/me/help-dismissals/{help_key}` | `core.user` | `dismiss_help` | oui | `back/core/user/router.py:509` |
+| GET | `/auth/me/tokens` | `core.user` | `list_my_tokens` | oui | `back/core/user/router.py:620` |
+| POST | `/auth/me/tokens` | `core.user` | `create_my_token` | oui | `back/core/user/router.py:636` |
+| DELETE | `/auth/me/tokens/{token_id}` | `core.user` | `delete_my_token` | oui | `back/core/user/router.py:679` |
+| PUT | `/auth/me/tokens/{token_id}` | `core.user` | `update_my_token` | oui | `back/core/user/router.py:657` |
+| POST | `/auth/mfa/confirm` | `core.user` | `confirm_mfa` | oui | `back/core/user/router.py:286` |
+| POST | `/auth/mfa/disable` | `core.user` | `disable_mfa` | oui | `back/core/user/router.py:299` |
+| POST | `/auth/mfa/recovery-codes` | `core.user` | `regenerate_mfa_recovery_codes` | oui | `back/core/user/router.py:312` |
+| POST | `/auth/mfa/setup` | `core.user` | `setup_mfa` | oui | `back/core/user/router.py:274` |
+| GET | `/auth/mfa/status` | `core.user` | `read_mfa_status` | oui | `back/core/user/router.py:261` |
+| POST | `/auth/refresh` | `core.user` | `refresh_session` | non | `back/core/user/router.py:343` |
+| POST | `/auth/register` | `core.user` | `register` | non | `back/core/user/router.py:133` |
+| GET | `/auth/registration-status` | `core.user` | `registration_status` | non | `back/core/user/router.py:121` |
+| GET | `/auth/users` | `core.user` | `list_users` | oui | `back/core/user/router.py:550` |
+| POST | `/auth/users` | `core.user` | `create_user_endpoint` | oui | `back/core/user/router.py:567` |
+| DELETE | `/auth/users/{user_id}` | `core.user` | `delete_user_endpoint` | oui | `back/core/user/router.py:604` |
+| GET | `/auth/users/{user_id}` | `core.user` | `read_user` | oui | `back/core/user/router.py:578` |
+| PUT | `/auth/users/{user_id}` | `core.user` | `update_user_endpoint` | oui | `back/core/user/router.py:587` |
 | GET | `/authorize/assignments` | `core.authorize` | `list_assignments` | oui | `back/core/authorize/router.py:269` |
 | POST | `/authorize/assignments` | `core.authorize` | `create_assignment` | oui | `back/core/authorize/router.py:321` |
 | DELETE | `/authorize/assignments/{id}` | `core.authorize` | `delete_assignment` | oui | `back/core/authorize/router.py:345` |
-| PUT | `/authorize/assignments/{id}/default` | `core.authorize` | `set_default_assignment` | oui | `back/core/authorize/router.py:399` |
+| PUT | `/authorize/assignments/{id}/default` | `core.authorize` | `set_default_assignment` | oui | `back/core/authorize/router.py:402` |
 | GET | `/authorize/my-privileges` | `core.authorize` | `get_my_privileges` | oui | `back/core/authorize/router.py:66` |
-| GET | `/authorize/privilege-lists` | `core.authorize` | `list_privilege_lists` | oui | `back/core/authorize/router.py:451` |
-| POST | `/authorize/privilege-lists` | `core.authorize` | `create_privilege_list` | oui | `back/core/authorize/router.py:462` |
-| DELETE | `/authorize/privilege-lists/{id}` | `core.authorize` | `delete_privilege_list` | oui | `back/core/authorize/router.py:508` |
-| PUT | `/authorize/privilege-lists/{id}` | `core.authorize` | `update_privilege_list` | oui | `back/core/authorize/router.py:487` |
-| DELETE | `/authorize/privilege-lists/{id}/privileges` | `core.authorize` | `remove_privileges_from_list` | oui | `back/core/authorize/router.py:560` |
-| POST | `/authorize/privilege-lists/{id}/privileges` | `core.authorize` | `add_privileges_to_list` | oui | `back/core/authorize/router.py:529` |
+| GET | `/authorize/privilege-lists` | `core.authorize` | `list_privilege_lists` | oui | `back/core/authorize/router.py:454` |
+| POST | `/authorize/privilege-lists` | `core.authorize` | `create_privilege_list` | oui | `back/core/authorize/router.py:465` |
+| DELETE | `/authorize/privilege-lists/{id}` | `core.authorize` | `delete_privilege_list` | oui | `back/core/authorize/router.py:511` |
+| PUT | `/authorize/privilege-lists/{id}` | `core.authorize` | `update_privilege_list` | oui | `back/core/authorize/router.py:490` |
+| DELETE | `/authorize/privilege-lists/{id}/privileges` | `core.authorize` | `remove_privileges_from_list` | oui | `back/core/authorize/router.py:563` |
+| POST | `/authorize/privilege-lists/{id}/privileges` | `core.authorize` | `add_privileges_to_list` | oui | `back/core/authorize/router.py:532` |
 | GET | `/authorize/privileges` | `core.authorize` | `list_privileges` | oui | `back/core/authorize/router.py:59` |
 | POST | `/authorize/privileges` | `core.authorize` | `create_privilege` | oui | `back/core/authorize/router.py:89` |
 | DELETE | `/authorize/privileges/{id}` | `core.authorize` | `delete_privilege` | oui | `back/core/authorize/router.py:107` |
@@ -1156,7 +1158,8 @@ tests restent l’autorité sur le comportement.
 | POST | `/authorize/roles/{role_id}/privileges` | `core.authorize` | `add_privileges_to_role` | oui | `back/core/authorize/router.py:211` |
 | POST | `/authorize/switch-role` | `core.authorize` | `switch_role` | oui | `back/core/authorize/router.py:366` |
 | GET | `/authorize/users/{user_id}/assignments` | `core.authorize` | `get_user_assignments` | oui | `back/core/authorize/router.py:307` |
-| GET | `/browser/status` | `app.browser` | `status` | oui | `back/app/browser/router.py:18` |
+| POST | `/browser/network/authorize` | `app.browser` | `network_authorization` | non | `back/app/browser/router.py:17` |
+| GET | `/browser/status` | `app.browser` | `status` | oui | `back/app/browser/router.py:34` |
 | GET | `/calendars` | `bridge.calendar` | `read_calendars` | oui | `back/bridge/calendar/router.py:54` |
 | POST | `/calendars` | `bridge.calendar` | `create_calendar` | oui | `back/bridge/calendar/router.py:61` |
 | DELETE | `/calendars/{calendar_id}` | `bridge.calendar` | `delete_calendar` | oui | `back/bridge/calendar/router.py:89` |
@@ -1522,10 +1525,10 @@ tests restent l’autorité sur le comportement.
 | GET | `/memory/recent` | `app.memory` | `read_recent_memories` | oui | `back/app/memory/router.py:178` |
 | GET | `/memory/retention/preview` | `app.memory` | `estimate_memory_retention` | oui | `back/app/memory/router.py:346` |
 | POST | `/memory/search` | `app.memory` | `search_memory` | oui | `back/app/memory/router.py:462` |
-| GET | `/messenger/bridges` | `app.messenger` | `list_messenger_bridges` | oui | `back/app/messenger/router.py:20` |
-| GET | `/messenger/channels` | `app.messenger` | `list_enabled_messenger_channels` | oui | `back/app/messenger/router.py:68` |
-| POST | `/messenger/configuration/test` | `app.messenger` | `test_messenger_configuration` | oui | `back/app/messenger/router.py:31` |
-| GET | `/messenger/users` | `app.messenger` | `search_messenger_users` | oui | `back/app/messenger/router.py:41` |
+| GET | `/messenger/bridges` | `app.messenger` | `list_messenger_bridges` | oui | `back/app/messenger/router.py:23` |
+| GET | `/messenger/channels` | `app.messenger` | `list_enabled_messenger_channels` | oui | `back/app/messenger/router.py:71` |
+| POST | `/messenger/configuration/test` | `app.messenger` | `test_messenger_configuration` | oui | `back/app/messenger/router.py:34` |
+| GET | `/messenger/users` | `app.messenger` | `search_messenger_users` | oui | `back/app/messenger/router.py:44` |
 | GET | `/metrics` | `app.process` | `read_metrics` | oui | `back/app/process/router.py:431` |
 | POST | `/multimedia/callback/{run_id}/{token}` | `app.multimedia` | `acknowledge_callback` | non | `back/app/multimedia/router.py:54` |
 | GET | `/multimedia/runs/{run_id}/deliveries` | `app.multimedia` | `list_deliveries` | oui | `back/app/multimedia/router.py:29` |
@@ -1536,6 +1539,8 @@ tests restent l’autorité sur le comportement.
 | GET | `/operations` | `app.process` | `read_process_operations` | oui | `back/app/process/router.py:114` |
 | GET | `/params` | `core.params` | `read_params` | oui | `back/core/params/router.py:46` |
 | PUT | `/params/{name}` | `core.params` | `update_param` | oui | `back/core/params/router.py:83` |
+| GET | `/permissions` | `app.messenger` | `list_permissions` | oui | `back/app/messenger/permission_router.py:16` |
+| DELETE | `/permissions/{permission_id}` | `app.messenger` | `delete_permission` | oui | `back/app/messenger/permission_router.py:29` |
 | POST | `/profile/anthropic/v1/messages` | `app.llm` | `anthropic_messages` | non | `back/app/llm/anthropic_router.py:252` |
 | POST | `/profile/anthropic/v1/messages/count_tokens` | `app.llm` | `anthropic_count_tokens` | non | `back/app/llm/anthropic_router.py:218` |
 | GET | `/profile/anthropic/v1/models` | `app.llm` | `anthropic_models` | non | `back/app/llm/anthropic_router.py:184` |
@@ -1746,17 +1751,18 @@ tests restent l’autorité sur le comportement.
 | `memory_topic_contact_items` | `MemoryTopicContactItem` | `app.memory` | non | `memory_items.id`, `memory_topic_contact_scopes.id` | `back/app/memory/models.py:782` |
 | `memory_topic_contact_scopes` | `MemoryTopicContactScope` | `app.memory` | non | `agents.id`, `memory_items.id` | `back/app/memory/models.py:741` |
 | `memory_usages` | `MemoryUsage` | `app.memory` | non | `agents.id`, `memory_items.id` | `back/app/memory/models.py:924` |
-| `messenger_files` | `File` | `app.messenger` | oui | `connections.id` | `back/app/messenger/models.py:407` |
-| `messenger_interactions` | `Interaction` | `app.messenger` | non | `connections.id` | `back/app/messenger/models.py:191` |
-| `messenger_listener_state` | `ListenerState` | `app.messenger` | non | `connections.id` | `back/app/messenger/models.py:463` |
-| `messenger_message_files` | `Attachment` | `app.messenger` | non | `messenger_files.id`, `messenger_messages.id` | `back/app/messenger/models.py:444` |
-| `messenger_messages` | `Message` | `app.messenger` | oui | `connections.id`, `memory_items.id`, `messenger_rooms.id`, `messenger_users.id`, `topics.id`, `users.id` | `back/app/messenger/models.py:233` |
-| `messenger_room_users` | `RoomUser` | `app.messenger` | non | `messenger_messages.id`, `messenger_rooms.id`, `messenger_users.id` | `back/app/messenger/models.py:138` |
-| `messenger_rooms` | `Room` | `app.messenger` | oui | `connections.id`, `topics.id` | `back/app/messenger/models.py:62` |
-| `messenger_users` | `MessengerUser` | `app.messenger` | oui | `agents.id`, `tools.id`, `users.id` | `back/app/messenger/models.py:95` |
+| `messenger_files` | `File` | `app.messenger` | oui | `connections.id` | `back/app/messenger/models.py:428` |
+| `messenger_interactions` | `Interaction` | `app.messenger` | non | `connections.id` | `back/app/messenger/models.py:192` |
+| `messenger_listener_state` | `ListenerState` | `app.messenger` | non | `connections.id` | `back/app/messenger/models.py:484` |
+| `messenger_message_files` | `Attachment` | `app.messenger` | non | `messenger_files.id`, `messenger_messages.id` | `back/app/messenger/models.py:465` |
+| `messenger_messages` | `Message` | `app.messenger` | oui | `connections.id`, `memory_items.id`, `messenger_rooms.id`, `messenger_users.id`, `topics.id`, `users.id` | `back/app/messenger/models.py:254` |
+| `messenger_room_users` | `RoomUser` | `app.messenger` | non | `messenger_messages.id`, `messenger_rooms.id`, `messenger_users.id` | `back/app/messenger/models.py:139` |
+| `messenger_rooms` | `Room` | `app.messenger` | oui | `connections.id`, `topics.id` | `back/app/messenger/models.py:63` |
+| `messenger_users` | `MessengerUser` | `app.messenger` | oui | `agents.id`, `tools.id`, `users.id` | `back/app/messenger/models.py:96` |
 | `multimedia_delivery_resolutions` | `MediaDeliveryResolution` | `app.multimedia` | non | `multimedia_output_receipts.id`, `users.id` | `back/app/multimedia/models.py:31` |
 | `multimedia_output_receipts` | `MediaOutputReceipt` | `app.multimedia` | non | `process_runs.id` | `back/app/multimedia/models.py:13` |
 | `params` | `Param` | `core.params` | non | — | `back/core/params/models.py:7` |
+| `permission_decisions` | `PermissionDecision` | `app.messenger` | oui | `agents.id`, `messenger_interactions.id`, `users.id` | `back/app/messenger/models.py:234` |
 | `privilege_lists` | `PrivilegeList` | `core.authorize` | non | — | `back/core/authorize/models.py:41` |
 | `privileges` | `Privilege` | `core.authorize` | non | `privilege_lists.id` | `back/core/authorize/models.py:22` |
 | `process_definitions` | `ProcessDefinition` | `app.process` | oui | `agents.id`, `tools.id` | `back/app/process/models.py:25` |
@@ -1797,16 +1803,16 @@ tests restent l’autorité sur le comportement.
 | `topic_split` | `` | `app.topic` | `mcp_topic_split` | `back/app/topic/mcp.py:248` |
 | `topic_update` | `` | `app.topic` | `mcp_topic_update` | `back/app/topic/mcp.py:168` |
 | `audio_transcribe` | `audio` | `app.audio` | `transcribe_audio_file` | `back/app/audio/mcp.py:289` |
-| `browser_back` | `browser` | `app.browser` | `browser_back` | `back/app/browser/mcp.py:414` |
-| `browser_click` | `browser` | `app.browser` | `browser_click` | `back/app/browser/mcp.py:348` |
-| `browser_close` | `browser` | `app.browser` | `browser_close` | `back/app/browser/mcp.py:427` |
-| `browser_content` | `browser` | `app.browser` | `browser_content` | `back/app/browser/mcp.py:269` |
-| `browser_navigate` | `browser` | `app.browser` | `browser_navigate` | `back/app/browser/mcp.py:253` |
-| `browser_open` | `browser` | `app.browser` | `browser_open` | `back/app/browser/mcp.py:220` |
-| `browser_press` | `browser` | `app.browser` | `browser_press` | `back/app/browser/mcp.py:386` |
-| `browser_screenshot` | `browser` | `app.browser` | `browser_screenshot` | `back/app/browser/mcp.py:314` |
-| `browser_scroll` | `browser` | `app.browser` | `browser_scroll` | `back/app/browser/mcp.py:400` |
-| `browser_type` | `browser` | `app.browser` | `browser_type` | `back/app/browser/mcp.py:362` |
+| `browser_back` | `browser` | `app.browser` | `browser_back` | `back/app/browser/mcp.py:420` |
+| `browser_click` | `browser` | `app.browser` | `browser_click` | `back/app/browser/mcp.py:354` |
+| `browser_close` | `browser` | `app.browser` | `browser_close` | `back/app/browser/mcp.py:433` |
+| `browser_content` | `browser` | `app.browser` | `browser_content` | `back/app/browser/mcp.py:275` |
+| `browser_navigate` | `browser` | `app.browser` | `browser_navigate` | `back/app/browser/mcp.py:259` |
+| `browser_open` | `browser` | `app.browser` | `browser_open` | `back/app/browser/mcp.py:226` |
+| `browser_press` | `browser` | `app.browser` | `browser_press` | `back/app/browser/mcp.py:392` |
+| `browser_screenshot` | `browser` | `app.browser` | `browser_screenshot` | `back/app/browser/mcp.py:320` |
+| `browser_scroll` | `browser` | `app.browser` | `browser_scroll` | `back/app/browser/mcp.py:406` |
+| `browser_type` | `browser` | `app.browser` | `browser_type` | `back/app/browser/mcp.py:368` |
 | `calendar_create_event` | `calendar` | `bridge.calendar` | `calendar_create_event` | `back/bridge/calendar/mcp.py:132` |
 | `calendar_delete_event` | `calendar` | `bridge.calendar` | `calendar_delete_event` | `back/bridge/calendar/mcp.py:192` |
 | `calendar_events` | `calendar` | `bridge.calendar` | `calendar_events` | `back/bridge/calendar/mcp.py:49` |
@@ -2066,6 +2072,7 @@ tests restent l’autorité sur le comportement.
 | `/browser/settings` | `app/browser` | `front/app/browser/pages/settings.vue` |
 | `/chat` | `app/chat` | `front/app/chat/pages/index.vue` |
 | `/connection/mail` | `app/connection` | `front/app/connection/pages/mail.vue` |
+| `/connection/permissions` | `app/connection` | `front/app/connection/pages/permissions.vue` |
 | `/console/executor` | `app/console` | `front/app/console/pages/executor.vue` |
 | `/dream` | `app/dream` | `front/app/dream/pages/index.vue` |
 | `/goal` | `app/goal` | `front/app/goal/pages/index.vue` |

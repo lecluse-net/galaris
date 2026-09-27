@@ -167,3 +167,4 @@ nouvelle décision plutôt que réécrite silencieusement si le choix change.
 - [0122 — Outils disponibles par défaut aux nouveaux agents](0122-default-agent-tools.md)
 - [0127 — Modèle de décision facultatif pour le dispatcher Task](0127-optional-dispatcher-decision-model.md)
 - [0128 — Requêtes HTTP de l'interface sans délai maximal](0128-http-client-without-deadline.md)
+- [0141 — Permissions réseau du navigateur et décisions humaines mémorisées](0141-browser-remembered-permissions.md)

@@ -14,6 +14,32 @@ const tools = [
 const connections = tools.slice(0, 5).map(tool => ({ id: tool.id, tool_id: tool.id, agent_id: 7, active: true }))
 const privileges = ['TOOL_ACCESS', 'TOOL_EDIT', 'CONNECTION_ACCESS', 'CONNECTION_EDIT', 'AGENT_MANAGE_ALL']
 
+for (const [locale, description] of [
+  ['fr', 'Permettre les demandes d’accès au réseau local (bloqué par défaut)'],
+  ['en', 'Allow local network permission requests (blocked by default)'],
+  ['zh', '允许请求本地网络访问权限（默认阻止）'],
+]) {
+  test(`Browser connection descriptions are translated (${locale})`, async ({ page }) => {
+    await jsonRoute(page, '**/api/agents?*', [{ id: 7, first_name: 'Synthetic', last_name: 'Agent', agent_driver: 'internal' }])
+    const params = Object.fromEntries(['allow_local_network', 'network_filter_mode', 'network_filter', 'permission_methods'].map(name => [name, {
+      type: name === 'allow_local_network' ? 'boolean' : 'string', required: false, description: 'Server description',
+    }]))
+    await mount(page, 'app/connection/components/ConnectionForm.vue', {
+      locale, privileges,
+      props: {
+        connection: { id: 42, agent_id: 7, tool_id: 8, active: true }, connectionParams: {},
+        agentOptions: [{ value: 7, label: 'Synthetic Agent', agentDriver: 'internal' }],
+        toolOptions: [{ id: 8, label: 'Browser' }],
+        tools: [{ id: 8, label: 'Browser', code: 'browser', connection_schema: { params } }],
+      },
+    })
+    await expect(page.getByText(description, { exact: true })).toBeVisible()
+    await expect(page.locator('.param-desc')).toHaveCount(4)
+    await expect(page.locator('.param-desc').filter({ hasText: 'tools.connectionParamDescriptions' })).toHaveCount(0)
+    await expect(page.getByText('Server description', { exact: true })).toHaveCount(0)
+  })
+}
+
 async function routes(page) {
   await jsonRoute(page, '**/api/tools', tools)
   await jsonRoute(page, '**/api/file-share/bridges', [])

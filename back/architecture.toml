@@ -109,8 +109,8 @@ allowed_dependencies = ["app.agent", "app.connection", "app.file_share", "app.ll
 max_domain_fan_out = 8
 
 [module."app.browser"]
-allowed_dependencies = ["app.connection", "app.file_share", "app.tools"]
-max_domain_fan_out = 3
+allowed_dependencies = ["app.connection", "app.file_share", "app.messenger", "app.tools"]
+max_domain_fan_out = 4
 
 [module."app.image"]
 allowed_dependencies = ["app.file_share", "app.llm", "app.tools"]

@@ -3,7 +3,7 @@
 # Flux du navigateur agentique
 
 Le navigateur intégré est un Tool Galaris gouverné comme les autres capacités MCP. Une connexion
-`browser` est créée automatiquement pour chaque agent, mais reste inactive par défaut. Son
+`browser` est créée automatiquement pour chaque agent. Son
 activation, puis les éventuelles désactivations fonction par fonction, déterminent exactement ce
 que le harnais interne et Hermès voient dans leur catalogue.
 
@@ -42,7 +42,7 @@ de nettoyage toutes les 10 secondes. Le premier appel après mise en veille supp
 le coût du lancement. `/health` reste sain pendant la veille ; une déconnexion inattendue de
 Chromium termine toujours le sidecar en erreur pour permettre sa récupération.
 
-Le Tool est désactivé par défaut. L’interface générique des connexions permet de l’activer pour un
+L’interface générique des connexions permet d’activer le Tool pour un
 agent et d’autoriser ou retirer séparément `open`, `content`, `screenshot` et les actions. Lorsque
 le Tool Galaris est actif pour un agent Hermès, le manager désactive le toolset navigateur natif
 d’Hermès afin de conserver une seule frontière d’autorisation et d’audit.
@@ -76,20 +76,55 @@ expirée n’est jamais réessayée : le modèle ouvre une nouvelle session et 
 
 ## Accès réseau
 
-Le sidecar n’expose aucun port hôte. Le backend le joint sur `executor_net` avec un secret partagé;
-seul le sidecar possède aussi une sortie Internet. Le proxy local résout lui-même chaque
-destination et connecte Chromium à toute URL HTTP(S) joignable depuis ses réseaux, y compris les
-noms de services Docker, les adresses privées ou réservées, le loopback du sidecar et
-`host.docker.internal`. Les redirections et sous-ressources bénéficient du même accès. Les URL qui
-embarquent des identifiants et les schémas autres que HTTP(S) restent refusés afin de ne pas
-introduire de credentials dans les appels d’outil ni d’exposer le système de fichiers du sidecar.
+Le sidecar n’expose aucun port hôte. Le backend le joint sur `executor_net` avec un secret partagé.
+Chaque contexte possède son proxy local, associé à son propriétaire. Pour chaque requête, le
+proxy résout le DNS, transmet origine, méthode et adresses à
+`POST /api/browser/network/authorize`, puis se connecte à une adresse déjà vérifiée. Le callback
+exige le secret partagé ; les corps, chemins et paramètres des requêtes ne lui sont pas transmis.
+Une indisponibilité du contrôle bloque la requête.
 
-Cette ouverture permet notamment de prévisualiser une application en construction servie par un
-autre conteneur sur `executor_net`, ou par l’hôte via `host.docker.internal`. Comme `localhost`
-désigne le sidecar lui-même, une application lancée ailleurs doit employer le nom DNS de son
-conteneur ou `host.docker.internal`, et écouter sur une interface accessible depuis Docker. Un
-serveur lancé dans la Console embarquée est ainsi joignable sous `http://ssh-executor:<port>` s’il
-écoute sur `0.0.0.0`.
+La connexion `browser` porte quatre réglages :
+
+- `allow_local_network=false` par défaut interdit les réseaux privés, le loopback, les adresses
+  réservées et link-local, y compris en IPv6. `true` permet de demander une permission locale.
+- `network_filter_mode=block` refuse les destinations de `network_filter` ; `allow` n’admet que
+  les destinations de cette liste, et une liste vide bloque tout.
+- `network_filter` accepte domaines exacts, `*.example.test`, IP et CIDR, séparés par virgules ou
+  espaces, avec port facultatif. Un joker ne couvre pas le domaine racine. En liste positive,
+  toutes les adresses DNS doivent correspondre. Un domaine ne dispense jamais du contrôle local.
+- `permission_methods` contient par défaut `POST PUT PATCH DELETE WEBSOCKET`. Les méthodes
+  HTTP connues peuvent y être ajoutées ou retirées ; vide rétablit le défaut, une valeur inconnue
+  bloque l’accès. Les GET publics passent sans question dans la configuration par défaut.
+
+Les interdictions de configuration précèdent toujours les permissions. Une demande locale et
+une demande POST sont distinctes. La clé déterministe
+`browser:v1:post:https://example.test:443` couvre une méthode et une origine normalisée, tous
+chemins confondus, pour un seul agent. Le port, le protocole et les sous-domaines restent séparés.
+`app.messenger.request_permission` conserve question, réponse, responsable et date ; une
+contrainte SQL empêche les doublons actifs entre workers. Il utilise les interactions communes,
+avec réponses textuelles ou boutons du chat interne. Une question expire après sept jours et
+peut être renouvelée ; les accords et refus restent valables jusqu’à suppression. Un changement
+de responsable invalide la décision à sa prochaine utilisation.
+
+Les redirections, sous-ressources et connexions WebSocket passent par le proxy. HTTPS est
+déchiffré dans le processus du sidecar pour vérifier la méthode, puis rechiffré vers la destination
+avec validation normale du certificat et du nom distant. Le certificat du proxy est éphémère.
+Les service workers, QUIC et sorties WebRTC sans proxy sont désactivés. Les WebSocket ouverts
+sont revérifiés chaque seconde, sans contrôles simultanés ; une indisponibilité les ferme au
+terme du délai de contrôle de 15 secondes. La vérification conserve leur adresse de connexion,
+même si le DNS change. Les requêtes HTTP déjà transmises ne sont pas annulées rétroactivement.
+
+Le résultat `network_issues` distingue demande en attente, refus et blocage de configuration.
+L’action bloquée n’est pas rejouée automatiquement après la réponse : l’agent doit attendre la
+décision et retenter l’action appropriée, sans resoumettre aveuglément un formulaire. Les
+sessions humaines sans connexion agent conservent les restrictions par défaut et ne créent
+pas de permission pour un agent fictif.
+
+Pour prévisualiser une application locale, activer `allow_local_network` sur la connexion de
+l’agent, autoriser sa destination dans le filtre, puis répondre à la demande. `localhost`
+désigne le sidecar ; employer le DNS du conteneur cible ou `host.docker.internal` et un service
+qui écoute sur une interface accessible depuis Docker. Les URL avec identifiants et les
+schémas hors HTTP(S)/WebSocket restent refusés.
 
 La durée d’inactivité, le nombre maximal de sessions, les délais d’opération,
 contenu, HTML, dimensions par défaut, bandes et octets
@@ -112,7 +147,8 @@ jamais une session occupée. Les exports PDF conservent leur propre limite de co
 ## Points d’entrée à lire
 
 - Tool et client : `back/app/browser/mcp.py`, `service.py`, `schemas.py`.
-- Exécuteur : `browser-executor/server.mjs` et `lib.mjs`.
+- Exécuteur : `browser-executor/server.mjs`, `network-proxy.mjs` et `lib.mjs`.
+- Politique et décisions : `back/app/browser/network.py`, `back/app/messenger/permissions.py`.
 - Gouvernance des connexions : `back/app/tools/mandatory_tools.py`,
   `back/app/tools/mcp_loader.py`.
 - Alignement Hermès : `back/bridge/hermes/manager.py`.

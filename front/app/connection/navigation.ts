@@ -5,6 +5,11 @@ import { isMailNavigationVisible } from './availability'
 const navigation: NavigationTree = {
   monitor: {
     children: {
+      permissions: {
+        label: 'permissions.title', description: 'permissions.description', icon: 'verified_user',
+        order: 31, to: '/connection/permissions',
+        privileges: [privileges.CONNECTION_ACCESS, privileges.CONNECTION_EDIT],
+      },
       mailJournal: {
         label: 'nav.mailJournal',
         icon: 'outbox',

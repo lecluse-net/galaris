@@ -1,6 +1,11 @@
 """English messages for agent-facing messaging tools."""
 
 default: dict[str, object] = {
+    "permissions": {
+        "title": "Permission request",
+        "allow": "Allow and remember",
+        "deny": "Deny and remember",
+    },
     "messenger_mcp": {
         "no_messenger": "No messaging service is configured for this agent.",
         "invalid_path": "Invalid destination resource URI or filename.",

@@ -20,6 +20,7 @@ from sqlalchemy import (
     String,
     Text,
     UniqueConstraint,
+    text,
 )
 from sqlalchemy.dialects.postgresql import JSONB, UUID as PGUUID
 from sqlalchemy.orm import Mapped, mapped_column
@@ -228,6 +229,26 @@ class Interaction(Base):
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )
     resolved_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class PermissionDecision(HistoryMixin, Base):
+    """Reusable human decision; deleting it preserves its audit history."""
+
+    __tablename__ = "permission_decisions"
+    id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), primary_key=True, default=uuid4)
+    agent_id: Mapped[int] = mapped_column(ForeignKey("agents.id", ondelete="CASCADE"), index=True)
+    permission_key: Mapped[str] = mapped_column(String(512))
+    question: Mapped[str] = mapped_column(Text)
+    allowed: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
+    approver_user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
+    answered_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    interaction_id: Mapped[UUID | None] = mapped_column(ForeignKey("messenger_interactions.id"), nullable=True)
+    notification_after: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    __table_args__ = (
+        Index("uq_permission_decision_active", "agent_id", "permission_key", unique=True,
+              postgresql_where=text("deleted_at IS NULL")),
+    )
 
 
 class Message(HistoryMixin, Base):
