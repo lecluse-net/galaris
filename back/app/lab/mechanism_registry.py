@@ -618,7 +618,6 @@ async def evaluate_mechanism(
         system_prompt_override = planner_evaluation_system_prompt(
             system_prompt_override,
             max_depth=input_data["max_depth"],
-            max_nodes=input_data["max_nodes"],
             max_leaves=input_data["max_leaves"],
             can_clarify=input_data["can_clarify"],
         )

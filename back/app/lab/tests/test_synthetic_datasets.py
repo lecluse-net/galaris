@@ -189,7 +189,7 @@ async def test_generation_uses_selected_experiment_context_without_copying_cases
     if "language" in source.parameters:
         source.parameters = {**source.parameters, "language": "fr"}
     if mechanism == "planner":
-        source.parameters = {**source.parameters, "max_nodes": 4, "can_clarify": False}
+        source.parameters = {**source.parameters, "max_leaves": 4, "can_clarify": False}
     if mechanism == "memory_extraction":
         source.parameters = {**source.parameters, "source_kind": "task"}
     if get_mechanism(mechanism).executor:

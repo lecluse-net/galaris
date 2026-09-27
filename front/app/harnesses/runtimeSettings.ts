@@ -17,14 +17,6 @@ export const plannerFields: SettingField[] = [
         max: 10,
     },
     {
-        name: 'TASK_PLAN_MAX_NODES',
-        labelKey: 'taskSettings.fields.planNodes',
-        descriptionKey: 'taskSettings.fields.planNodesHint',
-        input: 'integer',
-        min: 1,
-        max: 500,
-    },
-    {
         name: 'TASK_PLAN_MAX_LEAVES',
         labelKey: 'taskSettings.fields.planLeaves',
         descriptionKey: 'taskSettings.fields.planLeavesHint',

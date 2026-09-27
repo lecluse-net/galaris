@@ -1875,8 +1875,7 @@ async def planner_system_prompt(task: Task) -> str:
     system_prompt = await planner_prompt_base()
     system_prompt += (
         "\n\nHard size limits: produce at most "
-        f"{runtime_settings.TASK_PLAN_MAX_DEPTH} step levels below the root task, "
-        f"{runtime_settings.TASK_PLAN_MAX_NODES} total nodes and "
+        f"{runtime_settings.TASK_PLAN_MAX_DEPTH} step levels below the root task and "
         f"{runtime_settings.TASK_PLAN_MAX_LEAVES} leaf steps."
     )
     system_prompt += "\n\n" + _COLLECTION_PLANNING_CONTRACT
@@ -1891,7 +1890,6 @@ def planner_evaluation_system_prompt(
     base_prompt: str | None = None,
     *,
     max_depth: int | None = None,
-    max_nodes: int | None = None,
     max_leaves: int | None = None,
     can_clarify: bool = True,
 ) -> str:
@@ -1905,8 +1903,7 @@ def planner_evaluation_system_prompt(
             else "\n\nDo not request clarification; work within the supplied constraints."
         )
         + "\n\nHard size limits: produce at most "
-        f"{max_depth if max_depth is not None else runtime_settings.TASK_PLAN_MAX_DEPTH} step levels below the root task, "
-        f"{max_nodes if max_nodes is not None else runtime_settings.TASK_PLAN_MAX_NODES} total nodes and "
+        f"{max_depth if max_depth is not None else runtime_settings.TASK_PLAN_MAX_DEPTH} step levels below the root task and "
         f"{max_leaves if max_leaves is not None else runtime_settings.TASK_PLAN_MAX_LEAVES} leaf steps."
         + "\n\n" + _COLLECTION_PLANNING_CONTRACT
     )

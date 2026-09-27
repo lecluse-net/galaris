@@ -280,8 +280,9 @@ async def test_inventory_requires_both_resource_receipt_and_read_permission(
     assert await task_service.get_children(discovery.id) == []
 
 
-def test_large_collection_waves_are_finite_and_empty_inventory_finishes(monkeypatch) -> None:
-    monkeypatch.setattr(planner_service.runtime_settings, "TASK_PLAN_MAX_LEAVES", 7)
+@pytest.mark.parametrize("wave_size", [7, 30])
+def test_large_collection_waves_are_finite_and_empty_inventory_finishes(monkeypatch, wave_size) -> None:
+    monkeypatch.setattr(planner_service.runtime_settings, "TASK_PLAN_MAX_LEAVES", wave_size)
     task = Task(label="Many records", plan={
         "collection": collection_step().collection.model_dump(),
         "inventory": inventory(uuid4(), 123), "steps": [{"label": "Discovery"}],
@@ -293,7 +294,7 @@ def test_large_collection_waves_are_finite_and_empty_inventory_finishes(monkeypa
         if not planner_collection.append_item_wave(task):
             break
         sizes.append(len(task.plan["steps"]) - before)
-    assert max(sizes) <= 7
+    assert max(sizes) == wave_size
     assert sum(sizes) == 123
     assert len({step["collection_key"] for step in task.plan["steps"][1:]}) == 123
     task.plan = {**task.plan, "inventory": inventory(uuid4(), 0), "steps": [{"label": "Discovery"}]}

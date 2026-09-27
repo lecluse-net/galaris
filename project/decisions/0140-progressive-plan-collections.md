@@ -44,8 +44,8 @@ Le port de lecture appartient à `app.agent` et son adaptateur à `app.file_shar
 ne dépend pas du service de fichiers concret et aucune dette de couplage n'est ajoutée.
 
 Le moteur développe ensuite déterministement une feuille par élément avec le même modèle
-d'instructions. Chaque vague comporte au plus le minimum de `TASK_PLAN_MAX_LEAVES` et
-`TASK_PLAN_MAX_NODES`. Le squelette initial conserve ses plafonds ; chaque collection est
+d'instructions. Chaque vague comporte au plus `TASK_PLAN_MAX_LEAVES` éléments.
+Le squelette initial est borné par sa profondeur et son nombre de feuilles ; chaque collection est
 bornée à 1 000 éléments et 2 000 000 caractères JSON. Le plafond de profondeur comprend
 le niveau des éléments et aucun sous-arbre excessif n'est aplati silencieusement.
 Les nouveaux enfants ont une clé d'idempotence stable dérivée du groupe et de l'élément.

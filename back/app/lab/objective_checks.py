@@ -47,26 +47,24 @@ def check_output(mechanism: str, native: Any, output: Any) -> list[dict[str, Any
                 )
     elif mechanism == "planner":
 
-        def sizes(steps: list[dict[str, Any]], depth: int = 1) -> tuple[int, int, int]:
-            nodes = leaves = 0
+        def sizes(steps: list[dict[str, Any]], depth: int = 1) -> tuple[int, int]:
+            leaves = 0
             maximum = depth if steps else 0
             for step in steps:
                 children = cast(list[dict[str, Any]], step.get("steps", step.get("children", [])))
-                count, ends, level = sizes(children, depth + 1)
-                nodes += 1 + count
+                ends, level = sizes(children, depth + 1)
                 leaves += ends if children else 1
                 maximum = max(maximum, level)
                 if step.get("collection"):
                     maximum = max(maximum, depth + 1)
-            return nodes, leaves, maximum
+            return leaves, maximum
 
-        nodes, leaves, depth = sizes(output.get("steps", []))
+        leaves, depth = sizes(output.get("steps", []))
         check(
             "plan_limits",
-            nodes <= native["max_nodes"]
-            and leaves <= native["max_leaves"]
+            leaves <= native["max_leaves"]
             and depth <= native["max_depth"],
-            "Plan depth, node and leaf budgets",
+            "Plan depth and leaf budgets",
         )
         check(
             "clarification_policy",

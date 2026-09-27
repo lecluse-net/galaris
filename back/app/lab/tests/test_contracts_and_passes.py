@@ -38,9 +38,24 @@ def test_lab_checks_the_same_harness_choices_as_runtime(route, effort, high, use
     assert all(check["passed"] for check in checks) is permitted
 
 
+@pytest.mark.parametrize("max_depth,max_leaves,permitted", [(3, 12, True), (2, 12, False), (3, 11, False)])
+def test_planner_limits_use_depth_and_leaves(max_depth, max_leaves, permitted):
+    from app.lab.objective_checks import check_output
+
+    _, native = resolve_input("planner", LabInput(variable_value="Prepare reports"), {
+        "max_depth": max_depth, "max_leaves": max_leaves, "max_nodes": 1,
+    })
+    leaf = {"label": "Read", "objective": "Read the document"}
+    group = {"label": "Group", "objective": "Prepare", "steps": [
+        {"label": "Subgroup", "objective": "Prepare", "steps": [leaf]},
+    ]}
+    checks = check_output("planner", native, {"steps": [group for _ in range(12)]})
+    assert all(check["passed"] for check in checks) is permitted
+
+
 def test_one_variable_and_context_scope():
     value = LabInput(variable_value="Prepare the report")
-    resolved, native = resolve_input("planner", value, {"language": "en", "max_nodes": 7})
+    resolved, native = resolve_input("planner", value, {"language": "en", "max_leaves": 7, "max_nodes": 1})
     assert resolved.variable_value == native["objective"] == "Prepare the report"
     assert native["language"] == "en"
     assert resolved.model_dump() == {
@@ -49,7 +64,8 @@ def test_one_variable_and_context_scope():
     }
     with pytest.raises(ValueError):
         LabInput(variable_value="Prepare the report", parameters={"language": "fr"})
-    assert native["max_nodes"] == 7
+    assert native["max_leaves"] == 7
+    assert "max_nodes" not in native
     assert "expected_output" not in native
     with pytest.raises(ValueError):
         LabInput.model_validate({"variable_value": "a", "second_variable": "b"})

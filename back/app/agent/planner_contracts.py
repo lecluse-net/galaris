@@ -264,8 +264,7 @@ class Plan(BaseModel):
         if self.clarification_questions:
             return self
 
-        def counts(steps: list[PlanStep], depth: int = 1) -> tuple[int, int]:
-            nodes = 0
+        def count_leaves(steps: list[PlanStep], depth: int = 1) -> int:
             leaves = 0
             for step in steps:
                 if (
@@ -273,20 +272,13 @@ class Plan(BaseModel):
                     > runtime_settings.TASK_PLAN_MAX_DEPTH
                 ):
                     raise ValueError("Plan exceeds maximum depth; do not flatten work into a leaf")
-                nodes += 1
                 if step.steps:
-                    nested_nodes, nested_leaves = counts(step.steps, depth + 1)
-                    nodes += nested_nodes
-                    leaves += nested_leaves
+                    leaves += count_leaves(step.steps, depth + 1)
                 else:
                     leaves += 1
-            return nodes, leaves
+            return leaves
 
-        nodes, leaves = counts(self.steps)
-        if nodes > runtime_settings.TASK_PLAN_MAX_NODES:
-            raise ValueError(
-                f"Plan too large: {nodes} nodes; maximum is {runtime_settings.TASK_PLAN_MAX_NODES}."
-            )
+        leaves = count_leaves(self.steps)
         if leaves > runtime_settings.TASK_PLAN_MAX_LEAVES:
             raise ValueError(
                 f"Plan too large: {leaves} leaves; maximum is "

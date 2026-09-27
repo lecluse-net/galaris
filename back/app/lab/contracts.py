@@ -60,7 +60,6 @@ class PlannerParameters(Parameters):
     result_contract: dict[str, JsonValue] = Field(default_factory=dict[str, JsonValue])
     delivery_owner: str = ""
     max_depth: int = Field(default=3, ge=1, le=10)
-    max_nodes: int = Field(default=24, ge=1, le=500)
     max_leaves: int = Field(default=12, ge=1, le=250)
 
 
@@ -333,6 +332,9 @@ _JSON: TypeAdapter[JsonValue] = TypeAdapter(JsonValue)
 def validate_parameters(
     mechanism: str, value: dict[str, Any], *, partial: bool = False
 ) -> dict[str, Any]:
+    if mechanism == "planner":
+        # Older datasets and run snapshots may still carry the retired node limit.
+        value = {key: item for key, item in value.items() if key != "max_nodes"}
     parsed = CONTRACTS[mechanism].parameters_type.model_validate(value)
     values = parsed.model_dump(mode="json")
     return {

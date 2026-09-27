@@ -118,7 +118,7 @@ def append_item_wave(task: AgentTask) -> bool:
     spec = PlanCollection.model_validate(plan["collection"])
     steps = list(cast(list[dict[str, Any]], plan.get("steps", [])))
     allocated = sum("collection_key" in step for step in steps)
-    wave_size = min(runtime_settings.TASK_PLAN_MAX_LEAVES, runtime_settings.TASK_PLAN_MAX_NODES)
+    wave_size = runtime_settings.TASK_PLAN_MAX_LEAVES
     items = inventory.items[allocated : allocated + wave_size]
     for item in items:
         inputs = escape(item.model_dump_json())

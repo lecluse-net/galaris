@@ -247,7 +247,6 @@ class Params:
     LLM_CALL_TIMEOUT_MINUTES = "LLM_CALL_TIMEOUT_MINUTES"
     TASK_TOOL_TIMEOUT_SECONDS = "TASK_TOOL_TIMEOUT_SECONDS"
     TASK_PLAN_MAX_DEPTH = "TASK_PLAN_MAX_DEPTH"
-    TASK_PLAN_MAX_NODES = "TASK_PLAN_MAX_NODES"
     TASK_PLAN_MAX_LEAVES = "TASK_PLAN_MAX_LEAVES"
     TASK_AGENT_MAX_REQUESTS = "TASK_AGENT_MAX_REQUESTS"
     TASK_AGENT_MAX_TOOL_CALLS = "TASK_AGENT_MAX_TOOL_CALLS"
@@ -762,9 +761,6 @@ DEFAULT_PARAMS: dict[str, ParamConfig] = {
     },
     Params.TASK_PLAN_MAX_DEPTH: {
         "value": "3", "runtime_field": "TASK_PLAN_MAX_DEPTH", "kind": "integer"
-    },
-    Params.TASK_PLAN_MAX_NODES: {
-        "value": "24", "runtime_field": "TASK_PLAN_MAX_NODES", "kind": "integer"
     },
     Params.TASK_PLAN_MAX_LEAVES: {
         "value": "200", "runtime_field": "TASK_PLAN_MAX_LEAVES", "kind": "integer"

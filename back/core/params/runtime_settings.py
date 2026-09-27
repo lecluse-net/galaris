@@ -285,7 +285,6 @@ class RuntimeSettings(BaseModel):
     LLM_CALL_TIMEOUT_MINUTES: int = Field(default=30, ge=1, le=1_440)
     TASK_TOOL_TIMEOUT_SECONDS: float = Field(default=300.0, ge=1.0, le=3_600.0)
     TASK_PLAN_MAX_DEPTH: int = Field(default=3, ge=1, le=10)
-    TASK_PLAN_MAX_NODES: int = Field(default=24, ge=1, le=500)
     TASK_PLAN_MAX_LEAVES: int = Field(default=200, ge=1, le=250)
     TASK_AGENT_MAX_REQUESTS: int = Field(default=200, ge=1, le=500)
     TASK_AGENT_MAX_TOOL_CALLS: int = Field(default=5_000, ge=1, le=5_000)

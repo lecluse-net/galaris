@@ -32,6 +32,8 @@ async function expandSettings(page) {
 for (const [section, name, label, initial, saved, rejected, tab = 'internal', scale = 1] of [
   ['messaging', 'MESSENGER_MAX_INLINE_MB', 'Maximum inline attachment size (MB)', '3.814697265625', '7.62939453125', '15.2587890625', 'internal', 1.048576],
   ['harnesses', 'PYDANTIC_AI_BINARY_INPUT_MAX_BYTES', 'Maximum binary file size sent to the model (MB)', '20000000', '40000000', '80000000', 'internal', 0.000001],
+  ['tasks', 'TASK_PLAN_MAX_DEPTH', 'Maximum plan depth', '3', '4', '5'],
+  ['tasks', 'TASK_PLAN_MAX_LEAVES', 'Maximum leaves in one plan', '12', '30', '40'],
   ['tasks', 'TASK_AGENT_MAX_REQUESTS', 'Maximum model requests per execution', '120', '150', '200'],
   ['tasks', 'LLM_CALL_TIMEOUT_MINUTES', 'Maximum LLM call duration (minutes)', '30', '45', '60'],
   ['tasks', 'TASK_AGENT_MAX_TOOL_CALLS', 'Maximum tool calls per execution', '800', '1000', '1200'],
@@ -40,6 +42,12 @@ for (const [section, name, label, initial, saved, rejected, tab = 'internal', sc
 ]) {
   test(`${name} saves, recovers errors and persists on reopen in ${section}`, async ({ page }) => {
     await fixtures(page)
+    if (name.startsWith('TASK_PLAN_')) {
+      await jsonRoute(page, '**/api/harnesses/execution-configurations', [{
+        provider_code: 'internal', label: 'Internal',
+        pipeline_policy: { use_planner: true, uses_llm_calls: true, execution_efforts: ['standard', 'high'] },
+      }])
+    }
     const param = { name, value: initial, configured: true, secret: false }
     const display = value => String(Number((Number(value) * scale).toFixed(6)))
     await page.route('**/api/params', route => route.fulfill({ json: { params: [param] } }))

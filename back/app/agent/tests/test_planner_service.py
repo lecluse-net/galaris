@@ -67,12 +67,12 @@ class _FakeMessenger:
         self.sent.append((room_id, text))
 
 
-def test_plan_rejects_tree_above_configured_node_budget(
+def test_plan_rejects_tree_above_configured_leaf_budget(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.setattr(
         planner_service.runtime_settings,
-        "TASK_PLAN_MAX_NODES",
+        "TASK_PLAN_MAX_LEAVES",
         2,
     )
 
@@ -83,6 +83,21 @@ def test_plan_rejects_tree_above_configured_node_budget(
                 for index in range(3)
             ]
         )
+
+
+def test_plan_accepts_parents_beyond_former_node_limit(monkeypatch) -> None:
+    monkeypatch.setattr(planner_service.runtime_settings, "TASK_PLAN_MAX_DEPTH", 3)
+    monkeypatch.setattr(planner_service.runtime_settings, "TASK_PLAN_MAX_LEAVES", 12)
+    steps = [
+        PlanStep(label=f"Group {index}", objective="Execute", steps=[
+            PlanStep(label="Subgroup", objective="Execute", steps=[
+                PlanStep(label="Leaf", objective="Execute"),
+            ]),
+        ])
+        for index in range(12)
+    ]
+    plan = Plan(steps=steps)
+    assert planner_service._count_leaves(plan.model_dump()["steps"]) == 12
 
 
 def test_plan_accepts_provider_stringified_brief() -> None:

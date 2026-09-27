@@ -8,7 +8,7 @@ const parameterSchema = {
     agent: { type: 'object', default: {} },
     effort: { anyOf: [{ $ref: '#/$defs/Effort' }, { type: 'null' }], default: null },
     can_clarify: { type: 'boolean', default: true },
-    max_nodes: { type: 'integer', minimum: 1, maximum: 500, default: 24 },
+    max_leaves: { type: 'integer', minimum: 1, maximum: 250, default: 12 },
     system_prompt: { type: 'string', default: 'Prepare a clear and verified report.' },
     history: { type: 'array', default: [] },
     resources: { type: 'array', default: [] },
@@ -36,9 +36,9 @@ test('parameter sections keep edits and invalid drafts while searching and colla
   await expect.poll(invalid).toBe(true)
   await page.getByRole('button', { name: 'Collapse all', exact: true }).click()
   await expect(page.locator('.parameter-section').first()).toContainText('1 value to correct')
-  await page.getByLabel('Find a parameter', { exact: true }).fill('max_nodes')
+  await page.getByLabel('Find a parameter', { exact: true }).fill('max_leaves')
   await expect(page.locator('.parameter-field:visible')).toHaveCount(1)
-  await page.getByLabel('Maximum nodes', { exact: true }).fill('12')
+  await page.getByLabel('Maximum leaves', { exact: true }).fill('12')
   await expect.poll(invalid).toBe(true)
   await page.getByLabel('Find a parameter', { exact: true }).fill('unknown field')
   await expect(page.getByRole('status')).toHaveText('No parameters match this search.')
@@ -46,7 +46,7 @@ test('parameter sections keep edits and invalid drafts while searching and colla
   await expect(agent.locator('textarea')).toHaveValue('{invalid')
   await agent.locator('textarea').fill('{"name":"Grace"}')
   await expect.poll(invalid).toBe(false)
-  await expect.poll(() => page.evaluate(() => window.testApp.events.filter(event => event.name === 'update:modelValue').at(-1)?.value)).toEqual({ label: 'Research', agent: { name: 'Grace' }, language: 'fr', max_nodes: 12 })
+  await expect.poll(() => page.evaluate(() => window.testApp.events.filter(event => event.name === 'update:modelValue').at(-1)?.value)).toEqual({ label: 'Research', agent: { name: 'Grace' }, language: 'fr', max_leaves: 12 })
 })
 
 test('parameter forms resolve nullable enums and preserve read-only values', async ({ page }) => {
@@ -59,7 +59,7 @@ test('parameter forms resolve nullable enums and preserve read-only values', asy
   await expect.poll(() => page.evaluate(() => window.testApp.events.filter(event => event.name === 'update:modelValue').at(-1)?.value)).toEqual({ effort: null })
   await page.evaluate(() => window.testApp.setProps({ readonly: true }))
   await expect(page.getByLabel('Language', { exact: true })).not.toBeEditable()
-  await expect(page.getByLabel('Maximum nodes', { exact: true })).not.toBeEditable()
+  await expect(page.getByLabel('Maximum leaves', { exact: true })).not.toBeEditable()
   await expect(page.getByRole('switch')).toHaveAttribute('aria-disabled', 'true')
 })
 
@@ -68,7 +68,7 @@ test('dataset settings save their revision and preserve other parameters on desk
   const initialLoad = new Promise(resolve => { releaseInitialLoad = resolve })
   const dataset = {
     id: 'dataset', name: 'Préparer un rapport', revision: 1, description: 'Comparer la préparation de rapports à partir du même contexte.',
-    parameters: { label: 'Recherche documentaire', language: 'fr', agent: { name: 'Ada', role: 'Analyste' }, resources: ['memory://reports/quarterly'], max_nodes: 24 },
+    parameters: { label: 'Recherche documentaire', language: 'fr', agent: { name: 'Ada', role: 'Analyste' }, resources: ['memory://reports/quarterly'], max_leaves: 24 },
     configuration: { system_prompt: 'Prépare un rapport clair, concis et vérifiable.' }, prompt_suffix: null,
   }
   await jsonRoute(page, '**/api/evaluation/mechanisms', [{
@@ -101,14 +101,14 @@ test('dataset settings save their revision and preserve other parameters on desk
   await expect(page.getByText('Paramètres enregistrés', { exact: true })).toBeVisible()
   await expect(page.getByRole('tab', { name: 'Paramètres du jeu', exact: true })).toHaveAttribute('aria-selected', 'true')
   await page.screenshot({ path: '/artifacts/lab-parameters-desktop.png', animations: 'disabled' })
-  await page.getByLabel('Rechercher un paramètre', { exact: true }).fill('nœuds')
-  await page.getByLabel('Nombre maximal de nœuds', { exact: true }).fill('12')
+  await page.getByLabel('Rechercher un paramètre', { exact: true }).fill('feuilles')
+  await page.getByLabel('Nombre maximal de feuilles', { exact: true }).fill('12')
   await expect(page.getByText('Modifications non enregistrées', { exact: true })).toBeVisible()
   const save = page.getByRole('button', { name: 'Enregistrer', exact: true })
   await save.click()
   await expect.poll(() => saved).toEqual([{
     revision: 1, name: dataset.name, description: dataset.description,
-    parameters: { ...dataset.parameters, max_nodes: 12 }, configuration: dataset.configuration, prompt_suffix: null,
+    parameters: { ...dataset.parameters, max_leaves: 12 }, configuration: dataset.configuration, prompt_suffix: null,
   }])
   await page.getByLabel('Rechercher un paramètre', { exact: true }).fill('')
   await page.setViewportSize({ width: 390, height: 900 })
@@ -116,7 +116,7 @@ test('dataset settings save their revision and preserve other parameters on desk
   await page.getByLabel('Libellé', { exact: true }).fill('Rapport mobile')
   await save.click()
   await expect.poll(() => saved).toHaveLength(2)
-  expect(saved[1]).toMatchObject({ revision: 2, parameters: { ...dataset.parameters, label: 'Rapport mobile', max_nodes: 12 } })
+  expect(saved[1]).toMatchObject({ revision: 2, parameters: { ...dataset.parameters, label: 'Rapport mobile', max_leaves: 12 } })
   await expect(page.getByText('Paramètres enregistrés', { exact: true })).toBeVisible()
 })
 

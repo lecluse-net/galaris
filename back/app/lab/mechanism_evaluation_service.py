@@ -2682,7 +2682,6 @@ async def preview_input(
         system_prompt = planner_evaluation_system_prompt(
             system_prompt,
             max_depth=native["max_depth"],
-            max_nodes=native["max_nodes"],
             max_leaves=native["max_leaves"],
             can_clarify=native["can_clarify"],
         )
