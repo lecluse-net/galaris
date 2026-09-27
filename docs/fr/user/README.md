@@ -267,6 +267,10 @@ deux demandes distinctes.
 
 ### Comprendre les conversations courtes et le travail de fond
 
+Un agent peut consulter l’annuaire des agents pendant une conversation pour identifier un
+collègue et son rôle, sans créer de Task. Demander la contribution d’un collègue suit la
+politique d’action habituelle et les droits de contact ; lire sa fiche ne le contacte pas.
+
 À l’initialisation, **Console SSH**, **Image**, **Mail** et **Multimédia** ne sont pas
 accessibles en mode conversation par défaut. Un administrateur peut autoriser chaque outil
 pour les conversations depuis le catalogue des outils. Ce réglage ne change pas leur accès

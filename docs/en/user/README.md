@@ -200,6 +200,10 @@ Attaching an image to a document and sending it back in the chat are separate re
 
 ### Understanding Short Conversations and Background Work
 
+An Agent can consult the agent directory during a conversation to identify a colleague and
+their role, without creating a Task. Asking for a colleague's contribution follows the usual
+action policy and contact permissions; reading a profile does not itself contact that Agent.
+
 On initialization, **Console SSH**, **Image**, **Mail**, and **Multimedia** are unavailable
 in conversation mode by default. An administrator can enable each Tool for conversations
 in the Tool catalog. This setting does not change access in Tasks; updates preserve

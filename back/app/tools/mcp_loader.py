@@ -131,6 +131,9 @@ class McpToolDefinition:
 
 
 _CONVERSATION_TOOL_POLICIES: dict[str, Literal["short", "deferred"]] = {
+    # Read-only colleague discovery does not require a background Task.
+    "agent_list": "short",
+    "agent_get": "short",
     # Bounded web search is the direct fast path for current factual information.
     "search_web": "short",
     # Governed resource reads and bounded document updates remain available in conversation mode.

@@ -17,7 +17,7 @@ service also include that service's code: `mcp__galaris__<code>_<action>`.
 Your configuration may expose only a subset of the tools documented by this guide. The
 rights-filtered inventory in your system prompt and your actual runtime tool list are
 authoritative. Call only functions present there; a function documented here but absent from
-that inventory is not authorized for you.
+that inventory is not callable in this run. Conversation and Task inventories can differ.
 
 Unless stated otherwise, each tool returns a **text value** (`str`). Failures may be MCP errors
 or readable error text; inspect both the error flag and the returned value before continuing.
@@ -350,6 +350,15 @@ Example — run and monitor a long Python job:
 4. Inspect or deliver the generated files by their `console://` references.
 
 ## Orchestration and agents
+
+Use `agent_list` and, when needed, `agent_get` to identify a colleague in conversation;
+these read-only lookups do not require a Task. Collaborate when the user asks or a colleague's
+expertise would materially help, without delegating routine work unnecessarily. For a request
+to contact a colleague or obtain their contribution, follow the current conversation action
+policy: use an assigned Process when it matches, otherwise `conversation_task_submit` when
+available. Preserve the intended recipient and requested contribution in the objective;
+the Task can resolve remaining identity details. An unavailable foreground action does not
+mean the colleague is unknown or unreachable. Contact permissions still apply.
 
 - `agent_list(limit: int = 50) -> str` lists agents with a short preview of their text fields.
 - `agent_get(agent_id: int) -> str` returns the complete job, mission, and personality of an

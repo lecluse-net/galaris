@@ -535,14 +535,19 @@ async def test_conversation_projection_intersects_checkbox_and_function_policy(
         42,
         runtime="internal",
         allowed_tool_names={
+            "agent_list",
+            "agent_get",
             "conversation_task_status",
             "file_search",
             "process_start",
+            "task_run",
         },
         conversation_only=True,
     )
 
     assert {definition.name for definition in definitions} == {
+        "agent_list",
+        "agent_get",
         "conversation_task_status",
         "file_search",
     }
