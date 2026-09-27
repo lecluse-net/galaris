@@ -578,6 +578,44 @@ async def retry(task_id: UUID, expected_revision: int) -> Optional[Task]:
         task.execution_result = None
         task.feedback = None
         await save(child)
+    elif task.plan is not None:
+        if task.status != TaskStatus.ERROR:
+            raise TaskEditConflict(render_prompt(
+                await tr("task_api.errors.cannot_restart"), status=task.status.value,
+            ))
+        # Reopen only unfinished plan work; successful item outputs and effect journals
+        # remain authoritative. Persist the whole reset in the root's final commit.
+        tree = await _collect_tree(task, set())
+        locked = list((await get_db().scalars(
+            select(Task).where(Task.id.in_([node.id for node in tree]))
+            .options(selectinload(Task.agent).selectinload(Agent.title))
+            .options(selectinload(Task.requester_agent).selectinload(Agent.title))
+            .order_by(Task.id).with_for_update().execution_options(populate_existing=True)
+        )).all())
+        if any(node.status not in _TERMINAL_STATUSES or node.lease_token is not None for node in locked):
+            raise TaskEditConflict(await tr("task_api.errors.action_running"))
+        for node in locked:
+            if node.status == TaskStatus.SUCCESS:
+                continue
+            node_data = dict(node.data or {})
+            checkpoint = node_data.get(_AGENT_RUN_CHECKPOINT_DATA_KEY)
+            if isinstance(checkpoint, dict):
+                node_data[_AGENT_RUN_CHECKPOINT_DATA_KEY] = {
+                    **checkpoint, "result": None, "status": "interrupted",
+                }
+            node_data.pop("plan_skipped", None)
+            node_data.pop("plan_skipped_after_task_id", None)
+            node.data = node_data
+            transition(node, TaskEvent.RETRY_PLAN if node.plan is not None else TaskEvent.RETRY)
+            clear_pauses(node)
+            if node.id != task.id:
+                suspend(node, PAUSE_PLAN)
+            node.execution_result = None
+            node.feedback = None
+            node.last_error = None
+            node.next_attempt_at = None
+            node.consecutive_failures = 0
+            node.cancel_requested = False
     else:
         # A retry may recover acknowledged work, but never erase proof of an
         # ambiguous effect. The driver reconciles its journal before resuming.

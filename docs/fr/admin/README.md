@@ -627,6 +627,13 @@ Cette page comporte trois onglets, avec la même présentation que la page Agent
 
 ### Harnais interne
 
+Les plafonds `TASK_PLAN_MAX_NODES` et `TASK_PLAN_MAX_LEAVES` bornent le squelette du plan
+et les vagues de matérialisation des collections, pas leur nombre total de documents.
+Chaque collection accepte au plus 1 000 éléments et un inventaire Dataset JSON de
+2 000 000 caractères. Le plafond `TASK_PLAN_MAX_DEPTH` inclut le niveau des éléments.
+Une collection trop grande ou un inventaire incomplet échoue explicitement ; le moteur
+ne regroupe pas silencieusement tout le travail dans une feuille.
+
 Code : `internal`.
 
 Dans **Préférences → Harnais → Réglages avancés**, la taille maximale des fichiers binaires

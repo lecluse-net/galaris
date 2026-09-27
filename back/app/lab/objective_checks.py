@@ -62,6 +62,8 @@ def check_output(mechanism: str, native: Any, output: Any) -> list[dict[str, Any
                 nodes += 1 + count
                 leaves += ends if children else 1
                 maximum = max(maximum, level)
+                if step.get("collection"):
+                    maximum = max(maximum, depth + 1)
             return nodes, leaves, maximum
 
         nodes, leaves, depth = sizes(output.get("steps", []))

@@ -395,6 +395,18 @@ Le planner découpe uniquement un objectif qui exige plusieurs blocs de travail 
 Chaque feuille du plan est une vraie tâche. Une étape n’est pas censée « réfléchir » ou
 « rédiger la réponse finale » : elle doit produire une partie vérifiable du résultat.
 
+Pour un traitement répété sur de nombreux documents ou enregistrements, le planner peut créer
+une collection : Galaris identifie les éléments depuis l'inventaire, puis crée une tâche par
+élément, par vagues. « Un workspace après l'autre » conserve cet ordre tout en séparant les
+documents. Le total de progression se précise à la découverte de chaque collection. En cas
+d'erreur, **Réessayer** sur le plan reprend le travail en échec et conserve les éléments réussis.
+Les plans déjà enregistrés ne sont pas redécoupés automatiquement.
+
+Un petit lot mécanique d'au plus cinq éléments connus peut rester une seule tâche, par
+exemple renommer trois documents avec les noms fournis. Lire, transformer et vérifier chaque
+document reste un traitement par document, même pour un petit lot. Plusieurs cibles ne
+suffisent pas, à elles seules, à déclencher le planner.
+
 Le briefing peut préparer une exécution `high` en rappelant l’objectif, les contraintes, les
 ressources pertinentes et les contrôles de fin. Il est actuellement désactivé pour mesurer sa
 valeur ajoutée face aux objectifs de Task autonomes. Ses anciennes traces restent consultables.

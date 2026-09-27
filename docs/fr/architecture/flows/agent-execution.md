@@ -274,10 +274,20 @@ leur fin.
    l’exécuteur. Elle est héritée par les descendants planifiés ou délégués ; elle ne modifie ni
    l’effort d’exécution `standard`/`high`, ni les usages spécialisés image, audio ou vectoriels.
    Une fois `PLAN` sélectionné — automatiquement pour plusieurs unités réellement décomposables ou
-   explicitement par le créateur — le planner produit l'arbre complet en une seule passe. Il juge
+   explicitement par le créateur — le planner produit le squelette du plan en une seule passe. Il juge
    la profondeur d'après la complexité et les composants vérifiables du travail, pas d'après le
    nombre de fichiers ou de livrables : un artefact unique explicitement planifié peut donc devenir
    un groupe de sous-étapes séquentielles qui partagent et raffinent la même ressource durable.
+   Une feuille déclarée `item_work=mechanical` peut regrouper au plus cinq éléments connus
+   pour des opérations triviales et déterministes avec vérification simple du lot, sans découverte.
+   Le travail substantiel par élément (`substantial` par défaut), les lots plus grands ou de
+   taille inconnue exigent une décomposition. Cette règle ne modifie pas l'activation de PLAN.
+   Pour les collections, une Task de découverte prépare un inventaire Dataset complet et borné.
+   Le serveur vérifie son reçu et ses ACL, fige les éléments et développe une Task par élément,
+   par vagues limitées. Les workspaces et leurs documents restent séquentiels : l'ordre demandé
+   ne justifie jamais de fusionner une collection entière dans une feuille. Réessayer conserve
+   les succès, l'inventaire et les journaux d'effets, puis reprend l'élément en échec.
+   Voir [0140](../../../../project/decisions/0140-progressive-plan-collections.md).
    Cette politique vient du Param Markdown `ai.planner-system-prompt`, également copié dans les
    datasets Planner du Lab. Le serveur ajoute séparément les limites effectives et le contrat du
    cycle de clarification ; ces garde-fous ne sont pas du texte expérimental.

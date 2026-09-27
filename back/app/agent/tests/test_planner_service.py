@@ -1141,7 +1141,8 @@ async def test_cursor_past_final_step_finalizes_without_creating_another_step(
 
     assert parent.status == TaskStatus.SUCCESS
     assert parent.feedback == "FINAL"
-    assert parent.plan == {"steps": [{"objective": "o1", "label": "l1"}], "cursor": 1}
+    assert parent.plan["steps"] == [{"objective": "o1", "label": "l1"}]
+    assert parent.plan["cursor"] == 1
     assert len(mocks["created"]) == 0
     assert parent.cost == pytest.approx(0.05 + 0.10 + 0.02)
     synthesize.assert_awaited_once()
@@ -1514,29 +1515,11 @@ async def test_internal_subtree_is_fully_materialized_and_first_leaf_activated(m
     assert tc.status == TaskStatus.PLAN  # Internal node: PLAN resume point.
     assert tc.paused is True
     assert group.paused is True          # Paused while its leaf tasks are running.
-    assert tc.plan == {
-        "steps": [
-                {
-                    "objective": "o1a",
-                    "label": "l1a",
-                    "effort": "standard",
-                    "tools": [],
-                    "artifact_policy": "none",
-                    "delivery_policy": "forbidden",
-                    "steps": [],
-                },
-                {
-                    "objective": "o1b",
-                    "label": "l1b",
-                    "effort": "standard",
-                    "tools": [],
-                    "artifact_policy": "none",
-                    "delivery_policy": "forbidden",
-                    "steps": [],
-                },
-        ],
-        "cursor": 0,
-    }
+    # Preserve work and order without freezing incidental serialized defaults.
+    assert tc.plan["cursor"] == 0
+    assert [(step["label"], step["objective"]) for step in tc.plan["steps"]] == [
+        ("l1a", "o1a"), ("l1b", "o1b"),
+    ]
     first_leaf = mocks["created"][1][1]
     second_leaf = mocks["created"][2][1]
     assert first_leaf.status == TaskStatus.DISPATCH
@@ -1582,18 +1565,15 @@ async def test_nested_leaf_receives_global_plan_and_current_step(mocks: dict[str
     assert context.rstrip().endswith("</current_step>")
 
 
-def test_cap_tree_depth_truncates_beyond_max():
+def test_excess_depth_is_rejected_without_discarding_work(monkeypatch):
     steps = [{"label": "L1", "objective": "o", "steps": [
         {"label": "L2", "objective": "o", "steps": [
             {"label": "L3", "objective": "o", "steps": [
                 {"label": "L4", "objective": "o"}]}]}]}]
-    # With the root at level 1 and maximum 3, the level-3 node loses its substeps.
-    planner_service._cap_tree_depth(steps, 1, 3)
-    l1 = steps[0]
-    l2 = l1["steps"][0]
-    l3 = l2["steps"][0]
-    assert l3["steps"] == []
-    assert l2["steps"]  # Preserved.
+    monkeypatch.setattr(planner_service.runtime_settings, "TASK_PLAN_MAX_DEPTH", 3)
+    with pytest.raises(ValidationError, match="maximum depth"):
+        Plan.model_validate({"steps": steps})
+    assert steps[0]["steps"][0]["steps"][0]["steps"][0]["label"] == "L4"
 
 
 def test_count_leaves_counts_only_terminal_steps():

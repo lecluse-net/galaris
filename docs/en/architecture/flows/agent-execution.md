@@ -263,10 +263,20 @@ automatically; they remain flagged as blockers until completion.
    synthesis, and the executor. It is inherited by planned or delegated descendants; it changes
    neither the `standard`/`high` execution effort nor specialized image, audio, or vector usage.
    Once `PLAN` is selected—automatically for multiple genuinely decomposable units or explicitly
-   by the creator—the planner produces the complete tree in a single pass. It judges depth based
+   by the creator—the planner produces the plan skeleton in a single pass. It judges depth based
    on the complexity and verifiable components of the work, not on the number of files or
    deliverables: a single explicitly planned artifact can therefore become a group of sequential
    substeps that share and refine the same durable resource.
+   A leaf declared `item_work=mechanical` can group up to five known items for trivial
+   deterministic operations with a simple batch check, without discovery. Substantial per-item
+   work (`substantial` by default), larger batches or unknown sizes require decomposition.
+   This rule does not change PLAN activation.
+   For collections, a discovery Task prepares a complete bounded Dataset inventory. The server
+   verifies its receipt and access rights, freezes the items and expands one Task per item in
+   bounded waves. Workspaces and their documents remain sequential: ordering never requires
+   merging an entire collection into one leaf. Retrying preserves successful items, the frozen
+   inventory and effect journals, then resumes the failed item.
+   See [0140](../../../../project/decisions/0140-progressive-plan-collections.md).
    This policy comes from the Markdown Param `ai.planner-system-prompt`, also copied into the
    Planner datasets in the Lab. The server separately adds the effective limits and the
    clarification-cycle contract; these safeguards are not experimental text.

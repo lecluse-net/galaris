@@ -1,7 +1,8 @@
 """Create and durably advance tree-structured execution plans.
 
 The planner makes one structured LLM call to produce a self-contained mission brief and
-a bounded tree. It materializes the complete tree immediately, activates one leaf at a
+a bounded skeleton. Static trees are materialized immediately; collection groups discover
+their finite inventory and expand item tasks in bounded waves. It activates one leaf at a
 time, and never sends leaves back through the dispatcher. Each leaf receives the frozen
 Messenger history as well as the mission, its position, and prior step results.
 
@@ -49,7 +50,9 @@ from .planner_contracts import (
     BlockedPlanRecovery as BlockedPlanRecovery,
     FILE_PRODUCTION_TOOLS as _FILE_PRODUCTION_TOOLS,
     FILE_DELIVERY_TOOLS as _FILE_DELIVERY_TOOLS,
+    MAX_MECHANICAL_BATCH_ITEMS,
 )
+from . import planner_collection
 
 # Local aliases keep the mechanically moved code readable while pointing exclusively to
 # generic ``app.agent`` contracts and ports.
@@ -94,6 +97,40 @@ _BLOCKED_PREFIX = "BLOCKED:"
 _BLOCKED_RECOVERY_DATA_KEY = "blocked_recovery"
 _PLAN_SKIPPED_DATA_KEY = "plan_skipped"
 PLANNER_CLARIFICATION_INTERACTION = "planner_clarification"
+
+_COLLECTION_PLANNING_CONTRACT = f"""
+Classify the independent items of every step in item_count (null if unknown). Sequential
+execution constrains order, not granularity. Prefer the simplest meaningful work unit.
+A small batch of at most {MAX_MECHANICAL_BATCH_ITEMS} known items may stay ONE leaf with
+item_work="mechanical" only for trivial deterministic operations with a simple batch check,
+such as renaming three documents to supplied names. Do not add inventory discovery or per-item
+tasks for that batch. Several targets alone do not justify decomposition or activating PLAN.
+Reading and transforming each document, judgment, or substantial per-item validation requires
+item_work="substantial" and explicit substeps or collection, even for two items and standard
+effort. Large or unknown batches must also be decomposed; never use mechanical to hide them.
+For large or not-yet-enumerated collections, use collection: inventory_objective describes
+bounded identifier discovery from the existing index, inventory_tools includes the authorized
+discovery tools plus file_create and file_read, and item_objective describes ONE item's full
+read/transform/verify/record workflow. The step's tools and effort apply to each item.
+The server discovers a durable JSON Dataset inventory and expands item tasks in bounded waves;
+do not enumerate hundreds of steps in this response or hide a loop in an executor objective.
+Static plan limits apply to this skeleton and each materialization wave, not to the total
+number of collection items. Each collection allows at most 1000 items and a 2 MB inventory.
+Collection groups need one extra depth level for inventory and item leaves. Keep workspace
+groups sequential when requested; item tasks are sequential too, including shared tracking
+updates. Separate any cross-item link reconciliation after the collection. A document's own
+conversion and verification remain together. Do not invent missing identifiers or redo an
+existing inventory: let discovery read it. If authorized inventory tools are unavailable,
+report that limitation; never disguise the collection as a single executable task.
+""".strip()
+
+
+def _validate_plan_depth(steps: Sequence[PlanStep], depth: int) -> None:
+    for step in steps:
+        required_depth = depth + (1 if step.collection is not None else 0)
+        if required_depth > runtime_settings.TASK_PLAN_MAX_DEPTH:
+            raise ValueError("Plan exceeds maximum depth; do not flatten work into a leaf")
+        _validate_plan_depth(step.steps, depth + 1)
 
 
 def _required_prompt_default(name: str) -> str:
@@ -236,7 +273,7 @@ def _validate_plan_result_contract(task: Task, plan: Plan) -> None:
     if plan.clarification_questions:
         return
     contract = _result_contract(task)
-    selected = _plan_tool_names(plan)
+    selected = _plan_tool_names(plan, include_inventory=False)
     if bool(contract.get("requires_file")) and not (selected & _FILE_PRODUCTION_TOOLS):
         raise ValueError(
             "The plan omits the file-production work required by the original objective."
@@ -265,6 +302,8 @@ _UNMET_DELIVERY_FAILURE_CODE = "UNMET_DELIVERY_CONTRACT"
 
 async def advance(task: Task) -> None:
     """Advance planning once and fail safely instead of leaving the task in PLAN."""
+    if task.status != TaskStatus.PLAN or task_service.is_held_by_user(task):
+        return
     try:
         if task.plan is None:
             await _start_plan(task)
@@ -408,6 +447,10 @@ async def get_progress(task_id: UUID) -> Optional[dict[str, Any]]:
                 continue
             visited.add(child.id)
             if child.plan:  # Descend into internal plan nodes.
+                if child.plan.get("collection"):
+                    inventory = child.plan.get("inventory")
+                    if isinstance(inventory, dict):
+                        total += int(cast(dict[str, Any], inventory).get("item_count", 0))
                 frontier.append(child.id)
                 continue
             visited_children.append(child)
@@ -818,9 +861,7 @@ async def _start_plan(task: Task) -> None:
 
     # Serialize the complete recursive tree, including nested steps.
     steps_data = [s.model_dump() for s in steps]
-    # Root steps start at base + 1; trim nested steps beyond the configured depth.
-    base_depth = _plan_depth(task)
-    _cap_tree_depth(steps_data, base_depth + 1, runtime_settings.TASK_PLAN_MAX_DEPTH)
+    _validate_plan_depth(steps, _plan_depth(task) + 1)
 
     plan_payload: dict[str, Any] = {"steps": steps_data, "cursor": 0}
     if plan.brief is not None:
@@ -852,6 +893,10 @@ async def _start_plan(task: Task) -> None:
 async def _advance_plan(task: Task) -> None:
     """Resume at the next step or finalize the plan."""
     plan = dict(task.plan or {})
+    if plan.get("collection") and not plan.get("steps"):
+        plan["steps"] = [planner_collection.inventory_step(task)]
+        task.plan = plan
+        await task_service.save(task)
     steps = as_list(plan.get("steps"))
     cursor = int(plan.get("cursor", 0) or 0)
     total = len(steps)
@@ -859,6 +904,13 @@ async def _advance_plan(task: Task) -> None:
     children = await task_service.get_children(task.id)
     # A cursor beyond the final step is a durable ready-to-finalize checkpoint.
     if cursor >= total:
+        if plan.get("collection") and planner_collection.append_item_wave(task):
+            await task_service.save(task)
+            children = await _ensure_children(task)
+            await _activate_step(task, cursor, children)
+            _mark_plan_waiting(task)
+            await task_service.save(task)
+            return
         await _finalize(task, children, success=True)
         return
     current = child_for_step(children, cursor)
@@ -881,7 +933,7 @@ async def _advance_plan(task: Task) -> None:
 
     if current.status == TaskStatus.SUCCESS and _blocked_reason(current) is not None:
         # Give the planner one bounded chance to insert a materially different action.
-        if await _try_recover_blocked_plan(task, current, children, steps, cursor):
+        if not (plan.get("collection") and cursor == 0) and await _try_recover_blocked_plan(task, current, children, steps, cursor):
             return
         logger.info("Planner: step {} of {} is BLOCKED; aborting", cursor, task.id)
         await _close_unfinished_children(task, children, current)
@@ -889,15 +941,26 @@ async def _advance_plan(task: Task) -> None:
         return
 
     if current.status != TaskStatus.SUCCESS:
+        if (task_service.is_paused_for(current, task_service.PAUSE_PLAN)
+                and not task_service.is_held_by_user(current)):
+            # Recover a retry or a crash between materialization and activation.
+            # Descending into an already active group never restarts its active leaf.
+            await _activate_step(task, cursor, children)
         # Ignore a spurious wake-up while the child is still running.
         _mark_plan_waiting(task)
         await task_service.save(task)
         return
 
     # Advance after a successful current step.
+    if plan.get("collection") and cursor == 0 and "inventory" not in plan:
+        await planner_collection.freeze_inventory(task, current)
+        plan = dict(task.plan or {})
     cursor += 1
     plan["cursor"] = cursor
     task.plan = plan
+    if cursor >= total and plan.get("collection"):
+        planner_collection.append_item_wave(task)
+        total = len(as_list((task.plan or {}).get("steps")))
     if cursor < total:
         await task_service.save(task)
         # Support plans started before eager materialization was introduced.
@@ -1016,9 +1079,12 @@ async def _try_recover_blocked_plan(
     inserted = [step.model_dump() for step in decision.steps]
     combined_steps = [*steps[: cursor + 1], *inserted, *steps[cursor + 1 :]]
     try:
+        _validate_plan_depth(decision.steps, _plan_depth(task) + 1)
         Plan(
             steps=[
-                PlanStep.model_validate(item) for item in combined_steps if isinstance(item, dict)
+                PlanStep.model_validate(item)
+                for item in (inserted if plan.get("collection") else combined_steps)
+                if isinstance(item, dict)
             ]
         )
     except ValidationError as exc:
@@ -1232,7 +1298,11 @@ async def _finalize(
         except Exception:
             logger.exception("Planner: LLM synthesis failed; using concatenated results")
             final_text = aggregated
-    task.cost += total_child_cost + synth_cost
+    cost_plan = dict(task.plan or {})
+    previously_accounted = float(cost_plan.get("accounted_child_cost", 0.0))
+    task.cost += max(0.0, total_child_cost - previously_accounted) + synth_cost
+    cost_plan["accounted_child_cost"] = total_child_cost
+    task.plan = cost_plan
     task.feedback = final_text[:_FEEDBACK_MAX_CHARS] if final_text else None
     child_results = [
         result for child in children if (result := child.get_execution_result()) is not None
@@ -1346,12 +1416,27 @@ async def _working_set_completion_error(task: Task) -> str | None:
 
     working_set = await task_port.get_working_set(task.id)
     resources = working_set.resources
+    inventory_uris: set[str] = set()
+    pending_groups = [task]
+    seen_groups: set[UUID] = set()
+    while pending_groups:
+        group = pending_groups.pop()
+        if group.id in seen_groups:
+            continue
+        seen_groups.add(group.id)
+        group_plan = group.plan or {}
+        if inventory_uri := group_plan.get("inventory_uri"):
+            inventory_uris.add(str(inventory_uri))
+        if any(step.get("collection") or step.get("steps") for step in as_list(group_plan.get("steps"))):
+            pending_groups.extend(child for child in await task_service.get_children(group.id) if child.plan)
     produced_files = [resource for resource in resources if _is_produced_file(resource)]
     contract = _result_contract(task)
     active_documents = [
         resource
-        for resource in working_set.active("primary_working_document")
+        for resource in working_set.active(None if inventory_uris else "primary_working_document")
         if resource.resource_type == "memory_document"
+        and resource.reference not in inventory_uris
+        and (resource.role == "primary_working_document" or resource.metadata.get("produced") is True)
     ]
     if bool(contract.get("requires_document")) and not active_documents:
         return (
@@ -1408,8 +1493,15 @@ async def _create_child(parent: Task, step_index: int) -> Task:
     depth = _plan_depth(parent)
     substeps = as_list(step.get("steps"))
 
-    if substeps:
-        child_plan: Optional[dict[str, Any]] = {"steps": substeps, "cursor": 0}
+    if step.get("collection"):
+        child_plan: Optional[dict[str, Any]] = {
+            "steps": [], "cursor": 0,
+            "collection": step["collection"],
+            "item_tools": step.get("tools", []),
+            "item_effort": step.get("effort", "standard"),
+        }
+    elif substeps:
+        child_plan = {"steps": substeps, "cursor": 0}
     else:
         child_plan = None
 
@@ -1455,6 +1547,8 @@ async def _create_child(parent: Task, step_index: int) -> Task:
     catalog_version = str((parent.plan or {}).get("tool_catalog_version") or "").strip()
     if catalog_version:
         child_data["tool_catalog_version"] = catalog_version
+        if child_plan is not None:
+            child_plan["tool_catalog_version"] = catalog_version
 
     frozen_messages: list[Mapping[str, Any]] = []
     for raw_message in parent.messages or ():
@@ -1465,6 +1559,11 @@ async def _create_child(parent: Task, step_index: int) -> Task:
 
     child = await task_service.create(
         TaskCreate(
+            idempotency_key=(
+                (f"collection:{parent.id}:item:{step['collection_key']}"
+                 if "collection_key" in step else f"collection:{parent.id}:step:{step_index}")
+                if (parent.plan or {}).get("collection") else None
+            ),
             label=step.get("label")
             or _translate_for_task(parent, "planner.step").format(number=step_index + 1),
             objective=step.get("objective"),
@@ -1496,7 +1595,7 @@ async def _ensure_children(parent: Task) -> list[Task]:
         if child is None:
             child = await _create_child(parent, step_index)
         children.append(child)
-        if child.plan:
+        if child.plan and not child.plan.get("collection"):
             await _ensure_children(child)
     return children
 
@@ -1608,6 +1707,13 @@ def _render_plan_position(parent: Task, step_index: int) -> str:
         return ""
     current_path = [*_plan_path(parent), step_index]
     lines = _render_plan_lines_with_current(steps, current_path)
+    if (parent.plan or {}).get("collection"):
+        local_steps = as_list((parent.plan or {}).get("steps"))
+        if step_index < len(local_steps):
+            lines.append(
+                f"{_format_plan_number(current_path)}. {local_steps[step_index]['label']}"
+                "   <- you are executing this step"
+            )
     if len(lines) <= 1:
         return ""  # Position adds no value for a single-step plan.
     return "<plan>\n" + "\n".join(lines) + "\n</plan>"
@@ -1696,6 +1802,10 @@ async def _activate_step(
     child = child_for_step(materialized, step_index)
     if child is None:
         raise RuntimeError(f"Missing subtask for step {step_index}")
+    if (child.status in (TaskStatus.SUCCESS, TaskStatus.ERROR, TaskStatus.EXEC, TaskStatus.BRIEFING)
+            or task_service.is_held_by_user(child)
+            or (child.status == TaskStatus.DISPATCH and not child.paused)):
+        return child
 
     data = dict(child.data) if isinstance(child.data, dict) else {}
     data["language"] = _task_language(parent)
@@ -1730,11 +1840,20 @@ async def _activate_step(
     await _maybe_notify_step(parent, step_index)
 
     if child.plan:
+        if child.plan.get("collection") and not child.plan.get("steps"):
+            child.plan = {**child.plan, "steps": [planner_collection.inventory_step(child)]}
+            await task_service.save(child)
         # Keep group nodes suspended while their leaves execute.
         _mark_plan_waiting(child)
         await task_service.save(child)
         nested = await _ensure_children(child)
         nested_cursor = int(child.plan.get("cursor", 0) or 0)
+        nested_current = child_for_step(nested, nested_cursor)
+        if nested_current is None or nested_current.status == TaskStatus.SUCCESS:
+            task_service.release(child, task_service.PAUSE_PLAN)
+            await task_service.save(child)
+            go_next(child.id)
+            return child
         await _activate_step(child, nested_cursor, nested)
         return child
 
@@ -1761,6 +1880,7 @@ async def planner_system_prompt(task: Task) -> str:
         f"{runtime_settings.TASK_PLAN_MAX_NODES} total nodes and "
         f"{runtime_settings.TASK_PLAN_MAX_LEAVES} leaf steps."
     )
+    system_prompt += "\n\n" + _COLLECTION_PLANNING_CONTRACT
     if _can_request_clarification(task):
         return f"{system_prompt}\n\n{_PLANNER_CLARIFICATION_PROMPT}"
     if _clarification_rounds(task):
@@ -1789,6 +1909,7 @@ def planner_evaluation_system_prompt(
         f"{max_depth if max_depth is not None else runtime_settings.TASK_PLAN_MAX_DEPTH} step levels below the root task, "
         f"{max_nodes if max_nodes is not None else runtime_settings.TASK_PLAN_MAX_NODES} total nodes and "
         f"{max_leaves if max_leaves is not None else runtime_settings.TASK_PLAN_MAX_LEAVES} leaf steps."
+        + "\n\n" + _COLLECTION_PLANNING_CONTRACT
     )
 
 
@@ -1869,6 +1990,8 @@ async def _build_plan(
         )
         _validate_plan_tool_names(result.output, catalog)
         result.output.tool_catalog_version = catalog.version
+    if result.output.steps:
+        _validate_plan_depth(result.output.steps, _plan_depth(task) + 1)
     _validate_plan_result_contract(task, result.output)
     return result.output, result.cost, pformat(result.messages)
 
@@ -2103,12 +2226,14 @@ async def _tool_search_results_block(
     )
 
 
-def _plan_tool_names(plan: Plan) -> frozenset[str]:
+def _plan_tool_names(plan: Plan, *, include_inventory: bool = True) -> frozenset[str]:
     names: set[str] = set()
 
     def visit(steps: Sequence[PlanStep]) -> None:
         for step in steps:
             names.update(step.tools)
+            if include_inventory and step.collection is not None:
+                names.update(step.collection.inventory_tools)
             visit(step.steps)
 
     visit(plan.steps)
@@ -2174,16 +2299,6 @@ def _make_plan_conversation_context(
 # ──────────────────────────────────────────────────────────────────────────
 # Helpers
 # ──────────────────────────────────────────────────────────────────────────
-
-
-def _cap_tree_depth(steps: list[dict[str, Any]], depth: int, max_depth: int) -> None:
-    """Trim nested steps in place beyond ``max_depth``."""
-    for step in steps:
-        sub = as_list(step.get("steps"))
-        if depth >= max_depth:
-            step["steps"] = []
-        elif sub:
-            _cap_tree_depth(sub, depth + 1, max_depth)
 
 
 def _count_leaves(steps: list[dict[str, Any]]) -> int:

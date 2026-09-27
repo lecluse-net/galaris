@@ -2,6 +2,13 @@
 
 # Catalogue des garanties fonctionnelles
 
+`back/app/agent/tests/test_planner_collections.py` couvre les traitements répétés : petits lots
+mécaniques connus d'au plus cinq éléments en une feuille sans découverte ni replanification,
+décomposition des traitements substantiels ou des lots trop grands/inconnus, une Task
+par élément de collection, vagues bornées, inventaire Dataset vérifié avec les ACL, refus des listes
+incomplètes ou ambiguës, progression et reprise après rechargement sans rejouer les succès.
+Le parcours PostgreSQL conserve l'inventaire figé même si le Dataset est modifié ensuite.
+
 Ce catalogue part des usages et des responsabilités des modules. Les suites citées sont les
 points d’entrée vérifiables ; une ligne ne signifie ni couverture exhaustive ni qualification
 d’un service externe. Les résultats exécutés et les remplacements sont consignés dans

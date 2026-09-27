@@ -135,6 +135,7 @@
           "back/app/agent/executor_service.py",
           "back/app/agent/facade.py",
           "back/app/agent/janus.py",
+          "back/app/agent/planner_collection.py",
           "back/app/agent/planner_contracts.py",
           "back/app/agent/planner_service.py",
           "back/app/agent/realtime.py",
@@ -1026,6 +1027,7 @@
         "files": [
           "back/app/file_share/galaris_provider.py",
           "back/app/file_share/messenger_transport.py",
+          "back/app/file_share/planner_adapter.py",
           "back/app/file_share/resource_contracts.py"
         ],
         "source": "app.file_share",

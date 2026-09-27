@@ -5,6 +5,7 @@ without Pydantic AI or Hermes prevents cycles with task contracts.
 """
 
 from .active_run import get_current_task
+from .planner_inventory_port import register_plan_inventory_reader as register_plan_inventory_reader
 from .defaults import register_default_agent
 from .capabilities import driver_capabilities, effective_capabilities, effective_tool_profile, negotiate_capabilities, normalize_capabilities
 from .execution_errors import HarnessExecutionError, HarnessCheckpointError, HarnessProtocolError, classify_execution_error
@@ -224,6 +225,7 @@ async def terminate_paused_agent_tasks(agent_id: int) -> AgentTaskBlockers:
 
 
 __all__ = [
+    "register_plan_inventory_reader",
     "register_default_agent",
     "HarnessExecutionError", "HarnessCheckpointError", "HarnessProtocolError", "classify_execution_error",
     "HarnessCapability", "HarnessCapabilityDescriptor", "HarnessExecutionPolicy",

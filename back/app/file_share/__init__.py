@@ -148,3 +148,7 @@ from .web_preview import document_web_image
 from core.preview import register_web_image_provider
 
 register_web_image_provider(document_web_image)
+
+from .planner_adapter import register_planner_inventory_adapter
+
+register_planner_inventory_adapter()

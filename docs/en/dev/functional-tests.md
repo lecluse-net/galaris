@@ -2,6 +2,13 @@
 
 # Functional guarantees catalogue
 
+`back/app/agent/tests/test_planner_collections.py` covers repeated work: small mechanical batches
+of up to five known items in one leaf without discovery or replanning, decomposition of
+substantial work or oversized/unknown batches, one Task per collection item,
+bounded waves, Dataset inventory validation with access rights, rejection of incomplete or
+ambiguous lists, progress and recovery after reload without replaying successful items.
+The PostgreSQL journey preserves the frozen inventory even if its Dataset changes later.
+
 Start with business behavior and module responsibility. The suites below are entry points,
 not exhaustive certification or proof that a live external account works. The
 [September 10 review](../../../project/audits/2026-09-10-functional-tests.md) records replacements

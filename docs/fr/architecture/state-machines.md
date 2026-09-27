@@ -99,6 +99,12 @@ ci-dessus peuvent créer une nouvelle exécution.
 Pour `RETRY_DELIVERY`, l'action `DISPATCH → execute` reconnaît le contrat serveur et appelle
 directement l'unique outil natif autorisé : aucun driver ni modèle IA ne participe à cette reprise.
 
+Les collections utilisent les phases existantes : le groupe reste en `PLAN`, sa découverte
+puis ses éléments traversent `DISPATCH → EXEC → SUCCESS/ERROR`. Une nouvelle vague est
+persistée avant activation. Réessayer un plan entièrement terminal applique `RETRY_PLAN`
+aux groupes en erreur et `RETRY` aux feuilles en erreur, puis réactive uniquement le chemin
+du curseur. Les succès, inventaires figés et journaux d'effets ne sont pas effacés.
+
 Pour une exécution interne, le checkpoint d’effet suit `absent → started → completed`.
 `completed` autorise la reprise et la restitution du résultat journalisé sans réexécuter l’outil.
 Une erreur d’outil observée donne en v4 `started → error_reported`, avec son résultat

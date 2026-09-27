@@ -1,5 +1,7 @@
 # Décisions d’architecture
 
+- [0140 — Collections de tâches développées progressivement](0140-progressive-plan-collections.md)
+
 - [0139 — Capacité de sortie publiée par le fournisseur](0139-provider-output-capacity.md)
 
 - [0138 — Caches API bornés par leur domaine d’invalidation](0138-request-authorization-cache.md)

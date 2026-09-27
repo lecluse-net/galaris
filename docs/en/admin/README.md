@@ -609,6 +609,12 @@ This page has three tabs, using the same presentation as the Agents page, with n
 
 ### Internal Harness
 
+`TASK_PLAN_MAX_NODES` and `TASK_PLAN_MAX_LEAVES` bound the plan skeleton and collection
+materialization waves, rather than the total number of documents in a collection.
+Each collection accepts at most 1,000 items and a JSON Dataset inventory of 2,000,000
+characters. `TASK_PLAN_MAX_DEPTH` includes the item level. An oversized collection or
+incomplete inventory fails explicitly instead of silently merging all work into one leaf.
+
 Code: `internal`.
 
 Under **Preferences → Harnesses → Advanced settings**, the maximum binary file size sent

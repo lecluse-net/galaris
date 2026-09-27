@@ -97,6 +97,12 @@ execution.
 For `RETRY_DELIVERY`, the `DISPATCH → execute` action recognizes the server contract and directly
 calls the only authorized native tool: no driver or AI model participates in this resumption.
 
+Collections use existing phases: the group stays in `PLAN`, while discovery and item Tasks
+follow `DISPATCH → EXEC → SUCCESS/ERROR`. Each new wave is persisted before activation.
+Retrying a fully terminal plan applies `RETRY_PLAN` to failed groups and `RETRY` to failed
+leaves, then activates only the cursor path. Successful items, frozen inventories and effect
+journals are retained.
+
 For an internal execution, the effect checkpoint follows `absent → started → completed`.
 `completed` authorizes resumption and the return of the logged result without re-executing the tool.
 In v4, an observed tool error gives `started → error_reported`, preserving a structured

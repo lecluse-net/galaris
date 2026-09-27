@@ -263,6 +263,17 @@ Text and voice conversations follow their own configured controller and executor
 
 The planner breaks down only an objective that requires several coordinated blocks of work. Each leaf of the plan is a real Task. A step is not intended to “think” or “write the final response”: it must produce a verifiable part of the result.
 
+For repeated work on many documents or records, the planner can create a collection: Galaris
+identifies its items from the inventory, then creates one Task per item in bounded waves.
+“One workspace after another” preserves that order while keeping documents separate. The
+progress total becomes more precise as each collection is discovered. After a failure,
+**Retry** on the plan resumes failed work and preserves successful items. Existing saved
+plans are not automatically decomposed again.
+
+A small mechanical batch of up to five known items can remain one Task, such as renaming
+three documents to supplied names. Reading, transforming and verifying each document remains
+per-document work, even for a small batch. Multiple targets alone do not trigger the planner.
+
 Briefing can prepare a `high` execution by recalling the objective, constraints, relevant resources, and completion checks. It is currently disabled to measure its added value against autonomous Task objectives. Its previous traces remain available for consultation.
 
 These aids are enabled per driver. In the current configuration:

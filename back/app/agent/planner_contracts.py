@@ -7,6 +7,8 @@ from typing import Any, Literal, Optional
 from pydantic import BaseModel, Field, field_validator, model_validator
 from core.params import runtime_settings
 
+MAX_MECHANICAL_BATCH_ITEMS = 5
+
 FILE_PRODUCTION_TOOLS = frozenset(
     {
         "file_create",
@@ -72,6 +74,29 @@ class PlanBrief(BaseModel):
     deliverables: list[str] = Field(default_factory=lambda: [], description="Expected artifacts.")
 
 
+class PlanCollection(BaseModel):
+    """A finite collection expanded by the server after a durable inventory."""
+
+    inventory_objective: str = Field(min_length=1, description=(
+        "HTML instructions to identify every remaining item from an existing inventory or "
+        "authorized source. Discover identifiers only; never perform the item work here."
+    ))
+    inventory_tools: list[str] = Field(min_length=1, description=(
+        "Exact authorized tools for inventory discovery, including file_create and file_read. "
+        "The server adds the JSON Dataset inventory format to the discovery task."
+    ))
+    item_objective: str = Field(min_length=1, description=(
+        "HTML instructions to complete and verify ONE item end to end, using the exact "
+        "item inputs supplied by the server. Reuse existing outputs and record durable results."
+    ))
+
+    @model_validator(mode="after")
+    def requires_inventory_storage(self) -> "PlanCollection":
+        if not {"file_create", "file_read"}.issubset(self.inventory_tools):
+            raise ValueError("Collection discovery requires file_create and file_read")
+        return self
+
+
 class PlanStep(BaseModel):
     """One recursive plan step, represented as either a leaf or a group."""
 
@@ -118,10 +143,37 @@ class PlanStep(BaseModel):
             "only when the step is atomic and can be completed and verified as one coherent unit."
         ),
     )
+    item_count: int | None = Field(default=1, ge=1, description=(
+        "Number of independently verifiable items covered by this step; null if unknown. "
+        "Substantial per-item work or large/unknown batches require substeps or collection. "
+        f"A mechanical batch of at most {MAX_MECHANICAL_BATCH_ITEMS} known items may stay one leaf."
+    ))
+    item_work: Literal["substantial", "mechanical"] = Field(default="substantial", description=(
+        "Use mechanical only for trivial deterministic operations on known targets with "
+        "a simple batch completion check, such as applying three supplied document names. "
+        "Reading and transforming each document, judgment, or substantial per-item validation "
+        "is substantial even with standard effort. This classification never changes routing."
+    ))
+    collection: PlanCollection | None = Field(default=None, description=(
+        "Use for repeated per-item work, especially when identifiers require discovery or "
+        "the items exceed static plan limits. This step is a group, never an executor leaf. "
+        "Its tools and effort apply to each item; leave steps empty."
+    ))
 
     @model_validator(mode="after")
     def normalize_effect_policies(self) -> "PlanStep":
         """Derive safe policies from the exact tools selected by the planner."""
+
+        if self.collection is not None and self.steps:
+            raise ValueError("A collection cannot also contain static substeps")
+        small_mechanical_batch = (
+            self.item_work == "mechanical"
+            and self.item_count is not None
+            and self.item_count <= MAX_MECHANICAL_BATCH_ITEMS
+        )
+        if (not self.steps and self.collection is None
+                and self.item_count != 1 and not small_mechanical_batch):
+            raise ValueError("Repeated or unbounded work needs substeps or a collection")
 
         selected = frozenset(self.tools)
         delivery_tools = selected & _DELIVERY_TOOLS
@@ -189,13 +241,15 @@ class Plan(BaseModel):
         if self.clarification_questions:
             return self
 
-        def counts(steps: list[PlanStep]) -> tuple[int, int]:
+        def counts(steps: list[PlanStep], depth: int = 1) -> tuple[int, int]:
             nodes = 0
             leaves = 0
             for step in steps:
+                if depth + (1 if step.collection is not None else 0) > runtime_settings.TASK_PLAN_MAX_DEPTH:
+                    raise ValueError("Plan exceeds maximum depth; do not flatten work into a leaf")
                 nodes += 1
                 if step.steps:
-                    nested_nodes, nested_leaves = counts(step.steps)
+                    nested_nodes, nested_leaves = counts(step.steps, depth + 1)
                     nodes += nested_nodes
                     leaves += nested_leaves
                 else:
