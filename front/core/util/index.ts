@@ -64,4 +64,5 @@ export const SharingPanel = defineAsyncView(() => import('./components/SharingPa
 export { default as PersonAvatar } from './components/PersonAvatar.vue'
 export type { SharingDraft, SharingLevel, SharingRecipient, SharingState } from './sharing'
 export { preparePortableDocumentSnapshot } from './facade'
+export { queuePreview } from './previewQueue'
 export type { RegisterDocumentCapture, RenderedDocumentCapture } from './renderedDocument'

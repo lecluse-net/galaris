@@ -9,6 +9,55 @@ test.beforeEach(async ({ page }) => {
 
 const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+a5AAAAABJRU5ErkJggg==', 'base64')
 
+test('message previews wait until the message approaches the viewport', async ({ page }) => {
+  let calls = 0
+  await page.route('**/api/chat/rooms/room/messages/message/previews*', route => {
+    calls++
+    return route.fulfill({ json: [] })
+  })
+  await mount(page, 'app/chat/components/MessageResourcePreviews.vue', {
+    props: { roomId: 'room', messageId: 'message' }, containerStyle: { marginTop: '2000px' },
+  })
+  // Allow mount effects and intersection notifications to run while the message is offscreen.
+  await page.waitForTimeout(400)
+  expect(calls).toBe(0)
+  await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight))
+  await expect.poll(() => calls).toBe(1)
+})
+
+test('thumbnail congestion leaves documents usable and room changes cancel queued captures', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 1500 })
+  const ids = [1, 2, 3].map(index => `00000000-0000-0000-0000-${String(index).padStart(12, '0')}`)
+  await jsonRoute(page, '**/api/chat/rooms/room/messages/message/previews', ids.map((id, index) => ({
+    uri: `document://${id}`, kind: 'document', title: `Report ${index + 1}`, description: '', subtitle: '',
+    media_type: 'text/html', image_available: false, download_available: false, open_mode: 'inline', metadata: { revision: 1 },
+  })))
+  await jsonRoute(page, '**/api/chat/rooms/other/messages/message/previews', [])
+  const releases = []
+  let reads = 0
+  await page.route('**/api/memory/items/*?agent_id=7', async route => {
+    reads++
+    await new Promise(resolve => releases.push(resolve))
+    await route.fulfill({ json: { ...documentFixture, payload: { text: '<p>Body</p>' } } })
+  })
+  await mount(page, 'app/chat/components/MessageResourcePreviews.vue', {
+    props: { roomId: 'room', messageId: 'message', conversationAgentId: 7, canReadDocuments: true, canEditDocuments: true },
+  })
+  await expect(page.locator('.resource-preview-card')).toHaveCount(3)
+  await expect.poll(() => reads).toBe(2)
+  await page.waitForTimeout(300)
+  expect(reads).toBe(2)
+  const first = page.locator('.resource-preview-card').first()
+  await first.hover()
+  await first.getByRole('button', { name: 'Open in co-editing', exact: true }).click()
+  await expect.poll(() => page.evaluate(() => window.testApp.events.find(event => event.name === 'openDocument')?.args[0].id)).toBe(ids[0])
+  await page.evaluate(() => window.testApp.setProps({ roomId: 'other' }))
+  releases.forEach(release => release())
+  await expect(page.locator('.resource-preview-card')).toHaveCount(0)
+  await page.waitForTimeout(300)
+  expect(reads).toBe(2)
+})
+
 test('document cards inside messages display and refresh their saved revision thumbnail', async ({ page }, testInfo) => {
   const id = '00000000-0000-0000-0000-000000000001'
   const pagePreview = Buffer.from(await page.evaluate(() => {

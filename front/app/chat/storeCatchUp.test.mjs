@@ -5,7 +5,7 @@ import * as pinia from 'pinia'
 import * as vue from 'vue'
 import { loadTypescript } from '../../test-support/load-typescript.mjs'
 
-async function setup(t, service) {
+async function setup(t, service, canCall = false) {
   t.mock.timers.enable({ apis: ['setTimeout', 'Date'], now: new Date('2026-09-06T00:00:00Z') })
   const originalWindow = globalThis.window
   globalThis.window = new EventTarget()
@@ -15,10 +15,10 @@ async function setup(t, service) {
   const { useChatStore } = loadTypescript(new URL('./stores/chat.ts', import.meta.url), {
     pinia, vue,
     axios: { isAxiosError: () => false },
-    '@/core/authorize': { usePrivilegeStore: () => ({ hasPrivilege: () => false }) },
+    '@/core/authorize': { usePrivilegeStore: () => ({ hasPrivilege: () => canCall }) },
     '@/core/api': { AUTH_TOKEN_CHANGED_EVENT: 'auth', getStoredAccessToken: () => 'test' },
     '@/core/websocket': { BaseRoom: class {}, websocket: {
-      createWebsocket() {}, onEvent() {}, offEvent() {}, onConnect() {}, offConnect() {},
+      createWebsocket() {}, onEvent() {}, offEvent() {}, onConnect() {}, offConnect() {}, joinRoom() {}, leaveRoom() {},
     } },
     '../services/chatService': { chatService: { status: async () => ({ enabled: false }), ...service } },
     '../liveState': liveState, '../runtimeState': {}, '../voiceCall': {},
@@ -31,6 +31,61 @@ async function setup(t, service) {
   await vue.nextTick()
   return store
 }
+
+test('opening a room displays its messages while commands are still loading and ignores stale commands', async t => {
+  let release
+  const room = { id: 'room', writable: true }
+  const store = await setup(t, {
+    room: async id => ({ ...room, id }),
+    messages: async () => ({ items: [{ id: 'message', text: 'Hello' }], total: 1 }),
+    activity: async () => ({ items: [], total: 0 }),
+    commands: id => id === 'room' ? new Promise(resolve => { release = resolve }) : Promise.resolve({ commands: [] }),
+  })
+  const opening = store.selectRoom(room)
+  await setImmediate()
+  assert.equal(store.messages[0]?.text, 'Hello')
+  assert.equal(store.loadingSelectedRoom, false)
+  await opening
+  await store.selectRoom({ ...room, id: 'other' })
+  release({ commands: [{ name: 'stale' }] })
+  await setImmediate()
+  assert.deepEqual(store.commands, [])
+})
+
+test('an unavailable command catalog does not hide the conversation or reject opening', async t => {
+  const room = { id: 'room', writable: true }
+  const store = await setup(t, {
+    room: async () => room,
+    messages: async () => ({ items: [{ id: 'message', text: 'Hello' }], total: 1 }),
+    activity: async () => ({ items: [], total: 0 }),
+    commands: async () => { throw Error('Temporary failure') },
+  })
+  await store.selectRoom(room)
+  await setImmediate()
+  assert.equal(store.messages[0]?.text, 'Hello')
+  assert.equal(store.loadingSelectedRoom, false)
+  assert.deepEqual(store.commands, [])
+})
+
+test('call controls wait for the current call while messages are already readable', async t => {
+  let release
+  const room = { id: 'room', writable: false, kind: 'direct', source: null }
+  const store = await setup(t, {
+    room: async () => room,
+    messages: async () => ({ items: [{ id: 'message', text: 'Hello' }], total: 1 }),
+    activity: async () => ({ items: [], total: 0 }),
+    activeCall: () => new Promise(resolve => { release = resolve }),
+    callStatus: async () => ({ available: true }),
+  }, true)
+  await store.selectRoom(room)
+  await setImmediate()
+  assert.equal(store.messages[0]?.text, 'Hello')
+  assert.equal(store.callAvailable, false)
+  release({ call_id: 'existing-call' })
+  await setImmediate()
+  assert.equal(store.activeCall.call_id, 'existing-call')
+  assert.equal(store.callAvailable, true)
+})
 
 test('catch-up retries failed HTTP, then stops after the canonical response is visible', async t => {
   let requests = 0

@@ -1,16 +1,12 @@
 import assert from 'node:assert/strict'
-import { readFileSync } from 'node:fs'
 import test from 'node:test'
-import ts from 'typescript'
-
-const output = ts.transpileModule(readFileSync(new URL('./agentService.ts', import.meta.url), 'utf8'), {
-  compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
-}).outputText
+import { loadTypescript } from '../../../test-support/load-typescript.mjs'
+import { sessionReadCache } from '../../../test-support/session-read-cache.mjs'
 
 function service(get) {
-  const loaded = { exports: {} }
-  new Function('require', 'module', 'exports', output)(() => ({ __esModule: true, default: { get } }), loaded, loaded.exports)
-  return loaded.exports.agentService
+  return loadTypescript(new URL('./agentService.ts', import.meta.url), {
+    '@/core/api': { __esModule: true, default: { get } }, '@/core/util/facade': sessionReadCache(),
+  }).agentService
 }
 
 test('agent trees receive every page, including the agent after 500', async () => {
@@ -31,4 +27,45 @@ test('a failed later page does not silently return an incomplete agent tree', as
     return { data: Array.from({ length: 500 }, (_, id) => ({ id })) }
   })
   await assert.rejects(api.getAgents(), /offline/)
+})
+
+test('catalogues expire independently, isolate edits and invalidate after successful domain writes', async t => {
+  t.mock.timers.enable({ apis: ['Date'], now: 0 })
+  const reads = []
+  let forbidden = false
+  const http = {
+    get: async url => { reads.push(url); return { data: [{ id: 7, title: { label: 'Synthetic' } }] } },
+    post: async () => ({ data: { id: 8 } }),
+    put: async () => { if (forbidden) throw Error('forbidden'); return { data: { id: 7 } } },
+    delete: async () => ({ data: undefined }),
+  }
+  const { agentService: agents, titleService: titles, agentGroupService: groups } = loadTypescript(new URL('./agentService.ts', import.meta.url), {
+    '@/core/api': { __esModule: true, default: http }, '@/core/util/facade': sessionReadCache(),
+  })
+  const first = await agents.getAgents()
+  first.data[0].title.label = 'Local draft'
+  assert.equal((await agents.getAgents()).data[0].title.label, 'Synthetic')
+  await titles.getTitles()
+  await groups.getGroups()
+  await titles.getTitles()
+  assert.equal(reads.length, 3)
+  t.mock.timers.tick(60_001)
+  await agents.getAgents()
+  await titles.getTitles()
+  assert.equal(reads.length, 4)
+  await titles.updateTitle(7, { label: 'Saved' })
+  await titles.getTitles()
+  await agents.getAgents()
+  assert.equal(reads.length, 6, 'embedded titles are invalidated too')
+  forbidden = true
+  await assert.rejects(agents.updateAgent(7, {}), /forbidden/)
+  await agents.getAgents()
+  assert.equal(reads.length, 6, 'failed writes leave valid data reusable')
+  await groups.deleteGroup(7)
+  await groups.getGroups()
+  await agents.getAgents()
+  assert.equal(reads.length, 8, 'detached group memberships are refreshed')
+  t.mock.timers.tick(300_001)
+  await titles.getTitles()
+  assert.equal(reads.length, 9)
 })

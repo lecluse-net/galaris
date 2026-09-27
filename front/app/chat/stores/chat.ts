@@ -215,13 +215,13 @@ export const useChatStore = defineStore('chat', () => {
   }
 
   async function loadStatus(): Promise<void> { status.value = await service.status() }
-  function handleScopeError(error: unknown): never {
+  function clearDeniedScope(error: unknown): void {
     if (axios.isAxiosError(error) && [403, 404].includes(error.response?.status ?? 0)) {
       disconnect()
       purge()
     }
-    throw error
   }
+  function handleScopeError(error: unknown): never { clearDeniedScope(error); throw error }
   async function loadRooms(
     search = roomSearch.value,
     includeExternal = includeExternalRooms.value,
@@ -297,15 +297,12 @@ export const useChatStore = defineStore('chat', () => {
       const canLoadCall = scopeAgentId === null && selectedRoom.value.source === null
         && selectedRoom.value.kind === 'direct' && privilegeStore.hasPrivilege('CHAT_CALL')
       const canLoadCommands = selectedRoom.value.writable && scopeAgentId === null
-      const [room, [messageResult, activityResult], call, callStatus, commandCatalog] = await Promise.all([
+      const [room, [messageResult, activityResult]] = await Promise.all([
         service.room(id, scopeAgentId),
         loadMessageActivitySnapshot(
           () => service.messages(id, 1, messagesPageSize, scopeAgentId),
           () => service.activity(id, activityPage.value, activityPageSize.value, scopeAgentId),
         ),
-        canLoadCall ? service.activeCall(id) : Promise.resolve(null),
-        canLoadCall ? service.callStatus(id) : Promise.resolve(null),
-        canLoadCommands ? service.commands(id) : Promise.resolve(null),
       ])
       if (!request.canApply()) return
       request.accept()
@@ -314,12 +311,22 @@ export const useChatStore = defineStore('chat', () => {
       if (messagesPage.value === 1) resetProviderHistory(messageResult)
       lastRecentMessagesLoad = Date.now()
       applyActivitySnapshot(id, activityResult, runtimeRevisionAtRequest)
-      if (callRevisionAtRequest === callEventRevision) {
-        activeCall.value = call?.call_id === endedCallId.value ? null : call
-        if (!activeCall.value) stoppingCallId.value = null
-      }
-      callAvailable.value = callStatus?.available ?? false
-      commands.value = commandCatalog?.commands ?? []
+      // Optional controls must not delay the canonical message/activity projection.
+      const optionalError = (error: unknown): void => { if (request.canApply()) clearDeniedScope(error) }
+      void Promise.all([
+        canLoadCall ? service.activeCall(id) : Promise.resolve(null),
+        canLoadCall ? service.callStatus(id) : Promise.resolve(null),
+      ]).then(([call, status]) => {
+        if (!request.canApply()) return
+        if (callRevisionAtRequest === callEventRevision) {
+          activeCall.value = call?.call_id === endedCallId.value ? null : call
+          if (!activeCall.value) stoppingCallId.value = null
+        }
+        callAvailable.value = status?.available ?? false
+      }).catch(optionalError)
+      void (canLoadCommands ? service.commands(id) : Promise.resolve(null)).then(catalog => {
+        if (request.canApply()) commands.value = catalog?.commands ?? []
+      }).catch(optionalError)
     } catch (error) { if (request.canApply()) handleScopeError(error) }
   }
   async function selectRoom(room: MessengerRoom): Promise<void> {

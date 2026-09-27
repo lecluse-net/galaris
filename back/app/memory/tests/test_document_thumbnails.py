@@ -12,6 +12,7 @@ from unittest.mock import AsyncMock
 import av
 import pytest
 from PIL import Image
+from sqlalchemy import event
 
 from app.memory.document_thumbnail_service import (
     _text_thumbnail,
@@ -29,7 +30,7 @@ from app.browser.schemas import BrowserScreenshot, BrowserScreenshotPart
 
 @pytest.mark.asyncio
 async def test_document_capture_tracks_saved_revisions_and_rechecks_access(
-    agents, memory_storage, tmp_path, monkeypatch,
+    agents, memory_storage, tmp_path, monkeypatch, db,
 ):
     owner, peer = agents
     cache_root = tmp_path / "thumbnails"
@@ -50,11 +51,26 @@ async def test_document_capture_tracks_saved_revisions_and_rechecks_access(
     ))
     await service.set_item_grant(item.id, peer.id, MemoryGrantUpdate(can_write=False), actor_agent_id=owner.id)
     snapshot = DocumentThumbnailRender(html="<h1>First revision</h1><table><tr><td>Result</td></tr></table>", revision=item.revision, lock_version=item.lock_version)
-    first = await document_thumbnail_service.read_document_thumbnail(item.id, snapshot, actor_agent_id=peer.id)
+    statements = []
+
+    def record_sql(connection, cursor, statement, parameters, context, executemany):
+        statements.append(statement)
+
+    storage = service.get_storage(item.provider_code)
+    source_reads = AsyncMock(wraps=storage.read)
+    event.listen(db.sync_session.bind, "before_cursor_execute", record_sql)
+    try:
+        with monkeypatch.context() as capture_patch:
+            capture_patch.setattr(storage, "read", source_reads)
+            first = await document_thumbnail_service.read_document_thumbnail(item.id, snapshot, actor_agent_id=peer.id)
+            assert await document_thumbnail_service.read_document_thumbnail(item.id, snapshot, actor_agent_id=owner.id) == first
+    finally:
+        event.remove(db.sync_session.bind, "before_cursor_execute", record_sql)
+    source_reads.assert_not_awaited()
+    assert not any("memory_revision" in statement.lower() for statement in statements)
     assert first is not None
     assert "<h1>First revision</h1>" in captured[0]
     assert "<table>" in captured[0]
-    assert await document_thumbnail_service.read_document_thumbnail(item.id, snapshot, actor_agent_id=owner.id) == first
     assert len(captured) == 1
 
     await service.update_item(item.id, MemoryItemUpdate(

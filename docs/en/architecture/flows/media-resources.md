@@ -9,6 +9,29 @@ aspect ratio and transparency without padding. HTML uses the shared browser rend
 `.url` shortcuts reuse their target URL's thumbnail. Each domain checks access before
 reading the cache. Deleting a shortcut does not delete its target's preview.
 
+In the UI, message resource cards wait until they approach the viewport before loading
+metadata. Their images and document thumbnails (chat and library) share a queue of two
+concurrent loads, deferred until after the initial render. Leaving the visible area cancels
+pending loads; context and session changes also invalidate late responses. Explicitly
+opening a document bypasses this queue. For document thumbnails, the server checks access
+and revision without reading the content or history again: the client already supplies the
+print snapshot. The key retains its hash, revision and lock version, and edits invalidate
+the existing cache.
+
+Chat and management avatar services keep blobs in memory for up to 60 seconds of reuse,
+each limited to 64 entries and 16 MiB. Endpoints remain separate according to their access
+rules; only simultaneous calls to the same endpoint and agent share a request. Network
+reads join the secondary preview queue, while fresh cache hits return directly.
+Local agent or avatar mutations invalidate affected entries in both services. Session
+changes clear caches and reject late responses. Changes from another client become visible
+on the next read after expiry. Failures are not retained between reads; no persistent browser
+cache is used.
+
+Each `getAvatarBlobUrl` caller still owns its object URL: revoking it cannot break another
+screen. Chat bubbles share a URL while mounted. Cancelling one reader preserves the others;
+the last cancellation aborts transport. Agent selections share only simultaneous reads,
+partitioned by scope (`management`, `dialogue`, `teams`), with no retained result between openings.
+
 Galaris separates a resource's canonical identity, its bounded transfer, and the strictly technical temporary files required by certain libraries.
 
 ## Source search

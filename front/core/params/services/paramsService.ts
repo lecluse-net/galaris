@@ -1,5 +1,10 @@
-import api from '@/core/api'
+import api, { AUTH_TOKEN_CHANGED_EVENT, sessionGeneration } from '@/core/api'
+import { createSessionResponseCache, invalidateSessionReads } from '@/core/util/facade'
 import type { AxiosResponse } from 'axios'
+
+const parameters = createSessionResponseCache<ParamsListResponse>({
+    group: 'parameters', sessionEvent: AUTH_TOKEN_CHANGED_EVENT, sessionKey: sessionGeneration, maxAgeMs: 300_000,
+})
 
 // Parameter response. Labels and descriptions are frontend translations keyed by
 // parameter name and are no longer returned by the API.
@@ -40,8 +45,8 @@ export const paramsService = {
     /**
      * Return every parameter name and value.
      */
-    getParamsList(): Promise<AxiosResponse<ParamsListResponse>> {
-        return api.get('/params')
+    getParamsList(force = false): Promise<AxiosResponse<ParamsListResponse>> {
+        return parameters.read(signal => api.get('/params', { signal }), force)
     },
 
     /**
@@ -49,7 +54,9 @@ export const paramsService = {
      * @param name Parameter name.
      * @param update Payload containing the new value.
      */
-    updateParam(name: string, update: ParamUpdate): Promise<AxiosResponse<ParamUpdateResponse>> {
-        return api.put(`/params/${name}`, update)
+    async updateParam(name: string, update: ParamUpdate): Promise<AxiosResponse<ParamUpdateResponse>> {
+        const response = await api.put<ParamUpdateResponse>(`/params/${name}`, update)
+        invalidateSessionReads('parameters')
+        return response
     }
 }

@@ -13,6 +13,32 @@ Les captures HTML passent par le navigateur partagé ; les raccourcis `.url` ré
 directement l'aperçu de leur URL cible. Chaque domaine contrôle les droits avant d'accéder
 au cache. Supprimer un raccourci ne supprime pas l'aperçu de sa cible.
 
+Dans l’interface, les cartes de ressources des messages attendent la proximité de la zone
+visible avant de charger leurs métadonnées. Leurs images et les miniatures de documents
+(discussion et bibliothèque) partagent une file de deux chargements simultanés, différés
+après le rendu initial. Sortir de la zone visible annule les chargements en attente ; les
+changements de contexte ou de session invalident aussi les réponses tardives. L’ouverture
+explicite d’un document ne passe pas par cette file. Pour une miniature documentaire, le
+serveur contrôle les droits et la révision sans relire le contenu ni l’historique : le client
+fournit déjà l’instantané d’impression. La clé conserve son hash, la révision et la version
+de verrouillage, et une modification invalide le cache existant.
+
+Les services d’avatars de Discussion et d’administration conservent leurs blobs en mémoire
+pendant au plus 60 secondes de réutilisation, chacun avec un maximum de 64 entrées et 16 Mio.
+Les endpoints restent séparés selon leurs droits ; seuls les appels simultanés au même
+endpoint et au même agent partagent la requête. Les lectures réseau rejoignent la file
+secondaire des aperçus, tandis qu’un résultat frais en cache revient directement.
+Une modification locale d’agent ou d’avatar invalide les entrées concernées des deux services.
+Tout changement de session vide les caches et rejette les réponses tardives. Une modification
+effectuée depuis un autre client devient visible à la prochaine lecture après expiration.
+Les échecs ne sont pas conservés entre lectures ; aucun cache persistant de navigateur n’est utilisé.
+
+Chaque appelant de `getAvatarBlobUrl` reste propriétaire de son URL objet : sa révocation
+ne casse pas un autre écran. Les bulles de Discussion partagent une URL tant qu’elles restent
+montées. Annuler un lecteur préserve les autres ; le dernier abandon annule le transport.
+Les listes de sélection d’agents mutualisent uniquement les lectures simultanées, par
+périmètre (`management`, `dialogue`, `teams`), sans conserver le résultat entre ouvertures.
+
 ## Recherche de sources
 
 `search_web` appelle SearXNG par HTTP asynchrone, avec un client possédé par l'appel :

@@ -1,7 +1,7 @@
 import { test, expect, mount, jsonRoute } from './fixtures.mjs'
 import { document as documentFixture } from './data.mjs'
 
-async function conversation(page, privileges = ['CHAT_SEND']) {
+async function conversation(page, privileges = ['CHAT_SEND'], commandsHandler = null) {
   const rooms = ['a', 'b'].map(code => ({ id: `room-${code}`, label: `Conversation ${code}`,
     agent_id: 7, agent_name: 'Alice', agent_active: false, source: null, writable: true,
     members: [], muted: false, archived: false, unread_count: 0, conversation_type: 'text' }))
@@ -20,6 +20,7 @@ async function conversation(page, privileges = ['CHAT_SEND']) {
     }))
     await jsonRoute(page, `**/api/chat/rooms/${room.id}/read`, {})
     await jsonRoute(page, `**/api/chat/rooms/${room.id}/commands`, { commands: [] })
+    if (commandsHandler) await page.route(`**/api/chat/rooms/${room.id}/commands`, commandsHandler)
     await jsonRoute(page, `**/api/chat/rooms/${room.id}/speech/status*`, { available_agent_ids: [] })
   }
   await jsonRoute(page, '**/api/chat/inbox', { unread_count: 0 })
@@ -29,6 +30,20 @@ async function conversation(page, privileges = ['CHAT_SEND']) {
   await expect(page.locator('.conversation-pane')).toContainText('Content room-a')
   return { rooms, messages }
 }
+
+test('messages and composer remain usable while optional commands are slow or unavailable', async ({ page }) => {
+  const releases = []
+  await conversation(page, ['CHAT_SEND'], async route => {
+    await new Promise(resolve => releases.push(resolve))
+    await route.fulfill({ status: 503, json: { detail: 'Temporarily unavailable' } })
+  })
+  await expect.poll(() => releases.length).toBeGreaterThan(0)
+  const composer = page.locator('.composer-shell textarea')
+  await composer.fill('A draft while commands are loading')
+  releases.forEach(release => release())
+  await expect(page.locator('.conversation-pane')).toContainText('Content room-a')
+  await expect(composer).toHaveValue('A draft while commands are loading')
+})
 
 async function refresh(page, key, method = 'refreshSelected') {
   await page.evaluate(async ({ key, method }) => {

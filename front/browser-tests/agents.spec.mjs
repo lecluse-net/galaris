@@ -9,6 +9,32 @@ async function agentFixtures(page) {
   await jsonRoute(page, '**/api/harnesses/agents/7', { containerized: true })
 }
 
+test('reopening agent management reuses catalogues while reloading the page retrieves them again', async ({ page }) => {
+  await agentFixtures(page)
+  const reads = { agents: 0, titles: 0, groups: 0 }
+  for (const [key, url] of Object.entries({ agents: '**/api/agents?*', titles: '**/api/agents/titles?*', groups: '**/api/agents/groups?*' })) {
+    await page.route(url, route => { reads[key]++; return route.fulfill({ json: [] }) })
+  }
+  const options = { component: 'app/agent/pages/index.vue', privileges: ['AGENT_EDIT'] }
+  await mount(page, options.component, options)
+  await expect(page.getByRole('button', { name: 'New Agent', exact: true })).toBeVisible()
+  await expect.poll(() => reads).toEqual({ agents: 1, titles: 1, groups: 1 })
+  await page.evaluate(async options => {
+    window.testApp.unmount()
+    await window.testApp.mount(options)
+  }, options)
+  await expect(page.getByRole('button', { name: 'New Agent', exact: true })).toBeVisible()
+  // Await both loads through the actual store, including the cached empty lists.
+  await page.evaluate(async () => {
+    const { useAgentStore } = await import('/app/agent/stores/agentStore.ts')
+    const store = useAgentStore(window.testApp.pinia)
+    await Promise.all([store.fetchAgents(), store.fetchTitles(), store.fetchGroups()])
+  })
+  expect(reads).toEqual({ agents: 1, titles: 1, groups: 1 })
+  await mount(page, options.component, options) // Full navigation, equivalent to F5 for memory caches.
+  await expect.poll(() => reads).toEqual({ agents: 2, titles: 2, groups: 2 })
+})
+
 test('agent creation requires a first name but accepts an empty last name', async ({ page }) => {
   await agentFixtures(page)
   await jsonRoute(page, '**/api/agents?*', [])

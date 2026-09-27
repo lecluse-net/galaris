@@ -12,8 +12,8 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
-import { chatService } from '../services/chatService'
+import { computed } from 'vue'
+import { useChatAvatar } from '../useChatAvatar'
 
 const {
   agentId,
@@ -29,10 +29,7 @@ const {
   textColor?: string
 }>()
 
-const avatarCache = new Map<number, string>()
-const avatarLoads = new Map<number, Promise<string>>()
-const avatarMisses = new Set<number>()
-const avatarUrl = ref(avatarCache.get(agentId) || '')
+const avatarUrl = useChatAvatar(() => agentId)
 const displayName = computed(() => name.trim() || `#${agentId}`)
 const initials = computed(() => {
   const parts = displayName.value.split(/\s+/).filter(Boolean)
@@ -40,32 +37,6 @@ const initials = computed(() => {
   const last = parts.length > 1 ? parts[parts.length - 1]?.[0] || '' : ''
   return `${first}${last}`.toLocaleUpperCase() || '?'
 })
-
-watch(
-  () => agentId,
-  id => {
-    avatarUrl.value = avatarCache.get(id) || ''
-    if (!avatarUrl.value && !avatarMisses.has(id)) void loadAvatar(id)
-  },
-  { immediate: true },
-)
-
-async function loadAvatar(id: number): Promise<void> {
-  let pending = avatarLoads.get(id)
-  if (!pending) {
-    pending = chatService.agentAvatarBlob(id).then(blob => URL.createObjectURL(blob))
-    avatarLoads.set(id, pending)
-  }
-  try {
-    const url = await pending
-    avatarCache.set(id, url)
-    if (agentId === id) avatarUrl.value = url
-  } catch {
-    avatarMisses.add(id)
-  } finally {
-    avatarLoads.delete(id)
-  }
-}
 </script>
 
 <style scoped>

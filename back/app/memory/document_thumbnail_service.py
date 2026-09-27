@@ -35,7 +35,10 @@ async def read_document_thumbnail(
     document_id: UUID, snapshot: DocumentThumbnailRender, *, actor_agent_id: int | HumanActor,
 ) -> bytes | None:
     """Capture the saved HTML revision after checking the current reader's access."""
-    item, _, _, _, _ = await service.get_item(document_id, agent_id=actor_agent_id)
+    item = await service.item_record(document_id, revisions=False)
+    if item is None:
+        raise service.MemoryNotFoundError("Document not found.")
+    await service.assert_item_access(item, actor_agent_id)
     if item.node_kind != "document":
         raise service.MemoryNotFoundError("Document not found.")
     if item.document_type == "dataset":
@@ -69,7 +72,7 @@ async def read_document_thumbnail(
             result = await asyncio.to_thread(_printed_document_thumbnail, pdf)
             if result is not None:
                 # An edit during Chromium rendering must not republish the invalidated capture.
-                current = await service.item_record(document_id)
+                current = await service.item_record(document_id, revisions=False)
                 if current is None or (current.revision, current.lock_version) != (snapshot.revision, snapshot.lock_version):
                     return None
                 await asyncio.to_thread(thumbnails.write, cache_path, result)

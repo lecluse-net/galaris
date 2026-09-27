@@ -1,4 +1,6 @@
 import { defineStore } from 'pinia'
+import { isAxiosError } from 'axios'
+import { sessionGeneration } from '@/core/api'
 import {
     paramsService,
     type ParamItem,
@@ -11,6 +13,8 @@ interface ParamsState {
     loading: boolean
     error: unknown
 }
+
+const reads = new WeakMap<object, symbol>()
 
 export const useParamsStore = defineStore('params', {
     state: (): ParamsState => ({
@@ -47,17 +51,24 @@ export const useParamsStore = defineStore('params', {
         /**
          * Load all parameters from the backend.
          */
-        async fetchParams(): Promise<void> {
+        async fetchParams(force = false): Promise<void> {
+            const request = Symbol()
+            reads.set(this, request)
+            const generation = sessionGeneration()
+            const current = () => reads.get(this) === request && generation === sessionGeneration()
             this.loading = true
             this.error = null
             try {
-                const response = await paramsService.getParamsList()
+                const response = await paramsService.getParamsList(force)
+                if (!current()) return
                 this.params = response.data.params
             } catch (error) {
+                if (!current() || (error instanceof DOMException && error.name === 'AbortError')) return
+                if (isAxiosError(error) && [401, 403].includes(error.response?.status ?? 0)) this.params = []
                 this.error = error
                 console.error('Error fetching params:', error)
             } finally {
-                this.loading = false
+                if (current()) this.loading = false
             }
         },
 

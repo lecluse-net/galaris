@@ -103,6 +103,19 @@ Use **Act → Chat** (`/chat`) to talk with an agent, **Act → Goals** (`/goal`
 objective, and **Act → Processes** (`/process`) for predefined workflows. The
 [user guide](README.md) explains when to choose a conversation, Task or Goal.
 
+When opening a conversation, messages appear without waiting for the command catalogue
+or call status. Link previews and document thumbnails load progressively near the visible
+area; you can read and compose while they load, and open a document before its thumbnail
+is ready.
+Messages from the same agent share its avatar load; initials remain visible while the
+image is unavailable.
+Avatars are also briefly reused across other screens. Replacing or deleting one in the app
+invalidates its cache; signing out clears it.
+
+Agent lists are reused for one minute; titles, groups and parameters for five minutes.
+Saving these resources invalidates the corresponding cache. To immediately see a change
+made from another session, reload the page with **F5**: all these memory caches start empty.
+
 Monitor work in **Monitor → Activity** (`/task`):
 
 | Tab | Contents | Direct link |

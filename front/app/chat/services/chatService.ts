@@ -1,4 +1,5 @@
-import { api } from '@/core/api'
+import { api, AUTH_TOKEN_CHANGED_EVENT, sessionGeneration } from '@/core/api'
+import { createSessionReadCache, queuePreview } from '@/core/util/facade'
 import type { DocumentFocus } from '../documentFocus'
 import type { MessengerInteraction } from '../types'
 import { isAxiosError } from 'axios'
@@ -10,6 +11,10 @@ interface HtmlPreviewTicket {
 }
 
 const base = '/chat'
+const avatars = createSessionReadCache<Blob>({
+  sessionEvent: AUTH_TOKEN_CHANGED_EVENT, sessionKey: sessionGeneration,
+  group: 'agent-avatar', maxAgeMs: 60_000, maxEntries: 64, maxBytes: 16 * 1024 * 1024, size: blob => blob.size,
+})
 
 export class DictationNotConfiguredError extends Error {
   constructor() {
@@ -33,7 +38,11 @@ export const chatService = {
   async clearIdentityMapping(toolId: number): Promise<void> { await api.delete(`${base}/identities/${toolId}`) },
   async viewerAgents(): Promise<ChatViewerAgent[]> { return (await api.get<ChatViewerAgent[]>(`${base}/viewer-agents`)).data },
   async recipients(search = ''): Promise<RecipientCatalog> { return (await api.get<RecipientCatalog>(`${base}/recipients`, { params: { search } })).data },
-  async agentAvatarBlob(agentId: number): Promise<Blob> { return (await api.get<Blob>(`${base}/agents/${agentId}/avatar`, { responseType: 'blob' })).data },
+  async agentAvatarBlob(agentId: number, signal?: AbortSignal): Promise<Blob> {
+    return avatars.read(String(agentId), sharedSignal => queuePreview(async () => (
+      await api.get<Blob>(`${base}/agents/${agentId}/avatar`, { responseType: 'blob', signal: sharedSignal })
+    ).data, sharedSignal), signal)
+  },
   async rooms(page = 1, pageSize = 50, search = '', agentId: number | null = null, includeExternal = false, includeArchived = false): Promise<Page<MessengerRoom>> { return (await api.get<Page<MessengerRoom>>(`${base}/rooms`, { params: { page, page_size: pageSize, search, agent_id: agentId, include_external: includeExternal, include_archived: includeArchived } })).data },
   async room(roomId: string, agentId: number | null = null): Promise<MessengerRoom> { return (await api.get<MessengerRoom>(`${base}/rooms/${roomId}`, { params: { agent_id: agentId } })).data },
   async updateRoomPreferences(roomId: string, label: string, showLastMessage: boolean): Promise<MessengerRoom> { return (await api.patch<MessengerRoom>(`${base}/rooms/${roomId}`, { label, show_last_message: showLastMessage })).data },
@@ -45,9 +54,9 @@ export const chatService = {
   async messageSpeechStatus(roomId: string, agentId: number | null = null): Promise<MessageSpeechStatus> { return (await api.get<MessageSpeechStatus>(`${base}/rooms/${roomId}/speech/status`, { params: { agent_id: agentId } })).data },
   async messageSpeechBlob(roomId: string, messageId: string, language: string, agentId: number | null = null): Promise<Blob> { return (await api.post<Blob>(`${base}/rooms/${roomId}/messages/${messageId}/speech`, undefined, { params: { language, agent_id: agentId }, responseType: 'blob' })).data },
   async updateMessageTopic(roomId: string, messageId: string, topicId: string, scope: MessageTopicChangeScope): Promise<MessageTopicUpdateResult> { return (await api.patch<MessageTopicUpdateResult>(`${base}/rooms/${roomId}/messages/${messageId}/topic`, { topic_id: topicId, scope })).data },
-  async messagePreviews(roomId: string, messageId: string, agentId: number | null = null): Promise<MessageResourcePreview[]> { return (await api.get<MessageResourcePreview[]>(`${base}/rooms/${roomId}/messages/${messageId}/previews`, { params: { agent_id: agentId } })).data },
-  async messagePreviewImageBlob(roomId: string, messageId: string, uri: string, agentId: number | null = null): Promise<Blob> { return (await api.get<Blob>(`${base}/rooms/${roomId}/messages/${messageId}/previews/image`, { params: { uri, agent_id: agentId }, responseType: 'blob' })).data },
-  async messagePreviewContentBlob(roomId: string, messageId: string, uri: string, agentId: number | null = null): Promise<Blob> { return (await api.get<Blob>(`${base}/rooms/${roomId}/messages/${messageId}/previews/content`, { params: { uri, agent_id: agentId }, responseType: 'blob' })).data },
+  async messagePreviews(roomId: string, messageId: string, agentId: number | null = null, signal?: AbortSignal): Promise<MessageResourcePreview[]> { return (await api.get<MessageResourcePreview[]>(`${base}/rooms/${roomId}/messages/${messageId}/previews`, { params: { agent_id: agentId }, signal })).data },
+  async messagePreviewImageBlob(roomId: string, messageId: string, uri: string, agentId: number | null = null, signal?: AbortSignal): Promise<Blob> { return (await api.get<Blob>(`${base}/rooms/${roomId}/messages/${messageId}/previews/image`, { params: { uri, agent_id: agentId }, responseType: 'blob', signal })).data },
+  async messagePreviewContentBlob(roomId: string, messageId: string, uri: string, agentId: number | null = null, signal?: AbortSignal): Promise<Blob> { return (await api.get<Blob>(`${base}/rooms/${roomId}/messages/${messageId}/previews/content`, { params: { uri, agent_id: agentId }, responseType: 'blob', signal })).data },
   async standaloneHtmlPreview(blob: Blob, name: string): Promise<string> { const data = new FormData(); data.append('file', blob, name); return (await api.post<HtmlPreviewTicket>(`${base}/html-previews`, data)).data.url },
   async activity(roomId: string, page = 1, pageSize = 50, agentId: number | null = null): Promise<ConversationActivityPage> { return (await api.get<ConversationActivityPage>(`${base}/rooms/${roomId}/activity`, { params: { page, page_size: pageSize, agent_id: agentId } })).data },
   async activityDetail(roomId: string, roundId: string, agentId: number | null = null): Promise<ConversationActivityDetail> { return (await api.get<ConversationActivityDetail>(`${base}/rooms/${roomId}/activity/${roundId}`, { params: { agent_id: agentId } })).data },

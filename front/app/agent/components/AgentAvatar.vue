@@ -12,7 +12,9 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, ref, watch } from 'vue'
+import { AUTH_TOKEN_CHANGED_EVENT } from '@/core/api'
+import { onSessionReadInvalidation } from '@/core/util/facade'
 import { useAgentStore } from '../stores/agentStore'
 import { agentService } from '../services/agentService'
 
@@ -32,10 +34,9 @@ const {
   hasAvatar?: boolean
 }>()
 
-const avatarCache = new Map<number, string>()
-const avatarLoads = new Map<number, Promise<string>>()
 const agentStore = useAgentStore()
-const avatarUrl = ref(avatarCache.get(agentId) || '')
+const avatarUrl = ref('')
+let request: AbortController | undefined
 const agent = computed(() => agentStore.agents.find(item => item.id === agentId) ?? null)
 const displayName = computed(() => {
   const value = agent.value
@@ -51,31 +52,46 @@ const initials = computed(() => {
   return `${first}${last}`.toLocaleUpperCase()
 })
 
+const available = computed(() => hasAvatar ?? agent.value?.has_avatar)
 watch(
   () => [agentId, hasAvatar ?? agent.value?.has_avatar] as const,
-  ([id, hasAvatar]) => {
-    avatarUrl.value = avatarCache.get(id) || ''
-    if (hasAvatar && !avatarUrl.value) void loadAvatar(id)
-  },
+  () => { void loadAvatar() },
   { immediate: true },
 )
 
-async function loadAvatar(id: number): Promise<void> {
-  let pending = avatarLoads.get(id)
-  if (!pending) {
-    pending = agentService.getAvatarBlobUrl(id)
-    avatarLoads.set(id, pending)
-  }
+function clear(): void {
+  request?.abort()
+  if (avatarUrl.value) URL.revokeObjectURL(avatarUrl.value)
+  avatarUrl.value = ''
+}
+
+async function loadAvatar(): Promise<void> {
+  clear()
+  if (!available.value) return
+  const current = new AbortController()
+  request = current
   try {
-    const url = await pending
-    avatarCache.set(id, url)
-    if (agentId === id) avatarUrl.value = url
+    const url = await agentService.getAvatarBlobUrl(agentId, current.signal)
+    if (current.signal.aborted) URL.revokeObjectURL(url)
+    else avatarUrl.value = url
   } catch {
     // Initials remain the stable fallback when an avatar cannot be loaded.
-  } finally {
-    avatarLoads.delete(id)
   }
 }
+
+const unsubscribe = onSessionReadInvalidation('agent-avatar', key => {
+  if (key === undefined || key === String(agentId)) void loadAvatar()
+})
+function onSessionChanged(event: Event): void {
+  clear()
+  if ((event as CustomEvent<string | null>).detail) void loadAvatar()
+}
+window.addEventListener(AUTH_TOKEN_CHANGED_EVENT, onSessionChanged)
+onBeforeUnmount(() => {
+  clear()
+  unsubscribe()
+  window.removeEventListener(AUTH_TOKEN_CHANGED_EVENT, onSessionChanged)
+})
 </script>
 
 <style scoped>

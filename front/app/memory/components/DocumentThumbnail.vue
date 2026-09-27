@@ -9,6 +9,7 @@
 <script setup lang="ts">
 import { onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from 'vue'
 import { AUTH_TOKEN_CHANGED_EVENT } from '@/core/api'
+import { queuePreview } from '@/core/util'
 import { websocket } from '@/core/websocket'
 import { memoryService } from '../services/memoryService'
 
@@ -23,6 +24,7 @@ const container = useTemplateRef<HTMLElement>('container')
 const url = ref('')
 const loading = ref(false)
 let visible = false
+let sessionAvailable = true
 let controller: AbortController | undefined
 let observer: IntersectionObserver | undefined
 let refreshTimer: ReturnType<typeof setTimeout> | undefined
@@ -36,12 +38,15 @@ async function load(): Promise<void> {
   controller?.abort()
   clearImage()
   loading.value = false
-  if (!visible) return
+  if (!visible || !sessionAvailable) return
   const request = new AbortController()
   controller = request
   loading.value = true
   try {
-    const blob = await memoryService.documentThumbnail(props.documentId, props.agentId ?? null, request.signal)
+    const blob = await queuePreview(
+      () => memoryService.documentThumbnail(props.documentId, props.agentId ?? null, request.signal),
+      request.signal,
+    )
     if (!request.signal.aborted && blob) url.value = URL.createObjectURL(blob)
   } catch {
     // The document remains usable when the optional renderer is unavailable.
@@ -71,8 +76,9 @@ function onDocumentDelete(event: { data?: { id?: string } }): void {
 }
 
 function onSessionChanged(event: Event): void {
+  sessionAvailable = Boolean((event as CustomEvent<string | null>).detail)
   resetSession()
-  if ((event as CustomEvent<string | null>).detail) void load()
+  if (sessionAvailable) void load()
 }
 
 watch(() => [props.documentId, props.revision, props.updatedAt, props.agentId], invalidate)
@@ -83,11 +89,9 @@ onMounted(() => {
   websocket.onConnect(invalidate)
   window.addEventListener(AUTH_TOKEN_CHANGED_EVENT, onSessionChanged)
   observer = new IntersectionObserver(entries => {
-    if (entries.some(entry => entry.isIntersecting)) {
-      visible = true
-      observer?.disconnect()
-      void load()
-    }
+    visible = entries.some(entry => entry.isIntersecting)
+    if (visible && !url.value) void load()
+    else if (!visible) { controller?.abort(); loading.value = false }
   }, { rootMargin: '160px' })
   if (container.value) observer.observe(container.value)
 })

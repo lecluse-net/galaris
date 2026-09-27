@@ -114,6 +114,20 @@ durable, ouvrez **Agir → Objectifs** (`/goal`). Pour lancer un workflow préd�
 ouvrez **Agir → Processus** (`/process`). Le [guide utilisateur](README.md) explique
 quand choisir une conversation, une Task ou un Goal.
 
+À l’ouverture d’une discussion, les messages s’affichent sans attendre le catalogue des
+commandes ni l’état des appels. Les aperçus de liens et les miniatures de documents se
+chargent progressivement à proximité de la zone visible ; vous pouvez lire et rédiger
+pendant leur chargement, et ouvrir un document avant que sa miniature soit prête.
+Les bulles d’un même agent partagent le chargement de son avatar ; ses initiales restent
+visibles tant que l’image n’est pas disponible.
+Les avatars sont aussi réutilisés brièvement entre les autres écrans. Un remplacement ou
+une suppression effectués dans l’application invalident leur cache ; la déconnexion le vide.
+
+Les listes d’agents sont réutilisées pendant une minute ; les titres, groupes et paramètres
+pendant cinq minutes. Les sauvegardes correspondantes invalident le cache concerné.
+Pour voir immédiatement un changement effectué depuis une autre session, rechargez la page
+avec **F5** : tous ces caches mémoire repartent à vide.
+
 Le suivi se fait dans **Superviser → Activité** (`/task`) :
 
 | Onglet | Contenu | Lien direct |

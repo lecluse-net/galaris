@@ -1,4 +1,5 @@
 import api from '@/core/api'
+import { invalidateSessionReads } from '@/core/util/facade'
 
 export interface TeamAgent {
   id: number
@@ -15,5 +16,7 @@ export const teamService = {
   },
   async membership(team: number, agent: number, present: boolean): Promise<void> {
     await api.put(`/agents/teams/${team}/members/${agent}`, { present })
+    invalidateSessionReads('agent-catalogue')
+    invalidateSessionReads('agent-selection')
   },
 }

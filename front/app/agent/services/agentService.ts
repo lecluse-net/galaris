@@ -1,5 +1,16 @@
-import api from '@/core/api'
+import api, { AUTH_TOKEN_CHANGED_EVENT, sessionGeneration } from '@/core/api'
+import { createSessionReadCache, createSessionResponseCache, invalidateSessionReads, queuePreview } from '@/core/util/facade'
 import type { AxiosResponse } from 'axios'
+
+const avatars = createSessionReadCache<Blob>({
+    sessionEvent: AUTH_TOKEN_CHANGED_EVENT, sessionKey: sessionGeneration,
+    group: 'agent-avatar', maxAgeMs: 60_000, maxEntries: 64, maxBytes: 16 * 1024 * 1024, size: blob => blob.size,
+})
+
+const referenceOptions = { sessionEvent: AUTH_TOKEN_CHANGED_EVENT, sessionKey: sessionGeneration, maxAgeMs: 60_000 }
+const agents = createSessionResponseCache<Agent[]>({ ...referenceOptions, group: 'agent-catalogue' })
+const titles = createSessionResponseCache<Title[]>({ ...referenceOptions, group: 'agent-titles', maxAgeMs: 300_000 })
+const groups = createSessionResponseCache<AgentGroup[]>({ ...referenceOptions, group: 'agent-groups', maxAgeMs: 300_000 })
 
 // Title interfaces
 export interface Title {
@@ -101,55 +112,74 @@ export type AgentUpdate = Partial<Omit<AgentCreate, 'code'>>
 
 // Title service
 export const titleService = {
-    getTitles(): Promise<AxiosResponse<Title[]>> {
-        return api.get('/agents/titles', { params: { limit: 500 } })
+    getTitles(force = false): Promise<AxiosResponse<Title[]>> {
+        return titles.read(signal => api.get('/agents/titles', { params: { limit: 500 }, signal }), force)
     },
     getTitle(id: number): Promise<AxiosResponse<Title>> {
         return api.get(`/agents/titles/${id}`)
     },
-    createTitle(title: TitleCreate): Promise<AxiosResponse<Title>> {
-        return api.post('/agents/titles', title)
+    async createTitle(title: TitleCreate): Promise<AxiosResponse<Title>> {
+        const response = await api.post<Title>('/agents/titles', title)
+        invalidateSessionReads('agent-titles')
+        return response
     },
-    updateTitle(id: number, title: TitleUpdate): Promise<AxiosResponse<Title>> {
-        return api.put(`/agents/titles/${id}`, title)
+    async updateTitle(id: number, title: TitleUpdate): Promise<AxiosResponse<Title>> {
+        const response = await api.put<Title>(`/agents/titles/${id}`, title)
+        invalidateSessionReads('agent-titles')
+        invalidateSessionReads('agent-catalogue')
+        invalidateSessionReads('agent-selection')
+        return response
     },
-    deleteTitle(id: number): Promise<AxiosResponse<void>> {
-        return api.delete(`/agents/titles/${id}`)
+    async deleteTitle(id: number): Promise<AxiosResponse<void>> {
+        const response = await api.delete(`/agents/titles/${id}`)
+        invalidateSessionReads('agent-titles')
+        invalidateSessionReads('agent-catalogue')
+        invalidateSessionReads('agent-selection')
+        return response
     }
 }
 
 // Agent group service
 export const agentGroupService = {
-    getGroups(): Promise<AxiosResponse<AgentGroup[]>> {
-        return api.get('/agents/groups', { params: { limit: 500 } })
+    getGroups(force = false): Promise<AxiosResponse<AgentGroup[]>> {
+        return groups.read(signal => api.get('/agents/groups', { params: { limit: 500 }, signal }), force)
     },
     getGroup(id: number): Promise<AxiosResponse<AgentGroup>> {
         return api.get(`/agents/groups/${id}`)
     },
-    createGroup(group: AgentGroupCreate): Promise<AxiosResponse<AgentGroup>> {
-        return api.post('/agents/groups', group)
+    async createGroup(group: AgentGroupCreate): Promise<AxiosResponse<AgentGroup>> {
+        const response = await api.post<AgentGroup>('/agents/groups', group)
+        invalidateSessionReads('agent-groups')
+        return response
     },
-    updateGroup(id: number, group: AgentGroupUpdate): Promise<AxiosResponse<AgentGroup>> {
-        return api.put(`/agents/groups/${id}`, group)
+    async updateGroup(id: number, group: AgentGroupUpdate): Promise<AxiosResponse<AgentGroup>> {
+        const response = await api.put<AgentGroup>(`/agents/groups/${id}`, group)
+        invalidateSessionReads('agent-groups')
+        return response
     },
-    deleteGroup(id: number): Promise<AxiosResponse<void>> {
-        return api.delete(`/agents/groups/${id}`)
+    async deleteGroup(id: number): Promise<AxiosResponse<void>> {
+        const response = await api.delete(`/agents/groups/${id}`)
+        invalidateSessionReads('agent-groups')
+        invalidateSessionReads('agent-catalogue')
+        return response
     }
 }
 
 // Agent service
 export const agentService = {
-    async getAgents(): Promise<AxiosResponse<Agent[]>> {
+    getAgents(force = false): Promise<AxiosResponse<Agent[]>> {
+      return agents.read(async signal => {
         // Consumers build complete trees and local selectors; traverse every page.
-        const response = await api.get<Agent[]>('/agents', { params: { skip: 0, limit: 500 } })
+        const response = await api.get<Agent[]>('/agents', { params: { skip: 0, limit: 500 }, signal })
         const agents = [...response.data]
         let size = response.data.length
         while (size === 500) {
-            const next = await api.get<Agent[]>('/agents', { params: { skip: agents.length, limit: 500 } })
+            const next = await api.get<Agent[]>('/agents', { params: { skip: agents.length, limit: 500 }, signal })
             agents.push(...next.data)
             size = next.data.length
         }
         return { ...response, data: agents }
+      }, force)
     },
     getAgent(id: number): Promise<AxiosResponse<Agent>> {
         return api.get(`/agents/${id}`)
@@ -157,35 +187,55 @@ export const agentService = {
     getManagers(): Promise<AxiosResponse<AgentManagerInfo[]>> {
         return api.get('/agents/managers')
     },
-    createAgent(agent: AgentCreate): Promise<AxiosResponse<Agent>> {
-        return api.post('/agents', agent, { headers: { 'X-Editorial-Profile-Version': '1' } })
+    async createAgent(agent: AgentCreate): Promise<AxiosResponse<Agent>> {
+        const response = await api.post('/agents', agent, { headers: { 'X-Editorial-Profile-Version': '1' } })
+        invalidateSessionReads('agent-selection')
+        invalidateSessionReads('agent-catalogue')
+        return response
     },
-    updateAgent(id: number, agent: AgentUpdate): Promise<AxiosResponse<Agent>> {
-        return api.put(`/agents/${id}`, agent, { headers: { 'X-Editorial-Profile-Version': '1' } })
+    async updateAgent(id: number, agent: AgentUpdate): Promise<AxiosResponse<Agent>> {
+        const response = await api.put(`/agents/${id}`, agent, { headers: { 'X-Editorial-Profile-Version': '1' } })
+        invalidateSessionReads('agent-avatar', String(id))
+        invalidateSessionReads('agent-selection')
+        invalidateSessionReads('agent-catalogue')
+        return response
     },
-    deleteAgent(id: number): Promise<AxiosResponse<void>> {
-        return api.delete(`/agents/${id}`)
+    async deleteAgent(id: number): Promise<AxiosResponse<void>> {
+        const response = await api.delete(`/agents/${id}`)
+        invalidateSessionReads('agent-avatar', String(id))
+        invalidateSessionReads('agent-selection')
+        invalidateSessionReads('agent-catalogue')
+        return response
     },
-    uploadAvatar(id: number, file: File): Promise<AxiosResponse<void>> {
+    async uploadAvatar(id: number, file: File): Promise<AxiosResponse<void>> {
         const formData = new FormData()
         formData.append('file', file)
-        return api.post(`/agents/${id}/avatar`, formData, {
+        const response = await api.post(`/agents/${id}/avatar`, formData, {
             headers: {
                 'Content-Type': 'multipart/form-data'
             }
         })
+        invalidateSessionReads('agent-avatar', String(id))
+        invalidateSessionReads('agent-selection')
+        invalidateSessionReads('agent-catalogue')
+        return response
     },
     getAvatarUrl(id: number): string {
         return `/api/agents/${id}/avatar`
     },
-    async getAvatarBlobUrl(id: number): Promise<string> {
-        const response = await api.get(`/agents/${id}/avatar`, {
-            responseType: 'blob'
-        })
-        return URL.createObjectURL(response.data)
+    async getAvatarBlobUrl(id: number, signal?: AbortSignal): Promise<string> {
+        const blob = await avatars.read(String(id), sharedSignal => queuePreview(async () => (
+            await api.get<Blob>(`/agents/${id}/avatar`, { responseType: 'blob', signal: sharedSignal })
+        ).data, sharedSignal), signal)
+        signal?.throwIfAborted()
+        return URL.createObjectURL(blob)
     },
-    deleteAvatar(id: number): Promise<AxiosResponse<void>> {
-        return api.delete(`/agents/${id}/avatar`)
+    async deleteAvatar(id: number): Promise<AxiosResponse<void>> {
+        const response = await api.delete(`/agents/${id}/avatar`)
+        invalidateSessionReads('agent-avatar', String(id))
+        invalidateSessionReads('agent-selection')
+        invalidateSessionReads('agent-catalogue')
+        return response
     },
     getDrivers(): Promise<AxiosResponse<ExecutorDriverInfo[]>> {
         return api.get('/agents/drivers')

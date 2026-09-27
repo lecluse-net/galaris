@@ -1,4 +1,5 @@
 import { defineStore } from 'pinia'
+import { isAxiosError } from 'axios'
 import { sessionGeneration } from '@/core/api'
 import { titleLabel } from '../titleLabels'
 import { agentService, titleService, agentGroupService, type Agent, type AgentCreate, type AgentUpdate, type Title, type TitleCreate, type TitleUpdate, type AgentGroup, type AgentGroupCreate, type AgentGroupUpdate } from '../services/agentService'
@@ -13,7 +14,20 @@ interface AgentState {
     error: unknown
 }
 
-const agentRequests = new WeakMap<object, { generation: string; promise: Promise<void> }>()
+const catalogueReads = new WeakMap<object, Map<string, symbol>>()
+
+function beginRead(store: object, catalogue: string): () => boolean {
+    const reads = catalogueReads.get(store) ?? new Map<string, symbol>()
+    catalogueReads.set(store, reads)
+    const request = Symbol(catalogue)
+    const generation = sessionGeneration()
+    reads.set(catalogue, request)
+    return () => reads.get(catalogue) === request && generation === sessionGeneration()
+}
+
+function cancelled(error: unknown): boolean {
+    return error instanceof DOMException && error.name === 'AbortError'
+}
 
 export const useAgentStore = defineStore('agent', {
     state: (): AgentState => ({
@@ -53,17 +67,21 @@ export const useAgentStore = defineStore('agent', {
     },
     actions: {
         // ==================== TITLES ====================
-        async fetchTitles(): Promise<void> {
+        async fetchTitles(force = false): Promise<void> {
+            const current = beginRead(this, 'titles')
             this.loading = true
             this.error = null
             try {
-                const response = await titleService.getTitles()
+                const response = await titleService.getTitles(force)
+                if (!current()) return
                 this.titles = response.data
             } catch (error) {
+                if (!current() || cancelled(error)) return
+                if (isAxiosError(error) && [401, 403].includes(error.response?.status ?? 0)) this.titles = []
                 this.error = error
                 console.error('Error fetching titles:', error)
             } finally {
-                this.loading = false
+                if (current()) this.loading = false
             }
         },
         async fetchTitle(id: number): Promise<void> {
@@ -129,17 +147,21 @@ export const useAgentStore = defineStore('agent', {
         },
 
         // ==================== GROUPS ====================
-        async fetchGroups(): Promise<void> {
+        async fetchGroups(force = false): Promise<void> {
+            const current = beginRead(this, 'groups')
             this.loading = true
             this.error = null
             try {
-                const response = await agentGroupService.getGroups()
+                const response = await agentGroupService.getGroups(force)
+                if (!current()) return
                 this.groups = response.data
             } catch (error) {
+                if (!current() || cancelled(error)) return
+                if (isAxiosError(error) && [401, 403].includes(error.response?.status ?? 0)) this.groups = []
                 this.error = error
                 console.error('Error fetching groups:', error)
             } finally {
-                this.loading = false
+                if (current()) this.loading = false
             }
         },
         async createGroup(group: AgentGroupCreate): Promise<AgentGroup> {
@@ -195,29 +217,22 @@ export const useAgentStore = defineStore('agent', {
         },
 
         // ==================== AGENTS ====================
-        async fetchAgents(): Promise<void> {
-            const generation = sessionGeneration()
-            const pending = agentRequests.get(this)
-            if (pending?.generation === generation) return pending.promise
+        async fetchAgents(force = false): Promise<void> {
+            const current = beginRead(this, 'agents')
             this.loading = true
             this.error = null
-            const promise = (async () => {
-                try {
-                    const response = await agentService.getAgents()
-                    if (generation !== sessionGeneration()) return
-                    this.agents = response.data
-                } catch (error) {
-                    if (generation !== sessionGeneration()) return
-                    this.agents = []
-                    this.error = error
-                    console.error('Error fetching agents:', error)
-                } finally {
-                    if (generation === sessionGeneration()) this.loading = false
-                    if (agentRequests.get(this)?.generation === generation) agentRequests.delete(this)
-                }
-            })()
-            agentRequests.set(this, { generation, promise })
-            return promise
+            try {
+                const response = await agentService.getAgents(force)
+                if (!current()) return
+                this.agents = response.data
+            } catch (error) {
+                if (!current() || cancelled(error)) return
+                this.agents = []
+                this.error = error
+                console.error('Error fetching agents:', error)
+            } finally {
+                if (current()) this.loading = false
+            }
         },
         async fetchAgent(id: number): Promise<void> {
             this.loading = true

@@ -1,105 +1,106 @@
 <template>
-  <div v-if="loading" class="resource-preview-loading" aria-live="polite">
-    <q-skeleton type="rect" height="86px" animation="fade" />
+  <div ref="container" class="resource-preview-container">
+    <div v-if="loading" class="resource-preview-loading" aria-live="polite">
+      <q-skeleton type="rect" height="86px" animation="fade" />
+    </div>
+    <div v-else-if="previews.length" class="resource-preview-list resource-preview-grid">
+      <ResourcePreviewBlock
+        v-for="preview in previews"
+        :key="preview.uri"
+        placement="below-page"
+        :title="preview.title || (preview.deleted ? t('chat.resourcePreview.kinds.document') : '')"
+        :disabled="preview.deleted"
+        :description="preview.kind === 'document' ? '' : preview.description"
+        :subtitle="preview.deleted ? t('chat.resourcePreview.documentDeleted') : [kindLabel(preview.kind), preview.subtitle].filter(Boolean).join(' · ')"
+        :uri="preview.uri"
+        :image="imageUrls[preview.uri]"
+        :icon="kindIcon(preview.kind)"
+        :href="preview.open_mode === 'external' ? preview.external_url ?? undefined : undefined"
+        :open-label="preview.open_mode === 'external'
+          ? t('chat.resourcePreview.openExternal')
+          : t('chat.resourcePreview.open', { title: preview.title })"
+        @open="handlePreviewClick($event, preview)"
+      >
+        <template v-if="preview.deleted" #preview>
+          <q-icon name="delete_outline" size="32px" style="color: var(--solaire-gray-accent)" />
+        </template>
+        <template v-else-if="documentId(preview) && canReadDocuments" #preview>
+          <WorkingDocumentThumbnail
+            :document-id="documentId(preview)!"
+            :revision="typeof preview.metadata.revision === 'number' ? preview.metadata.revision : null"
+            :updated-at="typeof preview.metadata.updated_at === 'string' ? preview.metadata.updated_at : null"
+            :agent-id="documentAgentId"
+            fill
+          />
+        </template>
+        <template v-else-if="resourceKind(preview) === 'model3d'" #preview>
+          <Model3dThumbnail :source="modelSource(preview)" />
+        </template>
+        <template v-if="documentId(preview) && !preview.deleted" #title-icon>
+          <DocumentIcon :document-id="documentId(preview)!" :title="preview.title" />
+        </template>
+        <template v-if="!preview.deleted" #actions>
+          <q-btn
+            v-if="canCoedit(preview)"
+            flat
+            round
+            dense
+            size="sm"
+            icon="vertical_split"
+            class="resource-preview-action"
+            :aria-label="t('chat.resourcePreview.coedit')"
+            @click="openCoediting(preview)"
+          >
+            <q-tooltip>{{ t('chat.resourcePreview.coedit') }}</q-tooltip>
+          </q-btn>
+          <q-btn
+            v-if="canOpenStandalone(preview)"
+            flat
+            round
+            dense
+            size="sm"
+            icon="open_in_new"
+            class="resource-preview-action"
+            :href="preview.external_url ?? undefined"
+            target="_blank"
+            rel="noopener noreferrer"
+            :loading="openingResourceUri === preview.uri"
+            :aria-label="t('chat.resourcePreview.openNewTab')"
+            @click="openStandalone($event, preview)"
+          >
+            <q-tooltip>{{ t('chat.resourcePreview.openNewTab') }}</q-tooltip>
+          </q-btn>
+          <q-btn
+            v-if="preview.download_available"
+            flat
+            round
+            dense
+            size="sm"
+            icon="download"
+            class="resource-preview-action"
+            :loading="downloadingUri === preview.uri"
+            :aria-label="t('chat.resourcePreview.download')"
+            @click="downloadPreview(preview)"
+          >
+            <q-tooltip>{{ t('chat.resourcePreview.download') }}</q-tooltip>
+          </q-btn>
+          <q-btn
+            v-if="preview.open_mode !== 'external'"
+            flat
+            round
+            dense
+            size="sm"
+            :icon="preview.kind === 'document' ? 'edit_note' : 'open_in_full'"
+            class="resource-preview-action"
+            :aria-label="t('chat.resourcePreview.open', { title: preview.title })"
+            @click="openPreview(preview)"
+          >
+            <q-tooltip>{{ t('chat.resourcePreview.open', { title: preview.title }) }}</q-tooltip>
+          </q-btn>
+        </template>
+      </ResourcePreviewBlock>
+    </div>
   </div>
-  <div v-else-if="previews.length" class="resource-preview-list resource-preview-grid">
-    <ResourcePreviewBlock
-      v-for="preview in previews"
-      :key="preview.uri"
-      placement="below-page"
-      :title="preview.title || (preview.deleted ? t('chat.resourcePreview.kinds.document') : '')"
-      :disabled="preview.deleted"
-      :description="preview.kind === 'document' ? '' : preview.description"
-      :subtitle="preview.deleted ? t('chat.resourcePreview.documentDeleted') : [kindLabel(preview.kind), preview.subtitle].filter(Boolean).join(' · ')"
-      :uri="preview.uri"
-      :image="imageUrls[preview.uri]"
-      :icon="kindIcon(preview.kind)"
-      :href="preview.open_mode === 'external' ? preview.external_url ?? undefined : undefined"
-      :open-label="preview.open_mode === 'external'
-        ? t('chat.resourcePreview.openExternal')
-        : t('chat.resourcePreview.open', { title: preview.title })"
-      @open="handlePreviewClick($event, preview)"
-    >
-      <template v-if="preview.deleted" #preview>
-        <q-icon name="delete_outline" size="32px" style="color: var(--solaire-gray-accent)" />
-      </template>
-      <template v-else-if="documentId(preview) && canReadDocuments" #preview>
-        <WorkingDocumentThumbnail
-          :document-id="documentId(preview)!"
-          :revision="typeof preview.metadata.revision === 'number' ? preview.metadata.revision : null"
-          :updated-at="typeof preview.metadata.updated_at === 'string' ? preview.metadata.updated_at : null"
-          :agent-id="documentAgentId"
-          fill
-        />
-      </template>
-      <template v-else-if="resourceKind(preview) === 'model3d'" #preview>
-        <Model3dThumbnail :source="modelSource(preview)" />
-      </template>
-      <template v-if="documentId(preview) && !preview.deleted" #title-icon>
-        <DocumentIcon :document-id="documentId(preview)!" :title="preview.title" />
-      </template>
-      <template v-if="!preview.deleted" #actions>
-        <q-btn
-          v-if="canCoedit(preview)"
-          flat
-          round
-          dense
-          size="sm"
-          icon="vertical_split"
-          class="resource-preview-action"
-          :aria-label="t('chat.resourcePreview.coedit')"
-          @click="openCoediting(preview)"
-        >
-          <q-tooltip>{{ t('chat.resourcePreview.coedit') }}</q-tooltip>
-        </q-btn>
-        <q-btn
-          v-if="canOpenStandalone(preview)"
-          flat
-          round
-          dense
-          size="sm"
-          icon="open_in_new"
-          class="resource-preview-action"
-          :href="preview.external_url ?? undefined"
-          target="_blank"
-          rel="noopener noreferrer"
-          :loading="openingResourceUri === preview.uri"
-          :aria-label="t('chat.resourcePreview.openNewTab')"
-          @click="openStandalone($event, preview)"
-        >
-          <q-tooltip>{{ t('chat.resourcePreview.openNewTab') }}</q-tooltip>
-        </q-btn>
-        <q-btn
-          v-if="preview.download_available"
-          flat
-          round
-          dense
-          size="sm"
-          icon="download"
-          class="resource-preview-action"
-          :loading="downloadingUri === preview.uri"
-          :aria-label="t('chat.resourcePreview.download')"
-          @click="downloadPreview(preview)"
-        >
-          <q-tooltip>{{ t('chat.resourcePreview.download') }}</q-tooltip>
-        </q-btn>
-        <q-btn
-          v-if="preview.open_mode !== 'external'"
-          flat
-          round
-          dense
-          size="sm"
-          :icon="preview.kind === 'document' ? 'edit_note' : 'open_in_full'"
-          class="resource-preview-action"
-          :aria-label="t('chat.resourcePreview.open', { title: preview.title })"
-          @click="openPreview(preview)"
-        >
-          <q-tooltip>{{ t('chat.resourcePreview.open', { title: preview.title }) }}</q-tooltip>
-        </q-btn>
-      </template>
-    </ResourcePreviewBlock>
-  </div>
-
   <FullscreenPreview
     v-model="dialogOpen"
     :immersive="immersivePreview"
@@ -281,6 +282,7 @@
 import { WorkingDocumentIcon as DocumentIcon, WorkingDocumentThumbnail } from '@/core/util'
 import { RichText, richTextExcerpt } from '@/core/util'
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
+import { AUTH_TOKEN_CHANGED_EVENT } from '@/core/api'
 import { useI18n } from 'vue-i18n'
 import { useQuasar } from 'quasar'
 import {
@@ -294,6 +296,7 @@ import {
   Markdown,
   TextResourcePreview,
   saveBlobAsResource,
+  queuePreview,
 } from '@/core/util'
 import type { BrowserResourceKind, Model3dSource, WorkingDocumentSnapshot } from '@/core/util'
 import { websocket } from '@/core/websocket'
@@ -332,6 +335,13 @@ const { t } = useI18n()
 const $q = useQuasar()
 const authStore = useAuthStore()
 const loading = ref(false)
+const container = ref<HTMLElement | null>(null)
+let visible = false
+let needsRefresh = true
+let sessionAvailable = true
+let pendingImages = 0
+let observer: IntersectionObserver | undefined
+let controller: AbortController | undefined
 const previews = ref<MessageResourcePreview[]>([])
 const selected = ref<MessageResourcePreview | null>(null)
 const dialogOpen = ref(false)
@@ -446,6 +456,7 @@ function documentPreviewIds(): Set<string> {
 }
 
 async function load(resetDialog = true): Promise<void> {
+  controller?.abort()
   const currentGeneration = ++generation
   const selectedUri = resetDialog ? null : selected.value?.uri ?? null
   if (resetDialog) {
@@ -457,13 +468,20 @@ async function load(resetDialog = true): Promise<void> {
     resetResource()
   }
   clearImages()
+  needsRefresh = true
+  pendingImages = 0
+  if (!visible || !sessionAvailable) { loading.value = false; return }
+  const request = new AbortController()
+  controller = request
   try {
-    const loaded = await chatService.messagePreviews(
+    const loaded = await queuePreview(() => chatService.messagePreviews(
       props.roomId,
       props.messageId,
       props.viewerAgentId,
-    )
+      request.signal,
+    ), request.signal)
     if (currentGeneration !== generation) return
+    needsRefresh = false
     previews.value = loaded
     if (selectedUri) {
       const refreshedSelection = loaded.find(item => item.uri === selectedUri) ?? null
@@ -477,7 +495,10 @@ async function load(resetDialog = true): Promise<void> {
     for (const item of loaded.filter(
       candidate => resourceKind(candidate) !== 'model3d' && (candidate.image_available || isInlineImagePreview(candidate)),
     )) {
-      void loadPreviewImage(item, currentGeneration)
+      pendingImages++
+      void loadPreviewImage(item, currentGeneration, request.signal).finally(() => {
+        if (currentGeneration === generation) pendingImages--
+      })
     }
   } catch {
     // A message remains readable even when none of its linked resources can be previewed.
@@ -488,33 +509,41 @@ async function load(resetDialog = true): Promise<void> {
 
 const thumbnailRetryDelays = [0, 1_000, 2_000, 4_000, 8_000, 16_000, 30_000]
 
-function waitForThumbnail(delay: number): Promise<void> {
-  return new Promise(resolve => window.setTimeout(resolve, delay))
+function waitForThumbnail(delay: number, signal: AbortSignal): Promise<void> {
+  return new Promise(resolve => {
+    const finish = (): void => { clearTimeout(timer); signal.removeEventListener('abort', finish); resolve() }
+    const timer = setTimeout(finish, delay)
+    if (signal.aborted) finish()
+    else signal.addEventListener('abort', finish, { once: true })
+  })
 }
 
 async function loadPreviewImage(
   preview: MessageResourcePreview,
   currentGeneration: number,
+  signal: AbortSignal,
 ): Promise<void> {
   const directImage = isInlineImagePreview(preview)
   const retryDelays = directImage ? [0] : thumbnailRetryDelays
   for (const delay of retryDelays) {
-    if (delay > 0) await waitForThumbnail(delay)
-    if (currentGeneration !== generation) return
+    if (delay > 0) await waitForThumbnail(delay, signal)
+    if (currentGeneration !== generation || signal.aborted) return
     try {
-      const blob = directImage
-        ? await chatService.messagePreviewContentBlob(
+      const blob = await queuePreview(() => directImage
+        ? chatService.messagePreviewContentBlob(
             props.roomId,
             props.messageId,
             preview.uri,
             props.viewerAgentId,
+            signal,
           )
-        : await chatService.messagePreviewImageBlob(
+        : chatService.messagePreviewImageBlob(
             props.roomId,
             props.messageId,
             preview.uri,
             props.viewerAgentId,
-          )
+            signal,
+          ), signal)
       if (currentGeneration !== generation) return
       if (blob.type && !blob.type.toLowerCase().startsWith('image/')) return
       const previousUrl = imageUrls[preview.uri]
@@ -522,7 +551,7 @@ async function loadPreviewImage(
       imageUrls[preview.uri] = URL.createObjectURL(blob)
       if (preview.open_mode === 'external' && !preview.description) {
         // The capture may have supplied metadata unavailable to the initial fetch.
-        void chatService.messagePreviews(props.roomId, props.messageId, props.viewerAgentId).then(updated => {
+        await queuePreview(() => chatService.messagePreviews(props.roomId, props.messageId, props.viewerAgentId, signal), signal).then(updated => {
           if (currentGeneration !== generation) return
           const enriched = updated.find(item => item.uri === preview.uri)
           if (enriched) previews.value = previews.value.map(item => item.uri === preview.uri ? enriched : item)
@@ -556,7 +585,8 @@ function openPreview(preview: MessageResourcePreview): void {
   }
   documentDialogOpen.value = false
   dialogOpen.value = true
-  if (resourceKind(preview) && !isInlineImagePreview(preview) && resourceKind(preview) !== 'model3d') void ensureResourceBlob()
+  if (resourceKind(preview) && resourceKind(preview) !== 'model3d'
+    && (!isInlineImagePreview(preview) || !imageUrls[preview.uri])) void ensureResourceBlob()
 }
 
 function canOpenStandalone(preview: MessageResourcePreview): boolean {
@@ -705,10 +735,11 @@ function onSelectedDocumentUnavailable(documentIdValue: string): void {
 }
 
 function scheduleRealtimeRefresh(): void {
+  needsRefresh = true
   if (realtimeTimer) clearTimeout(realtimeTimer)
   realtimeTimer = setTimeout(() => {
     realtimeTimer = undefined
-    void load(false)
+    if (visible) void load(false)
   }, 180)
 }
 
@@ -726,6 +757,11 @@ function onMemoryDelete(response: MemoryRealtimeEvent): void {
 
 function onWebsocketConnect(): void {
   scheduleRealtimeRefresh()
+}
+
+function onSessionChanged(event: Event): void {
+  sessionAvailable = Boolean((event as CustomEvent<string | null>).detail)
+  void load()
 }
 
 function prettyJson(content: string): string {
@@ -754,6 +790,18 @@ watch(dialogOpen, open => {
 })
 
 onMounted(() => {
+  window.addEventListener(AUTH_TOKEN_CHANGED_EVENT, onSessionChanged)
+  observer = new IntersectionObserver(entries => {
+    visible = entries.some(entry => entry.isIntersecting)
+    if (visible && needsRefresh) void load(false)
+    else if (!visible) {
+      needsRefresh ||= loading.value || pendingImages > 0
+      generation++
+      controller?.abort()
+      loading.value = false
+    }
+  }, { rootMargin: '160px' })
+  if (container.value) observer.observe(container.value)
   websocket.createWebsocket()
   websocket.onEvent('memory', 'update', onMemoryUpdate)
   websocket.onEvent('memory', 'delete', onMemoryDelete)
@@ -761,6 +809,9 @@ onMounted(() => {
 })
 
 onBeforeUnmount(() => {
+  observer?.disconnect()
+  controller?.abort()
+  window.removeEventListener(AUTH_TOKEN_CHANGED_EVENT, onSessionChanged)
   generation += 1
   if (realtimeTimer) clearTimeout(realtimeTimer)
   websocket.offEvent('memory', 'update', onMemoryUpdate)
@@ -772,6 +823,7 @@ onBeforeUnmount(() => {
 </script>
 
 <style scoped>
+.resource-preview-container { min-height: 1px; }
 .resource-preview-loading,.resource-preview-list { margin-top: 8px; }
 .resource-preview-video-frame { position: relative; width: 1280px; height: 720px; overflow: hidden; background: #000; }
 .resource-preview-video-frame.resource-preview-content--fit { width: 100vw; height: var(--galaris-preview-height, 100dvh); min-height: var(--galaris-preview-height, 100dvh); }

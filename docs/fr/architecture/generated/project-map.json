@@ -15770,6 +15770,7 @@
       },
       {
         "files": [
+          "front/app/agent/components/AgentAvatar.vue",
           "front/app/agent/components/AgentSelect.vue",
           "front/app/agent/composables/useHarnessLogs.ts",
           "front/app/agent/pages/index.vue",
@@ -15818,9 +15819,13 @@
       },
       {
         "files": [
+          "front/app/agent/components/AgentAvatar.vue",
           "front/app/agent/composables/useHarnessLogs.ts",
           "front/app/agent/pages/index.vue",
-          "front/app/agent/richContent.ts"
+          "front/app/agent/richContent.ts",
+          "front/app/agent/services/agentSelectionService.ts",
+          "front/app/agent/services/agentService.ts",
+          "front/app/agent/services/teamService.ts"
         ],
         "source": "app/agent",
         "target": "core/util"
@@ -15923,11 +15928,13 @@
           "front/app/chat/components/ChatNotificationBootstrap.vue",
           "front/app/chat/components/ConversationDocumentsPanel.vue",
           "front/app/chat/components/ConversationProcessesPanel.vue",
+          "front/app/chat/components/MessageResourcePreviews.vue",
           "front/app/chat/components/MessageTimeline.vue",
           "front/app/chat/pages/index.vue",
           "front/app/chat/services/chatService.ts",
           "front/app/chat/stores/chat.ts",
-          "front/app/chat/stores/inbox.ts"
+          "front/app/chat/stores/inbox.ts",
+          "front/app/chat/useChatAvatar.ts"
         ],
         "source": "app/chat",
         "target": "core/api"
@@ -15976,7 +15983,9 @@
           "front/app/chat/components/MessageResourcePreviews.vue",
           "front/app/chat/components/MessageTimeline.vue",
           "front/app/chat/components/SafeMessageContent.vue",
-          "front/app/chat/pages/index.vue"
+          "front/app/chat/pages/index.vue",
+          "front/app/chat/services/chatService.ts",
+          "front/app/chat/useChatAvatar.ts"
         ],
         "source": "app/chat",
         "target": "core/util"
@@ -16636,6 +16645,7 @@
           "front/app/memory/components/DocumentLibraryPage.vue",
           "front/app/memory/components/DocumentTagIcon.vue",
           "front/app/memory/components/DocumentTagIconPicker.vue",
+          "front/app/memory/components/DocumentThumbnail.vue",
           "front/app/memory/components/MemoryAttachmentButton.vue",
           "front/app/memory/components/MemoryGraph.vue",
           "front/app/memory/components/MemoryItemForm.vue",
@@ -17313,7 +17323,8 @@
         "files": [
           "front/core/params/services/configurationService.ts",
           "front/core/params/services/logCleanupService.ts",
-          "front/core/params/services/paramsService.ts"
+          "front/core/params/services/paramsService.ts",
+          "front/core/params/stores/paramsStore.ts"
         ],
         "source": "core/params",
         "target": "core/api"
@@ -17350,6 +17361,7 @@
           "front/core/params/components/SettingFieldControl.vue",
           "front/core/params/pages/harnesses/[provider].vue",
           "front/core/params/pages/index.vue",
+          "front/core/params/services/paramsService.ts",
           "front/core/params/settingsTypes.ts"
         ],
         "source": "core/params",
