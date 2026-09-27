@@ -430,7 +430,7 @@ onBeforeUnmount(() => {
 .conversation-document-preview { padding-right: 8px; }
 .conversation-document-thumbnail { position: relative; width: 108px; height: 76px; }
 .conversation-document--selected { color: inherit; background: var(--solaire-blue-light); box-shadow: inset 3px 0 var(--solaire-blue-accent); }
-:global(.body--dark) .conversation-document--selected { background: var(--solaire-blue-dark); }
+.body--dark .conversation-document--selected { background: var(--solaire-blue-dark); }
 .conversation-work-loader { display: flex; min-height: 36px; align-items: center; justify-content: center; }
 .conversation-work-inline-error { padding: 7px 10px; font-size: .75rem; }
 .conversation-document-create-dialog { width: min(520px, calc(100vw - 32px)); }

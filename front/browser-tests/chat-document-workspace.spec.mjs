@@ -69,6 +69,22 @@ async function openFromSearch(page) {
   await expect(page.locator('.chat-document-pane')).toContainText('document body')
 }
 
+async function expectReadableSelection(row, label) {
+  await expect(row).toHaveAttribute('aria-current', 'true')
+  await expect.poll(() => row.evaluate((element, labelSelector) => {
+    const luminance = color => {
+      const channels = color.match(/[\d.]+/g).slice(0, 3).map(Number).map(value => {
+        const channel = value / 255
+        return channel <= 0.04045 ? channel / 12.92 : ((channel + 0.055) / 1.055) ** 2.4
+      })
+      return channels[0] * 0.2126 + channels[1] * 0.7152 + channels[2] * 0.0722
+    }
+    const foreground = luminance(getComputedStyle(element.querySelector(labelSelector)).color)
+    const background = luminance(getComputedStyle(element).backgroundColor)
+    return (Math.max(foreground, background) + 0.05) / (Math.min(foreground, background) + 0.05)
+  }, label), { message: 'Selected labels must retain readable contrast when the theme changes' }).toBeGreaterThanOrEqual(4.5)
+}
+
 for (const editable of [true, false]) {
   test(`document selection, last cursor and visible passage survive composer focus (editable=${editable})`, async ({ page }) => {
     await page.setViewportSize({ width: 1600, height: 1000 })
@@ -245,11 +261,14 @@ for (const width of [1440, 390]) {
     await show('other-room')
     await expect(page.locator('.chat-document-pane')).toHaveCount(0)
     await expect(page.getByRole('dialog')).toHaveCount(0)
-    for (let attempt = 0; attempt < 2; attempt += 1) {
+    for (const dark of [false, true, false]) {
+      await page.evaluate(dark => window.testApp.dark(dark), dark)
       await show('room-a')
       const viewer = width < 1024 ? page.getByRole('dialog') : page.locator('.chat-document-pane')
       await expect(viewer).toContainText('Initial document body')
       await expect(documentRow).toHaveAttribute('aria-current', 'true')
+      await expectReadableSelection(documentRow, '.q-item__label')
+      await expectReadableSelection(page.locator('.room-item[aria-current="true"]'), '.room-agent-name')
       await viewer.getByRole('button', { name: width < 1024 ? 'Close' : 'Close working document', exact: true }).click()
       await expect(viewer).toHaveCount(0)
       await expect(documentRow).not.toHaveAttribute('aria-current', 'true')

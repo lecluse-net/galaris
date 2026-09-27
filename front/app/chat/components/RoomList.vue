@@ -162,7 +162,7 @@ function onScroll(event: Event): void {
 .room-item { min-height: 62px; padding: 1px 16px 1px 4px; margin: 2px 0; border-radius: 0; transition: background-color .16s ease, transform .16s ease; }
 .room-avatar { padding-right: 12px; }
 .room-item.room-item--active { color: inherit; background: var(--solaire-blue-light); border-radius: 0; box-shadow: inset 3px 0 var(--solaire-blue-accent); }
-:global(.body--dark) .room-item.room-item--active { background: var(--solaire-blue-dark); }
+.body--dark .room-item.room-item--active { background: var(--solaire-blue-dark); }
 .room-item--unread:not(.room-item--active) { background: color-mix(in srgb, var(--q-primary) 7%, var(--chat-surface, #fff)); }
 .room-item--unread .room-agent-name { color: var(--chat-text, #252b36); font-weight: 700; }
 .room-item--unread .room-message-preview { font-weight: 600; }
