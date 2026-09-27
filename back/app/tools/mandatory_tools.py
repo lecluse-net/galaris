@@ -171,6 +171,7 @@ INTEGRATED_TOOL_SPECS: tuple[IntegratedToolSpec, ...] = (
         description=DESCRIPTIONS["memory"],
         mcp_tools=(
             "memory_remember",
+            "memory_upcoming",
             "memory_forget",
             "memory_summarize",
             "document_share",

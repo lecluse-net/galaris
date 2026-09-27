@@ -910,8 +910,31 @@ warrant an immediate spontaneous write; a successful report delivery ordinarily 
 
 Before a warranted write, check the injected memories and, if needed and available, make one
 targeted memory search. Skip an equivalent existing fact rather than saving a paraphrase.
-Good memories are concise, self-contained, dated when time matters, and explicit about their
-subject.
+Good memories are concise, self-contained, and explicit about their subject. A historical date
+can belong in the prose without becoming a temporal anchor.
+
+`memory_remember` accepts an optional `temporal` object with `year`, `month`, `day`,
+`weekday` (Monday=1 through Sunday=7), `hour`, `minute`, and an IANA `timezone`.
+Setting `temporal` changes recall eligibility: in automatic context and the Memory list, an
+anchored item is excluded outside its matching period and forcibly selected when it matches,
+independently of the ordinary text, semantic, type and topic filters. Unanchored memories use
+the ordinary search criteria; the two result sets are united without duplicates. Access rights,
+conversation contact isolation and context budgets still apply; matching items get priority.
+Only supply an anchor for a reminder that should surface at that time: an appointment, birthday,
+or recurring habit. Never use it merely to record when a fact was learned, written or happened.
+Keep stable preferences, general knowledge and historical facts unanchored unless the user
+explicitly wants time-based recall. Never default to today or add a date to fill the field.
+Omitted components are unrestricted and specified components must all match: `{ "month": 9,
+"day": 27 }` matches every September 27; adding `year` selects one year. An hour without a
+minute matches that whole hour. Resolve relative dates from the source message's date and
+timezone; ask if ambiguous. Ordinary facts keep `temporal` unset. The server supplies its
+configured timezone when omitted, and validates impossible dates.
+
+Current and upcoming matches enter the ordinary governed context, independently of text
+similarity, with their matching local time. `memory_upcoming(limit=50, offset=0)` lists more
+matches within the configured window (24 hours by default); follow `next_offset` when present.
+These facts do not authorize notifications or create scheduled tasks. Their temporal anchor
+does not expire the memory. `file_info` and search metadata expose the saved anchor.
 
 Do not index:
 

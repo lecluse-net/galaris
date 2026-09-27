@@ -275,6 +275,7 @@ class MemoryItem(HistoryMixin, Base):
         nullable=False,
     )
     valid_from: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    temporal: Mapped[dict[str, Any] | None] = mapped_column(JSONB(none_as_null=True), nullable=True)
     valid_until: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True, index=True
     )
@@ -381,6 +382,7 @@ class MemoryItem(HistoryMixin, Base):
         Index("ix_memory_items_owner_hash", "owner_agent_id", "content_hash"),
         Index("ix_memory_items_user_owner_hash", "owner_user_id", "content_hash"),
         Index("ix_memory_items_activity", "activity_at"),
+        Index("ix_memory_items_temporal", "id", postgresql_where=sql_text("temporal IS NOT NULL")),
         Index(
             "ix_memory_items_search_vector_gin",
             "search_vector",
@@ -440,6 +442,8 @@ class MemoryRevision(Base):
     """Immutable metadata and resource pointer for one item revision."""
 
     __tablename__ = "memory_revisions"
+
+    temporal: Mapped[dict[str, Any] | None] = mapped_column(JSONB(none_as_null=True), nullable=True)
 
     id: Mapped[UUID] = mapped_column(
         PGUUID(as_uuid=True), primary_key=True, default=uuid4

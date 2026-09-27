@@ -8,6 +8,8 @@ from typing import Annotated, Any, Literal, Protocol, Union, cast
 from uuid import UUID
 
 from pydantic import BaseModel, Field, model_validator
+from app.memory import MemoryTemporalAnchor
+from core.util import local_timezone_name
 
 
 DreamMemoryType = Literal[
@@ -112,9 +114,11 @@ class MemoryExtractionExistingMemory(BaseModel):
     memory_type: DreamMemoryType = "semantic"
     keywords: list[DreamKeyword] = Field(default_factory=list, max_length=20)
     score: float = Field(default=0.0)
+    temporal: MemoryTemporalAnchor | None = None
 
 
 class MemoryExtractionMessage(BaseModel):
+    occurred_at: datetime | None = None
     speaker_name: str = Field(min_length=1, max_length=500)
     speaker_kind: Literal["human", "AI"]
     text: str = Field(min_length=1, max_length=8_000)
@@ -143,6 +147,8 @@ class MemoryExtractionInput(BaseModel):
     """Portable input shared by Dream and the isolated Memory Lab."""
 
     source_kind: MemoryExtractionSourceKind
+    source_at: datetime | None = None
+    timezone: str = Field(default_factory=local_timezone_name)
     topic: dict[str, Any]
     history: list[MemoryExtractionMessage] = Field(
         default_factory=lambda: list[MemoryExtractionMessage](), max_length=5
@@ -159,6 +165,7 @@ class MemoryCreateOperation(BaseModel):
     """Create one new, independently useful durable fact from the source."""
 
     action: Literal["CREATE"] = "CREATE"
+    temporal: MemoryTemporalAnchor | None = None
     title: str = Field(min_length=1, max_length=500)
     content: str = Field(min_length=1, max_length=8_000)
     memory_type: DreamMemoryType = "semantic"

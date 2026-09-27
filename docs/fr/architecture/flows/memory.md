@@ -19,6 +19,31 @@ conservation `retention_reason` de Dream reste appliqué.
 
 ## Lecture avant une exécution
 
+Les items peuvent porter un objet `temporal` facultatif (année, mois, jour, jour ISO de semaine,
+heure, minute et fuseau IANA). Les valeurs absentes sont libres et les contraintes présentes se
+combinent. La préparation du contexte réserve le rappel ordinaire aux souvenirs sans ancrage
+et sélectionne séparément les correspondances actuelles et celles
+de la fenêtre `MEMORY_TEMPORAL_LOOKAHEAD_HOURS`, sans condition de similarité avec la requête.
+Cette voie conserve les ACL, la portée contact et l'admission finale, déduplique les UUID et
+respecte le budget commun, avec priorité aux correspondances temporelles sur les souvenirs
+ordinaires et les expériences. Un souvenir daté hors fenêtre ne peut pas revenir par similarité.
+Le Topic et les types ne limitent pas la branche temporelle ; la portée du contact conversationnel
+reste obligatoire. L'occurrence figure dans l'extrait des capsules conversationnelles.
+`memory_upcoming` expose les pages supplémentaires. La temporalité est indépendante de la validité
+et ne déclenche ni notification ni expiration. Voir la décision
+[0144](../../../../project/decisions/0144-partial-memory-temporality.md).
+
+La liste d'administration réutilise `next_match` via le filtre `temporal` de `/memory/browse`.
+L'IHM applique toujours le filtre, dès la première recherche, sans possibilité de désactivation.
+Elle préremplit un unique champ date/heure avec le temps local du navigateur, convertit la cible
+en UTC explicite et transmet une anticipation nulle. Les filtres texte/type/sujet/interlocuteur
+sélectionnent les souvenirs sans ancrage. La branche temporelle sélectionne indépendamment les
+ancrages correspondants, même sans pertinence lexicale ou sémantique. L'union est comptée, triée
+et paginée en SQL avant hydratation ; les correspondances temporelles précèdent par défaut les
+autres résultats. Le plafond du rappel textuel ne tronque pas la branche temporelle.
+La réponse fournit `temporal_window` et `temporal_match_at` (null pour les souvenirs sans date).
+Une simulation conserve les ACL, la validité et les révisions actuelles.
+
 ```text
 journal app.messenger ──► snapshot de session borné ──┐
                                                        ├─► AgentRunContext

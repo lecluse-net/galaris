@@ -126,6 +126,12 @@ export const memorySessionFields: SettingField[] = [
 
 export const memoryContextFields: SettingField[] = [
     {
+        name: 'MEMORY_TEMPORAL_LOOKAHEAD_HOURS',
+        labelKey: 'memorySettings.fields.temporalHours',
+        descriptionKey: 'memorySettings.fields.temporalHoursHint',
+        input: 'integer', min: 0, max: 744,
+    },
+    {
         name: 'MEMORY_CONTEXT_ENABLED',
         labelKey: 'memorySettings.fields.contextEnabled',
         descriptionKey: 'memorySettings.fields.contextEnabledHint',

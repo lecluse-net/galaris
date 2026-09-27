@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
+from datetime import datetime
 from uuid import UUID
 
 from .contracts import MemorySearchItem
@@ -20,6 +21,11 @@ def _search_request(
     text: str,
     *,
     agent_id: int,
+    target_at: datetime | None = None,
+    exclude_temporal: bool = False,
+    keyword: str | None = None,
+    filter_topic_item_id: UUID | None = None,
+    filter_contact_item_id: UUID | None = None,
     semantic_query: str | None,
     limit: int | None,
     memory_types: Sequence[MemoryType],
@@ -34,6 +40,11 @@ def _search_request(
 ) -> MemoryRecallRequest:
     return MemoryRecallRequest(
         agent_id=agent_id,
+        target_at=target_at,
+        exclude_temporal=exclude_temporal,
+        keyword=keyword,
+        filter_topic_item_id=filter_topic_item_id,
+        filter_contact_item_id=filter_contact_item_id,
         query=text,
         semantic_query=semantic_query,
         limit=limit,
@@ -53,6 +64,11 @@ async def search_memory(
     text: str,
     *,
     agent_id: int,
+    target_at: datetime | None = None,
+    exclude_temporal: bool = False,
+    keyword: str | None = None,
+    filter_topic_item_id: UUID | None = None,
+    filter_contact_item_id: UUID | None = None,
     semantic_query: str | None = None,
     limit: int | None = None,
     memory_types: Sequence[MemoryType] = (),
@@ -75,6 +91,11 @@ async def search_memory(
     result = await search_memory_detailed(
         text,
         agent_id=agent_id,
+        target_at=target_at,
+        exclude_temporal=exclude_temporal,
+        keyword=keyword,
+        filter_topic_item_id=filter_topic_item_id,
+        filter_contact_item_id=filter_contact_item_id,
         semantic_query=semantic_query,
         limit=limit,
         memory_types=memory_types,
@@ -106,6 +127,11 @@ async def search_memory_detailed(
     text: str,
     *,
     agent_id: int,
+    target_at: datetime | None = None,
+    exclude_temporal: bool = False,
+    keyword: str | None = None,
+    filter_topic_item_id: UUID | None = None,
+    filter_contact_item_id: UUID | None = None,
     semantic_query: str | None = None,
     limit: int | None = None,
     memory_types: Sequence[MemoryType] = (),
@@ -125,6 +151,11 @@ async def search_memory_detailed(
     request = _search_request(
         text,
         agent_id=agent_id,
+        target_at=target_at,
+        exclude_temporal=exclude_temporal,
+        keyword=keyword,
+        filter_topic_item_id=filter_topic_item_id,
+        filter_contact_item_id=filter_contact_item_id,
         semantic_query=semantic_query,
         limit=limit,
         memory_types=memory_types,

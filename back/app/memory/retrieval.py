@@ -53,6 +53,7 @@ from .topic_ranking import rank_topic_projection_embeddings
 from .semantic_index import complete_projection_clause
 from .passages import lexical_excerpt, query_identity
 from . import relevance
+from .temporal import MemoryTemporalFilter
 
 
 RRF_RANK_CONSTANT = 60
@@ -274,6 +275,12 @@ def _search_request(
 ) -> MemorySearchRequest:
     return MemorySearchRequest(
         agent_id=request.agent_id,
+        exclude_temporal=request.exclude_temporal,
+        keyword=request.keyword,
+        filter_topic_item_id=request.filter_topic_item_id,
+        filter_contact_item_id=request.filter_contact_item_id,
+        temporal=MemoryTemporalFilter(target_at=request.target_at, timezone="UTC", lookahead_hours=0)
+        if request.target_at is not None else None,
         recall_query=request.query,
         # Recall is a candidate-ranking operation, not an exact search. Requiring
         # every word of a task label to match makes the lexical fail-open useless
@@ -341,6 +348,20 @@ def _item_filters(
         or_(MemoryItem.valid_from.is_(None), MemoryItem.valid_from <= now),
         or_(MemoryItem.valid_until.is_(None), MemoryItem.valid_until > now),
     ]
+    filters.extend(service._exact_scope_filters(  # pyright: ignore[reportPrivateUsage]
+        agent_id=request.agent_id, topic_item_id=request.filter_topic_item_id,
+        contact_item_id=request.filter_contact_item_id,
+    ))
+    if request.keyword and request.keyword.strip():
+        filters.append(MemoryItem.keywords.contains([request.keyword.strip()]))
+    if request.exclude_temporal:
+        filters.append(MemoryItem.temporal.is_(None))
+    if request.temporal is not None:
+        # Recall accepts one resolved instant. Apply the partial calendar before
+        # vector/graph limits, using each item's timezone, just like next_match.
+        if request.temporal.target_at is None or request.temporal.lookahead_hours != 0:
+            raise ValueError("Recall requires a resolved temporal instant.")
+        filters.append(service.temporal_match_clause(request.temporal.target_at))
     if request.memory_types:
         filters.append(MemoryItem.memory_type.in_(request.memory_types))
     if request.topic_item_id is not None and request.contact_item_id is not None:
@@ -1550,6 +1571,71 @@ async def admit_recall_hits(request: MemoryRecallRequest, hits: Sequence[MemoryS
     return await admit_search_hits(request.agent_id, hits, scope_filters=_item_filters(global_request))
 
 
+async def temporal_hits(
+    request: MemoryRecallRequest, *, limit: int, offset: int = 0,
+    now: datetime | None = None,
+) -> tuple[list[MemorySearchHit], bool]:
+    """Recall calendar matches without a lexical/embedding relevance gate.
+
+    Scan only anchored metadata in bounded pages, retaining the nearest requested
+    results. Apply exactly the same contact/ACL scope and final admission as recall.
+    """
+    from datetime import timedelta
+    from .temporal import MemoryTemporalAnchor, next_match
+
+    start = now or datetime.now(timezone.utc)
+    end = start + timedelta(hours=runtime_settings.MEMORY_TEMPORAL_LOOKAHEAD_HOURS)
+    request = request.model_copy(update={
+        "query": "", "keyword": None, "topic_item_id": None,
+        "filter_topic_item_id": None, "filter_contact_item_id": None,
+        "memory_types": [], "node_kinds": [], "memory_role": None,
+        "exclude_temporal": False, "target_at": None,
+    })
+    global_request, _ = _branch_requests(request, limit=limit)
+    filters = _item_filters(global_request)
+    cursor: UUID | None = None
+    selected: list[tuple[datetime, UUID]] = []
+    keep = offset + limit + 1
+    while True:
+        query = select(MemoryItem.id, MemoryItem.temporal).where(
+            *filters, MemoryItem.temporal.is_not(None),
+        ).order_by(MemoryItem.id).limit(200)
+        if cursor is not None:
+            query = query.where(MemoryItem.id > cursor)
+        rows = (await get_db().execute(query)).all()
+        if not rows:
+            break
+        for item_id, temporal in rows:
+            match = next_match(MemoryTemporalAnchor.model_validate(temporal), start, end)
+            if match is not None:
+                selected.append((match, item_id))
+        selected.sort()
+        del selected[keep:]
+        cursor = rows[-1][0]
+    has_more = len(selected) > offset + limit
+    matches = dict((item_id, instant) for instant, item_id in selected[offset:offset + limit])
+    if not matches:
+        return [], has_more
+    items = (await get_db().scalars(select(MemoryItem).where(
+        *filters, MemoryItem.id.in_(matches),
+    ).options(selectinload(MemoryItem.grants)).execution_options(populate_existing=True))).all()
+    hits: list[MemorySearchHit] = []
+    for item in items:
+        # A concurrent edit between metadata selection and hydration can change
+        # the calendar. Recompute rather than labeling it with a stale occurrence.
+        if item.temporal is None:
+            continue
+        match = next_match(MemoryTemporalAnchor.model_validate(item.temporal), start, end)
+        if match is None:
+            continue
+        hits.append(MemorySearchHit(
+            item=service.item_to_public(item, await effective_access(item, request.agent_id)),
+            excerpt=_excerpt(item.search_text), score=1.0, temporal_match_at=match,
+        ))
+    hits.sort(key=lambda hit: (hit.temporal_match_at or start, hit.item.id))
+    return await admit_recall_hits(request, hits), has_more
+
+
 async def recall_items(
     request: MemoryRecallRequest,
     *,
@@ -1592,4 +1678,29 @@ async def recall_items(
     return result
 
 
-__all__ = ["recall_items"]
+async def browse_items(request: MemorySearchRequest) -> MemorySearchPage:
+    """Unite ordinary relevance with independent calendar matches before pagination."""
+    if not request.hybrid or not request.query.strip():
+        return await service.search_items(request, record_llm_access=False, temporal_union=request.temporal is not None)
+    if request.temporal is not None:
+        window = request.temporal.window(now=datetime.now(timezone.utc), default_hours=0)
+        request = request.model_copy(update={"temporal": request.temporal.model_copy(update={"target_at": window.start})})
+    recall = await recall_items(MemoryRecallRequest(
+        agent_id=request.agent_id, query=request.query.strip(), limit=500,
+        exclude_temporal=request.temporal is not None or request.exclude_temporal,
+        keyword=request.keyword, memory_types=request.memory_types, node_kinds=request.node_kinds,
+        memory_role=request.memory_role, task_id=request.task_id,
+        topic_item_id=request.topic_item_id, contact_item_id=request.contact_item_id,
+        strict_contact_scope=request.strict_contact_scope,
+        filter_topic_item_id=request.filter_topic_item_id, filter_contact_item_id=request.filter_contact_item_id,
+        exclude_agent_projections=request.exclude_agent_projections,
+        exclude_source_managed=request.exclude_source_managed,
+    ))
+    page = await service.search_items(request, ranked_hits=recall.hits, record_llm_access=False,
+                                      temporal_union=request.temporal is not None)
+    page.recall_truncated = recall.has_more
+    page.degradation_reason = recall.degradation_reason
+    return page
+
+
+__all__ = ["recall_items", "browse_items"]

@@ -328,6 +328,7 @@ async def preview_duplicate_pairs(
     now = datetime.now(timezone.utc)
     filters: list[ColumnElement[bool]] = [
         first_item.node_kind == "memory",
+        first_item.temporal.is_not_distinct_from(second_item.temporal),
         second_item.node_kind == "memory",
         first_item.source_managed.is_(False),
         second_item.source_managed.is_(False),

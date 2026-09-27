@@ -29,6 +29,9 @@ def admit_synthetic_context_pages(monkeypatch):
     async def admit(_agent_id, hits):
         return hits
     monkeypatch.setattr(context, "admit_recall_hits", admit)
+    async def no_temporal_hits(*args, **kwargs):
+        return [], False
+    monkeypatch.setattr(context, "temporal_hits", no_temporal_hits)
 
 
 def _request(

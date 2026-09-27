@@ -14,6 +14,8 @@ import type {
   MemorySearchHit,
   MemorySortField,
   MemoryType,
+  MemoryTemporalFilter,
+  MemoryTemporalWindow,
 } from '../types'
 
 const MEMORY_PAGE_SIZE_OPTIONS = [10, 20, 50, 100, 500]
@@ -36,6 +38,14 @@ export const useMemoryStore = defineStore('memory', () => {
   const selectedTopicItemId = ref<string | null>(null)
   const selectedContactItemId = ref<string | null>(null)
   const query = ref('')
+  const temporal = ref<MemoryTemporalFilter>({
+    target_at: new Date(Math.floor(Date.now() / 60_000) * 60_000).toISOString(),
+    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+    lookahead_hours: 0,
+  })
+  const temporalWindow = ref<MemoryTemporalWindow | null>(null)
+  const recallTruncated = ref(false)
+  const degradationReason = ref<string | null>(null)
   const loading = ref(false)
   const detailLoading = ref(false)
   const saving = ref(false)
@@ -79,8 +89,14 @@ export const useMemoryStore = defineStore('memory', () => {
     }
     loading.value = true
     error.value = null
+    hits.value = []
+    temporalWindow.value = null
+    recallTruncated.value = false
+    degradationReason.value = null
     try {
       let result = await memoryService.browse({
+        hybrid: true,
+        temporal: temporal.value,
         agentId: selectedAgentId.value,
         query: query.value,
         memoryTypes: selectedTypes.value,
@@ -96,6 +112,8 @@ export const useMemoryStore = defineStore('memory', () => {
       if (page.value > lastPage) {
         page.value = lastPage
         result = await memoryService.browse({
+          hybrid: true,
+          temporal: temporal.value,
           agentId: selectedAgentId.value,
           query: query.value,
           memoryTypes: selectedTypes.value,
@@ -110,6 +128,9 @@ export const useMemoryStore = defineStore('memory', () => {
       const newFindings = await memoryService.listFindings(selectedAgentId.value)
       if (request !== searchRequest || agentId !== selectedAgentId.value) return
       hits.value = result.hits
+      temporalWindow.value = result.temporal_window ?? null
+      recallTruncated.value = result.recall_truncated ?? false
+      degradationReason.value = result.degradation_reason ?? null
       findings.value = newFindings
       total.value = result.total
       hasMore.value = result.has_more
@@ -127,9 +148,12 @@ export const useMemoryStore = defineStore('memory', () => {
   }
 
   function invalidateAccess(): void {
+    recallTruncated.value = false
+    degradationReason.value = null
     searchRequest++
     detailRequest++
     hits.value = []
+    temporalWindow.value = null
     findings.value = []
     currentItem.value = null
     revisions.value = []
@@ -320,6 +344,10 @@ export const useMemoryStore = defineStore('memory', () => {
     selectedTopicItemId,
     selectedContactItemId,
     query,
+    temporal,
+    temporalWindow,
+    recallTruncated,
+    degradationReason,
     loading,
     detailLoading,
     saving,

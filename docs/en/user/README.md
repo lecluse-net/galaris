@@ -253,6 +253,38 @@ A local cancellation does not always guarantee that the external engine will sto
 
 Recent conversation memory is reconstructed automatically. For durable context, Galaris can inject a bounded reminder of relevant memories before execution. If semantic search is unavailable, the interface indicates the fallback to lexical search.
 
+A memory's details include **Temporality (optional)**. Enter only meaningful components:
+day, month, year, weekday, hour and minute. Empty fields are unrestricted: day 27 and month 9
+mean every September 27; adding a year restricts the match to that year. A date without a time
+matches the whole day. Hour 9 without a minute matches 9:00–9:59. The proposed timezone comes
+from the application and can be changed. An interpretation appears below the fields;
+**Remove temporality** preserves the memory and its content.
+
+Current and upcoming matches enrich agent context under the same access rules. Configure the
+lookahead in **Preferences → Memory** (24 hours by default). Context remains bounded; agents
+can inspect additional matches with `memory_upcoming`. This creates no notification and does
+not expire the memory. Agents and Dream reserve anchors for intended reminders (appointments,
+birthdays or habits). A historical date stays in the prose and does not itself justify an anchor.
+Adding an anchor excludes the memory from automatic recall outside its period and gives it priority
+when it matches. Undated memories continue through ordinary relevance search.
+
+In **Memory → List**, the temporal filter always applies, starting with the first search. A single
+date and time field is prefilled with the browser's current local time. Edit it and click **Apply**
+to check that exact instant, with no lookahead or timezone to enter. The list unites two independent
+selections: **undated memories** matching text, type, topic and interlocutor filters, and **dated memories**
+matching the target time regardless of those other filters. Dated memories outside their period are excluded.
+The target date appears in the filter; dated results display their matching time in browser local time.
+The field is required and the filter cannot be disabled. The simulation
+uses current memories, validity and access rights; it does not reconstruct historical state.
+
+Search is integrated into **List**; the two tabs are **List** and **Graph**.
+A text query uses lexical and semantic recall under the selected filters. Relevant results
+are bounded to 500 undated memories. Calendar matches are added independently of that limit.
+The combined results can be paginated and sorted without duplicates; calendar matches appear first by default. A message asks you
+to refine the search when this selection is truncated and indicates fallback to matching words
+when semantic search is unavailable. With no text, the list browses all undated memories matching
+the filters, plus calendar matches.
+
 A document used with the same Agent remains a recall candidate after many ordinary exchanges.
 The Agent recovers its reference, current title and revision, subject to current access rights.
 Deleted or newly private documents are excluded. Recall remains bounded: provide an exact URI
@@ -260,7 +292,7 @@ if an older document cannot be found.
 
 In **Memory**, authorized accounts can:
 
-- test an Agent’s recall and see the mode actually used;
+- search an Agent’s memories directly in List;
 - view content, revisions, provenance, relationships, and uses;
 - correct or archive an ordinary memory;
 - share an item directly for reading or editing;

@@ -360,6 +360,42 @@ La mémoire récente d’une conversation est reconstruite automatiquement. Pour
 Galaris peut injecter avant l’exécution un rappel borné des souvenirs pertinents. Si la recherche
 sémantique est indisponible, l’interface indique le repli vers la recherche lexicale.
 
+La fiche d'un souvenir propose une **Temporalité (facultative)**. Renseignez uniquement les
+composantes utiles : jour, mois, année, jour de semaine, heure et minute. Les champs vides
+restent libres : jour 27 et mois 9 signifient chaque 27 septembre ; ajouter une année limite
+la correspondance à cette année. Une date sans heure correspond toute la journée. L'heure 9
+sans minute correspond de 9 h à 9 h 59. Le fuseau proposé est celui de l'application et peut
+être changé. L'interprétation s'affiche sous les champs ; **Retirer la temporalité** conserve
+le souvenir et son contenu.
+
+Les correspondances actuelles ou prochaines enrichissent le contexte des agents, avec les
+mêmes droits d'accès. L'anticipation se règle dans **Préférences → Mémoire** (24 heures par
+défaut). Le contexte reste borné ; l'agent peut consulter les correspondances supplémentaires
+avec `memory_upcoming`. Aucune notification ni expiration du souvenir n'est déclenchée.
+Les agents et Dream réservent ces valeurs aux rappels voulus à une date donnée (rendez-vous,
+anniversaire, habitude). Une date historique reste dans le texte : elle ne justifie pas à elle
+seule une temporalité. Ajouter un ancrage exclut le souvenir du rappel automatique hors période
+et lui donne priorité lorsqu'il correspond. Les souvenirs sans date suivent la recherche habituelle.
+
+Dans **Mémoire → Liste**, le filtre temporel est toujours appliqué, dès la première recherche.
+Un seul champ date et heure est prérempli avec l'heure actuelle du navigateur. Modifiez-le puis
+cliquez sur **Appliquer** pour tester précisément cet instant, sans anticipation ni fuseau à saisir.
+La liste réunit deux sélections indépendantes : les souvenirs **sans date** répondant aux filtres
+texte, type, sujet et interlocuteur ; les souvenirs **datés** correspondant à la date cible,
+même s'ils ne répondent pas aux autres filtres. Un souvenir daté hors période est exclu.
+La date cible figure dans le filtre ; la correspondance figure sur les souvenirs datés.
+Le champ est obligatoire et le filtre ne peut pas être désactivé. Cette simulation
+utilise les souvenirs, leur validité et les droits actuels ; elle ne reconstitue pas un historique.
+
+La recherche est regroupée dans **Liste** ; les deux onglets sont **Liste** et **Graphe**.
+Une requête textuelle utilise le rappel lexical et sémantique, sous les filtres sélectionnés.
+La sélection textuelle est bornée à 500 souvenirs sans date. Les correspondances temporelles
+s'y ajoutent sans dépendre de cette limite. L'ensemble est paginé et triable sans doublons ;
+par défaut, les correspondances temporelles apparaissent en premier.
+Un message invite à affiner la recherche si cette sélection est tronquée et signale le repli
+sur les mots recherchés si la recherche sémantique est indisponible. Sans texte, la liste
+parcourt tous les souvenirs sans date correspondant aux filtres, plus les correspondances temporelles.
+
 Un document manipulé avec le même agent reste candidat au rappel même après de nombreux
 échanges ordinaires. L'agent retrouve sa référence, son titre et sa révision actuels, sous
 réserve des droits courants. Les documents supprimés ou devenus privés sont exclus. Ce
@@ -367,7 +403,7 @@ rappel reste borné : fournissez son URI exacte si un ancien document n'est pas 
 
 Dans **Mémoire**, les comptes autorisés peuvent :
 
-- tester le rappel d’un agent et voir le mode réellement utilisé ;
+- rechercher les souvenirs d’un agent directement dans Liste ;
 - consulter contenu, révisions, provenance, relations et usages ;
 - corriger ou archiver un souvenir ordinaire ;
 - partager directement un élément en lecture ou édition ;

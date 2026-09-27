@@ -1,8 +1,9 @@
 # Décisions d’architecture
 
 - [0145 — Réveils du runtime après commit](0145-committed-runtime-wakeups.md)
-- [0143 — Suppression du briefing d’exécution](0143-retire-execution-briefing.md)
+- [0144 — Temporalité partielle des souvenirs](0144-partial-memory-temporality.md)
 
+- [0143 — Suppression du briefing d’exécution](0143-retire-execution-briefing.md)
 - [0142 — Caches de lecture client bornés et séparés par autorisation](0142-bounded-client-read-caches.md)
 
 - [0140 — Collections de tâches développées progressivement](0140-progressive-plan-collections.md)

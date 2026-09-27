@@ -41,6 +41,7 @@
         <EditorialContent v-else-if="detail.payload.text != null" class="memory-history-content"
           :content="detail.payload.text" :media-type="detail.media_type" />
         <q-banner v-else dense>{{ t('memory.binaryContent') }}</q-banner>
+        <MemoryTemporalFields :model-value="detail.temporal ?? null" readonly />
       </template>
     </section>
   </div>
@@ -48,6 +49,7 @@
 
 <script setup lang="ts">
 import DocumentIcon from './DocumentIcon.vue'
+import MemoryTemporalFields from './MemoryTemporalFields.vue'
 import { onBeforeUnmount, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { CodeEditor, EditorialContent } from '@/core/util'

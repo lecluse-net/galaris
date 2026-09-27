@@ -40,6 +40,7 @@ def item_to_public(item: MemoryItem, access: MemoryAccess) -> MemoryItemPublic:
             "last_accessed_at": item.last_accessed_at,
             "access_count": item.access_count,
             "valid_from": item.valid_from,
+            "temporal": item.temporal,
             "valid_until": item.valid_until,
             "old_at": item.old_at,
             "old_reason": item.old_reason,

@@ -179,6 +179,7 @@ class RuntimeSettings(BaseModel):
     # Governed long-term memory and post-task capture.
     MEMORY_CONTEXT_ENABLED: bool = True
     MEMORY_CONTEXT_MAX_ITEMS: int = Field(default=8, ge=1, le=50)
+    MEMORY_TEMPORAL_LOOKAHEAD_HOURS: int = Field(default=24, ge=0, le=744)
     MEMORY_CONTEXT_MAX_CHARS: int = Field(default=12_000, ge=1_000, le=200_000)
     MEMORY_RECALL_CANDIDATE_LIMIT: int = Field(default=48, ge=8, le=200)
     MEMORY_RECALL_SEMANTIC_QUERY_MAX_CHARS: int = Field(

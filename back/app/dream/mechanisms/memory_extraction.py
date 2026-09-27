@@ -69,6 +69,24 @@ Supported retention reasons are:
 - explicit_correction: a correction that should prevent the same misunderstanding or error later;
 - durable_relationship: a stable relationship between identified people or organizations.
 
+Appointments and future commitments qualify as explicit_decision_or_commitment. An explicit
+birthday or recurring habit can qualify as stable_personal_fact or recurring_constraint.
+Optionally set temporal ONLY when the fact warrants date/time recall. Its year, month, day,
+weekday (ISO Monday=1..Sunday=7), hour and minute are independent optional constraints; null
+means any value. September 27 every year is month=9/day=27 without a year. All-day dates have
+no hour or minute. Use the supplied IANA timezone unless the source specifies another one.
+Never fill unspecified components with today's values. Resolve relative dates using the
+supporting message's occurred_at (or source_at), never the extraction time. If the source
+date or intended date is ambiguous, leave temporal null. Keep temporal null for ordinary facts.
+An anchor is a recall rule, not a historical timestamp: it excludes the memory from automatic
+recall outside the matching period and forces priority inclusion when it matches, independently
+of ordinary search relevance (access rights and budgets still apply). Without an anchor the
+memory remains available to ordinary recall. Use anchors only for intended reminders such as
+appointments, birthdays or recurring habits. A date in a report, a past event, a message timestamp
+or a stable preference does not by itself justify an anchor; keep such dates in the prose.
+LINK cannot add or correct temporal: CREATE when the candidate lacks the required anchor or
+has different calendar constraints, even if its prose contains a similar fact.
+
 For every qualifying independent fact, choose exactly one operation:
 - CREATE when the precise fact is not already present in any supplied existing node;
 - LINK when any existing node already contains that precise durable fact and this source should
@@ -190,6 +208,7 @@ def existing_memories_from_hits(
                 memory_type=hit.item.memory_type,
                 keywords=list(hit.item.keywords[:20]),
                 score=hit.score,
+                temporal=hit.item.temporal,
             )
         )
     return result
@@ -218,6 +237,8 @@ def validate_memory_extraction_decision(
         if operation.retention_reason == "unspecified" or operation.future_utility != "high":
             continue
         normalized = " ".join(operation.content.casefold().split())
+        if operation.temporal is not None:
+            normalized += operation.temporal.model_dump_json()
         if not normalized or normalized in created_contents:
             continue
         created_contents.add(normalized)
@@ -429,6 +450,7 @@ async def apply_memory_extraction(
                 source_kind=source_kind,
                 source_ref=source_ref,
                 metadata=operation_metadata,
+                temporal=operation.temporal if isinstance(operation, MemoryCreateOperation) else None,
                 idempotency_key=hashlib.sha256(
                     f"{idempotency_prefix}:{index}".encode("utf-8")
                 ).hexdigest(),

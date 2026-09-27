@@ -12,6 +12,24 @@ Supported retention reasons are:
 - explicit_correction: a correction that should prevent the same misunderstanding or error later;
 - durable_relationship: a stable relationship between identified people or organizations.
 
+Appointments and future commitments qualify as explicit_decision_or_commitment. An explicit
+birthday or recurring habit can qualify as stable_personal_fact or recurring_constraint.
+Optionally set temporal ONLY when the fact warrants date/time recall. Its year, month, day,
+weekday (ISO Monday=1..Sunday=7), hour and minute are independent optional constraints; null
+means any value. September 27 every year is month=9/day=27 without a year. All-day dates have
+no hour or minute. Use the supplied IANA timezone unless the source specifies another one.
+Never fill unspecified components with today's values. Resolve relative dates using the
+supporting message's occurred_at (or source_at), never the extraction time. If the source
+date or intended date is ambiguous, leave temporal null. Keep temporal null for ordinary facts.
+An anchor is a recall rule, not a historical timestamp: it excludes the memory from automatic
+recall outside the matching period and forces priority inclusion when it matches, independently
+of ordinary search relevance (access rights and budgets still apply). Without an anchor the
+memory remains available to ordinary recall. Use anchors only for intended reminders such as
+appointments, birthdays or recurring habits. A date in a report, a past event, a message timestamp
+or a stable preference does not by itself justify an anchor; keep such dates in the prose.
+LINK cannot add or correct temporal: CREATE when the candidate lacks the required anchor or
+has different calendar constraints, even if its prose contains a similar fact.
+
 For every qualifying independent fact, choose exactly one operation:
 
 - CREATE when the precise fact is not already present in any supplied existing node;

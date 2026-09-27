@@ -34,6 +34,7 @@ def test_memory_mcp_family_is_discovered_once() -> None:
     names = mcp_tool_names_by_tool_code()
     expected = {
         "memory_remember",
+        "memory_upcoming",
         "memory_forget",
         "memory_summarize",
         "document_share",

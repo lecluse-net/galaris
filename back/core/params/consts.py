@@ -161,6 +161,7 @@ class Params:
     # Governed long-term memory and asynchronous capture.
     MEMORY_CONTEXT_ENABLED = "MEMORY_CONTEXT_ENABLED"
     MEMORY_CONTEXT_MAX_ITEMS = "MEMORY_CONTEXT_MAX_ITEMS"
+    MEMORY_TEMPORAL_LOOKAHEAD_HOURS = "MEMORY_TEMPORAL_LOOKAHEAD_HOURS"
     MEMORY_CONTEXT_MAX_CHARS = "MEMORY_CONTEXT_MAX_CHARS"
     MEMORY_RECALL_CANDIDATE_LIMIT = "MEMORY_RECALL_CANDIDATE_LIMIT"
     MEMORY_RECALL_SEMANTIC_QUERY_MAX_CHARS = (
@@ -547,6 +548,9 @@ DEFAULT_PARAMS: dict[str, ParamConfig] = {
     },
     Params.MEMORY_CONTEXT_MAX_ITEMS: {
         "value": "8", "runtime_field": "MEMORY_CONTEXT_MAX_ITEMS", "kind": "integer"
+    },
+    Params.MEMORY_TEMPORAL_LOOKAHEAD_HOURS: {
+        "value": "24", "runtime_field": "MEMORY_TEMPORAL_LOOKAHEAD_HOURS", "kind": "integer"
     },
     Params.MEMORY_CONTEXT_MAX_CHARS: {
         "value": "12000", "runtime_field": "MEMORY_CONTEXT_MAX_CHARS", "kind": "integer"

@@ -64,6 +64,10 @@ def _idempotency_key(data: MemoryAcquisitionCreate) -> str:
             data.content,
         )
     )
+    if data.temporal is not None:
+        raw += "\x1f" + data.temporal.model_dump_json()
+    elif data.action == "update" and "temporal" in data.model_fields_set:
+        raw += "\x1fnull"
     return hashlib.sha256(raw.encode("utf-8")).hexdigest()
 
 
@@ -114,6 +118,9 @@ async def _create_acquisition_record(
     )
     if existing is not None:
         return existing, False
+    record_metadata = dict(data.metadata)
+    if "temporal" in data.model_fields_set:
+        record_metadata["temporal"] = data.temporal.model_dump(mode="json") if data.temporal else None
     record = MemoryAcquisition(
         agent_id=data.agent_id,
         action=data.action,
@@ -125,7 +132,7 @@ async def _create_acquisition_record(
         source_ref=data.source_ref.strip(),
         status="pending",
         idempotency_key=key,
-        metadata_=dict(data.metadata),
+        metadata_=record_metadata,
     )
     db.add(record)
     await db.commit()
@@ -193,6 +200,7 @@ def _item_create_data(record: MemoryAcquisition) -> MemoryItemCreate:
             "visibility": str(record.metadata_.get("visibility") or "private"),
             "read_only": bool(record.metadata_.get("read_only", False)),
             "valid_from": record.metadata_.get("valid_from"),
+            "temporal": record.metadata_.get("temporal"),
             "valid_until": record.metadata_.get("valid_until"),
             "provider_code": str(record.metadata_.get("provider_code") or "native"),
             "content_type": str(record.metadata_.get("content_type") or "text"),
@@ -254,6 +262,11 @@ async def _resolve_semantic_duplicate(
     if not groups or not groups[0]:
         return
     candidate = groups[0][0]
+    candidate_temporal = await get_db().scalar(select(MemoryItem.temporal).where(
+        MemoryItem.id == candidate.memory_id,
+    ))
+    if candidate_temporal != record.metadata_.get("temporal"):
+        return
     inference = await run_profile_decision(
         text_llm=None, task_id=None, agent_id=record.agent_id,
         purpose=LLMCallPurpose.MEMORY_DUPLICATE_DECISION, model_field=model_usages.DREAM,
@@ -549,15 +562,21 @@ async def _apply_acquisition_record(
         language = str(record.metadata_.get("language") or "").strip().lower()
         if language in {"en", "fr"}:
             metadata["language"] = language
+        update_data = MemoryItemUpdate(
+            expected_revision=_target_revision(record.metadata_),
+            title=record.title,
+            payload=MemoryPayload(text=record.content),
+            keywords=list(record.keywords),
+            metadata=metadata,
+        )
+        if "temporal" in record.metadata_:
+            update_data = MemoryItemUpdate.model_validate({
+                **update_data.model_dump(exclude_unset=True),
+                "temporal": record.metadata_["temporal"],
+            })
         item = await update_item(
             record.target_item_id,
-            MemoryItemUpdate(
-                expected_revision=_target_revision(record.metadata_),
-                title=record.title,
-                payload=MemoryPayload(text=record.content),
-                keywords=list(record.keywords),
-                metadata=metadata,
-            ),
+            update_data,
             actor_agent_id=record.agent_id,
         )
         await add_item_source(
@@ -749,6 +768,7 @@ async def create_manual_item(data: MemoryItemCreate) -> MemoryItem:
     result = await acquire_memory(
         MemoryAcquisitionCreate(
             agent_id=data.owner_agent_id,
+            temporal=data.temporal,
             title=data.title,
             content=content,
             keywords=list(data.keywords),

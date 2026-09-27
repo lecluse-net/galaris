@@ -81,13 +81,16 @@
         {{ t('memory.required') }}
       </div>
     </div>
+    <MemoryTemporalFields :model-value="draft.temporal ?? null" :readonly="readonly"
+      @update:model-value="updateDraft({ temporal: $event })" />
   </q-card-section>
 </template>
 
 <script lang="ts">
-import type { MemoryNodeKind, MemoryType } from '../types'
+import type { MemoryNodeKind, MemoryType, MemoryTemporalAnchor } from '../types'
 
 export interface MemoryEditorDraft {
+  temporal?: MemoryTemporalAnchor | null
   title: string
   content: string
   memoryType: MemoryType
@@ -106,6 +109,7 @@ import { RouterLink } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { CodeEditor, RichTextEditor } from '@/core/util'
 import MemorySharingPanel from './MemorySharingPanel.vue'
+import MemoryTemporalFields from './MemoryTemporalFields.vue'
 
 const { draft, editingId, lockVersion, sharingEditable, readonly = false, textAvailable = true, ownerLabel, sources, canViewTasks = false, keywordOptions = [] } = defineProps<{
   draft: MemoryEditorDraft

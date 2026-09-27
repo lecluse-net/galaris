@@ -9,137 +9,123 @@
       indicator-color="primary"
       align="left"
     >
-      <q-tab name="search" icon="manage_search" :label="t('memory.tabs.search')" />
       <q-tab name="list" icon="view_list" :label="t('memory.tabs.list')" />
       <q-tab name="graph" icon="hub" :label="t('memory.tabs.graph')" />
     </q-tabs>
     <q-separator />
 
-    <q-card v-if="activeTab !== 'search'" flat bordered class="memory-filter-block q-my-md">
-      <q-card-section class="memory-filter-block__row memory-filter-block__row--primary row q-col-gutter-md items-center">
-        <div class="col-12 col-md-6">
-          <AgentSelect
-            v-model="store.selectedAgentId"
-            class="memory-agent-select"
-            :options="agentOptions"
-            behavior="menu"
-            emit-value
-            map-options
-            outlined
-            dense
-            options-dense
-            :label="t('memory.agent')"
-            :loading="agentStore.loading"
-          />
-        </div>
-        <div v-if="activeTab === 'graph'" class="col-12 col-md-6 memory-filter-block__timeline">
-          <div class="memory-filter-block__slider">
-            <q-slider
-              v-model="graphTimeRangeDraftIndex"
-              :min="0"
-              :max="GRAPH_TIME_RANGE_OPTIONS.length - 1"
-              :step="1"
-              markers
-              snap
-              label
-              label-always
-              :label-value="graphTimeRangeLabel"
-              :title="t('memory.graph.timeRange')"
-              :aria-label="t('memory.graph.timeRange')"
-              @change="applyGraphTimeRange"
-            />
-          </div>
-        </div>
-      </q-card-section>
-
-      <q-card-section
-        class="memory-filter-block__row memory-filter-block__row--secondary"
-      >
-        <div class="memory-filter-block__field">
-          <q-input
-            v-model="store.query"
-            outlined
-            dense
-            clearable
-            debounce="350"
-            :placeholder="t('memory.search')"
-            @update:model-value="scheduleSearch"
-          >
-            <template #prepend><q-icon name="search" /></template>
-          </q-input>
-        </div>
-        <div class="memory-filter-block__field">
-          <q-select
-            v-model="store.selectedTypes"
-            :options="typeOptions"
-            behavior="menu"
-            outlined
-            dense
-            multiple
-            emit-value
-            map-options
-            options-dense
-            :label="t('memory.type')"
-            @update:model-value="() => searchSafely(true)"
-          />
-        </div>
-        <div class="memory-filter-block__field">
-          <q-select
-            v-model="store.selectedTopicItemId"
-            :options="topicFilterOptions"
-            behavior="menu"
-            outlined
-            dense
-            clearable
-            emit-value
-            map-options
-            options-dense
-            :loading="filterOptionsLoading"
-            :label="t('memory.topicFilter')"
-            @update:model-value="() => searchSafely(true)"
-          />
-        </div>
-        <div class="memory-filter-block__field">
-          <q-select
-            v-model="store.selectedContactItemId"
-            :options="contactFilterOptions"
-            behavior="menu"
-            outlined
-            dense
-            clearable
-            emit-value
-            map-options
-            options-dense
-            :loading="filterOptionsLoading"
-            :label="t('memory.contactFilter')"
-            @update:model-value="() => searchSafely(true)"
-          />
-        </div>
-      </q-card-section>
-    </q-card>
-
-    <q-tab-panels v-model="activeTab" animated class="bg-transparent">
-      <q-tab-panel name="search" class="q-pa-none">
-        <MemorySearchTester
-          ref="memorySearchTester"
-          :agent-id="store.selectedAgentId"
-          @open="openDetail"
-        >
-          <template #agent>
+    <q-card flat bordered class="memory-filter-block q-my-md">
+      <q-form class="memory-filter-block__form" @submit="temporalFilter?.apply()">
+        <div class="memory-filter-block__row memory-filter-block__row--primary">
+          <div class="memory-filter-block__field">
             <AgentSelect
               v-model="store.selectedAgentId"
+              class="memory-agent-select"
               :options="agentOptions"
               behavior="menu"
+              emit-value
+              map-options
               outlined
               dense
               options-dense
               :label="t('memory.agent')"
               :loading="agentStore.loading"
             />
-          </template>
-        </MemorySearchTester>
-      </q-tab-panel>
+          </div>
+          <div v-if="activeTab === 'list'" class="memory-filter-block__field">
+            <MemoryTemporalFilter ref="temporalFilter" v-model="store.temporal" @update:model-value="() => searchSafely(true)" />
+          </div>
+          <div v-if="activeTab === 'graph'" class="memory-filter-block__timeline">
+            <div class="memory-filter-block__slider">
+              <q-slider
+                v-model="graphTimeRangeDraftIndex"
+                :min="0"
+                :max="GRAPH_TIME_RANGE_OPTIONS.length - 1"
+                :step="1"
+                markers
+                snap
+                label
+                label-always
+                :label-value="graphTimeRangeLabel"
+                :title="t('memory.graph.timeRange')"
+                :aria-label="t('memory.graph.timeRange')"
+                @change="applyGraphTimeRange"
+              />
+            </div>
+          </div>
+        </div>
 
+        <div
+          class="memory-filter-block__row memory-filter-block__row--secondary"
+        >
+          <div class="memory-filter-block__field">
+            <q-input
+              v-model="store.query"
+              outlined
+              dense
+              clearable
+              debounce="350"
+              :placeholder="t('memory.search')"
+              @update:model-value="scheduleSearch"
+            >
+              <template #prepend><q-icon name="search" /></template>
+            </q-input>
+          </div>
+          <div class="memory-filter-block__field">
+            <q-select
+              v-model="store.selectedTypes"
+              :options="typeOptions"
+              behavior="menu"
+              outlined
+              dense
+              multiple
+              emit-value
+              map-options
+              options-dense
+              :label="t('memory.type')"
+              @update:model-value="() => searchSafely(true)"
+            />
+          </div>
+          <div class="memory-filter-block__field">
+            <q-select
+              v-model="store.selectedTopicItemId"
+              :options="topicFilterOptions"
+              behavior="menu"
+              outlined
+              dense
+              clearable
+              emit-value
+              map-options
+              options-dense
+              :loading="filterOptionsLoading"
+              :label="t('memory.topicFilter')"
+              @update:model-value="() => searchSafely(true)"
+            />
+          </div>
+          <div class="memory-filter-block__field">
+            <q-select
+              v-model="store.selectedContactItemId"
+              :options="contactFilterOptions"
+              behavior="menu"
+              outlined
+              dense
+              clearable
+              emit-value
+              map-options
+              options-dense
+              :loading="filterOptionsLoading"
+              :label="t('memory.contactFilter')"
+              @update:model-value="() => searchSafely(true)"
+            />
+          </div>
+        </div>
+        <div v-if="activeTab === 'list'" class="memory-filter-block__actions">
+          <q-btn type="submit" color="primary" outline icon="refresh" :label="t('memory.temporalSearch.apply')" />
+        </div>
+      </q-form>
+    </q-card>
+
+    <q-tab-panels v-model="activeTab" animated class="bg-transparent">
       <q-tab-panel name="list" class="q-pa-none">
         <section>
         <div class="row justify-end items-center q-gutter-md q-mb-md">
@@ -161,6 +147,13 @@
             <q-btn flat color="negative" :label="t('memory.retry')" @click="searchSafely()" />
           </template>
         </q-banner>
+
+        <div v-if="store.recallTruncated" class="text-caption q-mb-md" role="status">
+          {{ t('memory.recall.bounded') }}
+        </div>
+        <div v-if="store.degradationReason" class="text-caption q-mb-md" role="status">
+          {{ t('memory.recall.degraded') }}
+        </div>
 
         <q-table
           flat
@@ -221,6 +214,9 @@
               </div>
               <div class="memory-excerpt text-caption text-grey-7 ellipsis-2-lines">
                 {{ props.row.excerpt }}
+              </div>
+              <div v-if="props.row.temporal_match_at" class="text-caption">
+                {{ t('memory.temporalSearch.match', { date: formatTemporalDate(props.row.temporal_match_at) }) }}
               </div>
             </q-td>
           </template>
@@ -284,6 +280,9 @@
                 @keyup.enter.self="props.row.item.node_kind !== 'folder' && openDetail(props.row.item.id)"
               >
                 <q-card-section class="q-gutter-md">
+                  <div v-if="props.row.temporal_match_at" class="text-caption">
+                    {{ t('memory.temporalSearch.match', { date: formatTemporalDate(props.row.temporal_match_at) }) }}
+                  </div>
                   <div class="row items-start no-wrap q-gutter-sm">
                     <div class="col memory-mobile-copy">
                       <div class="text-subtitle1 text-weight-medium memory-mobile-title">
@@ -621,7 +620,7 @@ import { AgentSelect } from '@/app/agent'
 import MemoryGraph from '../components/MemoryGraph.vue'
 import MemoryFindingDialog from '../components/MemoryFindingDialog.vue'
 import MemoryLinkDialog from '../components/MemoryLinkDialog.vue'
-import MemorySearchTester from '../components/MemorySearchTester.vue'
+import MemoryTemporalFilter from '../components/MemoryTemporalFilter.vue'
 import MemoryItemHistory from '../components/MemoryItemHistory.vue'
 import MemoryItemForm from '../components/MemoryItemForm.vue'
 import { useMemoryStore } from '../stores/memoryStore'
@@ -639,6 +638,11 @@ import type {
 } from '../types'
 
 const { t, te, locale } = useI18n()
+function formatTemporalDate(value: string): string {
+  return new Intl.DateTimeFormat(locale.value, {
+    dateStyle: 'medium', timeStyle: 'short',
+  }).format(new Date(value))
+}
 const route = useRoute()
 const $q = useQuasar()
 const store = useMemoryStore()
@@ -647,7 +651,7 @@ const privilegeStore = usePrivilegeStore()
 const canEdit = computed(() => privilegeStore.hasPrivilege(privileges.MEMORY_EDIT))
 const canAdminister = computed(() => privilegeStore.hasPrivilege(privileges.MEMORY_ADMIN))
 const canViewTasks = computed(() => privilegeStore.hasPrivilege(privileges.TASK_ACCESS))
-const activeTab = ref<'search' | 'list' | 'graph'>('list')
+const activeTab = ref<'list' | 'graph'>('list')
 const detailDialog = ref(false)
 const detailTab = ref<'memory' | 'history'>('memory')
 const canModifyCurrent = computed(() => canEdit.value && Boolean(store.currentItem?.access.can_write)
@@ -659,7 +663,7 @@ const editingId = ref<string | null>(null)
 const linkDialog = ref(false)
 const linkedItemTitles = reactive<Record<string, string>>({})
 const selectedFinding = ref<MemoryFinding | null>(null)
-const memorySearchTester = useTemplateRef<InstanceType<typeof MemorySearchTester>>('memorySearchTester')
+const temporalFilter = useTemplateRef<InstanceType<typeof MemoryTemporalFilter>>('temporalFilter')
 const filterOptionsLoading = ref(false)
 const topicFilterOptions = ref<{ value: string, label: string }[]>([])
 const contactFilterOptions = ref<{ value: string, label: string }[]>([])
@@ -784,6 +788,7 @@ const itemColumns = computed<QTableProps['columns']>(() => [
 ])
 
 const editor = reactive({
+  temporal: null as import('../types').MemoryTemporalAnchor | null,
   title: '',
   content: '',
   memoryType: 'semantic' as MemoryType,
@@ -991,6 +996,7 @@ async function saveLink(
 
 function resetEditor(): void {
   Object.assign(editor, {
+    temporal: null,
     title: '', content: '', memoryType: 'semantic',
     nodeKind: 'memory',
     keywords: [], readOnly: false, revision: null,
@@ -1011,6 +1017,7 @@ async function openEdit(id: string): Promise<void> {
 function prepareEditor(item: MemoryItemDetail): void {
   editingId.value = item.id
   Object.assign(editor, {
+    temporal: item.temporal ? { ...item.temporal } : null,
     title: item.title,
     content: item.payload.text ?? '',
     memoryType: item.memory_type,
@@ -1039,6 +1046,7 @@ async function saveEditor(): Promise<void> {
     if (editingId.value) {
       await store.updateItem(editingId.value, {
         expected_revision: editor.revision ?? undefined,
+        temporal: editor.temporal,
         title: editor.title.trim(),
         payload: { text: editor.content },
         media_type: editor.mediaType,
@@ -1049,6 +1057,7 @@ async function saveEditor(): Promise<void> {
     } else {
       const created = await store.createItem({
         owner_agent_id: store.selectedAgentId,
+        temporal: editor.temporal,
         title: editor.title.trim(),
         payload: { text: editor.content },
         media_type: editor.mediaType,
@@ -1081,7 +1090,6 @@ function confirmForget(item: MemoryItem): void {
   }).onOk(async () => {
     try {
       await store.forgetItem(item.id)
-      memorySearchTester.value?.removeResult(item.id)
       detailDialog.value = false
       $q.notify({ type: 'positive', message: t('memory.forgottenDone') })
     } catch (error) {
@@ -1171,12 +1179,30 @@ watch(() => [route.query.item_id, agentStore.agents.length] as const, async ([va
 </script>
 
 <style scoped>
+.memory-filter-block__form {
+  display: grid;
+  gap: 8px;
+  padding: 16px;
+}
+
 .memory-filter-block__row {
-  padding: 10px 12px;
+  display: grid;
+  gap: 8px;
+  align-items: start;
 }
 
 .memory-filter-block__row--primary {
-  padding-bottom: 8px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.memory-filter-block :deep(.q-field__control),
+.memory-filter-block :deep(.q-field__marginal) {
+  min-height: 44px;
+}
+
+.memory-filter-block__actions {
+  display: flex;
+  justify-content: flex-end;
 }
 
 .memory-agent-select :deep(.q-field__native > .row) {
@@ -1185,10 +1211,7 @@ watch(() => [route.query.item_id, agentStore.agents.length] as const, async ([va
 }
 
 .memory-filter-block__row--secondary {
-  display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 8px;
-  padding-top: 0;
 }
 
 .memory-filter-block__field {
@@ -1311,19 +1334,22 @@ watch(() => [route.query.item_id, agentStore.agents.length] as const, async ([va
 .member-editor { width: min(620px, 94vw); }
 
 @media (max-width: 1023px) {
+  .memory-filter-block__row--primary {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
   .memory-filter-block__row--secondary {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
 @media (max-width: 599px) {
-  .memory-filter-block__row {
-    padding: 8px;
+  .memory-filter-block__form {
+    padding: 12px;
   }
 
   .memory-filter-block__row--secondary {
     grid-template-columns: minmax(0, 1fr);
-    padding-top: 0;
   }
 }
 </style>

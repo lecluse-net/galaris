@@ -314,6 +314,8 @@ async def detect_for_item(item_id: UUID) -> list[UUID]:
                 continue
             if await _scope_signature(candidate.id) != item_scope:
                 continue
+            if candidate.temporal != item.temporal:
+                continue
             signal = _contradiction_signal(item, candidate)
             if (
                 contradiction_mode != "off"
@@ -537,6 +539,8 @@ async def _merge_items(canonical: MemoryItem, duplicate: MemoryItem, finding_id:
         raise service.MemoryConflictError("A memory cannot be merged into itself.")
     if canonical.owner_agent_id != duplicate.owner_agent_id:
         raise service.MemoryConflictError("Memories owned by different agents cannot be merged.")
+    if canonical.temporal != duplicate.temporal:
+        raise service.MemoryConflictError("Memories with different temporal anchors cannot be merged.")
     if await _scope_signature(canonical.id) != await _scope_signature(duplicate.id):
         raise service.MemoryConflictError("Memory scopes changed and are no longer compatible.")
     db = get_db()

@@ -1,5 +1,7 @@
 """Governed, durable memory public surface."""
 
+from .temporal import MemoryTemporalAnchor
+
 from .contracts import (
     ContactReferenceCleaner,
     ContactReferenceRewriter,
@@ -86,6 +88,7 @@ from .file_facade import (
 )
 
 __all__ = [
+    "MemoryTemporalAnchor",
     "DocumentTag",
     "MemoryAccess",
     "MemoryBrief",

@@ -144,6 +144,7 @@ async def describe_file_resource(
         "can_write": access.can_write and item.node_kind == "document",
         "updated_at": item.updated_at.isoformat() if item.updated_at else None,
         "metadata": {
+            "temporal": item.temporal,
             "document_type": item.document_type,
             "folder": str(item.metadata_.get("document_path") or ""),
             "content_profile": item.content_profile,
@@ -331,7 +332,8 @@ async def search_file_resources(
                 "score": hit.score,
                 "excerpt": hit.excerpt,
                 "can_write": hit.item.access.can_write,
-                "metadata": {**hit.item.metadata, "document_type": hit.item.document_type},
+                "metadata": {**hit.item.metadata, "document_type": hit.item.document_type,
+                             "temporal": hit.item.temporal.model_dump(mode="json") if hit.item.temporal else None},
                 "retrieval_sources": hit.retrieval_sources,
                 "source_refs": hit.source_refs,
                 "passages": [passage.model_dump() for passage in hit.passages],

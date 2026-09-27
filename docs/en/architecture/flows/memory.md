@@ -19,6 +19,28 @@ criterion remains enforced.
 
 ## Read Before an Execution
 
+Items may carry an optional `temporal` object (year, month, day, ISO weekday, hour, minute
+and IANA timezone). Missing components are unrestricted; supplied constraints are combined.
+Context preparation restricts ordinary recall to unanchored memories and separately selects current matches and those within
+`MEMORY_TEMPORAL_LOOKAHEAD_HOURS`, without a query-similarity requirement. This path preserves
+ACLs, contact scope and final admission, deduplicates UUIDs and respects the shared budget,
+with calendar matches taking priority over ordinary memories and experiences. Dated memories
+outside the window cannot return through similarity. Topic and type filters do not limit the
+calendar branch; conversational contact isolation remains mandatory.
+The occurrence stays in the excerpt used by conversational context capsules. `memory_upcoming`
+exposes further pages. Temporality is independent of validity and triggers neither notifications
+nor expiration. See decision [0144](../../../../project/decisions/0144-partial-memory-temporality.md).
+
+The administration list reuses `next_match` through the `temporal` filter on `/memory/browse`.
+The UI always applies the filter from the first search, with no option to disable it.
+It prefills a single date/time field with browser local time, converts the target to explicit
+UTC and submits zero lookahead. Text/type/topic/interlocutor filters select unanchored memories.
+The calendar branch independently selects matching anchors without requiring lexical or semantic
+relevance. Their union is counted, sorted and paginated in SQL before hydration; calendar matches
+come first by default. The text recall cap does not truncate calendar results. Responses
+include `temporal_window` and a per-result `temporal_match_at` (null for undated memories). Simulations retain current ACLs,
+validity and revisions.
+
 ```text
 app.messenger journal ──► bounded session snapshot ──┐
                                                      ├─► AgentRunContext

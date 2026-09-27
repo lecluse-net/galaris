@@ -58,8 +58,8 @@ def test_topic_and_memory_metadata_are_part_of_the_item():
     assert native["initial_topic"]["title"] == "Existing topic"
     memory_native = {
         "topic": {"id": "topic-1", "title": "Preferences"},
-        "history": [{"speaker_name": "Ada", "speaker_kind": "human", "text": "Earlier"}],
-        "current": [{"speaker_name": "Ada", "speaker_kind": "human", "text": "French please"}],
+        "history": [{"speaker_name": "Ada", "speaker_kind": "human", "text": "Earlier", "occurred_at": None}],
+        "current": [{"speaker_name": "Ada", "speaker_kind": "human", "text": "French please", "occurred_at": None}],
     }
     memory = capture_input("memory_extraction", memory_native)
     _, rebuilt = resolve_input("memory_extraction", memory, {})

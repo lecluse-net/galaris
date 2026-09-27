@@ -89,6 +89,7 @@ export interface DocumentAttachment {
 export type DocumentType = 'html' | 'dataset'
 
 export interface MemoryItem {
+  temporal?: MemoryTemporalAnchor | null
   document_type: DocumentType
   content_profile?: 'rich-text' | 'document'
   content_profile_version?: number | null
@@ -228,6 +229,7 @@ export interface DocumentCreate {
 }
 
 export interface MemoryItemCreate {
+  temporal?: MemoryTemporalAnchor | null
   document_type?: DocumentType
   owner_agent_id: number
   title: string
@@ -244,6 +246,7 @@ export interface MemoryItemCreate {
 }
 
 export interface MemoryItemUpdate {
+  temporal?: MemoryTemporalAnchor | null
   expected_revision?: number
   expected_lock_version?: number
   title?: string
@@ -259,17 +262,43 @@ export interface MemoryItemUpdate {
 }
 
 export interface MemorySearchHit {
+  temporal_match_at?: string | null
   item: MemoryItem
   excerpt: string
   score: number
   source_refs: string[]
 }
 
+export interface MemoryTemporalAnchor {
+  year?: number | null
+  month?: number | null
+  day?: number | null
+  weekday?: number | null
+  hour?: number | null
+  minute?: number | null
+  timezone?: string
+}
+
 export interface MemorySearchPage {
+  recall_truncated?: boolean
+  degradation_reason?: string | null
+  temporal_window?: MemoryTemporalWindow | null
   query: string
   hits: MemorySearchHit[]
   total: number
   has_more: boolean
+}
+
+export interface MemoryTemporalFilter {
+  target_at: string | null
+  timezone: string
+  lookahead_hours: number | null
+}
+
+export interface MemoryTemporalWindow {
+  start: string
+  end: string
+  timezone: string
 }
 
 export interface MemoryRankedItem {

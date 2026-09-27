@@ -37,6 +37,9 @@ import type {
 } from '../types'
 
 export const memoryService = {
+  async temporalDefaults(): Promise<{ timezone: string; lookahead_hours: number }> {
+    return (await api.get<{ timezone: string; lookahead_hours: number }>('/memory/temporal/defaults')).data
+  },
   async appPermissions(documentId: string, signal: AbortSignal): Promise<AppPermissions> {
     return (await api.get<AppPermissions>(`/memory/documents/${documentId}/app-permissions`, { signal })).data
   },
@@ -230,6 +233,8 @@ export const memoryService = {
   },
 
   async browse(params: {
+    hybrid?: boolean
+    temporal?: import('../types').MemoryTemporalFilter | null
     agentId: number
     query?: string
     keyword?: string | null
@@ -243,6 +248,8 @@ export const memoryService = {
     contactItemId?: string | null
   }): Promise<MemorySearchPage> {
     const response = await api.post<MemorySearchPage>('/memory/browse', {
+      hybrid: params.hybrid ?? false,
+      temporal: params.temporal ?? null,
       agent_id: params.agentId,
       query: params.query ?? '',
       keyword: params.keyword ?? null,

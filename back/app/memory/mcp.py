@@ -17,6 +17,7 @@ from core.i18n import t
 
 from . import acquisition_service, document_service, facade, item_sharing, service
 from .schemas import (
+    MemoryTemporalAnchor,
     MemoryAcquisitionCreate,
     MemoryRecallRequest,
     MemorySourceCreate,
@@ -469,7 +470,11 @@ async def memory_share(
         "Use sparingly for an explicit memory request, a correction, or an especially important "
         "confirmed fact worth retaining immediately. Leave routine extraction and duplicate checking "
         "to Dream; skip equivalent known memories. Storage is immediate and auditable. Keywords may be "
-        "an array of strings or a JSON-encoded array string."
+        "an array of strings or a JSON-encoded array string. Optional temporal contains partial "
+        "year/month/day/weekday (Monday=1..Sunday=7)/hour/minute and an IANA timezone. "
+        "Unset components are wildcards. An anchor excludes automatic recall outside its period "
+        "and forces priority inclusion when it matches, subject to access and context budgets. "
+        "Use it for intended reminders, not historical timestamps or ordinary facts; never default to today."
     ),
 )
 async def memory_remember(
@@ -478,6 +483,7 @@ async def memory_remember(
     title: str,
     memory_type: str = "semantic",
     keywords: list[str] | str | None = None,
+    temporal: MemoryTemporalAnchor | None = None,
 ) -> str:
     source = _current_source(ctx)
     language = await context_language(ctx)
@@ -489,6 +495,7 @@ async def memory_remember(
                 title=title,
                 content=content,
                 keywords=_normalize_memory_keywords(keywords),
+                temporal=temporal,
                 source_kind=source.source_kind,
                 source_ref=source.source_ref,
                 metadata={
@@ -516,6 +523,23 @@ async def memory_remember(
     except Exception as exc:
         logger.exception("memory_remember failed")
         return _json({"error": str(exc)})
+
+
+@mcp_tool("memory", name="memory_upcoming", description=(
+    "List accessible memories matching now or the configured upcoming time window, independently "
+    "of text similarity. Use offset to read further pages. Does not schedule notifications."
+))
+async def memory_upcoming(ctx: McpToolContext, limit: int = 50, offset: int = 0) -> str:
+    from .retrieval import temporal_hits
+    if not 1 <= limit <= 500 or not 0 <= offset <= 10_000:
+        return _json({"error": "Use limit 1..500 and offset 0..10000."})
+    topic_item_id, contact_item_id = await _recall_scope(ctx)
+    hits, has_more = await temporal_hits(MemoryRecallRequest(
+        agent_id=ctx.agent_id, topic_item_id=topic_item_id, contact_item_id=contact_item_id,
+        strict_contact_scope=False, exclude_agent_projections=True,
+    ), limit=limit, offset=offset)
+    return _json({"items": [hit.model_dump(mode="json") for hit in hits], "has_more": has_more,
+                  "next_offset": offset + limit if has_more else None})
 
 
 async def memory_index(

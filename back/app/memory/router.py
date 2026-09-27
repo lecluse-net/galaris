@@ -1,7 +1,7 @@
 """RBAC-protected administration API for governed memory."""
 
 from __future__ import annotations
-from core.util import require_editorial_client
+from core.util import require_editorial_client, local_timezone_name
 from fastapi import Depends
 
 from typing import Any
@@ -32,6 +32,7 @@ from . import (
     facade,
     maintenance,
     metrics,
+    retrieval,
     service,
 )
 from .assertions import ManagedDocumentAccessAssertion
@@ -101,6 +102,13 @@ from .document_app_security import AppConsentRequired, AppWriteLimitError
 
 
 router = APIRouter(prefix="/memory", tags=["memory"])
+
+
+@router.get("/temporal/defaults")
+@authorize(privileges=[Privileges.MEMORY_ACCESS, Privileges.MEMORY_EDIT, Privileges.MEMORY_ADMIN])
+async def temporal_defaults() -> dict[str, str | int]:
+    return {"timezone": local_timezone_name(),
+            "lookahead_hours": runtime_settings.MEMORY_TEMPORAL_LOOKAHEAD_HOURS}
 
 
 async def _require_app_write(scope: AgentManagementScope) -> None:
@@ -435,7 +443,7 @@ async def dismiss_memory_finding(finding_id: UUID) -> MemoryFindingPublic:
 async def browse_memory(data: MemorySearchRequest) -> MemorySearchPage:
     try:
         await _require_agent_scope(data.agent_id)
-        return await service.search_items(data, record_llm_access=False)
+        return await retrieval.browse_items(data)
     except Exception as exc:
         raise _http_error(exc) from exc
 
@@ -444,6 +452,11 @@ async def _ranked_memory_search(data: MemoryRecallRequest) -> list[MemorySearchI
     return await facade.search_memory(
         data.query,
         agent_id=data.agent_id,
+        target_at=data.target_at,
+        exclude_temporal=data.exclude_temporal,
+        keyword=data.keyword,
+        filter_topic_item_id=data.filter_topic_item_id,
+        filter_contact_item_id=data.filter_contact_item_id,
         semantic_query=data.semantic_query,
         limit=data.limit,
         memory_types=data.memory_types,

@@ -705,6 +705,7 @@ def _revision_for(
         title=item.title,
         keywords=list(item.keywords),
         metadata_=dict(item.metadata_),
+        temporal=item.temporal,
         author_agent_id=author_agent_id,
     )
 
@@ -772,6 +773,9 @@ async def create_item(
                 MemoryItem.owner_agent_id == data.owner_agent_id,
                 MemoryItem.content_hash == digest,
                 MemoryItem.valid_from.is_not_distinct_from(data.valid_from),
+                MemoryItem.temporal.is_not_distinct_from(
+                    data.temporal.model_dump(mode="json") if data.temporal else None
+                ),
                 MemoryItem.valid_until.is_not_distinct_from(data.valid_until),
                 MemoryItem.source_managed.is_(False),
                 MemoryItem.node_kind == "memory",
@@ -815,6 +819,7 @@ async def create_item(
             content, content_type=data.content_type, media_type=data.media_type
         ),
         valid_from=data.valid_from,
+        temporal=data.temporal.model_dump(mode="json") if data.temporal else None,
         valid_until=data.valid_until,
     )
     _set_semantic_fingerprint(item)
@@ -1280,6 +1285,7 @@ async def item_to_detail(
             size_bytes=len(content),
             title=selected.title,
             keywords=list(selected.keywords),
+            temporal=selected.temporal,
         )
     return MemoryItemDetail(
         **values,
@@ -1551,6 +1557,7 @@ async def update_item(
             "read_only",
             "valid_from",
             "valid_until",
+            "temporal",
         )
     }
     previous_metadata = dict(item.metadata_)
@@ -1646,6 +1653,8 @@ async def update_item(
         if field_name in fields:
             setattr(item, field_name, getattr(data, field_name))
     keywords_changed = False
+    if "temporal" in fields:
+        item.temporal = data.temporal.model_dump(mode="json") if data.temporal else None
     if "keywords" in fields and data.keywords is not None:
         normalized_keywords = _keywords(data.keywords)
         keywords_changed = list(item.keywords) != normalized_keywords
@@ -1674,9 +1683,10 @@ async def update_item(
             "metadata",
             "valid_from",
             "valid_until",
+            "temporal",
         }
     )
-    if content_changed or keywords_changed:
+    if content_changed or keywords_changed or previous_values["temporal"] != item.temporal:
         item.updated_at = datetime.now(timezone.utc)
     if meaningful_change:
         item.old_at = None
@@ -2420,13 +2430,35 @@ async def record_llm_retrieval(
     await db.flush()
 
 
+def temporal_match_clause(target: datetime) -> ColumnElement[bool]:
+    """Match an anchored item at one instant, including partial dates and DST folds."""
+    local = func.timezone(MemoryItem.temporal["timezone"].as_string(), target)
+    constraints: list[ColumnElement[bool]] = [MemoryItem.temporal.is_not(None)]
+    for component, part in (("year", "year"), ("month", "month"), ("day", "day"),
+                            ("weekday", "isodow"), ("hour", "hour"), ("minute", "minute")):
+        constraint = MemoryItem.temporal[component].as_integer()
+        constraints.append(or_(constraint.is_(None), constraint == func.extract(part, local)))
+    return and_(*constraints)
+
+
 async def search_items(
-    request: MemorySearchRequest, *, record_llm_access: bool = False
+    request: MemorySearchRequest, *, record_llm_access: bool = False,
+    ranked_hits: Sequence[MemorySearchHit] | None = None,
+    temporal_union: bool = False,
 ) -> MemorySearchPage:
     """Apply ACL/validity first, then deterministic full-text ranking."""
 
     db = get_db()
     now = datetime.now(timezone.utc)
+    from .temporal import MemoryTemporalAnchor, next_match
+    from core.params import runtime_settings
+
+    temporal_window = request.temporal.window(
+        now=now, default_hours=runtime_settings.MEMORY_TEMPORAL_LOOKAHEAD_HOURS,
+    ) if request.temporal is not None else None
+    scan_calendar = temporal_window is not None and (
+        not temporal_union or temporal_window.start != temporal_window.end
+    )
     query = (
         select(MemoryItem)
         .options(*_item_options())
@@ -2436,8 +2468,6 @@ async def search_items(
             or_(MemoryItem.valid_until.is_(None), MemoryItem.valid_until > now),
         )
     )
-    if request.memory_types:
-        query = query.where(MemoryItem.memory_type.in_(request.memory_types))
     if request.topic_item_id is not None and request.contact_item_id is not None:
         query = query.where(
             exists(
@@ -2503,13 +2533,6 @@ async def search_items(
                     ~(directly_conversation_scoped | legacy_conversation_scoped),
                 )
             )
-    exact_scope_filters = _exact_scope_filters(
-        agent_id=request.agent_id,
-        topic_item_id=request.filter_topic_item_id,
-        contact_item_id=request.filter_contact_item_id,
-    )
-    if exact_scope_filters:
-        query = query.where(*exact_scope_filters)
     if request.exclude_topic_projections:
         query = query.where(
             or_(
@@ -2530,6 +2553,18 @@ async def search_items(
         )
     if request.exclude_source_managed:
         query = query.where(MemoryItem.source_managed.is_(False))
+    # ACLs, validity and contextual contact isolation apply to both branches.
+    # User-facing search criteria below apply only to unanchored items in union mode.
+    temporal_scope = query.whereclause
+    if request.exclude_temporal:
+        query = query.where(MemoryItem.temporal.is_(None))
+    if request.memory_types:
+        query = query.where(MemoryItem.memory_type.in_(request.memory_types))
+    query = query.where(*_exact_scope_filters(
+        agent_id=request.agent_id,
+        topic_item_id=request.filter_topic_item_id,
+        contact_item_id=request.filter_contact_item_id,
+    ))
     if request.node_kinds:
         query = query.where(MemoryItem.node_kind.in_(request.node_kinds))
     keyword = request.keyword.strip() if request.keyword is not None else ""
@@ -2547,7 +2582,19 @@ async def search_items(
 
     normalized = request.query.strip()
     identity = query_identity(normalized)
-    if identity is not None:
+    recalled = {hit.item.id: hit for hit in ranked_hits or []}
+    if ranked_hits is not None:
+        # Never attach an old semantic excerpt to a newly edited row.
+        query = query.where(or_(False, *(and_(
+            MemoryItem.id == hit.item.id, MemoryItem.revision == hit.item.revision,
+            MemoryItem.lock_version == hit.item.lock_version, MemoryItem.content_hash == hit.item.content_hash,
+            MemoryItem.semantic_fingerprint == hit.item.semantic_fingerprint,
+        ) for hit in ranked_hits)))
+        rank_expression = case(
+            {hit.item.id: float(len(ranked_hits) - index) for index, hit in enumerate(ranked_hits)},
+            value=MemoryItem.id, else_=0.0,
+        ) if ranked_hits else case((MemoryItem.id.is_(None), 0.0), else_=0.0)
+    elif identity is not None:
         query = query.where(MemoryItem.id == identity)
         rank_expression = case((MemoryItem.id == identity, 1.0), else_=0.0)
     elif normalized:
@@ -2564,10 +2611,20 @@ async def search_items(
         query = query.where(or_(MemoryItem.search_vector.op("@@")(ts_query), fallback))
     else:
         rank_expression = case((MemoryItem.memory_type == "core", 1.0), else_=0.1)
+    if temporal_union and temporal_window is not None:
+        assert temporal_scope is not None and query.whereclause is not None
+        calendar_filter = MemoryItem.temporal.is_not(None) if scan_calendar else temporal_match_clause(temporal_window.start)
+        query = select(MemoryItem).options(*_item_options()).where(or_(
+            and_(MemoryItem.temporal.is_(None), query.whereclause),
+            and_(temporal_scope, calendar_filter),
+        ))
     count_query = select(func.count(MemoryItem.id))
     if query.whereclause is not None:
         count_query = count_query.where(query.whereclause)
-    total = int(await db.scalar(count_query) or 0)
+    total = int(await db.scalar(count_query) or 0) if not scan_calendar else 0
+
+    if temporal_union and temporal_window is not None and request.sort_by is None:
+        query = query.order_by(case((MemoryItem.temporal.is_not(None), 0), else_=1))
 
     if request.sort_by is not None:
         if request.sort_by == "owner":
@@ -2601,7 +2658,28 @@ async def search_items(
             MemoryItem.id,
         )
 
-    result = await db.execute(query.execution_options(populate_existing=True).offset(request.offset).limit(request.limit + 1))
+    if scan_calendar and temporal_window is not None:
+        # Apply calendar matching after all existing filters, before pagination.
+        # Scan metadata only; retain at most one page of IDs, regardless of total.
+        if not temporal_union:
+            query = query.where(MemoryItem.temporal.is_not(None))
+        calendar_query = query.with_only_columns(MemoryItem.id, MemoryItem.temporal)
+        selected_ids: list[UUID] = []
+        scan_offset = 0
+        while True:
+            candidates = (await db.execute(calendar_query.offset(scan_offset).limit(200))).all()
+            for item_id, anchor in candidates:
+                if anchor is not None and next_match(MemoryTemporalAnchor.model_validate(anchor), temporal_window.start, temporal_window.end) is None:
+                    continue
+                if request.offset <= total < request.offset + request.limit + 1:
+                    selected_ids.append(item_id)
+                total += 1
+            if len(candidates) < 200:
+                break
+            scan_offset += len(candidates)
+        query = query.where(MemoryItem.id.in_(selected_ids))
+    result = await db.execute(query.execution_options(populate_existing=True)
+                              .offset(0 if scan_calendar else request.offset).limit(request.limit + 1))
     rows = list(result.unique().all())
     has_more = len(rows) > request.limit
     rows = rows[: request.limit]
@@ -2615,15 +2693,26 @@ async def search_items(
         access = await effective_access(item, request.agent_id)
         if not access.can_read:
             continue
+        temporal_match_at: datetime | None = None
+        if temporal_window is not None:
+            if item.temporal is None and not temporal_union:
+                continue
+            if item.temporal is not None:
+                temporal_match_at = next_match(MemoryTemporalAnchor.model_validate(item.temporal),
+                                               temporal_window.start, temporal_window.end)
+                if temporal_match_at is None:
+                    continue
         # Search text and metadata come from the same database revision. Reading
         # the mutable storage resource here could mix two concurrent revisions.
-        excerpt = lexical_excerpt(item.search_text, request.recall_query or normalized)
+        recalled_hit = recalled.get(item.id)
+        excerpt = recalled_hit.excerpt if recalled_hit is not None else lexical_excerpt(item.search_text, request.recall_query or normalized)
         hits.append(
             MemorySearchHit(
                 item=item_to_public(item, access),
                 excerpt=excerpt,
                 score=score,
                 source_refs=sources.get(item.id, []),
+                temporal_match_at=temporal_match_at,
             )
         )
     hits = await admit_search_hits(request.agent_id, hits,
@@ -2636,6 +2725,7 @@ async def search_items(
             task_id=request.task_id,
         )
     return MemorySearchPage(
+        temporal_window=temporal_window,
         query=normalized,
         hits=hits,
         total=total,

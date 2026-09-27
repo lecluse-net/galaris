@@ -4,12 +4,13 @@ from __future__ import annotations
 
 from .contracts import MemoryAccess
 from .document_types import DocumentType
+from .temporal import MemoryTemporalAnchor, MemoryTemporalFilter, MemoryTemporalWindow
 
 from datetime import datetime
 from typing import Any, Literal
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+from pydantic import AwareDatetime, BaseModel, ConfigDict, Field, field_validator, model_validator
 from .tag_icons import MAX_ICON_URI_LENGTH, SVG_PREFIX, validate_icon
 
 
@@ -137,6 +138,7 @@ class MemoryItemCreate(BaseModel):
     read_only: bool = False
     valid_from: datetime | None = None
     valid_until: datetime | None = None
+    temporal: MemoryTemporalAnchor | None = None
     provider_code: str = Field(default="native", min_length=1, max_length=80)
     source: MemorySourceCreate | None = None
 
@@ -175,6 +177,7 @@ class MemoryItemUpdate(BaseModel):
     read_only: bool | None = None
     valid_from: datetime | None = None
     valid_until: datetime | None = None
+    temporal: MemoryTemporalAnchor | None = None
 
 
 class MemoryAccessPublic(BaseModel):
@@ -219,6 +222,7 @@ def _empty_grants() -> list[MemoryGrantPublic]:
 
 
 class MemoryItemPublic(BaseModel):
+    temporal: MemoryTemporalAnchor | None = None
     document_type: DocumentType = "html"
     semantic_fingerprint: str | None = Field(default=None, exclude=True)
     content_profile: Literal["rich-text", "document"] = "rich-text"
@@ -293,6 +297,7 @@ class MemoryFindingAction(BaseModel):
 
 
 class MemoryRevisionPublic(BaseModel):
+    temporal: MemoryTemporalAnchor | None = None
     media_type: str = "text/markdown"
     content_profile_version: int | None = None
     revision: int
@@ -364,6 +369,9 @@ class DocumentContentRestore(BaseModel):
 
 
 class MemorySearchRequest(BaseModel):
+    exclude_temporal: bool = False
+    hybrid: bool = False
+    temporal: MemoryTemporalFilter | None = None
     agent_id: int = Field(gt=0)
     query: str = Field(default="", max_length=4_000)
     recall_query: str | None = Field(default=None, max_length=4_000, exclude=True)
@@ -387,6 +395,8 @@ class MemorySearchRequest(BaseModel):
 
     @model_validator(mode="after")
     def complete_conversation_scope(self) -> "MemorySearchRequest":
+        if self.hybrid and self.temporal is not None and self.temporal.lookahead_hours != 0:
+            raise ValueError("Hybrid browsing requires zero temporal lookahead.")
         if self.contact_item_id is not None and self.topic_item_id is None:
             # A contact-only request is reserved for the internal global branch:
             # it keeps memories learned from another interlocutor out of recall.
@@ -411,6 +421,7 @@ class MemorySearchPassage(BaseModel):
 
 
 class MemorySearchHit(BaseModel):
+    temporal_match_at: datetime | None = None
     item: MemoryItemPublic
     excerpt: str
     score: float
@@ -424,6 +435,9 @@ class MemorySearchHit(BaseModel):
 
 
 class MemorySearchPage(BaseModel):
+    recall_truncated: bool = False
+    degradation_reason: str | None = None
+    temporal_window: MemoryTemporalWindow | None = None
     query: str
     hits: list[MemorySearchHit]
     total: int = Field(ge=0)
@@ -701,6 +715,11 @@ class MemoryRecallRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     agent_id: int = Field(gt=0)
+    exclude_temporal: bool = False
+    target_at: AwareDatetime | None = None
+    keyword: str | None = Field(default=None, max_length=100)
+    filter_topic_item_id: UUID | None = None
+    filter_contact_item_id: UUID | None = None
     query: str = Field(default="", max_length=4_000)
     semantic_query: str | None = Field(default=None, max_length=4_000)
     limit: int | None = Field(default=None, ge=1, le=500)
@@ -981,6 +1000,7 @@ class MemoryLinkReconciliationRunResult(BaseModel):
 
 
 class MemoryAcquisitionCreate(BaseModel):
+    temporal: MemoryTemporalAnchor | None = None
     agent_id: int = Field(gt=0)
     action: AcquisitionAction = "create"
     target_item_id: UUID | None = None

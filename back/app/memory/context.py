@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import re
+from datetime import datetime
 from collections.abc import Mapping, Sequence
 from typing import Literal
 from uuid import UUID
@@ -14,7 +15,7 @@ from .facade import search_memory_detailed
 from .metrics import observe_context
 from .schemas import MemorySearchHit, MemoryType
 from .service import record_llm_retrieval
-from .retrieval import admit_recall_hits
+from .retrieval import admit_recall_hits, temporal_hits
 from .schemas import MemoryRecallRequest
 
 
@@ -53,6 +54,18 @@ Before a warranted write, check the injected memories and, if needed and availab
 targeted memory search. Skip an equivalent existing fact; do not store a paraphrase of it.
 Do not store transient status, secrets, raw transcripts, provisional drafts or notes, or facts
 already owned by an authoritative domain.
+
+Temporal anchors are optional. Supply year/month/day/weekday (ISO Monday=1), hour/minute
+and an IANA timezone only when the fact explicitly warrants temporal recall. Unset components
+are wildcards: month=9/day=27 means every September 27; hour=9 without minute means the whole
+9 o'clock hour. Never default to today's date. Resolve relative dates from the source message's
+timestamp and timezone; ask when ambiguous. Upcoming memories convey information, not an
+instruction to notify anyone. Use memory_upcoming to inspect further matches when truncated.
+An anchor is a recall rule: outside its period the memory is excluded from automatic context;
+when it matches it is added with priority independently of ordinary search criteria. Unanchored
+memories continue through ordinary relevance search. Both branches preserve access and contact
+isolation and share the context budget. A historical date may stay in the prose without an anchor.
+Use anchors for intended time-based reminders, never just to timestamp a preference or fact.
 
 An explicit correction must be written first as the new durable memory, then the obsolete memory
 must be forgotten. For an explicit erasure request, use the UUID when it is known; otherwise search
@@ -238,6 +251,7 @@ async def build_memory_brief(
             semantic_query=semantic_query,
             limit=limit,
             memory_types=_AUTOMATIC_MEMORY_TYPES,
+            exclude_temporal=True,
             task_id=task_id,
             memory_role="ordinary",
             topic_item_id=topic_item_id,
@@ -250,9 +264,18 @@ async def build_memory_brief(
 
     general_hits: list[MemorySearchHit] = []
     truncated = False
+    if include_relevant:
+        upcoming, upcoming_more = await temporal_hits(MemoryRecallRequest(
+            agent_id=agent_id, topic_item_id=topic_item_id, contact_item_id=contact_item_id,
+            strict_contact_scope=strict_contact_scope, memory_role="ordinary",
+            exclude_agent_projections=True,
+        ), limit=limit)
+        general_hits.extend(upcoming)
+        truncated = upcoming_more
     if relevant_page is not None:
         truncated = truncated or relevant_page.has_more
-        general_hits.extend(relevant_page.hits)
+        seen = {hit.item.id for hit in general_hits}
+        general_hits.extend(hit for hit in relevant_page.hits if hit.item.id not in seen)
 
     experience_hits: list[MemorySearchHit] = []
     experience_has_more = False
@@ -263,6 +286,7 @@ async def build_memory_brief(
             semantic_query=semantic_query,
             limit=min(runtime_settings.DREAM_EXPERIENCE_MAX_ITEMS, limit),
             memory_types=["episodic", "procedural"],
+            exclude_temporal=True,
             task_id=task_id,
             memory_role="experience",
             topic_item_id=topic_item_id,
@@ -283,7 +307,9 @@ async def build_memory_brief(
     admitted_by_id = {hit.item.id: hit for hit in admitted}
     general_hits = [admitted_by_id[hit.item.id] for hit in general_hits if hit.item.id in admitted_by_id]
     experience_hits = [admitted_by_id[hit.item.id] for hit in experience_hits if hit.item.id in admitted_by_id]
-    reserved = min(len(experience_hits), runtime_settings.DREAM_EXPERIENCE_MAX_ITEMS, limit)
+    temporal_count = sum(getattr(hit, "temporal_match_at", None) is not None for hit in general_hits)
+    reserved = min(len(experience_hits), runtime_settings.DREAM_EXPERIENCE_MAX_ITEMS, max(0, limit - temporal_count))
+    experience_has_more = experience_has_more or len(experience_hits) > reserved
     experience_hits = experience_hits[:reserved]
     general_limit = max(0, limit - len(experience_hits))
     if len(general_hits) > general_limit:
@@ -308,6 +334,12 @@ async def build_memory_brief(
             node_kind = str(getattr(hit.item, "node_kind", "memory"))
             kind_text = f"; kind={node_kind}" if node_kind == "document" else ""
             experience_text = ""
+            temporal_text = ""
+            match_at = getattr(hit, "temporal_match_at", None)
+            if isinstance(match_at, datetime) and hit.item.temporal is not None:
+                from zoneinfo import ZoneInfo
+                local_match = match_at.astimezone(ZoneInfo(hit.item.temporal.timezone))
+                temporal_text = f"temporal_match={local_match.isoformat(timespec='minutes')} ({hit.item.temporal.timezone})\n"
             if experience:
                 metadata = hit.item.metadata
                 experience_text = (
@@ -328,8 +360,9 @@ async def build_memory_brief(
             if remaining <= 0:
                 local_truncated = True
                 break
-            excerpt = hit.excerpt[:remaining]
-            if len(excerpt) < len(hit.excerpt):
+            full_excerpt = temporal_text + hit.excerpt
+            excerpt = full_excerpt[:remaining]
+            if len(excerpt) < len(full_excerpt):
                 excerpt = f"{excerpt[:-1].rstrip()}…" if excerpt else ""
                 local_truncated = True
             block = prefix + excerpt
@@ -359,7 +392,13 @@ async def build_memory_brief(
         )
 
     total_budget = runtime_settings.MEMORY_CONTEXT_MAX_CHARS
-    experience_budget = min(runtime_settings.DREAM_EXPERIENCE_MAX_CHARS, total_budget)
+    overflow_note = "\n\nMemory context is bounded; use memory_upcoming to inspect further calendar matches."
+    total_budget = max(0, total_budget - len(overflow_note))
+    calendar_rendered, _, _, _ = render_hits(
+        general_hits[:temporal_count], header=_HEADER, budget=total_budget, experience=False,
+    )
+    calendar_budget = len(calendar_rendered) + (2 if calendar_rendered else 0)
+    experience_budget = min(runtime_settings.DREAM_EXPERIENCE_MAX_CHARS, max(0, total_budget - calendar_budget))
     experience_rendered, experience_items, experience_consulted, exp_truncated = render_hits(
         experience_hits,
         header=_EXPERIENCE_HEADER,
@@ -382,6 +421,8 @@ async def build_memory_brief(
         part for part in (general_rendered, experience_rendered) if part
     )
     truncated = truncated or experience_has_more or exp_truncated or general_truncated
+    if truncated:
+        rendered += overflow_note
     await record_llm_retrieval(
         agent_id=agent_id,
         item_scores=general_consulted,

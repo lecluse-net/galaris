@@ -8,8 +8,10 @@ async function memoryItemFixtures(page) {
   const versions = [1, 2, 3].map(revision => ({ revision, title: `Saved version ${revision}`, keywords: [],
     created_at: '2026-09-01T12:00:00Z', author_agent_id: 7, task_id: null, content_hash: String(revision) }))
   await jsonRoute(page, '**/api/agents?*', [agent])
+  await jsonRoute(page, '**/api/memory/temporal/defaults', { timezone: 'Europe/Paris', lookahead_hours: 24 })
   await jsonRoute(page, '**/api/memory/filter-options?*', { topics: [], contacts: [] })
   await jsonRoute(page, '**/api/memory/findings?*', [])
+  await jsonRoute(page, '**/api/memory/graph/roots', { nodes: [], edges: [], has_more: false })
   await jsonRoute(page, '**/api/memory/items/doc-a/links?*', [])
   await jsonRoute(page, '**/api/memory/items/doc-a/revisions?*', versions)
   await jsonRoute(page, '**/api/memory/items/doc-a/sharing', { lock_version: 3, can_manage: true, grants: [], options: [],
@@ -35,6 +37,93 @@ test('opening memory selects an agent and loads its results and filters only onc
   await mount(page, 'app/memory/pages/index.vue', { privileges: ['MEMORY_EDIT'] })
   await expect(page.getByText('Current memory', { exact: true }).first()).toBeVisible()
   expect(requests).toEqual({ filters: 2, results: 2 })
+})
+
+test.describe('browser local calendar', () => {
+  test.use({ timezoneId: 'America/Toronto' })
+for (const width of [1440, 390]) {
+  test(`memory calendar filter is always applied and combines criteria at ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 1000 })
+    await page.clock.setFixedTime(new Date('2026-09-27T16:12:45Z'))
+    const { item } = await memoryItemFixtures(page)
+    await jsonRoute(page, '**/api/memory/items/doc-a?*', item)
+    const requests = []
+    let fail = false
+    await page.route('**/api/memory/browse', route => {
+      const request = route.request().postDataJSON()
+      requests.push(request)
+      if (fail) return route.fulfill({ status: 422, json: { detail: 'Invalid target time' } })
+      const scheduled = request.temporal.target_at.startsWith('2027-09-27') ? [{
+        item: { ...item, id: 'scheduled-memory', title: 'Scheduled reminder', memory_type: 'working',
+          temporal: { month: 9, day: 27, timezone: 'America/Toronto' } },
+        score: 1, temporal_match_at: request.temporal.target_at,
+      }] : []
+      return route.fulfill({ json: {
+        hits: [...scheduled, { item, score: 1, temporal_match_at: null }],
+        total: 1 + scheduled.length, has_more: false,
+        temporal_window: request.temporal ? { start: request.temporal.target_at, end: request.temporal.target_at, timezone: request.temporal.timezone } : null,
+      } })
+    })
+    await mount(page, 'app/memory/pages/index.vue', { route: '/memory?agent=7' })
+    await expect(page.getByText('Current memory', { exact: true })).toBeVisible()
+    await expect(page.getByRole('switch')).toHaveCount(0)
+    expect(requests).toHaveLength(1)
+    await expect(page.getByLabel('Target date and time', { exact: true })).toHaveValue('2026-09-27T12:12')
+    await expect.poll(() => requests.at(-1)?.temporal).toEqual({ target_at: '2026-09-27T16:12:00.000Z', timezone: 'America/Toronto', lookahead_hours: 0 })
+    await expect(page.getByLabel('Look ahead (hours)', { exact: true })).toHaveCount(0)
+    await expect(page.getByLabel('Timezone', { exact: true })).toHaveCount(0)
+    await page.getByLabel('Target date and time', { exact: true }).fill('2027-09-27T09:30')
+    await page.getByRole('button', { name: 'Apply', exact: true }).click()
+    await expect.poll(() => requests.at(-1)?.temporal).toEqual({ target_at: '2027-09-27T13:30:00.000Z', timezone: 'America/Toronto', lookahead_hours: 0 })
+    await expect(page.getByText(/^Match:/)).toBeVisible()
+    await expect(page.getByText('Scheduled reminder', { exact: true })).toBeVisible()
+    await expect(page.getByText('Current memory', { exact: true })).toBeVisible()
+    await page.getByPlaceholder('Search titles, keywords, and content').fill('calendar')
+    await expect.poll(() => requests.at(-1)?.query).toBe('calendar')
+    expect(requests.at(-1).temporal.target_at).toBe('2027-09-27T13:30:00.000Z')
+    await page.getByText('Current memory', { exact: true }).click()
+    await expect(page.getByRole('dialog')).toBeVisible()
+    await page.keyboard.press('Escape')
+    // Returning to the list keeps the simulated target and its other filters.
+    await page.getByRole('tab', { name: 'Graph', exact: true }).click()
+    await page.getByRole('tab', { name: 'List', exact: true }).click()
+    await expect(page.getByLabel('Target date and time', { exact: true })).toHaveValue('2027-09-27T09:30')
+    await page.getByLabel('Target date and time', { exact: true }).fill('')
+    const requestCount = requests.length
+    await page.getByRole('button', { name: 'Apply', exact: true }).click()
+    expect(requests).toHaveLength(requestCount)
+    await page.getByLabel('Target date and time', { exact: true }).fill('2027-09-28T09:30')
+    fail = true
+    await page.getByRole('button', { name: 'Apply', exact: true }).click()
+    await expect(page.getByText('Current memory', { exact: true })).toHaveCount(0)
+    await expect(page.getByText(/^Match:/)).toHaveCount(0)
+    fail = false
+    await page.getByRole('button', { name: 'Retry', exact: true }).click()
+    await expect(page.getByText('Current memory', { exact: true })).toBeVisible()
+    await expect(page.getByText('Scheduled reminder', { exact: true })).toHaveCount(0)
+    expect(requests.at(-1).temporal.target_at).toBe('2027-09-28T13:30:00.000Z')
+    expect(requests.at(-1).query).toBe('calendar')
+    expect(requests.every(request => request.temporal?.target_at && request.temporal.lookahead_hours === 0)).toBe(true)
+  })
+}
+
+test('calendar default keeps the current instant during a repeated browser hour', async ({ page }) => {
+  await page.clock.setFixedTime(new Date('2026-11-01T06:30:45Z'))
+  const { item } = await memoryItemFixtures(page)
+  const requests = []
+  await page.route('**/api/memory/browse', route => {
+    requests.push(route.request().postDataJSON())
+    return route.fulfill({ json: { hits: [{ item, score: 1 }], total: 1, has_more: false } })
+  })
+  await mount(page, 'app/memory/pages/index.vue', { route: '/memory?agent=7' })
+  await expect(page.getByText('Current memory', { exact: true })).toBeVisible()
+  await expect(page.getByLabel('Target date and time', { exact: true })).toHaveValue('2026-11-01T01:30')
+  await page.getByRole('button', { name: 'Apply', exact: true }).click()
+  await expect.poll(() => requests.length).toBe(2)
+  expect(requests.at(-1).temporal).toEqual({
+    target_at: '2026-11-01T06:30:00.000Z', timezone: 'America/Toronto', lookahead_hours: 0,
+  })
+})
 })
 
 for (const locale of ['fr', 'en']) {
@@ -258,18 +347,27 @@ for (const width of [1440, 390]) {
     await expect(dialog.getByText('Current body', { exact: true })).toBeVisible()
     await expect(dialog.getByLabel('Title', { exact: true })).toHaveValue('My current draft')
     await expect(keywordField.locator('.q-chip').last()).toContainText('release, notes')
+    await dialog.getByLabel('Day of month', { exact: true }).fill('27')
+    await dialog.getByLabel('Month', { exact: true }).fill('9')
+    await dialog.getByLabel('Hour', { exact: true }).fill('0')
+    await dialog.getByLabel('Minute', { exact: true }).fill('0')
+    await expect(dialog.getByLabel('Year', { exact: true })).toHaveValue('')
     expect(writes).toEqual([])
     await dialog.getByRole('button', { name: 'Save', exact: true }).click()
     await expect.poll(() => writes.length).toBe(1)
     expect(writes[0]).toMatchObject({ title: 'My current draft', expected_revision: 3, keywords: ['current', 'release, notes'], payload: { text: '<p>Current body</p>' } })
     expect(writes[0]).not.toHaveProperty('summary')
     expect(writes[0]).not.toHaveProperty('reason')
+    expect(writes[0].temporal).toMatchObject({ day: 27, month: 9, hour: 0, minute: 0, timezone: 'Europe/Paris' })
     await expect(dialog.getByRole('tab', { name: 'Memory', exact: true })).toHaveAttribute('aria-selected', 'true')
     await expect(dialog.getByText('Current body', { exact: true })).toBeVisible()
     await dialog.getByLabel('Title', { exact: true }).fill('Second saved title')
+    await expect(dialog.getByLabel('Day of month', { exact: true })).toHaveValue('27')
+    await dialog.getByRole('button', { name: 'Remove temporality', exact: true }).click()
     await dialog.getByRole('button', { name: 'Save', exact: true }).click()
     await expect.poll(() => writes.length).toBe(2)
     expect(writes[1]).toMatchObject({ title: 'Second saved title', expected_revision: 4 })
+    expect(writes[1].temporal).toBeNull()
   })
 }
 
@@ -360,24 +458,43 @@ export async function documentFixtures(page) {
   await jsonRoute(page, '**/api/memory/documents/doc-a/attachments?*', [])
 }
 
-test('memory search submits selected types and trimmed query, then opens a returned memory', async ({ page }) => {
-  const requests = []
-  await page.route('**/api/memory/search', route => {
-    requests.push(route.request().postDataJSON())
-    return route.fulfill({ json: [{ ...document, title: 'Matching memory', score: 0.9 }] })
+test('memory list combines hybrid search, type and calendar, then opens a returned memory', async ({ page }) => {
+  const { item } = await memoryItemFixtures(page)
+  let deleted = false
+  await page.route('**/api/memory/items/doc-a?*', route => {
+    if (route.request().method() === 'DELETE') {
+      expect(new URL(route.request().url()).searchParams.get('actor_agent_id')).toBe('7')
+      deleted = true
+      return route.fulfill({ status: 204 })
+    }
+    return route.fulfill({ json: item })
   })
-  await mount(page, 'app/memory/components/MemorySearchTester.vue', { props: { agentId: 7 } })
-  await expect(page.locator('button[type=submit]')).toBeDisabled()
-  await page.getByLabel('Question or search', { exact: true }).fill('  project evidence  ')
-  await page.getByRole('combobox').click()
+  const requests = []
+  await page.route('**/api/memory/browse', route => {
+    requests.push(route.request().postDataJSON())
+    const searched = Boolean(requests.at(-1).query) && !deleted
+    return route.fulfill({ json: { hits: deleted ? [] : [{ item, score: 0.9 }], total: deleted ? 0 : 1, has_more: false,
+      recall_truncated: searched, degradation_reason: searched ? 'embedding_unavailable' : null } })
+  })
+  await mount(page, 'app/memory/pages/index.vue', { privileges: ['MEMORY_EDIT'], route: '/memory?agent=7' })
+  await expect(page.getByText('Current memory', { exact: true })).toBeVisible()
+  await page.getByPlaceholder('Search titles, keywords, and content').fill('project evidence')
+  await page.getByLabel('Type', { exact: true }).click()
   await page.getByRole('option', { name: 'Knowledge', exact: true }).click()
   await page.keyboard.press('Escape')
   await page.locator('button[type=submit]').click()
-  await expect.poll(() => requests).toEqual([{ agent_id: 7, query: 'project evidence', memory_types: ['semantic'] }])
-  await page.getByText('Matching memory', { exact: true }).click()
-  await expect.poll(() => page.evaluate(() => window.testApp.events.filter(event => event.name === 'open').at(-1)?.value)).toBe('doc-a')
-  await page.evaluate(() => window.testApp.setProps({ agentId: 8 }))
-  await expect(page.getByText('Matching memory')).toHaveCount(0)
+  await expect.poll(() => requests.at(-1)).toMatchObject({ agent_id: 7, query: 'project evidence', memory_types: ['semantic'], hybrid: true })
+  expect(requests.at(-1).temporal.target_at).toBeTruthy()
+  await expect(page.getByText('Results are limited. Refine your search to explore other memories.')).toBeVisible()
+  await expect(page.getByText('Semantic search is unavailable. Results match the search words.')).toBeVisible()
+  await page.getByText('Current memory', { exact: true }).click()
+  await expect(page.getByRole('dialog').getByLabel('Title', { exact: true })).toHaveValue(item.title)
+  await page.getByRole('button', { name: 'Forget permanently', exact: true }).click()
+  await page.getByRole('dialog').last().getByRole('button', { name: 'Forget permanently', exact: true }).click()
+  await expect.poll(() => deleted).toBe(true)
+  await expect(page.getByRole('dialog')).toHaveCount(0)
+  await expect(page.getByText('Current memory', { exact: true })).toHaveCount(0)
+  await expect(page.getByText('Results are limited. Refine your search to explore other memories.')).toHaveCount(0)
 })
 
 test('document editor autosaves with its revision and preserves read-only content', async ({ page }) => {

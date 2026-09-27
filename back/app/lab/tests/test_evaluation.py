@@ -287,6 +287,7 @@ async def test_memory_extraction_import_preserves_source_corpus_with_dataset_par
             "id": "memory-001",
             "title": "Réponses courtes",
             "content": "La personne préfère les réponses courtes.",
+            "temporal": None,
             "memory_type": "core",
             "keywords": ["concision"],
             "score": 0.0,

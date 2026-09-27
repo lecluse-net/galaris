@@ -111,6 +111,7 @@ def _journal_message(
             is_agent=is_agent,
         ),
         speaker_kind="AI" if is_agent else "human",
+        occurred_at=row.created_at,
         text=text[:8_000],
     )
 
@@ -145,6 +146,7 @@ async def _round_messages(
                 is_agent=role == "output",
             ),
             speaker_kind="AI" if role == "output" else "human",
+            occurred_at=row.created_at,
             text=text[:8_000],
         )
         for role, row, display_name, external_id in linked_rows
@@ -198,6 +200,7 @@ async def _round_messages(
                             is_agent=role == "output",
                         ),
                         speaker_kind="AI" if role == "output" else "human",
+                        occurred_at=row.created_at,
                         text=text[:8_000],
                     )
                     for role, row, display_name, external_id in previous_rows
@@ -256,6 +259,7 @@ async def build_conversation_extraction_input(
     history, current = await _round_messages(round_)
     return MemoryExtractionInput(
         source_kind="conversation_round",
+        source_at=round_.created_at,
         topic={
             "id": str(topic.id),
             "title": topic.title,

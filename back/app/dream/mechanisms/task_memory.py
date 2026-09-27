@@ -172,6 +172,7 @@ def build_task_extraction_input(
         MemoryExtractionMessage(
             speaker_name=_task_human_name(task),
             speaker_kind="human",
+            occurred_at=task.created_at,
             text=human_source,
         )
     ]
@@ -186,6 +187,7 @@ def build_task_extraction_input(
         )
     return MemoryExtractionInput(
         source_kind="task",
+        source_at=task.created_at,
         topic={
             "id": str(topic.id),
             "title": topic.title,
