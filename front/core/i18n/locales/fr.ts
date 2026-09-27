@@ -20,6 +20,7 @@ export default {
     refresh: 'Rafraîchir',
     search: 'Rechercher',
     loading: 'Chargement…',
+    viewLoadError: 'Impossible de charger cette vue. Veuillez réessayer.',
     yes: 'Oui',
     no: 'Non',
     actions: 'Actions',

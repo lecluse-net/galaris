@@ -1101,6 +1101,9 @@ async function onSharingChanged(): Promise<void> {
   }
 }
 
+let initializingAgent = true
+let pageDisposed = false
+onBeforeUnmount(() => { pageDisposed = true })
 watch(() => store.selectedAgentId, (agentId, previousAgentId) => {
   if (agentId !== previousAgentId) {
     store.selectedTopicItemId = null
@@ -1108,6 +1111,7 @@ watch(() => store.selectedAgentId, (agentId, previousAgentId) => {
     topicFilterOptions.value = []
     contactFilterOptions.value = []
   }
+  if (initializingAgent) return
   void Promise.all([
     loadFilterOptions(agentId),
     searchSafely(true),
@@ -1122,6 +1126,7 @@ watch(() => editor.nodeKind, (nodeKind) => {
 onMounted(async () => {
   try {
     await agentStore.fetchAgents()
+    if (pageDisposed) return
     const rawAgentId = Array.isArray(route.query.agent) ? route.query.agent[0] : route.query.agent
     const requestedAgentId = rawAgentId ? Number(rawAgentId) : null
     const routeAgentId = requestedAgentId !== null
@@ -1144,12 +1149,15 @@ onMounted(async () => {
       activeTab.value = 'list'
       store.selectedContactItemId = rawContactId
     }
+    initializingAgent = false
     await Promise.all([
       loadFilterOptions(store.selectedAgentId),
       searchSafely(true),
     ])
   } catch (error) {
     notifyError(error)
+  } finally {
+    initializingAgent = false
   }
 })
 

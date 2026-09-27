@@ -45,12 +45,13 @@ import { computed, ref, useTemplateRef, watch } from 'vue'
 import { useQuasar } from 'quasar'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
-import { PageHeader } from '@/core/util'
-import ConfiguredLlmManager from '../components/ConfiguredLlmManager.vue'
-import LlmUsageManager from '../components/LlmUsageManager.vue'
-import ProviderWorkspace from '../components/ProviderWorkspace.vue'
+import { PageHeader, defineAsyncView } from '@/core/util'
 import type { LLMModelInfo } from '../services/llmProviderService'
 import { privileges, usePrivilegeStore } from '@/core/authorize'
+
+const ConfiguredLlmManager = defineAsyncView(() => import('../components/ConfiguredLlmManager.vue'))
+const LlmUsageManager = defineAsyncView(() => import('../components/LlmUsageManager.vue'))
+const ProviderWorkspace = defineAsyncView(() => import('../components/ProviderWorkspace.vue'))
 
 const { t } = useI18n()
 const $q = useQuasar()
@@ -95,11 +96,14 @@ watch(activeTab, tab => {
 async function openPendingLlmCreation(): Promise<void> {
   const manager = llmManager.value
   const payload = pendingLlmCreation.value
-  if (!manager || !payload) return
+  if (activeTab.value !== 'models' || typeof manager?.openForModel !== 'function' || !payload) return
 
   pendingLlmCreation.value = null
   await manager.openForModel(payload.providerId, payload.model)
 }
+
+// A download can finish after the tab's transition, particularly on mobile.
+watch(llmManager, () => { void openPendingLlmCreation() }, { flush: 'post' })
 
 function onTabTransition(tab: string | number): void {
   if (tab === 'models') void openPendingLlmCreation()

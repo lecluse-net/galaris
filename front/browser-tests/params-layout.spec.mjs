@@ -18,6 +18,8 @@ async function fixtures(page) {
 }
 
 async function expandSettings(page) {
+  // Optional settings panels may still be downloading when their page mounts.
+  await expect(page.locator('.setting-field:visible, .settings-block:visible, .q-expansion-item:visible, .janus-api-url:visible').first()).toBeVisible()
   const closed = page.locator('.q-expansion-item--collapsed > .q-expansion-item__container > .q-item:visible')
   while (await closed.count()) {
     const header = closed.first()

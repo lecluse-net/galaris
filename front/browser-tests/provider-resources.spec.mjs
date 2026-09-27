@@ -36,6 +36,36 @@ async function selectCategory(page, label) {
 }
 
 for (const width of [1440, 390]) {
+  test(`creating from the catalog waits for the model form and preserves its selection at ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 1100 })
+    await setup(page)
+    await jsonRoute(page, '**/api/llm-providers/21/resources?*', { models: [documentModel] })
+    let release
+    const pending = new Promise(resolve => { release = resolve })
+    await page.route('**/app/llm/components/ConfiguredLlmManager.vue', async route => {
+      await pending
+      await route.continue()
+    })
+    await mount(page, 'app/llm/pages/index.vue', {
+      privileges: ['LLM_PROVIDER_EDIT'], route: '/llm',
+      containerStyle: { height: '100vh', display: 'flex', flexDirection: 'column' },
+    })
+    const panel = page.locator('.provider-models-panel')
+    await expect(panel.getByText(documentModel.name, { exact: true })).toBeVisible()
+    await panel.locator('.model-item').getByRole('button').click()
+    await expect(page.getByRole('status').filter({ hasText: 'Loading' })).toBeVisible()
+    await expect(page.getByRole('dialog')).toHaveCount(0)
+    release()
+    const dialog = page.getByRole('dialog')
+    await expect(dialog).toBeVisible()
+    await expect(dialog.getByRole('combobox', { name: 'Model', exact: true })).toHaveValue(documentModel.name)
+    await expect(dialog).toContainText(provider.name)
+    await dialog.getByRole('button', { name: 'Cancel', exact: true }).click()
+    await expect(dialog).toHaveCount(0)
+    await page.getByRole('tab').first().click()
+    await expect(panel.getByText(documentModel.name, { exact: true })).toBeVisible()
+  })
+
   test(`document catalog selects native readers and preserves model metadata at ${width}px`, async ({ page }, testInfo) => {
     await page.setViewportSize({ width, height: 1100 })
     await setup(page)

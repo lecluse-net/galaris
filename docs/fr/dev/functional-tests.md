@@ -20,6 +20,14 @@ est une décision à part entière : aucun quota de tests nouveaux par module.
 
 ## Parcours traversant plusieurs domaines
 
+`front/browser-tests/async-views.spec.mjs` couvre l'ouverture différée d'un vrai éditeur,
+la saisie dans le reste de la page pendant l'attente, la fermeture avant la réponse,
+la réouverture et le réessai du chargeur sans perdre le brouillon, sur mobile et desktop.
+Un téléchargement de module en échec reste explicite sans imposer un rechargement global.
+`provider-resources.spec.mjs` conserve la sélection d'un modèle lorsque le formulaire
+arrive après la transition d'onglet. `memory.spec.mjs` impose une seule recherche et une
+seule lecture des filtres à l'initialisation de l'agent de la page Mémoire.
+
 `back/tests/test_api_read_cost.py` ouvre et réouvre les Documents via HTTP avec 1 puis
 1 000 révisions : contenu courant frais sans matérialiser l’historique, ancienne version
 lisible et pagination bornée. Il mesure aussi identité, Agents, bibliothèque, propriétaires

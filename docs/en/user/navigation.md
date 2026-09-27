@@ -7,6 +7,11 @@ Use this guide to locate a feature in the application. The
 provides exact labels, routes, descriptions and access conditions for the shipped version.
 Paths below are relative to your Galaris instance.
 
+A loading indicator may briefly appear when opening a tab or editor for the first time.
+The rest of the page stays usable. If loading fails, **Retry** attempts to open the view
+again without reloading the page or discarding current input. A persistent error leaves
+that view unavailable; other actions remain accessible.
+
 ## Opening the menus
 
 Once signed in, use the left sidebar. If only icons are visible, expand it with the menu

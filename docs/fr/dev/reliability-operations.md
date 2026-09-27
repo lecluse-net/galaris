@@ -267,6 +267,17 @@ asynchrone : consulter un document ne doit pas initialiser son moteur d'édition
 exclut les polices et les appels API ; le service worker conserve son précache complet,
 donc le volume téléchargé pour une installation PWA n'est pas celui du graphe initial.
 
+Les lecteurs, éditeurs et prévisualisations lourds exposés par `core/util`, ainsi que les
+panneaux Activité, Fournisseurs & modèles et plusieurs sections des Préférences, se
+chargent à leur ouverture. `defineAsyncView` conserve le contrat Vue des props, événements,
+slots et références. Après une courte attente il affiche un état de chargement accessible ;
+les méthodes exposées ne sont appelées qu'une fois le composant réel disponible.
+Une erreur propose de réessayer sans rechargement de la page. Certains navigateurs
+conservent un échec d'import de module : le réessai n'impose donc jamais de navigation
+qui pourrait perdre une saisie. Les catalogues de langues restent disponibles de façon
+synchrone. Les données API gardent leur fraîcheur et leurs contrôles de contexte ; aucun
+cache général de réponses n'est ajouté.
+
 Avec `APP_ENV=dev` (transmis au frontend par `VITE_APP_ENV`), le cache PWA est désactivé,
 y compris pour un build statique. Il est également désactivé avec le serveur Vite.
 Le worker ne met en cache aucune ressource et n'intercepte aucune requête ; à l'activation,

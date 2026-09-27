@@ -237,6 +237,15 @@ asynchronous: reading a document should not initialize its editing engine. The m
 excludes fonts and API calls. The service worker retains its full precache, so offline
 installation downloads differ from the initial dependency graph.
 
+Heavy readers, editors and previews exported by `core/util`, the Activity and Providers
+& models panels, and several Preferences sections load when opened. `defineAsyncView`
+preserves Vue props, events, slots and references. After a short wait it displays an
+accessible loading state; exposed methods are called only once the real component is
+available. Failures offer retry without reloading the page. Some browsers
+retain failed module imports, so retry never forces navigation that could discard input.
+Language catalogs remain synchronously available. API data retains its freshness and
+context checks; no general response cache is introduced.
+
 With `APP_ENV=dev` (passed to the frontend as `VITE_APP_ENV`), PWA caching is disabled,
 including static builds. It is also disabled when using the Vite server. The worker
 caches no resources and intercepts no requests; activation deletes old Workbox caches

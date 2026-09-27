@@ -55,7 +55,7 @@ export const memoryService = {
       ? (await api.get<ManagedDocumentDetail>(`/memory/documents/${id}`, { signal })).data.item
       : (await api.get<MemoryItemDetail>(`/memory/items/${id}`, { params: { agent_id: agentId }, signal })).data
     if (item.document_type === 'dataset') return null
-    const { preparePortableDocumentSnapshot } = await import('@/core/util')
+    const { preparePortableDocumentSnapshot } = await import('@/core/util/facade')
     const html = await preparePortableDocumentSnapshot(item.payload.text ?? '', item.title, signal,
       (documentId, attachmentId) => memoryService.documentAttachmentBlob(documentId, attachmentId, agentId, signal))
     const response = await api.post<Blob>(`/memory/documents/${id}/thumbnail`, {

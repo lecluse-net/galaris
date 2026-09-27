@@ -20,6 +20,14 @@ contracts and tests, then select the least expensive layer that proves the obser
 
 ## Cross-domain workflows
 
+`front/browser-tests/async-views.spec.mjs` covers deferred loading of a real editor,
+typing elsewhere while waiting, closing before the response, reopening and retrying
+the loader without losing the draft, on mobile and desktop. A failed module download
+remains explicit without forcing a full-page reload. `provider-resources.spec.mjs`
+preserves the chosen model when its form arrives after the tab transition.
+`memory.spec.mjs` requires one search and one filter read when initializing the
+selected agent on the Memory page.
+
 `back/tests/test_api_read_cost.py` opens and reopens Documents through HTTP with 1 then
 1,000 revisions: fresh current content without materializing history, readable older versions
 and bounded pagination. It also measures identity, Agents, the library, owners and Goal

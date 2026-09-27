@@ -7,6 +7,11 @@ Ce guide aide à trouver une fonction dans l’application. La
 donne les libellés exacts, routes, descriptions et conditions d’accès de la version livrée.
 Les chemins ci-dessous sont relatifs à votre instance Galaris.
 
+Lors de la première ouverture d'un onglet ou d'un éditeur, un indicateur de chargement
+peut apparaître brièvement. Le reste de la page reste utilisable. Si le chargement échoue,
+**Réessayer** relance l'ouverture sans recharger la page ni effacer les saisies en cours.
+Une erreur persistante laisse la vue en échec ; les autres actions restent accessibles.
+
 ## Ouvrir les menus
 
 Une fois connecté, utilisez la barre latérale à gauche. Si elle ne montre que des icônes,

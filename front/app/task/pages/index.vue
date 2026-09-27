@@ -153,14 +153,15 @@ import { useTaskStore } from '../stores/taskStore'
 import { usePrivilegeStore } from '@/core/authorize'
 import { privileges } from '@/core/authorize'
 import { useI18n } from 'vue-i18n'
-import { PageHeader } from '@/core/util'
-import TaskDetail from '../components/TaskDetail.vue'
-import ActiveTasksPanel from '../components/ActiveTasksPanel.vue'
-import LlmActivityPanel from '@/app/llm/components/LlmActivityPanel.vue'
-import ConversationHistory from '@/app/conversation/components/ConversationHistory.vue'
-import VoiceCallHistory from '@/app/voice/components/VoiceCallHistory.vue'
-import ProcessRunsPanel from '@/app/process/components/ProcessRunsPanel.vue'
+import { PageHeader, defineAsyncView } from '@/core/util'
 import type { Task, TaskFull } from '../types'
+
+const TaskDetail = defineAsyncView(() => import('../components/TaskDetail.vue'))
+const ActiveTasksPanel = defineAsyncView(() => import('../components/ActiveTasksPanel.vue'))
+const LlmActivityPanel = defineAsyncView(() => import('@/app/llm/components/LlmActivityPanel.vue'))
+const ConversationHistory = defineAsyncView(() => import('@/app/conversation/components/ConversationHistory.vue'))
+const VoiceCallHistory = defineAsyncView(() => import('@/app/voice/components/VoiceCallHistory.vue'))
+const ProcessRunsPanel = defineAsyncView(() => import('@/app/process/components/ProcessRunsPanel.vue'))
 
 type ActivityTab = 'tasks' | 'conversations' | 'voice' | 'llm' | 'processes'
 

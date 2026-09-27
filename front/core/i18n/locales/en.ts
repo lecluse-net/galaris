@@ -20,6 +20,7 @@ export default {
     refresh: 'Refresh',
     search: 'Search',
     loading: 'Loading…',
+    viewLoadError: 'This view could not be loaded. Please try again.',
     yes: 'Yes',
     no: 'No',
     actions: 'Actions',

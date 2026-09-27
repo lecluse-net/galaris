@@ -1,25 +1,27 @@
 // Reusable utility components.
 import { defineAsyncComponent } from 'vue'
+import { defineAsyncView } from './asyncView'
+export { defineAsyncView } from './asyncView'
 import './resourcePreviewCard.css'
 export { showConfirmationDialog } from './confirmationDialog'
 export { startVisiblePolling } from './visiblePolling'
-export { default as CodeEditor } from './components/CodeEditor.vue'
+export const CodeEditor = defineAsyncView(() => import('./components/CodeEditor.vue'))
 export { default as ExecutionDateFilters } from './components/ExecutionDateFilters.vue'
-export { default as FullscreenPreview } from './components/FullscreenPreview.vue'
+export const FullscreenPreview = defineAsyncView(() => import('./components/FullscreenPreview.vue'))
 export { default as ResourcePreviewBlock } from './components/ResourcePreviewBlock.vue'
 export { default as FolderIcon } from './components/FolderIcon.vue'
 export { solaire, solaireColors, type SolaireColor } from './solaire'
 export { solaireCss } from './solaireTheme'
-export { default as Model3dThumbnail } from './components/Model3dThumbnail.vue'
-export { default as Model3dViewer } from './components/Model3dViewer.vue'
+export const Model3dThumbnail = defineAsyncView(() => import('./components/Model3dThumbnail.vue'))
+export const Model3dViewer = defineAsyncView(() => import('./components/Model3dViewer.vue'))
 export { model3dFormat } from './model3d'
 export type { Model3dSource } from './model3d'
-export { default as HtmlPreview } from './components/HtmlPreview.vue'
+export const HtmlPreview = defineAsyncView(() => import('./components/HtmlPreview.vue'))
 // Backward-compatible alias.
-export { default as JsonEditor } from './components/CodeEditor.vue'
-export { default as Markdown } from './components/Markdown.vue'
-export { default as TextResourcePreview } from './components/TextResourcePreview.vue'
-export { default as MarkdownWysiwygEditor } from './components/MarkdownWysiwygEditor.vue'
+export const JsonEditor = CodeEditor
+export const Markdown = defineAsyncView(() => import('./components/Markdown.vue'))
+export const TextResourcePreview = defineAsyncView(() => import('./components/TextResourcePreview.vue'))
+export const MarkdownWysiwygEditor = defineAsyncView(() => import('./components/MarkdownWysiwygEditor.vue'))
 export { default as PageHeader } from './components/PageHeader.vue'
 export { default as ContextHelp } from './components/ContextHelp.vue'
 export { contextHelpKey, type ContextHelpState } from './contextHelp'
@@ -52,14 +54,14 @@ export type { StatusBadgeTone } from './statusBadge'
 export const RichTextEditor = defineAsyncComponent(() => import('./components/RichTextEditor.vue'))
 export type { EditorVoiceControls } from './ckeditorVoice'
 export type { EditorVoiceContext, EditorVoiceSession, EditorVoiceProvider } from './editorVoice'
-export { default as RichText } from './components/RichText.vue'
-export { default as EditorialContent } from './components/EditorialContent.vue'
+export const RichText = defineAsyncView(() => import('./components/RichText.vue'))
+export const EditorialContent = defineAsyncView(() => import('./components/EditorialContent.vue'))
 export { attachmentReference, richTextExcerpt, richLinkHref, type RichContentContribution } from './richText'
 export { documentResourceHtml } from './documentResources'
 export { formatFileSize, sizeInMegabytes, sizeFromMegabytes } from './fileSize'
 export type { FileSizeUnit } from './fileSize'
-export { default as SharingPanel } from './components/SharingPanel.vue'
+export const SharingPanel = defineAsyncView(() => import('./components/SharingPanel.vue'))
 export { default as PersonAvatar } from './components/PersonAvatar.vue'
 export type { SharingDraft, SharingLevel, SharingRecipient, SharingState } from './sharing'
-export { preparePortableDocumentSnapshot } from './documentSnapshot'
+export { preparePortableDocumentSnapshot } from './facade'
 export type { RegisterDocumentCapture, RenderedDocumentCapture } from './renderedDocument'

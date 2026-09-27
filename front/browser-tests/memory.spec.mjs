@@ -18,6 +18,25 @@ async function memoryItemFixtures(page) {
   return { item, versions }
 }
 
+test('opening memory selects an agent and loads its results and filters only once', async ({ page }) => {
+  const { item } = await memoryItemFixtures(page)
+  const requests = { filters: 0, results: 0 }
+  await page.route('**/api/memory/filter-options?*', route => {
+    requests.filters++
+    return route.fulfill({ json: { topics: [], contacts: [] } })
+  })
+  await page.route('**/api/memory/browse', route => {
+    requests.results++
+    return route.fulfill({ json: { hits: [{ item, score: 1 }], total: 1, has_more: false } })
+  })
+  await mount(page, 'app/memory/pages/index.vue', { privileges: ['MEMORY_EDIT'] })
+  await expect(page.getByText('Current memory', { exact: true }).first()).toBeVisible()
+  expect(requests).toEqual({ filters: 1, results: 1 })
+  await mount(page, 'app/memory/pages/index.vue', { privileges: ['MEMORY_EDIT'] })
+  await expect(page.getByText('Current memory', { exact: true }).first()).toBeVisible()
+  expect(requests).toEqual({ filters: 2, results: 2 })
+})
+
 for (const locale of ['fr', 'en']) {
   test(`memory list stays readable without horizontal scrolling in ${locale}`, async ({ page }, testInfo) => {
     const { item } = await memoryItemFixtures(page)

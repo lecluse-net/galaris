@@ -180,7 +180,7 @@ import { navigationIcon } from '@/core/navigation'
 import { computed, onMounted, ref } from 'vue'
 import { copyToClipboard, useQuasar } from 'quasar'
 import { useI18n } from 'vue-i18n'
-import { PageHeader } from '@/core/util'
+import { PageHeader, defineAsyncView } from '@/core/util'
 import { harnessBridgeSettings, harnessOverviewSettings, processBridgeSettings } from '../bridgeSettings'
 import {
     audioMeetingSummaryFields,
@@ -196,17 +196,18 @@ import {
 } from '../settingsCatalog'
 import { useParamsStore } from '../stores/paramsStore'
 import BridgeSettingsPanel from './BridgeSettingsPanel.vue'
-import DreamSettingsPanel from './DreamSettingsPanel.vue'
-import LogCleanupPanel from './LogCleanupPanel.vue'
-import MemorySettingsPanel from './MemorySettingsPanel.vue'
-import MessagingSettingsPanel from './MessagingSettingsPanel.vue'
 import PreferencesMenuGrid from './PreferencesMenuGrid.vue'
 import SettingsFields from './SettingsFields.vue'
 import SettingsBlock from './SettingsBlock.vue'
 import type { SettingField } from '../settingsTypes'
-import TaskSettingsPanel from './TaskSettingsPanel.vue'
 import { privileges, usePrivilegeStore } from '@/core/authorize'
 import { harnessSettingsPath, preferenceSections, type PreferenceSectionKey } from '../presentation'
+
+const DreamSettingsPanel = defineAsyncView(() => import('./DreamSettingsPanel.vue'))
+const LogCleanupPanel = defineAsyncView(() => import('./LogCleanupPanel.vue'))
+const MemorySettingsPanel = defineAsyncView(() => import('./MemorySettingsPanel.vue'))
+const MessagingSettingsPanel = defineAsyncView(() => import('./MessagingSettingsPanel.vue'))
+const TaskSettingsPanel = defineAsyncView(() => import('./TaskSettingsPanel.vue'))
 
 const { section } = defineProps<{ section: PreferenceSectionKey }>()
 
