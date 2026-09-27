@@ -12,6 +12,7 @@ from app.lab.assertions import LabMechanismReadPrivilegeAssertion
 from app.lab.contracts import CONTRACTS
 from app.lab.models import LabEvaluationDataset, LabEvaluationRun, LabEvaluationRunCase, LabJudgmentCampaign
 from app.lab.comparison_summary import summarize
+from app.lab.comparison_service import compare
 from app.lab.router import compare_benchmarks
 from core.authorize import AssertionContext
 from core.database import get_db_session
@@ -43,6 +44,73 @@ async def test_summary_counts_distinct_cases_repetitions_judgments_and_errors(db
     blocked = await summarize(before.id, after.id, comparable=False)
     assert blocked.increased is blocked.decreased is blocked.equal is None
     assert blocked.matched == 6
+
+
+@pytest.mark.asyncio
+async def test_regressions_and_paired_performance_cover_the_run_before_pagination(db):
+    dataset = LabEvaluationDataset(name="Synthetic risk campaign", mechanism="conversation_executor")
+    db.add(dataset)
+    await db.flush()
+    before, after = [LabEvaluationRun(dataset_id=dataset.id, status="completed",
+        configuration_snapshot={"fingerprints": {"corpus": "same", "candidate": "same"}}) for _ in range(2)]
+    db.add_all([before, after])
+    await db.flush()
+    for run in (before, after):
+        db.add(LabJudgmentCampaign(run_id=run.id, configuration={"rubric": "synthetic/v1"}))
+    for index in range(15):
+        for run in (before, after):
+            changed = run is after
+            judgment = {"rubric_version": "synthetic/v1", "critical_failures":
+                ["Unsupported delivery claim"] if changed and index == 10 else [],
+                "dimensions": [{"code": "grounding", "score_percent": 20 if changed and index >= 10 else 90}]}
+            if index == 12:
+                judgment = None  # A historical score is not comparable evidence.
+            elif index == 13 and changed:
+                judgment["rubric_version"] = "synthetic/v2"
+            elif index == 14:
+                judgment["dimensions"] = [
+                    {"code": "grounding", "score_percent": 90},
+                    {"code": "grounding", "score_percent": 10},
+                    {"code": "invalid", "score_percent": "not a score"},
+                ]
+            db.add(LabEvaluationRunCase(run_id=run.id, repetition=1,
+                created_at=datetime(2026, 1, 1, tzinfo=timezone.utc) + timedelta(seconds=index),
+                case_snapshot={"name": f"Risk case {index}", "input_data": {"message": str(index)}, "expected_output": {"action": "reply"}},
+                score_percent=95 if changed else 90, judge_output=judgment,
+                verdict="fail" if changed and index in (10, 11) else "pass",
+                score_details={"candidate_status": "completed", "checks": [
+                    {"code": "tool_evidence", "passed": not (changed and index == 11), "critical": True}],
+                    "performance": {"version": "lab-executor-stream/v1",
+                        "first_output_seconds": (1 if changed else 2) if index < 12 else None}},
+                cost=0.02 if changed else 0.04, duration=3 if changed else 4))
+    await db.flush()
+    first = await compare("conversation_executor", before.id, after.id, "model", limit=10)
+    assert len(first["items"]) == 10
+    assert not any(row["introduced_critical"] for row in first["items"])
+    assert first["risks"] == {"assessed_pairs": 13, "introduced_critical": 2, "pass_to_fail": 2,
+        "dimensions": [{"code": "grounding", "pairs": 12, "decreased": 2, "increased": 0, "equal": 10, "mean_delta": pytest.approx(-140 / 12)}]}
+    assert first["performance"]["first_output"] == {"pairs": 12, "left_median": 2, "right_median": 1, "median_delta": -1}
+    assert first["performance"]["cost"]["median_delta"] == pytest.approx(-0.02)
+    for focus, dimension in (("critical", None), ("verdict", None), ("dimension", "grounding")):
+        filtered = await compare("conversation_executor", before.id, after.id, "model", limit=1, focus=focus, dimension=dimension)
+        assert filtered["items"][0]["name"] == "Risk case 10"
+        assert filtered["items"][0]["introduced_critical"] is True
+        assert filtered["items"][0]["dimension_deltas"] == {"grounding": -70}
+        assert filtered["items"][0]["score_delta"] == 5  # A higher aggregate does not hide regressions.
+        assert filtered["next_offset"] == 1
+        assert filtered["risks"] == first["risks"]
+        second = await compare("conversation_executor", before.id, after.id, "model", limit=1, offset=1, focus=focus, dimension=dimension)
+        assert second["items"][0]["name"] == "Risk case 11"
+        assert second["next_offset"] is None
+    reversed_result = await compare("conversation_executor", after.id, before.id, "model", focus="critical")
+    assert reversed_result["items"] == []
+    assert reversed_result["risks"]["introduced_critical"] == 0
+    assert reversed_result["performance"]["first_output"]["median_delta"] == 1
+    after.configuration_snapshot = {"fingerprints": {"corpus": "different", "candidate": "same"}}
+    await db.flush()
+    blocked = await compare("conversation_executor", before.id, after.id, "model", focus="critical")
+    assert blocked["risks"] is blocked["performance"] is None
+    assert blocked["items"] == []
 
 
 @pytest.mark.asyncio
@@ -110,7 +178,10 @@ async def test_http_comparison_preserves_evidence_and_missing_scores(client, mec
     assert items["Case 2"]["score_delta"] is None
     assert items["Case 2"]["right_score"] is None
     assert (await client.get(url, params={**params, "limit": 500})).status_code == 200
-    for invalid in ({"limit": 501}, {"offset": -1}, {"axis": "unknown"}):
+    filtered = (await client.get(url, params={**params, "focus": "critical"})).json()
+    assert filtered["items"] == []  # Missing judgments never become regression evidence.
+    assert filtered["summary"] == data["summary"]
+    for invalid in ({"limit": 501}, {"offset": -1}, {"axis": "unknown"}, {"focus": "unknown"}, {"focus": "dimension"}):
         assert (await client.get(url, params={**params, **invalid})).status_code == 422
     other = "dispatcher" if mechanism != "dispatcher" else "briefing"
     assert (await client.get(f"/api/evaluation/{other}/runs/compare", params=params)).status_code == 404

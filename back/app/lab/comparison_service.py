@@ -4,13 +4,15 @@ from copy import deepcopy
 from typing import Any, Literal, cast
 from uuid import UUID
 
-from sqlalchemy import and_, func, or_, select
+from sqlalchemy import and_, case, false, func, or_, select
 from sqlalchemy.sql.selectable import CTE
 
 from core.database import get_db
 from .models import LabEvaluationDataset, LabEvaluationRun, LabEvaluationRunCase, LabJudgmentCampaign
 from .schemas import EvaluationMechanism, EvaluationRunRead, EvaluationRunCaseRead
 from .comparison_summary import summarize
+from .comparison_schemas import ComparisonFocus
+from .comparison_evidence import assessed, critical_regression, dimension_evidence, first_output, paired_evidence, summarize_evidence, verdict_regression
 
 
 async def _run(mechanism: EvaluationMechanism, identifier: UUID) -> LabEvaluationRun:
@@ -71,7 +73,11 @@ async def compare(
     offset: int = 0,
     limit: int = 50,
     include_outputs: bool = False,
+    focus: ComparisonFocus = "all",
+    dimension: str | None = None,
 ) -> dict[str, Any]:
+    if focus == "dimension" and not dimension:
+        raise ValueError("A dimension code is required for the dimension filter.")
     left, right = await _run(mechanism, left_id), await _run(mechanism, right_id)
     differences: list[str] = []
     left_fp, right_fp = (
@@ -134,19 +140,46 @@ async def compare(
     ambiguous = _ambiguous_pairings(left_id, right_id)
     if await get_db().scalar(select(select(ambiguous).exists())):
         blockers.append("ambiguous_case_pairing")
+    pairs = paired_evidence(left_id, right_id)
+    dimensions = dimension_evidence(pairs)
+    risks, performance = await summarize_evidence(pairs, dimensions) if not blockers else (None, None)
+    focus_clause = None
+    if focus != "all":
+        if blockers:
+            focus_clause = false()
+        elif focus == "dimension":
+            focus_clause = LabEvaluationRunCase.id.in_(select(dimensions.c.left_id).where(
+                dimensions.c.code == dimension, dimensions.c.delta < 0))
+        else:
+            focus_clause = LabEvaluationRunCase.id.in_(select(pairs.c.left_id).where(
+                critical_regression(pairs) if focus == "critical" else verdict_regression(pairs)))
     ambiguous_item = select(ambiguous).where(
         ambiguous.c.repetition == LabEvaluationRunCase.repetition,
         ambiguous.c.input_data == LabEvaluationRunCase.case_snapshot["input_data"],
         ambiguous.c.expected_output == LabEvaluationRunCase.case_snapshot["expected_output"],
     ).exists()
+    query = select(LabEvaluationRunCase, ambiguous_item).where(LabEvaluationRunCase.run_id == left_id)
+    if focus_clause is not None:
+        query = query.where(focus_clause)
     rows = (
         await get_db().execute(
-            select(LabEvaluationRunCase, ambiguous_item)
-            .where(LabEvaluationRunCase.run_id == left_id)
+            query
             .order_by(LabEvaluationRunCase.created_at, LabEvaluationRunCase.id)
             .offset(offset).limit(limit + 1)
         )
     ).tuples().all()
+    page_ids = [row.id for row, _ in rows[:limit]]
+    signals = {row.left_id: dict(row) for row in (await get_db().execute(select(
+        pairs.c.left_id,
+        case((assessed(pairs), critical_regression(pairs)), else_=None).label("introduced_critical"),
+        case((assessed(pairs), verdict_regression(pairs)), else_=None).label("pass_to_fail"),
+        first_output(pairs, "left").label("left_first_output_seconds"),
+        first_output(pairs, "right").label("right_first_output_seconds"),
+    ).where(pairs.c.left_id.in_(page_ids)))).mappings()} if page_ids and not blockers else {}
+    dimension_deltas: dict[UUID, dict[str, float]] = {}
+    if page_ids and not blockers:
+        for result_id, code, delta in (await get_db().execute(select(dimensions).where(dimensions.c.left_id.in_(page_ids)))).all():
+            dimension_deltas.setdefault(result_id, {})[code] = float(delta)
     compared: list[dict[str, Any]] = []
     for row, is_ambiguous in rows[:limit]:
         item = EvaluationRunCaseRead.model_validate(row).model_dump(mode="json")
@@ -168,6 +201,8 @@ async def compare(
         target = matches[0] if len(matches) == 1 and not is_ambiguous else None
         compared.append(
             {
+                **{key: value for key, value in signals.get(row.id, {}).items() if key != "left_id"},
+                "dimension_deltas": dimension_deltas.get(row.id, {}),
                 "left_result_id": item["id"],
                 "right_result_id": str(target.id) if target else None,
                 "pairing": "ambiguous" if is_ambiguous else "matched" if target else "missing",
@@ -211,5 +246,7 @@ async def compare(
         "items": compared,
         "next_offset": offset + limit if len(rows) > limit else None,
         "summary": (await summarize(left_id, right_id, comparable=not blockers)).model_dump(),
+        "risks": risks.model_dump() if risks else None,
+        "performance": performance.model_dump() if performance else None,
         "note": "Descriptive observed results; missing judgments are not successes. Repeat with reversed runs to inspect unmatched cases.",
     }

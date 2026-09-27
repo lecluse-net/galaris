@@ -165,6 +165,19 @@ executed before: use **Swap before and after**, then **Compare** to inspect case
 after. Compare again after new results or judgments; the view does not refresh automatically.
 Reading starts no inference and changes neither evaluations nor production settings.
 
+**Regressions to review** counts pairs with newly critical outcomes (judgment or objective
+check) and pass-to-fail changes. It also shows decreases, increases and mean differences
+for shared criteria. Buttons find affected cases across the entire run before pagination;
+**All cases** clears the filter without changing global statistics. Newly critical means
+no critical failure before and at least one after; free-form explanations are not failure
+identifiers. Judgments without a comparable rubric version remain unknown even when scored.
+
+**Latency, cost and quality** shows medians and paired counts. First output is the first
+nonempty text or tool call observed by the Lab, excluding queue and judge time; it does not
+confirm success. Missing measurements stay “—”. Cost is the recorded candidate cost.
+The [FR/EN protocol](../dev/lab-reference-corpus.md) provides
+four synthetic journeys to prepare a reproducible comparison.
+
 ## Tasks
 
 Interactive Task analysis remains available: select a Task, optionally supply human

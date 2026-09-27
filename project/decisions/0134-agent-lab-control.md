@@ -71,6 +71,28 @@ Les lignes concernées restent ambiguës sans réponse cible ni delta arbitraire
 Une autre répétition est une preuve distincte ; des cas sans correspondant restent manquants.
 Le contrôle global s'exécute en SQL ; seuls les résultats de la page sont matérialisés.
 
+## Régressions et mesures appariées
+
+La comparaison expose les apparitions d'échecs critiques (jugement ou contrôle objectif),
+les transitions réussi → échoué et les écarts par code de critère commun. Ces signaux exigent
+des jugements notés, sans erreur, avec une même version de grille ; les anciennes preuves
+incomplètes restent inconnues. Une apparition critique désigne une transition d'absence à
+présence, sans comparer les textes libres comme des identifiants. Les critères dupliqués,
+absents ou non numériques ne produisent pas d'écart. Les filtres HTTP/MCP s'appliquent avant
+pagination sur tout le run ; les agrégats restent globaux. Un blocage de comparabilité
+supprime ces agrégats et les sélections de régressions.
+
+Les exécuteurs du Lab capturent la première sortie via les événements du SDK Pydantic AI :
+texte non vide ou nom d'appel d'outil, hors pensées. La mesure commence juste avant
+l'exécution SDK, exclut la file Lab et le juge, et porte la provenance
+`lab-executor-stream/v1` dans `score_details.performance`, séparée du contenu jugé.
+Le chemin public `run_text_with_tools` garde cette observation optionnelle pour ses autres
+consommateurs. Un rejugement conserve la mesure et les coûts/durées candidats.
+Les médianes de première sortie, coût, durée et qualité donnent chacune leur effectif de
+paires valides ; elles ne remplacent pas les données manquantes et ne constituent pas un
+test de significativité. Les corpus FR/EN et leur protocole figent quatre parcours simulés
+dans le moteur existant ; ils ne qualifient pas le scheduler ou le transport en production.
+
 ## Limites et validation
 
 Le budget des benchmarks reste un seuil entre évaluations, susceptible d'être dépassé

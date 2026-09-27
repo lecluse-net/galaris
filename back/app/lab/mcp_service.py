@@ -430,10 +430,13 @@ async def compare(
     right_id: UUID,
     axis: Literal["model", "prompt", "parameters"],
     pagination: Page,
+    focus: Literal["all", "critical", "verdict", "dimension"] = "all",
+    dimension: str | None = None,
 ) -> dict[str, Any]:
     return await comparison_service.compare(
         mechanism, left_id, right_id, axis,
         offset=pagination.offset, limit=pagination.limit,
+        focus=focus, dimension=dimension,
     )
 
 

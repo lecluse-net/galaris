@@ -63,7 +63,11 @@ export interface LabPreview {
   origins: Record<string, 'dataset' | 'item'>
 }
 export type ComparisonAxis = 'model' | 'prompt' | 'parameters'
+export interface ComparisonFilter { focus: 'all' | 'critical' | 'verdict' | 'dimension'; dimension?: string }
+export interface PairedMetric { pairs: number; left_median: number | null; right_median: number | null; median_delta: number | null }
 export interface ComparisonItem {
+  introduced_critical: boolean | null; pass_to_fail: boolean | null; dimension_deltas: Record<string, number>
+  left_first_output_seconds: number | null; right_first_output_seconds: number | null
   left_result_id: string; right_result_id: string | null; name: string | null; repetition: number
   pairing: 'matched' | 'missing' | 'ambiguous'
   score_delta: number | null; cost_delta: number | null; duration_delta: number | null
@@ -76,6 +80,8 @@ export interface ComparisonItem {
   left_error: string | null; right_error: string | null
 }
 export interface RunComparison {
+  risks: { assessed_pairs: number; introduced_critical: number; pass_to_fail: number; dimensions: { code: string; pairs: number; decreased: number; increased: number; equal: number; mean_delta: number }[] } | null
+  performance: Record<'first_output' | 'cost' | 'duration' | 'quality', PairedMetric> | null
   axis: ComparisonAxis; comparable: boolean; differences: string[]; blockers: string[]
   left: LabRun; right: LabRun; items: ComparisonItem[]; next_offset: number | null
   summary: {
@@ -86,8 +92,8 @@ export interface RunComparison {
 }
 const base = (key: LabKey) => `/evaluation/${key}`
 export const labWorkbenchService = {
-  async compare(key: LabKey, left_run_id: string, right_run_id: string, axis: ComparisonAxis, offset: number, limit: number, signal?: AbortSignal) {
-    return (await api.get<RunComparison>(`${base(key)}/runs/compare`, { params: { left_run_id, right_run_id, axis, offset, limit }, signal })).data
+  async compare(key: LabKey, left_run_id: string, right_run_id: string, axis: ComparisonAxis, offset: number, limit: number, signal?: AbortSignal, filter?: ComparisonFilter) {
+    return (await api.get<RunComparison>(`${base(key)}/runs/compare`, { params: { left_run_id, right_run_id, axis, offset, limit, ...filter }, signal })).data
   },
   async generateDataset(key: LabKey, data: SyntheticDatasetRequest) {
     return (await api.post<{ dataset: LabDataset; cost: number }>(`${base(key)}/datasets/synthetic`, data, { timeout: 200000 })).data

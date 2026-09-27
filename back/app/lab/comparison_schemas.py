@@ -3,10 +3,41 @@
 from typing import Any, Literal
 from uuid import UUID
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from .schemas import EvaluationRunRead
 
 ComparisonAxis = Literal["model", "prompt", "parameters"]
+ComparisonFocus = Literal["all", "critical", "verdict", "dimension"]
+
+
+class ComparisonDimension(BaseModel):
+    code: str
+    pairs: int
+    decreased: int
+    increased: int
+    equal: int
+    mean_delta: float
+
+
+class ComparisonRisks(BaseModel):
+    assessed_pairs: int = 0
+    introduced_critical: int = 0
+    pass_to_fail: int = 0
+    dimensions: list[ComparisonDimension] = Field(default_factory=list[ComparisonDimension])
+
+
+class PairedMetric(BaseModel):
+    pairs: int
+    left_median: float | None
+    right_median: float | None
+    median_delta: float | None
+
+
+class ComparisonPerformance(BaseModel):
+    first_output: PairedMetric
+    cost: PairedMetric
+    duration: PairedMetric
+    quality: PairedMetric
 
 
 class ComparisonSummary(BaseModel):
@@ -50,6 +81,11 @@ class ComparisonItem(BaseModel):
     right_output: Any
     left_error: str | None
     right_error: str | None
+    introduced_critical: bool | None = None
+    pass_to_fail: bool | None = None
+    dimension_deltas: dict[str, float] = Field(default_factory=dict[str, float])
+    left_first_output_seconds: float | None = None
+    right_first_output_seconds: float | None = None
 
 
 class RunComparison(BaseModel):
@@ -62,3 +98,5 @@ class RunComparison(BaseModel):
     items: list[ComparisonItem]
     next_offset: int | None
     summary: ComparisonSummary
+    risks: ComparisonRisks | None = None
+    performance: ComparisonPerformance | None = None

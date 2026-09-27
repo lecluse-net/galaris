@@ -38,11 +38,19 @@
           </template>
           <p v-if="result.comparable">{{ t('evaluation.comparison.counts', counts) }}</p>
           <p v-else>{{ t('evaluation.comparison.noSummary') }}</p>
+          <LabComparisonInsights :comparison="result" @focus="chooseFocus" />
+          <p v-if="filter.focus !== 'all'">
+            {{ t('evaluation.comparison.activeFocus.' + filter.focus, { code: filter.dimension ?? '' }) }}
+            <q-btn flat :label="t('evaluation.comparison.allCases')" @click="chooseFocus({ focus: 'all' })" />
+          </p>
           <p v-if="!result.items.length">{{ t('evaluation.comparison.empty') }}</p>
           <article v-for="item in result.items" :key="item.left_result_id" class="comparison-case q-my-md q-pa-md">
             <h3>{{ item.name || t('evaluation.comparison.unnamed') }} · {{ t('evaluation.insights.attempt', { number: item.repetition }) }}</h3>
             <p v-if="item.pairing !== 'matched'" class="comparison-notice q-pa-sm">{{ t('evaluation.comparison.pairing.' + item.pairing) }}</p>
             <p v-else>{{ t('evaluation.comparison.deltas', { score: delta(item.score_delta, 1), cost: delta(item.cost_delta, 6), duration: delta(item.duration_delta, 2) }) }}</p>
+            <p v-if="item.introduced_critical" class="comparison-error">{{ t('evaluation.comparison.newCritical') }}</p>
+            <p v-if="item.pass_to_fail" class="comparison-error">{{ t('evaluation.comparison.passToFail') }}</p>
+            <p v-for="(change, code) in item.dimension_deltas" :key="code">{{ t('evaluation.comparison.dimensionDelta', { code, delta: delta(change, 1) }) }}</p>
             <q-expansion-item :label="t('evaluation.contract.effectiveInput')"><LabReadableValue :value="item.input" /></q-expansion-item>
             <q-expansion-item :label="t('evaluation.contract.reference')"><LabReadableValue :value="item.reference" /></q-expansion-item>
             <div class="comparison-columns q-mt-md">
@@ -50,6 +58,7 @@
                 <h4>{{ t('evaluation.comparison.' + (side === 'left' ? 'before' : 'after')) }}</h4>
                 <template v-if="side === 'left' || item.pairing === 'matched'">
                   <p>{{ t('evaluation.comparison.metrics', { score: number(item[`${side}_score`], 1), cost: number(item[`${side}_cost`], 6), duration: number(item[`${side}_duration`], 2) }) }}</p>
+                  <p>{{ t('evaluation.comparison.firstOutput', { seconds: number(item[`${side}_first_output_seconds`], 2) }) }}</p>
                   <p>{{ item[`${side}_verdict`] ? t('evaluation.contract.status.' + item[`${side}_verdict`]) : t('evaluation.comparison.unjudged') }}</p>
                   <p v-if="item[`${side}_error`]" class="comparison-error">{{ item[`${side}_error`] }}</p>
                   <ul v-if="item[`${side}_judgment`]?.critical_failures?.length" class="comparison-error"><li v-for="failure in item[`${side}_judgment`]?.critical_failures" :key="failure">{{ failure }}</li></ul>
@@ -78,8 +87,9 @@ import { computed, nextTick, onBeforeUnmount, reactive, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { apiErrorDetail } from '@/core/api'
 import { solaireCss as solaire } from '@/core/util'
-import { labWorkbenchService as api, type ComparisonAxis, type LabDataset, type LabKey, type LabRun, type RunComparison } from '../services/labWorkbenchService'
+import { labWorkbenchService as api, type ComparisonAxis, type ComparisonFilter, type LabDataset, type LabKey, type LabRun, type RunComparison } from '../services/labWorkbenchService'
 import LabReadableValue from './LabReadableValue.vue'
+import LabComparisonInsights from './LabComparisonInsights.vue'
 
 const opened = defineModel<boolean>({ default: false })
 const props = defineProps<{ mechanism: LabKey; datasets: LabDataset[]; initialDatasetId: string | null }>()
@@ -87,6 +97,7 @@ const { t, locale } = useI18n()
 interface Side { key: 'before' | 'after'; datasetId: string | null; runId: string | null; runs: LabRun[]; loading: boolean; error: string; generation: number }
 const sides = reactive<Side[]>(['before', 'after'].map(key => ({ key: key as Side['key'], datasetId: null, runId: null, runs: [], loading: false, error: '', generation: 0 })))
 const axis = ref<ComparisonAxis>('model'), result = ref<RunComparison | null>(null)
+const filter = ref<ComparisonFilter>({ focus: 'all' })
 const loading = ref(false), error = ref(''), offset = ref(0), limit = ref(50)
 let generation = 0, controller: AbortController | undefined
 const axes = computed(() => (['model', 'prompt', 'parameters'] as const).map(value => ({ value, label: t('evaluation.comparison.axes.' + value) })))
@@ -123,7 +134,7 @@ async function compare(pageOffset: number) {
   const request = generation
   controller = new AbortController(); loading.value = true
   try {
-    const data = await api.compare(props.mechanism, sides[0]!.runId!, sides[1]!.runId!, axis.value, pageOffset, limit.value, controller.signal)
+    const data = await api.compare(props.mechanism, sides[0]!.runId!, sides[1]!.runId!, axis.value, pageOffset, limit.value, controller.signal, filter.value)
     if (request === generation) { result.value = data; offset.value = pageOffset }
   } catch (cause) { if (request === generation) error.value = apiErrorDetail(cause) ?? t('evaluation.comparison.loadError') }
   finally { if (request === generation) loading.value = false }
@@ -134,6 +145,7 @@ async function swap() {
   await nextTick()
   sides[0]!.runId = after.run; sides[1]!.runId = before.run
 }
+function chooseFocus(value: ComparisonFilter) { filter.value = value; void compare(0) }
 for (const side of sides) watch(() => side.datasetId, () => { side.runId = null; void loadRuns(side) }, { flush: 'sync' })
 watch(() => [opened.value, props.mechanism], () => {
   invalidate()
@@ -144,7 +156,7 @@ watch(() => [opened.value, props.mechanism], () => {
     else side.datasetId = dataset
   }
 }, { immediate: true, flush: 'sync' })
-watch(() => [props.mechanism, opened.value, axis.value, ...sides.flatMap(side => [side.datasetId, side.runId])], invalidate, { flush: 'sync' })
+watch(() => [props.mechanism, opened.value, axis.value, ...sides.flatMap(side => [side.datasetId, side.runId])], () => { filter.value = { focus: 'all' }; invalidate() }, { flush: 'sync' })
 watch(limit, () => { if (result.value) void compare(0) })
 onBeforeUnmount(() => { invalidate(); for (const side of sides) side.generation++ })
 </script>

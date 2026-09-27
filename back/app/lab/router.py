@@ -37,7 +37,7 @@ from .contracts import LabInput
 from . import synthetic_service
 from .synthetic_schemas import SyntheticDatasetRequest, SyntheticDatasetResult
 from . import comparison_service
-from .comparison_schemas import ComparisonAxis, RunComparison
+from .comparison_schemas import ComparisonAxis, ComparisonFocus, RunComparison
 from .capture_service import CaptureParametersMismatch
 from .schemas import CaptureRequest, LabInputPreview, HumanReviewCreate, HumanReviewQueue
 from .schemas import (
@@ -93,14 +93,18 @@ async def compare_benchmarks(
     left_run_id: UUID,
     right_run_id: UUID,
     axis: ComparisonAxis = "model",
+    focus: ComparisonFocus = "all",
+    dimension: Annotated[str | None, Query(pattern=r"^[a-z][a-z0-9_]{1,79}$")] = None,
     offset: Annotated[int, Query(ge=0)] = 0,
     limit: Annotated[int, Query(ge=1, le=500)] = 50,
 ) -> RunComparison:
     try:
         return RunComparison.model_validate(await comparison_service.compare(
             mechanism, left_run_id, right_run_id, axis,
-            offset=offset, limit=limit, include_outputs=True,
+            offset=offset, limit=limit, include_outputs=True, focus=focus, dimension=dimension,
         ))
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
     except LookupError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
 

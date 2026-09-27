@@ -150,6 +150,7 @@ async def test_two_passes_and_rejudge_preserve_candidate_outputs(db, monkeypatch
             {"text": f"History for {kwargs['input_data']['objective']}"}
         ]
         calls.append("candidate")
+        kwargs["observations"]["performance"] = {"version": "lab-executor-stream/v1", "first_output_seconds": 0.25}
         return {"result": kwargs["input_data"]["objective"], "choices": []}, 0.1
 
     async def judge(**kwargs):
@@ -180,7 +181,7 @@ async def test_two_passes_and_rejudge_preserve_candidate_outputs(db, monkeypatch
     results = (
         await db.scalars(select(LabEvaluationRunCase).where(LabEvaluationRunCase.run_id == run.id))
     ).all()
-    original = [(row.id, row.actual_output, row.cost) for row in results]
+    original = [(row.id, row.actual_output, row.cost, row.duration, row.score_details["performance"]) for row in results]
     await service.process_runs()
     await service.process_runs()
     await db.refresh(run)
@@ -201,7 +202,7 @@ async def test_two_passes_and_rejudge_preserve_candidate_outputs(db, monkeypatch
     assert len((await db.scalars(select(LabJudgmentResult))).all()) == 4
     for row in results:
         await db.refresh(row)
-    assert [(row.id, row.actual_output, row.cost) for row in results] == original
+    assert [(row.id, row.actual_output, row.cost, row.duration, row.score_details["performance"]) for row in results] == original
 
 
 @pytest.mark.asyncio

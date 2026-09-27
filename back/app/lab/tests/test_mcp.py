@@ -420,6 +420,13 @@ async def test_comparison_identifies_prompt_treatment_and_ambiguous_evidence(db,
     )
     assert compared["comparable"] and compared["items"][0]["pairing"] == "matched"
     assert compared["items"][0]["score_delta"] == 0
+    for focus in ("critical", "verdict", "dimension"):
+        filtered = await mcp.lab_run_compare(
+            ctx, "briefing", UUID(left["id"]), UUID(right["id"]), "prompt", Page(),
+            focus=focus, dimension="grounding" if focus == "dimension" else None,
+        )
+        assert filtered["items"] == []
+        assert filtered["risks"] == compared["risks"]
     assert not (
         await mcp.lab_run_compare(
             ctx, "briefing", UUID(left["id"]), UUID(right["id"]), "model", Page()

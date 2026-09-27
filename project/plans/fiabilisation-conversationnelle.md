@@ -23,6 +23,9 @@ La projection des traces mesure maintenant le premier texte/outil et l'union des
 LLM ; Task et Conversation la partagent ([ADR 0094](../decisions/0094-task-timing-and-delivery-observations.md)).
 Les durées entre appels restent non attribuées et les preuves absentes restent inconnues.
 Les campagnes avant/après, la séparation réseau/verrou/temps local et la livraison restent à qualifier.
+Le [protocole Lab FR/EN](../../docs/fr/dev/lab-reference-corpus.md#campagne-délai-coût-et-qualité)
+prépare quatre parcours à réponses d'outils fixes, avec première sortie SDK, coût et qualité.
+L'admission Task y est simulée ; les mesures du parcours utilisateur complet restent à réaliser.
 
 - Constituer un corpus synthétique multilingue avec témoins nominaux et perturbés :
   humain/pair IA, question/action, racine/enfant, contraintes et capacités différentes.

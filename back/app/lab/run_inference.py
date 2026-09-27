@@ -224,6 +224,7 @@ async def evaluate_claim(run: RunClaim) -> CaseEvaluation:
         ):
             actual, inference_cost = await evaluate_mechanism(
                 definition,
+                observations=score_details,
                 input_data=input_data,
                 llm=llm,
                 decision_llm=decision_llm,

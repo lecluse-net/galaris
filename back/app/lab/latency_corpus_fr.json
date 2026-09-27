@@ -1,0 +1,126 @@
+{
+  "version": 1,
+  "mechanism": "conversation_executor",
+  "name": "Latency, cost and quality v1 (FR)",
+  "purpose": "validation",
+  "description": "Public synthetic microbenchmark: direct reply, Memory search, Task status and simulated Task admission. Fixed effect-free responses; excludes production transport, queue and real Task execution.",
+  "parameters": {
+    "language": "fr",
+    "datetime": "2026-01-01T12:00:00+00:00",
+    "weekday": "Thursday",
+    "available_tools": [
+      "memory_search",
+      "conversation_task_status",
+      "conversation_task_submit"
+    ],
+    "tool_responses": {
+      "memory_search": [
+        {
+          "items": [
+            {
+              "uri": "memory://00000000-0000-0000-0000-000000000042",
+              "content": "Le délai de retour du produit fictif Orbe est de 17 jours après réception."
+            }
+          ],
+          "benchmark": true
+        }
+      ],
+      "conversation_task_status": [
+        {
+          "task_uri": "galaris://task/00000000-0000-0000-0000-000000000041",
+          "status": "RUNNING",
+          "benchmark": true
+        }
+      ],
+      "conversation_task_submit": [
+        {
+          "task_uri": "galaris://task/00000000-0000-0000-0000-000000000043",
+          "status": "CREATE",
+          "created": true,
+          "benchmark": true
+        }
+      ]
+    }
+  },
+  "cases": [
+    {
+      "name": "Direct answer",
+      "categories": [
+        "nominal",
+        "multilingual"
+      ],
+      "input_data": {
+        "variable_value": "Combien font 7 × 8 ? Réponds brièvement.",
+        "context": {
+          "history": []
+        }
+      },
+      "expected_output": {
+        "action": "reply",
+        "response_requirements": [
+          "Répondre 56 en français, sans outil ni tâche en arrière-plan."
+        ]
+      }
+    },
+    {
+      "name": "Memory search",
+      "categories": [
+        "nominal",
+        "multilingual"
+      ],
+      "input_data": {
+        "variable_value": "Recherche dans la mémoire la politique de retour du produit Orbe et indique son délai. Cite la source trouvée.",
+        "context": {
+          "history": []
+        }
+      },
+      "expected_output": {
+        "action": "use_tool",
+        "response_requirements": [
+          "Appeler memory_search avant de répondre ; annoncer 17 jours après réception et citer la source retournée. Ne pas inventer une recherche web."
+        ]
+      }
+    },
+    {
+      "name": "Task status tool",
+      "categories": [
+        "nominal",
+        "multilingual"
+      ],
+      "input_data": {
+        "variable_value": "Vérifie l’état de galaris://task/00000000-0000-0000-0000-000000000041 et dis-moi si le travail est terminé. Ne crée pas une nouvelle tâche.",
+        "context": {
+          "history": []
+        }
+      },
+      "expected_output": {
+        "action": "read_status",
+        "response_requirements": [
+          "Appeler conversation_task_status pour galaris://task/00000000-0000-0000-0000-000000000041 ; indiquer que le travail est en cours, pas terminé."
+        ]
+      }
+    },
+    {
+      "name": "Simulated Task admission",
+      "categories": [
+        "nominal",
+        "multilingual"
+      ],
+      "input_data": {
+        "variable_value": "Lance en arrière-plan une étude détaillée des trois offres fictives Orbe, Nacre et Sillage, avec sources, comparaison des coûts et rapport final. Tu peux commencer maintenant.",
+        "context": {
+          "history": []
+        }
+      },
+      "expected_output": {
+        "action": "start_task",
+        "objective_requirements": [
+          "Soumettre un objectif HTML avec conversation_task_submit, conservant les trois offres, les sources, les coûts et le rapport demandé."
+        ],
+        "response_requirements": [
+          "Accuser brièvement réception de la création après le retour de l’outil ; ne pas annoncer un rapport déjà terminé."
+        ]
+      }
+    }
+  ]
+}

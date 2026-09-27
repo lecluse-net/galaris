@@ -678,6 +678,7 @@ async def evaluate_mechanism(
     system_prompt_override: str | None = None,
     topic_configuration: dict[str, Any] | None = None,
     decision_llm: LLM | None = None,
+    observations: dict[str, Any] | None = None,
 ) -> tuple[Any, float]:
     if definition.key == "dispatcher":
         result = await evaluate_dispatcher_input(
@@ -732,9 +733,15 @@ async def evaluate_mechanism(
             prompt=prompt,
             system_prompt=system_prompt_override,
             tools=recording_tools(definition.executor, responses, transcript),
+            measure_latency=observations is not None,
             purpose=LLMCallPurpose.LAB_MECHANISM_RUN,
             model_field=model_usages.LAB,
         )
+        if observations is not None:
+            observations["performance"] = {
+                "version": "lab-executor-stream/v1",
+                "first_output_seconds": inference.first_output_seconds,
+            }
         return {
             "action": _executor_action(inference.tool_calls),
             "response": inference.output,

@@ -321,3 +321,47 @@ async def test_text_with_tools_records_the_exact_effect_free_call(
     assert result.tool_calls == [
         {"name": "record_action", "arguments": {"objective": "Prepare report"}}
     ]
+    assert result.first_output_seconds is None
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("with_tool", [False, True])
+async def test_stream_latency_keeps_first_meaningful_output_and_finishes_tools(monkeypatch, with_tool):
+    from pydantic_ai.models.function import DeltaToolCall
+
+    clock = [50.0]
+    steps, effects = [], []
+
+    async def stream(_messages, _info):
+        steps.append(True)
+        if len(steps) == 1:
+            if with_tool:
+                clock[0] = 52.0
+                yield {0: DeltaToolCall(name="record_action", json_args='{"objective":"Synthetic report"}')}
+                return
+            yield "   "  # Empty transport chunks must not count as useful output.
+            clock[0] = 52.0
+            yield "Work"
+        else:
+            clock[0] = 75.0
+            yield "Work"
+        clock[0] = 80.0
+        yield " started."
+
+    async def build(*_args, **_kwargs):
+        return FunctionModel(stream_function=stream)
+
+    async def record_action(objective: str) -> dict[str, str]:
+        effects.append(objective)
+        return {"status": "recorded"}
+
+    monkeypatch.setattr(structured_service, "time", SimpleNamespace(monotonic=lambda: clock[0]))
+    monkeypatch.setattr(structured_service, "build_model_for_llm", build)
+    monkeypatch.setattr(structured_service, "estimate_cost_from_usage", lambda *_: 0.0)
+    monkeypatch.setattr(structured_service, "UsageLimits", lambda **kw: UsageLimits(**{**kw, "count_tokens_before_request": False}))
+    result = await structured_service.run_text_with_tools(llm=SimpleNamespace(), prompt="Synthetic request",
+        system_prompt="Use the recording tool when requested.", tools=[record_action], measure_latency=True)
+    assert result.first_output_seconds == 2.0
+    assert result.output.strip() == "Work started."
+    assert effects == (["Synthetic report"] if with_tool else [])
+    assert len(result.tool_calls) == int(with_tool)

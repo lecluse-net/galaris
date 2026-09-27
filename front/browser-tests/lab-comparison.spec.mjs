@@ -6,6 +6,9 @@ const before = run('before-run', 'Candidate before'), after = run('after-run', '
 const item = (name, changes = {}) => ({ name, left_result_id: name, right_result_id: 'after-' + name, pairing: 'matched', repetition: 1, score_delta: -20, cost_delta: -0.01, duration_delta: 1, left_score: 20, right_score: 0, left_cost: 0.02, right_cost: 0.01, left_duration: 1, right_duration: 2, left_verdict: 'pass', right_verdict: 'fail', input: 'Synthetic input', reference: 'Reference only', left_output: 'Original answer', right_output: 'Changed answer', left_judgment: { explanation: 'Original evidence' }, right_judgment: { explanation: 'New evidence', critical_failures: ['Unsupported claim'] }, left_checks: {}, right_checks: {}, left_error: null, right_error: null, ...changes })
 const summary = { cases: 4, observations: 6, matched: 5, missing_left: 0, missing_right: 1, ambiguous: 0, unjudged: 1, failed: 0, increased: 2, decreased: 1, equal: 1 }
 const comparison = { axis: 'model', comparable: true, summary, differences: ['candidate'], blockers: [], left: before, right: after, items: [item('A result')], next_offset: null }
+const risks = { assessed_pairs: 12, introduced_critical: 1, pass_to_fail: 1, dimensions: [{ code: 'grounding', pairs: 12, decreased: 1, increased: 0, equal: 11, mean_delta: -5 }] }
+const metric = { pairs: 12, left_median: 2, right_median: 1, median_delta: -1 }
+const performance = { first_output: metric, duration: metric, cost: { ...metric, left_median: 0.02, right_median: 0.01, median_delta: -0.01 }, quality: { ...metric, left_median: 70, right_median: 75, median_delta: 5 } }
 
 async function routes(page, mechanism = 'briefing') {
   await jsonRoute(page, `**/api/evaluation/${mechanism}/datasets/baseline/runs?*`, [before, after])
@@ -23,6 +26,40 @@ async function choose(page) {
 for (const viewport of [{ width: 1440, height: 1000 }, { width: 390, height: 844 }]) {
   test.describe('Lab comparison at ' + viewport.width, () => {
     test.use({ viewport })
+    test('global risk filters reveal off-page regressions despite a higher overall score', async ({ page }) => {
+      await routes(page)
+      const requests = []
+      await page.route('**/api/evaluation/briefing/runs/compare?*', route => {
+        const params = Object.fromEntries(new URL(route.request().url()).searchParams)
+        requests.push(params)
+        return route.fulfill({ json: { ...comparison, risks, performance, items: params.focus === 'all'
+          ? [item('Ordinary case')]
+          : [item('Previously off-page case', { introduced_critical: true, pass_to_fail: true, dimension_deltas: { grounding: -60 }, score_delta: 5, left_first_output_seconds: 2, right_first_output_seconds: 1 })] } })
+      })
+      await mount(page, 'app/lab/components/LabComparisonDialog.vue', { props: { mechanism: 'briefing', datasets, initialDatasetId: 'baseline', modelValue: true } })
+      await choose(page)
+      await page.getByRole('button', { name: 'Compare', exact: true }).click()
+      await expect(page.getByRole('heading', { name: /Ordinary case/ })).toBeVisible()
+      for (const [focus, label] of [['critical', '1 newly critical outcomes — view cases'], ['verdict', '1 pass-to-fail changes — view cases'], ['dimension', 'View decreases: grounding']]) {
+        await page.getByRole('button', { name: label, exact: true }).click()
+        await expect(page.getByRole('heading', { name: /Previously off-page case/ })).toBeVisible()
+        await expect(page.getByText('A critical failure appeared.', { exact: true })).toBeVisible()
+        await expect(page.getByText('Verdict changed from pass to fail.', { exact: true })).toBeVisible()
+        await expect(page.getByText('grounding: -60.0 points.', { exact: true })).toBeVisible()
+        await expect(page.getByText('First observed output: 1.00 s.', { exact: true })).toBeVisible()
+        expect(requests.at(-1)).toMatchObject({ focus, offset: '0' })
+        if (focus === 'dimension') expect(requests.at(-1).dimension).toBe('grounding')
+        await expect(page.getByText('12 pairs · before 2 · after 1 · median paired difference -1').first()).toBeVisible()
+        await page.getByRole('button', { name: 'All cases', exact: true }).click()
+        await expect(page.getByRole('heading', { name: /Ordinary case/ })).toBeVisible()
+      }
+      await page.getByRole('button', { name: '1 newly critical outcomes — view cases', exact: true }).click()
+      await expect(page.getByRole('heading', { name: /Previously off-page case/ })).toBeVisible()
+      await page.getByRole('button', { name: 'Swap before and after' }).click()
+      await page.getByRole('button', { name: 'Compare', exact: true }).click()
+      await expect(page.getByRole('heading', { name: /Ordinary case/ })).toBeVisible()
+      expect(requests.at(-1)).toMatchObject({ focus: 'all', left_run_id: after.id })
+    })
     test('read-only comparison shows zero scores, evidence, missing results, pagination and reversed selections', async ({ page }) => {
       await routes(page)
       const requests = []

@@ -7,9 +7,10 @@ framework agents themselves.
 from __future__ import annotations
 
 import json
+import time
 from contextlib import contextmanager
 from contextvars import ContextVar
-from collections.abc import Generator
+from collections.abc import AsyncIterable, Generator
 from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Any, Generic, Literal, TypeVar
@@ -18,8 +19,10 @@ from uuid import UUID
 from pydantic import JsonValue
 from pydantic_ai import (
     Agent as PydanticAgent,
+    AgentStreamEvent,
     ModelRetry,
     PromptedOutput,
+    RunContext,
     UsageLimits,
 )
 from pydantic_ai import messages as pydantic_messages
@@ -83,6 +86,7 @@ class ToolInferenceResult:
     cost: float
     messages: list[Any]
     tool_calls: list[dict[str, Any]]
+    first_output_seconds: float | None = None
 
 
 async def run_structured(
@@ -322,6 +326,7 @@ async def run_text_with_tools(
     tool_calls_limit: int = 3,
     purpose: LLMCallPurpose | str | None = None,
     model_field: str | None = None,
+    measure_latency: bool = False,
 ) -> ToolInferenceResult:
     """Run effect-free recording tools and return their exact model call transcript."""
 
@@ -340,9 +345,32 @@ async def run_text_with_tools(
         model_settings={"temperature": temperature, "parallel_tool_calls": False},
         retries={"tools": 1, "output": 1},
     )
+    first_output_seconds: float | None = None
+    started = time.monotonic()
+
+    async def observe(_ctx: RunContext[None], events: AsyncIterable[AgentStreamEvent]) -> None:
+        nonlocal first_output_seconds
+        async for event in events:
+            if first_output_seconds is not None:
+                continue
+            content = ""
+            if isinstance(event, pydantic_messages.PartStartEvent):
+                if isinstance(event.part, pydantic_messages.TextPart):
+                    content = event.part.content
+                elif isinstance(event.part, pydantic_messages.ToolCallPart):
+                    content = event.part.tool_name
+            elif isinstance(event, pydantic_messages.PartDeltaEvent):
+                if isinstance(event.delta, pydantic_messages.TextPartDelta):
+                    content = event.delta.content_delta
+                elif isinstance(event.delta, pydantic_messages.ToolCallPartDelta):
+                    content = event.delta.tool_name_delta or ""
+            if content.strip():
+                first_output_seconds = time.monotonic() - started
+
     with llm_call_accounting() as accounting:
         result = await agent.run(
             prompt,
+            event_stream_handler=observe if measure_latency else None,
             usage_limits=UsageLimits(
                 request_limit=request_limit,
                 tool_calls_limit=tool_calls_limit,
@@ -371,6 +399,7 @@ async def run_text_with_tools(
         cost=accounting.cost if accounting.costs else estimate_cost_from_usage(result, llm),
         messages=messages,
         tool_calls=calls,
+        first_output_seconds=first_output_seconds,
     )
 
 

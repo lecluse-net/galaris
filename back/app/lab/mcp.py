@@ -580,8 +580,10 @@ async def lab_run_compare(
     right_run_id: UUID,
     axis: Literal["model", "prompt", "parameters"],
     pagination: Page,
+    focus: Literal["all", "critical", "verdict", "dimension"] = "all",
+    dimension: str | None = None,
 ) -> dict[str, Any]:
-    return await service.compare(mechanism, left_run_id, right_run_id, axis, pagination)
+    return await service.compare(mechanism, left_run_id, right_run_id, axis, pagination, focus, dimension)
 
 
 @mcp_tool(

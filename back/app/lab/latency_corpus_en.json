@@ -1,0 +1,126 @@
+{
+  "version": 1,
+  "mechanism": "conversation_executor",
+  "name": "Latency, cost and quality v1 (EN)",
+  "purpose": "validation",
+  "description": "Public synthetic microbenchmark: direct reply, Memory search, Task status and simulated Task admission. Fixed effect-free responses; excludes production transport, queue and real Task execution.",
+  "parameters": {
+    "language": "en",
+    "datetime": "2026-01-01T12:00:00+00:00",
+    "weekday": "Thursday",
+    "available_tools": [
+      "memory_search",
+      "conversation_task_status",
+      "conversation_task_submit"
+    ],
+    "tool_responses": {
+      "memory_search": [
+        {
+          "items": [
+            {
+              "uri": "memory://00000000-0000-0000-0000-000000000042",
+              "content": "The return period for the fictional Orbe product is 17 days after receipt."
+            }
+          ],
+          "benchmark": true
+        }
+      ],
+      "conversation_task_status": [
+        {
+          "task_uri": "galaris://task/00000000-0000-0000-0000-000000000041",
+          "status": "RUNNING",
+          "benchmark": true
+        }
+      ],
+      "conversation_task_submit": [
+        {
+          "task_uri": "galaris://task/00000000-0000-0000-0000-000000000043",
+          "status": "CREATE",
+          "created": true,
+          "benchmark": true
+        }
+      ]
+    }
+  },
+  "cases": [
+    {
+      "name": "Direct answer",
+      "categories": [
+        "nominal",
+        "multilingual"
+      ],
+      "input_data": {
+        "variable_value": "What is 7 × 8? Answer briefly.",
+        "context": {
+          "history": []
+        }
+      },
+      "expected_output": {
+        "action": "reply",
+        "response_requirements": [
+          "Answer 56 in English, without tools or background work."
+        ]
+      }
+    },
+    {
+      "name": "Memory search",
+      "categories": [
+        "nominal",
+        "multilingual"
+      ],
+      "input_data": {
+        "variable_value": "Search Memory for the Orbe product return policy and state the return period. Cite the source you find.",
+        "context": {
+          "history": []
+        }
+      },
+      "expected_output": {
+        "action": "use_tool",
+        "response_requirements": [
+          "Call memory_search before answering; state 17 days after receipt and cite the returned source. Do not claim a web search."
+        ]
+      }
+    },
+    {
+      "name": "Task status tool",
+      "categories": [
+        "nominal",
+        "multilingual"
+      ],
+      "input_data": {
+        "variable_value": "Check the status of galaris://task/00000000-0000-0000-0000-000000000041 and tell me whether the work is complete. Do not create a new task.",
+        "context": {
+          "history": []
+        }
+      },
+      "expected_output": {
+        "action": "read_status",
+        "response_requirements": [
+          "Call conversation_task_status for galaris://task/00000000-0000-0000-0000-000000000041; report that work is running, not completed."
+        ]
+      }
+    },
+    {
+      "name": "Simulated Task admission",
+      "categories": [
+        "nominal",
+        "multilingual"
+      ],
+      "input_data": {
+        "variable_value": "Start a detailed background study of the three fictional offers Orbe, Nacre and Sillage, with sources, cost comparison and a final report. You may start now.",
+        "context": {
+          "history": []
+        }
+      },
+      "expected_output": {
+        "action": "start_task",
+        "objective_requirements": [
+          "Submit an HTML objective with conversation_task_submit, preserving the three offers, sources, costs and requested report."
+        ],
+        "response_requirements": [
+          "Briefly acknowledge creation after the tool returns; do not claim the report is already complete."
+        ]
+      }
+    }
+  ]
+}

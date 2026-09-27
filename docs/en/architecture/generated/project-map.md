@@ -325,7 +325,7 @@ tests remain authoritative for behavior.
 | `app.lab` | `app.topic` | `back/app/lab/contracts.py`, `back/app/lab/mechanism_evaluation_service.py`, `back/app/lab/mechanism_registry.py`, `back/app/lab/schemas.py`, `back/app/lab/synthetic_service.py` |
 | `app.lab` | `app.voice` | `back/app/lab/mechanism_evaluation_service.py` |
 | `app.lab` | `core.authorize` | `back/app/lab/access.py`, `back/app/lab/assertions.py`, `back/app/lab/router.py` |
-| `app.lab` | `core.database` | `back/app/lab/agent_review_service.py`, `back/app/lab/capture_service.py`, `back/app/lab/comparison_service.py`, `back/app/lab/comparison_summary.py`, `back/app/lab/diagnosis_service.py`, `back/app/lab/dispatcher_evaluation_service.py`, `back/app/lab/engine.py`, `back/app/lab/evaluation_service.py`, `back/app/lab/evidence_service.py`, `back/app/lab/human_review_service.py`, `back/app/lab/judgment_service.py`, `back/app/lab/mcp_access.py`, `back/app/lab/mcp_service.py`, `back/app/lab/mechanism_evaluation_service.py`, `back/app/lab/models.py`, `back/app/lab/operations.py`, `back/app/lab/run_claims.py`, `back/app/lab/run_lease.py`, `back/app/lab/run_publication.py`, `back/app/lab/synthetic_service.py`, `back/app/lab/transactions.py` |
+| `app.lab` | `core.database` | `back/app/lab/agent_review_service.py`, `back/app/lab/capture_service.py`, `back/app/lab/comparison_evidence.py`, `back/app/lab/comparison_service.py`, `back/app/lab/comparison_summary.py`, `back/app/lab/diagnosis_service.py`, `back/app/lab/dispatcher_evaluation_service.py`, `back/app/lab/engine.py`, `back/app/lab/evaluation_service.py`, `back/app/lab/evidence_service.py`, `back/app/lab/human_review_service.py`, `back/app/lab/judgment_service.py`, `back/app/lab/mcp_access.py`, `back/app/lab/mcp_service.py`, `back/app/lab/mechanism_evaluation_service.py`, `back/app/lab/models.py`, `back/app/lab/operations.py`, `back/app/lab/run_claims.py`, `back/app/lab/run_lease.py`, `back/app/lab/run_publication.py`, `back/app/lab/synthetic_service.py`, `back/app/lab/transactions.py` |
 | `app.lab` | `core.i18n` | `back/app/lab/analysis_service.py`, `back/app/lab/diagnosis_service.py`, `back/app/lab/dispatcher_evaluation_service.py`, `back/app/lab/evaluation_service.py`, `back/app/lab/human_review_service.py`, `back/app/lab/judgment_service.py`, `back/app/lab/mechanism_evaluation_service.py`, `back/app/lab/router.py`, `back/app/lab/synthetic_service.py` |
 | `app.lab` | `core.params` | `back/app/lab/evidence_service.py`, `back/app/lab/executor_prompt_service.py` |
 | `app.lab` | `core.user` | `back/app/lab/human_review_service.py` |
@@ -1261,70 +1261,70 @@ tests remain authoritative for behavior.
 | GET | `/dream/receipts/{receipt_id}` | `app.dream` | `read_dream_receipt` | yes | `back/app/dream/router.py:109` |
 | GET | `/dream/runtime` | `app.dream` | `read_dream_runtime` | yes | `back/app/dream/router.py:39` |
 | GET | `/dream/topic-assignment` | `app.dream` | `read_topic_assignment` | yes | `back/app/dream/router.py:85` |
-| GET | `/evaluation/candidates` | `app.lab` | `read_candidates` | yes | `back/app/lab/router.py:210` |
-| GET | `/evaluation/config` | `app.lab` | `read_config` | yes | `back/app/lab/router.py:204` |
-| GET | `/evaluation/dispatcher/candidates` | `app.lab` | `read_dispatcher_candidates` | yes | `back/app/lab/router.py:372` |
-| DELETE | `/evaluation/dispatcher/cases/{case_id}` | `app.lab` | `delete_dispatcher_case` | yes | `back/app/lab/router.py:417` |
-| PATCH | `/evaluation/dispatcher/cases/{case_id}` | `app.lab` | `update_dispatcher_case` | yes | `back/app/lab/router.py:406` |
-| POST | `/evaluation/dispatcher/cases/{case_id}/duplicate` | `app.lab` | `duplicate_dispatcher_case` | yes | `back/app/lab/router.py:428` |
-| POST | `/evaluation/dispatcher/cases/{case_id}/generate-expected` | `app.lab` | `generate_dispatcher_expected` | yes | `back/app/lab/router.py:457` |
-| POST | `/evaluation/dispatcher/cases/{case_id}/restore-source` | `app.lab` | `restore_dispatcher_case` | yes | `back/app/lab/router.py:437` |
-| GET | `/evaluation/dispatcher/datasets` | `app.lab` | `read_dispatcher_datasets` | yes | `back/app/lab/router.py:290` |
-| POST | `/evaluation/dispatcher/datasets` | `app.lab` | `create_dispatcher_dataset` | yes | `back/app/lab/router.py:300` |
-| DELETE | `/evaluation/dispatcher/datasets/{dataset_id}` | `app.lab` | `delete_dispatcher_dataset` | yes | `back/app/lab/router.py:339` |
-| PATCH | `/evaluation/dispatcher/datasets/{dataset_id}` | `app.lab` | `update_dispatcher_dataset` | yes | `back/app/lab/router.py:308` |
-| GET | `/evaluation/dispatcher/datasets/{dataset_id}/cases` | `app.lab` | `read_dispatcher_cases` | yes | `back/app/lab/router.py:346` |
-| POST | `/evaluation/dispatcher/datasets/{dataset_id}/cases` | `app.lab` | `create_dispatcher_case` | yes | `back/app/lab/router.py:359` |
-| POST | `/evaluation/dispatcher/datasets/{dataset_id}/cases/from-task` | `app.lab` | `import_dispatcher_case` | yes | `back/app/lab/router.py:390` |
-| GET | `/evaluation/dispatcher/datasets/{dataset_id}/runs` | `app.lab` | `read_dispatcher_runs` | yes | `back/app/lab/router.py:485` |
-| POST | `/evaluation/dispatcher/datasets/{dataset_id}/runs` | `app.lab` | `start_dispatcher_run` | yes | `back/app/lab/router.py:474` |
-| GET | `/evaluation/dispatcher/runs/{run_id}` | `app.lab` | `read_dispatcher_run` | yes | `back/app/lab/router.py:497` |
-| POST | `/evaluation/dispatcher/runs/{run_id}/analyze` | `app.lab` | `analyze_dispatcher_run` | yes | `back/app/lab/router.py:506` |
-| POST | `/evaluation/dispatcher/runs/{run_id}/cancel` | `app.lab` | `cancel_dispatcher_run` | yes | `back/app/lab/router.py:519` |
-| GET | `/evaluation/executor-prompts/defaults` | `app.lab` | `read_executor_prompt_defaults` | yes | `back/app/lab/router.py:534` |
-| GET | `/evaluation/mechanisms` | `app.lab` | `read_mechanisms` | yes | `back/app/lab/router.py:540` |
-| PATCH | `/evaluation/memory_extraction/datasets/{dataset_id}/configuration` | `app.lab` | `update_memory_extraction_dataset_configuration` | yes | `back/app/lab/router.py:641` |
-| GET | `/evaluation/memory_extraction/prompt-default` | `app.lab` | `read_memory_extraction_prompt_default` | yes | `back/app/lab/router.py:324` |
-| PATCH | `/evaluation/planner/datasets/{dataset_id}/configuration` | `app.lab` | `update_planner_dataset_configuration` | yes | `back/app/lab/router.py:660` |
-| GET | `/evaluation/planner/prompt-default` | `app.lab` | `read_planner_prompt_default` | yes | `back/app/lab/router.py:333` |
-| GET | `/evaluation/tasks` | `app.lab` | `read_lab_tasks` | yes | `back/app/lab/router.py:224` |
-| POST | `/evaluation/tasks` | `app.lab` | `add_lab_task` | yes | `back/app/lab/router.py:235` |
-| DELETE | `/evaluation/tasks/{task_id}` | `app.lab` | `remove_lab_task` | yes | `back/app/lab/router.py:250` |
-| POST | `/evaluation/tasks/{task_id}/analyze` | `app.lab` | `analyze_task` | yes | `back/app/lab/router.py:274` |
-| GET | `/evaluation/tasks/{task_id}/diagnoses` | `app.lab` | `read_task_diagnoses` | yes | `back/app/lab/router.py:261` |
-| POST | `/evaluation/topic-classification/datasets/{dataset_id}/cases/from-message-range` | `app.lab` | `import_topic_messages` | yes | `back/app/lab/router.py:603` |
-| PATCH | `/evaluation/topic-classification/datasets/{dataset_id}/configuration` | `app.lab` | `update_topic_dataset_configuration` | yes | `back/app/lab/router.py:622` |
-| GET | `/evaluation/topic-classification/message-agents` | `app.lab` | `read_topic_message_agents` | yes | `back/app/lab/router.py:549` |
-| GET | `/evaluation/topic-classification/message-people` | `app.lab` | `read_topic_message_people` | yes | `back/app/lab/router.py:559` |
-| GET | `/evaluation/topic-classification/message-preview` | `app.lab` | `preview_topic_messages` | yes | `back/app/lab/router.py:573` |
-| GET | `/evaluation/{mechanism}/candidates` | `app.lab` | `read_mechanism_candidates` | yes | `back/app/lab/router.py:772` |
-| DELETE | `/evaluation/{mechanism}/cases/{case_id}` | `app.lab` | `delete_mechanism_case` | yes | `back/app/lab/router.py:894` |
-| PATCH | `/evaluation/{mechanism}/cases/{case_id}` | `app.lab` | `update_mechanism_case` | yes | `back/app/lab/router.py:876` |
-| POST | `/evaluation/{mechanism}/cases/{case_id}/duplicate` | `app.lab` | `duplicate_mechanism_case` | yes | `back/app/lab/router.py:908` |
-| POST | `/evaluation/{mechanism}/cases/{case_id}/generate-expected` | `app.lab` | `generate_mechanism_expected` | yes | `back/app/lab/router.py:950` |
-| POST | `/evaluation/{mechanism}/cases/{case_id}/restore-source` | `app.lab` | `restore_mechanism_case` | yes | `back/app/lab/router.py:925` |
-| GET | `/evaluation/{mechanism}/datasets` | `app.lab` | `read_mechanism_datasets` | yes | `back/app/lab/router.py:679` |
-| POST | `/evaluation/{mechanism}/datasets` | `app.lab` | `create_mechanism_dataset` | yes | `back/app/lab/router.py:694` |
-| POST | `/evaluation/{mechanism}/datasets/synthetic` | `app.lab` | `generate_synthetic_dataset` | yes | `back/app/lab/router.py:110` |
-| DELETE | `/evaluation/{mechanism}/datasets/{dataset_id}` | `app.lab` | `delete_mechanism_dataset` | yes | `back/app/lab/router.py:723` |
-| PATCH | `/evaluation/{mechanism}/datasets/{dataset_id}` | `app.lab` | `update_mechanism_dataset` | yes | `back/app/lab/router.py:705` |
-| GET | `/evaluation/{mechanism}/datasets/{dataset_id}/cases` | `app.lab` | `read_mechanism_cases` | yes | `back/app/lab/router.py:736` |
-| POST | `/evaluation/{mechanism}/datasets/{dataset_id}/cases` | `app.lab` | `create_mechanism_case` | yes | `back/app/lab/router.py:754` |
-| POST | `/evaluation/{mechanism}/datasets/{dataset_id}/cases/from-execution` | `app.lab` | `import_executor_execution_case` | yes | `back/app/lab/router.py:850` |
-| POST | `/evaluation/{mechanism}/datasets/{dataset_id}/cases/from-source` | `app.lab` | `import_mechanism_case` | yes | `back/app/lab/router.py:795` |
-| POST | `/evaluation/{mechanism}/datasets/{dataset_id}/cases/from-task` | `app.lab` | `import_mechanism_task_case` | yes | `back/app/lab/router.py:825` |
-| POST | `/evaluation/{mechanism}/datasets/{dataset_id}/preview` | `app.lab` | `preview_lab_input` | yes | `back/app/lab/router.py:151` |
-| GET | `/evaluation/{mechanism}/datasets/{dataset_id}/runs` | `app.lab` | `read_mechanism_runs` | yes | `back/app/lab/router.py:993` |
-| POST | `/evaluation/{mechanism}/datasets/{dataset_id}/runs` | `app.lab` | `start_mechanism_run` | yes | `back/app/lab/router.py:972` |
+| GET | `/evaluation/candidates` | `app.lab` | `read_candidates` | yes | `back/app/lab/router.py:214` |
+| GET | `/evaluation/config` | `app.lab` | `read_config` | yes | `back/app/lab/router.py:208` |
+| GET | `/evaluation/dispatcher/candidates` | `app.lab` | `read_dispatcher_candidates` | yes | `back/app/lab/router.py:376` |
+| DELETE | `/evaluation/dispatcher/cases/{case_id}` | `app.lab` | `delete_dispatcher_case` | yes | `back/app/lab/router.py:421` |
+| PATCH | `/evaluation/dispatcher/cases/{case_id}` | `app.lab` | `update_dispatcher_case` | yes | `back/app/lab/router.py:410` |
+| POST | `/evaluation/dispatcher/cases/{case_id}/duplicate` | `app.lab` | `duplicate_dispatcher_case` | yes | `back/app/lab/router.py:432` |
+| POST | `/evaluation/dispatcher/cases/{case_id}/generate-expected` | `app.lab` | `generate_dispatcher_expected` | yes | `back/app/lab/router.py:461` |
+| POST | `/evaluation/dispatcher/cases/{case_id}/restore-source` | `app.lab` | `restore_dispatcher_case` | yes | `back/app/lab/router.py:441` |
+| GET | `/evaluation/dispatcher/datasets` | `app.lab` | `read_dispatcher_datasets` | yes | `back/app/lab/router.py:294` |
+| POST | `/evaluation/dispatcher/datasets` | `app.lab` | `create_dispatcher_dataset` | yes | `back/app/lab/router.py:304` |
+| DELETE | `/evaluation/dispatcher/datasets/{dataset_id}` | `app.lab` | `delete_dispatcher_dataset` | yes | `back/app/lab/router.py:343` |
+| PATCH | `/evaluation/dispatcher/datasets/{dataset_id}` | `app.lab` | `update_dispatcher_dataset` | yes | `back/app/lab/router.py:312` |
+| GET | `/evaluation/dispatcher/datasets/{dataset_id}/cases` | `app.lab` | `read_dispatcher_cases` | yes | `back/app/lab/router.py:350` |
+| POST | `/evaluation/dispatcher/datasets/{dataset_id}/cases` | `app.lab` | `create_dispatcher_case` | yes | `back/app/lab/router.py:363` |
+| POST | `/evaluation/dispatcher/datasets/{dataset_id}/cases/from-task` | `app.lab` | `import_dispatcher_case` | yes | `back/app/lab/router.py:394` |
+| GET | `/evaluation/dispatcher/datasets/{dataset_id}/runs` | `app.lab` | `read_dispatcher_runs` | yes | `back/app/lab/router.py:489` |
+| POST | `/evaluation/dispatcher/datasets/{dataset_id}/runs` | `app.lab` | `start_dispatcher_run` | yes | `back/app/lab/router.py:478` |
+| GET | `/evaluation/dispatcher/runs/{run_id}` | `app.lab` | `read_dispatcher_run` | yes | `back/app/lab/router.py:501` |
+| POST | `/evaluation/dispatcher/runs/{run_id}/analyze` | `app.lab` | `analyze_dispatcher_run` | yes | `back/app/lab/router.py:510` |
+| POST | `/evaluation/dispatcher/runs/{run_id}/cancel` | `app.lab` | `cancel_dispatcher_run` | yes | `back/app/lab/router.py:523` |
+| GET | `/evaluation/executor-prompts/defaults` | `app.lab` | `read_executor_prompt_defaults` | yes | `back/app/lab/router.py:538` |
+| GET | `/evaluation/mechanisms` | `app.lab` | `read_mechanisms` | yes | `back/app/lab/router.py:544` |
+| PATCH | `/evaluation/memory_extraction/datasets/{dataset_id}/configuration` | `app.lab` | `update_memory_extraction_dataset_configuration` | yes | `back/app/lab/router.py:645` |
+| GET | `/evaluation/memory_extraction/prompt-default` | `app.lab` | `read_memory_extraction_prompt_default` | yes | `back/app/lab/router.py:328` |
+| PATCH | `/evaluation/planner/datasets/{dataset_id}/configuration` | `app.lab` | `update_planner_dataset_configuration` | yes | `back/app/lab/router.py:664` |
+| GET | `/evaluation/planner/prompt-default` | `app.lab` | `read_planner_prompt_default` | yes | `back/app/lab/router.py:337` |
+| GET | `/evaluation/tasks` | `app.lab` | `read_lab_tasks` | yes | `back/app/lab/router.py:228` |
+| POST | `/evaluation/tasks` | `app.lab` | `add_lab_task` | yes | `back/app/lab/router.py:239` |
+| DELETE | `/evaluation/tasks/{task_id}` | `app.lab` | `remove_lab_task` | yes | `back/app/lab/router.py:254` |
+| POST | `/evaluation/tasks/{task_id}/analyze` | `app.lab` | `analyze_task` | yes | `back/app/lab/router.py:278` |
+| GET | `/evaluation/tasks/{task_id}/diagnoses` | `app.lab` | `read_task_diagnoses` | yes | `back/app/lab/router.py:265` |
+| POST | `/evaluation/topic-classification/datasets/{dataset_id}/cases/from-message-range` | `app.lab` | `import_topic_messages` | yes | `back/app/lab/router.py:607` |
+| PATCH | `/evaluation/topic-classification/datasets/{dataset_id}/configuration` | `app.lab` | `update_topic_dataset_configuration` | yes | `back/app/lab/router.py:626` |
+| GET | `/evaluation/topic-classification/message-agents` | `app.lab` | `read_topic_message_agents` | yes | `back/app/lab/router.py:553` |
+| GET | `/evaluation/topic-classification/message-people` | `app.lab` | `read_topic_message_people` | yes | `back/app/lab/router.py:563` |
+| GET | `/evaluation/topic-classification/message-preview` | `app.lab` | `preview_topic_messages` | yes | `back/app/lab/router.py:577` |
+| GET | `/evaluation/{mechanism}/candidates` | `app.lab` | `read_mechanism_candidates` | yes | `back/app/lab/router.py:776` |
+| DELETE | `/evaluation/{mechanism}/cases/{case_id}` | `app.lab` | `delete_mechanism_case` | yes | `back/app/lab/router.py:898` |
+| PATCH | `/evaluation/{mechanism}/cases/{case_id}` | `app.lab` | `update_mechanism_case` | yes | `back/app/lab/router.py:880` |
+| POST | `/evaluation/{mechanism}/cases/{case_id}/duplicate` | `app.lab` | `duplicate_mechanism_case` | yes | `back/app/lab/router.py:912` |
+| POST | `/evaluation/{mechanism}/cases/{case_id}/generate-expected` | `app.lab` | `generate_mechanism_expected` | yes | `back/app/lab/router.py:954` |
+| POST | `/evaluation/{mechanism}/cases/{case_id}/restore-source` | `app.lab` | `restore_mechanism_case` | yes | `back/app/lab/router.py:929` |
+| GET | `/evaluation/{mechanism}/datasets` | `app.lab` | `read_mechanism_datasets` | yes | `back/app/lab/router.py:683` |
+| POST | `/evaluation/{mechanism}/datasets` | `app.lab` | `create_mechanism_dataset` | yes | `back/app/lab/router.py:698` |
+| POST | `/evaluation/{mechanism}/datasets/synthetic` | `app.lab` | `generate_synthetic_dataset` | yes | `back/app/lab/router.py:114` |
+| DELETE | `/evaluation/{mechanism}/datasets/{dataset_id}` | `app.lab` | `delete_mechanism_dataset` | yes | `back/app/lab/router.py:727` |
+| PATCH | `/evaluation/{mechanism}/datasets/{dataset_id}` | `app.lab` | `update_mechanism_dataset` | yes | `back/app/lab/router.py:709` |
+| GET | `/evaluation/{mechanism}/datasets/{dataset_id}/cases` | `app.lab` | `read_mechanism_cases` | yes | `back/app/lab/router.py:740` |
+| POST | `/evaluation/{mechanism}/datasets/{dataset_id}/cases` | `app.lab` | `create_mechanism_case` | yes | `back/app/lab/router.py:758` |
+| POST | `/evaluation/{mechanism}/datasets/{dataset_id}/cases/from-execution` | `app.lab` | `import_executor_execution_case` | yes | `back/app/lab/router.py:854` |
+| POST | `/evaluation/{mechanism}/datasets/{dataset_id}/cases/from-source` | `app.lab` | `import_mechanism_case` | yes | `back/app/lab/router.py:799` |
+| POST | `/evaluation/{mechanism}/datasets/{dataset_id}/cases/from-task` | `app.lab` | `import_mechanism_task_case` | yes | `back/app/lab/router.py:829` |
+| POST | `/evaluation/{mechanism}/datasets/{dataset_id}/preview` | `app.lab` | `preview_lab_input` | yes | `back/app/lab/router.py:155` |
+| GET | `/evaluation/{mechanism}/datasets/{dataset_id}/runs` | `app.lab` | `read_mechanism_runs` | yes | `back/app/lab/router.py:997` |
+| POST | `/evaluation/{mechanism}/datasets/{dataset_id}/runs` | `app.lab` | `start_mechanism_run` | yes | `back/app/lab/router.py:976` |
 | GET | `/evaluation/{mechanism}/runs/compare` | `app.lab` | `compare_benchmarks` | yes | `back/app/lab/router.py:91` |
-| DELETE | `/evaluation/{mechanism}/runs/{run_id}` | `app.lab` | `delete_mechanism_run` | yes | `back/app/lab/router.py:1021` |
-| GET | `/evaluation/{mechanism}/runs/{run_id}` | `app.lab` | `read_mechanism_run` | yes | `back/app/lab/router.py:1009` |
-| POST | `/evaluation/{mechanism}/runs/{run_id}/analyze` | `app.lab` | `analyze_mechanism_run` | yes | `back/app/lab/router.py:1035` |
-| POST | `/evaluation/{mechanism}/runs/{run_id}/cancel` | `app.lab` | `cancel_mechanism_run` | yes | `back/app/lab/router.py:1053` |
-| GET | `/evaluation/{mechanism}/runs/{run_id}/human-review` | `app.lab` | `read_human_review` | yes | `back/app/lab/router.py:125` |
-| POST | `/evaluation/{mechanism}/runs/{run_id}/human-review` | `app.lab` | `submit_human_review` | yes | `back/app/lab/router.py:138` |
-| POST | `/evaluation/{mechanism}/runs/{run_id}/rejudge` | `app.lab` | `rejudge_benchmark` | yes | `back/app/lab/router.py:164` |
-| POST | `/evaluation/{mechanism}/runs/{run_id}/resume` | `app.lab` | `resume_benchmark` | yes | `back/app/lab/router.py:177` |
+| DELETE | `/evaluation/{mechanism}/runs/{run_id}` | `app.lab` | `delete_mechanism_run` | yes | `back/app/lab/router.py:1025` |
+| GET | `/evaluation/{mechanism}/runs/{run_id}` | `app.lab` | `read_mechanism_run` | yes | `back/app/lab/router.py:1013` |
+| POST | `/evaluation/{mechanism}/runs/{run_id}/analyze` | `app.lab` | `analyze_mechanism_run` | yes | `back/app/lab/router.py:1039` |
+| POST | `/evaluation/{mechanism}/runs/{run_id}/cancel` | `app.lab` | `cancel_mechanism_run` | yes | `back/app/lab/router.py:1057` |
+| GET | `/evaluation/{mechanism}/runs/{run_id}/human-review` | `app.lab` | `read_human_review` | yes | `back/app/lab/router.py:129` |
+| POST | `/evaluation/{mechanism}/runs/{run_id}/human-review` | `app.lab` | `submit_human_review` | yes | `back/app/lab/router.py:142` |
+| POST | `/evaluation/{mechanism}/runs/{run_id}/rejudge` | `app.lab` | `rejudge_benchmark` | yes | `back/app/lab/router.py:168` |
+| POST | `/evaluation/{mechanism}/runs/{run_id}/resume` | `app.lab` | `resume_benchmark` | yes | `back/app/lab/router.py:181` |
 | GET | `/file-share/bridges` | `app.file_share` | `list_bridges` | yes | `back/app/file_share/router.py:14` |
 | GET | `/goals` | `app.goal` | `read_goals` | yes | `back/app/goal/router.py:83` |
 | POST | `/goals` | `app.goal` | `create_goal` | yes | `back/app/goal/router.py:181` |
@@ -1887,26 +1887,26 @@ tests remain authoritative for behavior.
 | `lab_case_list` | `lab` | `app.lab` | `lab_case_list` | `back/app/lab/mcp.py:216` |
 | `lab_case_restore_source` | `lab` | `app.lab` | `lab_case_restore_source` | `back/app/lab/mcp.py:313` |
 | `lab_case_update` | `lab` | `app.lab` | `lab_case_update` | `back/app/lab/mcp.py:259` |
-| `lab_content_read` | `lab` | `app.lab` | `lab_content_read` | `back/app/lab/mcp.py:809` |
+| `lab_content_read` | `lab` | `app.lab` | `lab_content_read` | `back/app/lab/mcp.py:811` |
 | `lab_dataset_clone` | `lab` | `app.lab` | `lab_dataset_clone` | `back/app/lab/mcp.py:181` |
 | `lab_dataset_create` | `lab` | `app.lab` | `lab_dataset_create` | `back/app/lab/mcp.py:148` |
 | `lab_dataset_delete` | `lab` | `app.lab` | `lab_dataset_delete` | `back/app/lab/mcp.py:199` |
-| `lab_dataset_generate` | `lab` | `app.lab` | `lab_dataset_generate` | `back/app/lab/mcp.py:594` |
+| `lab_dataset_generate` | `lab` | `app.lab` | `lab_dataset_generate` | `back/app/lab/mcp.py:596` |
 | `lab_dataset_get` | `lab` | `app.lab` | `lab_dataset_get` | `back/app/lab/mcp.py:133` |
 | `lab_dataset_list` | `lab` | `app.lab` | `lab_dataset_list` | `back/app/lab/mcp.py:120` |
 | `lab_dataset_update` | `lab` | `app.lab` | `lab_dataset_update` | `back/app/lab/mcp.py:164` |
-| `lab_expected_generate` | `lab` | `app.lab` | `lab_expected_generate` | `back/app/lab/mcp.py:612` |
+| `lab_expected_generate` | `lab` | `app.lab` | `lab_expected_generate` | `back/app/lab/mcp.py:614` |
 | `lab_get` | `lab` | `app.lab` | `lab_get` | `back/app/lab/mcp.py:57` |
 | `lab_input_preview` | `lab` | `app.lab` | `lab_input_preview` | `back/app/lab/mcp.py:334` |
 | `lab_list` | `lab` | `app.lab` | `lab_list` | `back/app/lab/mcp.py:40` |
 | `lab_models` | `lab` | `app.lab` | `lab_models` | `back/app/lab/mcp.py:75` |
-| `lab_operation_cancel` | `lab` | `app.lab` | `lab_operation_cancel` | `back/app/lab/mcp.py:691` |
-| `lab_operation_get` | `lab` | `app.lab` | `lab_operation_get` | `back/app/lab/mcp.py:678` |
+| `lab_operation_cancel` | `lab` | `app.lab` | `lab_operation_cancel` | `back/app/lab/mcp.py:693` |
+| `lab_operation_get` | `lab` | `app.lab` | `lab_operation_get` | `back/app/lab/mcp.py:680` |
 | `lab_prompt_defaults` | `lab` | `app.lab` | `lab_prompt_defaults` | `back/app/lab/mcp.py:100` |
-| `lab_review_get` | `lab` | `app.lab` | `lab_review_get` | `back/app/lab/mcp.py:780` |
-| `lab_review_list` | `lab` | `app.lab` | `lab_review_list` | `back/app/lab/mcp.py:767` |
-| `lab_review_submit` | `lab` | `app.lab` | `lab_review_submit` | `back/app/lab/mcp.py:793` |
-| `lab_run_analyze` | `lab` | `app.lab` | `lab_run_analyze` | `back/app/lab/mcp.py:636` |
+| `lab_review_get` | `lab` | `app.lab` | `lab_review_get` | `back/app/lab/mcp.py:782` |
+| `lab_review_list` | `lab` | `app.lab` | `lab_review_list` | `back/app/lab/mcp.py:769` |
+| `lab_review_submit` | `lab` | `app.lab` | `lab_review_submit` | `back/app/lab/mcp.py:795` |
+| `lab_run_analyze` | `lab` | `app.lab` | `lab_run_analyze` | `back/app/lab/mcp.py:638` |
 | `lab_run_cancel` | `lab` | `app.lab` | `lab_run_cancel` | `back/app/lab/mcp.py:482` |
 | `lab_run_compare` | `lab` | `app.lab` | `lab_run_compare` | `back/app/lab/mcp.py:576` |
 | `lab_run_delete` | `lab` | `app.lab` | `lab_run_delete` | `back/app/lab/mcp.py:529` |
@@ -1917,12 +1917,12 @@ tests remain authoritative for behavior.
 | `lab_run_resume` | `lab` | `app.lab` | `lab_run_resume` | `back/app/lab/mcp.py:495` |
 | `lab_run_start` | `lab` | `app.lab` | `lab_run_start` | `back/app/lab/mcp.py:427` |
 | `lab_source_list` | `lab` | `app.lab` | `lab_source_list` | `back/app/lab/mcp.py:347` |
-| `lab_task_add` | `lab` | `app.lab` | `lab_task_add` | `back/app/lab/mcp.py:728` |
-| `lab_task_analyze` | `lab` | `app.lab` | `lab_task_analyze` | `back/app/lab/mcp.py:659` |
-| `lab_task_candidates` | `lab` | `app.lab` | `lab_task_candidates` | `back/app/lab/mcp.py:702` |
-| `lab_task_diagnoses` | `lab` | `app.lab` | `lab_task_diagnoses` | `back/app/lab/mcp.py:754` |
-| `lab_task_list` | `lab` | `app.lab` | `lab_task_list` | `back/app/lab/mcp.py:715` |
-| `lab_task_remove` | `lab` | `app.lab` | `lab_task_remove` | `back/app/lab/mcp.py:740` |
+| `lab_task_add` | `lab` | `app.lab` | `lab_task_add` | `back/app/lab/mcp.py:730` |
+| `lab_task_analyze` | `lab` | `app.lab` | `lab_task_analyze` | `back/app/lab/mcp.py:661` |
+| `lab_task_candidates` | `lab` | `app.lab` | `lab_task_candidates` | `back/app/lab/mcp.py:704` |
+| `lab_task_diagnoses` | `lab` | `app.lab` | `lab_task_diagnoses` | `back/app/lab/mcp.py:756` |
+| `lab_task_list` | `lab` | `app.lab` | `lab_task_list` | `back/app/lab/mcp.py:717` |
+| `lab_task_remove` | `lab` | `app.lab` | `lab_task_remove` | `back/app/lab/mcp.py:742` |
 | `lab_topic_agent_list` | `lab` | `app.lab` | `lab_topic_agent_list` | `back/app/lab/mcp.py:377` |
 | `lab_topic_messages_import` | `lab` | `app.lab` | `lab_topic_messages_import` | `back/app/lab/mcp.py:414` |
 | `lab_topic_messages_preview` | `lab` | `app.lab` | `lab_topic_messages_preview` | `back/app/lab/mcp.py:401` |

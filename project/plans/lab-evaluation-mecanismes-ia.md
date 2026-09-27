@@ -54,6 +54,12 @@ cas et répétitions, couverture et scores jugés ; il reste descriptif, sans co
 La comparabilité et les ambiguïtés d'appariement portent sur les deux runs complets,
 indépendamment de la page consultée ou du sens de comparaison.
 
+Les apparitions critiques, transitions réussi → échoué et écarts par dimension sont
+consultables avec un filtrage global avant pagination. Le protocole FR/EN délai/coût/qualité
+est préparé : quatre cas synthétiques, outils simulés, première sortie observée et médianes
+appariées. Il reste à exécuter et qualifier les campagnes avec des fournisseurs réels ;
+la mesure du Lab n'inclut pas le transport utilisateur ni une admission Task réelle.
+
 - Étendre les politiques de comparaison aux expériences portant sur la rubrique, le corpus
   ou le juge et les qualifier sur des campagnes réelles.
 - Compléter le bilan descriptif global par des tendances dimensionnelles dans le temps,

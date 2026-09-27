@@ -14,10 +14,15 @@ from urllib.parse import urlparse
 import httpx
 
 CORPUS = Path(__file__).parents[1] / "app/lab/reference_corpus.json"
+CORPORA = {
+    "reference": CORPUS,
+    "latency-fr": CORPUS.with_name("latency_corpus_fr.json"),
+    "latency-en": CORPUS.with_name("latency_corpus_en.json"),
+}
 
 
-async def install(client: httpx.AsyncClient) -> dict[str, Any]:
-    corpus = json.loads(CORPUS.read_text())
+async def install(client: httpx.AsyncClient, corpus_name: str = "reference") -> dict[str, Any]:
+    corpus = json.loads(CORPORA[corpus_name].read_text())
     prefix = f"/api/evaluation/{corpus['mechanism']}"
     existing = await client.get(f"{prefix}/datasets")
     existing.raise_for_status()
@@ -47,10 +52,11 @@ async def install(client: httpx.AsyncClient) -> dict[str, Any]:
 async def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--install", action="store_true")
+    parser.add_argument("--corpus", choices=tuple(CORPORA), default="reference")
     parser.add_argument("--base-url", default="http://127.0.0.1:8000")
     args = parser.parse_args()
     if not args.install:
-        print(CORPUS.read_text())
+        print(CORPORA[args.corpus].read_text())
         return
     base_url = str(args.base_url)
     address = urlparse(base_url)
@@ -64,7 +70,7 @@ async def main() -> None:
     async with httpx.AsyncClient(
         base_url=base_url, headers={"Authorization": f"Bearer {token}"}, timeout=30,
     ) as client:
-        print(json.dumps(await install(client)))
+        print(json.dumps(await install(client, args.corpus)))
 
 
 if __name__ == "__main__":

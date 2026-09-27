@@ -185,6 +185,20 @@ pour examiner les cas présents uniquement après. Relancez la comparaison aprè
 résultat ou jugement ; elle ne se rafraîchit pas automatiquement. La lecture ne lance aucune
 inférence et ne modifie ni les évaluations ni les réglages de production.
 
+La section **Régressions à examiner** compte les paires où apparaît un échec critique
+(jugement ou contrôle objectif) et les passages réussi → échoué. Elle affiche aussi les
+baisses, hausses et écarts moyens par critère commun. Les boutons retrouvent les cas concernés
+sur tout le run avant pagination ; **Tous les cas** retire le filtre sans changer le bilan
+global. Une apparition critique signifie aucune défaillance avant, au moins une après ;
+les explications libres ne servent pas d'identifiants de défaillances. Des jugements sans
+version de grille comparable restent inconnus, même lorsqu'ils portent un score.
+
+**Délai, coût et qualité** présente les médianes et les effectifs appariés. La première sortie
+est le premier texte non vide ou appel d'outil observé par le Lab, sans file d'attente ni juge ;
+ce n'est pas une confirmation de réussite. Les mesures absentes restent « — ». Le coût est
+celui du candidat enregistré. Le [protocole FR/EN](../dev/lab-reference-corpus.md)
+fournit quatre parcours synthétiques pour préparer une comparaison reproductible.
+
 ## Tasks
 
 L’analyse interactive d’une Task reste disponible : sélectionnez la Task, ajoutez
