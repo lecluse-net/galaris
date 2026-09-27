@@ -20,6 +20,7 @@ class LLMModelInfo:
     metadata_source: Optional[str] = None
     resource_type: str = "model"
     service_capabilities: List[str] = field(default_factory=lambda: list[str]())
+    max_output_tokens: int | None = None  # Published output capacity, not a user budget.
 
 
 class BaseLLMHandler(ABC):

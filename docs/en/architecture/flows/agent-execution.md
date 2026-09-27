@@ -26,6 +26,12 @@ receipts distinguish a request from a confirmed stop. See
 
 ## Elementary inference
 
+Chat/Responses requests without an explicit budget use the served model's published output
+capacity, within the estimated remaining context. Runtime discovery also covers existing
+configured models; missing metadata does not block the call. Explicit short-call budgets
+and rejection of incomplete results remain unchanged.
+See [0139](../../../../project/decisions/0139-provider-output-capacity.md).
+
 Internal Chat/Responses models use the durable inference facade in `app.llm`. Dispatcher
 and Briefing also use the structured adapter with a frozen schema and validation context.
 Admission is committed before the worker starts; its leases, events and results replace

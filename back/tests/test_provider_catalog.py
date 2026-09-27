@@ -402,7 +402,7 @@ async def test_models_dev_fills_prices_context_modalities_and_capabilities(
                     "attachment": True,
                     "structured_output": True,
                     "modalities": {"input": ["text", "image", "pdf"], "output": ["text"]},
-                    "limit": {"context": 131072},
+                    "limit": {"context": 131072, "output": 16384},
                     "cost": {
                         "input": 0.2,
                         "cache_read": 0.05,
@@ -435,6 +435,7 @@ async def test_models_dev_fills_prices_context_modalities_and_capabilities(
     model = models[0]
 
     assert model.context_length == 131072
+    assert model.max_output_tokens == 16384
     assert model.pricing == {
         "input": 0.2,
         "cached_input": 0.05,

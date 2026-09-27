@@ -530,6 +530,14 @@ Providers and models are administered in the LLM interface. A model contains the
 name expected by the provider, its cost parameters, and its potential embedding
 capability.
 
+For Chat/Responses calls without an explicit output budget, Galaris requests the provider's
+published output capacity, supplemented by the models.dev catalog when needed, within the
+estimated remaining context. Existing configured models benefit without reconfiguration.
+Discovery is cached for five minutes; when capacity remains unknown, the provider default
+still applies. Explicit budgets for short calls take precedence. Compaction and Responses
+conversations with remote history do not receive a locally calculated budget. Output cut
+off by the provider's physical limit remains a failure, never a successfully completed Task.
+
 Assignments exist exclusively in model profiles. The global
 `llm_profile_id` parameter contains no model: it only points to the current profile. An Agent
 can choose a personal profile or retain “Current profile”; the latter choice is persisted

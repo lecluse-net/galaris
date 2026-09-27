@@ -1,5 +1,7 @@
 # Décisions d’architecture
 
+- [0139 — Capacité de sortie publiée par le fournisseur](0139-provider-output-capacity.md)
+
 - [0138 — Caches API bornés par leur domaine d’invalidation](0138-request-authorization-cache.md)
 
 - [0137 — Outillage documentaire hors ligne et confiné](0137-offline-documentation-toolchain.md)

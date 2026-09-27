@@ -1948,6 +1948,7 @@
       {
         "files": [
           "back/app/llm/embedding_service.py",
+          "back/app/llm/generation_capacity.py",
           "back/app/llm/handlers/openai_compatible.py",
           "back/app/llm/image_trace.py",
           "back/app/llm/llm_call_service.py",
@@ -4387,6 +4388,7 @@
           "back/bridge/openrouter/decisions.py",
           "back/bridge/openrouter/image.py",
           "back/bridge/openrouter/multimedia.py",
+          "back/bridge/openrouter/resources.py",
           "back/bridge/openrouter/transcription.py",
           "back/bridge/openrouter/usage.py"
         ],

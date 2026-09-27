@@ -159,10 +159,12 @@ def _context_length(raw: dict[str, Any]) -> Optional[int]:
 
 
 def _metadata_model(model_id: str, raw: dict[str, Any]) -> LLMModelInfo:
+    output = as_dict(raw.get("limit")).get("output")
     return LLMModelInfo(
         id=model_id,
         name=str(raw.get("name") or model_id),
         context_length=_context_length(raw),
+        max_output_tokens=output if isinstance(output, int) and not isinstance(output, bool) and output > 0 else None,
         pricing=_pricing(raw),
         modalities=_modalities(raw),
         capabilities=_capabilities(raw),
@@ -190,6 +192,7 @@ def _merge_model(live: LLMModelInfo, metadata: LLMModelInfo) -> LLMModelInfo:
         name=live.name or metadata.name,
         description=live.description or metadata.description,
         context_length=live.context_length or metadata.context_length,
+        max_output_tokens=live.max_output_tokens or metadata.max_output_tokens,
         pricing=live_pricing or None,
         modalities=live_modalities or None,
         capabilities=live_capabilities or None,
@@ -233,6 +236,8 @@ async def get_model_metadata(
     model_id: str,
 ) -> Optional[LLMModelInfo]:
     """Return normalized metadata for one configured model when available."""
+    if _provider_metadata_id(provider) is None:
+        return None
     registry = await _registry()
     raw = _raw_model(_models_for_provider(registry, provider), model_id)
     return _metadata_model(model_id, raw) if raw else None

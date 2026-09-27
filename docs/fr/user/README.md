@@ -109,6 +109,11 @@ retour final. Les boutons de pause et de reprise agissent sur l’arbre de trava
 est une récupération administrative pour une exécution réellement bloquée : elle marque la Task
 en erreur et libère sa lease, elle ne constitue pas une annulation ordinaire du travail externe.
 
+Les exécutions sans budget de réponse explicite demandent automatiquement la capacité de
+sortie publiée du modèle lorsqu'elle est connue. Aucun réglage n'est nécessaire pour les
+modèles déjà configurés. Cela évite les petits plafonds par défaut de certains fournisseurs ;
+leur limite physique reste applicable et une réponse coupée ne valide pas la tâche.
+
 Si vous demandez de remplacer une tâche Hermès en cours, le nouveau travail attend la
 confirmation de l'arrêt du précédent. Une coupure réseau ou un redémarrage de Galaris ne
 déclenche pas automatiquement le remplaçant : la vérification reprend depuis les informations

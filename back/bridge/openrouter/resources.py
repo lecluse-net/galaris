@@ -10,6 +10,7 @@ from app.llm.capabilities import AICapability, with_capability
 from app.llm.handlers import LLMModelInfo
 from app.llm.handlers.openai_compatible import OpenAICompatibleHandler
 from app.llm.provider_facade import ProviderConnection
+from core.util import as_dict, as_list
 
 
 class OpenRouterResourceDiscovery:
@@ -27,7 +28,21 @@ class OpenRouterResourceDiscovery:
             response = await client.get(url, headers=headers, params=params)
             response.raise_for_status()
             payload: Any = response.json()
-        return OpenAICompatibleHandler().parse_models(payload)
+        models = OpenAICompatibleHandler().parse_models(payload)
+        raw_by_id = {
+            str(item.get("id")): item
+            for raw in as_list(as_dict(payload).get("data"))
+            if (item := as_dict(raw))
+        }
+        for model in models:
+            top = as_dict(raw_by_id.get(model.id, {}).get("top_provider"))
+            capacity = top.get("max_completion_tokens")
+            if isinstance(capacity, int) and not isinstance(capacity, bool) and capacity > 0:
+                model.max_output_tokens = capacity
+            context = top.get("context_length")
+            if isinstance(context, int) and not isinstance(context, bool) and context > 0:
+                model.context_length = min(model.context_length or context, context)
+        return models
 
     async def list_resources(
         self,

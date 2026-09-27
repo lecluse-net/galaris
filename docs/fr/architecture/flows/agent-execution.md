@@ -26,6 +26,12 @@ Une réponse d’annulation distingue demande reçue et arrêt confirmé. Voir
 
 ## Inférence élémentaire
 
+Les requêtes Chat/Responses sans budget explicite utilisent la capacité de sortie publiée
+du modèle servi, dans la place estimée restante du contexte. La découverte à l'exécution
+couvre aussi les modèles déjà configurés ; son absence ne bloque pas l'appel. Les budgets
+explicites des appels courts et le refus des résultats incomplets restent inchangés.
+Voir [0139](../../../../project/decisions/0139-provider-output-capacity.md).
+
 Les modèles internes Chat/Responses traversent la façade d’inférence durable de `app.llm`.
 Dispatcher et Briefing utilisent aussi l’adaptateur structuré, avec leur schéma et contexte
 de validation figés. L’admission est committée avant le départ du worker ; ses leases,

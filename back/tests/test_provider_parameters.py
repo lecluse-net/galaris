@@ -581,6 +581,9 @@ async def test_sdk_transport_preserves_errors_timeouts_cancellation_and_resolved
     requests = []
 
     async def upstream(request):
+        if request.method == "GET":
+            # Optional catalog lookup is not a paid generation attempt.
+            return httpx.Response(200, json={})
         requests.append(request)
         assert request.extensions["timeout"] == dict.fromkeys(("connect", "read", "write", "pool"), 0.25)
         if outcome == "cancel":

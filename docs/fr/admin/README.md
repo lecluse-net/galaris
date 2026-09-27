@@ -545,6 +545,15 @@ Les fournisseurs et modèles sont administrés dans l’interface LLM. Un modèl
 nom attendu par le fournisseur, ses paramètres de coût et sa capacité éventuelle
 d’embedding.
 
+Pour les appels Chat/Responses sans budget de sortie explicite, Galaris demande la
+capacité de sortie publiée par le fournisseur, complétée si nécessaire par le catalogue
+models.dev, dans la place estimée restante du contexte. Les modèles déjà enregistrés en
+bénéficient sans reconfiguration. La découverte est mise en cache pendant cinq minutes ;
+si la capacité reste inconnue, le défaut du fournisseur s'applique. Les limites explicites
+des appels courts restent prioritaires. La compaction et les conversations Responses à
+historique distant ne reçoivent pas de budget calculé localement. Une sortie coupée par
+la limite physique du fournisseur reste un échec, jamais une tâche déclarée réussie.
+
 Les affectations vivent exclusivement dans des profils de modèles. Le paramètre global
 `llm_profile_id` ne contient aucun modèle : il pointe seulement vers le profil courant. Un agent
 peut choisir un profil personnel ou conserver « Profil courant » ; ce second choix est persisté

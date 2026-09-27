@@ -31,6 +31,56 @@ def provider_http(monkeypatch, handler):
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("protocol", ["chat", "responses"])
+async def test_agent_uses_published_output_capacity_instead_of_provider_default(runtime, monkeypatch, protocol, responses_sse):
+    """An executor can finish when the provider's implicit reasoning budget is too small."""
+    db, llm, _, _ = runtime
+    llm.provider = (await db.scalars(select(LLMProvider).where(
+        LLMProvider.catalog_code == "openrouter",
+    ))).one()
+    llm.llm_name = "synthetic/long-worker"
+    await db.commit()
+    sent = []
+
+    def upstream(request):
+        if request.method == "GET":
+            return httpx.Response(200, json={"data": [{
+                "id": llm.llm_name, "context_length": 131072,
+                "top_provider": {"max_completion_tokens": 16384},
+            }]})
+        body = json.loads(request.content)
+        sent.append(body)
+        enough = body.get("max_tokens" if protocol == "chat" else "max_output_tokens", 512) == 16384
+        if protocol == "responses":
+            assert enough
+            return httpx.Response(200, headers={"content-type": "text/event-stream"}, content=responses_sse({
+                "id": "response-capacity", "object": "response", "created_at": 1,
+                "model": llm.llm_name, "status": "completed", "output": [{
+                    "id": "answer", "type": "message", "role": "assistant", "status": "completed",
+                    "content": [{"type": "output_text", "text": "Migration checked.", "annotations": []}],
+                }],
+            }))
+        chunk = {"id": "chat-capacity", "object": "chat.completion.chunk", "created": 1,
+            "model": llm.llm_name, "choices": [{"index": 0,
+                "delta": {"content": "Migration checked."} if enough else {},
+                "finish_reason": "stop" if enough else "length"}]}
+        return httpx.Response(200, headers={"content-type": "text/event-stream"},
+            content=f"data: {json.dumps(chunk)}\n\ndata: [DONE]\n\n")
+
+    provider_http(monkeypatch, upstream)
+    from app.llm.pydantic_ai_utils import InternalLLMChatModel, InternalLLMResponsesModel
+
+    model_class = InternalLLMChatModel if protocol == "chat" else InternalLLMResponsesModel
+    model = model_class(llm, durable=True)
+    result = await Agent(model).run("Finish the synthetic migration.")
+    assert result.output == "Migration checked."
+    assert sent[0]["max_tokens" if protocol == "chat" else "max_output_tokens"] == 16384
+    calls = (await db.scalars(select(LLMCall).where(LLMCall.llm_id == llm.id))).all()
+    assert len(calls) == 1
+    assert calls[0].finish_reason == "stop"
+
+
+@pytest.mark.asyncio
 @pytest.mark.parametrize("status,parameter,retries", [
     (400, "custom_option", 1), (422, "temperature", 1),
     (400, "messages", 0), (400, "max_tokens", 0), (429, "temperature", 0),

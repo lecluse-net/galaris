@@ -33,6 +33,7 @@ from .provider_facade import (
     request_parameter_policy_for,
 )
 from .resource_discovery import provider_connection
+from .generation_capacity import apply_generation_capacity
 from .responses_trace import (
     ResponsesStreamTrace,
     request_messages as responses_request_messages,
@@ -493,8 +494,12 @@ async def proxy_chat_completion(
         connection = provider_connection(provider, api_key)
         transport = chat_transport_for(connection)
         _remove_galaris_fields(forwarded)
+        parameter_policy = request_parameter_policy_for(connection, llm.llm_name)
+        forwarded = await apply_generation_capacity(
+            forwarded, connection, llm.llm_name, parameter_policy, "chat",
+        )
         forwarded = adapt_request_parameters(
-            forwarded, request_parameter_policy_for(connection, llm.llm_name), "chat",
+            forwarded, parameter_policy, "chat",
         )
 
         stream = bool(forwarded.get("stream", False))
@@ -988,8 +993,13 @@ async def proxy_responses(
         connection = provider_connection(provider, api_key)
         transport = responses_transport_for(connection)
         _remove_galaris_fields(forwarded)
+        parameter_policy = request_parameter_policy_for(connection, llm.llm_name)
+        forwarded = await apply_generation_capacity(
+            forwarded, connection, llm.llm_name, parameter_policy,
+            "compact" if operation == "compact" else "responses",
+        )
         forwarded = adapt_request_parameters(
-            forwarded, request_parameter_policy_for(connection, llm.llm_name),
+            forwarded, parameter_policy,
             "compact" if operation == "compact" else "responses",
         )
         stream = operation == "create" and bool(forwarded.get("stream", False))
