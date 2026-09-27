@@ -59,6 +59,24 @@ Les tests utilisent également ce chemin sur leur PostgreSQL éphémère.
 
 ## Conséquences
 
+### Durcissement des conversions d'ENUM — 27 septembre 2026
+
+Une modification d'ENUM existant passe un contrôle de droits, d'état et de dépendances avant
+les actions métier, également en simulation. Les dépendances dont la sémantique ne peut pas
+être préservée sont refusées explicitement ; elles ne sont jamais supprimées par cascade.
+Le remplacement conserve propriétaire, droits accordés par celui-ci, commentaire et défauts
+constants avec le mapping des lignes. Le lot complet d'enums est atomique, y compris si une
+conversion échoue ou est annulée après une première conversion réussie. Le contrôle est répété
+sous les verrous de tables avant le DDL, avec les limites de durée existantes.
+
+Cette frontière ne crée pas de transaction globale avec les actions ou Atlas et n'autorise
+aucune réparation automatique des droits d'une installation. Les tests utilisent de vrais rôles
+PostgreSQL, des données synthétiques, des dépendances bloquantes, un verrou concurrent et des
+interruptions, en plus du parcours complet orchestrateur–Atlas et de son rejeu. Une base neuve
+possédée par le superutilisateur ne suffit plus à qualifier les conversions d'enums.
+
+### Effets de la décision
+
 - une suppression dans `public` est une décision déclarative du code et non une question posée au
   déploiement ;
 - un modèle qui cible un autre schéma est refusé avant l’appel à Atlas ;

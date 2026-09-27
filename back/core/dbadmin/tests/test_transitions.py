@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import pytest
-from sqlalchemy import Column, Enum, Integer, MetaData, String, Table
+from sqlalchemy import ARRAY, Column, Enum, Integer, MetaData, String, Table
 
 from core.dbadmin._internal.enums import validate_enum_transitions
 from core.dbadmin._internal.target import staged_metadata
@@ -22,14 +22,26 @@ def test_only_named_native_enums_require_postgresql_enum_transitions():
     target = MetaData()
     Table("items", target, Column("native", Enum("ready", name="state")),
         Column("portable", Enum("local", name="portable", native_enum=False)),
+        Column("array", ARRAY(Enum("ready", name="array_state"))),
         Column("unnamed", Enum("anonymous")))
-    assert target_enum_values(target) == {"state": ("ready",)}
+    assert target_enum_values(target) == {"state": ("ready",), "array_state": ("ready",)}
+
+
+@pytest.mark.parametrize("labels", [(), ("same", "same"), ("x" * 64,), ("é" * 32,), ("bad\x00label",)])
+def test_invalid_enum_targets_fail_before_ddl(labels):
+    with pytest.raises(DbAdminFatalError):
+        validate_enum_transitions((EnumTransition("state", ("old",), labels),), DbAdminRegistry())
 
 
 @pytest.mark.parametrize("schema", ["private", "vectors"])
-def test_target_cannot_take_ownership_of_external_schemas(schema):
+@pytest.mark.parametrize("kind", ["table", "enum", "array_enum"])
+def test_target_cannot_take_ownership_of_external_schemas(schema, kind):
     target = MetaData()
-    Table("records", target, Column("id", Integer), schema=schema)
+    if kind == "table":
+        Table("records", target, Column("id", Integer), schema=schema)
+    else:
+        state = Enum("old", name="state", schema=schema)
+        Table("records", target, Column("state", ARRAY(state) if kind == "array_enum" else state))
     with pytest.raises(ValueError, match="outside public"):
         validate_target_schema(target)
 

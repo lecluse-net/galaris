@@ -35,7 +35,10 @@ from .registry import DbAdminRegistry, registry
 from .scope import DbAdminDdlFilters
 from .snapshot import compute_transitions, inspect_public_schema
 from ._internal.atlas import apply_target
-from ._internal.enums import prepare_enum_transitions, validate_enum_transitions
+from ._internal.enums import (
+    prepare_enum_transitions,
+    validate_enum_preflight,
+)
 from ._internal.target import (
     load_target_metadata,
     render_target_sql,
@@ -210,8 +213,8 @@ async def synchronize_database(
         lock_connection = await _acquire_lock()
         async with engine.connect() as connection:
             live = await inspect_public_schema(connection)
-        transitions = compute_transitions(live, canonical_target)
-        validate_enum_transitions(transitions.enums, target_registry)
+            transitions = compute_transitions(live, canonical_target)
+            await validate_enum_preflight(connection, transitions.enums, target_registry)
 
         if dry_run:
             expansion_target = staged_metadata(

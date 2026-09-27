@@ -3,7 +3,8 @@ from __future__ import annotations
 from datetime import datetime, timezone
 
 import pytest
-from sqlalchemy import Column, DateTime, Integer, MetaData, String, Table, Text, text
+from sqlalchemy import Column, DateTime, Enum, Integer, MetaData, String, Table, Text, text
+from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
 from core.database import AsyncSessionLocal, engine
 from core.dbadmin._internal.atlas import apply_target
@@ -16,7 +17,7 @@ from core.dbadmin._internal.target import (
     render_target_sql,
     staged_metadata,
 )
-from core.dbadmin.contracts import DbAdminVerdict, EnumTransition
+from core.dbadmin.contracts import DbAdminFatalError, DbAdminVerdict, EnumTransition
 from core.dbadmin.contracts import DbAdminPhase
 from core.dbadmin.dataset import DbAdminDataset, reconcile_dataset
 from core.dbadmin.orchestrator import synchronize_database
@@ -58,6 +59,91 @@ def _copy_metadata(source: MetaData) -> MetaData:
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("dry_run", [False, True])
+@pytest.mark.parametrize("blocker", ["enum_owner", "table_owner", "view", "default"])
+async def test_enum_preflight_failure_preserves_data_before_upgrade_actions(monkeypatch, dry_run, blocker):
+    from core.database import database
+    from core.dbadmin import orchestrator
+
+    target = _copy_metadata(load_target_metadata())
+    Table("dbadmin_ownership_probe", target, Column("id", Integer, primary_key=True),
+          Column("state", Enum("current", name="dbadmin_ownership_state")))
+    enum_owner = "dbadmin_type_owner" if blocker == "enum_owner" else "dbadmin_runtime_probe"
+    table_owner = "dbadmin_type_owner" if blocker == "table_owner" else "dbadmin_runtime_probe"
+    async with engine.begin() as connection:
+        await connection.execute(text("CREATE ROLE dbadmin_type_owner NOLOGIN"))
+        await connection.execute(text("CREATE ROLE dbadmin_runtime_probe NOLOGIN"))
+        await connection.execute(text("GRANT USAGE, CREATE ON SCHEMA public TO dbadmin_type_owner, dbadmin_runtime_probe"))
+        await connection.execute(text("CREATE TYPE dbadmin_ownership_state AS ENUM ('current', 'retired')"))
+        await connection.execute(text(f"ALTER TYPE dbadmin_ownership_state OWNER TO {enum_owner}"))
+        await connection.execute(text("CREATE TABLE dbadmin_ownership_probe (id integer PRIMARY KEY, state dbadmin_ownership_state, legacy_payload text)"))
+        await connection.execute(text(f"ALTER TABLE dbadmin_ownership_probe OWNER TO {table_owner}"))
+        await connection.execute(text("INSERT INTO dbadmin_ownership_probe VALUES (1, 'retired', 'synthetic archive')"))
+        await connection.execute(text("GRANT ALL ON ALL TABLES IN SCHEMA public TO dbadmin_runtime_probe"))
+        await connection.execute(text("GRANT USAGE ON ALL SEQUENCES IN SCHEMA public TO dbadmin_runtime_probe"))
+        if blocker == "view":
+            await connection.execute(text("CREATE VIEW dbadmin_ownership_view AS SELECT state::text FROM dbadmin_ownership_probe"))
+        if blocker == "default":
+            await connection.execute(text("ALTER TABLE dbadmin_ownership_probe ALTER COLUMN state SET DEFAULT ('retired'::text || '')::dbadmin_ownership_state"))
+
+    restricted = create_async_engine(engine.url, connect_args={
+        "server_settings": {"role": "dbadmin_runtime_probe"},
+    })
+    monkeypatch.setattr(orchestrator, "engine", restricted)
+    monkeypatch.setattr(database, "AsyncSessionLocal", async_sessionmaker(restricted, expire_on_commit=False))
+    monkeypatch.setattr(orchestrator, "load_target_metadata", lambda: target)
+    monkeypatch.setattr(orchestrator, "_load_contributions", lambda registry: None)
+
+    async def purge(session, transitions):
+        await session.execute(text("UPDATE dbadmin_ownership_probe SET legacy_payload=NULL"))
+
+    async def purged(session, transitions):
+        return await session.scalar(text("SELECT legacy_payload IS NULL FROM dbadmin_ownership_probe WHERE id=1"))
+
+    registry = DbAdminRegistry()
+    registry.register_enum_mapping(DbAdminEnumMapping("dbadmin_ownership_state", {"retired": "current"}))
+    registry.register_action(DbAdminAction(
+        key="test.enum_ownership_purge", phase=DbAdminPhase.BEFORE_EXPAND, checksum="v1",
+        predicate=lambda delta: "dbadmin_ownership_probe.legacy_payload" in delta.removed_columns,
+        handler=purge, postcondition=purged,
+    ))
+    try:
+        result = await synchronize_database(target_registry=registry, dry_run=dry_run)
+        async with engine.connect() as connection:
+            row = (await connection.execute(text(
+                "SELECT state::text, legacy_payload FROM dbadmin_ownership_probe WHERE id=1"
+            ))).one()
+            assert row == ("retired", "synthetic archive")
+            assert await connection.scalar(text(
+                "SELECT count(*) FROM dbadmin_actions WHERE key='test.enum_ownership_purge'"
+            )) == 0
+            assert await connection.scalar(text(
+                "SELECT pg_get_userbyid(typowner) FROM pg_type WHERE typname='dbadmin_ownership_state'"
+            )) == enum_owner
+        assert result.verdict is DbAdminVerdict.FATAL
+        assert result.action_results == ()
+        diagnostic = " ".join(issue.message for issue in result.issues)
+        expected_terms = {
+            "enum_owner": ("preflight", "dbadmin_type_owner", "dbadmin_runtime_probe"),
+            "table_owner": ("cannot alter", "dbadmin_type_owner"),
+            "view": ("dependency", "dbadmin_ownership_view"),
+            "default": ("default dependency", "dbadmin_ownership_probe"),
+        }
+        for expected in ("public.dbadmin_ownership_state", *expected_terms[blocker]):
+            assert expected in diagnostic
+    finally:
+        await restricted.dispose()
+        async with engine.begin() as connection:
+            await connection.execute(text("DROP VIEW IF EXISTS dbadmin_ownership_view"))
+            await connection.execute(text("DROP TABLE dbadmin_ownership_probe"))
+            await connection.execute(text("DROP TYPE dbadmin_ownership_state"))
+            await connection.execute(text("DELETE FROM dbadmin_actions WHERE key='test.enum_ownership_purge'"))
+            await connection.execute(text("DROP OWNED BY dbadmin_runtime_probe, dbadmin_type_owner"))
+            await connection.execute(text("DROP ROLE dbadmin_runtime_probe, dbadmin_type_owner"))
+        await engine.dispose()
+
+
+@pytest.mark.asyncio
 async def test_enum_additions_preserve_rows_order_and_quoted_labels_on_replay():
     registry = DbAdminRegistry()
     transition = EnumTransition("dbadmin_added_labels", ("middle",), ("before", "middle", "after", "quote's value"))
@@ -80,6 +166,62 @@ async def test_enum_additions_preserve_rows_order_and_quoted_labels_on_replay():
         async with engine.begin() as connection:
             await connection.execute(text("DROP TABLE IF EXISTS dbadmin_enum_additions"))
             await connection.execute(text("DROP TYPE IF EXISTS dbadmin_added_labels"))
+        await engine.dispose()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("change", ["add", "replace"])
+@pytest.mark.parametrize("identity", ["owner", "inherited", "set_only", "unrelated", "superuser"])
+async def test_enum_changes_respect_effective_owner_privileges(change, identity):
+    transition = EnumTransition(
+        "dbadmin_privilege_state", ("current", "retired"),
+        ("current", "retired", "future") if change == "add" else ("current",),
+    )
+    registry = DbAdminRegistry()
+    registry.register_enum_mapping(DbAdminEnumMapping(transition.name, {"retired": "current"}))
+    allowed = identity in {"owner", "inherited", "superuser"}
+    try:
+        async with engine.begin() as connection:
+            await connection.execute(text("CREATE ROLE dbadmin_enum_owner NOLOGIN"))
+            await connection.execute(text("CREATE ROLE dbadmin_enum_actor NOLOGIN"))
+            await connection.execute(text("GRANT USAGE, CREATE ON SCHEMA public TO dbadmin_enum_owner, dbadmin_enum_actor"))
+            await connection.execute(text("CREATE TYPE dbadmin_privilege_state AS ENUM ('current', 'retired')"))
+            await connection.execute(text("ALTER TYPE dbadmin_privilege_state OWNER TO dbadmin_enum_owner"))
+            await connection.execute(text("CREATE TABLE dbadmin_privilege_probe (state dbadmin_privilege_state)"))
+            await connection.execute(text("ALTER TABLE dbadmin_privilege_probe OWNER TO dbadmin_enum_actor"))
+            await connection.execute(text("INSERT INTO dbadmin_privilege_probe VALUES ('retired'), (NULL)"))
+            if identity == "owner":
+                await connection.execute(text("ALTER TYPE dbadmin_privilege_state OWNER TO dbadmin_enum_actor"))
+            elif identity == "inherited":
+                await connection.execute(text("GRANT dbadmin_enum_owner TO dbadmin_enum_actor WITH INHERIT TRUE"))
+            elif identity == "set_only":
+                await connection.execute(text("GRANT dbadmin_enum_owner TO dbadmin_enum_actor WITH INHERIT FALSE, SET TRUE"))
+            if identity != "superuser":
+                await connection.execute(text("SET LOCAL ROLE dbadmin_enum_actor"))
+            if allowed:
+                await prepare_enum_transitions(connection, (transition,), registry)
+            else:
+                with pytest.raises(DbAdminFatalError, match="ownership preflight"):
+                    await prepare_enum_transitions(connection, (transition,), registry)
+            # Denials leave both the transaction and its rows untouched.
+            rows = (await connection.execute(text(
+                "SELECT state::text FROM dbadmin_privilege_probe ORDER BY state NULLS LAST"
+            ))).scalars().all()
+            assert rows == ["current" if allowed and change == "replace" else "retired", None]
+            labels = tuple((await connection.execute(text(
+                "SELECT e.enumlabel FROM pg_enum e JOIN pg_type t ON t.oid=e.enumtypid "
+                "WHERE t.typname='dbadmin_privilege_state' ORDER BY e.enumsortorder"
+            ))).scalars())
+            assert labels == (transition.target_values if allowed else transition.live_values)
+    finally:
+        async with engine.begin() as connection:
+            await connection.execute(text("DROP TABLE IF EXISTS dbadmin_privilege_probe"))
+            await connection.execute(text("DROP TYPE IF EXISTS dbadmin_privilege_state"))
+            # The setup is transactional, so failed setup may have rolled roles back.
+            for role in ("dbadmin_enum_actor", "dbadmin_enum_owner"):
+                if await connection.scalar(text("SELECT 1 FROM pg_roles WHERE rolname=:role"), {"role": role}):
+                    await connection.execute(text(f'DROP OWNED BY "{role}"'))
+                    await connection.execute(text(f'DROP ROLE "{role}"'))
         await engine.dispose()
 
 
@@ -201,6 +343,35 @@ async def test_enum_replacement_maps_data_atomically() -> None:
         async with engine.begin() as connection:
             await connection.execute(text(f'DROP TABLE IF EXISTS "{table_name}"'))
             await connection.execute(text(f'DROP TYPE IF EXISTS "{enum_name}"'))
+        await engine.dispose()
+
+
+@pytest.mark.asyncio
+async def test_enum_upgrade_converges_through_atlas_and_restarts(monkeypatch):
+    from core.dbadmin import orchestrator
+
+    target = _copy_metadata(load_target_metadata())
+    Table("dbadmin_upgrade_probe", target, Column("id", Integer, primary_key=True),
+          Column("state", Enum("current", name="dbadmin_upgrade_state"), nullable=False, server_default="current"))
+    monkeypatch.setattr(orchestrator, "load_target_metadata", lambda: target)
+    monkeypatch.setattr(orchestrator, "_load_contributions", lambda registry: None)
+    registry = DbAdminRegistry()
+    registry.register_enum_mapping(DbAdminEnumMapping("dbadmin_upgrade_state", {"retired": "current"}))
+    async with engine.begin() as connection:
+        await connection.execute(text("CREATE TYPE dbadmin_upgrade_state AS ENUM ('current','retired')"))
+        await connection.execute(text("CREATE TABLE dbadmin_upgrade_probe (id serial PRIMARY KEY, state dbadmin_upgrade_state NOT NULL DEFAULT 'retired')"))
+        await connection.execute(text("INSERT INTO dbadmin_upgrade_probe DEFAULT VALUES"))
+    try:
+        for _ in range(2):
+            result = await synchronize_database(target_registry=registry)
+            assert result.verdict is DbAdminVerdict.CONVERGED
+            async with engine.begin() as connection:
+                assert await connection.scalar(text("SELECT count(*) FROM dbadmin_upgrade_probe WHERE state::text <> 'current'")) == 0
+                await connection.execute(text("INSERT INTO dbadmin_upgrade_probe DEFAULT VALUES"))
+    finally:
+        async with engine.begin() as connection:
+            await connection.execute(text("DROP TABLE dbadmin_upgrade_probe"))
+            await connection.execute(text("DROP TYPE dbadmin_upgrade_state"))
         await engine.dispose()
 
 

@@ -62,7 +62,7 @@ A non-dry synchronization follows this order:
 
 1. load the `<module>.dbadmin` contributions from active modules;
 2. wait for PostgreSQL and acquire a global advisory lock;
-3. inspect `public` and calculate the delta toward the canonical target once;
+3. inspect `public`, calculate the delta toward the canonical target, and preflight ENUM changes;
 4. create the DbAdmin journal tables if necessary;
 5. check unfinished actions and explicitly compatible successors, deferring incompatible optional actions;
 6. execute `BEFORE_EXPAND` actions;
@@ -171,6 +171,47 @@ The checksum is a stable developer fingerprint of the expected behavior. It is n
 ### ENUM
 
 Adding an ENUM value is automatic. Removing, renaming, or reordering values requires a complete `DbAdminEnumMapping` for each old value that does not remain valid. DbAdmin prepares the conversion before Atlas and rejects an incomplete destructive transformation.
+
+Before any action, including in dry-run mode, DbAdmin checks that the current PostgreSQL role
+can alter every affected enum. Direct ownership, immediately inherited owner privileges and
+superusers are accepted; type `USAGE` alone or membership allowing only `SET ROLE` is insufficient.
+A denial identifies the type, its owner and the current role, then stops synchronization before
+data cleanup or transformations. The diagnostic may be saved to an existing DbAdmin journal.
+A PostgreSQL administrator must correct ownership or inherited privileges before retrying
+`make update` in production. DbAdmin neither changes owners nor elevates its privileges.
+Rights are checked again on the DDL connection immediately before conversion; this does not
+replace PostgreSQL's checks if an administrator changes permissions during the operation.
+
+Preflight also checks table ownership, the privileges needed to recreate the type and restore
+its owner, and PostgreSQL dependencies. It never evaluates a computed default to guess its value.
+Automatic replacement supports scalar columns in ordinary `public` tables, constant or `NULL`
+defaults, and simple indexes. Unique indexes require an injective mapping: two old labels cannot
+map to the same label. Enums used only inside arrays are also discovered in the models; adding
+labels remains supported, while replacing an enum with array consumers is rejected.
+
+Views, functions, domains, arrays, foreign keys, CHECK constraints, partial or expression indexes,
+generated columns, inherited/partitioned tables, and dependencies outside `public` are not rebuilt
+automatically. A diagnostic identifies the blocking dependency before business actions. Grants
+issued by the owner are preserved, including grant options and revoked `PUBLIC` access; grant
+chains issued by other roles are explicitly rejected. Such cases need a transition across
+multiple releases or an extension to DbAdmin with a PostgreSQL contract test, never `DROP CASCADE`.
+
+Conversion restores constant defaults (using the same mapping as rows), ownership, grants and
+the type comment **inside the enum transaction**, before Atlas. All DDL names explicitly target
+`public`. Temporary names stay below PostgreSQL's identifier limit even for a maximum-length
+original name; quotes, colons and backslashes in labels remain literal.
+
+A savepoint protects the entire enum batch: an error or cancellation also rolls back enums already
+converted in that batch. Tables are locked in a stable order and checks run again after acquisition;
+existing `DB_LOCK_TIMEOUT_MS` and `DB_STATEMENT_TIMEOUT_MS` limits apply. State that differs from the
+inspected snapshot is rejected; state already matching the target is skipped on replay. Unexpected
+labels are never implicitly replaced with `NULL`. Failed conversion commits no temporary types.
+
+This guarantee covers the enum batch, not the entire upgrade: previously committed actions and
+Atlas phases have separate transactions. Concurrent administrator changes, locks acquired after
+preflight, or a later Atlas failure remain possible. Destructive transitions still need the
+preparation and recovery strategy below. Complete removal of a type absent from the models remains
+managed by Atlas.
 
 ## Conditional actions
 

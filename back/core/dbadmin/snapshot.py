@@ -6,7 +6,7 @@ from dataclasses import dataclass, field
 import json
 from typing import Any, cast
 from sqlalchemy import Enum as SqlEnum
-from sqlalchemy import Column, DefaultClause, MetaData, inspect, text
+from sqlalchemy import ARRAY, Column, DefaultClause, MetaData, inspect, text
 from sqlalchemy.dialects.postgresql import dialect
 from sqlalchemy.dialects.postgresql.base import ischema_names
 from sqlalchemy.types import NullType, TypeEngine
@@ -155,12 +155,17 @@ def target_enum_values(metadata: MetaData) -> dict[str, tuple[str, ...]]:
     result: dict[str, tuple[str, ...]] = {}
     for table in metadata.tables.values():
         for column in table.columns:
-            if not isinstance(column.type, SqlEnum) or not column.type.native_enum:
+            column_type = column.type
+            enum_type = cast(ARRAY[object], column_type).item_type if isinstance(column_type, ARRAY) else column_type
+            if not isinstance(enum_type, SqlEnum) or not enum_type.native_enum:
                 continue
-            if column.type.name is None:
+            enum_schema: object = getattr(enum_type, "schema", None)
+            if enum_schema not in {None, "public"}:
+                raise ValueError(f"DbAdmin target contains enum outside public: {enum_schema}.{enum_type.name}")
+            if enum_type.name is None:
                 continue
-            name = str(column.type.name)
-            values = tuple(str(value) for value in column.type.enums)
+            name = str(enum_type.name)
+            values = tuple(str(value) for value in enum_type.enums)
             previous = result.setdefault(name, values)
             if previous != values:
                 raise ValueError(
@@ -285,3 +290,4 @@ def validate_target_schema(metadata: MetaData) -> None:
         raise ValueError(
             "DbAdmin target contains tables outside public: " + ", ".join(invalid)
         )
+    target_enum_values(metadata)  # Also reject foreign or contradictory enum declarations.

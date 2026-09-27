@@ -73,7 +73,7 @@ Une synchronisation non sèche suit cet ordre :
 
 1. charger les contributions `<module>.dbadmin` des modules actifs ;
 2. attendre PostgreSQL et acquérir un verrou consultatif global ;
-3. inspecter `public` et calculer une fois le delta vers la cible canonique ;
+3. inspecter `public`, calculer le delta vers la cible canonique et vérifier les changements d’ENUM ;
 4. créer si nécessaire les tables de journal DbAdmin ;
 5. vérifier les actions inachevées et les successions explicitement compatibles ;
 6. exécuter les actions `BEFORE_EXPAND` ;
@@ -199,6 +199,51 @@ de migration, ni un ordre global.
 Ajouter une valeur d’ENUM est automatique. Retirer, renommer ou réordonner des valeurs exige un
 `DbAdminEnumMapping` total pour chaque ancienne valeur qui ne reste pas valide. DbAdmin prépare la
 conversion avant Atlas et refuse une transformation destructive incomplète.
+
+Avant toute action, même en simulation, DbAdmin vérifie que le rôle PostgreSQL courant peut
+modifier chacun des enums concernés. La propriété directe, les droits immédiatement hérités
+du propriétaire et un superutilisateur sont acceptés ; un simple `USAGE` sur le type ou une
+adhésion permettant seulement `SET ROLE` ne suffit pas. Un refus indique le type, son propriétaire
+et le rôle courant, puis arrête la synchronisation avant les nettoyages et transformations de
+données. Le diagnostic peut être enregistré dans le journal DbAdmin existant.
+Un administrateur PostgreSQL doit corriger la propriété ou les droits hérités avant de relancer
+`make update` en production. DbAdmin ne change pas les propriétaires et n'élève pas ses privilèges.
+Les droits sont revérifiés sur la connexion DDL juste avant la conversion ; cette vérification
+ne remplace pas les contrôles PostgreSQL si un administrateur les modifie pendant l'opération.
+
+Le contrôle préalable inspecte aussi les propriétaires des tables, les droits nécessaires pour
+recréer le type et restaurer son propriétaire, et les dépendances PostgreSQL. Il ne lance aucun
+défaut calculé pour en deviner le résultat. Un remplacement automatique prend en charge les
+colonnes scalaires des tables ordinaires de `public`, leurs défauts constants ou `NULL`, et les
+index simples. Un index unique exige un mapping injectif : deux anciennes valeurs ne peuvent
+pas devenir la même valeur. Les enums utilisés uniquement dans des tableaux sont également
+détectés dans les modèles ; un ajout de valeur reste possible, un remplacement est refusé.
+
+Les vues, fonctions, domaines, tableaux, clés étrangères, contraintes CHECK, index partiels ou
+d'expression, colonnes générées, tables héritées/partitionnées et dépendances hors de `public`
+ne sont pas reconstruits automatiquement. Un diagnostic identifie la dépendance bloquante avant
+les actions métier. Les droits accordés par le propriétaire sont conservés, y compris les options
+de délégation et un `PUBLIC` révoqué ; les chaînes de droits accordés par d'autres rôles sont
+refusées explicitement. Ces cas nécessitent une évolution en plusieurs livraisons, ou une
+extension de DbAdmin accompagnée d'un test PostgreSQL de leur contrat, jamais un `DROP CASCADE`.
+
+La conversion restaure les défauts constants (avec le même mapping que les lignes), le propriétaire,
+les droits et le commentaire du type **dans la transaction des enums**, avant Atlas. Tous les noms
+DDL ciblent explicitement `public`. Les noms temporaires restent sous la limite PostgreSQL même
+si le nom d'origine l'atteint ; guillemets, deux-points et antislashs des valeurs restent littéraux.
+
+Le lot d'enums est protégé par un savepoint : une erreur ou annulation annule aussi les enums déjà
+convertis dans ce lot. Les tables sont verrouillées dans un ordre stable et les contrôles sont
+refaits après acquisition ; les limites existantes `DB_LOCK_TIMEOUT_MS` et
+`DB_STATEMENT_TIMEOUT_MS` s'appliquent. Un état différent de l'état inspecté est refusé, un état
+déjà égal à la cible est ignoré au rejeu. Une valeur imprévue n'est jamais remplacée implicitement
+par `NULL`. Aucun type temporaire n'est validé si la conversion échoue.
+
+Cette garantie porte sur le lot d'enums, pas sur toute la mise à jour : les actions précédemment
+validées et les phases Atlas ont leurs transactions propres. Une modification concurrente par un
+administrateur, un verrou apparu après le contrôle préalable, ou un échec Atlas ultérieur reste
+possible. Les transformations destructives doivent conserver la stratégie de préparation et de
+reprise décrite plus bas. Le retrait complet d'un type absent des modèles reste géré par Atlas.
 
 ## Actions conditionnelles
 
