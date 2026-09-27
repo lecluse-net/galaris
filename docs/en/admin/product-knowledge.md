@@ -100,6 +100,14 @@ model, a background job progressively builds a semantic index and retrieval comb
 rankings. Results report missing models, provider failures and incomplete coverage. Unchanged
 passages are not embedded again.
 
+Under heavy load, indexing processes at most eight passages per batch and allows 60 seconds
+for the provider. After a failure, this job waits 1, 2, 4, 8 and then at most 10 minutes
+between attempts, per backend process. Success restores its normal 30-second schedule.
+A warning reports the failure type and retry delay. Completed batches are retained;
+new passages become available to lexical search before embeddings are computed.
+Interactive searches keep their short timeout and can run concurrently with other LLM
+calls and background indexing.
+
 Backend images contain the source corpus, updated with Galaris. Development mounts documentation
 read-only and detects edits automatically. A corpus hash identifies the exact sources even when
 the build label is unknown.

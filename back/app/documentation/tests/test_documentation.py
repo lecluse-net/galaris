@@ -1,8 +1,11 @@
 """Product knowledge remains readable, attributable and scoped to the shipped version."""
 
 from unittest.mock import AsyncMock
+import asyncio
+from types import SimpleNamespace
 
 import pytest
+import pytest_asyncio
 from sqlalchemy import select, func
 
 from app.documentation import corpus, facade
@@ -295,6 +298,183 @@ async def test_semantic_index_is_incremental_and_does_not_reuse_other_models(db,
     changed_model = await facade.search(snapshot, "orchestration périodique", model_key="b" * 64, query_vector=[1.0, 0.0])
     assert changed_model.mode == "lexical"
     assert changed_model.degradation_reason == "semantic_index_incomplete"
+
+
+@pytest_asyncio.fixture
+async def indexing_agent(committed_database, monkeypatch):
+    from app.connection.models import Connection
+    from app.agent.models import Agent, Title
+    from app.tools.models import Tool
+    from app.tools import documentation_service, mandatory_tools
+    from core.database import get_db_session
+    from core.user.models import User
+
+    monkeypatch.setattr(documentation_service, "_index_retry_at", 0.0)
+    monkeypatch.setattr(documentation_service, "_index_retry_delay", 0.0)
+    async with get_db_session() as db:
+        title = Title(label="Synthetic indexer", gender="X")
+        user = User(email="indexer@example.test", hashed_password="unused")
+        db.add_all([title, user])
+        await db.flush()
+        agent = Agent(user_id=user.id, title_id=title.id, code="synthetic-indexer",
+                      first_name="Synthetic", last_name="Indexer", agent_driver="internal")
+        db.add(agent)
+        await db.flush()
+        agent_id = agent.id
+        await mandatory_tools.sync_integrated_tool_connections(agent_id)
+        connection = await db.scalar(select(Connection).join(Tool).where(
+            Connection.agent_id == agent_id, Tool.code == "galaris_admin"))
+        connection.active = True
+    return agent_id
+
+
+@pytest.mark.asyncio
+async def test_background_index_keeps_search_and_other_embeddings_concurrent(
+    indexing_agent, sources, monkeypatch,
+):
+    from app.tools import documentation_service
+    from core.database import get_db_session
+
+    started, release = asyncio.Event(), asyncio.Event()
+    calls = []
+
+    async def embed(texts, *, timeout=5.0):
+        calls.append((texts, timeout))
+        if len(texts) > 1:
+            started.set()
+            await release.wait()
+        return [[1.0, 0.0] for _ in texts]
+
+    monkeypatch.setattr(documentation_service, "configured_embedding_model", AsyncMock(
+        return_value=SimpleNamespace(key="a" * 64, embed=embed)))
+
+    async def refresh():
+        async with get_db_session():
+            await documentation_service.refresh_documentation_index()
+
+    background = asyncio.create_task(refresh())
+    try:
+        await asyncio.wait_for(started.wait(), 5)
+        # A second worker must skip this same maintenance job without waiting.
+        await asyncio.wait_for(refresh(), 2)
+        assert len(calls) == 1
+        # Use the actual authorized search path, including a concurrent query embedding.
+        async with get_db_session():
+            result = await asyncio.wait_for(documentation_service.documentation_search(
+                indexing_agent, "partager", language="fr"), 2)
+        assert result["hits"][0]["uri"].endswith("docs/fr/user/documents.md")
+        assert len(calls) == 2
+        assert calls[1][1] == 5.0
+        assert calls[0][1] == 60.0
+        assert len(calls[0][0]) <= 8
+    finally:
+        release.set()
+        await asyncio.wait_for(background, 5)
+
+
+@pytest.mark.asyncio
+async def test_background_index_backs_off_preserves_progress_and_recovers(
+    indexing_agent, sources, monkeypatch,
+):
+    import httpx
+    from app.llm import EmbeddingError
+    from app.tools import documentation_service
+    from core.database import get_db_session
+
+    # More than two maintenance batches, using only synthetic source data.
+    page = sources / "docs/fr/user/more.md"
+    page.write_text("# Synthetic guide\n" + "\n".join(
+        f"## Station {index}\n\nSynthetic station instructions {index}.\n" for index in range(24)))
+    snapshot = facade.load_corpus()
+    now = 1000.0
+    monkeypatch.setattr(documentation_service, "monotonic", lambda: now)
+    calls = []
+    fail = False
+
+    async def embed(texts, *, timeout):
+        calls.append(texts)
+        if fail:
+            raise EmbeddingError("Provider unavailable") from httpx.ReadTimeout("synthetic timeout")
+        return [[1.0, 0.0] for _ in texts]
+
+    monkeypatch.setattr(documentation_service, "configured_embedding_model", AsyncMock(
+        return_value=SimpleNamespace(key="b" * 64, embed=embed)))
+
+    async def refresh():
+        async with get_db_session():
+            await documentation_service.refresh_documentation_index()
+
+    await refresh()
+    assert len(calls[0]) == 8
+    fail = True
+    for delay in (60, 120, 240, 480, 600, 600):
+        await refresh()
+        attempts = len(calls)
+        assert calls[-1] != calls[0]
+        now += delay - 1
+        await refresh()
+        assert len(calls) == attempts
+        async with get_db_session():
+            status = await facade.index_status(snapshot, model_key="b" * 64)
+            assert status["embedded_passages"] == 8
+            assert status["indexed_passages"] == len(snapshot.passages)
+            result = await facade.search(snapshot, "partager", language="fr")
+            assert result.hits
+        now += 1
+
+    fail = False
+    await refresh()
+    assert calls[-1] == calls[-2]  # Resume the failed batch, not the completed one.
+    await refresh()  # A success clears the long cooldown for the scheduler's next tick.
+    async with get_db_session():
+        assert (await facade.index_status(snapshot, model_key="b" * 64))["embedded_passages"] == 24
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("outcome", ["deadline", "cancelled", "unexpected"])
+async def test_background_index_releases_lock_on_deadline_or_cancellation(
+    indexing_agent, sources, monkeypatch, outcome,
+):
+    from app.tools import documentation_service
+    from core.database import get_db_session
+
+    started = asyncio.Event()
+
+    async def embed(texts, *, timeout):
+        started.set()
+        if outcome == "unexpected":
+            raise ValueError("Synthetic programming error")
+        await asyncio.Event().wait()
+
+    monkeypatch.setattr(documentation_service, "_INDEX_TIMEOUT_SECONDS", 0.05)
+    model = SimpleNamespace(key="c" * 64, embed=embed)
+    monkeypatch.setattr(documentation_service, "configured_embedding_model", AsyncMock(return_value=model))
+
+    async def refresh():
+        async with get_db_session():
+            await documentation_service.refresh_documentation_index()
+
+    background = asyncio.create_task(refresh())
+    await asyncio.wait_for(started.wait(), 5)
+    if outcome == "cancelled":
+        background.cancel()
+        with pytest.raises(asyncio.CancelledError):
+            await background
+    elif outcome == "unexpected":
+        with pytest.raises(ValueError, match="Synthetic programming error"):
+            await background
+    else:
+        await asyncio.wait_for(background, 5)
+        monkeypatch.setattr(documentation_service, "monotonic", lambda: float("inf"))
+
+    async def recovered(texts, *, timeout):
+        return [[1.0, 0.0] for _ in texts]
+
+    model.embed = recovered
+    await refresh()
+    async with get_db_session():
+        status = await facade.index_status(facade.load_corpus(), model_key=model.key)
+        assert status["embedded_passages"] > 0
 
 
 @pytest.mark.asyncio

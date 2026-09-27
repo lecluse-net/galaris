@@ -5,12 +5,22 @@ from __future__ import annotations
 import asyncio
 from collections import Counter
 from dataclasses import asdict
+from time import monotonic
 from typing import Any
 
+from loguru import logger
+
 from app.documentation import facade as documentation
-from app.llm import configured_embedding_model
+from app.llm import EmbeddingError, configured_embedding_model
 
 from .admin_access import require_documentation_access
+
+
+_INDEX_BATCH_SIZE = 8
+_INDEX_TIMEOUT_SECONDS = 60.0
+# Process-local cooldown for this maintenance job only; never gate interactive calls.
+_index_retry_at = 0.0
+_index_retry_delay = 0.0
 
 
 async def documentation_catalog(agent_id: int) -> dict[str, Any]:
@@ -71,18 +81,43 @@ async def refresh_documentation_index() -> None:
     from sqlalchemy import func, select
     from core.database import get_db
 
+    global _index_retry_at, _index_retry_delay
+    if monotonic() < _index_retry_at:
+        return
+
     # The scheduler owns this callback's session and transaction.
     if not await connections.has_any_active_tool_connection("galaris_admin"):
-        return
-    if not await get_db().scalar(select(func.pg_try_advisory_xact_lock(func.hashtextextended("galaris-documentation-index", 0)))):
         return
     model = await configured_embedding_model()
     if model is None:
         return
     corpus = await asyncio.to_thread(documentation.load_corpus)
 
-    async def embed(texts: list[str]) -> list[list[float]]:
-        return await model.embed(texts, timeout=20.0)
+    # Publish new lexical rows before waiting on the provider. Otherwise concurrent
+    # searches can block on synchronize's unique-key inserts throughout the HTTP call.
+    await documentation.synchronize(corpus)
+    await get_db().commit()
+    # Keep cross-worker exclusion limited to background indexing. This deliberately
+    # retains one DB connection, but no passage write locks during the network wait.
+    if not await get_db().scalar(select(func.pg_try_advisory_xact_lock(func.hashtextextended("galaris-documentation-index", 0)))):
+        return
 
-    await documentation.index_embeddings(corpus, model_key=model.key, embed=embed)
+    async def embed(texts: list[str]) -> list[list[float]]:
+        # Bound wall-clock time as well as the HTTP client's individual I/O waits.
+        async with asyncio.timeout(_INDEX_TIMEOUT_SECONDS):
+            return await model.embed(texts, timeout=_INDEX_TIMEOUT_SECONDS)
+
+    try:
+        await documentation.index_embeddings(corpus, model_key=model.key, embed=embed,
+                                            batch_size=_INDEX_BATCH_SIZE)
+    except (EmbeddingError, TimeoutError) as exc:
+        await get_db().rollback()
+        _index_retry_delay = min(600.0, _index_retry_delay * 2 or 60.0)
+        _index_retry_at = monotonic() + _index_retry_delay
+        logger.warning(
+            "Documentation embeddings deferred: {}; retry in {:.0f}s; lexical search remains available",
+            type(exc.__cause__ or exc).__name__, _index_retry_delay,
+        )
+        return
     await documentation.prune_retired(corpus)
+    _index_retry_at = _index_retry_delay = 0.0

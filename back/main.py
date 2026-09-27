@@ -71,7 +71,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         register_llm_scheduler_jobs()
         from app.tools.documentation_service import refresh_documentation_index
         task_scheduler.register_periodic_job(
-            "documentation-index", refresh_documentation_index, interval=30.0, timeout=45.0,
+            "documentation-index", refresh_documentation_index, interval=30.0, timeout=90.0,
         )
         register_scheduler_jobs()
         register_goal_jobs()

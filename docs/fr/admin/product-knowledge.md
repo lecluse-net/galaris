@@ -108,6 +108,14 @@ Avec le modèle vectoriel configuré, l'index s'enrichit progressivement en arri
 la recherche combine résultats textuels et sémantiques. Un modèle absent, une panne ou un index
 incomplet sont signalés dans le résultat. Les passages inchangés ne sont pas réencodés.
 
+Sous forte charge, l'indexation traite huit passages au maximum par lot, avec un délai
+de 60 secondes pour le fournisseur. Après un échec, ce job attend 1, 2, 4, 8 puis au maximum
+10 minutes entre les tentatives, par processus backend. Un succès rétablit sa cadence normale
+de 30 secondes. Un avertissement indique le type d'échec et le délai avant reprise.
+Les lots validés restent conservés ; les nouveaux passages sont accessibles en recherche
+textuelle avant le calcul des embeddings. Les recherches interactives gardent leur délai
+court et peuvent s'exécuter en parallèle des autres appels LLM et de l'indexation.
+
 Les fichiers sont embarqués dans les images backend ; les mises à jour de Galaris actualisent
 le corpus. En développement, les sources documentaires sont montées en lecture seule et leurs
 modifications sont détectées automatiquement. L'empreinte du corpus identifie exactement les

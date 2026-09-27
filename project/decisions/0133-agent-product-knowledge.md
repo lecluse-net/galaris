@@ -31,6 +31,19 @@ mutualisés par empreinte de passage et identité du modèle. Un job périodique
 une couverture incomplète ou une panne sémantique n'empêche pas la lecture ni la recherche
 textuelle. Les lignes retirées sont éliminées après une période de grâce de sept jours.
 
+L'indexation valide les nouveaux passages textuels dans une transaction courte avant
+d'appeler le fournisseur : une recherche concurrente ne doit pas attendre les embeddings
+sur un conflit d'insertion. Le verrou transactionnel PostgreSQL reste limité à l'indexation
+de fond entre workers ; il conserve une connexion pendant cet appel, sans verrou d'écriture
+sur les passages. Aucun verrou ou quota global n'est ajouté aux appels LLM ou aux recherches.
+Les lots contiennent au plus huit passages ; le fournisseur dispose de 60 secondes, dans
+un job limité à 90 secondes. Les erreurs d'embeddings déclenchent un avertissement et une
+échéance de reprise progressive de 60 à 600 secondes, locale au processus, sans attente
+active ni transaction ouverte pendant ce délai. Un succès réinitialise cette échéance ;
+un redémarrage la réinitialise également. Les erreurs inattendues et annulations continuent
+à remonter au scheduler. Les lots déjà validés, les droits vivants et le repli textuel
+restent les garanties à préserver.
+
 Le skill système `galaris-knowledge` fournit le modèle conceptuel et la méthode d'assistance.
 Les règles d'attribution de skills restent applicables, complétées par le droit documentaire.
 Les instructions déjà chargées ne sont pas effacées rétroactivement ; les outils restent
