@@ -34,7 +34,7 @@ export type ChatCommandCode =
   | 'effort'
   | 'approve'
 export interface ChatCommandCatalog { commands: ChatCommandCode[] }
-export interface MessengerAgent { agent_id: number; connection_id: number; code: string; display_name: string; active: boolean }
+export interface MessengerAgent { agent_id: number; connection_id: number; code: string; display_name: string; active: boolean; suggested_room_label?: string }
 export interface RecipientCatalog { agents: MessengerAgent[] }
 export interface MessengerMember { id: string; external_id: string; display_name: string; avatar_url: string | null; is_ai: boolean; agent_id: number | null; role: 'owner' | 'manager' | 'member'; joined_at: string | null; muted: boolean }
 export interface MessengerFile { id: string; uri: string; name: string; mime_type: string; size_bytes: number | null; kind: string }

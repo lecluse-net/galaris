@@ -49,7 +49,7 @@ from app.messenger import (
     internal_agent_avatar,
     is_kind_enabled,
     kind_from_mime,
-    list_internal_agents,
+    list_internal_agent_page,
     list_chat_identity_mappings,
     list_chat_message_agent_ids,
     list_chat_viewer_agents,
@@ -419,22 +419,16 @@ async def delete_identity_mapping(tool_id: int) -> MutationResult:
 @authorize(privileges=ACCESS)
 async def read_recipients(
     search: str = Query(default="", max_length=200),
+    page: int = Query(default=1, ge=1),
+    page_size: int | None = Query(default=None, ge=1, le=500),
 ) -> RecipientCatalog:
     _require_enabled()
-    normalized = search.strip().lower()
     scope = await current_dialogue_scope()
-    agents = [
-        agent
-        for agent in await list_internal_agents(agent_ids=scope.agent_ids)
-        if agent.active
-    ]
-    if normalized:
-        agents = [
-            agent
-            for agent in agents
-            if normalized in agent.display_name.lower() or normalized in agent.code.lower()
-        ]
-    return RecipientCatalog(agents=agents)
+    agents, total = await list_internal_agent_page(
+        actor_user_id=await _user_id(), agent_ids=scope.agent_ids,
+        search=search, active_only=True, page=page, page_size=page_size,
+    )
+    return RecipientCatalog(agents=agents, total=total)
 
 
 @router.get("/viewer-agents", response_model=list[ChatViewerAgent])

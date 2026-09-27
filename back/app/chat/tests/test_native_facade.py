@@ -342,8 +342,10 @@ async def test_button_answer_is_journaled_before_handler_and_survives_its_retry(
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("explicit_label", [False, True])
 async def test_room_creation_creates_distinct_threads_with_numbered_labels(
     db: AsyncSession,
+    explicit_label: bool,
 ) -> None:
     agent, owner, member = await _scope(db)
     room = await create_internal_room(
@@ -358,10 +360,13 @@ async def test_room_creation_creates_distinct_threads_with_numbered_labels(
     second_room = await create_internal_room(
         actor_user_id=owner_id,
         agent_id=agent_id,
+        label=room.label if explicit_label else None,
     )
+    assert second_room is not None
     third_room = await create_internal_room(
         actor_user_id=owner_id,
         agent_id=agent_id,
+        label=second_room.label if explicit_label else None,
     )
 
     assert second_room is not None
@@ -407,6 +412,86 @@ async def test_room_creation_creates_distinct_threads_with_numbered_labels(
         f"user:{owner_id}",
     }
     assert await get_internal_room(member_id, room_id) is None
+
+
+@pytest.mark.asyncio
+async def test_room_name_suggestions_include_archived_and_renamed_rooms_beyond_first_page(
+    db: AsyncSession,
+) -> None:
+    agent, owner, other = await _scope(db)
+    first = await create_internal_room(actor_user_id=owner.id, agent_id=agent.id)
+    assert first is not None
+    identity = await db.scalar(select(MessengerUser).where(
+        MessengerUser.external_id == f"user:{owner.id}",
+        MessengerUser.is_ai.is_(False),
+    ))
+    assert identity is not None
+    rooms = [Room(
+        connection_id=first.connection_id, external_id=f"synthetic-{uuid4()}",
+        label=f"Native Agent ({number})" if number > 2 else "Renamed conversation",
+        kind="direct", conversation_type="text",
+    ) for number in range(2, 53)]
+    db.add_all(rooms)
+    await db.flush()
+    db.add_all([RoomUser(
+        room_id=room.id, user_id=identity.id, role="owner", archived=True,
+        custom_label="Native Agent (2)" if index == 0 else None,
+    ) for index, room in enumerate(rooms)])
+    await db.commit()
+
+    suggestions = await native_facade.list_internal_agents(
+        actor_user_id=owner.id, agent_ids=[agent.id],
+    )
+    assert len(suggestions) == 1
+    assert suggestions[0].suggested_room_label == "Native Agent (53)"
+    other_suggestions = await native_facade.list_internal_agents(
+        actor_user_id=other.id, agent_ids=[agent.id],
+    )
+    assert other_suggestions[0].suggested_room_label == "Native Agent"
+    assert await native_facade.list_internal_agents(actor_user_id=owner.id, agent_ids=[]) == []
+
+    # A stale or manually reused visible name is also disambiguated when persisted.
+    created = await create_internal_room(
+        actor_user_id=owner.id, agent_id=agent.id, label="Native Agent (2)",
+    )
+    assert created is not None and created.label == "Native Agent (53)"
+
+
+@pytest.mark.asyncio
+async def test_agent_pages_filter_before_counting_and_keep_stable_order(db: AsyncSession) -> None:
+    base, owner, _ = await _scope(db)
+    tool = await db.scalar(select(Tool).where(Tool.code == "chat"))
+    assert tool is not None
+    agents = [Agent(
+        user_id=owner.id, title_id=base.title_id,
+        first_name="Pagination", last_name=f"Agent {index:03d}",
+        code=f"page-{index}-{uuid4().hex[:10]}", agent_driver="internal",
+    ) for index in range(52)]
+    db.add_all(agents)
+    await db.flush()
+    db.add_all([Connection(tool_id=tool.id, agent_id=agent.id, active=index != 51)
+                for index, agent in enumerate(agents)])
+    await db.flush()
+    scope = [agent.id for agent in agents]
+    first, total = await native_facade.list_internal_agent_page(
+        actor_user_id=owner.id, agent_ids=scope, active_only=True, page_size=50,
+    )
+    second, second_total = await native_facade.list_internal_agent_page(
+        actor_user_id=owner.id, agent_ids=scope, active_only=True, page_size=50, page=2,
+    )
+    assert total == second_total == 51
+    assert [agent.agent_id for agent in first + second] == scope[:51]
+    assert len(first) == 50 and len(second) == 1
+    filtered, total = await native_facade.list_internal_agent_page(
+        actor_user_id=owner.id, agent_ids=scope[:20], active_only=True,
+        search="PAGINATION AGENT 01", page_size=500,
+    )
+    assert total == 10
+    assert [agent.agent_id for agent in filtered] == scope[10:20]
+    empty, total = await native_facade.list_internal_agent_page(
+        actor_user_id=owner.id, agent_ids=[], active_only=True, page_size=50,
+    )
+    assert empty == [] and total == 0
 
 
 @pytest.mark.asyncio

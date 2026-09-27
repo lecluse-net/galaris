@@ -3,16 +3,17 @@ import { document as documentFixture } from './data.mjs'
 
 const events = (page, name) => page.evaluate(name => window.testApp.events.filter(event => event.name === name).map(event => event.args), name)
 
-test('room creation validates identity and name, and emits all preferences together', async ({ page }) => {
+for (const suggestedLabel of ['Alice', 'Alice (3)']) {
+test(`room creation uses the available name ${suggestedLabel} and preserves custom names and preferences`, async ({ page }) => {
   await jsonRoute(page, '**/api/agents/selection?scope=dialogue', [{ id: 7, label: 'Alice', has_avatar: false }])
   await page.route('**/api/chat/agents/7/avatar', route => route.fulfill({ status: 404, body: '' }))
-  await mount(page, 'app/chat/components/RoomCreateDialog.vue', { props: { modelValue: true, agents: [{ agent_id: 7, display_name: 'Alice', has_avatar: false }] } })
+  await mount(page, 'app/chat/components/RoomCreateDialog.vue', { props: { modelValue: true, agents: [{ agent_id: 7, display_name: 'Alice', suggested_room_label: suggestedLabel, has_avatar: false }] } })
   const create = page.getByRole('button', { name: 'Chat', exact: true })
   await expect(create).toBeDisabled()
   await page.getByRole('combobox', { name: 'Agent', exact: true }).click()
   await page.getByRole('option', { name: 'Alice' }).click()
   const label = page.getByRole('textbox', { name: 'Conversation name', exact: true })
-  await expect(label).toHaveValue('Alice')
+  await expect(label).toHaveValue(suggestedLabel)
   await label.fill('   ')
   await expect(create).toBeDisabled()
   await label.fill('  Private conversation  ')
@@ -25,6 +26,7 @@ test('room creation validates identity and name, and emits all preferences toget
   await page.locator('.q-dialog__backdrop').click({ position: { x: 3, y: 3 } })
   await expect(page.getByRole('dialog')).toHaveCount(0)
 })
+}
 
 test('room creation can create and select a topic while preserving conversation preferences', async ({ page }) => {
   const topic = { id: 'new-topic', title: 'New subject', description: '', keywords: [], revision: 1 }

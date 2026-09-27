@@ -104,11 +104,13 @@ const {
   agents,
   saving = false,
   canEditTopic = false,
+  initialAgentId = null,
 } = defineProps<{
   modelValue: boolean
   agents: MessengerAgent[]
   saving?: boolean
   canEditTopic?: boolean
+  initialAgentId?: number | null
 }>()
 
 const emit = defineEmits<{
@@ -132,21 +134,25 @@ const agentOptions = computed(() =>
   agents.map(agent => ({ label: agent.display_name, value: agent.agent_id })),
 )
 
+function suggestedRoomLabel(selectedAgentId: number | null): string {
+  const agent = agents.find(agent => agent.agent_id === selectedAgentId)
+  return agent?.suggested_room_label || agent?.display_name || ''
+}
+
 watch(
   () => modelValue,
   open => {
     if (!open) return
-    agentId.value = null
-    label.value = ''
+    agentId.value = initialAgentId
+    label.value = suggestedRoomLabel(initialAgentId)
     topicId.value = null
     showLastMessage.value = true
-    suggestedLabel = ''
+    suggestedLabel = label.value
   },
 )
 
 watch(agentId, selectedAgentId => {
-  const nextSuggestion =
-    agents.find(agent => agent.agent_id === selectedAgentId)?.display_name ?? ''
+  const nextSuggestion = suggestedRoomLabel(selectedAgentId)
   if (!label.value.trim() || label.value === suggestedLabel) {
     label.value = nextSuggestion
   }

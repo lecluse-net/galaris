@@ -65,7 +65,7 @@ for (const width of [1280, 390]) {
     await page.setViewportSize({ width, height: 900 })
     const agents = [{ agent_id: 7, display_name: 'Alice', has_avatar: false }]
     await jsonRoute(page, '**/api/chat/viewer-agents', agents)
-    await jsonRoute(page, '**/api/chat/recipients?*', { agents })
+    await jsonRoute(page, '**/api/chat/recipients?*', { agents, total: agents.length })
     await conversation(page, ['CHAT_SEND', 'CHAT_MANAGE', 'CHAT_IMPERSONATE'])
     if (width < 1024) await page.getByRole('button', { name: 'Details', exact: true }).click()
     const header = page.locator('.sidebar-accordion-header').filter({ hasText: 'Conversations' })
@@ -115,7 +115,7 @@ for (const section of [
       return route.fulfill({ json: { items, total: items.length, page: 1, page_size: 50 } })
     })
     await jsonRoute(page, `**/api/chat/rooms/room-b/${section.path}?*`, { items: [], total: 0 })
-    await jsonRoute(page, '**/api/chat/recipients?*', { agents: [] })
+    await jsonRoute(page, '**/api/chat/recipients?*', { agents: [], total: 0 })
     await jsonRoute(page, '**/api/tasks/activity', [])
     await jsonRoute(page, '**/api/memory/items/doc-a?*', documentFixture)
     await conversation(page, ['CHAT_SEND', section.privilege])

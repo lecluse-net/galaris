@@ -29,6 +29,7 @@ class ChatStatus(BaseModel):
 
 class RecipientCatalog(BaseModel):
     agents: list[NativeMessengerAgent]
+    total: int
 
 
 ChatCommandCode = Literal[

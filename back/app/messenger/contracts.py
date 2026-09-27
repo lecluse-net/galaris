@@ -37,6 +37,7 @@ class NativeMessengerAgent(BaseModel):
     connection_id: int
     code: str
     display_name: str
+    suggested_room_label: str = ""
     active: bool
 
 

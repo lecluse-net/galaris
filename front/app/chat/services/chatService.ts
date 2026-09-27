@@ -38,6 +38,7 @@ export const chatService = {
   async clearIdentityMapping(toolId: number): Promise<void> { await api.delete(`${base}/identities/${toolId}`) },
   async viewerAgents(): Promise<ChatViewerAgent[]> { return (await api.get<ChatViewerAgent[]>(`${base}/viewer-agents`)).data },
   async recipients(search = ''): Promise<RecipientCatalog> { return (await api.get<RecipientCatalog>(`${base}/recipients`, { params: { search } })).data },
+  async recipientPage(page = 1, pageSize = 50): Promise<RecipientCatalog & { total: number }> { return (await api.get<RecipientCatalog & { total: number }>(`${base}/recipients`, { params: { page, page_size: pageSize } })).data },
   async agentAvatarBlob(agentId: number, signal?: AbortSignal): Promise<Blob> {
     return avatars.read(String(agentId), sharedSignal => queuePreview(async () => (
       await api.get<Blob>(`${base}/agents/${agentId}/avatar`, { responseType: 'blob', signal: sharedSignal })

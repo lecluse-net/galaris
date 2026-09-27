@@ -213,8 +213,24 @@ async def internal_direct_room_observation(
 
 async def list_internal_agents(
     *,
+    actor_user_id: int,
     agent_ids: Collection[int] | None = None,
 ) -> list[NativeMessengerAgent]:
+    agents, _ = await list_internal_agent_page(
+        actor_user_id=actor_user_id, agent_ids=agent_ids
+    )
+    return agents
+
+
+async def list_internal_agent_page(
+    *,
+    actor_user_id: int,
+    agent_ids: Collection[int] | None = None,
+    search: str = "",
+    active_only: bool = False,
+    page: int = 1,
+    page_size: int | None = None,
+) -> tuple[list[NativeMessengerAgent], int]:
     query = (
         select(Connection, Agent)
             .join(Tool, Tool.id == Connection.tool_id)
@@ -224,8 +240,21 @@ async def list_internal_agents(
     )
     if agent_ids is not None:
         query = query.where(Agent.id.in_(agent_ids))
+    if active_only:
+        query = query.where(Connection.active.is_(True))
+    if search.strip():
+        name = func.trim(func.concat_ws(" ", Agent.first_name, Agent.last_name))
+        query = query.where(or_(
+            func.lower(name).contains(search.strip().lower(), autoescape=True),
+            func.lower(Agent.code).contains(search.strip().lower(), autoescape=True),
+        ))
+    total = int(await get_db().scalar(
+        select(func.count()).select_from(query.order_by(None).subquery())
+    ) or 0)
+    if page_size is not None:
+        query = query.offset((page - 1) * page_size).limit(page_size)
     rows = (await get_db().execute(query)).all()
-    return [
+    agents = [
         NativeMessengerAgent(
             agent_id=agent.id,
             connection_id=connection.id,
@@ -240,6 +269,14 @@ async def list_internal_agents(
         )
         for connection, agent in rows
     ]
+    labels = await _internal_room_labels(
+        actor_user_id, [agent.connection_id for agent in agents]
+    )
+    for agent in agents:
+        agent.suggested_room_label = _next_internal_room_label(
+            agent.display_name, labels.get(agent.connection_id, set())
+        )
+    return agents, total
 
 
 def _tool_source(tool: Tool) -> str:
@@ -413,6 +450,31 @@ async def _ensure_agent(tool_id: int, agent: Agent) -> UUID:
     )
 
 
+async def _internal_room_labels(
+    actor_user_id: int, connection_ids: Collection[int],
+) -> dict[int, set[str]]:
+    """Read the owner's visible names, including archived rooms, without pagination."""
+    if not connection_ids:
+        return {}
+    rows = (await get_db().execute(
+        select(Room.connection_id, func.coalesce(RoomUser.custom_label, Room.label))
+        .join(RoomUser, RoomUser.room_id == Room.id)
+        .join(MessengerUser, MessengerUser.id == RoomUser.user_id)
+        .where(
+            Room.connection_id.in_(connection_ids),
+            Room.kind == "direct",
+            Room.conversation_type == "text",
+            MessengerUser.external_id == human_external_id(actor_user_id),
+            MessengerUser.is_ai.is_(False),
+            RoomUser.role == "owner",
+        )
+    )).all()
+    labels: dict[int, set[str]] = {}
+    for connection_id, label in rows:
+        labels.setdefault(connection_id, set()).add(label)
+    return labels
+
+
 def _next_internal_room_label(
     base_label: str,
     existing_labels: Collection[str],
@@ -421,6 +483,10 @@ def _next_internal_room_label(
     if normalized_base not in existing_labels:
         return normalized_base
     suffix_number = 2
+    numbered = re.fullmatch(r"(.+) \(([0-9]+)\)", normalized_base)
+    if numbered is not None and int(numbered[2]) >= 2:
+        normalized_base = numbered[1]
+        suffix_number = int(numbered[2]) + 1
     while True:
         suffix = f" ({suffix_number})"
         candidate = f"{normalized_base[: 500 - len(suffix)].rstrip()}{suffix}"
@@ -474,20 +540,8 @@ async def create_internal_room(
         ).strip()
         or agent.code
     )
-    existing_labels = set(
-        (
-            await get_db().scalars(
-                select(Room.label)
-                .join(RoomUser, RoomUser.room_id == Room.id)
-                .where(
-                    Room.connection_id == connection.id,
-                    Room.kind == "direct",
-                    Room.conversation_type == "text",
-                    RoomUser.user_id == _actor.id,
-                    RoomUser.role == "owner",
-                )
-            )
-        ).all()
+    existing_labels = (await _internal_room_labels(actor_user_id, [connection.id])).get(
+        connection.id, set()
     )
     normalized_label = label.strip()[:500] if label is not None else ""
     room_id = uuid4()
@@ -495,10 +549,7 @@ async def create_internal_room(
         id=room_id,
         connection_id=connection.id,
         external_id=f"chat:direct:{agent_id}:{actor_user_id}:{room_id}",
-        label=(
-            normalized_label
-            or _next_internal_room_label(agent_label, existing_labels)
-        ),
+        label=_next_internal_room_label(normalized_label or agent_label, existing_labels),
         kind="direct",
         conversation_type="text",
         topic_id=topic_id,
@@ -2206,6 +2257,7 @@ __all__ = [
     "internal_outbound_observation",
     "search_internal_users",
     "list_internal_agents",
+    "list_internal_agent_page",
     "list_internal_messages",
     "list_internal_rooms",
     "mark_chat_room_read",

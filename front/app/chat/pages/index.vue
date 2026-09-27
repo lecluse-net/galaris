@@ -1,12 +1,30 @@
 <template>
   <q-page
     class="messenger-page"
-    :class="{ 'messenger-page--dark': $q.dark.isActive, 'q-dark': $q.dark.isActive }"
+    :class="{ 'messenger-page--dark': $q.dark.isActive, 'q-dark': $q.dark.isActive, 'messenger-page--home': !store.selectedRoom }"
     :style-fn="chatPageStyle"
   >
     <q-banner v-if="store.status && !store.enabled" class="bg-warning text-dark q-ma-md" rounded>{{ t('chat.disabled') }}</q-banner>
     <q-inner-loading :showing="store.loading" />
     <div ref="messengerGrid" v-if="store.enabled" class="messenger-grid" :class="{ 'messenger-grid--empty': !store.selectedRoom, 'messenger-grid--resizing': resizingColumns, 'messenger-grid--document': integratedDocument }" :style="messengerGridStyle">
+      <main v-if="!store.selectedRoom" class="chat-home q-pa-md">
+        <PageHeader help-key="chat" :help-text="t('contextHelpPages.chat')" :icon="navigationIcon('forum')" :title="t('nav.chat')" :description="t('nav.chat_desc')" />
+        <div class="chat-home-content">
+          <ChatWelcome :agents="homeAgents" :can-create="canCreateRoom" :loading="loadingRecipients" :error="recipientsError" @create="openCreate" @retry="recipientsRevision++">
+            <template #pagination><ChatHomePagination v-model:page="agentsPage" v-model:page-size="agentsPageSize" :total="agentsTotal" :loading="loadingRecipients" :label="t('chat.home.agentPages')" /></template>
+          </ChatWelcome>
+          <section :aria-label="t('chat.home.recent')">
+            <div class="chat-home-list-header">
+              <h2>{{ t('chat.home.recent') }}</h2>
+            </div>
+            <RoomList :search-value="roomSearch" cards show-filters :rooms="homeRooms" :can-create="canCreateRoom" :can-impersonate="canImpersonate" :viewer-agent-id="store.viewerAgentId" :viewer-agents="viewerAgents" :include-external="store.includeExternalRooms" :include-archived="store.includeArchivedRooms" :has-more="false" :loading-more="loadingHomeRooms" :error="homeRoomsError" @select="selectRoom" @search="searchRooms" @toggle-external="toggleExternalRooms" @toggle-archived="toggleArchivedRooms" @view-agent="changeViewerAgent" />
+            <div v-if="homeRoomsError" role="alert" class="q-mt-md">
+              {{ t('chat.error') }} <q-btn flat :label="t('chat.home.retry')" @click="homeRoomsRevision++" />
+            </div>
+            <ChatHomePagination v-model:page="homeRoomsPage" v-model:page-size="homeRoomsPageSize" :total="homeRoomsTotal" :loading="loadingHomeRooms" :label="t('chat.home.conversationPages')" />
+          </section>
+        </div>
+      </main>
       <section v-if="store.selectedRoom" class="chat-workspace" :class="{ 'mobile-hidden': $q.screen.lt.md && mobileView !== 'conversation' }">
         <div ref="documentWorkspace" class="chat-workspace-content" :class="{ 'chat-workspace-content--document': integratedDocument, 'chat-workspace-content--rows': effectiveDocumentLayout === 'rows', 'chat-workspace-content--resizing': resizingDocument }" :style="documentWorkspaceStyle">
       <main class="conversation-pane">
@@ -61,7 +79,7 @@
         @lostpointercapture="finishColumnResize"
         @keydown="resizeColumnsWithKeyboard"
       ><span class="column-resizer-handle"><q-icon name="drag_indicator" size="16px" /></span></div>
-      <aside id="chat-details" v-show="!$q.screen.lt.md || sidebarVisible || !store.selectedRoom" class="details-pane" :class="{ 'details-pane--empty': !store.selectedRoom }">
+      <aside v-if="store.selectedRoom" id="chat-details" v-show="!$q.screen.lt.md || sidebarVisible" class="details-pane">
         <q-toolbar v-if="$q.screen.lt.md && store.selectedRoom" class="sidebar-mobile-toolbar"><q-btn flat round dense icon="arrow_back" :aria-label="t('chat.backToConversation')" @click="mobileView='conversation'" /><q-toolbar-title>{{ t('chat.details') }}</q-toolbar-title></q-toolbar>
         <ContextHelp help-key="chat" :text="t('contextHelpPages.chat')" />
         <q-list id="chat-sidebar-content" v-show="sidebarVisible || !store.selectedRoom" class="sidebar-accordion" :class="{ 'sidebar-accordion--empty': !store.selectedRoom }">
@@ -72,25 +90,12 @@
               <q-item-section side>
                 <div class="row no-wrap">
                   <q-btn flat round dense icon="filter_list" class="room-list-options" :color="roomFiltersVisible ? 'primary' : undefined" :aria-label="t('chat.listOptions')" :aria-expanded="roomFiltersVisible" aria-controls="chat-room-filters" @click.stop="toggleRoomFilters" @keydown.stop><q-tooltip>{{ t('chat.listOptions') }}</q-tooltip></q-btn>
-                  <q-btn v-if="canCreateRoom" flat round dense color="primary" icon="add" :aria-label="t('chat.newRoom')" @click.stop="openCreate" @keydown.stop><q-tooltip>{{ t('chat.newRoom') }}</q-tooltip></q-btn>
+                  <q-btn v-if="canCreateRoom" flat round dense color="primary" icon="add" :aria-label="t('chat.newRoom')" @click.stop="openCreate()" @keydown.stop><q-tooltip>{{ t('chat.newRoom') }}</q-tooltip></q-btn>
                 </div>
               </q-item-section>
             </template>
-            <div class="sidebar-section-content"><RoomList :show-filters="roomFiltersVisible" :rooms="store.rooms" :selected-id="store.selectedRoom?.id" :can-create="canCreateRoom" :can-impersonate="canImpersonate" :viewer-agent-id="store.viewerAgentId" :viewer-agents="viewerAgents" :include-external="store.includeExternalRooms" :include-archived="store.includeArchivedRooms" :has-more="store.hasMoreRooms" :loading-more="store.loadingMoreRooms" @select="selectRoom" @search="searchRooms" @toggle-external="toggleExternalRooms" @toggle-archived="toggleArchivedRooms" @load-more="loadMoreRooms" @view-agent="changeViewerAgent" @create="openCreate" /></div>
+            <div class="sidebar-section-content"><RoomList :search-value="roomSearch" :show-filters="roomFiltersVisible" :rooms="store.rooms" :selected-id="store.selectedRoom?.id" :can-create="canCreateRoom" :can-impersonate="canImpersonate" :viewer-agent-id="store.viewerAgentId" :viewer-agents="viewerAgents" :include-external="store.includeExternalRooms" :include-archived="store.includeArchivedRooms" :has-more="store.hasMoreRooms" :loading-more="store.loadingMoreRooms" @select="selectRoom" @search="searchRooms" @toggle-external="toggleExternalRooms" @toggle-archived="toggleArchivedRooms" @load-more="loadMoreRooms" @view-agent="changeViewerAgent" @create="openCreate" /></div>
           </q-expansion-item>
-          <section v-else class="sidebar-accordion-item sidebar-accordion-item--open conversations-section">
-            <q-item dense class="sidebar-accordion-header">
-              <q-item-section avatar><q-icon name="forum" /></q-item-section>
-              <q-item-section><q-item-label>{{ t('chat.conversations') }}</q-item-label></q-item-section>
-              <q-item-section side>
-                <div class="row no-wrap">
-                  <q-btn flat round dense icon="filter_list" class="room-list-options" :color="roomFiltersVisible ? 'primary' : undefined" :aria-label="t('chat.listOptions')" :aria-expanded="roomFiltersVisible" aria-controls="chat-room-filters" @click.stop="toggleRoomFilters" @keydown.stop><q-tooltip>{{ t('chat.listOptions') }}</q-tooltip></q-btn>
-                  <q-btn v-if="canCreateRoom" flat round dense color="primary" icon="add" :aria-label="t('chat.newRoom')" @click.stop="openCreate" @keydown.stop><q-tooltip>{{ t('chat.newRoom') }}</q-tooltip></q-btn>
-                </div>
-              </q-item-section>
-            </q-item>
-            <div class="sidebar-section-content"><RoomList :show-filters="roomFiltersVisible" :rooms="store.rooms" :can-create="canCreateRoom" :can-impersonate="canImpersonate" :viewer-agent-id="store.viewerAgentId" :viewer-agents="viewerAgents" :include-external="store.includeExternalRooms" :include-archived="store.includeArchivedRooms" :has-more="store.hasMoreRooms" :loading-more="store.loadingMoreRooms" @select="selectRoom" @search="searchRooms" @toggle-external="toggleExternalRooms" @toggle-archived="toggleArchivedRooms" @load-more="loadMoreRooms" @view-agent="changeViewerAgent" @create="openCreate" /></div>
-          </section>
           <q-expansion-item v-if="store.selectedRoom" v-model="documentsExpanded" dense-toggle expand-separator icon="description" :label="t('chat.workingDocuments')" class="sidebar-accordion-item" :class="{ 'sidebar-accordion-item--open': documentsExpanded }" header-class="sidebar-accordion-header">
             <template #header>
               <q-item-section avatar><q-icon name="description" /></q-item-section>
@@ -113,7 +118,7 @@
       </aside>
     </div>
 
-    <RoomCreateDialog v-model="createDialog" :agents="recipients.agents" :saving="creatingRoom" :can-edit-topic="canEditConversationTopic" @create="createRoom" />
+    <RoomCreateDialog v-model="createDialog" :agents="recipients.agents" :initial-agent-id="initialAgentId" :saving="creatingRoom" :can-edit-topic="canEditConversationTopic" @create="createRoom" />
     <RoomPreferencesDialog v-model="preferencesDialog" :room="store.selectedRoom" :saving="savingRoomPreferences" :archiving="archivingRoom" :can-edit-topic="canEditConversationTopic" @save="saveRoomPreferences" @archive="setRoomArchived" />
     <ConversationDocumentDialog ref="mobileDocument" v-model="mobileDocumentOpen" :document-id="selectedDocument?.id ?? null"
       :agent-id="selectedDocumentAgentId" :title="selectedDocument?.title ?? t('chat.workingDocument')" :editable="canEditDocuments" @changed="displayedDocumentId = $event.id" @unavailable="displayedDocumentId = null" />
@@ -122,7 +127,8 @@
 </template>
 
 <script setup lang="ts">
-import { ContextHelp } from '@/core/util'
+import { ContextHelp, PageHeader } from '@/core/util'
+import { navigationIcon } from '@/core/navigation'
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { copyToClipboard, useQuasar } from 'quasar'
 import { useI18n } from 'vue-i18n'
@@ -134,6 +140,8 @@ import { usePrivilegeStore } from '@/core/authorize/stores/privilegeStore'
 import RoomList from '../components/RoomList.vue'; import MessageTimeline from '../components/MessageTimeline.vue'; import Composer from '../components/Composer.vue'; import AgentTasksPanel from '../components/AgentTasksPanel.vue'; import VoiceCallPanel from '../components/VoiceCallPanel.vue'; import InternalAgentAvatar from '../components/InternalAgentAvatar.vue'
 import RoomPreferencesDialog from '../components/RoomPreferencesDialog.vue'
 import RoomCreateDialog from '../components/RoomCreateDialog.vue'
+import ChatWelcome from '../components/ChatWelcome.vue'
+import ChatHomePagination from '../components/ChatHomePagination.vue'
 import ConversationDocumentsPanel from '../components/ConversationDocumentsPanel.vue'
 import ConversationDocumentDialog from '../components/ConversationDocumentDialog.vue'
 import ConversationProcessesPanel from '../components/ConversationProcessesPanel.vue'
@@ -147,6 +155,23 @@ import { useChatStore } from '../stores/chat'; import { chatService as service }
 
 const $q=useQuasar(); const {t,locale}=useI18n(); const route=useRoute(); const store=useChatStore(); const inboxStore=useChatInboxStore(); const privilegeStore=usePrivilegeStore(); const mobileView=ref<'conversation'|'details'>('details'); const createDialog=ref(false); const creatingRoom=ref(false); const preferencesDialog=ref(false); const savingRoomPreferences=ref(false); const archivingRoom=ref(false); const conversationsExpanded=ref(false); const tasksExpanded=ref(false); const documentsExpanded=ref(false); const processesExpanded=ref(false); const recipients=ref<RecipientCatalog>({agents:[]}); const viewerAgents=ref<ChatViewerAgent[]>([]); const roomSearch=ref(''); const replyingTo=ref<MessengerMessage|null>(null); const selectedTopicId=ref<string|null>(null)
 const roomFiltersVisible = ref(false)
+const initialAgentId = ref<number | null>(null)
+const loadingRecipients = ref(false)
+const recipientsError = ref(false)
+const recipientsRevision = ref(0)
+const homeAgents = ref<RecipientCatalog['agents']>([])
+const agentsPage = ref(1)
+const agentsPageSize = ref(50)
+const agentsTotal = ref(0)
+const homeRooms = ref<MessengerRoom[]>([])
+const homeRoomsPage = ref(1)
+const homeRoomsPageSize = ref(50)
+const homeRoomsTotal = ref(0)
+const loadingHomeRooms = ref(false)
+const homeRoomsError = ref(false)
+const homeRoomsRevision = ref(0)
+watch(agentsPageSize, () => { agentsPage.value = 1 }, { flush: 'sync' })
+watch([homeRoomsPageSize, roomSearch, () => store.viewerAgentId, () => store.includeExternalRooms, () => store.includeArchivedRooms], () => { homeRoomsPage.value = 1 }, { flush: 'sync' })
 function toggleRoomFilters(): void {
   roomFiltersVisible.value = !roomFiltersVisible.value
   if (roomFiltersVisible.value) conversationsExpanded.value = true
@@ -308,6 +333,48 @@ function finishColumnResize(event:PointerEvent){if(resizingPointerId!==event.poi
 function resizeColumnsWithKeyboard(event:KeyboardEvent){if(event.key!=='ArrowLeft'&&event.key!=='ArrowRight')return;event.preventDefault();setConversationRatio(conversationRatio.value+(event.key==='ArrowLeft'?-2:2))}
 const canManagePrivilege=computed(()=>privilegeStore.hasPrivilege(privileges.CHAT_MANAGE)); const canSend=computed(()=>privilegeStore.hasPrivilege(privileges.CHAT_SEND)); const canCall=computed(()=>privilegeStore.hasPrivilege(privileges.CHAT_CALL)); const canImpersonate=computed(()=>privilegeStore.hasPrivilege(privileges.CHAT_IMPERSONATE)); const canCreateRoom=computed(()=>canManagePrivilege.value&&store.viewerAgentId===null&&store.status?.chat_enabled===true); const canCustomizeSelectedRoom=computed(()=>store.viewerAgentId===null&&store.selectedRoom!==null); const canWriteSelectedRoom=computed(()=>canSend.value&&store.viewerAgentId===null&&store.selectedRoom?.writable===true); const canReadTasks=computed(()=>privilegeStore.hasPrivilege(privileges.TASK_ACCESS)||privilegeStore.hasPrivilege(privileges.TASK_EDIT)); const canReadDocuments=computed(()=>privilegeStore.hasPrivilege(privileges.MEMORY_ACCESS)||privilegeStore.hasPrivilege(privileges.MEMORY_EDIT)||privilegeStore.hasPrivilege(privileges.MEMORY_ADMIN)); const canEditDocuments=computed(()=>privilegeStore.hasPrivilege(privileges.MEMORY_EDIT)&&store.viewerAgentId===null); const canReadProcesses=computed(()=>privilegeStore.hasPrivilege(privileges.PROCESS_READ)||privilegeStore.hasPrivilege(privileges.PROCESS_LAUNCH)||privilegeStore.hasPrivilege(privileges.PROCESS_ADMIN)); const canSelectTopic=computed(()=>privilegeStore.hasPrivilege(privileges.TOPIC_ACCESS)||privilegeStore.hasPrivilege(privileges.TOPIC_EDIT))
 const canEditConversationTopic=computed(()=>privilegeStore.hasPrivilege(privileges.TOPIC_EDIT)&&store.viewerAgentId===null)
+watch([canCreateRoom, () => store.selectedRoom?.id, recipientsRevision, agentsPage, agentsPageSize], ([canCreate, roomId], _, onCleanup) => {
+  let cancelled = false
+  onCleanup(() => { cancelled = true })
+  loadingRecipients.value = false
+  if (!canCreate || roomId) return
+  loadingRecipients.value = true
+  recipientsError.value = false
+  void service.recipientPage(agentsPage.value, agentsPageSize.value).then(result => {
+    if (cancelled) return
+    agentsTotal.value = result.total
+    if (result.total <= 50) agentsPageSize.value = 50
+    agentsPage.value = Math.min(agentsPage.value, Math.max(1, Math.ceil(result.total / agentsPageSize.value)))
+    homeAgents.value = result.agents
+  }).catch(() => {
+    if (!cancelled) recipientsError.value = true
+  }).finally(() => {
+    if (!cancelled) loadingRecipients.value = false
+  })
+}, { immediate: true })
+watch([() => store.enabled, () => store.selectedRoom?.id, () => store.rooms, roomSearch,
+  () => store.viewerAgentId, () => store.includeExternalRooms, () => store.includeArchivedRooms,
+  homeRoomsPage, homeRoomsPageSize, homeRoomsRevision], (_, __, onCleanup) => {
+  let cancelled = false
+  onCleanup(() => { cancelled = true })
+  loadingHomeRooms.value = false
+  if (!store.enabled || store.selectedRoom) return
+  loadingHomeRooms.value = true
+  homeRoomsError.value = false
+  homeRooms.value = []
+  void service.rooms(homeRoomsPage.value, homeRoomsPageSize.value, roomSearch.value,
+    store.viewerAgentId, store.includeExternalRooms, store.includeArchivedRooms).then(result => {
+    if (cancelled) return
+    homeRoomsTotal.value = result.total
+    if (result.total <= 50) homeRoomsPageSize.value = 50
+    homeRoomsPage.value = Math.min(homeRoomsPage.value, Math.max(1, Math.ceil(result.total / homeRoomsPageSize.value)))
+    homeRooms.value = result.items
+  }).catch(() => {
+    if (!cancelled) homeRoomsError.value = true
+  }).finally(() => {
+    if (!cancelled) loadingHomeRooms.value = false
+  })
+}, { immediate: true })
 watch([() => store.selectedRoom?.id, () => store.viewerAgentId, canReadDocuments], () => {
   selectedDocument.value = null
   documentSearchOpen.value = false
@@ -348,7 +415,7 @@ async function sendMessage(text:string,files?:File[],reasoningEffortOverride?:Re
   } catch(error) { reportError(error) }
 }
 async function onMessageScroll(info:MessageScrollInfo){const atBottom=info.verticalSize-info.verticalContainerSize-info.verticalPosition<=conversationBottomThreshold;showScrollToBottom.value=historyScrollEnabled&&!atBottom;if(!historyScrollEnabled||restoringHistoryPosition)return;if(atBottom&&(info.verticalPosition>120||!store.hasOlderMessages))void store.loadRecentMessages().catch(()=>undefined);if(!historyNavigationRequested||info.verticalPosition>120||store.loadingOlderMessages||!store.hasOlderMessages)return;restoringHistoryPosition=true;const roomId=store.selectedRoom?.id;const previousSize=info.verticalSize;const previousPosition=info.verticalPosition;try{await store.loadOlderMessages();await nextTick();if(store.selectedRoom?.id!==roomId)return;const currentSize=messageScrollArea.value?.getScroll().verticalSize ?? previousSize;messageScrollArea.value?.setScrollPosition('vertical',previousPosition+currentSize-previousSize);await nextAnimationFrame();await nextAnimationFrame()}finally{restoringHistoryPosition=false}}
-async function openCreate(){await report(async()=>{recipients.value=await service.recipients();createDialog.value=true})}
+async function openCreate(agentId?:number){if(!canCreateRoom.value)return;await report(async()=>{const result=agentId === undefined ? await service.recipients() : {agents:homeAgents.value};if(!canCreateRoom.value)return;recipients.value=result;initialAgentId.value=result.agents.some(agent=>agent.agent_id===agentId)?agentId??null:null;createDialog.value=true})}
 async function createRoom(agentId:number,label:string,topicId:string|null,showLastMessage:boolean){creatingRoom.value=true;try{await report(async()=>{const room=await service.createRoom(agentId,label,topicId,showLastMessage);createDialog.value=false;await store.loadRooms();await selectRoom(room)})}finally{creatingRoom.value=false}}
 async function saveRoomPreferences(label:string,showLastMessage:boolean,topicId:string|null){savingRoomPreferences.value=true;try{await store.updateRoomPreferences(label,showLastMessage);if(canEditConversationTopic.value&&topicId!==store.selectedRoom?.topic_id)await store.updateRoomTopic(topicId);preferencesDialog.value=false}catch(error){reportError(error)}finally{savingRoomPreferences.value=false}}
 async function setRoomArchived(archived:boolean){archivingRoom.value=true;try{await store.setRoomArchived(archived);preferencesDialog.value=false;$q.notify({type:'positive',message:t(archived?'chat.roomPreferences.archived':'chat.roomPreferences.unarchived')})}catch(error){reportError(error)}finally{archivingRoom.value=false}}
@@ -428,7 +495,12 @@ onMounted(()=>{document.addEventListener('visibilitychange',updateChatPageVisibi
   grid-template-columns: var(--conversation-width, clamp(420px, calc(68% - 5.44px), calc(100% - 328px))) 8px minmax(320px, 1fr);
   height: 100%;
 }
-.messenger-grid--empty { display: flex; width: 100%; min-width: 0; align-items: center; justify-content: center; padding: 24px; }
+.messenger-grid--empty { display: block; width: 100%; min-width: 0; }
+.messenger-page--home { background: var(--galaris-page-background); }
+.chat-home { height: 100%; overflow-y: auto; }
+.chat-home-content { min-width: 0; }
+.chat-home-list-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
+.chat-home-list-header h2 { margin: 0; font-size: 1.15rem; font-weight: 600; line-height: 1.4; }
 .messenger-grid--resizing { cursor: col-resize; user-select: none; }
 .messenger-grid--document { grid-template-columns: minmax(0, var(--conversation-width)) 8px minmax(240px, 1fr); }
 .chat-workspace { display: flex; min-width: 0; min-height: 0; height: 100%; flex-direction: column; overflow: hidden; }
@@ -456,8 +528,6 @@ onMounted(()=>{document.addEventListener('visibilitychange',updateChatPageVisibi
 .document-resizer--rows::before { inset: 3px 0 auto; width: auto; height: 2px; }
 .document-resizer--rows .column-resizer-handle { transform: translate(-50%, -50%) rotate(90deg); }
 .details-pane { color: var(--chat-text); background: var(--chat-surface); }
-.details-pane--empty { width: min(620px, 100%); max-width: 100%; height: min(720px, 100%); border: 1px solid var(--chat-border); border-radius: 14px; box-shadow: 0 10px 32px var(--chat-shadow); }
-.details-pane--empty .sidebar-accordion { min-width: 0; max-width: 100%; border-radius: inherit; }
 .conversation-toolbar { flex: 0 0 auto; min-height: 54px; color: var(--chat-text); background: var(--chat-surface); border-bottom: 1px solid var(--chat-border); }
 .conversation-title { color: var(--chat-text-secondary); font-size: .9rem; font-weight: 550; }
 .room-id-copy { min-width: 22px; min-height: 22px; color: var(--chat-text-subtle); }
@@ -498,11 +568,10 @@ onMounted(()=>{document.addEventListener('visibilitychange',updateChatPageVisibi
   .conversation-toolbar { min-height: 48px; }
   .messenger-grid { display: block; }
   .messenger-grid--document { display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) minmax(120px, 30%); }
-  .messenger-grid--empty { display: flex; padding: 16px; }
+  .messenger-grid--empty { display: block; }
   .column-resizer { display: none; }
   .conversation-pane,
   .details-pane { width: 100%; border: 0; }
-  .details-pane--empty { height: 100%; border-radius: 12px; }
   .sidebar-accordion { margin-top: 0; }
 }
 </style>

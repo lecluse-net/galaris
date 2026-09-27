@@ -191,6 +191,20 @@ joindre un fichier, enregistrer une note vocale et démarrer un appel navigateur
 l'agent. Quitter une conversation retire votre accès sans effacer son historique pour les autres
 membres.
 
+Avant de sélectionner une conversation, l’accueil du Chat affiche **Avec qui souhaitez-vous
+échanger ?**. Cliquez sur un agent pour ouvrir une nouvelle conversation avec cet agent
+présélectionné, puis confirmez son nom et ses préférences. Le nom proposé tient compte de vos
+conversations existantes avec cet agent, y compris les archives : si le nom est déjà pris,
+Galaris ajoute **(2)**, **(3)**, etc. Vous pouvez modifier ce nom ; sa disponibilité est
+revérifiée lors de la création, et un suffixe est ajouté si nécessaire. Les **Conversations récentes**
+apparaissent en cartes avec l’agent, les non-lus et la date du dernier message. L’aperçu respecte
+votre préférence de confidentialité. Sur cet accueil, la recherche et les filtres restent
+visibles : conversations externes, archives et, selon vos droits, vue d’un agent.
+Les cartes s’adaptent à la largeur de l’écran et s’affichent sur une colonne sur téléphone.
+Les agents et les conversations récentes se chargent par pages de 50. Chaque liste affiche
+sa pagination uniquement au-delà de 50 résultats, avec un choix de 10, 20, 50, 100 ou 500
+éléments par page. Modifier un filtre ramène les conversations à la première page.
+
 Les rubriques du panneau sont présentées dans l’ordre **Conversations, Documents, Tâches, Processus**.
 Elles s’ouvrent automatiquement lorsqu’elles contiennent des éléments et se replient lorsqu’elles
 deviennent vides. Vous pouvez les replier manuellement ; une simple actualisation ne les rouvre pas.
