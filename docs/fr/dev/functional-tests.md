@@ -1,5 +1,7 @@
 <p align="right"><strong>Français</strong> · <a href="../../en/dev/functional-tests.md">English</a></p>
 
+Les réveils après commit sont couverts par `tests/test_inference_lifecycle.py` : zéro requête pendant une fenêtre de silence, livraison après notification, lecteurs multiples, commandes immédiates, pagination et récupération. `core/tests/test_commit_notifications.py` vérifie commits, savepoints et rollbacks. `tests/test_scheduler_wakeups.py` vérifie les mutations durables, les délais de retry et les files au repos malgré les maintenances périodiques.
+
 # Catalogue des garanties fonctionnelles
 
 `back/app/agent/tests/test_planner_collections.py` couvre les traitements répétés : petits lots

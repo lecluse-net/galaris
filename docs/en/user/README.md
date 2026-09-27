@@ -79,6 +79,13 @@ The auto-approval option authorizes certain actions in advance that would normal
 
 From the list, click a Task to open its details. There you will find the current phase, subtasks, Tool calls, related Processes, known LLM costs, and final response. The pause and resume buttons act on the work tree. **Force finish** is an administrative recovery action for a genuinely blocked execution: it marks the Task as failed and releases its lease; it is not an ordinary cancellation of the external work.
 
+New executions and model messages wake their observers as soon as they are saved. For an
+internal inference, pause and stop remain responsive even when the provider stops producing
+text. Reopening monitoring reads the saved events without restarting generation; closing
+a monitoring view alone does not stop it.
+
+
+
 Executions without an explicit response budget automatically request the model's published
 output capacity when known. Existing configured models need no extra setting. This avoids
 small provider defaults; their physical limit still applies, and a cut-off response does

@@ -1,5 +1,7 @@
 <p align="right"><a href="../../fr/dev/functional-tests.md">Français</a> · <strong>English</strong></p>
 
+Post-commit wakeups are covered by `tests/test_inference_lifecycle.py`: zero queries during a silent interval, delivery after notification, multiple readers, immediate commands, pagination and recovery. `core/tests/test_commit_notifications.py` checks commits, savepoints and rollbacks. `tests/test_scheduler_wakeups.py` checks durable mutations, retry deadlines and idle queues despite periodic maintenance.
+
 # Functional guarantees catalogue
 
 `back/app/agent/tests/test_planner_collections.py` covers repeated work: small mechanical batches

@@ -109,6 +109,11 @@ retour final. Les boutons de pause et de reprise agissent sur l’arbre de trava
 est une récupération administrative pour une exécution réellement bloquée : elle marque la Task
 en erreur et libère sa lease, elle ne constitue pas une annulation ordinaire du travail externe.
 
+Les nouvelles exécutions et les messages des modèles réveillent leur suivi dès leur
+enregistrement. Pour une inférence interne, pause et arrêt restent réactifs même si le
+fournisseur ne produit plus de texte. Rouvrir le suivi relit les événements enregistrés
+sans relancer la génération ; fermer une vue de suivi seule ne l'arrête pas.
+
 Les exécutions sans budget de réponse explicite demandent automatiquement la capacité de
 sortie publiée du modèle lorsqu'elle est connue. Aucun réglage n'est nécessaire pour les
 modèles déjà configurés. Cela évite les petits plafonds par défaut de certains fournisseurs ;

@@ -690,6 +690,7 @@
           "back/app/conversation/facade.py",
           "back/app/conversation/mcp.py",
           "back/app/conversation/progress.py",
+          "back/app/conversation/scheduler.py",
           "back/app/conversation/service.py",
           "back/app/conversation/work_projection.py"
         ],
@@ -704,6 +705,7 @@
           "back/app/conversation/mcp.py",
           "back/app/conversation/monitoring_service.py",
           "back/app/conversation/progress.py",
+          "back/app/conversation/scheduler.py",
           "back/app/conversation/schemas.py",
           "back/app/conversation/service.py",
           "back/app/conversation/task_projection.py",
@@ -1880,6 +1882,7 @@
           "back/app/llm/facade.py",
           "back/app/llm/inference_execution.py",
           "back/app/llm/inference_journal.py",
+          "back/app/llm/inference_notifications.py",
           "back/app/llm/inference_store.py",
           "back/app/llm/llm_call_service.py",
           "back/app/llm/llm_provider_service.py",

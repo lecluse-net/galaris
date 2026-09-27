@@ -48,6 +48,14 @@ autonome se poursuivre. Voir les [états d’inférence](../state-machines.md) e
 
 ## Activité des tâches et provenance
 
+Les inférences et les files Task/Conversation sont réveillées après commit. Le suivi interne
+et Chat/Responses attendent les nouveaux événements par curseur ; pause et arrêt réveillent
+l'exécuteur sans attendre le renouvellement de son bail (5 secondes). Les réconciliations de
+secours restent espacées de 30 secondes pour LLM/Conversation et 15 secondes pour Task,
+avec réveil anticipé pour les retries persistés. Les maintenances gardent leur propre cadence.
+Voir [0145](../../../../project/decisions/0145-committed-runtime-wakeups.md) pour les producteurs,
+les garanties de transaction et les limites du transport local mono-worker.
+
 Le harnais interne rend les erreurs d’outil au modèle sous forme structurée, y compris
 lorsque leur effet reste incertain. Le modèle décide de vérifier, corriger, poursuivre
 ou arrêter. Le checkpoint v4 conserve séparément ces erreurs acquittées et les appels

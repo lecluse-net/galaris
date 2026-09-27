@@ -5,11 +5,13 @@ from typing import Any
 from uuid import UUID
 
 from sqlalchemy import select
+from sqlalchemy.orm import load_only
 
 from app.agent.contracts import AgentUsage
 from core.database import get_db
 from . import llm_call_service
 from .models import LLMCall, LLMCallEvent
+from .inference_notifications import notify_after_commit
 
 
 def call_usage(call: LLMCall) -> AgentUsage:
@@ -54,18 +56,25 @@ async def append_events(
         if owner is None or owner.attempt_id != attempt_id:
             raise LostInferenceLease("This writer does not own the inference attempt.")
         operation, _ = await owned(owner)
-    call = await db.scalar(select(LLMCall).where(LLMCall.id == call_id).with_for_update())
+    call = await db.scalar(
+        select(LLMCall).where(LLMCall.id == call_id).options(load_only(
+            LLMCall.id, LLMCall.cost, LLMCall.input_tokens, LLMCall.output_tokens,
+            LLMCall.cache_read_tokens, LLMCall.cache_write_tokens, LLMCall.reasoning_tokens,
+            LLMCall.usage, LLMCall.is_subscription, LLMCall.cost_estimated, LLMCall.inference_cost,
+            raiseload=True,
+        )).with_for_update()
+    )
     if call is None:
         raise LookupError("The inference call no longer exists.")
-    last = await db.scalar(
-        select(LLMCallEvent)
+    last = (await db.execute(
+        select(LLMCallEvent.sequence, LLMCallEvent.payload["kind"].astext.label("kind"))
         .where(LLMCallEvent.call_id == call_id)
         .order_by(LLMCallEvent.sequence.desc())
         .limit(1)
-    )
+    )).one_or_none()
     if last is None:
         raise LookupError("This call has no inference journal.")
-    if last.payload["kind"] == "result":
+    if last.kind == "result":
         raise ValueError("An inference journal is already terminal.")
     sequence = last.sequence
     events: list[dict[str, Any]] = []
@@ -93,6 +102,8 @@ async def append_events(
             )
         )
         events.append(event)
+    if operation is not None and events:
+        notify_after_commit("changes", operation.id)
     await db.commit()
     return events
 

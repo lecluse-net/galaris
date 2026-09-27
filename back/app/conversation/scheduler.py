@@ -11,11 +11,12 @@ from uuid import UUID, uuid4
 from loguru import logger
 
 from app.agent import AIMessage
-from core.database import get_db_session
+from core.database import get_db_session, watch_committed_changes
 from .contracts import ConversationLeaseLostError
 
 
-_POLL_SECONDS = 0.5
+_POLL_SECONDS = 30.0  # Recovery only; committed changes wake the scheduler immediately.
+_ERROR_RETRY_SECONDS = 1.0
 _MAX_CONCURRENCY = 4
 # Reasoning models can spend five minutes before their first tool call. Leave room
 # for search results and the final answer while keeping the entire attempt bounded.
@@ -25,17 +26,32 @@ _WORKER_ID = f"{socket.gethostname()}:{os.getpid()}:{uuid4().hex[:8]}"
 _scheduler_task: asyncio.Task[None] | None = None
 _wake_event: asyncio.Event | None = None
 _loop: asyncio.AbstractEventLoop | None = None
+_watching_changes = False
 _running: dict[UUID, asyncio.Task[None]] = {}
 
 ClaimedRound = tuple[UUID, UUID]
 
 
 def start() -> None:
-    global _scheduler_task, _wake_event, _loop
+    global _scheduler_task, _wake_event, _loop, _watching_changes
     if _scheduler_task is not None and not _scheduler_task.done():
         return
     _loop = asyncio.get_running_loop()
     _wake_event = asyncio.Event()
+    if not _watching_changes:
+        from app.task import Task
+        from app.process import ProcessRun
+        from .models import ConversationRound, ConversationRoundMessage, ConversationTaskLink, ConversationProcessLink
+
+        watch_committed_changes({
+            ConversationRound: ("status", "delivery_state", "lease_token"),
+            ConversationRoundMessage: (),
+            ConversationTaskLink: ("notification_state", "notification_task_attempt_count"),
+            ConversationProcessLink: ("notification_state",),
+            Task: ("status", "lease_token", "attempt_count", "deleted_at"),
+            ProcessRun: ("status",),
+        }, wake)
+        _watching_changes = True
     _scheduler_task = asyncio.create_task(_run_loop(), name="conversation-scheduler")
     logger.info("Conversation scheduler started")
 
@@ -347,6 +363,9 @@ async def _run_loop() -> None:
 
     while True:
         try:
+            event = _wake_event
+            if event is not None:
+                event.clear()
             claimed_any = False
             while len(_running) < _MAX_CONCURRENCY:
                 claimed = await _claim()
@@ -408,7 +427,6 @@ async def _run_loop() -> None:
             if event is None:
                 await asyncio.sleep(_POLL_SECONDS)
                 continue
-            event.clear()
             try:
                 await asyncio.wait_for(event.wait(), timeout=_POLL_SECONDS)
             except TimeoutError:
@@ -417,7 +435,7 @@ async def _run_loop() -> None:
             raise
         except Exception:
             logger.exception("Conversation scheduler loop failed")
-            await asyncio.sleep(_POLL_SECONDS)
+            await asyncio.sleep(_ERROR_RETRY_SECONDS)
 
 
 __all__ = ["cancel_round", "is_running", "start", "stop", "wake"]

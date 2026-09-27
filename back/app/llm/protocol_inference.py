@@ -246,20 +246,28 @@ async def protocol_response(request: ProtocolInferenceRequest) -> JSONResponse |
                     record_persisted_call_cost(call_id, cost)
 
     async def wire_events() -> AsyncGenerator[dict[str, Any]]:
+        from . import inference_notifications as notifications
+
         assert attempt_id is not None
         selected_attempt = attempt_id
         cursor = 0
-        while True:
-            batch = await execution.transaction(lambda cursor=cursor: _read_wire(selected_attempt, cursor))
-            for cursor, payload in batch:
-                yield payload
-            snapshot = await execution.read(key)
-            attempt = next(item for item in snapshot.attempts if item.id == attempt_id)
-            if attempt.status in inference_store.TERMINAL_ATTEMPTS and not batch:
-                if attempt.result is None or not attempt.result.success:
-                    _raise_failure(attempt.result)
-                return
-            await asyncio.sleep(execution.POLL_SECONDS)
+        with notifications.subscribe("changes", key) as changed:
+            while True:
+                changed.clear()
+                status = await execution.transaction(
+                    lambda: inference_store.read_attempt_status(key, selected_attempt)
+                )
+                batch = await execution.transaction(lambda cursor=cursor: _read_wire(selected_attempt, cursor))
+                for cursor, payload in batch:
+                    yield payload
+                if status in inference_store.TERMINAL_ATTEMPTS and not batch:
+                    snapshot = await execution.read(key)
+                    attempt = next(item for item in snapshot.attempts if item.id == selected_attempt)
+                    if attempt.result is None or not attempt.result.success:
+                        _raise_failure(attempt.result)
+                    return
+                if not batch:
+                    await notifications.wait(changed)
 
     stream = wire_events()
     try:

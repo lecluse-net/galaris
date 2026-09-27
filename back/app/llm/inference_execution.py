@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import asyncio
 import anyio
-from collections.abc import AsyncIterator, Awaitable, Callable
-from contextlib import suppress, nullcontext
+from collections.abc import AsyncGenerator, Awaitable, Callable
+from contextlib import aclosing, suppress, nullcontext
 from contextvars import Context
 from dataclasses import replace
 from typing import TypeVar
@@ -17,7 +17,7 @@ from loguru import logger
 from app.agent.contracts import AIResult
 from core.database import get_db_session
 from core.user import get_current_token_label, get_current_user_id
-from . import inference_store
+from . import inference_store, inference_notifications as notifications
 from .call_capture import inference_owner
 from .contracts import (
     InferenceAction,
@@ -39,7 +39,7 @@ if TYPE_CHECKING:
 T = TypeVar("T")
 _worker: asyncio.Task[None] | None = None
 _executions: dict[UUID, asyncio.Task[None]] = {}
-POLL_SECONDS = 0.25
+HEARTBEAT_SECONDS = inference_store.LEASE_SECONDS / 6
 
 
 async def transaction(action: Callable[[], Awaitable[T]]) -> T:
@@ -149,29 +149,31 @@ async def _run(
     try:
         await submit(request, inference_id=key)
         while True:
-            snapshot = await read(key)
-            if snapshot.status == "paused":
-                await asyncio.sleep(POLL_SECONDS)
-                continue
-            async for event in events(key, attempt_id=snapshot.attempts[-1].id):
-                if event.result is not None:
-                    if not event.result.success:
-                        if (
-                            event.result.metadata.get("inference_status") == "paused"
-                            and (await read(key)).status != "stopped"
-                        ):
-                            break
-                        raise RuntimeError(
-                            str(event.result.metadata.get("error", "Inference did not complete."))
+            with notifications.subscribe("changes", key) as changed:
+                snapshot = await read(key)
+                if snapshot.status == "paused":
+                    await notifications.wait(changed)
+                    continue
+            async with aclosing(events(key, attempt_id=snapshot.attempts[-1].id)) as stream:
+                async for event in stream:
+                    if event.result is not None:
+                        if not event.result.success:
+                            if (
+                                event.result.metadata.get("inference_status") == "paused"
+                                and (await read(key)).status != "stopped"
+                            ):
+                                break
+                            raise RuntimeError(
+                                str(event.result.metadata.get("error", "Inference did not complete."))
+                            )
+                        transcript, _ = await transaction(
+                            lambda: inference_store.execution_details(key)
                         )
-                    transcript, _ = await transaction(
-                        lambda: inference_store.execution_details(key)
-                    )
-                    return StructuredInferenceResult(
-                        output=decode(event.result),
-                        cost=(await read(key)).cost,
-                        messages=list(ModelMessagesTypeAdapter.validate_python(transcript)),
-                    )
+                        return StructuredInferenceResult(
+                            output=decode(event.result),
+                            cost=(await read(key)).cost,
+                            messages=list(ModelMessagesTypeAdapter.validate_python(transcript)),
+                        )
     except asyncio.CancelledError:
         with anyio.CancelScope(shield=True):
             with suppress(LookupError, ValueError):
@@ -198,26 +200,26 @@ async def command(
 
 async def events(
     inference_id: UUID, *, attempt_id: UUID | None = None, after_sequence: int = 0
-) -> AsyncIterator[InferenceRunEvent]:
+) -> AsyncGenerator[InferenceRunEvent]:
     snapshot = await read(inference_id)
     attempt_id = attempt_id or snapshot.attempts[-1].id
     cursor = after_sequence
-    while True:
-        batch = await transaction(
-            lambda cursor=cursor: inference_store.read_events(inference_id, attempt_id, cursor)
-        )
-        for event in batch:
-            cursor = event.sequence
-            yield event
-            if event.kind == "result":
+    with notifications.subscribe("changes", inference_id) as changed:
+        while True:
+            changed.clear()
+            status = await transaction(lambda: inference_store.read_attempt_status(inference_id, attempt_id))
+            batch = await transaction(
+                lambda cursor=cursor: inference_store.read_events(inference_id, attempt_id, cursor)
+            )
+            for event in batch:
+                cursor = event.sequence
+                yield event
+                if event.kind == "result":
+                    return
+            if status in inference_store.TERMINAL_ATTEMPTS and not batch:
                 return
-        snapshot = await read(inference_id)
-        attempt = next((item for item in snapshot.attempts if item.id == attempt_id), None)
-        if attempt is None:
-            raise LookupError("Inference attempt not found.")
-        if attempt.status in inference_store.TERMINAL_ATTEMPTS and not batch:
-            return
-        await asyncio.sleep(POLL_SECONDS)
+            if not batch:
+                await notifications.wait(changed)
 
 
 async def execute(inference_id: UUID) -> None:
@@ -276,12 +278,26 @@ async def execute(inference_id: UUID) -> None:
     interrupted = False
     lost = False
     try:
-        while not task.done():
-            await asyncio.wait({task}, timeout=POLL_SECONDS)
-            status = await transaction(lambda: inference_store.heartbeat(owner))
-            if status in {"pausing", "stopping"}:
-                task.cancel()
-                break
+        with notifications.subscribe("control", inference_id) as control:
+            while True:
+                # Register/clear before checking durable state: a command may
+                # commit during that check, before we start waiting.
+                control.clear()
+                status = await transaction(lambda: inference_store.heartbeat(owner))
+                if status in {"pausing", "stopping"}:
+                    task.cancel()
+                    break
+                if task.done():
+                    break
+                command_wait = asyncio.create_task(control.wait())
+                try:
+                    await asyncio.wait(
+                        {task, command_wait}, timeout=HEARTBEAT_SECONDS,
+                        return_when=asyncio.FIRST_COMPLETED,
+                    )
+                finally:
+                    command_wait.cancel()
+                    await asyncio.gather(command_wait, return_exceptions=True)
         result = await task
     except inference_store.LostInferenceLease:
         lost = True
@@ -306,29 +322,54 @@ async def execute(inference_id: UUID) -> None:
 
 async def _loop() -> None:
     try:
-        while True:
-            await transaction(inference_store.recover_expired)
-            for key, task in list(_executions.items()):
-                if task.done():
-                    try:
-                        task.result()
-                    except Exception:
-                        logger.exception("Inference execution root failed for {}", key)
-                    del _executions[key]
-            # Callers own their concurrency limits. Long Lab requests must not
-            # occupy a shared four-slot queue ahead of foreground conversations.
-            for key in await transaction(inference_store.pending):
-                if key not in _executions:
-                    _executions[key] = asyncio.create_task(
+        with notifications.subscribe("work") as work:
+            loop = asyncio.get_running_loop()
+            recover_at = 0.0
+            while True:
+                work.clear()
+                if loop.time() >= recover_at:
+                    recovered = await transaction(inference_store.recover_expired)
+                    # A restart can leave more than one recovery page. Drain it
+                    # without adding a reconciliation delay between every page.
+                    recover_at = loop.time() + (
+                        0.0 if recovered == inference_store.RECOVERY_BATCH_SIZE
+                        else notifications.RECONCILE_SECONDS
+                    )
+                for key, task in list(_executions.items()):
+                    if task.done():
+                        try:
+                            task.result()
+                        except asyncio.CancelledError:
+                            pass
+                        except Exception:
+                            logger.exception("Inference execution root failed for {}", key)
+                        del _executions[key]
+                # Drain bounded pages without waiting for the reconciliation
+                # timer; exclude roots whose claim has not committed yet.
+                pending = await transaction(lambda: inference_store.pending(exclude=tuple(_executions)))
+                for key in pending:
+                    task = asyncio.create_task(
                         execute(key), name=f"inference:{key}"
                     )
-            await asyncio.sleep(POLL_SECONDS)
+                    _executions[key] = task
+                    task.add_done_callback(_execution_done)
+                if len(pending) == inference_store.PENDING_BATCH_SIZE:
+                    continue
+                await notifications.wait(work, timeout=max(0.0, recover_at - loop.time()))
     finally:
         tasks = list(_executions.values())
         for task in tasks:
             task.cancel()
         await asyncio.gather(*tasks, return_exceptions=True)
         _executions.clear()
+
+
+def _execution_done(task: asyncio.Task[None]) -> None:
+    # A failed claim must not create an immediate, unbounded retry loop. The
+    # periodic reconciliation will retry it. Successful roots free their slot
+    # immediately, including a resume racing with the old root's finalization.
+    if not task.cancelled() and task.exception() is None:
+        notifications.notify("work")
 
 
 async def start() -> None:

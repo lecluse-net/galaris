@@ -67,9 +67,11 @@ async def control_inference(inference_id: UUID, action: InferenceAction, *, comm
 
 async def stream_inference(inference_id: UUID, *, attempt_id: UUID | None = None,
                            after_sequence: int = 0) -> AsyncIterator[InferenceRunEvent]:
+    from contextlib import aclosing
     from .inference_execution import events
-    async for event in events(inference_id, attempt_id=attempt_id, after_sequence=after_sequence):
-        yield event
+    async with aclosing(events(inference_id, attempt_id=attempt_id, after_sequence=after_sequence)) as stream:
+        async for event in stream:
+            yield event
 
 
 async def start_inference_worker() -> None:

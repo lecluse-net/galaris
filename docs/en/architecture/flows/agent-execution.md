@@ -47,6 +47,14 @@ plain journal subscription leaves autonomous inference running. See the
 
 ## Task activity and provenance
 
+Inferences and the Task/Conversation queues wake after commit. Internal and Chat/Responses
+streams wait for new journal events using their cursor; pause and stop wake the executor
+without waiting for its lease heartbeat (5 seconds). Recovery scans remain at 30 seconds
+for LLM/Conversation and 15 seconds for Task, with earlier wakeups for persisted retries.
+Maintenance jobs keep their own cadence. See
+[0145](../../../../project/decisions/0145-committed-runtime-wakeups.md) for producers,
+transaction guarantees and the limits of this local single-worker transport.
+
 The internal harness returns structured tool errors to the model, including errors
 whose effects remain uncertain. The model decides whether to verify, correct, continue
 or stop. The v4 checkpoint distinguishes these acknowledged errors from calls interrupted

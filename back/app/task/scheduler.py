@@ -24,7 +24,7 @@ from sqlalchemy import case, func, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.params import runtime_settings
-from core.database import get_db, get_db_session
+from core.database import get_db, get_db_session, watch_committed_changes
 from core.i18n import default_language, is_supported, render_prompt, t
 from app.agent.contracts import ReasoningDegenerationError, StaleAgentRunError
 from app.task.models import Task, TaskAttempt, TaskAttemptStatus, TaskStatus
@@ -46,6 +46,8 @@ _last_lease_recovery = 0.0
 _scheduler_task: asyncio.Task[None] | None = None
 _wake_event: asyncio.Event | None = None
 _loop: asyncio.AbstractEventLoop | None = None
+_watching_changes = False
+_work_pending = False
 _running: dict[UUID, asyncio.Task[None]] = {}
 _running_agents: dict[UUID, int] = {}  # task_id -> agent_id for running actions
 _activity_events: dict[UUID, asyncio.Event] = {}
@@ -161,11 +163,16 @@ def _retry_policy(error: str, consecutive_failures: int) -> tuple[int, float, bo
 
 def start() -> None:
     """Start the scheduling loop if it is not already running."""
-    global _scheduler_task, _wake_event, _loop
+    global _scheduler_task, _wake_event, _loop, _watching_changes
     if _scheduler_task is not None and not _scheduler_task.done():
         return
     _loop = asyncio.get_running_loop()
     _wake_event = asyncio.Event()
+    if not _watching_changes:
+        watch_committed_changes({Task: (
+            "status", "paused", "agent_id", "next_attempt_at", "lease_token", "deleted_at",
+        )}, wake)
+        _watching_changes = True
     _scheduler_task = asyncio.create_task(_run_loop(), name="task-scheduler")
     logger.info("Task scheduler started")
 
@@ -190,6 +197,7 @@ def register_periodic_job(
     if timeout <= 0:
         raise ValueError("A periodic job timeout must be positive")
     _periodic_jobs[name] = _PeriodicJob(callback, max(0.5, float(interval)), timeout)
+    wake()
 
 
 def unregister_periodic_job(name: str) -> None:
@@ -282,25 +290,60 @@ def cancel(task_id: UUID | str) -> bool:
 
 
 def _set_wake() -> None:
+    global _work_pending
+    _work_pending = True
     event = _wake_event
     if event is not None:
         event.set()
 
 
 async def _run_loop() -> None:
+    global _work_pending
+    scan_at = 0.0
     while True:
         try:
+            event = _wake_event
+            scan = time.monotonic() >= scan_at or _work_pending
+            _work_pending = False
+            if event is not None:
+                # Clear before querying: a commit during the query must survive
+                # until the next pass, not be erased on entry to the wait.
+                event.clear()
             _schedule_periodic_jobs()
-            did_work = await _fill_slots()
-            if did_work:
-                continue
-            await _reconcile_paused_parents()
-            await _wait_for_work()
+            if scan:
+                did_work = await _fill_slots()
+                if did_work:
+                    scan_at = 0.0
+                    continue
+                await _reconcile_paused_parents()
+                scan_at = time.monotonic() + await _next_scan_delay()
+            # Maintenance keeps its own cadence without rescanning the task
+            # queue every time a periodic observer or outbox job is due.
+            due = [scan_at]
+            for name, job in _periodic_jobs.items():
+                if name not in _periodic_running:
+                    due.append(_periodic_last_run.get(name, 0.0) + job.interval)
+            await _wait_for_work(timeout=max(0.0, min(due) - time.monotonic()))
         except asyncio.CancelledError:
             raise
         except Exception:
             logger.exception("Task scheduler failed")
             await asyncio.sleep(_POLL_INTERVAL)
+
+
+async def _next_scan_delay() -> float:
+    """Honor persisted retry deadlines even after restart lost local timers."""
+    now = datetime.now(timezone.utc)
+    async with get_db_session() as db:
+        next_retry = await db.scalar(Task.histo_filter(
+            select(func.min(Task.next_attempt_at)).where(
+                Task.paused.is_(False), Task.next_attempt_at > now,
+                Task.status.in_((TaskStatus.CREATE, TaskStatus.DISPATCH, TaskStatus.BRIEFING, TaskStatus.PLAN)),
+            )
+        ))
+    if next_retry is None:
+        return _RECONCILE_INTERVAL
+    return min(_RECONCILE_INTERVAL, max(0.01, (next_retry - now).total_seconds()))
 
 
 def _schedule_periodic_jobs() -> None:
@@ -350,16 +393,19 @@ def _periodic_done(name: str, task: asyncio.Task[None]) -> None:
         pass
     except Exception:
         logger.exception("Task scheduler maintenance job {} failed", name)
+    # The next due time may have been ignored while this job was still running.
+    # Recheck deadlines without falsely treating maintenance as new task work.
+    if _loop is not None and not _loop.is_closed() and _wake_event is not None:
+        _loop.call_soon_threadsafe(_wake_event.set)
 
 
-async def _wait_for_work() -> None:
+async def _wait_for_work(*, timeout: float = _RECONCILE_INTERVAL) -> None:
     event = _wake_event
     if event is None:
-        await asyncio.sleep(_POLL_INTERVAL)
+        await asyncio.sleep(timeout)
         return
-    event.clear()
     try:
-        await asyncio.wait_for(event.wait(), timeout=_POLL_INTERVAL)
+        await asyncio.wait_for(event.wait(), timeout=timeout)
     except asyncio.TimeoutError:
         pass
 

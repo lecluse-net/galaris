@@ -15,6 +15,7 @@ from .database import (
 from .history import HistoryMixin
 from .model_loader import load_models
 from .vector import Vector
+from .notifications import after_commit, watch_committed_changes
 
 __all__ = [
     "engine",
@@ -27,4 +28,6 @@ __all__ = [
     "HistoryMixin",
     "load_models",
     "Vector",
+    "after_commit",
+    "watch_committed_changes",
 ]

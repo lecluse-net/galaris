@@ -1,12 +1,14 @@
 """Transactional inference lifecycle; provider accounting remains in LLMCall."""
 
 from datetime import datetime, timedelta
+from collections.abc import Collection
 from dataclasses import asdict
 from typing import Any
 from uuid import UUID, uuid4
 
 from sqlalchemy import func, select
 from sqlalchemy.dialects.postgresql import insert
+from sqlalchemy.orm import defer
 
 from app.agent.contracts import AIMessage, AIResult, AgentUsage
 from core.database import get_db
@@ -23,8 +25,11 @@ from .contracts import (
 from .models import LLMCall, LLMCallEvent, LLMInference, LLMInferenceAttempt, LLMInferenceCommand
 from .subscription_policy import LLMExecutionAuthority
 from .inference_journal import call_usage
+from .inference_notifications import notify_after_commit
 
 LEASE_SECONDS = 30
+PENDING_BATCH_SIZE = 20
+RECOVERY_BATCH_SIZE = 100
 TERMINAL_ATTEMPTS = frozenset({"paused", "stopped", "completed", "failed", "interrupted"})
 
 
@@ -78,6 +83,8 @@ async def create(
     if added is not None:
         db.add(LLMInferenceAttempt(inference_id=key, number=1, status="queued"))
         await db.flush()
+        notify_after_commit("work")
+        notify_after_commit("changes", key)
     else:
         existing = await db.get(LLMInference, key)
         if (
@@ -119,11 +126,14 @@ async def execution_details(inference_id: UUID) -> tuple[list[Any], dict[UUID, f
     return transcript, {call.id: call.cost for call in calls}
 
 
-async def locked(inference_id: UUID) -> tuple[LLMInference, LLMInferenceAttempt]:
+async def locked(
+    inference_id: UUID, *, include_request: bool = True,
+) -> tuple[LLMInference, LLMInferenceAttempt]:
     db = get_db()
-    operation = await db.scalar(
-        select(LLMInference).where(LLMInference.id == inference_id).with_for_update()
-    )
+    statement = select(LLMInference).where(LLMInference.id == inference_id).with_for_update()
+    if not include_request:
+        statement = statement.options(defer(LLMInference.request, raiseload=True))
+    operation = await db.scalar(statement)
     if operation is None:
         raise LookupError("Inference not found.")
     attempt = (
@@ -140,7 +150,7 @@ async def locked(inference_id: UUID) -> tuple[LLMInference, LLMInferenceAttempt]
 
 
 async def owned(owner: InferenceOwner) -> tuple[LLMInference, LLMInferenceAttempt]:
-    operation, attempt = await locked(owner.inference_id)
+    operation, attempt = await locked(owner.inference_id, include_request=False)
     if (
         attempt.id != owner.attempt_id
         or attempt.lease_token != owner.token
@@ -162,6 +172,7 @@ async def claim(inference_id: UUID) -> InferenceOwner | None:
     attempt.lease_token = token
     attempt.started_at = timestamp
     attempt.lease_expires_at = timestamp + timedelta(seconds=LEASE_SECONDS)
+    notify_after_commit("changes", operation.id)
     return InferenceOwner(operation.id, attempt.id, token)
 
 
@@ -201,6 +212,8 @@ async def _finish(
     )
     for command in commands:
         command.applied_at = timestamp
+    notify_after_commit("changes", operation.id)
+    notify_after_commit("control", operation.id)
 
 
 async def finish(owner: InferenceOwner, result: AIResult, *, interrupted: bool = False) -> None:
@@ -286,6 +299,10 @@ async def command(
         receipt.applied_at = await now()
     db.add(receipt)
     await db.flush()
+    notify_after_commit("changes", inference_id)
+    notify_after_commit("control", inference_id)
+    if action == "resume":
+        notify_after_commit("work")
     return InferenceCommand.model_validate(receipt, from_attributes=True)
 
 
@@ -339,6 +356,19 @@ async def read(inference_id: UUID) -> InferenceRead:
     )
 
 
+async def read_attempt_status(inference_id: UUID, attempt_id: UUID) -> str:
+    """Poll a selected attempt without transferring requests or call histories."""
+    status = await get_db().scalar(
+        select(LLMInferenceAttempt.status).where(
+            LLMInferenceAttempt.id == attempt_id,
+            LLMInferenceAttempt.inference_id == inference_id,
+        )
+    )
+    if status is None:
+        raise LookupError("Inference attempt not found.")
+    return status
+
+
 async def read_events(
     inference_id: UUID, attempt_id: UUID, after_sequence: int = 0, limit: int = 500
 ) -> list[InferenceRunEvent]:
@@ -388,15 +418,16 @@ async def read_events(
     return events
 
 
-async def pending() -> list[UUID]:
+async def pending(*, exclude: Collection[UUID] = ()) -> list[UUID]:
     return list(
         await get_db().scalars(
             select(LLMInference.id)
             .where(
                 LLMInference.status == "queued",
+                LLMInference.id.not_in(exclude),
             )
             .order_by(LLMInference.created_at)
-            .limit(20)
+            .limit(PENDING_BATCH_SIZE)
         )
     )
 
@@ -410,7 +441,7 @@ async def recover_expired() -> int:
                 LLMInferenceAttempt.status == "running",
                 LLMInferenceAttempt.lease_expires_at <= await now(),
             )
-            .limit(100)
+            .limit(RECOVERY_BATCH_SIZE)
         )
     )
     recovered = 0
