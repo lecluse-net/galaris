@@ -44,6 +44,9 @@ test('agent creation requires a first name but accepts an empty last name', asyn
   await page.route('**/api/agents', route => {
     const data = route.request().postDataJSON()
     saves.push(data)
+    if (data.code === 'lyra') {
+      return route.fulfill({ status: 400, json: { detail: 'This code is already used by another agent. Please choose a different code.' } })
+    }
     return route.fulfill({ status: 201, json: { ...agent, ...data } })
   })
   await mount(page, 'app/agent/pages/index.vue', { privileges: ['AGENT_EDIT'] })
@@ -58,9 +61,14 @@ test('agent creation requires a first name but accepts an empty last name', asyn
   expect(saves).toEqual([])
   await dialog.getByLabel('First name *', { exact: true }).fill('Lyra')
   await dialog.getByRole('button', { name: 'Create', exact: true }).click()
+  await expect(page.getByText('This code is already used by another agent. Please choose a different code.', { exact: true })).toBeVisible()
+  await expect(dialog).toBeVisible()
+  await expect(dialog.getByLabel('First name *', { exact: true })).toHaveValue('Lyra')
+  await dialog.getByLabel('Agent code', { exact: true }).fill('lyra-available')
+  await dialog.getByRole('button', { name: 'Create', exact: true }).click()
   await expect(dialog).toHaveCount(0)
-  expect(saves).toHaveLength(1)
-  expect(saves[0]).toMatchObject({ first_name: 'Lyra', last_name: '' })
+  expect(saves).toHaveLength(2)
+  expect(saves[1]).toMatchObject({ code: 'lyra-available', first_name: 'Lyra', last_name: '' })
 })
 
 test('built-in titles follow the locale and remain keys until renamed', async ({ page }) => {

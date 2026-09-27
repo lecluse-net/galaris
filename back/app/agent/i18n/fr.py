@@ -80,6 +80,7 @@ default = {
             "code_too_long": "Le code de l’agent ne peut pas dépasser 50 caractères.",
             "code_invalid": "Le code de l’agent ne peut contenir que des lettres, des chiffres, des tirets et des tirets bas.",
             "code_immutable": "Le code de l’agent est immuable après sa création.",
+            "code_already_used": "Ce code est déjà utilisé par un autre agent. Veuillez choisir un autre code.",
             "invalid_title": "Identifiant de fonction invalide",
             "invalid_group": "Identifiant de groupe invalide",
             "manager_required": "Un manager humain est obligatoire pour chaque agent.",

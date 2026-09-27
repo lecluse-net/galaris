@@ -14,6 +14,7 @@ from core.authorize import AssertionContext
 from core.user import UserModel
 from pydantic import ValidationError
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
 
 
 @pytest.mark.parametrize("names", [{}, {"last_name": ""}, {"last_name": None}])
@@ -238,6 +239,126 @@ async def test_agent_persists_its_required_human_manager(
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("code", ["reusable-agent", "a" * 50])
+@pytest.mark.parametrize("legacy", [False, True])
+async def test_historized_agent_releases_code_without_losing_history(db, code, legacy):
+    from app.agent.models import Title
+
+    title = Title(label="Synthetic reusable agent", gender="X")
+    db.add(title)
+    await db.flush()
+    old = Agent(title_id=title.id, code=code, first_name="Archived", last_name="")
+    db.add(old)
+    await db.commit()
+    old_id, manager_id, title_id = old.id, old.user_id, title.id
+    if legacy:
+        old.soft_delete()
+        await db.commit()
+    else:
+        assert await agent_service.delete(old_id)
+        await db.refresh(old)
+        assert old.code != code
+        archived_code = old.code
+        assert not await agent_service.delete(old_id)
+        await db.refresh(old)
+        assert old.code == archived_code
+
+    created = await agent_service.create(AgentCreate(
+        title_id=title_id, user_id=manager_id, code=code, first_name="Replacement",
+    ))
+    archived = await db.scalar(select(Agent).where(Agent.id == old_id)
+                               .execution_options(include_historized=True))
+    assert archived is not None and archived.deleted_at is not None
+    assert archived.first_name == "Archived"
+    assert archived.code.startswith(code[:39] + "_")
+    assert len(archived.code.rsplit("_", 1)[1]) == 10
+    assert len(archived.code) <= 50
+    assert created.id != old_id and created.code == code
+    assert await agent_service.get(old_id) is None
+
+
+@pytest.mark.asyncio
+async def test_duplicate_agent_code_reports_specific_error_and_allows_retry(db):
+    from app.agent.models import Title
+
+    title = Title(label="Synthetic duplicate agent", gender="X")
+    db.add(title)
+    await db.flush()
+    original = Agent(title_id=title.id, code="already-used", first_name="Original", last_name="")
+    db.add(original)
+    await db.commit()
+    data = AgentCreate(title_id=title.id, user_id=original.user_id,
+                       code=" already-used ", first_name="Replacement")
+    with pytest.raises(ValueError, match="already used by another agent"):
+        await agent_service.create(data)
+    data.code = "available-code"
+    created = await agent_service.create(data)
+    assert created.code == "available-code"
+    await db.refresh(original)
+    assert original.code == "already-used" and original.deleted_at is None
+
+
+@pytest.mark.asyncio
+async def test_archiving_retries_a_suffix_collision(db, monkeypatch):
+    from app.agent.models import Title
+
+    title = Title(label="Synthetic suffix collision", gender="X")
+    db.add(title)
+    await db.flush()
+    old = Agent(title_id=title.id, code="collision", first_name="Archived", last_name="")
+    occupied = Agent(title_id=title.id, code="collision_0123456789", first_name="Other", last_name="")
+    db.add_all([old, occupied])
+    await db.commit()
+    suffixes = iter(["0123456789", "abcdef0123"])
+    monkeypatch.setattr(agent_service.secrets, "token_hex", lambda _size: next(suffixes))
+
+    assert await agent_service.delete(old.id)
+    await db.refresh(old)
+    await db.refresh(occupied)
+    assert old.deleted_at is not None and old.code == "collision_abcdef0123"
+    assert occupied.deleted_at is None and occupied.code == "collision_0123456789"
+
+
+@pytest.mark.asyncio
+async def test_concurrent_agent_creations_report_the_code_conflict(committed_database, monkeypatch):
+    import asyncio
+    from app.agent.models import Title
+    from core.database import get_db_session
+
+    async with get_db_session() as session:
+        manager = UserModel(email="concurrent-agent@example.test", hashed_password="not-used",
+                            display_name="Synthetic manager", is_active=True)
+        title = Title(label="Concurrent agents", gender="X")
+        session.add_all([manager, title])
+        await session.commit()
+        data = AgentCreate(user_id=manager.id, title_id=title.id,
+                           code="concurrent-agent", first_name="Synthetic")
+
+    barrier = asyncio.Barrier(2)
+    ensure_available = agent_service._ensure_code_available
+
+    async def synchronize_creations(code):
+        await ensure_available(code)
+        await asyncio.wait_for(barrier.wait(), timeout=10)
+
+    monkeypatch.setattr(agent_service, "_ensure_code_available", synchronize_creations)
+
+    async def create():
+        async with get_db_session():
+            try:
+                return await agent_service.create(data)
+            except ValueError as error:
+                return error
+
+    results = await asyncio.wait_for(asyncio.gather(create(), create()), timeout=20)
+    assert sum(isinstance(result, Agent) for result in results) == 1
+    errors = [str(result) for result in results if isinstance(result, ValueError)]
+    assert errors == ["This code is already used by another agent. Please choose a different code."]
+    async with get_db_session() as session:
+        assert len((await session.scalars(select(Agent).where(Agent.code == data.code))).all()) == 1
+
+
+@pytest.mark.asyncio
 async def test_update_persists_one_voice_selection(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -292,6 +413,7 @@ async def test_create_internal_harness_materializes_skill_assignments(
     refreshed_result.scalar_one.side_effect = lambda: created_agents[0]
     db = MagicMock()
     db.execute = AsyncMock(side_effect=[title_result, refreshed_result])
+    db.scalar = AsyncMock(return_value=None)
     db.scalars = AsyncMock(return_value=SimpleNamespace(all=lambda: []))
     db.flush = AsyncMock()
     db.commit = AsyncMock()

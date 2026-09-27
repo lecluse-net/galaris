@@ -1880,7 +1880,12 @@ const onAgentSubmit = async () => {
     }
     showAgentDialog.value = false
   } catch (error) {
-    const message = apiErrorDetail(error)
+    const validationDetail = isAxiosError<{ detail?: unknown }>(error) && error.response?.status === 400
+      ? error.response.data?.detail
+      : null
+    const message = typeof validationDetail === 'string'
+      ? validationDetail.trim().slice(0, 2000)
+      : apiErrorDetail(error)
 
     console.error(
       `[AgentForm] Agent ${isAgentEdit.value ? 'update' : 'creation'} failed`,

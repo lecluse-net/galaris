@@ -80,6 +80,7 @@ default = {
             "code_too_long": "Agent code must contain at most 50 characters.",
             "code_invalid": "Agent code may contain only letters, numbers, hyphens, and underscores.",
             "code_immutable": "Agent code cannot be changed after creation.",
+            "code_already_used": "This code is already used by another agent. Please choose a different code.",
             "invalid_title": "Invalid title_id",
             "invalid_group": "Invalid group_id",
             "manager_required": "Every agent must have a human manager.",

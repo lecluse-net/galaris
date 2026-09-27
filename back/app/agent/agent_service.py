@@ -1,6 +1,7 @@
 from collections.abc import Collection
 from typing import Any, Sequence, Optional
 import re
+import secrets
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import defer, joinedload, selectinload
@@ -18,6 +19,43 @@ from .voice import parse_voice_selection
 from .facade import validate_agent_driver, resolve_driver
 
 _AGENT_CODE_RE = re.compile(r"^[a-zA-Z0-9_-]+$")
+
+
+def _is_code_conflict(error: IntegrityError) -> bool:
+    # asyncpg's diagnostic is retained as the DBAPI adapter's cause.
+    diagnostic = error.orig.__cause__ if error.orig is not None else None
+    return getattr(diagnostic, "constraint_name", None) == "ix_agents_code"
+
+
+async def _release_code(agent: Agent) -> None:
+    """Free a code transactionally, retrying the unlikely suffix collision."""
+    db = get_db()
+    prefix = agent.code[:39]
+    for attempt in range(5):
+        try:
+            async with db.begin_nested():
+                agent.code = f"{prefix}_{secrets.token_hex(5)}"
+                await db.flush()
+            return
+        except IntegrityError as error:
+            if not _is_code_conflict(error) or attempt == 4:
+                raise
+            await db.refresh(agent)
+
+
+async def _ensure_code_available(code: str) -> None:
+    db = get_db()
+    existing = await db.scalar(
+        select(Agent).where(Agent.code == code).with_for_update()
+        .execution_options(include_historized=True, populate_existing=True)
+    )
+    if existing is None:
+        return
+    if existing.deleted_at is None:
+        raise ValueError(await tr("agent_api.errors.code_already_used"))
+    # Older historized agents still own their original code. Release it only
+    # when reused, in the same transaction as the replacement agent's creation.
+    await _release_code(existing)
 
 
 async def _normalize_code(code: Optional[str]) -> str:
@@ -208,6 +246,7 @@ async def create(agent_data: AgentCreate) -> Agent:
             )
         )
     await _validate_voice_selection(agent_data.voice)
+    await _ensure_code_available(code)
 
     # Create the agent
     data = agent_data.model_dump()
@@ -224,6 +263,8 @@ async def create(agent_data: AgentCreate) -> Agent:
         await db.commit()
     except IntegrityError as e:
         await db.rollback()
+        if _is_code_conflict(e):
+            raise ValueError(await tr("agent_api.errors.code_already_used")) from e
         raise ValueError(await tr("agent_api.errors.create_conflict")) from e
     await db.refresh(new_agent)
 
@@ -334,11 +375,12 @@ async def update(id: int, agent_update: AgentUpdate) -> Optional[Agent]:
 async def delete(id: int) -> bool:
     """Soft delete an agent. Returns True if deleted, False if not found."""
     db = get_db()
-    result = await db.execute(select(Agent).where(Agent.id == id))
+    result = await db.execute(select(Agent).where(Agent.id == id).with_for_update())
     agent = result.scalar_one_or_none()
     if agent is None:
         return False
 
+    await _release_code(agent)
     agent.soft_delete()
     await db.commit()
     logger.info(f"Agent deleted: {id}")
