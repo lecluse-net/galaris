@@ -257,6 +257,11 @@ Operational risk alone does not determine effort: deleting a precisely identifie
 
 You can let Galaris choose. The `@standard` and `@high` directives force the level when they are available in your channel. `@exec` and `@plan` force the route, but a driver that prohibits the planner cannot be forced to use it.
 
+For a single document, research, chapters, and reviews stay within one execution to preserve
+consistency. Separate deliverables that can be accepted and resumed individually may use `PLAN`,
+even when they must run sequentially and share a progress log. A small mechanical batch does not
+by itself require a plan.
+
 In native Chat, placing `@task` anywhere in the message immediately creates a durable Task with the remaining text as its objective, without calling the conversational LLM. For the internal Galaris harness, `@plan` is also sufficient to create the Task and force its planning, without adding `@task`. These directives can be combined, in any order, with `@standard`, `@high`, and `@approve`. Chat retains the round and immediately publishes a deterministic confirmation in the room; the Task result will be published there when it terminates. The composer’s `@` button displays only the directives compatible with the selected Agent’s driver.
 
 ## What Happens After Submission

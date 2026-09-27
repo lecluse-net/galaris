@@ -247,8 +247,11 @@ automatically; they remain flagged as blockers until completion.
    Risk determines the safeguards, not the effort. A genuinely complex, coherent deliverable
    produced through multiple research, construction, verification, and delivery passes remains
    `EXEC high`. `PLAN` requires multiple independently executable units of work whose durable
-   results benefit from coordination. If there is ambiguity between these two routes, `EXEC high`
-   is preferred. An explicit forced choice is honored without hidden reevaluation.
+   results benefit from coordination, even with a shared goal, progress log, and sequential order.
+   Each unit must be separately completable, verifiable, and recoverable; chapters and passes of
+   the same document are insufficient, even when saved separately. If separation or the benefit
+   of coordination is unclear, `EXEC high` is preferred. An explicit forced choice is honored
+   without hidden reevaluation.
 4. The planner or briefing runs when the dispatcher selects that route from the harness's
    capabilities. `EXEC high` implies no automatic briefing for new decisions. The
    planner receives all names from the effective MCP catalog, without a global cap, followed by a

@@ -900,7 +900,12 @@ A site, visual, report, document, code change, or other coherent deliverable rem
 the same result. `BRIEFING` is a separate choice from `EXEC high`: it prepares one execution
 without planning multiple tasks. It remains disabled in the internal harness. `PLAN`
 is reserved for multiple independently executable units whose durable results require
-coordination; in case of ambiguity, `EXEC high` is preferred. Conversational exchanges no
+coordination. A shared goal, repeated method, shared progress log, or sequential order does not
+exclude `PLAN` when each deliverable can be completed, checked, and resumed separately and
+coordination provides a concrete benefit. Chapters, drafts, and review passes of the same document
+stay together, even when saved separately. A small mechanical batch remains `EXEC standard`;
+when separation or the coordination benefit is unclear, `EXEC high` remains preferred.
+Conversational exchanges no
 longer pass through a Task; their separate restricted profile may still arbitrate EXEC/END to
 avoid an AI→AI loop. This conversational profile always imposes direct `standard` execution
 and disables planner, briefing, and `high` effort. When no dispatcher LLM is configured, the

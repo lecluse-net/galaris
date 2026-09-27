@@ -256,8 +256,11 @@ leur fin.
    Le risque détermine les garde-fous, pas l'effort. Un livrable cohérent réellement complexe et
    produit par plusieurs passes de recherche, construction, vérification et livraison reste en
    `EXEC high`. `PLAN` exige plusieurs unités de travail
-   indépendamment exécutables dont les résultats durables gagnent à être coordonnés. En cas
-   d'ambiguïté entre ces deux routes, `EXEC high` est préféré. Un choix forcé explicite est honoré
+   indépendamment exécutables dont les résultats durables gagnent à être coordonnés, même avec
+   un objectif commun, un suivi partagé et un ordre séquentiel. Chaque unité doit pouvoir être
+   terminée, vérifiée et reprise séparément ; les chapitres et passes d'un même document ne
+   suffisent pas, même sauvegardés séparément. Si la séparation ou le bénéfice de coordination
+   est incertain, `EXEC high` est préféré. Un choix forcé explicite est honoré
    sans réévaluation cachée.
 4. Le planner ou le briefing s’exécute si le dispatcher a retenu cette route parmi les capacités
    du harnais. `EXEC high` n'implique aucun briefing automatique pour une nouvelle décision.

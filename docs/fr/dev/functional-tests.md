@@ -170,6 +170,15 @@ d'EXEC standard, EXEC high, BRIEFING et PLAN. `test_dispatcher_inference.py` pro
 d'une décision de Task à choix unique sans appel LLM ; `test_registry.py` protège la reprise des
 anciennes décisions. Le Lab contrôle les mêmes couples via `test_contracts_and_passes.py`.
 
+Le corpus synthétique `back/app/lab/dispatcher_boundaries_corpus.json`, importable avec
+`scripts/import_lab_reference.py --corpus dispatcher-boundaries --install`, oppose les lots
+reprenables séparément aux documents uniques, chapitres liés, sites cohérents et petits lots
+mécaniques. Il remplace l'ancienne assertion de formulation imposant toujours EXEC high en cas
+de doute. `test_reference_corpus.py` vérifie son import autorisé, sa persistance et ses contrats ;
+ces tests ne mesurent pas le routage du modèle. Comparer les prompts avant/après dans le Lab avec
+le même modèle et plusieurs répétitions, en examinant séparément les PLAN manqués et les PLAN
+abusifs, notamment sur les documents uniques.
+
 La matrice durable du dispatcher couvre FR/EN et Chat/Responses avec le SDK réel, une base
 isolée et le seul transport fournisseur simulé. Une sortie sans route suivie d'une correction
 valide conserve les deux sorties dans le journal, mais seule la correction fixe langue et

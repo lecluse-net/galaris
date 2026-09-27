@@ -745,10 +745,6 @@ async def test_dispatcher_prompt_lists_only_available_routes():
         "PLAN is reserved for SEVERAL independently executable work units"
         in dispatcher_mod._DISPATCHER_SYSTEM_PROMPT
     )
-    assert (
-        'When uncertain between EXEC "high" and PLAN, choose EXEC "high"'
-        in dispatcher_mod._DISPATCHER_SYSTEM_PROMPT
-    )
     assert "Research, production" in dispatcher_mod._DISPATCHER_SYSTEM_PROMPT
     assert "Operational risk changes the required safeguards" in (
         dispatcher_mod._DISPATCHER_SYSTEM_PROMPT

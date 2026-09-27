@@ -379,6 +379,11 @@ Vous pouvez laisser Galaris choisir. Les directives `@standard` et `@high` force
 lorsqu’elles sont disponibles dans votre canal. `@exec` et `@plan` forcent la route, mais un
 driver qui interdit le planner ne peut pas être contraint à l’utiliser.
 
+Pour un document unique, ses recherches, chapitres et relectures restent dans une même exécution
+afin de conserver leur cohérence. Un ensemble de livrables pouvant être validés et repris
+séparément peut passer par `PLAN`, même s'ils doivent être traités dans l'ordre et partagent un
+suivi commun. Un petit lot mécanique ne nécessite pas à lui seul un plan.
+
 Dans le Chat natif, `@task` placé n’importe où dans le message crée immédiatement une Task durable
 avec le texte restant comme objectif, sans appel au LLM de conversation. Pour le harnais interne
 Galaris, `@plan` suffit lui aussi à créer la Task et à forcer sa planification, sans ajouter `@task`.

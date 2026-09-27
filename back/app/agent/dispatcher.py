@@ -327,13 +327,21 @@ Choose between them with these definitions:
   assignment on its own, and the objective must benefit from durable checkpoints, fan-out/fan-in,
   specialization, or recovery across those units. PLAN is about decomposability and coordination,
   not difficulty, duration, or the number of steps one executor may perform.
+  A shared overall goal, a repeated method, or a required sequential order does not rule out PLAN:
+  prefer it for batches of separate deliverables that can each be completed, checked, and resumed
+  without reopening completed units. A shared progress log does not make those deliverables one.
+  A bounded mechanical batch that needs no separate recovery or coordination remains EXEC.
 
 Do not split a single website, visual, report, document, code change, or other cohesive artifact
 into a PLAN merely because producing it includes research, construction, refinement, testing,
 review, or delivery. Choose EXEC "high" for that work so one executor retains end-to-end context.
-When uncertain between EXEC "high" and PLAN, choose EXEC "high". Select PLAN only when the task
-contains at least two independently executable work units whose durable coordination improves
-reliability. If the selected route is PLAN, set effort to "high".
+Sections, drafts, research notes, and review passes of that same artifact are not independent
+deliverables merely because they can be saved separately. Keep tightly coupled work together
+when later decisions require revising earlier parts to preserve the whole artifact's consistency.
+When uncertain between EXEC "high" and PLAN, look for at least two independently verifiable
+deliverables and a concrete benefit from coordinating their completion or recovery. If both are
+present, prefer PLAN; if the separation or coordination benefit is unclear, prefer EXEC "high".
+If the selected route is PLAN, set effort to "high".
 
 Do not choose EXEC "high" solely because the task corrects a previous action, touches an existing
 artifact, names a recipient, has external side effects, uses several tools, or performs an
@@ -859,7 +867,10 @@ class Dispatcher:
             lines.append(
                 "- **PLAN**: reserve for at least two independently executable, meaningful work "
                 "units whose durable results need coordination. Do not use PLAN merely because "
-                "one cohesive artifact requires several phases, tools, checks, or a long run."
+                "one cohesive artifact requires several phases, tools, checks, or a long run. "
+                "Separate deliverables may share a goal, method, progress log, and sequential "
+                "order; use PLAN when individual completion and recovery benefit from coordination. "
+                "Keep tightly coupled parts of one artifact in EXEC."
             )
         if "END" in routes:
             lines.append(

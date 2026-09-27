@@ -913,7 +913,12 @@ Un site, visuel, rapport, document, changement de code ou autre livrable cohére
 même résultat. `BRIEFING` est un choix distinct de `EXEC high` : il prépare une exécution sans
 planifier plusieurs tâches. Il reste désactivé dans le harnais interne. `PLAN`
 est réservé à plusieurs unités indépendamment exécutables dont les résultats durables nécessitent
-une coordination ; en cas d’ambiguïté, `EXEC high` est préféré. Les échanges conversationnels ne
+une coordination. Un objectif commun, une méthode répétée, un suivi partagé ou un ordre séquentiel
+n'excluent pas `PLAN` si chaque livrable peut être terminé, vérifié et repris séparément et que
+cette coordination apporte un bénéfice concret. Les chapitres, brouillons et passes de revue d'un
+même document restent ensemble, même sauvegardés séparément. Un petit lot mécanique reste en
+`EXEC standard` ; si la séparation ou le bénéfice de coordination est incertain, `EXEC high`
+reste préféré. Les échanges conversationnels ne
 passent plus par une Task ; leur profil restreint distinct peut encore arbitrer EXEC/END pour éviter
 une boucle IA→IA. Ce profil conversationnel impose toujours l’exécution directe `standard` et
 désactive planner, briefing et effort `high`. Quand aucun LLM dispatcher n’est configuré, le

@@ -1,0 +1,70 @@
+{
+  "version": 1,
+  "mechanism": "dispatcher",
+  "name": "Independent deliverables and cohesive work v1",
+  "purpose": "validation",
+  "description": "Synthetic public routing cases. Compare baseline and candidate prompts with the same model and repeated runs. Inspect missed PLAN cases and false PLAN choices separately, especially the single-document cases. Import and contract tests do not measure model routing quality.",
+  "parameters": {"driver_code": "internal"},
+  "cases": [
+    {
+      "name": "Sequential migration with separately recoverable deliveries",
+      "categories": ["nominal", "robustness", "multilingual"],
+      "input_data": {"variable_value": "<p>Migre les fiches d'un musée vers son nouveau catalogue. Traite les quatre collections dans l'ordre, une collection à la fois. Pour chaque fiche, conserve le texte et les illustrations, écris la fiche cible, vérifie-la puis actualise le registre partagé. Une fiche terminée doit rester acquise si une autre échoue ; le registre doit permettre de reprendre les seules fiches restantes.</p>"},
+      "expected_output": {"route": "PLAN", "effort": "high", "language": "fr"}
+    },
+    {
+      "name": "Resume a partially completed catalog migration",
+      "categories": ["incident", "robustness"],
+      "input_data": {"variable_value": "<p>Resume the migration of the observatory's instrument catalog. Two collections are complete; leave their accepted entries intact. Repair the incomplete entries in the next collection, then migrate the remaining collections in order. Each entry has its own target record, illustration checks and acceptance status. Save verified progress so a failure on one entry does not repeat the others. The retrieval fault has been fixed; start delivering entries without another global diagnostic phase.</p>"},
+      "expected_output": {"route": "PLAN", "effort": "high", "language": "en"}
+    },
+    {
+      "name": "Separate deliverables sharing one campaign goal",
+      "categories": ["nominal", "ambiguity"],
+      "input_data": {"variable_value": "<p>Prépare les dossiers de maintenance de trois ateliers pour la même campagne. Chacun reçoit un dossier autonome fondé sur ses équipements, avec ses propres vérifications et sa validation séparée. Termine chaque dossier avant de passer au suivant. Conserve les dossiers acceptés et leur statut pour pouvoir reprendre un atelier bloqué sans refaire les autres.</p>"},
+      "expected_output": {"route": "PLAN", "effort": "high", "language": "fr"}
+    },
+    {
+      "name": "One report with research drafting review and delivery",
+      "categories": ["nominal", "robustness"],
+      "input_data": {"variable_value": "<p>Produce one report comparing several water-treatment technologies. Research their performance, reconcile conflicting studies, build the argument, write the chapters, review the calculations and deliver the final document. Revise earlier chapters whenever later findings change the recommendation; terminology, assumptions and conclusions must remain consistent throughout.</p>"},
+      "expected_output": {"route": "EXEC", "effort": "high", "language": "en"}
+    },
+    {
+      "name": "Saved chapters still belong to one document",
+      "categories": ["ambiguity", "robustness", "multilingual"],
+      "input_data": {"variable_value": "<p>Rédige un seul guide de formation en six chapitres. Sauvegarde après chaque chapitre et tiens une liste d'avancement. Les exemples forment un fil conducteur ; adapte les premières explications quand les exercices révèlent un prérequis manquant. Relis l'ensemble pour garantir une progression pédagogique cohérente avant de livrer le guide.</p>"},
+      "expected_output": {"route": "EXEC", "effort": "high", "language": "fr"}
+    },
+    {
+      "name": "Many source documents produce one cohesive synthesis",
+      "categories": ["ambiguity", "robustness"],
+      "input_data": {"variable_value": "<p>Read the archived workshop notes and produce one decision memo. Compare disagreements, resolve duplicated claims and derive one consistent recommendation. Source notes are inputs only; no individual note needs its own deliverable. Review and revise the whole memo before delivery.</p>"},
+      "expected_output": {"route": "EXEC", "effort": "high", "language": "en"}
+    },
+    {
+      "name": "Coupled code changes with tests remain one outcome",
+      "categories": ["nominal", "robustness"],
+      "input_data": {"variable_value": "<p>Corrige le calcul des remises dans l'application de démonstration. Reproduis l'erreur, retrouve la règle métier, adapte le calcul et son affichage, puis vérifie les scénarios concernés. Le calcul, l'écran et les tests constituent une seule correction cohérente ; ajuste-les ensemble si l'analyse révèle un cas oublié.</p>"},
+      "expected_output": {"route": "EXEC", "effort": "high", "language": "fr"}
+    },
+    {
+      "name": "A bounded mechanical batch needs no plan",
+      "categories": ["nominal", "robustness"],
+      "input_data": {"variable_value": "<p>Rename the three selected draft files by adding the prefix reviewed_ to each filename. The selection and prefix are confirmed. Check the final filenames and report completion.</p>"},
+      "expected_output": {"route": "EXEC", "effort": "standard", "language": "en"}
+    },
+    {
+      "name": "Several output files still form one coherent website",
+      "categories": ["nominal", "robustness"],
+      "input_data": {"variable_value": "<p>Create a demonstration website explaining an unusual geometric puzzle. Research the construction, design an interactive explanation, implement its HTML, CSS and script, and test the assembled experience. Revise the visual design and explanatory text together as you refine the interaction. Deliver the working website with its supporting files.</p>"},
+      "expected_output": {"route": "EXEC", "effort": "high", "language": "en"}
+    },
+    {
+      "name": "A small mechanical conversion stays direct",
+      "categories": ["nominal", "robustness", "multilingual"],
+      "input_data": {"variable_value": "<p>Convertis les deux tableaux CSV sélectionnés en UTF-8 avec l'outil de conversion disponible. L'encodage source est connu, les destinations sont confirmées et les originaux doivent être conservés. Vérifie simplement que les lignes sont préservées dans les deux fichiers convertis.</p>"},
+      "expected_output": {"route": "EXEC", "effort": "standard", "language": "fr"}
+    }
+  ]
+}

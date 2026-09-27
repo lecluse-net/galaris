@@ -18,6 +18,7 @@ CORPORA = {
     "reference": CORPUS,
     "latency-fr": CORPUS.with_name("latency_corpus_fr.json"),
     "latency-en": CORPUS.with_name("latency_corpus_en.json"),
+    "dispatcher-boundaries": CORPUS.with_name("dispatcher_boundaries_corpus.json"),
 }
 
 

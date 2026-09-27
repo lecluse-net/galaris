@@ -140,6 +140,15 @@ EXEC standard, EXEC high, BRIEFING, and PLAN. `test_dispatcher_inference.py` pro
 of a single-choice Task decision without an LLM call; `test_registry.py` protects historical
 decision recovery. The Lab checks the same pairs through `test_contracts_and_passes.py`.
 
+The synthetic `back/app/lab/dispatcher_boundaries_corpus.json` corpus, imported with
+`scripts/import_lab_reference.py --corpus dispatcher-boundaries --install`, contrasts separately
+recoverable batches with single documents, coupled chapters, coherent websites, and small
+mechanical batches. It replaces the old wording assertion that always preferred EXEC high when
+uncertain. `test_reference_corpus.py` verifies authorized import, persistence, and contracts;
+these tests do not measure model routing. Compare before/after prompts in the Lab with the same
+model and repeated runs, inspecting missed PLAN choices and unnecessary PLAN choices separately,
+especially for single documents.
+
 The durable dispatcher matrix covers FR/EN and Chat/Responses with the real SDK, an isolated
 database and only provider transport simulated. An output without a route followed by a valid
 correction retains both outputs in the journal, but only the correction determines language
