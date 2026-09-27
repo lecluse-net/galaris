@@ -1,0 +1,4 @@
+interface:
+  display_name: "PostgreSQL Best Practices"
+  short_description: "Review queries, indexes, connections, and locking"
+  default_prompt: "Use $supabase-postgres-best-practices to investigate this PostgreSQL query or concurrency issue within Galaris conventions."

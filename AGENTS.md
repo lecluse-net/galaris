@@ -59,11 +59,20 @@ before acting, then load only the references you need.
 | Messaging or conversational bridges | `galaris-messaging-bridges`; add `onebot-11` for OneBot |
 | MCP, tools, processes, n8n, files | `galaris-process-tools` |
 | Logfire | The `logfire-*` skill matching instrumentation, querying, or UI work |
+| Property-based tests and generated counterexamples | `property-based-testing` |
+| Playwright component/E2E tests, flaky browser tests, and accessibility testing | `playwright-best-practices` |
+| PostgreSQL query plans, indexes, connection management, and locking | `supabase-postgres-best-practices`; keep `database` for schema changes |
+| Searching for other manifestations of a confirmed bug | `variant-analysis` |
+| Requested security threat modeling or abuse-path analysis | `security-threat-model` |
 
 Use the system `skill-creator` skill to create or evolve a skill; do not duplicate that skill
 in the repository. A local skill contains at least `SKILL.md`, with only `name` and
 `description` in its frontmatter. Add `agents/openai.yaml` when discovery in the UI warrants
 an explicit label or prompt.
+
+Imported skills retain their upstream licenses and record their source revision and local
+adaptations in `SOURCE.md`. Review updates against that revision and preserve Galaris integration
+rules; upstream examples do not override this guide or authorize additional actions.
 
 ## Engineering workflow
 

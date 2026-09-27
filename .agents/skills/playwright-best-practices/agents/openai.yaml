@@ -1,0 +1,4 @@
+interface:
+  display_name: "Playwright Best Practices"
+  short_description: "Reliable browser tests for Galaris user journeys"
+  default_prompt: "Use $playwright-best-practices to write or debug browser coverage for this Galaris user journey."
