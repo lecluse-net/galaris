@@ -11,7 +11,7 @@ from pydantic import AwareDatetime, BaseModel, Field, ValidationError
 from sqlalchemy import select
 
 from core.database import get_db
-from app.llm.facade import LLMProcessingTiming, task_processing_timings
+from app.llm.facade import LLMExecutionTiming, LLMProcessingTiming, execution_timing, task_processing_timings
 from .models import Task, TaskAttempt
 from .timing_events import parse_lifecycle, phase_totals, timing_totals
 
@@ -34,6 +34,9 @@ class TaskStartupTiming(TaskAdmissionTiming):
     preparation_to_first_call_seconds: float | None = None
     admission_seconds: float | None = None
     queue_wait_upper_bound_seconds: float | None = None
+    claimed_to_output_seconds: float | None = None
+    enqueued_to_output_seconds: float | None = None
+    execution_timing: LLMExecutionTiming = Field(default_factory=LLMExecutionTiming)
     processing_intervals: list[LLMProcessingTiming] = Field(default_factory=list[LLMProcessingTiming])
     lifecycle_seconds: dict[str, float] = Field(default_factory=dict[str, float])
     lifecycle_observed_since: AwareDatetime | None = None
@@ -98,9 +101,7 @@ async def task_startup_timings(
     if agent_id is not None:
         query = query.where(Task.agent_id == agent_id)
     rows = (await get_db().execute(query)).all()
-    historical = tuple(row[0] for row in rows
-                       if startup_timing(row[0], row[1], row[2], row[3], row[4]).enqueued_at is None)
-    intervals = await task_processing_timings(historical) if historical else {}
+    intervals = await task_processing_timings(tuple(row[0] for row in rows)) if rows else {}
     result: list[TaskStartupTiming] = []
     for task_id, label, admission, claimed_at, lifecycle in rows:
         timing = startup_timing(task_id, label, admission, claimed_at, lifecycle)
@@ -109,6 +110,9 @@ async def task_startup_timings(
                        if item.purpose == "conversation.task_objective"]
         execution = [item for item in timing.processing_intervals
                      if item.purpose != "conversation.task_objective"]
+        timing.execution_timing = execution_timing(execution)
+        timing.claimed_to_output_seconds = elapsed_seconds(timing.first_claimed_at, timing.execution_timing.first_output_at)
+        timing.enqueued_to_output_seconds = elapsed_seconds(timing.enqueued_at, timing.execution_timing.first_output_at)
         if timing.preparation_started_at is None and preparation:
             timing.preparation_started_at = preparation[0].started_at
             timing.preparation_source = "llm_calls"

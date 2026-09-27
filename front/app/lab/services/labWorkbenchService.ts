@@ -78,6 +78,11 @@ export interface ComparisonItem {
 export interface RunComparison {
   axis: ComparisonAxis; comparable: boolean; differences: string[]; blockers: string[]
   left: LabRun; right: LabRun; items: ComparisonItem[]; next_offset: number | null
+  summary: {
+    cases: number; observations: number; matched: number; missing_left: number; missing_right: number
+    ambiguous: number; unjudged: number; failed: number
+    increased: number | null; decreased: number | null; equal: number | null
+  }
 }
 const base = (key: LabKey) => `/evaluation/${key}`
 export const labWorkbenchService = {

@@ -7,7 +7,8 @@ from collections.abc import Mapping, Sequence
 from typing import cast
 from uuid import UUID
 
-from sqlalchemy import select
+from sqlalchemy import func, literal, select
+from sqlalchemy.dialects.postgresql import JSONPATH
 
 from app.agent.contracts import (
     AgentContextCandidate,
@@ -20,10 +21,14 @@ from app.messenger import Room
 from core.database import get_db
 
 from .models import ConversationRound
+from .document_display import can_read_conversation_document
+from .document_metadata import resolve_conversation_document_metadata
 
 
 _RECENT_ROUNDS = 20
-_RECENT_DOCUMENTS = 10
+# Gather more candidates than the capsule's ten-resource budget so its existing
+# relevance scorer can choose an older document by its current title.
+_DOCUMENT_CANDIDATES = 50
 _DOCUMENT_TOOL_NAMES = frozenset(
     {
         "file_create",
@@ -84,6 +89,7 @@ def _payload_references(value: object) -> tuple[str, ...]:
 
 def conversation_document_references(
     execution_result: Mapping[str, object] | None,
+    *, confirmed_only: bool = False,
 ) -> tuple[tuple[str, str, str], ...]:
     """Extract exact document URIs, labels and operations from successful tool traces."""
 
@@ -98,6 +104,10 @@ def conversation_document_references(
     for raw in cast(Sequence[object], raw_messages):
         message = _mapping(raw)
         if message is None or message.get("success") is False:
+            continue
+        # Historical work projections keep their existing permissive display;
+        # new context admission requires a confirmed tool outcome.
+        if confirmed_only and (message.get("type") != "tool" or message.get("success") is not True):
             continue
         tool_name = str(message.get("tool_name") or "").strip()
         if tool_name not in _DOCUMENT_TOOL_NAMES and not tool_name.startswith(
@@ -122,7 +132,7 @@ def conversation_document_references(
 async def recent_conversation_document_context(
     request: AgentContextRequest,
 ) -> AgentContextContribution:
-    """Offer recent direct-conversation documents to every contact-scoped runtime."""
+    """Recall document-bearing history, then recheck current access and metadata."""
 
     if not request.include_historical_context:
         return AgentContextContribution()
@@ -139,6 +149,11 @@ async def recent_conversation_document_context(
                     Connection.agent_id == request.agent.id,
                     ConversationRound.contact_memory_item_id == contact_id,
                     ConversationRound.execution_result.is_not(None),
+                    func.jsonb_path_exists(ConversationRound.execution_result, literal(
+                        '$.messages[*] ? (@.type == "tool" && @.success == true && '
+                        '(@.tool_name like_regex "^(file_(create|read|info|write|append|edit|copy|move)|document_.*)$") && '
+                        '(exists(@.tool_arguments.** ? (@ like_regex "^document://")) || '
+                        'exists(@.tool_arguments.document_id) || @.content like_regex "document://|document_id"))', type_=JSONPATH)),
                     Room.deleted_at.is_(None),
                 )
                 .order_by(
@@ -152,16 +167,24 @@ async def recent_conversation_document_context(
     )
     candidates: list[AgentContextCandidate] = []
     seen: set[str] = set()
+    readable: dict[UUID, bool] = {}
     for round_ in rounds:
         result = (
             cast(Mapping[str, object], round_.execution_result)
             if isinstance(round_.execution_result, Mapping)
             else None
         )
-        for reference, label, operation in conversation_document_references(result):
+        for reference, label, operation in conversation_document_references(result, confirmed_only=True):
+            if len(seen) >= _DOCUMENT_CANDIDATES:
+                break
             if reference in seen:
                 continue
             seen.add(reference)
+            document_id = UUID(parse_resource_uri(reference).locator.split("/", 1)[0])
+            if document_id not in readable:
+                readable[document_id] = await can_read_conversation_document(document_id, request.agent.id)
+            if not readable[document_id]:
+                continue
             candidates.append(
                 AgentContextCandidate(
                     key=f"conversation-document:{reference}",
@@ -176,17 +199,24 @@ async def recent_conversation_document_context(
                         "resource_type": "memory_document",
                         "last_operation": operation,
                         "source_round_id": str(round_.id),
+                        "document_id": str(document_id),
                     },
                 )
             )
-            if len(candidates) >= _RECENT_DOCUMENTS:
-                return AgentContextContribution(
-                    candidates=tuple(candidates),
-                    metadata={"recent_conversation_document_count": len(candidates)},
-                )
+            if len(seen) >= _DOCUMENT_CANDIDATES:
+                break
+        if len(seen) >= _DOCUMENT_CANDIDATES:
+            break
+    metadata = await resolve_conversation_document_metadata(tuple(key for key, allowed in readable.items() if allowed))
+    current: list[AgentContextCandidate] = []
+    for candidate in candidates:
+        document = metadata.get(UUID(str(candidate.metadata["document_id"])))
+        if document is None or document.deleted:
+            continue
+        current.append(candidate.model_copy(update={"title": document.title, "revision": document.revision}))
     return AgentContextContribution(
-        candidates=tuple(candidates),
-        metadata={"recent_conversation_document_count": len(candidates)},
+        candidates=tuple(current),
+        metadata={"recent_conversation_document_count": len(current)},
     )
 
 

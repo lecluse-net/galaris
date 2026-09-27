@@ -18,6 +18,7 @@
       :timing="timing"
       show-task
     />
+    <LlmExecutionTiming v-if="round?.execution_timing" :timing="round.execution_timing" />
   </q-card>
   <q-card tag="section" flat bordered class="q-pa-sm q-mt-md" :aria-label="t('task.budget.recorded')">
     <h3 class="text-subtitle2 q-mt-none q-mb-sm text-primary">
@@ -36,7 +37,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
-import type { LLMCall } from '@/app/llm'
+import { LlmExecutionTiming, type LLMCall } from '@/app/llm'
 import { TaskStartupTimingPanel } from '@/app/task'
 import { StatusBadge, type StatusBadgeTone } from '@/core/util'
 import type { ConversationRoundDetail } from '../types'

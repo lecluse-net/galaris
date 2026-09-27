@@ -87,8 +87,12 @@ Time after a backoff deadline counts as queue time again. For historical Tasks, 
 recovers actual persisted call timestamps, including preparation when the originating round
 belongs unambiguously to one Task. It does not manufacture a claim time from `created_at` or
 `updated_at`. Views present available intervals with their source instead of “not measured”
-cells. Queries are batched over authorized Tasks; historical call recovery is unnecessary when
-enqueue has already been observed.
+cells. Queries are batched over authorized Tasks. Calls also measure first useful output:
+nonempty text or a tool call observed in the journal, excluding reasoning and internal decisions.
+Task and Conversation separate time within LLM calls from unattributed time between calls;
+concurrent calls count only once. Tasks also show time from admission and their first claim.
+Missing journal or call-end evidence leaves the corresponding measurement unknown. These
+server timings measure neither client rendering nor delivery to the recipient.
 See [decision 0087](../../../../project/decisions/0087-task-activity-snapshots.md) for limits,
 rehydration and the distinction from future generic effect authorization.
 

@@ -78,6 +78,33 @@ async def test_admission_timings_are_durable_shared_with_round_and_not_rewritten
 
 
 @pytest.mark.asyncio
+async def test_direct_round_latency_reads_useful_output_and_preserves_agent_scope(db):
+    from app.llm.models import LLMCallEvent
+
+    agent, _connection, room, _sender = await _scope(db)
+    other, *_ = await _scope(db)
+    round_ = ConversationRound(room_id=room.id, status="COMPLETED")
+    db.add(round_)
+    await db.flush()
+    assert (await monitoring_service.get_round(round_.id)).execution_timing.first_output_seconds is None
+    start = datetime(2026, 1, 1, tzinfo=timezone.utc)
+    for owner, delay in [(agent, 3), (other, 1)]:
+        call = LLMCall(conversation_round_id=round_.id, agent_id=owner.id, purpose="conversation.text",
+            requested_model="synthetic", status="completed", started_at=start,
+            completed_at=start + timedelta(seconds=5), duration=5)
+        db.add(call)
+        await db.flush()
+        db.add(LLMCallEvent(call_id=call.id, sequence=1, created_at=start + timedelta(seconds=delay),
+            payload={"kind": "message", "message": {"type": "text", "content": "Synthetic reply"}}))
+    await db.flush()
+    detail = await monitoring_service.get_round(round_.id)
+    assert detail.execution_timing.first_output_seconds == 3
+    assert detail.execution_timing.call_seconds_before_output == 3
+    assert detail.execution_timing.between_calls_seconds == 0
+    assert (await inspection_service.inspect_round(round_.id))["execution_timing"] == detail.execution_timing.model_dump(mode="json")
+
+
+@pytest.mark.asyncio
 async def test_historical_preparation_is_recovered_only_with_unambiguous_task_lineage(db):
     from sqlalchemy import update
     from app.task import Task, task_startup_timings

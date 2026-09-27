@@ -10,6 +10,8 @@ export default {
     task: {
       title: 'Gestion des Tâches',
       startup: {
+        claimedToOutput: 'Prise en charge → première sortie utile',
+        enqueuedToOutput: 'Admission → première sortie utile',
         title: 'Démarrage initial',
         preparation: 'Préparation de l’objectif',
         preparationCalls: 'Préparation de l’objectif (appels LLM)',
@@ -398,6 +400,8 @@ export default {
         admission: 'Admission after preparation',
         wait: 'Wait before first claim (upper bound)',
         callTimings: 'LLM processing: timestamps recovered from the call ledger',
+        claimedToOutput: 'First claim → first useful output',
+        enqueuedToOutput: 'Admission → first useful output',
         phases: 'Breakdown by phase',
         observedSince: 'Lifecycle measurements since {value}',
         queue: 'Cumulative queue time',
@@ -775,6 +779,8 @@ export default {
         admission: '准备后的接纳处理',
         wait: '首次领取前的等待时间（上限）',
         callTimings: 'LLM 处理：从调用记录恢复的时间戳',
+        claimedToOutput: '首次领取 → 首次有效输出',
+        enqueuedToOutput: '入队 → 首次有效输出',
         phases: '各阶段明细',
         observedSince: '生命周期测量起始时间：{value}',
         queue: '累计排队时间',

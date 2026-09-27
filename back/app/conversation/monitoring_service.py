@@ -403,6 +403,7 @@ async def get_round(round_id: UUID) -> ConversationRoundDetail | None:
         attempt_number=link.notification_attempt_count, error=link.notification_error,
     ) for link in task_links if link.notification_state == "UNKNOWN")
     from app.task import task_startup_timings
+    from app.llm.facade import conversation_execution_timing
 
     timings = await task_startup_timings([link.task_id for link in task_links], agent_id=connection.agent_id)
     process_links = await get_db().scalars(select(ConversationProcessLink).where(
@@ -415,6 +416,7 @@ async def get_round(round_id: UUID) -> ConversationRoundDetail | None:
     return ConversationRoundDetail(
         id=round_.id,
         task_startup_timings=timings,
+        execution_timing=await conversation_execution_timing(round_id, agent_id=connection.agent_id),
         topic_id=round_.topic_id,
         agent_id=connection.agent_id,
         agent_name=f"{first_name or ''} {last_name or ''}".strip() or None,

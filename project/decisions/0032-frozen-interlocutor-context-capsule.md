@@ -45,6 +45,14 @@ Sets récents et aux URI `document://` vérifiées dans les traces d'outils des 
 même agent et du même contact. Il expose leurs dates et provenances, et n'utilise ni la room, ni les
 fichiers temporaires, ni le texte libre comme élargissement implicite.
 
+Le rappel des traces filtre les échanges documentaires avant sa limite de vingt rounds :
+les discussions et lectures de fichiers non documentaires ne chassent plus une ancienne URI.
+Il soumet au plus cinquante références au contrôle d'accès courant du domaine documentaire,
+puis récupère titre et révision canoniques. Les documents supprimés, absents ou interdits
+sont exclus ; aucun ancien succès d'outil ne vaut autorisation. Le compositeur conserve son
+classement et son quota de dix ressources. Ce rappel borné complète la recherche Memory ;
+il ne garantit pas de retrouver tout document ancien ni de reconstruire une capsule figée.
+
 ## Conséquences
 
 - Deux interlocuteurs d'une même room ne contaminent plus leurs contextes implicites.

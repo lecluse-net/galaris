@@ -11,9 +11,38 @@ from app.lab.access import MECHANISM_PRIVILEGES
 from app.lab.assertions import LabMechanismReadPrivilegeAssertion
 from app.lab.contracts import CONTRACTS
 from app.lab.models import LabEvaluationDataset, LabEvaluationRun, LabEvaluationRunCase, LabJudgmentCampaign
+from app.lab.comparison_summary import summarize
 from app.lab.router import compare_benchmarks
 from core.authorize import AssertionContext
 from core.database import get_db_session
+
+
+@pytest.mark.asyncio
+async def test_summary_counts_distinct_cases_repetitions_judgments_and_errors(db):
+    dataset = LabEvaluationDataset(name="Synthetic summary", mechanism="briefing")
+    db.add(dataset)
+    await db.flush()
+    before, after = [LabEvaluationRun(dataset_id=dataset.id, status="completed") for _ in range(2)]
+    db.add_all([before, after])
+    await db.flush()
+    assert (await summarize(before.id, after.id, comparable=True)).observations == 0
+    for repetition, scores in enumerate([(0, 20), (30, 0), (0, 0), (10, 20), (10, 20), (0, 10)], 1):
+        for run, score in zip((before, after), scores):
+            db.add(LabEvaluationRunCase(run_id=run.id, repetition=repetition,
+                case_snapshot={"input_data": {"question": "same"}, "expected_output": {"answer": "same"}},
+                score_percent=score, judge_output=None if repetition == 4 else {"explanation": "Synthetic evidence"},
+                error="Synthetic failed execution" if repetition == 5 and run is after else None))
+    await db.flush()
+    result = await summarize(before.id, after.id, comparable=True)
+    assert result.cases == 1 and result.observations == result.matched == 6
+    assert result.increased == 2
+    assert result.decreased == result.equal == result.unjudged == result.failed == 1
+    reversed_result = await summarize(after.id, before.id, comparable=True)
+    assert reversed_result.increased == result.decreased
+    assert reversed_result.decreased == result.increased
+    blocked = await summarize(before.id, after.id, comparable=False)
+    assert blocked.increased is blocked.decreased is blocked.equal is None
+    assert blocked.matched == 6
 
 
 @pytest.mark.asyncio
@@ -63,6 +92,11 @@ async def test_http_comparison_preserves_evidence_and_missing_scores(client, mec
     assert data["next_offset"] == 10
     second = (await client.get(url, params={**params, "offset": 10})).json()
     assert second["next_offset"] is None
+    assert data["summary"] == second["summary"]
+    assert data["summary"]["cases"] == data["summary"]["observations"] == 11
+    assert data["summary"]["matched"] == data["summary"]["unjudged"] == 10
+    assert data["summary"]["missing_right"] == 1
+    assert data["summary"]["increased"] == 0  # A score without a judgment is not a gain.
     items = {item["name"]: item for item in data["items"] + second["items"]}
     assert len(items) == 11
     assert items["Case 0"]["left_score"] == 0
@@ -110,6 +144,10 @@ async def test_http_comparison_preserves_evidence_and_missing_scores(client, mec
             page = response.json()
             assert page["comparable"] is False
             assert page["blockers"] == ["ambiguous_case_pairing"]
+            assert page["summary"]["cases"] == 11
+            assert page["summary"]["observations"] == 13
+            assert page["summary"]["ambiguous"] == 1
+            assert page["summary"]["increased"] is None
             for item in page["items"]:
                 if item["name"] == "Case 10" and item["repetition"] == original.repetition:
                     assert item["pairing"] == "ambiguous"

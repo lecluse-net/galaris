@@ -21,6 +21,17 @@ La projection récupère les heures de traitement des tâches historiques depuis
 conservés. La préparation antérieure à l’existence d’une tâche est attribuée uniquement si le
 round ne possède qu’une tâche distincte. Aucune date de commit historique n’est inventée.
 
+Les détails Task et Conversation projettent aussi la première sortie utile depuis le journal
+LLM : texte non vide ou appel d'outil, hors raisonnement et décisions internes. La mesure
+part du premier appel ; une Task expose également les délais depuis l'admission et la
+première prise en charge lorsque ces dates existent. L'union des intervalles d'appels avant
+la sortie évite de compter deux fois les appels simultanés. Les temps entre appels restent
+non attribués, sans être présentés comme du temps scheduler ou réseau. Une fin d'appel
+manquante rend cette décomposition inconnue. Une absence de journal reste « non mesuré » ;
+`first_token_at` et les dates d'audit ne remplacent jamais cette preuve.
+Ce sont des observations serveur, pas une mesure de rendu ou un reçu de livraison.
+Les lectures utilisent les identifiants autorisés et ne chargent ni prompts ni contenus.
+
 Le transport de fichiers Messenger enregistre un reçu serveur au retour d’un upload réussi
 dans le contexte de la tâche. Il porte l’URI, le message, la connexion et la salle observés.
 La notification finale reconnaît cette livraison, y compris lorsque l’outil spécialisé n’a

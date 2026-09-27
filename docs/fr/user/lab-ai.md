@@ -173,8 +173,13 @@ signalé dès la première page, même si le cas concerné se trouve plus loin. 
 jugements identiques, changer de page, de taille de page ou inverser les évaluations ne
 change pas ce blocage. Une ambiguïté d'un côté ou de l'autre empêche de choisir une réponse.
 
-Les compteurs décrivent uniquement la page affichée, avec 50 cas par défaut et les choix
-10, 20, 50, 100 ou 500. Un appariement ambigu ne choisit pas arbitrairement une réponse.
+Le bilan global décrit les deux évaluations complètes : cas distincts, observations incluant
+les répétitions, appariements, résultats manquants avant/après, ambiguïtés, jugements absents
+et erreurs. Les hausses, baisses et égalités ne comptent que les paires jugées, notées et sans
+erreur ; elles restent absentes si les configurations ne sont pas comparables. Une répétition
+ne constitue pas un cas indépendant et ce bilan descriptif ne prouve pas un gain statistique.
+Les compteurs de page restent séparés, avec 50 cas par défaut et les choix 10, 20, 50, 100 ou 500.
+Un appariement ambigu ne choisit pas arbitrairement une réponse.
 La liste part des cas exécutés avant : utilisez **Inverser avant et après**, puis **Comparer**
 pour examiner les cas présents uniquement après. Relancez la comparaison après un nouveau
 résultat ou jugement ; elle ne se rafraîchit pas automatiquement. La lecture ne lance aucune

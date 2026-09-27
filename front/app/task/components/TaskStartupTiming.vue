@@ -21,6 +21,7 @@
       </div>
     </details>
     <div v-if="timing.queue_wait_upper_bound_seconds != null">{{ t('task.startup.waitExplanation') }}</div>
+    <LlmExecutionTiming v-if="timing.execution_timing" :timing="timing.execution_timing" />
     <dl v-if="lifecycle.length" class="q-my-sm">
       <div v-for="stage in lifecycle" :key="stage.label" class="row q-col-gutter-sm">
         <dt class="col-8">{{ stage.label }}</dt>
@@ -47,6 +48,7 @@
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import type { TaskStartupTiming } from '../activity'
+import { LlmExecutionTiming } from '@/app/llm'
 
 const { timing, showTask = false } = defineProps<{ timing: TaskStartupTiming; showTask?: boolean }>()
 const { t, locale } = useI18n()
@@ -55,6 +57,8 @@ const stages = computed(() => [
   { label: t('task.startup.beforeFirstCall'), seconds: timing.preparation_to_first_call_seconds },
   { label: t('task.startup.admission'), seconds: timing.admission_seconds },
   { label: t('task.startup.wait'), seconds: timing.queue_wait_upper_bound_seconds },
+  { label: t('task.startup.claimedToOutput'), seconds: timing.claimed_to_output_seconds },
+  { label: t('task.startup.enqueuedToOutput'), seconds: timing.enqueued_to_output_seconds },
 ].filter(stage => stage.seconds != null))
 const lifecycle = computed(() => Object.entries(timing.lifecycle_seconds ?? {})
   .filter(([state]) => ['queue', 'processing', 'user_pause', 'external_wait', 'backoff'].includes(state))

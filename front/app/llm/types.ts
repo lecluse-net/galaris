@@ -80,3 +80,10 @@ export interface LLMCallSummary {
   total_cost: number
   total_inference_cost: number
 }
+export interface LLMExecutionTiming {
+  first_call_at: string | null
+  first_output_at: string | null
+  first_output_seconds: number | null
+  call_seconds_before_output: number | null
+  between_calls_seconds: number | null
+}

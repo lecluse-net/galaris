@@ -8,6 +8,7 @@ from typing import Literal
 
 from pydantic import BaseModel, Field
 from app.task import TaskStartupTiming
+from app.llm.facade import LLMExecutionTiming
 
 
 class ConversationNotificationTarget(BaseModel):
@@ -98,6 +99,7 @@ class ConversationRoundDetail(ConversationRoundRead):
     """One round with its canonical room metadata for the monitoring modal."""
 
     agent_id: int
+    execution_timing: LLMExecutionTiming = Field(default_factory=LLMExecutionTiming)
     task_startup_timings: list[TaskStartupTiming] = Field(default_factory=list[TaskStartupTiming])
     agent_name: str | None = None
     channel_kind: str

@@ -4,7 +4,8 @@ const datasets = [{ id: 'baseline', name: 'Baseline corpus', parameters: {}, con
 const run = (id, label) => ({ id, created_at: '2026-01-01T12:00:00Z', status: 'completed', total_cases: 3, completed_cases: 3, judged_cases: 3, llm_snapshot: { label }, configuration_snapshot: {} })
 const before = run('before-run', 'Candidate before'), after = run('after-run', 'Candidate after')
 const item = (name, changes = {}) => ({ name, left_result_id: name, right_result_id: 'after-' + name, pairing: 'matched', repetition: 1, score_delta: -20, cost_delta: -0.01, duration_delta: 1, left_score: 20, right_score: 0, left_cost: 0.02, right_cost: 0.01, left_duration: 1, right_duration: 2, left_verdict: 'pass', right_verdict: 'fail', input: 'Synthetic input', reference: 'Reference only', left_output: 'Original answer', right_output: 'Changed answer', left_judgment: { explanation: 'Original evidence' }, right_judgment: { explanation: 'New evidence', critical_failures: ['Unsupported claim'] }, left_checks: {}, right_checks: {}, left_error: null, right_error: null, ...changes })
-const comparison = { axis: 'model', comparable: true, differences: ['candidate'], blockers: [], left: before, right: after, items: [item('A result')], next_offset: null }
+const summary = { cases: 4, observations: 6, matched: 5, missing_left: 0, missing_right: 1, ambiguous: 0, unjudged: 1, failed: 0, increased: 2, decreased: 1, equal: 1 }
+const comparison = { axis: 'model', comparable: true, summary, differences: ['candidate'], blockers: [], left: before, right: after, items: [item('A result')], next_offset: null }
 
 async function routes(page, mechanism = 'briefing') {
   await jsonRoute(page, `**/api/evaluation/${mechanism}/datasets/baseline/runs?*`, [before, after])
@@ -47,6 +48,9 @@ for (const viewport of [{ width: 1440, height: 1000 }, { width: 390, height: 844
       await expect(dialog.getByText('Unsupported claim', { exact: true }).first()).toBeVisible()
       await expect(dialog.getByText(/Score 0.0 %/).first()).toBeVisible()
       await expect(dialog.getByText('Displayed page: 0 scores increased · 1 decreased · 0 unchanged · 2 without comparable scores.')).toBeVisible()
+      const globalCoverage = dialog.getByText('Global summary: 4 distinct cases · 6 observations including repetitions · 5 paired.')
+      await expect(globalCoverage).toBeVisible()
+      await expect(dialog.getByText(/2 scores increased · 1 decreased · 1 unchanged/)).toBeVisible()
       await expect(dialog.getByText('No matching result after.').first()).toBeVisible()
       await expect(dialog.getByText('Unjudged', { exact: true })).toBeVisible()
       await page.screenshot({ path: test.info().outputPath('comparison.png'), fullPage: true })
@@ -56,6 +60,7 @@ for (const viewport of [{ width: 1440, height: 1000 }, { width: 390, height: 844
       await expect(dialog.getByRole('button', { name: 'Close', exact: true })).toBeInViewport()
       await dialog.getByRole('button', { name: 'Next', exact: true }).click()
       await expect(dialog.getByRole('heading', { name: /Next case/ })).toBeVisible()
+      await expect(globalCoverage).toBeVisible()
       expect(requests.at(-1)).toMatchObject({ offset: '50', limit: '50', left_run_id: before.id, right_run_id: after.id })
       await dialog.getByRole('button', { name: 'Swap before and after' }).click()
       await expect(dialog.getByText('Changed answer', { exact: true })).not.toBeVisible()
@@ -98,6 +103,7 @@ test('errors can be retried and late comparisons cannot cross selections or Lab 
   await expect(page.getByRole('status')).toContainText('Different corpora')
   await expect(page.getByRole('status')).toContainText('Different judges')
   await expect(page.getByText('No progress summary is calculated for these configurations.')).toBeVisible()
+  await expect(page.getByText(/2 scores increased · 1 decreased · 1 unchanged/)).not.toBeVisible()
   await expect(page.getByText('Ambiguous pairing: no after result was selected.').first()).toBeVisible()
   await expect(page.getByText('Changed answer', { exact: true })).not.toBeVisible()
 })

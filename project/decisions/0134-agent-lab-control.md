@@ -56,8 +56,12 @@ Le Workbench des onze Labs expose aussi ce comparateur en lecture via HTTP et un
 commun « Avant / après ». HTTP et MCP délèguent au même service de comparaison ; seule la
 réponse HTTP ajoute les sorties et erreurs nécessaires à la lecture côte à côte. La route
 exige le droit de lecture ou d'édition du mécanisme demandé et vérifie l'appartenance des
-deux runs. Aucun appel de modèle ni écriture n'intervient. Les compteurs restent limités
-à la page courante ; l'inversion permet d'examiner les cas présents uniquement à droite.
+deux runs. Aucun appel de modèle ni écriture n'intervient. Un bilan global SQL complète les
+compteurs de page : cas distincts (entrée/référence), observations (entrée/référence/répétition),
+paires, manquants des deux côtés, ambiguïtés, jugements absents et erreurs. Les hausses, baisses
+et égalités exigent deux scores et jugements sans erreur ; elles restent nulles en présence
+d'un blocage de comparabilité. Les répétitions ne sont pas des cas indépendants. L'inversion
+permet d'examiner le détail des cas présents uniquement à droite.
 
 La comparabilité, elle, porte sur les deux runs complets. Pour chaque clé d'appariement
 (entrée JSON, référence JSON, répétition) présente des deux côtés, plusieurs résultats dans

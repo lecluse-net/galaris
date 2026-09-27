@@ -10,6 +10,7 @@ from sqlalchemy.sql.selectable import CTE
 from core.database import get_db
 from .models import LabEvaluationDataset, LabEvaluationRun, LabEvaluationRunCase, LabJudgmentCampaign
 from .schemas import EvaluationMechanism, EvaluationRunRead, EvaluationRunCaseRead
+from .comparison_summary import summarize
 
 
 async def _run(mechanism: EvaluationMechanism, identifier: UUID) -> LabEvaluationRun:
@@ -209,5 +210,6 @@ async def compare(
         "right": EvaluationRunRead.model_validate(right).model_dump(mode="json"),
         "items": compared,
         "next_offset": offset + limit if len(rows) > limit else None,
+        "summary": (await summarize(left_id, right_id, comparable=not blockers)).model_dump(),
         "note": "Descriptive observed results; missing judgments are not successes. Repeat with reversed runs to inspect unmatched cases.",
     }

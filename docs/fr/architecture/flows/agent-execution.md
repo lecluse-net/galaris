@@ -92,8 +92,13 @@ Pour les tâches historiques, la façade LLM récupère les heures réelles des 
 y compris la préparation lorsque son round appartient sans ambiguïté à une seule tâche.
 Elle ne fabrique pas une heure de claim depuis `created_at` ou `updated_at`. Les vues présentent
 les intervalles disponibles avec leur source plutôt que des cases « non mesuré ». Les requêtes
-sont groupées sur les seules tâches autorisées ; la récupération des appels historiques est
-inutile lorsqu’une mise en file a déjà été observée.
+sont groupées sur les seules tâches autorisées. Les appels servent également à mesurer la
+première sortie utile : texte non vide ou outil observé dans le journal, hors raisonnement
+et décisions internes. Task et Conversation séparent le temps dans les appels LLM et les
+intervalles non attribués entre appels ; les appels simultanés comptent une seule fois.
+Les Task ajoutent le délai depuis leur admission et leur première prise en charge. Sans
+journal ou fin d'appel probante, la mesure concernée reste inconnue. Ces temps serveur ne
+mesurent ni le rendu client ni la livraison au destinataire.
 Voir la [décision 0087](../../../../project/decisions/0087-task-activity-snapshots.md) pour les bornes,
 la réhydratation et la distinction avec le futur contrôle générique des effets.
 

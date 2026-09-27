@@ -1,5 +1,11 @@
 export default {
   fr: {
+    llmTiming: {
+      title: 'Délai avant la première sortie utile',
+      firstOutput: 'Depuis le premier appel LLM', calls: 'Dans les appels LLM', between: 'Entre les appels LLM',
+      unknown: 'Non mesuré', seconds: '{value} s',
+      explanation: 'Premier texte non vide ou appel d’outil observé dans le journal, hors raisonnement. Les appels simultanés ne sont comptés qu’une fois. Ce délai ne mesure pas la livraison au destinataire ; le temps entre appels reste non attribué.',
+    },
     clientConfig: {
       generate: 'Configurer Codex / Claude Code',
       title: 'Configuration des clients externes',
@@ -521,6 +527,12 @@ export default {
     },
   },
   en: {
+    llmTiming: {
+      title: 'Time to first useful output',
+      firstOutput: 'From first LLM call', calls: 'Within LLM calls', between: 'Between LLM calls',
+      unknown: 'Not measured', seconds: '{value} s',
+      explanation: 'First nonempty text or tool call observed in the journal, excluding reasoning. Concurrent calls count only once. This does not measure delivery to the recipient; time between calls remains unattributed.',
+    },
     clientConfig: {
       generate: 'Configure Codex / Claude Code',
       title: 'External client configuration',
@@ -1042,6 +1054,12 @@ export default {
     },
   },
   zh: {
+    llmTiming: {
+      title: '首次有效输出延迟',
+      firstOutput: '从首次 LLM 调用开始', calls: 'LLM 调用内', between: 'LLM 调用之间',
+      unknown: '未测量', seconds: '{value} 秒',
+      explanation: '日志中首次出现的非空文本或工具调用，不含推理。并发调用仅计一次。此延迟不代表接收者收到输出的时间；调用之间的时间未归因。',
+    },
     clientConfig: {
       generate: '配置 Codex / Claude Code',
       title: '外部客户端配置',

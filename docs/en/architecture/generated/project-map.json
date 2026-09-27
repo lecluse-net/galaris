@@ -649,6 +649,8 @@
           "back/app/conversation/facade.py",
           "back/app/conversation/inspection_service.py",
           "back/app/conversation/management_service.py",
+          "back/app/conversation/monitoring_service.py",
+          "back/app/conversation/schemas.py",
           "back/app/conversation/service.py",
           "back/app/conversation/task_objective.py"
         ],
@@ -1702,6 +1704,7 @@
           "back/app/lab/agent_review_service.py",
           "back/app/lab/capture_service.py",
           "back/app/lab/comparison_service.py",
+          "back/app/lab/comparison_summary.py",
           "back/app/lab/diagnosis_service.py",
           "back/app/lab/dispatcher_evaluation_service.py",
           "back/app/lab/engine.py",
@@ -16727,7 +16730,9 @@
       },
       {
         "files": [
+          "front/app/task/activity.ts",
           "front/app/task/components/ExecutionResult.vue",
+          "front/app/task/components/TaskStartupTiming.vue",
           "front/app/task/pages/index.vue",
           "front/app/task/useTaskActivity.ts"
         ],

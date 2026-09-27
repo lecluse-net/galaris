@@ -1,4 +1,5 @@
 import type { AIResult } from './types'
+import type { LLMExecutionTiming } from '@/app/llm'
 
 export interface TaskStartupTiming {
   task_id: string
@@ -12,6 +13,9 @@ export interface TaskStartupTiming {
   preparation_to_first_call_seconds?: number | null
   admission_seconds: number | null
   queue_wait_upper_bound_seconds: number | null
+  claimed_to_output_seconds?: number | null
+  enqueued_to_output_seconds?: number | null
+  execution_timing?: LLMExecutionTiming
   lifecycle_seconds?: Record<string, number>
   lifecycle_observed_since?: string | null
   phase_seconds?: Record<string, Record<string, number>>

@@ -34,6 +34,17 @@ async def can_display_conversation_document(turn: object, agent_id: int) -> bool
                 and room.messenger_active and _publisher is not None and _authorize_read is not None)
 
 
+async def can_read_conversation_document(document_id: UUID, agent_id: int) -> bool:
+    """Historical references never replace the document owner's current ACL."""
+    if _authorize_read is None:
+        return False
+    try:
+        await _authorize_read(document_id, agent_id)
+    except (PermissionError, FileNotFoundError):
+        return False
+    return True
+
+
 async def display_conversation_document(turn: ConversationTurn, document_id: UUID) -> None:
     if not await can_display_conversation_document(turn, turn.agent_id) or _publisher is None:
         raise PermissionError("Document presentation requires an internal Chat conversation.")

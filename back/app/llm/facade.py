@@ -7,9 +7,9 @@ from fastapi.responses import JSONResponse, StreamingResponse
 from collections.abc import AsyncIterator, Awaitable, Callable, Collection
 from contextlib import AbstractContextManager
 from uuid import UUID, uuid4
-from datetime import datetime
 from pydantic import BaseModel, JsonValue
 from .accounting_scope import llm_call_accounting
+from .timing import LLMExecutionTiming, LLMProcessingTiming, execution_timing, first_output_timestamp
 
 from . import llm_call_service, llm_provider_service
 from .provider_facade import (
@@ -160,14 +160,6 @@ class AgentRunUsage(TypedDict):
     cost_quality: Literal["exact", "estimated", "partial", "unknown"]
 
 
-class LLMProcessingTiming(BaseModel):
-    call_id: UUID
-    purpose: str | None
-    started_at: datetime
-    completed_at: datetime | None
-    seconds: float
-
-
 async def task_processing_timings(task_ids: tuple[UUID, ...]) -> dict[UUID, list[LLMProcessingTiming]]:
     """Recover actual provider intervals, never transaction timestamps or prompts.
 
@@ -181,7 +173,8 @@ async def task_processing_timings(task_ids: tuple[UUID, ...]) -> dict[UUID, list
     from .purposes import LLMCallPurpose
 
     result: dict[UUID, list[LLMProcessingTiming]] = {task_id: [] for task_id in task_ids}
-    columns = (LLMCall.id, LLMCall.purpose, LLMCall.started_at, LLMCall.completed_at, LLMCall.duration)
+    columns = (LLMCall.id, LLMCall.purpose, LLMCall.started_at, LLMCall.completed_at, LLMCall.duration,
+               first_output_timestamp())
     calls = (await get_db().execute(select(LLMCall.task_id, *columns)
              .where(LLMCall.task_id.in_(task_ids)).order_by(LLMCall.started_at))).all()
     candidate_rounds = select(ConversationTaskLink.round_id).where(ConversationTaskLink.task_id.in_(task_ids))
@@ -198,12 +191,29 @@ async def task_processing_timings(task_ids: tuple[UUID, ...]) -> dict[UUID, list
                LLMCall.purpose == LLMCallPurpose.CONVERSATION_TASK_OBJECTIVE.value)
         .distinct()
     )).all()
-    for task_id, call_id, purpose, started, completed, duration in (*calls, *preparations):
+    for task_id, call_id, purpose, started, completed, duration, first_output in (*calls, *preparations):
         result[task_id].append(LLMProcessingTiming(call_id=call_id, purpose=purpose,
-            started_at=started, completed_at=completed, seconds=max(0.0, float(duration))))
+            started_at=started, completed_at=completed, seconds=max(0.0, float(duration)),
+            first_output_at=first_output))
     for intervals in result.values():
         intervals.sort(key=lambda interval: interval.started_at)
     return result
+
+
+async def conversation_execution_timing(round_id: UUID, *, agent_id: int) -> LLMExecutionTiming:
+    """Read timing evidence for an already-authorized conversation, without prompts."""
+    from sqlalchemy import select
+    from core.database import get_db
+    from .models import LLMCall
+
+    rows = (await get_db().execute(select(
+        LLMCall.id, LLMCall.purpose, LLMCall.started_at, LLMCall.completed_at,
+        LLMCall.duration, first_output_timestamp(),
+    ).where(LLMCall.conversation_round_id == round_id, LLMCall.agent_id == agent_id,
+            LLMCall.task_id.is_(None)))).all()
+    return execution_timing([LLMProcessingTiming(call_id=call_id, purpose=purpose,
+        started_at=start, completed_at=end, seconds=duration, first_output_at=output)
+        for call_id, purpose, start, end, duration, output in rows])
 
 
 async def aggregate_task_lineage_usage(task_ids: tuple[UUID, ...]) -> tuple[int, float]:
@@ -305,7 +315,7 @@ __all__ = [
     "start_inference", "read_inference", "control_inference", "stream_inference",
     "start_inference_worker", "stop_inference_worker", "inference_worker_running",
     "record_text_inferences", "run_text_inference", "read_inference_events", "read_inference_result",
-    "LLMProcessingTiming", "task_processing_timings",
+    "LLMProcessingTiming", "task_processing_timings", "LLMExecutionTiming", "execution_timing", "conversation_execution_timing",
     "llm_call_accounting",
     "ProviderResponsesPolicy", "register_image_generation_provider", "register_model_metadata",
     "register_openai_protocol_adapter", "register_responses_policy",

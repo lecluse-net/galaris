@@ -31,6 +31,11 @@
           <p>{{ t('evaluation.comparison.descriptive') }}</p>
           <p v-if="incomplete" class="comparison-notice q-pa-sm">{{ t('evaluation.comparison.incomplete') }}</p>
           <p>{{ t('evaluation.comparison.progress', { before: result.left.completed_cases, beforeTotal: result.left.total_cases, after: result.right.completed_cases, afterTotal: result.right.total_cases }) }}</p>
+          <template v-if="result.summary">
+            <p>{{ t('evaluation.comparison.globalCoverage', result.summary) }}</p>
+            <p>{{ t('evaluation.comparison.globalMissing', result.summary) }}</p>
+            <p v-if="result.comparable">{{ t('evaluation.comparison.globalScores', result.summary) }}</p>
+          </template>
           <p v-if="result.comparable">{{ t('evaluation.comparison.counts', counts) }}</p>
           <p v-else>{{ t('evaluation.comparison.noSummary') }}</p>
           <p v-if="!result.items.length">{{ t('evaluation.comparison.empty') }}</p>

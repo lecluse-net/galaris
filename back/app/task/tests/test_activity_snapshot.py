@@ -95,6 +95,24 @@ async def test_initial_startup_separates_preparation_from_queue_and_survives_ret
                        data={"claimed_at": at(120)}))
     task.status = TaskStatus.SUCCESS
     task.updated_at = start + timedelta(seconds=200)
+    from app.llm.models import LLMCall, LLMCallEvent
+
+    dispatch = LLMCall(task_id=task.id, purpose="agent.dispatch", requested_model="synthetic", status="completed",
+        started_at=start + timedelta(seconds=15.4), completed_at=start + timedelta(seconds=17), duration=1.6)
+    execution = LLMCall(task_id=task.id, purpose="agent.exec", requested_model="synthetic", status="completed",
+        started_at=start + timedelta(seconds=18), completed_at=start + timedelta(seconds=25), duration=7,
+        first_token_at=start + timedelta(seconds=18.1))
+    db.add_all([dispatch, execution])
+    await db.flush()
+    for call, sequence, seconds, message in [
+        (dispatch, 1, 16, {"type": "text", "content": "Internal choice"}),
+        (execution, 1, 18.1, {"type": "thinking", "content": "Private reasoning"}),
+        (execution, 2, 18.2, {"type": "text", "content": "  \n\t"}),
+        (execution, 3, 21, {"type": "tool", "tool_name": "file_read"}),
+        (execution, 4, 22, {"type": "text", "content": "Useful text"}),
+    ]:
+        db.add(LLMCallEvent(call_id=call.id, sequence=sequence, created_at=start + timedelta(seconds=seconds),
+                            payload={"kind": "message", "message": message}))
     await db.flush()
     task_id = task.id
     db.expire_all()
@@ -103,6 +121,13 @@ async def test_initial_startup_separates_preparation_from_queue_and_survives_ret
     assert reloaded.admission_seconds == pytest.approx(.2)
     assert reloaded.queue_wait_upper_bound_seconds == pytest.approx(.1)
     assert reloaded.first_claimed_at.isoformat() == at(15.3)
+    assert reloaded.claimed_to_output_seconds == pytest.approx(5.7)
+    assert reloaded.enqueued_to_output_seconds == pytest.approx(5.8)
+    assert reloaded.execution_timing.first_output_at.isoformat() == at(21)
+    assert reloaded.execution_timing.first_output_seconds == pytest.approx(5.6)
+    assert reloaded.execution_timing.call_seconds_before_output == pytest.approx(4.6)
+    assert reloaded.execution_timing.between_calls_seconds == 1
+    assert "Private reasoning" not in reloaded.model_dump_json()
 
 
 @pytest.mark.parametrize("admission,claimed", [

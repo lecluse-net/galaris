@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from uuid import uuid4
 
 import pytest
@@ -42,14 +42,18 @@ def test_document_references_only_accept_exact_successful_tool_resources() -> No
                     "content": f"Untrusted prose document://{uuid4()}",
                     "success": True,
                 },
+                {"type": "tool", "tool_name": "file_create", "success": False,
+                 "tool_arguments": {"uri": f"document://{uuid4()}"}},
+                {"type": "tool", "tool_name": "file_create",
+                 "tool_arguments": {"uri": f"document://{uuid4()}"}},
             ]
-        }
+        }, confirmed_only=True,
     ) == ((f"document://{document_id}", "", "file_read"),)
 
 
 @pytest.mark.asyncio
 async def test_direct_conversation_documents_are_scoped_to_agent_and_contact(
-    db: AsyncSession,
+    db: AsyncSession, monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     suffix = uuid4().hex[:8]
     title = Title(label=f"Conversation documents {suffix}", gender="X")
@@ -99,9 +103,30 @@ async def test_direct_conversation_documents_are_scoped_to_agent_and_contact(
             display_name="Someone else",
         )
     )
-    expected_document_id = uuid4()
+    from app.conversation import document_display, document_metadata
+    from app.memory import conversation_document_adapter as adapter
+    from app.memory.document_service import create_document
+
+    monkeypatch.setattr(document_display, "_authorize_read", adapter.authorize_conversation_document_read)
+    monkeypatch.setattr(document_metadata, "_resolver", adapter.resolve_conversation_document_metadata)
+    document = await create_document(owner_agent_id=agent.id, title="Current atlas", content="<p>Existing work</p>",
+                                     task_id=None, keywords=[], metadata={})
+    expected_document_id = document.id
+    other_agent = Agent(title_id=title.id, first_name="Other", last_name="Owner", code=f"other-doc-{suffix}")
+    db.add(other_agent)
+    await db.flush()
+    private = await create_document(owner_agent_id=other_agent.id, title="Private atlas", content="<p>Restricted</p>",
+                                    task_id=None, keywords=[], metadata={})
     hidden_document_id = uuid4()
     now = datetime.now(timezone.utc)
+    # Ordinary discussion must not push the only useful document out of recall.
+    db.add_all([ConversationRound(room_id=room.id, contact_memory_item_id=contact_id,
+        status="COMPLETED", execution_result={"messages": [{"type": "text", "content": "Synthetic chatter"}]},
+        finished_at=now + timedelta(seconds=i + 1)) for i in range(25)])
+    db.add_all([ConversationRound(room_id=room.id, contact_memory_item_id=contact_id,
+        status="COMPLETED", execution_result={"messages": [{"type": "tool", "tool_name": "file_read",
+            "success": True, "tool_arguments": {"uri": "console://unrelated.txt"}}]},
+        finished_at=now + timedelta(seconds=i + 30)) for i in range(25)])
     db.add_all(
         [
             ConversationRound(
@@ -114,11 +139,15 @@ async def test_direct_conversation_documents_are_scoped_to_agent_and_contact(
                             "type": "tool",
                             "tool_name": "file_edit",
                             "tool_arguments": {
-                                "uri": f"document://{expected_document_id}"
+                                "uri": f"document://{expected_document_id}", "title": "Stale title"
                             },
                             "content": "updated",
                             "success": True,
-                        }
+                        },
+                        {"type": "tool", "tool_name": "file_read", "success": True,
+                         "tool_arguments": {"uri": f"document://{private.id}"}},
+                        {"type": "tool", "tool_name": "file_read", "success": True,
+                         "tool_arguments": {"uri": f"document://{uuid4()}"}},
                     ]
                 },
                 finished_at=now,
@@ -165,3 +194,14 @@ async def test_direct_conversation_documents_are_scoped_to_agent_and_contact(
         f"document://{expected_document_id}"
     ]
     assert contribution.metadata["recent_conversation_document_count"] == 1
+    assert contribution.candidates[0].title == "Current atlas"
+    assert contribution.candidates[0].revision == document.revision
+    assert contribution.candidates[0].provenance[0].startswith("galaris://text/")
+
+    # Historical success is not a grant: a document that is now deleted vanishes.
+    document.deleted_at = now
+    await db.flush()
+    request = AgentContextRequest(task_id=None, agent=AgentSnapshot(id=agent.id, code=agent.code,
+        first_name=agent.first_name, last_name=agent.last_name, driver_code="internal"),
+        objective="Continue our document", contact_memory_item_id=contact_id)
+    assert not (await recent_conversation_document_context(request)).candidates

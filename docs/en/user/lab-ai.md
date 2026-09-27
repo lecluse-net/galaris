@@ -154,8 +154,13 @@ first page even when the affected case appears later. With unchanged results and
 changing the page, page size or evaluation order does not change this blocker. Ambiguity
 on either side prevents selecting an answer.
 
-Counts describe only the displayed page, with 50 cases by default and options of 10, 20, 50,
-100 or 500. Ambiguous pairing never arbitrarily selects an answer. The list starts from cases
+The global summary covers both complete evaluations: distinct cases, observations including
+repetitions, paired results, missing before/after results, ambiguities, missing judgments and
+errors. Increases, decreases and ties count only judged, scored pairs without errors; they
+remain absent for incompatible configurations. Repetitions are not independent cases, and
+these descriptive counts do not establish statistical improvement. Separate page counts use
+50 cases by default and options of 10, 20, 50, 100 or 500. Ambiguous pairing never arbitrarily
+selects an answer. The list starts from cases
 executed before: use **Swap before and after**, then **Compare** to inspect cases present only
 after. Compare again after new results or judgments; the view does not refresh automatically.
 Reading starts no inference and changes neither evaluations nor production settings.

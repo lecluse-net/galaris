@@ -19,6 +19,11 @@ du dispatcher est regroupée ici ; ses contrats sont portés par 0101 et 0102.
 
 ### L0 — Mesures du parcours, dont la qualification du dispatcher
 
+La projection des traces mesure maintenant le premier texte/outil et l'union des intervalles
+LLM ; Task et Conversation la partagent ([ADR 0094](../decisions/0094-task-timing-and-delivery-observations.md)).
+Les durées entre appels restent non attribuées et les preuves absentes restent inconnues.
+Les campagnes avant/après, la séparation réseau/verrou/temps local et la livraison restent à qualifier.
+
 - Constituer un corpus synthétique multilingue avec témoins nominaux et perturbés :
   humain/pair IA, question/action, racine/enfant, contraintes et capacités différentes.
 - Mesurer admission, préparation, premier texte/outil, confirmation d'arrêt et démarrage du

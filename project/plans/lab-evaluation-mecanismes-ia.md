@@ -49,15 +49,15 @@ indépendantes ; un nombre insuffisant de cas reste signalé.
 
 Le comparateur MCP et le dialogue « Avant / après » des onze Labs partagent la comparaison
 de deux runs (axes modèle, prompt et paramètres), les blocages explicites et les écarts par
-cas décrits par l'[ADR 0134](../decisions/0134-agent-lab-control.md). Les compteurs de l'interface
-décrivent uniquement la page affichée ; ils ne constituent pas un bilan global ni statistique.
+cas décrits par l'[ADR 0134](../decisions/0134-agent-lab-control.md). Le bilan global distingue
+cas et répétitions, couverture et scores jugés ; il reste descriptif, sans conclusion statistique.
 La comparabilité et les ambiguïtés d'appariement portent sur les deux runs complets,
 indépendamment de la page consultée ou du sens de comparaison.
 
 - Étendre les politiques de comparaison aux expériences portant sur la rubrique, le corpus
   ou le juge et les qualifier sur des campagnes réelles.
-- Compléter les sorties dimensionnelles par des agrégats de régressions/améliorations et
-  des tendances dans le temps, avec les règles d'incertitude du lot F.
+- Compléter le bilan descriptif global par des tendances dimensionnelles dans le temps,
+  avec les règles d'incertitude du lot F.
 
 Réception : une modification du corpus ou du juge ne peut pas être présentée silencieusement
 comme un gain du candidat ; les résultats restent rattachés aux snapshots d'origine.

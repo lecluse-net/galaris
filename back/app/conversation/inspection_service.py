@@ -111,7 +111,10 @@ async def inspect_round(
         ).all()
     )
     serialized_calls = await llm_call_service.serialize_calls(calls)
+    from app.llm.facade import conversation_execution_timing
+
     return {
+        "execution_timing": (await conversation_execution_timing(round_id, agent_id=agent.id)).model_dump(mode="json"),
         "task_startup_timings": [item.model_dump(mode="json") for item in
                                  await task_startup_timings([link.task_id for link in task_links], agent_id=agent.id)],
         "round": {

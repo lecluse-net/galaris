@@ -7,13 +7,19 @@ test('initial task timing recovers historical processing and preserves timing ac
     preparation_started_at: '2026-09-13T05:44:40Z', preparation_finished_at: '2026-09-13T05:44:55Z',
     enqueued_at: '2026-09-13T05:44:55.200Z', first_claimed_at: '2026-09-13T05:44:55.300Z',
     preparation_seconds: 15, admission_seconds: 0.2, queue_wait_upper_bound_seconds: 0.1,
+    claimed_to_output_seconds: 5.7, enqueued_to_output_seconds: 5.8,
+    execution_timing: { first_call_at: '2026-09-13T05:44:55.400Z', first_output_at: '2026-09-13T05:45:01Z',
+      first_output_seconds: 5.6, call_seconds_before_output: 4.6, between_calls_seconds: 1 },
   }
   const props = { timing, showTask: true }
   await mount(page, 'app/task/components/TaskStartupTiming.vue', { props })
   const panel = page.getByRole('region', { name: 'Initial startup' })
   await expect(panel).toContainText('galaris://task/task-timing')
-  await expect(panel.locator('dl')).toContainText('15 s')
-  await expect(panel.locator('dl')).toContainText('0.1 s')
+  await expect(panel.locator('dl').first()).toContainText('15 s')
+  await expect(panel.locator('dl').first()).toContainText('0.1 s')
+  await expect(panel.locator('dl').first()).toContainText('5.7 s')
+  await expect(panel.getByRole('region', { name: 'Time to first useful output' })).toContainText('5.6 s')
+  await expect(panel.getByRole('region', { name: 'Time to first useful output' })).toContainText('4.6 s')
   await panel.getByText('Observed timestamps', { exact: true }).click()
   await expect(panel).toContainText('2026')
   await page.evaluate(timing => window.testApp.setProps({ timing: {
@@ -22,18 +28,23 @@ test('initial task timing recovers historical processing and preserves timing ac
     admission_seconds: null, queue_wait_upper_bound_seconds: null,
     preparation_started_at: '2026-09-13T05:44:40Z', preparation_finished_at: '2026-09-13T05:44:44Z',
     enqueued_at: null, first_claimed_at: null,
+    claimed_to_output_seconds: null, enqueued_to_output_seconds: null,
+    execution_timing: { first_call_at: null, first_output_at: null,
+      first_output_seconds: null, call_seconds_before_output: null, between_calls_seconds: null },
     processing_intervals: [{ call_id: 'historical-call', purpose: 'agent.dispatch',
       started_at: '2026-09-13T05:44:45Z', completed_at: '2026-09-13T05:44:53Z', seconds: 8 }],
   } }), timing)
   await panel.getByText('LLM processing: timestamps recovered from the call ledger').click()
   await expect(panel).toContainText('agent.dispatch')
   await expect(panel).toContainText('8 s')
-  await expect(panel.locator('dl')).toContainText('Objective preparation (LLM calls)')
-  await expect(panel.locator('dl')).toContainText('4 s')
+  await expect(panel.locator('dl').first()).toContainText('Objective preparation (LLM calls)')
+  await expect(panel.locator('dl').first()).toContainText('4 s')
+  await expect(panel.getByRole('region', { name: 'Time to first useful output' }).getByText('Not measured', { exact: true })).toHaveCount(3)
+  await expect(panel).not.toContainText('5.6 s')
   await expect(panel).not.toContainText('15 s')
   await expect(panel).not.toContainText('galaris://task/task-timing')
   await mount(page, 'app/task/components/TaskStartupTiming.vue', { props })
-  await expect(page.getByRole('region', { name: 'Initial startup' }).locator('dl')).toContainText('0.1 s')
+  await expect(page.getByRole('region', { name: 'Initial startup' }).locator('dl').first()).toContainText('0.1 s')
 })
 
 test('agent selector exposes an accessible label, placeholder, selection and clearing', async ({ page }) => {

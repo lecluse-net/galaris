@@ -65,6 +65,7 @@ export interface ConversationUnknownNotification {
 }
 
 export interface ConversationRoundDetail extends ConversationRound {
+  execution_timing?: LLMExecutionTiming
   task_startup_timings?: TaskStartupTiming[]
   agent_id: number
   agent_name: string | null
@@ -77,3 +78,4 @@ export interface ConversationRoundDetail extends ConversationRound {
 }
 
 export type ConversationRoundCalls = Record<string, LLMCall[]>
+import type { LLMExecutionTiming } from '@/app/llm'

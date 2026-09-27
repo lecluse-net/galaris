@@ -254,6 +254,11 @@ attente, les rounds, leurs tentatives, les appels LLM, la livraison et les éven
 réponse entre deux agents est admise seulement lorsqu’une requête fraîche l’attend ; cette garde
 évite les boucles automatiques de politesse.
 
+Les détails d'exécution montrent le délai jusqu'au premier texte ou appel d'outil observé,
+avec le temps dans les appels LLM et entre ces appels. Pour une Task, la préparation,
+l'admission et l'attente avant sa prise en charge restent séparées. « Non mesuré » signifie
+que les traces nécessaires manquent ; ces délais serveur ne prouvent pas la livraison.
+
 ### Parler à un agent en temps réel
 
 Lorsque Matrix ou Nextcloud Talk et une capacité vocale sont configurés, un agent peut participer
@@ -326,6 +331,11 @@ relancer le processus.
 La mémoire récente d’une conversation est reconstruite automatiquement. Pour le contexte durable,
 Galaris peut injecter avant l’exécution un rappel borné des souvenirs pertinents. Si la recherche
 sémantique est indisponible, l’interface indique le repli vers la recherche lexicale.
+
+Un document manipulé avec le même agent reste candidat au rappel même après de nombreux
+échanges ordinaires. L'agent retrouve sa référence, son titre et sa révision actuels, sous
+réserve des droits courants. Les documents supprimés ou devenus privés sont exclus. Ce
+rappel reste borné : fournissez son URI exacte si un ancien document n'est pas retrouvé.
 
 Dans **Mémoire**, les comptes autorisés peuvent :
 

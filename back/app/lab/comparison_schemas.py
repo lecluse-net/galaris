@@ -9,6 +9,20 @@ from .schemas import EvaluationRunRead
 ComparisonAxis = Literal["model", "prompt", "parameters"]
 
 
+class ComparisonSummary(BaseModel):
+    cases: int
+    observations: int
+    matched: int
+    missing_left: int
+    missing_right: int
+    ambiguous: int
+    unjudged: int
+    failed: int
+    increased: int | None
+    decreased: int | None
+    equal: int | None
+
+
 class ComparisonItem(BaseModel):
     left_result_id: UUID
     right_result_id: UUID | None
@@ -47,3 +61,4 @@ class RunComparison(BaseModel):
     right: EvaluationRunRead
     items: list[ComparisonItem]
     next_offset: int | None
+    summary: ComparisonSummary

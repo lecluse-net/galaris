@@ -59,6 +59,11 @@ identifiée de revenir à la configuration précédente.
 
 ### C — Continuité documentaire et sélection pertinente
 
+Le rappel borné des traces documentaires ignore désormais les échanges ordinaires avant
+sa limite et recontrôle ACL, titre et révision ([ADR 0032](../decisions/0032-frozen-interlocutor-context-capsule.md)).
+La régression synthétique couvre un document au-delà de cinquante échanges sans document.
+Cela ne qualifie pas encore le classement multilingue ni tout l'historique documentaire.
+
 - Mesurer les documents ou ressources utiles qui sortent de la fenêtre de messages récente.
 - Comparer récence, proximité sémantique, lien au contact et activité sans créer un second moteur
   de mémoire. Préserver URI, révision et toutes les provenances pertinentes lors de la fusion.

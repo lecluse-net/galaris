@@ -181,6 +181,11 @@ A received message is no longer systematically turned into a Task. The conversat
 
 In **Execution Tracking → Text conversations**, you can see processed or pending messages, rounds, their attempts, LLM calls, delivery, and any errors. A response between two Agents is admitted only when a fresh request is waiting for it; this safeguard prevents automatic loops of polite exchanges.
 
+Execution details show time to the first observed text or tool call, split into time within
+and between LLM calls. For Tasks, preparation, admission and waiting before the first claim
+remain separate. “Not measured” means the required evidence is missing; these server timings
+do not prove delivery.
+
 ### Talking to an Agent in Real Time
 
 When Matrix or Nextcloud Talk and a voice capability are configured, an Agent can participate in a call. Depending on the voice selected on its profile, Galaris uses either the transcription → Agent → synthesis pipeline or a low-latency native audio session. The second mode may retain no intermediate transcription: the absence of text in a native turn therefore does not indicate a lost call.
@@ -219,6 +224,11 @@ A local cancellation does not always guarantee that the external engine will sto
 ## Memory, Documents, and Topics
 
 Recent conversation memory is reconstructed automatically. For durable context, Galaris can inject a bounded reminder of relevant memories before execution. If semantic search is unavailable, the interface indicates the fallback to lexical search.
+
+A document used with the same Agent remains a recall candidate after many ordinary exchanges.
+The Agent recovers its reference, current title and revision, subject to current access rights.
+Deleted or newly private documents are excluded. Recall remains bounded: provide an exact URI
+if an older document cannot be found.
 
 In **Memory**, authorized accounts can:
 
