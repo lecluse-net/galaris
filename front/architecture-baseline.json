@@ -390,6 +390,14 @@
     },
     {
       "source": "app/onboarding",
+      "target": "core/authorize"
+    },
+    {
+      "source": "app/onboarding",
+      "target": "core/params"
+    },
+    {
+      "source": "app/onboarding",
       "target": "core/user"
     },
     {
