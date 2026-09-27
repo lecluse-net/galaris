@@ -4,7 +4,8 @@ from copy import deepcopy
 from typing import Any, Literal, cast
 from uuid import UUID
 
-from sqlalchemy import select
+from sqlalchemy import and_, func, or_, select
+from sqlalchemy.sql.selectable import CTE
 
 from core.database import get_db
 from .models import LabEvaluationDataset, LabEvaluationRun, LabEvaluationRunCase, LabJudgmentCampaign
@@ -20,6 +21,44 @@ async def _run(mechanism: EvaluationMechanism, identifier: UUID) -> LabEvaluatio
     if row is None:
         raise LookupError("Lab run not found.")
     return row
+
+
+def _ambiguous_pairings(left_id: UUID, right_id: UUID) -> CTE:
+    """Find shared evidence keys that cannot be paired one-to-one, in either direction."""
+    input_data = LabEvaluationRunCase.case_snapshot["input_data"]
+    expected_output = LabEvaluationRunCase.case_snapshot["expected_output"]
+    counts = (
+        select(
+            LabEvaluationRunCase.run_id,
+            LabEvaluationRunCase.repetition,
+            input_data.label("input_data"),
+            expected_output.label("expected_output"),
+            func.count().label("result_count"),
+        )
+        .where(LabEvaluationRunCase.run_id.in_((left_id, right_id)))
+        .group_by(
+            LabEvaluationRunCase.run_id,
+            LabEvaluationRunCase.repetition,
+            input_data,
+            expected_output,
+        )
+        .cte("pairing_counts")
+    )
+    left, right = counts.alias("left_counts"), counts.alias("right_counts")
+    return (
+        select(left.c.repetition, left.c.input_data, left.c.expected_output)
+        .join(right, and_(
+            left.c.repetition == right.c.repetition,
+            left.c.input_data == right.c.input_data,
+            left.c.expected_output == right.c.expected_output,
+        ))
+        .where(
+            left.c.run_id == left_id,
+            right.c.run_id == right_id,
+            or_(left.c.result_count > 1, right.c.result_count > 1),
+        )
+        .cte("ambiguous_pairings")
+    )
 
 
 async def compare(
@@ -91,20 +130,25 @@ async def compare(
         differences.append("other_configuration")
     allowed = {"candidate"} if axis == "model" else {"context"}
     blockers = [key for key in differences if key not in allowed]
+    ambiguous = _ambiguous_pairings(left_id, right_id)
+    if await get_db().scalar(select(select(ambiguous).exists())):
+        blockers.append("ambiguous_case_pairing")
+    ambiguous_item = select(ambiguous).where(
+        ambiguous.c.repetition == LabEvaluationRunCase.repetition,
+        ambiguous.c.input_data == LabEvaluationRunCase.case_snapshot["input_data"],
+        ambiguous.c.expected_output == LabEvaluationRunCase.case_snapshot["expected_output"],
+    ).exists()
     rows = (
-        await get_db().scalars(
-            select(LabEvaluationRunCase)
+        await get_db().execute(
+            select(LabEvaluationRunCase, ambiguous_item)
             .where(LabEvaluationRunCase.run_id == left_id)
             .order_by(LabEvaluationRunCase.created_at, LabEvaluationRunCase.id)
             .offset(offset).limit(limit + 1)
         )
-    ).all()
-    left_results = [
-        EvaluationRunCaseRead.model_validate(row).model_dump(mode="json")
-        for row in rows[:limit]
-    ]
+    ).tuples().all()
     compared: list[dict[str, Any]] = []
-    for item in left_results:
+    for row, is_ambiguous in rows[:limit]:
+        item = EvaluationRunCaseRead.model_validate(row).model_dump(mode="json")
         snapshot = item["case_snapshot"]
         matches = (
             await get_db().scalars(
@@ -120,14 +164,12 @@ async def compare(
                 .limit(2)
             )
         ).all()
-        target = matches[0] if len(matches) == 1 else None
-        if len(matches) > 1 and "ambiguous_case_pairing" not in blockers:
-            blockers.append("ambiguous_case_pairing")
+        target = matches[0] if len(matches) == 1 and not is_ambiguous else None
         compared.append(
             {
                 "left_result_id": item["id"],
                 "right_result_id": str(target.id) if target else None,
-                "pairing": "ambiguous" if len(matches) > 1 else "matched" if target else "missing",
+                "pairing": "ambiguous" if is_ambiguous else "matched" if target else "missing",
                 "name": snapshot.get("name"),
                 "repetition": item["repetition"],
                 "score_delta": target.score_percent - item["score_percent"]

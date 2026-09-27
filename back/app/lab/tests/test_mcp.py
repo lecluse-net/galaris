@@ -441,6 +441,14 @@ async def test_comparison_identifies_prompt_treatment_and_ambiguous_evidence(db,
         ctx, "briefing", UUID(left["id"]), UUID(right["id"]), "prompt", Page()
     )
     assert "ambiguous_case_pairing" in ambiguous["blockers"]
+    for left_id, right_id in ((left["id"], right["id"]), (right["id"], left["id"])):
+        for offset in (0, 100):
+            page = await mcp.lab_run_compare(
+                ctx, "briefing", UUID(left_id), UUID(right_id), "prompt", Page(offset=offset)
+            )
+            assert page["comparable"] is False
+            assert page["blockers"] == ["ambiguous_case_pairing"]
+            assert all(item["pairing"] == "ambiguous" for item in page["items"])
 
 
 @pytest.mark.asyncio

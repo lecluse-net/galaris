@@ -1,8 +1,9 @@
 """All Labs expose the same read-only comparison of persisted evidence."""
 
 from types import SimpleNamespace
+from datetime import datetime, timedelta, timezone
 from unittest.mock import AsyncMock
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 import pytest
 
@@ -29,7 +30,8 @@ async def test_comparison_requires_read_or_edit_of_exact_lab(monkeypatch, mechan
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("mechanism", list(CONTRACTS))
-async def test_http_comparison_preserves_evidence_and_missing_scores(client, mechanism):
+@pytest.mark.parametrize("duplicate_side", ["left", "right"])
+async def test_http_comparison_preserves_evidence_and_missing_scores(client, mechanism, duplicate_side):
     url = f"/api/evaluation/{mechanism}/runs/compare"
     params = {"left_run_id": str(uuid4()), "right_run_id": str(uuid4())}
     assert (await client.get(url, params=params)).status_code in {401, 403}
@@ -48,9 +50,10 @@ async def test_http_comparison_preserves_evidence_and_missing_scores(client, mec
             db.add(LabJudgmentCampaign(run_id=run.id, configuration={"judge": "synthetic"}))
         for index in range(11):
             snapshot = {"name": f"Case {index}", "input_data": {"variable_value": str(index)}, "expected_output": {"result": "Reference"}}
-            db.add(LabEvaluationRunCase(run_id=runs[0].id, case_snapshot=snapshot, score_percent=0, actual_output={"result": "Before answer"}, cost=0.2, duration=2))
+            created_at = datetime(2026, 1, 1, tzinfo=timezone.utc) + timedelta(seconds=index)
+            db.add(LabEvaluationRunCase(run_id=runs[0].id, case_snapshot=snapshot, score_percent=0, actual_output={"result": "Before answer"}, cost=0.2, duration=2, created_at=created_at))
             if index != 1:
-                db.add(LabEvaluationRunCase(run_id=runs[1].id, case_snapshot=snapshot, score_percent=None if index == 2 else 20, actual_output={"result": "After answer"}, cost=0.1, duration=1))
+                db.add(LabEvaluationRunCase(run_id=runs[1].id, case_snapshot=snapshot, score_percent=None if index == 2 else 20, actual_output={"result": "After answer"}, cost=0.1, duration=1, created_at=created_at))
         await db.commit()
         params = {"left_run_id": str(runs[0].id), "right_run_id": str(runs[1].id), "limit": 10}
     response = await client.get(url, params=params)
@@ -78,3 +81,40 @@ async def test_http_comparison_preserves_evidence_and_missing_scores(client, mec
     other = "dispatcher" if mechanism != "dispatcher" else "briefing"
     assert (await client.get(f"/api/evaluation/{other}/runs/compare", params=params)).status_code == 404
     assert (await client.get(url, params={**params, "right_run_id": str(uuid4())})).status_code == 404
+
+    # The affected case is outside the first page. Different repetitions are
+    # separate evidence; duplicating the same repetition makes pairing ambiguous.
+    async with get_db_session() as db:
+        original = await db.get(LabEvaluationRunCase, UUID(items["Case 10"][f"{duplicate_side}_result_id"]))
+        for repetition in (original.repetition + 1, original.repetition + 2):
+            db.add(LabEvaluationRunCase(run_id=original.run_id, repetition=repetition,
+                case_snapshot=original.case_snapshot, score_percent=10))
+        missing = await db.get(LabEvaluationRunCase, UUID(items["Case 1"]["left_result_id"]))
+        db.add(LabEvaluationRunCase(run_id=missing.run_id, repetition=missing.repetition,
+            case_snapshot=missing.case_snapshot, score_percent=0))
+        await db.commit()
+    assert (await client.get(url, params=params)).json()["comparable"] is True
+    async with get_db_session() as db:
+        original = await db.get(LabEvaluationRunCase, original.id)
+        db.add(LabEvaluationRunCase(run_id=original.run_id, repetition=original.repetition,
+            case_snapshot=original.case_snapshot, score_percent=10))
+        await db.commit()
+
+    for reverse in (False, True):
+        pair = {**params}
+        if reverse:
+            pair["left_run_id"], pair["right_run_id"] = pair["right_run_id"], pair["left_run_id"]
+        for offset, limit in ((0, 10), (10, 10), (0, 500), (999, 10)):
+            response = await client.get(url, params={**pair, "offset": offset, "limit": limit})
+            assert response.status_code == 200, response.text
+            page = response.json()
+            assert page["comparable"] is False
+            assert page["blockers"] == ["ambiguous_case_pairing"]
+            for item in page["items"]:
+                if item["name"] == "Case 10" and item["repetition"] == original.repetition:
+                    assert item["pairing"] == "ambiguous"
+                    assert item["right_result_id"] is None
+                    assert item["score_delta"] is None
+                    assert item["cost_delta"] is None
+                    assert item["duration_delta"] is None
+                    assert item["right_output"] is None

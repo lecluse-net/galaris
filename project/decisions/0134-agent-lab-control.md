@@ -59,6 +59,14 @@ exige le droit de lecture ou d'édition du mécanisme demandé et vérifie l'app
 deux runs. Aucun appel de modèle ni écriture n'intervient. Les compteurs restent limités
 à la page courante ; l'inversion permet d'examiner les cas présents uniquement à droite.
 
+La comparabilité, elle, porte sur les deux runs complets. Pour chaque clé d'appariement
+(entrée JSON, référence JSON, répétition) présente des deux côtés, plusieurs résultats dans
+l'un ou l'autre run produisent `ambiguous_case_pairing`. Ce blocage est indépendant de
+l'offset, de la taille de page et du sens de comparaison, y compris sur une page vide.
+Les lignes concernées restent ambiguës sans réponse cible ni delta arbitrairement choisi.
+Une autre répétition est une preuve distincte ; des cas sans correspondant restent manquants.
+Le contrôle global s'exécute en SQL ; seuls les résultats de la page sont matérialisés.
+
 ## Limites et validation
 
 Le budget des benchmarks reste un seuil entre évaluations, susceptible d'être dépassé
@@ -73,7 +81,8 @@ revues et la projection du skill. Les tests existants des captures, deux passes,
 publications et revues humaines restent applicables. `lab-insights.spec.mjs` vérifie la
 distinction des avis d'agents et des scores automatiques sur ordinateur et mobile.
 `test_comparison.py` couvre le contrat HTTP des onze mécanismes, les droits, les scores
-absents ou nuls et la pagination. `lab-comparison.spec.mjs` traverse le dialogue commun,
+absents ou nuls et la pagination, dont une ambiguïté hors page et l'inversion des runs.
+`test_mcp.py` vérifie le même blocage sur une page vide. `lab-comparison.spec.mjs` traverse le dialogue commun,
 les deux formats d'écran, les erreurs, les réponses tardives et l'ouverture dans chaque Lab.
 
 L'étalonnage statistique, les tendances, les gardes de promotion et la qualification

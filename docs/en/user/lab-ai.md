@@ -149,6 +149,10 @@ scores remain zero; missing judgments remain missing. Differences show **after m
 without statistical guarantees or automatic promotion decisions. Changes to corpora, judges
 or other incompatible settings are flagged and suppress the progress summary. Incomplete
 evaluations carry a warning.
+Comparability covers both complete evaluations: an ambiguous pairing is flagged on the
+first page even when the affected case appears later. With unchanged results and judgments,
+changing the page, page size or evaluation order does not change this blocker. Ambiguity
+on either side prevents selecting an answer.
 
 Counts describe only the displayed page, with 50 cases by default and options of 10, 20, 50,
 100 or 500. Ambiguous pairing never arbitrarily selects an answer. The list starts from cases

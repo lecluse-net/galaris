@@ -168,6 +168,10 @@ lire les preuves. Un score nul reste zéro ; un jugement absent reste absent. Le
 affichent **après moins avant**, sans garantie statistique ni décision automatique de promotion.
 Les changements de corpus, de juge ou d'autres réglages incompatibles sont signalés ; aucun
 bilan de progression n'est alors calculé. Les évaluations incomplètes portent un avertissement.
+La comparabilité porte sur les deux évaluations complètes : un appariement ambigu est
+signalé dès la première page, même si le cas concerné se trouve plus loin. À résultats et
+jugements identiques, changer de page, de taille de page ou inverser les évaluations ne
+change pas ce blocage. Une ambiguïté d'un côté ou de l'autre empêche de choisir une réponse.
 
 Les compteurs décrivent uniquement la page affichée, avec 50 cas par défaut et les choix
 10, 20, 50, 100 ou 500. Un appariement ambigu ne choisit pas arbitrairement une réponse.
