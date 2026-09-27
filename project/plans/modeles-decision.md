@@ -54,7 +54,7 @@ supprimés par 0129. Aucun cache sémantique de décisions n'est prévu dans ce 
 
 - API TypeSafe directe et adaptateurs locaux, dont Laya ; services Docker spécialisés,
   essais CPU/GPU, démarrage à froid, contention et entraînement.
-- Classement de ressources, compétences et outils ; usages Goal, planner et briefing,
+- Classement de ressources, compétences et outils ; usages Goal, planner,
   seulement après démonstration qu'une décision fermée évite un travail génératif utile.
 - Primitives booléennes ou ordinales lorsqu'un consommateur concret et sa sémantique de
   repli les justifient ; le contrat courant reste le choix fermé.

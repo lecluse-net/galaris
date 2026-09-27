@@ -178,13 +178,13 @@ or new/expanded cycle causes `make architecture-check` to fail.
   results, policies);
 - the registry and availability state of drivers;
 - model resolution and `standard` and `high` execution strategies;
-- the dispatcher, planner, briefing, and common workflow;
+- the dispatcher, planner, and common workflow;
 - the public `run`, `stream`, and `cancel` facade, as well as task adapters;
 - the port to durable persistence.
 
 `app.harness` is the internal Pydantic AI harness: adaptation to the `AgentDriver` contract,
 agent construction, toolset, history, media, streaming, registry of cancellable runs, and
-effect checkpoints. `bridge.hermes` is its external counterpart. The dispatcher, planner, and briefing remain
+effect checkpoints. `bridge.hermes` is its external counterpart. The dispatcher and planner remain
 in `app.agent`, because they prepare an `AgentRunRequest` before entering either driver.
 
 `bridge.hermes` contains the client, driver, configuration, and adaptation of the
@@ -208,13 +208,9 @@ and the binary file input limit.
 collaboration and per-run model request and tool call limits. The internal engine enforces
 these limits; compatible network harnesses receive them and are responsible for enforcing
 them. Legacy links to the harness `common` and `advanced` tabs redirect to this page.
-It also contains Planner and Briefing blocks. Each lists the harnesses whose
-pipeline policy uses that mechanism and is hidden when the list is empty. The API exposes
-the provider policy in preference to its transport policy. Briefing also requires at least
-one eligible effort level. Currently only the internal harness uses Planner; Briefing is hidden.
-The briefing prompt is a persistent Param (`ai.briefing-system-prompt`) with a canonical default;
-editing it does not activate the mechanism. Lab evaluations retain their explicit overrides.
-Planner retains its prompt and depth, node and leaf limits.
+The Planner block lists eligible harnesses and is hidden when none declare it.
+The provider policy takes precedence over its transport policy. Planner retains its prompt
+and depth, node and leaf limits.
 Automatic incident and LLM trace retention is configured in Logs, separately
 from manual cleanup. This organization preserves persisted keys and values and does not
 introduce per-harness overrides for execution limits.
@@ -258,7 +254,7 @@ of the Hermes consumer are documented in
 
 `app.task` owns the SQLAlchemy models, durable state machine, leases, attempts,
 retries, administration commands, and scheduler. It does not choose the driver, model,
-or whether to use the planner or briefing.
+or whether to use the planner.
 
 Its scheduling, retry, planning, budget, and collaboration limits are stored in `params` and
 administered under **Preferences → Tasks**. Consumers read their typed view at the boundary of
@@ -364,14 +360,13 @@ persisted as creation constraints, notably `@high`. `@plan` implies creation of 
 and `@effort` implies creation of a Task with additional reasoning overhead; `@task` alone
 retains the profile setting. The tags
 `@task` and `@effort` are removed from visible text and their intent
-is carried through server metadata. The parser preserves `@briefing` for compatibility,
-but current policy refuses its admission. It rejects
+is carried through server metadata. The parser rejects
 invented URIs, checks idempotency before this call, and rechecks round freshness before directly
 persisting the `Task`; no intermediate objective object exists.
 This Task is then marked as carrying a standalone objective. The dispatcher reads this `label` and
 `objective`, while the Messenger session, Memory, and continuity used by the admission call are
 purged from downstream prompts. Server fields for the room and interlocutor remain in
-`Task.data` and messaging context; future contributions from the planner, briefing, Working Set,
+`Task.data` and messaging context; future contributions from the planner, Working Set,
 and harness remain independent.
 
 For a numbered interaction, exact responses continue to be handled without a model. Text that
@@ -730,7 +725,7 @@ Task SQLAlchemy
 AgentTask + app.agent facade
     │
     ├── dispatcher ──► EXEC / PLAN
-    ├── driver policy ──► optional briefing
+    ├── driver policy ──► direct execution
     ├── model_resolver ──► model frozen for the run
     ├── DriverSpec ──► direct strategy frozen
     ▼
@@ -833,17 +828,15 @@ Helpers are not selected by `app.task`. They are hard-coded in the driver's desc
 ```python
 DriverPipelinePolicy(
     use_planner=True,
-    use_briefing=False,
-    briefing_efforts=frozenset(),
 )
 ```
 
 Current matrix:
 
-| Driver | Planner | Briefing | `standard` | `high` | Workspace |
-|---|---:|---:|---|---|---|
-| `internal` | yes | never (disabled for evaluation) | direct | direct | per agent |
-| `hermes` | no | never | direct `/v1/runs` | direct `/v1/runs`, `high` model | shared by runtime |
+| Driver | Planner | `standard` | `high` | Workspace |
+|---|---:|---|---|---|
+| `internal` | yes | direct | direct | per agent |
+| `hermes` | no | direct `/v1/runs` | direct `/v1/runs`, `high` model | shared by runtime |
 
 The dispatcher filters routes according to this policy and annotates its decision with the driver,
 permitted routes, and policy notes. Workflow transitions then honor this decision; they do not
@@ -877,46 +870,13 @@ A driver must not import the `Task` ORM model. An optional capability uses a ded
 protocol, such as `DriverConfigurationProvider`, not
 an `if driver == ...` test in the facade.
 
-## 4. Dispatcher, Planner, and Briefing
+## 4. Dispatcher and Planner
 
 `EXEC high` requires the harness to declare `uses_llm_calls=true`: execution calls must use
 Galaris model routing and its `LLMCall` journal. An external runtime using its own API or
-subscription keeps standard execution only; without planner or briefing, dispatch requires
+subscription keeps standard execution only; without a planner, dispatch requires
 no LLM call. Managed providers, including Claude Agent, currently enforce the Galaris gateway
 and retain both effort levels.
-
-The Task dispatcher builds the route/effort pairs exposed by the selected harness:
-`EXEC standard`, `EXEC high`, `BRIEFING` with a supported effort, and `PLAN high`. Provider
-capabilities refine the shared network driver's policy. After constraints are applied, one
-remaining choice requires no LLM; multiple choices permit inference limited to that list;
-zero choices produce an explicit error. Every result is persisted. Without a dispatcher model,
-the first permitted choice is selected after these checks. Tasks cannot select `END`.
-The rule distinguishes difficulty from decomposability.
-An explicit, bounded, mechanical, and simply verifiable operation remains `EXEC standard`, even
-if it uses multiple tools or applies an already authorized destructive action: risk determines
-guardrails, not effort level.
-A site, visual, report, document, code change, or other coherent deliverable remains in
-`EXEC high` when research, production, refinement, verification, and delivery contribute to
-the same result. `BRIEFING` is a separate choice from `EXEC high`: it prepares one execution
-without planning multiple tasks. It remains disabled in the internal harness. `PLAN`
-is reserved for multiple independently executable units whose durable results require
-coordination. A shared goal, repeated method, shared progress log, or sequential order does not
-exclude `PLAN` when each deliverable can be completed, checked, and resumed separately and
-coordination provides a concrete benefit. Chapters, drafts, and review passes of the same document
-stay together, even when saved separately. A small mechanical batch remains `EXEC standard`;
-when separation or the coordination benefit is unclear, `EXEC high` remains preferred.
-Conversational exchanges no
-longer pass through a Task; their separate restricted profile may still arbitrate EXEC/END to
-avoid an AI→AI loop. This conversational profile always imposes direct `standard` execution
-and disables planner, briefing, and `high` effort. When no dispatcher LLM is configured, the
-service produces a traceable and deterministic direct-execution decision. For humans, this
-decision never consults the dispatcher model. Explicit `@plan` and `@exec` directives follow
-deterministic admission without routing inference. Current contracts, including Tasks, omit
-`requires_action`. On Tasks, a textual directive
-is applied only after routes exposed by the driver's policy have been resolved; it can never
-activate an absent planner. A creation `forced_route`, on the other hand, remains a strict
-constraint and is explicitly incompatible if the driver does not expose it. `@briefing` remains
-recognized for compatibility but is refused while no driver exposes it.
 
 The Task dispatcher supports an optional **Decision** model in the LLM profile. Add Jev from
 the OpenRouter catalog under the Decision capability, then select it in the profile usages.
@@ -951,7 +911,7 @@ setting is required. See [ADR 0130](../../../project/decisions/0130-live-message
 
 Each agent references a personal LLM profile or retains `profile_id = NULL` to follow the
 current profile. Text usages share four levels: `ultra-low` for Dream; `low` for the
-dispatcher and quick conversation; `standard` for briefing, executor, and Goal tracking;
+dispatcher and quick conversation; `standard` for the executor and Goal tracking;
 `high` for the high executor, planner, and AI Lab. Specialized models (media,
 transcription, and embeddings) retain their dedicated columns. An empty value in a personal
 profile remains empty and never falls back to the current profile. Planner selection also covers
@@ -960,7 +920,7 @@ final plan synthesis. Gateways also recognize Claude families
 (Luna/`low`, Terra/`standard`, Sol/`high`) as aliases for these levels; an explicitly
 configured LLM code retains priority.
 Driver policy remains higher priority than activation:
-configuring a briefing or planner model does not activate them for Hermes.
+configuring a planner model does not activate it for Hermes.
 
 The planner produces a mission brief and then a bounded tree. All tasks are
 materialized durably, but only one leaf is activated at a time. Results from previous steps
@@ -996,13 +956,8 @@ source fails, the operation is reported as partial and does not prune the index.
 remains an optimization: the effective MCP catalog is recalculated with current permissions
 before every selection and call.
 
-Briefing can prepare one complex execution of the internal harness. It selects only genuinely
-available resources and cannot execute, send, or conclude the task.
-It is currently disabled in all production policies; its implementation, historical results, and
-benchmarks remain available for evaluation. No driver receives an old briefing result when its
-policy does not allow it.
 
-Neither the plan nor the briefing can replace the user's objective. Common prompts instruct
+The plan cannot replace the user's objective. Common prompts instruct
 the agent to ask a concise question when essential information is missing.
 
 ### AI Lab and Mechanism Benchmarks
@@ -1641,7 +1596,7 @@ make it explicit in the contract, tests, and documentation.
 
 - importing `app.task.models.Task` in a driver recreates the coupling that the facade eliminates;
 - choosing a model in the proxy after the run has begun makes traces inconsistent;
-- having the briefing or planner decide a second time cancels the dispatcher's choice;
+- having the planner decide a second time cancels the dispatcher's choice;
 - retaining a silent fallback for an unknown driver code masks a configuration error;
 - treating final text as proof of an action allows hallucinated confirmations;
 - persisting a test fixture to the development database creates stray tasks;

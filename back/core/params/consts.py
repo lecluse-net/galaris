@@ -78,7 +78,6 @@ class Params:
     # Configurable Markdown system prompts and prompt additions.
     AI_TASK_OBJECTIVE_SYSTEM_PROMPT = "ai.task-objective-system-prompt"
     AI_PLANNER_SYSTEM_PROMPT = "ai.planner-system-prompt"
-    AI_BRIEFING_SYSTEM_PROMPT = "ai.briefing-system-prompt"
     AI_EXECUTOR_SYSTEM_PROMPT = "ai.executor-system-prompt"
     AI_CONVERSATION_EXECUTOR_SYSTEM_PROMPT = "ai.conversation-executor-system-prompt"
     AI_VOICE_EXECUTOR_SYSTEM_PROMPT = "ai.voice-executor-system-prompt"
@@ -355,12 +354,6 @@ DEFAULT_PARAMS: dict[str, ParamConfig] = {
         "empty_uses_default": True,
     },
     Params.AI_PLANNER_SYSTEM_PROMPT: {
-        "value": None,
-        "kind": "prompt",
-        "display_default": True,
-        "empty_uses_default": True,
-    },
-    Params.AI_BRIEFING_SYSTEM_PROMPT: {
         "value": None,
         "kind": "prompt",
         "display_default": True,

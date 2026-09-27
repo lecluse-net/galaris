@@ -115,7 +115,7 @@ def _correlation_ids(
 
 
 def _scoped_tool_names(task: AgentRunRequest) -> set[str] | None:
-    """Return the planner or briefing tool scope when one exists."""
+    """Return the planner tool scope when one exists."""
     selected: set[str] = set()
     data = task.data if isinstance(task.data, dict) else {}
     raw_plan_tools = data.get("plan_tools")
@@ -137,16 +137,6 @@ def _scoped_tool_names(task: AgentRunRequest) -> set[str] | None:
 
     if data.get("goal_referrer_type") == "AGENT":
         selected.add("task_run")
-
-    briefing = task.get_briefing_result()
-    if briefing is not None and briefing.success:
-        selected.update(
-            choice.identifier.strip()
-            for choice in briefing.choices
-            if choice.kind == "tool" and choice.identifier.strip()
-        )
-        if any(choice.kind == "process" for choice in briefing.choices):
-            selected.update(_SCOPED_PROCESS_TOOLS)
 
     if not selected:
         return None

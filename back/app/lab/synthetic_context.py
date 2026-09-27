@@ -11,13 +11,6 @@ USAGE_CONTEXT: dict[EvaluationMechanism, str] = {
         "and multi-stage work only when the policy permits planning. Forced route/effort are "
         "authoritative even if a different choice might otherwise be natural."
     ),
-    "briefing": (
-        "The caller prepares a Task for an executor. Build objectives that actually use the supplied "
-        "resource catalog, agent role and channel. Vary item history, prior attachments and missing "
-        "information. Include relevant resources and plausible distractors. When creating a fresh "
-        "environment, supply a small coherent tool/process catalog with identifiers and descriptions. "
-        "References must select existing resources or explicit checks, never invent a tool."
-    ),
     "planner": (
         "The caller decomposes a Task before execution. Use the shared tool catalog, result contract, "
         "delivery owner, context and limits. Vary objectives with real dependencies (collect, verify, "
@@ -57,7 +50,7 @@ USAGE_CONTEXT: dict[EvaluationMechanism, str] = {
         "goal context, not unrelated missions with identical tracking."
     ),
     "task_executor": (
-        "The caller executes an assigned Task. Use the shared agent role, tool catalog, briefing, "
+        "The caller executes an assigned Task. Use the shared agent role, tool catalog, "
         "plan, resources, working set and simulated tool responses. Fresh environments need a concrete "
         "role, relevant tool names and coherent response fixtures. Cases must be executable with "
         "those tools and fixtures; inability or clarification is valid when a capability is absent. "

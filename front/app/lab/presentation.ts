@@ -16,14 +16,6 @@ export const labSections = [
     descriptionKey: 'evaluation.sectionInfo.dispatcher',
   },
   {
-    key: 'briefing',
-    slug: 'briefing',
-    icon: 'assignment',
-    color: 'orange',
-    titleKey: 'evaluation.tabs.briefing',
-    descriptionKey: 'evaluation.mechanismInfo.briefing',
-  },
-  {
     key: 'planner',
     slug: 'planner',
     icon: 'account_tree',

@@ -292,7 +292,6 @@ def _messaging_context(data: dict[str, Any]) -> dict[str, str]:
 async def build_task_prompt(task: Any, extra_context: Optional[dict[str, str]] = None) -> str:
     """Build the driver-neutral task prompt and normalized JSON message context."""
     from core.params import runtime_settings
-    from app.agent import briefing_service
 
     raw_data = getattr(task, "data", None)
     data = _string_keyed_dict(raw_data)
@@ -368,11 +367,6 @@ async def build_task_prompt(task: Any, extra_context: Optional[dict[str, str]] =
         ),
         t("executor.section_objectives", lang): task.objective or "",
         t("executor.section_shared_context", lang): shared_context,
-        "execution_briefing": (
-            str(metadata.get("briefing_text") or "")
-            if has_request_metadata
-            else briefing_service.executor_text(task)
-        ),
     }
     referrer_type = str(data.get("goal_referrer_type") or "").strip()
     if referrer_type == "AGENT" and data.get("goal_referrer_agent_id") is not None:

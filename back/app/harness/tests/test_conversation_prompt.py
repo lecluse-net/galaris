@@ -1249,7 +1249,6 @@ async def test_plan_directive_is_admitted_before_foreground_model(
         "Génère une Tour Eiffel 3D très détaillée.",
         forced_route="PLAN",
         forced_effort="high",
-        require_briefing=False,
         auto_approve=False,
     )
     build_session.assert_not_awaited()
@@ -1309,33 +1308,12 @@ async def test_new_post_interrupts_blocked_dispatcher_before_admission(monkeypat
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
-    ("objective", "expected_objective", "route", "effort", "briefing", "approve"),
+    ("objective", "expected_objective", "route", "effort", "approve"),
     [
-        ("Fais ça @standard @task", "Fais ça", None, "standard", False, False),
-        (
-            "@plan Fais plutôt ceci @high @approve",
-            "Fais plutôt ceci",
-            "PLAN",
-            "high",
-            False,
-            True,
-        ),
-        (
-            "Exécute @task directement @exec",
-            "Exécute directement",
-            "EXEC",
-            None,
-            False,
-            False,
-        ),
-        (
-            "@task @briefing vas-y, fais-le",
-            "vas-y, fais-le",
-            "BRIEFING",
-            "high",
-            True,
-            False,
-        ),
+        ("Fais ça @standard @task", "Fais ça", None, "standard", False),
+        ("@plan Fais plutôt ceci @high @approve", "Fais plutôt ceci", "PLAN", "high", True),
+        ("Exécute @task directement @exec", "Exécute directement", "EXEC", None, False),
+        ("@task @unknown vas-y, fais-le", "@unknown vas-y, fais-le", None, None, False),
     ],
 )
 async def test_direct_task_is_admitted_without_any_conversation_llm_call(
@@ -1344,7 +1322,6 @@ async def test_direct_task_is_admitted_without_any_conversation_llm_call(
     expected_objective: str,
     route: str | None,
     effort: str | None,
-    briefing: bool,
     approve: bool,
 ) -> None:
     task_id = uuid4()
@@ -1382,7 +1359,6 @@ async def test_direct_task_is_admitted_without_any_conversation_llm_call(
         expected_objective,
         forced_route=route,
         forced_effort=effort,
-        require_briefing=briefing,
         auto_approve=approve,
     )
     build_session.assert_not_awaited()
@@ -1435,7 +1411,6 @@ async def test_hidden_task_control_is_admitted_without_a_visible_tag(
         "Écris un poème sur la mer",
         forced_route=None,
         forced_effort=None,
-        require_briefing=False,
         auto_approve=False,
     )
     build_session.assert_not_awaited()
@@ -1476,8 +1451,6 @@ async def test_conversation_controller_skips_runtime_when_dispatcher_ends_peer_e
             allowed_routes=["EXEC", "END"],
             pipeline_policy={
                 "use_planner": False,
-                "use_briefing": False,
-                "briefing_efforts": [],
             },
         )
 

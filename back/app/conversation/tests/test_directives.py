@@ -17,14 +17,13 @@ def test_task_directives_combine_in_any_order() -> None:
     assert directive.error is None
 
 
-def test_briefing_directive_forces_briefing_before_execution() -> None:
-    directive = parse_direct_task_directive("@task @briefing Vas-y, fais-le")
+def test_unknown_tag_is_plain_objective_text() -> None:
+    directive = parse_direct_task_directive("@task @unknown Vas-y, fais-le")
 
     assert directive is not None
-    assert directive.objective == "Vas-y, fais-le"
-    assert directive.forced_route == "BRIEFING"
-    assert directive.forced_effort == "high"
-    assert directive.briefing_requested is True
+    assert directive.objective == "@unknown Vas-y, fais-le"
+    assert directive.forced_route is None
+    assert directive.forced_effort is None
 
 
 def test_plan_directive_implies_a_direct_task() -> None:
@@ -71,7 +70,7 @@ def test_task_directive_reports_conflicts_without_model_interpretation() -> None
     route_conflict = parse_direct_task_directive("@task @exec @plan Fais ça")
     effort_conflict = parse_direct_task_directive("@standard @task @high Fais ça")
     missing = parse_direct_task_directive("@task @plan")
-    incompatible = parse_direct_task_directive("@task @briefing @standard Fais ça")
+    incompatible = parse_direct_task_directive("@task @plan @standard Fais ça")
 
     assert route_conflict is not None and route_conflict.error == "conflicting_route"
     assert effort_conflict is not None and effort_conflict.error == "conflicting_effort"

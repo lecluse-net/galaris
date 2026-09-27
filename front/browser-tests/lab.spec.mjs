@@ -72,23 +72,23 @@ test('dataset settings save their revision and preserve other parameters on desk
     configuration: { system_prompt: 'Prépare un rapport clair, concis et vérifiable.' }, prompt_suffix: null,
   }
   await jsonRoute(page, '**/api/evaluation/mechanisms', [{
-    key: 'briefing', executor: null, configuration_schema: { properties: { system_prompt: { type: 'string' } } }, algorithm: {},
-    contract: { variable_name: 'objective', variable_schema: { type: 'string' }, parameters_schema: parameterSchema, parameter_defaults: {}, result_name: 'briefing_and_resources' },
+    key: 'planner', executor: null, configuration_schema: { properties: { system_prompt: { type: 'string' } } }, algorithm: {},
+    contract: { variable_name: 'objective', variable_schema: { type: 'string' }, parameters_schema: parameterSchema, parameter_defaults: {}, result_name: 'plan' },
   }])
   await jsonRoute(page, '**/api/evaluation/config', { lab_llm_id: null, llms: [] })
-  await page.route('**/api/evaluation/briefing/datasets', async route => {
+  await page.route('**/api/evaluation/planner/datasets', async route => {
     await initialLoad
     await route.fulfill({ json: [dataset] })
   })
-  await jsonRoute(page, '**/api/evaluation/briefing/datasets/dataset/cases', [])
-  await jsonRoute(page, '**/api/evaluation/briefing/datasets/dataset/runs?*', [])
+  await jsonRoute(page, '**/api/evaluation/planner/datasets/dataset/cases', [])
+  await jsonRoute(page, '**/api/evaluation/planner/datasets/dataset/runs?*', [])
   const saved = []
-  await page.route('**/api/evaluation/briefing/datasets/dataset', async route => {
+  await page.route('**/api/evaluation/planner/datasets/dataset', async route => {
     expect(route.request().method()).toBe('PATCH')
     saved.push(route.request().postDataJSON())
     await route.fulfill({ json: { ...dataset, ...saved.at(-1), revision: saved.length + 1 } })
   })
-  await mount(page, 'app/lab/components/LabWorkbench.vue', { props: { mechanism: 'briefing', canEdit: true }, locale: 'fr' })
+  await mount(page, 'app/lab/components/LabWorkbench.vue', { props: { mechanism: 'planner', canEdit: true }, locale: 'fr' })
   const newDataset = page.getByRole('button', { name: 'Nouveau jeu', exact: true })
   await expect(newDataset).toBeDisabled()
   releaseInitialLoad()
@@ -124,17 +124,17 @@ test('Lab input actions show dismissible error toasts without changing the modal
   const dataset = { id: 'dataset', name: 'Test dataset', revision: 1, description: '', parameters: {}, configuration: {}, prompt_suffix: null }
   const input = { variable_value: 'Prepare a report' }
   await jsonRoute(page, '**/api/evaluation/mechanisms', [{
-    key: 'briefing', executor: null, configuration_schema: {}, algorithm: {},
-    contract: { variable_name: 'objective', variable_schema: { type: 'string' }, parameters_schema: {}, parameter_defaults: {}, result_name: 'briefing_and_resources' },
+    key: 'planner', executor: null, configuration_schema: {}, algorithm: {},
+    contract: { variable_name: 'objective', variable_schema: { type: 'string' }, parameters_schema: {}, parameter_defaults: {}, result_name: 'plan' },
   }])
   await jsonRoute(page, '**/api/evaluation/config', { lab_llm_id: null, llms: [] })
-  await jsonRoute(page, '**/api/evaluation/briefing/datasets', [dataset])
-  await jsonRoute(page, '**/api/evaluation/briefing/datasets/dataset/cases', [{
+  await jsonRoute(page, '**/api/evaluation/planner/datasets', [dataset])
+  await jsonRoute(page, '**/api/evaluation/planner/datasets/dataset/cases', [{
     id: 'item', name: 'Report', revision: 1, enabled: true, readiness: 'draft',
     input_data: input, expected_output: {}, source_capture: {},
   }])
-  await jsonRoute(page, '**/api/evaluation/briefing/datasets/dataset/runs?*', [])
-  await mount(page, 'app/lab/components/LabWorkbench.vue', { props: { mechanism: 'briefing', canEdit: true } })
+  await jsonRoute(page, '**/api/evaluation/planner/datasets/dataset/runs?*', [])
+  await mount(page, 'app/lab/components/LabWorkbench.vue', { props: { mechanism: 'planner', canEdit: true } })
   await page.getByRole('tab', { name: 'Items', exact: true }).click()
   await page.getByRole('button', { name: 'View', exact: true }).click()
   const dialog = page.getByRole('dialog')
@@ -143,7 +143,7 @@ test('Lab input actions show dismissible error toasts without changing the modal
     ['Suggest a reference for review', 'cases/item/generate-expected', { input_data: input }, ['body', 'input_data', 'variable_value'], { output: { result: 'Reference report' } }],
   ]) {
     let valid = false
-    await page.route(`**/api/evaluation/briefing/${path}`, async route => {
+    await page.route(`**/api/evaluation/planner/${path}`, async route => {
       expect(route.request().postDataJSON()).toEqual(body)
       await route.fulfill(valid
         ? { json: result }
@@ -177,30 +177,30 @@ test('each item edits and sends its own history for previews, references and sav
     expected_output: {}, source_capture: {},
   }))
   await jsonRoute(page, '**/api/evaluation/mechanisms', [{
-    key: 'briefing', executor: null, configuration_schema: {}, algorithm: {},
+    key: 'planner', executor: null, configuration_schema: {}, algorithm: {},
     contract: {
       variable_name: 'objective', variable_schema: { type: 'string' },
       parameters_schema: { properties: { language: { type: 'string' } } }, parameter_defaults: { language: 'en' },
       context_schema: { properties: { history: { type: 'array' } } }, context_defaults: { history: [] },
-      result_name: 'briefing_and_resources',
+      result_name: 'plan',
     },
   }])
   await jsonRoute(page, '**/api/evaluation/config', { lab_llm_id: null, llms: [] })
-  await jsonRoute(page, '**/api/evaluation/briefing/datasets', [dataset])
-  await jsonRoute(page, '**/api/evaluation/briefing/datasets/dataset/cases', items)
-  await jsonRoute(page, '**/api/evaluation/briefing/datasets/dataset/runs?*', [])
+  await jsonRoute(page, '**/api/evaluation/planner/datasets', [dataset])
+  await jsonRoute(page, '**/api/evaluation/planner/datasets/dataset/cases', items)
+  await jsonRoute(page, '**/api/evaluation/planner/datasets/dataset/runs?*', [])
   const sent = []
   for (const [path, result] of [
     ['datasets/dataset/preview', { candidate_prompt: 'Preview' }],
     ['cases/item-0/generate-expected', { output: { result: 'Reference' } }],
     ['cases/item-0', { ...items[0], revision: 2 }],
   ]) {
-    await page.route(`**/api/evaluation/briefing/${path}`, async route => {
+    await page.route(`**/api/evaluation/planner/${path}`, async route => {
       sent.push(route.request().postDataJSON())
       await route.fulfill({ json: result })
     })
   }
-  await mount(page, 'app/lab/components/LabWorkbench.vue', { props: { mechanism: 'briefing', canEdit: true } })
+  await mount(page, 'app/lab/components/LabWorkbench.vue', { props: { mechanism: 'planner', canEdit: true } })
   await page.getByRole('tab', { name: 'Dataset settings', exact: true }).click()
   await expect(page.locator('[data-parameter="history"]')).toHaveCount(0)
   await page.getByRole('tab', { name: 'Items', exact: true }).click()

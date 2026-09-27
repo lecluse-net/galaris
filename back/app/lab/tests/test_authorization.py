@@ -34,7 +34,6 @@ def test_every_evaluation_lab_has_a_distinct_read_edit_pair() -> None:
     assert set(MECHANISM_PRIVILEGES) == {
         "dispatcher",
         "task_analysis",
-        "briefing",
         "planner",
         "topic_classification",
         "memory_extraction",
@@ -44,8 +43,8 @@ def test_every_evaluation_lab_has_a_distinct_read_edit_pair() -> None:
         "conversation_executor",
         "voice_executor",
     }
-    assert len(ALL_EVALUATION_LAB_PRIVILEGES) == 22
-    assert len(set(ALL_EVALUATION_LAB_PRIVILEGES)) == 22
+    assert len(ALL_EVALUATION_LAB_PRIVILEGES) == 20
+    assert len(set(ALL_EVALUATION_LAB_PRIVILEGES)) == 20
 
 
 def test_static_and_dynamic_routes_declare_their_lab_contract() -> None:
@@ -82,14 +81,14 @@ async def test_mechanism_assertion_checks_only_the_requested_lab(
         AssertionContext(
             user=user,
             db=db,
-            params={"mechanism": "briefing", "lab_access_mode": "edit"},
+            params={"mechanism": "planner", "lab_access_mode": "edit"},
         )
     )
 
     assert allowed is True
     check.assert_awaited_once_with(
         user,
-        list(MECHANISM_PRIVILEGES["briefing"]),
+        list(MECHANISM_PRIVILEGES["planner"]),
         db,
     )
 

@@ -143,7 +143,7 @@ async def test_task_profile_selects_decision_or_existing_text_path(decisions, ru
     task.agent.profile_id = profile.id
     await db.commit()
     spec = replace(INTERNAL_HARNESS, pipeline_policy=DriverPipelinePolicy(
-        use_planner=False, use_briefing=False, uses_llm_calls=True,
+        use_planner=False, uses_llm_calls=True,
         execution_efforts=frozenset({"standard", "high"}),
     ))
     # The harness is an execution boundary; exercise the real dispatcher and profile resolution.
@@ -169,7 +169,7 @@ async def test_lab_runs_real_dispatcher_with_decision_candidate_and_no_hidden_fa
     db, request, calls, text_calls, mode = decisions
     llm = await db.get(LLM, request.llm_id)
     inputs = {"objective": "<p>Résoudre le problème de calcul.</p>",
-              "pipeline_policy": {"use_planner": False, "use_briefing": False,
+              "pipeline_policy": {"use_planner": False,
                                   "execution_efforts": ["standard", "high"], "uses_llm_calls": True}}
     result, cost = await evaluate_mechanism(get_mechanism("dispatcher"), input_data=inputs, llm=llm)
     assert (result["route"], result["effort"], result["language"]) == ("EXEC", "high", "fr")

@@ -26,12 +26,9 @@ register_incident_runtime()
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     """Manage application startup and shutdown."""
-    from app.agent import register_briefing_output_contracts, register_dispatcher_output_contracts
-    from app.lab import register_inference_output_contracts as register_lab_output_contracts
+    from app.agent import register_dispatcher_output_contracts
 
     register_dispatcher_output_contracts()
-    register_briefing_output_contracts()
-    register_lab_output_contracts()
     # Wait for database availability before the first query so a transient DNS
     # or remote startup delay cannot terminate Uvicorn permanently.
     from core.database import get_db_session, wait_for_db

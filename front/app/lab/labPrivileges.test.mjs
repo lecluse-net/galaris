@@ -11,7 +11,6 @@ const incidentNavigation = loadTypescript(new URL('../incident/navigation.ts', i
 const labKeys = [
   'tasks',
   'dispatcher',
-  'briefing',
   'planner',
   'topic_classification',
   'memory_extraction',

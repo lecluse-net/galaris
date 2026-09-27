@@ -73,7 +73,7 @@ test('chat access cannot populate the management cache and removing an avatar cl
   await expect(page.locator('img')).toHaveCount(0)
 })
 
-test('agent selectors coalesce simultaneous reads by scope and return independent copies', async ({ page }) => {
+test('agent selectors share reads by scope, survive one cancelled reader and return independent copies', async ({ page }) => {
   const reads = []
   await page.route('**/api/agents/selection?scope=*', route => {
     reads.push(new URL(route.request().url()).searchParams.get('scope'))
@@ -81,15 +81,20 @@ test('agent selectors coalesce simultaneous reads by scope and return independen
   })
   await mount(page, harness, { props: { showManagement: false } })
   reads.length = 0
-  const labels = await page.evaluate(async () => {
+  const result = await page.evaluate(async () => {
     const { getAgentSelection } = await import('/app/agent/services/agentSelectionService.ts')
-    const [first, second, teams] = await Promise.all([
+    const controller = new AbortController()
+    const cancelled = getAgentSelection('management', controller.signal)
+      .then(() => 'unexpected success', error => error.name)
+    const selections = Promise.all([
       getAgentSelection('management'), getAgentSelection('management'), getAgentSelection('teams'),
     ])
+    controller.abort()
+    const [first, second, teams] = await selections
     first[0].label = 'Locally edited'
     await getAgentSelection('management')
-    return [second[0].label, teams[0].label]
+    return { labels: [second[0].label, teams[0].label], cancelled: await cancelled }
   })
-  expect(labels).toEqual(['Test Agent', 'Test Agent'])
+  expect(result).toEqual({ labels: ['Test Agent', 'Test Agent'], cancelled: 'AbortError' })
   expect(reads.sort()).toEqual(['management', 'management', 'teams'])
 })

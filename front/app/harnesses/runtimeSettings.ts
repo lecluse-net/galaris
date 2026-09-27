@@ -34,12 +34,6 @@ export const plannerFields: SettingField[] = [
     },
 ]
 
-export const briefingFields: SettingField[] = [{
-  name: 'ai.briefing-system-prompt',
-  labelKey: 'harnesses.preferences.briefingPrompt',
-  descriptionKey: 'harnesses.preferences.briefingPromptHint',
-  input: 'prompt',
-}]
 
 export const executionLimitFields: SettingField[] = [
   {

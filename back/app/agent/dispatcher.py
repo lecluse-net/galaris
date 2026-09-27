@@ -46,7 +46,7 @@ DispatchOutputT = TypeVar(
 )
 
 
-# Frozen v1/v2 requests retain their original schemas; new Task calls use v3.
+# Frozen requests retain their original schemas; new Task calls use v4.
 _LegacyActiveDispatchDecision = create_model(
     "ActiveDispatchDecision", __base__=ActiveDispatchDecision,
     __doc__=ActiveDispatchDecision.__doc__, requires_action=(bool, False),
@@ -56,14 +56,13 @@ _LegacyConversationDispatchDecision = create_model(
     __doc__=ConversationDispatchDecision.__doc__, requires_action=(bool, False),
 )
 
-
 def register_dispatcher_output_contracts() -> None:
     from app.llm.facade import register_inference_output
 
     register_inference_output("galaris.dispatcher.active/v1", _LegacyActiveDispatchDecision)
     register_inference_output("galaris.dispatcher.conversation/v1", _LegacyConversationDispatchDecision)
     register_inference_output("galaris.dispatcher.active/v2", ActiveDispatchDecision)
-    register_inference_output("galaris.dispatcher.active/v3", TaskDispatchDecision)
+    register_inference_output("galaris.dispatcher.active/v4", TaskDispatchDecision)
     register_inference_output("galaris.dispatcher.conversation/v2", ConversationDispatchDecision)
 
 
@@ -296,7 +295,7 @@ DISPATCHER_HISTORY_MAX_CHARS_PER_MESSAGE = 500
 # Read routing tags before inference. The negative lookbehind avoids addresses such as
 # ``email@exec.com``.
 _DISPATCH_TAG_RE = re.compile(
-    r"(?<!\w)@(exec|plan|briefing|approve|high|standard)\b",
+    r"(?<!\w)@(exec|plan|approve|high|standard)\b",
     re.IGNORECASE,
 )
 
@@ -307,8 +306,7 @@ Your role is to analyze the incoming task and select exactly one route from the 
 Do not infer, mention, or select any route that is not listed in the available routes section. If only one route is listed, use that route. Prefer the simplest available route that can satisfy the task.
 
 Route and effort are separate decisions. Start from EXEC with effort "standard", then escalate
-only when the task requires another available choice: EXEC "high", BRIEFING, or PLAN.
-BRIEFING prepares one work unit before execution; it is optional and separate from EXEC high.
+only when the task requires another available choice: EXEC "high" or PLAN.
 
 Choose between them with these definitions:
 - EXEC with effort "standard" is the default: conversation, a direct answer, a clarification, or
@@ -348,7 +346,7 @@ artifact, names a recipient, has external side effects, uses several tools, or p
 authorized destructive command such as deleting a known file or resetting one exact repository.
 Those properties require precise scope checks and normal safety controls, but a bounded mechanical
 operation remains EXEC "standard". Choose high only when actual cognitive complexity means that a
-stronger model or execution briefing would materially help.
+stronger model would materially help.
 
 You must also detect the task/user language:
 - Choose exactly one language code from the available Galaris languages: ${languages}.
@@ -503,7 +501,7 @@ class Dispatcher:
             notes.append("Ignored unsupported message directives: " + ", ".join(ignored))
         raw_route = str(task.forced_route or "").strip().upper()
         raw_effort = str(task.forced_effort or "").strip().lower()
-        if raw_route and raw_route not in {"EXEC", "BRIEFING", "PLAN"}:
+        if raw_route and raw_route not in {"EXEC", "PLAN"}:
             return (), [*notes, "Invalid forced route"]
         if raw_effort and raw_effort not in {"standard", "high"}:
             return (), [*notes, "Invalid forced effort"]
@@ -560,7 +558,7 @@ class Dispatcher:
             effective_objective = str(objective or "")
             effective_sender_is_ai = bool(sender_is_ai)
         policy_notes = [
-            "Conversation profile: direct standard execution only; planner and briefing disabled"
+            "Conversation profile: direct standard execution only; planner disabled"
         ]
         depth = 0
 
@@ -672,8 +670,6 @@ class Dispatcher:
         result.policy_notes = policy_notes
         result.pipeline_policy = {
             "use_planner": False,
-            "use_briefing": False,
-            "briefing_efforts": [],
         }
         result.decision.effort = "standard"
         return result
@@ -693,13 +689,11 @@ class Dispatcher:
         spec = spec or self._task_executor_driver(task)
         result.driver_code = spec.code
         result.allowed_routes = [
-            route for route in ("EXEC", "BRIEFING", "PLAN", "END") if route in allowed_routes
+            route for route in ("EXEC", "PLAN", "END") if route in allowed_routes
         ]  # type: ignore[assignment]
         result.policy_notes = list(policy_notes)
         result.pipeline_policy = {
             "use_planner": spec.pipeline_policy.use_planner,
-            "use_briefing": spec.pipeline_policy.use_briefing,
-            "briefing_efforts": sorted(spec.pipeline_policy.briefing_efforts),
             "execution_efforts": sorted(spec.pipeline_policy.execution_efforts),
             "uses_llm_calls": spec.pipeline_policy.uses_llm_calls,
             "dispatch_choices": [
@@ -742,14 +736,12 @@ class Dispatcher:
             return []
 
         applied: list[str] = []
-        route_tags = tags & {"exec", "plan", "briefing"}
+        route_tags = tags & {"exec", "plan"}
         if len(route_tags) == 1 and task.forced_route is None:
             tag = route_tags.pop()
             route = tag.upper()
             if allowed_routes is None or route in allowed_routes:
                 task.forced_route = cast(ForcedRoute, route)
-                if tag == "briefing":
-                    task.forced_effort = "high"
                 applied.append(f"@{tag}")
             else:
                 if ignored_tags is not None:
@@ -857,11 +849,6 @@ class Dispatcher:
             lines.append(
                 "- **EXEC**: the default route. Use standard for a small self-contained request, "
                 "or high for one coherent but demanding work unit with one immediate outcome."
-            )
-        if "BRIEFING" in routes:
-            lines.append(
-                "- **BRIEFING**: prepare a focused execution briefing, then execute one cohesive "
-                "work unit. Select this only when preparation adds value over direct execution."
             )
         if "PLAN" in routes:
             lines.append(
@@ -1179,7 +1166,7 @@ class Dispatcher:
         routes = {
             match.group(1).upper()
             for match in _DISPATCH_TAG_RE.finditer(objective)
-            if match.group(1).lower() in {"exec", "plan", "briefing"}
+            if match.group(1).lower() in {"exec", "plan"}
         }
         if len(routes) != 1:
             return None

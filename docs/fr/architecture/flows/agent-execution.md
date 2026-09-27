@@ -33,7 +33,7 @@ explicites des appels courts et le refus des résultats incomplets restent incha
 Voir [0139](../../../../project/decisions/0139-provider-output-capacity.md).
 
 Les modèles internes Chat/Responses traversent la façade d’inférence durable de `app.llm`.
-Dispatcher et Briefing utilisent aussi l’adaptateur structuré, avec leur schéma et contexte
+Le Dispatcher utilise aussi l’adaptateur structuré, avec son schéma et contexte
 de validation figés. L’admission est committée avant le départ du worker ; ses leases,
 événements et résultats ne remplacent ni les tentatives Task ni les checkpoints d’outils.
 `LLMCall` reste la source des coûts des appels physiques. Le pilote d’extraction Memory du Lab
@@ -131,7 +131,7 @@ Task PostgreSQL ── app.task scheduler/agent_adapter ──► AgentTaskPort
                               │
                dispatcher + politique du driver
                               │
-                  planner / briefing éventuels
+                  planner éventuel
                               │
              providers de contexte communs, fail-open
  historique gouverné si requis + Working Set courant
@@ -162,8 +162,8 @@ Task PostgreSQL ── app.task scheduler/agent_adapter ──► AgentTaskPort
 |---|---|
 | Phase, lease, tentative, pause, reprise | `app.task` |
 | Driver disponible et descripteur | registre `app.agent` |
-| Route EXEC/BRIEFING/PLAN et effort | dispatcher `app.agent` borné par la politique du harnais sélectionné |
-| Activation du planner et du briefing | `DriverPipelinePolicy` |
+| Route EXEC/PLAN et effort | dispatcher `app.agent` borné par la politique du harnais sélectionné |
+| Activation du planner | `DriverPipelinePolicy` |
 | Tous les usages LLM | niveau texte ou colonne spécialisée du profil effectif, sauf surcharge durable de raisonnement portée par la Task |
 | Modèle standard/high | resolver `app.agent`, une fois par run |
 | Adaptateur direct ou Kanban interne à Hermès | `bridge.hermes.driver` |
@@ -270,8 +270,8 @@ leur fin.
    suffisent pas, même sauvegardés séparément. Si la séparation ou le bénéfice de coordination
    est incertain, `EXEC high` est préféré. Un choix forcé explicite est honoré
    sans réévaluation cachée.
-4. Le planner ou le briefing s’exécute si le dispatcher a retenu cette route parmi les capacités
-   du harnais. `EXEC high` n'implique aucun briefing automatique pour une nouvelle décision.
+4. Le planner s’exécute si le dispatcher a retenu cette route parmi les capacités
+   du harnais. `EXEC high` exécute directement.
    Le planner reçoit tous les noms du catalogue MCP effectif, sans
    plafond global, puis un top-k hybride détaillé calculé après filtrage des droits. La version
    du catalogue est persistée avec le plan et chaque identifiant choisi est validé contre elle.
@@ -286,7 +286,7 @@ leur fin.
    conserve l’effort de raisonnement du profil. Les deux tags de contrôle sont retirés du texte
    visible et leur intention est transportée dans les métadonnées serveur. La valeur durable a
    priorité sur chaque niveau texte du profil
-   pour la construction de l’objectif, le dispatcher, le planner, le briefing, la synthèse et
+   pour la construction de l’objectif, le dispatcher, le planner, la synthèse et
    l’exécuteur. Elle est héritée par les descendants planifiés ou délégués ; elle ne modifie ni
    l’effort d’exécution `standard`/`high`, ni les usages spécialisés image, audio ou vectoriels.
    Une fois `PLAN` sélectionné — automatiquement pour plusieurs unités réellement décomposables ou
@@ -308,8 +308,8 @@ leur fin.
    datasets Planner du Lab. Le serveur ajoute séparément les limites effectives et le contrat du
    cycle de clarification ; ces garde-fous ne sont pas du texte expérimental.
    Chaque mécanisme texte lit son niveau partagé dans l’unique profil effectif de l’agent :
-   `ultra-low` pour Dream, `low` pour le dispatcher et la conversation rapide, `standard` pour le
-   briefing, l’exécuteur et le suivi des Goals, `high` pour l’exécuteur high, le planner et le Lab.
+   `ultra-low` pour Dream, `low` pour le dispatcher et la conversation rapide, `standard` pour
+   l’exécuteur et le suivi des Goals, `high` pour l’exécuteur high, le planner et le Lab.
    `Agent.profile_id = NULL` sélectionne
    le profil courant ; un identifiant renseigné sélectionne exclusivement ce profil et une colonne
    vide n’en consulte aucun autre. Le modèle du planner est réutilisé pour sa synthèse finale.
@@ -322,7 +322,7 @@ leur fin.
    un objectif autonome, le dispatcher reçoit directement ce libellé et cet objectif ; les
    providers ne relisent plus la session Messenger, Memory ou la continuité historique consommées
    par cet appel. Le contexte de salon et d'interlocuteur reste déterministe dans `Task.data` et
-   `messaging_context`, tandis que le Working Set et les apports du plan, du briefing et du harnais
+   `messaging_context`, tandis que le Working Set et les apports du plan et du harnais
    peuvent encore enrichir le travail courant. Pour les autres Tasks, le provider Memory reçoit des
    identifiants structurés afin qu'un nom inclus dans la requête ne serve jamais de frontière d'identité. Pour
    une Task humaine, le rappel réunit les mémoires non conversationnelles et celles du contact
@@ -378,7 +378,7 @@ leur fin.
    l'exécution et de son accounting. Le Harness ne reçoit que l'identité de Task et de run ; le
    service LLM redérive le round côté serveur, recoupe le lien durable `ConversationTaskLink` avec
    le `conversation_round_id` figé dans les données de Task et refuse toute divergence. Le champ
-   `purpose` distingue notamment `agent.dispatch`, `agent.briefing`, `agent.planning` et
+   `purpose` distingue notamment `agent.dispatch`, `agent.planning` et
    `agent.exec`, indépendamment du Harness concret.
 7. La façade invoque le driver enregistré, normalise son mode streamé ou non streamé, impose le
    résultat terminal unique et projette les événements sémantiques dans la timeline de la
@@ -627,8 +627,8 @@ qui ne sont pas cochés ne sont même pas résolus.
 Le profil conversationnel du dispatcher répond directement aux humains et arbitre `EXEC`/`END`
 pour un message émis par une autre IA. Ce `END` termine uniquement le round conversationnel sans
 réponse ; `EXEC` lance toujours le contrôleur direct en effort `standard`. Ce profil n’expose ni
-`PLAN`, ni effort `high`, ni briefing. `END` n’appartient plus au contrat actif du dispatcher de
-Task, limité à `EXEC`/`BRIEFING`/`PLAN`. Les deux sorties structurées ne demandent aucune justification au
+`PLAN`, ni effort `high`. `END` n’appartient plus au contrat actif du dispatcher de
+Task, limité à `EXEC`/`PLAN`. Les deux sorties structurées ne demandent aucune justification au
 modèle : elles ne contiennent que les champs de routage nécessaires et sont bornées à 256 tokens.
 Le champ historique de la décision durable reste réservé aux diagnostics et décisions
 déterministes produits localement.
@@ -672,8 +672,7 @@ déterministe `EXEC`, puis appellent l'opération canonique
 d'admission avant tout runtime LLM conversationnel. Sur une Task durable, une directive de message
 est une préférence négociée après résolution
 des routes déclarées par `AgentDriverSpec.pipeline_policy`; elle ne peut donc pas activer une étape
-que le driver n'expose pas. `@briefing` est actuellement indisponible puisque aucun driver actif
-n'expose le briefing. Seul un
+que le driver n'expose pas. Seul un
 `forced_route` de création explicite reste une contrainte stricte.
 
 Une commande simple d'arrêt avec une cible active unique peut être exécutée avant le dispatcher
@@ -855,13 +854,10 @@ conversations et la même persistance de session vocale.
 
 ## Matrice d’exécution
 
-| Driver | Effort `standard` | Effort `high` | Briefing |
-|---|---|---|---|
-| `internal` | exécution Pydantic AI directe | exécution Pydantic AI directe | jamais (désactivé pour évaluation) |
-| `hermes` | session `/v1/runs` directe | session `/v1/runs` directe, modèle `high` | jamais |
-
-Le mécanisme, ses contrats, ses résultats historiques et ses benchmarks du Lab restent présents,
-mais la politique statique du driver interne ne route plus les nouvelles Tasks vers `BRIEFING`.
+| Driver | Effort `standard` | Effort `high` |
+|---|---|---|
+| `internal` | exécution Pydantic AI directe | exécution Pydantic AI directe |
+| `hermes` | session `/v1/runs` directe | session `/v1/runs` directe, modèle `high` |
 
 La constante interne `HERMES_HIGH_KANBAN_ENABLED` est actuellement désactivée. Elle n’est ni un
 paramètre d’environnement, ni un paramètre administrable : les nouvelles exécutions Hermès
@@ -941,7 +937,7 @@ depuis l’ADR 0058 et la reprise échoue explicitement.
 
 - Contrats : `back/app/agent/contracts.py`, `task_port.py`.
 - Orchestration : `back/app/agent/facade.py`, `dispatcher.py`, `planner_service.py`,
-  `briefing_service.py`, `model_resolver.py`.
+  `model_resolver.py`.
 - Harnais interne : `back/app/harness/driver.py`, `executor.py`, `run_control.py`,
   `checkpoint.py`.
 - Découverte des outils : `back/app/tools/catalog.py`, `tool_search_service.py` et

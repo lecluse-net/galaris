@@ -474,7 +474,6 @@ class TestSet:
     def test_prompt_declarations_share_the_governed_kind(self) -> None:
         assert Params.AI_TASK_OBJECTIVE_SYSTEM_PROMPT in params_service.prompt_names()
         assert Params.AI_PLANNER_SYSTEM_PROMPT in params_service.prompt_names()
-        assert Params.AI_BRIEFING_SYSTEM_PROMPT in params_service.prompt_names()
         assert Params.AI_TOPIC_CLASSIFICATION_SYSTEM_PROMPT in params_service.prompt_names()
         assert Params.AUDIO_SUMMARY_VIDEO_FINAL_SYSTEM_PROMPT in params_service.prompt_names()
         assert all(

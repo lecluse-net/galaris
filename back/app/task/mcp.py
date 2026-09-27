@@ -38,7 +38,6 @@ _EXECUTION_CONTEXT_KEYS = (
 _ACTIVE_STATUSES = (
     TaskStatus.CREATE,
     TaskStatus.DISPATCH,
-    TaskStatus.BRIEFING,
     TaskStatus.EXEC,
     TaskStatus.PLAN,
 )
@@ -1053,7 +1052,7 @@ async def _infer_current_task(ctx: McpToolContext) -> Task | None:
     query = (
         select(Task)
         .where(Task.agent_id == ctx.agent_id)
-        .where(Task.status.in_((TaskStatus.DISPATCH, TaskStatus.BRIEFING, TaskStatus.EXEC, TaskStatus.PLAN)))
+        .where(Task.status.in_((TaskStatus.DISPATCH, TaskStatus.EXEC, TaskStatus.PLAN)))
         .order_by(Task.updated_at.desc(), Task.created_at.desc())
         .limit(1)
     )
@@ -1165,8 +1164,6 @@ def _parse_forced_route(mode: Optional[str]) -> Optional[ForcedRoute]:
         return "EXEC"
     if value == "plan":
         return "PLAN"
-    if value == "briefing":
-        return "BRIEFING"
     return None
 
 

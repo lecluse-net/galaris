@@ -25,7 +25,7 @@ from app.lab import (
 from app.agent.models import Agent, Title
 from app.llm import LlmProfile
 from app.connection import Connection
-from app.agent.contracts import BriefingChoice, BriefingResult, DispatchDecision, DispatchResult
+from app.agent.contracts import DispatchDecision, DispatchResult
 from app.agent.evaluation import PlannerLabConfiguration
 from app.lab.models import (
     LabEvaluationCase,
@@ -105,7 +105,6 @@ def test_lab_exposes_all_isolated_ai_mechanisms() -> None:
     assert {item.key for item in descriptors} == {
         "dispatcher",
         "task_analysis",
-        "briefing",
         "planner",
         "topic_classification",
         "memory_extraction",
@@ -117,7 +116,7 @@ def test_lab_exposes_all_isolated_ai_mechanisms() -> None:
     }
     formats = {item.key: (item.input_format, item.output_format) for item in descriptors}
     source_import = {item.key: item.source_import for item in descriptors}
-    assert formats["briefing"] == ("text", "json")
+    assert formats["planner"] == ("text", "json")
     assert formats["topic_classification"] == ("json", "json")
     assert formats["goal_tracking"] == ("text", "json")
     assert formats["conversation_executor"] == ("json", "json")
@@ -205,7 +204,6 @@ def test_every_non_dispatch_mechanism_has_a_complete_versioned_semantic_rubric()
     assert {rubric.mechanism for rubric in rubrics} == {
         "dispatcher",
         "task_analysis",
-        "briefing",
         "planner",
         "topic_classification",
         "memory_extraction",
@@ -766,13 +764,13 @@ async def test_topic_run_freezes_dataset_catalogue_and_prompts(
 
 
 def test_semantic_score_is_weighted_and_independent_of_reference_similarity() -> None:
-    rubric = get_rubric("briefing")
+    rubric = get_rubric("planner")
     scores = {
         "objective_fidelity": 100,
-        "constraint_coverage": 80,
-        "actionability": 90,
-        "resource_relevance": 70,
-        "verification_quality": 60,
+        "decomposition_coverage": 80,
+        "feasibility_dependencies": 90,
+        "resource_strategy": 70,
+        "verification_deliverables": 60,
     }
     judged = MechanismJudgeOutput(
         dimensions=[
@@ -792,18 +790,12 @@ def test_semantic_score_is_weighted_and_independent_of_reference_similarity() ->
 
     semantic_score = run_inference._semantic_score(rubric, judged)
     strict_score, _ = run_inference._structured_score(
-        {
-            "result": "Write, check, then deliver the report.",
-            "choices": ["provider", "messenger"],
-        },
-        {
-            "result": "Deliver a verified report using Messenger and its provider URI.",
-            "choices": ["messenger", "provider"],
-        },
+        {"brief": {"objective": "Write, check, then deliver the report."}, "steps": []},
+        {"brief": {"objective": "Deliver a verified report using Messenger and its provider URI."}, "steps": []},
     )
 
-    assert semantic_score == 82.0
-    assert strict_score == 0.0
+    assert semantic_score == 80.5
+    assert strict_score < semantic_score
 
     judged.critical_failures = ["A critical constraint was violated."]
     assert run_inference._semantic_score(rubric, judged) == 50.0
@@ -813,7 +805,7 @@ def test_semantic_score_is_weighted_and_independent_of_reference_similarity() ->
 async def test_mechanism_judge_is_pointwise_and_non_normative(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    rubric = get_rubric("briefing")
+    rubric = get_rubric("planner")
     output = MechanismJudgeOutput(
         dimensions=[
             MechanismJudgeDimension(
@@ -834,7 +826,7 @@ async def test_mechanism_judge_is_pointwise_and_non_normative(
 
     judged, cost = await run_inference._judge(
         judge=cast(LLM, SimpleNamespace()),
-        mechanism="briefing",
+        mechanism="planner",
         input_data="Prepare and deliver a verified report.",
         expected={"result": "Reference wording"},
         actual={"result": "Different but valid wording"},
@@ -852,39 +844,28 @@ async def test_mechanism_judge_is_pointwise_and_non_normative(
 async def test_generic_lab_cases_preserve_native_text_and_json_formats(
     db: AsyncSession,
 ) -> None:
-    briefing_dataset = await mechanism_evaluation_service.create_dataset(
-        "briefing", MechanismDatasetCreate(name=f"Briefing {uuid4()}")
+    planner_dataset = await mechanism_evaluation_service.create_dataset(
+        "planner", MechanismDatasetCreate(name=f"Planner {uuid4()}")
     )
-    briefing_case = await mechanism_evaluation_service.create_case(
-        "briefing",
-        briefing_dataset.id,
+    planner_case = await mechanism_evaluation_service.create_case(
+        "planner",
+        planner_dataset.id,
         EvaluationCaseCreate(name="Prepare execution"),
     )
-    assert briefing_case.input_data == {"variable_value": "", "context": {}}
+    assert planner_case.input_data == {"variable_value": "", "context": {}}
 
     saved = await mechanism_evaluation_service.update_case(
-        "briefing",
-        briefing_case.id,
+        "planner",
+        planner_case.id,
         MechanismCaseUpdate(
-            revision=briefing_case.revision,
+            revision=planner_case.revision,
             input_data={"variable_value": "Publish the report"},
-            expected_output={
-                "result": "Deliver the report with the available resource.",
-                "choices": [
-                    {
-                        "kind": "tool",
-                        "identifier": "messenger_send_file",
-                        "label": "Messenger",
-                        "reason": "The artifact must be delivered.",
-                        "score": 1.0,
-                    }
-                ],
-            },
+            expected_output={"brief": {"objective": "Deliver the report with the available resource."}, "steps": []},
         ),
     )
     assert saved.readiness == "ready"
     assert saved.input_data["variable_value"] == "Publish the report"
-    assert saved.expected_output["choices"][0]["kind"] == "tool"
+    assert saved.expected_output["brief"]["objective"] == "Deliver the report with the available resource."
 
     topic_dataset = await mechanism_evaluation_service.create_dataset(
         "topic_classification", MechanismDatasetCreate(name=f"Topics {uuid4()}")
@@ -939,11 +920,11 @@ async def test_generic_lab_cases_preserve_native_text_and_json_formats(
         get_mechanism("topic_classification").validate_output({"topic": "Ancienne référence JSON"})
 
     await db.execute(
-        delete(LabEvaluationCase).where(LabEvaluationCase.id.in_([briefing_case.id, topic_case.id]))
+        delete(LabEvaluationCase).where(LabEvaluationCase.id.in_([planner_case.id, topic_case.id]))
     )
     await db.execute(
         delete(LabEvaluationDataset).where(
-            LabEvaluationDataset.id.in_([briefing_dataset.id, topic_dataset.id])
+            LabEvaluationDataset.id.in_([planner_dataset.id, topic_dataset.id])
         )
     )
     await db.commit()
@@ -964,42 +945,30 @@ async def test_generic_lab_task_capture_confirms_parameters_and_preserves_source
         status="completed",
         prompt="Task: prepare and deliver the report",
         system_prompt=(
-            "You prepare a concise execution briefing for another AI agent before a "
-            "complex HIGH-effort task."
+            "You are the Planner. You receive an objective"
         ),
         response_text="",
         tool_calls=[
             {
                 "id": "output-1",
                 "name": "final_result",
-                "arguments": {
-                    "result": "Prepare, verify and deliver the report.",
-                    "choices": [
-                        {
-                            "kind": "other",
-                            "identifier": "verification",
-                            "label": "Verification",
-                            "reason": "Check the artifact.",
-                            "score": 1.0,
-                        }
-                    ],
-                },
+                "arguments": {"brief": {"objective": "Prepare, verify and deliver the report."}, "steps": []},
             }
         ],
     )
     db.add(call)
     await db.commit()
     dataset = await mechanism_evaluation_service.create_dataset(
-        "briefing", MechanismDatasetCreate(name=f"Imported briefing {uuid4()}")
+        "planner", MechanismDatasetCreate(name=f"Imported planner {uuid4()}")
     )
 
-    candidates = await mechanism_evaluation_service.list_source_candidates("briefing", limit=50)
+    candidates = await mechanism_evaluation_service.list_source_candidates("planner", limit=50)
     capture_request = dispatcher_evaluation_service.DispatcherCaseImport(task_id=task.id)
     with pytest.raises(CaptureParametersMismatch) as mismatch:
-        await mechanism_evaluation_service.import_task_case("briefing", dataset.id, capture_request)
-    assert not await mechanism_evaluation_service.list_cases("briefing", dataset.id)
+        await mechanism_evaluation_service.import_task_case("planner", dataset.id, capture_request)
+    assert not await mechanism_evaluation_service.list_cases("planner", dataset.id)
     imported = await mechanism_evaluation_service.import_task_case(
-        "briefing",
+        "planner",
         dataset.id,
         capture_request.model_copy(
             update={"confirmation_token": mismatch.value.detail["confirmation_token"]}
@@ -1010,7 +979,7 @@ async def test_generic_lab_task_capture_confirms_parameters_and_preserves_source
     assert imported.source_task_id == task.id
     assert imported.readiness == "draft"
     assert imported.source_capture["input_data"] == call.prompt
-    assert imported.expected_output["result"].startswith("Prepare")
+    assert imported.expected_output["brief"]["objective"].startswith("Prepare")
     assert imported.source_capture["input_data"] == call.prompt
     assert imported.source_capture["prompts"]["system_prompt"] == call.system_prompt
 
@@ -1197,50 +1166,6 @@ async def test_topic_lab_previews_and_imports_one_human_ai_exchange_as_one_case(
     await db.commit()
 
 
-@pytest.mark.asyncio
-async def test_task_capture_uses_persisted_briefing_when_structured_trace_has_no_text(
-    db: AsyncSession,
-) -> None:
-    task = Task(label="Prepare a durable briefing", status=TaskStatus.SUCCESS)
-    task.set_briefing_result(
-        BriefingResult(
-            prompt="# Execution briefing input\n\nTask: prepare the report",
-            system_prompt="Recorded briefing system prompt",
-            result="Prepare, verify, then deliver the report.",
-            choices=[
-                BriefingChoice(
-                    kind="other",
-                    identifier="verification",
-                    label="Verification",
-                    reason="Check the result before delivery.",
-                    score=1.0,
-                )
-            ],
-        )
-    )
-    db.add(task)
-    await db.commit()
-    dataset = await mechanism_evaluation_service.create_dataset(
-        "briefing", MechanismDatasetCreate(name=f"Task briefing {uuid4()}")
-    )
-
-    imported = await capture_with_source_parameters(
-        mechanism_evaluation_service.import_task_case,
-        "briefing",
-        dataset.id,
-        dispatcher_evaluation_service.DispatcherCaseImport(task_id=task.id),
-    )
-
-    assert imported.readiness == "draft"
-    assert imported.input_data["variable_value"] == (task.objective or "")
-    assert imported.expected_output["result"] == "Prepare, verify, then deliver the report."
-    assert imported.expected_output["choices"][0]["identifier"] == "verification"
-    assert imported.source_capture["fidelity"] == "context_requires_review"
-
-    await db.execute(delete(LabEvaluationCase).where(LabEvaluationCase.id == imported.id))
-    await db.execute(delete(LabEvaluationDataset).where(LabEvaluationDataset.id == dataset.id))
-    await db.execute(delete(Task).where(Task.id == task.id))
-    await db.commit()
 
 
 @pytest.mark.asyncio
@@ -1411,9 +1336,9 @@ async def test_generic_worker_never_replaces_a_failed_judge_with_strict_similari
     await db.flush()
     candidate = LLM(
         llm_provider_id=provider.id,
-        code=f"briefing-candidate-{uuid4()}",
-        llm_name="example/briefing-candidate",
-        label="Briefing candidate",
+        code=f"planner-candidate-{uuid4()}",
+        llm_name="example/planner-candidate",
+        label="Planner candidate",
     )
     judge = LLM(
         llm_provider_id=provider.id,
@@ -1424,19 +1349,16 @@ async def test_generic_worker_never_replaces_a_failed_judge_with_strict_similari
     db.add_all([candidate, judge])
     await db.commit()
     dataset = await mechanism_evaluation_service.create_dataset(
-        "briefing", MechanismDatasetCreate(name=f"Failed judgment {uuid4()}")
+        "planner", MechanismDatasetCreate(name=f"Failed judgment {uuid4()}")
     )
     created = await mechanism_evaluation_service.create_case(
-        "briefing",
+        "planner",
         dataset.id,
         EvaluationCaseCreate(name="Prepare a report"),
     )
-    expected = {
-        "result": "Prepare and verify the report.",
-        "choices": [],
-    }
+    expected = {"brief": {"objective": "Prepare and verify the report."}, "steps": []}
     saved = await mechanism_evaluation_service.update_case(
-        "briefing",
+        "planner",
         created.id,
         MechanismCaseUpdate(
             revision=created.revision,
@@ -1461,11 +1383,11 @@ async def test_generic_worker_never_replaces_a_failed_judge_with_strict_similari
     )
 
     queued = await mechanism_evaluation_service.start_run(
-        "briefing", dataset.id, EvaluationRunStart(llm_id=candidate.id)
+        "planner", dataset.id, EvaluationRunStart(llm_id=candidate.id)
     )
     assert await mechanism_evaluation_service.process_runs() == 1
     assert await mechanism_evaluation_service.process_runs() == 1
-    completed = await mechanism_evaluation_service.get_run("briefing", queued.id)
+    completed = await mechanism_evaluation_service.get_run("planner", queued.id)
 
     assert completed is not None
     assert completed.status == "partial"

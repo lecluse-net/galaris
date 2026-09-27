@@ -36,7 +36,6 @@ ChatCommandCode = Literal[
     "task",
     "exec",
     "plan",
-    "briefing",
     "standard",
     "high",
     "effort",

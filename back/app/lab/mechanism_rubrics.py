@@ -130,42 +130,6 @@ _RUBRICS: dict[EvaluationMechanism, MechanismRubric] = {
             ),
         ),
     ),
-    "briefing": MechanismRubric(
-        mechanism="briefing",
-        version="briefing-score:v2",
-        dimensions=(
-            _dimension(
-                "objective_fidelity",
-                "Objective fidelity",
-                25,
-                "Preserves the real objective, requested deliverable and relevant context without changing their meaning.",
-            ),
-            _dimension(
-                "constraint_coverage",
-                "Constraint coverage",
-                20,
-                "Covers material user constraints, risks and prohibitions; omissions are weighted by operational impact.",
-            ),
-            _dimension(
-                "actionability",
-                "Actionability",
-                20,
-                "Provides a concise execution approach that another agent can follow on its first attempt.",
-            ),
-            _dimension(
-                "resource_relevance",
-                "Resource relevance",
-                20,
-                "Selects available resources that are necessary or well justified. Compare identifiers as a set; ordering, labels and optional confidence scores are not normative.",
-            ),
-            _dimension(
-                "verification_quality",
-                "Verification quality",
-                15,
-                "Defines completion checks that can demonstrate the requested outcome instead of merely asserting success.",
-            ),
-        ),
-    ),
     "planner": MechanismRubric(
         mechanism="planner",
         version="planner-score:v2",

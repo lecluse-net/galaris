@@ -22,6 +22,7 @@ for (const [kind, contract] of Object.entries(choices)) {
         let release
         const pending = new Promise(resolve => { release = resolve })
         let requests = 0
+        const completed = []
         await page.route(contract.pattern, async route => {
           const current = ++requests
           if (current === 2) await pending
@@ -29,6 +30,7 @@ for (const [kind, contract] of Object.entries(choices)) {
             ? { status: 503, json: { detail: 'Obsolete popup failure' } }
             : { json: contract.response(current === 1 ? 7 : current === 2 ? 8 : 9,
               current === 1 ? 'Initial choice' : current === 2 ? 'Obsolete choice' : 'Current choice') })
+          completed.push(current)
         })
         await mount(page, contract.component, { props: { ...contract.props, modelValue: null, label: 'Choice' } })
         const input = page.getByRole('combobox', { name: 'Choice', exact: true })
@@ -42,9 +44,10 @@ for (const [kind, contract] of Object.entries(choices)) {
           await page.keyboard.press('Escape')
           await input.click()
           await expect(page.getByRole('option', { name: 'Current choice', exact: true })).toBeVisible()
-          const response = page.waitForResponse(contract.pattern)
+          await expect.poll(() => requests).toBe(3)
           release()
-          await response
+          // Closing may cancel delivery; still finish the old server response before checking the UI.
+          await expect.poll(() => completed.includes(2)).toBe(true)
           // Flush the asynchronous response handler before asserting preserved choices.
           await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))))
           await expect(page.getByRole('option', { name: 'Obsolete choice', exact: true })).toHaveCount(0)

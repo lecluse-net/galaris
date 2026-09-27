@@ -677,9 +677,8 @@ async def build_turn(round_id: UUID, *, lease_token: UUID) -> ConversationTurn:
     async def admit_explicit_task(
         objective: str,
         *,
-        forced_route: Literal["EXEC", "BRIEFING", "PLAN"] | None = None,
+        forced_route: Literal["EXEC", "PLAN"] | None = None,
         forced_effort: Literal["standard", "high"] | None = None,
-        require_briefing: bool = False,
         auto_approve: bool = False,
     ) -> Mapping[str, object]:
         from .mcp import admit_background_task
@@ -689,7 +688,6 @@ async def build_turn(round_id: UUID, *, lease_token: UUID) -> ConversationTurn:
             objective,
             forced_route=forced_route,
             forced_effort=forced_effort,
-            require_briefing=require_briefing,
             auto_approve=auto_approve,
         )
 

@@ -159,6 +159,7 @@ test('memory detail and editor share the common control without overwriting a co
     media_type: 'text/html', content_profile: 'rich-text', content_profile_version: 1, payload: { text: '<p>Preserved memory</p>' } }
   const contentWrites = []
   await jsonRoute(page, '**/api/agents?*', [agent])
+  await jsonRoute(page, '**/api/memory/temporal/defaults', { timezone: 'Europe/Paris', lookahead_hours: 24 })
   await jsonRoute(page, '**/api/memory/filter-options?*', { topics: [], contacts: [] })
   await jsonRoute(page, '**/api/memory/findings?*', [])
   await jsonRoute(page, '**/api/memory/items/doc-a/revisions?*', [])

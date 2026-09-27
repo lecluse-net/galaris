@@ -77,7 +77,7 @@ Les coûts du dispatcher sont projetés depuis les appels persistés, même quan
 est tronquée et que le dispatcher utilise sa décision de repli. Un appel mis à jour plusieurs
 fois est compté une seule fois et un abonnement conserve un coût facturé nul.
 Les résultats réussis des façades d’inférence communes utilisent la même comptabilité, afin
-que la préparation d’un objectif ou un briefing ne remplace pas un coût connu par une estimation.
+que la préparation d’un objectif ne remplace pas un coût connu par une estimation.
 Les écritures de fichiers vers un transport Messenger enregistrent leur reçu après l’envoi :
 la notification finale reconnaît l’URI et la destination exactes et ne renvoie pas la même image.
 

@@ -23,10 +23,6 @@ DISPATCHER_PRIVILEGES: Final[PrivilegePair] = (
 MECHANISM_PRIVILEGES: Final[dict[EvaluationMechanism, PrivilegePair]] = {
     "dispatcher": DISPATCHER_PRIVILEGES,
     "task_analysis": TASK_ANALYSIS_PRIVILEGES,
-    "briefing": (
-        Privileges.BRIEFING_EVALUATION_ACCESS,
-        Privileges.BRIEFING_EVALUATION_EDIT,
-    ),
     "planner": (
         Privileges.PLANNER_EVALUATION_ACCESS,
         Privileges.PLANNER_EVALUATION_EDIT,

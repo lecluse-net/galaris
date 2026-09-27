@@ -4,7 +4,6 @@
       {
         "files": [
           "back/app/agent/agent_service.py",
-          "back/app/agent/briefing_service.py",
           "back/app/agent/dispatcher.py",
           "back/app/agent/facade.py",
           "back/app/agent/janus.py",
@@ -27,7 +26,6 @@
       },
       {
         "files": [
-          "back/app/agent/briefing_service.py",
           "back/app/agent/janus.py",
           "back/app/agent/openai_router.py",
           "back/app/agent/realtime.py"
@@ -49,7 +47,6 @@
       {
         "files": [
           "back/app/agent/agent_service.py",
-          "back/app/agent/briefing_service.py",
           "back/app/agent/defaults.py",
           "back/app/agent/executor_service.py",
           "back/app/agent/facade.py",
@@ -111,7 +108,6 @@
       {
         "files": [
           "back/app/agent/agent_service.py",
-          "back/app/agent/briefing_service.py",
           "back/app/agent/contracts.py",
           "back/app/agent/dispatcher.py",
           "back/app/agent/dispatcher_service.py",
@@ -130,7 +126,6 @@
       },
       {
         "files": [
-          "back/app/agent/briefing_service.py",
           "back/app/agent/dispatcher.py",
           "back/app/agent/executor_service.py",
           "back/app/agent/facade.py",
@@ -6352,7 +6347,7 @@
       {
         "file": "back/app/conversation/mcp.py",
         "handler": "conversation_choice_resolve",
-        "line": 859,
+        "line": 849,
         "module": "app.conversation",
         "name": "conversation_choice_resolve",
         "namespace": "conversation"
@@ -6360,7 +6355,7 @@
       {
         "file": "back/app/conversation/mcp.py",
         "handler": "conversation_process_start",
-        "line": 987,
+        "line": 977,
         "module": "app.conversation",
         "name": "conversation_process_start",
         "namespace": "conversation"
@@ -6368,7 +6363,7 @@
       {
         "file": "back/app/conversation/mcp.py",
         "handler": "conversation_task_list",
-        "line": 799,
+        "line": 789,
         "module": "app.conversation",
         "name": "conversation_task_list",
         "namespace": "conversation"
@@ -6376,7 +6371,7 @@
       {
         "file": "back/app/conversation/mcp.py",
         "handler": "conversation_task_pause",
-        "line": 938,
+        "line": 928,
         "module": "app.conversation",
         "name": "conversation_task_pause",
         "namespace": "conversation"
@@ -6384,7 +6379,7 @@
       {
         "file": "back/app/conversation/mcp.py",
         "handler": "conversation_task_resume",
-        "line": 949,
+        "line": 939,
         "module": "app.conversation",
         "name": "conversation_task_resume",
         "namespace": "conversation"
@@ -6392,7 +6387,7 @@
       {
         "file": "back/app/conversation/mcp.py",
         "handler": "conversation_task_retry",
-        "line": 960,
+        "line": 950,
         "module": "app.conversation",
         "name": "conversation_task_retry",
         "namespace": "conversation"
@@ -6400,7 +6395,7 @@
       {
         "file": "back/app/conversation/mcp.py",
         "handler": "conversation_task_status",
-        "line": 839,
+        "line": 829,
         "module": "app.conversation",
         "name": "conversation_task_status",
         "namespace": "conversation"
@@ -6408,7 +6403,7 @@
       {
         "file": "back/app/conversation/mcp.py",
         "handler": "conversation_task_stop",
-        "line": 971,
+        "line": 961,
         "module": "app.conversation",
         "name": "conversation_task_stop",
         "namespace": "conversation"
@@ -6416,7 +6411,7 @@
       {
         "file": "back/app/conversation/mcp.py",
         "handler": "conversation_task_submit",
-        "line": 550,
+        "line": 545,
         "module": "app.conversation",
         "name": "conversation_task_submit",
         "namespace": "conversation"
@@ -6616,7 +6611,7 @@
       {
         "file": "back/app/task/mcp.py",
         "handler": "mcp_get_task",
-        "line": 90,
+        "line": 89,
         "module": "app.task",
         "name": "task_get",
         "namespace": "galaris"
@@ -6624,7 +6619,7 @@
       {
         "file": "back/app/task/mcp.py",
         "handler": "mcp_run_task",
-        "line": 176,
+        "line": 175,
         "module": "app.task",
         "name": "task_run",
         "namespace": "galaris"
@@ -6632,7 +6627,7 @@
       {
         "file": "back/app/task/mcp.py",
         "handler": "mcp_stop_task",
-        "line": 155,
+        "line": 154,
         "module": "app.task",
         "name": "task_stop",
         "namespace": "galaris"
@@ -6648,7 +6643,7 @@
       {
         "file": "back/app/conversation/mcp.py",
         "handler": "conversation_round_get",
-        "line": 241,
+        "line": 236,
         "module": "app.conversation",
         "name": "conversation_round_get",
         "namespace": "galaris_admin"
@@ -8886,7 +8881,7 @@
           "tasks.id"
         ],
         "history_mixin": false,
-        "line": 257,
+        "line": 244,
         "module": "app.task",
         "table": "task_amendments"
       },
@@ -8897,7 +8892,7 @@
           "tasks.id"
         ],
         "history_mixin": false,
-        "line": 290,
+        "line": 277,
         "module": "app.task",
         "table": "task_attempts"
       },
@@ -8915,7 +8910,7 @@
           "users.id"
         ],
         "history_mixin": true,
-        "line": 79,
+        "line": 77,
         "module": "app.task",
         "table": "tasks"
       },
@@ -10069,30 +10064,16 @@
         "value": "privilege.INCIDENT_PURGE"
       },
       {
-        "constant": "BRIEFING_EVALUATION_ACCESS",
-        "file": "back/app/lab/privileges.py",
-        "line": 9,
-        "module": "app.lab",
-        "value": "privilege.BRIEFING_EVALUATION_ACCESS"
-      },
-      {
-        "constant": "BRIEFING_EVALUATION_EDIT",
-        "file": "back/app/lab/privileges.py",
-        "line": 10,
-        "module": "app.lab",
-        "value": "privilege.BRIEFING_EVALUATION_EDIT"
-      },
-      {
         "constant": "CONVERSATION_EXECUTOR_EVALUATION_ACCESS",
         "file": "back/app/lab/privileges.py",
-        "line": 30,
+        "line": 28,
         "module": "app.lab",
         "value": "privilege.CONVERSATION_EXECUTOR_EVALUATION_ACCESS"
       },
       {
         "constant": "CONVERSATION_EXECUTOR_EVALUATION_EDIT",
         "file": "back/app/lab/privileges.py",
-        "line": 31,
+        "line": 29,
         "module": "app.lab",
         "value": "privilege.CONVERSATION_EXECUTOR_EVALUATION_EDIT"
       },
@@ -10127,98 +10108,98 @@
       {
         "constant": "GOAL_TRACKING_EVALUATION_ACCESS",
         "file": "back/app/lab/privileges.py",
-        "line": 24,
+        "line": 22,
         "module": "app.lab",
         "value": "privilege.GOAL_TRACKING_EVALUATION_ACCESS"
       },
       {
         "constant": "GOAL_TRACKING_EVALUATION_EDIT",
         "file": "back/app/lab/privileges.py",
-        "line": 25,
+        "line": 23,
         "module": "app.lab",
         "value": "privilege.GOAL_TRACKING_EVALUATION_EDIT"
       },
       {
         "constant": "MEMORY_EXTRACTION_EVALUATION_ACCESS",
         "file": "back/app/lab/privileges.py",
-        "line": 18,
+        "line": 16,
         "module": "app.lab",
         "value": "privilege.MEMORY_EXTRACTION_EVALUATION_ACCESS"
       },
       {
         "constant": "MEMORY_EXTRACTION_EVALUATION_EDIT",
         "file": "back/app/lab/privileges.py",
-        "line": 19,
+        "line": 17,
         "module": "app.lab",
         "value": "privilege.MEMORY_EXTRACTION_EVALUATION_EDIT"
       },
       {
         "constant": "OUTCOME_REFLECTION_EVALUATION_ACCESS",
         "file": "back/app/lab/privileges.py",
-        "line": 21,
+        "line": 19,
         "module": "app.lab",
         "value": "privilege.OUTCOME_REFLECTION_EVALUATION_ACCESS"
       },
       {
         "constant": "OUTCOME_REFLECTION_EVALUATION_EDIT",
         "file": "back/app/lab/privileges.py",
-        "line": 22,
+        "line": 20,
         "module": "app.lab",
         "value": "privilege.OUTCOME_REFLECTION_EVALUATION_EDIT"
       },
       {
         "constant": "PLANNER_EVALUATION_ACCESS",
         "file": "back/app/lab/privileges.py",
-        "line": 12,
+        "line": 10,
         "module": "app.lab",
         "value": "privilege.PLANNER_EVALUATION_ACCESS"
       },
       {
         "constant": "PLANNER_EVALUATION_EDIT",
         "file": "back/app/lab/privileges.py",
-        "line": 13,
+        "line": 11,
         "module": "app.lab",
         "value": "privilege.PLANNER_EVALUATION_EDIT"
       },
       {
         "constant": "TASK_EXECUTOR_EVALUATION_ACCESS",
         "file": "back/app/lab/privileges.py",
-        "line": 27,
+        "line": 25,
         "module": "app.lab",
         "value": "privilege.TASK_EXECUTOR_EVALUATION_ACCESS"
       },
       {
         "constant": "TASK_EXECUTOR_EVALUATION_EDIT",
         "file": "back/app/lab/privileges.py",
-        "line": 28,
+        "line": 26,
         "module": "app.lab",
         "value": "privilege.TASK_EXECUTOR_EVALUATION_EDIT"
       },
       {
         "constant": "TOPIC_CLASSIFICATION_EVALUATION_ACCESS",
         "file": "back/app/lab/privileges.py",
-        "line": 15,
+        "line": 13,
         "module": "app.lab",
         "value": "privilege.TOPIC_CLASSIFICATION_EVALUATION_ACCESS"
       },
       {
         "constant": "TOPIC_CLASSIFICATION_EVALUATION_EDIT",
         "file": "back/app/lab/privileges.py",
-        "line": 16,
+        "line": 14,
         "module": "app.lab",
         "value": "privilege.TOPIC_CLASSIFICATION_EVALUATION_EDIT"
       },
       {
         "constant": "VOICE_EXECUTOR_EVALUATION_ACCESS",
         "file": "back/app/lab/privileges.py",
-        "line": 33,
+        "line": 31,
         "module": "app.lab",
         "value": "privilege.VOICE_EXECUTOR_EVALUATION_ACCESS"
       },
       {
         "constant": "VOICE_EXECUTOR_EVALUATION_EDIT",
         "file": "back/app/lab/privileges.py",
-        "line": 34,
+        "line": 32,
         "module": "app.lab",
         "value": "privilege.VOICE_EXECUTOR_EVALUATION_EDIT"
       },
@@ -10520,7 +10501,7 @@
         "declared_path": "/agents",
         "file": "back/app/agent/router.py",
         "handler": "read_agents",
-        "line": 203,
+        "line": 201,
         "method": "GET",
         "module": "app.agent"
       },
@@ -10529,7 +10510,7 @@
         "declared_path": "/agents",
         "file": "back/app/agent/router.py",
         "handler": "create_agent",
-        "line": 254,
+        "line": 252,
         "method": "POST",
         "module": "app.agent"
       },
@@ -10592,7 +10573,7 @@
         "declared_path": "/agents/managers",
         "file": "back/app/agent/router.py",
         "handler": "read_agent_managers",
-        "line": 219,
+        "line": 217,
         "method": "GET",
         "module": "app.agent"
       },
@@ -10709,7 +10690,7 @@
         "declared_path": "/agents/{id}",
         "file": "back/app/agent/router.py",
         "handler": "delete_agent",
-        "line": 309,
+        "line": 307,
         "method": "DELETE",
         "module": "app.agent"
       },
@@ -10718,7 +10699,7 @@
         "declared_path": "/agents/{id}",
         "file": "back/app/agent/router.py",
         "handler": "read_agent",
-        "line": 242,
+        "line": 240,
         "method": "GET",
         "module": "app.agent"
       },
@@ -10727,7 +10708,7 @@
         "declared_path": "/agents/{id}",
         "file": "back/app/agent/router.py",
         "handler": "update_agent",
-        "line": 282,
+        "line": 280,
         "method": "PUT",
         "module": "app.agent"
       },
@@ -10736,7 +10717,7 @@
         "declared_path": "/agents/{id}/avatar",
         "file": "back/app/agent/router.py",
         "handler": "delete_avatar",
-        "line": 392,
+        "line": 390,
         "method": "DELETE",
         "module": "app.agent"
       },
@@ -10745,7 +10726,7 @@
         "declared_path": "/agents/{id}/avatar",
         "file": "back/app/agent/router.py",
         "handler": "download_avatar",
-        "line": 358,
+        "line": 356,
         "method": "GET",
         "module": "app.agent"
       },
@@ -10754,7 +10735,7 @@
         "declared_path": "/agents/{id}/avatar",
         "file": "back/app/agent/router.py",
         "handler": "upload_avatar",
-        "line": 323,
+        "line": 321,
         "method": "POST",
         "module": "app.agent"
       },
@@ -16904,7 +16885,6 @@
         "files": [
           "front/app/task/components/ActiveTaskNode.vue",
           "front/app/task/components/ActiveTasksPanel.vue",
-          "front/app/task/components/BriefingResult.vue",
           "front/app/task/components/DispatchResult.vue",
           "front/app/task/components/ExecutionResult.vue",
           "front/app/task/components/MemoryItemCard.vue",

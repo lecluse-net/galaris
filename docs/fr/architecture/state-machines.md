@@ -51,18 +51,15 @@ conteneur stable `<agent.code>-agent`; aucune Task non terminale ne peut chevauc
 
 ## Tâches
 
-Phases : `CREATE`, `DISPATCH`, `BRIEFING`, `EXEC`, `PLAN`, `SUCCESS`, `ERROR`. `PAUSE` est une
+Phases : `CREATE`, `DISPATCH`, `EXEC`, `PLAN`, `SUCCESS`, `ERROR`. `PAUSE` est une
 valeur historique PostgreSQL ; la suspension courante utilise `Task.paused` tout en conservant
 la phase de reprise.
 
 | Événement | Sources | Cible |
 |---|---|---|
 | `ROUTE_TO_EXECUTION` | CREATE, DISPATCH | DISPATCH |
-| `ROUTE_TO_BRIEFING` | CREATE, DISPATCH | BRIEFING |
 | `ROUTE_TO_PLAN` | CREATE, DISPATCH, PLAN | PLAN |
 | `START_EXECUTION` | DISPATCH | EXEC |
-| `BRIEFING_SUCCEEDED` | BRIEFING | DISPATCH |
-| `BRIEFING_FAILED` | BRIEFING | ERROR |
 | `EXECUTION_SUCCEEDED` | EXEC | SUCCESS |
 | `EXECUTION_FAILED` | EXEC | ERROR |
 | `PLAN_SUCCEEDED` | PLAN | SUCCESS |
@@ -74,7 +71,7 @@ la phase de reprise.
 | `RETRY_PLAN` | ERROR | PLAN |
 | `RETRY_DELIVERY` | SUCCESS, ERROR | DISPATCH |
 | `RETRY_ROUTING` | ERROR | CREATE |
-| `REVISE` | DISPATCH, BRIEFING | CREATE |
+| `REVISE` | DISPATCH | CREATE |
 | `CANCEL` | toute phase active | ERROR |
 | `FORCE_TERMINATE` | toute phase active | ERROR |
 | `ACTIVATE_PLAN_STEP` | PLAN, DISPATCH | DISPATCH |
@@ -82,22 +79,8 @@ la phase de reprise.
 | `COORDINATION_SUCCEEDED` | CREATE, PAUSE héritée, DISPATCH | SUCCESS |
 | `COORDINATION_FAILED` | CREATE, PAUSE héritée, DISPATCH | ERROR |
 
-Actions du scheduler : `CREATE → dispatch`, `BRIEFING → brief`, `DISPATCH → execute`,
-`PLAN → advance_plan`. `SUCCESS` et `ERROR` n’ont pas d’action. La phase `EXEC` représente une
-exécution déjà réclamée ; sa récupération repasse explicitement par `DISPATCH`.
-La politique de production courante ne route plus de nouvelle Task vers `BRIEFING`. La phase et
-ses transitions restent disponibles pour reprendre et inspecter les lignes historiques pendant
-l’évaluation de cette désactivation.
-Lorsqu'un harnais déclare le briefing, le dispatcher peut choisir explicitement `BRIEFING`, qui
-applique `ROUTE_TO_BRIEFING` puis `BRIEFING_SUCCEEDED` avant l'exécution. Un nouveau choix
-`EXEC high` suit directement `ROUTE_TO_EXECUTION`. Les décisions historiques sans liste de choix
-conservent la politique de reprise antérieure.
-Une coordination découverte à la fin d'une exécution applique `INTERRUPT_EXECUTION` et suspend la
-Task en `DISPATCH` **avant** toute transition terminale. `SUCCESS` et `ERROR` sont immuables pour
-tous les événements automatiques ; seules les commandes humaines explicites de retry déclarées
-ci-dessus peuvent créer une nouvelle exécution.
-Pour `RETRY_DELIVERY`, l'action `DISPATCH → execute` reconnaît le contrat serveur et appelle
-directement l'unique outil natif autorisé : aucun driver ni modèle IA ne participe à cette reprise.
+Actions du scheduler : `CREATE → dispatch`, `DISPATCH → execute`, `PLAN → advance_plan`.
+Une tâche suspendue conserve sa phase sans être exécutée.
 
 Les collections utilisent les phases existantes : le groupe reste en `PLAN`, sa découverte
 puis ses éléments traversent `DISPATCH → EXEC → SUCCESS/ERROR`. Une nouvelle vague est
@@ -428,7 +411,7 @@ Chaque run fige les cas, le LLM candidat, le LLM d’analyse du Lab utilisé aut
 juge et la version du barème avant son démarrage. Le juge est résolu depuis l’usage **Lab** du profil courant ; il
 n’existe pas de sélection distincte dans le Lab. Un résultat de cas constitue un checkpoint
 durable et unique pour le couple run/cas.
-Le registre couvre Dispatcher, Briefing, Planner, classification thématique, extraction mémoire,
+Le registre couvre Dispatcher, Planner, classification thématique, extraction mémoire,
 apprentissage et suivi d’objectif. Chaque mécanisme déclare le
 format natif de son entrée et de sa sortie (`text` ou `json`), son prompt système de production et
 son schéma de sortie. Les workers Dispatcher et mécanismes génériques ont des réclamations

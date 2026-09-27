@@ -319,7 +319,7 @@ retains the same artifact or primary target and substantially identical success 
 different target, repository, resource, deliverable, or independently verifiable result receives a
 new Task, even if the request stems from the same incident. The URI of an amended Task remains
 unique, but the round exposes its `TaskAmendment` as an audit lineage. When an amendment interrupts
-an execution, the new dispatcher and new briefing see the merged objective; the checkpoint retains
+an execution, the new dispatcher and executor see the merged objective; the checkpoint retains
 only its anti-replay effects journal and abandons the old provider history. A result or checkpoint
 bearing the fingerprint of a previous objective is refused before terminal persistence. The
 scheduler then closes the old attempt as canceled, without consuming a retry or recording an error

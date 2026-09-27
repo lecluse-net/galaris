@@ -3,7 +3,7 @@
 from typing import Any, cast
 from dataclasses import replace
 from .mechanism_registry import get_mechanism
-from app.agent import resolve_pipeline_policy, validate_briefing_resources
+from app.agent import resolve_pipeline_policy
 
 
 def check_output(mechanism: str, native: Any, output: Any) -> list[dict[str, Any]]:
@@ -27,8 +27,8 @@ def check_output(mechanism: str, native: Any, output: Any) -> list[dict[str, Any
     elif mechanism == "dispatcher":
         check(
             "active_route",
-            output.get("route") in {"EXEC", "BRIEFING", "PLAN"},
-            "Active Task routes are EXEC, BRIEFING and PLAN",
+            output.get("route") in {"EXEC", "PLAN"},
+            "Active Task routes are EXEC and PLAN",
         )
         policy = resolve_pipeline_policy(native.get("driver_code") or "internal")
         if native.get("pipeline_policy"):
@@ -45,12 +45,6 @@ def check_output(mechanism: str, native: Any, output: Any) -> list[dict[str, Any
                     output.get(field) == native[key],
                     "Forced routing constraints must be respected",
                 )
-    elif mechanism == "briefing":
-        try:
-            validate_briefing_resources(output, native.get("resources", []))
-            check("resource_references", True, "Production resource selection checks passed")
-        except Exception as exc:
-            check("resource_references", False, str(exc))
     elif mechanism == "planner":
 
         def sizes(steps: list[dict[str, Any]], depth: int = 1) -> tuple[int, int, int]:

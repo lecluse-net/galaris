@@ -338,7 +338,7 @@ async def _next_scan_delay() -> float:
         next_retry = await db.scalar(Task.histo_filter(
             select(func.min(Task.next_attempt_at)).where(
                 Task.paused.is_(False), Task.next_attempt_at > now,
-                Task.status.in_((TaskStatus.CREATE, TaskStatus.DISPATCH, TaskStatus.BRIEFING, TaskStatus.PLAN)),
+                Task.status.in_((TaskStatus.CREATE, TaskStatus.DISPATCH, TaskStatus.PLAN)),
             )
         ))
     if next_retry is None:
@@ -573,9 +573,6 @@ async def _run_action(task_id: UUID, status: TaskStatus) -> None:
     if action == TaskAction.DISPATCH:
         await _dispatch(task_id)
         return
-    if action == TaskAction.BRIEF:
-        await _brief(task_id)
-        return
     if action == TaskAction.EXECUTE:
         await _execute(task_id)
         return
@@ -623,7 +620,6 @@ async def _next_task(
                         (
                             TaskStatus.CREATE,
                             TaskStatus.DISPATCH,
-                            TaskStatus.BRIEFING,
                             TaskStatus.PLAN,
                         )
                     )
@@ -679,7 +675,6 @@ async def _next_fast_path(
                         (
                             TaskStatus.CREATE,
                             TaskStatus.DISPATCH,
-                            TaskStatus.BRIEFING,
                             TaskStatus.PLAN,
                         )
                     )
@@ -715,7 +710,6 @@ async def _claim_specific(task_id: UUID, *, priority: int) -> ClaimedTask | None
                     (
                         TaskStatus.CREATE,
                         TaskStatus.DISPATCH,
-                        TaskStatus.BRIEFING,
                         TaskStatus.PLAN,
                     )
                 )
@@ -1107,7 +1101,6 @@ async def _release_cancelled_claim(task_id: UUID, lease_token: UUID) -> None:
     if not task.paused and task.status in (
         TaskStatus.CREATE,
         TaskStatus.DISPATCH,
-        TaskStatus.BRIEFING,
         TaskStatus.PLAN,
     ):
         wake(task.id)
@@ -1191,8 +1184,6 @@ async def _fail_claim(
                     transition(task, TaskEvent.RETRY)
                     if phase == TaskStatus.PLAN:
                         transition(task, TaskEvent.ROUTE_TO_PLAN)
-                    elif phase == TaskStatus.BRIEFING:
-                        transition(task, TaskEvent.ROUTE_TO_BRIEFING)
                     else:
                         transition(task, TaskEvent.ROUTE_TO_EXECUTION)
             elif task.status == TaskStatus.EXEC:
@@ -1369,20 +1360,7 @@ async def _execute(task_id: UUID) -> None:
     logger.info("Task scheduler — execute {}", task_id)
     async with get_db_session():
         task = await task_service.get_by_id(task_id)
-        if task is None or task.status != TaskStatus.DISPATCH or task.paused:
-            return
-        await run_workflow_step(as_agent_task(task))
-
-
-async def _brief(task_id: UUID) -> None:
-    from app.agent import run_workflow_step
-    from app.task import task_service
-    from app.task.agent_adapter import as_agent_task
-
-    logger.info("Task scheduler — briefing {}", task_id)
-    async with get_db_session():
-        task = await task_service.get_by_id(task_id)
-        if task is None or task.status != TaskStatus.BRIEFING or task.paused:
+        if task is None or task.status not in {TaskStatus.DISPATCH} or task.paused:
             return
         await run_workflow_step(as_agent_task(task))
 

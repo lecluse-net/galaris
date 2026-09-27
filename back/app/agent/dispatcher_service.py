@@ -1,6 +1,6 @@
 """Persist and apply dispatcher routing decisions.
 
-The dispatcher chooses EXEC, BRIEFING or PLAN. It does not own task hierarchy or
+The dispatcher chooses EXEC or PLAN. It does not own task hierarchy or
 execution; those concerns remain behind the task port and agent workflow.
 
 Usage:

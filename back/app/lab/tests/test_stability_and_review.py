@@ -42,7 +42,7 @@ async def benchmark(db, monkeypatch):
         service_capabilities=["chat"],
     )
     dataset = LabEvaluationDataset(
-        name=f"stability-{uuid4()}", mechanism="briefing", purpose="validation"
+        name=f"stability-{uuid4()}", mechanism="planner", purpose="validation"
     )
     db.add_all([llm, dataset])
     await db.flush()
@@ -51,7 +51,7 @@ async def benchmark(db, monkeypatch):
         name="Report",
         categories=["ambiguity", "incident"],
         input_data={"variable_value": "Prepare a report"},
-        expected_output={"result": "Reference", "choices": []},
+        expected_output={"brief": {"objective": "Reference"}, "steps": []},
     )
     db.add(case)
     await db.commit()
@@ -69,12 +69,7 @@ async def benchmark(db, monkeypatch):
 
     async def candidate(*args, **kwargs):
         calls.append("candidate")
-        return {
-            "result": f"Result {len(calls)}",
-            "choices": [
-                {"kind": "other", "identifier": "verify", "reason": "Verify the supplied evidence"}
-            ],
-        }, 0.1
+        return {"brief": {"objective": f"Result {len(calls)}"}, "steps": []}, 0.1
 
     async def judge(**kwargs):
         calls.append("judge")
@@ -83,7 +78,7 @@ async def benchmark(db, monkeypatch):
             confidence_percent=90,
             dimensions=[
                 {"code": dim.code, "score_percent": 90, "assessment": "Supported"}
-                for dim in get_rubric("briefing").dimensions
+                for dim in get_rubric("planner").dimensions
             ],
         ), 0.02
 
@@ -96,22 +91,22 @@ async def benchmark(db, monkeypatch):
 async def test_dataset_roles_and_item_categories_survive_edits_and_duplication(db, benchmark):
     dataset, _, _ = benchmark
     saved = await service.update_dataset(
-        "briefing",
+        "planner",
         dataset.id,
         EvaluationDatasetUpdate(revision=dataset.revision, name=dataset.name, purpose="holdout"),
     )
     assert saved.purpose == "holdout"
     saved = await service.update_dataset(
-        "briefing",
+        "planner",
         dataset.id,
         EvaluationDatasetUpdate(
             revision=saved.revision, name=saved.name, description="Legacy client edit"
         ),
     )
     assert saved.purpose == "holdout"
-    case = (await service.list_cases("briefing", dataset.id))[0]
+    case = (await service.list_cases("planner", dataset.id))[0]
     edited = await service.update_case(
-        "briefing",
+        "planner",
         case.id,
         MechanismCaseUpdate(
             revision=case.revision,
@@ -121,10 +116,10 @@ async def test_dataset_roles_and_item_categories_survive_edits_and_duplication(d
         ),
     )
     assert edited.categories == ["multilingual", "incident"]
-    duplicate = await service.duplicate_case("briefing", case.id)
+    duplicate = await service.duplicate_case("planner", case.id)
     assert duplicate.categories == edited.categories
     unchanged = await service.update_case(
-        "briefing",
+        "planner",
         case.id,
         MechanismCaseUpdate(
             revision=edited.revision,
@@ -139,16 +134,16 @@ async def test_dataset_roles_and_item_categories_survive_edits_and_duplication(d
 async def test_repetitions_resume_without_duplicates_and_preserve_coverage(db, benchmark):
     dataset, llm, calls = benchmark
     started = await service.start_run(
-        "briefing", dataset.id, EvaluationRunStart(llm_id=llm.id, repetitions=3)
+        "planner", dataset.id, EvaluationRunStart(llm_id=llm.id, repetitions=3)
     )
     run = await db.get(LabEvaluationRun, started.id)
     assert run.total_cases == 3 and run.repetitions == 3
     assert run.configuration_snapshot["dataset_purpose"] == "validation"
     assert all(row["categories"] == ["ambiguity", "incident"] for row in run.case_snapshots)
     await service.process_runs()
-    await service.cancel_run("briefing", run.id)
+    await service.cancel_run("planner", run.id)
     await service.process_runs()
-    await resume("briefing", run.id)
+    await resume("planner", run.id)
     for _ in range(5):
         await service.process_runs()
     await db.refresh(run)
@@ -160,8 +155,8 @@ async def test_repetitions_resume_without_duplicates_and_preserve_coverage(db, b
         await db.scalars(select(LabEvaluationRunCase).where(LabEvaluationRunCase.run_id == run.id))
     ).all()
     assert sorted(row.repetition for row in results) == [1, 2, 3]
-    assert len({row.actual_output["result"] for row in results}) == 3
-    await rejudge("briefing", run.id, EvaluationRejudge())
+    assert len({row.actual_output["brief"]["objective"] for row in results}) == 3
+    await rejudge("planner", run.id, EvaluationRejudge())
     for _ in range(3):
         await service.process_runs()
     assert calls.count("candidate") == 3
@@ -175,17 +170,17 @@ async def test_budget_stops_before_next_evaluation_and_preserves_outputs(
 ):
     dataset, llm, calls = benchmark
     run = await service.start_run(
-        "briefing", dataset.id, EvaluationRunStart(llm_id=llm.id, repetitions=3, max_cost=budget)
+        "planner", dataset.id, EvaluationRunStart(llm_id=llm.id, repetitions=3, max_cost=budget)
     )
     for _ in range(8):
         await service.process_runs()
-    detail = await service.get_run("briefing", run.id)
+    detail = await service.get_run("planner", run.id)
     assert calls == ["candidate"] * candidate_count + ["judge"] * judge_count
     assert detail.stop_reason == "budget_exhausted" and detail.status == "partial"
     assert len(detail.results) == candidate_count
     assert detail.judged_cases == judge_count
     with pytest.raises(ValueError, match="budget exhausted"):
-        await rejudge("briefing", run.id, EvaluationRejudge())
+        await rejudge("planner", run.id, EvaluationRejudge())
 
 
 @pytest.mark.asyncio
@@ -193,7 +188,7 @@ async def test_review_is_blind_immutable_and_isolated_by_reviewer_and_campaign(
     db, benchmark, monkeypatch
 ):
     dataset, llm, _ = benchmark
-    run = await service.start_run("briefing", dataset.id, EvaluationRunStart(llm_id=llm.id))
+    run = await service.start_run("planner", dataset.id, EvaluationRunStart(llm_id=llm.id))
     await service.process_runs()
     await service.process_runs()
     reviewers = [
@@ -203,7 +198,7 @@ async def test_review_is_blind_immutable_and_isolated_by_reviewer_and_campaign(
     db.add_all(reviewers)
     await db.commit()
     monkeypatch.setattr(human_review_service, "get_current_user_id", lambda: reviewers[0].id)
-    queue = await human_review_service.review_queue("briefing", run.id)
+    queue = await human_review_service.review_queue("planner", run.id)
     assert queue.items[0].judge is None and queue.items[0].assessment is None
     assert "Hidden candidate" not in queue.model_dump_json()
     assert "Automatic assessment" not in queue.model_dump_json()
@@ -212,27 +207,27 @@ async def test_review_is_blind_immutable_and_isolated_by_reviewer_and_campaign(
         campaign_id=queue.campaign_id,
         dimensions=[
             {"code": dim.code, "score_percent": 50, "assessment": "Missing evidence"}
-            for dim in get_rubric("briefing").dimensions
+            for dim in get_rubric("planner").dimensions
         ],
         explanation="Insufficient support",
     )
     bad = data.model_copy(update={"dimensions": data.dimensions[:-1]})
     with pytest.raises(ValueError, match="exactly once"):
-        await human_review_service.submit_review("briefing", run.id, bad)
-    revealed = await human_review_service.submit_review("briefing", run.id, data)
+        await human_review_service.submit_review("planner", run.id, bad)
+    revealed = await human_review_service.submit_review("planner", run.id, data)
     assert revealed.items[0].human_score == 50
     assert revealed.items[0].human_verdict == "fail"
     assert revealed.items[0].judge.score_percent == 90
     assert revealed.items[0].judge.verdict == "pass"
     with pytest.raises(ValueError, match="already submitted"):
-        await human_review_service.submit_review("briefing", run.id, data)
+        await human_review_service.submit_review("planner", run.id, data)
     monkeypatch.setattr(human_review_service, "get_current_user_id", lambda: reviewers[1].id)
-    assert (await human_review_service.review_queue("briefing", run.id)).items[0].judge is None
+    assert (await human_review_service.review_queue("planner", run.id)).items[0].judge is None
     with pytest.raises(LookupError):
-        await human_review_service.review_queue("planner", run.id)
+        await human_review_service.review_queue("task_executor", run.id)
     monkeypatch.setattr(human_review_service, "get_current_user_id", lambda: reviewers[0].id)
-    await rejudge("briefing", run.id, EvaluationRejudge())
-    assert (await human_review_service.review_queue("briefing", run.id)).items[0].assessment is None
-    assert (await human_review_service.review_queue("briefing", run.id, queue.campaign_id)).items[
+    await rejudge("planner", run.id, EvaluationRejudge())
+    assert (await human_review_service.review_queue("planner", run.id)).items[0].assessment is None
+    assert (await human_review_service.review_queue("planner", run.id, queue.campaign_id)).items[
         0
     ].human_score == 50

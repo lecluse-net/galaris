@@ -60,7 +60,8 @@ async def content_revision(item_id: UUID, revision: int) -> MemoryRevision | Non
     previous_hash = await get_db().scalar(
         select(MemoryRevision.content_hash)
         .where(MemoryRevision.item_id == item_id, MemoryRevision.revision < revision)
-        .order_by(MemoryRevision.revision.desc()).limit(1)
+        .order_by(MemoryRevision.revision.desc())
+        .limit(1)
     )
     return entry if previous_hash is not None and entry.content_hash != previous_hash else None
 

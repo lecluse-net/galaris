@@ -194,27 +194,24 @@ def _round_id(value: str) -> UUID:
 
 
 def _dispatch_forces(
-    mode: Literal["auto", "exec", "plan", "briefing"],
-) -> tuple[Literal["EXEC", "BRIEFING", "PLAN"] | None, Literal["standard", "high"] | None]:
+    mode: Literal["auto", "exec", "plan"],
+) -> tuple[Literal["EXEC", "PLAN"] | None, Literal["standard", "high"] | None]:
     """Normalize explicit route controls without choosing ordinary Task effort."""
 
-    route: Literal["EXEC", "BRIEFING", "PLAN"] | None = None
+    route: Literal["EXEC", "PLAN"] | None = None
     if mode == "exec":
         route = "EXEC"
-    elif mode == "briefing":
-        route = "BRIEFING"
     elif mode == "plan":
         route = "PLAN"
-    # PLAN is intrinsically high in the dispatcher, and briefing requires high by
-    # pipeline contract. Ordinary EXEC admissions deliberately leave effort unset.
-    return route, "high" if mode in {"plan", "briefing"} else None
+    # Ordinary EXEC admissions leave effort unset.
+    return route, "high" if mode == "plan" else None
 
 
 async def _validate_dispatch_mode(
     turn: ConversationTurn,
-    mode: Literal["auto", "exec", "plan", "briefing"],
+    mode: Literal["auto", "exec", "plan"],
 ) -> None:
-    if mode not in {"plan", "briefing"}:
+    if mode != "plan":
         return
     from app.agent import get_agent_record, resolve_pipeline_policy
 
@@ -224,8 +221,6 @@ async def _validate_dispatch_mode(
     policy = resolve_pipeline_policy(getattr(agent, "agent_driver", None))
     if mode == "plan" and not policy.use_planner:
         raise ValueError("plan is unavailable for the selected Task harness")
-    if mode == "briefing" and not policy.allows_briefing("high"):
-        raise ValueError("briefing is unavailable for the selected Task harness")
 
 
 @mcp_tool(
@@ -390,7 +385,7 @@ async def _create_conversation_task(
     action_key: str,
     requested_disposition: str,
     fallback_reason: str | None = None,
-    forced_route: Literal["EXEC", "BRIEFING", "PLAN"] | None = None,
+    forced_route: Literal["EXEC", "PLAN"] | None = None,
     forced_effort: Literal["standard", "high"] | None = None,
     auto_approve: bool = False,
     replace_target: tuple[UUID, int] | None = None,
@@ -539,8 +534,8 @@ async def _create_conversation_task(
         "of target_task_id at expected_revision. Unresolved coordination returns a conflict. "
         "The supplied label and objective are framing hints: before creating "
         "a new Task, Galaris rebuilds both with the agent's standard model from the complete "
-        "conversation context, memory, URLs, and resource references. Use mode=plan or "
-        "mode=briefing only when explicitly requested; omitted controls remain the dispatcher's "
+        "conversation context, memory, URLs, and resource references. Use mode=plan "
+        "only when explicitly requested; omitted controls remain the dispatcher's "
         "decision. This tool never chooses Task effort; the dispatcher owns that decision. "
         "Explicit deterministic chat directives such as @high use the separate direct-admission "
         "path. Ask the user when the relationship is ambiguous. Return immediately and never "
@@ -552,7 +547,7 @@ async def conversation_task_submit(
     *,
     objective: str,
     label: str = "",
-    mode: Literal["auto", "exec", "plan", "briefing"] = "auto",
+    mode: Literal["auto", "exec", "plan"] = "auto",
     disposition: Literal["CREATE_NEW", "AMEND_CURRENT", "AMEND_QUEUED", "REPLACE"] = "CREATE_NEW",
     target_task_id: str | None = None,
     expected_revision: int | None = None,
@@ -734,9 +729,8 @@ async def admit_background_task(
     turn: ConversationTurn,
     objective: str,
     *,
-    forced_route: Literal["EXEC", "BRIEFING", "PLAN"] | None = None,
+    forced_route: Literal["EXEC", "PLAN"] | None = None,
     forced_effort: Literal["standard", "high"] | None = None,
-    require_briefing: bool = False,
     auto_approve: bool = False,
 ) -> dict[str, Any]:
     """Admit a direct Task while bypassing the conversation controller LLM."""
@@ -751,12 +745,8 @@ async def admit_background_task(
     clean_objective = objective.strip()
     if not clean_objective:
         raise ValueError("objective is required")
-    direct_mode: Literal["auto", "exec", "plan", "briefing"] = "auto"
-    if require_briefing or forced_route == "BRIEFING":
-        direct_mode = "briefing"
-        forced_route = "BRIEFING"
-        forced_effort = forced_effort or "high"
-    elif forced_route == "PLAN":
+    direct_mode: Literal["auto", "exec", "plan"] = "auto"
+    if forced_route == "PLAN":
         direct_mode = "plan"
     elif forced_route == "EXEC":
         direct_mode = "exec"

@@ -12,7 +12,7 @@ from app.lab import run_inference, run_publication
 
 
 def claim(**changes):
-    work = RunClaim(run_id=uuid4(), token=uuid4(), mechanism="briefing", llm_id=2147483647,
+    work = RunClaim(run_id=uuid4(), token=uuid4(), mechanism="planner", llm_id=2147483647,
         judge_llm_id=2147483647, created_by=None, configuration_snapshot={},
         case_snapshot={"id": str(uuid4()), "resolved_input": {"objective": "Report"}},
         result_id=uuid4(), campaign_id=uuid4(), actual_output={"result": "Saved answer"})
@@ -65,7 +65,7 @@ async def test_inference_requires_a_frozen_case():
 @pytest.mark.asyncio
 @pytest.mark.parametrize("cancel", [False, True])
 async def test_candidate_republication_preserves_original_output_and_billing(db, cancel):
-    dataset = LabEvaluationDataset(name=f"publication-{uuid4()}", mechanism="briefing")
+    dataset = LabEvaluationDataset(name=f"publication-{uuid4()}", mechanism="planner")
     db.add(dataset)
     await db.flush()
     case = LabEvaluationCase(dataset_id=dataset.id, name="Report")
@@ -89,7 +89,7 @@ async def test_candidate_republication_preserves_original_output_and_billing(db,
 @pytest.mark.asyncio
 @pytest.mark.parametrize("action", ["candidate", "judgment", "finish"])
 async def test_dispossessed_worker_cannot_publish_or_finish_an_owned_run(db, action):
-    dataset = LabEvaluationDataset(name=f"lease-{uuid4()}", mechanism="briefing")
+    dataset = LabEvaluationDataset(name=f"lease-{uuid4()}", mechanism="planner")
     db.add(dataset)
     await db.flush()
     run = LabEvaluationRun(dataset_id=dataset.id, status="running", total_cases=2, lease_token=uuid4())
@@ -111,7 +111,7 @@ async def test_dispossessed_worker_cannot_publish_or_finish_an_owned_run(db, act
 
 @pytest.mark.asyncio
 async def test_judgment_republication_is_idempotent_and_cancellation_finishes_campaign(db):
-    dataset = LabEvaluationDataset(name=f"judgment-{uuid4()}", mechanism="briefing")
+    dataset = LabEvaluationDataset(name=f"judgment-{uuid4()}", mechanism="planner")
     db.add(dataset)
     await db.flush()
     run = LabEvaluationRun(dataset_id=dataset.id, status="running", phase="judgment", total_cases=2,

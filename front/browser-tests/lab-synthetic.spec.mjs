@@ -4,17 +4,17 @@ const oldDataset = { id: 'existing', name: 'Existing experiment', description: '
 const generated = { ...oldDataset, id: 'synthetic', name: 'Observatory', case_count: 3, ready_case_count: 0 }
 
 async function workbench(page, props = {}) {
-  await jsonRoute(page, '**/api/evaluation/mechanisms', ['briefing', 'planner'].map(key => ({
+  await jsonRoute(page, '**/api/evaluation/mechanisms', ['planner', 'task_executor'].map(key => ({
     key, executor: null, configuration_schema: {}, algorithm: {},
-    contract: { variable_name: 'objective', variable_schema: { type: 'string' }, parameters_schema: {}, parameter_defaults: {}, result_name: 'briefing_and_resources' },
+    contract: { variable_name: 'objective', variable_schema: { type: 'string' }, parameters_schema: {}, parameter_defaults: {}, result_name: 'plan_or_clarification' },
   })))
   await jsonRoute(page, '**/api/evaluation/config', { lab_llm_id: 7, llms: [{ id: 7, label: 'Generator' }] })
-  for (const key of ['briefing', 'planner']) {
+  for (const key of ['planner', 'task_executor']) {
     await jsonRoute(page, `**/api/evaluation/${key}/datasets`, [oldDataset])
     await jsonRoute(page, `**/api/evaluation/${key}/datasets/*/cases`, [])
     await jsonRoute(page, `**/api/evaluation/${key}/datasets/*/runs?*`, [])
   }
-  await mount(page, 'app/lab/components/LabWorkbench.vue', { props: { mechanism: 'briefing', canEdit: true, ...props } })
+  await mount(page, 'app/lab/components/LabWorkbench.vue', { props: { mechanism: 'planner', canEdit: true, ...props } })
 }
 
 async function openGenerator(page) {
@@ -28,7 +28,7 @@ async function openGenerator(page) {
 
 test('synthetic generation sends customization, preserves failed drafts and opens the new experiment', async ({ page }) => {
   const requests = []
-  await page.route('**/api/evaluation/briefing/datasets/synthetic', route => {
+  await page.route('**/api/evaluation/planner/datasets/synthetic', route => {
     requests.push(route.request().postDataJSON())
     return route.fulfill(requests.length === 1
       ? { status: 422, json: { detail: 'Generator unavailable' } }
@@ -57,7 +57,7 @@ test('closing and reopening a pending generation cannot submit it twice or erase
   let release
   const pending = new Promise(resolve => { release = resolve })
   let calls = 0
-  await page.route('**/api/evaluation/briefing/datasets/synthetic', async route => {
+  await page.route('**/api/evaluation/planner/datasets/synthetic', async route => {
     calls++; await pending
     await route.fulfill({ status: 201, json: { dataset: generated, cost: 0.012 } })
   })
@@ -83,7 +83,7 @@ test('closing and reopening a pending generation cannot submit it twice or erase
 test('late generation from another lab cannot change the current experiment', async ({ page }) => {
   let release
   const pending = new Promise(resolve => { release = resolve })
-  await page.route('**/api/evaluation/briefing/datasets/synthetic', async route => {
+  await page.route('**/api/evaluation/planner/datasets/synthetic', async route => {
     await pending
     await route.fulfill({ status: 201, json: { dataset: generated, cost: 0.012 } })
   })
@@ -91,7 +91,7 @@ test('late generation from another lab cannot change the current experiment', as
   const dialog = await openGenerator(page)
   await dialog.getByRole('button', { name: 'Generate', exact: true }).click()
   await expect(dialog.getByRole('status')).toBeVisible()
-  await page.evaluate(() => window.testApp.setProps({ mechanism: 'planner' }))
+  await page.evaluate(() => window.testApp.setProps({ mechanism: 'task_executor' }))
   await expect(dialog).not.toBeVisible()
   release()
   await page.getByRole('button', { name: 'Generate a synthetic dataset', exact: true }).click()
@@ -127,7 +127,7 @@ test('mobile generation requires a configured model and valid case coverage', as
 
 test('contextual generation requires saved settings and can explicitly start a fresh environment', async ({ page }) => {
   const requests = []
-  await page.route('**/api/evaluation/briefing/datasets/synthetic', route => {
+  await page.route('**/api/evaluation/planner/datasets/synthetic', route => {
     requests.push(route.request().postDataJSON())
     return route.fulfill({ status: 201, json: { dataset: generated, cost: 0.012 } })
   })

@@ -28,7 +28,7 @@ export interface LLMCall {
   agent_name?: string
   agent_code?: string
   process_label?: string
-  call_type: 'chat' | 'dispatch' | 'planning' | 'briefing' | 'synthesis' | 'goal_tracking' | 'vision'
+  call_type: 'chat' | 'dispatch' | 'planning' | 'synthesis' | 'goal_tracking' | 'vision'
   provider_name: string
   provider_code?: string
   requested_model: string

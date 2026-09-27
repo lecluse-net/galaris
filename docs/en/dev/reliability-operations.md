@@ -70,7 +70,7 @@ forces a fallback decision. Repeated updates count one call once; subscriptions 
 billed cost. File writes to Messenger record a receipt after upload. Final notifications match
 the exact URI and destination and do not resend an already delivered image.
 Successful results from the common inference facades use the same accounting, preventing
-objective preparation or briefing from replacing a known cost with a local estimate.
+objective preparation from replacing a known cost with a local estimate.
 
 Conversation deliveries and Task/Process notifications in `UNKNOWN` can be resolved in the round
 detail with evidence and edit privileges within the agent scope. Decisions are recorded per

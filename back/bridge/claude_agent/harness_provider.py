@@ -192,7 +192,7 @@ async def _selected_token(agent: Agent) -> str:
 
 class ClaudeAgentHarnessProvider:
     pipeline_policy = DriverPipelinePolicy(
-        use_planner=False, use_briefing=False,
+        use_planner=False,
         execution_efforts=frozenset({"standard", "high"}),
         uses_llm_calls=True,
     )

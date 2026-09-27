@@ -36,7 +36,7 @@ def boundary(monkeypatch):
     spec = AgentDriverSpec(
         code="hostile-test", label_key="test", factory_path="test:factory",
         tool_profile=ToolExposureProfile(),
-        pipeline_policy=DriverPipelinePolicy(use_planner=False, use_briefing=False),
+        pipeline_policy=DriverPipelinePolicy(use_planner=False, ),
     )
     driver = ScriptedDriver(spec)
     monkeypatch.setitem(registry._DRIVER_SPECS, spec.code, spec)

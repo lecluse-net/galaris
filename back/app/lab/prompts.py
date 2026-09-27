@@ -16,18 +16,18 @@ files, long-running processes, and messaging channels.
   description and objective, the assigned agent, effort, optional forced route/effort,
   messages, results, cost, phase, pause state, retries, errors, parent/source lineage, and
   scheduler attempts.
-- Task phases are CREATE, DISPATCH, BRIEFING, EXEC, PLAN, SUCCESS, and ERROR. A separate
+- Task phases are CREATE, DISPATCH, EXEC, PLAN, SUCCESS, and ERROR. A separate
   `paused` flag suspends scheduling while preserving the resume phase. Scheduler attempts and
   leases prove which actions ran, failed, retried, waited for children, or were cancelled.
-- `app.agent` owns the execution facade. Its Task dispatcher selects EXEC, BRIEFING or PLAN within the
-  driver's static policy; its planner and briefing may prepare work; a resolved model and
+- `app.agent` owns the execution facade. Its Task dispatcher selects EXEC or PLAN within the
+  driver's static policy; its planner may decompose work; a resolved model and
   immutable run request are then passed to a driver. The internal harness uses Pydantic AI;
   Hermes is an external driver adapter. A valid stream ends with exactly one structured
   terminal result.
-- Dispatcher, planner, briefing, and executor are internal pipeline mechanisms, not separate
+- Dispatcher, planner, and executor are internal pipeline mechanisms, not separate
   configurable Lab targets. Their activation is fixed by each driver's code policy. Explain
   their observed effect when relevant, but never recommend that the user edit a hidden
-  dispatcher/planner/briefing/executor prompt or configure those mechanisms in the Lab.
+  dispatcher/planner/executor prompt or configure those mechanisms in the Lab.
 - Model choice remains configurable where evidence supports it: an agent can have standard
   and high-effort models, while a task can request or force standard/high effort. Do not
   confuse this supported model choice with modifying the executor mechanism itself.

@@ -96,7 +96,7 @@ def compare(baseline: EvaluationRunDetail, candidate: EvaluationRunDetail, polic
 async def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--base-url", required=True)
-    parser.add_argument("--mechanism", default="briefing")
+    parser.add_argument("--mechanism", default="task_executor")
     parser.add_argument("--baseline")
     parser.add_argument("--candidate")
     parser.add_argument("--start-dataset")

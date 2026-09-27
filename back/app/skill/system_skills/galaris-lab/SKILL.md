@@ -12,8 +12,8 @@ without trying to bypass it with SQL, a console, another identity or a direct pr
 
 ## Discover the experiment
 
-Call `lab_list`, then `lab_get(mechanism)` and `lab_models(mechanism)`. Eleven mechanisms share
-the same tools: dispatcher, briefing, planner, topic_classification, memory_extraction,
+Call `lab_list`, then `lab_get(mechanism)` and `lab_models(mechanism)`. Ten mechanisms share
+the same tools: dispatcher, planner, topic_classification, memory_extraction,
 outcome_reflection, goal_tracking, task_executor, conversation_executor, voice_executor,
 task_analysis. Read the actual schemas, rubric and compatible models rather than guessing fields.
 `lab_prompt_defaults` returns effective defaults without creating anything.
@@ -120,7 +120,7 @@ longer meaningfully blind even if this endpoint hides it. Failed critical checks
 
 A missing judge score is missing evidence, never a pass. The executors simulate tools and do
 not execute real side effects. Voice Lab tests transcribed turns, not recognition or synthesis.
-Briefing remains evaluable even when disabled in normal runtime. Decision models are only
+Decision models are only
 eligible for Dispatcher, Topics and memory extraction; hybrid runs pin their text model.
 
 ## Diagnose and iterate

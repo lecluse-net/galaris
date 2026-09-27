@@ -24,9 +24,9 @@ from app.harness.runtime import Agent
 @pytest.mark.parametrize("transport", ["native", "mcp"])
 @pytest.mark.parametrize("durable", [False, True])
 async def test_repeated_tools_allow_skill_reread_or_an_honest_report(
-    monkeypatch, failed, decision, transport, durable,
+    db, monkeypatch, failed, decision, transport, durable,
 ):
-    """A whole tool batch finishes before advice; the same run can still do work."""
+    """Finish tool batches before advice and roll back their real failure-journal writes."""
     from unittest.mock import AsyncMock
 
     from fastmcp import FastMCP

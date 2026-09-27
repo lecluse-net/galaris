@@ -181,7 +181,6 @@ const syntheticFr = {
   created: 'Jeu « {name} » créé : {count} brouillons à relire · coût : {cost} $',
   focus: {
     dispatcher: 'Cibles : choix de route, effort, ambiguïtés et contraintes du moteur d’exécution.',
-    briefing: 'Cibles : sélection des ressources, preuves manquantes et consignes utiles à l’exécution.',
     planner: 'Cibles : décomposition, dépendances, demandes de précision et limites du plan.',
     topic_classification: 'Cibles : continuité, changement et reprise de sujet au fil des messages.',
     memory_extraction: 'Cibles : faits durables, bavardage, corrections et liens avec les souvenirs existants.',
@@ -208,7 +207,6 @@ const syntheticEn = {
   created: 'Dataset “{name}” created: {count} drafts to review · cost: ${cost}',
   focus: {
     dispatcher: 'Focus: routing, effort, ambiguity and execution engine constraints.',
-    briefing: 'Focus: resource selection, missing evidence and useful execution guidance.',
     planner: 'Focus: decomposition, dependencies, clarification and plan limits.',
     topic_classification: 'Focus: topic continuity, changes and returns across messages.',
     memory_extraction: 'Focus: durable facts, chatter, corrections and links to existing memories.',
@@ -232,8 +230,7 @@ const syntheticZh = {
   generating: '正在生成…您可以关闭此窗口并重新打开以跟踪请求。', error: '生成失败。请减少案例数量或选择其他模型。',
   created: '已创建测试集“{name}”：{count} 个草稿待审阅 · 费用：{cost} 美元',
   focus: {
-    dispatcher: '重点：路由、推理强度、歧义和执行引擎约束。', briefing: '重点：资源选择、证据缺失和有用的执行指导。',
-    planner: '重点：分解、依赖、澄清和计划限制。', topic_classification: '重点：消息中的话题延续、切换和回归。',
+    dispatcher: '重点：路由、推理强度、歧义和执行引擎约束。', planner: '重点：分解、依赖、澄清和计划限制。', topic_classification: '重点：消息中的话题延续、切换和回归。',
     memory_extraction: '重点：长期事实、闲聊、更正和现有记忆关联。', outcome_reflection: '重点：以成功、失败和不完整结果证据为依据的经验。',
     goal_tracking: '重点：已验证的进展、完成、阻碍和下一步有用行动。', task_executor: '重点：有界执行、模拟工具、错误和完成证据。',
     conversation_executor: '重点：直接回复、澄清、委派和避免重复操作的跟进。', voice_executor: '重点：简洁口语回复、模糊转录、打断和委派。',
@@ -347,7 +344,6 @@ export default {
         },
         "results": {
           "dispatch_decision": "Décision de routage",
-          "briefing_and_resources": "Briefing et ressources choisies",
           "plan_or_clarification": "Plan ou clarification",
           "topics_per_message": "Topic de chaque message",
           "memory_operations": "Création, liaison ou ignorance des souvenirs",
@@ -436,7 +432,6 @@ export default {
           "available_tools": "Outils disponibles",
           "available_processes": "Process disponibles",
           "memories": "Mémoires fournies",
-          "briefing": "Briefing",
           "plan": "Plan",
           "working_set": "Ressources de travail",
           "interrupted_objective": "Objectif interrompu",
@@ -465,7 +460,6 @@ export default {
       tabs: {
         taskAnalysis: 'Analyse de tâches',
         dispatcher: 'Dispatcher',
-        briefing: 'Briefing',
         planner: 'Planner',
         topicClassification: 'Détection des sujets',
         memoryExtraction: 'Extraction mémoire',
@@ -484,7 +478,6 @@ export default {
         dispatcher: 'Comparez les décisions d’aiguillage du dispatcher sur des cas persistés et mesurez leur pertinence avec un juge sémantique.',
       },
       mechanismInfo: {
-        briefing: 'Mesurez la préparation concise transmise à l’exécuteur, notamment ses contraintes, son approche et ses choix de ressources.',
         planner: 'Mesurez la construction d’un plan complet, structuré et directement exécutable à partir d’un objectif isolé.',
         topicClassification: 'Mesurez message par message la continuité, les ruptures et les retours entre sujets dans un échange Humain / IA complet.',
         memoryExtraction: 'Classez le corpus local puis mesurez les décisions CREATE, LINK ou IGNORE depuis une activité classée.',
@@ -889,9 +882,6 @@ export default {
         dispatcher: 'Vers le Dispatcher',
         dispatcherHelp: 'Copie l’entrée et la sortie du dispatcher dans un jeu de données.',
         dispatcherUnavailable: 'Cette tâche ne possède pas encore de résultat de dispatcher.',
-        briefing: 'Vers le Briefing',
-        briefingHelp: 'Copie l’entrée et la sortie du briefing dans un jeu de données.',
-        briefingUnavailable: 'Cette tâche ne possède pas encore de résultat de briefing.',
         planner: 'Vers le Planner',
         plannerHelp: 'Copie l’entrée et la sortie du planner dans un jeu de données.',
         plannerUnavailable: 'Cette tâche ne possède pas encore de plan produit par le planner.',
@@ -1019,7 +1009,6 @@ export default {
         },
         "results": {
           "dispatch_decision": "Routing decision",
-          "briefing_and_resources": "Briefing and selected resources",
           "plan_or_clarification": "Plan or clarification",
           "topics_per_message": "Topic per message",
           "memory_operations": "Memory creation, linking or abstention",
@@ -1108,7 +1097,6 @@ export default {
           "available_tools": "Available tools",
           "available_processes": "Available processes",
           "memories": "Provided memories",
-          "briefing": "Briefing",
           "plan": "Plan",
           "working_set": "Working resources",
           "interrupted_objective": "Interrupted objective",
@@ -1137,7 +1125,6 @@ export default {
       tabs: {
         taskAnalysis: 'Task analysis',
         dispatcher: 'Dispatcher',
-        briefing: 'Briefing',
         planner: 'Planner',
         topicClassification: 'Thematic dossier detection',
         memoryExtraction: 'Memory extraction',
@@ -1156,7 +1143,6 @@ export default {
         dispatcher: 'Compare dispatcher routing decisions on persisted cases and measure their relevance with a semantic judge.',
       },
       mechanismInfo: {
-        briefing: 'Measure the concise preparation passed to the executor, including constraints, approach, and resource choices.',
         planner: 'Measure the construction of a complete, structured, directly executable plan from an isolated objective.',
         topicClassification: 'Measure thematic dossier continuity, boundaries, and returns message by message across one complete Human / AI exchange.',
         memoryExtraction: 'Rank the local corpus, then measure CREATE, LINK, or IGNORE decisions from a classified activity.',
@@ -1561,9 +1547,6 @@ export default {
         dispatcher: 'To Dispatcher',
         dispatcherHelp: 'Copies dispatcher input and output into a dataset.',
         dispatcherUnavailable: 'This task does not have a dispatcher result yet.',
-        briefing: 'To Briefing',
-        briefingHelp: 'Copy the briefing input and output into a dataset.',
-        briefingUnavailable: 'This task does not have a briefing result yet.',
         planner: 'To Planner',
         plannerHelp: 'Copy the planner input and output into a dataset.',
         plannerUnavailable: 'This task does not have a planner result yet.',
@@ -1688,7 +1671,6 @@ export default {
   },
   "results": {
     "dispatch_decision": "路由决策",
-    "briefing_and_resources": "简报与所选资源",
     "plan_or_clarification": "计划或澄清",
     "topics_per_message": "每条消息的主题",
     "memory_operations": "创建、关联记忆或放弃操作",
@@ -1776,7 +1758,6 @@ export default {
     "available_tools": "可用工具",
     "available_processes": "可用流程",
     "memories": "提供的记忆",
-    "briefing": "简报",
     "plan": "计划",
     "working_set": "工作资源",
     "interrupted_objective": "被中断的目标",
@@ -1801,11 +1782,11 @@ export default {
   }
 },
       labTitle: '实验室：{name}', refresh: '刷新', view: '查看',
-      tabs: { taskAnalysis: '任务分析', dispatcher: '调度器', briefing: '简报', planner: '规划器', topicClassification: '主题档案检测', memoryExtraction: '记忆提取', learning: '学习', goalTracking: '目标跟踪', taskExecutor: '任务执行器', conversationExecutor: '对话执行器', voiceExecutor: '语音执行器' },
+      tabs: { taskAnalysis: '任务分析', dispatcher: '调度器', planner: '规划器', topicClassification: '主题档案检测', memoryExtraction: '记忆提取', learning: '学习', goalTracking: '目标跟踪', taskExecutor: '任务执行器', conversationExecutor: '对话执行器', voiceExecutor: '语音执行器' },
       home: { title: '实验室', description: '选择实验项目以分析真实执行，或在可复现数据集上比较 AI 机制。' },
       sectionInfo: { taskAnalysis: '检查真实任务、执行证据以及实验室分析模型生成的诊断。', dispatcher: '在持久化用例上比较调度器的路由决策，并使用语义裁判衡量相关性。' },
       mechanismInfo: {
-        briefing: '衡量传给执行器的精简准备内容，包括约束、方法和资源选择。', planner: '衡量从独立目标构建完整、结构化且可直接执行的计划。',
+        planner: '衡量从独立目标构建完整、结构化且可直接执行的计划。',
         topicClassification: '逐条消息衡量一次完整人机交流中的主题档案延续、边界和回归。', memoryExtraction: '对本地语料排序，然后衡量已分类活动中的创建、关联或忽略决策。',
         learning: '衡量从已完成任务的可观察证据中学习可复用经验。', goalTracking: '衡量持久目标跟踪更新以及继续或停止的决策。',
         taskExecutor: '使用无副作用工具，比较不同提示词后缀和模型能否对任务采取行动、请求说明或回复。',
@@ -1908,7 +1889,7 @@ export default {
         confirmDatasetParameters: "使用测试集参数添加",
         diagnosis: '任务诊断', diagnosisHelp: '将证据捕获到诊断数据集。',
         addToLab: '将用例添加到实验室', dispatcher: '添加到调度器', dispatcherHelp: '将调度器输入和输出复制到数据集。', dispatcherUnavailable: '此任务尚无调度器结果。',
-        briefing: '添加到简报', briefingHelp: '将简报输入和输出复制到数据集。', briefingUnavailable: '此任务尚无简报结果。', planner: '添加到规划器',
+        planner: '添加到规划器',
         plannerHelp: '将规划器输入和输出复制到数据集。', plannerUnavailable: '此任务尚无规划器结果。', taskExecutor: '添加到任务执行器', taskExecutorHelp: '将请求和执行结果复制到数据集。',
         taskExecutorUnavailable: '此任务尚无执行结果。', chooseDataset: '选择调度器数据集', chooseDatasetFor: '选择 {mechanism} 数据集', chooseDatasetHelp: '哪个数据集应接收“{source}”？',
         datasetCases: '{total} 个用例中 {ready} 个就绪', noDatasetsFor: '不存在 {mechanism} 数据集。请创建一个以复制此项目。', createDataset: '创建数据集', datasetName: '数据集名称',

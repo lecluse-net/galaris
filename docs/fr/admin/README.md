@@ -566,7 +566,6 @@ par un `profile_id` nul et suit immédiatement tout changement de profil courant
 | Conversation | réponses rapides du control plane des conversations texte |
 | Dispatcher | choix `EXEC`/`PLAN` et effort des Tasks ; il n’exécute pas les conversations |
 | Planner | création de plans et synthèse finale |
-| Briefing | mécanisme conservé pour le Lab et une éventuelle réactivation ; désactivé en production |
 | Goal | jugement et suivi des cycles de Goals |
 | Lab | analyse de Tasks, proposition de références, jugement et analyse des benchmarks du Lab IA |
 | Dream | classement, extraction et apprentissage Dream |
@@ -645,7 +644,6 @@ leur référence. Ce réglage concerne uniquement le harnais Pydantic AI interne
 - aucune façade de stockage local implicite ; les fichiers locaux passent exclusivement par une
   console active ;
 - planner activé ;
-- briefing conservé mais désactivé pendant l’évaluation des objectifs autonomes ;
 - modèles standard/high résolus dans la configuration Galaris.
 
 ### Driver Hermès
@@ -653,7 +651,7 @@ leur référence. Ce réglage concerne uniquement le harnais Pydantic AI interne
 Code : `hermes`.
 
 Hermès reste un runtime autonome. Galaris lui transmet une requête normalisée et supervise
-le résultat, mais ne lui impose ni planner ni briefing afin d’éviter deux systèmes de
+le résultat, mais ne lui impose pas de planner afin d’éviter deux systèmes de
 raisonnement concurrents.
 
 Le niveau d’effort sélectionne le modèle, pas un second ordonnanceur :
@@ -666,7 +664,7 @@ Le niveau d’effort sélectionne le modèle, pas un second ordonnanceur :
 Le Kanban est désactivé par une constante interne au code du driver Hermès. Ce choix n’est pas
 configurable dans `.env`, les paramètres ou l’administration. Le code et les routes Kanban restent
 disponibles uniquement pour reprendre une carte créée avant la désactivation et ouvrir la voie à
-une future réactivation. Le briefing n’est actuellement activé par aucun harnais.
+une future réactivation.
 
 Le manager se configure dans **Préférences → Harnais → Harnais managés → Configurer le Harness Manager** : URL, secret
 partagé et URL API vue par les harnais. Ces réglages s’appliquent sans redémarrer Galaris.

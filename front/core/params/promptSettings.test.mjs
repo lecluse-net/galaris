@@ -6,7 +6,6 @@ import * as harnessCatalog from '../../app/harnesses/runtimeSettings.ts'
 const promptNames = [
   'ai.task-objective-system-prompt',
   'ai.planner-system-prompt',
-  'ai.briefing-system-prompt',
   'ai.executor-system-prompt',
   'ai.conversation-executor-system-prompt',
   'ai.voice-executor-system-prompt',

@@ -397,8 +397,6 @@ async def import_task_case(dataset_id: UUID, data: DispatcherCaseImport) -> Eval
         "version": "dispatcher-input:v2",
         "pipeline_policy": {
             "use_planner": dispatch.pipeline_policy.get("use_planner", policy.use_planner),
-            "use_briefing": dispatch.pipeline_policy.get("use_briefing", policy.use_briefing),
-            "briefing_efforts": dispatch.pipeline_policy.get("briefing_efforts", sorted(policy.briefing_efforts)),
             "execution_efforts": dispatch.pipeline_policy.get("execution_efforts", ["standard", "high"]),
             "uses_llm_calls": dispatch.pipeline_policy.get("uses_llm_calls", policy.uses_llm_calls),
         },

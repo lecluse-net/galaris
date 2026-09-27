@@ -43,12 +43,12 @@ async def test_orchestration_model_uses_the_single_effective_profile(
 async def test_profile_model_availability_has_no_second_fallback(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    resolver = AsyncMock(side_effect=[_llm(1, "briefing"), None])
+    resolver = AsyncMock(side_effect=[_llm(1, "executor"), None])
     monkeypatch.setattr(llm_service, "get_profile_llm", resolver)
     agent = SimpleNamespace(profile_id=5)
 
-    assert await has_agent_profile_model(agent, model_usages.BRIEFING)
-    assert not await has_agent_profile_model(agent, model_usages.BRIEFING)
+    assert await has_agent_profile_model(agent, model_usages.EXECUTOR)
+    assert not await has_agent_profile_model(agent, model_usages.EXECUTOR)
 
 
 @pytest.mark.asyncio

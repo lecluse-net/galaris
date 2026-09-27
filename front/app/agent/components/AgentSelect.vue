@@ -100,6 +100,7 @@ const loading = ref(false)
 const failed = ref(false)
 const failureDetail = ref('')
 let request = 0
+let selectionController: AbortController | undefined
 let popupOpen = false
 const { t } = useI18n()
 const allowedIds = computed(() => new Set(authorized.value.map(agent => agent.id)))
@@ -116,10 +117,13 @@ function select(value: number | null): void {
 
 async function refresh(): Promise<void> {
   const current = ++request
+  selectionController?.abort()
+  const controller = new AbortController()
+  selectionController = controller
   loading.value = true
   failed.value = false
   try {
-    const result = await getAgentSelection(scope)
+    const result = await getAgentSelection(scope, controller.signal)
     if (current !== request) return
     if (loadAgents && scope === 'management' && agentStore.agents.length === 0) {
       await agentStore.fetchAgents()
@@ -137,15 +141,24 @@ async function refresh(): Promise<void> {
     // the empty authorized list still prevents choosing an unverified agent.
     if (isAxiosError(error) && [401, 403].includes(error.response?.status ?? 0)) model.value = null
   } finally {
-    if (current === request) loading.value = false
+    if (current === request) {
+      selectionController = undefined
+      loading.value = false
+    }
   }
 }
 
-function invalidate(): void {
+function cancelRefresh(): void {
   request += 1
+  selectionController?.abort()
+  selectionController = undefined
+  loading.value = false
+}
+
+function invalidate(): void {
+  cancelRefresh()
   authorized.value = []
   failed.value = false
-  loading.value = false
   if (popupOpen || model.value !== null) void refresh()
 }
 function open(): void {
@@ -154,15 +167,14 @@ function open(): void {
 }
 function close(): void {
   popupOpen = false
-  request += 1
-  loading.value = false
+  cancelRefresh()
 }
 watch(() => [scope, privileges.privileges], invalidate, { immediate: true, deep: true })
 watch(model, value => {
   if (value !== null && !allowedIds.value.has(value) && !loading.value) void refresh()
 })
 onBeforeUnmount(() => {
-  request += 1
+  cancelRefresh()
   window.removeEventListener(AUTH_TOKEN_CHANGED_EVENT, invalidate)
 })
 

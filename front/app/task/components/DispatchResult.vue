@@ -151,7 +151,6 @@ const activeTab = ref('data')
 const getRouteIcon = (route: string): string => {
     switch (route) {
         case 'EXEC': return 'play_arrow'
-        case 'BRIEFING': return 'assignment'
         case 'PLAN': return 'account_tree'
         case 'END': return 'stop_circle'
         default: return 'help'

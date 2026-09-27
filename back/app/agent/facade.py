@@ -534,7 +534,6 @@ async def build_task_context(
 
 async def build_run_request(task: AgentTask) -> AgentRunRequest:
     """Freeze a persisted task into a DTO before crossing the driver boundary."""
-    from .workflow import task_uses_briefing
     agent = getattr(task, "agent", None)
     if agent is None:
         raise RuntimeError(f"Task {getattr(task, 'id', '?')} has no associated agent.")
@@ -638,7 +637,7 @@ async def build_run_request(task: AgentTask) -> AgentRunRequest:
         job_title=getattr(agent, "job_title", None),
         driver_config=driver_config,
     )
-    from app.agent import briefing_service, planner_service
+    from app.agent import planner_service
     from .task_port import task_port
 
     shared_context = "\n\n".join(
@@ -800,14 +799,6 @@ async def build_run_request(task: AgentTask) -> AgentRunRequest:
             if callable(getattr(task, "get_dispatch_result", None))
             else None
         ),
-        briefing_result=(
-            task.get_briefing_result()
-            if (
-                task_uses_briefing(task)
-                and callable(getattr(task, "get_briefing_result", None))
-            )
-            else None
-        ),
         last_error=getattr(task, "last_error", None),
         consecutive_failures=int(getattr(task, "consecutive_failures", 0) or 0),
         approval_action=approval,
@@ -819,11 +810,6 @@ async def build_run_request(task: AgentTask) -> AgentRunRequest:
         conversation_history=contributed_context.conversation_history,
         messaging_context=contributed_context.messaging_context,
         metadata={
-            "briefing_text": (
-                briefing_service.executor_text(task)
-                if task_uses_briefing(task)
-                else ""
-            ),
             "delegated": bool(data.get(task_port.DELEGATED_KEY)),
             **dict(contributed_context.metadata),
             _CHECKPOINT_OBJECTIVE_FINGERPRINT_KEY: objective_fingerprint,
@@ -862,7 +848,6 @@ def _enrich_run_result(
         "model_fallback_used": request.model.fallback_used,
         "usage": result.usage.model_dump(mode="json"),
         "planner_used": request.parent_task_id is not None,
-        "briefing_used": request.briefing_result is not None,
         _CHECKPOINT_OBJECTIVE_FINGERPRINT_KEY: request.metadata.get(
             _CHECKPOINT_OBJECTIVE_FINGERPRINT_KEY
         ),
@@ -1442,7 +1427,6 @@ async def stream_conversation_turn_events(
         conversation_history=contributed_context.conversation_history,
         messaging_context=messaging_context,
         metadata={
-            "briefing_text": "",
             **dict(contributed_context.metadata),
         },
     )

@@ -59,17 +59,16 @@ async def test_pipeline_configuration_uses_the_provider_policy_over_its_transpor
 
     provider = SimpleNamespace(
         code="future-harness", label="Future harness", driver_code="openai_messages",
-        pipeline_policy=DriverPipelinePolicy(use_planner=True, use_briefing=True,
-            briefing_efforts=frozenset({"standard"})),
+        pipeline_policy=DriverPipelinePolicy(use_planner=True),
         capabilities=lambda: frozenset(),
     )
     monkeypatch.setattr(configuration, "all_providers", lambda: (provider,))
     result = await configuration.describe_configuration(provider.code)
     assert result.pipeline_policy.use_planner
-    assert result.pipeline_policy.allows_briefing("standard")
+    assert result.pipeline_policy.use_planner
     transport = await configuration.describe_configuration("openai_messages")
     assert not transport.pipeline_policy.use_planner
-    assert not transport.pipeline_policy.use_briefing
+    assert not transport.pipeline_policy.use_planner
 
 
 @pytest.mark.asyncio

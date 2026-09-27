@@ -510,7 +510,7 @@ Sa panne laisse un score absent et une campagne incomplète.
 
 Une base nue peut compléter l'expérience ; elle ne remplace pas la baseline active. Le Lab doit
 accepter une cible `base + adapter + politique Memory` et une campagne composite conservant
-les scores par mécanisme, dimension et cas. Réutiliser Dispatcher, Briefing, Planner, Memory,
+les scores par mécanisme, dimension et cas. Réutiliser Dispatcher, Planner, Memory,
 Dream et Goal, puis des Tasks représentatives sans effet externe, avec frontières d'outils
 simulées ou résultats enregistrés dans un harness dédié.
 

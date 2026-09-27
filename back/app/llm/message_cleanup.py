@@ -24,7 +24,6 @@ _GALARIS_TAGS = (
     "<message-or-task>",
     "<role-and-context>",
     "<reply_contract>",
-    "<execution_briefing>",
 )
 
 # Maximum number of recent non-system messages sent to the model.
@@ -36,8 +35,7 @@ _STRIP_BLOCK_RES = [
     re.compile(r"<role-and-context>.*?</role-and-context>\s*", re.DOTALL),
     # A fixed delivery contract should not accumulate on every turn.
     re.compile(r"<reply_contract>.*?</reply_contract>\s*", re.DOTALL),
-    # Only the current turn's execution briefing should guide the agent.
-    re.compile(r"<execution_briefing>.*?</execution_briefing>\s*", re.DOTALL),
+    # Embedded history should not accumulate on every turn.
     re.compile(r"<history>.*?</history>\s*", re.DOTALL),
     # Legacy metadata section removed without extraction.
     re.compile(r"<metadata>.*?</metadata>\s*", re.DOTALL),

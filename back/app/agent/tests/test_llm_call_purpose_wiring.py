@@ -7,7 +7,7 @@ from uuid import uuid4
 
 import pytest
 
-from app.agent import briefing_service, dispatcher as dispatcher_module, facade
+from app.agent import dispatcher as dispatcher_module, facade
 from app.agent import planner_service
 from app.agent.contracts import ActiveDispatchDecision, AgentTask
 from app.llm import LLM, LLMCallPurpose
@@ -60,54 +60,6 @@ async def test_dispatcher_inference_is_task_owned_and_identified(
     assert captured["purpose"] == LLMCallPurpose.AGENT_DISPATCH
 
 
-@pytest.mark.asyncio
-async def test_briefing_inference_is_task_owned_and_identified(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    captured: dict[str, Any] = {}
-    task_id = uuid4()
-    task = cast(
-        AgentTask,
-        SimpleNamespace(
-            id=task_id,
-            agent_id=7,
-            reasoning_effort_override=None,
-        ),
-    )
-    catalog = briefing_service._ResourceCatalog((), ())  # pyright: ignore[reportPrivateUsage]
-    draft = briefing_service._BriefingDraft(  # pyright: ignore[reportPrivateUsage]
-        result="Inspect the inputs, then verify the result.",
-        choices=[
-            {
-                "kind": "other",
-                "identifier": "verification",
-                "label": "Verification",
-                "reason": "No external resource is required.",
-            }
-        ],
-    )
-
-    async def fake_run_structured(**kwargs: Any) -> StructuredInferenceResult[Any]:
-        captured.update(kwargs)
-        return StructuredInferenceResult(output=draft, cost=0.0, messages=[])
-
-    monkeypatch.setattr(
-        briefing_service,
-        "_resource_catalog",
-        AsyncMock(return_value=catalog),
-    )
-    monkeypatch.setattr(briefing_service, "_briefing_prompt", lambda *_args: "Brief")
-    monkeypatch.setattr(briefing_service, "run_structured", fake_run_structured)
-
-    result = await briefing_service.generate(
-        task,
-        llm_override=cast(LLM, object()),
-        system_prompt_override="Briefing",
-    )
-
-    assert result.success is True
-    assert captured["task_id"] == task_id
-    assert captured["purpose"] == LLMCallPurpose.AGENT_BRIEFING
 
 
 @pytest.mark.asyncio

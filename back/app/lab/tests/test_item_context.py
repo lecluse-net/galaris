@@ -26,14 +26,11 @@ def test_item_context_cannot_override_shared_settings(mechanism):
     "mechanism,field",
     [
         ("dispatcher", "messages"),
-        ("briefing", "history"),
         ("planner", "history"),
         ("planner", "clarifications"),
         ("task_executor", "history"),
         ("conversation_executor", "history"),
         ("voice_executor", "history"),
-        ("briefing", "recent_attachments"),
-        ("briefing", "recent_images"),
     ],
 )
 def test_capture_and_resolution_preserve_each_items_history(mechanism, field):
@@ -84,7 +81,7 @@ def test_previous_goal_tracking_is_item_evidence():
 
 
 def test_history_retains_native_size_limits():
-    for mechanism, limit in [("briefing", 6), ("planner", 30), ("memory_extraction", 5)]:
+    for mechanism, limit in [("planner", 30), ("memory_extraction", 5)]:
         with pytest.raises(ValueError, match="at most"):
             resolve_input(
                 mechanism,
@@ -120,11 +117,11 @@ async def test_captures_preserve_history_through_preview_reference_and_snapshot(
     await db.flush()
     monkeypatch.setattr(service.llm_service, "get_llm", AsyncMock(return_value=llm))
     monkeypatch.setattr(service.llm_service, "get_profile_llm", AsyncMock(return_value=llm))
-    inference = AsyncMock(return_value=({"result": "Reference", "choices": []}, 0))
+    inference = AsyncMock(return_value=({"brief": {"objective": "Reference"}, "steps": []}, 0))
     monkeypatch.setattr(service, "evaluate_mechanism", inference)
 
     dataset = LabEvaluationDataset(
-        name="Different histories", mechanism="briefing", parameters={"language": "en"}
+        name="Different histories", mechanism="planner", parameters={"language": "en"}
     )
     db.add(dataset)
     await db.commit()
@@ -134,8 +131,8 @@ async def test_captures_preserve_history_through_preview_reference_and_snapshot(
             dataset_id=dataset.id,
             name=text,
             readiness="ready",
-            expected_output={"result": "Reference", "choices": []},
-            input_data=capture_input("briefing", native),
+            expected_output={"brief": {"objective": "Reference"}, "steps": []},
+            input_data=capture_input("planner", native),
             source_capture={"input_data": native},
         )
         await check_capture(item)
@@ -143,7 +140,7 @@ async def test_captures_preserve_history_through_preview_reference_and_snapshot(
         await db.commit()
         await db.refresh(item)
         preview = await service.preview_input(
-            "briefing", dataset.id, LabInput.model_validate(item.input_data)
+            "planner", dataset.id, LabInput.model_validate(item.input_data)
         )
         assert preview.input.context["history"] == native["history"]
         assert preview.native_input["history"] == native["history"]
@@ -152,10 +149,10 @@ async def test_captures_preserve_history_through_preview_reference_and_snapshot(
         assert preview.origins["language"] == "dataset"
         assert "history" not in preview.parameters
         assert "parameter_confirmation" not in item.source_capture
-        await service.generate_expected("briefing", item.id, MechanismExpectedGenerate())
+        await service.generate_expected("planner", item.id, MechanismExpectedGenerate())
         assert inference.call_args.kwargs["input_data"]["history"] == native["history"]
         await service.generate_expected(
-            "briefing",
+            "planner",
             item.id,
             MechanismExpectedGenerate(
                 input_data=LabInput(
@@ -166,7 +163,7 @@ async def test_captures_preserve_history_through_preview_reference_and_snapshot(
         )
         assert inference.call_args.kwargs["input_data"]["history"] == [{"text": "Unsaved edit"}]
     assert dataset.parameters == {"language": "en"}
-    started = await service.start_run("briefing", dataset.id, EvaluationRunStart(llm_id=llm.id))
+    started = await service.start_run("planner", dataset.id, EvaluationRunStart(llm_id=llm.id))
     run = await db.get(LabEvaluationRun, started.id)
     assert len(run.case_snapshots) == 2
     assert "history" not in run.configuration_snapshot["parameters"]

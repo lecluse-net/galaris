@@ -143,17 +143,17 @@ tests remain authoritative for behavior.
 
 | Source | Target | Files |
 |---|---|---|
-| `app.agent` | `app.llm` | `back/app/agent/agent_service.py`, `back/app/agent/briefing_service.py`, `back/app/agent/dispatcher.py`, `back/app/agent/facade.py`, `back/app/agent/janus.py`, `back/app/agent/model_resolver.py`, `back/app/agent/models.py`, `back/app/agent/openai_router.py`, `back/app/agent/planner_service.py`, `back/app/agent/realtime.py`, `back/app/agent/tools.py` |
+| `app.agent` | `app.llm` | `back/app/agent/agent_service.py`, `back/app/agent/dispatcher.py`, `back/app/agent/facade.py`, `back/app/agent/janus.py`, `back/app/agent/model_resolver.py`, `back/app/agent/models.py`, `back/app/agent/openai_router.py`, `back/app/agent/planner_service.py`, `back/app/agent/realtime.py`, `back/app/agent/tools.py` |
 | `app.agent` | `app.messenger` | `back/app/agent/planner_service.py` |
-| `app.agent` | `app.process` | `back/app/agent/briefing_service.py`, `back/app/agent/janus.py`, `back/app/agent/openai_router.py`, `back/app/agent/realtime.py` |
+| `app.agent` | `app.process` | `back/app/agent/janus.py`, `back/app/agent/openai_router.py`, `back/app/agent/realtime.py` |
 | `app.agent` | `app.skill` | `back/app/agent/__init__.py`, `back/app/agent/agent_service.py`, `back/app/agent/defaults.py`, `back/app/agent/facade.py`, `back/app/agent/models.py` |
-| `app.agent` | `app.tools` | `back/app/agent/agent_service.py`, `back/app/agent/briefing_service.py`, `back/app/agent/defaults.py`, `back/app/agent/executor_service.py`, `back/app/agent/facade.py`, `back/app/agent/mcp.py`, `back/app/agent/planner_service.py` |
+| `app.agent` | `app.tools` | `back/app/agent/agent_service.py`, `back/app/agent/defaults.py`, `back/app/agent/executor_service.py`, `back/app/agent/facade.py`, `back/app/agent/mcp.py`, `back/app/agent/planner_service.py` |
 | `app.agent` | `core.authorize` | `back/app/agent/agent_service.py`, `back/app/agent/assertions.py`, `back/app/agent/defaults.py`, `back/app/agent/dialogue_service.py`, `back/app/agent/management_scope.py`, `back/app/agent/openai_router.py`, `back/app/agent/openai_service.py`, `back/app/agent/router.py`, `back/app/agent/team_router.py` |
 | `app.agent` | `core.database` | `back/app/agent/agent_group_service.py`, `back/app/agent/agent_service.py`, `back/app/agent/defaults.py`, `back/app/agent/dialogue_service.py`, `back/app/agent/janus.py`, `back/app/agent/management_scope.py`, `back/app/agent/models.py`, `back/app/agent/openai_service.py`, `back/app/agent/resource_facade.py`, `back/app/agent/router.py`, `back/app/agent/team_router.py`, `back/app/agent/title_service.py` |
 | `app.agent` | `core.dbadmin` | `back/app/agent/dbadmin.py`, `back/app/agent/defaults.py`, `back/app/agent/html_migration.py` |
 | `app.agent` | `core.failure_journal` | `back/app/agent/facade.py` |
-| `app.agent` | `core.i18n` | `back/app/agent/agent_service.py`, `back/app/agent/briefing_service.py`, `back/app/agent/contracts.py`, `back/app/agent/dispatcher.py`, `back/app/agent/dispatcher_service.py`, `back/app/agent/executor_service.py`, `back/app/agent/janus.py`, `back/app/agent/model_resolver.py`, `back/app/agent/openai_router.py`, `back/app/agent/openai_schemas.py`, `back/app/agent/openai_service.py`, `back/app/agent/planner_service.py`, `back/app/agent/router.py`, `back/app/agent/tools.py` |
-| `app.agent` | `core.params` | `back/app/agent/briefing_service.py`, `back/app/agent/dispatcher.py`, `back/app/agent/executor_service.py`, `back/app/agent/facade.py`, `back/app/agent/janus.py`, `back/app/agent/planner_collection.py`, `back/app/agent/planner_contracts.py`, `back/app/agent/planner_service.py`, `back/app/agent/realtime.py`, `back/app/agent/registry.py` |
+| `app.agent` | `core.i18n` | `back/app/agent/agent_service.py`, `back/app/agent/contracts.py`, `back/app/agent/dispatcher.py`, `back/app/agent/dispatcher_service.py`, `back/app/agent/executor_service.py`, `back/app/agent/janus.py`, `back/app/agent/model_resolver.py`, `back/app/agent/openai_router.py`, `back/app/agent/openai_schemas.py`, `back/app/agent/openai_service.py`, `back/app/agent/planner_service.py`, `back/app/agent/router.py`, `back/app/agent/tools.py` |
+| `app.agent` | `core.params` | `back/app/agent/dispatcher.py`, `back/app/agent/executor_service.py`, `back/app/agent/facade.py`, `back/app/agent/janus.py`, `back/app/agent/planner_collection.py`, `back/app/agent/planner_contracts.py`, `back/app/agent/planner_service.py`, `back/app/agent/realtime.py`, `back/app/agent/registry.py` |
 | `app.agent` | `core.team` | `back/app/agent/agent_group_service.py`, `back/app/agent/dialogue_service.py`, `back/app/agent/models.py`, `back/app/agent/team_router.py` |
 | `app.agent` | `core.user` | `back/app/agent/agent_service.py`, `back/app/agent/dbadmin.py`, `back/app/agent/defaults.py`, `back/app/agent/dialogue_service.py`, `back/app/agent/janus.py`, `back/app/agent/management_scope.py`, `back/app/agent/models.py`, `back/app/agent/openai_service.py`, `back/app/agent/router.py` |
 | `app.agent` | `core.util` | `back/app/agent/html_migration.py`, `back/app/agent/models.py`, `back/app/agent/planner_service.py`, `back/app/agent/router.py`, `back/app/agent/schemas.py` |
@@ -798,7 +798,7 @@ tests remain authoritative for behavior.
 | `app/task` | `core/i18n` | `front/app/task/services/taskStatusService.ts` |
 | `app/task` | `core/navigation` | `front/app/task/navigation.ts`, `front/app/task/pages/index.vue` |
 | `app/task` | `core/user` | `front/app/task/components/TaskDetail.vue`, `front/app/task/stores/taskStore.ts` |
-| `app/task` | `core/util` | `front/app/task/components/ActiveTaskNode.vue`, `front/app/task/components/ActiveTasksPanel.vue`, `front/app/task/components/BriefingResult.vue`, `front/app/task/components/DispatchResult.vue`, `front/app/task/components/ExecutionResult.vue`, `front/app/task/components/MemoryItemCard.vue`, `front/app/task/components/PlannerResult.vue`, `front/app/task/components/TaskDetail.vue`, `front/app/task/components/TaskFormDialog.vue`, `front/app/task/pages/index.vue`, `front/app/task/richContent.ts`, `front/app/task/services/taskStatusService.ts` |
+| `app/task` | `core/util` | `front/app/task/components/ActiveTaskNode.vue`, `front/app/task/components/ActiveTasksPanel.vue`, `front/app/task/components/DispatchResult.vue`, `front/app/task/components/ExecutionResult.vue`, `front/app/task/components/MemoryItemCard.vue`, `front/app/task/components/PlannerResult.vue`, `front/app/task/components/TaskDetail.vue`, `front/app/task/components/TaskFormDialog.vue`, `front/app/task/pages/index.vue`, `front/app/task/richContent.ts`, `front/app/task/services/taskStatusService.ts` |
 | `app/task` | `core/websocket` | `front/app/task/stores/taskStore.ts`, `front/app/task/useTaskActivity.ts` |
 | `app/tools` | `app/connection` | `front/app/tools/components/ToolsList.vue`, `front/app/tools/pages/index.vue` |
 | `app/tools` | `core/api` | `front/app/tools/components/ToolsList.vue`, `front/app/tools/services/toolService.ts` |
@@ -1074,15 +1074,15 @@ tests remain authoritative for behavior.
 |---|---|---|---|---:|---|
 | POST | `/agent/openai/chat/completions` | `app.agent` | `agent_chat_completions` | yes | `back/app/agent/openai_router.py:77` |
 | GET | `/agent/openai/models` | `app.agent` | `get_agent_models` | yes | `back/app/agent/openai_router.py:66` |
-| GET | `/agents` | `app.agent` | `read_agents` | yes | `back/app/agent/router.py:203` |
-| POST | `/agents` | `app.agent` | `create_agent` | yes | `back/app/agent/router.py:254` |
+| GET | `/agents` | `app.agent` | `read_agents` | yes | `back/app/agent/router.py:201` |
+| POST | `/agents` | `app.agent` | `create_agent` | yes | `back/app/agent/router.py:252` |
 | GET | `/agents/drivers` | `app.agent` | `read_executor_drivers` | yes | `back/app/agent/router.py:171` |
 | GET | `/agents/groups` | `app.agent` | `read_groups` | yes | `back/app/agent/router.py:114` |
 | POST | `/agents/groups` | `app.agent` | `create_group` | yes | `back/app/agent/router.py:134` |
 | DELETE | `/agents/groups/{id}` | `app.agent` | `delete_group` | yes | `back/app/agent/router.py:156` |
 | GET | `/agents/groups/{id}` | `app.agent` | `read_group` | yes | `back/app/agent/router.py:123` |
 | PUT | `/agents/groups/{id}` | `app.agent` | `update_group` | yes | `back/app/agent/router.py:143` |
-| GET | `/agents/managers` | `app.agent` | `read_agent_managers` | yes | `back/app/agent/router.py:219` |
+| GET | `/agents/managers` | `app.agent` | `read_agent_managers` | yes | `back/app/agent/router.py:217` |
 | GET | `/agents/selection` | `app.agent` | `read_agent_selection` | yes | `back/app/agent/router.py:46` |
 | GET | `/agents/teams/agents` | `app.agent` | `agents` | yes | `back/app/agent/team_router.py:16` |
 | PUT | `/agents/teams/{team_id}/members/{agent_id}` | `app.agent` | `update_membership` | yes | `back/app/agent/team_router.py:23` |
@@ -1095,12 +1095,12 @@ tests remain authoritative for behavior.
 | POST | `/agents/{agent_id}/mcp-tokens` | `app.mcp` | `create_agent_mcp_token` | yes | `back/app/mcp/router.py:92` |
 | DELETE | `/agents/{agent_id}/mcp-tokens/{token_id}` | `app.mcp` | `delete_agent_mcp_token` | yes | `back/app/mcp/router.py:146` |
 | PUT | `/agents/{agent_id}/mcp-tokens/{token_id}` | `app.mcp` | `update_agent_mcp_token` | yes | `back/app/mcp/router.py:120` |
-| DELETE | `/agents/{id}` | `app.agent` | `delete_agent` | yes | `back/app/agent/router.py:309` |
-| GET | `/agents/{id}` | `app.agent` | `read_agent` | yes | `back/app/agent/router.py:242` |
-| PUT | `/agents/{id}` | `app.agent` | `update_agent` | yes | `back/app/agent/router.py:282` |
-| DELETE | `/agents/{id}/avatar` | `app.agent` | `delete_avatar` | yes | `back/app/agent/router.py:392` |
-| GET | `/agents/{id}/avatar` | `app.agent` | `download_avatar` | yes | `back/app/agent/router.py:358` |
-| POST | `/agents/{id}/avatar` | `app.agent` | `upload_avatar` | yes | `back/app/agent/router.py:323` |
+| DELETE | `/agents/{id}` | `app.agent` | `delete_agent` | yes | `back/app/agent/router.py:307` |
+| GET | `/agents/{id}` | `app.agent` | `read_agent` | yes | `back/app/agent/router.py:240` |
+| PUT | `/agents/{id}` | `app.agent` | `update_agent` | yes | `back/app/agent/router.py:280` |
+| DELETE | `/agents/{id}/avatar` | `app.agent` | `delete_avatar` | yes | `back/app/agent/router.py:390` |
+| GET | `/agents/{id}/avatar` | `app.agent` | `download_avatar` | yes | `back/app/agent/router.py:356` |
+| POST | `/agents/{id}/avatar` | `app.agent` | `upload_avatar` | yes | `back/app/agent/router.py:321` |
 | GET | `/api/docs` | `core.api` | `public_swagger_ui_html` | no | `back/core/api.py:235` |
 | GET | `/api/health` | `core.api` | `health_check` | no | `back/core/api.py:266` |
 | GET | `/api/health/live` | `core.api` | `liveness_check` | no | `back/core/api.py:271` |
@@ -1773,9 +1773,9 @@ tests remain authoritative for behavior.
 | `roles` | `Role` | `core.authorize` | no | — | `back/core/authorize/models.py:53` |
 | `skill_categories` | `SkillCategory` | `app.skill` | yes | — | `back/app/skill/models.py:31` |
 | `skills` | `Skill` | `app.skill` | yes | `skill_categories.id` | `back/app/skill/models.py:52` |
-| `task_amendments` | `TaskAmendment` | `app.task` | no | `tasks.id` | `back/app/task/models.py:257` |
-| `task_attempts` | `TaskAttempt` | `app.task` | no | `tasks.id` | `back/app/task/models.py:290` |
-| `tasks` | `Task` | `app.task` | yes | `agents.id`, `connections.id`, `goals.id`, `memory_items.id`, `messenger_messages.id`, `tasks.id`, `topics.id`, `users.id` | `back/app/task/models.py:79` |
+| `task_amendments` | `TaskAmendment` | `app.task` | no | `tasks.id` | `back/app/task/models.py:244` |
+| `task_attempts` | `TaskAttempt` | `app.task` | no | `tasks.id` | `back/app/task/models.py:277` |
+| `tasks` | `Task` | `app.task` | yes | `agents.id`, `connections.id`, `goals.id`, `memory_items.id`, `messenger_messages.id`, `tasks.id`, `topics.id`, `users.id` | `back/app/task/models.py:77` |
 | `team_audit` | `TeamAudit` | `core.team` | yes | — | `back/core/team/models.py:28` |
 | `team_users` | `TeamUser` | `core.team` | no | `agent_groups.id`, `users.id` | `back/core/team/models.py:19` |
 | `titles` | `Title` | `app.agent` | no | — | `back/app/agent/models.py:27` |
@@ -1826,15 +1826,15 @@ tests remain authoritative for behavior.
 | `console_status` | `console` | `app.console` | `console_status` | `back/app/console/mcp.py:35` |
 | `console_stop` | `console` | `app.console` | `console_stop` | `back/app/console/mcp.py:127` |
 | `console_write` | `console` | `app.console` | `console_write` | `back/app/console/mcp.py:112` |
-| `conversation_choice_resolve` | `conversation` | `app.conversation` | `conversation_choice_resolve` | `back/app/conversation/mcp.py:859` |
-| `conversation_process_start` | `conversation` | `app.conversation` | `conversation_process_start` | `back/app/conversation/mcp.py:987` |
-| `conversation_task_list` | `conversation` | `app.conversation` | `conversation_task_list` | `back/app/conversation/mcp.py:799` |
-| `conversation_task_pause` | `conversation` | `app.conversation` | `conversation_task_pause` | `back/app/conversation/mcp.py:938` |
-| `conversation_task_resume` | `conversation` | `app.conversation` | `conversation_task_resume` | `back/app/conversation/mcp.py:949` |
-| `conversation_task_retry` | `conversation` | `app.conversation` | `conversation_task_retry` | `back/app/conversation/mcp.py:960` |
-| `conversation_task_status` | `conversation` | `app.conversation` | `conversation_task_status` | `back/app/conversation/mcp.py:839` |
-| `conversation_task_stop` | `conversation` | `app.conversation` | `conversation_task_stop` | `back/app/conversation/mcp.py:971` |
-| `conversation_task_submit` | `conversation` | `app.conversation` | `conversation_task_submit` | `back/app/conversation/mcp.py:550` |
+| `conversation_choice_resolve` | `conversation` | `app.conversation` | `conversation_choice_resolve` | `back/app/conversation/mcp.py:849` |
+| `conversation_process_start` | `conversation` | `app.conversation` | `conversation_process_start` | `back/app/conversation/mcp.py:977` |
+| `conversation_task_list` | `conversation` | `app.conversation` | `conversation_task_list` | `back/app/conversation/mcp.py:789` |
+| `conversation_task_pause` | `conversation` | `app.conversation` | `conversation_task_pause` | `back/app/conversation/mcp.py:928` |
+| `conversation_task_resume` | `conversation` | `app.conversation` | `conversation_task_resume` | `back/app/conversation/mcp.py:939` |
+| `conversation_task_retry` | `conversation` | `app.conversation` | `conversation_task_retry` | `back/app/conversation/mcp.py:950` |
+| `conversation_task_status` | `conversation` | `app.conversation` | `conversation_task_status` | `back/app/conversation/mcp.py:829` |
+| `conversation_task_stop` | `conversation` | `app.conversation` | `conversation_task_stop` | `back/app/conversation/mcp.py:961` |
+| `conversation_task_submit` | `conversation` | `app.conversation` | `conversation_task_submit` | `back/app/conversation/mcp.py:545` |
 | `document_show` | `conversation` | `app.conversation` | `document_show` | `back/app/conversation/mcp.py:107` |
 | `file_append` | `file_sharing` | `app.file_share` | `append_file` | `back/app/file_share/mcp.py:289` |
 | `file_copy` | `file_sharing` | `app.file_share` | `copy_file` | `back/app/file_share/mcp.py:344` |
@@ -1859,11 +1859,11 @@ tests remain authoritative for behavior.
 | `process_list` | `galaris` | `app.process` | `process_list` | `back/app/process/mcp.py:51` |
 | `process_list_runs` | `galaris` | `app.process` | `process_list_runs` | `back/app/process/mcp.py:121` |
 | `process_start` | `galaris` | `app.process` | `process_start` | `back/app/process/mcp.py:86` |
-| `task_get` | `galaris` | `app.task` | `mcp_get_task` | `back/app/task/mcp.py:90` |
-| `task_run` | `galaris` | `app.task` | `mcp_run_task` | `back/app/task/mcp.py:176` |
-| `task_stop` | `galaris` | `app.task` | `mcp_stop_task` | `back/app/task/mcp.py:155` |
+| `task_get` | `galaris` | `app.task` | `mcp_get_task` | `back/app/task/mcp.py:89` |
+| `task_run` | `galaris` | `app.task` | `mcp_run_task` | `back/app/task/mcp.py:175` |
+| `task_stop` | `galaris` | `app.task` | `mcp_stop_task` | `back/app/task/mcp.py:154` |
 | `tools_list` | `galaris` | `app.tools` | `list_mcp_tools` | `back/app/tools/mcp.py:88` |
-| `conversation_round_get` | `galaris_admin` | `app.conversation` | `conversation_round_get` | `back/app/conversation/mcp.py:241` |
+| `conversation_round_get` | `galaris_admin` | `app.conversation` | `conversation_round_get` | `back/app/conversation/mcp.py:236` |
 | `documentation_catalog` | `galaris_admin` | `app.tools` | `documentation_catalog` | `back/app/tools/mcp.py:36` |
 | `documentation_search` | `galaris_admin` | `app.tools` | `documentation_search` | `back/app/tools/mcp.py:49` |
 | `llm_call` | `galaris_admin` | `app.llm` | `mcp_llm_call` | `back/app/llm/mcp.py:30` |
@@ -2000,28 +2000,26 @@ tests remain authoritative for behavior.
 | `INCIDENT_ACCESS` | `app.incident` | privilege.INCIDENT_ACCESS | `back/app/incident/privileges.py:3` |
 | `INCIDENT_EDIT` | `app.incident` | privilege.INCIDENT_EDIT | `back/app/incident/privileges.py:4` |
 | `INCIDENT_PURGE` | `app.incident` | privilege.INCIDENT_PURGE | `back/app/incident/privileges.py:5` |
-| `BRIEFING_EVALUATION_ACCESS` | `app.lab` | privilege.BRIEFING_EVALUATION_ACCESS | `back/app/lab/privileges.py:9` |
-| `BRIEFING_EVALUATION_EDIT` | `app.lab` | privilege.BRIEFING_EVALUATION_EDIT | `back/app/lab/privileges.py:10` |
-| `CONVERSATION_EXECUTOR_EVALUATION_ACCESS` | `app.lab` | privilege.CONVERSATION_EXECUTOR_EVALUATION_ACCESS | `back/app/lab/privileges.py:30` |
-| `CONVERSATION_EXECUTOR_EVALUATION_EDIT` | `app.lab` | privilege.CONVERSATION_EXECUTOR_EVALUATION_EDIT | `back/app/lab/privileges.py:31` |
+| `CONVERSATION_EXECUTOR_EVALUATION_ACCESS` | `app.lab` | privilege.CONVERSATION_EXECUTOR_EVALUATION_ACCESS | `back/app/lab/privileges.py:28` |
+| `CONVERSATION_EXECUTOR_EVALUATION_EDIT` | `app.lab` | privilege.CONVERSATION_EXECUTOR_EVALUATION_EDIT | `back/app/lab/privileges.py:29` |
 | `DISPATCHER_EVALUATION_ACCESS` | `app.lab` | privilege.DISPATCHER_EVALUATION_ACCESS | `back/app/lab/privileges.py:6` |
 | `DISPATCHER_EVALUATION_EDIT` | `app.lab` | privilege.DISPATCHER_EVALUATION_EDIT | `back/app/lab/privileges.py:7` |
 | `EVALUATION_ACCESS` | `app.lab` | privilege.EVALUATION_ACCESS | `back/app/lab/privileges.py:3` |
 | `EVALUATION_EDIT` | `app.lab` | privilege.EVALUATION_EDIT | `back/app/lab/privileges.py:4` |
-| `GOAL_TRACKING_EVALUATION_ACCESS` | `app.lab` | privilege.GOAL_TRACKING_EVALUATION_ACCESS | `back/app/lab/privileges.py:24` |
-| `GOAL_TRACKING_EVALUATION_EDIT` | `app.lab` | privilege.GOAL_TRACKING_EVALUATION_EDIT | `back/app/lab/privileges.py:25` |
-| `MEMORY_EXTRACTION_EVALUATION_ACCESS` | `app.lab` | privilege.MEMORY_EXTRACTION_EVALUATION_ACCESS | `back/app/lab/privileges.py:18` |
-| `MEMORY_EXTRACTION_EVALUATION_EDIT` | `app.lab` | privilege.MEMORY_EXTRACTION_EVALUATION_EDIT | `back/app/lab/privileges.py:19` |
-| `OUTCOME_REFLECTION_EVALUATION_ACCESS` | `app.lab` | privilege.OUTCOME_REFLECTION_EVALUATION_ACCESS | `back/app/lab/privileges.py:21` |
-| `OUTCOME_REFLECTION_EVALUATION_EDIT` | `app.lab` | privilege.OUTCOME_REFLECTION_EVALUATION_EDIT | `back/app/lab/privileges.py:22` |
-| `PLANNER_EVALUATION_ACCESS` | `app.lab` | privilege.PLANNER_EVALUATION_ACCESS | `back/app/lab/privileges.py:12` |
-| `PLANNER_EVALUATION_EDIT` | `app.lab` | privilege.PLANNER_EVALUATION_EDIT | `back/app/lab/privileges.py:13` |
-| `TASK_EXECUTOR_EVALUATION_ACCESS` | `app.lab` | privilege.TASK_EXECUTOR_EVALUATION_ACCESS | `back/app/lab/privileges.py:27` |
-| `TASK_EXECUTOR_EVALUATION_EDIT` | `app.lab` | privilege.TASK_EXECUTOR_EVALUATION_EDIT | `back/app/lab/privileges.py:28` |
-| `TOPIC_CLASSIFICATION_EVALUATION_ACCESS` | `app.lab` | privilege.TOPIC_CLASSIFICATION_EVALUATION_ACCESS | `back/app/lab/privileges.py:15` |
-| `TOPIC_CLASSIFICATION_EVALUATION_EDIT` | `app.lab` | privilege.TOPIC_CLASSIFICATION_EVALUATION_EDIT | `back/app/lab/privileges.py:16` |
-| `VOICE_EXECUTOR_EVALUATION_ACCESS` | `app.lab` | privilege.VOICE_EXECUTOR_EVALUATION_ACCESS | `back/app/lab/privileges.py:33` |
-| `VOICE_EXECUTOR_EVALUATION_EDIT` | `app.lab` | privilege.VOICE_EXECUTOR_EVALUATION_EDIT | `back/app/lab/privileges.py:34` |
+| `GOAL_TRACKING_EVALUATION_ACCESS` | `app.lab` | privilege.GOAL_TRACKING_EVALUATION_ACCESS | `back/app/lab/privileges.py:22` |
+| `GOAL_TRACKING_EVALUATION_EDIT` | `app.lab` | privilege.GOAL_TRACKING_EVALUATION_EDIT | `back/app/lab/privileges.py:23` |
+| `MEMORY_EXTRACTION_EVALUATION_ACCESS` | `app.lab` | privilege.MEMORY_EXTRACTION_EVALUATION_ACCESS | `back/app/lab/privileges.py:16` |
+| `MEMORY_EXTRACTION_EVALUATION_EDIT` | `app.lab` | privilege.MEMORY_EXTRACTION_EVALUATION_EDIT | `back/app/lab/privileges.py:17` |
+| `OUTCOME_REFLECTION_EVALUATION_ACCESS` | `app.lab` | privilege.OUTCOME_REFLECTION_EVALUATION_ACCESS | `back/app/lab/privileges.py:19` |
+| `OUTCOME_REFLECTION_EVALUATION_EDIT` | `app.lab` | privilege.OUTCOME_REFLECTION_EVALUATION_EDIT | `back/app/lab/privileges.py:20` |
+| `PLANNER_EVALUATION_ACCESS` | `app.lab` | privilege.PLANNER_EVALUATION_ACCESS | `back/app/lab/privileges.py:10` |
+| `PLANNER_EVALUATION_EDIT` | `app.lab` | privilege.PLANNER_EVALUATION_EDIT | `back/app/lab/privileges.py:11` |
+| `TASK_EXECUTOR_EVALUATION_ACCESS` | `app.lab` | privilege.TASK_EXECUTOR_EVALUATION_ACCESS | `back/app/lab/privileges.py:25` |
+| `TASK_EXECUTOR_EVALUATION_EDIT` | `app.lab` | privilege.TASK_EXECUTOR_EVALUATION_EDIT | `back/app/lab/privileges.py:26` |
+| `TOPIC_CLASSIFICATION_EVALUATION_ACCESS` | `app.lab` | privilege.TOPIC_CLASSIFICATION_EVALUATION_ACCESS | `back/app/lab/privileges.py:13` |
+| `TOPIC_CLASSIFICATION_EVALUATION_EDIT` | `app.lab` | privilege.TOPIC_CLASSIFICATION_EVALUATION_EDIT | `back/app/lab/privileges.py:14` |
+| `VOICE_EXECUTOR_EVALUATION_ACCESS` | `app.lab` | privilege.VOICE_EXECUTOR_EVALUATION_ACCESS | `back/app/lab/privileges.py:31` |
+| `VOICE_EXECUTOR_EVALUATION_EDIT` | `app.lab` | privilege.VOICE_EXECUTOR_EVALUATION_EDIT | `back/app/lab/privileges.py:32` |
 | `LLM_API_ACCESS` | `app.llm` | privilege.LLM_API_ACCESS | `back/app/llm/privileges.py:5` |
 | `LLM_CALL_PURGE` | `app.llm` | privilege.LLM_CALL_PURGE | `back/app/llm/privileges.py:6` |
 | `LLM_PROVIDER_ACCESS` | `app.llm` | privilege.LLM_PROVIDER_ACCESS | `back/app/llm/privileges.py:3` |

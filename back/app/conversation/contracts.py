@@ -32,9 +32,8 @@ class BackgroundTaskAdmission(Protocol):
         self,
         objective: str,
         *,
-        forced_route: Literal["EXEC", "BRIEFING", "PLAN"] | None = None,
+        forced_route: Literal["EXEC", "PLAN"] | None = None,
         forced_effort: Literal["standard", "high"] | None = None,
-        require_briefing: bool = False,
         auto_approve: bool = False,
     ) -> Mapping[str, object]: ...
 

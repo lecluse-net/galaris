@@ -100,7 +100,7 @@ deduplicate and consolidate memories, then retain lessons only when task evidenc
 ### Measure AI behavior before trusting it
 
 The AI Lab turns real Tasks, text rounds and voice turns into versioned datasets. Benchmark the
-Dispatcher, Briefing, Planner, Task/Conversation/Voice executors and Dream/Goal mechanisms with
+Dispatcher, Planner, Task/Conversation/Voice executors and Dream/Goal mechanisms with
 semantic rubrics, frozen cases, resumable runs and explicit judge diagnostics.
 
 ## Specialized models for decisions

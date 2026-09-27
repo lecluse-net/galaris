@@ -9,7 +9,6 @@ la valeur de la variable, son contexte et le résultat attendu, avec un nom et s
 | Lab | Variable de l’item | Résultat évalué |
 |---|---|---|
 | Dispatcher | Demande | Route, effort, action, langue et justification |
-| Briefing | Objectif | Briefing et ressources choisies |
 | Planner | Objectif | Plan ou clarification |
 | Détection des sujets | Échange ordonné | Sujet de chaque message |
 | Extraction mémoire | Échange ou compte-rendu de Task | CREATE, LINK ou IGNORE |
@@ -30,7 +29,7 @@ Activez sa connexion **Lab Galaris**, puis attribuez-lui le skill système **Gal
 (`galaris-lab`) dans les autorisations des compétences. Le skill est déjà autorisé pour
 l’agent **Galaris** créé à l’installation. Pour les autres agents, il reste désactivé
 par défaut ; la connexion Lab reste à activer explicitement dans tous les cas.
-L'agent dispose alors de cinquante outils pour découvrir les onze labs, préparer et
+L'agent dispose alors de cinquante outils pour découvrir les dix labs, préparer et
 copier leurs jeux, modifier les prompts expérimentaux, lancer, suivre, arrêter, reprendre,
 rejuger et comparer les benchmarks, puis déposer ses propres évaluations.
 
@@ -61,12 +60,12 @@ nouveau travail ; une inférence déjà partie peut encore être facturée.
 3. Enregistrez. Les items et les benchmarks utilisent les valeurs enregistrées.
 
 Les champs dépendent réellement du traitement : catalogue et fenêtre pour Topics,
-corpus et classement pour mémoire, ressources pour Briefing, limites de plan pour
+corpus et classement pour mémoire, limites de plan pour
 Planner, contexte et réponses simulées des outils pour les exécuteurs.
 
 ## Générer un jeu synthétique
 
-Dans chacun des onze labs, **Générer un jeu synthétique** crée un nouveau jeu adapté au
+Dans chacun des dix labs, **Générer un jeu synthétique** crée un nouveau jeu adapté au
 traitement. Choisissez son nom, le modèle générateur, la langue, 1 à 20 cas et les catégories
 à couvrir. Décrivez le domaine, les situations et les contraintes souhaitées : le formulaire
 précise les points testables propres au lab. Prévoyez au moins un cas par catégorie.
@@ -156,7 +155,7 @@ précédentes restent consultables. Relancer depuis le jeu crée une nouvelle ex
 
 ## Comparer avant et après
 
-Dans **Benchmarks**, ouvrez **Avant / après**, disponible dans les onze labs avec le droit
+Dans **Benchmarks**, ouvrez **Avant / après**, disponible dans les dix labs avec le droit
 de lecture. Choisissez le jeu et l'évaluation de chaque côté, puis le changement étudié :
 modèle, prompt ou paramètres. Les sélecteurs proposent les 500 évaluations les plus récentes
 de chaque jeu. Cliquez sur **Comparer** : les entrées, références et répétitions identiques

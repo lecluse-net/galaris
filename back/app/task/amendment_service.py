@@ -179,7 +179,6 @@ async def amend_task(
 
     task.objective = _merge_instruction(task.objective, clean_instruction)
     task.dispatch_result = None
-    task.briefing_result = None
     # The previous visible trace belongs to the superseded objective. The durable driver
     # checkpoint remains available for effect-safe replay, but the revised run must publish
     # a fresh result before the Task can become terminal again.

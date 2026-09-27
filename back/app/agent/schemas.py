@@ -17,8 +17,6 @@ class ExecutorDriverInfo(BaseModel):
     supports_streaming: bool = True
     supports_cancellation: bool = False
     use_planner: bool = False
-    use_briefing: bool = False
-    briefing_efforts: list[str] = Field(default_factory=list)
     execution_efforts: list[str] = Field(default_factory=lambda: ["standard"])
     uses_llm_calls: bool = False
 

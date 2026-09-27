@@ -46,13 +46,11 @@ const open = (page, options = {}) => mount(page, 'core/params/components/Prefere
 })
 const openTasks = page => open(page, { props: { section: 'tasks' }, route: '/params/tasks' })
 
-function pipelineConfigurations(internalPlanner, externalPlanner, briefingEfforts = [], externalBriefing = false) {
+function pipelineConfigurations(internalPlanner, externalPlanner) {
   return ['internal', 'future-runtime'].map(provider_code => ({
     provider_code, label: provider_code === 'internal' ? 'agent.harnessInternal' : 'Future runtime', revision: 0,
     pipeline_policy: {
       use_planner: provider_code === 'internal' ? internalPlanner : externalPlanner,
-      use_briefing: provider_code !== 'internal' && externalBriefing,
-      briefing_efforts: provider_code === 'internal' ? [] : briefingEfforts,
     },
     descriptor: { configurable: [], policy: {
       disabled_capabilities: [], max_parallel_tasks: null, execution_timeout_seconds: null,
@@ -62,30 +60,25 @@ function pipelineConfigurations(internalPlanner, externalPlanner, briefingEffort
   }))
 }
 
-for (const [scenario, internalPlanner, externalPlanner, externalBriefing, efforts] of [
-  ['current harnesses', true, false, false, []],
-  ['no eligible harness', false, false, false, []],
-  ['shared planning and external briefing', true, true, true, ['standard']],
-  ['briefing without an eligible effort', false, false, true, []],
+for (const [scenario, internalPlanner, externalPlanner] of [
+  ['current harnesses', true, false],
+  ['no eligible harness', false, false],
+  ['shared planning', true, true],
 ]) {
   test(`pipeline settings list only eligible harnesses: ${scenario}`, async ({ page }) => {
     await fixtures(page)
-    await jsonRoute(page, '**/api/harnesses/execution-configurations', pipelineConfigurations(internalPlanner, externalPlanner, efforts, externalBriefing))
+    await jsonRoute(page, '**/api/harnesses/execution-configurations', pipelineConfigurations(internalPlanner, externalPlanner))
     await openTasks(page)
     await expect(page.getByRole('region', { name: 'Per-run limits', exact: true })).toBeVisible()
     const planner = page.getByRole('region', { name: 'Planner', exact: true })
-    const briefing = page.getByRole('region', { name: 'Briefing', exact: true })
     await expect(planner).toHaveCount(Number(internalPlanner || externalPlanner))
     if (internalPlanner || externalPlanner) {
       await expect(planner.getByRole('listitem')).toHaveText([
         ...(internalPlanner ? ['Internal harness (Galaris)'] : []), ...(externalPlanner ? ['Future runtime'] : []),
       ])
     }
-    await expect(briefing).toHaveCount(Number(externalBriefing && efforts.length > 0))
-    if (externalBriefing && efforts.length) await expect(briefing.getByRole('listitem')).toHaveText(['Future runtime'])
     await setPrivileges(page, ['PARAMS_ACCESS'])
     if (internalPlanner || externalPlanner) await expect(planner.locator('textarea')).toHaveAttribute('readonly', '')
-    if (externalBriefing && efforts.length) await expect(briefing.locator('textarea')).toHaveAttribute('readonly', '')
   })
 }
 
@@ -95,8 +88,8 @@ test('pipeline prompts recover loading and saving errors, preserve drafts and pe
   let failSave = true
   await page.route('**/api/harnesses/execution-configurations', route => route.fulfill(failLoad
     ? { status: 503, json: { detail: 'Unavailable' } }
-    : { json: pipelineConfigurations(true, false, ['standard'], true) }))
-  const params = ['planner', 'briefing'].map(key => ({
+    : { json: pipelineConfigurations(true, false) }))
+  const params = ['planner'].map(key => ({
     name: `ai.${key}-system-prompt`, value: `Existing ${key}`, configured: true, secret: false,
     prompt: { default_value: `Default ${key}`, customized: true, default_changed: false },
   }))
@@ -113,15 +106,14 @@ test('pipeline prompts recover loading and saving errors, preserve drafts and pe
   await expect(page.getByRole('region', { name: 'Planner', exact: true })).toHaveCount(0)
   failLoad = false
   await page.getByRole('button', { name: 'Retry', exact: true }).click()
-  for (const key of ['planner', 'briefing']) {
-    const region = page.getByRole('region', { name: key === 'planner' ? 'Planner' : 'Briefing', exact: true })
+  for (const key of ['planner']) {
+    const region = page.getByRole('region', { name: 'Planner', exact: true })
     await expect(region.locator('textarea')).toHaveValue(`Existing ${key}`)
     await region.locator('textarea').fill(`Saved ${key}`)
   }
   await page.getByRole('button', { name: /Task creation/ }).click()
   await page.getByRole('button', { name: /Task creation/ }).click()
   const planner = page.getByRole('region', { name: 'Planner', exact: true })
-  const briefing = page.getByRole('region', { name: 'Briefing', exact: true })
   await expect(planner.locator('textarea')).toHaveValue('Saved planner')
   await planner.getByRole('button', { name: 'Save customization', exact: true }).click()
   await expect(page.getByText('Could not save the setting')).toBeVisible()
@@ -129,11 +121,10 @@ test('pipeline prompts recover loading and saving errors, preserve drafts and pe
   await expect(planner.locator('textarea')).toHaveValue('Existing planner')
   failSave = false
   await planner.locator('textarea').fill('Saved planner')
-  for (const region of [planner, briefing]) await region.getByRole('button', { name: 'Save customization', exact: true }).click()
-  await expect.poll(() => params.map(item => item.value)).toEqual(['Saved planner', 'Saved briefing'])
+  for (const region of [planner]) await region.getByRole('button', { name: 'Save customization', exact: true }).click()
+  await expect.poll(() => params.map(item => item.value)).toEqual(['Saved planner'])
   await reopen()
   await expect(planner.locator('textarea')).toHaveValue('Saved planner')
-  await expect(briefing.locator('textarea')).toHaveValue('Saved briefing')
   await page.setViewportSize({ width: 390, height: 844 })
   await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true)
   await page.screenshot({ path: testInfo.outputPath('pipeline-mobile.png'), fullPage: true })

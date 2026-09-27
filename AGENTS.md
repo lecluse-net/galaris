@@ -55,7 +55,7 @@ before acting, then load only the references you need.
 | Data migrations, permanent datasets, or actions triggered by model deltas | `core-dbadmin` with `database` and `back-conventions` |
 | Vue/Quasar | `front-ui-conventions`, `vue-skilld`, `quasar-skilld` |
 | Pinia, routes, or translations | `pinia-skilld`, `vue-router-skilld`, `vue-i18n-skilld` depending on imports |
-| Agent, task, driver, planner, briefing | `galaris-agent-execution`; add `building-pydantic-ai-agents` for the internal harness |
+| Agent, task, driver, planner | `galaris-agent-execution`; add `building-pydantic-ai-agents` for the internal harness |
 | Messaging or conversational bridges | `galaris-messaging-bridges`; add `onebot-11` for OneBot |
 | MCP, tools, processes, n8n, files | `galaris-process-tools` |
 | Logfire | The `logfire-*` skill matching instrumentation, querying, or UI work |
@@ -180,7 +180,7 @@ for business logic.
 ### Agent execution
 
 - `app.agent` is the single facade and contract: drivers, registry, dispatcher, planner,
-  briefing, model resolution, streaming, and result application.
+  model resolution, streaming, and result application.
 - `app.harness` is the concrete Pydantic AI implementation.
 - `app.task` owns persistence, transitions, leases, attempts, and the scheduler. It provides
   a port to `app.agent`; `app.agent` never imports `app.task`.

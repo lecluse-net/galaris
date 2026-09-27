@@ -161,7 +161,11 @@ async def test_api_token_history_survives_rename_deletion_and_request_context_ch
         return key
 
     first = await call_label(token["label"])
-    renamed = await client.put(f"/api/auth/me/tokens/{token['id']}", json={"label": "Renamed client"})
+    # Credential management requires the browser session; inference keeps using the API token.
+    renamed = await client.put(
+        f"/api/auth/me/tokens/{token['id']}", headers={"Authorization": browser_auth},
+        json={"label": "Renamed client"},
+    )
     assert renamed.status_code == 200
     await call_label("Renamed client")
     client.headers["Authorization"] = browser_auth

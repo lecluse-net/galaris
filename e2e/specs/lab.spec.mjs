@@ -23,7 +23,7 @@ test('every lab exposes its single variable and result', async ({ page, request 
   await signIn(page, request)
   const errors = []
   page.on('pageerror', error => errors.push(error.message))
-  for (const slug of ['dispatcher', 'briefing', 'planner', 'topic-detection', 'memory-extraction', 'learning', 'goal-tracking', 'task-executor', 'conversation-executor', 'voice-executor']) {
+  for (const slug of ['dispatcher', 'planner', 'topic-detection', 'memory-extraction', 'learning', 'goal-tracking', 'task-executor', 'conversation-executor', 'voice-executor']) {
     await openLab(page, slug)
     await expect(page.locator('.contract-summary')).toContainText('Variable testée')
     await expect(page.locator('.contract-summary')).toContainText('Résultat à tester')
@@ -38,17 +38,18 @@ test('shared settings belong to the dataset and history belongs to each item on 
   await signIn(page, request)
   const errors = []
   page.on('pageerror', error => errors.push(error.message))
-  await openLab(page, 'briefing')
+  await openLab(page, 'planner')
   await page.getByRole('button', { name: 'Nouveau jeu', exact: true }).click()
   let dialog = page.getByRole('dialog').last()
-  await dialog.getByLabel('Nom', { exact: true }).fill(`Briefing browser ${Date.now()}`)
+  await dialog.getByLabel('Nom', { exact: true }).fill(`Planner browser ${Date.now()}`)
   await dialog.getByRole('button', { name: 'Créer', exact: true }).click()
   await expect(dialog).not.toBeVisible()
   await page.getByRole('tab', { name: 'Paramètres du jeu', exact: true }).click()
   await expect(page.locator('[data-parameter="history"]')).toHaveCount(0)
-  const agentParameter = page.locator('[data-parameter="agent"]')
-  await agentParameter.locator('.q-item').first().click()
-  await agentParameter.locator('textarea').fill('{"name":"Test agent"}')
+  await page.getByRole('button', { name: 'Développer "Consignes et objectifs"', exact: true }).click()
+  const contractParameter = page.locator('[data-parameter="result_contract"]')
+  await contractParameter.locator('.q-item').first().click()
+  await contractParameter.locator('textarea').fill('{"format":"report"}')
   const savedDataset = page.waitForResponse(response => response.request().method() === 'PATCH' && /\/datasets\//.test(response.url()))
   await page.getByRole('button', { name: 'Enregistrer', exact: true }).click()
   await savedDataset
@@ -59,7 +60,7 @@ test('shared settings belong to the dataset and history belongs to each item on 
   await dialog.getByRole('button', { name: 'Créer', exact: true }).click()
   dialog = page.getByRole('dialog').last()
   await dialog.getByLabel('Variable : Objectif', { exact: true }).fill('Prepare a verified report')
-  await expect(dialog.locator('[data-parameter="agent"]')).toHaveCount(0)
+  await expect(dialog.locator('[data-parameter="result_contract"]')).toHaveCount(0)
   const history = [{ text: 'Previous request', role: 'human' }]
   await dialog.locator('[data-parameter="history"] .q-item').first().click()
   await dialog.locator('[data-parameter="history"] textarea').fill(JSON.stringify(history))
@@ -67,8 +68,8 @@ test('shared settings belong to the dataset and history belongs to each item on 
   await dialog.getByRole('button', { name: 'Prévisualiser les entrées', exact: true }).click()
   const preview = await (await previewResponse).json()
   expect(preview.input.variable_value).toBe('Prepare a verified report')
-  expect(preview.parameters.agent).toEqual({ name: 'Test agent' })
-  expect(preview.origins.agent).toBe('dataset')
+  expect(preview.parameters.result_contract).toEqual({ format: 'report' })
+  expect(preview.origins.result_contract).toBe('dataset')
   expect(Object.keys(preview.input)).toEqual(['variable_value', 'context'])
   expect(preview.input.context.history).toEqual(history)
   expect(preview.native_input.history).toEqual(history)
@@ -90,11 +91,11 @@ test('shared settings belong to the dataset and history belongs to each item on 
 
 test('capture differences require explicit confirmation and cancellation adds nothing', async ({ page, request }, testInfo) => {
   await signIn(page, request)
-  await openLab(page, 'briefing')
+  await openLab(page, 'planner')
   await page.getByRole('button', { name: 'Nouveau jeu', exact: true }).click()
   let dialog = page.getByRole('dialog').last()
   await dialog.getByLabel('Nom', { exact: true }).fill(`Shared parameters ${testInfo.testId} ${testInfo.repeatEachIndex}`)
-  const created = page.waitForResponse(response => response.request().method() === 'POST' && response.url().endsWith('/briefing/datasets'))
+  const created = page.waitForResponse(response => response.request().method() === 'POST' && response.url().endsWith('/planner/datasets'))
   await dialog.getByRole('button', { name: 'Créer', exact: true }).click()
   const response = await created
   expect(response.ok(), await response.text()).toBeTruthy()
@@ -102,7 +103,7 @@ test('capture differences require explicit confirmation and cancellation adds no
   await page.getByRole('tab', { name: 'Items', exact: true }).click()
   const captures = []
   const token = 'a'.repeat(64)
-  await page.route('**/evaluation/briefing/datasets/*/cases/from-task', async route => {
+  await page.route('**/evaluation/planner/datasets/*/cases/from-task', async route => {
     const body = route.request().postDataJSON()
     captures.push(body)
     if (body.confirmation_token !== token) {
@@ -115,13 +116,13 @@ test('capture differences require explicit confirmation and cancellation adds no
       await route.fulfill({ status: 201, json: {
         id: 'captured-item', revision: 1, name: 'Captured report', enabled: true,
         readiness: 'draft', input_data: { variable_value: 'Prepare a report' },
-        expected_output: { result: 'Report', choices: [] }, source_capture: {},
+        expected_output: { brief: { objective: 'Report' }, steps: [] }, source_capture: {},
       } })
     }
   })
   await page.getByRole('button', { name: 'Capturer une source', exact: true }).click()
   dialog = page.getByRole('dialog').last()
-  await dialog.getByLabel('URI de la Task source', { exact: true }).fill('00000000-0000-0000-0000-000000000001')
+  await dialog.getByLabel('URI de la Task source', { exact: true }).fill('galaris://task/00000000-0000-0000-0000-000000000001')
   await dialog.getByRole('button', { name: 'Capturer la Task', exact: true }).click()
   let confirmation = page.getByRole('dialog').filter({ hasText: 'Les paramètres de la source diffèrent' })
   await expect(confirmation).toContainText('Shared parameters')

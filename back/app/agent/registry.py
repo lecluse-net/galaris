@@ -15,7 +15,6 @@ from .contracts import (
     DisabledAgentDriverError,
     DriverPipelinePolicy,
     DriverStatus,
-    ExecutionEffort,
     ToolExposureProfile,
     UnknownAgentDriverError,
 )
@@ -34,10 +33,6 @@ INTERNAL_HARNESS = AgentDriverSpec(
         use_planner=True,
         execution_efforts=frozenset({"standard", "high"}),
         uses_llm_calls=True,
-        # Retain the briefing mechanism and its historical results while production
-        # execution evaluates whether standalone Task objectives make it redundant.
-        use_briefing=False,
-        briefing_efforts=frozenset(),
     ),
     supports_cancellation=True,
     max_parallel_tasks=None,
@@ -158,11 +153,6 @@ def require_available_driver(code: str | None) -> AgentDriverSpec:
 
 def pipeline_policy_for(code: str | None) -> DriverPipelinePolicy:
     return get_driver_spec(code).pipeline_policy
-
-
-def should_use_briefing(code: str | None, effort: str) -> bool:
-    normalized: ExecutionEffort = "high" if effort == "high" else "standard"
-    return pipeline_policy_for(code).allows_briefing(normalized)
 
 
 def tool_profile_for_runtime(runtime: str) -> ToolExposureProfile:

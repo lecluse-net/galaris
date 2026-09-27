@@ -7,7 +7,6 @@ from app.harness.executor import (
     _scoped_tool_names,
     _task_is_real_time,
 )
-from app.agent.contracts import BriefingChoice, BriefingResult
 from app.agent.contracts import TaskMessageAttachment
 from app.task import TaskMessage
 from app.task.models import Task, TaskStatus
@@ -123,37 +122,17 @@ def test_local_history_is_strictly_bounded_for_multi_tool_runs() -> None:
     assert len(block) < 25_000
 
 
-def test_executor_tool_scope_combines_plan_and_briefing_choices() -> None:
+def test_executor_tool_scope_uses_plan() -> None:
     task = Task(
-        label="Scoped",
-        status=TaskStatus.BRIEFING,
+        label="Scoped", status=TaskStatus.DISPATCH,
         data={"plan_tools": ["search_web"]},
     )
-    task.set_briefing_result(
-        BriefingResult(
-            result="Write and deliver.",
-            choices=[
-                BriefingChoice(kind="tool", identifier="file_write"),
-                BriefingChoice(kind="process", identifier="document_generation"),
-            ],
-        )
-    )
-
     names = _scoped_tool_names(task)
-
     assert names is not None
-    assert {
-        "search_web",
-        "file_write",
-        "process_list",
-        "process_get",
-        "process_start",
-        "process_list_runs",
-        "process_get_run",
-        "process_analyze_run",
-    } <= names
+    assert "search_web" in names
+    assert "file_write" not in names
     assert "messenger_room_send_message" not in names
-    assert {"file_list", "file_info", "file_read"} <= names
+    assert {"process_list", "process_get", "process_start"} <= names
 
 
 def test_intermediate_plan_leaf_cannot_access_delivery_tools() -> None:

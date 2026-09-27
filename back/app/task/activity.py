@@ -18,7 +18,6 @@ async def has_active_task_work() -> bool:
     active_phases = (
         TaskStatus.CREATE,
         TaskStatus.DISPATCH,
-        TaskStatus.BRIEFING,
         TaskStatus.EXEC,
         TaskStatus.PLAN,
     )

@@ -173,13 +173,13 @@ ou un cycle nouveau/élargi fait échouer `make architecture-check`.
   résultats, politiques) ;
 - le registre et l’état de disponibilité des drivers ;
 - la résolution des modèles et stratégies d’exécution `standard` et `high` ;
-- le dispatcher, le planner, le briefing et le workflow commun ;
+- le dispatcher, le planner et le workflow commun ;
 - la façade publique `run`, `stream`, `cancel`, ainsi que les adaptateurs de tâches ;
 - le port vers la persistance durable.
 
 `app.harness` est le harnais interne Pydantic AI : adaptation au contrat `AgentDriver`,
 construction de l’agent, toolset, historique, médias, streaming, registre des runs annulables et
-checkpoints d’effets. `bridge.hermes` est son pair externe. Le dispatcher, le planner et le briefing restent
+checkpoints d’effets. `bridge.hermes` est son pair externe. Le dispatcher et le planner restent
 dans `app.agent`, car ils préparent un `AgentRunRequest` avant l’entrée dans l’un ou l’autre driver.
 
 `bridge.hermes` contient le client, le driver, la configuration et l'adaptation du runtime
@@ -204,13 +204,9 @@ des objectifs, la collaboration et les limites de requêtes modèle et d’appel
 exécution. Le moteur interne applique ces limites ; les harnais réseau compatibles les
 reçoivent et sont responsables de leur application. Les anciens liens vers les onglets
 `common` et `advanced` des harnais redirigent vers cette page.
-Les blocs Planner et Briefing y listent les harnais dont la politique déclare l’usage
-du mécanisme et disparaît si cette liste est vide. L’API expose la politique du provider choisi,
-prioritaire sur celle de son transport. Le briefing exige aussi au moins un niveau d’effort
-autorisé. Aujourd’hui, seul le harnais interne utilise le Planner ; le Briefing reste masqué.
-Le prompt du briefing est un Param (`ai.briefing-system-prompt`) avec défaut canonique et
-personnalisation persistée, sans activer le mécanisme. Les évaluations du Lab gardent leur
-surcharge explicite. Le Planner conserve son prompt et ses limites de profondeur, nœuds et feuilles.
+Le bloc Planner liste les harnais qui le déclarent et disparaît si cette liste est vide.
+La politique du provider choisi prime sur celle de son transport. Le Planner conserve son prompt
+et ses limites de profondeur, nœuds et feuilles.
 La conservation automatique des traces d’incidents et
 LLM se règle dans Journaux, séparément des purges manuelles. Cette répartition conserve les
 clés et valeurs persistées ; elle n’introduit pas de surcharges des limites par harnais.
@@ -256,7 +252,7 @@ du consommateur Hermès sont documentées dans
 
 `app.task` possède les modèles SQLAlchemy, la machine d’état durable, les leases, tentatives,
 reprises, commandes d’administration et le scheduler. Il ne choisit ni le driver, ni le
-modèle, ni l’usage du planner ou du briefing.
+modèle, ni l’usage du planner.
 
 Ses limites d’ordonnancement, de reprise, de planification, de budget et de collaboration
 sont stockées dans `params` et administrées dans **Préférences → Tâches**. Les consommateurs
@@ -369,14 +365,13 @@ restent persistées comme contraintes de création, notamment `@high`. `@plan` i
 d'une Task planifiée et `@effort` implique la création d'une Task avec une surcharge de
 raisonnement ; `@task` seul conserve le réglage du profil. Les tags
 `@task` et `@effort` sont retirés du texte visible et leur intention
-est transportée par les métadonnées serveur. Le parseur conserve `@briefing` pour compatibilité,
-mais la politique courante refuse son admission. Il refuse les
+est transportée par les métadonnées serveur. Le parseur refuse les
 URI inventées, contrôle l'idempotence avant cet appel et revérifie la fraîcheur du round avant de
 persister directement la `Task`; aucun objet d'objectif intermédiaire n'existe.
 Cette Task est ensuite marquée comme portant un objectif autonome. Le dispatcher lit ce `label` et
 cet `objective`, tandis que la session Messenger, Memory et la continuité utilisées par l'appel
 d'admission sont purgées des prompts aval. Les champs serveur de salon et d'interlocuteur restent
-dans `Task.data` et le contexte de messagerie ; les futurs apports du planner, du briefing, du
+dans `Task.data` et le contexte de messagerie ; les futurs apports du planner, du
 Working Set et du harnais restent indépendants.
 
 Pour une interaction numérotée, les réponses exactes restent traitées sans modèle. Un texte qui ne
@@ -742,7 +737,7 @@ Task SQLAlchemy
 AgentTask + app.agent facade
     │
     ├── dispatcher ──► EXEC / PLAN
-    ├── politique du driver ──► briefing éventuel
+    ├── politique du driver ──► exécution directe
     ├── model_resolver ──► modèle figé pour le run
     ├── DriverSpec ──► stratégie directe figée
     ▼
@@ -847,17 +842,15 @@ du driver :
 ```python
 DriverPipelinePolicy(
     use_planner=True,
-    use_briefing=False,
-    briefing_efforts=frozenset(),
 )
 ```
 
 Matrice actuelle :
 
-| Driver | Planner | Briefing | `standard` | `high` | Workspace |
-|---|---:|---:|---|---|---|
-| `internal` | oui | jamais (désactivé pour évaluation) | direct | direct | par agent |
-| `hermes` | non | jamais | `/v1/runs` direct | `/v1/runs` direct, modèle `high` | partagé par le runtime |
+| Driver | Planner | `standard` | `high` | Workspace |
+|---|---:|---|---|---|
+| `internal` | oui | direct | direct | par agent |
+| `hermes` | non | `/v1/runs` direct | `/v1/runs` direct, modèle `high` | partagé par le runtime |
 
 Le dispatcher filtre les routes selon cette politique et annote sa décision avec le driver,
 les routes autorisées et les notes de politique. Les transitions de workflow honorent
@@ -891,49 +884,11 @@ Un driver ne doit pas importer le modèle ORM `Task`. Une capacité optionnelle 
 protocole dédié, par exemple `DriverConfigurationProvider`, pas
 un test `if driver == ...` dans la façade.
 
-## 4. Dispatcher, planner et briefing
-
-Le dispatcher de Task construit les couples route/effort exposés par le harnais sélectionné :
-`EXEC standard`, `EXEC high`, `BRIEFING` avec un effort accepté et `PLAN high`. Les capacités
-du provider précisent celles du driver réseau commun. Après application des contraintes, un
-seul choix ne déclenche aucun LLM ; plusieurs choix autorisent une inférence limitée à cette
-liste ; aucun choix produit une erreur explicite. Le résultat est toujours persisté. Sans modèle
-dispatcher, le premier choix permis est retenu après ces contrôles. `END` reste interdit pour
-les Tasks. La règle distingue difficulté et décomposabilité.
-`EXEC high` n'est disponible que si le harnais déclare `uses_llm_calls=true` : ses appels
-d'exécution passent par le routage de modèles Galaris et son journal `LLMCall`. Un runtime
-externe qui utilise sa propre API ou son abonnement reste à EXEC standard ; sans planner ni
-briefing, le dispatcher n'appelle donc aucun LLM. Les providers gérés, dont Claude Agent,
-imposent actuellement la passerelle Galaris et conservent les deux efforts.
-Une opération explicite, bornée, mécanique et simplement vérifiable reste en `EXEC standard`, même
-si elle utilise plusieurs outils ou applique une action destructive déjà autorisée : le risque
-détermine les garde-fous, pas le niveau d'effort.
-Un site, visuel, rapport, document, changement de code ou autre livrable cohérent reste en
-`EXEC high` lorsque recherche, production, raffinement, vérification et livraison concourent au
-même résultat. `BRIEFING` est un choix distinct de `EXEC high` : il prépare une exécution sans
-planifier plusieurs tâches. Il reste désactivé dans le harnais interne. `PLAN`
-est réservé à plusieurs unités indépendamment exécutables dont les résultats durables nécessitent
-une coordination. Un objectif commun, une méthode répétée, un suivi partagé ou un ordre séquentiel
-n'excluent pas `PLAN` si chaque livrable peut être terminé, vérifié et repris séparément et que
-cette coordination apporte un bénéfice concret. Les chapitres, brouillons et passes de revue d'un
-même document restent ensemble, même sauvegardés séparément. Un petit lot mécanique reste en
-`EXEC standard` ; si la séparation ou le bénéfice de coordination est incertain, `EXEC high`
-reste préféré. Les échanges conversationnels ne
-passent plus par une Task ; leur profil restreint distinct peut encore arbitrer EXEC/END pour éviter
-une boucle IA→IA. Ce profil conversationnel impose toujours l’exécution directe `standard` et
-désactive planner, briefing et effort `high`. Quand aucun LLM dispatcher n’est configuré, le
-service produit une décision d’exécution directe, traçable et déterministe. Pour un humain, cette
-décision ne consulte jamais le modèle dispatcher. Les directives explicites `@plan` et `@exec`
-suivent le chemin d'admission déterministe sans inférence de routage. Le champ `requires_action`
-est absent des contrats courants, y compris pour les Tasks. Sur les Tasks, une directive textuelle
-n'est appliquée qu'après résolution des routes exposées par la politique du driver ; elle ne peut
-jamais activer un planner absent. Un `forced_route` de création reste au contraire une contrainte
-stricte et explicitement incompatible si le driver ne l'expose pas. `@briefing` reste reconnu
-pour compatibilité mais est refusé tant qu’aucun driver ne l’expose.
+## 4. Dispatcher et planner
 
 Chaque agent référence un profil LLM personnel ou conserve `profile_id = NULL` pour suivre le
 profil courant. Les usages texte partagent quatre niveaux : `ultra-low` pour Dream ; `low` pour le
-dispatcher et la conversation rapide ; `standard` pour le briefing, l’exécuteur et le suivi des
+dispatcher et la conversation rapide ; `standard` pour l’exécuteur et le suivi des
 Goals ; `high` pour l’exécuteur high, le planner et le Lab IA. Les modèles spécialisés (médias,
 transcription et embeddings) conservent leurs colonnes dédiées. Une valeur vide dans un profil
 personnel reste vide et ne reprend jamais le profil courant. La sélection du planner couvre aussi
@@ -942,7 +897,7 @@ la synthèse finale du plan. Les gateways reconnaissent également les familles 
 (Luna/`low`, Terra/`standard`, Sol/`high`) comme alias de ces niveaux ; un code LLM configuré
 explicitement garde priorité.
 La politique du driver reste prioritaire sur l’activation :
-configurer un modèle de briefing ou de planner ne les active pas pour Hermès.
+configurer un modèle de planner ne l’active pas pour Hermès.
 
 Le dispatcher Task peut utiliser la sélection facultative **Décision** du profil. Ajouter Jev
 dans le catalogue OpenRouter, capacité Décision, puis le sélectionner dans les usages du profil.
@@ -1012,18 +967,13 @@ Si un agent ou une source distante échoue, l’opération est signalée comme p
 pas l’index. Cette projection reste une optimisation : le catalogue MCP effectif est recalculé
 avec les droits courants avant chaque sélection et chaque appel.
 
-Le briefing peut préparer une seule exécution complexe du harnais interne. Il sélectionne uniquement
-des ressources réellement disponibles et ne peut ni exécuter, ni envoyer, ni conclure la tâche.
-Il est actuellement désactivé dans toutes les politiques de production ; son implémentation, ses
-résultats historiques et ses benchmarks restent disponibles pour évaluation. Aucun driver ne reçoit
-un ancien résultat de briefing lorsque sa politique ne l’autorise pas.
 
-Ni le plan ni le briefing ne peuvent remplacer l’objectif utilisateur. Les prompts communs
+Le plan ne peut remplacer l’objectif utilisateur. Les prompts communs
 ordonnent à l’agent de poser une question concise lorsqu’une information essentielle manque.
 
 ### Lab IA et benchmarks des mécanismes
 
-Les onze traitements du LAB utilisent les contrats typés de `app.lab.contracts` :
+Les dix traitements du LAB utilisent les contrats typés de `app.lab.contracts` :
 une seule variable métier par item, des paramètres exclusivement au niveau du jeu,
 et une sortie de référence séparée. Les descripteurs du registre alimentent l’IHM commune
 `LabWorkbench.vue`, y compris les paramètres propres aux algorithmes et la prévisualisation.
@@ -1678,7 +1628,7 @@ change, rendez-le explicite dans le contrat, les tests et la documentation.
 
 - importer `app.task.models.Task` dans un driver recrée le couplage que la façade élimine ;
 - choisir un modèle dans le proxy après le début du run rend les traces incohérentes ;
-- faire décider le briefing ou le planner une seconde fois annule le choix du dispatcher ;
+- faire décider le planner une seconde fois annule le choix du dispatcher ;
 - conserver un fallback silencieux pour un code driver inconnu masque une erreur de config ;
 - considérer un texte final comme preuve d’une action permet les confirmations hallucinées ;
 - persister une fixture de test sur la base de développement crée des tâches parasites ;

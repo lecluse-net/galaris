@@ -1,6 +1,6 @@
 ---
 name: galaris-agent-execution
-description: Architecture d’exécution agentique propre à Galaris — app.agent, app.harness, app.task, goals, drivers, dispatcher, planner, briefing, streaming, leases et reprise. À utiliser pour tracer, diagnostiquer ou modifier une tâche, un driver, une politique d’effort, une transition ou un résultat agentique.
+description: Architecture d’exécution agentique propre à Galaris — app.agent, app.harness, app.task, goals, drivers, dispatcher, planner, streaming, leases et reprise. À utiliser pour tracer, diagnostiquer ou modifier une tâche, un driver, une politique d’effort, une transition ou un résultat agentique.
 ---
 
 # Maîtriser l’exécution agentique Galaris
@@ -21,7 +21,7 @@ mais vérifier toute règle métier dans le code.
 
 | Domaine | Responsabilité |
 |---|---|
-| `app.agent` | Contrats, registre, politique, dispatcher, planner, briefing, résolution du modèle, façade, streaming et application du résultat |
+| `app.agent` | Contrats, registre, politique, dispatcher, planner, résolution du modèle, façade, streaming et application du résultat |
 | `app.harness` | Harnais interne concret Pydantic AI, historique, toolsets, médias et adaptation de stream |
 | `app.task` | Modèles durables, transitions, leases, tentatives, commandes et scheduler |
 | `app.goal` | Objectif durable, cycles de jugement et décision de continuation |
@@ -29,7 +29,7 @@ mais vérifier toute règle métier dans le code.
 
 `app.agent` ne dépend jamais de `app.task`. Utiliser le port de tâche enregistré par
 `app.task.agent_adapter`. Un driver ne sélectionne pas silencieusement un second modèle et
-ne décide pas à nouveau du planner ou du briefing.
+ne décide pas à nouveau du planner.
 
 ## Tracer un run
 
@@ -37,7 +37,7 @@ Suivre cette séquence sans sauter de couche :
 
 1. La tâche durable est convertie en contrat `AgentTask`.
 2. Le workflow et le dispatcher choisissent la route autorisée par la politique du driver.
-3. Planner et briefing s’exécutent uniquement si la politique figée les active.
+3. Le planner s’exécute uniquement si la route PLAN est autorisée et retenue.
 4. Le modèle est résolu une fois et incorporé à l’`AgentRunRequest`.
 5. La façade invoque le driver enregistré.
 6. Le driver produit des messages puis un unique résultat terminal.

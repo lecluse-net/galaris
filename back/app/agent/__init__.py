@@ -39,8 +39,6 @@ from .contracts import (
     AgentTaskBlockers,
     RealtimeAgentContext,
     OBJECTIVE_IS_STANDALONE_DATA_KEY as OBJECTIVE_IS_STANDALONE_DATA_KEY,
-    BriefingChoice,
-    BriefingResult,
     ConversationDispatchDecision,
     ConfiguredHarnessSelection,
     DispatchDecision,
@@ -122,7 +120,6 @@ from .dispatcher import (
     preview_dispatcher_input,
     register_dispatcher_output_contracts,
 )
-from .briefing_service import register_briefing_output_contracts, validate_briefing_resources
 from .conversation_context import (
     conversation_context_block,
     current_message_data,
@@ -259,8 +256,6 @@ __all__ = [
     "ExecutionResult",
     "DispatchDecision",
     "DispatchResult",
-    "BriefingChoice",
-    "BriefingResult",
     "ConversationDispatchDecision",
     "ConfiguredHarnessSelection",
     "AgentDriver",
@@ -352,8 +347,6 @@ __all__ = [
     "dispatcher_system_prompt",
     "preview_dispatcher_input",
     "register_dispatcher_output_contracts",
-    "register_briefing_output_contracts",
-    "validate_briefing_resources",
     "dispatch_conversation",
     "ExecutorKind",
     "ExecutorPromptContext",

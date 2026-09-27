@@ -458,7 +458,6 @@ async def get_progress(task_id: UUID) -> Optional[dict[str, Any]]:
                 done += 1
             elif child.status in (
                 TaskStatus.DISPATCH,
-                TaskStatus.BRIEFING,
                 TaskStatus.EXEC,
                 TaskStatus.CREATE,
             ):
@@ -1802,7 +1801,7 @@ async def _activate_step(
     child = child_for_step(materialized, step_index)
     if child is None:
         raise RuntimeError(f"Missing subtask for step {step_index}")
-    if (child.status in (TaskStatus.SUCCESS, TaskStatus.ERROR, TaskStatus.EXEC, TaskStatus.BRIEFING)
+    if (child.status in (TaskStatus.SUCCESS, TaskStatus.ERROR, TaskStatus.EXEC)
             or task_service.is_held_by_user(child)
             or (child.status == TaskStatus.DISPATCH and not child.paused)):
         return child

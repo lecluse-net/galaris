@@ -6,7 +6,6 @@ from uuid import uuid4
 
 import pytest
 
-from core.params.runtime_settings import runtime_settings
 from app.agent.contracts import (
     ExecutionEffort,
     UnknownAgentDriverError,
@@ -16,20 +15,17 @@ from app.agent.registry import (
     get_driver_spec,
     pipeline_policy_for,
     require_available_driver,
-    should_use_briefing,
 )
 from app.agent.workflow import route_to_driver_pipeline
 from app.task.models import Task, TaskStatus
 
 
 @pytest.mark.parametrize("current_decision, expected", [
-    (False, TaskStatus.BRIEFING), (True, TaskStatus.DISPATCH),
+    (False, TaskStatus.DISPATCH), (True, TaskStatus.DISPATCH),
 ])
-def test_explicit_execution_choice_supersedes_legacy_automatic_briefing(monkeypatch, current_decision, expected):
-    from app.agent import registry
+def test_execution_choice_works_with_current_and_legacy_snapshots(current_decision, expected):
     from app.agent.contracts import DispatchDecision, DispatchResult
 
-    monkeypatch.setattr(registry, "should_use_briefing", lambda *_: True)
     task = Task(id=uuid4(), label="Resume", status=TaskStatus.CREATE, effort="high")
     task.set_dispatch_result(DispatchResult(
         prompt="", decision=DispatchDecision(route="EXEC", effort="high"),
@@ -48,14 +44,7 @@ def test_driver_policies_are_explicit_and_immutable() -> None:
     hermes = pipeline_policy_for("hermes")
 
     assert internal.use_planner is True
-    assert internal.use_briefing is False
-    assert internal.briefing_efforts == frozenset()
     assert hermes.use_planner is False
-    assert hermes.use_briefing is False
-    assert hermes.briefing_efforts == frozenset()
-    assert should_use_briefing("internal", "standard") is False
-    assert should_use_briefing("internal", "high") is False
-    assert should_use_briefing("hermes", "high") is False
     assert internal_spec.execution_strategy_for("standard") == "direct"
     assert internal_spec.execution_strategy_for("high") == "direct"
     assert hermes_spec.execution_strategy_for("standard") == "direct"

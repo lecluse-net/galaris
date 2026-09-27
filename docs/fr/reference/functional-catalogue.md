@@ -393,7 +393,7 @@ Les modèles texte sont répartis en quatre niveaux communs :
 |---|---|
 | **Ultra low** | Mécanismes Dream utilisant un modèle |
 | **Low** | Dispatcher et conversations courtes |
-| **Standard** | Exécution standard, suivi des Goals et mécanisme Briefing conservé |
+| **Standard** | Exécution standard et suivi des Goals |
 | **High** | Exécution high, Planner et Lab |
 
 Chaque niveau peut aussi porter un **effort de raisonnement**. Ce réglage du fournisseur est distinct
@@ -434,7 +434,7 @@ restent utilisables, y compris avec un unique modèle local.
 | Extraction Memory par Dream | Ignorer une source sans fait durable, rattacher des faits déjà couverts ou demander l’extraction | Rédiger et valider les connaissances nouvelles ou incomplètement couvertes |
 | Acquisition Memory | Confirmer l’équivalence complète avec un candidat proche | Recherche, droits, conservation des faits et rattachement idempotent de provenance |
 
-Planner, Briefing, suivi de Goal et apprentissage restent génératifs. Les règles déterministes de
+Planner, suivi de Goal et apprentissage restent génératifs. Les règles déterministes de
 maintenance et de transition n’ajoutent pas d’appel de décision.
 
 La politique **repli texte en cas d’échec** peut autoriser un seul appel au modèle du **même
@@ -696,14 +696,14 @@ Le descripteur commun distingue les capacités implémentées, configurées, vé
 et réellement effectives. L’ensemble effectif est leur intersection ; activer une option ne crée
 pas une capacité absente du runtime.
 
-| Harnais sélectionné | EXEC standard | EXEC high | PLAN high | BRIEFING |
-|---|---|---|---|---|
-| Interne | Oui | Oui | Oui | Désactivé |
-| Hermès géré | Oui | Oui | Non | Non |
-| Codex géré | Oui | Oui | Non | Non |
-| Claude Agent géré | Oui | Oui | Non | Non |
-| DeepSeek Harness géré | Oui | Oui | Non | Non |
-| Serveur compatible générique, dont un runtime externe avec sa propre API | Oui | Non | Non | Non |
+| Harnais sélectionné | EXEC standard | EXEC high | PLAN high |
+|---|---|---|---|
+| Interne | Oui | Oui | Oui |
+| Hermès géré | Oui | Oui | Non |
+| Codex géré | Oui | Oui | Non |
+| Claude Agent géré | Oui | Oui | Non |
+| DeepSeek Harness géré | Oui | Oui | Non |
+| Serveur compatible générique, dont un runtime externe avec sa propre API | Oui | Non | Non |
 
 Le mode high exige que l’exécution utilise la sélection de modèle et le journal d’appels LLM de
 Galaris. Les quatre runtimes gérés imposent actuellement cette passerelle ; ils n’annoncent pas
@@ -1060,16 +1060,12 @@ Le **Dispatcher** choisit la route et l’effort dans la politique autorisée pa
 complexité représente le travail cognitif : un long transfert de fichier n’impose pas à lui seul
 le modèle high. L’identité et le modèle sont résolus avant l’exécution.
 
-Les couples admis sont `EXEC standard`, éventuellement `EXEC high`, `BRIEFING` avec un effort
-déclaré et `PLAN high`. Les contraintes explicites et les décisions héritées d’un parent réduisent
+Les couples admis sont `EXEC standard`, éventuellement `EXEC high` et `PLAN high`.
+Les contraintes explicites et les décisions héritées d’un parent réduisent
 cette liste. Un seul choix produit une décision déterministe sans appeler ni résoudre un modèle
 dispatcher ; plusieurs choix autorisent une inférence limitée à cette liste. Un résultat invalide
 ou un modèle absent revient au premier choix permis, avec motif conservé. Aucune combinaison
 compatible produit une erreur explicite ; `PLAN standard` n’est pas un repli implicite.
-
-`EXEC high` exécute directement ; `BRIEFING` prépare puis exécute. Le mécanisme Briefing demeure
-désactivé dans les politiques actuelles, même si son contrat est représenté. Les décisions
-historiques restent relisibles avec leur politique de reprise.
 
 La **capsule de contexte** fige les informations antérieures utiles : conversation, tâches récentes,
 ressources et mémoire, avec leur provenance et les éventuelles troncatures. L’agent reçoit aussi son
@@ -1092,7 +1088,7 @@ feuilles sont bornés par les réglages. Les étapes deviennent de **vraies tâc
 l’arborescence, et leurs résultats alimentent la synthèse du parent.
 
 Le harnais interne autorise la planification. La politique Hermès utilise une exécution autonome
-directe. Le **Briefing** est consultable dans les historiques et testable au Lab.
+directe.
 
 Un agent peut déléguer à un collègue autorisé, conserver le lien parent/enfant et attendre une réponse.
 Les attentes de collaboration ont une corrélation, une échéance et des limites de tours. Le parent
@@ -1117,7 +1113,7 @@ L’écran **Activité** permet de :
 - rechercher les tâches, filtrer par agent, état et période, et consulter les totaux correspondants ;
 - distinguer les tâches créées, en routage, en exécution, planifiées, réussies ou en erreur ;
 - voir les états opérationnels en attente, en cours, en pause, en attente d’un collègue ou terminés ;
-- ouvrir l’objectif, les résultats de Dispatcher/Planner/Briefing, le résultat d’exécution et
+- ouvrir l’objectif, les résultats du Dispatcher et du Planner, le résultat d’exécution et
   l’arborescence des sous-tâches ;
 - inspecter les messages publics de progression, les appels d’outils, leurs arguments/résultats,
   les ressources, les tentatives, les erreurs et les coûts ;
@@ -2776,7 +2772,6 @@ le contexte propre à l’item, les paramètres communs au jeu, la sortie du can
 | Lab | Entrée principale | Ce qui est évalué |
 |---|---|---|
 | Dispatcher | Demande et politique effective du harnais | Route/effort parmi les couples disponibles et langue ; décisions déterministes et motifs locaux inspectables |
-| Briefing | Objectif | Préparation du travail et choix des ressources |
 | Planner | Objectif | Plan ou besoin de clarification |
 | Détection des sujets | Séquence de messages | Sujet affecté à chaque message |
 | Extraction mémoire | Échange ou compte rendu de tâche | Décision CREATE/LINK/IGNORE et connaissances retenues |
@@ -2814,12 +2809,12 @@ constitue pas un cas vocal exploitable tel quel.
 Le chargement initial précède la création automatique d’une expérience : une réponse encore
 attendue ne doit pas faire considérer une expérience existante comme absente. Le Lab Dispatcher
 capture la politique effective du provider et utilise les mêmes couples route/effort que le
-runtime, dont `BRIEFING` lorsqu’il est déclaré et le choix déterministe lorsqu’un seul couple
+runtime, dont le choix déterministe lorsqu’un seul couple
 subsiste. Ses jugements suivent le contrat de production.
 
 ### Générer des jeux synthétiques contextualisés
 
-Les **onze labs** proposent une génération de jeu synthétique : choisir son nom, le modèle
+Les **dix labs** proposent une génération de jeu synthétique : choisir son nom, le modèle
 générateur, la langue, **1 à 20 cas**, les catégories et les situations ou contraintes métier.
 Le formulaire explique les points testables du mécanisme ; il faut prévoir au moins un cas
 par catégorie demandée. Le modèle propose paramètres communs, variables, contextes et références.
@@ -2900,7 +2895,7 @@ complémentaires.
 
 ### Confier une campagne à un agent
 
-La connexion **Lab Galaris** donne accès à **50 fonctions MCP** pour découvrir les onze mécanismes,
+La connexion **Lab Galaris** donne accès à **50 fonctions MCP** pour découvrir les dix mécanismes,
 lire leurs contrats et rubriques, préparer les jeux et cas, régler leurs prompts expérimentaux,
 lancer les benchmarks et examiner leurs preuves. La connexion et le skill système **Galaris Lab**
 (`galaris-lab`) sont **désactivés globalement par défaut** et s’activent séparément. Le skill est
@@ -3352,7 +3347,7 @@ nom du jeton utilisé et conserve le fournisseur et le modèle réellement solli
 | Quotas ChatGPT | Fenêtres fournies pour l’ensemble du compte, consultées à un instant donné ; ni quota par agent ni budget de facture API. |
 | Harnais gérés | Standard/high via la passerelle Galaris ; un run simultané par instance externe ; le transport générique reste standard. |
 | Synchronisation des skills | Appliquée avant une nouvelle exécution, sans interrompre une Task ; une continuation distante conserve son contexte antérieur et un échec de projection bloque le démarrage. |
-| Routage | Seuls les couples déclarés par le harnais sont disponibles ; Briefing reste désactivé dans les politiques actuelles. |
+| Routage | Seuls les couples EXEC/PLAN et effort déclarés par le harnais sont disponibles. |
 | Inférence durable | Reconnexion au flux sans nouvelle génération ; reprise explicite par nouvelle tentative potentiellement facturée, sans continuation interne du calcul fournisseur. |
 | Chat natif | Humain–agent ; les salons de groupe de transports externes ne constituent pas une messagerie native universelle entre humains. |
 | Apprentissage de skills | Off par défaut ; observation et apprentissage explicites avec preuves et seuils. |
@@ -3625,7 +3620,7 @@ appartiennent toutes au Tool optionnel `lab`.
 
 | Fonction | Famille | Action et résultat |
 |---|---|---|
-| `lab_list` | `lab` | Découvrir les onze mécanismes et savoir si l’inspection des sources réelles est autorisée. |
+| `lab_list` | `lab` | Découvrir les dix mécanismes et savoir si l’inspection des sources réelles est autorisée. |
 | `lab_get` | `lab` | Lire les contrats d’entrée, de configuration et de sortie, un exemple et la rubrique de jugement. |
 | `lab_models` | `lab` | Lister les modèles candidats et juges compatibles, les défauts et le besoin éventuel de génération hybride, sans credentials. |
 | `lab_prompt_defaults` | `lab` | Lire prompts et paramètres effectifs par défaut sans créer de jeu. |

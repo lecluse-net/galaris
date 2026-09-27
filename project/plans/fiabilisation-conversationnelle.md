@@ -31,7 +31,7 @@ L'admission Task y est simulée ; les mesures du parcours utilisateur complet re
 - Comparer les appels LLM, coûts, faux lancements et latences du dispatcher, à configuration
   constante. Son absence d'inférence pour un round humain ou un choix unique est déjà testée.
 - Reprendre la matrice de 0101/0102 : ancien résultat, modèle absent, choix incompatible,
-  effort explicite, briefing, reprise et livraison unique. Mesurer le gain jusqu'au premier
+  effort explicite, reprise et livraison unique. Mesurer le gain jusqu'au premier
   texte/outil ; un ancien indicateur de relance n'est pas une vérité terrain.
 
 **Sortie :** mesures avant/après reproductibles et limites explicites, sans rejouer d'effets

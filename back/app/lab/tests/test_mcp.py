@@ -127,12 +127,12 @@ async def test_each_mechanism_can_be_authored_inspected_and_cloned(db, actor, me
 async def test_partial_edits_conflicts_and_function_revocation(db, actor):
     ctx, connection_id = actor
     dataset = await mcp.lab_dataset_create(
-        ctx, "briefing", MechanismDatasetCreate(name="Holdout", purpose="holdout"), "create"
+        ctx, "planner", MechanismDatasetCreate(name="Holdout", purpose="holdout"), "create"
     )
     identifier = UUID(dataset["id"])
     edited = await mcp.lab_dataset_update(
         ctx,
-        "briefing",
+        "planner",
         identifier,
         DatasetPatch(revision=dataset["revision"], description="Preserved"),
         "edit",
@@ -141,7 +141,7 @@ async def test_partial_edits_conflicts_and_function_revocation(db, actor):
     with pytest.raises(Exception, match="revision"):
         await mcp.lab_dataset_update(
             ctx,
-            "briefing",
+            "planner",
             identifier,
             DatasetPatch(revision=dataset["revision"], description="stale"),
             "stale",
@@ -153,8 +153,8 @@ async def test_partial_edits_conflicts_and_function_revocation(db, actor):
     )
     await db.flush()
     with pytest.raises(PermissionError):
-        await mcp.lab_dataset_delete(ctx, "briefing", identifier, edited["revision"], "delete")
-    assert (await mcp.lab_dataset_get(ctx, "briefing", identifier))["description"] == "Preserved"
+        await mcp.lab_dataset_delete(ctx, "planner", identifier, edited["revision"], "delete")
+    assert (await mcp.lab_dataset_get(ctx, "planner", identifier))["description"] == "Preserved"
     with pytest.raises(PermissionError):
         await mcp.lab_task_candidates(ctx, Page())
 
@@ -163,7 +163,7 @@ async def test_partial_edits_conflicts_and_function_revocation(db, actor):
 async def test_sql_pagination_does_not_lose_cases_after_500(db, actor):
     ctx, _ = actor
     dataset = await mcp.lab_dataset_create(
-        ctx, "briefing", MechanismDatasetCreate(name="Paged"), "create"
+        ctx, "planner", MechanismDatasetCreate(name="Paged"), "create"
     )
     identifier = UUID(dataset["id"])
     db.add_all(
@@ -173,9 +173,9 @@ async def test_sql_pagination_does_not_lose_cases_after_500(db, actor):
         ]
     )
     await db.flush()
-    first = await mcp.lab_case_list(ctx, "briefing", identifier, Page(limit=500))
+    first = await mcp.lab_case_list(ctx, "planner", identifier, Page(limit=500))
     second = await mcp.lab_case_list(
-        ctx, "briefing", identifier, Page(limit=500, offset=first["next_offset"])
+        ctx, "planner", identifier, Page(limit=500, offset=first["next_offset"])
     )
     assert len(first["items"]) == 500 and len(second["items"]) == 3
     assert second["next_offset"] is None
@@ -223,26 +223,26 @@ async def test_run_rejudge_and_agent_review_preserve_candidate_and_human_identit
     ctx, _ = actor
     dataset, llm, calls = benchmark
     started = await mcp.lab_run_start(
-        ctx, "briefing", dataset.id, dataset.revision, EvaluationRunStart(llm_id=llm.id), "run"
+        ctx, "planner", dataset.id, dataset.revision, EvaluationRunStart(llm_id=llm.id), "run"
     )
     run_id = UUID(started["id"])
     await db.commit()
     for _ in range(6):
         await evaluations.process_runs()
-    result = (await mcp.lab_run_results(ctx, "briefing", run_id, Page()))["items"][0]
-    campaigns = (await mcp.lab_campaign_list(ctx, "briefing", run_id, Page()))["items"]
+    result = (await mcp.lab_run_results(ctx, "planner", run_id, Page()))["items"][0]
+    campaigns = (await mcp.lab_campaign_list(ctx, "planner", run_id, Page()))["items"]
     campaign_id = UUID(campaigns[0]["id"])
-    blind = await mcp.lab_review_get(ctx, "briefing", campaign_id, UUID(result["id"]))
+    blind = await mcp.lab_review_get(ctx, "planner", campaign_id, UUID(result["id"]))
     assert "automatic_judgment" not in blind
     review = await mcp.lab_review_submit(
         ctx,
-        "briefing",
+        "planner",
         HumanReviewCreate(
             result_id=UUID(result["id"]),
             campaign_id=campaign_id,
             dimensions=[
                 {"code": dim.code, "score_percent": 80, "assessment": "Supported by evidence"}
-                for dim in get_rubric("briefing").dimensions
+                for dim in get_rubric("planner").dimensions
             ],
             explanation="Synthetic review",
         ),
@@ -250,13 +250,13 @@ async def test_run_rejudge_and_agent_review_preserve_candidate_and_human_identit
     )
     assert review["author_kind"] == "agent" and review["agent_id"] == ctx.agent_id
     assert await db.scalar(select(func.count(LabAgentReview.id))) == 1
-    displayed = await evaluations.get_run("briefing", run_id)
+    displayed = await evaluations.get_run("planner", run_id)
     assert displayed.agent_reviews[0].agent_id == ctx.agent_id
     assert str(displayed.agent_reviews[0].campaign_id) == review["campaign_id"]
     snapshot = deepcopy((await db.get(LabEvaluationRunCase, UUID(result["id"]))).actual_output)
     candidate_calls = calls.count("candidate")
     await mcp.lab_run_rejudge(
-        ctx, "briefing", run_id, "rejudge", EvaluationRejudge(judge_llm_id=llm.id)
+        ctx, "planner", run_id, "rejudge", EvaluationRejudge(judge_llm_id=llm.id)
     )
     await db.commit()
     for _ in range(4):
@@ -274,7 +274,7 @@ async def test_command_failure_rolls_back_effect_and_receipt(committed_database)
         async with get_db_session():
             await mcp.lab_dataset_create(
                 mcp_loader.McpToolContext(identifier, "internal"),
-                "briefing",
+                "planner",
                 MechanismDatasetCreate(name=name),
                 "rollback",
             )
@@ -319,12 +319,12 @@ async def test_async_generation_is_durable_and_never_rebills_on_retry(
         if outcome == "revoked_during":
             (await db.get(Connection, connection_id)).active = False
             await db.flush()
-        return SimpleNamespace(output=generated_content("briefing"), cost=0.012)
+        return SimpleNamespace(output=generated_content("planner"), cost=0.012)
 
     inference = AsyncMock(side_effect=infer)
     monkeypatch.setattr(synthetic_service, "run_structured", inference)
-    first = await mcp.lab_dataset_generate(ctx, "briefing", request, "generation")
-    repeat = await mcp.lab_dataset_generate(ctx, "briefing", request, "generation")
+    first = await mcp.lab_dataset_generate(ctx, "planner", request, "generation")
+    repeat = await mcp.lab_dataset_generate(ctx, "planner", request, "generation")
     assert first["operation_id"] == repeat["operation_id"]
     identifier = UUID(first["operation_id"])
     assert inference.await_count == 0
@@ -351,12 +351,12 @@ async def test_async_generation_is_durable_and_never_rebills_on_retry(
         result = await mcp.lab_operation_get(ctx, identifier)
         assert result["result"]["dataset"]["id"] == str(generated.id)
         assert result["result"]["dataset"]["ready_case_count"] == 0
-        assert (await mcp.lab_dataset_generate(ctx, "briefing", request, "generation"))[
+        assert (await mcp.lab_dataset_generate(ctx, "planner", request, "generation"))[
             "operation_id"
         ] == str(identifier)
         with pytest.raises(ValueError, match="different arguments"):
             await mcp.lab_dataset_generate(
-                ctx, "briefing", request.model_copy(update={"name": "Changed"}), "generation"
+                ctx, "planner", request.model_copy(update={"name": "Changed"}), "generation"
             )
     else:
         assert generated is None and receipt is None
@@ -369,12 +369,12 @@ async def test_revoked_run_is_stopped_before_candidate_inference(db, actor, benc
     ctx, connection_id = actor
     dataset, llm, calls = benchmark
     result = await mcp.lab_run_start(
-        ctx, "briefing", dataset.id, dataset.revision, EvaluationRunStart(llm_id=llm.id), "run"
+        ctx, "planner", dataset.id, dataset.revision, EvaluationRunStart(llm_id=llm.id), "run"
     )
     (await db.get(Connection, connection_id)).active = False
     await db.commit()
     await evaluations.process_runs()
-    stopped = await evaluations.get_run("briefing", UUID(result["id"]))
+    stopped = await evaluations.get_run("planner", UUID(result["id"]))
     assert stopped.status == "cancelled" and stopped.stop_reason == "authorization_revoked"
     assert calls == []
 
@@ -386,14 +386,14 @@ async def test_comparison_identifies_prompt_treatment_and_ambiguous_evidence(db,
     ctx, _ = actor
     dataset, llm, _ = benchmark
     left = await mcp.lab_run_start(
-        ctx, "briefing", dataset.id, dataset.revision, EvaluationRunStart(llm_id=llm.id), "baseline"
+        ctx, "planner", dataset.id, dataset.revision, EvaluationRunStart(llm_id=llm.id), "baseline"
     )
     copy = await mcp.lab_dataset_clone(
-        ctx, "briefing", dataset.id, dataset.revision, "Prompt variant", "variant"
+        ctx, "planner", dataset.id, dataset.revision, "Prompt variant", "variant"
     )
     changed = await mcp.lab_dataset_update(
         ctx,
-        "briefing",
+        "planner",
         UUID(copy["id"]),
         DatasetPatch(
             revision=copy["revision"],
@@ -406,7 +406,7 @@ async def test_comparison_identifies_prompt_treatment_and_ambiguous_evidence(db,
     )
     right = await mcp.lab_run_start(
         ctx,
-        "briefing",
+        "planner",
         UUID(copy["id"]),
         changed["revision"],
         EvaluationRunStart(llm_id=llm.id),
@@ -416,20 +416,20 @@ async def test_comparison_identifies_prompt_treatment_and_ambiguous_evidence(db,
     for _ in range(6):
         await evaluations.process_runs()
     compared = await mcp.lab_run_compare(
-        ctx, "briefing", UUID(left["id"]), UUID(right["id"]), "prompt", Page()
+        ctx, "planner", UUID(left["id"]), UUID(right["id"]), "prompt", Page()
     )
     assert compared["comparable"] and compared["items"][0]["pairing"] == "matched"
     assert compared["items"][0]["score_delta"] == 0
     for focus in ("critical", "verdict", "dimension"):
         filtered = await mcp.lab_run_compare(
-            ctx, "briefing", UUID(left["id"]), UUID(right["id"]), "prompt", Page(),
+            ctx, "planner", UUID(left["id"]), UUID(right["id"]), "prompt", Page(),
             focus=focus, dimension="grounding" if focus == "dimension" else None,
         )
         assert filtered["items"] == []
         assert filtered["risks"] == compared["risks"]
     assert not (
         await mcp.lab_run_compare(
-            ctx, "briefing", UUID(left["id"]), UUID(right["id"]), "model", Page()
+            ctx, "planner", UUID(left["id"]), UUID(right["id"]), "model", Page()
         )
     )["comparable"]
     original = await db.get(LabEvaluationRunCase, UUID(compared["items"][0]["right_result_id"]))
@@ -445,13 +445,13 @@ async def test_comparison_identifies_prompt_treatment_and_ambiguous_evidence(db,
     )
     await db.flush()
     ambiguous = await mcp.lab_run_compare(
-        ctx, "briefing", UUID(left["id"]), UUID(right["id"]), "prompt", Page()
+        ctx, "planner", UUID(left["id"]), UUID(right["id"]), "prompt", Page()
     )
     assert "ambiguous_case_pairing" in ambiguous["blockers"]
     for left_id, right_id in ((left["id"], right["id"]), (right["id"], left["id"])):
         for offset in (0, 100):
             page = await mcp.lab_run_compare(
-                ctx, "briefing", UUID(left_id), UUID(right_id), "prompt", Page(offset=offset)
+                ctx, "planner", UUID(left_id), UUID(right_id), "prompt", Page(offset=offset)
             )
             assert page["comparable"] is False
             assert page["blockers"] == ["ambiguous_case_pairing"]
@@ -493,7 +493,7 @@ async def test_capture_confirmation_survives_real_mcp_and_requires_source_access
         agent_id, _ = await provision(db)
         ctx = mcp_loader.McpToolContext(agent_id, "internal")
         dataset = await mcp.lab_dataset_create(
-            ctx, "briefing", MechanismDatasetCreate(name=f"Capture {uuid4()}"), "capture-dataset"
+            ctx, "planner", MechanismDatasetCreate(name=f"Capture {uuid4()}"), "capture-dataset"
         )
         task = Task(label="Synthetic observatory report", status="SUCCESS")
         db.add(task)
@@ -505,13 +505,13 @@ async def test_capture_confirmation_survives_real_mcp_and_requires_source_access
             effective_model="synthetic",
             status="completed",
             prompt="Task: prepare the observatory report",
-            system_prompt="You prepare a concise execution briefing for another AI agent before a complex HIGH-effort task.",
+            system_prompt="You are the Planner. You receive an objective",
             response_text="",
             tool_calls=[
                 {
                     "id": "test-output",
                     "name": "final_result",
-                    "arguments": generated_content("briefing").cases[0].expected_output,
+                    "arguments": generated_content("planner").cases[0].expected_output,
                 }
             ],
         )
@@ -521,7 +521,7 @@ async def test_capture_confirmation_survives_real_mcp_and_requires_source_access
     async with get_db_session():
         server = await mcp_loader.build_agent_galaris_fastmcp(agent_id, runtime="internal")
     args = {
-        "mechanism": "briefing",
+        "mechanism": "planner",
         "dataset_id": dataset["id"],
         "data": {"source_kind": "llm_call", "source_id": source_id},
         "invocation_key": "capture",
@@ -558,26 +558,26 @@ async def test_async_reference_and_analysis_keep_results_canonical(db, actor, be
     dataset, llm, _ = benchmark
     monkeypatch.setattr(evaluations.llm_service, "get_profile_llm_for_agent_id", AsyncMock(return_value=llm))
     async def infer(**kwargs):
-        return SimpleNamespace(output=kwargs["output_type"].model_validate(generated_content("briefing").cases[0].expected_output), cost=0.01)
+        return SimpleNamespace(output=kwargs["output_type"].model_validate(generated_content("planner").cases[0].expected_output), cost=0.01)
     monkeypatch.setattr(mechanism_registry, "run_structured", infer)
-    case = (await mcp.lab_case_list(ctx, "briefing", dataset.id, Page()))["items"][0]
-    operation = await mcp.lab_expected_generate(ctx, "briefing", UUID(case["id"]), case["revision"], MechanismExpectedGenerate(), "reference")
+    case = (await mcp.lab_case_list(ctx, "planner", dataset.id, Page()))["items"][0]
+    operation = await mcp.lab_expected_generate(ctx, "planner", UUID(case["id"]), case["revision"], MechanismExpectedGenerate(), "reference")
     await process_service.refresh_run(UUID(operation["operation_id"]))
     proposal = await mcp.lab_operation_get(ctx, UUID(operation["operation_id"]))
     assert proposal["status"] == "success", proposal
     assert proposal["result"]["cost"] == 0.01
-    assert (await mcp.lab_case_get(ctx, "briefing", UUID(case["id"])))["expected_output"] == case["expected_output"]
-    started = await mcp.lab_run_start(ctx, "briefing", dataset.id, dataset.revision, EvaluationRunStart(llm_id=llm.id), "analyzed-run")
+    assert (await mcp.lab_case_get(ctx, "planner", UUID(case["id"])))["expected_output"] == case["expected_output"]
+    started = await mcp.lab_run_start(ctx, "planner", dataset.id, dataset.revision, EvaluationRunStart(llm_id=llm.id), "analyzed-run")
     await db.commit()
     for _ in range(3):
         await evaluations.process_runs()
     monkeypatch.setattr(evaluations, "run_structured", AsyncMock(return_value=SimpleNamespace(output=BenchmarkAnalysisContent(
         summary="Evidence supports the result.", case_analyses=[{"case_name": "Report", "assessment": "Supported"}], conclusion="Retain the baseline."), cost=0.02)))
-    analysis = await mcp.lab_run_analyze(ctx, "briefing", UUID(started["id"]), EvaluationRunAnalysisRequest(language="en"), "analysis")
+    analysis = await mcp.lab_run_analyze(ctx, "planner", UUID(started["id"]), EvaluationRunAnalysisRequest(language="en"), "analysis")
     await process_service.refresh_run(UUID(analysis["operation_id"]))
     result = await mcp.lab_operation_get(ctx, UUID(analysis["operation_id"]))
     assert result["status"] == "success", result
-    displayed = await evaluations.get_run("briefing", UUID(started["id"]))
+    displayed = await evaluations.get_run("planner", UUID(started["id"]))
     assert displayed.analysis_cost == 0.02 and "Retain the baseline" in displayed.analysis_markdown
 
 

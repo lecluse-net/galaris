@@ -50,10 +50,10 @@ ReasoningEffort: TypeAlias = Annotated[
     Literal["none", "low", "medium", "high", "xhigh", "max"],
     BeforeValidator(_legacy_reasoning_effort),
 ]
-ForcedRoute = Literal["EXEC", "BRIEFING", "PLAN"]
+ForcedRoute = Literal["EXEC", "PLAN"]
 # ``END`` remains accepted when historical dispatch traces are deserialized. New task
 # dispatch decisions use ``ActiveDispatchRoute`` and can only execute or plan work.
-DispatchRoute = Literal["EXEC", "BRIEFING", "PLAN", "END"]
+DispatchRoute = Literal["EXEC", "PLAN", "END"]
 ActiveDispatchRoute = Literal["EXEC", "PLAN"]
 ConversationDispatchRoute = Literal["EXEC", "END"]
 RuntimeName = str
@@ -355,7 +355,6 @@ class TaskMessage(BaseModel):
 class TaskPhase(str, Enum):
     CREATE = "CREATE"
     DISPATCH = "DISPATCH"
-    BRIEFING = "BRIEFING"
     EXEC = "EXEC"
     PLAN = "PLAN"
     SUCCESS = "SUCCESS"
@@ -364,10 +363,8 @@ class TaskPhase(str, Enum):
 
 class TaskTransition(str, Enum):
     ROUTE_TO_EXECUTION = "route_to_execution"
-    ROUTE_TO_BRIEFING = "route_to_briefing"
     ROUTE_TO_PLAN = "route_to_plan"
     START_EXECUTION = "start_execution"
-    BRIEFING_SUCCEEDED = "briefing_succeeded"
     EXECUTION_SUCCEEDED = "execution_succeeded"
     EXECUTION_FAILED = "execution_failed"
     PLAN_SUCCEEDED = "plan_succeeded"
@@ -841,24 +838,6 @@ class DispatchResult(BaseModel):
     conversation_route_directive: ForcedRoute | None = None
 
 
-class BriefingChoice(BaseModel):
-    kind: Literal["process", "tool", "other"]
-    identifier: str
-    label: str = ""
-    reason: str = ""
-    score: float | None = None
-
-
-class BriefingResult(BaseModel):
-    prompt: str = ""
-    system_prompt: str = ""
-    result: str = "NO ISSUES"
-    choices: list[BriefingChoice] = Field(default_factory=list[BriefingChoice])
-    execution_time: float = 0.0
-    cost: float = 0.0
-    success: bool = True
-
-
 @dataclass(frozen=True)
 class ToolExposureProfile:
     """Galaris capabilities that may be exposed to a driver."""
@@ -1011,8 +990,6 @@ class DriverPipelinePolicy:
     """Static pipeline policy declared in code by each driver."""
 
     use_planner: bool
-    use_briefing: bool
-    briefing_efforts: frozenset[ExecutionEffort] = frozenset()
     execution_efforts: frozenset[ExecutionEffort] = frozenset({"standard"})
     # True only when execution uses Galaris model routing and its durable LLMCalls.
     # A runtime calling its own provider cannot use the Galaris high model tier.
@@ -1020,43 +997,28 @@ class DriverPipelinePolicy:
 
     def __post_init__(self) -> None:
         efforts = frozenset(self.execution_efforts)
-        briefing = frozenset(self.briefing_efforts)
         if "standard" not in efforts or efforts - {"standard", "high"}:
             raise ValueError("A harness must expose standard execution and valid effort levels.")
-        if briefing - efforts:
-            raise ValueError("Briefing must lead to an execution effort supported by the harness.")
         if not self.uses_llm_calls:
             efforts = efforts - {"high"}
-            briefing = briefing - {"high"}
         object.__setattr__(self, "execution_efforts", efforts)
-        object.__setattr__(self, "briefing_efforts", briefing)
 
     def dispatch_choices(self) -> tuple[tuple[ForcedRoute, ExecutionEffort], ...]:
         choices: list[tuple[ForcedRoute, ExecutionEffort]] = [
             ("EXEC", effort) for effort in ("standard", "high")
             if effort in self.execution_efforts
         ]
-        choices.extend(
-            ("BRIEFING", effort) for effort in ("standard", "high")
-            if self.allows_briefing(effort)
-        )
         if self.use_planner:
             choices.append(("PLAN", "high"))
         return tuple(choices)
 
-    def allows_briefing(self, effort: ExecutionEffort) -> bool:
-        return self.use_briefing and effort in self.briefing_efforts
 
     def allowed_routes(self, routes: set[str]) -> tuple[set[str], list[str]]:
-        allowed = set(routes)
+        allowed = routes & {"EXEC", "PLAN", "END"}
         notes: list[str] = []
         if not self.use_planner and "PLAN" in allowed:
             allowed.discard("PLAN")
             notes.append("PLAN excluded by the driver's static policy")
-        if not self.use_briefing or not self.briefing_efforts:
-            if "BRIEFING" in allowed:
-                allowed.discard("BRIEFING")
-                notes.append("BRIEFING excluded by the driver's static policy")
         return allowed, notes
 
 
@@ -1485,7 +1447,6 @@ class AgentRunRequest:
     sender_is_ai: bool = False
     task_data: Mapping[str, Any] = field(default_factory=dict[str, Any])
     dispatch_result: DispatchResult | None = None
-    briefing_result: BriefingResult | None = None
     last_error: str | None = None
     consecutive_failures: int = 0
     approval_action: Literal["auto", "deny_agent", "ask"] = "ask"
@@ -1529,8 +1490,6 @@ class AgentRunRequest:
     def get_dispatch_result(self) -> DispatchResult | None:
         return self.dispatch_result
 
-    def get_briefing_result(self) -> BriefingResult | None:
-        return self.briefing_result
 
     @property
     def save_progress(self) -> Callable[[ExecutionResult], Awaitable[None]] | None:
@@ -1660,7 +1619,6 @@ class AgentRunRequest:
             metadata={
                 "driver_code": self.driver_code,
                 "planner_used": self.parent_task_id is not None,
-                "briefing_used": self.briefing_result is not None,
             },
         )
 
@@ -1744,10 +1702,8 @@ class AgentTask(Protocol):
     agent: Any | None
 
     def get_dispatch_result(self) -> DispatchResult | None: ...
-    def get_briefing_result(self) -> BriefingResult | None: ...
     def get_execution_result(self) -> ExecutionResult | None: ...
     def set_dispatch_result(self, result: DispatchResult) -> None: ...
-    def set_briefing_result(self, result: BriefingResult) -> None: ...
     def set_execution_result(self, result: ExecutionResult) -> None: ...
 
 

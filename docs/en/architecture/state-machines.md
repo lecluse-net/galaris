@@ -49,18 +49,15 @@ stable container `<agent.code>-agent`; no non-terminal Task may overlap a transi
 
 ## Tasks
 
-Phases: `CREATE`, `DISPATCH`, `BRIEFING`, `EXEC`, `PLAN`, `SUCCESS`, `ERROR`. `PAUSE` is a
+Phases: `CREATE`, `DISPATCH`, `EXEC`, `PLAN`, `SUCCESS`, `ERROR`. `PAUSE` is a
 historical PostgreSQL value; current suspension uses `Task.paused` while preserving
 the resume phase.
 
 | Event | Sources | Target |
 |---|---|---|
 | `ROUTE_TO_EXECUTION` | CREATE, DISPATCH | DISPATCH |
-| `ROUTE_TO_BRIEFING` | CREATE, DISPATCH | BRIEFING |
 | `ROUTE_TO_PLAN` | CREATE, DISPATCH, PLAN | PLAN |
 | `START_EXECUTION` | DISPATCH | EXEC |
-| `BRIEFING_SUCCEEDED` | BRIEFING | DISPATCH |
-| `BRIEFING_FAILED` | BRIEFING | ERROR |
 | `EXECUTION_SUCCEEDED` | EXEC | SUCCESS |
 | `EXECUTION_FAILED` | EXEC | ERROR |
 | `PLAN_SUCCEEDED` | PLAN | SUCCESS |
@@ -72,7 +69,7 @@ the resume phase.
 | `RETRY_PLAN` | ERROR | PLAN |
 | `RETRY_DELIVERY` | SUCCESS, ERROR | DISPATCH |
 | `RETRY_ROUTING` | ERROR | CREATE |
-| `REVISE` | DISPATCH, BRIEFING | CREATE |
+| `REVISE` | DISPATCH | CREATE |
 | `CANCEL` | any active phase | ERROR |
 | `FORCE_TERMINATE` | any active phase | ERROR |
 | `ACTIVATE_PLAN_STEP` | PLAN, DISPATCH | DISPATCH |
@@ -80,22 +77,8 @@ the resume phase.
 | `COORDINATION_SUCCEEDED` | CREATE, inherited PAUSE, DISPATCH | SUCCESS |
 | `COORDINATION_FAILED` | CREATE, inherited PAUSE, DISPATCH | ERROR |
 
-Scheduler actions: `CREATE → dispatch`, `BRIEFING → brief`, `DISPATCH → execute`,
-`PLAN → advance_plan`. `SUCCESS` and `ERROR` have no action. The `EXEC` phase represents an
-execution that has already been claimed; recovery explicitly goes back through `DISPATCH`.
-The current production policy no longer routes new Tasks to `BRIEFING`. The phase and
-its transitions remain available to resume and inspect historical rows while
-this deactivation is being evaluated.
-When a harness declares briefing, the dispatcher may explicitly select `BRIEFING`, which
-applies `ROUTE_TO_BRIEFING` then `BRIEFING_SUCCEEDED` before execution. A new `EXEC high`
-choice follows `ROUTE_TO_EXECUTION` directly. Historical decisions without an available-choice
-list retain the previous recovery policy.
-Coordination discovered at the end of an execution applies `INTERRUPT_EXECUTION` and suspends the
-Task in `DISPATCH` **before** any terminal transition. `SUCCESS` and `ERROR` are immutable for
-all automatic events; only the explicit human retry commands declared above can create a new
-execution.
-For `RETRY_DELIVERY`, the `DISPATCH → execute` action recognizes the server contract and directly
-calls the only authorized native tool: no driver or AI model participates in this resumption.
+Scheduler actions: `CREATE → dispatch`, `DISPATCH → execute`, `PLAN → advance_plan`.
+A paused task retains its phase without being executed.
 
 Collections use existing phases: the group stays in `PLAN`, while discovery and item Tasks
 follow `DISPATCH → EXEC → SUCCESS/ERROR`. Each new wave is persisted before activation.
@@ -425,7 +408,7 @@ Each run freezes the cases, the candidate LLM, the Lab analysis LLM automaticall
 judge, and the rubric version before starting. The judge is resolved from the **Lab** usage of the current profile; there
 is no separate selection in the Lab. A case result constitutes a single durable
 checkpoint for the run/case pair.
-The registry covers Dispatcher, Briefing, Planner, topic classification, memory extraction,
+The registry covers Dispatcher, Planner, topic classification, memory extraction,
 learning, and objective tracking. Each mechanism declares the
 native format of its input and output (`text` or `json`), its production system prompt, and
 its output schema. Dispatcher workers and generic mechanisms have disjoint claims. They process

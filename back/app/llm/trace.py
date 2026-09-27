@@ -108,7 +108,6 @@ def infer_call_type(messages: Any, system_prompt: str = "") -> str:
         ("you maintain the durable html tracking", "goal_tracking"),
         ("you are the main dispatcher", "dispatch"),
         ("you are the planner", "planning"),
-        ("you prepare a concise execution briefing", "briefing"),
         ("you synthesize the overall result", "synthesis"),
     )
     for marker, call_type in markers:
@@ -134,7 +133,6 @@ def infer_call_purpose(messages: Any, system_prompt: str = "") -> str | None:
         ("produce cautious, reusable lessons", "dream.task_outcome_reflection"),
         ("you are the main dispatcher", "agent.dispatch"),
         ("you are the planner", "agent.planning"),
-        ("you prepare a concise execution briefing", "agent.briefing"),
         ("you synthesize the overall result", "agent.synthesis"),
         ("you maintain the durable markdown tracking", "goal.tracking"),
     )

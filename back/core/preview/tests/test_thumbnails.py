@@ -2,8 +2,17 @@ from concurrent.futures import ThreadPoolExecutor
 from io import BytesIO
 
 from PIL import Image
+import pytest
 
 from core.preview import thumbnails
+
+
+@pytest.mark.parametrize("content", [b"", b"not an image", b"\x89PNG\r\n\x1a\n"])
+def test_invalid_images_have_no_thumbnail_and_preserve_the_source(tmp_path, content):
+    source = tmp_path / "source.png"
+    source.write_bytes(content)
+    assert thumbnails.from_image(source) is None
+    assert source.read_bytes() == content
 
 
 def test_canonical_uris_have_distinct_bounded_keys(tmp_path, monkeypatch):

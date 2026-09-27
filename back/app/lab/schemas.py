@@ -151,14 +151,13 @@ class TaskAnalysis(TaskAnalysisContent):
     created_by: int | None = None
 
 
-DispatcherRoute = Literal["EXEC", "BRIEFING", "PLAN", "END"]
+DispatcherRoute = Literal["EXEC", "PLAN", "END"]
 DispatcherEffort = Literal["standard", "high"]
 EvaluationReadiness = Literal["draft", "ready"]
 EvaluationRunStatus = Literal["queued", "running", "completed", "partial", "failed", "cancelled"]
 EvaluationMechanism = Literal[
     "dispatcher",
     "task_analysis",
-    "briefing",
     "planner",
     "topic_classification",
     "memory_extraction",

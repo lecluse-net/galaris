@@ -22,7 +22,7 @@ rewrite of that request. Together, source request and context must make the Task
   and preserving existing contributions, including those completed after this Task was queued;
 - copy required URLs and canonical resource URIs exactly; never invent or alter a reference;
 - include a compact explicit list of required inputs or resources inside the objective when useful;
-- omit conversation-control directives such as @task, @exec, @plan, @briefing, @standard,
+- omit conversation-control directives such as @task, @exec, @plan, @standard,
   @high, and @approve;
 - do not repeat the source request when it already supplies the necessary detail.
 

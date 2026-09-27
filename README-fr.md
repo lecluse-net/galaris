@@ -103,7 +103,7 @@ une leçon uniquement lorsque les preuves de la tâche la justifient.
 ### Mesurer le comportement de l’IA avant de lui faire confiance
 
 Le Lab IA transforme de vraies Tasks, conversations texte et conversations vocales en jeux de
-données versionnés. Comparez Dispatcher, Briefing, Planner, exécuteurs Task/Conversation/Voice et
+données versionnés. Comparez Dispatcher, Planner, exécuteurs Task/Conversation/Voice et
 mécanismes Dream/Goal avec rubriques sémantiques, cas figés, runs reprenables et diagnostics du juge.
 
 ## Des modèles spécialisés pour décider

@@ -315,7 +315,7 @@ explicitly assigned to an agent or selected in a person's preferences.
 |---|---|
 | **Ultra low** | Model-based Dream mechanisms |
 | **Low** | Dispatcher and short conversations |
-| **Standard** | Standard execution, Goal follow-up and retained Briefing mechanism |
+| **Standard** | Standard execution and Goal follow-up |
 | **High** | High execution, Planner and Lab |
 
 Each level may set provider **reasoning effort**, distinct from Task standard/high complexity.
@@ -346,7 +346,7 @@ including a single local LLM.
 | Dream memory extraction | Ignore sources without durable facts, link covered facts or request extraction | Write/validate new or incompletely covered knowledge |
 | Memory acquisition | Confirm full equivalence with a close candidate | Retrieval, rights, fact preservation and idempotent provenance linking |
 
-Planner, Briefing, Goal follow-up and learning remain generative. Deterministic maintenance and
+Planner, Goal follow-up and learning remain generative. Deterministic maintenance and
 transitions add no decisions. **Text fallback on failure** permits at most one call in the **same
 profile**, low for Dispatcher, ultra low for Dream, or can be disabled. A personal profile lacking
 specialization does not borrow the global one. Authentication, permission/payment refusal,
@@ -546,14 +546,14 @@ are image-pinned; DSH explicitly uses **Chat Completions**. See [DSH](../compone
 
 Effective support intersects implemented, configured and target-verified capabilities.
 
-| Harness | EXEC standard | EXEC high | PLAN high | BRIEFING |
-|---|---|---|---|---|
-| Internal | Yes | Yes | Yes | Disabled |
-| Managed Hermes | Yes | Yes | No | No |
-| Managed Codex | Yes | Yes | No | No |
-| Managed Claude Agent | Yes | Yes | No | No |
-| Managed DeepSeek Harness | Yes | Yes | No | No |
-| Generic compatible server, including runtimes with their own API | Yes | No | No | No |
+| Harness | EXEC standard | EXEC high | PLAN high |
+|---|---|---|---|
+| Internal | Yes | Yes | Yes |
+| Managed Hermes | Yes | Yes | No |
+| Managed Codex | Yes | Yes | No |
+| Managed Claude Agent | Yes | Yes | No |
+| Managed DeepSeek Harness | Yes | Yes | No |
+| Generic compatible server, including runtimes with their own API | Yes | No | No |
 
 High requires Galaris model selection/call accounting. All four managed runtimes require the
 gateway, without independent-subscription mode. SDK reasoning support alone does not establish
@@ -800,10 +800,10 @@ or explicitly select an allowed EXEC/PLAN route and standard/high effort.
 
 Dispatch considers cognitive complexity and runtime capabilities, not simply file length. The
 effective model identity is frozen for the attempt. Choices are limited to declared EXEC
-standard/high, declared BRIEFING and PLAN high, with inherited restrictions applied. A single
+standard/high and PLAN high, with inherited restrictions applied. A single
 choice is deterministic and does not resolve a decision model. An unavailable model or invalid
 choice selects the first allowed option with a recorded reason; no allowed option is an error,
-not an invented PLAN-standard fallback. Disabled historical Briefing runs remain readable.
+not an invented PLAN-standard fallback. Historical LLM traces remain readable.
 
 The execution capsule keeps original source material separate from contextual supplements,
 pre-message facts and their provenance, truncation notices, role instructions, skills and tool
@@ -817,7 +817,7 @@ content can therefore be corrected before admission rather than failing only whe
 The Planner either asks for clarification or creates a plan of real Tasks with dependencies,
 deliverables and acceptance criteria. Depth, node and leaf counts are bounded, and a parent
 synthesises child results. Internal PLAN execution is managed by Galaris; Hermes has its direct
-execution path. Briefing is also available for Lab experiments where declared.
+execution path.
 
 An agent can delegate to peers, creating correlated parent/child work with deadlines and turn
 limits. Waiting suspends work and a reply resumes it, while human pauses retain priority.
@@ -831,7 +831,7 @@ represent rather than manufacture approval.
 ### Activity and operator controls
 
 Activity provides search, filters and totals; states and operations; Goal links; Dispatcher,
-Planner and Briefing decisions; results, child trees and progress; tool arguments/results;
+Planner decisions; results, child trees and progress; tool arguments/results;
 resources; attempts; errors and costs. Operators can pause/resume, cancel descendants, terminate
 blocked work, retry, edit eligible definitions, logically delete, restore or permanently clean
 finished work with the required privileges. Editing checks revisions and status, not just changed
@@ -1989,7 +1989,6 @@ shared dataset parameters, candidate output and judgement.
 | Lab | Input | Evaluation |
 |---|---|---|
 | Dispatcher | Request and effective harness policy | Allowed route/effort and language; inspectable deterministic decisions/local reasons. |
-| Briefing | Objective | Work preparation and resource choice. |
 | Planner | Objective | Plan or clarification need. |
 | Topic detection | Message sequence | Topic assigned per message. |
 | Memory extraction | Exchange or Task report | CREATE/LINK/IGNORE and retained knowledge. |
@@ -2016,12 +2015,11 @@ incomplete context, multilingual use, robustness, security, real incidents and v
 Incomplete cases remain drafts; captures with inseparable objective/context are not declared ready,
 and voice turns without transcription are not usable voice cases. Initial loading completes before
 automatic experiment creation to avoid duplicating an apparently missing experiment. Dispatcher
-captures effective provider policy and production route/effort pairs, including declared BRIEFING
-and deterministic single-choice cases; judgement follows production contracts.
+captures effective provider policy and production route/effort pairs, including deterministic single-choice cases; judgement follows production contracts.
 
 ### Contextual synthetic generation
 
-All eleven labs generate synthetic datasets: name, generator model, language, 1–20 cases, categories
+All ten labs generate synthetic datasets: name, generator model, language, 1–20 cases, categories
 and business situations/constraints, with at least one case per category. The form explains testable
 mechanism behaviour; generation proposes shared settings, variables, contexts and references.
 With a selected dataset, default-on “Reuse dataset context” retains saved settings, corpus, tools,
@@ -2083,7 +2081,7 @@ assistant receives the skill individually at creation, without activating its La
 Experiment edits never change
 production prompts/models. Authorised agents can:
 
-- Discover eleven mechanisms, schemas, rubrics, compatible models and defaults.
+- Discover ten mechanisms, schemas, rubrics, compatible models and defaults.
 - Create/read/revision-edit datasets/cases, clone experiments with cases, duplicate cases, restore
   sources and delete eligible objects.
 - Preview resolved inputs/prompts without inference, generate synthetic datasets and propose references.
@@ -2412,7 +2410,7 @@ for subsequent calls without editing client files. Logs retain token name and ac
 | ChatGPT quotas | Account-wide provider windows observed at one instant, not agent quotas or API billing budgets. |
 | Managed harnesses | Standard/high through Galaris; one simultaneous run per external instance; generic transport remains standard. |
 | Skill synchronisation | Before new execution without interrupting active work; remote continuations retain context and projection failure blocks startup. |
-| Routing | Only declared pairs; Briefing is disabled in current policies. |
+| Routing | Only the declared EXEC/PLAN and effort pairs. |
 | Durable inference | Stream reconnection avoids generation; explicit retry may incur another charge, not continue provider internals. |
 | Native chat | Human–agent; external group rooms do not imply universal native human messaging. |
 | Learned skills | Off by default; explicit observation/learning with thresholds and evidence. |
@@ -2674,7 +2672,7 @@ functions below belong to optional `lab`.
 
 | Function | Family | Action/result |
 |---|---|---|
-| `lab_list` | `lab` | Discover eleven mechanisms and whether real-source inspection is permitted. |
+| `lab_list` | `lab` | Discover ten mechanisms and whether real-source inspection is permitted. |
 | `lab_get` | `lab` | Read input/configuration/output contracts, example and judging rubric. |
 | `lab_models` | `lab` | List compatible candidates/judges, defaults and hybrid-generation needs, without credentials. |
 | `lab_prompt_defaults` | `lab` | Read effective defaults without creating a dataset. |

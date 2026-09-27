@@ -257,7 +257,6 @@ def _task_payload(task: Task, *, selected: bool) -> dict[str, Any]:
         "messages": task.messages or [],
         "data": task.data or {},
         "dispatch_result": task.dispatch_result,
-        "briefing_result": task.briefing_result,
         "plan": task.plan,
         "execution_result": task.execution_result,
     }
@@ -332,8 +331,6 @@ async def _agent_payload(task: Task) -> tuple[dict[str, Any] | None, list[Any], 
         ),
         "static_pipeline_policy": {
             "use_planner": policy.use_planner,
-            "use_briefing": policy.use_briefing,
-            "briefing_efforts": sorted(policy.briefing_efforts),
         },
         "tool_profile": {
             "voice_calling": profile.voice_calling,

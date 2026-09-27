@@ -9,7 +9,6 @@ export const labSectionPrivileges = {
     privileges.DISPATCHER_EVALUATION_ACCESS,
     privileges.DISPATCHER_EVALUATION_EDIT,
   ],
-  briefing: [privileges.BRIEFING_EVALUATION_ACCESS, privileges.BRIEFING_EVALUATION_EDIT],
   planner: [privileges.PLANNER_EVALUATION_ACCESS, privileges.PLANNER_EVALUATION_EDIT],
   topic_classification: [
     privileges.TOPIC_CLASSIFICATION_EVALUATION_ACCESS,

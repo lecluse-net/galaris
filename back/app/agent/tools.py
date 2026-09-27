@@ -157,9 +157,6 @@ async def get_agent_details(
         lang, "planner_enabled", value=_boolean(lang, policy.use_planner)
     ))
     lines.append(_message(
-        lang, "briefing_enabled", value=_boolean(lang, policy.use_briefing)
-    ))
-    lines.append(_message(
         lang, "voice_calling", value=_boolean(lang, capabilities.voice_calling)
     ))
     lines.append(_message(

@@ -1439,7 +1439,7 @@ async def import_source_case(
         "llm": reference,
         "prompts": {"system_prompt": call.system_prompt}
         if mechanism
-        in {"briefing", "planner", "outcome_reflection", "goal_tracking", "task_analysis"}
+        in {"planner", "outcome_reflection", "goal_tracking", "task_analysis"}
         else {},
     }
     row = LabEvaluationCase(
@@ -1453,7 +1453,7 @@ async def import_source_case(
             mechanism,
             input_data,
             objective=task.objective
-            if task is not None and mechanism in {"briefing", "planner"}
+            if task is not None and mechanism in {"planner"}
             else None,
         ),
         expected_output=expected_output,
@@ -1528,16 +1528,7 @@ async def import_task_case(
 
     input_data: Any
     raw_output: Any
-    if mechanism == "briefing":
-        briefing = task.get_briefing_result()
-        if briefing is None or not briefing.prompt.strip():
-            raise ValueError(await tr("evaluation_api.errors.source_capture_missing"))
-        input_data = briefing.prompt
-        raw_output = {
-            "result": briefing.result,
-            "choices": [choice.model_dump(mode="json") for choice in briefing.choices],
-        }
-    elif mechanism == "planner" and task.plan:
+    if mechanism == "planner" and task.plan:
         if call is None or not call.prompt.strip():
             raise ValueError(await tr("evaluation_api.errors.source_capture_missing"))
         input_data = call.prompt
@@ -1546,21 +1537,16 @@ async def import_task_case(
         raise ValueError(await tr("evaluation_api.errors.source_capture_missing"))
 
     expected_output = definition.validate_output(raw_output)
-    llm = (
-        await llm_service.get_llm(call.llm_id)
-        if call is not None and call.llm_id is not None
-        else None
-    )
+    llm = await llm_service.get_llm(call.llm_id) if call.llm_id is not None else None
     reference = _llm_snapshot(llm)
-    if call is not None:
-        reference.update(
-            {
-                "llm_call_id": str(call.id),
-                "requested_model": call.requested_model,
-                "effective_model": call.effective_model,
-                "provider": call.provider_name,
-            }
-        )
+    reference.update(
+        {
+            "llm_call_id": str(call.id),
+            "requested_model": call.requested_model,
+            "effective_model": call.effective_model,
+            "provider": call.provider_name,
+        }
+    )
     source_capture = {
         "captured_at": _utcnow().isoformat(),
         "fidelity": "context_requires_review" if isinstance(input_data, str) else "captured",
@@ -1578,7 +1564,7 @@ async def import_task_case(
         input_data=capture_input(
             mechanism,
             input_data,
-            objective=task.objective if mechanism in {"briefing", "planner"} else None,
+            objective=task.objective if mechanism in {"planner"} else None,
         ),
         expected_output=expected_output,
         reference=reference,
@@ -2645,7 +2631,6 @@ def algorithm_description(mechanism: EvaluationMechanism) -> dict[str, Any]:
         },
         "context_limits": {
             "dispatcher": {"history_messages": 10, "characters_per_message": 500},
-            "briefing": {"history_messages": 6, "result_characters": 8000, "resource_choices": 12},
             "planner": {"history_messages": 30},
             "outcome_reflection": {
                 "result_characters": 4000,

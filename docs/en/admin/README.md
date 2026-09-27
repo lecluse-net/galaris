@@ -550,7 +550,6 @@ with a null `profile_id` and immediately follows any change to the current profi
 | Conversation | quick responses from the text conversation control plane |
 | Dispatcher | `EXEC`/`PLAN` selection and Task effort; it does not execute conversations |
 | Planner | plan creation and final synthesis |
-| Briefing | mechanism retained for the Lab and possible reactivation; disabled in production |
 | Goal | judgment and tracking of Goal cycles |
 | Lab | Task analysis, reference proposal, judgment, and analysis of AI Lab benchmarks |
 | Dream | Dream classification, extraction, and learning |
@@ -626,7 +625,6 @@ only to the internal Pydantic AI harness.
 - no implicit local-storage facade; local files pass exclusively through an
   active Console;
 - planner enabled;
-- briefing retained but disabled during autonomous goal evaluation;
 - standard/high models resolved in the Galaris configuration.
 
 ### Hermes Driver
@@ -634,7 +632,7 @@ only to the internal Pydantic AI harness.
 Code: `hermes`.
 
 Hermes remains an autonomous runtime. Galaris sends it a normalized request and supervises
-the result, but does not impose either a planner or briefing on it in order to avoid two
+the result, but does not impose a planner on it in order to avoid two
 competing reasoning systems.
 
 The effort level selects the model, not a second scheduler:
@@ -647,7 +645,7 @@ The effort level selects the model, not a second scheduler:
 Kanban is disabled by an internal constant in the Hermes driver code. This choice is not
 configurable in `.env`, the settings, or the administration interface. The Kanban code and routes
 remain available only to resume a card created before deactivation and to enable a future
-reactivation. Briefing is not currently enabled by any harness.
+reactivation.
 
 Configure the manager in **Preferences → Harnesses → Managed harnesses → Configure the Harness Manager**: URL, shared secret
 and API URL seen by harnesses. These preferences apply without restarting Galaris. The form also

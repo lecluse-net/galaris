@@ -28,7 +28,7 @@ async def claim_next_run() -> ClaimResult:
         select(LabEvaluationRun)
         .join(LabEvaluationDataset, LabEvaluationDataset.id == LabEvaluationRun.dataset_id)
         .where(
-            LabEvaluationDataset.mechanism.in_(tuple(MECHANISMS)),
+            LabEvaluationDataset.mechanism.in_(MECHANISMS),
             LabEvaluationRun.status.in_({"queued", "running"}),
             or_(
                 LabEvaluationRun.lease_expires_at.is_(None),

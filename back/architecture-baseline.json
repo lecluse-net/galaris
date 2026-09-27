@@ -5,10 +5,6 @@
       "target": "app.tools.mandatory_tools"
     },
     {
-      "source": "back/app/agent/briefing_service.py",
-      "target": "app.llm.structured_service"
-    },
-    {
       "source": "back/app/agent/dispatcher.py",
       "target": "app.llm.provider_models"
     },

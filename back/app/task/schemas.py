@@ -57,7 +57,6 @@ class TaskBase(BaseModel):
     message_platform: Optional[str] = Field(default=None, max_length=100)
     message_group_id: Optional[str] = Field(default=None, max_length=512)
     dispatch_result: Optional[Dict[str, Any]] = None
-    briefing_result: Optional[Dict[str, Any]] = None
     execution_result: Optional[Dict[str, Any]] = None
     data: Optional[Dict[str, Any]] = None
     messages: Optional[List[TaskMessage]] = None
@@ -134,6 +133,7 @@ class Task(TaskBase):
     resolved_by_task_id: Optional[UUID] = None
 
     model_config = ConfigDict(from_attributes=True)
+
 
     @field_validator("revision", mode="before")
     @classmethod

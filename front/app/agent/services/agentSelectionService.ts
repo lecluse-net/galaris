@@ -11,9 +11,9 @@ export interface AgentSelectionOption {
 
 const selections = createSessionReadCache<AgentSelectionOption[]>({ sessionEvent: AUTH_TOKEN_CHANGED_EVENT, sessionKey: sessionGeneration, group: 'agent-selection', maxAgeMs: 0, maxEntries: 0 })
 
-export async function getAgentSelection(scope: AgentSelectionScope): Promise<AgentSelectionOption[]> {
+export async function getAgentSelection(scope: AgentSelectionScope, signal?: AbortSignal): Promise<AgentSelectionOption[]> {
   const options = await selections.read(scope, async signal => (
     await api.get<AgentSelectionOption[]>('/agents/selection', { params: { scope }, signal })
-  ).data)
+  ).data, signal)
   return options.map(option => ({ ...option }))
 }

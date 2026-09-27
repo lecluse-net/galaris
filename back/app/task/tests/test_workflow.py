@@ -78,17 +78,8 @@ def test_typed_workflow_covers_execution_and_plan_paths() -> None:
     assert planned.status == TaskStatus.SUCCESS
 
 
-def test_task_state_machine_accepts_an_explicit_briefing_route() -> None:
-    task = _task()
-    task.effort = "high"
 
-    transition(task, TaskEvent.ROUTE_TO_BRIEFING)
-    assert task.status == TaskStatus.BRIEFING
-    assert scheduler_action(task.status) == TaskAction.BRIEF
 
-    transition(task, TaskEvent.BRIEFING_SUCCEEDED)
-    assert task.status == TaskStatus.DISPATCH
-    assert scheduler_action(task.status) == TaskAction.EXECUTE
 
 
 def test_terminal_task_cannot_restart_without_explicit_retry_path() -> None:
@@ -113,7 +104,7 @@ def test_terminal_task_cannot_restart_without_explicit_retry_path() -> None:
     assert routing_failed.status == TaskStatus.CREATE
 
 
-@pytest.mark.parametrize("status", [TaskStatus.DISPATCH, TaskStatus.BRIEFING])
+@pytest.mark.parametrize("status", [TaskStatus.DISPATCH])
 def test_revision_returns_unstarted_work_to_dispatcher(status: TaskStatus) -> None:
     task = _task(status)
 
@@ -138,7 +129,6 @@ def test_running_revision_interrupts_before_returning_to_dispatcher() -> None:
         TaskStatus.CREATE,
         TaskStatus.PAUSE,
         TaskStatus.DISPATCH,
-        TaskStatus.BRIEFING,
         TaskStatus.EXEC,
         TaskStatus.PLAN,
     ],

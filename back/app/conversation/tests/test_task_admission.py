@@ -99,10 +99,6 @@ def test_dispatch_controls_are_normalized_before_task_creation() -> None:
     assert conversation_mcp._dispatch_forces("auto") == (None, None)
     assert conversation_mcp._dispatch_forces("exec") == ("EXEC", None)
     assert conversation_mcp._dispatch_forces("plan") == ("PLAN", "high")
-    assert conversation_mcp._dispatch_forces("briefing") == (
-        "BRIEFING",
-        "high",
-    )
 
 
 @pytest.mark.asyncio
@@ -132,7 +128,7 @@ async def test_task_submit_leaves_exec_effort_to_the_dispatcher(
 
 
 @pytest.mark.asyncio
-async def test_task_submit_forwards_explicit_briefing_to_dispatcher(
+async def test_task_submit_forwards_explicit_plan_to_dispatcher(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     turn = _turn()
@@ -149,27 +145,15 @@ async def test_task_submit_forwards_explicit_briefing_to_dispatcher(
     result = await conversation_mcp.conversation_task_submit(
         ctx,
         objective="Fais-le avec le contexte complet.",
-        mode="briefing",
+        mode="plan",
     )
 
     assert result == {"created": True}
-    validate_mode.assert_awaited_once_with(turn, "briefing")
-    assert create.await_args.kwargs["forced_route"] == "BRIEFING"
+    validate_mode.assert_awaited_once_with(turn, "plan")
+    assert create.await_args.kwargs["forced_route"] == "PLAN"
     assert create.await_args.kwargs["forced_effort"] == "high"
 
 
-@pytest.mark.asyncio
-async def test_explicit_briefing_is_unavailable_while_policy_is_disabled(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    turn = _turn()
-    monkeypatch.setattr(
-        "app.agent.get_agent_record",
-        AsyncMock(return_value=SimpleNamespace(agent_driver="internal")),
-    )
-
-    with pytest.raises(ValueError, match="briefing is unavailable"):
-        await conversation_mcp._validate_dispatch_mode(turn, "briefing")
 
 
 @pytest.mark.asyncio

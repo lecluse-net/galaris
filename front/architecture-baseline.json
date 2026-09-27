@@ -1015,10 +1015,6 @@
       "target": "@/app/topic/composables/useTopicRefs"
     },
     {
-      "source": "front/app/task/components/BriefingResult.vue",
-      "target": "@/core/util/components/Markdown.vue"
-    },
-    {
       "source": "front/app/task/components/DispatchResult.vue",
       "target": "@/core/util/components/Markdown.vue"
     },

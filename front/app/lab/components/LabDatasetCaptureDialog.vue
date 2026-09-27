@@ -144,7 +144,6 @@ const saving = ref(false)
 const targetTranslationKey = computed(() => ({
   dispatcher: 'dispatcher',
   task_analysis: 'taskAnalysis',
-  briefing: 'briefing',
   planner: 'planner',
   task_executor: 'taskExecutor',
   conversation_executor: 'conversationExecutor',
@@ -181,7 +180,7 @@ async function importSource(datasetId: string, token?: string): Promise<'draft' 
   }
   if (target === 'dispatcher') {
     return (await dispatcherEvaluationService.importTask(datasetId, sourceId, token)).data.readiness
-  } else if (target === 'briefing' || target === 'planner') {
+  } else if (target === 'planner') {
     return (await mechanismEvaluationService.importTask(target, datasetId, sourceId, token)).data.readiness
   }
   return (await mechanismEvaluationService.importExecution(target, datasetId, sourceId, token)).data.readiness

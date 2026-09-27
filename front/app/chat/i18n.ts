@@ -260,7 +260,6 @@ export default {
           task: "Crée une tâche avec l’effort de raisonnement configuré par défaut.",
           exec: "Force l’exécution directe de la tâche.",
           plan: "Crée une tâche et force sa planification.",
-          briefing: "Force une préparation approfondie suivie de l’exécution de la tâche.",
           standard: "Utilise l’effort standard.",
           high: "Utilise un effort élevé.",
           effort: "Crée une tâche et affiche le réglage de son effort de raisonnement forcé.",
@@ -595,7 +594,6 @@ export default {
           task: "Creates a Task using the default configured reasoning effort.",
           exec: "Forces direct Task execution.",
           plan: "Creates a Task and forces its planning route.",
-          briefing: "Forces an execution briefing followed by direct Task execution.",
           standard: "Uses standard effort.",
           high: "Uses high effort.",
           effort: "Creates a Task and shows its forced reasoning-effort setting.",
@@ -762,8 +760,7 @@ export default {
       commandHelp: {
         open: "显示 {'@'} 命令", title: "快捷命令", hint: "可将标签放在消息中的任意位置。{'@'}effort 会直接以所选级别创建任务。",
         commands: {
-          task: "使用默认推理强度创建任务。", exec: "强制直接执行任务。", plan: "创建任务并强制使用规划路径。", briefing: "强制生成执行简报，然后直接执行任务。",
-          standard: "使用标准强度。", high: "使用高强度。", effort: "创建任务并显示强制设置的推理强度。", approve: "自动批准任务请求的确认。", topic: "为下一条消息显示手动主题档案选择。",
+          task: "使用默认推理强度创建任务。", exec: "强制直接执行任务。", plan: "创建任务并强制使用规划路径。", standard: "使用标准强度。", high: "使用高强度。", effort: "创建任务并显示强制设置的推理强度。", approve: "自动批准任务请求的确认。", topic: "为下一条消息显示手动主题档案选择。",
         },
       },
       emoji: {

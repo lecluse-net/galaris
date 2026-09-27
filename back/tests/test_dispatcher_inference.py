@@ -39,8 +39,7 @@ async def test_single_choice_task_persists_dispatch_without_inference(runtime, m
     _context, _options, task_id, _attempt = await dispatch_context(db, "task")
     task = await task_service.get_by_id(task_id)
     spec = replace(INTERNAL_HARNESS, pipeline_policy=DriverPipelinePolicy(
-        use_planner=False, use_briefing=False,
-        execution_efforts=frozenset({"standard", "high"}),
+        use_planner=False, execution_efforts=frozenset({"standard", "high"}),
         uses_llm_calls=False,
     ))
     monkeypatch.setattr(Dispatcher, "_task_executor_driver", staticmethod(lambda task: spec))

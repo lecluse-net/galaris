@@ -71,7 +71,6 @@
                                 :task-id="task.id"
                                 :task-label="task.label"
                                 :has-dispatcher="Boolean(task.dispatch_result)"
-                                :has-briefing="Boolean(task.briefing_result)"
                                 :has-planner="Boolean(task.plan)"
                                 :has-executor="Boolean(task.execution_result)"
                             />
@@ -410,11 +409,6 @@
                 :planning="task.status === 'PLAN' && working"
             />
 
-            <BriefingResultComponent
-                v-if="executionExpected && (task.effort === 'high' || task.briefing_result || task.status === 'BRIEFING')"
-                :briefing-result="task.briefing_result || null"
-                :briefing="task.status === 'BRIEFING' && working"
-            />
 
             <!-- Expandable execution trace, visible from EXEC start with live feedback. -->
             <ExecutionResultComponent
@@ -489,7 +483,6 @@ import { StatusBadge } from '@/core/util'
 
 import DispatchResultComponent from './DispatchResult.vue'
 import PlannerResultComponent from './PlannerResult.vue'
-import BriefingResultComponent from './BriefingResult.vue'
 import ExecutionResultComponent from './ExecutionResult.vue'
 import Markdown from '@/core/util/components/Markdown.vue'
 import TaskLabCaptureMenu from '@/app/lab/components/TaskLabCaptureMenu.vue'
@@ -512,14 +505,13 @@ const privilegeStore = usePrivilegeStore()
 const canEdit = computed(() => privilegeStore.hasPrivilege(privileges.TASK_EDIT))
 const canEditLab = computed(() => hasAnyPrivilege(privilegeStore.hasPrivilege, [
     labSectionPrivileges.dispatcher[1],
-    labSectionPrivileges.briefing[1],
     labSectionPrivileges.planner[1],
     labSectionPrivileges.task_executor[1],
 ]))
 
 const terminalStatuses = new Set(['SUCCESS', 'ERROR'])
 // RUN advances a fresh task or one waiting on internal coordination, planning, or
-// briefing. It is unavailable for user-paused and terminal tasks.
+// a retired phase. It is unavailable for user-paused and terminal tasks.
 const canRun = computed(() => {
     if (!task.value) return false
     if (!executionExpected.value) return false
@@ -1240,7 +1232,6 @@ function getHeaderBgClass(status: string): string {
     const bgClasses: Record<string, string> = {
         'CREATE': 'bg-grey-1',
         'DISPATCH': 'bg-purple-1',
-        'BRIEFING': 'bg-amber-1',
         'EXEC': 'bg-blue-1',
         'PLAN': 'bg-teal-1',
         'SUCCESS': 'bg-positive-1',

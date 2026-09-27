@@ -3,13 +3,16 @@
 > **Statut :** `partial` — contrat générique de portée et projection de ses décisions à réaliser.
 > **Revue documentaire :** 27 septembre 2026.
 >
-> **But :** empêcher qu’un planner, un briefing ou un exécuteur transforme une information de
+> **But :** empêcher qu’un planner ou un exécuteur transforme une information de
 > contexte en cible ou en instruction opérationnelle non demandée, sans réduire l’autonomie.
 
 Les contrats d’activité, de pause et de provenance consultable sont maintenus dans
 l’[ADR 0087](../decisions/0087-task-activity-snapshots.md) et le
 [flux d’exécution](../../docs/fr/architecture/flows/agent-execution.md). Les lots ci-dessous
 les étendent avec une portée générique ; ils ne réimplémentent pas leurs projections.
+
+> Le briefing est supprimé par la [décision 0143](../decisions/0143-retire-execution-briefing.md). Le diagnostic ci-dessous décrit
+> l’incident historique ; les travaux restants portent sur le planner et l’exécuteur.
 
 ## 1. Problèmes constatés
 
@@ -65,7 +68,7 @@ peut laisser le compteur de tentatives, le feedback et les reçus incohérents.
 
 ### 2.2 Principes non négociables
 
-- L’objectif utilisateur ne peut être remplacé ni affaibli par le planner, le briefing, le profil,
+- L’objectif utilisateur ne peut être remplacé ni affaibli par le planner, le profil,
   la mémoire ou l’historique.
 - Une ressource autorisée par RBAC n’est pas automatiquement pertinente pour la Task courante.
 - Une ressource pertinente n’autorise pas automatiquement tous les effets qu’elle supporte.
@@ -86,7 +89,7 @@ peut laisser le compteur de tentatives, le feedback et les reçus incohérents.
 | Cible | Ressource, acteur, collection, système ou périmètre affecté par une opération. |
 | Effet | Conséquence déclarée d’une fonction, indépendamment de son nom ou de sa technologie. |
 | Grant | Association durable entre une cible, des capacités permises et leur provenance. |
-| Claim | Proposition du planner, du briefing ou de l’exécuteur reliant une action à une exigence et à une cible. |
+| Claim | Proposition du planner ou de l’exécuteur reliant une action à une exigence et à une cible. |
 | Reçu | Preuve structurée qu’une opération a réellement produit ou transporté un résultat. |
 | Contexte | Information utile mais non suffisante, seule, pour autoriser une nouvelle cible ou un nouvel effet. |
 
@@ -113,7 +116,7 @@ La provenance doit être conservée sous forme structurée. L’ordre de priorit
 4. résultats et reçus validés des outils du run courant ;
 5. politique explicite du Process ou du canal qui possède l’effet ;
 6. contexte conversationnel pertinent et borné ;
-7. briefing ou plan dérivé ;
+7. plan dérivé ;
 8. mémoire, profil et fiche de poste.
 
 Une source basse peut suggérer une recherche, un outil ou une formulation. Elle ne peut pas
@@ -215,11 +218,11 @@ L’absence de métadonnée ne masque pas l’outil et ne le rend pas inutilisab
 Cette compatibilité évite un basculement fermé où tous les connecteurs historiques devraient être
 annotés avant de fonctionner.
 
-## 7. Briefing et planner bornés par provenance
+## 7. Planner borné par provenance
 
 ### 7.1 Entrée
 
-Le briefing et le planner reçoivent :
+Le planner reçoit :
 
 - l’objectif et ses exigences identifiées ;
 - `ExecutionScopeV1` ;
@@ -259,18 +262,18 @@ Le validateur applique des règles déterministes avant persistance :
 
 Une erreur de structure peut déclencher un retry de structured output. Une violation sémantique ne
 doit pas être réduite à une correction de format : le modèle reçoit le conflit précis. Après le
-budget de correction, le briefing est ignoré au profit de l’objectif et du scope valides, ou la
-Task attend une clarification si le travail ne peut réellement pas continuer.
+budget de correction, le plan est rejeté. La Task attend une clarification si le travail
+ne peut pas continuer dans la portée validée.
 
 ### 7.4 Injection dans l’exécuteur
 
-Le texte actuel `CRITICAL` est remplacé par un contrat de priorité explicite :
+Le contexte de plan suit un contrat de priorité explicite :
 
 ```text
-objectif utilisateur > scope validé > Working Set et reçus > briefing validé > profil
+objectif utilisateur > scope validé > Working Set et reçus > plan validé > profil
 ```
 
-Le briefing validé est contraignant à l’intérieur de ce périmètre. L’exécuteur doit refuser et
+Le plan validé est contraignant à l’intérieur de ce périmètre. L’exécuteur doit refuser et
 signaler toute contradiction résiduelle au lieu de choisir arbitrairement l’un des textes.
 
 ## 8. Préflight générique avant un effet
@@ -299,7 +302,7 @@ ou un effet non impliqué par l’objectif reste explicitement justifiée.
 La politique de livraison possède un unique propriétaire : contrôleur conversationnel, domaine
 appelant, Process ou cible explicite. Elle est figée dans le run avant l’exécution.
 
-- Le planner et le briefing n’ajoutent pas un second transport.
+- Le planner n’ajoute pas un second transport.
 - Un transport réussi inscrit source, destination, fonction, idempotency key et reçu.
 - Le résultat terminal ne prétend pas avoir livré sans reçu.
 - Une reprise consulte les reçus avant de rejouer un effet.
@@ -347,7 +350,7 @@ aucun second checkpoint visuel ni seconde représentation des messages.
 
 ### `app.agent`
 
-- posséder les contrats `ExecutionScopeV1`, exigences, claims, descripteurs et briefing validé ;
+- posséder les contrats `ExecutionScopeV1`, exigences, claims, descripteurs et plan validé ;
 - composer la hiérarchie de prompt ;
 - appliquer le préflight générique sans importer les modèles ORM de Task ou Tool ;
 - conserver le contrat de stream et le résultat terminal unique.
@@ -398,7 +401,7 @@ aucun second checkpoint visuel ni seconde représentation des messages.
 - garantir un unique propriétaire de livraison ;
 - tester création, amendement, pièce jointe, salon courant et cible explicite.
 
-### Bloc C — Briefing et planner
+### Bloc C — Planner
 
 - remplacer l’entrée libre par le scope et le profil compact ;
 - structurer claims, exigences, hypothèses et preuves ;
@@ -445,7 +448,7 @@ aucun second checkpoint visuel ni seconde représentation des messages.
 - Fonction inconnue sans descripteur : elle reste découvrable et utilisable selon les règles de
   compatibilité, sans obtenir de grant implicite.
 
-### Briefing et planner
+### Planner
 
 - Ajout d’une cible sans source : rejet sémantique.
 - Omission ou affaiblissement d’une exigence : rejet.
@@ -480,7 +483,7 @@ aucun second checkpoint visuel ni seconde représentation des messages.
 - Les fonctions non enrichies restent compatibles et observables.
 - Une Task autonome peut explorer, produire, vérifier et livrer sans questions artificielles.
 - Les effets externes ou difficilement réversibles sont justifiés, reçus et rejoués de façon sûre.
-- Briefing, planner, exécuteur et livraison partagent le même scope versionné.
+- Planner, exécuteur et livraison partagent le même scope versionné.
 - Chat, TaskDetails et `task_get` montrent les mêmes décisions de portée après reconnexion,
   en conservant les garanties d’activité et de pause existantes.
 - Une panne SQLAlchemy conserve sa cause initiale et ne provoque pas la répétition aveugle d’un
@@ -492,7 +495,7 @@ aucun second checkpoint visuel ni seconde représentation des messages.
 - remplacer le RBAC ou les ACL propres aux domaines ;
 - analyser le texte arbitraire d’une commande comme unique barrière de sécurité ;
 - imposer une confirmation humaine à chaque appel d’outil ;
-- donner au briefing le droit d’exécuter ou de créer des grants ;
+- donner au planner le droit d’exécuter ou de créer des grants ;
 - créer un second système de fichiers virtuel à côté d’`app.file_share` ;
 - fusionner les états canoniques de Task, Process et LLMCall ;
 - implémenter ce plan dans le présent changement.

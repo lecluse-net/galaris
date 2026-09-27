@@ -20,7 +20,6 @@ def _old_user_message(text: str, history_lines: list[str]) -> dict[str, Any]:
             ' "location": "Caen", "platform": "talk", "room_id": "room-42",\n'
             ' "recent_attachments": "report.pdf (id 12)", "recent_images": "none"}\n'
             "</galaris_message_context>\n"
-            "<execution_briefing>\nNO ISSUES\n</execution_briefing>\n"
             f"<message-or-task>\n{text}\n</message-or-task>\n\n"
             "Recent messages in this room, for context — some may be missing from your own "
             "conversation history (posted by scheduled jobs or other agents). The current "
@@ -89,7 +88,6 @@ def test_old_user_messages_lose_repeated_sections_and_keep_context_json() -> Non
     for message in old_users:
         content = str(message["content"])
         assert "<galaris_role>" not in content
-        assert "<execution_briefing>" not in content
         assert "<galaris_message_context>" not in content
         assert "<history>" not in content
         assert "Recent messages in this room" not in content
@@ -113,29 +111,6 @@ def test_old_user_messages_lose_repeated_sections_and_keep_context_json() -> Non
     assert any("Hello, how are you?" in str(m["content"]) for m in old_users)
 
 
-def test_briefing_is_removed_from_history_but_kept_for_current_message() -> None:
-    old = _old_user_message("Old request.", [])
-    old["content"] = str(old["content"]).replace("NO ISSUES", "OLD BRIEFING")
-    current = _old_user_message("Current request.", [])
-    current["content"] = str(current["content"]).replace("NO ISSUES", "CURRENT BRIEFING")
-    messages = [
-        {"role": "system", "content": "Hermes system."},
-        old,
-        {"role": "assistant", "content": "Old response."},
-        current,
-    ]
-
-    cleaned = clean_request_messages(messages)
-
-    old_content = next(
-        str(message["content"])
-        for message in cleaned
-        if "Old request." in str(message.get("content"))
-    )
-    current_content = str(cleaned[-1]["content"])
-    assert "<execution_briefing>" not in old_content
-    assert "OLD BRIEFING" not in old_content
-    assert "<execution_briefing>\nCURRENT BRIEFING\n</execution_briefing>" in current_content
 
 
 def test_current_user_message_keeps_structure_and_prunes_known_history() -> None:

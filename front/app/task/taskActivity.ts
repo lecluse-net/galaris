@@ -1,6 +1,6 @@
 import type { TaskStatus } from './types'
 
-export const ACTION_STATUSES: TaskStatus[] = ['DISPATCH', 'BRIEFING', 'EXEC', 'PLAN']
+export const ACTION_STATUSES: TaskStatus[] = ['DISPATCH', 'EXEC', 'PLAN']
 
 const ACTION_STATUS_SET = new Set<TaskStatus>(ACTION_STATUSES)
 

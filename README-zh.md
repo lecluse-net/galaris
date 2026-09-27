@@ -88,7 +88,7 @@ Dream 可以利用空闲时间去重、整合记忆，且仅在任务证据支�
 
 AI 实验室将真实任务、文本对话和语音对话转为有版本记录的数据集。
 你可以借助语义评分标准、固定测试用例、可恢复的评测运行和明确的评审诊断，
-比较 Dispatcher、Briefing、Planner、Task/Conversation/Voice 执行器以及 Dream/Goal 机制。
+比较 Dispatcher、Planner、Task/Conversation/Voice 执行器以及 Dream/Goal 机制。
 
 ## 专门的模型负责决策
 

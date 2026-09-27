@@ -278,7 +278,7 @@ function formatDate(value: string | null): string {
 function statusColor(status: string): string {
   if (['SUCCESS', 'SUCCEEDED', 'COMPLETED'].includes(status)) return 'positive'
   if (['ERROR', 'ERROR_RESOLVED', 'FAILED'].includes(status)) return 'negative'
-  if (['RUNNING', 'CLAIMED', 'FROZEN', 'EXEC', 'PLAN', 'DISPATCH', 'BRIEFING'].includes(status)) return 'primary'
+  if (['RUNNING', 'CLAIMED', 'FROZEN', 'EXEC', 'PLAN', 'DISPATCH'].includes(status)) return 'primary'
   return 'grey-7'
 }
 

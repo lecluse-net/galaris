@@ -4,7 +4,7 @@
 
 `back/app/lab/reference_corpus.json` contains six versioned synthetic cases: concurrent HTML
 editing, attachment URIs without a console, document prompt injection, unconfirmed delivery,
-HTML versus Markdown, and usage without an imposed budget. They exercise briefing and review
+HTML versus Markdown, and usage without an imposed budget. They exercise executor responses and review
 of proposed actions; they do not prove actual delivery or success on real tasks.
 
 Inside the backend container, `python scripts/import_lab_reference.py` displays the corpus.

@@ -7,8 +7,8 @@ default: dict[str, object] = {
         "explicit_task_started": "C’est lancé en arrière-plan. Je te transmettrai le résultat ici dès qu’il sera prêt.",
         "direct_task_started": "J’ai créé et lancé la tâche « ${objective} ». Je publierai son résultat ici dès qu’elle sera terminée.",
         "task_directive_missing_objective": "Ajoute un objectif après la commande pour créer la tâche.",
-        "task_directive_conflicting_route": "Choisis exactement un mode parmi @exec, @plan ou @briefing pour cette tâche.",
-        "task_directive_conflicting_effort": "Choisis soit @standard, soit @high, et ne combine pas @standard avec @plan ou @briefing.",
+        "task_directive_conflicting_route": "Choisis exactement un mode parmi @exec ou @plan pour cette tâche.",
+        "task_directive_conflicting_effort": "Choisis soit @standard, soit @high, et ne combine pas @standard avec @plan.",
         "task_stopped": "C’est arrêté. La tâche en cours ne continuera pas.",
         "failure_notification": {
             "message": (

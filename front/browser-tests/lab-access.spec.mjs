@@ -1,15 +1,15 @@
 import { test, expect, mount, setPrivileges, jsonRoute } from './fixtures.mjs'
 
 test('Lab grants reveal only their own section and revocation removes access', async ({ page }) => {
-  await mount(page, 'app/lab/pages/index.vue', { route: '/lab', privileges: ['BRIEFING_EVALUATION_ACCESS'] })
+  await mount(page, 'app/lab/pages/index.vue', { route: '/lab', privileges: ['PLANNER_EVALUATION_ACCESS'] })
   await expect(page.getByRole('complementary', { name: 'Contextual help' })).toBeVisible()
-  await expect(page.locator('a[href="/lab/briefing"]')).toBeVisible()
-  await expect(page.locator('a[href="/lab/planner"]')).toHaveCount(0)
-  await page.locator('a[href="/lab/briefing"]').press('Enter')
-  await expect.poll(() => page.evaluate(() => window.testApp.router.currentRoute.value.path)).toBe('/lab/briefing')
-  await setPrivileges(page, ['PLANNER_EVALUATION_EDIT'])
-  await expect(page.locator('a[href="/lab/briefing"]')).toHaveCount(0)
   await expect(page.locator('a[href="/lab/planner"]')).toBeVisible()
+  await expect(page.locator('a[href="/lab/task-executor"]')).toHaveCount(0)
+  await page.locator('a[href="/lab/planner"]').press('Enter')
+  await expect.poll(() => page.evaluate(() => window.testApp.router.currentRoute.value.path)).toBe('/lab/planner')
+  await setPrivileges(page, ['TASK_EXECUTOR_EVALUATION_EDIT'])
+  await expect(page.locator('a[href="/lab/planner"]')).toHaveCount(0)
+  await expect(page.locator('a[href="/lab/task-executor"]')).toBeVisible()
   await setPrivileges(page, ['INCIDENT_ACCESS'])
   await expect(page.locator('a[href^="/lab/"]')).toHaveCount(0)
   await expect.poll(() => page.evaluate(() => window.testApp.router.currentRoute.value.path)).toBe('/')

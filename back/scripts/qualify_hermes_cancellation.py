@@ -6,11 +6,28 @@ work and authentication boundary are synthetic; the runtime lifecycle is unchang
 
 import asyncio
 from contextlib import AbstractContextManager, nullcontext, suppress
+from dataclasses import dataclass
 import importlib
 import json
 from threading import Event
 from types import SimpleNamespace
 from typing import Any
+
+
+@dataclass
+class SyntheticAgent:
+    started: Event
+    release: Event
+    interrupted: Event
+
+    def run_conversation(self, **kwargs: object) -> dict[str, object]:
+        self.started.set()
+        if not self.release.wait(10):
+            raise TimeoutError("The qualification did not release its synthetic worker")
+        return {"interrupted": self.interrupted.is_set(), "final_response": "synthetic result"}
+
+    def hard_interrupt(self, message: str | None = None) -> None:
+        self.interrupted.set()
 
 
 async def qualify() -> None:
@@ -21,21 +38,14 @@ async def qualify() -> None:
     for mode in ("cooperative", "task_cancelled", "natural"):
         started, release, interrupted = Event(), Event(), Event()
 
-        class SyntheticAgent:
-            def run_conversation(self, **kwargs: object) -> dict[str, object]:
-                started.set()
-                if not release.wait(10):
-                    raise TimeoutError("The qualification did not release its synthetic worker")
-                return {"interrupted": interrupted.is_set(), "final_response": "synthetic result"}
-
-            def hard_interrupt(self, message: str | None = None) -> None:
-                interrupted.set()
-
         def profile_scope(_profile: object) -> AbstractContextManager[None]:
             return nullcontext()
 
-        def create_agent(**_kwargs: object) -> SyntheticAgent:
-            return SyntheticAgent()
+        def create_agent(
+            *, _started: Event = started, _release: Event = release,
+            _interrupted: Event = interrupted, **_kwargs: object,
+        ) -> SyntheticAgent:
+            return SyntheticAgent(_started, _release, _interrupted)
 
         def ignore(*_args: object, **_kwargs: object) -> None:
             pass

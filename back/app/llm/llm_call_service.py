@@ -46,7 +46,6 @@ class InferenceCallDeletionError(ValueError):
 
 _TASK_REQUIRED_PURPOSES = frozenset(
     {
-        LLMCallPurpose.AGENT_BRIEFING.value,
         LLMCallPurpose.AGENT_PLANNING.value,
         LLMCallPurpose.AGENT_PLANNING_RECOVERY.value,
         LLMCallPurpose.AGENT_SYNTHESIS.value,

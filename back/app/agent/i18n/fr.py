@@ -90,7 +90,6 @@ default = {
             "agent_id_not_found": "Agent ${agent_id} introuvable",
             "invalid_token": "Jeton d’agent absent ou invalide",
             "internal_error": "Erreur interne : ${error}",
-            "briefing_model_missing": "Aucun modèle de briefing n’est configuré.",
             "messages_required": "Au moins un message est requis.",
             "harness_terminal_result_missing": (
                 "Le harnais interne n’a produit aucun résultat final."
@@ -101,7 +100,6 @@ default = {
                 "Aucun LLM d’exécution n’est configuré pour l’agent ${agent_code} "
                 "(effort=${effort})."
             ),
-            "briefing_unavailable": "Briefing indisponible.",
             "task_not_found": "Tâche ${task_id} introuvable",
         },
     },
@@ -126,7 +124,6 @@ default = {
         "assigned_llm": "LLM attribué : ${label} (${model})",
         "driver": "Driver de l’agent : ${value}",
         "planner_enabled": "Planner activé : ${value}",
-        "briefing_enabled": "Briefing activé : ${value}",
         "voice_calling": "Appels vocaux : ${value}",
         "file_tools": "Outils de fichiers : ${value}",
         "console_execution": "Exécution par console SSH : ${value}",

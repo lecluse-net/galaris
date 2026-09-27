@@ -16,7 +16,6 @@ class TaskAction(str, Enum):
     """Durable actions triggered by the scheduler for a phase."""
 
     DISPATCH = "dispatch"
-    BRIEF = "brief"
     EXECUTE = "execute"
     ADVANCE_PLAN = "advance_plan"
 
@@ -25,11 +24,8 @@ class TaskEvent(str, Enum):
     """Domain events allowed to change a task phase."""
 
     ROUTE_TO_EXECUTION = "route_to_execution"
-    ROUTE_TO_BRIEFING = "route_to_briefing"
     ROUTE_TO_PLAN = "route_to_plan"
     START_EXECUTION = "start_execution"
-    BRIEFING_SUCCEEDED = "briefing_succeeded"
-    BRIEFING_FAILED = "briefing_failed"
     EXECUTION_SUCCEEDED = "execution_succeeded"
     EXECUTION_FAILED = "execution_failed"
     PLAN_SUCCEEDED = "plan_succeeded"
@@ -72,7 +68,6 @@ _ACTIVE: Final[frozenset[TaskStatus]] = frozenset(
         TaskStatus.CREATE,
         TaskStatus.PAUSE,  # Read compatibility for legacy rows.
         TaskStatus.DISPATCH,
-        TaskStatus.BRIEFING,
         TaskStatus.EXEC,
         TaskStatus.PLAN,
     }
@@ -82,21 +77,12 @@ TRANSITIONS: Final[dict[TaskEvent, TransitionRule]] = {
     TaskEvent.ROUTE_TO_EXECUTION: TransitionRule(
         frozenset({TaskStatus.CREATE, TaskStatus.DISPATCH}), TaskStatus.DISPATCH
     ),
-    TaskEvent.ROUTE_TO_BRIEFING: TransitionRule(
-        frozenset({TaskStatus.CREATE, TaskStatus.DISPATCH}), TaskStatus.BRIEFING
-    ),
     TaskEvent.ROUTE_TO_PLAN: TransitionRule(
         frozenset({TaskStatus.CREATE, TaskStatus.DISPATCH, TaskStatus.PLAN}),
         TaskStatus.PLAN,
     ),
     TaskEvent.START_EXECUTION: TransitionRule(
         frozenset({TaskStatus.DISPATCH}), TaskStatus.EXEC
-    ),
-    TaskEvent.BRIEFING_SUCCEEDED: TransitionRule(
-        frozenset({TaskStatus.BRIEFING}), TaskStatus.DISPATCH
-    ),
-    TaskEvent.BRIEFING_FAILED: TransitionRule(
-        frozenset({TaskStatus.BRIEFING}), TaskStatus.ERROR
     ),
     TaskEvent.EXECUTION_SUCCEEDED: TransitionRule(
         frozenset({TaskStatus.EXEC}), TaskStatus.SUCCESS
@@ -130,7 +116,7 @@ TRANSITIONS: Final[dict[TaskEvent, TransitionRule]] = {
         frozenset({TaskStatus.ERROR}), TaskStatus.CREATE
     ),
     TaskEvent.REVISE: TransitionRule(
-        frozenset({TaskStatus.DISPATCH, TaskStatus.BRIEFING}), TaskStatus.CREATE
+        frozenset({TaskStatus.DISPATCH}), TaskStatus.CREATE
     ),
     TaskEvent.CANCEL: TransitionRule(_ACTIVE, TaskStatus.ERROR),
     TaskEvent.FORCE_TERMINATE: TransitionRule(_ACTIVE, TaskStatus.ERROR),
@@ -156,7 +142,6 @@ TRANSITIONS: Final[dict[TaskEvent, TransitionRule]] = {
 
 SCHEDULER_ACTIONS: Final[dict[TaskStatus, TaskAction]] = {
     TaskStatus.CREATE: TaskAction.DISPATCH,
-    TaskStatus.BRIEFING: TaskAction.BRIEF,
     TaskStatus.DISPATCH: TaskAction.EXECUTE,
     TaskStatus.PLAN: TaskAction.ADVANCE_PLAN,
 }

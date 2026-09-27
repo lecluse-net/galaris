@@ -669,7 +669,7 @@ async def test_plan_child_inherits_frozen_conversation_snapshot(
 
 
 @pytest.mark.asyncio
-async def test_high_plan_leaf_executes_directly_while_briefing_is_disabled(
+async def test_high_plan_leaf_executes_directly_without_preparation(
     mocks: dict[str, Any], monkeypatch: pytest.MonkeyPatch
 ) -> None:
     parent = _task(objective="Do X", plan=None)

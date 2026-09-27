@@ -19,7 +19,7 @@ HERMES_DRIVER = AgentDriverSpec(
         use_planner=False,
         execution_efforts=frozenset({"standard", "high"}),
         uses_llm_calls=True,
-        use_briefing=False,
+
     ),
     manages_runtime=True,
     supports_cancellation=True,

@@ -10,7 +10,6 @@ class LLMCallPurpose(StrEnum):
 
     AGENT_EXEC = "agent.exec"
     AGENT_DISPATCH = "agent.dispatch"
-    AGENT_BRIEFING = "agent.briefing"
     AGENT_PLANNING = "agent.planning"
     AGENT_PLANNING_RECOVERY = "agent.planning_recovery"
     AGENT_SYNTHESIS = "agent.synthesis"

@@ -90,7 +90,6 @@ default = {
             "agent_id_not_found": "Agent ${agent_id} not found",
             "invalid_token": "Agent token is invalid or missing",
             "internal_error": "Internal error: ${error}",
-            "briefing_model_missing": "No briefing model is configured.",
             "messages_required": "At least one message is required.",
             "harness_terminal_result_missing": (
                 "The internal harness produced no terminal result."
@@ -101,7 +100,6 @@ default = {
                 "No executor LLM is configured for agent ${agent_code} "
                 "(effort=${effort})."
             ),
-            "briefing_unavailable": "Briefing unavailable.",
             "task_not_found": "Task ${task_id} not found",
         },
     },
@@ -126,7 +124,6 @@ default = {
         "assigned_llm": "Assigned LLM: ${label} (${model})",
         "driver": "Agent driver: ${value}",
         "planner_enabled": "Planner enabled: ${value}",
-        "briefing_enabled": "Briefing enabled: ${value}",
         "voice_calling": "Voice calling: ${value}",
         "file_tools": "File tools: ${value}",
         "console_execution": "SSH console execution: ${value}",

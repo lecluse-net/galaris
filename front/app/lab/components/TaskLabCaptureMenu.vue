@@ -47,14 +47,12 @@ const {
   taskId,
   taskLabel,
   hasDispatcher,
-  hasBriefing,
   hasPlanner,
   hasExecutor,
 } = defineProps<{
   taskId: string
   taskLabel: string
   hasDispatcher: boolean
-  hasBriefing: boolean
   hasPlanner: boolean
   hasExecutor: boolean
 }>()
@@ -73,15 +71,6 @@ const captureItems = computed(() => [
     icon: 'alt_route',
     available: hasDispatcher,
     editPrivilege: labSectionPrivileges.dispatcher[1],
-  },
-  {
-    target: 'briefing' as const,
-    label: 'briefing',
-    help: 'briefingHelp',
-    unavailable: 'briefingUnavailable',
-    icon: 'assignment',
-    available: hasBriefing,
-    editPrivilege: labSectionPrivileges.briefing[1],
   },
   {
     target: 'planner' as const,

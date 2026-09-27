@@ -43,7 +43,6 @@ _TERMINAL_TASK_STATUSES = (TaskStatus.SUCCESS, TaskStatus.ERROR)
 _RUNNABLE_TASK_STATUSES = (
     TaskStatus.CREATE,
     TaskStatus.DISPATCH,
-    TaskStatus.BRIEFING,
     TaskStatus.EXEC,
     TaskStatus.PLAN,
 )

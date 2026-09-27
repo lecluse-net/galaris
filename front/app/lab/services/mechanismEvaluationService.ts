@@ -3,7 +3,6 @@ import type { AxiosResponse } from 'axios'
 
 export type EvaluationMechanism =
   | 'task_analysis'
-  | 'briefing'
   | 'planner'
   | 'topic_classification'
   | 'memory_extraction'
@@ -17,7 +16,6 @@ export type ExecutorPromptKind = 'task' | 'conversation' | 'voice'
 export type LabCaptureTarget =
   | 'task_analysis'
   | 'dispatcher'
-  | 'briefing'
   | 'planner'
   | 'task_executor'
   | 'conversation_executor'

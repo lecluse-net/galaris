@@ -21,11 +21,12 @@ test('editorial HTML survives real API storage, browser editing and reload', asy
     expect(item.content_profile).toBe('rich-text')
     expect(item.memory_type).toBe(memoryType)
   }
-  // Editorial bodies are static HTML. Executable HTML belongs to attachments;
-  // an older test expected scripts to survive inline in the editor.
+  // Memory keeps the static rich-text contract. Executable document isolation
+  // is exercised separately by document-apps.spec.mjs.
   const documentData = { owner_agent_id: fixture.agent_id, title: 'Document HTML E2E', node_kind: 'document', memory_type: 'working', media_type: 'text/html' }
   const rejected = await request.post('/api/memory/items', { headers, data: {
-    ...documentData, payload: { text: corpus + '<script>window.editorialE2E=true</script>' },
+    ...documentData, node_kind: 'memory', title: 'Rejected scripted memory',
+    payload: { text: corpus + '<script>window.editorialE2E=true</script>' },
   } })
   expect(rejected.status()).toBe(422)
   const callout = '<blockquote class="galaris-callout galaris-callout-info"><p>Document éditorial</p></blockquote>'

@@ -32,10 +32,8 @@ def generated_content(mechanism):
     elif mechanism == "task_analysis":
         variable = {"selected_task": {"objective": "Summarize the observatory schedule", "status": "SUCCESS"}}
     output = deepcopy(get_mechanism(mechanism).default_output)
-    if mechanism == "briefing":
-        output = {"result": "Check the supplied schedule before summarizing it.", "choices": [
-            {"kind": "other", "identifier": "schedule_evidence", "reason": "Verify the opening time."},
-        ]}
+    if mechanism == "planner":
+        output = {"brief": {"objective": "Check the supplied schedule before summarizing it."}, "steps": []}
     if mechanism == "topic_classification":
         output = {"topics": ["Observatory schedule"]}
     if mechanism.endswith("_executor"):
@@ -94,7 +92,7 @@ async def test_every_lab_generates_reviewable_cases_with_its_own_contract(db, mo
 
 @pytest.mark.asyncio
 async def test_invalid_last_case_or_provider_failure_never_publishes_partial_dataset(db, monkeypatch):
-    content = generated_content("briefing")
+    content = generated_content("planner")
     bad = content.cases[0].model_copy(deep=True)
     bad.name = "Invalid context"
     bad.input_data.context = {"unknown_setting": True}
@@ -103,17 +101,17 @@ async def test_invalid_last_case_or_provider_failure_never_publishes_partial_dat
     before = await db.scalar(select(func.count()).select_from(LabEvaluationDataset))
     request = SyntheticDatasetRequest(name="Rejected generation", count=2, categories=["nominal"])
     with pytest.raises(ValueError):
-        await service.generate_dataset("briefing", request)
+        await service.generate_dataset("planner", request)
     assert await db.scalar(select(func.count()).select_from(LabEvaluationDataset)) == before
     infer.side_effect = RuntimeError("provider unavailable")
     with pytest.raises(RuntimeError):
-        await service.generate_dataset("briefing", request)
+        await service.generate_dataset("planner", request)
     assert await db.scalar(select(func.count()).select_from(LabEvaluationDataset)) == before
 
 
 @pytest.mark.parametrize("change", ["count", "duplicate", "coverage", "topic_alignment", "memory_links", "tools"])
 def test_synthetic_references_must_be_consistent_with_the_experiment(change):
-    mechanism = "topic_classification" if change == "topic_alignment" else "memory_extraction" if change == "memory_links" else "task_executor" if change == "tools" else "briefing"
+    mechanism = "topic_classification" if change == "topic_alignment" else "memory_extraction" if change == "memory_links" else "task_executor" if change == "tools" else "planner"
     content = generated_content(mechanism)
     request = SyntheticDatasetRequest(name="Invalid experiment", count=1, categories=["nominal"])
     if change == "count":
@@ -135,23 +133,23 @@ def test_synthetic_references_must_be_consistent_with_the_experiment(change):
 
 @pytest.mark.asyncio
 async def test_missing_model_and_timeout_leave_existing_datasets_untouched(db, monkeypatch):
-    infer = fake_generator(monkeypatch, generated_content("briefing"))
+    infer = fake_generator(monkeypatch, generated_content("planner"))
     request = SyntheticDatasetRequest(name="Model failure", count=1, categories=["nominal"])
     monkeypatch.setattr(service.llm_service, "get_profile_llm", AsyncMock(return_value=None))
     with pytest.raises(ValueError):
-        await service.generate_dataset("briefing", request)
+        await service.generate_dataset("planner", request)
     infer.assert_not_awaited()
-    infer = fake_generator(monkeypatch, generated_content("briefing"))
+    infer = fake_generator(monkeypatch, generated_content("planner"))
     infer.side_effect = TimeoutError()
     with pytest.raises(ValueError, match="minutes"):
-        await service.generate_dataset("briefing", request)
+        await service.generate_dataset("planner", request)
     assert not (await db.scalars(select(LabEvaluationDataset).where(LabEvaluationDataset.name == request.name))).all()
 
 
 @pytest.mark.asyncio
 async def test_synthetic_http_requires_privileges_and_creates_drafts(client, monkeypatch):
-    infer = fake_generator(monkeypatch, generated_content("briefing"))
-    url = "/api/evaluation/briefing/datasets/synthetic"
+    infer = fake_generator(monkeypatch, generated_content("planner"))
+    url = "/api/evaluation/planner/datasets/synthetic"
     payload = {"name": "HTTP synthetic", "count": 1, "categories": ["nominal"]}
     assert (await client.post(url, json=payload)).status_code in {401, 403}
     infer.assert_not_awaited()
@@ -233,7 +231,7 @@ async def test_generation_uses_selected_experiment_context_without_copying_cases
 async def test_invalid_context_never_creates_a_misleading_experiment(db, monkeypatch, invalid):
     from app.lab.dispatcher_evaluation_service import RevisionConflictError
 
-    source = await experiments.prepare_dataset("briefing", MechanismDatasetCreate(name="Source"))
+    source = await experiments.prepare_dataset("planner", MechanismDatasetCreate(name="Source"))
     source.parameters = {**source.parameters, "language": "fr"}
     db.add(source)
     await db.commit()
@@ -244,9 +242,9 @@ async def test_invalid_context_never_creates_a_misleading_experiment(db, monkeyp
     if invalid == "stale":
         source.description = "Changed context"
         await db.commit()
-    infer = fake_generator(monkeypatch, generated_content("briefing"))
+    infer = fake_generator(monkeypatch, generated_content("planner"))
     with pytest.raises((LookupError, RevisionConflictError, ValueError)):
-        await service.generate_dataset("planner" if invalid == "wrong_lab" else "briefing", SyntheticDatasetRequest(
+        await service.generate_dataset("task_executor" if invalid == "wrong_lab" else "planner", SyntheticDatasetRequest(
             name="Rejected context", count=1, categories=["nominal"],
             source_dataset_id=source.id, source_revision=revision,
         ))

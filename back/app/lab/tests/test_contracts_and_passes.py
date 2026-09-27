@@ -18,26 +18,24 @@ from app.lab.mechanism_rubrics import get_rubric
 from app.lab.schemas import EvaluationRejudge, MechanismJudgeOutput
 
 
-@pytest.mark.parametrize("route, effort, briefing, high, uses_llm_calls, permitted", [
-    ("BRIEFING", "high", True, True, True, True),
-    ("BRIEFING", "high", False, True, True, False),
-    ("EXEC", "high", False, False, True, False),
-    ("EXEC", "standard", False, False, True, True),
-    ("PLAN", "standard", False, True, True, False),
-    ("EXEC", "high", False, True, False, False),
-    ("EXEC", "standard", False, True, False, True),
+@pytest.mark.parametrize("route, effort, high, uses_llm_calls, permitted", [
+    ("UNKNOWN", "high", True, True, False),
+    ("EXEC", "high", False, True, False),
+    ("EXEC", "standard", False, True, True),
+    ("PLAN", "standard", True, True, False),
+    ("EXEC", "high", True, False, False),
+    ("EXEC", "standard", True, False, True),
 ])
-def test_lab_checks_the_same_harness_choices_as_runtime(route, effort, briefing, high, uses_llm_calls, permitted):
+def test_lab_checks_the_same_harness_choices_as_runtime(route, effort, high, uses_llm_calls, permitted):
     from app.lab.objective_checks import check_output
 
     checks = check_output("dispatcher", {"pipeline_policy": {
-        "use_planner": True, "use_briefing": briefing,
-        "briefing_efforts": ["high"] if briefing else [],
+        "use_planner": True,
         "execution_efforts": ["standard", "high"] if high else ["standard"],
         "uses_llm_calls": uses_llm_calls,
     }}, {"route": route, "effort": effort, "language": "en"})
 
-    assert next(check for check in checks if check["code"] == "harness_choice")["passed"] is permitted
+    assert all(check["passed"] for check in checks) is permitted
 
 
 def test_one_variable_and_context_scope():
@@ -57,6 +55,8 @@ def test_one_variable_and_context_scope():
         LabInput.model_validate({"variable_value": "a", "second_variable": "b"})
     with pytest.raises(ValueError):
         resolve_input("planner", value, {"unknown": True})
+
+
 
 
 def test_topic_capture_separates_content_from_metadata():
@@ -102,7 +102,7 @@ async def test_two_passes_and_rejudge_preserve_candidate_outputs(db, monkeypatch
     )
     db.add(llm)
     await db.flush()
-    dataset = LabEvaluationDataset(name=f"passes-{uuid4()}", mechanism="briefing")
+    dataset = LabEvaluationDataset(name=f"passes-{uuid4()}", mechanism="planner")
     db.add(dataset)
     await db.flush()
     cases = [LabEvaluationCase(dataset_id=dataset.id, name=f"case-{i}") for i in range(2)]
@@ -116,11 +116,12 @@ async def test_two_passes_and_rejudge_preserve_candidate_outputs(db, monkeypatch
                 "context": {"history": [{"text": f"History for {case.name}"}]},
             },
             "resolved_input": {
+                **CONTRACTS["planner"].parameters_type().model_dump(),
                 "objective": case.name,
                 "language": "en",
                 "history": [{"text": f"History for {case.name}"}],
             },
-            "expected_output": {"result": "reference", "choices": []},
+            "expected_output": {"brief": {"objective": "reference"}, "steps": []},
         }
         for case in cases
     ]
@@ -132,7 +133,7 @@ async def test_two_passes_and_rejudge_preserve_candidate_outputs(db, monkeypatch
         case_snapshots=snapshots,
         total_cases=2,
         configuration_snapshot={
-            "rubric": get_rubric("briefing").prompt_value(),
+            "rubric": get_rubric("planner").prompt_value(),
             "parameters": {"language": "en"},
         },
     )
@@ -151,7 +152,7 @@ async def test_two_passes_and_rejudge_preserve_candidate_outputs(db, monkeypatch
         ]
         calls.append("candidate")
         kwargs["observations"]["performance"] = {"version": "lab-executor-stream/v1", "first_output_seconds": 0.25}
-        return {"result": kwargs["input_data"]["objective"], "choices": []}, 0.1
+        return {"brief": {"objective": kwargs["input_data"]["objective"]}, "steps": []}, 0.1
 
     async def judge(**kwargs):
         assert kwargs["input_data"]["parameters"] == {"language": "en"}
@@ -165,7 +166,7 @@ async def test_two_passes_and_rejudge_preserve_candidate_outputs(db, monkeypatch
             confidence_percent=95,
             dimensions=[
                 {"code": dim.code, "score_percent": 90, "assessment": "Supported"}
-                for dim in get_rubric("briefing").dimensions
+                for dim in get_rubric("planner").dimensions
             ],
         ), 0.02
 
@@ -190,7 +191,7 @@ async def test_two_passes_and_rejudge_preserve_candidate_outputs(db, monkeypatch
     assert len((await db.scalars(select(LabJudgmentResult))).all()) == 2
 
     monkeypatch.setattr(service.llm_service, "get_profile_llm", AsyncMock(return_value=llm))
-    await rejudge("briefing", run.id, EvaluationRejudge())
+    await rejudge("planner", run.id, EvaluationRejudge())
     await service.process_runs()
     await service.process_runs()
     await db.refresh(run)

@@ -415,7 +415,7 @@ affiche uniquement les directives compatibles avec le driver de l’agent sélec
 
 1. La demande créée dans cet écran devient une Task durable.
 2. Le Dispatcher choisit une exécution directe ou un plan, puis fixe l’effort.
-3. Le planner prépare les travaux décomposables ; le briefing automatique est actuellement désactivé.
+3. Le planner prépare les travaux décomposables.
 4. Le driver exécute l’agent avec ses outils autorisés.
 5. Galaris enregistre la trace et le résultat, puis reprend les parents éventuels.
 
@@ -423,7 +423,7 @@ Les conversations texte et voix suivent leur propre contrôleur et leur exécute
 ne passent pas par le Dispatcher de Tasks ; lorsqu’elles ont besoin d’un travail durable, elles
 créent une Task explicitement liée.
 
-## Planner et briefing : des aides optionnelles
+## Planner : décomposer un travail coordonné
 
 Le planner découpe uniquement un objectif qui exige plusieurs blocs de travail coordonnés.
 Chaque feuille du plan est une vraie tâche. Une étape n’est pas censée « réfléchir » ou
@@ -441,16 +441,13 @@ exemple renommer trois documents avec les noms fournis. Lire, transformer et vé
 document reste un traitement par document, même pour un petit lot. Plusieurs cibles ne
 suffisent pas, à elles seules, à déclencher le planner.
 
-Le briefing peut préparer une exécution `high` en rappelant l’objectif, les contraintes, les
-ressources pertinentes et les contrôles de fin. Il est actuellement désactivé pour mesurer sa
-valeur ajoutée face aux objectifs de Task autonomes. Ses anciennes traces restent consultables.
 
 Ces aides sont activées par driver. Dans la configuration actuelle :
 
-| Driver | Planner | Briefing |
-|---|---:|---:|
-| Interne (Pydantic AI) | oui | non, désactivé pour évaluation |
-| Hermès | non | non |
+| Driver | Planner |
+|---|---:|
+| Interne (Pydantic AI) | oui |
+| Hermès | non |
 
 Hermès conserve ainsi ses capacités propres sans être enfermé dans un second harnais.
 
@@ -469,7 +466,6 @@ Sans réponse avant l’expiration, il reprend avec des hypothèses explicites.
 | État affiché | Signification pratique |
 |---|---|
 | Création / dispatch | la demande est en cours de routage |
-| Briefing | la préparation `high` est en cours |
 | Exécution | l’agent travaille ou appelle des outils |
 | Plan | Galaris crée ou avance dans les étapes |
 | En pause | la tâche attend une réponse, une étape fille ou une reprise |
@@ -517,7 +513,7 @@ configurent dans l’administration ou dans l’environnement prévu à cet effe
 ## Mesurer la qualité avec le Lab IA
 
 Les comptes autorisés disposent d’un **Lab IA** séparant deux usages : l’analyse complète d’une
-Task réelle et les benchmarks reproductibles du Dispatcher, du Briefing, du Planner et des
+Task réelle et les benchmarks reproductibles du Dispatcher, du Planner et des
 exécuteurs Task/Conversation/Voice ainsi que des mécanismes Dream/Goal.
 
 Le [guide complet du Lab IA](lab-ai.md) explique comment importer un cas réel, construire une

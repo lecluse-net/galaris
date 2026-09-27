@@ -37,7 +37,6 @@ from ..agent.models import Agent
 _TERMINAL_STATUSES = (TaskStatus.SUCCESS, TaskStatus.ERROR)
 _ACTIVE_STATUSES = (
     TaskStatus.DISPATCH,
-    TaskStatus.BRIEFING,
     TaskStatus.EXEC,
     TaskStatus.PLAN,
 )
@@ -562,7 +561,6 @@ async def retry(task_id: UUID, expected_revision: int) -> Optional[Task]:
         )
         child.data = child_data
         child.execution_result = None
-        child.briefing_result = None
         child.feedback = None
         child.last_error = None
         child.next_attempt_at = None

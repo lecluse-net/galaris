@@ -448,7 +448,7 @@ function statusColor(status?: string): string {
   if (status === 'SUCCESS') return 'positive'
   if (status === 'ERROR') return 'negative'
   if (status === 'EXEC' || status === 'PLAN') return 'primary'
-  if (status === 'BRIEFING' || status === 'DISPATCH') return 'deep-purple'
+  if (status === 'DISPATCH') return 'deep-purple'
   return 'blue-grey'
 }
 

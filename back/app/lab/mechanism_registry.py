@@ -6,10 +6,9 @@ import json
 import inspect
 from functools import wraps
 from dataclasses import dataclass
-from collections.abc import Callable
 from typing import Any, Literal, cast
 
-from pydantic import BaseModel, Field, JsonValue
+from pydantic import BaseModel
 
 from app.agent import (
     evaluate_dispatcher_input,
@@ -21,9 +20,7 @@ from app.agent import (
     render_prompt_tree,
 )
 from app.agent.evaluation import (
-    BriefingChoice,
     Plan,
-    briefing_system_prompt,
     built_in_planner_lab_configuration,
 )
 from app.dream.evaluation import (
@@ -36,11 +33,7 @@ from app.dream.evaluation import (
 )
 from app.goal.evaluation import GoalJudgement, goal_tracking_system_prompt
 from app.llm import LLM, LLMCallPurpose, model_usages
-from app.llm.facade import (
-    record_text_inferences,
-    record_structured_inferences,
-    register_inference_output,
-)
+from app.llm.facade import record_text_inferences
 from app.llm.structured_service import (
     run_prompted,
     run_structured,
@@ -63,37 +56,8 @@ from .schemas import (
 )
 from .prompts import ANALYST_SYSTEM_PROMPT
 from app.agent.evaluation import (
-    render_briefing_input,
-    validate_briefing_resources,
     planner_evaluation_system_prompt,
 )
-
-
-class BriefingEvaluationOutput(BaseModel):
-    result: str = Field(min_length=1, max_length=8_000)
-    choices: list[BriefingChoice] = Field(default_factory=list[BriefingChoice], max_length=12)
-
-
-class _BriefingValidationContext(BaseModel):
-    resources: list[dict[str, JsonValue]]
-
-
-def _briefing_validator(
-    context: dict[str, JsonValue],
-) -> Callable[[BriefingEvaluationOutput], BriefingEvaluationOutput]:
-    frozen = _BriefingValidationContext.model_validate(context)
-
-    def validate(value: BriefingEvaluationOutput) -> BriefingEvaluationOutput:
-        validate_briefing_resources(value.model_dump(mode="json"), frozen.resources)
-        return value
-
-    return validate
-
-
-def register_inference_output_contracts() -> None:
-    register_inference_output(
-        "galaris.lab.briefing/v1", BriefingEvaluationOutput, validator_factory=_briefing_validator
-    )
 
 
 @dataclass(frozen=True)
@@ -131,50 +95,6 @@ class MechanismDefinition:
             return render_analysis_prompt(
                 payload, language=parameters["language"], user_context=parameters["user_context"]
             )[0]
-        if self.key == "briefing" and isinstance(value, dict):
-            native = cast(dict[str, Any], value)
-            grouped: dict[str, list[dict[str, Any]]] = {}
-            processes: list[dict[str, Any]] = []
-            for resource in native["resources"]:
-                if resource.get("kind", "tool") == "process":
-                    processes.append(resource)
-                else:
-                    grouped.setdefault(resource.get("label", ""), []).append(
-                        {
-                            "identifier": resource["identifier"],
-                            "description": resource.get("description", ""),
-                        }
-                    )
-            task_payload = {
-                "uri": native["task_uri"],
-                "label": native["label"],
-                "objective": native["objective"],
-                "effort": native["effort"],
-                "context": {
-                    key: native[key]
-                    for key in (
-                        "language",
-                        "message_type",
-                        "room_id",
-                        "sender",
-                        "attachments",
-                        "recent_attachments",
-                        "recent_images",
-                    )
-                },
-                "recent_messages": native["history"],
-            }
-            return render_briefing_input(
-                task_payload,
-                native["agent"],
-                {
-                    "tool_groups": [
-                        {"label": label, "functions": functions}
-                        for label, functions in grouped.items()
-                    ],
-                    "processes": processes,
-                },
-            )
         if self.executor is not None:
             if not isinstance(value, dict):
                 raise ValueError("Executor benchmark input must be a JSON object")
@@ -188,7 +108,6 @@ class MechanismDefinition:
                     "history",
                     "memories",
                     "resources",
-                    "briefing",
                     "plan",
                     "working_set",
                     "interrupted_objective",
@@ -263,25 +182,6 @@ _DEFINITIONS: tuple[MechanismDefinition, ...] = (
             "effort": "standard",
             "language": "en",
             "reasoning": "",
-        },
-    ),
-    MechanismDefinition(
-        key="briefing",
-        input_format="text",
-        output_format="json",
-        output_type=BriefingEvaluationOutput,
-        system_prompt=briefing_system_prompt(),
-        call_style="structured",
-        marker="You prepare a concise execution briefing",
-        default_input=(
-            "# Execution briefing input\n\n"
-            "## Task\n\nDescribe the task, its objective and constraints here.\n\n"
-            "## Executor\n\nDescribe the executor here.\n\n"
-            "## Available resources\n\nList the exact available resources here."
-        ),
-        default_output={
-            "result": "Describe the expected execution briefing.",
-            "choices": [],
         },
     ),
     MechanismDefinition(
@@ -763,24 +663,6 @@ async def evaluate_mechanism(
             model_field=model_usages.LAB,
         )
         return inference.output, inference.cost
-    if definition.key == "briefing":
-        register_inference_output_contracts()
-        with record_structured_inferences():
-            inference = await run_structured(
-                llm=llm,
-                output_type=BriefingEvaluationOutput,
-                prompt=prompt,
-                system_prompt=system_prompt_override or definition.system_prompt,
-                task_id=None,
-                agent_id=None,
-                temperature=0.0,
-                request_limit=3,
-                output_retries=1,
-                output_context={"resources": input_data["resources"]},
-                purpose=LLMCallPurpose.LAB_MECHANISM_RUN,
-                model_field=model_usages.LAB,
-            )
-        return inference.output.model_dump(mode="json"), inference.cost
     output_type = definition.output_type
     if definition.call_style == "prompted":
         inference = await run_prompted(

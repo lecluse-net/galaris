@@ -1221,7 +1221,7 @@ async def test_room_tasks_include_agent_work_outside_the_message_window(
     message = await _message(db, connection, room, 1, "Current exchange") if with_message else None
     ongoing = [
         Task(label=f"Ongoing {status.value}", agent_id=agent.id, status=status)
-        for status in (TaskStatus.CREATE, TaskStatus.DISPATCH, TaskStatus.BRIEFING, TaskStatus.PLAN, TaskStatus.EXEC)
+        for status in (TaskStatus.CREATE, TaskStatus.DISPATCH, TaskStatus.PLAN, TaskStatus.EXEC)
     ]
     waiting = Task(
         label="Waiting for a reply", agent_id=agent.id, status=TaskStatus.EXEC,

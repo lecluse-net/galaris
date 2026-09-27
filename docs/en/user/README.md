@@ -288,13 +288,13 @@ In native Chat, placing `@task` anywhere in the message immediately creates a du
 
 1. The request created on this screen becomes a durable Task.
 2. The Dispatcher chooses direct execution or a plan, then sets the effort.
-3. The planner prepares decomposable work; automatic briefing is currently disabled.
+3. The planner prepares decomposable work.
 4. The driver executes the Agent with its authorized Tools.
 5. Galaris records the trace and result, then resumes any parent Tasks.
 
 Text and voice conversations follow their own configured controller and executor. They do not go through the Task Dispatcher; when they need durable work, they explicitly create a linked Task.
 
-## Planner and Briefing: Optional Aids
+## Planner: Decomposing Coordinated Work
 
 The planner breaks down only an objective that requires several coordinated blocks of work. Each leaf of the plan is a real Task. A step is not intended to “think” or “write the final response”: it must produce a verifiable part of the result.
 
@@ -309,14 +309,13 @@ A small mechanical batch of up to five known items can remain one Task, such as 
 three documents to supplied names. Reading, transforming and verifying each document remains
 per-document work, even for a small batch. Multiple targets alone do not trigger the planner.
 
-Briefing can prepare a `high` execution by recalling the objective, constraints, relevant resources, and completion checks. It is currently disabled to measure its added value against autonomous Task objectives. Its previous traces remain available for consultation.
 
 These aids are enabled per driver. In the current configuration:
 
-| Driver | Planner | Briefing |
-|---|---:|---:|
-| Internal (Pydantic AI) | yes | no, disabled for evaluation |
-| Hermès | no | no |
+| Driver | Planner |
+|---|---:|
+| Internal (Pydantic AI) | yes |
+| Hermès | no |
 
 Hermès therefore retains its own capabilities without being confined to a second harness.
 
@@ -331,7 +330,6 @@ A planner may also request a single series of clarifications before creating its
 | Displayed status | Practical meaning |
 |---|---|
 | Creation / dispatch | the request is being routed |
-| Briefing | `high` preparation is in progress |
 | Execution | the Agent is working or calling Tools |
 | Plan | Galaris is creating or advancing through the steps |
 | Paused | the Task is waiting for a response, a child step, or a resume |
@@ -373,7 +371,7 @@ Never copy an API key or password into a conversation. Secrets are configured in
 
 ## Measuring Quality with the AI Lab
 
-Authorized accounts have access to an **AI Lab** that separates two uses: full analysis of a real Task and reproducible benchmarks for the Dispatcher, Briefing, Planner, and Task/Conversation/Voice executors, as well as Dream/Goal mechanisms.
+Authorized accounts have access to an **AI Lab** that separates two uses: full analysis of a real Task and reproducible benchmarks for the Dispatcher, Planner, and Task/Conversation/Voice executors, as well as Dream/Goal mechanisms.
 
 The [complete AI Lab guide](lab-ai.md) explains how to import a real case, build a reference, run a candidate model, assess relevance, and calibrate the automatic judge. A percentage in the Lab is never sufficient proof on its own: it must be interpreted together with the dimensions, coverage, errors, and dataset.
 

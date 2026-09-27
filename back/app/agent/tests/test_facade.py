@@ -16,7 +16,6 @@ from app.agent.contracts import (
     AgentRunContext,
     AgentRunRequest,
     AgentSnapshot,
-    BriefingResult,
     ExecutionResult,
     ResolvedModel,
 )
@@ -367,12 +366,11 @@ async def test_build_run_request_freezes_the_orm_task(
 
 
 @pytest.mark.asyncio
-async def test_internal_high_does_not_inherit_a_historical_briefing(
+async def test_internal_high_executes_directly(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     task = _task()
     task.effort = "high"
-    task.set_briefing_result(BriefingResult(result="historical briefing"))
     monkeypatch.setattr(
         facade,
         "resolve_execution_model",
@@ -382,17 +380,14 @@ async def test_internal_high_does_not_inherit_a_historical_briefing(
 
     request = await facade.build_run_request(task)
 
-    assert request.briefing_result is None
-    assert request.metadata["briefing_text"] == ""
 
 
 @pytest.mark.asyncio
-async def test_hermes_high_uses_direct_without_inheriting_a_briefing(
+async def test_hermes_high_executes_directly(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     task = _task()
     task.agent.agent_driver = "hermes"
-    task.set_briefing_result(BriefingResult(result="stale internal briefing"))
     monkeypatch.setattr(facade, "validate_agent_driver", lambda _code: "hermes")
     monkeypatch.setattr(facade, "resolve_driver", lambda _code: HERMES_DRIVER)
     monkeypatch.setattr(
@@ -415,8 +410,6 @@ async def test_hermes_high_uses_direct_without_inheriting_a_briefing(
     request = await facade.build_run_request(task)
 
     assert request.execution_strategy == "direct"
-    assert request.briefing_result is None
-    assert request.metadata["briefing_text"] == ""
 
     task.data[facade.RUN_CHECKPOINT_DATA_KEY] = {
         "driver_code": "hermes",

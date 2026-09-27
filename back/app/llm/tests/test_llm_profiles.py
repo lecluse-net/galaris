@@ -110,7 +110,6 @@ async def test_text_usages_share_the_expected_profile_tiers() -> None:
     assert model_usages.DREAM == model_usages.TEXT_ULTRA_LOW
     assert model_usages.DISPATCHER == model_usages.TEXT_LOW
     assert model_usages.CONVERSATION == model_usages.TEXT_LOW
-    assert model_usages.BRIEFING == model_usages.TEXT_STANDARD
     assert model_usages.EXECUTOR == model_usages.TEXT_STANDARD
     assert model_usages.GOAL == model_usages.TEXT_STANDARD
     assert model_usages.EXECUTOR_HIGH == model_usages.TEXT_HIGH

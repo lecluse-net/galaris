@@ -322,7 +322,7 @@ substantiellement identiques. Une autre cible, un autre dépôt, une autre resso
 livrable ou un résultat vérifiable indépendamment reçoit une nouvelle Task, même si la demande
 découle du même incident. L'URI d'une Task amendée reste unique, mais le round expose son
 `TaskAmendment` comme lignée d'audit. Lorsqu'un amendement interrompt une exécution, le nouveau
-dispatcher et le nouveau briefing voient l'objectif fusionné ; le checkpoint conserve uniquement
+dispatcher et l’exécuteur voient l'objectif fusionné ; le checkpoint conserve uniquement
 son journal d'effets anti-rejeu et abandonne l'ancien historique fournisseur. Un résultat ou un
 checkpoint portant l'empreinte d'un objectif antérieur est refusé avant persistance terminale.
 Le scheduler clôt alors l'ancien attempt comme annulé, sans consommer de retry ni inscrire une

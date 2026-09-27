@@ -9,7 +9,6 @@ its context and expected output, with a name and optional provenance.
 | Lab | Item variable | Evaluated result |
 |---|---|---|
 | Dispatcher | Request | Route, effort, action, language and rationale |
-| Briefing | Objective | Briefing and selected resources |
 | Planner | Objective | Plan or clarification |
 | Topic detection | Ordered exchange | Topic for each message |
 | Memory extraction | Exchange or Task report | CREATE, LINK or IGNORE |
@@ -29,7 +28,7 @@ Enable the agent's **Lab Galaris** connection and assign the **Galaris Lab** sys
 (`galaris-lab`) in its skill authorizations. The **Galaris** agent created during installation
 already has this skill enabled. Other agents inherit its disabled default; the Lab connection
 still requires explicit activation in every case. Fifty tools
-cover all eleven labs: discover contracts, create and clone datasets, edit experimental
+cover all ten labs: discover contracts, create and clone datasets, edit experimental
 prompts, start, monitor, cancel, resume, rejudge and compare benchmarks, and submit
 attributed agent assessments.
 
@@ -58,11 +57,11 @@ edit them. The **Save** bar stays accessible at the bottom of the form and indic
 changes.
 
 Fields follow the treatment: Topic catalog and context window, memory corpus and ranking,
-Briefing resources, Planner limits, or executor context and simulated tool responses.
+Planner limits, or executor context and simulated tool responses.
 
 ## Generate a synthetic dataset
 
-Each of the eleven labs offers **Generate a synthetic dataset**. Choose a new name, generator
+Each of the ten labs offers **Generate a synthetic dataset**. Choose a new name, generator
 model, language, 1–20 cases and coverage categories. Describe the domain, scenarios and
 constraints; the dialog explains the lab's specific focus. Request at least one case per category.
 
@@ -138,7 +137,7 @@ again from the dataset creates a new execution.
 
 ## Compare before and after
 
-Under **Benchmarks**, open **Before / after**, available in all eleven labs with read access.
+Under **Benchmarks**, open **Before / after**, available in all ten labs with read access.
 Choose a dataset and evaluation on each side, then the change being studied: model, prompt,
 or parameters. Selectors offer the 500 most recent evaluations in each dataset. Click
 **Compare**: identical inputs, references and repetitions are paired, even across datasets.

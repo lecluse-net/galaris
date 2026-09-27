@@ -26,7 +26,7 @@ SPEC = AgentDriverSpec(
     label_key="fixture",
     factory_path="fixture:create",
     tool_profile=ToolExposureProfile(),
-    pipeline_policy=DriverPipelinePolicy(use_planner=False, use_briefing=False),
+    pipeline_policy=DriverPipelinePolicy(use_planner=False, ),
 )
 
 

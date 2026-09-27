@@ -1,7 +1,7 @@
 import api from '@/core/api'
 import type { AxiosResponse } from 'axios'
 
-export type DispatcherRoute = 'EXEC' | 'BRIEFING' | 'PLAN' | 'END'
+export type DispatcherRoute = 'EXEC' | 'PLAN' | 'END'
 export type DispatcherEffort = 'standard' | 'high'
 export type EvaluationRunStatus = 'queued' | 'running' | 'completed' | 'partial' | 'failed' | 'cancelled'
 

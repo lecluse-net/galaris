@@ -62,13 +62,6 @@ export const TASK_STATUS_CONFIG: Record<TaskStatus, TaskStatusConfig> = {
     labelKey: 'task.status.DISPATCH',
     isAction: true
   },
-  BRIEFING: {
-    icon: 'manage_search',
-    color: 'amber-9',
-    badgeTone: 'active',
-    labelKey: 'task.status.BRIEFING',
-    isAction: true
-  },
   EXEC: {
     icon: 'play_circle',
     color: 'blue',

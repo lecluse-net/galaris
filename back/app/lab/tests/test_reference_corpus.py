@@ -51,7 +51,7 @@ async def test_reference_corpus_can_be_saved_resolved_and_checked(db, filename):
             revision=saved.revision, **case,
         ))
         _, native = resolve_input(corpus["mechanism"], saved.input_data, corpus["parameters"])
-        if corpus["mechanism"] in {"briefing", "dispatcher"}:
+        if corpus["mechanism"] in {"dispatcher"}:
             assert native["objective"].startswith("<p>")
         else:
             assert native["message"] == case["input_data"]["variable_value"]

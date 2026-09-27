@@ -30,8 +30,7 @@ async def test_standard_only_harness_dispatches_without_loading_model(monkeypatc
     from app.agent.registry import INTERNAL_HARNESS
 
     spec = replace(INTERNAL_HARNESS, pipeline_policy=DriverPipelinePolicy(
-        use_planner=False, use_briefing=False,
-    ))
+        use_planner=False, ))
     monkeypatch.setattr(Dispatcher, "_task_executor_driver", staticmethod(lambda task: spec))
     inference = AsyncMock(side_effect=AssertionError("No choice remains"))
     model_check = AsyncMock(side_effect=AssertionError("No model should be resolved"))
@@ -50,7 +49,6 @@ async def test_standard_only_harness_dispatches_without_loading_model(monkeypatc
 @pytest.mark.parametrize("route, effort, phase", [
     ("EXEC", "standard", TaskStatus.DISPATCH),
     ("EXEC", "high", TaskStatus.DISPATCH),
-    ("BRIEFING", "high", TaskStatus.BRIEFING),
     ("PLAN", "high", TaskStatus.PLAN),
 ])
 async def test_dispatcher_choice_drives_the_pipeline_when_all_capabilities_exist(
@@ -61,10 +59,9 @@ async def test_dispatcher_choice_drives_the_pipeline_when_all_capabilities_exist
     from app.agent.registry import INTERNAL_HARNESS
 
     spec = replace(INTERNAL_HARNESS, pipeline_policy=DriverPipelinePolicy(
-        use_planner=True, use_briefing=True,
-        uses_llm_calls=True,
+        use_planner=True, uses_llm_calls=True,
         execution_efforts=frozenset({"standard", "high"}),
-        briefing_efforts=frozenset({"high"}),
+
     ))
     monkeypatch.setattr(Dispatcher, "_task_executor_driver", staticmethod(lambda task: spec))
     infer = AsyncMock(return_value=SimpleNamespace(
@@ -83,11 +80,9 @@ async def test_dispatcher_choice_drives_the_pipeline_when_all_capabilities_exist
     assert result.pipeline_policy["dispatch_choices"] == [
         {"route": "EXEC", "effort": "standard"},
         {"route": "EXEC", "effort": "high"},
-        {"route": "BRIEFING", "effort": "high"},
         {"route": "PLAN", "effort": "high"},
     ]
     prompt = infer.await_args.kwargs["system_prompt"]
-    assert "route=BRIEFING, effort=high" in prompt
     assert "route=EXEC, effort=high" in prompt
 
 
@@ -102,8 +97,7 @@ async def test_selected_provider_policy_overrides_shared_network_driver(monkeypa
     selected = ConfiguredHarnessSelection(
         id=uuid4(), name="Provider", provider_code="codex", driver_code="openai_messages",
         revision=1, status="ready", pipeline_policy=DriverPipelinePolicy(
-            use_planner=False, use_briefing=False,
-            execution_efforts=frozenset({"standard", "high"}),
+            use_planner=False, execution_efforts=frozenset({"standard", "high"}),
             uses_llm_calls=uses_llm_calls,
         ),
     )
@@ -164,9 +158,9 @@ def test_dispatcher_contract_upgrade_preserves_frozen_inferences(kind, output_ty
         output_registry.resolve(StructuredOutputSpec(
             contract="galaris.dispatcher.active/v2", json_schema=schema_v2,
         ))
-        spec_v3 = output_registry.for_type(TaskDispatchDecision, None, mode="tool")
-        assert spec_v3.contract == "galaris.dispatcher.active/v3"
-        assert spec_v3.json_schema["properties"]["route"]["enum"] == ["EXEC", "BRIEFING", "PLAN"]
+        spec_v4 = output_registry.for_type(TaskDispatchDecision, None, mode="tool")
+        assert spec_v4.contract == "galaris.dispatcher.active/v4"
+        assert spec_v4.json_schema["properties"]["route"]["enum"] == ["EXEC", "PLAN"]
 
 
 @pytest.fixture(autouse=True)
@@ -759,7 +753,6 @@ async def test_dispatcher_prompt_lists_only_available_routes():
     assert "${languages}" in dispatcher_mod._DISPATCHER_SYSTEM_PROMPT
     assert "- **EXEC**" in prompt
     assert "the default route" in prompt
-    assert "execution briefing" not in prompt
     assert "- **PLAN**" not in prompt
     assert "- **END**" not in prompt
 
@@ -778,13 +771,12 @@ async def test_dispatcher_plan_gate_reserves_planning_for_independent_work_units
     prompt = await Dispatcher()._routing_gate({"EXEC", "PLAN"}, _task())
 
     assert "one coherent but demanding work unit" in prompt
-    assert "execution briefing" not in prompt
     assert "at least two independently executable, meaningful work units" in prompt
     assert "one cohesive artifact requires several phases" in prompt
 
 
 @pytest.mark.asyncio
-async def test_hermes_route_gate_does_not_advertise_galaris_briefing(
+async def test_hermes_route_gate_exposes_execution_only(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     task = _task()
@@ -798,7 +790,6 @@ async def test_hermes_route_gate_does_not_advertise_galaris_briefing(
     prompt = await Dispatcher()._routing_gate({"EXEC"}, task)
 
     assert "or high for one coherent" in prompt
-    assert "execution briefing" not in prompt
 
 
 @pytest.mark.asyncio
@@ -847,7 +838,7 @@ async def test_dispatcher_service_persists_detected_language(monkeypatch: pytest
 
 
 @pytest.mark.asyncio
-async def test_dispatcher_routes_high_exec_directly_while_briefing_is_disabled(
+async def test_dispatcher_routes_high_exec_directly_without_preparation(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     task = _task(effort="high")
@@ -1027,15 +1018,16 @@ async def test_soft_plan_directive_respects_driver_route_capabilities(
 
 
 @pytest.mark.asyncio
-async def test_fully_forced_task_skips_llm():
+@pytest.mark.parametrize("route, effort", [("EXEC", "standard"), ("EXEC", "high")])
+async def test_fully_forced_task_skips_llm(route, effort):
     # Forced route and effort yield a deterministic decision without LLM inference.
-    task = _task(forced_route="EXEC", forced_effort="standard")
+    task = _task(forced_route=route, forced_effort=effort)
 
     result = await Dispatcher().run(task)
 
     assert result.success is True
     assert result.decision.route == "EXEC"
-    assert result.decision.effort == "standard"
+    assert result.decision.effort == effort
     assert result.cost == 0.0
     assert result.prompt == ""
 
@@ -1249,8 +1241,6 @@ async def test_conversation_profile_only_allows_direct_standard_exec_or_end(
     assert result.allowed_routes == ["EXEC", "END"]
     assert result.pipeline_policy == {
         "use_planner": False,
-        "use_briefing": False,
-        "briefing_efforts": [],
     }
     assert captured["clamp_to"] == ("EXEC", "END")
     assert captured["force_effort"] == "standard"

@@ -2,7 +2,7 @@
 
 # Architecture et théorie d’évaluation du Lab IA
 
-Le Lab expose onze traitements évaluables avec un contrat commun : **une variable métier par
+Le Lab expose dix traitements évaluables avec un contrat commun : **une variable métier par
 item**, son contexte propre, des paramètres partagés et une sortie à évaluer.
 Le [guide opérateur](../user/lab-ai.md) décrit l’écran ; l’[ADR 0078](../../../project/decisions/0078-lab-variable-and-judgment-campaigns.md)
 décrit la séparation des deux passes. Les contrats et tests du dépôt font foi.
@@ -26,7 +26,6 @@ le schéma de sortie et la rubrique.
 | Traitement | Variable unique | Résultat évalué |
 |---|---|---|
 | Dispatcher | Demande | Décision de routage |
-| Briefing | Objectif | Préparation et choix de ressources |
 | Planner | Objectif | Plan ou demande de clarification |
 | Classification thématique | Textes de l’échange | Affectations thématiques |
 | Extraction mémoire | Contenu source | Classement et opérations mémoire |
@@ -232,7 +231,7 @@ L’analyse Markdown est un rapport facultatif fondé sur les résultats enregis
 
 Avant d’ajouter des cas, écrire les échecs que le benchmark doit détecter. Par exemple :
 
-- Briefing qui oublie une interdiction mais cite tous les outils ;
+- Plan qui oublie une interdiction mais cite tous les outils ;
 - Planner techniquement élégant qui change le livrable demandé ;
 - extraction mémoire qui conserve une information éphémère ou sensible ;
 - apprentissage qui conclut à une cause non prouvée ;

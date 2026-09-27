@@ -33,7 +33,7 @@ and rejection of incomplete results remain unchanged.
 See [0139](../../../../project/decisions/0139-provider-output-capacity.md).
 
 Internal Chat/Responses models use the durable inference facade in `app.llm`. Dispatcher
-and Briefing also use the structured adapter with a frozen schema and validation context.
+also uses the structured adapter with a frozen schema and validation context.
 Admission is committed before the worker starts; its leases, events and results replace
 neither Task attempts nor tool checkpoints. `LLMCall` remains the cost authority for physical
 calls. The Lab Memory extraction pilot uses the same journal while preserving business retries.
@@ -125,7 +125,7 @@ Task PostgreSQL ── app.task scheduler/agent_adapter ──► AgentTaskPort
                               │
                  dispatcher + driver policy
                               │
-                   optional planner / briefing
+                   optional planner
                               │
              shared context providers, fail-open
  governed history if required + current Working Set
@@ -156,8 +156,8 @@ Task PostgreSQL ── app.task scheduler/agent_adapter ──► AgentTaskPort
 |---|---|
 | Phase, lease, attempt, pause, resumption | `app.task` |
 | Available driver and descriptor | `app.agent` registry |
-| EXEC/BRIEFING/PLAN route and effort | `app.agent` dispatcher bounded by the selected harness policy |
-| Planner and briefing activation | `DriverPipelinePolicy` |
+| EXEC/PLAN route and effort | `app.agent` dispatcher bounded by the selected harness policy |
+| Planner activation | `DriverPipelinePolicy` |
 | All LLM usage | Text level or specialized column of the effective profile, except for the durable reasoning override carried by the Task |
 | Standard/high model | `app.agent` resolver, once per run |
 | Direct adapter or internal Kanban in Hermes | `bridge.hermes.driver` |
@@ -260,8 +260,8 @@ automatically; they remain flagged as blockers until completion.
    the same document are insufficient, even when saved separately. If separation or the benefit
    of coordination is unclear, `EXEC high` is preferred. An explicit forced choice is honored
    without hidden reevaluation.
-4. The planner or briefing runs when the dispatcher selects that route from the harness's
-   capabilities. `EXEC high` implies no automatic briefing for new decisions. The
+4. The planner runs when the dispatcher selects that route from the harness's
+   capabilities. `EXEC high` runs directly. The
    planner receives all names from the effective MCP catalog, without a global cap, followed by a
    detailed hybrid top-k calculated after permission filtering. The catalog version is persisted
    with the plan, and each selected identifier is validated against it. The model tier and its
@@ -274,7 +274,7 @@ automatically; they remain flagged as blockers until completion.
    admission with `@effort`. This command directly implies `@task`, while `@task` alone retains
    the profile's reasoning effort. Both control tags are removed from visible text and their
    intent is carried in server metadata. The durable value takes precedence over every text level
-   of the profile for constructing the objective, the dispatcher, the planner, the briefing, the
+   of the profile for constructing the objective, the dispatcher, the planner, the
    synthesis, and the executor. It is inherited by planned or delegated descendants; it changes
    neither the `standard`/`high` execution effort nor specialized image, audio, or vector usage.
    Once `PLAN` is selected—automatically for multiple genuinely decomposable units or explicitly
@@ -297,7 +297,7 @@ automatically; they remain flagged as blockers until completion.
    clarification-cycle contract; these safeguards are not experimental text.
    Each text mechanism reads its shared level from the agent's single effective profile:
    `ultra-low` for Dream, `low` for the dispatcher and rapid conversation, `standard` for the
-   briefing, executor, and Goal tracking, and `high` for the high executor, planner, and Lab.
+   executor, and Goal tracking, and `high` for the high executor, planner, and Lab.
    `Agent.profile_id = NULL` selects the current profile; a populated identifier selects only that
    profile, and an empty column consults no other profile. The planner's model is reused for its
    final synthesis.
@@ -310,7 +310,7 @@ automatically; they remain flagged as blockers until completion.
    already produced a standalone objective, the dispatcher receives that label and objective
    directly; providers no longer reread the Messenger, Memory, or historical continuity session
    consumed by that call. Room and interlocutor context remains deterministic in `Task.data` and
-   `messaging_context`, while the Working Set and contributions from the plan, briefing, and
+   `messaging_context`, while the Working Set and contributions from the plan, and
    harness may still enrich the current work. For other Tasks, the Memory provider receives
    structured identifiers so that a name included in the request can never serve as an identity
    boundary. For a human Task, recall combines nonconversational memories and those of the
@@ -362,7 +362,7 @@ automatically; they remain flagged as blockers until completion.
    its accounting. The Harness receives only the Task and run identities; the LLM service derives
    the round again on the server, cross-checks the durable `ConversationTaskLink` against the
    `conversation_round_id` frozen in the Task data, and rejects any divergence. The `purpose` field
-   distinguishes, in particular, `agent.dispatch`, `agent.briefing`, `agent.planning`, and
+   distinguishes, in particular, `agent.dispatch`, `agent.planning`, and
    `agent.exec`, independently of the concrete Harness.
 7. The facade invokes the registered driver, normalizes its streamed or nonstreamed mode, enforces
    a single terminal result, and projects semantic events into the `TaskAttempt` timeline. Token
@@ -595,8 +595,8 @@ are not even resolved.
 The conversational dispatcher profile responds directly to humans and arbitrates `EXEC`/`END`
 for a message emitted by another AI. This `END` terminates only the conversational round without
 a response; `EXEC` always launches the direct controller with `standard` effort. This profile
-exposes neither `PLAN`, nor `high` effort, nor briefing. `END` is no longer part of the active
-Task dispatcher contract, which is limited to `EXEC`/`BRIEFING`/`PLAN`. Neither structured output asks the
+exposes neither `PLAN` nor `high` effort. `END` is no longer part of the active
+Task dispatcher contract, which is limited to `EXEC`/`PLAN`. Neither structured output asks the
 model for a justification: they contain only the routing fields that are needed and are capped at
 256 tokens. The historical field on the durable decision remains reserved for locally produced
 diagnostics and deterministic decisions.
@@ -639,8 +639,7 @@ These directives never make the conversational controller plan: they use a deter
 path, then call the canonical admission operation before any
 conversational LLM runtime. On a durable Task, a message directive is a preference negotiated
 after resolving the routes declared by `AgentDriverSpec.pipeline_policy`; it therefore cannot
-activate a step that the driver does not expose. `@briefing` is currently unavailable because no
-active driver exposes briefing. Only an explicit creation `forced_route` remains a strict
+activate a step that the driver does not expose. Only an explicit creation `forced_route` remains a strict
 constraint.
 
 A simple stop command with a unique active target can execute before the dispatcher and
@@ -815,13 +814,10 @@ same voice-session persistence.
 
 ## Execution Matrix
 
-| Driver | `standard` effort | `high` effort | Briefing |
-|---|---|---|---|
-| `internal` | Direct Pydantic AI execution | Direct Pydantic AI execution | never (disabled for evaluation) |
-| `hermes` | Direct `/v1/runs` session | Direct `/v1/runs` session, `high` model | never |
-
-The mechanism, its contracts, historical results, and Lab benchmarks remain present, but the
-internal driver's static policy no longer routes new Tasks to `BRIEFING`.
+| Driver | `standard` effort | `high` effort |
+|---|---|---|
+| `internal` | Direct Pydantic AI execution | Direct Pydantic AI execution |
+| `hermes` | Direct `/v1/runs` session | Direct `/v1/runs` session, `high` model |
 
 The internal constant `HERMES_HIGH_KANBAN_ENABLED` is currently disabled. It is neither an
 environment parameter nor an administrable parameter: new Hermes `standard` and `high`
@@ -901,7 +897,7 @@ longer been available since ADR 0058, and resumption fails explicitly.
 
 - Contracts: `back/app/agent/contracts.py`, `task_port.py`.
 - Orchestration: `back/app/agent/facade.py`, `dispatcher.py`, `planner_service.py`,
-  `briefing_service.py`, `model_resolver.py`.
+  `model_resolver.py`.
 - Internal harness: `back/app/harness/driver.py`, `executor.py`, `run_control.py`,
   `checkpoint.py`.
 - Tool discovery: `back/app/tools/catalog.py`, `tool_search_service.py`, and

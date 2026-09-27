@@ -5,7 +5,7 @@
 Le fichier `back/app/lab/reference_corpus.json` contient six cas synthétiques versionnés :
 édition HTML concurrente, URI de pièce jointe sans console, injection dans un document,
 livraison non confirmée, distinction HTML/Markdown et consommation sans budget imposé.
-Il exerce le briefing et prépare la revue des actions proposées. Il ne prouve pas qu'un
+Il évalue les réponses de l’exécuteur avec des outils simulés et prépare leur revue. Il ne prouve pas qu'un
 agent a effectivement livré un fichier ou réussi une tâche réelle.
 
 Dans le conteneur backend, `python scripts/import_lab_reference.py` affiche le corpus.

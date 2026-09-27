@@ -10,7 +10,7 @@ const risks = { assessed_pairs: 12, introduced_critical: 1, pass_to_fail: 1, dim
 const metric = { pairs: 12, left_median: 2, right_median: 1, median_delta: -1 }
 const performance = { first_output: metric, duration: metric, cost: { ...metric, left_median: 0.02, right_median: 0.01, median_delta: -0.01 }, quality: { ...metric, left_median: 70, right_median: 75, median_delta: 5 } }
 
-async function routes(page, mechanism = 'briefing') {
+async function routes(page, mechanism = 'planner') {
   await jsonRoute(page, `**/api/evaluation/${mechanism}/datasets/baseline/runs?*`, [before, after])
   await jsonRoute(page, `**/api/evaluation/${mechanism}/datasets/variant/runs?*`, [after])
 }
@@ -29,14 +29,14 @@ for (const viewport of [{ width: 1440, height: 1000 }, { width: 390, height: 844
     test('global risk filters reveal off-page regressions despite a higher overall score', async ({ page }) => {
       await routes(page)
       const requests = []
-      await page.route('**/api/evaluation/briefing/runs/compare?*', route => {
+      await page.route('**/api/evaluation/planner/runs/compare?*', route => {
         const params = Object.fromEntries(new URL(route.request().url()).searchParams)
         requests.push(params)
         return route.fulfill({ json: { ...comparison, risks, performance, items: params.focus === 'all'
           ? [item('Ordinary case')]
           : [item('Previously off-page case', { introduced_critical: true, pass_to_fail: true, dimension_deltas: { grounding: -60 }, score_delta: 5, left_first_output_seconds: 2, right_first_output_seconds: 1 })] } })
       })
-      await mount(page, 'app/lab/components/LabComparisonDialog.vue', { props: { mechanism: 'briefing', datasets, initialDatasetId: 'baseline', modelValue: true } })
+      await mount(page, 'app/lab/components/LabComparisonDialog.vue', { props: { mechanism: 'planner', datasets, initialDatasetId: 'baseline', modelValue: true } })
       await choose(page)
       await page.getByRole('button', { name: 'Compare', exact: true }).click()
       await expect(page.getByRole('heading', { name: /Ordinary case/ })).toBeVisible()
@@ -63,14 +63,14 @@ for (const viewport of [{ width: 1440, height: 1000 }, { width: 390, height: 844
     test('read-only comparison shows zero scores, evidence, missing results, pagination and reversed selections', async ({ page }) => {
       await routes(page)
       const requests = []
-      await page.route('**/api/evaluation/briefing/runs/compare?*', route => {
+      await page.route('**/api/evaluation/planner/runs/compare?*', route => {
         const params = Object.fromEntries(new URL(route.request().url()).searchParams)
         requests.push(params)
         return route.fulfill({ json: Number(params.offset) > 0 ? { ...comparison, items: [item('Next case')], next_offset: null } : {
           ...comparison, next_offset: 50, items: [item('A result'), item('Missing result', { pairing: 'missing', score_delta: null, right_score: null, right_output: null }), item('Unjudged result', { score_delta: null, right_score: null, right_judgment: null, right_verdict: null })],
         } })
       })
-      await mount(page, 'app/lab/components/LabComparisonDialog.vue', { props: { mechanism: 'briefing', datasets, initialDatasetId: 'baseline', modelValue: true } })
+      await mount(page, 'app/lab/components/LabComparisonDialog.vue', { props: { mechanism: 'planner', datasets, initialDatasetId: 'baseline', modelValue: true } })
       const dialog = page.getByRole('dialog')
       await expect(dialog.getByRole('button', { name: 'Compare', exact: true })).toBeDisabled()
       await choose(page)
@@ -115,16 +115,16 @@ for (const viewport of [{ width: 1440, height: 1000 }, { width: 390, height: 844
 
 test('errors can be retried and late comparisons cannot cross selections or Lab context', async ({ page }) => {
   await routes(page)
-  await routes(page, 'planner')
+  await routes(page, 'task_executor')
   let resolveLate, requested = false, failed = true
-  await page.route('**/api/evaluation/briefing/runs/compare?*', async route => {
+  await page.route('**/api/evaluation/planner/runs/compare?*', async route => {
     if (failed) { failed = false; return route.fulfill({ status: 503, json: { detail: 'Synthetic unavailable' } }) }
     requested = true
     await new Promise(resolve => { resolveLate = resolve })
     await route.fulfill({ json: comparison }).catch(() => {})
   })
-  await jsonRoute(page, '**/api/evaluation/planner/runs/compare?*', { ...comparison, comparable: false, blockers: ['corpus', 'judge', 'ambiguous_case_pairing'], items: [item('Ambiguous', { pairing: 'ambiguous', score_delta: null })] })
-  await mount(page, 'app/lab/components/LabComparisonDialog.vue', { props: { mechanism: 'briefing', datasets, initialDatasetId: 'baseline', modelValue: true } })
+  await jsonRoute(page, '**/api/evaluation/task_executor/runs/compare?*', { ...comparison, comparable: false, blockers: ['corpus', 'judge', 'ambiguous_case_pairing'], items: [item('Ambiguous', { pairing: 'ambiguous', score_delta: null })] })
+  await mount(page, 'app/lab/components/LabComparisonDialog.vue', { props: { mechanism: 'planner', datasets, initialDatasetId: 'baseline', modelValue: true } })
   await choose(page)
   await page.getByRole('button', { name: 'Compare', exact: true }).click()
   await expect(page.getByRole('alert')).toContainText('Synthetic unavailable')
@@ -134,7 +134,7 @@ test('errors can be retried and late comparisons cannot cross selections or Lab 
   await page.getByRole('option', { name: 'Prompt', exact: true }).click()
   resolveLate()
   await expect(page.getByText('Original answer', { exact: true })).not.toBeVisible()
-  await page.evaluate(() => window.testApp.setProps({ mechanism: 'planner' }))
+  await page.evaluate(() => window.testApp.setProps({ mechanism: 'task_executor' }))
   await choose(page)
   await page.getByRole('button', { name: 'Compare', exact: true }).click()
   await expect(page.getByRole('status')).toContainText('Different corpora')
@@ -145,7 +145,7 @@ test('errors can be retried and late comparisons cannot cross selections or Lab 
   await expect(page.getByText('Changed answer', { exact: true })).not.toBeVisible()
 })
 
-for (const mechanism of ['dispatcher', 'task_analysis', 'briefing', 'planner', 'topic_classification', 'memory_extraction', 'outcome_reflection', 'goal_tracking', 'task_executor', 'conversation_executor', 'voice_executor']) {
+for (const mechanism of ['dispatcher', 'task_analysis', 'planner', 'topic_classification', 'memory_extraction', 'outcome_reflection', 'goal_tracking', 'task_executor', 'conversation_executor', 'voice_executor']) {
   test(`${mechanism}: comparison is reachable without edit permission`, async ({ page }) => {
     await routes(page, mechanism)
     await jsonRoute(page, '**/api/evaluation/config', { llms: [], decision_llms: [] })
@@ -165,14 +165,14 @@ for (const mechanism of ['dispatcher', 'task_analysis', 'briefing', 'planner', '
 
 test('run-list retry, late dataset response, empty and incomplete evaluations stay explicit', async ({ page }) => {
   let failure = true, release, pending = false
-  await page.route('**/api/evaluation/briefing/datasets/baseline/runs?*', route => route.fulfill(failure ? { status: 503, json: { detail: 'Runs unavailable' } } : { json: [before, after] }))
-  await page.route('**/api/evaluation/briefing/datasets/variant/runs?*', async route => {
+  await page.route('**/api/evaluation/planner/datasets/baseline/runs?*', route => route.fulfill(failure ? { status: 503, json: { detail: 'Runs unavailable' } } : { json: [before, after] }))
+  await page.route('**/api/evaluation/planner/datasets/variant/runs?*', async route => {
     pending = true
     await new Promise(resolve => { release = resolve })
     await route.fulfill({ json: [run('obsolete', 'Obsolete selection')] })
   })
-  await jsonRoute(page, '**/api/evaluation/briefing/runs/compare?*', { ...comparison, left: { ...before, status: 'partial', judged_cases: 0 }, items: [] })
-  await mount(page, 'app/lab/components/LabComparisonDialog.vue', { props: { mechanism: 'briefing', datasets, initialDatasetId: 'baseline', modelValue: true } })
+  await jsonRoute(page, '**/api/evaluation/planner/runs/compare?*', { ...comparison, left: { ...before, status: 'partial', judged_cases: 0 }, items: [] })
+  await mount(page, 'app/lab/components/LabComparisonDialog.vue', { props: { mechanism: 'planner', datasets, initialDatasetId: 'baseline', modelValue: true } })
   await expect(page.getByRole('alert')).toHaveCount(2)
   failure = false
   await page.getByRole('button', { name: 'Retry', exact: true }).first().click()

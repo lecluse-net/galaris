@@ -42,7 +42,6 @@ async def test_batch_activity_excludes_other_runs_auxiliary_calls_and_unmanaged_
 @pytest.mark.parametrize(
     "purpose",
     [
-        LLMCallPurpose.AGENT_BRIEFING,
         LLMCallPurpose.AGENT_PLANNING,
         LLMCallPurpose.AGENT_PLANNING_RECOVERY,
         LLMCallPurpose.AGENT_SYNTHESIS,

@@ -18,8 +18,9 @@ from app.lab import mechanism_evaluation_service as service, run_inference
 @pytest.mark.parametrize("intervention", ["cancel", "replace_lease"])
 async def test_publication_observes_concurrent_control(db, monkeypatch, intervention):
     from core.database.database import AsyncSessionLocal
+    from app.lab.contracts import resolve_input
 
-    dataset = LabEvaluationDataset(name=f"publication-{uuid4()}", mechanism="briefing")
+    dataset = LabEvaluationDataset(name=f"publication-{uuid4()}", mechanism="planner")
     db.add(dataset)
     await db.flush()
     case = LabEvaluationCase(dataset_id=dataset.id, name="case")
@@ -32,8 +33,8 @@ async def test_publication_observes_concurrent_control(db, monkeypatch, interven
             {
                 "id": str(case.id),
                 "input_data": {"variable_value": "test"},
-                "resolved_input": {"objective": "test"},
-                "expected_output": {"result": "ok", "choices": []},
+                "resolved_input": resolve_input("planner", {"variable_value": "test"}, {})[1],
+                "expected_output": {"brief": {"objective": "ok"}, "steps": []},
             }
         ],
     )
@@ -53,7 +54,7 @@ async def test_publication_observes_concurrent_control(db, monkeypatch, interven
                 update(LabEvaluationRun).where(LabEvaluationRun.id == run_id).values(**values)
             )
             await independent.commit()
-        return {"result": "ok", "choices": []}, 0.1
+        return {"brief": {"objective": "ok"}, "steps": []}, 0.1
 
     monkeypatch.setattr(run_inference, "validate_binding", lambda *args: None)
     monkeypatch.setattr(run_inference, "evaluate_mechanism", evaluate)
@@ -73,7 +74,7 @@ async def test_publication_observes_concurrent_control(db, monkeypatch, interven
 
         unexpected_candidate = AsyncMock(side_effect=AssertionError("Candidate already published"))
         monkeypatch.setattr(run_inference, "evaluate_mechanism", unexpected_candidate)
-        await resume("briefing", run.id)
+        await resume("planner", run.id)
         await service.process_runs()
         await db.refresh(run)
         unexpected_candidate.assert_not_awaited()
@@ -91,7 +92,7 @@ async def test_claim_detaches_inputs_and_expired_lease_is_recoverable(db):
     from datetime import datetime, timedelta, timezone
     from app.lab.run_claims import claim_next_run
 
-    dataset = LabEvaluationDataset(name=f"claim-{uuid4()}", mechanism="briefing")
+    dataset = LabEvaluationDataset(name=f"claim-{uuid4()}", mechanism="planner")
     db.add(dataset)
     await db.flush()
     case_id = uuid4()
@@ -106,6 +107,7 @@ async def test_claim_detaches_inputs_and_expired_lease_is_recoverable(db):
     first = await claim_next_run()
     assert first.work is not None
     assert (await claim_next_run()).processed == 0
+
     run.configuration_snapshot["nested"]["prompt"] = "edited"
     run.case_snapshots[0]["input_data"]["text"] = "edited"
     assert first.work.configuration_snapshot["nested"]["prompt"] == "frozen"

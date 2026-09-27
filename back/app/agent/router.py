@@ -189,8 +189,6 @@ async def read_executor_drivers() -> List[ExecutorDriverInfo]:
             supports_streaming=driver.supports_streaming,
             supports_cancellation=driver.supports_cancellation,
             use_planner=driver.pipeline_policy.use_planner,
-            use_briefing=driver.pipeline_policy.use_briefing,
-            briefing_efforts=sorted(driver.pipeline_policy.briefing_efforts),
             execution_efforts=sorted(driver.pipeline_policy.execution_efforts),
             uses_llm_calls=driver.pipeline_policy.uses_llm_calls,
         )

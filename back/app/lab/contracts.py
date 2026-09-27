@@ -30,15 +30,13 @@ class Parameters(BaseModel):
 class PipelineParameters(Parameters):
     uses_llm_calls: bool = True
     use_planner: bool = True
-    use_briefing: bool = False
-    briefing_efforts: list[Literal["standard", "high"]] = Field(default_factory=list[Literal["standard", "high"]])
     execution_efforts: list[Literal["standard", "high"]] = Field(default_factory=lambda: ["standard", "high"])
 
 
 class DispatcherParameters(Parameters):
     label: str = ""
     effort: Literal["standard", "high"] = "standard"
-    forced_route: Literal["EXEC", "BRIEFING", "PLAN"] | None = None
+    forced_route: Literal["EXEC", "PLAN"] | None = None
     forced_effort: Literal["standard", "high"] | None = None
     auto_approve: bool = False
     driver_code: str = "internal"
@@ -49,19 +47,6 @@ class DispatcherParameters(Parameters):
     message_group_id: str | None = None
     parent_id: str | None = None
     data: dict[str, JsonValue] = Field(default_factory=dict[str, JsonValue])
-
-
-class BriefingParameters(Parameters):
-    label: str = ""
-    task_uri: str = ""
-    effort: Literal["standard", "high"] = "standard"
-    language: str = "en"
-    agent: dict[str, JsonValue] = Field(default_factory=dict[str, JsonValue])
-    message_type: str = ""
-    room_id: str = ""
-    sender: dict[str, JsonValue] = Field(default_factory=dict[str, JsonValue])
-    attachments: list[JsonValue] = Field(default_factory=list[JsonValue])
-    resources: list[dict[str, JsonValue]] = Field(default_factory=list[dict[str, JsonValue]])
 
 
 class PlannerParameters(Parameters):
@@ -154,7 +139,6 @@ class ExecutorParameters(Parameters):
     )
     memories: list[JsonValue] = Field(default_factory=list[JsonValue])
     resources: list[JsonValue] = Field(default_factory=list[JsonValue])
-    briefing: str = ""
     plan: dict[str, JsonValue] = Field(default_factory=dict[str, JsonValue])
     working_set: list[JsonValue] = Field(default_factory=list[JsonValue])
     interrupted_objective: str = ""
@@ -178,14 +162,6 @@ class ItemContext(BaseModel):
 
 class DispatcherContext(ItemContext):
     messages: list[dict[str, JsonValue]] = Field(default_factory=list[dict[str, JsonValue]])
-
-
-class BriefingContext(ItemContext):
-    history: list[dict[str, JsonValue]] = Field(
-        default_factory=list[dict[str, JsonValue]], max_length=6
-    )
-    recent_attachments: list[JsonValue] = Field(default_factory=list[JsonValue])
-    recent_images: list[JsonValue] = Field(default_factory=list[JsonValue])
 
 
 class PlannerContext(ItemContext):
@@ -269,15 +245,6 @@ CONTRACTS = {
             "dispatch_decision",
             "app.agent.Dispatcher.run",
             DispatcherContext,
-        ),
-        LabContract(
-            "briefing",
-            "objective",
-            "string",
-            BriefingParameters,
-            "briefing_and_resources",
-            "briefing",
-            BriefingContext,
         ),
         LabContract(
             "planner",

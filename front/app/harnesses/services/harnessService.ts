@@ -26,8 +26,6 @@ export interface HarnessExecutionConfiguration {
     revision: number
     pipeline_policy: {
         use_planner: boolean
-        use_briefing: boolean
-        briefing_efforts: string[]
     }
     descriptor: {
         schema_version: 'galaris.harness-capabilities/v1'

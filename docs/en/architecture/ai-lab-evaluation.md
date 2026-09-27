@@ -2,7 +2,7 @@
 
 # AI Lab Evaluation Architecture and Theory
 
-The Lab exposes eleven evaluable treatments through one contract: **one business variable per
+The Lab exposes ten evaluable treatments through one contract: **one business variable per
 case**, its own context, shared parameters, and one output to assess.
 See the [operator guide](../user/lab-ai.md) and [ADR 0078](../../../project/decisions/0078-lab-variable-and-judgment-campaigns.md).
 Repository contracts and tests remain authoritative.
@@ -24,7 +24,6 @@ configuration schema, inference limits, output schema and rubric.
 | Treatment | Single variable | Evaluated result |
 |---|---|---|
 | Dispatcher | Request | Routing decision |
-| Briefing | Objective | Preparation and resource choices |
 | Planner | Objective | Plan or clarification |
 | Topic classification | Exchange texts | Topic assignments |
 | Memory extraction | Source content | Ranking and memory operations |
@@ -223,7 +222,7 @@ based on persisted results.
 
 Before adding cases, write down the failures the benchmark must detect. For example:
 
-- Briefing that forgets a prohibition but cites every tool;
+- Plan that forgets a prohibition but cites every tool;
 - technically elegant Planner that changes the requested deliverable;
 - memory extraction that retains ephemeral or sensitive information;
 - learning that concludes an unproven cause;

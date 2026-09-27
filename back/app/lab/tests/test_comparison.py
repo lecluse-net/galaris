@@ -20,7 +20,7 @@ from core.database import get_db_session
 
 @pytest.mark.asyncio
 async def test_summary_counts_distinct_cases_repetitions_judgments_and_errors(db):
-    dataset = LabEvaluationDataset(name="Synthetic summary", mechanism="briefing")
+    dataset = LabEvaluationDataset(name="Synthetic summary", mechanism="planner")
     db.add(dataset)
     await db.flush()
     before, after = [LabEvaluationRun(dataset_id=dataset.id, status="completed") for _ in range(2)]
@@ -183,7 +183,7 @@ async def test_http_comparison_preserves_evidence_and_missing_scores(client, mec
     assert filtered["summary"] == data["summary"]
     for invalid in ({"limit": 501}, {"offset": -1}, {"axis": "unknown"}, {"focus": "unknown"}, {"focus": "dimension"}):
         assert (await client.get(url, params={**params, **invalid})).status_code == 422
-    other = "dispatcher" if mechanism != "dispatcher" else "briefing"
+    other = "dispatcher" if mechanism != "dispatcher" else "planner"
     assert (await client.get(f"/api/evaluation/{other}/runs/compare", params=params)).status_code == 404
     assert (await client.get(url, params={**params, "right_run_id": str(uuid4())})).status_code == 404
 

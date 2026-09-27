@@ -58,7 +58,7 @@ from .runtime import Agent, create_agent
 
 
 _PENDING_INTERACTION_PROMPT_LIMIT = 6
-_ACTIVE_TASK_PHASES = frozenset({"CREATE", "DISPATCH", "BRIEFING", "EXEC", "PLAN"})
+_ACTIVE_TASK_PHASES = frozenset({"CREATE", "DISPATCH", "EXEC", "PLAN"})
 _LIVE_TEXT_FLUSH_SECONDS = 0.12
 _LIVE_TEXT_FLUSH_CHARS = 512
 _LIVE_TEXT_EVENT_CHARS = 8_000
@@ -505,7 +505,6 @@ class HarnessConversationController:
                     direct_task.objective,
                     forced_route=direct_task.forced_route,
                     forced_effort=direct_task.forced_effort,
-                    require_briefing=direct_task.briefing_requested,
                     auto_approve=direct_task.auto_approve,
                 )
                 admitted_label = str(receipt.get("label") or direct_task.objective)
@@ -609,14 +608,9 @@ class HarnessConversationController:
                         "Explicit Task routing is unavailable for this conversation turn."
                     )
                 started_at = time.monotonic()
-                briefing_requested = bool(
-                    re.search(r"(?<!\w)@briefing\b", turn.objective, re.IGNORECASE)
-                )
                 receipt = await admission(
                     turn.objective,
                     forced_route=dispatch_result.conversation_route_directive,
-                    forced_effort="high" if briefing_requested else None,
-                    require_briefing=briefing_requested,
                 )
                 text = t("conversation.explicit_task_started", turn.language)
                 execution_result = ExecutionResult(

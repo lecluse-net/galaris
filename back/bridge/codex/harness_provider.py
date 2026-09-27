@@ -251,7 +251,7 @@ async def _probe_runtime(base_url: str, token: str) -> None:
 
 class CodexHarnessProvider:
     pipeline_policy = DriverPipelinePolicy(
-        use_planner=False, use_briefing=False,
+        use_planner=False,
         execution_efforts=frozenset({"standard", "high"}),
         uses_llm_calls=True,
     )

@@ -1,5 +1,9 @@
 """Cross-layer DbAdmin composition that must not live inside ``core``."""
 
+import json
+import re
+
+from pydantic import JsonValue
 from sqlalchemy import func, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -13,11 +17,137 @@ from bridge.hermes.config_service import (
 from bridge.hermes.session_binding import SessionBindingRoute, migrate_legacy_bindings
 from core.dbadmin import (
     DbAdminAction,
+    DbAdminEnumMapping,
     DbAdminPhase,
     DbAdminReconciler,
     DbAdminRegistry,
     SchemaTransitionSet,
 )
+
+
+def _retires_execution_preparation(transitions: SchemaTransitionSet) -> bool:
+    return "tasks.briefing_result" in transitions.removed_columns
+
+
+_RETIRED_KEYS = frozenset({
+    "briefing", "briefing_result", "briefing_text", "briefing_used",
+    "use_briefing", "briefing_efforts", "require_briefing",
+})
+_PREPARATION_BLOCK = re.compile(r"<execution_briefing>.*?</execution_briefing>\s*", re.DOTALL)
+
+
+def _without_execution_preparation(value: JsonValue) -> JsonValue:
+    """Remove retired machine fields and injected blocks, preserving authored content."""
+    if isinstance(value, dict):
+        return {
+            key: _without_execution_preparation(item)
+            for key, item in value.items() if key not in _RETIRED_KEYS
+        }
+    if isinstance(value, list):
+        return [_without_execution_preparation(item) for item in value]
+    if isinstance(value, str):
+        if value == "BRIEFING":
+            return "EXEC"
+        return _PREPARATION_BLOCK.sub("", value)
+    return value
+
+
+async def _preparation_snapshots(session: AsyncSession) -> list[tuple[str, str]]:
+    # Inspect only execution-owned snapshots; user documents/messages are not configuration.
+    rows = await session.execute(text(r"""
+        SELECT table_name, column_name FROM information_schema.columns
+        WHERE table_schema = 'public' AND data_type = 'jsonb'
+          AND column_name <> 'briefing_result'
+          AND (table_name IN ('tasks', 'task_attempts', 'harnesses', 'agent_harnesses',
+                              'harness_execution_configurations')
+               OR left(table_name, 4) IN ('lab_', 'llm_'))
+        ORDER BY table_name, column_name
+    """))
+    return [(str(table), str(column)) for table, column in rows]
+
+
+async def _purge_execution_preparation(
+    session: AsyncSession, _transitions: SchemaTransitionSet,
+) -> None:
+    """One transactional cutover, explicitly discarding the retired feature's archives."""
+    statements = (
+        "UPDATE tasks SET forced_route = 'EXEC' WHERE forced_route = 'BRIEFING'",
+        "UPDATE task_attempts SET phase = 'DISPATCH' WHERE phase = 'BRIEFING'",
+        "DELETE FROM lab_evaluation_datasets WHERE mechanism = 'briefing'",
+        # Old structured requests must not be replayed under a different contract.
+        """CREATE TEMP TABLE retired_execution_inferences ON COMMIT DROP AS
+           SELECT id FROM llm_inferences
+           WHERE request::text LIKE '%galaris.briefing/%'
+              OR request::text LIKE '%galaris.dispatcher.active/v3%'
+              OR request->'context'->>'purpose' = 'agent.briefing'
+              OR request->>'purpose' = 'agent.briefing'""",
+        """DELETE FROM llm_calls WHERE purpose = 'agent.briefing'
+           OR system_prompt ILIKE '%you prepare a concise execution briefing%'
+           OR inference_attempt_id IN (
+               SELECT id FROM llm_inference_attempts WHERE inference_id IN
+                   (SELECT id FROM retired_execution_inferences))""",
+        """DELETE FROM llm_call_events WHERE inference_id IN
+               (SELECT id FROM retired_execution_inferences)""",
+        """DELETE FROM llm_inference_commands WHERE inference_id IN
+               (SELECT id FROM retired_execution_inferences)""",
+        """UPDATE llm_inference_commands SET replay_id = NULL WHERE replay_id IN
+               (SELECT id FROM retired_execution_inferences)""",
+        """DELETE FROM llm_inference_attempts WHERE inference_id IN
+               (SELECT id FROM retired_execution_inferences)""",
+        """UPDATE llm_inferences SET replay_of_id = NULL WHERE replay_of_id IN
+               (SELECT id FROM retired_execution_inferences)""",
+        "DELETE FROM llm_inferences WHERE id IN (SELECT id FROM retired_execution_inferences)",
+        "DROP TABLE retired_execution_inferences",
+        """UPDATE llm_calls SET prompt = regexp_replace(
+               prompt, '<execution_briefing>.*?</execution_briefing>\\s*', '', 'gs')
+           WHERE prompt LIKE '%<execution_briefing>%'""",
+    )
+    for statement in statements:
+        await session.execute(text(statement))
+    for table, column in await _preparation_snapshots(session):
+        # Identifiers come from PostgreSQL, quoted independently of their values.
+        table_sql = '"' + table.replace('"', '""') + '"'
+        column_sql = '"' + column.replace('"', '""') + '"'
+        rows = await session.stream(text(
+            f"SELECT id, {column_sql} FROM {table_sql} "
+            f"WHERE {column_sql}::text ILIKE '%briefing%'"
+        ))
+        async for row in rows:
+            cleaned = _without_execution_preparation(row[1])
+            if cleaned != row[1]:
+                await session.execute(text(
+                    f"UPDATE {table_sql} SET {column_sql} = CAST(:value AS jsonb) WHERE id = :id"
+                ), {"id": row[0], "value": json.dumps(cleaned)})
+
+
+async def _execution_preparation_is_purged(
+    session: AsyncSession, _transitions: SchemaTransitionSet,
+) -> bool:
+    remains = await session.scalar(text("""
+        SELECT EXISTS(SELECT 1 FROM tasks WHERE forced_route = 'BRIEFING')
+            OR EXISTS(SELECT 1 FROM task_attempts WHERE phase = 'BRIEFING')
+            OR EXISTS(SELECT 1 FROM lab_evaluation_datasets WHERE mechanism = 'briefing')
+            OR EXISTS(SELECT 1 FROM llm_calls WHERE purpose = 'agent.briefing'
+                      OR system_prompt ILIKE '%you prepare a concise execution briefing%')
+            OR EXISTS(SELECT 1 FROM llm_inferences
+                      WHERE request::text LIKE '%galaris.briefing/%'
+                         OR request::text LIKE '%galaris.dispatcher.active/v3%'
+                         OR request->'context'->>'purpose' = 'agent.briefing'
+                         OR request->>'purpose' = 'agent.briefing')
+            OR EXISTS(SELECT 1 FROM llm_calls WHERE prompt LIKE '%<execution_briefing>%')
+    """))
+    if remains:
+        return False
+    for table, column in await _preparation_snapshots(session):
+        table_sql = '"' + table.replace('"', '""') + '"'
+        column_sql = '"' + column.replace('"', '""') + '"'
+        rows = await session.stream(text(
+            f"SELECT {column_sql} FROM {table_sql} WHERE {column_sql}::text ILIKE '%briefing%'"
+        ))
+        async for row in rows:
+            if _without_execution_preparation(row[0]) != row[0]:
+                return False
+    return True
 
 
 def _adds_durable_messenger_task_key(transitions: SchemaTransitionSet) -> bool:
@@ -73,14 +203,14 @@ async def _backfill_messenger_admissions(
                 ON (task.data ->> 'message_id')
                    ~* '^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$'
                AND message.id = (task.data ->> 'message_id')::uuid
-             WHERE task.status IN ('CREATE', 'PAUSE', 'DISPATCH', 'BRIEFING', 'EXEC', 'PLAN')
+             WHERE task.status IN ('CREATE', 'PAUSE', 'DISPATCH', 'EXEC', 'PLAN')
                AND task.created_at > message.created_at + interval '1 hour'
             UNION
             SELECT link.task_id
               FROM conversation_task_links AS link
               JOIN galaris_replayed_round_ids AS replayed ON replayed.id = link.round_id
               JOIN tasks AS task ON task.id = link.task_id
-             WHERE task.status IN ('CREATE', 'PAUSE', 'DISPATCH', 'BRIEFING', 'EXEC', 'PLAN')
+             WHERE task.status IN ('CREATE', 'PAUSE', 'DISPATCH', 'EXEC', 'PLAN')
             """
         )
     )
@@ -120,7 +250,7 @@ async def _backfill_messenger_admissions(
                    updated_at = now()
               FROM galaris_replayed_task_ids AS replayed
              WHERE task.id = replayed.id
-               AND task.status IN ('CREATE', 'PAUSE', 'DISPATCH', 'BRIEFING', 'EXEC', 'PLAN')
+               AND task.status IN ('CREATE', 'PAUSE', 'DISPATCH', 'EXEC', 'PLAN')
             """
         )
     )
@@ -230,7 +360,7 @@ async def _legacy_messenger_admissions_are_closed(
                 ON (task.data ->> 'message_id')
                    ~* '^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$'
                AND message.id = (task.data ->> 'message_id')::uuid
-             WHERE task.status IN ('CREATE', 'PAUSE', 'DISPATCH', 'BRIEFING', 'EXEC', 'PLAN')
+             WHERE task.status IN ('CREATE', 'PAUSE', 'DISPATCH', 'EXEC', 'PLAN')
                AND task.created_at > message.created_at + interval '1 hour'
             """
         )
@@ -328,6 +458,15 @@ async def _reconcile_hermes_session_bindings(session: AsyncSession) -> None:
 def register_dbadmin(registry: DbAdminRegistry) -> None:
     """Register transitional Hermès work without changing the in-progress bridge."""
 
+    registry.register_enum_mapping(DbAdminEnumMapping("taskstatus", {"BRIEFING": "DISPATCH"}))
+    registry.register_action(DbAdminAction(
+        key="app.agent.retire_execution_preparation",
+        phase=DbAdminPhase.BEFORE_EXPAND,
+        checksum="v1-purge-archives-and-normalize-routing",
+        predicate=_retires_execution_preparation,
+        handler=_purge_execution_preparation,
+        postcondition=_execution_preparation_is_purged,
+    ))
     registry.register_action(
         DbAdminAction(
             key="app.messenger.close_legacy_inbound_admissions",

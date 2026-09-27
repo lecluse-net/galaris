@@ -1615,57 +1615,7 @@
   <rect width="32" height="32" fill="#fff" mask="url(#artwork_115)"/>
 </svg>
 <text x="34" y="1003" font-size="12">Répartition</text>
-<rect x="264" y="914" width="224" height="100" rx="12" fill="#FFFFFF"/>
-<rect x="380" y="921" width="100" height="63" rx="10" fill="#101010"/>
-<svg x="274" y="933.0" width="38" height="38" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-  <defs>
-    <mask id="artwork_116" x="0" y="0" width="32" height="32" maskUnits="userSpaceOnUse" style="mask-type: luminance">
-      <g fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <rect x="5" y="5" width="22" height="25" rx="4" fill="#fff" stroke="none" />
-        <rect x="10" y="2" width="12" height="7" rx="3" fill="#fff" stroke="#000" stroke-width="1" />
-        <path d="M11 15h10M11 20h10M11 25h6" stroke="#000" />
-      </g>
-    </mask>
-  </defs>
-  <rect width="32" height="32" fill="#000" mask="url(#artwork_116)"/>
-</svg>
-<svg x="330" y="940.0" width="24" height="24" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-  <defs>
-    <mask id="artwork_117" x="0" y="0" width="32" height="32" maskUnits="userSpaceOnUse" style="mask-type: luminance">
-      <g fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <rect x="5" y="5" width="22" height="25" rx="4" fill="#fff" stroke="none" />
-        <rect x="10" y="2" width="12" height="7" rx="3" fill="#fff" stroke="#000" stroke-width="1" />
-        <path d="M11 15h10M11 20h10M11 25h6" stroke="#000" />
-      </g>
-    </mask>
-  </defs>
-  <rect width="32" height="32" fill="#000" mask="url(#artwork_117)"/>
-</svg>
-<svg x="390" y="933.0" width="38" height="38" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-  <defs>
-    <mask id="artwork_118" x="0" y="0" width="32" height="32" maskUnits="userSpaceOnUse" style="mask-type: luminance">
-      <g fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <rect x="5" y="5" width="22" height="25" rx="4" fill="#fff" stroke="none" />
-        <rect x="10" y="2" width="12" height="7" rx="3" fill="#fff" stroke="#000" stroke-width="1" />
-        <path d="M11 15h10M11 20h10M11 25h6" stroke="#000" />
-      </g>
-    </mask>
-  </defs>
-  <rect width="32" height="32" fill="#fff" mask="url(#artwork_118)"/>
-</svg>
-<svg x="442" y="940.0" width="24" height="24" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-  <defs>
-    <mask id="artwork_119" x="0" y="0" width="32" height="32" maskUnits="userSpaceOnUse" style="mask-type: luminance">
-      <g fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <rect x="5" y="5" width="22" height="25" rx="4" fill="#fff" stroke="none" />
-        <rect x="10" y="2" width="12" height="7" rx="3" fill="#fff" stroke="#000" stroke-width="1" />
-        <path d="M11 15h10M11 20h10M11 25h6" stroke="#000" />
-      </g>
-    </mask>
-  </defs>
-  <rect width="32" height="32" fill="#fff" mask="url(#artwork_119)"/>
-</svg>
-<text x="274" y="1003" font-size="12">Briefing</text>
+
 <rect x="504" y="914" width="224" height="100" rx="12" fill="#FFFFFF"/>
 <rect x="620" y="921" width="100" height="63" rx="10" fill="#101010"/>
 <svg x="514" y="933.0" width="38" height="38" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">

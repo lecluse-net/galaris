@@ -32,8 +32,7 @@ from .synthetic_schemas import (
 
 
 SCENARIOS: dict[EvaluationMechanism, str] = {
-    "dispatcher": "Routing EXEC/BRIEFING/PLAN and standard/high effort, ambiguity, forced choices and harness policy. Never use END for an active task.",
-    "briefing": "Relevant resource selection, missing evidence, concise execution guidance. Reference only exact identifiers in the shared resource catalog. Always provide at least one choice; use kind=other for a specific check if no tool or process is relevant.",
+    "dispatcher": "Routing EXEC/PLAN and standard/high effort, ambiguity, forced choices and harness policy. Never use END for an active task.",
     "planner": "Dependencies, decomposition, bounded plans, clarification when allowed, concrete deliverables. Respect shared tool catalog and depth/node/leaf limits.",
     "topic_classification": "Topic continuity, true topic changes, returns to an earlier topic, short acknowledgments and ambiguous transitions. One topic title per message, in order; message metadata has the same length as the exchange or is empty.",
     "memory_extraction": "Durable facts versus transient chatter, corrections, duplicate facts and relevant existing memories. Every case needs a non-null context.topic with fictional id and title. Respect shared source_kind: conversation_round uses an array of strings; task uses {task_trace, messages}. LINK and relevant/ranked memory IDs must belong to shared existing_memories.",

@@ -36,10 +36,6 @@ def register_scheduler_jobs() -> None:
     )
 
 
-def register_inference_output_contracts() -> None:
-    from .mechanism_registry import register_inference_output_contracts as register
-
-    register()
 
 
 __all__ = [
@@ -57,5 +53,4 @@ __all__ = [
     "executor_prompt_service",
     "mechanism_evaluation_service",
     "register_scheduler_jobs",
-    "register_inference_output_contracts",
 ]

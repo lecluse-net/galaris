@@ -40,10 +40,9 @@ class MessageListType(TypeDecorator[list[TaskMessage]]):
         return [TaskMessage.model_validate(msg) for msg in value]
 
 if TYPE_CHECKING:
-    from app.agent.contracts import BriefingResult, DispatchResult, ExecutionResult
+    from app.agent.contracts import DispatchResult, ExecutionResult
     from app.agent.models import Agent
     from app.goal.models import Goal
-
 
 
 class TaskStatus(str, enum.Enum):
@@ -57,7 +56,6 @@ class TaskStatus(str, enum.Enum):
     PAUSE = "PAUSE"  # Deprecated; do not use. See Task.paused.
 
     DISPATCH = "DISPATCH"
-    BRIEFING = "BRIEFING"
     EXEC = "EXEC"
     PLAN = "PLAN"
 
@@ -157,7 +155,6 @@ class Task(HistoryMixin, Base):
     message_platform: Mapped[str | None] = mapped_column(String(100), nullable=True)
     message_group_id: Mapped[str | None] = mapped_column(String(512), nullable=True)
     dispatch_result: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
-    briefing_result: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
     execution_result: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
     data: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
     # Server-owned observations. Keep Task.data=None semantics and client input intact.
@@ -231,16 +228,6 @@ class Task(HistoryMixin, Base):
         """Store ``dispatch_result`` from a Pydantic object."""
         self.dispatch_result = result.model_dump()
 
-    def get_briefing_result(self) -> "BriefingResult | None":
-        """Return the latest briefing result as a Pydantic object."""
-        if self.briefing_result is None:
-            return None
-        from app.agent.contracts import BriefingResult
-        return BriefingResult.model_validate(self.briefing_result)
-
-    def set_briefing_result(self, result: "BriefingResult") -> None:
-        """Store the briefing result."""
-        self.briefing_result = result.model_dump()
 
     def get_execution_result(self) -> "ExecutionResult | None":
         """Return ``execution_result`` as a Pydantic object."""

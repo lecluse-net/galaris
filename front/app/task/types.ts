@@ -1,9 +1,9 @@
 // Suspension is represented by paused and data.pause_reasons rather than a status.
-export type TaskStatus = 'CREATE' | 'DISPATCH' | 'BRIEFING' | 'EXEC' | 'PLAN' | 'SUCCESS' | 'ERROR'
+export type TaskStatus = 'CREATE' | 'DISPATCH' | 'EXEC' | 'PLAN' | 'SUCCESS' | 'ERROR'
 export type CoordinationType = 'await_reply'
 
 // Dispatcher overrides; null or undefined delegates the decision to the dispatcher.
-export type ForcedRoute = 'EXEC' | 'BRIEFING' | 'PLAN'
+export type ForcedRoute = 'EXEC' | 'PLAN'
 export type Effort = 'standard' | 'high'
 export type ReasoningEffort = 'none' | 'low' | 'medium' | 'high' | 'xhigh' | 'max'
 
@@ -85,7 +85,6 @@ export interface Task {
   message_platform?: string
   message_group_id?: string
   dispatch_result?: DispatchResult
-  briefing_result?: BriefingResult
   execution_result?: ExecutionResult
   data?: Record<string, any>
   parent_id?: string
@@ -156,7 +155,6 @@ export interface TaskCreate {
   message_platform?: string
   message_group_id?: string
   dispatch_result?: DispatchResult
-  briefing_result?: BriefingResult
   execution_result?: ExecutionResult
   data?: Record<string, any>
   parent_id?: string
@@ -178,7 +176,7 @@ export interface TaskUpdate {
 
 export interface DispatchDecision {
   reasoning: string
-  route: 'EXEC' | 'BRIEFING' | 'PLAN' | 'END'
+  route: 'EXEC' | 'PLAN' | 'END'
   // Missing from dispatch results created before executor_llm_tier became effort.
   effort?: 'standard' | 'high'
   // Missing from dispatch results created before language detection.
@@ -195,23 +193,7 @@ export interface DispatchResult {
   decision: DispatchDecision
 }
 
-export interface BriefingChoice {
-  kind: 'process' | 'tool' | 'other'
-  identifier: string
-  label: string
-  reason: string
-  score?: number
-}
 
-export interface BriefingResult {
-  prompt: string
-  system_prompt: string
-  result: string
-  choices: BriefingChoice[]
-  execution_time: number
-  cost: number
-  success: boolean
-}
 
 export interface AIMessage {
   type: 'text' | 'audio' | 'image' | 'video' | 'tool'

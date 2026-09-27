@@ -28,7 +28,6 @@ export type ChatCommandCode =
   | 'task'
   | 'exec'
   | 'plan'
-  | 'briefing'
   | 'standard'
   | 'high'
   | 'effort'
