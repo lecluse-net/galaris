@@ -82,36 +82,14 @@
           </template>
         </q-banner>
 
-        <div class="welcome-grid">
-          <aside class="welcome-summary">
-            <div class="welcome-summary__heading">
-              <span>{{ t('onboarding.summary.title') }}</span>
-              <small>{{ t('onboarding.summary.description') }}</small>
-            </div>
-
-            <button
-              v-for="step in steps"
-              :key="step.key"
-              type="button"
-              class="summary-step"
-              :class="{ 'summary-step--active': activeStep === step.name }"
-              @click="activeStep = step.name"
-            >
-              <span class="summary-step__icon" :class="`summary-step__icon--${step.tone}`">
-                <q-icon :name="step.complete ? 'check' : step.icon" />
-              </span>
-              <span class="summary-step__copy">
-                <strong>{{ t(`onboarding.steps.${step.key}.title`) }}</strong>
-                <small>{{ step.required ? t('onboarding.required') : t('onboarding.optional') }}</small>
-              </span>
-              <q-icon name="chevron_right" class="summary-step__arrow" />
-            </button>
-          </aside>
-
+        <section :aria-label="t('onboarding.summary.title')">
           <q-stepper
             v-model="activeStep"
             flat
-            animated
+            alternative-labels
+            header-nav
+            active-icon="none"
+            done-icon="none"
             color="primary"
             class="welcome-stepper"
           >
@@ -120,12 +98,12 @@
               :key="step.key"
               :name="step.name"
               :title="t(`onboarding.steps.${step.key}.title`)"
-              :caption="step.required ? t('onboarding.required') : t('onboarding.optional')"
+              :caption="statusFor(step).label"
+              :prefix="step.name"
               :icon="step.icon"
               :done="step.complete === true"
-              :error="step.required && step.complete !== true"
             >
-              <article class="step-content">
+              <article class="step-content" :aria-label="t(`onboarding.steps.${step.key}.title`)">
                 <div class="step-content__header">
                   <div>
                     <div class="step-number">
@@ -135,8 +113,7 @@
                   </div>
                   <q-chip
                     dense
-                    :color="statusFor(step).color"
-                    :text-color="statusFor(step).textColor"
+                    :class="`step-status--${statusFor(step).tone}`"
                     :icon="statusFor(step).icon"
                   >
                     {{ statusFor(step).label }}
@@ -145,7 +122,27 @@
 
                 <p class="step-lead">{{ t(`onboarding.steps.${step.key}.description`) }}</p>
 
-                <div class="step-tips">
+                <div v-if="step.key === 'language'" class="welcome-language">
+                  <div v-if="!canAccessParams" class="text-caption">{{ t('onboarding.permissionRequired') }}</div>
+                  <div v-else-if="languageLoading" role="status">
+                    <q-spinner color="primary" class="q-mr-sm" />{{ t('common.loading') }}
+                  </div>
+                  <q-banner v-else-if="languageLoadError" rounded>
+                    {{ t('onboarding.error.description') }}
+                    <template #action>
+                      <q-btn flat no-caps :label="t('common.retry')" @click="loadLanguage" />
+                    </template>
+                  </q-banner>
+                  <div v-else-if="configuredLanguage" class="welcome-language__saved" role="status">
+                    <q-icon name="check_circle" color="positive" size="20px" />
+                    <strong>{{ configuredLanguage }}</strong>
+                  </div>
+                  <div v-else :inert="paramsStore.loading" class="welcome-language__field">
+                    <SettingsFields :fields="defaultLanguageFields" />
+                  </div>
+                </div>
+
+                <div v-if="step.tipKeys.length" class="step-tips">
                   <div class="step-tips__title">
                     <q-icon name="tips_and_updates" />
                     {{ t('onboarding.tipsTitle') }}
@@ -155,14 +152,14 @@
                   </ul>
                 </div>
 
-                <q-banner v-if="!step.canEdit && !step.complete" rounded class="permission-banner">
+                <q-banner v-if="step.key !== 'language' && !step.canEdit && !step.complete" rounded class="permission-banner">
                   <template #avatar><q-icon name="admin_panel_settings" /></template>
                   {{ t('onboarding.permissionRequired') }}
                 </q-banner>
 
-                <div class="step-actions">
+                <div v-if="step.key !== 'language'" class="step-actions">
                   <q-btn
-                    v-if="step.canEdit"
+                    v-if="step.canEdit && step.route"
                     unelevated
                     no-caps
                     color="primary"
@@ -199,13 +196,14 @@
                     color="primary"
                     icon-right="arrow_forward"
                     :label="t('onboarding.actions.next')"
+                    class="step-navigation__next"
                     @click="activeStep = step.name + 1"
                   />
                 </div>
               </article>
             </q-step>
           </q-stepper>
-        </div>
+        </section>
       </template>
     </div>
   </q-page>
@@ -214,18 +212,18 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { privileges, usePrivilegeStore } from '@/core/authorize'
+import { languageFields, SettingsFields, useParamsStore } from '@/core/params'
 import { useAuthStore } from '@/core/user'
 import { useOnboardingStore } from '../stores/onboardingStore'
 
-type StepKey = 'llm' | 'agent' | 'tools' | 'connections' | 'skills' | 'processes'
-type StepTone = 'blue' | 'violet' | 'amber' | 'teal'
+type StepKey = 'language' | 'llm' | 'agent' | 'tools' | 'connections' | 'skills' | 'processes'
 
 interface SetupStep {
   name: number
   key: StepKey
   icon: string
-  tone: StepTone
-  route: string
+  route: string | null
   required: boolean
   complete: boolean | null
   canEdit: boolean
@@ -234,22 +232,54 @@ interface SetupStep {
 
 interface StepStatus {
   label: string
-  color: string
-  textColor: string
+  tone: 'green' | 'gray' | 'red' | 'orange'
   icon: string
 }
 
 const { t } = useI18n()
 const authStore = useAuthStore()
 const onboardingStore = useOnboardingStore()
+const privilegeStore = usePrivilegeStore()
+const paramsStore = useParamsStore()
+const canAccessParams = computed(() => authStore.isAuthenticated && privilegeStore.hasPrivilege(privileges.PARAMS_ACCESS))
+const defaultLanguageFields = languageFields.filter(field => field.name === 'DEFAULT_LANGUAGE')
+const configuredLanguage = computed(() => {
+  const value = paramsStore.getParamValue('DEFAULT_LANGUAGE')
+  if (!value?.trim()) return ''
+  const option = defaultLanguageFields[0]?.options?.find(item => item.value === value)
+  return option ? t(option.labelKey) : value
+})
+const languageLoading = ref(false)
+const languageLoadError = ref(false)
 const activeStep = ref(1)
+
+async function loadLanguage(): Promise<void> {
+  languageLoading.value = true
+  languageLoadError.value = false
+  await paramsStore.fetchParams(true)
+  languageLoadError.value = Boolean(paramsStore.error)
+  languageLoading.value = false
+}
+
+watch(canAccessParams, allowed => {
+  if (allowed) void loadLanguage()
+}, { immediate: true })
 
 const steps = computed<SetupStep[]>(() => [
   {
     name: 1,
+    key: 'language',
+    icon: 'translate',
+    route: null,
+    required: false,
+    complete: canAccessParams.value && !languageLoading.value && !languageLoadError.value && Boolean(configuredLanguage.value),
+    canEdit: canAccessParams.value && privilegeStore.hasPrivilege(privileges.PARAMS_EDIT),
+    tipKeys: [],
+  },
+  {
+    name: 2,
     key: 'llm',
     icon: 'smart_toy',
-    tone: 'blue',
     route: '/llm?tab=providers',
     required: true,
     complete: onboardingStore.llmProvider?.has_data ?? false,
@@ -261,10 +291,9 @@ const steps = computed<SetupStep[]>(() => [
     ],
   },
   {
-    name: 2,
+    name: 3,
     key: 'agent',
     icon: 'support_agent',
-    tone: 'violet',
     route: '/agent',
     required: true,
     complete: onboardingStore.agents?.has_data ?? false,
@@ -276,10 +305,9 @@ const steps = computed<SetupStep[]>(() => [
     ],
   },
   {
-    name: 3,
+    name: 4,
     key: 'connections',
     icon: 'hub',
-    tone: 'teal',
     route: '/tools?tab=connections',
     required: false,
     complete: onboardingStore.connections?.has_data ?? false,
@@ -291,10 +319,9 @@ const steps = computed<SetupStep[]>(() => [
     ],
   },
   {
-    name: 4,
+    name: 5,
     key: 'tools',
     icon: 'construction',
-    tone: 'amber',
     route: '/tools',
     required: false,
     complete: onboardingStore.tools?.has_data ?? false,
@@ -306,10 +333,9 @@ const steps = computed<SetupStep[]>(() => [
     ],
   },
   {
-    name: 5,
+    name: 6,
     key: 'skills',
     icon: 'psychology',
-    tone: 'violet',
     route: '/skill',
     required: false,
     complete: onboardingStore.skills?.has_data ?? false,
@@ -321,10 +347,9 @@ const steps = computed<SetupStep[]>(() => [
     ],
   },
   {
-    name: 6,
+    name: 7,
     key: 'processes',
     icon: 'account_tree',
-    tone: 'teal',
     route: '/process',
     required: false,
     complete: onboardingStore.processes?.has_data ?? false,
@@ -343,51 +368,38 @@ const requiredTotal = computed(() => requiredSteps.value.length)
 const requiredProgress = computed(() => requiredCompleted.value / requiredTotal.value)
 const mandatoryReady = computed(() => requiredCompleted.value === requiredTotal.value)
 
-watch(
-  () => steps.value.map(step => step.complete),
-  () => {
-    const firstIncompleteRequired = steps.value.find(step => step.required && step.complete !== true)
-    const firstIncompleteOptional = steps.value.find(step => !step.required && step.complete !== true)
-    activeStep.value = (firstIncompleteRequired ?? firstIncompleteOptional ?? steps.value[0])?.name ?? 1
-  },
-  { immediate: true },
-)
-
 function statusFor(step: SetupStep): StepStatus {
   if (step.complete === true) {
     return {
       label: t('onboarding.status.configured'),
-      color: 'green-1',
-      textColor: 'positive',
+      tone: 'green',
       icon: 'check_circle',
     }
   }
   if (!step.canEdit) {
     return {
       label: t('onboarding.status.restricted'),
-      color: 'grey-3',
-      textColor: 'grey-8',
+      tone: 'gray',
       icon: 'lock',
     }
   }
   if (step.required) {
     return {
       label: t('onboarding.status.required'),
-      color: 'red-1',
-      textColor: 'negative',
+      tone: 'red',
       icon: 'priority_high',
     }
   }
   return {
     label: t('onboarding.status.recommended'),
-    color: 'amber-1',
-    textColor: 'orange-10',
+    tone: 'orange',
     icon: 'lightbulb',
   }
 }
 
 function refresh(): void {
   void onboardingStore.fetchOverview()
+  if (canAccessParams.value) void loadLanguage()
 }
 </script>
 
@@ -535,123 +547,78 @@ function refresh(): void {
   background: #f0fbf7;
 }
 
-.welcome-grid {
-  display: grid;
-  grid-template-columns: 290px minmax(0, 1fr);
-  gap: 20px;
-  align-items: start;
-}
-
-.welcome-summary,
 .welcome-stepper {
-  border: 1px solid rgba(43, 60, 96, 0.09);
+  --step-text: #292c30;
+  --step-surface: var(--solaire-gray-light);
+  --step-selected: var(--solaire-blue-light);
+  --step-success: var(--solaire-green-light);
+  --step-warning: var(--solaire-orange-light);
+  --step-required: var(--solaire-red-light);
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, currentColor 12%, transparent);
   border-radius: 22px;
-  background: rgba(255, 255, 255, 0.96);
-  box-shadow: 0 12px 38px rgba(32, 46, 78, 0.07);
-}
-
-.welcome-summary {
-  position: sticky;
-  top: 16px;
-  overflow: hidden;
-  padding: 10px;
-}
-
-.welcome-summary__heading {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  padding: 14px 14px 17px;
-}
-
-.welcome-summary__heading span {
-  color: #263652;
-  font-size: 0.9rem;
-  font-weight: 800;
-}
-
-.welcome-summary__heading small {
-  color: #8b95a9;
-  font-size: 0.7rem;
-  line-height: 1.45;
-}
-
-.summary-step {
-  display: grid;
-  width: 100%;
-  grid-template-columns: auto minmax(0, 1fr) auto;
-  gap: 11px;
-  align-items: center;
-  padding: 12px;
-  color: inherit;
-  border: 0;
-  border-radius: 14px;
-  outline: none;
-  background: transparent;
-  font: inherit;
-  text-align: left;
-  cursor: pointer;
-  transition: background 160ms ease, transform 160ms ease;
-}
-
-.summary-step:hover,
-.summary-step--active {
-  background: #f2f5fc;
-}
-
-.summary-step:focus-visible {
-  outline: 2px solid #4f78dd;
-  outline-offset: 2px;
-}
-
-.summary-step__icon {
-  display: grid;
-  width: 38px;
-  height: 38px;
-  place-items: center;
-  border-radius: 12px;
-}
-
-.summary-step__icon--blue { color: #3c6ed7; background: #edf3ff; }
-.summary-step__icon--violet { color: #7651c5; background: #f3efff; }
-.summary-step__icon--amber { color: #ad710d; background: #fff6dd; }
-.summary-step__icon--teal { color: #087f70; background: #e8f8f4; }
-
-.summary-step__copy {
-  display: flex;
-  min-width: 0;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.summary-step__copy strong {
-  overflow: hidden;
-  color: #33415d;
-  font-size: 0.78rem;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.summary-step__copy small {
-  color: #98a1b2;
-  font-size: 0.65rem;
-}
-
-.summary-step__arrow {
-  color: #aab1bf;
-}
-
-.welcome-stepper {
-  overflow: hidden;
 }
 
 .welcome-stepper :deep(.q-stepper__header) {
-  border-bottom: 1px solid #edf0f5;
-  box-shadow: none;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(140px, 100%), 1fr));
 }
 
 .welcome-stepper :deep(.q-stepper__tab) {
-  min-height: 82px;
+  min-width: 0;
+  padding: 24px 10px;
+}
+
+.welcome-stepper :deep(.q-stepper__label) {
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+
+.welcome-stepper :deep(.q-stepper__tab--active) {
+  background: var(--step-selected);
+}
+
+.welcome-stepper :deep(.q-stepper__title) {
+  color: var(--step-text);
+  font-size: 0.85rem;
+  line-height: 1.4;
+}
+
+.welcome-stepper :deep(.q-stepper__caption) {
+  margin-top: 4px;
+  color: var(--step-text);
+  opacity: 0.75;
+}
+
+.welcome-stepper :deep(.q-stepper__dot) {
+  background: var(--solaire-gray-accent);
+}
+
+.welcome-stepper :deep(.q-stepper__tab--done .q-stepper__dot) {
+  background: var(--solaire-green-accent);
+}
+
+.welcome-stepper :deep(.q-stepper__tab--active .q-stepper__dot) {
+  background: var(--solaire-blue-accent);
+}
+
+.welcome-stepper :deep(.q-stepper__tab:focus-visible) {
+  outline: 2px solid var(--solaire-blue-accent);
+  outline-offset: -3px;
+}
+
+.welcome-language {
+  margin-bottom: 24px;
+}
+
+.welcome-language__saved {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.welcome-language__field {
+  max-width: 480px;
 }
 
 .step-content {
@@ -667,42 +634,34 @@ function refresh(): void {
 
 .step-number {
   margin-bottom: 6px;
-  color: #7484a3;
-  font-size: 0.68rem;
-  font-weight: 800;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  font-size: 0.75rem;
+  opacity: 0.7;
 }
 
 .step-content h2 {
   margin: 0;
-  color: #263652;
   font-size: clamp(1.35rem, 2.4vw, 1.8rem);
 }
 
 .step-lead {
   max-width: 720px;
   margin: 16px 0 20px;
-  color: #66738c;
-  font-size: 0.92rem;
+  font-size: 0.95rem;
   line-height: 1.65;
 }
 
 .step-tips {
   margin-bottom: 20px;
   padding: 18px 20px;
-  border: 1px solid #e7ebf3;
   border-radius: 16px;
-  background: #fafbfe;
+  background: var(--step-surface);
 }
 
 .step-tips__title {
   display: flex;
   gap: 8px;
   align-items: center;
-  color: #43577f;
-  font-size: 0.76rem;
-  font-weight: 800;
+  font-weight: 600;
 }
 
 .step-tips ul {
@@ -710,16 +669,18 @@ function refresh(): void {
   gap: 8px;
   margin: 13px 0 0;
   padding-left: 20px;
-  color: #68758c;
-  font-size: 0.8rem;
   line-height: 1.55;
 }
 
 .permission-banner {
   margin-bottom: 18px;
-  color: #6f5a2c;
-  background: #fff8e7;
+  background: var(--step-warning);
 }
+
+.step-status--green { background: var(--step-success); }
+.step-status--gray { background: var(--step-surface); }
+.step-status--red { background: var(--step-required); }
+.step-status--orange { background: var(--step-warning); }
 
 .step-actions {
   display: flex;
@@ -735,101 +696,39 @@ function refresh(): void {
   padding-top: 12px;
 }
 
-body.body--dark .welcome-state h1,
-body.body--dark .welcome-summary__heading span,
-body.body--dark .summary-step__copy strong,
-body.body--dark .step-content h2 {
-  color: #e1e7f2;
+.step-navigation__next {
+  grid-column: 3;
 }
 
-body.body--dark .welcome-summary,
 body.body--dark .welcome-stepper {
-  border-color: rgba(255, 255, 255, 0.09);
-  background: rgba(29, 29, 29, 0.97);
-  box-shadow: 0 12px 38px rgba(0, 0, 0, 0.3);
+  --step-text: #eeeef0;
+  --step-surface: var(--solaire-gray-dark);
+  --step-selected: var(--solaire-blue-dark);
+  --step-success: var(--solaire-green-dark);
+  --step-warning: var(--solaire-orange-dark);
+  --step-required: var(--solaire-red-dark);
 }
 
-body.body--dark .summary-step:hover,
-body.body--dark .summary-step--active {
-  background: #252b38;
-}
-
-body.body--dark .welcome-stepper :deep(.q-stepper__header) {
-  border-bottom-color: #343945;
-}
-
-body.body--dark .step-tips {
-  border-color: #373d49;
-  background: #232630;
+body.body--dark .welcome-state h1 {
+  color: inherit;
 }
 
 body.body--dark .ready-banner {
-  color: #9bdecd;
-  border-color: #285f52;
-  background: #18352f;
-}
-
-@media (max-width: 900px) {
-  .welcome-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .welcome-summary {
-    position: static;
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
-
-  .welcome-summary__heading {
-    grid-column: 1 / -1;
-  }
-
-  .summary-step {
-    grid-template-columns: auto minmax(0, 1fr);
-  }
-
-  .summary-step__arrow {
-    display: none;
-  }
+  color: inherit;
+  border-color: var(--solaire-green-accent);
+  background: var(--solaire-green-dark);
 }
 
 @media (max-width: 650px) {
-  .welcome-page {
-    padding: 10px;
-  }
-
+  .welcome-page { padding: 10px; }
   .welcome-hero {
     grid-template-columns: 1fr;
     padding: 26px 22px;
     border-radius: 22px;
   }
-
-  .welcome-hero__mark {
-    display: none;
-  }
-
-  .welcome-summary {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .summary-step {
-    padding: 9px;
-  }
-
-  .welcome-stepper :deep(.q-stepper__header) {
-    display: none;
-  }
-
-  .welcome-stepper :deep(.q-stepper__step-inner) {
-    padding: 22px 16px;
-  }
-
-  .step-content__header {
-    flex-direction: column;
-  }
-
-  .step-actions .q-btn {
-    width: 100%;
-  }
+  .welcome-hero__mark { display: none; }
+  .welcome-stepper :deep(.q-stepper__step-inner) { padding: 22px 16px; }
+  .step-content__header { flex-direction: column; }
+  .step-actions .q-btn { width: 100%; }
 }
 </style>

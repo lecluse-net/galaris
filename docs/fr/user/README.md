@@ -44,6 +44,15 @@ aux utilisateurs de créer leur compte** les ouvre immédiatement ; les nouveaux
 restent sans droits jusqu’à l’attribution d’un rôle. Sa désactivation ferme le formulaire
 et l’API d’inscription, sans empêcher les comptes existants de se connecter.
 
+Le parcours de bienvenue présente sept étapes dans une timeline qui revient à la ligne selon
+la largeur disponible, sans défilement horizontal. Sélectionnez une étape pour
+afficher son contenu en dessous, ou utilisez **Étape précédente** et **Étape suivante**.
+La première étape, **Langue par défaut**, suit la même présentation : si la langue n’est pas
+renseignée, un sélecteur permet de la choisir avec les droits de gestion des paramètres ; sinon,
+la langue enregistrée est affichée. Le choix est enregistré automatiquement ; la langue du profil
+reste prioritaire. Dans les autres étapes, le bouton de configuration ouvre l’écran correspondant
+selon vos droits.
+
 La barre latérale ne montre que les écrans autorisés par votre rôle :
 
 | Écran | À quoi il sert |

@@ -16694,6 +16694,20 @@
           "front/app/process/services/processService.ts"
         ],
         "source": "app/process",
+      {
+        "files": [
+          "front/app/onboarding/components/WelcomePage.vue"
+        ],
+        "source": "app/onboarding",
+        "target": "core/authorize"
+      },
+      {
+        "files": [
+          "front/app/onboarding/components/WelcomePage.vue"
+        ],
+        "source": "app/onboarding",
+        "target": "core/params"
+      },
         "target": "core/api"
       },
       {

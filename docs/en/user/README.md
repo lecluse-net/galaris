@@ -36,6 +36,14 @@ then closes by default. **Preferences → System → Allow users to create their
 reopens it immediately; new accounts have no permissions until a role is assigned.
 Disabling this setting closes the signup form and API while existing accounts can still log in.
 
+The welcome journey presents seven steps in a timeline that wraps to fit the available width,
+without horizontal scrolling. Select a step to display its content
+below, or use **Previous step** and **Next step**. The first step, **Default language**, uses the
+same presentation: if the language is unset, users with parameter management permissions can
+choose it directly; otherwise, the saved language is displayed. The choice saves automatically;
+the profile language still takes precedence. In the other steps, the configuration button opens
+the corresponding screen according to your permissions.
+
 The sidebar shows only the screens authorized by your role:
 
 | Screen | What it is for |

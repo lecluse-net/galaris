@@ -12,7 +12,7 @@ tests restent l’autorité sur le comportement.
 - 71 modules backend déclarés ;
 - 36 modules frontend déclarés ;
 - 527 arêtes de dépendance backend ;
-- 192 arêtes de dépendance frontend ;
+- 194 arêtes de dépendance frontend ;
 - 266 arêtes entre domaines `app`/`bridge` ;
 - 25 paires de domaines directement bidirectionnelles ;
 - 1 composantes fortement connexes ;
@@ -773,6 +773,8 @@ tests restent l’autorité sur le comportement.
 | `app/memory` | `core/websocket` | `front/app/memory/components/DocumentApplication.vue`, `front/app/memory/components/DocumentEditor.vue`, `front/app/memory/components/DocumentLibraryNavigation.vue`, `front/app/memory/components/DocumentLibraryPage.vue`, `front/app/memory/components/DocumentThumbnail.vue`, `front/app/memory/components/MemoryGraph.vue`, `front/app/memory/components/MemorySearchTester.vue`, `front/app/memory/stores/memoryStore.ts` |
 | `app/onboarding` | `core/api` | `front/app/onboarding/services/onboardingService.ts` |
 | `app/onboarding` | `core/user` | `front/app/onboarding/components/WelcomePage.vue` |
+| `app/onboarding` | `core/authorize` | `front/app/onboarding/components/WelcomePage.vue` |
+| `app/onboarding` | `core/params` | `front/app/onboarding/components/WelcomePage.vue` |
 | `app/process` | `app/agent` | `front/app/process/components/ProcessRunsPanel.vue`, `front/app/process/pages/index.vue` |
 | `app/process` | `app/task` | `front/app/process/components/ProcessRunDetailContent.vue` |
 | `app/process` | `core/api` | `front/app/process/services/processService.ts` |

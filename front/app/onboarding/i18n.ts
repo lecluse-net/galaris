@@ -43,6 +43,10 @@ export default {
         home: 'Ouvrir l’accueil',
       },
       steps: {
+        language: {
+          title: 'Langue par défaut',
+          description: 'Choisissez la langue utilisée par défaut dans votre instance. Chaque utilisateur pourra choisir sa propre langue dans son profil.',
+        },
         llm: {
           title: 'Configurer un LLM',
           description: 'Ajoutez un fournisseur, puis sélectionnez au moins un modèle de langage. Un fournisseur seul ne suffit pas : Galaris doit disposer d’un modèle actif à appeler.',
@@ -144,6 +148,10 @@ export default {
         home: 'Open home',
       },
       steps: {
+        language: {
+          title: 'Default language',
+          description: 'Choose the default language for your instance. Each user can choose their own language in their profile.',
+        },
         llm: {
           title: 'Configure an LLM',
           description: 'Add a provider, then select at least one language model. A provider alone is not enough: Galaris needs an active model it can call.',
@@ -214,6 +222,10 @@ export default {
       error: { title: '无法检查配置', description: 'Galaris 无法读取实例状态。请稍后重试。' },
       actions: { retry: '重试', refresh: '重新检查', previous: '上一步', next: '下一步', home: '打开主页' },
       steps: {
+        language: {
+          title: '默认语言',
+          description: '选择实例的默认语言。每位用户都可以在个人资料中选择自己的语言。',
+        },
         llm: {
           title: '配置 LLM', description: '添加服务商，然后选择至少一个语言模型。仅有服务商还不够：Galaris 需要一个可调用的已启用模型。',
           action: '配置 LLM', reviewAction: '检查 LLM', tipProvider: '选择本地或远程服务商并输入连接信息。',

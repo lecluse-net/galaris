@@ -12,7 +12,7 @@ tests remain authoritative for behavior.
 - 71 declared backend modules;
 - 36 declared frontend modules;
 - 527 backend dependency edges;
-- 192 frontend dependency edges;
+- 194 frontend dependency edges;
 - 266 edges between `app`/`bridge` domains;
 - 25 directly bidirectional domain pairs;
 - 1 strongly connected components;
@@ -773,6 +773,8 @@ tests remain authoritative for behavior.
 | `app/memory` | `core/websocket` | `front/app/memory/components/DocumentApplication.vue`, `front/app/memory/components/DocumentEditor.vue`, `front/app/memory/components/DocumentLibraryNavigation.vue`, `front/app/memory/components/DocumentLibraryPage.vue`, `front/app/memory/components/DocumentThumbnail.vue`, `front/app/memory/components/MemoryGraph.vue`, `front/app/memory/components/MemorySearchTester.vue`, `front/app/memory/stores/memoryStore.ts` |
 | `app/onboarding` | `core/api` | `front/app/onboarding/services/onboardingService.ts` |
 | `app/onboarding` | `core/user` | `front/app/onboarding/components/WelcomePage.vue` |
+| `app/onboarding` | `core/authorize` | `front/app/onboarding/components/WelcomePage.vue` |
+| `app/onboarding` | `core/params` | `front/app/onboarding/components/WelcomePage.vue` |
 | `app/process` | `app/agent` | `front/app/process/components/ProcessRunsPanel.vue`, `front/app/process/pages/index.vue` |
 | `app/process` | `app/task` | `front/app/process/components/ProcessRunDetailContent.vue` |
 | `app/process` | `core/api` | `front/app/process/services/processService.ts` |
