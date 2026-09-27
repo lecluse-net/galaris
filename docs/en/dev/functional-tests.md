@@ -1,7 +1,5 @@
 <p align="right"><a href="../../fr/dev/functional-tests.md">Français</a> · <strong>English</strong></p>
 
-Post-commit wakeups are covered by `tests/test_inference_lifecycle.py`: zero queries during a silent interval, delivery after notification, multiple readers, immediate commands, pagination and recovery. `core/tests/test_commit_notifications.py` checks commits, savepoints and rollbacks. `tests/test_scheduler_wakeups.py` checks durable mutations, retry deadlines and idle queues despite periodic maintenance.
-
 # Functional guarantees catalogue
 
 `back/app/agent/tests/test_planner_collections.py` covers repeated work: small mechanical batches
@@ -77,6 +75,18 @@ idempotence through the real API. `context-help.spec.mjs` covers closing, acknow
 reopening, existing preferences, errors and retries, late responses and account changes
 with real Vue/Quasar components. Domain catalogs own the text; translation changes
 never reset an acknowledgement.
+
+Task activity during tool-argument generation is covered by
+`app/harness/tests/test_message_fragments.py` and `test_executor_streaming.py`:
+durable progress without a fabricated tool result, timeout for silent streams and empty
+deltas. `test_inference_lifecycle.py` uses PostgreSQL to ensure polling, lease renewal and
+journal writes do not transfer full requests; recovery scenarios and
+`test_protocol_inference.py` preserve event order, errors and accounting.
+The same scenario requires zero queries during a silent interval, then notification-driven
+delivery; it covers multiple readers and a commit between reading and waiting.
+`core/tests/test_commit_notifications.py` checks commits, savepoints and rollbacks.
+`tests/test_scheduler_wakeups.py` checks wakeups after durable mutations, retry deadlines
+and idle queues without scans even while periodic maintenance keeps running.
 
 Document structure (#168) is covered by `back/app/memory/tests/test_document_structure.py`:
 one memory companion per attachment, mandatory image-description persistence, deterministic

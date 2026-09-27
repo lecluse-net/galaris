@@ -171,6 +171,9 @@ Système, Langue, Messagerie, Mémoire, Dream, Voix, Audio, Processus, Tâches e
 Harnais, Recherche, Navigateur, Janus, Instructions et Journaux. La
 [carte générée](../architecture/generated/navigation.md) donne la route de chaque rubrique.
 
+Dans **Tâches et exécution → Planner**, la planification se règle avec la profondeur maximale et
+le nombre maximal de feuilles. Il n’y a pas de plafond distinct sur le nombre total d’étapes.
+
 Quelques distinctions utiles :
 
 - **Superviser → Dream** (`/dream`) montre l’activité ; **Préférences → Dream**
@@ -185,9 +188,6 @@ Quelques distinctions utiles :
   web authentifiée. Un jeton API ne peut ni les lister, créer, modifier ou supprimer,
   ni obtenir un JWT web par renouvellement ou changement de rôle, même pour un administrateur.
   Le mot de passe, le profil, l’avatar, le MFA, les aides masquées, le rôle par défaut
-Dans **Tâches et exécution → Planner**, la planification se règle avec la profondeur maximale et
-le nombre maximal de feuilles. Il n’y a pas de plafond distinct sur le nombre total d’étapes.
-
   et les préférences personnelles LLM/voix se gèrent également en session web.
   Les jetons API ne peuvent pas créer, modifier ou supprimer un compte via les routes
   d’administration. Les privilèges habituels restent nécessaires dans l’interface web.

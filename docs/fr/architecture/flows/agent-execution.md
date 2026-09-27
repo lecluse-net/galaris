@@ -766,6 +766,12 @@ runtime au lieu d'immobiliser toute la Task. `TASK_ACTION_TIMEOUT_SECONDS` est u
 progression durable : chaque checkpoint ou événement sémantique le réarme. La durée totale n'est
 donc pas bornée et une Task peut rester active plusieurs jours ; seule une absence continue de
 progression pendant la durée configurée termine la tentative avec un diagnostic explicite.
+Le harnais interne réarme aussi ce contrôle pendant la génération d'arguments d'outil :
+un delta non vide déjà journalisé par la passerelle publie une progression durable, limitée
+en fréquence. Cela ne crée aucun résultat d'outil avant son exécution. Un renouvellement
+de lease ou un delta vide ne constitue pas une progression. La supervision des inférences,
+leur journal et leurs lecteurs de flux évitent de retransférer les requêtes et historiques
+complets à chaque passage ; les lectures détaillées restent disponibles.
 L'annulation d'un stream fournisseur finalise d'abord la trace `LLMCall` comme
 `cancelled` dans une portée protégée de l'annulation HTTP, puis ferme les transports avec un délai
 séparé ; la réconciliation des traces orphelines reste un filet de sécurité et non le chemin

@@ -7,7 +7,7 @@ following their work over time. Conversations, tasks, goals, documents, memory, 
 integrations form a common system. An agent can converse, consult authorized information,
 produce deliverables, involve colleagues, trigger external workflows and retain useful knowledge.
 
-This catalogue describes features present in the repository as of **26 September 2026**,
+This catalogue describes features present in the repository as of **27 September 2026**,
 including agent functions, administration screens and background mechanisms. It is organized
 by use, followed by a native MCP inventory and coverage of **every declared module**. Sources
 make that coverage verifiable. This is the exhaustive reference for preparing the product website.
@@ -16,11 +16,18 @@ make that coverage verifiable. This is the exhaustive reference for preparing th
 connections, models and external accounts. This describes the software without certifying
 every provider or installation configuration.
 
-This update reviews changes over the **last two days, 24–26 September 2026**, through commit
-`66a3100`, against current contracts and tests. It preserves the previous catalogue's coverage
-and integrates additions, changed behaviour and access conditions into their domain sections
-and inventories.
-The inventory covers **183 native MCP functions, 71 backend modules and 36 frontend modules**.
+This update retains the previous catalogue and reviews **27 September 2026 commits**, through
+`ce7f6b9`, together with staged and unstaged local changes present during inspection. Behaviour
+is checked against available contracts, implementation and tests; this documentary review does
+not qualify the assembled application.
+
+**Temporal memory and unified search**,
+**progress tracking during tool-argument generation** and **directory lookup in conversations**
+include local work not yet committed. They describe the inspected repository, without announcing
+publication. The committed retirement of execution briefing is reflected in routes, profiles and
+the Lab's ten mechanisms.
+
+The inventory covers **184 native MCP functions, 71 backend modules and 36 frontend modules**.
 Implemented features remain distinct from intentions in the [plan register](../../../project/plans/README.md).
 Quality controls appear under [operations](#exploitation).
 
@@ -134,6 +141,9 @@ transport result. Resource origins, executed tools, results and available delive
 <a id="interface"></a>
 ## 2. Getting started and shared interface
 
+- **Welcome journey.** Seven selectable setup steps include the default language. The timeline
+  wraps to the available width, provides previous/next navigation and links to configuration
+  screens under the user's rights; language selection saves automatically.
 - **Guided home page:** discovery panels check usable chat models, agents, tools, active
   messaging, skills and processes, respecting rights and existing configuration.
 - **Contextual help:** explains domain concepts/workflows. Closing or selecting “Got it”
@@ -177,6 +187,11 @@ Sources: [user guide](../user/README.md), [PWA](../user/pwa.md),
 ## 3. Accounts, roles and teams
 
 ### Accounts and sessions
+
+Account administration, profile, password, avatar, MFA, personal preferences and personal/agent
+MCP token management require an **authenticated web session**. Even an administrator's API token
+cannot perform these mutations, manage tokens or obtain a web JWT through refresh or role switching.
+The usual privileges remain necessary in the web interface.
 
 - Register the first administrator on a fresh instance. Further registrations default to
   closed; System preferences can open them. Role assignments grant new accounts their rights.
@@ -228,7 +243,9 @@ An agent retains identity through conversations, Tasks and model changes. Its pr
 - tool connections, authorized skills and MCP access.
 
 Profiles, avatars and titles are managed under rights. Permanent codes serve integrations and
-workspaces and never change after creation. Selectors filter by action: manageable agents,
+workspaces and remain unchanged during an agent's lifetime. Deletion releases the code for a
+new agent while preserving history; older archived agents also release their codes upon reuse.
+An active duplicate produces an explicit error. Selectors filter by action: manageable agents,
 authorized chat partners or eligible team members. Standard titles follow UI language; custom
 labels, deletions and customizations survive initialization.
 
@@ -282,6 +299,13 @@ Multimodal discovery retains all capabilities; explicit refresh updates metadata
 **Providers & Models** opens on **Providers** by default unless a link requests another permitted
 tab. **Used models** retains profile settings and external-client configuration. The expandable
 profile-API explanation has been removed; the API and client configuration remain available.
+
+Chat/Responses calls without an explicit output budget request the model's published output
+capacity within the estimated remaining context. The models.dev catalogue can supplement provider
+metadata; discovery is cached for five minutes and existing configurations benefit automatically.
+Explicit budgets take precedence; unknown capacity keeps the provider default. Compaction and
+remote Responses histories do not receive a locally calculated budget. Physically truncated output
+does not count as successful Task completion.
 
 ### Optional initial OpenRouter configuration
 
@@ -355,7 +379,8 @@ trigger fallback; absent probabilities are not invented.
 
 Durable requests freeze choices/models/parameters. Traces distinguish specialized/fallback calls,
 retain costs and identify origin/reason. Resume rejects incompatible model/connection changes.
-No dedicated Decision deadline is imposed by default; explicit/workflow limits apply. Quality,
+No additional Decision-specific deadline is imposed by default; the shared LLM call duration
+ceiling and explicit/workflow limits apply. Quality,
 cost and latency are measured in Lab: filtering followed by writing can add a call.
 
 Sources: [profile decisions](../../../back/app/llm/profile_decisions.py),
@@ -604,6 +629,28 @@ Additional references: [DeepSeek Harness](../components/deepseek-harness.md).
 
 ### Conversations and interactions
 
+Chat home offers agents to start a conversation with and recent-conversation cards showing unread
+counts, latest activity and previews under the user's privacy preference. Both lists default to
+50 items and offer 10/20/50/100/500. Search, archives, external conversations and agent views remain
+available under their permissions. Creation preselects the agent; names already used, including
+archived conversations, receive **(2)**, **(3)** and subsequent suffixes, checked again on save.
+
+Conversations, Documents, Tasks and Processes expand when content appears and then respect manual
+collapse. Conversation filters can be hidden without clearing them. Message-linked Tasks and
+children are supplemented by the agent's active or waiting work, even in an empty conversation;
+unrelated completed or human-paused work is excluded. A document can be created from its collapsed
+section header. Selected conversations and documents remain legible in dark mode.
+
+Authorised `agent_list` and `agent_get` directory reads are available in conversation. Identifying
+a colleague neither contacts them nor creates a Task.
+
+Heavy views, editors and tabs load when opened; failures offer **Retry** without page reload or
+loss of edits. Agent lists are reused for one minute, titles/teams/settings for five; relevant
+saves invalidate caches and logout clears them. A full reload retrieves another session's changes
+immediately. Link previews and document thumbnails load near the visible area while messages and
+composition remain usable. Avatar reads are shared and invalidated on replacement/deletion. These
+mechanisms do not establish a measured performance gain.
+
 The native chat supports several named conversations with an agent, including creation from an
 empty list; search and rename; latest-message previews; archive/unarchive; unread counts and mute;
 replies, reactions and frequently used emoji; files, voice notes and dictation; explicit reasoning
@@ -815,9 +862,25 @@ content can therefore be corrected before admission rather than failing only whe
 ### Plans and collaboration between agents
 
 The Planner either asks for clarification or creates a plan of real Tasks with dependencies,
-deliverables and acceptance criteria. Depth, node and leaf counts are bounded, and a parent
+deliverables and acceptance criteria. Depth and leaf counts are bounded, without a separate
+total-node ceiling; defaults are **200 leaves** and three levels. A parent
 synthesises child results. Internal PLAN execution is managed by Galaris; Hermes has its direct
 execution path.
+
+The Dispatcher favours PLAN for independently verifiable and resumable deliverables, even when
+sequential and sharing a progress log. Phases of one document or tightly coupled work remain
+direct execution; difficulty alone does not justify planning.
+
+**Progressive collections** discover an inventory in a JSON Dataset, check completeness and access,
+then freeze its revision. One Task per substantial item is materialised in waves bounded by the
+leaf ceiling. Each collection permits **1,000 items** and **2,000,000 JSON characters**; depth includes
+the item level. A known mechanical batch of at most five items may remain one leaf. Incomplete
+inventories and excessive plans fail explicitly rather than silently flattening all work into a
+leaf. Execution remains sequential, progress includes known items awaiting materialisation, and
+**Retry** retains successful work and the frozen inventory to resume failed items.
+
+Sources: [planner contracts](../../../back/app/agent/planner_contracts.py),
+[collection/recovery journeys](../../../back/app/agent/tests/test_planner_collections.py).
 
 An agent can delegate to peers, creating correlated parent/child work with deadlines and turn
 limits. Waiting suspends work and a reply resumes it, while human pauses retain priority.
@@ -849,6 +912,12 @@ invalidates its workers.
 
 ### Recovery and side effects
 
+Committed admissions and events wake schedulers and readers after database commit. Internal
+inference pause/stop remains responsive while the provider is silent. Reopening monitoring reads
+the journal; closing the view does not stop generation. The internal harness's inactivity control
+also recognises tool-argument generation as progress, without presenting an unfinished tool call
+as an executed action or acquired result.
+
 PostgreSQL leases and heartbeats support recovery. Transient errors may retry; terminal errors do
 not. Internal execution journals checkpoints before and after effects. An unknown outcome for a
 non-idempotent operation blocks blind automatic replay until reconciled.
@@ -866,6 +935,10 @@ remains possible. This does not promise atomicity between the database and a rem
 Git output or shell text is not delivery evidence.
 
 ### Observed time and retained costs
+
+Task and conversation details distinguish waiting, preparation and first observable output,
+including time within and between calls before that output. Available measurements are used; missing data remains
+missing. An opening tool call can be the first output, without proving successful completion.
 
 Timings distinguish admission, processing, waiting, pause and backoff using persisted intervals.
 Older model-call records may support reconstruction; missing intervals are not invented. Accounting
@@ -974,6 +1047,26 @@ contradiction or partial overlap remains separate. The candidate revision is rec
 model call; concurrent changes preserve the incoming knowledge. Attachment adds provenance without
 rewriting or deleting the existing record. Without this specialisation, existing deduplication applies.
 
+### Partial temporal anchors and upcoming recall
+
+A memory may carry an **optional temporal anchor**: year, month, day of month, weekday, hour,
+minute and IANA timezone. Supplied components combine; missing components remain unrestricted.
+Day 27 and month 9 mean every 27 September; a date without a time covers the day. The form explains
+the interpretation and can remove the anchor without removing content. Creation, revisions,
+`memory_remember` and Dream extraction preserve it; different anchors are not merged. Existing
+records are not assigned inferred dates.
+
+Automatic recall prioritises current/upcoming matches independently of textual similarity, Topic
+and type, within access rights, interlocutor scope and the common budget. Lookahead defaults to
+**24 hours**, configurable from 0 to 744 hours. Dated memories outside that window cannot enter
+ordinary automatic recall. `memory_upcoming` retrieves further pages, up to 500 results per page.
+Anchors express intended reminders at a date, not every historical date mentioned in prose. They
+remain distinct from validity and trigger no notification, Task or expiry.
+
+Sources: [temporal contract](../../../back/app/memory/temporal.py),
+[temporal/access scenarios](../../../back/app/memory/tests/test_temporal.py),
+[Memory tools](../../../back/app/memory/mcp.py).
+
 ### Hybrid search and contextual recall
 
 Recall combines lexical title/keyword/content matches, embedding similarity, current or preselected
@@ -995,11 +1088,17 @@ changed and pending content is reconciled in the background. Changing the embedd
 rebuilding; incomplete or differently modelled indexes are not treated as current. Rights and
 revisions are checked again before return, including resumed Tasks. Missing embeddings or indexes
 produce an explicitly explained lexical fallback. Bounded recall is not exhaustive pagination;
-the administrative list separately provides paginated lexical search.
+the administrative list also uses hybrid text recall, selecting at most 500 undated memories
+and reporting truncation. Without text, it browses all undated memories matching filters.
+Temporal matches are added separately.
 
 Automatic memory context before selected runs requires no generative model call. Agents can deepen
-it through `file_search` on `memory://`. Search and injection use the same recall policy; core
-memory does not automatically reserve space at the expense of relevance.
+it through `file_search` on `memory://`. Search and injection use canonical recall, supplemented
+by temporal priority for automatic context; undated core memory does not automatically reserve space.
+
+Documents used with the same agent remain recall candidates beyond the recent-message window.
+Inaccessible references, another agent's documents and irrelevant matches are excluded; retrieved
+documents retain provenance and revision in the capsule.
 
 ### Documentary structure and attachment memory
 
@@ -1041,6 +1140,13 @@ Contact memory keeps exact identity scope. Topic proximity or a shared fact cann
 identity merging is explicit.
 
 ### Browsing and maintenance
+
+Search now lives in **List**, alongside **Graph**; the separate Search tab is removed. The mandatory
+temporal filter starts at the browser's current date/time. **Apply** tests that instant without
+lookahead: undated memories follow text/type/Topic/interlocutor filters, while matching dated
+memories are added independently of those filters. The union is sorted and paginated without
+duplicates, prioritising temporal matches by default. The text-recall ceiling does not truncate
+temporal matches. Simulation uses current rights and validity rather than reconstructing history.
 
 The graph UI supports node types and relationships, expansion, centring, full screen and bounded
 periods. Memory uses a desktop table or mobile cards without horizontal overflow; titles open
@@ -1612,6 +1718,10 @@ separate specialised functions. Lab is initially inactive; its 50 functions are 
 
 ### Installed product documentation for agents
 
+When the embedding provider is busy or fails, indexing backs off progressively, up to ten minutes,
+and retains completed batches. New passages remain available to text search; interactive searches
+need not wait for semantic indexing to catch up.
+
 Authorised agents can explain the installed Galaris version without changing personality or mission.
 A shared index covers user/admin/developer guides, navigation/architecture maps, decisions and plans.
 `documentation_catalog` exposes version, languages, domains and entry points and controls access to
@@ -1751,7 +1861,16 @@ open HTTP(S) URLs and choose mobile/desktop viewport; navigate/back/close; read 
 content with stable element references; click, replace field content, submit, press keys/shortcuts
 and scroll; capture full-page JPEG/PNG with bounded vertical slicing; inspect real dimensions and
 capture limits. Image blocks can render without local storage; an active console enables contracted
-saving. Reachable development services include Docker, LAN and the host through `host.docker.internal`.
+saving. Reachable development services can include Docker, LAN and the host when connection
+configuration and network permissions allow access.
+
+**Local networking is blocked by default**. Enabling it on a connection permits a permission
+request; destination/domain/port/network filters retain priority. Allowed public GETs pass directly
+by default, while POST, PUT, PATCH, DELETE and WebSocket require consent. Grants and refusals are
+remembered per agent, access type and origin (scheme/domain/port). The action must be retried after
+the answer: forms are not automatically resubmitted. **Monitor → Remembered permissions** lists
+questions and decisions, filters by agent/answer and deletes choices to prompt again, under
+connection privileges and the managed-agent scope.
 
 Browser preferences control inactivity expiry, capacity, action timeout, viewport and read/capture
 limits. Running or accepted actions protect their session from expiry; reducing capacity does not
@@ -2064,6 +2183,26 @@ amount without deleting results; optional narrative analysis is separate. Comple
 all cases passed. Judge failure leaves scores absent; critical violations can prohibit success.
 Repetition measures stability on these cases, not universal generalisation.
 
+### Before/after comparisons and regressions
+
+All ten labs compare evaluations, including different datasets, to examine a model, prompt or
+parameter change. Identical inputs, references and repetitions are paired; responses, checks,
+judgements, costs and durations appear side by side or stacked on mobile. Summaries cover full
+runs independently of pagination. Ambiguous pairing anywhere in either run or incompatible
+configuration blocks a misleading progression summary. Incomplete cases and missing judgements
+remain explicit.
+
+**Regressions to inspect** finds new critical failures and pass-to-fail transitions across the
+whole run, with changes by shared criterion. **Latency, cost and quality** reports medians and
+paired counts, including the Lab's first observed text/tool output, excluding queue and judge time.
+Four synthetic FR/EN journeys document a reproducible protocol. Missing values are not zero.
+Comparison launches no inference, changes no production setting and establishes no statistical
+superiority; rerun it after new results or judgements.
+
+Sources: [before/after journey](../user/lab-ai.md),
+[comparison protocol](../dev/lab-reference-corpus.md),
+[comparison contract](../../../back/app/lab/comparison_schemas.py).
+
 ### Human review and diagnosis
 
 Blind human review can hide model identity and automatic scores until a reviewer records dimension
@@ -2161,6 +2300,24 @@ Failed loads retry; stale details/snapshots cannot overwrite live activity, and 
 survive reopening. Mobile headers wrap, long tool names wrap, and header excerpts hide to preserve
 status readability while expanded steps retain full content.
 
+### Stopping an individual call and bounding its duration
+
+LLM activity and Task details provide **Stop this LLM call** for an ongoing inference, after
+confirmation, requiring `TASK_EDIT` and managed-agent scope. Acknowledgement does not yet prove
+provider termination. Traces and costs remain stored; these inferences offer no trash action.
+The waiting Task or conversation may report interruption; Task pause remains the appropriate
+control for work intended to resume.
+
+**Maximum LLM call duration** defaults to **30 minutes**, configurable from 1 to 1,440 minutes.
+A call without a terminal result fails at that deadline even while emitting partial text or
+reasoning. Each call has its own limit, independent of retries and Task inactivity control;
+multi-call work may therefore last longer. Changed settings affect new calls. Repetitive-reasoning
+detection handles words and cumulative snapshots without mistaking fragments of one word for loops.
+
+Sources: [call deadline](../../../back/app/llm/call_deadline.py),
+[stop, scope and retention](../../../back/tests/test_inference_lifecycle.py),
+[reasoning guard](../../../back/app/agent/tests/test_reasoning_guard.py).
+
 ### Durable incident journal
 
 AI, tool, Task, conversation and Process failures can create durable incidents grouped by fingerprint,
@@ -2189,11 +2346,11 @@ value saves restore confirmed values. Fields respect edit rights and remain usab
 | System | Registration and encrypted telemetry export configuration. |
 | Language/location | Optional fallbacks, with user-profile language taking priority. |
 | Messaging | Channels/bridges, incoming-file limits, voice-note duration, chat contact and notification delay. |
-| Memory | Session window, context activation/size, recall candidates/weights, acquisition, duplicates, conflicts and ageing. |
+| Memory | Session window, context activation/size, temporal lookahead, recall candidates/weights, acquisition, duplicates, conflicts and ageing. |
 | Dream | Activation, Topic creation, mechanism prompts, four attachment analyses, learning, evidence/score thresholds, active skills, delays and link reconciliation. |
 | Voice | Activation, auto-answer, audio and call discovery. |
 | Audio | Meeting/video prompts for segment, reduction and final synthesis. |
-| Tasks/execution | Scheduling, concurrency, leases, recovery, budgets, Goals, collaboration, model/tool limits and capability-aware Planner settings. |
+| Tasks/execution | Scheduling, concurrency, leases, recovery, budgets, Goals, collaboration, maximum duration per LLM call, model/tool limits and capability-aware Planner depth/leaves. |
 | Processes | Engine, file references, submission, refresh, waiting, idempotency, recovery and retention. |
 | Harnesses | Internal/managed/external policies, technical limits, internal binary files, Compose, manager connection/distribution. |
 | Browser | Sessions, inactivity, capacity, action timeout, viewport, content and capture limits. |
@@ -2437,6 +2594,9 @@ for subsequent calls without editing client files. Logs retain token name and ac
 | Local storage | Agent-local files require an active configured console. |
 | PWA | Installable with persistent sessions; processing needs the server. |
 | Memory | Bounded governed recall, not every memory on every request. |
+| Temporal memory | Partial anchors and lookahead, separate from validity; no automatic notification or trigger. Simulation uses current rights and data. |
+| Plan collections | Frozen inventory and sequential waves; up to 1,000 items per collection, with no promise of parallel execution. |
+| Browser permissions | Local networking denied by default; remembered consent cannot bypass connection filters. |
 | Early Topics | Parallel with Decision/Dream text, no admission wait/new rights/replay of completed search. |
 | Product knowledge | Admin/documentation permissions, read-only text search without embeddings, plans marked prospective; actual configuration separately verified. |
 | Agent Lab | Optional globally off-by-default connection/skill; only the skill is individually granted to the initial Galaris assistant. 50 shared-object functions, no automatic production changes; captures/diagnosis need Admin. |
@@ -2451,7 +2611,7 @@ and DbAdmin contributions.
 <a id="mcp"></a>
 ## 30. Inventory of agent-accessible functions
 
-These are the **183 native functions declared with `@mcp_tool` in the reviewed code**, including
+These are the **184 native functions declared with `@mcp_tool` in the reviewed code**, including
 conversation-only and administrative functions. They are not all visible to every agent; MCP exposes
 full argument schemas. External MCP servers discover their own evolving functions at connection time,
 with descriptions/status in the effective catalogue. External-runtime capabilities and discovery
@@ -2505,7 +2665,8 @@ management needs the specialised connection; ordinary actions stay within the ag
 
 | Function | Family | Action/result |
 |---|---|---|
-| `memory_remember` | `memory` | Immediately acquire an uncommon important durable fact as HTML with metadata/sources; ordinary extraction belongs to Dream. |
+| `memory_remember` | `memory` | Immediately acquire an uncommon important durable fact as HTML with metadata, sources and optional temporal anchor; ordinary extraction belongs to Dream. |
+| `memory_upcoming` | `memory` | Paginate authorised memories matching now or the lookahead window independently of textual similarity; schedules no notification. |
 | `memory_forget` | `memory` | Permanently forget owned memory/document and eligible versions; document forgetting also removes attachment descriptions/revisions. |
 | `memory_summarize` | `memory` | Use the agent model for attributed facts, decisions, commitments and open questions from ≤200 messages/32,000 characters, without replacing memory or saving after model failure. |
 | `memory_sharing` | `memory` | Read sharing, possible recipients and lock version, with recipient search/filter/pagination. |
@@ -2718,7 +2879,7 @@ These functions additionally require Admin inspection permissions.
 | `lab_run_delete` | `lab` | Delete terminal runs under state checks. |
 | `lab_campaign_list` | `lab` | List independent judging campaigns. |
 | `lab_campaign_get` | `lab` | Read a campaign/paginated judgements. |
-| `lab_run_compare` | `lab` | Compare model, prompt or parameter axes, flagging corpus/context/judge differences and unpairable evidence. |
+| `lab_run_compare` | `lab` | Compare model, prompt or parameter axes with full-run summaries, regression filters and paired latency/cost/quality medians; flag corpus/context/judge differences and unpairable evidence. |
 
 ### Lab: durable operations and diagnosis
 
@@ -2868,7 +3029,7 @@ rather than independent applications.
 | `app/dream` | Background-mechanism monitoring/receipts |
 | `app/topic` | Topic list/detail/reorganisation |
 | `app/goal` | Objectives, tree, cycles, referrers, schedules and follow-up |
-| `app/memory` | Search, document graph, contacts, HTML/Dataset library, JSON CodeEditor, apps/permissions, personal folders/icons/thumbnails/sharing |
+| `app/memory` | Unified list/search, temporal anchors and simulation, document graph, contacts, HTML/Dataset library, JSON CodeEditor, apps/permissions, personal folders/icons/thumbnails/sharing |
 | `app/lab` | Task diagnosis, contextual synthetic datasets, mechanism evaluation, consistency and attributed reviews |
 | `app/incident` | Incidents, families and review |
 | `app/process` | Definitions, execution, diagnostics/administration |

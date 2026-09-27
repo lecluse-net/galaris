@@ -728,6 +728,11 @@ instead of immobilizing the entire Task. `TASK_ACTION_TIMEOUT_SECONDS` is a dura
 watchdog: each checkpoint or semantic event resets it. Total duration is therefore not bounded,
 and a Task may remain active for several days; only continuous absence of progress for the
 configured duration ends the attempt with an explicit diagnostic.
+The internal harness also resets this watchdog while generating tool arguments: a nonempty
+delta already journaled by the gateway publishes throttled durable progress. This does not
+create a tool result before execution. Lease renewal and empty deltas do not count as
+progress. Inference supervision, journal writes and stream polling avoid transferring full
+requests and call histories on every iteration; detailed reads remain available.
 When a provider stream is canceled, the `LLMCall` trace is first finalized as
 `cancelled` within a cancellation-protected HTTP scope, then transports are closed with a
 separate timeout; reconciliation of orphaned traces remains a safety net, not the nominal path.

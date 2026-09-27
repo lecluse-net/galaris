@@ -575,6 +575,7 @@ async def _stream(
         current_messages=[current_message] if current_message is not None else None,
         output_transport=None,
         checkpoint=checkpoint,
+        on_model_activity=persist_progress,
     )
     from . import run_control
 

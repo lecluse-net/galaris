@@ -1,6 +1,8 @@
 from types import SimpleNamespace
 from typing import Any, AsyncIterator, cast
 from uuid import uuid4
+from unittest.mock import AsyncMock
+import asyncio
 
 import pytest
 from pydantic_ai import PartStartEvent, PartDeltaEvent, PartEndEvent
@@ -8,6 +10,53 @@ from pydantic_ai.messages import ThinkingPart, ThinkingPartDelta, TextPart, Text
 
 from app.agent import AIResult
 from app.harness.runtime import Agent, _StreamState
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("producing_arguments", [True, False])
+async def test_tool_argument_stream_keeps_task_alive_without_claiming_tool_execution(monkeypatch, producing_arguments):
+    from pydantic_ai.messages import ToolCallPartDelta
+    from app.task import scheduler
+    from app.task.models import TaskStatus
+
+    task_id = uuid4()
+    agent = Agent(cast(Any, SimpleNamespace()), task_id=task_id)
+    messages = []
+
+    async def events():
+        for _ in range(8):
+            await asyncio.sleep(0.03)
+            yield PartDeltaEvent(index=0, delta=ToolCallPartDelta(
+                args_delta="next" if producing_arguments else "",
+            ))
+
+    async def progress():
+        scheduler.notify_task_activity(task_id)
+
+    async def action(*_args):
+        async for message in agent._emit_stream_messages(
+            events(), _StreamState(), None, on_model_activity=progress,
+        ):
+            messages.append(message)
+
+    async def heartbeat(*_args):
+        await asyncio.Future()
+
+    complete, fail = AsyncMock(), AsyncMock()
+    monkeypatch.setattr(scheduler, "_run_action", action)
+    monkeypatch.setattr(scheduler, "_heartbeat_lease", heartbeat)
+    monkeypatch.setattr(scheduler, "_complete_claim", complete)
+    monkeypatch.setattr(scheduler, "_fail_claim", fail)
+    monkeypatch.setattr(scheduler, "runtime_settings", SimpleNamespace(TASK_ACTION_TIMEOUT_SECONDS=0.12))
+    await scheduler._run_claimed_action(task_id, TaskStatus.DISPATCH, uuid4())
+    assert messages == []  # Argument generation is neither a tool result nor a user message.
+    if producing_arguments:
+        complete.assert_awaited_once()
+        fail.assert_not_awaited()
+    else:
+        fail.assert_awaited_once()
+        assert isinstance(fail.await_args.args[3], TimeoutError)
+        complete.assert_not_awaited()
 
 
 @pytest.mark.asyncio

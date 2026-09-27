@@ -8,7 +8,7 @@ les objectifs, les documents, la mémoire, les modèles IA et les intégrations 
 Un même agent peut discuter avec une personne, consulter ses informations autorisées, produire un
 livrable, solliciter un collègue, déclencher un workflow externe et conserver les connaissances utiles.
 
-Ce catalogue décrit les fonctionnalités présentes dans le dépôt au **26 septembre 2026**, y compris
+Ce catalogue décrit les fonctionnalités présentes dans le dépôt au **27 septembre 2026**, y compris
 les fonctions destinées aux agents, les écrans d’administration et les mécanismes de fond. Il est
 organisé par usages, puis complété par un inventaire des fonctions MCP et une correspondance avec
 **tous les modules déclarés**. Les sources de chaque domaine sont indiquées pour rendre la couverture
@@ -20,12 +20,18 @@ des connexions, du modèle et, pour un service externe, du compte configuré. Ce
 sur l’implémentation actuelle et ses usages accessibles. Il décrit le logiciel, sans attester la
 configuration ou la qualification de tous les fournisseurs d’une installation particulière.
 
-La présente actualisation examine les changements des **deux derniers jours, du 24 au 26 septembre
-2026**, jusqu’au commit `66a3100`, et les confronte aux contrats et tests courants. Elle complète
-le catalogue précédent sans en retirer les capacités : nouveautés, changements de comportement
-et conditions d’accès sont intégrés à leurs sections métier et aux inventaires.
+La présente actualisation reprend le catalogue précédent et examine les **commits du 27 septembre
+2026**, jusqu’au commit `ce7f6b9`, ainsi que les modifications locales, indexées ou non, présentes
+lors de la revue. Les comportements sont confrontés aux contrats, à l’implémentation et aux tests
+disponibles ; cette revue documentaire ne constitue pas une qualification de l’application.
 
-Les inventaires couvrent **183 fonctions MCP natives, 71 modules backend et 36 modules frontend**.
+Les ajouts de **temporalité mémoire et de recherche unifiée**, le
+**suivi de progression pendant la génération des arguments d’outil** et
+la **consultation de l’annuaire en conversation** incluent du travail local non encore committé.
+Ils décrivent l’état du dépôt inspecté, sans annoncer leur publication. Le retrait du briefing,
+déjà committé, est reflété dans les routes, profils et dix mécanismes du Lab.
+
+Les inventaires couvrent **184 fonctions MCP natives, 71 modules backend et 36 modules frontend**.
 Les fonctionnalités réalisées restent distinctes des intentions du
 [registre des plans](../../../project/plans/README.md) ; les contrôles de
 qualité figurent dans [l’exploitation](#exploitation).
@@ -143,6 +149,9 @@ son résultat et, lorsqu’il existe, le reçu de livraison.
 <a id="interface"></a>
 ## 2. Prise en main et interface commune
 
+- **Parcours de bienvenue.** Sept étapes sélectionnables présentent la configuration initiale,
+  dont la langue par défaut. La timeline s’adapte à la largeur, avec précédent/suivant et accès
+  aux écrans de configuration selon les droits ; le choix de langue s’enregistre automatiquement.
 - **Accueil guidé.** Les blocs de découverte contrôlent la présence d’un modèle de chat réellement
   utilisable, d’agents, d’outils, d’une connexion de messagerie active, de skills et de processus.
   Ils tiennent compte des droits et de la configuration déjà présente.
@@ -190,6 +199,15 @@ son résultat et, lorsqu’il existe, le reçu de livraison.
 La PWA ne transforme pas les agents en logiciel autonome hors connexion : les actions métier ont
 besoin du serveur Galaris et des services qu’elles utilisent.
 
+Les vues lourdes, éditeurs et onglets se chargent à leur ouverture. Un échec propose **Réessayer**
+sans recharger la page ni effacer les saisies. Les listes d’agents sont réutilisées une minute,
+les civilités, groupes et paramètres cinq minutes ; les sauvegardes invalident les caches concernés,
+et la déconnexion les vide. Un rechargement complet permet de voir immédiatement les changements
+d’une autre session. Les miniatures et aperçus du chat se chargent près de la zone visible ;
+les messages et la rédaction restent utilisables. Les avatars mutualisent leurs lectures et
+s’invalident après remplacement ou suppression. Ces mécanismes ne constituent pas une mesure
+chiffrée de gain de performance.
+
 Les vérifications de mise à jour sont réessayées même si l’indicateur réseau du navigateur reste
 à tort hors ligne. Le mode développement désactive le cache PWA. Les chargements communs
 d’identité, d’agents et de privilèges mutualisent les demandes concurrentes et ignorent les
@@ -226,6 +244,11 @@ Sources : [guide utilisateur](../user/README.md), [PWA](../user/pwa.md),
   Les tokens d’intégration sont distincts des tokens MCP par agent.
 
 ### Droits et rôles
+
+La gestion des comptes, du profil, du mot de passe, de l’avatar, du MFA, des préférences personnelles
+et des jetons personnels/MCP exige une **session web authentifiée**. Un jeton API, même administrateur,
+ne permet pas ces mutations, ne donne pas accès à la gestion des jetons et ne peut obtenir un JWT
+web par renouvellement ou changement de rôle. Les privilèges métier restent requis dans le web.
 
 Galaris applique un **RBAC**, c’est-à-dire des droits regroupés en rôles puis affectés aux personnes.
 L’administration permet de gérer les privilèges, les rôles, leurs affectations et des listes de
@@ -275,7 +298,10 @@ Un agent peut porter seulement un prénom. La création et les modifications ref
 vide ou composé d’espaces ; le nom peut être omis ou effacé sans empêcher l’enregistrement.
 
 Les fiches, avatars et civilités sont administrables selon les droits. Le code permanent sert aux
-intégrations et aux espaces de travail ; il ne change pas après création. Les sélecteurs d’agents
+intégrations et aux espaces de travail ; il ne change pas pendant la vie de l’agent. La suppression
+libère ce code pour un nouvel agent sans effacer l’historique ; les anciens agents archivés libèrent
+également leur code lors de sa réutilisation. Un doublon actif produit une erreur explicite.
+Les sélecteurs d’agents
 filtrent selon l’action : agents administrables pour une modification, interlocuteurs autorisés
 pour un chat, membres possibles pour une équipe.
 
@@ -352,6 +378,13 @@ La page **Fournisseurs & Modèles** s’ouvre par défaut sur **Fournisseurs**, 
 un autre onglet autorisé. L’onglet **Modèles utilisés** conserve la configuration des profils et
 le configurateur de clients externes ; le bloc explicatif déroulant sur l’accès API par profil
 a été retiré, sans supprimer l’API ni les configurations de clients.
+
+Pour les appels Chat/Responses sans budget explicite, Galaris demande la capacité de sortie publiée
+du modèle, dans la place estimée restante du contexte. Le catalogue models.dev peut compléter les
+métadonnées ; la découverte est conservée cinq minutes. Les modèles déjà configurés en bénéficient.
+Un budget explicite reste prioritaire ; sans capacité connue, le défaut fournisseur s’applique.
+La compaction et les historiques Responses distants n’utilisent pas ce calcul local. Une sortie
+tronquée par la limite physique ne valide pas la tâche.
 
 ### Configuration initiale facultative OpenRouter
 
@@ -447,8 +480,9 @@ seule un repli ; les probabilités absentes ne sont jamais inventées.
 La requête durable fige les choix, modèles et paramètres. La trace distingue l’appel spécialisé
 du repli éventuel, conserve leurs coûts et précise l’origine de la réponse et la raison du repli.
 Une reprise refuse une configuration de modèle ou de connexion devenue incompatible. Il n’y a
-pas de délai propre à Décision imposé par défaut ; les échéances explicites et limites du workflow
-restent appliquées. Le gain de qualité, de coût ou de rapidité se mesure dans le Lab : une décision
+pas de délai supplémentaire propre à Décision imposé par défaut ; le plafond commun de durée
+d’un appel LLM, les échéances explicites et les limites du workflow s’appliquent. Le gain de
+qualité, de coût ou de rapidité se mesure dans le Lab : une décision
 suivie d’une rédaction peut ajouter un appel.
 
 Sources : [décisions par profil](../../../back/app/llm/profile_decisions.py),
@@ -768,6 +802,24 @@ Sources : [contrats](../../../back/app/harnesses/contracts.py), [API](../../../b
 
 ### Échanger au quotidien
 
+L’accueil du Chat propose les agents avec qui commencer une conversation et les conversations
+récentes en cartes : non-lus, dernier message et aperçu selon la préférence de confidentialité.
+Les deux listes sont paginées, avec 50 éléments par défaut et les choix 10/20/50/100/500.
+Recherche, archives, conversations externes et vue d’un agent restent accessibles selon les droits.
+Créer une conversation présélectionne l’agent ; un nom déjà utilisé, archives comprises, reçoit
+un suffixe **(2)**, **(3)**, etc., revérifié à l’enregistrement.
+
+Les rubriques Conversations, Documents, Tâches et Processus s’ouvrent lorsque des éléments
+apparaissent et respectent ensuite le repli manuel. Les filtres de conversation peuvent être
+masqués sans être réinitialisés. Les tâches liées aux messages et leurs enfants sont complétés
+par les travaux en cours ou en attente de l’agent, même dans une conversation vide ; les travaux
+extérieurs terminés ou en pause humaine ne sont pas ajoutés. Un document peut être créé depuis
+l’en-tête de sa rubrique repliée. La sélection des conversations et documents reste lisible en
+thème sombre.
+
+La lecture de l’annuaire par `agent_list` et `agent_get` est disponible en conversation selon
+les autorisations : identifier un collègue ne le contacte pas et ne crée pas de Task.
+
 Le chat natif sert aux conversations **entre un humain et un agent**. L’utilisateur peut :
 
 - choisir un agent autorisé et créer plusieurs conversations nommées ;
@@ -1083,9 +1135,26 @@ sans attendre un échec lors de son enregistrement.
 ### Planifier et déléguer
 
 Le Planner peut produire un plan ou demander un cadrage. Un plan comporte des étapes, des
-livrables, des critères de succès et des dépendances ; sa profondeur, son nombre de nœuds et ses
-feuilles sont bornés par les réglages. Les étapes deviennent de **vraies tâches**, consultables dans
+livrables, des critères de succès et des dépendances ; sa profondeur et ses feuilles sont bornées
+par les réglages, sans plafond distinct du nombre total de nœuds. Le plafond par défaut est de
+**200 feuilles** et trois niveaux. Les étapes deviennent de **vraies tâches**, consultables dans
 l’arborescence, et leurs résultats alimentent la synthèse du parent.
+
+Le Dispatcher privilégie PLAN pour des livrables indépendamment vérifiables et reprenables,
+même séquentiels et partageant un suivi. Les phases d’un même document ou d’un travail étroitement
+couplé restent en exécution directe ; la difficulté seule ne justifie pas un plan.
+
+Les **collections progressives** découvrent un inventaire dans un Dataset JSON, vérifient sa
+complétude et les droits, puis figent sa révision. Une Task par élément substantiel est créée
+par vagues bornées par le plafond de feuilles. Une collection accepte jusqu’à **1 000 éléments**
+et un inventaire de **2 000 000 caractères** ; la profondeur inclut les éléments. Un petit lot
+mécanique connu d’au plus cinq éléments peut rester une feuille. Un inventaire incomplet ou un
+plan excessif échoue explicitement, sans concentrer silencieusement le travail dans une feuille.
+L’ordre reste séquentiel, la progression inclut les éléments connus encore non matérialisés,
+et **Réessayer** conserve les succès et l’inventaire figé pour reprendre les éléments en erreur.
+
+Sources : [contrats du planner](../../../back/app/agent/planner_contracts.py),
+[parcours de collections et reprise](../../../back/app/agent/tests/test_planner_collections.py).
 
 Le harnais interne autorise la planification. La politique Hermès utilise une exécution autonome
 directe.
@@ -1145,6 +1214,12 @@ pas le faire réapparaître.
 
 ### Durabilité, reprise et livraison
 
+Les admissions et événements enregistrés réveillent les schedulers et lecteurs après validation
+en base. Pause et arrêt des inférences internes restent traités pendant le silence du fournisseur.
+Rouvrir un suivi relit le journal ; fermer la vue ne stoppe pas la génération. Le contrôle d’absence
+de progrès du harnais interne tient également compte des arguments d’outil en cours de génération,
+sans les présenter comme un outil exécuté ni comme un résultat acquis.
+
 Les phases, tentatives et leases sont stockées dans PostgreSQL. Un heartbeat renouvelle la propriété
 d’une exécution ; une reprise récupère un travail abandonné selon son état. Les erreurs transitoires
 suivent des délais et plafonds de retry distincts des erreurs terminales.
@@ -1181,6 +1256,11 @@ porte la ressource, le message, la connexion et le salon observés ; il ne rend 
 le réseau et la base. Un texte de commande Git ou shell ne constitue pas une preuve de livraison.
 
 ### Temps observés et coûts conservés
+
+Les détails de Task et de conversation distinguent l’attente, la préparation et la première
+sortie observable, avec le temps dans les appels et entre les appels avant cette sortie.
+Ils utilisent les mesures effectivement disponibles : une donnée absente reste absente. Le début d’un appel
+d’outil peut constituer la première sortie ; il ne prouve pas la réussite du travail.
 
 Les mesures distinguent préparation, admission, première prise en charge, traitement sous lease,
 attente, pause et backoff. Les intervalles suivent les transitions persistées ; ils ne se fondent
@@ -1355,6 +1435,27 @@ le parcours de dédoublonnage existant reste utilisé.
 Sources : [acquisition Memory](../../../back/app/memory/acquisition_service.py),
 [équivalence et concurrence](../../../back/tests/test_decision_workflows.py).
 
+### Temporalité partielle et rappels à venir
+
+Un souvenir peut recevoir une **temporalité facultative** : année, mois, jour du mois, jour de
+semaine, heure, minute et fuseau IANA. Les composantes renseignées se combinent ; les autres restent
+libres. Jour 27 et mois 9 correspondent à chaque 27 septembre ; une date sans heure couvre la
+journée. Le formulaire explique l’interprétation et permet de retirer l’ancrage sans perdre le
+contenu. Création, révisions, `memory_remember` et extraction Dream conservent cette information ;
+des ancrages différents ne sont pas fusionnés. Les anciennes données ne sont pas datées par inférence.
+
+Le rappel automatique donne priorité aux correspondances présentes ou prochaines, indépendamment
+de la similarité textuelle, du sujet et du type, dans les droits, la portée d’interlocuteur et le
+budget commun. L’anticipation vaut **24 heures par défaut**, réglable de 0 à 744 heures. Un souvenir
+daté hors fenêtre est exclu du rappel automatique ordinaire. `memory_upcoming` consulte les pages
+supplémentaires, jusqu’à 500 résultats par page. Cet ancrage concerne les rappels voulus à une date,
+pas toute date historique citée dans un texte. Il reste distinct de la validité et ne déclenche
+ni notification, ni tâche, ni expiration.
+
+Sources : [contrat temporel](../../../back/app/memory/temporal.py),
+[cas temporels et droits](../../../back/app/memory/tests/test_temporal.py),
+[outils Memory](../../../back/app/memory/mcp.py).
+
 ### Recherche hybride et rappel contextuel
 
 La recherche combine :
@@ -1385,13 +1486,19 @@ autre modèle n’est pas utilisé comme s’il était à jour. Les droits et la
 avant restitution, y compris lors d’une reprise de tâche.
 
 Si le modèle d’embeddings ou l’index est indisponible, le repli lexical est annoncé avec sa raison.
-La recherche bornée ne promet pas une pagination exhaustive ; la liste d’administration dispose
-séparément d’une recherche lexicale paginée.
+La recherche bornée ne promet pas une pagination exhaustive. Dans la liste d’administration,
+la recherche textuelle utilise aussi le rappel hybride, avec une sélection de 500 souvenirs
+sans date au maximum et une indication de troncature ; sans texte, la liste parcourt tous les
+souvenirs sans date répondant aux filtres. Les correspondances temporelles s’ajoutent séparément.
 
 Avant certains runs, un **contexte mémoire automatique** est construit sans appel à un modèle
 génératif. L’agent peut approfondir avec `file_search` sur `memory://`. La recherche et l’injection
-utilisent la même politique de rappel ; la mémoire centrale ne reçoit pas automatiquement une
-place réservée au détriment de la pertinence.
+utilisent le rappel canonique, complété pour le contexte automatique par la priorité temporelle ;
+la mémoire centrale sans date ne reçoit pas automatiquement une place réservée.
+
+Les documents manipulés avec le même agent restent candidats au rappel au-delà des derniers
+messages. Les références inaccessibles, d’un autre agent ou sans correspondance utile sont écartées ;
+la capsule conserve la provenance et la révision du document retrouvé.
 
 ### Structure documentaire et mémoire des pièces jointes
 
@@ -1465,6 +1572,14 @@ périmètres. La fusion de contacts est une opération explicite.
 La page Mémoire propose recherche, filtres et **graphe interactif** : types de nœuds, relations,
 développement progressif, recentrage, plein écran et période. Les détails expliquent les contenus,
 liens et sources ; les grandes vues restent bornées.
+
+La recherche est réunie dans **Liste**, à côté de **Graphe** ; l’ancien onglet Recherche est retiré.
+Le filtre temporel obligatoire est prérempli avec la date et l’heure du navigateur. **Appliquer**
+teste cet instant sans anticipation : les souvenirs sans date suivent les filtres texte/type/sujet/
+interlocuteur, et les souvenirs datés correspondants s’ajoutent indépendamment de ces filtres.
+L’union est triée et paginée sans doublons, avec priorité temporelle par défaut. La limite du rappel
+textuel ne tronque pas les correspondances temporelles. La simulation utilise les droits et la
+validité actuels ; elle ne reconstitue pas un état historique.
 
 La liste affiche un tableau sur desktop et des cartes sur mobile, avec filtres et pagination
 accessibles sans défilement horizontal. Le titre ouvre directement le détail autorisé ; les
@@ -2289,6 +2404,10 @@ développement peuvent être rafraîchies sans redémarrage. L’empreinte ident
 si la référence de build manque. Les réponses déjà écrites dans une conversation ne sont pas
 réécrites rétroactivement ; une nouvelle lecture utilise les sources actualisées.
 
+En cas de charge ou d’échec du fournisseur d’embeddings, l’indexation reprend avec un délai
+progressif, jusqu’à dix minutes, en conservant les lots validés. Les nouveaux passages restent
+recherchables textuellement et les recherches interactives ne doivent pas attendre ce rattrapage.
+
 Sources : [contrats Tool](../../../back/app/tools/schemas.py), [API Tool](../../../back/app/tools/router.py),
 [connexions](../../../back/app/connection/router.py), [MCP](../../../back/app/mcp/router.py),
 [outils intégrés](../../../back/app/tools/mandatory_tools.py),
@@ -2431,8 +2550,17 @@ contexte isolé et temporaire.
 - Capturer une page entière en JPEG/PNG, avec découpage vertical borné pour les grandes pages.
 - Voir les dimensions réelles et les limites de capture ; les blocs d’image peuvent être rendus
   même sans stockage local. Une console active permet les sauvegardes prévues par le contrat.
-- Ouvrir un service de développement joignable depuis le sidecar, y compris les services Docker,
-  le réseau local et l’hôte via `host.docker.internal`.
+- Ouvrir un service de développement joignable depuis le sidecar lorsque la configuration de
+  connexion et les permissions réseau l’autorisent, notamment Docker, le LAN ou l’hôte.
+
+Le **réseau local est bloqué par défaut**. L’activer sur la connexion autorise une demande de
+permission ; les filtres de domaines, ports et réseaux restent prioritaires. Par défaut, les GET
+publics autorisés passent directement, tandis que POST, PUT, PATCH, DELETE et WebSocket exigent
+un accord. Accord et refus sont mémorisés par agent, type d’accès et origine (protocole/domaine/port).
+L’action doit être retentée après réponse : un formulaire n’est pas resoumis automatiquement.
+**Superviser → Permissions mémorisées** permet de consulter les questions et réponses, filtrer
+par agent/décision et supprimer un choix pour faire redemander, dans le périmètre administrable
+et avec les droits de connexion requis.
 
 Les préférences **Navigateur** règlent la durée d’inactivité, le nombre maximal de sessions,
 le délai des actions, le viewport et les limites de lecture et de capture. Une action en cours
@@ -2878,6 +3006,27 @@ Une campagne « terminée » n’implique pas que tous les cas sont réussis. Un
 la note absente, et une violation critique peut interdire un verdict de réussite. Les répétitions
 mesurent la stabilité sur ces cas, pas la généralisation à toute situation.
 
+### Comparaisons avant/après et régressions
+
+Les dix labs proposent une comparaison entre évaluations, y compris de jeux distincts, pour
+étudier un changement de modèle, prompt ou paramètres. Les entrées, références et répétitions
+identiques sont appariées ; les réponses, contrôles, jugements, coûts et durées se lisent côte
+à côte, ou empilés sur mobile. Le bilan porte sur les runs complets, indépendamment de la page.
+Une ambiguïté d’appariement, même hors de la page affichée, ou une configuration incompatible
+empêche un bilan de progression trompeur. Les cas incomplets et jugements absents restent explicites.
+
+**Régressions à examiner** retrouve les nouveaux échecs critiques et les passages réussi → échoué
+sur tout le run, ainsi que les écarts par critère commun. **Délai, coût et qualité** présente
+les médianes et effectifs appariés, dont la première sortie de texte ou d’outil observée par le Lab,
+hors file d’attente et juge. Quatre parcours synthétiques FR/EN documentent un protocole reproductible.
+Les valeurs manquantes ne valent pas zéro. Une comparaison ne lance aucune inférence, ne modifie
+pas la production et ne prouve pas de supériorité statistique ; elle doit être relancée après de
+nouveaux résultats ou jugements.
+
+Sources : [parcours avant/après](../user/lab-ai.md),
+[protocole de comparaison](../dev/lab-reference-corpus.md),
+[contrat de comparaison](../../../back/app/lab/comparison_schemas.py).
+
 ### Revue humaine et diagnostic
 
 La **revue humaine** peut montrer les sorties sans le modèle ni les notes automatiques. Le reviewer
@@ -3021,6 +3170,25 @@ Sur mobile, les en-têtes des étapes se répartissent sur plusieurs lignes et l
 longs peuvent revenir à la ligne. L’aperçu de contenu dans l’en-tête est masqué pour laisser les
 statuts lisibles ; le contenu complet reste accessible dans l’étape dépliée.
 
+### Arrêter un appel et borner sa durée
+
+Dans l’activité LLM et le détail de Task, **Arrêter cet appel LLM** demande l’arrêt d’une inférence
+en cours, après confirmation, avec `TASK_EDIT` et dans le périmètre des agents gérés. L’accusé de
+réception ne prouve pas encore l’arrêt fournisseur. Traces et coûts restent conservés ; ces
+inférences ne proposent pas de suppression par corbeille. La tâche ou conversation peut ensuite
+signaler l’interruption ; la pause de Task reste l’action adaptée à un travail à reprendre.
+
+**Durée maximale d’un appel LLM** vaut **30 minutes par défaut**, réglable entre 1 et 1 440 minutes.
+Un appel sans résultat terminal échoue à cette échéance même s’il produit encore du texte ou du
+raisonnement. Le plafond porte sur chaque appel, indépendamment des retries et du contrôle
+d’inactivité de la Task ; un travail composé de plusieurs appels peut donc durer plus longtemps.
+Les nouveaux appels prennent les nouveaux réglages. La détection de raisonnement répétitif tient
+compte des mots et snapshots cumulés, sans compter comme répétitions les fragments d’un même mot.
+
+Sources : [échéance par appel](../../../back/app/llm/call_deadline.py),
+[arrêt, portée et conservation](../../../back/tests/test_inference_lifecycle.py),
+[garde de raisonnement](../../../back/app/agent/tests/test_reasoning_guard.py).
+
 ### Journal durable des incidents
 
 Les erreurs IA, outils, tâches, conversations et processus peuvent créer des **incidents persistés**.
@@ -3061,11 +3229,11 @@ sur mobile. Les rubriques couvrent :
 | Système | Ouverture des inscriptions et configuration chiffrée de l’export de télémétrie. |
 | Langue et localisation | Langue de repli et localisation facultatives ; priorité à la langue du profil utilisateur. |
 | Messagerie | Canaux actifs, configuration de bridges, limites des fichiers entrants, durée des notes vocales, contact et délai des notifications du Chat. |
-| Mémoire | Fenêtre de session, activation et taille du contexte mémoire, candidats et pondérations du rappel, acquisition, doublons, contradictions et vieillissement. |
+| Mémoire | Fenêtre de session, activation et taille du contexte mémoire, anticipation temporelle, candidats et pondérations du rappel, acquisition, doublons, contradictions et vieillissement. |
 | Dream | Activation, création des sujets, consignes des mécanismes, quatre analyses indépendantes de pièces jointes, apprentissage, seuils de preuves/score, nombre de skills actives, délais et réconciliation des liens. |
 | Voix | Activation, auto-réponse, paramètres audio et découverte des appels. |
 | Audio | Consignes de synthèse de réunion/vidéo, pour segments, réduction et résultat final. |
-| Tâches et exécution | Ordonnancement, concurrence, leases, reprises, budgets, création des objectifs, collaboration, limites d’appels modèle/outils et réglages du Planner selon les capacités des harnais. |
+| Tâches et exécution | Ordonnancement, concurrence, leases, reprises, budgets, création des objectifs, collaboration, durée maximale par appel LLM, limites d’appels modèle/outils, profondeur et feuilles du Planner selon les capacités des harnais. |
 | Processus | Moteur, références de fichiers, soumission, actualisation, attente, idempotence, reprises et rétention. |
 | Harnais | Politiques propres aux fournisseurs interne, managés ou externes, limites techniques, fichiers binaires du harnais interne, Compose, raccordement et distribution du manager. |
 | Navigateur | Sessions, durée d’inactivité, capacité, délai des actions, viewport, volumes de contenu et de captures. |
@@ -3374,6 +3542,9 @@ nom du jeton utilisé et conserve le fournisseur et le modèle réellement solli
 | Stockage local | Disponible pour l’agent seulement si une console est configurée et active. |
 | PWA | Installation et session persistante ; les traitements requièrent le serveur. |
 | Mémoire | Rappel borné et gouverné ; pas une garantie de rappeler chaque souvenir à chaque demande. |
+| Temporalité mémoire | Ancrage partiel et anticipation, distincts de la validité ; pas de notification ni de déclenchement automatique. La simulation utilise les droits et données actuels. |
+| Collections de plan | Inventaire figé et exécution séquentielle par vagues ; jusqu’à 1 000 éléments par collection, sans promesse de parallélisme. |
+| Permissions navigateur | Réseau local interdit par défaut ; un accord mémorisé ne contourne pas les filtres de la connexion. |
 | Sujet précoce | Classement parallèle si Décision et texte Dream sont configurés ; aucune attente d’admission, aucun droit supplémentaire et aucun rejeu automatique d’une recherche déjà faite. |
 | Documentation produit | Accès Galaris Admin et fonctions documentaires nécessaires ; lecture seule, recherche texte sans embeddings, plans identifiés comme prospectifs et configuration réelle à vérifier séparément. |
 | Lab agentique | Connexion et skill optionnels, inactifs globalement par défaut ; seul le skill est attribué individuellement à l’assistant Galaris initial. 50 fonctions sur les expériences communes, sans modification automatique de la production. Captures et diagnostics exigent l’inspection Admin. |
@@ -3388,7 +3559,7 @@ d’aperçu, les bridges, les harnais, les mécanismes Dream et les contribution
 <a id="mcp"></a>
 ## 30. Inventaire des fonctions accessibles aux agents
 
-Cet inventaire reprend les **183 fonctions natives déclarées par `@mcp_tool` dans le code inspecté**.
+Cet inventaire reprend les **184 fonctions natives déclarées par `@mcp_tool` dans le code inspecté**.
 Il couvre aussi les fonctions réservées aux contrôleurs conversationnels ou à l’administration.
 Toutes ne sont donc pas visibles simultanément par chaque agent. Les schémas d’arguments complets
 sont exposés par MCP ; leurs sources sont reliées aux sections métier ci-dessus.
@@ -3451,7 +3622,8 @@ ordinaires restent dans le périmètre de l’agent.
 
 | Fonction | Famille | Action et résultat |
 |---|---|---|
-| `memory_remember` | `memory` | Enregistrer immédiatement un fait durable rare et important en HTML, avec métadonnées et sources ; l’extraction ordinaire reste confiée à Dream. |
+| `memory_remember` | `memory` | Enregistrer immédiatement un fait durable rare et important en HTML, avec métadonnées, sources et temporalité facultative ; l’extraction ordinaire reste confiée à Dream. |
+| `memory_upcoming` | `memory` | Paginer les souvenirs autorisés correspondant à maintenant ou à la fenêtre d’anticipation, indépendamment de la similarité textuelle ; ne programme aucune notification. |
 | `memory_forget` | `memory` | Oublier définitivement une mémoire/document propriétaire et ses versions admissibles ; oublier le document supprime aussi les descriptions et révisions de ses pièces jointes. |
 | `memory_summarize` | `memory` | Synthétiser avec le modèle de l’agent faits attribués, décisions, engagements et questions ouvertes, au maximum 200 messages et 32 000 caractères, sans remplacement des souvenirs existants ni stockage après erreur modèle. |
 | `memory_sharing` | `memory` | Lire partages, destinataires possibles et version de verrouillage ; recherche/filtre/pagination des destinataires. |
@@ -3666,7 +3838,7 @@ Ces fonctions exigent également les autorisations d’inspection de Galaris Adm
 | `lab_run_delete` | `lab` | Supprimer un benchmark terminal selon ses contrôles d’état. |
 | `lab_campaign_list` | `lab` | Lister les campagnes de jugement indépendantes d’un benchmark. |
 | `lab_campaign_get` | `lab` | Lire une campagne et ses jugements paginés. |
-| `lab_run_compare` | `lab` | Comparer deux runs selon l’axe modèle, prompt ou paramètres ; signaler les différences de corpus, contexte, juge et les preuves non appariables. |
+| `lab_run_compare` | `lab` | Comparer deux runs selon l’axe modèle, prompt ou paramètres ; bilan complet, filtres de régressions et médianes appariées de délai/coût/qualité ; signaler les différences de corpus, contexte, juge et les preuves non appariables. |
 
 ### Lab : opérations longues et diagnostics
 
@@ -3821,7 +3993,7 @@ des formulaires/guides aux écrans communs, plutôt qu’une application indépe
 | `app/dream` | Suivi et reçus des mécanismes de fond |
 | `app/topic` | Liste, détail et réorganisation des sujets |
 | `app/goal` | Objectifs, arbre, cycles, référents, horaires et suivi |
-| `app/memory` | Recherche, graphe documentaire, contacts, bibliothèque HTML/Dataset, CodeEditor JSON, applications et permissions, dossiers personnels, icônes, miniatures et partage |
+| `app/memory` | Liste/recherche unifiée, temporalité et simulation, graphe documentaire, contacts, bibliothèque HTML/Dataset, CodeEditor JSON, applications et permissions, dossiers personnels, icônes, miniatures et partage |
 | `app/lab` | Analyse de tâches, jeux synthétiques contextualisés, évaluation par mécanisme, cohérence et revues attribuées |
 | `app/incident` | Incidents, familles et revue |
 | `app/process` | Définitions, exécutions, diagnostic et administration |

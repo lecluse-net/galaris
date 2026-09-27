@@ -7,7 +7,7 @@ import mimetypes
 import re
 import time
 from collections import deque
-from collections.abc import Mapping
+from collections.abc import Awaitable, Callable, Mapping
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field, replace
 from datetime import datetime, timezone
@@ -654,6 +654,7 @@ class AgentRuntime(ABC):
         output_transport: Any | None = None,
         checkpoint: HarnessRunCheckpoint | None = None,
         current_messages: Sequence[Message] | None = None,
+        on_model_activity: Callable[[], Awaitable[None]] | None = None,
     ) -> AsyncIterator[AIMessage]:
         """Run the agent and stream messages.
 
@@ -929,6 +930,7 @@ class Agent(AgentRuntime):
         output_transport: Any | None = None,
         checkpoint: HarnessRunCheckpoint | None = None,
         current_messages: Sequence[Message] | None = None,
+        on_model_activity: Callable[[], Awaitable[None]] | None = None,
     ) -> AsyncIterator[AIMessage]:  # type: ignore
         """Run in streaming mode and yield each partial or tool message in real time."""
 
@@ -1007,7 +1009,7 @@ class Agent(AgentRuntime):
                         ),
                     ) as event_stream:
                         async for message in self._emit_stream_messages(
-                            event_stream, state, output_transport
+                            event_stream, state, output_transport, on_model_activity=on_model_activity,
                         ):
                             yield message
         except asyncio.CancelledError as cancellation_error:
@@ -1049,6 +1051,8 @@ class Agent(AgentRuntime):
         ],
         state: _StreamState,
         output_transport: Any | None,
+        *,
+        on_model_activity: Callable[[], Awaitable[None]] | None = None,
     ) -> AsyncIterator[AIMessage]:
         """Translate one run's event stream into trace messages."""
         task_trace = self._task_id is not None and not self._real_time
@@ -1105,6 +1109,13 @@ class Agent(AgentRuntime):
 
             # 3. Append text and reasoning deltas to their own identified messages.
             if isinstance(event, PartDeltaEvent):
+                if isinstance(event.delta, _pydantic_messages.ToolCallPartDelta):
+                    # Arguments are still being generated, not executed. The durable
+                    # gateway has committed these bytes; keep the stall watchdog alive
+                    # without publishing an unfinished tool as a result or checkpoint.
+                    if event.delta.args_delta and on_model_activity is not None:
+                        await on_model_activity()
+                    continue
                 if isinstance(event.delta, _pydantic_messages.ThinkingPartDelta):
                     content = event.delta.content_delta
                     if content:

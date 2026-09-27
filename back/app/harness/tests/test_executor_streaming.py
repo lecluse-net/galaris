@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 from collections.abc import AsyncIterator
 from dataclasses import replace
 from types import SimpleNamespace
@@ -206,9 +207,11 @@ async def test_voice_conversation_runtime_is_traced_as_audio(
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("use_tool", [True, False])
+@pytest.mark.parametrize("argument_stream", [True, False])
 async def test_internal_stream_publishes_initial_and_tool_progress(
     monkeypatch: pytest.MonkeyPatch,
     use_tool: bool,
+    argument_stream: bool,
 ) -> None:
     progress = AsyncMock()
     request = AgentRunRequest(
@@ -246,6 +249,9 @@ async def test_internal_stream_publishes_initial_and_tool_progress(
             async def messages() -> AsyncIterator[AIMessage]:
                 yield AIMessage(type="text", content="Searching", stream_id="text", stream_complete=False)
                 yield AIMessage(type="text", content="", stream_id="text", stream_complete=True)
+                if argument_stream:
+                    await asyncio.sleep(executor._PROGRESS_PERSIST_INTERVAL + 0.01)
+                    await _kwargs["on_model_activity"]()
                 if not use_tool:
                     return
                 yield AIMessage(
@@ -283,7 +289,7 @@ async def test_internal_stream_publishes_initial_and_tool_progress(
 
     events = [event async for event in executor.stream(request)]
 
-    assert progress.await_count == (3 if use_tool else 2)
+    assert progress.await_count == (3 if use_tool else 2) + int(argument_stream)
     initial = progress.await_args_list[0].args[0]
     assert isinstance(initial, ExecutionResult)
     assert initial.messages == []
@@ -293,8 +299,12 @@ async def test_internal_stream_publishes_initial_and_tool_progress(
     assert completed.messages[0].stream_complete is True
     assert [event.message.stream_complete for event in events[:2]] == [False, True]
 
+    if argument_stream:
+        during_arguments = progress.await_args_list[2].args[0]
+        assert during_arguments.tools_used == []
+        assert [message.type for message in during_arguments.messages] == ["text"]
     if use_tool:
-        after_tool = progress.await_args_list[2].args[0]
+        after_tool = progress.await_args_list[-1].args[0]
         assert isinstance(after_tool, ExecutionResult)
         assert after_tool.tools_used == ["search_web"]
         assert [message.type for message in after_tool.messages] == ["text", "tool"]

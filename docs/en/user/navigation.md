@@ -157,6 +157,9 @@ Language, Messaging, Memory, Dream, Voice, Audio, Processes, Tasks and execution
 Harnesses, Search, Browser, Janus, Instructions and Logs. The
 [generated map](../architecture/generated/navigation.md) provides each route.
 
+Under **Tasks and execution → Planner**, planning is bounded by maximum depth and maximum leaves.
+There is no separate limit on the total number of steps.
+
 Useful distinctions:
 
 - **Monitor → Dream** (`/dream`) shows activity; **Preferences → Dream** (`/params/dream`)
@@ -169,9 +172,6 @@ Useful distinctions:
   (`/user/tokens`). It also changes language, theme and active role.
   Managing personal tokens and agents' MCP tokens requires an authenticated web
   session. An API token cannot list, create, update or delete them, or obtain a web
-Under **Tasks and execution → Planner**, planning is bounded by maximum depth and maximum leaves.
-There is no separate limit on the total number of steps.
-
   JWT through renewal or role switching, even when its owner is an administrator.
   Passwords, profiles, avatars, MFA, dismissed help, the default role and personal
   LLM/voice preferences are also managed through a web session. API tokens cannot

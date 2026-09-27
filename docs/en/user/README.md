@@ -92,8 +92,6 @@ internal inference, pause and stop remain responsive even when the provider stop
 text. Reopening monitoring reads the saved events without restarting generation; closing
 a monitoring view alone does not stop it.
 
-
-
 Executions without an explicit response budget automatically request the model's published
 output capacity when known. Existing configured models need no extra setting. This avoids
 small provider defaults; their physical limit still applies, and a cut-off response does

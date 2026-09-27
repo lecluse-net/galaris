@@ -1,7 +1,5 @@
 <p align="right"><strong>Français</strong> · <a href="../../en/dev/functional-tests.md">English</a></p>
 
-Les réveils après commit sont couverts par `tests/test_inference_lifecycle.py` : zéro requête pendant une fenêtre de silence, livraison après notification, lecteurs multiples, commandes immédiates, pagination et récupération. `core/tests/test_commit_notifications.py` vérifie commits, savepoints et rollbacks. `tests/test_scheduler_wakeups.py` vérifie les mutations durables, les délais de retry et les files au repos malgré les maintenances périodiques.
-
 # Catalogue des garanties fonctionnelles
 
 `back/app/agent/tests/test_planner_collections.py` couvre les traitements répétés : petits lots
@@ -97,6 +95,18 @@ renommage/suppression, jeton sans nom et alternance avec une session navigateur.
 `test_inference_lifecycle.py` vérifie sa transmission au worker sans hériter du
 jeton d'un autre appel. `front/browser-tests/llm-calls.spec.mjs` couvre son affichage
 et les appels historiques ou rattachés à un agent.
+
+Le suivi des tâches pendant la génération d'arguments d'outil est couvert par
+`app/harness/tests/test_message_fragments.py` et `test_executor_streaming.py` :
+progression durable sans faux résultat d'outil, arrêt des flux silencieux et des deltas
+vides. `test_inference_lifecycle.py` vérifie sur PostgreSQL que les boucles de suivi,
+les leases et le journal ne retransfèrent pas les requêtes complètes ; les scénarios
+de reprise et `test_protocol_inference.py` préservent ordre, erreurs et comptabilité.
+Le même scénario impose zéro requête pendant une fenêtre de silence, puis une livraison
+sur notification ; il couvre plusieurs lecteurs et un commit entre lecture et attente.
+`core/tests/test_commit_notifications.py` vérifie commits, savepoints et rollbacks.
+`tests/test_scheduler_wakeups.py` vérifie les réveils après mutations durables, les délais
+de retry et l'absence de scans des files au repos malgré une maintenance périodique.
 
 La structure documentaire de la #168 est couverte par
 `back/app/memory/tests/test_document_structure.py` : une mémoire par PJ, conservation obligatoire
