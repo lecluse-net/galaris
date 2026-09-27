@@ -3,7 +3,7 @@
 > **Statut :** `partial` — les changements de composition sont présents ; mesures empiriques
 > et améliorations de sélection restantes.
 >
-> **Revue du code :** 11 septembre 2026.
+> **Revue documentaire :** 27 septembre 2026.
 
 ## 1. Périmètre
 
@@ -13,18 +13,12 @@ leurs objectifs, historiques, outils et reprises ont un autre contrat.
 
 Le [guide développeur](../../docs/fr/dev/README.md) et le
 [flux d'exécution](../../docs/fr/architecture/flows/agent-execution.md) portent le comportement
-courant. Ce plan remplace sa rédaction historique accumulée depuis août : les variantes
-abandonnées et les incréments déjà décrits dans le code ne sont plus des lots à implémenter.
+courant.
 
 ## 2. Contrats de départ
 
-Le flux d'exécution et le catalogue fonctionnel portent la composition déjà réalisée.
-Les historiques d'implémentation et tableaux d'acquis ne sont plus maintenus ici.
-
-Les budgets existants sont conservés. Les profils `compact`, `standard` et `extended` sont
-abandonnés. L'annonce textuelle exhaustive des outils effectivement disponibles reste conservée.
-Le choix actuel est l'historique natif unique : l'ancienne proposition d'une seconde chronologie
-système n'est plus une cible de ce plan.
+Conserver les budgets existants, l'annonce textuelle des outils effectivement disponibles
+et l'historique natif unique définis dans le flux d'exécution et le catalogue fonctionnel.
 
 Ces contrats et tests ne démontrent pas encore un gain empirique sur tous les modèles.
 
@@ -59,10 +53,8 @@ identifiée de revenir à la configuration précédente.
 
 ### C — Continuité documentaire et sélection pertinente
 
-Le rappel borné des traces documentaires ignore désormais les échanges ordinaires avant
-sa limite et recontrôle ACL, titre et révision ([ADR 0032](../decisions/0032-frozen-interlocutor-context-capsule.md)).
-La régression synthétique couvre un document au-delà de cinquante échanges sans document.
-Cela ne qualifie pas encore le classement multilingue ni tout l'historique documentaire.
+Partir du rappel documentaire défini par l'[ADR 0032](../decisions/0032-frozen-interlocutor-context-capsule.md)
+pour qualifier le classement multilingue et la couverture de l'historique documentaire.
 
 - Mesurer les documents ou ressources utiles qui sortent de la fenêtre de messages récente.
 - Comparer récence, proximité sémantique, lien au contact et activité sans créer un second moteur

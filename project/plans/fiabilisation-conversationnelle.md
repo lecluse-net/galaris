@@ -1,7 +1,7 @@
 # Fiabilisation conversationnelle — travaux restants
 
 > **Statut :** `partial` — corrections réalisées ; extensions et qualifications encore ouvertes.
-> **Revue documentaire :** 19 septembre 2026.
+> **Revue documentaire :** 27 septembre 2026.
 
 Ce plan conserve uniquement le travail restant. Les contrats et preuves des corrections sont
 dans la [matrice projet](../audits/2026-09-19-fiabilisation-transversale.md), les décisions
@@ -12,19 +12,16 @@ dans la [matrice projet](../audits/2026-09-19-fiabilisation-transversale.md), le
 [0123](../decisions/0123-explicit-task-replacement.md), ainsi que le
 [catalogue fonctionnel](../../docs/fr/dev/functional-tests.md).
 
-Les dix lots de corrections ne sont plus des tâches à réaliser. La qualification restante
-du dispatcher est regroupée ici ; ses contrats sont portés par 0101 et 0102.
+La qualification restante du dispatcher est regroupée ici ; ses contrats sont portés par
+0101 et 0102.
 
 ## Travaux restant à réaliser
 
 ### L0 — Mesures du parcours, dont la qualification du dispatcher
 
-La projection des traces mesure maintenant le premier texte/outil et l'union des intervalles
-LLM ; Task et Conversation la partagent ([ADR 0094](../decisions/0094-task-timing-and-delivery-observations.md)).
-Les durées entre appels restent non attribuées et les preuves absentes restent inconnues.
-Les campagnes avant/après, la séparation réseau/verrou/temps local et la livraison restent à qualifier.
-Le [protocole Lab FR/EN](../../docs/fr/dev/lab-reference-corpus.md#campagne-délai-coût-et-qualité)
-prépare quatre parcours à réponses d'outils fixes, avec première sortie SDK, coût et qualité.
+Les campagnes avant/après, la séparation réseau/verrou/temps local et la livraison restent
+à qualifier à partir des mesures de l'[ADR 0094](../decisions/0094-task-timing-and-delivery-observations.md)
+et du [protocole Lab FR/EN](../../docs/fr/dev/lab-reference-corpus.md#campagne-délai-coût-et-qualité).
 L'admission Task y est simulée ; les mesures du parcours utilisateur complet restent à réaliser.
 
 - Constituer un corpus synthétique multilingue avec témoins nominaux et perturbés :
@@ -42,10 +39,9 @@ sur une conversation réelle ni présenter une mesure locale comme une preuve de
 
 ### L1–L3 — Arrêt externe, reprise et remplacement coordonné
 
-Le contrôle Hermès direct dispose d'une preuve de sortie du worker et d'une récupération
-par checkpoint, qualifiées avec un agent synthétique dans l'image épinglée ; voir le
-complément du 26 septembre de l'ADR 0123. Cela ne qualifie pas les effets distants réels,
-les autres runtimes ou le remplacement coordonné d'un arbre.
+Partir de la qualification synthétique du worker Hermès direct consignée dans
+l'[ADR 0123](../decisions/0123-explicit-task-replacement.md) pour étendre les preuves
+aux autres runtimes et aux effets distants réels.
 
 - Qualifier l'arrêt physique des runtimes externes, au-delà des probes de démarrage et de
   terminaison normale : demande refusée, accusé sans arrêt, perte réseau et crash/reprise.
@@ -105,10 +101,8 @@ prématuré. Le filtrage des sondes techniques dans les objectifs est un acquis 
 
 ### L8 — Langue, sortie structurée et effort
 
-La correction d'une sortie sans route lors d'un retry Task, les défauts des champs facultatifs,
-le repli sans retry des pairs IA et la relecture durable sont couverts en FR/EN sur
-Chat/Responses dans le [catalogue fonctionnel](../../docs/fr/dev/functional-tests.md).
-Les schémas historiques restent couverts par `test_dispatcher_planning.py`.
+Étendre la couverture du dispatcher et de ses schémas historiques recensée dans le
+[catalogue fonctionnel](../../docs/fr/dev/functional-tests.md).
 
 - Qualifier les réponses contenant plusieurs objets candidats dans une même réponse
   fournisseur, distinctes de la correction lors d'un retry déjà couverte.
@@ -137,9 +131,7 @@ Pour chaque travail : vérifier un manque actuel, préserver la matrice projet, 
 de corriger et adapter une règle générale. Aucun ajout de prompt pour un cas particulier.
 Réutiliser les suites existantes ; qualifier séparément les frontières externes réelles.
 
-Les contrôles complets du 19 septembre ont réussi sur leur instantané. Leur rapport reste
-`STALE` après une modification documentaire concurrente ; il ne qualifie pas une publication
-du worktree courant. Une publication demandée requiert `make validate` sur un nouvel instantané.
+Une publication demandée requiert `make validate` sur l'instantané final.
 
 Supprimer ce plan lorsque les lignes restantes sont réalisées, transférées vers un chantier
 identifié ou explicitement abandonnées. Aucun déploiement n'est autorisé par ce nettoyage.

@@ -1,15 +1,12 @@
 # Convergence SDK — métadonnées, protocoles et surfaces restantes
 
 - Statut : `partial`
-- Revue documentaire : 2026-09-19
+- Revue documentaire : 2026-09-27
 - Contrats réalisés : [0095](../decisions/0095-pydantic-ai-request-ownership.md) et
   [0097](../decisions/0097-durable-inference-lifecycle.md).
 
-La construction des appels par le SDK et la suppression des règles locales de noms du
-lot du 14 septembre sont réalisées. Les anciennes tables par modèle et propositions de
-migration ne constituent plus du travail à refaire. Les
-[preuves historiques](../audits/2026-09-13-pydantic-ai-request-ownership.md) restent dans l'audit ;
-le cycle de vie durable et ses extensions ont leur [plan propre](llm-calls-durables.md).
+Les [preuves historiques](../audits/2026-09-13-pydantic-ai-request-ownership.md) restent dans
+l'audit ; le cycle de vie durable et ses extensions ont leur [plan propre](llm-calls-durables.md).
 
 ## Travaux restants
 
@@ -24,9 +21,11 @@ le cycle de vie durable et ses extensions ont leur [plan propre](llm-calls-durab
 3. **Réglages et comptabilité.** Définir une projection bornée des réglages demandés,
    résolus et envoyés ; garder `reasoning_effort` canonique et les contenus sensibles
    hors de cette projection. Qualifier le découplage entre publication UI et comptabilité.
-4. **Autres surfaces.** Inventorier embeddings, realtime et génération/analyse média,
-   puis qualifier leurs intégrations officielles dans des lots distincts, coordonnés avec
-   le plan d'inférences durables.
+4. **Autres surfaces.** Compléter les intégrations embeddings, realtime et génération/analyse
+   média selon les manques de chaque consommateur, dans des lots distincts coordonnés avec
+   le plan d'inférences durables. Les entrées natives Chat/Task sont portées par
+   l'[ADR 0126](../decisions/0126-native-multimodal-inputs.md) ; restent notamment les formats
+   et fournisseurs non pris en charge par ses adaptateurs.
 
 ## Garanties de réception
 

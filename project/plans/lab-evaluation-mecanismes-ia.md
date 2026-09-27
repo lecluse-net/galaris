@@ -2,7 +2,7 @@
 
 > **Statut :** `partial` — socle livré ; qualification empirique et capacités de décision restantes.
 >
-> **Revue du code :** 11 septembre 2026. Cette revue documentaire ne rejoue pas les campagnes
+> **Revue documentaire :** 27 septembre 2026. Cette revue ne rejoue pas les campagnes
 > et n'atteste pas la qualité des modèles distants.
 
 ## 1. Périmètre restant
@@ -14,8 +14,9 @@ constitue pas à lui seul une preuve de qualité.
 Le contrat courant est maintenu dans l'[architecture du Lab](../../docs/fr/architecture/ai-lab-evaluation.md)
 et le [guide opérateur](../../docs/fr/user/lab-ai.md). Les décisions
 [0078](../decisions/0078-lab-variable-and-judgment-campaigns.md) et
-[0082](../decisions/0082-lab-stability-human-review.md) remplacent les anciennes descriptions
-jeu/item, candidat et juge de ce plan.
+[0082](../decisions/0082-lab-stability-human-review.md) et
+[0134](../decisions/0134-agent-lab-control.md) portent les contrats des campagnes et de leur
+comparaison. Leur implémentation n'est plus un lot de ce plan.
 
 ## 2. Limites des preuves existantes
 
@@ -47,19 +48,9 @@ indépendantes ; un nombre insuffisant de cas reste signalé.
 
 ### G — Comparabilité et tendances
 
-Le comparateur MCP et le dialogue « Avant / après » des onze Labs partagent la comparaison
-de deux runs (axes modèle, prompt et paramètres), les blocages explicites et les écarts par
-cas décrits par l'[ADR 0134](../decisions/0134-agent-lab-control.md). Le bilan global distingue
-cas et répétitions, couverture et scores jugés ; il reste descriptif, sans conclusion statistique.
-La comparabilité et les ambiguïtés d'appariement portent sur les deux runs complets,
-indépendamment de la page consultée ou du sens de comparaison.
-
-Les apparitions critiques, transitions réussi → échoué et écarts par dimension sont
-consultables avec un filtrage global avant pagination. Le protocole FR/EN délai/coût/qualité
-est préparé : quatre cas synthétiques, outils simulés, première sortie observée et médianes
-appariées. Il reste à exécuter et qualifier les campagnes avec des fournisseurs réels ;
-la mesure du Lab n'inclut pas le transport utilisateur ni une admission Task réelle.
-
+- Exécuter et qualifier avec des fournisseurs réels le
+  [protocole FR/EN délai/coût/qualité](../../docs/fr/dev/lab-reference-corpus.md#campagne-délai-coût-et-qualité).
+  La mesure du Lab n'inclut pas le transport utilisateur ni une admission Task réelle.
 - Étendre les politiques de comparaison aux expériences portant sur la rubrique, le corpus
   ou le juge et les qualifier sur des campagnes réelles.
 - Compléter le bilan descriptif global par des tendances dimensionnelles dans le temps,

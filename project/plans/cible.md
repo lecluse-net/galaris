@@ -3,7 +3,7 @@
 > **Statut :** `design` — direction produit et ordre de dépendance, sans autorisation implicite
 > d’implémenter.
 >
-> **Date de mise à jour :** 11 septembre 2026 — revue documentaire des dépendances et de la livraison.
+> **Revue documentaire :** 27 septembre 2026 — dépendances et travaux réalisés retirés.
 
 ## 1. Rôle de ce document
 
@@ -104,8 +104,6 @@ Avant d’élargir l’autonomie :
 
 - publier un threat model couvrant entrées, sorties réseau, secrets, approbations et surfaces à
   effet ;
-- supprimer les derniers fallbacks de secrets statiques après conversion vers des références de
-  connexion ;
 - durcir les clients MCP externes en deny-by-default : egress, SSRF, redirections, résolution DNS,
   TLS, tailles, délais et isolation de `stdio` ;
 - rendre les jetons MCP expirables, révocables, scopés, liés à une audience et audités ;
@@ -184,11 +182,11 @@ Ce chantier complète le plan actif du Lab, sans créer un moteur parallèle.
 
 Il reste à :
 
-- livrer la calibration humaine, les répétitions, l’incertitude, la comparabilité et les tendances
-  prévues par le plan du Lab ;
+- qualifier la calibration humaine, l’incertitude, les politiques de comparabilité élargies
+  et les tendances prévues par le plan du Lab ;
 - ajouter les gardes de non-régression et les exports machine utilisables en CI ;
-- versionner les rôles travail, validation et holdout ainsi que la gouvernance des datasets ;
-- fournir des outils simulés et fixtures d’effets pour les scénarios à risque ;
+- définir le gel et l'ouverture des holdouts en réutilisant les rôles de datasets existants ;
+- étendre les outils simulés et fixtures d’effets aux scénarios à risque encore non couverts ;
 - évaluer les politiques, permissions, pannes, injections et résultats end-to-end ;
 - comparer baseline et candidat sur qualité, coût, latence, stabilité et taux d’erreur ;
 - rattacher les gates aux `AgentRelease` et `AgentDeployment` ;

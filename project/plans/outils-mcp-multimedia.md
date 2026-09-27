@@ -2,15 +2,10 @@
 
 > **Statut :** `partial` — socle livré ; qualification réelle des comptes et extensions restantes.
 >
-> **Revue du code :** 11 septembre 2026. Aucun appel fournisseur payant n'est effectué par
+> **Revue documentaire :** 27 septembre 2026. Aucun appel fournisseur payant n'est effectué par
 > ce ménage documentaire.
 
-**Qualification locale du 11 septembre 2026 :** les 26 tests du module passent, dont le transfert
-de 100 Mo traversant file-share, Messenger et le bridge WhatsApp. La fixture utilise désormais
-un destinataire Galaris vérifié et autorisé par le contrat de contact courant. Le transport
-fournisseur reste simulé. Un inventaire en lecture seule trouve une ressource musicale
-OpenRouter active ; le fournisseur/capacité à essayer et le plafond de dépense restent à
-confirmer avant un appel réel. Voir le
+Les preuves et limites des essais locaux sont conservées dans le
 [rapport de qualification](../audits/2026-09-11-memory-multimedia-qualification.md).
 
 ## 1. Contrats de départ

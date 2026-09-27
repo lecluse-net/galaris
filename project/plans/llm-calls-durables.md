@@ -1,14 +1,12 @@
 # Inférences durables — extensions restantes
 
 - Statut : `partial`
-- Revue documentaire : 2026-09-19
+- Revue documentaire : 2026-09-27
 - Contrat courant : [ADR 0097](../decisions/0097-durable-inference-lifecycle.md).
 - Construction SDK : [ADR 0095](../decisions/0095-pydantic-ai-request-ownership.md).
 
-La façade durable, les requêtes texte/structurées/protocole, le journal, les leases,
-pause/stop/resume/replay et les pilotes existent. Leurs exemples d'implémentation ne sont
-plus maintenus dans ce plan ; les signatures réelles de `app.llm.contracts` et `facade.py`
-font foi. Les écarts providers restent suivis dans la
+Les contrats publics de `app.llm.contracts` et `facade.py` font foi sur le cycle durable.
+Les écarts providers restent suivis dans la
 [convergence SDK](convergence-pydantic-ai.md).
 
 ## 1. Préparation sans démarrage
@@ -40,8 +38,10 @@ coûts et incertitudes, sans relance implicite.
 
 ## 4. Médias et autres formes d'entrée
 
-Inventorier embeddings, transcription, realtime et génération/analyse média, puis étendre
-par consommateur avec ses garanties propres.
+Inventorier les besoins durables propres aux embeddings, à la transcription, au realtime
+et à la génération/analyse média, puis étendre par consommateur avec ses garanties propres.
+La réception native des pièces jointes Chat/Task relève déjà de
+l'[ADR 0126](../decisions/0126-native-multimodal-inputs.md) ; elle n'est pas à réimplémenter.
 
 - Préserver les URI canoniques, droits et matière effectivement nécessaire au rejeu.
 - Distinguer résultat typé, blocs progressifs et trames de protocole.

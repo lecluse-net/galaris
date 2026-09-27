@@ -1,11 +1,9 @@
 # Plan — Qualification de la mémoire et expériences restantes
 
 > **Statut :** `partial` — socle documentaire réalisé ; qualification et extensions ouvertes.
-> **Revue documentaire :** 19 septembre 2026.
+> **Revue documentaire :** 27 septembre 2026.
 
 Le contrat réalisé appartient à la [décision 0108](../decisions/0108-memory-document-retrieval.md).
-Les lots d'admission MEM-017, d'indexation MEM-016, de recherche commune MEM-008 et le premier
-découpage documentaire MEM-018 ne sont plus des implémentations à reprendre dans ce plan.
 
 Les preuves et limites restent dans les audits de
 [validité](../audits/2026-09-11-memory-multimedia-qualification.md),
@@ -78,68 +76,16 @@ correction, consolidation, vieillissement et oubli
 ```
 
 
-### 2.1 Sources vérifiées pour le remaniement du 17 septembre 2026
+### 2.1 Expériences exploratoires
 
-Ce fichier reste le plan unique. La demande porte sur son remaniement, pas sur une activation,
-une migration, un déploiement ou une réécriture de la mémoire en production.
+Les pistes du rapport privé sont reprises dans les lots ci-dessous : observation sans
+renforcement de popularité (MEM-013), cohortes et ablations (MEM-006/009), organisation
+des Topics (MEM-010), provenance fine (MEM-011/018). Leurs prototypes et mesures ne sont
+pas réputés intégrés au dépôt ; chaque hypothèse doit être reproduite sur le moteur courant.
 
-- **Code local courant** : cartographie générée, `memory/{models,semantic_index,embedding,
-  retrieval,service,file_facade,context,attachment_description}.py`, projection des résultats dans
-  `file_share/resource_service.py`, tests Memory et contrats du Lab. Le worktree évolue pendant
-  l'analyse ; les constats ci-dessous désignent les fonctions, pas une prétendue release figée.
-- **Diagnostic local du 17 septembre, vers 11 h Paris** : 26 documents dont 24 avec texte,
-  508 souvenirs avec texte, 18 compagnons de PJ sans texte ; aucun embedding courant.
-  Les 535 chunks présents ont le bon modèle configuré mais aucune empreinte courante.
-  La file contient alors 1 753 jobs en attente et 197 en erreur ; les dernières erreurs indiquent
-  un fournisseur injoignable. Ce sont des compteurs de jobs, pas de documents distincts.
-  Ces observations sont celles du développement, **pas un audit de santé de la production**.
-- **Validation locale déjà exécutée** : 40 tests de `test_semantic_search.py` et
-  `test_recall_evaluation.py` réussis. Les embeddings de ces tests sont substitués ou indisponibles ;
-  ce résultat ne mesure ni le fournisseur réel, ni la pertinence sur le corpus documentaire.
-- **Rapport privé lu en production, en lecture seule** :
-  lecture paginée avec vérification d'une même révision sur toutes les pages.
-  Son titre, son identifiant et son empreinte ne sont pas publiés.
-  Ses résultats sont des **preuves rapportées**, non des campagnes réexécutées lors de ce remaniement.
-  Les branches, bundles et artefacts `console://work/…` cités ne sont pas réputés intégrés ou
-  accessibles dans le dépôt courant. Les fichiers d'observation et d'évaluation contrefactuelle
-  cités dans ce rapport n'ont pas été retrouvés aux chemins correspondants dans le backend local.
-
-| Constat de code actuel | Conséquence | Lot |
-|---|---|---|
-| `file_facade.search_file_resources` filtre `memory://` sur `node_kinds=["memory"]` ; `document://` utilise `service.search_items` | Un document n'est pas directement candidat à la recherche mémoire explicite ; le parcours documentaire reste lexical | MEM-008 |
-| `resource_service.resource_search` construit l'URI depuis le schéma demandé | Élargir les résultats sans adapter ce consommateur fabriquerait des URI et capacités erronées | MEM-008 |
-| La mise en file sémantique intervient après le commit de certaines écritures ; `record_attachment_description` ne l'appelle pas | Fenêtre de perte de programmation et descriptions acquises non réindexées immédiatement | MEM-016 |
-| Réconciliation : existence d'au moins un chunk courant ; disponibilité : existence d'au moins un item courant | Une couverture partielle ne peut pas être résumée par « index disponible » | MEM-016 |
-| Découpage à 360 mots, recouvrement 60, plafond 256 fragments ; texte de recherche limité à 2 millions de caractères | Structure et fin des grands documents potentiellement perdues sans état partiel explicite | MEM-018 |
-| `_semantic_candidates` lit les chunks puis les objets ORM ; `_hydrate_hits` calcule l'accès sans en faire une condition de retrait | Frontières de révision et d'autorisation à corriger sur toutes les voies | MEM-017 |
-| Replis utilisant une page lexicale calculée avant l'appel au fournisseur | Risque de réintroduire un extrait invalidé pendant l'attente | MEM-017 |
-| Le brief peut rechercher plusieurs natures, mais présente surtout des UUID ; le résultat fichier perd les diagnostics détaillés | Découverte, lecture et compréhension des limites inégales selon le consommateur | MEM-007/008 |
-
-### 2.2 Analyse et arbitrages sur les réflexions du rapport privé
-
-| Apport du document | Ce que le plan retient | Limite ou correction |
-|---|---|---|
-| Cycles 1–2, instrumentation : candidat, exposé, injecté, utile | Événements distincts, traces par source, aucun renforcement fondé sur la seule exposition | La proposition initiale de petit bonus pour l'injection est abandonnée au profit de la correction ultérieure du rapport privé : aucun crédit d'utilité sans preuve attribuable |
-| MEM-013/MEM-014 du rapport privé : writer, observation et ablations | Réutiliser les contrats et tests pertinents après récupération et revue du delta ; observer sans modifier le ranking | Résultats historiques de branches expérimentales, pas fonctionnalités livrées ; aucun portage global aveugle |
-| Cycles 19–34 : propensions, cohortes et censure | Séparer probabilité d'action et échantillonnage de traces ; mission racine, horizon fixé et inconnues explicites | Une attestation de bras sans changement exécuté ne démontre aucun effet ; pas d'IPS/SNIPS depuis un score ou un taux de logging |
-| Cycles 38–40 : support de concept | Dépendances de provenance, rareté, exceptions et stabilité ; un cluster propose, il ne prouve pas un concept | Plusieurs fragments ou replays d'une source ne deviennent pas plusieurs observations indépendantes |
-| Cycle 45 : SciFact | Conserver un canal global indépendant du Topic ; mesurer séparément fidélité au top-k exact et pertinence annotée | Le banc TF-IDF rapporté passe de Recall@10 0,7735 en exhaustif à 0,3681 avec le seul centroïde ; les bornes complètes ne réduisent pas les comparaisons. Ce n'est ni le modèle configuré ni une mesure de Galaris |
-| Cycle 46 : génération cohérente | Manifestes, révisions, espace vectoriel, publication atomique et état incomplet explicite | Cohérence, fraîcheur, couverture et autorisation sont des garanties différentes ; aucune nouvelle partition technique imposée |
-| Cycle 47 : frontières ORM et replis | Priorité à une projection cohérente et à une admission commune des sorties ; reproduire ses ordonnancements dans la suite actuelle | Le rapport privé rapporte des défauts reproduits dans les vraies fonctions, mais pas le parcours HTTP complet ni un incident de production ; `refresh` seul ne suffit pas |
-| Cycle 48 : origine et activation | L'origine d'un fait reste attachée à sa version ; un chemin de rappel ne la réécrit pas | Une origine correcte ne prouve pas la pertinence ; les fixtures avec provenance fournie ne démontrent pas son extraction automatique |
-| Cycle 49 : support par fragment | Ancrages source/version et dépendances ; distinguer source citée, support attesté et vérité | Ne pas inférer des circuits ET/OU depuis une liste de citations ; `MemorySource.content_hash` n'est pas un digest général des octets de la source externe |
-
-Les analogies cognitives motivent des expériences, pas des constantes de production. L'activation
-adaptative, les nouveaux états de dormance et les circuits de preuve restent exploratoires.
-Les anciennes références à Alembic, à des révisions d'arêtes inexistantes ou à des FK empêchant
-l'oubli ne sont pas reprises : SQLAlchemy/DbAdmin, snapshots d'attributs réellement disponibles
-et effacement gouverné restent les contrats du dépôt.
-
-**Correspondance des identifiants :** conserver les MEM-001 à MEM-015 de ce fichier. Le MEM-011
-« cycle de vie Topic » du rapport privé rejoint ici MEM-010 ; son MEM-012 « métriques causales » rejoint
-MEM-009 ; son MEM-013 « observation » précise notre MEM-013 ; son MEM-014 « ablations » précise
-MEM-006 et MEM-009. Notre MEM-014 reste l'UX d'administration. Les nouveaux MEM-016 à MEM-018
-portent respectivement l'indexation, l'admission et la représentation documentaire.
+L'activation adaptative, la dormance et les circuits de preuve restent exploratoires.
+Les identifiants MEM restent stables ; l'indexation, l'admission et la recherche commune
+réalisées relèvent de l'ADR 0108, sans lots d'implémentation dans ce plan.
 
 ## 3. Invariants communs
 
@@ -418,10 +364,7 @@ une panne fournisseur ; sa durée et le temps de rattrapage sont mesurés sépar
 
 | Lot | Surfaces principales du dépôt | Scénarios existants à renforcer |
 |---|---|---|
-| MEM-017 | `retrieval.py`, `access.py`, `service.py`, `context.py`, contrats de sortie fichiers/API | `test_semantic_search.py`, `test_document_sharing.py`, `test_document_grants.py`, `test_document_structure.py` : concurrence, droits frais, révisions et replis |
-| MEM-016 | `semantic_index.py`, `automation.py`, `embedding.py`, `models.py`, `dbadmin.py`, tous les writers | `test_semantic_search.py`, `test_acquisition_automation.py`, `test_creation_cancellation.py`, `test_document_structure.py` : durabilité, jobs, rattrapage et descriptions |
 | MEM-018 | `semantic_index.py`, `document_structure.py`, `attachment_description.py`, contrats de contenu et de source | `test_editorial_html.py`, `test_document_resources.py`, `test_document_structure.py`, `test_source_associations.py` : fidélité, couverture, PJ et provenance |
-| MEM-008 | `file_facade.py`, `facade.py`, `schemas.py`, `app.file_share.resource_service`, MCP, voix, brief et drivers | `test_facade.py`, `test_mcp.py`, `app/file_share/tests/test_resource_service.py`, tests de contexte et navigateur : recherche puis lecture réelles |
 | MEM-006/007/009 | `retrieval.py`, `context.py`, `evaluation.py`, contrats/datasets/runs du Lab | `test_recall_evaluation.py`, `test_context.py`, `test_search_performance.py`, `test_agent_correction_eval.py`, tests de publication du Lab |
 | MEM-013/014 | `metrics.py`, journal d'usage, état d'index, routes d'administration, interface Memory | `test_metrics.py`, `test_document_library.py`, tests navigateur Memory ; nouveaux scénarios d'observation seulement pour les garanties manquantes |
 
@@ -877,9 +820,7 @@ structurels (générations, admission, extraction, traces) donnent lieu aux ADR 
 
 Toute future publication requiert la qualification du snapshot courant par `make validate`,
 lecture de son rapport et revue des résultats. Une édition ultérieure invalide cette qualification.
-Les autorisations reçues couvrent la lecture du document de production, le remaniement du plan,
-l'implémentation et les essais en développement. Elles n'autorisent pas la réparation,
-l'activation de traces ou un canari en production.
+Le plan ne vaut pas autorisation d'intervenir en production.
 
 ## 13. Critères de réussite et clôture
 

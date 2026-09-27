@@ -3,7 +3,7 @@
 > **Statut :** `design` — réflexion d’architecture, sans autorisation implicite
 > d’implémenter.
 >
-> **Date de mise à jour :** 11 septembre 2026 — dépendances Lab revues ; cible matérielle inchangée.
+> **Revue documentaire :** 27 septembre 2026 — dépendances Lab revues ; cible matérielle inchangée.
 >
 > **But :** permettre à un agent de consolider périodiquement des préférences, procédures et
 > expériences stables dans un adaptateur LoRA personnel, tout en conservant `app.memory` comme
@@ -480,10 +480,10 @@ et auditable, sans recalculer un score ni lever une garde depuis une analyse nar
 
 ### 12.1 Dépendances Lab et protocole
 
-Répétitions, revue humaine indépendante, rôles de datasets et empreintes corpus/contexte/candidat/
-juge sont présents au 11 septembre 2026. Le [plan du Lab](lab-evaluation-mecanismes-ia.md)
-porte encore l'étalonnage, l'incertitude, la comparaison explicite, les tendances et les gardes
-bloquantes. Leur qualification reste un préalable au mode `gated`.
+S'appuyer sur les contrats du [Lab](../../docs/fr/architecture/ai-lab-evaluation.md), y compris
+son comparateur existant. Le [plan du Lab](lab-evaluation-mecanismes-ia.md) porte encore
+l'étalonnage, l'incertitude, les politiques de comparaison élargies, les tendances et les
+gardes bloquantes. Leur qualification reste un préalable au mode `gated`.
 
 Chaque cycle fixe une hypothèse, une métrique de gain et des seuils avant le holdout. Comparer
 la version réellement active et le candidat sur les mêmes snapshots, avec une variable principale

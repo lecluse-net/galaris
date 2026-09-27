@@ -1,7 +1,7 @@
 # Plans actifs de Galaris
 
-Nettoyage documentaire du **19 septembre 2026**, fondé sur les contrats, décisions et preuves
-déjà consignés. Il ne relance pas les qualifications et ne prouve aucun déploiement.
+Revue documentaire du **27 septembre 2026**, fondée sur le code, les contrats, les tests et
+les décisions du dépôt. Elle ne relance pas les qualifications et ne prouve aucun déploiement.
 
 Cet index contient uniquement les extensions, mesures et conceptions encore ouvertes.
 Les étapes réalisées appartiennent aux [décisions](../decisions/README.md), aux tests et à la
@@ -25,11 +25,11 @@ d'implémentation ni nouvel ordre de priorité produit.
 | [llm-calls-durables.md](llm-calls-durables.md) | `partial` | Création différée, commandes avec révision attendue, échéance globale, entrées média, rétention et arbitrages de rejeu incertain justifiés par un consommateur. |
 | [convergence-pydantic-ai.md](convergence-pydantic-ai.md) | `partial` | Métadonnées OpenRouter, changements d'intégration/protocole à qualifier, projection des réglages demandés/envoyés et surfaces média. |
 | [portee-provenance-execution-agentique.md](portee-provenance-execution-agentique.md) | `partial` | Contrat générique de portée, descripteurs d'effets, briefing validé, préflight et intégration de ces décisions dans l'activité existante. |
-| [lab-evaluation-mecanismes-ia.md](lab-evaluation-mecanismes-ia.md) | `partial` | Comparaison MCP et « Avant / après » dans les onze Labs : bilan global, régressions critiques et dimensionnelles filtrées avant pagination, médianes appariées délai/coût/qualité. Campagne synthétique FR/EN préparée, qualification avec fournisseurs réels restante. Restent aussi : étalonnage du juge, incertitude, politiques de comparabilité élargies et tendances, gardes de promotion, portabilité et jugement renforcé. |
+| [lab-evaluation-mecanismes-ia.md](lab-evaluation-mecanismes-ia.md) | `partial` | Qualification des campagnes FR/EN avec fournisseurs réels, étalonnage du juge, incertitude, politiques de comparabilité élargies et tendances, gardes de promotion, portabilité et jugement renforcé. |
 | [optimisation-prompts-agentiques.md](optimisation-prompts-agentiques.md) | `partial` | Mesures sur corpus multilingue et sélection du contexte selon les résultats, sans modifier le contrat des sessions de Task. |
 | [amelioration-globale-memoire.md](amelioration-globale-memoire.md) | `partial` | Qualification multilingue et sur d'autres corpus, utilité aval, nouvelles extractions de PJ, provenance fine, observation et expériences Memory/Dream/Topics. |
 | [outils-mcp-multimedia.md](outils-mcp-multimedia.md) | `partial` | Qualification des comptes et livraisons réels ; accès officiel Suno, références média, composition avancée et extensions locales à concevoir séparément. |
-| [modeles-decision.md](modeles-decision.md) | `partial` | Dispatcher qualifié sur 14 cas synthétiques. Topics, rétention et dédoublonnage mémoire branchés, avec Lab hybride ; classement des messages en parallèle de l'admission ([ADR 0130](../decisions/0130-live-message-topic-decisions.md)). Qualifier ces nouveaux usages avec Jev réel ; adaptateurs locaux différés. |
+| [modeles-decision.md](modeles-decision.md) | `partial` | Comparaisons spécialisé/texte avec répétitions et témoin, qualification Jev réelle des usages Topics et mémoire, latence de bout en bout et optimisations guidées par les mesures ; nouveaux usages et adaptateurs locaux différés. |
 
 ## Conceptions conservées
 

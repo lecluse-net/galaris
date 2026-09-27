@@ -1,30 +1,15 @@
-# Plan — Portée, provenance et observabilité de l’exécution agentique
+# Plan — Portée et provenance de l’exécution agentique
 
-> **Statut :** `partial` — activité commune, états de pause et provenance consultable réalisés
-> dans le lot demandé le 11 septembre 2026. Le contrat générique de portée reste à réaliser.
->
-> **Date de création :** 25 août 2026.
-> **Revue documentaire :** 19 septembre 2026.
+> **Statut :** `partial` — contrat générique de portée et projection de ses décisions à réaliser.
+> **Revue documentaire :** 27 septembre 2026.
 >
 > **But :** empêcher qu’un planner, un briefing ou un exécuteur transforme une information de
-> contexte en cible ou en instruction opérationnelle non demandée, sans réduire l’autonomie des
-> agents ni spécialiser les règles pour un outil, un provider ou une technologie particulière.
-> Le même chantier doit rendre l’activité d’une Task durablement observable, distinguer une pause
-> d’une erreur et fiabiliser les reprises après une défaillance de persistance.
+> contexte en cible ou en instruction opérationnelle non demandée, sans réduire l’autonomie.
 
-## Avancement des dépendances
-
-Le lot d’activité est repris dans la [décision 0087](../decisions/0087-task-activity-snapshots.md)
-et le [flux canonique](../../docs/fr/architecture/flows/agent-execution.md). Le chat et la fiche
-partagent les abonnements et la réhydratation ; `task_get` expose l’activité et la dernière
-tentative à tous les stades. La demande initiale des nouvelles tâches et les reçus existants
-sont consultables. Le plan séparé de streaming est clôturé et supprimé.
-
-Les tests couvrent la reconnexion, les sources exclusives, les droits de lecture, les événements
-tardifs, les états d’attente et la préservation des checkpoints d’effets. Cette qualification
-ne vaut pas implémentation des blocs de portée générique ci-dessous : `ExecutionScopeV1`,
-descripteurs d’effets, briefing validé et préflight restent à concevoir dans le code.
-Les problèmes ci-dessous sont les constats historiques à l’origine du plan.
+Les contrats d’activité, de pause et de provenance consultable sont maintenus dans
+l’[ADR 0087](../decisions/0087-task-activity-snapshots.md) et le
+[flux d’exécution](../../docs/fr/architecture/flows/agent-execution.md). Les lots ci-dessous
+les étendent avec une portée générique ; ils ne réimplémentent pas leurs projections.
 
 ## 1. Problèmes constatés
 
@@ -76,9 +61,7 @@ peut laisser le compteur de tentatives, le feedback et les reçus incohérents.
 4. Appliquer la même mécanique aux Tools natifs, MCP externes, Processes et futurs runtimes.
 5. Garder l’autorisation RBAC, la pertinence agentique et la portée de la Task comme trois
    contrôles distincts.
-6. Exposer une progression durable identique dans Chat, TaskDetails et `task_get`.
-7. Garantir qu’une pause n’est ni un succès, ni une erreur métier, ni une reprise implicite.
-8. Reprendre après panne sans répéter un effet dont le reçu durable existe déjà.
+6. Reprendre après panne sans répéter un effet dont le reçu durable existe déjà.
 
 ### 2.2 Principes non négociables
 
@@ -333,16 +316,9 @@ consultables dans l'activité existante, sans exposer contenus sensibles ni argu
 Réutiliser `TaskActivitySnapshot`, `activity_snapshot.py` et `live_checkpoint.py` :
 aucun second checkpoint visuel ni seconde représentation des messages.
 
-## 11. Garanties de pause à préserver
+## 11. Transactions, reprise et idempotence
 
-Activité commune, dernière tentative, reconnexion, états de pause et leur acquittement
-sont réalisés par la [décision 0087](../decisions/0087-task-activity-snapshots.md).
-Les nouvelles projections de portée conservent ces garanties ; leur réimplémentation et
-l'ancien projet de streaming ne sont plus des lots de ce plan.
-
-## 12. Transactions, reprise et idempotence
-
-### 12.1 Transactions courtes
+### 11.1 Transactions courtes
 
 - Claim, transition et création de tentative sont persistés avant l’appel externe.
 - Les appels LLM, Tools et Processes n’ont pas lieu dans une transaction métier longue.
@@ -351,7 +327,7 @@ l'ancien projet de streaming ne sont plus des lots de ce plan.
 - L’application du résultat terminal utilise une nouvelle transaction et revérifie lease, run et
   révision.
 
-### 12.2 Gestion d’erreur
+### 11.2 Gestion d’erreur
 
 - Toute exception SQLAlchemy invalide d’abord la transaction puis déclenche un rollback.
 - La persistance de l’échec utilise une session fraîche.
@@ -359,7 +335,7 @@ l'ancien projet de streaming ne sont plus des lots de ce plan.
   `secondary_error` et ne remplace jamais la cause.
 - Le feedback humain reste borné et cohérent avec la tentative réellement terminale.
 
-### 12.3 Retry sûr
+### 11.3 Retry sûr
 
 - Chaque effet porte une identité stable ou un reçu d’idempotence.
 - Avant retry, le scheduler relit Working Set, checkpoints et reçus.
@@ -367,7 +343,7 @@ l'ancien projet de streaming ne sont plus des lots de ce plan.
 - Sans preuve suffisante, la Task attend une décision au lieu de rejouer aveuglément un effet
   potentiellement externe ou irréversible.
 
-## 13. Répartition des responsabilités
+## 12. Répartition des responsabilités
 
 ### `app.agent`
 
@@ -378,10 +354,10 @@ l'ancien projet de streaming ne sont plus des lots de ce plan.
 
 ### `app.task`
 
-- persister scope, grants, reçus, activité, tentatives, leases et motifs de suspension ;
+- ajouter scope et grants à la persistance existante des reçus, tentatives et leases ;
 - promouvoir les ressources exactes dans le Working Set via son port ;
 - ordonnancer retry et reprise sans décider de la méthode agentique ;
-- exposer le snapshot opérationnel durable.
+- enrichir le snapshot opérationnel durable avec les décisions de portée.
 
 ### `app.tools` et `app.mcp`
 
@@ -399,16 +375,14 @@ l'ancien projet de streaming ne sont plus des lots de ce plan.
 
 - construire l’objectif autonome, les exigences, les références utiles et la politique de
   livraison lors de l’admission ;
-- projeter durablement activité et résultat dans le salon ;
 - recueillir une clarification sans créer une seconde Task concurrente.
 
 ### Frontend Task et Chat
 
-- consommer le même snapshot d’activité ;
-- rejouer le durable avant le live ;
-- ne jamais inférer un état depuis la seule présence d’un texte ou d’une animation.
+- présenter les nouvelles décisions de portée depuis le snapshot commun existant ;
+- préserver la réhydratation, les droits et les états de pause définis par 0087.
 
-## 14. Séquence d’implémentation
+## 13. Séquence d’implémentation
 
 ### Bloc A — Contrats purs et provenance
 
@@ -459,7 +433,7 @@ l'ancien projet de streaming ne sont plus des lots de ce plan.
 - documenter les métadonnées des Tools externes ;
 - régénérer la cartographie si les contrats ou outils exposés changent.
 
-## 15. Matrice minimale de tests
+## 14. Matrice minimale de tests
 
 ### Portée et provenance
 
@@ -486,13 +460,10 @@ l'ancien projet de streaming ne sont plus des lots de ce plan.
 - Redelivery d’un reçu identique : aucune duplication.
 - Effet externe réussi puis panne DB : le retry reprend depuis le reçu.
 
-### Activité et pause
+### Projection de la portée
 
-- Ouverture tardive ou reconnexion : replay puis live sans doublon.
-- Task directe sans plan : opération courante et dernière activité visibles.
-- Pause pendant un appel : `pausing`, puis pause acquittée, sans erreur métier.
-- Reprise : nouvelle tentative uniquement après commande explicite.
-- Compteurs, feedback et dernière tentative restent cohérents.
+- Décisions de scope et de préflight accessibles après reconnexion, sans données sensibles.
+- Droits, pause, compteurs et checkpoints existants préservés lors de leur projection.
 
 ### Transactions
 
@@ -501,7 +472,7 @@ l'ancien projet de streaming ne sont plus des lots de ce plan.
 - Perte de lease pendant application du résultat.
 - Crash entre reçu, Working Set et résultat terminal sans répétition de l’effet.
 
-## 16. Critères d’acceptation
+## 15. Critères d’acceptation
 
 - Aucun composant agentique ne peut introduire silencieusement une cible concrète sans provenance.
 - Un profil riche continue d’aider le raisonnement sans agir comme une autorisation implicite.
@@ -510,12 +481,12 @@ l'ancien projet de streaming ne sont plus des lots de ce plan.
 - Une Task autonome peut explorer, produire, vérifier et livrer sans questions artificielles.
 - Les effets externes ou difficilement réversibles sont justifiés, reçus et rejoués de façon sûre.
 - Briefing, planner, exécuteur et livraison partagent le même scope versionné.
-- Chat, TaskDetails et `task_get` montrent la même activité après chargement ou reconnexion.
-- Une pause humaine ne se présente plus comme une activité ou une erreur métier.
+- Chat, TaskDetails et `task_get` montrent les mêmes décisions de portée après reconnexion,
+  en conservant les garanties d’activité et de pause existantes.
 - Une panne SQLAlchemy conserve sa cause initiale et ne provoque pas la répétition aveugle d’un
   effet déjà réussi.
 
-## 17. Hors périmètre
+## 16. Hors périmètre
 
 - construire une liste centrale de produits, commandes ou providers interdits ;
 - remplacer le RBAC ou les ACL propres aux domaines ;
