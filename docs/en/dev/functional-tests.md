@@ -103,6 +103,15 @@ EXEC standard, EXEC high, BRIEFING, and PLAN. `test_dispatcher_inference.py` pro
 of a single-choice Task decision without an LLM call; `test_registry.py` protects historical
 decision recovery. The Lab checks the same pairs through `test_contracts_and_passes.py`.
 
+The durable dispatcher matrix covers FR/EN and Chat/Responses with the real SDK, an isolated
+database and only provider transport simulated. An output without a route followed by a valid
+correction retains both outputs in the journal, but only the correction determines language
+and effort. AI peers retain their no-retry policy: an invalid output produces `END` in the
+context language. A valid output missing optional fields retains the historical `standard`
+and `en` defaults. Readback returns the same validated result without another call, with costs
+and lineage for every physical attempt. This does not qualify real accounts or multiple
+competing objects within one provider response.
+
 Unless qualified, Python files are in `back/app/<module>/tests/` and browser specifications
 are in `front/browser-tests/`.
 

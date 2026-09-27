@@ -132,6 +132,15 @@ d'EXEC standard, EXEC high, BRIEFING et PLAN. `test_dispatcher_inference.py` pro
 d'une décision de Task à choix unique sans appel LLM ; `test_registry.py` protège la reprise des
 anciennes décisions. Le Lab contrôle les mêmes couples via `test_contracts_and_passes.py`.
 
+La matrice durable du dispatcher couvre FR/EN et Chat/Responses avec le SDK réel, une base
+isolée et le seul transport fournisseur simulé. Une sortie sans route suivie d'une correction
+valide conserve les deux sorties dans le journal, mais seule la correction fixe langue et
+effort. Un pair IA conserve sa politique sans retry : une sortie invalide entraîne `END`
+dans la langue du contexte. Une sortie valide sans champs facultatifs conserve les défauts
+historiques `standard` et `en`. La relecture restitue le même résultat validé sans nouvel
+appel, avec les coûts et corrélations de chaque tentative physique. Cela ne qualifie ni les
+comptes réels ni plusieurs objets concurrents dans une même réponse fournisseur.
+
 Les fichiers `test_*.py` ci-dessous se trouvent sous `back/app/<module>/tests/`, sauf chemin
 explicite. Les fichiers `*.spec.mjs` se trouvent sous `front/browser-tests/`.
 

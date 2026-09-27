@@ -97,8 +97,13 @@ prématuré. Le filtrage des sondes techniques dans les objectifs est un acquis 
 
 ### L8 — Langue, sortie structurée et effort
 
-- Qualifier le résultat validé lorsqu'une sortie partielle précède une sortie complète,
-  la politique des champs absents et la lecture des anciens résultats.
+La correction d'une sortie sans route lors d'un retry Task, les défauts des champs facultatifs,
+le repli sans retry des pairs IA et la relecture durable sont couverts en FR/EN sur
+Chat/Responses dans le [catalogue fonctionnel](../../docs/fr/dev/functional-tests.md).
+Les schémas historiques restent couverts par `test_dispatcher_planning.py`.
+
+- Qualifier les réponses contenant plusieurs objets candidats dans une même réponse
+  fournisseur, distinctes de la correction lors d'un retry déjà couverte.
 - Étendre la matrice FR/EN aux commentaires, objectifs, notifications, suggestions de sujet
   et reprises, avec préférences absentes ou demandeur différent.
 
