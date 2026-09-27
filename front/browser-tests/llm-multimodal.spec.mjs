@@ -27,7 +27,7 @@ for (const width of [1440, 390]) {
     })
     const options = { privileges: ['LLM_PROVIDER_EDIT'] }
     await mount(page, 'app/llm/components/ConfiguredLlmManager.vue', options)
-    await page.getByRole('button', { name: 'Add a resource', exact: true }).click()
+    await page.getByRole('button', { name: 'Add an LLM', exact: true }).click()
     const dialog = page.getByRole('dialog')
     await dialog.getByRole('combobox', { name: 'Provider', exact: true }).click()
     await page.getByRole('option', { name: 'Provider', exact: true }).click()

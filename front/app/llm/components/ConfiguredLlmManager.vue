@@ -338,7 +338,6 @@
                     value => /^[a-zA-Z0-9][a-zA-Z0-9_.-]{0,99}$/.test(value) || t('llm.codeInvalid'),
                   ]"
                 />
-                <div class="llm-form-field__help">{{ t('llm.codeHint') }}</div>
               </div>
 
               <div class="llm-form-field llm-form-field--label">
@@ -350,7 +349,6 @@
                   :aria-label="t('llm.customLabel')"
                   :rules="[value => Boolean(value) || t('llm.labelRequired')]"
                 />
-                <div class="llm-form-field__help">{{ t('llm.customLabelHint') }}</div>
               </div>
 
               <div class="llm-form-field llm-form-field--full">
