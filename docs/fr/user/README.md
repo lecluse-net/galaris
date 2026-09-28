@@ -507,6 +507,13 @@ Hermès conserve ainsi ses capacités propres sans être enfermé dans un second
 
 ## Quand Galaris pose une question
 
+Si une connexion Mail exige une validation humaine, son responsable désigné reçoit une demande
+privée dans le Chat pour chaque mail préparé. Vérifiez les destinataires, l’objet, l’aperçu du
+contenu et la liste des pièces jointes, puis choisissez **Autoriser l’envoi** ou **Refuser**.
+Le **Journal des mails** présente le contenu complet et le résultat de l’envoi ; il permet aussi
+de décider. L’accord concerne uniquement ce mail. Sans réponse, il reste non envoyé ; après
+sept jours, utilisez le journal car la demande du Chat a expiré.
+
 Une information essentielle peut manquer : destinataire, fichier, période, autorisation ou
 choix irréversible. L’agent doit alors poser une question courte et attendre au lieu de
 deviner. Une question est un résultat valide du tour en cours ; répondez dans la même

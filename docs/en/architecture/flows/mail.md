@@ -76,6 +76,19 @@ to the connections, can approve or reject the message. An approval locks the row
 exactly the persisted MIME; a rejection is terminal and preserves the optional reason. A later
 change to the connection policy does not affect an email already awaiting approval.
 
+Each pending email also produces a `mail_approval` choice in a private internal Chat conversation
+with that approver. The request shows To/Cc/Bcc recipients, the subject, each body preview limited
+to 6,000 characters, and attachment metadata; the Mail journal retains the full content.
+**Allow sending** and **Reject** call the same domain operations as the journal. Identity,
+active user status, `CONNECTION_ACCESS`, and agent management scope are checked before notification
+and again when deciding. Approval applies to the prepared MIME, never to future emails.
+
+A failed notification leaves the email pending. A job in the existing scheduler retries bounded
+batches using a durable lease and a per-email interaction key. Captured answers can be replayed
+after interruption; reloading the Mail state under a lock prevents a second SMTP submission.
+A journal decision expires an unanswered choice. After seven days the Chat choice expires without
+sending or rejecting the email automatically; the approver can still decide from the journal.
+
 The server always appends, after the content provided by the model, the following signature in the
 text part and its HTML equivalent:
 

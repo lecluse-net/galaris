@@ -12,12 +12,13 @@ from bridge.mail import service
 from bridge.mail.contracts import MailConnectionConfig, MailEndpointConfig, OutgoingMail
 
 
-async def _persist_connection(db: AsyncSession) -> tuple[int, int]:
+async def _persist_connection(db: AsyncSession, *, user_id: int | None = None) -> tuple[int, int]:
     title = Title(label="Agent", gender="N")
     tool = Tool(code="mail-idempotency-test", label="Mail")
     db.add_all([title, tool])
     await db.flush()
     agent = Agent(
+        user_id=user_id,
         title_id=title.id,
         first_name="Mail",
         last_name="Agent",

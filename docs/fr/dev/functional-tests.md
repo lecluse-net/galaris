@@ -316,7 +316,7 @@ locaux ; ils ne prouvent pas la réception sur un compte distant réel.
 | `one_bot` | Routage d’événement/API et connexion du hub | `test_hub.py`, `test_router_routing.py`, `test_messenger_routing.py` |
 | `telegram` | Messages et reprise de livraison | `test_messenger.py`, `test_delivery_retry.py` |
 | `whatsapp` | Authentification du bridge, API et livraison Messenger | `test_router.py`, `test_client.py`, `test_messenger_send.py` |
-| `mail` | MIME, identités, connexion autorisée, messages et fichiers | `test_assertions.py`, `test_connection_resolution.py`, `test_mime.py`, `test_messenger.py`, `test_file_transport.py` |
+| `mail` | MIME, identités, connexion autorisée, messages, fichiers et validation privée Chat/journal (reprise, concurrence, refus) | `test_assertions.py`, `test_connection_resolution.py`, `test_mime.py`, `test_messenger.py`, `test_file_transport.py`, `test_chat_approvals.py` ; E2E `mail-approval.spec.mjs` |
 | `calendar` | Dates/récurrences, limites et opérations autorisées | `test_ical.py`, `test_calculation_limits.py`, `test_service.py`, `test_mcp.py` |
 | `n8n` | Traduire démarrage, callback et annulation vers Process | `test_n8n_bridge.py` |
 | `harness` | Manager, diagnostic et cycle de vie du conteneur | `test_manager.py`, `test_diagnostics.py`, `make tests-harness-manager` |

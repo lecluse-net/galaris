@@ -130,6 +130,11 @@ async def lifespan(_app: FastAPI):
         patches.enter_context(patch("app.conversation.mcp.generate_task_fields", task_fields))
         patches.enter_context(patch("app.agent.facade.resolve_execution_model", task_model))
         patches.enter_context(patch("app.harness.executor.stream", task_stream))
+        # External mail boundaries only; approval persistence, Chat and RBAC remain real.
+        from bridge.mail.contracts import MailPollBatch
+        patches.enter_context(patch("bridge.mail.smtp_client.SmtpClient.send", return_value=(1, 0)))
+        patches.enter_context(patch("bridge.mail.imap_client.ImapClient.poll_inbox",
+                                    return_value=MailPollBatch(uid_validity=1, latest_uid=0)))
         async with main.app.other_asgi_app.router.lifespan_context(main.app.other_asgi_app):
             register_controller(ScriptedController())
             yield
@@ -145,7 +150,7 @@ async def ready():
 
 @app.post("/api/__test/seed")
 async def seed(mode: str = "normal", mfa: bool = False):
-    if mode not in {"normal", "tools", "error", "task", "missing-terminal", "interruptible"}:
+    if mode not in {"normal", "tools", "error", "task", "missing-terminal", "interruptible", "mail"}:
         raise HTTPException(400, "Unknown scenario")
     suffix = uuid4().hex[:12]
     async with get_db_session() as db:
@@ -181,8 +186,35 @@ async def seed(mode: str = "normal", mfa: bool = False):
             gates[room.id] = asyncio.Event()
             modes[room.id] = mode
             rooms.append(str(room.id))
-        return {"email": owner.email, "password": "Browser-test-password-42!", "rooms": rooms,
-                "agent_id": agent.id}
+        fixture = {"email": owner.email, "password": "Browser-test-password-42!", "rooms": rooms,
+                   "agent_id": agent.id}
+        if mode == "mail":
+            from app.connection.models import ConnectionParam
+            from bridge.mail.connection_service import resolve_connection
+            from bridge.mail.contracts import OutgoingAttachment, OutgoingMail
+            from bridge.mail.service import send_outgoing
+            from core.util.encryption import encrypt_value
+            mail = await db.scalar(select(Tool).where(Tool.code == "mail"))
+            assert mail is not None
+            connection = Connection(tool_id=mail.id, agent_id=agent.id, active=True)
+            db.add(connection)
+            await db.flush()
+            params = {
+                "email_address": f"agent-{suffix}@example.org",
+                "password": encrypt_value("synthetic-mail-secret"),
+                "imap_host": "mail.example.test", "smtp_host": "mail.example.test",
+                "approval_required": "true", "approver_user_id": str(owner.id),
+            }
+            db.add_all([ConnectionParam(connection_id=connection.id, param_name=key, param_value=value)
+                        for key, value in params.items()])
+            await db.commit()
+            receipt = await send_outgoing(await resolve_connection(connection.id, require_active=True), OutgoingMail(
+                to=("recipient@example.org",), cc=(), bcc=("archive@example.org",),
+                subject="Compte rendu synthétique", body="Voici le compte rendu à valider.", html_body=None,
+                attachments=(OutgoingAttachment("rapport.txt", "text/plain", b"Synthetic report"),),
+            ), idempotency_key=f"e2e-mail:{suffix}")
+            fixture["delivery_id"] = str(receipt.delivery_id)
+        return fixture
 
 
 @app.get("/api/__test/otp")

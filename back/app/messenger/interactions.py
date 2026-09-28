@@ -15,7 +15,7 @@ from sqlalchemy import delete, or_, select
 from sqlalchemy.sql.elements import ColumnElement
 
 from app.messenger.facade import MessengerFacade
-from app.messenger.models import Interaction, Message
+from app.messenger.models import Interaction, Message, MessengerUser, RoomUser
 from app.messenger.events import interaction_changed
 from core.database import get_db
 from core.i18n import default_language, is_supported, render_prompt, t
@@ -205,10 +205,19 @@ async def create_choice(
     db.add(record)
     await db.commit()
 
+    return await _send_choice_prompt(messenger, record, request, reply_to=reply_to)
+
+
+async def _send_choice_prompt(
+    messenger: MessengerFacade, record: Interaction, request: ChoiceRequest,
+    *, reply_to: str | None = None,
+) -> PendingChoice:
+    """Send a persisted prompt, including a domain's recovery of an unsent choice."""
+    db = get_db()
     try:
         sent = await messenger.send_to_room(
-            room_id,
-            _render_choice_text(request, reference),
+            str(record.room_id),
+            _render_choice_text(request, record.reference),
             reply_to=reply_to,
         )
         record.prompt_message_id = str(sent.id)
@@ -558,6 +567,72 @@ async def retry_pending_interactions() -> None:
     await db.commit()
     for interaction_id, token in claimed:
         await _deliver_record(interaction_id, token)
+
+
+async def request_user_choice(
+    *, agent_id: int, user_id: int, request: ChoiceRequest, idempotency_key: str,
+) -> PendingChoice:
+    """Deliver a choice only to this human's private internal conversation.
+
+    The domain owns authorization and concurrent notification claims. Reusing the key
+    recovers a previously delivered choice without sending another prompt.
+    """
+    from .native_facade import create_internal_room, internal_direct_room_observation
+    from .service import messenger_for_agent_kind
+
+    db = get_db()
+    messenger = await messenger_for_agent_kind(agent_id, "internal")
+    external_user = f"user:{user_id}"
+    existing = await db.scalar(select(Interaction).where(
+        Interaction.agent_id == agent_id, Interaction.kind == request.kind,
+        Interaction.metadata_["idempotency_key"].as_string() == idempotency_key,
+    ).order_by(Interaction.created_at.desc()).limit(1))
+    if existing is not None:
+        if (existing.user_id != external_user or existing.connection_id != messenger.connection_id):
+            raise PermissionError("The existing choice belongs to another conversation scope")
+        if (existing.prompt_message_id is None and existing.status == "PENDING"
+                and existing.expires_at > datetime.now(timezone.utc)):
+            return await _send_choice_prompt(messenger, existing, ChoiceRequest(
+                kind=existing.kind, title=existing.title, body=existing.body,
+                options=[ChoiceOption.model_validate(option) for option in existing.options],
+                free_text=existing.free_text, language=request.language,
+            ))
+        return _pending_from_record(existing)
+    room = await internal_direct_room_observation(messenger.connection_id, external_user)
+    room_id = room.local_id if room is not None else None
+    if room_id is not None:
+        archived = await db.scalar(select(RoomUser.archived).join(
+            MessengerUser, MessengerUser.id == RoomUser.user_id,
+        ).where(RoomUser.room_id == room_id, MessengerUser.galaris_user_id == user_id))
+        members = (await db.scalars(select(MessengerUser).join(
+            RoomUser, RoomUser.user_id == MessengerUser.id,
+        ).where(RoomUser.room_id == room_id))).all()
+        if archived or any(member.galaris_user_id != user_id and member.agent_id != agent_id for member in members):
+            room_id = None
+    if room_id is None:
+        created = await create_internal_room(actor_user_id=user_id, agent_id=agent_id)
+        if created is None:
+            raise LookupError("No private Chat channel for this approver")
+        room_id = created.id
+    return await create_choice(
+        messenger, agent_id=agent_id, room_id=str(room_id), user_id=external_user,
+        request=request, idempotency_key=idempotency_key,
+    )
+
+
+async def expire_user_choice(*, agent_id: int, kind: str, idempotency_key: str) -> None:
+    """Withdraw an unanswered prompt after its domain action was handled elsewhere."""
+    db = get_db()
+    record = await db.scalar(select(Interaction).where(
+        Interaction.agent_id == agent_id, Interaction.kind == kind,
+        Interaction.metadata_["idempotency_key"].as_string() == idempotency_key,
+        Interaction.status == "PENDING",
+    ).with_for_update().execution_options(populate_existing=True))
+    if record is None or record.expires_at <= datetime.now(timezone.utc):
+        return
+    record.expires_at = datetime.now(timezone.utc)
+    await db.commit()
+    await interaction_changed.send_async(record)
 
 
 async def _reset_for_tests() -> None:  # pyright: ignore[reportUnusedFunction]

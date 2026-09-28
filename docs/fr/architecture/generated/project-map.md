@@ -67,7 +67,7 @@ tests restent l’autorité sur le comportement.
 | `bridge.codex` | bridge | non | oui | `router.py`, `tests/` |
 | `bridge.deepseek_harness` | bridge | non | oui | `tests/` |
 | `bridge.n8n` | bridge | non | oui | `router.py`, `schemas.py`, `tests/` |
-| `bridge.mail` | bridge | non | oui | `contracts.py`, `mcp.py`, `models.py`, `router.py`, `schemas.py`, `tests/` |
+| `bridge.mail` | bridge | non | oui | `contracts.py`, `i18n/`, `mcp.py`, `models.py`, `router.py`, `schemas.py`, `tests/` |
 | `bridge.calendar` | bridge | non | oui | `mcp.py`, `models.py`, `router.py`, `schemas.py`, `tests/` |
 | `bridge.hermes` | bridge | non | oui | `i18n/`, `models.py`, `privileges.py`, `router.py`, `schemas.py`, `tests/` |
 | `bridge.one_bot` | bridge | non | oui | `router.py`, `tests/` |
@@ -560,16 +560,16 @@ tests restent l’autorité sur le comportement.
 | `bridge.hermes` | `core.params` | `back/bridge/hermes/executor.py`, `back/bridge/hermes/harness_provider.py`, `back/bridge/hermes/manager.py`, `back/bridge/hermes/prompt.py`, `back/bridge/hermes/session_binding.py` |
 | `bridge.hermes` | `core.util` | `back/bridge/hermes/client.py`, `back/bridge/hermes/config_service.py`, `back/bridge/hermes/executor.py`, `back/bridge/hermes/harness_provider.py`, `back/bridge/hermes/kanban.py`, `back/bridge/hermes/manager.py`, `back/bridge/hermes/session_binding.py` |
 | `bridge.huggingface` | `app.llm` | `back/bridge/huggingface/__init__.py` |
-| `bridge.mail` | `app.agent` | `back/bridge/mail/connection_service.py`, `back/bridge/mail/dbadmin.py`, `back/bridge/mail/router.py`, `back/bridge/mail/service.py` |
+| `bridge.mail` | `app.agent` | `back/bridge/mail/approvals.py`, `back/bridge/mail/connection_service.py`, `back/bridge/mail/dbadmin.py`, `back/bridge/mail/router.py`, `back/bridge/mail/service.py` |
 | `bridge.mail` | `app.connection` | `back/bridge/mail/connection_service.py`, `back/bridge/mail/dbadmin.py`, `back/bridge/mail/router.py` |
 | `bridge.mail` | `app.file_share` | `back/bridge/mail/__init__.py`, `back/bridge/mail/file_transport.py`, `back/bridge/mail/service.py` |
-| `bridge.mail` | `app.messenger` | `back/bridge/mail/__init__.py`, `back/bridge/mail/messenger.py`, `back/bridge/mail/service.py` |
+| `bridge.mail` | `app.messenger` | `back/bridge/mail/__init__.py`, `back/bridge/mail/approvals.py`, `back/bridge/mail/messenger.py`, `back/bridge/mail/service.py` |
 | `bridge.mail` | `app.tools` | `back/bridge/mail/connection_service.py`, `back/bridge/mail/mcp.py` |
-| `bridge.mail` | `core.authorize` | `back/bridge/mail/assertions.py`, `back/bridge/mail/router.py` |
-| `bridge.mail` | `core.database` | `back/bridge/mail/models.py`, `back/bridge/mail/service.py` |
+| `bridge.mail` | `core.authorize` | `back/bridge/mail/approvals.py`, `back/bridge/mail/assertions.py`, `back/bridge/mail/router.py` |
+| `bridge.mail` | `core.database` | `back/bridge/mail/approvals.py`, `back/bridge/mail/models.py`, `back/bridge/mail/service.py` |
 | `bridge.mail` | `core.dbadmin` | `back/bridge/mail/dbadmin.py` |
-| `bridge.mail` | `core.i18n` | `back/bridge/mail/messenger.py` |
-| `bridge.mail` | `core.user` | `back/bridge/mail/connection_service.py`, `back/bridge/mail/router.py`, `back/bridge/mail/service.py` |
+| `bridge.mail` | `core.i18n` | `back/bridge/mail/approvals.py`, `back/bridge/mail/messenger.py` |
+| `bridge.mail` | `core.user` | `back/bridge/mail/approvals.py`, `back/bridge/mail/connection_service.py`, `back/bridge/mail/router.py`, `back/bridge/mail/service.py` |
 | `bridge.mail` | `core.util` | `back/bridge/mail/service.py` |
 | `bridge.mammouth` | `app.llm` | `back/bridge/mammouth/__init__.py`, `back/bridge/mammouth/image.py`, `back/bridge/mammouth/multimedia.py`, `back/bridge/mammouth/protocol.py`, `back/bridge/mammouth/resources.py` |
 | `bridge.mammouth` | `core.util` | `back/bridge/mammouth/image.py`, `back/bridge/mammouth/multimedia.py`, `back/bridge/mammouth/resources.py` |

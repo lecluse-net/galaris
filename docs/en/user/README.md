@@ -368,6 +368,12 @@ Hermès therefore retains its own capabilities without being confined to a secon
 
 ## When Galaris Asks a Question
 
+If a Mail connection requires human approval, its designated approver receives a private Chat
+request for each prepared email. Review the recipients, subject, content preview, and attachment
+list, then choose **Allow sending** or **Reject**. The **Mail journal** shows the complete content
+and delivery result and also lets you decide. Approval applies only to this email. Without a
+response, it stays unsent; after seven days, use the journal because the Chat request has expired.
+
 Essential information may be missing: recipient, file, period, authorization, or an irreversible choice. The Agent must then ask a short question and wait rather than guess. A question is a valid result of the current turn; reply in the same conversation to continue.
 
 A planner may also request a single series of clarifications before creating its plan. Without a response before expiration, it resumes with explicit assumptions.

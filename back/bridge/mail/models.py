@@ -83,6 +83,9 @@ class MailOutboundDelivery(Base):
     reviewed_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
+    approval_notified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    # Retry deadline; retained after notification until prompt withdrawal completes.
+    approval_notification_after: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     rejection_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
     smtp_response_code: Mapped[int | None] = mapped_column(Integer, nullable=True)
     accepted_recipients: Mapped[int] = mapped_column(Integer, nullable=False, default=0)

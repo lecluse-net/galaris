@@ -44,6 +44,15 @@ fonctions de fichiers nécessaires, l’inventaire MCP ordonne de rechercher ces
 
 ## Conséquences
 
+### Validation dans le Chat — 2026-09-28
+
+La politique Mail existante conserve son valideur et son MIME figés par envoi. Le bridge émet
+un choix canonique `mail_approval` dans le Chat interne privé du valideur, sans créer de permission
+permanente. Le handler et l’écran Mail convergent vers les mêmes opérations verrouillées.
+Les droits sont relus avant notification et décision ; un choix expiré ou déjà traité n’envoie
+rien. La notification possède un bail durable et une reprise hébergée par le scheduler existant.
+Le journal reste utilisable lorsque le Chat est indisponible ou que la question a expiré.
+
 - L’activation de la connexion gouverne à la fois les fonctions Mail et son listener de polling.
 - `app.messenger` reste l’unique journal et superviseur des entrées, même lorsque la politique Mail
   choisit l’admission directe en Task plutôt qu’une conversation.

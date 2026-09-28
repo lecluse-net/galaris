@@ -48,6 +48,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         from app.goal import register_scheduler_jobs as register_goal_jobs
         from app.lab import register_scheduler_jobs as register_lab_jobs
         from bridge.calendar import sync_calendars
+        from bridge.mail import retry_approval_notifications
         from app.task import register_runtime_settings, scheduler as task_scheduler
         from app.chat import reconcile_storage, register_scheduler_jobs as register_chat_jobs
         from app.incident import prune_traces as prune_incident_traces
@@ -74,6 +75,9 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         register_goal_jobs()
         register_lab_jobs()
         register_chat_jobs(task_scheduler.register_periodic_job)
+        task_scheduler.register_periodic_job(
+            "mail-approval-notifications", retry_approval_notifications, interval=30.0, timeout=450.0,
+        )
         for name, observer in (
             ("runtime-pressure", record_runtime_pressure), ("process-progress", record_process_progress),
             ("task-progress", record_task_progress), ("notification-progress", record_conversation_progress),

@@ -380,7 +380,7 @@ async def _claim_delivery(
         select(MailOutboundDelivery).where(
             MailOutboundDelivery.connection_id == config.connection_id,
             MailOutboundDelivery.idempotency_key == idempotency_key,
-        ).with_for_update()
+        ).with_for_update().execution_options(populate_existing=True)
     )
     delivery = result.scalar_one()
     if delivery.payload_fingerprint != fingerprint:
@@ -556,7 +556,12 @@ async def send_outgoing(
     await _store_message(config, delivery, outgoing)
     if delivery.status == "pending_approval":
         await get_db().commit()
-        return _receipt(delivery, "Waiting for human approval before SMTP submission")
+        from .approvals import notify_approval
+        delivery_id = delivery.id
+        await notify_approval(delivery_id)
+        await get_db().refresh(delivery)
+        return _receipt(delivery, "Waiting for human approval before SMTP submission"
+                        if delivery.status == "pending_approval" else "Existing idempotent Mail receipt")
     if delivery.status in {"sent", "error", "rejected"}:
         return await _project_sent_recipient_contacts(
             config,
@@ -948,6 +953,7 @@ async def approve_delivery(
             select(MailOutboundDelivery)
             .where(MailOutboundDelivery.id == delivery_id)
             .with_for_update()
+            .execution_options(populate_existing=True)
         )
     ).scalar_one_or_none()
     if delivery is None or (
@@ -965,7 +971,10 @@ async def approve_delivery(
     delivery.reviewed_at = datetime.now(timezone.utc)
     delivery.rejection_reason = None
     delivery.status = "claimed"
-    return await _submit_delivery(config, delivery)
+    receipt = await _submit_delivery(config, delivery)
+    from .approvals import close_approval
+    await close_approval(delivery)
+    return receipt
 
 
 async def reject_delivery(
@@ -980,6 +989,7 @@ async def reject_delivery(
             select(MailOutboundDelivery)
             .where(MailOutboundDelivery.id == delivery_id)
             .with_for_update()
+            .execution_options(populate_existing=True)
         )
     ).scalar_one_or_none()
     if delivery is None or (
@@ -995,6 +1005,8 @@ async def reject_delivery(
     delivery.reviewed_at = datetime.now(timezone.utc)
     delivery.rejection_reason = reason.strip() or None
     await get_db().commit()
+    from .approvals import close_approval
+    await close_approval(delivery)
     return await get_delivery(
         delivery_id,
         current_user_id=current_user_id,

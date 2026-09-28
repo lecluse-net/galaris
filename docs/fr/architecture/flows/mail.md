@@ -76,6 +76,21 @@ aux connexions, peut approuver ou rejeter le message. Une approbation verrouille
 exactement le MIME persisté ; un rejet est terminal et conserve le motif facultatif. Une modification
 ultérieure de la politique de connexion ne réaffecte pas un mail déjà en attente.
 
+Chaque mail en attente produit aussi un choix `mail_approval` dans une conversation privée du
+Chat interne avec ce responsable. La demande présente les destinataires To/Cc/Bcc, l’objet,
+un aperçu de chaque corps limité à 6 000 caractères et les métadonnées des pièces jointes ;
+le Journal des mails conserve le contenu complet. **Autoriser l’envoi** et **Refuser** appellent
+les mêmes opérations métier que le journal. L’identité, l’utilisateur actif, `CONNECTION_ACCESS`
+et le périmètre des agents sont vérifiés avant notification et à la décision. Cette validation
+porte sur le MIME préparé, jamais sur une permission mémorisée pour les mails suivants.
+
+Une notification échouée laisse le mail en attente. Un job du scheduler existant reprend les
+notifications par lots bornés, avec un bail durable et une clé d’interaction propre au mail.
+Une réponse capturée est rejouable après interruption ; l’état Mail relu sous verrou empêche
+une deuxième soumission SMTP. Une décision depuis le journal expire le choix encore sans réponse.
+Après sept jours, le choix du chat expire sans envoyer ni rejeter automatiquement le mail ;
+le responsable peut toujours décider depuis le journal.
+
 Le serveur ajoute toujours, après le contenu fourni par le modèle, la signature suivante dans la
 partie texte et son équivalent HTML :
 
