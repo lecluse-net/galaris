@@ -20,6 +20,36 @@ The toolbar stays accessible while scrolling through the document, even after cl
 Heading and font size selectors display their current value as text. Their dropdown lists
 preview headings and font sizes at their respective sizes.
 
+## Document formatting shortcuts
+
+Place the cursor in the document or select text. On Mac, replace **Ctrl** with **Cmd**.
+Numbers use the top row, including on AZERTY keyboards. The **Accessibility help** button
+in **Reading** (also available on mobile), or **Alt+0** inside the editor, shows shortcuts.
+Press **Escape** to close the help.
+
+| Action | Shortcut |
+|---|---|
+| Headings 1–6 | Ctrl+Shift+1–6 |
+| Normal text | Ctrl+Shift+0 |
+| Numbered / bulleted list | Ctrl+Shift+7 / Ctrl+Shift+8 |
+| Block quote | Ctrl+Shift+9 |
+| Bold / italic / underline | Ctrl+B / Ctrl+I / Ctrl+U |
+| Strikethrough | Ctrl+Shift+S |
+| Inline code / code block | Ctrl+E / Ctrl+Alt+C |
+| Increase / decrease indent | Ctrl+M / Ctrl+Shift+M |
+| Nest / unnest a list item | Tab / Shift+Tab |
+| Insert or edit a link | Ctrl+K |
+| Undo / redo | Ctrl+Z / Ctrl+Shift+Z |
+
+In tables, **Tab** and **Shift+Tab** move between cells. In code blocks, they adjust
+indentation. Elsewhere, Tab retains keyboard navigation; use Ctrl+M to indent a paragraph.
+Commands respect editing permissions and do not apply to **Source** fields or JSON Datasets.
+
+At the start of a paragraph, type `#` through `######` then a space for a heading, `-` or
+`*` then a space for bullets, `1.` then a space for a numbered list, or `>` then a space for
+a quote. **Backspace** immediately after conversion restores the typed characters. The
+document is still saved as rich HTML.
+
 ## Folder colors
 
 Document folder colors indicate their role: **blue** for custom folders specific to one

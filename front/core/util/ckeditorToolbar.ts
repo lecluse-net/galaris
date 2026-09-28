@@ -8,7 +8,7 @@ const headingIcon = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"
 
 export function editorToolbarGroups(document: boolean, voice = false) {
   return [
-    { name: 'reading', rows: [...(voice ? [['documentDictation', 'documentReading']] : []), [...(document ? ['documentLayout'] : []), 'sourceEditing', 'fullscreen']] },
+    { name: 'reading', rows: [...(voice ? [['documentDictation', 'documentReading']] : []), [...(document ? ['documentLayout'] : []), 'sourceEditing', 'fullscreen', ...(document ? ['accessibilityHelp'] : [])]] },
     { name: 'editing', rows: document
       ? [['undo', 'redo', 'findAndReplace', 'selectAll'], ['removeFormat', 'documentPrint', 'documentExportPdf', 'documentExportBundle']]
       : [['undo', 'redo', 'findAndReplace'], ['selectAll', 'removeFormat']] },
@@ -61,7 +61,7 @@ export function registerEditorToolbarGroups(editor: Editor, document: boolean, t
       'undo', 'redo', 'bold', 'italic', 'removeFormat', 'heading', 'style', 'bulletedList', 'numberedList',
       ...(voice ? ['documentDictation', 'documentReading'] : []),
       'link', 'galarisLink', ...(document ? ['uploadImage', 'documentAttachments'] : []),
-      ...(document ? ['documentShare'] : []),
+      ...(document ? ['documentShare', 'accessibilityHelp'] : []),
     ], editor.ui.componentFactory)
     for (const item of toolbar.items) {
       if (!(item instanceof DropdownView)) continue

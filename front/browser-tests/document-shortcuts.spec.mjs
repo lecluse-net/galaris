@@ -1,0 +1,158 @@
+import { test, expect, mount } from './fixtures.mjs'
+
+const lastValue = page => page.evaluate(() => window.testApp.events.filter(event => event.name === 'update:modelValue').at(-1)?.value)
+async function documentEditor(page, html = '<p>Keyboard document</p>', options = {}) {
+  await mount(page, 'core/util/components/RichTextEditor.vue', {
+    ...options, props: { profile: 'document', modelValue: html, ariaLabel: 'Document content', ...options.props },
+  })
+  const editor = page.getByRole('textbox', { name: 'Document content' })
+  await expect(editor).toBeVisible()
+  await editor.click()
+  return editor
+}
+
+test('number-row shortcuts format existing text, undo and survive reopening', async ({ page }) => {
+  const editor = await documentEditor(page)
+  for (let level = 1; level <= 6; level++) {
+    await page.keyboard.press(`Control+Shift+Digit${level}`)
+    await expect(editor.locator(`h${level}`)).toHaveText('Keyboard document')
+  }
+  await page.keyboard.press('Control+z')
+  await expect(editor.locator('h5')).toHaveText('Keyboard document')
+  await page.keyboard.press('Control+Shift+z')
+  await expect(editor.locator('h6')).toHaveText('Keyboard document')
+  const saved = await lastValue(page)
+  await documentEditor(page, saved)
+  await expect(editor.locator('h6')).toHaveText('Keyboard document')
+  // A French number-row key still selects its heading regardless of key/keyCode.
+  await editor.dispatchEvent('keydown', { code: 'Digit2', key: 'é', keyCode: 0, ctrlKey: true, shiftKey: true })
+  await expect(editor.locator('h2')).toHaveText('Keyboard document')
+  await page.keyboard.press('Control+Shift+Digit0')
+  await expect(editor.locator('p')).toHaveText('Keyboard document')
+  await page.keyboard.press('Control+Shift+Digit9')
+  await expect(editor.locator('blockquote')).toHaveText('Keyboard document')
+  await page.keyboard.press('Control+Shift+Digit9')
+  await expect(editor.locator('blockquote')).toHaveCount(0)
+})
+
+test('list shortcuts preserve nesting, paragraph indentation and table navigation', async ({ page }) => {
+  const editor = await documentEditor(page, '<p>First</p>')
+  await page.keyboard.press('End')
+  await page.keyboard.press('Control+Shift+Digit8')
+  await page.keyboard.press('Enter')
+  await page.keyboard.type('Second')
+  await expect(editor.locator('ul > li')).toHaveCount(2)
+  await page.keyboard.press('Tab')
+  await expect.poll(() => lastValue(page)).toMatch(/<ul[^>]*>.*<ul/)
+  await expect(editor.locator('ul ul li')).toHaveText('Second')
+  await page.keyboard.press('Shift+Tab')
+  await expect(editor.locator('ul ul')).toHaveCount(0)
+  await page.keyboard.press('Control+a')
+  await page.keyboard.press('Control+Shift+Digit7')
+  await expect(editor.locator('ol > li')).toHaveCount(2)
+  await page.keyboard.press('Control+Shift+Digit7')
+  await expect(editor.locator('li')).toHaveCount(0)
+  await page.keyboard.press('ArrowRight')
+  await page.keyboard.press('Control+m')
+  await expect.poll(() => lastValue(page)).toMatch(/margin-left:/)
+  await page.keyboard.press('Control+Shift+m')
+  await expect.poll(() => lastValue(page)).not.toMatch(/margin-left:/)
+
+  await documentEditor(page, '<table><tbody><tr><td>Left</td><td>Right</td></tr></tbody></table>')
+  await editor.locator('td').first().click()
+  await page.keyboard.press('Tab')
+  await page.keyboard.type('!')
+  await expect(editor.locator('td').last()).toContainText('!')
+  await expect(editor.locator('td').first()).toHaveText('Left')
+})
+
+test('inline formatting and code use the selection and preserve native code tabs', async ({ page }) => {
+  const editor = await documentEditor(page)
+  await page.keyboard.press('Control+a')
+  for (const [shortcut, tag] of [['Control+b', 'strong'], ['Control+i', 'i'], ['Control+u', 'u'], ['Control+Shift+s', 's'], ['Control+e', 'code']]) {
+    await page.keyboard.press(shortcut)
+    await expect(editor.locator(tag)).toHaveText('Keyboard document')
+    await page.keyboard.press(shortcut)
+    await expect(editor.locator(tag)).toHaveCount(0)
+  }
+  await page.keyboard.press('Control+Alt+c')
+  await expect(editor.locator('pre code')).toHaveText('Keyboard document')
+  await page.keyboard.press('ArrowLeft')
+  await page.keyboard.press('Home')
+  await page.keyboard.press('Tab')
+  await expect.poll(() => lastValue(page)).toMatch(/(?:\t| +)Keyboard document/)
+  await page.keyboard.press('Shift+Tab')
+  await expect.poll(() => lastValue(page)).toContain('>Keyboard document</code>')
+})
+
+test('typing markers creates editable headings and lists with reversible autoformat', async ({ page }) => {
+  const editor = await documentEditor(page, '')
+  await page.keyboard.type('## Heading')
+  await expect(editor.locator('h2')).toHaveText('Heading')
+  await page.keyboard.press('Enter')
+  await page.keyboard.type('- Item')
+  await expect(editor.locator('ul li')).toHaveText('Item')
+  await page.keyboard.press('Enter')
+  await page.keyboard.press('Enter')
+  await page.keyboard.type('1. ')
+  await expect(editor.locator('ol li')).toHaveCount(1)
+  await page.keyboard.press('Backspace')
+  await expect(editor.locator('ol')).toHaveCount(0)
+  await expect(editor).toContainText('1.')
+})
+
+test('shortcuts leave read-only, source mode and other fields unchanged', async ({ page }) => {
+  const editor = await documentEditor(page)
+  await page.evaluate(() => window.testApp.setProps({ readonly: true }))
+  await expect(editor).toHaveAttribute('contenteditable', 'false')
+  await editor.dispatchEvent('keydown', { code: 'Digit1', key: '1', ctrlKey: true, shiftKey: true })
+  await expect(editor.locator('h1')).toHaveCount(0)
+  expect(await lastValue(page)).toBeUndefined()
+  await page.evaluate(() => window.testApp.setProps({ readonly: false }))
+  await page.getByRole('button', { name: 'Source', exact: true }).click()
+  const source = page.locator('.ck-source-editing-area textarea')
+  await source.fill('<p>## Literal source</p>')
+  await source.press('Control+Shift+Digit1')
+  await expect(source).toHaveValue('<p>## Literal source</p>')
+  await page.getByRole('button', { name: 'Source', exact: true }).click()
+  await expect(editor.locator('p')).toHaveText('## Literal source')
+  await documentEditor(page, '<p>Other field</p>', { props: { profile: 'rich-text' } })
+  await page.keyboard.press('Control+Shift+Digit1')
+  await expect(editor.locator('p')).toHaveText('Other field')
+  await expect(page.getByRole('button', { name: 'Accessibility help', exact: true })).toHaveCount(0)
+})
+
+test('shortcut help is available on desktop and small screens and restores editing', async ({ page }) => {
+  const editor = await documentEditor(page)
+  for (const width of [1440, 390]) {
+    await page.setViewportSize({ width, height: 844 })
+    await page.getByRole('button', { name: 'Accessibility help', exact: true }).filter({ visible: true }).click()
+    const help = page.getByRole('dialog', { name: 'Accessibility help' })
+    await expect(help).toBeVisible()
+    await expect(help).toContainText('Heading 6')
+    await expect(help).toContainText('Normal text')
+    await page.keyboard.press('Escape')
+    await expect(help).toBeHidden()
+  }
+  await editor.click()
+  await page.keyboard.press('Control+Shift+Digit3')
+  await expect(editor.locator('h3')).toHaveText('Keyboard document')
+})
+
+test.describe('Mac keyboard mapping', () => {
+  test.use({ userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 Chrome/140.0.0.0 Safari/537.36' })
+  test('Command applies headings and inline code with French help', async ({ page }) => {
+    const editor = await documentEditor(page, '<p>Exemple clavier</p>', { locale: 'fr' })
+    await page.keyboard.press('Meta+Shift+Digit2')
+    await expect(editor.locator('h2')).toHaveText('Exemple clavier')
+    await page.keyboard.press('Meta+a')
+    await page.keyboard.press('Meta+e')
+    await expect(editor.locator('h2 code')).toHaveText('Exemple clavier')
+    await page.keyboard.press('Alt+Digit0')
+    const help = page.getByRole('dialog')
+    await expect(help).toContainText('Titre 6')
+    await expect(help).toContainText('Code en ligne')
+    await page.keyboard.press('Escape')
+    await expect(help).toBeHidden()
+  })
+})

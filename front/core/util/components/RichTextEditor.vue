@@ -36,7 +36,7 @@ import { useQuasar } from 'quasar'
 import { useI18n } from 'vue-i18n'
 import { Ckeditor } from '@ckeditor/ckeditor5-vue'
 import {
-  ClassicEditor, Essentials, Paragraph, Heading, Bold, Italic, Underline, Strikethrough, Subscript, Superscript, Code,
+  ClassicEditor, Essentials, Autoformat, Paragraph, Heading, Bold, Italic, Underline, Strikethrough, Subscript, Superscript, Code,
   Link, List, ListProperties, Indent, IndentBlock, BlockQuote, CodeBlock, HorizontalLine, Alignment, Highlight,
   FontFamily, FontSize, FontColor, FontBackgroundColor, FindAndReplace, RemoveFormat, SelectAll, SpecialCharacters,
   SpecialCharactersEssentials, SourceEditing, Fullscreen, GeneralHtmlSupport, PasteFromOffice, Style,
@@ -59,6 +59,7 @@ import { attachGnomeEditorIcons, gnomeEditorIcon } from '../ckeditorIcons'
 import { GalarisSourceEditing } from '../ckeditorSourceEditing'
 import { GalarisCodeHighlight } from '../ckeditorCodeHighlight'
 import { attachCodeTools, codeBlockLanguages } from '../ckeditorCodeTools'
+import { attachDocumentShortcuts } from '../ckeditorShortcuts'
 import { attachEditorToolbarGroups, editorToolbarCommands, editorToolbarGroups, registerEditorToolbarGroups } from '../ckeditorToolbar'
 import { registerEditorVoice } from '../ckeditorVoice'
 import { editorVoiceProvider } from '../editorVoice'
@@ -343,7 +344,7 @@ const config = computed<EditorConfig>(() => ({
     Indent, IndentBlock, BlockQuote, CodeBlock, GalarisCodeHighlight, HorizontalLine, Alignment, Highlight, FontFamily, FontSize, FontColor, FontBackgroundColor,
     FindAndReplace, RemoveFormat, SelectAll, SpecialCharacters, SpecialCharactersEssentials, SourceEditing, GalarisSourceEditing, Fullscreen, GeneralHtmlSupport, PasteFromOffice, Style,
     Table, TableToolbar, TableProperties, TableCellProperties, TableColumnResize, TableCaption,
-    ...(profile === 'document' ? [Image, ImageCaption, ImageStyle, ImageToolbar, ImageResize, ImageUpload, LinkImage] : []), GalarisIntegration],
+    ...(profile === 'document' ? [Autoformat, Image, ImageCaption, ImageStyle, ImageToolbar, ImageResize, ImageUpload, LinkImage] : []), GalarisIntegration],
   menuBar: { isVisible: false },
   codeBlock: { languages: codeBlockLanguages(t) },
   fullscreen: { menuBar: { isVisible: false } },
@@ -381,6 +382,7 @@ function insertGalarisLink(uri: string, label: string): void {
 }
 function ready(current: ClassicEditor): void {
   editor.value = current
+  if (profile === 'document') attachDocumentShortcuts(current, t)
   // Keep the native sticky panel active within the editor's bounds, even after blur.
   current.ui.view.stickyPanel.unbind('isActive')
   current.ui.view.stickyPanel.isActive = true

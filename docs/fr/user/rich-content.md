@@ -23,6 +23,37 @@ Cliquer dans le document conserve sa bordure neutre.
 Les sélecteurs de titre et de taille de police affichent leur valeur en texte. Leurs listes
 présentent les titres et les tailles avec un aperçu de leur grandeur.
 
+## Raccourcis de mise en forme des documents
+
+Placez le curseur dans le document ou sélectionnez du texte. Sur Mac, remplacez **Ctrl** par
+**Cmd**. Les chiffres sont ceux de la rangée supérieure, y compris sur un clavier AZERTY.
+Le bouton **Aide à l’accessibilité** du groupe **Lecture** (également disponible sur mobile),
+ou **Alt+0** dans l’éditeur, affiche les raccourcis. **Échap** ferme cette aide.
+
+| Action | Raccourci |
+|---|---|
+| Titres 1 à 6 | Ctrl+Maj+1 à 6 |
+| Texte normal | Ctrl+Maj+0 |
+| Liste numérotée / liste à puces | Ctrl+Maj+7 / Ctrl+Maj+8 |
+| Citation | Ctrl+Maj+9 |
+| Gras / italique / souligné | Ctrl+B / Ctrl+I / Ctrl+U |
+| Barré | Ctrl+Maj+S |
+| Code en ligne / bloc de code | Ctrl+E / Ctrl+Alt+C |
+| Augmenter / réduire le retrait | Ctrl+M / Ctrl+Maj+M |
+| Imbriquer / désimbriquer un élément de liste | Tab / Maj+Tab |
+| Insérer ou modifier un lien | Ctrl+K |
+| Annuler / rétablir | Ctrl+Z / Ctrl+Maj+Z |
+
+Dans un tableau, **Tab** et **Maj+Tab** passent entre les cellules. Dans un bloc de code,
+ils règlent l’indentation. Hors de ces contextes, Tab garde son rôle de navigation ; utilisez
+Ctrl+M pour le retrait d’un paragraphe. Les commandes respectent les droits d’édition et
+ne s’appliquent pas au champ **Source** ni aux Datasets JSON.
+
+Au début d’un paragraphe, tapez `#` à `######` puis une espace pour un titre, `-` ou `*`
+puis une espace pour des puces, `1.` puis une espace pour une liste numérotée, ou `>` puis
+une espace pour une citation. **Retour arrière** juste après la transformation restaure
+les caractères saisis. Le document reste enregistré en HTML enrichi.
+
 ## Couleurs des dossiers
 
 Les couleurs des répertoires de documents indiquent leur rôle : **bleu** pour les dossiers

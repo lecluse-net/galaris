@@ -31,6 +31,7 @@ export default {
       reload: 'Recharger les droits',
     },
     richEditor: {
+      shortcuts: { paragraph: 'Texte normal', inlineCode: 'Code en ligne', indent: 'Augmenter le retrait', outdent: 'Réduire le retrait' },
       resources: {
         documentAttachments: 'Pièces jointes', insertAttachment: 'Insérer dans le document',
         asUrl: 'Afficher l’URL', asCard: 'Afficher une carte',
@@ -220,6 +221,7 @@ targetTypes: {"all":"Tous","document":"Document","memory":"Mémoire","goal":"Obj
       reload: 'Reload access',
     },
     richEditor: {
+      shortcuts: { paragraph: 'Normal text', inlineCode: 'Inline code', indent: 'Increase indent', outdent: 'Decrease indent' },
       resources: {
         documentAttachments: 'Attachments', insertAttachment: 'Insert into document',
         asUrl: 'Show URL', asCard: 'Show card',
@@ -409,6 +411,7 @@ targetTypes: {"all":"All","document":"Document","memory":"Memory","goal":"Goal",
       reload: '重新加载权限',
     },
     richEditor: {
+      shortcuts: { paragraph: '正文', inlineCode: '行内代码', indent: '增加缩进', outdent: '减少缩进' },
       resources: {
         documentAttachments: '附件', insertAttachment: '插入文档',
         asUrl: '显示网址', asCard: '显示卡片',
