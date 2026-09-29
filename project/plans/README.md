@@ -35,6 +35,7 @@ d'implémentation ni nouvel ordre de priorité produit.
 
 | Plan | Statut | Portée et dépendances |
 |---|---|---|
+| [tool-admin.md](tool-admin.md) | `design` | Tool optionnel d'administration du catalogue, configurations, connexions et autorisations ; test MCP non persistant et diagnostic du catalogue effectif. Services de connexion communs avec AgentAdmin ; délégation et secrets à formaliser avant implémentation. |
 | [tool-agent-admin.md](tool-agent-admin.md) | `approved` | Tool optionnel de 34 fonctions pour administrer agents, avatars (dont génération conditionnée au modèle image), équipes, connexions et harnais ; sans gestion de skills. Implémentation et qualification à réaliser. |
 | [cible.md](cible.md) | `design` | Livraison publique, gouvernance des effets, releases d'agents, autonomie, interopérabilité et exploitation. |
 | [infrastructure-plugins-galaris.md](infrastructure-plugins-galaris.md) | `design` | Bundles, activation, frontend précompilé, permissions, conservation des données, compatibilité et rollback. |
