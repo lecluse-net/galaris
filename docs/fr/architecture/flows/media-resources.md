@@ -39,6 +39,30 @@ montées. Annuler un lecteur préserve les autres ; le dernier abandon annule le
 Les listes de sélection d’agents mutualisent uniquement les lectures simultanées, par
 périmètre (`management`, `dialogue`, `teams`), sans conserver le résultat entre ouvertures.
 
+## Fichiers Nextcloud
+
+Le bridge WebDAV conserve les noms décodés ; la façade encode chaque segment une seule fois
+lorsqu’elle produit une URI. Lister et rechercher parcourent les dossiers avec `Depth: 1`,
+sans dépendre de `Depth: infinity`. Les curseurs sont liés au compte, au dossier et au mode de
+parcours ; ceux de recherche incluent aussi l’agent et la requête. Une empreinte des entrées
+empêche de continuer silencieusement une page dont le dossier a changé. Les réponses DAV de
+métadonnées sont limitées à 8 Mio ; une page parcourt au plus 64 dossiers et 64 niveaux.
+Une collection dont la réponse dépasse cette limite produit une erreur explicite.
+
+Les créations et copies sans remplacement utilisent `If-None-Match: *`. Les remplacements,
+éditions et ajouts de texte utilisent un ETag fort et `If-Match`. `file_read` et `file_info`
+exposent `etag`, transmis ensuite comme `expected_etag` aux mutations. Sans jeton explicite,
+une édition protège quand même son propre cycle lecture/écriture. Une lecture destinée au modèle
+est bornée à 16 Mo ; les éditions sont bornées à 500 000 caractères. Les transferts conservent
+leur budget distinct. Une source Nextcloud modifiée pendant un déplacement vers un autre
+provider n’est pas supprimée : le résultat signale que seule la copie a abouti.
+
+Les dossiers ne sont ni supprimés ni déplacés par les opérations génériques Nextcloud.
+Les appels ont des délais finis, les téléchargements interrompus effacent leur temporaire et
+aucune mutation n’est rejouée automatiquement après une issue réseau ambiguë. Une réponse OCS
+de partage doit confirmer le succès et fournir un lien exploitable avant d’être annoncée réussie.
+La recherche textuelle signale les fichiers illisibles, binaires ou trop volumineux ignorés.
+
 ## Recherche de sources
 
 `search_web` appelle SearXNG par HTTP asynchrone, avec un client possédé par l'appel :

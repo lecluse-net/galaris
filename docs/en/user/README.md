@@ -203,6 +203,14 @@ If your organization connects Nextcloud Talk, Matrix, OneBot, Telegram, or Whats
 
 Attachments remain files. Specify their name and the expected action: “read,” “modify,” “compare,” “return,” or “share.” For a large file, the Agent may transfer it without loading all its content into the model.
 
+To exchange files with agents from your PC, use a Nextcloud folder accessible to the agent's
+connected account, synchronized or mounted on your computer. Specify the folder and file.
+Names containing accents, spaces, `#`, `?`, and `%` are preserved. If you change a file while
+the agent is editing it, the concurrent edit is rejected: the agent must read your version
+before continuing. Search may continue across several pages; content search reports files it
+could not examine. Generic deletion only removes individual files, never an entire folder.
+An active connection with incomplete configuration remains unusable.
+
 The Agent interprets a resend request and selects the file and destination before sending.
 A document open beside the chat provides context; its words never trigger automatic redelivery.
 Attaching an image to a document and sending it back in the chat are separate requests.

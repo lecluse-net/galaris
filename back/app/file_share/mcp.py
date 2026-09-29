@@ -255,6 +255,7 @@ async def create_file(
         "file_read (mandatory for documents); Dataset replacements must remain valid JSON. "
         "Document types cannot change. Use file_create for new resources. Skill definitions are validated and "
         "system skills remain read-only."
+        " For Nextcloud, pass expected_etag from file_read to reject stale replacements."
     ),
 )
 async def write_file(
@@ -263,6 +264,7 @@ async def write_file(
     content: str,
     encoding: Literal["utf-8", "base64"] = "utf-8",
     expected_revision: int | None = None,
+    expected_etag: str | None = None,
 ) -> str:
     """Write a complete text or binary file through a provider adapter."""
 
@@ -272,6 +274,7 @@ async def write_file(
             uri,
             _decode_content(content, encoding),
             expected_revision=expected_revision,
+            expected_etag=expected_etag,
         )
     )
 
@@ -283,14 +286,14 @@ async def write_file(
         "Append UTF-8 text to a resource URI when its provider supports append. HTML documents require complete valid blocks and expected_revision. "
         "Dataset appends must leave the complete document valid JSON; normally use file_write or file_edit instead. Use it to "
         "extend local files, document:// resources, and authorized galaris://skill/ files "
-        "without resending existing content."
+        "without resending existing content. Nextcloud supports conditional append; pass expected_etag from file_read when known."
     ),
 )
-async def append_file(ctx: McpToolContext, uri: str, content: str, expected_revision: int | None = None) -> str:
+async def append_file(ctx: McpToolContext, uri: str, content: str, expected_revision: int | None = None, expected_etag: str | None = None) -> str:
     """Append text through a provider adapter."""
 
     return _json_model(
-        await resource_append(await _resource_context(ctx), uri, content, expected_revision=expected_revision)
+        await resource_append(await _resource_context(ctx), uri, content, expected_revision=expected_revision, expected_etag=expected_etag)
     )
 
 
@@ -304,7 +307,7 @@ async def append_file(ctx: McpToolContext, uri: str, content: str, expected_revi
         "expected_revision; the complete result must remain valid JSON. For "
         "example start_line=10 and end_line=14 rewrites lines 10 through 14. Binary resources "
         "are rejected. Pass expected_revision for document:// or galaris://skill/ when one is "
-        "already known."
+        "already known. For Nextcloud, pass expected_etag from file_read when known; concurrent edits are rejected."
     ),
 )
 async def edit_file(
@@ -314,6 +317,7 @@ async def edit_file(
     end_line: int,
     content: str,
     expected_revision: int | None = None,
+    expected_etag: str | None = None,
 ) -> str:
     """Edit one explicit inclusive line range."""
 
@@ -325,6 +329,7 @@ async def edit_file(
             end_line=end_line,
             content=content,
             expected_revision=expected_revision,
+            expected_etag=expected_etag,
         )
     )
 

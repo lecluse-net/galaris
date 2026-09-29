@@ -34,6 +34,29 @@ partitioned by scope (`management`, `dialogue`, `teams`), with no retained resul
 
 Galaris separates a resource's canonical identity, its bounded transfer, and the strictly technical temporary files required by certain libraries.
 
+## Nextcloud files
+
+The WebDAV bridge preserves decoded names; the facade encodes each segment once when producing
+a URI. Listing and search walk folders with `Depth: 1`, without depending on `Depth: infinity`.
+Cursors are bound to the account, folder and traversal mode; search also binds the agent and
+query. An entry fingerprint prevents silently continuing a page whose folder changed.
+DAV metadata responses are limited to 8 MiB; one page visits at most 64 folders and 64 levels.
+A collection whose response exceeds this limit produces an explicit error.
+
+Creation and copying without replacement use `If-None-Match: *`. Replacements, edits and text
+appends use a strong ETag and `If-Match`. `file_read` and `file_info` expose `etag`, which is
+passed as `expected_etag` to mutations. Without an explicit token, an edit still protects its
+own read-modify-write cycle. Reads intended for the model are bounded to 16 MB; edits are
+bounded to 500,000 characters. Transfers retain their separate byte budget. A Nextcloud source
+changed during a move to another provider is preserved: the result reports that only the copy
+succeeded.
+
+Generic Nextcloud operations neither delete nor relocate directories. Calls have finite
+deadlines, interrupted downloads remove their temporary file, and mutations are not retried
+automatically after an ambiguous network outcome. An OCS sharing response must confirm success
+and supply a usable link before being reported successful. Text search reports skipped files
+that are unreadable, binary or too large.
+
 ## Source search
 
 `search_web` calls SearXNG through asynchronous HTTP with a client owned by the call:

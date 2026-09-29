@@ -271,6 +271,15 @@ Les pièces jointes restent des fichiers. Précisez leur nom et l’action atten
 « modifie », « compare », « renvoie » ou « partage ». Pour un fichier volumineux, l’agent peut
 le transférer sans charger tout son contenu dans le modèle.
 
+Pour échanger des fichiers avec les agents depuis votre PC, utilisez un dossier Nextcloud
+accessible au compte connecté de l’agent, synchronisé ou monté sur votre ordinateur.
+Indiquez le dossier et le fichier concernés. Les noms avec accents, espaces, `#`, `?` et `%`
+sont conservés. Si vous modifiez le fichier pendant le travail de l’agent, une édition
+concurrente est refusée : l’agent doit relire votre version avant de poursuivre.
+La recherche peut continuer sur plusieurs pages ; une recherche de contenu signale les fichiers
+qu’elle n’a pas pu examiner. La suppression générique porte uniquement sur des fichiers,
+jamais sur un dossier entier. Une connexion active mais incomplètement configurée reste inutilisable.
+
 L’agent interprète la demande de renvoi et choisit le fichier et sa destination avant l’envoi.
 Le contenu d’un document ouvert à côté du chat sert de contexte ; ses mots ne déclenchent
 aucun renvoi automatique. Joindre une image à un document et la renvoyer dans le chat sont

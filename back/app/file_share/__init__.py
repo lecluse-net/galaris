@@ -66,6 +66,8 @@ from .resource_uri import (
     SYSTEM_TOOL_CODES,
     ResourceUri,
     ResourceUriError,
+    ResourceRevisionConflict,
+    ResourceValidationError,
     parse_resource_uri,
     validate_external_tool_code,
 )
@@ -115,6 +117,8 @@ __all__ = [
     "ResourceTransfer",
     "ResourceUri",
     "ResourceUriError",
+    "ResourceRevisionConflict",
+    "ResourceValidationError",
     "FileResourceTransport",
     "FileEntry",
     "FileListing",

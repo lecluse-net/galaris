@@ -8,15 +8,20 @@ and authenticates with a Nextcloud login and password over Basic Auth.
 from __future__ import annotations
 
 import asyncio
+import base64
+import hashlib
 import json
 import mimetypes
+import tempfile
+from collections.abc import AsyncIterator
 from pathlib import Path
-from core.util import DEFAULT_DOWNLOAD_BYTES, copy_download
-from typing import Any, Optional
+from core.util import DEFAULT_DOWNLOAD_BYTES, complete_io, copy_download
+from typing import Any, Literal
 from urllib.parse import quote, unquote, urlsplit
 from xml.etree import ElementTree
 
 import httpx
+from pydantic import BaseModel, ConfigDict, Field, ValidationError
 from loguru import logger
 
 from app.file_share import (
@@ -25,26 +30,80 @@ from app.file_share import (
     FileEntry,
     FileListing,
     FileMutation,
+    ResourceRevisionConflict,
+    ResourceValidationError,
 )
 from core.i18n import render_prompt, t
 
 _SHARES = "/ocs/v2.php/apps/files_sharing/api/v1"
-_TIMEOUT = httpx.Timeout(connect=10.0, read=None, write=None, pool=10.0)
+_TIMEOUT = httpx.Timeout(connect=10.0, read=60.0, write=60.0, pool=10.0)
 _CHUNK = 1 << 20
+_METADATA_LIMIT = 8 * 1024 * 1024
+_REQUEST_SECONDS = 300
+
+
+class _Frame(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    path: str = Field(max_length=4096)
+    offset: int = Field(default=0, ge=0)
+    fingerprint: str = ""
+
+
+class _Cursor(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    scope: str
+    frames: list[_Frame] = Field(max_length=64)
+
+
+class _ShareData(BaseModel):
+    url: str | None = None
+    token: str | None = None
+    file_source: int | None = Field(default=None, gt=0)
+
+
+class _ShareMeta(BaseModel):
+    status: Literal["ok"]
+    statuscode: Literal[100, 200]
+
+
+class _ShareResult(BaseModel):
+    meta: _ShareMeta
+    data: _ShareData
+
+
+class _ShareEnvelope(BaseModel):
+    ocs: _ShareResult
+
+
+def _strong_etag(value: str | None) -> str:
+    if (
+        not value
+        or not value.startswith('"')
+        or not value.endswith('"')
+        or any(ord(c) < 32 or ord(c) == 127 for c in value)
+    ):
+        raise ResourceValidationError(
+            "Nextcloud did not provide a strong ETag; reload before modifying the file."
+        )
+    return value
+
+
+def _check_status(response: httpx.Response, allowed: set[int], path: str) -> None:
+    status = response.status_code
+    if status in allowed:
+        return
+    if status == 404:
+        raise FileNotFoundError(path)
+    if status in {401, 403}:
+        raise PermissionError(f"Nextcloud denied the file operation (HTTP {status}).")
+    if status == 412:
+        raise ResourceRevisionConflict("The Nextcloud file changed; read it again before retrying.")
+    # Do not echo remote bodies, credentials or signed URLs into tool errors.
+    raise RuntimeError(f"Nextcloud file operation failed (HTTP {status}).")
 
 
 def _error(key: str, **values: Any) -> str:
     return render_prompt(t(f"file_share.errors.{key}"), **values)
-
-
-def _operation_error(operation: str, status: int, detail: Any) -> str:
-    return _error(
-        "operation_failed",
-        service="Nextcloud",
-        operation=t(f"file_share.operations.{operation}"),
-        status=status,
-        detail=detail,
-    )
 
 
 class NextcloudFileClient:
@@ -69,6 +128,10 @@ class NextcloudFileClient:
         return "/".join(quote(seg) for seg in path.split("/") if seg)
 
     def _webdav_url(self, remote_path: str) -> str:
+        if any(part in {".", ".."} for part in remote_path.split("/")) or any(
+            ord(c) < 32 for c in remote_path
+        ):
+            raise ValueError("Invalid Nextcloud path")
         root = self._encode_path(self._dav_root)
         rel = self._encode_path(remote_path)
         return f"{self.base_url}/{root}" + (f"/{rel}" if rel else "")
@@ -77,8 +140,33 @@ class NextcloudFileClient:
         return httpx.AsyncClient(
             auth=(self.username, self.password),
             timeout=_TIMEOUT,
-            follow_redirects=True,
+            follow_redirects=False,
         )
+
+    async def _request(
+        self,
+        method: str,
+        url: str,
+        *,
+        headers: dict[str, str] | None = None,
+        content: str | None = None,
+        data: dict[str, str] | None = None,
+    ) -> httpx.Response:
+        """Bound both the time and bytes of DAV control responses."""
+        async with asyncio.timeout(_REQUEST_SECONDS), self._client() as http:
+            async with http.stream(
+                method, url, headers=headers, content=content, data=data
+            ) as response:
+                received = bytearray()
+                async for chunk in response.aiter_bytes(64 * 1024):
+                    if len(received) + len(chunk) > _METADATA_LIMIT:
+                        raise ResourceValidationError(
+                            "Nextcloud metadata exceeds the bounded response limit; use a smaller folder."
+                        )
+                    received.extend(chunk)
+                return httpx.Response(
+                    response.status_code, headers=response.headers, content=bytes(received)
+                )
 
     async def _ensure_dirs(self, http: httpx.AsyncClient, remote_dir: str) -> None:
         """Recursively create parent collections with idempotent MKCOL calls."""
@@ -86,15 +174,14 @@ class NextcloudFileClient:
         acc = ""
         for part in parts:
             acc = f"{acc}/{part}" if acc else part
-            resp = await http.request("MKCOL", self._webdav_url(acc))
+            async with http.stream("MKCOL", self._webdav_url(acc)) as resp:
+                status = resp.status_code
             # 201 means created; 405 means already present.
-            if resp.status_code not in (201, 405):
-                raise RuntimeError(_error(
-                    "folder_creation_failed",
-                    path=acc,
-                    status=resp.status_code,
-                    detail=resp.text[:200],
-                ))
+            if status == 405:
+                if not (await self.resource_info(acc)).is_dir:
+                    raise NotADirectoryError(acc)
+            else:
+                _check_status(resp, {201}, acc)
 
     # -- Public API -------------------------------------------------------------
 
@@ -103,76 +190,109 @@ class NextcloudFileClient:
 
         Return the created remote path.
         """
-        folder = target.strip("/")
-        remote_path = f"{folder}/{filename}" if folder else filename.strip("/")
-        async with self._client() as http:
-            if folder:
-                await self._ensure_dirs(http, folder)
-            resp = await http.put(
-                self._webdav_url(remote_path),
-                content=data,
-                headers={"Content-Type": "application/octet-stream"},
-            )
-        if resp.status_code not in (201, 204):
-            raise RuntimeError(_operation_error(
-                "webdav_upload", resp.status_code, resp.text[:200]
-            ))
-        logger.info("Nextcloud: uploaded file to {}", remote_path)
-        return remote_path
+        with tempfile.TemporaryDirectory(prefix="galaris_nextcloud_upload_") as folder:
+            temporary = Path(folder) / "content"
+            await complete_io(temporary.write_bytes, data)
+            return await self.upload_from(temporary, filename, target=target)
 
     async def download(self, remote: str) -> bytes:
         """Download a file from a relative path or complete WebDAV URL."""
-        url = remote if remote.startswith(("http://", "https://")) else self._webdav_url(remote.strip("/"))
-        async with self._client() as http:
-            resp = await http.get(url)
-        if resp.status_code != 200:
-            raise RuntimeError(_operation_error(
-                "webdav_download", resp.status_code, resp.text[:200]
-            ))
-        return resp.content
+        with tempfile.TemporaryDirectory(prefix="galaris_nextcloud_download_") as folder:
+            temporary = Path(folder) / "content"
+            await self.download_to(remote, temporary)
+            return await complete_io(temporary.read_bytes)
 
     # -- Standard FileTransport interface (streaming with bounded memory) --------
 
-    async def download_to(self, remote: str, dest: Path, *, target: str = "", max_bytes: int = DEFAULT_DOWNLOAD_BYTES) -> int:
+    async def download_to(
+        self, remote: str, dest: Path, *, target: str = "", max_bytes: int = DEFAULT_DOWNLOAD_BYTES
+    ) -> int:
         """Stream a WebDAV file to local ``dest``; ``target`` is ignored."""
-        url = remote if remote.startswith(("http://", "https://")) else self._webdav_url(remote.strip("/"))
-        total = 0
-        async with self._client() as http:
-            async with http.stream("GET", url) as resp:
-                if resp.status_code != 200:
-                    body = (await resp.aread())[:200]
-                    raise RuntimeError(_operation_error(
-                        "webdav_download", resp.status_code, repr(body)
-                    ))
-                total = await copy_download(resp.aiter_bytes(min(64 * 1024, max_bytes + 1)), dest, max_bytes=max_bytes)
-        return total
+        del target
+        return (await self.download_versioned(remote, dest, max_bytes=max_bytes)).size or 0
+
+    async def download_versioned(
+        self, remote: str, dest: Path, *, max_bytes: int = DEFAULT_DOWNLOAD_BYTES
+    ) -> FileEntry:
+        if remote.startswith(("http://", "https://")):
+            # File tools use account-relative paths. Never forward Basic Auth to
+            # an arbitrary URL, even when called through a legacy consumer.
+            root = self._webdav_url("").rstrip("/") + "/"
+            if not remote.startswith(root):
+                raise ValueError("Download URL is outside the configured Nextcloud account")
+            remote = unquote(urlsplit(remote).path[len(urlsplit(root).path) :])
+        try:
+            async with asyncio.timeout(_REQUEST_SECONDS), self._client() as http:
+                async with http.stream("GET", self._webdav_url(remote)) as resp:
+                    _check_status(resp, {200}, remote)
+                    size = await copy_download(
+                        resp.aiter_bytes(min(64 * 1024, max_bytes + 1)), dest, max_bytes=max_bytes
+                    )
+                    return FileEntry(
+                        path=remote,
+                        is_dir=False,
+                        size=size,
+                        mime_type=resp.headers.get(
+                            "content-type", "application/octet-stream"
+                        ).split(";")[0],
+                        etag=resp.headers.get("etag"),
+                    )
+        except BaseException:
+            dest.unlink(missing_ok=True)
+            raise
 
     async def upload_from(self, src: Path, filename: str, *, target: str = "") -> str:
         """Stream local ``src`` into ``target`` and return the remote path."""
+        return await self.upload_conditional(src, filename, target=target, overwrite=True)
+
+    async def upload_conditional(
+        self,
+        src: Path,
+        filename: str,
+        *,
+        target: str = "",
+        overwrite: bool,
+        expected_etag: str | None = None,
+    ) -> str:
         folder = target.strip("/")
         remote_path = f"{folder}/{filename}" if folder else filename.strip("/")
         size = src.stat().st_size
 
-        async def _body():
+        if overwrite and expected_etag is None:
+            try:
+                current = await self.resource_info(remote_path)
+            except FileNotFoundError:
+                overwrite = False
+            else:
+                if current.is_dir:
+                    raise IsADirectoryError(remote_path)
+                expected_etag = _strong_etag(current.etag)
+        headers = {"Content-Type": "application/octet-stream", "Content-Length": str(size)}
+        if overwrite:
+            headers["If-Match"] = _strong_etag(expected_etag)
+        else:
+            headers["If-None-Match"] = "*"
+
+        async def _body() -> AsyncIterator[bytes]:
             with src.open("rb") as fh:
                 while True:
-                    chunk = await asyncio.to_thread(fh.read, _CHUNK)
+                    chunk = await complete_io(fh.read, _CHUNK)
                     if not chunk:
                         break
                     yield chunk
 
-        async with self._client() as http:
+        async with asyncio.timeout(_REQUEST_SECONDS), self._client() as http:
             if folder:
                 await self._ensure_dirs(http, folder)
-            resp = await http.put(
+            async with http.stream(
+                "PUT",
                 self._webdav_url(remote_path),
                 content=_body(),
-                headers={"Content-Type": "application/octet-stream", "Content-Length": str(size)},
-            )
-        if resp.status_code not in (201, 204):
-            raise RuntimeError(_operation_error(
-                "webdav_upload", resp.status_code, resp.text[:200]
-            ))
+                headers=headers,
+            ) as resp:
+                if resp.status_code == 412 and not overwrite:
+                    raise FileExistsError(remote_path)
+                _check_status(resp, {201, 204}, remote_path)
         logger.info("Nextcloud: streamed file to {} ({} bytes)", remote_path, size)
         return remote_path
 
@@ -180,7 +300,7 @@ class NextcloudFileClient:
         self,
         remote: str,
         permissions: int = 1,
-        share_with: Optional[str] = None,
+        share_with: str | None = None,
     ) -> str:
         """Create a Nextcloud share and return its URL.
 
@@ -196,26 +316,34 @@ class NextcloudFileClient:
         if share_with:
             payload["shareWith"] = share_with
 
-        async with self._client() as http:
-            resp = await http.post(
-                endpoint,
-                data=payload,
-                headers={"OCS-APIRequest": "true", "Accept": "application/json"},
-            )
-        if resp.status_code not in (200, 201):
-            raise RuntimeError(_operation_error(
-                "share_creation", resp.status_code, resp.text[:200]
-            ))
-
-        url = ""
+        resp = await self._request(
+            "POST",
+            endpoint,
+            data=payload,
+            headers={"OCS-APIRequest": "true", "Accept": "application/json"},
+        )
+        _check_status(resp, {200, 201}, remote)
         try:
-            body = json.loads(resp.text)
-            data = body.get("ocs", {}).get("data", {})
-            url = data.get("url") or ""
-            if not url and data.get("token"):
-                url = f"{self.base_url}/s/{data['token']}"
-        except (json.JSONDecodeError, AttributeError):
-            logger.warning("Nextcloud: share response is not JSON: {}", resp.text[:200])
+            data = _ShareEnvelope.model_validate_json(resp.content).ocs.data
+            url = data.url
+            if not url and not share_with and data.token:
+                url = f"{self.base_url}/s/{quote(data.token, safe='')}"
+            if not url and share_with and data.file_source is not None:
+                url = f"{self.base_url}/index.php/f/{data.file_source}"
+            if not isinstance(url, str):
+                raise ValueError("Missing share link")
+            parsed = urlsplit(url)
+            if (
+                parsed.scheme not in {"http", "https"}
+                or not parsed.hostname
+                or parsed.username
+                or parsed.password
+            ):
+                raise ValueError("Invalid share link")
+        except ValueError, KeyError, TypeError, AttributeError:
+            raise RuntimeError(
+                "Nextcloud returned no confirmed usable share; verify its state before retrying."
+            ) from None
         logger.info("Nextcloud: created share for {}", remote)
         return url
 
@@ -229,40 +357,52 @@ class NextcloudFileClient:
         body = """<?xml version="1.0" encoding="utf-8" ?>
 <d:propfind xmlns:d="DAV:"><d:prop><d:resourcetype/><d:getcontentlength/>
 <d:getlastmodified/><d:getcontenttype/><d:getetag/></d:prop></d:propfind>"""
-        async with self._client() as http:
-            response = await http.request(
-                "PROPFIND",
-                self._webdav_url(remote.strip("/")),
-                headers=headers,
-                content=body,
-            )
-        if response.status_code == 404:
-            raise FileNotFoundError(remote)
-        if response.status_code != 207:
-            raise RuntimeError(
-                _operation_error("webdav_download", response.status_code, response.text[:200])
-            )
+        response = await self._request(
+            "PROPFIND", self._webdav_url(remote.strip("/")), headers=headers, content=body
+        )
+        _check_status(response, {207}, remote)
+        if b"<!DOCTYPE" in response.content.upper() or b"<!ENTITY" in response.content.upper():
+            raise ResourceValidationError("Nextcloud returned unsupported XML declarations.")
         try:
             root = ElementTree.fromstring(response.content)
         except ElementTree.ParseError as exc:
             raise RuntimeError(_error("invalid_response", service="Nextcloud")) from exc
-        dav_prefix = f"/{self._dav_root.strip('/')}"
+        if root.tag != "{DAV:}multistatus":
+            raise ResourceValidationError("Nextcloud returned an invalid DAV envelope.")
+        dav_prefix = unquote(urlsplit(self._webdav_url("")).path).rstrip("/")
         entries: list[FileEntry] = []
+        seen: set[str] = set()
         for item in root.findall("{DAV:}response"):
             href = item.findtext("{DAV:}href") or ""
             decoded_path = unquote(urlsplit(href).path)
-            marker = decoded_path.find(dav_prefix)
-            if marker < 0:
-                continue
-            path = decoded_path[marker + len(dav_prefix) :].strip("/")
-            prop = item.find("{DAV:}propstat/{DAV:}prop")
+            if decoded_path.rstrip("/") != dav_prefix and not decoded_path.startswith(
+                dav_prefix + "/"
+            ):
+                raise ResourceValidationError("Nextcloud returned a path outside the account.")
+            path = decoded_path[len(dav_prefix) :].strip("/")
+            if path in seen:
+                raise ResourceValidationError("Nextcloud returned duplicate paths.")
+            seen.add(path)
+            self._webdav_url(path)
+            normalized = remote.strip("/")
+            if path != normalized and (depth == "0" or path.rpartition("/")[0] != normalized):
+                raise ResourceValidationError(
+                    "Nextcloud returned a path outside the requested folder."
+                )
+            prop = None
+            for propstat in item.findall("{DAV:}propstat"):
+                status = (propstat.findtext("{DAV:}status") or "").split()
+                if len(status) >= 2 and status[1] == "200":
+                    prop = propstat.find("{DAV:}prop")
+                    break
             if prop is None:
-                continue
+                raise PermissionError(
+                    "Nextcloud did not return readable properties for a resource."
+                )
             resource_type = prop.find("{DAV:}resourcetype")
-            is_dir = (
-                resource_type is not None
-                and resource_type.find("{DAV:}collection") is not None
-            )
+            if resource_type is None:
+                raise ResourceValidationError("Nextcloud did not identify the resource type.")
+            is_dir = resource_type.find("{DAV:}collection") is not None
             size_text = prop.findtext("{DAV:}getcontentlength") or "0"
             mime_type = prop.findtext("{DAV:}getcontenttype") or (
                 mimetypes.guess_type(path)[0] or "application/octet-stream"
@@ -275,6 +415,7 @@ class NextcloudFileClient:
                     modified_at=prop.findtext("{DAV:}getlastmodified") or "",
                     mime_type=mime_type,
                     sha256="",
+                    etag=prop.findtext("{DAV:}getetag"),
                 )
             )
         return entries
@@ -282,11 +423,27 @@ class NextcloudFileClient:
     async def resource_info(self, path: str, *, include_sha256: bool = False) -> FileEntry:
         """Return WebDAV metadata for one resource."""
 
-        del include_sha256
         entries = await self._propfind(path, depth="0")
-        if not entries:
+        if len(entries) != 1:
             raise FileNotFoundError(path)
-        return entries[0]
+        entry = entries[0]
+        if include_sha256 and not entry.is_dir:
+            from dataclasses import replace
+
+            with tempfile.TemporaryDirectory(prefix="galaris_nextcloud_checksum_") as folder:
+                temporary = Path(folder) / "content"
+                downloaded = await self.download_versioned(path, temporary)
+                if entry.etag != downloaded.etag:
+                    raise ResourceRevisionConflict(
+                        "Nextcloud changed during checksum calculation; retry."
+                    )
+
+                def digest() -> str:
+                    with temporary.open("rb") as stream:
+                        return hashlib.file_digest(stream, "sha256").hexdigest()
+
+                entry = replace(entry, sha256=await complete_io(digest))
+        return entry
 
     async def resource_list(
         self,
@@ -295,27 +452,110 @@ class NextcloudFileClient:
         recursive: bool,
         limit: int,
     ) -> FileListing:
-        """List one WebDAV collection, using a server-bounded result slice."""
+        """List a bounded page; continue with resource_list_page and its cursor."""
 
-        entries = await self._propfind(path, depth="infinity" if recursive else "1")
-        normalized = path.strip("/") or "."
-        children = [entry for entry in entries if entry.path != normalized]
+        return await self.resource_list_page(path, recursive=recursive, limit=limit)
+
+    async def resource_list_page(
+        self, path: str, *, recursive: bool, limit: int, cursor: str | None = None
+    ) -> FileListing:
+        root = path.strip("/")
+        scope = hashlib.sha256(
+            json.dumps([self.base_url, self.username, root, recursive]).encode()
+        ).hexdigest()
+        state = _Cursor(scope=scope, frames=[_Frame(path=root)])
+        if cursor:
+            if len(cursor) > 65536:
+                raise ResourceValidationError("Invalid Nextcloud listing cursor")
+            try:
+                state = _Cursor.model_validate_json(base64.urlsafe_b64decode(cursor.encode()))
+            except (ValueError, ValidationError) as exc:
+                raise ResourceValidationError("Invalid Nextcloud listing cursor") from exc
+            if state.scope != scope or not state.frames or state.frames[0].path != root:
+                raise ResourceValidationError(
+                    "Nextcloud cursor belongs to a different account or listing"
+                )
+            for parent, child in zip(state.frames, state.frames[1:]):
+                if not recursive or child.path.rpartition("/")[0] != parent.path:
+                    raise ResourceValidationError("Invalid Nextcloud traversal cursor")
+        result: list[FileEntry] = []
+        requests = 0
+        async with asyncio.timeout(_REQUEST_SECONDS):
+            while state.frames and len(result) < min(max(limit, 1), 500) and requests < 64:
+                frame = state.frames[-1]
+                entries = await self._propfind(frame.path, depth="1")
+                requests += 1
+                own = next(
+                    (
+                        item
+                        for item in entries
+                        if (item.path if item.path != "." else "") == frame.path
+                    ),
+                    None,
+                )
+                if own is None or not own.is_dir:
+                    raise NotADirectoryError(frame.path)
+                children = sorted(
+                    (item for item in entries if item is not own), key=lambda item: item.path
+                )
+                fingerprint = hashlib.sha256(
+                    json.dumps([(e.path, e.is_dir, e.etag) for e in children]).encode()
+                ).hexdigest()
+                if frame.fingerprint and frame.fingerprint != fingerprint:
+                    raise ResourceRevisionConflict(
+                        "Nextcloud folder changed during pagination; restart the listing."
+                    )
+                frame.fingerprint = fingerprint
+                while frame.offset < len(children) and len(result) < min(max(limit, 1), 500):
+                    child = children[frame.offset]
+                    frame.offset += 1
+                    result.append(child)
+                    if recursive and child.is_dir:
+                        if len(state.frames) >= 64:
+                            raise ResourceValidationError(
+                                "Nextcloud folder depth exceeds 64 levels"
+                            )
+                        state.frames.append(_Frame(path=child.path))
+                        break
+                if state.frames[-1] is frame and frame.offset >= len(children):
+                    state.frames.pop()
+        token = (
+            base64.urlsafe_b64encode(state.model_dump_json().encode()).decode()
+            if state.frames
+            else None
+        )
+        if token and len(token) > 65536:
+            raise ResourceValidationError("Nextcloud traversal cursor exceeds its size limit")
         return FileListing(
-            path=normalized,
-            entries=tuple(children[:limit]),
-            truncated=len(children) > limit,
+            path=root or ".", entries=tuple(result), truncated=bool(token), next_cursor=token
         )
 
     async def resource_delete(self, path: str) -> FileMutation:
-        """Delete one WebDAV file or empty collection."""
+        """Delete one file conditionally; never recursively delete a collection."""
 
         info = await self.resource_info(path)
-        async with self._client() as http:
-            response = await http.request("DELETE", self._webdav_url(path.strip("/")))
-        if response.status_code not in {200, 204}:
-            raise RuntimeError(
-                _operation_error("webdav_upload", response.status_code, response.text[:200])
+        if info.is_dir:
+            raise IsADirectoryError(
+                "Nextcloud folder deletion is not exposed by file_delete; delete individual files explicitly."
             )
+        return await self.resource_delete_conditional(path, expected_etag=_strong_etag(info.etag))
+
+    async def resource_delete_conditional(self, path: str, *, expected_etag: str) -> FileMutation:
+        info = await self.resource_info(path)
+        if info.is_dir:
+            raise IsADirectoryError(
+                "Nextcloud folder deletion is not exposed by file_delete; delete individual files explicitly."
+            )
+        if info.etag != expected_etag:
+            raise ResourceRevisionConflict(
+                "The Nextcloud file changed before deletion; its new version was preserved."
+            )
+        response = await self._request(
+            "DELETE",
+            self._webdav_url(path.strip("/")),
+            headers={"If-Match": _strong_etag(expected_etag)},
+        )
+        _check_status(response, {200, 204}, path)
         return FileMutation(path=path.strip("/"), size=info.size or 0, state="deleted")
 
     async def _resource_relocate(
@@ -326,29 +566,36 @@ class NextcloudFileClient:
         *,
         overwrite: bool,
     ) -> FileMutation:
+        source_info = await self.resource_info(source)
+        if source_info.is_dir:
+            raise IsADirectoryError(
+                "Use explicit file operations; collection relocation is not supported."
+            )
         folder = destination.strip("/").rpartition("/")[0]
-        async with self._client() as http:
+        async with asyncio.timeout(_REQUEST_SECONDS), self._client() as http:
             if folder:
                 await self._ensure_dirs(http, folder)
-            response = await http.request(
+            response = await self._request(
                 method,
                 self._webdav_url(source.strip("/")),
                 headers={
                     "Destination": self._webdav_url(destination.strip("/")),
                     "Overwrite": "T" if overwrite else "F",
+                    "If-Match": _strong_etag(source_info.etag),
                 },
             )
         if response.status_code not in {201, 204}:
-            if response.status_code == 412:
+            if response.status_code == 412 and not overwrite:
+                if (await self.resource_info(source)).etag != source_info.etag:
+                    raise ResourceRevisionConflict(
+                        "The Nextcloud source changed during relocation; read it again."
+                    )
                 raise FileExistsError(destination)
-            raise RuntimeError(
-                _operation_error("webdav_upload", response.status_code, response.text[:200])
-            )
-        info = await self.resource_info(destination)
+            _check_status(response, {201, 204}, source)
         return FileMutation(
             path=destination.strip("/"),
             source=source.strip("/"),
-            size=info.size or 0,
+            size=source_info.size or 0,
             state="moved" if method == "MOVE" else "copied",
         )
 
@@ -359,9 +606,7 @@ class NextcloudFileClient:
         *,
         overwrite: bool,
     ) -> FileMutation:
-        return await self._resource_relocate(
-            "COPY", source, destination, overwrite=overwrite
-        )
+        return await self._resource_relocate("COPY", source, destination, overwrite=overwrite)
 
     async def resource_move(
         self,
@@ -370,9 +615,7 @@ class NextcloudFileClient:
         *,
         overwrite: bool,
     ) -> FileMutation:
-        return await self._resource_relocate(
-            "MOVE", source, destination, overwrite=overwrite
-        )
+        return await self._resource_relocate("MOVE", source, destination, overwrite=overwrite)
 
 
 def build_file_transport(

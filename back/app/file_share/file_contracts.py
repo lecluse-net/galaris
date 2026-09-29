@@ -14,6 +14,7 @@ class FileEntry:
     modified_at: str = ""
     mime_type: str = "application/octet-stream"
     sha256: str = ""
+    etag: str | None = None
 
 
 @dataclass(frozen=True)
@@ -21,6 +22,7 @@ class FileListing:
     path: str
     entries: tuple[FileEntry, ...]
     truncated: bool = False
+    next_cursor: str | None = None
 
 
 @dataclass(frozen=True)

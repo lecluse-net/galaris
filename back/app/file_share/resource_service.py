@@ -5,15 +5,17 @@ from __future__ import annotations
 import base64
 import asyncio
 import json
+import hashlib
 import mimetypes
 import os
 import tempfile
 from pathlib import Path, PurePosixPath
 from typing import Any, Literal, cast
-from urllib.parse import unquote, urlsplit
+from urllib.parse import quote, unquote, urlsplit
 from uuid import UUID
 
 from fastapi.encoders import jsonable_encoder
+from core.util import complete_io
 
 from .file_share_service import (
     describe_targets,
@@ -26,8 +28,10 @@ from .resource_contracts import (
     ResourceContext,
     ResourceDescriptor,
     ResourceDeletionTransport,
+    ResourceConditionalDeletionTransport,
     ResourceListing,
     ResourceListingTransport,
+    ResourcePaginatedListingTransport,
     ResourceMetadataTransport,
     ResourceMutation,
     ResourceRelocationTransport,
@@ -47,7 +51,7 @@ from .service_references import (
     normalize_source_reference,
     reference_filename,
 )
-from .transport import FileTransport, transfer
+from .transport import FileTransport, VersionedFileTransport, transfer, upload_file
 from .file_contracts import FileResourceTransport, FileEntry
 from .web_transport import PublicHttpsFileTransport
 
@@ -79,11 +83,7 @@ _TRANSPORT_CAPABILITIES: list[ResourceCapability] = [
     "read",
     "write",
 ]
-_NEXTCLOUD_CAPABILITIES: list[ResourceCapability] = [
-    capability
-    for capability in _MUTABLE_FILE_CAPABILITIES
-    if capability != "append"
-]
+_NEXTCLOUD_CAPABILITIES = _MUTABLE_FILE_CAPABILITIES
 _MEMORY_CAPABILITIES: list[ResourceCapability] = [
     "copy",
     "info",
@@ -134,6 +134,16 @@ _GALARIS_CAPABILITIES: list[ResourceCapability] = [
 _MAIL_CAPABILITIES: list[ResourceCapability] = ["copy", "info", "list", "read"]
 
 
+def _transport_capabilities(service: str, entry: FileEntry) -> list[ResourceCapability]:
+    if service == "mail":
+        return _MAIL_CAPABILITIES
+    if service == "nextcloud":
+        if entry.is_dir:
+            return ["create", "info", "list", "search"]
+        return ["append", "copy", "delete", "edit", "info", "move", "read", "write"]
+    return _TRANSPORT_CAPABILITIES
+
+
 def _json_model(value: Any) -> str:
     return json.dumps(
         jsonable_encoder(value, exclude_none=True),
@@ -155,7 +165,8 @@ def _resource_name(reference: ResourceUri, fallback: str = "resource") -> str:
 
 def _uri(scheme: str, locator: str, *, collection: bool = False) -> str:
     suffix = "/" if collection and locator and not locator.endswith("/") else ""
-    return str(parse_resource_uri(f"{scheme}://{locator}{suffix}", allow_empty=True))
+    encoded = quote(locator, safe="/!$&'()*+,-.;=@_~:")
+    return str(parse_resource_uri(f"{scheme}://{encoded}{suffix}", allow_empty=True))
 
 
 def _document_attachment_ids(
@@ -262,6 +273,7 @@ def _entry_descriptor(
         size=None if entry.is_dir else entry.size,
         modified_at=entry.modified_at or None,
         checksum=entry.sha256 or None,
+        etag=entry.etag,
         capabilities=list(capabilities or _MUTABLE_FILE_CAPABILITIES),
     )
 
@@ -360,6 +372,8 @@ async def _connected_transport(
         reference.decoded_locator,
         language=ctx.language,
     )
+    if reference.is_collection and not reference.locator and isinstance(transport, ResourceListingTransport):
+        return transport, service, "", ""
     source = normalize_source_reference(service, reference.decoded_locator)
     if isinstance(transport, MessengerFileTransport):
         transport = transport.for_task(ctx.task_id, reference.scheme)
@@ -467,7 +481,7 @@ async def _resolve_transfer_destination(
         for part in (destination.decoded_locator.rstrip("/"), source_name)
         if part
     )
-    return parse_resource_uri(f"{destination.scheme}://{locator}")
+    return parse_resource_uri(_uri(destination.scheme, locator))
 
 
 def _canonical_created_locator(
@@ -698,9 +712,7 @@ async def resource_info(
         descriptor = _entry_descriptor(
             reference.scheme,
             entry,
-            capabilities=(
-                _MAIL_CAPABILITIES if service == "mail" else _TRANSPORT_CAPABILITIES
-            ),
+            capabilities=_transport_capabilities(service, entry),
         )
         if service == "affine" and not PurePosixPath(descriptor.name).suffix:
             descriptor.name += mimetypes.guess_extension(entry.mime_type) or ""
@@ -886,30 +898,26 @@ async def resource_list(
         )
     if not isinstance(transport, ResourceListingTransport):
         raise NotImplementedError(f"{reference.scheme}:// does not support listing.")
-    if cursor:
+    if isinstance(transport, ResourcePaginatedListingTransport):
+        listing = await transport.resource_list_page(reference.decoded_locator, recursive=recursive, limit=limit, cursor=cursor)
+    elif cursor:
         raise NotImplementedError(
             f"{reference.scheme}:// does not expose paginated listing cursors."
         )
-    listing = await transport.resource_list(
-        reference.decoded_locator,
-        recursive=recursive,
-        limit=limit,
-    )
+    else:
+        listing = await transport.resource_list(reference.decoded_locator, recursive=recursive, limit=limit)
     return ResourceListing(
         uri=str(reference),
         entries=[
             _entry_descriptor(
                 reference.scheme,
                 entry,
-                capabilities=(
-                    _MAIL_CAPABILITIES
-                    if service == "mail"
-                    else _TRANSPORT_CAPABILITIES
-                ),
+                capabilities=_transport_capabilities(service, entry),
             )
             for entry in listing.entries
         ],
         truncated=listing.truncated,
+        next_cursor=listing.next_cursor,
     )
 
 
@@ -1095,10 +1103,16 @@ async def resource_read(
     os.close(fd)
     temporary = Path(temporary_name)
     text: str | None = None
+    etag: str | None = None
     try:
-        await transport.download_to(remote, temporary, target=target)
+        if isinstance(transport, VersionedFileTransport):
+            downloaded = await transport.download_versioned(remote, temporary, max_bytes=_FILE_WRITE_LIMIT)
+            etag = downloaded.etag
+        else:
+            await transport.download_to(remote, temporary, target=target)
         size = temporary.stat().st_size
-        sample = temporary.read_bytes()[:8192]
+        with temporary.open("rb") as stream:
+            sample = stream.read(8192)
         guessed_media_type = affine_media_type or mimetypes.guess_type(_resource_name(reference))[0]
         explicitly_textual = bool(
             guessed_media_type
@@ -1112,7 +1126,7 @@ async def resource_read(
         is_binary = bool(guessed_media_type and not explicitly_textual) or b"\x00" in sample
         if not is_binary:
             try:
-                text = temporary.read_text(encoding="utf-8")
+                text = await complete_io(temporary.read_text, encoding="utf-8", newline="")
             except UnicodeDecodeError:
                 is_binary = True
         media_type = guessed_media_type or (
@@ -1134,6 +1148,7 @@ async def resource_read(
                 start=0,
                 end=len(raw),
                 total=len(raw),
+                etag=etag,
             )
     finally:
         temporary.unlink(missing_ok=True)
@@ -1149,6 +1164,7 @@ async def resource_read(
         end=end,
         total=len(text),
         next_offset=end if end < len(text) else None,
+        etag=etag,
     )
 
 
@@ -1239,10 +1255,11 @@ async def resource_write_text(
     temporary = Path(temporary_name)
     try:
         temporary.write_text(content, encoding="utf-8")
-        location = await transport.upload_from(
+        location = await upload_file(transport,
             temporary,
             destination.filename,
             target=destination.target,
+            overwrite=overwrite,
         )
     finally:
         temporary.unlink(missing_ok=True)
@@ -1342,7 +1359,7 @@ async def resource_create(
             locator = "/".join(
                 part for part in (reference.decoded_locator.rstrip("/"), clean_name) if part
             )
-            reference = parse_resource_uri(f"galaris://{locator}")
+            reference = parse_resource_uri(_uri("galaris", locator))
         elif clean_name:
             raise ResourceUriError(
                 "name is only accepted when path identifies a collection."
@@ -1360,7 +1377,7 @@ async def resource_create(
         locator = "/".join(
             part for part in (reference.decoded_locator.rstrip("/"), clean_name) if part
         )
-        reference = parse_resource_uri(f"{reference.scheme}://{locator}")
+        reference = parse_resource_uri(_uri(reference.scheme, locator))
     elif clean_name:
         raise ResourceUriError(
             "name is only accepted when path identifies a collection or document://."
@@ -1404,10 +1421,11 @@ async def resource_create(
     temporary = Path(temporary_name)
     try:
         temporary.write_bytes(content)
-        location = await destination_transport.upload_from(
+        location = await upload_file(destination_transport,
             temporary,
             destination_filename,
             target=destination_target,
+            overwrite=False,
         )
     finally:
         temporary.unlink(missing_ok=True)
@@ -1438,6 +1456,7 @@ async def resource_write(
     content: bytes,
     *,
     expected_revision: int | None = None,
+    expected_etag: str | None = None,
 ) -> ResourceMutation:
     """Replace one existing complete resource from bounded bytes."""
 
@@ -1527,16 +1546,23 @@ async def resource_write(
             raise IsADirectoryError(str(reference))
         destination_filename = destination.filename
         destination_target = destination.target
+        if isinstance(destination_transport, VersionedFileTransport):
+            if expected_etag is not None and expected_etag != info.etag:
+                raise ResourceRevisionConflict("The file changed since it was read; read it again before writing.")
+            expected_etag = expected_etag or info.etag
+            if not expected_etag:
+                raise ResourceValidationError("This file has no ETag; replacement cannot be protected.")
 
     fd, temporary_name = tempfile.mkstemp(prefix="galaris_resource_write_binary_")
     os.close(fd)
     temporary = Path(temporary_name)
     try:
         temporary.write_bytes(content)
-        location = await destination_transport.upload_from(
+        location = await upload_file(destination_transport,
             temporary,
             destination_filename,
             target=destination_target,
+            expected_etag=expected_etag,
         )
     finally:
         temporary.unlink(missing_ok=True)
@@ -1566,6 +1592,7 @@ async def resource_append(
     content: str,
     *,
     expected_revision: int | None = None,
+    expected_etag: str | None = None,
 ) -> ResourceMutation:
     if len(content) > _TEXT_WRITE_LIMIT:
         raise ResourceValidationError(f"Text content exceeds {_TEXT_WRITE_LIMIT} characters.")
@@ -1606,7 +1633,34 @@ async def resource_append(
         from .galaris_provider import galaris_resource_append
 
         return await galaris_resource_append(ctx, reference, content)
+    transport, _service, _remote, _target = await _connected_transport(ctx, reference)
+    if isinstance(transport, VersionedFileTransport):
+        text, etag = await _read_versioned_text(transport, reference, expected_etag)
+        if len(text) + len(content) > _TEXT_WRITE_LIMIT:
+            raise ResourceValidationError("The appended file exceeds the text editing limit.")
+        result = await resource_write(ctx, reference, (text + content).encode("utf-8"), expected_etag=etag)
+        return result.model_copy(update={"operation": "append", "state": "appended"})
     raise NotImplementedError(f"{reference.scheme}:// does not support text append.")
+
+
+async def _read_versioned_text(transport: VersionedFileTransport, reference: ResourceUri, expected_etag: str | None) -> tuple[str, str]:
+    with tempfile.TemporaryDirectory(prefix="galaris_resource_edit_") as folder:
+        temporary = Path(folder) / "content"
+        try:
+            entry = await transport.download_versioned(reference.decoded_locator, temporary, max_bytes=_TEXT_WRITE_LIMIT * 4)
+        except ValueError as exc:
+            raise ResourceValidationError("The file exceeds the bounded text operation limit.") from exc
+        if not entry.etag:
+            raise ResourceValidationError("This file has no ETag; editing cannot be protected.")
+        if expected_etag is not None and expected_etag != entry.etag:
+            raise ResourceRevisionConflict("The file changed since it was read; read it again before editing.")
+        try:
+            text = await complete_io(temporary.read_text, encoding="utf-8", newline="")
+        except UnicodeDecodeError as exc:
+            raise ResourceValidationError("Editing and appending require a UTF-8 text file.") from exc
+        if "\x00" in text or len(text) > _TEXT_WRITE_LIMIT:
+            raise ResourceValidationError("The file is binary or exceeds the text editing limit.")
+        return text, entry.etag
 
 
 async def _read_complete_text(
@@ -1737,6 +1791,7 @@ async def resource_edit(
     end_line: int,
     content: str,
     expected_revision: int | None = None,
+    expected_etag: str | None = None,
 ) -> ResourceMutation:
     """Replace a 1-based inclusive line range in one UTF-8 text resource."""
 
@@ -1747,7 +1802,16 @@ async def resource_edit(
     reference = parse_resource_uri(uri)
     if reference.scheme == "document" and expected_revision is None:
         raise ResourceValidationError("Document edits require expected_revision from file_read.")
-    text, observed_revision = await _read_complete_text_and_revision(ctx, reference)
+    versioned = None
+    if reference.scheme not in {"console", "document", "memory", "galaris", "http", "https"}:
+        candidate, _service, _remote, _target = await _connected_transport(ctx, reference)
+        if isinstance(candidate, VersionedFileTransport):
+            versioned = candidate
+    if versioned is not None:
+        text, expected_etag = await _read_versioned_text(versioned, reference, expected_etag)
+        observed_revision = None
+    else:
+        text, observed_revision = await _read_complete_text_and_revision(ctx, reference)
     descriptor = await resource_info(ctx, reference) if reference.scheme == "document" else None
     if descriptor is not None and descriptor.media_type == "text/html":
         from core.util import html_blocks, normalize_html
@@ -1776,6 +1840,8 @@ async def resource_edit(
     ):
         replacement += "\r\n" if replaced_block.endswith("\r\n") else "\n"
     updated = "".join(lines[: start_line - 1]) + replacement + "".join(lines[end_line:])
+    if versioned is not None and len(updated) > _TEXT_WRITE_LIMIT:
+        raise ResourceValidationError("The edited file exceeds the text editing limit.")
     mutation = await resource_write(
         ctx,
         reference,
@@ -1783,6 +1849,7 @@ async def resource_edit(
         expected_revision=(
             expected_revision if expected_revision is not None else observed_revision
         ),
+        expected_etag=expected_etag,
     )
     return mutation.model_copy(
         update={"operation": "edit", "state": "edited"}
@@ -1831,7 +1898,7 @@ async def resource_copy(
                 (await resource_info(ctx, source_ref)).name
             ).name
             target = parse_resource_uri(
-                f"galaris://{target.decoded_locator.rstrip('/')}/{source_name}"
+                _uri("galaris", f"{target.decoded_locator.rstrip('/')}/{source_name}")
             )
         mutation = (
             await resource_write(ctx, target, data)
@@ -1886,7 +1953,7 @@ async def resource_copy(
         if target.is_collection:
             source_name = (await resource_info(ctx, source_ref)).name
             target = parse_resource_uri(
-                f"{target.scheme}://{target.decoded_locator}{source_name}"
+                _uri(target.scheme, f"{target.decoded_locator}{source_name}")
             )
         mutation = (
             await resource_write(ctx, target, data)
@@ -1906,7 +1973,7 @@ async def resource_copy(
                 (await resource_info(ctx, source_ref)).name
             ).name
             target = parse_resource_uri(
-                f"{target.scheme}://{target.decoded_locator.rstrip('/')}/{source_name}"
+                _uri(target.scheme, f"{target.decoded_locator.rstrip('/')}/{source_name}")
             )
         mutation = (
             await resource_write(ctx, target, data)
@@ -1924,7 +1991,7 @@ async def resource_copy(
         target = destination_ref
         if target.is_collection:
             target = parse_resource_uri(
-                f"{target.scheme}://{target.decoded_locator}{name}", allow_empty=False
+                _uri(target.scheme, f"{target.decoded_locator}{name}"), allow_empty=False
             )
         mutation = (
             await resource_write(ctx, target, data)
@@ -2022,6 +2089,7 @@ async def resource_copy(
         source_target=source_target,
         dest_target=destination_spec.target,
         filename=destination_spec.filename,
+        overwrite=overwrite,
     )
     locator = _canonical_created_locator(
         destination_ref.scheme,
@@ -2037,7 +2105,7 @@ async def resource_copy(
     )
 
 
-async def resource_delete(ctx: ResourceContext, uri: object) -> ResourceMutation:
+async def resource_delete(ctx: ResourceContext, uri: object, *, expected_etag: str | None = None) -> ResourceMutation:
     reference = parse_resource_uri(uri)
     if reference.scheme == "console":
         transport, path = await _console_reference(ctx, reference)
@@ -2090,7 +2158,12 @@ async def resource_delete(ctx: ResourceContext, uri: object) -> ResourceMutation
         )
     if not isinstance(transport, ResourceDeletionTransport):
         raise NotImplementedError(f"{reference.scheme}:// does not support deletion.")
-    result = await transport.resource_delete(reference.decoded_locator)
+    if expected_etag is not None:
+        if not isinstance(transport, ResourceConditionalDeletionTransport):
+            raise NotImplementedError("This provider cannot conditionally delete a file.")
+        result = await transport.resource_delete_conditional(reference.decoded_locator, expected_etag=expected_etag)
+    else:
+        result = await transport.resource_delete(reference.decoded_locator)
     return ResourceMutation(
         uri=str(reference), operation="delete", state=result.state, size=result.size
     )
@@ -2197,6 +2270,7 @@ async def resource_move(
                 size=result.size,
                 moved=True,
             )
+    source_etag: str | None = None
     if source_ref.scheme != "console":
         source_transport, _service, _remote, _target = await _connected_transport(
             ctx, source_ref
@@ -2208,9 +2282,15 @@ async def resource_move(
                 f"{source_ref.scheme}:// resources cannot be moved because the source "
                 "provider does not support deletion; use file_copy instead."
             )
+        if isinstance(source_transport, VersionedFileTransport):
+            if not isinstance(source_transport, ResourceConditionalDeletionTransport):
+                raise NotImplementedError("Use file_copy: this provider cannot conditionally delete the copied version.")
+            source_etag = (await resource_info(ctx, source_ref)).etag
+            if not source_etag:
+                raise ResourceValidationError("Use file_copy: the source has no ETag to protect its deletion.")
     copied = await resource_copy(ctx, source_ref, destination_ref, overwrite=overwrite)
     try:
-        await resource_delete(ctx, source_ref)
+        await resource_delete(ctx, source_ref, expected_etag=source_etag)
     except Exception as exc:
         raise RuntimeError(
             f"Resource copied to {copied.uri}, but source deletion failed; "
@@ -2223,6 +2303,78 @@ async def resource_move(
 def _name_matches(descriptor: ResourceDescriptor, query: str) -> bool:
     folded = query.casefold()
     return folded in descriptor.name.casefold() or folded in descriptor.uri.casefold()
+
+
+async def _search_paginated(
+    ctx: ResourceContext, reference: ResourceUri, query: str, *,
+    mode: Literal["name", "text", "semantic"], recursive: bool,
+    limit: int, cursor: str | None, transport: ResourcePaginatedListingTransport,
+    service: str,
+) -> ResourceSearchResult:
+    """Advance the provider traversal, including pages that contain no matches."""
+    scope = hashlib.sha256(json.dumps([ctx.agent_id, str(reference), query, mode, recursive]).encode()).hexdigest()
+    provider_cursor: str | None = None
+    if cursor:
+        if len(cursor) > 100_000:
+            raise ResourceValidationError("Invalid file search cursor")
+        try:
+            decoded: object = json.loads(base64.urlsafe_b64decode(cursor.encode()))
+            if not isinstance(decoded, dict):
+                raise ValueError("Invalid cursor object")
+            value = cast(dict[str, object], decoded)
+            token = value.get("cursor")
+            if value.get("scope") != scope or not isinstance(token, str):
+                raise ValueError("Cursor scope mismatch")
+            provider_cursor = token
+        except (ValueError, TypeError) as exc:
+            raise ResourceValidationError("Search cursor belongs to a different query or context") from exc
+    hits: list[ResourceSearchHit] = []
+    scanned = 0
+    skipped = 0
+    budget = 50 if mode == "text" else _SEARCH_SCAN_LIMIT
+    async with asyncio.timeout(300):
+        while scanned < budget and len(hits) < limit:
+            listing = await transport.resource_list_page(
+                reference.decoded_locator, recursive=recursive,
+                limit=min(limit - len(hits), budget - scanned), cursor=provider_cursor,
+            )
+            for entry in listing.entries:
+                scanned += 1
+                descriptor = _entry_descriptor(reference.scheme, entry, capabilities=_transport_capabilities(service, entry))
+                excerpt = ""
+                matched = _name_matches(descriptor, query)
+                if mode == "text":
+                    matched = False
+                    if not entry.is_dir:
+                        if not isinstance(transport, VersionedFileTransport):
+                            raise NotImplementedError("Paginated text search requires a versioned reader")
+                        try:
+                            text, _etag = await _read_versioned_text(transport, parse_resource_uri(descriptor.uri), None)
+                        except (ResourceValidationError, FileNotFoundError, PermissionError):
+                            skipped += 1
+                            continue
+                        position = text.casefold().find(query.casefold())
+                        matched = position >= 0
+                        if matched:
+                            excerpt = text[max(0, position - 120):position + len(query) + 240]
+                if matched:
+                    hits.append(ResourceSearchHit(resource=descriptor, excerpt=excerpt))
+            previous = provider_cursor
+            provider_cursor = listing.next_cursor
+            if not provider_cursor:
+                break
+            if provider_cursor == previous:
+                raise RuntimeError("File provider returned a cursor that does not advance")
+            # A page may spend its DAV request budget closing empty folders.
+            if not listing.entries:
+                break
+    next_cursor = base64.urlsafe_b64encode(json.dumps({"scope": scope, "cursor": provider_cursor}).encode()).decode() if provider_cursor else None
+    return ResourceSearchResult(
+        uri=str(reference), query=query, mode=mode, hits=hits,
+        truncated=bool(next_cursor), next_cursor=next_cursor,
+        degraded=bool(skipped),
+        degradation_reason=f"{skipped} unreadable, non-text or oversized files were skipped on this page." if skipped else None,
+    )
 
 
 async def resource_search(
@@ -2240,7 +2392,6 @@ async def resource_search(
     if not normalized_query:
         raise ValueError("A non-empty file search query is required.")
     limit = 50 if max_results is None else max(1, min(max_results, 500))
-    offset = max(0, int(cursor or "0"))
     if reference.scheme == "galaris":
         from .galaris_provider import galaris_resource_search
 
@@ -2265,7 +2416,7 @@ async def resource_search(
             query=normalized_query,
             mode=mode,
             limit=(max_results if reference.scheme == "memory" else limit),
-            offset=offset,
+            offset=max(0, int(cursor or "0")),
         )
         hits = [
             ResourceSearchHit(
@@ -2313,6 +2464,15 @@ async def resource_search(
         raise NotImplementedError(
             f"{reference.scheme}:// does not expose semantic file search."
         )
+    if reference.scheme not in {"console", "document", "memory", "galaris", "http", "https"}:
+        probe = ResourceUri(reference.scheme, f"{reference.locator.rstrip('/')}/placeholder".lstrip("/"))
+        transport, _service, _remote, _target = await _connected_transport(ctx, probe)
+        if isinstance(transport, ResourcePaginatedListingTransport):
+            return await _search_paginated(
+                ctx, reference, normalized_query, mode=mode, recursive=recursive,
+                limit=limit, cursor=cursor, transport=transport, service=_service,
+            )
+    offset = max(0, int(cursor or "0"))
     listing = await resource_list(
         ctx,
         reference,

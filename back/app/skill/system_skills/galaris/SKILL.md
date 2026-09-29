@@ -190,10 +190,11 @@ loading them into model context.
 - `file_create(path: str, content: str = "", encoding: "utf-8" | "base64" = "utf-8",
   name: str = "", document_type: "html" | "dataset" | None = None) -> str`
 - `file_write(uri: str, content: str, encoding: "utf-8" | "base64" = "utf-8",
-  expected_revision: int | None = None) -> str`
-- `file_append(uri: str, content: str, expected_revision: int | None = None) -> str`
+  expected_revision: int | None = None, expected_etag: str | None = None) -> str`
+- `file_append(uri: str, content: str, expected_revision: int | None = None,
+  expected_etag: str | None = None) -> str`
 - `file_edit(uri: str, start_line: int, end_line: int, content: str,
-  expected_revision: int | None = None) -> str`
+  expected_revision: int | None = None, expected_etag: str | None = None) -> str`
 - `file_copy(source: str, destination: str, overwrite: bool = False) -> str`
 - `file_move(source: str, destination: str, overwrite: bool = False) -> str`
 - `file_delete(uri: str) -> str`
@@ -208,6 +209,16 @@ Business snapshots under `galaris://` are read-only; copy an object to another s
 durable JSON snapshot is needed. The separately authorized `galaris://skill/` collection exposes
 managed skill package files and allows safe file mutations on non-system skills.
 When `file_list` returns `next_cursor`, pass it unchanged as `cursor` to read the next page.
+Nextcloud listing and search use opaque cursors. Continue even after a search page with no
+matches when `next_cursor` is present. Keep the same URI, query, mode and recursive setting;
+restart discovery if the folder changes during pagination. Text search reports `degraded`
+when files were skipped; do not present such a page as an exhaustive content search.
+For Nextcloud edits, appends and replacements, pass the `etag` returned by `file_read` as
+`expected_etag` when available. A conflict requires reading the new content and reconsidering
+the change, not dropping the precondition. Without an explicit token, an edit or append still
+protects its own read-modify-write operation. Generic Nextcloud operations never delete or
+relocate a directory. An ambiguous upload or share failure is not permission to retry blindly:
+inspect the remote state before repeating a mutation.
 `file_read` detects UTF-8 text and returns bounded pages; small binaries are returned completely
 with `encoding="base64"`. A binary larger than 1 MiB must stay out of model context. Pass its URI
 directly to a specialized tool, or copy it to `console://` only when console software must process

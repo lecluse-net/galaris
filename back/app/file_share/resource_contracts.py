@@ -60,6 +60,7 @@ class ResourceDescriptor(BaseModel):
     modified_at: str | None = None
     revision: int | None = Field(default=None, ge=1)
     checksum: str | None = None
+    etag: str | None = None
     capabilities: list[ResourceCapability] = Field(default_factory=_empty_capabilities)
     metadata: dict[str, Any] = Field(default_factory=dict[str, Any])
 
@@ -81,6 +82,7 @@ class ResourceRead(BaseModel):
     total: int = Field(ge=0)
     next_offset: int | None = Field(default=None, ge=0)
     revision: int | None = Field(default=None, ge=1)
+    etag: str | None = None
 
 
 class EditorialResourceRead(ResourceRead):
@@ -177,8 +179,22 @@ class ResourceListingTransport(Protocol):
 
 
 @runtime_checkable
+class ResourcePaginatedListingTransport(Protocol):
+    async def resource_list_page(
+        self, path: str, *, recursive: bool, limit: int, cursor: str | None = None
+    ) -> "FileListing": ...
+
+
+@runtime_checkable
 class ResourceDeletionTransport(Protocol):
     async def resource_delete(self, path: str) -> "FileMutation": ...
+
+
+@runtime_checkable
+class ResourceConditionalDeletionTransport(Protocol):
+    async def resource_delete_conditional(
+        self, path: str, *, expected_etag: str
+    ) -> "FileMutation": ...
 
 
 @runtime_checkable
@@ -201,7 +217,9 @@ __all__ = [
     "MaterializedResource",
     "ResourceMutation",
     "ResourceDeletionTransport",
+    "ResourceConditionalDeletionTransport",
     "ResourceListingTransport",
+    "ResourcePaginatedListingTransport",
     "ResourceMetadataTransport",
     "ResourceRelocationTransport",
     "ResourceSchemeDescription",
