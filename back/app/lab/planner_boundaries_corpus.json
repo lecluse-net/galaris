@@ -1,0 +1,1160 @@
+{
+  "version": 1,
+  "mechanism": "planner",
+  "name": "Planner — traitements complets et collections — 24 cas",
+  "purpose": "validation",
+  "description": "Synthetic planner boundaries: 24 cases covering repeated substantial work, ordered groups, retries, unknown and large inventories, cohesive complex work, explicit PLAN, small mechanical batches, explicit written plans, independent heterogeneous outcomes and clarification. Reference plans illustrate expected granularity; judge meaning rather than wording. Use structural checks and inspect actual plans in addition to semantic scores.",
+  "parameters": {
+    "language": "fr",
+    "max_depth": 3,
+    "max_leaves": 12,
+    "tool_catalog": [
+      {
+        "name": "file_read",
+        "description": "Read a resource URI with bounded pagination."
+      },
+      {
+        "name": "file_search",
+        "description": "Find resources within a collection."
+      },
+      {
+        "name": "file_list",
+        "description": "List resource identifiers with pagination."
+      },
+      {
+        "name": "file_create",
+        "description": "Create a document or JSON Dataset; return its URI."
+      },
+      {
+        "name": "file_edit",
+        "description": "Edit an existing resource preserving other content."
+      },
+      {
+        "name": "file_write",
+        "description": "Write a target resource."
+      },
+      {
+        "name": "file_copy",
+        "description": "Copy an exact resource."
+      },
+      {
+        "name": "file_move",
+        "description": "Rename a resource."
+      },
+      {
+        "name": "memory_sharing",
+        "description": "Inspect document recipients and revision."
+      },
+      {
+        "name": "document_share",
+        "description": "Share a document with an authorized recipient."
+      },
+      {
+        "name": "console_exec",
+        "description": "Run code and tests in the development workspace."
+      },
+      {
+        "name": "search_web",
+        "description": "Research public sources."
+      }
+    ],
+    "tool_catalog_version": "synthetic-planner-boundaries-v1",
+    "can_clarify": true
+  },
+  "cases": [
+    {
+      "name": "01 Archive de fichiers",
+      "categories": [
+        "nominal",
+        "robustness"
+      ],
+      "input_data": {
+        "variable_value": "<p>Convertis les 80 fichiers du catalogue fictif de minéraux depuis archive://catalogue/index.json vers des documents Galaris. Pour chaque fichier, conserve le contenu et les figures, vérifie la conversion et actualise le registre. Chaque fichier réussi doit pouvoir rester acquis si un autre échoue.</p>"
+      },
+      "expected_output": {
+        "brief": {
+          "objective": "<p>Convertis les 80 fichiers du catalogue fictif de minéraux depuis archive://catalogue/index.json vers des documents Galaris. Pour chaque fichier, conserve le contenu et les figures, vérifie la conversion et actualise le registre. Chaque fichier réussi doit pouvoir rester acquis si un autre échoue.</p>",
+          "rationale": "Each independent item owns its complete treatment; preserve completed items across retries.",
+          "success_criteria": [
+            "One complete treatment per independent item; no hidden substantial loop."
+          ]
+        },
+        "steps": [
+          {
+            "label": "Process remaining items",
+            "objective": "<p>Complete each independent item and preserve verified progress.</p>",
+            "effort": "high",
+            "tools": [
+              "file_read",
+              "file_create",
+              "file_edit",
+              "file_write"
+            ],
+            "item_count": 80,
+            "item_work": "substantial",
+            "steps": [],
+            "collection": {
+              "inventory_objective": "<p>Read only the existing index and collect the exact remaining identifiers in order, excluding verified completed items. Save the complete bounded JSON Dataset inventory.</p>",
+              "inventory_tools": [
+                "file_read",
+                "file_create"
+              ],
+              "item_objective": "<p>Read this item's source and existing target, perform the requested treatment, preserve existing contributions, verify the result and record the target URI and status. Complete this entire workflow for this item only.</p>"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "02 Collections ordonnées",
+      "categories": [
+        "nominal",
+        "robustness"
+      ],
+      "input_data": {
+        "variable_value": "<p>Migrate the fictional herbarium's North, East and South collections, in that order. Each has 40 independent specimen files listed in archive://herbarium/index.json. Finish and verify one specimen record before the next. Preserve completed records and update the shared register.</p>"
+      },
+      "expected_output": {
+        "brief": {
+          "objective": "<p>Migrate the fictional herbarium's North, East and South collections, in that order. Each has 40 independent specimen files listed in archive://herbarium/index.json. Finish and verify one specimen record before the next. Preserve completed records and update the shared register.</p>",
+          "rationale": "Each independent item owns its complete treatment; preserve completed items across retries.",
+          "success_criteria": [
+            "One complete treatment per independent item; no hidden substantial loop."
+          ]
+        },
+        "steps": [
+          {
+            "label": "North",
+            "objective": "<p>Complete each independent item and preserve verified progress.</p>",
+            "effort": "high",
+            "tools": [
+              "file_read",
+              "file_create",
+              "file_edit",
+              "file_write"
+            ],
+            "item_count": 40,
+            "item_work": "substantial",
+            "steps": [],
+            "collection": {
+              "inventory_objective": "<p>Read only the existing index and collect the exact remaining identifiers in order, excluding verified completed items. Save the complete bounded JSON Dataset inventory.</p>",
+              "inventory_tools": [
+                "file_read",
+                "file_create"
+              ],
+              "item_objective": "<p>Read this item's source and existing target, perform the requested treatment, preserve existing contributions, verify the result and record the target URI and status. Complete this entire workflow for this item only.</p>"
+            }
+          },
+          {
+            "label": "East",
+            "objective": "<p>Complete each independent item and preserve verified progress.</p>",
+            "effort": "high",
+            "tools": [
+              "file_read",
+              "file_create",
+              "file_edit",
+              "file_write"
+            ],
+            "item_count": 40,
+            "item_work": "substantial",
+            "steps": [],
+            "collection": {
+              "inventory_objective": "<p>Read only the existing index and collect the exact remaining identifiers in order, excluding verified completed items. Save the complete bounded JSON Dataset inventory.</p>",
+              "inventory_tools": [
+                "file_read",
+                "file_create"
+              ],
+              "item_objective": "<p>Read this item's source and existing target, perform the requested treatment, preserve existing contributions, verify the result and record the target URI and status. Complete this entire workflow for this item only.</p>"
+            }
+          },
+          {
+            "label": "South",
+            "objective": "<p>Complete each independent item and preserve verified progress.</p>",
+            "effort": "high",
+            "tools": [
+              "file_read",
+              "file_create",
+              "file_edit",
+              "file_write"
+            ],
+            "item_count": 40,
+            "item_work": "substantial",
+            "steps": [],
+            "collection": {
+              "inventory_objective": "<p>Read only the existing index and collect the exact remaining identifiers in order, excluding verified completed items. Save the complete bounded JSON Dataset inventory.</p>",
+              "inventory_tools": [
+                "file_read",
+                "file_create"
+              ],
+              "item_objective": "<p>Read this item's source and existing target, perform the requested treatment, preserve existing contributions, verify the result and record the target URI and status. Complete this entire workflow for this item only.</p>"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "03 Reprise partielle",
+      "categories": [
+        "nominal",
+        "robustness"
+      ],
+      "input_data": {
+        "variable_value": "<p>Reprends les 43 fiches restantes du catalogue fictif d'instruments, indiquées dans archive://instruments/progress.json. Les fiches validées restent acquises. Traite chaque fiche entièrement et mets à jour le suivi. Ne refais pas l'inventaire global.</p>"
+      },
+      "expected_output": {
+        "brief": {
+          "objective": "<p>Reprends les 43 fiches restantes du catalogue fictif d'instruments, indiquées dans archive://instruments/progress.json. Les fiches validées restent acquises. Traite chaque fiche entièrement et mets à jour le suivi. Ne refais pas l'inventaire global.</p>",
+          "rationale": "Each independent item owns its complete treatment; preserve completed items across retries.",
+          "success_criteria": [
+            "One complete treatment per independent item; no hidden substantial loop."
+          ]
+        },
+        "steps": [
+          {
+            "label": "Process remaining items",
+            "objective": "<p>Complete each independent item and preserve verified progress.</p>",
+            "effort": "high",
+            "tools": [
+              "file_read",
+              "file_create",
+              "file_edit",
+              "file_write"
+            ],
+            "item_count": 43,
+            "item_work": "substantial",
+            "steps": [],
+            "collection": {
+              "inventory_objective": "<p>Read only the existing index and collect the exact remaining identifiers in order, excluding verified completed items. Save the complete bounded JSON Dataset inventory.</p>",
+              "inventory_tools": [
+                "file_read",
+                "file_create"
+              ],
+              "item_objective": "<p>Read this item's source and existing target, perform the requested treatment, preserve existing contributions, verify the result and record the target URI and status. Complete this entire workflow for this item only.</p>"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "04 Petit lot substantiel",
+      "categories": [
+        "nominal",
+        "robustness"
+      ],
+      "input_data": {
+        "variable_value": "<p>Compare puis corrige les deux notices indépendantes archive://notices/alpha.html et archive://notices/beta.html d'après leurs sources liées. Chaque notice doit être relue, réparée et vérifiée entièrement, avec son propre résultat.</p>"
+      },
+      "expected_output": {
+        "brief": {
+          "objective": "<p>Compare puis corrige les deux notices indépendantes archive://notices/alpha.html et archive://notices/beta.html d'après leurs sources liées. Chaque notice doit être relue, réparée et vérifiée entièrement, avec son propre résultat.</p>",
+          "rationale": "Each independent item owns its complete treatment; preserve completed items across retries.",
+          "success_criteria": [
+            "One complete treatment per independent item; no hidden substantial loop."
+          ]
+        },
+        "steps": [
+          {
+            "label": "Complete first independent item",
+            "objective": "<p>Complete and verify the first requested independent output.</p>",
+            "effort": "high",
+            "tools": [
+              "file_read",
+              "file_create",
+              "file_edit",
+              "file_write"
+            ],
+            "item_count": 1,
+            "item_work": "substantial",
+            "steps": []
+          },
+          {
+            "label": "Complete second independent item",
+            "objective": "<p>Complete and verify the second requested independent output.</p>",
+            "effort": "high",
+            "tools": [
+              "file_read",
+              "file_create",
+              "file_edit",
+              "file_write"
+            ],
+            "item_count": 1,
+            "item_work": "substantial",
+            "steps": []
+          }
+        ]
+      }
+    },
+    {
+      "name": "05 Cardinalité inconnue",
+      "categories": [
+        "nominal",
+        "robustness"
+      ],
+      "input_data": {
+        "variable_value": "<p>For every remaining lesson listed in archive://lessons/index.json, read the original, translate it to French, preserve examples and links, save the translated lesson and verify it. The index is paginated and the remaining count is unknown.</p>"
+      },
+      "expected_output": {
+        "brief": {
+          "objective": "<p>For every remaining lesson listed in archive://lessons/index.json, read the original, translate it to French, preserve examples and links, save the translated lesson and verify it. The index is paginated and the remaining count is unknown.</p>",
+          "rationale": "Each independent item owns its complete treatment; preserve completed items across retries.",
+          "success_criteria": [
+            "One complete treatment per independent item; no hidden substantial loop."
+          ]
+        },
+        "steps": [
+          {
+            "label": "Process remaining items",
+            "objective": "<p>Complete each independent item and preserve verified progress.</p>",
+            "effort": "high",
+            "tools": [
+              "file_read",
+              "file_create",
+              "file_edit",
+              "file_write"
+            ],
+            "item_count": null,
+            "item_work": "substantial",
+            "steps": [],
+            "collection": {
+              "inventory_objective": "<p>Read only the existing index and collect the exact remaining identifiers in order, excluding verified completed items. Save the complete bounded JSON Dataset inventory.</p>",
+              "inventory_tools": [
+                "file_read",
+                "file_create"
+              ],
+              "item_objective": "<p>Read this item's source and existing target, perform the requested treatment, preserve existing contributions, verify the result and record the target URI and status. Complete this entire workflow for this item only.</p>"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "06 Rapprochement après collection",
+      "categories": [
+        "nominal",
+        "robustness"
+      ],
+      "input_data": {
+        "variable_value": "<p>Convert all 25 independent pages listed in archive://manuals/index.json to target documents, verifying each page and saving its target URI. After every target exists, reconcile cross-page links using the recorded mapping.</p>"
+      },
+      "expected_output": {
+        "brief": {
+          "objective": "<p>Convert all 25 independent pages listed in archive://manuals/index.json to target documents, verifying each page and saving its target URI. After every target exists, reconcile cross-page links using the recorded mapping.</p>",
+          "rationale": "Each independent item owns its complete treatment; preserve completed items across retries.",
+          "success_criteria": [
+            "One complete treatment per independent item; no hidden substantial loop."
+          ]
+        },
+        "steps": [
+          {
+            "label": "Process remaining items",
+            "objective": "<p>Complete each independent item and preserve verified progress.</p>",
+            "effort": "high",
+            "tools": [
+              "file_read",
+              "file_create",
+              "file_edit",
+              "file_write"
+            ],
+            "item_count": 25,
+            "item_work": "substantial",
+            "steps": [],
+            "collection": {
+              "inventory_objective": "<p>Read only the existing index and collect the exact remaining identifiers in order, excluding verified completed items. Save the complete bounded JSON Dataset inventory.</p>",
+              "inventory_tools": [
+                "file_read",
+                "file_create"
+              ],
+              "item_objective": "<p>Read this item's source and existing target, perform the requested treatment, preserve existing contributions, verify the result and record the target URI and status. Complete this entire workflow for this item only.</p>"
+            }
+          },
+          {
+            "label": "Reconcile cross-page links",
+            "objective": "<p>After all target records are verified, reconcile inter-document links using the complete recorded source-to-target mapping.</p>",
+            "effort": "high",
+            "tools": [
+              "file_read",
+              "file_create",
+              "file_edit",
+              "file_write"
+            ],
+            "item_count": 1,
+            "item_work": "substantial",
+            "steps": []
+          }
+        ]
+      }
+    },
+    {
+      "name": "07 Rapport complexe",
+      "categories": [
+        "nominal",
+        "robustness"
+      ],
+      "input_data": {
+        "variable_value": "<p>Rédige un rapport unique comparant trois méthodes de purification de l'eau. Recherche les sources publiques, confronte leurs hypothèses, construis l'argumentation et les tableaux, puis révise l'ensemble. Les conclusions doivent rester cohérentes avec tous les chapitres.</p>"
+      },
+      "expected_output": {
+        "brief": {
+          "objective": "<p>Rédige un rapport unique comparant trois méthodes de purification de l'eau. Recherche les sources publiques, confronte leurs hypothèses, construis l'argumentation et les tableaux, puis révise l'ensemble. Les conclusions doivent rester cohérentes avec tous les chapitres.</p>",
+          "rationale": "One coherent outcome: keep research, production, correction, verification and requested sharing in one executor.",
+          "success_criteria": [
+            "One complete task, no phase or component splitting."
+          ]
+        },
+        "steps": [
+          {
+            "label": "Complete the requested work",
+            "objective": "<p>Rédige un rapport unique comparant trois méthodes de purification de l'eau. Recherche les sources publiques, confronte leurs hypothèses, construis l'argumentation et les tableaux, puis révise l'ensemble. Les conclusions doivent rester cohérentes avec tous les chapitres.</p>",
+            "effort": "high",
+            "tools": [
+              "file_read",
+              "file_create",
+              "file_edit",
+              "file_write"
+            ],
+            "item_count": 1,
+            "item_work": "substantial",
+            "steps": []
+          }
+        ]
+      }
+    },
+    {
+      "name": "08 Site plusieurs fichiers",
+      "categories": [
+        "nominal",
+        "robustness"
+      ],
+      "input_data": {
+        "variable_value": "<p>Build one interactive geometry tutorial website in console://geometry/. Design the explanation, implement HTML, CSS and JavaScript, test the interactions and refine everything together. Deliver one coherent working website.</p>"
+      },
+      "expected_output": {
+        "brief": {
+          "objective": "<p>Build one interactive geometry tutorial website in console://geometry/. Design the explanation, implement HTML, CSS and JavaScript, test the interactions and refine everything together. Deliver one coherent working website.</p>",
+          "rationale": "One coherent outcome: keep research, production, correction, verification and requested sharing in one executor.",
+          "success_criteria": [
+            "One complete task, no phase or component splitting."
+          ]
+        },
+        "steps": [
+          {
+            "label": "Complete the requested work",
+            "objective": "<p>Build one interactive geometry tutorial website in console://geometry/. Design the explanation, implement HTML, CSS and JavaScript, test the interactions and refine everything together. Deliver one coherent working website.</p>",
+            "effort": "high",
+            "tools": [
+              "console_exec",
+              "file_read",
+              "file_write"
+            ],
+            "item_count": 1,
+            "item_work": "substantial",
+            "steps": []
+          }
+        ]
+      }
+    },
+    {
+      "name": "09 Correction de code",
+      "categories": [
+        "nominal",
+        "robustness"
+      ],
+      "input_data": {
+        "variable_value": "<p>Corrige un bug unique de calcul des remises dans console://demo-shop/. Reproduis le défaut, adapte le calcul et son affichage, puis vérifie les tests. Les modifications de plusieurs fichiers servent la même correction cohérente.</p>"
+      },
+      "expected_output": {
+        "brief": {
+          "objective": "<p>Corrige un bug unique de calcul des remises dans console://demo-shop/. Reproduis le défaut, adapte le calcul et son affichage, puis vérifie les tests. Les modifications de plusieurs fichiers servent la même correction cohérente.</p>",
+          "rationale": "One coherent outcome: keep research, production, correction, verification and requested sharing in one executor.",
+          "success_criteria": [
+            "One complete task, no phase or component splitting."
+          ]
+        },
+        "steps": [
+          {
+            "label": "Complete the requested work",
+            "objective": "<p>Corrige un bug unique de calcul des remises dans console://demo-shop/. Reproduis le défaut, adapte le calcul et son affichage, puis vérifie les tests. Les modifications de plusieurs fichiers servent la même correction cohérente.</p>",
+            "effort": "high",
+            "tools": [
+              "console_exec",
+              "file_read",
+              "file_write"
+            ],
+            "item_count": 1,
+            "item_work": "substantial",
+            "steps": []
+          }
+        ]
+      }
+    },
+    {
+      "name": "10 Guide par chapitres",
+      "categories": [
+        "nominal",
+        "robustness"
+      ],
+      "input_data": {
+        "variable_value": "<p>Write one training guide with six chapters in a Galaris document. Save after each chapter and revise earlier explanations when later exercises reveal missing prerequisites. Maintain one consistent pedagogical progression; chapters are not independent publications.</p>"
+      },
+      "expected_output": {
+        "brief": {
+          "objective": "<p>Write one training guide with six chapters in a Galaris document. Save after each chapter and revise earlier explanations when later exercises reveal missing prerequisites. Maintain one consistent pedagogical progression; chapters are not independent publications.</p>",
+          "rationale": "One coherent outcome: keep research, production, correction, verification and requested sharing in one executor.",
+          "success_criteria": [
+            "One complete task, no phase or component splitting."
+          ]
+        },
+        "steps": [
+          {
+            "label": "Complete the requested work",
+            "objective": "<p>Write one training guide with six chapters in a Galaris document. Save after each chapter and revise earlier explanations when later exercises reveal missing prerequisites. Maintain one consistent pedagogical progression; chapters are not independent publications.</p>",
+            "effort": "high",
+            "tools": [
+              "file_read",
+              "file_create",
+              "file_edit",
+              "file_write"
+            ],
+            "item_count": 1,
+            "item_work": "substantial",
+            "steps": []
+          }
+        ]
+      }
+    },
+    {
+      "name": "11 Nombreuses sources un résultat",
+      "categories": [
+        "nominal",
+        "robustness"
+      ],
+      "input_data": {
+        "variable_value": "<p>Analyse les 40 notes d'atelier dans archive://workshop/ pour produire une seule recommandation argumentée. Recoupe les contradictions et doublons. Aucune note ne demande un livrable individuel ; seule la synthèse finale doit être produite.</p>"
+      },
+      "expected_output": {
+        "brief": {
+          "objective": "<p>Analyse les 40 notes d'atelier dans archive://workshop/ pour produire une seule recommandation argumentée. Recoupe les contradictions et doublons. Aucune note ne demande un livrable individuel ; seule la synthèse finale doit être produite.</p>",
+          "rationale": "One coherent outcome: keep research, production, correction, verification and requested sharing in one executor.",
+          "success_criteria": [
+            "One complete task, no phase or component splitting."
+          ]
+        },
+        "steps": [
+          {
+            "label": "Complete the requested work",
+            "objective": "<p>Analyse les 40 notes d'atelier dans archive://workshop/ pour produire une seule recommandation argumentée. Recoupe les contradictions et doublons. Aucune note ne demande un livrable individuel ; seule la synthèse finale doit être produite.</p>",
+            "effort": "high",
+            "tools": [
+              "file_read",
+              "file_create",
+              "file_edit",
+              "file_write"
+            ],
+            "item_count": 1,
+            "item_work": "substantial",
+            "steps": []
+          }
+        ]
+      }
+    },
+    {
+      "name": "12 PLAN forcé tâche unique",
+      "categories": [
+        "nominal",
+        "robustness"
+      ],
+      "input_data": {
+        "variable_value": "<p>@plan Crée une simulation interactive unique du cycle de l'eau dans console://water/. Recherche, conçois, implémente, teste et affine la même simulation. Exécute ce travail ; je ne demande pas un document décrivant un plan.</p>"
+      },
+      "expected_output": {
+        "brief": {
+          "objective": "<p>@plan Crée une simulation interactive unique du cycle de l'eau dans console://water/. Recherche, conçois, implémente, teste et affine la même simulation. Exécute ce travail ; je ne demande pas un document décrivant un plan.</p>",
+          "rationale": "One coherent outcome: keep research, production, correction, verification and requested sharing in one executor.",
+          "success_criteria": [
+            "One complete task, no phase or component splitting."
+          ]
+        },
+        "steps": [
+          {
+            "label": "Complete the requested work",
+            "objective": "<p>@plan Crée une simulation interactive unique du cycle de l'eau dans console://water/. Recherche, conçois, implémente, teste et affine la même simulation. Exécute ce travail ; je ne demande pas un document décrivant un plan.</p>",
+            "effort": "high",
+            "tools": [
+              "console_exec",
+              "file_read",
+              "file_write"
+            ],
+            "item_count": 1,
+            "item_work": "substantial",
+            "steps": []
+          }
+        ]
+      }
+    },
+    {
+      "name": "13 Trois renommages",
+      "categories": [
+        "nominal",
+        "robustness"
+      ],
+      "input_data": {
+        "variable_value": "<p>Rename exactly archive://drafts/a.txt, archive://drafts/b.txt and archive://drafts/c.txt by adding reviewed_ to their existing names. Names and scope are confirmed. Verify the names and finish.</p>"
+      },
+      "expected_output": {
+        "brief": {
+          "objective": "<p>Rename exactly archive://drafts/a.txt, archive://drafts/b.txt and archive://drafts/c.txt by adding reviewed_ to their existing names. Names and scope are confirmed. Verify the names and finish.</p>",
+          "rationale": "Each independent item owns its complete treatment; preserve completed items across retries.",
+          "success_criteria": [
+            "One bounded mechanical task without inventory discovery."
+          ]
+        },
+        "steps": [
+          {
+            "label": "Complete the requested work",
+            "objective": "<p>Rename exactly archive://drafts/a.txt, archive://drafts/b.txt and archive://drafts/c.txt by adding reviewed_ to their existing names. Names and scope are confirmed. Verify the names and finish.</p>",
+            "effort": "standard",
+            "tools": [
+              "file_move",
+              "file_copy",
+              "file_read"
+            ],
+            "item_count": 3,
+            "item_work": "mechanical",
+            "steps": []
+          }
+        ]
+      }
+    },
+    {
+      "name": "14 Cinq copies connues",
+      "categories": [
+        "nominal",
+        "robustness"
+      ],
+      "input_data": {
+        "variable_value": "<p>Copy the five known files archive://forms/1.pdf through archive://forms/5.pdf to archive://copies/ with identical names. The source files and destination are authorized. Verify the copies; no interpretation or content rewriting is needed.</p>"
+      },
+      "expected_output": {
+        "brief": {
+          "objective": "<p>Copy the five known files archive://forms/1.pdf through archive://forms/5.pdf to archive://copies/ with identical names. The source files and destination are authorized. Verify the copies; no interpretation or content rewriting is needed.</p>",
+          "rationale": "Each independent item owns its complete treatment; preserve completed items across retries.",
+          "success_criteria": [
+            "One bounded mechanical task without inventory discovery."
+          ]
+        },
+        "steps": [
+          {
+            "label": "Complete the requested work",
+            "objective": "<p>Copy the five known files archive://forms/1.pdf through archive://forms/5.pdf to archive://copies/ with identical names. The source files and destination are authorized. Verify the copies; no interpretation or content rewriting is needed.</p>",
+            "effort": "standard",
+            "tools": [
+              "file_move",
+              "file_copy",
+              "file_read"
+            ],
+            "item_count": 5,
+            "item_work": "mechanical",
+            "steps": []
+          }
+        ]
+      }
+    },
+    {
+      "name": "15 Lot mécanique large",
+      "categories": [
+        "nominal",
+        "robustness"
+      ],
+      "input_data": {
+        "variable_value": "<p>Rename the 60 files enumerated in archive://images/index.json with the prefix archived_. The identifiers and mapping are in that index. Verify each result and retain completed renames across retries.</p>"
+      },
+      "expected_output": {
+        "brief": {
+          "objective": "<p>Rename the 60 files enumerated in archive://images/index.json with the prefix archived_. The identifiers and mapping are in that index. Verify each result and retain completed renames across retries.</p>",
+          "rationale": "Each independent item owns its complete treatment; preserve completed items across retries.",
+          "success_criteria": [
+            "One complete treatment per independent item; no hidden substantial loop."
+          ]
+        },
+        "steps": [
+          {
+            "label": "Process remaining items",
+            "objective": "<p>Complete each independent item and preserve verified progress.</p>",
+            "effort": "high",
+            "tools": [
+              "file_read",
+              "file_create",
+              "file_edit",
+              "file_write"
+            ],
+            "item_count": 60,
+            "item_work": "substantial",
+            "steps": [],
+            "collection": {
+              "inventory_objective": "<p>Read only the existing index and collect the exact remaining identifiers in order, excluding verified completed items. Save the complete bounded JSON Dataset inventory.</p>",
+              "inventory_tools": [
+                "file_read",
+                "file_create"
+              ],
+              "item_objective": "<p>Read this item's source and existing target, perform the requested treatment, preserve existing contributions, verify the result and record the target URI and status. Complete this entire workflow for this item only.</p>"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "16 Production unique et partage",
+      "categories": [
+        "nominal",
+        "robustness"
+      ],
+      "input_data": {
+        "variable_value": "<p>Rédige et vérifie une seule notice technique complète pour le capteur fictif Lumen, à partir de archive://lumen/spec.json. Crée un document Galaris et partage-le avec l'utilisateur explicitement autorisé user:sample-reviewer en utilisant les destinataires et versions renvoyés par memory_sharing.</p>"
+      },
+      "expected_output": {
+        "brief": {
+          "objective": "<p>Rédige et vérifie une seule notice technique complète pour le capteur fictif Lumen, à partir de archive://lumen/spec.json. Crée un document Galaris et partage-le avec l'utilisateur explicitement autorisé user:sample-reviewer en utilisant les destinataires et versions renvoyés par memory_sharing.</p>",
+          "rationale": "One coherent outcome: keep research, production, correction, verification and requested sharing in one executor.",
+          "success_criteria": [
+            "One complete task, no phase or component splitting."
+          ]
+        },
+        "steps": [
+          {
+            "label": "Complete the requested work",
+            "objective": "<p>Rédige et vérifie une seule notice technique complète pour le capteur fictif Lumen, à partir de archive://lumen/spec.json. Crée un document Galaris et partage-le avec l'utilisateur explicitement autorisé user:sample-reviewer en utilisant les destinataires et versions renvoyés par memory_sharing.</p>",
+            "effort": "high",
+            "tools": [
+              "file_read",
+              "file_create",
+              "file_edit",
+              "file_write"
+            ],
+            "item_count": 1,
+            "item_work": "substantial",
+            "steps": []
+          }
+        ]
+      }
+    },
+    {
+      "name": "17 Plan écrit explicitement demandé",
+      "categories": [
+        "nominal",
+        "robustness"
+      ],
+      "input_data": {
+        "variable_value": "<p>Produce only a written migration proposal for a fictional library catalog. Explain stages, risks and acceptance criteria in one document. Do not migrate records, create migration inventories or change the catalog in this task.</p>"
+      },
+      "expected_output": {
+        "brief": {
+          "objective": "<p>Produce only a written migration proposal for a fictional library catalog. Explain stages, risks and acceptance criteria in one document. Do not migrate records, create migration inventories or change the catalog in this task.</p>",
+          "rationale": "One coherent outcome: keep research, production, correction, verification and requested sharing in one executor.",
+          "success_criteria": [
+            "One complete task, no phase or component splitting."
+          ]
+        },
+        "steps": [
+          {
+            "label": "Complete the requested work",
+            "objective": "<p>Produce only a written migration proposal for a fictional library catalog. Explain stages, risks and acceptance criteria in one document. Do not migrate records, create migration inventories or change the catalog in this task.</p>",
+            "effort": "high",
+            "tools": [
+              "file_read",
+              "file_create",
+              "file_edit",
+              "file_write"
+            ],
+            "item_count": 1,
+            "item_work": "substantial",
+            "steps": []
+          }
+        ]
+      }
+    },
+    {
+      "name": "18 Livrables hétérogènes autonomes",
+      "categories": [
+        "nominal",
+        "robustness"
+      ],
+      "input_data": {
+        "variable_value": "<p>Produce two independently usable deliverables for a fictional exhibit: a visitor guide based on archive://exhibit/guide-source.html, and a separate maintenance checklist based on archive://exhibit/equipment.json. Complete and verify each; either can be accepted without the other.</p>"
+      },
+      "expected_output": {
+        "brief": {
+          "objective": "<p>Produce two independently usable deliverables for a fictional exhibit: a visitor guide based on archive://exhibit/guide-source.html, and a separate maintenance checklist based on archive://exhibit/equipment.json. Complete and verify each; either can be accepted without the other.</p>",
+          "rationale": "Each independent item owns its complete treatment; preserve completed items across retries.",
+          "success_criteria": [
+            "One complete treatment per independent item; no hidden substantial loop."
+          ]
+        },
+        "steps": [
+          {
+            "label": "Complete first independent item",
+            "objective": "<p>Complete and verify the first requested independent output.</p>",
+            "effort": "high",
+            "tools": [
+              "file_read",
+              "file_create",
+              "file_edit",
+              "file_write"
+            ],
+            "item_count": 1,
+            "item_work": "substantial",
+            "steps": []
+          },
+          {
+            "label": "Complete second independent item",
+            "objective": "<p>Complete and verify the second requested independent output.</p>",
+            "effort": "high",
+            "tools": [
+              "file_read",
+              "file_create",
+              "file_edit",
+              "file_write"
+            ],
+            "item_count": 1,
+            "item_work": "substantial",
+            "steps": []
+          }
+        ]
+      }
+    },
+    {
+      "name": "19 Deux entrées un seul livrable",
+      "categories": [
+        "nominal",
+        "robustness"
+      ],
+      "input_data": {
+        "variable_value": "<p>Read archive://policy/old.html and archive://policy/new.html and produce one coherent comparison memo, reconciling changes and their implications. Do not write one output per source.</p>"
+      },
+      "expected_output": {
+        "brief": {
+          "objective": "<p>Read archive://policy/old.html and archive://policy/new.html and produce one coherent comparison memo, reconciling changes and their implications. Do not write one output per source.</p>",
+          "rationale": "One coherent outcome: keep research, production, correction, verification and requested sharing in one executor.",
+          "success_criteria": [
+            "One complete task, no phase or component splitting."
+          ]
+        },
+        "steps": [
+          {
+            "label": "Complete the requested work",
+            "objective": "<p>Read archive://policy/old.html and archive://policy/new.html and produce one coherent comparison memo, reconciling changes and their implications. Do not write one output per source.</p>",
+            "effort": "high",
+            "tools": [
+              "file_read",
+              "file_create",
+              "file_edit",
+              "file_write"
+            ],
+            "item_count": 1,
+            "item_work": "substantial",
+            "steps": []
+          }
+        ]
+      }
+    },
+    {
+      "name": "20 Ambiguïté essentielle",
+      "categories": [
+        "nominal",
+        "robustness",
+        "ambiguity"
+      ],
+      "input_data": {
+        "variable_value": "<p>Migrate the documents from the old catalog to the new one. No catalog names, locations, scope or source references have been provided in the conversation. Ask for the missing source and destination before planning execution.</p>"
+      },
+      "expected_output": {
+        "clarification_questions": [
+          "Which source catalog, destination and document scope should be used?"
+        ],
+        "steps": []
+      }
+    },
+    {
+      "name": "21 Réparation puis suite",
+      "categories": [
+        "nominal",
+        "robustness"
+      ],
+      "input_data": {
+        "variable_value": "<p>The fictional museum's progress register archive://museum/progress.json identifies 6 damaged migrated records and 32 records not yet migrated. Repair the six first, then migrate the remaining records. For each, read source and target, preserve user edits, verify the result and update the register.</p>"
+      },
+      "expected_output": {
+        "brief": {
+          "objective": "<p>The fictional museum's progress register archive://museum/progress.json identifies 6 damaged migrated records and 32 records not yet migrated. Repair the six first, then migrate the remaining records. For each, read source and target, preserve user edits, verify the result and update the register.</p>",
+          "rationale": "Each independent item owns its complete treatment; preserve completed items across retries.",
+          "success_criteria": [
+            "One complete treatment per independent item; no hidden substantial loop."
+          ]
+        },
+        "steps": [
+          {
+            "label": "Repair damaged records",
+            "objective": "<p>Complete each independent item and preserve verified progress.</p>",
+            "effort": "high",
+            "tools": [
+              "file_read",
+              "file_create",
+              "file_edit",
+              "file_write"
+            ],
+            "item_count": 6,
+            "item_work": "substantial",
+            "steps": [],
+            "collection": {
+              "inventory_objective": "<p>Read only the existing index and collect the exact remaining identifiers in order, excluding verified completed items. Save the complete bounded JSON Dataset inventory.</p>",
+              "inventory_tools": [
+                "file_read",
+                "file_create"
+              ],
+              "item_objective": "<p>Read this item's source and existing target, perform the requested treatment, preserve existing contributions, verify the result and record the target URI and status. Complete this entire workflow for this item only.</p>"
+            }
+          },
+          {
+            "label": "Migrate remaining records",
+            "objective": "<p>Complete each independent item and preserve verified progress.</p>",
+            "effort": "high",
+            "tools": [
+              "file_read",
+              "file_create",
+              "file_edit",
+              "file_write"
+            ],
+            "item_count": 32,
+            "item_work": "substantial",
+            "steps": [],
+            "collection": {
+              "inventory_objective": "<p>Read only the existing index and collect the exact remaining identifiers in order, excluding verified completed items. Save the complete bounded JSON Dataset inventory.</p>",
+              "inventory_tools": [
+                "file_read",
+                "file_create"
+              ],
+              "item_objective": "<p>Read this item's source and existing target, perform the requested treatment, preserve existing contributions, verify the result and record the target URI and status. Complete this entire workflow for this item only.</p>"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "22 Un même traitement par facture",
+      "categories": [
+        "nominal",
+        "robustness"
+      ],
+      "input_data": {
+        "variable_value": "<p>Review each of 35 fictional invoices listed in archive://invoices/index.json against its supplied order, produce a separate discrepancy record and mark the invoice checked. Never send messages or issue payments. Each invoice is independently verifiable.</p>"
+      },
+      "expected_output": {
+        "brief": {
+          "objective": "<p>Review each of 35 fictional invoices listed in archive://invoices/index.json against its supplied order, produce a separate discrepancy record and mark the invoice checked. Never send messages or issue payments. Each invoice is independently verifiable.</p>",
+          "rationale": "Each independent item owns its complete treatment; preserve completed items across retries.",
+          "success_criteria": [
+            "One complete treatment per independent item; no hidden substantial loop."
+          ]
+        },
+        "steps": [
+          {
+            "label": "Process remaining items",
+            "objective": "<p>Complete each independent item and preserve verified progress.</p>",
+            "effort": "high",
+            "tools": [
+              "file_read",
+              "file_create",
+              "file_edit",
+              "file_write"
+            ],
+            "item_count": 35,
+            "item_work": "substantial",
+            "steps": [],
+            "collection": {
+              "inventory_objective": "<p>Read only the existing index and collect the exact remaining identifiers in order, excluding verified completed items. Save the complete bounded JSON Dataset inventory.</p>",
+              "inventory_tools": [
+                "file_read",
+                "file_create"
+              ],
+              "item_objective": "<p>Read this item's source and existing target, perform the requested treatment, preserve existing contributions, verify the result and record the target URI and status. Complete this entire workflow for this item only.</p>"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "23 Un prototype expérimental",
+      "categories": [
+        "nominal",
+        "robustness"
+      ],
+      "input_data": {
+        "variable_value": "<p>Explore three possible interaction designs to produce one usable constellation explorer in console://sky/. Try alternatives, assess them, implement the best approach and test the assembled prototype. Experiments and revisions belong to this single deliverable.</p>"
+      },
+      "expected_output": {
+        "brief": {
+          "objective": "<p>Explore three possible interaction designs to produce one usable constellation explorer in console://sky/. Try alternatives, assess them, implement the best approach and test the assembled prototype. Experiments and revisions belong to this single deliverable.</p>",
+          "rationale": "One coherent outcome: keep research, production, correction, verification and requested sharing in one executor.",
+          "success_criteria": [
+            "One complete task, no phase or component splitting."
+          ]
+        },
+        "steps": [
+          {
+            "label": "Complete the requested work",
+            "objective": "<p>Explore three possible interaction designs to produce one usable constellation explorer in console://sky/. Try alternatives, assess them, implement the best approach and test the assembled prototype. Experiments and revisions belong to this single deliverable.</p>",
+            "effort": "high",
+            "tools": [
+              "console_exec",
+              "file_read",
+              "file_write"
+            ],
+            "item_count": 1,
+            "item_work": "substantial",
+            "steps": []
+          }
+        ]
+      }
+    },
+    {
+      "name": "24 Limites vagues",
+      "categories": [
+        "nominal",
+        "robustness"
+      ],
+      "input_data": {
+        "variable_value": "<p>Translate 180 independent field cards listed in archive://cards/index.json. Each card needs interpretation, writing, checking and an individual saved result. The static plan budget is only 12 leaves; do not combine the whole collection into one executor task or list 180 static leaves.</p>"
+      },
+      "expected_output": {
+        "brief": {
+          "objective": "<p>Translate 180 independent field cards listed in archive://cards/index.json. Each card needs interpretation, writing, checking and an individual saved result. The static plan budget is only 12 leaves; do not combine the whole collection into one executor task or list 180 static leaves.</p>",
+          "rationale": "Each independent item owns its complete treatment; preserve completed items across retries.",
+          "success_criteria": [
+            "One complete treatment per independent item; no hidden substantial loop."
+          ]
+        },
+        "steps": [
+          {
+            "label": "Process remaining items",
+            "objective": "<p>Complete each independent item and preserve verified progress.</p>",
+            "effort": "high",
+            "tools": [
+              "file_read",
+              "file_create",
+              "file_edit",
+              "file_write"
+            ],
+            "item_count": 180,
+            "item_work": "substantial",
+            "steps": [],
+            "collection": {
+              "inventory_objective": "<p>Read only the existing index and collect the exact remaining identifiers in order, excluding verified completed items. Save the complete bounded JSON Dataset inventory.</p>",
+              "inventory_tools": [
+                "file_read",
+                "file_create"
+              ],
+              "item_objective": "<p>Read this item's source and existing target, perform the requested treatment, preserve existing contributions, verify the result and record the target URI and status. Complete this entire workflow for this item only.</p>"
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "acceptance_by_case": {
+    "01 Archive de fichiers": {
+      "kind": "collection",
+      "count": 80
+    },
+    "02 Collections ordonnées": {
+      "kind": "ordered",
+      "count": 120
+    },
+    "03 Reprise partielle": {
+      "kind": "collection",
+      "count": 43
+    },
+    "04 Petit lot substantiel": {
+      "kind": "items2",
+      "count": 2
+    },
+    "05 Cardinalité inconnue": {
+      "kind": "collection",
+      "count": null
+    },
+    "06 Rapprochement après collection": {
+      "kind": "cross",
+      "count": 25
+    },
+    "07 Rapport complexe": {
+      "kind": "single",
+      "count": 1
+    },
+    "08 Site plusieurs fichiers": {
+      "kind": "single",
+      "count": 1
+    },
+    "09 Correction de code": {
+      "kind": "single",
+      "count": 1
+    },
+    "10 Guide par chapitres": {
+      "kind": "single",
+      "count": 1
+    },
+    "11 Nombreuses sources un résultat": {
+      "kind": "single",
+      "count": 1
+    },
+    "12 PLAN forcé tâche unique": {
+      "kind": "single",
+      "count": 1
+    },
+    "13 Trois renommages": {
+      "kind": "mechanical",
+      "count": 3
+    },
+    "14 Cinq copies connues": {
+      "kind": "mechanical",
+      "count": 5
+    },
+    "15 Lot mécanique large": {
+      "kind": "collection",
+      "count": 60
+    },
+    "16 Production unique et partage": {
+      "kind": "single",
+      "count": 1
+    },
+    "17 Plan écrit explicitement demandé": {
+      "kind": "single",
+      "count": 1
+    },
+    "18 Livrables hétérogènes autonomes": {
+      "kind": "independent",
+      "count": 2
+    },
+    "19 Deux entrées un seul livrable": {
+      "kind": "single",
+      "count": 1
+    },
+    "20 Ambiguïté essentielle": {
+      "kind": "clarify",
+      "count": null
+    },
+    "21 Réparation puis suite": {
+      "kind": "ordered",
+      "count": 38
+    },
+    "22 Un même traitement par facture": {
+      "kind": "collection",
+      "count": 35
+    },
+    "23 Un prototype expérimental": {
+      "kind": "single",
+      "count": 1
+    },
+    "24 Limites vagues": {
+      "kind": "collection",
+      "count": 180
+    }
+  }
+}

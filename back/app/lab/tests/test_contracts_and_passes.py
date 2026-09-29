@@ -49,7 +49,9 @@ def test_planner_limits_use_depth_and_leaves(max_depth, max_leaves, permitted):
     group = {"label": "Group", "objective": "Prepare", "steps": [
         {"label": "Subgroup", "objective": "Prepare", "steps": [leaf]},
     ]}
-    checks = check_output("planner", native, {"steps": [group for _ in range(12)]})
+    checks = check_output("planner", native, {
+        "brief": {"objective": "Prepare reports"}, "steps": [group for _ in range(12)],
+    })
     assert all(check["passed"] for check in checks) is permitted
 
 

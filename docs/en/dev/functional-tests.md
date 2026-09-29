@@ -2,6 +2,21 @@
 
 # Functional guarantees catalogue
 
+The synthetic `back/app/lab/planner_boundaries_corpus.json` contains 24 granularity cases:
+ordered collections, partial recovery, unknown sizes, small batches, complex coherent tasks,
+forced PLAN, explicitly requested written plans and clarification. Import it with
+`scripts/import_lab_reference.py --corpus planner-boundaries --install`.
+`test_reference_corpus.py` checks authenticated import, persistence and contracts.
+References are semantic examples; `acceptance_by_case` distinguishes empty plans,
+fragmented coherent tasks and missed collections. Quality requires real inference and
+reviewing actual plans, beyond these model-free tests.
+`back/app/lab/tests/test_evaluation.py` rejects an output without a brief or executable
+steps, or mixing a plan with clarification, as a critical failure. Generation and review
+success fixtures therefore contain executable plans.
+`back/tests/test_protocol_inference.py` reproduces a provider `response.failed` containing
+an empty tool call: the inference and its trace remain failed for both streaming and JSON
+responses, instead of accepting the tool call as a plan.
+
 `back/app/agent/tests/test_planner_collections.py` covers repeated work: small mechanical batches
 of up to five known items in one leaf without discovery or replanning, decomposition of
 substantial work or oversized/unknown batches, one Task per collection item,

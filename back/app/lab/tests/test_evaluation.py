@@ -220,6 +220,8 @@ def test_every_non_dispatch_mechanism_has_a_complete_versioned_semantic_rubric()
             expected_version = (
                 ":v1"
                 if rubric.mechanism == "task_analysis"
+                else ":v4"
+                if rubric.mechanism == "planner"
                 else ":v3"
                 if rubric.mechanism in {"topic_classification", "dispatcher"}
                 else ":v2"
@@ -1425,6 +1427,26 @@ def test_dispatcher_critical_constraints_cannot_be_compensated() -> None:
         check["code"] == "forced_route" and not check["passed"] and check["critical"]
         for check in checks
     )
+
+
+@pytest.mark.parametrize("output,complete", [
+    ({}, False),
+    ({"brief": {"objective": "Process the records."}, "steps": []}, False),
+    ({"steps": [{"label": "Process record", "objective": "Read, convert and verify."}]}, False),
+    ({"clarification_questions": ["Which collection should be processed?"]}, True),
+    ({"brief": {"objective": "Process the record."}, "steps": [
+        {"label": "Process record", "objective": "Read, convert and verify."},
+    ]}, True),
+    ({"brief": {"objective": "Process the record."}, "steps": [
+        {"label": "Process record", "objective": "Read, convert and verify."},
+    ], "clarification_questions": ["Which record?"]}, False),
+])
+def test_planner_requires_an_executable_plan_or_clarification(output, complete) -> None:
+    from app.lab.objective_checks import check_output
+
+    checks = check_output("planner", {"max_depth": 3, "max_leaves": 12, "can_clarify": True}, output)
+    failures = [check for check in checks if check["critical"] and not check["passed"]]
+    assert bool(failures) is not complete
 
 
 @pytest.mark.asyncio

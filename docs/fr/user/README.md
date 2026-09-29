@@ -489,6 +489,12 @@ Le planner découpe uniquement un objectif qui exige plusieurs blocs de travail 
 Chaque feuille du plan est une vraie tâche. Une étape n’est pas censée « réfléchir » ou
 « rédiger la réponse finale » : elle doit produire une partie vérifiable du résultat.
 
+Le découpage privilégié répète le même traitement complet sur des éléments indépendants :
+un fichier à traiter donne une tâche qui le lit, le transforme, le vérifie et enregistre son
+résultat. Une tâche unique, même complexe, reste entière : ses phases de recherche,
+construction et validation ne deviennent pas des sous-tâches. Cela vaut aussi avec `@plan`,
+qui choisit l'orchestration sans remplacer le travail demandé par la rédaction d'un plan.
+
 Pour un traitement répété sur de nombreux documents ou enregistrements, le planner peut créer
 une collection : Galaris identifie les éléments depuis l'inventaire, puis crée une tâche par
 élément, par vagues. « Un workspace après l'autre » conserve cet ordre tout en séparant les

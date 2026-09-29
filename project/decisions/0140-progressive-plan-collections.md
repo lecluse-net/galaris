@@ -31,6 +31,29 @@ de PLAN restent inchangés ; plusieurs cibles seules ne justifient pas cette rou
 Le planner conserve la responsabilité de reconnaître sémantiquement ces collections ;
 le serveur valide le contrat déclaré sans prétendre déduire ce nombre d'un texte libre.
 
+Le découpage privilégie la répétition d'un traitement complet sur des éléments autonomes :
+X fichiers indépendants donnent X traitements complets. La lecture, la transformation, la
+vérification, les corrections et la mise à jour du suivi d'un élément restent dans sa Task.
+Une tâche cohérente unique reste une seule feuille, même complexe ou forcée en PLAN.
+Les chapitres, composants, phases et fichiers sources d'un même résultat ne constituent pas
+des éléments autonomes. Les groupes organisent les collections et les résultats réellement
+indépendants ; ils ne fragmentent pas le travail interne d'un exécuteur.
+
+Cette précision aligne le planner sur l'ADR 0036. L'ancien prompt, le schéma des sous-étapes
+et leurs tests encourageaient au contraire le découpage d'un artefact complexe ; cette
+contrainte est retirée intentionnellement. Le prompt par défaut, le schéma et le contrat
+serveur ajouté aux prompts de production et du Lab portent désormais la même règle.
+Le contrat serveur prime sur une ancienne consigne personnalisée contradictoire.
+Le barème Planner v4 évalue les deux erreurs : fragmenter une tâche unique ou regrouper
+les traitements substantiels de plusieurs éléments dans une feuille. Il distingue les choix
+du modèle des politiques techniques ajoutées par le serveur ; les campagnes précédentes
+conservent leur barème figé et leurs scores.
+Les politiques `artifact_policy` et `delivery_policy` sont retirées du schéma d'entrée du
+modèle, sans changer leur sérialisation ni la validation des valeurs explicitement fournies.
+La qualification indépendante a reproduit leur émission incorrecte malgré la consigne de
+les omettre : le schéma, plutôt qu'une nouvelle consigne, porte désormais cette séparation.
+Les tests de présence de formulations ne prouvent pas la qualité des choix du modèle.
+
 Chaque collection devient un groupe PLAN. À son activation, une Task de découverte lit
 l'inventaire existant ou les sources autorisées, sans réaliser les transformations. Elle
 crée un Dataset JSON `galaris.collection/v1` et rend son URI dans un reçu JSON terminal.

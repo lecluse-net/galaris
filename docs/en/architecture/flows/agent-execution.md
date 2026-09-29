@@ -286,10 +286,12 @@ automatically; they remain flagged as blockers until completion.
    synthesis, and the executor. It is inherited by planned or delegated descendants; it changes
    neither the `standard`/`high` execution effort nor specialized image, audio, or vector usage.
    Once `PLAN` is selected—automatically for multiple genuinely decomposable units or explicitly
-   by the creator—the planner produces the plan skeleton in a single pass. It judges depth based
-   on the complexity and verifiable components of the work, not on the number of files or
-   deliverables: a single explicitly planned artifact can therefore become a group of sequential
-   substeps that share and refine the same durable resource.
+   by the creator—the planner produces the plan skeleton in a single pass. It prioritizes one
+   complete workflow repeated per independent item: each file to process receives a Task that
+   reads, transforms, writes, verifies and records its result. A unique coherent task stays one
+   leaf, even when complex or explicitly routed to PLAN; its phases, chapters, components and
+   implementation files are not autonomous units. Forcing PLAN changes orchestration, never
+   the requested outcome into merely writing a plan.
    A leaf declared `item_work=mechanical` can group up to five known items for trivial
    deterministic operations with a simple batch check, without discovery. Substantial per-item
    work (`substantial` by default), larger batches or unknown sizes require decomposition.
@@ -302,7 +304,8 @@ automatically; they remain flagged as blockers until completion.
    See [0140](../../../../project/decisions/0140-progressive-plan-collections.md).
    This policy comes from the Markdown Param `ai.planner-system-prompt`, also copied into the
    Planner datasets in the Lab. The server separately adds the effective limits and the
-   clarification-cycle contract; these safeguards are not experimental text.
+   clarification-cycle and work-unit contracts, taking precedence over conflicting decomposition
+   guidance; these safeguards are not experimental text.
    Each text mechanism reads its shared level from the agent's single effective profile:
    `ultra-low` for Dream, `low` for the dispatcher and rapid conversation, `standard` for the
    executor, and Goal tracking, and `high` for the high executor, planner, and Lab.
@@ -531,7 +534,10 @@ does not satisfy the contract.
 
 Each materialized leaf additionally carries `artifact_policy` (`none`, `intermediate`, or
 `final`) and `delivery_policy` (`forbidden` or `required`), normalized by the server from the
-plan's exact tools. An intermediate leaf receives no delivery tool, even if the runtime
+plan's exact tools. These policies are omitted from the input schema sent to the model, but
+remain serialized in persisted plans and API responses. Explicitly supplied values are still
+validated; hiding the fields does not relax effect constraints.
+An intermediate leaf receives no delivery tool, even if the runtime
 spontaneously wants to publish its file. Only a leaf that explicitly declares a send or sharing
 tool may produce the final artifact and its receipt. Messenger sending copies the file to the
 destination provider without deleting its source.

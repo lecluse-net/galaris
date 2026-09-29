@@ -351,6 +351,12 @@ Text and voice conversations follow their own configured controller and executor
 
 The planner breaks down only an objective that requires several coordinated blocks of work. Each leaf of the plan is a real Task. A step is not intended to “think” or “write the final response”: it must produce a verifiable part of the result.
 
+The preferred decomposition repeats the same complete treatment across independent items:
+one file to process means one task that reads, transforms, verifies and records its result.
+A unique task stays whole even when complex: its research, construction and validation phases
+do not become subtasks. This also applies to `@plan`, which selects orchestration without
+replacing the requested work with writing a plan.
+
 For repeated work on many documents or records, the planner can create a collection: Galaris
 identifies its items from the inventory, then creates one Task per item in bounded waves.
 “One workspace after another” preserves that order while keeping documents separate. The

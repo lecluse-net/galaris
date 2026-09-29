@@ -132,7 +132,7 @@ _RUBRICS: dict[EvaluationMechanism, MechanismRubric] = {
     ),
     "planner": MechanismRubric(
         mechanism="planner",
-        version="planner-score:v2",
+        version="planner-score:v4",
         dimensions=(
             _dimension(
                 "objective_fidelity",
@@ -144,7 +144,11 @@ _RUBRICS: dict[EvaluationMechanism, MechanismRubric] = {
                 "decomposition_coverage",
                 "Decomposition and coverage",
                 25,
-                "Breaks the work into sufficient, coherent steps without omitting material work or adding unrelated scope.",
+                "Uses one complete treatment per independent item for repeated workflows, "
+                "with collections for large or unknown sets. Keeps a unique coherent task "
+                "in one leaf, including research, production and verification, even when "
+                "PLAN is forced. Penalizes splitting that task into phases or components "
+                "and hiding substantial multi-item work in one leaf. Covers all requested work.",
             ),
             _dimension(
                 "feasibility_dependencies",
@@ -156,7 +160,12 @@ _RUBRICS: dict[EvaluationMechanism, MechanismRubric] = {
                 "resource_strategy",
                 "Resource strategy",
                 15,
-                "Uses available tools and resources appropriately. Alternative valid tool selections and step orderings are allowed when justified.",
+                "Uses available tools and resources appropriately. Alternative valid tool selections "
+                "and step orderings are allowed when justified. The candidate is a normalized plan: "
+                "artifact_policy and delivery_policy are server-derived metadata, not model choices. "
+                "Their presence does not violate an instruction to omit them during generation. "
+                "file_copy derives final/required because copying is placement; these values alone "
+                "do not imply an unrequested external delivery. Judge the selected tools and objectives.",
             ),
             _dimension(
                 "verification_deliverables",

@@ -69,7 +69,9 @@ async def benchmark(db, monkeypatch):
 
     async def candidate(*args, **kwargs):
         calls.append("candidate")
-        return {"brief": {"objective": f"Result {len(calls)}"}, "steps": []}, 0.1
+        return {"brief": {"objective": f"Result {len(calls)}"}, "steps": [
+            {"label": "Produce report", "objective": "Research, write and verify the complete report."},
+        ]}, 0.1
 
     async def judge(**kwargs):
         calls.append("judge")

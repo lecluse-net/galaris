@@ -109,6 +109,46 @@ def provider_http(monkeypatch, handler):
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("streaming", [False, True])
+async def test_failed_responses_tool_call_cannot_become_a_successful_plan(
+    runtime, monkeypatch, responses_sse, streaming,
+):
+    from app.llm.contracts import ProtocolInferenceRequest
+    from app.llm.facade import start_inference
+
+    _, llm, _, _ = runtime
+    terminal = {
+        "id": "synthetic-failed-plan", "object": "response", "created_at": 1,
+        "model": llm.llm_name, "status": "failed",
+        "error": {"code": "server_error", "message": "Synthetic upstream planning failure"},
+        "output": [{"id": "synthetic-call", "type": "function_call", "status": "incomplete",
+                    "call_id": "synthetic-plan", "name": "final_result", "arguments": "{}"}],
+    }
+    stream = responses_sse(terminal).replace('"type": "response.completed"', '"type": "response.failed"')
+    provider_http(monkeypatch, lambda request: httpx.Response(
+        200, headers={"content-type": "text/event-stream"} if streaming else {},
+        content=stream if streaming else json.dumps(terminal),
+    ))
+    key = await start_inference(ProtocolInferenceRequest(
+        llm_id=llm.id, prompt="Process each synthetic record completely.",
+        purpose="lab.mechanism_run", protocol="responses",
+        body={"model": llm.code, "stream": streaming, "input": "Plan the synthetic collection."},
+    ))
+    async with asyncio.timeout(10):
+        while (finished := await read_inference(key)).status not in {"completed", "failed"}:
+            await asyncio.sleep(0.02)
+    assert finished.status == "failed"
+    events = [event async for event in stream_inference(key)]
+    assert sum(event.kind == "result" for event in events) == 1
+    assert not events[-1].result.success
+    async with lifecycle.get_db_session() as db:
+        call = await db.get(LLMCall, finished.attempts[0].call_ids[0])
+        assert call.status == "error"
+        assert "Synthetic upstream planning failure" in call.error
+        assert json.loads(call.raw_response)["status"] == "failed"
+
+
+@pytest.mark.asyncio
 @pytest.mark.parametrize("protocol", ["chat", "responses"])
 async def test_agent_uses_published_output_capacity_instead_of_provider_default(runtime, monkeypatch, protocol, responses_sse):
     """An executor can finish when the provider's implicit reasoning budget is too small."""

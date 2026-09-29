@@ -120,6 +120,14 @@ def test_plan_accepts_provider_stringified_brief() -> None:
 
 
 def test_plan_derives_intermediate_and_final_delivery_policies() -> None:
+    # The model chooses tools; only the server supplies effect policies. Keep
+    # those values in persisted/API output without asking the model to invent them.
+    input_fields = Plan.model_json_schema(mode="validation")["$defs"]["PlanStep"]["properties"]
+    output_fields = Plan.model_json_schema(mode="serialization")["$defs"]["PlanStep"]["properties"]
+    for name in ("artifact_policy", "delivery_policy"):
+        assert name not in input_fields
+        assert name in output_fields
+
     plan = Plan(
         steps=[
             PlanStep(
@@ -139,6 +147,24 @@ def test_plan_derives_intermediate_and_final_delivery_policies() -> None:
     assert plan.steps[0].delivery_policy == "forbidden"
     assert plan.steps[1].artifact_policy == "final"
     assert plan.steps[1].delivery_policy == "required"
+    saved = plan.model_dump(mode="json")
+    assert saved["steps"][1]["delivery_policy"] == "required"
+    assert Plan.model_validate(saved) == plan
+
+
+@pytest.mark.parametrize("policy,value,tools,message", [
+    ("delivery_policy", "required", ["file_write"], "exact delivery tool"),
+    ("artifact_policy", "final", ["file_write"], "exact file-delivery tool"),
+    ("artifact_policy", "intermediate", ["file_read"], "file production or delivery tool"),
+])
+def test_unadvertised_plan_policies_still_reject_unsupported_effects(
+    policy, value, tools, message,
+) -> None:
+    with pytest.raises(ValueError, match=message):
+        Plan.model_validate({"steps": [{
+            "label": "Complete the requested work", "objective": "Read, write and verify.",
+            "tools": tools, policy: value,
+        }]})
 
 
 def test_plan_cannot_narrow_file_delivery_objective_to_file_read() -> None:
@@ -234,18 +260,6 @@ def test_planner_prompt_requires_precise_mcp_action_blocks():
     assert "retrieved_memory" not in prompt
 
 
-def test_planner_prompt_decomposes_complex_single_artifacts() -> None:
-    prompt = planner_service.built_in_planner_prompt()
-    step_description = PlanStep.model_fields["steps"].description or ""
-
-    assert "One artifact or one target file does NOT imply one leaf" in prompt
-    assert "independently verifiable components" in prompt
-    assert "build and refine the artifact" in prompt
-    assert "one deliverable never justifies flattening" in prompt
-    assert "selecting or checking a destination filename" in prompt
-    assert "single artifact or target file may still require substeps" in step_description
-
-
 @pytest.mark.asyncio
 async def test_planner_prompt_uses_the_configured_runtime_value(
     monkeypatch: pytest.MonkeyPatch,
@@ -258,6 +272,11 @@ async def test_planner_prompt_uses_the_configured_runtime_value(
 
     assert prompt.startswith(configured)
     assert "Hard size limits" in prompt
+    # Runtime and Lab retain the server-owned work-unit contract with a custom
+    # base prompt. This checks assembly, not model decision quality.
+    contract = planner_service._COLLECTION_PLANNING_CONTRACT
+    assert contract in prompt
+    assert planner_service.planner_evaluation_system_prompt(configured).endswith(contract)
     resolver.assert_awaited_once_with(Params.AI_PLANNER_SYSTEM_PROMPT)
 
 

@@ -2,6 +2,22 @@
 
 # Using the AI Lab
 
+To evaluate Planner granularity, the public `planner-boundaries` corpus provides 24 synthetic
+cases: complete per-file treatment, ordered collections and recovery, complex coherent tasks
+that must stay whole, small mechanical batches and ambiguous requests.
+After importing it with `scripts/import_lab_reference.py --corpus planner-boundaries --install`
+inside the backend container, open **Lab → Planner**, select the dataset and run multiple
+repetitions with the same candidate and judge. Inspect actual plans for empty results,
+fragmented coherent tasks and hidden loops inside a leaf, alongside scores. The Lab applies
+its current server contract to both base prompts: an old prompt alone does not reproduce
+an old runtime.
+A plan without a brief or executable steps, or mixing a plan with clarification, is a
+critical Lab failure even if the judge awards it a high score.
+Planner rubric v4 distinguishes model choices from artifact and delivery policies added by
+the server. Their presence in the evaluated plan is not a generation error;
+`file_copy` notably implies the technical values `final` and `required`.
+Campaigns retain the rubric frozen at creation; historical scores are not rewritten.
+
 Every lab identifies its treatment, **one business variable**, and the result to
 evaluate. Shared settings belong to the test dataset. Each item contains the tested value,
 its context and expected output, with a name and optional provenance.

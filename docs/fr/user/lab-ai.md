@@ -2,6 +2,22 @@
 
 # Utiliser le Lab IA
 
+Pour évaluer le découpage du Planner, le corpus public `planner-boundaries` propose 24 cas
+synthétiques : traitement complet par fichier, collections ordonnées et reprises, tâches
+uniques complexes à conserver entières, petits lots mécaniques et demandes ambiguës.
+Après import avec `scripts/import_lab_reference.py --corpus planner-boundaries --install`
+dans le conteneur backend, ouvrir **Lab → Planner**, choisir le jeu et lancer plusieurs
+répétitions avec le même candidat et le même juge. Examiner les plans effectivement produits,
+notamment les plans vides, la fragmentation d'une tâche unique et les boucles cachées dans
+une feuille, en plus des scores. Le Lab applique son contrat serveur courant aux prompts
+de base comparés : un ancien prompt ne reproduit pas à lui seul un ancien runtime.
+Un plan sans brief ou sans étapes, ou qui mélange plan et clarification, constitue un
+échec critique du Lab, même si le juge lui attribue un bon score.
+Le barème Planner v4 distingue les choix du modèle des politiques d'artefact et de livraison
+ajoutées par le serveur. Leur présence dans le plan évalué n'est pas une erreur de génération ;
+`file_copy` implique notamment les valeurs techniques `final` et `required`.
+Les campagnes conservent le barème figé à leur création ; les anciens scores ne sont pas réécrits.
+
 Chaque lab présente le traitement testé, **une seule variable métier** et le résultat à
 évaluer. Les réglages communs appartiennent au jeu de tests. Un item contient
 la valeur de la variable, son contexte et le résultat attendu, avec un nom et sa provenance éventuelle.

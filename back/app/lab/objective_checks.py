@@ -46,6 +46,15 @@ def check_output(mechanism: str, native: Any, output: Any) -> list[dict[str, Any
                     "Forced routing constraints must be respected",
                 )
     elif mechanism == "planner":
+        has_questions = bool(output.get("clarification_questions"))
+        has_steps = bool(output.get("steps"))
+        has_brief = bool(output.get("brief"))
+        check(
+            "plan_completeness",
+            (has_questions and not has_steps and not has_brief)
+            or (not has_questions and has_steps and has_brief),
+            "Return a brief and executable steps, or clarification questions without a plan",
+        )
 
         def sizes(steps: list[dict[str, Any]], depth: int = 1) -> tuple[int, int]:
             leaves = 0

@@ -299,10 +299,12 @@ leur fin.
    l’exécuteur. Elle est héritée par les descendants planifiés ou délégués ; elle ne modifie ni
    l’effort d’exécution `standard`/`high`, ni les usages spécialisés image, audio ou vectoriels.
    Une fois `PLAN` sélectionné — automatiquement pour plusieurs unités réellement décomposables ou
-   explicitement par le créateur — le planner produit le squelette du plan en une seule passe. Il juge
-   la profondeur d'après la complexité et les composants vérifiables du travail, pas d'après le
-   nombre de fichiers ou de livrables : un artefact unique explicitement planifié peut donc devenir
-   un groupe de sous-étapes séquentielles qui partagent et raffinent la même ressource durable.
+   explicitement par le créateur — le planner produit le squelette du plan en une seule passe.
+   Il privilégie une séquence complète répétée par élément indépendant : chaque fichier à traiter
+   reçoit une Task qui lit, transforme, écrit, vérifie et consigne son résultat. Une tâche cohérente
+   unique reste une feuille, même complexe ou explicitement en PLAN ; ses phases, chapitres,
+   composants et fichiers d'implémentation ne sont pas des unités autonomes. Le forçage PLAN
+   change l'orchestration, jamais le résultat demandé en simple rédaction d'un plan.
    Une feuille déclarée `item_work=mechanical` peut regrouper au plus cinq éléments connus
    pour des opérations triviales et déterministes avec vérification simple du lot, sans découverte.
    Le travail substantiel par élément (`substantial` par défaut), les lots plus grands ou de
@@ -315,7 +317,8 @@ leur fin.
    Voir [0140](../../../../project/decisions/0140-progressive-plan-collections.md).
    Cette politique vient du Param Markdown `ai.planner-system-prompt`, également copié dans les
    datasets Planner du Lab. Le serveur ajoute séparément les limites effectives et le contrat du
-   cycle de clarification ; ces garde-fous ne sont pas du texte expérimental.
+   cycle de clarification et le contrat d'unité de travail, prioritaire sur une consigne de
+   découpage contradictoire ; ces garde-fous ne sont pas du texte expérimental.
    Chaque mécanisme texte lit son niveau partagé dans l’unique profil effectif de l’agent :
    `ultra-low` pour Dream, `low` pour le dispatcher et la conversation rapide, `standard` pour
    l’exécuteur et le suivi des Goals, `high` pour l’exécuteur high, le planner et le Lab.
@@ -563,7 +566,10 @@ satisfait pas le contrat.
 
 Chaque feuille matérialisée porte en outre `artifact_policy` (`none`, `intermediate`, `final`) et
 `delivery_policy` (`forbidden`, `required`), normalisées par le serveur depuis les outils exacts du
-plan. Une feuille intermédiaire ne reçoit aucun outil de livraison, même si le runtime souhaite
+plan. Ces politiques sont absentes du schéma d'entrée envoyé au modèle, mais restent sérialisées
+dans les plans persistés et les réponses API. Une valeur explicitement fournie reste validée ;
+masquer le champ ne relâche pas les contraintes sur les effets.
+Une feuille intermédiaire ne reçoit aucun outil de livraison, même si le runtime souhaite
 spontanément publier son fichier. Seule une feuille qui déclare explicitement un outil d'envoi ou
 de partage peut produire l'artefact final et son reçu. L'envoi Messenger copie le fichier vers le
 provider de destination sans supprimer sa source.

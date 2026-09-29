@@ -1218,8 +1218,9 @@ async def proxy_responses(
                 raise RuntimeError("the Responses stream ended before its terminal event")
             stream_completed = True
             if stream_trace.error is not None:
-                status = "error"
-                error = stream_trace.error
+                # An SDK may accept an incomplete function call from response.failed.
+                # Propagate the terminal failure so it cannot publish a successful result.
+                raise RuntimeError(stream_trace.error)
         except asyncio.CancelledError:
             if stream_trace.terminal:
                 status = "error" if stream_trace.error else "completed"

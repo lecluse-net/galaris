@@ -115,19 +115,28 @@ async def complete(task, *, success=True, result="Verified item", cost=0.1):
 
 
 @pytest.mark.asyncio
-async def test_small_mechanical_batch_executes_without_inventory_or_replanning(db, agents, monkeypatch) -> None:
+@pytest.mark.parametrize("objective,count,work,effort", [
+    ("<p>Rename the three listed documents.</p>", 3, "mechanical", "standard"),
+    ("<p>Build one interactive geometry tutorial: research the construction, implement "
+     "the explanation and controls, then test and refine the complete experience.</p>",
+     1, "substantial", "high"),
+])
+async def test_single_work_unit_executes_without_inventory_or_replanning(
+    db, agents, monkeypatch, objective, count, work, effort,
+) -> None:
     worker, _ = agents
     monkeypatch.setattr(planner_service, "go_next", MagicMock())
     monkeypatch.setattr(task_service.websocket, "emit", AsyncMock())
     monkeypatch.setattr(planner_service, "require_agent_profile_model", AsyncMock(return_value=object()))
     monkeypatch.setattr(planner_service, "run_structured", AsyncMock(
-        return_value=SimpleNamespace(output="Names verified", cost=0.0)))
-    root = Task(label="Apply supplied names", objective="<p>Rename the three listed documents.</p>",
-                agent_id=worker.id, status=TaskStatus.PLAN, cost=0.0)
+        return_value=SimpleNamespace(output="Work verified", cost=0.0)))
+    root = Task(label="Complete assigned work", objective=objective,
+                agent_id=worker.id, status=TaskStatus.PLAN, forced_route="PLAN", cost=0.0)
     db.add(root)
     await db.commit()
     plan = Plan(steps=[PlanStep(
-        label="Rename documents", objective=root.objective, item_count=3, item_work="mechanical",
+        label="Complete assigned work", objective=root.objective,
+        item_count=count, item_work=work, effort=effort,
     )])
     build = AsyncMock(return_value=(plan, 0.0, ""))
     monkeypatch.setattr(planner_service, "_build_plan", build)
@@ -136,7 +145,9 @@ async def test_small_mechanical_batch_executes_without_inventory_or_replanning(d
     assert leaf.status == TaskStatus.DISPATCH and not leaf.paused
     assert not leaf.plan
     assert not await task_service.get_children(leaf.id)
-    await complete(leaf, result="All supplied names applied and verified")
+    assert objective in leaf.objective
+    assert leaf.effort == effort
+    await complete(leaf, result="Assigned work completed and verified")
     await planner_service.advance(root)
     assert root.status == TaskStatus.SUCCESS
     assert [child.id for child in await task_service.get_children(root.id)] == [leaf.id]
@@ -297,6 +308,12 @@ def test_large_collection_waves_are_finite_and_empty_inventory_finishes(monkeypa
     assert max(sizes) == wave_size
     assert sum(sizes) == 123
     assert len({step["collection_key"] for step in task.plan["steps"][1:]}) == 123
+    # Keep the complete treatment and exact input in each generated item task.
+    for step, item in zip(task.plan["steps"][1:], task.plan["inventory"]["items"], strict=True):
+        assert task.plan["collection"]["item_objective"] in step["objective"]
+        assert item["inputs"]["source_uri"] in step["objective"]
+        assert step["item_count"] == 1
+        assert step["steps"] == [] and step["collection"] is None
     task.plan = {**task.plan, "inventory": inventory(uuid4(), 0), "steps": [{"label": "Discovery"}]}
     assert not planner_collection.append_item_wave(task)
 

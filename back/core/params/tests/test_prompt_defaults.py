@@ -31,7 +31,6 @@ def test_prompt_defaults_keep_their_english_contracts() -> None:
     assert resolution is not None
     assert "Classify only the explicitly marked current message" in resolution
     assert planner is not None
-    assert "One artifact or one target file does NOT imply one leaf" in planner
     assert objective is not None
     assert "fully understandable and executable without access" in objective
     assert "automatically returns the terminal result" in objective

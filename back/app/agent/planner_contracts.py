@@ -3,8 +3,8 @@
 from __future__ import annotations
 
 import json
-from typing import Any, Literal, Optional
-from pydantic import BaseModel, Field, field_validator, model_validator
+from typing import Annotated, Any, Literal, Optional
+from pydantic import BaseModel, Field, WithJsonSchema, field_validator, model_validator
 from core.params import runtime_settings
 
 MAX_MECHANICAL_BATCH_ITEMS = 5
@@ -129,14 +129,19 @@ class PlanStep(BaseModel):
             "do not invent identifiers."
         ),
     )
-    artifact_policy: Literal["none", "intermediate", "final"] = Field(
+    # Model-facing input omits server-owned policies; stored/API output keeps them.
+    artifact_policy: Annotated[
+        Literal["none", "intermediate", "final"], WithJsonSchema(None, mode="validation")
+    ] = Field(
         default="none",
         description=(
             "Server-enforced artifact lifecycle. File-producing steps without delivery "
             "are intermediate; steps that deliver a file are final."
         ),
     )
-    delivery_policy: Literal["forbidden", "required"] = Field(
+    delivery_policy: Annotated[
+        Literal["forbidden", "required"], WithJsonSchema(None, mode="validation")
+    ] = Field(
         default="forbidden",
         description=(
             "Server-enforced delivery permission. Required only when an exact delivery "
@@ -146,17 +151,18 @@ class PlanStep(BaseModel):
     steps: list["PlanStep"] = Field(
         default_factory=lambda: [],
         description=(
-            "Ordered substeps when the work contains substantial independently verifiable "
-            "components or benefits from durable implementation, refinement, and validation "
-            "passes. A single artifact or target file may still require substeps. Leave empty "
-            "only when the step is atomic and can be completed and verified as one coherent unit."
+            "Ordered complete tasks for independent items or autonomous requested outcomes. "
+            "Prefer a collection when the same workflow repeats across items. Keep each "
+            "item's reading, transformation, verification and recording together. Leave empty "
+            "for one coherent task, however complex; never split its phases or components."
         ),
     )
     item_count: int | None = Field(
         default=1,
         ge=1,
         description=(
-            "Number of independently verifiable items covered by this step; null if unknown. "
+            "Number of independently processable items covered by this step; null if unknown. "
+            "Count one for a coherent task, not its phases, chapters or implementation files. "
             "Substantial per-item work or large/unknown batches require substeps or collection. "
             f"A mechanical batch of at most {MAX_MECHANICAL_BATCH_ITEMS} known items may stay one leaf."
         ),

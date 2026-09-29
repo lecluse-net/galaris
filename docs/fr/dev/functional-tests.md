@@ -9,6 +9,21 @@ par élément de collection, vagues bornées, inventaire Dataset vérifié avec 
 incomplètes ou ambiguës, progression et reprise après rechargement sans rejouer les succès.
 Le parcours PostgreSQL conserve l'inventaire figé même si le Dataset est modifié ensuite.
 
+Le corpus synthétique `back/app/lab/planner_boundaries_corpus.json` contient 24 cas de
+granularité : collections ordonnées, reprise partielle, volumes inconnus, petits lots,
+tâches uniques complexes, PLAN forcé, plan écrit explicitement demandé et clarification.
+Il s'importe avec `scripts/import_lab_reference.py --corpus planner-boundaries --install`.
+`test_reference_corpus.py` vérifie l'import authentifié, la persistance et les contrats.
+Les références sont des exemples sémantiques ; les critères `acceptance_by_case` permettent
+de distinguer plans vides, tâches uniques fragmentées et collections manquées. La qualité
+requiert des appels réels et une revue des plans, pas seulement ces tests sans modèle.
+`back/app/lab/tests/test_evaluation.py` interdit un verdict favorable pour une sortie
+sans brief ou étapes, ou mélangeant plan et clarification. Les fixtures de succès des
+tests de génération et de revue utilisent donc un vrai plan exécutable.
+`back/tests/test_protocol_inference.py` reproduit une réponse fournisseur `response.failed`
+contenant un appel d'outil vide : l'inférence et sa trace restent en échec, en flux comme
+en réponse JSON, au lieu de transformer cet appel en plan accepté.
+
 Ce catalogue part des usages et des responsabilités des modules. Les suites citées sont les
 points d’entrée vérifiables ; une ligne ne signifie ni couverture exhaustive ni qualification
 d’un service externe. Les résultats exécutés et les remplacements sont consignés dans

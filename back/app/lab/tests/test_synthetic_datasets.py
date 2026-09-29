@@ -33,7 +33,9 @@ def generated_content(mechanism):
         variable = {"selected_task": {"objective": "Summarize the observatory schedule", "status": "SUCCESS"}}
     output = deepcopy(get_mechanism(mechanism).default_output)
     if mechanism == "planner":
-        output = {"brief": {"objective": "Check the supplied schedule before summarizing it."}, "steps": []}
+        output = {"brief": {"objective": "Check the supplied schedule before summarizing it."}, "steps": [
+            {"label": "Check and summarize schedule", "objective": "Check the supplied schedule and summarize its opening times."},
+        ]}
     if mechanism == "topic_classification":
         output = {"topics": ["Observatory schedule"]}
     if mechanism.endswith("_executor"):

@@ -99,6 +99,17 @@ _PLAN_SKIPPED_DATA_KEY = "plan_skipped"
 PLANNER_CLARIFICATION_INTERACTION = "planner_clarification"
 
 _COLLECTION_PLANNING_CONTRACT = f"""
+Mandatory work-unit contract; this takes precedence over conflicting decomposition guidance:
+Prefer ONE complete treatment per independent item when the same workflow repeats over a
+collection. X independently processed files require X item tasks, each owning its full
+read/transform/write/verify/record sequence. Keep a unique coherent task in ONE leaf even
+when it is complex or PLAN was explicitly selected. Never split its research, chapters,
+implementation, refinement, validation or delivery into separate tasks. Multiple source
+files or saved drafts of one result are not independent work items. Non-repetitive outcomes
+may be separated only when they can each be completed, verified and resumed independently.
+Selecting PLAN changes orchestration, not the requested outcome; it does not turn an action
+request into a request to write a plan. Write a plan only when that is the requested deliverable.
+
 Classify the independent items of every step in item_count (null if unknown). Sequential
 execution constrains order, not granularity. Prefer the simplest meaningful work unit.
 A small batch of at most {MAX_MECHANICAL_BATCH_ITEMS} known items may stay ONE leaf with
