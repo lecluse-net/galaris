@@ -40,6 +40,7 @@ d'implémentation ni nouvel ordre de priorité produit.
 | [cible.md](cible.md) | `design` | Livraison publique, gouvernance des effets, releases d'agents, autonomie, interopérabilité et exploitation. |
 | [infrastructure-plugins-galaris.md](infrastructure-plugins-galaris.md) | `design` | Bundles, activation, frontend précompilé, permissions, conservation des données, compatibilité et rollback. |
 | [consolidation-parametrique-lora.md](consolidation-parametrique-lora.md) | `design` | Entraînement et service de modèles à qualifier ; dépend des campagnes, de l'étalonnage et des gardes du Lab. |
+| [indexation-file-share-memory.md](indexation-file-share-memory.md) | `design` | Catalogue fichiers/répertoires par agent et binding, notes privées, observations immédiates, enrichissements versionnés, discovery/réconciliation Dream, purge prouvée et recherche Memory commune ; matrice des capacités provider et qualification à réaliser. |
 
 La piste optionnelle de visualisation 3D de la mémoire reste dans la
 [cible prospective](cible.md#piste-optionnelle--visualisation-3d-de-la-mémoire).
