@@ -735,6 +735,10 @@ Users can request pause, resume, retry, stop or status. Deterministic `@task`, `
 commands persist the Task before invoking the controller and confirm only after creation; native
 controls provide equivalent metadata. Other requests use automatic admission.
 
+A similar request must not systematically retry a failed Task. Instructions call for inspecting
+the error and prior effects: an explicit retry request or a corrected cause can justify retrying;
+otherwise prefer a new Task carrying the failure context and useful corrections.
+
 ### Freshness, failures and delivery
 
 Rounds are serialised and check freshness before effects. New messages interrupt obsolete

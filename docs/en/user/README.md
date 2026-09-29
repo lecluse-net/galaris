@@ -191,6 +191,12 @@ elsewhere or before the visible messages, even in an empty conversation. Queued 
 automatic waits remain visible; completed or manually paused work from elsewhere is not
 added. The list updates live, and clicking a Task opens its details, subject to your read permissions.
 
+Requesting work again does not systematically retry an older failed Task. The Agent must inspect
+the error and partial results: it can retry the same Task when you explicitly request it or the
+failure's cause has been corrected. If the approach or instructions must change, it prefers a new
+Task taking the failure and your corrections into account, through a channel that allows Tasks.
+Manual retry also remains available from the Task detail view.
+
 A native conversation never opens a Task, even if the message explicitly requests it. It can, however, launch a configured Process. To delegate durable work to a Task, use the Tasks page or another channel whose admission policy allows it.
 
 If your organization connects Nextcloud Talk, Matrix, OneBot, Telegram, or WhatsApp Business, send your request to the Agent’s account in the designated room. Configured platforms can operate simultaneously, and the response returns through the original connection and conversation. Avoid resending a slow request multiple times: instead, open the created Task or Process, or ask for its status.

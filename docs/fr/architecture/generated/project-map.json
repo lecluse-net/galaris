@@ -6371,7 +6371,7 @@
       {
         "file": "back/app/conversation/mcp.py",
         "handler": "conversation_choice_resolve",
-        "line": 849,
+        "line": 852,
         "module": "app.conversation",
         "name": "conversation_choice_resolve",
         "namespace": "conversation"
@@ -6379,7 +6379,7 @@
       {
         "file": "back/app/conversation/mcp.py",
         "handler": "conversation_process_start",
-        "line": 977,
+        "line": 989,
         "module": "app.conversation",
         "name": "conversation_process_start",
         "namespace": "conversation"
@@ -6387,7 +6387,7 @@
       {
         "file": "back/app/conversation/mcp.py",
         "handler": "conversation_task_list",
-        "line": 789,
+        "line": 792,
         "module": "app.conversation",
         "name": "conversation_task_list",
         "namespace": "conversation"
@@ -6395,7 +6395,7 @@
       {
         "file": "back/app/conversation/mcp.py",
         "handler": "conversation_task_pause",
-        "line": 928,
+        "line": 931,
         "module": "app.conversation",
         "name": "conversation_task_pause",
         "namespace": "conversation"
@@ -6403,7 +6403,7 @@
       {
         "file": "back/app/conversation/mcp.py",
         "handler": "conversation_task_resume",
-        "line": 939,
+        "line": 942,
         "module": "app.conversation",
         "name": "conversation_task_resume",
         "namespace": "conversation"
@@ -6411,7 +6411,7 @@
       {
         "file": "back/app/conversation/mcp.py",
         "handler": "conversation_task_retry",
-        "line": 950,
+        "line": 962,
         "module": "app.conversation",
         "name": "conversation_task_retry",
         "namespace": "conversation"
@@ -6419,7 +6419,7 @@
       {
         "file": "back/app/conversation/mcp.py",
         "handler": "conversation_task_status",
-        "line": 829,
+        "line": 832,
         "module": "app.conversation",
         "name": "conversation_task_status",
         "namespace": "conversation"
@@ -6427,7 +6427,7 @@
       {
         "file": "back/app/conversation/mcp.py",
         "handler": "conversation_task_stop",
-        "line": 961,
+        "line": 973,
         "module": "app.conversation",
         "name": "conversation_task_stop",
         "namespace": "conversation"
@@ -6435,7 +6435,7 @@
       {
         "file": "back/app/conversation/mcp.py",
         "handler": "conversation_task_submit",
-        "line": 545,
+        "line": 548,
         "module": "app.conversation",
         "name": "conversation_task_submit",
         "namespace": "conversation"

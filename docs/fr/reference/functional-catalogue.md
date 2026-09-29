@@ -950,6 +950,11 @@ La conversation permet aussi de demander l’état réel d’une tâche, de la m
 réessayer ou arrêter, et d’interpréter une réponse humaine à une interaction en attente. Un
 changement de sujet ou de livrable peut devenir un travail distinct.
 
+Une demande similaire ne doit pas relancer systématiquement une tâche échouée. Les consignes
+demandent d'examiner l'erreur et les effets précédents : une relance explicite ou une cause
+corrigée peut justifier le retry ; sinon, privilégier une nouvelle tâche avec le contexte de
+l'échec et les corrections utiles.
+
 Les directives déterministes du chat permettent de demander les modes pris en charge : Task,
 exécution directe, planification, standard, high, effort et approbation. Le catalogue servi à la
 conversation indique les modes accessibles.

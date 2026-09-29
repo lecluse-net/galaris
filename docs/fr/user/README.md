@@ -251,6 +251,12 @@ Les tâches en file et les attentes automatiques restent visibles ; les tâches 
 terminées ou mises en pause manuellement ne sont pas ajoutées. La liste se met à jour en direct
 et un clic ouvre le détail de la tâche, selon vos droits de consultation.
 
+Redemander un travail ne relance pas systématiquement une ancienne tâche échouée. L’agent doit
+examiner l’erreur et les résultats partiels : il peut relancer la même tâche si vous le demandez
+explicitement ou si la cause de l’échec a été corrigée. Si l’approche ou les instructions doivent
+changer, il privilégie une nouvelle tâche tenant compte de l’échec et de vos corrections, sur un
+canal autorisant les Tasks. La relance manuelle reste aussi disponible depuis la fiche tâche.
+
 Une conversation native n'ouvre jamais de Task, même si le message le demande explicitement. Elle
 peut toutefois lancer un Processus configuré. Pour confier un travail durable à une Task, utilisez
 la page Tasks ou un autre canal dont la politique d'admission l'autorise.

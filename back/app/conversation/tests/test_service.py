@@ -182,7 +182,7 @@ async def test_amendment_after_concurrent_update_keeps_one_task(db, monkeypatch,
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("blocker", ["missing", "incomplete", "terminal", "plan", "remote_checkpoint", "starting"])
+@pytest.mark.parametrize("blocker", ["missing", "incomplete", "terminal", "failed", "plan", "remote_checkpoint", "starting"])
 async def test_failed_amendment_preserves_target_and_explicit_new_work_is_idempotent(db, monkeypatch, blocker):
     from app.conversation import mcp
     from app.tools import McpToolContext
@@ -193,20 +193,27 @@ async def test_failed_amendment_preserves_target_and_explicit_new_work_is_idempo
         label="Rapport existant", objective=f"<p>Ajouter un graphique au rapport {document}.</p>",
         agent_id=agent.id, messenger_connection_id=connection.id,
         message_group_id=str(room.id),
-        status=TaskStatus.SUCCESS if blocker == "terminal" else TaskStatus.PLAN,
+        status=(TaskStatus.SUCCESS if blocker == "terminal" else
+                TaskStatus.ERROR if blocker == "failed" else TaskStatus.PLAN),
+        last_error="Source unavailable" if blocker == "failed" else None,
+        execution_result={"prompt": "", "result": "Source unavailable", "success": False}
+        if blocker == "failed" else None,
         plan={"steps": [{"label": "Analyse"}]} if blocker == "plan" else None,
         lease_token=uuid4() if blocker in {"remote_checkpoint", "starting"} else None,
         data={"_agent_run_checkpoint": {"driver_code": "hermes", "runtime_run_id": "synthetic-run",
             "status": "running", "data": {}}} if blocker == "remote_checkpoint" else None,
     )
     db.add(original)
-    message = await _message(db, connection, room, 1, "Ajoute une synthèse au rapport.")
+    request = (f"Refais le graphique de {document} avec une source disponible."
+               if blocker == "failed" else f"Ajouter un glossaire à {document}.")
+    message = await _message(db, connection, room, 1, request)
     await admit_message(message, agent_id=agent.id, connection_id=connection.id)
     round_ = await claim_next_round("amendment-worker")
     turn = await build_turn(round_.id, lease_token=round_.lease_token)
     await db.commit()
     original_state = (original.revision, original.status, original.objective, original.plan, original.lease_token, original.data)
-    generate = AsyncMock(return_value=("Glossaire", f"<p>Ajouter un glossaire à {document}, en préservant son contenu.</p>", 0.0))
+    original_failure = (original.last_error, original.execution_result, original.attempt_count)
+    generate = AsyncMock(return_value=("Rapport", f"<p>{request} Préserver le contenu existant.</p>", 0.0))
     cancel = MagicMock()
     monkeypatch.setattr("app.task.scheduler.cancel", cancel)
     monkeypatch.setattr(mcp, "generate_task_fields", generate)
@@ -224,7 +231,8 @@ async def test_failed_amendment_preserves_target_and_explicit_new_work_is_idempo
     assert result["created"] is False and result["amended"] is False
     assert result["conflict"] == {
         "missing": "amendment_target_unavailable", "incomplete": "incomplete_amendment_target",
-        "terminal": "amendment_no_longer_safe", "plan": "amendment_no_longer_safe",
+        "terminal": "amendment_no_longer_safe", "failed": "amendment_no_longer_safe",
+        "plan": "amendment_no_longer_safe",
         "remote_checkpoint": "amendment_no_longer_safe", "starting": "amendment_no_longer_safe",
     }[blocker]
     generate.assert_not_awaited()
@@ -235,10 +243,10 @@ async def test_failed_amendment_preserves_target_and_explicit_new_work_is_idempo
     assert len(list(await db.scalars(select(Task).where(Task.agent_id == agent.id)))) == 1
 
     created = await mcp.conversation_task_submit(
-        ctx, objective=f"Ajouter un glossaire à {document}.", disposition="CREATE_NEW",
+        ctx, objective=request, disposition="CREATE_NEW",
     )
     repeated = await mcp.conversation_task_submit(
-        ctx, objective=f"Ajouter un glossaire à {document}.", disposition="CREATE_NEW",
+        ctx, objective=request, disposition="CREATE_NEW",
     )
     assert created["created"] is True and repeated["created"] is False
     assert created["resource_uri"] == repeated["resource_uri"]
@@ -247,6 +255,7 @@ async def test_failed_amendment_preserves_target_and_explicit_new_work_is_idempo
     await db.refresh(original)
     assert (original.revision, original.status, original.objective, original.plan, original.lease_token, original.data) == original_state
     cancel.assert_not_called()
+    assert (original.last_error, original.execution_result, original.attempt_count) == original_failure
     successor = await db.scalar(select(Task).where(Task.agent_id == agent.id, Task.id != original.id))
     assert successor.status == TaskStatus.CREATE and successor.lease_token is None
     assert document in successor.objective
@@ -2467,6 +2476,47 @@ async def test_terminal_task_success_skips_only_an_already_delivered_result(
     else:
         assert claimed == link.id
         assert link.notification_state == "SENDING"
+
+
+@pytest.mark.asyncio
+async def test_conversation_can_deliberately_retry_a_failed_task(db, monkeypatch):
+    from app.conversation import ConversationTurn
+    from app.conversation.mcp import conversation_task_retry
+    from app.tools import McpToolContext
+
+    agent, connection, room = await _scope(db)
+    task = Task(
+        label="Report", objective="<p>Prepare the report.</p>",
+        status=TaskStatus.ERROR, agent_id=agent.id,
+        messenger_connection_id=connection.id, message_group_id=room.external_id,
+        last_error="Source temporarily unavailable", attempt_count=1,
+        execution_result={"prompt": "", "result": "Source unavailable", "success": False},
+        data={"receipt": "existing-effect"},
+    )
+    db.add(task)
+    await db.commit()
+    wake = MagicMock()
+    monkeypatch.setattr("app.task.runner.go_next", wake)
+    ctx = McpToolContext(
+        agent_id=agent.id, runtime="internal",
+        resources={"conversation_turn": ConversationTurn(
+            room_id=room.id, round_id=uuid4(), agent_id=agent.id, language="fr",
+            objective="La source est réparée, relance cette tâche.", messages=(),
+            messaging_context={"connection_id": connection.id, "room_id": room.external_id},
+        )},
+    )
+
+    result = await conversation_task_retry(ctx, task_id=f"galaris://task/{task.id}")
+
+    await db.refresh(task)
+    assert result["resource_uri"] == f"galaris://task/{task.id}"
+    assert task.status == TaskStatus.DISPATCH
+    assert task.objective == "<p>Prepare the report.</p>"
+    assert task.data == {"receipt": "existing-effect"}
+    assert task.attempt_count == 1
+    assert task.last_error is None and task.execution_result is None
+    assert len(list(await db.scalars(select(Task).where(Task.agent_id == agent.id)))) == 1
+    wake.assert_called_once_with(task.id, fast=True)
 
 
 @pytest.mark.asyncio

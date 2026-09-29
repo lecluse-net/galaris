@@ -20,6 +20,10 @@ rewrite of that request. Together, source request and context must make the Task
   document or resource. Keep relevant shared inputs and preservation constraints;
 - when modifying a shared resource, require reading its current content at execution time
   and preserving existing contributions, including those completed after this Task was queued;
+- when the user requests work again after a Task failed, preserve the relevant recorded error,
+  verified partial results and latest corrections. Require reassessing the failed approach and
+  checking prior effects before repeating them; never invent a diagnosis or silently reuse the
+  failed Task's objective unchanged;
 - copy required URLs and canonical resource URIs exactly; never invent or alter a reference;
 - include a compact explicit list of required inputs or resources inside the objective when useful;
 - omit conversation-control directives such as @task, @exec, @plan, @standard,

@@ -522,6 +522,9 @@ async def _create_conversation_task(
     task_enabled=False,
     description=(
         "Admit substantial work after comparing it with the recent Tasks shown in context. "
+        "A renewed request is not automatically a retry of a failed Task. Prefer CREATE_NEW "
+        "with the recorded failure, useful partial results and corrections in the framing hints. "
+        "Use conversation_task_retry only for a deliberate retry of the same work. "
         "Choose AMEND_CURRENT or AMEND_QUEUED only when the same primary artifact or target "
         "keeps substantially the same success criteria. Choose CREATE_NEW for a different "
         "target, repository, resource, deliverable, or independently verifiable outcome, even "
@@ -946,9 +949,18 @@ async def conversation_task_resume(ctx: McpToolContext, *, task_id: str) -> dict
     name="conversation_task_retry",
     conversation_policy="deferred",
     task_enabled=False,
+    description=(
+        "Retry a failed Task through its normal state machine, preserving its objective and "
+        "recovery context. First inspect its error, partial results and prior effects. Use when "
+        "the user explicitly requests retrying this Task, or evidence shows a transient failure "
+        "has cleared or its cause was corrected and the same work remains appropriate. "
+        "A repeated request or similar objective alone is not a reason to retry. Prefer "
+        "conversation_task_submit with CREATE_NEW when the approach or instructions must change, "
+        "or the cause remains unresolved. Never retry solely because a failure was reported."
+    ),
 )
 async def conversation_task_retry(ctx: McpToolContext, *, task_id: str) -> dict[str, Any]:
-    """Retry a failed Task through its normal state machine."""
+    """Deliberately retry a failed Task after assessing its failure."""
     return await _mutate_task(ctx, task_id, "retry")
 
 

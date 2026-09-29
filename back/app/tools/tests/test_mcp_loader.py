@@ -538,6 +538,9 @@ async def test_conversation_projection_intersects_checkbox_and_function_policy(
             "agent_list",
             "agent_get",
             "conversation_task_status",
+            "conversation_task_submit",
+            "conversation_task_resume",
+            "conversation_task_retry",
             "file_search",
             "process_start",
             "task_run",
@@ -549,6 +552,9 @@ async def test_conversation_projection_intersects_checkbox_and_function_policy(
         "agent_list",
         "agent_get",
         "conversation_task_status",
+        "conversation_task_submit",
+        "conversation_task_resume",
+        "conversation_task_retry",
         "file_search",
     }
 

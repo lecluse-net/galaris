@@ -524,6 +524,13 @@ The following functions belong to the mandatory `conversation` Tool and are proj
 the bounded `app.conversation` controller. They are absent from ordinary Task execution because
 the standard Task and Process tools already own that workflow.
 
+Do not systematically reuse a failed Task for a renewed request. Inspect its error, partial
+results and prior effects. Retry the same Task when the user explicitly requests it, or when
+evidence shows a transient failure has cleared or its cause was corrected and the original
+objective remains appropriate. Otherwise prefer `CREATE_NEW`, carrying the failure and useful
+corrections into the new objective. Reassess the approach and verify prior effects before
+repeating them. A failure notification alone does not request another attempt.
+
 - `conversation_task_submit(objective: str, label: str = "", mode: str = "auto") -> dict`
   commits a self-contained background Task and returns immediately. It never chooses execution
   effort: the Task dispatcher owns that decision. Explicit chat directives such as `@high` use
@@ -535,7 +542,8 @@ the standard Task and Process tools already own that workflow.
 - `conversation_task_pause(task_id: str) -> dict` pauses an unfinished Task tree.
 - `conversation_task_resume(task_id: str) -> dict` resumes a user-paused Task and wakes its
   scheduler.
-- `conversation_task_retry(task_id: str) -> dict` retries a failed Task through its state machine.
+- `conversation_task_retry(task_id: str) -> dict` deliberately retries a failed Task through its
+  state machine after assessing the failure; it keeps the original objective and recovery context.
 - `conversation_task_stop(task_id: str) -> dict` cancels an unfinished Task through its normal
   transition.
 - `conversation_choice_resolve(reference: str, option_id: str) -> dict` resolves one pending

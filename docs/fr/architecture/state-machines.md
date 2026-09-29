@@ -158,6 +158,12 @@ transition, modification de révision, de résultat ou de cause de fin. Une Task
 conserve la commande `CANCEL` existante ; ce comportement ne change pas le contrat HTTP
 de révision attendue ni ne prouve l'arrêt physique d'un worker encore en cours de nettoyage.
 
+`conversation_task_retry` conserve la commande de retry existante. La politique de décision
+demande d'examiner l'échec avant de choisir : relance explicite de la même tâche ou cause corrigée,
+sinon préférence pour `CREATE_NEW` avec le diagnostic et les corrections utiles. Une demande
+similaire ne suffit pas à justifier une relance. Cette règle guide le modèle ; elle ne modifie
+pas les transitions de la machine d'états ni le retry manuel HTTP.
+
 Autorité : `back/app/task/models.py` et `back/app/task/workflow.py`.
 
 ## Conversations textuelles

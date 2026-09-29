@@ -155,6 +155,12 @@ transition or changes to its revision, result, or termination cause. An active T
 the existing `CANCEL` command. This does not change the HTTP expected-revision contract
 or prove that a worker still performing cleanup has physically stopped.
 
+`conversation_task_retry` retains the existing retry command. The decision policy calls for
+assessing the failure first: an explicit retry of the same Task or a corrected cause can justify
+retrying; otherwise prefer `CREATE_NEW` with the known failure and useful corrections. A similar
+request alone does not justify retrying. This rule guides the model; it does not change state
+machine transitions or manual HTTP retry.
+
 Authority: `back/app/task/models.py` and `back/app/task/workflow.py`.
 
 ## Text Conversations
