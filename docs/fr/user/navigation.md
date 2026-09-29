@@ -51,6 +51,13 @@ pas autant de menus supplémentaires.
 | Modèles disponibles | Gérer les modèles exposés à Galaris | `/llm?tab=models` |
 | Modèles utilisés | Choisir les modèles employés par les usages et profils | `/llm?tab=usage` |
 
+La configuration d’un fournisseur s’enregistre automatiquement après un test de connexion
+réussi, à chaque modification lorsqu’il est actif et que les champs requis sont remplis,
+ainsi que lors de sa désactivation, même si des champs sont incomplets. Les modifications
+d’un fournisseur déjà inactif restent en brouillon jusqu’à un test réussi ou un enregistrement
+manuel. En cas d’erreur d’enregistrement, la saisie est conservée ; utilisez **Enregistrer**
+pour réessayer.
+
 Dans **Fournisseurs → Ressources disponibles**, la liste **Type de ressources** conserve
 les icônes et filtre le catalogue du fournisseur. **Documents / PDF** présente les modèles
 de chat déclarant les fichiers en entrée et le texte en sortie. Ajoutez un modèle, puis

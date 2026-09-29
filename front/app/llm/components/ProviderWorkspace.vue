@@ -20,6 +20,8 @@
           :users="store.providerUsers"
           :active-user-count="store.activeUserCount"
           @save="saveProvider"
+          @auto-save="saveProvider($event, true)"
+          @change="configurationChanged"
           @test="testProvider"
           @connect-oauth="connectOauth"
           @disconnect-oauth="disconnectOauth"
@@ -158,6 +160,9 @@ let selectionGeneration = 0
 let modelGeneration = 0
 let oauthPollInFlight = false
 let oauthExpiresAt = 0
+let draftRevision = 0
+type PendingSave = { item: ProviderCatalogItem; draft: ProviderConfigurationDraft; automatic: boolean }
+const pendingSaves = new Map<string, PendingSave>()
 
 const selectedItem = computed<ProviderCatalogItem | null>(() =>
   store.catalogItems.find(item => item.key === selectedKey.value) || null,
@@ -251,11 +256,35 @@ function changeCapability(capability: ProviderResourceCategory): void {
   void loadModels(false)
 }
 
-async function saveProvider(draft: ProviderConfigurationDraft): Promise<void> {
+function configurationChanged(): void {
+  ++draftRevision
+  testResult.value = null
+  if (selectedKey.value && pendingSaves.get(selectedKey.value)?.draft.is_active) {
+    pendingSaves.delete(selectedKey.value)
+  }
+}
+
+async function saveProvider(draft: ProviderConfigurationDraft, automatic = false): Promise<void> {
   if (!canEdit.value) return
   const item = selectedItem.value
   if (!item) return
+  pendingSaves.set(item.key, { item, draft, automatic })
+  if (saving.value) return
   saving.value = true
+  try {
+    while (pendingSaves.size) {
+      const entry = pendingSaves.entries().next().value
+      if (!entry) break
+      pendingSaves.delete(entry[0])
+      if (canEdit.value) await persistProvider(entry[1])
+    }
+  } finally {
+    saving.value = false
+  }
+}
+
+async function persistProvider({ item, draft, automatic }: PendingSave): Promise<void> {
+  const generation = selectionGeneration
   try {
     let provider: LLMProvider
     if (item.is_custom && item.connection) {
@@ -280,14 +309,14 @@ async function saveProvider(draft: ProviderConfigurationDraft): Promise<void> {
     } else {
       return
     }
-    chooseSelection()
-    await loadSelection(store.catalogItems.find(entry => entry.key === selectedKey.value) || null)
-    $q.notify({ type: 'positive', message: t('llm.notify.providerUpdated') })
-    if (provider.is_active && canLoadModels(selectedItem.value)) await loadModels(true)
+    if (selectedKey.value === item.key) selectedDetail.value = { ...provider, api_key: null }
+    if (!automatic) $q.notify({ type: 'positive', message: t('llm.notify.providerUpdated') })
+    if (generation === selectionGeneration && selectedKey.value === item.key
+      && !pendingSaves.has(item.key) && provider.is_active && canLoadModels(selectedItem.value)) {
+      await loadModels(true)
+    }
   } catch (error) {
     $q.notify({ type: 'negative', message: errorMessage(error) || t('llm.notify.saveError') })
-  } finally {
-    saving.value = false
   }
 }
 
@@ -295,10 +324,12 @@ async function testProvider(draft: ProviderConfigurationDraft): Promise<void> {
   if (!canEdit.value) return
   const item = selectedItem.value
   if (!item || item.auth_type === 'oauth_device') return
+  const generation = selectionGeneration
+  const revision = draftRevision
   testing.value = true
   testResult.value = null
   try {
-    testResult.value = await store.testConnection({
+    const result = await store.testConnection({
       provider_id: item.connection?.id,
       base_url: draft.base_url,
       api_key: draft.api_key,
@@ -306,11 +337,14 @@ async function testProvider(draft: ProviderConfigurationDraft): Promise<void> {
       catalog_code: item.code,
       configuration: draft.configuration,
     })
-    if (testResult.value.success) {
+    if (generation !== selectionGeneration || revision !== draftRevision) return
+    testResult.value = result
+    if (result.success) {
       $q.notify({
         type: 'positive',
-        message: t('llm.notify.connectionSuccess', { count: testResult.value.models_count }),
+        message: t('llm.notify.connectionSuccess', { count: result.models_count }),
       })
+      await saveProvider(draft, true)
     }
   } catch (error) {
     $q.notify({ type: 'negative', message: errorMessage(error) || t('llm.notify.testConnectionError') })
@@ -508,7 +542,7 @@ function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error || '')
 }
 
-watch(selectedItem, item => { void loadSelection(item) })
+watch(selectedKey, () => { void loadSelection(selectedItem.value) })
 
 onMounted(async () => {
   initialLoading.value = true
@@ -522,7 +556,11 @@ onMounted(async () => {
   }
 })
 
-onUnmounted(stopOauthPolling)
+onUnmounted(() => {
+  ++selectionGeneration
+  ++modelGeneration
+  stopOauthPolling()
+})
 </script>
 
 <style scoped>

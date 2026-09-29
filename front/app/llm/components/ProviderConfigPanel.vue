@@ -242,7 +242,7 @@
           :label="t('llm.testConnection')"
           :loading="testing"
           no-caps
-          @click="emit('test', { ...draft })"
+          @click="emit('test', snapshot())"
         />
         <q-btn
           v-if="canEdit"
@@ -295,6 +295,8 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   save: [draft: ProviderConfigurationDraft]
+  'auto-save': [draft: ProviderConfigurationDraft]
+  change: []
   test: [draft: ProviderConfigurationDraft]
   'connect-oauth': [draft: ProviderConfigurationDraft]
   'disconnect-oauth': []
@@ -308,7 +310,9 @@ const { t } = useI18n()
 const providerForm = useTemplateRef<QForm>('providerForm')
 const showApiKey = ref(false)
 const loadedItemKey = ref<string | null>(null)
-const loadedAcknowledgement = ref(false)
+const editableFields = ['name', 'provider_type', 'base_url', 'is_active', 'user_id', 'subscription_acknowledged'] as const
+const editedFields = new Set<keyof ProviderConfigurationDraft>()
+const editedConfiguration = new Set<string>()
 const draft = reactive<ProviderConfigurationDraft>({
   name: '',
   provider_type: 'openai_compatible',
@@ -320,6 +324,7 @@ const draft = reactive<ProviderConfigurationDraft>({
   subscription_acknowledged: false,
 })
 const configurationValues = reactive<Record<string, string>>({})
+let resettingDraft = false
 
 const oauthConnected = computed(() => Boolean(props.item?.connection?.oauth_connected))
 const isChatGptSubscription = computed(() => props.item?.code === 'openai-codex')
@@ -367,43 +372,85 @@ function selectSubscriptionOwner(userId: number | null): void {
 function resetDraft(): void {
   const item = props.item
   if (!item) return
+  resettingDraft = true
   const connection = props.detail || item.connection
-  const nextUserId = connection?.user_id ?? null
-  const nextAcknowledgement = connection?.subscription_acknowledged ?? false
-  const preserveAcknowledgement = (
-    loadedItemKey.value === item.key
-    && draft.user_id === nextUserId
-    && draft.subscription_acknowledged !== loadedAcknowledgement.value
-  )
-  draft.name = connection?.name || item.display_name
-  draft.provider_type = item.provider_type
-  draft.base_url = item.is_custom
-    ? (connection?.base_url || item.default_base_url)
-    : item.default_base_url
-  for (const key of Object.keys(configurationValues)) delete configurationValues[key]
+  const sameItem = loadedItemKey.value === item.key
+  if (!sameItem) {
+    editedFields.clear()
+    editedConfiguration.clear()
+  }
+  const nextConfiguration: Record<string, string> = {}
   for (const field of item.configuration_fields) {
     const value = connection?.configuration?.[field.key]
-    configurationValues[field.key] = value === null || value === undefined ? '' : String(value)
+    nextConfiguration[field.key] = value === null || value === undefined ? '' : String(value)
   }
-  draft.configuration = configurationValues
-  // Stored credentials never leave the backend. A blank field preserves the
-  // existing encrypted value; only a newly entered token replaces it.
-  draft.api_key = null
-  draft.is_active = connection?.is_active ?? false
-  draft.user_id = nextUserId
-  draft.subscription_acknowledged = preserveAcknowledgement
-    ? draft.subscription_acknowledged
-    : nextAcknowledgement
-  loadedAcknowledgement.value = nextAcknowledgement
+  const next: ProviderConfigurationDraft = {
+    name: connection?.name || item.display_name,
+    provider_type: item.provider_type,
+    base_url: item.is_custom ? (connection?.base_url || item.default_base_url) : item.default_base_url,
+    api_key: null,
+    configuration: nextConfiguration,
+    is_active: connection?.is_active ?? false,
+    user_id: connection?.user_id ?? null,
+    subscription_acknowledged: connection?.subscription_acknowledged ?? false,
+  }
+  // Refresh unchanged fields, but never overwrite edits made while a request was pending.
+  const preserved: Partial<ProviderConfigurationDraft> = {}
+  if (sameItem) {
+    for (const field of editableFields) {
+      if (editedFields.has(field)) Object.assign(preserved, { [field]: draft[field] })
+    }
+    preserved.api_key = draft.api_key
+  }
+  const previousConfiguration = { ...configurationValues }
+  for (const key of Object.keys(configurationValues)) delete configurationValues[key]
+  for (const [key, value] of Object.entries(nextConfiguration)) {
+    configurationValues[key] = editedConfiguration.has(key)
+      ? previousConfiguration[key] ?? '' : value
+  }
+  Object.assign(draft, next, preserved, { configuration: configurationValues })
   loadedItemKey.value = item.key
-  showApiKey.value = false
+  if (!sameItem) showApiKey.value = false
+  resettingDraft = false
 }
+
+function snapshot(): ProviderConfigurationDraft {
+  return { ...draft, api_key: draft.api_key?.trim() || null, configuration: { ...configurationValues } }
+}
+
+function readyToSave(): boolean {
+  const item = props.item
+  if (!item || !subscriptionReady.value) return false
+  if (item.is_custom && (!draft.name.trim() || !draft.base_url.trim())) return false
+  if (apiKeyRule(draft.api_key) !== true) return false
+  return item.configuration_fields.every(field => !field.required || configurationValues[field.key]?.trim())
+}
+
+watch(
+  () => JSON.stringify(snapshot()),
+  (value, previous) => {
+    if (resettingDraft) return
+    const current = JSON.parse(value) as ProviderConfigurationDraft
+    const before = JSON.parse(previous) as ProviderConfigurationDraft
+    for (const field of editableFields) {
+      if (current[field] !== before[field]) editedFields.add(field)
+    }
+    for (const key of Object.keys(current.configuration)) {
+      if (current.configuration[key] !== before.configuration[key]) editedConfiguration.add(key)
+    }
+    emit('change')
+    if (!canEdit.value) return
+    if ((draft.is_active && readyToSave()) || (before.is_active && !draft.is_active)) {
+      emit('auto-save', snapshot())
+    }
+  },
+  { flush: 'sync' },
+)
 
 async function submit(): Promise<void> {
   if (!canEdit.value || !subscriptionReady.value) return
-  const valid = await providerForm.value?.validate()
-  if (valid === false) return
-  emit('save', { ...draft, configuration: { ...configurationValues } })
+  if (await providerForm.value?.validate() === false) return
+  emit('save', snapshot())
 }
 
 async function connectOauth(): Promise<void> {

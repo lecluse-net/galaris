@@ -48,6 +48,12 @@ They are not additional sidebar menus. Use the generated map for labels in each 
 | Available models | Manage models exposed to Galaris | `/llm?tab=models` |
 | Models in use | Choose models for usages and profiles | `/llm?tab=usage` |
 
+Provider configuration is saved automatically after a successful connection test, on each
+change while the provider is active and required fields are complete, and when disabling
+the provider, even with incomplete fields. Changes to an already inactive provider remain
+a draft until a successful test or a manual save. If saving fails, your input is preserved;
+use **Save** to retry.
+
 Under **Providers → Available resources**, the **Resource type** dropdown keeps the icons
 and filters the provider catalog. **Documents / PDF** lists chat models declaring file
 input and text output. Add a model, then assign it to **Document analysis model** under
