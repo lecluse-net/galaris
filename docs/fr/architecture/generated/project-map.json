@@ -1034,6 +1034,13 @@
       },
       {
         "files": [
+          "back/app/dream/attachment_processing.py"
+        ],
+        "source": "app.dream",
+        "target": "core.document"
+      },
+      {
+        "files": [
           "back/app/dream/attachment_processing.py",
           "back/app/dream/language.py",
           "back/app/dream/mechanisms/sequential_topic_classification.py",
@@ -1196,6 +1203,13 @@
         ],
         "source": "app.file_share",
         "target": "core.authorize"
+      },
+      {
+        "files": [
+          "back/app/file_share/document_facade.py"
+        ],
+        "source": "app.file_share",
+        "target": "core.document"
       },
       {
         "files": [
@@ -1959,6 +1973,13 @@
       },
       {
         "files": [
+          "back/app/llm/document_input.py"
+        ],
+        "source": "app.llm",
+        "target": "core.document"
+      },
+      {
+        "files": [
           "back/app/llm/llm_call_service.py"
         ],
         "source": "app.llm",
@@ -2014,6 +2035,8 @@
       },
       {
         "files": [
+          "back/app/llm/document_input.py",
+          "back/app/llm/document_responses.py",
           "back/app/llm/embedding_service.py",
           "back/app/llm/generation_capacity.py",
           "back/app/llm/handlers/openai_compatible.py",
@@ -2472,6 +2495,13 @@
       },
       {
         "files": [
+          "back/app/messenger/ingest.py"
+        ],
+        "source": "app.messenger",
+        "target": "core.document"
+      },
+      {
+        "files": [
           "back/app/messenger/ingest.py",
           "back/app/messenger/interactions.py",
           "back/app/messenger/mcp.py",
@@ -2691,6 +2721,8 @@
       },
       {
         "files": [
+          "back/app/process/document_engine.py",
+          "back/app/process/mcp.py",
           "back/app/process/process_service.py",
           "back/app/process/router.py"
         ],
@@ -2701,6 +2733,7 @@
         "files": [
           "back/app/process/__init__.py",
           "back/app/process/agent_capabilities.py",
+          "back/app/process/document_engine.py",
           "back/app/process/process_service.py"
         ],
         "source": "app.process",
@@ -2743,6 +2776,13 @@
         ],
         "source": "app.process",
         "target": "core.database"
+      },
+      {
+        "files": [
+          "back/app/process/document_engine.py"
+        ],
+        "source": "app.process",
+        "target": "core.document"
       },
       {
         "files": [
@@ -6917,6 +6957,30 @@
         "namespace": "galaris"
       },
       {
+        "file": "back/app/process/mcp.py",
+        "handler": "document_analysis_cancel",
+        "line": 61,
+        "module": "app.process",
+        "name": "document_analysis_cancel",
+        "namespace": "galaris"
+      },
+      {
+        "file": "back/app/process/mcp.py",
+        "handler": "document_analysis_get",
+        "line": 48,
+        "module": "app.process",
+        "name": "document_analysis_get",
+        "namespace": "galaris"
+      },
+      {
+        "file": "back/app/process/mcp.py",
+        "handler": "document_analyze",
+        "line": 28,
+        "module": "app.process",
+        "name": "document_analyze",
+        "namespace": "galaris"
+      },
+      {
         "file": "back/app/goal/mcp.py",
         "handler": "mcp_goal_ask_referrer",
         "line": 130,
@@ -6943,7 +7007,7 @@
       {
         "file": "back/app/process/mcp.py",
         "handler": "process_analyze_run",
-        "line": 156,
+        "line": 204,
         "module": "app.process",
         "name": "process_analyze_run",
         "namespace": "galaris"
@@ -6951,7 +7015,7 @@
       {
         "file": "back/app/process/mcp.py",
         "handler": "process_get",
-        "line": 60,
+        "line": 108,
         "module": "app.process",
         "name": "process_get",
         "namespace": "galaris"
@@ -6959,7 +7023,7 @@
       {
         "file": "back/app/process/mcp.py",
         "handler": "process_get_run",
-        "line": 141,
+        "line": 189,
         "module": "app.process",
         "name": "process_get_run",
         "namespace": "galaris"
@@ -6967,7 +7031,7 @@
       {
         "file": "back/app/process/mcp.py",
         "handler": "process_list",
-        "line": 51,
+        "line": 99,
         "module": "app.process",
         "name": "process_list",
         "namespace": "galaris"
@@ -6975,7 +7039,7 @@
       {
         "file": "back/app/process/mcp.py",
         "handler": "process_list_runs",
-        "line": 121,
+        "line": 169,
         "module": "app.process",
         "name": "process_list_runs",
         "namespace": "galaris"
@@ -6983,7 +7047,7 @@
       {
         "file": "back/app/process/mcp.py",
         "handler": "process_start",
-        "line": 86,
+        "line": 134,
         "module": "app.process",
         "name": "process_start",
         "namespace": "galaris"
@@ -7775,7 +7839,7 @@
       {
         "file": "back/app/process/mcp.py",
         "handler": "process_admin_analyze_run",
-        "line": 469,
+        "line": 517,
         "module": "app.process",
         "name": "process_admin_analyze_run",
         "namespace": "process_admin"
@@ -7783,7 +7847,7 @@
       {
         "file": "back/app/process/mcp.py",
         "handler": "process_admin_cancel_run",
-        "line": 441,
+        "line": 489,
         "module": "app.process",
         "name": "process_admin_cancel_run",
         "namespace": "process_admin"
@@ -7791,7 +7855,7 @@
       {
         "file": "back/app/process/mcp.py",
         "handler": "process_admin_create",
-        "line": 245,
+        "line": 293,
         "module": "app.process",
         "name": "process_admin_create",
         "namespace": "process_admin"
@@ -7799,7 +7863,7 @@
       {
         "file": "back/app/process/mcp.py",
         "handler": "process_admin_delete",
-        "line": 322,
+        "line": 370,
         "module": "app.process",
         "name": "process_admin_delete",
         "namespace": "process_admin"
@@ -7807,7 +7871,7 @@
       {
         "file": "back/app/process/mcp.py",
         "handler": "process_admin_delete_run",
-        "line": 483,
+        "line": 531,
         "module": "app.process",
         "name": "process_admin_delete_run",
         "namespace": "process_admin"
@@ -7815,7 +7879,7 @@
       {
         "file": "back/app/process/mcp.py",
         "handler": "process_admin_engines",
-        "line": 168,
+        "line": 216,
         "module": "app.process",
         "name": "process_admin_engines",
         "namespace": "process_admin"
@@ -7823,7 +7887,7 @@
       {
         "file": "back/app/process/mcp.py",
         "handler": "process_admin_get",
-        "line": 226,
+        "line": 274,
         "module": "app.process",
         "name": "process_admin_get",
         "namespace": "process_admin"
@@ -7831,7 +7895,7 @@
       {
         "file": "back/app/process/mcp.py",
         "handler": "process_admin_get_run",
-        "line": 407,
+        "line": 455,
         "module": "app.process",
         "name": "process_admin_get_run",
         "namespace": "process_admin"
@@ -7839,7 +7903,7 @@
       {
         "file": "back/app/process/mcp.py",
         "handler": "process_admin_list",
-        "line": 203,
+        "line": 251,
         "module": "app.process",
         "name": "process_admin_list",
         "namespace": "process_admin"
@@ -7847,7 +7911,7 @@
       {
         "file": "back/app/process/mcp.py",
         "handler": "process_admin_list_runs",
-        "line": 378,
+        "line": 426,
         "module": "app.process",
         "name": "process_admin_list_runs",
         "namespace": "process_admin"
@@ -7855,7 +7919,7 @@
       {
         "file": "back/app/process/mcp.py",
         "handler": "process_admin_refresh_run",
-        "line": 427,
+        "line": 475,
         "module": "app.process",
         "name": "process_admin_refresh_run",
         "namespace": "process_admin"
@@ -7863,7 +7927,7 @@
       {
         "file": "back/app/process/mcp.py",
         "handler": "process_admin_retry_run",
-        "line": 455,
+        "line": 503,
         "module": "app.process",
         "name": "process_admin_retry_run",
         "namespace": "process_admin"
@@ -7871,7 +7935,7 @@
       {
         "file": "back/app/process/mcp.py",
         "handler": "process_admin_start",
-        "line": 343,
+        "line": 391,
         "module": "app.process",
         "name": "process_admin_start",
         "namespace": "process_admin"
@@ -7879,7 +7943,7 @@
       {
         "file": "back/app/process/mcp.py",
         "handler": "process_admin_sync",
-        "line": 187,
+        "line": 235,
         "module": "app.process",
         "name": "process_admin_sync",
         "namespace": "process_admin"
@@ -7887,7 +7951,7 @@
       {
         "file": "back/app/process/mcp.py",
         "handler": "process_admin_update",
-        "line": 275,
+        "line": 323,
         "module": "app.process",
         "name": "process_admin_update",
         "namespace": "process_admin"

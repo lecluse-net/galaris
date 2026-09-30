@@ -2,11 +2,9 @@
 
 from __future__ import annotations
 
-import asyncio
 import base64
 import json
 from pathlib import Path
-import sys
 from tempfile import TemporaryDirectory
 from typing import Any, Literal, cast
 
@@ -31,25 +29,20 @@ _INSTRUCTION = (
 
 
 async def extract_attachment_text(path: Path, source: AttachmentAnalysisSource) -> str | None:
-    process = await asyncio.create_subprocess_exec(
-        sys.executable, str(Path(__file__).with_name("attachment_extract.py")),
-        str(path), source.name, source.media_type,
-        stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.DEVNULL,
-    )
-    try:
-        async with asyncio.timeout(45):
-            output, _ = await process.communicate()
-    finally:
-        if process.returncode is None:
-            process.kill()
-            await process.wait()
-    if process.returncode != 0:
-        raise ValueError("Document conversion failed or exceeded its resource limits")
-    result = cast(dict[str, Any], json.loads(output))
-    if "error" in result:
-        raise ValueError(str(result["error"]))
-    text = result.get("text")
-    return str(text) if text is not None else None
+    from core.document import prepare_document
+    from .attachment_extract import OFFICE_SUFFIXES, TEXT_TYPES
+
+    suffix = Path(source.name).suffix.lower()
+    supported = (source.media_type.startswith("text/") or source.media_type in TEXT_TYPES
+                 or source.media_type == "application/pdf" or suffix in OFFICE_SUFFIXES
+                 or suffix in {".pdf", ".doc", ".rtf", ".odg", ".ppt", ".xls", ".md", ".html", ".epub"})
+    if not supported:
+        return None
+    with TemporaryDirectory(prefix="dream-document-") as temporary:
+        document = await prepare_document(path, source.name, source.media_type, Path(temporary))
+        if not any(page.text.strip() for page in document.pages) and not document.structured_text:
+            return None
+        return document.text()
 
 
 async def summarize_text(text: str, source: AttachmentAnalysisSource) -> str:

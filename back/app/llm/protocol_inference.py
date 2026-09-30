@@ -349,20 +349,32 @@ async def _request(
     llm, effort = await execution.transaction(resolve)
     from .message_cleanup import clean_request_messages
 
-    messages = (clean_request_messages(body.get("messages")) if protocol == "chat"
-                else proxy_service.responses_request_messages(body))
-    prompt, system_prompt = extract_prompts(messages)
-    request = ProtocolInferenceRequest(
-        llm_id=llm.id, task_id=task_id, agent_id=agent_id, agent_run_id=agent_run_id,
-        conversation_round_id=conversation_round_id, process_run_id=process_run_id,
-        prompt=prompt, system_prompt=system_prompt, purpose=purpose or "",
-        reasoning_effort=effort, body=body, protocol=protocol,
-        sdk_request=sdk_request, managed_runtime_request=managed_runtime_request,
-        force_reasoning_effort=force_reasoning_effort, unwrap_deferred_tools=unwrap_deferred_tools,
-        request_timeout=request_timeout,
-        correlation_ref=str(body.get("model")) if profile_model else None,
-    )
-    return await protocol_response(request)
+    async def send(payload: dict[str, Any]) -> JSONResponse | StreamingResponse:
+        messages = (clean_request_messages(payload.get("messages")) if protocol == "chat"
+                    else proxy_service.responses_request_messages(payload))
+        prompt, system_prompt = extract_prompts(messages)
+        request = ProtocolInferenceRequest(
+            llm_id=llm.id, task_id=task_id, agent_id=agent_id, agent_run_id=agent_run_id,
+            conversation_round_id=conversation_round_id, process_run_id=process_run_id,
+            prompt=prompt, system_prompt=system_prompt, purpose=purpose or "",
+            reasoning_effort=effort, body=payload, protocol=protocol,
+            sdk_request=sdk_request, managed_runtime_request=managed_runtime_request,
+            force_reasoning_effort=force_reasoning_effort, unwrap_deferred_tools=unwrap_deferred_tools,
+            request_timeout=request_timeout,
+            correlation_ref=str(payload.get("model")) if profile_model else None,
+        )
+        return await protocol_response(request)
+
+    from .document_input import has_documents, route_documents
+
+    if protocol == "chat" and has_documents(body):
+        return await route_documents(body, llm, send)
+    if protocol == "responses":
+        from .document_responses import has_response_documents, route_response_documents
+
+        if has_response_documents(body):
+            return await route_response_documents(body, llm, send)
+    return await send(body)
 
 
 async def proxy_chat_completion(body: dict[str, Any], **options: Any) -> JSONResponse | StreamingResponse:

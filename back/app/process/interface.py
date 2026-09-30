@@ -28,6 +28,7 @@ async def engine_checkpoint(
     run_id: UUID, engine_code: str, values: dict[str, Any] | None = None,
     *, claim: str | None = None, immutable_values: dict[str, Any] | None = None,
     preserve_if: dict[str, Any] | None = None,
+    expected_values: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     run = (await get_db().execute(select(ProcessRun).where(
         ProcessRun.id == run_id, ProcessRun.engine_code == engine_code,
@@ -35,6 +36,10 @@ async def engine_checkpoint(
     preserved = bool(preserve_if) and any(
         run.engine_metadata.get(key) == value for key, value in (preserve_if or {}).items()
     )
+    if expected_values is not None and any(
+        run.engine_metadata.get(key) != value for key, value in expected_values.items()
+    ):
+        preserved = True
     # Identity validation still applies when a duplicate observation is ignored.
     if immutable_values and run.status not in process_service.TERMINAL_STATUSES:
         for key, value in immutable_values.items():

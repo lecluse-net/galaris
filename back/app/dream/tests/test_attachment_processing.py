@@ -85,14 +85,19 @@ async def test_empty_video_transcript_keeps_item_unfilled(tmp_path, monkeypatch)
 @pytest.mark.asyncio
 async def test_cancelled_conversion_kills_and_reaps_worker(tmp_path, monkeypatch):
     import asyncio
+    from core.document import service
     process = SimpleNamespace(returncode=None, communicate=AsyncMock(side_effect=asyncio.CancelledError),
                               kill=lambda: None, wait=AsyncMock())
     from unittest.mock import Mock
     process.kill = Mock()
-    monkeypatch.setattr(processing.asyncio, "create_subprocess_exec", AsyncMock(return_value=process))
+    process.pid = 123456
+    import os
+    reap = Mock()
+    monkeypatch.setattr(os, "killpg", reap)
+    monkeypatch.setattr(service.asyncio, "create_subprocess_exec", AsyncMock(return_value=process))
     with pytest.raises(asyncio.CancelledError):
         await processing.extract_attachment_text(tmp_path / "document", source())
-    process.kill.assert_called_once()
+    reap.assert_called_once()
     process.wait.assert_awaited_once()
 
 

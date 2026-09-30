@@ -74,6 +74,7 @@ default: dict[str, object] = {
         ),
     },
     "messenger_ingest": {
+        "text_truncated": "[Texte extrait tronqué par la limite du contexte ; une analyse documentaire est nécessaire pour une couverture complète.]",
         "bytes": "${count} octets",
         "unnamed": "sans nom",
         "unreadable_error": "[Pièce jointe illisible : ${description} — ${error}]",

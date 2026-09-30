@@ -1,5 +1,9 @@
 # Décisions d’architecture
 
+- [0151 — Analyse documentaire reprenable et couverture explicite](0151-resumable-document-analysis.md)
+
+- [0149 — Préparation documentaire commune et transitoire](0149-transient-document-preparation.md)
+
 - [0148 — Délégation AgentAdmin et publication différée des avatars](0148-agent-admin-delegation.md)
 
 - [0147 — Cohérence des fichiers Nextcloud](0147-nextcloud-file-consistency.md)

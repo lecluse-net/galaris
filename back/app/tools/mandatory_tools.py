@@ -149,6 +149,7 @@ INTEGRATED_TOOL_SPECS: tuple[IntegratedToolSpec, ...] = (
             "goal_run_now", "goal_ask_referrer",
             "process_list", "process_get", "process_start", "process_list_runs",
             "process_get_run", "process_analyze_run",
+            "document_analyze", "document_analysis_get", "document_analysis_cancel",
             "tools_list",
         ),
         default_active=True,

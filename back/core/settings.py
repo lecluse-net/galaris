@@ -27,6 +27,7 @@ class Settings(BaseSettings):
     GALARIS_MEMORY_ROOT: ClassVar[str] = "/data/memory"
     GALARIS_INTERNAL_MESSENGER_ROOT: ClassVar[str] = "/data/chat"
     GALARIS_THUMBNAIL_ROOT: ClassVar[str] = "/data/thumbnails"
+    GALARIS_DOCUMENT_ROOT: ClassVar[str] = "/data/document-analysis"
 
     # Isolated browser executor infrastructure. Operation preferences are sent
     # with each authenticated request by app.browser.

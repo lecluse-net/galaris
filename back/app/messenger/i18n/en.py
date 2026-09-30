@@ -74,6 +74,7 @@ default: dict[str, object] = {
         ),
     },
     "messenger_ingest": {
+        "text_truncated": "[Extracted content truncated by inline budget; document analysis is required for complete coverage.]",
         "bytes": "${count} bytes",
         "unnamed": "unnamed",
         "unreadable_error": "[Unreadable attachment: ${description} — ${error}]",

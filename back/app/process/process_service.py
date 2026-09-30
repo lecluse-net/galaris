@@ -923,6 +923,16 @@ async def _run_read(run: ProcessRun, *, fresh: bool = True) -> ProcessRunRead:
     # SQLAlchemy populates ``updated_at`` through ``onupdate`` and may expire it
     # after commit. Reloading explicitly prevents synchronous lazy loading in Pydantic.
     await get_db().refresh(run)
+    if run.engine_code == "galaris" and "uri" in run.input:
+        from app.file_share import ResourceContext, resource_info, prepared_resource
+
+        context = ResourceContext(agent_id=run.launcher_agent_id,
+            runtime=str(run.input.get("runtime", "internal")), task_id=run.task_id)
+        await resource_info(context, str(run.input["uri"]))
+        if run.engine_metadata.get("source_sha256"):
+            async with prepared_resource(context, str(run.input["uri"])) as (document, _):
+                if document.sha256 != run.engine_metadata["source_sha256"]:
+                    raise ValueError("Document analysis belongs to an obsolete source version")
     process = await get_db().get(ProcessDefinition, run.process_id)
     if process is None:
         process = (

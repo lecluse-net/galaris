@@ -9,13 +9,14 @@ from typing import AsyncGenerator
 from fastapi import FastAPI
 from core.api import create_app, setup_public_docs, setup_api_routers
 from core import websocket
-from modules import configure_agent_admin, configure_dream_media, load_llm_provider_modules
+from modules import configure_agent_admin, configure_document_analysis, configure_dream_media, load_llm_provider_modules
 
 
 # Provider bridges register immutable profiles and optional service adapters.
 # Loading them is a composition concern; application domains never import bridge code.
 load_llm_provider_modules()
 configure_agent_admin()
+configure_document_analysis()
 
 # Cross-cutting execution domains emit through a core port; the composition root
 # binds its PostgreSQL implementation without creating reverse domain imports.

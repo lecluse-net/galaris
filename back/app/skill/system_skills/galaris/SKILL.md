@@ -31,6 +31,23 @@ generation and analysis return durable operations. Real-source capture additiona
 the execution-inspection functions of `galaris_admin`. These tools operate canonical Lab
 records and do not promote experimental settings to production.
 
+## Document attachments and large reports
+
+Use `document_analyze(uri="<exact canonical source URI>", question="...",
+model_slot="document", max_calls=256)` when an attachment exceeds inline budgets,
+contains unread visual evidence, or needs complete page traversal. It returns a personal
+Process run. Follow with `document_analysis_get(run_id="...")` for coverage and the answer;
+`document_analysis_cancel` requests cancellation. The current Task retains its source URI.
+Never copy a file merely to make this reader accept it.
+
+The profile document model is preferred; `model_slot="text"` selects its standard text
+model. A configured vision model may prepare visual observations for a text-only model;
+coverage identifies that provenance. Completed batches survive interruption without a
+new billable admission. Interrupted inference is reported explicitly and is not silently
+replayed. Source permissions and versions are checked again when results are read.
+Coverage means supplied source units, not guaranteed semantic accuracy. Report missing
+visual evidence, OCR uncertainty, conversion limits and partial results honestly.
+
 ## Official product knowledge
 
 When authorized, `documentation_catalog` and `documentation_search` under Galaris Admin provide

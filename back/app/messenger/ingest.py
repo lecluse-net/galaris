@@ -9,9 +9,7 @@ failing the whole agent run.
 from __future__ import annotations
 
 import base64
-import asyncio
-import io
-import sys
+from tempfile import TemporaryDirectory
 from pathlib import Path
 from collections import OrderedDict
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, Union
@@ -37,8 +35,6 @@ _MAX_TEXT_CHARS = 20_000
 # Bounded transient LRU caches for raw bytes and extracted text.
 _CACHE_MAXLEN = 64
 _CACHE_MAX_BYTES = 32 * 1024 * 1024
-_PDF_MAX_BYTES = 16 * 1024 * 1024
-_pdf_slots = asyncio.Semaphore(2)
 _bytes_cache: "OrderedDict[str, bytes]" = OrderedDict()
 _text_cache: "OrderedDict[str, str]" = OrderedDict()
 
@@ -120,7 +116,8 @@ async def extract_text(
         logger.exception("Messenger file extraction failed for {}", description)
         text = _message(lang, "unreadable_error", description=description, error=exc)
 
-    text = text[:_MAX_TEXT_CHARS]
+    if len(text) > _MAX_TEXT_CHARS:
+        text = text[:_MAX_TEXT_CHARS] + "\n" + _message(lang, "text_truncated")
     _cache_put(_text_cache, key, text)  # type: ignore[arg-type]
     return text
 
@@ -136,6 +133,16 @@ async def _extract(messenger: MessengerFacade, att: File, language: str) -> str:
 
     if mime == "application/pdf" or att.name.lower().endswith(".pdf"):
         return await _extract_pdf(messenger, att, language)
+    if att.name.lower().endswith(
+            (".doc", ".docx", ".odt", ".odg", ".ppt", ".pptx", ".odp", ".xls", ".xlsx", ".ods")):
+        from core.document import prepare_document
+
+        with TemporaryDirectory(prefix="messenger-document-") as temporary:
+            directory = Path(temporary)
+            path = directory / "input"
+            path.write_bytes(await fetch_bytes(messenger, att))
+            document = await prepare_document(path, att.name, mime, directory)
+            return document.text()
 
     if att.kind == "audio":
         transcript = await _transcribe(messenger, att)
@@ -274,35 +281,14 @@ async def transcribe_audio_for_conversation(
 
 
 async def _extract_pdf(messenger: MessengerFacade, att: File, language: str) -> str:
-    if att.size_bytes and att.size_bytes > _PDF_MAX_BYTES:
-        return _message(
-            language,
-            "pdf_unavailable",
-            description=describe(att, language),
-        )
+    from core.document import prepare_document
 
-    data = await fetch_bytes(messenger, att)
-    if len(data) > _PDF_MAX_BYTES:
-        return _message(language, "pdf_unavailable", description=describe(att, language))
-    async with _pdf_slots:
-        process = await asyncio.create_subprocess_exec(
-            sys.executable, str(Path(__file__).with_name("pdf_extract.py")),
-            stdin=asyncio.subprocess.PIPE, stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.DEVNULL,
-        )
-        try:
-            async with asyncio.timeout(15):
-                output, _ = await process.communicate(data)
-        finally:
-            if process.returncode is None:
-                try:
-                    process.kill()
-                except ProcessLookupError:
-                    pass
-                await process.wait()
-        if process.returncode != 0:
-            return _message(language, "pdf_unavailable", description=describe(att, language))
-    text = output.decode("utf-8", errors="replace")[:_MAX_TEXT_CHARS]
+    with TemporaryDirectory(prefix="messenger-pdf-") as temporary:
+        directory = Path(temporary)
+        path = directory / "input"
+        path.write_bytes(await fetch_bytes(messenger, att))
+        document = await prepare_document(path, att.name, "application/pdf", directory)
+        text = document.text() if any(page.text.strip() for page in document.pages) else ""
     return text or _message(
         language,
         "pdf_no_text",
@@ -363,37 +349,20 @@ def _image_part(data: bytes, mime: Optional[str]) -> Dict[str, Any]:
 async def pdf_to_images(
     messenger: MessengerFacade, att: File, max_pages: int = 10, dpi: int = 150
 ) -> List[Tuple[bytes, str]]:
-    """Rasterize PDF pages to PNG for vision models without native file support.
+    """Use common bounded rendering; callers report the limited visual selection."""
 
-    Scanned PDFs become ``image_url`` parts through ``pypdfium2`` and Pillow. Missing libraries
-    or rendering failures return an empty list so callers can fall back to text extraction.
-    """
-    try:
-        import pypdfium2 as pdfium  # type: ignore
-    except Exception:
-        logger.warning(
-            "pypdfium2 is missing; PDF rasterization is unavailable ({})",
-            describe(att, "en"),
-        )
-        return []
+    from core.document import prepare_document
 
-    data = await fetch_bytes(messenger, att)
-    scale = dpi / 72.0
     out: List[Tuple[bytes, str]] = []
-    try:
-        pdf = pdfium.PdfDocument(data)
-        try:
-            for i in range(min(len(pdf), max_pages)):
-                page: Any = pdf[i]
-                pil = page.render(scale=scale).to_pil()
-                buf = io.BytesIO()
-                pil.save(buf, format="PNG")
-                out.append((buf.getvalue(), "image/png"))
-        finally:
-            pdf.close()
-    except Exception:
-        logger.exception("PDF rasterization failed ({})", describe(att, "en"))
-        return []
+    with TemporaryDirectory(prefix="messenger-render-") as temporary:
+        directory = Path(temporary)
+        path = directory / "input"
+        path.write_bytes(await fetch_bytes(messenger, att))
+        document = await prepare_document(path, att.name, "application/pdf", directory)
+        for page in document.pages[:max_pages]:
+            image = document.image_path(page, directory)
+            if image:
+                out.append((image.read_bytes(), "image/png"))
     return out
 
 
@@ -465,6 +434,9 @@ async def as_openai_content(
                 for data, mime in pages:
                     media_parts.append(_image_part(data, mime))
                 handled = bool(pages)
+                doc_blocks.append(f"### {describe(att, lang)}\n{await extract_text(messenger, att, lang)}\n"
+                                  f"[Rendered image selection: at most {len(pages)} pages; visual coverage is partial if more source pages exist. "
+                                  "Use document_analyze with the canonical URI for complete bounded analysis.]")
         except Exception:
             logger.exception(
                 "Native media preparation failed for {}",

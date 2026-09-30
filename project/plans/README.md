@@ -21,6 +21,7 @@ d'implémentation ni nouvel ordre de priorité produit.
 
 | Plan | Statut | Reste à faire |
 |---|---|---|
+| [analyse-documentaire-unifiee.md](analyse-documentaire-unifiee.md) | `partial` | Socle commun, Process reprenable, cache autorisé et fallback Chat/Responses réalisés ; restent la qualification sémantique exhaustive des grands rapports, les formats non qualifiés et le XLS structurel. |
 | [tool-agent-admin.md](tool-agent-admin.md) | `partial` | Les 34 fonctions et le parcours UI synthétique sont implémentés. Recette photographique avec un fournisseur réellement authentifié à terminer ; l’essai réel a été refusé avec HTTP 401, sans enregistrement ni resoumission automatique. |
 | [fiabilisation-conversationnelle.md](fiabilisation-conversationnelle.md) | `partial` | Mesures de latence, dont le dispatcher ; arrêt physique des autres runtimes et effets distants réels (worker Hermès direct qualifié en environnement synthétique), remplacement coordonné Task/Goal/Process ; autres surfaces de capacités et diagnostics ; recherche dans l'environnement cible, livraison d'images, contexte utile ; objets candidats concurrents et langue/effort hors du dispatcher qualifié FR/EN ; frictions du parcours complet. |
 | [llm-calls-durables.md](llm-calls-durables.md) | `partial` | Création différée, commandes avec révision attendue, échéance globale, entrées média, rétention et arbitrages de rejeu incertain justifiés par un consommateur. |

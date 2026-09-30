@@ -9,7 +9,12 @@ from typing import Any
 
 from loguru import logger
 
-from app.llm import rank_texts_by_semantic_similarity
+async def rank_texts_by_semantic_similarity(query: str, texts: list[str]) -> tuple[int, ...] | None:
+    # Agent bootstrap now registers an integrated Process engine. Resolve the LLM
+    # facade at call time so Process can load before that facade is complete.
+    from app.llm import rank_texts_by_semantic_similarity as rank
+
+    return await rank(query, texts)
 
 
 _PROCESS_DISCOVERY_TOOLS = frozenset({"process_list", "process_get"})

@@ -121,6 +121,13 @@ def configure_agent_admin() -> None:
     registry.register(AvatarEngine())
 
 
+def configure_document_analysis() -> None:
+    from app.process.document_engine import DocumentEngine
+    from app.process import registry
+
+    registry.register(DocumentEngine())
+
+
 def load_dbadmin_contributions(registry: object) -> None:
     """Load optional DbAdmin contributions at the composition boundary."""
 

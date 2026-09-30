@@ -33,6 +33,16 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     pulseaudio \
     pulseaudio-utils \
     postgresql-client \
+    libreoffice-writer \
+    libreoffice-calc \
+    libreoffice-impress \
+    libreoffice-draw \
+    pandoc \
+    fonts-liberation \
+    fonts-dejavu-core \
+    tesseract-ocr \
+    tesseract-ocr-eng \
+    tesseract-ocr-fra \
     && rm -rf /var/lib/apt/lists/*
 
 # Compilers stay in build stages, never in the production image.
