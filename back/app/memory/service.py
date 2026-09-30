@@ -590,6 +590,11 @@ async def invalidate_memory_views() -> None:
     await websocket.emit("memory", "invalidate", {}, None)
 
 
+async def notify_item_content_update(item: MemoryItem) -> None:
+    """Refresh this committed resource without invalidating unrelated access snapshots."""
+    await _emit_memory_event("update", item)
+
+
 async def assert_item_access(
     item: MemoryItem,
     agent_id: int | HumanActor | None,

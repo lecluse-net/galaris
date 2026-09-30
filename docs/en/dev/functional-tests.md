@@ -389,11 +389,18 @@ user infrastructure adds neither private imports nor cycles.
   Empty folders can be opened, collapsed and reopened without another request.
   Targeted refreshes preserve unrelated rows during slow responses, folder renames do not reload
   documents, and access invalidation still removes visible snapshots immediately.
+  Reconnection reconciles existing rows without unmounting them, failed refreshes retain usable
+  content, and token renewal preserves expanded folders and filters without browsing again.
   Document icon choices propagate between tree and list, persist on reopening and ignore stale
   reads or previous-session writes; resetting the default and retrying failures remain usable.
   In the tree, a document icon opens the document without an icon picker; folder icons remain editable.
 - `front/browser-tests/memory.spec.mjs` and `document-sharing.spec.mjs`: on-demand pagination,
   mobile opening, creation and saving with a human identity.
+- `back/app/memory/tests/test_goal_folders.py`: background classification notifies only its owner
+  and affected folder, retries without changes stay silent, and folder renames do not reload documents.
+  `test_document_structure.py` verifies that an attachment description notifies only its memory.
+- `e2e/specs/document-refresh.spec.mjs`: remote API edits and real websocket events refresh only
+  the affected folder and visible page while preserving rows in the tree and list.
 
 ### Dialog scrolling
 

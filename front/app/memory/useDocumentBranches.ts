@@ -1,6 +1,7 @@
 import { onBeforeUnmount, ref } from 'vue'
 import { memoryService } from './services/memoryService'
 import type { DocumentLibraryEntry } from './types'
+import { reconcileLibrarySnapshot } from './librarySnapshot'
 
 /** Each open folder loads its complete direct contents, independently of list filters. */
 export function useDocumentBranches(changed: () => void) {
@@ -28,7 +29,8 @@ export function useDocumentBranches(changed: () => void) {
         documents.push(...result.entries)
         more = result.has_more && result.entries.length > 0
       }
-      entries.value[id] = documents; stale.delete(id); changed()
+      entries.value[id] = reconcileLibrarySnapshot(entries.value[id] ?? [], documents, entry => entry.item.id)
+      stale.delete(id); changed()
     } catch { if (valid()) errors.value[id] = true }
     finally { if (valid()) loading.value[id] = false }
   }

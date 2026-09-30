@@ -113,5 +113,5 @@ async def write_attachment_description(
         await db.rollback()
         await storage.delete(resource_id)
         raise
-    await service.invalidate_memory_views()
+    await service.notify_item_content_update(item)
     return item.id

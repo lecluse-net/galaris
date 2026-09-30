@@ -408,6 +408,9 @@ applicative vers l’infrastructure utilisateur n’ajoute ni import privé ni c
   la révocation d'accès interdit leur lecture et leur modification.
   Les notifications de classement ne concernent que leur propriétaire et identifient les dossiers
   touchés ; elles ne déclenchent pas l'invalidation globale réservée aux changements d'accès.
+  `test_goal_folders.py` vérifie aussi les notifications ciblées du worker de classement,
+  l'absence de notification lors d'une reprise sans changement et le renommage sans relire les documents.
+  `test_document_structure.py` vérifie qu'une description de pièce jointe notifie seulement sa mémoire.
 - `front/browser-tests/document-classification.spec.mjs` : déplacement par glisser-déposer,
   retour aux documents non classés par déplacement, création immédiate de dossiers et sous-dossiers suivie du renommage
   direct avec annulation, choix d'émojis
@@ -421,12 +424,16 @@ applicative vers l’infrastructure utilisateur n’ajoute ni import privé ni c
   ouverture, repliage et réouverture des dossiers vides sans nouvelle requête,
   rafraîchissement limité aux dossiers concernés sans retirer les autres lignes pendant une réponse
   lente, renommage sans recharger les documents et effacement immédiat lors d'une révocation d'accès,
+  réconciliation après reconnexion sans démonter les lignes, maintien du contenu en cas d'erreur
+  de rafraîchissement et renouvellement du jeton sans perdre dossiers ouverts ni filtres,
   suppression vide immédiate ou confirmée avec annulation, réponses tardives et reprise après erreur.
   Le choix d'icône se propage entre arbre et liste, persiste à la réouverture et ignore les réponses
   périmées après sauvegarde ou changement de session ; l'icône par défaut et les erreurs restent utilisables.
   Dans l'arbre, l'icône d'un document ouvre le document sans sélecteur d'icône ; celle d'un dossier reste modifiable.
 - `front/browser-tests/memory.spec.mjs` et `document-sharing.spec.mjs` : pagination à la demande,
   ouverture mobile, création et sauvegarde avec l'identité humaine.
+- `e2e/specs/document-refresh.spec.mjs` : modification distante via l'API et les vrais événements
+  websocket, requêtes limitées au dossier concerné et à la page visible, lignes conservées dans l'arbre et la liste.
 
 ### Défilement des modales
 

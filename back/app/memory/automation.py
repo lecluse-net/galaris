@@ -697,10 +697,14 @@ async def _process(job: _ClaimedJob) -> None:
         from .goal_folders import GoalFolderRequest, process_goal_folder_job
 
         async with get_db_session():
-            changed = await process_goal_folder_job(job.id, GoalFolderRequest.model_validate(job.payload))
-        if changed:
-            from .service import invalidate_memory_views
-            await invalidate_memory_views()
+            change = await process_goal_folder_job(job.id, GoalFolderRequest.model_validate(job.payload))
+        if change is not None:
+            from .events import emit_classification
+            await emit_classification(
+                change.user_id, tag_ids=[change.tag_id] if change.document_ids else [],
+                document_ids=change.document_ids, tags_changed=change.tags_changed,
+                list_changed=bool(change.document_ids),
+            )
     elif job.kind == "task_capture":
         await _process_task_capture(job.payload)
     elif job.kind == "resource_cleanup":

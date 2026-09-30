@@ -7,6 +7,7 @@ same per-user lock as manual classification; documents themselves are untouched.
 from __future__ import annotations
 
 import hashlib
+from dataclasses import dataclass
 from datetime import datetime, timezone
 from uuid import UUID, uuid4
 
@@ -30,6 +31,14 @@ from .models import DocumentTag, DocumentTagAssignment, MemoryAutomationJob, Mem
 
 JOB_KIND = "goal_folder_reconcile"
 BATCH_SIZE = 50
+
+
+@dataclass(frozen=True)
+class GoalFolderChange:
+    user_id: int
+    tag_id: UUID
+    document_ids: tuple[UUID, ...]
+    tags_changed: bool
 
 
 class GoalFolderRequest(BaseModel):
@@ -127,26 +136,28 @@ async def _folder(user: UserModel, goal: Goal | None) -> DocumentTag:
     return folder
 
 
-async def _file_pair(request: GoalFolderRequest) -> tuple[UUID | None, bool]:
+async def _file_pair(request: GoalFolderRequest) -> tuple[UUID | None, GoalFolderChange | None]:
     assert request.user_id is not None and request.goal_id is not None
     db = get_db()
     await lock_tree(request.user_id)
     user = await db.get(UserModel, request.user_id)
     goal = await db.get(Goal, request.goal_id)
     if user is None or not user.is_active or goal is None:
-        return None, False
+        return None, None
     base = (*await _visible_documents(user), _documents_of(goal))
     # Do not expose a renamed Goal to a user who can no longer read any document.
     if await db.scalar(select(MemoryItem.id).where(*base).limit(1)) is None:
-        return None, False
+        return None, None
     existing = await db.scalar(select(DocumentTag).where(
         DocumentTag.user_id == user.id, DocumentTag.goal_id == goal.id,
     ))
     changed = False
+    folder = existing
     if existing is not None:
         before = existing.name
         await _folder(user, goal)
         changed = existing.name != before
+    tags_changed = existing is None or changed
     assigned = exists(select(DocumentTagAssignment.id).join(DocumentTag).where(
         DocumentTagAssignment.document_id == MemoryItem.id, DocumentTag.user_id == user.id,
     ))
@@ -171,14 +182,18 @@ async def _file_pair(request: GoalFolderRequest) -> tuple[UUID | None, bool]:
             item = await db.get(MemoryItem, identity)
             if item is not None:
                 await sync_document_structure(item)
-    return (batch[-1] if len(documents) > BATCH_SIZE else None), changed
+    change = None
+    if changed:
+        assert folder is not None
+        change = GoalFolderChange(user.id, folder.id, tuple(batch), tags_changed)
+    return (batch[-1] if len(documents) > BATCH_SIZE else None), change
 
 
-async def process_goal_folder_job(job_id: UUID, request: GoalFolderRequest) -> bool:
+async def process_goal_folder_job(job_id: UUID, request: GoalFolderRequest) -> GoalFolderChange | None:
     """Process one bounded page and persist its continuation atomically with writes."""
     db = get_db()
     continuation: GoalFolderRequest | None = None
-    changed = False
+    change: GoalFolderChange | None = None
     if request.user_id is None:
         users = list(await db.scalars(select(UserModel.id).where(
             UserModel.is_active.is_(True), UserModel.id > request.after_user,
@@ -190,7 +205,7 @@ async def process_goal_folder_job(job_id: UUID, request: GoalFolderRequest) -> b
     elif request.goal_id is None:
         user = await db.get(UserModel, request.user_id)
         if user is None or not user.is_active:
-            return False
+            return None
         visible = await _visible_documents(user)
         query = select(Goal.id).where(exists(select(MemoryItem.id).where(
             *visible, _documents_of(Goal),
@@ -203,7 +218,7 @@ async def process_goal_folder_job(job_id: UUID, request: GoalFolderRequest) -> b
         if len(goals) > BATCH_SIZE:
             continuation = request.model_copy(update={"after_goal": goals[BATCH_SIZE - 1]})
     else:
-        cursor, changed = await _file_pair(request)
+        cursor, change = await _file_pair(request)
         if cursor is not None:
             continuation = request.model_copy(update={"after_document": cursor})
     if continuation is not None:
@@ -211,7 +226,7 @@ async def process_goal_folder_job(job_id: UUID, request: GoalFolderRequest) -> b
             kind=JOB_KIND, idempotency_key=f"{JOB_KIND}:continue:{job_id}",
             payload=continuation.model_dump(mode="json"),
         ).on_conflict_do_nothing(index_elements=[MemoryAutomationJob.idempotency_key]))
-    return changed
+    return change
 
 
 async def on_goal_change(goal_id: UUID, action: str) -> None:

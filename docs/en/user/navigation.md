@@ -206,6 +206,10 @@ page and select the tab without assuming a URL parameter. Contacts are at
 `/memory/contacts`; thematic groupings are under **Knowledge → Thematic dossiers** (`/topic`).
 Sharing a link does not grant access to its content.
 
+In **Documents**, ordinary refreshes update affected rows without clearing the tree or list.
+Expanded folders and filters stay in place, including after reconnection. A failed refresh
+can be retried while displayed documents remain available; access revocation removes them immediately.
+
 ## Preferences, monitoring and account
 
 **Administer → Preferences** (`/params`) presents a section grid and submenus for System,

@@ -83,14 +83,15 @@ import { websocket } from '@/core/websocket'
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useQuasar } from 'quasar'
-import { AUTH_TOKEN_CHANGED_EVENT } from '@/core/api'
-import type { DocumentLibraryEntry, DocumentOwnerOption, DocumentTag, DocumentOrderNode, DocumentOrderMove } from '../types'
+import { AUTH_TOKEN_CHANGED_EVENT, sessionGeneration as authSessionGeneration } from '@/core/api'
+import type { DocumentLibraryEntry, DocumentLibraryFilters as LibraryRequest, DocumentOwnerOption, DocumentTag, DocumentOrderNode, DocumentOrderMove } from '../types'
 import { memoryService } from '../services/memoryService'
 import { defaultLibraryFilters, libraryRequestFilters } from '../libraryFilterState'
 import DocumentLibraryFilters from './DocumentLibraryFilters.vue'
 import DocumentTagCreateButton from './DocumentTagCreateButton.vue'
 import DocumentTagRow from './DocumentTagRow.vue'
 import { useDocumentBranches } from '../useDocumentBranches'
+import { reconcileLibrarySnapshot } from '../librarySnapshot'
 import DocumentLibraryEntryRow from './DocumentLibraryEntryRow.vue'
 import DocumentSplitterHandle from './DocumentSplitterHandle.vue'
 defineProps<{ selectedDocumentId: string | null }>()
@@ -125,10 +126,12 @@ let pendingDrop: Omit<DocumentOrderMove, 'node'> | null = null
 let drag: { kind: 'tag' | 'document'; id: string } | null = null
 let documentFromTree = false
 let generation = 0
+let loadedListContext: string | null = null
 let tagGeneration = 0
 let disposed = false
 let ready = false
 let sessionGeneration = 0
+let authSession = authSessionGeneration()
 interface ClassificationChange { tag_ids?: string[]; document_ids?: string[]; tags_changed?: boolean; list_changed?: boolean }
 let pendingChanges: ClassificationChange[] = []
 let refreshTimer: ReturnType<typeof setTimeout> | undefined
@@ -172,9 +175,15 @@ function isDescendant(id: string, ancestor: string): boolean {
 const hasFilters = computed(() => Boolean(!onlyUnclassified.value || query.value || JSON.stringify(filters.value) !== JSON.stringify(defaultLibraryFilters())))
 async function reload(): Promise<void> {
   const current = ++generation
+  const request: LibraryRequest = {
+    ...listFilters.value, include_owners: true,
+    classification: onlyUnclassified.value ? 'unclassified' : 'all',
+    tag_id: null, limit: pageSize.value, offset: (page.value - 1) * pageSize.value,
+  }
+  const context = JSON.stringify(request)
   loading.value = true; loadError.value = false
   try {
-    const result = await memoryService.browseDocumentLibrary({ ...listFilters.value, include_owners: true, classification: onlyUnclassified.value ? 'unclassified' : 'all', tag_id: null, limit: pageSize.value, offset: (page.value - 1) * pageSize.value })
+    const result = await memoryService.browseDocumentLibrary(request)
     if (disposed || current !== generation) return
     total.value = result.total
     owners.value = result.owners ?? []
@@ -182,9 +191,16 @@ async function reload(): Promise<void> {
     if (page.value > Math.max(1, Math.ceil(result.total / pageSize.value))) {
       page.value = Math.max(1, Math.ceil(result.total / pageSize.value)); return
     }
-    entries.value = result.entries
+    entries.value = reconcileLibrarySnapshot(entries.value, result.entries, entry => entry.item.id)
+    loadedListContext = context
     publishEntries()
-  } catch { if (!disposed && current === generation) { loadError.value = true; entries.value = [] } }
+  } catch {
+    if (!disposed && current === generation) {
+      loadError.value = true
+      // A failed background refresh keeps usable rows; a new filter must not show unrelated results.
+      if (loadedListContext !== context) { entries.value = []; publishEntries() }
+    }
+  }
   finally { if (!disposed && current === generation) loading.value = false }
 }
 async function loadTags(): Promise<void> {
@@ -193,7 +209,7 @@ async function loadTags(): Promise<void> {
     const result = await memoryService.listDocumentTags()
     if (disposed || current !== tagGeneration) return
     if (userId.value !== result.user_id) { userId.value = result.user_id; restoreSplit() }
-    tags.value = result.tags; tagError.value = false
+    tags.value = reconcileLibrarySnapshot(tags.value, result.tags, tag => tag.id); tagError.value = false
     expanded.value = expanded.value.filter(id => result.tags.some(tag => tag.id === id))
     for (const id of Object.keys(branchEntries.value)) if (!result.tags.some(tag => tag.id === id)) branches.forget(id)
   } catch { if (!disposed && current === tagGeneration) tagError.value = true }
@@ -225,10 +241,10 @@ async function flushChanges(): Promise<void> {
   await Promise.all([refreshTree(ids), ...(changes.some(change => change.list_changed) ? [reload()] : [])])
   if (disposed || session !== sessionGeneration) return
   const refreshed = new Map(ids.flatMap(id => branchEntries.value[id] ?? []).map(entry => [entry.item.id, entry]))
-  entries.value = entries.value.map(entry => {
+  entries.value = reconcileLibrarySnapshot(entries.value, entries.value.map(entry => {
     const current = refreshed.get(entry.item.id)
     return current ? { ...current, position: entry.position } : entry
-  })
+  }), entry => entry.item.id)
   publishEntries()
 }
 function classificationChanged(event: { data: ClassificationChange & { user_id: number } }): void {
@@ -240,9 +256,18 @@ function refreshDocuments(ids: string[]): void {
 function invalidateAccess(): void {
   pendingChanges = []
   ++generation
+  loadedListContext = null
   entries.value = []; owners.value = []; keywords.value = []; total.value = 0
   branches.reset()
   publishEntries()
+  const session = sessionGeneration
+  void loadTags().then(() => {
+    if (!disposed && session === sessionGeneration) return refresh()
+  })
+}
+function reconnect(): void {
+  // Reconcile after missed events without dismantling the current navigation.
+  // Explicit access invalidations and identity changes still discard snapshots immediately.
   const session = sessionGeneration
   void loadTags().then(() => {
     if (!disposed && session === sessionGeneration) return refresh()
@@ -252,12 +277,12 @@ onMounted(() => {
   websocket.createWebsocket()
   websocket.onEvent('memory', 'invalidate', invalidateAccess)
   websocket.onEvent('memory', 'classification', classificationChanged)
-  websocket.onConnect(invalidateAccess)
+  websocket.onConnect(reconnect)
 })
 onBeforeUnmount(() => {
   websocket.offEvent('memory', 'invalidate', invalidateAccess)
   websocket.offEvent('memory', 'classification', classificationChanged)
-  websocket.offConnect(invalidateAccess)
+  websocket.offConnect(reconnect)
   if (refreshTimer) clearTimeout(refreshTimer)
 })
 function reset(): void { query.value = ''; filters.value = defaultLibraryFilters(); onlyUnclassified.value = true }
@@ -405,8 +430,12 @@ watch(() => [...expanded.value], (value, previous) => {
 const storageKey = computed(() => `galaris:document-library-split:${userId.value ?? 'session'}`)
 function restoreSplit(): void { try { const value = Number(localStorage.getItem(storageKey.value)); split.value = value >= 15 && value <= 65 ? value : 35 } catch { split.value = 35 } }
 watch(split, value => { try { localStorage.setItem(storageKey.value, String(value)) } catch { /* Storage may be unavailable. */ } })
-async function changeSession(): Promise<void> {
+async function changeSession(event: Event): Promise<void> {
+  const currentSession = authSessionGeneration()
+  if ((event as CustomEvent<string | null>).detail !== null && currentSession === authSession) return
+  authSession = currentSession
   const session = ++sessionGeneration
+  loadedListContext = null
   pendingChanges = []
   if (refreshTimer) clearTimeout(refreshTimer)
   ++generation; ++tagGeneration; entries.value = []; tags.value = []; owners.value = []; keywords.value = []; total.value = 0

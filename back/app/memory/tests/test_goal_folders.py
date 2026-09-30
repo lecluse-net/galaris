@@ -1,5 +1,6 @@
 """Goal filing follows personal access and never replaces a human's classification."""
 
+from contextlib import asynccontextmanager
 from uuid import uuid4
 
 import pytest
@@ -49,6 +50,59 @@ async def drain(db):
 async def locations(db, user_id):
     return dict((await db.execute(select(DocumentTagAssignment.document_id, DocumentTagAssignment.tag_id)
         .join(DocumentTag).where(DocumentTag.user_id == user_id))).all())
+
+
+@pytest.mark.asyncio
+async def test_background_filing_notifies_only_its_owner_and_changed_folder(db, agents, memory_storage, monkeypatch):
+    from app.memory import automation
+    from core import websocket
+
+    goal, user, _ = await setup_goal(db, agents)
+
+    @asynccontextmanager
+    async def session():
+        yield db
+        await db.commit()
+
+    # Replace the transaction boundary to retain this test's isolated database transaction.
+    monkeypatch.setattr(automation, "get_db_session", session)
+    notifications = []
+
+    async def emit(subject, action, data, *_args, **_kwargs):
+        notifications.append((subject, action, data))
+
+    monkeypatch.setattr(websocket, "emit", emit)
+    job = automation._ClaimedJob(uuid4(), filing.JOB_KIND,
+        {"user_id": user.id, "goal_id": str(goal.id)}, 1)
+    await automation._process(job)
+    folder = await db.scalar(select(DocumentTag).where(DocumentTag.user_id == user.id, DocumentTag.goal_id == goal.id))
+    assert notifications == [("memory", "classification", {
+        "user_id": user.id, "tag_ids": [str(folder.id)],
+        "document_ids": sorted([str(goal.description_document_id), str(goal.tracking_document_id)]),
+        "tags_changed": True, "list_changed": True,
+    })]
+    notifications.clear()
+    await automation._process(job)
+    assert notifications == []
+    goal.title = "Renamed goal"
+    await db.commit()
+    await automation._process(job)
+    assert notifications == [("memory", "classification", {
+        "user_id": user.id, "tag_ids": [], "document_ids": [],
+        "tags_changed": True, "list_changed": False,
+    })]
+    notifications.clear()
+    await db.execute(delete(DocumentTagAssignment).where(
+        DocumentTagAssignment.tag_id == folder.id,
+        DocumentTagAssignment.document_id == goal.tracking_document_id,
+    ))
+    await db.commit()
+    await automation._process(job)
+    assert notifications == [("memory", "classification", {
+        "user_id": user.id, "tag_ids": [str(folder.id)],
+        "document_ids": [str(goal.tracking_document_id)],
+        "tags_changed": False, "list_changed": True,
+    })]
 
 
 @pytest.mark.asyncio

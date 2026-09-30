@@ -224,6 +224,11 @@ et **Graphe** : ouvrez la page puis choisissez l’onglet, sans supposer un para
 Les contacts sont dans `/memory/contacts` ; les regroupements thématiques dans
 **Connaissances → Sujets** (`/topic`). Le partage d’un lien ne donne pas accès au contenu.
 
+Dans **Documents**, les rafraîchissements courants mettent à jour les lignes concernées
+sans vider l’arborescence ni la liste. Les dossiers ouverts et les filtres restent en place,
+y compris après une reconnexion. Une erreur de rafraîchissement permet de réessayer en
+conservant les documents affichés ; une révocation d’accès les retire immédiatement.
+
 ## Préférences, supervision et compte
 
 **Administrer → Préférences** (`/params`) présente une grille de rubriques et des sous-menus :

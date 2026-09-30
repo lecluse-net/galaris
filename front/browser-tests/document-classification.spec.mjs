@@ -313,6 +313,70 @@ test('classification refreshes only affected folders and keeps other documents u
   releaseAccess()
 })
 
+test('reconnection reconciles documents without removing rows and failed refreshes preserve usable content', async ({ page }) => {
+  const state = await fixture(page)
+  state.assignments.add('work')
+  await toggleUnclassified(page)
+  await page.getByText('Work', { exact: true }).click()
+  const list = page.getByLabel('All documents', { exact: true })
+  const tree = page.getByLabel('Documents in folder Work', { exact: true })
+  await expect(tree.getByText('Test document', { exact: true })).toBeVisible()
+  const listRow = await list.getByText('Test document', { exact: true }).elementHandle()
+  const treeRow = await tree.getByText('Test document', { exact: true }).elementHandle()
+  let release, fail = false
+  const gate = new Promise(resolve => { release = resolve })
+  const requests = []
+  await page.route('**/api/memory/documents/library', async route => {
+    const body = route.request().postDataJSON(); requests.push(body.tag_id)
+    await gate
+    if (fail) return route.fulfill({ status: 503, json: { detail: 'Unavailable' } })
+    const entry = { item: { ...document, title: 'Updated report', revision: 4 }, agent_ids: [7], writable_agent_ids: [], tags: [{ id: 'work', name: 'Work', parent_id: null }] }
+    await route.fulfill({ json: { entries: [entry], total: 1, keywords: [], has_more: false } })
+  })
+  await page.evaluate(() => window.testApp.emitSocket('connect', {}))
+  await expect.poll(() => requests.length).toBe(2)
+  await expect(list.getByText('Test document', { exact: true })).toBeVisible()
+  await expect(tree.getByText('Test document', { exact: true })).toBeVisible()
+  expect(await listRow.evaluate(element => element.isConnected)).toBe(true)
+  expect(await treeRow.evaluate(element => element.isConnected)).toBe(true)
+  release()
+  await expect(list.getByText('Updated report', { exact: true })).toBeVisible()
+  await expect(tree.getByText('Updated report', { exact: true })).toBeVisible()
+  expect(await listRow.evaluate(element => element.isConnected)).toBe(true)
+  expect(await treeRow.evaluate(element => element.isConnected)).toBe(true)
+  fail = true
+  await page.evaluate(() => window.testApp.emitSocket('connect', {}))
+  await expect(page.getByRole('alert')).toHaveCount(2)
+  await expect(list.getByText('Updated report', { exact: true })).toBeVisible()
+  await expect(tree.getByText('Updated report', { exact: true })).toBeVisible()
+  await list.getByText('Updated report', { exact: true }).click()
+  await expect.poll(() => page.evaluate(() => window.testApp.events.filter(event => event.name === 'select').at(-1)?.args[0].item.id)).toBe('doc-a')
+  fail = false
+  await page.getByRole('button', { name: 'Retry', exact: true }).first().click()
+  await expect(page.getByRole('alert')).toHaveCount(1)
+  await page.getByRole('button', { name: 'Retry', exact: true }).click()
+  await expect(page.getByRole('alert')).toHaveCount(0)
+})
+
+test('access-token renewal keeps expanded folders, filters and document rows without browsing again', async ({ page }) => {
+  const state = await fixture(page)
+  state.assignments.add('work')
+  await toggleUnclassified(page)
+  await page.getByText('Work', { exact: true }).click()
+  await expect(page.getByLabel('Documents in folder Work', { exact: true }).getByText('Test document', { exact: true })).toBeVisible()
+  const rows = await page.getByText('Test document', { exact: true }).elementHandles()
+  const requests = state.requests.length
+  await jsonRoute(page, '**/api/auth/refresh', { access_token: 'renewed-session', token_type: 'bearer' })
+  await page.evaluate(async () => {
+    const { refreshAccessToken } = await import('/core/api.ts')
+    await refreshAccessToken()
+  })
+  await expectUnclassified(page, false)
+  await expect(page.getByText('Test document', { exact: true })).toHaveCount(2)
+  for (const row of rows) expect(await row.evaluate(element => element.isConnected)).toBe(true)
+  expect(state.requests).toHaveLength(requests)
+})
+
 test('compact filters keep the orphan list unclassified while filtering owner, dates and sorting', async ({ page }) => {
   const { requests } = await fixture(page)
   // Filters describe local calendar days, regardless of the browser/container timezone.
@@ -726,10 +790,11 @@ test('switching user clears private tags and restores that user’s panel prefer
   await expectUnclassified(page, false)
   await jsonRoute(page, '**/api/memory/documents/tags', { user_id: 2, tags: [{ id: 'other', name: 'Other user tag', parent_id: null }] })
   await jsonRoute(page, '**/api/memory/documents/library', { entries: [], total: 0, keywords: [], has_more: false })
-  await page.evaluate(() => {
+  await page.evaluate(async () => {
     localStorage.setItem('galaris:document-library-split:2', '45')
     window.testApp.auth.$patch({ user: { id: 2, email: 'other@example.invalid' } })
-    window.dispatchEvent(new CustomEvent('galaris:auth-token-changed', { detail: 'other-session' }))
+    const { saveAccessToken } = await import('/core/api.ts')
+    saveAccessToken('other-session')
   })
   await expect(page.getByText('Work', { exact: true })).toHaveCount(0)
   await expect(page.getByText('Test document', { exact: true })).toHaveCount(0)

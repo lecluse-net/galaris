@@ -28,7 +28,8 @@ def png():
 
 
 @pytest.mark.asyncio
-async def test_attachment_companion_preserves_description_across_reconciliation_and_live_revocation(db, agents, memory_storage):
+async def test_attachment_companion_preserves_description_across_reconciliation_and_live_revocation(db, agents, memory_storage, monkeypatch):
+    from core import websocket
     owner, reader = agents
     source = await document(owner, "Album")
     attachment = await attachments.add_document_attachment_bytes(
@@ -40,8 +41,16 @@ async def test_attachment_companion_preserves_description_across_reconciliation_
     before = (await service.get_item(companion_id, agent_id=owner.id))[1]
     assert before == b""
     await service.set_item_grant(source.id, reader.id, MemoryGrantUpdate(can_write=False), actor_agent_id=owner.id)
+    notifications = []
+
+    async def emit(subject, action, data, *_args, **_kwargs):
+        notifications.append((subject, action, data))
+
+    monkeypatch.setattr(websocket, "emit", emit)
     uri = f"document://{source.id}/attachments/{attachment.id}"
     assert await record_attachment_description(uri, "Une montagne bleue.", agent_id=reader.id) == companion_id
+    assert [(subject, action) for subject, action, _ in notifications] == [("memory", "update")]
+    assert notifications[0][2]["id"] == str(companion_id)
     assert await db.scalar(select(MemoryAutomationJob.id).where(
         MemoryAutomationJob.kind == "semantic_index",
         MemoryAutomationJob.payload["item_id"].as_string() == str(companion_id),
