@@ -100,11 +100,12 @@ async def create_llm(data: LLMCreate) -> LLM:
     return llm
 
 
-async def get_llm(llm_id: int) -> Optional[LLM]:
+async def get_llm(llm_id: int, *, fresh: bool = False) -> Optional[LLM]:
     """Return an LLM by ID with provider information."""
     db = get_db()
     result = await db.execute(
         select(LLM).options(joinedload(LLM.provider)).where(LLM.id == llm_id)
+        .execution_options(populate_existing=fresh)
     )
     return result.scalar_one_or_none()
 

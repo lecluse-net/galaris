@@ -54,6 +54,7 @@ async def _list_internal_functions(
 
 async def list_available_connection_functions(
     connection_id: int,
+    *, include_inactive: bool = False,
 ) -> dict[str, Any]:
     """List local and external functions with their effective authorization state."""
 
@@ -64,7 +65,7 @@ async def list_available_connection_functions(
             "message": await tr("connection_api.errors.not_found"),
             "functions": [],
         }
-    if not connection.active:
+    if not connection.active and not include_inactive:
         return {
             "success": False,
             "message": await tr("connection_api.errors.inactive"),
@@ -135,11 +136,11 @@ async def list_available_connection_functions(
             "description": description,
             "connection_state": function_state_label(connection_states.get(name)) if tool.can_disable else "enabled",
             "global_state": function_state_label(tool_states.get(name)) if tool.can_disable else "enabled",
-            "effective": not tool.can_disable or resolve_function_enabled(
+            "effective": connection.active and (not tool.can_disable or resolve_function_enabled(
                 name,
                 connection_states,
                 tool_states,
-            ),
+            )),
         }
         for name, description in pairs
     ]

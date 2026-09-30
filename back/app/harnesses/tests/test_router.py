@@ -5,7 +5,7 @@ from uuid import uuid4
 import pytest
 from fastapi import HTTPException
 
-from app.harnesses import router
+from app.harnesses import router, supervision
 from app.agent import AgentTaskBlocker, AgentTaskBlockers
 from app.harnesses.contracts import HarnessTarget
 
@@ -15,6 +15,7 @@ def default_configuration(monkeypatch):
     from app.harnesses import skill_sync
 
     monkeypatch.setattr(skill_sync, "skill_sync_status", AsyncMock(return_value=("not_applicable", None)))
+    monkeypatch.setattr(supervision, "skill_sync_status", AsyncMock(return_value=("not_applicable", None)))
     from app.harnesses import configuration
     from app.agent import HarnessExecutionPolicy
 
@@ -23,6 +24,7 @@ def default_configuration(monkeypatch):
     async def configured(code):
         return router.get_provider(code).capabilities()
     monkeypatch.setattr(router, "configured_provider_capabilities", configured)
+    monkeypatch.setattr(supervision, "configured_provider_capabilities", configured)
 
 
 @pytest.mark.asyncio
@@ -48,9 +50,10 @@ async def test_status_exposes_runtime_manager_unavailability_as_503(
         status="ready",
         capabilities=frozenset({"status"}),
     )
-    monkeypatch.setattr(router, "get_agent_record", AsyncMock(return_value=agent))
+    monkeypatch.setattr(supervision, "get_agent_record", AsyncMock(return_value=agent))
     monkeypatch.setattr(router.service, "resolve_target", AsyncMock(return_value=target))
     monkeypatch.setattr(router, "get_provider", lambda _code: provider)
+    monkeypatch.setattr(supervision, "get_provider", lambda _code: provider)
 
     with pytest.raises(HTTPException) as error:
         await router.harness_status(2)
@@ -80,13 +83,14 @@ async def test_logs_return_persisted_diagnostic_while_runtime_is_not_ready(
         last_error="The previous runtime could not be removed.",
         capabilities=frozenset({"logs"}),
     )
+    monkeypatch.setattr(router, "get_provider", lambda _code: provider)
     monkeypatch.setattr(
-        router,
-        "_selected",
+        supervision,
+        "selected",
         AsyncMock(return_value=(SimpleNamespace(id=2), target, provider)),
     )
 
-    result = await router.harness_logs(2)
+    result = await router.harness_logs(2, lines=300)
 
     assert result.lines == ["The previous runtime could not be removed."]
     provider.logs.assert_not_awaited()

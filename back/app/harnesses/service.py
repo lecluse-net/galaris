@@ -821,56 +821,61 @@ def _cleanup_matches(assignment: AgentHarness, cleanup: HarnessCleanup) -> bool:
 
 
 async def cleanup_previous_runtime(cleanup: HarnessCleanup) -> None:
-    """Destroy the replaced runtime after the selection response has been sent."""
-
+    """Autonomous HTTP cleanup root, with its own transaction."""
     async with get_db_session():
-        async with agent_lock(cleanup.agent_id):
-            agent = await get_agent_record(cleanup.agent_id)
-            if agent is None:
-                logger.error(
-                    "Harness cleanup skipped because the agent disappeared: agent_id={}",
-                    cleanup.agent_id,
-                )
-                return
-            current = await _assignment_for_agent(cleanup.agent_id)
-            if current is not None and not _cleanup_matches(current, cleanup):
-                # A later selection or explicit recreation already superseded this
-                # cleanup. Running the old provider now could delete the new runtime,
-                # because every Harness deliberately shares one canonical name.
-                return
-            try:
-                await get_provider(cleanup.provider_code).deprovision(
-                    agent,
-                    cleanup.request,
-                )
-            except Exception as exc:
-                assignment = await _assignment_for_agent(cleanup.agent_id)
-                if assignment is not None and _cleanup_matches(assignment, cleanup):
-                    assignment.lifecycle_status = "error"
-                    assignment.last_error = str(exc)[:10_000]
-                    await get_db().commit()
-                logger.exception(
-                    "Harness cleanup failed: agent_id={} provider={}",
-                    cleanup.agent_id,
-                    cleanup.provider_code,
-                )
-                return
+        await cleanup_runtime(cleanup)
 
+
+async def cleanup_runtime(cleanup: HarnessCleanup) -> bool:
+    """Clean the replaced runtime in the caller's managed session."""
+    async with agent_lock(cleanup.agent_id):
+        agent = await get_agent_record(cleanup.agent_id)
+        if agent is None:
+            logger.error(
+                "Harness cleanup skipped because the agent disappeared: agent_id={}",
+                cleanup.agent_id,
+            )
+            return False
+        current = await _assignment_for_agent(cleanup.agent_id)
+        if current is not None and not _cleanup_matches(current, cleanup):
+            # A later selection or explicit recreation already superseded this
+            # cleanup. Running the old provider now could delete the new runtime,
+            # because every Harness deliberately shares one canonical name.
+            return False
+        try:
+            await get_provider(cleanup.provider_code).deprovision(
+                agent,
+                cleanup.request,
+            )
+        except Exception as exc:
             assignment = await _assignment_for_agent(cleanup.agent_id)
             if assignment is not None and _cleanup_matches(assignment, cleanup):
-                if bool((assignment.provider_metadata or {}).get("target_internal")):
-                    await get_db().delete(assignment)
-                else:
-                    selected_harness = await _harness_for_assignment(assignment)
-                    assignment.lifecycle_status = (
-                        "absent"
-                        if selected_harness is not None
-                        and get_provider(selected_harness.provider_code).containerized
-                        else "ready"
-                    )
-                    assignment.provider_metadata = {}
-                    assignment.last_error = None
+                assignment.lifecycle_status = "error"
+                assignment.last_error = str(exc)[:10_000]
                 await get_db().commit()
+            logger.exception(
+                "Harness cleanup failed: agent_id={} provider={}",
+                cleanup.agent_id,
+                cleanup.provider_code,
+            )
+            return False
+
+        assignment = await _assignment_for_agent(cleanup.agent_id)
+        if assignment is not None and _cleanup_matches(assignment, cleanup):
+            if bool((assignment.provider_metadata or {}).get("target_internal")):
+                await get_db().delete(assignment)
+            else:
+                selected_harness = await _harness_for_assignment(assignment)
+                assignment.lifecycle_status = (
+                    "absent"
+                    if selected_harness is not None
+                    and get_provider(selected_harness.provider_code).containerized
+                    else "ready"
+                )
+                assignment.provider_metadata = {}
+                assignment.last_error = None
+            await get_db().commit()
+    return True
 
 
 async def _recreate_selected_runtime(agent_id: int) -> None:
@@ -919,61 +924,64 @@ async def _recreate_selected_runtime(agent_id: int) -> None:
     await db.commit()
 
 
+async def run_action(agent_id: int, action: HarnessAction) -> None:
+    """Execute under the caller's managed transaction; propagate domain failures."""
+    if action == "refresh":
+        from .skill_sync import request_skill_sync
+
+        await request_skill_sync(agent_id)
+        return
+    async with agent_lock(agent_id):
+        try:
+            assignment = await _assignment_for_agent(agent_id)
+            if assignment is None:
+                raise HarnessConflictError(
+                    "The internal Harness has no external runtime to supervise."
+                )
+            if action not in {"restart", "update"} and assignment.lifecycle_status != "ready":
+                raise HarnessConflictError(
+                    "Use restart or update to create the selected Harness runtime."
+                )
+            from .configuration import configured_provider_capabilities
+
+            harness = await _harness_for_assignment(assignment)
+            if harness is None or action not in await configured_provider_capabilities(harness.provider_code):
+                raise HarnessConflictError("The Harness policy no longer permits this action.")
+            if action in {"restart", "update"}:
+                await _recreate_selected_runtime(agent_id)
+                return
+            if assignment.lifecycle_status != "ready":
+                raise HarnessConflictError(
+                    "Use restart or update to create the selected Harness runtime."
+                )
+            agent = await get_agent_record(agent_id)
+            if agent is None:
+                raise LookupError("Agent not found.")
+            harness = await _harness_for_assignment(assignment)
+            if harness is None:
+                raise HarnessConflictError(
+                    "The selected Harness configuration is missing."
+                )
+            await get_provider(harness.provider_code).run_action(
+                agent,
+                action,
+            )
+        except Exception as exc:
+            assignment = await _assignment_for_agent(agent_id)
+            if assignment is not None:
+                assignment.lifecycle_status = "error"
+                assignment.last_error = str(exc)[:10_000]
+                await get_db().commit()
+            raise
+
+
 async def run_action_in_background(agent_id: int, action: HarnessAction) -> None:
-    """Run long lifecycle work in an isolated database context."""
-
+    """Autonomous HTTP background root with its own session."""
     async with get_db_session():
-        if action == "refresh":
-            from .skill_sync import request_skill_sync
-
-            await request_skill_sync(agent_id)
-            return
-        async with agent_lock(agent_id):
-            try:
-                assignment = await _assignment_for_agent(agent_id)
-                if assignment is None:
-                    raise HarnessConflictError(
-                        "The internal Harness has no external runtime to supervise."
-                    )
-                if action not in {"restart", "update"} and assignment.lifecycle_status != "ready":
-                    raise HarnessConflictError(
-                        "Use restart or update to create the selected Harness runtime."
-                    )
-                from .configuration import configured_provider_capabilities
-
-                harness = await _harness_for_assignment(assignment)
-                if harness is None or action not in await configured_provider_capabilities(harness.provider_code):
-                    raise HarnessConflictError("The Harness policy no longer permits this action.")
-                if action in {"restart", "update"}:
-                    await _recreate_selected_runtime(agent_id)
-                    return
-                if assignment.lifecycle_status != "ready":
-                    raise HarnessConflictError(
-                        "Use restart or update to create the selected Harness runtime."
-                    )
-                agent = await get_agent_record(agent_id)
-                if agent is None:
-                    raise LookupError("Agent not found.")
-                harness = await _harness_for_assignment(assignment)
-                if harness is None:
-                    raise HarnessConflictError(
-                        "The selected Harness configuration is missing."
-                    )
-                await get_provider(harness.provider_code).run_action(
-                    agent,
-                    action,
-                )
-            except Exception as exc:
-                assignment = await _assignment_for_agent(agent_id)
-                if assignment is not None:
-                    assignment.lifecycle_status = "error"
-                    assignment.last_error = str(exc)[:10_000]
-                    await get_db().commit()
-                logger.exception(
-                    "Harness background action failed: agent_id={} action={}",
-                    agent_id,
-                    action,
-                )
+        try:
+            await run_action(agent_id, action)
+        except Exception:
+            logger.warning("Harness action failed: agent_id={} action={}", agent_id, action)
 
 
 __all__ = [

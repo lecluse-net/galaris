@@ -90,6 +90,7 @@ export interface Agent {
     voice: string | null
     profile?: LlmProfileInfo | null
     has_avatar: boolean
+    avatar_revision?: number
     title?: Title
 }
 
@@ -195,14 +196,14 @@ export const agentService = {
     },
     async updateAgent(id: number, agent: AgentUpdate): Promise<AxiosResponse<Agent>> {
         const response = await api.put(`/agents/${id}`, agent, { headers: { 'X-Editorial-Profile-Version': '1' } })
-        invalidateSessionReads('agent-avatar', String(id))
+        invalidateSessionReads('agent-avatar')
         invalidateSessionReads('agent-selection')
         invalidateSessionReads('agent-catalogue')
         return response
     },
     async deleteAgent(id: number): Promise<AxiosResponse<void>> {
         const response = await api.delete(`/agents/${id}`)
-        invalidateSessionReads('agent-avatar', String(id))
+        invalidateSessionReads('agent-avatar')
         invalidateSessionReads('agent-selection')
         invalidateSessionReads('agent-catalogue')
         return response
@@ -215,7 +216,7 @@ export const agentService = {
                 'Content-Type': 'multipart/form-data'
             }
         })
-        invalidateSessionReads('agent-avatar', String(id))
+        invalidateSessionReads('agent-avatar')
         invalidateSessionReads('agent-selection')
         invalidateSessionReads('agent-catalogue')
         return response
@@ -223,16 +224,16 @@ export const agentService = {
     getAvatarUrl(id: number): string {
         return `/api/agents/${id}/avatar`
     },
-    async getAvatarBlobUrl(id: number, signal?: AbortSignal): Promise<string> {
-        const blob = await avatars.read(String(id), sharedSignal => queuePreview(async () => (
-            await api.get<Blob>(`/agents/${id}/avatar`, { responseType: 'blob', signal: sharedSignal })
+    async getAvatarBlobUrl(id: number, signal?: AbortSignal, revision = 0): Promise<string> {
+        const blob = await avatars.read(`${id}:${revision}`, sharedSignal => queuePreview(async () => (
+            await api.get<Blob>(`/agents/${id}/avatar`, { responseType: 'blob', signal: sharedSignal, params: { revision } })
         ).data, sharedSignal), signal)
         signal?.throwIfAborted()
         return URL.createObjectURL(blob)
     },
     async deleteAvatar(id: number): Promise<AxiosResponse<void>> {
         const response = await api.delete(`/agents/${id}/avatar`)
-        invalidateSessionReads('agent-avatar', String(id))
+        invalidateSessionReads('agent-avatar')
         invalidateSessionReads('agent-selection')
         invalidateSessionReads('agent-catalogue')
         return response

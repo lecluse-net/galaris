@@ -86,6 +86,7 @@ class Agent(HistoryMixin, Base):
         index=True,
     )
     avatar: Mapped[Optional[bytes]] = mapped_column(LargeBinary, nullable=True)
+    avatar_revision: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
     # Transient API flag populated without loading avatar bytes.
     has_avatar: bool = False
     team_ids: list[int] = []

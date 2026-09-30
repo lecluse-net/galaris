@@ -33,14 +33,16 @@ async def get_user_record(user_id: int) -> UserModel | None:
 
 async def list_user_records(
     *,
+    skip: int = 0,
     limit: int = 500,
     search: str | None = None,
+    active_only: bool = False,
 ) -> tuple[UserModel, ...]:
     """List Users through the public core.user surface."""
 
     from .user_service import get_users
 
-    return tuple(await get_users(limit=limit, search=search))
+    return tuple(await get_users(skip=skip, limit=limit, search=search, active_only=active_only))
 
 __all__ = [
     "notify_user_access_changed",

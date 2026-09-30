@@ -136,6 +136,10 @@ export default {
       systemService: "Service système obligatoire",
       systemServiceHint: "Ce service système et ses fonctions sont toujours actifs. Sa connexion et ses autorisations sont en lecture seule.",
       builtins: {
+        agent_admin: {
+          label: "AgentAdmin",
+          description: "Administration des agents, avatars, équipes, connexions et harnais existants, limitée aux droits et au périmètre du responsable humain. Inactif par défaut. La génération de portrait exige le modèle image de l’appelant et retourne un Process à suivre jusqu’à l’enregistrement.",
+        },
         galaris: {
           label: "Galaris",
           description: "## Rôle\n\nCoordonner les agents, déléguer des tâches, consulter leur progression, suivre ses objectifs et exécuter les processus métier affectés. Les droits de propriété et de partage restent appliqués ; l’administration et les commandes conversationnelles ont leurs propres Tools.\n\n## Possibilités\n\n- **Coordination** : découvrir les agents et consulter leur rôle pour choisir à qui déléguer une tâche.\n- **Tâches** : lancer un travail chez un autre agent, consulter son état et son résultat, ou arrêter une tâche admissible.\n- **Objectifs** : mettre à jour le suivi de ses objectifs, demander une nouvelle exécution et solliciter le référent dans le contexte prévu.\n- **Processus** : découvrir les workflows affectés, examiner leurs entrées, les lancer et suivre ou analyser leurs exécutions. Consulter aussi le catalogue des outils disponibles.\n\n## Quand l’utiliser\n\nÀ utiliser pour répartir un travail entre spécialistes et garder un suivi durable. **Exemple :** déléguer une recherche à un agent, récupérer son résultat, puis déclencher un processus de traitement affecté.\n\n## Conditions et limites\n\nService système obligatoire. La délégation ne permet pas de lancer une tâche chez soi-même. L’accès aux tâches, objectifs et processus reste contrôlé ; les opérations administratives étendues nécessitent leurs Tools dédiés.",
@@ -472,6 +476,10 @@ export default {
       systemService: "Mandatory system service",
       systemServiceHint: "This system service and its functions are always enabled. Its connection and permissions are read-only.",
       builtins: {
+        agent_admin: {
+          label: "AgentAdmin",
+          description: "Administer agents, avatars, teams, connections and existing Harnesses within the human manager’s current rights and scope. Inactive by default. Portrait generation requires the caller’s image model and returns a Process to inspect until registration is confirmed.",
+        },
         galaris: {
           label: "Galaris",
           description: "## Purpose\n\nCoordinate agents, delegate Tasks, inspect their progress, update your Goals and run assigned business Processes. Resource access remains subject to ownership and sharing rights; administration and conversation controls belong to separate Tools.\n\n## Capabilities\n\n- **Coordination:** discover agents and inspect their roles to choose whom to delegate to.\n- **Tasks:** launch work for another agent, inspect its state and result, or stop an eligible task.\n- **Goals:** update tracking for owned goals, request another run and ask the referrer within the supported context.\n- **Processes:** discover assigned workflows, inspect inputs, launch them and track or analyze their runs. Also inspect the available tool catalog.\n\n## When to use it\n\nUse this service to distribute work among specialists and retain durable progress. **Example:** delegate research, collect the result, then launch an assigned processing workflow.\n\n## Requirements and limits\n\nMandatory system service. Delegation cannot target the calling agent itself. Task, goal and process access remains controlled; broader administrative operations require their dedicated Tools.",
@@ -709,6 +717,10 @@ export default {
       systemService: "必需的系统服务",
       systemServiceHint: "此系统服务及其功能始终启用。连接和权限为只读。",
       builtins: {
+        agent_admin: {
+          label: "AgentAdmin",
+          description: "在负责人当前权限和管理范围内管理智能体、头像、团队、连接及已有执行框架。默认关闭。生成头像需要调用者的图像模型，并返回可查询的流程；确认保存后才能视为完成。",
+        },
         galaris: {
           label: "Galaris",
           description: "## 用途\n\n协调智能体、委派任务、检查进度、更新自己的目标并执行已分配的业务流程。资源访问仍受所有权与共享权限约束；管理和对话控制由独立工具提供。\n\n## 功能\n\n- **协调：**发现智能体并查看其职责，选择合适的任务接收者。\n- **任务：**向其他智能体委派工作，查看状态与结果，停止符合条件的任务。\n- **目标：**更新自己的目标进展、请求再次执行，并在支持的上下文中询问目标负责人。\n- **流程：**发现已分配的工作流，检查输入、启动、跟踪及分析运行，并查看可用工具目录。\n\n## 使用场景\n\n适合将复杂工作分配给不同专家，同时保留持久进展。**示例：**委派资料研究，获取结果后启动已分配的数据处理流程。\n\n## 条件与限制\n\n这是必需的系统服务。不能向自己委派任务。任务、目标及流程的权限仍然生效；跨智能体的管理操作需要独立授权的管理工具。",

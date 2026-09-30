@@ -3,7 +3,23 @@
     "dependencies": [
       {
         "files": [
+          "back/app/agent/mcp.py"
+        ],
+        "source": "app.agent",
+        "target": "app.file_share"
+      },
+      {
+        "files": [
+          "back/app/agent/avatar_engine.py"
+        ],
+        "source": "app.agent",
+        "target": "app.image"
+      },
+      {
+        "files": [
+          "back/app/agent/admin_service.py",
           "back/app/agent/agent_service.py",
+          "back/app/agent/avatar_engine.py",
           "back/app/agent/dispatcher.py",
           "back/app/agent/facade.py",
           "back/app/agent/janus.py",
@@ -26,7 +42,9 @@
       },
       {
         "files": [
+          "back/app/agent/avatar_engine.py",
           "back/app/agent/janus.py",
+          "back/app/agent/mcp.py",
           "back/app/agent/openai_router.py",
           "back/app/agent/realtime.py"
         ],
@@ -46,6 +64,7 @@
       },
       {
         "files": [
+          "back/app/agent/admin_authorization.py",
           "back/app/agent/agent_service.py",
           "back/app/agent/defaults.py",
           "back/app/agent/executor_service.py",
@@ -58,6 +77,7 @@
       },
       {
         "files": [
+          "back/app/agent/admin_authorization.py",
           "back/app/agent/agent_service.py",
           "back/app/agent/assertions.py",
           "back/app/agent/defaults.py",
@@ -73,8 +93,11 @@
       },
       {
         "files": [
+          "back/app/agent/admin_authorization.py",
+          "back/app/agent/admin_service.py",
           "back/app/agent/agent_group_service.py",
           "back/app/agent/agent_service.py",
+          "back/app/agent/avatars.py",
           "back/app/agent/defaults.py",
           "back/app/agent/dialogue_service.py",
           "back/app/agent/janus.py",
@@ -141,8 +164,11 @@
       },
       {
         "files": [
+          "back/app/agent/admin_service.py",
           "back/app/agent/agent_group_service.py",
+          "back/app/agent/agent_service.py",
           "back/app/agent/dialogue_service.py",
+          "back/app/agent/mcp.py",
           "back/app/agent/models.py",
           "back/app/agent/team_router.py"
         ],
@@ -151,6 +177,8 @@
       },
       {
         "files": [
+          "back/app/agent/admin_authorization.py",
+          "back/app/agent/admin_service.py",
           "back/app/agent/agent_service.py",
           "back/app/agent/dbadmin.py",
           "back/app/agent/defaults.py",
@@ -166,6 +194,7 @@
       },
       {
         "files": [
+          "back/app/agent/avatar_engine.py",
           "back/app/agent/html_migration.py",
           "back/app/agent/models.py",
           "back/app/agent/planner_service.py",
@@ -456,6 +485,7 @@
       },
       {
         "files": [
+          "back/app/connection/agent_admin_mcp.py",
           "back/app/connection/router.py"
         ],
         "source": "app.connection",
@@ -463,6 +493,8 @@
       },
       {
         "files": [
+          "back/app/connection/agent_admin_mcp.py",
+          "back/app/connection/agent_admin_service.py",
           "back/app/connection/connection_service.py",
           "back/app/connection/router.py"
         ],
@@ -479,6 +511,7 @@
       },
       {
         "files": [
+          "back/app/connection/agent_admin_service.py",
           "back/app/connection/connection_service.py",
           "back/app/connection/models.py",
           "back/app/connection/router.py"
@@ -1441,15 +1474,24 @@
           "back/app/harnesses/dbadmin.py",
           "back/app/harnesses/driver.py",
           "back/app/harnesses/facade.py",
+          "back/app/harnesses/mcp.py",
           "back/app/harnesses/models.py",
           "back/app/harnesses/openai_client.py",
           "back/app/harnesses/openai_provider.py",
           "back/app/harnesses/router.py",
           "back/app/harnesses/service.py",
-          "back/app/harnesses/skill_sync.py"
+          "back/app/harnesses/skill_sync.py",
+          "back/app/harnesses/supervision.py"
         ],
         "source": "app.harnesses",
         "target": "app.agent"
+      },
+      {
+        "files": [
+          "back/app/harnesses/mcp.py"
+        ],
+        "source": "app.harnesses",
+        "target": "app.tools"
       },
       {
         "files": [
@@ -2962,6 +3004,7 @@
           "back/app/tools/connection_functions.py",
           "back/app/tools/dbadmin.py",
           "back/app/tools/documentation_service.py",
+          "back/app/tools/facade.py",
           "back/app/tools/mandatory_tools.py",
           "back/app/tools/mcp_loader.py"
         ],
@@ -3031,6 +3074,7 @@
       },
       {
         "files": [
+          "back/app/tools/administration_lock.py",
           "back/app/tools/catalog_refresh_service.py",
           "back/app/tools/documentation_service.py",
           "back/app/tools/mandatory_tools.py",
@@ -4949,6 +4993,10 @@
       "direct_cycles": [
         [
           "app.agent",
+          "app.file_share"
+        ],
+        [
+          "app.agent",
           "app.llm"
         ],
         [
@@ -5048,7 +5096,7 @@
           "app.tools"
         ]
       ],
-      "domain_edges": 266,
+      "domain_edges": 269,
       "fan_in": [
         {
           "count": 43,
@@ -5139,7 +5187,7 @@
           ]
         },
         {
-          "count": 29,
+          "count": 30,
           "module": "app.tools",
           "modules": [
             "app.agent",
@@ -5151,6 +5199,7 @@
             "app.file_share",
             "app.goal",
             "app.harness",
+            "app.harnesses",
             "app.image",
             "app.lab",
             "app.llm",
@@ -5255,6 +5304,27 @@
         },
         {
           "count": 15,
+          "module": "app.file_share",
+          "modules": [
+            "app.agent",
+            "app.audio",
+            "app.browser",
+            "app.console",
+            "app.conversation",
+            "app.harness",
+            "app.image",
+            "app.messenger",
+            "app.multimedia",
+            "app.process",
+            "app.tools",
+            "bridge.calendar",
+            "bridge.hermes",
+            "bridge.mail",
+            "bridge.nextcloud"
+          ]
+        },
+        {
+          "count": 15,
           "module": "app.process",
           "modules": [
             "app.agent",
@@ -5272,26 +5342,6 @@
             "bridge.calendar",
             "bridge.hermes",
             "bridge.n8n"
-          ]
-        },
-        {
-          "count": 14,
-          "module": "app.file_share",
-          "modules": [
-            "app.audio",
-            "app.browser",
-            "app.console",
-            "app.conversation",
-            "app.harness",
-            "app.image",
-            "app.messenger",
-            "app.multimedia",
-            "app.process",
-            "app.tools",
-            "bridge.calendar",
-            "bridge.hermes",
-            "bridge.mail",
-            "bridge.nextcloud"
           ]
         },
         {
@@ -5424,6 +5474,14 @@
           ]
         },
         {
+          "count": 2,
+          "module": "app.image",
+          "modules": [
+            "app.agent",
+            "app.file_share"
+          ]
+        },
+        {
           "count": 1,
           "module": "app.browser",
           "modules": [
@@ -5435,13 +5493,6 @@
           "module": "app.dream",
           "modules": [
             "app.lab"
-          ]
-        },
-        {
-          "count": 1,
-          "module": "app.image",
-          "modules": [
-            "app.file_share"
           ]
         },
         {
@@ -5670,6 +5721,19 @@
         },
         {
           "count": 7,
+          "module": "app.agent",
+          "modules": [
+            "app.file_share",
+            "app.image",
+            "app.llm",
+            "app.messenger",
+            "app.process",
+            "app.skill",
+            "app.tools"
+          ]
+        },
+        {
+          "count": 7,
           "module": "app.onboarding",
           "modules": [
             "app.agent",
@@ -5763,17 +5827,6 @@
             "app.messenger",
             "app.tools",
             "app.voice"
-          ]
-        },
-        {
-          "count": 5,
-          "module": "app.agent",
-          "modules": [
-            "app.llm",
-            "app.messenger",
-            "app.process",
-            "app.skill",
-            "app.tools"
           ]
         },
         {
@@ -5929,6 +5982,14 @@
         },
         {
           "count": 2,
+          "module": "app.harnesses",
+          "modules": [
+            "app.agent",
+            "app.tools"
+          ]
+        },
+        {
+          "count": 2,
           "module": "app.mcp",
           "modules": [
             "app.agent",
@@ -5941,13 +6002,6 @@
           "modules": [
             "app.connection",
             "app.messenger"
-          ]
-        },
-        {
-          "count": 1,
-          "module": "app.harnesses",
-          "modules": [
-            "app.agent"
           ]
         },
         {
@@ -6205,6 +6259,278 @@
         "module": "app.topic",
         "name": "topic_update",
         "namespace": ""
+      },
+      {
+        "file": "back/app/agent/mcp.py",
+        "handler": "agent_avatar_delete",
+        "line": 99,
+        "module": "app.agent",
+        "name": "agent_avatar_delete",
+        "namespace": "agent_admin"
+      },
+      {
+        "file": "back/app/agent/mcp.py",
+        "handler": "agent_avatar_generate",
+        "line": 209,
+        "module": "app.agent",
+        "name": "agent_avatar_generate",
+        "namespace": "agent_admin"
+      },
+      {
+        "file": "back/app/agent/mcp.py",
+        "handler": "agent_avatar_set",
+        "line": 184,
+        "module": "app.agent",
+        "name": "agent_avatar_set",
+        "namespace": "agent_admin"
+      },
+      {
+        "file": "back/app/connection/agent_admin_mcp.py",
+        "handler": "agent_connection_create",
+        "line": 33,
+        "module": "app.connection",
+        "name": "agent_connection_create",
+        "namespace": "agent_admin"
+      },
+      {
+        "file": "back/app/connection/agent_admin_mcp.py",
+        "handler": "agent_connection_delete",
+        "line": 48,
+        "module": "app.connection",
+        "name": "agent_connection_delete",
+        "namespace": "agent_admin"
+      },
+      {
+        "file": "back/app/connection/agent_admin_mcp.py",
+        "handler": "agent_connection_function_list",
+        "line": 72,
+        "module": "app.connection",
+        "name": "agent_connection_function_list",
+        "namespace": "agent_admin"
+      },
+      {
+        "file": "back/app/connection/agent_admin_mcp.py",
+        "handler": "agent_connection_function_set",
+        "line": 83,
+        "module": "app.connection",
+        "name": "agent_connection_function_set",
+        "namespace": "agent_admin"
+      },
+      {
+        "file": "back/app/connection/agent_admin_mcp.py",
+        "handler": "agent_connection_get",
+        "line": 25,
+        "module": "app.connection",
+        "name": "agent_connection_get",
+        "namespace": "agent_admin"
+      },
+      {
+        "file": "back/app/connection/agent_admin_mcp.py",
+        "handler": "agent_connection_list",
+        "line": 18,
+        "module": "app.connection",
+        "name": "agent_connection_list",
+        "namespace": "agent_admin"
+      },
+      {
+        "file": "back/app/connection/agent_admin_mcp.py",
+        "handler": "agent_connection_param_delete",
+        "line": 64,
+        "module": "app.connection",
+        "name": "agent_connection_param_delete",
+        "namespace": "agent_admin"
+      },
+      {
+        "file": "back/app/connection/agent_admin_mcp.py",
+        "handler": "agent_connection_params_set",
+        "line": 56,
+        "module": "app.connection",
+        "name": "agent_connection_params_set",
+        "namespace": "agent_admin"
+      },
+      {
+        "file": "back/app/connection/agent_admin_mcp.py",
+        "handler": "agent_connection_update",
+        "line": 40,
+        "module": "app.connection",
+        "name": "agent_connection_update",
+        "namespace": "agent_admin"
+      },
+      {
+        "file": "back/app/agent/mcp.py",
+        "handler": "agent_create",
+        "line": 56,
+        "module": "app.agent",
+        "name": "agent_create",
+        "namespace": "agent_admin"
+      },
+      {
+        "file": "back/app/agent/mcp.py",
+        "handler": "agent_delete",
+        "line": 82,
+        "module": "app.agent",
+        "name": "agent_delete",
+        "namespace": "agent_admin"
+      },
+      {
+        "file": "back/app/agent/mcp.py",
+        "handler": "agent_group_create",
+        "line": 158,
+        "module": "app.agent",
+        "name": "agent_group_create",
+        "namespace": "agent_admin"
+      },
+      {
+        "file": "back/app/agent/mcp.py",
+        "handler": "agent_group_delete",
+        "line": 175,
+        "module": "app.agent",
+        "name": "agent_group_delete",
+        "namespace": "agent_admin"
+      },
+      {
+        "file": "back/app/agent/mcp.py",
+        "handler": "agent_group_list",
+        "line": 152,
+        "module": "app.agent",
+        "name": "agent_group_list",
+        "namespace": "agent_admin"
+      },
+      {
+        "file": "back/app/agent/mcp.py",
+        "handler": "agent_group_update",
+        "line": 164,
+        "module": "app.agent",
+        "name": "agent_group_update",
+        "namespace": "agent_admin"
+      },
+      {
+        "file": "back/app/harnesses/mcp.py",
+        "handler": "agent_harness_action",
+        "line": 62,
+        "module": "app.harnesses",
+        "name": "agent_harness_action",
+        "namespace": "agent_admin"
+      },
+      {
+        "file": "back/app/harnesses/mcp.py",
+        "handler": "agent_harness_blockers",
+        "line": 81,
+        "module": "app.harnesses",
+        "name": "agent_harness_blockers",
+        "namespace": "agent_admin"
+      },
+      {
+        "file": "back/app/harnesses/mcp.py",
+        "handler": "agent_harness_get",
+        "line": 17,
+        "module": "app.harnesses",
+        "name": "agent_harness_get",
+        "namespace": "agent_admin"
+      },
+      {
+        "file": "back/app/harnesses/mcp.py",
+        "handler": "agent_harness_logs",
+        "line": 72,
+        "module": "app.harnesses",
+        "name": "agent_harness_logs",
+        "namespace": "agent_admin"
+      },
+      {
+        "file": "back/app/harnesses/mcp.py",
+        "handler": "agent_harness_reset",
+        "line": 38,
+        "module": "app.harnesses",
+        "name": "agent_harness_reset",
+        "namespace": "agent_admin"
+      },
+      {
+        "file": "back/app/harnesses/mcp.py",
+        "handler": "agent_harness_set",
+        "line": 24,
+        "module": "app.harnesses",
+        "name": "agent_harness_set",
+        "namespace": "agent_admin"
+      },
+      {
+        "file": "back/app/harnesses/mcp.py",
+        "handler": "agent_harness_status",
+        "line": 51,
+        "module": "app.harnesses",
+        "name": "agent_harness_status",
+        "namespace": "agent_admin"
+      },
+      {
+        "file": "back/app/agent/mcp.py",
+        "handler": "agent_options",
+        "line": 93,
+        "module": "app.agent",
+        "name": "agent_options",
+        "namespace": "agent_admin"
+      },
+      {
+        "file": "back/app/agent/mcp.py",
+        "handler": "agent_team_list",
+        "line": 107,
+        "module": "app.agent",
+        "name": "agent_team_list",
+        "namespace": "agent_admin"
+      },
+      {
+        "file": "back/app/agent/mcp.py",
+        "handler": "agent_team_set",
+        "line": 114,
+        "module": "app.agent",
+        "name": "agent_team_set",
+        "namespace": "agent_admin"
+      },
+      {
+        "file": "back/app/agent/mcp.py",
+        "handler": "agent_title_create",
+        "line": 127,
+        "module": "app.agent",
+        "name": "agent_title_create",
+        "namespace": "agent_admin"
+      },
+      {
+        "file": "back/app/agent/mcp.py",
+        "handler": "agent_title_delete",
+        "line": 144,
+        "module": "app.agent",
+        "name": "agent_title_delete",
+        "namespace": "agent_admin"
+      },
+      {
+        "file": "back/app/agent/mcp.py",
+        "handler": "agent_title_list",
+        "line": 121,
+        "module": "app.agent",
+        "name": "agent_title_list",
+        "namespace": "agent_admin"
+      },
+      {
+        "file": "back/app/agent/mcp.py",
+        "handler": "agent_title_update",
+        "line": 133,
+        "module": "app.agent",
+        "name": "agent_title_update",
+        "namespace": "agent_admin"
+      },
+      {
+        "file": "back/app/connection/agent_admin_mcp.py",
+        "handler": "agent_tool_list",
+        "line": 11,
+        "module": "app.connection",
+        "name": "agent_tool_list",
+        "namespace": "agent_admin"
+      },
+      {
+        "file": "back/app/agent/mcp.py",
+        "handler": "agent_update",
+        "line": 67,
+        "module": "app.agent",
+        "name": "agent_update",
+        "namespace": "agent_admin"
       },
       {
         "file": "back/app/audio/mcp.py",
@@ -9268,6 +9594,7 @@
         "capabilities": [
           "contracts.py",
           "facade.py",
+          "mcp.py",
           "models.py",
           "router.py",
           "schemas.py",
@@ -9283,6 +9610,7 @@
         "capabilities": [
           "facade.py",
           "i18n/",
+          "mcp.py",
           "models.py",
           "privileges.py",
           "router.py",
@@ -10780,7 +11108,7 @@
         "declared_path": "/agents/{id}/avatar",
         "file": "back/app/agent/router.py",
         "handler": "delete_avatar",
-        "line": 390,
+        "line": 393,
         "method": "DELETE",
         "module": "app.agent"
       },
@@ -10789,7 +11117,7 @@
         "declared_path": "/agents/{id}/avatar",
         "file": "back/app/agent/router.py",
         "handler": "download_avatar",
-        "line": 356,
+        "line": 359,
         "method": "GET",
         "module": "app.agent"
       },
@@ -13084,7 +13412,7 @@
         "declared_path": "/harnesses/agents/{id}/actions/{action}",
         "file": "back/app/harnesses/router.py",
         "handler": "run_harness_action",
-        "line": 338,
+        "line": 297,
         "method": "POST",
         "module": "app.harnesses"
       },
@@ -13102,7 +13430,7 @@
         "declared_path": "/harnesses/agents/{id}/logs",
         "file": "back/app/harnesses/router.py",
         "handler": "harness_logs",
-        "line": 367,
+        "line": 326,
         "method": "GET",
         "module": "app.harnesses"
       },

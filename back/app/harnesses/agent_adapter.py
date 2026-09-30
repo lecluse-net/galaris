@@ -12,6 +12,9 @@ from .registry import get_provider
 
 
 class HarnessSelectionAdapter:
+    async def admin_options(self) -> list[dict[str, Any]]:
+        from .facade import list_admin_harness_options
+        return await list_admin_harness_options()
     async def projected_skill_agent_ids(self, agent_ids: Collection[int] | None = None) -> list[int]:
         from .skill_sync import projected_skill_agent_ids
 

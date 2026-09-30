@@ -1,5 +1,7 @@
 # Décisions d’architecture
 
+- [0148 — Délégation AgentAdmin et publication différée des avatars](0148-agent-admin-delegation.md)
+
 - [0147 — Cohérence des fichiers Nextcloud](0147-nextcloud-file-consistency.md)
 
 - [0146 — Consommation et crédits des fournisseurs](0146-provider-usage-snapshots.md)

@@ -2,6 +2,20 @@
 
 # Catalogue des garanties fonctionnelles
 
+AgentAdmin est documenté dans [agent-admin.md](agent-admin.md).
+`back/app/agent/tests/test_avatars.py` vérifie le stockage JPEG dans une limite de 512 × 512,
+les proportions, l’absence d’agrandissement, l’orientation EXIF et la transparence.
+Son parcours HTTP remplace un PNG synthétique de plus de 8 Mio par un JPEG compact,
+puis vérifie qu’un remplacement invalide conserve l’avatar et sa révision.
+`back/app/agent/tests/test_agent_admin.py` protège le CRUD sans contexte humain HTTP,
+le périmètre du responsable, les services système et la délégation réservée aux humains,
+les 34 fonctions et leur révocation sur un serveur MCP monté. Les scénarios Process
+vérifient l’image valide, le fournisseur incertain, la révocation, le profil modifié,
+l’avatar tardif, la suppression et le rejeu sans nouvelle soumission.
+`e2e/specs/agent-admin.spec.mjs` vérifie la création et deux portraits successifs réellement
+affichés après navigation Vue sans rechargement, une civilité renommée et le refus après
+révocation, avec un fournisseur synthétique.
+
 `back/app/agent/tests/test_planner_collections.py` couvre les traitements répétés : petits lots
 mécaniques connus d'au plus cinq éléments en une feuille sans découverte ni replanification,
 décomposition des traitements substantiels ou des lots trop grands/inconnus, une Task

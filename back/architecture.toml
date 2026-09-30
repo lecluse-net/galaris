@@ -37,16 +37,16 @@ allowed_dependencies = []
 max_domain_fan_out = 0
 
 [module."app.agent"]
-allowed_dependencies = ["app.llm", "app.messenger", "app.process", "app.skill", "app.tools"]
-max_domain_fan_out = 5
+allowed_dependencies = ["app.file_share", "app.image", "app.llm", "app.messenger", "app.process", "app.skill", "app.tools"]
+max_domain_fan_out = 7
 
 [module."app.harness"]
 allowed_dependencies = ["app.agent", "app.console", "app.conversation", "app.file_share", "app.llm", "app.messenger", "app.process", "app.skill", "app.tools"]
 max_domain_fan_out = 9
 
 [module."app.harnesses"]
-allowed_dependencies = ["app.agent"]
-max_domain_fan_out = 1
+allowed_dependencies = ["app.agent", "app.tools"]
+max_domain_fan_out = 2
 
 [module."app.connection"]
 allowed_dependencies = ["app.agent", "app.tools"]

@@ -4,7 +4,7 @@ from unittest.mock import AsyncMock
 import pytest
 from fastapi import BackgroundTasks, HTTPException
 
-from app.harnesses import router
+from app.harnesses import router, supervision
 from app.harnesses.schemas import HarnessRuntimeState
 
 
@@ -12,10 +12,11 @@ from app.harnesses.schemas import HarnessRuntimeState
 def default_configuration(monkeypatch):
     from app.harnesses import skill_sync
 
-    monkeypatch.setattr(skill_sync, "skill_sync_status", AsyncMock(return_value=("not_applicable", None)))
+    monkeypatch.setattr(supervision, "skill_sync_status", AsyncMock(return_value=("not_applicable", None)))
     async def configured(code):
         return router.get_provider(code).capabilities()
     monkeypatch.setattr(router, "configured_provider_capabilities", configured)
+    monkeypatch.setattr(supervision, "configured_provider_capabilities", configured)
 
 
 @pytest.mark.parametrize("lifecycle,status,expected", [
@@ -58,9 +59,10 @@ async def test_absent_status_exposes_creation_without_querying_missing_runtime(m
         status="absent", provider_code="hermes", last_error=None,
         capabilities=provider.capabilities(),
     )
-    monkeypatch.setattr(router, "get_agent_record", AsyncMock(return_value=SimpleNamespace(id=1)))
+    monkeypatch.setattr(supervision, "get_agent_record", AsyncMock(return_value=SimpleNamespace(id=1)))
     monkeypatch.setattr(router.service, "resolve_target", AsyncMock(return_value=target))
     monkeypatch.setattr(router, "get_provider", lambda _: provider)
+    monkeypatch.setattr(supervision, "get_provider", lambda _: provider)
     result = await router.harness_status(1)
     assert result.status == "absent"
     assert result.available_actions == ["restart"]

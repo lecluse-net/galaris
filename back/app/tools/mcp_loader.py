@@ -441,6 +441,18 @@ def _wrap_tool(definition: McpToolDefinition, ctx: McpToolContext) -> Callable[.
             # output schema. Returning this message as a string breaks every tool annotated
             # with a structured result and masks the original recoverable tool error behind
             # a protocol validation failure. ToolError produces a proper MCP error result.
+            if definition.tool_code == "agent_admin":
+                from fastmcp.tools import ToolResult
+
+                kind = ("access_denied" if isinstance(exc, (PermissionError, ToolCallRejectedError))
+                        else "not_found" if isinstance(exc, LookupError)
+                        else "conflict" if "Conflict" in type(exc).__name__ or
+                        (isinstance(exc, ValueError) and any(word in str(exc).casefold() for word in ("conflict", "already exists", "referenced")))
+                        else "invalid_configuration" if isinstance(exc, ValueError)
+                        else "dependency_unavailable")
+                return ToolResult(content=message, is_error=True, structured_content={
+                    "success": False, "error": {"kind": kind, "reference": error_reference},
+                })
             if execution is not None:
                 from fastmcp.tools import ToolResult
 
@@ -494,7 +506,7 @@ def build_galaris_fastmcp(
     resources: dict[str, Any] | None = None,
 ) -> FastMCP:
     """Build a complete or filtered native Galaris FastMCP server."""
-    mcp: FastMCP = _MediaFilteredFastMCP(f"Galaris tools — Agent {agent_id}", agent_id=agent_id)
+    mcp: FastMCP = _MediaFilteredFastMCP(f"Galaris tools — Agent {agent_id}", agent_id=agent_id, runtime=runtime)
     add_galaris_tools(
         mcp,
         agent_id,
@@ -610,9 +622,30 @@ async def list_enabled_native_mcp_definitions(
         agent_id=agent_id, runtime=runtime, resources=dict(resources or {}),
         conversation_only=conversation_only,
     )
+    from app.agent.facade import admin_available
+
+    async def permitted(definition: McpToolDefinition) -> bool:
+        if definition.tool_code != "agent_admin":
+            return True
+        privileges = ["AGENT_EDIT"]
+        name = definition.name
+        if name.startswith("agent_connection_") or name == "agent_tool_list":
+            privileges.append("CONNECTION_EDIT")
+        if name.startswith(("agent_team_", "agent_group_")):
+            privileges.append("TEAM_ACCESS")
+        if name == "agent_team_set":
+            privileges.append("TEAM_MEMBERS_EDIT")
+        if name.startswith("agent_group_") and name != "agent_group_list":
+            privileges.append("TEAM_EDIT")
+        if name == "agent_harness_blockers":
+            privileges.append("TASK_EDIT")
+        global_scope = name in {f"agent_{kind}_{op}" for kind in ("group", "title") for op in ("create", "update", "delete")}
+        return await admin_available(agent_id, *privileges, global_scope=global_scope)
+
     visible = [
         definition for definition in definitions
-        if definition.available_when is None or await definition.available_when(ctx)
+        if await permitted(definition)
+        and (definition.available_when is None or await definition.available_when(ctx))
     ]
     return tuple(sorted(visible, key=lambda item: (item.tool_code, item.name)))
 
@@ -684,7 +717,7 @@ async def build_agent_galaris_fastmcp(
         resources=resolved_resources,
         conversation_only=conversation_only,
     )
-    mcp: FastMCP = _MediaFilteredFastMCP(f"Galaris tools — Agent {agent_id}", agent_id=agent_id)
+    mcp: FastMCP = _MediaFilteredFastMCP(f"Galaris tools — Agent {agent_id}", agent_id=agent_id, runtime=runtime)
     for definition in definitions:
         mcp.tool()(_wrap_tool(definition, ctx))
         mcp.native_execution_names.add(definition.name)
@@ -693,7 +726,7 @@ async def build_agent_galaris_fastmcp(
     from app.agent import resolve_tool_profile
     present = {definition.name for definition in definitions}
     for definition in load_mcp_tools():
-        if (definition.tool_code == "multimedia" and definition.name not in present
+        if (definition.tool_code in {"multimedia", "agent_admin"} and definition.name not in present
                 and resolve_tool_profile(runtime).supports(definition.required_capabilities)
                 and (allowed_tool_names is None or definition.name in allowed_tool_names)
                 and not conversation_only):
@@ -703,9 +736,10 @@ async def build_agent_galaris_fastmcp(
 
 
 class _MediaFilteredFastMCP(FastMCP):
-    def __init__(self, name: str, *, agent_id: int) -> None:
+    def __init__(self, name: str, *, agent_id: int, runtime: RuntimeName = "internal") -> None:
         super().__init__(name)  # pyright: ignore[reportUnknownMemberType]
         self.media_agent_id = agent_id
+        self.runtime = runtime
         self.native_execution_names: set[str] = set()
         self.add_middleware(ExecutionEvidenceMiddleware(self.native_execution_names))
 
@@ -713,21 +747,23 @@ class _MediaFilteredFastMCP(FastMCP):
         tools = await super().list_tools(run_middleware=run_middleware)
         from core.database import get_db_session
 
-        media = {definition.name for definition in load_mcp_tools() if definition.tool_code == "multimedia"}
-        if not any(tool.name in media for tool in tools):
+        dynamic = {definition.name for definition in load_mcp_tools()
+                   if definition.tool_code in {"multimedia", "agent_admin"}}
+        if not any(tool.name in dynamic for tool in tools):
             return tools
+
+        async def current_names() -> set[str]:
+            return {definition.name for definition in await list_enabled_native_mcp_definitions(
+                self.media_agent_id, runtime=self.runtime, allowed_tool_names=dynamic)}
+
         try:
             get_db()
         except RuntimeError:
             async with get_db_session():
-                enabled = await get_enabled_integrated_tool_codes(self.media_agent_id)
-                disabled = await get_disabled_internal_function_names(self.media_agent_id)
+                visible = await current_names()
         else:
-            enabled = await get_enabled_integrated_tool_codes(self.media_agent_id)
-            disabled = await get_disabled_internal_function_names(self.media_agent_id)
-        return [tool for tool in tools if tool.name not in media or (
-            "multimedia" in enabled and tool.name not in disabled
-        )]
+            visible = await current_names()
+        return [tool for tool in tools if tool.name not in dynamic or tool.name in visible]
 
 
 def _resolve_auth_headers(mcp_config: Any, params: dict[str, Any]) -> dict[str, str]:
@@ -914,6 +950,10 @@ async def list_agent_mcp_tools(agent_id: int) -> list[dict[str, Any]]:
     native_by_tool = mcp_tools_by_tool_code()
     from app.llm import available_media_functions
     media_functions: frozenset[str] = await available_media_functions(agent_id) if "multimedia" in native_by_tool else frozenset()
+    admin_names = {definition.name for definition in native_by_tool.get("agent_admin", [])}
+    permitted_admin: set[str] = {definition.name for definition in await list_enabled_native_mcp_definitions(
+        agent_id, runtime=runtime, allowed_tool_names=admin_names)} if admin_names else set()
+    admin_context = McpToolContext(agent_id=agent_id, runtime=runtime)
     records = await tool_service.get_all_tool_records()
 
     groups: list[dict[str, Any]] = []
@@ -941,11 +981,14 @@ async def list_agent_mcp_tools(agent_id: int) -> list[dict[str, Any]]:
             for definition in native_definitions:
                 if getattr(definition, "tool_code", None) == "multimedia" and definition.name not in media_functions:
                     continue
+                if getattr(definition, "tool_code", None) == "agent_admin" and definition.available_when is not None and not await definition.available_when(admin_context):
+                    continue
                 runtime_supported = profile.supports(definition.required_capabilities)
                 mcp_tools.append({
                     "name": definition.name,
                     "description": definition.description,
-                    "enabled": active and runtime_supported and definition.name not in disabled,
+                    "enabled": active and runtime_supported and definition.name not in disabled
+                    and (getattr(definition, "tool_code", None) != "agent_admin" or definition.name in permitted_admin),
                 })
         if has_external and active and connection is not None:
             try:

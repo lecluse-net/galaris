@@ -143,12 +143,20 @@ async def generate_image_bytes(
     language: str | None = None,
     task_id: UUID | None = None,
     agent_id: int | None = None,
+    model_id: int | None = None,
 ) -> Tuple[bytes, str]:
     """Generate, edit, or compose an image and return bytes plus MIME type."""
     options = ImageGenerationOptions(width=width, height=height)
     lang = language if is_supported(language) else default_language()
+    async def selected_model() -> LLM | None:
+        resource = (await llm_service.get_llm(model_id) if model_id is not None
+                    else await llm_service.get_image_llm(agent_id=agent_id))
+        if resource is None or not resource.output_image or not resource.provider.is_active:
+            return None
+        return resource
+
     model_code, model = await _resolve_llm_config(
-        lambda: llm_service.get_image_llm(agent_id=agent_id),
+        selected_model,
         "generation_model_missing",
         lang,
     )

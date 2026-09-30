@@ -2,6 +2,13 @@
 
 from typing import Any
 from .schemas import Tool
+from .secrets import public_connection_schema as public_connection_schema
+
+
+async def has_active_admin_function(agent_id: int, function: str) -> bool:
+    from app.connection.facade import has_active_tool_function
+
+    return await has_active_tool_function(agent_id, "agent_admin", function)
 
 
 async def get_tool_by_id(tool_id: int) -> Tool | None:
@@ -18,3 +25,29 @@ async def get_runtime_global_params(
     return await tool_service.get_runtime_global_params(
         tool_id, decrypt_passwords=decrypt_passwords
     )
+
+
+from .administration_lock import lock_tools, finish_write
+
+HUMAN_ONLY_TOOL_CODES = frozenset(
+    {
+        "tool_admin",
+        "agent_admin",
+        "galaris_admin",
+        "process_admin",
+        "lab",
+        "goal_management",
+        "skill_management",
+        "console",
+    }
+)
+
+
+__all__ = [
+    "get_tool_by_id",
+    "get_runtime_global_params",
+    "has_active_admin_function",
+    "lock_tools",
+    "finish_write",
+    "HUMAN_ONLY_TOOL_CODES",
+]

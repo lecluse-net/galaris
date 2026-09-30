@@ -895,6 +895,7 @@ import { useI18n } from 'vue-i18n'
 import { isAxiosError } from 'axios'
 import { apiErrorDetail } from '@/core/api'
 import { RichTextEditor, richTextExcerpt, PageHeader, startVisiblePolling } from '@/core/util'
+import { invalidateSessionReads } from '@/core/util/facade'
 import { useHarnessLogs } from '../composables/useHarnessLogs'
 import AgentAuxiliaryDialogs from '../components/AgentAuxiliaryDialogs.vue'
 import { privileges, usePrivilegeStore } from '@/core/authorize'
@@ -1064,6 +1065,7 @@ const deleteType = ref<'agent' | 'title' | 'group'>('agent') // 'agent', 'title'
 const avatarFile = ref<File | null>(null)
 const uploadingAvatar = ref(false)
 const avatarUrls = reactive<Record<number, string>>({})
+const avatarRevisions: Record<number, number> = {}
 
 const agentInitials = (agent: Pick<Agent, 'first_name' | 'last_name' | 'code'>) => {
   const fullName = `${agent?.first_name || ''} ${agent?.last_name || ''}`.trim()
@@ -1080,10 +1082,21 @@ const agentInitials = (agent: Pick<Agent, 'first_name' | 'last_name' | 'code'>) 
 // Load avatars for agents
 const loadAvatars = async () => {
   for (const agent of agentStore.agents) {
+    if (pageDisposed) return
+    const revision = agent.avatar_revision ?? 0
+    if (!agent.has_avatar || avatarRevisions[agent.id] !== revision) {
+      if (avatarUrls[agent.id]) URL.revokeObjectURL(avatarUrls[agent.id])
+      delete avatarUrls[agent.id]
+    }
     if (agent.has_avatar && !avatarUrls[agent.id]) {
       try {
-        const url = await agentService.getAvatarBlobUrl(agent.id)
-        avatarUrls[agent.id] = url
+        const url = await agentService.getAvatarBlobUrl(agent.id, undefined, revision)
+        const current = agentStore.agents.find(item => item.id === agent.id)
+        if (!pageDisposed && current?.has_avatar && (current.avatar_revision ?? 0) === revision) {
+          if (avatarUrls[agent.id]) URL.revokeObjectURL(avatarUrls[agent.id])
+          avatarUrls[agent.id] = url
+          avatarRevisions[agent.id] = revision
+        } else URL.revokeObjectURL(url)
       } catch (error) {
         console.error(`Failed to load avatar for agent ${agent.id}:`, error)
       }
@@ -1682,8 +1695,12 @@ const openAgentDialog = async (agent: Agent | null = null) => {
     // Load avatar if agent has one and it's not already loaded
     if (agent.has_avatar && !avatarUrls[agent.id]) {
       try {
-        const url = await agentService.getAvatarBlobUrl(agent.id)
-        avatarUrls[agent.id] = url
+        const url = await agentService.getAvatarBlobUrl(agent.id, undefined, agent.avatar_revision)
+        if (pageDisposed) URL.revokeObjectURL(url)
+        else {
+          if (avatarUrls[agent.id]) URL.revokeObjectURL(avatarUrls[agent.id])
+          avatarUrls[agent.id] = url
+        }
       } catch (error) {
         console.error(`Failed to load avatar for agent ${agent.id}:`, error)
       }
@@ -1961,7 +1978,11 @@ const onAvatarSelected = async (file: File | null) => {
     agentForm.has_avatar = true
     // Load the new avatar
     const url = await agentService.getAvatarBlobUrl(agentForm.id)
-    avatarUrls[agentForm.id] = url
+    if (pageDisposed) URL.revokeObjectURL(url)
+    else {
+      if (avatarUrls[agentForm.id]) URL.revokeObjectURL(avatarUrls[agentForm.id])
+      avatarUrls[agentForm.id] = url
+    }
     $q.notify({ type: 'positive', message: t('agent.notify.avatarUploaded') })
     // Refresh the agent list to update has_avatar status
     await agentStore.fetchAgents()
@@ -2043,6 +2064,9 @@ watch(() => agentForm.agent_driver, () => {
 })
 
 const richRoute = useRoute()
+// MCP administration can change these records while this page is closed. Invalidate
+// once on opening so its concurrent readers still share a single fresh request.
+for (const group of ['agent-catalogue', 'agent-titles', 'agent-groups']) invalidateSessionReads(group)
 watch(() => richRoute.query.agent_id, async value => {
   if (typeof value !== 'string' || !/^[1-9][0-9]*$/.test(value)) return
   try { await agentStore.fetchAgents(); const agent = agentStore.agents.find(valueAgent => valueAgent.id === Number(value)); if (agent) await openAgentDialog(agent); else $q.notify({ type: 'negative', message: t('richEditor.unavailable') }) } catch { $q.notify({ type: 'negative', message: t('richEditor.unavailable') }) }
@@ -2076,6 +2100,7 @@ watch(activeTab, async (tab, previous) => {
 onUnmounted(() => {
   pageDisposed = true
   stopHarnessPolling?.()
+  for (const url of Object.values(avatarUrls)) URL.revokeObjectURL(url)
 })
 </script>
 

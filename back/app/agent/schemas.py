@@ -185,6 +185,7 @@ class Agent(AgentBase):
     memory_item_id: Optional[UUID] = None
     title: Optional[Title] = None
     has_avatar: bool = False
+    avatar_revision: int = 0
     is_owner: bool = False
     profile: Optional[LlmProfileInfo] = None
 

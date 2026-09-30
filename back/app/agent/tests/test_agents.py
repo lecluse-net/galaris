@@ -511,7 +511,11 @@ async def test_agent_list_batches_teams_and_reopens_avatar_flags(db, monkeypatch
         event.remove(engine, "before_cursor_execute", count)
     assert await agent_service.get_avatar(ids[0]) == b"synthetic-avatar"
     assert await agent_service.delete_avatar(ids[0])
-    assert await agent_service.update_avatar(ids[1], b"new-avatar")
+    import io
+    from PIL import Image
+    image = io.BytesIO()
+    Image.new("RGB", (16, 16), "blue").save(image, "PNG")
+    assert await agent_service.update_avatar(ids[1], image.getvalue())
     monkeypatch.setattr(agent_service.user_service, "get_current_user_id", lambda: None)
     reopened = await agent_service.get_all(agent_ids=ids, skip=0, limit=2)
     assert [agent.has_avatar for agent in reopened] == [False, True]

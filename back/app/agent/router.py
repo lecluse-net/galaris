@@ -335,17 +335,20 @@ async def upload_avatar(
         )
 
     # Read file content
-    content = await file.read()
+    from .avatars import MAX_AVATAR_BYTES
+    content = await file.read(MAX_AVATAR_BYTES + 1)
 
     # Validate file size (max 15MB)
-    max_size = 15 * 1024 * 1024  # 15MB
-    if len(content) > max_size:
+    if len(content) > MAX_AVATAR_BYTES:
         raise HTTPException(
             status_code=400,
             detail=await _detail("avatar_too_large"),
         )
 
-    success = await agent_service.update_avatar(id, content)
+    try:
+        success = await agent_service.update_avatar(id, content)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
     if not success:
         raise HTTPException(status_code=404, detail=await _detail("agent_not_found"))
     return None
@@ -380,7 +383,7 @@ async def download_avatar(
         content=avatar_data,
         media_type=content_type,
         headers={
-            "Cache-Control": "private, max-age=86400",
+            "Cache-Control": "private, no-cache",
         }
     )
 

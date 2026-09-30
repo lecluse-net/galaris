@@ -4,6 +4,7 @@ const BUILT_IN_TOOL_CODES = new Set([
   "memory",
   "file_sharing",
   "galaris_admin",
+  "agent_admin",
   "goal_management",
   "skill_management",
   "process_admin",

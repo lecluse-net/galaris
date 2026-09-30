@@ -281,52 +281,11 @@ async def _selected(id: int):
     assertion=AgentOwnerAssertion,
 )
 async def harness_status(id: int) -> HarnessRuntimeState:
-    agent = await get_agent_record(id)
-    if agent is None:
-        raise HTTPException(status_code=404, detail="Agent not found.")
-    target = await service.resolve_target(agent)
-    if target is None:
-        return HarnessRuntimeState(
-            status="internal",
-            lifecycle_status="internal",
-            managed=False,
-            capabilities=[],
-        )
-    provider = get_provider(target.provider_code)
-    from .skill_sync import skill_sync_status
-
-    skills_status, skills_error = await skill_sync_status(id)
-    capabilities = sorted(await configured_provider_capabilities(target.provider_code))
-    if target.status != "ready":
-        return HarnessRuntimeState(
-            status=target.status,
-            lifecycle_status=target.status,
-            managed=provider.containerized,
-            capabilities=capabilities,
-            last_error=target.last_error or skills_error,
-            skills_status=skills_status,
-        )
-    if "status" not in capabilities:
-        return HarnessRuntimeState(
-            status=target.status,
-            lifecycle_status=target.status,
-            managed=provider.containerized,
-            capabilities=capabilities,
-            last_error=target.last_error or skills_error,
-            skills_status=skills_status,
-        )
+    from .supervision import status as runtime_status
     try:
-        runtime_status = await provider.status(agent)
+        return await runtime_status(id)
     except Exception as exc:
         raise _http_error(exc) from exc
-    return HarnessRuntimeState(
-        status=runtime_status,
-        lifecycle_status=target.status,
-        managed=provider.containerized,
-        capabilities=capabilities,
-        last_error=target.last_error or skills_error,
-        skills_status=skills_status,
-    )
 
 
 @router.post(
@@ -368,13 +327,9 @@ async def harness_logs(
     id: int,
     lines: int = Query(default=300, ge=1, le=5_000),
 ) -> HarnessLogs:
-    agent, target, provider = await _selected(id)
-    if "logs" not in await configured_provider_capabilities(target.provider_code):
-        raise HTTPException(status_code=409, detail="This Harness does not expose logs.")
-    if target.status != "ready":
-        return HarnessLogs(lines=[target.last_error] if target.last_error else [])
+    from .supervision import logs
     try:
-        return HarnessLogs(lines=await provider.logs(agent, lines))
+        return await logs(id, lines)
     except Exception as exc:
         raise _http_error(exc) from exc
 

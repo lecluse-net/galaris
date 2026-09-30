@@ -21,6 +21,7 @@ d'implémentation ni nouvel ordre de priorité produit.
 
 | Plan | Statut | Reste à faire |
 |---|---|---|
+| [tool-agent-admin.md](tool-agent-admin.md) | `partial` | Les 34 fonctions et le parcours UI synthétique sont implémentés. Recette photographique avec un fournisseur réellement authentifié à terminer ; l’essai réel a été refusé avec HTTP 401, sans enregistrement ni resoumission automatique. |
 | [fiabilisation-conversationnelle.md](fiabilisation-conversationnelle.md) | `partial` | Mesures de latence, dont le dispatcher ; arrêt physique des autres runtimes et effets distants réels (worker Hermès direct qualifié en environnement synthétique), remplacement coordonné Task/Goal/Process ; autres surfaces de capacités et diagnostics ; recherche dans l'environnement cible, livraison d'images, contexte utile ; objets candidats concurrents et langue/effort hors du dispatcher qualifié FR/EN ; frictions du parcours complet. |
 | [llm-calls-durables.md](llm-calls-durables.md) | `partial` | Création différée, commandes avec révision attendue, échéance globale, entrées média, rétention et arbitrages de rejeu incertain justifiés par un consommateur. |
 | [convergence-pydantic-ai.md](convergence-pydantic-ai.md) | `partial` | Métadonnées OpenRouter, changements d'intégration/protocole à qualifier, projection des réglages demandés/envoyés et surfaces média. |
@@ -36,7 +37,6 @@ d'implémentation ni nouvel ordre de priorité produit.
 | Plan | Statut | Portée et dépendances |
 |---|---|---|
 | [tool-admin.md](tool-admin.md) | `design` | Tool optionnel d'administration du catalogue, configurations, connexions et autorisations ; test MCP non persistant et diagnostic du catalogue effectif. Services de connexion communs avec AgentAdmin ; délégation et secrets à formaliser avant implémentation. |
-| [tool-agent-admin.md](tool-agent-admin.md) | `approved` | Tool optionnel de 34 fonctions pour administrer agents, avatars (dont génération conditionnée au modèle image), équipes, connexions et harnais ; sans gestion de skills. Implémentation et qualification à réaliser. |
 | [cible.md](cible.md) | `design` | Livraison publique, gouvernance des effets, releases d'agents, autonomie, interopérabilité et exploitation. |
 | [infrastructure-plugins-galaris.md](infrastructure-plugins-galaris.md) | `design` | Bundles, activation, frontend précompilé, permissions, conservation des données, compatibilité et rollback. |
 | [consolidation-parametrique-lora.md](consolidation-parametrique-lora.md) | `design` | Entraînement et service de modèles à qualifier ; dépend des campagnes, de l'étalonnage et des gardes du Lab. |

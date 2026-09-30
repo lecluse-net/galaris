@@ -16,6 +16,8 @@ class TestConnectionService:
         """Isolate persistence; system-service refusals use PostgreSQL in test_system_tools."""
         monkeypatch.setattr(connection_service, "require_editable_connection", AsyncMock())
         monkeypatch.setattr(connection_service, "require_editable_tool", AsyncMock())
+        # AgentAdmin integration tests exercise validation against real Tool schemas.
+        monkeypatch.setattr(connection_service, "validate_params", AsyncMock())
         return AsyncMock(spec=AsyncSession)
 
     # ==========================================================================

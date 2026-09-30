@@ -26,7 +26,7 @@ from .media_facade import SelectedMediaResource, start_media_call, finish_media_
 from .media_contracts import MediaRequestRejected
 from .capabilities import AICapability, with_capability
 from .handlers import LLMModelInfo
-from .provider_catalog import ProviderProfile
+from .provider_catalog import ProviderProfile, resolve_provider_profile
 from .provider_facade import (
     ProviderResponsesPolicy,
     register_image_generation_provider,
@@ -330,4 +330,22 @@ __all__ = [
     "AgentRunUsage",
     "aggregate_agent_run_usage",
     "get_managed_runtime_credential",
+    "image_generation_configuration_ready",
 ]
+
+
+async def image_generation_configuration_ready(model_id: int) -> bool:
+    """Check local image configuration, without probing or exposing provider credentials."""
+    from . import llm_service
+
+    resource = await llm_service.get_llm(model_id, fresh=True)
+    if resource is None or not resource.output_image or not resource.provider.is_active:
+        return False
+    provider = resource.provider
+    profile = resolve_provider_profile(catalog_code=provider.catalog_code, base_url=provider.base_url)
+    if profile is not None:
+        if profile.api_key_required and not provider.api_key:
+            return False
+        if profile.auth_type == "oauth_device" and not provider.oauth_credentials:
+            return False
+    return True

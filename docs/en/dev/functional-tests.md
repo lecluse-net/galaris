@@ -2,6 +2,19 @@
 
 # Functional guarantees catalogue
 
+AgentAdmin is documented in [agent-admin.md](agent-admin.md).
+`back/app/agent/tests/test_avatars.py` checks JPEG storage within 512 × 512 pixels,
+proportions, no enlargement, EXIF orientation and transparency.
+Its HTTP journey replaces a synthetic PNG over 8 MiB with a compact JPEG,
+then verifies that an invalid replacement preserves the avatar and its revision.
+`back/app/agent/tests/test_agent_admin.py` protects CRUD without an HTTP human context,
+manager scope, system services, human-only delegation, the exact 34 functions and live
+revocation on a mounted MCP server. Process scenarios cover valid images, uncertain provider
+outcomes, revocation, changed profiles, late avatars, deletion and replay without resubmission.
+`e2e/specs/agent-admin.spec.mjs` checks creation and two successive portraits displayed after
+Vue navigation without a full reload, a renamed title and refusal after revocation,
+using a synthetic provider.
+
 The synthetic `back/app/lab/planner_boundaries_corpus.json` contains 24 granularity cases:
 ordered collections, partial recovery, unknown sizes, small batches, complex coherent tasks,
 forced PLAN, explicitly requested written plans and clarification. Import it with

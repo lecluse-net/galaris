@@ -215,6 +215,22 @@ INTEGRATED_TOOL_SPECS: tuple[IntegratedToolSpec, ...] = (
         default_active=False,
     ),
     IntegratedToolSpec(
+        code="agent_admin", label="AgentAdmin", description=DESCRIPTIONS["agent_admin"],
+        mcp_tools=(
+            "agent_create", "agent_update", "agent_delete", "agent_options",
+            "agent_avatar_set", "agent_avatar_delete", "agent_avatar_generate",
+            "agent_team_list", "agent_team_set", "agent_tool_list",
+            "agent_connection_list", "agent_connection_get", "agent_connection_create",
+            "agent_connection_update", "agent_connection_delete", "agent_connection_params_set",
+            "agent_connection_param_delete", "agent_connection_function_list", "agent_connection_function_set",
+            "agent_harness_get", "agent_harness_set", "agent_harness_reset", "agent_harness_status",
+            "agent_harness_action", "agent_harness_logs", "agent_harness_blockers",
+            "agent_title_list", "agent_title_create", "agent_title_update", "agent_title_delete",
+            "agent_group_list", "agent_group_create", "agent_group_update", "agent_group_delete",
+        ),
+        default_active=False,
+    ),
+    IntegratedToolSpec(
         code="topic",
         label="Topics",
         description=DESCRIPTIONS["topic"],

@@ -115,6 +115,14 @@ le général, les modèles et le MCP selon les droits. Le choix du moteur des Ta
 **Administrer → Préférences → Harnais** (`/params/harnesses`). Les entrées de harnais
 dépendent du catalogue serveur : utilisez le lien affiché, sans inventer leur identifiant.
 
+Pour déléguer cette administration à un agent, activez sa connexion optionnelle **AgentAdmin**
+dans **Outils & connexions**. Ses 34 fonctions restent limitées aux droits et au périmètre de
+son responsable humain. Le portrait généré utilise le modèle image de l’appelant ; suivez
+le Process retourné jusqu’à la confirmation d’enregistrement, puis rouvrez la fiche de la cible.
+Voir le [contrat AgentAdmin](../dev/agent-admin.md) pour les connexions, équipes et harnais.
+À l’enregistrement d’un avatar d’agent, l’image est convertie en JPEG et réduite à
+512 × 512 pixels au maximum, en conservant ses proportions, sans agrandir les petites images.
+
 ## Outils, connexions et compétences
 
 **Configurer → Outils & connexions** (`/tools`) sépare trois besoins :

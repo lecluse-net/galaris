@@ -67,6 +67,11 @@ async def delete(id: int) -> bool:
     if title is None:
         return False
 
+    referenced = await db.scalar(select(Agent.id).where(Agent.title_id == id)
+                                 .execution_options(include_historized=True).limit(1))
+    if referenced is not None:
+        raise ValueError("A referenced title cannot be deleted")
+
     await db.delete(title)
     await db.commit()
     logger.info(f"Title deleted: {id}")

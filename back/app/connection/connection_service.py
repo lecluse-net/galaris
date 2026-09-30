@@ -9,6 +9,7 @@ from sqlalchemy.orm import joinedload
 
 from .models import Connection, ConnectionParam, ConnectionFunctionState, ToolFunctionState
 from .schemas import FunctionState
+from app.tools.facade import lock_tools, finish_write
 from core.util import get_encryption_service
 from core.database import get_db
 from core.i18n import render_prompt, tr
@@ -76,6 +77,7 @@ async def tool_can_disable(tool_id: int) -> bool:
 
 
 async def require_editable_tool(tool_id: int) -> None:
+    await lock_tools([tool_id], db=get_db())
     if not await tool_can_disable(tool_id):
         raise ValueError(await tr("tools.errors.system_read_only"))
 
@@ -85,20 +87,21 @@ async def require_editable_connection(connection_id: int) -> None:
     if connection is not None:
         await require_editable_tool(connection.tool_id)
 
-async def get_or_create_connection(tool_id: int, agent_id: int) -> Connection:
+async def get_or_create_connection(tool_id: int, agent_id: int, *, active: bool = True, commit: bool = True) -> Connection:
+    await lock_tools([tool_id], db=get_db())
     db = get_db()
     result = await db.execute(
         select(Connection).where(
             Connection.tool_id == tool_id,
             Connection.agent_id == agent_id
-        )
+        ).execution_options(populate_existing=True)
     )
     connection = result.scalar_one_or_none()
     if connection:
         return connection
-    new_connection = Connection(tool_id=tool_id, agent_id=agent_id, active=True)
+    new_connection = Connection(tool_id=tool_id, agent_id=agent_id, active=active)
     db.add(new_connection)
-    await db.commit()
+    await finish_write(commit=commit, db=get_db())
     await db.refresh(new_connection)
     return new_connection
 
@@ -106,7 +109,7 @@ async def get_or_create_connection(tool_id: int, agent_id: int) -> Connection:
 async def get_connection(connection_id: int) -> Optional[Connection]:
     db = get_db()
     result = await db.execute(
-        select(Connection).where(Connection.id == connection_id)
+        select(Connection).where(Connection.id == connection_id).execution_options(populate_existing=True)
     )
     return result.scalar_one_or_none()
 
@@ -191,26 +194,26 @@ async def has_any_active_tool_connection(
     return result.scalar_one_or_none() is not None
 
 
-async def set_connection_active(connection_id: int, active: bool) -> Optional[Connection]:
+async def set_connection_active(connection_id: int, active: bool, *, commit: bool = True) -> Optional[Connection]:
     await require_editable_connection(connection_id)
     db = get_db()
     connection = await get_connection(connection_id)
     if not connection:
         return None
     connection.active = active
-    await db.commit()
+    await finish_write(commit=commit, db=get_db())
     await db.refresh(connection)
     return connection
 
 
-async def delete_connection(connection_id: int) -> bool:
+async def delete_connection(connection_id: int, *, commit: bool = True) -> bool:
     await require_editable_connection(connection_id)
     db = get_db()
     connection = await get_connection(connection_id)
     if not connection:
         return False
     await db.delete(connection)
-    await db.commit()
+    await finish_write(commit=commit, db=get_db())
     return True
 
 
@@ -233,7 +236,7 @@ async def _get_local_params_as_dict(
     # default and implicit I/O raises MissingGreenlet under SQLAlchemy async.
     db = get_db()
     result = await db.execute(
-        select(ConnectionParam).where(ConnectionParam.connection_id == connection_obj.id)
+        select(ConnectionParam).where(ConnectionParam.connection_id == connection_obj.id).execution_options(populate_existing=True)
     )
     params = result.scalars().all()
 
@@ -389,7 +392,8 @@ async def get_connections_by_param(
 async def set_param(
     connection_id: int,
     param_name: str,
-    param_value: Optional[str]
+    param_value: Optional[str],
+    *, commit: bool = True,
 ) -> ConnectionParam:
     await require_editable_connection(connection_id)
     db = get_db()
@@ -402,6 +406,8 @@ async def set_param(
             )
         )
 
+    await validate_params(connection.tool_id, {param_name: param_value})
+
     from app.tools import facade as tool_service
 
     _, forced = await tool_service.get_runtime_global_params(
@@ -412,7 +418,6 @@ async def set_param(
         raise ValueError(f"Connection parameter {param_name} is imposed globally")
 
     tool_schema = await _get_tool_schema(connection.tool_id)
-    encrypted_value = _encrypt_if_needed(param_name, param_value, tool_schema)
 
     result = await db.execute(
         select(ConnectionParam).where(
@@ -421,10 +426,18 @@ async def set_param(
         )
     )
     existing = result.scalar_one_or_none()
+    from core.util import SECRET_MASK
+
+    if param_value == SECRET_MASK and _is_password_field(param_name, tool_schema):
+        if existing is None or not existing.param_value:
+            raise ValueError("A masked value requires an existing secret")
+        encrypted_value = existing.param_value
+    else:
+        encrypted_value = _encrypt_if_needed(param_name, param_value, tool_schema)
 
     if existing:
         existing.param_value = encrypted_value
-        await db.commit()
+        await finish_write(commit=commit, db=get_db())
         await db.refresh(existing)
         return existing
 
@@ -434,20 +447,59 @@ async def set_param(
         param_value=encrypted_value
     )
     db.add(new_param)
-    await db.commit()
+    await finish_write(commit=commit, db=get_db())
     await db.refresh(new_param)
     return new_param
 
 
 async def set_params_bulk(
     connection_id: int,
-    params: Dict[str, Optional[str]]
+    params: Dict[str, Optional[str]],
+    *, commit: bool = True,
 ) -> List[ConnectionParam]:
     await require_editable_connection(connection_id)
-    return [await set_param(connection_id, k, v) for k, v in params.items()]
+    connection = await get_connection(connection_id)
+    if connection is None:
+        raise ValueError("Connection not found")
+    await validate_params(connection.tool_id, params)
+    saved = [await set_param(connection_id, k, v, commit=False) for k, v in params.items()]
+    await finish_write(commit=commit, db=get_db())
+    return saved
 
 
-async def delete_param(connection_id: int, param_name: str) -> bool:
+async def validate_params(tool_id: int, params: Dict[str, Optional[str]]) -> None:
+    """Validate a whole parameter batch before writing any EAV row."""
+    from app.tools.facade import get_tool_by_id, get_runtime_global_params
+
+    tool = await get_tool_by_id(tool_id)
+    if tool is None:
+        raise ValueError("Tool not found")
+    definitions = tool.connection.params
+    _, forced = await get_runtime_global_params(tool_id, decrypt_passwords=False)
+    for name, value in params.items():
+        definition = definitions.get(name)
+        if definition is None:
+            raise ValueError("Unknown connection parameter")
+        if name in forced and value not in (None, ""):
+            raise ValueError("Connection parameter is imposed globally")
+        if value in (None, ""):
+            continue
+        validate_param_value(definition.type, value)
+
+
+def validate_param_value(type_name: str, value: str) -> None:
+    if len(value.encode()) > 65536:
+        raise ValueError("Connection parameter exceeds the size limit")
+    if type_name in {"integer", "user", "agent"}:
+        try:
+            int(value)
+        except ValueError:
+            raise ValueError("An integer connection parameter is required") from None
+    elif type_name == "boolean" and value.lower() not in {"true", "false", "0", "1"}:
+        raise ValueError("A boolean connection parameter is required")
+
+
+async def delete_param(connection_id: int, param_name: str, *, commit: bool = True) -> bool:
     await require_editable_connection(connection_id)
     db = get_db()
     result = await db.execute(
@@ -456,7 +508,7 @@ async def delete_param(connection_id: int, param_name: str) -> bool:
             ConnectionParam.param_name == param_name
         )
     )
-    await db.commit()
+    await finish_write(commit=commit, db=get_db())
     return cast(CursorResult[Any], result).rowcount > 0
 
 
@@ -560,7 +612,7 @@ async def list_function_states(connection_id: int) -> List[ConnectionFunctionSta
     """Return connection-level state rows."""
     db = get_db()
     result = await db.execute(
-        select(ConnectionFunctionState).where(
+        select(ConnectionFunctionState).execution_options(populate_existing=True).where(
             ConnectionFunctionState.connection_id == connection_id
         )
     )
@@ -571,7 +623,7 @@ async def list_tool_function_states(tool_id: int) -> List[ToolFunctionState]:
     """Return global tool-level state rows."""
     db = get_db()
     result = await db.execute(
-        select(ToolFunctionState).where(ToolFunctionState.tool_id == tool_id)
+        select(ToolFunctionState).execution_options(populate_existing=True).where(ToolFunctionState.tool_id == tool_id)
     )
     return list(result.scalars().all())
 
@@ -593,12 +645,13 @@ async def set_connection_function_state(
     connection_id: int,
     function_name: str,
     state: FunctionState,
+    *, commit: bool = True,
 ) -> None:
     """Apply a connection-level state; ``default`` deletes the override row."""
     await require_editable_connection(connection_id)
     db = get_db()
     result = await db.execute(
-        select(ConnectionFunctionState).where(
+        select(ConnectionFunctionState).execution_options(populate_existing=True).where(
             ConnectionFunctionState.connection_id == connection_id,
             ConnectionFunctionState.function_name == function_name,
         )
@@ -608,7 +661,7 @@ async def set_connection_function_state(
     if state == "default":
         if row:
             await db.delete(row)
-            await db.commit()
+            await finish_write(commit=commit, db=get_db())
         return
 
     enabled = state == "enabled"
@@ -620,19 +673,20 @@ async def set_connection_function_state(
             function_name=function_name,
             enabled=enabled,
         ))
-    await db.commit()
+    await finish_write(commit=commit, db=get_db())
 
 
 async def set_tool_function_state(
     tool_id: int,
     function_name: str,
     state: FunctionState,
+    *, commit: bool = True,
 ) -> None:
     """Apply a tool-level state; ``default`` deletes the override row."""
     await require_editable_tool(tool_id)
     db = get_db()
     result = await db.execute(
-        select(ToolFunctionState).where(
+        select(ToolFunctionState).execution_options(populate_existing=True).where(
             ToolFunctionState.tool_id == tool_id,
             ToolFunctionState.function_name == function_name,
         )
@@ -642,7 +696,7 @@ async def set_tool_function_state(
     if state == "default":
         if row:
             await db.delete(row)
-            await db.commit()
+            await finish_write(commit=commit, db=get_db())
         return
 
     enabled = state == "enabled"
@@ -654,7 +708,7 @@ async def set_tool_function_state(
             function_name=function_name,
             enabled=enabled,
         ))
-    await db.commit()
+    await finish_write(commit=commit, db=get_db())
 
 
 async def resolve_function(connection: Connection, function_name: str) -> Dict[str, Any]:

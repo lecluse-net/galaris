@@ -139,6 +139,8 @@ async def lifespan(_app: FastAPI):
         await original_emit(subject, action, data, room=room)
 
     with ExitStack() as patches:
+        from tests.e2e_agent_admin import portrait_provider
+        patches.enter_context(patch("app.image.generate_image_bytes", portrait_provider))
         patches.enter_context(patch("bridge.openai.codex_quota._USAGE_URL",
                                     "http://127.0.0.1:8000/api/__test/chatgpt/usage"))
         patches.enter_context(patch.object(websocket, "emit", emit))
@@ -427,4 +429,6 @@ async def subscription(room_id: UUID):
     }
 
 
+from tests.e2e_agent_admin import router as agent_admin_fixture_router
+app.include_router(agent_admin_fixture_router)
 app.mount("/", main.app)

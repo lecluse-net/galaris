@@ -113,6 +113,14 @@ def configure_dream_media() -> None:
     register_attachment_media(image_reader=describe_image, audio_normalizer=normalize_for_transcription_chunks_isolated)
 
 
+def configure_agent_admin() -> None:
+    """Register the integrated avatar engine after provider modules are loaded."""
+    from app.agent.avatar_engine import AvatarEngine
+    from app.process import registry
+
+    registry.register(AvatarEngine())
+
+
 def load_dbadmin_contributions(registry: object) -> None:
     """Load optional DbAdmin contributions at the composition boundary."""
 

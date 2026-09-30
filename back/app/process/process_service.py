@@ -377,6 +377,7 @@ async def list_for_agent(agent_id: int) -> list[dict[str, Any]]:
             ProcessDefinition.agent_id == agent_id,
             ~ProcessDefinition.engine_process_id.startswith("multimedia:"),
             ~ProcessDefinition.engine_process_id.startswith("lab:"),
+            ~ProcessDefinition.engine_process_id.startswith("agent_admin:"),
         )
         .order_by(ProcessDefinition.label)
     )
@@ -405,6 +406,7 @@ async def list_resource_definitions_for_agent(
         ProcessDefinition.agent_id == agent_id,
         ~ProcessDefinition.engine_process_id.startswith("multimedia:"),
         ~ProcessDefinition.engine_process_id.startswith("lab:"),
+        ~ProcessDefinition.engine_process_id.startswith("agent_admin:"),
     )
     normalized_query = query.strip()
     if normalized_query:
@@ -1138,6 +1140,9 @@ async def _apply_snapshot(run: ProcessRun, snapshot: EngineRunSnapshot, event_ty
                 **(run.engine_metadata or {}),
                 "failed_node": snapshot.error.node_name,
             }
+
+
+apply_engine_snapshot = _apply_snapshot
 
 
 async def refresh_run(run_id: UUID) -> ProcessRun:

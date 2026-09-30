@@ -79,9 +79,10 @@ async def _set_transient_flags(agent: Agent) -> None:
     agent.is_owner = agent.user_id == user_service.get_current_user_id()
 
 
-async def _require_team_members_edit() -> None:
+async def _require_team_members_edit(actor_user_id: int | None = None) -> None:
     from core.authorize import check_privilege
-    user = await user_service.get_current_user()
+    user = (await user_service.get_user_by_id(actor_user_id) if actor_user_id is not None
+            else await user_service.get_current_user())
     if (user is None
         or not await check_privilege(user, "TEAM_ACCESS", get_db())
         or not await check_privilege(user, "TEAM_MEMBERS_EDIT", get_db())):
@@ -211,7 +212,7 @@ async def get(
     return agent
 
 
-async def create(agent_data: AgentCreate) -> Agent:
+async def create(agent_data: AgentCreate, *, actor_user_id: int | None = None) -> Agent:
     """Create a new agent."""
     db = get_db()
     code = await _normalize_code(agent_data.code)
@@ -229,7 +230,7 @@ async def create(agent_data: AgentCreate) -> Agent:
 
     # Verify group exists if provided
     if agent_data.group_id is not None:
-        await _require_team_members_edit()
+        await _require_team_members_edit(actor_user_id)
         group_result = await db.execute(select(AgentGroup).where(AgentGroup.id == agent_data.group_id))
         if group_result.scalar_one_or_none() is None:
             raise ValueError(await tr("agent_api.errors.invalid_group"))
@@ -284,10 +285,13 @@ async def create(agent_data: AgentCreate) -> Agent:
 
     logger.info(f"Agent created: {new_agent.first_name} {new_agent.last_name}")
     await notify_agent_profile(new_agent.id, "create")
+    if new_agent.group_id is not None:
+        from core.team import notify_team_access_changed
+        await notify_team_access_changed()
     return new_agent
 
 
-async def update(id: int, agent_update: AgentUpdate) -> Optional[Agent]:
+async def update(id: int, agent_update: AgentUpdate, *, actor_user_id: int | None = None) -> Optional[Agent]:
     """Update an existing agent."""
     db = get_db()
     result = await db.execute(select(Agent).where(Agent.id == id))
@@ -298,7 +302,7 @@ async def update(id: int, agent_update: AgentUpdate) -> Optional[Agent]:
     fields_set = agent_update.model_fields_set
     if "group_id" in fields_set and agent_update.group_id != agent.group_id:
         from .dialogue_service import set_agent_membership
-        await _require_team_members_edit()
+        await _require_team_members_edit(actor_user_id)
         previous_team = agent.group_id
         if previous_team is not None:
             await set_agent_membership(previous_team, agent.id, False)
@@ -369,6 +373,9 @@ async def update(id: int, agent_update: AgentUpdate) -> Optional[Agent]:
 
     logger.info(f"Agent updated: {agent.first_name} {agent.last_name}")
     await notify_agent_profile(agent.id, "update")
+    if "group_id" in fields_set:
+        from core.team import notify_team_access_changed
+        await notify_team_access_changed()
     return agent
 
 
@@ -391,12 +398,16 @@ async def delete(id: int) -> bool:
 async def update_avatar(id: int, avatar_data: bytes) -> bool:
     """Update the avatar for an agent. Returns True if updated, False if not found."""
     db = get_db()
-    result = await db.execute(select(Agent).where(Agent.id == id))
+    from .avatars import normalize_avatar
+    avatar_data = normalize_avatar(avatar_data)
+    result = await db.execute(select(Agent).where(Agent.id == id).with_for_update()
+                              .execution_options(populate_existing=True))
     agent = result.scalar_one_or_none()
     if agent is None:
         return False
 
     agent.avatar = avatar_data
+    agent.avatar_revision += 1
     await db.commit()
     logger.info(f"Avatar updated for agent: {id}")
     return True
@@ -415,12 +426,14 @@ async def get_avatar(id: int) -> Optional[bytes]:
 async def delete_avatar(id: int) -> bool:
     """Delete the avatar for an agent. Returns True if deleted, False if not found."""
     db = get_db()
-    result = await db.execute(select(Agent).where(Agent.id == id))
+    result = await db.execute(select(Agent).where(Agent.id == id).with_for_update()
+                              .execution_options(populate_existing=True))
     agent = result.scalar_one_or_none()
     if agent is None:
         return False
 
     agent.avatar = None
+    agent.avatar_revision += 1
     await db.commit()
     logger.info(f"Avatar deleted for agent: {id}")
     return True

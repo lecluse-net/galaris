@@ -164,11 +164,13 @@ def set_current_user(user: Optional[User]) -> None:
 async def get_users(
     skip: int = 0, limit: int = 50, search: Optional[str] = None,
     *, sort_by: Literal["id", "email", "display_name", "is_active", "created_at"] = "id",
-    descending: bool = False,
+    descending: bool = False, active_only: bool = False,
 ) -> List[User]:
     """Return all users with optional search filtering."""
     db = get_db()
     query = select(User)
+    if active_only:
+        query = query.where(User.is_active.is_(True))
 
     if search:
         search_term = f"%{search}%"

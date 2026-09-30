@@ -1605,3 +1605,7 @@ async def resume_expired_planner_clarifications() -> None:
     from .planner_service import resume_expired_clarifications
 
     await resume_expired_clarifications()
+from .admin_authorization import delegated_admin as delegated_admin
+from .admin_authorization import admin_available as admin_available
+from .admin_schemas import PageLimit as PageLimit, PageOffset as PageOffset
+from .avatars import apply_generated_avatar as apply_generated_avatar, portrait_snapshot as portrait_snapshot

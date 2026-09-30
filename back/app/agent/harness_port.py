@@ -9,6 +9,7 @@ from .contracts import AgentRunRequest, ConfiguredHarnessSelection, HarnessExecu
 
 
 class AgentHarnessSelectionPort(Protocol):
+    async def admin_options(self) -> list[dict[str, Any]]: ...
     async def projected_skill_agent_ids(self, agent_ids: Collection[int] | None = None) -> list[int]: ...
 
     async def request_skill_sync(self, agent_id: int) -> None: ...
@@ -26,6 +27,11 @@ class _HarnessSelectionPortProxy:
 
     def register(self, implementation: AgentHarnessSelectionPort) -> None:
         self._implementation = implementation
+
+    async def admin_options(self) -> list[dict[str, Any]]:
+        if self._implementation is None:
+            return []
+        return await self._implementation.admin_options()
 
     async def prepare_execution(self, request: AgentRunRequest) -> None:
         if self._implementation is not None:
