@@ -3,8 +3,10 @@
 # AgentAdmin
 
 AgentAdmin (`agent_admin`) is an optional built-in Tool with 34 functions. Its connection
-starts inactive; catalogue synchronization never reactivates disabled connections. A human
-enables it in **Configure → Tools & connections → Connections**.
+starts inactive for ordinary agents. The **Galaris** assistant proposed by the installation
+receives an active connection when first created. Catalogue synchronization never reactivates
+disabled connections or changes previously initialized agents. A human can enable it in
+**Configure → Tools & connections → Connections**.
 `agent_list` and `agent_get` remain in the mandatory Galaris system service.
 
 ## Delegation and privileges

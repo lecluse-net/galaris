@@ -720,9 +720,9 @@ async def initialize_admin_agent_connections(agent_id: int) -> None:
     await get_db().execute(
         update(Connection).where(
             Connection.agent_id == agent_id,
-            Connection.tool_id == select(ToolModel.id).where(
-                ToolModel.code == "galaris_admin"
-            ).scalar_subquery(),
+            Connection.tool_id.in_(select(ToolModel.id).where(
+                ToolModel.code.in_(("galaris_admin", "agent_admin"))
+            )),
         ).values(active=True)
     )
 

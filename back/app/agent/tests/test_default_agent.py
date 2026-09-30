@@ -9,6 +9,7 @@ from sqlalchemy import select
 from app.agent.defaults import default_agent_dataset
 from app.agent.models import Agent, Title
 from app.connection import Connection
+from app.connection.facade import has_active_tool_function
 from app.skill import AgentSkill, skill_service
 from app.tools import ToolModel, has_documentation_access, has_galaris_admin_access, initialize_admin_agent_connections
 from app.tools.dbadmin import datasets as tool_datasets
@@ -52,6 +53,7 @@ async def test_seed_waits_for_manager_then_preserves_edits_revocations_and_delet
     assert agent.profile_media_type == "text/html"
     assert await has_galaris_admin_access(agent.id)
     assert await has_documentation_access(agent.id)
+    assert await has_active_tool_function(agent.id, "agent_admin", "agent_options")
     skill = await skill_service.get_by_code(skill_code)
     assert skill is not None and not skill.global_enabled
     assert skill_code in await skill_service.get_assigned_codes(agent.id)
@@ -66,11 +68,12 @@ async def test_seed_waits_for_manager_then_preserves_edits_revocations_and_delet
     await db.flush()
     agent.profile_id = custom_profile.id
     agent.agent_driver = "hermes"
-    admin_tool_id = await db.scalar(select(ToolModel.id).where(ToolModel.code == "galaris_admin"))
-    connection = (await db.scalars(select(Connection).where(
-        Connection.agent_id == agent.id, Connection.tool_id == admin_tool_id,
-    ))).one()
-    connection.active = False
+    for tool_code in ("galaris_admin", "agent_admin"):
+        admin_tool_id = await db.scalar(select(ToolModel.id).where(ToolModel.code == tool_code))
+        connection = (await db.scalars(select(Connection).where(
+            Connection.agent_id == agent.id, Connection.tool_id == admin_tool_id,
+        ))).one()
+        connection.active = False
     await db.commit()
     await skill_service.set_agent_authorization(skill.id, agent.id, "disabled")
 
@@ -84,6 +87,7 @@ async def test_seed_waits_for_manager_then_preserves_edits_revocations_and_delet
     )
     assert not await has_galaris_admin_access(agent.id)
     assert not await has_documentation_access(agent.id)
+    assert not await has_active_tool_function(agent.id, "agent_admin", "agent_options")
     assert skill_code not in await skill_service.get_assigned_codes(agent.id)
     assignment = await db.scalar(select(AgentSkill).where(
         AgentSkill.agent_id == agent.id, AgentSkill.skill_id == skill.id,
@@ -113,6 +117,10 @@ async def test_seed_preserves_existing_galaris_agent(db):
     await db.refresh(existing)
     assert existing.first_name == "Existing" and existing.initialization_key is None
     assert not await has_galaris_admin_access(existing.id)
+    for definition in tool_datasets():
+        await reconcile_dataset(db, definition)
+    assert not await has_active_tool_function(existing.id, "agent_admin", "agent_options")
+    assert await has_active_tool_function(proposal.id, "agent_admin", "agent_options")
     # Documentation access alone must not grant the bundled assistant's skills.
     await initialize_admin_agent_connections(existing.id)
     assert await has_documentation_access(existing.id)
@@ -199,6 +207,13 @@ async def test_first_signup_immediately_proposes_manageable_galaris(client, monk
     assert agent["first_name"] == "Galaris"
     assert agent["agent_driver"] == "internal" and agent["profile_id"] is None
     assert "initialization_key" not in agent
+    connections = await client.get(
+        "/api/connections", headers=headers, params={"agent_id": agent["id"]},
+    )
+    assert connections.status_code == 200, connections.text
+    async with get_db_session() as db:
+        tool_id = await db.scalar(select(ToolModel.id).where(ToolModel.code == "agent_admin"))
+    assert next(row for row in connections.json() if row["tool_id"] == tool_id)["active"] is True
     authorizations = await client.get(
         "/api/skills/authorizations", headers=headers, params={"agent_id": agent["id"]},
     )

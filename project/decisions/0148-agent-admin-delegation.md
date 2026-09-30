@@ -2,7 +2,10 @@
 
 Status: accepted. Date: 2026-09-30.
 
-AgentAdmin is an optional built-in Tool, inactive by default. Every operation requires
+AgentAdmin is an optional built-in Tool, inactive by default for ordinary agents. The
+bundled Galaris assistant receives an active connection when first created; subsequent
+synchronization preserves manual deactivation and previously initialized agents.
+Every operation requires
 the caller's current active connection and effective function permission. Its scope is
 the caller's active human manager's current Agent management scope; no HTTP identity is
 required or trusted. The manager's assignments are evaluated without a selected HTTP

@@ -106,7 +106,8 @@ engine in the agent's record; administer harnesses under
 on the server catalog: use the displayed link without inventing an identifier.
 
 To delegate this administration to an agent, enable its optional **AgentAdmin** connection
-under **Tools & connections**. Its 34 functions remain limited to its human manager’s rights
+under **Tools & connections**. It starts active when the **Galaris** assistant is created;
+later deactivation is preserved. Its 34 functions remain limited to its human manager’s rights
 and scope. Generated portraits use the caller’s image model; inspect the returned Process
 until registration is confirmed, then reopen the target’s record. See the
 [AgentAdmin contract](../dev/agent-admin.md) for connections, teams and Harnesses.
