@@ -49,6 +49,7 @@ from core.database import get_db_session
 from core import websocket
 from core.user.models import User
 from core.user.user_service import encrypt_password
+from tests.e2e_tool_admin import router as tool_admin_fixture, remote_app as tool_admin_remote
 
 pydantic_ai.models.ALLOW_MODEL_REQUESTS = False
 gates: dict[UUID, asyncio.Event] = {}
@@ -153,11 +154,14 @@ async def lifespan(_app: FastAPI):
         patches.enter_context(patch("bridge.mail.imap_client.ImapClient.poll_inbox",
                                     return_value=MailPollBatch(uid_validity=1, latest_uid=0)))
         async with main.app.other_asgi_app.router.lifespan_context(main.app.other_asgi_app):
-            register_controller(ScriptedController())
-            yield
+            async with tool_admin_remote.router.lifespan_context(tool_admin_remote):
+                register_controller(ScriptedController())
+                yield
 
 
 app = FastAPI(lifespan=lifespan)
+app.include_router(tool_admin_fixture)
+app.mount("/api/__test/mcp", tool_admin_remote)
 
 
 @app.get("/api/__test/ready")

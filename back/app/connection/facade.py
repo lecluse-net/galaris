@@ -1,5 +1,7 @@
 """Stable connection-domain operations used by other modules."""
 
+from . import admin_service as administration
+
 from .connection_service import (
     function_state_label,
     get_connection,
@@ -52,7 +54,7 @@ from .agent_admin_service import (
 )
 
 __all__ += [
-    "validate_param_value", "validate_params", "get_connection_by_agent_tool",
+    "administration", "validate_param_value", "validate_params", "get_connection_by_agent_tool",
     "get_agent_ids_by_tool", "get_or_create_connection", "set_connection_active", "delete_connection",
     "get_params_for_api", "set_params_bulk", "delete_param", "set_connection_function_state",
     "set_tool_function_state", "resolve_function",

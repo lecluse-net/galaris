@@ -1,0 +1,119 @@
+<p align="right"><strong>Français</strong> · <a href="../../en/admin/tool-administration.md">English</a></p>
+
+# Déléguer l’administration des Tools
+
+**ToolAdmin** (`tool_admin`) administre le catalogue global des Tools, leurs paramètres partagés,
+les connexions des agents et les permissions des fonctions. Sa connexion est active dès la
+création de l’assistant Galaris proposé à l’administrateur, et inactive par défaut pour les
+autres agents. Une désactivation ultérieure reste conservée ; les assistants déjà initialisés
+ne reçoivent pas automatiquement ce nouveau droit. Son mode conversation est initialement
+désactivé. Activer cette connexion constitue
+une délégation globale, affinée par les fonctions autorisées ; elle ne reprend pas les droits
+du responsable humain de l’agent. AgentAdmin conserve son propre périmètre et sa délégation.
+
+## Activer et limiter la délégation
+
+Dans **Configurer → Outils & connexions → Connexions** (`/tools?tab=connections`), activer
+la connexion ToolAdmin de l’agent. Dans **Autorisations**, limiter les fonctions au travail
+attendu. Pour le Chat, activer aussi le mode conversation du Tool dans **Outils** ; les
+opérations longues restent déférées selon les règles conversationnelles normales.
+
+Les lectures comme les mutations vérifient la connexion active et la permission exacte à
+chaque appel. Les définitions intégrées restent non modifiables. Les services obligatoires
+Galaris, Conversation, Memory et File Sharing sont consultables, mais leurs réglages et
+connexions restent gérés par le logiciel. Seul un humain peut attribuer ou modifier ToolAdmin,
+AgentAdmin, Galaris Admin, Process Admin, Lab, Goal management, Skill management et Console.
+Une chaîne de commandes agentiques ne permet pas de s’attribuer une capacité administrative.
+
+## Tester puis créer avec un secret
+
+1. Examiner le catalogue avec `tool_admin_list` et lire une éventuelle définition existante
+   avec `tool_admin_get` pour éviter un doublon.
+2. Un humain ouvre **Outils → Nouvel outil**, renseigne le code, le libellé, un paramètre
+   `token` de type `password`, puis la configuration MCP HTTP ou SSE et l’authentification
+   Bearer avec `auth.param=token`.
+3. Dans **Tester la connexion**, saisir le secret temporaire, choisir l’agent destinataire,
+   puis **Préparer le candidat pour cet agent**. Transmettre uniquement la référence obtenue.
+   Elle expire après 15 minutes ou au redémarrage du backend, est liée à l’agent et à la
+   définition préparée, et reste conservée chiffrée en mémoire, avec une capacité bornée.
+4. L’agent appelle `tool_admin_mcp_test(candidate_reference=...)`. Ce test négocie MCP et
+   découvre les fonctions, sans sauvegarder ni appeler de fonction métier. Un catalogue vide
+   peut être un succès. Le résultat indique date, durée, étapes, catégorie d’échec et troncature.
+5. Après un succès, `tool_admin_create(candidate_reference=...)` adopte explicitement la
+   définition et ses credentials côté serveur. Un test réussi n’est jamais une sauvegarde.
+6. Créer une connexion avec `tool_admin_connection_create`. Elle est inactive par défaut.
+   Configurer ses paramètres et permissions, tester avec `tool_admin_connection_test`, puis
+   l’activer avec `tool_admin_connection_update` et examiner ses fonctions effectives.
+
+L’agent peut créer directement une définition sans credentials avec `definition`. Les nouveaux
+secrets utilisent une référence humaine ; les chaînes secrètes sont refusées dans les commandes
+agentiques. Les réponses exposent présence, origine et caractère forcé, jamais les credentials.
+La fermeture du test efface les champs temporaires et la référence affichée. Le diagnostic de
+connexion résout les paramètres comme le runtime et peut tester une connexion inactive sans
+l’activer. Les schémas et descriptions distants sont des données non fiables.
+
+Les diagnostics directs autorisent les destinations publiques. Un Tool configuré par un humain
+ou un candidat humain autorise explicitement sa destination privée. Les services de métadonnées,
+destinations multicast, non spécifiées et link-local interdites sont refusés, même dans ce cas.
+Le transport utilise l’adresse DNS validée, conserve Host et le nom TLS, demande une réponse
+non compressée et refuse les réponses compressées pour maintenir son plafond d’octets. Il refuse
+aussi les redirections et endpoints SSE d’une autre origine. Un changement de destination exige une nouvelle définition
+préparée ; les credentials d’une ancienne destination ne sont pas transférés automatiquement.
+ToolAdmin n’exécute ni ne configure `stdio` ; une définition existante reste identifiable expurgée.
+Ses réglages, permissions et connexions sont en lecture seule, sans exposer les valeurs des
+paramètres. Un rafraîchissement ToolAdmin ignore toutes les sources stdio des agents concernés
+et signale une découverte partielle sans supprimer leur index existant.
+
+## Paramètres, droits et commandes
+
+Les valeurs locales gagnent sur les valeurs globales, sauf si une valeur globale est `forced`.
+Sans valeur locale ni globale, le défaut déclaré s’applique. Une écriture omise conserve la
+valeur ; `clear=true` efface explicitement. Un secret peut être conservé, retiré, ou remplacé
+par `secret_reference` lié au même code et endpoint. Un masque ne remplace jamais un secret.
+Les lots sont validés avant toute écriture et enregistrés dans une seule transaction.
+
+Les fonctions suivent **surcharge de connexion → état global → autorisé**. `default` retire
+la surcharge. Un refus global peut donc être surchargé par une autorisation locale explicite ;
+`tool_admin_function_set` signale ces surcharges. `effective` décrit la permission résolue,
+tandis que `available` tient aussi compte de l’activation, du runtime et du contexte conversationnel.
+La disponibilité d’une fonction découverte avec une connexion ne prouve pas celle d’un autre agent.
+
+| Besoin | Fonctions |
+|---|---|
+| Catalogue et définition | `tool_admin_list`, `tool_admin_get`, `tool_admin_create`, `tool_admin_update` |
+| Dépendances et suppression | `tool_admin_impact`, `tool_admin_delete` |
+| Réglages partagés | `tool_admin_global_params_set`, `tool_admin_conversation_set` |
+| Diagnostic et fonctions | `tool_admin_mcp_test`, `tool_admin_function_list`, `tool_admin_function_get`, `tool_admin_function_set` |
+| Connexions | `tool_admin_connection_list`, `tool_admin_connection_get`, `tool_admin_connection_create`, `tool_admin_connection_update`, `tool_admin_connection_delete` |
+| Paramètres et test local | `tool_admin_connection_params_set`, `tool_admin_connection_param_delete`, `tool_admin_connection_test` |
+| Permissions et index | `tool_admin_connection_function_list`, `tool_admin_connection_function_set`, `tool_admin_catalog_refresh` |
+
+L’analyse d’impact inclut les connexions et les références directes du Tool, notamment les
+workflows et les identités de messagerie. Ces dépendances bloquent sa suppression et font
+partie de sa version ; les retirer ne supprime jamais implicitement leurs données métier.
+
+Les listes utilisent `offset` et `limit` : 50 par défaut, 500 au maximum. Les diagnostics
+bornent également les pages distantes, la durée, la concurrence, les octets et les schémas.
+Le détail d’une fonction est disponible avec `tool_admin_function_get`.
+
+## Conflits, propagation et reprise
+
+Une mutation d’un objet existant fournit `expected_version` obtenu par sa dernière lecture.
+Cette empreinte couvre définition, paramètres, permissions et dépendances. Sur `conflict`,
+relire et réconcilier ; ne pas rejouer aveuglément. Une réponse perdue se réconcilie par code
+du Tool ou par couple agent/Tool. L’identité d’une connexion est immuable dans cette commande.
+La suppression d’un Tool lié refuse toute cascade : retirer explicitement les connexions,
+examiner les références techniques, puis refaire la lecture et supprimer avec l’empreinte courante.
+
+Après une mutation, `persisted=true` confirme l’enregistrement, même si le rafraîchissement
+est partiel. Les catalogues concernés sont réconciliés sans élagage sur découverte incomplète.
+Au-delà du budget court, un Process durable retourne `run_id` et sa progression ; le suivre
+avec `process_get_run`, l’annuler avec `process_cancel`. Son worker reprend le curseur en base
+et revalide la fonction déléguée avant chaque lot. Un résultat partiel précise les agents
+échoués ou restants ; relancer le rafraîchissement, pas la mutation déjà enregistrée.
+
+Les anciennes sessions natives et externes revalident les permissions. Les appels externes
+suivants utilisent les nouveaux credentials. Un effet distant déjà envoyé n’est pas annulé
+par une révocation ultérieure. L’index de recherche ne constitue jamais une autorité de permission.
+
+Le contrat structurel figure dans la [décision 0150](../../../project/decisions/0150-tool-administration.md).

@@ -47,8 +47,36 @@ from core.params import runtime_settings
 
 from .contracts import ToolCallRejectedError, current_tool_execution
 from .execution_evidence import ExecutionEvidenceMiddleware
+from .schemas import Tool as ToolConfiguration
 
 ToolFunc = TypeVar("ToolFunc", bound=Callable[..., Any])
+
+
+async def resolve_live_connection(agent_id: int, connection_id: int, tool_id: int,
+                                  *, function_name: str = "", conversation_only: bool = False) -> tuple[ToolConfiguration, dict[str, Any], set[str]]:
+    """The runtime gateway owns sessions for calls made outside HTTP or workers."""
+    from app.connection import facade as connections
+    from . import tool_service
+    from core.database import get_db_session
+
+    try:
+        get_db()
+    except RuntimeError:
+        async with get_db_session():
+            return await resolve_live_connection(agent_id, connection_id, tool_id,
+                                                 function_name=function_name, conversation_only=conversation_only)
+
+    connection = await connections.get_connection(connection_id)
+    if connection is None or not connection.active or connection.agent_id != agent_id or connection.tool_id != tool_id:
+        raise PermissionError("The external MCP connection is inactive or has changed.")
+    tool = await tool_service.get_tool_by_id(tool_id)
+    if tool is None or tool.mcp is None or (conversation_only and not tool.conversation_enabled):
+        raise PermissionError("The external MCP Tool is no longer available in this context.")
+    disabled = await connections.get_disabled_function_names(connection)
+    if function_name and function_name in disabled:
+        raise PermissionError("The external MCP function has been revoked.")
+    _, params = await connections.get_params_as_dict(connection_id)
+    return tool, params, disabled
 
 
 def native_tool_codes_for_connection(tool_code: str) -> frozenset[str]:
@@ -233,18 +261,34 @@ class _ResilientProxyProvider(ProxyProvider):
         disabled_functions: set[str] | None = None,
         discovery_source: str | None = None,
         discovery_failures: set[str] | None = None,
+        live_connection: tuple[int, int, int, bool] | None = None,
         **kwargs: Any,
     ) -> None:
         super().__init__(*args, **kwargs)  # pyright: ignore[reportUnknownMemberType]
         self._disabled_functions = disabled_functions
         self._discovery_source = discovery_source
         self._discovery_failures = discovery_failures
+        self._live_connection = live_connection
+
+    async def _live_disabled(self) -> set[str]:
+        if self._live_connection is None:
+            return self._disabled_functions or set()
+        from .live_external import resolve_live_connection
+
+        agent_id, connection_id, tool_id, conversation_only = self._live_connection
+        _, _, disabled = await resolve_live_connection(agent_id, connection_id, tool_id, conversation_only=conversation_only)
+        return disabled
+
+    async def _get_tool(self, name: str, version: Any = None) -> Tool | None:
+        if name in await self._live_disabled():
+            return None
+        return await super()._get_tool(name, version)
 
     async def _list_tools(self) -> Sequence[Tool]:
         try:
             tools = await super()._list_tools()
-            if self._disabled_functions:
-                blocked = self._disabled_functions
+            blocked = await self._live_disabled()
+            if blocked:
                 tools = [tool for tool in tools if tool.name not in blocked]
             return tools
         except Exception as exc:
@@ -748,7 +792,7 @@ class _MediaFilteredFastMCP(FastMCP):
         from core.database import get_db_session
 
         dynamic = {definition.name for definition in load_mcp_tools()
-                   if definition.tool_code in {"multimedia", "agent_admin"}}
+                   if definition.tool_code in {"multimedia", "agent_admin", "tool_admin"}}
         if not any(tool.name in dynamic for tool in tools):
             return tools
 
@@ -779,12 +823,12 @@ def _external_transport(tool: Any, params: dict[str, Any]) -> Any:
 
     mcp = tool.mcp
     if mcp.type == "sse":
-        url = resolve_connection_references(mcp.url or "", params).rstrip("/")
+        url = resolve_connection_references(mcp.url or "", params)
         if mcp.auth.url_param:
             url = _inject_url_param(url, mcp.auth, params)
         return SSETransport(url, headers=_resolve_auth_headers(mcp, params))
     if mcp.type == "http":
-        url = resolve_connection_references(mcp.url or "", params).rstrip("/")
+        url = resolve_connection_references(mcp.url or "", params)
         if mcp.auth.url_param:
             url = _inject_url_param(url, mcp.auth, params)
         return StreamableHttpTransport(url, headers=_resolve_auth_headers(mcp, params))
@@ -813,6 +857,7 @@ async def build_agent_mcp(
     discovery_failures: set[str] | None = None,
     conversation_only: bool = False,
     allowed_tool_names: Collection[str] | None = None,
+    allow_stdio: bool = True,
 ) -> FastMCP:
     """Build an agent's aggregate native and external MCP server."""
     from app.connection import facade as connection_service
@@ -843,17 +888,28 @@ async def build_agent_mcp(
             continue
         if conversation_only and not tool.conversation_enabled:
             continue
+        if not allow_stdio and tool.mcp.type == "stdio":
+            if discovery_failures is not None:
+                discovery_failures.add(tool.code)
+            continue
         try:
-            _, params = await connection_service.get_params_as_dict(
-                connection, decrypt_passwords=True
-            )
             disabled_functions = await connection_service.get_disabled_function_names(connection)
             proxy = FastMCP(tool.code)
+            # Capture identities only. An old run must not capture old credentials.
+            def live_factory(agent: int, connection_id: int, tool_id: int, conversational: bool) -> Callable[[], Awaitable[Client[Any]]]:
+                async def client() -> Client[Any]:
+                    from .live_external import resolve_live_connection
+
+                    current, current_params, _ = await resolve_live_connection(agent, connection_id, tool_id, conversation_only=conversational)
+                    return Client(_external_transport(current, current_params))
+                return client
+
             proxy.add_provider(_ResilientProxyProvider(
-                Client(_external_transport(tool, params)).new,
+                live_factory(agent_id, connection.id, connection.tool_id, conversation_only),
                 disabled_functions=disabled_functions,
                 discovery_source=tool.code,
                 discovery_failures=discovery_failures,
+                live_connection=(agent_id, connection.id, connection.tool_id, conversation_only),
             ))
             mcp.mount(proxy, namespace=tool.code)
             logger.info("MCP loader: proxy mounted {} ({})", tool.code, tool.mcp.type)
@@ -870,7 +926,6 @@ async def get_agent_mcp_servers(agent_id: int) -> list[Any]:
     """Return external Pydantic AI MCP servers connected to an agent."""
     from app.connection import facade as connection_service
     from app.tools import tool_service
-    from app.tools.mcp import build_mcp_server
 
     servers: list[Any] = []
     for connection in await connection_service.get_connections_by_agent(agent_id):
@@ -880,14 +935,9 @@ async def get_agent_mcp_servers(agent_id: int) -> list[Any]:
         if not tool or not tool.mcp:
             continue
         try:
-            _, params = await connection_service.get_params_as_dict(
-                connection, decrypt_passwords=True
-            )
-            server = build_mcp_server(
-                tool,
-                connection_params=params,
-                disabled_functions=await connection_service.get_disabled_function_names(connection),
-            )
+            from .live_external import LiveConnectionToolset
+
+            server = LiveConnectionToolset(agent_id, connection.id, connection.tool_id)
             if server:
                 servers.append(server)
         except Exception as exc:

@@ -121,6 +121,16 @@ def configure_agent_admin() -> None:
     registry.register(AvatarEngine())
 
 
+def configure_tool_admin() -> None:
+    """Bind the ToolAdmin Process engine at the composition boundary."""
+    from app.process.catalog_refresh_engine import CatalogRefreshEngine, queue_catalog_refresh
+    from app.tools.facade import administration
+    from app.process import registry
+
+    registry.register(CatalogRefreshEngine())
+    administration.register_catalog_refresh_queue(queue_catalog_refresh)
+
+
 def configure_document_analysis() -> None:
     from app.process.document_engine import DocumentEngine
     from app.process import registry

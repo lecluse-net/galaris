@@ -53,6 +53,7 @@ async def test_seed_waits_for_manager_then_preserves_edits_revocations_and_delet
     assert agent.profile_media_type == "text/html"
     assert await has_galaris_admin_access(agent.id)
     assert await has_documentation_access(agent.id)
+    assert await has_active_tool_function(agent.id, "tool_admin", "tool_admin_list")
     assert await has_active_tool_function(agent.id, "agent_admin", "agent_options")
     skill = await skill_service.get_by_code(skill_code)
     assert skill is not None and not skill.global_enabled
@@ -68,7 +69,7 @@ async def test_seed_waits_for_manager_then_preserves_edits_revocations_and_delet
     await db.flush()
     agent.profile_id = custom_profile.id
     agent.agent_driver = "hermes"
-    for tool_code in ("galaris_admin", "agent_admin"):
+    for tool_code in ("galaris_admin", "tool_admin", "agent_admin"):
         admin_tool_id = await db.scalar(select(ToolModel.id).where(ToolModel.code == tool_code))
         connection = (await db.scalars(select(Connection).where(
             Connection.agent_id == agent.id, Connection.tool_id == admin_tool_id,
@@ -87,6 +88,7 @@ async def test_seed_waits_for_manager_then_preserves_edits_revocations_and_delet
     )
     assert not await has_galaris_admin_access(agent.id)
     assert not await has_documentation_access(agent.id)
+    assert not await has_active_tool_function(agent.id, "tool_admin", "tool_admin_list")
     assert not await has_active_tool_function(agent.id, "agent_admin", "agent_options")
     assert skill_code not in await skill_service.get_assigned_codes(agent.id)
     assignment = await db.scalar(select(AgentSkill).where(
@@ -119,6 +121,8 @@ async def test_seed_preserves_existing_galaris_agent(db):
     assert not await has_galaris_admin_access(existing.id)
     for definition in tool_datasets():
         await reconcile_dataset(db, definition)
+    assert not await has_active_tool_function(existing.id, "tool_admin", "tool_admin_list")
+    assert await has_active_tool_function(proposal.id, "tool_admin", "tool_admin_list")
     assert not await has_active_tool_function(existing.id, "agent_admin", "agent_options")
     assert await has_active_tool_function(proposal.id, "agent_admin", "agent_options")
     # Documentation access alone must not grant the bundled assistant's skills.

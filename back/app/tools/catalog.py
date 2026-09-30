@@ -204,6 +204,7 @@ async def build_effective_tool_catalog(
     allowed_tool_names: Collection[str] | None = None,
     resources: dict[str, Any] | None = None,
     discovery_failures: set[str] | None = None,
+    allow_stdio: bool = True,
 ) -> AgentToolCatalog:
     """Build the live catalog after connection, runtime and function filtering."""
 
@@ -215,6 +216,7 @@ async def build_effective_tool_catalog(
         task_id=task_id,
         resources=resources,
         discovery_failures=discovery_failures,
+        allow_stdio=allow_stdio,
     )
     tools = await mcp.list_tools()
     allowed = (

@@ -275,6 +275,10 @@ export default {
         return api.post('/tools/test-mcp', data)
     },
 
+    prepareMcpCandidate(agentId: number, definition: ToolCreate, params: Record<string, string | null>): Promise<AxiosResponse<{ reference: string; expires_in_seconds: number }>> {
+        return api.post('/tools/mcp-candidates', { agent_id: agentId, definition, params })
+    },
+
     deleteTool(id: number): Promise<AxiosResponse<void>> {
         return api.delete(`/tools/${id}`)
     },

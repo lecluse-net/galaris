@@ -52,6 +52,7 @@ async def refresh_tool_catalogs(
     agent_ids: Collection[int] | None = None,
     force_embeddings: bool,
     prune_stale: bool,
+    allow_stdio: bool = True,
 ) -> ToolCatalogRefreshResult:
     """Reload remote definitions, rebuild effective catalogs and reconcile the index."""
 
@@ -72,6 +73,7 @@ async def refresh_tool_catalogs(
                 agent_id,
                 runtime=runtime,
                 discovery_failures=failures,
+                allow_stdio=allow_stdio,
             )
         except Exception:
             agent_failures += 1
@@ -140,11 +142,14 @@ async def refresh_agent_tool_catalog(
 
 async def refresh_agents_tool_catalogs(
     agent_ids: Sequence[int],
+    *,
+    allow_stdio: bool = True,
 ) -> ToolCatalogRefreshResult:
     return await refresh_tool_catalogs(
         agent_ids=set(agent_ids),
         force_embeddings=False,
         prune_stale=False,
+        allow_stdio=allow_stdio,
     )
 
 

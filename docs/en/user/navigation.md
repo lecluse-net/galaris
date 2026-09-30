@@ -124,6 +124,13 @@ When an agent avatar is saved, the image is converted to JPEG and reduced to at 
 | Connections | Configure connections associated with agents | `/tools?tab=connections` |
 | Authorizations | Administer access rules for tools and functions | `/tools?tab=authorizations` |
 
+To delegate catalogue and connection management, explicitly enable **ToolAdmin** and follow
+the [delegated administration journey](../admin/tool-administration.md).
+The Galaris assistant receives this active connection when first created; later deactivation
+is preserved. Prepare an MCP
+candidate under **Tools → New Tool → Test connection**; send only its temporary reference
+to the agent, keeping secrets server-side.
+
 For browser access, open the agent's **Browser** connection. Local networking is blocked by
 default; enable `allow_local_network` to allow a permission request. Destination filters stay
 authoritative. Answer through messaging or the internal-chat buttons: both approvals and denials

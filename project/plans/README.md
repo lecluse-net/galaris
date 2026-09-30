@@ -37,7 +37,6 @@ d'implémentation ni nouvel ordre de priorité produit.
 
 | Plan | Statut | Portée et dépendances |
 |---|---|---|
-| [tool-admin.md](tool-admin.md) | `design` | Tool optionnel d'administration du catalogue, configurations, connexions et autorisations ; test MCP non persistant et diagnostic du catalogue effectif. Services de connexion communs avec AgentAdmin ; délégation et secrets à formaliser avant implémentation. |
 | [cible.md](cible.md) | `design` | Livraison publique, gouvernance des effets, releases d'agents, autonomie, interopérabilité et exploitation. |
 | [infrastructure-plugins-galaris.md](infrastructure-plugins-galaris.md) | `design` | Bundles, activation, frontend précompilé, permissions, conservation des données, compatibilité et rollback. |
 | [consolidation-parametrique-lora.md](consolidation-parametrique-lora.md) | `design` | Entraînement et service de modèles à qualifier ; dépend des campagnes, de l'étalonnage et des gardes du Lab. |

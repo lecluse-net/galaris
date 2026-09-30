@@ -134,6 +134,13 @@ Voir le [contrat AgentAdmin](../dev/agent-admin.md) pour les connexions, équipe
 | Connexions | Configurer les connexions associées aux agents | `/tools?tab=connections` |
 | Autorisations | Administrer les règles d’accès aux outils et fonctions | `/tools?tab=authorizations` |
 
+Pour déléguer la gestion du catalogue et des connexions, activer explicitement **ToolAdmin**
+et suivre le [parcours d’administration déléguée](../admin/tool-administration.md).
+L’assistant Galaris reçoit cette connexion active lors de sa création initiale ; une
+désactivation ultérieure est conservée.
+Le candidat MCP se prépare depuis **Outils → Nouvel outil → Tester la connexion** ; seul
+sa référence temporaire est transmise à l’agent, les secrets restent côté serveur.
+
 Pour les accès du navigateur, ouvrez la connexion **Navigateur** de l’agent. Le réseau local
 est bloqué par défaut ; activez `allow_local_network` pour permettre une demande de permission.
 Le filtre de destinations reste prioritaire. Répondez à la question dans la messagerie ou avec

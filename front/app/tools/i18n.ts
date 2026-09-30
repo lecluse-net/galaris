@@ -72,6 +72,12 @@ export default {
       testMcpIntro: 'Le test utilise la configuration actuellement affichée sans enregistrer le Tool. Les valeurs ci-dessous restent temporaires.',
       testMcpParameters: 'Paramètres de connexion pour ce test',
       testMcpRun: 'Lancer le test',
+      candidateAgent: 'Agent destinataire du candidat MCP',
+      candidatePrepare: 'Préparer le candidat pour cet agent',
+      candidateReference: 'Référence à transmettre à l’agent',
+      candidateExpiry: 'Expire après 15 minutes ou au redémarrage.',
+      candidateHint: 'La référence permet de tester puis de créer ce Tool. Les secrets restent côté serveur. Une destination privée est autorisée uniquement pour ce candidat.',
+      candidateError: 'Impossible de préparer le candidat MCP.',
       testMcpFunctionsFound: '{count} fonction(s) détectée(s)',
       testMcpError: 'Impossible de tester la connexion MCP',
       testMcpDuration: '{duration} ms',
@@ -139,6 +145,10 @@ export default {
         agent_admin: {
           label: "AgentAdmin",
           description: "Administration des agents, avatars, équipes, connexions et harnais existants, limitée aux droits et au périmètre du responsable humain. Inactif par défaut. La génération de portrait exige le modèle image de l’appelant et retourne un Process à suivre jusqu’à l’enregistrement.",
+        },
+        tool_admin: {
+          label: "ToolAdmin",
+          description: "Administration globale déléguée des Tools, paramètres, connexions et fonctions. Inactif par défaut. La délégation des capacités administratives reste réservée aux humains. Les secrets utilisent une référence candidate temporaire préparée dans l’interface ; les tests MCP HTTP/SSE ne sauvegardent rien et n’appellent aucune fonction métier.",
         },
         galaris: {
           label: "Galaris",
@@ -412,6 +422,12 @@ export default {
       testMcpIntro: 'The test uses the configuration currently displayed without saving the Tool. The values below remain temporary.',
       testMcpParameters: 'Connection parameters for this test',
       testMcpRun: 'Run test',
+      candidateAgent: 'Agent receiving the MCP candidate',
+      candidatePrepare: 'Prepare candidate for this agent',
+      candidateReference: 'Reference to give to the agent',
+      candidateExpiry: 'Expires after 15 minutes or on restart.',
+      candidateHint: 'The reference allows testing and creating this Tool. Secrets stay on the server. A private destination is authorized only for this candidate.',
+      candidateError: 'Unable to prepare the MCP candidate.',
       testMcpFunctionsFound: '{count} function(s) detected',
       testMcpError: 'Unable to test the MCP connection',
       testMcpDuration: '{duration} ms',
@@ -479,6 +495,10 @@ export default {
         agent_admin: {
           label: "AgentAdmin",
           description: "Administer agents, avatars, teams, connections and existing Harnesses within the human manager’s current rights and scope. Inactive by default. Portrait generation requires the caller’s image model and returns a Process to inspect until registration is confirmed.",
+        },
+        tool_admin: {
+          label: "ToolAdmin",
+          description: "Delegated global administration of Tools, parameters, connections and functions. Inactive by default. Administrative capabilities remain human-delegated. Secrets use a temporary candidate reference prepared in the interface; HTTP/SSE MCP tests save nothing and call no business functions.",
         },
         galaris: {
           label: "Galaris",
@@ -701,6 +721,12 @@ export default {
       writeOnlyMappingHint: "字面值会被加密且只写。使用 ${'{'}connection:name{'}'} 引用连接参数。", invalidJsonMap: '{field} 必须是所有值均为字符串的 JSON 对象。',
       testMcpConnection: '测试连接', testMcpTitle: '测试 MCP 连接', testMcpIntro: '测试使用当前显示的配置，不会保存工具。以下值仅临时使用。',
       testMcpParameters: '此次测试的连接参数', testMcpRun: '运行测试', testMcpFunctionsFound: '检测到 {count} 个函数', testMcpError: '无法测试 MCP 连接', testMcpDuration: '{duration} 毫秒',
+      candidateAgent: '接收 MCP 候选配置的代理',
+      candidatePrepare: '为此代理准备候选配置',
+      candidateReference: '提供给代理的引用',
+      candidateExpiry: '15 分钟后或重启时过期。',
+      candidateHint: '引用可用于测试和创建工具。密钥保留在服务器上，私有目标仅对此候选配置授权。',
+      candidateError: '无法准备 MCP 候选配置。',
       testMcpStages: { configuration: '配置', dns: 'DNS 解析', tcp: 'IP / TCP 可达性', tls: 'TLS 与证书', process: 'stdio 进程', authentication: '认证', protocol: 'MCP 协议', discovery: '函数发现' },
       testMcpStatuses: { success: '成功', error: '失败', warning: '未验证', skipped: '不适用', info: '等待中' },
       fileShare: '文件共享', enableFileShare: '启用文件共享', fileShareServiceLabel: '服务（桥接）*', fileShareParamMap: '参数映射', mapToParam: '连接参数',
@@ -720,6 +746,10 @@ export default {
         agent_admin: {
           label: "AgentAdmin",
           description: "在负责人当前权限和管理范围内管理智能体、头像、团队、连接及已有执行框架。默认关闭。生成头像需要调用者的图像模型，并返回可查询的流程；确认保存后才能视为完成。",
+        },
+        tool_admin: {
+          label: "ToolAdmin",
+          description: "全局委托管理工具、参数、连接和函数。默认关闭。管理能力仅由人类授予。密钥通过界面准备的临时候选引用使用；HTTP/SSE MCP 测试不保存配置，也不调用业务函数。",
         },
         galaris: {
           label: "Galaris",

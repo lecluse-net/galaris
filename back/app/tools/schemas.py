@@ -326,6 +326,10 @@ class ToolMcpTestFunction(BaseModel):
 
     name: str
     description: str = ""
+    input_schema: dict[str, object] | None = None
+    output_schema: dict[str, object] | None = None
+    annotations: dict[str, object] | None = None
+    truncated: bool = False
 
 
 class ToolMcpTestDiagnostic(BaseModel):
@@ -351,6 +355,9 @@ class ToolMcpTestResponse(BaseModel):
 
     success: bool
     message: str
+    tested_at: datetime | None = None
+    duration_ms: int = 0
+    truncated: bool = False
     failure_kind: Optional[
         Literal[
             "configuration",

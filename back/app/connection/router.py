@@ -227,7 +227,7 @@ async def create_connection(data: ConnectionCreate):
             ),
         )
     connection = await connection_service.get_or_create_connection(
-        data.tool_id, data.agent_id
+        data.tool_id, data.agent_id, active=data.active
     )
     if connection.active != data.active:
         updated = await connection_service.set_connection_active(
@@ -244,6 +244,10 @@ async def create_connection(data: ConnectionCreate):
 @authorize(privileges=Privileges.CONNECTION_EDIT)
 async def update_connection(connection_id: int, update: ConnectionUpdate):
     db = get_db()
+    connection = await _managed_connection(connection_id)
+    from app.tools.facade import lock_tools
+
+    await lock_tools([connection.tool_id, update.tool_id or connection.tool_id])
     connection = await _managed_connection(connection_id, editable=True)
     if update.tool_id is not None:
         await _editable_tool(update.tool_id)

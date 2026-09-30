@@ -36,31 +36,10 @@ async def require_connection(connection_id: int, *, editable: bool = False) -> C
 
 
 async def projection(connection_id: int) -> dict[str, Any]:
-    connection, local, configured = await service.get_params_for_api(connection_id)
-    if connection is None:
-        raise LookupError("Connection not found")
-    from app.tools.facade import get_tool_by_id, get_runtime_global_params
-
-    tool = await get_tool_by_id(connection.tool_id)
-    if tool is None:
-        raise LookupError("Tool not found")
-    global_values, forced = await get_runtime_global_params(connection.tool_id, decrypt_passwords=False)
-    executable = tool.mcp is not None and tool.mcp.type == "stdio"
-    effective: dict[str, Any] = {}
-    for name, definition in tool.connection.params.items():
-        local_set = name in configured or local.get(name) not in (None, "")
-        inherited = name in forced or not local_set
-        value = global_values.get(name, definition.default or None) if inherited else local.get(name)
-        secret = definition.type == "password"
-        effective[name] = {
-            "value": None if secret or executable else value, "secret": secret,
-            "configured": value not in (None, "") or (not inherited and name in configured),
-            "origin": "global" if inherited and name in global_values else "default" if inherited else "local",
-            "forced": name in forced,
-        }
-    if executable:
-        local = {name: None for name in local}
-    return {"id": connection.id, "tool_id": connection.tool_id, "agent_id": connection.agent_id, "active": connection.active, "resource_uri": f"galaris://agent/{connection.agent_id}", "local_params": local, "configured_params": configured, "effective_params": effective}
+    from .admin_service import projection as shared_projection
+    result = await shared_projection(connection_id)
+    result["resource_uri"] = f"galaris://agent/{result['agent_id']}"
+    return result
 
 
 async def create(agent_id: int, tool_id: int, active: bool) -> dict[str, Any]:

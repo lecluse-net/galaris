@@ -43,8 +43,10 @@ async def test_full_refresh_reconciles_index_only_after_complete_discovery(
         *,
         runtime: str,
         discovery_failures: set[str],
+        allow_stdio: bool,
     ) -> AgentToolCatalog:
         assert runtime == "internal"
+        assert allow_stdio
         if agent_id == 1:
             discovery_failures.add("remote_unavailable")
             return _catalog(agent_id, "search_web")

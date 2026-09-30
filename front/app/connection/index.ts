@@ -11,3 +11,4 @@ export {
   type MailStatus,
 } from './services/mailService'
 export { CONNECTIONS_CHANGED_EVENT } from './events'
+export { default as McpCandidateAgent } from './components/McpCandidateAgent.vue'

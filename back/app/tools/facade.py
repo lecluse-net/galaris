@@ -28,20 +28,9 @@ async def get_runtime_global_params(
 
 
 from .administration_lock import lock_tools, finish_write
+from .admin_contracts import AdministrationContext, AdministrationError, HUMAN_ONLY_TOOL_CODES
 
-HUMAN_ONLY_TOOL_CODES = frozenset(
-    {
-        "tool_admin",
-        "agent_admin",
-        "galaris_admin",
-        "process_admin",
-        "lab",
-        "goal_management",
-        "skill_management",
-        "console",
-    }
-)
-
+from . import admin_service as administration
 
 __all__ = [
     "get_tool_by_id",
@@ -49,5 +38,8 @@ __all__ = [
     "has_active_admin_function",
     "lock_tools",
     "finish_write",
+    "AdministrationContext",
+    "AdministrationError",
     "HUMAN_ONLY_TOOL_CODES",
+    "administration",
 ]

@@ -44,6 +44,20 @@ class IntegratedToolSpec:
 
 INTEGRATED_TOOL_SPECS: tuple[IntegratedToolSpec, ...] = (
     IntegratedToolSpec(
+        code="tool_admin", label="ToolAdmin", description=DESCRIPTIONS["tool_admin"],
+        mcp_tools=(
+            "tool_admin_list", "tool_admin_get", "tool_admin_create", "tool_admin_update",
+            "tool_admin_impact", "tool_admin_delete", "tool_admin_global_params_set",
+            "tool_admin_conversation_set", "tool_admin_mcp_test", "tool_admin_function_list",
+            "tool_admin_function_get", "tool_admin_function_set", "tool_admin_connection_list",
+            "tool_admin_connection_get", "tool_admin_connection_create", "tool_admin_connection_update",
+            "tool_admin_connection_delete", "tool_admin_connection_params_set", "tool_admin_connection_param_delete",
+            "tool_admin_connection_test", "tool_admin_connection_function_list", "tool_admin_connection_function_set",
+            "tool_admin_catalog_refresh",
+        ),
+        default_active=False,
+    ),
+    IntegratedToolSpec(
         code="lab", label="Lab Galaris", description=DESCRIPTIONS["lab"],
         mcp_tools=(
             "lab_list",
@@ -713,7 +727,7 @@ async def sync_mandatory_tools() -> list[ToolModel]:
 
 
 async def initialize_admin_agent_connections(agent_id: int) -> None:
-    """Initialize the optional administration grant for a newly seeded agent."""
+    """Initialize optional administration grants for a newly seeded Galaris agent."""
     from sqlalchemy import update
     from app.connection import Connection
 
@@ -722,7 +736,7 @@ async def initialize_admin_agent_connections(agent_id: int) -> None:
         update(Connection).where(
             Connection.agent_id == agent_id,
             Connection.tool_id.in_(select(ToolModel.id).where(
-                ToolModel.code.in_(("galaris_admin", "agent_admin"))
+                ToolModel.code.in_(("galaris_admin", "tool_admin", "agent_admin"))
             )),
         ).values(active=True)
     )

@@ -7,6 +7,12 @@ from app.tools.schemas import ToolGlobalParamsUpdate
 from app.tools import tool_service
 
 
+@pytest.fixture(autouse=True)
+def isolate_database_locks(monkeypatch):
+    # Locking/concurrency is verified against PostgreSQL in test_tool_admin.
+    monkeypatch.setattr(tool_service, "lock_tools", AsyncMock())
+
+
 def test_new_schema_defaults_are_merged_without_overwriting_global_values() -> None:
     merged = tool_service.merge_default_global_params(
         {"host": {"value": "custom.example.test", "forced": True}},

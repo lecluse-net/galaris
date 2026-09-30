@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import asyncio
+import json
+from datetime import datetime, timezone
 import re
 import socket
 import ssl
@@ -13,6 +15,7 @@ from urllib.parse import urlparse
 
 import httpx
 from loguru import logger
+from pydantic_ai.mcp import MCPToolset
 
 from app.tools.mcp import build_mcp_server
 from app.tools.schemas import (
@@ -436,10 +439,11 @@ async def _failure_message(kind: FailureKind) -> str:
     return await _message(_FAILURE_MESSAGE_KEYS[kind])
 
 
-async def diagnose_mcp_connection(
+async def _diagnose_mcp_connection(
     data: ToolMcpTestRequest,
     *,
     existing_config: Mapping[str, Any] | None = None,
+    http_client: httpx.AsyncClient | None = None,
 ) -> ToolMcpTestResponse:
     """Run a bounded, non-persistent MCP connection diagnostic."""
 
@@ -459,11 +463,10 @@ async def diagnose_mcp_connection(
             for name, value in data.params.items()
             if value is not None
         }
-        server = build_mcp_server(
-            preview_tool,
-            connection_params,
-            prefix_tools=False,
-        )
+        if http_client is None:
+            server = build_mcp_server(preview_tool, connection_params, prefix_tools=False)
+        else:
+            server = build_mcp_server(preview_tool, connection_params, prefix_tools=False, http_client=http_client)
         if server is None:
             diagnostic_facts.append(
                 DiagnosticFact(
@@ -536,9 +539,34 @@ async def diagnose_mcp_connection(
         )
 
     mcp_started = time.monotonic()
+    truncated = False
+    tools: list[Any]
     try:
         async with server:
-            tools = await server.list_tools()
+            if not isinstance(server, MCPToolset):
+                tools = await server.list_tools()
+            else:
+                tools = []
+                cursor = None
+                seen: set[str] = set()
+                size = 0
+                for _ in range(10):
+                    page = await server.client.list_tools_mcp(cursor=cursor)
+                    for tool in page.tools:
+                        size += len(tool.model_dump_json().encode())
+                        if len(tools) >= 500 or size > 1024 * 1024:
+                            truncated = True
+                            break
+                        tools.append(tool)
+                    if truncated or not page.nextCursor:
+                        break
+                    if page.nextCursor in seen:
+                        truncated = True
+                        break
+                    seen.add(page.nextCursor)
+                    cursor = page.nextCursor
+                else:
+                    truncated = True
     except Exception as exc:
         failure_kind = classify_mcp_exception(exc)
         logger.error(
@@ -630,11 +658,46 @@ async def diagnose_mcp_connection(
         success=True,
         message=await _message("mcp_test_tools_available", count=len(tools)),
         diagnostics=await _render_diagnostics(diagnostic_facts),
-        tools=[
-            ToolMcpTestFunction(
-                name=tool.name,
-                description=tool.description or "",
-            )
-            for tool in tools
-        ],
+        tools=[function_detail(tool) for tool in tools[:500]],
+        truncated=truncated or len(tools) > 500,
     )
+
+
+_DIAGNOSTIC_SLOTS = asyncio.Semaphore(4)
+
+
+def function_detail(tool: Any) -> ToolMcpTestFunction:
+    def read(name: str, alternate: str) -> Any:
+        return getattr(tool, name, getattr(tool, alternate, None))
+
+    payload = {
+        "input_schema": read("input_schema", "inputSchema"),
+        "output_schema": read("output_schema", "outputSchema"),
+        "annotations": getattr(tool, "annotations", None),
+    }
+    annotations: Any = payload["annotations"]
+    if hasattr(annotations, "model_dump"):
+        payload["annotations"] = annotations.model_dump(mode="json", by_alias=True)
+    oversized = len(json.dumps(payload, default=str).encode()) > 65536
+    return ToolMcpTestFunction(
+        name=str(tool.name)[:255], description=str(tool.description or "")[:8192],
+        **({} if oversized else payload),
+        truncated=oversized or len(str(tool.description or "")) > 8192,
+    )
+
+
+async def diagnose_mcp_connection(
+    data: ToolMcpTestRequest, *, existing_config: Mapping[str, Any] | None = None,
+    http_client: httpx.AsyncClient | None = None,
+) -> ToolMcpTestResponse:
+    started = time.monotonic()
+    try:
+        async with asyncio.timeout(30), _DIAGNOSTIC_SLOTS:
+            result = await _diagnose_mcp_connection(
+                data, existing_config=existing_config, http_client=http_client,
+            )
+    except TimeoutError:
+        result = ToolMcpTestResponse(success=False, message=await _failure_message("timeout"), failure_kind="timeout")
+    result.tested_at = datetime.now(timezone.utc)
+    result.duration_ms = _elapsed_ms(started)
+    return result

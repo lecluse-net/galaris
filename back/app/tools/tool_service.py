@@ -10,6 +10,7 @@ from core.database import get_db
 from core.i18n import render_prompt, tr
 from core.util import get_encryption_service
 from .models import Tool as ToolModel
+from .administration_lock import lock_tools, finish_write
 from .secrets import (
     SecretPlaceholderWithoutValue,
     export_listener_config,
@@ -117,7 +118,7 @@ async def get_runtime_global_params(
 ) -> tuple[Dict[str, Any], set[str]]:
     """Resolve configured Tool values and names whose global value is imposed."""
 
-    record = await get_db().get(ToolModel, tool_id)
+    record = await get_tool_record_by_id(tool_id)
     if record is None:
         return {}, set()
     definitions = _connection_param_definitions(record)
@@ -142,10 +143,12 @@ async def get_runtime_global_params(
 async def update_global_params(
     tool_id: int,
     data: ToolGlobalParamsUpdate,
+    *, commit: bool = True,
 ) -> ToolModel | None:
     """Persist administrator-owned global values without changing the Tool definition."""
 
     db = get_db()
+    await lock_tools([tool_id], db=get_db())
     record = await db.get(ToolModel, tool_id)
     if record is None:
         return None
@@ -169,6 +172,16 @@ async def update_global_params(
         else:
             value = update.value if update.value.strip() else None
 
+        from core.util import SECRET_MASK
+        from app.connection.facade import validate_param_value
+
+        if value == SECRET_MASK:
+            if not previous_value:
+                raise ValueError("A masked value requires an existing secret")
+            value = str(previous_value)
+        if value is not None:
+            validate_param_value(str(definition.get("type") or "string"), value)
+
         if value is not None and _global_param_is_secret(definition):
             if not _encryption.is_encrypted(value):
                 value = _encryption.encrypt(value)
@@ -178,7 +191,7 @@ async def update_global_params(
         }
 
     record.global_params = entries
-    await db.commit()
+    await finish_write(commit=commit, db=get_db())
     await db.refresh(record)
     logger.info(
         "Global connection parameters updated for Tool {} (fields={})",
@@ -208,6 +221,9 @@ def _messenger_secret_fields(service: str) -> frozenset[str]:
     return frozenset(
         param.name for param in spec.tool_params if param.type == "password"
     )
+
+
+messenger_secret_fields = _messenger_secret_fields
 
 
 async def _validate_messenger_config(
@@ -339,7 +355,7 @@ def _to_internal(record: ToolModel) -> Tool:
 # Database CRUD.
 # =============================================================================
 
-async def create_tool(data: ToolCreate) -> ToolModel:
+async def create_tool(data: ToolCreate, *, commit: bool = True) -> ToolModel:
     from app.file_share import validate_external_tool_code
 
     validate_external_tool_code(
@@ -347,6 +363,10 @@ async def create_tool(data: ToolCreate) -> ToolModel:
         file_share=data.file_share_config is not None,
         messenger=data.messenger_config is not None,
     )
+    from .assertions import tool_can_edit
+
+    if not tool_can_edit(data.code):
+        raise ValueError("Integrated Tool definitions are software-owned")
     db = get_db()
     connection_schema = data.connection_schema.model_dump()
     await _validate_connection_schema(connection_schema)
@@ -385,27 +405,30 @@ async def create_tool(data: ToolCreate) -> ToolModel:
 
         record.description = bridge_description(record.messenger_config, record.file_share_config)
     db.add(record)
-    await db.commit()
+    await finish_write(commit=commit, db=get_db())
     await db.refresh(record)
     from .mandatory_tools import AUTO_CONNECTED_INTEGRATED_TOOL_CODES, sync_integrated_tool_connections
 
     if record.code in AUTO_CONNECTED_INTEGRATED_TOOL_CODES:
         await sync_integrated_tool_connections()
-        await db.commit()
+        await finish_write(commit=commit, db=get_db())
         await db.refresh(record)
     return record
 
 
-async def update_tool(tool_id: int, data: ToolUpdate) -> Optional[ToolModel]:
+async def update_tool(tool_id: int, data: ToolUpdate, *, commit: bool = True) -> Optional[ToolModel]:
     from app.file_share import validate_external_tool_code
     from .mandatory_tools import INTEGRATED_TOOL_CODES
 
     db = get_db()
+    await lock_tools([tool_id], db=get_db())
     record = await db.get(ToolModel, tool_id)
     if not record:
         return None
 
-    if record.can_disable is False:
+    from .assertions import tool_can_edit
+
+    if not tool_can_edit(record):
         raise ValueError(await tr("tools.errors.system_read_only"))
 
     # ``model_fields_set`` distinguishes omitted fields from explicit null values so overwrite
@@ -473,48 +496,56 @@ async def update_tool(tool_id: int, data: ToolUpdate) -> Optional[ToolModel]:
             record.global_params,
             target_connection_schema,
         )
-    await db.commit()
+    await finish_write(commit=commit, db=get_db())
     await db.refresh(record)
     return record
 
 
 async def update_conversation_access(
-    tool_id: int, *, enabled: bool
+    tool_id: int, *, enabled: bool, commit: bool = True
 ) -> Optional[ToolModel]:
     """Update the independent conversation projection switch."""
 
+    await lock_tools([tool_id], db=get_db())
     record = await get_db().get(ToolModel, tool_id)
     if record is None:
         return None
     if record.can_disable is False:
         raise ValueError(await tr("tools.errors.system_read_only"))
     record.conversation_enabled = enabled
-    await get_db().commit()
+    await finish_write(commit=commit, db=get_db())
     await get_db().refresh(record)
     return record
 
 
-async def delete_tool(tool_id: int) -> bool:
+async def delete_tool(tool_id: int, *, commit: bool = True) -> bool:
     db = get_db()
+    await lock_tools([tool_id], db=get_db())
     record = await db.get(ToolModel, tool_id)
     if not record:
         return False
-    if record.can_disable is False:
+    from .assertions import tool_can_edit
+
+    if not tool_can_edit(record):
         raise ValueError(await tr("tools.errors.system_read_only"))
+    from app.connection.facade import get_agent_ids_by_tool, administration
+
+    if await get_agent_ids_by_tool(tool_id) or await administration.references([], tool_id=tool_id):
+        raise ValueError("This Tool still has dependencies")
     await db.delete(record)
-    await db.commit()
+    await finish_write(commit=commit, db=get_db())
     return True
 
 
 async def get_tool_record(code: str) -> Optional[ToolModel]:
     db = get_db()
-    result = await db.execute(select(ToolModel).where(ToolModel.code == code))
+    result = await db.execute(select(ToolModel).where(ToolModel.code == code).execution_options(populate_existing=True))
     return result.scalar_one_or_none()
 
 
 async def get_tool_record_by_id(tool_id: int) -> Optional[ToolModel]:
     db = get_db()
-    return await db.get(ToolModel, tool_id)
+    return await db.scalar(select(ToolModel).where(ToolModel.id == tool_id).execution_options(populate_existing=True))
 
 
 async def get_all_tool_records() -> List[ToolModel]:

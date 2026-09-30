@@ -628,6 +628,15 @@
             />
           </div>
 
+          <div v-if="form.mcp_config.type !== 'stdio'" class="q-gutter-y-sm">
+            <McpCandidateAgent v-model="candidateAgentId" :label="$t('tools.candidateAgent')" />
+            <q-btn outline color="primary" :label="$t('tools.candidatePrepare')"
+              :disable="!candidateAgentId || preparingCandidate" :loading="preparingCandidate" @click="prepareCandidate" />
+            <q-input v-if="candidateReference" :model-value="candidateReference" readonly outlined
+              :label="$t('tools.candidateReference')" :hint="$t('tools.candidateExpiry')" />
+            <div class="text-caption">{{ $t('tools.candidateHint') }}</div>
+          </div>
+
           <q-banner
             v-if="mcpTestResult"
             rounded
@@ -732,6 +741,7 @@
 import { ref, computed, watch, onMounted } from 'vue'
 import { Markdown } from '@/core/util'
 import SystemToolIcon from './SystemToolIcon.vue'
+import { McpCandidateAgent } from '@/app/connection'
 import { useQuasar } from 'quasar'
 import { useToolStore } from '../stores/toolStore'
 import toolService from '../services/toolService'
@@ -763,6 +773,34 @@ const toolStore = useToolStore()
 const privilegeStore = usePrivilegeStore()
 const canEdit = computed(() => privilegeStore.hasPrivilege(privileges.TOOL_EDIT))
 const conversationAccessLoading = ref<Set<number>>(new Set())
+const candidateAgentId = ref<number | null>(null)
+const candidateReference = ref('')
+const preparingCandidate = ref(false)
+let candidateGeneration = 0
+
+watch(candidateAgentId, () => {
+  candidateGeneration++
+  candidateReference.value = ''
+  preparingCandidate.value = false
+})
+
+async function prepareCandidate() {
+  if (!candidateAgentId.value || !canEdit.value) return
+  const generation = ++candidateGeneration
+  preparingCandidate.value = true
+  candidateReference.value = ''
+  try {
+    const { data } = await toolService.prepareMcpCandidate(candidateAgentId.value, {
+      code: form.value.code.trim(), label: form.value.label.trim(), description: form.value.description,
+      ...buildPayload(),
+    }, Object.fromEntries(Object.entries(mcpTestParams.value).map(([name, value]) => [name, value || null])))
+    if (generation === candidateGeneration && mcpTestDialogOpen.value) candidateReference.value = data.reference
+  } catch {
+    if (generation === candidateGeneration) mcpTestError.value = t('tools.candidateError')
+  } finally {
+    if (generation === candidateGeneration) preparingCandidate.value = false
+  }
+}
 
 type GlobalParamRow = {
   name: string
@@ -1241,6 +1279,12 @@ function resetForm() {
   clearMcpTest()
 }
 
+watch([form, connParams, mcpTestParams], () => {
+  candidateGeneration++
+  candidateReference.value = ''
+  preparingCandidate.value = false
+}, { deep: true })
+
 function openCreate() { if (!canEdit.value) return; editingTool.value = null; resetForm(); dialogOpen.value = true }
 
 function openEdit(tool: Tool) {
@@ -1375,6 +1419,10 @@ function buildPayload() {
 }
 
 function clearMcpTest() {
+  candidateGeneration++
+  candidateAgentId.value = null
+  candidateReference.value = ''
+  preparingCandidate.value = false
   mcpTestParams.value = {}
   mcpTestResult.value = null
   mcpTestError.value = null
