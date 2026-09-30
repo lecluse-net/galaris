@@ -33,18 +33,37 @@ def upstream(monkeypatch):
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("refresh", [False, True])
-async def test_account_quota_preserves_windows_and_refreshes_only_after_401(upstream, refresh):
+@pytest.mark.parametrize(("credits", "remaining"), [
+    ({"has_credits": True, "unlimited": False, "balance": "125.5"}, 125.5),
+    ({"has_credits": False, "unlimited": False, "balance": "0"}, 0),
+    ({"balance": 75}, 75),
+    (None, None),
+    ({}, None),
+    ({"balance": True}, None),
+    ({"balance": "invalid"}, None),
+    ({"balance": "NaN"}, None),
+    ({"balance": "-1"}, None),
+    ({"unlimited": True, "balance": "0"}, None),
+])
+async def test_account_quota_preserves_windows_and_refreshes_only_after_401(upstream, refresh, credits, remaining):
     responses, requests, token = upstream
     if refresh:
         responses.append(httpx.Response(401))
     responses.append(httpx.Response(200, json={"rate_limit": {
         "primary_window": {"used_percent": 37, "limit_window_seconds": 18000, "reset_at": 2000000000},
         "secondary_window": {"used_percent": 0, "limit_window_seconds": 604800, "reset_at": 2000604800},
-    }, "email": "private@example.test"}))
+    }, "credits": credits, "email": "private@example.test"}))
     quota = await codex_quota.get_quota(17)
-    assert [(w.name, w.used_percent, w.window_seconds) for w in quota.windows] == [
+    assert [(w.name, w.used_percent, w.window_seconds) for w in quota.windows[:2]] == [
         ("primary", 37, 18000), ("secondary", 0, 604800),
     ]
+    if remaining is None:
+        assert len(quota.windows) == 2
+    else:
+        assert len(quota.windows) == 3
+        balance = quota.windows[2]
+        assert (balance.name, balance.remaining, balance.unit) == ("credits", remaining, "credits")
+        assert balance.used is balance.limit is balance.used_percent is None
     assert quota.windows[0].resets_at.timestamp() == 2000000000
     assert "private@example.test" not in repr(quota)
     assert len(requests) == (2 if refresh else 1)
@@ -113,10 +132,12 @@ async def test_quota_endpoint_requires_provider_privileges_and_keeps_credentials
     monkeypatch.setattr(codex_quota.httpx, "AsyncClient", lambda **kwargs: client_type(
         transport=httpx.MockTransport(lambda _: httpx.Response(200, json={"rate_limit": {
             "primary_window": {"used_percent": 42, "limit_window_seconds": 18000},
-        }})), **kwargs,
+        }, "credits": {"has_credits": True, "unlimited": False, "balance": "125.5"}})), **kwargs,
     ))
     response = await client.get(path, headers=headers)
     assert response.status_code == 200, response.text
     assert response.json()["windows"][0]["used_percent"] == 42
+    assert response.json()["windows"][1]["remaining"] == 125.5
+    assert response.json()["windows"][1]["unit"] == "credits"
     assert "synthetic-token" not in response.text
     assert (await client.get("/api/llm-providers/999999/quota", headers=headers)).status_code == 404

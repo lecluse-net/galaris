@@ -63,11 +63,12 @@
             v-model="form.api_key"
             outlined
             type="password"
+            stack-label
             :label="t('llm.apiKey')"
             :hint="selectedType.apiKeyRequired ? t('llm.apiKeyPasteHint') : t('llm.apiKeyOptionalHint')"
             :rules="[apiKeyRule]"
             reactive-rules
-            autocomplete="off"
+            autocomplete="new-password"
           >
             <template #prepend><q-icon name="key" /></template>
           </q-input>

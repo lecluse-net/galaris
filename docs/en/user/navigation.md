@@ -54,6 +54,39 @@ the provider, even with incomplete fields. Changes to an already inactive provid
 a draft until a successful test or a manual save. If saving fails, your input is preserved;
 use **Save** to retry.
 
+API key fields stay masked while typing and have no eye icon. Stored keys are encrypted
+and never displayed again: an empty field shows the fixed `**********` indicator.
+The label stays visible in small text inside the field.
+Leave it empty to retain a key, or enter a new key to replace it. The small remove button
+inside the field asks for confirmation, then deletes the stored key. Removing a required
+key deactivates the provider; removing an optional key preserves its active state. This
+behavior applies to both model keys and OpenRouter’s optional management key.
+
+For supported providers, **Usage and credits** in provider settings displays service-reported
+limits: ChatGPT windows and additional credits, ElevenLabs credits, Mammouth AI and OpenRouter key spending,
+DeepSeek balances and SunoAPI.org credits. **Refresh limits** reads the service without
+generation. The panel identifies account-wide or API-key scope, including use outside
+Galaris. A gauge appears only when a reported ceiling permits a percentage. Amounts retain
+their units, zero values and overages; failed reads can be retried. Mammouth application
+quotas are separate from API credits. OpenRouter displays only the remaining amount, without
+a gauge or percentage based on cumulative purchases. Without a management key, this amount
+is the available API-key budget; the account balance requires a management key.
+**Management key (optional)** stores this second key encrypted
+in the database without replacing the model API key. **Create a management key on OpenRouter**
+opens the provider’s dedicated page. This key grants administrative permissions; Galaris uses
+it only to read account credits and usage. Saved keys stay hidden; entering a new value replaces
+the key, and **Remove management key** restores the remaining amount for the API key.
+The ElevenLabs key needs **User → Read** permission to
+read subscription usage. Missing values remain unknown.
+For ChatGPT, the additional credit balance appears in credits, without a gauge, alongside
+subscription windows. A zero balance remains visible; a missing amount or unlimited
+entitlement is not shown as zero. These credits are separate from OpenAI API credits.
+
+Fireworks AI settings display no balance or usage panel because the prepaid balance
+cannot be read with the API key.
+The [provider availability survey](../dev/provider-quotas.md) distinguishes integrated readers
+from APIs requiring additional integration or permissions.
+
 Under **Providers → Available resources**, the **Resource type** dropdown keeps the icons
 and filters the provider catalog. **Documents / PDF** lists chat models declaring file
 input and text output. Add a model, then assign it to **Document analysis model** under

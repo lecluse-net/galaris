@@ -3,6 +3,7 @@
 from app.llm.provider_catalog import ProviderProfile
 from app.llm.provider_facade import (
     register_provider,
+    register_provider_quota_reader,
     register_realtime_transcription_provider,
     register_resource_discovery,
     register_speech_provider,
@@ -10,6 +11,7 @@ from app.llm.provider_facade import (
 )
 
 from .resources import ElevenLabsResourceDiscovery
+from .quota import ElevenLabsQuota
 from .speech import ElevenLabsSpeech
 from .transcription import ElevenLabsTranscription
 from .multimedia import ElevenLabsMedia
@@ -31,6 +33,7 @@ PROFILE = ProviderProfile(
 )
 
 register_provider(PROFILE)
+register_provider_quota_reader(PROFILE.code, ElevenLabsQuota())
 register_media_provider(PROFILE.code, ElevenLabsMedia())
 register_resource_discovery(PROFILE.code, ElevenLabsResourceDiscovery())
 register_speech_provider(PROFILE.code, ElevenLabsSpeech())

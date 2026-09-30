@@ -190,6 +190,7 @@ are in `front/browser-tests/`.
 
 | Module | Behavior and risks | Suites to retain or strengthen |
 |---|---|---|
+| Provider usage and credits | Read windows, budgets and balances with provider privileges, without exposing credentials; display additional ChatGPT credits alongside subscription windows without a balance gauge; preserve units, account/key scope, zero and overages; show no gauge without a ceiling; display no Fireworks balance or usage panel; refresh and ignore obsolete responses; mask stored keys, retain omitted keys and explicitly remove each key after confirmation; deactivate a provider when its required key is removed; preserve input after errors; encrypt, replace and remove the OpenRouter management key without changing inference credentials | `back/bridge/openai/tests/test_quota.py`, `back/app/llm/tests/test_provider_quotas.py`, `front/browser-tests/provider-quota.spec.mjs`, `front/browser-tests/provider-autosave.spec.mjs`, `e2e/specs/provider-usage.spec.mjs` |
 | `agent` | Authorized agent selection, policy and a coherent terminal result | `test_management_scope.py`, `test_facade.py`, `test_executor_lifecycle.py`, `agents.spec.mjs` |
 | `harness` | Tools and streaming, safe recovery, resource cleanup | `test_checkpoint.py`, `test_runtime_cancellation.py`, `test_executor_streaming.py` |
 | Harness boundary | Reject invalid results and events before publication, close streams, honor declared capabilities | `make tests-harness-contracts`, `app/agent/tests/test_driver_boundary.py` |

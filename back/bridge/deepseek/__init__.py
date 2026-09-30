@@ -8,8 +8,10 @@ from app.llm.provider_catalog import ProviderProfile
 from app.llm.provider_facade import (
     ProviderResponsesPolicy,
     register_provider,
+    register_provider_quota_reader,
     register_responses_policy,
 )
+from .quota import DeepSeekQuota
 
 
 PROFILE = ProviderProfile(
@@ -27,6 +29,7 @@ PROFILE = ProviderProfile(
 )
 
 register_provider(PROFILE)
+register_provider_quota_reader(PROFILE.code, DeepSeekQuota())
 register_request_parameter_policy(PROFILE.code, model_parameter_policy)
 register_responses_policy(
     PROFILE.code,

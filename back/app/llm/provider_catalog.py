@@ -23,7 +23,7 @@ class ProviderConfigurationField:
     """Public, non-secret configuration field required by one provider driver."""
 
     key: str
-    label: str
+    label: str  # Frontend translation key, or a legacy display label.
     required: bool = False
     placeholder: Optional[str] = None
 
@@ -47,6 +47,8 @@ class ProviderProfile:
     aliases: tuple[str, ...] = ()
     capabilities: tuple[AICapability, ...] = ("chat",)
     configuration_fields: tuple[ProviderConfigurationField, ...] = ()
+    supports_management_key: bool = False
+    management_key_url: str | None = None
 
     @property
     def api_key_required(self) -> bool:

@@ -123,7 +123,6 @@ export const useLLMProviderStore = defineStore('llmProvider', {
                 return response.data
             } catch (error) {
                 this.error = error
-                console.error('Error configuring catalog provider:', error)
                 throw error
             } finally {
                 this.loading = false
@@ -155,7 +154,6 @@ export const useLLMProviderStore = defineStore('llmProvider', {
                 return response.data
             } catch (error) {
                 this.error = error
-                console.error('Error creating LLM provider:', error)
                 throw error
             } finally {
                 this.loading = false
@@ -182,7 +180,6 @@ export const useLLMProviderStore = defineStore('llmProvider', {
                 return response.data
             } catch (error) {
                 this.error = error
-                console.error('Error updating LLM provider:', error)
                 throw error
             } finally {
                 this.loading = false

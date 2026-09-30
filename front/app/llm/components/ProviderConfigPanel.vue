@@ -117,8 +117,8 @@
             v-model="configurationValues[field.key]"
             outlined
             dense
-            :label="field.label"
-            :placeholder="field.placeholder || undefined"
+            :label="te(field.label) ? t(field.label) : field.label"
+            :placeholder="field.placeholder ? (te(field.placeholder) ? t(field.placeholder) : field.placeholder) : undefined"
             :rules="field.required ? [requiredRule(t('llm.configurationRequired'))] : []"
           >
             <template #prepend><q-icon name="tune" /></template>
@@ -163,21 +163,59 @@
               v-model="draft.api_key"
               outlined
               dense
-              :type="showApiKey ? 'text' : 'password'"
+              type="password"
+              stack-label
               :label="t('llm.apiKey')"
+              :placeholder="storedApiKey && !draft.api_key ? t('llm.apiKeyStoredMask') : undefined"
+              :aria-label="t('llm.apiKey')"
               :hint="credentialHint"
               :rules="[apiKeyRule]"
-              autocomplete="off"
+              autocomplete="new-password"
             >
               <template #prepend><q-icon name="key" /></template>
               <template #append>
-                <q-icon
-                  :name="showApiKey ? 'visibility_off' : 'visibility'"
-                  class="cursor-pointer"
-                  @click="showApiKey = !showApiKey"
-                />
+                <q-btn
+                  v-if="storedApiKey" flat round dense icon="delete_outline"
+                  :aria-label="t('llm.removeApiKey')" :disable="!canEdit || saving"
+                  @click="keyToRemove = 'api_key'"
+                >
+                  <q-tooltip>{{ t('llm.removeApiKey') }}</q-tooltip>
+                </q-btn>
               </template>
             </q-input>
+            <template v-if="item.supports_management_key">
+              <q-input
+                v-model="draft.management_api_key"
+                outlined dense type="password"
+                stack-label
+                :label="t('llm.managementApiKey')"
+                :placeholder="storedManagementKey && !draft.management_api_key ? t('llm.apiKeyStoredMask') : undefined"
+                :aria-label="t('llm.managementApiKey')"
+                :hint="t(storedManagementKey ? 'llm.managementApiKeyStored' : 'llm.managementApiKeyOptional')"
+                :disable="!canEdit"
+                autocomplete="new-password"
+              >
+                <template #prepend><q-icon name="key" /></template>
+                <template #append>
+                  <q-btn
+                    v-if="storedManagementKey" flat round dense icon="delete_outline"
+                    :aria-label="t('llm.removeManagementApiKey')" :disable="!canEdit || saving"
+                    @click="keyToRemove = 'management_api_key'"
+                  >
+                    <q-tooltip>{{ t('llm.removeManagementApiKey') }}</q-tooltip>
+                  </q-btn>
+                </template>
+              </q-input>
+              <div class="text-caption">{{ t('llm.managementApiKeyPurpose') }}</div>
+              <div class="row items-center q-gutter-sm">
+                <q-btn
+                  v-if="item.management_key_url"
+                  flat dense icon="open_in_new" no-caps
+                  :href="item.management_key_url" target="_blank" rel="noopener noreferrer"
+                  :label="t('llm.createManagementApiKey', { provider: item.display_name })"
+                />
+              </div>
+            </template>
           </div>
 
           <q-card v-else flat bordered>
@@ -202,8 +240,10 @@
           </q-card>
 
           <ProviderQuotaPanel
-            v-if="isChatGptSubscription && oauthConnected && item.connection"
+            v-if="item.code !== 'fireworks' && item.supports_quota && item.connection && (item.connection.api_key_configured || item.connection.management_api_key_configured || oauthConnected)"
             :provider-id="item.connection.id"
+            :refresh-key="item.connection.updated_at"
+            :unavailable-hint="item.code === 'elevenlabs' ? t('llm.quota.elevenlabsPermissionHint') : undefined"
           />
 
           <q-banner
@@ -261,6 +301,25 @@
       <q-icon name="touch_app" size="54px" class="q-mb-md" />
       <div class="text-subtitle1">{{ t('llm.selectProvider') }}</div>
     </div>
+    <q-dialog v-model="removeKeyDialog">
+      <q-card class="galaris-dialog-card">
+        <q-card-section class="galaris-dialog-title row items-center no-wrap">
+          <div class="text-h6">{{ t('common.confirm') }}</div>
+          <q-space />
+          <q-btn v-close-popup flat round dense icon="close" :aria-label="t('common.close')" />
+        </q-card-section>
+        <q-card-section class="galaris-dialog-body">
+          {{ t(keyToRemove === 'api_key' ? 'llm.confirmRemoveApiKey' : 'llm.confirmRemoveManagementApiKey') }}
+          <div v-if="keyToRemove === 'api_key' && item?.api_key_required && draft.is_active" class="q-mt-sm">
+            {{ t('llm.removeRequiredApiKeyHint') }}
+          </div>
+        </q-card-section>
+        <q-card-actions class="galaris-dialog-actions" align="right">
+          <q-btn v-close-popup flat :label="t('common.cancel')" />
+          <q-btn color="negative" :label="t('common.delete')" :disable="!canEdit || saving" @click="removeKey" />
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
   </section>
 </template>
 
@@ -306,9 +365,13 @@ const emit = defineEmits<{
 const privilegeStore = usePrivilegeStore()
 const canEdit = computed(() => privilegeStore.hasPrivilege(privileges.LLM_PROVIDER_EDIT))
 
-const { t } = useI18n()
+const { t, te } = useI18n()
 const providerForm = useTemplateRef<QForm>('providerForm')
-const showApiKey = ref(false)
+const keyToRemove = ref<'api_key' | 'management_api_key' | null>(null)
+const removeKeyDialog = computed({
+  get: () => keyToRemove.value !== null,
+  set: (open: boolean) => { if (!open) keyToRemove.value = null },
+})
 const loadedItemKey = ref<string | null>(null)
 const editableFields = ['name', 'provider_type', 'base_url', 'is_active', 'user_id', 'subscription_acknowledged'] as const
 const editedFields = new Set<keyof ProviderConfigurationDraft>()
@@ -317,7 +380,7 @@ const draft = reactive<ProviderConfigurationDraft>({
   name: '',
   provider_type: 'openai_compatible',
   base_url: '',
-  api_key: null,
+  api_key: undefined,
   configuration: {},
   is_active: false,
   user_id: null,
@@ -336,11 +399,13 @@ const effectiveTokenUrl = computed(() => (
   props.item?.is_custom ? null : (props.item?.token_url || null)
 ))
 const credentialHint = computed(() => {
-  if (props.item?.connection?.api_key_configured && !draft.api_key) {
+  if (storedApiKey.value && !draft.api_key) {
     return t('llm.apiKeyAlreadyConfigured')
   }
   return props.item?.api_key_required ? t('llm.apiKeyPasteHint') : t('llm.apiKeyOptionalHint')
 })
+const storedApiKey = computed(() => Boolean(props.item?.connection?.api_key_configured) && draft.api_key !== null)
+const storedManagementKey = computed(() => Boolean(props.item?.connection?.management_api_key_configured) && draft.management_api_key !== null)
 const guideText = computed(() => {
   if (props.item?.auth_type === 'oauth_device') return t('llm.oauthGuide')
   if (props.item?.is_custom) {
@@ -354,9 +419,9 @@ function requiredRule(message: string): (value: string | null) => true | string 
   return value => Boolean(value?.trim()) || message
 }
 
-function apiKeyRule(value: string | null): true | string {
+function apiKeyRule(value: string | null | undefined): true | string {
   if (!draft.is_active || !props.item?.api_key_required) return true
-  if (value?.trim() || props.item.connection?.api_key_configured) return true
+  if (value?.trim() || storedApiKey.value) return true
   return t('llm.apiKeyRequired')
 }
 
@@ -376,6 +441,7 @@ function resetDraft(): void {
   const connection = props.detail || item.connection
   const sameItem = loadedItemKey.value === item.key
   if (!sameItem) {
+    keyToRemove.value = null
     editedFields.clear()
     editedConfiguration.clear()
   }
@@ -388,7 +454,8 @@ function resetDraft(): void {
     name: connection?.name || item.display_name,
     provider_type: item.provider_type,
     base_url: item.is_custom ? (connection?.base_url || item.default_base_url) : item.default_base_url,
-    api_key: null,
+    api_key: undefined,
+    management_api_key: undefined,
     configuration: nextConfiguration,
     is_active: connection?.is_active ?? false,
     user_id: connection?.user_id ?? null,
@@ -401,6 +468,7 @@ function resetDraft(): void {
       if (editedFields.has(field)) Object.assign(preserved, { [field]: draft[field] })
     }
     preserved.api_key = draft.api_key
+    preserved.management_api_key = draft.management_api_key
   }
   const previousConfiguration = { ...configurationValues }
   for (const key of Object.keys(configurationValues)) delete configurationValues[key]
@@ -410,12 +478,27 @@ function resetDraft(): void {
   }
   Object.assign(draft, next, preserved, { configuration: configurationValues })
   loadedItemKey.value = item.key
-  if (!sameItem) showApiKey.value = false
   resettingDraft = false
 }
 
 function snapshot(): ProviderConfigurationDraft {
-  return { ...draft, api_key: draft.api_key?.trim() || null, configuration: { ...configurationValues } }
+  return {
+    ...draft, api_key: draft.api_key === null ? null : draft.api_key?.trim() || undefined,
+    management_api_key: draft.management_api_key === null ? null : draft.management_api_key?.trim() || undefined,
+    configuration: { ...configurationValues },
+  }
+}
+
+function removeKey(): void {
+  const field = keyToRemove.value
+  if (!field || !canEdit.value || props.saving) return
+  resettingDraft = true
+  draft[field] = null
+  if (field === 'api_key' && props.item?.api_key_required) draft.is_active = false
+  resettingDraft = false
+  keyToRemove.value = null
+  emit('change')
+  emit('save', snapshot())
 }
 
 function readyToSave(): boolean {

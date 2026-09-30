@@ -47,7 +47,9 @@ export interface ProviderConfigurationDraft {
     name: string
     provider_type: LLMProviderType
     base_url: string
-    api_key: string | null
+    // Omitted keeps the stored credential; null explicitly removes it.
+    api_key?: string | null
+    management_api_key?: string | null
     configuration: Record<string, unknown>
     is_active: boolean
     user_id: number | null

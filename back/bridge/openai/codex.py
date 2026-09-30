@@ -27,8 +27,10 @@ from .codex_responses import (
 class CodexBridge:
     stream_only = True
 
-    async def get_quota(self, provider_id: int) -> ProviderQuota:
-        return await get_quota(provider_id)
+    async def get_quota(self, connection: ProviderConnection) -> ProviderQuota:
+        if connection.id is None:
+            raise ValueError("A saved provider connection is required.")
+        return await get_quota(connection.id)
 
     async def list_resources(
         self,

@@ -58,6 +58,42 @@ d’un fournisseur déjà inactif restent en brouillon jusqu’à un test réuss
 manuel. En cas d’erreur d’enregistrement, la saisie est conservée ; utilisez **Enregistrer**
 pour réessayer.
 
+Les champs de clés API restent masqués pendant la saisie et ne proposent pas d’icône œil.
+Les clés enregistrées sont chiffrées et ne sont jamais réaffichées : le champ vide porte
+l’indicateur fixe `**********`. Le libellé reste visible en petit à l’intérieur du champ.
+Laissez-le vide pour conserver la clé, ou saisissez une
+nouvelle clé pour la remplacer. Le petit bouton de suppression dans le champ demande une
+confirmation puis supprime la clé enregistrée. Supprimer une clé obligatoire désactive le
+fournisseur ; supprimer une clé facultative conserve son état. Ce fonctionnement est commun
+à la clé des modèles et à la clé de gestion facultative d’OpenRouter.
+
+Dans la configuration d’un fournisseur compatible, **Consommation et crédits** affiche les
+limites remontées par le service : fenêtres et crédits supplémentaires ChatGPT, crédits ElevenLabs, consommation de clé
+Mammouth AI et OpenRouter, soldes DeepSeek et crédits SunoAPI.org. **Actualiser les limites**
+relit le service sans génération. Le panneau précise si les chiffres concernent le compte
+entier ou la clé API ; ils incluent ses usages hors de Galaris. Une jauge apparaît seulement
+lorsqu’un plafond permet de calculer un pourcentage. Les montants conservent leur unité,
+les zéros et les dépassements ; une erreur peut être retentée. Les quotas de l’application
+Mammouth sont distincts de ses crédits API. OpenRouter affiche uniquement le montant restant,
+sans jauge ni pourcentage calculé sur les achats cumulés. Sans clé de gestion, ce montant
+concerne le budget disponible pour la clé API ; le solde global nécessite une clé de gestion.
+Le champ **Clé de gestion (facultative)** permet
+d’enregistrer cette seconde clé, chiffrée en base, sans remplacer la clé API des modèles.
+Le lien **Créer une clé de gestion OpenRouter** ouvre la page dédiée du fournisseur.
+Cette clé dispose de droits administratifs et Galaris l’utilise uniquement pour lire les
+crédits et la consommation du compte. Une clé déjà enregistrée reste masquée ; une nouvelle
+saisie la remplace, et **Supprimer la clé de gestion** rétablit le montant restant pour la clé API.
+La clé ElevenLabs doit autoriser
+**User → Read** pour consulter l’abonnement. Une donnée absente reste inconnue.
+Pour ChatGPT, le solde des crédits supplémentaires apparaît en crédits, sans jauge, à côté
+des fenêtres de l’abonnement. Un solde nul reste affiché ; un montant absent ou un accès
+illimité n’est pas présenté comme zéro. Ces crédits sont distincts des crédits de l’API OpenAI.
+
+La configuration Fireworks AI n’affiche aucun panneau de solde ou de consommation,
+car le solde prépayé ne peut pas être lu avec la clé API.
+La [disponibilité par fournisseur](../dev/provider-quotas.md) distingue les lecteurs intégrés
+des API nécessitant une intégration ou des droits supplémentaires.
+
 Dans **Fournisseurs → Ressources disponibles**, la liste **Type de ressources** conserve
 les icônes et filtre le catalogue du fournisseur. **Documents / PDF** présente les modèles
 de chat déclarant les fichiers en entrée et le texte en sortie. Ajoutez un modèle, puis

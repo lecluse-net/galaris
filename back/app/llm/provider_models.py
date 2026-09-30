@@ -31,6 +31,8 @@ class LLMProvider(HistoryMixin, Base):
     )
     base_url: Mapped[str] = mapped_column(String(500), nullable=False)
     api_key: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)  # Encrypted token.
+    # Optional administrative credential, encrypted and reserved for account-credit reads.
+    management_api_key: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     # Galaris account owning a personal subscription. Only the ChatGPT/Codex OAuth provider
     # accepts this field; the proxy enforces it before sending any upstream request.
     user_id: Mapped[Optional[int]] = mapped_column(
@@ -93,6 +95,11 @@ class LLMProvider(HistoryMixin, Base):
     def api_key_configured(self) -> bool:
         """Expose credential presence without returning the encrypted secret."""
         return bool(self.api_key)
+
+    @property
+    def management_api_key_configured(self) -> bool:
+        """Expose administrative credential presence without returning its secret."""
+        return bool(self.management_api_key)
 
     @property
     def oauth_connected(self) -> bool:

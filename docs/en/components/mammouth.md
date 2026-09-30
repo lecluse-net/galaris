@@ -73,9 +73,15 @@ The Galaris provider therefore does not advertise them. A generic
 Web search advertised by individual models remains a model property; it does not
 grant access to the application's Agentic Mode or connectors. Their MCPs are
 incoming application connections, not a public server to add automatically to
-Galaris. Mammouth Code is also a separate product. Credit tracking via `/key/info`
-is not integrated: the guide's example targets a local address and this endpoint
-does not appear in the inspected public schema.
+Galaris. Mammouth Code is also a separate product.
+
+The API guide now documents `https://api.mammouth.ai/key/info`. The shared **Usage and credits**
+panel reads this endpoint's `info.spend`, plus `info.max_budget` and `info.budget_reset_at`
+when provided. These values concern the API key, separate from Mammouth application session
+quotas. Spending remains visible without a gauge when no ceiling is reported. Missing or
+unknown formats never produce invented amounts. The public OpenAPI schema still omits this
+route; parsing is verified with synthetic responses, with no real key available to confirm
+the fields for this installation.
 
 ## Validation
 

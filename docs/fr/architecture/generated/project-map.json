@@ -1936,6 +1936,7 @@
           "back/app/llm/profile_router.py",
           "back/app/llm/profile_service.py",
           "back/app/llm/protocol_inference.py",
+          "back/app/llm/provider_quota.py",
           "back/app/llm/provider_router.py",
           "back/app/llm/proxy_service.py",
           "back/app/llm/subscription_policy.py"
@@ -1980,6 +1981,7 @@
           "back/app/llm/media_transport.py",
           "back/app/llm/message_cleanup.py",
           "back/app/llm/personal_service.py",
+          "back/app/llm/provider_quota.py",
           "back/app/llm/proxy_service.py",
           "back/app/llm/responses_trace.py",
           "back/app/llm/trace.py",
@@ -3634,10 +3636,18 @@
       {
         "files": [
           "back/bridge/deepseek/__init__.py",
-          "back/bridge/deepseek/parameters.py"
+          "back/bridge/deepseek/parameters.py",
+          "back/bridge/deepseek/quota.py"
         ],
         "source": "bridge.deepseek",
         "target": "app.llm"
+      },
+      {
+        "files": [
+          "back/bridge/deepseek/quota.py"
+        ],
+        "source": "bridge.deepseek",
+        "target": "core.util"
       },
       {
         "files": [
@@ -3692,6 +3702,7 @@
         "files": [
           "back/bridge/elevenlabs/__init__.py",
           "back/bridge/elevenlabs/multimedia.py",
+          "back/bridge/elevenlabs/quota.py",
           "back/bridge/elevenlabs/resources.py",
           "back/bridge/elevenlabs/speech.py",
           "back/bridge/elevenlabs/transcription.py"
@@ -4073,6 +4084,7 @@
           "back/bridge/mammouth/image.py",
           "back/bridge/mammouth/multimedia.py",
           "back/bridge/mammouth/protocol.py",
+          "back/bridge/mammouth/quota.py",
           "back/bridge/mammouth/resources.py"
         ],
         "source": "bridge.mammouth",
@@ -4082,6 +4094,7 @@
         "files": [
           "back/bridge/mammouth/image.py",
           "back/bridge/mammouth/multimedia.py",
+          "back/bridge/mammouth/quota.py",
           "back/bridge/mammouth/resources.py"
         ],
         "source": "bridge.mammouth",
@@ -4429,6 +4442,7 @@
           "back/bridge/openrouter/decisions.py",
           "back/bridge/openrouter/image.py",
           "back/bridge/openrouter/multimedia.py",
+          "back/bridge/openrouter/quota.py",
           "back/bridge/openrouter/resources.py",
           "back/bridge/openrouter/transcription.py"
         ],
@@ -4437,9 +4451,17 @@
       },
       {
         "files": [
+          "back/bridge/openrouter/resources.py"
+        ],
+        "source": "bridge.openrouter",
+        "target": "core.i18n"
+      },
+      {
+        "files": [
           "back/bridge/openrouter/decisions.py",
           "back/bridge/openrouter/image.py",
           "back/bridge/openrouter/multimedia.py",
+          "back/bridge/openrouter/quota.py",
           "back/bridge/openrouter/resources.py",
           "back/bridge/openrouter/transcription.py",
           "back/bridge/openrouter/usage.py"
@@ -4457,10 +4479,18 @@
       {
         "files": [
           "back/bridge/sunoapi/__init__.py",
-          "back/bridge/sunoapi/media.py"
+          "back/bridge/sunoapi/media.py",
+          "back/bridge/sunoapi/quota.py"
         ],
         "source": "bridge.sunoapi",
         "target": "app.llm"
+      },
+      {
+        "files": [
+          "back/bridge/sunoapi/quota.py"
+        ],
+        "source": "bridge.sunoapi",
+        "target": "core.i18n"
       },
       {
         "files": [
@@ -8423,7 +8453,7 @@
           "llm_providers.id"
         ],
         "history_mixin": true,
-        "line": 103,
+        "line": 110,
         "module": "app.llm",
         "table": "llms"
       },

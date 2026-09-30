@@ -292,7 +292,7 @@ async function persistProvider({ item, draft, automatic }: PendingSave): Promise
         name: draft.name,
         provider_type: draft.provider_type,
         base_url: draft.base_url,
-        ...(draft.api_key !== null ? { api_key: draft.api_key } : {}),
+        ...(draft.api_key !== undefined ? { api_key: draft.api_key } : {}),
         is_active: draft.is_active,
         configuration: draft.configuration,
         user_id: draft.user_id,
@@ -300,7 +300,8 @@ async function persistProvider({ item, draft, automatic }: PendingSave): Promise
       })
     } else if (item.code) {
       provider = await store.configureCatalogProvider(item.code, {
-        ...(draft.api_key !== null ? { api_key: draft.api_key } : {}),
+        ...(draft.api_key !== undefined ? { api_key: draft.api_key } : {}),
+        ...(draft.management_api_key !== undefined ? { management_api_key: draft.management_api_key } : {}),
         is_active: draft.is_active,
         configuration: draft.configuration,
         user_id: draft.user_id,

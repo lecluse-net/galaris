@@ -8,6 +8,7 @@ from app.llm.facade import (
     register_model_metadata,
     register_openai_protocol_adapter,
     register_provider,
+    register_provider_quota_reader,
     register_resource_discovery,
     register_responses_policy,
 )
@@ -16,6 +17,7 @@ from .image import MammouthImageGeneration
 from .multimedia import MammouthMedia
 from .protocol import MammouthProtocol, model_profile
 from .resources import MammouthResources
+from .quota import MammouthQuota
 from dataclasses import replace
 from app.llm import (
     RequestParameterPolicy, register_request_parameter_policy, compatible_parameter_policy,
@@ -37,6 +39,7 @@ PROFILE = ProviderProfile(
 )
 
 register_provider(PROFILE)
+register_provider_quota_reader(PROFILE.code, MammouthQuota())
 register_request_parameter_policy(PROFILE.code, _request_parameters)
 register_openai_protocol_adapter(PROFILE.code, MammouthProtocol())
 register_responses_policy(PROFILE.code, ProviderResponsesPolicy(

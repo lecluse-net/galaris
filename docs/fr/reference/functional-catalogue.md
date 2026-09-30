@@ -379,6 +379,14 @@ un autre onglet autorisé. L’onglet **Modèles utilisés** conserve la configu
 le configurateur de clients externes ; le bloc explicatif déroulant sur l’accès API par profil
 a été retiré, sans supprimer l’API ni les configurations de clients.
 
+Tous les champs de clés fournisseur restent masqués, sans action de révélation. Une clé
+enregistrée est représentée par l’indicateur fixe `**********`, jamais par sa valeur.
+Le libellé reste visible en petit à l’intérieur de chaque champ pour identifier la clé.
+Un champ vide conserve le secret ; une nouvelle saisie le remplace ; le bouton de suppression
+le retire après confirmation. Une clé obligatoire supprimée désactive le fournisseur, tandis
+qu’une clé facultative supprimée conserve son état. Ces règles couvrent les connexions du
+catalogue, les connexions personnalisées et la clé de gestion OpenRouter.
+
 Pour les appels Chat/Responses sans budget explicite, Galaris demande la capacité de sortie publiée
 du modèle, dans la place estimée restante du contexte. Le catalogue models.dev peut compléter les
 métadonnées ; la découverte est conservée cinq minutes. Les modèles déjà configurés en bénéficient.
@@ -549,9 +557,27 @@ consultation ne lance pas d’inférence. Elle exige les droits d’administrati
 un titulaire valide et une authentification utilisable. Une erreur ou une fenêtre absente est
 signalée comme indisponible, sans fabriquer un quota de remplacement. Cette vue ne constitue
 ni un budget par agent ni une mesure de la facture des modèles API.
+Le solde des crédits supplémentaires du compte apparaît en crédits à côté des fenêtres,
+sans jauge de solde. Zéro reste visible ; une valeur absente ou un accès illimité n’est pas
+converti en zéro. Le rafraîchissement relit ce solde avec les fenêtres.
 
 Sources : [lecture des quotas](../../../back/bridge/openai/codex_quota.py),
 [contrôles et erreurs](../../../back/bridge/openai/tests/test_quota.py).
+
+Le panneau **Consommation et crédits** est commun aux fournisseurs qui déclarent un lecteur :
+ChatGPT, ElevenLabs, Mammouth AI, OpenRouter, DeepSeek et SunoAPI.org. Il affiche les montants
+connus dans leur unité et précise la portée compte/clé. Les soldes sans plafond n’ont pas de
+jauge ; les zéros et dépassements restent visibles. Mammouth expose les crédits API séparément
+des quotas de son application ; OpenRouter nécessite une clé d’administration pour les crédits
+globaux et expose sinon le montant restant pour la clé. OpenRouter affiche seulement ce
+montant, sans jauge ni pourcentage calculé sur les achats cumulés. Les données sont lues à l’ouverture et à
+l’actualisation, sans suivi permanent ni inférence.
+Fireworks n’affiche aucun panneau de solde ou de consommation, car le solde ne peut pas
+être lu avec la clé API ; son plafond mensuel ne remplace jamais l’argent disponible.
+
+Sources : [contrats communs](../../../back/app/llm/provider_facade.py),
+[tests fournisseurs](../../../back/app/llm/tests/test_provider_quotas.py),
+[interactions](../../../front/browser-tests/provider-quota.spec.mjs).
 
 ### API publiques fondées sur les profils
 

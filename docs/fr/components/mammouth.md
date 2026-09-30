@@ -74,8 +74,14 @@ La recherche web déclarée par certains modèles reste une propriété de ces m
 elle ne donne pas accès au mode agentique ni aux connecteurs de l'application Mammouth.
 Leurs MCP sont des connexions entrantes de leur application, pas un serveur public à
 ajouter automatiquement dans Galaris. Mammouth Code est également un produit distinct.
-Le suivi de crédit `/key/info` n'est pas intégré : l'exemple du guide vise une adresse
-locale et cet endpoint n'apparaît pas dans le schéma public inspecté.
+Le guide API documente désormais `https://api.mammouth.ai/key/info`. Le panneau commun
+**Consommation et crédits** consulte cette route et lit `info.spend`, ainsi que
+`info.max_budget` et `info.budget_reset_at` lorsqu’ils sont fournis. Ces informations portent
+sur la clé API ; elles ne décrivent pas les quotas des sessions de l’application Mammouth.
+Sans plafond, la consommation reste visible sans jauge. Un format absent ou inconnu ne
+produit aucun montant inventé. Le schéma OpenAPI public ne décrit toujours pas cette route ;
+le parsing est vérifié avec des réponses synthétiques, sans clé réelle disponible pour
+confirmer les champs de cette installation.
 
 ## Validation
 

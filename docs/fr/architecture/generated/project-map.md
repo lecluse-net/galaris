@@ -11,7 +11,7 @@ tests restent l’autorité sur le comportement.
 
 - 71 modules backend déclarés ;
 - 36 modules frontend déclarés ;
-- 529 arêtes de dépendance backend ;
+- 532 arêtes de dépendance backend ;
 - 194 arêtes de dépendance frontend ;
 - 266 arêtes entre domaines `app`/`bridge` ;
 - 25 paires de domaines directement bidirectionnelles ;
@@ -342,10 +342,10 @@ tests restent l’autorité sur le comportement.
 | `app.llm` | `core.database` | `back/app/llm/anthropic_router.py`, `back/app/llm/call_router.py`, `back/app/llm/events.py`, `back/app/llm/facade.py`, `back/app/llm/inference_execution.py`, `back/app/llm/inference_journal.py`, `back/app/llm/inference_notifications.py`, `back/app/llm/inference_store.py`, `back/app/llm/llm_call_service.py`, `back/app/llm/llm_provider_service.py`, `back/app/llm/llm_service.py`, `back/app/llm/mcp.py`, `back/app/llm/models.py`, `back/app/llm/personal_service.py`, `back/app/llm/profile_gateway.py`, `back/app/llm/profile_models.py`, `back/app/llm/profile_service.py`, `back/app/llm/protocol_inference.py`, `back/app/llm/provider_models.py`, `back/app/llm/proxy_service.py`, `back/app/llm/retention.py`, `back/app/llm/structured_service.py`, `back/app/llm/subscription_policy.py`, `back/app/llm/text_inference.py` |
 | `app.llm` | `core.dbadmin` | `back/app/llm/dbadmin.py`, `back/app/llm/initial_configuration.py` |
 | `app.llm` | `core.failure_journal` | `back/app/llm/llm_call_service.py` |
-| `app.llm` | `core.i18n` | `back/app/llm/anthropic_router.py`, `back/app/llm/anthropic_service.py`, `back/app/llm/call_router.py`, `back/app/llm/llm_call_service.py`, `back/app/llm/llm_provider_service.py`, `back/app/llm/llm_service.py`, `back/app/llm/personal_router.py`, `back/app/llm/profile_gateway.py`, `back/app/llm/profile_inference_router.py`, `back/app/llm/profile_router.py`, `back/app/llm/profile_service.py`, `back/app/llm/protocol_inference.py`, `back/app/llm/provider_router.py`, `back/app/llm/proxy_service.py`, `back/app/llm/subscription_policy.py` |
+| `app.llm` | `core.i18n` | `back/app/llm/anthropic_router.py`, `back/app/llm/anthropic_service.py`, `back/app/llm/call_router.py`, `back/app/llm/llm_call_service.py`, `back/app/llm/llm_provider_service.py`, `back/app/llm/llm_service.py`, `back/app/llm/personal_router.py`, `back/app/llm/profile_gateway.py`, `back/app/llm/profile_inference_router.py`, `back/app/llm/profile_router.py`, `back/app/llm/profile_service.py`, `back/app/llm/protocol_inference.py`, `back/app/llm/provider_quota.py`, `back/app/llm/provider_router.py`, `back/app/llm/proxy_service.py`, `back/app/llm/subscription_policy.py` |
 | `app.llm` | `core.params` | `back/app/llm/call_deadline.py`, `back/app/llm/dbadmin.py`, `back/app/llm/llm_call_service.py`, `back/app/llm/profile_service.py`, `back/app/llm/retention.py` |
 | `app.llm` | `core.user` | `back/app/llm/anthropic_router.py`, `back/app/llm/call_router.py`, `back/app/llm/events.py`, `back/app/llm/inference_execution.py`, `back/app/llm/llm_call_service.py`, `back/app/llm/llm_provider_service.py`, `back/app/llm/personal_router.py`, `back/app/llm/profile_inference.py`, `back/app/llm/subscription_policy.py` |
-| `app.llm` | `core.util` | `back/app/llm/embedding_service.py`, `back/app/llm/generation_capacity.py`, `back/app/llm/handlers/openai_compatible.py`, `back/app/llm/image_trace.py`, `back/app/llm/llm_call_service.py`, `back/app/llm/llm_provider_service.py`, `back/app/llm/media_transport.py`, `back/app/llm/message_cleanup.py`, `back/app/llm/personal_service.py`, `back/app/llm/proxy_service.py`, `back/app/llm/responses_trace.py`, `back/app/llm/trace.py`, `back/app/llm/transcription_service.py`, `back/app/llm/tts_service.py` |
+| `app.llm` | `core.util` | `back/app/llm/embedding_service.py`, `back/app/llm/generation_capacity.py`, `back/app/llm/handlers/openai_compatible.py`, `back/app/llm/image_trace.py`, `back/app/llm/llm_call_service.py`, `back/app/llm/llm_provider_service.py`, `back/app/llm/media_transport.py`, `back/app/llm/message_cleanup.py`, `back/app/llm/personal_service.py`, `back/app/llm/provider_quota.py`, `back/app/llm/proxy_service.py`, `back/app/llm/responses_trace.py`, `back/app/llm/trace.py`, `back/app/llm/transcription_service.py`, `back/app/llm/tts_service.py` |
 | `app.mcp` | `app.agent` | `back/app/mcp/router.py` |
 | `app.mcp` | `app.tools` | `back/app/mcp/router.py` |
 | `app.mcp` | `core.authorize` | `back/app/mcp/router.py` |
@@ -521,7 +521,8 @@ tests restent l’autorité sur le comportement.
 | `bridge.codex` | `core.authorize` | `back/bridge/codex/router.py` |
 | `bridge.codex` | `core.params` | `back/bridge/codex/harness_provider.py` |
 | `bridge.cohere` | `app.llm` | `back/bridge/cohere/__init__.py` |
-| `bridge.deepseek` | `app.llm` | `back/bridge/deepseek/__init__.py`, `back/bridge/deepseek/parameters.py` |
+| `bridge.deepseek` | `app.llm` | `back/bridge/deepseek/__init__.py`, `back/bridge/deepseek/parameters.py`, `back/bridge/deepseek/quota.py` |
+| `bridge.deepseek` | `core.util` | `back/bridge/deepseek/quota.py` |
 | `bridge.deepseek_harness` | `app.agent` | `back/bridge/deepseek_harness/harness_provider.py` |
 | `bridge.deepseek_harness` | `app.harnesses` | `back/bridge/deepseek_harness/harness_provider.py` |
 | `bridge.deepseek_harness` | `app.llm` | `back/bridge/deepseek_harness/harness_provider.py` |
@@ -529,7 +530,7 @@ tests restent l’autorité sur le comportement.
 | `bridge.deepseek_harness` | `app.skill` | `back/bridge/deepseek_harness/harness_provider.py` |
 | `bridge.deepseek_harness` | `bridge.harness` | `back/bridge/deepseek_harness/harness_provider.py` |
 | `bridge.deepseek_harness` | `core.params` | `back/bridge/deepseek_harness/harness_provider.py` |
-| `bridge.elevenlabs` | `app.llm` | `back/bridge/elevenlabs/__init__.py`, `back/bridge/elevenlabs/multimedia.py`, `back/bridge/elevenlabs/resources.py`, `back/bridge/elevenlabs/speech.py`, `back/bridge/elevenlabs/transcription.py` |
+| `bridge.elevenlabs` | `app.llm` | `back/bridge/elevenlabs/__init__.py`, `back/bridge/elevenlabs/multimedia.py`, `back/bridge/elevenlabs/quota.py`, `back/bridge/elevenlabs/resources.py`, `back/bridge/elevenlabs/speech.py`, `back/bridge/elevenlabs/transcription.py` |
 | `bridge.elevenlabs` | `core.util` | `back/bridge/elevenlabs/resources.py`, `back/bridge/elevenlabs/speech.py`, `back/bridge/elevenlabs/transcription.py` |
 | `bridge.fireworks` | `app.llm` | `back/bridge/fireworks/__init__.py`, `back/bridge/fireworks/image.py` |
 | `bridge.google` | `app.llm` | `back/bridge/google/__init__.py`, `back/bridge/google/image.py`, `back/bridge/google/parameters.py`, `back/bridge/google/resources.py`, `back/bridge/google/speech.py` |
@@ -571,8 +572,8 @@ tests restent l’autorité sur le comportement.
 | `bridge.mail` | `core.i18n` | `back/bridge/mail/approvals.py`, `back/bridge/mail/messenger.py` |
 | `bridge.mail` | `core.user` | `back/bridge/mail/approvals.py`, `back/bridge/mail/connection_service.py`, `back/bridge/mail/router.py`, `back/bridge/mail/service.py` |
 | `bridge.mail` | `core.util` | `back/bridge/mail/service.py` |
-| `bridge.mammouth` | `app.llm` | `back/bridge/mammouth/__init__.py`, `back/bridge/mammouth/image.py`, `back/bridge/mammouth/multimedia.py`, `back/bridge/mammouth/protocol.py`, `back/bridge/mammouth/resources.py` |
-| `bridge.mammouth` | `core.util` | `back/bridge/mammouth/image.py`, `back/bridge/mammouth/multimedia.py`, `back/bridge/mammouth/resources.py` |
+| `bridge.mammouth` | `app.llm` | `back/bridge/mammouth/__init__.py`, `back/bridge/mammouth/image.py`, `back/bridge/mammouth/multimedia.py`, `back/bridge/mammouth/protocol.py`, `back/bridge/mammouth/quota.py`, `back/bridge/mammouth/resources.py` |
+| `bridge.mammouth` | `core.util` | `back/bridge/mammouth/image.py`, `back/bridge/mammouth/multimedia.py`, `back/bridge/mammouth/quota.py`, `back/bridge/mammouth/resources.py` |
 | `bridge.matrix` | `app.agent` | `back/bridge/matrix/voice_listener.py` |
 | `bridge.matrix` | `app.connection` | `back/bridge/matrix/client.py`, `back/bridge/matrix/voice_listener.py`, `back/bridge/matrix/voice_provider.py` |
 | `bridge.matrix` | `app.messenger` | `back/bridge/matrix/__init__.py`, `back/bridge/matrix/client.py`, `back/bridge/matrix/messenger.py`, `back/bridge/matrix/voice_listener.py`, `back/bridge/matrix/voice_provider.py` |
@@ -612,10 +613,12 @@ tests restent l’autorité sur le comportement.
 | `bridge.openai` | `core.database` | `back/bridge/openai/codex_oauth.py` |
 | `bridge.openai` | `core.i18n` | `back/bridge/openai/codex_oauth.py`, `back/bridge/openai/codex_quota.py` |
 | `bridge.openai` | `core.util` | `back/bridge/openai/codex_oauth.py`, `back/bridge/openai/codex_quota.py`, `back/bridge/openai/codex_responses.py`, `back/bridge/openai/image.py`, `back/bridge/openai/realtime.py` |
-| `bridge.openrouter` | `app.llm` | `back/bridge/openrouter/__init__.py`, `back/bridge/openrouter/decisions.py`, `back/bridge/openrouter/image.py`, `back/bridge/openrouter/multimedia.py`, `back/bridge/openrouter/resources.py`, `back/bridge/openrouter/transcription.py` |
-| `bridge.openrouter` | `core.util` | `back/bridge/openrouter/decisions.py`, `back/bridge/openrouter/image.py`, `back/bridge/openrouter/multimedia.py`, `back/bridge/openrouter/resources.py`, `back/bridge/openrouter/transcription.py`, `back/bridge/openrouter/usage.py` |
+| `bridge.openrouter` | `app.llm` | `back/bridge/openrouter/__init__.py`, `back/bridge/openrouter/decisions.py`, `back/bridge/openrouter/image.py`, `back/bridge/openrouter/multimedia.py`, `back/bridge/openrouter/quota.py`, `back/bridge/openrouter/resources.py`, `back/bridge/openrouter/transcription.py` |
+| `bridge.openrouter` | `core.i18n` | `back/bridge/openrouter/resources.py` |
+| `bridge.openrouter` | `core.util` | `back/bridge/openrouter/decisions.py`, `back/bridge/openrouter/image.py`, `back/bridge/openrouter/multimedia.py`, `back/bridge/openrouter/quota.py`, `back/bridge/openrouter/resources.py`, `back/bridge/openrouter/transcription.py`, `back/bridge/openrouter/usage.py` |
 | `bridge.perplexity` | `app.llm` | `back/bridge/perplexity/__init__.py` |
-| `bridge.sunoapi` | `app.llm` | `back/bridge/sunoapi/__init__.py`, `back/bridge/sunoapi/media.py` |
+| `bridge.sunoapi` | `app.llm` | `back/bridge/sunoapi/__init__.py`, `back/bridge/sunoapi/media.py`, `back/bridge/sunoapi/quota.py` |
+| `bridge.sunoapi` | `core.i18n` | `back/bridge/sunoapi/quota.py` |
 | `bridge.sunoapi` | `core.util` | `back/bridge/sunoapi/media.py` |
 | `bridge.telegram` | `app.messenger` | `back/bridge/telegram/__init__.py`, `back/bridge/telegram/client.py`, `back/bridge/telegram/messenger.py` |
 | `bridge.telegram` | `core.params` | `back/bridge/telegram/messenger.py` |
@@ -1737,7 +1740,7 @@ tests restent l’autorité sur le comportement.
 | `llm_inferences` | `LLMInference` | `app.llm` | non | `llm_inferences.id`, `users.id` | `back/app/llm/models.py:16` |
 | `llm_profiles` | `LlmProfile` | `app.llm` | non | `llms.id` | `back/app/llm/profile_models.py:19` |
 | `llm_providers` | `LLMProvider` | `app.llm` | oui | `users.id` | `back/app/llm/provider_models.py:9` |
-| `llms` | `LLM` | `app.llm` | oui | `llm_providers.id` | `back/app/llm/provider_models.py:103` |
+| `llms` | `LLM` | `app.llm` | oui | `llm_providers.id` | `back/app/llm/provider_models.py:110` |
 | `mail_outbound_deliveries` | `MailOutboundDelivery` | `bridge.mail` | non | `agents.id`, `connections.id`, `users.id` | `back/bridge/mail/models.py:28` |
 | `memory_associations` | `MemoryAssociation` | `app.memory` | non | `memory_items.id` | `back/app/memory/models.py:961` |
 | `memory_automation_jobs` | `MemoryAutomationJob` | `app.memory` | non | — | `back/app/memory/models.py:1143` |

@@ -2,6 +2,8 @@
 
 - [0147 — Cohérence des fichiers Nextcloud](0147-nextcloud-file-consistency.md)
 
+- [0146 — Consommation et crédits des fournisseurs](0146-provider-usage-snapshots.md)
+
 - [0145 — Réveils du runtime après commit](0145-committed-runtime-wakeups.md)
 - [0144 — Temporalité partielle des souvenirs](0144-partial-memory-temporality.md)
 

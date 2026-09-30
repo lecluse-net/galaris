@@ -7,12 +7,14 @@ are covered separately. A barrier, not a sleep, controls stream completion.
 from __future__ import annotations
 
 import asyncio
+import json
 import time
 from contextlib import ExitStack, asynccontextmanager
+from dataclasses import replace
 from unittest.mock import patch
 from uuid import UUID, uuid4
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, Header, HTTPException
 from sqlalchemy import select
 
 from core.settings import settings
@@ -51,6 +53,7 @@ from core.user.user_service import encrypt_password
 pydantic_ai.models.ALLOW_MODEL_REQUESTS = False
 gates: dict[UUID, asyncio.Event] = {}
 modes: dict[UUID, str] = {}
+quota_fixture = {"used": 2500, "status": 200, "codex_credits": 125.5}
 
 
 class ScriptedController:
@@ -118,6 +121,16 @@ async def task_stream(request):
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
     original_emit = websocket.emit
+    from app.llm.provider_facade import register_provider
+    from bridge.elevenlabs import PROFILE as elevenlabs_profile
+    from bridge.openrouter import PROFILE as openrouter_profile
+    from bridge.fireworks import PROFILE as fireworks_profile
+    from bridge.openai import CODEX_PROFILE as codex_profile
+    # Run the real quota bridge over HTTP against a synthetic external-service boundary.
+    register_provider(replace(elevenlabs_profile, base_url="http://127.0.0.1:8000/api/__test/elevenlabs/v1"))
+    register_provider(replace(openrouter_profile, base_url="http://127.0.0.1:8000/api/__test/openrouter/v1"))
+    register_provider(replace(fireworks_profile, base_url="http://127.0.0.1:8000/api/__test/fireworks/inference/v1"))
+    register_provider(replace(codex_profile, base_url="http://127.0.0.1:8000/api/__test/chatgpt/codex"))
 
     async def emit(subject, action, data, room=None):
         if subject == "chat" and action == "runtime" and data.get("kind") == "finished":
@@ -126,6 +139,8 @@ async def lifespan(_app: FastAPI):
         await original_emit(subject, action, data, room=room)
 
     with ExitStack() as patches:
+        patches.enter_context(patch("bridge.openai.codex_quota._USAGE_URL",
+                                    "http://127.0.0.1:8000/api/__test/chatgpt/usage"))
         patches.enter_context(patch.object(websocket, "emit", emit))
         patches.enter_context(patch("app.conversation.mcp.generate_task_fields", task_fields))
         patches.enter_context(patch("app.agent.facade.resolve_execution_model", task_model))
@@ -146,6 +161,98 @@ app = FastAPI(lifespan=lifespan)
 @app.get("/api/__test/ready")
 async def ready():
     return {"ready": True}
+
+
+@app.put("/api/__test/provider-usage")
+async def provider_usage(used: int = 2500, status: int = 200, codex_credits: float = 125.5):
+    quota_fixture.update(used=used, status=status, codex_credits=codex_credits)
+    return {"configured": True}
+
+
+@app.post("/api/__test/codex-credits/{provider_id}")
+async def connect_codex_credits(provider_id: int):
+    from app.llm.provider_models import LLMProvider
+    from core.util import get_encryption_service
+
+    async with get_db_session() as db:
+        provider = await db.get(LLMProvider, provider_id)
+        if provider is None or provider.catalog_code != "openai-codex":
+            raise HTTPException(404, "Synthetic Codex connection not found")
+        provider.oauth_credentials = get_encryption_service().encrypt(json.dumps({
+            "access_token": "synthetic-e2e-codex-token", "expires_at": time.time() + 3600,
+        }))
+        await db.commit()
+    return {"connected": True}
+
+
+@app.get("/api/__test/chatgpt/usage")
+async def codex_usage(authorization: str = Header()):
+    if authorization != "Bearer synthetic-e2e-codex-token":
+        raise HTTPException(401, "Synthetic unauthorized Codex token")
+    if quota_fixture["status"] != 200:
+        raise HTTPException(quota_fixture["status"], "Synthetic upstream unavailable")
+    return {"rate_limit": {
+        "primary_window": {"used_percent": 37, "limit_window_seconds": 18000},
+        "secondary_window": {"used_percent": 0, "limit_window_seconds": 604800},
+    }, "credits": {"has_credits": quota_fixture["codex_credits"] > 0,
+                   "unlimited": False, "balance": str(quota_fixture["codex_credits"])}}
+
+
+@app.get("/api/__test/chatgpt/codex/models")
+async def codex_models(authorization: str = Header()):
+    if authorization != "Bearer synthetic-e2e-codex-token":
+        raise HTTPException(401, "Synthetic unauthorized Codex token")
+    return {"models": []}
+
+
+@app.get("/api/__test/fireworks/inference/v1/models")
+async def fireworks_models(authorization: str = Header()):
+    if authorization != "Bearer synthetic-e2e-fireworks-key":
+        raise HTTPException(401, "Synthetic unauthorized key")
+    return {"data": []}
+
+
+@app.get("/api/__test/elevenlabs/v1/user/subscription")
+async def elevenlabs_subscription(xi_api_key: str = Header()):
+    if xi_api_key != "synthetic-e2e-quota-key":
+        raise HTTPException(401, "Synthetic unauthorized key")
+    if quota_fixture["status"] != 200:
+        raise HTTPException(quota_fixture["status"], "Synthetic upstream unavailable")
+    return {"character_count": quota_fixture["used"], "character_limit": 10000,
+            "next_character_count_reset_unix": 2000000000}
+
+
+@app.get("/api/__test/openrouter/v1/key")
+async def openrouter_key(authorization: str = Header()):
+    if authorization != "Bearer synthetic-e2e-inference-key":
+        raise HTTPException(401, "Synthetic unauthorized inference key")
+    return {"data": {"limit": 10, "limit_remaining": 6, "is_management_key": False}}
+
+
+@app.get("/api/__test/openrouter/v1/credits")
+async def openrouter_credits(authorization: str = Header()):
+    if authorization != "Bearer synthetic-e2e-management-key":
+        raise HTTPException(403, "Synthetic unauthorized management key")
+    if quota_fixture["status"] != 200:
+        raise HTTPException(quota_fixture["status"], "Synthetic upstream unavailable")
+    return {"data": {"total_credits": 100, "total_usage": 25}}
+
+
+@app.get("/api/__test/openrouter/v1/models")
+async def openrouter_models(authorization: str = Header()):
+    if authorization != "Bearer synthetic-e2e-inference-key":
+        raise HTTPException(401, "Synthetic unauthorized inference key")
+    return {"data": []}
+
+
+@app.get("/api/__test/elevenlabs/v1/models")
+async def elevenlabs_models():
+    return []
+
+
+@app.get("/api/__test/elevenlabs/v2/voices")
+async def elevenlabs_voices():
+    return {"voices": [], "has_more": False}
 
 
 @app.post("/api/__test/seed")

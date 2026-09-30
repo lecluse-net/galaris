@@ -31,6 +31,7 @@ class LLMProviderCreate(BaseModel):
     base_url: str
     transcription_base_url: Optional[str] = None
     api_key: Optional[str] = None
+    management_api_key: Optional[str] = Field(default=None, repr=False)
     configuration: Dict[str, Any] = Field(default_factory=dict)
     is_active: bool = True
     user_id: Optional[int] = None
@@ -44,6 +45,7 @@ class LLMProviderUpdate(BaseModel):
     base_url: Optional[str] = None
     transcription_base_url: Optional[str] = None
     api_key: Optional[str] = None
+    management_api_key: Optional[str] = Field(default=None, repr=False)
     configuration: Optional[Dict[str, Any]] = None
     is_active: Optional[bool] = None
     user_id: Optional[int] = None
@@ -59,6 +61,7 @@ class LLMProviderResponse(BaseModel):
     base_url: str
     transcription_base_url: Optional[str] = None
     api_key_configured: bool
+    management_api_key_configured: bool = False
     oauth_connected: bool
     user_id: Optional[int] = None
     subscription_acknowledged: bool = False
@@ -81,6 +84,7 @@ class LLMProviderDetailResponse(BaseModel):
     transcription_base_url: Optional[str] = None
     api_key: Optional[str] = None
     api_key_configured: bool
+    management_api_key_configured: bool = False
     oauth_connected: bool
     user_id: Optional[int] = None
     subscription_acknowledged: bool = False
@@ -97,6 +101,7 @@ class ProviderCatalogConfigure(BaseModel):
     """Create or update the connection associated with a built-in profile."""
 
     api_key: Optional[str] = None
+    management_api_key: Optional[str] = Field(default=None, repr=False)
     is_active: bool = True
     configuration: Dict[str, Any] = Field(default_factory=dict)
     user_id: Optional[int] = None
@@ -134,6 +139,9 @@ class ProviderCatalogItem(BaseModel):
         default_factory=lambda: list[ProviderConfigurationFieldResponse]()
     )
     supports_model_management: bool
+    supports_quota: bool = False
+    supports_management_key: bool = False
+    management_key_url: str | None = None
     is_custom: bool
     connection: Optional[LLMProviderResponse] = None
 

@@ -9,11 +9,25 @@ import httpx
 from app.llm.capabilities import AICapability, with_capability
 from app.llm.handlers import LLMModelInfo
 from app.llm.handlers.openai_compatible import OpenAICompatibleHandler
-from app.llm.provider_facade import ProviderConnection
+from app.llm.provider_facade import ProviderAuthenticationError, ProviderConnection
+from core.i18n import tr
 from core.util import as_dict, as_list
 
 
 class OpenRouterResourceDiscovery:
+    async def validate_connection(self, connection: ProviderConnection) -> None:
+        if not connection.api_key:
+            raise ProviderAuthenticationError(await tr("llm_api.connection.invalid_key"))
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            response = await client.get(
+                f"{connection.base_url.rstrip('/')}/key",
+                headers={"Authorization": f"Bearer {connection.api_key}"},
+            )
+            response.raise_for_status()
+            data = as_dict(as_dict(response.json()).get("data"))
+        if data.get("is_management_key") is not False:
+            raise ProviderAuthenticationError(await tr("llm_api.connection.invalid_key"))
+
     async def _models_at(
         self,
         connection: ProviderConnection,

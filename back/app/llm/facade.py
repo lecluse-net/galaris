@@ -19,6 +19,7 @@ from .provider_facade import (
     managed_runtime_authentication_for,
 )
 from .resource_discovery import provider_connection
+from .provider_quota import amount_window, quota_number, quota_reset, read_quota_payload
 from .subscription_policy import ensure_subscription_confirmation
 from .media_transport import GenerationProvider, media_http, media_json
 from .media_facade import SelectedMediaResource, start_media_call, finish_media_call
@@ -32,6 +33,7 @@ from .provider_facade import (
     register_model_metadata,
     register_openai_protocol_adapter,
     register_provider,
+    register_provider_quota_reader,
     register_resource_discovery,
     register_responses_policy,
 )
@@ -309,6 +311,8 @@ async def get_managed_runtime_credential(
 
 
 __all__ = [
+    "register_provider_quota_reader",
+    "amount_window", "quota_number", "quota_reset", "read_quota_payload",
     "ProviderQuota", "ProviderQuotaWindow",
     "ChoiceQuestion", "DecisionResult", "DecisionInferenceRequest", "run_decision", "run_profile_decision", "use_decision_models",
     "DecisionUnavailable", "ProviderDecisionResponse", "ProviderConnection",

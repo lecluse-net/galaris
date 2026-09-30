@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from dataclasses import replace
 from typing import Any, Optional, TypedDict
 
 import httpx
@@ -28,12 +29,14 @@ from .capabilities import AICapability, with_capability
 from .resource_discovery import list_resources as discover_resources
 from .resource_discovery import provider_connection
 from .provider_facade import (
+    ConnectionValidation,
     ProviderAuthenticationError,
     ProviderConnection,
     ProviderQuota,
     provider_quota_reader_for,
     model_management_for,
     model_metadata_for,
+    resource_discovery_for,
 )
 from .provider_schemas import (
     LLMCreate,
@@ -72,7 +75,11 @@ async def get_provider_quota(provider_id: int) -> ProviderQuota:
             code="provider_quota_unsupported", status_code=400,
         )
     await ensure_subscription_owner(provider)
-    return await reader.get_quota(provider_id)
+    connection = provider_connection(provider, decrypt_api_key(provider.api_key))
+    # Only quota readers receive this credential; inference and resource discovery do not.
+    if provider.management_api_key:
+        connection = replace(connection, management_api_key=_decrypt_api_key(provider.management_api_key))
+    return await reader.get_quota(connection)
 
 
 # ==========================================================================
@@ -108,6 +115,13 @@ def _decrypt_api_key(api_key: Optional[str]) -> Optional[str]:
 def decrypt_api_key(api_key: Optional[str]) -> Optional[str]:
     """Public wrapper used by transcription and compatibility integrations."""
     return _decrypt_api_key(api_key)
+
+
+async def _encrypted_management_key(value: str | None, profile: ProviderProfile | None) -> str | None:
+    key = value.strip() if value else None
+    if key and (profile is None or not profile.supports_management_key):
+        raise ValueError(await tr("llm_api.errors.management_key_unsupported"))
+    return _encrypt_api_key(key)
 
 
 def _clean_url(value: Optional[str]) -> Optional[str]:
@@ -187,7 +201,7 @@ async def create_provider(data: LLMProviderCreate) -> LLMProvider:
             is_active=data.is_active,
             configuration=data.configuration,
             user_id=data.user_id,
-            **data.model_dump(include={"subscription_acknowledged"}, exclude_unset=True),
+            **data.model_dump(include={"subscription_acknowledged", "management_api_key"}, exclude_unset=True),
         )
         return await configure_catalog_provider(data.catalog_code, configured)
 
@@ -206,7 +220,7 @@ async def create_provider(data: LLMProviderCreate) -> LLMProvider:
             is_active=data.is_active,
             configuration=data.configuration,
             user_id=data.user_id,
-            **data.model_dump(include={"subscription_acknowledged"}, exclude_unset=True),
+            **data.model_dump(include={"subscription_acknowledged", "management_api_key"}, exclude_unset=True),
         )
         return await configure_catalog_provider(registered.code, configured)
 
@@ -220,6 +234,7 @@ async def create_provider(data: LLMProviderCreate) -> LLMProvider:
         # database column empty instead of growing one URL field per AI capability.
         transcription_base_url=None,
         api_key=_encrypt_api_key(data.api_key),
+        management_api_key=await _encrypted_management_key(data.management_api_key, None),
         configuration=dict(data.configuration),
         is_active=data.is_active,
         subscription_acknowledged=data.subscription_acknowledged,
@@ -281,6 +296,8 @@ async def configure_catalog_provider(
     if profile is None:
         raise ValueError(f"Unknown provider catalog code: {catalog_code}")
 
+    management_key = await _encrypted_management_key(data.management_api_key, profile)
+
     db = get_db()
     provider = await get_provider_by_catalog_code(catalog_code)
     creating = provider is None
@@ -332,6 +349,9 @@ async def configure_catalog_provider(
     elif "api_key" in data.model_fields_set:
         provider.api_key = _encrypt_api_key(data.api_key)
 
+    if "management_api_key" in data.model_fields_set:
+        provider.management_api_key = management_key
+
     await db.commit()
     update_subscription_confirmation(provider.catalog_code, provider.subscription_acknowledged)
     await db.refresh(provider)
@@ -363,6 +383,8 @@ async def update_provider(
 
     if "api_key" in update_data:
         update_data["api_key"] = _encrypt_api_key(update_data["api_key"])
+    if "management_api_key" in update_data:
+        update_data["management_api_key"] = await _encrypted_management_key(data.management_api_key, profile)
     for url_field in ("base_url", "transcription_base_url"):
         if url_field in update_data:
             update_data[url_field] = _clean_url(update_data[url_field])
@@ -371,7 +393,7 @@ async def update_provider(
         update_data = {
             field: value
             for field, value in update_data.items()
-            if field in {"api_key", "is_active", "configuration", "user_id", "subscription_acknowledged"}
+            if field in {"api_key", "management_api_key", "is_active", "configuration", "user_id", "subscription_acknowledged"}
         }
         provider.provider_type = profile.provider_type
         provider.base_url = profile.base_url
@@ -453,6 +475,12 @@ def _fixed_catalog_item(
             for field in profile.configuration_fields
         ],
         supports_model_management=False,
+        supports_management_key=profile.supports_management_key,
+        management_key_url=profile.management_key_url,
+        supports_quota=provider_quota_reader_for(ProviderConnection(
+            id=None, name=profile.display_name, catalog_code=profile.code,
+            provider_type=profile.provider_type, base_url=profile.base_url,
+        )) is not None,
         is_custom=False,
         connection=connection,
     )
@@ -487,6 +515,7 @@ def _custom_catalog_item(provider: LLMProvider) -> ProviderCatalogItem:
         ),
         configuration_fields=[],
         supports_model_management=manages_models,
+        supports_quota=provider_quota_reader_for(connection) is not None,
         is_custom=True,
         connection=LLMProviderResponse.model_validate(provider),
     )
@@ -787,6 +816,10 @@ async def test_connection(
                 configuration=configuration or {},
                 is_active=True,
             )
+            connection = provider_connection(candidate, api_key)
+            discovery = resource_discovery_for(connection)
+            if isinstance(discovery, ConnectionValidation):
+                await discovery.validate_connection(connection)
             models = await discover_resources(
                 candidate,
                 api_key,
@@ -815,6 +848,14 @@ async def test_connection(
             "provider_name": provider_name,
             "models_count": len(models),
             "error_details": None,
+        }
+    except ProviderAuthenticationError as exc:
+        return {
+            "success": False,
+            "message": await tr("llm_api.connection.failed"),
+            "provider_name": None,
+            "models_count": None,
+            "error_details": str(exc),
         }
     except httpx.HTTPStatusError as exc:
         error_msg = render_prompt(

@@ -46,6 +46,46 @@ def _connection(code: str, provider_type: str = "openai_compatible") -> Provider
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "status, key, management, authenticated",
+    [(401, "synthetic-inference-key", False, False),
+     (200, "synthetic-inference-key", False, True),
+     (200, "synthetic-inference-key", True, False),
+     (200, None, False, False)],
+)
+async def test_openrouter_connection_requires_authenticated_key(
+    monkeypatch: pytest.MonkeyPatch, status: int, key: str | None,
+    management: bool, authenticated: bool,
+) -> None:
+    requests: list[str] = []
+
+    def respond(request: httpx.Request) -> httpx.Response:
+        requests.append(request.url.path)
+        if request.url.path.endswith("/key"):
+            assert request.headers["Authorization"] == "Bearer synthetic-inference-key"
+            return httpx.Response(
+                status, json={"data": {"is_management_key": management}},
+            )
+        return httpx.Response(200, json={"data": []})
+
+    client_type = httpx.AsyncClient
+    monkeypatch.setattr(
+        httpx, "AsyncClient",
+        lambda **kwargs: client_type(**kwargs, transport=httpx.MockTransport(respond)),
+    )
+    result = await llm_provider_service.test_connection(
+        "https://openrouter.ai/api/v1", key,
+        catalog_code="openrouter",
+    )
+    assert result["success"] is authenticated
+    if key:
+        assert requests[0] == "/api/v1/key"
+    else:
+        assert requests == []
+    assert "synthetic-inference-key" not in str(result)
+
+
+@pytest.mark.asyncio
 @pytest.mark.parametrize("catalog_code", [None, "openai-api", "openai-codex"])
 async def test_provider_acknowledgement_survives_reload_and_partial_updates(
     db: AsyncSession, catalog_code: str | None,
@@ -239,9 +279,11 @@ async def test_catalog_codes_are_unique_and_api_keys_have_acquisition_links() ->
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("write_route", ["catalog", "provider"])
 async def test_catalog_configuration_is_an_encrypted_upsert(
     db: AsyncSession,
     monkeypatch: pytest.MonkeyPatch,
+    write_route: str,
 ) -> None:
     created = await llm_provider_service.configure_catalog_provider(
         "openai-api",
@@ -326,6 +368,15 @@ async def test_catalog_configuration_is_an_encrypted_upsert(
     assert captured["base_url"] == "https://api.openai.com/v1"
     assert captured["provider_type"] == "openai_compatible"
     assert captured["catalog_code"] == "openai-api"
+    if write_route == "catalog":
+        removed = await llm_provider_service.configure_catalog_provider(
+            "openai-api", ProviderCatalogConfigure(api_key=None, is_active=False),
+        )
+    else:
+        removed = await llm_provider_service.update_provider(created.id, LLMProviderUpdate(api_key=None))
+    assert removed is not None and removed.api_key is None
+    detail = await provider_router.get_provider(created.id)
+    assert detail.api_key is None and detail.api_key_configured is False
 
 
 @pytest.mark.asyncio

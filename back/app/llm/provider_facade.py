@@ -6,7 +6,7 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
 from collections.abc import AsyncIterator, Callable, Iterable
-from typing import Annotated, Any, Literal, Protocol, TypeAlias
+from typing import Annotated, Any, Literal, Protocol, TypeAlias, runtime_checkable
 
 import httpx
 from .decision_contracts import ChoiceQuestion, DecisionUnavailable, ProviderDecisionResponse
@@ -55,6 +55,7 @@ class ProviderConnection:
     base_url: str
     api_key: str | None = field(default=None, repr=False)
     configuration: dict[str, Any] = field(default_factory=_empty_configuration)
+    management_api_key: str | None = field(default=None, repr=False)
 
 
 @dataclass(frozen=True, slots=True)
@@ -76,6 +77,13 @@ class ProviderMediaInputPolicy:
 
     audio_types: frozenset[str] = frozenset({"audio/wav", "audio/mpeg"})
     video_types: frozenset[str] = frozenset()
+
+
+@runtime_checkable
+class ConnectionValidation(Protocol):
+    """Validate inference credentials independently of public resource catalogs."""
+
+    async def validate_connection(self, connection: ProviderConnection) -> None: ...
 
 
 class ResourceDiscovery(Protocol):
@@ -296,20 +304,25 @@ class ProviderAuthentication(Protocol):
 
 @dataclass(frozen=True, slots=True)
 class ProviderQuotaWindow:
-    name: Literal["primary", "secondary"]
-    used_percent: float
+    name: Literal["primary", "secondary", "credits", "budget", "balance"]
+    used_percent: float | None
     window_seconds: int | None
     resets_at: datetime | None
+    used: float | None = None
+    limit: float | None = None
+    remaining: float | None = None
+    unit: Literal["credits", "USD", "CNY"] = "credits"
 
 
 @dataclass(frozen=True, slots=True)
 class ProviderQuota:
     windows: list[ProviderQuotaWindow]
     checked_at: datetime
+    scope: Literal["account", "api_key"] = "account"
 
 
 class ProviderQuotaReader(Protocol):
-    async def get_quota(self, provider_id: int) -> ProviderQuota: ...
+    async def get_quota(self, connection: ProviderConnection) -> ProviderQuota: ...
 
 
 @dataclass(frozen=True, slots=True)
@@ -885,6 +898,7 @@ __all__ = [
     "RealtimeConversationSession",
     "RealtimeToolDefinition",
     "ResourceDiscovery",
+    "ConnectionValidation",
     "RealtimeSpeechStream",
     "SpeechOptions",
     "SpeechProvider",

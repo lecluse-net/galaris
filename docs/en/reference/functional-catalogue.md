@@ -300,6 +300,13 @@ Multimodal discovery retains all capabilities; explicit refresh updates metadata
 tab. **Used models** retains profile settings and external-client configuration. The expandable
 profile-API explanation has been removed; the API and client configuration remain available.
 
+All provider key fields stay masked without a reveal action. Stored keys use the fixed
+`**********` indicator, never their actual value. Each field keeps its label visible in
+small text inside the field. Empty input retains the secret; new
+input replaces it; the remove button deletes it after confirmation. Removing a required key
+deactivates the provider, while removing an optional key preserves its active state. These
+rules cover catalog connections, custom connections and the OpenRouter management key.
+
 Chat/Responses calls without an explicit output budget request the model's published output
 capacity within the estimated remaining context. The models.dev catalogue can supplement provider
 metadata; discovery is cached for five minutes and existing configurations benefit automatically.
@@ -435,9 +442,26 @@ and reset date when available, with check time and refresh. These are **whole-ac
 including outside use; reading them makes no inference call. Provider-admin rights, valid owner
 and usable authentication are required. Missing windows/errors remain unavailable, without invented
 quotas. This is neither a per-agent budget nor API-model billing.
+The account's additional credit balance appears in credits alongside subscription windows,
+without a balance gauge. Zero remains visible; missing values or unlimited entitlements are
+not converted into zero. Refresh reads the balance together with the windows.
 
 Sources: [quota reading](../../../back/bridge/openai/codex_quota.py),
 [checks/errors](../../../back/bridge/openai/tests/test_quota.py).
+
+The shared **Usage and credits** panel serves providers with a registered reader: ChatGPT,
+ElevenLabs, Mammouth AI, OpenRouter, DeepSeek and SunoAPI.org. It displays known amounts in
+their units and identifies account/key scope. Balances without a ceiling have no gauge; zero
+values and overages remain visible. Mammouth API credits are separate from application quotas;
+OpenRouter account credits require a management key, otherwise remaining key funds are displayed.
+OpenRouter shows only this amount, without a gauge or percentage based on cumulative purchases.
+Values are read on opening and refresh, without permanent tracking or inference.
+Fireworks displays no balance or usage panel because the balance cannot be read with the
+API key; its monthly spending ceiling never substitutes for available funds.
+
+Sources: [shared contracts](../../../back/app/llm/provider_facade.py),
+[provider tests](../../../back/app/llm/tests/test_provider_quotas.py),
+[interactions](../../../front/browser-tests/provider-quota.spec.mjs).
 
 ### Profile-based public APIs
 

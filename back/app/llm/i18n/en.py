@@ -39,7 +39,9 @@ default: dict[str, object] = {
         "model_deleted": "Model ${model_name} deleted successfully",
         "client_disconnected": "Client disconnected during streaming",
         "errors": {
-            "provider_quota_unsupported": "This provider does not expose subscription usage limits.",
+            "provider_quota_unsupported": "This provider does not expose readable quotas or credits.",
+            "provider_quota_unavailable": "Usage unavailable. Check the connection and API key permissions.",
+            "management_key_unsupported": "This provider does not support a separate management key.",
             "profile_selector_invalid": "Invalid profile model '${model}' for this endpoint. Use profile/usage/level.",
             "profile_selector_unavailable": "Profile model '${model}' is not configured or is unavailable.",
             "profile_selector_conflict": "Profile model '${model}' conflicts with the model frozen for this request.",

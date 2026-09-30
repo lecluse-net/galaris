@@ -32,6 +32,7 @@ export interface LLMProvider {
     base_url: string
     transcription_base_url: string | null
     api_key_configured: boolean
+    management_api_key_configured: boolean
     oauth_connected: boolean
     user_id: number | null
     subscription_acknowledged: boolean
@@ -47,15 +48,20 @@ export interface LLMProviderDetail extends LLMProvider {
 }
 
 export interface ProviderQuotaWindow {
-    name: 'primary' | 'secondary'
-    used_percent: number
+    name: 'primary' | 'secondary' | 'credits' | 'budget' | 'balance'
+    used_percent: number | null
     window_seconds: number | null
     resets_at: string | null
+    used: number | null
+    limit: number | null
+    remaining: number | null
+    unit: 'credits' | 'USD' | 'CNY'
 }
 
 export interface ProviderQuota {
     windows: ProviderQuotaWindow[]
     checked_at: string
+    scope: 'account' | 'api_key'
 }
 
 export interface LLMProviderCreate {
@@ -65,6 +71,7 @@ export interface LLMProviderCreate {
     base_url: string
     transcription_base_url?: string | null
     api_key?: string | null
+    management_api_key?: string | null
     configuration?: Record<string, unknown>
     is_active?: boolean
     user_id?: number | null
@@ -77,6 +84,7 @@ export interface LLMProviderUpdate {
     base_url?: string
     transcription_base_url?: string | null
     api_key?: string | null
+    management_api_key?: string | null
     configuration?: Record<string, unknown>
     is_active?: boolean
     user_id?: number | null
@@ -101,6 +109,7 @@ export interface LLMModelInfo {
 
 export interface ProviderCatalogConfigure {
     api_key?: string | null
+    management_api_key?: string | null
     is_active: boolean
     configuration?: Record<string, unknown>
     user_id?: number | null
@@ -135,6 +144,9 @@ export interface ProviderCatalogItem {
     capabilities: AICapability[]
     configuration_fields: ProviderConfigurationField[]
     supports_model_management: boolean
+    supports_quota: boolean
+    supports_management_key: boolean
+    management_key_url: string | null
     capability: AICapability
     is_custom: boolean
     connection: LLMProvider | null

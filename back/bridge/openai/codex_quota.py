@@ -1,4 +1,4 @@
-"""Read account-wide Codex subscription windows without performing inference."""
+"""Read account-wide Codex subscription windows and additional credits."""
 
 from datetime import datetime, timezone
 from math import isfinite
@@ -6,7 +6,7 @@ from typing import Literal
 
 import httpx
 
-from app.llm.facade import ProviderQuota, ProviderQuotaWindow
+from app.llm.facade import ProviderQuota, ProviderQuotaWindow, amount_window, quota_number
 from core.i18n import current_language, t
 from core.util import as_dict
 
@@ -66,7 +66,8 @@ async def get_quota(provider_id: int) -> ProviderQuota:
             relogin_required=response.status_code == 401,
         )
     try:
-        limits = as_dict(as_dict(response.json()).get("rate_limit"))
+        payload = as_dict(response.json())
+        limits = as_dict(payload.get("rate_limit"))
     except ValueError as exc:
         raise codex_oauth.CodexOAuthError(
             t("llm_api.codex.quota_unavailable", language), code="codex_quota_unavailable",
@@ -76,4 +77,10 @@ async def get_quota(provider_id: int) -> ProviderQuota:
         window = _window(name, limits.get(f"{name}_window"))
         if window is not None:
             windows.append(window)
+    credits = as_dict(payload.get("credits"))
+    # An unlimited entitlement has no finite balance; never turn it into zero.
+    if credits.get("unlimited") is not True:
+        balance = amount_window("credits", remaining=quota_number(credits.get("balance")))
+        if balance is not None:
+            windows.append(balance)
     return ProviderQuota(windows=windows, checked_at=datetime.now(timezone.utc))

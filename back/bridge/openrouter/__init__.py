@@ -12,6 +12,7 @@ from app.llm.provider_facade import (
     ProviderResponsesPolicy,
     register_model_metadata,
     register_provider,
+    register_provider_quota_reader,
     register_image_generation_provider,
     register_resource_discovery,
     register_responses_policy,
@@ -20,6 +21,7 @@ from app.llm.provider_facade import (
 )
 
 from .resources import OpenRouterResourceDiscovery
+from .quota import OpenRouterQuota
 from .transcription import OpenRouterTranscription
 from .usage import OpenRouterUsageAccounting
 from .image import OpenRouterImageGeneration
@@ -52,6 +54,8 @@ PROFILE = ProviderProfile(
     models_dev_id="openrouter",
     supports_transcription=True,
     supports_responses=True,
+    supports_management_key=True,
+    management_key_url="https://openrouter.ai/settings/management-keys",
     capabilities=(
         "decision",
         "chat",
@@ -68,6 +72,7 @@ PROFILE = ProviderProfile(
 )
 
 register_provider(PROFILE)
+register_provider_quota_reader(PROFILE.code, OpenRouterQuota())
 register_decision_provider(PROFILE.code, OpenRouterDecisions())
 register_media_input_policy(PROFILE.code, ProviderMediaInputPolicy(
     audio_types=frozenset({"audio/wav", "audio/mpeg", "audio/aiff", "audio/aac",
