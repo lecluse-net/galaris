@@ -64,7 +64,8 @@ behavior applies to both model keys and OpenRouter’s optional management key.
 
 For supported providers, **Usage and credits** in provider settings displays service-reported
 limits: ChatGPT windows and additional credits, ElevenLabs credits, Mammouth AI and OpenRouter key spending,
-DeepSeek balances and SunoAPI.org credits. **Refresh limits** reads the service without
+DeepSeek balances and SunoAPI.org credits. These figures refresh automatically every five
+minutes while the panel is open. **Refresh limits** reads the service without
 generation. The panel identifies account-wide or API-key scope, including use outside
 Galaris. A gauge appears only when a reported ceiling permits a percentage. Amounts retain
 their units, zero values and overages; failed reads can be retried. Mammouth application

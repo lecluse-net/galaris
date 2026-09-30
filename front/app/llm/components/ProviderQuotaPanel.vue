@@ -49,7 +49,8 @@
 </template>
 
 <script setup lang="ts">
-import { onBeforeUnmount, ref, watch } from 'vue'
+import { onActivated, onBeforeUnmount, onDeactivated, onMounted, ref, watch } from 'vue'
+import { useInterval } from 'quasar'
 import { useI18n } from 'vue-i18n'
 import { solaireCss } from '@/core/util'
 import llmProviderService, { type ProviderQuota, type ProviderQuotaWindow } from '../services/llmProviderService'
@@ -59,7 +60,14 @@ const { t, locale } = useI18n()
 const quota = ref<ProviderQuota | null>(null)
 const loading = ref(false)
 const failed = ref(false)
+const { registerInterval, removeInterval } = useInterval()
 let request: AbortController | undefined
+
+function startAutoRefresh(): void {
+  registerInterval(() => {
+    if (!loading.value) void load()
+  }, 5 * 60 * 1000)
+}
 
 async function load(): Promise<void> {
   request?.abort()
@@ -108,5 +116,8 @@ function quotaColor(percent: number): string {
 }
 
 watch(() => [props.providerId, props.refreshKey], load, { immediate: true })
+onMounted(startAutoRefresh)
+onActivated(startAutoRefresh)
+onDeactivated(removeInterval)
 onBeforeUnmount(() => request?.abort())
 </script>

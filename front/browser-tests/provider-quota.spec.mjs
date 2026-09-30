@@ -40,6 +40,55 @@ test('account windows load, refresh, and recover from unavailable quotas', async
   await expect(page.getByText('Remaining: 125.5 credits', { exact: true })).toBeVisible()
 })
 
+test('usage and credits refresh every five minutes and recover automatically', async ({ page }) => {
+  await page.clock.install()
+  let reads = 0
+  let status = 200
+  await page.route('**/api/llm-providers/17/quota', route => {
+    reads += 1
+    return route.fulfill({ status, json: snapshot(reads * 10, reads * 100) })
+  })
+  await mount(page, 'app/llm/components/ProviderQuotaPanel.vue', { props: { providerId: 17 } })
+  await expect(page.getByText('10% used', { exact: true })).toBeVisible()
+  await page.clock.fastForward('04:00')
+  expect(reads).toBe(1)
+  await page.clock.fastForward('01:00')
+  await expect(page.getByText('20% used', { exact: true })).toBeVisible()
+  await expect(page.getByText('Remaining: 200 credits', { exact: true })).toBeVisible()
+  status = 502
+  await page.clock.fastForward('05:00')
+  await expect(page.getByRole('alert')).toContainText('Limits unavailable')
+  status = 200
+  await page.clock.fastForward('05:00')
+  await expect(page.getByText('40% used', { exact: true })).toBeVisible()
+  await expect(page.getByText('Remaining: 400 credits', { exact: true })).toBeVisible()
+})
+
+test('automatic refresh waits for pending requests and stops after unmount', async ({ page }) => {
+  await page.clock.install()
+  let reads = 0
+  let release
+  const pending = new Promise(resolve => { release = resolve })
+  await page.route('**/api/llm-providers/17/quota', async route => {
+    reads += 1
+    if (reads === 2) await pending
+    await route.fulfill({ json: snapshot(reads * 10) })
+  })
+  await mount(page, 'app/llm/components/ProviderQuotaPanel.vue', { props: { providerId: 17 } })
+  await expect(page.getByText('10% used', { exact: true })).toBeVisible()
+  await page.clock.fastForward('05:00')
+  await expect(page.getByRole('status')).toHaveText('Loading limits…')
+  await page.clock.fastForward('10:00')
+  expect(reads).toBe(2)
+  release()
+  await expect(page.getByText('20% used', { exact: true })).toBeVisible()
+  await page.clock.fastForward('05:00')
+  await expect(page.getByText('30% used', { exact: true })).toBeVisible()
+  await page.evaluate(() => window.testApp.unmount())
+  await page.clock.fastForward('10:00')
+  expect(reads).toBe(3)
+})
+
 for (const width of [1440, 390]) {
   test(`Fireworks configuration has no balance panel or spend gauge at ${width}px`, async ({ page }) => {
     await page.setViewportSize({ width, height: 1100 })

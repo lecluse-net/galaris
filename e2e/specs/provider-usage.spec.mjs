@@ -172,6 +172,7 @@ test('provider credits open, refresh, recover and reopen in the assembled applic
 })
 
 test('ChatGPT additional credits remain distinct from subscription windows', async ({ page, request }, testInfo) => {
+  await page.clock.install()
   const seeded = await request.post('/api/__test/seed')
   expect(seeded.ok()).toBeTruthy()
   const fixture = await seeded.json()
@@ -231,6 +232,26 @@ test('ChatGPT additional credits remain distinct from subscription windows', asy
     await page.locator('.provider-list-panel').getByText('OpenAI — ChatGPT', { exact: true }).click()
     await expect(panel.getByText('Restants : 75 crédits', { exact: true })).toBeVisible()
     await expect(panel.getByRole('progressbar')).toHaveCount(2)
+    let quotaReads = 0
+    const countQuotaReads = outgoing => {
+      if (outgoing.url().endsWith('/quota')) quotaReads += 1
+    }
+    page.on('request', countQuotaReads)
+    expect((await request.put('/api/__test/provider-usage?codex_credits=50')).ok()).toBeTruthy()
+    await page.clock.fastForward('05:00')
+    await expect(panel.getByText('Restants : 50 crédits', { exact: true })).toBeVisible()
+    expect(quotaReads).toBe(1)
+    await page.getByRole('tab', { name: 'Modèles disponibles', exact: true }).click()
+    await expect(panel).toBeHidden()
+    await page.clock.fastForward('05:00')
+    expect(quotaReads).toBe(1)
+    await page.getByRole('tab', { name: 'Fournisseurs', exact: true }).click()
+    await expect(panel).toBeVisible()
+    expect((await request.put('/api/__test/provider-usage?codex_credits=25')).ok()).toBeTruthy()
+    await page.clock.fastForward('05:00')
+    await expect(panel.getByText('Restants : 25 crédits', { exact: true })).toBeVisible()
+    expect(quotaReads).toBe(2)
+    page.off('request', countQuotaReads)
   }
   expect(failures).toEqual([])
 })

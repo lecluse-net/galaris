@@ -69,7 +69,8 @@ fournisseur ; supprimer une clé facultative conserve son état. Ce fonctionneme
 
 Dans la configuration d’un fournisseur compatible, **Consommation et crédits** affiche les
 limites remontées par le service : fenêtres et crédits supplémentaires ChatGPT, crédits ElevenLabs, consommation de clé
-Mammouth AI et OpenRouter, soldes DeepSeek et crédits SunoAPI.org. **Actualiser les limites**
+Mammouth AI et OpenRouter, soldes DeepSeek et crédits SunoAPI.org. Ces données s’actualisent
+automatiquement toutes les cinq minutes tant que le panneau est ouvert. **Actualiser les limites**
 relit le service sans génération. Le panneau précise si les chiffres concernent le compte
 entier ou la clé API ; ils incluent ses usages hors de Galaris. Une jauge apparaît seulement
 lorsqu’un plafond permet de calculer un pourcentage. Les montants conservent leur unité,
