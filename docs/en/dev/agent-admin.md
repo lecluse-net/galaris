@@ -65,7 +65,7 @@ the current provider and runtime state. Results distinguish `completed`, `in_pro
 with credentials and paths redacted. Blocking Tasks have complete URIs; no Task-stop command
 is provided.
 
-## Generated portraits and tracking
+## Generated portraits
 
 Only `agent_avatar_generate` disappears when the caller’s effective image usage has no
 image-output model with an active provider and the credentials required by its provider
@@ -74,27 +74,24 @@ Inherited profiles qualify; chat and executor
 models never serve as fallbacks. Discovery and invocation recheck availability even within
 a retained session.
 
-Portraits use the target’s first/last name, title gender, personality and job. HTML is read
+Portraits use the target’s first/last name, title gender and personality. HTML is read
 as descriptive text and remains unchanged in storage. Optional instructions, limited to
 4,000 characters, specify appearance, framing or atmosphere.
 
-The initial result includes `registered=false`, `status`, `run_id`, the workflow URI and
-a `follow_up` pointing to `process_get_run`. The Galaris system service provides tracking
-without granting ProcessAdmin. Final success includes `registered=true` and the target URI.
-Technical avatar workflows stay outside the business-process catalogue.
-
-A Process freezes the caller’s image model, provider-configuration fingerprint, manager,
-target description and avatar revision. A durable claim precedes provider submission;
-interrupted requests with uncertain outcomes become `unknown` without automatic resubmission.
-Publication rechecks rights, target and fingerprints. The image, receipt and Process success
-persist together. Late results, revocation, deletion or changed profiles fail and preserve
-the current state.
+`agent_avatar_generate` directly calls the service used by `image_generate`, waits for the
+image and registers it. The result contains `status="success"`, `registered=true`, the
+target URI and avatar revision. No Process or process job is created.
+Before registration, delegation, manager, target profile and avatar revision are rechecked.
+Provider errors, revoked rights and concurrent changes preserve the current state; the
+function does not automatically resubmit generation.
+DbAdmin purges obsolete `agent_admin:<agent>:avatar` definitions and their runs, jobs
+and events, after settling any waiting Tasks.
 
 `agent_avatar_set` materializes an authorized canonical URI through `app.file_share` into
 a bounded temporary file, then cleans it up. Upload, URI and generation share actual
 JPEG/PNG/GIF/WebP decoding, a 15 MiB byte limit and dimension limits (16 million pixels,
 8,192 per side). Before each write, the Agent module applies EXIF orientation and converts
-the image to optimized JPEG (quality 85), within 512 × 512 pixels, preserving proportions
+the image to optimized JPEG (quality 85), within 500 × 500 pixels, preserving proportions
 without cropping or enlarging it. Transparency becomes a white background, animations use
 their first frame and EXIF metadata is removed. HTTP POST, URI and generated portraits all
 use this conversion. Monotonic revisions also detect replacement followed by restoration.
@@ -104,7 +101,7 @@ UI readers use the revision to load current portraits when reopened.
 
 `back/app/agent/tests/test_agent_admin.py` covers CRUD without HTTP context, scope, connection
 protections, the exact 34 functions, revocation and image availability on a mounted server,
-and durable publication with failure outcomes. `e2e/specs/agent-admin.spec.mjs` exercises
+and direct generation without Processes with failure outcomes. `e2e/specs/agent-admin.spec.mjs` exercises
 the assembled API/UI with a synthetic provider: creation, generation, replacement, reopening
 through Vue navigation without a full reload, renamed titles and refusal after revocation.
 Persistence tests also exercise real URI materialization behind a synthetic provider boundary,

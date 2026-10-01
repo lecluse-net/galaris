@@ -1,7 +1,6 @@
 """Durable checkpoints and technical definitions for integrated process engines."""
 
-from typing import Any, cast
-from collections.abc import Awaitable, Callable
+from typing import Any
 from uuid import UUID
 
 from sqlalchemy import select
@@ -10,7 +9,6 @@ from sqlalchemy.dialects.postgresql import insert
 from core.database import get_db
 from . import process_service
 from .models import ProcessDefinition, ProcessRun
-from .schemas import EngineRunSnapshot
 
 
 async def ensure_integrated_definition(agent_id: int, tool_code: str, operation: str) -> str:
@@ -63,25 +61,5 @@ async def engine_checkpoint(
         "claimed": claimed,
         "applied": not preserved and run.status not in process_service.TERMINAL_STATUSES,
     }
-    await get_db().commit()
-    return result
-
-
-async def complete_engine_effect(
-    run_id: UUID, engine_code: str, effect: Callable[[], Awaitable[dict[str, Any]]],
-) -> dict[str, Any]:
-    """Commit a built-in domain effect and its durable receipt atomically."""
-    run = (await get_db().scalars(select(ProcessRun).where(
-        ProcessRun.id == run_id, ProcessRun.engine_code == engine_code,
-    ).with_for_update().execution_options(populate_existing=True))).one()
-    receipt = run.engine_metadata.get("effect_receipt")
-    if isinstance(receipt, dict):
-        return cast(dict[str, Any], receipt)
-    if run.status in process_service.TERMINAL_STATUSES:
-        raise ValueError("A terminal Process cannot publish another effect")
-    async with get_db().begin_nested():
-        result = await effect()
-        run.engine_metadata = {**run.engine_metadata, "effect_receipt": result}
-        await process_service.apply_engine_snapshot(run, EngineRunSnapshot(status="success", output=result), "engine.effect.completed")
     await get_db().commit()
     return result

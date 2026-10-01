@@ -113,14 +113,6 @@ def configure_dream_media() -> None:
     register_attachment_media(image_reader=describe_image, audio_normalizer=normalize_for_transcription_chunks_isolated)
 
 
-def configure_agent_admin() -> None:
-    """Register the integrated avatar engine after provider modules are loaded."""
-    from app.agent.avatar_engine import AvatarEngine
-    from app.process import registry
-
-    registry.register(AvatarEngine())
-
-
 def configure_tool_admin() -> None:
     """Bind the ToolAdmin Process engine at the composition boundary."""
     from app.process.catalog_refresh_engine import CatalogRefreshEngine, queue_catalog_refresh

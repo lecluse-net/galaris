@@ -68,7 +68,7 @@ Les résultats distinguent `completed`, `in_progress` et `error`. Les logs sont 
 des credentials et chemins. Les tâches bloquantes sont référencées par URI complète ;
 aucune commande d’arrêt de tâche n’est fournie.
 
-## Portrait généré et suivi
+## Portrait généré
 
 Seule `agent_avatar_generate` disparaît lorsque l’usage image du profil effectif de
 l’appelant n’est pas configuré avec un modèle produisant des images, un fournisseur actif
@@ -77,27 +77,24 @@ la validité des credentials auprès du fournisseur.
 Un profil hérité convient ; le modèle de chat ou celui de l’exécuteur ne sert jamais de repli.
 La disponibilité est réévaluée à la découverte et à l’appel, même dans une session conservée.
 
-Le portrait utilise le prénom, le nom, le genre de la civilité, la personnalité et le poste
+Le portrait utilise le prénom, le nom, le genre de la civilité et la personnalité
 de la cible. Le HTML est lu comme texte descriptif et reste inchangé en base. Les instructions
 facultatives, au plus 4 000 caractères, précisent apparence, cadrage ou ambiance.
 
-La réponse initiale contient `registered=false`, `status`, `run_id`, l’URI du workflow et
-un `follow_up` indiquant `process_get_run`. Le service système Galaris permet donc le suivi
-sans attribuer ProcessAdmin. Le succès final contient `registered=true` et l’URI de la cible.
-Ces workflows techniques restent absents du catalogue des processus métier.
-
-Un Process fige le modèle image de l’appelant, l’empreinte de sa configuration fournisseur,
-le responsable, la description de la cible et sa révision d’avatar. Une marque durable précède
-l’appel fournisseur : une interruption au résultat incertain devient `unknown` sans nouvelle
-soumission automatique. Avant publication, les droits, la cible et les empreintes sont revérifiés.
-L’image, son reçu et le succès du Process sont persistés ensemble. Un résultat tardif, une
-révocation, une suppression ou une modification du profil produit un échec et conserve l’état courant.
+`agent_avatar_generate` appelle directement le service utilisé par `image_generate`,
+attend l'image et l'enregistre. La réponse contient `status="success"`, `registered=true`,
+l'URI de la cible et sa révision d'avatar. Aucun Process ni job de processus n'est créé.
+Avant enregistrement, les droits, le responsable, le profil et la révision de l'avatar
+sont revérifiés. Une erreur fournisseur, une révocation ou une modification concurrente
+conserve l'état courant ; la fonction ne resoumet pas automatiquement la génération.
+DbAdmin purge les anciennes définitions `agent_admin:<agent>:avatar` et leurs exécutions,
+jobs et événements, après résolution de leurs éventuelles Tasks d'attente.
 
 `agent_avatar_set` lit une URI canonique autorisée avec `app.file_share` dans un temporaire
 borné, ensuite nettoyé. Upload, URI et génération partagent le décodage réel JPEG/PNG/GIF/WebP,
 la limite de 15 Mio et les limites de dimensions (16 millions de pixels, 8 192 par côté).
 Avant chaque enregistrement, le module Agent applique l’orientation EXIF puis convertit
-l’image en JPEG optimisé (qualité 85), avec un maximum de 512 × 512 pixels, proportions
+l’image en JPEG optimisé (qualité 85), avec un maximum de 500 × 500 pixels, proportions
 conservées, sans recadrage ni agrandissement. La transparence devient un fond blanc,
 les animations utilisent leur première image et les métadonnées EXIF sont retirées.
 Cette conversion s’applique au POST HTTP, aux URI et aux portraits générés.
@@ -108,7 +105,7 @@ utilisent cette révision pour charger le nouvel avatar à la réouverture.
 
 `back/app/agent/tests/test_agent_admin.py` vérifie le parcours CRUD sans contexte HTTP,
 le périmètre, les protections des connexions, les 34 fonctions, la révocation et la disponibilité
-image sur un serveur monté, ainsi que la publication durable et ses issues d’échec.
+image sur un serveur monté, ainsi que la génération directe sans Process et ses issues d’échec.
 Il exerce aussi le transfert URI réel derrière une frontière fournisseur synthétique,
 le nettoyage des temporaires et le parcours MCP des harnais avec tâches bloquantes.
 `e2e/specs/agent-admin.spec.mjs` exerce l’API et l’UI assemblées avec un fournisseur synthétique :

@@ -13,7 +13,7 @@ from .models import Agent, Title
 
 MAX_AVATAR_BYTES = 15 * 1024 * 1024
 MAX_AVATAR_PIXELS = 16_000_000
-MAX_STORED_AVATAR_SIDE = 512
+MAX_STORED_AVATAR_SIDE = 500
 
 
 def validate_avatar(content: bytes) -> None:
@@ -62,7 +62,7 @@ async def portrait_snapshot(agent: Agent, *, lock_title: bool = False) -> dict[s
 
 
 async def apply_generated_avatar(target_id: int, content: bytes, snapshot: dict[str, object]) -> dict[str, object]:
-    """Caller owns the commit, together with the durable Process receipt."""
+    """Register a valid JPEG while preserving concurrent profile/avatar changes."""
     content = normalize_avatar(content)
     agent = await get_db().scalar(select(Agent).where(Agent.id == target_id).with_for_update()
                                   .execution_options(populate_existing=True))

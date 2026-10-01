@@ -1,6 +1,7 @@
 """Synthetic persistence journeys for AgentAdmin and its live delegation."""
 
 import io
+import json
 from uuid import UUID, uuid4
 from unittest.mock import AsyncMock
 
@@ -12,7 +13,7 @@ from fastmcp import Client
 
 from app.agent import mcp as agent_mcp
 from app.agent.admin_schemas import AdminAgentCreate, AdminAgentUpdate
-from app.agent.avatar_engine import AvatarEngine, portrait_prompt
+from app.agent.avatar_generation import portrait_prompt
 from app.agent.avatars import portrait_snapshot, apply_generated_avatar, validate_avatar
 from app.agent.models import Agent, Title
 from app.agent import agent_service
@@ -22,15 +23,14 @@ from app.tools import mandatory_tools, mcp_loader
 from app.tools.models import Tool
 from core.authorize import Assignment, Privilege, Role
 from app.llm import LLM, LLMProvider, LlmProfile
-from app.process import registry as process_registry, process_service, EngineRunReference, ProcessStartPayload
 from core.user import UserModel
 from core.user import user_service
 from app.agent.schemas import AgentGroupCreate, AgentGroupUpdate, TitleCreate, TitleUpdate
 
 
-def image_bytes(color="blue"):
+def image_bytes(color="blue", size=(24, 24)):
     output = io.BytesIO()
-    Image.new("RGB", (24, 24), color).save(output, "PNG")
+    Image.new("RGB", size, color).save(output, "PNG")
     return output.getvalue()
 
 
@@ -253,15 +253,13 @@ async def _make_image_configuration(db, admin_fixture):
     profile = await db.get(LlmProfile, caller.profile_id)
     profile.image_llm_id = image.id
     await db.commit()
-    engine = AvatarEngine()
-    process_registry.register(engine)
-    return image, profile, engine
+    return image, profile
 
 
 @pytest.mark.asyncio
 async def test_mounted_catalogue_has_exact_functions_and_rechecks_every_call(db, admin_fixture, image_configuration):
     caller, owner, _, _, _, role, connection = admin_fixture
-    image, profile, _ = image_configuration
+    image, profile = image_configuration
     await db.refresh(role, ["privileges"])
     role.privileges.append(await db.scalar(select(Privilege).where(Privilege.code == "AGENT_MANAGE_ALL")))
     await db.commit()
@@ -314,7 +312,7 @@ async def test_mounted_catalogue_has_exact_functions_and_rechecks_every_call(db,
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("revoked", [False, True])
-async def test_approved_avatar_job_outlives_its_task_and_rechecks_permissions_before_dispatch(
+async def test_avatar_requires_approval_and_approved_call_completes_without_replay(
     inference_db, durable_admin_fixture, durable_image_configuration, monkeypatch, revoked,
 ):
     from app.connection import facade as connections
@@ -342,50 +340,34 @@ async def test_approved_avatar_job_outlives_its_task_and_rechecks_permissions_be
     request_id = UUID(control["request_id"])
     provider.assert_not_awaited()
     assert await answer_action(request_id, user_id=owner.id, approved=True)
-    admitted = await call()
-    run_id = UUID(admitted["run_id"])
-    assert (await process_service.refresh_run(run_id)).status == "queued"
-    replay = await call()
-    assert replay.is_error and replay.meta[AUTHORIZATION_META_KEY]["status"] == "executing"
-    task.status = TaskStatus.SUCCESS
-    await db.commit()
     if revoked:
         await connections.set_connection_function_state(connection.id, "agent_avatar_generate", "disabled")
-    assert await process_service.process_start_jobs(engine_code="agent_admin") == 1
-    assert await process_service.process_start_jobs(engine_code="agent_admin") == 0
-    run = await process_service.refresh_run(run_id)
-    if revoked:
+        with pytest.raises(PermissionError):
+            await call()
         provider.assert_not_awaited()
-        assert run.status == "error"
     else:
+        result = await call()
         provider.assert_awaited_once()
-        assert run.status == "success"
+        assert result["registered"] is True and result["status"] == "success"
         assert (await db.get(ActionAuthorization, request_id)).status == "completed"
+        replay = await call()
+        assert replay.is_error
+        provider.assert_awaited_once()
 
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("outcome", ["success", "invalid", "provider_error", "revoked", "profile_changed", "late_avatar", "deleted"])
-async def test_durable_generation_preserves_old_avatar_and_never_resubmits(db, admin_fixture, image_configuration, monkeypatch, outcome):
+async def test_direct_generation_preserves_old_avatar_on_failure(db, admin_fixture, image_configuration, monkeypatch, outcome):
     caller, _, _, _, _, _, connection = admin_fixture
-    model, _, engine = image_configuration
+    model, _ = image_configuration
     caller_id, model_id = caller.id, model.id
     old, new, late = image_bytes(), image_bytes("red"), image_bytes("green")
     await agent_service.update_avatar(caller_id, old)
     old = await agent_service.get_avatar(caller_id)
     ctx = mcp_loader.McpToolContext(caller_id, "internal")
-    result = await agent_mcp.agent_avatar_generate(ctx, caller_id, "neutral studio background")
-    assert result["status"] == "queued" and result["registered"] is False
-    run_id = UUID(result["run_id"])
-    run = await process_service.get_run(run_id)
-    assert run.input["model_id"] == model_id
-    assert "Admin" in run.input["prompt"]
-    # Inspection before the worker runs must keep the durable job admissible.
-    assert (await process_service.refresh_run(run_id)).status == "queued"
-
     async def provider(prompt, **kwargs):
         nonlocal late
-        from app.llm.correlation import current_llm_correlation_ref
-        assert current_llm_correlation_ref() == f"process:{run_id}"
+        assert "Admin" in prompt and "gender" in prompt and "personality" in prompt
         assert kwargs["agent_id"] == caller_id and kwargs["model_id"] == model_id
         assert kwargs["task_id"] is None
         if outcome == "provider_error":
@@ -405,26 +387,51 @@ async def test_durable_generation_preserves_old_avatar_and_never_resubmits(db, a
     import app.image
     boundary = AsyncMock(side_effect=provider)
     monkeypatch.setattr(app.image, "generate_image_bytes", boundary)
-    assert await process_service.process_start_jobs(engine_code="agent_admin") == 1
-    run = await process_service.refresh_run(run_id)
-    reference = EngineRunReference(id=run_id, correlation_id=run.correlation_id, engine_run_id=run.engine_run_id)
-    await engine.start_run(f"agent_admin:{caller_id}:avatar", reference, ProcessStartPayload())
-    await process_service.refresh_run(run_id)
-    assert boundary.await_count == 1
     if outcome == "success":
-        assert run.status == "success" and run.output["registered"] is True
+        result = await agent_mcp.agent_avatar_generate(ctx, caller_id, "neutral studio background")
+        assert result["status"] == "success" and result["registered"] is True
         with Image.open(io.BytesIO(await agent_service.get_avatar(caller_id))) as image:
             assert image.format == "JPEG" and image.size == (24, 24)
             assert image.getpixel((12, 12))[0] > 250
     elif outcome == "deleted":
-        assert run.status == "error" and await agent_service.get(caller_id) is None
+        with pytest.raises((LookupError, PermissionError)):
+            await agent_mcp.agent_avatar_generate(ctx, caller_id)
+        assert await agent_service.get(caller_id) is None
     else:
-        assert run.status == ("unknown" if outcome == "provider_error" else "error")
+        with pytest.raises((ValueError, PermissionError, TimeoutError)):
+            await agent_mcp.agent_avatar_generate(ctx, caller_id)
         assert await agent_service.get_avatar(caller_id) == (late if outcome == "late_avatar" else old)
+    boundary.assert_awaited_once()
 
 
 @pytest.mark.asyncio
-async def test_direct_generation_without_image_model_never_queues(db, admin_fixture):
+async def test_avatar_generation_registers_directly_without_creating_processes(db, admin_fixture, image_configuration, monkeypatch):
+    from app.process.models import ProcessDefinition, ProcessRun
+    from sqlalchemy import func
+
+    caller = admin_fixture[0]
+    caller.personality = "<p>Patient synthetic astronomer</p>"
+    await db.commit()
+    definitions = await db.scalar(select(func.count()).select_from(ProcessDefinition))
+    runs = await db.scalar(select(func.count()).select_from(ProcessRun))
+    import app.image
+    provider = AsyncMock(return_value=(image_bytes("red", (1200, 800)), "image/png"))
+    monkeypatch.setattr(app.image, "generate_image_bytes", provider)
+    result = await agent_mcp.agent_avatar_generate(mcp_loader.McpToolContext(caller.id, "internal"), caller.id)
+    assert result["registered"] is True and result["status"] == "success"
+    provider.assert_awaited_once()
+    prompt = provider.await_args.args[0]
+    profile = json.loads(prompt.split("\n")[1])
+    assert profile == {"first_name": "Admin", "last_name": "Synthetic", "gender": "F",
+                       "personality": "Patient synthetic astronomer"}
+    with Image.open(io.BytesIO(await agent_service.get_avatar(caller.id))) as avatar:
+        assert avatar.format == "JPEG" and avatar.size == (500, 333)
+    assert await db.scalar(select(func.count()).select_from(ProcessDefinition)) == definitions
+    assert await db.scalar(select(func.count()).select_from(ProcessRun)) == runs
+
+
+@pytest.mark.asyncio
+async def test_direct_generation_without_image_model_fails_before_calling_provider(db, admin_fixture):
     caller = admin_fixture[0]
     with pytest.raises(ValueError, match="image generation model"):
         await agent_mcp.agent_avatar_generate(mcp_loader.McpToolContext(caller.id, "internal"), caller.id)

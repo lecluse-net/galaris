@@ -6,7 +6,7 @@
 
 - [0150 — Administration déléguée des Tools](0150-tool-administration.md)
 
-- [0148 — Délégation AgentAdmin et publication différée des avatars](0148-agent-admin-delegation.md)
+- [0148 — Délégation AgentAdmin et génération directe des avatars](0148-agent-admin-delegation.md)
 
 - [0149 — Préparation documentaire commune et transitoire](0149-transient-document-preparation.md)
 

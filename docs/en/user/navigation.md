@@ -109,11 +109,11 @@ on the server catalog: use the displayed link without inventing an identifier.
 To delegate this administration to an agent, enable its optional **AgentAdmin** connection
 under **Tools & connections**. It starts active when the **Galaris** assistant is created;
 later deactivation is preserved. Its 34 functions remain limited to its human manager’s rights
-and scope. Generated portraits use the caller’s image model; inspect the returned Process
-until registration is confirmed, then reopen the target’s record. See the
+and scope. Generated portraits use the caller’s image model; wait for registration
+to be confirmed, then reopen the target’s record. See the
 [AgentAdmin contract](../dev/agent-admin.md) for connections, teams and Harnesses.
 When an agent avatar is saved, the image is converted to JPEG and reduced to at most
-512 × 512 pixels, preserving its proportions without enlarging small images.
+500 × 500 pixels, preserving its proportions without enlarging small images.
 
 ## Tools, connections and skills
 

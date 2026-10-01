@@ -202,24 +202,11 @@ async def agent_avatar_set(ctx: McpToolContext, agent_id: int, uri: str) -> dict
 
 
 async def _avatar_available(ctx: McpToolContext) -> bool:
-    from .avatar_engine import avatar_generation_available
+    from .avatar_generation import avatar_generation_available
     return await avatar_generation_available(ctx.agent_id)
 
 
-@mcp_tool("agent_admin", approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval", name="agent_avatar_generate", description="Queue a photographic avatar using your effective image model and the target profile. Returns a durable Process URI; queued is not registered.", available_when=_avatar_available)
+@mcp_tool("agent_admin", approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval", name="agent_avatar_generate", description="Generate and register a photographic avatar from the target's personality, title gender, first and last name using your image model. Waits for completion and stores a JPEG within 500x500 pixels.", available_when=_avatar_available)
 async def agent_avatar_generate(ctx: McpToolContext, agent_id: int, instructions: str = "") -> dict[str, Any]:
-    from app.process import process_service
-    from app.process.interface import ensure_integrated_definition
-    async with delegated_admin(ctx.agent_id, "agent_avatar_generate", "AGENT_EDIT") as grant:
-        await grant.target(agent_id)
-        if not await _avatar_available(ctx):
-            raise ValueError("A usable image generation model is required")
-        if len(instructions) > 4000:
-            raise ValueError("Avatar instructions exceed 4000 characters")
-        workflow = await ensure_integrated_definition(ctx.agent_id, "agent_admin", "avatar")
-        result = await process_service.start_process(agent_id=ctx.agent_id, workflow_id=workflow,
-            input_data={"target_id": agent_id, "runtime": ctx.runtime, "instructions": instructions},
-            task_id=ctx.task_id, runtime=ctx.runtime)
-        return {"agent_id": agent_id, "resource_uri": f"galaris://agent/{agent_id}", "status": result.status,
-                "registered": False, "process_uri": f"galaris://process/{workflow}", "run_id": str(result.run_id),
-                "follow_up": {"tool": "process_get_run", "arguments": {"run_id": str(result.run_id)}}}
+    from .avatar_generation import generate_avatar
+    return await generate_avatar(ctx.agent_id, agent_id, instructions, task_id=ctx.task_id)

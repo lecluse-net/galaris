@@ -119,11 +119,11 @@ dépendent du catalogue serveur : utilisez le lien affiché, sans inventer leur 
 Pour déléguer cette administration à un agent, activez sa connexion optionnelle **AgentAdmin**
 dans **Outils & connexions**. Elle est active par défaut à la création de l’assistant **Galaris** ;
 une désactivation ultérieure est conservée. Ses 34 fonctions restent limitées aux droits et au périmètre de
-son responsable humain. Le portrait généré utilise le modèle image de l’appelant ; suivez
-le Process retourné jusqu’à la confirmation d’enregistrement, puis rouvrez la fiche de la cible.
+son responsable humain. Le portrait généré utilise le modèle image de l’appelant ; attendez
+la confirmation d’enregistrement, puis rouvrez la fiche de la cible.
 Voir le [contrat AgentAdmin](../dev/agent-admin.md) pour les connexions, équipes et harnais.
 À l’enregistrement d’un avatar d’agent, l’image est convertie en JPEG et réduite à
-512 × 512 pixels au maximum, en conservant ses proportions, sans agrandir les petites images.
+500 × 500 pixels au maximum, en conservant ses proportions, sans agrandir les petites images.
 
 ## Outils, connexions et compétences
 

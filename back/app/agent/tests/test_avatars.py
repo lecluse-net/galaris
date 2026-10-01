@@ -18,7 +18,7 @@ def encode(image, format="PNG", **options):
 
 
 @pytest.mark.parametrize("format", ["PNG", "JPEG", "GIF", "WEBP"])
-@pytest.mark.parametrize("size,expected", [((1200, 600), (512, 256)), ((300, 900), (171, 512)), ((80, 40), (80, 40))])
+@pytest.mark.parametrize("size,expected", [((1200, 600), (500, 250)), ((300, 900), (167, 500)), ((80, 40), (80, 40))])
 def test_avatar_storage_is_jpeg_bounded_and_preserves_proportions(format, size, expected):
     content = encode(Image.new("RGB", size, "blue"), format)
     with Image.open(io.BytesIO(normalize_avatar(content))) as result:
@@ -47,7 +47,7 @@ def test_exif_orientation_is_applied_before_resizing_and_private_metadata_is_str
     exif[270] = "Synthetic camera metadata"
     content = encode(image, "JPEG", exif=exif)
     with Image.open(io.BytesIO(normalize_avatar(content))) as result:
-        assert result.format == "JPEG" and result.size == (256, 512)
+        assert result.format == "JPEG" and result.size == (250, 500)
         assert not result.getexif()
 
 
@@ -90,7 +90,7 @@ async def test_http_post_stores_a_compact_jpeg_and_rejects_invalid_replacement(c
     assert response.status_code == 200 and response.headers["content-type"] == "image/jpeg"
     assert len(response.content) < len(source) // 100
     with Image.open(io.BytesIO(response.content)) as result:
-        assert result.format == "JPEG" and result.size == (512, 384)
+        assert result.format == "JPEG" and result.size == (500, 375)
     metadata = (await client.get(f"/api/agents/{agent_id}", headers=headers)).json()
     revision = metadata["avatar_revision"]
     invalid = await client.post(url, headers=headers, files={"file": ("invalid.png", b"invalid image", "image/png")})

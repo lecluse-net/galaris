@@ -1,4 +1,4 @@
-# 0148 — AgentAdmin delegation and deferred avatars
+# 0148 — AgentAdmin delegation and direct avatars
 
 Status: accepted. Date: 2026-09-30.
 
@@ -19,13 +19,16 @@ domain access or edit privilege. Changing a manager requires global management a
 cannot change the caller's own manager. AgentAdmin connections and permissions are
 human-administered only, including revocation; MCP cannot grant or extend delegation.
 
-Avatars use a dedicated integrated Process engine. Admission freezes the caller's
-image model and provider configuration, target descriptive fingerprint, manager and
-avatar revision. A durable submission claim prevents a second provider request after
-an uncertain interruption. The avatar and final engine receipt commit together. Before
-publication, current delegation and target preconditions are checked again. Late images
-produce a conflict and preserve the current avatar. A monotonic avatar revision also
-detects replacing an image and restoring its previous bytes.
+Correction on 2026-10-01: avatar generation is an ordinary function call, not a Process.
+It reads the target's personality, title gender, first and last name, invokes the same
+image service as `image_generate`, converts the result to JPEG within 500 × 500 pixels
+and registers it before returning success. Current delegation and target preconditions
+are checked again before registration. Late images produce a conflict and preserve the
+current avatar. A monotonic revision detects replacement followed by restoration.
+The obsolete avatar engine and deferred receipt are removed. DbAdmin hard-purges its
+exact generated definitions and runs, including archived records; jobs and events cascade.
+Waiting Tasks and approval receipts are settled before removal. Business processes and
+stored avatars are preserved. Automatic provider resubmission is not introduced.
 
 Native discovery uses the same live projection as execution, including conditional
 image generation. AgentAdmin supplies no skill management, global Tool permissions,

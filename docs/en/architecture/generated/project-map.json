@@ -10,7 +10,7 @@
       },
       {
         "files": [
-          "back/app/agent/avatar_engine.py"
+          "back/app/agent/avatar_generation.py"
         ],
         "source": "app.agent",
         "target": "app.image"
@@ -19,7 +19,7 @@
         "files": [
           "back/app/agent/admin_service.py",
           "back/app/agent/agent_service.py",
-          "back/app/agent/avatar_engine.py",
+          "back/app/agent/avatar_generation.py",
           "back/app/agent/dispatcher.py",
           "back/app/agent/facade.py",
           "back/app/agent/janus.py",
@@ -42,9 +42,7 @@
       },
       {
         "files": [
-          "back/app/agent/avatar_engine.py",
           "back/app/agent/janus.py",
-          "back/app/agent/mcp.py",
           "back/app/agent/openai_router.py",
           "back/app/agent/realtime.py"
         ],
@@ -98,6 +96,7 @@
           "back/app/agent/agent_group_service.py",
           "back/app/agent/agent_service.py",
           "back/app/agent/authorization.py",
+          "back/app/agent/avatar_generation.py",
           "back/app/agent/avatars.py",
           "back/app/agent/defaults.py",
           "back/app/agent/dialogue_service.py",
@@ -196,7 +195,7 @@
       },
       {
         "files": [
-          "back/app/agent/avatar_engine.py",
+          "back/app/agent/avatar_generation.py",
           "back/app/agent/html_migration.py",
           "back/app/agent/models.py",
           "back/app/agent/planner_service.py",
@@ -2778,6 +2777,7 @@
       {
         "files": [
           "back/app/process/catalog_refresh_engine.py",
+          "back/app/process/dbadmin.py",
           "back/app/process/mcp.py",
           "back/app/process/process_service.py"
         ],
@@ -2805,6 +2805,13 @@
         ],
         "source": "app.process",
         "target": "core.database"
+      },
+      {
+        "files": [
+          "back/app/process/dbadmin.py"
+        ],
+        "source": "app.process",
+        "target": "core.dbadmin"
       },
       {
         "files": [

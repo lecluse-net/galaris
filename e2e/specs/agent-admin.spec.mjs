@@ -48,14 +48,12 @@ test('AgentAdmin creates an agent and generated portraits remain visible after r
     await page.locator('a[href="/params"]').first().click()
     await expect(page).toHaveURL(/\/params$/)
     const generation = await invoke('agent_avatar_generate', { agent_id: target.id, instructions })
-    expect(generation.data.registered).toBe(false)
-    await expect.poll(async () => {
-      const result = await invoke('process_get_run', { run_id: generation.data.run_id })
-      return result.data.status
-    }, { timeout: 45_000 }).toBe('success')
+    expect(generation.is_error).toBe(false)
+    expect(generation.data.registered).toBe(true)
+    expect(generation.data.status).toBe('success')
     await page.locator('a[href="/agent"]').first().click()
     await expect(portrait).toBeVisible()
-    await expect.poll(() => portrait.evaluate(img => [img.naturalWidth, img.naturalHeight])).toEqual([512, 320])
+    await expect.poll(() => portrait.evaluate(img => [img.naturalWidth, img.naturalHeight])).toEqual([500, 313])
     await expect.poll(async () => {
       const rgb = await pixel()
       return rgb !== null && rgb.every((value, index) => Math.abs(value - expected[index]) <= 3)
