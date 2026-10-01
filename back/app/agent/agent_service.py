@@ -294,7 +294,7 @@ async def create(agent_data: AgentCreate, *, actor_user_id: int | None = None) -
 async def update(id: int, agent_update: AgentUpdate, *, actor_user_id: int | None = None) -> Optional[Agent]:
     """Update an existing agent."""
     db = get_db()
-    result = await db.execute(select(Agent).where(Agent.id == id))
+    result = await db.execute(select(Agent).where(Agent.id == id).with_for_update().execution_options(populate_existing=True))
     agent = result.scalar_one_or_none()
     if agent is None:
         return None
@@ -322,6 +322,13 @@ async def update(id: int, agent_update: AgentUpdate, *, actor_user_id: int | Non
         agent_update.agent_driver = requested_driver
     if "user_id" in fields_set:
         agent_update.user_id = await _validate_manager(agent_update.user_id)
+        if agent_update.user_id != agent.user_id:
+            from .models import AgentAuthorizationChange
+            from core.user import user_service
+            db.add(AgentAuthorizationChange(agent_id=agent.id, actor_user_id=user_service.get_current_user_id(),
+                old_yolo=agent.yolo, new_yolo=False, version=agent.authorization_version + 1, reason="manager_changed"))
+            agent.yolo = False
+            agent.authorization_version += 1
 
     # Verify title exists if provided
     if agent_update.title_id is not None:

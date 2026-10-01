@@ -59,7 +59,12 @@ async def qualify() -> None:
         host._create_agent = create_agent
         host._bind_api_server_session = ignore
         host._check_run_auth = ignore
+        host._check_auth = ignore
         host._request_owns_run = owns_run
+        capability_route = next(handler for method, path, handler in runs._http_routes(host)
+            if method == "GET" and path == "/v1/galaris/capabilities")
+        capability = json.loads((await capability_route(SimpleNamespace())).body)
+        assert capability == {"authorization_protocol": "galaris.runtime-authorization/v1", "resumable_runs": True}
         run_id = f"synthetic-{mode}"
         queue: asyncio.Queue[dict[str, Any] | None] = asyncio.Queue()
         host._run_streams[run_id] = queue

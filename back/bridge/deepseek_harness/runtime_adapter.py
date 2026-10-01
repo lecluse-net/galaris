@@ -11,6 +11,7 @@ from dataclasses import dataclass
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import importlib
+import asyncio
 import json
 import logging
 import os
@@ -19,8 +20,13 @@ import queue
 import secrets
 import threading
 import time
-from typing import Any, Callable, Protocol, cast
+from typing import Any, Callable, Protocol, TYPE_CHECKING, cast
 from uuid import uuid4
+
+if TYPE_CHECKING or __package__:
+    from app.harnesses import ActionApprovals, RuntimeActor, RuntimeRuns, file_precondition
+else:
+    from runtime_support import ActionApprovals, RuntimeActor, RuntimeRuns, file_precondition  # pyright: ignore[reportMissingImports]
 
 
 _MAX_REQUEST_BYTES = 2_000_000
@@ -344,6 +350,8 @@ def run_completion(
     *,
     active: "ActiveRun | None" = None,
     on_notification: Callable[[object], None] | None = None,
+    run_context: str = "",
+    actor_id: str = "",
 ) -> Completion:
     model = str(body.get("model") or "").strip()
     if not model:
@@ -389,7 +397,11 @@ def run_completion(
             patches=(str(config.cordis),),
             request_timeout_seconds=config.request_timeout_seconds,
             shutdown_timeout_seconds=2.0,
-            env={"DSH_SESSION_ROOT": str(run_root / "sessions"), **(
+            env={"DSH_SESSION_ROOT": str(run_root / "sessions"), **({
+                "GALARIS_RUN_CONTEXT": run_context,
+                "GALARIS_AUTHORIZATION_PROXY": f"http://127.0.0.1:8080/local/{actor_id}",
+                "GALARIS_MCP_URL": f"http://127.0.0.1:8080/mcp/{actor_id}",
+            } if actor_id else {}), **(
                 {"DSH_REASONING_EFFORT": reasoning_effort} if reasoning_effort is not None else {}
             )},
         ),
@@ -494,6 +506,15 @@ class HarnessRequestHandler(BaseHTTPRequestHandler):
         if self.path == "/healthz":
             self._json(HTTPStatus.OK, {"status": "ok"})
             return
+        if self.path == "/v1/galaris/capabilities" and self._authorized():
+            self._json(HTTPStatus.OK, {"authorization_protocol": "galaris.runtime-authorization/v1", "resumable_runs": True})
+            return
+        if self.path.startswith("/v1/galaris/runs/") and self._authorized():
+            try:
+                self._json(HTTPStatus.OK, cast(HarnessHTTPServer, self.server).runs.get(self.path.rsplit("/", 1)[1]))
+            except LookupError:
+                self._json(HTTPStatus.NOT_FOUND, {"error": "run_not_found"})
+            return
         if self.path == "/v1/models":
             if not self._authorized():
                 self._json(HTTPStatus.UNAUTHORIZED, {"error": "unauthorized"})
@@ -515,6 +536,9 @@ class HarnessRequestHandler(BaseHTTPRequestHandler):
         self._json(HTTPStatus.NOT_FOUND, {"error": "not_found"})
 
     def do_POST(self) -> None:  # noqa: N802
+        if self.path.startswith(("/v1/galaris/", "/mcp/", "/local/")):
+            self._control()
+            return
         if self.path != "/v1/chat/completions":
             self._json(HTTPStatus.NOT_FOUND, {"error": "not_found"})
             return
@@ -572,6 +596,84 @@ class HarnessRequestHandler(BaseHTTPRequestHandler):
             )
         finally:
             _RUN_SLOT.release()
+
+    def _control(self) -> None:
+        server = cast(HarnessHTTPServer, self.server)
+        internal = self.path.startswith(("/mcp/", "/local/"))
+        supplied = self.headers.get("Authorization", "")
+        if (internal and not secrets.compare_digest(supplied, f"Bearer {os.environ.get('GALARIS_MCP_TOKEN', '')}")) or (not internal and not self._authorized()):
+            self._json(HTTPStatus.UNAUTHORIZED, {"error": "unauthorized"})
+            return
+        try:
+            length = int(self.headers.get("Content-Length", "0"))
+            if length <= 0 or length > _MAX_REQUEST_BYTES:
+                raise ValueError("Invalid bounded request")
+            body = cast(dict[str, Any], json.loads(self.rfile.read(length)))
+            if self.path == "/v1/galaris/runs":
+                credential = self.headers.get("X-Galaris-Run-Context", "")
+                headers = dict(self.headers.items())
+                async def events(actor: RuntimeActor):
+                    approvals = ActionApprovals(mcp_url=os.environ.get("GALARIS_MCP_URL", ""),
+                        token=os.environ.get("GALARIS_MCP_TOKEN", ""), run_context=credential,
+                        session=actor.identifier, on_pending=actor.pending, on_running=actor.running)
+                    actor.approvals = approvals
+                    await asyncio.to_thread(approvals.validate)
+                    notifications: queue.Queue[object] = queue.Queue()
+                    adapter = DeepSeekStreamAdapter()
+                    augmented = {**body, **{key: value for key, value in {
+                        "galaris_task_id": headers.get("X-Galaris-Task-Id"),
+                        "galaris_run_id": headers.get("X-Galaris-Agent-Run-Id"),
+                        "galaris_reasoning_effort": headers.get("X-Galaris-Reasoning-Effort")}.items() if value}}
+                    active = ActiveRun()
+                    worker = asyncio.create_task(asyncio.to_thread(run_completion, augmented, self.config,
+                        active=active, on_notification=notifications.put, run_context=credential, actor_id=actor.identifier))
+                    try:
+                        while not worker.done() or not notifications.empty():
+                            while not notifications.empty():
+                                for emission in adapter.consume(notifications.get_nowait()):
+                                    yield "tool" if emission.kind == "semantic" else "text", emission.payload
+                            await asyncio.sleep(0.05)
+                        result = await worker
+                        for emission in adapter.finish():
+                            yield "tool" if emission.kind == "semantic" else "text", emission.payload
+                        yield "result", {"result": result.content, "success": True, "usage": adapter.usage}
+                    finally:
+                        active.cancel()
+                identifier = server.runs.start(credential, body, events)
+                self._json(HTTPStatus.OK, {"runtime_run_id": identifier})
+                return
+            parts = self.path.strip("/").split("/")
+            if self.path.startswith("/v1/galaris/runs/") and self.path.endswith("/cancel"):
+                server.runs.cancel(parts[-2])
+                self._json(HTTPStatus.OK, {"cancelled": True})
+                return
+            identifier = parts[1]
+            with server.runs.lock:
+                actor = server.runs.actors.get(identifier)
+            if actor is None or actor.approvals is None:
+                raise LookupError("Runtime continuation not found")
+            if parts[0] == "mcp":
+                status, raw = actor.approvals.mcp(body)
+                self.send_response(status)
+                self.send_header("Content-Type", "application/json")
+                self.send_header("Content-Length", str(len(raw)))
+                self.end_headers()
+                self.wfile.write(raw)
+            elif not secrets.compare_digest(self.headers.get("X-Galaris-Run-Context", ""), actor.approvals.run_context):
+                raise PermissionError("Invalid runtime continuation")
+            elif len(parts) == 3 and parts[2] == "context":
+                actor.approvals.validate()
+                self._json(HTTPStatus.OK, {"active": True})
+            elif len(parts) == 3 and parts[2] == "receipt":
+                actor.approvals.finish(str(body["callback"]), outcome=str(body["outcome"]), receipt=body.get("receipt") or {})
+                self._json(HTTPStatus.OK, {"recorded": True})
+            else:
+                arguments = body["arguments"]
+                allowed = actor.approvals.authorize(str(body["callback"]), str(body["name"]), arguments,
+                    precondition=lambda: file_precondition(arguments, self.config.workspace))
+                self._json(HTTPStatus.OK, {"allowed": allowed})
+        except (ValueError, KeyError, LookupError, PermissionError, OSError):
+            self._json(HTTPStatus.CONFLICT, {"error": "runtime_control_failed_closed"})
 
     def _stream_completion(self, body: Mapping[str, object]) -> None:
         active = ActiveRun()
@@ -694,6 +796,7 @@ class HarnessHTTPServer(ThreadingHTTPServer):
 
     def __init__(self, address: tuple[str, int], config: AdapterConfig) -> None:
         self.config = config
+        self.runs = RuntimeRuns(config.session_root / "authorizations")
         super().__init__(address, HarnessRequestHandler)
 
 

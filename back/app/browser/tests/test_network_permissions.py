@@ -212,3 +212,118 @@ def test_equivalent_origins_filters_and_mapped_local_addresses():
     assert filter_matches("192.168.0.0/16", "app.test", 80, ["::ffff:192.168.1.2"])
     with pytest.raises(ValueError):
         filter_matches("bad:port", "example.com", 443, ["93.184.215.14"])
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("language,title,label", [(None, "Demande d’autorisation", "Toujours autoriser tous les sites"),
+                                                   ("fr", "Demande d’autorisation", "Toujours autoriser tous les sites"),
+                                                   ("zh-CN", "授权请求", "始终允许所有网站")])
+async def test_all_sites_approval_is_localized_reusable_scoped_and_revocable(db, monkeypatch, language, title, label):
+    from app.messenger.permissions import delete_decision
+    from core.params.runtime_settings import runtime_settings
+    monkeypatch.setattr(runtime_settings, "DEFAULT_LANGUAGE", "fr")
+    agents, users, connections = await setup_scope(db)
+    users[0].language = language
+    await db.commit()
+    request = NetworkRequest(owner={"agent_id": agents[0].id}, url="https://example.com/a", method="POST", addresses=["93.184.215.14"])
+    assert (await authorize_network(request)).code == "permission_required"
+    decision = await db.scalar(select(PermissionDecision).where(PermissionDecision.agent_id == agents[0].id))
+    interaction = await db.get(Interaction, decision.interaction_id)
+    assert interaction.title == title
+    assert next(option for option in interaction.options if option["id"] == "allow_always")["label"] == label
+    await answer_internal_interaction(users[0].id, UUID(interaction.room_id), interaction.id, option_id="allow_always")
+    request.method = "PUT"
+    request.url = "https://example.com/another"
+    assert (await authorize_network(request)).allowed
+    request.url = "https://other.example.com/"
+    assert (await authorize_network(request)).allowed
+    request.url = "http://another.example.test:8080/elsewhere"
+    for method in ["POST", "PUT", "PATCH", "DELETE", "WEBSOCKET"]:
+        request.method = method
+        assert (await authorize_network(request)).allowed
+    assert await db.scalar(select(func.count()).select_from(Interaction).where(Interaction.agent_id == agents[0].id)) == 1
+    request.method = "PUT"
+    request.url = "https://example.com/"
+    request.owner.agent_id = agents[1].id
+    assert (await authorize_network(request)).code == "permission_required"
+    request.owner.agent_id = agents[0].id
+    # Destination filters still take precedence over remembered consent.
+    filter_param = ConnectionParam(connection_id=connections[0].id, param_name="network_filter", param_value="example.com")
+    db.add(filter_param)
+    await db.commit()
+    assert (await authorize_network(request)).code == "destination_blocked"
+    await db.delete(filter_param)
+    await db.commit()
+    # All-sites consent never opens the local network.
+    request.addresses = ["192.168.10.20"]
+    assert (await authorize_network(request)).code == "local_network_blocked"
+    db.add(ConnectionParam(connection_id=connections[0].id, param_name="allow_local_network", param_value="true"))
+    await db.commit()
+    assert (await authorize_network(request)).code == "permission_required"
+    request.addresses = ["93.184.215.14"]
+    all_sites = await db.scalar(select(PermissionDecision).where(PermissionDecision.permission_key == "browser:v1:all-sites"))
+    assert await delete_decision(all_sites.id, managed_agent_ids=frozenset({agents[0].id}))
+    assert (await authorize_network(request)).code == "permission_required"
+    request.method = "POST"
+    assert (await authorize_network(request)).code == "permission_required"
+
+
+@pytest.mark.asyncio
+async def test_existing_site_grant_is_never_silently_extended_to_all_sites(db):
+    agents, users, _ = await setup_scope(db)
+    db.add(PermissionDecision(agent_id=agents[0].id, permission_key="browser:v1:site:https://example.com:443",
+                             approver_user_id=users[0].id, question="Synthetic consent for one site", allowed=True))
+    await db.commit()
+    request = NetworkRequest(owner={"agent_id": agents[0].id}, url="https://example.com/a", method="POST", addresses=["93.184.215.14"])
+    assert (await authorize_network(request)).allowed
+    request.url = "https://another.example.test/"
+    assert (await authorize_network(request)).code == "permission_required"
+
+
+@pytest.mark.asyncio
+async def test_pending_site_question_is_replaced_before_all_sites_consent(db):
+    agents, users, _ = await setup_scope(db)
+    request = NetworkRequest(owner={"agent_id": agents[0].id}, url="https://example.com/", method="POST", addresses=["93.184.215.14"])
+    assert (await authorize_network(request)).code == "permission_required"
+    decision = await db.scalar(select(PermissionDecision).where(PermissionDecision.agent_id == agents[0].id))
+    previous = await db.get(Interaction, decision.interaction_id)
+    # Synthetic durable question from the earlier, per-site consent contract.
+    previous.metadata_ = {**previous.metadata_, "always_key": "browser:v1:site:https://example.com:443",
+                          "always_question": "Allow only this synthetic site"}
+    previous.options = [{**option, "label": "Always allow this site"} if option["id"] == "allow_always" else option
+                        for option in previous.options]
+    await db.commit()
+    assert (await authorize_network(request)).code == "permission_required"
+    await db.refresh(decision)
+    current = await db.get(Interaction, decision.interaction_id)
+    assert current.id != previous.id
+    assert next(option for option in current.options if option["id"] == "allow_always")["label"] == "Always allow all sites"
+    with pytest.raises(ValueError):
+        await answer_internal_interaction(users[0].id, UUID(previous.room_id), previous.id, option_id="allow_always")
+    assert await db.scalar(select(PermissionDecision).where(PermissionDecision.permission_key == "browser:v1:all-sites")) is None
+    await answer_internal_interaction(users[0].id, UUID(current.room_id), current.id, option_id="allow_always")
+    request.url = "https://another.example.test/"
+    assert (await authorize_network(request)).allowed
+
+
+@pytest.mark.asyncio
+async def test_all_sites_consent_respects_explicit_denials_connection_and_manager(db):
+    agents, users, connections = await setup_scope(db)
+    db.add_all([
+        PermissionDecision(agent_id=agents[0].id, permission_key="browser:v1:all-sites",
+                           approver_user_id=users[0].id, question="Synthetic consent for all websites", allowed=True),
+        PermissionDecision(agent_id=agents[0].id, permission_key="browser:v1:delete:https://example.com:443",
+                           approver_user_id=users[0].id, question="Synthetic refusal", allowed=False),
+    ])
+    await db.commit()
+    request = NetworkRequest(owner={"agent_id": agents[0].id}, url="https://example.com/", method="DELETE", addresses=["93.184.215.14"])
+    assert (await authorize_network(request)).code == "permission_denied"
+    request.method = "POST"
+    assert (await authorize_network(request)).allowed
+    connections[0].active = False
+    await db.commit()
+    assert (await authorize_network(request)).code == "connection_inactive"
+    connections[0].active = True
+    agents[0].user_id = users[1].id
+    await db.commit()
+    assert (await authorize_network(request)).code == "permission_required"

@@ -142,11 +142,26 @@ désactivation ultérieure est conservée.
 Le candidat MCP se prépare depuis **Outils → Nouvel outil → Tester la connexion** ; seul
 sa référence temporaire est transmise à l’agent, les secrets restent côté serveur.
 
+Une demande d’autorisation pour une fonction MCP configurable, par exemple `topic_create`,
+propose **Autoriser cette action**, **Refuser cette action** et **Toujours autoriser cette
+fonction**. Ce dernier choix mémorise l’accord pour cette fonction sur la connexion de cet
+agent, quels que soient les paramètres des futurs appels. Les autres fonctions conservent
+leurs règles. Pour redemander une confirmation, remettez la fonction sur **Sur demande** dans
+les autorisations de la connexion. Les demandes suivent la langue du responsable (français,
+anglais ou chinois), puis la langue par défaut de l’installation si son profil n’en définit pas.
+
 Pour les accès du navigateur, ouvrez la connexion **Navigateur** de l’agent. Le réseau local
 est bloqué par défaut ; activez `allow_local_network` pour permettre une demande de permission.
 Le filtre de destinations reste prioritaire. Répondez à la question dans la messagerie ou avec
 les boutons du chat interne : accord et refus sont mémorisés par agent, type d’accès et origine
 (domaine, protocole, port). Les GET publics ne posent pas de question avec les réglages par défaut.
+Le troisième choix **Toujours autoriser tous les sites** mémorise un accord pour tous les
+domaines, protocoles, ports et chemins, avec les méthodes HTTP configurées et WebSocket,
+pour cet agent. Les nouvelles destinations web ne demandent plus d’autorisation de site.
+Les filtres, les refus explicites et les permissions distinctes du réseau local restent prioritaires.
+Les boutons **Autoriser et mémoriser** et **Refuser et mémoriser** restent limités au type
+d’accès demandé. Supprimez l’accord « tous les sites » pour que ces accès nécessitent à nouveau
+un choix. Les anciens accords limités à un seul site conservent cette portée.
 **Superviser → Permissions mémorisées** (`/connection/permissions`) permet de retrouver la
 question et la réponse, filtrer par agent ou décision et supprimer un choix. L’agent redemandera
 à sa prochaine tentative autorisée par la configuration. Une action bloquée attend une nouvelle

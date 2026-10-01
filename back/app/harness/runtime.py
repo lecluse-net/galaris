@@ -28,6 +28,7 @@ from pydantic_ai import (
     PartStartEvent,
     UsageLimits,
     capture_run_messages,
+    DeferredToolRequests,
 )
 from pydantic_ai.exceptions import RunCancelled, UnexpectedModelBehavior, UsageLimitExceeded
 from pydantic_ai import messages as _pydantic_messages
@@ -706,7 +707,7 @@ class Agent(AgentRuntime):
         self._checkpoint = checkpoint
         self._reasoning_effort: ReasoningEffort | None = reasoning_effort
         self._cancellation_token = CancellationToken()
-        self._agent: Optional[PydanticAgent] = None
+        self._agent: PydanticAgent[Any, str | DeferredToolRequests] | None = None
         self.prompt = ""
         self.messages: List[AIMessage] = []
         self.cost: float = 0.0
@@ -714,6 +715,7 @@ class Agent(AgentRuntime):
         self.budget_exhausted: bool = False
         self.terminal_failure_kind: str | None = None
         self.terminal_output: str | None = None
+        self.authorization_requests: list[UUID] = []
         self._pending_tool_guidance: list[str] = []
 
     async def init(self) -> None:
@@ -839,6 +841,7 @@ class Agent(AgentRuntime):
 
         self._agent = PydanticAgent(
             model,
+            output_type=[str, DeferredToolRequests],
             # Pydantic AI omits ``system_prompt`` when an existing message history is
             # supplied. Harness runs always need their current governed prompt, so use
             # instructions, which are injected into every model request.
@@ -943,9 +946,16 @@ class Agent(AgentRuntime):
             return
 
         active_checkpoint = checkpoint or self._checkpoint
+        deferred_results = None
         pydantic_history: List[_pydantic_messages.ModelMessage] = []
         if active_checkpoint is not None:
             await active_checkpoint.prepare_resume()
+            from app.tools.facade import AuthorizationRequired
+            try:
+                deferred_results = await active_checkpoint.deferred_results()
+            except AuthorizationRequired as pending:
+                self.authorization_requests = [pending.request_id]
+                return
         native_inputs: dict[str, NativeInput] = {}
         if self._agent_id is not None and not (active_checkpoint is not None and active_checkpoint.history):
             from app.file_share import ResourceContext
@@ -999,8 +1009,9 @@ class Agent(AgentRuntime):
                 )
                 with self._agent.parallel_tool_call_execution_mode(execution_mode):
                     async with self._agent.run_stream_events(
-                        agent_input,
+                        None if deferred_results is not None else agent_input,
                         message_history=pydantic_history or None,
+                        deferred_tool_results=deferred_results,
                         cancellation_token=self._cancellation_token,
                         usage_limits=UsageLimits(
                             request_limit=runtime_settings.TASK_AGENT_MAX_REQUESTS,
@@ -1251,6 +1262,16 @@ class Agent(AgentRuntime):
             # 5. The final event carries exact cost accounting.
             if isinstance(event, AgentRunResultEvent):
                 result = cast(Any, event.result)
+                if isinstance(getattr(result, "output", None), DeferredToolRequests):
+                    self.authorization_requests = [UUID(str(metadata["authorization_request_id"]))
+                        for metadata in result.output.metadata.values() if metadata.get("authorization_request_id")]
+                    if self._checkpoint is not None:
+                        await self._checkpoint.interrupted(result.all_messages())
+                    cost = estimate_cost_from_usage(result, self.llm)
+                    self.cost += cost
+                    yield AIMessage(type="text", content="", cost=cost,
+                                    usage=_normalized_usage(result, self.llm, cost), execution_time=state.elapsed())
+                    continue
                 finish_reason = _result_finish_reason(result)
                 if finish_reason in {"length", "content_filter"}:
                     raise IncompleteModelResponseError(

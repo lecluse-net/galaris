@@ -5,6 +5,28 @@
 Ce document rend les états recherchables, mais les constantes et tests du code restent
 l’autorité. Toute modification de matrice doit mettre à jour ce fichier dans le même diff.
 
+## Autorisations d’action
+
+Le journal `tool_action_authorizations` porte les états `pending`, `approved`, `denied`,
+`expired`, `invalidated`, `executing`, `completed`, `failed` et `outcome_unknown`.
+
+| Événement | Source | Cible |
+|---|---|---|
+| Préparation committée, YOLO inactif | absent | `pending` |
+| Nouvelle action, YOLO courant actif | absent | `approved`, puis claim `executing` |
+| Réponse humaine habilitée | `pending` | `approved` ou `denied` |
+| Échéance ou perte d’autorité avant effet | `pending` / `approved` | `expired` / `invalidated` |
+| Claim atomique après revalidation | `approved` | `executing` |
+| Reçu d’effet | `executing` | `completed` / `failed` / `outcome_unknown` |
+| Preuve distante tardive | `outcome_unknown` | `completed` / `failed`, sans redispatch |
+
+La première décision valide gagne. Un état réconcilié reste terminal. L’attente produit
+`galaris.execution-result/v2` avec `disposition=waiting_for_authorization` et les UUIDs concernés.
+La tentative Task termine en `WAITING_APPROVAL`, libère son lease et conserve son checkpoint ;
+la phase de Task reste inchangée, avec une raison de pause d’autorisation. Une pause humaine
+indépendante reste prioritaire au réveil. Les rounds et la voix conservent la même disposition.
+Voir [0153](../../../project/decisions/0153-common-action-authorizations.md).
+
 ## Inférences LLM
 
 `LLMInference` porte la demande et `LLMInferenceAttempt` chaque tentative. Les états de

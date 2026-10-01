@@ -1,5 +1,7 @@
 # Décisions d’architecture
 
+- [0153 — Autorisation commune par action pour MCP et runtimes](0153-common-action-authorizations.md)
+
 - [0151 — Analyse documentaire reprenable et couverture explicite](0151-resumable-document-analysis.md)
 
 - [0150 — Administration déléguée des Tools](0150-tool-administration.md)

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import base64
 import binascii
-from typing import Literal
+from typing import Any, Literal
 
 from app.tools import RecoverableToolError
 from app.tools.mcp_loader import McpToolContext, context_language, mcp_tool
@@ -25,6 +25,7 @@ from .resource_service import (
     resource_read,
     resource_search,
     resource_write,
+    materialize_resource,
 )
 
 
@@ -45,6 +46,46 @@ async def _resource_context(ctx: McpToolContext) -> ResourceContext:
     )
 
 
+async def _file_preflight(ctx: McpToolContext, arguments: dict[str, Any]) -> dict[str, Any]:
+    """Freeze existing targets and bounded collection membership before approval."""
+    import hashlib
+    from pathlib import Path
+    from tempfile import TemporaryDirectory
+    context = await _resource_context(ctx)
+    snapshots: dict[str, Any] = {}
+    for key in ("uri", "source", "destination"):
+        uri = arguments.get(key)
+        if not isinstance(uri, str) or not uri:
+            continue
+        if key == "destination" and uri.strip() == "document://":
+            snapshots[key] = {"uri": uri, "new_document": True}
+            continue
+        try:
+            descriptor = await resource_info(context, uri)
+        except FileNotFoundError:
+            if key == "destination":
+                snapshots[key] = {"uri": uri, "exists": False}
+                continue
+            raise
+        snapshot = descriptor.model_dump(include={"uri", "is_collection", "size", "modified_at", "revision", "etag", "capabilities"})
+        if descriptor.is_collection:
+            listing = await resource_list(context, uri, recursive=True, max_entries=200)
+            if listing.truncated:
+                raise RecoverableToolError("The authorization cannot freeze more than 200 collection targets. Select a smaller scope.")
+            snapshot["entries"] = sorted((entry.model_dump(include={"uri", "is_collection", "size", "modified_at", "revision", "etag"})
+                for entry in listing.entries), key=lambda entry: str(entry["uri"]))
+        elif descriptor.revision is None and descriptor.etag is None:
+            if descriptor.size is not None and descriptor.size > 50 * 1024 * 1024:
+                raise RecoverableToolError("This provider exposes no file revision; the authorization snapshot is limited to 50 MiB.")
+            with TemporaryDirectory(prefix="galaris-authorization-file-") as temporary:
+                path = Path(temporary) / "snapshot"
+                await materialize_resource(context, uri, path, max_bytes=50 * 1024 * 1024)
+                with path.open("rb") as stream:
+                    snapshot["sha256"] = hashlib.file_digest(stream, "sha256").hexdigest()
+        snapshots[key] = snapshot
+    return snapshots
+
+
 def _decode_content(
     content: str,
     encoding: Literal["utf-8", "base64"],
@@ -57,8 +98,8 @@ def _decode_content(
         raise ValueError("content must be valid base64 when encoding='base64'.") from exc
 
 
-@mcp_tool(
-    "file_sharing",
+@mcp_tool("file_sharing", approval="enabled", approval_reason="Governed bounded read or control without a new sensitive effect",
+
     name="file_schemes",
     description=(
         "List the resource URI schemes accessible to this agent, with examples and exact "
@@ -74,8 +115,8 @@ async def file_schemes(ctx: McpToolContext) -> str:
     return _json_model({"schemes": await list_schemes(await _resource_context(ctx))})
 
 
-@mcp_tool(
-    "file_sharing",
+@mcp_tool("file_sharing", approval="enabled", approval_reason="Governed bounded read or control without a new sensitive effect",
+
     name="file_list",
     description=(
         "List a resource collection by URI, for example console://reports/, "
@@ -110,8 +151,8 @@ async def list_files(
     return _json_model(result)
 
 
-@mcp_tool(
-    "file_sharing",
+@mcp_tool("file_sharing", approval="enabled", approval_reason="Governed bounded read or control without a new sensitive effect",
+
     name="file_info",
     description="Show normalized metadata and capabilities for one resource URI.",
     effect_policy="read",
@@ -133,8 +174,8 @@ async def file_info(
     )
 
 
-@mcp_tool(
-    "file_sharing",
+@mcp_tool("file_sharing", approval="enabled", approval_reason="Governed bounded read or control without a new sensitive effect",
+
     name="file_search",
     description=(
         "Search below a collection URI by name or bounded UTF-8 content. Returns canonical "
@@ -176,8 +217,8 @@ async def search_files(
     return _json_model(result)
 
 
-@mcp_tool(
-    "file_sharing",
+@mcp_tool("file_sharing", approval="enabled", approval_reason="Governed bounded read or control without a new sensitive effect",
+
     name="file_read",
     description=(
         "Read any resource URI. UTF-8 text is returned in bounded pages; small binary files "
@@ -203,8 +244,8 @@ async def read_file(
     )
 
 
-@mcp_tool(
-    "file_sharing",
+@mcp_tool("file_sharing", approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval",
+
     name="file_create",
     description=(
         "Create a new complete text or binary file and return its canonical URI. Pass an exact "
@@ -246,9 +287,10 @@ async def create_file(
     )
 
 
-@mcp_tool(
-    "file_sharing",
+@mcp_tool("file_sharing", approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval",
+
     name="file_write",
+    authorization_preflight=_file_preflight,
     description=(
         "Replace one existing complete file. Pass text with encoding='utf-8' or binary bytes "
         "as base64. document:// and galaris://skill/ files accept expected_revision from "
@@ -279,9 +321,10 @@ async def write_file(
     )
 
 
-@mcp_tool(
-    "file_sharing",
+@mcp_tool("file_sharing", approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval",
+
     name="file_append",
+    authorization_preflight=_file_preflight,
     description=(
         "Append UTF-8 text to a resource URI when its provider supports append. HTML documents require complete valid blocks and expected_revision. "
         "Dataset appends must leave the complete document valid JSON; normally use file_write or file_edit instead. Use it to "
@@ -297,9 +340,10 @@ async def append_file(ctx: McpToolContext, uri: str, content: str, expected_revi
     )
 
 
-@mcp_tool(
-    "file_sharing",
+@mcp_tool("file_sharing", approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval",
+
     name="file_edit",
+    authorization_preflight=_file_preflight,
     description=(
         "Replace a 1-based inclusive range in an existing UTF-8 resource. For HTML documents, "
         "start_line/end_line identify complete blocks returned by file_read, content is valid HTML, "
@@ -334,9 +378,10 @@ async def edit_file(
     )
 
 
-@mcp_tool(
-    "file_sharing",
+@mcp_tool("file_sharing", approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval",
+
     name="file_copy",
+    authorization_preflight=_file_preflight,
     description=(
         "Copy bytes between any two resource URIs with bounded memory. An existing collection "
         "or provider space keeps the source name even when its trailing / is omitted; use / "
@@ -364,9 +409,10 @@ async def copy_file(
     )
 
 
-@mcp_tool(
-    "file_sharing",
+@mcp_tool("file_sharing", approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval",
+
     name="file_move",
+    authorization_preflight=_file_preflight,
     description=(
         "Move or rename a local file, mutable connected-provider file, or an "
         "auxiliary file within the same authorized galaris://skill/<code>/ directory. A "
@@ -395,9 +441,10 @@ async def move_file(
     )
 
 
-@mcp_tool(
-    "file_sharing",
+@mcp_tool("file_sharing", approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval",
+
     name="file_delete",
+    authorization_preflight=_file_preflight,
     description=(
         "Delete one resource URI when its provider supports generic deletion. Memory, documents "
         "themselves, Messenger attachments, Galaris business snapshots, and SKILL.md require "

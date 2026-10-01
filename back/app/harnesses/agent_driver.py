@@ -15,11 +15,12 @@ OPENAI_MESSAGES_DRIVER = AgentDriverSpec(
     tool_profile=ToolExposureProfile(),
     pipeline_policy=DriverPipelinePolicy(use_planner=False),
     supports_streaming=True,
-    # Chat Completions cannot address and cancel a remote run by its run_id.
-    supports_cancellation=False,
+    # Only a persisted managed actor can acknowledge a remote cancellation.
+    supports_cancellation=True,
     execution_capabilities=frozenset(
-        {"streaming", "semantic_events", "normalized_usage"}
+        {"streaming", "semantic_events", "normalized_usage", "checkpoints", "cancellation"}
     ),
+    checkpoint_policy_path="app.harnesses.checkpoint_policy:create_policy",
 )
 
 register_driver_spec(OPENAI_MESSAGES_DRIVER)

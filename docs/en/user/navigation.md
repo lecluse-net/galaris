@@ -132,11 +132,25 @@ is preserved. Prepare an MCP
 candidate under **Tools → New Tool → Test connection**; send only its temporary reference
 to the agent, keeping secrets server-side.
 
+A configurable MCP function request, such as `topic_create`, offers **Allow this action**,
+**Deny this action**, and **Always allow this function**. The last choice saves consent for
+that function on this agent's connection, with any arguments in future calls. Other functions
+keep their policies. Set the function back to **Ask** in the connection's permissions to
+require confirmation again. Requests use the manager's language (French, English, or Chinese),
+falling back to the instance's default language when their profile has none.
+
 For browser access, open the agent's **Browser** connection. Local networking is blocked by
 default; enable `allow_local_network` to allow a permission request. Destination filters stay
 authoritative. Answer through messaging or the internal-chat buttons: both approvals and denials
 are remembered per agent, access type and origin (domain, protocol, port). Public GET requests
-need no question with the default settings. **Monitor → Remembered permissions**
+need no question with the default settings. The third choice, **Always allow all sites**,
+saves consent for all domains, protocols, ports and paths, with configured HTTP methods and
+WebSocket, for this agent. New web destinations no longer require site permission requests.
+Filters, explicit denials and separate local-network permissions still apply.
+**Allow and remember** and **Deny and remember** remain limited to the requested access type.
+Delete the all-sites agreement to require a choice again for those accesses. Existing
+single-site agreements keep their original scope.
+**Monitor → Remembered permissions**
 (`/connection/permissions`) shows the original question and answer, filters by agent or decision,
 and lets you delete a choice. The agent asks again on its next attempt allowed by configuration.
 A blocked action requires a new attempt after your reply; forms are not resubmitted automatically.

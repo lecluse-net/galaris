@@ -32,6 +32,7 @@ async def test_mail_uses_email_and_one_password_for_imap_and_smtp(
             "poll_interval_s": "120",
             "max_attachment_mb": "12",
             "max_total_attachment_mb": "24",
+            "approval_required": "true",  # A stale legacy value grants no separate policy.
         })),
     )
     monkeypatch.setattr(

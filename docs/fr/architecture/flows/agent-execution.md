@@ -67,9 +67,17 @@ les garanties de transaction et les limites du transport local mono-worker.
 
 Le harnais interne rend les erreurs d’outil au modèle sous forme structurée, y compris
 lorsque leur effet reste incertain. Le modèle décide de vérifier, corriger, poursuivre
-ou arrêter. Le checkpoint v4 conserve séparément ces erreurs acquittées et les appels
+ou arrêter. Le checkpoint v5 conserve séparément ces erreurs acquittées et les appels
 interrompus sans réponse ; le stream continue de signaler un échec d’outil sans en faire
 automatiquement un échec de Task. Voir [0103](../../../../project/decisions/0103-tool-errors-return-to-agent.md).
+
+Une demande d’autorisation suspend l’appel avant effet. Le checkpoint v5 conserve les requêtes
+différées Pydantic AI et leur identité ; l’accord reprend cet appel sans nouvelle décision du
+modèle. Le résultat v2 expose `waiting_for_authorization` et les UUIDs exacts. La tentative
+Task libère son lease pendant l’attente ; les rounds texte et voix exposent aussi cette
+disposition. Les harnais gérés conservent leurs callbacks dans un acteur runtime et valident
+le protocole d’autorisation avant de démarrer un ancien SDK. Une issue inconnue interdit le
+rejeu automatique. Voir [0153](../../../../project/decisions/0153-common-action-authorizations.md).
 
 Le chat et la fiche tâche réhydratent `POST /tasks/activity` à l’ouverture et à la reconnexion,
 puis partagent les abonnements aux runs actifs. La projection commune expose état opérationnel,

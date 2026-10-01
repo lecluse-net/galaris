@@ -590,12 +590,6 @@ def _mail_connection_params() -> dict[str, dict[str, Any]]:
             default="20",
             description="Maximum total attachment size per outgoing message in megabytes",
         ),
-        "approval_required": _param(
-            "boolean",
-            required=False,
-            default="false",
-            description="Require the configured human user to approve every outgoing message",
-        ),
         "approver_user_id": _param(
             "user",
             required=False,

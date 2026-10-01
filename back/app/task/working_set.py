@@ -55,11 +55,12 @@ async def _root_task(task_id: UUID, *, lock: bool = False) -> Task | None:
     if lock:
         # The traversal may have loaded this root before another transaction committed.
         # A row lock alone does not refresh an object already in the identity map.
+        # Keep writers exclusive without blocking FK references from live traces/tools.
         return await get_db().scalar(
             Task.histo_filter(
                 select(Task)
                 .where(Task.id == current.id)
-                .with_for_update()
+                .with_for_update(key_share=True)
                 .execution_options(populate_existing=True)
             )
         )

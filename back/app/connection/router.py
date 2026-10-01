@@ -6,6 +6,8 @@ from sqlalchemy import select
 from typing import Annotated, List, Optional, Dict, Any
 
 from core.database import get_db
+from core.user import require_web_session
+from pydantic import Field
 from core.authorize import Privileges, authorize
 from core.i18n import render_prompt, tr
 from app.agent import AgentManagementScope, current_management_scope
@@ -518,33 +520,55 @@ async def list_connection_functions(connection_id: int):
     return ConnectionFunctionsResponse(**result)
 
 
-@router.put("/{connection_id}/functions/{function_name}", response_model=FunctionStateResolved)
+@router.put("/{connection_id}/functions/{function_name}", response_model=FunctionStateResolved, dependencies=[Depends(require_web_session)])
 @authorize(privileges=Privileges.CONNECTION_EDIT)
 async def set_connection_function(connection_id: int, function_name: str, data: FunctionStateUpdate):
     """Apply a function state directly at connection level."""
-    connection = await _managed_connection(connection_id, editable=True)
-    await connection_service.set_connection_function_state(connection_id, function_name, data.state)
-    resolved = await connection_service.resolve_function(connection, function_name)
+    connection = await _managed_connection(connection_id)
+    await connection_service.set_connection_function_state(connection_id, function_name, data.state, capability_kind=data.capability_kind)
+    resolved = await connection_service.resolve_function(connection, function_name, capability_kind=data.capability_kind)
     await _refresh_agent_indexes([connection.agent_id])
     return FunctionStateResolved(**resolved)
 
 
-@router.put("/{connection_id}/functions/{function_name}/global", response_model=FunctionStateResolved)
+@router.put("/{connection_id}/functions/{function_name}/global", response_model=FunctionStateResolved, dependencies=[Depends(require_web_session)])
 @authorize(privileges=Privileges.CONNECTION_EDIT)
 async def set_connection_function_global(connection_id: int, function_name: str, data: FunctionStateUpdate):
     """Apply a global function state at the connection's tool level."""
-    connection = await _managed_connection(connection_id, editable=True)
+    connection = await _managed_connection(connection_id)
     scope = await current_management_scope()
     if not scope.is_global:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail=await _message("errors.not_found"),
         )
-    await connection_service.set_tool_function_state(connection.tool_id, function_name, data.state)
-    resolved = await connection_service.resolve_function(connection, function_name)
+    await connection_service.set_tool_function_state(connection.tool_id, function_name, data.state, capability_kind=data.capability_kind)
+    resolved = await connection_service.resolve_function(connection, function_name, capability_kind=data.capability_kind)
     await _refresh_agent_indexes([
         agent_id
         for agent_id in await connection_service.get_agent_ids_by_tool(connection.tool_id)
         if scope.allows(agent_id)
     ])
     return FunctionStateResolved(**resolved)
+
+
+class CapabilityStateUpdate(FunctionStateUpdate):
+    function_name: str = Field(min_length=1, max_length=2000)
+    global_policy: bool = False
+
+
+@router.put("/{connection_id}/capabilities", response_model=FunctionStateResolved, dependencies=[Depends(require_web_session)])
+@authorize(privileges=Privileges.CONNECTION_EDIT)
+async def set_capability_policy(connection_id: int, data: CapabilityStateUpdate):
+    """Exact names and URIs travel in the body, independently of their capability kind."""
+    if data.global_policy:
+        result = await set_connection_function_global(connection_id, data.function_name, data)
+        connection = await _managed_connection(connection_id)
+        from .models import ConnectionFunctionState
+        from sqlalchemy import func
+        result.local_override_count = await get_db().scalar(select(func.count()).select_from(ConnectionFunctionState)
+            .join(Connection).where(Connection.tool_id == connection.tool_id,
+                ConnectionFunctionState.capability_kind == data.capability_kind,
+                ConnectionFunctionState.function_name == data.function_name)) or 0
+        return result
+    return await set_connection_function(connection_id, data.function_name, data)

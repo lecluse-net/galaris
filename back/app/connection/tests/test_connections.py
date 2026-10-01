@@ -142,7 +142,7 @@ async def test_connection_function_update_refreshes_affected_agent(
     )
 
     assert result.effective is False
-    set_state.assert_awaited_once_with(11, "remote_search", "disabled")
+    set_state.assert_awaited_once_with(11, "remote_search", "disabled", capability_kind="tool")
     refresh.assert_awaited_once_with([7])
 
 

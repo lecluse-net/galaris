@@ -52,6 +52,8 @@ def _serialize_env(values: dict[str, str]) -> str:
 
 
 async def _push_static_files(instance_id: str) -> None:
+    from app.harnesses import managed_runtime_files
+    await harness_manager.write_text_file(instance_id, "runtime_support.py", managed_runtime_files()["runtime_support.py"])
     if not _DEFAULT_AGENT_DIR.is_dir():
         raise RuntimeError("The DeepSeek Harness runtime template is missing.")
     for source in sorted(_DEFAULT_AGENT_DIR.iterdir()):

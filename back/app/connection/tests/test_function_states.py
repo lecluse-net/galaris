@@ -206,8 +206,9 @@ class TestSetConnectionFunctionState:
 
     @pytest.fixture
     def mock_db(self, monkeypatch):
-        # Persistence units; immutable system grants are exercised against PostgreSQL.
-        monkeypatch.setattr(connection_service, "require_editable_connection", AsyncMock())
+        # Persistence units; complete policy enforcement is exercised against PostgreSQL.
+        monkeypatch.setattr(connection_service, "get_connection", AsyncMock(return_value=Connection(id=1, tool_id=7, agent_id=3)))
+        monkeypatch.setattr(connection_service, "lock_tools", AsyncMock())
         return AsyncMock(spec=AsyncSession)
 
     @pytest.mark.asyncio

@@ -84,8 +84,10 @@ un document ; les échanges restent dans la conversation et l'état dans la ress
 Privilégier le document pertinent existant :
 une URI `document://` stable, enrichie au fil du travail, plutôt que des fichiers Markdown
 ou HTML concurrents. Galaris, Conversation, Memory et File Sharing sont des services système
-obligatoires, aux connexions et autorisations non modifiables. Les ACL des ressources et les
-restrictions de contexte restent applicables. Le contrat complet est dans
+obligatoires dont les connexions restent actives. Leurs fonctions ont les mêmes modes
+Actif/Bloqué/Sur demande et héritage global/local que les autres Tools ; seules leurs
+définitions sont protégées. Les ACL des ressources et les restrictions de contexte restent
+applicables, y compris avec YOLO. Le contrat complet est dans
 la section « Documents comme pivot de l'information » de `docs/fr/dev/editorial-html.md`.
 
 ## Valider proportionnellement

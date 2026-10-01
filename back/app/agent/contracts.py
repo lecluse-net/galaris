@@ -730,8 +730,19 @@ class HarnessFailure(BaseModel):
 class ExecutionResult(AIResult):
     """Normalized terminal result returned by a driver."""
 
-    schema_version: Literal["galaris.execution-result/v1"] = "galaris.execution-result/v1"
+    schema_version: Literal["galaris.execution-result/v1", "galaris.execution-result/v2"] = "galaris.execution-result/v1"
     failure: HarnessFailure | None = None
+    disposition: Literal["completed", "waiting_for_authorization"] = "completed"
+    authorization_requests: list[UUID] = Field(default_factory=list[UUID])
+
+    @model_validator(mode="after")
+    def validate_authorization_wait(self) -> Self:
+        if self.disposition == "waiting_for_authorization" and (
+            self.schema_version != "galaris.execution-result/v2" or self.success
+            or not self.authorization_requests or self.failure is not None
+        ):
+            raise ValueError("An authorization wait requires v2, pending requests and no terminal failure")
+        return self
 
 
 class AgentEvent(BaseModel):
@@ -1282,6 +1293,7 @@ class AgentRunEnvelopeV1(BaseModel):
 AgentRunEventKind = Literal[
     "run.started",
     "run.completed",
+    "run.waiting_for_authorization",
     "run.failed",
     "run.cancelled",
     "message.completed",
@@ -1313,7 +1325,7 @@ class AgentRunEventV1(BaseModel):
 
     @model_validator(mode="after")
     def terminal_payload_is_consistent(self) -> Self:
-        if self.kind in {"run.completed", "run.failed", "run.cancelled"}:
+        if self.kind in {"run.completed", "run.failed", "run.cancelled", "run.waiting_for_authorization"}:
             if self.result is None:
                 raise ValueError("A terminal run event must contain a result")
         elif self.result is not None:
@@ -1322,7 +1334,7 @@ class AgentRunEventV1(BaseModel):
 
     @property
     def terminal(self) -> bool:
-        return self.kind in {"run.completed", "run.failed", "run.cancelled"}
+        return self.kind in {"run.completed", "run.failed", "run.cancelled", "run.waiting_for_authorization"}
 
 
 @dataclass(frozen=True)

@@ -104,6 +104,11 @@ def test_independent_auth_route_allowlist_is_exact() -> None:
         ("app.llm.profile_inference_router", "embeddings"),
         ("app.llm.profile_inference_router", "decisions"),
         ("app.mcp.router", "agent_mcp_endpoint"),
+        # Token + issued run context; denial and foreign request paths have real HTTP coverage.
+        ("app.tools.runtime_authorization_router", "request_action"),
+        ("app.tools.runtime_authorization_router", "context_status"),
+        ("app.tools.runtime_authorization_router", "action_status"),
+        ("app.tools.runtime_authorization_router", "action_receipt"),
         ("app.multimedia.router", "acknowledge_callback"),
         ("bridge.codex.router", "runtime_credential"),
         # Scoped Fernet capabilities and expired/wrong keys are tested in test_distribution.

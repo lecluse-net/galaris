@@ -4,12 +4,15 @@ from __future__ import annotations
 
 import asyncio
 import json
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
+from contextvars import ContextVar
 from typing import Any, Awaitable, Callable, Literal, cast
-from uuid import UUID
+from uuid import UUID, uuid4
 
 from app.llm.provider_facade import RealtimeToolDefinition
 from core.database import get_db_session
+
+_bound_round: ContextVar[tuple[UUID | None] | None] = ContextVar("realtime_bound_round", default=None)
 
 
 @dataclass(frozen=True, slots=True)
@@ -31,6 +34,11 @@ def realtime_tools(
     hangup_requested: asyncio.Event | None = None,
 ) -> tuple[RealtimeTool, ...]:
     pending_hangup = hangup_requested or asyncio.Event()
+    live_round = current_round_id
+    def bound_round_id() -> UUID | None:
+        bound = _bound_round.get()
+        return bound[0] if bound is not None else (live_round() if live_round else None)
+    current_round_id = bound_round_id
 
     async def voice_call_stop(_arguments: dict[str, Any]) -> dict[str, Any]:
         """Arm a real hangup after the provider finishes its final spoken response."""
@@ -280,7 +288,7 @@ def realtime_tools(
             )
         return {"created": not response.deduplicated, **response.model_dump(mode="json")}
 
-    return (
+    items = (
         RealtimeTool(
             definition=RealtimeToolDefinition(
                 name="voice_call_stop",
@@ -485,12 +493,52 @@ def realtime_tools(
         ),
     )
 
+    def governed(tool: RealtimeTool):
+        async def execute(arguments: dict[str, Any]) -> dict[str, Any]:
+            from app.tools import McpToolContext, load_mcp_tools
+            from app.tools.facade import bind_native_action, claim_action, finish_action, authorized_request, AuthorizationAction
+            from jsonschema import validators  # pyright: ignore[reportMissingTypeStubs]
+            cast(Any, validators).validator_for(tool.definition.parameters)(tool.definition.parameters).validate(arguments)
+            definition = next((item for item in load_mcp_tools() if item.name == tool.definition.name), None)
+            if definition is None and tool.definition.name != "memory_search":
+                raise PermissionError("The realtime operation has no native authorization classification")
+            round_id = current_round_id()
+            context_key = f"voice:{voice_session_id}:round:{round_id}" if voice_session_id else f"principal:voice:{conversation_id}"
+            ctx = McpToolContext(agent_id=agent_id, runtime="internal", resources={"authorization_context": context_key})
+            async with get_db_session():
+                bound_arguments = {**arguments, "voice_session": str(voice_session_id), "round": str(round_id),
+                    "topic": str(topic_id), "contact": str(contact_memory_item_id)}
+                if definition is not None:
+                    action = await bind_native_action(ctx, definition, bound_arguments)
+                else:
+                    # Realtime Memory search is SDK-only and may pay for query embeddings.
+                    # It remains a conservative local-runtime action, with no invented MCP alias.
+                    from app.tools.contracts import current_tool_execution
+                    execution = current_tool_execution()
+                    action = AuthorizationAction(agent_id=agent_id, runtime="internal", context_key=context_key,
+                        callback_key=str(execution.operation_id if execution else uuid4()), source="runtime",
+                        name="memory_search", arguments=bound_arguments, configuration={"schema": tool.definition.parameters},
+                        preview="Voice: Memory search")
+            identifier = await claim_action(action)
+            try:
+                with authorized_request(identifier):
+                    result = await tool.execute(arguments)
+            except BaseException:
+                await finish_action(identifier, outcome="outcome_unknown")
+                raise
+            await finish_action(identifier, receipt=result)
+            return result
+        return execute
+    return tuple(replace(tool, execute=governed(tool)) for tool in items)
+
 
 async def execute_realtime_tool(
     tools: tuple[RealtimeTool, ...],
     *,
     name: str,
     arguments: str,
+    operation_id: UUID | None = None,
+    round_id: UUID | None | Literal["current"] = "current",
 ) -> str:
     """Validate and execute one known tool, returning JSON for the provider."""
 
@@ -502,11 +550,20 @@ async def execute_realtime_tool(
         if not isinstance(raw, dict):
             raise ValueError("tool arguments must be an object")
         raw_mapping = cast(dict[object, object], raw)
-        result = await selected.execute(
-            {str(key): value for key, value in raw_mapping.items()}
-        )
+        from app.tools.contracts import tool_execution, ToolExecutionContext
+        token = _bound_round.set(None if round_id == "current" else (round_id,))
+        try:
+            with tool_execution(ToolExecutionContext(operation_id=operation_id or uuid4(), tool_name=name)):
+                result = await selected.execute({str(key): value for key, value in raw_mapping.items()})
+        finally:
+            _bound_round.reset(token)
         return json.dumps({"ok": True, "result": result}, ensure_ascii=False)
     except Exception as exc:
+        from app.tools.facade import AuthorizationRequired, AuthorizationClosed
+        if isinstance(exc, AuthorizationRequired):
+            return json.dumps({"authorization_required": str(exc.request_id)})
+        if isinstance(exc, AuthorizationClosed):
+            return json.dumps({"ok": False, "authorization_status": exc.status})
         return json.dumps(
             {
                 "ok": False,

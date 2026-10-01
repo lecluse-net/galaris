@@ -44,9 +44,9 @@ from .models import (
 )
 
 
-ACTIVE_ROUND_STATUSES = ("FROZEN", "CLAIMED", "RUNNING")
+ACTIVE_ROUND_STATUSES = ("FROZEN", "CLAIMED", "RUNNING", "WAITING_APPROVAL")
 PROCESSING_ROUND_STATUSES = ("CLAIMED", "RUNNING")
-TERMINAL_ROUND_STATUSES = ("SUCCEEDED", "SUPERSEDED", "ERROR_RESOLVED", "CANCELLED")
+TERMINAL_ROUND_STATUSES = ("SUCCEEDED", "SUPERSEDED", "ERROR_RESOLVED", "CANCELLED", "COMPLETED", "INTERRUPTED", "FAILED")
 CONTEXT_SOFT_MAX_CHARS = 16_000
 CONTEXT_SOFT_OVERFLOW_CHARS = 2_000
 LEASE_SECONDS = 45
@@ -211,6 +211,18 @@ async def admit_message(
             sequence=sequence,
         )
     )
+    await get_db().flush()
+    waiting = (await get_db().scalars(select(ConversationRound).where(
+        ConversationRound.room_id == room.id, ConversationRound.status == "WAITING_APPROVAL",
+    ).with_for_update())).all()
+    if waiting:
+        from app.tools.facade import invalidate_authorization_context
+        for previous in waiting:
+            await invalidate_authorization_context(agent_id, f"round:{previous.id}")
+            if not previous.effect_started:
+                await _merge_inputs(previous, round_)
+            previous.status = "SUPERSEDED"
+            previous.encrypted_checkpoint = None
     await get_db().commit()
     return True
 
@@ -380,7 +392,6 @@ async def claim_next_round(worker_id: str) -> ConversationRound | None:
     expired = await get_db().scalar(
         select(ConversationRound)
         .where(
-            ConversationRound.voice_session_id.is_(None),
             ConversationRound.status.in_(PROCESSING_ROUND_STATUSES),
             ConversationRound.lease_expires_at < now,
         )
@@ -420,12 +431,10 @@ async def claim_next_round(worker_id: str) -> ConversationRound | None:
             ConversationRound.room_id == Room.id,
         )
         .where(
-            ConversationRound.voice_session_id.is_(None),
             ConversationRound.status == "FROZEN",
             ~exists(
                 select(processing_round.id).where(
                     processing_round.room_id == Room.id,
-                    processing_round.voice_session_id.is_(None),
                     processing_round.status.in_(PROCESSING_ROUND_STATUSES),
                 )
             ),
@@ -440,7 +449,6 @@ async def claim_next_round(worker_id: str) -> ConversationRound | None:
         select(ConversationRound)
         .where(
             ConversationRound.room_id == pending_room_id,
-            ConversationRound.voice_session_id.is_(None),
             ConversationRound.status == "FROZEN",
         )
         .order_by(ConversationRound.created_at.asc(), ConversationRound.id.asc())
@@ -629,6 +637,22 @@ async def build_turn(round_id: UUID, *, lease_token: UUID) -> ConversationTurn:
         room_id=str(room.id),
         user_id=newest.sender_external_id,
     )
+    from app.agent.contracts import AgentRunCheckpoint, ExecutionResult
+    from core.util import get_encryption_service
+    resume_checkpoint = None
+    if round_.encrypted_checkpoint:
+        payload = json.loads(get_encryption_service().decrypt(round_.encrypted_checkpoint))
+        resume_checkpoint = AgentRunCheckpoint(driver_code=payload["driver_code"], runtime_run_id=payload["runtime_run_id"],
+            status=payload["status"], data=payload["data"],
+            result=ExecutionResult.model_validate(payload["result"]) if payload.get("result") else None)
+
+    async def save_checkpoint(checkpoint: AgentRunCheckpoint) -> None:
+        from app.tools.facade import canonical_authorization_snapshot
+        async with get_db_session():
+            owned = await _locked_owned_round(round_id, lease_token)
+            owned.encrypted_checkpoint = get_encryption_service().encrypt(canonical_authorization_snapshot(checkpoint))
+            await get_db().commit()
+
     turn = ConversationTurn(
         room_id=room.id,
         round_id=round_.id,
@@ -638,6 +662,7 @@ async def build_turn(round_id: UUID, *, lease_token: UUID) -> ConversationTurn:
         messages=messages,
         source_request=source_request,
         messaging_context={
+            "round_id": str(round_.id),
             "connection_id": room.connection_id,
             "tool_id": newest.tool_id,
             "platform": newest.platform or "messenger",
@@ -647,6 +672,7 @@ async def build_turn(round_id: UUID, *, lease_token: UUID) -> ConversationTurn:
             "room_kind": room.kind,
             "tool_code": newest.tool_code,
             "participant_id": newest.sender_external_id,
+            "voice_session_id": str(round_.voice_session_id) if round_.voice_session_id else None,
         },
         linked_work=await linked_work_snapshot(room.id),
         pending_interactions=tuple(
@@ -672,6 +698,8 @@ async def build_turn(round_id: UUID, *, lease_token: UUID) -> ConversationTurn:
         assert_fresh_before_effect=lambda: mark_effect_if_fresh(round_id, lease_token=lease_token),
         should_interrupt=lambda: newer_input_pending(round_id, lease_token=lease_token),
         attempt=round_.attempt_count,
+        origin="voice" if round_.voice_session_id else "text",
+        resume_checkpoint=resume_checkpoint, save_checkpoint=save_checkpoint,
     )
 
     async def admit_explicit_task(
@@ -850,6 +878,13 @@ async def complete_round(
         else None
     )
     round_.effect_started = round_.effect_started or outcome.effect_started
+    if outcome.metadata.get("waiting_for_authorization") is True:
+        round_.status = "WAITING_APPROVAL"
+        round_.last_error = None
+        _clear_round_lease(round_)
+        await _finish_attempt(round_, "WAITING_APPROVAL")
+        await get_db().commit()
+        return "WAITING_APPROVAL"
     interrupted = outcome.metadata.get("interrupted") is True
     if interrupted and successor is None and not round_.effect_started:
         # Administrative cancellation of the successor must not turn a partial
@@ -934,7 +969,8 @@ async def complete_round(
         # trigger an implicit asynchronous reload while rendering the handoff.
         await get_db().refresh(publish_message)
         get_db().expunge(publish_message)
-    round_.status = "SUCCEEDED"
+    round_.status = "COMPLETED" if round_.voice_session_id else "SUCCEEDED"
+    round_.encrypted_checkpoint = None
     round_.last_error = None
     round_.delivery_state = "DELIVERED" if text else "SKIPPED"
     round_.finished_at = _now()
@@ -1794,6 +1830,56 @@ async def deliver_process_notification(link_id: UUID) -> None:
     current.notification_lease_token = None
     current.notification_lease_expires_at = None
     await get_db().commit()
+
+
+async def _wake_authorization_context(agent_id: int, context_key: str) -> bool:
+    if not context_key.startswith("round:"):
+        return False
+    from app.tools.facade import authorization_context_pending, invalidate_authorization_context
+    from .facade import wake
+    async with get_db_session():
+        round_ = await get_db().scalar(select(ConversationRound).where(
+            ConversationRound.id == UUID(context_key.removeprefix("round:")),
+        ).with_for_update(skip_locked=True))
+        if round_ is None:
+            return await get_db().get(ConversationRound, UUID(context_key.removeprefix("round:"))) is None
+        _, connection = await _room_scope(round_.room_id)
+        if connection.agent_id != agent_id:
+            return True
+        if round_.status in PROCESSING_ROUND_STATUSES:
+            return False
+        if round_.status != "WAITING_APPROVAL":
+            return True
+        successor = await _pending_successor(round_)
+        if successor is not None:
+            await invalidate_authorization_context(agent_id, context_key)
+            if not round_.effect_started:
+                await _merge_inputs(round_, successor)
+            round_.status = "SUPERSEDED"
+            round_.encrypted_checkpoint = None
+        elif await authorization_context_pending(agent_id, context_key):
+            return False
+        else:
+            round_.status = "FROZEN"
+        await get_db().commit()
+    wake()
+    return True
+
+
+async def _authorization_context_snapshot(agent_id: int, context_key: str) -> dict[str, object] | None:
+    round_ = await get_db().scalar(select(ConversationRound).where(
+        ConversationRound.id == UUID(context_key.removeprefix("round:"))).execution_options(populate_existing=True))
+    if round_ is None or round_.status in TERMINAL_ROUND_STATUSES:
+        return None
+    _, connection = await _room_scope(round_.room_id)
+    if connection.agent_id != agent_id:
+        return None
+    return {"round_id": str(round_.id), "room_id": str(round_.room_id)}
+
+
+from app.tools.facade import register_authorization_waker, register_authorization_context_guard
+register_authorization_waker("conversation", _wake_authorization_context)
+register_authorization_context_guard("round", _authorization_context_snapshot)
 
 
 __all__ = [

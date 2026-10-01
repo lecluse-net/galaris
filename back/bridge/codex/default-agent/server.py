@@ -13,14 +13,19 @@ import uuid
 from collections.abc import AsyncGenerator, AsyncIterator
 from contextlib import asynccontextmanager
 from typing import Literal
+from pathlib import Path
+from typing import Any
 
 import httpx
 from fastapi import Depends, FastAPI, Header, HTTPException, Request
 from fastapi.responses import StreamingResponse
 from openai_codex import AsyncCodex, Sandbox
 from openai_codex.types import ThreadTokenUsageUpdatedNotification, TurnCompletedNotification
+from openai_codex.api import AsyncThread
 from pydantic import BaseModel, ConfigDict, Field
 from stream_trace import CodexStreamTrace
+from authorization import install_permissions
+from runtime_web import install_control
 
 
 logging.basicConfig(level=logging.INFO)
@@ -155,13 +160,13 @@ def _server_request_handler(
     method: str,
     _params: dict[str, object] | None,
 ) -> dict[str, object]:
-    """Accept bounded workspace actions requested by the managed App Server."""
+    """Fail closed until an exact common authorization can be consumed."""
 
     if method in {
         "item/commandExecution/requestApproval",
         "item/fileChange/requestApproval",
     }:
-        return {"decision": "accept"}
+        return {"decision": "decline"}
     return {}
 
 
@@ -204,7 +209,8 @@ async def models(request: Request) -> dict[str, object]:
 
 
 async def _thread(request: Request, body: ChatCompletionRequest):
-    codex: AsyncCodex = request.app.state.codex
+    actor = getattr(request.state, "runtime_actor", None)
+    codex: AsyncCodex = actor.codex if actor else request.app.state.codex
     model_name = request.headers.get("X-Galaris-Model-Name", "").strip() or body.model
     effort = request.headers.get("X-Galaris-Effort", "standard").strip().lower()
     reasoning_effort = request.headers.get(
@@ -231,6 +237,10 @@ async def _thread(request: Request, body: ChatCompletionRequest):
             },
         },
     }
+    config["approval_policy"] = "on-request"
+    config["approvals_reviewer"] = "user"
+    config["mcp_servers"] = {"galaris": {"url": f"http://127.0.0.1:8787/mcp/{actor.identifier}" if actor else os.environ.get("GALARIS_MCP_URL", ""),
+        "bearer_token_env_var": "GALARIS_MCP_TOKEN", "required": True, "tool_timeout_sec": 86400}}
     mapped_reasoning_effort = {
         "none": "low",
         "minimal": "low",
@@ -242,16 +252,12 @@ async def _thread(request: Request, body: ChatCompletionRequest):
     }.get(reasoning_effort)
     if mapped_reasoning_effort is not None:
         config["model_reasoning_effort"] = mapped_reasoning_effort
-    return await codex.thread_start(
-        cwd=WORKSPACE,
-        config=config,
-        developer_instructions=_developer_instructions(body.messages),
-        ephemeral=True,
-        model=model_name,
-        model_provider="galaris",
-        service_name="galaris-codex-harness",
-        sandbox=Sandbox.workspace_write,
-    )
+    await codex._ensure_initialized()
+    started = await codex._client.thread_start({"cwd": WORKSPACE, "config": config,
+        "developerInstructions": _developer_instructions(body.messages), "ephemeral": True,
+        "model": model_name, "modelProvider": "galaris", "serviceName": "galaris-codex-harness",
+        "sandbox": "read-only", "approvalPolicy": "on-request", "approvalsReviewer": "user"})
+    return AsyncThread(codex, started.thread.id)
 
 
 @app.post("/v1/chat/completions", dependencies=[Depends(_authenticate)])
@@ -264,7 +270,7 @@ async def chat_completions(request: Request, body: ChatCompletionRequest):
 
     if not body.stream:
         try:
-            result = await thread.run(prompt, sandbox=Sandbox.workspace_write)
+            result = await thread.run(prompt, sandbox=Sandbox.read_only)
         except Exception as exc:
             logger.exception("Codex turn failed")
             raise HTTPException(status_code=502, detail=_safe_error(exc)) from exc
@@ -322,7 +328,7 @@ async def chat_completions(request: Request, body: ChatCompletionRequest):
             "choices": [{"index": 0, "delta": {"role": "assistant"}, "finish_reason": None}],
         })
         try:
-            turn = await thread.turn(prompt, sandbox=Sandbox.workspace_write)
+            turn = await thread.turn(prompt, sandbox=Sandbox.read_only)
             async for notification in turn.stream():
                 payload = notification.payload
                 if notification.method == "item/agentMessage/delta":
@@ -405,15 +411,12 @@ async def chat_completions(request: Request, body: ChatCompletionRequest):
                 final["usage"] = usage_payload
             yield event(final)
             gateway_usage = await _gateway_usage(run_id)
-            if gateway_usage is not None:
-                yield semantic_result({
-                    "result": final_text,
-                    "success": True,
-                    "usage": gateway_usage,
-                    "metadata": {
-                        "inference_cost": gateway_usage.get("inference_cost", 0.0),
-                    },
-                })
+            yield semantic_result({
+                "result": final_text,
+                "success": True,
+                "usage": gateway_usage,
+                "metadata": {"inference_cost": gateway_usage.get("inference_cost", 0.0)} if gateway_usage else {},
+            })
             yield event("[DONE]")
         except asyncio.CancelledError:
             if turn is not None:
@@ -431,3 +434,44 @@ async def chat_completions(request: Request, body: ChatCompletionRequest):
                     logger.warning("Unable to interrupt unfinished Codex turn", exc_info=True)
 
     return StreamingResponse(stream(), media_type="text/event-stream")
+
+
+async def _managed_events(body: dict[str, Any], request: Request, actor: Any):
+    codex = AsyncCodex()
+    pool = install_permissions(codex._client._sync, actor, Path(WORKSPACE))
+    actor.codex = codex
+    request.state.runtime_actor = actor
+    try:
+        async with codex:
+            response = await chat_completions(request, ChatCompletionRequest.model_validate({**body, "stream": True}))
+            if not isinstance(response, StreamingResponse):
+                raise RuntimeError("The managed Codex actor requires an event stream")
+            async for chunk in response.body_iterator:
+                raw = chunk.decode() if isinstance(chunk, bytes) else str(chunk)
+                event_name = next((line[7:] for line in raw.splitlines() if line.startswith("event: ")), "")
+                data = next((line[6:] for line in raw.splitlines() if line.startswith("data: ")), "")
+                if not data or data == "[DONE]":
+                    continue
+                payload = json.loads(data)
+                if event_name == "galaris.agent-message/v1":
+                    yield "tool", payload
+                elif event_name == "galaris.agent-result/v1":
+                    yield "result", payload
+                elif payload.get("error"):
+                    raise RuntimeError("The Codex actor stopped without a confirmed result")
+                else:
+                    choices = payload.get("choices") or []
+                    if choices and (content := choices[0].get("delta", {}).get("content")):
+                        yield "text", {"content": content}
+    finally:
+        if actor.approvals is not None:
+            actor.approvals.cancelled.set()
+        pool.shutdown(wait=False, cancel_futures=True)
+
+
+def _authenticate_control(request: Request) -> None:
+    _authenticate(request.headers.get("Authorization"))
+
+
+_runs = install_control(app, root=Path("/var/lib/codex/authorizations"),
+    authenticate=_authenticate_control, events=_managed_events)

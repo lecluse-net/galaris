@@ -3,6 +3,7 @@
 default: dict[str, object] = {
     "browser": {
         "permission_question": "Allow this agent's browser to perform ${action} access to ${origin}? This decision covers all paths on this origin and will be remembered for this agent.",
+        "all_sites_permission_question": "Always allow this agent's browser to access all websites without further site permission requests? This covers all domains, protocols, ports, paths, configured HTTP methods and WebSocket. Network filters, explicit refusals and separate local-network permissions still apply. Revoke this agreement in Remembered permissions.",
         "errors": {
             "invalid_url": "The URL is invalid. Use an HTTP(S) URL without embedded credentials.",
             "invalid_viewport": (

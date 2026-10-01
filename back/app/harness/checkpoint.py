@@ -14,7 +14,8 @@ from typing import Any, AsyncGenerator, Literal, cast
 from uuid import UUID, uuid4
 from datetime import datetime, timezone
 
-from pydantic_ai import ModelRetry
+from pydantic_ai import ModelRetry, ApprovalRequired, DeferredToolResults, ToolDenied
+from app.tools.facade import AuthorizationRequired, authorization_status
 from pydantic_core import to_jsonable_python
 from app.tools.contracts import ToolExecutionContext, tool_execution
 from .recovery_metrics import observe_recovery
@@ -27,8 +28,8 @@ from app.agent.contracts import (
     ToolEffectPolicy,
 )
 
-_CHECKPOINT_VERSION = 4
-_COMPATIBLE_CHECKPOINT_VERSIONS = frozenset({1, 2, 3, _CHECKPOINT_VERSION})
+_CHECKPOINT_VERSION = 5
+_COMPATIBLE_CHECKPOINT_VERSIONS = frozenset({1, 2, 3, 4, _CHECKPOINT_VERSION})
 TOOL_ERROR_SCHEMA = "galaris.tool-error/v1"
 
 
@@ -400,6 +401,8 @@ class HarnessRunCheckpoint:
                     if item.get("tool_name") == part.tool_name
                     and item.get("tool_call_id") == part.tool_call_id
                     and _effect_response_index(item, history) == index), None)
+                if effect is not None and effect.get("status") == "waiting_for_authorization":
+                    continue
                 previous = answered.get((part.tool_name, part.tool_call_id))
                 if previous is not None and not (
                     isinstance(previous, messages.ToolReturnPart)
@@ -470,6 +473,13 @@ class HarnessRunCheckpoint:
 
             response = next((message for message in reversed(messages)
                 if isinstance(message, model_messages.ModelResponse)), None)
+            previous = next((item for item in self.effects if
+                item.get("status") == "waiting_for_authorization" and item.get("tool_call_id") == tool_call_id
+                and item.get("signature") == _signature(name, arguments)), None)
+            if previous is not None:
+                previous["status"] = "started"
+                await self._save()
+                return str(previous["id"])
             effect_id = str(uuid4())
             self.effects.append(
                 {
@@ -494,6 +504,36 @@ class HarnessRunCheckpoint:
             await self._save()
             observe_recovery("started", run_id=self.runtime_run_id, operation_id=effect_id)
         return effect_id
+
+    async def waiting_for_authorization(self, effect_id: str, request_id: UUID) -> None:
+        async with self._lock:
+            for effect in self.effects:
+                if effect.get("id") == effect_id:
+                    effect["status"] = "waiting_for_authorization"
+                    effect["outcome"] = "rejected"
+                    effect["authorization_request_id"] = str(request_id)
+            await self._save(status="waiting_for_authorization")
+
+    async def deferred_results(self) -> DeferredToolResults | None:
+        results = DeferredToolResults()
+        for effect in self.effects:
+            if effect.get("status") != "waiting_for_authorization":
+                continue
+            request_id = UUID(str(effect["authorization_request_id"]))
+            status = await authorization_status(request_id, agent_id=self.request.agent_id)
+            if status == "pending":
+                raise AuthorizationRequired(request_id)
+            call_id = str(effect["tool_call_id"])
+            if status == "approved":
+                results.approvals[call_id] = True
+            else:
+                results.approvals[call_id] = ToolDenied(f"Authorization {status}; no action was repeated.")
+                effect["status"] = "completed"
+                effect["result"] = {"authorization_status": status,
+                    "dispatched": None if status in {"executing", "completed", "failed", "outcome_unknown"} else False}
+                if status in {"executing", "outcome_unknown"}:
+                    effect["outcome"] = "unknown"
+        return results if results.approvals else None
 
     async def completed(
         self,
@@ -781,6 +821,11 @@ def wrap_toolsets(
                                         name, tool_args, ctx, tool
                                     )
                             except Exception as exc:
+                                if isinstance(exc, AuthorizationRequired):
+                                    await checkpoint.waiting_for_authorization(effect_id, exc.request_id)
+                                    raise ApprovalRequired(metadata={"authorization_request_id": str(exc.request_id)}) from exc
+                                if isinstance(exc, ApprovalRequired):
+                                    raise
                                 tool_error_outcome = (
                                     "rejected" if execution.outcome == "rejected"
                                     or effect_policy == "read" else "unknown"
@@ -800,6 +845,10 @@ def wrap_toolsets(
                             with tool_execution(execution):
                                 result = await self.wrapped.call_tool(name, tool_args, ctx, tool)
                         except Exception as exc:
+                            if isinstance(exc, AuthorizationRequired):
+                                raise ApprovalRequired(metadata={"authorization_request_id": str(exc.request_id)}) from exc
+                            if isinstance(exc, ApprovalRequired):
+                                raise
                             result = _tool_error_result(
                                 exc, "rejected" if execution.outcome == "rejected"
                                 or effect_policy == "read" else "unknown",

@@ -24,6 +24,7 @@ from core.util import BufferedAdmissionDeferred
 from core.i18n import render_prompt, tr
 from core.params import runtime_settings
 from app.tools import ToolModel
+from app.tools.facade import AuthorizationClosed, AuthorizationSuspended, continued_deferred_dispatch
 
 from . import metrics, registry
 from .checkpoints import LaunchSnapshot
@@ -57,7 +58,7 @@ from .schemas import (
 TERMINAL_STATUSES = frozenset({"success", "error", "cancelled"})
 PROCESS_FILE_MAX_BYTES = 512 * 1024 * 1024
 TRANSITIONS: dict[str, frozenset[str]] = {
-    "queued": frozenset({"running", "waiting", "success", "error", "cancelled"}),
+    "queued": frozenset({"running", "waiting", "success", "error", "cancelled", "unknown"}),
     "running": frozenset({"waiting", "success", "error", "cancelling", "cancelled", "unknown"}),
     "waiting": frozenset({"running", "success", "error", "cancelling", "cancelled", "unknown"}),
     "unknown": frozenset({"running", "waiting", "success", "error", "cancelling", "cancelled"}),
@@ -749,6 +750,10 @@ async def start_process(
         "input": input_data,
         "files": serialized_files,
     }
+    from app.tools.facade import register_deferred_dispatch
+    authorization_permit = await register_deferred_dispatch(launch_snapshot)
+    if authorization_permit is not None:
+        launch_snapshot["authorization_permit"] = str(authorization_permit)
     run = ProcessRun(
         id=run_id,
         process_id=process.id,
@@ -1152,6 +1157,14 @@ async def _apply_snapshot(run: ProcessRun, snapshot: EngineRunSnapshot, event_ty
             }
 
 
+async def _reconcile_authorization_receipt(run: ProcessRun) -> None:
+    if run.status in TERMINAL_STATUSES and (permit := run.launch_snapshot.get("authorization_permit")):
+        from app.tools.facade import finish_action
+        await finish_action(UUID(str(permit)), deferred=True,
+            outcome="completed" if run.status == "success" else "failed",
+            receipt={"process_run": str(run.id), "status": run.status, "remote_run": run.engine_run_id})
+
+
 apply_engine_snapshot = _apply_snapshot
 
 
@@ -1162,13 +1175,31 @@ async def refresh_run(run_id: UUID) -> ProcessRun:
     if run.status in TERMINAL_STATUSES:
         await _resolve_await_if_terminal(run)
         return run
+    if run.status == "queued" and run.launch_snapshot.get("authorization_permit") and run.engine_run_id is None:
+        return run
     engine = registry.get(run.engine_code)
     try:
-        snapshot = await asyncio.wait_for(
-            engine.get_run(_engine_run_reference(run)),
-            timeout=(engine.refresh_timeout_seconds if isinstance(engine, IntegratedProcessEngine)
-                     else runtime_settings.PROCESS_REFRESH_TIMEOUT_SECONDS),
-        )
+        if isinstance(engine, IntegratedProcessEngine):
+            permit = run.launch_snapshot.get("authorization_permit")
+            async with continued_deferred_dispatch(UUID(str(permit)) if permit else None,
+                agent_id=run.launcher_agent_id,
+                payload={key: value for key, value in run.launch_snapshot.items() if key != "authorization_permit"}):
+                snapshot = await asyncio.wait_for(engine.get_run(_engine_run_reference(run)),
+                    timeout=engine.refresh_timeout_seconds)
+        else:
+            snapshot = await asyncio.wait_for(engine.get_run(_engine_run_reference(run)),
+                timeout=runtime_settings.PROCESS_REFRESH_TIMEOUT_SECONDS)
+    except AuthorizationSuspended:
+        return run
+    except AuthorizationClosed as error:
+        locked = await _locked_run(run.id)
+        if locked is not None and locked.status not in TERMINAL_STATUSES:
+            locked.error_code = "authorization_invalidated"
+            locked.error_message = "The authorization for further process effects is unavailable."
+            await _transition(locked, "error", event_type="authorization.invalidated")
+            await get_db().commit()
+            await _resolve_await_if_terminal(locked)
+        raise ProcessEngineError("authorization_invalidated", "Process authorization was revoked") from error
     except asyncio.TimeoutError as error:
         exc = ProcessEngineError(
             "engine_timeout",
@@ -1191,6 +1222,7 @@ async def refresh_run(run_id: UUID) -> ProcessRun:
         raise LookupError(await tr("process.errors.run_not_found"))
     await _apply_snapshot(locked, snapshot, "engine.refresh")
     await get_db().commit()
+    await _reconcile_authorization_receipt(locked)
     await _resolve_await_if_terminal(locked)
     await websocket.emit("process_run", "update", {"id": str(locked.id), "status": locked.status}, None)
     return locked
@@ -1367,6 +1399,8 @@ async def receive_callback(
             run.error_code = event.error.code
             run.error_message = str(await _sanitize(event.error.message))
     await get_db().commit()
+    if accepted:
+        await _reconcile_authorization_receipt(run)
     metrics.increment(
         "process_callbacks_total",
         engine=run.engine_code,
@@ -1632,6 +1666,9 @@ async def process_start_jobs(*, batch_size: int = 10, engine_code: str | None = 
         ).scalar_one()
         await db.commit()
         started = asyncio.get_running_loop().time()
+        authorization_permit = run.launch_snapshot.get("authorization_permit")
+        dispatch_claimed = False
+        from app.tools.facade import claim_deferred_dispatch, finish_action, authorized_request
         try:
             try:
                 snapshot = LaunchSnapshot.model_validate(run.launch_snapshot)
@@ -1646,21 +1683,32 @@ async def process_start_jobs(*, batch_size: int = 10, engine_code: str | None = 
                 launch_snapshot=snapshot.model_dump(mode="json"),
             )
             engine = registry.get(run.engine_code)
-            result = await asyncio.wait_for(
-                engine.start_run(
-                    process.engine_process_id or "",
-                    _engine_run_reference(run),
-                    payload,
-                ),
-                timeout=(engine.start_timeout_seconds if isinstance(engine, IntegratedProcessEngine)
-                         else runtime_settings.PROCESS_START_TIMEOUT_SECONDS),
-            )
+            if authorization_permit:
+                if process.deleted_at is not None or process.engine_process_id != snapshot.workflow_id:
+                    raise ProcessEngineError("authorization_invalidated", "Process changed after authorization")
+                try:
+                    await claim_deferred_dispatch(UUID(str(authorization_permit)), agent_id=run.launcher_agent_id,
+                        payload={key: value for key, value in run.launch_snapshot.items() if key != "authorization_permit"})
+                    dispatch_claimed = True
+                except (PermissionError, ValueError) as error:
+                    raise ProcessEngineError("authorization_invalidated", "Deferred authorization is unavailable") from error
+            with authorized_request(UUID(str(authorization_permit)) if authorization_permit else None):
+                result = await asyncio.wait_for(
+                    engine.start_run(process.engine_process_id or "", _engine_run_reference(run), payload),
+                    timeout=(engine.start_timeout_seconds if isinstance(engine, IntegratedProcessEngine)
+                             else runtime_settings.PROCESS_START_TIMEOUT_SECONDS),
+                )
             if not result.accepted:
                 raise ProcessEngineError(
                     "engine_rejected",
                     await tr("process.errors.engine_rejected"),
                 )
-        except BufferedAdmissionDeferred:
+            if authorization_permit:
+                await finish_action(UUID(str(authorization_permit)), receipt=result.model_dump(mode="json"), deferred=True)
+        except (BufferedAdmissionDeferred, AuthorizationSuspended):
+            if dispatch_claimed and authorization_permit:
+                from app.tools.facade import release_buffered_dispatch
+                await release_buffered_dispatch(UUID(str(authorization_permit)))
             locked_job = (await db.execute(
                 select(ProcessStartJob).where(ProcessStartJob.id == job.id)
                 .with_for_update().execution_options(populate_existing=True)
@@ -1719,6 +1767,10 @@ async def process_start_jobs(*, batch_size: int = 10, engine_code: str | None = 
             continue
 
         max_retries = runtime_settings.PROCESS_START_MAX_RETRIES
+        if dispatch_claimed and authorization_permit:
+            await finish_action(UUID(str(authorization_permit)), outcome="outcome_unknown", deferred=True)
+            # A lost response after admission is not proof that the remote effect did not start.
+            exc = ProcessEngineError("authorization_outcome_unknown", "The admitted process outcome must be reconciled")
         locked_job = (
             await db.execute(select(ProcessStartJob).where(ProcessStartJob.id == job.id).with_for_update())
         ).scalar_one()
@@ -1753,7 +1805,9 @@ async def process_start_jobs(*, batch_size: int = 10, engine_code: str | None = 
             locked_job.locked_at = None
             locked_run.error_code = "engine_unreachable" if exc.retryable else exc.code
             locked_run.error_message = str(await _sanitize(exc.message))
-            await _transition(locked_run, "error", event_type="run.failed", payload={"code": exc.code})
+            await _transition(locked_run, "unknown" if exc.code == "authorization_outcome_unknown" else "error",
+                event_type="run.outcome_unknown" if exc.code == "authorization_outcome_unknown" else "run.failed",
+                payload={"code": exc.code})
             metrics.increment(
                 "process_runs_failed_total", process_code=process.engine_process_id,
                 engine=locked_run.engine_code, error_code=locked_run.error_code or "unknown",

@@ -19,6 +19,7 @@ from app.agent.contracts import (
     AgentSnapshot,
     ExecutionResult,
     ResolvedModel,
+    ResolvedExecutionTarget,
 )
 from app.llm import llm_call_service
 from bridge.hermes import driver as hermes_driver
@@ -473,6 +474,9 @@ async def test_driver_disables_new_kanban_runs_but_preserves_resumes(
     assert (await driver.run(high)).result == "direct"
     assert (await driver.run(legacy_high)).result == "direct"
     assert (await driver.run(resumed_kanban)).result == "kanban"
+    with pytest.raises(AgentDriverError, match="no common authorization context"):
+        await driver.run(replace(resumed_kanban, target=ResolvedExecutionTarget(
+            provider_code="hermes", target_ref="harness:7", revision="1")))
 
     monkeypatch.setattr(hermes_driver, "HERMES_HIGH_KANBAN_ENABLED", True)
     assert (

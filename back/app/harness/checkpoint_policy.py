@@ -11,7 +11,7 @@ class InternalCheckpointPolicy:
     def assess(self, checkpoint: AgentRunCheckpoint) -> CheckpointAssessment:
         data = checkpoint.data
         version = data.get("version")
-        if type(version) is not int or version not in {1, 2, 3, 4}:
+        if type(version) is not int or version not in {1, 2, 3, 4, 5}:
             return CheckpointAssessment(state="unsafe", reason="Unsupported internal checkpoint version.")
         raw = data.get("effects", [])
         if not isinstance(raw, list):
@@ -21,7 +21,7 @@ class InternalCheckpointPolicy:
             if not isinstance(item, Mapping):
                 return CheckpointAssessment(state="unsafe", reason="Invalid internal effect record.")
             effect = cast(Mapping[str, object], item)
-            if (effect.get("status") not in {"started", "outcome_unknown", "completed", "failed", "error_reported", "interrupted"}
+            if (effect.get("status") not in {"started", "outcome_unknown", "completed", "failed", "error_reported", "interrupted", "waiting_for_authorization"}
                 or effect.get("effect_policy", "non_idempotent") not in {"read", "idempotent", "non_idempotent"}):
                 return CheckpointAssessment(state="unsafe", reason="Unknown effect state or safety policy.")
             # prepare_resume persists this state after closing a retryable call.
@@ -34,18 +34,22 @@ class InternalCheckpointPolicy:
                 reported: Mapping[str, object] = (
                     cast(Mapping[str, object], result) if isinstance(result, Mapping) else {}
                 )
-                if (version != 4 or effect.get("outcome") not in {"rejected", "unknown"}
+                if (version not in {4, 5} or effect.get("outcome") not in {"rejected", "unknown"}
                     or reported.get("schema") != "galaris.tool-error/v1"
                     or reported.get("status") != "error"
                     or reported.get("outcome") != effect.get("outcome")):
                     return CheckpointAssessment(state="unsafe", reason="Invalid reported tool error.")
             effects.append(effect)
+            if effect.get("status") == "waiting_for_authorization" and (
+                version != 5 or effect.get("outcome") != "rejected" or not effect.get("authorization_request_id")
+            ):
+                return CheckpointAssessment(state="unsafe", reason="Invalid authorization waiting record.")
         unresolved = [effect for effect in effects
             if effect.get("effect_policy", "non_idempotent") == "non_idempotent"
             and (effect.get("status") in {"started", "outcome_unknown"}
                  or (effect.get("status") == "failed" and effect.get("outcome") != "rejected"))]
         if unresolved:
-            recoverable = (version in {3, 4} and data.get("resume_reconcilable") is True
+            recoverable = (version in {3, 4, 5} and data.get("resume_reconcilable") is True
                 and all(effect.get("tool_name") in {"console_exec", "console_start"}
                     and effect.get("operation_id") and effect.get("recovery_scope")
                     for effect in unresolved))

@@ -30,8 +30,8 @@ from .schemas import (
 from .synthetic_schemas import SyntheticDatasetRequest, SyntheticExecutorOutput
 
 
-@mcp_tool(
-    "lab",
+@mcp_tool("lab", approval="enabled", approval_reason="Governed bounded read or control without a new sensitive effect",
+
     name="lab_list",
     description="Discover every Lab mechanism and whether real-source inspection is authorized.",
     effect_policy="read",
@@ -47,8 +47,8 @@ async def lab_list(ctx: McpToolContext) -> dict[str, Any]:
     }
 
 
-@mcp_tool(
-    "lab",
+@mcp_tool("lab", approval="enabled", approval_reason="Governed bounded read or control without a new sensitive effect",
+
     name="lab_get",
     description="Read one Lab's executable input/configuration/output contracts and scoring rubric before editing cases.",
     effect_policy="read",
@@ -65,8 +65,8 @@ async def lab_get(ctx: McpToolContext, mechanism: EvaluationMechanism) -> dict[s
     }
 
 
-@mcp_tool(
-    "lab",
+@mcp_tool("lab", approval="enabled", approval_reason="Governed bounded read or control without a new sensitive effect",
+
     name="lab_models",
     description="List compatible configured candidate and judge models, without provider credentials.",
     effect_policy="read",
@@ -90,8 +90,8 @@ async def lab_models(ctx: McpToolContext, mechanism: EvaluationMechanism) -> dic
     }
 
 
-@mcp_tool(
-    "lab",
+@mcp_tool("lab", approval="enabled", approval_reason="Governed bounded read or control without a new sensitive effect",
+
     name="lab_prompt_defaults",
     description="Inspect effective Lab prompt and parameter defaults without creating a dataset.",
     effect_policy="read",
@@ -110,8 +110,8 @@ async def lab_prompt_defaults(
     }
 
 
-@mcp_tool(
-    "lab",
+@mcp_tool("lab", approval="enabled", approval_reason="Governed bounded read or control without a new sensitive effect",
+
     name="lab_dataset_list",
     description="List datasets with stable server pagination.",
     effect_policy="read",
@@ -123,8 +123,8 @@ async def lab_dataset_list(
     return await service.datasets(mechanism, pagination)
 
 
-@mcp_tool(
-    "lab",
+@mcp_tool("lab", approval="enabled", approval_reason="Governed bounded read or control without a new sensitive effect",
+
     name="lab_dataset_get",
     description="Read a dataset, its revision, configuration and coverage.",
     effect_policy="read",
@@ -138,8 +138,8 @@ async def lab_dataset_get(
     )
 
 
-@mcp_tool(
-    "lab",
+@mcp_tool("lab", approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval",
+
     name="lab_dataset_create",
     description="Create a Lab dataset; reuse invocation_key only to retry this exact command.",
     effect_policy="idempotent",
@@ -154,8 +154,8 @@ async def lab_dataset_create(
     return service.dump(await evaluations.create_dataset(mechanism, data))
 
 
-@mcp_tool(
-    "lab",
+@mcp_tool("lab", approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval",
+
     name="lab_dataset_update",
     description="Update selected dataset fields with the last read revision. Omitted fields are preserved.",
     effect_policy="idempotent",
@@ -171,8 +171,8 @@ async def lab_dataset_update(
     return await service.update_dataset(mechanism, dataset_id, data)
 
 
-@mcp_tool(
-    "lab",
+@mcp_tool("lab", approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval",
+
     name="lab_dataset_clone",
     description="Copy an experiment and its cases atomically, preserving provenance for controlled comparison.",
     effect_policy="idempotent",
@@ -189,8 +189,8 @@ async def lab_dataset_clone(
     return await service.clone_dataset(mechanism, dataset_id, revision, name)
 
 
-@mcp_tool(
-    "lab",
+@mcp_tool("lab", approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval",
+
     name="lab_dataset_delete",
     description="Soft-delete an experiment at its expected revision; active benchmarks must finish first.",
     effect_policy="idempotent",
@@ -206,8 +206,8 @@ async def lab_dataset_delete(
     return await service.delete_dataset(mechanism, dataset_id, revision)
 
 
-@mcp_tool(
-    "lab",
+@mcp_tool("lab", approval="enabled", approval_reason="Governed bounded read or control without a new sensitive effect",
+
     name="lab_case_list",
     description="List cases with server pagination.",
     effect_policy="read",
@@ -219,8 +219,8 @@ async def lab_case_list(
     return await service.cases(mechanism, dataset_id, pagination)
 
 
-@mcp_tool(
-    "lab",
+@mcp_tool("lab", approval="enabled", approval_reason="Governed bounded read or control without a new sensitive effect",
+
     name="lab_case_get",
     description="Read a case's variable, context, reference, readiness, provenance and revision.",
     effect_policy="read",
@@ -232,8 +232,8 @@ async def lab_case_get(
     return service.dump(EvaluationCaseRead.model_validate(await service.case(mechanism, case_id)))
 
 
-@mcp_tool(
-    "lab",
+@mcp_tool("lab", approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval",
+
     name="lab_case_create",
     description="Create a draft case using the mechanism's defaults.",
     effect_policy="idempotent",
@@ -249,8 +249,8 @@ async def lab_case_create(
     return service.dump(await evaluations.create_case(mechanism, dataset_id, data))
 
 
-@mcp_tool(
-    "lab",
+@mcp_tool("lab", approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval",
+
     name="lab_case_update",
     description="Edit and validate a case at its expected revision, or explicitly mark it draft/disabled.",
     effect_policy="idempotent",
@@ -266,8 +266,8 @@ async def lab_case_update(
     return await service.update_case(mechanism, case_id, data)
 
 
-@mcp_tool(
-    "lab",
+@mcp_tool("lab", approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval",
+
     name="lab_case_duplicate",
     description="Case duplicate at the expected revision. Capture parameter conflicts return a confirmation token.",
     effect_policy="idempotent",
@@ -284,8 +284,8 @@ async def lab_case_duplicate(
     return service.dump(await evaluations.duplicate_case(mechanism, case_id))
 
 
-@mcp_tool(
-    "lab",
+@mcp_tool("lab", approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval",
+
     name="lab_case_delete",
     description="Case delete at the expected revision. Capture parameter conflicts return a confirmation token.",
     effect_policy="idempotent",
@@ -303,8 +303,8 @@ async def lab_case_delete(
     return {"deleted": True, "case_id": str(case_id)}
 
 
-@mcp_tool(
-    "lab",
+@mcp_tool("lab", approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval",
+
     name="lab_case_restore_source",
     description="Case restore source at the expected revision. Capture parameter conflicts return a confirmation token.",
     effect_policy="idempotent",
@@ -324,8 +324,8 @@ async def lab_case_restore_source(
     )
 
 
-@mcp_tool(
-    "lab",
+@mcp_tool("lab", approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval",
+
     name="lab_input_preview",
     description="Preview the exact resolved input and prompts without inference.",
     effect_policy="read",
@@ -337,8 +337,8 @@ async def lab_input_preview(
     return service.dump(await evaluations.preview_input(mechanism, dataset_id, data))
 
 
-@mcp_tool(
-    "lab",
+@mcp_tool("lab", approval="enabled", approval_reason="Governed bounded read or control without a new sensitive effect",
+
     name="lab_source_list",
     description="Discover real capture sources. Requires an active galaris_admin connection.",
     effect_policy="read",
@@ -350,8 +350,8 @@ async def lab_source_list(
     return await operations.source_list(mechanism, pagination, search)
 
 
-@mcp_tool(
-    "lab",
+@mcp_tool("lab", approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval",
+
     name="lab_case_import",
     description="Import a typed real source. galaris_admin required. If parameters differ, inspect the error and explicitly resubmit its confirmation_token.",
     effect_policy="idempotent",
@@ -367,8 +367,8 @@ async def lab_case_import(
     return await operations.import_case(mechanism, dataset_id, data)
 
 
-@mcp_tool(
-    "lab",
+@mcp_tool("lab", approval="enabled", approval_reason="Governed bounded read or control without a new sensitive effect",
+
     name="lab_topic_agent_list",
     description="List agents with Topic capture sources; administrative source access required.",
     effect_policy="read",
@@ -378,8 +378,8 @@ async def lab_topic_agent_list(ctx: McpToolContext, pagination: Page) -> dict[st
     return await operations.topic_agents(pagination)
 
 
-@mcp_tool(
-    "lab",
+@mcp_tool("lab", approval="enabled", approval_reason="Governed bounded read or control without a new sensitive effect",
+
     name="lab_topic_person_list",
     description="List source interlocutors for a Topic experiment.",
     effect_policy="read",
@@ -391,8 +391,8 @@ async def lab_topic_person_list(
     return await operations.topic_people(agent_id, pagination)
 
 
-@mcp_tool(
-    "lab",
+@mcp_tool("lab", approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval",
+
     name="lab_topic_messages_preview",
     description="Preview a bounded real message range before capture.",
     effect_policy="read",
@@ -404,8 +404,8 @@ async def lab_topic_messages_preview(
     return service.dump(await evaluations.preview_topic_message_range(data))
 
 
-@mcp_tool(
-    "lab",
+@mcp_tool("lab", approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval",
+
     name="lab_topic_messages_import",
     description="Capture a complete message range as a Topic case; refuses truncated ranges.",
     effect_policy="idempotent",
@@ -417,8 +417,8 @@ async def lab_topic_messages_import(
     return service.dump(await evaluations.import_topic_message_range(dataset_id, data))
 
 
-@mcp_tool(
-    "lab",
+@mcp_tool("lab", approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval",
+
     name="lab_run_start",
     description="Start a durable benchmark immediately, freezing the dataset and models. Budget is a threshold between evaluations; repetitions range 1–20.",
     effect_policy="idempotent",
@@ -438,7 +438,7 @@ async def lab_run_start(
     )
 
 
-@mcp_tool("lab", name="lab_run_list", description="List benchmark runs.", effect_policy="read")
+@mcp_tool("lab", approval="enabled", approval_reason="Governed bounded read or control without a new sensitive effect", name="lab_run_list", description="List benchmark runs.", effect_policy="read")
 @lab_call(mutation=False, sources=False)
 async def lab_run_list(
     ctx: McpToolContext, mechanism: EvaluationMechanism, dataset_id: UUID, pagination: Page
@@ -446,8 +446,8 @@ async def lab_run_list(
     return await service.runs(mechanism, dataset_id, pagination)
 
 
-@mcp_tool(
-    "lab",
+@mcp_tool("lab", approval="enabled", approval_reason="Governed bounded read or control without a new sensitive effect",
+
     name="lab_run_get",
     description="Inspect run status, two-pass progress, costs, configuration and errors. Results are paginated separately.",
     effect_policy="read",
@@ -459,8 +459,8 @@ async def lab_run_get(
     return service.dump(EvaluationRunRead.model_validate(await service.run(mechanism, run_id)))
 
 
-@mcp_tool(
-    "lab",
+@mcp_tool("lab", approval="enabled", approval_reason="Governed bounded read or control without a new sensitive effect",
+
     name="lab_run_results",
     description="Read candidate outputs, objective checks and automatic judgments by page.",
     effect_policy="read",
@@ -472,8 +472,8 @@ async def lab_run_results(
     return await service.results(mechanism, run_id, pagination)
 
 
-@mcp_tool(
-    "lab",
+@mcp_tool("lab", approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval",
+
     name="lab_run_cancel",
     description="Request benchmark cancellation; in-flight inference may still finish.",
     effect_policy="idempotent",
@@ -485,8 +485,8 @@ async def lab_run_cancel(
     return service.dump(await evaluations.cancel_run(mechanism, run_id))
 
 
-@mcp_tool(
-    "lab",
+@mcp_tool("lab", approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval",
+
     name="lab_run_resume",
     description="Resume a cancelled benchmark's missing publications without repeating saved results.",
     effect_policy="idempotent",
@@ -500,8 +500,8 @@ async def lab_run_resume(
     )
 
 
-@mcp_tool(
-    "lab",
+@mcp_tool("lab", approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval",
+
     name="lab_run_rejudge",
     description="Create a new judgment campaign over saved outputs, without rerunning candidates.",
     effect_policy="idempotent",
@@ -519,8 +519,8 @@ async def lab_run_rejudge(
     )
 
 
-@mcp_tool(
-    "lab",
+@mcp_tool("lab", approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval",
+
     name="lab_run_delete",
     description="Delete a terminal benchmark only after checking its observed status.",
     effect_policy="idempotent",
@@ -540,8 +540,8 @@ async def lab_run_delete(
     return {"deleted": True, "run_id": str(run_id)}
 
 
-@mcp_tool(
-    "lab",
+@mcp_tool("lab", approval="enabled", approval_reason="Governed bounded read or control without a new sensitive effect",
+
     name="lab_campaign_list",
     description="List independent judgment campaigns, preserving previous judges.",
     effect_policy="read",
@@ -553,8 +553,8 @@ async def lab_campaign_list(
     return await service.campaigns(mechanism, run_id, pagination)
 
 
-@mcp_tool(
-    "lab",
+@mcp_tool("lab", approval="enabled", approval_reason="Governed bounded read or control without a new sensitive effect",
+
     name="lab_campaign_get",
     description="Read a campaign and its paginated judgments.",
     effect_policy="read",
@@ -566,8 +566,8 @@ async def lab_campaign_get(
     return await service.campaign_detail(mechanism, campaign_id, pagination)
 
 
-@mcp_tool(
-    "lab",
+@mcp_tool("lab", approval="enabled", approval_reason="Governed bounded read or control without a new sensitive effect",
+
     name="lab_run_compare",
     description="Compare frozen experiments and per-case results; explicitly report incomparable corpus/context/judge changes.",
     effect_policy="read",
@@ -586,8 +586,8 @@ async def lab_run_compare(
     return await service.compare(mechanism, left_run_id, right_run_id, axis, pagination, focus, dimension)
 
 
-@mcp_tool(
-    "lab",
+@mcp_tool("lab", approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval",
+
     name="lab_dataset_generate",
     description="Generate a synthetic draft dataset asynchronously. Returns an operation_id; inspect lab_operation_get.",
     effect_policy="idempotent",
@@ -604,8 +604,8 @@ async def lab_dataset_generate(
     )
 
 
-@mcp_tool(
-    "lab",
+@mcp_tool("lab", approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval",
+
     name="lab_expected_generate",
     description="Propose a case reference asynchronously; it is not automatically accepted as truth.",
     effect_policy="idempotent",
@@ -628,8 +628,8 @@ async def lab_expected_generate(
     )
 
 
-@mcp_tool(
-    "lab",
+@mcp_tool("lab", approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval",
+
     name="lab_run_analyze",
     description="Analyze a terminal benchmark asynchronously; analysis cost is separate from its run budget.",
     effect_policy="idempotent",
@@ -651,8 +651,8 @@ async def lab_run_analyze(
     )
 
 
-@mcp_tool(
-    "lab",
+@mcp_tool("lab", approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval",
+
     name="lab_task_analyze",
     description="Analyze a registered Task asynchronously using real evidence. Requires galaris_admin.",
     effect_policy="idempotent",
@@ -670,8 +670,8 @@ async def lab_task_analyze(
     )
 
 
-@mcp_tool(
-    "lab",
+@mcp_tool("lab", approval="enabled", approval_reason="Governed bounded read or control without a new sensitive effect",
+
     name="lab_operation_get",
     description="Poll an asynchronous Lab Process and read its complete durable result by character pages.",
     effect_policy="read",
@@ -683,8 +683,8 @@ async def lab_operation_get(
     return await operations.get(ctx, operation_id, offset, length)
 
 
-@mcp_tool(
-    "lab",
+@mcp_tool("lab", approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval",
+
     name="lab_operation_cancel",
     description="Cancel a queued operation or request cancellation of in-flight work; never assume the provider stopped.",
     effect_policy="idempotent",
@@ -694,8 +694,8 @@ async def lab_operation_cancel(ctx: McpToolContext, operation_id: UUID) -> dict[
     return await operations.cancel(ctx, operation_id)
 
 
-@mcp_tool(
-    "lab",
+@mcp_tool("lab", approval="enabled", approval_reason="Governed bounded read or control without a new sensitive effect",
+
     name="lab_task_candidates",
     description="Discover registered Lab Tasks or available Task evidence, with pagination.",
     effect_policy="read",
@@ -707,8 +707,8 @@ async def lab_task_candidates(
     return await operations.tasks(pagination, search, registered=False)
 
 
-@mcp_tool(
-    "lab",
+@mcp_tool("lab", approval="enabled", approval_reason="Governed bounded read or control without a new sensitive effect",
+
     name="lab_task_list",
     description="Discover registered Lab Tasks or available Task evidence, with pagination.",
     effect_policy="read",
@@ -720,8 +720,8 @@ async def lab_task_list(
     return await operations.tasks(pagination, search, registered=True)
 
 
-@mcp_tool(
-    "lab",
+@mcp_tool("lab", approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval",
+
     name="lab_task_add",
     description="Register an existing Task for diagnosis; does not execute the Task.",
     effect_policy="idempotent",
@@ -732,8 +732,8 @@ async def lab_task_add(ctx: McpToolContext, task_id: UUID, invocation_key: str) 
     return {**result, "task_uri": f"galaris://task/{task_id}"}
 
 
-@mcp_tool(
-    "lab",
+@mcp_tool("lab", approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval",
+
     name="lab_task_remove",
     description="Remove the Lab reference; retain the canonical Task and its diagnosis history.",
     effect_policy="idempotent",
@@ -746,8 +746,8 @@ async def lab_task_remove(
     return {"removed": removed, "task_uri": f"galaris://task/{task_id}"}
 
 
-@mcp_tool(
-    "lab",
+@mcp_tool("lab", approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval",
+
     name="lab_task_diagnoses",
     description="List immutable diagnoses for a real Task.",
     effect_policy="read",
@@ -759,8 +759,8 @@ async def lab_task_diagnoses(
     return await operations.diagnoses(task_id, pagination)
 
 
-@mcp_tool(
-    "lab",
+@mcp_tool("lab", approval="enabled", approval_reason="Governed bounded read or control without a new sensitive effect",
+
     name="lab_review_list",
     description="List attributed agent assessments alongside distinctly labeled human reviews.",
     effect_policy="read",
@@ -772,8 +772,8 @@ async def lab_review_list(
     return await operations.reviews(mechanism, campaign_id, pagination)
 
 
-@mcp_tool(
-    "lab",
+@mcp_tool("lab", approval="enabled", approval_reason="Governed bounded read or control without a new sensitive effect",
+
     name="lab_review_get",
     description="Read a candidate and frozen rubric for independent agent assessment; automatic judgment stays hidden until this agent submits.",
     effect_policy="read",
@@ -785,8 +785,8 @@ async def lab_review_get(
     return await operations.review_input(ctx, mechanism, campaign_id, result_id)
 
 
-@mcp_tool(
-    "lab",
+@mcp_tool("lab", approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval",
+
     name="lab_review_submit",
     description="Submit an immutable attributed agent assessment. Never writes a human review or changes the automatic score.",
     effect_policy="idempotent",
@@ -801,8 +801,8 @@ async def lab_review_submit(
     return await service.submit_review(ctx, mechanism, data)
 
 
-@mcp_tool(
-    "lab",
+@mcp_tool("lab", approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval",
+
     name="lab_content_read",
     description="Read oversized Lab JSON by character pages. Check the fingerprint stays identical across pages.",
     effect_policy="read",

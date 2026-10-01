@@ -212,15 +212,28 @@ async def agent_mcp_endpoint(agent_code: str, request: Request) -> Response:
                 detail=await tr("mcp_api.errors.invalid_token"),
                 headers={"WWW-Authenticate": "Bearer"},
             )
-        # The gateway is stateless. Recover the agent's active task so task-aware
-        # tools receive a task ID. This is unambiguous because the scheduler
-        # serializes execution for each agent to at most one active task.
-        from app.agent import get_current_task
-
+        runtime = agent.agent_driver
+        task_id = None
+        resources = {"mcp_principal": str(matched.id)}
+        credential = request.headers.get("X-Galaris-Run-Context")
+        if matched.hidden and not credential:
+            raise HTTPException(401, "A managed runtime MCP token requires its server-issued run context")
+        if credential:
+            from app.tools.facade import resolve_runtime_run_grant
+            from uuid import UUID
+            try:
+                from app.tools.facade import RuntimePrincipal
+                grant = await resolve_runtime_run_grant(credential, principal=RuntimePrincipal(matched.id, matched.agent_id, matched.enabled))
+            except PermissionError as exc:
+                raise HTTPException(403, "Invalid runtime run context") from exc
+            runtime = grant.runtime
+            task_id = UUID(grant.context_key.removeprefix("task:")) if grant.context_key.startswith("task:") else None
+            resources.update(runtime_grant_id=str(grant.id), authorization_context=grant.context_key)
         mcp_server = await build_agent_mcp(
             agent.id,
-            runtime=agent.agent_driver,
-            task_id=get_current_task(agent.id),
+            runtime=runtime,
+            task_id=task_id,
+            resources=resources,
         )
 
     logger.info("MCP HTTP request for agent={} ({})", agent.code, request.method)

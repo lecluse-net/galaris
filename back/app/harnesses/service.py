@@ -537,6 +537,7 @@ async def resolve_target(agent: Agent) -> HarnessTarget | None:
                 for key, value in cast(Mapping[str, Any], assignment.provider_metadata or {}).items()
                 if value is None or isinstance(value, (str, int, float, bool))
             },
+            "authorization_enabled": bool(harness.enabled),
             "streams_ai_messages": harness.provider_code != "openai_messages"
             or (harness.settings or {}).get("streams_ai_messages") is not False,
         },
@@ -548,7 +549,7 @@ async def execution_credentials(harness_id: UUID) -> HarnessCredentials:
     if assignment is None or assignment.lifecycle_status != "ready":
         raise RuntimeError("The frozen Harness target is not ready.")
     harness = await _harness_for_assignment(assignment)
-    if harness is None:
+    if harness is None or not harness.enabled:
         raise RuntimeError("The frozen Harness configuration no longer exists.")
     base_url = assignment.runtime_base_url or harness.base_url
     model = assignment.runtime_model or harness.model

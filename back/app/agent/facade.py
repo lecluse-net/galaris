@@ -1002,6 +1002,9 @@ async def _record_run_outcome(
 ) -> None:
     """Record terminal model/runtime failures and close recovered tool incidents."""
 
+    if result.disposition == "waiting_for_authorization":
+        return
+
     from core.failure_journal import (
         FailureEvent,
         mark_failure_run_recovered,
@@ -1194,7 +1197,8 @@ async def _stream_driver(
                 await _publish_run_event(
                     request,
                     sequence=sequence,
-                    kind="run.completed" if event.result.success else "run.failed",
+                    kind="run.waiting_for_authorization" if event.result.disposition == "waiting_for_authorization"
+                         else "run.completed" if event.result.success else "run.failed",
                     result=event.result,
                     payload={"execution_stopped": event.result.metadata.get("execution_stopped", True) is True},
                 )
@@ -1311,6 +1315,9 @@ async def stream_conversation_turn_events(
     conversation_round_id: UUID | None = None,
     topic_id: UUID | None = None,
     contact_memory_item_id: UUID | None = None,
+    voice_session_id: UUID | None = None,
+    resume_checkpoint: AgentRunCheckpoint | None = None,
+    control: AgentRunControl | None = None,
 ) -> AsyncIterator[AgentEvent]:
     """Execute one voice turn through the internal conversation runtime.
 
@@ -1359,6 +1366,7 @@ async def stream_conversation_turn_events(
         "voice_call": True,
         "conversation_only": True,
         "conversation_origin": "voice",
+        "voice_session_id": str(voice_session_id) if voice_session_id else None,
         "transport_kind": transport_kind,
         "linked_work": tuple(dict(item) for item in linked_work),
         "message_id": str(current_message_id) if current_message_id else "",
@@ -1420,6 +1428,8 @@ async def stream_conversation_turn_events(
         message_group_id=conversation_id,
         task_data=task_data,
         approval_action="ask",
+        resume_checkpoint=resume_checkpoint,
+        control=control or AgentRunControl(),
         system_instructions=contributed_context.system_instructions,
         shared_context=contributed_context.shared_context,
         memory_context=contributed_context.memory_context,

@@ -357,7 +357,7 @@ const agentOptions = computed(() => [
 ])
 const statusOptions = computed(() => [
   { label: t('conversation.history.allStatuses'), value: null },
-  ...(['IDLE', 'READY'] as ConversationStatus[]).map(status => ({
+  ...(['IDLE', 'READY', 'RUNNING', 'WAITING_APPROVAL'] as ConversationStatus[]).map(status => ({
     label: t(`conversation.history.statuses.${status}`),
     value: status,
   })),

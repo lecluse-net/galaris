@@ -313,9 +313,25 @@ async def test_native_generation_failure_never_writes_destination(monkeypatch):
     ImageDimensionsError("Image model has no usable configuration; check the selected model"),
     RuntimeError("Provider error with private credential=secret-value"),
 ])
-async def test_image_failure_is_an_mcp_error_without_artifact_effects(monkeypatch, runtime, failure):
+async def test_image_failure_is_an_mcp_error_without_artifact_effects(db, monkeypatch, runtime, failure):
     from fastmcp import Client, FastMCP
     from app.tools import mcp_loader, resource_effects
+    from app.agent.models import Agent, Title
+    from app.connection.models import Connection, ConnectionFunctionState
+    from app.tools.models import Tool
+    from sqlalchemy import select
+    title = Title(label="Synthetic image approver", gender="X")
+    db.add(title)
+    await db.flush()
+    agent = Agent(code=f"image-failure-{uuid4().hex}", first_name="Synthetic", last_name="Image", title_id=title.id)
+    db.add(agent)
+    await db.flush()
+    image_tool = await db.scalar(select(Tool).where(Tool.code == "image"))
+    connection = Connection(agent_id=agent.id, tool_id=image_tool.id, active=True)
+    db.add(connection)
+    await db.flush()
+    db.add(ConnectionFunctionState(connection_id=connection.id, function_name="image_generate", state="enabled", enabled=True))
+    await db.flush()
 
     # This scenario tests media failure semantics. Harness policy persistence has
     # its own database tests; permit execution at that external domain boundary.
@@ -332,7 +348,7 @@ async def test_image_failure_is_an_mcp_error_without_artifact_effects(monkeypatc
         tool_code="image", name="image_generate", description="Generate an image.",
         required_capabilities=frozenset(), function=image_mcp.generate_image,
     )
-    wrapper = mcp_loader._wrap_tool(definition, McpToolContext(agent_id=17, runtime=runtime))
+    wrapper = mcp_loader._wrap_tool(definition, McpToolContext(agent_id=agent.id, runtime=runtime))
     monkeypatch.setattr(mcp_loader, "list_enabled_native_mcp_definitions", AsyncMock(return_value=(definition,)))
     server = FastMCP("image-failure-regression")
     server.tool(name="image_generate")(wrapper)

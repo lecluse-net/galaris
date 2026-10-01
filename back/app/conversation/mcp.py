@@ -92,8 +92,8 @@ def _display_document_id(value: str) -> UUID:
     return UUID(reference)
 
 
-@mcp_tool(
-    "conversation",
+@mcp_tool("conversation", approval="enabled", approval_reason="Governed bounded read or control without a new sensitive effect",
+
     conversation_policy="short",
     task_enabled=False,
     available_when=_can_show_document,
@@ -223,8 +223,8 @@ async def _validate_dispatch_mode(
         raise ValueError("plan is unavailable for the selected Task harness")
 
 
-@mcp_tool(
-    "galaris_admin",
+@mcp_tool("galaris_admin", approval='ask', approval_reason='Sensitive trace, content disclosure or remote diagnostic',
+
     name="conversation_round_get",
     description=(
         "Return the complete persisted dataset for one text conversation round by exact UUID: "
@@ -515,8 +515,8 @@ async def _create_conversation_task(
     )
 
 
-@mcp_tool(
-    "conversation",
+@mcp_tool("conversation", approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval",
+
     name="conversation_task_submit",
     conversation_policy="deferred",
     task_enabled=False,
@@ -778,8 +778,8 @@ async def admit_background_task(
     )
 
 
-@mcp_tool(
-    "conversation",
+@mcp_tool("conversation", approval='enabled', approval_reason='Governed bounded read or polling',
+
     name="conversation_task_list",
     conversation_policy="short",
     task_enabled=False,
@@ -819,8 +819,8 @@ async def conversation_task_list(
     return items
 
 
-@mcp_tool(
-    "conversation",
+@mcp_tool("conversation", approval='enabled', approval_reason='Governed bounded read or polling',
+
     name="conversation_task_status",
     conversation_policy="short",
     task_enabled=False,
@@ -836,8 +836,8 @@ async def conversation_task_status(ctx: McpToolContext, *, task_id: str) -> dict
     return result
 
 
-@mcp_tool(
-    "conversation",
+@mcp_tool("conversation", approval="enabled", approval_reason="Governed bounded read or control without a new sensitive effect",
+
     name="conversation_choice_resolve",
     conversation_policy="deferred",
     task_enabled=False,
@@ -922,8 +922,8 @@ async def _mutate_task(ctx: McpToolContext, task_id: str, command: str) -> dict[
     return await _task_dict(changed)
 
 
-@mcp_tool(
-    "conversation",
+@mcp_tool("conversation", approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval",
+
     name="conversation_task_pause",
     conversation_policy="deferred",
     task_enabled=False,
@@ -933,8 +933,8 @@ async def conversation_task_pause(ctx: McpToolContext, *, task_id: str) -> dict[
     return await _mutate_task(ctx, task_id, "pause")
 
 
-@mcp_tool(
-    "conversation",
+@mcp_tool("conversation", approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval",
+
     name="conversation_task_resume",
     conversation_policy="deferred",
     task_enabled=False,
@@ -944,8 +944,8 @@ async def conversation_task_resume(ctx: McpToolContext, *, task_id: str) -> dict
     return await _mutate_task(ctx, task_id, "resume")
 
 
-@mcp_tool(
-    "conversation",
+@mcp_tool("conversation", approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval",
+
     name="conversation_task_retry",
     conversation_policy="deferred",
     task_enabled=False,
@@ -964,8 +964,8 @@ async def conversation_task_retry(ctx: McpToolContext, *, task_id: str) -> dict[
     return await _mutate_task(ctx, task_id, "retry")
 
 
-@mcp_tool(
-    "conversation",
+@mcp_tool("conversation", approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval",
+
     name="conversation_task_stop",
     conversation_policy="deferred",
     task_enabled=False,
@@ -975,8 +975,8 @@ async def conversation_task_stop(ctx: McpToolContext, *, task_id: str) -> dict[s
     return await _mutate_task(ctx, task_id, "stop")
 
 
-@mcp_tool(
-    "conversation",
+@mcp_tool("conversation", approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval",
+
     name="conversation_process_start",
     conversation_policy="deferred",
     task_enabled=False,

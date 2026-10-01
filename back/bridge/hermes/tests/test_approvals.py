@@ -26,6 +26,7 @@ def _interaction() -> PendingChoice:
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("option", ["once", "session", "always", "deny"])
 @pytest.mark.parametrize(
     "error",
     [
@@ -33,9 +34,10 @@ def _interaction() -> PendingChoice:
         client.HermesApprovalNotPending("run-gone"),
     ],
 )
-async def test_stale_approval_is_consumed_without_replay(
+async def test_historical_session_approval_is_consumed_without_granting_authority(
     monkeypatch: pytest.MonkeyPatch,
     error: RuntimeError,
+    option: str,
 ) -> None:
     import app.agent as agent_domain
     from bridge.hermes import config_service
@@ -58,7 +60,7 @@ async def test_stale_approval_is_consumed_without_replay(
         AsyncMock(return_value=snapshot),
     )
     monkeypatch.setattr(
-        approvals,
+        client,
         "HermesTarget",
         SimpleNamespace(
             from_config=lambda config, *, agent_code: (
@@ -69,12 +71,12 @@ async def test_stale_approval_is_consumed_without_replay(
         ),
     )
     submit = AsyncMock(side_effect=error)
-    monkeypatch.setattr(approvals.client, "submit_run_approval", submit)
+    monkeypatch.setattr(client, "submit_run_approval", submit)
     interaction = _interaction()
     resolution = ChoiceResolution(
         interaction_id=interaction.id,
         kind=interaction.kind,
-        option_id="session",
+        option_id=option,
         metadata={},
     )
 
@@ -83,4 +85,4 @@ async def test_stale_approval_is_consumed_without_replay(
         resolution,
     )
 
-    submit.assert_awaited_once_with(target, "run-gone", "session")
+    submit.assert_not_awaited()

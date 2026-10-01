@@ -22,6 +22,20 @@ that inventory is not callable in this run. Conversation and Task inventories ca
 Unless stated otherwise, each tool returns a **text value** (`str`). Failures may be MCP errors
 or readable error text; inspect both the error flag and the returned value before continuing.
 
+Function permissions resolve from the connection override, then the global Tool override,
+then the native function default (or enabled for an external MCP capability). Enabled calls
+can run, blocked calls cannot, and on-request calls wait for the responsible human to approve
+the exact prepared action. Sensitive native functions default to on-request. Required system
+services remain connected, but their individual functions are configurable. Human-only
+administration and resource ACLs still apply.
+
+An authorization control response suspends the operation; it is neither a successful effect
+nor a tool incident. Resume the same opaque continuation with unchanged arguments. Do not
+create a new call to evade a refusal or repeat an executing/unknown effect. Managed runtimes
+retain the pending callback. An agent's YOLO setting can automatically approve new requests,
+with an audit entry; it never overrides blocked functions, ACLs, existing refusals or pending
+human questions. Only an authenticated human can change YOLO, after acknowledging its risk.
+
 ## AI Labs
 
 The optional `lab` connection exposes `lab_*` tools for all eleven AI Labs and Task diagnosis.
@@ -60,6 +74,31 @@ Before giving Galaris menu paths or click-by-click instructions, read the curren
 guide or menu map through these authorized documentation tools. Do not substitute remembered
 layouts or generic administration conventions. If documentation is unavailable or access is
 denied, say that you cannot verify the path; do not present a guessed location as an instruction.
+
+## Delegated Agent administration
+
+The optional AgentAdmin connection requires a human manager and current delegated privileges.
+Sensitive actions use the common authorization policy; discoverability never grants execution.
+`agent_options`, `agent_create`, `agent_update` and `agent_delete` manage profiles within the
+manager's scope. Creation uses the internal Harness; code and Harness changes use their
+dedicated contracts. `agent_avatar_set`, `agent_avatar_delete` and `agent_avatar_generate`
+manage portraits; generation returns a governed Process to follow.
+
+Use `agent_team_list` and `agent_team_set` for membership. Titles use `agent_title_list`,
+`agent_title_create`, `agent_title_update` and `agent_title_delete`; groups use `agent_group_list`,
+`agent_group_create`, `agent_group_update` and `agent_group_delete`.
+
+Inspect `agent_harness_get`, `agent_harness_status`, `agent_harness_logs` and
+`agent_harness_blockers` before `agent_harness_set`, `agent_harness_reset` or
+`agent_harness_action`. Re-read expected versions and blockers before changing a target.
+
+`agent_tool_list`, `agent_connection_list` and `agent_connection_get` expose bounded,
+credential-free configuration. `agent_connection_create`, `agent_connection_update` and
+`agent_connection_delete` manage optional connections. `agent_connection_params_set` and
+`agent_connection_param_delete` alter parameters under the existing secret-reference rules.
+`agent_connection_function_list` and `agent_connection_function_set` inspect and configure
+optional function policy. AgentAdmin cannot change mandatory or administrative grants,
+approve as a human, or enable YOLO.
 
 ## Delegated Tool administration
 
@@ -108,7 +147,8 @@ Inspect `tool_admin_function_list`/`tool_admin_function_get` and
 `tool_admin_connection_function_list(runtime="internal", conversation_only=false, ...)`.
 `effective` is permission; `available` additionally includes activation/runtime/context.
 `tool_admin_function_set` and `tool_admin_connection_function_set` accept `default`,
-`enabled` or `disabled`. Resolution is local override, then global, then enabled: a local
+`enabled`, `disabled` or `ask`. Resolution is local override, then global, then the software
+default. Sensitive native functions default to `ask`; third-party functions default to `enabled`. A local
 enable can override a global denial. `default` removes an override. Global writes report
 local overrides that remain effective.
 

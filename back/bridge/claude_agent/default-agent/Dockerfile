@@ -16,6 +16,7 @@ RUN pip install --upgrade --no-cache-dir -r requirements.txt \
 
 COPY server.py.txt ./server.py
 COPY stream_trace.py ./stream_trace.py
+COPY runtime_support.py runtime_web.py ./
 RUN mkdir -p /data/claude /data/skills /data/workspace \
     && chown -R agent:agent /data /opt/claude-agent
 

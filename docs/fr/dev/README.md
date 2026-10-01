@@ -358,7 +358,8 @@ le HTML éventuel du message est échappé comme texte. Pour la voix, la demande
 Task si le message demande plusieurs résultats indépendants. Les
 valeurs envoyées à `conversation_task_submit` restent des indices et ne peuvent effacer une
 contrainte source. Le backend conserve seul la connexion, le salon, l'interlocuteur, le Topic, le
-contact et les choix `@exec`, `@plan`, `@standard`, `@high`, `@effort` ou `@approve`. Dans le Chat
+contact et les choix `@exec`, `@plan`, `@standard`, `@high` ou `@effort`. `@approve` ne donne
+aucun accord ; l’autonomie automatique se configure par le mode YOLO humain. Dans le Chat
 natif, `conversation_task_submit` n'expose aucun choix d'effort : le dispatcher de Task décide
 entre `standard` et `high`. Les directives explicites contournent ce choix conversationnel et
 restent persistées comme contraintes de création, notamment `@high`. `@plan` implique la création

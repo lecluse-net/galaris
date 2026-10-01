@@ -23,14 +23,21 @@ for runtime in codex claude_agent hermes deepseek_harness; do
       cp back/bridge/claude_agent/default-agent/server.py.txt "$context/"
     fi
     cp back/bridge/"$runtime"/stream_trace.py "$context/"
+    cp back/app/harnesses/runtime_support.py back/app/harnesses/runtime_web.py "$context/"
+    if [[ $runtime == codex ]]; then
+      cp back/bridge/codex/default-agent/authorization.py "$context/"
+    fi
   elif [[ $runtime == deepseek_harness ]]; then
     cp back/bridge/deepseek_harness/default-agent/cordis.yml "$context/"
     cp back/bridge/deepseek_harness/runtime_adapter.py "$context/"
+    cp back/bridge/deepseek_harness/default-agent/authorization.mjs back/app/harnesses/runtime_support.py "$context/"
     revision=$(sed -n 's/^_DSH_REF = "\([a-f0-9]*\)"$/\1/p' back/bridge/deepseek_harness/harness_provider.py)
     [[ $revision =~ ^[a-f0-9]{40}$ ]]
     build_args+=(--build-arg "DSH_REF=$revision")
   elif [[ $runtime == hermes ]]; then
     cp back/bridge/hermes/default-agent/patch_run_stop.py.txt "$context/"
+    cp back/bridge/hermes/default-agent/galaris_authorization.py.txt "$context/"
+    cp back/app/harnesses/runtime_support.py "$context/"
   fi
   context_hash=$(tar --sort=name --mtime='UTC 1970-01-01' --owner=0 --group=0 --numeric-owner -cf - -C "$context" . | sha256sum | cut -d ' ' -f1)
   image="galaris-qualification/$runtime:${context_hash:0:16}"

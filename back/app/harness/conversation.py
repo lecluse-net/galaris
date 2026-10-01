@@ -44,6 +44,7 @@ from app.conversation import (
 from app.llm import llm_service
 from app.messenger import build_conversation_session
 from app.agent.contracts import TaskMessage as Message
+from app.agent.contracts import AgentRunControl, ResolvedModel
 from app.process import build_agent_process_advertisement
 from app.tools.agent_registry import build_agent_tool_advertisement
 from app.tools.mcp_loader import McpToolContext
@@ -55,6 +56,7 @@ from core.params import runtime_settings
 from .mcp_toolset import build_conversation_toolset
 from .conversation_interrupt import ConversationInterruption
 from .runtime import Agent, create_agent
+from .checkpoint import HarnessRunCheckpoint
 
 
 _PENDING_INTERACTION_PROMPT_LIMIT = 6
@@ -734,6 +736,13 @@ class HarnessConversationController:
                 ConversationInterruption(turn.should_interrupt)
                 if turn.should_interrupt is not None else None
             )
+            checkpoint = HarnessRunCheckpoint(AgentRunRequest(
+                run_id=turn.round_id, task_id=None, driver_code="internal", effort="standard", objective=turn.objective,
+                agent=AgentSnapshot(id=turn.agent_id, code=str(getattr(agent, "code", "")),
+                    first_name=str(getattr(agent, "first_name", "")), last_name=str(getattr(agent, "last_name", "")), driver_code="internal"),
+                model=ResolvedModel(id=llm.id, code=llm.code, model_name=llm.llm_name, label=llm.label, requested_effort="standard"),
+                resume_checkpoint=turn.resume_checkpoint, control=AgentRunControl(save_checkpoint=turn.save_checkpoint),
+            )) if turn.save_checkpoint is not None else None
             runtime = await create_agent(
                 llm=llm,
                 system_prompt=_system_prompt(
@@ -757,6 +766,7 @@ class HarnessConversationController:
                 real_time=True,
                 purpose=LLMCallPurpose.CONVERSATION_TEXT,
                 reasoning_effort=reasoning_effort,
+                checkpoint=checkpoint,
             )
             if interruption is not None:
                 interruption.cancel = runtime.request_cancel
@@ -911,6 +921,13 @@ class HarnessConversationController:
             execution_result.reconcile_terminal_text(text)
             execution_result.cost = traced_runtime.cost + dispatch_result.cost
             execution_result.success = not bool(failure or traced_runtime.error)
+            pending_authorizations = getattr(traced_runtime, "authorization_requests", [])
+            if pending_authorizations:
+                execution_result.success = False
+                execution_result.disposition = "waiting_for_authorization"
+                execution_result.schema_version = "galaris.execution-result/v2"
+                execution_result.authorization_requests = list(pending_authorizations)
+                return ConversationOutcome(text="", metadata={"waiting_for_authorization": True}, execution_result=execution_result)
             if failure:
                 execution_result.metadata["error"] = failure
                 raise ConversationExecutionError(
@@ -933,6 +950,8 @@ def _voice_turn_messaging_context(request: AgentRunRequest) -> dict[str, object]
         if str(key).strip() and value not in (None, "")
     }
     messaging_context["platform"] = request.message_platform or "voice"
+    if request.task_data.get("voice_session_id"):
+        messaging_context["voice_session_id"] = request.task_data["voice_session_id"]
     messaging_context["room_id"] = request.message_group_id or ""
     room_locator = str(
         request.task_data.get("room_locator")
@@ -984,6 +1003,8 @@ async def stream_voice_conversation(
             if isinstance(item, Mapping)
         ),
         origin="voice",
+        resume_checkpoint=request.resume_checkpoint,
+        save_checkpoint=request.save_checkpoint,
     )
     llm = await llm_service.get_llm(request.model.id)
     if llm is None:
@@ -1042,6 +1063,7 @@ async def stream_voice_conversation(
         real_time=True,
         purpose=LLMCallPurpose.CONVERSATION_AUDIO,
         reasoning_effort=request.model.reasoning_effort,
+        checkpoint=HarnessRunCheckpoint(request),
     )
     chunks: list[str] = []
     started_at = time.monotonic()
@@ -1101,6 +1123,12 @@ async def stream_voice_conversation(
     result.result = strip_leading_message_metadata("".join(chunks)).strip()
     if failure:
         result.metadata["error"] = failure
+    pending_authorizations = getattr(traced_runtime, "authorization_requests", [])
+    if pending_authorizations:
+        result.success = False
+        result.disposition = "waiting_for_authorization"
+        result.schema_version = "galaris.execution-result/v2"
+        result.authorization_requests = list(pending_authorizations)
     yield AgentEvent.from_result(result)
 
 

@@ -4,16 +4,103 @@ from uuid import uuid4
 from datetime import datetime, timedelta, timezone
 
 import pytest
-from sqlalchemy import select
+from sqlalchemy import event, select
+
+from core.database import get_db_session
 
 from app.agent.contracts import (
     AgentRunEventV1,
     AgentRunIdentityV1,
     ExecutionResult,
     StaleAgentRunError,
+    AgentContextCapsule,
+    WorkingResource,
 )
 from app.task.agent_adapter import SqlAlchemyAgentTaskAdapter
 from app.task.models import Task, TaskAttempt, TaskAttemptStatus, TaskStatus
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("operation", ["checkpoint", "progress", "event", "activate", "resource", "capsule"])
+async def test_run_writes_do_not_wait_for_uncommitted_llm_trace(
+    committed_database, operation,
+) -> None:
+    """A trace's foreign keys must not block the run waiting for its checkpoint."""
+    from app.llm.models import LLMCall
+
+    engine = committed_database.kw["bind"].sync_engine
+
+    def bound_lock_wait(connection):
+        connection.exec_driver_sql("SET LOCAL lock_timeout = '300ms'")
+
+    event.listen(engine, "begin", bound_lock_wait)
+    try:
+        token, run_id = uuid4(), uuid4()
+        async with get_db_session() as db:
+            task = Task(label="Concurrent trace", objective="<p>Continue safely</p>",
+                status=TaskStatus.EXEC, lease_token=token,
+                lease_expires_at=datetime.now(timezone.utc) + timedelta(minutes=5),
+                data={"existing": "keep"})
+            db.add(task)
+            await db.flush()
+            attempt = TaskAttempt(task_id=task.id, attempt_number=1, phase="DISPATCH",
+                status="CLAIMED", worker_id="test-worker", lease_token=token, data={})
+            db.add(attempt)
+            await db.flush()
+            task_id, attempt_id = task.id, attempt.id
+
+        adapter = SqlAlchemyAgentTaskAdapter()
+        async with get_db_session() as trace_db:
+            call = LLMCall(task_id=task_id, task_attempt_id=attempt_id)
+            trace_db.add(call)
+            await trace_db.flush()
+            # Hold the actual FK locks until the run write returns, as happens when
+            # an inference or tool is waiting for durable progress before committing.
+            async with get_db_session() as writer_db:
+                current = await writer_db.get(Task, task_id)
+                if operation in {"checkpoint", "progress"}:
+                    await adapter.persist_agent_run_state(task_id,
+                        expected_objective="<p>Continue safely</p>",
+                        expected_attempt_id=attempt_id,
+                        data_patch={"_agent_run_checkpoint": {"status": "running"}},
+                        execution_result=ExecutionResult(prompt="run", result="partial")
+                        if operation == "progress" else None)
+                elif operation == "event":
+                    await adapter.append_agent_run_event(current, AgentRunEventV1(
+                        identity=AgentRunIdentityV1(task_id=task_id,
+                            attempt_id=attempt_id, run_id=run_id),
+                        sequence=1, kind="run.started"))
+                elif operation == "activate":
+                    assert await adapter.activate_agent_run(current,
+                        {"request_run_id": str(run_id), "driver_code": "internal"}) == attempt_id
+                elif operation == "resource":
+                    await adapter.upsert_working_resource(task_id, WorkingResource(
+                        resource_type="artifact", role="source",
+                        reference="https://example.test/source"))
+                else:
+                    await adapter.freeze_context_capsule(current, AgentContextCapsule(
+                        contact_memory_item_id=uuid4(), rendered="Synthetic context"))
+            assert trace_db.in_transaction()
+
+        async with get_db_session() as db:
+            persisted = await db.get(Task, task_id)
+            recorded = await db.get(TaskAttempt, attempt_id)
+            assert await db.get(LLMCall, call.id) is not None
+            assert persisted.data["existing"] == "keep"
+            if operation in {"checkpoint", "progress"}:
+                assert recorded.data["agent_checkpoint"] == {"status": "running"}
+                if operation == "progress":
+                    assert persisted.get_execution_result().result == "partial"
+            elif operation == "event":
+                assert recorded.data["agent_events"][0]["kind"] == "run.started"
+            elif operation == "activate":
+                assert recorded.data["agent_run"]["request_run_id"] == str(run_id)
+            elif operation == "resource":
+                assert (await adapter.get_working_set(task_id)).active("source")
+            else:
+                assert (await adapter.get_context_capsule(persisted)).rendered == "Synthetic context"
+    finally:
+        event.remove(engine, "begin", bound_lock_wait)
 
 
 @pytest.mark.asyncio

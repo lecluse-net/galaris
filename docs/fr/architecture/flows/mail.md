@@ -69,7 +69,13 @@ l’état `submitting` au lieu de lancer un deuxième SMTP. Une coupure dont l�
 `uncertain` et n’est pas rejouée aveuglément ; le bridge tente seulement une réconciliation par
 `Message-ID` dans Envoyés.
 
-Lorsque le paramètre effectif `approval_required` est actif, la première réclamation passe en
+Les nouveaux appels MCP utilisent les modes Actif/Bloqué/Sur demande et le journal commun
+d’autorisation. Le MIME final et ses pièces jointes sont préparés avant la demande ; après accord,
+seuls ces octets persistés sont envoyés. Le responsable Mail reste prioritaire. S’il diffère du
+responsable de l’agent, YOLO n’approuve pas à sa place. Une seule demande visible suffit ;
+le journal SMTP continue de gérer les doublons et résultats incertains.
+
+Pour les demandes historiques créées avec `approval_required`, la première réclamation passe en
 `pending_approval` et retourne immédiatement ce reçu à l’agent sans contacter SMTP. Le
 `approver_user_id` effectif est figé sur la ligne : seul ce USER authentifié, disposant de l’accès
 aux connexions, peut approuver ou rejeter le message. Une approbation verrouille la ligne puis envoie
@@ -125,9 +131,10 @@ y sont exprimées en Mo puis converties en octets à la frontière du bridge. Un
 personnaliser sauf
 lorsqu'une valeur est imposée. Tous les paramètres `password`, globaux ou locaux, restent chiffrés
 au repos. Seuls TLS implicite et STARTTLS avec validation du certificat sont acceptés. Le formulaire
-permet de tester IMAP et SMTP après enregistrement. `approval_required` et `approver_user_id`
-suivent la même cascade globale/surcharge locale : la politique peut donc être commune au Tool ou
-personnalisée pour la connexion Mail d’un agent. Une politique active sans USER actif est refusée
+permet de tester IMAP et SMTP après enregistrement. `approver_user_id` suit la cascade
+globale/surcharge locale. Les modes des fonctions remplacent le réglage `approval_required` :
+DbAdmin convertit les anciens opt-ins en Sur demande sans réactiver les fonctions bloquées.
+Une politique active sans USER actif est refusée
 avant la création du mail. Le Tool n’est pas auto-connecté et reste absent du catalogue d’un agent
 tant qu’un administrateur n’a pas créé et activé sa connexion.
 

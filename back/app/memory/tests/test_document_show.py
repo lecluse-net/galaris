@@ -36,7 +36,11 @@ async def display_scope(db, agents, memory_storage, monkeypatch):
             conversation_connection = connection
     await db.flush()
     room = await create_internal_room(actor_user_id=agent.user_id, agent_id=agent.id)
-    turn = ConversationTurn(room_id=room.id, round_id=uuid4(), agent_id=agent.id,
+    from app.conversation.models import ConversationRound
+    round_ = ConversationRound(room_id=room.id, requester_user_id=agent.user_id, language="en", status="RUNNING")
+    db.add(round_)
+    await db.flush()
+    turn = ConversationTurn(room_id=room.id, round_id=round_.id, agent_id=agent.id,
                             language="en", objective="Show the document", messages=())
     document = await document_service.create_document(
         owner_agent_id=agent.id, title="Report", content="<p>Report body</p>", task_id=None,
@@ -56,12 +60,12 @@ async def server_for(agent, turn, *, conversation_only=True):
 @pytest.mark.asyncio
 @pytest.mark.parametrize("reference_kind", ["uuid", "uri", "url", "relative_url"])
 @pytest.mark.parametrize("legacy_function_denials", [False, True])
-async def test_show_document_uses_current_room_without_changing_content_or_sharing(
+async def test_show_document_honors_function_policy_without_changing_content_or_sharing(
     display_scope, db, reference_kind, legacy_function_denials,
 ):
     agent, _, turn, document, connection, emit = display_scope
     if legacy_function_denials:
-        # ADR 0105: historical function denials cannot disable a system service.
+        # System service connections stay mandatory; function denials apply normally.
         db.add_all([
             ConnectionFunctionState(
                 connection_id=connection.id, function_name="document_show", enabled=False,
@@ -79,8 +83,16 @@ async def test_show_document_uses_current_room_without_changing_content_or_shari
     advertisement = await build_agent_tool_advertisement(
         agent.id, runtime="internal", conversation_only=True, resources={"conversation_turn": turn},
     )
-    assert "document_show" in advertisement.tool_names
     before = (document.revision, document.visibility, document.lock_version)
+    if legacy_function_denials:
+        assert "document_show" not in advertisement.tool_names
+        async with Client(await server_for(agent, turn)) as client:
+            result = await client.call_tool("document_show", {"document": references[reference_kind]}, raise_on_error=False)
+        assert result.is_error
+        assert (document.revision, document.visibility, document.lock_version) == before
+        emit.assert_not_awaited()
+        return
+    assert "document_show" in advertisement.tool_names
     async with Client(await server_for(agent, turn)) as client:
         assert "document_show" in {tool.name for tool in await client.list_tools()}
         result = await client.call_tool("document_show", {"document": references[reference_kind]})

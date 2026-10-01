@@ -39,6 +39,13 @@ async def delegated(db):
     assert tool is not None
     grant = Connection(tool_id=tool.id, agent_id=agents[0].id, active=True)
     db.add(grant)
+    await db.flush()
+    # Exercise domain behavior under an explicit human function policy; the
+    # one-use MCP approval boundary has its own real persistence scenarios.
+    from app.tools.mcp_loader import load_mcp_tools
+    for definition in load_mcp_tools():
+        if definition.tool_code == "tool_admin":
+            await connection_service.set_connection_function_state(grant.id, definition.name, "enabled")
     await db.commit()
     return McpToolContext(agents[0].id, "internal"), agents[1].id, grant.id
 
@@ -518,6 +525,11 @@ async def test_candidate_credentials_stay_out_of_model_messages_and_checkpoints(
     ctx, _, _ = delegated
     url, calls = synthetic_mcp
     secret = "synthetic-private-model-candidate-token"
+    # This scenario verifies secret confinement after an explicit human policy grant.
+    # Deferred approval itself is exercised separately without permitting the effect.
+    grant = await db.scalar(select(Connection).join(Tool).where(Connection.agent_id == ctx.agent_id, Tool.code == "tool_admin"))
+    for function in ("tool_admin_mcp_test", "tool_admin_create"):
+        await connection_service.set_connection_function_state(grant.id, function, "enabled")
     reference = prepare_candidate(CandidateRequest(agent_id=ctx.agent_id, definition={
         "code": f"model_{uuid4().hex}", "label": "Synthetic scripted operator",
         "mcp_config": {"type": "sse" if url.endswith("/sse") else "http", "url": url, "auth": {"type": "bearer", "param": "token"}},
@@ -556,7 +568,10 @@ async def test_concurrent_mutations_only_apply_one_examined_version(committed_da
         db.add_all([agent, tool])
         await db.flush()
         admin = await db.scalar(select(Tool).where(Tool.code == "tool_admin"))
-        db.add(Connection(tool_id=admin.id, agent_id=agent.id, active=True))
+        grant = Connection(tool_id=admin.id, agent_id=agent.id, active=True)
+        db.add(grant)
+        await db.flush()
+        await connection_service.set_connection_function_state(grant.id, "tool_admin_update", "enabled")
         agent_id, tool_id = agent.id, tool.id
     ctx = McpToolContext(agent_id, "internal")
     async with get_db_session():

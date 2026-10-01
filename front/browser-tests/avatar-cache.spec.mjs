@@ -5,7 +5,7 @@ const harness = 'test-support/browser/AgentAvatarHarness.vue'
 
 test('management avatars reuse cached bytes across mounts while each consumer owns its image URL', async ({ page }) => {
   let reads = 0
-  await page.route('**/api/agents/7/avatar', route => { reads++; return route.fulfill({ contentType: 'image/png', body: png }) })
+  await page.route(/\/api\/agents\/7\/avatar(?:\?.*)?$/, route => { reads++; return route.fulfill({ contentType: 'image/png', body: png }) })
   await mount(page, harness)
   const images = page.locator('.management-avatars img')
   await expect(images).toHaveCount(2)
@@ -32,7 +32,7 @@ test('management avatars reuse cached bytes across mounts while each consumer ow
 
 test('successful avatar replacement invalidates both authorized endpoints and logout clears mounted images', async ({ page }) => {
   let management = 0, chat = 0
-  await page.route('**/api/agents/7/avatar', route => {
+  await page.route(/\/api\/agents\/7\/avatar(?:\?.*)?$/, route => {
     if (route.request().method() === 'POST') return route.fulfill({ status: 204 })
     management++
     return route.fulfill({ contentType: 'image/png', body: png })

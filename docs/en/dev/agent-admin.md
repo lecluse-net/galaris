@@ -54,7 +54,7 @@ persisted effects and available URIs. MCP errors include an `error` object with 
 a technical reference, without secrets.
 
 Parameters use existing encrypted storage; reads mask secrets and distinguish local, inherited
-and forced settings. Function permissions are local (`default`, `enabled`, `disabled`) and
+and forced settings. Function permissions are local (`default`, `enabled`, `disabled`, `ask`) and
 never change global rules. Each agent/Tool pair has one connection. Group deletion detaches
 legacy references and revokes associated access. Referenced titles cannot be deleted, including
 those still used by archived agents.

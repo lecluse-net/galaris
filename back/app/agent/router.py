@@ -19,11 +19,33 @@ from .schemas import (
 from . import title_service, agent_service, agent_group_service
 from core.user import user_service
 from .selection import AgentSelectionOption, AgentSelectionScope, selection_options
+from pydantic import BaseModel
+from core.user import require_web_session
 
 router = APIRouter()
 from .team_router import router as team_router
 router.include_router(team_router)
 crud_router = APIRouter(prefix="/agents", tags=["agents"])
+
+
+class AgentYoloUpdate(BaseModel):
+    enabled: bool
+    acknowledged: bool = False
+    expected_version: int
+
+
+@crud_router.put("/{id}/yolo", dependencies=[Depends(require_web_session)])
+@authorize(privileges=Privileges.AGENT_EDIT, assertion=AgentOwnerAssertion)
+async def update_agent_yolo(id: int, data: AgentYoloUpdate) -> dict[str, object]:
+    from .authorization import set_yolo
+    scope = await current_management_scope()
+    if not scope.allows(id):
+        raise HTTPException(404, "Agent not found")
+    try:
+        agent = await set_yolo(id, enabled=data.enabled, acknowledged=data.acknowledged, expected_version=data.expected_version)
+    except ValueError as exc:
+        raise HTTPException(422, str(exc)) from exc
+    return {"yolo": agent.yolo, "authorization_version": agent.authorization_version}
 
 
 async def _detail(key: str) -> str:

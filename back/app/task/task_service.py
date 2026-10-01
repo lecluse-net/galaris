@@ -52,7 +52,8 @@ PAUSE_AWAIT = "await"      # Waiting for a peer response.
 PAUSE_PLAN = "plan"        # Waiting for a plan child task.
 PAUSE_CLARIFY = "clarify"  # Waiting for a clarification response.
 PAUSE_CHILD = "child"      # Waiting for a delegated child in the call-stack model.
-_AUTO_PAUSE_REASONS = (PAUSE_AWAIT, PAUSE_PLAN, PAUSE_CLARIFY, PAUSE_CHILD)
+PAUSE_APPROVAL = "approval"  # Waiting for one-operation human authorization.
+_AUTO_PAUSE_REASONS = (PAUSE_AWAIT, PAUSE_PLAN, PAUSE_CLARIFY, PAUSE_CHILD, PAUSE_APPROVAL)
 
 # Marker on a child created through ``task_run``. Its creator waits with the ``child`` pause
 # reason and resumes when the child terminates.
@@ -759,26 +760,11 @@ async def force_terminate(
 
 
 async def is_auto_approved(task: Task) -> bool:
-    """Return whether the task or a same-agent ancestor enables ``auto_approve``.
+    """Historical Task flags never grant permission to dispatch an action.
 
-    Auto-approval covers only the subtree owned by the same agent. Walking ancestors makes a
-    root change apply immediately to descendants, but traversal stops at every agent boundary.
-    Work delegated to another agent remains subject to approval even below an auto-approved
-    objective. Human consent for one agent never grants transitive privileges to another.
+    Only the common authorization service may consume a current human or YOLO grant.
+    Keep this compatibility function while old callers and snapshots are migrated.
     """
-    current: Task = task
-    seen: set[UUID] = set()
-    while current.id not in seen:  # Cycle guard; ``current`` is always a Task here.
-        if current.auto_approve:
-            return True
-        seen.add(current.id)
-        if current.parent_id is None:
-            return False
-        parent = await get_by_id(current.parent_id)
-        # An auto-approval owned by another agent does not cross this boundary.
-        if parent is None or parent.agent_id != current.agent_id:
-            return False
-        current = parent
     return False
 
 
@@ -786,16 +772,7 @@ ApprovalAction = Literal["auto", "deny_agent", "ask"]
 
 
 async def approval_action(task: Task) -> ApprovalAction:
-    """Choose how to handle an executor approval request for ``task``.
-
-    ``auto`` approves through an inherited policy. ``deny_agent`` rejects a request whose
-    conversation peer is another AI because only humans can approve. ``ask`` opens a question
-    for a human peer. Explicit auto-approval takes precedence over the AI-peer rejection.
-    """
-    if await is_auto_approved(task):
-        return "auto"
-    if task.ai:
-        return "deny_agent"
+    """Legacy wire hint; actual authority belongs to the common action service."""
     return "ask"
 
 

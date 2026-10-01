@@ -47,8 +47,8 @@ async def snapshot(tool_id: int, *, connection_id: int | None = None) -> dict[st
     return {
         "connections": [identity(record) for record in records],
         "params": [(row.connection_id, row.param_name, row.param_value) for row in params],
-        "local_states": [(row.connection_id, row.function_name, row.enabled) for row in local],
-        "global_states": sorted((row.function_name, row.enabled) for row in global_states),
+        "local_states": [(row.connection_id, row.capability_kind, row.function_name, service.stored_function_state(row)) for row in local],
+        "global_states": sorted((row.capability_kind, row.function_name, service.stored_function_state(row)) for row in global_states),
     }
 
 

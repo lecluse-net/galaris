@@ -30,7 +30,6 @@ from . import client
 from . import driver as hermes_driver
 from .client import HermesTarget
 from . import session_binding
-from .approvals import HERMES_APPROVAL_INTERACTION
 from .media import current_content
 from .prompt import build_context_instructions, hermes_context_values
 
@@ -41,6 +40,7 @@ _TERMINAL_RUN_STATUSES = {"completed", "failed", "cancelled"}
 _NON_EFFECT_TOOLS = {"approval", "final_result", "reply", "thinking"}
 _ACTIVE_RUNS: dict[UUID, tuple[HermesTarget, str]] = {}
 _ACTIVE_RUNS_LOCK = asyncio.Lock()
+_MANAGED_RUNS: set[UUID] = set()
 
 
 async def _register_active_run(
@@ -51,16 +51,22 @@ async def _register_active_run(
     async with _ACTIVE_RUNS_LOCK:
         _ACTIVE_RUNS[request.run_id] = (target, runtime_run_id)
         _ACTIVE_RUNS[request.id] = (target, runtime_run_id)
+        if request.target is not None and request.target.target_ref.startswith("harness:"):
+            _MANAGED_RUNS.update((request.run_id, request.id))
 
 
 async def _unregister_active_run(request: AgentRunRequest) -> None:
     async with _ACTIVE_RUNS_LOCK:
         for identifier in {request.run_id, request.id}:
             _ACTIVE_RUNS.pop(identifier, None)
+            _MANAGED_RUNS.discard(identifier)
 
 
 async def cancel(run_id: UUID) -> None:
     """Stop the Hermes runtime run associated with a Galaris run identifier."""
+    if run_id in _MANAGED_RUNS:
+        from app.tools.facade import revoke_runtime_run_grant
+        await revoke_runtime_run_grant(run_id)
     async with _ACTIVE_RUNS_LOCK:
         active = _ACTIVE_RUNS.get(run_id)
     if active is None:
@@ -86,6 +92,9 @@ def _cancellation_target(target: HermesTarget) -> dict[str, str]:
 async def request_cancellation(
     run_id: UUID, *, checkpoint: AgentRunCheckpoint | None = None,
 ) -> HarnessCancellationReceipt:
+    if run_id in _MANAGED_RUNS or (checkpoint is not None and checkpoint.data.get("runtime_run_context")):
+        from app.tools.facade import revoke_runtime_run_grant
+        await revoke_runtime_run_grant(run_id)
     async with _ACTIVE_RUNS_LOCK:
         active = _ACTIVE_RUNS.get(run_id)
     if active is None and checkpoint is not None and checkpoint.driver_code == "hermes":
@@ -110,6 +119,9 @@ async def request_cancellation(
 
 
 async def _cancel_if_active(request: AgentRunRequest) -> None:
+    if request.target is not None and request.target.target_ref.startswith("harness:"):
+        from app.tools.facade import revoke_runtime_run_grant
+        await revoke_runtime_run_grant(request.run_id)
     async with _ACTIVE_RUNS_LOCK:
         active = _ACTIVE_RUNS.get(request.id) or _ACTIVE_RUNS.get(request.run_id)
     if active is None:
@@ -168,6 +180,10 @@ async def _run_lifecycle_events(
                 },
             }
             return
+        if state == "waiting_for_approval" and isinstance(status.get("approval"), dict):
+            yield {"event": "approval.request", "data": status["approval"]}
+        if state == "waiting_for_authorization":
+            yield {"event": "authorization.required", "data": status}
         yield {"event": "run.status", "data": status}
         await asyncio.sleep(_RUN_POLL_INTERVAL)
 
@@ -180,11 +196,6 @@ def _task_language(task: AgentRunRequest) -> str:
 
 def _message(language: str, key: str, **values: Any) -> str:
     return render_prompt(t(f"hermes.{key}", language), **values)
-
-def _truncate(value: str, max_chars: int) -> str:
-    if len(value) <= max_chars:
-        return value
-    return value[: max_chars - 3].rstrip() + "..."
 
 
 def _coerce_tool_args(raw: Any) -> dict[str, Any] | None:
@@ -589,70 +600,6 @@ def _merged_conversation_history(
     return canonical[-runtime_settings.MESSENGER_SESSION_MAX_MESSAGES :]
 
 
-async def _send_approval_choice(
-    *,
-    task: AgentRunRequest,
-    messenger: Optional[Any],
-    room_id: Optional[str],
-    run_id: str,
-    approval: dict[str, Any],
-) -> bool:
-    """Publish a Hermes approval request through Galaris messaging."""
-    if messenger is None or not room_id:
-        return False
-
-    from app.messenger.interactions import ChoiceOption, ChoiceRequest, create_choice
-
-    command = str(approval.get("command") or "")
-    language = _task_language(task)
-    description = str(
-        approval.get("description") or _message(language, "approval_default_description")
-    )
-    body = (
-        f"{_message(language, 'approval_reason')}: {description}\n\n"
-        f"{_message(language, 'approval_command')}:\n```\n{_truncate(command, 1800)}\n```"
-    )
-    request = ChoiceRequest(
-        kind=HERMES_APPROVAL_INTERACTION,
-        title=_message(language, "approval_title"),
-        body=body,
-        options=[
-            ChoiceOption(
-                id="once",
-                label=_message(language, "approval_once"),
-                aliases=[
-                    "yes", "oui", "ok", "approve", "approuver", "autorise",
-                    "j'autorise", "j’autorise", "j'approuve", "j’approuve",
-                ],
-            ),
-            ChoiceOption(
-                id="session",
-                label=_message(language, "approval_session"),
-                aliases=["session"],
-            ),
-            ChoiceOption(
-                id="deny",
-                label=_message(language, "approval_deny"),
-                aliases=["no", "non", "deny", "refuser"],
-            ),
-        ],
-        metadata={
-            "run_id": run_id,
-            "task_id": str(task.id),
-            "session_id": approval.get("session_id"),
-        },
-        timeout_seconds=300,
-        language=language,
-    )
-    await create_choice(
-        messenger,
-        agent_id=task.agent_id,
-        room_id=room_id,
-        request=request,
-        reply_to=str(task.data.get("message_id")) if isinstance(task.data, dict) and task.data.get("message_id") else None,
-    )
-    return True
-
 
 async def _stream(task: AgentRunRequest) -> AsyncIterator[AgentEvent]:
     """Consume a Hermes SSE run, stream visible events, and return a terminal result."""
@@ -730,6 +677,17 @@ async def _stream(task: AgentRunRequest) -> AsyncIterator[AgentEvent]:
         else None
     )
     checkpoint_data = dict(checkpoint.data) if checkpoint is not None else {}
+    managed = task.target is not None and task.target.target_ref.startswith("harness:")
+    run_context: str | None = None
+    if managed:
+        await client.verify_authorization_control(target)
+    if managed and checkpoint is not None:
+        from app.tools.facade import renew_runtime_run_grant
+        encrypted_context = checkpoint_data.get("runtime_run_context")
+        if not isinstance(encrypted_context, str) or not encrypted_context:
+            raise PermissionError("The Hermes continuation has no server-issued runtime context")
+        run_context = get_encryption_service().decrypt(encrypted_context)
+        await renew_runtime_run_grant(run_context, task)
     checkpoint_session_id = str(checkpoint_data.get("session_id") or "").strip()
     session_id = checkpoint_session_id or binding_session_id
     checkpoint_effective_session_id = str(
@@ -784,7 +742,10 @@ async def _stream(task: AgentRunRequest) -> AsyncIterator[AgentEvent]:
         try:
             await client.get_run_status(target, run_id)
         except client.HermesRunNotFound:
-            if _checkpoint_has_effects(checkpoint):
+            if managed or _checkpoint_has_effects(checkpoint):
+                if run_context:
+                    from app.tools.facade import close_runtime_run_grant
+                    await close_runtime_run_grant(run_context)
                 lost_result = (
                     checkpoint.result.model_copy(deep=True)
                     if checkpoint.result is not None
@@ -839,6 +800,20 @@ async def _stream(task: AgentRunRequest) -> AsyncIterator[AgentEvent]:
 
     if checkpoint is None:
         history = _merged_conversation_history(task, session_messages)
+        if managed:
+            import hashlib
+            from app.tools.facade import issue_runtime_run_grant
+            run_context = await issue_runtime_run_grant(task)
+            checkpoint_data["runtime_run_context"] = get_encryption_service().encrypt(run_context)
+            # A lost start reply cannot prove that the runtime did not execute effects.
+            # Persist that boundary before contacting the SDK, and never restart it.
+            if task.save_checkpoint:
+                await task.save_checkpoint(AgentRunCheckpoint(driver_code=task.driver_code,
+                    runtime_run_id=hashlib.sha256(run_context.encode()).hexdigest(), status="admitting",
+                    data={**checkpoint_data, "execution_strategy": "direct",
+                        "cancellation_target": _cancellation_target(target), "session_id": session_id,
+                        "effective_session_id": effective_session_id}))
+        start_context = {"run_context": run_context} if run_context else {}
         try:
             run_id = await client.start_run(
                 target,
@@ -847,8 +822,12 @@ async def _stream(task: AgentRunRequest) -> AsyncIterator[AgentEvent]:
                 system_message=context_instructions,
                 conversation_history=history,
                 session_key=hermes_session_key,
+                **start_context,
             )
         except Exception as e:
+            if run_context:
+                from app.tools.facade import close_runtime_run_grant
+                await close_runtime_run_grant(run_context)
             result = ExecutionResult(
                 prompt=human_prompt,
                 system_prompt=context_instructions,
@@ -958,6 +937,8 @@ async def _stream(task: AgentRunRequest) -> AsyncIterator[AgentEvent]:
                 "prior_llm_call_ids": sorted(prior_llm_call_ids),
                 "seen_session_message_ids": sorted(seen_session_message_ids),
                 "hermes_tool_message_indexes": tool_indexes,
+                "runtime_authorization": checkpoint_data.get("runtime_authorization"),
+                "runtime_run_context": checkpoint_data.get("runtime_run_context"),
             },
         ))
 
@@ -1091,83 +1072,83 @@ async def _stream(task: AgentRunRequest) -> AsyncIterator[AgentEvent]:
                 )
             }
 
+        elif name == "authorization.required":
+            raw_requests = data.get("authorization_requests")
+            if not isinstance(raw_requests, list) or not raw_requests:
+                raise PermissionError("Hermes returned no exact pending authorization")
+            requests = [UUID(str(identifier)) for identifier in as_list(raw_requests)]
+            runtime_status = "waiting_for_authorization"
+            await _persist(force=True)
+            waiting = ExecutionResult(**ai_result.model_dump(exclude={"success", "execution_time"}),
+                success=False, execution_time=time.time() - start_time,
+                schema_version="galaris.execution-result/v2", disposition="waiting_for_authorization",
+                authorization_requests=requests)
+            yield AgentEvent.from_result(waiting)
+            return
+
         elif name == "approval.request":
-            action = task.approval_action
-            # Auto-approve without opening a messenger interaction.
-            if action == "auto":
-                try:
-                    await client.submit_run_approval(target, run_id, "once")
-                    ai_result.add_message(AIMessage(
-                        type="tool",
-                        tool_name="approval",
-                        content=_message(language, "approval_auto_granted"),
-                        execution_time=_gap(),
-                    ))
-                except Exception:
-                    logger.exception("Hermes: automatic approval failed for run={}", run_id)
-                    ai_result.add_message(AIMessage(
-                        type="tool",
-                        tool_name="approval",
-                        content=_message(language, "approval_auto_failed"),
-                        execution_time=_gap(),
-                        success=False,
-                    ))
-                await _persist(force=True)
-                for semantic_message in _semantic_updates():
-                    yield AgentEvent.from_message(semantic_message)
-                continue
-            # Only humans may approve. Deny AI requesters unless an ancestor enabled auto-approve.
-            if action == "deny_agent":
-                try:
-                    await client.submit_run_approval(target, run_id, "deny")
-                except Exception:
-                    logger.exception(
-                        "Hermes: failed to deny approval automatically for AI requester run={}",
-                        run_id,
-                    )
-                ai_result.add_message(AIMessage(
-                    type="tool",
-                    tool_name="approval",
-                    content=_message(language, "approval_agent_denied"),
-                    execution_time=_gap(),
-                    success=False,
-                ))
-                await _persist(force=True)
-                for semantic_message in _semantic_updates():
-                    yield AgentEvent.from_message(semantic_message)
-                continue
-            sent = await _send_approval_choice(
-                task=task,
-                messenger=messenger,
-                room_id=task.message_group_id,
-                run_id=run_id,
-                approval=data,
+            from app.agent import get_agent_record
+            from app.tools.facade import (
+                AuthorizationAction, AuthorizationClosed, AuthorizationRequired,
+                claim_action, finish_action,
             )
-            if sent:
-                ai_result.add_message(AIMessage(
-                    type="tool",
-                    tool_name="approval",
-                    content=_message(language, "approval_request_sent"),
-                    execution_time=_gap(),
-                ))
+            from .config_service import execution_snapshot
+
+            request_key = str(data.get("request_id") or "")
+            action_digest = str(data.get("action_digest") or "")
+            # A redacted command alone cannot bind an agreement to the actual operation.
+            if not request_key or len(action_digest) != 64:
+                await client.stop_run(target, run_id)
+                error_text = "The runtime cannot bind this approval to an exact action."
+                terminal_event = "failed"
+                break
+            current = await client.get_run_status(target, run_id)
+            current_approval = as_dict(current.get("approval"))
+            if (current.get("status") != "waiting_for_approval"
+                or current_approval.get("request_id") != request_key
+                or current_approval.get("action_digest") != action_digest):
+                continue
+            agent = await get_agent_record(task.agent_id)
+            if agent is None:
+                raise PermissionError("The runtime agent is no longer available")
+            live_target = HermesTarget.from_config(await execution_snapshot(agent), agent_code=agent.code)
+            action = AuthorizationAction(
+                agent_id=task.agent_id, runtime="hermes", source="runtime",
+                context_key=f"task:{task.task_id}" if task.task_id else f"principal:hermes:{run_id}",
+                callback_key=f"{run_id}:{request_key}", name=str(data.get("tool") or "runtime_action"),
+                arguments={"action_digest": action_digest, "command": data.get("command"),
+                    "arguments": data.get("arguments"), "arguments_fingerprint": data.get("arguments_fingerprint"),
+                    "file_precondition": data.get("file_precondition"),
+                    "request_id": request_key, "session": effective_session_id},
+                configuration={"url": live_target.url, "model": live_target.model, "credential": live_target.api_key,
+                    "runtime_run": run_id}, preview=f"Hermes: {data.get('tool') or 'runtime action'}",
+            )
+            try:
+                permit = await claim_action(action)
+            except AuthorizationRequired as required:
+                runtime_status = "waiting_for_authorization"
+                checkpoint_data["runtime_authorization"] = {"request_id": str(required.request_id)}
                 await _persist(force=True)
-                for semantic_message in _semantic_updates():
-                    yield AgentEvent.from_message(semantic_message)
+                waiting = ExecutionResult(
+                    **ai_result.model_dump(exclude={"success", "execution_time"}), success=False,
+                    execution_time=time.time() - start_time,
+                    schema_version="galaris.execution-result/v2", disposition="waiting_for_authorization",
+                    authorization_requests=[required.request_id],
+                )
+                yield AgentEvent.from_result(waiting)
+                return
+            except AuthorizationClosed:
+                await client.submit_run_approval(target, run_id, "deny", request_id=request_key)
             else:
                 try:
-                    await client.submit_run_approval(target, run_id, "deny")
-                except Exception:
-                    logger.exception("Hermes: automatic approval denial failed")
-                ai_result.add_message(AIMessage(
-                    type="tool",
-                    tool_name="approval",
-                    content=_message(language, "approval_no_channel"),
-                    execution_time=_gap(),
-                    success=False,
-                ))
-                await _persist(force=True)
-                for semantic_message in _semantic_updates():
-                    yield AgentEvent.from_message(semantic_message)
+                    response = await client.submit_run_approval(target, run_id, "once", request_id=request_key)
+                except BaseException:
+                    await finish_action(permit, outcome="outcome_unknown")
+                    raise
+                await finish_action(permit, receipt=response)
+            checkpoint_data.pop("runtime_authorization", None)
+            runtime_status = "running"
+            await _persist(force=True)
 
         elif name == "error":
             error_text = data.get("message") or _message(language, "errors.generic")
@@ -1299,6 +1280,9 @@ async def _stream(task: AgentRunRequest) -> AsyncIterator[AgentEvent]:
         "runtime_status": runtime_status,
         "execution_stopped": execution_stopped,
     }
+    if run_context:
+        from app.tools.facade import close_runtime_run_grant
+        await close_runtime_run_grant(run_context)
     yield AgentEvent.from_result(result)
 
 
@@ -1313,13 +1297,16 @@ async def stream(task: AgentRunRequest) -> AsyncIterator[AgentEvent]:
             task_id=task.id,
             context=memory_context,
         )
+    suspended = False
     try:
         async for event in _stream(task):
             if event.result is not None:
+                suspended = event.result.disposition == "waiting_for_authorization"
                 event.result.metadata.setdefault("execution_stopped", False)
             yield event
     except (asyncio.CancelledError, GeneratorExit):
-        await asyncio.shield(_cancel_if_active(task))
+        if not suspended:
+            await asyncio.shield(_cancel_if_active(task))
         raise
     finally:
         clear_memory_context(agent_id=task.agent_id, task_id=task.id)

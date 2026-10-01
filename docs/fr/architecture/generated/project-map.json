@@ -97,6 +97,7 @@
           "back/app/agent/admin_service.py",
           "back/app/agent/agent_group_service.py",
           "back/app/agent/agent_service.py",
+          "back/app/agent/authorization.py",
           "back/app/agent/avatars.py",
           "back/app/agent/defaults.py",
           "back/app/agent/dialogue_service.py",
@@ -180,6 +181,7 @@
           "back/app/agent/admin_authorization.py",
           "back/app/agent/admin_service.py",
           "back/app/agent/agent_service.py",
+          "back/app/agent/authorization.py",
           "back/app/agent/dbadmin.py",
           "back/app/agent/defaults.py",
           "back/app/agent/dialogue_service.py",
@@ -525,11 +527,25 @@
       },
       {
         "files": [
+          "back/app/connection/dbadmin.py"
+        ],
+        "source": "app.connection",
+        "target": "core.dbadmin"
+      },
+      {
+        "files": [
           "back/app/connection/connection_service.py",
           "back/app/connection/router.py"
         ],
         "source": "app.connection",
         "target": "core.i18n"
+      },
+      {
+        "files": [
+          "back/app/connection/router.py"
+        ],
+        "source": "app.connection",
+        "target": "core.user"
       },
       {
         "files": [
@@ -748,7 +764,8 @@
       },
       {
         "files": [
-          "back/app/conversation/mcp.py"
+          "back/app/conversation/mcp.py",
+          "back/app/conversation/service.py"
         ],
         "source": "app.conversation",
         "target": "app.tools"
@@ -805,6 +822,7 @@
       },
       {
         "files": [
+          "back/app/conversation/service.py",
           "back/app/conversation/task_objective.py"
         ],
         "source": "app.conversation",
@@ -1487,6 +1505,7 @@
         "files": [
           "back/app/harnesses/agent_adapter.py",
           "back/app/harnesses/agent_driver.py",
+          "back/app/harnesses/checkpoint_policy.py",
           "back/app/harnesses/configuration.py",
           "back/app/harnesses/contracts.py",
           "back/app/harnesses/dbadmin.py",
@@ -1506,6 +1525,7 @@
       },
       {
         "files": [
+          "back/app/harnesses/driver.py",
           "back/app/harnesses/mcp.py"
         ],
         "source": "app.harnesses",
@@ -1544,6 +1564,7 @@
       },
       {
         "files": [
+          "back/app/harnesses/driver.py",
           "back/app/harnesses/service.py"
         ],
         "source": "app.harnesses",
@@ -2069,7 +2090,8 @@
       },
       {
         "files": [
-          "back/app/mcp/router.py"
+          "back/app/mcp/router.py",
+          "back/app/mcp/runtime_adapter.py"
         ],
         "source": "app.mcp",
         "target": "app.tools"
@@ -2085,6 +2107,7 @@
         "files": [
           "back/app/mcp/models.py",
           "back/app/mcp/router.py",
+          "back/app/mcp/runtime_adapter.py",
           "back/app/mcp/service.py"
         ],
         "source": "app.mcp",
@@ -2937,6 +2960,7 @@
       {
         "files": [
           "back/app/task/access.py",
+          "back/app/task/agent_adapter.py",
           "back/app/task/mcp.py"
         ],
         "source": "app.task",
@@ -3033,13 +3057,17 @@
         "files": [
           "back/app/tools/admin_service.py",
           "back/app/tools/agent_registry.py",
+          "back/app/tools/authorization.py",
+          "back/app/tools/authorization_notifications.py",
+          "back/app/tools/authorization_router.py",
           "back/app/tools/catalog.py",
           "back/app/tools/catalog_refresh_service.py",
           "back/app/tools/connection_functions.py",
           "back/app/tools/dbadmin.py",
           "back/app/tools/mcp_loader.py",
           "back/app/tools/resource_effects.py",
-          "back/app/tools/router.py"
+          "back/app/tools/router.py",
+          "back/app/tools/runtime_authorization.py"
         ],
         "source": "app.tools",
         "target": "app.agent"
@@ -3051,11 +3079,13 @@
           "back/app/tools/admin_contracts.py",
           "back/app/tools/admin_service.py",
           "back/app/tools/agent_registry.py",
+          "back/app/tools/authorization.py",
           "back/app/tools/connection_functions.py",
           "back/app/tools/dbadmin.py",
           "back/app/tools/documentation_service.py",
           "back/app/tools/facade.py",
           "back/app/tools/mandatory_tools.py",
+          "back/app/tools/mcp_authorization.py",
           "back/app/tools/mcp_loader.py",
           "back/app/tools/tool_service.py"
         ],
@@ -3095,6 +3125,7 @@
       },
       {
         "files": [
+          "back/app/tools/authorization_notifications.py",
           "back/app/tools/mcp_loader.py",
           "back/app/tools/tool_service.py"
         ],
@@ -3118,7 +3149,9 @@
       {
         "files": [
           "back/app/tools/assertions.py",
-          "back/app/tools/router.py"
+          "back/app/tools/authorization_router.py",
+          "back/app/tools/router.py",
+          "back/app/tools/runtime_authorization_router.py"
         ],
         "source": "app.tools",
         "target": "core.authorize"
@@ -3127,11 +3160,17 @@
         "files": [
           "back/app/tools/admin_service.py",
           "back/app/tools/administration_lock.py",
+          "back/app/tools/authorization.py",
+          "back/app/tools/authorization_models.py",
+          "back/app/tools/authorization_notifications.py",
+          "back/app/tools/authorization_router.py",
           "back/app/tools/catalog_refresh_service.py",
           "back/app/tools/documentation_service.py",
           "back/app/tools/mandatory_tools.py",
           "back/app/tools/mcp_loader.py",
           "back/app/tools/models.py",
+          "back/app/tools/runtime_authorization.py",
+          "back/app/tools/runtime_authorization_router.py",
           "back/app/tools/tool_search_service.py",
           "back/app/tools/tool_service.py"
         ],
@@ -3156,6 +3195,7 @@
       {
         "files": [
           "back/app/tools/agent_registry.py",
+          "back/app/tools/authorization_notifications.py",
           "back/app/tools/connection_functions.py",
           "back/app/tools/mcp.py",
           "back/app/tools/mcp_diagnostics.py",
@@ -3178,11 +3218,24 @@
       },
       {
         "files": [
+          "back/app/tools/authorization.py",
+          "back/app/tools/authorization_notifications.py",
+          "back/app/tools/authorization_router.py"
+        ],
+        "source": "app.tools",
+        "target": "core.user"
+      },
+      {
+        "files": [
           "back/app/tools/admin_candidates.py",
           "back/app/tools/admin_service.py",
           "back/app/tools/agent_registry.py",
           "back/app/tools/assertions.py",
+          "back/app/tools/authorization.py",
+          "back/app/tools/authorization_notifications.py",
+          "back/app/tools/authorization_router.py",
           "back/app/tools/catalog.py",
+          "back/app/tools/runtime_authorization.py",
           "back/app/tools/secrets.py",
           "back/app/tools/tool_service.py"
         ],
@@ -3395,8 +3448,10 @@
       },
       {
         "files": [
+          "back/app/voice/conversation_service.py",
           "back/app/voice/mcp.py",
-          "back/app/voice/monitoring_service.py"
+          "back/app/voice/monitoring_service.py",
+          "back/app/voice/realtime_tools.py"
         ],
         "source": "app.voice",
         "target": "app.tools"
@@ -3454,7 +3509,8 @@
       },
       {
         "files": [
-          "back/app/voice/audio.py"
+          "back/app/voice/audio.py",
+          "back/app/voice/conversation_service.py"
         ],
         "source": "app.voice",
         "target": "core.util"
@@ -3756,7 +3812,8 @@
       },
       {
         "files": [
-          "back/bridge/deepseek_harness/harness_provider.py"
+          "back/bridge/deepseek_harness/harness_provider.py",
+          "back/bridge/deepseek_harness/runtime_adapter.py"
         ],
         "source": "bridge.deepseek_harness",
         "target": "app.harnesses"
@@ -3912,7 +3969,6 @@
       {
         "files": [
           "back/bridge/hermes/agent_driver.py",
-          "back/bridge/hermes/approvals.py",
           "back/bridge/hermes/checkpoint_policy.py",
           "back/bridge/hermes/config_service.py",
           "back/bridge/hermes/driver.py",
@@ -3946,7 +4002,8 @@
       },
       {
         "files": [
-          "back/bridge/hermes/harness_provider.py"
+          "back/bridge/hermes/harness_provider.py",
+          "back/bridge/hermes/manager.py"
         ],
         "source": "bridge.hermes",
         "target": "app.harnesses"
@@ -4003,6 +4060,8 @@
       },
       {
         "files": [
+          "back/bridge/hermes/agent_driver.py",
+          "back/bridge/hermes/executor.py",
           "back/bridge/hermes/manager.py",
           "back/bridge/hermes/prompt.py"
         ],
@@ -4121,7 +4180,8 @@
       {
         "files": [
           "back/bridge/mail/connection_service.py",
-          "back/bridge/mail/mcp.py"
+          "back/bridge/mail/mcp.py",
+          "back/bridge/mail/service.py"
         ],
         "source": "bridge.mail",
         "target": "app.tools"
@@ -6317,7 +6377,7 @@
       {
         "file": "back/app/agent/mcp.py",
         "handler": "agent_avatar_delete",
-        "line": 99,
+        "line": 100,
         "module": "app.agent",
         "name": "agent_avatar_delete",
         "namespace": "agent_admin"
@@ -6325,7 +6385,7 @@
       {
         "file": "back/app/agent/mcp.py",
         "handler": "agent_avatar_generate",
-        "line": 209,
+        "line": 210,
         "module": "app.agent",
         "name": "agent_avatar_generate",
         "namespace": "agent_admin"
@@ -6333,7 +6393,7 @@
       {
         "file": "back/app/agent/mcp.py",
         "handler": "agent_avatar_set",
-        "line": 184,
+        "line": 185,
         "module": "app.agent",
         "name": "agent_avatar_set",
         "namespace": "agent_admin"
@@ -6413,7 +6473,7 @@
       {
         "file": "back/app/agent/mcp.py",
         "handler": "agent_create",
-        "line": 56,
+        "line": 57,
         "module": "app.agent",
         "name": "agent_create",
         "namespace": "agent_admin"
@@ -6421,7 +6481,7 @@
       {
         "file": "back/app/agent/mcp.py",
         "handler": "agent_delete",
-        "line": 82,
+        "line": 83,
         "module": "app.agent",
         "name": "agent_delete",
         "namespace": "agent_admin"
@@ -6429,7 +6489,7 @@
       {
         "file": "back/app/agent/mcp.py",
         "handler": "agent_group_create",
-        "line": 158,
+        "line": 159,
         "module": "app.agent",
         "name": "agent_group_create",
         "namespace": "agent_admin"
@@ -6437,7 +6497,7 @@
       {
         "file": "back/app/agent/mcp.py",
         "handler": "agent_group_delete",
-        "line": 175,
+        "line": 176,
         "module": "app.agent",
         "name": "agent_group_delete",
         "namespace": "agent_admin"
@@ -6445,7 +6505,7 @@
       {
         "file": "back/app/agent/mcp.py",
         "handler": "agent_group_list",
-        "line": 152,
+        "line": 153,
         "module": "app.agent",
         "name": "agent_group_list",
         "namespace": "agent_admin"
@@ -6453,7 +6513,7 @@
       {
         "file": "back/app/agent/mcp.py",
         "handler": "agent_group_update",
-        "line": 164,
+        "line": 165,
         "module": "app.agent",
         "name": "agent_group_update",
         "namespace": "agent_admin"
@@ -6517,7 +6577,7 @@
       {
         "file": "back/app/agent/mcp.py",
         "handler": "agent_options",
-        "line": 93,
+        "line": 94,
         "module": "app.agent",
         "name": "agent_options",
         "namespace": "agent_admin"
@@ -6525,7 +6585,7 @@
       {
         "file": "back/app/agent/mcp.py",
         "handler": "agent_team_list",
-        "line": 107,
+        "line": 108,
         "module": "app.agent",
         "name": "agent_team_list",
         "namespace": "agent_admin"
@@ -6533,7 +6593,7 @@
       {
         "file": "back/app/agent/mcp.py",
         "handler": "agent_team_set",
-        "line": 114,
+        "line": 115,
         "module": "app.agent",
         "name": "agent_team_set",
         "namespace": "agent_admin"
@@ -6541,7 +6601,7 @@
       {
         "file": "back/app/agent/mcp.py",
         "handler": "agent_title_create",
-        "line": 127,
+        "line": 128,
         "module": "app.agent",
         "name": "agent_title_create",
         "namespace": "agent_admin"
@@ -6549,7 +6609,7 @@
       {
         "file": "back/app/agent/mcp.py",
         "handler": "agent_title_delete",
-        "line": 144,
+        "line": 145,
         "module": "app.agent",
         "name": "agent_title_delete",
         "namespace": "agent_admin"
@@ -6557,7 +6617,7 @@
       {
         "file": "back/app/agent/mcp.py",
         "handler": "agent_title_list",
-        "line": 121,
+        "line": 122,
         "module": "app.agent",
         "name": "agent_title_list",
         "namespace": "agent_admin"
@@ -6565,7 +6625,7 @@
       {
         "file": "back/app/agent/mcp.py",
         "handler": "agent_title_update",
-        "line": 133,
+        "line": 134,
         "module": "app.agent",
         "name": "agent_title_update",
         "namespace": "agent_admin"
@@ -6581,7 +6641,7 @@
       {
         "file": "back/app/agent/mcp.py",
         "handler": "agent_update",
-        "line": 67,
+        "line": 68,
         "module": "app.agent",
         "name": "agent_update",
         "namespace": "agent_admin"
@@ -6597,7 +6657,7 @@
       {
         "file": "back/app/browser/mcp.py",
         "handler": "browser_back",
-        "line": 420,
+        "line": 434,
         "module": "app.browser",
         "name": "browser_back",
         "namespace": "browser"
@@ -6605,7 +6665,7 @@
       {
         "file": "back/app/browser/mcp.py",
         "handler": "browser_click",
-        "line": 354,
+        "line": 364,
         "module": "app.browser",
         "name": "browser_click",
         "namespace": "browser"
@@ -6613,7 +6673,7 @@
       {
         "file": "back/app/browser/mcp.py",
         "handler": "browser_close",
-        "line": 433,
+        "line": 447,
         "module": "app.browser",
         "name": "browser_close",
         "namespace": "browser"
@@ -6621,7 +6681,7 @@
       {
         "file": "back/app/browser/mcp.py",
         "handler": "browser_content",
-        "line": 275,
+        "line": 284,
         "module": "app.browser",
         "name": "browser_content",
         "namespace": "browser"
@@ -6629,7 +6689,7 @@
       {
         "file": "back/app/browser/mcp.py",
         "handler": "browser_navigate",
-        "line": 259,
+        "line": 268,
         "module": "app.browser",
         "name": "browser_navigate",
         "namespace": "browser"
@@ -6637,7 +6697,7 @@
       {
         "file": "back/app/browser/mcp.py",
         "handler": "browser_open",
-        "line": 226,
+        "line": 234,
         "module": "app.browser",
         "name": "browser_open",
         "namespace": "browser"
@@ -6645,7 +6705,7 @@
       {
         "file": "back/app/browser/mcp.py",
         "handler": "browser_press",
-        "line": 392,
+        "line": 404,
         "module": "app.browser",
         "name": "browser_press",
         "namespace": "browser"
@@ -6653,7 +6713,7 @@
       {
         "file": "back/app/browser/mcp.py",
         "handler": "browser_screenshot",
-        "line": 320,
+        "line": 329,
         "module": "app.browser",
         "name": "browser_screenshot",
         "namespace": "browser"
@@ -6661,7 +6721,7 @@
       {
         "file": "back/app/browser/mcp.py",
         "handler": "browser_scroll",
-        "line": 406,
+        "line": 419,
         "module": "app.browser",
         "name": "browser_scroll",
         "namespace": "browser"
@@ -6669,7 +6729,7 @@
       {
         "file": "back/app/browser/mcp.py",
         "handler": "browser_type",
-        "line": 368,
+        "line": 379,
         "module": "app.browser",
         "name": "browser_type",
         "namespace": "browser"
@@ -6861,7 +6921,7 @@
       {
         "file": "back/app/file_share/mcp.py",
         "handler": "append_file",
-        "line": 292,
+        "line": 335,
         "module": "app.file_share",
         "name": "file_append",
         "namespace": "file_sharing"
@@ -6869,7 +6929,7 @@
       {
         "file": "back/app/file_share/mcp.py",
         "handler": "copy_file",
-        "line": 349,
+        "line": 394,
         "module": "app.file_share",
         "name": "file_copy",
         "namespace": "file_sharing"
@@ -6877,7 +6937,7 @@
       {
         "file": "back/app/file_share/mcp.py",
         "handler": "create_file",
-        "line": 228,
+        "line": 269,
         "module": "app.file_share",
         "name": "file_create",
         "namespace": "file_sharing"
@@ -6885,7 +6945,7 @@
       {
         "file": "back/app/file_share/mcp.py",
         "handler": "delete_file",
-        "line": 408,
+        "line": 455,
         "module": "app.file_share",
         "name": "file_delete",
         "namespace": "file_sharing"
@@ -6893,7 +6953,7 @@
       {
         "file": "back/app/file_share/mcp.py",
         "handler": "edit_file",
-        "line": 313,
+        "line": 357,
         "module": "app.file_share",
         "name": "file_edit",
         "namespace": "file_sharing"
@@ -6901,7 +6961,7 @@
       {
         "file": "back/app/file_share/mcp.py",
         "handler": "file_info",
-        "line": 120,
+        "line": 161,
         "module": "app.file_share",
         "name": "file_info",
         "namespace": "file_sharing"
@@ -6909,7 +6969,7 @@
       {
         "file": "back/app/file_share/mcp.py",
         "handler": "list_files",
-        "line": 92,
+        "line": 133,
         "module": "app.file_share",
         "name": "file_list",
         "namespace": "file_sharing"
@@ -6917,7 +6977,7 @@
       {
         "file": "back/app/file_share/mcp.py",
         "handler": "move_file",
-        "line": 380,
+        "line": 426,
         "module": "app.file_share",
         "name": "file_move",
         "namespace": "file_sharing"
@@ -6925,7 +6985,7 @@
       {
         "file": "back/app/file_share/mcp.py",
         "handler": "read_file",
-        "line": 191,
+        "line": 232,
         "module": "app.file_share",
         "name": "file_read",
         "namespace": "file_sharing"
@@ -6933,7 +6993,7 @@
       {
         "file": "back/app/file_share/mcp.py",
         "handler": "file_schemes",
-        "line": 71,
+        "line": 112,
         "module": "app.file_share",
         "name": "file_schemes",
         "namespace": "file_sharing"
@@ -6941,7 +7001,7 @@
       {
         "file": "back/app/file_share/mcp.py",
         "handler": "search_files",
-        "line": 150,
+        "line": 191,
         "module": "app.file_share",
         "name": "file_search",
         "namespace": "file_sharing"
@@ -6949,7 +7009,7 @@
       {
         "file": "back/app/file_share/mcp.py",
         "handler": "write_file",
-        "line": 261,
+        "line": 303,
         "module": "app.file_share",
         "name": "file_write",
         "namespace": "file_sharing"
@@ -8205,6 +8265,18 @@
     ],
     "models": [
       {
+        "class_name": "AgentAuthorizationChange",
+        "file": "back/app/agent/models.py",
+        "foreign_keys": [
+          "agents.id",
+          "users.id"
+        ],
+        "history_mixin": false,
+        "line": 18,
+        "module": "app.agent",
+        "table": "agent_authorization_changes"
+      },
+      {
         "class_name": "Team",
         "file": "back/core/team/models.py",
         "foreign_keys": [],
@@ -8268,7 +8340,7 @@
           "agents.id"
         ],
         "history_mixin": false,
-        "line": 17,
+        "line": 31,
         "module": "app.agent",
         "table": "agent_teams"
       },
@@ -8284,7 +8356,7 @@
           "users.id"
         ],
         "history_mixin": true,
-        "line": 37,
+        "line": 51,
         "module": "app.agent",
         "table": "agents"
       },
@@ -8428,7 +8500,7 @@
           "process_runs.id"
         ],
         "history_mixin": false,
-        "line": 313,
+        "line": 314,
         "module": "app.conversation",
         "table": "conversation_process_links"
       },
@@ -8439,7 +8511,7 @@
           "conversation_rounds.id"
         ],
         "history_mixin": false,
-        "line": 235,
+        "line": 236,
         "module": "app.conversation",
         "table": "conversation_round_attempts"
       },
@@ -8451,7 +8523,7 @@
           "messenger_messages.id"
         ],
         "history_mixin": false,
-        "line": 175,
+        "line": 176,
         "module": "app.conversation",
         "table": "conversation_round_messages"
       },
@@ -8480,7 +8552,7 @@
           "tasks.id"
         ],
         "history_mixin": false,
-        "line": 265,
+        "line": 266,
         "module": "app.conversation",
         "table": "conversation_task_links"
       },
@@ -9505,6 +9577,18 @@
         "table": "roles"
       },
       {
+        "class_name": "RuntimeRunGrant",
+        "file": "back/app/tools/authorization_models.py",
+        "foreign_keys": [
+          "agent_mcp_tokens.id",
+          "agents.id"
+        ],
+        "history_mixin": false,
+        "line": 63,
+        "module": "app.tools",
+        "table": "runtime_run_grants"
+      },
+      {
         "class_name": "SkillCategory",
         "file": "back/app/skill/models.py",
         "foreign_keys": [],
@@ -9531,7 +9615,7 @@
           "tasks.id"
         ],
         "history_mixin": false,
-        "line": 244,
+        "line": 243,
         "module": "app.task",
         "table": "task_amendments"
       },
@@ -9542,7 +9626,7 @@
           "tasks.id"
         ],
         "history_mixin": false,
-        "line": 277,
+        "line": 276,
         "module": "app.task",
         "table": "task_attempts"
       },
@@ -9560,7 +9644,7 @@
           "users.id"
         ],
         "history_mixin": true,
-        "line": 77,
+        "line": 78,
         "module": "app.task",
         "table": "tasks"
       },
@@ -9590,9 +9674,25 @@
         "file": "back/app/agent/models.py",
         "foreign_keys": [],
         "history_mixin": false,
-        "line": 27,
+        "line": 41,
         "module": "app.agent",
         "table": "titles"
+      },
+      {
+        "class_name": "ActionAuthorization",
+        "file": "back/app/tools/authorization_models.py",
+        "foreign_keys": [
+          "agents.id",
+          "connections.id",
+          "messenger_interactions.id",
+          "runtime_run_grants.id",
+          "tools.id",
+          "users.id"
+        ],
+        "history_mixin": false,
+        "line": 13,
+        "module": "app.tools",
+        "table": "tool_action_authorizations"
       },
       {
         "class_name": "ToolFunctionState",
@@ -9601,7 +9701,7 @@
           "tools.id"
         ],
         "history_mixin": false,
-        "line": 75,
+        "line": 80,
         "module": "app.connection",
         "table": "tool_function_state"
       },
@@ -9610,7 +9710,7 @@
         "file": "back/app/tools/models.py",
         "foreign_keys": [],
         "history_mixin": false,
-        "line": 61,
+        "line": 62,
         "module": "app.tools",
         "table": "tool_search_documents"
       },
@@ -9619,7 +9719,7 @@
         "file": "back/app/tools/models.py",
         "foreign_keys": [],
         "history_mixin": false,
-        "line": 21,
+        "line": 22,
         "module": "app.tools",
         "table": "tools"
       },
@@ -9697,7 +9797,7 @@
           "users.id"
         ],
         "history_mixin": true,
-        "line": 58,
+        "line": 59,
         "module": "app.voice",
         "table": "voice_sessions"
       }
@@ -11133,6 +11233,42 @@
     "routes": [
       {
         "authorized": true,
+        "declared_path": "/action-authorizations",
+        "file": "back/app/tools/authorization_router.py",
+        "handler": "list_requests",
+        "line": 34,
+        "method": "GET",
+        "module": "app.tools"
+      },
+      {
+        "authorized": true,
+        "declared_path": "/action-authorizations/{identifier}",
+        "file": "back/app/tools/authorization_router.py",
+        "handler": "get_request",
+        "line": 55,
+        "method": "GET",
+        "module": "app.tools"
+      },
+      {
+        "authorized": true,
+        "declared_path": "/action-authorizations/{identifier}/answer",
+        "file": "back/app/tools/authorization_router.py",
+        "handler": "answer_request",
+        "line": 83,
+        "method": "POST",
+        "module": "app.tools"
+      },
+      {
+        "authorized": true,
+        "declared_path": "/action-authorizations/{identifier}/cancel",
+        "file": "back/app/tools/authorization_router.py",
+        "handler": "cancel_request",
+        "line": 95,
+        "method": "POST",
+        "module": "app.tools"
+      },
+      {
+        "authorized": true,
         "declared_path": "/agent/openai/chat/completions",
         "file": "back/app/agent/openai_router.py",
         "handler": "agent_chat_completions",
@@ -11154,7 +11290,7 @@
         "declared_path": "/agents",
         "file": "back/app/agent/router.py",
         "handler": "read_agents",
-        "line": 201,
+        "line": 223,
         "method": "GET",
         "module": "app.agent"
       },
@@ -11163,7 +11299,7 @@
         "declared_path": "/agents",
         "file": "back/app/agent/router.py",
         "handler": "create_agent",
-        "line": 252,
+        "line": 274,
         "method": "POST",
         "module": "app.agent"
       },
@@ -11172,7 +11308,7 @@
         "declared_path": "/agents/drivers",
         "file": "back/app/agent/router.py",
         "handler": "read_executor_drivers",
-        "line": 171,
+        "line": 193,
         "method": "GET",
         "module": "app.agent"
       },
@@ -11181,7 +11317,7 @@
         "declared_path": "/agents/groups",
         "file": "back/app/agent/router.py",
         "handler": "read_groups",
-        "line": 114,
+        "line": 136,
         "method": "GET",
         "module": "app.agent"
       },
@@ -11190,7 +11326,7 @@
         "declared_path": "/agents/groups",
         "file": "back/app/agent/router.py",
         "handler": "create_group",
-        "line": 134,
+        "line": 156,
         "method": "POST",
         "module": "app.agent"
       },
@@ -11199,7 +11335,7 @@
         "declared_path": "/agents/groups/{id}",
         "file": "back/app/agent/router.py",
         "handler": "delete_group",
-        "line": 156,
+        "line": 178,
         "method": "DELETE",
         "module": "app.agent"
       },
@@ -11208,7 +11344,7 @@
         "declared_path": "/agents/groups/{id}",
         "file": "back/app/agent/router.py",
         "handler": "read_group",
-        "line": 123,
+        "line": 145,
         "method": "GET",
         "module": "app.agent"
       },
@@ -11217,7 +11353,7 @@
         "declared_path": "/agents/groups/{id}",
         "file": "back/app/agent/router.py",
         "handler": "update_group",
-        "line": 143,
+        "line": 165,
         "method": "PUT",
         "module": "app.agent"
       },
@@ -11226,7 +11362,7 @@
         "declared_path": "/agents/managers",
         "file": "back/app/agent/router.py",
         "handler": "read_agent_managers",
-        "line": 217,
+        "line": 239,
         "method": "GET",
         "module": "app.agent"
       },
@@ -11235,7 +11371,7 @@
         "declared_path": "/agents/selection",
         "file": "back/app/agent/router.py",
         "handler": "read_agent_selection",
-        "line": 46,
+        "line": 68,
         "method": "GET",
         "module": "app.agent"
       },
@@ -11262,7 +11398,7 @@
         "declared_path": "/agents/titles",
         "file": "back/app/agent/router.py",
         "handler": "read_titles",
-        "line": 57,
+        "line": 79,
         "method": "GET",
         "module": "app.agent"
       },
@@ -11271,7 +11407,7 @@
         "declared_path": "/agents/titles",
         "file": "back/app/agent/router.py",
         "handler": "create_title",
-        "line": 77,
+        "line": 99,
         "method": "POST",
         "module": "app.agent"
       },
@@ -11280,7 +11416,7 @@
         "declared_path": "/agents/titles/{id}",
         "file": "back/app/agent/router.py",
         "handler": "delete_title",
-        "line": 99,
+        "line": 121,
         "method": "DELETE",
         "module": "app.agent"
       },
@@ -11289,7 +11425,7 @@
         "declared_path": "/agents/titles/{id}",
         "file": "back/app/agent/router.py",
         "handler": "read_title",
-        "line": 66,
+        "line": 88,
         "method": "GET",
         "module": "app.agent"
       },
@@ -11298,7 +11434,7 @@
         "declared_path": "/agents/titles/{id}",
         "file": "back/app/agent/router.py",
         "handler": "update_title",
-        "line": 86,
+        "line": 108,
         "method": "PUT",
         "module": "app.agent"
       },
@@ -11343,7 +11479,7 @@
         "declared_path": "/agents/{id}",
         "file": "back/app/agent/router.py",
         "handler": "delete_agent",
-        "line": 307,
+        "line": 329,
         "method": "DELETE",
         "module": "app.agent"
       },
@@ -11352,7 +11488,7 @@
         "declared_path": "/agents/{id}",
         "file": "back/app/agent/router.py",
         "handler": "read_agent",
-        "line": 240,
+        "line": 262,
         "method": "GET",
         "module": "app.agent"
       },
@@ -11361,7 +11497,7 @@
         "declared_path": "/agents/{id}",
         "file": "back/app/agent/router.py",
         "handler": "update_agent",
-        "line": 280,
+        "line": 302,
         "method": "PUT",
         "module": "app.agent"
       },
@@ -11370,7 +11506,7 @@
         "declared_path": "/agents/{id}/avatar",
         "file": "back/app/agent/router.py",
         "handler": "delete_avatar",
-        "line": 393,
+        "line": 415,
         "method": "DELETE",
         "module": "app.agent"
       },
@@ -11379,7 +11515,7 @@
         "declared_path": "/agents/{id}/avatar",
         "file": "back/app/agent/router.py",
         "handler": "download_avatar",
-        "line": 359,
+        "line": 381,
         "method": "GET",
         "module": "app.agent"
       },
@@ -11388,8 +11524,17 @@
         "declared_path": "/agents/{id}/avatar",
         "file": "back/app/agent/router.py",
         "handler": "upload_avatar",
-        "line": 321,
+        "line": 343,
         "method": "POST",
+        "module": "app.agent"
+      },
+      {
+        "authorized": true,
+        "declared_path": "/agents/{id}/yolo",
+        "file": "back/app/agent/router.py",
+        "handler": "update_agent_yolo",
+        "line": 39,
+        "method": "PUT",
         "module": "app.agent"
       },
       {
@@ -12414,7 +12559,7 @@
         "declared_path": "/connections",
         "file": "back/app/connection/router.py",
         "handler": "list_connections",
-        "line": 182,
+        "line": 184,
         "method": "GET",
         "module": "app.connection"
       },
@@ -12423,7 +12568,7 @@
         "declared_path": "/connections",
         "file": "back/app/connection/router.py",
         "handler": "create_connection",
-        "line": 213,
+        "line": 215,
         "method": "POST",
         "module": "app.connection"
       },
@@ -12432,7 +12577,7 @@
         "declared_path": "/connections/find-by-param",
         "file": "back/app/connection/router.py",
         "handler": "find_agents_by_param",
-        "line": 84,
+        "line": 86,
         "method": "GET",
         "module": "app.connection"
       },
@@ -12441,7 +12586,7 @@
         "declared_path": "/connections/refresh-tools",
         "file": "back/app/connection/router.py",
         "handler": "refresh_connections_and_tool_catalogs",
-        "line": 142,
+        "line": 144,
         "method": "POST",
         "module": "app.connection"
       },
@@ -12450,7 +12595,7 @@
         "declared_path": "/connections/sync-integrated",
         "file": "back/app/connection/router.py",
         "handler": "sync_integrated_connections",
-        "line": 154,
+        "line": 156,
         "method": "POST",
         "module": "app.connection"
       },
@@ -12459,7 +12604,7 @@
         "declared_path": "/connections/test-mcp-tools",
         "file": "back/app/connection/router.py",
         "handler": "test_mcp_tools",
-        "line": 454,
+        "line": 456,
         "method": "POST",
         "module": "app.connection"
       },
@@ -12468,7 +12613,7 @@
         "declared_path": "/connections/{connection_id}",
         "file": "back/app/connection/router.py",
         "handler": "delete_connection",
-        "line": 293,
+        "line": 295,
         "method": "DELETE",
         "module": "app.connection"
       },
@@ -12477,7 +12622,7 @@
         "declared_path": "/connections/{connection_id}",
         "file": "back/app/connection/router.py",
         "handler": "get_connection",
-        "line": 207,
+        "line": 209,
         "method": "GET",
         "module": "app.connection"
       },
@@ -12486,8 +12631,17 @@
         "declared_path": "/connections/{connection_id}",
         "file": "back/app/connection/router.py",
         "handler": "update_connection",
-        "line": 245,
+        "line": 247,
         "method": "PATCH",
+        "module": "app.connection"
+      },
+      {
+        "authorized": true,
+        "declared_path": "/connections/{connection_id}/capabilities",
+        "file": "back/app/connection/router.py",
+        "handler": "set_capability_policy",
+        "line": 562,
+        "method": "PUT",
         "module": "app.connection"
       },
       {
@@ -12495,7 +12649,7 @@
         "declared_path": "/connections/{connection_id}/functions",
         "file": "back/app/connection/router.py",
         "handler": "list_connection_functions",
-        "line": 514,
+        "line": 516,
         "method": "GET",
         "module": "app.connection"
       },
@@ -12504,7 +12658,7 @@
         "declared_path": "/connections/{connection_id}/functions/{function_name}",
         "file": "back/app/connection/router.py",
         "handler": "set_connection_function",
-        "line": 523,
+        "line": 525,
         "method": "PUT",
         "module": "app.connection"
       },
@@ -12513,7 +12667,7 @@
         "declared_path": "/connections/{connection_id}/functions/{function_name}/global",
         "file": "back/app/connection/router.py",
         "handler": "set_connection_function_global",
-        "line": 534,
+        "line": 536,
         "method": "PUT",
         "module": "app.connection"
       },
@@ -12522,7 +12676,7 @@
         "declared_path": "/connections/{connection_id}/params",
         "file": "back/app/connection/router.py",
         "handler": "get_connection_params",
-        "line": 309,
+        "line": 311,
         "method": "GET",
         "module": "app.connection"
       },
@@ -12531,7 +12685,7 @@
         "declared_path": "/connections/{connection_id}/params",
         "file": "back/app/connection/router.py",
         "handler": "create_or_update_param",
-        "line": 356,
+        "line": 358,
         "method": "POST",
         "module": "app.connection"
       },
@@ -12540,7 +12694,7 @@
         "declared_path": "/connections/{connection_id}/params/bulk",
         "file": "back/app/connection/router.py",
         "handler": "create_or_update_params_bulk",
-        "line": 381,
+        "line": 383,
         "method": "POST",
         "module": "app.connection"
       },
@@ -12549,7 +12703,7 @@
         "declared_path": "/connections/{connection_id}/params/{param_name}",
         "file": "back/app/connection/router.py",
         "handler": "delete_param",
-        "line": 438,
+        "line": 440,
         "method": "DELETE",
         "module": "app.connection"
       },
@@ -12558,7 +12712,7 @@
         "declared_path": "/connections/{connection_id}/params/{param_name}",
         "file": "back/app/connection/router.py",
         "handler": "get_single_param",
-        "line": 329,
+        "line": 331,
         "method": "GET",
         "module": "app.connection"
       },
@@ -12567,7 +12721,7 @@
         "declared_path": "/connections/{connection_id}/params/{param_name}",
         "file": "back/app/connection/router.py",
         "handler": "update_connection_param",
-        "line": 406,
+        "line": 408,
         "method": "PATCH",
         "module": "app.connection"
       },
@@ -13827,7 +13981,7 @@
         "declared_path": "/healthz",
         "file": "back/bridge/codex/default-agent/server.py",
         "handler": "health",
-        "line": 184,
+        "line": 189,
         "method": "GET",
         "module": "bridge.codex"
       },
@@ -14523,6 +14677,15 @@
         "line": 53,
         "method": "GET",
         "module": "bridge.mail"
+      },
+      {
+        "authorized": false,
+        "declared_path": "/mcp/{identifier}",
+        "file": "back/app/harnesses/runtime_web.py",
+        "handler": "mcp",
+        "line": 60,
+        "method": "POST",
+        "module": "app.harnesses"
       },
       {
         "authorized": true,
@@ -15578,6 +15741,42 @@
         "module": "app.harness"
       },
       {
+        "authorized": false,
+        "declared_path": "/runtime-authorizations",
+        "file": "back/app/tools/runtime_authorization_router.py",
+        "handler": "request_action",
+        "line": 47,
+        "method": "POST",
+        "module": "app.tools"
+      },
+      {
+        "authorized": false,
+        "declared_path": "/runtime-authorizations/context",
+        "file": "back/app/tools/runtime_authorization_router.py",
+        "handler": "context_status",
+        "line": 72,
+        "method": "GET",
+        "module": "app.tools"
+      },
+      {
+        "authorized": false,
+        "declared_path": "/runtime-authorizations/receipt",
+        "file": "back/app/tools/runtime_authorization_router.py",
+        "handler": "action_receipt",
+        "line": 94,
+        "method": "POST",
+        "module": "app.tools"
+      },
+      {
+        "authorized": false,
+        "declared_path": "/runtime-authorizations/{identifier}",
+        "file": "back/app/tools/runtime_authorization_router.py",
+        "handler": "action_status",
+        "line": 81,
+        "method": "GET",
+        "module": "app.tools"
+      },
+      {
         "authorized": true,
         "declared_path": "/skills",
         "file": "back/app/skill/router.py",
@@ -16059,7 +16258,7 @@
         "declared_path": "/tools",
         "file": "back/app/tools/router.py",
         "handler": "list_tools",
-        "line": 63,
+        "line": 67,
         "method": "GET",
         "module": "app.tools"
       },
@@ -16068,7 +16267,7 @@
         "declared_path": "/tools",
         "file": "back/app/tools/router.py",
         "handler": "create_tool",
-        "line": 154,
+        "line": 158,
         "method": "POST",
         "module": "app.tools"
       },
@@ -16077,7 +16276,7 @@
         "declared_path": "/tools/agents/{agent_id}/mcp-tools",
         "file": "back/app/tools/router.py",
         "handler": "list_agent_mcp_tools",
-        "line": 73,
+        "line": 77,
         "method": "GET",
         "module": "app.tools"
       },
@@ -16086,7 +16285,7 @@
         "declared_path": "/tools/import",
         "file": "back/app/tools/router.py",
         "handler": "import_tool",
-        "line": 244,
+        "line": 248,
         "method": "POST",
         "module": "app.tools"
       },
@@ -16095,7 +16294,7 @@
         "declared_path": "/tools/mcp-candidates",
         "file": "back/app/tools/router.py",
         "handler": "prepare_mcp_candidate",
-        "line": 33,
+        "line": 37,
         "method": "POST",
         "module": "app.tools"
       },
@@ -16104,7 +16303,7 @@
         "declared_path": "/tools/test-mcp",
         "file": "back/app/tools/router.py",
         "handler": "test_mcp_connection",
-        "line": 82,
+        "line": 86,
         "method": "POST",
         "module": "app.tools"
       },
@@ -16122,7 +16321,7 @@
         "declared_path": "/tools/{tool_id}",
         "file": "back/app/tools/router.py",
         "handler": "delete_tool",
-        "line": 206,
+        "line": 210,
         "method": "DELETE",
         "module": "app.tools"
       },
@@ -16131,7 +16330,7 @@
         "declared_path": "/tools/{tool_id}",
         "file": "back/app/tools/router.py",
         "handler": "get_tool",
-        "line": 102,
+        "line": 106,
         "method": "GET",
         "module": "app.tools"
       },
@@ -16140,7 +16339,7 @@
         "declared_path": "/tools/{tool_id}",
         "file": "back/app/tools/router.py",
         "handler": "update_tool",
-        "line": 170,
+        "line": 174,
         "method": "PUT",
         "module": "app.tools"
       },
@@ -16149,7 +16348,7 @@
         "declared_path": "/tools/{tool_id}/conversation-access",
         "file": "back/app/tools/router.py",
         "handler": "update_conversation_access",
-        "line": 186,
+        "line": 190,
         "method": "PATCH",
         "module": "app.tools"
       },
@@ -16158,7 +16357,7 @@
         "declared_path": "/tools/{tool_id}/export",
         "file": "back/app/tools/router.py",
         "handler": "export_tool",
-        "line": 221,
+        "line": 225,
         "method": "GET",
         "module": "app.tools"
       },
@@ -16167,7 +16366,7 @@
         "declared_path": "/tools/{tool_id}/global-params",
         "file": "back/app/tools/router.py",
         "handler": "get_global_params",
-        "line": 114,
+        "line": 118,
         "method": "GET",
         "module": "app.tools"
       },
@@ -16176,7 +16375,7 @@
         "declared_path": "/tools/{tool_id}/global-params",
         "file": "back/app/tools/router.py",
         "handler": "update_global_params",
-        "line": 131,
+        "line": 135,
         "method": "PUT",
         "module": "app.tools"
       },
@@ -16293,16 +16492,52 @@
         "declared_path": "/v1/chat/completions",
         "file": "back/bridge/codex/default-agent/server.py",
         "handler": "chat_completions",
-        "line": 258,
+        "line": 264,
         "method": "POST",
         "module": "bridge.codex"
+      },
+      {
+        "authorized": false,
+        "declared_path": "/v1/galaris/capabilities",
+        "file": "back/app/harnesses/runtime_web.py",
+        "handler": "capabilities",
+        "line": 22,
+        "method": "GET",
+        "module": "app.harnesses"
+      },
+      {
+        "authorized": false,
+        "declared_path": "/v1/galaris/runs",
+        "file": "back/app/harnesses/runtime_web.py",
+        "handler": "start",
+        "line": 27,
+        "method": "POST",
+        "module": "app.harnesses"
+      },
+      {
+        "authorized": false,
+        "declared_path": "/v1/galaris/runs/{identifier}",
+        "file": "back/app/harnesses/runtime_web.py",
+        "handler": "status",
+        "line": 43,
+        "method": "GET",
+        "module": "app.harnesses"
+      },
+      {
+        "authorized": false,
+        "declared_path": "/v1/galaris/runs/{identifier}/cancel",
+        "file": "back/app/harnesses/runtime_web.py",
+        "handler": "cancel",
+        "line": 51,
+        "method": "POST",
+        "module": "app.harnesses"
       },
       {
         "authorized": false,
         "declared_path": "/v1/models",
         "file": "back/bridge/codex/default-agent/server.py",
         "handler": "models",
-        "line": 189,
+        "line": 194,
         "method": "GET",
         "module": "bridge.codex"
       },
@@ -16711,6 +16946,7 @@
       },
       {
         "files": [
+          "front/app/connection/components/ActionAuthorizations.vue",
           "front/app/connection/components/AuthorizationManager.vue",
           "front/app/connection/components/CalendarConnectionEditor.vue",
           "front/app/connection/components/ConnectionForm.vue",

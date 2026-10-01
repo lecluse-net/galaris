@@ -344,8 +344,8 @@ async def document_append(
         raise
 
 
-@mcp_tool(
-    "memory",
+@mcp_tool("memory", approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval",
+
     name="document_share",
     description=(
         "Share your HTML or JSON Dataset document with one agent, human user or team (group). "
@@ -411,8 +411,8 @@ def _sharing_target(
     return targets[0]
 
 
-@mcp_tool(
-    "memory", name="memory_sharing",
+@mcp_tool("memory", approval="enabled", approval_reason="Governed bounded read or control without a new sensitive effect",
+     name="memory_sharing",
     description=(
         "Inspect sharing of a document or memory item you own. Pass its exact document:// or memory:// "
         "URI, or UUID. Returns grants, recipient options (agents, human users, teams/groups), "
@@ -439,8 +439,8 @@ async def memory_sharing(
     return _json(payload)
 
 
-@mcp_tool(
-    "memory", name="memory_share",
+@mcp_tool("memory", approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval",
+     name="memory_share",
     description=(
         "Share your memory item or document with one agent, human user or team (group). "
         "Pass its exact memory:// or document:// URI, or UUID, and exactly one of agent_id, user_id, "
@@ -462,8 +462,8 @@ async def memory_share(
     return _json(state.model_dump(mode="json", exclude={"options"}))
 
 
-@mcp_tool(
-    "memory",
+@mcp_tool("memory", approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval",
+
     name="memory_remember",
     description=(
         "Store one durable governed memory as semantic HTML (paragraphs, lists, tables, links; no images). "
@@ -525,7 +525,7 @@ async def memory_remember(
         return _json({"error": str(exc)})
 
 
-@mcp_tool("memory", name="memory_upcoming", description=(
+@mcp_tool("memory", approval="enabled", approval_reason="Governed bounded read or control without a new sensitive effect", name="memory_upcoming", description=(
     "List accessible memories matching now or the configured upcoming time window, independently "
     "of text similarity. Use offset to read further pages. Does not schedule notifications."
 ))
@@ -593,8 +593,8 @@ async def memory_index(
         return _json({"error": str(exc)})
 
 
-@mcp_tool(
-    "memory",
+@mcp_tool("memory", approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval",
+
     name="memory_forget",
     description=(
         "Permanently forget one of your memories, including every stored revision. "
@@ -612,8 +612,8 @@ async def memory_forget(ctx: McpToolContext, memory_id: str) -> str:
         return _json({"error": str(exc)})
 
 
-@mcp_tool(
-    "memory",
+@mcp_tool("memory", approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval",
+
     name="memory_summarize",
     description=(
         "Summarize up to 200 recent room messages into durable memory: attributed facts, "

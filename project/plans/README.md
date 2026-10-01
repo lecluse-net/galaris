@@ -52,6 +52,12 @@ conservent les preuves de stabilisation et le point de synchronisation des ancie
 de dialogue. Retirer un plan réalisé n'efface ni un blocage opérationnel ni une limite de
 qualification. Le contrat du dialogue reste la [décision 0083](../decisions/0083-shared-teams-and-dialogue-permissions.md).
 
+Les autorisations ponctuelles MCP et des runtimes sont réalisées : leur contrat est conservé
+dans la [décision 0153](../decisions/0153-common-action-authorizations.md), les parcours dans
+le [guide d'administration](../../docs/fr/admin/tool-administration.md), et les preuves dans
+le [catalogue des tests](../../docs/fr/dev/functional-tests.md). Les qualifications synthétiques
+ne prouvent pas un déploiement ni les effets d'un fournisseur réel.
+
 ## Maintenance
 
 - Chaque plan du répertoire possède exactement une entrée et un statut cohérent.

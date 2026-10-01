@@ -56,7 +56,7 @@ Les erreurs MCP incluent un objet `error` avec `kind` et une référence techniq
 
 Les paramètres utilisent le stockage chiffré existant ; les lectures masquent les secrets
 et distinguent configuration locale, valeur héritée et valeur imposée. Les autorisations
-de fonctions sont locales (`default`, `enabled`, `disabled`) et ne modifient pas les règles
+de fonctions sont locales (`default`, `enabled`, `disabled`, `ask`) et ne modifient pas les règles
 globales. Un couple agent/Tool ne possède qu’une connexion. La suppression des groupes
 détache le groupe historique et révoque les accès associés ; une civilité référencée ne
 peut pas être supprimée, y compris lorsqu’un agent archivé la référence encore.

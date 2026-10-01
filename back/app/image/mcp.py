@@ -105,8 +105,8 @@ async def _store_image(
     return mutation.uri
 
 
-@mcp_tool(
-    "image",
+@mcp_tool("image", approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval",
+
     name="image_generate",
     description=(
         "Generate, edit, or compose an image. attachments accepts canonical resource URIs "
@@ -189,8 +189,8 @@ async def generate_image(
         )) from exc
 
 
-@mcp_tool(
-    "image",
+@mcp_tool("image", approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval",
+
     name="image_read",
     description=(
         "Describe or analyze an image from any canonical resource URI, including console://, "

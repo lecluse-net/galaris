@@ -33,6 +33,8 @@ from .models import (
     VoiceConversationStatus,
     VoiceTurnStatus,
 )
+# Import registers voice authorization lifecycle guards during module activation.
+from . import conversation_service as _conversation_service  # noqa: F401  # pyright: ignore[reportUnusedImport]
 from .audio_devices import PulseAudioBridge, PulseAudioConfig, PulseAudioDevices
 from .session import VoiceSession
 from .call_manager import VoiceCallInfo, voice_call_manager

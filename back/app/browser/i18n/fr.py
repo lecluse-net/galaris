@@ -3,6 +3,7 @@
 default: dict[str, object] = {
     "browser": {
         "permission_question": "Autoriser le navigateur de cet agent à effectuer un accès ${action} vers ${origin} ? Cette décision couvre tous les chemins de cette destination et sera mémorisée pour cet agent.",
+        "all_sites_permission_question": "Toujours autoriser le navigateur de cet agent à accéder à tous les sites sans nouvelle demande d’autorisation de site ? Cela couvre tous les domaines, protocoles, ports, chemins, méthodes HTTP configurées et WebSocket. Les filtres réseau, les refus explicites et les permissions distinctes du réseau local restent applicables. Révoquez cet accord dans les permissions mémorisées.",
         "errors": {
             "invalid_url": "L’URL est invalide. Utilisez une URL HTTP(S) sans identifiants intégrés.",
             "invalid_viewport": (

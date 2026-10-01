@@ -498,24 +498,24 @@
     {
       "id": "monitor.permissions",
       "labels": {
-        "fr": "Permissions mémorisées",
-        "en": "Remembered permissions"
+        "fr": "Permissions",
+        "en": "Permissions"
       },
       "breadcrumbs": {
         "fr": [
           "Superviser",
-          "Permissions mémorisées"
+          "Permissions"
         ],
         "en": [
           "Monitor",
-          "Remembered permissions"
+          "Permissions"
         ]
       },
       "route": "/connection/permissions",
       "href": null,
       "description": {
-        "fr": "Autorisations et refus enregistrés pour les agents",
-        "en": "Saved approvals and denials for agents"
+        "fr": "Décisions pour une action et permissions mémorisées des agents",
+        "en": "Decisions for one action and remembered agent permissions"
       },
       "privilege_groups": [
         [

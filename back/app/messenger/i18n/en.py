@@ -5,6 +5,11 @@ default: dict[str, object] = {
         "title": "Permission request",
         "allow": "Allow and remember",
         "deny": "Deny and remember",
+        "allow_once": "Allow this action",
+        "deny_once": "Deny this action",
+        "allow_function": "Always allow this function",
+        "function_scope": "This allows ${function} for this agent on this connection, with any arguments. You can revoke it in the connection's function permissions.",
+        "allow_all_sites": "Always allow all sites",
     },
     "messenger_mcp": {
         "no_messenger": "No messaging service is configured for this agent.",

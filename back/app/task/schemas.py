@@ -69,6 +69,13 @@ class TaskCreate(TaskBase):
     """Task creation schema."""
     topic_id: Optional[UUID] = None
 
+    @field_validator("auto_approve")
+    @classmethod
+    def reject_legacy_auto_approval(cls, value: bool) -> bool:
+        if value:
+            raise ValueError("Task auto-approval is retired; configure the agent's YOLO policy")
+        return False
+
 
     @field_validator("objective")
     @classmethod
@@ -91,7 +98,6 @@ class TaskUpdate(BaseModel):
     forced_route: Optional[ForcedRoute] = None
     forced_effort: Optional[ExecutionEffort] = None
     reasoning_effort_override: Optional[ReasoningEffort] = None
-    auto_approve: Optional[bool] = None
     agent_id: Optional[int] = None
     topic_id: Optional[UUID] = None
 

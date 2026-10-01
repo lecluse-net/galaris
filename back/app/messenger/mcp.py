@@ -257,8 +257,8 @@ async def _deliver_agent_file_with_status(
     }, True
 
 
-@mcp_tool(
-    "messenger",
+@mcp_tool("messenger", approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval",
+
     name="messenger_room_send_message",
     description="Send a Markdown message to a room or conversation.",
 )
@@ -297,8 +297,8 @@ async def mcp_room_send_message(ctx: McpToolContext, room_id: str, message: str)
         raise RuntimeError(_message(language, "send_failed", error=exc)) from exc
 
 
-@mcp_tool(
-    "messenger",
+@mcp_tool("messenger", approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval",
+
     name="messenger_send_message_to_user",
     description=(
         "Send a message to an exact provider user ID or a display name resolved by that provider. "
@@ -513,8 +513,8 @@ async def _deliver_agent_audio(
     return generated.provider_name, len(generated.content), generated.voice
 
 
-@mcp_tool(
-    "messenger",
+@mcp_tool("messenger", approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval",
+
     name="messenger_send_audio_message",
     description=(
         "Generate an MP3 voice message with this agent's configured TTS and attach it to a "
@@ -627,8 +627,8 @@ async def mcp_send_audio_message(
         ) from exc
 
 
-@mcp_tool(
-    "messenger",
+@mcp_tool("messenger", approval="enabled", approval_reason="Governed bounded read or control without a new sensitive effect",
+
     name="messenger_list_rooms",
     description=(
         "List every room accessible through the current Task's exact messaging "
@@ -664,8 +664,8 @@ async def mcp_list_rooms(ctx: McpToolContext) -> dict[str, Any] | str:
     }
 
 
-@mcp_tool(
-    "messenger",
+@mcp_tool("messenger", approval="enabled", approval_reason="Governed bounded read or control without a new sensitive effect",
+
     name="messenger_room_history",
     description=(
         "Return one newest-to-oldest page of room history. Pass next_cursor as cursor "
@@ -737,8 +737,8 @@ async def mcp_room_history(
     }
 
 
-@mcp_tool(
-    "messenger",
+@mcp_tool("messenger", approval="enabled", approval_reason="Governed bounded read or control without a new sensitive effect",
+
     name="messenger_search_users",
     description=(
         "List or search users across every enabled messaging channel, with their exact "
@@ -823,8 +823,8 @@ async def mcp_read_attachment(ctx: McpToolContext, room_id: str, attachment_id: 
         return _message(language, "read_failed", error=exc)
 
 
-@mcp_tool(
-    "messenger",
+@mcp_tool("messenger", approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval",
+
     name="messenger_send_file_to_user",
     description=(
         "Send a file from any canonical resource URI to an exact provider user. Galaris "
@@ -875,8 +875,8 @@ async def mcp_send_file_to_user(
         raise
 
 
-@mcp_tool(
-    "messenger",
+@mcp_tool("messenger", approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval",
+
     name="messenger_room_send_file",
     description=(
         "Attach a file from any canonical resource URI to a messaging room. Galaris resolves "

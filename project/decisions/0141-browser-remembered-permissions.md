@@ -48,6 +48,29 @@ reviennent avec `network_issues`, sans rejouer automatiquement une écriture apr
 Le routage conversationnel et les transports existants restent responsables de la réponse
 humaine ; le navigateur ne possède aucune implémentation propre des boutons ou messages.
 
+## Extension du 2026-10-01 — Accords durables à portée explicite
+
+Les demandes réseau non locales proposent un troisième choix, « Toujours autoriser tous les sites ».
+Il conserve une décision humaine sous `browser:v1:all-sites` pour cet agent,
+en réutilisant la table de décisions et son historique. Cette portée couvre les méthodes
+configurées et WebSocket sur tous les domaines, protocoles et ports. Les filtres, le refus
+du réseau local et les refus explicites par méthode restent prioritaires. Le choix initial
+est historisé : révoquer l’accord global ne laisse pas une autorisation implicite pour sa
+méthode d’origine. Un changement de responsable invalide également cet accord.
+Les anciens accords sous `browser:v1:site:<origine-normalisée>` restent limités à leur site.
+Une ancienne question est expirée et remplacée avant de demander un accord élargi ; sa réponse
+ne peut pas autoriser tous les sites sans que cette portée ait été présentée.
+
+Les fonctions MCP configurables proposent « Toujours autoriser cette fonction ». L’accord
+écrit la politique `enabled` existante de cette fonction sur cette connexion ; les autres
+fonctions et agents gardent leurs règles. L’action initiale conserve sa reprise et sa
+consommation unique. Les autorisations sans connexion configurable restent ponctuelles.
+Révoquer cet accord consiste à remettre la fonction sur « Sur demande ».
+
+Les titres, boutons et explications suivent la langue normalisée du responsable humain,
+puis la langue de l’installation. Les catalogues d’autorisation couvrent anglais, français
+et chinois. Une autorisation ponctuelle ne porte plus un libellé promettant une mémorisation.
+
 ## Validation et mise en service
 
 Les parcours PostgreSQL vérifient réutilisation, refus, portée, suppression, expiration,

@@ -35,8 +35,20 @@ class ExecutionEvidenceClient(Client[Any]):
                 **(kwargs.get("meta") or {}),
                 EXECUTION_META_KEY: {"operation_id": str(execution.operation_id)},
             }
+        kwargs["raise_on_error"] = False
         result = cast(Any, await super().call_tool(name, arguments, **kwargs))
         raw_meta: object = result.meta
+        from app.tools.facade import AUTHORIZATION_META_KEY, AuthorizationRequired, AuthorizationClosed
+        if isinstance(raw_meta, dict):
+            control = cast(dict[str, Any], raw_meta).get(AUTHORIZATION_META_KEY)
+            if isinstance(control, dict):
+                authorization_control = cast(dict[str, Any], control)
+                identifier = UUID(str(authorization_control["request_id"]))
+                if execution is not None:
+                    execution.outcome = "rejected"
+                if authorization_control.get("disposition") == "authorization_required":
+                    raise AuthorizationRequired(identifier)
+                raise AuthorizationClosed(identifier, str(authorization_control.get("status") or "invalidated"))
         if execution is not None and isinstance(raw_meta, dict):
             evidence: Any = cast(dict[str, Any], raw_meta).get(EXECUTION_META_KEY)
             if (

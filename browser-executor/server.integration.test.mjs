@@ -98,6 +98,15 @@ test('Chromium crash exits with failure and a fresh executor serves new sessions
       assert.equal((await response.json()).content.length, limit, 'existing session uses the next operation limits');
     }
     const largeHtml = Buffer.from('<p>' + 'x'.repeat(15000) + '</p>').toString('base64');
+    const inspected = await (await post('/v1/action', { owner: { agent_id: 1 },
+      session_id: captures[0].session_id, action: 'inspect' })).json();
+    const moved = await post('/v1/action', { owner: { agent_id: 1 }, session_id: captures[0].session_id,
+      action: 'scroll', delta_y: 100, output: 'content', expected_snapshot: inspected });
+    assert.equal(moved.status, 200);
+    const stale = await post('/v1/action', { owner: { agent_id: 1 }, session_id: captures[0].session_id,
+      action: 'scroll', delta_y: 100, output: 'content', expected_snapshot: inspected });
+    assert.equal(stale.status, 409, 'an old observation must not permit another effect');
+    assert.equal((await stale.json()).error.code, 'stale_action');
     assert.equal((await post('/v1/render-html', { owner: { agent_id: 1 }, html_base64: largeHtml,
       settings: { html_max_bytes: 10000 } })).status, 413);
     assert.equal((await post('/v1/render-html', { owner: { agent_id: 1 }, html_base64: largeHtml,

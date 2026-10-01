@@ -130,15 +130,11 @@
         >
           <template v-slot:prepend><q-icon name="search" /></template>
         </q-input>
-        <q-btn-toggle
+        <q-select outlined emit-value map-options
           v-model="filterState"
+          :aria-label="$t('connection.auth.colEffective')"
           :options="stateFilterOptions"
-          color="grey-4"
-          text-color="grey-8"
-          toggle-color="primary"
           dense
-          unelevated
-          no-caps
         />
       </div>
 
@@ -151,7 +147,7 @@
         :rows="filteredFunctions"
         :columns="columns"
         :grid="$q.screen.lt.md"
-        row-key="name"
+        row-key="key"
         :loading="loading"
         :rows-per-page-options="[10, 20, 50, 100, 500]"
         :pagination="{ rowsPerPage: 50 }"
@@ -181,6 +177,7 @@
         <template v-slot:body-cell-name="props">
           <q-td :props="props">
             <span class="text-weight-medium">{{ props.row.name }}</span>
+            <div class="text-caption">{{ $t(`connection.auth.kind.${props.row.capability_kind}`) }}</div>
           </q-td>
         </template>
         <template v-slot:body-cell-description="props">
@@ -190,47 +187,35 @@
         </template>
         <template v-slot:body-cell-global="props">
           <q-td :props="props" class="text-center">
-            <q-btn-toggle
+            <q-select outlined emit-value map-options
               v-if="canEdit && canManageAllAgents"
-              :disable="systemConnection"
-              :model-value="props.row.global_state === 'disabled' ? 'disabled' : 'default'"
+              :aria-label="$t('connection.auth.colGlobal') + ': ' + props.row.name"
+              :model-value="props.row.global_state"
               :options="globalStateOptions"
-              color="grey-4"
-              text-color="grey-8"
-              toggle-color="primary"
               dense
-              unelevated
-              no-caps
               @update:model-value="onGlobalState(props.row, $event)"
             />
+            <span v-else>{{ policyLabel(props.row.global_state) }}</span>
           </q-td>
         </template>
         <template v-slot:body-cell-connection="props">
           <q-td :props="props" class="text-center">
-            <q-btn-toggle
+            <q-select outlined emit-value map-options
               v-if="canEdit"
-              :disable="systemConnection"
+              :aria-label="$t('connection.auth.colConnection') + ': ' + props.row.name"
               :model-value="props.row.connection_state"
               :options="connStateOptions"
-              color="grey-4"
-              text-color="grey-8"
-              toggle-color="primary"
               dense
-              unelevated
-              no-caps
               @update:model-value="onConnectionState(props.row, $event)"
             />
+            <span v-else>{{ policyLabel(props.row.connection_state) }}</span>
           </q-td>
         </template>
         <template v-slot:body-cell-effective="props">
           <q-td :props="props" class="text-center">
-            <q-icon
-              :name="props.row.effective ? 'check_circle' : 'block'"
-              :color="props.row.effective ? 'positive' : 'grey-5'"
-              size="sm"
-            >
-              <q-tooltip>{{ props.row.effective ? $t('connection.auth.effectiveOn') : $t('connection.auth.effectiveOff') }}</q-tooltip>
-            </q-icon>
+            <span>{{ policyLabel(props.row.effective_state) }}</span>
+            <div class="text-caption">{{ $t(`connection.auth.source.${props.row.state_source}`) }}</div>
+            <q-tooltip>{{ $t('connection.auth.defaultPolicy', { state: policyLabel(props.row.default_state) }) }}</q-tooltip>
           </q-td>
         </template>
 
@@ -248,13 +233,18 @@
                     </div>
                   </div>
                   <q-icon
-                    :name="props.row.effective ? 'check_circle' : 'block'"
+                    :name="props.row.effective_state === 'ask' ? 'pending_actions' : props.row.effective ? 'check_circle' : 'block'"
                     :color="props.row.effective ? 'positive' : 'grey-5'"
                     size="sm"
-                    :aria-label="props.row.effective ? $t('connection.auth.effectiveOn') : $t('connection.auth.effectiveOff')"
+                    :aria-label="policyLabel(props.row.effective_state)"
                   >
-                    <q-tooltip>{{ props.row.effective ? $t('connection.auth.effectiveOn') : $t('connection.auth.effectiveOff') }}</q-tooltip>
+                    <q-tooltip>{{ policyLabel(props.row.effective_state) }} · {{ $t(`connection.auth.source.${props.row.state_source}`) }}</q-tooltip>
                   </q-icon>
+                </div>
+
+                <div class="text-caption q-mt-sm">
+                  {{ policyLabel(props.row.effective_state) }} · {{ $t(`connection.auth.source.${props.row.state_source}`) }}
+                  · {{ policyLabel(props.row.default_state) }}
                 </div>
 
                 <div class="authorization-mobile-settings q-mt-md">
@@ -262,37 +252,29 @@
                     <div class="text-caption text-grey-7 q-mb-xs">
                       {{ $t('connection.auth.colGlobal') }}
                     </div>
-                    <q-btn-toggle
+                    <q-select outlined emit-value map-options
                       v-if="canEdit && canManageAllAgents"
-                      :disable="systemConnection"
-                      :model-value="props.row.global_state === 'disabled' ? 'disabled' : 'default'"
+                      :aria-label="$t('connection.auth.colGlobal') + ': ' + props.row.name"
+                      :model-value="props.row.global_state"
                       :options="globalStateOptions"
-                      color="grey-4"
-                      text-color="grey-8"
-                      toggle-color="primary"
                       dense
-                      unelevated
-                      no-caps
                       @update:model-value="onGlobalState(props.row, $event)"
                     />
+                    <span v-else>{{ policyLabel(props.row.global_state) }}</span>
                   </div>
                   <div>
                     <div class="text-caption text-grey-7 q-mb-xs">
                       {{ $t('connection.auth.colConnection') }}
                     </div>
-                    <q-btn-toggle
+                    <q-select outlined emit-value map-options
                       v-if="canEdit"
-                      :disable="systemConnection"
+                      :aria-label="$t('connection.auth.colConnection') + ': ' + props.row.name"
                       :model-value="props.row.connection_state"
                       :options="connStateOptions"
-                      color="grey-4"
-                      text-color="grey-8"
-                      toggle-color="primary"
                       dense
-                      unelevated
-                      no-caps
                       @update:model-value="onConnectionState(props.row, $event)"
                     />
+                    <span v-else>{{ policyLabel(props.row.connection_state) }}</span>
                   </div>
                 </div>
               </q-card-section>
@@ -359,16 +341,14 @@ let initialized = false
 let connectionRequestId = 0
 let functionRequestId = 0
 
-const globalStateOptions = computed(() => [
-  { label: t('connection.auth.globalActive'), value: 'default' as FunctionState },
-  { label: t('connection.auth.globalBlocked'), value: 'disabled' as FunctionState },
-])
-
 const connStateOptions = computed(() => [
   { label: t('connection.auth.stateDefault'), value: 'default' as FunctionState },
   { label: t('connection.auth.stateEnabled'), value: 'enabled' as FunctionState },
   { label: t('connection.auth.stateDisabled'), value: 'disabled' as FunctionState },
+  { label: t('connection.auth.stateAsk'), value: 'ask' as FunctionState },
 ])
+const globalStateOptions = connStateOptions
+const policyLabel = (state: FunctionState) => t(`connection.auth.${state === 'ask' ? 'stateAsk' : state === 'disabled' ? 'stateDisabled' : state === 'enabled' ? 'stateEnabled' : 'stateDefault'}`)
 
 const agentFilterOptions = computed(() =>
   agentStore.agents.map(a => ({ label: `${a.first_name} ${a.last_name}`, value: a.id }))
@@ -544,14 +524,19 @@ function applyResolved(row: ConnectionFunctionInfo, resolved: FunctionStateResol
   row.connection_state = resolved.connection_state
   row.global_state = resolved.global_state
   row.effective = resolved.effective
+  row.effective_state = resolved.effective_state
+  row.default_state = resolved.default_state
+  row.state_source = resolved.state_source
 }
 
 // Persist every toggle immediately.
 async function onConnectionState(row: ConnectionFunctionInfo, state: FunctionState): Promise<void> {
   if (!canEdit.value) return
   if (selectedConnectionId.value === null) return
+  const connectionId = selectedConnectionId.value
   try {
-    const { data } = await connectionService.setConnectionFunctionState(selectedConnectionId.value, row.name, state)
+    const { data } = await connectionService.setConnectionFunctionState(connectionId, row.name, state, row.capability_kind)
+    if (selectedConnectionId.value !== connectionId || !functions.value.includes(row)) return
     applyResolved(row, data)
     $q.notify({ type: 'positive', message: t('connection.auth.updated') })
   } catch (error) {
@@ -564,10 +549,12 @@ async function onConnectionState(row: ConnectionFunctionInfo, state: FunctionSta
 async function onGlobalState(row: ConnectionFunctionInfo, state: FunctionState): Promise<void> {
   if (!canEdit.value) return
   if (selectedConnectionId.value === null) return
+  const connectionId = selectedConnectionId.value
   try {
-    const { data } = await connectionService.setToolFunctionState(selectedConnectionId.value, row.name, state)
+    const { data } = await connectionService.setToolFunctionState(connectionId, row.name, state, row.capability_kind)
+    if (selectedConnectionId.value !== connectionId || !functions.value.includes(row)) return
     applyResolved(row, data)
-    $q.notify({ type: 'positive', message: t('connection.auth.updated') })
+    $q.notify({ type: 'positive', message: t('connection.auth.globalExceptions', { count: data.local_override_count ?? 0 }) })
   } catch (error) {
     console.error('Error updating global function state:', error)
     $q.notify({ type: 'negative', message: t('connection.auth.updateError') })

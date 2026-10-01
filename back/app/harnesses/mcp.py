@@ -13,14 +13,14 @@ from .facade import get_admin_harness
 from .schemas import HarnessSelectionUpdate
 
 
-@mcp_tool("agent_admin", name="agent_harness_get", description="Read a managed agent's selected Harness and public execution settings.", effect_policy="read", concurrency_policy="safe")
+@mcp_tool("agent_admin", approval="enabled", approval_reason="Governed bounded read or control without a new sensitive effect", name="agent_harness_get", description="Read a managed agent's selected Harness and public execution settings.", effect_policy="read", concurrency_policy="safe")
 async def agent_harness_get(ctx: McpToolContext, agent_id: int) -> dict[str, object]:
     async with delegated_admin(ctx.agent_id, "agent_harness_get", "AGENT_EDIT") as grant:
         await grant.target(agent_id)
         return await get_admin_harness(agent_id)
 
 
-@mcp_tool("agent_admin", name="agent_harness_set", description="Select an existing Harness, respecting open Tasks and previous runtime cleanup.", timeout_seconds=660)
+@mcp_tool("agent_admin", approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval", name="agent_harness_set", description="Select an existing Harness, respecting open Tasks and previous runtime cleanup.", timeout_seconds=660)
 async def agent_harness_set(ctx: McpToolContext, agent_id: int, harness_id: UUID) -> dict[str, object]:
     async with delegated_admin(ctx.agent_id, "agent_harness_set", "AGENT_EDIT") as grant:
         await grant.target(agent_id)
@@ -34,7 +34,7 @@ async def agent_harness_set(ctx: McpToolContext, agent_id: int, harness_id: UUID
         return result
 
 
-@mcp_tool("agent_admin", name="agent_harness_reset", description="Return to the internal Harness using the existing cleanup workflow.", timeout_seconds=660, effect_policy="idempotent")
+@mcp_tool("agent_admin", approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval", name="agent_harness_reset", description="Return to the internal Harness using the existing cleanup workflow.", timeout_seconds=660, effect_policy="idempotent")
 async def agent_harness_reset(ctx: McpToolContext, agent_id: int) -> dict[str, object]:
     async with delegated_admin(ctx.agent_id, "agent_harness_reset", "AGENT_EDIT") as grant:
         await grant.target(agent_id)
@@ -47,7 +47,7 @@ async def agent_harness_reset(ctx: McpToolContext, agent_id: int) -> dict[str, o
         return result
 
 
-@mcp_tool("agent_admin", name="agent_harness_status", description="Inspect lifecycle, observed runtime state and available actions.", effect_policy="read", concurrency_policy="safe")
+@mcp_tool("agent_admin", approval="enabled", approval_reason="Governed bounded read or control without a new sensitive effect", name="agent_harness_status", description="Inspect lifecycle, observed runtime state and available actions.", effect_policy="read", concurrency_policy="safe")
 async def agent_harness_status(ctx: McpToolContext, agent_id: int) -> dict[str, Any]:
     async with delegated_admin(ctx.agent_id, "agent_harness_status", "AGENT_EDIT") as grant:
         await grant.target(agent_id)
@@ -58,7 +58,7 @@ async def agent_harness_status(ctx: McpToolContext, agent_id: int) -> dict[str, 
         return result
 
 
-@mcp_tool("agent_admin", name="agent_harness_action", description="Perform an action supported by the current provider and runtime state.", timeout_seconds=660)
+@mcp_tool("agent_admin", approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval", name="agent_harness_action", description="Perform an action supported by the current provider and runtime state.", timeout_seconds=660)
 async def agent_harness_action(ctx: McpToolContext, agent_id: int, action: HarnessAction) -> dict[str, Any]:
     async with delegated_admin(ctx.agent_id, "agent_harness_action", "AGENT_EDIT") as grant:
         await grant.target(agent_id)
@@ -68,7 +68,7 @@ async def agent_harness_action(ctx: McpToolContext, agent_id: int, action: Harne
                 "operation_status": "in_progress" if action == "refresh" else "completed"}
 
 
-@mcp_tool("agent_admin", name="agent_harness_logs", description="Read bounded Harness logs, with credentials and host paths redacted.", effect_policy="read", concurrency_policy="safe")
+@mcp_tool("agent_admin", approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval", name="agent_harness_logs", description="Read bounded Harness logs, with credentials and host paths redacted.", effect_policy="read", concurrency_policy="safe")
 async def agent_harness_logs(ctx: McpToolContext, agent_id: int, lines: Annotated[int, Field(ge=1, le=5000)] = 300) -> dict[str, Any]:
     async with delegated_admin(ctx.agent_id, "agent_harness_logs", "AGENT_EDIT") as grant:
         await grant.target(agent_id)
@@ -77,7 +77,7 @@ async def agent_harness_logs(ctx: McpToolContext, agent_id: int, lines: Annotate
         return {"agent_id": agent_id, "lines": redact_logs(result.lines)}
 
 
-@mcp_tool("agent_admin", name="agent_harness_blockers", description="List Tasks blocking a Harness change, using full Task URIs. Does not terminate Tasks.", effect_policy="read", concurrency_policy="safe")
+@mcp_tool("agent_admin", approval="enabled", approval_reason="Governed bounded read or control without a new sensitive effect", name="agent_harness_blockers", description="List Tasks blocking a Harness change, using full Task URIs. Does not terminate Tasks.", effect_policy="read", concurrency_policy="safe")
 async def agent_harness_blockers(ctx: McpToolContext, agent_id: int) -> dict[str, Any]:
     async with delegated_admin(ctx.agent_id, "agent_harness_blockers", "AGENT_EDIT", "TASK_EDIT") as grant:
         await grant.target(agent_id)

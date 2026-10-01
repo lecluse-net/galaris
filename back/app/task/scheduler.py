@@ -993,6 +993,9 @@ def _finalize_claim_outcome(task: Task, attempt: TaskAttempt | None) -> None:
                 if failure:
                     attempt.error = failure
                     task.last_error = failure
+        elif task_service.is_paused_for(task, task_service.PAUSE_APPROVAL):
+            attempt.status = TaskAttemptStatus.WAITING_APPROVAL.value
+            attempt.data = {**(attempt.data or {}), "pause_reasons": task_service.pause_reasons(task)}
         elif waiting_children:
             attempt.status = TaskAttemptStatus.WAITING_CHILDREN.value
             attempt.data = {

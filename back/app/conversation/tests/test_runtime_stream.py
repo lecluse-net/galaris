@@ -10,6 +10,22 @@ from app.conversation.runtime import room_runtime_snapshot
 
 
 @pytest.mark.asyncio
+async def test_authorization_wait_keeps_its_portable_disposition_in_public_progress(monkeypatch):
+    from app.agent import ExecutionResult
+    publish = AsyncMock()
+    monkeypatch.setattr(facade, "publish_runtime_event", publish)
+    stream = ConversationRuntimeStream(room_id=uuid4(), round_id=uuid4())
+    await stream.start()
+    identifier = uuid4()
+    result = ExecutionResult(prompt="", success=False, schema_version="galaris.execution-result/v2",
+        disposition="waiting_for_authorization", authorization_requests=[identifier])
+    await stream.finish(success=False, result=result)
+    event = publish.await_args.args[1].model_dump(mode="json")
+    assert event["result"]["disposition"] == "waiting_for_authorization"
+    assert event["result"]["authorization_requests"] == [str(identifier)]
+
+
+@pytest.mark.asyncio
 async def test_message_fragments_survive_interleaving_and_terminal_snapshot(monkeypatch):
     publish = AsyncMock()
     monkeypatch.setattr(facade, "publish_runtime_event", publish)

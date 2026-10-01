@@ -11,7 +11,8 @@ WORKDIR /opt/codex-harness
 COPY requirements.txt ./
 RUN pip install --upgrade --no-cache-dir --requirement requirements.txt \
     && pip freeze > requirements-resolved.txt
-COPY server.py stream_trace.py ./
+COPY server.py stream_trace.py authorization.py ./
+COPY runtime_support.py runtime_web.py ./
 
 RUN mkdir -p /workspace /var/lib/codex \
     && chown -R "${APP_UID}:${APP_GID}" /workspace /var/lib/codex /opt/codex-harness

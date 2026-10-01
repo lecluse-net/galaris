@@ -17,8 +17,8 @@ from core.database import get_db
 _INSPECTION_LIMIT_MAX = 100
 
 
-@mcp_tool(
-    "galaris_admin",
+@mcp_tool("galaris_admin", approval='ask', approval_reason='Sensitive trace, content disclosure or remote diagnostic',
+
     name="llm_call",
     description=(
         "Return a complete LLM-call inspection as JSON text, including request and response "
@@ -37,8 +37,8 @@ async def mcp_llm_call(ctx: McpToolContext, llm_call_id: str) -> str:  # noqa: A
     return json.dumps(payload, ensure_ascii=False)
 
 
-@mcp_tool(
-    "galaris_admin",
+@mcp_tool("galaris_admin", approval='ask', approval_reason='Sensitive trace, content disclosure or remote diagnostic',
+
     name="llm_calls",
     description=(
         "Return a JSON array containing only the IDs of the most recent LLM calls started in "

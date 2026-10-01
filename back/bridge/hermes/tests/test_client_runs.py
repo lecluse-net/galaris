@@ -1,6 +1,27 @@
 import pytest
+import httpx
+from functools import partial
 
 from bridge.hermes import client
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("supported", [False, True])
+async def test_authorization_handshake_rejects_legacy_hermes_before_start(monkeypatch, supported):
+    requests = []
+    def transport(request):
+        requests.append(request)
+        return httpx.Response(200, json={"authorization_protocol": "galaris.runtime-authorization/v1" if supported else "legacy",
+            "resumable_runs": True})
+    monkeypatch.setattr(client.httpx, "AsyncClient", partial(httpx.AsyncClient, transport=httpx.MockTransport(transport)))
+    target = client.HermesTarget("http://synthetic-hermes/v1", "synthetic-token", "synthetic-model")
+    if supported:
+        await client.verify_authorization_control(target)
+    else:
+        with pytest.raises(PermissionError, match="qualified one-action"):
+            await client.verify_authorization_control(target)
+    assert len(requests) == 1 and requests[0].method == "GET"
+    assert requests[0].url.path == "/v1/galaris/capabilities"
 
 
 class _FakeResponse:

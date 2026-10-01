@@ -18,7 +18,7 @@ from .schemas import (
 )
 
 
-@mcp_tool("galaris", name="document_analyze", effect_policy="non_idempotent", concurrency_policy="safe",
+@mcp_tool("galaris", approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval", name="document_analyze", effect_policy="non_idempotent", concurrency_policy="safe",
     conversation_policy="forbidden", description=(
         "Analyze an authorized document URI in resumable bounded batches, including large reports. "
         "Returns a Process run; use document_analysis_get for coverage and results. "
@@ -43,7 +43,7 @@ async def document_analyze(ctx: McpToolContext, uri: str, question: str,
     return result.model_dump(mode="json")
 
 
-@mcp_tool("galaris", name="document_analysis_get", effect_policy="read", concurrency_policy="safe",
+@mcp_tool("galaris", approval="enabled", approval_reason="Governed bounded read or control without a new sensitive effect", name="document_analysis_get", effect_policy="read", concurrency_policy="safe",
     description="Read an owned document analysis Process and its explicit coverage after rechecking source access.")
 async def document_analysis_get(ctx: McpToolContext, run_id: str) -> dict[str, Any]:
     from app.file_share import ResourceContext, resource_info
@@ -56,7 +56,7 @@ async def document_analysis_get(ctx: McpToolContext, run_id: str) -> dict[str, A
     return detail.model_dump(mode="json", exclude={"events"}) if detail else {}
 
 
-@mcp_tool("galaris", name="document_analysis_cancel", effect_policy="idempotent", concurrency_policy="safe",
+@mcp_tool("galaris", approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval", name="document_analysis_cancel", effect_policy="idempotent", concurrency_policy="safe",
     description="Cancel an owned document analysis; completed batches are retained and pending inference is stopped.")
 async def document_analysis_cancel(ctx: McpToolContext, run_id: str) -> dict[str, Any]:
     run = await process_service.get_run(_run_id(run_id))
@@ -91,8 +91,8 @@ async def _process_tool_codes() -> dict[int, str]:
     }
 
 
-@mcp_tool(
-    "galaris",
+@mcp_tool("galaris", approval='enabled', approval_reason='Governed bounded read or polling',
+
     name="process_list",
     description="List only the business processes assigned to the current agent.",
 )
@@ -100,8 +100,8 @@ async def process_list(ctx: McpToolContext) -> list[dict[str, Any]]:
     return await process_service.list_for_agent(ctx.agent_id)
 
 
-@mcp_tool(
-    "galaris",
+@mcp_tool("galaris", approval='enabled', approval_reason='Governed bounded read or polling',
+
     name="process_get",
     description="Describe one workflow assigned to the current agent.",
 )
@@ -121,8 +121,8 @@ async def process_get(ctx: McpToolContext, workflow_id: str) -> dict[str, Any]:
     }
 
 
-@mcp_tool(
-    "galaris",
+@mcp_tool("galaris", approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval",
+
     name="process_start",
     conversation_policy="forbidden",
     description=(
@@ -161,8 +161,8 @@ async def process_start(
     return response.model_dump(mode="json")
 
 
-@mcp_tool(
-    "galaris",
+@mcp_tool("galaris", approval='enabled', approval_reason='Governed bounded read or polling',
+
     name="process_list_runs",
     description="List only business-process runs launched for the current agent.",
 )
@@ -181,8 +181,8 @@ async def process_list_runs(
     ]
 
 
-@mcp_tool(
-    "galaris",
+@mcp_tool("galaris", approval='enabled', approval_reason='Governed bounded read or polling',
+
     name="process_get_run",
     description="Return one run belonging to the current agent and refresh it when needed.",
 )
@@ -196,8 +196,8 @@ async def process_get_run(ctx: McpToolContext, run_id: str) -> dict[str, Any]:
     return detail.model_dump(mode="json", exclude={"events"})
 
 
-@mcp_tool(
-    "galaris",
+@mcp_tool("galaris", approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval",
+
     name="process_analyze_run",
     description="Explain the result and errors of one run belonging to the current agent.",
 )
@@ -208,8 +208,8 @@ async def process_analyze_run(ctx: McpToolContext, run_id: str) -> dict[str, Any
     return (await process_service.analyze_run(run.id)).model_dump(mode="json")
 
 
-@mcp_tool(
-    "process_admin",
+@mcp_tool("process_admin", approval='enabled', approval_reason='Governed bounded read or polling',
+
     name="process_admin_engines",
     description="List process engines that can back an administrative process definition.",
 )
@@ -224,8 +224,8 @@ async def process_admin_engines(
     ]
 
 
-@mcp_tool(
-    "process_admin",
+@mcp_tool("process_admin", approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval",
+
     name="process_admin_sync",
     description=(
         "Read the workflows currently exposed by one process engine before creating or updating "
@@ -241,8 +241,8 @@ async def process_admin_sync(
     return await process_service.sync_tool_definitions(tool_code)
 
 
-@mcp_tool(
-    "process_admin",
+@mcp_tool("process_admin", approval='enabled', approval_reason='Governed bounded read or polling',
+
     name="process_admin_list",
     description=(
         "List process definitions for every agent, optionally filtered by assigned agent."
@@ -266,8 +266,8 @@ async def process_admin_list(
     return [_definition_payload(item, tool_codes) for item in definitions]
 
 
-@mcp_tool(
-    "process_admin",
+@mcp_tool("process_admin", approval='enabled', approval_reason='Governed bounded read or polling',
+
     name="process_admin_get",
     description="Return any agent's process definition by its Galaris process ID.",
 )
@@ -285,8 +285,8 @@ async def process_admin_get(
     return _definition_payload(definition, tool_codes)
 
 
-@mcp_tool(
-    "process_admin",
+@mcp_tool("process_admin", approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval",
+
     name="process_admin_create",
     description="Create and assign a process definition to the selected agent.",
 )
@@ -312,8 +312,8 @@ async def process_admin_create(
     return _definition_payload(definition, {tool.id: tool.code})
 
 
-@mcp_tool(
-    "process_admin",
+@mcp_tool("process_admin", approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval",
+
     name="process_admin_update",
     description=(
         "Update the assignment, engine workflow, label, or description of any process "
@@ -362,8 +362,8 @@ async def process_admin_update(
     return _definition_payload(definition, tool_codes)
 
 
-@mcp_tool(
-    "process_admin",
+@mcp_tool("process_admin", approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval",
+
     name="process_admin_delete",
     description="Soft-delete any agent's process definition while preserving run history.",
 )
@@ -380,8 +380,8 @@ async def process_admin_delete(
     return {"process_id": process_id, "deleted": True}
 
 
-@mcp_tool(
-    "process_admin",
+@mcp_tool("process_admin", approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval",
+
     name="process_admin_start",
     description=(
         "Start a process assigned to the selected agent and return its tracking ID. Each files "
@@ -418,8 +418,8 @@ async def process_admin_start(
     return dict(response.model_dump(mode="json"))
 
 
-@mcp_tool(
-    "process_admin",
+@mcp_tool("process_admin", approval='enabled', approval_reason='Governed bounded read or polling',
+
     name="process_admin_list_runs",
     description="List process runs for every agent, optionally filtered by agent or workflow.",
 )
@@ -447,8 +447,8 @@ async def process_admin_list_runs(
     ]
 
 
-@mcp_tool(
-    "process_admin",
+@mcp_tool("process_admin", approval='enabled', approval_reason='Governed bounded read or polling',
+
     name="process_admin_get_run",
     description="Return the complete details of any agent's process run.",
 )
@@ -467,8 +467,8 @@ async def process_admin_get_run(
     return dict(detail.model_dump(mode="json"))
 
 
-@mcp_tool(
-    "process_admin",
+@mcp_tool("process_admin", approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval",
+
     name="process_admin_refresh_run",
     description="Refresh any agent's active process run from its engine.",
 )
@@ -481,8 +481,8 @@ async def process_admin_refresh_run(
     return dict((await process_service._run_read(run)).model_dump(mode="json"))  # pyright: ignore[reportPrivateUsage]
 
 
-@mcp_tool(
-    "process_admin",
+@mcp_tool("process_admin", approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval",
+
     name="process_admin_cancel_run",
     description="Cancel any agent's active process run.",
 )
@@ -495,8 +495,8 @@ async def process_admin_cancel_run(
     return dict((await process_service._run_read(run)).model_dump(mode="json"))  # pyright: ignore[reportPrivateUsage]
 
 
-@mcp_tool(
-    "process_admin",
+@mcp_tool("process_admin", approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval",
+
     name="process_admin_retry_run",
     description="Retry any agent's failed or cancelled process run.",
 )
@@ -509,8 +509,8 @@ async def process_admin_retry_run(
     return dict(response.model_dump(mode="json"))
 
 
-@mcp_tool(
-    "process_admin",
+@mcp_tool("process_admin", approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval",
+
     name="process_admin_analyze_run",
     description="Analyze the result and errors of any agent's process run.",
 )
@@ -523,8 +523,8 @@ async def process_admin_analyze_run(
     return dict(analysis.model_dump(mode="json"))
 
 
-@mcp_tool(
-    "process_admin",
+@mcp_tool("process_admin", approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval",
+
     name="process_admin_delete_run",
     description="Permanently delete any terminal process run.",
 )

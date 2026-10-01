@@ -1,5 +1,9 @@
 import { test, expect, mount, jsonRoute } from './fixtures.mjs';
 
+test.beforeEach(async ({ page }) => {
+  await jsonRoute(page, '**/api/tools/action-authorizations?*', { items: [], total: 0 });
+});
+
 test('remembered approvals and denials can be filtered and removed, with retry after failure', async ({ page }) => {
   await jsonRoute(page, '**/api/agents/selection*', [{ id: 7, label: 'Synthetic agent' }]);
   const row = { id: 'permission-a', agent_id: 7, permission_key: 'browser:v1:post:https://example.test:443',

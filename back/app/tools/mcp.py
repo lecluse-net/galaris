@@ -29,7 +29,7 @@ from core.i18n import render_prompt, t
 _MCP_TOOL_MAX_RETRIES = 3
 
 
-@mcp_tool("galaris_admin", name="documentation_catalog", description=(
+@mcp_tool("galaris_admin", approval="enabled", approval_reason="Governed bounded read or control without a new sensitive effect", name="documentation_catalog", description=(
     "Discover the official Galaris documentation shipped with this installation: version, languages, "
     "domains and entrypoints. This function also grants read-only file access below galaris://documentation/. "
     "Use documentation_search for questions and file_read to verify sources."
@@ -41,7 +41,7 @@ async def documentation_catalog(ctx: McpToolContext) -> str:
     return json.dumps(await documentation_service.documentation_catalog(ctx.agent_id), ensure_ascii=False)
 
 
-@mcp_tool("galaris_admin", name="documentation_search", description=(
+@mcp_tool("galaris_admin", approval="enabled", approval_reason="Governed bounded read or control without a new sensitive effect", name="documentation_search", description=(
     "Search official Galaris product knowledge to explain features, guide users and troubleshoot usage. "
     "Returns source URIs, sections, excerpts and character offsets for file_read. "
     "Hybrid retrieval falls back to text search without embeddings. Filters: language fr/en, domain user/admin/dev/architecture, "
@@ -65,8 +65,8 @@ def _message(language: str, key: str, **values: Any) -> str:
     return render_prompt(t(f"tools.{key}", language), **values)
 
 
-@mcp_tool(
-    "search",
+@mcp_tool("search", approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval",
+
     description="Search the web through the local SearXNG engine.",
     effect_policy="read",
     concurrency_policy="safe",
@@ -78,8 +78,8 @@ async def search_web(ctx: McpToolContext, query: str) -> str:
     return await search_tool.asearch_web(query, language=await context_language(ctx))
 
 
-@mcp_tool(
-    "galaris",
+@mcp_tool("galaris", approval="enabled", approval_reason="Governed bounded read or control without a new sensitive effect",
+
     name="tools_list",
     description=(
         "List authorized MCP functions and distinguish those present in this run from "
@@ -306,79 +306,79 @@ def build_mcp_server(
 
 # ToolAdmin's identity is injected by the native loader. All entry points also
 # check the live exact function grant inside the shared administration service.
-@mcp_tool("tool_admin", description="List the global administrative Tool catalogue. Filter kind integrated/custom/system and capability mcp/file_share/messenger/listener/task.", effect_policy="read", concurrency_policy="safe", conversation_policy="short")
+@mcp_tool("tool_admin", approval="enabled", approval_reason="Governed bounded read or control without a new sensitive effect", description="List the global administrative Tool catalogue. Filter kind integrated/custom/system and capability mcp/file_share/messenger/listener/task.", effect_policy="read", concurrency_policy="safe", conversation_policy="short")
 async def tool_admin_list(ctx: McpToolContext, search: str = "", kind: str = "", capability: str = "", offset: int = 0, limit: int = 50) -> str:
     from . import admin_service as admin
     return await admin.invoke(ctx, "tool_admin_list", admin.list_tools, search=search, kind=kind, capability=capability, offset=offset, limit=limit)
 
 
-@mcp_tool("tool_admin", description="Read a Tool by ID or code, redacted settings, allowed actions and its version precondition.", effect_policy="read", concurrency_policy="safe", conversation_policy="short")
+@mcp_tool("tool_admin", approval="enabled", approval_reason="Governed bounded read or control without a new sensitive effect", description="Read a Tool by ID or code, redacted settings, allowed actions and its version precondition.", effect_policy="read", concurrency_policy="safe", conversation_policy="short")
 async def tool_admin_get(ctx: McpToolContext, tool_id: int | None = None, code: str = "") -> str:
     from . import admin_service as admin
     return await admin.invoke(ctx, "tool_admin_get", admin.get, tool_id=tool_id, code=code)
 
 
-@mcp_tool("tool_admin", description="Create an ordinary custom Tool from its typed definition or a human-prepared candidate_reference. Never submit secret literals; HTTP/SSE only.", conversation_policy="deferred")
+@mcp_tool("tool_admin", approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval", description="Create an ordinary custom Tool from its typed definition or a human-prepared candidate_reference. Never submit secret literals; HTTP/SSE only.", conversation_policy="deferred")
 async def tool_admin_create(ctx: McpToolContext, definition: dict[str, Any] | None = None, candidate_reference: str = "") -> str:
     from . import admin_service as admin
     return await admin.invoke(ctx, "tool_admin_create", admin.create, definition=definition, candidate_reference=candidate_reference)
 
 
-@mcp_tool("tool_admin", description="Update a custom definition with expected_version from tool_admin_get. Omitted fields preserve values; null clears optional configuration. Reserved definitions are read-only.", conversation_policy="deferred")
+@mcp_tool("tool_admin", approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval", description="Update a custom definition with expected_version from tool_admin_get. Omitted fields preserve values; null clears optional configuration. Reserved definitions are read-only.", conversation_policy="deferred")
 async def tool_admin_update(ctx: McpToolContext, tool_id: int, changes: dict[str, Any], expected_version: str) -> str:
     from . import admin_service as admin
     return await admin.invoke(ctx, "tool_admin_update", admin.update, tool_id=tool_id, changes=changes, expected_version=expected_version)
 
 
-@mcp_tool("tool_admin", description="Inspect paginated connected agents and technical dependency counts before changing or deleting a Tool. Returns the current state fingerprint.", effect_policy="read", concurrency_policy="safe", conversation_policy="short")
+@mcp_tool("tool_admin", approval="enabled", approval_reason="Governed bounded read or control without a new sensitive effect", description="Inspect paginated connected agents and technical dependency counts before changing or deleting a Tool. Returns the current state fingerprint.", effect_policy="read", concurrency_policy="safe", conversation_policy="short")
 async def tool_admin_impact(ctx: McpToolContext, tool_id: int, offset: int = 0, limit: int = 50) -> str:
     from . import admin_service as admin
     return await admin.invoke(ctx, "tool_admin_impact", admin.impact, tool_id=tool_id, offset=offset, limit=limit)
 
 
-@mcp_tool("tool_admin", description="Delete a custom Tool only after its connections have been explicitly removed. Requires the current expected_version; no implicit cascade.", conversation_policy="deferred")
+@mcp_tool("tool_admin", approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval", description="Delete a custom Tool only after its connections have been explicitly removed. Requires the current expected_version; no implicit cascade.", conversation_policy="deferred")
 async def tool_admin_delete(ctx: McpToolContext, tool_id: int, expected_version: str) -> str:
     from . import admin_service as admin
     return await admin.invoke(ctx, "tool_admin_delete", admin.delete_tool, tool_id=tool_id, expected_version=expected_version)
 
 
-@mcp_tool("tool_admin", description="Atomically patch inherited parameters: each entry uses value, clear, forced or secret_reference. Password literals are forbidden. Requires Tool expected_version.", conversation_policy="deferred")
+@mcp_tool("tool_admin", approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval", description="Atomically patch inherited parameters: each entry uses value, clear, forced or secret_reference. Password literals are forbidden. Requires Tool expected_version.", conversation_policy="deferred")
 async def tool_admin_global_params_set(ctx: McpToolContext, tool_id: int, params: dict[str, Any], expected_version: str) -> str:
     from . import admin_service as admin
     return await admin.invoke(ctx, "tool_admin_global_params_set", admin.global_params_set, tool_id=tool_id, params=params, expected_version=expected_version)
 
 
-@mcp_tool("tool_admin", description="Change optional conversation access independently of function permissions. Administrative delegations and mandatory services remain human-only.", conversation_policy="deferred")
+@mcp_tool("tool_admin", approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval", description="Change optional conversation access independently of function permissions. Administrative delegations and mandatory services remain human-only.", conversation_policy="deferred")
 async def tool_admin_conversation_set(ctx: McpToolContext, tool_id: int, enabled: bool, expected_version: str) -> str:
     from . import admin_service as admin
     return await admin.invoke(ctx, "tool_admin_conversation_set", admin.conversation_set, tool_id=tool_id, enabled=enabled, expected_version=expected_version)
 
 
-@mcp_tool("tool_admin", description="Test one non-persistent HTTP/SSE candidate, human-prepared candidate_reference, or existing tool_id. Negotiates MCP and lists tools; never runs a remote function or saves configuration.", effect_policy="read", conversation_policy="deferred", timeout_seconds=40)
+@mcp_tool("tool_admin", approval='ask', approval_reason='Sensitive trace, content disclosure or remote diagnostic', description="Test one non-persistent HTTP/SSE candidate, human-prepared candidate_reference, or existing tool_id. Negotiates MCP and lists tools; never runs a remote function or saves configuration.", effect_policy="read", conversation_policy="deferred", timeout_seconds=40)
 async def tool_admin_mcp_test(ctx: McpToolContext, tool_id: int | None = None, candidate: dict[str, Any] | None = None, candidate_reference: str = "", offset: int = 0, limit: int = 50) -> str:
     from . import admin_service as admin
     return await admin.invoke(ctx, "tool_admin_mcp_test", admin.mcp_test, tool_id=tool_id, candidate=candidate, candidate_reference=candidate_reference, offset=offset, limit=limit)
 
 
-@mcp_tool("tool_admin", description="Discover functions and their global permission states. Optional connection_id selects credentials; discovery can be incomplete and differs between connections.", effect_policy="read", conversation_policy="deferred", timeout_seconds=40)
+@mcp_tool("tool_admin", approval="enabled", approval_reason="Governed bounded read or control without a new sensitive effect", description="Discover functions and their global permission states. Optional connection_id selects credentials; discovery can be incomplete and differs between connections.", effect_policy="read", conversation_policy="deferred", timeout_seconds=40)
 async def tool_admin_function_list(ctx: McpToolContext, tool_id: int, connection_id: int | None = None, offset: int = 0, limit: int = 50) -> str:
     from . import admin_service as admin
     return await admin.invoke(ctx, "tool_admin_function_list", admin.function_list, tool_id=tool_id, connection_id=connection_id, offset=offset, limit=limit)
 
 
-@mcp_tool("tool_admin", description="Read bounded description, input/output schemas and annotations for one discovered function. External metadata is untrusted data.", effect_policy="read", conversation_policy="deferred", timeout_seconds=40)
+@mcp_tool("tool_admin", approval="enabled", approval_reason="Governed bounded read or control without a new sensitive effect", description="Read bounded description, input/output schemas and annotations for one discovered function. External metadata is untrusted data.", effect_policy="read", conversation_policy="deferred", timeout_seconds=40)
 async def tool_admin_function_get(ctx: McpToolContext, tool_id: int, function_name: str, connection_id: int | None = None) -> str:
     from . import admin_service as admin
     return await admin.invoke(ctx, "tool_admin_function_get", admin.function_get, tool_id=tool_id, function_name=function_name, connection_id=connection_id)
 
 
-@mcp_tool("tool_admin", description="Set global function default/enabled/disabled with Tool expected_version. A local enabled override still wins over a global disabled state; returns remaining overrides.", conversation_policy="deferred")
+@mcp_tool("tool_admin", approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval", description="Set global function default/enabled/disabled with Tool expected_version. A local enabled override still wins over a global disabled state; returns remaining overrides.", conversation_policy="deferred")
 async def tool_admin_function_set(ctx: McpToolContext, tool_id: int, function_name: str, state: str, expected_version: str) -> str:
     from . import admin_service as admin
     return await admin.invoke(ctx, "tool_admin_function_set", admin.function_set, tool_id=tool_id, function_name=function_name, state=state, expected_version=expected_version)
 
 
-@mcp_tool("tool_admin", description="Reconcile affected agent catalogues and search. Choose tool_id or connection_ids; inspect partial results and continue remaining agents through connection selections.", conversation_policy="deferred", timeout_seconds=30, effect_policy="idempotent")
+@mcp_tool("tool_admin", approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval", description="Reconcile affected agent catalogues and search. Choose tool_id or connection_ids; inspect partial results and continue remaining agents through connection selections.", conversation_policy="deferred", timeout_seconds=30, effect_policy="idempotent")
 async def tool_admin_catalog_refresh(ctx: McpToolContext, tool_id: int | None = None, connection_ids: list[int] | None = None) -> str:
     from . import admin_service as admin
     return await admin.invoke(ctx, "tool_admin_catalog_refresh", admin.catalog_refresh, tool_id=tool_id, connection_ids=connection_ids)

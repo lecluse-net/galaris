@@ -77,6 +77,7 @@ from .service import (
     search_agent_users,
 )
 from .permissions import request_permission as request_permission
+from .permissions import get_permission_decision as get_permission_decision
 from .reply_guard import (
     clear_room,
     note_reply,

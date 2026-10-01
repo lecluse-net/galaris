@@ -24,7 +24,7 @@ async function teamFixtures(page, { failFirstAgentSave = false, many = false } =
     const members = people.filter(person => humanTeams.get(team.id)?.includes(person.id))
     return { ...team, human_count: members.length, human_members: members }
   }
-  await page.route('**/api/agents/*/avatar', route => route.fulfill({ contentType: 'image/svg+xml', body: avatarSvg }))
+  await page.route(/\/api\/agents\/\d+\/avatar(?:\?.*)?$/, route => route.fulfill({ contentType: 'image/svg+xml', body: avatarSvg }))
   await page.route('**/api/agents/teams/agents', route => route.fulfill({ json: agents }))
   await page.route('**/api/teams', async route => {
     if (route.request().method() === 'POST') {

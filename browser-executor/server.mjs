@@ -358,8 +358,12 @@ async function performAction(body) {
 }
 
 async function performSessionAction(session, body) {
-  session.network.clearIssues();
   const action = String(body.action ?? "");
+  if (action === "inspect") return inspectAction(session, body);
+  if (body.expected_snapshot && JSON.stringify(await inspectAction(session, body)) !== JSON.stringify(body.expected_snapshot)) {
+    throw new BrowserRequestError("stale_action", "The browser action changed; obtain a new observation.", 409);
+  }
+  session.network.clearIssues();
   await applyRequestedViewport(session, body);
   if (action === "content") return contentResult(session, body.settings, body.offset, body.max_chars);
   if (action === "screenshot") return screenshotResult(session, body.settings, body.image_format);
@@ -396,6 +400,16 @@ async function performSessionAction(session, body) {
   }
   session.revision += 1;
   return requestedOutput(session, body);
+}
+
+async function inspectAction(session, body) {
+  let target = null;
+  if (body.ref != null) {
+    const reference = safeReference(body.ref);
+    target = (await session.page.locator(`aria-ref=${reference}`).ariaSnapshot({ timeout: 3_000 })).slice(0, 16_000);
+  }
+  return { session_id: session.id, revision: session.revision, url: session.page.url(),
+    ref: body.ref ?? null, target, settings: body.settings };
 }
 
 async function close(body) {

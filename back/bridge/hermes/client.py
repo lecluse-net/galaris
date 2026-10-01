@@ -172,6 +172,7 @@ async def start_run(
     system_message: Optional[str] = None,
     conversation_history: Optional[list[dict[str, Any]]] = None,
     session_key: Optional[str] = None,
+    run_context: str | None = None,
 ) -> str:
     """Start a controllable Hermes run through /v1/runs."""
     endpoint = f"{_v1_url(target)}/runs"
@@ -189,11 +190,17 @@ async def start_run(
         payload["instructions"] = system_message
     if conversation_history:
         payload["conversation_history"] = conversation_history
+    if run_context:
+        payload["galaris_run_context"] = run_context
 
     async with httpx.AsyncClient(timeout=HERMES_TIMEOUT) as http:
+        headers = _run_headers(target, session_key or session_id)
+        if run_context:
+            import hashlib
+            headers["Idempotency-Key"] = hashlib.sha256(run_context.encode()).hexdigest()
         res = await http.post(
             endpoint,
-            headers=_run_headers(target, session_key or session_id),
+            headers=headers,
             json=payload,
         )
         res.raise_for_status()
@@ -201,7 +208,16 @@ async def start_run(
         run_id = as_dict(data).get("run_id") if isinstance(data, dict) else None
         if not run_id:
             raise RuntimeError(_error("run_id_missing"))
-        return str(run_id)
+    return str(run_id)
+
+
+async def verify_authorization_control(target: HermesTarget) -> None:
+    async with httpx.AsyncClient(timeout=HERMES_TIMEOUT, follow_redirects=False, trust_env=False) as http:
+        response = await http.get(f"{_v1_url(target)}/galaris/capabilities", headers=_auth_headers(target))
+        response.raise_for_status()
+    capability = as_dict(response.json())
+    if capability.get("authorization_protocol") != "galaris.runtime-authorization/v1" or capability.get("resumable_runs") is not True:
+        raise PermissionError("Hermes requires a qualified one-action authorization adapter")
 
 
 async def run_events(
@@ -280,14 +296,14 @@ async def stop_run(target: HermesTarget, run_id: str) -> Dict[str, Any]:
         return as_dict(data) if isinstance(data, dict) else {}
 
 
-async def submit_run_approval(target: HermesTarget, run_id: str, choice: str) -> Dict[str, Any]:
+async def submit_run_approval(target: HermesTarget, run_id: str, choice: str, *, request_id: str | None = None) -> Dict[str, Any]:
     """Submit a choice for a pending Hermes run approval."""
     endpoint = f"{_v1_url(target)}/runs/{run_id}/approval"
     async with httpx.AsyncClient(timeout=HERMES_TIMEOUT) as http:
         res = await http.post(
             endpoint,
             headers=_auth_headers(target),
-            json={"choice": choice},
+            json={"choice": choice, **({"request_id": request_id} if request_id else {})},
         )
         if res.status_code == 404:
             raise HermesRunNotFound(run_id)

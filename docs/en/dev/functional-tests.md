@@ -84,6 +84,34 @@ sessions, connection priority, mixed DNS, filters and managers' HTTP rights.
 redirects, owner isolation, HTTPS certificate validation, WebSockets and revocation.
 `front/browser-tests/permissions.spec.mjs` exercises the real list, filters, deletion,
 dialog backdrop dismissal and retry after failure.
+The same backend suite checks all-sites consent, revocation, filter priority, local-network
+isolation, and French, Chinese, and the instance's default language.
+Historical single-site agreements are not broadened; earlier questions are replaced before
+collecting consent for all sites.
+`app/tools/tests/test_action_authorizations.py` checks permanent consent per function and
+connection, resuming the original action without replay, and subsequent execution without a question.
+It also covers concurrent claims, non-repeatable denial, expiry, quotas, context or configuration
+revocation, YOLO, and file preconditions. Permanent consent rejects changed MCP configuration,
+including changes between call preparation and creation of its question.
+Real HTTP routes reject a system runtime token without its context, accept a valid
+context, reject a revoked context, and preserve independent MCP clients.
+`app/connection/tests/test_function_modes_migration.py`
+proves Boolean conversion, rollback and replay after a later human choice on PostgreSQL.
+`app/harnesses/tests/test_runtime_control.py` checks suspended calls, lost claim replies and
+restart without re-execution. Mail and Process workflows check permits before effects and
+reconciliation after an unknown outcome.
+`app/process/tests/test_common_authorizations.py` exercises real MCP transport and transactions:
+pause, revocation, workflow changes, continuation after Task completion, lost replies,
+and precedence of a terminal callback over revoked observation.
+`bridge/deepseek_harness/tests/test_runtime_authorizations.py` exercises runtime HTTP routes
+for agreement, denial, revocation and cancellation, without restarting the SDK.
+`make tests-harness-runtimes` exercises the embedded Codex, Claude, Hermes and DeepSeek SDKs
+with synthetic model and external transports: no effect before agreement, denial, resumption
+of the exact call, and MCP continuation. This qualification does not prove a deployment.
+`e2e/specs/tool-authorizations.spec.mjs` checks agreement and denial, reopening, keyboard use,
+YOLO and blocked functions in the assembled application at 390 and 1440 pixels.
+`front/browser-tests/action-authorizations.spec.mjs` covers the permanent choice with its explicit
+scope, all three languages, keyboard use, mobile layouts, and retry after an HTTP rejection.
 
 Journal and streaming stabilization is covered by
 `back/app/agent/tests/test_reasoning_guard.py` (irregular fragments, replayed snapshots,

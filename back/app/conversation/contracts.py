@@ -8,10 +8,10 @@ from datetime import datetime
 from typing import Literal, Protocol
 from uuid import UUID
 
-from pydantic import BaseModel, Field, JsonValue, model_validator
+from pydantic import BaseModel, Field, JsonValue, model_validator, SerializeAsAny
 
 from app.agent import AIMessage, AIResult
-from app.agent.contracts import ReasoningEffort
+from app.agent.contracts import AgentRunCheckpoint, ReasoningEffort
 from app.process import ProcessRunRead
 from app.task import TaskRead
 
@@ -74,7 +74,7 @@ class ConversationRuntimeEvent(BaseModel):
     attempt: int = Field(default=1, ge=1)
     topic_id: UUID | None = None
     message: AIMessage | None = None
-    result: AIResult | None = None
+    result: SerializeAsAny[AIResult] | None = None
     success: bool = True
 
     @model_validator(mode="after")
@@ -124,6 +124,8 @@ class ConversationTurn:
     publish_progress: ConversationProgressPublisher | None = None
     reset_progress: ConversationProgressResetter | None = None
     attempt: int = 1
+    resume_checkpoint: AgentRunCheckpoint | None = None
+    save_checkpoint: Callable[[AgentRunCheckpoint], Awaitable[None]] | None = None
 
     @property
     def sender_is_ai(self) -> bool:

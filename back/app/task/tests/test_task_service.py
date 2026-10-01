@@ -836,10 +836,10 @@ async def test_is_auto_approved_walks_ancestors(monkeypatch: pytest.MonkeyPatch)
         task_service, "get_by_id", AsyncMock(side_effect=lambda tid: by_id.get(tid))
     )
 
-    # A flag on the root covers the entire descendant tree.
-    assert await task_service.is_auto_approved(grandchild) is True
-    assert await task_service.is_auto_approved(child) is True
-    assert await task_service.is_auto_approved(root) is True
+    # Historical flags are readable but grant no authority, including to descendants.
+    assert await task_service.is_auto_approved(grandchild) is False
+    assert await task_service.is_auto_approved(child) is False
+    assert await task_service.is_auto_approved(root) is False
     # Without a local flag or flagged ancestor, return False.
     assert await task_service.is_auto_approved(plain) is False
 
@@ -863,9 +863,9 @@ async def test_is_auto_approved_stops_at_agent_boundary(
     # Root auto_approve does not cross the agent boundary.
     assert await task_service.is_auto_approved(peer) is False
     assert await task_service.is_auto_approved(peer_child) is False
-    # For the same agent, auto_approve propagates through the subtree.
-    assert await task_service.is_auto_approved(root) is True
-    assert await task_service.is_auto_approved(same_agent_child) is True
+    # Same-agent lineage does not restore retired authority either.
+    assert await task_service.is_auto_approved(root) is False
+    assert await task_service.is_auto_approved(same_agent_child) is False
 
 
 @pytest.mark.asyncio
@@ -1010,8 +1010,8 @@ async def test_approval_action_denies_agent_interlocutor(monkeypatch: pytest.Mon
 
     # Ask a human caller without auto_approve for approval in the room.
     assert await task_service.approval_action(_task(ai=False)) == "ask"
-    # Refuse an AI-agent caller without auto_approve; agents cannot grant approval.
-    assert await task_service.approval_action(_task(ai=True)) == "deny_agent"
+    # The current manager receives the request even when work originates from an agent.
+    assert await task_service.approval_action(_task(ai=True)) == "ask"
 
 
 @pytest.mark.asyncio
@@ -1020,8 +1020,8 @@ async def test_approval_action_auto_approve_beats_agent_denial(
 ) -> None:
     monkeypatch.setattr(task_service, "get_by_id", AsyncMock(return_value=None))
 
-    # Explicit auto_approve takes precedence even in an agent-to-agent conversation.
-    assert await task_service.approval_action(_task(ai=True, auto_approve=True)) == "auto"
+    # Historical approval flags cannot authorize agent-to-agent work.
+    assert await task_service.approval_action(_task(ai=True, auto_approve=True)) == "ask"
 
 
 @pytest.mark.asyncio
@@ -1035,5 +1035,5 @@ async def test_approval_action_auto_approve_inherited_from_ancestor(
         task_service, "get_by_id", AsyncMock(side_effect=lambda tid: by_id.get(tid))
     )
 
-    # An ancestor's auto_approve covers the agent-to-agent subtask.
-    assert await task_service.approval_action(child) == "auto"
+    # An ancestor cannot grant one-action authority to a subtask.
+    assert await task_service.approval_action(child) == "ask"

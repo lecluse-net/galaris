@@ -9,8 +9,8 @@ from app.tools.mcp_loader import McpToolContext, mcp_tool
 from . import skill_service, storage
 
 
-@mcp_tool(
-    "skill_management",
+@mcp_tool("skill_management", approval='enabled', approval_reason='Governed bounded read or polling',
+
     name="skills_list",
     description=(
         "List the Galaris skills available to a given agent. By default only effectively enabled, "
@@ -32,8 +32,8 @@ async def mcp_skills_list(
     return [dict(item.model_dump(mode="json")) for item in authorizations]
 
 
-@mcp_tool(
-    "skill_management",
+@mcp_tool("skill_management", approval='enabled', approval_reason='Governed bounded read or polling',
+
     name="skill_read",
     description=(
         "Read the complete SKILL.md file of one skill from the central Galaris skill library. "

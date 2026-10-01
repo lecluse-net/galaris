@@ -353,7 +353,8 @@ message is escaped as text. Voice uses the admitted request as its source.
 retains applicable constraints, and identifies this Task's scope when the message requests several
 independent outcomes. The values sent to `conversation_task_submit` remain hints and cannot erase a
 source constraint. The backend alone retains the connection, room, interlocutor, Topic,
-contact, and the choices `@exec`, `@plan`, `@standard`, `@high`, `@effort`, or `@approve`. In
+contact, and the choices `@exec`, `@plan`, `@standard`, `@high`, or `@effort`. `@approve` grants
+no agreement; automatic autonomy is configured through the human YOLO control. In
 native Chat, `conversation_task_submit` exposes no effort choice: the Task dispatcher decides
 between `standard` and `high`. Explicit directives override this conversational choice and remain
 persisted as creation constraints, notably `@high`. `@plan` implies creation of a planned Task

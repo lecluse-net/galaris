@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import json
 import re
 import time
 from dataclasses import dataclass
@@ -190,6 +191,7 @@ class RealtimeAgentVoiceEngine:
         self._current_output_item_id = ""
         self._response_text: list[str] = []
         self._tool_response_ids: set[str] = set()
+        self._authorization_tasks: set[asyncio.Task[None]] = set()
         self._first_text_at: datetime | None = None
         self._first_audio_at: datetime | None = None
         self._playback_started: float | None = None
@@ -311,6 +313,10 @@ class RealtimeAgentVoiceEngine:
                 if error is not None:
                     raise error
         finally:
+            authorization_tasks = tuple(self._authorization_tasks)
+            for pending in authorization_tasks:
+                pending.cancel()
+            await asyncio.gather(*authorization_tasks, return_exceptions=True)
             for task in tasks:
                 task.cancel()
             await asyncio.gather(*tasks, return_exceptions=True)
@@ -461,11 +467,31 @@ class RealtimeAgentVoiceEngine:
     ) -> None:
         assert self._provider is not None
         self._tool_response_ids.add(response_id)
-        output = await execute_realtime_tool(
-            self._tools,
-            name=name,
-            arguments=arguments,
-        )
+        from uuid import uuid5, NAMESPACE_URL
+        operation = uuid5(NAMESPACE_URL, f"voice:{self._session_id}:{call_id}")
+        round_id = self._current_turn_id
+        output = await execute_realtime_tool(self._tools, name=name, arguments=arguments,
+            operation_id=operation, round_id=round_id)
+        if "authorization_required" in json.loads(output):
+            async def resume() -> None:
+                try:
+                    result = output
+                    while "authorization_required" in json.loads(result):
+                        await asyncio.sleep(2)
+                        result = await execute_realtime_tool(self._tools, name=name, arguments=arguments,
+                            operation_id=operation, round_id=round_id)
+                    if self._provider is not None:
+                        await self._provider.send_function_output(call_id, result)
+                        if response_id not in self._tool_response_ids:
+                            await self._provider.request_response()
+                except asyncio.CancelledError:
+                    raise
+                except Exception:
+                    logger.warning("Realtime authorization continuation stopped without replay")
+            task = asyncio.create_task(resume())
+            self._authorization_tasks.add(task)
+            task.add_done_callback(self._authorization_tasks.discard)
+            return
         await self._provider.send_function_output(call_id, output)
         logger.info(
             "Voice agent: realtime tool executed room={} tool={} call_id={}",
@@ -479,6 +505,8 @@ class RealtimeAgentVoiceEngine:
         await self._finish_external_tts()
         if response_id in self._tool_response_ids:
             self._tool_response_ids.discard(response_id)
+            if self._authorization_tasks:
+                return
             await self._provider.request_response()
             return
         if self._current_turn_id is not None:

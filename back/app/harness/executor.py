@@ -641,6 +641,13 @@ async def _stream(
         execution_time=time.time() - start_time,
     )
 
+    authorization_requests = getattr(runtime_agent, "authorization_requests", [])
+    if authorization_requests:
+        result.success = False
+        result.disposition = "waiting_for_authorization"
+        result.authorization_requests = list(authorization_requests)
+        result.schema_version = "galaris.execution-result/v2"
+
     # Release task-scoped messenger context.
     reset_context(_ctx_token)
     yield AgentEvent.from_result(result)

@@ -1,6 +1,6 @@
 from core.util import normalize_html
-from pydantic import BaseModel, ConfigDict, Field, computed_field, field_validator
-from typing import Optional
+from pydantic import BaseModel, ConfigDict, Field, computed_field, field_validator, model_validator
+from typing import Optional, cast
 from uuid import UUID
 
 
@@ -83,7 +83,16 @@ class AgentBase(BaseModel):
 
 _STR_NULLABLE = ["personality", "job_description", "job_title"]
 
-class AgentCreate(AgentBase):
+class HumanApprovalFields(BaseModel):
+    @model_validator(mode="before")
+    @classmethod
+    def reject_approval_settings(cls, value: object) -> object:
+        if isinstance(value, dict) and ("yolo" in value or "authorization_version" in value):
+            raise ValueError("Approval settings require the dedicated human policy endpoint")
+        return cast(object, value)
+
+
+class AgentCreate(AgentBase, HumanApprovalFields):
     user_id: Optional[int] = None
     first_name: str = Field(min_length=1, pattern=r"\S")
     last_name: str = ""
@@ -104,7 +113,7 @@ class AgentCreate(AgentBase):
         return normalize_html(value) if value is not None else None
 
 
-class AgentUpdate(BaseModel):
+class AgentUpdate(HumanApprovalFields):
     user_id: Optional[int] = None
     title_id: Optional[int] = None
     group_id: Optional[int] = None
@@ -174,6 +183,8 @@ class LlmProfileInfo(BaseModel):
 
 
 class Agent(AgentBase):
+    yolo: bool = False
+    authorization_version: int = 0
     team_ids: list[int] = Field(default_factory=list[int])
     profile_media_type: str = "text/html"
     content_profile: str = "rich-text"

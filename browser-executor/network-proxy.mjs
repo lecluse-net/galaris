@@ -8,6 +8,7 @@ import { promisify } from 'node:util';
 import { mkdtemp, readFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { createHash, randomUUID } from 'node:crypto';
 import { BrowserRequestError, resolveTarget } from './lib.mjs';
 
 let certificate;
@@ -35,14 +36,16 @@ export async function startNetworkProxy({ owner, token, authorizationUrl = 'http
   const issues = new Map();
   const secureContext = tls.createSecureContext(await localCertificate());
   let closed = false;
-  async function authorize(raw, method, connectedTarget = null) {
+  async function authorize(raw, method, connectedTarget = null, bodySha256 = null) {
     if (closed) throw new BrowserRequestError('session_not_found', 'Session closed', 404);
     const target = connectedTarget ?? await resolveTarget(raw);
     let decision;
     try {
       const response = await fetch(authorizationUrl, {
         method: 'POST', headers: { 'content-type': 'application/json', 'x-galaris-browser-token': token },
-        body: JSON.stringify({ owner, url: target.url.origin, method, addresses: target.addresses }),
+        body: JSON.stringify({ owner, url: target.url.href, method, addresses: target.addresses,
+          operation_key: randomUUID(), body_sha256: bodySha256,
+          authorization_generation: connectedTarget?.authorizationGeneration ?? null }),
         signal: AbortSignal.timeout(15000), redirect: 'error',
       });
       if (!response.ok) throw new Error('Authorization unavailable');
@@ -61,6 +64,7 @@ export async function startNetworkProxy({ owner, token, authorizationUrl = 'http
       throw new BrowserRequestError('blocked_url', 'Destination blocked by browser policy', 403);
     }
     if (closed) throw new BrowserRequestError('session_not_found', 'Session closed', 404);
+    if (Number.isInteger(decision.authorization_generation)) target.authorizationGeneration = decision.authorization_generation;
     return target;
   }
   function track(socket) {
@@ -79,7 +83,16 @@ export async function startNetworkProxy({ owner, token, authorizationUrl = 'http
   }
   async function forward(request, response) {
     try {
-      const { url, address } = await authorize(targetUrl(request), request.method);
+      const chunks = [];
+      let size = 0;
+      for await (const chunk of request) {
+        size += chunk.length;
+        if (size > 50 * 1024 * 1024) throw new BrowserRequestError('blocked_url', 'Request body exceeds the authorization limit', 413);
+        chunks.push(chunk);
+      }
+      const body = Buffer.concat(chunks);
+      const { url, address } = await authorize(targetUrl(request), request.method, null,
+        createHash('sha256').update(body).digest('hex'));
       const secure = url.protocol === 'https:';
       const upstream = (secure ? https : http).request({
         host: address, port: url.port || (secure ? 443 : 80), servername: url.hostname.replace(/^\[|\]$/g, ''),
@@ -96,7 +109,7 @@ export async function startNetworkProxy({ owner, token, authorizationUrl = 'http
       upstream.on('error', () => { if (!response.headersSent) response.writeHead(502); response.end(); });
       request.on('error', () => upstream.destroy());
       response.on('close', () => upstream.destroy());
-      request.pipe(upstream);
+      upstream.end(body);
     } catch {
       response.writeHead(403, { connection: 'close', 'content-type': 'text/plain' });
       response.end('Blocked by browser network policy');

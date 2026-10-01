@@ -9,8 +9,8 @@ from sqlalchemy import func, or_, select, update
 from sqlalchemy.dialects.postgresql import insert
 
 from core.database import get_db
-from core.i18n import t
-from core.user import UserModel, user_service
+from core.i18n import current_language, t
+from core.user import UserModel
 
 from .interactions import ChoiceOption, ChoiceRequest, ChoiceResolution, PendingChoice, create_choice, register_choice_handler
 from .models import Interaction, PermissionDecision, MessengerUser
@@ -70,11 +70,15 @@ async def _expire_question(record: PermissionDecision) -> Interaction | None:
     return None
 
 
-async def request_permission(agent_id: int, key: str, question: str) -> PermissionDecision:
+async def request_permission(agent_id: int, key: str, question: str, *,
+                             always_key: str | None = None, always_question: str | None = None) -> PermissionDecision:
     """Return a current decision, creating at most one active question per key."""
     from app.agent import get_agent_record
     if not key or len(key) > 512 or not question or len(question) > 4000:
         raise ValueError("Invalid permission request")
+    if always_key is not None and (not always_key or len(always_key) > 512 or always_key == key
+                                   or not always_question or len(always_question) > 4000):
+        raise ValueError("Invalid reusable permission scope")
     agent = await get_agent_record(agent_id)
     if agent is None:
         raise PermissionError("The agent has no permission approver")
@@ -104,11 +108,22 @@ async def request_permission(agent_id: int, key: str, question: str) -> Permissi
     if record is None:
         raise RuntimeError("Permission request was concurrently removed; retry")
     if record.allowed is None:
-        await _notify(record)
+        await _notify(record, always_key=always_key, always_question=always_question)
     return record
 
 
-async def _notify(record: PermissionDecision) -> None:
+async def get_permission_decision(agent_id: int, key: str) -> PermissionDecision | None:
+    """Inspect a current human decision without creating or answering a question."""
+    from app.agent import authorization_policy
+    policy = await authorization_policy(agent_id)
+    return await get_db().scalar(select(PermissionDecision).where(
+        PermissionDecision.agent_id == agent_id, PermissionDecision.permission_key == key,
+        PermissionDecision.approver_user_id == policy.manager_user_id,
+    ).execution_options(populate_existing=True))
+
+
+async def _notify(record: PermissionDecision, *, always_key: str | None = None,
+                  always_question: str | None = None) -> None:
     """A durable lease prevents concurrent sends; failed delivery can be retried."""
     from .service import messenger_for_agent, messenger_for_agent_kind
 
@@ -118,11 +133,14 @@ async def _notify(record: PermissionDecision) -> None:
         Interaction.kind == KIND,
         Interaction.metadata_["permission_decision_id"].as_string() == str(record.id),
     ).order_by(Interaction.created_at.desc()).limit(1))
-    if previous is not None and previous.expires_at > now:
+    scope_changed = previous is not None and previous.metadata_.get("always_key") != always_key
+    if previous is not None and previous.expires_at > now and not scope_changed:
         if record.interaction_id != previous.id:
             record.interaction_id = previous.id
             await db.commit()
         return
+    if previous is not None and scope_changed and previous.status == "PENDING":
+        previous.expires_at = now
     if record.interaction_id is not None:
         # A timed-out question must not make an undecided permission unusable.
         record.interaction_id = None
@@ -134,6 +152,8 @@ async def _notify(record: PermissionDecision) -> None:
         or_(PermissionDecision.notification_after.is_(None), PermissionDecision.notification_after <= now),
     ).values(notification_after=now + timedelta(seconds=60)).returning(PermissionDecision.id))
     await db.commit()
+    if previous is not None and scope_changed:
+        await interaction_changed.send_async(previous)
     if claimed is None:
         return
     try:
@@ -160,17 +180,21 @@ async def _notify(record: PermissionDecision) -> None:
             if created is None:
                 raise LookupError("No internal channel for the permission approver") from None
             room = await messenger.ensure_direct_room(external_user)
-        user = await user_service.get_user_by_id(record.approver_user_id)
-        language = getattr(user, "language", None) or "en"
+        language = await current_language(user_id=record.approver_user_id)
+        options = [
+            ChoiceOption(id="allow", label=t("permissions.allow", language), aliases=["yes", "oui", "ok", "是"]),
+            ChoiceOption(id="deny", label=t("permissions.deny", language), aliases=["no", "non", "否"]),
+        ]
+        metadata: dict[str, object] = {"permission_decision_id": str(record.id)}
+        if always_key is not None:
+            options.append(ChoiceOption(id="allow_always", label=t("permissions.allow_all_sites", language)))
+            metadata.update(always_key=always_key, always_question=always_question)
         interaction = await create_choice(
             messenger, agent_id=record.agent_id, room_id=str(room.id), user_id=external_user,
             request=ChoiceRequest(
-                kind=KIND, title=t("permissions.title", language), body=record.question,
-                options=[
-                    ChoiceOption(id="allow", label=t("permissions.allow", language), aliases=["yes", "oui", "ok"]),
-                    ChoiceOption(id="deny", label=t("permissions.deny", language), aliases=["no", "non"]),
-                ],
-                metadata={"permission_decision_id": str(record.id)},
+                kind=KIND, title=t("permissions.title", language),
+                body=record.question + ("\n\n" + always_question if always_question else ""),
+                options=options, metadata=metadata,
                 timeout_seconds=604800, language=language,
             ),
             idempotency_key=f"permission:{record.id}:{previous.id if previous is not None else 'initial'}",
@@ -182,21 +206,39 @@ async def _notify(record: PermissionDecision) -> None:
 
 
 async def _answer(interaction: PendingChoice, resolution: ChoiceResolution) -> None:
-    from app.agent import get_agent_record
-    if resolution.option_id not in {"allow", "deny"}:
+    from app.agent import authorization_policy
+    agent_id = interaction.agent_id
+    if agent_id is None or resolution.option_id not in {"allow", "deny", "allow_always"}:
         return
+    policy = await authorization_policy(agent_id, lock=True)
     identifier = UUID(str(interaction.metadata["permission_decision_id"]))
     db = get_db()
     record = await db.scalar(select(PermissionDecision).where(
         PermissionDecision.id == identifier,
     ).with_for_update().execution_options(populate_existing=True))
-    if record is None or record.allowed is not None or record.agent_id != interaction.agent_id:
+    if (record is None or record.allowed is not None or record.agent_id != interaction.agent_id
+            or record.interaction_id != interaction.id):
         return
-    agent = await get_agent_record(record.agent_id)
-    if agent is None or agent.user_id != record.approver_user_id:
+    if policy.manager_user_id != record.approver_user_id:
         return
-    record.allowed = resolution.option_id == "allow"
-    record.answered_at = datetime.now(timezone.utc)
+    now = datetime.now(timezone.utc)
+    if resolution.option_id == "allow_always":
+        key = str(interaction.metadata.get("always_key") or "")
+        question = str(interaction.metadata.get("always_question") or "")
+        if not key or len(key) > 512 or not question or len(question) > 4000:
+            return
+        # The server-issued question owns this scope; answers cannot supply a key.
+        await db.execute(insert(PermissionDecision).values(
+            id=uuid4(), agent_id=record.agent_id, permission_key=key, question=question,
+            approver_user_id=record.approver_user_id, allowed=True, answered_at=now,
+        ).on_conflict_do_update(index_elements=["agent_id", "permission_key"],
+                               index_where=PermissionDecision.deleted_at.is_(None),
+                               set_={"allowed": True, "answered_at": now, "question": question,
+                                     "approver_user_id": record.approver_user_id}))
+        # Revoking the broad grant must ask again, including this original method.
+        record.soft_delete()
+    record.allowed = resolution.option_id != "deny"
+    record.answered_at = now
     record.interaction_id = interaction.id
     await db.commit()
 

@@ -73,8 +73,8 @@ def _message(key: str, language: str, **values: Any) -> str:
     return render_prompt(t(f"task_mcp.{key}", language), **values)
 
 
-@mcp_tool(
-    "galaris",
+@mcp_tool("galaris", approval="enabled", approval_reason="Governed bounded read or control without a new sensitive effect",
+
     name="task_get",
     description=(
         "Return a compact operational view of a task with its canonical resource URI, target "
@@ -142,8 +142,8 @@ async def mcp_list_paused_tasks(
     return await list_paused_tasks(ctx, limit=limit)
 
 
-@mcp_tool(
-    "galaris",
+@mcp_tool("galaris", approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval",
+
     name="task_stop",
     description=(
         "Permanently stop an active root task and its unfinished descendants. The current task, "
@@ -161,8 +161,8 @@ async def mcp_stop_task(
     return await stop_task(ctx, task_id=task_id, reason=reason)
 
 
-@mcp_tool(
-    "galaris",
+@mcp_tool("galaris", approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval",
+
     name="task_run",
     description=(
         "Create a child task delegated to a peer and return its canonical galaris://task/ URI. Never target your own "

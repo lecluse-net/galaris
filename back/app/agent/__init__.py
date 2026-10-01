@@ -105,6 +105,7 @@ from .facade import (
 )
 from .registry import register_driver_spec
 from .models import Agent, AgentGroup, Title
+from .authorization import AgentAuthorizationPolicy as AgentAuthorizationPolicy, authorization_policy as authorization_policy
 from .dialogue_service import current_dialogue_scope, dialogue_scope_for, require_agent_contact
 from .assertions import AgentDialogueAssertion
 from .realtime import (
@@ -147,6 +148,11 @@ from .management_scope import (
 )
 from .live import AgentLiveEvent, register_live_listener
 from .harness_port import register_harness_selection_port
+
+
+async def configured_harness_selection(agent: Agent) -> ConfiguredHarnessSelection | None:
+    from .harness_port import harness_selection_port
+    return await harness_selection_port.resolve(agent)
 
 
 async def agent_skill_revision(agent_id: int) -> str:
@@ -258,6 +264,7 @@ __all__ = [
     "DispatchResult",
     "ConversationDispatchDecision",
     "ConfiguredHarnessSelection",
+    "configured_harness_selection",
     "AgentDriver",
     "AgentEvent",
     "AgentModelConfigurationError",

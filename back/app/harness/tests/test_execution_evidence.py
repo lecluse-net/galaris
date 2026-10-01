@@ -76,6 +76,9 @@ async def test_agent_decides_after_tool_errors_without_exhausting_retry_budget(d
 async def test_file_copy_source_failure_can_retry_but_lost_upload_cannot(
     monkeypatch, tmp_path, failure_stage,
 ):
+    # This journey diagnoses transport outcomes after authorization; the actual
+    # approval boundary has separate real-DB dispatch/replay coverage.
+    monkeypatch.setattr("app.tools.mcp_authorization.authorize_native_call", AsyncMock(return_value=None))
     import httpx
 
     from app import agent

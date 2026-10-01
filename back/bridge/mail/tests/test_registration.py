@@ -51,9 +51,7 @@ def test_mail_connection_schema_uses_one_account_password_and_safe_defaults() ->
     assert params["poll_interval_s"]["default"] == "60"
     assert params["max_attachment_mb"]["default"] == "10"
     assert params["max_total_attachment_mb"]["default"] == "20"
-    assert params["approval_required"]["type"] == "boolean"
-    assert params["approval_required"]["required"] is False
-    assert params["approval_required"]["default"] == "false"
+    assert "approval_required" not in params
     assert params["approver_user_id"]["type"] == "user"
     assert params["approver_user_id"]["required"] is False
     assert "max_attachment_bytes" not in params

@@ -60,6 +60,16 @@ async def provision(db):
     assert connection is not None and not connection.active
     connection.active = True
     await db.flush()
+    # These journeys exercise Lab effects and receipts after a human function grant.
+    # Common one-action admission is qualified separately through the mounted MCP server.
+    for definition in mcp_loader.load_mcp_tools():
+        if definition.tool_code == "lab":
+            db.add(ConnectionFunctionState(connection_id=connection.id,
+                function_name=definition.name, state="enabled", enabled=True))
+    inspection = await db.scalar(select(Connection).join(Tool).where(Connection.agent_id == agent.id, Tool.code == "galaris_admin"))
+    for name in ("conversation_round_get", "voice_turn_get", "llm_call", "llm_calls"):
+        db.add(ConnectionFunctionState(connection_id=inspection.id, function_name=name, state="enabled", enabled=True))
+    await db.flush()
     return agent.id, connection.id
 
 
@@ -124,6 +134,34 @@ async def test_each_mechanism_can_be_authored_inspected_and_cloned(db, actor, me
 
 
 @pytest.mark.asyncio
+async def test_mounted_lab_action_waits_for_one_exact_human_agreement(committed_database):
+    from app.connection import facade as connections
+    from app.tools.authorization import AUTHORIZATION_META_KEY, answer_action
+    from app.tools.authorization_models import ActionAuthorization
+    async with get_db_session() as db:
+        agent_id, connection_id = await provision(db)
+        await connections.set_connection_function_state(connection_id, "lab_dataset_create", "ask")
+        server = await mcp_loader.build_agent_galaris_fastmcp(agent_id, runtime="internal")
+    arguments = {"mechanism": "dispatcher", "data": {"name": "Synthetic human-approved dataset"}, "invocation_key": "one-consent"}
+    async with Client(server) as client:
+        result = await client.call_tool("lab_dataset_create", arguments, raise_on_error=False)
+        assert result.is_error
+        control = result.meta[AUTHORIZATION_META_KEY]
+        identifier = UUID(control["request_id"])
+        async with get_db_session() as db:
+            assert await db.scalar(select(LabEvaluationDataset.id).where(LabEvaluationDataset.name == arguments["data"]["name"])) is None
+            row = await db.get(ActionAuthorization, identifier)
+            assert await answer_action(identifier, user_id=row.approver_user_id, approved=True)
+        continuation = {AUTHORIZATION_META_KEY: {"continuation": control["continuation"]}}
+        created = await client.call_tool("lab_dataset_create", arguments, meta=continuation)
+        assert created.data["name"] == arguments["data"]["name"]
+        replay = await client.call_tool("lab_dataset_create", arguments, meta=continuation, raise_on_error=False)
+        assert replay.is_error and replay.meta[AUTHORIZATION_META_KEY]["status"] == "completed"
+        async with get_db_session() as db:
+            assert await db.scalar(select(func.count()).select_from(LabEvaluationDataset).where(LabEvaluationDataset.name == arguments["data"]["name"])) == 1
+
+
+@pytest.mark.asyncio
 async def test_partial_edits_conflicts_and_function_revocation(db, actor):
     ctx, connection_id = actor
     dataset = await mcp.lab_dataset_create(
@@ -146,12 +184,8 @@ async def test_partial_edits_conflicts_and_function_revocation(db, actor):
             DatasetPatch(revision=dataset["revision"], description="stale"),
             "stale",
         )
-    db.add(
-        ConnectionFunctionState(
-            connection_id=connection_id, function_name="lab_dataset_delete", enabled=False
-        )
-    )
-    await db.flush()
+    from app.connection import facade as connections
+    await connections.set_connection_function_state(connection_id, "lab_dataset_delete", "disabled", commit=False)
     with pytest.raises(PermissionError):
         await mcp.lab_dataset_delete(ctx, "planner", identifier, edited["revision"], "delete")
     assert (await mcp.lab_dataset_get(ctx, "planner", identifier))["description"] == "Preserved"

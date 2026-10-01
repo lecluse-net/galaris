@@ -105,14 +105,20 @@ export interface TestMcpToolsResponse {
 
 // Tri-state function status at connection or tool level. "default" means no row,
 // inheriting the active-by-default state; other values are explicit overrides.
-export type FunctionState = 'default' | 'enabled' | 'disabled'
+export type FunctionState = 'default' | 'enabled' | 'disabled' | 'ask'
+export type EffectiveFunctionState = Exclude<FunctionState, 'default'>
 
 export interface ConnectionFunctionInfo {
+    key: string
     name: string
     description: string
     connection_state: FunctionState
     global_state: FunctionState
     effective: boolean
+    capability_kind: 'tool' | 'resource' | 'prompt'
+    effective_state: EffectiveFunctionState
+    default_state: EffectiveFunctionState
+    state_source: 'connection' | 'tool' | 'native_default' | 'external_default'
 }
 
 export interface ConnectionFunctionsResponse {
@@ -122,10 +128,14 @@ export interface ConnectionFunctionsResponse {
 }
 
 export interface FunctionStateResolved {
+    local_override_count?: number
     name: string
     connection_state: FunctionState
     global_state: FunctionState
     effective: boolean
+    effective_state: EffectiveFunctionState
+    default_state: EffectiveFunctionState
+    state_source: ConnectionFunctionInfo['state_source']
 }
 
 // =============================================================================
@@ -230,17 +240,19 @@ export default {
     setConnectionFunctionState(
         connectionId: number,
         functionName: string,
-        state: FunctionState
+        state: FunctionState,
+        capabilityKind: 'tool' | 'resource' | 'prompt' = 'tool'
     ): Promise<AxiosResponse<FunctionStateResolved>> {
-        return api.put(`/connections/${connectionId}/functions/${encodeURIComponent(functionName)}`, { state })
+        return api.put(`/connections/${connectionId}/capabilities`, { state, function_name: functionName, capability_kind: capabilityKind })
     },
 
     // Persist a function's global state at the connection's tool level.
     setToolFunctionState(
         connectionId: number,
         functionName: string,
-        state: FunctionState
+        state: FunctionState,
+        capabilityKind: 'tool' | 'resource' | 'prompt' = 'tool'
     ): Promise<AxiosResponse<FunctionStateResolved>> {
-        return api.put(`/connections/${connectionId}/functions/${encodeURIComponent(functionName)}/global`, { state })
+        return api.put(`/connections/${connectionId}/capabilities`, { state, function_name: functionName, capability_kind: capabilityKind, global_policy: true })
     }
 }

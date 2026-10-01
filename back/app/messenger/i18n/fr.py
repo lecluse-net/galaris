@@ -5,6 +5,11 @@ default: dict[str, object] = {
         "title": "Demande d’autorisation",
         "allow": "Autoriser et mémoriser",
         "deny": "Refuser et mémoriser",
+        "allow_once": "Autoriser cette action",
+        "deny_once": "Refuser cette action",
+        "allow_function": "Toujours autoriser cette fonction",
+        "function_scope": "Cela autorise ${function} pour cet agent sur cette connexion, quels que soient ses paramètres. Vous pouvez révoquer cet accord dans les autorisations des fonctions de la connexion.",
+        "allow_all_sites": "Toujours autoriser tous les sites",
     },
     "messenger_mcp": {
         "no_messenger": "Aucune messagerie n’est configurée pour cet agent.",

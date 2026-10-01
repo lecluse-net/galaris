@@ -271,13 +271,38 @@ async def test_concrete_adapter_closes_its_runtime_stream(boundary, monkeypatch,
             closed = True
 
     if module == "app.harnesses":
-        monkeypatch.setattr(type(driver), "_client", AsyncMock(return_value=SimpleNamespace(stream=runtime_stream)))
+        async def controlled_run(_self, request, *, on_progress=None):
+            nonlocal closed
+            try:
+                await on_progress(AIMessage(type="text", content="progress"))
+                await asyncio.Event().wait()
+            finally:
+                closed = True
+        monkeypatch.setattr(type(driver), "_managed_run", controlled_run)
     else:
         monkeypatch.setattr(importlib.import_module(f"{module}.executor"), "stream", runtime_stream)
     stream = driver.stream(boundary.request)
     await anext(stream)
     await stream.aclose()
     assert closed
+
+
+@pytest.mark.asyncio
+async def test_http_harness_without_authorization_protocol_cannot_dispatch_a_run(boundary, monkeypatch):
+    import httpx
+    from app.harnesses.driver import OpenAIMessagesDriver
+    from app.harnesses.openai_client import OpenAIHarnessClient
+    calls = []
+    def transport(request):
+        calls.append((request.method, request.url.path))
+        return httpx.Response(200, json={"object": "legacy-chat-completions"})
+    client = OpenAIHarnessClient(base_url="http://harness.example.test/v1", token="synthetic",
+        transport=httpx.MockTransport(transport))
+    monkeypatch.setattr(OpenAIMessagesDriver, "_client", AsyncMock(return_value=client))
+    driver = OpenAIMessagesDriver()
+    with pytest.raises(RuntimeError, match="one-action authorization control"):
+        await driver.run(boundary.request)
+    assert calls == [("GET", "/v1/galaris/capabilities")]
 
 
 @pytest.mark.asyncio

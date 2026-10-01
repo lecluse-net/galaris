@@ -222,8 +222,10 @@ class SqlAlchemyAgentTaskAdapter:
         from core.database import get_db
 
         db = get_db()
+        # These writes never change keys. FOR NO KEY UPDATE still serializes writers
+        # while allowing the FK locks held by in-flight LLM traces.
         current = (await db.execute(select(Task.lease_token, Task.lease_expires_at, Task.status)
-            .where(Task.id == task.id).with_for_update())).one_or_none()
+            .where(Task.id == task.id).with_for_update(key_share=True))).one_or_none()
         if (current is None or current.lease_token != lease_token
                 or current.status in (TaskStatus.SUCCESS, TaskStatus.ERROR)
                 or (current.lease_expires_at is not None
@@ -233,7 +235,7 @@ class SqlAlchemyAgentTaskAdapter:
             select(TaskAttempt)
             .where(TaskAttempt.lease_token == lease_token)
             .where(TaskAttempt.task_id == task.id)
-            .with_for_update()
+            .with_for_update(key_share=True)
         )
         if attempt is None or attempt.status != "CLAIMED":
             raise StaleAgentRunError("The task attempt is no longer active.")
@@ -277,6 +279,8 @@ class SqlAlchemyAgentTaskAdapter:
         Parallel tool tasks must never refresh, mutate, or commit the scheduler's ambient
         ORM instance. Locking and reloading the durable row here also merges Working Set
         updates committed by tools before the checkpoint is written.
+        Use FOR NO KEY UPDATE: an uncommitted LLMCall references both the Task and
+        its attempt, but must not block the checkpoint it is waiting for.
         """
 
         from core.database import get_db_session
@@ -284,7 +288,7 @@ class SqlAlchemyAgentTaskAdapter:
         async with get_db_session() as db:
             task = await db.scalar(
                 Task.histo_filter(
-                    select(Task).where(Task.id == task_id).with_for_update()
+                    select(Task).where(Task.id == task_id).with_for_update(key_share=True)
                 )
             )
             if task is None:
@@ -294,7 +298,7 @@ class SqlAlchemyAgentTaskAdapter:
                 attempt = await db.scalar(select(TaskAttempt).where(
                     TaskAttempt.id == expected_attempt_id,
                     TaskAttempt.task_id == task_id,
-                ).with_for_update())
+                ).with_for_update(key_share=True))
                 if (attempt is None or attempt.status != "CLAIMED"
                         or task.lease_token != attempt.lease_token
                         or (task.lease_expires_at is not None
@@ -342,7 +346,7 @@ class SqlAlchemyAgentTaskAdapter:
             attempt = await db.scalar(
                 select(TaskAttempt)
                 .where(TaskAttempt.lease_token == lease_token)
-                .with_for_update()
+                .with_for_update(key_share=True)
             )
             if attempt is None:
                 return
@@ -515,6 +519,70 @@ class SqlAlchemyAgentTaskAdapter:
 
 
 register_task_port(SqlAlchemyAgentTaskAdapter())
+
+
+async def _wake_authorization_context(agent_id: int, context_key: str) -> bool:
+    if not context_key.startswith("task:"):
+        return False
+    from core.database import get_db_session
+    from app.tools.facade import authorization_status
+    try:
+        task_id = UUID(context_key.removeprefix("task:"))
+    except ValueError:
+        return False
+    async with get_db_session() as db:
+        task = await db.scalar(select(Task).where(Task.id == task_id, Task.agent_id == agent_id)
+                               .with_for_update(skip_locked=True).execution_options(populate_existing=True))
+        if task is None:
+            return await db.get(Task, task_id) is None
+        if task.status in (TaskStatus.SUCCESS, TaskStatus.ERROR):
+            return True
+        if task_service.is_paused_for(task, task_service.PAUSE_USER):
+            return False
+        if task.lease_token is not None or not task_service.is_paused_for(task, task_service.PAUSE_APPROVAL):
+            return False
+        identifiers = list((task.data or {}).get("authorization_requests") or [])
+        if any([await authorization_status(UUID(str(identifier)), agent_id=agent_id) == "pending" for identifier in identifiers]):
+            return False
+        task_service.release(task, task_service.PAUSE_APPROVAL)
+        await db.commit()
+    from .runner import go_next
+    go_next(task_id, fast=True)
+    return True
+
+
+async def _authorization_context_snapshot(agent_id: int, context_key: str) -> dict[str, Any] | None:
+    from core.database import get_db
+    try:
+        identifier = UUID(context_key.removeprefix("task:"))
+    except ValueError:
+        return None
+    task = await get_db().scalar(select(Task).where(Task.id == identifier, Task.agent_id == agent_id)
+        .execution_options(populate_existing=True))
+    if task is None or task.status in (TaskStatus.SUCCESS, TaskStatus.ERROR) or task.cancel_requested:
+        return None
+    return {"task_id": str(task.id), "objective": task.objective, "effort": task.effort}
+
+
+async def _authorization_dispatch_available(agent_id: int, context_key: str) -> bool:
+    from core.database import get_db
+    task = await get_db().get(Task, UUID(context_key.removeprefix("task:")), populate_existing=True)
+    return task is not None and task.agent_id == agent_id and not task_service.is_paused_for(task, task_service.PAUSE_USER)
+
+
+async def _deferred_authorization_snapshot(agent_id: int, context_key: str) -> dict[str, Any] | None:
+    from core.database import get_db
+    task = await get_db().get(Task, UUID(context_key.removeprefix("task:")), populate_existing=True)
+    if task is None or task.agent_id != agent_id or task.status == TaskStatus.ERROR or task.cancel_requested:
+        return None
+    return {"task_id": str(task.id), "objective": task.objective, "effort": task.effort}
+
+
+from app.tools.facade import register_authorization_waker, register_authorization_context_guard, register_authorization_dispatch_guard, register_deferred_authorization_guard
+register_deferred_authorization_guard("task", _deferred_authorization_snapshot)
+register_authorization_dispatch_guard("task", _authorization_dispatch_available)
+register_authorization_waker("task", _wake_authorization_context)
+register_authorization_context_guard("task", _authorization_context_snapshot)
 
 
 def as_agent_task(task: Task) -> AgentTask:

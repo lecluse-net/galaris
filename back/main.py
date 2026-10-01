@@ -70,6 +70,9 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         register_replacement_blocker("process", replacement_blocked_task_ids)
         task_scheduler.register_periodic_job("task-replacements", reconcile_replacements, interval=2.0)
         register_llm_scheduler_jobs()
+        from app.tools.authorization_notifications import deliver_authorization_notifications, reconcile_authorizations
+        task_scheduler.register_periodic_job("action-authorization-notifications", deliver_authorization_notifications, interval=2.0)
+        task_scheduler.register_periodic_job("action-authorization-reconciliation", reconcile_authorizations, interval=30.0)
         from app.tools.documentation_service import refresh_documentation_index
         task_scheduler.register_periodic_job(
             "documentation-index", refresh_documentation_index, interval=30.0, timeout=90.0,

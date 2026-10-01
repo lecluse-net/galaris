@@ -13,6 +13,14 @@ import pytest
 from app.voice import realtime_tools as realtime_tools_module
 
 
+@pytest.fixture(autouse=True)
+def enabled_governance_port(monkeypatch):
+    """These unit scenarios cover projection; DB-backed approvals have separate integration coverage."""
+    from app.tools import facade
+    monkeypatch.setattr(facade, "bind_native_action", AsyncMock(return_value=object()))
+    monkeypatch.setattr(facade, "claim_action", AsyncMock(return_value=None))
+
+
 @asynccontextmanager
 async def _db_session() -> AsyncIterator[None]:
     yield None

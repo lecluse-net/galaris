@@ -17,6 +17,7 @@ class ToolExecutionContext:
     tool_name: str
     outcome: Literal["unknown", "rejected", "returned"] = "unknown"
     entered: bool = False
+    authorization_continuation: str | None = None
 
 
 _execution: ContextVar[ToolExecutionContext | None] = ContextVar("tool_execution", default=None)

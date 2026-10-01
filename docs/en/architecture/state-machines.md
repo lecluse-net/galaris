@@ -4,6 +4,28 @@
 
 This document makes states searchable, but the code constants and tests remain authoritative. Any matrix change must update this file in the same diff.
 
+## Action authorizations
+
+The `tool_action_authorizations` journal has `pending`, `approved`, `denied`, `expired`,
+`invalidated`, `executing`, `completed`, `failed`, and `outcome_unknown` states.
+
+| Event | Source | Target |
+|---|---|---|
+| Committed preparation with YOLO off | absent | `pending` |
+| New action with current YOLO on | absent | `approved`, then claim `executing` |
+| Authorized human answer | `pending` | `approved` or `denied` |
+| Expiry or loss of authority before effect | `pending` / `approved` | `expired` / `invalidated` |
+| Atomic claim after revalidation | `approved` | `executing` |
+| Effect receipt | `executing` | `completed` / `failed` / `outcome_unknown` |
+| Late authoritative remote evidence | `outcome_unknown` | `completed` / `failed`, without redispatch |
+
+The first valid decision wins. Reconciled outcomes stay terminal. Waiting returns
+`galaris.execution-result/v2` with `disposition=waiting_for_authorization` and exact request UUIDs.
+The Task attempt ends in `WAITING_APPROVAL`, releases its lease and retains its checkpoint;
+the Task phase stays unchanged, with an authorization pause reason. An independent human pause
+still takes precedence on wake. Rounds and voice retain the same disposition.
+See [0153](../../../project/decisions/0153-common-action-authorizations.md).
+
 ## LLM inferences
 
 `LLMInference` owns the request and `LLMInferenceAttempt` each attempt. Operation states are

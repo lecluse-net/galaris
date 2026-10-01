@@ -99,6 +99,7 @@ class ConversationRound(Base):
     execution_result: Mapped[dict[str, object] | None] = mapped_column(
         JSONB, nullable=True
     )
+    encrypted_checkpoint: Mapped[str | None] = mapped_column(Text, nullable=True)
     sequence: Mapped[int | None] = mapped_column(Integer, nullable=True)
     source_round_id: Mapped[UUID | None] = mapped_column(
         PGUUID(as_uuid=True),

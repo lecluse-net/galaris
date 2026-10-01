@@ -486,8 +486,8 @@ async def function_list(actor: AdministrationContext, tool_id: int, connection_i
         diagnostics = result["diagnostic"]
         complete = bool(diagnostics["success"] and not diagnostics.get("truncated"))
         functions.extend(diagnostics["tools"])
-    globals_ = {row.function_name: row.enabled for row in await connections.list_tool_function_states(tool_id)}
-    locals_ = {row.function_name: row.enabled for row in await connections.list_function_states(connection_id)} if connection_id is not None else {}
+    globals_ = {row.function_name: connections.stored_function_state(row) for row in await connections.list_tool_function_states(tool_id) if (row.capability_kind or "tool") == "tool"}
+    locals_ = {row.function_name: connections.stored_function_state(row) for row in await connections.list_function_states(connection_id) if (row.capability_kind or "tool") == "tool"} if connection_id is not None else {}
     visible: set[str] = {definition.name for definition in await list_enabled_native_mcp_definitions(
         target_agent or 0, runtime=selected_runtime, conversation_only=conversation_only,
     )} if connection is not None else set()
@@ -495,10 +495,11 @@ async def function_list(actor: AdministrationContext, tool_id: int, connection_i
     external_executable = "execute" in await effective_capabilities(target_agent or 0, selected_runtime) if connection is not None else False
     for item in functions:
         name = item["name"]
-        effective = not tool.can_disable or connections.resolve_function_enabled(name, locals_, globals_)
-        item.update({"global_state": connections.function_state_label(globals_.get(name)) if tool.can_disable else "enabled",
-                     "connection_state": connections.function_state_label(locals_.get(name)) if tool.can_disable else "enabled",
-                     "effective": effective, "available": bool(connection and connection.active and effective and (
+        from .mcp_loader import load_mcp_tools
+        definition = next((definition for definition in load_mcp_tools() if definition.name == name and definition.tool_code in native_tool_codes_for_tool(tool)), None)
+        policy = connections.project_function_policy(name, locals_, globals_, default=definition.approval if definition else "enabled", native=definition is not None)
+        effective = policy["effective"]
+        item.update({**policy, "available": bool(connection and connection.active and effective and (
                          name in visible if name in native_names else external_executable and (not conversation_only or tool.conversation_enabled)
                      )), "source": "native" if name in native_names else "external"})
         if not include_details:
@@ -525,13 +526,13 @@ async def function_set(actor: AdministrationContext, tool_id: int, function_name
     await _lock_mutation(actor, tool_id, expected_version)
     await set_tool_function_state(tool_id, function_name, state, commit=False)
     snapshot = await administration.snapshot(tool_id)
-    overrides = [{"connection_id": conn, "enabled": enabled} for conn, name, enabled in snapshot["local_states"] if name == function_name]
+    overrides = [{"connection_id": conn, "state": mode} for conn, kind, name, mode in snapshot["local_states"] if kind == "tool" and name == function_name]
     return {**await _saved(actor, tool_id), "function_name": function_name, "global_state": state,
             "local_overrides": overrides[:500], "local_override_count": len(overrides), "overrides_truncated": len(overrides) > 500}
 
 
 def _validate_function(name: str, state: FunctionState) -> None:
-    if not name or len(name) > 255 or state not in {"default", "enabled", "disabled"}:
+    if not name or len(name) > 255 or state not in {"default", "enabled", "disabled", "ask"}:
         raise AdministrationError("configuration_invalid", "Invalid function name or state.")
 
 

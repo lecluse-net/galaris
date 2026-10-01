@@ -3,7 +3,9 @@ from typing import Optional, Any, Dict, List, Literal
 
 
 # Three-state function value at connection or tool level. ``default`` means inheritance.
-FunctionState = Literal["default", "enabled", "disabled"]
+FunctionState = Literal["default", "enabled", "disabled", "ask"]
+EffectiveFunctionState = Literal["enabled", "disabled", "ask"]
+CapabilityKind = Literal["tool", "resource", "prompt"]
 
 
 # =============================================================================
@@ -131,11 +133,17 @@ class TestMcpToolsResponse(BaseModel):
 
 class ConnectionFunctionInfo(BaseModel):
     name: str
+    key: str = ""
+    capability_kind: CapabilityKind = "tool"
     description: str
     # Connection and tool cascade states plus the resolved value.
     connection_state: FunctionState
     global_state: FunctionState
     effective: bool
+    effective_state: EffectiveFunctionState = "enabled"
+    default_state: EffectiveFunctionState = "enabled"
+    policy_source: Literal["connection", "tool", "software"] = "software"
+    state_source: Literal["connection", "tool", "native_default", "external_default"] = "external_default"
 
 
 class ConnectionFunctionsResponse(BaseModel):
@@ -149,11 +157,18 @@ class ConnectionFunctionsResponse(BaseModel):
 class FunctionStateUpdate(BaseModel):
     """New state for one level of the function-authorization cascade."""
     state: FunctionState
+    capability_kind: CapabilityKind = "tool"
 
 
 class FunctionStateResolved(BaseModel):
+    local_override_count: int = 0
     """Resolved function state after an update without querying MCP again."""
     name: str
+    capability_kind: CapabilityKind = "tool"
     connection_state: FunctionState
     global_state: FunctionState
     effective: bool
+    effective_state: EffectiveFunctionState = "enabled"
+    default_state: EffectiveFunctionState = "enabled"
+    policy_source: Literal["connection", "tool", "software"] = "software"
+    state_source: Literal["connection", "tool", "native_default", "external_default"] = "external_default"

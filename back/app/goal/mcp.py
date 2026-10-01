@@ -116,8 +116,8 @@ async def _goal_management_command(
     return _goal_payload(result)
 
 
-@mcp_tool(
-    "galaris",
+@mcp_tool("galaris", approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval",
+
     name="goal_ask_referrer",
     description=(
         "Ask the configured human Messenger referrer of the current agent's own Goal a "
@@ -142,8 +142,8 @@ async def mcp_goal_ask_referrer(ctx: McpToolContext, question: str) -> str:
     )
 
 
-@mcp_tool(
-    "goal_management",
+@mcp_tool("goal_management", approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval",
+
     name="goal_create",
     description=(
         "Assign a new long-running Goal to an agent. The owner agent performs the work and "
@@ -257,8 +257,8 @@ async def mcp_goal_get_suivi(
     return [dict(cycle.model_dump(mode="json")) for cycle in cycles.items]
 
 
-@mcp_tool(
-    "galaris",
+@mcp_tool("galaris", approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval",
+
     name="goal_update_suivi",
     description=(
         "Replace the tracking HTML of one visible Goal using the revision returned by "
@@ -290,8 +290,8 @@ async def mcp_goal_update_suivi(
     return _goal_payload(result)
 
 
-@mcp_tool(
-    "goal_management",
+@mcp_tool("goal_management", approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval",
+
     name="goal_update",
     description=(
         "Update a Goal using the revision read from galaris://goal/<uuid>. Any omitted field is "
@@ -361,8 +361,8 @@ async def mcp_goal_update(
     return _goal_payload(result)
 
 
-@mcp_tool(
-    "goal_management",
+@mcp_tool("goal_management", approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval",
+
     name="goal_pause",
     description="Pause a Goal using the revision read from galaris://goal/<uuid>.",
 )
@@ -382,8 +382,8 @@ async def mcp_goal_pause(
     )
 
 
-@mcp_tool(
-    "goal_management",
+@mcp_tool("goal_management", approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval",
+
     name="goal_resume",
     description=(
         "Resume a paused or errored Goal, or restart a completed Goal while preserving "
@@ -406,8 +406,8 @@ async def mcp_goal_resume(
     )
 
 
-@mcp_tool(
-    "goal_management",
+@mcp_tool("goal_management", approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval",
+
     name="goal_complete",
     description=(
         "Mark a Goal completed and stop future cycles, using the revision read from "
@@ -430,8 +430,8 @@ async def mcp_goal_complete(
     )
 
 
-@mcp_tool(
-    "galaris",
+@mcp_tool("galaris", approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval",
+
     name="goal_run_now",
     description=(
         "Schedule a Goal cycle immediately, using the revision read from "
@@ -460,8 +460,8 @@ async def mcp_goal_run_now(
     return _goal_payload(result)
 
 
-@mcp_tool(
-    "goal_management",
+@mcp_tool("goal_management", approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval",
+
     name="goal_delete",
     description=(
         "Soft-delete a Goal. A Goal with an unfinished execution cycle cannot be deleted; "

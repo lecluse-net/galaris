@@ -1514,10 +1514,10 @@ async def test_plan_tag_in_objective_skips_llm():
 
 
 @pytest.mark.asyncio
-async def test_approve_tag_sets_auto_approve_and_still_infers(
+async def test_approve_tag_cannot_grant_authority_and_still_infers(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    # @approve alone enables auto_approve, but the LLM still decides route and effort.
+    # A message cannot change the human-managed authorization policy.
     called = {"infer": False}
 
     async def fake_infer(
@@ -1543,11 +1543,12 @@ async def test_approve_tag_sets_auto_approve_and_still_infers(
 
     task = _task(
         data={"text": "@approve deploy the new version"},
+        auto_approve=False,
         message_group_id="room1",
         message_platform="talk",
     )
     result = await Dispatcher().run(task)
 
     assert called["infer"] is True
-    assert task.auto_approve is True
+    assert task.auto_approve is False
     assert result.decision.route == "EXEC"

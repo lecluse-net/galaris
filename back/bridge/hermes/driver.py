@@ -40,6 +40,8 @@ def _execution_strategy(request: AgentRunRequest) -> str:
     checkpoint = request.resume_checkpoint
     if checkpoint is not None and checkpoint.driver_code == request.driver_code:
         stored = str(checkpoint.data.get("execution_strategy") or "").strip().lower()
+        if stored == "kanban" and request.target is not None and request.target.target_ref.startswith("harness:"):
+            raise AgentDriverError("The legacy Kanban continuation has no common authorization context; stop it before upgrading.")
         return stored or "direct"
     strategy = request.execution_strategy.strip().lower()
     if request.effort == "high" and HERMES_HIGH_KANBAN_ENABLED:

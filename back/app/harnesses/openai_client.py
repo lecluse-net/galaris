@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 import json
-from collections.abc import AsyncIterator, Mapping, Sequence
+import asyncio
+from collections.abc import AsyncIterator, Mapping, Sequence, Callable, Awaitable
 from typing import cast
+from uuid import UUID
 from urllib.parse import urlsplit, urlunsplit
 
 import httpx
@@ -18,6 +20,7 @@ from app.agent import (
     ExecutionResult,
     UsageQuality,
 )
+from app.agent.contracts import HarnessFailure
 
 
 _TIMEOUT = httpx.Timeout(connect=10.0, read=600.0, write=30.0, pool=10.0)
@@ -246,15 +249,19 @@ class OpenAIHarnessClient:
         base_url: str,
         token: str | None,
         transport: httpx.AsyncBaseTransport | None = None,
+        run_context: str | None = None,
     ) -> None:
         self.base_url = normalize_base_url(base_url)
         self.token = token
         self.transport = transport
+        self.run_context = run_context
 
     def _headers(self, envelope: AgentRunEnvelopeV1 | None = None) -> dict[str, str]:
         headers = {"Accept": "application/json"}
         if self.token:
             headers["Authorization"] = f"Bearer {self.token}"
+        if self.run_context:
+            headers["X-Galaris-Run-Context"] = self.run_context
         if (
             envelope is not None
             and envelope.target.metadata.get("galaris_extensions") is True
@@ -280,6 +287,68 @@ class OpenAIHarnessClient:
                     envelope.limits.tool_call_limit
                 )
         return headers
+
+    async def verify_authorization_control(self) -> None:
+        async with httpx.AsyncClient(timeout=_TIMEOUT, follow_redirects=False, trust_env=False, transport=self.transport) as client:
+            response = await client.get(f"{self.base_url}/galaris/capabilities", headers=self._headers())
+            response.raise_for_status()
+        capability = _mapping(response.json())
+        if capability.get("authorization_protocol") != "galaris.runtime-authorization/v1" or capability.get("resumable_runs") is not True:
+            raise RuntimeError("The managed Harness has no qualified one-action authorization control")
+
+    async def cancel_control_run(self, runtime_run_id: str) -> bool:
+        async with httpx.AsyncClient(timeout=_TIMEOUT, follow_redirects=False, trust_env=False, transport=self.transport) as client:
+            response = await client.post(f"{self.base_url}/galaris/runs/{runtime_run_id}/cancel", headers=self._headers(), json={})
+            response.raise_for_status()
+            response = await client.get(f"{self.base_url}/galaris/runs/{runtime_run_id}", headers=self._headers())
+            response.raise_for_status()
+        return _mapping(response.json()).get("stopped") is True
+
+    async def control_run(self, envelope: AgentRunEnvelopeV1, *, runtime_run_id: str, start: bool,
+                          on_progress: Callable[[AIMessage], Awaitable[None]] | None = None,
+                          cursor: Mapping[str, object] | None = None) -> ExecutionResult:
+        if not self.run_context:
+            raise RuntimeError("A server-issued managed run context is required")
+        message_count = max(0, int(_float((cursor or {}).get("messages"))))
+        text_offset = max(0, int(_float((cursor or {}).get("text"))))
+        async with httpx.AsyncClient(timeout=_TIMEOUT, follow_redirects=False, trust_env=False, transport=self.transport) as client:
+            if start:
+                created = await client.post(f"{self.base_url}/galaris/runs", headers=self._headers(envelope),
+                    json={"model": _model(envelope), "messages": _messages(envelope)})
+                created.raise_for_status()
+                if _mapping(created.json()).get("runtime_run_id") != runtime_run_id:
+                    raise RuntimeError("The managed runtime returned a foreign run identity")
+            while True:
+                response = await client.get(f"{self.base_url}/galaris/runs/{runtime_run_id}", headers=self._headers(envelope))
+                response.raise_for_status()
+                state = _mapping(response.json())
+                messages = _trace_messages(state.get("messages"))
+                text = str(state.get("result") or "")
+                if on_progress:
+                    for message in messages[message_count:]:
+                        await on_progress(message)
+                    if len(text) > text_offset:
+                        await on_progress(AIMessage(type="text", content=text[text_offset:], stream_id=f"runtime:{runtime_run_id}:text"))
+                message_count, text_offset = len(messages), len(text)
+                status = str(state.get("status") or "")
+                if status != "running":
+                    break
+                await asyncio.sleep(0.25)
+        usage, accounting_metadata = await _authoritative_gateway_usage(envelope, _usage(state.get("usage")))
+        waiting = status == "waiting_for_authorization"
+        identifiers = [UUID(str(value)) for value in cast(Sequence[object], state.get("authorization_requests") or [])] if waiting else []
+        unknown = status == "outcome_unknown"
+        return ExecutionResult(
+            schema_version="galaris.execution-result/v2", prompt=envelope.objective, system_prompt=envelope.system_instructions,
+            result=str(state.get("result") or ""), messages=_trace_messages(state.get("messages")),
+            execution_time=_float(state.get("execution_time")), cost=usage.cost, usage=usage,
+            success=status == "completed" and state.get("success") is not False,
+            disposition="waiting_for_authorization" if waiting else "completed", authorization_requests=identifiers,
+            failure=HarnessFailure(code="effect_unknown", message="The managed runtime outcome is unknown; no action was replayed",
+                retry="reconcile", effects="possible") if unknown else None,
+            metadata={"runtime_run_id": runtime_run_id, "runtime_status": status,
+                "runtime_cursor": {"messages": message_count, "text": text_offset}, **accounting_metadata},
+        )
 
     async def list_models(self) -> list[str]:
         async with httpx.AsyncClient(

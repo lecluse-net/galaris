@@ -72,11 +72,56 @@ valeur ; `clear=true` efface explicitement. Un secret peut être conservé, reti
 par `secret_reference` lié au même code et endpoint. Un masque ne remplace jamais un secret.
 Les lots sont validés avant toute écriture et enregistrés dans une seule transaction.
 
-Les fonctions suivent **surcharge de connexion → état global → autorisé**. `default` retire
-la surcharge. Un refus global peut donc être surchargé par une autorisation locale explicite ;
+Les fonctions suivent **surcharge de connexion → état global → défaut logiciel**. Les modes
+sont **Actif**, **Bloqué** et **Sur demande** ; **Hériter** (`default`) retire la surcharge.
+Les fonctions natives sensibles sont Sur demande par défaut ; les capacités MCP tierces sont
+Actives par défaut. Un refus global peut donc être surchargé par une autorisation locale explicite ;
 `tool_admin_function_set` signale ces surcharges. `effective` décrit la permission résolue,
 tandis que `available` tient aussi compte de l’activation, du runtime et du contexte conversationnel.
 La disponibilité d’une fonction découverte avec une connexion ne prouve pas celle d’un autre agent.
+
+## Répondre à une demande d’action
+
+Dans **Permissions** (`/connection/permissions`), les demandes ponctuelles sont séparées des
+permissions réseau mémorisées. Ouvrir **Examiner la demande** pour vérifier les arguments,
+l’agent, le responsable et l’échéance. **Autoriser cette action** couvre cette seule opération ;
+**Refuser cette action** empêche sa reprise. **Toujours autoriser cette fonction**, lorsqu’il est
+proposé, change explicitement le mode de cette fonction sur cette connexion en Actif, pour ses
+futurs paramètres également. Ce choix n’est pas disponible pour une commande locale de harnais.
+
+Seul le responsable habilité peut répondre ; les droits de consultation ou de gestion ne
+permettent pas de répondre à sa place. Sans canal privé disponible, la demande reste consultable
+ici et l’échec de notification est signalé. Une demande attend au plus 24 heures, sous réserve
+de la durée de vie de son contexte. La tâche libère son worker pendant l’attente et conserve
+son appel pour la reprise. Une réponse dupliquée, expirée ou liée à une configuration modifiée
+ne lance pas une deuxième opération. **Résultat incertain** exige une réconciliation, jamais
+un nouvel envoi automatique. Annuler une demande n’annule pas un effet déjà envoyé.
+
+Les fonctions des services obligatoires restent configurables par un humain ; leurs connexions
+et définitions restent protégées. Les permissions des ressources et prompts MCP sont distinctes
+de celles d’un outil portant le même nom. Les anciennes interfaces binaires doivent être mises
+à jour : Sur demande ne signifie pas Actif.
+
+## Configurer YOLO
+
+Dans la fiche d’un agent, **Mode YOLO — approuver automatiquement les autorisations** est
+désactivé par défaut. L’activer ouvre un avertissement sur les commandes, suppressions,
+messages, dépenses et divulgations possibles. Annuler ou fermer la fenêtre laisse le mode
+désactivé ; **Activer YOLO** confirme son activation. L’état actif est visible sur l’agent et
+les accords automatiques sont identifiés dans les demandes.
+
+YOLO approuve les nouvelles demandes de cet agent, y compris celles de son harnais. Les demandes
+humaines déjà ouvertes restent humaines. Il ne lève aucun blocage ni droit métier. Le désactiver
+retire les accords automatiques encore non consommés et rétablit la demande humaine pour les
+actions suivantes. Un changement de responsable le remet à faux. Un agent, une Task ou `@approve`
+ne peut pas l’activer. Mail conserve son responsable métier lorsqu’il est distinct.
+
+Pour la mise à niveau, préparer les images backend, frontend et harnais compatibles, arrêter
+les anciens runs encore actifs, puis utiliser la synchronisation DbAdmin normale. Les exceptions
+binaires effectives sont conservées ; les anciennes restrictions système ignorées sont archivées.
+Les anciens opt-ins Mail deviennent Sur demande sans réactiver de fonction bloquée. Aucun ancien
+accord de Task ou de session ne devient YOLO. Conserver l’audit lors d’un retour de version ;
+ne pas utiliser un ancien runtime qui interprète Sur demande comme autorisé.
 
 | Besoin | Fonctions |
 |---|---|

@@ -10,6 +10,11 @@ export default {
     },
     agent: {
       title: 'Gestion des Agents',
+      yolo: {
+        label: 'Mode YOLO — approuver automatiquement les autorisations', active: 'YOLO actif',
+        confirmTitle: 'Activer le mode YOLO ?', activate: 'Activer YOLO', error: 'Impossible de modifier le mode YOLO. Réessayez.',
+        warning: 'Danger : en activant le mode YOLO, toutes les demandes d’autorisation de cet agent seront approuvées automatiquement, y compris celles des fonctions MCP et de son harnais. Il pourra exécuter des commandes, modifier ou supprimer des fichiers et données, envoyer des messages et engager des dépenses sans vous demander confirmation. Une erreur ou une instruction malveillante peut entraîner une perte de données ou une divulgation d’informations. Les fonctions bloquées et les droits d’accès restent appliqués.',
+      },
       selectPlaceholder: 'Agent',
       selectionLoadError: 'Impossible de vérifier les agents autorisés. Rouvrez la liste pour réessayer.',
       tabAgents: 'Agents',
@@ -228,6 +233,11 @@ export default {
     },
     agent: {
       title: 'Agent Management',
+      yolo: {
+        label: 'YOLO mode — automatically approve authorizations', active: 'YOLO active',
+        confirmTitle: 'Enable YOLO mode?', activate: 'Enable YOLO', error: 'Could not change YOLO mode. Try again.',
+        warning: 'Danger: enabling YOLO mode automatically approves all authorization requests for this agent, including MCP functions and its Harness. It can execute commands, change or delete files and data, send messages and incur costs without asking you for confirmation. An error or malicious instruction may cause data loss or disclosure of information. Blocked functions and access rights remain enforced.',
+      },
       selectPlaceholder: 'Agent',
       selectionLoadError: 'Unable to check allowed agents. Reopen the list to retry.',
       tabAgents: 'Agents',
@@ -443,6 +453,10 @@ export default {
     nav: { agent: '智能体', agent_desc: '智能体管理' },
     agent: {
       title: '智能体管理', selectPlaceholder: '智能体', selectionLoadError: '无法检查可用智能体。请重新打开列表重试。', tabAgents: '智能体', tabGroups: '分组', tabTitles: '称谓', noGroup: '无分组', newAgent: '新建智能体',
+      yolo: {
+        label: 'YOLO 模式 — 自动批准授权', active: 'YOLO 已启用', confirmTitle: '启用 YOLO 模式？', activate: '启用 YOLO', error: '无法更改 YOLO 模式。请重试。',
+        warning: '危险：启用 YOLO 模式后，将自动批准此智能体的所有授权请求，包括 MCP 功能及其运行框架。它可在不询问您的情况下执行命令、修改或删除文件和数据、发送消息并产生费用。错误或恶意指令可能导致数据丢失或信息泄露。禁用的功能及访问权限仍然有效。',
+      },
       noJobTitle: '未定义职位', personality: '个性', jobDescription: '职位描述', notDefinedF: '未定义', editTooltip: '编辑智能体', deleteTooltip: '删除智能体',
       noAgentInGroup: '此分组中没有智能体', noAgent: '尚未登记智能体', newGroup: '新建分组', noGroupRegistered: '尚未登记分组', newTitle: '新建称谓',
       genderM: '男', genderF: '女', noTitleRegistered: '尚未登记称谓', editAgent: '编辑智能体', addAgent: '添加智能体', general: '常规',

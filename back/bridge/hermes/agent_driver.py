@@ -60,4 +60,13 @@ async def _ensure_configuration(agent_id: int, action: str) -> None:
 
 register_agent_profile_observer("hermes_configuration", _ensure_configuration)
 
+
+async def _runtime_authorization_configuration(agent_id: int) -> dict[str, str]:
+    from .manager import runtime_authorization_configuration
+    return await runtime_authorization_configuration(agent_id)
+
+
+from app.tools.facade import register_runtime_authorization_configuration
+register_runtime_authorization_configuration("hermes", _runtime_authorization_configuration)
+
 __all__ = ["HERMES_DRIVER"]

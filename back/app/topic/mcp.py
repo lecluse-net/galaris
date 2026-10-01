@@ -56,8 +56,8 @@ def _item_type(value: str | None) -> TopicItemKind | None:
     return cast(TopicItemKind, normalized)
 
 
-@mcp_tool(
-    _TOOL_CODE,
+@mcp_tool(_TOOL_CODE, approval="enabled", approval_reason="Governed bounded read or control without a new sensitive effect",
+
     name="topic_list",
     description=(
         "List the instance's Topics with stable UUIDs, revisions, descriptions, keywords, "
@@ -85,8 +85,8 @@ async def mcp_topic_list(
     return page.model_dump(mode="json")
 
 
-@mcp_tool(
-    _TOOL_CODE,
+@mcp_tool(_TOOL_CODE, approval="enabled", approval_reason="Governed bounded read or control without a new sensitive effect",
+
     name="topic_get",
     description=(
         "Get one Topic by exact UUID, including its current revision. Use topic_items_list "
@@ -104,8 +104,8 @@ async def mcp_topic_get(ctx: McpToolContext, topic_id: str) -> dict[str, object]
     return topic.model_dump(mode="json")
 
 
-@mcp_tool(
-    _TOOL_CODE,
+@mcp_tool(_TOOL_CODE, approval="enabled", approval_reason="Governed bounded read or control without a new sensitive effect",
+
     name="topic_items_list",
     description=(
         "List objects assigned or linked to one Topic. Optionally filter item_type to task, "
@@ -132,8 +132,8 @@ async def mcp_topic_items_list(
     return page.model_dump(mode="json")
 
 
-@mcp_tool(
-    _TOOL_CODE,
+@mcp_tool(_TOOL_CODE, approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval",
+
     name="topic_create",
     description=(
         "Create a global Topic with a concise title and optional description and keywords. "
@@ -157,8 +157,8 @@ async def mcp_topic_create(
     return topic.model_dump(mode="json")
 
 
-@mcp_tool(
-    _TOOL_CODE,
+@mcp_tool(_TOOL_CODE, approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval",
+
     name="topic_update",
     description=(
         "Replace a Topic's title, description, and keywords using the exact current revision "
@@ -186,8 +186,8 @@ async def mcp_topic_update(
     return topic.model_dump(mode="json")
 
 
-@mcp_tool(
-    _TOOL_CODE,
+@mcp_tool(_TOOL_CODE, approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval",
+
     name="topic_item_move",
     description=(
         "Move one exact task, message, conversation round, voice turn, memory, or document "
@@ -216,8 +216,8 @@ async def mcp_topic_item_move(
     return result.model_dump(mode="json")
 
 
-@mcp_tool(
-    _TOOL_CODE,
+@mcp_tool(_TOOL_CODE, approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval",
+
     name="topic_merge",
     description=(
         "Merge a source Topic into a target Topic. All assignments and memory links move to "
@@ -237,8 +237,8 @@ async def mcp_topic_merge(
     return result.model_dump(mode="json")
 
 
-@mcp_tool(
-    _TOOL_CODE,
+@mcp_tool(_TOOL_CODE, approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval",
+
     name="topic_split",
     description=(
         "Split selected heterogeneous items out of a source Topic into a newly created Topic. "

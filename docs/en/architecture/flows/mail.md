@@ -69,7 +69,13 @@ the `submitting` state instead of launching a second SMTP submission. A disconne
 unknown outcome produces `uncertain` and is not blindly replayed; the bridge only attempts
 reconciliation by `Message-ID` in Sent.
 
-When the effective `approval_required` parameter is active, the first claim transitions to
+New MCP calls use Enabled/Disabled/Ask modes and the common authorization journal. The final
+MIME and attachments are prepared before asking; after agreement, only those persisted bytes
+are submitted. The configured Mail approver takes precedence. When distinct from the agent
+manager, YOLO cannot answer on their behalf. One visible request suffices; the SMTP journal
+still handles duplicates and unknown outcomes.
+
+For historical requests created with `approval_required`, the first claim transitions to
 `pending_approval` and immediately returns this receipt to the agent without contacting SMTP.
 The effective `approver_user_id` is fixed on the row: only that authenticated USER, with access
 to the connections, can approve or reject the message. An approval locks the row and then sends
@@ -120,9 +126,9 @@ and the polling interval are configurable globally on the Tool; attachment limit
 there in MB and then converted to bytes at the bridge boundary. A connection can customize them
 unless a value is imposed. All `password` parameters, global or local, remain encrypted
 at rest. Only implicit TLS and STARTTLS with certificate validation are accepted. The form
-allows IMAP and SMTP to be tested after registration. `approval_required` and `approver_user_id`
-follow the same global/local override cascade: the policy can therefore be shared by the Tool or
-customized for an agent's Mail connection. An active policy without an active USER is rejected
+allows IMAP and SMTP to be tested after registration. `approver_user_id` follows the global/local
+override cascade. Function modes replace `approval_required`: DbAdmin converts old opt-ins
+to Ask without enabling blocked functions. An active policy without an active USER is rejected
 before the mail is created. The Tool is not auto-connected and remains absent from an agent's
 catalog until an administrator has created and activated its connection.
 

@@ -114,6 +114,7 @@ class _TaskPortProxy:
     PAUSE_PLAN = "plan"
     PAUSE_CLARIFY = "clarify"
     PAUSE_CHILD = "child"
+    PAUSE_APPROVAL = "approval"
     DELEGATED_KEY = "delegated"
 
     def __init__(self) -> None:

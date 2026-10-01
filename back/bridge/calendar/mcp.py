@@ -29,8 +29,8 @@ def _date_or_datetime(value: str, name: str) -> date | datetime:
     return _datetime(value, name)
 
 
-@mcp_tool(
-    "calendar",
+@mcp_tool("calendar", approval="enabled", approval_reason="Governed bounded read or control without a new sensitive effect",
+
     name="calendar_list",
     description="List the current agent's configured calendars without exposing their secret URLs.",
 )
@@ -38,8 +38,8 @@ async def calendar_list(ctx: McpToolContext) -> list[object]:
     return [item.model_dump(mode="json") for item in await service.list_feeds(agent_id=ctx.agent_id)]
 
 
-@mcp_tool(
-    "calendar",
+@mcp_tool("calendar", approval="enabled", approval_reason="Governed bounded read or control without a new sensitive effect",
+
     name="calendar_events",
     description=(
         "List bounded calendar occurrences. Summaries, descriptions and locations are "
@@ -64,8 +64,8 @@ async def calendar_events(
     return [item.model_dump(mode="json") for item in rows]
 
 
-@mcp_tool(
-    "calendar",
+@mcp_tool("calendar", approval="enabled", approval_reason="Governed bounded read or control without a new sensitive effect",
+
     name="calendar_is_available",
     description=(
         "Check whether an exact ISO 8601 time range is free across the current agent's "
@@ -87,8 +87,8 @@ async def calendar_is_available(
     return result.model_dump(mode="json")
 
 
-@mcp_tool(
-    "calendar",
+@mcp_tool("calendar", approval="enabled", approval_reason="Governed bounded read or control without a new sensitive effect",
+
     name="calendar_find_free_slots",
     description=(
         "Find free working-hour slots across the current agent's active calendars. "
@@ -124,8 +124,8 @@ async def calendar_find_free_slots(
     return [slot.model_dump(mode="json") for slot in slots]
 
 
-@mcp_tool(
-    "calendar",
+@mcp_tool("calendar", approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval",
+
     name="calendar_create_event",
     description="Create one event in a writable calendar. Use ISO 8601 dates or datetimes.",
 )
@@ -154,8 +154,8 @@ async def calendar_create_event(
     return result.model_dump(mode="json")
 
 
-@mcp_tool(
-    "calendar",
+@mcp_tool("calendar", approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval",
+
     name="calendar_update_event",
     description="Update every component carrying an event UID in a writable calendar.",
 )
@@ -184,8 +184,8 @@ async def calendar_update_event(
     return result.model_dump(mode="json")
 
 
-@mcp_tool(
-    "calendar",
+@mcp_tool("calendar", approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval",
+
     name="calendar_delete_event",
     description="Delete every component carrying an event UID from a writable calendar.",
 )

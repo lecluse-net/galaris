@@ -756,9 +756,8 @@ class Dispatcher:
             tag = effort_tags.pop()
             task.forced_effort = tag
             applied.append(f"@{tag}")
-        if "approve" in tags and not task.auto_approve:
-            task.auto_approve = True
-            applied.append("@approve")
+        if "approve" in tags and ignored_tags is not None:
+            ignored_tags.append("@approve")
 
         if applied:
             logger.info(

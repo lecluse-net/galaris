@@ -24,8 +24,8 @@ def _result(value: Any) -> dict[str, Any]:
     return value.model_dump(mode="json")
 
 
-@mcp_tool(
-    "console",
+@mcp_tool("console", approval="enabled", approval_reason="Governed bounded read or control without a new sensitive effect",
+
     name="console_status",
     effect_policy="read",
     concurrency_policy="safe",
@@ -36,8 +36,8 @@ async def console_status(ctx: McpToolContext) -> dict[str, Any]:
     return _result(await _resource(ctx).execution.status())
 
 
-@mcp_tool(
-    "console",
+@mcp_tool("console", approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval",
+
     name="console_exec",
     description=(
         "Execute a shell command on the agent's persistent SSH machine and wait for completion. "
@@ -64,8 +64,8 @@ async def console_exec(
     )
 
 
-@mcp_tool(
-    "console",
+@mcp_tool("console", approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval",
+
     name="console_start",
     description=(
         "Start a durable command through galaris-exec v2 and return its run_id. "
@@ -88,8 +88,8 @@ async def console_start(
     )
 
 
-@mcp_tool(
-    "console",
+@mcp_tool("console", approval="enabled", approval_reason="Governed bounded read or control without a new sensitive effect",
+
     name="console_poll",
     effect_policy="idempotent",
     description="Read new bounded output from a durable console run starting at cursor.",
@@ -103,8 +103,8 @@ async def console_poll(
     return _result(await _resource(ctx).execution.poll(run_id, cursor=cursor))
 
 
-@mcp_tool(
-    "console",
+@mcp_tool("console", approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval",
+
     name="console_write",
     description="Write UTF-8 data to the stdin of a durable console run.",
     requires=("console_execution",),
@@ -117,8 +117,8 @@ async def console_write(
     return _result(await _resource(ctx).execution.write(run_id, data))
 
 
-@mcp_tool(
-    "console",
+@mcp_tool("console", approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval",
+
     name="console_stop",
     effect_policy="idempotent",
     description="Stop the complete process group of a durable console run.",

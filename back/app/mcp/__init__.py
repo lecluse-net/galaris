@@ -11,5 +11,7 @@ avoid coupling module loading to the Hermes bridge.
 
 from . import service as mcp_token_service
 from .models import AgentMcpToken
+# Import registers the runtime principal port during module activation.
+from . import runtime_adapter as _runtime_adapter  # noqa: F401  # pyright: ignore[reportUnusedImport]
 
 __all__ = ["mcp_token_service", "AgentMcpToken"]

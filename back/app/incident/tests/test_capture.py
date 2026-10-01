@@ -32,6 +32,9 @@ async def _request(db: AsyncSession):
     task = Task(label="Synthetic journal recovery", objective="<p>Check recovery.</p>")
     db.add_all([agent, task])
     await db.flush()
+    task.agent_id = agent.id
+    from app.tools import mandatory_tools
+    await mandatory_tools.sync_integrated_tool_connections(agent.id)
     attempt = TaskAttempt(task_id=task.id, attempt_number=1, phase="DISPATCH", worker_id="test", lease_token=uuid4())
     db.add(attempt)
     await db.commit()
@@ -105,6 +108,7 @@ async def test_native_diagnostic_is_durable_private_and_enriched_without_duplica
 
     definition = mcp_loader.McpToolDefinition(
         tool_code="file_sharing", name="file_read", description="Read", required_capabilities=frozenset(), function=broken,
+        approval="enabled", approval_reason="Synthetic governed read after permission",
     )
     monkeypatch.setattr("app.agent.effective_capabilities", AsyncMock(return_value={"execute"}))
     monkeypatch.setattr(mcp_loader, "list_enabled_native_mcp_definitions", AsyncMock(return_value=(definition,)))

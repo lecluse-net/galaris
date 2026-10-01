@@ -21,7 +21,8 @@ test('AgentAdmin creates an agent and generated portraits remain visible after r
     return response.json()
   }
   const created = await invoke('agent_create', { configuration: {
-    ...setup, code: `portrait-${fixture.agent_id}`, first_name: 'Lyra', last_name: `Qualification ${fixture.agent_id}`,
+    user_id: setup.user_id, title_id: setup.title_id,
+    code: `portrait-${fixture.agent_id}`, first_name: 'Lyra', last_name: `Qualification ${fixture.agent_id}`,
     personality: '<p>Observatrice patiente.</p>', job_title: 'Astronome',
   } })
   expect(created.is_error).toBe(false)

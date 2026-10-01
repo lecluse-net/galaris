@@ -186,9 +186,15 @@ async def _action(
     output: RequestedOutput,
     **values: Any,
 ) -> str | ToolResult:
+    from app.tools.facade import current_prepared_authorization, claim_prepared_action, AuthorizationRequired, AuthorizationClosed
     try:
         _track_owner_cleanup(ctx)
         resolved = await _resolve_output(ctx, output)
+        if current_prepared_authorization() is not None:
+            snapshot = await browser_executor.inspect_action(agent_id=ctx.agent_id, task_id=ctx.task_id,
+                session_id=session_id, ref=values.get("ref"))
+            await claim_prepared_action(snapshot=snapshot)
+            values["expected_snapshot"] = snapshot
         result = await browser_executor.action(
             agent_id=ctx.agent_id,
             task_id=ctx.task_id,
@@ -198,6 +204,8 @@ async def _action(
             **values,
         )
         return await _present(ctx, result)
+    except (AuthorizationRequired, AuthorizationClosed):
+        raise
     except BrowserExecutorError as exc:
         return await _safe_error(ctx, exc)
     except Exception as exc:
@@ -209,8 +217,8 @@ async def _action(
         return await _message(ctx, "errors.failed", code="internal_error")
 
 
-@mcp_tool(
-    "browser",
+@mcp_tool("browser", approval="enabled", approval_reason="Governed bounded read or control without a new sensitive effect",
+
     name="browser_open",
     description=(
         "Open any reachable HTTP(S) page, including local and private-network URLs, in a new "
@@ -248,9 +256,10 @@ async def browser_open(
         return await _message(ctx, "errors.failed", code="internal_error")
 
 
-@mcp_tool(
-    "browser",
+@mcp_tool("browser", approval="enabled", approval_reason="Governed bounded read or control without a new sensitive effect",
+
     name="browser_navigate",
+    authorization_boundary="prepared",
     description=(
         "Navigate an existing browser session to another reachable HTTP(S) URL, including "
         "local and private-network destinations when connection policy and human permissions allow them."
@@ -265,8 +274,8 @@ async def browser_navigate(
     return await _action(ctx, session_id, "navigate", output, url=url)
 
 
-@mcp_tool(
-    "browser",
+@mcp_tool("browser", approval="enabled", approval_reason="Governed bounded read or control without a new sensitive effect",
+
     name="browser_content",
     description=(
         "Read accessible page content and element refs. Use offset to continue a truncated page."
@@ -299,8 +308,8 @@ async def browser_content(
         return await _message(ctx, "errors.failed", code="internal_error")
 
 
-@mcp_tool(
-    "browser",
+@mcp_tool("browser", approval="enabled", approval_reason="Governed bounded read or control without a new sensitive effect",
+
     name="browser_screenshot",
     description=(
         "Capture the current page of an existing browser session; this tool does not open a URL. "
@@ -346,9 +355,10 @@ async def browser_screenshot(
         return await _message(ctx, "errors.failed", code="internal_error")
 
 
-@mcp_tool(
-    "browser",
+@mcp_tool("browser", approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval",
+
     name="browser_click",
+    authorization_boundary="prepared",
     description="Click an element using a ref returned by browser content, for example e12.",
 )
 async def browser_click(
@@ -360,9 +370,10 @@ async def browser_click(
     return await _action(ctx, session_id, "click", output, ref=ref)
 
 
-@mcp_tool(
-    "browser",
+@mcp_tool("browser", approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval",
+
     name="browser_type",
+    authorization_boundary="prepared",
     description="Replace the value of a referenced input and optionally submit it.",
 )
 async def browser_type(
@@ -384,9 +395,10 @@ async def browser_type(
     )
 
 
-@mcp_tool(
-    "browser",
+@mcp_tool("browser", approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval",
+
     name="browser_press",
+    authorization_boundary="prepared",
     description="Press a keyboard key or shortcut in the active page, such as Enter or Control+L.",
 )
 async def browser_press(
@@ -398,9 +410,10 @@ async def browser_press(
     return await _action(ctx, session_id, "press", output, key=key)
 
 
-@mcp_tool(
-    "browser",
+@mcp_tool("browser", approval="enabled", approval_reason="Governed bounded read or control without a new sensitive effect",
+
     name="browser_scroll",
+    authorization_boundary="prepared",
     description="Scroll the page vertically by a signed pixel amount.",
 )
 async def browser_scroll(
@@ -412,9 +425,10 @@ async def browser_scroll(
     return await _action(ctx, session_id, "scroll", output, delta_y=delta_y)
 
 
-@mcp_tool(
-    "browser",
+@mcp_tool("browser", approval="enabled", approval_reason="Governed bounded read or control without a new sensitive effect",
+
     name="browser_back",
+    authorization_boundary="prepared",
     description="Navigate the browser session back one history entry.",
 )
 async def browser_back(
@@ -425,8 +439,8 @@ async def browser_back(
     return await _action(ctx, session_id, "back", output)
 
 
-@mcp_tool(
-    "browser",
+@mcp_tool("browser", approval="enabled", approval_reason="Governed bounded read or control without a new sensitive effect",
+
     name="browser_close",
     description="Close a browser session and release its isolated resources.",
 )

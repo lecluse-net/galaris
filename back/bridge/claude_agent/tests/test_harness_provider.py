@@ -122,6 +122,7 @@ async def test_template_projects_the_stream_trace_adapter(
 ) -> None:
     upload = AsyncMock()
     monkeypatch.setattr(harness_provider.manager, "upload_file_from", upload)
+    monkeypatch.setattr(harness_provider.manager, "write_text_file", AsyncMock())
 
     await harness_provider._sync_template("alice")
 

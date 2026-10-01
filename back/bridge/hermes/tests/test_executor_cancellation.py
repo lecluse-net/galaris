@@ -22,7 +22,7 @@ async def test_driver_cancellation_stops_the_registered_direct_run(
 ) -> None:
     request = cast(
         AgentRunRequest,
-        SimpleNamespace(run_id=uuid4(), id=uuid4()),
+        SimpleNamespace(run_id=uuid4(), id=uuid4(), target=None),
     )
     target = HermesTarget(
         url="http://alice-agent:8642/v1",
@@ -51,7 +51,7 @@ async def test_driver_cancellation_stops_the_registered_direct_run(
 async def test_remote_control_failures_never_confirm_stop(monkeypatch, failure):
     from app.agent import facade
 
-    request = SimpleNamespace(run_id=uuid4(), id=uuid4())
+    request = SimpleNamespace(run_id=uuid4(), id=uuid4(), target=None)
     target = HermesTarget("http://synthetic-hermes/v1", "synthetic-key", "test-model")
 
     def handle(http_request):
@@ -87,7 +87,7 @@ async def test_cancellation_of_an_unknown_local_run_is_explicit() -> None:
     ("failed", True, "confirmed"),
 ])
 async def test_cancellation_requires_remote_worker_proof(monkeypatch, status, proof, expected):
-    request = SimpleNamespace(run_id=uuid4(), id=uuid4())
+    request = SimpleNamespace(run_id=uuid4(), id=uuid4(), target=None)
     target = HermesTarget("http://synthetic-hermes/v1", "synthetic-key", "test-model")
     poll = AsyncMock(return_value={"run_id": "remote-run", "status": status, "execution_stopped": proof})
     stop = AsyncMock(return_value={"run_id": "remote-run", "status": "stopping"})

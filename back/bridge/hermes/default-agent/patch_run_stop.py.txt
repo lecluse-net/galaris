@@ -12,6 +12,7 @@ source = path.read_text()
 original = """        result, usage = await loop.run_in_executor(
             None, lambda: _run_agent_sync(self, run, agent, approval_notify, _api_server=_api_server))"""
 replacement = """        def mark_execution_stopped():
+            self._galaris_authorization_loops.pop(run_id, None)
             current = self._run_statuses.get(run_id)
             if current is not None:
                 self._set_run_status(run_id, current['status'], execution_stopped=True)
@@ -22,6 +23,7 @@ replacement = """        def mark_execution_stopped():
             finally:
                 loop.call_soon_threadsafe(mark_execution_stopped)
 
+        self._galaris_authorization_loops[run_id] = loop
         result, usage = await loop.run_in_executor(None, tracked_execution)"""
 early_stop = """        if run_id in self._stopping_run_ids:
             _finish("cancelled")
@@ -36,5 +38,83 @@ source = source.replace(original, replacement).replace(
     terminal_extra,
     '        extra = {"execution_stopped": self._run_statuses.get(run_id, {}).get("execution_stopped") is True, **(extra or {})}',
 )
+approval_boundary = '        event = dict(approval_data or {})'
+assert source.count(approval_boundary) == 1, "Review the exact Hermes approval payload boundary."
+source = source.replace(approval_boundary, '''        event = dict(approval_data or {})
+        import hashlib
+        import json
+        event["action_digest"] = hashlib.sha256(json.dumps(
+            approval_data, sort_keys=True, separators=(",", ":"), default=str,
+        ).encode()).hexdigest()
+        event["allow_session"] = False
+        event["allow_permanent"] = False''')
+# Runtime APIs cannot grant a session, even if an old interaction sends that choice.
+allowed_choices = '    allowed = {"once", "deny"} if room_scoped else {"once", "session", "always", "deny"}'
+assert source.count(allowed_choices) == 1, "Review Hermes approval scope validation."
+source = source.replace(allowed_choices, '    allowed = {"once", "deny"}')
+source = source.replace('(room_scoped and resolve_all,', '(resolve_all,')
+source = source.replace('(room_scoped and not request_id,', '(not request_id,')
+managed_boundaries = {
+    'def _http_routes(self) -> list[tuple[str, str, Any]]:\n    return [':
+        'def _http_routes(self) -> list[tuple[str, str, Any]]:\n'
+        '    async def managed_capabilities(request):\n'
+        '        error = self._check_auth(request)\n'
+        '        if error is not None:\n'
+        '            return error\n'
+        '        return web.json_response({"authorization_protocol": "galaris.runtime-authorization/v1", "resumable_runs": True})\n'
+        '    return [("GET", "/v1/galaris/capabilities", managed_capabilities),',
+    '    self._run_idempotency_ids: set[str] = set()':
+        '    self._galaris_authorization_loops = {}\n    self._run_idempotency_ids: set[str] = set()',
+    '    turn_author: Optional[Dict[str, Any]] = None':
+        '    turn_author: Optional[Dict[str, Any]] = None\n    galaris_run_context: str = ""',
+    '        turn_author=turn_author)':
+        '        turn_author=turn_author, galaris_run_context=str(body.get("galaris_run_context") or ""))',
+    '            register_gateway_notify(run.approval_session_key, approval_notify)':
+        '            from galaris_authorization import bind_run, reset_run\n'
+        '            resets.append((bind_run(self, run), reset_run))\n'
+        '            register_gateway_notify(run.approval_session_key, approval_notify)',
+}
+for boundary, replacement in managed_boundaries.items():
+    assert source.count(boundary) == 1, f"Review the Hermes managed context boundary: {boundary}"
+    source = source.replace(boundary, replacement)
 compile(source, str(path), "exec")
 path.write_text(source)
+
+executor_path = Path("/opt/hermes/agent/tool_executor.py")
+executor_source = executor_path.read_text()
+boundary = '    if block_message is not None or guardrail_decision is not None:'
+assert executor_source.count(boundary) == 1, "Review the common Hermes pre-dispatch boundary."
+executor_source = executor_source.replace(boundary, '''    if block_message is None and guardrail_decision is None:
+        from galaris_authorization import authorize_call
+        block_message = authorize_call(ref.name, ref.args)
+        block_error_type = "galaris_authorization"
+
+''' + boundary)
+dispatch = '    return _run_with_activity_heartbeat(agent, ref.name, lambda: execute(ref.args))'
+assert executor_source.count(dispatch) == 1, "Review the one real Hermes tool dispatch."
+executor_source = executor_source.replace(dispatch, '''    from galaris_authorization import locally_authorized
+    with locally_authorized():
+        return _run_with_activity_heartbeat(agent, ref.name, lambda: execute(ref.args))''')
+compile(executor_source, str(executor_path), "exec")
+executor_path.write_text(executor_source)
+
+approval_path = Path("/opt/hermes/tools/approval.py")
+approval_source = approval_path.read_text()
+gate = '    if _yolo_active() or approval_context._get_approval_mode() == "off":'
+assert approval_source.count(gate) == 1, "Review the redundant Hermes recoverable approval layer."
+approval_source = approval_source.replace(gate, '''    from galaris_authorization import current_action_authorized
+    if current_action_authorized():
+        return _approved()
+''' + gate)
+compile(approval_source, str(approval_path), "exec")
+approval_path.write_text(approval_source)
+
+mcp_path = Path("/opt/hermes/tools/mcp_tool_handlers.py")
+mcp_source = mcp_path.read_text()
+mcp_boundary = '    _call_coro = server.session.call_tool(tool_name, arguments=args)'
+assert mcp_source.count(mcp_boundary) == 1, "Review the Hermes MCP dispatch boundary."
+mcp_source = mcp_source.replace(mcp_boundary,
+    '    from galaris_authorization import call_galaris_tool\n'
+    '    _call_coro = call_galaris_tool(server.session, server_name, tool_name, args)')
+compile(mcp_source, str(mcp_path), "exec")
+mcp_path.write_text(mcp_source)

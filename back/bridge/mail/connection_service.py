@@ -51,18 +51,6 @@ def _security(params: dict[str, Any], name: str) -> MailSecurity:
     return cast(MailSecurity, value)
 
 
-def _boolean(params: dict[str, Any], name: str, default: bool) -> bool:
-    raw = params.get(name)
-    if raw in (None, ""):
-        return default
-    value = str(raw).strip().casefold()
-    if value in {"true", "1", "yes", "on"}:
-        return True
-    if value in {"false", "0", "no", "off"}:
-        return False
-    raise ValueError(f"Mail parameter {name} must be true or false")
-
-
 def _optional_user_id(params: dict[str, Any], name: str) -> int | None:
     raw = params.get(name)
     if raw in (None, ""):
@@ -95,10 +83,10 @@ async def _config_from_connection(
     )
     email_address = _required(params, "email_address")
     password = _required(params, "password")
-    approval_required = _boolean(params, "approval_required", False)
+    # The common function policy owns new approvals. Historical deliveries retain
+    # their approval_required snapshot and their original approval workflow.
+    approval_required = False
     approver_user_id = _optional_user_id(params, "approver_user_id")
-    if approval_required and approver_user_id is None:
-        raise ValueError("Mail approval requires a responsible approver user")
     if approver_user_id is not None:
         approver = await user_service.get_user_by_id(approver_user_id)
         if approver is None or not approver.is_active:

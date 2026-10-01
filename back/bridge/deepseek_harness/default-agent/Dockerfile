@@ -61,6 +61,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 COPY --from=dsh-builder /src/python/sdk/src/deepseek_harness /opt/dsh/python/deepseek_harness
 COPY --from=dsh-builder /src/python/sdk-runtime/src/deepseek_harness_runtime /opt/dsh/python/deepseek_harness_runtime
 COPY runtime_adapter.py /opt/galaris/runtime_adapter.py
+COPY runtime_support.py authorization.mjs /opt/galaris/
 COPY cordis.yml /opt/galaris/cordis.yml
 
 RUN groupadd --gid "${RUNTIME_GID}" dsh \

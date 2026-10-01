@@ -16,6 +16,7 @@ from sqlalchemy.dialects.postgresql import JSONB, TSVECTOR
 from sqlalchemy.orm import Mapped, mapped_column
 from core.database import Base
 from core.database.vector import Vector
+from .authorization_models import ActionAuthorization as ActionAuthorization, RuntimeRunGrant as RuntimeRunGrant
 
 
 class Tool(Base):

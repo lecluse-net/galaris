@@ -81,7 +81,16 @@ async def test_mcp_sharing_conflict_preserves_content_and_safe_retry(
         memory_type="working" if node_kind == "document" else "semantic",
         media_type="text/html", payload=MemoryPayload(text="<p>Original</p>"),
     ))
-    ctx = McpToolContext(agent_id=owner.id, runtime="internal", task_id=uuid4())
+    from app.task.models import Task
+    from app.connection import facade as connections
+    from app.connection.models import Connection
+    from app.tools.models import Tool
+    task = Task(agent_id=owner.id, label="Synthetic sharing", objective="<p>Check conflict recovery.</p>")
+    db.add(task)
+    await db.flush()
+    connection = await db.scalar(select(Connection).join(Tool).where(Connection.agent_id == owner.id, Tool.code == "memory"))
+    await connections.set_connection_function_state(connection.id, f"{node_kind}_share", "enabled")
+    ctx = McpToolContext(agent_id=owner.id, runtime="internal", task_id=task.id)
     previous = json.loads(await mcp.memory_sharing(ctx, str(item.id)))
     item = await service.update_item(item.id, MemoryItemUpdate(
         expected_revision=item.revision, payload=MemoryPayload(text="<p>Updated dossier</p>"),

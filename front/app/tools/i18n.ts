@@ -140,7 +140,7 @@ export default {
       deleted: 'Outil supprimé',
       deleteError: 'Erreur lors de la suppression',
       systemService: "Service système obligatoire",
-      systemServiceHint: "Ce service système et ses fonctions sont toujours actifs. Sa connexion et ses autorisations sont en lecture seule.",
+      systemServiceHint: "Ce service système et sa connexion sont obligatoires. Ses fonctions restent configurables : bloquer une fonction peut empêcher le travail de l’agent.",
       builtins: {
         agent_admin: {
           label: "AgentAdmin",
@@ -490,7 +490,7 @@ export default {
       deleted: 'Tool deleted',
       deleteError: 'Error while deleting',
       systemService: "Mandatory system service",
-      systemServiceHint: "This system service and its functions are always enabled. Its connection and permissions are read-only.",
+      systemServiceHint: "This system service and its connection are mandatory. Function policies remain configurable: blocking a function may prevent the agent from working.",
       builtins: {
         agent_admin: {
           label: "AgentAdmin",
@@ -741,7 +741,7 @@ export default {
       detectError: '无法在此文件中检测代码/名称字段', importError: '导入时出错', saveRequired: '名称和显示名称为必填项', savedCreated: '工具“{code}”已成功创建',
       savedUpdated: '工具“{code}”已成功更新', updated: '工具已更新', created: '工具已创建', saveError: '保存时出错', deleted: '工具已删除', deleteError: '删除时出错',
       systemService: "必需的系统服务",
-      systemServiceHint: "此系统服务及其功能始终启用。连接和权限为只读。",
+      systemServiceHint: "此系统服务及其连接为必需。功能策略仍可配置：阻止功能可能导致智能体无法工作。",
       builtins: {
         agent_admin: {
           label: "AgentAdmin",

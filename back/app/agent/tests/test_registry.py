@@ -138,9 +138,9 @@ def test_driver_cannot_disable_terminal_closure_bound(timeout):
         replace(get_driver_spec("internal"), stream_close_timeout_seconds=timeout)
 
 
-def test_network_driver_does_not_advertise_noop_remote_cancellation():
-    assert get_driver_spec("openai_messages").supports_cancellation is False
-    assert "cancellation" not in get_driver_spec("openai_messages").execution_capabilities
+def test_network_driver_advertises_managed_actor_cancellation():
+    assert get_driver_spec("openai_messages").supports_cancellation is True
+    assert "cancellation" in get_driver_spec("openai_messages").execution_capabilities
 
 
 def test_hermes_driver_has_no_ui_managed_transport_requirements() -> None:

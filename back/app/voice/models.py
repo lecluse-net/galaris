@@ -50,6 +50,7 @@ class VoiceTurnStatus(str, enum.Enum):
     """Durable outcome of one user turn and its conversational response."""
 
     RUNNING = "RUNNING"
+    WAITING_APPROVAL = "WAITING_APPROVAL"
     COMPLETED = "COMPLETED"
     INTERRUPTED = "INTERRUPTED"
     FAILED = "FAILED"

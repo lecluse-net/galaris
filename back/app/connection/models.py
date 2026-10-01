@@ -1,5 +1,5 @@
 from typing import Optional
-from sqlalchemy import ForeignKey, UniqueConstraint, Index, String, Boolean, Text
+from sqlalchemy import ForeignKey, UniqueConstraint, Index, String, Boolean, Text, CheckConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from core.database import Base
 
@@ -62,13 +62,18 @@ class ConnectionFunctionState(Base):
         ForeignKey("connections.id", ondelete="CASCADE"),
         index=True
     )
-    function_name: Mapped[str] = mapped_column(String(255))
+    function_name: Mapped[str] = mapped_column(String(2000))
     enabled: Mapped[bool] = mapped_column(Boolean, default=False)
+    # Retained for rollback compatibility: ask is represented as false to old runtimes.
+    state: Mapped[Optional[str]] = mapped_column(String(8), nullable=True)
+    capability_kind: Mapped[str] = mapped_column(String(8), default="tool", server_default="tool")
 
     connection: Mapped["Connection"] = relationship("Connection", back_populates="function_states")
 
     __table_args__ = (
-        UniqueConstraint("connection_id", "function_name", name="uq_connection_function"),
+        UniqueConstraint("connection_id", "capability_kind", "function_name", name="uq_connection_function"),
+        CheckConstraint("state IS NULL OR state IN ('enabled', 'disabled', 'ask')", name="ck_connection_function_state"),
+        CheckConstraint("capability_kind IN ('tool', 'resource', 'prompt')", name="ck_connection_capability_kind"),
     )
 
 
@@ -86,9 +91,13 @@ class ToolFunctionState(Base):
         ForeignKey("tools.id", ondelete="CASCADE"),
         index=True
     )
-    function_name: Mapped[str] = mapped_column(String(255))
+    function_name: Mapped[str] = mapped_column(String(2000))
     enabled: Mapped[bool] = mapped_column(Boolean, default=True)
+    state: Mapped[Optional[str]] = mapped_column(String(8), nullable=True)
+    capability_kind: Mapped[str] = mapped_column(String(8), default="tool", server_default="tool")
 
     __table_args__ = (
-        UniqueConstraint("tool_id", "function_name", name="uq_tool_function"),
+        UniqueConstraint("tool_id", "capability_kind", "function_name", name="uq_tool_function"),
+        CheckConstraint("state IS NULL OR state IN ('enabled', 'disabled', 'ask')", name="ck_tool_function_state"),
+        CheckConstraint("capability_kind IN ('tool', 'resource', 'prompt')", name="ck_tool_capability_kind"),
     )

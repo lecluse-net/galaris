@@ -68,11 +68,52 @@ A secret can be preserved, removed, or replaced through a `secret_reference` bou
 code and endpoint. A mask never replaces a secret. Entire batches validate before writing
 and persist in one transaction.
 
-Functions resolve **connection override → global state → enabled**. `default` removes an
-override. A global denial can therefore be overridden by an explicit local enable;
+Functions resolve **connection override → global state → software default**. Modes are
+**Enabled**, **Disabled**, and **Ask**; **Inherit** (`default`) removes an override. Sensitive
+native functions default to Ask; third-party MCP capabilities default to Enabled.
+A global denial can therefore be overridden by an explicit local enable;
 `tool_admin_function_set` reports such overrides. `effective` describes resolved permission;
 `available` also includes activation, runtime and conversation context. Discovery under one
 connection does not establish another agent's access.
+
+## Answer an action request
+
+In **Permissions** (`/connection/permissions`), individual requests are separate from remembered
+network permissions. Open **Review request** to inspect arguments, agent, approver and expiry.
+**Allow this action** covers one operation; **Deny this action** prevents its continuation.
+Where offered, **Always allow this function** explicitly changes this connection's function
+mode to Enabled, including future arguments. It is unavailable for runtime-local commands.
+
+Only the authorized approver can answer; viewing or management privileges cannot answer on
+their behalf. If no private channel is available, the request stays accessible here and
+delivery failure is shown. Requests expire within 24 hours, also bounded by their context
+lifetime. Task releases its worker while waiting and retains the call for resumption.
+Duplicate, expired or stale-configuration answers cannot dispatch a second operation.
+**Unknown outcome** requires reconciliation, never automatic redispatch. Cancelling a request
+does not undo an effect already sent.
+
+Humans can configure mandatory service functions; their connections and definitions stay
+protected. MCP resource and prompt policies are distinct from same-named tools. Update old
+binary clients: Ask does not mean Enabled.
+
+## Configure YOLO
+
+On an agent's form, **YOLO mode — automatically approve authorizations** defaults to off.
+Enabling it opens a warning about commands, deletions, messages, costs and disclosures.
+Cancel or dismiss the dialog to leave it off; **Enable YOLO** confirms activation. Active
+mode is visible on the agent, and automatic decisions are identified in action requests.
+
+YOLO approves new requests for this agent, including runtime actions. Existing human questions
+remain human. Disabled capabilities and domain access rights still apply. Turning it off
+withdraws unconsumed automatic agreements and restores human approval for subsequent actions.
+Reassigning the manager resets it. An agent, Task or `@approve` cannot enable it. Mail retains
+its domain approver when distinct from the agent manager.
+
+For an upgrade, prepare compatible backend, frontend and runtime images, stop old active runs,
+then use normal DbAdmin synchronization. Effective binary overrides are preserved; previously
+ignored system restrictions are archived. Old Mail opt-ins become Ask without enabling blocked
+functions. Previous Task/session approval never becomes YOLO. Preserve the audit when rolling
+back; do not use an older runtime that treats Ask as authorization.
 
 | Need | Functions |
 |---|---|

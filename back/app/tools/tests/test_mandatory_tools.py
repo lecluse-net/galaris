@@ -222,16 +222,14 @@ def test_console_host_key_is_a_write_only_connection_parameter() -> None:
     }
 
 
-def test_mail_connection_parameters_have_a_stable_logical_order() -> None:
+def test_mail_connection_parameters_keep_transport_and_reviewer_configuration() -> None:
     row = next(
         row for row in mandatory_tools.mandatory_tool_rows()
         if row["code"] == "mail"
     )
     params = row["connection_schema"]["params"]
 
-    assert [
-        name for name, _ in sorted(params.items(), key=lambda item: item[1]["order"])
-    ] == [
+    assert set(params) == {
         "email_address",
         "password",
         "imap_host",
@@ -245,9 +243,8 @@ def test_mail_connection_parameters_have_a_stable_logical_order() -> None:
         "poll_interval_s",
         "max_attachment_mb",
         "max_total_attachment_mb",
-        "approval_required",
         "approver_user_id",
-    ]
+    }
 
 
 def test_calendar_requires_an_administrator_connection() -> None:

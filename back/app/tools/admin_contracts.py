@@ -88,4 +88,4 @@ class ParamWrite(BaseModel):
     secret_reference: str | None = None
 
 
-FunctionState = Literal["default", "enabled", "disabled"]
+FunctionState = Literal["default", "enabled", "disabled", "ask"]

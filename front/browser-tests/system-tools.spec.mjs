@@ -52,6 +52,8 @@ async function routes(page) {
     await jsonRoute(page, `**/api/connections/${connection.id}/functions`, {
       success: true, message: '', functions: [{
         name: connection.id === 5 ? 'external_read' : 'system_read', description: 'Read authorized content.',
+        key: connection.id === 5 ? 'tool:external_read' : 'tool:system_read', capability_kind: 'tool',
+        default_state: 'enabled', effective_state: 'enabled', state_source: 'connection',
         connection_state: connection.id === 5 ? 'default' : 'enabled',
         global_state: connection.id === 5 ? 'default' : 'enabled', effective: true,
       }],
@@ -109,13 +111,14 @@ for (const mobile of [false, true]) {
 }
 
 for (const mobile of [false, true]) {
-test(`Authorization selection keeps system functions enabled (${mobile ? 'mobile' : 'desktop'})`, async ({ page }) => {
+test(`System functions have editable one-action policies while their service remains mandatory (${mobile ? 'mobile' : 'desktop'})`, async ({ page }) => {
   await page.setViewportSize({ width: mobile ? 390 : 1400, height: 1000 })
   await routes(page)
   const writes = []
-  await page.route('**/api/connections/5/functions/external_read', route => {
+  await page.route('**/api/connections/1/capabilities', route => {
     writes.push(route.request().postDataJSON())
-    return route.fulfill({ json: { name: 'external_read', connection_state: 'disabled', global_state: 'default', effective: false } })
+    return route.fulfill({ json: { name: 'system_read', connection_state: 'ask', global_state: 'enabled',
+      effective: true, effective_state: 'ask', default_state: 'enabled', state_source: 'connection' } })
   })
   await mount(page, 'app/connection/components/AuthorizationManager.vue', { privileges })
   const selector = page.getByRole('combobox').nth(2)
@@ -123,12 +126,10 @@ test(`Authorization selection keeps system functions enabled (${mobile ? 'mobile
   await page.getByRole('option', { name: 'Alice Example — Galaris', exact: true }).click()
   await expect(page.getByText('system_read', { exact: true })).toBeVisible()
   const row = page.locator(mobile ? '.authorization-mobile-card' : 'tbody tr')
-  for (const button of await row.getByRole('button').all()) await expect(button).toBeDisabled()
-  await expect(page.getByText('This system service and its functions are always enabled.', { exact: false })).toBeVisible()
-  await selector.click()
-  await page.getByRole('option', { name: 'Alice Example — Optional Tool', exact: true }).click()
-  await expect(page.getByText('external_read', { exact: true })).toBeVisible()
-  await row.getByRole('button', { name: 'Disabled', exact: true }).click()
-  await expect.poll(() => writes).toEqual([{ state: 'disabled' }])
+  await expect(page.getByText('This system service and its connection are mandatory.', { exact: false })).toBeVisible()
+  await row.getByRole('combobox', { name: 'This connection: system_read' }).click()
+  await page.getByRole('option', { name: 'Ask', exact: true }).click()
+  await expect.poll(() => writes).toEqual([{ function_name: 'system_read', state: 'ask', capability_kind: 'tool' }])
+  await expect(row).toContainText('Ask')
 })
 }

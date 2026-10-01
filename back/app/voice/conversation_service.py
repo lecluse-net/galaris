@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
+from typing import Any
 from datetime import datetime, timezone
 from uuid import UUID, uuid4
 
@@ -16,11 +17,71 @@ from core.database import get_db
 from .models import VoiceConversationSession, VoiceConversationStatus, VoiceTurnStatus
 
 
+async def save_turn_checkpoint(turn_id: UUID, checkpoint: Any) -> None:
+    from core.database import get_db_session
+    from core.util import get_encryption_service
+    from app.tools.facade import canonical_authorization_snapshot
+    async with get_db_session() as db:
+        round_ = await db.scalar(select(ConversationRound).where(ConversationRound.id == turn_id,
+            ConversationRound.voice_session_id.is_not(None)).with_for_update())
+        if round_ is None or round_.status not in ("RUNNING", "WAITING_APPROVAL"):
+            raise PermissionError("The voice round is no longer owned by its runtime")
+        round_.encrypted_checkpoint = get_encryption_service().encrypt(canonical_authorization_snapshot(checkpoint))
+        await db.commit()
+
+
 _TERMINAL_ROUND_STATUSES = {
     VoiceTurnStatus.COMPLETED.value,
     VoiceTurnStatus.INTERRUPTED.value,
     VoiceTurnStatus.FAILED.value,
 }
+
+
+async def _authorization_context_snapshot(agent_id: int, context_key: str) -> dict[str, Any] | None:
+    try:
+        _, session_key, _, round_key = context_key.split(":")
+        session = await get_db().get(VoiceConversationSession, UUID(session_key), populate_existing=True)
+    except ValueError:
+        return None
+    if session is None or session.status != VoiceConversationStatus.ACTIVE.value:
+        return None
+    _, owner_agent, _ = await _message_context(session)
+    if owner_agent != agent_id:
+        return None
+    if round_key != "None":
+        round_ = await get_db().get(ConversationRound, UUID(round_key), populate_existing=True)
+        if round_ is None or round_.voice_session_id != session.id or round_.status in (_TERMINAL_ROUND_STATUSES | {"CANCELLED", "SUPERSEDED", "SUCCEEDED", "ERROR_RESOLVED"}):
+            return None
+    return {"session": str(session.id), "round": round_key, "sequence": session.next_sequence}
+
+
+async def _wake_authorization_context(agent_id: int, context_key: str) -> bool:
+    if not context_key.startswith("voice:"):
+        return False
+    from app.tools.facade import authorization_context_pending, invalidate_authorization_context
+    from core.database import get_db_session
+    from app.conversation import wake
+    async with get_db_session() as db:
+        if await _authorization_context_snapshot(agent_id, context_key) is None:
+            await invalidate_authorization_context(agent_id, context_key)
+            return True
+        round_key = context_key.split(":")[-1]
+        if round_key == "None":
+            return True
+        round_ = await db.scalar(select(ConversationRound).where(ConversationRound.id == UUID(round_key)).with_for_update())
+        if round_ is None or round_.status != "WAITING_APPROVAL":
+            return True  # A live realtime SDK owns its callback and polls without a Task lease.
+        if await authorization_context_pending(agent_id, context_key):
+            return False
+        round_.status = "FROZEN"
+        await db.commit()
+    wake()
+    return True
+
+
+from app.tools.facade import register_authorization_context_guard, register_authorization_waker
+register_authorization_context_guard("voice", _authorization_context_snapshot)
+register_authorization_waker("voice", _wake_authorization_context)
 
 
 def _now() -> datetime:
@@ -382,6 +443,14 @@ async def start_turn(
     if session.status != VoiceConversationStatus.ACTIVE.value:
         raise RuntimeError(f"Voice session {session_id} is not active.")
 
+    waiting = list((await db.scalars(select(ConversationRound).where(
+        ConversationRound.voice_session_id == session.id, ConversationRound.status == "WAITING_APPROVAL").with_for_update())).all())
+    from app.tools.facade import invalidate_authorization_context
+    for previous in waiting:
+        _, owner_agent, _ = await _message_context(session)
+        await invalidate_authorization_context(owner_agent, f"voice:{session.id}:round:{previous.id}")
+        previous.status = VoiceTurnStatus.INTERRUPTED.value
+        previous.encrypted_checkpoint = None
     source = await _pending_round(session.id)
     round_ = ConversationRound(
         id=run_id,
@@ -466,6 +535,14 @@ async def complete_turn(
     """Complete a round after its output messages have been persisted."""
 
     del assistant_response
+    if execution_result and execution_result.get("disposition") == "waiting_for_authorization":
+        round_ = await get_db().scalar(select(ConversationRound).where(ConversationRound.id == turn_id).with_for_update())
+        if round_ is not None and round_.status == "RUNNING":
+            round_.status = VoiceTurnStatus.WAITING_APPROVAL.value
+            round_.execution_result = execution_result
+            await get_db().commit()
+            await _publish_round_activity(round_.id)
+        return
     await _finish_turn(
         turn_id,
         status=VoiceTurnStatus.COMPLETED,
@@ -540,6 +617,7 @@ async def _finish_turn(
 
     finished_at = _now()
     round_.status = status.value
+    round_.encrypted_checkpoint = None
     round_.execution_result = execution_result
     round_.last_error = (error or "").strip()[:4000] or None
     round_.first_text_at = first_text_at

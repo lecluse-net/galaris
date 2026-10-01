@@ -156,6 +156,10 @@ class McpToolDefinition:
     effect_policy: ToolEffectPolicy = "non_idempotent"
     concurrency_policy: ToolConcurrencyPolicy = "exclusive"
     available_when: Callable[[McpToolContext], Awaitable[bool]] | None = None
+    approval: Literal["enabled", "ask"] = "ask"
+    approval_reason: str = "Unclassified native action"
+    authorization_boundary: Literal["native", "prepared"] = "native"
+    authorization_preflight: Callable[[McpToolContext, dict[str, Any]], Awaitable[dict[str, Any]]] | None = None
 
 
 _CONVERSATION_TOOL_POLICIES: dict[str, Literal["short", "deferred"]] = {
@@ -211,6 +215,10 @@ def mcp_tool(
     effect_policy: ToolEffectPolicy = "non_idempotent",
     concurrency_policy: ToolConcurrencyPolicy = "exclusive",
     available_when: Callable[[McpToolContext], Awaitable[bool]] | None = None,
+    approval: Literal["enabled", "ask"] = "ask",
+    approval_reason: str = "Unclassified native action",
+    authorization_boundary: Literal["native", "prepared"] = "native",
+    authorization_preflight: Callable[[McpToolContext, dict[str, Any]], Awaitable[dict[str, Any]]] | None = None,
 ) -> Callable[[ToolFunc], ToolFunc]:
     """Mark an ``mcp.py`` function as a native MCP tool.
 
@@ -232,6 +240,10 @@ def mcp_tool(
             effect_policy=effect_policy,
             concurrency_policy=concurrency_policy,
             available_when=available_when,
+            approval=approval,
+            approval_reason=approval_reason,
+            authorization_boundary=authorization_boundary,
+            authorization_preflight=authorization_preflight,
             function=func,
         )
         setattr(func, "__galaris_mcp_tool__", definition)
@@ -279,6 +291,36 @@ class _ResilientProxyProvider(ProxyProvider):
         _, _, disabled = await resolve_live_connection(agent_id, connection_id, tool_id, conversation_only=conversation_only)
         return disabled
 
+    async def _live_disabled_kind(self, kind: Literal["resource", "prompt"]) -> set[str]:
+        if self._live_connection is None:
+            return set()
+        from app.connection import facade as connections
+        from core.database import get_db_session
+        agent_id, connection_id, tool_id, conversational = self._live_connection
+        await resolve_live_connection(agent_id, connection_id, tool_id, conversation_only=conversational)
+        async with get_db_session():
+            connection = await connections.get_connection(connection_id)
+            if connection is None:
+                raise PermissionError("Connection revoked")
+            return await connections.get_disabled_function_names(connection, capability_kind=kind)
+
+    async def _get_resource(self, uri: str, version: Any = None) -> Resource | None:
+        if uri in await self._live_disabled_kind("resource"):
+            return None
+        return await super()._get_resource(uri, version)
+
+    async def _get_resource_template(self, uri: str, version: Any = None) -> ResourceTemplate | None:
+        blocked = await self._live_disabled_kind("resource")
+        if uri in blocked:
+            return None
+        template = await super()._get_resource_template(uri, version)
+        return template if template is not None and template.uri_template not in blocked else None
+
+    async def _get_prompt(self, name: str, version: Any = None) -> Prompt | None:
+        if name in await self._live_disabled_kind("prompt"):
+            return None
+        return await super()._get_prompt(name, version)
+
     async def _get_tool(self, name: str, version: Any = None) -> Tool | None:
         if name in await self._live_disabled():
             return None
@@ -303,7 +345,8 @@ class _ResilientProxyProvider(ProxyProvider):
 
     async def _list_resources(self) -> Sequence[Resource]:
         try:
-            return await super()._list_resources()
+            blocked = await self._live_disabled_kind("resource")
+            return [resource for resource in await super()._list_resources() if str(resource.uri) not in blocked]
         except Exception as exc:
             logger.warning(
                 "MCP proxy _list_resources skipped ({}, error_type={})",
@@ -314,7 +357,8 @@ class _ResilientProxyProvider(ProxyProvider):
 
     async def _list_resource_templates(self) -> Sequence[ResourceTemplate]:
         try:
-            return await super()._list_resource_templates()
+            blocked = await self._live_disabled_kind("resource")
+            return [template for template in await super()._list_resource_templates() if template.uri_template not in blocked]
         except Exception as exc:
             logger.warning(
                 "MCP proxy _list_resource_templates skipped ({}, error_type={})",
@@ -325,7 +369,8 @@ class _ResilientProxyProvider(ProxyProvider):
 
     async def _list_prompts(self) -> Sequence[Prompt]:
         try:
-            return await super()._list_prompts()
+            blocked = await self._live_disabled_kind("prompt")
+            return [prompt for prompt in await super()._list_prompts() if prompt.name not in blocked]
         except Exception as exc:
             logger.warning(
                 "MCP proxy _list_prompts skipped ({}, error_type={})",
@@ -391,6 +436,7 @@ def _wrap_tool(definition: McpToolDefinition, ctx: McpToolContext) -> Callable[.
         # ``ctx.task_id`` is frozen when the toolset is built and needs no call-time lookup.
         language: str | None = None
         execution = current_tool_execution()
+        authorization_id: UUID | None = None
         if execution is not None:
             execution.entered = True
         try:
@@ -417,18 +463,49 @@ def _wrap_tool(definition: McpToolDefinition, ctx: McpToolContext) -> Callable[.
                     )
                     if not visible:
                         raise ToolCallRejectedError("This tool is no longer authorized or available in this execution.")
-                    result = definition.function(ctx, *args, **kwargs)
-                    if inspect.isawaitable(result):
-                        result = await result
                     bound = inspect.signature(definition.function).bind(ctx, *args, **kwargs)
+                    bound.apply_defaults()
                     arguments = {
-                        key: value for key, value in bound.arguments.items() if key != "ctx"
+                        key: value for key, value in bound.arguments.items() if key not in {"ctx", "context"}
                     }
+                    from .mcp_authorization import authorize_native_call, bind_native_action
+                    if definition.authorization_boundary == "prepared":
+                        from .authorization import prepared_authorization
+                        with prepared_authorization(await bind_native_action(ctx, definition, arguments)) as prepared:
+                            try:
+                                result = definition.function(ctx, *args, **kwargs)
+                                if inspect.isawaitable(result):
+                                    result = await result
+                            finally:
+                                authorization_id = prepared.request_id
+                    else:
+                        authorization_id = await authorize_native_call(ctx, definition, arguments)
+                        from .authorization import authorized_request
+                        with authorized_request(authorization_id):
+                            result = definition.function(ctx, *args, **kwargs)
+                            if inspect.isawaitable(result):
+                                result = await result
                     from .resource_effects import record_tool_resources
 
                     await record_tool_resources(ctx, definition.name, arguments, result)
-                    return result
+                await get_db().commit()
+            from .authorization import finish_action
+            await finish_action(authorization_id, receipt=result)
+            return result
         except Exception as exc:
+            from .authorization import AuthorizationRequired, AuthorizationClosed, finish_action
+            if isinstance(exc, (AuthorizationRequired, AuthorizationClosed)):
+                if execution is not None:
+                    execution.outcome = "rejected"
+                from fastmcp.tools import ToolResult
+                from .authorization import AUTHORIZATION_META_KEY
+                pending = isinstance(exc, AuthorizationRequired)
+                return ToolResult(content=str(exc), is_error=True, meta={AUTHORIZATION_META_KEY: {
+                    "request_id": str(exc.request_id), "status": "pending" if pending else exc.status,
+                    "disposition": "authorization_required" if pending else "authorization_closed",
+                    "continuation": exc.continuation if pending else None,
+                }})
+            await finish_action(authorization_id, outcome="failed" if isinstance(exc, ToolCallRejectedError) else "outcome_unknown")
             if isinstance(exc, ToolCallRejectedError) and execution is not None:
                 execution.outcome = "rejected"
             failure = classify_tool_failure(exc)
@@ -587,25 +664,17 @@ async def get_disabled_internal_function_names(agent_id: int) -> set[str]:
 
     known_codes = set(mcp_tools_by_tool_code())
     names: set[str] = set()
-    system_codes: set[str] = set()
     for connection in await connection_service.get_connections_by_agent(agent_id):
         if not connection.active:
             continue
         tool = await tool_service.get_tool_by_id(connection.tool_id)
         if tool and native_tool_codes_for_tool(tool) & known_codes:
             names |= await connection_service.get_disabled_function_names(connection)
-            if not tool.can_disable:
-                system_codes.update(native_tool_codes_for_tool(tool))
     from app.llm import available_media_functions
 
     media_names = {definition.name for definition in load_mcp_tools() if definition.tool_code == "multimedia"}
     names |= media_names - await available_media_functions(agent_id)
-    # Stale or invalid overrides on another Tool cannot disable a system function.
-    system_names = {
-        definition.name for definition in load_mcp_tools()
-        if definition.tool_code in system_codes
-    }
-    return names - system_names
+    return names
 
 
 async def list_enabled_native_mcp_definitions(
@@ -895,6 +964,14 @@ async def build_agent_mcp(
         try:
             disabled_functions = await connection_service.get_disabled_function_names(connection)
             proxy = FastMCP(tool.code)
+            from .external_authorization import ExternalAuthorizationMiddleware
+            from .mcp_authorization import authorization_context_key
+            proxy.add_middleware(ExternalAuthorizationMiddleware(
+                agent_id, connection.id, connection.tool_id, runtime=runtime,
+                context_key=authorization_context_key(task_id, resources or {}),
+                runtime_grant_id=UUID(str(resources["runtime_grant_id"])) if resources and resources.get("runtime_grant_id") else None,
+                conversation_only=conversation_only,
+            ))
             # Capture identities only. An old run must not capture old credentials.
             def live_factory(agent: int, connection_id: int, tool_id: int, conversational: bool) -> Callable[[], Awaitable[Client[Any]]]:
                 async def client() -> Client[Any]:
@@ -961,6 +1038,20 @@ async def list_external_mcp_functions(tool: Any, params: dict[str, Any]) -> list
     return [(tool.name, tool.description or "") for tool in tools]
 
 
+async def list_external_mcp_capabilities(tool: ToolConfiguration, params: dict[str, Any]) -> list[tuple[str, str, Literal["tool", "resource", "prompt"]]]:
+    async with Client(_external_transport(tool, params)) as client:
+        tools = await client.list_tools()
+        resources = await client.list_resources()
+        templates = await client.list_resource_templates()
+        prompts = await client.list_prompts()
+    result: list[tuple[str, str, Literal["tool", "resource", "prompt"]]] = []
+    result.extend((item.name, item.description or "", "tool") for item in tools)
+    result.extend((str(item.uri), item.description or "", "resource") for item in resources)
+    result.extend((item.uriTemplate, item.description or "", "resource") for item in templates)
+    result.extend((item.name, item.description or "", "prompt") for item in prompts)
+    return result
+
+
 async def list_internal_mcp_functions(
     agent_id: int,
     tool_code: str,
@@ -969,18 +1060,10 @@ async def list_internal_mcp_functions(
     tool: Any | None = None,
 ) -> list[tuple[str, str]]:
     """List native functions declared by a built-in tool."""
-    mcp = build_galaris_fastmcp(
-        agent_id,
-        runtime=runtime,
-        enabled_tool_codes=set(
-            native_tool_codes_for_tool(tool)
-            if tool is not None
-            else native_tool_codes_for_connection(tool_code)
-        ),
-    )
-    tools = await mcp.list_tools()
-    disabled = await get_disabled_internal_function_names(agent_id)
-    return [(tool.name, tool.description or "") for tool in tools if tool.name not in disabled]
+    del agent_id, runtime
+    codes = native_tool_codes_for_tool(tool) if tool is not None else native_tool_codes_for_connection(tool_code)
+    # Administration must retain blocked capabilities so humans can restore them.
+    return [(definition.name, definition.description) for definition in load_mcp_tools() if definition.tool_code in codes]
 
 
 async def list_agent_mcp_tools(agent_id: int) -> list[dict[str, Any]]:

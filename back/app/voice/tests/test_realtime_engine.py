@@ -90,7 +90,10 @@ async def test_realtime_audio_journals_input_output_and_greeting(
 
 
 @pytest.mark.asyncio
-async def test_realtime_stop_waits_for_audio_drain_then_ends_call() -> None:
+async def test_realtime_stop_waits_for_audio_drain_then_ends_call(monkeypatch) -> None:
+    from app.tools import facade
+    monkeypatch.setattr(facade, "bind_native_action", AsyncMock(return_value=object()))
+    monkeypatch.setattr(facade, "claim_action", AsyncMock(return_value=None))
     configuration = realtime_engine._RealtimeConfiguration(
         service=MagicMock(),
         connection=MagicMock(),

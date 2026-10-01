@@ -3,12 +3,12 @@
 from __future__ import annotations
 
 from collections.abc import Collection
-from typing import TYPE_CHECKING, Any, Dict, Optional, List, Tuple, cast
+from typing import TYPE_CHECKING, Any, Dict, Optional, List, Tuple, cast, Mapping
 from sqlalchemy import CursorResult, delete, exists, or_, select
 from sqlalchemy.orm import joinedload
 
 from .models import Connection, ConnectionParam, ConnectionFunctionState, ToolFunctionState
-from .schemas import FunctionState
+from .schemas import FunctionState, EffectiveFunctionState, CapabilityKind
 from app.tools.facade import lock_tools, finish_write
 from core.util import get_encryption_service
 from core.database import get_db
@@ -166,8 +166,13 @@ async def has_active_tool_function(agent_id: int, tool_code: str, function_name:
         Connection.agent_id == agent_id, Connection.active.is_(True), ToolModel.code == tool_code,
     ))).all()
     for connection in connections:
-        if function_name not in await get_disabled_function_names(connection):
+        policy = await resolve_function(connection, function_name)
+        if policy["effective_state"] == "enabled":
             return True
+        if policy["effective_state"] == "ask":
+            from app.tools.facade import current_action_covers
+            if await current_action_covers(agent_id, connection.id, function_name):
+                return True
     return False
 
 
@@ -588,24 +593,51 @@ async def get_agent_ids_by_tool(tool_id: int) -> List[int]:
 # The runtime consumes the resulting denylist.
 
 
-def function_state_label(enabled: Optional[bool]) -> FunctionState:
-    """Convert an optional stored boolean to a three-state label."""
+def function_state_label(enabled: bool | str | None) -> FunctionState:
+    """Read both the expanded policy and the transitional legacy boolean."""
     if enabled is None:
         return "default"
+    if isinstance(enabled, str):
+        if enabled not in {"enabled", "disabled", "ask"}:
+            raise ValueError("Invalid function policy")
+        return cast(FunctionState, enabled)
     return "enabled" if enabled else "disabled"
+
+
+def stored_function_state(row: ConnectionFunctionState | ToolFunctionState) -> EffectiveFunctionState:
+    return cast(EffectiveFunctionState, function_state_label(row.state if row.state is not None else row.enabled))
+
+
+def resolve_function_state(function_name: str, conn_states: Mapping[str, bool | str],
+                           tool_states: Mapping[str, bool | str], *,
+                           default: EffectiveFunctionState = "enabled") -> EffectiveFunctionState:
+    value = conn_states.get(function_name, tool_states.get(function_name, default))
+    return cast(EffectiveFunctionState, function_state_label(value))
+
+
+def project_function_policy(function_name: str, conn_states: Mapping[str, bool | str],
+                            tool_states: Mapping[str, bool | str], *,
+                            default: EffectiveFunctionState = "enabled",
+                            capability_kind: CapabilityKind = "tool", native: bool = False) -> Dict[str, Any]:
+    effective = resolve_function_state(function_name, conn_states, tool_states, default=default)
+    origin = "connection" if function_name in conn_states else "tool" if function_name in tool_states else "software"
+    return {
+        "name": function_name, "capability_kind": capability_kind,
+        "connection_state": function_state_label(conn_states.get(function_name)),
+        "global_state": function_state_label(tool_states.get(function_name)),
+        "effective": effective != "disabled", "effective_state": effective,
+        "default_state": default, "policy_source": origin,
+        "state_source": origin if origin != "software" else "native_default" if native else "external_default",
+    }
 
 
 def resolve_function_enabled(
     function_name: str,
-    conn_states: Dict[str, bool],
-    tool_states: Dict[str, bool],
+    conn_states: Mapping[str, bool | str],
+    tool_states: Mapping[str, bool | str],
 ) -> bool:
     """Resolve a function through the enabled-by-default cascade."""
-    if function_name in conn_states:
-        return conn_states[function_name]
-    if function_name in tool_states:
-        return tool_states[function_name]
-    return True
+    return resolve_function_state(function_name, conn_states, tool_states) != "disabled"
 
 
 async def list_function_states(connection_id: int) -> List[ConnectionFunctionState]:
@@ -628,12 +660,10 @@ async def list_tool_function_states(tool_id: int) -> List[ToolFunctionState]:
     return list(result.scalars().all())
 
 
-async def get_disabled_function_names(connection: Connection) -> set[str]:
+async def get_disabled_function_names(connection: Connection, *, capability_kind: CapabilityKind = "tool") -> set[str]:
     """Return function names disabled for a connection after cascade resolution."""
-    if not await tool_can_disable(connection.tool_id):
-        return set()
-    conn_states = {s.function_name: s.enabled for s in await list_function_states(connection.id)}
-    tool_states = {s.function_name: s.enabled for s in await list_tool_function_states(connection.tool_id)}
+    conn_states = {s.function_name: stored_function_state(s) for s in await list_function_states(connection.id) if (s.capability_kind or "tool") == capability_kind}
+    tool_states = {s.function_name: stored_function_state(s) for s in await list_tool_function_states(connection.tool_id) if (s.capability_kind or "tool") == capability_kind}
     return {
         name
         for name in (set(conn_states) | set(tool_states))
@@ -641,19 +671,30 @@ async def get_disabled_function_names(connection: Connection) -> set[str]:
     }
 
 
+def _validate_capability_name(name: str, kind: CapabilityKind) -> None:
+    if not name or len(name.encode("utf-8")) > (2000 if kind == "resource" else 255):
+        raise ValueError("Invalid bounded MCP capability name")
+
+
 async def set_connection_function_state(
     connection_id: int,
     function_name: str,
     state: FunctionState,
     *, commit: bool = True,
+    capability_kind: CapabilityKind = "tool",
 ) -> None:
     """Apply a connection-level state; ``default`` deletes the override row."""
-    await require_editable_connection(connection_id)
+    _validate_capability_name(function_name, capability_kind)
+    connection = await get_connection(connection_id)
+    if connection is None:
+        raise ValueError("Connection not found")
+    await lock_tools([connection.tool_id], db=get_db())
     db = get_db()
     result = await db.execute(
         select(ConnectionFunctionState).execution_options(populate_existing=True).where(
             ConnectionFunctionState.connection_id == connection_id,
             ConnectionFunctionState.function_name == function_name,
+            ConnectionFunctionState.capability_kind == capability_kind,
         )
     )
     row = result.scalar_one_or_none()
@@ -667,11 +708,14 @@ async def set_connection_function_state(
     enabled = state == "enabled"
     if row:
         row.enabled = enabled
+        row.state = state
     else:
         db.add(ConnectionFunctionState(
             connection_id=connection_id,
             function_name=function_name,
             enabled=enabled,
+            state=state,
+            capability_kind=capability_kind,
         ))
     await finish_write(commit=commit, db=get_db())
 
@@ -681,14 +725,17 @@ async def set_tool_function_state(
     function_name: str,
     state: FunctionState,
     *, commit: bool = True,
+    capability_kind: CapabilityKind = "tool",
 ) -> None:
     """Apply a tool-level state; ``default`` deletes the override row."""
-    await require_editable_tool(tool_id)
+    _validate_capability_name(function_name, capability_kind)
+    await lock_tools([tool_id], db=get_db())
     db = get_db()
     result = await db.execute(
         select(ToolFunctionState).execution_options(populate_existing=True).where(
             ToolFunctionState.tool_id == tool_id,
             ToolFunctionState.function_name == function_name,
+            ToolFunctionState.capability_kind == capability_kind,
         )
     )
     row = result.scalar_one_or_none()
@@ -702,25 +749,33 @@ async def set_tool_function_state(
     enabled = state == "enabled"
     if row:
         row.enabled = enabled
+        row.state = state
     else:
         db.add(ToolFunctionState(
             tool_id=tool_id,
             function_name=function_name,
             enabled=enabled,
+            state=state,
+            capability_kind=capability_kind,
         ))
     await finish_write(commit=commit, db=get_db())
 
 
-async def resolve_function(connection: Connection, function_name: str) -> Dict[str, Any]:
+async def resolve_function(connection: Connection, function_name: str, *, capability_kind: CapabilityKind = "tool") -> Dict[str, Any]:
     """Resolve connection, tool, and effective state without querying MCP."""
-    if not await tool_can_disable(connection.tool_id):
-        return {"name": function_name, "connection_state": "enabled",
-                "global_state": "enabled", "effective": True}
-    conn_states = {s.function_name: s.enabled for s in await list_function_states(connection.id)}
-    tool_states = {s.function_name: s.enabled for s in await list_tool_function_states(connection.tool_id)}
-    return {
-        "name": function_name,
-        "connection_state": function_state_label(conn_states.get(function_name)),
-        "global_state": function_state_label(tool_states.get(function_name)),
-        "effective": resolve_function_enabled(function_name, conn_states, tool_states),
-    }
+    from app.tools import facade as tools
+    from app.tools import load_mcp_tools, native_tool_codes_for_tool
+
+    tool = await tools.get_tool_by_id(connection.tool_id)
+    default: EffectiveFunctionState = "enabled"
+    native = False
+    if tool is not None and capability_kind == "tool":
+        for definition in load_mcp_tools():
+            if definition.name == function_name and definition.tool_code in native_tool_codes_for_tool(tool):
+                default = definition.approval
+                native = True
+                break
+    conn_states = {s.function_name: stored_function_state(s) for s in await list_function_states(connection.id) if (s.capability_kind or "tool") == capability_kind}
+    tool_states = {s.function_name: stored_function_state(s) for s in await list_tool_function_states(connection.tool_id) if (s.capability_kind or "tool") == capability_kind}
+    return project_function_policy(function_name, conn_states, tool_states, default=default,
+                                   capability_kind=capability_kind, native=native)

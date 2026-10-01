@@ -238,6 +238,13 @@ def _bounded_ssh_number(
     return value
 
 
+async def runtime_authorization_configuration(agent_id: int) -> dict[str, str]:
+    from dataclasses import asdict
+    from app.tools.facade import authorization_fingerprint
+    ssh = await _resolve_external_console_ssh(agent_id)
+    return {"terminal_signature": authorization_fingerprint(asdict(ssh) if ssh else {"terminal": "local"})}
+
+
 async def _resolve_external_console_ssh(
     agent_id: int,
 ) -> _HermesSshConnection | None:
@@ -1279,6 +1286,9 @@ class HermesAgent:
         ssh: _HermesSshConnection | None,
     ) -> None:
         """Materialize and select an external Console connection for Hermes."""
+        from dataclasses import asdict
+        from app.tools.facade import authorization_fingerprint
+        data_env["GALARIS_TERMINAL_SIGNATURE"] = authorization_fingerprint(asdict(ssh) if ssh else {"terminal": "local"})
 
         if ssh is None:
             await self._manager.delete_agent_tree(self.code, _GALARIS_SSH_DIR)
@@ -1369,6 +1379,8 @@ class HermesAgent:
             runtime_settings.HARNESS_API_URL,
             mcp_token,
         )
+        data_env["GALARIS_MCP_URL"] = f"{runtime_settings.HARNESS_API_URL.rstrip('/')}/mcp/{self.agent.code}"
+        data_env["GALARIS_MCP_TOKEN"] = mcp_token
         _inject_memory_provider(
             config,
             data_env,
@@ -1559,6 +1571,9 @@ class HermesAgent:
 
         pushed: list[str] = []
         errors: list[str] = []
+        from app.harnesses import managed_runtime_files
+        await self.write_file("runtime_support.py", managed_runtime_files()["runtime_support.py"])
+        pushed.append("runtime_support.py")
         for src in sorted(_DEFAULT_AGENT_DIR.rglob("*")):
             if src.is_dir():
                 continue

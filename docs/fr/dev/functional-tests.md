@@ -86,6 +86,35 @@ des gestionnaires. `browser-executor/network-proxy.test.mjs` utilise Chromium et
 synthétiques pour vérifier POST, redirections, isolation, HTTPS avec validation du certificat,
 WebSocket et révocation. `front/browser-tests/permissions.spec.mjs` vérifie la liste réelle,
 ses filtres, la suppression, la fermeture par fond de modale et le réessai après erreur.
+La même suite backend vérifie l’accord couvrant tous les sites, sa révocation, la priorité des
+filtres et la séparation du réseau local, ainsi que le français, le chinois et la langue par défaut.
+Les accords historiques par site ne sont pas élargis ; les anciennes questions sont remplacées
+avant de recueillir un accord pour tous les sites.
+`app/tools/tests/test_action_authorizations.py` vérifie l’accord permanent par fonction et
+connexion, la reprise sans rejeu de l’action initiale et l’exécution suivante sans question.
+Elle couvre aussi le claim concurrent, le refus non répétable, l’expiration, les quotas,
+la révocation du contexte ou de la configuration, YOLO et les préconditions des fichiers.
+Le choix permanent refuse une configuration MCP changée, y compris si le changement
+survient entre la préparation de l'appel et la création de sa question.
+Les routes HTTP réelles refusent le jeton système d'un runtime sans son contexte,
+acceptent un contexte valide, refusent un contexte révoqué et conservent les clients MCP indépendants.
+`app/connection/tests/test_function_modes_migration.py` prouve sur PostgreSQL la conversion
+des anciens booléens, le rollback et le rejeu après un choix humain ultérieur.
+`app/harnesses/tests/test_runtime_control.py` vérifie les appels suspendus, la réponse de claim
+perdue et le redémarrage sans réexécution. Les workflows Mail et Process vérifient les permis
+avant effet et la réconciliation après une issue inconnue.
+`app/process/tests/test_common_authorizations.py` exerce le transport MCP et les transactions
+réels : pause, révocation, changement de workflow, reprise après la fin de la Task,
+réponse perdue et priorité d'un callback terminal sur une observation révoquée.
+`bridge/deepseek_harness/tests/test_runtime_authorizations.py` exerce les routes HTTP
+du runtime pour l'accord, le refus, la révocation et l'annulation, sans relancer le SDK.
+`make tests-harness-runtimes` exerce les SDK embarqués Codex, Claude, Hermes et DeepSeek,
+avec modèle et transports externes synthétiques : aucun effet avant accord, refus, reprise
+de l’appel exact et continuation MCP. Cette qualification ne prouve pas un déploiement.
+`e2e/specs/tool-authorizations.spec.mjs` vérifie dans l’application assemblée l’accord et le
+refus, la réouverture, le clavier, YOLO et les fonctions bloquées à 390 et 1440 pixels.
+`front/browser-tests/action-authorizations.spec.mjs` couvre le choix permanent avec sa portée
+explicite, les trois langues, le clavier, le mobile et le réessai après un refus HTTP.
 
 La stabilisation du journal et du streaming est couverte par
 `back/app/agent/tests/test_reasoning_guard.py` (fragments irréguliers, snapshots rejoués,

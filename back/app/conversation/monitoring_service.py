@@ -29,6 +29,7 @@ from .schemas import (
 def _runtime_status(round_status: Any):
     return case(
         (round_status == "FROZEN", "READY"),
+        (round_status == "WAITING_APPROVAL", "WAITING_APPROVAL"),
         (round_status.in_(("CLAIMED", "RUNNING")), "RUNNING"),
         else_="IDLE",
     )

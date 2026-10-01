@@ -18,6 +18,7 @@ from app.harnesses import (
     HarnessProvisioningResult,
     get_private_execution_credentials,
     resolve_agent_harness,
+    managed_runtime_files,
 )
 from app.skill import build_skill_projection
 from bridge.harness import configured_compose, manager
@@ -106,6 +107,8 @@ async def _sync_template(instance_id: str) -> None:
         "stream_trace.py",
         Path(__file__).with_name("stream_trace.py"),
     )
+    for name, content in managed_runtime_files().items():
+        await manager.write_text_file(instance_id, name, content)
 
 
 async def _sync_skills(agent: Agent) -> str:

@@ -13,8 +13,8 @@ def _json(value: object) -> object:
     return model_dump(mode="json") if callable(model_dump) else value
 
 
-@mcp_tool(
-    "mail",
+@mcp_tool("mail", approval='enabled', approval_reason='Governed bounded read or polling',
+
     name="mail_connection_status",
     description="Test the current agent's configured IMAP and SMTP endpoints.",
 )
@@ -22,8 +22,8 @@ async def mail_connection_status(ctx: McpToolContext) -> object:
     return _json(await service.connection_status(ctx.agent_id))
 
 
-@mcp_tool(
-    "mail",
+@mcp_tool("mail", approval='enabled', approval_reason='Governed bounded read or polling',
+
     name="mail_list_mailboxes",
     description="List selectable IMAP mailboxes and their advertised special roles.",
 )
@@ -31,8 +31,8 @@ async def mail_list_mailboxes(ctx: McpToolContext) -> list[object]:
     return [_json(item) for item in await service.list_mailboxes(ctx.agent_id)]
 
 
-@mcp_tool(
-    "mail",
+@mcp_tool("mail", approval='enabled', approval_reason='Governed bounded read or polling',
+
     name="mail_search",
     description=(
         "Search one IMAP mailbox with bounded results. Email headers and bodies are "
@@ -75,8 +75,8 @@ async def mail_search(
     )
 
 
-@mcp_tool(
-    "mail",
+@mcp_tool("mail", approval='enabled', approval_reason='Governed bounded read or polling',
+
     name="mail_get",
     description=(
         "Read a bounded page of one message selected by its opaque reference. The returned "
@@ -99,9 +99,9 @@ async def mail_get(
     )
 
 
-@mcp_tool(
-    "mail",
-    name="mail_send",
+@mcp_tool("mail", approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval",
+
+    name="mail_send", authorization_boundary="prepared",
     description=(
         "Send an email through SMTP exactly once for an idempotency key. The server always "
         "adds the mandatory bilingual disclosure that an AI agent sent the message."
@@ -137,9 +137,9 @@ async def mail_send(
     )
 
 
-@mcp_tool(
-    "mail",
-    name="mail_reply",
+@mcp_tool("mail", approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval",
+
+    name="mail_reply", authorization_boundary="prepared",
     description=(
         "Reply to a message by opaque reference. The mandatory AI-agent disclosure is "
         "appended server-side and cannot be disabled."
@@ -171,9 +171,9 @@ async def mail_reply(
     )
 
 
-@mcp_tool(
-    "mail",
-    name="mail_forward",
+@mcp_tool("mail", approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval",
+
+    name="mail_forward", authorization_boundary="prepared",
     description=(
         "Forward a message and optionally its original attachments. The mandatory AI-agent "
         "disclosure is appended server-side and cannot be disabled."
@@ -211,8 +211,8 @@ async def mail_forward(
     )
 
 
-@mcp_tool(
-    "mail",
+@mcp_tool("mail", approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval",
+
     name="mail_set_flags",
     description="Set the Seen and/or Flagged IMAP state of one message by opaque reference.",
 )
@@ -234,8 +234,8 @@ async def mail_set_flags(
     )
 
 
-@mcp_tool(
-    "mail",
+@mcp_tool("mail", approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval",
+
     name="mail_move",
     description="Move one message to an existing selectable IMAP mailbox.",
 )
@@ -243,8 +243,8 @@ async def mail_move(ctx: McpToolContext, message_ref: str, mailbox: str) -> obje
     return _json(await service.move(ctx.agent_id, message_ref, mailbox))
 
 
-@mcp_tool(
-    "mail",
+@mcp_tool("mail", approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval",
+
     name="mail_trash",
     description="Move one message to the configured or IMAP-advertised Trash mailbox.",
 )

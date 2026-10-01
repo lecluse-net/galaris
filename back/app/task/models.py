@@ -72,6 +72,7 @@ class TaskAttemptStatus(str, enum.Enum):
     RETRY = "RETRY"
     CANCELLED = "CANCELLED"
     WAITING_CHILDREN = "WAITING_CHILDREN"
+    WAITING_APPROVAL = "WAITING_APPROVAL"
 
 
 class Task(HistoryMixin, Base):
@@ -109,9 +110,7 @@ class Task(HistoryMixin, Base):
     reasoning_effort_override: Mapped[str | None] = mapped_column(
         String(20), nullable=True
     )
-    # Automatically approve executor approval requests (for example Hermes) for this task
-    # and its descendants, resolved by walking ancestors. The default is False, so requests
-    # are sent through the messaging interaction flow.
+    # Read-only historical flag. Never used as permission to dispatch an action.
     auto_approve: Mapped[bool] = mapped_column(
         Boolean, nullable=False, default=False, server_default="false"
     )

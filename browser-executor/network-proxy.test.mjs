@@ -24,7 +24,7 @@ test('real Chromium checks every request, redirect and WebSocket; revocation and
     assert.equal(req.headers['x-galaris-browser-token'], 'synthetic-token');
     let raw = ''; for await (const chunk of req) raw += chunk;
     const body = JSON.parse(raw); checks.push(body);
-    const allowed = body.owner.agent_id === 7 && body.url !== blockedOrigin &&
+    const allowed = body.owner.agent_id === 7 && new URL(body.url).origin !== blockedOrigin &&
       (body.method === 'GET' || body.method === 'POST' && postAllowed || body.method === 'WEBSOCKET' && wsAllowed);
     res.writeHead(available ? 200 : 503, { 'content-type': 'application/json' });
     res.end(JSON.stringify({ allowed, code: 'permission_required', permission_keys: ['synthetic'] }));
@@ -84,7 +84,8 @@ test('real Chromium checks every request, redirect and WebSocket; revocation and
   available = false;
   assert.equal(await post(), 403, 'unavailable authorization never opens access');
   assert.ok(proxy.issues().some(issue => issue.code === 'authorization_unavailable'));
-  assert.ok(checks.every(check => !check.url.includes('/save') && !('body' in check)), 'approval callback receives origin only');
+  assert.ok(checks.some(check => new URL(check.url).pathname === '/save'), 'authorization receives the exact target path');
+  assert.ok(checks.every(check => !('body' in check)), 'authorization receives a fingerprint rather than the raw body');
 });
 
 test('HTTPS POST is inspected, trusted destinations work and untrusted certificates remain rejected', { timeout: 15000 }, async t => {
@@ -111,7 +112,7 @@ test('HTTPS POST is inspected, trusted destinations work and untrusted certifica
   const page = await context.newPage();
   await page.setContent(`<form action="${base}/save" method="post"><button>Submit</button></form>`);
   await Promise.all([page.waitForURL(base + '/save'), page.getByRole('button').click()]);
-  assert.ok(checks.some(check => check.method === 'POST' && check.url === base), 'TLS does not hide HTTP methods');
+  assert.ok(checks.some(check => check.method === 'POST' && check.url === base + '/save' && /^[a-f0-9]{64}$/.test(check.body_sha256)), 'TLS preserves the exact target, method and body fingerprint for authorization');
   assert.equal(hits, 0, 'upstream TLS certificate verification remains enabled');
   tls.setDefaultCACertificates([...roots, await readFile(join(directory, 'cert'), 'utf8')]);
   const submit = async () => {

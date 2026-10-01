@@ -40,8 +40,8 @@ def _turn_id(value: str) -> UUID:
         raise ValueError(f"Invalid voice conversation turn UUID: {value}") from exc
 
 
-@mcp_tool(
-    "galaris_admin",
+@mcp_tool("galaris_admin", approval='ask', approval_reason='Sensitive trace, content disclosure or remote diagnostic',
+
     name="voice_turn_get",
     description=(
         "Return the complete persisted dataset for one voice conversation turn by exact UUID: "
@@ -288,8 +288,8 @@ async def _list_calls(agent_id: int, language: str | None = None) -> str:
     )
 
 
-@mcp_tool(
-    "voice",
+@mcp_tool("voice", approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval",
+
     name="voice_call_start",
     description="Start a voice call in the current room on its exact messaging connection.",
     requires=("voice_calling",),
@@ -309,8 +309,8 @@ async def mcp_start_voice_call(
     )
 
 
-@mcp_tool(
-    "voice",
+@mcp_tool("voice", approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval",
+
     name="voice_call_stop",
     description=(
         "End the current live audio call for real. Call this when the caller asks to "
@@ -345,8 +345,8 @@ async def mcp_stop_voice_call(
     )
 
 
-@mcp_tool(
-    "voice",
+@mcp_tool("voice", approval="enabled", approval_reason="Governed bounded read or control without a new sensitive effect",
+
     name="voice_call_list",
     description="List active voice calls for this AI agent.",
     requires=("voice_calling",),

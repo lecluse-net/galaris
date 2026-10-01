@@ -53,6 +53,7 @@ _ERROR_CODES = frozenset({
     "unavailable", "executor_failed", "invalid_response", "blocked_url", "dns_failed",
     "invalid_ref", "invalid_action", "invalid_json", "invalid_key", "invalid_owner",
     "not_found", "payload_too_large", "text_too_long", "invalid_settings",
+    "stale_action",
     "invalid_pdf_html", "pdf_too_large", "browser_failed", "internal_error", "unauthorized",
 })
 
@@ -244,6 +245,11 @@ class BrowserExecutor:
             },
         )
         return self._parse_result(body, output)
+
+    async def inspect_action(self, *, agent_id: int, task_id: object | None, session_id: str,
+                             ref: object | None = None) -> dict[str, Any]:
+        return await self._post("/v1/action", {"owner": _owner(agent_id, task_id).model_dump(exclude={"user_id"}),
+            "session_id": session_id, "action": "inspect", "ref": ref})
 
     async def action(
         self,

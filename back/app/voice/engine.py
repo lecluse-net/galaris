@@ -14,7 +14,7 @@ from uuid import UUID, uuid4
 from loguru import logger
 
 from app.agent.contracts import TaskMessage as Message
-from app.agent import AIResult
+from app.agent import ExecutionResult
 from app.conversation import ConversationRuntimeStream
 from core.database import get_db_session
 from core.i18n import render_prompt, t
@@ -574,6 +574,9 @@ class AgentVoiceEngine:
                         linked_work = await linked_work_snapshot(
                             conversation_round.room_id
                         )
+                        from app.agent import AgentRunControl, AgentRunCheckpoint
+                        async def save_checkpoint(checkpoint: AgentRunCheckpoint) -> None:
+                            await conversation_service.save_turn_checkpoint(conversation_round.id, checkpoint)
                         async for event in stream_conversation_turn_events(
                             agent_id=self._agent_id,
                             objective=objective,
@@ -588,6 +591,8 @@ class AgentVoiceEngine:
                             transport_kind=self._transport.kind,
                             run_id=run_id,
                             conversation_round_id=conversation_round_id,
+                            voice_session_id=self._session_id,
+                            control=AgentRunControl(save_checkpoint=save_checkpoint),
                             topic_id=conversation_round.topic_id,
                             contact_memory_item_id=getattr(
                                 conversation_round,
@@ -746,9 +751,13 @@ class AgentVoiceEngine:
                     first_text_at=first_text_timestamp,
                     first_audio_at=first_audio_timestamp,
                 )
-            completed_successfully = True
-            self._pending_turn_indexes.clear()
-            self._pending_message_ids.clear()
+            waiting_for_approval = execution_result.get("disposition") == "waiting_for_authorization"
+            completed_successfully = not waiting_for_approval
+            if waiting_for_approval:
+                self._pending_turn_indexes.add(turn_index)
+            else:
+                self._pending_turn_indexes.clear()
+                self._pending_message_ids.clear()
             if response:
                 self._append_assistant_message(response, turn_index)
                 logger.info(
@@ -758,7 +767,7 @@ class AgentVoiceEngine:
                     len(response),
                     time.monotonic() - started_at,
                 )
-            if hangup_after_response:
+            if hangup_after_response and not waiting_for_approval:
                 self._request_graceful_stop(turn_index)
         except asyncio.CancelledError:
             partial = "".join(response_parts).strip()
@@ -798,7 +807,7 @@ class AgentVoiceEngine:
             if progress is not None:
                 await asyncio.shield(progress.finish(
                     success=completed_successfully,
-                    result=AIResult.model_validate(execution_result) if execution_result else None,
+                    result=ExecutionResult.model_validate(execution_result) if execution_result else None,
                 ))
             if not transcription_finished:
                 await asyncio.shield(

@@ -3,6 +3,7 @@
 Runtime I/O is scripted; the driver itself and portable envelope are real.
 """
 import asyncio
+from contextlib import aclosing
 from dataclasses import replace
 from importlib import import_module
 from uuid import uuid4
@@ -40,16 +41,16 @@ async def test_registered_adapter_preserves_stream_identity_and_closes(monkeypat
     if code == "openai_messages":
         from app.harnesses.driver import OpenAIMessagesDriver
 
-        class Client:
-            async def stream(self, envelope):
-                async for event in stream(envelope):
-                    yield event
-
-        async def client(_self, received):
+        async def controlled_run(_self, received, *, on_progress=None):
             assert received.to_envelope() == request.to_envelope()
-            return Client()
+            async with aclosing(stream(received.to_envelope())) as events:
+                async for event in events:
+                    if event.message is not None:
+                        await on_progress(event.message)
+                    if event.result is not None:
+                        return event.result
 
-        monkeypatch.setattr(OpenAIMessagesDriver, "_client", client)
+        monkeypatch.setattr(OpenAIMessagesDriver, "_managed_run", controlled_run)
     else:
         path = "app.harness.executor" if code == "internal" else "bridge.hermes.executor"
         monkeypatch.setattr(import_module(path), "stream", stream)

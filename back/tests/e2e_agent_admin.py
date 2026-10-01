@@ -2,7 +2,7 @@
 
 import io
 from typing import Any
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 from fastapi import APIRouter, HTTPException
 from fastmcp import Client
@@ -11,6 +11,7 @@ from sqlalchemy import select
 
 from app.agent import Agent, Title
 from app.connection import Connection
+from app.connection import facade as connections
 from app.llm import LLM, LLMProvider, LlmProfile
 from app.tools import build_agent_galaris_fastmcp, sync_integrated_tool_connections, ToolModel
 from core.database import get_db_session
@@ -34,6 +35,11 @@ async def setup(caller_id: int) -> dict[str, int]:
         tool = await db.scalar(select(ToolModel).where(ToolModel.code == "agent_admin"))
         connection = await db.scalar(select(Connection).where(Connection.agent_id == caller_id, Connection.tool_id == tool.id))
         connection.active = True
+        # This existing journey exercises portraits, with delegation explicitly granted.
+        from app.tools.mcp_loader import load_mcp_tools
+        for definition in load_mcp_tools():
+            if definition.tool_code == "agent_admin":
+                await connections.set_connection_function_state(connection.id, definition.name, "enabled")
         provider = LLMProvider(name=f"Synthetic portrait {uuid4().hex}", base_url="https://portrait.example.test")
         db.add(provider)
         await db.flush()
@@ -41,21 +47,27 @@ async def setup(caller_id: int) -> dict[str, int]:
                     label="Synthetic portraits", primary_capability="image_generation", service_capabilities=["image_generation"], output_image=True)
         db.add(model)
         await db.flush()
-        profile = LlmProfile(label="Synthetic portraits", image_llm_id=model.id)
+        profile = LlmProfile(code=f"synthetic-portraits-{uuid4().hex}", label="Synthetic portraits", image_llm_id=model.id)
         db.add(profile)
         await db.flush()
         caller.profile_id = profile.id
         await db.commit()
-        return {"user_id": caller.user_id, "title_id": caller.title_id}
+        return {"user_id": caller.user_id, "title_id": caller.title_id, "connection_id": connection.id}
 
 
 @router.post("/{caller_id}/call/{function}")
-async def call(caller_id: int, function: str, arguments: dict[str, Any]) -> dict[str, Any]:
+async def call(caller_id: int, function: str, arguments: dict[str, Any],
+               operation_id: UUID | None = None, continuation: str | None = None) -> dict[str, Any]:
     async with get_db_session():
         server = await build_agent_galaris_fastmcp(caller_id, allowed_tool_names={function})
     async with Client(server) as client:
-        result = await client.call_tool(function, arguments, raise_on_error=False)
-        return {"is_error": result.is_error, "data": result.data}
+        metadata: dict[str, Any] = {}
+        if operation_id is not None:
+            metadata["galaris.execution/v1"] = {"operation_id": str(operation_id)}
+        if continuation:
+            metadata["galaris.authorization/v1"] = {"continuation": continuation}
+        result = await client.call_tool(function, arguments, raise_on_error=False, meta=metadata)
+        return {"is_error": result.is_error, "data": result.data, "meta": result.meta}
 
 
 @router.post("/{caller_id}/revoke")

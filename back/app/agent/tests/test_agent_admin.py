@@ -36,6 +36,15 @@ def image_bytes(color="blue"):
 
 @pytest_asyncio.fixture
 async def admin_fixture(db):
+    return await _make_admin_fixture(db)
+
+
+@pytest_asyncio.fixture
+async def durable_admin_fixture(inference_db):
+    return await _make_admin_fixture(inference_db)
+
+
+async def _make_admin_fixture(db):
     owner = UserModel(email=f"admin-{uuid4().hex}@example.test", hashed_password="unused", is_active=True)
     other = UserModel(email=f"other-{uuid4().hex}@example.test", hashed_password="unused", is_active=True)
     title = Title(label="Synthetic title", gender="F")
@@ -60,6 +69,12 @@ async def admin_fixture(db):
     connection = await db.scalar(select(Connection).where(Connection.agent_id == caller.id, Connection.tool_id == admin_tool.id))
     assert connection.active is False
     connection.active = True
+    # Domain journeys below have a human-enabled function policy. The real MCP
+    # one-action suspension is verified in Tools authorization integration tests.
+    from app.connection import facade as connections
+    for definition in mcp_loader.load_mcp_tools():
+        if definition.tool_code == "agent_admin":
+            await connections.set_connection_function_state(connection.id, definition.name, "enabled")
     await db.commit()
     return caller, owner, other, outsider, title, role, connection
 
@@ -218,6 +233,15 @@ async def test_avatar_uri_transfer_validates_bytes_cleans_temporary_and_rechecks
 
 @pytest_asyncio.fixture
 async def image_configuration(db, admin_fixture):
+    return await _make_image_configuration(db, admin_fixture)
+
+
+@pytest_asyncio.fixture
+async def durable_image_configuration(inference_db, durable_admin_fixture):
+    return await _make_image_configuration(inference_db, durable_admin_fixture)
+
+
+async def _make_image_configuration(db, admin_fixture):
     caller = admin_fixture[0]
     provider = LLMProvider(name=f"Synthetic portraits {uuid4().hex}", base_url="https://portrait.example.test", is_active=True)
     db.add(provider)
@@ -277,7 +301,8 @@ async def test_mounted_catalogue_has_exact_functions_and_rechecks_every_call(db,
         provider.api_key = get_encryption_service().encrypt("synthetic-image-key")
         await db.commit()
         assert "agent_avatar_generate" in {t.name for t in await client.list_tools()}
-        db.add(ConnectionFunctionState(connection_id=connection.id, function_name="agent_options", enabled=False))
+        from app.connection import facade as connections
+        await connections.set_connection_function_state(connection.id, "agent_options", "disabled")
         await db.commit()
         assert "agent_options" not in {t.name for t in await client.list_tools()}
         assert (await client.call_tool("agent_options", {"category": "managers"}, raise_on_error=False)).is_error
@@ -285,6 +310,57 @@ async def test_mounted_catalogue_has_exact_functions_and_rechecks_every_call(db,
         await db.commit()
         assert not set(spec.mcp_tools) & {t.name for t in await client.list_tools()}
         assert (await client.call_tool("agent_title_list", {}, raise_on_error=False)).is_error
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("revoked", [False, True])
+async def test_approved_avatar_job_outlives_its_task_and_rechecks_permissions_before_dispatch(
+    inference_db, durable_admin_fixture, durable_image_configuration, monkeypatch, revoked,
+):
+    from app.connection import facade as connections
+    from app.task.models import Task, TaskStatus
+    from app.tools.authorization import AUTHORIZATION_META_KEY, answer_action
+    from app.tools.authorization_models import ActionAuthorization
+    from app.tools.contracts import ToolExecutionContext, tool_execution
+    db = inference_db
+    caller, owner, _, _, _, _, connection = durable_admin_fixture
+    await connections.set_connection_function_state(connection.id, "agent_avatar_generate", "ask")
+    task = Task(agent_id=caller.id, label="Synthetic portrait", objective="<p>Generate a synthetic portrait</p>", status=TaskStatus.EXEC)
+    db.add(task)
+    await db.commit()
+    operation = uuid4()
+    async def call():
+        with tool_execution(ToolExecutionContext(operation_id=operation, tool_name="agent_avatar_generate")):
+            return await mcp_loader.execute_native_mcp_tool(caller.id, runtime="internal", task_id=task.id,
+                tool_name="agent_avatar_generate", arguments={"agent_id": caller.id, "instructions": "Synthetic studio background"})
+    provider = AsyncMock(return_value=(image_bytes(), "image/png"))
+    import app.image
+    monkeypatch.setattr(app.image, "generate_image_bytes", provider)
+    pending = await call()
+    control = pending.meta[AUTHORIZATION_META_KEY]
+    assert pending.is_error and control["status"] == "pending"
+    request_id = UUID(control["request_id"])
+    provider.assert_not_awaited()
+    assert await answer_action(request_id, user_id=owner.id, approved=True)
+    admitted = await call()
+    run_id = UUID(admitted["run_id"])
+    assert (await process_service.refresh_run(run_id)).status == "queued"
+    replay = await call()
+    assert replay.is_error and replay.meta[AUTHORIZATION_META_KEY]["status"] == "executing"
+    task.status = TaskStatus.SUCCESS
+    await db.commit()
+    if revoked:
+        await connections.set_connection_function_state(connection.id, "agent_avatar_generate", "disabled")
+    assert await process_service.process_start_jobs(engine_code="agent_admin") == 1
+    assert await process_service.process_start_jobs(engine_code="agent_admin") == 0
+    run = await process_service.refresh_run(run_id)
+    if revoked:
+        provider.assert_not_awaited()
+        assert run.status == "error"
+    else:
+        provider.assert_awaited_once()
+        assert run.status == "success"
+        assert (await db.get(ActionAuthorization, request_id)).status == "completed"
 
 
 @pytest.mark.asyncio

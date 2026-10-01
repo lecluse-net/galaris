@@ -1,0 +1,176 @@
+"""Pre-dispatch authorization for the pinned Hermes local tool executor.
+
+The gateway collects exactly one decision; SDK YOLO, smart approval and persistent
+allowlists cannot authorize this boundary. Native hard guards remain in force.
+"""
+
+from contextlib import contextmanager
+from contextvars import ContextVar
+import asyncio
+import hashlib
+import json
+import os
+from pathlib import Path
+
+_authorized = ContextVar("galaris_local_action_authorized", default=False)
+_run_approvals = ContextVar("galaris_run_approvals", default=None)
+_call_permit = ContextVar("galaris_call_permit", default=None)
+_READS = frozenset({"read_file", "file_read", "file_search", "file_list", "search_files", "list_directory", "skill_view"})
+
+
+def redacted(value):
+    if isinstance(value, dict):
+        return {str(key): "[redacted]" if any(part in str(key).lower() for part in (
+            "password", "secret", "token", "credential", "api_key", "authorization", "headers", "base64",
+        )) else redacted(item) for key, item in value.items()}
+    if isinstance(value, list):
+        return [redacted(item) for item in value]
+    return value
+
+
+def _snapshot(arguments):
+    if os.environ.get("TERMINAL_ENV") == "ssh":
+        # SSH targets are versioned by their governed connection signature. A local
+        # Path cannot describe the remote filesystem; keep that limitation explicit.
+        return {"terminal_backend": "ssh", "terminal_signature": os.environ.get("GALARIS_TERMINAL_SIGNATURE"),
+            "cwd": os.environ.get("TERMINAL_CWD", "~"), "remote_file_revision": "unavailable"}
+    workspace = Path(os.environ.get("TERMINAL_CWD") or "/workspace").expanduser().resolve()
+    result = {"workspace": str(workspace)}
+    for key in ("path", "file_path", "filePath"):
+        value = arguments.get(key)
+        if not isinstance(value, str) or not value:
+            continue
+        target = Path(value)
+        if not target.is_absolute():
+            target = workspace / target
+        target = target.resolve()
+        if not target.is_relative_to(workspace):
+            raise PermissionError("The local file target is outside the runtime workspace")
+        if target.is_file():
+            if target.stat().st_size > 50 * 1024 * 1024:
+                raise PermissionError("The local target exceeds the authorization snapshot limit")
+            with target.open("rb") as stream:
+                result[key] = {"path": str(target), "sha256": hashlib.file_digest(stream, "sha256").hexdigest()}
+        else:
+            result[key] = {"path": str(target), "exists": target.exists()}
+    return result
+
+
+def authorize_call(name, arguments):
+    # The authenticated Galaris transport owns the MCP function policy itself.
+    if name.startswith("mcp_galaris_"):
+        return None
+    collector = _run_approvals.get()
+    if name in _READS:
+        if collector is None:
+            return "BLOCKED: No current Galaris runtime context is available."
+        try:
+            signature = os.environ.get("GALARIS_TERMINAL_SIGNATURE")
+            collector.validate(configuration={"terminal_signature": signature} if signature else None)
+        except Exception:
+            return "BLOCKED: The Galaris runtime authority or configuration changed."
+        return None
+    if collector is not None:
+        from uuid import uuid4
+        callback = str(uuid4())
+        try:
+            if not collector.authorize(callback, name, arguments, precondition=lambda: _snapshot(arguments)):
+                return "BLOCKED: Galaris did not authorize this exact action. Do not retry it."
+            _call_permit.set((collector, callback))
+        except Exception:
+            return "BLOCKED: The Galaris authorization boundary is unavailable."
+        return None
+    from tools import approval
+    session = approval.get_current_session_key()
+    notify = approval._gateway_notify_cb(session)
+    if notify is None:
+        return "BLOCKED: No Galaris one-action authorization collector is available."
+    try:
+        encoded = json.dumps(arguments, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
+        if len(encoded.encode()) > 1024 * 1024:
+            return "BLOCKED: The local action exceeds the authorization snapshot limit."
+        before = _snapshot(arguments)
+        data = {"tool": name, "arguments": redacted(arguments), "file_precondition": before,
+            "arguments_fingerprint": hashlib.sha256(encoded.encode()).hexdigest(),
+            "command": json.dumps(redacted(arguments), ensure_ascii=False),
+            "description": "Galaris authorization for one exact local action",
+            "allow_session": False, "allow_permanent": False}
+        decision = approval._await_gateway_decision(session, notify, data, surface="gateway")
+        if decision.get("resolved") is not True or decision.get("choice") != "once":
+            return "BLOCKED: Galaris did not authorize this exact action. Do not retry it."
+        if before != _snapshot(arguments):
+            return "BLOCKED: The file target changed while authorization was pending."
+    except Exception:
+        return "BLOCKED: The Galaris authorization boundary is unavailable."
+    return None
+
+
+@contextmanager
+def locally_authorized():
+    token = _authorized.set(True)
+    try:
+        yield
+    except BaseException:
+        if permit := _call_permit.get():
+            permit[0].finish(permit[1], outcome="outcome_unknown", receipt={"returned": False})
+        raise
+    else:
+        if permit := _call_permit.get():
+            permit[0].finish(permit[1], outcome="completed", receipt={"returned": True})
+    finally:
+        _call_permit.set(None)
+        _authorized.reset(token)
+
+
+def current_action_authorized():
+    return _authorized.get()
+
+
+def bind_run(host, run):
+    from runtime_support import ActionApprovals
+    if not run.galaris_run_context:
+        return _run_approvals.set(None)
+    loop = host._galaris_authorization_loops[run.run_id]
+    def publish_wait(identifier):
+        def publish():
+            requests = sorted(collector.waiting)
+            host._set_run_status(run.run_id, "waiting_for_authorization", authorization_requests=requests)
+            run.put_event({"run_id": run.run_id, "event": "authorization.required", "authorization_requests": requests})
+        loop.call_soon_threadsafe(publish)
+    def publish_running():
+        def publish():
+            if collector.waiting:
+                host._set_run_status(run.run_id, "waiting_for_authorization", authorization_requests=sorted(collector.waiting))
+            else:
+                host._set_run_status(run.run_id, "running", authorization_requests=[])
+        loop.call_soon_threadsafe(publish)
+    collector = ActionApprovals(mcp_url=os.environ.get("GALARIS_MCP_URL", ""),
+        token=os.environ.get("GALARIS_MCP_TOKEN", ""), run_context=run.galaris_run_context,
+        session=run.run_id, on_pending=publish_wait, on_running=publish_running)
+    signature = os.environ.get("GALARIS_TERMINAL_SIGNATURE")
+    collector.validate(configuration={"terminal_signature": signature} if signature else None)
+    return _run_approvals.set(collector)
+
+
+def reset_run(token):
+    _run_approvals.reset(token)
+
+
+async def call_galaris_tool(session, server_name, tool_name, arguments):
+    collector = _run_approvals.get()
+    if server_name != "galaris":
+        return await session.call_tool(tool_name, arguments=arguments)
+    if collector is None:
+        raise PermissionError("The managed Galaris MCP call has no server-issued run context")
+    from uuid import uuid4
+    operation = str(uuid4())
+    body = {"jsonrpc": "2.0", "id": operation, "method": "tools/call", "params": {
+        "name": tool_name, "arguments": arguments,
+        "_meta": {"galaris.execution/v1": {"operation_id": operation}}}}
+    _, raw = await asyncio.to_thread(collector.mcp, body)
+    result = json.loads(raw)
+    from mcp.shared.exceptions import MCPError
+    from mcp.types import CallToolResult, ErrorData
+    if "error" in result:
+        raise MCPError(ErrorData.model_validate(result["error"]))
+    return CallToolResult.model_validate(result["result"])

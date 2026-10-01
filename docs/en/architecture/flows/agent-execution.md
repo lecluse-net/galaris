@@ -55,6 +55,14 @@ the transport trailer stalls. Each new call gets its own budget; total Task dura
 
 ## Task activity and provenance
 
+An authorization request suspends the call before its effect. Internal checkpoint v5 retains
+Pydantic AI deferred requests and their identities; agreement resumes the same call without
+a new model decision. Result v2 exposes `waiting_for_authorization` and exact request UUIDs.
+The Task attempt releases its lease while waiting; text and voice rounds retain the same
+disposition. Managed runtimes retain callbacks in a runtime actor and verify authorization
+protocol support before starting an older SDK. Unknown outcomes prohibit automatic replay.
+See [0153](../../../../project/decisions/0153-common-action-authorizations.md).
+
 Inferences and the Task/Conversation queues wake after commit. Internal and Chat/Responses
 streams wait for new journal events using their cursor; pause and stop wake the executor
 without waiting for its lease heartbeat (5 seconds). Recovery scans remain at 30 seconds
@@ -455,7 +463,8 @@ timeline projection error never turns a successful external effect into a replay
 
 ## Checkpoints, Effects, and Concurrency
 
-Internal checkpoint version 3 logs each call before execution and then its result. Unknown tools
+Internal checkpoint version 5 logs each call before execution and then its result, and preserves
+deferred authorization calls with their original identities. Unknown tools
 are considered non-idempotent and exclusive. Standard MCP annotations
 `readOnlyHint` and `idempotentHint` from an external server supplement the native tool policy,
 without ever making a tool marked destructive replayable. Only tools whose contract explicitly

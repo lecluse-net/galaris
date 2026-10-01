@@ -1,4 +1,4 @@
-"""System services stay visible and enabled; administrative mutations are rejected."""
+"""System definitions remain mandatory; human function policies survive convergence."""
 
 from unittest.mock import AsyncMock
 
@@ -29,7 +29,7 @@ from core.dbadmin import reconcile_dataset
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("code", sorted(SYSTEM_TOOL_CODES))
-async def test_system_connections_and_function_grants_are_immutable(db, monkeypatch, code):
+async def test_system_definitions_are_immutable_and_function_modes_are_editable(db, monkeypatch, code):
     title = Title(label="System", gender="X")
     db.add(title)
     await db.flush()
@@ -58,9 +58,9 @@ async def test_system_connections_and_function_grants_are_immutable(db, monkeypa
     db.add_all(
         [
             ConnectionFunctionState(
-                connection_id=connection.id, function_name=function, enabled=False
+                connection_id=connection.id, function_name=function, enabled=False, state="disabled"
             ),
-            ToolFunctionState(tool_id=tool.id, function_name=function, enabled=False),
+            ToolFunctionState(tool_id=tool.id, function_name=function, enabled=False, state="disabled"),
         ]
     )
     await db.commit()
@@ -71,15 +71,13 @@ async def test_system_connections_and_function_grants_are_immutable(db, monkeypa
     await db.refresh(tool)
     assert connection.active and tool.conversation_enabled
     assert code in await get_enabled_integrated_tool_codes(agent.id)
-    assert await connection_service.get_disabled_function_names(connection) == set()
-    assert not set(names) & await get_disabled_internal_function_names(agent.id)
+    assert await connection_service.get_disabled_function_names(connection) == {function}
+    assert function in await get_disabled_internal_function_names(agent.id)
     catalogue = await list_available_connection_functions(connection.id)
     assert catalogue["success"] and catalogue["functions"]
-    assert all(item["effective"] for item in catalogue["functions"])
-    assert all(
-        item["connection_state"] == item["global_state"] == "enabled"
-        for item in catalogue["functions"]
-    )
+    blocked = next(item for item in catalogue["functions"] if item["name"] == function)
+    assert blocked["effective_state"] == blocked["connection_state"] == blocked["global_state"] == "disabled"
+    assert not blocked["effective"]
 
     monkeypatch.setattr(
         connection_router,
@@ -92,12 +90,6 @@ async def test_system_connections_and_function_grants_are_immutable(db, monkeypa
         lambda: connection_router.delete_connection(connection.id),
         lambda: connection_router.create_connection(
             ConnectionCreate(tool_id=tool.id, agent_id=agent.id)
-        ),
-        lambda: connection_router.set_connection_function(
-            connection.id, function, FunctionStateUpdate(state="disabled")
-        ),
-        lambda: connection_router.set_connection_function_global(
-            connection.id, function, FunctionStateUpdate(state="disabled")
         ),
         lambda: connection_router.delete_param(connection.id, "anything"),
     ):
@@ -116,6 +108,12 @@ async def test_system_connections_and_function_grants_are_immutable(db, monkeypa
             await operation()
     await db.refresh(connection)
     assert connection.active and connection.agent_id == agent.id
+    changed = await connection_router.set_connection_function(connection.id, function, FunctionStateUpdate(state="ask"))
+    assert changed.effective_state == "ask"
+    for dataset in datasets():
+        await reconcile_dataset(db, dataset)
+    resolved = await connection_service.resolve_function(connection, function)
+    assert resolved["effective_state"] == "ask" and resolved["global_state"] == "disabled"
 
 
 def test_native_function_families_have_their_expected_owners():

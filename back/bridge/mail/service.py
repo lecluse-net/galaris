@@ -339,6 +339,9 @@ async def _claim_delivery(
         )
     db = get_db()
     delivery_id = uuid4()
+    from app.tools.facade import current_prepared_authorization
+    prepared = current_prepared_authorization()
+    common_approval = prepared is not None and prepared.action.agent_id == config.agent_id and prepared.action.connection_id == config.connection_id
     statement = (
         insert(MailOutboundDelivery)
         .values(
@@ -366,8 +369,8 @@ async def _claim_delivery(
             payload_fingerprint=fingerprint,
             rfc_message_id=_message_id(delivery_id, str(config.email_address)),
             ai_disclosure_version=AI_DISCLOSURE_VERSION,
-            status="pending_approval" if config.approval_required else "claimed",
-            approval_required=config.approval_required,
+            status="pending_approval" if config.approval_required and not common_approval else "claimed",
+            approval_required=config.approval_required and not common_approval,
             approver_user_id=config.approver_user_id,
         )
         .on_conflict_do_nothing(
@@ -574,7 +577,33 @@ async def send_outgoing(
             delivery,
             await _reconcile_uncertain(config, delivery),
         )
-    return await _submit_delivery(config, delivery)
+    from app.tools.facade import claim_prepared_action, current_prepared_authorization, finish_action
+    prepared = current_prepared_authorization()
+    identifier = None
+    if prepared is not None:
+        if prepared.action.connection_id != config.connection_id or prepared.action.agent_id != config.agent_id:
+            raise PermissionError("Mail authorization targets a different connection")
+        from app.agent import authorization_policy
+        manager = await authorization_policy(config.agent_id)
+        # The durable MIME is frozen before asking, and is the only MIME submitted.
+        await get_db().commit()
+        identifier = await claim_prepared_action(snapshot={
+            "delivery_id": str(delivery.id), "message_id": delivery.rfc_message_id,
+            "mime_sha256": hashlib.sha256(delivery.raw_message or b"").hexdigest(),
+            "payload_fingerprint": delivery.payload_fingerprint,
+            "to": delivery.to_addresses, "cc": delivery.cc_addresses, "bcc": delivery.bcc_addresses,
+            "subject": delivery.subject, "body": delivery.body, "html_body": delivery.html_body,
+            "attachments": delivery.attachment_metadata,
+        }, approver_user_id=config.approver_user_id,
+           allow_yolo=config.approver_user_id in (None, manager.manager_user_id))
+    try:
+        receipt = await _submit_delivery(config, delivery)
+    except BaseException:
+        await finish_action(identifier, outcome="outcome_unknown")
+        raise
+    await finish_action(identifier, receipt=receipt.model_dump(mode="json"),
+                        outcome="outcome_unknown" if receipt.status == "uncertain" else "failed" if receipt.status == "error" else "completed")
+    return receipt
 
 
 async def send(

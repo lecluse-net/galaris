@@ -761,10 +761,6 @@
       "target": "app.messenger.interactions"
     },
     {
-      "source": "back/bridge/hermes/executor.py",
-      "target": "app.messenger.interactions"
-    },
-    {
       "source": "back/bridge/hermes/paths.py",
       "target": "app.file_share.path_normalization"
     },

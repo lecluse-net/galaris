@@ -98,11 +98,13 @@ def _env_content(
     llm_url: str,
     service_token: str,
     mcp_token: str,
+    mcp_url: str = "",
 ) -> str:
     values = {
         "GALARIS_LLM_URL": _require_env_value("Galaris LLM URL", llm_url),
         "HARNESS_API_TOKEN": _require_env_value("Harness API token", service_token),
         "GALARIS_MCP_TOKEN": _require_env_value("Galaris MCP token", mcp_token),
+        "GALARIS_MCP_URL": mcp_url,
     }
     return "".join(
         f"{key}={json.dumps(value, ensure_ascii=False)}\n"
@@ -156,7 +158,10 @@ def _runtime_llm_url() -> str:
 
 
 async def _write_static_files(instance_id: str) -> None:
-    for filename in ("Dockerfile", "Makefile", "requirements.txt", "server.py"):
+    from app.harnesses import managed_runtime_files
+    for name, content in managed_runtime_files().items():
+        await manager.write_text_file(instance_id, name, content)
+    for filename in ("Dockerfile", "Makefile", "requirements.txt", "server.py", "authorization.py"):
         await manager.write_text_file(
             instance_id,
             filename,
@@ -220,6 +225,7 @@ async def _write_runtime_files(
             llm_url=_runtime_llm_url(),
             service_token=service_token,
             mcp_token=mcp_token,
+            mcp_url=f"{settings.HARNESS_API_URL}/mcp/{agent_code}",
         ),
     )
     await manager.write_text_file(

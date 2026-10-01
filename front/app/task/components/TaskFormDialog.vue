@@ -59,14 +59,6 @@
             </div>
           </div>
 
-          <q-toggle
-            v-model="form.auto_approve"
-            :label="$t('task.form.autoApprove')"
-            color="orange"
-          />
-          <div class="text-caption text-grey-7 q-mt-none">
-            {{ $t('task.form.autoApproveHint') }}
-          </div>
         </q-form>
       </q-card-section>
 
@@ -103,7 +95,6 @@ interface FormData {
   objective: string
   forced_route: ForcedRoute | null
   forced_effort: Effort | null
-  auto_approve: boolean
 }
 
 const props = defineProps<{
@@ -129,8 +120,7 @@ const defaultForm: FormData = {
   agent_id: undefined,
   objective: '',
   forced_route: null,
-  forced_effort: null,
-  auto_approve: false
+  forced_effort: null
 }
 
 const form = ref<FormData>({ ...defaultForm })
@@ -178,8 +168,7 @@ watch(() => props.task, (task) => {
       agent_id: task.agent_id,
       objective: task.objective || '',
       forced_route: task.forced_route ?? null,
-      forced_effort: task.forced_effort ?? null,
-      auto_approve: task.auto_approve ?? false
+      forced_effort: task.forced_effort ?? null
     }
   } else {
     form.value = { ...defaultForm }
@@ -203,7 +192,6 @@ function onSubmit(runAfterCreate = false) {
     // Explicit null returns to automatic routing and clears the backend override.
     forced_route: form.value.forced_route,
     forced_effort: form.value.forced_effort,
-    auto_approve: form.value.auto_approve,
     // New tasks start human-paused unless they are run immediately. The backend derives
     // the "user" pause reason from paused.
     status: isEdit.value ? undefined : 'CREATE',

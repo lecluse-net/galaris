@@ -5,8 +5,8 @@ from __future__ import annotations
 from app.tools.mcp_loader import McpToolContext, context_language, mcp_tool
 
 
-@mcp_tool(
-    "galaris",
+@mcp_tool("galaris", approval="enabled", approval_reason="Governed bounded read or control without a new sensitive effect",
+
     name="agent_list",
     description=(
         "List Galaris agents with profile text truncated to 100 characters. "
@@ -24,8 +24,8 @@ async def list_agents(ctx: McpToolContext, limit: int = 50) -> str:
     return await agent_tools.list_agents(limit=limit, language=language)
 
 
-@mcp_tool(
-    "galaris",
+@mcp_tool("galaris", approval="enabled", approval_reason="Governed bounded read or control without a new sensitive effect",
+
     name="agent_get",
     description=(
         "Return a complete agent profile, including full job and personality text, "
@@ -48,22 +48,23 @@ from typing import Any, Literal
 from core.team import notify_team_access_changed
 from .admin_authorization import delegated_admin
 from .admin_schemas import AdminAgentCreate, AdminAgentUpdate, PageLimit, PageOffset
+from .registry import INTERNAL_HARNESS
 from . import admin_service, agent_service, title_service, agent_group_service
 from .schemas import Title as TitleRead, TitleCreate, TitleUpdate, AgentGroup as GroupRead, AgentGroupCreate, AgentGroupUpdate
 
 
-@mcp_tool("agent_admin", name="agent_create", description="Create an internally harnessed agent with a human manager and HTML personality/job description.")
+@mcp_tool("agent_admin", approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval", name="agent_create", description="Create an internally harnessed agent with a human manager and HTML personality/job description.")
 async def agent_create(ctx: McpToolContext, configuration: AdminAgentCreate) -> dict[str, Any]:
     async with delegated_admin(ctx.agent_id, "agent_create", "AGENT_EDIT") as grant:
         assert configuration.user_id is not None
         grant.manager_change(None, configuration.user_id)
-        if configuration.agent_driver != "internal":
+        if configuration.agent_driver != INTERNAL_HARNESS.code:
             raise ValueError("Create with the internal Harness before selecting another")
         created = await agent_service.create(configuration, actor_user_id=grant.manager.id)
         return await admin_service.projection(created.id)
 
 
-@mcp_tool("agent_admin", name="agent_update", description="Update explicitly supplied agent fields; null clears nullable fields. Code and Harness are immutable here.", effect_policy="idempotent")
+@mcp_tool("agent_admin", approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval", name="agent_update", description="Update explicitly supplied agent fields; null clears nullable fields. Code and Harness are immutable here.", effect_policy="idempotent")
 async def agent_update(ctx: McpToolContext, agent_id: int, changes: AdminAgentUpdate) -> dict[str, Any]:
     if {"code", "agent_driver"} & changes.model_fields_set:
         raise ValueError("Code and Harness cannot be updated here")
@@ -78,7 +79,7 @@ async def agent_update(ctx: McpToolContext, agent_id: int, changes: AdminAgentUp
         return await admin_service.projection(agent_id)
 
 
-@mcp_tool("agent_admin", name="agent_delete", description="Soft-delete an agent in the delegated management scope.", effect_policy="idempotent")
+@mcp_tool("agent_admin", approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval", name="agent_delete", description="Soft-delete an agent in the delegated management scope.", effect_policy="idempotent")
 async def agent_delete(ctx: McpToolContext, agent_id: int) -> dict[str, Any]:
     async with delegated_admin(ctx.agent_id, "agent_delete", "AGENT_EDIT") as grant:
         await grant.target(agent_id)
@@ -89,13 +90,13 @@ async def agent_delete(ctx: McpToolContext, agent_id: int) -> dict[str, Any]:
         return {"agent_id": agent_id, "resource_uri": f"galaris://agent/{agent_id}", "deleted": True}
 
 
-@mcp_tool("agent_admin", name="agent_options", description="List selectable managers, LLM profiles, voices or existing Harnesses without credentials.", effect_policy="read", concurrency_policy="safe")
+@mcp_tool("agent_admin", approval="enabled", approval_reason="Governed bounded read or control without a new sensitive effect", name="agent_options", description="List selectable managers, LLM profiles, voices or existing Harnesses without credentials.", effect_policy="read", concurrency_policy="safe")
 async def agent_options(ctx: McpToolContext, category: Literal["managers", "profiles", "voices", "harnesses"], skip: PageOffset = 0, limit: PageLimit = 50) -> dict[str, Any]:
     async with delegated_admin(ctx.agent_id, "agent_options", "AGENT_EDIT") as grant:
         return await admin_service.options(grant, category, skip, limit)
 
 
-@mcp_tool("agent_admin", name="agent_avatar_delete", description="Remove an agent avatar.", effect_policy="idempotent")
+@mcp_tool("agent_admin", approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval", name="agent_avatar_delete", description="Remove an agent avatar.", effect_policy="idempotent")
 async def agent_avatar_delete(ctx: McpToolContext, agent_id: int) -> dict[str, Any]:
     async with delegated_admin(ctx.agent_id, "agent_avatar_delete", "AGENT_EDIT") as grant:
         await grant.target(agent_id)
@@ -103,33 +104,33 @@ async def agent_avatar_delete(ctx: McpToolContext, agent_id: int) -> dict[str, A
         return await admin_service.projection(agent_id)
 
 
-@mcp_tool("agent_admin", name="agent_team_list", description="List shared teams and the target's membership.", effect_policy="read", concurrency_policy="safe")
+@mcp_tool("agent_admin", approval="enabled", approval_reason="Governed bounded read or control without a new sensitive effect", name="agent_team_list", description="List shared teams and the target's membership.", effect_policy="read", concurrency_policy="safe")
 async def agent_team_list(ctx: McpToolContext, agent_id: int, skip: PageOffset = 0, limit: PageLimit = 50) -> dict[str, Any]:
     async with delegated_admin(ctx.agent_id, "agent_team_list", "AGENT_EDIT", "TEAM_ACCESS") as grant:
         await grant.target(agent_id)
         return await admin_service.teams(agent_id, skip, limit)
 
 
-@mcp_tool("agent_admin", name="agent_team_set", description="Idempotently add or remove a target's shared team membership.", effect_policy="idempotent")
+@mcp_tool("agent_admin", approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval", name="agent_team_set", description="Idempotently add or remove a target's shared team membership.", effect_policy="idempotent")
 async def agent_team_set(ctx: McpToolContext, agent_id: int, team_id: int, present: bool) -> dict[str, Any]:
     async with delegated_admin(ctx.agent_id, "agent_team_set", "AGENT_EDIT", "TEAM_ACCESS", "TEAM_MEMBERS_EDIT") as grant:
         await grant.target(agent_id)
         return await admin_service.team_set(agent_id, team_id, present)
 
 
-@mcp_tool("agent_admin", name="agent_title_list", description="List existing titles and their gender values.", effect_policy="read", concurrency_policy="safe")
+@mcp_tool("agent_admin", approval="enabled", approval_reason="Governed bounded read or control without a new sensitive effect", name="agent_title_list", description="List existing titles and their gender values.", effect_policy="read", concurrency_policy="safe")
 async def agent_title_list(ctx: McpToolContext, skip: PageOffset = 0, limit: PageLimit = 50) -> dict[str, Any]:
     async with delegated_admin(ctx.agent_id, "agent_title_list", "AGENT_EDIT"):
         return {"items": [TitleRead.model_validate(t).model_dump() for t in await title_service.get_all(skip, limit)], "skip": skip, "limit": limit}
 
 
-@mcp_tool("agent_admin", name="agent_title_create", description="Create a shared title with its existing M/F gender contract; requires global management.")
+@mcp_tool("agent_admin", approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval", name="agent_title_create", description="Create a shared title with its existing M/F gender contract; requires global management.")
 async def agent_title_create(ctx: McpToolContext, configuration: TitleCreate) -> dict[str, Any]:
     async with delegated_admin(ctx.agent_id, "agent_title_create", "AGENT_EDIT", global_scope=True):
         return TitleRead.model_validate(await title_service.create(configuration)).model_dump()
 
 
-@mcp_tool("agent_admin", name="agent_title_update", description="Update a shared title; requires global management.", effect_policy="idempotent")
+@mcp_tool("agent_admin", approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval", name="agent_title_update", description="Update a shared title; requires global management.", effect_policy="idempotent")
 async def agent_title_update(ctx: McpToolContext, title_id: int, changes: TitleUpdate) -> dict[str, Any]:
     async with delegated_admin(ctx.agent_id, "agent_title_update", "AGENT_EDIT", global_scope=True):
         if any(v is None for v in changes.model_dump(exclude_unset=True).values()):
@@ -140,7 +141,7 @@ async def agent_title_update(ctx: McpToolContext, title_id: int, changes: TitleU
         return TitleRead.model_validate(title).model_dump()
 
 
-@mcp_tool("agent_admin", name="agent_title_delete", description="Delete an unused shared title; referenced titles cannot be removed.", effect_policy="idempotent")
+@mcp_tool("agent_admin", approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval", name="agent_title_delete", description="Delete an unused shared title; referenced titles cannot be removed.", effect_policy="idempotent")
 async def agent_title_delete(ctx: McpToolContext, title_id: int) -> dict[str, Any]:
     async with delegated_admin(ctx.agent_id, "agent_title_delete", "AGENT_EDIT", global_scope=True):
         if not await title_service.delete(title_id):
@@ -148,19 +149,19 @@ async def agent_title_delete(ctx: McpToolContext, title_id: int) -> dict[str, An
         return {"title_id": title_id, "deleted": True}
 
 
-@mcp_tool("agent_admin", name="agent_group_list", description="List shared agent groups/teams.", effect_policy="read", concurrency_policy="safe")
+@mcp_tool("agent_admin", approval="enabled", approval_reason="Governed bounded read or control without a new sensitive effect", name="agent_group_list", description="List shared agent groups/teams.", effect_policy="read", concurrency_policy="safe")
 async def agent_group_list(ctx: McpToolContext, skip: PageOffset = 0, limit: PageLimit = 50) -> dict[str, Any]:
     async with delegated_admin(ctx.agent_id, "agent_group_list", "AGENT_EDIT", "TEAM_ACCESS"):
         return {"items": [GroupRead.model_validate(t).model_dump() for t in await agent_group_service.get_all(skip, limit)], "skip": skip, "limit": limit}
 
 
-@mcp_tool("agent_admin", name="agent_group_create", description="Create a shared group/team; requires global management and team edit rights.")
+@mcp_tool("agent_admin", approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval", name="agent_group_create", description="Create a shared group/team; requires global management and team edit rights.")
 async def agent_group_create(ctx: McpToolContext, configuration: AgentGroupCreate) -> dict[str, Any]:
     async with delegated_admin(ctx.agent_id, "agent_group_create", "AGENT_EDIT", "TEAM_ACCESS", "TEAM_EDIT", global_scope=True):
         return GroupRead.model_validate(await agent_group_service.create(configuration)).model_dump()
 
 
-@mcp_tool("agent_admin", name="agent_group_update", description="Rename or reorder a shared group/team.", effect_policy="idempotent")
+@mcp_tool("agent_admin", approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval", name="agent_group_update", description="Rename or reorder a shared group/team.", effect_policy="idempotent")
 async def agent_group_update(ctx: McpToolContext, group_id: int, changes: AgentGroupUpdate) -> dict[str, Any]:
     async with delegated_admin(ctx.agent_id, "agent_group_update", "AGENT_EDIT", "TEAM_ACCESS", "TEAM_EDIT", global_scope=True):
         if any(v is None for v in changes.model_dump(exclude_unset=True).values()):
@@ -171,7 +172,7 @@ async def agent_group_update(ctx: McpToolContext, group_id: int, changes: AgentG
         return GroupRead.model_validate(group).model_dump()
 
 
-@mcp_tool("agent_admin", name="agent_group_delete", description="Soft-delete a shared team, detach legacy group references and revoke its memberships.", effect_policy="idempotent")
+@mcp_tool("agent_admin", approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval", name="agent_group_delete", description="Soft-delete a shared team, detach legacy group references and revoke its memberships.", effect_policy="idempotent")
 async def agent_group_delete(ctx: McpToolContext, group_id: int) -> dict[str, Any]:
     async with delegated_admin(ctx.agent_id, "agent_group_delete", "AGENT_EDIT", "TEAM_ACCESS", "TEAM_EDIT", global_scope=True):
         if not await agent_group_service.delete(group_id):
@@ -180,7 +181,7 @@ async def agent_group_delete(ctx: McpToolContext, group_id: int) -> dict[str, An
         return {"group_id": group_id, "deleted": True}
 
 
-@mcp_tool("agent_admin", name="agent_avatar_set", description="Replace an agent avatar from an authorized canonical resource URI; validates image bytes and dimensions.", effect_policy="idempotent")
+@mcp_tool("agent_admin", approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval", name="agent_avatar_set", description="Replace an agent avatar from an authorized canonical resource URI; validates image bytes and dimensions.", effect_policy="idempotent")
 async def agent_avatar_set(ctx: McpToolContext, agent_id: int, uri: str) -> dict[str, Any]:
     from pathlib import Path
     from tempfile import TemporaryDirectory
@@ -205,7 +206,7 @@ async def _avatar_available(ctx: McpToolContext) -> bool:
     return await avatar_generation_available(ctx.agent_id)
 
 
-@mcp_tool("agent_admin", name="agent_avatar_generate", description="Queue a photographic avatar using your effective image model and the target profile. Returns a durable Process URI; queued is not registered.", available_when=_avatar_available)
+@mcp_tool("agent_admin", approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval", name="agent_avatar_generate", description="Queue a photographic avatar using your effective image model and the target profile. Returns a durable Process URI; queued is not registered.", available_when=_avatar_available)
 async def agent_avatar_generate(ctx: McpToolContext, agent_id: int, instructions: str = "") -> dict[str, Any]:
     from app.process import process_service
     from app.process.interface import ensure_integrated_definition

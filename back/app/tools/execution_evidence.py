@@ -12,6 +12,7 @@ from mcp.types import CallToolRequestParams
 from pydantic import ValidationError as PydanticValidationError
 
 from .contracts import EXECUTION_META_KEY, ToolExecutionContext, tool_execution
+from .authorization import AUTHORIZATION_META_KEY, AuthorizationRequired, AuthorizationClosed
 
 
 class ExecutionEvidenceMiddleware(Middleware):
@@ -28,6 +29,7 @@ class ExecutionEvidenceMiddleware(Middleware):
             # Proxied servers cannot assert native pre-dispatch rejection evidence.
             if result.meta:
                 result.meta.pop(EXECUTION_META_KEY, None)
+                result.meta.pop(AUTHORIZATION_META_KEY, None)
             return result
         request = context.fastmcp_context.request_context if context.fastmcp_context else None
         meta = request.meta if request is not None else context.message.meta
@@ -41,9 +43,23 @@ class ExecutionEvidenceMiddleware(Middleware):
         except ValueError:
             operation_id = uuid4()
         execution = ToolExecutionContext(operation_id, context.message.name)
+        control: Any = getattr(meta, AUTHORIZATION_META_KEY, None) if meta else None
+        if isinstance(control, dict) and isinstance(cast(dict[str, Any], control).get("continuation"), str):
+            execution.authorization_continuation = cast(str, control["continuation"])
         with tool_execution(execution):
             try:
                 result = await call_next(context)
+            except AuthorizationRequired as exc:
+                execution.outcome = "rejected"
+                result = ToolResult(content="Authorization required before execution.", is_error=True,
+                                    meta={AUTHORIZATION_META_KEY: {"request_id": str(exc.request_id),
+                                          "continuation": exc.continuation,
+                                          "status": "pending", "disposition": "authorization_required"}})
+            except AuthorizationClosed as exc:
+                execution.outcome = "rejected"
+                result = ToolResult(content=str(exc), is_error=True,
+                                    meta={AUTHORIZATION_META_KEY: {"request_id": str(exc.request_id),
+                                          "status": exc.status, "disposition": "authorization_closed"}})
             except ValidationError, PydanticValidationError:
                 # FastMCP distinguishes argument validation from errors inside the body.
                 if execution.entered:

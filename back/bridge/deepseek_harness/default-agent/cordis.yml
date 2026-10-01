@@ -78,6 +78,8 @@
     compactionRetries: 1
 
 - insert:
+    - id: galaris-authorizations
+      name: /opt/galaris/authorization.mjs
     - id: mcp-galaris
       name: '@deepseek-ai/dsh-mcp-client'
       config:
@@ -86,5 +88,5 @@
         url: !!js process.env.GALARIS_MCP_URL
         headers:
           Authorization: !!js '`Bearer ${process.env.GALARIS_MCP_TOKEN}`'
-        toolCallTimeoutMs: 120000
+        toolCallTimeoutMs: 86400000
         failOnStartupError: true

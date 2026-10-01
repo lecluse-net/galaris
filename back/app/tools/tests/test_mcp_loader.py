@@ -19,6 +19,9 @@ def default_harness_configuration(monkeypatch):
     monkeypatch.setattr(agent_service, "get", AsyncMock(return_value=SimpleNamespace(id=7)))
     monkeypatch.setattr(harness_selection_port, "resolve", AsyncMock(return_value=None))
     monkeypatch.setattr(harness_selection_port, "configuration", AsyncMock(return_value=(HarnessExecutionPolicy(), 0)))
+    # Isolate approval persistence in these wrapper/error units. Actual pre-effect
+    # authorization is exercised with real DB and MCP in test_action_authorizations.
+    monkeypatch.setattr("app.tools.mcp_authorization.authorize_native_call", AsyncMock(return_value=None))
 
 
 @pytest.mark.asyncio

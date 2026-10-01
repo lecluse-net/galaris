@@ -15,7 +15,7 @@ def test_unversioned_working_set_and_result_remain_readable():
 
 @pytest.mark.parametrize("model, payload", [
     (WorkingSet, {"schema_version": "galaris.working-set/v2", "resources": []}),
-    (ExecutionResult, {"schema_version": "galaris.execution-result/v2", "prompt": "future task"}),
+    (ExecutionResult, {"schema_version": "galaris.execution-result/v3", "prompt": "future task"}),
 ])
 def test_unknown_durable_version_is_not_silently_reinterpreted(model, payload):
     with pytest.raises(ValidationError):

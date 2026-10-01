@@ -23,6 +23,10 @@ from .mcp_diagnostics import diagnose_mcp_connection
 from . import tool_service
 
 router = APIRouter(prefix="/tools", tags=["tools"])
+from .authorization_router import router as authorization_router
+router.include_router(authorization_router)
+from .runtime_authorization_router import router as runtime_authorization_router
+router.include_router(runtime_authorization_router)
 
 
 from .admin_contracts import CandidateRequest, AdministrationError
