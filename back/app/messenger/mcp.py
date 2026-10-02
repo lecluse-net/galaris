@@ -234,7 +234,7 @@ async def _deliver_agent_file_with_status(
             room_id,
             filename,
         )
-    except (OSError, RuntimeError, ValueError) as exc:
+    except (OSError, ValueError) as exc:
         logger.warning("send_file: could not transfer {} ({})", filename, exc)
         return _message(lang, "missing_file", path=filename), False
     if message:
@@ -857,6 +857,9 @@ async def mcp_send_file_to_user(
         room_id = str(
             (await messenger.ensure_direct_room(resolved_user_id)).id
         )
+        # Room/directory synchronization must be committed before the independent
+        # outbound journal resolves those same rows after the upload.
+        await release_db_transaction()
         result, delivered = await _deliver_agent_file_with_status(
             ctx,
             messenger,

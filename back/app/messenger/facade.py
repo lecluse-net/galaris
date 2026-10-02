@@ -341,7 +341,7 @@ class MessengerFacade:
             if publish_event:
                 await message_sent.send_async(stored)
             return stored
-        except Exception:
+        except Exception as exc:
             logger.exception(
                 "Could not journal outbound message connection={} message={}",
                 self._connection_id,
@@ -349,7 +349,7 @@ class MessengerFacade:
             )
             raise RuntimeError(
                 "The provider accepted the message but Galaris could not persist it."
-            ) from None
+            ) from exc
 
     async def history(
         self, room_id: UUID | str, limit: int = 20

@@ -114,3 +114,53 @@ async def test_pasted_non_image_creates_no_attachment(agents, memory_storage, mo
     with pytest.raises(ValueError, match="not a raster image"):
         await document_image_import.import_document_image(item.id, "https://example.org/photo", actor=owner.id)
     assert await attachments.list_document_attachments(item.id, actor_agent_id=owner.id) == []
+
+
+@pytest.mark.asyncio
+async def test_generated_native_image_can_be_copied_and_embedded_in_a_document(
+    agents, memory_storage, monkeypatch, tmp_path,
+):
+    from app.file_share import ResourceContext, resource_copy, resource_service
+    from app.file_share.tests.local_file_transport import TemporaryFileTransport
+    from app.image import mcp as image_mcp
+    from app.tools.mcp_loader import McpToolContext
+    from app.memory.schemas import MemoryItemUpdate
+
+    owner, reader = agents
+    item = await document(owner)
+    await service.set_item_grant(item.id, reader.id, MemoryGrantUpdate(can_write=False), actor_agent_id=owner.id)
+    output = BytesIO()
+    Image.new("RGB", (24, 12), "blue").save(output, format="PNG")
+    source = output.getvalue()
+    console = TemporaryFileTransport(tmp_path / "console")
+
+    async def resolve(ctx):
+        return console
+
+    async def generate(*args, **kwargs):
+        return source, "image/png"
+
+    monkeypatch.setattr(resource_service, "_console_transport", resolve)
+    monkeypatch.setattr(image_mcp.image_service, "generate_image_bytes", generate)
+    result = await image_mcp.generate_image(
+        McpToolContext(agent_id=owner.id, runtime="internal", resources={"console": object()}),
+        "A synthetic illustration", destination="console://gallery/scene.jpg",
+    )
+    assert "console://gallery/scene.png" in result
+    ctx = ResourceContext(agent_id=owner.id, runtime="internal", console_resource=object())
+    copied = await resource_copy(ctx, "console://gallery/scene.png", f"document://{item.id}/attachments/")
+    attachment = (await attachments.list_document_attachments(item.id, actor_agent_id=reader.id))[0]
+    assert attachment.name == "scene.png"
+    assert attachment.media_type == "image/png"
+    _, stored = await attachments.read_document_attachment(item.id, attachment.id, actor_agent_id=reader.id)
+    assert stored == source
+    await service.update_item(item.id, MemoryItemUpdate(
+        expected_revision=item.revision, expected_lock_version=item.lock_version,
+        payload=MemoryPayload(text=f'<p><img src="{copied.uri}" alt="Synthetic illustration"></p>'),
+    ), actor_agent_id=owner.id)
+    current, content, *_ = await service.get_item(item.id, agent_id=reader.id)
+    assert copied.uri.encode() in content
+    assert current.revision == 2
+    with pytest.raises(service.MemoryPermissionError):
+        await resource_copy(ResourceContext(agent_id=reader.id, runtime="internal", console_resource=object()),
+                            "console://gallery/scene.png", f"document://{item.id}/attachments/")

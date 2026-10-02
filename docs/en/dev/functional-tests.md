@@ -2,6 +2,16 @@
 
 # Functional guarantees catalogue
 
+`back/app/image/tests/test_image_mcp.py` covers image references as a URI, a list, or a
+JSON-encoded list, temporary cleanup, and filenames matching the native format without
+conversion or overwriting a neighboring file. The workflow in
+`back/app/memory/tests/test_document_resources.py` generates a synthetic PNG, copies it as an
+attachment, embeds it in a document, and checks reader permissions.
+`back/app/chat/tests/test_native_facade.py` verifies MCP file delivery to a human, with and
+without a Task, using independent PostgreSQL transactions: room synchronization does not block
+its own receipt, and both bytes and the message remain readable. It uses `committed_database`;
+savepoints sharing one connection would conceal this lock failure.
+
 Document analysis belongs to `app.llm` and creates no business-process definition or run.
 `back/tests/test_document_analysis.py` protects this separation, recovery of 500-page
 batches without duplicate billing, cancellation, access control, scheduler progression,

@@ -167,6 +167,54 @@ async def _scope(db: AsyncSession) -> tuple[Agent, User, User]:
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("task_pinned", [False, True])
+async def test_file_tool_delivers_to_user_with_independent_journal_transactions(
+    committed_database, monkeypatch, tmp_path, task_pinned,
+):
+    from app.chat import storage
+    from app.file_share import MaterializedResource, resource_delivery
+    from app.messenger import mcp
+    from app.tools.mcp_loader import McpToolContext
+
+    monkeypatch.setattr(storage, "root", lambda: tmp_path / "chat")
+
+    async def materialize(ctx, uri, destination, *, max_bytes):
+        assert uri == "console://reports/report.txt"
+        destination.write_bytes(b"Synthetic report")
+        return MaterializedResource(uri=uri, name="report.txt", media_type="text/plain", size=16)
+
+    monkeypatch.setattr(resource_delivery, "materialize_resource", materialize)
+    async with get_db_session() as db:
+        agent, owner, _ = await _scope(db)
+        room = await create_internal_room(actor_user_id=owner.id, agent_id=agent.id)
+        agent_id, owner_id, room_id = agent.id, owner.id, room.id
+        task_id = None
+        if task_pinned:
+            from app.task import Task
+            task = Task(label="Synthetic file delivery", agent_id=agent_id,
+                        requester_user_id=owner_id, messenger_connection_id=room.connection_id,
+                        data={"goal_referrer_user_id": f"user:{owner_id}"})
+            db.add(task)
+            await db.flush()
+            task_id = task.id
+
+    async with get_db_session():
+        result = await asyncio.wait_for(mcp.mcp_send_file_to_user(
+            McpToolContext(agent_id=agent_id, runtime="internal", task_id=task_id),
+            f"user:{owner_id}", "console://reports/report.txt", message="Here is the report.",
+        ), timeout=4)
+
+    async with get_db_session():
+        messages = await journal.history(room.connection_id, room.external_id)
+        files = [file for message in messages for file in message.files]
+        assert len(files) == 1
+        assert files[0].name == "report.txt"
+        assert result["uri"] == f"chat://{room.external_id}/{files[0].id}"
+        assert await storage.read_bytes(files[0].id) == b"Synthetic report"
+        assert [message.text for message in messages if message.text] == ["Here is the report."]
+
+
+@pytest.mark.asyncio
 @pytest.mark.parametrize("answer_mode", ["button", "text"])
 @pytest.mark.parametrize("selected_option, selected_label", [("create", "Créer"), ("reject", "Refuser")])
 async def test_internal_choices_reload_and_resolve_once_in_the_exact_human_scope(

@@ -7,9 +7,10 @@ same virtual file facade.
 
 from __future__ import annotations
 
+import json
 import mimetypes
 from io import BytesIO
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from tempfile import TemporaryDirectory
 from typing import Any, cast
 
@@ -23,6 +24,7 @@ from app.tools import RecoverableToolError
 from app.file_share import (
     ResourceContext,
     ResourceUri,
+    ResourceUriError,
     materialize_resource,
     parse_resource_uri,
     preferred_local_resource_uri,
@@ -51,19 +53,23 @@ def _as_optional_text(value: Any) -> str:
     return str(value).strip()
 
 
-def _as_attachment_refs(value: Any) -> list[str]:
-    """Coerce the flexible MCP argument to raw non-empty path references."""
+def _as_attachment_refs(value: str | list[str] | None) -> list[str]:
+    """Accept URI lists, one URI, and legacy JSON-encoded URI lists."""
 
     if value is None:
         return []
     if isinstance(value, str):
         clean = value.strip()
-        return [clean] if clean else []
-    if isinstance(value, list):
-        items = cast(list[object], value)
-        return [_as_optional_text(item) for item in items if _as_optional_text(item)]
-    clean = str(value).strip()
-    return [clean] if clean else []
+        if not clean.startswith("["):
+            return [clean] if clean else []
+        try:
+            decoded: object = json.loads(clean)
+        except ValueError as exc:
+            raise ResourceUriError("attachments must be a URI or a JSON array of URI strings.") from exc
+        if not isinstance(decoded, list) or not all(isinstance(item, str) for item in cast(list[object], decoded)):
+            raise ResourceUriError("attachments must be a URI or a JSON array of URI strings.")
+        return [item.strip() for item in cast(list[str], decoded) if item.strip()]
+    return [item.strip() for item in value if item.strip()]
 
 
 async def _resource_context(ctx: McpToolContext, language: str) -> ResourceContext:
@@ -96,10 +102,18 @@ async def _store_image(
     default_name: str,
 ) -> str:
     reference, name = _destination(resource_ctx, destination, default_name)
+    requested_reference = reference
+    if not reference.is_collection:
+        # Keep the provider's bytes intact, but never label a PNG as JPEG (or vice versa).
+        requested_mime = mimetypes.guess_type(reference.decoded_locator)[0]
+        native_mime = mimetypes.guess_type(default_name)[0]
+        if requested_mime and requested_mime.startswith("image/") and requested_mime != native_mime:
+            locator = PurePosixPath(reference.decoded_locator).with_suffix(PurePosixPath(default_name).suffix)
+            reference = parse_resource_uri(f"{reference.scheme}://{locator}")
     try:
         mutation = await resource_create(resource_ctx, reference, data, name=name)
     except FileExistsError:
-        if reference.is_collection:
+        if reference.is_collection or reference != requested_reference:
             raise
         mutation = await resource_write(resource_ctx, reference, data)
     return mutation.uri
@@ -110,20 +124,21 @@ async def _store_image(
     name="image_generate",
     description=(
         "Generate, edit, or compose an image. attachments accepts canonical resource URIs "
-        "from any file_schemes provider; Galaris transfers them transparently. destination "
+        "as an array or a single URI from any file_schemes provider; Galaris transfers them transparently. destination "
         "accepts any writable resource URI; it may be omitted only when console:// is "
         "advertised by file_schemes. width and height are preferred pixel dimensions, "
         "not requirements. Always use best effort: choose a nearby native size, preferably "
         "above the target, otherwise the closest available below, including the model maximum "
         "for oversized requests. Unknown size capabilities use model defaults. No confirmation "
         "is needed for this adjustment. Report the actual returned dimensions. Never resize "
-        "or crop afterward or substitute SVG/code artwork for a generated image."
+        "or crop afterward or substitute SVG/code artwork for a generated image. The filename "
+        "extension follows the native image format; always use the returned URI."
     ),
 )
 async def generate_image(
     ctx: McpToolContext,
     prompt: str,
-    attachments: Any = None,
+    attachments: str | list[str] | None = None,
     destination: Any = "",
     width: ImageDimension | None = None,
     height: ImageDimension | None = None,
@@ -167,7 +182,8 @@ async def generate_image(
             )
         with Image.open(BytesIO(img)) as image:
             actual_width, actual_height = image.size
-        ext = (mime.split("/")[-1] or "png")
+            mime = Image.MIME.get(image.format or "", mime)
+        ext = "jpg" if mime == "image/jpeg" else (mime.split("/")[-1] or "png")
         raw_destination = _as_optional_text(destination)
         location = await _store_image(
             resource_ctx,
@@ -181,6 +197,8 @@ async def generate_image(
         )
     except ImageDimensionsError as exc:
         raise RecoverableToolError(_message(language, "generation_failed", error=str(exc))) from exc
+    except ResourceUriError as exc:
+        raise RecoverableToolError(str(exc)) from exc
     except Exception as exc:
         logger.exception("MCP generate_image failed")
         # Provider/transport exceptions may contain credentials or response bodies.

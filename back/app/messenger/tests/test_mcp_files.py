@@ -59,7 +59,7 @@ async def test_deliver_agent_file_does_not_send_message_when_transfer_fails(
     messenger = _FakeMessenger()
 
     async def materialize(*args: Any, **kwargs: Any) -> MaterializedResource:
-        raise RuntimeError("missing")
+        raise FileNotFoundError("missing")
 
     monkeypatch.setattr(resource_delivery, "materialize_resource", materialize)
 
@@ -74,6 +74,22 @@ async def test_deliver_agent_file_does_not_send_message_when_transfer_fails(
 
     assert "could not be read" in result
     assert delivered is False
+    assert messenger.sent == []
+
+
+@pytest.mark.asyncio
+async def test_delivery_persistence_failure_is_not_reported_as_a_missing_source(monkeypatch):
+    import app.file_share
+
+    failure = RuntimeError("The provider accepted the message but Galaris could not persist it.")
+    monkeypatch.setattr(app.file_share, "deliver_resource_to_messenger", AsyncMock(side_effect=failure))
+    messenger = _FakeMessenger()
+    with pytest.raises(RuntimeError) as caught:
+        await messenger_mcp._deliver_agent_file_with_status(
+            McpToolContext(agent_id=7, runtime="internal"), messenger, "room-1",
+            "console://report.txt", "Delivered.", "en",
+        )
+    assert caught.value is failure
     assert messenger.sent == []
 
 

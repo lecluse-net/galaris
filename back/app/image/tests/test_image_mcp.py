@@ -22,6 +22,10 @@ def test_generate_image_normalizes_attachment_references() -> None:
     assert _as_attachment_refs("") == []
     assert _as_attachment_refs("source.png") == ["source.png"]
     assert _as_attachment_refs([" a.png ", "", "b.png"]) == ["a.png", "b.png"]
+    assert _as_attachment_refs('["console://reference%20photo.jpg"]') == [
+        "console://reference%20photo.jpg"
+    ]
+    assert _as_attachment_refs("[]") == []
 
 
 def test_generate_image_keeps_paths_for_transport_aware_normalization() -> None:
@@ -80,7 +84,9 @@ async def test_generate_image_schema_accepts_flexible_optional_args() -> None:
 
     assert schema["required"] == ["prompt"]
     assert schema["properties"]["prompt"]["type"] == "string"
-    assert "type" not in schema["properties"]["attachments"]
+    variants = schema["properties"]["attachments"]["anyOf"]
+    assert {variant["type"] for variant in variants} == {"array", "string", "null"}
+    assert next(variant for variant in variants if variant["type"] == "array")["items"]["type"] == "string"
     assert "type" not in schema["properties"]["destination"]
     for dimension in ("width", "height"):
         prop = schema["properties"][dimension]
@@ -178,9 +184,11 @@ async def test_describe_image_propagates_agent_and_task_context(
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("dimensions", [{}, {"width": 1920, "height": 1080}, {"width": 100000, "height": 100000}])
+@pytest.mark.parametrize("attachments", [None, "console://reference.png", ["console://reference.png"], '["console://reference.png"]'])
 async def test_generate_image_propagates_agent_and_task_context(
     monkeypatch: pytest.MonkeyPatch,
     dimensions: dict[str, int],
+    attachments: object,
 ) -> None:
     task_id = uuid4()
     context = McpToolContext(agent_id=17, runtime="internal", task_id=task_id)
@@ -193,6 +201,13 @@ async def test_generate_image_propagates_agent_and_task_context(
     output = BytesIO()
     Image.new("RGB", (1200, 896)).save(output, format="PNG")
     image_content = output.getvalue()
+    materialized_paths = []
+
+    async def materialize(ctx, uri, destination, *, max_bytes):
+        assert uri == "console://reference.png"
+        destination.write_bytes(image_content)
+        materialized_paths.append(destination)
+        return MaterializedResource(uri=uri, name="reference.png", media_type="image/png", size=len(image_content))
 
     async def fake_resource_context(
         ctx: McpToolContext, language: str
@@ -236,12 +251,14 @@ async def test_generate_image_propagates_agent_and_task_context(
 
     monkeypatch.setattr(image_mcp, "_context_language", fake_language)
     monkeypatch.setattr(image_mcp, "_resource_context", fake_resource_context)
+    monkeypatch.setattr(image_mcp, "materialize_resource", materialize)
     monkeypatch.setattr(image_mcp.image_service, "generate_image_bytes", fake_generate)
     monkeypatch.setattr(image_mcp, "_store_image", fake_store)
 
     result = await image_mcp.generate_image(
         context,
         "Créer une affiche",
+        attachments=attachments,
         destination="nextcloud://Shared/poster.png",
         **dimensions,
     )
@@ -250,13 +267,58 @@ async def test_generate_image_propagates_agent_and_task_context(
     assert "1200 × 896" in result
     assert received == {
         "prompt": "Créer une affiche",
-        "sources": None,
+        "sources": [(image_content, "image/png")] if attachments else None,
         "width": dimensions.get("width"),
         "height": dimensions.get("height"),
         "language": "fr",
         "task_id": task_id,
         "agent_id": 17,
     }
+    assert all(not path.exists() for path in materialized_paths)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("destination, expected", [
+    ("console://gallery/scene.jpg", "console://gallery/scene.png"),
+    ("nextcloud://Gallery/scene%20one.jpeg", "nextcloud://Gallery/scene%20one.png"),
+    ("console://gallery/scene.png", "console://gallery/scene.png"),
+    ("console://gallery/", "console://gallery/"),
+])
+async def test_generated_image_name_matches_native_bytes_without_conversion(
+    monkeypatch, destination, expected,
+):
+    from app.file_share import ResourceMutation
+
+    output = BytesIO()
+    Image.new("RGB", (24, 12), "blue").save(output, format="PNG")
+    content = output.getvalue()
+    writes = []
+
+    async def create(ctx, reference, data, *, name):
+        writes.append((str(reference), data, name))
+        return ResourceMutation(uri=str(reference), operation="create", state="created")
+
+    monkeypatch.setattr(image_mcp, "resource_create", create)
+    result = await image_mcp._store_image(
+        ResourceContext(agent_id=17, runtime="internal"), destination, content,
+        default_name="generated_image.png",
+    )
+    assert result == expected
+    assert writes == [(expected, content, "generated_image.png" if expected.endswith("/") else "")]
+
+
+@pytest.mark.asyncio
+async def test_correcting_native_image_extension_does_not_overwrite_an_existing_file(monkeypatch):
+    create = AsyncMock(side_effect=FileExistsError("console://scene.png"))
+    write = AsyncMock()
+    monkeypatch.setattr(image_mcp, "resource_create", create)
+    monkeypatch.setattr(image_mcp, "resource_write", write)
+    with pytest.raises(FileExistsError):
+        await image_mcp._store_image(
+            ResourceContext(agent_id=17, runtime="internal"), "console://scene.jpg", b"native bytes",
+            default_name="generated_image.png",
+        )
+    write.assert_not_awaited()
 
 
 @pytest.mark.asyncio

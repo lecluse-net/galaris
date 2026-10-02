@@ -159,6 +159,11 @@ de la déposer avec les commandes natives de CKEditor. Sa barre contextuelle per
 le texte alternatif, la légende et la largeur. Le téléversement affiche sa progression.
 Les images restent des pièces jointes du document, disponibles via le bouton **Pièces jointes**.
 
+Un agent peut aussi générer une image, copier son URI vers la collection des pièces jointes du
+document, puis l'intégrer au texte. Le nom du fichier suit le format natif renvoyé par le modèle :
+un PNG porte l'extension `.png`, même si la destination demandée se terminait par `.jpg`.
+L'image conserve ses octets et ses dimensions ; réutilisez l'URI rendue par l'outil.
+
 Les images ne sont pas autorisées dans les autres mémoires, profils, tâches, descriptions ou
 suivis de Goals. Cette règle reste valable lorsqu’un document Goal est ouvert dans la
 bibliothèque. Les images distantes par URL et les SVG ne sont pas acceptés.

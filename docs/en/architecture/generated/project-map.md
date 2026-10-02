@@ -1962,8 +1962,8 @@ tests remain authoritative for behavior.
 | `goal_pause` | `goal_management` | `app.goal` | `mcp_goal_pause` | `back/app/goal/mcp.py:369` |
 | `goal_resume` | `goal_management` | `app.goal` | `mcp_goal_resume` | `back/app/goal/mcp.py:393` |
 | `goal_update` | `goal_management` | `app.goal` | `mcp_goal_update` | `back/app/goal/mcp.py:304` |
-| `image_generate` | `image` | `app.image` | `generate_image` | `back/app/image/mcp.py:123` |
-| `image_read` | `image` | `app.image` | `describe_image` | `back/app/image/mcp.py:205` |
+| `image_generate` | `image` | `app.image` | `generate_image` | `back/app/image/mcp.py:138` |
+| `image_read` | `image` | `app.image` | `describe_image` | `back/app/image/mcp.py:223` |
 | `lab_campaign_get` | `lab` | `app.lab` | `lab_campaign_get` | `back/app/lab/mcp.py:563` |
 | `lab_campaign_list` | `lab` | `app.lab` | `lab_campaign_list` | `back/app/lab/mcp.py:550` |
 | `lab_case_create` | `lab` | `app.lab` | `lab_case_create` | `back/app/lab/mcp.py:242` |
@@ -2033,7 +2033,7 @@ tests remain authoritative for behavior.
 | `memory_upcoming` | `memory` | `app.memory` | `memory_upcoming` | `back/app/memory/mcp.py:532` |
 | `messenger_list_rooms` | `messenger` | `app.messenger` | `mcp_list_rooms` | `back/app/messenger/mcp.py:638` |
 | `messenger_room_history` | `messenger` | `app.messenger` | `mcp_room_history` | `back/app/messenger/mcp.py:676` |
-| `messenger_room_send_file` | `messenger` | `app.messenger` | `mcp_room_send_file` | `back/app/messenger/mcp.py:886` |
+| `messenger_room_send_file` | `messenger` | `app.messenger` | `mcp_room_send_file` | `back/app/messenger/mcp.py:889` |
 | `messenger_room_send_message` | `messenger` | `app.messenger` | `mcp_room_send_message` | `back/app/messenger/mcp.py:265` |
 | `messenger_search_users` | `messenger` | `app.messenger` | `mcp_search_users` | `back/app/messenger/mcp.py:748` |
 | `messenger_send_audio_message` | `messenger` | `app.messenger` | `mcp_send_audio_message` | `back/app/messenger/mcp.py:530` |

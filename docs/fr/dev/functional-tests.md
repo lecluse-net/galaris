@@ -2,6 +2,16 @@
 
 # Catalogue des garanties fonctionnelles
 
+`back/app/image/tests/test_image_mcp.py` couvre les références d'image sous forme d'URI,
+de liste ou de liste JSON encodée, le nettoyage des temporaires et le nom conforme au format
+natif sans conversion ni remplacement d'un fichier voisin. Le parcours de
+`back/app/memory/tests/test_document_resources.py` génère un PNG synthétique, le copie en pièce
+jointe, l'intègre au document et vérifie les droits du lecteur.
+`back/app/chat/tests/test_native_facade.py` vérifie l'envoi MCP d'un fichier à un humain,
+avec et sans Task, sur de vraies transactions PostgreSQL indépendantes : la synchronisation de
+la room ne bloque pas son propre reçu, les octets et le message restent lisibles. Ce scénario
+emploie `committed_database` ; les savepoints partageant une connexion masqueraient ce blocage.
+
 L'analyse documentaire relève de `app.llm` et ne crée aucune définition ni exécution
 de processus métier. `back/tests/test_document_analysis.py` protège cette séparation,
 la reprise des lots de 500 pages sans double facturation, l'annulation, les droits,

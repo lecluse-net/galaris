@@ -7300,7 +7300,7 @@
       {
         "file": "back/app/image/mcp.py",
         "handler": "generate_image",
-        "line": 123,
+        "line": 138,
         "module": "app.image",
         "name": "image_generate",
         "namespace": "image"
@@ -7308,7 +7308,7 @@
       {
         "file": "back/app/image/mcp.py",
         "handler": "describe_image",
-        "line": 205,
+        "line": 223,
         "module": "app.image",
         "name": "image_read",
         "namespace": "image"
@@ -7868,7 +7868,7 @@
       {
         "file": "back/app/messenger/mcp.py",
         "handler": "mcp_room_send_file",
-        "line": 886,
+        "line": 889,
         "module": "app.messenger",
         "name": "messenger_room_send_file",
         "namespace": "messenger"

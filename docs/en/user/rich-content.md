@@ -152,6 +152,11 @@ Uploads show progress. Images remain available through the **Attachments** butto
 Images are unavailable in other memories, agent profiles, tasks and Goal descriptions/tracking,
 even when opening a Goal document through the library. Remote image URLs and SVG are unsupported.
 
+An agent can also generate an image, copy its URI to the document's attachment collection,
+then embed it in the text. The filename follows the model's native output format: a PNG uses
+`.png`, even when the requested destination ended in `.jpg`. Its bytes and dimensions are
+preserved; reuse the URI returned by the tool.
+
 Removing an image from the text preserves its attachment. Explicit deletion hides the attachment
 from the list but keeps historical versions restorable under current access rights. Forgetting
 the document permanently removes these resources, subject to business protections.
