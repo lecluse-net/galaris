@@ -171,6 +171,7 @@ async def apply_target(
     try:
         async with engine.begin() as connection:
             await connection.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
+            await connection.execute(text("CREATE EXTENSION IF NOT EXISTS pg_trgm"))
             # UUID generated here, never a user-supplied SQL identifier.
             await connection.execute(text(f'CREATE SCHEMA "{dev_schema}"'))  # nosemgrep: python.sqlalchemy.security.audit.avoid-sqlalchemy-text.avoid-sqlalchemy-text
 

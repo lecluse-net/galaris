@@ -6,6 +6,12 @@ services are registered bridges and Messenger attachments keep their provider id
 """
 
 from . import file_share_service
+from .models import FileCatalogEntry, FileIndexRun, FileObservationRepair
+from .indexing import indexing_tick, repair_tick, start_index_run, cancel_index_run, prune_index_history, refresh_known_tick
+from .catalogue import annotate_catalogue_entry, catalogue_access_clause, catalogue_source_readable
+from app.memory import register_source_access
+
+register_source_access("file_catalogue", catalogue_access_clause, catalogue_source_readable)
 from .bridges import (
     FileShareBridge,
     FileShareBridgeInfo,
@@ -81,6 +87,7 @@ from .file_contracts import (
 from .web_transport import PublicHttpsContent, read_public_https_bytes
 
 __all__ = [
+    "FileCatalogEntry", "annotate_catalogue_entry",
     "record_resource_description",
     "WebMetadata", "web_metadata",
     "file_share_service",
@@ -158,3 +165,7 @@ register_web_image_provider(document_web_image)
 from .planner_adapter import register_planner_inventory_adapter
 
 register_planner_inventory_adapter()
+__all__ += ["FileIndexRun", "FileObservationRepair", "indexing_tick", "repair_tick", "start_index_run", "cancel_index_run", "prune_index_history", "refresh_known_tick"]
+
+from .enrichment import descriptor_version, pending_enrichments, apply_enrichment, FileCatalogueEnrichmentPort
+__all__ += ["descriptor_version", "pending_enrichments", "apply_enrichment", "FileCatalogueEnrichmentPort"]

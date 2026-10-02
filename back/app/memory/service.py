@@ -36,6 +36,7 @@ from .access import (
     readable_item_clause,
 )
 from .admission import admit_search_hits
+from .source_access import source_checked_graph
 from .passages import lexical_excerpt, query_identity
 from . import relevance
 from .contracts import (
@@ -138,8 +139,8 @@ async def _commit_with_conflict(message: str) -> None:
         raise MemoryConflictError(message) from exc
 
 
-def _assert_not_source_managed(item: MemoryItem) -> None:
-    if item.source_managed:
+def _assert_not_source_managed(item: MemoryItem, *, allow_catalogue: bool = False) -> None:
+    if item.source_managed and not (allow_catalogue and item.managed_source_kind == "file_catalogue"):
         raise MemoryPermissionError(
             "This memory is generated from source data and can only be changed through that source."
         )
@@ -410,13 +411,17 @@ def _exact_scope_filters(
 
 
 def _graph_node(item: MemoryItem, *, relation_count: int) -> MemoryGraphNode:
-    entity_kind: Literal["memory", "document", "attachment", "folder", "topic", "contact"] = "memory"
+    entity_kind: Literal["memory", "document", "attachment", "folder", "file", "directory", "topic", "contact"] = "memory"
     if item.node_kind == "document":
         entity_kind = "document"
     elif item.node_kind == "attachment":
         entity_kind = "attachment"
     elif item.node_kind == "folder":
         entity_kind = "folder"
+    elif item.node_kind == "file":
+        entity_kind = "file"
+    elif item.node_kind == "directory":
+        entity_kind = "directory"
     elif item.managed_source_kind == "topic":
         entity_kind = "topic"
     elif item.managed_source_kind == "messenger_contact":
@@ -603,9 +608,9 @@ async def assert_item_access(
     administrative: bool = False,
 ) -> MemoryAccess:
     if write:
-        _assert_not_source_managed(item)
+        _assert_not_source_managed(item, allow_catalogue=True)
     if administrative:
-        return MemoryAccess(can_read=True, can_write=not item.source_managed)
+        return MemoryAccess(can_read=True, can_write=not item.source_managed or item.managed_source_kind == "file_catalogue")
     if agent_id is None:
         raise MemoryPermissionError("An agent identity is required.")
     access = await effective_access(item, agent_id)
@@ -1491,6 +1496,8 @@ async def update_item(
     }
     if not fields:
         return item
+    if item.managed_source_kind == "file_catalogue" and "visibility" in fields and data.visibility != "private":
+        raise MemoryPermissionError("A file catalogue entry must remain private to its agent.")
     if "visibility" in fields and data.visibility != item.visibility:
         owns_item = (
             item.owner_agent_id == actor_agent_id if isinstance(actor_agent_id, int)
@@ -1676,6 +1683,19 @@ async def update_item(
                     metadata[attachment_key] = item.metadata_[attachment_key]
                 else:
                     metadata.pop(attachment_key, None)
+        item.metadata_ = metadata
+    if item.managed_source_kind == "file_catalogue":
+        # Source identity and manual ownership survive generic metadata writes.
+        metadata = dict(item.metadata_)
+        for key in ("resource_uri", "catalogue_ref", "catalogue_editable", "catalogue_manual_content", "catalogue_manual_title"):
+            if key in previous_metadata:
+                metadata[key] = previous_metadata[key]
+            else:
+                metadata.pop(key, None)
+        if content_changed:
+            metadata["catalogue_manual_content"] = True
+        if item.title != previous_values["title"]:
+            metadata["catalogue_manual_title"] = True
         item.metadata_ = metadata
     _set_semantic_fingerprint(item)
     meaningful_change = bool(
@@ -2613,7 +2633,12 @@ async def search_items(
         )
         if request.recall_query is not None:
             rank_expression = case((func.lower(MemoryItem.title) == literal.lower(), 2.0), else_=rank_expression)
-        query = query.where(or_(MemoryItem.search_vector.op("@@")(ts_query), fallback))
+        matches = select(MemoryItem.id).where(
+            or_(MemoryItem.search_vector.op("@@")(ts_query), fallback),
+        ).cte("lexical_matches").prefix_with("MATERIALIZED", dialect="postgresql")
+        # Keep source/structural access checks on lexical candidates only. The
+        # outer query still applies every ACL, validity and contextual filter.
+        query = query.where(MemoryItem.id.in_(select(matches.c.id)))
     else:
         rank_expression = case((MemoryItem.memory_type == "core", 1.0), else_=0.1)
     if temporal_union and temporal_window is not None:
@@ -2964,6 +2989,7 @@ async def list_filter_options(agent_id: int) -> MemoryFilterOptions:
     )
 
 
+@source_checked_graph
 async def list_graph_roots(request: MemoryGraphRootsRequest) -> MemoryGraphPage:
     """Return one keyset page of recent graph roots and bounded visible edges."""
 
@@ -3104,6 +3130,7 @@ async def list_graph_roots(request: MemoryGraphRootsRequest) -> MemoryGraphPage:
     )
 
 
+@source_checked_graph
 async def expand_graph_node(request: MemoryGraphExpandRequest) -> MemoryGraphPage:
     """Return one bounded relation page around a visible graph node."""
 

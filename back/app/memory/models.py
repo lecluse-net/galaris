@@ -313,8 +313,16 @@ class MemoryItem(HistoryMixin, Base):
             name="ck_memory_items_document_type",
         ),
         CheckConstraint(
-            "node_kind IN ('memory', 'document', 'attachment', 'folder')",
+            "node_kind IN ('memory', 'document', 'attachment', 'folder', 'file', 'directory')",
             name="ck_memory_items_node_kind",
+        ),
+        CheckConstraint(
+            "node_kind NOT IN ('file', 'directory') OR "
+            "(source_managed = true AND managed_source_kind = 'file_catalogue' "
+            "AND owner_agent_id IS NOT NULL AND owner_user_id IS NULL "
+            "AND visibility = 'private' AND global_access = 0 AND group_access = 0 "
+            "AND deletion_protected = true)",
+            name="ck_memory_items_file_catalogue",
         ),
         CheckConstraint(
             "node_kind != 'document' OR "
@@ -368,7 +376,8 @@ class MemoryItem(HistoryMixin, Base):
             "(owner_agent_id IS NOT NULL OR owner_user_id IS NOT NULL)) "
             "OR (node_kind != 'document' AND owner_agent_id IS NOT NULL))) OR "
             "(source_managed = true AND managed_source_kind IS NOT NULL "
-            "AND managed_source_ref IS NOT NULL AND read_only = true "
+            "AND managed_source_ref IS NOT NULL AND (read_only = true OR "
+            "(managed_source_kind = 'file_catalogue' AND node_kind IN ('file', 'directory'))) "
             "AND owner_user_id IS NULL "
             "AND ((visibility = 'private' AND owner_agent_id IS NOT NULL) "
             "OR (visibility = 'public' AND owner_agent_id IS NULL)))",
@@ -388,6 +397,10 @@ class MemoryItem(HistoryMixin, Base):
             "search_vector",
             postgresql_using="gin",
         ),
+        Index("ix_memory_items_title_trgm", "title",
+              postgresql_using="gin", postgresql_ops={"title": "gin_trgm_ops"}),
+        Index("ix_memory_items_search_text_trgm", "search_text",
+              postgresql_using="gin", postgresql_ops={"search_text": "gin_trgm_ops"}),
     )
     __mapper_args__ = {"version_id_col": lock_version}
 

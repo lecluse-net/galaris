@@ -372,6 +372,8 @@ const GRAPH_ROLE_LEGEND: readonly MemoryGraphEntityKind[] = [
   'document',
   'attachment',
   'folder',
+  'file',
+  'directory',
   'conversation',
 ]
 const NODE_COLORS_LIGHT: Record<MemoryType, string> = {
@@ -523,6 +525,8 @@ function roleColor(role: MemoryGraphEntityKind): string {
   switch (role) {
     case 'attachment': return solaireCss.cyan.accent
     case 'folder': return solaireCss.yellow.accent
+    case 'file': return solaireCss.cyan.accent
+    case 'directory': return solaireCss.yellow.accent
     case 'contact': return nodeColor('social')
     case 'document': return nodeColor('working')
     case 'conversation': return nodeColor('episodic')
@@ -584,6 +588,8 @@ function nodeIcon(node: MemoryGraphNode): string {
       if (node.resource_media_type?.startsWith('video/')) return 'video_file'
       return 'attach_file'
     case 'folder': return 'folder'
+    case 'file': return 'insert_drive_file'
+    case 'directory': return 'folder_open'
     case 'conversation': return 'forum'
     default: return 'neurology'
   }
@@ -601,6 +607,8 @@ function nodeSymbol(node: MemoryGraphNode): 'circle' | 'diamond' | 'rect' | 'rou
     case 'document': return 'rect'
     case 'attachment': return 'rect'
     case 'folder': return 'roundRect'
+    case 'file': return 'rect'
+    case 'directory': return 'roundRect'
     case 'conversation': return 'roundRect'
     default: return 'circle'
   }

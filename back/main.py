@@ -76,6 +76,11 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
             "documentation-index", refresh_documentation_index, interval=30.0, timeout=90.0,
         )
         register_scheduler_jobs()
+        from app.file_share import indexing_tick, repair_tick, prune_index_history, refresh_known_tick
+        task_scheduler.register_periodic_job("file-index-discovery", indexing_tick, interval=2.0, timeout=90.0)
+        task_scheduler.register_periodic_job("file-index-repair", repair_tick, interval=2.0, timeout=90.0)
+        task_scheduler.register_periodic_job("file-index-history", prune_index_history, interval=3600.0)
+        task_scheduler.register_periodic_job("file-index-known", refresh_known_tick, interval=2.0, timeout=90.0)
         register_goal_jobs()
         register_lab_jobs()
         register_chat_jobs(task_scheduler.register_periodic_job)
@@ -138,6 +143,9 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         stop as stop_dream,
     )
     configure_dream_media()
+    from app.dream.interface import register_file_catalogue
+    from app.file_share import FileCatalogueEnrichmentPort
+    register_file_catalogue(FileCatalogueEnrichmentPort())
     from app.task import scheduler as task_scheduler
     from app.conversation import register_controller, register_runtime
     from app.conversation import scheduler as conversation_scheduler

@@ -53,6 +53,7 @@ class ResourceContext:
 
 
 class ResourceDescriptor(BaseModel):
+    indexing_status: Literal["excluded", "indexed", "failed"] = "excluded"
     uri: str
     name: str = ""
     is_collection: bool = False
@@ -67,6 +68,7 @@ class ResourceDescriptor(BaseModel):
 
 
 class ResourceListing(BaseModel):
+    indexing_status: Literal["excluded", "indexed", "failed"] = "excluded"
     uri: str
     entries: list[ResourceDescriptor] = Field(default_factory=_empty_descriptors)
     truncated: bool = False
@@ -74,6 +76,7 @@ class ResourceListing(BaseModel):
 
 
 class ResourceRead(BaseModel):
+    indexing_status: Literal["excluded", "indexed", "failed"] = "excluded"
     uri: str
     content: str
     encoding: Literal["utf-8", "base64"] = "utf-8"
@@ -96,6 +99,7 @@ class EditorialResourceRead(ResourceRead):
 
 
 class ResourceMutation(BaseModel):
+    indexing_status: Literal["excluded", "indexed", "failed"] = "excluded"
     uri: str
     operation: Literal["append", "create", "delete", "edit", "move", "write"]
     state: str
@@ -105,6 +109,7 @@ class ResourceMutation(BaseModel):
 
 
 class ResourceTransfer(BaseModel):
+    indexing_status: Literal["excluded", "indexed", "failed"] = "excluded"
     source_uri: str
     uri: str
     size: int = Field(ge=0)
@@ -121,6 +126,7 @@ class ResourceSearchHit(BaseModel):
 
 
 class ResourceSearchResult(BaseModel):
+    indexing_status: Literal["excluded", "indexed", "failed"] = "excluded"
     uri: str
     query: str
     mode: Literal["name", "text", "semantic"]

@@ -1,7 +1,7 @@
 """DbAdmin contributions for rebuildable memory projections."""
 
 from loguru import logger
-from sqlalchemy import select, text
+from sqlalchemy import select, text, update, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.dbadmin import (
@@ -14,6 +14,16 @@ from .goal_document_adapter import (
 )
 from .semantic_index import reconcile_embedding_index
 from .source_projection import rebuild_source_memories
+from .models import MemoryItem
+
+
+async def _reconcile_catalogue_editability(session: AsyncSession) -> None:
+    """Upgrade old generated fiches once; later explicit read-only choices survive."""
+    await session.execute(update(MemoryItem).where(
+        MemoryItem.managed_source_kind == "file_catalogue",
+        MemoryItem.node_kind.in_(("file", "directory")),
+        MemoryItem.metadata_["catalogue_editable"].as_boolean().is_not(True),
+    ).values(read_only=False, metadata_=MemoryItem.metadata_.op("||")(func.jsonb_build_object("catalogue_editable", True))))
 
 
 def needs_document_append_backfill(transitions: SchemaTransitionSet) -> bool:
@@ -81,6 +91,9 @@ async def _enqueue_goal_folders(_session: AsyncSession) -> None:
 
 
 def register_dbadmin(registry: DbAdminRegistry) -> None:
+    registry.register_reconciler(DbAdminReconciler(
+        key="app.memory.catalogue_editability", handler=_reconcile_catalogue_editability,
+    ))
     registry.register_reconciler(DbAdminReconciler(
         key="app.memory.goal_folders", handler=_enqueue_goal_folders,
         depends_on=("app.memory.goal_document_paths", "app.memory.document_structure"),

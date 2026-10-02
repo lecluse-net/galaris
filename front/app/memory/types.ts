@@ -1,6 +1,6 @@
 export type MemoryType = 'core' | 'working' | 'episodic' | 'semantic' | 'procedural' | 'social'
-export type MemoryNodeKind = 'memory' | 'document' | 'attachment' | 'folder'
-export type MemoryGraphEntityKind = 'memory' | 'document' | 'attachment' | 'folder' | 'topic' | 'contact' | 'conversation'
+export type MemoryNodeKind = 'memory' | 'document' | 'attachment' | 'folder' | 'file' | 'directory'
+export type MemoryGraphEntityKind = MemoryNodeKind | 'topic' | 'contact' | 'conversation'
 export type MemoryVisibility = 'private' | 'shared' | 'public'
 export type DocumentGlobalAccess = 0 | 1 | 2
 export type MemoryRetrievalMode = 'lexical' | 'hybrid'

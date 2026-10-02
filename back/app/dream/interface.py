@@ -3,6 +3,26 @@
 from collections.abc import Awaitable, Callable, Sequence
 from pathlib import Path
 from typing import Protocol
+from typing import Any
+
+
+class FileCataloguePort(Protocol):
+    async def candidates(self) -> list[dict[str, Any]]: ...
+    async def claimed(self, identity: str) -> None: ...
+    async def materialize(self, source: dict[str, Any], path: Path) -> dict[str, Any] | None: ...
+    async def apply(self, identity: str, version: str, description: str) -> bool: ...
+
+
+_file_catalogue: FileCataloguePort | None = None
+
+
+def register_file_catalogue(port: FileCataloguePort) -> None:
+    global _file_catalogue
+    _file_catalogue = port
+
+
+def file_catalogue_port() -> FileCataloguePort | None:
+    return _file_catalogue
 
 
 class DreamAudioChunk(Protocol):

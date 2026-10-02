@@ -6,19 +6,27 @@ import base64
 import json
 from pathlib import Path
 from tempfile import TemporaryDirectory
-from typing import Any, Literal, cast
+from typing import Any, Literal, cast, Protocol
 
 from fastapi.responses import JSONResponse
 
 from app.llm import llm_service, model_usages, run_structured, transcription_service
 from app.llm.facade import proxy_chat_completion
-from app.memory.facade import AttachmentAnalysisSource
 from core.database import get_db_session
 from core.i18n import default_language
 
 from .interface import describe_image, normalize_for_transcription_chunks
 
 AttachmentKind = Literal["text", "document", "image", "video"]
+
+
+class MediaAnalysisSource(Protocol):
+    @property
+    def name(self) -> str: ...
+    @property
+    def media_type(self) -> str: ...
+    @property
+    def owner_agent_id(self) -> int | None: ...
 _CHUNK_CHARS = 16_000
 _INSTRUCTION = (
     "Describe and summarize the attached source factually for future memory recall. "
@@ -28,7 +36,7 @@ _INSTRUCTION = (
 )
 
 
-async def extract_attachment_text(path: Path, source: AttachmentAnalysisSource) -> str | None:
+async def extract_attachment_text(path: Path, source: MediaAnalysisSource) -> str | None:
     from core.document import prepare_document
     from .attachment_extract import OFFICE_SUFFIXES, TEXT_TYPES
 
@@ -45,7 +53,7 @@ async def extract_attachment_text(path: Path, source: AttachmentAnalysisSource) 
         return document.text()
 
 
-async def summarize_text(text: str, source: AttachmentAnalysisSource) -> str:
+async def summarize_text(text: str, source: MediaAnalysisSource) -> str:
     if not text.strip():
         raise ValueError("Attachment contains no readable text")
     async with get_db_session():
@@ -78,7 +86,7 @@ async def summarize_text(text: str, source: AttachmentAnalysisSource) -> str:
     return await summarize(text)
 
 
-async def describe_document(path: Path, source: AttachmentAnalysisSource) -> str:
+async def describe_document(path: Path, source: MediaAnalysisSource) -> str:
     if path.stat().st_size > 16 * 1024 * 1024:
         raise ValueError("Native document analysis exceeds the 16 MiB limit")
     async with get_db_session():
@@ -106,7 +114,7 @@ async def describe_document(path: Path, source: AttachmentAnalysisSource) -> str
     return content
 
 
-async def analyze_attachment(kind: AttachmentKind, path: Path, source: AttachmentAnalysisSource) -> str | None:
+async def analyze_attachment(kind: AttachmentKind, path: Path, source: MediaAnalysisSource) -> str | None:
     if kind in {"text", "document"}:
         text = await extract_attachment_text(path, source)
         if kind == "text":

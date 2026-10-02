@@ -1,6 +1,8 @@
 """Governed, durable memory public surface."""
 
 from .temporal import MemoryTemporalAnchor
+from .catalogue_projection import project_catalogue_entry, link_catalogue_entries, catalogue_projection_write, detach_catalogue_parent_links
+from .source_access import register_source_access
 
 from .contracts import (
     ContactReferenceCleaner,
@@ -88,6 +90,8 @@ from .file_facade import (
 )
 
 __all__ = [
+    "project_catalogue_entry", "link_catalogue_entries", "catalogue_projection_write", "register_source_access",
+    "detach_catalogue_parent_links",
     "MemoryTemporalAnchor",
     "DocumentTag",
     "MemoryAccess",

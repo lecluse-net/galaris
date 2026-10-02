@@ -11,6 +11,7 @@ from core.database import get_db
 from .access import readable_item_clause
 from .models import MemoryItem, MemoryLink, MemorySource
 from .schemas import MemorySearchHit
+from .source_access import source_is_readable
 
 
 async def admit_search_hits(
@@ -23,6 +24,11 @@ async def admit_search_hits(
     exposed traversal endpoint and edge must still be visible at that snapshot.
     Revocations committed after this statement apply to subsequent admissions.
     """
+    if not hits:
+        return []
+    hits = [hit for hit in hits if await source_is_readable(
+        hit.item.id, hit.item.managed_source_kind, agent_id,
+    )]
     if not hits:
         return []
     db = get_db()

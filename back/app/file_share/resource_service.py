@@ -54,6 +54,7 @@ from .service_references import (
 from .transport import FileTransport, VersionedFileTransport, transfer, upload_file
 from .file_contracts import FileResourceTransport, FileEntry
 from .web_transport import PublicHttpsFileTransport
+from .resource_observation import observe_operation
 
 
 _LIST_LIMIT = 500
@@ -596,6 +597,7 @@ async def list_schemes(ctx: ResourceContext) -> list[ResourceSchemeDescription]:
     return [unique[scheme] for scheme in sorted(unique)]
 
 
+@observe_operation
 async def resource_info(
     ctx: ResourceContext,
     uri: object,
@@ -732,6 +734,7 @@ async def resource_info(
     )
 
 
+@observe_operation
 async def resource_list(
     ctx: ResourceContext,
     uri: object,
@@ -1031,6 +1034,7 @@ async def _materialize_resource(
     )
 
 
+@observe_operation
 async def resource_read(
     ctx: ResourceContext,
     uri: object,
@@ -1174,6 +1178,7 @@ async def resource_read(
     )
 
 
+@observe_operation
 async def resource_write_text(
     ctx: ResourceContext,
     uri: object,
@@ -1284,6 +1289,7 @@ async def resource_write_text(
     )
 
 
+@observe_operation
 async def resource_create(
     ctx: ResourceContext,
     path: object,
@@ -1456,6 +1462,7 @@ async def resource_create(
     )
 
 
+@observe_operation
 async def resource_write(
     ctx: ResourceContext,
     uri: object,
@@ -1592,6 +1599,7 @@ async def resource_write(
     )
 
 
+@observe_operation
 async def resource_append(
     ctx: ResourceContext,
     uri: object,
@@ -1789,6 +1797,7 @@ async def _materialize_complete_bytes(
         temporary.unlink(missing_ok=True)
 
 
+@observe_operation
 async def resource_edit(
     ctx: ResourceContext,
     uri: object,
@@ -1862,6 +1871,7 @@ async def resource_edit(
     )
 
 
+@observe_operation
 async def resource_copy(
     ctx: ResourceContext,
     source: object,
@@ -2111,6 +2121,7 @@ async def resource_copy(
     )
 
 
+@observe_operation
 async def resource_delete(ctx: ResourceContext, uri: object, *, expected_etag: str | None = None) -> ResourceMutation:
     reference = parse_resource_uri(uri)
     if reference.scheme == "console":
@@ -2175,6 +2186,7 @@ async def resource_delete(ctx: ResourceContext, uri: object, *, expected_etag: s
     )
 
 
+@observe_operation
 async def resource_move(
     ctx: ResourceContext,
     source: object,
@@ -2383,6 +2395,7 @@ async def _search_paginated(
     )
 
 
+@observe_operation
 async def resource_search(
     ctx: ResourceContext,
     uri: object,

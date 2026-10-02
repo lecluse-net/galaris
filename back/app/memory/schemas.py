@@ -17,7 +17,7 @@ from .tag_icons import MAX_ICON_URI_LENGTH, SVG_PREFIX, validate_icon
 MemoryType = Literal[
     "core", "working", "episodic", "semantic", "procedural", "social"
 ]
-MemoryNodeKind = Literal["memory", "document", "attachment", "folder"]
+MemoryNodeKind = Literal["memory", "document", "attachment", "folder", "file", "directory"]
 
 
 class DocumentPdfExport(BaseModel):
@@ -864,8 +864,8 @@ class MemoryGraphNode(BaseModel):
 
     id: UUID
     resource_media_type: str | None = None
-    node_kind: Literal["memory", "document", "attachment", "folder", "conversation"] = "memory"
-    entity_kind: Literal["memory", "document", "attachment", "folder", "topic", "contact", "conversation"]
+    node_kind: Literal["memory", "document", "attachment", "folder", "file", "directory", "conversation"] = "memory"
+    entity_kind: Literal["memory", "document", "attachment", "folder", "file", "directory", "topic", "contact", "conversation"]
     owner_agent_id: int | None
     title: str
     memory_type: MemoryType

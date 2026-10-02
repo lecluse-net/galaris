@@ -1,6 +1,7 @@
 <template>
   <q-page class="q-pa-md">
     <PageHeader help-key="memory" :help-text="$t('contextHelpPages.memory')" :icon="navigationIcon('memory')" :title="t('nav.memory')" />
+    <FileIndexPanel v-if="store.selectedAgentId !== null" :agent-id="store.selectedAgentId" :editable="canEdit" />
 
     <q-tabs
       v-model="activeTab"
@@ -463,7 +464,7 @@
                 </q-chip>
               </div>
               <q-banner
-                v-if="store.currentItem.source_managed"
+                v-if="store.currentItem.source_managed && store.currentItem.managed_source_kind !== 'file_catalogue'"
                 dense
                 rounded
                 class="bg-blue-1 text-primary q-mb-sm"
@@ -618,6 +619,7 @@ import { usePrivilegeStore } from '@/core/authorize/stores/privilegeStore'
 import { useAgentStore } from '@/app/agent/stores/agentStore'
 import { AgentSelect } from '@/app/agent'
 import MemoryGraph from '../components/MemoryGraph.vue'
+import FileIndexPanel from '../components/FileIndexPanel.vue'
 import MemoryFindingDialog from '../components/MemoryFindingDialog.vue'
 import MemoryLinkDialog from '../components/MemoryLinkDialog.vue'
 import MemoryTemporalFilter from '../components/MemoryTemporalFilter.vue'
@@ -655,7 +657,8 @@ const activeTab = ref<'list' | 'graph'>('list')
 const detailDialog = ref(false)
 const detailTab = ref<'memory' | 'history'>('memory')
 const canModifyCurrent = computed(() => canEdit.value && Boolean(store.currentItem?.access.can_write)
-  && !store.currentItem?.source_managed && store.currentItem?.payload.text != null)
+  && (!store.currentItem?.source_managed || store.currentItem?.managed_source_kind === 'file_catalogue')
+  && store.currentItem?.payload.text != null)
 const editorDialog = ref(false)
 const editorSaving = ref(false)
 const memoryKeywordOptions = computed(() => [...new Set(store.hits.flatMap(hit => hit.item.keywords))])

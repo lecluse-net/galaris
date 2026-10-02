@@ -15,6 +15,7 @@ from sqlalchemy.sql.selectable import Subquery
 from sqlalchemy.orm import aliased, InstrumentedAttribute
 
 from .contracts import MemoryAccess
+from .source_access import source_access_clause, source_is_readable
 from .models import MemoryItem, MemoryItemGrant, DocumentUserGrant, DocumentTeamGrant, DocumentAttachment, DocumentTag, DocumentTagAssignment
 
 
@@ -103,11 +104,11 @@ def _structural_access(direct: ColumnElement[bool], *, write: bool = False, user
 
 
 def readable_item_clause(agent_id: int) -> ColumnElement[bool]:
-    return _structural_access(_direct_readable_item_clause(agent_id))
+    return and_(_structural_access(_direct_readable_item_clause(agent_id)), source_access_clause())
 
 
 def readable_item_for_agents_clause(agent_ids: Collection[int] | None) -> ColumnElement[bool]:
-    return _structural_access(_direct_readable_item_for_agents_clause(agent_ids))
+    return and_(_structural_access(_direct_readable_item_for_agents_clause(agent_ids)), source_access_clause())
 
 
 async def managed_item_agent_ids(
@@ -150,7 +151,7 @@ async def managed_item_agent_ids(
         grant = grants.get(agent_id)
         if owned or item.visibility == "public" or item.global_access >= 1 or grant is not None or agent_id in team_access:
             readable.append(agent_id)
-        if not item.read_only and not item.source_managed and (
+        if not item.read_only and (not item.source_managed or item.managed_source_kind == "file_catalogue") and (
             owned or item.global_access == 2 or (grant is not None and grant.can_write) or team_access.get(agent_id, False)
         ):
             writable.append(agent_id)
@@ -162,6 +163,8 @@ async def effective_access(item: MemoryItem, agent_id: int | HumanActor) -> Memo
 
     if isinstance(agent_id, HumanActor):
         return await human_item_access(item, agent_id.user_id)
+    if not await source_is_readable(item.id, item.managed_source_kind, agent_id):
+        return MemoryAccess(can_read=False, can_write=False)
     if item.node_kind in {"attachment", "folder"}:
         readable = await get_db().scalar(select(MemoryItem.id).where(
             MemoryItem.id == item.id, readable_item_clause(agent_id),
