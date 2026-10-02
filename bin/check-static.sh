@@ -27,4 +27,5 @@ docker run --rm "$tag-browser" npm test
 docker run --rm "$tag-browser" npm audit --omit=dev --audit-level=high
 make tests-focus-gates
 make tests-validation-source
+make tests-e2e-orchestration
 make tests-update

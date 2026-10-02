@@ -454,9 +454,17 @@ validate: ## Validate a frozen local snapshot without a CI server or development
 	@bash bin/validate.sh
 .PHONY: validate
 
+validate-stability: ## Full validation with three E2E repetitions per browser
+	@VALIDATION_E2E_REPEATS=3 bash bin/validate.sh
+.PHONY: validate-stability
+
 tests-validation-source: ## Prove local validation preserves and fingerprints uncommitted changes
 	@bash bin/test-validation-source.sh
 .PHONY: tests-validation-source
+
+tests-e2e-orchestration: ## Prove browser stacks stay isolated and propagate failures and cancellation
+	@bash bin/test-e2e-orchestration.sh
+.PHONY: tests-e2e-orchestration
 
 quality: typecheck lint format-check tests-front-tooling tests-focus-gates tests-front-components tests-browser tests-executor tests-harness-manager architecture-check tests-providers tests-coverage tests-mutations tests-e2e ## Run the complete local quality gate
 	@$(MAKE) regression-check

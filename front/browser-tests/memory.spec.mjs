@@ -20,6 +20,40 @@ async function memoryItemFixtures(page) {
   return { item, versions }
 }
 
+for (const nodeKind of ['file', 'directory']) {
+  test(`catalogue ${nodeKind} title and content can be saved and reopened`, async ({ page }) => {
+    const { item } = await memoryItemFixtures(page)
+    Object.assign(item, { node_kind: nodeKind, source_managed: true,
+      managed_source_kind: 'file_catalogue', read_only: false, deletion_protected: true,
+      access: { can_read: true, can_write: true } })
+    const writes = []
+    await page.route('**/api/memory/items/doc-a?*', route => {
+      if (route.request().method() === 'PUT') {
+        const body = route.request().postDataJSON()
+        writes.push(body)
+        Object.assign(item, body, { revision: 4 })
+      }
+      return route.fulfill({ json: item })
+    })
+    await mount(page, 'app/memory/pages/index.vue', { privileges: ['MEMORY_EDIT'], route: '/memory?agent=7' })
+    await page.getByText('Current memory', { exact: true }).click()
+    const dialog = page.getByRole('dialog')
+    await dialog.getByLabel('Title', { exact: true }).fill('Personal catalogue title')
+    const editor = dialog.locator('.ck-editor__editable')
+    await expect(editor).toBeEditable()
+    await editor.fill('Personal catalogue content')
+    await dialog.getByRole('button', { name: 'Save', exact: true }).click()
+    await expect.poll(() => writes.length).toBe(1)
+    expect(writes[0]).toMatchObject({ title: 'Personal catalogue title',
+      payload: { text: '<p>Personal catalogue content</p>' } })
+    await dialog.getByRole('button', { name: 'Close', exact: true }).click()
+    await expect(dialog).toBeHidden()
+    await page.getByText('Personal catalogue title', { exact: true }).click()
+    await expect(dialog.getByLabel('Title', { exact: true })).toHaveValue('Personal catalogue title')
+    await expect(dialog.locator('.ck-editor__editable')).toHaveText('Personal catalogue content')
+  })
+}
+
 test('opening memory selects an agent and loads its results and filters only once', async ({ page }) => {
   const { item } = await memoryItemFixtures(page)
   const requests = { filters: 0, results: 0 }
@@ -482,7 +516,7 @@ test('memory list combines hybrid search, type and calendar, then opens a return
   await page.getByLabel('Type', { exact: true }).click()
   await page.getByRole('option', { name: 'Knowledge', exact: true }).click()
   await page.keyboard.press('Escape')
-  await page.locator('button[type=submit]').click()
+  await page.getByRole('button', { name: 'Apply', exact: true }).click()
   await expect.poll(() => requests.at(-1)).toMatchObject({ agent_id: 7, query: 'project evidence', memory_types: ['semantic'], hybrid: true })
   expect(requests.at(-1).temporal.target_at).toBeTruthy()
   await expect(page.getByText('Results are limited. Refine your search to explore other memories.')).toBeVisible()
@@ -559,7 +593,9 @@ test('a remote document revision merges untouched fields without losing the loca
   await mount(page, 'core/util/components/WorkingDocumentEditor.vue', { props: { documentId: 'doc-a', agentId: 7, editable: true }, privileges: ['MEMORY_EDIT'] })
   const title = page.getByLabel('Title', { exact: true })
   await expect(title).toHaveValue(document.title)
-  await page.clock.install()
+  const clockTime = new Date('2026-01-01T00:00:00Z')
+  await page.clock.install({ time: clockTime })
+  await page.clock.pauseAt(new Date(clockTime.getTime() + 1000))
   await title.fill('Local draft')
   current = { ...document, revision: 4, payload: { text: '# Remote content' } }
   await page.evaluate(() => window.testApp.emitSocket('memory.update', { data: { id: 'doc-a', node_kind: 'document', revision: 4 } }))

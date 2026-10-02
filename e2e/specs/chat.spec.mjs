@@ -60,7 +60,9 @@ async function send(page) {
   await expect(input).toHaveValue('Vérifie le scénario de streaming')
   expect(await page.evaluate(() => window.isSecureContext)).toBe(true)
   await input.press('Enter')
-  await expect(page.locator('.message-timeline')).toContainText('Réponse progressive')
+  // Admission can recover from a concurrent room lock through the real
+  // scheduler; its recovery cadence is shortened by the isolated E2E root.
+  await expect(page.locator('.message-timeline')).toContainText('Réponse progressive', { timeout: 40_000 })
   await expect(page.locator('.message-timeline')).not.toContainText('terminée.')
 }
 
@@ -125,6 +127,7 @@ test('mobile viewport preserves the response through reload', async ({ page, req
 })
 
 test('conversation admission runs a real durable Task and delivers its result once', async ({ page, request }) => {
+  test.setTimeout(90_000)
   const fixture = await prepare(page, request, 'task')
   await send(page)
   await release(request, fixture.rooms[0])

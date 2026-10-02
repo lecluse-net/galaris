@@ -1,8 +1,11 @@
 import { test, expect } from '@playwright/test'
+import { collectPageErrors } from '../page-errors.mjs'
 
 test('a late document library response cannot cancel navigation to another lazy page', async ({ page, request }) => {
+  const pageErrors = collectPageErrors(page)
   const fixture = await (await request.post('/api/__test/seed')).json()
   const refresh = page.waitForResponse(response => response.url().endsWith('/api/auth/refresh'))
+  await pageErrors.settle()
   await page.goto('/user/login')
   await refresh
   await page.locator('input[type=email]').fill(fixture.email)
@@ -26,6 +29,7 @@ test('a late document library response cannot cancel navigation to another lazy 
   await page.route('**/api/memory/documents/library', async route => { await library; await route.continue() })
   const libraryRequest = page.waitForRequest('**/api/memory/documents/library')
   try {
+    await pageErrors.settle()
     await page.goto('/memory/documents')
     await libraryRequest
     await expect(page.getByRole('heading', { name: 'Documents', exact: true })).toBeVisible()
@@ -39,7 +43,7 @@ test('a late document library response cannot cancel navigation to another lazy 
     await expect(page.getByText(title, { exact: true }).first()).toBeVisible()
     releaseNavigation()
     await expect(page).toHaveURL(/\/memory$/)
-    await expect(page.getByRole('tab', { name: 'Recherche', exact: true })).toBeVisible()
+    await expect(page.getByRole('tab', { name: 'Liste', exact: true })).toBeVisible()
   } finally { releaseLibrary(); releaseNavigation() }
 })
 
@@ -55,16 +59,18 @@ for (const width of [390, 1440]) {
       await page.setViewportSize({ width, height: 900 })
       const seeded = await request.post('/api/__test/seed')
       expect(seeded.ok()).toBeTruthy()
+      const pageErrors = collectPageErrors(page)
       const fixture = await seeded.json()
       const refresh = page.waitForResponse(response => response.url().endsWith('/api/auth/refresh'))
+      await pageErrors.settle()
       await page.goto('/user/login')
       await refresh
       await page.locator('input[type=email]').fill(fixture.email)
       await page.locator('input[type=password]').fill(fixture.password)
       await page.locator('button[type=submit]').click()
       await expect(page.locator('.user-menu-wrapper').first()).toBeVisible()
+      await expect(page).toHaveURL(/\/$/)
       const failures = []
-      page.on('pageerror', error => failures.push(error.message))
       page.on('response', response => {
         if (new URL(response.url()).pathname.startsWith('/api/') && response.status() >= 400) {
           failures.push(`${response.status()} ${response.request().method()} ${response.url()}`)
@@ -74,9 +80,8 @@ for (const width of [390, 1440]) {
       // WebKit report the discarded home page's requests as page errors.
       if (width < 1024) {
         await expect(page.locator('.mobile-taskbar')).toBeVisible()
-        if (!await page.locator('.q-drawer__backdrop').isVisible()) {
-          await page.locator('.mobile-taskbar').getByRole('button', { name: 'Déployer la sidebar' }).click()
-        }
+        await expect(page.locator('.q-drawer__backdrop')).toBeHidden()
+        await page.locator('.mobile-taskbar').getByRole('button', { name: 'Déployer la sidebar' }).click()
       }
       await page.locator(`a[href="${scenario.path}"]`).first().click()
       await expect(page).toHaveURL(new RegExp(`${scenario.path}$`))
@@ -104,7 +109,7 @@ for (const width of [390, 1440]) {
       await filter.click()
       await expect(page.getByRole('option', { name: label, exact: true })).toBeVisible()
       await page.keyboard.press('Escape')
-      expect(failures).toEqual([])
+      expect([...failures, ...pageErrors()]).toEqual([])
     })
   }
 }

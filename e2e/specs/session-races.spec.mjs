@@ -6,19 +6,31 @@ async function signIn(page, fixture) {
   await page.locator('input[type=password]').fill(fixture.password)
   await page.locator('button[type=submit]').click()
   await expect(page.locator('.user-menu-wrapper').first()).toBeVisible()
+  await expect(page).toHaveURL(/\/(?:welcome)?$/)
 }
 
 function observeSubscriptions(page) {
   let events = []
   let upgraded = false
+  const observePacket = frame => {
+    if (!frame.startsWith('42')) return
+    const [name, data] = JSON.parse(frame.slice(2))
+    if (name === 'events.subscribe') events = data.events
+  }
+  // Initial subscriptions can be sent before Engine.IO upgrades to WebSocket.
+  // Observe both transports so an unchanged global subscription is retained.
+  page.on('request', request => {
+    const url = new URL(request.url())
+    if (url.pathname !== '/socket.io/' || url.searchParams.get('transport') !== 'polling'
+      || request.method() !== 'POST') return
+    for (const packet of (request.postData() ?? '').split('\x1e')) observePacket(packet)
+  })
   page.on('websocket', socket => {
     if (!socket.url().includes('/socket.io/')) return
     socket.on('framesent', ({ payload }) => {
       const frame = String(payload)
       if (frame === '5') upgraded = true
-      if (!frame.startsWith('42')) return
-      const [name, data] = JSON.parse(frame.slice(2))
-      if (name === 'events.subscribe') events = data.events
+      observePacket(frame)
     })
   })
   const current = () => events

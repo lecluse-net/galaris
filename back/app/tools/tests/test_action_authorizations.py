@@ -481,7 +481,8 @@ def test_every_declared_native_function_has_explicit_approval_metadata():
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("changed", [False, True])
-async def test_file_copy_approval_is_bound_to_the_observed_source_bytes(action, tmp_path, monkeypatch, changed):
+@pytest.mark.parametrize("remember", [False, True])
+async def test_file_copy_approval_is_bound_to_the_observed_source_bytes(action, tmp_path, monkeypatch, changed, remember):
     from fastmcp import Client
     from app.file_share import resource_service
     from app.file_share.tests.local_file_transport import TemporaryFileTransport
@@ -511,7 +512,7 @@ async def test_file_copy_approval_is_bound_to_the_observed_source_bytes(action, 
             source.write_text("changed source")
         async with get_db_session() as db:
             row = await db.get(ActionAuthorization, identifier)
-            assert await answer_action(identifier, user_id=row.approver_user_id, approved=True)
+            assert await answer_action(identifier, user_id=row.approver_user_id, approved=True, remember=remember)
         meta["galaris.authorization/v1"] = {"continuation": control["continuation"]}
         result = await client.call_tool("file_copy", arguments, meta=meta, raise_on_error=False)
         destination = transport.resolve_path("destination.txt")

@@ -1,10 +1,12 @@
 import { randomUUID } from 'node:crypto'
 import { test, expect } from '@playwright/test'
+import { collectPageErrors } from '../page-errors.mjs'
 
 for (const width of [390, 1440]) {
   test(`human approval protects the exact action and survives reopening at ${width}px`, async ({ page, request }) => {
     test.setTimeout(90_000)
     await page.setViewportSize({ width, height: 900 })
+    const errors = collectPageErrors(page)
     const fixture = await (await request.post('/api/__test/seed')).json()
     const refresh = page.waitForResponse(response => response.url().endsWith('/api/auth/refresh'))
     await page.goto('/user/login')
@@ -30,8 +32,6 @@ for (const width of [390, 1440]) {
       expect(response.ok(), await response.text()).toBeTruthy()
       return response.json()
     }
-    const errors = []
-    page.on('pageerror', error => errors.push(error.message))
     for (const allowed of [false, true]) {
       const operation = randomUUID()
       const title = `Synthetic ${allowed ? 'approved' : 'denied'} ${fixture.agent_id}`
@@ -40,11 +40,15 @@ for (const width of [390, 1440]) {
       expect(control.disposition).toBe('authorization_required')
       expect((await read()).job_title).toBe(original.job_title)
       const path = `/connection/permissions?request=${control.request_id}`
+      await errors.settle()
       await page.goto(path)
       await expect(page.getByRole('dialog')).toContainText(title)
       await page.keyboard.press('Escape')
       await expect(page.getByRole('dialog')).toHaveCount(0)
+      await errors.settle()
       await page.goto('/agent')
+      await expect(page.getByText(`${original.first_name} ${original.last_name}`, { exact: true })).toBeVisible()
+      await errors.settle()
       await page.goto(path)
       const dialog = page.getByRole('dialog')
       const answer = page.waitForResponse(response => response.url().endsWith(`/action-authorizations/${control.request_id}/answer`))
@@ -62,6 +66,7 @@ for (const width of [390, 1440]) {
     expect((await setMode('disabled')).ok()).toBeTruthy()
     expect((await invoke(randomUUID(), 'Blocked synthetic mutation')).is_error).toBe(true)
     expect((await read()).job_title).toBe(`Synthetic approved ${fixture.agent_id}`)
+    await errors.settle()
     await page.goto(`/agent?agent_id=${fixture.agent_id}`)
     const toggle = page.getByRole('switch', { name: /Mode YOLO/ })
     await expect(toggle).toHaveAttribute('aria-checked', 'false')
@@ -85,6 +90,6 @@ for (const width of [390, 1440]) {
     const waiting = await invoke(randomUUID(), 'Human approval restored')
     expect(waiting.meta['galaris.authorization/v1'].disposition).toBe('authorization_required')
     expect((await read()).job_title).toBe('YOLO approved synthetic mutation')
-    expect(errors).toEqual([])
+    expect(errors()).toEqual([])
   })
 }

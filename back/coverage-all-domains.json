@@ -524,6 +524,13 @@
     "line_min": 87,
     "branch_min": 76
   },
+  "core/document/": {
+    "prefixes": [
+      "core/document/"
+    ],
+    "line_min": 64,
+    "branch_min": 39
+  },
   "core/failure_journal.py": {
     "prefixes": [
       "core/failure_journal.py"

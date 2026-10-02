@@ -112,7 +112,21 @@ générale. La commande humaine conserve donc l’incertitude tant qu’aucune p
 `make tests-e2e ARGS='--repeat-each=3'` exécute les mêmes scénarios sur Chromium, Firefox et
 WebKit, sans relance automatique des échecs. Le test PWA active le vrai service worker et
 remplace le shell dans un volume propre à l’exécution ; les autres scénarios bloquent les
-workers pour isoler leur contrat. Traces et journaux restent sous `artifacts/e2e/<exécution>/`.
+workers pour isoler leur contrat. Chaque navigateur possède sa stack Compose, sa base et
+son volume PWA ; les trois stacks tournent en parallèle, avec un seul worker chacune.
+`--project=chromium` permet de cibler une seule stack. Les journaux de groupe restent sous
+`artifacts/e2e/galaris-e2e-group-<exécution>/` et les traces dans les répertoires des stacks.
+La composition E2E accélère à une seconde le poll de récupération conversationnel ; les
+verrous, baux, réveils et traitements restent réels. La cadence de production reste inchangée.
+Les composants utilisent quatre workers avec un contexte navigateur et des fixtures HTTP
+propres à chaque test. `make validate` conserve tous ses contrôles et exécute chaque parcours
+une fois sur chacun des trois navigateurs. `make validate-stability` répète les parcours trois fois
+par navigateur pour rechercher les instabilités. Les deux commandes ont une limite de 45 minutes ;
+un dépassement arrête les tests, nettoie leurs environnements et signale un résultat incomplet.
+`VALIDATION_TIMEOUT_SECONDS` permet d'adapter explicitement cette limite.
+La validation lance backend, composants, E2E et mutations en parallèle après les contrôles statiques.
+Les mutations travaillent sur leurs propres copies jetables des sources. Il attend
+toutes les suites, conserve leur code d'échec et refuse toujours un instantané modifié.
 `GALARIS_E2E_DEBUG=pw:browser make tests-e2e` ajoute le diagnostic des processus navigateur.
 
 Sous Linux, WebKit utilise le port GTK officiel via Xvfb. Le port WPE headless du build 2336

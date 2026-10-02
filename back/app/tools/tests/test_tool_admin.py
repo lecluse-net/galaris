@@ -323,7 +323,7 @@ async def synthetic_mcp(request, monkeypatch):
     path = "/sse" if transport == "sse" else "/mcp"
     url = f"http://127.0.0.1:{sock.getsockname()[1]}{path}"
     application = uvicorn.Server(uvicorn.Config(server.http_app(transport=transport, path=path),
-        log_level="critical", lifespan="on", timeout_graceful_shutdown=1))
+        log_level="error", lifespan="on", timeout_graceful_shutdown=1))
     task = asyncio.create_task(application.serve(sockets=[sock]))
     try:
         async with asyncio.timeout(10):
@@ -336,6 +336,19 @@ async def synthetic_mcp(request, monkeypatch):
         application.should_exit = True
         await asyncio.wait_for(task, 10)
         sock.close()
+
+
+@pytest.mark.asyncio
+async def test_mcp_server_recovers_after_previous_server_exit(previous_server_exit, synthetic_mcp):
+    url, _calls = synthetic_mcp
+    async with Client(url) as client:
+        assert 'lookup' in {tool.name for tool in await client.list_tools()}
+
+
+@pytest.fixture
+def previous_server_exit(monkeypatch):
+    from sse_starlette.sse import AppStatus
+    monkeypatch.setattr(AppStatus, 'should_exit', True)
 
 
 @pytest.mark.asyncio
@@ -399,7 +412,7 @@ async def test_diagnostic_bounds_large_remote_catalogue(delegated, db, synthetic
     }))
     diagnostic = result(await mcp.tool_admin_mcp_test(ctx, candidate_reference=prepared["reference"],
                         limit=20))["diagnostic"]
-    assert diagnostic["success"] and diagnostic["truncated"]
+    assert diagnostic["success"] and diagnostic["truncated"], diagnostic
     assert diagnostic["total"] == 500 and len(diagnostic["tools"]) == 20
     assert calls == []
     large = next(item for item in diagnostic["tools"] if item["name"] == "synthetic_000")

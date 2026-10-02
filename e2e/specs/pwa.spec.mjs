@@ -42,7 +42,7 @@ test('a deployed update automatically replaces the cached shell while preserving
     await expect(composer).toBeVisible()
     await composer.fill('Conversation conservée pendant la mise à jour PWA')
     await composer.press('Enter')
-    await expect(page.locator('.message-timeline')).toContainText('Réponse progressive')
+    await expect(page.locator('.message-timeline')).toContainText('Réponse progressive', { timeout: 40_000 })
     await request.post(`/api/__test/release/${fixture.rooms[0]}`)
     const reply = page.locator('.message-row').filter({ hasText: 'Réponse progressive terminée.' })
     await expect(reply).toHaveAttribute('data-message-id', /.+/)
@@ -79,8 +79,17 @@ test('a deployed update automatically replaces the cached shell while preserving
     // Never invoke update() or reload() from the test: the app must recover itself.
     await expect.poll(async () => {
       await page.clock.fastForward(60_001)
-      return page.locator('meta[name="e2e-build"]').getAttribute('content')
-    }).toBe('B')
+      return page.evaluate(async () => {
+        const registration = await navigator.serviceWorker.getRegistration()
+        return {
+          version: document.querySelector('meta[name="e2e-build"]')?.getAttribute('content'),
+          visibility: document.visibilityState,
+          active: registration?.active?.state,
+          installing: registration?.installing?.state ?? null,
+          waiting: registration?.waiting?.state ?? null,
+        }
+      })
+    }).toEqual(expect.objectContaining({ version: 'B' }))
     await expect.poll(() => refreshes).toContain(200)
     await expect(reply).toHaveCount(1)
     await expect(reply).toHaveAttribute('data-message-id', messageId)

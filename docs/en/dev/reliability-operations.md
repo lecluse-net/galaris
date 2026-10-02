@@ -103,7 +103,20 @@ until evidence is available.
 `make tests-e2e ARGS='--repeat-each=3'` runs the same scenarios on Chromium, Firefox and
 WebKit without automatic retries. The PWA test enables the real service worker and replaces
 the shell in a volume dedicated to that run; other scenarios block workers to isolate their
-contract. Traces and logs remain under `artifacts/e2e/<run>/`.
+contract. Each browser owns its Compose stack, database and PWA volume; the three stacks
+run in parallel with one worker each. `--project=chromium` selects a single stack.
+Group logs remain under `artifacts/e2e/galaris-e2e-group-<run>/`, with traces in the individual
+stack directories. The E2E composition shortens conversation recovery polling to one second;
+locks, leases, wakeups and execution remain real. Production polling is unchanged.
+Components use four workers with browser contexts and HTTP fixtures isolated per test.
+`make validate` retains every gate and runs each journey once on each of the three browsers.
+`make validate-stability` repeats journeys three times per browser to detect instability.
+Both commands have a 45-minute deadline: exceeding it stops tests, cleans up their environments
+and reports an incomplete result. Set `VALIDATION_TIMEOUT_SECONDS` to explicitly adjust it.
+Validation runs backend, components
+E2E and mutations concurrently after static checks. Mutations use their own disposable
+source copies. It waits for every suite, propagates failures and
+still rejects a changed snapshot.
 `GALARIS_E2E_DEBUG=pw:browser make tests-e2e` enables browser process diagnostics.
 
 On Linux, WebKit uses its official GTK port through Xvfb. Headless WPE build 2336

@@ -1,6 +1,7 @@
 """Isolated browser-test composition root. Never imported by production.
 
-The real API, authorization, Socket.IO, journal and schedulers run unchanged.
+The real API, authorization, Socket.IO, journal and schedulers run. Only the
+conversation recovery poll is accelerated in this isolated composition root.
 The conversation controller is scripted at its public port; provider adapters
 are covered separately. A barrier, not a sleep, controls stream completion.
 """
@@ -87,7 +88,7 @@ class ScriptedController:
             async with get_db_session():
                 await turn.admit_background_task(
                     "Produire le résultat de la tâche de test",
-                    forced_route="EXEC", forced_effort="standard", auto_approve=True,
+                    forced_route="EXEC", forced_effort="standard",
                 )
         if modes.get(turn.room_id) == "error":
             raise ConversationExecutionError(
@@ -141,6 +142,9 @@ async def lifespan(_app: FastAPI):
 
     with ExitStack() as patches:
         from tests.e2e_agent_admin import portrait_provider
+        # Exercise the real lock/lease recovery without spending 30 seconds on
+        # each room-lock collision. Production keeps its own recovery cadence.
+        patches.enter_context(patch("app.conversation.scheduler._POLL_SECONDS", 1.0))
         patches.enter_context(patch("app.image.generate_image_bytes", portrait_provider))
         patches.enter_context(patch("bridge.openai.codex_quota._USAGE_URL",
                                     "http://127.0.0.1:8000/api/__test/chatgpt/usage"))
@@ -316,12 +320,17 @@ async def seed(mode: str = "normal", mfa: bool = False):
                 "email_address": f"agent-{suffix}@example.org",
                 "password": encrypt_value("synthetic-mail-secret"),
                 "imap_host": "mail.example.test", "smtp_host": "mail.example.test",
-                "approval_required": "true", "approver_user_id": str(owner.id),
+                "approver_user_id": str(owner.id),
             }
             db.add_all([ConnectionParam(connection_id=connection.id, param_name=key, param_value=value)
                         for key, value in params.items()])
             await db.commit()
-            receipt = await send_outgoing(await resolve_connection(connection.id, require_active=True), OutgoingMail(
+            # Exercise a historical pending delivery after the common policy
+            # migration. New connection configuration no longer owns this flag.
+            historical_config = (await resolve_connection(connection.id, require_active=True)).model_copy(
+                update={"approval_required": True},
+            )
+            receipt = await send_outgoing(historical_config, OutgoingMail(
                 to=("recipient@example.org",), cc=(), bcc=("archive@example.org",),
                 subject="Compte rendu synthétique", body="Voici le compte rendu à valider.", html_body=None,
                 attachments=(OutgoingAttachment("rapport.txt", "text/plain", b"Synthetic report"),),

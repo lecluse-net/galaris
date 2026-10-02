@@ -1,10 +1,17 @@
 import { test, expect } from '@playwright/test'
+import { collectPageErrors } from '../page-errors.mjs'
 
 test('provider credits open, refresh, recover and reopen in the assembled application', async ({ page, request }, testInfo) => {
   const seeded = await request.post('/api/__test/seed')
   expect(seeded.ok()).toBeTruthy()
+  // Provider changes abort quota reads; the assertions below await each visible
+  // result. Keep observing their errors without waiting on an abandoned read.
+  const pageErrors = collectPageErrors(page, {
+    waitForRequest: outgoing => !new URL(outgoing.url()).pathname.endsWith('/quota'),
+  })
   const fixture = await seeded.json()
   const refresh = page.waitForResponse(response => response.url().endsWith('/api/auth/refresh'))
+  await pageErrors.settle()
   await page.goto('/user/login')
   await refresh
   await page.locator('input[type=email]').fill(fixture.email)
@@ -24,7 +31,6 @@ test('provider credits open, refresh, recover and reopen in the assembled applic
   })
   expect(configured.ok(), await configured.text()).toBeTruthy()
   const failures = []
-  page.on('pageerror', error => failures.push(error.message))
   page.on('response', response => {
     if (new URL(response.url()).pathname.startsWith('/api/') && response.status() >= 400
         && !response.url().endsWith('/quota')) failures.push(`${response.status()} ${response.url()}`)
@@ -32,6 +38,7 @@ test('provider credits open, refresh, recover and reopen in the assembled applic
   for (const width of [1440, 390]) {
     await page.setViewportSize({ width, height: 1100 })
     expect((await request.put('/api/__test/provider-usage?used=2500&status=200')).ok()).toBeTruthy()
+    await pageErrors.settle()
     await page.goto('/llm?tab=providers')
     if (width < 1024) {
       await page.addLocatorHandler(page.locator('.q-drawer__backdrop'), async backdrop => {
@@ -68,6 +75,7 @@ test('provider credits open, refresh, recover and reopen in the assembled applic
   for (const width of [1440, 390]) {
     await page.setViewportSize({ width, height: 1100 })
     expect((await request.put('/api/__test/provider-usage?status=200')).ok()).toBeTruthy()
+    await pageErrors.settle()
     await page.goto('/llm?tab=providers')
     if (width < 1024) {
       await page.addLocatorHandler(page.locator('.q-drawer__backdrop'), async backdrop => {
@@ -144,6 +152,7 @@ test('provider credits open, refresh, recover and reopen in the assembled applic
   for (const width of [1440, 390]) {
     await page.setViewportSize({ width, height: 1100 })
     expect((await request.put('/api/__test/provider-usage?used=2500')).ok()).toBeTruthy()
+    await pageErrors.settle()
     await page.goto('/llm?tab=providers')
     if (width < 1024) {
       await page.addLocatorHandler(page.locator('.q-drawer__backdrop'), async backdrop => {
@@ -168,15 +177,19 @@ test('provider credits open, refresh, recover and reopen in the assembled applic
     await expect(panel.getByText(/^Restants :/)).toHaveCount(0)
     await panel.screenshot({ path: testInfo.outputPath(`fireworks-config-${width}.png`) })
   }
-  expect(failures).toEqual([])
+  expect([...failures, ...pageErrors()]).toEqual([])
 })
 
 test('ChatGPT additional credits remain distinct from subscription windows', async ({ page, request }, testInfo) => {
   await page.clock.install()
   const seeded = await request.post('/api/__test/seed')
   expect(seeded.ok()).toBeTruthy()
+  const pageErrors = collectPageErrors(page, {
+    waitForRequest: outgoing => !new URL(outgoing.url()).pathname.endsWith('/quota'),
+  })
   const fixture = await seeded.json()
   const refresh = page.waitForResponse(response => response.url().endsWith('/api/auth/refresh'))
+  await pageErrors.settle()
   await page.goto('/user/login')
   await refresh
   await page.locator('input[type=email]').fill(fixture.email)
@@ -194,7 +207,6 @@ test('ChatGPT additional credits remain distinct from subscription windows', asy
   expect(configured.ok(), await configured.text()).toBeTruthy()
   expect((await request.post(`/api/__test/codex-credits/${(await configured.json()).id}`)).ok()).toBeTruthy()
   const failures = []
-  page.on('pageerror', error => failures.push(error.message))
   page.on('response', response => {
     if (new URL(response.url()).pathname.startsWith('/api/') && response.status() >= 400
         && !response.url().endsWith('/quota')) failures.push(`${response.status()} ${response.url()}`)
@@ -202,6 +214,7 @@ test('ChatGPT additional credits remain distinct from subscription windows', asy
   for (const width of [1440, 390]) {
     await page.setViewportSize({ width, height: 1100 })
     expect((await request.put('/api/__test/provider-usage?codex_credits=125.5')).ok()).toBeTruthy()
+    await pageErrors.settle()
     await page.goto('/llm?tab=providers')
     if (width < 1024) {
       await page.addLocatorHandler(page.locator('.q-drawer__backdrop'), async backdrop => {
@@ -253,5 +266,5 @@ test('ChatGPT additional credits remain distinct from subscription windows', asy
     expect(quotaReads).toBe(2)
     page.off('request', countQuotaReads)
   }
-  expect(failures).toEqual([])
+  expect([...failures, ...pageErrors()]).toEqual([])
 })

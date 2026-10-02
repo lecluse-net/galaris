@@ -66,6 +66,8 @@ class ModelService(BaseHTTPRequestHandler):
                 self.send({"recorded": True})
             else:
                 gate.setdefault("requests", []).append(body)
+                # The runtime can observe the request before its HTTP response arrives.
+                time.sleep(gate.get("authorization_response_delay", 0))
                 self.send({"status": gate.get("decision", "pending"), "claimed": gate.get("decision") == "executing",
                     "request_id": "00000000-0000-0000-0000-000000000001"})
             return
@@ -457,7 +459,7 @@ def main() -> None:
             for allowed in (False, True):
                 gate.clear()
                 target = config.workspace / f"approval-{allowed}.txt"
-                gate.update(path=str(target), decision="pending", requests=[], receipts=[])
+                gate.update(path=str(target), decision="pending", requests=[], receipts=[], authorization_response_delay=0.1)
                 headers = {"Content-Type": "application/json", "Authorization": "Bearer qualification-token",
                     "X-Galaris-Run-Context": f"synthetic-context-{allowed}"}
                 request = urllib.request.Request("http://127.0.0.1:8080/v1/galaris/runs", headers=headers,
@@ -469,7 +471,12 @@ def main() -> None:
                     time.sleep(0.05)
                 assert gate["requests"], "The actual DeepSeek SDK did not intercept its write"
                 assert not target.exists(), "The DeepSeek effect happened before agreement"
-                assert adapter_server.runs.get(identifier)["status"] == "waiting_for_authorization"
+                status = adapter_server.runs.get(identifier)
+                while status["status"] == "running" and time.monotonic() < deadline:
+                    time.sleep(0.05)
+                    status = adapter_server.runs.get(identifier)
+                assert status["status"] == "waiting_for_authorization", status
+                assert not target.exists(), "The DeepSeek effect happened while awaiting agreement"
                 gate["decision"] = "executing" if allowed else "denied"
                 status = adapter_server.runs.get(identifier)
                 while time.monotonic() < deadline:
@@ -484,6 +491,11 @@ def main() -> None:
                 print(json.dumps({"runtime": runtime, "authorization": "allow" if allowed else "deny", "effect": target.exists()}))
                 gate.clear()
         finally:
+            # An assertion must not leave SDK workers waiting for a human decision.
+            gate["decision"] = "denied"
+            for identifier in list(adapter_server.runs.actors):
+                if adapter_server.runs.get(identifier)["status"] in {"running", "waiting_for_authorization"}:
+                    adapter_server.runs.cancel(identifier)
             adapter_server.shutdown()
             adapter_server.server_close()
             adapter_thread.join(timeout=5)

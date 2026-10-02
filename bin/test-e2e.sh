@@ -1,6 +1,46 @@
 #!/usr/bin/env bash
 set -euo pipefail
 cd "$(dirname "$0")/.."
+# Keep mutable provider settings, PWA volumes and database rows separate across
+# browsers. Tests remain sequential inside each browser's own Compose project.
+single_project=false
+for argument in "$@"; do
+  case "$argument" in
+    --project|--project=*|--list|--help|--version) single_project=true ;;
+  esac
+done
+if ! "$single_project"; then
+  group_dir="$PWD/artifacts/e2e/galaris-e2e-group-$$"
+  mkdir -p "$group_dir"
+  children=()
+  cleanup_group() {
+    for child in "${children[@]}"; do
+      kill -TERM -- "-$child" 2>/dev/null || true
+    done
+    for child in "${children[@]}"; do wait "$child" 2>/dev/null || true; done
+  }
+  trap cleanup_group EXIT
+  trap 'exit 130' INT
+  trap 'exit 143' TERM
+  browsers=(chromium firefox webkit)
+  for browser in "${browsers[@]}"; do
+    printf 'Running %s in an isolated stack (log: %s/%s.log)\n' "$browser" "$group_dir" "$browser"
+    setsid bash bin/test-e2e.sh "--project=$browser" "$@" > "$group_dir/$browser.log" 2>&1 &
+    children+=("$!")
+  done
+  failed=0
+  for index in "${!children[@]}"; do
+    if wait "${children[$index]}"; then
+      printf 'PASS %s\n' "${browsers[$index]}"
+    else
+      printf 'FAIL %s (see %s/%s.log)\n' "${browsers[$index]}" "$group_dir" "${browsers[$index]}"
+      failed=1
+    fi
+    unset 'children[index]'
+  done
+  children=()
+  exit "$failed"
+fi
 # A unique project also permits concurrent CI jobs without stopping each other.
 project="galaris-e2e-${GITHUB_RUN_ID:-local}-$$"
 export GALARIS_E2E_ARTIFACT_DIR="$(pwd)/artifacts/e2e/$project"

@@ -646,9 +646,11 @@ async def test_search_reports_total_and_pages_without_loading_every_item(
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("query", ["Release", "elease"])
 async def test_search_filters_documents_before_counting_and_pagination(
     agents: tuple[Agent, Agent],
     memory_storage: Path,
+    query: str,
 ) -> None:
     del memory_storage
     owner, _peer = agents
@@ -684,7 +686,7 @@ async def test_search_filters_documents_before_counting_and_pagination(
     page = await service.search_items(
         MemorySearchRequest(
             agent_id=owner.id,
-            query="Release",
+            query=query,
             node_kinds=["document"],
             limit=50,
         )

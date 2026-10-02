@@ -1,10 +1,14 @@
 import { test, expect } from '@playwright/test'
+import { collectPageErrors } from '../page-errors.mjs'
+import { selectOption } from '../select-option.mjs'
 
 for (const mobile of [false, true]) {
   test(`ToolAdmin prepares a secret candidate and administers a Tool (${mobile ? 'mobile' : 'desktop'})`, async ({ page, request }) => {
     if (mobile) await page.setViewportSize({ width: 390, height: 844 })
+    const pageErrors = collectPageErrors(page)
     const fixture = await (await request.post('/api/__test/seed')).json()
     const refresh = page.waitForResponse(response => response.url().endsWith('/api/auth/refresh'))
+    await pageErrors.settle()
     await page.goto('/user/login')
     await refresh
     await page.locator('input[type=email]').fill(fixture.email)
@@ -15,7 +19,6 @@ for (const mobile of [false, true]) {
     await expect(page.locator('input[type=password]')).toHaveCount(0)
     const headers = { Authorization: `Bearer ${session.access_token}` }
     const errors = []
-    page.on('pageerror', error => errors.push(error.message))
     page.on('response', response => {
       const path = new URL(response.url()).pathname
       if (path.startsWith('/api/') && response.status() >= 400) errors.push(`${response.status()} ${path}`)
@@ -29,6 +32,14 @@ for (const mobile of [false, true]) {
     })).json()
     expect(grant.active).toBe(false)
     expect((await request.patch(`/api/connections/${grant.id}`, { headers, data: { active: true } })).ok()).toBeTruthy()
+    // This administration scenario starts with explicit human authorization.
+    const definitions = await (await request.get(`/api/connections/${grant.id}/functions`, { headers })).json()
+    for (const definition of definitions.functions) {
+      if (definition.name.startsWith('tool_admin_')) {
+        const enabled = await request.put(`/api/connections/${grant.id}/functions/${definition.name}`, { headers, data: { state: 'enabled' } })
+        expect(enabled.ok(), await enabled.text()).toBeTruthy()
+      }
+    }
     const invoke = async (name, data = {}) => {
       const response = await request.post(`/api/__test/tool-admin/${fixture.agent_id}/${name}`, { data })
       expect(response.ok(), await response.text()).toBeTruthy()
@@ -40,8 +51,9 @@ for (const mobile of [false, true]) {
       return response
     }
     const code = `candidate_${fixture.agent_id}`
+    await pageErrors.settle()
     await page.goto('/tools')
-    if (mobile) await page.locator('.q-drawer__backdrop').click({ position: { x: 380, y: 150 } })
+    if (mobile) await page.addLocatorHandler(page.locator('.q-drawer__backdrop'), backdrop => backdrop.click({ position: { x: 380, y: 150 } }), { times: 1 })
     await page.getByRole('button', { name: 'Nouvel outil', exact: true }).click()
     const editor = page.getByRole('dialog').first()
     await editor.getByLabel('Nom technique *', { exact: true }).fill(code)
@@ -60,9 +72,10 @@ for (const mobile of [false, true]) {
     const diagnostic = page.getByRole('dialog').last()
     const secret = `synthetic-browser-secret-${fixture.agent_id}`
     await diagnostic.getByLabel('token *', { exact: true }).fill(secret)
-    await diagnostic.getByRole('combobox', { name: 'Agent destinataire du candidat MCP', exact: true }).press('ArrowDown')
     const agent = await (await request.get(`/api/agents/${fixture.agent_id}`, { headers })).json()
-    await page.getByRole('option', { name: `${agent.first_name} ${agent.last_name}`, exact: true }).click()
+    const choices = await (await request.get('/api/agents/selection?scope=management', { headers })).json()
+    expect(choices.some(choice => choice.id === fixture.agent_id)).toBe(true)
+    await selectOption(page, diagnostic.getByRole('combobox', { name: 'Agent destinataire du candidat MCP', exact: true }), `${agent.first_name} ${agent.last_name}`)
     await diagnostic.getByRole('button', { name: 'Préparer le candidat pour cet agent', exact: true }).focus()
     await page.keyboard.press('Enter')
     const referenceInput = diagnostic.getByLabel('Référence à transmettre à l’agent', { exact: true })
@@ -108,6 +121,7 @@ for (const mobile of [false, true]) {
       connection_id: connectionId, function_name: 'lookup', state: 'disabled', expected_version: active.version,
     })
     expect(revoked.function.effective).toBe(false)
+    await pageErrors.settle()
     await page.reload()
     await expect(page.getByText(code, { exact: true })).toBeVisible()
     const current = await allowed('tool_admin_get', { tool_id: toolId })
@@ -116,8 +130,9 @@ for (const mobile of [false, true]) {
     await allowed('tool_admin_connection_delete', { connection_id: connectionId, expected_version: revoked.version })
     const detached = await allowed('tool_admin_get', { tool_id: toolId })
     await allowed('tool_admin_delete', { tool_id: toolId, expected_version: detached.version })
+    await pageErrors.settle()
     await page.reload()
     await expect(page.getByText(code, { exact: true })).toHaveCount(0)
-    expect(errors).toEqual([])
+    expect([...errors, ...pageErrors()]).toEqual([])
   })
 }

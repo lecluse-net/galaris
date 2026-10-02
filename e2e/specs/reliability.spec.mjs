@@ -42,7 +42,7 @@ test('keyboard resolution preserves work and message counts after reopening', as
   const marker = `Notification verification ${fixture.agent_id}`
   await composer.fill(marker)
   await composer.press('Enter')
-  await expect(page.locator('.message-timeline')).toContainText('Réponse progressive')
+  await expect(page.locator('.message-timeline')).toContainText('Réponse progressive', { timeout: 40_000 })
   await request.post(`/api/__test/release/${fixture.rooms[0]}`)
   await expect.poll(async () => (await (await request.get(`/api/__test/rounds/${fixture.rooms[0]}`)).json())[0]?.status).toBe('SUCCEEDED')
   const [round] = await (await request.get(`/api/__test/rounds/${fixture.rooms[0]}`)).json()

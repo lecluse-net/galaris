@@ -3,7 +3,8 @@ import { defineConfig } from '@playwright/test'
 export default defineConfig({
   testDir: '.',
   testMatch: '*.spec.mjs',
-  workers: 1,
+  fullyParallel: true,
+  workers: 4,
   retries: 0,
   forbidOnly: true,
   timeout: 30_000,

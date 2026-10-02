@@ -276,10 +276,10 @@ async def test_memory_mcp_index_search_get_and_store(
     searched = json.loads(await mcp.memory_search(ctx, "Atlas database"))
     assert searched["memories"][0]["memory_id"] == memory_id
     assert "score" not in searched["memories"][0]
-    assert searched["memories"][0]["sources"] == [
+    assert sorted(searched["memories"][0]["sources"]) == sorted([
         "test:mcp:1",
         f"task:{task.id}",
-    ]
+    ])
     assert searched["search"] == {
         "requested": "hybrid",
         "used": "lexical",

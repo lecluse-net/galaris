@@ -43,8 +43,11 @@ test('editorial HTML survives real API storage, browser editing and reload', asy
   await expect(editor.locator('th')).toHaveAttribute('colspan', '2')
   await editor.locator('h2').click()
   await page.keyboard.press('End')
-  const saved = page.waitForResponse(response => response.request().method() === 'PUT' && response.url().includes(`/memory/items/${item.id}`))
-  await page.keyboard.press('Control+Shift+Digit3')
+  const saved = page.waitForResponse(response => response.request().method() === 'PUT'
+    && response.url().includes(`/memory/items/${item.id}`)
+    && response.request().postDataJSON()?.payload?.text?.includes('<h3>Été!</h3>'))
+  const modifier = await page.evaluate(() => /Macintosh|iPhone|iPad/.test(navigator.userAgent) ? 'Meta' : 'Control')
+  await page.keyboard.press(`${modifier}+Shift+Digit3`)
   await expect(editor.locator('h3')).toHaveText('Été')
   await page.keyboard.type('!')
   expect((await saved).ok()).toBeTruthy()

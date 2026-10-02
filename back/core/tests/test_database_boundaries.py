@@ -28,6 +28,7 @@ ALLOWED_DATABASE_SESSION_BOUNDARIES = {
     "app/dream/mechanisms/attachment_memory.py",  # Scheduler claim/prepare/apply run without an ambient session.
     "app/dream/mechanisms/conversation_memory.py",
     "app/dream/mechanisms/document_structure.py",  # Autonomous reconciliation claims and applies separately.
+    "app/dream/mechanisms/file_catalogue.py",  # Scheduler-owned claims, materialization and application use short sessions.
     "app/dream/mechanisms/memory_maintenance.py",
     "app/dream/mechanisms/process_memory.py",
     "app/dream/mechanisms/sequential_topic_classification.py",
