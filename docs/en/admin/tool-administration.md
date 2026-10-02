@@ -212,11 +212,13 @@ remove its connections explicitly, inspect technical references, read again, the
 the current fingerprint.
 
 After a mutation, `persisted=true` confirms storage even when refresh is partial. Affected
-catalogues reconcile without pruning after incomplete discovery. Work exceeding the short-call
-budget returns a durable Process `run_id` with progress; follow it with `process_get_run` or cancel
-with `process_cancel`. Its worker resumes the database cursor and rechecks the delegated function
-before each batch. Partial results identify failed or remaining agents; retry catalogue refresh,
-not the already persisted mutation.
+catalogues reconcile without pruning after incomplete discovery. Refresh calls the Python functions
+in `app.tools` directly, with a 20-second budget and permission checks before and after each agent.
+Each agent's results are committed separately. Partial results identify `failed_agent_ids` and
+`remaining_agent_ids`; look up their connections and retry `tool_admin_catalog_refresh` with those
+`connection_ids`, not the already persisted mutation. No Process is created.
+DbAdmin convergence removes obsolete technical `catalog_refresh` definitions and their runs,
+after resolving any waiting Tasks.
 
 Old native and external sessions recheck permissions. Following external calls use rotated
 credentials. Revocation does not cancel a remote effect already sent. The search index never

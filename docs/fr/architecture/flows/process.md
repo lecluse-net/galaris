@@ -2,9 +2,11 @@
 
 # Flux des outils et processus
 
-Un appel d’outil court retourne directement une sortie structurée. Une opération externe ou
-longue devient un `ProcessRun` durable, afin que l’agent puisse attendre, reprendre, annuler et
-analyser sans garder une requête ouverte.
+Un appel d’outil retourne directement une sortie structurée. Les workflows métier, par exemple
+ceux gérés dans n8n, utilisent un `ProcessRun` durable afin que l’agent puisse attendre,
+reprendre, annuler et analyser sans garder une requête ouverte. La maintenance technique
+reste dans son module : le rafraîchissement du catalogue utilise les fonctions Python de
+`app.tools` et ne crée aucun Process.
 
 ```text
 Agent runtime

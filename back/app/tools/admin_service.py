@@ -33,13 +33,6 @@ from .projections import to_public
 from .schemas import McpConfig, ToolGlobalParamsUpdate, ToolGlobalParamUpdate, ToolMcpTestRequest
 from .secrets import is_connection_reference, runtime_mcp_config
 
-_catalog_refresh_queue: Callable[[AdministrationContext, list[int]], Awaitable[dict[str, Any]]] | None = None
-
-
-def register_catalog_refresh_queue(callback: Callable[[AdministrationContext, list[int]], Awaitable[dict[str, Any]]]) -> None:
-    global _catalog_refresh_queue
-    _catalog_refresh_queue = callback
-
 
 async def invoke(ctx: McpToolContext, name: str, operation: Callable[..., Awaitable[dict[str, Any]]], **arguments: Any) -> str:
     actor = AdministrationContext(agent_id=ctx.agent_id, function_name=name)
@@ -193,14 +186,18 @@ def _safe_mcp(config: McpConfig | None, *, literals: bool = False) -> None:
         raise AdministrationError("configuration_invalid", "Use a human-prepared candidate for secret literals.")
 
 
-async def refresh_batch(agent_ids: list[int], *, actor: AdministrationContext | None = None) -> dict[str, Any]:
+async def refresh_batch(agent_ids: list[int], *, actor: AdministrationContext | None = None,
+                        timeout_seconds: float = 20.0) -> dict[str, Any]:
     from .catalog_refresh_service import refresh_agents_tool_catalogs
 
     selected, remaining = agent_ids[:10], agent_ids[10:]
     if not selected:
         return {"complete": True, "agents_refreshed": 0, "remaining_agent_ids": []}
     try:
-        async with asyncio.timeout(20):
+        async with asyncio.timeout(timeout_seconds):
+            if actor is not None:
+                await actor.require()
+            await release_db_transaction()
             result = await refresh_agents_tool_catalogs(selected, allow_stdio=False)
             if actor is not None:
                 caller = await tool_service.get_tool_record("tool_admin")
@@ -209,9 +206,54 @@ async def refresh_batch(agent_ids: list[int], *, actor: AdministrationContext | 
                 await actor.require()
             await get_db().commit()
         return {**asdict(result), "complete": result.complete and not remaining, "remaining_agent_ids": remaining}
-    except (TimeoutError, Exception):
+    except asyncio.CancelledError:
+        await get_db().rollback()
+        raise
+    except AdministrationError:
+        await get_db().rollback()
+        return {"complete": False, "error": "access_denied", "remaining_agent_ids": agent_ids}
+    except TimeoutError:
+        await get_db().rollback()
+        return {"complete": False, "error": "catalog_refresh_timeout", "remaining_agent_ids": agent_ids}
+    except Exception:
         await get_db().rollback()
         return {"complete": False, "error": "catalog_refresh_failed", "remaining_agent_ids": agent_ids}
+
+
+async def refresh_catalogs(actor: AdministrationContext, agent_ids: list[int], *,
+                           timeout_seconds: float = 20.0) -> dict[str, Any]:
+    """Reconcile directly, committing each agent and returning unfinished work for retry."""
+    remaining = sorted(set(agent_ids))
+    failed: list[int] = []
+    totals = {name: 0 for name in (
+        "agents_scanned", "agents_refreshed", "agent_failures", "source_failures",
+        "tools_discovered", "documents_indexed", "embeddings_refreshed", "documents_pruned",
+    )}
+    semantic_available = True
+    degradation_reason: str | None = None
+    error: str | None = None
+    deadline = asyncio.get_running_loop().time() + timeout_seconds
+    while remaining:
+        budget = deadline - asyncio.get_running_loop().time()
+        if budget <= 0:
+            error = "catalog_refresh_timeout"
+            break
+        identifier = remaining[0]
+        result = await refresh_batch([identifier], actor=actor, timeout_seconds=budget)
+        if result.get("error"):
+            error = str(result["error"])
+            break
+        remaining.pop(0)
+        for name in totals:
+            totals[name] += int(result.get(name, 0))
+        semantic_available = semantic_available and bool(result.get("semantic_available", False))
+        degradation_reason = result.get("degradation_reason") or degradation_reason
+        if not result["complete"]:
+            failed.append(identifier)
+    return {**totals, "complete": not remaining and not failed,
+            "failed_agent_ids": failed, "remaining_agent_ids": remaining,
+            "semantic_available": semantic_available, "degradation_reason": degradation_reason,
+            **({"error": error} if error else {})}
 
 
 async def _saved(actor: AdministrationContext, tool_id: int, *, connection_id: int | None = None,
@@ -226,22 +268,11 @@ async def _saved(actor: AdministrationContext, tool_id: int, *, connection_id: i
         )
         ids = agent_ids if agent_ids is not None else await get_agent_ids_by_tool(tool_id)
         await release_db_transaction()
-        return {**data, "persisted": True, "refresh": await _refresh_or_queue(actor, ids)}
+        return {**data, "persisted": True, "refresh": await refresh_catalogs(actor, ids)}
     except Exception:
         await get_db().rollback()
         return {"tool_id": tool_id, "connection_id": connection_id, "deleted": deleted, "persisted": True,
                 "refresh": {"complete": False, "error": "post_commit_reconciliation_failed"}}
-
-
-async def _refresh_or_queue(actor: AdministrationContext, agent_ids: list[int]) -> dict[str, Any]:
-    if len(agent_ids) <= 10:
-        result = await refresh_batch(agent_ids, actor=actor)
-        if result["complete"]:
-            return result
-    await actor.require()
-    if _catalog_refresh_queue is None:
-        return {"complete": False, "error": "refresh_worker_unavailable", "remaining_agent_ids": agent_ids}
-    return await _catalog_refresh_queue(actor, agent_ids)
 
 
 def _secret_definition(data: AdminToolCreate | AdminToolUpdate) -> None:
@@ -635,4 +666,4 @@ async def catalog_refresh(actor: AdministrationContext, tool_id: int | None = No
                 raise AdministrationError("not_found", "Connection not found.")
             agents.append(connection.agent_id)
     await release_db_transaction()
-    return {"refresh": await _refresh_or_queue(actor, sorted(set(agents)))}
+    return {"refresh": await refresh_catalogs(actor, agents)}

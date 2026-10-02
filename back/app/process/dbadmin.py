@@ -1,4 +1,4 @@
-"""Remove the obsolete technical avatar workflows during database convergence."""
+"""Remove obsolete technical workflows during database convergence."""
 
 from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -12,9 +12,20 @@ from .schemas import EngineError, EngineRunSnapshot
 
 
 async def _purge_avatar_processes(session: AsyncSession) -> None:
+    await _purge_technical_processes(session, "agent_admin", "avatar",
+        "Avatar generation now uses a direct function; this obsolete workflow was removed.")
+
+
+async def _purge_catalog_refresh_processes(session: AsyncSession) -> None:
+    await _purge_technical_processes(session, "tool_admin", "catalog_refresh",
+        "Catalogue refresh now uses direct app.tools functions; retry the unfinished agents there.")
+
+
+async def _purge_technical_processes(session: AsyncSession, tool_code: str, operation: str,
+                                     message: str) -> None:
     definitions = list((await session.scalars(select(ProcessDefinition).where(
-        ProcessDefinition.tool_id.in_(select(ToolModel.id).where(ToolModel.code == "agent_admin")),
-        ProcessDefinition.engine_process_id.regexp_match(r"^agent_admin:[0-9]+:avatar$"),
+        ProcessDefinition.tool_id.in_(select(ToolModel.id).where(ToolModel.code == tool_code)),
+        ProcessDefinition.engine_process_id.regexp_match(rf"^{tool_code}:[0-9]+:{operation}$"),
     ).execution_options(include_historized=True))).all())
     for definition in definitions:
         runs = list((await session.scalars(select(ProcessRun).where(
@@ -24,9 +35,8 @@ async def _purge_avatar_processes(session: AsyncSession) -> None:
             if run.deleted_at is None:
                 if run.status not in TERMINAL_STATUSES:
                     await apply_engine_snapshot(run, EngineRunSnapshot(status="error", error=EngineError(
-                        code="avatar_process_removed",
-                        message="Avatar generation now uses a direct function; this obsolete workflow was removed.",
-                    )), "avatar.workflow.removed")
+                        code=f"{operation}_process_removed", message=message,
+                    )), f"{operation}.workflow.removed")
                 # Settle existing approval receipts and wake any waiting Task before purging.
                 if permit := run.launch_snapshot.get("authorization_permit"):
                     from uuid import UUID
@@ -43,6 +53,10 @@ async def _purge_avatar_processes(session: AsyncSession) -> None:
 
 
 def register_dbadmin(registry: DbAdminRegistry) -> None:
+    registry.register_reconciler(DbAdminReconciler(
+        key="app.process.remove_catalog_refresh_workflows", handler=_purge_catalog_refresh_processes,
+        depends_on=("app.tools.mandatory.tools",),
+    ))
     registry.register_reconciler(DbAdminReconciler(
         key="app.process.remove_avatar_workflows", handler=_purge_avatar_processes,
         depends_on=("app.tools.mandatory.tools",),

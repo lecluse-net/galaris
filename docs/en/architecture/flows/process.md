@@ -2,9 +2,10 @@
 
 # Tool and Process Flow
 
-A short tool call returns a structured output directly. An external or
-long-running operation becomes a durable `ProcessRun`, so the Agent can wait, resume, cancel, and
-analyze it without keeping a request open.
+A tool call returns a structured output directly. Business workflows, such as those managed
+in n8n, use a durable `ProcessRun` so the Agent can wait, resume, cancel, and analyze them
+without keeping a request open. Technical maintenance stays in its owning module:
+catalogue refresh uses Python functions in `app.tools` and creates no Process.
 
 ```text
 Agent runtime

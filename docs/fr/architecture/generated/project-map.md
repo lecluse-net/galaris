@@ -423,9 +423,9 @@ tests restent l’autorité sur le comportement.
 | `app.process` | `app.file_share` | `back/app/process/process_service.py`, `back/app/process/router.py` |
 | `app.process` | `app.llm` | `back/app/process/__init__.py`, `back/app/process/agent_capabilities.py`, `back/app/process/dbadmin.py`, `back/app/process/process_service.py` |
 | `app.process` | `app.task` | `back/app/process/__init__.py`, `back/app/process/process_service.py`, `back/app/process/retention.py` |
-| `app.process` | `app.tools` | `back/app/process/catalog_refresh_engine.py`, `back/app/process/dbadmin.py`, `back/app/process/mcp.py`, `back/app/process/process_service.py` |
+| `app.process` | `app.tools` | `back/app/process/dbadmin.py`, `back/app/process/mcp.py`, `back/app/process/process_service.py` |
 | `app.process` | `core.authorize` | `back/app/process/router.py` |
-| `app.process` | `core.database` | `back/app/process/catalog_refresh_engine.py`, `back/app/process/events.py`, `back/app/process/export.py`, `back/app/process/interface.py`, `back/app/process/models.py`, `back/app/process/process_service.py`, `back/app/process/progress.py`, `back/app/process/retention.py`, `back/app/process/workers.py` |
+| `app.process` | `core.database` | `back/app/process/events.py`, `back/app/process/export.py`, `back/app/process/interface.py`, `back/app/process/models.py`, `back/app/process/process_service.py`, `back/app/process/progress.py`, `back/app/process/retention.py`, `back/app/process/workers.py` |
 | `app.process` | `core.dbadmin` | `back/app/process/dbadmin.py` |
 | `app.process` | `core.i18n` | `back/app/process/fake_engine.py`, `back/app/process/mcp.py`, `back/app/process/process_service.py`, `back/app/process/registry.py`, `back/app/process/router.py` |
 | `app.process` | `core.params` | `back/app/process/__init__.py`, `back/app/process/process_service.py`, `back/app/process/retention.py`, `back/app/process/router.py`, `back/app/process/workers.py` |

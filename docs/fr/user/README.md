@@ -378,6 +378,10 @@ L’écran **Processus** expose les workflows que l’administrateur a associés
 une définition, renseignez son entrée JSON puis lancez une exécution. Son statut, sa sortie, ses
 événements et les tâches liées restent consultables dans le même écran.
 
+Le rafraîchissement technique des outils ne figure pas dans cet écran. Si l’agent signale
+un catalogue partiellement actualisé, demandez-lui de relancer le rafraîchissement pour les
+agents indiqués, sans répéter la modification déjà enregistrée.
+
 Une annulation locale ne garantit pas toujours l’arrêt immédiat du moteur externe. Lorsque
 l’interface indique que l’exécution distante peut continuer, vérifiez le service cible avant de
 relancer le processus.

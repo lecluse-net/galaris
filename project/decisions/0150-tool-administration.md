@@ -74,9 +74,15 @@ Remote schemas and descriptions are untrusted data. Old mounted external tool pr
 resolve current configuration and authorization before each call; credential rotation
 applies to the next request, without claiming to cancel an already sent remote effect.
 
-Catalog refresh uses bounded short calls. Larger selections or work exceeding that
-budget become canonical durable Process runs using the integrated ToolAdmin engine.
-The database cursor survives worker restart; each batch revalidates the original exact
-function delegation. Cancellation and immutable terminal states use Process contracts.
-Partial discovery preserves the index and returns failed/remaining agent identifiers
-for explicit reconciliation without replaying an already persisted configuration change.
+Catalog refresh uses ordinary Python functions owned by `app.tools`, with a total
+20-second budget. Each agent's results are committed separately and the original exact
+function delegation is checked before discovery and before commit. Partial discovery
+preserves the index and returns failed/remaining agent identifiers for explicit
+reconciliation without replaying an already persisted configuration change. Timeout or
+interruption rolls back the current agent and preserves previously committed results.
+
+Processes are reserved for business workflows, such as n8n workflows. Technical catalogue
+maintenance creates no Process definition or run. This replaces the earlier integrated
+ToolAdmin engine: DbAdmin removes its exact `tool_admin:<agent>:catalog_refresh` definitions,
+runs and jobs, settling approval receipts and waiting Tasks before purging. Other workflows
+are preserved. Unfinished reconciliation is retried through `tool_admin_catalog_refresh`.

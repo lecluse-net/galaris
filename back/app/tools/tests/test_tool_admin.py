@@ -509,14 +509,11 @@ async def test_external_mounted_server_rechecks_permissions_and_credentials(comm
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("outcome", ["complete", "partial", "cancel", "revoke"])
-async def test_mass_refresh_is_durable_resumable_and_live_authorized(delegated, db, outcome):
-    from app.process import registry, process_service
-    from app.process.catalog_refresh_engine import CatalogRefreshEngine, queue_catalog_refresh
-    from app.process.schemas import EngineRunReference, ProcessStartPayload
+@pytest.mark.parametrize("outcome", ["complete", "partial"])
+async def test_mass_refresh_returns_direct_results_and_preserves_business_processes(delegated, db, outcome):
+    from app.process.models import ProcessDefinition, ProcessRun
+    from sqlalchemy import func
 
-    registry.register(CatalogRefreshEngine())
-    admin_service.register_catalog_refresh_queue(queue_catalog_refresh)
     ctx, recipient, grant_id = delegated
     tool = Tool(
         code=f"bulk_{uuid4().hex}", label="Synthetic mass refresh")
@@ -530,50 +527,74 @@ async def test_mass_refresh_is_durable_resumable_and_live_authorized(delegated, 
     await db.flush()
     db.add_all([Connection(tool_id=tool.id, agent_id=agent.id, active=False) for agent in agents])
     await db.commit()
-    if outcome == "complete":
-        engine = CatalogRefreshEngine()
-        workflow = f"tool_admin:{ctx.agent_id}:catalog_refresh"
-        for destination, admission in [
-            ("tool_admin:other:catalog_refresh", {"function_name": "tool_admin_catalog_refresh", "agent_ids": [recipient]}),
-            (workflow, {"function_name": "tool_admin_list", "agent_ids": [recipient]}),
-            (workflow, {"function_name": "tool_admin_catalog_refresh", "agent_ids": [0]}),
-        ]:
-            with pytest.raises(PermissionError):
-                await engine.prepare_input(ctx.agent_id, destination, admission)
-    queued = result(await mcp.tool_admin_catalog_refresh(ctx, tool_id=tool.id))
-    assert queued["refresh"]["queued"] and not queued["refresh"]["complete"]
-    run_id = UUID(queued["refresh"]["run_id"])
-    if outcome == "complete":
-        with pytest.raises(PermissionError):
-            await engine.start_run("tool_admin:other:catalog_refresh",
-                EngineRunReference(id=run_id, correlation_id="synthetic"), ProcessStartPayload())
-    await process_service.process_start_jobs(engine_code="tool_admin")
-    run = await process_service.refresh_run(run_id)
-    assert run.status == "running"
-    assert run.engine_metadata["completed_agent_ids"]
-    # Replacing the worker object preserves the durable cursor.
-    registry.register(CatalogRefreshEngine())
-    if outcome == "cancel":
-        run = await process_service.cancel_run(run_id)
-        assert run.status == "cancelled"
-    elif outcome == "revoke":
-        await connection_service.set_connection_function_state(grant_id, "tool_admin_catalog_refresh", "disabled")
-        run = await process_service.refresh_run(run_id)
-        assert run.status == "error" and run.error_code == "access_denied"
+    counts = [await db.scalar(select(func.count()).select_from(model))
+              for model in (ProcessDefinition, ProcessRun)]
+    refreshed = result(await mcp.tool_admin_catalog_refresh(ctx, tool_id=tool.id))["refresh"]
+    assert "run_id" not in refreshed and "queued" not in refreshed
+    assert refreshed["remaining_agent_ids"] == []
+    if outcome == "partial":
+        assert not refreshed["complete"] and refreshed["agents_refreshed"] == 10
+        assert refreshed["failed_agent_ids"] == [agents[0].id]
+        # Retrying just the failed connection completes the reconciliation.
+        agents[0].agent_driver = "internal"
+        await db.commit()
+        connection = await db.scalar(select(Connection).where(Connection.agent_id == agents[0].id,
+                                                              Connection.tool_id == tool.id))
+        retried = result(await mcp.tool_admin_catalog_refresh(ctx, connection_ids=[connection.id]))["refresh"]
+        assert retried["complete"] and retried["agents_refreshed"] == 1
     else:
-        for _ in agents:
-            run = await process_service.refresh_run(run_id)
-        if outcome == "partial":
-            assert run.status == "error" and run.error_code == "catalog_refresh_partial"
-            assert not run.output["complete"] and run.output["agents_refreshed"] == 10
-            assert run.output["failed_agent_ids"] == [agents[0].id]
-            assert run.output["remaining_agent_ids"] == []
-        else:
-            assert run.status == "success" and run.output["complete"]
-            assert run.output["agents_refreshed"] == 11
-    status, metadata = run.status, dict(run.engine_metadata)
-    run = await process_service.refresh_run(run_id)
-    assert run.status == status and run.engine_metadata == metadata
+        assert refreshed["complete"] and refreshed["agents_refreshed"] == 11
+    assert [await db.scalar(select(func.count()).select_from(model))
+            for model in (ProcessDefinition, ProcessRun)] == counts
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("interruption", ["timeout", "cancel", "revoke"])
+async def test_direct_refresh_preserves_completed_agents_and_stops_on_interruption(
+        delegated, db, monkeypatch, interruption):
+    import asyncio
+    from app.tools import catalog_refresh_service
+    from app.tools.catalog import catalog_entry_from_definition, catalog_from_entries
+    from app.tools.models import ToolSearchDocument
+
+    ctx, recipient, grant_id = delegated
+    identifiers = sorted([ctx.agent_id, recipient])
+    calls = []
+    build_catalog = catalog_refresh_service.build_effective_tool_catalog
+    marker = catalog_entry_from_definition(runtime="internal", name=f"synthetic_refresh_{uuid4().hex}",
+        description="Synthetic catalogue checkpoint", parameters_json_schema={})
+
+    async def interrupted_discovery(agent_id, **kwargs):
+        calls.append(agent_id)
+        if len(calls) == 2:
+            if interruption == "timeout":
+                await asyncio.Event().wait()
+            elif interruption == "cancel":
+                raise asyncio.CancelledError()
+            else:
+                await connection_service.set_connection_function_state(
+                    grant_id, "tool_admin_catalog_refresh", "disabled")
+        catalog = await build_catalog(agent_id, **kwargs)
+        if len(calls) == 1:
+            return catalog_from_entries(agent_id=agent_id, runtime=catalog.runtime,
+                entries=[*catalog.entries, marker])
+        return catalog
+
+    monkeypatch.setattr(catalog_refresh_service, "build_effective_tool_catalog", interrupted_discovery)
+    actor = AdministrationContext(agent_id=ctx.agent_id, function_name="tool_admin_catalog_refresh")
+    if interruption == "cancel":
+        with pytest.raises(asyncio.CancelledError):
+            await admin_service.refresh_catalogs(actor, identifiers)
+        # Cancellation leaves the contextual session usable after rollback.
+        assert await db.get(Agent, recipient)
+    else:
+        refreshed = await admin_service.refresh_catalogs(actor, identifiers, timeout_seconds=1)
+        assert not refreshed["complete"] and refreshed["agents_refreshed"] == 1
+        assert refreshed["remaining_agent_ids"] == identifiers[1:]
+        assert refreshed["error"] == ("access_denied" if interruption == "revoke" else "catalog_refresh_timeout")
+    assert calls == identifiers
+    assert await db.scalar(select(ToolSearchDocument.id).where(
+        ToolSearchDocument.definition_fingerprint == marker.definition_fingerprint)) is not None
 
 
 @pytest.mark.asyncio

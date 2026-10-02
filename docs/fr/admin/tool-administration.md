@@ -225,10 +225,13 @@ examiner les références techniques, puis refaire la lecture et supprimer avec 
 
 Après une mutation, `persisted=true` confirme l’enregistrement, même si le rafraîchissement
 est partiel. Les catalogues concernés sont réconciliés sans élagage sur découverte incomplète.
-Au-delà du budget court, un Process durable retourne `run_id` et sa progression ; le suivre
-avec `process_get_run`, l’annuler avec `process_cancel`. Son worker reprend le curseur en base
-et revalide la fonction déléguée avant chaque lot. Un résultat partiel précise les agents
-échoués ou restants ; relancer le rafraîchissement, pas la mutation déjà enregistrée.
+Le rafraîchissement appelle directement les fonctions Python de `app.tools`, avec un budget
+de 20 secondes et une validation des droits avant et après chaque agent. Les résultats de
+chaque agent sont enregistrés séparément. Un résultat partiel précise `failed_agent_ids` et
+`remaining_agent_ids` ; retrouver leurs connexions et relancer `tool_admin_catalog_refresh`
+avec ces `connection_ids`, pas la mutation déjà enregistrée. Aucun Process n’est créé.
+La convergence DbAdmin supprime les anciennes définitions techniques `catalog_refresh`
+et leurs runs, après résolution des éventuelles Tasks en attente.
 
 Les anciennes sessions natives et externes revalident les permissions. Les appels externes
 suivants utilisent les nouveaux credentials. Un effet distant déjà envoyé n’est pas annulé

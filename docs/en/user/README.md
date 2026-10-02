@@ -271,6 +271,10 @@ Normalization greatly reduces the size of a video, WAV, or high-bitrate media. I
 
 The **Processes** screen exposes the workflows that the administrator has associated with an Agent. Open a definition, enter its JSON input, and then launch an execution. Its status, output, events, and related Tasks remain available in the same screen.
 
+Technical tool catalogue refresh does not appear on this screen. If the Agent reports a
+partially refreshed catalogue, ask it to retry refresh for the indicated agents without
+repeating the configuration change that was already saved.
+
 A local cancellation does not always guarantee that the external engine will stop immediately. When the interface indicates that the remote execution may continue, check the target service before relaunching the Process.
 
 ## Memory, Documents, and Topics

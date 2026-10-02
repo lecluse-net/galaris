@@ -163,9 +163,10 @@ Mutations return `persisted=true` once saved. A partial refresh does not undo th
 Use `tool_admin_catalog_refresh(tool_id=...)` or explicit `connection_ids` to reconcile.
 Existing stdio Tools and connections are redacted and read-only through ToolAdmin.
 Administrative catalog refresh skips their executable sources and reports partial discovery.
-Large/slow refreshes return a durable Process `run_id`: follow with `process_get_run` and
-cancel with `process_cancel`. Its cursor survives restart, and revocation stops subsequent
-batches. Retry failed/remaining agents, not the saved mutation. Old mounted MCP sessions
+Refresh runs directly in `app.tools` within a 20-second budget and returns its result,
+without creating a Process. Each agent's results are committed separately; revocation stops
+further reconciliation. For `failed_agent_ids` or `remaining_agent_ids`, look up their connections
+and retry with explicit `connection_ids`, not the saved mutation. Old mounted MCP sessions
 recheck permission and resolve rotated credentials for following calls; already sent remote
 effects cannot be recalled. The index never grants rights.
 

@@ -2816,7 +2816,6 @@
       },
       {
         "files": [
-          "back/app/process/catalog_refresh_engine.py",
           "back/app/process/dbadmin.py",
           "back/app/process/mcp.py",
           "back/app/process/process_service.py"
@@ -2833,7 +2832,6 @@
       },
       {
         "files": [
-          "back/app/process/catalog_refresh_engine.py",
           "back/app/process/events.py",
           "back/app/process/export.py",
           "back/app/process/interface.py",

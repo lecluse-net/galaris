@@ -113,16 +113,6 @@ def configure_dream_media() -> None:
     register_attachment_media(image_reader=describe_image, audio_normalizer=normalize_for_transcription_chunks_isolated)
 
 
-def configure_tool_admin() -> None:
-    """Bind the ToolAdmin Process engine at the composition boundary."""
-    from app.process.catalog_refresh_engine import CatalogRefreshEngine, queue_catalog_refresh
-    from app.tools.facade import administration
-    from app.process import registry
-
-    registry.register(CatalogRefreshEngine())
-    administration.register_catalog_refresh_queue(queue_catalog_refresh)
-
-
 def load_dbadmin_contributions(registry: object) -> None:
     """Load optional DbAdmin contributions at the composition boundary."""
 
