@@ -2,6 +2,11 @@
 
 # Functional guarantees catalogue
 
+Document analysis belongs to `app.llm` and creates no business-process definition or run.
+`back/tests/test_document_analysis.py` protects this separation, recovery of 500-page
+batches without duplicate billing, cancellation, access control, scheduler progression,
+and idempotent transfer of legacy technical runs.
+
 AgentAdmin is documented in [agent-admin.md](agent-admin.md).
 `back/app/agent/tests/test_avatars.py` checks JPEG storage within 500 × 500 pixels,
 proportions, no enlargement, EXIF orientation and transparency.

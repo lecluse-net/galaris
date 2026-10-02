@@ -79,6 +79,11 @@ def register_scheduler_jobs() -> None:
         llm_call_service.reconcile_stale_running_calls,
         interval=60.0,
     )
+    from .document_service import analysis_tick
+
+    scheduler.register_periodic_job(
+        "llm-document-analysis", analysis_tick, interval=1.0, timeout=1250.0,
+    )
 
 
 from .media_contracts import (

@@ -173,7 +173,9 @@ skills while preserving your custom classifications.
 ## Chatting, tracking work and finding results
 
 Use **Act → Chat** (`/chat`) to talk with an agent, **Act → Goals** (`/goal`) for a durable
-objective, and **Act → Processes** (`/process`) for predefined workflows. The
+objective, and **Act → Processes** (`/process`) for predefined workflows. Attachment and
+large-report analyses remain available through the request made to the agent and do
+not create entries in this workflow catalogue. The
 [user guide](README.md) explains when to choose a conversation, Task or Goal.
 
 When opening a conversation, messages appear without waiting for the command catalogue

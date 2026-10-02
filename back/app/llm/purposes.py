@@ -35,6 +35,7 @@ class LLMCallPurpose(StrEnum):
 
     IMAGE_ANALYSIS = "image.analysis"
     IMAGE_GENERATION = "image.generation"
+    DOCUMENT_ANALYSIS = "document.analysis"
 
     LAB_TASK_ANALYSIS = "lab.task_analysis"
     LAB_MECHANISM_RUN = "lab.mechanism_run"

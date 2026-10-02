@@ -17,6 +17,45 @@ from core.database import get_db
 _INSPECTION_LIMIT_MAX = 100
 
 
+@mcp_tool("galaris", approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval",
+    name="document_analyze", effect_policy="non_idempotent", concurrency_policy="safe",
+    conversation_policy="forbidden", description=(
+        "Analyze an authorized document URI in resumable bounded batches, including large reports. "
+        "Returns an analysis identifier; use document_analysis_get for coverage and results. "
+        "model_slot document uses the profile's document reader, text uses its standard text model. "
+        "Interrupted billable batches are never automatically replayed."
+    ))
+async def document_analyze(ctx: McpToolContext, uri: str, question: str,
+                           model_slot: str = "document", max_calls: int = 256,
+                           idempotency_key: str = "") -> dict[str, Any]:
+    from app.tools.contracts import current_tool_execution
+    from .document_service import start_analysis
+
+    operation = current_tool_execution()
+    key = idempotency_key or (str(operation.operation_id) if operation else None)
+    return await start_analysis(ctx.agent_id, {"uri": uri, "question": question,
+        "runtime": ctx.runtime, "model_slot": model_slot, "max_calls": max_calls},
+        task_id=ctx.task_id, idempotency_key=key)
+
+
+@mcp_tool("galaris", approval="enabled", approval_reason="Governed bounded read or control without a new sensitive effect",
+    name="document_analysis_get", effect_policy="read", concurrency_policy="safe",
+    description="Read an owned document analysis and its explicit coverage after rechecking source access and version.")
+async def document_analysis_get(ctx: McpToolContext, run_id: str) -> dict[str, Any]:
+    from .document_service import read_analysis
+
+    return await read_analysis(ctx.agent_id, UUID(run_id), runtime=ctx.runtime)
+
+
+@mcp_tool("galaris", approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval",
+    name="document_analysis_cancel", effect_policy="idempotent", concurrency_policy="safe",
+    description="Cancel an owned document analysis; completed batches are retained and pending inference is stopped.")
+async def document_analysis_cancel(ctx: McpToolContext, run_id: str) -> dict[str, Any]:
+    from .document_service import cancel_analysis
+
+    return await cancel_analysis(ctx.agent_id, UUID(run_id), runtime=ctx.runtime)
+
+
 @mcp_tool("galaris_admin", approval='ask', approval_reason='Sensitive trace, content disclosure or remote diagnostic',
 
     name="llm_call",

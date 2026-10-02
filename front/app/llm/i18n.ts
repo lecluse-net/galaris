@@ -494,6 +494,9 @@ export default {
         process: {
           exec: 'Processus · Exécution',
         },
+        document: {
+          analysis: 'Document · Analyse',
+        },
       },
       openTask: 'Ouvrir la tâche',
       details: 'Détails',
@@ -1039,6 +1042,9 @@ export default {
         process: {
           exec: 'Process · Execution',
         },
+        document: {
+          analysis: 'Document · Analysis',
+        },
       },
       openTask: 'Open task',
       details: 'Details',
@@ -1282,6 +1288,7 @@ export default {
         dream: { topic_continuity: '梦境 · 主题延续', topic_reuse: '梦境 · 主题复用', topic_creation: '梦境 · 创建主题', memory_extraction: '梦境 · 提取记忆', task_outcome_reflection: '梦境 · 结果反思', skill_learning: '梦境 · 技能学习' },
         goal: { tracking: '目标 · 跟踪评估' }, audio: { segment_summary: '音频 · 片段摘要', summary_reduction: '音频 · 摘要压缩', final_synthesis: '音频 · 最终综合', transcription: '音频 · 转录' },
         image: { analysis: '图像 · 分析', generation: '图像 · 生成' },
+        document: { analysis: '文档 · 分析' },
         lab: { task_analysis: '实验室 · 任务分析', mechanism_run: '实验室 · 机制运行', mechanism_judge: '实验室 · 机制评估', benchmark_analysis: '实验室 · 基准分析', dispatcher_judge: '实验室 · 调度器评估' },
         process: { exec: '流程 · 执行' },
       },

@@ -18,54 +18,6 @@ from .schemas import (
 )
 
 
-@mcp_tool("galaris", approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval", name="document_analyze", effect_policy="non_idempotent", concurrency_policy="safe",
-    conversation_policy="forbidden", description=(
-        "Analyze an authorized document URI in resumable bounded batches, including large reports. "
-        "Returns a Process run; use document_analysis_get for coverage and results. "
-        "model_slot document uses the profile's document reader, text uses its standard text model. "
-        "No source-less guessing or automatic replay of interrupted billable batches."
-    ))
-async def document_analyze(ctx: McpToolContext, uri: str, question: str,
-                           model_slot: str = "document", max_calls: int = 256,
-                           idempotency_key: str = "") -> dict[str, Any]:
-    from .interface import ensure_integrated_definition
-    from .document_engine import DocumentAdmission
-    from app.tools.contracts import current_tool_execution
-
-    admission = DocumentAdmission.model_validate({"uri": uri, "question": question,
-        "runtime": ctx.runtime, "model_slot": model_slot, "max_calls": max_calls})
-    workflow = await ensure_integrated_definition(ctx.agent_id, "galaris", "document_analysis")
-    operation = current_tool_execution()
-    invocation_key = idempotency_key or (str(operation.operation_id) if operation is not None else None)
-    result = await process_service.start_process(agent_id=ctx.agent_id, workflow_id=workflow,
-        input_data=admission.model_dump(), task_id=ctx.task_id, runtime=ctx.runtime,
-        idempotency_key=invocation_key)
-    return result.model_dump(mode="json")
-
-
-@mcp_tool("galaris", approval="enabled", approval_reason="Governed bounded read or control without a new sensitive effect", name="document_analysis_get", effect_policy="read", concurrency_policy="safe",
-    description="Read an owned document analysis Process and its explicit coverage after rechecking source access.")
-async def document_analysis_get(ctx: McpToolContext, run_id: str) -> dict[str, Any]:
-    from app.file_share import ResourceContext, resource_info
-
-    run = await process_service.get_run(_run_id(run_id))
-    if run is None or run.launcher_agent_id != ctx.agent_id or run.engine_code != "galaris" or "uri" not in run.input:
-        raise PermissionError("Document analysis not accessible")
-    await resource_info(ResourceContext(agent_id=ctx.agent_id, runtime=ctx.runtime, task_id=ctx.task_id), str(run.input["uri"]))
-    detail = await process_service.get_run_detail(run.id, refresh_if_stale=True)
-    return detail.model_dump(mode="json", exclude={"events"}) if detail else {}
-
-
-@mcp_tool("galaris", approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval", name="document_analysis_cancel", effect_policy="idempotent", concurrency_policy="safe",
-    description="Cancel an owned document analysis; completed batches are retained and pending inference is stopped.")
-async def document_analysis_cancel(ctx: McpToolContext, run_id: str) -> dict[str, Any]:
-    run = await process_service.get_run(_run_id(run_id))
-    if run is None or run.launcher_agent_id != ctx.agent_id or run.engine_code != "galaris":
-        raise PermissionError("Document analysis not accessible")
-    result = await process_service.cancel_run(run.id)
-    return {"run_id": str(result.id), "status": result.status}
-
-
 def _run_id(value: str) -> UUID:
     try:
         return UUID(value.strip())

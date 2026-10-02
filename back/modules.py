@@ -123,13 +123,6 @@ def configure_tool_admin() -> None:
     administration.register_catalog_refresh_queue(queue_catalog_refresh)
 
 
-def configure_document_analysis() -> None:
-    from app.process.document_engine import DocumentEngine
-    from app.process import registry
-
-    registry.register(DocumentEngine())
-
-
 def load_dbadmin_contributions(registry: object) -> None:
     """Load optional DbAdmin contributions at the composition boundary."""
 

@@ -66,8 +66,10 @@ restent bornés ; les notices renvoient à `document_analyze` pour les grandes s
 Responses replie les fichiers incorporés des messages ; les items stateful et les
 identifiants de fichiers hébergés chez le fournisseur conservent leur transport natif.
 
-`document_analyze(uri, question, model_slot="document", max_calls=256)` lance un Process
-personnel et renvoie son identifiant. `document_analysis_get` restitue progression,
+`document_analyze(uri, question, model_slot="document", max_calls=256)` lance une analyse
+privée gérée par `app.llm` et renvoie `analysis_id`. Elle n'apparaît pas dans le catalogue
+des processus métier. Passez cet identifiant dans l'argument `run_id` de
+`document_analysis_get` pour obtenir progression,
 réponse et couverture après contrôle de la source. `document_analysis_cancel` demande
 l'arrêt et attend la confirmation locale de l'inférence. Les lots terminés sont relus,
 sans nouvel appel facturable, grâce à leurs identités d'inférence stables. Une inférence
@@ -87,7 +89,7 @@ checkpoints atomiques. XLSX/ODS conservent séparément cellules, formules, cach
 styles, feuilles cachées, fusions et commentaires ; les formules ne sont pas recalculées.
 Le XLS ancien conserve une limite explicite sur ses données structurelles.
 
-Les tests couvrent un Process de 500 pages avec fournisseur simulé, la reprise, les
+Les tests couvrent une analyse de 500 pages avec fournisseur simulé, la reprise, les
 droits, les sources modifiées, l'annulation, les fichiers corrompus/chiffrés et le TIFF
 multipage. Les essais réels et leur revue sont consignés dans les artefacts locaux.
 Ils ne qualifient pas tous les faits de rapports arbitraires ni tous les formats.

@@ -189,7 +189,9 @@ compétences existantes sans catégorie, en conservant vos classements personnal
 
 Pour échanger avec un agent, ouvrez **Agir → Discussion** (`/chat`). Pour un objectif
 durable, ouvrez **Agir → Objectifs** (`/goal`). Pour lancer un workflow prédéfini,
-ouvrez **Agir → Processus** (`/process`). Le [guide utilisateur](README.md) explique
+ouvrez **Agir → Processus** (`/process`). Les analyses de pièces jointes et de gros rapports
+restent accessibles depuis la demande faite à l'agent et ne créent aucune entrée dans
+ce catalogue de workflows. Le [guide utilisateur](README.md) explique
 quand choisir une conversation, une Task ou un Goal.
 
 À l’ouverture d’une discussion, les messages s’affichent sans attendre le catalogue des

@@ -19,7 +19,7 @@ section MCP du guide `docs/fr/dev/README.md` avant de changer l’exposition d�
 | `app.mcp` | Contrats et serveur MCP Galaris |
 | `app.connection` | Configuration et secrets référencés des intégrations |
 | `app.file_share` | URI canoniques, providers et transferts streamés de ressources |
-| `app.process` | État durable d’une exécution longue, progression, annulation et callbacks |
+| `app.process` | Définitions et exécutions de processus métier, progression, annulation et callbacks |
 | `bridge.n8n` | Traduction entre workflows n8n et contrats Galaris |
 
 Ne pas faire dépendre le catalogue d’outils d’un client concret. Un bridge externe traduit
@@ -31,7 +31,10 @@ vers `app.process` et les façades métier au lieu de posséder un second état 
 2. Valider les paramètres avant l’accès réseau, disque ou base.
 3. Résoudre les connexions et secrets côté serveur ; ne jamais les exposer au modèle.
 4. Retourner une sortie structurée et concise, avec identifiants corrélables.
-5. Pour une opération longue, créer un `Process` au lieu de bloquer l’appel.
+5. Pour une opération longue, conserver un état durable dans son domaine propriétaire.
+   Créer un `Process` lorsqu'il s'agit effectivement d'un processus métier à exposer dans
+   ce catalogue. La durée seule ne justifie pas une définition technique : l'analyse
+   documentaire appartient à `app.llm` et utilise ses inférences durables.
 6. Ajouter des tests du schéma, des autorisations, des erreurs et du résultat.
 7. Régénérer la cartographie pour inventorier le nouvel outil.
 

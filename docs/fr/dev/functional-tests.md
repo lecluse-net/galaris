@@ -2,6 +2,11 @@
 
 # Catalogue des garanties fonctionnelles
 
+L'analyse documentaire relève de `app.llm` et ne crée aucune définition ni exécution
+de processus métier. `back/tests/test_document_analysis.py` protège cette séparation,
+la reprise des lots de 500 pages sans double facturation, l'annulation, les droits,
+la progression par le scheduler et le transfert idempotent des anciens runs techniques.
+
 AgentAdmin est documenté dans [agent-admin.md](agent-admin.md).
 `back/app/agent/tests/test_avatars.py` vérifie le stockage JPEG dans une limite de 500 × 500,
 les proportions, l’absence d’agrandissement, l’orientation EXIF et la transparence.

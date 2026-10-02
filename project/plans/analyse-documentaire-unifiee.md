@@ -12,10 +12,10 @@ Ce résultat est un benchmark représentatif, pas une qualification exhaustive o
 répétée. Le mode préparé est également exercé ; ses corrections de précision visuelle,
 de consolidation et de reprise des erreurs fournisseur restent documentées dans les
 artefacts locaux. Le modèle Fireworks du profil testé était inaccessible à l'inférence.
-Le second lot ajoute un engine Process avec inférences durables par lot, des checkpoints
+Le second lot ajoute une analyse privée `app.llm` avec inférences durables par lot, des checkpoints
 de conversion, un cache contrôlé par source et accès, le repli Responses pour les fichiers
 incorporés, la convergence des lecteurs Messenger/Hermès et Dream et les données XLSX/ODS
-indépendantes de la pagination. La lecture synthétique de 500 pages traverse le Process
+indépendantes de la pagination. La lecture synthétique de 500 pages traverse cette analyse
 et la passerelle LLM avec le fournisseur externe remplacé dans les tests.
 Les formats non qualifiés, le XLS structurel, l'isolation réseau des convertisseurs et
 la qualification sémantique exhaustive et répétée des grandes sources restent ouverts.
@@ -226,8 +226,7 @@ feuille/cellule, figure ou entrée d'archive. Une pagination créée par convers
 identifiée comme dérivée. Les coordonnées et relations table/figure/texte sont préservées.
 
 Statuts documentaires proposés : en préparation, prêt, en analyse, complet, partiel,
-illisible, annulé. Leur projection respecte les transitions de `app.process`, sans ajouter
-un second ordonnanceur. « Complet » exige toutes les unités couvertes et tous les contrôles
+illisible, annulé. Leur projection relève de `app.llm` et réutilise le scheduler existant. « Complet » exige toutes les unités couvertes et tous les contrôles
 contractuels passés ; il décrit une couverture vérifiée, pas une infaillibilité sémantique.
 
 Le cache distingue préparation déterministe et analyse LLM. Clés : version source,
@@ -264,7 +263,7 @@ ni contenu privé ni secrets. Les diagnostics persistés sont structurés et bor
 3. **Routage et fallback.** Implémenter admission effective, choix direct/préparé, contrôles
    de résultat et alternatives bornées. Réception : refus natif et réponse 200 insuffisante
    provoquent le fallback attendu, avec source, motif et couverture.
-4. **Traitements durables.** Brancher un engine `app.process`, checkpoints, stockage des
+4. **Traitements durables.** Brancher une analyse privée `app.llm`, checkpoints, stockage des
    dérivés et lots. Réception : 500 pages, reprise après arrêt au milieu, déduplication,
    concurrence et annulation ; mémoire plafonnée sans dépendance linéaire au nombre de pages.
 5. **Convergence des parcours.** Migrer Chat/Tasks internes, Hermès, Messenger et Dream vers

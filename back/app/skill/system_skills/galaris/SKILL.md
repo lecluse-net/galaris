@@ -49,8 +49,9 @@ records and do not promote experimental settings to production.
 
 Use `document_analyze(uri="<exact canonical source URI>", question="...",
 model_slot="document", max_calls=256)` when an attachment exceeds inline budgets,
-contains unread visual evidence, or needs complete page traversal. It returns a personal
-Process run. Follow with `document_analysis_get(run_id="...")` for coverage and the answer;
+contains unread visual evidence, or needs complete page traversal. It returns a private
+analysis identifier, outside the business-process catalogue. Pass its `analysis_id` to
+`document_analysis_get(run_id="...")` for coverage and the answer;
 `document_analysis_cancel` requests cancellation. The current Task retains its source URI.
 Never copy a file merely to make this reader accept it.
 

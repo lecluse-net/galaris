@@ -61,8 +61,8 @@ allowed_dependencies = ["app.agent", "app.connection", "app.task", "app.tools"]
 max_domain_fan_out = 4
 
 [module."app.llm"]
-allowed_dependencies = ["app.agent", "app.connection", "app.conversation", "app.mcp", "app.messenger", "app.process", "app.task", "app.tools"]
-max_domain_fan_out = 8
+allowed_dependencies = ["app.agent", "app.connection", "app.conversation", "app.file_share", "app.mcp", "app.messenger", "app.process", "app.task", "app.tools"]
+max_domain_fan_out = 9
 
 [module."app.topic"]
 allowed_dependencies = ["app.agent", "app.connection", "app.conversation", "app.llm", "app.memory", "app.messenger", "app.process", "app.task", "app.tools"]

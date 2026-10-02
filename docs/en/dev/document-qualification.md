@@ -60,8 +60,9 @@ bounded; notices point to `document_analyze` for large sources. Responses falls 
 for inline files in messages; stateful items and provider-hosted file identifiers
 retain their native transport.
 
-`document_analyze(uri, question, model_slot="document", max_calls=256)` starts a personal
-Process and returns its identifier. `document_analysis_get` returns progress, answer
+`document_analyze(uri, question, model_slot="document", max_calls=256)` starts a private
+analysis owned by `app.llm` and returns `analysis_id`. It does not appear in the business
+process catalogue. Pass that identifier as `run_id` to `document_analysis_get` for progress, answer
 and coverage after source checks. `document_analysis_cancel` requests cancellation
 and waits for local inference termination. Completed batches are read again without
 another billable admission, using stable inference identities. Interrupted inference
@@ -80,7 +81,7 @@ XLSX/ODS retain cells, formulas, caches, styles, hidden sheets, merges and comme
 separately from printed pages. Formulas are not recalculated. Legacy XLS retains an
 explicit limitation on structural extraction.
 
-Tests cover a 500-page Process with a simulated provider, recovery, access control,
+Tests cover a 500-page analysis with a simulated provider, recovery, access control,
 changed sources, cancellation, corrupt/encrypted files and multi-frame TIFF. Real
 trials and independent review remain in local artifacts. They do not qualify every
 fact in arbitrary reports or every format. See the

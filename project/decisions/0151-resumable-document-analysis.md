@@ -11,17 +11,20 @@ tableur imprimé ne conserve pas toutes les données source.
 ## Décision
 
 Conserver `core.document` comme lecteur local commun, indépendant des domaines.
-Réutiliser `app.process` et les inférences durables de `app.llm` pour l'analyse longue,
-sans nouveau scheduler ni nouvelle table. L'engine intégré `galaris` n'admet que son
-workflow documentaire personnel. Les outils `document_analyze`, `document_analysis_get`
+Correction du 2026-10-01 : l'analyse documentaire est une opération technique de
+`app.llm`, pas un processus métier. Sa persistance privée `llm_document_analyses` conserve
+les checkpoints, la couverture, les résultats et les autorisations. Un job du scheduler
+existant avance les analyses avec un bail expirant ; aucun nouveau scheduler n'est créé.
+Le moteur Process `galaris` et ses définitions techniques sont supprimés.
+Les outils `document_analyze`, `document_analysis_get`
 et `document_analysis_cancel` passent par les autorisations normales du Tool Galaris.
 L'entrée est une URI file-share ; les chemins internes ne sont jamais rendus au modèle.
 
-Chaque lot a une identité d'inférence déterministe dérivée du run et de son rang.
+Chaque lot a une identité d'inférence déterministe dérivée de l'analyse et de son rang.
 Les résultats terminés sont relus après interruption, sans nouvelle admission facturable.
 Une inférence interrompue reste explicite et n'est pas automatiquement rejouée.
 Une annulation attend la confirmation de l'arrêt local de l'inférence ; elle ne promet
-pas l'annulation de la facturation chez le fournisseur. Les états terminaux du Process
+pas l'annulation de la facturation chez le fournisseur. Les états terminaux de l'analyse
 restent immuables et les checkpoints ignorent les publications tardives.
 
 La préparation garde des checkpoints atomiques par page. Une reprise ne rerend pas
@@ -48,7 +51,18 @@ est annoncée. Aucun contenu de fichier ne devient une instruction système.
 Le fallback Chat et Responses conserve le transport choisi. Les items Responses
 stateful ou les fichiers hébergés par le fournisseur ne sont pas transformés arbitrairement.
 Dream, Messenger/Hermès et le harnais consomment la préparation commune ; leurs budgets
-inline restent explicites et le traitement exhaustif est disponible par le Process.
+inline restent explicites et le traitement exhaustif est disponible par l'analyse dédiée.
+
+DbAdmin transfère les anciennes analyses avec leur UUID, leurs lots et leurs résultats,
+y compris les archives, avant de retirer leurs définitions et runs techniques.
+Les inférences payées gardent leur identité et leur historique, détachés des FK Process.
+Les processus métier restent intacts. Un éventuel waiter Process est terminé explicitement ;
+l'analyse transférée reste consultable avec le même identifiant via `document_analysis_get`.
+Le champ de réponse `run_id` reste un alias de compatibilité de `analysis_id`.
+
+La dépendance publique `app.llm → app.file_share` exprime la lecture autorisée des sources.
+Le contrôle manquant était l'absence de création de processus métier par l'outil d'analyse ;
+le test fonctionnel protège désormais cette séparation, en plus de la reprise et de l'annulation.
 
 ## Validation et limites
 

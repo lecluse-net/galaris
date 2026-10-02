@@ -1896,6 +1896,14 @@
       },
       {
         "files": [
+          "back/app/llm/document_analysis.py",
+          "back/app/llm/document_service.py"
+        ],
+        "source": "app.llm",
+        "target": "app.file_share"
+      },
+      {
+        "files": [
           "back/app/llm/anthropic_router.py",
           "back/app/llm/call_router.py"
         ],
@@ -1940,6 +1948,7 @@
       },
       {
         "files": [
+          "back/app/llm/document_service.py",
           "back/app/llm/mcp.py"
         ],
         "source": "app.llm",
@@ -1961,6 +1970,8 @@
         "files": [
           "back/app/llm/anthropic_router.py",
           "back/app/llm/call_router.py",
+          "back/app/llm/document_service.py",
+          "back/app/llm/document_store.py",
           "back/app/llm/events.py",
           "back/app/llm/facade.py",
           "back/app/llm/inference_execution.py",
@@ -1997,6 +2008,7 @@
       },
       {
         "files": [
+          "back/app/llm/document_analysis.py",
           "back/app/llm/document_input.py"
         ],
         "source": "app.llm",
@@ -2046,6 +2058,7 @@
         "files": [
           "back/app/llm/anthropic_router.py",
           "back/app/llm/call_router.py",
+          "back/app/llm/document_service.py",
           "back/app/llm/events.py",
           "back/app/llm/inference_execution.py",
           "back/app/llm/llm_call_service.py",
@@ -2747,8 +2760,6 @@
       },
       {
         "files": [
-          "back/app/process/document_engine.py",
-          "back/app/process/mcp.py",
           "back/app/process/process_service.py",
           "back/app/process/router.py"
         ],
@@ -2759,7 +2770,7 @@
         "files": [
           "back/app/process/__init__.py",
           "back/app/process/agent_capabilities.py",
-          "back/app/process/document_engine.py",
+          "back/app/process/dbadmin.py",
           "back/app/process/process_service.py"
         ],
         "source": "app.process",
@@ -2812,13 +2823,6 @@
         ],
         "source": "app.process",
         "target": "core.dbadmin"
-      },
-      {
-        "files": [
-          "back/app/process/document_engine.py"
-        ],
-        "source": "app.process",
-        "target": "core.document"
       },
       {
         "files": [
@@ -5217,7 +5221,7 @@
           "app.tools"
         ]
       ],
-      "domain_edges": 269,
+      "domain_edges": 270,
       "fan_in": [
         {
           "count": 43,
@@ -5403,6 +5407,28 @@
         },
         {
           "count": 16,
+          "module": "app.file_share",
+          "modules": [
+            "app.agent",
+            "app.audio",
+            "app.browser",
+            "app.console",
+            "app.conversation",
+            "app.harness",
+            "app.image",
+            "app.llm",
+            "app.messenger",
+            "app.multimedia",
+            "app.process",
+            "app.tools",
+            "bridge.calendar",
+            "bridge.hermes",
+            "bridge.mail",
+            "bridge.nextcloud"
+          ]
+        },
+        {
+          "count": 16,
           "module": "app.task",
           "modules": [
             "app.audio",
@@ -5421,27 +5447,6 @@
             "app.topic",
             "app.voice",
             "app.webhook"
-          ]
-        },
-        {
-          "count": 15,
-          "module": "app.file_share",
-          "modules": [
-            "app.agent",
-            "app.audio",
-            "app.browser",
-            "app.console",
-            "app.conversation",
-            "app.harness",
-            "app.image",
-            "app.messenger",
-            "app.multimedia",
-            "app.process",
-            "app.tools",
-            "bridge.calendar",
-            "bridge.hermes",
-            "bridge.mail",
-            "bridge.nextcloud"
           ]
         },
         {
@@ -5740,6 +5745,21 @@
         },
         {
           "count": 9,
+          "module": "app.llm",
+          "modules": [
+            "app.agent",
+            "app.connection",
+            "app.conversation",
+            "app.file_share",
+            "app.mcp",
+            "app.messenger",
+            "app.process",
+            "app.task",
+            "app.tools"
+          ]
+        },
+        {
+          "count": 9,
           "module": "app.memory",
           "modules": [
             "app.agent",
@@ -5806,20 +5826,6 @@
             "app.connection",
             "app.file_share",
             "app.llm",
-            "app.messenger",
-            "app.process",
-            "app.task",
-            "app.tools"
-          ]
-        },
-        {
-          "count": 8,
-          "module": "app.llm",
-          "modules": [
-            "app.agent",
-            "app.connection",
-            "app.conversation",
-            "app.mcp",
             "app.messenger",
             "app.process",
             "app.task",
@@ -7038,26 +7044,26 @@
         "namespace": "galaris"
       },
       {
-        "file": "back/app/process/mcp.py",
+        "file": "back/app/llm/mcp.py",
         "handler": "document_analysis_cancel",
-        "line": 61,
-        "module": "app.process",
+        "line": 53,
+        "module": "app.llm",
         "name": "document_analysis_cancel",
         "namespace": "galaris"
       },
       {
-        "file": "back/app/process/mcp.py",
+        "file": "back/app/llm/mcp.py",
         "handler": "document_analysis_get",
-        "line": 48,
-        "module": "app.process",
+        "line": 44,
+        "module": "app.llm",
         "name": "document_analysis_get",
         "namespace": "galaris"
       },
       {
-        "file": "back/app/process/mcp.py",
+        "file": "back/app/llm/mcp.py",
         "handler": "document_analyze",
         "line": 28,
-        "module": "app.process",
+        "module": "app.llm",
         "name": "document_analyze",
         "namespace": "galaris"
       },
@@ -7088,7 +7094,7 @@
       {
         "file": "back/app/process/mcp.py",
         "handler": "process_analyze_run",
-        "line": 204,
+        "line": 156,
         "module": "app.process",
         "name": "process_analyze_run",
         "namespace": "galaris"
@@ -7096,7 +7102,7 @@
       {
         "file": "back/app/process/mcp.py",
         "handler": "process_get",
-        "line": 108,
+        "line": 60,
         "module": "app.process",
         "name": "process_get",
         "namespace": "galaris"
@@ -7104,7 +7110,7 @@
       {
         "file": "back/app/process/mcp.py",
         "handler": "process_get_run",
-        "line": 189,
+        "line": 141,
         "module": "app.process",
         "name": "process_get_run",
         "namespace": "galaris"
@@ -7112,7 +7118,7 @@
       {
         "file": "back/app/process/mcp.py",
         "handler": "process_list",
-        "line": 99,
+        "line": 51,
         "module": "app.process",
         "name": "process_list",
         "namespace": "galaris"
@@ -7120,7 +7126,7 @@
       {
         "file": "back/app/process/mcp.py",
         "handler": "process_list_runs",
-        "line": 169,
+        "line": 121,
         "module": "app.process",
         "name": "process_list_runs",
         "namespace": "galaris"
@@ -7128,7 +7134,7 @@
       {
         "file": "back/app/process/mcp.py",
         "handler": "process_start",
-        "line": 134,
+        "line": 86,
         "module": "app.process",
         "name": "process_start",
         "namespace": "galaris"
@@ -7192,7 +7198,7 @@
       {
         "file": "back/app/llm/mcp.py",
         "handler": "mcp_llm_call",
-        "line": 30,
+        "line": 69,
         "module": "app.llm",
         "name": "llm_call",
         "namespace": "galaris_admin"
@@ -7200,7 +7206,7 @@
       {
         "file": "back/app/llm/mcp.py",
         "handler": "mcp_llm_calls",
-        "line": 48,
+        "line": 87,
         "module": "app.llm",
         "name": "llm_calls",
         "namespace": "galaris_admin"
@@ -7920,7 +7926,7 @@
       {
         "file": "back/app/process/mcp.py",
         "handler": "process_admin_analyze_run",
-        "line": 517,
+        "line": 469,
         "module": "app.process",
         "name": "process_admin_analyze_run",
         "namespace": "process_admin"
@@ -7928,7 +7934,7 @@
       {
         "file": "back/app/process/mcp.py",
         "handler": "process_admin_cancel_run",
-        "line": 489,
+        "line": 441,
         "module": "app.process",
         "name": "process_admin_cancel_run",
         "namespace": "process_admin"
@@ -7936,7 +7942,7 @@
       {
         "file": "back/app/process/mcp.py",
         "handler": "process_admin_create",
-        "line": 293,
+        "line": 245,
         "module": "app.process",
         "name": "process_admin_create",
         "namespace": "process_admin"
@@ -7944,7 +7950,7 @@
       {
         "file": "back/app/process/mcp.py",
         "handler": "process_admin_delete",
-        "line": 370,
+        "line": 322,
         "module": "app.process",
         "name": "process_admin_delete",
         "namespace": "process_admin"
@@ -7952,7 +7958,7 @@
       {
         "file": "back/app/process/mcp.py",
         "handler": "process_admin_delete_run",
-        "line": 531,
+        "line": 483,
         "module": "app.process",
         "name": "process_admin_delete_run",
         "namespace": "process_admin"
@@ -7960,7 +7966,7 @@
       {
         "file": "back/app/process/mcp.py",
         "handler": "process_admin_engines",
-        "line": 216,
+        "line": 168,
         "module": "app.process",
         "name": "process_admin_engines",
         "namespace": "process_admin"
@@ -7968,7 +7974,7 @@
       {
         "file": "back/app/process/mcp.py",
         "handler": "process_admin_get",
-        "line": 274,
+        "line": 226,
         "module": "app.process",
         "name": "process_admin_get",
         "namespace": "process_admin"
@@ -7976,7 +7982,7 @@
       {
         "file": "back/app/process/mcp.py",
         "handler": "process_admin_get_run",
-        "line": 455,
+        "line": 407,
         "module": "app.process",
         "name": "process_admin_get_run",
         "namespace": "process_admin"
@@ -7984,7 +7990,7 @@
       {
         "file": "back/app/process/mcp.py",
         "handler": "process_admin_list",
-        "line": 251,
+        "line": 203,
         "module": "app.process",
         "name": "process_admin_list",
         "namespace": "process_admin"
@@ -7992,7 +7998,7 @@
       {
         "file": "back/app/process/mcp.py",
         "handler": "process_admin_list_runs",
-        "line": 426,
+        "line": 378,
         "module": "app.process",
         "name": "process_admin_list_runs",
         "namespace": "process_admin"
@@ -8000,7 +8006,7 @@
       {
         "file": "back/app/process/mcp.py",
         "handler": "process_admin_refresh_run",
-        "line": 475,
+        "line": 427,
         "module": "app.process",
         "name": "process_admin_refresh_run",
         "namespace": "process_admin"
@@ -8008,7 +8014,7 @@
       {
         "file": "back/app/process/mcp.py",
         "handler": "process_admin_retry_run",
-        "line": 503,
+        "line": 455,
         "module": "app.process",
         "name": "process_admin_retry_run",
         "namespace": "process_admin"
@@ -8016,7 +8022,7 @@
       {
         "file": "back/app/process/mcp.py",
         "handler": "process_admin_start",
-        "line": 391,
+        "line": 343,
         "module": "app.process",
         "name": "process_admin_start",
         "namespace": "process_admin"
@@ -8024,7 +8030,7 @@
       {
         "file": "back/app/process/mcp.py",
         "handler": "process_admin_sync",
-        "line": 235,
+        "line": 187,
         "module": "app.process",
         "name": "process_admin_sync",
         "namespace": "process_admin"
@@ -8032,7 +8038,7 @@
       {
         "file": "back/app/process/mcp.py",
         "handler": "process_admin_update",
-        "line": 323,
+        "line": 275,
         "module": "app.process",
         "name": "process_admin_update",
         "namespace": "process_admin"
@@ -9034,7 +9040,7 @@
           "llm_inferences.id"
         ],
         "history_mixin": false,
-        "line": 58,
+        "line": 82,
         "module": "app.llm",
         "table": "llm_call_events"
       },
@@ -9052,9 +9058,21 @@
           "users.id"
         ],
         "history_mixin": false,
-        "line": 77,
+        "line": 101,
         "module": "app.llm",
         "table": "llm_calls"
+      },
+      {
+        "class_name": "LLMDocumentAnalysis",
+        "file": "back/app/llm/models.py",
+        "foreign_keys": [
+          "agents.id",
+          "tasks.id"
+        ],
+        "history_mixin": false,
+        "line": 16,
+        "module": "app.llm",
+        "table": "llm_document_analyses"
       },
       {
         "class_name": "LLMInferenceAttempt",
@@ -9063,7 +9081,7 @@
           "llm_inferences.id"
         ],
         "history_mixin": false,
-        "line": 30,
+        "line": 54,
         "module": "app.llm",
         "table": "llm_inference_attempts"
       },
@@ -9075,7 +9093,7 @@
           "llm_inferences.id"
         ],
         "history_mixin": false,
-        "line": 46,
+        "line": 70,
         "module": "app.llm",
         "table": "llm_inference_commands"
       },
@@ -9087,7 +9105,7 @@
           "users.id"
         ],
         "history_mixin": false,
-        "line": 16,
+        "line": 40,
         "module": "app.llm",
         "table": "llm_inferences"
       },

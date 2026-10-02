@@ -57,6 +57,35 @@ async def start_inference(request: InferenceRequest, *, inference_id: UUID | Non
     return await submit(request, inference_id=inference_id)
 
 
+async def import_document_analysis(
+    analysis_id: UUID, *, agent_id: int, task_id: UUID | None,
+    input_data: dict[str, Any], checkpoint: dict[str, Any],
+    status: str, output: dict[str, Any] | None, error: dict[str, Any] | None,
+    dispatch: dict[str, Any], idempotency_key: str | None,
+) -> None:
+    """DbAdmin cutover port; retain paid inference identities and existing results."""
+    from sqlalchemy import select
+    from sqlalchemy.dialects.postgresql import insert
+    from core.database import get_db
+    from .models import LLMDocumentAnalysis, LLMInference, LLMCall
+
+    db = get_db()
+    inferences = list(await db.scalars(select(LLMInference).where(
+        LLMInference.request["process_run_id"].astext == str(analysis_id),
+    )))
+    authority = dict(inferences[0].authority) if inferences else {}
+    await db.execute(insert(LLMDocumentAnalysis).values(
+        id=analysis_id, agent_id=agent_id, task_id=task_id, input=input_data,
+        checkpoint=checkpoint, status=status, output=output, error=error,
+        dispatch=dispatch, idempotency_key=idempotency_key, authority=authority,
+    ).on_conflict_do_nothing(index_elements=[LLMDocumentAnalysis.id]))
+    for inference in inferences:
+        inference.request = {**inference.request, "process_run_id": None, "purpose": "document.analysis"}
+    from sqlalchemy import update
+    await db.execute(update(LLMCall).where(LLMCall.process_run_id == analysis_id)
+        .values(process_run_id=None, purpose="document.analysis"))
+
+
 async def read_inference(inference_id: UUID) -> InferenceRead:
     from .inference_execution import read
     return await read(inference_id)
@@ -319,6 +348,7 @@ __all__ = [
     "ProviderAuthenticationError", "register_decision_provider",
     "register_inference_output", "inference_output_spec", "record_structured_inferences",
     "start_inference", "read_inference", "control_inference", "stream_inference",
+    "import_document_analysis",
     "start_inference_worker", "stop_inference_worker", "inference_worker_running",
     "record_text_inferences", "run_text_inference", "read_inference_events", "read_inference_result",
     "LLMProcessingTiming", "task_processing_timings", "LLMExecutionTiming", "execution_timing", "conversation_execution_timing",

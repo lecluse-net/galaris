@@ -47,3 +47,41 @@ def register_dbadmin(registry: DbAdminRegistry) -> None:
         key="app.process.remove_avatar_workflows", handler=_purge_avatar_processes,
         depends_on=("app.tools.mandatory.tools",),
     ))
+    registry.register_reconciler(DbAdminReconciler(
+        key="app.process.move_document_analyses", handler=_move_document_analyses,
+        depends_on=("app.tools.mandatory.tools",),
+    ))
+
+
+async def _move_document_analyses(session: AsyncSession) -> None:
+    """Transfer exact internal workflows atomically, leaving business workflows alone."""
+    from app.llm.facade import import_document_analysis
+
+    definitions = list(await session.scalars(select(ProcessDefinition).where(
+        ProcessDefinition.tool_id.in_(select(ToolModel.id).where(ToolModel.code == "galaris")),
+        ProcessDefinition.engine_process_id.regexp_match(r"^galaris:[0-9]+:document_analysis$"),
+    ).execution_options(include_historized=True)))
+    for definition in definitions:
+        runs = list(await session.scalars(select(ProcessRun).where(
+            ProcessRun.process_id == definition.id,
+        ).with_for_update().execution_options(include_historized=True)))
+        for run in runs:
+            await import_document_analysis(run.id, agent_id=run.launcher_agent_id, task_id=run.task_id,
+                input_data=run.input, checkpoint=run.engine_metadata,
+                status=run.status if run.status in TERMINAL_STATUSES | {"unknown", "cancelling"} else "running",
+                output=run.output, error={"code": run.error_code, "message": run.error_message or "Analysis failed"}
+                    if run.error_code else None,
+                dispatch={**run.launch_snapshot, "claimed": run.engine_run_id is not None},
+                idempotency_key=run.idempotency_key if definition.deleted_at is None and run.deleted_at is None else None)
+            if run.await_task_id is not None and run.deleted_at is None:
+                # Generic Process waiters cannot remain attached to deleted rows.
+                if run.status not in TERMINAL_STATUSES:
+                    await apply_engine_snapshot(run, EngineRunSnapshot(status="error", error=EngineError(
+                        code="document_analysis_moved",
+                        message="Analysis moved to document_analysis_get with the same run identifier.",
+                    )), "document.analysis.moved")
+                await refresh_run(run.id)
+        await session.execute(delete(ProcessRun).where(ProcessRun.process_id == definition.id)
+            .execution_options(synchronize_session=False))
+        await session.execute(delete(ProcessDefinition).where(ProcessDefinition.id == definition.id)
+            .execution_options(synchronize_session=False))
