@@ -9,6 +9,7 @@ from uuid import UUID
 from pydantic import BaseModel, Field
 
 from app.agent.contracts import RuntimeName
+from app.tools.contracts import FileIndexingMode
 
 
 ResourceCapability = Literal[
@@ -136,11 +137,13 @@ class ResourceSearchResult(BaseModel):
 
 
 class ResourceSchemeDescription(BaseModel):
+    """Indexing preferences cover file transports, never Messenger branches."""
     scheme: str
     label: str
     example: str
     capabilities: list[ResourceCapability]
     native: bool
+    file_indexing_mode: FileIndexingMode = "excluded"
 
 
 @dataclass(frozen=True, slots=True)

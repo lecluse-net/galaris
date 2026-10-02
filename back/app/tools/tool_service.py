@@ -11,6 +11,7 @@ from core.i18n import render_prompt, tr
 from core.util import get_encryption_service
 from .models import Tool as ToolModel
 from .administration_lock import lock_tools, finish_write
+from .parameter_definitions import with_standard_params
 from .secrets import (
     SecretPlaceholderWithoutValue,
     export_listener_config,
@@ -26,6 +27,7 @@ from .secrets import (
     runtime_mcp_config,
 )
 from .schemas import (
+    ConnectionParamDef,
     ConnectionSchema,
     FileShareConfig,
     ListenerConfig,
@@ -51,8 +53,13 @@ async def get_tool_codes(tool_ids: set[int]) -> dict[int, str]:
     return {tool_id: code for tool_id, code in rows}
 
 
+def connection_schema_for_tool(record: ToolModel) -> Dict[str, Any]:
+    return with_standard_params(record.connection_schema or {}, code=record.code,
+                                file_share_config=record.file_share_config)
+
+
 def _connection_param_definitions(record: ToolModel) -> Dict[str, Dict[str, Any]]:
-    schema = record.connection_schema or {}
+    schema = connection_schema_for_tool(record)
     return cast(Dict[str, Dict[str, Any]], schema.get("params") or {})
 
 
@@ -181,6 +188,9 @@ async def update_global_params(
             value = str(previous_value)
         if value is not None:
             validate_param_value(str(definition.get("type") or "string"), value)
+            options = ConnectionParamDef.model_validate(definition).options
+            if options and value not in {option.value for option in options}:
+                raise ValueError("Connection parameter must be one of the fixed options")
 
         if value is not None and _global_param_is_secret(definition):
             if not _encryption.is_encrypted(value):
@@ -345,7 +355,7 @@ def _to_internal(record: ToolModel) -> Tool:
             if record.listener_config
             else None
         ),
-        connection_schema=ConnectionSchema(**record.connection_schema) if record.connection_schema else ConnectionSchema(),
+        connection_schema=ConnectionSchema(**connection_schema_for_tool(record)),
         task_config=TaskConfig(**record.task_config) if record.task_config else None,
         conversation_enabled=bool(record.conversation_enabled),
     )
@@ -368,7 +378,8 @@ async def create_tool(data: ToolCreate, *, commit: bool = True) -> ToolModel:
     if not tool_can_edit(data.code):
         raise ValueError("Integrated Tool definitions are software-owned")
     db = get_db()
-    connection_schema = data.connection_schema.model_dump()
+    connection_schema = with_standard_params(data.connection_schema.model_dump(), code=data.code,
+        file_share_config=data.file_share_config.model_dump() if data.file_share_config else None)
     await _validate_connection_schema(connection_schema)
     messenger_config = (
         data.messenger_config.model_dump() if data.messenger_config else None
@@ -491,10 +502,11 @@ async def update_tool(tool_id: int, data: ToolUpdate, *, commit: bool = True) ->
             connection_schema = cast(Dict[str, Any], value)
             await _validate_connection_schema(connection_schema)
         setattr(record, field, value)
-    if "connection_schema" in data.model_fields_set:
+    if {"connection_schema", "file_share_config"} & data.model_fields_set:
+        record.connection_schema = connection_schema_for_tool(record)
         record.global_params = merge_default_global_params(
             record.global_params,
-            target_connection_schema,
+            record.connection_schema,
         )
     await finish_write(commit=commit, db=get_db())
     await db.refresh(record)
@@ -608,8 +620,9 @@ def _record_to_export_dict(record: ToolModel) -> Dict[str, object]:
         )
     if record.listener_config:
         d["listener_config"] = export_listener_config(record.listener_config)
-    if record.connection_schema and record.connection_schema.get("params"):
-        d["connection_schema"] = public_connection_schema(record.connection_schema)
+    schema = connection_schema_for_tool(record)
+    if schema.get("params"):
+        d["connection_schema"] = public_connection_schema(schema)
     if record.task_config:
         # Normalize persisted legacy JSON through the current public contract so
         # removed fields cannot reappear in exported YAML.

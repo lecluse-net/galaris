@@ -60,13 +60,7 @@ def to_public(record: ToolModel) -> ToolPublic:
             if listener_config
             else None
         ),
-        connection_schema=(
-            ConnectionSchema(
-                **public_connection_schema(record.connection_schema)
-            )
-            if record.connection_schema
-            else ConnectionSchema()
-        ),
+        connection_schema=ConnectionSchema(**public_connection_schema(tool_service.connection_schema_for_tool(record))),
         global_params=tool_service.public_global_params(record),
         task_config=TaskConfig(**record.task_config) if record.task_config else None,
         created_at=record.created_at,

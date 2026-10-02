@@ -1,3 +1,5 @@
+import type { ConnectionParamDef, ConnectionParamOption } from './services/toolService'
+
 const BUILT_IN_TOOL_CODES = new Set([
   "galaris",
   "conversation",
@@ -72,10 +74,40 @@ export function toolMessageKey(code: string, field: 'label' | 'description'): st
   return BUILT_IN_TOOL_CODES.has(code) ? `tools.builtins.${code}.${field}` : null
 }
 
-export function connectionParamMessageKey(toolCode: string, name: string): string | null {
+export function connectionParamMessageKey(toolCode: string, name: string, definition?: Partial<ConnectionParamDef>): string | null {
+  if (definition?.builtin && definition.description?.startsWith('tools.')) return definition.description
   return CONNECTION_PARAM_CODES[toolCode]?.has(name)
     ? `tools.connectionParamDescriptions.${toolCode}.${name}`
     : null
+}
+
+export function connectionParamLabel(
+  toolCode: string | undefined,
+  name: string,
+  definition: Partial<ConnectionParamDef>,
+  translate: (key: string) => string,
+  exists: (key: string) => boolean,
+): string {
+  const key = definition.label?.trim() || `tools.connectionParamLabels.${name}`
+  if ((definition.builtin || toolCode && BUILT_IN_TOOL_CODES.has(toolCode)) && exists(key)) return translate(key)
+  return definition.label?.trim() || name
+}
+
+export function connectionParamOptions(
+  toolCode: string | undefined,
+  name: string,
+  definition: Partial<ConnectionParamDef>,
+  translate: (key: string) => string,
+  exists: (key: string) => boolean,
+): ConnectionParamOption[] {
+  return (definition.options ?? []).map(option => {
+    const key = option.label || `tools.connectionParamOptions.${toolCode}.${name}.${option.value}`
+    return {
+      value: option.value,
+      label: (definition.builtin || toolCode && BUILT_IN_TOOL_CODES.has(toolCode)) && exists(key)
+        ? translate(key) : option.label || option.value,
+    }
+  })
 }
 
 export function sortedConnectionParamEntries<T extends { order?: number | null }>(

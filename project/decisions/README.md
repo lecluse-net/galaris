@@ -188,3 +188,5 @@ nouvelle décision plutôt que réécrite silencieusement si le choix change.
 - [0127 — Modèle de décision facultatif pour le dispatcher Task](0127-optional-dispatcher-decision-model.md)
 - [0128 — Requêtes HTTP de l'interface sans délai maximal](0128-http-client-without-deadline.md)
 - [0141 — Permissions réseau du navigateur et décisions humaines mémorisées](0141-browser-remembered-permissions.md)
+
+- [0152 — Indexation par les paramètres standards des Tools](0152-tool-file-indexing-preference.md)

@@ -27,6 +27,21 @@ Une chaîne de commandes agentiques ne permet pas de s’attribuer une capacité
 
 ## Tester puis créer avec un secret
 
+### Préparer l'indexation des fichiers
+
+Le paramètre standard **Indexation des fichiers** (`tools.fileindexing`) propose
+**Désactivée**, **Uniquement les fichiers déjà connus** et, si le provider le supporte,
+**Découverte & indexation de tous les contenus disponibles**. Ce dernier mode découvre les
+contenus accessibles via la connexion ; le mode des fichiers déjà connus ne parcourt pas le provider.
+Dans **Outils → Paramètres globaux**, définir la valeur héritée par les connexions du Tool ;
+dans **Connexions**, conserver cet héritage ou personnaliser la valeur pour un agent.
+Une valeur globale imposée empêche les surcharges locales, comme pour les autres paramètres.
+Le défaut est désactivé. Console expose ce paramètre aussi avec sa cible embarquée.
+Les réglages existants sont repris lors de la synchronisation et restent conservés aux mises
+à jour. Les droits de chaque agent restent applicables ; la définition intégrée reste protégée.
+
+### Créer le Tool
+
 1. Examiner le catalogue avec `tool_admin_list` et lire une éventuelle définition existante
    avec `tool_admin_get` pour éviter un doublon.
 2. Un humain ouvre **Outils → Nouvel outil**, renseigne le code, le libellé, un paramètre
@@ -65,6 +80,35 @@ paramètres. Un rafraîchissement ToolAdmin ignore toutes les sources stdio des 
 et signale une découverte partielle sans supprimer leur index existant.
 
 ## Paramètres, droits et commandes
+
+La définition `connection_schema.params` accepte un `label` facultatif par paramètre.
+Le formulaire affiche ce libellé avec le code technique et la description. Pour les types
+`string` et `integer`, `options` définit des choix fixes ; chaque entrée porte une `value`
+(chaîne enregistrée) et un `label` (texte affiché, facultatif). Par exemple :
+
+```yaml
+connection_schema:
+  params:
+    region:
+      type: string
+      label: Région du service
+      default: eu
+      options:
+        - value: eu
+          label: Europe
+        - value: us
+          label: Amérique du Nord
+```
+
+Les valeurs des choix doivent être non vides, uniques et compatibles avec le type. Un défaut
+non vide doit appartenir aux choix. Sans `options`, le contrôle habituel reste disponible.
+Les connexions, paramètres globaux et tests MCP affichent ces choix ; les écritures locales
+et globales refusent une valeur hors liste. L’import/export YAML conserve ces métadonnées.
+
+Pour les Tools internes, le backend renseigne `label` avec une clé de traduction, par exemple
+`tools.connectionParamLabels.default_output`. Les libellés des paramètres et de leurs choix
+sont traduits par le frontend en français, anglais et chinois. Pour les Tools personnalisés,
+les libellés saisis sont affichés tels quels, sans traduction.
 
 Les valeurs locales gagnent sur les valeurs globales, sauf si une valeur globale est `forced`.
 Sans valeur locale ni globale, le défaut déclaré s’applique. Une écriture omise conserve la

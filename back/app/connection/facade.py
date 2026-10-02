@@ -1,6 +1,7 @@
 """Stable connection-domain operations used by other modules."""
 
 from . import admin_service as administration
+from .parameter_resolution import effective_param_value_expression as effective_param_value_expression
 
 from .connection_service import (
     function_state_label,
@@ -33,6 +34,7 @@ from .connection_service import (
 )
 
 __all__ = [
+    "effective_param_value_expression",
     "function_state_label",
     "get_connection",
     "get_connections_by_agent",

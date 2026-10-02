@@ -105,7 +105,7 @@
       </template>
       <template v-slot:body-cell-actions="props">
         <q-td :props="props">
-          <q-btn v-if="canEdit && !isSystemTool(props.row.tool_id)" flat round color="primary" icon="edit" size="sm" @click="openDialog(props.row)" />
+          <q-btn v-if="canEdit && !isSystemTool(props.row.tool_id)" flat round color="primary" icon="edit" size="sm" :aria-label="$t('common.edit')" @click="openDialog(props.row)" />
           <q-btn v-if="canEdit && !isSystemTool(props.row.tool_id)" flat round color="negative" icon="delete" size="sm" @click="confirmDelete(props.row)" />
         </q-td>
       </template>

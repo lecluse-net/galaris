@@ -540,9 +540,14 @@ async def list_schemes(ctx: ResourceContext) -> list[ResourceSchemeDescription]:
         ),
     ]
     if ctx.console_resource is not None:
+        from .file_share_service import effective_file_indexing_mode
+
+        console_mode = await effective_file_indexing_mode(ctx.agent_id, "console")
+        console_indexing = "known_uris" if console_mode == "known_uris" else "excluded"
         schemes.append(
             ResourceSchemeDescription(
                 scheme="console",
+                file_indexing_mode=console_indexing,
                 label="Local files (SSH console home)",
                 example="console://reports/result.pdf",
                 capabilities=list(_MUTABLE_FILE_CAPABILITIES),
@@ -580,6 +585,7 @@ async def list_schemes(ctx: ResourceContext) -> list[ResourceSchemeDescription]:
         schemes.append(
             ResourceSchemeDescription(
                 scheme=scheme,
+                file_indexing_mode=target.get("file_indexing_mode", "excluded"),
                 label=target["label"],
                 example=example,
                 capabilities=capabilities,

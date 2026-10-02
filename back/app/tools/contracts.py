@@ -10,6 +10,9 @@ from uuid import UUID
 
 EXECUTION_META_KEY = "galaris.execution/v1"
 
+FileIndexingMode = Literal["excluded", "known_uris", "recursive"]
+FILE_INDEXING_PARAM = "tools.fileindexing"
+
 
 @dataclass
 class ToolExecutionContext:

@@ -267,7 +267,7 @@ tests restent l’autorité sur le comportement.
 | `app.file_share` | `app.process` | `back/app/file_share/galaris_provider.py` |
 | `app.file_share` | `app.skill` | `back/app/file_share/galaris_provider.py`, `back/app/file_share/mcp.py` |
 | `app.file_share` | `app.task` | `back/app/file_share/galaris_provider.py`, `back/app/file_share/messenger_transport.py` |
-| `app.file_share` | `app.tools` | `back/app/file_share/documentation_provider.py`, `back/app/file_share/file_share_service.py`, `back/app/file_share/galaris_provider.py`, `back/app/file_share/mcp.py`, `back/app/file_share/transport.py` |
+| `app.file_share` | `app.tools` | `back/app/file_share/bridges.py`, `back/app/file_share/documentation_provider.py`, `back/app/file_share/file_share_service.py`, `back/app/file_share/galaris_provider.py`, `back/app/file_share/mcp.py`, `back/app/file_share/resource_contracts.py`, `back/app/file_share/transport.py` |
 | `app.file_share` | `bridge.affine` | `back/app/file_share/bridges.py` |
 | `app.file_share` | `bridge.grav` | `back/app/file_share/bridges.py` |
 | `app.file_share` | `core.authorize` | `back/app/file_share/router.py` |
@@ -453,7 +453,7 @@ tests restent l’autorité sur le comportement.
 | `app.tools` | `app.connection` | `back/app/tools/admin_access.py`, `back/app/tools/admin_candidates.py`, `back/app/tools/admin_contracts.py`, `back/app/tools/admin_service.py`, `back/app/tools/agent_registry.py`, `back/app/tools/authorization.py`, `back/app/tools/connection_functions.py`, `back/app/tools/dbadmin.py`, `back/app/tools/documentation_service.py`, `back/app/tools/facade.py`, `back/app/tools/mandatory_tools.py`, `back/app/tools/mcp_authorization.py`, `back/app/tools/mcp_loader.py`, `back/app/tools/tool_service.py` |
 | `app.tools` | `app.console` | `back/app/tools/mcp_loader.py` |
 | `app.tools` | `app.documentation` | `back/app/tools/documentation_service.py` |
-| `app.tools` | `app.file_share` | `back/app/tools/resource_effects.py`, `back/app/tools/tool_service.py` |
+| `app.tools` | `app.file_share` | `back/app/tools/parameter_definitions.py`, `back/app/tools/resource_effects.py`, `back/app/tools/tool_service.py` |
 | `app.tools` | `app.llm` | `back/app/tools/documentation_service.py`, `back/app/tools/mcp_loader.py`, `back/app/tools/tool_search_service.py` |
 | `app.tools` | `app.messenger` | `back/app/tools/authorization_notifications.py`, `back/app/tools/mcp_loader.py`, `back/app/tools/tool_service.py` |
 | `app.tools` | `app.task` | `back/app/tools/mcp_loader.py` |
@@ -1822,8 +1822,8 @@ tests restent l’autorité sur le comportement.
 | `titles` | `Title` | `app.agent` | non | — | `back/app/agent/models.py:41` |
 | `tool_action_authorizations` | `ActionAuthorization` | `app.tools` | non | `agents.id`, `connections.id`, `messenger_interactions.id`, `runtime_run_grants.id`, `tools.id`, `users.id` | `back/app/tools/authorization_models.py:13` |
 | `tool_function_state` | `ToolFunctionState` | `app.connection` | non | `tools.id` | `back/app/connection/models.py:80` |
-| `tool_search_documents` | `ToolSearchDocument` | `app.tools` | non | — | `back/app/tools/models.py:62` |
-| `tools` | `Tool` | `app.tools` | non | — | `back/app/tools/models.py:22` |
+| `tool_search_documents` | `ToolSearchDocument` | `app.tools` | non | — | `back/app/tools/models.py:74` |
+| `tools` | `Tool` | `app.tools` | non | — | `back/app/tools/models.py:24` |
 | `topics` | `Topic` | `app.topic` | oui | `memory_items.id` | `back/app/topic/models.py:15` |
 | `user_help_dismissals` | `UserHelpDismissal` | `core.user` | non | `users.id` | `back/core/user/models.py:80` |
 | `user_llm_preferences` | `UserLlmPreferences` | `app.llm` | non | `llm_profiles.id`, `llms.id`, `users.id` | `back/app/llm/profile_models.py:111` |

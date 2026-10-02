@@ -26,6 +26,21 @@ administrative capabilities to its caller.
 
 ## Test and create with a secret
 
+### Prepare file indexing
+
+The standard **File indexing** parameter (`tools.fileindexing`) offers **Disabled**,
+**Only files already known**, and **Discover & index all available content** when the provider
+supports it. The latter discovers content accessible through the connection; the known-files
+mode does not traverse the provider.
+Under **Tools → Global parameters**, set the value inherited by the Tool's connections;
+under **Connections**, retain inheritance or override the value for an agent.
+An imposed global value prevents local overrides, as with other parameters. Disabled is the
+default. Console also exposes this parameter for its embedded target. Existing preferences
+are carried over during synchronization and preserved through upgrades. Each agent's source
+permissions remain enforced, and the integrated definition remains protected.
+
+### Create the Tool
+
 1. Inspect `tool_admin_list` and read any existing definition with `tool_admin_get` to avoid duplicates.
 2. A human opens **Tools → New Tool**, enters its code and label, declares a `token` parameter
    of type `password`, and configures HTTP or SSE MCP with Bearer authentication and `auth.param=token`.
@@ -61,6 +76,35 @@ ToolAdmin refresh skips all stdio sources connected to the selected agents and r
 partial discovery without pruning their existing index.
 
 ## Parameters, permissions and commands
+
+The `connection_schema.params` definition accepts an optional `label` for each parameter.
+Forms display it alongside the technical code and description. For `string` and `integer`
+parameters, `options` defines fixed choices; each entry has a `value` (the stored string) and
+an optional `label` (the displayed text). For example:
+
+```yaml
+connection_schema:
+  params:
+    region:
+      type: string
+      label: Service region
+      default: eu
+      options:
+        - value: eu
+          label: Europe
+        - value: us
+          label: North America
+```
+
+Choice values must be non-empty, unique and compatible with the parameter type. A non-empty
+default must be one of the choices. Without `options`, the usual control remains available.
+Connections, global parameters and MCP tests display these choices; local and global writes
+reject values outside the list. YAML import/export preserves this metadata.
+
+For built-in Tools, the backend supplies a translation key in `label`, for example
+`tools.connectionParamLabels.default_output`. The frontend translates parameter and choice
+labels into French, English and Chinese. Custom Tool labels are displayed as entered,
+without translation.
 
 Local values override global values unless a global value is `forced`. Without either value,
 the declared default applies. Omission preserves a value; `clear=true` explicitly clears it.

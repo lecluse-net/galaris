@@ -1195,10 +1195,12 @@
       },
       {
         "files": [
+          "back/app/file_share/bridges.py",
           "back/app/file_share/documentation_provider.py",
           "back/app/file_share/file_share_service.py",
           "back/app/file_share/galaris_provider.py",
           "back/app/file_share/mcp.py",
+          "back/app/file_share/resource_contracts.py",
           "back/app/file_share/transport.py"
         ],
         "source": "app.file_share",
@@ -3119,6 +3121,7 @@
       },
       {
         "files": [
+          "back/app/tools/parameter_definitions.py",
           "back/app/tools/resource_effects.py",
           "back/app/tools/tool_service.py"
         ],
@@ -9735,7 +9738,7 @@
         "file": "back/app/tools/models.py",
         "foreign_keys": [],
         "history_mixin": false,
-        "line": 62,
+        "line": 74,
         "module": "app.tools",
         "table": "tool_search_documents"
       },
@@ -9744,7 +9747,7 @@
         "file": "back/app/tools/models.py",
         "foreign_keys": [],
         "history_mixin": false,
-        "line": 22,
+        "line": 24,
         "module": "app.tools",
         "table": "tools"
       },

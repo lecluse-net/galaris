@@ -83,12 +83,20 @@ export interface ListenerConfig {
     connection_key: string
 }
 
+export interface ConnectionParamOption {
+    value: string
+    label: string
+}
+
 export interface ConnectionParamDef {
     type: string
     required: boolean
     default: string
     description: string
     order?: number | null
+    label?: string
+    builtin?: boolean
+    options?: ConnectionParamOption[]
 }
 
 export interface ConnectionSchema {

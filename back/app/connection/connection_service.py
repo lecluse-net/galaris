@@ -490,6 +490,8 @@ async def validate_params(tool_id: int, params: Dict[str, Optional[str]]) -> Non
         if value in (None, ""):
             continue
         validate_param_value(definition.type, value)
+        if definition.options and value not in {option.value for option in definition.options}:
+            raise ValueError("Connection parameter must be one of the fixed options")
 
 
 def validate_param_value(type_name: str, value: str) -> None:

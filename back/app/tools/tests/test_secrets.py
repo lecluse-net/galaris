@@ -165,7 +165,6 @@ def test_public_tool_projection_contains_presence_flags_only() -> None:
         can_disable=True,
         id=9,
         code="sentinel-public-tool",
-        file_indexing_mode="excluded",
         label="Sentinel",
         description="",
         mcp_config=protect_mcp_config({

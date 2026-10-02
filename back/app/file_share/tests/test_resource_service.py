@@ -401,6 +401,13 @@ async def test_move_rejects_an_immutable_source_before_copying() -> None:
 async def test_console_is_the_only_advertised_local_scheme_with_ssh(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    from app.file_share import file_share_service
+
+    async def console_mode(agent_id: int, code: str) -> str:
+        assert (agent_id, code) == (1, "console")
+        return "known_uris"
+
+    monkeypatch.setattr(file_share_service, "effective_file_indexing_mode", console_mode)
     async def no_targets(
         *_args: object,
         **_kwargs: object,
@@ -418,6 +425,12 @@ async def test_console_is_the_only_advertised_local_scheme_with_ssh(
     )
     by_scheme = {item.scheme: item for item in schemes}
     console = by_scheme["console"]
+
+    assert console.file_indexing_mode == "known_uris"
+    assert by_scheme["memory"].file_indexing_mode == "excluded"
+    assert by_scheme["document"].file_indexing_mode == "excluded"
+    assert by_scheme["galaris"].file_indexing_mode == "excluded"
+    assert by_scheme["https"].file_indexing_mode == "excluded"
 
     assert console.example == "console://reports/result.pdf"
     assert console.label == "Local files (SSH console home)"

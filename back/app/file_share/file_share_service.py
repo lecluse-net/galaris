@@ -7,11 +7,12 @@ code; Messenger and file sharing are capability-specific transports behind the s
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, cast
 
 from app.connection import connection_service
 from app.tools import tool_service
 from app.tools import FileShareConfig, Tool
+from app.tools.contracts import FILE_INDEXING_PARAM, FileIndexingMode
 from core.i18n import render_prompt, t
 
 from .bridges import get_bridge
@@ -152,6 +153,19 @@ async def list_services(agent_id: int) -> list[str]:
     return await list_tool_codes(agent_id)
 
 
+async def effective_file_indexing_mode(agent_id: int, tool_code: str) -> FileIndexingMode:
+    """Read the ordinary parameter of an active connection without decrypting secrets."""
+    tool = await tool_service.get_tool_record(tool_code)
+    if tool is None:
+        return "excluded"
+    connection = await connection_service.get_connection_by_agent_tool(tool.id, agent_id)
+    if connection is None or not connection.active:
+        return "excluded"
+    _, params = await connection_service.get_params_as_dict(connection, decrypt_passwords=False)
+    value = params.get(FILE_INDEXING_PARAM, "excluded")
+    return cast(FileIndexingMode, value) if value in {"known_uris", "recursive"} else "excluded"
+
+
 async def describe_targets(
     agent_id: int,
     *,
@@ -173,12 +187,20 @@ async def describe_targets(
         has_messenger = _has_messenger_files(tool)
         if tool.file_share is None and not has_messenger:
             continue
+        _, params = await connection_service.get_params_as_dict(connection, decrypt_passwords=False)
+        indexing_mode = params.get(FILE_INDEXING_PARAM, "excluded")
         targets.append({
             "code": tool.code,
             "service": tool.file_share.service if tool.file_share else "messenger",
             "label": tool.label or tool.code,
             "description": tool.description or "",
             "has_file_share": tool.file_share is not None,
+            "file_indexing_mode": (
+                indexing_mode
+                if tool.file_share and tool.file_share.service != "mail"
+                and indexing_mode in get_bridge(tool.file_share.service).indexing_modes
+                else "excluded"
+            ),
             "has_messenger": has_messenger,
         })
     return sorted(targets, key=lambda target: target["code"])

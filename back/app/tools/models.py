@@ -3,6 +3,7 @@ from typing import Any, Dict, Optional
 from sqlalchemy import (
     BigInteger,
     Boolean,
+    CheckConstraint,
     Computed,
     DateTime,
     Index,
@@ -17,6 +18,7 @@ from sqlalchemy.orm import Mapped, mapped_column
 from core.database import Base
 from core.database.vector import Vector
 from .authorization_models import ActionAuthorization as ActionAuthorization, RuntimeRunGrant as RuntimeRunGrant
+from .contracts import FileIndexingMode
 
 
 class Tool(Base):
@@ -34,6 +36,10 @@ class Tool(Base):
 
     mcp_config: Mapped[Optional[Dict[str, Any]]] = mapped_column(JSONB, nullable=True)
     file_share_config: Mapped[Optional[Dict[str, Any]]] = mapped_column(JSONB, nullable=True)
+    # Compatibility source for DbAdmin backfill only; runtime values use global_params/EAV.
+    file_indexing_mode: Mapped[FileIndexingMode] = mapped_column(
+        String(20), nullable=False, default="excluded", server_default="excluded"
+    )
     messenger_config: Mapped[Optional[Dict[str, Any]]] = mapped_column(JSONB, nullable=True)
     listener_config: Mapped[Optional[Dict[str, Any]]] = mapped_column(JSONB, nullable=True)
     connection_schema: Mapped[Dict[str, Any]] = mapped_column(JSONB, default=dict)
@@ -56,6 +62,12 @@ class Tool(Base):
         server_default=func.now(),
         onupdate=lambda: datetime.now(timezone.utc),
         default=lambda: datetime.now(timezone.utc),
+    )
+    __table_args__ = (
+        CheckConstraint(
+            "file_indexing_mode IN ('excluded', 'known_uris', 'recursive')",
+            name="ck_tools_file_indexing_mode",
+        ),
     )
 
 

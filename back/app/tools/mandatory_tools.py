@@ -394,12 +394,14 @@ def _param(
     required: bool = True,
     default: str = "",
     description: str = "",
+    options: list[dict[str, str]] | None = None,
 ) -> dict[str, Any]:
     return {
         "type": type_,
         "required": required,
         "default": default,
         "description": description,
+        "options": options or [],
     }
 
 
@@ -536,6 +538,7 @@ def _browser_connection_params() -> dict[str, dict[str, Any]]:
         "allow_local_network": _param("boolean", required=False, default="false",
             description="Allow asking permission for local network access; otherwise block it"),
         "network_filter_mode": _param(required=False, default="block",
+            options=[{"value": "block"}, {"value": "allow"}],
             description="block: deny listed destinations; allow: permit only listed destinations"),
         "network_filter": _param(required=False,
             description="Domains, *.subdomains, IPs or CIDRs separated by commas; optional :port (IPv6 in brackets)"),
@@ -544,6 +547,7 @@ def _browser_connection_params() -> dict[str, dict[str, Any]]:
         "default_output": _param(
             required=False,
             default="content",
+            options=[{"value": "content"}, {"value": "screenshot"}],
             description="Default browser response: content or screenshot",
         ),
     }
@@ -559,11 +563,13 @@ def _mail_connection_params() -> dict[str, dict[str, Any]]:
         "imap_host": _param(description="IMAP server DNS name"),
         "imap_port": _param("integer", default="993", description="IMAP server port"),
         "imap_security": _param(
+            options=[{"value": "tls"}, {"value": "starttls"}],
             default="tls", description="IMAP transport security: tls or starttls"
         ),
         "smtp_host": _param(description="SMTP submission server DNS name"),
         "smtp_port": _param("integer", default="465", description="SMTP submission port"),
         "smtp_security": _param(
+            options=[{"value": "tls"}, {"value": "starttls"}],
             default="tls", description="SMTP transport security: tls or starttls"
         ),
         "connect_timeout_s": _param(
@@ -627,6 +633,7 @@ def _calendar_connection_params() -> dict[str, dict[str, Any]]:
 def mandatory_tool_rows() -> list[dict[str, Any]]:
     """Return built-in tool rows ready for persistence."""
     from app.tools.tool_service import default_global_params
+    from .parameter_definitions import with_standard_params
 
     rows: list[dict[str, Any]] = []
     messenger_kind_by_tool = {
@@ -665,8 +672,16 @@ def mandatory_tool_rows() -> list[dict[str, Any]]:
             }
         )
         params = cast(dict[str, dict[str, Any]], connection_schema.get("params") or {})
-        for order, definition in enumerate(params.values()):
+        for order, (name, definition) in enumerate(params.items()):
             definition["order"] = order
+            definition["label"] = f"tools.connectionParamLabels.{name}"
+            definition["builtin"] = True
+            for option in definition["options"]:
+                option["label"] = (
+                    f"tools.connectionParamOptions.{spec.code}.{name}.{option['value']}"
+                )
+        connection_schema = with_standard_params(connection_schema, code=spec.code,
+            file_share_config={"service": spec.file_share_service} if spec.file_share_service else None)
         rows.append({
             "code": spec.code,
             "can_disable": spec.code not in SYSTEM_TOOL_CODES,

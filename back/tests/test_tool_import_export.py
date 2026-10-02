@@ -81,6 +81,7 @@ def test_export_contains_configuration_but_no_write_only_value():
     assert set(exported["connection_schema"]["params"]) == {
         "nc_login",
         "nc_password",
+        "tools.fileindexing",
     }
     assert exported["connection_schema"]["params"]["nc_password"]["default"] == ""
     assert exported["task_config"]["objective"] == "Copy ${file}"

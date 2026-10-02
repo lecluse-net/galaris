@@ -205,6 +205,17 @@ def test_browser_package_is_configurable_and_active_by_default() -> None:
     assert default_output["required"] is False
 
 
+def test_internal_connection_parameters_supply_translation_keys_and_valid_choices() -> None:
+    from app.tools.schemas import ConnectionParamDef
+
+    for row in mandatory_tools.mandatory_tool_rows():
+        for definition in row["connection_schema"]["params"].values():
+            param = ConnectionParamDef.model_validate(definition)
+            assert param.label.startswith("tools.connectionParamLabels.")
+            for option in param.options:
+                assert option.label.startswith("tools.connectionParamOptions.")
+
+
 def test_console_host_key_is_a_write_only_connection_parameter() -> None:
     row = next(
         row for row in mandatory_tools.mandatory_tool_rows()

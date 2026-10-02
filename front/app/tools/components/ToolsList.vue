@@ -84,11 +84,12 @@
           <q-btn
             v-if="canEdit && props.row.can_disable !== false && Object.keys(props.row.connection_schema?.params ?? {}).length"
             flat round icon="tune" size="sm" color="deep-purple"
+            :aria-label="$t('tools.globalParams')"
             @click="openGlobalParams(props.row)"
           >
             <q-tooltip>{{ $t('tools.globalParams') }}</q-tooltip>
           </q-btn>
-          <q-btn v-if="canEdit && props.row.can_edit && props.row.can_disable !== false" flat round icon="edit" size="sm" color="primary" @click="openEdit(props.row)" />
+          <q-btn v-if="canEdit && props.row.can_edit && props.row.can_disable !== false" flat round icon="edit" size="sm" color="primary" :aria-label="$t('tools.editTool')" @click="openEdit(props.row)" />
           <q-btn v-if="canEdit && props.row.can_edit && props.row.can_disable !== false" flat round icon="delete" size="sm" color="negative" @click="confirmDelete(props.row)" />
         </q-td>
       </template>
@@ -143,7 +144,6 @@
                 </q-chip>
               </div>
             </q-card-section>
-
             <q-separator />
             <q-card-actions align="right" class="q-px-sm q-py-xs">
               <q-btn
@@ -164,7 +164,7 @@
               <q-btn
                 v-if="canEdit && props.row.can_edit && props.row.can_disable !== false"
                 flat round icon="edit" size="sm" color="primary"
-                :aria-label="$t('common.edit')"
+                :aria-label="$t('tools.editTool')"
                 @click="openEdit(props.row)"
               />
               <q-btn
@@ -263,7 +263,7 @@
     </q-dialog>
 
     <q-dialog v-model="globalParamsDialogOpen">
-      <q-card class="galaris-dialog-card" style="min-width: 620px; max-width: 820px; width: 100%; max-height: 90vh; overflow-y: auto">
+      <q-card class="galaris-dialog-card" style="width: min(820px, 95vw); max-width: 95vw; max-height: 90vh; overflow-y: auto">
         <q-card-section class="galaris-dialog-title row items-center">
           <div class="text-h6">{{ $t('tools.globalParamsFor', { name: globalParamsTool ? localizedToolLabel(globalParamsTool) : '' }) }}</div>
           <q-space />
@@ -279,34 +279,18 @@
             <div v-for="row in globalParamRows" :key="row.name" class="tool-section">
               <div class="row items-start q-col-gutter-md">
                 <div class="col">
-                  <div class="text-weight-medium">{{ row.name }}</div>
+                  <div class="text-weight-medium">{{ localizedParamLabel(row, globalParamsTool?.code) }}</div>
+                  <code v-if="localizedParamLabel(row, globalParamsTool?.code) !== row.name" class="text-caption">{{ row.name }}</code>
                   <div v-if="row.description" class="text-caption text-grey-7 q-mb-sm">
                     {{ localizedGlobalParamDescription(row) }}
                   </div>
-                  <q-toggle
-                    v-if="row.type === 'boolean'"
-                    :model-value="row.value === 'true'"
-                    :label="row.value === 'true' ? $t('common.yes') : $t('common.no')"
-                    color="primary"
-                    @update:model-value="value => setGlobalBoolean(row, value)"
-                  />
-                  <q-select
-                    v-else-if="row.type === 'user'"
+                  <ConnectionParamInput
                     v-model="row.value"
-                    :options="approverOptions"
-                    emit-value
-                    map-options
-                    clearable
-                    dense
-                    outlined
-                    :loading="approversLoading"
-                    @update:model-value="row.clear = false"
-                  />
-                  <q-input
-                    v-else
-                    v-model="row.value"
-                    :type="row.type === 'password' ? 'password' : row.type === 'integer' ? 'number' : 'text'"
-                    dense outlined
+                    :name="row.name"
+                    :definition="row"
+                    :tool-code="globalParamsTool?.code"
+                    :user-options="approverOptions"
+                    :loading-users="approversLoading"
                     :placeholder="row.secret && row.configured && !row.clear ? $t('tools.secretConfigured') : row.default"
                     @update:model-value="row.clear = false"
                   >
@@ -317,7 +301,7 @@
                         @click="clearGlobalParam(row)"
                       />
                     </template>
-                  </q-input>
+                  </ConnectionParamInput>
                 </div>
                 <q-toggle
                   v-model="row.forced"
@@ -377,21 +361,36 @@
                 <q-space />
                 <q-btn v-if="canEdit" flat icon="add" :label="$t('tools.addParam')" color="primary" @click="addConnParam" />
               </div>
-              <div v-for="(param, key) in connParams" :key="key" class="connection-param-row">
-                <q-input v-model="param.name" :label="$t('tools.paramName')" dense outlined class="connection-param-name" />
-                <q-select v-model="param.type" :options="paramTypeOptions" :label="$t('tools.type')" emit-value map-options dense outlined class="connection-param-type" />
-                <q-input v-model="param.description" :label="$t('tools.descriptionMarkdown')" dense outlined class="connection-param-description" />
-                <q-toggle v-model="param.required" :label="$t('tools.required')" dense class="connection-param-required" />
-                <q-btn
-                  v-if="canEdit"
-                  flat
-                  round
-                  icon="delete"
-                  color="negative"
-                  class="connection-param-delete"
-                  :aria-label="$t('common.delete')"
-                  @click="removeConnParam(key)"
-                />
+              <div v-for="(param, key) in connParams" :key="key" class="connection-param-editor">
+                <div class="connection-param-row">
+                  <q-input v-model="param.name" :label="$t('tools.paramName')" dense outlined class="connection-param-name" />
+                  <q-input v-model="param.label" :label="$t('tools.paramLabel')" dense outlined class="connection-param-description" />
+                  <q-select v-model="param.type" :options="paramTypeOptions" :label="$t('tools.type')" emit-value map-options dense outlined class="connection-param-type" />
+                  <q-toggle v-model="param.required" :label="$t('tools.required')" dense class="connection-param-required" />
+                  <q-btn
+                    v-if="canEdit"
+                    flat
+                    round
+                    icon="delete"
+                    color="negative"
+                    class="connection-param-delete"
+                    :aria-label="$t('common.delete')"
+                    @click="removeConnParam(key)"
+                  />
+                </div>
+                <div class="row q-col-gutter-sm q-mt-xs">
+                  <q-input v-model="param.description" :label="$t('tools.descriptionMarkdown')" dense outlined class="col-12 col-md-8" />
+                  <q-input v-model="param.default" :label="$t('tools.paramDefault')" :disable="param.type === 'password'" dense outlined class="col-12 col-md-4" />
+                </div>
+                <div v-if="param.type === 'string' || param.type === 'integer'" class="q-mt-sm">
+                  <q-btn flat dense icon="add" color="primary" :label="$t('tools.addParamOption')" @click="param.options.push({ value: '', label: '' })" />
+                  <div v-if="param.options.length" class="text-caption q-mb-sm">{{ $t('tools.paramOptionsHint') }}</div>
+                  <div v-for="(option, index) in param.options" :key="index" class="row q-col-gutter-sm q-mb-sm items-start">
+                    <q-input v-model="option.value" :label="$t('tools.paramOptionValue')" dense outlined class="col" />
+                    <q-input v-model="option.label" :label="$t('tools.paramOptionLabel')" dense outlined class="col" />
+                    <q-btn flat round dense icon="delete" color="negative" :aria-label="$t('tools.removeParamOption')" @click="param.options.splice(index, 1)" />
+                  </div>
+                </div>
               </div>
             </section>
 
@@ -616,16 +615,11 @@
 
           <div v-if="mcpTestConnectionParams.length" class="q-gutter-y-sm">
             <div class="text-subtitle2">{{ $t('tools.testMcpParameters') }}</div>
-            <q-input
-              v-for="param in mcpTestConnectionParams"
-              :key="param.name"
-              v-model="mcpTestParams[param.name]"
-              :type="param.type === 'password' ? 'password' : param.type === 'integer' ? 'number' : 'text'"
-              :label="`${param.name}${param.required ? ' *' : ''}`"
-              :hint="param.description"
-              dense
-              outlined
-            />
+            <div v-for="param in mcpTestConnectionParams" :key="param.name">
+              <ConnectionParamInput :model-value="mcpTestParams[param.name]" :name="param.name" :definition="param" :tool-code="form.code" @update:model-value="mcpTestParams[param.name] = $event ?? ''" />
+              <code v-if="localizedParamLabel(param, form.code) !== param.name" class="text-caption">{{ param.name }}</code>
+              <div v-if="param.description" class="text-caption">{{ param.description }}</div>
+            </div>
           </div>
 
           <div v-if="form.mcp_config.type !== 'stdio'" class="q-gutter-y-sm">
@@ -741,6 +735,7 @@
 import { ref, computed, watch, onMounted } from 'vue'
 import { Markdown } from '@/core/util'
 import SystemToolIcon from './SystemToolIcon.vue'
+import ConnectionParamInput from './ConnectionParamInput.vue'
 import { McpCandidateAgent } from '@/app/connection'
 import { useQuasar } from 'quasar'
 import { useToolStore } from '../stores/toolStore'
@@ -755,6 +750,7 @@ import type {
   MessengerBridge,
   ListenerConfig,
   ConnectionParamDef,
+  ConnectionParamOption,
   TaskConfig,
   ToolMcpTestRequest,
   ToolMcpTestDiagnosticStatus,
@@ -763,12 +759,12 @@ import type {
 } from '../services/toolService'
 import api from '@/core/api'
 import { useI18n } from 'vue-i18n'
-import { connectionParamMessageKey, sortedConnectionParamEntries, toolMessageKey } from '../presentation'
+import { connectionParamLabel, connectionParamMessageKey, sortedConnectionParamEntries, toolMessageKey } from '../presentation'
 import { privileges, usePrivilegeStore } from '@/core/authorize'
 import { mailService, type MailApproverOption } from '@/app/connection'
 
 const $q = useQuasar()
-const { t } = useI18n()
+const { t, te } = useI18n()
 const toolStore = useToolStore()
 const privilegeStore = usePrivilegeStore()
 const canEdit = computed(() => privilegeStore.hasPrivilege(privileges.TOOL_EDIT))
@@ -802,7 +798,7 @@ async function prepareCandidate() {
   }
 }
 
-type GlobalParamRow = {
+type GlobalParamRow = ConnectionParamDef & {
   name: string
   type: string
   description: string
@@ -812,6 +808,10 @@ type GlobalParamRow = {
   forced: boolean
   clear: boolean
   value: string | null
+}
+
+function localizedParamLabel(param: { name: string } & Partial<ConnectionParamDef>, toolCode?: string): string {
+  return connectionParamLabel(toolCode, param.name, param, t, te)
 }
 
 const globalParamsDialogOpen = ref(false)
@@ -827,7 +827,7 @@ const approverOptions = computed(() => approvers.value.map(user => ({
 
 function localizedGlobalParamDescription(row: GlobalParamRow): string {
   const key = globalParamsTool.value
-    ? connectionParamMessageKey(globalParamsTool.value.code, row.name)
+    ? connectionParamMessageKey(globalParamsTool.value.code, row.name, row)
     : null
   return key ? t(key) : row.description
 }
@@ -852,6 +852,7 @@ async function openGlobalParams(tool: Tool): Promise<void> {
   globalParamRows.value = sortedConnectionParamEntries(tool.connection_schema.params).map(([name, definition]) => {
     const current = data.params[name]
     return {
+      ...definition,
       name,
       type: definition.type,
       description: definition.description,
@@ -864,11 +865,6 @@ async function openGlobalParams(tool: Tool): Promise<void> {
     }
   })
   globalParamsDialogOpen.value = true
-}
-
-function setGlobalBoolean(row: GlobalParamRow, value: boolean): void {
-  row.value = value ? 'true' : 'false'
-  row.clear = false
 }
 
 function clearGlobalParam(row: GlobalParamRow): void {
@@ -1113,7 +1109,7 @@ async function doImport(overwrite: boolean) {
 // Create or edit form.
 // =============================================================================
 
-type ConnParamRow = { name: string; type: string; required: boolean; description: string; default: string }
+type ConnParamRow = ConnectionParamDef & { name: string; label: string; options: ConnectionParamOption[] }
 
 const dialogOpen = ref(false)
 const deleteDialogOpen = ref(false)
@@ -1322,14 +1318,14 @@ function openEdit(tool: Tool) {
 
   form.value.task_config = tool.task_config ? JSON.parse(JSON.stringify(tool.task_config)) : emptyTaskConfig()
 
-  connParams.value = sortedConnectionParamEntries(tool.connection_schema.params ?? {}).map(([name, def]) => ({
-    name, type: def.type, required: def.required, description: def.description, default: def.default ?? '',
+  connParams.value = sortedConnectionParamEntries(tool.connection_schema.params ?? {}).filter(([, def]) => !def.builtin).map(([name, def]) => ({
+    ...def, name, label: def.label ?? '', options: (def.options ?? []).map(option => ({ ...option })), default: def.default ?? '',
   }))
   activeTab.value = firstEnabledTab()
   dialogOpen.value = true
 }
 
-function addConnParam() { connParams.value.push({ name: '', type: 'string', required: true, description: '', default: '' }) }
+function addConnParam() { connParams.value.push({ name: '', label: '', options: [], type: 'string', required: true, description: '', default: '' }) }
 function removeConnParam(index: number) { connParams.value.splice(index, 1) }
 
 function clearLegacyStaticToken() {
@@ -1406,7 +1402,18 @@ function buildPayload() {
   const task_config = hasListener.value ? { ...form.value.task_config } : null
   const params: Record<string, ConnectionParamDef> = {}
   for (const [order, p] of connParams.value.entries()) {
-    if (p.name.trim()) params[p.name.trim()] = { type: p.type, required: p.required, description: p.description, default: p.default, order }
+    if (p.name.trim() && ['string', 'integer'].includes(p.type) && p.options.length) {
+      const values = p.options.map(option => option.value)
+      if (values.some(value => !value.trim() || (p.type === 'integer' && !/^[+-]?\d+$/.test(value)))
+        || new Set(values).size !== values.length || (p.default && !values.includes(p.default))) {
+        throw new Error(t('tools.invalidParamOptions', { name: p.label || p.name }))
+      }
+    }
+    if (p.name.trim()) params[p.name.trim()] = {
+      type: p.type, required: p.required, description: p.description,
+      default: p.type === 'password' ? '' : p.default, order, label: p.label.trim(),
+      options: ['string', 'integer'].includes(p.type) ? p.options : [],
+    }
   }
   return {
     mcp_config,
@@ -1631,6 +1638,13 @@ onMounted(() => {
   margin-bottom: 8px;
 }
 
+.connection-param-editor {
+  padding: 16px;
+  margin-bottom: 12px;
+  border: 1px solid var(--solaire-gray-accent);
+  border-radius: 8px;
+}
+
 .connection-param-name,
 .connection-param-type {
   flex: 0 0 calc(16.6667% - 8px);
@@ -1728,9 +1742,6 @@ body.body--dark .import-dropzone--active {
     display: grid;
     grid-template-columns: minmax(0, 1fr) minmax(120px, 0.75fr);
     gap: 8px;
-    padding: 10px;
-    border: 1px solid #e1e5ec;
-    border-radius: 6px;
   }
 
   .connection-param-name,

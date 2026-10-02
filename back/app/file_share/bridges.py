@@ -18,6 +18,7 @@ from core.i18n import render_prompt, t
 from .transport import FileTransport
 from .file_contracts import FileEntry
 from .service_references import normalize_source_reference
+from app.tools.contracts import FileIndexingMode
 
 
 class AffineResourceTransport(AffineFileClient):
@@ -49,6 +50,7 @@ class FileShareBridgeInfo(BaseModel):
     service: str
     label: str
     supports_share: bool = False
+    indexing_modes: tuple[FileIndexingMode, ...] = ("excluded", "known_uris")
     params: list[FileShareParamInfo]
 
 
@@ -63,12 +65,14 @@ class FileShareBridge:
     params: tuple[FileShareParamInfo, ...]
     build: Callable[[str, Dict[str, str]], FileTransport]
     supports_share: bool = False
+    indexing_modes: tuple[FileIndexingMode, ...] = ("excluded", "known_uris")
 
     def info(self) -> FileShareBridgeInfo:
         return FileShareBridgeInfo(
             service=self.service,
             label=self.label,
             supports_share=self.supports_share,
+            indexing_modes=self.indexing_modes,
             params=list(self.params),
         )
 

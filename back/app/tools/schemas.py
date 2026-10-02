@@ -2,7 +2,7 @@
 
 from datetime import datetime
 from typing import Dict, List, Literal, Optional
-from pydantic import BaseModel, Field, computed_field
+from pydantic import BaseModel, Field, computed_field, model_validator
 
 
 # =============================================================================
@@ -113,6 +113,13 @@ class ListenerConfigPublic(BaseModel):
 # Connection schema.
 # =============================================================================
 
+class ConnectionParamOption(BaseModel):
+    """A fixed choice: the stored value is independent of its display label."""
+
+    value: str = Field(min_length=1)
+    label: str = ""
+
+
 class ConnectionParamDef(BaseModel):
     """Connection parameter definition."""
     type: str = "string"  # "string", "integer", "password", "boolean"
@@ -120,6 +127,30 @@ class ConnectionParamDef(BaseModel):
     default: str = ""
     description: str = ""
     order: int | None = None
+    label: str = ""
+    builtin: bool = False
+    options: list[ConnectionParamOption] = Field(default_factory=lambda: list[ConnectionParamOption]())
+
+    @model_validator(mode="after")
+    def validate_options(self) -> "ConnectionParamDef":
+        if not self.options:
+            return self
+        if self.type not in {"string", "integer"}:
+            raise ValueError("Fixed options require a string or integer parameter")
+        values = [option.value for option in self.options]
+        if len(set(values)) != len(values):
+            raise ValueError("Fixed option values must be unique")
+        if any(not value.strip() for value in values):
+            raise ValueError("Fixed option values must not be blank")
+        if self.type == "integer":
+            for value in values:
+                try:
+                    int(value)
+                except ValueError:
+                    raise ValueError("Fixed options for an integer must contain integers") from None
+        if self.default and self.default not in values:
+            raise ValueError("The default must be one of the fixed options")
+        return self
 
 
 class ConnectionSchema(BaseModel):

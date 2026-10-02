@@ -73,7 +73,8 @@
         </div>
         <div v-for="param in connectionParameters" :key="param.name" class="schema-params-row row items-center">
           <div class="col-param">
-            <div class="param-name">{{ param.name }}</div>
+            <div class="param-name">{{ localizedParamLabel(param) }} <span v-if="param.required" aria-hidden="true">*</span></div>
+            <code v-if="localizedParamLabel(param) !== param.name" class="text-caption">{{ param.name }}</code>
             <div v-if="param.description" class="param-desc text-grey-7">{{ localizedParamDescription(param) }}</div>
             <q-btn
               v-if="hasGlobalValue(param.name) && !isGloballyForced(param.name)"
@@ -83,42 +84,14 @@
             />
           </div>
           <div class="col-value">
-            <q-input
-              v-if="param.type === 'password'"
-              v-model="paramValues[param.name]"
-              dense filled type="password"
-              :placeholder="param.default !== undefined ? '********' : ''"
-            />
-            <q-input
-              v-else-if="param.type === 'integer'"
-              v-model.number="paramValues[param.name]"
-              type="number" dense filled
-              :placeholder="param.default !== undefined ? String(param.default) : ''"
-            />
-            <q-toggle
-              v-else-if="param.type === 'boolean'"
-              :model-value="paramValues[param.name] === 'true'"
-              :label="paramValues[param.name] === 'true' ? t('common.yes') : t('common.no')"
-              color="primary"
-              @update:model-value="value => setBooleanParam(param.name, value)"
-            />
-            <q-select
-              v-else-if="param.type === 'user'"
-              v-model="paramValues[param.name]"
-              :options="approverOptions"
-              emit-value
-              map-options
-              clearable
-              dense
-              filled
-              :loading="approversLoading"
-              :placeholder="t('connection.mail.selectApprover')"
-            />
-            <q-input
-              v-else
-              v-model="paramValues[param.name]"
-              dense filled
-              :placeholder="param.default !== undefined ? String(param.default) : ''"
+            <ConnectionParamInput
+              :model-value="paramValues[param.name]"
+              :name="param.name"
+              :definition="param"
+              :tool-code="selectedTool?.code"
+              :user-options="approverOptions"
+              :loading-users="approversLoading"
+              @update:model-value="paramValues[param.name] = $event ?? ''"
             />
           </div>
         </div>
@@ -126,7 +99,7 @@
     </div>
 
     <q-expansion-item
-      v-if="inheritedParameters.length && (selectedTool?.code !== 'console' || consoleTarget === 'external')"
+      v-if="inheritedParameters.length"
       dense
       icon="public"
       :label="t('connection.inheritedParams', { count: inheritedParameters.length })"
@@ -136,7 +109,8 @@
         <q-list separator>
           <q-item v-for="param in inheritedParameters" :key="param.name">
             <q-item-section>
-              <q-item-label>{{ param.name }}</q-item-label>
+              <q-item-label>{{ localizedParamLabel(param) }}</q-item-label>
+              <q-item-label v-if="localizedParamLabel(param) !== param.name" caption><code>{{ param.name }}</code></q-item-label>
               <q-item-label caption>{{ inheritedValueLabel(param) }}</q-item-label>
             </q-item-section>
             <q-item-section side>
@@ -388,16 +362,18 @@
 import { ref, computed, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useQuasar } from 'quasar'
-import { connectionParamMessageKey, sortedConnectionParamEntries } from '@/app/tools/presentation'
+import { connectionParamLabel, connectionParamMessageKey, connectionParamOptions, sortedConnectionParamEntries } from '@/app/tools/presentation'
+import { ConnectionParamInput, type ConnectionParamDef } from '@/app/tools'
 import { AgentSelect } from '@/app/agent'
 import { consoleService, type ConsoleConnectionStatus } from '@/app/console/services/consoleService'
 import { mailService, type MailApproverOption } from '@/app/connection/services/mailService'
+import connectionService from '../services/connectionService'
 import CalendarConnectionEditor from './CalendarConnectionEditor.vue'
 import { authorizedKeysDeploymentCommands } from '@/app/console/sshKeyDeployment'
 import { privileges, usePrivilegeStore } from '@/core/authorize'
 import { CodeEditor } from '@/core/util'
 
-const { t } = useI18n()
+const { t, te } = useI18n()
 const $q = useQuasar()
 const privilegeStore = usePrivilegeStore()
 const canEdit = computed(() => privilegeStore.hasPrivilege(privileges.CONNECTION_EDIT))
@@ -422,13 +398,7 @@ interface Tool {
   label: string
   has_mcp?: boolean
   connection_schema?: {
-    params?: Record<string, {
-      type?: string
-      description?: string
-      default?: unknown
-      required?: boolean
-      order?: number | null
-    }>
+    params?: Record<string, Partial<ConnectionParamDef>>
   }
   global_params?: Record<string, {
     value?: string | null
@@ -445,11 +415,10 @@ interface Connection {
   active: boolean
 }
 
-interface SchemaParam {
+interface SchemaParam extends Partial<ConnectionParamDef> {
   name: string
   type: string
   description?: string
-  default?: unknown
   required: boolean
 }
 
@@ -545,7 +514,9 @@ const CONSOLE_MANAGED_PARAMS = new Set([
 ])
 
 function isConsoleManagedParam(name: string): boolean {
-  return selectedTool.value?.code === 'console' && CONSOLE_MANAGED_PARAMS.has(name)
+  if (selectedTool.value?.code !== 'console') return false
+  return CONSOLE_MANAGED_PARAMS.has(name)
+    || consoleTarget.value === 'embedded' && ['host', 'port', 'username', 'password'].includes(name)
 }
 
 const consoleTargets = computed(() => [
@@ -568,6 +539,9 @@ const schemaParameters = computed((): SchemaParam[] => {
     .filter(([name]) => tool.code !== 'console' || name !== 'mode')
     .map(([name, config]) => ({
       name,
+      label: config.label,
+      builtin: config.builtin,
+      options: config.options,
       type: config.type || 'string',
       description: config.description,
       default: config.default,
@@ -615,19 +589,24 @@ const canInstallHelper = computed(() => Boolean(
 
 const showSchemaParameters = computed(() => (
   connectionParameters.value.length > 0
-  && (selectedTool.value?.code !== 'console' || consoleTarget.value === 'external')
 ))
 
 function localizedParamDescription(param: SchemaParam): string {
   const toolCode = selectedTool.value?.code
-  const key = toolCode ? connectionParamMessageKey(toolCode, param.name) : null
+  const key = toolCode ? connectionParamMessageKey(toolCode, param.name, param) : null
   return key ? t(key) : param.description ?? ''
+}
+
+function localizedParamLabel(param: SchemaParam): string {
+  return connectionParamLabel(selectedTool.value?.code, param.name, param, t, te)
 }
 
 function inheritedValueLabel(param: SchemaParam): string {
   const global = globalParam(param.name)
   if (global?.secret) return t('connection.globalSecretConfigured')
-  return t('connection.globalValueUsed', { value: global?.value ?? '' })
+  const options = connectionParamOptions(selectedTool.value?.code, param.name, param, t, te)
+  const value = options.find(option => option.value === global?.value)?.label ?? global?.value ?? ''
+  return t('connection.globalValueUsed', { value })
 }
 
 function enableParamOverride(param: SchemaParam): void {
@@ -663,10 +642,6 @@ const isValidForm = computed(() => {
     || consoleTarget.value === 'external'
     || selectedAgentIsInternal.value
 })
-
-function setBooleanParam(name: string, value: boolean): void {
-  paramValues.value[name] = value ? 'true' : 'false'
-}
 
 async function loadApprovers(): Promise<void> {
   if (approvers.value.length || approversLoading.value) return
@@ -774,6 +749,7 @@ function buildSubmitPayload(active: boolean = form.value.active): ConnectionSubm
   ])
   for (const definition of schemaParameters.value) {
     const key = definition.name
+    if (consoleTarget.value === 'embedded' && isConsoleManagedParam(key)) continue
     const value = paramValues.value[key] ?? ''
     if (isGloballyForced(key)) {
       if (paramOverrides.value[key]) filteredParams[key] = null
@@ -809,9 +785,13 @@ async function onSubmit() {
   if (selectedTool.value?.code === 'console' && consoleTarget.value === 'embedded') {
     const agentId = form.value.agent_id
     if (agentId === null) return
+    const params = buildSubmitPayload()?.params ?? {}
     consoleAction.value = 'embedded'
     try {
       const { data } = await consoleService.provision(agentId)
+      if (Object.keys(params).length) {
+        await connectionService.createOrUpdateParamsBulk(data.connection_id, params)
+      }
       $q.notify({
         type: 'positive',
         message: t('connection.console.embeddedProvisioned', { code: data.agent_code }),
@@ -1003,7 +983,13 @@ body.body--dark .schema-params-row { border-bottom-color: #2e3238; }
 .col-value { width: 60%; }
 
 .param-name { font-weight: 500; }
-.param-desc { font-size: 11px; margin-top: 2px; }
+.param-desc { font-size: 12px; margin-top: 4px; }
+
+@media (max-width: 1023px) {
+  .schema-params-header { display: none; }
+  .schema-params-row { gap: 8px; }
+  .col-param, .col-value { width: 100%; min-width: 0; }
+}
 
 .schema-params-row :deep(.q-field) { width: 100%; }
 .deployment-commands {

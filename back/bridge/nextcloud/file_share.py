@@ -634,6 +634,7 @@ NEXTCLOUD_FILE_SHARE_BRIDGE = FileShareBridge(
     service="nextcloud",
     label="Nextcloud (WebDAV + sharing)",
     supports_share=True,
+    indexing_modes=("excluded", "known_uris", "recursive"),
     params=(
         FileShareParamInfo(key="login", label="Login", type="string"),
         FileShareParamInfo(

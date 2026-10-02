@@ -21,7 +21,7 @@ from app.tools.admin_candidates import prepare_candidate, resolve_candidate
 from app.tools.admin_contracts import AdministrationContext, AdministrationError, CandidateRequest
 from app.tools.models import Tool
 from app.tools.mcp_loader import McpToolContext, build_agent_galaris_fastmcp, build_agent_mcp
-from app.tools.schemas import ToolGlobalParamsUpdate
+from app.tools.schemas import ConnectionParamDef, ToolCreate, ToolGlobalParamsUpdate
 from core.database import get_db_session
 from core.user.models import User
 
@@ -54,6 +54,52 @@ def result(value):
     data = json.loads(value)
     assert data["success"], data
     return data
+
+
+@pytest.mark.parametrize("definition", [
+    {"options": [{"value": ""}]},
+    {"options": [{"value": "one"}, {"value": "one"}]},
+    {"default": "other", "options": [{"value": "one"}]},
+    {"type": "password", "options": [{"value": "one"}]},
+    {"type": "integer", "options": [{"value": "text"}]},
+])
+def test_invalid_fixed_choices_are_rejected(definition):
+    from pydantic import ValidationError
+    with pytest.raises(ValidationError):
+        ConnectionParamDef.model_validate(definition)
+
+
+@pytest.mark.asyncio
+async def test_parameter_labels_choices_and_yaml_roundtrip(delegated, db):
+    _, recipient, _ = delegated
+    definition = {"type": "string", "label": "Service region", "default": "eu",
+                  "options": [{"value": "eu", "label": "Europe"}, {"value": "us", "label": "United States"}]}
+    record = await tool_service.create_tool(ToolCreate.model_validate({
+        "code": f"synthetic_{uuid4().hex}", "label": "Fixed choices",
+        "connection_schema": {"params": {"region": definition, "legacy": {"type": "string"}}},
+    }))
+    loaded = await tool_service.get_tool_by_id(record.id)
+    assert loaded is not None
+    assert loaded.connection.params["region"].label == "Service region"
+    assert loaded.connection.params["legacy"].options == []
+    exported = tool_service.serialize_to_yaml(record)
+    imported, created = await tool_service.import_from_yaml_string(exported, overwrite=True)
+    assert not created
+    assert imported.connection_schema["params"]["region"]["options"] == definition["options"]
+    assert imported.connection_schema["params"]["region"]["label"] == "Service region"
+    connection = Connection(tool_id=record.id, agent_id=recipient, active=False)
+    db.add(connection)
+    await db.commit()
+    await connection_service.set_params_bulk(connection.id, {"region": "us", "legacy": "free text"})
+    assert await connection_service.get_param(connection.id, "region") == "us"
+    with pytest.raises(ValueError, match="fixed options"):
+        await connection_service.set_params_bulk(connection.id, {"legacy": "must not persist", "region": "other"})
+    assert await connection_service.get_param(connection.id, "legacy") == "free text"
+    await tool_service.update_global_params(record.id, ToolGlobalParamsUpdate.model_validate({"params": {"region": {"value": "us"}}}))
+    with pytest.raises(ValueError, match="fixed options"):
+        await tool_service.update_global_params(record.id, ToolGlobalParamsUpdate.model_validate({"params": {"region": {"value": "other"}}}))
+    globals_, _ = await tool_service.get_runtime_global_params(record.id)
+    assert globals_["region"] == "us"
 
 
 @pytest.mark.asyncio
@@ -250,7 +296,12 @@ async def test_stdio_configuration_is_redacted_and_refresh_never_launches_it(exi
 
 
 @pytest_asyncio.fixture(params=["http", "sse"])
-async def synthetic_mcp(request):
+async def synthetic_mcp(request, monkeypatch):
+    from sse_starlette.sse import AppStatus
+
+    # Each fixture starts a new server in the same process. SSE's shutdown
+    # watcher can retain the preceding server's exit flag between test loops.
+    monkeypatch.setattr(AppStatus, "should_exit", False)
     transport = request.param
     server = FastMCP("Synthetic diagnostics")
     class CapturedCalls(list):

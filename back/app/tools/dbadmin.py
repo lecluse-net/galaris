@@ -10,7 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.agent import Agent
 from app.connection import Connection
-from core.dbadmin import DbAdminDataSource, DbAdminDataset, DbAdminRegistry
+from core.dbadmin import DbAdminDataSource, DbAdminDataset, DbAdminReconciler, DbAdminRegistry
 
 from .mandatory_tools import (
     AUTO_CONNECTED_INTEGRATED_TOOL_CODES,
@@ -21,6 +21,30 @@ from .mandatory_tools import (
 )
 from .models import Tool
 from .descriptions import bridge_description
+from .contracts import FILE_INDEXING_PARAM
+from .parameter_definitions import with_standard_params
+
+
+def _legacy_indexing_defaults(record: Tool, schema: dict[str, object]) -> dict[str, object]:
+    from .tool_service import default_global_params
+
+    defaults: dict[str, object] = dict(default_global_params(schema))
+    if FILE_INDEXING_PARAM in defaults and FILE_INDEXING_PARAM not in (record.global_params or {}):
+        defaults[FILE_INDEXING_PARAM] = {"value": record.file_indexing_mode or "excluded", "forced": False}
+    return defaults
+
+
+async def _reconcile_standard_params(session: AsyncSession) -> None:
+    for record in await session.scalars(select(Tool)):
+        schema = with_standard_params(record.connection_schema or {}, code=record.code,
+                                      file_share_config=record.file_share_config)
+        if schema != record.connection_schema:
+            record.connection_schema = schema
+        defaults = _legacy_indexing_defaults(record, schema)
+        merged = _merge_global_defaults(record.global_params, defaults)
+        if merged != record.global_params:
+            record.global_params = cast(dict[str, object], merged)
+    await session.flush()
 
 
 def _merge_global_defaults(existing: object | None, desired: object) -> object:
@@ -41,7 +65,8 @@ async def _tool_rows(
     session: AsyncSession,
 ) -> tuple[dict[str, object], ...]:
     rows: list[dict[str, object]] = []
-    existing_codes = set((await session.scalars(select(Tool.code))).all())
+    existing = {record.code: record for record in await session.scalars(select(Tool))}
+    existing_codes = set(existing)
     for raw in mandatory_tool_rows():
         row = dict(raw)
         messenger_config = row.get("messenger_config")
@@ -50,6 +75,8 @@ async def _tool_rows(
             # previously installed integration may legitimately own this value.
             row.pop("messenger_config", None)
         code = str(row["code"])
+        if code in existing:
+            row["global_params"] = _legacy_indexing_defaults(existing[code], cast(dict[str, object], row["connection_schema"]))
         if code in SYSTEM_TOOL_CODES or code not in existing_codes:
             row["conversation_enabled"] = (
                 code in SYSTEM_TOOL_CODES
@@ -170,3 +197,7 @@ DATA_SOURCE = DbAdminDataSource(key="app.tools", factory=datasets)
 
 def register_dbadmin(registry: DbAdminRegistry) -> None:
     registry.register_data_source(DATA_SOURCE)
+    registry.register_reconciler(DbAdminReconciler(
+        key="app.tools.standard_params", handler=_reconcile_standard_params,
+        depends_on=("app.tools.mandatory.tools",),
+    ))
