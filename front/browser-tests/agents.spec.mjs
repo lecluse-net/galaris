@@ -9,6 +9,154 @@ async function agentFixtures(page) {
   await jsonRoute(page, '**/api/harnesses/agents/7', { containerized: true })
 }
 
+for (const [mode, width] of [['create', 1440], ['edit', 390]]) {
+  test(`agent ${mode} form opens while its selectors are still loading (${width}px)`, async ({ page }, testInfo) => {
+    await page.setViewportSize({ width, height: 1000 })
+    await agentFixtures(page)
+    await jsonRoute(page, '**/api/agents?*', [{ ...agent, agent_driver: 'internal', yolo: false, authorization_version: 1 }])
+    await jsonRoute(page, '**/api/agents/drivers', [{ name: 'internal', manages_runtime: false }])
+    await jsonRoute(page, '**/api/agents/titles?*', [{ id: 1, label: 'agent_titles.ms', gender: 'F' }])
+    const pending = []
+    for (const [url, json] of [
+      ['**/api/agents/managers', [agent.user]],
+      ['**/api/harnesses/catalog?*', []],
+      ['**/api/harnesses/agents/7', { harness_id: null }],
+    ]) {
+      await page.route(url, async route => {
+        await new Promise(resolve => pending.push(resolve))
+        await route.fulfill({ json })
+      })
+    }
+    const writes = []
+    await page.route('**/api/agents/7', route => {
+      const data = route.request().postDataJSON()
+      writes.push(data)
+      return route.fulfill({ json: { ...agent, ...data, agent_driver: 'internal' } })
+    })
+    await mount(page, 'app/agent/pages/index.vue', { privileges: ['AGENT_EDIT'] })
+    await expect(page.getByText('Alice Example', { exact: true }).first()).toBeVisible()
+    try {
+      const started = Date.now()
+      await page.getByRole('button', { name: mode === 'create' ? 'New Agent' : 'Edit agent', exact: true }).click()
+      const dialog = page.getByRole('dialog')
+      await expect(dialog).toBeVisible()
+      await testInfo.attach('opening-latency', { body: JSON.stringify({ mode, width, milliseconds: Date.now() - started, selectorsPending: pending.length }), contentType: 'application/json' })
+      await dialog.getByLabel('First name *', { exact: true }).fill('Lyra')
+      await expect.poll(() => pending.length).toBe(mode === 'create' ? 1 : 3)
+      pending.splice(0).forEach(resolve => resolve())
+      await expect(dialog.getByLabel('Human manager *', { exact: true })).toHaveValue(/Test User/)
+      await expect(dialog.getByLabel('First name *', { exact: true })).toHaveValue('Lyra')
+      if (mode === 'edit') {
+        await expect(dialog.getByRole('switch', { name: /YOLO mode/ })).toBeVisible()
+        await testInfo.attach('agent-form', { body: await dialog.screenshot(), contentType: 'image/png' })
+        await dialog.getByRole('button', { name: 'Edit', exact: true }).click()
+        await expect(dialog).toHaveCount(0)
+        expect(writes).toMatchObject([{ first_name: 'Lyra', user_id: 1, title_id: 1 }])
+      } else {
+        await page.locator('.q-dialog__backdrop').click({ position: { x: 2, y: 2 } })
+        await expect(dialog).toHaveCount(0)
+      }
+    } finally { pending.splice(0).forEach(resolve => resolve()) }
+  })
+}
+
+test('reopening another agent ignores a late harness selection and retries a failed catalogue', async ({ page }) => {
+  await agentFixtures(page)
+  const second = { ...agent, id: 8, code: 'lyra', first_name: 'Lyra', agent_driver: 'internal' }
+  await jsonRoute(page, '**/api/agents?*', [{ ...agent, agent_driver: 'internal' }, second])
+  await jsonRoute(page, '**/api/agents/drivers', [{ name: 'internal', manages_runtime: false }])
+  await jsonRoute(page, '**/api/agents/managers', [agent.user])
+  let failCatalogue = false
+  await page.route('**/api/harnesses/catalog?*', route => route.fulfill(failCatalogue
+    ? { status: 503, json: { detail: 'Synthetic catalogue failure' } }
+    : { json: [{ id: 'old', name: 'Old Harness' }, { id: 'current', name: 'Current Harness' }] }))
+  let release, started = false
+  const pending = new Promise(resolve => { release = resolve })
+  await page.route('**/api/harnesses/agents/7', async route => {
+    started = true
+    await pending
+    await route.fulfill({ json: { harness_id: 'old' } })
+  })
+  await jsonRoute(page, '**/api/harnesses/agents/8', { harness_id: 'current' })
+  await mount(page, 'app/agent/pages/index.vue', { privileges: ['AGENT_EDIT'] })
+  const dialog = page.getByRole('dialog')
+  const edit = name => page.locator('.agent-card').filter({ has: page.getByText(name, { exact: true }) }).getByRole('button', { name: 'Edit agent', exact: true })
+  try {
+    await edit('Alice Example').click()
+    await expect(dialog).toBeVisible()
+    await expect.poll(() => started).toBe(true)
+    await page.locator('.q-dialog__backdrop').click({ position: { x: 2, y: 2 } })
+    await expect(dialog).toHaveCount(0)
+    await edit('Lyra Example').click()
+    await expect(dialog.getByLabel('Harness', { exact: true })).toHaveValue('Current Harness')
+    const lateResponse = page.waitForResponse(response => new URL(response.url()).pathname === '/api/harnesses/agents/7')
+    release()
+    await (await lateResponse).finished()
+    await dialog.getByLabel('First name *', { exact: true }).fill('Lyra edited')
+    await expect(dialog.getByLabel('Harness', { exact: true })).toHaveValue('Current Harness')
+    await page.keyboard.press('Escape')
+    await expect(dialog).toHaveCount(0)
+    failCatalogue = true
+    await edit('Lyra Example').click()
+    await expect(dialog.getByLabel('First name *', { exact: true })).toHaveValue('Lyra')
+    await expect(page.getByText('Unable to load Harnesses.', { exact: true })).toBeVisible()
+    await dialog.getByText('Harness', { exact: true }).click({ force: true })
+    await expect(page.getByRole('option')).toHaveCount(0)
+    await page.keyboard.press('Escape')
+    await expect(dialog).toHaveCount(0)
+    failCatalogue = false
+    await edit('Lyra Example').click()
+    await expect(dialog.getByLabel('Harness', { exact: true })).toHaveValue('Current Harness')
+    await expect(dialog.getByLabel('Harness', { exact: true })).toBeEnabled()
+  } finally { release() }
+})
+
+test('models load on demand without losing the saved profile, voice or identity draft', async ({ page }) => {
+  await agentFixtures(page)
+  const saved = { ...agent, agent_driver: 'internal', profile_id: 4, voice: 'realtime:12:voice%3Aecho' }
+  await jsonRoute(page, '**/api/agents?*', [saved])
+  await jsonRoute(page, '**/api/agents/drivers', [{ name: 'internal', manages_runtime: false }])
+  await jsonRoute(page, '**/api/agents/managers', [agent.user])
+  await jsonRoute(page, '**/api/agents/titles?*', [{ id: 1, label: 'agent_titles.ms', gender: 'F' }])
+  await jsonRoute(page, '**/api/harnesses/catalog?*', [])
+  await jsonRoute(page, '**/api/harnesses/agents/7', { harness_id: null })
+  await jsonRoute(page, '**/api/params', { params: [] })
+  await jsonRoute(page, '**/api/llm-profiles', { profiles: [{ id: 4, label: 'Saved profile' }], current_profile_id: 4 })
+  await jsonRoute(page, '**/api/llm-providers/llms', [{ id: 12, llm_provider_id: 3, service_capabilities: ['realtime_conversation'], label: 'Realtime model', provider_name: 'Synthetic provider' }])
+  let release, voiceReads = 0
+  const pending = new Promise(resolve => { release = resolve })
+  await page.route('**/api/llm-providers/3/resources?*', async route => {
+    voiceReads++
+    await pending
+    await route.fulfill({ json: { models: [{ id: 'voice:echo', name: 'Echo', resource_type: 'voice' }] } })
+  })
+  const writes = []
+  await page.route('**/api/agents/7', route => {
+    const data = route.request().postDataJSON()
+    writes.push(data)
+    return route.fulfill({ json: { ...saved, ...data } })
+  })
+  await mount(page, 'app/agent/pages/index.vue', { privileges: ['AGENT_EDIT', 'LLM_PROVIDER_ACCESS', 'PARAMS_ACCESS'] })
+  try {
+    await page.getByRole('button', { name: 'Edit agent', exact: true }).click()
+    const dialog = page.getByRole('dialog')
+    await dialog.getByLabel('First name *', { exact: true }).fill('Lyra')
+    expect(voiceReads).toBe(0)
+    await dialog.getByRole('tab', { name: 'Models', exact: true }).click()
+    await expect(dialog.getByLabel('Model profile', { exact: true })).toHaveValue('Saved profile')
+    await expect.poll(() => voiceReads).toBe(1)
+    await dialog.getByRole('tab', { name: 'General', exact: true }).click()
+    await expect(dialog.getByLabel('First name *', { exact: true })).toHaveValue('Lyra')
+    await dialog.getByRole('tab', { name: 'Models', exact: true }).click()
+    expect(voiceReads).toBe(1)
+    release()
+    await expect(dialog.getByLabel('Voice / TTS', { exact: true })).toHaveValue('Echo')
+    await dialog.getByRole('button', { name: 'Save', exact: true }).click()
+    await expect(dialog).toHaveCount(0)
+    expect(writes).toMatchObject([{ first_name: 'Lyra', profile_id: 4, voice: saved.voice }])
+  } finally { release() }
+})
+
 test('reopening agent management refreshes catalogues and reloading retrieves them again', async ({ page }) => {
   await agentFixtures(page)
   const reads = { agents: 0, titles: 0, groups: 0 }

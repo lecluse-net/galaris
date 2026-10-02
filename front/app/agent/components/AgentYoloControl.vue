@@ -1,6 +1,6 @@
 <template>
   <div class="q-mb-md">
-    <q-toggle :model-value="agent.yolo" :disable="disabled || saving" :label="t('agent.yolo.label')"
+    <q-toggle class="yolo-toggle" :model-value="agent.yolo" color="warning" :disable="disabled || saving" :label="t('agent.yolo.label')"
       @update:model-value="toggle" />
     <q-badge v-if="agent.yolo" class="yolo-badge">{{ t('agent.yolo.active') }}</q-badge>
     <div v-if="error" role="alert">{{ t('agent.yolo.error') }}</div>
@@ -13,7 +13,7 @@
         <q-card-section><p>{{ t('agent.yolo.warning') }}</p></q-card-section>
         <q-card-actions align="right">
           <q-btn v-close-popup flat :label="t('common.cancel')" />
-          <q-btn :label="t('agent.yolo.activate')" :loading="saving" @click="save(true)" />
+          <q-btn class="yolo-activate" color="warning" text-color="dark" :label="t('agent.yolo.activate')" :loading="saving" @click="save(true)" />
         </q-card-actions>
       </q-card>
     </q-dialog>
@@ -51,6 +51,11 @@ async function save(enabled: boolean) {
 </script>
 
 <style scoped>
+.yolo-activate.bg-warning {
+  background: var(--solaire-orange-accent) !important;
+  color: var(--q-dark) !important;
+}
+.yolo-toggle :deep(.text-warning) { color: var(--solaire-orange-accent) !important; }
 .yolo-badge { background: var(--solaire-red-light); color: var(--solaire-red-accent); }
 :global(body.body--dark) .yolo-badge { background: var(--solaire-red-dark); }
 </style>

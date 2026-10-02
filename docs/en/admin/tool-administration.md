@@ -165,9 +165,12 @@ binary clients: Ask does not mean Enabled.
 
 ## Configure YOLO
 
-On an agent's form, **YOLO mode — automatically approve authorizations** defaults to off.
+On an agent's form, in the **General** tab, **YOLO mode — automatically approve authorizations**
+appears below the Harness selection, after the identity fields, and defaults to off.
 Enabling it opens a warning about commands, deletions, messages, costs and disclosures.
-Cancel or dismiss the dialog to leave it off; **Enable YOLO** confirms activation. Active
+Cancel or dismiss the dialog to leave it off; the orange **Enable YOLO** button confirms activation.
+The form appears as soon as it opens; manager and Harness lists load afterward. Profiles and
+voices refresh when the **Models** tab opens. Active
 mode is visible on the agent, and automatic decisions are identified in action requests.
 
 YOLO approves new requests for this agent, including runtime actions. Existing human questions

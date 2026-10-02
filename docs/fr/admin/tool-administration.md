@@ -174,10 +174,13 @@ de celles d’un outil portant le même nom. Les anciennes interfaces binaires d
 
 ## Configurer YOLO
 
-Dans la fiche d’un agent, **Mode YOLO — approuver automatiquement les autorisations** est
+Dans la fiche d’un agent, onglet **Général**, le réglage **Mode YOLO — approuver automatiquement
+les autorisations** se trouve sous le choix du harnais, après les champs d’identité. Il est
 désactivé par défaut. L’activer ouvre un avertissement sur les commandes, suppressions,
 messages, dépenses et divulgations possibles. Annuler ou fermer la fenêtre laisse le mode
-désactivé ; **Activer YOLO** confirme son activation. L’état actif est visible sur l’agent et
+désactivé ; le bouton orange **Activer YOLO** confirme son activation. La fiche s’affiche dès
+l’ouverture ; les listes de gestionnaires et de harnais se chargent ensuite. Les profils et
+voix sont actualisés à l’ouverture de l’onglet **Modèles**. L’état actif est visible sur l’agent et
 les accords automatiques sont identifiés dans les demandes.
 
 YOLO approuve les nouvelles demandes de cet agent, y compris celles de son harnais. Les demandes

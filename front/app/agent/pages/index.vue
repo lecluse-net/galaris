@@ -408,8 +408,6 @@
 
             <!-- General tab -->
             <template v-if="!isAgentEdit || agentDialogTab === 'general'">
-            <AgentYoloControl v-if="editedAgent" :agent="editedAgent" :disabled="!canManageCurrentAgent"
-              @changed="agentStore.fetchAgents(true)" />
             <!-- Avatar for existing agents -->
             <template v-if="isAgentEdit">
               <div class="row q-col-gutter-sm items-center q-mb-sm">
@@ -458,6 +456,7 @@
               emit-value
               map-options
               :loading="managersLoading"
+              :disable="managersLoading"
               :rules="[val => val !== null || $t('agent.managerRequiredRule')]"
               :hint="$t('agent.managerHint')"
             />
@@ -486,19 +485,6 @@
                 />
               </div>
             </div>
-
-            <q-select
-              v-if="isAgentEdit"
-              v-model="selectedHarnessId"
-              :options="harnessSelectionOptions"
-              :label="$t('harnesses.selection')"
-              :hint="$t('harnesses.selectionHint')"
-              filled
-              emit-value
-              map-options
-              :loading="harnessSelectionLoading"
-              :disable="!canManageCurrentAgent || !harnessSelectionLoaded"
-            />
 
             <!-- Row 2: first and last name -->
             <div class="row q-col-gutter-md">
@@ -534,6 +520,26 @@
             />
               </div>
             </div>
+
+            <!-- Runtime and authorization settings follow the agent's identity. -->
+            <q-card v-if="isAgentEdit" flat bordered>
+              <q-card-section>
+                <q-select
+                  v-model="selectedHarnessId"
+                  :options="harnessSelectionOptions"
+                  :label="$t('harnesses.selection')"
+                  :hint="$t('harnesses.selectionHint')"
+                  filled emit-value map-options
+                  :loading="harnessSelectionLoading"
+                  :disable="!canManageCurrentAgent || !harnessSelectionLoaded"
+                />
+              </q-card-section>
+              <q-separator />
+              <q-card-section>
+                <AgentYoloControl v-if="editedAgent" :agent="editedAgent" :disabled="!canManageCurrentAgent"
+                  @changed="agentStore.fetchAgents(true)" />
+              </q-card-section>
+            </q-card>
 
             <!-- Personality and job description are edited after creation. -->
             <template v-if="isAgentEdit">
@@ -941,6 +947,11 @@ watch([canViewAgents, canViewTeams], () => {
 const activeGroupTab = ref('')
 const agentDialogTab = ref('general')
 const showAgentDialog = ref(false)
+let agentDialogGeneration = 0
+let modelOptionsGeneration = -1
+const isCurrentAgentDialog = (generation: number): boolean => (
+  !pageDisposed && showAgentDialog.value && generation === agentDialogGeneration
+)
 
 // MCP tab: access tokens for the agent's unified MCP server.
 const mcpTokens = ref<AgentMcpToken[]>([])
@@ -1178,12 +1189,19 @@ const harnessManagerUnavailable = computed(() => managedRuntimeAgents.value.some
   agent => unavailableHarnessManagerAgentIds.has(agent.id),
 ))
 
-const managerOptions = computed(() => managers.value.map(manager => ({
-  label: manager.display_name
-    ? `${manager.display_name} — ${manager.email}`
-    : manager.email,
-  value: manager.id,
-})))
+const managerOptions = computed(() => {
+  const options = [...managers.value]
+  const currentManager = editedAgent.value?.user
+  if (currentManager && !options.some(manager => manager.id === currentManager.id)) {
+    options.push(currentManager)
+  }
+  return options.map(manager => ({
+    label: manager.display_name
+      ? `${manager.display_name} — ${manager.email}`
+      : manager.email,
+    value: manager.id,
+  }))
+})
 
 const harnessSelectionOptions = computed(() => [
   { label: t('harnesses.internal'), value: null },
@@ -1195,7 +1213,7 @@ const harnessSelectionOptions = computed(() => [
   })),
 ])
 
-async function loadHarnessSelection(agent: Agent): Promise<void> {
+async function loadHarnessSelection(agent: Agent, generation: number): Promise<void> {
   harnessSelectionLoading.value = true
   harnessSelectionLoaded.value = false
   try {
@@ -1203,28 +1221,38 @@ async function loadHarnessSelection(agent: Agent): Promise<void> {
       harnessService.catalog(true),
       harnessService.selection(agent.id),
     ])
+    if (!isCurrentAgentDialog(generation)) return
     harnessCatalog.value = catalogResponse.data
     selectedHarnessId.value = selectionResponse.data.harness_id
     initialHarnessId.value = selectionResponse.data.harness_id
     harnessSelectionLoaded.value = true
   } catch {
+    if (!isCurrentAgentDialog(generation)) return
     harnessCatalog.value = []
     selectedHarnessId.value = null
     initialHarnessId.value = null
     $q.notify({ type: 'negative', message: t('harnesses.catalog.loadError') })
   } finally {
-    harnessSelectionLoading.value = false
+    if (isCurrentAgentDialog(generation)) harnessSelectionLoading.value = false
   }
 }
 
-const fetchManagers = async (): Promise<void> => {
+const fetchManagers = async (generation: number): Promise<void> => {
   if (!canEdit.value) return
   managersLoading.value = true
   try {
     const { data } = await agentService.getManagers()
+    if (!isCurrentAgentDialog(generation)) return
     managers.value = data
+    if (!isAgentEdit.value && agentForm.user_id === null) {
+      agentForm.user_id = data.find(manager => manager.is_current_user)?.id ?? null
+    }
+  } catch {
+    if (isCurrentAgentDialog(generation)) {
+      $q.notify({ type: 'negative', message: t('common.anError') })
+    }
   } finally {
-    managersLoading.value = false
+    if (isCurrentAgentDialog(generation)) managersLoading.value = false
   }
 }
 
@@ -1470,36 +1498,49 @@ function voiceSelectionForAgent(agent: Agent): string {
   return agent.voice || NO_VOICE
 }
 
-async function loadNativeVoiceResources(): Promise<void> {
+async function loadNativeVoiceResources(generation: number): Promise<void> {
   const providerIds = [...new Set(
     llmProviderStore.llms
       .filter(llm => llm.service_capabilities.includes('realtime_conversation'))
       .map(llm => llm.llm_provider_id),
   )]
   if (providerIds.length === 0) {
-    nativeVoiceResources.value = {}
+    if (isCurrentAgentDialog(generation)) nativeVoiceResources.value = {}
     return
   }
 
+  const entries = await Promise.all(providerIds.map(async providerId => {
+    try {
+      const response = await llmProviderService.getProviderResources(
+        providerId,
+        'speech',
+      )
+      return [
+        providerId,
+        response.data.models.filter(resource => resource.resource_type === 'voice'),
+      ] as const
+    } catch {
+      return [providerId, []] as const
+    }
+  }))
+  if (isCurrentAgentDialog(generation)) nativeVoiceResources.value = Object.fromEntries(entries)
+}
+
+async function loadModelOptions(generation: number): Promise<void> {
+  if (!canViewLlms.value || modelOptionsGeneration === generation) return
+  modelOptionsGeneration = generation
   loadingNativeVoices.value = true
-  try {
-    const entries = await Promise.all(providerIds.map(async providerId => {
-      try {
-        const response = await llmProviderService.getProviderResources(
-          providerId,
-          'speech',
-        )
-        return [
-          providerId,
-          response.data.models.filter(resource => resource.resource_type === 'voice'),
-        ] as const
-      } catch {
-        return [providerId, []] as const
-      }
-    }))
-    nativeVoiceResources.value = Object.fromEntries(entries)
-  } finally {
-    loadingNativeVoices.value = false
+  const results = await Promise.allSettled([
+    llmProviderStore.fetchLLMs().then(() => {
+      if (isCurrentAgentDialog(generation)) return loadNativeVoiceResources(generation)
+    }),
+    ...(canViewParams.value ? [llmProfileStore.fetchProfiles()] : []),
+  ])
+  if (!isCurrentAgentDialog(generation)) return
+  loadingNativeVoices.value = false
+  if (results.some(result => result.status === 'rejected')) {
+    modelOptionsGeneration = -1
+    $q.notify({ type: 'negative', message: t('common.anError') })
   }
 }
 
@@ -1645,6 +1686,7 @@ const resetAgentForm = () => {
   agentForm.last_name = ''
   agentForm.job_title = ''
   agentForm.agent_driver = 'internal'
+  agentForm.has_avatar = false
   agentForm.profile_id = null
   agentForm.voice_selection = NO_VOICE
   harnessCatalog.value = []
@@ -1662,29 +1704,13 @@ const resetTitleForm = () => {
   titleForm.gender = null
 }
 
-const openAgentDialog = async (agent: Agent | null = null) => {
-  await fetchManagers()
-  // Refresh the catalog so a voice or STS resource configured in another tab
-  // is immediately available in the agent's single voice picker.
-  if (canViewLlms.value) {
-    await llmProviderStore.fetchLLMs()
-    await loadNativeVoiceResources()
-  }
-
-  // Refresh model profiles so the picker lists every profile configured on
-  // the "Modèles utilisés" page. A failure keeps the last known list.
-  if (canViewParams.value) {
-    try {
-      await llmProfileStore.fetchProfiles()
-    } catch {
-      // Keep the stale list; the agent keeps its current profile.
-    }
-  }
-
+const openAgentDialog = (agent: Agent | null = null) => {
+  const generation = ++agentDialogGeneration
+  resetAgentForm()
+  agentDialogTab.value = 'general'
+  mcpTokens.value = []
   if (agent) {
     isAgentEdit.value = true
-    agentDialogTab.value = 'general'
-    mcpTokens.value = []
     Object.assign(agentForm, {
       id: agent.id,
       user_id: agent.user_id,
@@ -1699,26 +1725,14 @@ const openAgentDialog = async (agent: Agent | null = null) => {
       profile_id: agent.profile_id ?? null,
       voice_selection: voiceSelectionForAgent(agent),
     })
-    await loadHarnessSelection(agent)
-    // Load avatar if agent has one and it's not already loaded
-    if (agent.has_avatar && !avatarUrls[agent.id]) {
-      try {
-        const url = await agentService.getAvatarBlobUrl(agent.id, undefined, agent.avatar_revision)
-        if (pageDisposed) URL.revokeObjectURL(url)
-        else {
-          if (avatarUrls[agent.id]) URL.revokeObjectURL(avatarUrls[agent.id])
-          avatarUrls[agent.id] = url
-        }
-      } catch (error) {
-        console.error(`Failed to load avatar for agent ${agent.id}:`, error)
-      }
-    }
   } else {
     isAgentEdit.value = false
-    resetAgentForm()
   }
   avatarFile.value = null
   showAgentDialog.value = true
+  // Existing portraits already load with the catalogue; no request blocks opening.
+  void fetchManagers(generation)
+  if (agent) void loadHarnessSelection(agent, generation)
 }
 
 const openRichTextDialog = (agent: Agent, field: 'personality' | 'job_description') => {
@@ -2058,10 +2072,20 @@ watch(canViewParams, allowed => {
   if (allowed) void paramsStore.fetchParams()
 }, { immediate: true })
 
-// Load MCP tokens lazily when the tab opens.
+// Refresh tab-specific options only when their tab opens.
 watch(agentDialogTab, (tab) => {
   if (tab === 'mcp') loadMcpTokens()
+  if (tab === 'models' && showAgentDialog.value) void loadModelOptions(agentDialogGeneration)
 })
+
+watch(showAgentDialog, open => {
+  if (!open) {
+    agentDialogGeneration++
+    managersLoading.value = false
+    harnessSelectionLoading.value = false
+    loadingNativeVoices.value = false
+  }
+}, { flush: 'sync' })
 
 watch(() => agentForm.agent_driver, () => {
   const genericTabs = ['general', 'models', 'mcp']

@@ -11,6 +11,7 @@ import { websocket } from '/core/websocket.ts'
 import 'quasar/src/css/index.sass'
 import '@quasar/extras/material-icons/material-icons.css'
 import '/app/style.scss'
+import '/core/util/solaireTheme.ts'
 
 const errors = []
 window.testApp = {

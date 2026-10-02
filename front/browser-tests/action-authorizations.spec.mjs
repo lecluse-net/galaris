@@ -4,17 +4,18 @@ for (const [locale, toggleName, activateName, reviewName, allowName] of [
   ['en', 'YOLO mode', 'Enable YOLO', 'Review request', 'Allow this action'],
   ['fr', 'Mode YOLO', 'Activer YOLO', 'Examiner la demande', 'Autoriser cette action'],
 ]) {
-  test(`YOLO needs an explicit acknowledgement and deactivation is immediate (${locale})`, async ({ page }) => {
+  test(`YOLO needs an explicit acknowledgement and deactivation is immediate (${locale})`, async ({ page }, testInfo) => {
     const writes = []
     await page.route('**/api/agents/7/yolo', route => {
       writes.push(route.request().postDataJSON())
       return route.fulfill({ json: { yolo: writes.at(-1).enabled, authorization_version: 3 } })
     })
     await mount(page, 'app/agent/components/AgentYoloControl.vue', {
-      locale, props: { agent: { id: 7, yolo: false, authorization_version: 2 } },
+      locale, dark: locale === 'fr', props: { agent: { id: 7, yolo: false, authorization_version: 2 } },
     })
     await page.getByRole('switch', { name: new RegExp(toggleName) }).click()
     await expect(page.getByRole('dialog')).toBeVisible()
+    await testInfo.attach(`yolo-${locale === 'fr' ? 'dark' : 'light'}`, { body: await page.getByRole('dialog').screenshot({ animations: 'disabled' }), contentType: 'image/png' })
     expect(writes).toEqual([])
     await page.locator('.q-dialog__backdrop').click({ position: { x: 2, y: 2 } })
     await expect(page.getByRole('dialog')).toHaveCount(0)
