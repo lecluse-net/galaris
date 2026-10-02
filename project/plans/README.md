@@ -22,7 +22,6 @@ d'implémentation ni nouvel ordre de priorité produit.
 | Plan | Statut | Reste à faire |
 |---|---|---|
 | [analyse-documentaire-unifiee.md](analyse-documentaire-unifiee.md) | `partial` | Socle commun, Process reprenable, cache autorisé et fallback Chat/Responses réalisés ; restent la qualification sémantique exhaustive des grands rapports, les formats non qualifiés et le XLS structurel. |
-| [tool-agent-admin.md](tool-agent-admin.md) | `partial` | Les 34 fonctions et le parcours UI synthétique sont implémentés. Recette photographique avec un fournisseur réellement authentifié à terminer ; l’essai réel a été refusé avec HTTP 401, sans enregistrement ni resoumission automatique. |
 | [fiabilisation-conversationnelle.md](fiabilisation-conversationnelle.md) | `partial` | Mesures de latence, dont le dispatcher ; arrêt physique des autres runtimes et effets distants réels (worker Hermès direct qualifié en environnement synthétique), remplacement coordonné Task/Goal/Process ; autres surfaces de capacités et diagnostics ; recherche dans l'environnement cible, livraison d'images, contexte utile ; objets candidats concurrents et langue/effort hors du dispatcher qualifié FR/EN ; frictions du parcours complet. |
 | [llm-calls-durables.md](llm-calls-durables.md) | `partial` | Création différée, commandes avec révision attendue, échéance globale, entrées média, rétention et arbitrages de rejeu incertain justifiés par un consommateur. |
 | [convergence-pydantic-ai.md](convergence-pydantic-ai.md) | `partial` | Métadonnées OpenRouter, changements d'intégration/protocole à qualifier, projection des réglages demandés/envoyés et surfaces média. |
@@ -52,11 +51,18 @@ conservent les preuves de stabilisation et le point de synchronisation des ancie
 de dialogue. Retirer un plan réalisé n'efface ni un blocage opérationnel ni une limite de
 qualification. Le contrat du dialogue reste la [décision 0083](../decisions/0083-shared-teams-and-dialogue-permissions.md).
 
+AgentAdmin est réalisé : sa [recette fournisseur](../../docs/fr/dev/agent-admin.md#recette-avec-un-fournisseur-réel)
+a été réalisée en développement le 2 octobre 2026 avec OpenRouter authentifié : génération,
+remplacement, réouverture et autorisations ponctuelles. Les résultats et leur périmètre sont
+conservés dans le guide de vérification, sans maintenir un plan d'implémentation terminé.
+
 Les autorisations ponctuelles MCP et des runtimes sont réalisées : leur contrat est conservé
 dans la [décision 0153](../decisions/0153-common-action-authorizations.md), les parcours dans
 le [guide d'administration](../../docs/fr/admin/tool-administration.md), et les preuves dans
 le [catalogue des tests](../../docs/fr/dev/functional-tests.md). Les qualifications synthétiques
-ne prouvent pas un déploiement ni les effets d'un fournisseur réel.
+ne prouvent pas un déploiement. La recette AgentAdmin complète ces preuves avec un fournisseur
+image réel derrière MCP ; les modèles distants propres aux quatre SDK de harnais restent
+hors du périmètre de cette recette.
 
 ## Maintenance
 

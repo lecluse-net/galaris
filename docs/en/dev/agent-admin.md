@@ -112,3 +112,38 @@ Commands: `make tests ARGS='app/agent/tests app/connection/tests app/harnesses/t
 `make tests-e2e ARGS='agent-admin.spec.mjs --project=chromium'`, `make typecheck`,
 `make docs-prepare`, `make architecture-check`. The schema change is `agents.avatar_revision`,
 synchronized by DbAdmin through `make sync-db` in development.
+
+### Acceptance with a real provider
+
+Acceptance was exercised in development on October 2, 2026 with authenticated OpenRouter
+and `google/gemini-3.1-flash-image`, through the real HTTP MCP server and human responses
+to the authorization API. Two fictional photographic portraits were generated and registered
+in 10.797 s and 10.317 s, as 500 × 500 JPEGs without EXIF metadata.
+The target's silver hair, glasses and green jacket are visible; its HTML fields are preserved,
+and generation uses the caller's image model.
+Replacement and reopening through Vue navigation were verified on desktop and mobile,
+comparing the displayed portrait's digest with the registered JPEG's digest.
+
+YOLO was disabled: no provider call before approval or after denial, and no additional call
+when replaying completed continuations. The fictional account was disabled, its agents archived
+and its tokens revoked after acceptance. A `WebSocket closed without opened.` message occurs
+during login; no API failure or browser error occurs during the portrait journey.
+This acceptance qualifies the image provider behind MCP; it does not qualify the four Harness
+SDKs against their own remote models and does not constitute deployment.
+
+To repeat acceptance after a human configures the caller's image-use credentials:
+
+1. Use an entirely fictional caller and target; enable AgentAdmin for the caller and check
+   that generation is available.
+2. Give the target a title and descriptive HTML profile distinct from the caller's, then
+   request a photographic portrait through `agent_avatar_generate`.
+3. Wait for the `registered=true` result; verify the caller's image model, the target's
+   described traits and preservation of the target's HTML fields.
+4. Inspect the portrait after UI navigation and reopening, then replace it with a second
+   successful generation.
+5. Do not automatically resubmit interrupted calls; publish only technical
+   conclusions and aggregate measurements, without real profiles or individual captures.
+
+Acceptance requires a usable photographic portrait persisted by an authenticated provider
+and visible after reopening. Synthetic coverage of tracking, replacement, late conflicts
+and revocation does not establish the provider's photographic quality.

@@ -117,3 +117,39 @@ Commandes : `make tests ARGS='app/agent/tests app/connection/tests app/harnesses
 `make tests-e2e ARGS='agent-admin.spec.mjs --project=chromium'`, `make typecheck`,
 `make docs-prepare`, `make architecture-check`. Le changement de schéma est la colonne
 `agents.avatar_revision`, synchronisée par DbAdmin avec `make sync-db` en développement.
+
+### Recette avec un fournisseur réel
+
+Recette réalisée en développement le 2 octobre 2026 avec OpenRouter authentifié et
+`google/gemini-3.1-flash-image`, via le serveur MCP HTTP réel et les réponses humaines
+à l'API d'autorisation. Deux portraits photographiques fictifs ont été générés et enregistrés
+en 10,797 s puis 10,317 s, en JPEG de 500 × 500 pixels sans métadonnées EXIF.
+Les cheveux argentés, les lunettes et la veste verte de la cible sont visibles ; ses champs
+HTML sont conservés et le modèle utilisé est celui de l'appelant.
+Le remplacement et la réouverture par navigation Vue sont vérifiés sur ordinateur et mobile,
+avec comparaison de l'empreinte du portrait affiché à celle du JPEG enregistré.
+
+YOLO était désactivé : aucun appel fournisseur avant accord ni après refus, et aucun
+appel supplémentaire au rejeu des continuations terminées. Le compte fictif a été désactivé,
+ses agents archivés et ses jetons révoqués après recette. Un message
+`WebSocket closed without opened.` est observé pendant la connexion ; aucun échec API ni
+erreur navigateur n'est observé sur le parcours du portrait. Cette recette qualifie le
+fournisseur image derrière MCP ; elle ne qualifie pas les quatre SDK de harnais avec
+leurs propres modèles distants et ne constitue pas un déploiement.
+
+Pour renouveler la recette après configuration humaine des credentials image de l'appelant :
+
+1. Utiliser un appelant et une cible entièrement fictifs ; activer AgentAdmin pour l'appelant
+   et vérifier que la génération est disponible.
+2. Donner à la cible une civilité et un profil HTML descriptif distincts de ceux de l'appelant,
+   puis demander un portrait photographique avec `agent_avatar_generate`.
+3. Attendre la réponse `registered=true` ; vérifier le modèle image de l'appelant,
+   les traits décrits de la cible et la conservation de ses champs HTML.
+4. Vérifier le portrait dans l'UI après navigation et réouverture, puis son remplacement
+   par une deuxième génération réussie.
+5. Ne pas resoumettre automatiquement un appel interrompu ; publier uniquement
+   les conclusions techniques et mesures agrégées, sans profil réel ni capture individuelle.
+
+Réception : portrait photographique exploitable, persisté par un fournisseur authentifié
+et visible à la réouverture. Les garanties synthétiques de suivi, remplacement, conflits
+tardifs et révocation ne prouvent pas la qualité photographique du fournisseur.
