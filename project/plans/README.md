@@ -38,6 +38,7 @@ d'implémentation ni nouvel ordre de priorité produit.
 |---|---|---|
 | [cible.md](cible.md) | `design` | Livraison publique, gouvernance des effets, releases d'agents, autonomie, interopérabilité et exploitation. |
 | [infrastructure-plugins-galaris.md](infrastructure-plugins-galaris.md) | `design` | Bundles, activation, frontend précompilé, permissions, conservation des données, compatibilité et rollback. |
+| [graphe-memoire-multiechelle.md](graphe-memoire-multiechelle.md) | `design` | Repli des branches exclusives, hiérarchie et placement stables, chargement par zone/niveau de détail, actualisation progressive et qualification ; suppression du plafond global d'exploration avec budgets bornés par vue. |
 | [consolidation-parametrique-lora.md](consolidation-parametrique-lora.md) | `design` | Entraînement et service de modèles à qualifier ; dépend des campagnes, de l'étalonnage et des gardes du Lab. |
 | [indexation-file-share-memory.md](indexation-file-share-memory.md) | `partial` | Catalogue privé, fiches éditables, parcours périodique/reprenable, réconciliation, réparation durable, enrichissements Dream et suivi Memory implémentés. Qualification synthétique jusqu’à 100 000 entrées réalisée ; objectifs atteints à ce volume avec statistiques fraîches, démarrage à froid et installations réelles encore à qualifier. Documents, Galaris, Web, Mail et transports Messenger exclus. |
 

@@ -237,6 +237,10 @@ page and select the tab without assuming a URL parameter. Contacts are at
 `/memory/contacts`; thematic groupings are under **Knowledge → Thematic dossiers** (`/topic`).
 Sharing a link does not grant access to its content.
 
+Graph exploration through groups revealed on zoom and loaded by visible region is described
+in the [multi-level memory graph plan](../../../project/plans/graphe-memoire-multiechelle.md) (in French).
+This proposal has `design` status; that workflow is not yet available in the application.
+
 In **Documents**, ordinary refreshes update affected rows without clearing the tree or list.
 Expanded folders and filters stay in place, including after reconnection. A failed refresh
 can be retried while displayed documents remain available; access revocation removes them immediately.
