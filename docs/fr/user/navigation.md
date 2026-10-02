@@ -202,6 +202,10 @@ restent accessibles depuis la demande faite à l'agent et ne créent aucune entr
 ce catalogue de workflows. Le [guide utilisateur](README.md) explique
 quand choisir une conversation, une Task ou un Goal.
 
+L’accueil de **Discussion** présente d’abord les conversations ayant reçu un message durant
+les 7 derniers jours, puis les agents. Le bouton **+** ouvre l’historique complet paginé ;
+**−** revient aux conversations récentes.
+
 À l’ouverture d’une discussion, les messages s’affichent sans attendre le catalogue des
 commandes ni l’état des appels. Les aperçus de liens et les miniatures de documents se
 chargent progressivement à proximité de la zone visible ; vous pouvez lire et rédiger

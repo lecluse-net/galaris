@@ -593,6 +593,52 @@ async def test_room_creation_persists_label_topic_and_private_preview(
 
 
 @pytest.mark.asyncio
+async def test_recent_chat_rooms_use_message_activity_before_counting_and_paginating(
+    db: AsyncSession, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    agent, owner, _member = await _scope(db)
+    now = datetime(2026, 10, 2, 12, tzinfo=timezone.utc)
+
+    class FixedDatetime(datetime):
+        @classmethod
+        def now(cls, tz=None):
+            return now
+
+    monkeypatch.setattr(native_facade, "datetime", FixedDatetime)
+    rooms = []
+    for label in ["Revived exchange", "Seven-day boundary", "Older exchange", "Empty exchange"]:
+        room = await create_internal_room(actor_user_id=owner.id, agent_id=agent.id, label=label)
+        assert room is not None
+        rooms.append(room)
+    sender = await db.scalar(select(MessengerUser).where(MessengerUser.galaris_user_id == owner.id))
+    assert sender is not None
+    for room, age in zip(rooms, [1, 7, 8]):
+        db.add(Message(
+            connection_id=room.connection_id, tool_id=sender.tool_id,
+            platform="internal", remote_message_id=f"recent-{uuid4()}", direction="inbound",
+            messenger_room_id=room.id, messenger_user_id=sender.id,
+            room_id=room.external_id, user_id=sender.external_id, text=room.label,
+            created_at=now - timedelta(days=age),
+        ))
+    stored = await db.get(Room, rooms[0].id)
+    assert stored is not None
+    stored.created_at = now - timedelta(days=100)
+    stored.updated_at = now - timedelta(days=100)
+    await db.flush()
+
+    newest = await native_facade.list_chat_rooms(owner.id, recent_days=7, page_size=1)
+    boundary = await native_facade.list_chat_rooms(owner.id, recent_days=7, page_size=1, page=2)
+    assert newest.total == boundary.total == 2
+    assert [item.id for item in newest.items] == [rooms[0].id]
+    assert [item.id for item in boundary.items] == [rooms[1].id]
+    assert (await native_facade.list_chat_rooms(owner.id, recent_days=7, search="Older")).total == 0
+    assert (await native_facade.list_chat_rooms(owner.id)).total == 4
+    await native_facade.set_chat_room_archived(owner.id, rooms[0].id, True)
+    assert (await native_facade.list_chat_rooms(owner.id, recent_days=7)).total == 1
+    assert (await native_facade.list_chat_rooms(owner.id, recent_days=7, include_archived=True)).total == 2
+
+
+@pytest.mark.asyncio
 async def test_archived_chat_rooms_are_hidden_by_default_and_can_be_restored(
     db: AsyncSession,
 ) -> None:

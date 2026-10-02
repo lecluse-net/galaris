@@ -185,6 +185,9 @@ large-report analyses remain available through the request made to the agent and
 not create entries in this workflow catalogue. The
 [user guide](README.md) explains when to choose a conversation, Task or Goal.
 
+The Chat home screen shows conversations with a message in the last 7 days first, then agents.
+The **+** button opens the full paginated history; **−** returns to recent conversations.
+
 When opening a conversation, messages appear without waiting for the command catalogue
 or call status. Link previews and document thumbnails load progressively near the visible
 area; you can read and compose while they load, and open a document before its thumbnail

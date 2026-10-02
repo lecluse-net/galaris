@@ -42,7 +42,7 @@ const { t } = useI18n()
 
 <style scoped>
 .chat-welcome { padding: 16px 0 32px; }
-.chat-welcome h2 { margin: 20px 0 10px; font-size: clamp(1.7rem, 3vw, 2.5rem); font-weight: 650; line-height: 1.2; letter-spacing: -.025em; overflow-wrap: anywhere; }
+.chat-welcome h2 { margin: 20px 0 10px; font-size: 1.15rem; font-weight: 600; line-height: 1.4; overflow-wrap: anywhere; }
 .chat-welcome p { margin: 0; color: var(--chat-text-secondary); font-size: 1rem; line-height: 1.6; }
 .welcome-agents { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-top: 24px; }
 .welcome-agent { padding: 10px 16px 10px 10px; border: 1px solid var(--chat-border-strong); border-radius: 14px; background: var(--chat-surface); max-width: 100%; }

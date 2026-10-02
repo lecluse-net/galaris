@@ -44,7 +44,7 @@ export const chatService = {
       await api.get<Blob>(`${base}/agents/${agentId}/avatar`, { responseType: 'blob', signal: sharedSignal })
     ).data, sharedSignal), signal)
   },
-  async rooms(page = 1, pageSize = 50, search = '', agentId: number | null = null, includeExternal = false, includeArchived = false): Promise<Page<MessengerRoom>> { return (await api.get<Page<MessengerRoom>>(`${base}/rooms`, { params: { page, page_size: pageSize, search, agent_id: agentId, include_external: includeExternal, include_archived: includeArchived } })).data },
+  async rooms(page = 1, pageSize = 50, search = '', agentId: number | null = null, includeExternal = false, includeArchived = false, recentDays: number | null = null): Promise<Page<MessengerRoom>> { return (await api.get<Page<MessengerRoom>>(`${base}/rooms`, { params: { page, page_size: pageSize, search, agent_id: agentId, include_external: includeExternal, include_archived: includeArchived, ...(recentDays === null ? {} : { recent_days: recentDays }) } })).data },
   async room(roomId: string, agentId: number | null = null): Promise<MessengerRoom> { return (await api.get<MessengerRoom>(`${base}/rooms/${roomId}`, { params: { agent_id: agentId } })).data },
   async updateRoomPreferences(roomId: string, label: string, showLastMessage: boolean): Promise<MessengerRoom> { return (await api.patch<MessengerRoom>(`${base}/rooms/${roomId}`, { label, show_last_message: showLastMessage })).data },
   async setArchived(roomId: string, archived: boolean): Promise<MessengerRoom> { return (await api.patch<MessengerRoom>(`${base}/rooms/${roomId}/archive`, { archived })).data },

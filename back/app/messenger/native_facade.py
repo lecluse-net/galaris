@@ -10,7 +10,7 @@ import asyncio
 import re
 from collections.abc import Collection
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Literal, cast
 from uuid import UUID, uuid4
 
@@ -1061,6 +1061,7 @@ async def list_chat_rooms(
     search: str = "",
     include_external: bool = True,
     include_archived: bool = False,
+    recent_days: int | None = None,
 ) -> NativeMessengerRoomPage:
     """List canonical rooms belonging to one linked Galaris identity."""
 
@@ -1107,12 +1108,25 @@ async def list_chat_rooms(
         base = base.where(Tool.code == CHAT_TOOL_CODE)
     if not include_archived:
         base = base.where(RoomUser.archived.is_(False))
+    last_message_at = (
+        select(func.max(Message.created_at))
+        .where(Message.messenger_room_id == Room.id)
+        .correlate(Room)
+        .scalar_subquery()
+    )
+    if recent_days is not None:
+        base = base.where(
+            last_message_at >= datetime.now(timezone.utc) - timedelta(days=recent_days)
+        )
     total = int(
         await get_db().scalar(select(func.count()).select_from(base.subquery())) or 0
     )
     rows = (
         await get_db().execute(
-            base.order_by(Room.updated_at.desc(), Room.id.desc())
+            base.order_by(
+                last_message_at.desc() if recent_days is not None else Room.updated_at.desc(),
+                Room.id.desc(),
+            )
             .offset((page - 1) * page_size)
             .limit(page_size)
         )

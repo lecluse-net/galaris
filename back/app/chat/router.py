@@ -467,6 +467,7 @@ async def read_rooms(
     search: str = Query(default="", max_length=200),
     include_external: bool = Query(default=True),
     include_archived: bool = Query(default=False),
+    recent_days: int | None = Query(default=None, ge=1, le=365),
 ) -> NativeMessengerRoomPage:
     scope = await current_management_scope() if agent_id is not None else await current_dialogue_scope()
     result = await list_chat_rooms(
@@ -477,6 +478,7 @@ async def read_rooms(
         search=search,
         include_external=include_external,
         include_archived=include_archived,
+        recent_days=recent_days,
         agent_ids=scope.agent_ids if agent_id is not None else None,
     )
     return result.model_copy(update={"items": [_room_for_scope(room, scope) for room in result.items]})

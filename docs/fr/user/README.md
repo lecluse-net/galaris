@@ -210,8 +210,12 @@ joindre un fichier, enregistrer une note vocale et démarrer un appel navigateur
 l'agent. Quitter une conversation retire votre accès sans effacer son historique pour les autres
 membres.
 
-Avant de sélectionner une conversation, l’accueil du Chat affiche **Avec qui souhaitez-vous
-échanger ?**. Cliquez sur un agent pour ouvrir une nouvelle conversation avec cet agent
+Avant de sélectionner une conversation, l’accueil de **Discussion** affiche d’abord les
+**Conversations récentes** ayant reçu un nouveau message durant les **7 derniers jours**,
+de la plus récente à la plus ancienne. Le bouton **+** affiche toutes les conversations,
+y compris les anciennes et celles sans message, avec la pagination habituelle. Le bouton
+**−** permet de revenir aux conversations récentes. Les agents apparaissent en dessous,
+sous **Avec qui souhaitez-vous échanger ?**. Cliquez sur un agent pour ouvrir une nouvelle conversation avec cet agent
 présélectionné, puis confirmez son nom et ses préférences. Le nom proposé tient compte de vos
 conversations existantes avec cet agent, y compris les archives : si le nom est déjà pris,
 Galaris ajoute **(2)**, **(3)**, etc. Vous pouvez modifier ce nom ; sa disponibilité est
