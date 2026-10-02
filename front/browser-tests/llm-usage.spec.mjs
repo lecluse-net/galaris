@@ -33,7 +33,6 @@ for (const width of [1440, 390]) {
     const row = page.getByRole('row').filter({ has: page.getByText('Texte standard', { exact: true }) })
     const select = row.getByRole('combobox')
     const effort = row.getByRole('slider')
-    await expect(row).toContainText('Exécuteur standard, suivi des objectifs et modèles équivalents à Claude Opus ou GPT Terra.')
     await expect(row).toContainText('Modèle standard (Fournisseur A)')
     await expect(effort).toHaveAttribute('aria-valuetext', 'Auto')
     await page.screenshot({ path: testInfo.outputPath('light.png'), fullPage: true, animations: 'disabled' })

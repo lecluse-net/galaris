@@ -83,8 +83,8 @@ Préférences, Laboratoire, les dossiers et la coloration du code
 consomment ces variables. Les dossiers sont rendus en SVG intégré : aucune
 régénération d’image n’est nécessaire pour leur affichage. Les documents autonomes
 pour l’impression et l’export embarquent la feuille issue de la même source.
-Les tests `front/browser-tests/solaire.spec.mjs` vérifient qu’une modification globale
-se propage aux consommateurs existants dans les deux thèmes.
+Après une modification de palette, vérifier visuellement ces consommateurs dans les deux
+thèmes. Les tests fonctionnels ne figent pas leurs couleurs ni leurs regroupements visuels.
 
 La page « Modèles utilisés » applique les fonds Solaire clairs ou sombres aux en-têtes
 des familles d’usages. Ses tableaux et contrôles conservent les couleurs du thème de l’interface.

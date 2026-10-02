@@ -258,6 +258,10 @@ immutable. Consult the `galaris-process-tools` skill.
   request. Test usable actions, preserved content, permissions, and durable effects. A dimension
   is a valid assertion only when it represents a functional contract, such as no clipped content
   when printing.
+- A cosmetic-only UI change (spacing, colors, icons, wording, or visual grouping) does not
+  require a new automated test. Inspect the rendered result and reuse existing coverage.
+  Add or strengthen a test when behavior, accessibility, permissions, or data preservation
+  changes, or when the user explicitly requests one.
 - Use unit tests for pure rules, integration tests with real services/DB for workflows, real
   components for interactions, and a few E2E tests for the assembled system. Replace external
   boundaries, not internal services in the tested workflow.

@@ -80,8 +80,8 @@ the approved values above.
 Preferences, Laboratory, folders and code highlighting consume these
 variables. Folders render inline SVG, so their display requires no image regeneration.
 Standalone print and export documents embed the stylesheet derived from the same source.
-`front/browser-tests/solaire.spec.mjs` verifies that global changes reach existing
-consumers in both themes.
+After a palette change, inspect these consumers visually in both themes. Functional tests
+do not freeze their colors or visual grouping.
 
 The “Models in use” page applies light or dark Solaire backgrounds to usage group
 headings. Its tables and controls retain the interface theme colors.

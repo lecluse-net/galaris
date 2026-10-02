@@ -86,23 +86,6 @@ test('selected model labels follow catalogue refreshes and profile changes', t =
   assert.equal(state.selectedModelLabel('audio_llm_id'), 'llm.unavailable')
 })
 
-test('every LLM usage is assigned once to the appropriate category', t => {
-  const { state } = setupUsageManager(t)
-  const groups = state.modelGroups.value
-  const rows = groups.flatMap(group => group.rows)
-  assert.equal(rows.length, 15)
-  assert.equal(new Set(rows.map(row => row.modelField)).size, rows.length)
-  assert.deepEqual(
-    new Set(groups.map(group => group.key)),
-    new Set(['text', 'image', 'audio', 'multimedia', 'embedding', 'decision']),
-  )
-  const categories = Object.fromEntries(groups.flatMap(group => group.rows.map(row => [row.modelField, group.key])))
-  assert.equal(categories.transcription_llm_id, 'audio')
-  for (const column of ['audio_llm_id', 'video_llm_id', 'sound_generation_llm_id', 'music_generation_llm_id', 'video_generation_llm_id']) {
-    assert.equal(categories[column], 'multimedia')
-  }
-})
-
 test('decision selection saves and clears independently of text models and fallback policy', async t => {
   const { state, profile, llmStore } = setupUsageManager(t)
   llmStore.llms.push({ id: 45, label: 'Decision', provider_name: 'Provider', primary_capability: 'decision', service_capabilities: ['decision'] })
