@@ -39,7 +39,12 @@ test('agent creation requires a first name but accepts an empty last name', asyn
   await agentFixtures(page)
   await jsonRoute(page, '**/api/agents?*', [])
   await jsonRoute(page, '**/api/agents/managers', [agent.user])
-  await jsonRoute(page, '**/api/agents/titles?*', [{ id: 1, label: 'agent_titles.ms', gender: 'F' }])
+  const titles = Array.from({ length: 500 }, (_, index) => ({ id: index + 1, label: `Synthetic title ${index + 1}`, gender: 'X' }))
+  titles.push({ id: 501, label: 'agent_titles.ms', gender: 'F' })
+  await page.route('**/api/agents/titles?*', route => {
+    const skip = Number(new URL(route.request().url()).searchParams.get('skip') ?? 0)
+    return route.fulfill({ json: titles.slice(skip, skip + 500) })
+  })
   const saves = []
   await page.route('**/api/agents', route => {
     const data = route.request().postDataJSON()
@@ -54,6 +59,8 @@ test('agent creation requires a first name but accepts an empty last name', asyn
   const dialog = page.getByRole('dialog')
   await dialog.getByLabel('Agent code', { exact: true }).fill('lyra')
   await dialog.getByLabel('Title *', { exact: true }).click()
+  await expect(page.getByRole('option').first()).toBeVisible()
+  await page.keyboard.press('End')
   await page.getByRole('option', { name: 'Ms (F)', exact: true }).click()
   await dialog.getByLabel('First name *', { exact: true }).fill('   ')
   await dialog.getByRole('button', { name: 'Create', exact: true }).click()
@@ -68,7 +75,48 @@ test('agent creation requires a first name but accepts an empty last name', asyn
   await dialog.getByRole('button', { name: 'Create', exact: true }).click()
   await expect(dialog).toHaveCount(0)
   expect(saves).toHaveLength(2)
-  expect(saves[1]).toMatchObject({ code: 'lyra-available', first_name: 'Lyra', last_name: '' })
+  expect(saves[1]).toMatchObject({ code: 'lyra-available', first_name: 'Lyra', last_name: '', title_id: 501 })
+})
+
+test('a refreshed portrait survives an older catalogue avatar response', async ({ page }) => {
+  await agentFixtures(page)
+  await jsonRoute(page, '**/api/harnesses/agents/*/status', { status: 'stopped', managed: false, containerized: false, capabilities: [], available_actions: [] })
+  const target = { ...agent, id: 8, code: 'synthetic-portrait', first_name: 'Lyra', last_name: 'Synthetic', agent_driver: 'internal', is_owner: true }
+  let catalogue = [{ ...agent, agent_driver: 'internal', has_avatar: true, avatar_revision: 1 }, { ...target, has_avatar: false, avatar_revision: 0 }]
+  await page.route('**/api/agents?*', route => route.fulfill({ json: catalogue }))
+  const image = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+a5AAAAABJRU5ErkJggg==', 'base64')
+  let release, started = false
+  const pending = new Promise(resolve => { release = resolve })
+  await page.route('**/api/agents/7/avatar?*', async route => {
+    started = true
+    await pending
+    await route.fulfill({ contentType: 'image/png', body: image })
+  })
+  await page.route('**/api/agents/8/avatar?*', route => route.fulfill({ contentType: 'image/png', body: image }))
+  await mount(page, 'app/agent/pages/index.vue', { privileges: ['AGENT_EDIT'] })
+  await expect.poll(() => started).toBe(true)
+  // Observe disposal at the browser resource boundary, without mocking the loader.
+  await page.evaluate(() => {
+    window.disposedPortraits = 0
+    const revoke = URL.revokeObjectURL.bind(URL)
+    URL.revokeObjectURL = url => { window.disposedPortraits++; revoke(url) }
+  })
+  try {
+    catalogue = [{ ...catalogue[0], has_avatar: false, avatar_revision: 2 }, { ...target, has_avatar: true, avatar_revision: 1 }]
+    await page.evaluate(async () => {
+      const { invalidateSessionReads } = await import('/core/util/sessionReadCache.ts')
+      const { useAgentStore } = await import('/app/agent/stores/agentStore.ts')
+      invalidateSessionReads('agent-catalogue')
+      await useAgentStore(window.testApp.pinia).fetchAgents()
+    })
+    const portrait = page.getByRole('img', { name: 'Lyra Synthetic', exact: true })
+    await expect(portrait).toBeVisible()
+    await expect(portrait).toHaveJSProperty('naturalWidth', 1)
+    release()
+    await expect.poll(() => page.evaluate(() => window.disposedPortraits)).toBeGreaterThan(0)
+    await expect(portrait).toBeVisible()
+    await expect(portrait).toHaveJSProperty('naturalWidth', 1)
+  } finally { release() }
 })
 
 test('built-in titles follow the locale and remain keys until renamed', async ({ page }) => {
@@ -116,21 +164,47 @@ test('built-in titles follow the locale and remain keys until renamed', async ({
   await expect(page.getByText('agent_titles.', { exact: false })).toHaveCount(0)
 })
 
-test('agent page reports an unavailable manager and clears it after successful polling', async ({ page }) => {
-  await page.clock.install()
+test('internal agents remain editable without external runtime supervision', async ({ page }) => {
   await agentFixtures(page)
-  let healthy = false
-  await page.route('**/api/harnesses/agents/7/status', route => route.fulfill(healthy
-    ? { json: { status: 'running', managed: true, lifecycle_status: 'ready', capabilities: ['restart', 'stop'], available_actions: ['restart', 'stop'], last_error: null } }
-    : { status: 503, json: { detail: 'Manager unavailable' } }))
+  await jsonRoute(page, '**/api/agents?*', [{ ...agent, agent_driver: 'internal', is_owner: true }])
+  await jsonRoute(page, '**/api/agents/drivers', [{ name: 'internal', manages_runtime: false }])
+  await jsonRoute(page, '**/api/agents/managers', [agent.user])
+  let supervisionReads = 0
+  await page.route('**/api/harnesses/agents/7/status', route => {
+    supervisionReads++
+    return route.fulfill({ status: 503, json: { detail: 'External manager unavailable' } })
+  })
   await mount(page, 'app/agent/pages/index.vue', { privileges: ['AGENT_EDIT'] })
-  const warning = page.locator('.q-banner').filter({ hasText: /manager/i })
-  await expect(warning).toBeVisible()
-  healthy = true
-  await page.clock.fastForward(5100)
-  await expect(warning).toHaveCount(0)
   await expect(page.getByText('Alice Example', { exact: true }).first()).toBeVisible()
+  await page.getByRole('button', { name: 'New Agent', exact: true }).click()
+  await expect(page.getByRole('dialog')).toBeVisible()
+  expect(supervisionReads).toBe(0)
+  await expect(page.locator('.q-banner').filter({ hasText: /manager/i })).toHaveCount(0)
 })
+
+for (const [driver, driverMetadata] of [['hermes', true], ['hermes', false], ['openai_messages', true]]) {
+  test(`agent page reports an unavailable manager and recovers for ${driver} with metadata ${driverMetadata}`, async ({ page }) => {
+    await page.clock.install()
+    await agentFixtures(page)
+    if (driver === 'openai_messages') {
+      await jsonRoute(page, '**/api/agents?*', [{ ...agent, agent_driver: driver, is_owner: true }])
+      await jsonRoute(page, '**/api/agents/drivers', [{ name: driver, manages_runtime: false }])
+    }
+    if (!driverMetadata) await jsonRoute(page, '**/api/agents/drivers', [])
+    await jsonRoute(page, '**/api/harnesses/agents/7/selection', { containerized: true })
+    let healthy = false
+    await page.route('**/api/harnesses/agents/7/status', route => route.fulfill(healthy
+      ? { json: { status: 'running', managed: true, lifecycle_status: 'ready', capabilities: ['restart', 'stop'], available_actions: ['restart', 'stop'], last_error: null } }
+      : { status: 503, json: { detail: 'Manager unavailable' } }))
+    await mount(page, 'app/agent/pages/index.vue', { privileges: ['AGENT_EDIT'] })
+    const warning = page.locator('.q-banner').filter({ hasText: /manager/i })
+    await expect(warning).toBeVisible()
+    healthy = true
+    await page.clock.fastForward(5100)
+    await expect(warning).toHaveCount(0)
+    await expect(page.getByText('Alice Example', { exact: true }).first()).toBeVisible()
+  })
+}
 
 test('agent runtime action calls restart once and prevents duplicate submissions', async ({ page }) => {
   await agentFixtures(page)

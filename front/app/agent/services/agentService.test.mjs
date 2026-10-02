@@ -3,31 +3,33 @@ import test from 'node:test'
 import { loadTypescript } from '../../../test-support/load-typescript.mjs'
 import { sessionReadCache } from '../../../test-support/session-read-cache.mjs'
 
-function service(get) {
+function service(get, domain = 'agentService') {
   return loadTypescript(new URL('./agentService.ts', import.meta.url), {
     '@/core/api': { __esModule: true, default: { get } }, '@/core/util/facade': sessionReadCache(),
-  }).agentService
+  })[domain]
 }
 
-test('agent trees receive every page, including the agent after 500', async () => {
+for (const [domain, getter] of [['agentService', 'getAgents'], ['titleService', 'getTitles']]) {
+test(`${domain} receives every page, including the reference after 500`, async () => {
   const requests = []
   const agents = Array.from({ length: 501 }, (_, id) => ({ id }))
   const api = service(async (url, { params }) => {
     requests.push({ url, ...params })
     return { data: agents.slice(params.skip, params.skip + params.limit), status: 200 }
-  })
-  const result = await api.getAgents()
+  }, domain)
+  const result = await api[getter]()
   assert.deepEqual(result.data, agents)
   assert.deepEqual(requests.map(item => item.skip), [0, 500])
 })
 
-test('a failed later page does not silently return an incomplete agent tree', async () => {
+test(`${domain} does not silently return an incomplete catalogue after a later page fails`, async () => {
   const api = service(async (_url, { params }) => {
     if (params.skip) throw new Error('offline')
     return { data: Array.from({ length: 500 }, (_, id) => ({ id })) }
-  })
-  await assert.rejects(api.getAgents(), /offline/)
+  }, domain)
+  await assert.rejects(api[getter](), /offline/)
 })
+}
 
 test('catalogues expire independently, isolate edits and invalidate after successful domain writes', async t => {
   t.mock.timers.enable({ apis: ['Date'], now: 0 })

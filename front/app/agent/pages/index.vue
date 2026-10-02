@@ -1072,6 +1072,7 @@ const avatarFile = ref<File | null>(null)
 const uploadingAvatar = ref(false)
 const avatarUrls = reactive<Record<number, string>>({})
 const avatarRevisions: Record<number, number> = {}
+let avatarLoadGeneration = 0
 
 const agentInitials = (agent: Pick<Agent, 'first_name' | 'last_name' | 'code'>) => {
   const fullName = `${agent?.first_name || ''} ${agent?.last_name || ''}`.trim()
@@ -1087,8 +1088,9 @@ const agentInitials = (agent: Pick<Agent, 'first_name' | 'last_name' | 'code'>) 
 
 // Load avatars for agents
 const loadAvatars = async () => {
+  const generation = ++avatarLoadGeneration
   for (const agent of agentStore.agents) {
-    if (pageDisposed) return
+    if (pageDisposed || generation !== avatarLoadGeneration) return
     const revision = agent.avatar_revision ?? 0
     if (!agent.has_avatar || avatarRevisions[agent.id] !== revision) {
       if (avatarUrls[agent.id]) URL.revokeObjectURL(avatarUrls[agent.id])
@@ -1098,7 +1100,7 @@ const loadAvatars = async () => {
       try {
         const url = await agentService.getAvatarBlobUrl(agent.id, undefined, revision)
         const current = agentStore.agents.find(item => item.id === agent.id)
-        if (!pageDisposed && current?.has_avatar && (current.avatar_revision ?? 0) === revision) {
+        if (!pageDisposed && generation === avatarLoadGeneration && current?.has_avatar && (current.avatar_revision ?? 0) === revision) {
           if (avatarUrls[agent.id]) URL.revokeObjectURL(avatarUrls[agent.id])
           avatarUrls[agent.id] = url
           avatarRevisions[agent.id] = revision
@@ -2086,7 +2088,13 @@ watch(canViewAgents, async allowed => {
     agentStore.fetchGroups(),
   ])
   await fetchDrivers()
-  await Promise.all(agentStore.agents.map(agent => fetchHarnessStatus(agent)))
+  // The shared network driver can represent container runtimes. Exclude only
+  // the known local driver; inspect it too if its metadata could not load.
+  const agentsToInspect = agentStore.agents.filter(agent => (
+    agent.agent_driver !== 'internal'
+    || drivers.value.find(driver => driver.name === agent.agent_driver)?.manages_runtime !== false
+  ))
+  await Promise.all(agentsToInspect.map(agent => fetchHarnessStatus(agent)))
   if (pageDisposed) return
   stopHarnessPolling = startVisiblePolling(async () => {
     const refreshes: Promise<void>[] = []

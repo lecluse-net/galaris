@@ -116,7 +116,17 @@ export type AgentUpdate = Partial<Omit<AgentCreate, 'code'>>
 // Title service
 export const titleService = {
     getTitles(force = false): Promise<AxiosResponse<Title[]>> {
-        return titles.read(signal => api.get('/agents/titles', { params: { limit: 500 }, signal }), force)
+        return titles.read(async signal => {
+            const response = await api.get<Title[]>('/agents/titles', { params: { skip: 0, limit: 500 }, signal })
+            const catalogue = [...response.data]
+            let size = response.data.length
+            while (size === 500) {
+                const next = await api.get<Title[]>('/agents/titles', { params: { skip: catalogue.length, limit: 500 }, signal })
+                catalogue.push(...next.data)
+                size = next.data.length
+            }
+            return { ...response, data: catalogue }
+        }, force)
     },
     getTitle(id: number): Promise<AxiosResponse<Title>> {
         return api.get(`/agents/titles/${id}`)
