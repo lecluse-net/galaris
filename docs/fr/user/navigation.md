@@ -135,6 +135,14 @@ Voir le [contrat AgentAdmin](../dev/agent-admin.md) pour les connexions, équipe
 | Connexions | Configurer les connexions associées aux agents | `/tools?tab=connections` |
 | Autorisations | Administrer les règles d’accès aux outils et fonctions | `/tools?tab=authorizations` |
 
+Dans la définition d’un Tool personnalisé, chaque paramètre de connexion peut recevoir un
+libellé, une description et une valeur par défaut. Pour un texte ou un entier, **Ajouter un
+choix fixe** permet de définir les valeurs proposées et leurs libellés : le formulaire affiche
+alors une liste déroulante. Le code technique reste visible sous le libellé. Ces contrôles sont
+communs aux connexions des agents, aux paramètres globaux et au test MCP. Sans choix définis,
+la saisie reste libre ; les mots de passe restent masqués. Les choix et libellés sont conservés
+lors de l’export et de l’import YAML.
+
 Pour déléguer la gestion du catalogue et des connexions, activer explicitement **ToolAdmin**
 et suivre le [parcours d’administration déléguée](../admin/tool-administration.md).
 L’assistant Galaris reçoit cette connexion active lors de sa création initiale ; une

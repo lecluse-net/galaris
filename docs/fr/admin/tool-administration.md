@@ -40,6 +40,32 @@ Le défaut est désactivé. Console expose ce paramètre aussi avec sa cible emb
 Les réglages existants sont repris lors de la synchronisation et restent conservés aux mises
 à jour. Les droits de chaque agent restent applicables ; la définition intégrée reste protégée.
 
+Console, AFFiNE et Grav proposent actuellement uniquement les fichiers déjà connus ;
+Nextcloud propose aussi la découverte et l'indexation de tous les contenus disponibles.
+Mail reste exclu, comme les PJ de messagerie d'un
+Tool mixte. Les opérations sur les fichiers rencontrés créent maintenant des fiches
+privées `file`/`directory` dans Memory, recherchables par nom, URI et métadonnées sans
+attendre Dream. Une désactivation ou un changement de configuration de connexion retire
+les anciennes fiches des recherches ; l'accès au fichier source est également vérifié.
+Le parcours automatique traite les racines autorisées par pages, avec reprise après
+interruption et renouvellement après six heures. Les URI connues sont vérifiées périodiquement
+sans parcourir le provider. Seules les listes complètes et les suppressions prouvées retirent
+des fichiers du catalogue ; une source inaccessible reste distincte d'une source supprimée.
+
+Ouvrir une fiche dans **Memory**, modifier son titre ou son contenu, puis enregistrer.
+Les champs modifiés manuellement sont conservés lors des observations suivantes du fichier.
+L'édition porte sur la fiche Memory ; les références source continuent à être actualisées
+par le catalogue et les octets du fichier restent chez leur provider.
+
+Dans **Memory**, sélectionner l'agent puis ouvrir **Indexation des fichiers**. Saisir la
+racine admissible, par exemple `nextcloud://`, et choisir **Indexer maintenant**. Le tableau
+montre le nombre d'entrées rencontrées, les répertoires complets et les erreurs ; un run actif
+peut être annulé. Une couverture partielle indique une limite de volume, profondeur ou
+pagination. Les diagnostics terminaux sont conservés 30 jours. Les erreurs d'observation
+sont réparées avec backoff sans rejouer l'opération externe ; **Relancer les réparations**
+permet de relancer explicitement celles qui restent en échec. Les options de médias Dream
+existantes activent les enrichissements versionnés, qui préservent les contenus personnels.
+
 ### Créer le Tool
 
 1. Examiner le catalogue avec `tool_admin_list` et lire une éventuelle définition existante

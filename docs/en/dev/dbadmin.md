@@ -9,6 +9,8 @@ This document describes the developer contract for `core.dbadmin`, Galaris's sol
 
 - Active SQLAlchemy models fully describe the target `public` schema.
 - DbAdmin uses Atlas as a private implementation detail to converge the database toward that target.
+- DbAdmin prepares `vector` and `pg_trgm` before declared indexes: trigrams accelerate
+  literal Memory searches without changing permissions or results.
 - Galaris uses neither Alembic, numbered migrations, nor a linear version history.
 - Each synchronization compares the current database with the target of the current branch.
 - Special transformations are idempotent actions triggered by the current delta, not by an already-applied revision number.

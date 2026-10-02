@@ -96,6 +96,7 @@ without cropping or enlarging it. Transparency becomes a white background, anima
 their first frame and EXIF metadata is removed. HTTP POST, URI and generated portraits all
 use this conversion. Monotonic revisions also detect replacement followed by restoration.
 UI readers use the revision to load current portraits when reopened.
+An older list load cannot remove a current portrait; its temporary URL is released.
 
 ## Verification
 

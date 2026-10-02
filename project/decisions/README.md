@@ -1,5 +1,7 @@
 # Décisions d’architecture
 
+- [0155 — Parcours de fichiers durables et enrichissement versionné](0155-durable-file-indexing.md)
+
 - [0153 — Autorisation commune par action pour MCP et runtimes](0153-common-action-authorizations.md)
 
 - [0151 — Analyse documentaire reprenable et couverture explicite](0151-resumable-document-analysis.md)
@@ -188,5 +190,5 @@ nouvelle décision plutôt que réécrite silencieusement si le choix change.
 - [0127 — Modèle de décision facultatif pour le dispatcher Task](0127-optional-dispatcher-decision-model.md)
 - [0128 — Requêtes HTTP de l'interface sans délai maximal](0128-http-client-without-deadline.md)
 - [0141 — Permissions réseau du navigateur et décisions humaines mémorisées](0141-browser-remembered-permissions.md)
-
 - [0152 — Indexation par les paramètres standards des Tools](0152-tool-file-indexing-preference.md)
+- [0154 — Catalogue privé des ressources rencontrées](0154-file-catalogue-observations.md)

@@ -22,6 +22,9 @@ y compris leurs jobs et événements, sans supprimer les processus métier ni bl
 `e2e/specs/agent-admin.spec.mjs` vérifie la création et deux portraits successifs réellement
 affichés après navigation Vue sans rechargement, une civilité renommée et le refus après
 révocation, avec un fournisseur synthétique.
+`front/browser-tests/agents.spec.mjs` retarde la réponse d'un ancien catalogue puis
+vérifie qu'elle ne retire pas le portrait chargé par le catalogue courant et que son
+URL temporaire est libérée.
 
 `back/app/agent/tests/test_planner_collections.py` couvre les traitements répétés : petits lots
 mécaniques connus d'au plus cinq éléments en une feuille sans découverte ni replanification,
@@ -101,6 +104,8 @@ avant de recueillir un accord pour tous les sites.
 connexion, la reprise sans rejeu de l’action initiale et l’exécution suivante sans question.
 Elle couvre aussi le claim concurrent, le refus non répétable, l’expiration, les quotas,
 la révocation du contexte ou de la configuration, YOLO et les préconditions des fichiers.
+Une copie reprend après un accord ponctuel ou permanent seulement si la source observée
+est inchangée ; le changement de mode ne retire pas sa précondition.
 Le choix permanent refuse une configuration MCP changée, y compris si le changement
 survient entre la préparation de l'appel et la création de sa question.
 Les routes HTTP réelles refusent le jeton système d'un runtime sans son contexte,
@@ -118,6 +123,11 @@ du runtime pour l'accord, le refus, la révocation et l'annulation, sans relance
 `make tests-harness-runtimes` exerce les SDK embarqués Codex, Claude, Hermes et DeepSeek,
 avec modèle et transports externes synthétiques : aucun effet avant accord, refus, reprise
 de l’appel exact et continuation MCP. Cette qualification ne prouve pas un déploiement.
+La réponse d’autorisation DeepSeek est retardée dans le transport synthétique : le test
+attend l’état suspendu avant de répondre et annule les workers encore actifs en cas d’échec.
+Les diagnostics ToolAdmin utilisent des serveurs HTTP/SSE synthétiques successifs et vérifient
+les bornes du catalogue sans exécuter ses fonctions. Chaque serveur repart avec son indicateur
+d'arrêt SSE réinitialisé, car la bibliothèque le conserve au niveau du processus de test.
 `e2e/specs/tool-authorizations.spec.mjs` vérifie dans l’application assemblée l’accord et le
 refus, la réouverture, le clavier, YOLO et les fonctions bloquées à 390 et 1440 pixels.
 `front/browser-tests/action-authorizations.spec.mjs` couvre le choix permanent avec sa portée
@@ -192,6 +202,25 @@ Les chargements différés sont également vérifiés par `select-lifecycle.spec
 sélection d'agent et conservation du filtre en revenant sur l'onglet, mobile et desktop).
 Ce dernier reproduit aussi une réponse tardive de la bibliothèque Documents pendant le
 chargement de la page suivante : la sélection automatique ne doit pas annuler la navigation.
+Les répétitions E2E partagent une base isolée : les références créées portent des libellés
+uniques, et les scénarios utilisent la recherche et la pagination pour retrouver leurs données.
+Le driver local `internal`, quand sa définition est disponible, ne déclenche pas de
+lectures d'état du superviseur. Les autres drivers restent inspectés, dont le driver
+réseau commun aux runtimes Codex, Claude et DeepSeek. Une indisponibilité du catalogue
+ne masque pas leur supervision ni sa reprise après erreur.
+Les sélecteurs sans champ de recherche sont parcourus au clavier, y compris leurs options
+virtualisées ; les civilités restent sélectionnables au-delà des 500 premières références.
+Avant un rechargement volontaire, ils attendent les réponses HTTP concernées. Le collecteur
+`e2e/page-errors.mjs` conserve les erreurs JavaScript et réseau ; il exclut une erreur XHR
+native de WebKit uniquement si une annulation de la même requête est observée.
+Son attente suit les événements de fin ou d'échec des requêtes en cours, puis les requêtes
+déclenchées par leurs réponses, jusqu'à la fin de cette séquence. Elle exclut le long polling
+Socket.IO et couvre aussi la navigation juste après connexion.
+Lors d'une navigation complète, les requêtes du document quitté ne participent plus à
+cette attente : une requête lancée pendant son remplacement peut disparaître sans événement
+de fin. Les erreurs restent observées et les requêtes du nouveau document sont suivies.
+Les parcours de crédits attendent chaque résultat visible ; ils n'attendent pas les lectures
+de quota annulées au changement de fournisseur, tout en conservant l'observation des erreurs.
 Les tests de push vérifient l'admission, la déduplication et les effets durables des réponses
 du fournisseur (succès, abonnement disparu, refus et indisponibilité), avec une vraie DB.
 
@@ -305,7 +334,7 @@ explicite. Les fichiers `*.spec.mjs` se trouvent sous `front/browser-tests/`.
 | `process` | Lancer, suivre, annuler et reprendre un traitement externe ; préserver ses états terminaux | `test_recovery.py`, `test_process_core.py`, `test_router_scope.py`, `test_worker_concurrency.py`, `execution.spec.mjs` |
 | `tools` | Découvrir les outils autorisés, refuser les accès interdits, masquer les secrets ; révocation avant effet dans un serveur natif déjà monté, réactivation et isolation entre agents | `test_admin_access.py`, `test_agent_registry.py`, `test_secrets.py`, `test_resource_effects.py`, `test_live_authorization.py` |
 | Recherche Web | Préserver requête, encodage, ordre et langue configurée ; distinguer recherche vide, partielle, dégradée et échec ; conserver les sources valides, masquer les exceptions brutes et annuler le transport sans bloquer la boucle | `back/app/tools/tests/test_search.py` (frontière HTTP remplacée, client et outil réels) |
-| Paramètres d’indexation des Tools | Configurer `tools.fileindexing` par Tool et par connexion avec héritage, surcharge, valeur imposée et limites du provider ; reprendre les anciennes préférences sans les réappliquer ; enregistrer depuis la Console embarquée et reprendre après erreur ; traduire les libellés internes dans les trois langues | `back/app/tools/tests/test_file_indexing.py`, `front/browser-tests/tool-parameters.spec.mjs`, `e2e/specs/tool-parameters.spec.mjs` (desktop/mobile) |
+| Paramètres d’indexation des Tools | Configurer `tools.fileindexing` par Tool et par connexion avec héritage, surcharge, valeur imposée et limites du provider ; reprendre les anciennes préférences sans les réappliquer ; respecter la valeur effective dans les recherches et le parcours automatique ; enregistrer depuis la Console embarquée et reprendre après erreur ; traduire les libellés internes dans les trois langues | `back/app/tools/tests/test_file_indexing.py`, `back/app/memory/tests/test_file_catalogue.py`, `front/browser-tests/tool-parameters.spec.mjs`, `e2e/specs/tool-parameters.spec.mjs` (desktop/mobile) |
 | Administration ToolAdmin | Tester/créer un candidat sans fuite de secret dans le modèle ou les checkpoints ; connexion initialement inactive, héritage, atomicité, conflits, dépendances et interdiction d’auto-délégation ; révocation et rotation sur les anciens clients FastMCP/Pydantic AI ; Process massif reprenable, annulable et revalidé | `back/app/tools/tests/test_tool_admin.py`, `test_admin_network.py` ; `e2e/specs/tool-admin.spec.mjs` (application assemblée, clavier, fermeture et réouverture, desktop/mobile) |
 | Disponibilité de la recherche | Un HTTP 200 sans sources ne valide pas le diagnostic ; une dégradation conserve les sources et produit un verdict distinct | `back/app/tools/tests/test_search.py` ; `make check-search` pour le corpus externe volontaire, avec relecture humaine de la pertinence |
 | `document_show` (Conversation) | Exposer l'outil uniquement dans le chat interne autorisé, indépendamment de la connexion Memory et des anciens refus de fonctions du service système (ADR 0105) ; vérifier l'accès au document et les révocations ; ouvrir et rouvrir la visionneuse sans perdre les brouillons ni appliquer une demande à une autre conversation | `back/app/memory/tests/test_document_show.py`, `front/browser-tests/chat-document-workspace.spec.mjs` |
@@ -506,3 +535,16 @@ L’annulation et le changement de document empêchent de proposer un PDF devenu
 
 Garanties : `mobile-editor-toolbar.spec.mjs`, `document-voice.spec.mjs`,
 `rich-text.spec.mjs` et `document-print.spec.mjs` dans `front/browser-tests/`.
+
+## Catalogue privé de fichiers et maintenance
+
+`back/app/memory/tests/test_file_catalogue.py` vérifie les observations, la séparation des
+agents et bindings, les champs personnels éditables, les tombes et réponses tardives,
+la réparation durable sans rejouer les effets, la reprise de pages de plus de 500 entrées,
+les budgets/annulations, l'enrichissement versionné, les modifications externes et le RBAC.
+`back/app/memory/tests/test_file_catalogue_scale.py` qualifie des catalogues synthétiques de
+1 000, 10 000 et 100 000 entrées et compare les écritures avec/sans observation. Les résultats
+sont des mesures locales avec provider synthétique, sans promesse de latence distante.
+`front/browser-tests/file-indexing.spec.mjs` couvre le suivi, le lancement et l'annulation,
+l'erreur/retry et le rejet de réponses tardives après changement d'agent sur desktop/mobile.
+`e2e/specs/file-indexing.spec.mjs` exerce l'application assemblée et son API réelle.

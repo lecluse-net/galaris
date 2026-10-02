@@ -1,7 +1,7 @@
 # Plan — Portée et provenance de l’exécution agentique
 
 > **Statut :** `partial` — contrat générique de portée et projection de ses décisions à réaliser.
-> **Revue documentaire :** 27 septembre 2026.
+> **Revue documentaire :** 1er octobre 2026.
 >
 > **But :** empêcher qu’un planner ou un exécuteur transforme une information de
 > contexte en cible ou en instruction opérationnelle non demandée, sans réduire l’autonomie.
@@ -11,47 +11,12 @@ l’[ADR 0087](../decisions/0087-task-activity-snapshots.md) et le
 [flux d’exécution](../../docs/fr/architecture/flows/agent-execution.md). Les lots ci-dessous
 les étendent avec une portée générique ; ils ne réimplémentent pas leurs projections.
 
-> Le briefing est supprimé par la [décision 0143](../decisions/0143-retire-execution-briefing.md). Le diagnostic ci-dessous décrit
-> l’incident historique ; les travaux restants portent sur le planner et l’exécuteur.
+## 1. Périmètre restant
 
-## 1. Problèmes constatés
-
-### 1.1 Extension silencieuse de l’objectif
-
-Une Task de production demandait la création d’un nouveau livrable autonome. Sa destination et son
-mode de conservation n’étaient pas spécifiés. Le briefing a reçu la fiche de poste complète de
-l’agent, y a trouvé plusieurs projets possibles et en a choisi un sans preuve dans l’objectif ou le
-Working Set. Il a ensuite ajouté des opérations de synchronisation, de versionnement et de
-publication qui ne figuraient pas dans la demande.
-
-Le problème n’est pas propre à ces opérations. La même dérive peut viser un stockage, un document,
-une conversation, un destinataire, un calendrier, une base, un workflow, un équipement ou toute
-future fonction connectée. Une correction fondée sur une liste de mots, de commandes ou de
-providers déplacerait donc le défaut sans le supprimer.
-
-### 1.2 Briefing promu sans validation sémantique
-
-Le briefing est produit comme texte libre. Le serveur vérifie la structure de sa réponse et
-l’existence des outils choisis, mais pas que ses contraintes, cibles et effets restent inclus dans
-l’objectif utilisateur. Le texte validé syntaxiquement devient ensuite un contrat `CRITICAL` pour
-l’exécuteur. Une hypothèse du modèle acquiert ainsi davantage d’autorité que sa source.
-
-Une relance de structured output corrige seulement le format. Elle peut reproduire exactement la
-même extension de périmètre, car aucun validateur ne distingue une réparation de schéma d’une
-erreur de sens.
-
-### 1.3 Propriétaires de livraison contradictoires
-
-Le briefing peut sélectionner un outil d’envoi vers le salon courant alors que le contrat du run
-attribue déjà cette livraison au contrôleur conversationnel. Deux textes générés à des niveaux
-différents peuvent donc exiger deux chemins de transport, avec risque de doublon ou d’échec tardif.
-
-### 1.4 Erreur secondaire masquant la cause initiale
-
-Une exécution observée a terminé sur `PendingRollbackError`. Cette erreur indique qu’une session
-SQLAlchemy déjà invalide a été réutilisée ; elle ne décrit pas nécessairement la première panne.
-Après des effets externes, une telle perte de cause rend aussi la décision de retry dangereuse et
-peut laisser le compteur de tentatives, le feedback et les reçus incohérents.
+La suppression du briefing relève de la [décision 0143](../decisions/0143-retire-execution-briefing.md).
+Le Working Set, les reçus de livraison, les checkpoints d'effets et les sessions indépendantes
+ne sont plus des lots à créer. Le contrat générique reliant exigences, cibles, effets et
+provenance reste à concevoir et à appliquer au planner, à l'exécuteur et aux domaines concernés.
 
 ## 2. Objectifs et principes
 
@@ -319,32 +284,19 @@ consultables dans l'activité existante, sans exposer contenus sensibles ni argu
 Réutiliser `TaskActivitySnapshot`, `activity_snapshot.py` et `live_checkpoint.py` :
 aucun second checkpoint visuel ni seconde représentation des messages.
 
-## 11. Transactions, reprise et idempotence
+## 11. Extensions transactionnelles du contrôle de portée
 
-### 11.1 Transactions courtes
+Réutiliser les sessions courtes, les leases, les checkpoints et les reçus existants. Les
+travaux restants portent sur les nouvelles décisions de scope et de préflight :
 
-- Claim, transition et création de tentative sont persistés avant l’appel externe.
-- Les appels LLM, Tools et Processes n’ont pas lieu dans une transaction métier longue.
-- Les événements live et leurs projections durables utilisent une session indépendante, comme le
-  fait déjà l’append de timeline.
-- L’application du résultat terminal utilise une nouvelle transaction et revérifie lease, run et
-  révision.
+- persister leur identité et leur révision avant l'effet, puis revérifier le scope lors de
+  la publication ;
+- relire grants, décisions et reçus après interruption sans répéter un effet confirmé ;
+- conserver l'erreur racine et les erreurs secondaires de ces nouveaux chemins ;
+- qualifier leurs conflits et crashs, y compris après effet distant et avant publication.
 
-### 11.2 Gestion d’erreur
-
-- Toute exception SQLAlchemy invalide d’abord la transaction puis déclenche un rollback.
-- La persistance de l’échec utilise une session fraîche.
-- La première exception reste `root_error`; une erreur de rollback ou de projection devient
-  `secondary_error` et ne remplace jamais la cause.
-- Le feedback humain reste borné et cohérent avec la tentative réellement terminale.
-
-### 11.3 Retry sûr
-
-- Chaque effet porte une identité stable ou un reçu d’idempotence.
-- Avant retry, le scheduler relit Working Set, checkpoints et reçus.
-- Un effet réussi n’est pas répété uniquement parce que sa projection finale a échoué.
-- Sans preuve suffisante, la Task attend une décision au lieu de rejouer aveuglément un effet
-  potentiellement externe ou irréversible.
+Sans preuve suffisante, conserver une attente ou une issue incertaine. La généralisation
+aux Processes et aux autres runtimes ne peut se déduire du seul checkpoint interne.
 
 ## 12. Répartition des responsabilités
 
@@ -422,12 +374,11 @@ aucun second checkpoint visuel ni seconde représentation des messages.
 - intégrer les nouvelles décisions de scope/préflight dans l'activité existante ;
 - qualifier leur lecture après reconnexion avec les droits et états de pause courants.
 
-### Bloc F — Transactions et reprise
+### Bloc F — Reprise des décisions de portée
 
-- auditer les frontières de session du scheduler, de la façade et des callbacks ;
-- isoler appels externes et persistance terminale ;
-- conserver erreur racine et erreurs secondaires ;
-- injecter des pannes après chaque catégorie d’effet pour vérifier l’absence de doublon.
+- raccorder scope, grants et préflight aux transactions et checkpoints existants ;
+- conserver erreur racine et erreurs secondaires lors de leur persistance ;
+- injecter des pannes entre décision, effet et publication pour vérifier l'absence de doublon.
 
 ### Bloc G — Documentation et garde d’architecture
 

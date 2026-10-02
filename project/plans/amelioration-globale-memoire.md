@@ -1,7 +1,7 @@
 # Plan — Qualification de la mémoire et expériences restantes
 
 > **Statut :** `partial` — socle documentaire réalisé ; qualification et extensions ouvertes.
-> **Revue documentaire :** 27 septembre 2026.
+> **Revue documentaire :** 1er octobre 2026.
 
 Le contrat réalisé appartient à la [décision 0108](../decisions/0108-memory-document-retrieval.md).
 
@@ -183,8 +183,10 @@ canoniques ou les passages déjà implémentés.
 
 ### 7.1 MEM-018 — Extensions de pièces jointes et provenance par passage
 
-- Concevoir l'extraction déterministe des binaires pris en charge après évolution explicite
-  de l'ADR 0106, qui ne prévoit actuellement pas d'extraction automatique.
+- Raccorder les textes et localisateurs du lecteur commun de l'[ADR 0151](../decisions/0151-resumable-document-analysis.md)
+  aux compagnons Memory après évolution explicite de l'ADR 0106. La conversion et la lecture
+  des binaires pris en charge ne sont plus à créer ; leur acquisition automatique dans Memory
+  et leur provenance par passage restent à définir.
 - Pour une acquisition multimodale, définir déclenchement, budgets, modèles configurés et
   provenance ; aucune analyse générative systématique implicite.
 - Séparer texte extrait, description interprétée et binaire. Réutiliser le compagnon Memory
@@ -198,6 +200,82 @@ canoniques ou les passages déjà implémentés.
 **Preuve :** extraction partielle, PJ renommée/retirée, provenance multi-source et restauration
 du fournisseur, avec mesure de couverture et de fidélité des localisations. Préserver les
 tests existants de documents longs, de tableaux, d'ACL et d'admission.
+
+#### 7.1.1 Mémorisation sélective des PJ et transcriptions conversationnelles
+
+Complément demandé le 1er octobre 2026, à réaliser. Ce lot appartient à Memory/Dream,
+indépendamment du [catalogue File Share](indexation-file-share-memory.md), limité à Console
+et aux Tools `file_share` admissibles. Il ne crée ni catalogue Messenger ni analyse automatique
+de chaque fichier reçu. Documents et leurs PJ conservent leurs objets Memory existants.
+
+Constats de lecture du code, sans reproduction applicative :
+
+- `Message.conversation_text` expose texte et transcriptions audio durables, tandis que
+  `dream/mechanisms/conversation_memory.py` sélectionne et sérialise actuellement `Message.text`.
+  Vérifier le parcours complet d'un audio sans texte avant de corriger : une modification de
+  sérialisation seule serait insuffisante si l'éligibilité SQL exclut toujours le round.
+- Les mécanismes `memory.attachment_*` ciblent les compagnons des PJ documentaires encore
+  vides, avec quatre options désactivées par défaut. Ils ne parcourent pas les PJ Messenger.
+- L'analyse explicite d'une image documentaire enrichit son compagnon ; celle d'une ressource
+  externe peut produire une description privée `image_description`. Le raccordement de ces
+  résultats à la capture conversationnelle reste à établir, sans élargir leurs droits.
+- Le circuit documentaire Dream persiste une description/résumé. Il ne démontre pas la
+  recherche intégrale du texte extrait ; l'analyse vidéo actuelle résume uniquement l'audio.
+
+Travail demandé et garanties :
+
+1. **Transcriptions vers Dream.** Consommer la représentation conversationnelle canonique
+   et les transcriptions acquises, dans l'éligibilité comme dans les preuves transmises au
+   modèle. Un audio seul peut produire un souvenir pertinent ; une absence ou un échec de
+   transcription reste explicite. Conserver auteur, langue, message et URI audio, sans
+   fusionner une transcription automatique avec une déclaration écrite humaine.
+2. **Réutilisation des analyses de PJ.** Exposer par port public les résultats acquis et
+   autorisés, liés au message/round et à la source/version lorsqu'elles sont connues. Dream
+   les utilise comme preuves candidates selon pertinence et budget ; aucun nouveau téléchargement
+   ni appel d'analyse pour un résultat déjà acquis. Un fichier non analysé reste non analysé.
+   Une analyse acquise après un premier tour ouvre une reprise incrémentale idempotente,
+   sans recréer tous les souvenirs ni être bloquée par un ancien reçu de succès du round.
+3. **Provenance explicite.** Distinguer message écrit, transcription, extraction de PJ et
+   interprétation générative. Conserver le message/round, l'URI canonique, la version attestée
+   ou inconnue et les localisations disponibles. Le rappel permet de retrouver la preuve
+   autorisée ; ne pas attribuer une conclusion du modèle à l'auteur humain ni inventer une
+   précision temporelle/page absente. Un résumé et sa source ne sont pas deux corroborations.
+4. **Couverture d'analyse.** Porter et afficher séparément couverture extractive et nature
+   du résultat : résumé seul, extraction complète/partielle, illisible, modalité audio seule
+   pour une vidéo, limite atteinte ou erreur. Les preuves injectées dans Dream et le rappel
+   conservent ces limites. « Absent du résumé » ne signifie jamais « absent du fichier ».
+5. **Texte des PJ documentaires.** Évaluer puis raccorder la recherche des textes extraits
+   au compagnon existant, en complément de sa description ; conserver le résumé éditorial
+   et les descriptions rédigées. Comparer résumé seul et résumé + passages extraits sur PDF
+   longs et tableaux synthétiques : chiffre précis, unité, contexte et détail en fin de fichier.
+   Décider rétention, limites et représentation à partir du gain utile, coût, volume et
+   fidélité mesurés ; aucune copie binaire ni objet Memory concurrent pour la même PJ.
+
+L'admission applique les droits actuels de la conversation, de l'agent et de la source,
+y compris pour une description externe privée. Une révocation ou un retrait entre préparation
+et application bloque l'apport devenu inéligible. Préserver les autres faits indépendamment
+sourcés. Les sources restent des données non fiables ; aucun texte de PJ ne donne d'instructions
+au mécanisme. La correction ou l'oubli d'une preuve invalide ses dérivés selon leur dépendance,
+avec générations et checkpoints pour rejeter les résultats tardifs.
+
+Réception du lot, sur données entièrement synthétiques :
+
+| Garantie | Scénario et preuve attendue |
+|---|---|
+| Audio seul | Round sans texte avec transcription pertinente : candidat Dream puis souvenir sourcé ; audio sans transcription sans contenu inventé. Vérifier aussi historique, voix et message mêlant texte/audio. |
+| Analyse déjà acquise | PJ explicitement analysée puis Dream : preuve utilisée sans téléchargement ni nouvel appel d'analyse ; une réponse de tool non persistée ne suffit pas. |
+| Résultat tardif | Analyse acquise après extraction du round, reprise puis redelivery : ajout utile une seule fois, souvenirs antérieurs conservés. |
+| Provenance fidèle | Déclaration, transcription, extrait et interprétation sur le même sujet : origines distinguées et ouverture de la preuve autorisée ; pas de double corroboration. |
+| Couverture honnête | Extraction tronquée, illisible et vidéo audio seule : limite visible dans les résultats et le contexte ; aucune affirmation sur les parties non analysées. |
+| Recherche précise | PDF/tableau avec détail absent du résumé : détail retrouvable dans un passage localisable, résumé et description manuelle préservés. |
+| Droits et retrait | Deux agents, source révoquée/retirée pendant l'analyse : aucun résultat privé transmis, checkpoint ancien rejeté ; oubli sans réacquisition silencieuse. |
+
+Étendre les scénarios existants de `dream/tests/test_conversation_memory.py`,
+`dream/tests/test_voice_memory.py`, `memory/tests/test_dream_attachments.py` et
+`memory/tests/test_document_structure.py`. Reproduire d'abord le manque audio au niveau du
+workflow réel, puis vérifier le même scénario après correction. Réutiliser le lecteur de
+l'ADR 0151 et les ports de provenance/indexation existants ; préciser l'ADR 0106 et les
+contrats seulement lorsque la décision d'implémentation les change.
 
 ### 7.2 MEM-006/007 — Pertinence des candidats, classement et contexte utile
 
@@ -805,7 +883,7 @@ ses générations d'index et son admission ; elle ne reproduit pas les lots déj
 | Lot restant | Contenu et dépendances | Preuve de sortie | Retour arrière |
 |---|---|---|---|
 | A — Classement mesuré | MEM-006 et campagnes Lab §7.4 ; modèle configuré constant | Holdout, ablations, gain utile et coût mesuré ; alias, langues et négatifs documentés | Politique de classement précédente, index et admission conservés |
-| B — Extensions de PJ | Extraction nouvelle et provenance fine de MEM-018/MEM-011 | Couverture, localisations, droits et révisions préservés | Désactiver l'acquisition nouvelle, conserver les textes déjà acquis |
+| B — Extensions de PJ | MEM-018/MEM-011, transcriptions vers Dream, réutilisation des analyses acquises, provenance et couverture §7.1.1 ; évaluation du texte extrait documentaire | Audio seul mémorisable, analyses réutilisées sans nouvel appel, reprise idempotente, détail précis retrouvable et limites explicites ; droits et révisions préservés | Désactiver les nouvelles acquisitions et leur sélection, conserver les résultats acquis avec leurs droits et provenance |
 | C — Observation et utilité aval | MEM-013 détaillé et MEM-009 ; shadow avant canari | Traces bornées, A/A et horizon préenregistré | Désactiver l'expérience sans changer le moteur sain |
 | D — Capture et organisation | MEM-001/002/003, MEM-010 en simulation, MEM-004/005 sur erreurs observées | Gains de capture/rappel, pins, provenance et oubli préservés | Affectations restaurables sans réécrire les sources |
 

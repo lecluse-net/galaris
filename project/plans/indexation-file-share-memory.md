@@ -1,6 +1,61 @@
 # Catalogue de fichiers par agent, indexation Memory et entretien Dream
 
-Statut : `design` — proposition du 29 septembre 2026, non implémentée.
+Statut : `partial` — proposition du 29 septembre 2026, précisée le 1er octobre 2026.
+
+Socle implémenté : préférence par Tool ; catalogue privé par agent, connexion, empreinte
+de configuration et runtime ; observations de la façade publique ; fiches Memory
+`file`/`directory` éditables dans Memory et recherche lexicale immédiate ; notes via un port contrôlé ; relations
+directes établies par les listes non récursives ; suppressions explicites et rejet des
+réponses antérieures ; revalidation de connexion et d'accès source à la lecture/recherche.
+Le renommage prouvé dans le même binding conserve l'identité et les notes ; une copie ou
+une réapparition après suppression crée une nouvelle identité. Une panne d'indexation
+n'annule pas l'opération externe réussie (`indexing_status=failed`).
+
+Implémentés également : parcours périodique par pages avec frontière/curseur durables,
+budgets, reprise/backoff et annulation ; réconciliation des listes directes complètes ;
+vérification périodique des URI connues ; journal durable de réparation sans rejouer les
+mutations externes ; enrichissement versionné via Dream et ses options de médias ;
+suivi agent/racine, progression, couverture partielle et erreurs dans Memory.
+Une acquisition explicite d'une ressource admissible enrichit la même fiche catalogue,
+sans créer une seconde fiche `image_description` ni redemander cette version à Dream.
+
+La première validation globale du 2 octobre a rencontré des échecs MCP puis un blocage
+dans le fixture `synthetic_mcp`. Le fixture réinitialise désormais le drapeau global d'arrêt
+SSE entre serveurs ; un test couvre explicitement le démarrage après un arrêt précédent,
+en HTTP et SSE. Les contrôles globaux interrompus ne valent pas qualification de publication :
+seul le rapport complet d'un snapshot inchangé peut la prouver.
+
+La qualification synthétique du 1er octobre couvre 1 000, 10 000 et 100 000 entrées.
+Recherche avec contrôle source synthétique, p50/p95 : 30,87/45,07 ms, 67,35/72,86 ms et
+496,17/536,50 ms. Écriture de référence sans observation : 0,08/0,12 ms ; avec observation
+et journal durable : 54,13/61,63 ms. Médiane et p95 par rang supérieur sur 10 recherches
+et 20 écritures par mode. Ces mesures n'incluent aucun réseau provider réel,
+aucune inférence ni qualification sémantique. Les cibles proposées de 200 ms de recherche
+et 50 ms d'observation n'étaient pas atteintes. Le statut reste `partial` pour les capacités
+avancées et la qualification des installations réelles décrites ci-dessous ; les six lots fonctionnels
+de parcours, réconciliation, réparation, Dream, suivi et mesure sont présents.
+
+Nouvelle mesure du 2 octobre, après `ANALYZE` sur chaque volume : recherche p50/p95
+44,13/327,95 ms à 1 000 entrées, 62,41/71,60 ms à 10 000, 180,75/192,04 ms à 100 000 ;
+observation indexée 23,80/31,55 ms, référence sans observation 0,08/0,15 ms. Le premier
+appel à froid explique le maximum à 1 000 entrées ; il reste au-dessus de 200 ms.
+Même corpus, mêmes 10 recherches et 20 écritures : la qualification avec statistiques
+fraîches a d'abord révélé un plan défavorable à 5 711,74 ms au p95, recalculant le binding
+100 000 fois. Les plans finaux montrent des calculs par connexion, des candidats lexicaux
+matérialisés et l'utilisation des index GIN `pg_trgm` sur titre et texte pour le `ILIKE`.
+Un index partiel des tombstones borne leur contrôle dans l'observation. Le test conserve
+les plans sous `artifacts/` et vérifie le nombre d'exécutions des contrôles de paramètres.
+Les objectifs sont atteints à 100 000 entrées dans cette qualification synthétique ; ils
+ne constituent pas une garantie de latence réseau, d'inférence ou de démarrage à froid.
+
+Qualification des adapters : un vrai échange SSH/SFTP sur un serveur éphémère couvre la
+fiche Console, les changements externes et l'isolation ; le client Nextcloud réel face à
+un pair WebDAV synthétique couvre 503 entrées, pagination, reprise 503 et révocation 403.
+Ce dernier scénario ne vaut pas qualification d'une installation Nextcloud réelle ; celle-ci
+exige une connexion et un répertoire de test dédiés.
+
+Périmètre resserré le 1er octobre 2026 : Console et ressources des Tools portant la capacité
+`file_share`, hors Mail. Les autres accès de la façade ne sont pas des sources de ce catalogue.
 
 ## 1. Résultat attendu et périmètre de l'analyse
 
@@ -9,17 +64,46 @@ Chaque agent dispose d'un catalogue interrogeable des ressources auxquelles il a
 par nom, chemin, métadonnées, texte extrait, résumé ou notes personnelles ; consulter son URI
 canonique ; et continuer à la manipuler avec les outils génériques existants.
 
-L'observation d'une ressource alimente ce catalogue sans demander au modèle de mémoriser chaque
-fichier. Une analyse réussie enrichit sa fiche, une modification invalide ses anciens dérivés,
-une suppression confirmée retire ses résultats courants. Dream découvre les ressources encore
-inconnues et réconcilie les périmètres autorisés, avec reprise après interruption.
+Le point d'entrée est exclusivement `app.file_share` : il énumère les schémas accessibles
+à l'agent, décide lesquels peuvent être indexés, puis délègue aux providers. Aucun scanner,
+worker Memory ou mécanisme Dream ne sélectionne directement un service externe. Nextcloud
+est un exemple de provider, pas un lot de réalisation ni une branche du pipeline.
 
-L'analyse porte sur les contrats, implémentations et tests du worktree courant, consultés après
-la cartographie générée. Des modifications locales préexistent notamment dans `file_share` et
-Nextcloud : la pagination des transports et les opérations conditionnelles avec ETag décrites
-ci-dessous tiennent compte de ces modifications. Leur lecture ne démontre ni leur validation
-complète, ni leur publication, ni leur déploiement. Aucune base ni installation distante n'a été
-inspectée : cet inventaire décrit les mécanismes, pas le nombre de fichiers effectivement indexés.
+L'admission est positive : Console active ou transport de fichiers d'un Tool connecté doté
+de `file_share`, hors Mail. La façade fournit directement les périmètres admissibles au
+scanner ; celui-ci n'énumère pas tous les schémas pour appliquer sa propre liste d'exclusions.
+
+| Source | Décision de périmètre |
+|---|---|
+| `console://` | Incluse, dans le home SSH autorisé. |
+| Tools `file_share` tels que Nextcloud, AFFiNE et Grav | Inclus selon leurs capacités effectives, sous leur code de Tool. |
+| `memory://` | Exclue : l'index ne devient jamais sa propre source. |
+| `document://`, y compris Datasets et PJ | Exclus : les documents sont déjà des objets Memory et leur indexation existe. |
+| `galaris://`, toutes collections | Exclu : aucune indexation ou fédération métier, documentation ou skills dans ce plan. |
+| `https://` et `http://` | Exclus : les informations Web retenues passent par les documents et les conversations. |
+| Mail, quel que soit le code du Tool | Différé : un futur chantier portera sur les mails eux-mêmes, pas seulement leurs PJ ; aucune acquisition ici. |
+| Transports Messenger, quel que soit le code du Tool | Exclus : Dream produit déjà les souvenirs conversationnels ; aucun inventaire exhaustif des messages ou PJ ici. |
+
+Un Tool peut porter à la fois `file_share` et Messenger. L'admission s'applique au transport
+effectivement résolu pour la ressource : les fichiers Nextcloud sont admissibles, ses PJ Talk
+ne le sont pas. Le schéma ou le seul booléen `has_file_share` ne suffit donc pas à admettre
+toutes les URI de ce Tool. Ces gardes valent pour scans, observations et enrichissements.
+
+Pour les schémas admissibles et énumérables, un parcours récursif régulier inventorie tous
+les répertoires et fichiers autorisés, avec pagination et reprise. Par défaut, cette
+découverte conserve dans Memory l'arborescence, les noms, les URI source et les métadonnées,
+sans lecture documentaire ni appel LLM. Chaque fichier possède ainsi sa fiche avant d'être
+analysé. Les observations des opérations ordinaires complètent cet inventaire.
+
+Un mécanisme Dream distinct construit ensuite le résumé dans l'item Memory correspondant
+au document et à sa version source. Une modification invalide les enrichissements anciens
+et programme leur actualisation ; une suppression confirmée retire les résultats courants.
+Le schéma `memory://` est exclu avant tout parcours, observation d'indexation ou création de
+job : les fiches produites ne peuvent jamais redevenir les sources de leur propre indexation.
+
+Les contrats et tests du dépôt font autorité. Ce plan porte le catalogue de ressources,
+son parcours périodique et ses enrichissements ; aucune couverture d'installation n'est
+mesurée par cette revue documentaire.
 
 Garanties proposées :
 
@@ -30,172 +114,60 @@ Garanties proposées :
 - une analyse ancienne ne peut réintroduire un fichier supprimé ou remplacer une analyse récente ;
 - une absence dans une page, une recherche ou une réponse partielle ne provoque aucune purge ;
 - les droits actuels restent prioritaires sur les caches, les notes et les embeddings ;
-- le statut de couverture distingue explicitement connu, parcouru complètement et analysé.
+- le statut de couverture distingue explicitement connu, parcouru complètement et analysé ;
+- un format non analysable peut rester connu par son nom et sa place dans l'arborescence ;
+- un schéma exclu ne produit ni scan, ni fiche de fichier, ni job d'enrichissement ;
+- un fichier inchangé conserve sa fiche et son résumé sans nouvel appel modèle.
 
 « Tous les services » signifie une intégration commune pour tout provider compatible avec la
 façade. Cela ne signifie pas qu'un provider dépourvu de liste permette soudain un inventaire
 exhaustif. Ces limites deviennent visibles et les adapters sont complétés là où leur API le permet.
 
-## 2. Ce qui existe réellement
+## 2. Manques à couvrir et socle à réutiliser
 
-### 2.1 Façade et découverte des ressources
+Réutiliser les contrats de [file-share](../../back/app/file_share/resource_contracts.py),
+la [structure Memory](../decisions/0106-document-structure-memory.md),
+le [rappel documentaire](../decisions/0108-memory-document-retrieval.md),
+la [préparation documentaire commune](../decisions/0151-resumable-document-analysis.md)
+et la [cohérence Nextcloud](../decisions/0147-nextcloud-file-consistency.md).
+Leurs lecteurs, droits, pagination, index et checkpoints ne sont pas à réimplémenter.
 
-[`resource_contracts.py`](../../back/app/file_share/resource_contracts.py) définit déjà :
-`ResourceContext` avec agent/runtime/tâche, `ResourceDescriptor` avec URI, nature collection,
-nom, MIME, taille, date, révision, checksum, ETag, capacités et métadonnées ; `ResourceListing`
-avec troncature et curseur ; et des résultats de recherche avec provenance, passages et couverture.
+| Périmètre | Travail restant pour le catalogue |
+|---|---|
+| Ressources externes | Catalogue durable agent/binding, observation commune, notes privées, version source et retrait prouvé. |
+| Console | Découverte et curseurs exhaustifs ; une liste bornée ne prouve pas un inventaire complet. |
+| AFFiNE et Grav | Adapter liste/stat/version et découverte selon les capacités réelles ; aucune complétude inventée en l'absence d'API. |
+| Sources exclues ou différées | Aucun catalogue, scan, observation ou enrichissement nouveau ; préserver leurs mécanismes Memory/Dream existants. |
+| Audio et vidéo | Raccorder analyses et transcriptions à la fiche de la source ; qualifier les résumés visuels séparément de la piste audio. |
 
-[`resource_service.py`](../../back/app/file_share/resource_service.py) fournit les opérations
-`resource_info/list/read/create/write/append/edit/copy/move/delete/search`, ainsi que la
-matérialisation temporaire bornée. [`mcp.py`](../../back/app/file_share/mcp.py) les expose via
-l'unique Tool `file_sharing`. Les schémas externes sont les codes exacts des Tools connectés,
-et non les noms génériques des bridges.
+Le parcours périodique file-share doit fonctionner pendant les Tasks actives ; Dream,
+préemptible par Task/Voice, reste chargé des résumés et enrichissements. Une ressource
+connue par son titre n'est pas une ressource analysée. Les descriptions d'images existantes
+n'attestent pas la fraîcheur ni les droits actuels d'une source externe. Le nettoyage du
+stockage natif ne prouve pas la disparition d'une source distante.
 
-Ce socle **ne possède pas de catalogue durable général par agent**, ni de notification commune
-persistée à chaque observation. Un descripteur rendu par un tool n'est donc pas automatiquement
-un item Memory. Le Working Set mémorise certaines URI, états et reçus de livraison pour les
-Tasks ; il n'est ni un inventaire global ni un index de contenu.
+Les expériences de pertinence, de provenance fine et d'utilité aval restent dans le
+[plan Memory](amelioration-globale-memoire.md). La matrice de réception du présent plan
+porte les nouvelles garanties du catalogue, pas une nouvelle implémentation de ces socles.
 
-### 2.2 Matrice de couverture courante
+### 2.1 Vérification du socle au 1er octobre 2026
 
-| Ressources | Déjà indexé ou conservé | Recherche/découverte actuelle | Lacunes pour la cible |
-|---|---|---|---|
-| `memory://` | Items gouvernés, contenu, sources, révisions, FTS et projection vectorielle | Recherche Memory hybride ; liste sans requête limitée aux nœuds `memory` | Pas un inventaire des fichiers externes ; ne pas indexer récursivement l'index lui-même |
-| `document://` HTML | Documents `node_kind=document`, texte intégral indexable et passages HTML localisables | Recherche Memory filtrée documents, ACL vivantes, révisions | Notes personnelles sur une ressource partagée et catalogue fichier commun à ajouter |
-| `document://` Dataset | Documents JSON avec les mêmes mécanismes de recherche et de révision | Lecture JSON et indexation du texte de recherche | Provenance fine vers champs/JSON Pointer à formaliser ; ne pas convertir le Dataset en HTML |
-| PJ documentaires | Un compagnon `attachment` par PJ, manifeste actif et liens structurels | Nom/métadonnées ; description acquise recherchable et vectorisée lorsqu'elle existe | Pas de texte intégral binaire extrait par défaut ; compagnon commun aux lecteurs autorisés, pas par agent |
-| Dossiers de classement documentaire | Nœuds `folder` issus de `DocumentTag`, liens parent/enfant et document/dossier | Visibilité dérivée des documents lisibles ; nœuds vides sans embedding | Ce sont des classements personnels humains, pas les répertoires des providers |
-| `console://` | URI de certaines ressources dans les Working Sets | Liste SFTP bornée, lecture, recherche à partir d'une liste ; pas de curseur de reprise | Catalogue, pagination complète, notes, extraction et suivi des modifications hors tools |
-| Nextcloud fichier, `<tool.code>://...` | Descriptions privées des images explicitement analysées ; références de travail | WebDAV, métadonnées/ETag, pagination et recherche paginée dans le worktree courant | Pas d'index local général ; recherche texte relit des fichiers et recherche sémantique directe refusée |
-| AFFiNE blobs | Références et descriptions d'images acquises | Lecture/copie/upload ; métadonnées d'un blob explicite | Pas de liste générale exposée ; discovery des workspaces/blobs et stabilité de version à qualifier |
-| Grav médias | Références et descriptions d'images acquises | Transport de lecture/upload ; capacités génériques limitées | Liste/stat/version/suppression non implémentés par le transport courant ; inventaire des pages/médias à adapter |
-| PJ Messenger, `<tool.code>://<room>/<uuid>` | Journal et identité locale durable des PJ ; mémoire conversationnelle distincte | Liste bornée des PJ connues d'une room ; lecture via son bridge | Pas de catalogue fichier par agent, pas de pagination exhaustive de cette liste, pas d'inventaire de tout l'historique distant |
-| `mail://attachment/...` | Identités de PJ et références Mail ; mémoire des conversations selon éligibilité | Liste des PJ d'un message connu, lecture bornée ; `resource_info` infère nom/MIME sans prouver l'existence | Découverte de messages via contrat Mail, curseurs de PJ, versions et droits effectifs à adapter |
-| HTTPS | Description privée d'une image explicitement analysée, aperçus Web et caches séparés | URI explicite, lecture protégée contre SSRF ; pas d'énumération de site | Index des URL connues, validation fraîcheur/accès, exclusion des URL temporaires ou secrètes ; pas de crawler implicite |
-| `galaris://` métiers | Projections Memory de certains domaines, résumés et extractions sélectives | Tasks, rounds texte/voix, Goals, cycles, Process et skills via contrats/ACL de leur domaine | Réutiliser leurs projections ; une exposition fichier n'implique pas une copie intégrale de chaque snapshot dans Memory |
-| `galaris://documentation/` | Index dédié `DocumentationPassage` avec FTS et embeddings | Provider documentaire et `documentation_search`, corpus/révisions, droits fonctionnels | Fédération et provenance ; éviter de dupliquer le corpus pour chaque agent |
-| Fichiers de skills | Packages administrés et références ; apprentissage Dream distinct | Provider `galaris://skill/` sous autorisation effective | Catalogue par fichier/version à relier au skill existant ; ne pas élargir les droits de gestion |
+Cette inspection porte sur le code et les tests présents dans le dépôt ; elle n'est ni un
+test d'exécution ni une mesure de couverture des comptes connectés.
 
-Nextcloud peut porter à la fois file-share et Messenger : une room connue sélectionne son
-transport Messenger. Il faut conserver cette distinction dans l'identité du provider et dans
-la découverte, même lorsque les deux ressources portent le même schéma.
+| Surface vérifiée | Contrat actuel et conséquence pour le lot 0 |
+|---|---|
+| [`ResourceSchemeDescription`](../../back/app/file_share/resource_contracts.py) | Expose schéma, libellé, exemple, capacités et caractère natif ; ne porte ni politique d'indexation, ni racines, ni identité de binding. Ces champs sont à introduire avant le scanner. |
+| [`list_schemes`](../../back/app/file_share/resource_service.py) | Décrit les schémas natifs et les codes des Tools connectés. Les capacités annoncées sont assemblées selon le service ; elles ne constituent pas une certification d'inventaire complet du transport. |
+| Console dans [`resource_list`](../../back/app/file_share/resource_service.py) | Liste bornée, sans curseur accepté. Une liste tronquée ne permet pas de poursuivre l'inventaire ; conserver une couverture partielle, sans retrait d'absents. Messenger reste exclu. |
+| [`Nextcloud.resource_list_page`](../../back/bridge/nextcloud/file_share.py) | Curseur lié au compte, à la racine et au mode récursif ; empreinte des enfants pour détecter un changement de dossier. Ce socle permet la reprise, sans garantir un snapshot cohérent de l'arbre entier. |
+| [`MailAttachmentTransport`](../../back/bridge/mail/file_transport.py) | Le transport actuel ne couvre que les PJ d'un message connu. Mail est différé, même s'il porte `file_share` ; le futur chantier doit traiter les mails eux-mêmes. |
+| [`AffineResourceTransport`](../../back/app/file_share/bridges.py) et [`GravFileClient`](../../back/bridge/grav/client.py) | AFFiNE possède un adaptateur de métadonnées pour un blob explicite, sans liste générale ; Grav ne fournit pas les protocoles `resource_info`/`resource_list`. Commencer par les URI connues lorsque leur admission est démontrée. |
+| [`MemoryItem`](../../back/app/memory/models.py) | La contrainte des natures autorise seulement `memory`, `document`, `attachment`, `folder`. Ajouter `file`/`directory` exige d'adapter aussi les contraintes de propriété et de gestion de source, pas seulement les DTO. |
+| [`upsert_source_managed_item`](../../back/app/memory/service.py) | L'identité gérée repose sur le couple kind/ref ; le helper crée un item sans paramètre de nature. Un nouveau port de projection doit porter explicitement la nature et l'identité agent/binding, en préservant les consommateurs existants. |
 
-Les autres bridges Messenger ne deviennent des providers fichier que lorsqu'ils annoncent la
-capacité `FILES`. La couverture suit le registre effectif de bridges et les connexions actives,
-pas une liste de schémas codée en dur. Voir
-[`file_share_service.py`](../../back/app/file_share/file_share_service.py),
-[`bridges.py`](../../back/app/file_share/bridges.py),
-[`interface.py`](../../back/app/file_share/interface.py),
-[`messenger_transport.py`](../../back/app/file_share/messenger_transport.py),
-[`MailAttachmentTransport`](../../back/bridge/mail/file_transport.py).
-
-### 2.3 Mémoire, notes et enrichissements actuels
-
-[`MemoryItem`](../../back/app/memory/models.py) distingue actuellement :
-
-- `memory_type` : `core`, `working`, `episodic`, `semantic`, `procedural`, `social` ;
-- `node_kind` : `memory`, `document`, `attachment`, `folder`.
-
-« Fichier » et « répertoire » doivent étendre la **nature du nœud**, plutôt que les six types
-cognitifs. `folder` possède déjà une identité et des ACL documentaires spécifiques ; le
-réutiliser pour un répertoire Nextcloud modifierait son contrat.
-
-[`document_structure.py`](../../back/app/memory/document_structure.py) synchronise documents,
-PJ et classements sans LLM. Il préserve le texte acquis des PJ et les relations manuelles.
-Les liens existants sont `references`, `has_attachment`, `uses_attachment`, `in_folder` et
-`parent_of`. Une PJ retirée du manifeste reste conservée pour l'historique, mais disparaît des
-lectures/recherches courantes. L'oubli définitif du document élimine ses descriptions associées.
-
-[`record_resource_description`](../../back/app/file_share/resource_description.py) délègue
-au contrat Memory [`record_attachment_description`](../../back/app/memory/attachment_description.py).
-Son seul consommateur d'analyse actuellement trouvé est `image_read` :
-
-- PJ image documentaire : écrit dans son unique compagnon, après revalidation du document ;
-- autre URI : crée/actualise une mémoire privée `image_description`, d'identité agent + hash URI ;
-- description identique : pas de nouvelle révision ; échec de stockage : échec de l'outil ;
-- les descriptions successives alimentent le contenu courant et son historique, sans
-  séparation structurée entre question d'analyse, résumé et notes personnelles ;
-- pour les ressources externes, ce companion n'a pas de suivi général de version, disparition
-  ou révocation de la connexion source. L'ACL Memory privée ne remplace pas cette vérification.
-
-`audio_transcribe` conserve des transcriptions et, selon l'appel, des résumés comme fichiers
-via la façade. Cela ne constitue pas un enrichissement systématique de la fiche Memory de la
-source. `audio_read` et `video_read` rendent une analyse et tracent l'appel média sans appeler
-le port de description Memory. Voir [`audio/mcp.py`](../../back/app/audio/mcp.py),
-[`multimedia/service.py`](../../back/app/multimedia/service.py),
-[`image/mcp.py`](../../back/app/image/mcp.py).
-
-`memory_summarize` acquiert un résumé de conversation Messenger, et non le résumé d'une
-ressource fichier arbitraire. Son nom ne doit pas être pris comme preuve d'un service de
-résumé générique déjà disponible. Voir [`memory/mcp.py`](../../back/app/memory/mcp.py).
-
-Les miniatures document/PJ et aperçus Web ont des caches, des limites et des vérifications
-d'accès. Leur génération ne verse pas automatiquement un résumé ou une note dans Memory.
-Une miniature graphique n'est d'ailleurs pas une description sémantique. Voir
-[`document_thumbnail_service.py`](../../back/app/memory/document_thumbnail_service.py).
-
-### 2.4 Indexation et maintenance réutilisables
-
-Le moteur Memory dispose déjà de FTS PostgreSQL, recherche hybride, filtrage des ACL, liens,
-passages, admission finale des candidats, diagnostic de couverture et repli lexical.
-[`semantic_index.py`](../../back/app/memory/semantic_index.py) gère intentions transactionnelles,
-empreintes, fragments, manifeste d'une génération complète et comparaison avant publication.
-Le worker [`automation.py`](../../back/app/memory/automation.py) fournit des jobs durables et
-des reprises. Il ne faut pas créer un deuxième moteur vectoriel générique pour les fichiers.
-
-Le moteur ne vectorise pas les nœuds `attachment`/`folder` dont le texte est vide. Le titre et
-les métadonnées ne signifient donc pas qu'une pièce jointe est sémantiquement analysée.
-L'index des descriptions ne remplace pas un futur index du texte intégral extrait d'un PDF.
-L'empreinte du texte du compagnon ne constitue pas non plus la version du fichier externe.
-
-La mémoire conserve également des profils d'agents, projections publiques de Topics, contacts,
-Goals et leurs 100 derniers cycles, définitions de Process affectées et 20 dernières réussites
-par agent/processus, acquisitions manuelles et extractions sélectives de Tasks/conversations.
-Ces projections portent leur sens métier ; elles ne démontrent pas un inventaire intégral des
-fichiers accessibles. Voir
-[`source_projection.py`](../../back/app/memory/source_projection.py),
-[`process_projection.py`](../../back/app/memory/process_projection.py),
-[`context.py`](../../back/app/memory/context.py).
-
-Dream possède un registre séquentiel, rotation des mécanismes, leases, reçus, checkpoints,
-retries, corrélation des coûts et préemption. Il attend l'absence de travail Task/Voice :
-**il ne peut donc pas porter seul une garantie de mise à jour immédiate pendant l'utilisation**.
-[`registry.py`](../../back/app/dream/registry.py) enregistre notamment réparation structurelle,
-maintenance Memory et analyse des PJ documentaires text/document/image/video. Ces quatre
-analyses sont désactivées par défaut, traitent les compagnons vides et ne parcourent pas les
-shares externes. Le mécanisme vidéo actuel résume sa piste audio, pas l'ensemble des scènes.
-L'audio documentaire n'a pas de mécanisme PJ dédié équivalent.
-
-Le nettoyage des ressources Memory existe aussi, mais son inventaire d'orphelins concerne
-le stockage natif et protège les ressources des révisions historiques. Il n'observe pas
-les suppressions des shares distants. Réutiliser ses protections pour les payloads dérivés,
-sans le transformer en preuve de disparition de leur source. Voir
-[`storage_reconciliation.py`](../../back/app/memory/storage_reconciliation.py).
-
-Sources : [`attachment_memory.py`](../../back/app/dream/mechanisms/attachment_memory.py),
-[`attachment_processing.py`](../../back/app/dream/attachment_processing.py),
-[`scheduler.py`](../../back/app/dream/scheduler.py),
-[`runtime_settings.py`](../../back/core/params/runtime_settings.py).
-
-### 2.5 Preuves et limites
-
-Les tests existants consultés couvrent les compagnons/PJ, révocations et conservation des
-descriptions, descriptions privées externes, liens structurels, indexation complète et
-concurrente, miniatures et reprises Dream :
-[`test_document_structure.py`](../../back/app/memory/tests/test_document_structure.py),
-[`test_document_retrieval.py`](../../back/app/memory/tests/test_document_retrieval.py),
-[`test_dream_attachments.py`](../../back/app/memory/tests/test_dream_attachments.py),
-[`test_document_thumbnails.py`](../../back/app/memory/tests/test_document_thumbnails.py),
-[`test_resource_service.py`](../../back/app/file_share/tests/test_resource_service.py).
-Les tests Nextcloud locaux dans `back/bridge/nextcloud/tests/test_file_share.py` ont également
-été consultés ; ce fichier n'est pas encore versionné au moment de cette proposition.
-
-Ces tests n'ont pas été exécutés pour cette analyse. Aucun gain de performance ni état de
-couverture d'une installation n'est mesuré. Les décisions
-[0106](../decisions/0106-document-structure-memory.md) et
-[0108](../decisions/0108-memory-document-retrieval.md) restent les contrats à préserver ;
-le plan [d'amélioration Memory](amelioration-globale-memoire.md) conserve les expériences de
-pertinence, de provenance fine et d'utilité aval. Ce plan couvre le catalogue de ressources.
+Le lot 0 commence par ces écarts. Aucune racine récursive ne doit être déduite de
+`example`, du seul code du Tool ou de la présence de la capacité `list`.
 
 ## 3. Architecture proposée
 
@@ -203,9 +175,9 @@ Répartir les responsabilités dans les modules existants :
 
 | Domaine | Responsabilité proposée |
 |---|---|
-| `app.file_share` | Identité/binding des providers, catalogue par agent, observations, parcours et preuve de couverture, versions et état des sources, service d'indexation et validation d'accès source |
+| `app.file_share` | Énumération et admissibilité des schémas, racines autorisées, identité/binding des providers, catalogue par agent, observations, parcours régulier et preuve de couverture, versions et état des sources, service d'indexation et validation d'accès source |
 | `app.memory` | Nœuds `file`/`directory`, notes et textes recherchables, liens, FTS/embeddings, admission et oubli des projections |
-| `app.dream` | Découverte et réconciliation opportunistes, analyses enrichies avec budgets et checkpoints ; utilise les mêmes services que les tools |
+| `app.dream` | Résumés et enrichissements des fiches découvertes, réparations opportunistes avec budgets et checkpoints ; utilise exclusivement la façade file-share pour accéder aux sources |
 | Domaines propriétaires | Source canonique et ACL des documents, PJ, conversations, Tasks, Goals, Process, skills, documentation |
 | Bridges | Traduction des métadonnées, listes, versions, événements et accès propres au service |
 | Frontend Memory/Dream | Recherche, arbre, notes, progression et diagnostic des périmètres |
@@ -227,6 +199,47 @@ Contrats publics envisagés, noms à stabiliser pendant le lot initial :
 Réutiliser `ResourceDescriptor` et les DTO de recherche ; ne pas laisser circuler les modèles
 ORM internes entre les domaines. Les workers autonomes ouvrent des sessions courtes ; les
 services appelés dans un contexte utilisent sa session. Aucun appel réseau sous verrou long.
+
+### 3.1 Admissibilité des schémas et prévention des boucles
+
+La préférence utilise le paramètre standard **`tools.fileindexing`** : `excluded` (défaut),
+`known_uris` ou `recursive`. La valeur globale du Tool est héritée par ses connexions ; une
+surcharge locale peut la remplacer, sauf si la valeur globale est imposée. Ce même mécanisme
+configure Console, y compris embarquée, sans rendre sa définition SSH éditable. La préférence
+ne modifie aucune permission source et les synchronisations conservent les valeurs administrées.
+
+Le provider annonce les modes supportés ; le serveur refuse un mode non supporté. Mail et
+les Tools sans `file_share` restent exclus. Console accepte actuellement les URI connues ;
+le parcours automatique attend sa pagination reprenable. Nextcloud annonce le parcours,
+AFFiNE et Grav les URI connues. Les transports Messenger d'un Tool mixte restent exclus.
+Ce réglage prépare l'admission du futur catalogue : il ne constitue pas un scanner ni une
+preuve que les fichiers ont déjà été indexés.
+
+Étendre la description publique des schémas de `file_share` par une politique d'indexation
+calculée côté serveur à partir du provider, de ses capacités et du binding autorisé. Les
+noms des champs restent à stabiliser ; trois modes doivent être distingués :
+
+| Mode | Comportement |
+|---|---|
+| Exclu | Aucun parcours ni observation générant une fiche ou un job ; motif explicite |
+| URI connues | Observation de sources autorisées déjà rencontrées ; aucun inventaire complet annoncé |
+| Parcours récursif | Racines autorisées énumérables, pages et curseurs, parcours régulier reprenable |
+
+Les exclusions et le report de Mail définis en section 1 s'appliquent avant tout scan,
+hook d'observation, matérialisation générant une fiche ou job d'enrichissement. Aucun port
+de fédération des documents ou métiers natifs n'est ajouté dans ce chantier. Les dérivés
+internes et alias conservent leur origine et ne deviennent pas de nouvelles sources indexables.
+
+Le scanner consomme cette politique depuis `file_share` ; il ne contient aucune liste de
+services externes admissibles. Les nouveaux providers rejoignent le même pipeline selon
+leurs capacités effectives. La faculté de lister un schéma et celle de parser le contenu
+d'un fichier sont distinctes : une erreur d'extraction n'empêche pas sa fiche structurelle.
+
+La récursion suit uniquement les relations de collection validées par `file_share`, sans
+suivre les URI citées dans le contenu, les fiches Memory ou les résumés. Dédupliquer les
+collections visitées par binding et identité, détecter les cycles et curseurs sans progrès,
+et persister la frontière. Une borne atteinte conserve un parcours partiel reprenable ;
+elle ne rend jamais un inventaire tronqué complet.
 
 ## 4. Modèle de données et identité
 
@@ -266,23 +279,26 @@ notes : distinguer la nouvelle incarnation, sauf preuve de restauration de la m�
 Ajouter `node_kind=file` et `node_kind=directory`, généralement `memory_type=working`,
 gérés par source, privés et appartenant à l'agent. Conserver `folder` pour le classement
 documentaire. Une collection virtuelle peut être un `directory` avec une sous-nature explicite
-`collection` ; ne pas fabriquer un arbre en découpant les locators opaques de Mail/Messenger.
+`collection` ; ne pas fabriquer un arbre en découpant des locators opaques.
 
 Une projection doit avoir une identité source incluant agent/binding, compatible avec l'unicité
 globale actuelle de `(managed_source_kind, managed_source_ref)`. Le service
 `upsert_source_managed_item` et les contraintes actuelles doivent être adaptés explicitement
 pour produire ces natures ; passer simplement un nouveau libellé au helper existant ne suffit pas.
 
-Les ressources déjà canoniques dans Memory restent `document`/`attachment`/`memory`. Le
-catalogue peut pointer vers ces items sans les renommer ni recopier le même contenu dans un
-nœud `file`. Les notes par agent constituent une annotation privée distincte, et les résultats
-sont regroupés par ressource/binding. Le même principe s'applique aux projections métier et
-au corpus documentaire : fédérer ou lier, plutôt que recopier sans nécessité.
+Les ressources déjà canoniques dans Memory restent `document`/`attachment`/`memory`, hors
+de ce catalogue. Aucune fiche ni annotation supplémentaire n'est créée pour les documents,
+projections métier ou corpus documentaire. Les notes par agent concernent uniquement les
+sources admissibles ; les résultats sont regroupés par ressource/binding.
 
 La fiche sépare : métadonnées autoritatives, notes personnelles, texte extrait et analyses
-générées. Une synchronisation de nom/date/taille ne réécrit jamais les notes. Un compagnon
-géré reste non éditable par `memory_remember` ou une mutation générique : un port d'annotation
-contrôlé autorise l'édition des notes sans donner accès aux métadonnées ni au fichier source.
+générées. Une synchronisation de nom/date/taille ne réécrit jamais les notes. Le titre et le
+contenu sont éditables avec l'éditeur Memory existant ; chaque champ modifié manuellement
+est préservé lors des observations suivantes. L'identité, l'URI et les références source
+restent contrôlées par le catalogue. Les fiches restent privées et protégées de l'oubli
+ordinaire ; leur édition ne modifie pas le fichier source. Les fiches existantes deviennent
+éditables par une réconciliation idempotente, sans annuler un verrouillage ultérieur choisi
+par leur propriétaire.
 
 Le payload éditorial de la fiche/annotation suit le profil HTML Memory. Les octets source
 restent dans le provider ; le texte extrait, les locators et les dérivés sont des projections
@@ -298,13 +314,14 @@ Chaque projection possède ses liens et ne supprime jamais les liens manuels d'u
 Les observations se prennent **dans la façade publique**, pas uniquement dans les wrappers MCP.
 Les appels Python, usages par Process, générateurs média et matérialisations spécialisées doivent
 donc bénéficier de la même indexation. Vérifier aussi les chemins qui utilisent directement
-un transport, les livraisons Messenger, callbacks et mutations des domaines canoniques.
+un transport, les callbacks et les destinations de livraison. Une livraison Messenger
+n'admet pas sa destination ; seule sa source fichier admissible peut être observée.
 
 | Opération | Mise à jour à produire |
 |---|---|
-| `file_schemes` | Réconcilier les bindings/capacités ; aucun fichier inventé par la seule présence du schéma |
+| `file_schemes` | Réconcilier les bindings/capacités et la politique d'indexation ; programmer les racines des schémas admissibles ; aucun fichier inventé par la seule présence du schéma |
 | `file_list` | Upsert des entrées vues et des relations explicites ; noter couverture/cursor ; retraits limités aux enfants d'une liste complète et cohérente |
-| `file_info` | Actualiser les métadonnées et la version ; distinguer inférence et existence réellement vérifiée, notamment pour Mail |
+| `file_info` | Actualiser les métadonnées et la version ; distinguer inférence et existence réellement vérifiée |
 | `file_search` | Observer les hits et leur version ; un non-hit ne prouve jamais une absence |
 | `file_read` / matérialisation | Observer l'accès et la version réellement lue ; ne pas remplacer un texte extrait complet par le fragment paginé retourné |
 | create/write/append/edit | Observer la ressource résultante ; invalider les dérivés de l'ancienne version ; programmer uniquement les étapes devenues nécessaires |
@@ -317,9 +334,11 @@ Le premier upsert de catalogue, sa projection lexicale et l'intention d'indexati
 et sans LLM. L'index vectoriel est asynchrone ; la réponse indique son état réel. Coalescer les
 observations identiques : plusieurs lectures inchangées n'ajoutent ni révision textuelle ni
 recalcul d'embeddings. La date `last_seen` et les usages ne contaminent pas l'empreinte sémantique.
+Chaque hook applique d'abord la politique du schéma : lire une fiche `memory://` ne produit
+aucune observation d'indexation, même si cette lecture traverse la façade générique.
 
-Pour les ressources internes, écrire projection/intention dans la transaction du propriétaire.
-Pour les mutations externes, il n'existe pas de transaction atomique entre le provider et SQL :
+Les mutations des domaines canoniques exclus n'alimentent pas ce catalogue.
+Pour les mutations fichier admissibles, il n'existe pas de transaction atomique entre le provider et SQL :
 préparer un reçu d'opération/reprise avant l'effet lorsque nécessaire, puis enregistrer le
 résultat confirmé. Si l'effet distant réussit et la mise à jour locale échoue, rendre le
 succès fichier et l'état d'indexation incomplet distinctement, sans inciter à rejouer une
@@ -347,13 +366,26 @@ revoir. Les anciennes générations peuvent être retenues en historique selon p
 mais ne sont pas présentées comme description actuelle. Une description générée à partir
 d'un fichier doit porter l'empreinte de **ses octets**, pas seulement celle de son résumé.
 
+Chaque passage périodique compare la version observée à celle de la fiche et à celle du
+dernier résumé. Un fichier inchangé ne déclenche aucun nouvel appel LLM. Un changement de
+nom ou de parent met à jour l'arborescence ; avec une identité stable et une version de
+contenu inchangée, il préserve le résumé. Une version de contenu différente rend le résumé
+obsolète et remet la fiche dans les candidats Dream. Si le provider ne distingue pas
+métadonnées et contenu, un digest autorisé permet cette distinction avant réanalyse.
+
+Pour les providers sans version forte, date et taille ne suffisent pas à garantir la
+détection de toutes les modifications. Prévoir une revérification périodique bornée des
+octets avec digest ; publier le délai et les limites de cette vérification. Avant d'écrire
+un résumé acquis, comparer encore binding, version et droits : un ancien résultat ne peut
+pas écraser le résumé d'une version plus récente.
+
 ### 6.2 Catalogue des enrichissements
 
 | Type | Source et traitement | Provenance et limites |
 |---|---|---|
 | Nom/métadonnées | Provider, sans modèle | Champs réellement observés, date/force de vérification |
 | Texte brut/code/HTML/Markdown/JSON | Extraction locale bornée ; HTML générique lu inerte | Lignes/blocs/champs et version ; pas d'exécution de code/script |
-| PDF et bureautique | Réutiliser/étendre l'extracteur isolé Dream | Pages, paragraphes, feuilles/cellules ; OCR séparé pour pages image |
+| PDF et bureautique | Réutiliser la préparation commune `core.document` et les façades d'analyse documentaire | Pages, paragraphes, feuilles/cellules ; OCR séparé pour pages image |
 | Image | Analyse spécialisée existante ; OCR si requis | Modèle, instruction, langue et digest ; distinction description/OCR |
 | Audio | Transcription, puis résumé optionnel ; analyse sonore distincte | Timestamps et limites ; distinguer musique, bruit et parole |
 | Vidéo | Piste audio, scènes/frames si spécialiste autorisé | Timestamps et modalités couvertes ; audio seul annoncé explicitement |
@@ -453,9 +485,9 @@ une action distincte et ne partage pas les credentials ni le fichier. Les ACL do
 existantes continuent à gouverner leur source canonique.
 
 Les URI contenant tokens, credentials ou signatures éphémères ne sont pas persistées telles
-quelles dans les mémoires, jobs ou logs. Ne pas supprimer arbitrairement une query HTTPS si
-elle définit un autre contenu : obtenir une URI stable vérifiée, ou déclarer cette ressource
-non indexable durablement. Conserver les protections SSRF et matérialisation bornée existantes.
+quelles dans les mémoires, jobs ou logs. Les liens de téléchargement techniques ne remplacent
+pas l'URI canonique du provider. HTTPS reste exclu ; conserver les protections SSRF et
+matérialisation bornée existantes pour les opérations de la façade.
 
 ## 9. Détection des disparitions et purge
 
@@ -510,25 +542,38 @@ réactivation autorisée. La purge ne supprime jamais le fichier distant. Une so
 par plusieurs mémoires ne conduit pas à supprimer les autres sources ni un fait rédigé
 indépendamment ; invalider la dépendance concernée et rendre la provenance historique claire.
 
-## 10. Dream : découverte, indexation et enrichissement
+## 10. Parcours régulier file-share et enrichissement Dream
 
-Ajouter des mécanismes séparés, tous adossés au même service d'indexation :
+Le parcours structurel régulier appartient au service d'indexation `file_share`. Un worker
+durable traite les périmètres arrivés à échéance par pages bornées, via la façade commune.
+Il relit les schémas et leur politique, reprend les frontières interrompues, actualise les
+fiches et les relations Memory, puis programme le prochain passage. Son avancement régulier
+ne dépend pas uniquement des périodes de repos Dream. La cadence reste configurable et
+mesurée par agent/binding, sans lancer un crawl complet dans une requête interactive.
 
-| Mécanisme proposé | Sujet borné | Travail |
+Dream traite séparément les fiches sans résumé courant, en accédant à leurs sources via
+`file_share`. Le résumé enrichit le même item Memory ; il ne crée pas une mémoire indépendante
+à chaque tour. Les mécanismes de réparation opportuniste réutilisent le service du scanner.
+
+Séparer les opérations et leurs responsables :
+
+| Opération proposée | Responsable | Sujet borné et travail |
 |---|---|---|
-| `file_share.discover` | Une page/un dossier d'un binding et d'un périmètre | Découvrir et actualiser métadonnées/relations, persister la frontière ; sans LLM |
-| `file_share.reconcile` | Une fin de périmètre ou un lot de candidats absents | Valider les disparitions et exécuter les retraits idempotents ; sans LLM |
-| `memory.resource_extract` | Une entrée/version | Acquérir texte/OCR/transcription selon capacités, limites et options |
-| `memory.resource_enrich` | Une entrée/version/type d'analyse | Résumé, analyse image/audio/vidéo ou synthèse utile ; LLM seulement si nécessaire |
+| `file_share.discover` | Worker régulier ; réparation Dream optionnelle | Une page/un dossier autorisé ; actualiser métadonnées/relations et persister la frontière, sans LLM |
+| `file_share.reconcile` | Worker régulier ; réparation Dream optionnelle | Une fin de périmètre ou un lot d'absences suspectées ; valider puis retirer de façon idempotente, sans LLM |
+| `memory.resource_extract` | Dream | Une entrée/version ; acquérir texte/OCR/transcription selon capacités, limites et options |
+| `memory.resource_enrich` | Dream | Une entrée/version/type d'analyse ; écrire le résumé dans la fiche correspondante, avec provenance et couverture |
 
 Les mécanismes existants PJ peuvent déléguer au service commun par étapes, en conservant
 leurs options et la garantie de remplissage sans écraser une description rédigée entre-temps.
 Ne pas faire tourner deux analyses automatiques concurrentes pour la même source/version.
 
-Racines d'indexation : natives connues, share/chemins autorisés, workspaces/pages lorsque
-énumérables, rooms et messages connus accessibles, URL explicitement découvertes. Supporter
-inclusions/exclusions, profondeur, types, plafond de volume et calendrier par agent/provider.
-La découverte d'une collection autorisée ne permet pas d'explorer d'autres comptes ou rooms.
+Racines d'indexation : celles annoncées et autorisées par `file_share` pour les schémas
+admissibles. Un schéma en mode URI connues ne produit aucun parcours récursif. Supporter
+inclusions/exclusions, profondeur, types, plafond de volume et calendrier par agent/binding.
+Le parcours par défaut couvre toutes les branches autorisées des racines admissibles ; une
+restriction ou un plafond réduit la couverture annoncée. La découverte d'une collection
+autorisée ne permet pas d'explorer d'autres comptes ou rooms.
 
 Le contrat `DreamMechanism` traite un sujet par tour. Utiliser des pages avec checkpoint,
 curseurs et frontières durables ; ne pas lancer un crawl complet dans `prepare`. Les
@@ -536,10 +581,11 @@ identités de reçus intègrent agent/binding, run de découverte ou version sou
 et configuration utile. Un reçu succès n'empêche pas une nouvelle version ni une réparation
 explicitement demandée ; un checkpoint déjà acquis ne provoque pas un nouvel appel LLM.
 
-Respecter la préemption Task/Voice actuelle, la rotation entre mécanismes et l'équité entre
-agents/providers. Backoff par source pour les pannes/quota, afin qu'un share malade ne bloque
-pas tout Dream. Prévoir statuts unsupported, excluded, too-large et partial sans boucle de
-retry permanente. Nombre d'octets, coût, durée et résultats utiles sont comptabilisés.
+Les mécanismes Dream respectent la préemption Task/Voice actuelle et leur rotation ; le
+worker structurel possède ses quotas et son équité entre agents/bindings. Backoff par source
+pour les pannes/quota, afin qu'un share malade ne bloque pas les autres. Prévoir statuts
+unsupported, excluded, too-large et partial sans boucle de retry permanente. Nombre d'octets,
+coût, durée et résultats utiles sont comptabilisés.
 
 Un lancement humain « Indexer maintenant » doit produire un run durable, progressif et
 annulable. S'il doit progresser malgré des Tasks actives, cela relève d'une commande
@@ -560,11 +606,6 @@ de fraîcheur réelle par provider au lieu de promettre du temps réel universel
 | Nextcloud | Réutiliser pagination/ETags ; vérifier identité stable exposable, changements/deltas/notifications disponibles ; compléter identité/version/grouped stat ; réconciliation des listes concurrentes |
 | AFFiNE | Contrat de discovery des workspaces/blobs autorisés et identités/versions ; si indisponible, couverture explicite des seules URI connues |
 | Grav | Adapter énumération pages/médias, stat/version et racines ; aucun support fictif de delete/move |
-| Messenger | Liste paginée des PJ canoniques connues ; événements entrants/sortants/retraits ; découverte des rooms accessibles ; import d'historique distant seulement si API et autorisations réelles |
-| Mail | Découverte paginée des messages/PJ via façade Mail ; clés tenant compte du compte/mailbox/UIDVALIDITY/part selon contrat ; liste complète et signal d'expiration/suppression |
-| HTTPS | Index uniquement d'URI durables connues, ETag/Last-Modified si exploitables, politique de refresh ; aucun inventaire arbitraire du Web |
-| Natifs métier | Événements du propriétaire, pages filtrées par ACL et références vers projection canonique ; pas d'indexation globale des traces administratives |
-| Documentation/skills | Révisions/checksums et droits effectifs ; fédération d'index existant ou projection par fichier, sans double corpus ni double note |
 | Nouveau bridge | Tests contractuels obligatoires de découverte, version, validation d'accès, complétude et limitation ; observation seule si son API n'expose pas ces garanties |
 
 Ajouter des capacités d'indexation optionnelles : discover roots, listing paginé complet,
@@ -651,9 +692,22 @@ comportement implicite.
 
 Tests d'acceptation à construire ou étendre au niveau de chaque garantie :
 
+Tester aussi les sources exclues et différées : lecture, liste et matérialisation de
+Documents, Galaris, HTTPS, Mail et Messenger sans fiche, observation d'indexation ni job.
+Pour un Tool mixte Nextcloud fichiers/Talk, vérifier que seuls les fichiers sont admis.
+Un code de Tool personnalisé ne contourne ni cette garde ni le report de Mail.
+
 | Garantie | Scénario minimal observable |
 |---|---|
 | Catalogue immédiat | Lister un share synthétique puis rechercher son fichier via Memory, sans LLM ni attente Dream |
+| Politique de schémas | Énumérer ensemble un provider récursif, un provider limité aux URI connues et `memory://` ; seules les racines admissibles sont parcourues |
+| Absence de boucle | Lire/rechercher/lister les fiches Memory créées, puis relancer le scan : aucun appel de découverte sur `memory://`, aucune nouvelle fiche dérivée et aucun job récursif |
+| Pipeline générique | Deux providers synthétiques aux schémas différents, dont un ajouté après le premier scan, rejoignent le même scanner via `file_share` sans branche par nom de service |
+| Arborescence par défaut | Scan récursif d'une racine paginée avec documents non parsables : répertoires, parents et noms retrouvables sans téléchargement documentaire ni appel LLM |
+| Régularité | Ajouter un fichier hors des tools, avancer l'échéance du scan avec des Tasks actives : découverte au prochain passage ; le résumé suit séparément la politique Dream |
+| Résumé dans la fiche | Une fiche structurelle puis enrichissement Dream : même identité Memory, résumé lié à la bonne version ; un second passage inchangé ne réappelle pas le modèle |
+| Changement externe | Modifier les octets hors Galaris : prochain scan ou contrôle de digest invalide le résumé courant, puis Dream actualise la même fiche ; résultat ancien tardif rejeté |
+| Récursion bornée | Collection cyclique, alias ou curseur répété : arrêt diagnostiqué sans jobs infinis ; une limite conserve la frontière et une couverture partielle |
 | Index réutilisable | Lire et lister plusieurs fois la même version : même identité, mêmes notes, pas de nouvel appel modèle |
 | Isolation | Même URI sur deux comptes/agents ; recherche/fiche/graphe/miniature sans fuite croisée |
 | Version | Ancien résumé prêt après modification du fichier : rejet ; nouveau texte correctement localisé |
@@ -677,23 +731,57 @@ et convergence ; tests AST pour les ports et dépendances ; quelques E2E pour le
 
 ## 15. Lots de réalisation et portes de sortie
 
+### 15.1 Livrables vérifiables du lot 0
+
+1. Ajouter au contrat public de schéma une politique typée : `excluded`, `known_uris`,
+   `recursive`, avec motif et racines autorisées explicites. Distinguer l'admissibilité
+   d'indexation du droit de lire la ressource ; `excluded` ne désactive pas `file_read`.
+2. Définir un port optionnel de provider qui annonce ses capacités de découverte réelles.
+   Un provider admissible non déclaré reste limité aux URI connues ; une racine récursive
+   exige une liste reprenable et un périmètre autorisé. La façade fournit les candidats
+   Console/Tools `file_share` hors Mail et applique les exclusions de la section 1 au
+   transport résolu, y compris pour un Tool mixte fichiers/Messenger.
+3. Stabiliser les DTO de binding, version et preuve d'observation : identité serveur sans
+   secret, génération de configuration, version forte/faible/inconnue, existence vérifiée
+   ou seulement inférée. La politique générique ne contient aucune branche par code de Tool.
+4. Définir le port Memory avec nature explicite et les gardes de publication : incarnation,
+   génération et version source. Inventorier les contraintes SQL et consommateurs du helper
+   existant avant toute évolution de schéma ; réutiliser les projections documentaires.
+5. Tester la politique avec deux providers synthétiques et un provider ajouté via le même
+   port : racines autorisées, absence de racine implicite, refus de complétude sur liste
+   tronquée sans curseur, exclusions et report de Mail. Les tests d'absence de hooks/jobs suivent au
+   lot 1, lorsque ces effets existent réellement.
+6. Mesurer la baseline des opérations existantes sur corpus synthétique, puis consigner les
+   conditions et résultats. Le catalogue n'existant pas encore, sa latence n'a pas de baseline
+   actuelle : la mesurer après le lot 1 avant de comparer une optimisation ultérieure.
+
+Sortie du lot 0 : contrats implémentés et testés, ADR du choix retenu, matrice des capacités
+effectives et mesures disponibles avec leurs limites. Une rédaction de DTO ou cette inspection
+ne suffit pas à déclarer le lot terminé. Le scan durable, les notes et les résumés ne sont pas
+inclus dans sa réception.
+
+### 15.2 Séquence de réalisation
+
 | Lot | Contenu | Preuve de sortie |
 |---|---|---|
-| 0 — Contrats et baseline | Stabiliser identité/binding/version/ACL, notes natives vs privées, complétude et purge ; inventorier tous les consommateurs et qualifier les capacités réelles ; benchmark courant | Contrats/ADR proposés, scénarios de réception, baseline synthétique et limites provider explicites |
-| 1 — Catalogue et observation | Modèles catalogue + nœuds `file`/`directory`, port Memory, observation de façade et lexical immédiat ; premier parcours Nextcloud avec notes ; retrait explicite et isolation | List → Memory search → note → relecture → update → delete prouvé, y compris panne d'index après effet distant |
-| 2 — Discovery/reconciliation | Curseurs complets Console/Messenger/Mail, runs/racines, scan reprenable, clôture cohérente, GC et oubli explicite ; mechanisms Dream déterministes | Corpus >500, interruptions, races et panne provider sans faux retrait ; couverture et progression compréhensibles |
-| 3 — Enrichissements communs | Versions/pipelines/provenance, extraction texte/PDF/Office, image/audio/vidéo et thumbnails ; notes protégées et checkpoints | Toute analyse autorisée enrichit le bon fichier/version ; dérivés réutilisés, textes longs correctement couverts |
-| 4 — Recherche et contexte | Recherche provider indexée, fédération native/documentation, filtres/passages, briefs et tous drivers ; UI Memory/Dream complète | Parcours assembled et mesures de pertinence/latence/coût ; sources et fiches clairement distinguées |
+| 0 — Contrats et baseline | Politique de schémas exposée par `file_share`, exclusion ferme de `memory://`, racines/capacités, identité/binding/version/ACL, complétude et purge ; benchmark courant | Contrats/ADR proposés, scénarios multi-provider et anti-boucle, baseline synthétique et limites explicites |
+| 1 — Catalogue et observation | Modèles catalogue + nœuds `file`/`directory`, port Memory, hooks admissibles, relations d'arborescence et lexical immédiat ; retrait explicite et isolation | Deux providers via la même façade → fiches/arbre Memory sans LLM ; lecture de Memory sans réindexation ; update/delete prouvés |
+| 2 — Parcours régulier et réconciliation | Runs/racines/échéances issus des schémas, récursion paginée et reprenable, contrôle des versions, clôture cohérente, GC et oubli explicite | Nouveau provider sans branche spécifique ; corpus >500, changements externes, interruptions/cycles/pannes sans faux retrait ; progression hors repos Dream |
+| 3 — Résumés Dream et enrichissements communs | Sélection des fiches sans résumé courant, préparation documentaire commune, provenance/version, résumé dans le même item ; notes protégées et checkpoints | Même fiche enrichie puis actualisée après changement ; aucun nouvel appel modèle pour la version inchangée ; résultats tardifs rejetés |
+| 4 — Recherche et contexte | Recherche des fichiers admissibles indexée, filtres/passages, briefs et tous drivers ; UI Memory/Dream complète | Parcours assembled et mesures de pertinence/latence/coût ; sources et fiches clairement distinguées |
 | 5 — Couverture providers et changements externes | AFFiNE/Grav discovery selon API, événements/deltas fiables, repair des sources sans événements ; adapter SDK contractuel | Matrice de capacités vérifiée par bridge, fraîcheur mesurée et couverture totale uniquement là où démontrée |
 | 6 — Qualification et extension | Charge, isolation, rétention, reprise, canari et rollback ; docs FR/EN et compétences runtime | Snapshot validé, résultats mesurés, limites résiduelles et retour arrière prouvé |
 
-Séquence recommandée : construire d'abord le parcours complet Nextcloud + catalogue/notes/
-suppression, réutiliser Documents comme référence de non-régression, puis étendre la même
-garantie aux groupes de providers. Ne pas généraliser une optimisation de liste à tous les
-services sur la seule base du premier test. Les tests multi-compte et de réutilisation d'URI
-font partie du premier lot, pas d'une phase finale de durcissement.
+Séquence recommandée : construire le pipeline commun depuis les schémas `file_share`, puis
+la connaissance structurelle Memory, le parcours périodique et les résumés Dream versionnés.
+La réception traverse plusieurs providers par cette même façade ; aucun lot ne cible un
+service externe comme point d'entrée. Réutiliser Documents comme référence de non-régression.
+Les tests multi-compte, de réutilisation d'URI et d'exclusion de `memory://` font partie du
+socle initial. L'intégration d'un provider complète son contrat file-share sans modifier le
+scanner générique, Memory ni le mécanisme de résumé.
 
-Pour le démarrage, rattacher les `image_description` existantes à leur fiche agent/source,
+Pour le démarrage, rattacher uniquement les `image_description` de sources admissibles
+à leur fiche agent/source ; les descriptions Web, documentaires et Messenger restent hors catalogue.
 préserver révisions et notes, puis dédupliquer l'affichage. Ces anciennes descriptions n'ont
 pas de preuve de version source : les marquer historiques/non vérifiées jusqu'à revalidation,
 sans inventer leur digest. Les descriptions/PJ natives ne changent pas d'identité. Procéder
@@ -718,16 +806,25 @@ aux opérations provider ; conserver notes/révisions et les ACL renforcées. Ne
 les projections révoquées ni restaurer des chunks obsolètes. Une reconstruction réactive
 uniquement les générations dont la source, le binding et les droits sont à nouveau validés.
 
-## 16. Arbitrages proposés avant implémentation
+## 16. Principes retenus et arbitrages techniques avant implémentation
 
-Les choix suivants rendent le premier lot concret sans dépendre d'un crawler universel :
+Le besoin précisé le 30 septembre 2026 fixe les principes suivants : façade `file_share`
+exclusive, discrimination des schémas avec exclusion de `memory://`, parcours récursif
+régulier des sources admissibles, arborescence connue par défaut sans LLM, résumé Dream dans
+la fiche correspondante et actualisation après changement. Cette section conserve les
+arbitrages de conception initiaux ; l'état du runtime et sa qualification sont décrits en
+tête de ce plan et dans l'ADR 0155.
+
+Les choix techniques proposés pour les réaliser sont :
 
 1. `file` et `directory` comme nouvelles natures ; `folder` et Documents inchangés.
-2. Catalogue, notes et enrichissements externes par agent/binding ; descriptions
-   documentaires canoniques existantes conservées, annotation privée en complément.
-3. Métadonnées/lexical à l'observation ; embeddings et analyses coûteuses asynchrones.
-4. Discovery/reconciliation Dream sans LLM ; analyses automatiques activables par type et
-   budget, en reprenant les options PJ actuelles sans activation coûteuse implicite.
+2. Catalogue, notes et enrichissements par agent/binding pour Console et les Tools
+   `file_share` hors Mail ; sources exclues selon la section 1, sans annotation ni fédération
+   supplémentaire de leurs objets Memory existants.
+3. Métadonnées/arborescence/lexical dès la découverte ou l'observation admissible ; embeddings
+   et analyses coûteuses asynchrones, sans contenu inventé pour un fichier non parsable.
+4. Parcours et réconciliation périodiques file-share sans LLM ; résumés et enrichissements
+   Dream séparés, selon les budgets et options, avec reprise des résultats déjà acquis.
 5. Validation source actuelle des résultats sensibles ; possibilité de TTL distincte
    uniquement avec une garantie de fraîcheur bornée assumée.
 6. Retrait automatique après preuve ; corbeille bornée pour les notes rédigées, GC des
@@ -737,8 +834,6 @@ Les choix suivants rendent le premier lot concret sans dépendre d'un crawler un
 8. Réutilisation PostgreSQL/Memory/Dream et des modules existants ; nouvelle infrastructure
    seulement si les mesures et l'isolation des traitements la justifient.
 
-Questions techniques encore ouvertes : capacités réelles de discovery/change-feed des comptes
-AFFiNE/Grav/Nextcloud visés ; coût et faisabilité de validation ACL groupée ; politique de
-corbeille/rétention et volumes cibles ; priorité souhaitée du lancement manuel par rapport au
-repos Dream. Elles se résolvent au lot 0 à partir des contracts/API et mesures disponibles,
-sans transformer une hypothèse de provider en promesse de produit.
+L'ADR 0155 fixe les racines, les cadences, la rétention technique et les limites du parcours
+et de Dream. Restent à qualifier les capacités des providers réels, la validation ACL
+groupée, les performances aux volumes cibles et les capacités avancées de ce plan.

@@ -938,7 +938,6 @@
       },
       {
         "files": [
-          "back/app/dream/attachment_processing.py",
           "back/app/dream/contracts.py",
           "back/app/dream/mechanisms/attachment_memory.py",
           "back/app/dream/mechanisms/conversation_memory.py",
@@ -1031,6 +1030,7 @@
           "back/app/dream/mechanisms/attachment_memory.py",
           "back/app/dream/mechanisms/conversation_memory.py",
           "back/app/dream/mechanisms/document_structure.py",
+          "back/app/dream/mechanisms/file_catalogue.py",
           "back/app/dream/mechanisms/memory_maintenance.py",
           "back/app/dream/mechanisms/process_memory.py",
           "back/app/dream/mechanisms/sequential_topic_classification.py",
@@ -1075,6 +1075,7 @@
         "files": [
           "back/app/dream/mechanisms/attachment_memory.py",
           "back/app/dream/mechanisms/conversation_memory.py",
+          "back/app/dream/mechanisms/file_catalogue.py",
           "back/app/dream/mechanisms/memory_extraction.py",
           "back/app/dream/mechanisms/memory_maintenance.py",
           "back/app/dream/mechanisms/skill_learning.py",
@@ -1107,14 +1108,17 @@
           "back/app/file_share/galaris_provider.py",
           "back/app/file_share/messenger_transport.py",
           "back/app/file_share/planner_adapter.py",
-          "back/app/file_share/resource_contracts.py"
+          "back/app/file_share/resource_contracts.py",
+          "back/app/file_share/router.py"
         ],
         "source": "app.file_share",
         "target": "app.agent"
       },
       {
         "files": [
-          "back/app/file_share/file_share_service.py"
+          "back/app/file_share/catalogue.py",
+          "back/app/file_share/file_share_service.py",
+          "back/app/file_share/indexing.py"
         ],
         "source": "app.file_share",
         "target": "app.connection"
@@ -1157,7 +1161,12 @@
       },
       {
         "files": [
+          "back/app/file_share/__init__.py",
+          "back/app/file_share/catalogue.py",
+          "back/app/file_share/enrichment.py",
+          "back/app/file_share/indexing.py",
           "back/app/file_share/resource_description.py",
+          "back/app/file_share/resource_observation.py",
           "back/app/file_share/resource_service.py"
         ],
         "source": "app.file_share",
@@ -1196,9 +1205,11 @@
       {
         "files": [
           "back/app/file_share/bridges.py",
+          "back/app/file_share/catalogue.py",
           "back/app/file_share/documentation_provider.py",
           "back/app/file_share/file_share_service.py",
           "back/app/file_share/galaris_provider.py",
+          "back/app/file_share/indexing.py",
           "back/app/file_share/mcp.py",
           "back/app/file_share/resource_contracts.py",
           "back/app/file_share/transport.py"
@@ -1226,6 +1237,19 @@
         ],
         "source": "app.file_share",
         "target": "core.authorize"
+      },
+      {
+        "files": [
+          "back/app/file_share/catalogue.py",
+          "back/app/file_share/enrichment.py",
+          "back/app/file_share/indexing.py",
+          "back/app/file_share/models.py",
+          "back/app/file_share/resource_description.py",
+          "back/app/file_share/resource_observation.py",
+          "back/app/file_share/router.py"
+        ],
+        "source": "app.file_share",
+        "target": "core.database"
       },
       {
         "files": [
@@ -2266,6 +2290,7 @@
           "back/app/memory/attachment_analysis.py",
           "back/app/memory/attachment_description.py",
           "back/app/memory/automation.py",
+          "back/app/memory/catalogue_projection.py",
           "back/app/memory/contact_directory.py",
           "back/app/memory/conversation_document_adapter.py",
           "back/app/memory/deduplication.py",
@@ -2295,6 +2320,7 @@
           "back/app/memory/router.py",
           "back/app/memory/semantic_index.py",
           "back/app/memory/service.py",
+          "back/app/memory/source_access.py",
           "back/app/memory/source_projection.py",
           "back/app/memory/storage_reconciliation.py",
           "back/app/memory/topic_maintenance.py",
@@ -2396,6 +2422,7 @@
           "back/app/memory/acquisition_service.py",
           "back/app/memory/attachment_analysis.py",
           "back/app/memory/attachment_description.py",
+          "back/app/memory/catalogue_projection.py",
           "back/app/memory/document_links.py",
           "back/app/memory/document_service.py",
           "back/app/memory/file_facade.py",
@@ -8716,7 +8743,7 @@
           "memory_items.id"
         ],
         "history_mixin": false,
-        "line": 430,
+        "line": 443,
         "module": "app.memory",
         "table": "document_team_grants"
       },
@@ -8728,7 +8755,7 @@
           "users.id"
         ],
         "history_mixin": false,
-        "line": 419,
+        "line": 432,
         "module": "app.memory",
         "table": "document_user_grants"
       },
@@ -8787,6 +8814,43 @@
         "line": 27,
         "module": "app.incident",
         "table": "failure_patterns"
+      },
+      {
+        "class_name": "FileCatalogEntry",
+        "file": "back/app/file_share/models.py",
+        "foreign_keys": [
+          "agents.id",
+          "connections.id",
+          "memory_items.id"
+        ],
+        "history_mixin": false,
+        "line": 14,
+        "module": "app.file_share",
+        "table": "file_catalog_entries"
+      },
+      {
+        "class_name": "FileIndexRun",
+        "file": "back/app/file_share/models.py",
+        "foreign_keys": [
+          "agents.id",
+          "connections.id"
+        ],
+        "history_mixin": false,
+        "line": 45,
+        "module": "app.file_share",
+        "table": "file_index_runs"
+      },
+      {
+        "class_name": "FileObservationRepair",
+        "file": "back/app/file_share/models.py",
+        "foreign_keys": [
+          "agents.id",
+          "connections.id"
+        ],
+        "history_mixin": false,
+        "line": 72,
+        "module": "app.file_share",
+        "table": "file_observation_repairs"
       },
       {
         "class_name": "GoalCycleTrigger",
@@ -9165,7 +9229,7 @@
           "memory_items.id"
         ],
         "history_mixin": false,
-        "line": 961,
+        "line": 974,
         "module": "app.memory",
         "table": "memory_associations"
       },
@@ -9174,7 +9238,7 @@
         "file": "back/app/memory/models.py",
         "foreign_keys": [],
         "history_mixin": false,
-        "line": 1143,
+        "line": 1156,
         "module": "app.memory",
         "table": "memory_automation_jobs"
       },
@@ -9187,7 +9251,7 @@
           "users.id"
         ],
         "history_mixin": true,
-        "line": 875,
+        "line": 888,
         "module": "app.memory",
         "table": "memory_candidates"
       },
@@ -9200,7 +9264,7 @@
           "users.id"
         ],
         "history_mixin": false,
-        "line": 681,
+        "line": 694,
         "module": "app.memory",
         "table": "memory_contact_identities"
       },
@@ -9212,7 +9276,7 @@
           "memory_items.id"
         ],
         "history_mixin": false,
-        "line": 643,
+        "line": 656,
         "module": "app.memory",
         "table": "memory_contact_items"
       },
@@ -9224,7 +9288,7 @@
           "memory_items.id"
         ],
         "history_mixin": false,
-        "line": 606,
+        "line": 619,
         "module": "app.memory",
         "table": "memory_context_edges"
       },
@@ -9235,7 +9299,7 @@
           "agents.id"
         ],
         "history_mixin": false,
-        "line": 551,
+        "line": 564,
         "module": "app.memory",
         "table": "memory_context_nodes"
       },
@@ -9246,7 +9310,7 @@
           "memory_items.id"
         ],
         "history_mixin": false,
-        "line": 1018,
+        "line": 1031,
         "module": "app.memory",
         "table": "memory_embedding_chunks"
       },
@@ -9257,7 +9321,7 @@
           "memory_items.id"
         ],
         "history_mixin": false,
-        "line": 995,
+        "line": 1008,
         "module": "app.memory",
         "table": "memory_embedding_manifests"
       },
@@ -9269,7 +9333,7 @@
           "users.id"
         ],
         "history_mixin": false,
-        "line": 1072,
+        "line": 1085,
         "module": "app.memory",
         "table": "memory_findings"
       },
@@ -9281,7 +9345,7 @@
           "memory_items.id"
         ],
         "history_mixin": false,
-        "line": 395,
+        "line": 408,
         "module": "app.memory",
         "table": "memory_item_grants"
       },
@@ -9306,7 +9370,7 @@
           "memory_items.id"
         ],
         "history_mixin": true,
-        "line": 499,
+        "line": 512,
         "module": "app.memory",
         "table": "memory_links"
       },
@@ -9319,7 +9383,7 @@
           "tasks.id"
         ],
         "history_mixin": false,
-        "line": 441,
+        "line": 454,
         "module": "app.memory",
         "table": "memory_revisions"
       },
@@ -9332,7 +9396,7 @@
           "tasks.id"
         ],
         "history_mixin": false,
-        "line": 825,
+        "line": 838,
         "module": "app.memory",
         "table": "memory_sources"
       },
@@ -9344,7 +9408,7 @@
           "memory_topic_contact_scopes.id"
         ],
         "history_mixin": false,
-        "line": 786,
+        "line": 799,
         "module": "app.memory",
         "table": "memory_topic_contact_items"
       },
@@ -9356,7 +9420,7 @@
           "memory_items.id"
         ],
         "history_mixin": false,
-        "line": 745,
+        "line": 758,
         "module": "app.memory",
         "table": "memory_topic_contact_scopes"
       },
@@ -9368,7 +9432,7 @@
           "memory_items.id"
         ],
         "history_mixin": false,
-        "line": 928,
+        "line": 941,
         "module": "app.memory",
         "table": "memory_usages"
       },
@@ -10310,6 +10374,7 @@
           "i18n/",
           "interface.py",
           "mcp.py",
+          "models.py",
           "router.py",
           "tests/"
         ],
@@ -13595,8 +13660,44 @@
         "declared_path": "/file-share/bridges",
         "file": "back/app/file_share/router.py",
         "handler": "list_bridges",
-        "line": 14,
+        "line": 20,
         "method": "GET",
+        "module": "app.file_share"
+      },
+      {
+        "authorized": true,
+        "declared_path": "/file-share/indexing",
+        "file": "back/app/file_share/router.py",
+        "handler": "read_indexing",
+        "line": 32,
+        "method": "GET",
+        "module": "app.file_share"
+      },
+      {
+        "authorized": true,
+        "declared_path": "/file-share/indexing",
+        "file": "back/app/file_share/router.py",
+        "handler": "create_indexing",
+        "line": 39,
+        "method": "POST",
+        "module": "app.file_share"
+      },
+      {
+        "authorized": true,
+        "declared_path": "/file-share/indexing/repairs/retry",
+        "file": "back/app/file_share/router.py",
+        "handler": "retry_index_repairs",
+        "line": 64,
+        "method": "POST",
+        "module": "app.file_share"
+      },
+      {
+        "authorized": true,
+        "declared_path": "/file-share/indexing/{run_id}/cancel",
+        "file": "back/app/file_share/router.py",
+        "handler": "cancel_indexing",
+        "line": 54,
+        "method": "POST",
         "module": "app.file_share"
       },
       {
@@ -17541,6 +17642,7 @@
           "front/app/memory/pages/index.vue",
           "front/app/memory/richContent.ts",
           "front/app/memory/services/contactService.ts",
+          "front/app/memory/services/fileIndexService.ts",
           "front/app/memory/services/memoryService.ts",
           "front/app/memory/stores/documentIcons.ts"
         ],

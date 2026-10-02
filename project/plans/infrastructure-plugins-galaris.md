@@ -37,64 +37,23 @@ La cible sait :
 9. distinguer retrait du code et purge destructive des données ;
 10. utiliser la même chaîne pour un ZIP local et, ultérieurement, un store distant signé.
 
-## 2. État actuel vérifié
+## 2. Écarts à combler et contrats à réutiliser
 
-### 2.1 Backend
+Le bootstrap des modules, leurs contributions et la convergence DbAdmin sont décrits dans
+le [guide développeur](../../docs/fr/dev/README.md) et la
+[cartographie](../../docs/fr/architecture/generated/project-map.md). Ils ne sont pas des
+lots de ce plan. La cible plugin doit ajouter :
 
-`back/modules.py` contient un registre statique. Les modules actifs peuvent contribuer par
-convention des modèles SQLAlchemy, routers FastAPI, privilèges, datasets DbAdmin et outils MCP.
-Certains registres spécialisés chargent aussi les providers LLM, drivers, Harnesses et
-superviseurs.
+- découverte des versions installées et distinction installé/désiré/effectif ;
+- validation stricte des contributions et activation atomique d'une génération cohérente ;
+- rollback vers une génération fonctionnelle ;
+- conservation du schéma installé lors d'une désactivation ;
+- chargement d'un frontend précompilé depuis un manifeste runtime ;
+- exposition dédiée des seuls artefacts frontend publics.
 
-Cette base permet de traiter un plugin comme un module à la composition, mais pas encore :
-
-- de découvrir une version installée dans un volume persistant ;
-- de distinguer version installée, désirée et effectivement activée ;
-- de valider toutes les contributions avant de les rendre visibles ;
-- d'appliquer atomiquement un ensemble cohérent de plugins ;
-- de revenir automatiquement à la dernière génération fonctionnelle.
-
-Les chargeurs optionnels ne distinguent pas tous une capacité absente d'une dépendance cassée à
-l'intérieur du module. Le contrat plugin devra être plus strict et échouer avant activation.
-
-### 2.2 Base de données
-
-`core.dbadmin` importe les modèles des modules déclarés, construit la cible SQLAlchemy du schéma
-`public`, puis Atlas applique sa convergence. L'entrypoint effectue cette synchronisation avant le
-démarrage de FastAPI.
-
-Retirer un plugin de la cible ne peut donc pas être assimilé à une simple désactivation : ses
-tables pourraient apparaître comme des objets à supprimer. Le registre devra séparer les plugins
-dont le schéma reste installé de ceux dont les capacités runtime sont actives.
-
-### 2.3 Frontend
-
-`front/modules.ts` déclare les modules frontend. Vite lit cette liste pendant le build pour
-produire les routes basées sur les fichiers. Les fichiers `navigation.ts` et `i18n.ts` sont eux
-aussi agrégés au sein du bundle.
-
-En production, Nginx sert des ressources statiques déjà compilées. Copier du TypeScript ou des
-fichiers Vue après le build ne peut donc pas ajouter une interface. Un plugin distribuable doit
-fournir un artefact frontend précompilé et un entrypoint runtime stable.
-
-### 2.4 Déploiement
-
-Le backend possède déjà un volume persistant `/data`, tandis que le frontend de production est une
-image Nginx sans accès à ce volume. Une zone publique dédiée aux artefacts frontend des plugins
-devra être exposée sans rendre accessibles les autres données de `/data`.
-
-### 2.5 Alignement avec la cible prospective
-
-`project/plans/cible.md` prévoit déjà :
-
-- l'installation et le retrait d'extensions sans modifier un registre statique du cœur ;
-- un SDK minimal et un TCK exécutable hors du monorepo ;
-- un format de bundle, des compatibilités et permissions déclarées ;
-- SBOM, provenance, signature, révocation et rollback ;
-- un registre personnel puis fédéré.
-
-Le présent plan précise l'infrastructure de modules back/front nécessaire à cette intention. Il ne
-remplace ni les gates du Trust Kernel, ni ceux de la supply chain décrits par la cible générale.
+Le [chantier d'écosystème signé](cible.md#310-écosystème-signé) porte SDK, TCK, bundle,
+compatibilités, permissions, provenance et révocation. Ce plan conserve leur réalisation
+plugin sans remplacer les contrôles généraux de gouvernance de la cible.
 
 ## 3. Vocabulaire et objets distincts
 

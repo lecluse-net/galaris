@@ -31,7 +31,9 @@ changement de génération et réponse tardive.
 
 ## 3. Échéance globale
 
-Distinguer échéance de l'inférence et timeout de transport. Définir le budget cumulé des
+Partir du délai absolu des appels physiques documenté dans le
+[flux d'exécution](../../docs/fr/architecture/flows/agent-execution.md) ; son application
+n'est plus à implémenter. Définir une échéance de l'inférence et le budget cumulé des
 tentatives, son comportement pendant une pause et sa persistance après redémarrage.
 Une échéance expirée ne prouve pas l'arrêt d'un calcul distant : conserver les fragments,
 coûts et incertitudes, sans relance implicite.

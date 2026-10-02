@@ -21,6 +21,8 @@ including jobs and events, while preserving business processes and settling wait
 `e2e/specs/agent-admin.spec.mjs` checks creation and two successive portraits displayed after
 Vue navigation without a full reload, a renamed title and refusal after revocation,
 using a synthetic provider.
+`front/browser-tests/agents.spec.mjs` delays an older catalogue response, then verifies
+that it cannot remove the current catalogue's portrait and that its temporary URL is released.
 
 The synthetic `back/app/lab/planner_boundaries_corpus.json` contains 24 granularity cases:
 ordered collections, partial recovery, unknown sizes, small batches, complex coherent tasks,
@@ -100,6 +102,8 @@ connection, resuming the original action without replay, and subsequent executio
 It also covers concurrent claims, non-repeatable denial, expiry, quotas, context or configuration
 revocation, YOLO, and file preconditions. Permanent consent rejects changed MCP configuration,
 including changes between call preparation and creation of its question.
+A copy resumes after one-action or permanent consent only if the observed source
+is unchanged; changing the function mode does not discard its precondition.
 Real HTTP routes reject a system runtime token without its context, accept a valid
 context, reject a revoked context, and preserve independent MCP clients.
 `app/connection/tests/test_function_modes_migration.py`
@@ -115,6 +119,11 @@ for agreement, denial, revocation and cancellation, without restarting the SDK.
 `make tests-harness-runtimes` exercises the embedded Codex, Claude, Hermes and DeepSeek SDKs
 with synthetic model and external transports: no effect before agreement, denial, resumption
 of the exact call, and MCP continuation. This qualification does not prove a deployment.
+The synthetic transport delays the DeepSeek authorization response: the test waits for
+the suspended state before answering and cancels any active workers if it fails.
+ToolAdmin diagnostics use successive synthetic HTTP/SSE servers and check catalogue bounds
+without executing its functions. Each server starts with a reset SSE shutdown flag, which
+the library retains at the test process level.
 `e2e/specs/tool-authorizations.spec.mjs` checks agreement and denial, reopening, keyboard use,
 YOLO and blocked functions in the assembled application at 390 and 1440 pixels.
 `front/browser-tests/action-authorizations.spec.mjs` covers the permanent choice with its explicit
@@ -168,7 +177,26 @@ saved selections and permission revocation) and `e2e/specs/deferred-tabs.spec.mj
 (Connections/Authorizations tabs against the real API and DB, selecting agents and preserving
 filters when returning to a tab, on mobile and desktop).
 The latter also reproduces a late Documents library response while the next page loads:
-automatic selection must not cancel navigation. Push tests cover eligibility, deduplication
+automatic selection must not cancel navigation.
+E2E repetitions share an isolated database: created references use unique labels, and scenarios
+use search and pagination to retrieve their data. The local `internal` driver, when its
+definition is available, does not trigger supervisor status reads. Other drivers remain
+inspected, including the network driver shared by Codex, Claude and DeepSeek runtimes.
+Unavailable driver metadata does not hide supervision or recovery after an error.
+Selectors without a search input are navigated
+with the keyboard, including virtualized options; titles remain selectable beyond the first 500 entries.
+Before a deliberate reload, they wait for
+the relevant HTTP responses. `e2e/page-errors.mjs` retains JavaScript and network errors;
+it excludes a native WebKit XHR error only when cancellation of that same request is observed.
+Its wait tracks completion or failure events for requests in flight, then the requests
+triggered by their responses until that sequence finishes. It excludes Socket.IO long polling
+and also covers navigation immediately after sign-in.
+On full navigation, requests from the departing document no longer participate in
+this wait: a request started during replacement can disappear without a completion
+event. Errors remain observed and requests from the new document are tracked.
+Credit journeys await each visible result; they do not await quota reads cancelled on
+provider changes, while retaining error observation for those requests.
+Push tests cover eligibility, deduplication
 and the durable effects of provider responses (success, removed subscription, refusal and
 unavailability), using a real DB.
 
@@ -274,7 +302,7 @@ are in `front/browser-tests/`.
 | `process` | Start, observe, cancel and recover external work; immutable terminal outcomes | `test_recovery.py`, `test_process_core.py`, `test_router_scope.py`, `test_worker_concurrency.py`, `execution.spec.mjs` |
 | `tools` | Authorized discovery, access denial and secret redaction; revocation before effects on an already mounted native server, reactivation and agent isolation | `test_admin_access.py`, `test_agent_registry.py`, `test_secrets.py`, `test_resource_effects.py`, `test_live_authorization.py` |
 | Web search | Preserve query, encoding, order and configured language; distinguish empty, partial, degraded and failed searches; retain valid sources, redact raw exceptions and cancel transport without blocking the event loop | `back/app/tools/tests/test_search.py` (replaced HTTP boundary, real client and tool) |
-| Tool indexing parameters | Configure `tools.fileindexing` per Tool and connection with inheritance, overrides, imposed values and provider limits; carry over legacy preferences without reapplying them; save from the embedded Console and retry failed writes; translate internal labels in all three languages | `back/app/tools/tests/test_file_indexing.py`, `front/browser-tests/tool-parameters.spec.mjs`, `e2e/specs/tool-parameters.spec.mjs` (desktop/mobile) |
+| Tool indexing parameters | Configure `tools.fileindexing` per Tool and connection with inheritance, overrides, imposed values and provider limits; carry over legacy preferences without reapplying them; respect effective values in search and automatic traversal; save from the embedded Console and retry failed writes; translate internal labels in all three languages | `back/app/tools/tests/test_file_indexing.py`, `back/app/memory/tests/test_file_catalogue.py`, `front/browser-tests/tool-parameters.spec.mjs`, `e2e/specs/tool-parameters.spec.mjs` (desktop/mobile) |
 | ToolAdmin administration | Test/create candidates without leaking secrets into model messages or checkpoints; initially inactive connection, inheritance, atomic batches, conflicts, dependencies and denied self-delegation; revocation and rotation in old FastMCP/Pydantic AI clients; resumable, cancellable and reauthorized bulk Process | `back/app/tools/tests/test_tool_admin.py`, `test_admin_network.py`; `e2e/specs/tool-admin.spec.mjs` (assembled application, keyboard, backdrop dismissal/reopening, desktop/mobile) |
 | Search availability | HTTP 200 without sources does not pass the probe; degradation retains sources and produces a distinct verdict | `back/app/tools/tests/test_search.py`; `make check-search` for the opt-in external corpus, with human relevance review |
 | `connection` | Configure connections and functions without leaking secrets or another agent's scope | `test_connections.py`, `test_encryption.py`, `test_function_states.py` |
@@ -465,3 +493,16 @@ changes prevent an outdated PDF from being offered.
 
 Coverage: `mobile-editor-toolbar.spec.mjs`, `document-voice.spec.mjs`,
 `rich-text.spec.mjs` and `document-print.spec.mjs` in `front/browser-tests/`.
+
+## Private file catalogue and maintenance
+
+`back/app/memory/tests/test_file_catalogue.py` verifies encounters, agent and binding
+isolation, editable personal fields, tombstones and late responses, durable repair without
+replaying external effects, resumable pages exceeding 500 entries, budgets/cancellation,
+versioned enrichment, external changes and RBAC.
+`back/app/memory/tests/test_file_catalogue_scale.py` qualifies synthetic catalogues of
+1,000, 10,000 and 100,000 entries and compares writes with and without observation. These
+are local measurements with a synthetic provider, not a remote latency guarantee.
+`front/browser-tests/file-indexing.spec.mjs` covers progress, start/cancel, error/retry and
+late response rejection after an agent switch on desktop/mobile.
+`e2e/specs/file-indexing.spec.mjs` exercises the assembled application and its real API.

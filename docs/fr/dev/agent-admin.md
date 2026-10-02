@@ -100,6 +100,8 @@ les animations utilisent leur première image et les métadonnées EXIF sont ret
 Cette conversion s’applique au POST HTTP, aux URI et aux portraits générés.
 Une révision monotone protège aussi contre un avatar remplacé puis restauré. Les lecteurs UI
 utilisent cette révision pour charger le nouvel avatar à la réouverture.
+Une réponse d'un ancien chargement de la liste ne peut pas retirer un portrait courant ;
+son URL temporaire est libérée.
 
 ## Vérification
 

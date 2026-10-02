@@ -39,6 +39,29 @@ default. Console also exposes this parameter for its embedded target. Existing p
 are carried over during synchronization and preserved through upgrades. Each agent's source
 permissions remain enforced, and the integrated definition remains protected.
 
+Console, AFFiNE and Grav currently support only files already known; Nextcloud also offers
+discovery and indexing of all available content. Mail remains excluded, as do messaging attachments belonging
+to mixed Tools. Operations on encountered files now create private `file`/`directory`
+Memory entries, searchable by name, URI and metadata without waiting for Dream. Disabling
+or reconfiguring a connection removes its old entries from search; access to the source
+file is also checked. Automatic traversal processes authorized roots in pages, resumes
+after interruption and renews after six hours. Known URIs are checked periodically without
+traversing the provider. Only complete listings and proven deletions retire catalogue
+entries; an unavailable source remains distinct from a deleted source.
+
+Open an entry in **Memory**, edit its title or content, then save.
+Manually edited fields are preserved during subsequent file observations.
+Editing updates the Memory entry; the catalogue continues to update source references
+and the file bytes remain with their provider.
+
+In **Memory**, select the agent and open **File indexing**. Enter an eligible root, such as
+`nextcloud://`, and choose **Index now**. The table shows encountered entries, complete
+directories and errors; active runs can be cancelled. Partial coverage indicates a volume,
+depth or pagination limit. Terminal diagnostics are retained for 30 days. Observation
+failures are repaired with backoff without replaying external effects; **Retry repairs**
+explicitly restarts terminal failures. Existing Dream
+media options enable versioned enrichment while preserving personally curated content.
+
 ### Create the Tool
 
 1. Inspect `tool_admin_list` and read any existing definition with `tool_admin_get` to avoid duplicates.

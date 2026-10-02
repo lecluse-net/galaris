@@ -10,6 +10,8 @@ Ce document décrit le contrat développeur de `core.dbadmin`, l’unique chemin
 
 - Les modèles SQLAlchemy actifs décrivent entièrement la cible du schéma `public`.
 - DbAdmin utilise Atlas comme détail privé pour faire converger la base vers cette cible.
+- DbAdmin prépare `vector` et `pg_trgm` avant les index déclarés : les trigrammes accélèrent
+  les recherches littérales Memory sans changer les droits ni les résultats.
 - Galaris n’utilise ni Alembic, ni migrations numérotées, ni historique linéaire de versions.
 - Chaque synchronisation compare la base présente à la cible de la branche courante.
 - Les transformations particulières sont des actions idempotentes déclenchées par le delta

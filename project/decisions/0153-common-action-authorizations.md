@@ -101,6 +101,8 @@ YOLO network authority is checked by generation and withdrawn from open channels
 File mutation preflights bind revisions/ETags or bounded content hashes; collection
 membership is bounded to 200 entries and unversioned snapshots to 50 MiB. Provider
 ACLs and conditional mutation rules still apply at transport.
+Choosing permanent permission still resumes the original operation against its
+approved resource snapshot; changing the function mode does not discard that check.
 
 ## Upgrade and limits
 

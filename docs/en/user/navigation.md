@@ -125,6 +125,13 @@ When an agent avatar is saved, the image is converted to JPEG and reduced to at 
 | Connections | Configure connections associated with agents | `/tools?tab=connections` |
 | Authorizations | Administer access rules for tools and functions | `/tools?tab=authorizations` |
 
+In a custom Tool definition, each connection parameter can have a label, description and
+default value. For text or integers, **Add a fixed choice** defines allowed values and their
+display labels: the form then shows a dropdown. The technical code stays visible below the
+label. Agent connections, global parameters and MCP tests share these controls. Parameters
+without choices remain free text; passwords stay masked. YAML export and import preserve
+choices and labels.
+
 To delegate catalogue and connection management, explicitly enable **ToolAdmin** and follow
 the [delegated administration journey](../admin/tool-administration.md).
 The Galaris assistant receives this active connection when first created; later deactivation

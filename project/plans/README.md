@@ -1,6 +1,6 @@
 # Plans actifs de Galaris
 
-Revue documentaire du **27 septembre 2026**, fondée sur le code, les contrats, les tests et
+Revue documentaire du **1er octobre 2026**, fondée sur le code, les contrats, les tests et
 les décisions du dépôt. Elle ne relance pas les qualifications et ne prouve aucun déploiement.
 
 Cet index contient uniquement les extensions, mesures et conceptions encore ouvertes.
@@ -21,14 +21,14 @@ d'implémentation ni nouvel ordre de priorité produit.
 
 | Plan | Statut | Reste à faire |
 |---|---|---|
-| [analyse-documentaire-unifiee.md](analyse-documentaire-unifiee.md) | `partial` | Socle commun, Process reprenable, cache autorisé et fallback Chat/Responses réalisés ; restent la qualification sémantique exhaustive des grands rapports, les formats non qualifiés et le XLS structurel. |
+| [analyse-documentaire-unifiee.md](analyse-documentaire-unifiee.md) | `partial` | Formats non qualifiés et XLS structurel, isolation réseau des convertisseurs, contrôles sémantiques et qualification exhaustive et répétée des grandes sources. |
 | [fiabilisation-conversationnelle.md](fiabilisation-conversationnelle.md) | `partial` | Mesures de latence, dont le dispatcher ; arrêt physique des autres runtimes et effets distants réels (worker Hermès direct qualifié en environnement synthétique), remplacement coordonné Task/Goal/Process ; autres surfaces de capacités et diagnostics ; recherche dans l'environnement cible, livraison d'images, contexte utile ; objets candidats concurrents et langue/effort hors du dispatcher qualifié FR/EN ; frictions du parcours complet. |
-| [llm-calls-durables.md](llm-calls-durables.md) | `partial` | Création différée, commandes avec révision attendue, échéance globale, entrées média, rétention et arbitrages de rejeu incertain justifiés par un consommateur. |
-| [convergence-pydantic-ai.md](convergence-pydantic-ai.md) | `partial` | Métadonnées OpenRouter, changements d'intégration/protocole à qualifier, projection des réglages demandés/envoyés et surfaces média. |
+| [llm-calls-durables.md](llm-calls-durables.md) | `partial` | Création différée, commandes avec révision attendue, échéance cumulée des tentatives, entrées média et arbitrages de rejeu incertain justifiés par un consommateur. |
+| [convergence-pydantic-ai.md](convergence-pydantic-ai.md) | `partial` | Métadonnées OpenRouter, étude d'un transport Codex natif alternatif, projection des réglages demandés/envoyés et extensions embeddings, realtime et média. |
 | [portee-provenance-execution-agentique.md](portee-provenance-execution-agentique.md) | `partial` | Contrat générique de portée, descripteurs d'effets, plan validé, préflight et intégration de ces décisions dans l'activité existante. |
 | [lab-evaluation-mecanismes-ia.md](lab-evaluation-mecanismes-ia.md) | `partial` | Qualification des campagnes FR/EN avec fournisseurs réels, étalonnage du juge, incertitude, politiques de comparabilité élargies et tendances, gardes de promotion, portabilité et jugement renforcé. |
 | [optimisation-prompts-agentiques.md](optimisation-prompts-agentiques.md) | `partial` | Mesures sur corpus multilingue et sélection du contexte selon les résultats, sans modifier le contrat des sessions de Task. |
-| [amelioration-globale-memoire.md](amelioration-globale-memoire.md) | `partial` | Qualification multilingue et sur d'autres corpus, utilité aval, nouvelles extractions de PJ, provenance fine, observation et expériences Memory/Dream/Topics. |
+| [amelioration-globale-memoire.md](amelioration-globale-memoire.md) | `partial` | Qualification et expériences Memory/Dream/Topics ; transcriptions audio et analyses de PJ vers les souvenirs, provenance et couverture explicites, évaluation du texte extrait documentaire et utilité aval. |
 | [outils-mcp-multimedia.md](outils-mcp-multimedia.md) | `partial` | Qualification des comptes et livraisons réels ; accès officiel Suno, références média, composition avancée et extensions locales à concevoir séparément. |
 | [modeles-decision.md](modeles-decision.md) | `partial` | Comparaisons spécialisé/texte avec répétitions et témoin, qualification Jev réelle des usages Topics et mémoire, latence de bout en bout et optimisations guidées par les mesures ; nouveaux usages et adaptateurs locaux différés. |
 
@@ -39,7 +39,7 @@ d'implémentation ni nouvel ordre de priorité produit.
 | [cible.md](cible.md) | `design` | Livraison publique, gouvernance des effets, releases d'agents, autonomie, interopérabilité et exploitation. |
 | [infrastructure-plugins-galaris.md](infrastructure-plugins-galaris.md) | `design` | Bundles, activation, frontend précompilé, permissions, conservation des données, compatibilité et rollback. |
 | [consolidation-parametrique-lora.md](consolidation-parametrique-lora.md) | `design` | Entraînement et service de modèles à qualifier ; dépend des campagnes, de l'étalonnage et des gardes du Lab. |
-| [indexation-file-share-memory.md](indexation-file-share-memory.md) | `design` | Catalogue fichiers/répertoires par agent et binding, notes privées, observations immédiates, enrichissements versionnés, discovery/réconciliation Dream, purge prouvée et recherche Memory commune ; matrice des capacités provider et qualification à réaliser. |
+| [indexation-file-share-memory.md](indexation-file-share-memory.md) | `partial` | Catalogue privé, fiches éditables, parcours périodique/reprenable, réconciliation, réparation durable, enrichissements Dream et suivi Memory implémentés. Qualification synthétique jusqu’à 100 000 entrées réalisée ; objectifs atteints à ce volume avec statistiques fraîches, démarrage à froid et installations réelles encore à qualifier. Documents, Galaris, Web, Mail et transports Messenger exclus. |
 
 La piste optionnelle de visualisation 3D de la mémoire reste dans la
 [cible prospective](cible.md#piste-optionnelle--visualisation-3d-de-la-mémoire).
