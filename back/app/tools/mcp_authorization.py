@@ -56,9 +56,12 @@ async def bind_native_action(ctx: McpToolContext, definition: McpToolDefinition,
     _, params = await connections.get_params_as_dict(connection.id)
     preflight: dict[str, Any] = {}
     resolved = await connections.resolve_function(connection, definition.name)
-    if definition.authorization_preflight is not None and resolved["effective_state"] == "ask":
-        preflight = await definition.authorization_preflight(ctx, arguments)
     execution = current_tool_execution()
+    # A permanent grant changes the function to enabled, but the approved
+    # operation must still match the resource snapshot captured before consent.
+    resuming = execution is not None and bool(execution.authorization_continuation)
+    if definition.authorization_preflight is not None and (resolved["effective_state"] == "ask" or resuming):
+        preflight = await definition.authorization_preflight(ctx, arguments)
     action = AuthorizationAction(
         agent_id=ctx.agent_id, runtime=ctx.runtime,
         context_key=authorization_context_key(ctx.task_id, ctx.resources),
