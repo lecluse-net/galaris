@@ -407,163 +407,147 @@
             </template>
 
             <!-- General tab -->
-            <template v-if="!isAgentEdit || agentDialogTab === 'general'">
-            <!-- Avatar for existing agents -->
-            <template v-if="isAgentEdit">
-              <div class="row q-col-gutter-sm items-center q-mb-sm">
-                <div class="col-4 flex flex-center">
-                  <q-avatar size="80px" class="agent-fallback-avatar agent-dialog-avatar">
-                    <img v-if="agentForm.id !== null && agentForm.has_avatar && avatarUrls[agentForm.id]" :src="avatarUrls[agentForm.id]" />
-                    <template v-else>{{ agentInitials(agentForm) }}</template>
-                  </q-avatar>
+            <div v-if="!isAgentEdit || agentDialogTab === 'general'" class="agent-general-form">
+              <!-- Avatar for existing agents -->
+              <template v-if="isAgentEdit">
+                <div class="row q-col-gutter-x-sm items-center">
+                  <div class="col-4 flex flex-center">
+                    <q-avatar size="80px" class="agent-fallback-avatar agent-dialog-avatar">
+                      <img v-if="agentForm.id !== null && agentForm.has_avatar && avatarUrls[agentForm.id]" :src="avatarUrls[agentForm.id]" />
+                      <template v-else>{{ agentInitials(agentForm) }}</template>
+                    </q-avatar>
+                  </div>
+                  <div class="col-8 column q-gutter-y-sm">
+                    <q-file
+                      v-model="avatarFile"
+                      class="agent-avatar-action"
+                      :label="$t('agent.changeAvatar')"
+                      filled
+                      dense
+                      hide-bottom-space
+                      accept="image/*"
+                      @update:model-value="onAvatarSelected"
+                      :loading="uploadingAvatar"
+                      :disable="!canManageCurrentAgent"
+                    >
+                      <template v-slot:prepend>
+                        <q-icon name="cloud_upload" />
+                      </template>
+                    </q-file>
+                    <q-btn
+                      v-if="canManageCurrentAgent && agentForm.has_avatar"
+                      class="agent-avatar-action"
+                      flat
+                      color="negative"
+                      icon="delete"
+                      :label="$t('agent.deleteAvatar')"
+                      @click="confirmDeleteAvatar"
+                      :loading="uploadingAvatar"
+                    />
+                  </div>
                 </div>
-                <div class="col-8 column q-gutter-y-sm">
-                  <q-file
-                    v-model="avatarFile"
-                    class="agent-avatar-action"
-                    :label="$t('agent.changeAvatar')"
-                    filled
-                    dense
-                    accept="image/*"
-                    @update:model-value="onAvatarSelected"
-                    :loading="uploadingAvatar"
-                    :disable="!canManageCurrentAgent"
-                  >
-                    <template v-slot:prepend>
-                      <q-icon name="cloud_upload" />
-                    </template>
-                  </q-file>
-                  <q-btn
-                    v-if="canManageCurrentAgent && agentForm.has_avatar"
-                    class="agent-avatar-action"
-                    flat
-                    color="negative"
-                    icon="delete"
-                    :label="$t('agent.deleteAvatar')"
-                    @click="confirmDeleteAvatar"
-                    :loading="uploadingAvatar"
-                  />
-                </div>
-              </div>
-              <q-separator class="q-my-md" />
-            </template>
+                <q-separator />
+              </template>
 
-            <q-select
-              v-model="agentForm.user_id"
-              :options="managerOptions"
-              :label="$t('agent.managerLabel')"
-              filled
-              emit-value
-              map-options
-              :loading="managersLoading"
-              :disable="managersLoading"
-              :rules="[val => val !== null || $t('agent.managerRequiredRule')]"
-              :hint="$t('agent.managerHint')"
-            />
+              <q-select
+                v-model="agentForm.user_id"
+                :options="managerOptions"
+                :label="$t('agent.managerLabel')"
+                filled
+                hide-bottom-space
+                emit-value
+                map-options
+                :loading="managersLoading"
+                :disable="managersLoading"
+                :rules="[val => val !== null || $t('agent.managerRequiredRule')]"
+                :hint="$t('agent.managerHint')"
+              />
 
-            <!-- Row 1: title and code -->
-            <div class="row q-col-gutter-md">
-              <div class="col-12 col-sm-6">
+              <!-- Identity fields share one responsive grid. -->
+              <div class="agent-identity-fields">
                 <q-select
                   v-model="agentForm.title_id"
                   :options="titleOptions"
                   :label="$t('agent.titleField')"
                   filled
+                  hide-bottom-space
                   emit-value
                   map-options
                   :rules="[val => val !== null || $t('agent.titleRequiredRule')]"
                 />
-              </div>
-              <div class="col-12 col-sm-6">
                 <q-input
                   v-model="agentForm.code"
                   :label="$t('agent.codeLabel')"
                   filled
+                  hide-bottom-space
                   :autofocus="!isAgentEdit"
                   :readonly="isAgentEdit"
                   :rules="codeRules"
                 />
-              </div>
-            </div>
-
-            <!-- Row 2: first and last name -->
-            <div class="row q-col-gutter-md">
-              <div class="col-12 col-sm-6">
                 <q-input
                   v-model="agentForm.first_name"
                   :label="$t('agent.firstName')"
                   filled
+                  hide-bottom-space
                   :rules="[val => !!val?.trim() || $t('agent.firstNameRule')]"
                 />
-              </div>
-              <div class="col-12 col-sm-6">
                 <q-input
                   v-model="agentForm.last_name"
                   :label="$t('agent.lastName')"
                   filled
+                  hide-bottom-space
                 />
               </div>
-            </div>
 
-            <!-- Job title -->
-            <div class="row q-col-gutter-md">
-                <div class="col-12 col-sm-4">
-                    <q-btn v-if="canViewTeams" flat icon="groups" :label="$t('team.title')" to="/team" />
-                </div>
-              <div class="col-12 col-sm-8">
-                <q-input
-              v-model="agentForm.job_title"
-              :label="$t('agent.jobTitleLabel')"
-              type="text"
-              filled
-              :hint="$t('agent.jobTitleHint')"
-            />
-              </div>
-            </div>
+              <!-- Job title -->
+              <q-input
+                v-model="agentForm.job_title"
+                :label="$t('agent.jobTitleLabel')"
+                type="text"
+                filled
+                hide-bottom-space
+                :hint="$t('agent.jobTitleHint')"
+              />
 
-            <!-- Runtime and authorization settings follow the agent's identity. -->
-            <q-card v-if="isAgentEdit" flat bordered>
-              <q-card-section>
+              <!-- Runtime and authorization settings follow the agent's identity. -->
+              <template v-if="isAgentEdit">
                 <q-select
                   v-model="selectedHarnessId"
                   :options="harnessSelectionOptions"
                   :label="$t('harnesses.selection')"
                   :hint="$t('harnesses.selectionHint')"
                   filled emit-value map-options
+                  hide-bottom-space
                   :loading="harnessSelectionLoading"
                   :disable="!canManageCurrentAgent || !harnessSelectionLoaded"
                 />
-              </q-card-section>
-              <q-separator />
-              <q-card-section>
                 <AgentYoloControl v-if="editedAgent" :agent="editedAgent" :disabled="!canManageCurrentAgent"
                   @changed="agentStore.fetchAgents(true)" />
-              </q-card-section>
-            </q-card>
+              </template>
 
-            <!-- Personality and job description are edited after creation. -->
-            <template v-if="isAgentEdit">
-              <q-banner class="bg-info text-white q-mb-sm" dense rounded>
-                <template v-slot:avatar>
-                  <q-icon name="info" />
-                </template>
-                <div class="text-caption">
-                  {{ $t('agent.editInfoBanner') }}
-                </div>
-              </q-banner>
-            </template>
+              <!-- Personality and job description are edited after creation. -->
+              <template v-if="isAgentEdit">
+                <q-banner class="bg-info text-white" dense rounded>
+                  <template v-slot:avatar>
+                    <q-icon name="info" />
+                  </template>
+                  <div class="text-caption">
+                    {{ $t('agent.editInfoBanner') }}
+                  </div>
+                </q-banner>
+              </template>
 
-            <div class="row justify-end q-mt-md q-gutter-sm">
-              <q-btn :label="$t('common.cancel')" color="grey" flat v-close-popup />
-              <q-btn
-                v-if="canSaveAgent"
-                :label="isAgentEdit ? $t('common.edit') : $t('common.create')"
-                type="submit"
-                color="primary"
-                :loading="agentStore.loading || harnessChangePending"
-              />
+              <div class="row justify-end q-gutter-x-sm">
+                <q-btn :label="$t('common.cancel')" color="grey" flat v-close-popup />
+                <q-btn
+                  v-if="canSaveAgent"
+                  :label="isAgentEdit ? $t('common.edit') : $t('common.create')"
+                  type="submit"
+                  color="primary"
+                  :loading="agentStore.loading || harnessChangePending"
+                />
+              </div>
             </div>
-            </template>
           </q-form>
 
           <component
@@ -2148,6 +2132,17 @@ onUnmounted(() => {
   max-width: 90vw;
 }
 
+.agent-general-form,
+.agent-identity-fields {
+  display: grid;
+  gap: 16px;
+  min-width: 0;
+}
+
+.agent-identity-fields {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
 .ellipsis {
   overflow: hidden;
   text-overflow: ellipsis;
@@ -2307,6 +2302,10 @@ body.body--dark .agent-fallback-avatar {
 }
 
 @media (max-width: 1023.98px) {
+  .agent-identity-fields {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
   .agent-card-horizontal {
     grid-template-columns: 84px minmax(0, 1fr);
     min-height: 0;

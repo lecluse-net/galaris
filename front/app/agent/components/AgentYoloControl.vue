@@ -1,5 +1,5 @@
 <template>
-  <div class="q-mb-md">
+  <div>
     <q-toggle class="yolo-toggle" :model-value="agent.yolo" color="warning" :disable="disabled || saving" :label="t('agent.yolo.label')"
       @update:model-value="toggle" />
     <q-badge v-if="agent.yolo" class="yolo-badge">{{ t('agent.yolo.active') }}</q-badge>
