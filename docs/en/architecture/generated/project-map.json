@@ -2341,6 +2341,13 @@
       },
       {
         "files": [
+          "back/app/memory/document_thumbnail_service.py"
+        ],
+        "source": "app.memory",
+        "target": "core.document"
+      },
+      {
+        "files": [
           "back/app/memory/automation.py",
           "back/app/memory/goal_document_adapter.py",
           "back/app/memory/goal_folders.py",

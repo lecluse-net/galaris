@@ -13,6 +13,16 @@ Les captures HTML passent par le navigateur partagé ; les raccourcis `.url` ré
 directement l'aperçu de leur URL cible. Chaque domaine contrôle les droits avant d'accéder
 au cache. Supprimer un raccourci ne supprime pas l'aperçu de sa cible.
 
+Les pièces jointes Office utilisent le worker isolé de `core.document` en mode aperçu :
+LibreOffice exporte uniquement la première page en PDF, puis le worker la rasterise sans
+extraction de texte, OCR ni appel LLM. XLS, XLSX et ODS utilisent la première page imprimée
+du classeur, sans forcer toutes les feuilles sur une page. Le fichier source reste intact.
+Les temporaires de conversion sont supprimés après génération, échec ou annulation ; seul
+le PNG rejoint le cache partagé. Ce mode limite la source à 64 Mio, la conversion à 90 secondes
+et le worker à 120 secondes après acquisition d’un des deux emplacements partagés avec
+l’analyse documentaire. Ses checkpoints sont distincts de ceux de l’analyse complète.
+Un échec ne publie pas de cache et permet une nouvelle tentative.
+
 Dans l’interface, les cartes de ressources des messages attendent la proximité de la zone
 visible avant de charger leurs métadonnées. Leurs images et les miniatures de documents
 (discussion et bibliothèque) partagent une file de deux chargements simultanés, différés

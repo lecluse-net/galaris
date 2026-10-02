@@ -9,6 +9,15 @@ aspect ratio and transparency without padding. HTML uses the shared browser rend
 `.url` shortcuts reuse their target URL's thumbnail. Each domain checks access before
 reading the cache. Deleting a shortcut does not delete its target's preview.
 
+Office attachments use the isolated `core.document` worker in preview mode: LibreOffice
+exports only the first page to PDF, then the worker rasterizes it without text extraction,
+OCR or an LLM call. XLS, XLSX and ODS use the workbook’s first printed page without forcing
+every sheet onto one page. The source stays intact. Conversion temporaries are removed
+after generation, failure or cancellation; only the PNG enters the shared cache. This mode
+limits input to 64 MiB, conversion to 90 seconds and the worker to 120 seconds after acquiring
+one of the two slots shared with document analysis. Its checkpoints are separate from full
+analysis checkpoints. Failures publish no cache and allow another attempt.
+
 In the UI, message resource cards wait until they approach the viewport before loading
 metadata. Their images and document thumbnails (chat and library) share a queue of two
 concurrent loads, deferred until after the initial render. Leaving the visible area cancels

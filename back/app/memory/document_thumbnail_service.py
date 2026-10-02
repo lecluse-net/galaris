@@ -8,6 +8,7 @@ from hashlib import sha256
 from collections.abc import Awaitable, Callable
 from contextvars import Context
 from pathlib import Path
+from tempfile import TemporaryDirectory
 from typing import Any, cast
 from uuid import UUID
 
@@ -15,6 +16,7 @@ from loguru import logger
 from PIL import Image, ImageDraw, ImageFont
 
 from core.user import HumanActor
+from core.document import OFFICE_EXTENSIONS, prepare_document
 
 from core.preview import render_html_pdf, thumbnails
 from core.params import runtime_settings
@@ -139,6 +141,18 @@ def _pdf_thumbnail(path: Path) -> bytes | None:
         return None
 
 
+async def _office_thumbnail(path: Path, attachment: DocumentAttachmentPublic) -> bytes | None:
+    with TemporaryDirectory(prefix="office-thumbnail-") as temporary:
+        directory = Path(temporary)
+        prepared = await prepare_document(
+            path, attachment.name, attachment.media_type, directory, preview_only=True,
+        )
+        if not prepared.pages:
+            return None
+        image = prepared.image_path(prepared.pages[0], directory)
+        return await asyncio.to_thread(thumbnails.from_image, image) if image is not None else None
+
+
 def _video_thumbnail(path: Path) -> bytes | None:
     """Decode one early representative video frame without scanning the whole file."""
 
@@ -246,6 +260,8 @@ async def _generate(
             content = await asyncio.to_thread(_video_thumbnail, path)
         elif media_type == "application/pdf" or attachment.name.casefold().endswith(".pdf"):
             content = await asyncio.to_thread(_pdf_thumbnail, path)
+        elif Path(attachment.name).suffix.casefold() in OFFICE_EXTENSIONS:
+            content = await _office_thumbnail(path, attachment)
         elif media_type.startswith("text/"):
             content = await asyncio.to_thread(_text_thumbnail, path)
         else:

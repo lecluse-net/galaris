@@ -9,6 +9,42 @@ test.beforeEach(async ({ page }) => {
 
 const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+a5AAAAABJRU5ErkJggg==', 'base64')
 
+for (const width of [1440, 390]) test(`Office attachments show thumbnails and keep their original download at ${width}px`, async ({ page }) => {
+  await page.setViewportSize({ width, height: 900 })
+  const attachments = ['Report.docx', 'Notes.odt', 'Budget.XLSX', 'Forecast.ods'].map((name, index) => ({
+    id: `office-${index}`, name, media_type: 'application/octet-stream', size_bytes: 24,
+  }))
+  const reads = new Map()
+  await page.route('**/api/memory/documents/doc-a/attachments/*/thumbnail?*', route => {
+    const id = new URL(route.request().url()).pathname.split('/').at(-2)
+    const count = (reads.get(id) ?? 0) + 1
+    reads.set(id, count)
+    return count === 1
+      ? route.fulfill({ status: 404 })
+      : route.fulfill({ contentType: 'image/png', body: png })
+  })
+  const original = Buffer.from('Synthetic original workbook')
+  await page.route('**/api/memory/documents/doc-a/attachments/office-2?*', route => route.fulfill({ contentType: 'application/octet-stream', body: original }))
+  await mount(page, 'app/memory/components/DocumentAttachments.vue', {
+    props: { documentId: 'doc-a', agentId: 7, attachments },
+  })
+  for (const attachment of attachments) {
+    const card = page.locator('.resource-preview-card').filter({ has: page.getByText(attachment.name, { exact: true }) })
+    await card.scrollIntoViewIfNeeded()
+    const image = card.getByRole('img', { name: attachment.name, exact: true })
+    await expect(image).toHaveJSProperty('naturalWidth', 1)
+    expect(reads.get(attachment.id)).toBe(2)
+  }
+  const downloaded = page.waitForEvent('download')
+  // The whole card and its explicit action both download the original Office file.
+  await page.getByRole('button', { name: 'Download Budget.XLSX', exact: true }).first().click()
+  const download = await downloaded
+  expect(download.suggestedFilename()).toBe('Budget.XLSX')
+  const chunks = []
+  for await (const chunk of await download.createReadStream()) chunks.push(chunk)
+  expect(Buffer.concat(chunks)).toEqual(original)
+})
+
 test('message previews wait until the message approaches the viewport', async ({ page }) => {
   let calls = 0
   await page.route('**/api/chat/rooms/room/messages/message/previews*', route => {

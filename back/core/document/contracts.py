@@ -5,6 +5,11 @@ from pathlib import Path
 from pydantic import BaseModel, Field
 
 
+OFFICE_EXTENSIONS = frozenset({
+    ".doc", ".docx", ".odt", ".rtf", ".odg", ".odp", ".ppt", ".pptx", ".xls", ".xlsx", ".ods",
+})
+
+
 class DocumentPage(BaseModel):
     number: int = Field(ge=1)
     text: str = ""

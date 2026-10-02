@@ -293,6 +293,7 @@ const canThumbnail = (attachment: DocumentAttachment): boolean => {
     || mediaType === 'application/pdf'
     || name.endsWith('.pdf')
     || name.endsWith('.url')
+    || /\.(doc|docx|odt|rtf|odg|odp|ppt|pptx|xls|xlsx|ods)$/.test(name)
 }
 const previewKind = computed(() => previewAttachment.value ? attachmentKind(previewAttachment.value) : null)
 const previewIsImmersive = computed(() => previewKind.value !== null && previewKind.value !== 'audio')

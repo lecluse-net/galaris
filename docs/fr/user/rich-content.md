@@ -131,6 +131,12 @@ Les miniatures conservent les proportions et la transparence du fichier : elles 
 dans une limite de 520 × 320 pixels, sans ajout de bandes blanches. Leur affichage occupe la
 hauteur ou la largeur disponible selon leur format, en gardant l’image entière.
 
+Les fichiers Office joints (DOC, DOCX, ODT, RTF, ODG, ODP, PPT et PPTX) affichent une
+miniature de leur première page. Les tableurs XLS, XLSX et ODS affichent leur première
+page imprimée, selon la mise en page du classeur. L’aperçu apparaît après sa génération ;
+si la conversion échoue, le fichier reste téléchargeable. Le clic sur ces cartes télécharge
+le fichier original, qui reste intact.
+
 Le bouton **Imprimer** de l’éditeur ouvre la boîte d’impression du navigateur avec le contenu
 en cours, y compris les modifications non encore enregistrées. L’impression conserve les
 images, tableaux et encadrés sur fond clair, sans les commandes de l’éditeur. Elle utilise

@@ -8,6 +8,7 @@ from io import BytesIO
 from pathlib import Path
 from uuid import uuid4
 from unittest.mock import AsyncMock
+from zipfile import ZipFile
 
 import av
 import pytest
@@ -24,6 +25,7 @@ from app.memory import document_thumbnail_service
 from app.memory import service
 from app.memory.schemas import MemoryItemCreate, MemoryItemUpdate, MemoryPayload, MemoryGrantUpdate
 from core.preview import thumbnails
+from core.document import prepare_document
 from app.browser import service as browser_service
 from app.browser.schemas import BrowserScreenshot, BrowserScreenshotPart
 
@@ -170,6 +172,80 @@ def _attachment(name: str, media_type: str) -> DocumentAttachmentPublic:
     )
 
 
+def _office_source(path: Path) -> None:
+    """Entirely synthetic Office sources, with text on the first page or sheet."""
+    suffix = path.suffix.lower()
+    if suffix in {".odt", ".ods"}:
+        kind = "text" if suffix == ".odt" else "spreadsheet"
+        namespace = 'urn:oasis:names:tc:opendocument:xmlns:'
+        body = '<text:p>Synthetic report: quarterly total 1200.</text:p>' if kind == "text" else (
+            '<table:table table:name="Quarterly report"><table:table-row>'
+            '<table:table-cell office:value-type="string"><text:p>Quarterly total</text:p></table:table-cell>'
+            '<table:table-cell office:value-type="float" office:value="1200"><text:p>1200</text:p></table:table-cell>'
+            '</table:table-row></table:table>'
+            '<table:table table:name="Second sheet"><table:table-row>'
+            '<table:table-cell office:value-type="string"><text:p>Second sheet is outside the thumbnail.</text:p></table:table-cell>'
+            '</table:table-row></table:table>'
+        )
+        entries = {
+            "mimetype": f"application/vnd.oasis.opendocument.{kind}",
+            "META-INF/manifest.xml": f'<manifest:manifest xmlns:manifest="{namespace}manifest:1.0"><manifest:file-entry manifest:full-path="/" manifest:media-type="application/vnd.oasis.opendocument.{kind}"/><manifest:file-entry manifest:full-path="content.xml" manifest:media-type="text/xml"/></manifest:manifest>',
+            "content.xml": f'<office:document-content xmlns:office="{namespace}office:1.0" xmlns:text="{namespace}text:1.0" xmlns:table="{namespace}table:1.0" office:version="1.2"><office:body><office:{kind}>{body}</office:{kind}></office:body></office:document-content>',
+        }
+    else:
+        base = "http://schemas.openxmlformats.org"
+        is_sheet = suffix == ".xlsx"
+        part = "xl/workbook.xml" if is_sheet else "word/document.xml"
+        kind = "spreadsheetml.sheet" if is_sheet else "wordprocessingml.document"
+        entries = {
+            "[Content_Types].xml": f'<Types xmlns="{base}/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/{part}" ContentType="application/vnd.openxmlformats-officedocument.{kind}.main+xml"/>' + ('<Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>' if is_sheet else '') + '</Types>',
+            "_rels/.rels": f'<Relationships xmlns="{base}/package/2006/relationships"><Relationship Id="rId1" Type="{base}/officeDocument/2006/relationships/officeDocument" Target="{part}"/></Relationships>',
+        }
+        if is_sheet:
+            rows = ''.join(f'<row r="{index}"><c r="A{index}" t="inlineStr"><is><t>Synthetic line {index}</t></is></c></row>' for index in range(2, 141))
+            entries.update({
+                part: f'<workbook xmlns="{base}/spreadsheetml/2006/main" xmlns:r="{base}/officeDocument/2006/relationships"><sheets><sheet name="Quarterly report" sheetId="1" r:id="rId1"/></sheets></workbook>',
+                "xl/_rels/workbook.xml.rels": f'<Relationships xmlns="{base}/package/2006/relationships"><Relationship Id="rId1" Type="{base}/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/></Relationships>',
+                "xl/worksheets/sheet1.xml": f'<worksheet xmlns="{base}/spreadsheetml/2006/main"><sheetData><row r="1"><c r="A1" t="inlineStr"><is><t>Quarterly total</t></is></c><c r="B1"><v>1200</v></c></row>{rows}</sheetData></worksheet>',
+            })
+        else:
+            entries[part] = f'<w:document xmlns:w="{base}/wordprocessingml/2006/main"><w:body><w:p><w:r><w:t>Synthetic report: quarterly total 1200.</w:t></w:r></w:p><w:p><w:r><w:br w:type="page"/></w:r></w:p><w:p><w:r><w:t>Second page must not be rendered in a thumbnail.</w:t></w:r></w:p></w:body></w:document>'
+    with ZipFile(path, "w") as archive:
+        for name, content in entries.items():
+            archive.writestr(name, content)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("suffix", [".docx", ".ods", ".xlsx"])
+async def test_office_preview_exports_one_page_without_document_analysis(tmp_path: Path, suffix: str) -> None:
+    import pypdfium2 as pdfium
+
+    source = tmp_path / f"report{suffix}"
+    _office_source(source)
+    original = source.read_bytes()
+    directory = tmp_path / "preview"
+    prepared = await prepare_document(source, source.name, "application/octet-stream", directory, preview_only=True)
+    assert prepared.converted
+    assert len(prepared.pages) == 1
+    assert prepared.pages[0].text == ""
+    assert not prepared.pages[0].ocr
+    assert prepared.structured_text == ""
+    with pdfium.PdfDocument(str(directory / "source.pdf")) as pdf:
+        assert len(pdf) == 1
+    with Image.open(prepared.image_path(prepared.pages[0], directory)) as raster:
+        assert max(raster.size) <= 641
+    assert source.read_bytes() == original
+    # A cached preview cannot be mistaken for a complete analysis of the source.
+    with pytest.raises(ValueError):
+        await prepare_document(source, source.name, "application/octet-stream", directory)
+    complete = await prepare_document(source, source.name, "application/octet-stream", tmp_path / "analysis")
+    assert len(complete.pages) >= 2
+    if suffix == ".docx":
+        assert "Second page" in complete.pages[1].text
+    else:
+        assert "1200" in complete.structured_text
+
+
 def test_transparent_image_thumbnail_keeps_alpha_and_its_dimensions(tmp_path: Path) -> None:
     source = tmp_path / "transparent.png"
     Image.new("RGBA", (40, 20), (255, 0, 0, 0)).save(source)
@@ -224,11 +300,16 @@ def test_palette_transparency_is_preserved(tmp_path: Path) -> None:
 
 
 @pytest.mark.asyncio
-async def test_document_thumbnail_is_shared_with_browser_after_authorization(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+@pytest.mark.parametrize("suffix", [".png", ".odt", ".docx", ".ods", ".xlsx"])
+async def test_document_thumbnail_is_shared_with_browser_after_authorization(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, suffix: str) -> None:
     document_id = uuid4()
-    attachment = _attachment("portrait.png", "image/png")
-    source = tmp_path / "portrait.png"
-    Image.new("RGB", (600, 900), "blue").save(source)
+    attachment = _attachment(f"source{suffix}", "image/png" if suffix == ".png" else "application/octet-stream")
+    source = tmp_path / attachment.name
+    if suffix == ".png":
+        Image.new("RGB", (600, 900), "blue").save(source)
+    else:
+        _office_source(source)
+    original = source.read_bytes()
     reference = f"document://{document_id}/attachments/{attachment.id}"
     cache_root = tmp_path / "cache"
     from core import settings
@@ -242,8 +323,14 @@ async def test_document_thumbnail_is_shared_with_browser_after_authorization(tmp
     assert content is not None
     with Image.open(BytesIO(content)) as thumbnail:
         assert thumbnail.format == "PNG"
-        assert thumbnail.size == (213, 320)
-        assert thumbnail.getpixel((0, 0)) == (0, 0, 255)
+        assert 0 < thumbnail.width <= thumbnails.MAX_SIZE[0]
+        assert 0 < thumbnail.height <= thumbnails.MAX_SIZE[1]
+        if suffix == ".png":
+            assert thumbnail.size == (213, 320)
+            assert thumbnail.getpixel((0, 0)) == (0, 0, 255)
+        else:
+            assert any(low < 200 for low, _high in thumbnail.convert("RGB").getextrema())
+    assert source.read_bytes() == original
     assert authorized_path.await_count == 2
     from app.browser import read_cached_thumbnail
     assert await read_cached_thumbnail(reference=reference) == (content, "image/png")
@@ -253,6 +340,73 @@ async def test_document_thumbnail_is_shared_with_browser_after_authorization(tmp
         await document_thumbnail_service.read_or_schedule_document_attachment_thumbnail(
             document_id, attachment.id, actor_agent_id=8,
         )
+
+
+@pytest.mark.asyncio
+async def test_office_thumbnail_retries_conversion_failure_and_deduplicates_requests(tmp_path, monkeypatch):
+    document_id = uuid4()
+    attachment = _attachment("report.odt", "application/octet-stream")
+    source = tmp_path / attachment.name
+    _office_source(source)
+    reference = document_thumbnail_service._reference(document_id, attachment.id)
+    monkeypatch.setattr(type(thumbnails.settings), "GALARIS_THUMBNAIL_ROOT", str(tmp_path / "cache"))
+    monkeypatch.setattr(document_thumbnail_service.document_attachment_service, "document_attachment_path", AsyncMock(return_value=(attachment, source)))
+    attempts = []
+    started = asyncio.Event()
+    release = asyncio.Event()
+
+    async def convert(path, name, media_type, directory, *, preview_only):
+        attempts.append(directory)
+        started.set()
+        await release.wait()
+        if len(attempts) == 1:
+            raise ValueError("Synthetic converter failure")
+        return await prepare_document(path, name, media_type, directory, preview_only=preview_only)
+
+    monkeypatch.setattr(document_thumbnail_service, "prepare_document", convert)
+    read = document_thumbnail_service.read_or_schedule_document_attachment_thumbnail
+    assert await read(document_id, attachment.id, actor_agent_id=7) is None
+    task = document_thumbnail_service._tasks[reference]
+    await started.wait()
+    assert await read(document_id, attachment.id, actor_agent_id=7) is None
+    assert document_thumbnail_service._tasks[reference] is task
+    release.set()
+    await task
+    assert not thumbnails.cache_path(reference).exists()
+    assert not attempts[0].exists()
+    assert await read(document_id, attachment.id, actor_agent_id=7) is None
+    await document_thumbnail_service._tasks[reference]
+    assert await read(document_id, attachment.id, actor_agent_id=7) is not None
+    assert len(attempts) == 2
+    assert all(not directory.exists() for directory in attempts)
+
+
+@pytest.mark.asyncio
+async def test_deleting_office_attachment_cancels_thumbnail_and_removes_temporaries(tmp_path, monkeypatch):
+    document_id = uuid4()
+    attachment = _attachment("budget.ods", "application/octet-stream")
+    source = tmp_path / attachment.name
+    _office_source(source)
+    reference = document_thumbnail_service._reference(document_id, attachment.id)
+    monkeypatch.setattr(type(thumbnails.settings), "GALARIS_THUMBNAIL_ROOT", str(tmp_path / "cache"))
+    monkeypatch.setattr(document_thumbnail_service.document_attachment_service, "document_attachment_path", AsyncMock(return_value=(attachment, source)))
+    directories = []
+    started = asyncio.Event()
+
+    async def convert(path, name, media_type, directory, *, preview_only):
+        directories.append(directory)
+        started.set()
+        await asyncio.Event().wait()
+
+    monkeypatch.setattr(document_thumbnail_service, "prepare_document", convert)
+    assert await document_thumbnail_service.read_or_schedule_document_attachment_thumbnail(document_id, attachment.id, actor_agent_id=7) is None
+    task = document_thumbnail_service._tasks[reference]
+    await started.wait()
+    await document_thumbnail_service.delete_document_attachment_thumbnail(document_id, attachment.id)
+    assert task.cancelled()
+    assert reference not in document_thumbnail_service._tasks
+    assert not thumbnails.cache_path(reference).exists()
+    assert all(not directory.exists() for directory in directories)
 
 
 def test_text_thumbnail_is_bounded_png(tmp_path: Path) -> None:

@@ -123,6 +123,12 @@ Thumbnails preserve the file’s proportions and transparency, fitting within 52
 without added white bars. They fill the available height or width according to their shape
 while keeping the entire image visible.
 
+Office attachments (DOC, DOCX, ODT, RTF, ODG, ODP, PPT and PPTX) display a thumbnail
+of their first page. XLS, XLSX and ODS spreadsheets show their first printed page,
+according to the workbook’s page layout. The preview appears after generation; if
+conversion fails, the file remains downloadable. Clicking these cards downloads the
+original file, which remains intact.
+
 The editor’s **Print** button opens the browser print dialog with the current content,
 including unsaved changes. Printing retains images, tables and callouts on a light background,
 without editor controls. It uses the document’s static content: scripts and the elements they
