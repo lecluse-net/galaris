@@ -36,6 +36,7 @@ d'implémentation ni nouvel ordre de priorité produit.
 
 | Plan | Statut | Portée et dépendances |
 |---|---|---|
+| [ordonnancement-llm-par-fournisseur.md](ordonnancement-llm-par-fournisseur.md) | `design` | Inventaire complet des appels et audit de leur demandeur/origine ; limite par connexion LLMProvider, priorités configurables par type avec audio en tête, administration, annulation, traces et chemins directs. |
 | [cible.md](cible.md) | `design` | Livraison publique, gouvernance des effets, releases d'agents, autonomie, interopérabilité et exploitation. |
 | [infrastructure-plugins-galaris.md](infrastructure-plugins-galaris.md) | `design` | Bundles, activation, frontend précompilé, permissions, conservation des données, compatibilité et rollback. |
 | [graphe-memoire-multiechelle.md](graphe-memoire-multiechelle.md) | `design` | Repli des branches exclusives, hiérarchie et placement stables, chargement par zone/niveau de détail, actualisation progressive et qualification ; suppression du plafond global d'exploration avec budgets bornés par vue. |
