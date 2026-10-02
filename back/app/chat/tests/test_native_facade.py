@@ -272,6 +272,19 @@ async def test_internal_choices_reload_and_resolve_once_in_the_exact_human_scope
     choice = next(item.interaction for item in reloaded.items if item.id == message.id)
     assert choice is not None and choice.status == "RESOLVED" and not choice.can_answer
     assert choice.selected_option_id == selected_option
+    assert next(item for item in reloaded.items if item.id == message.id).interaction_answer is None
+    if answer_mode == "button":
+        answer = next(item for item in reloaded.items if item.direction == "inbound")
+        assert answer.interaction_answer is not None
+        assert answer.interaction_answer.model_dump() == {
+            "title": "Créer le dossier ?", "reference": pending.reference, "answer": selected_label,
+        }
+        reopened = await get_internal_room(owner.id, room.id)
+        assert reopened is not None and reopened.last_message is not None
+        assert reopened.last_message.interaction_answer == answer.interaction_answer
+        refreshed = await native_facade.get_chat_message(owner.id, room.id, answer.id)
+        assert refreshed is not None and refreshed.interaction_answer == answer.interaction_answer
+        assert await native_facade.get_chat_message(other.id, room.id, answer.id) is None
 
     expired = await create_choice(
         messenger, agent_id=agent.id, room_id=str(room.id), user_id=f"user:{owner.id}",

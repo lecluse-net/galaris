@@ -332,6 +332,7 @@ import VoiceTranscriptionStatus from './VoiceTranscriptionStatus.vue'
 import type { ConversationActivity, ConversationDocumentReference, LiveAgentRound, MessageTopicChange, MessengerFile, MessengerMessage, PendingVoiceTranscription } from '../types'
 import { chatService } from '../services/chatService'
 import { visibleMessageText } from '../messageDirectives'
+import { displayMessageText } from '../messagePresentation'
 import { conversationTimelineEntries, conversationTimelineEntryText, conversationTimelineRenderKey, shouldShowLiveConversationRound } from '../liveState'
 
 const props = withDefaults(defineProps<{ roomId: string; messages: MessengerMessage[]; activity: ConversationActivity[]; liveRound: LiveAgentRound | null; pendingTranscriptions?: PendingVoiceTranscription[]; agentId: number; agentName: string; loading?: boolean; viewerAgentId?: number | null; showAgentAvatars?: boolean; allowReply?: boolean; canReadDocuments?: boolean; canEditDocuments?: boolean }>(), {
@@ -429,7 +430,7 @@ const timelineEntries = computed(() => conversationTimelineEntries(
     activity,
     copyRoundId: message ? roundIdByMessageId.value.get(message.id) : undefined,
     createdAt: message?.created_at ?? pendingTranscription?.started_at ?? null,
-    text: visibleMessageText(conversationTimelineEntryText(entry)),
+    text: message ? displayMessageText(message, t) : visibleMessageText(conversationTimelineEntryText(entry)),
   }
 }))
 const timelineRenderKey = computed(() => conversationTimelineRenderKey(
@@ -481,7 +482,7 @@ watch(timelineRenderKey, async () => {
 
 function repliedMessage(externalId: string): MessengerMessage | undefined {
   const message = messagesByExternalId.value.get(externalId)
-  return message ? { ...message, text: visibleMessageText(message.text) } : undefined
+  return message ? { ...message, text: displayMessageText(message, t) } : undefined
 }
 async function reassignMessageTopic(
   message: MessengerMessage,

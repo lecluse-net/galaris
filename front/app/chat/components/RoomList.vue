@@ -109,7 +109,7 @@
 import { computed, ref, useTemplateRef, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { sourceTranslationKey } from '../sourcePresentation'
-import { visibleMessageText } from '../messageDirectives'
+import { displayMessageText } from '../messagePresentation'
 import type { ChatViewerAgent, MessengerRoom } from '../types'
 import InternalAgentAvatar from './InternalAgentAvatar.vue'
 
@@ -142,7 +142,7 @@ function syncViewerPopupWidth(): void {
 }
 
 function lastMessageText(room: MessengerRoom): string {
-  return visibleMessageText(room.last_message?.text ?? '')
+  return room.last_message ? displayMessageText(room.last_message, t) : ''
 }
 
 function unreadBadgeLabel(count: number): string {

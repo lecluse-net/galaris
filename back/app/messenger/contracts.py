@@ -82,6 +82,14 @@ class NativeMessengerInteraction(BaseModel):
     can_answer: bool = False
 
 
+class NativeInteractionAnswer(BaseModel):
+    """Display variables for a recorded button answer; the client translates the sentence."""
+
+    title: str
+    reference: str
+    answer: str
+
+
 class NativeMessengerMessage(BaseModel):
     id: UUID
     external_id: str
@@ -97,6 +105,7 @@ class NativeMessengerMessage(BaseModel):
     created_at: datetime
     is_mine: bool = False
     interaction: NativeMessengerInteraction | None = None
+    interaction_answer: NativeInteractionAnswer | None = None
 
 
 class NativeMessengerRoom(BaseModel):

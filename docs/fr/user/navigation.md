@@ -149,6 +149,9 @@ agent, quels que soient les paramètres des futurs appels. Les autres fonctions 
 leurs règles. Pour redemander une confirmation, remettez la fonction sur **Sur demande** dans
 les autorisations de la connexion. Les demandes suivent la langue du responsable (français,
 anglais ou chinois), puis la langue par défaut de l’installation si son profil n’en définit pas.
+Dans le Chat interne, la phrase « Réponse à… » des réponses par bouton suit la langue de
+l’interface, y compris après réouverture ou changement de langue. Le titre de la demande
+et le libellé du choix restent ceux de la demande d’origine.
 
 Pour les accès du navigateur, ouvrez la connexion **Navigateur** de l’agent. Le réseau local
 est bloqué par défaut ; activez `allow_local_network` pour permettre une demande de permission.

@@ -37,7 +37,8 @@ export interface MessengerAgent { agent_id: number; connection_id: number; code:
 export interface RecipientCatalog { agents: MessengerAgent[] }
 export interface MessengerMember { id: string; external_id: string; display_name: string; avatar_url: string | null; is_ai: boolean; agent_id: number | null; role: 'owner' | 'manager' | 'member'; joined_at: string | null; muted: boolean }
 export interface MessengerFile { id: string; uri: string; name: string; mime_type: string; size_bytes: number | null; kind: string }
-export interface MessengerMessage { interaction?: MessengerInteraction | null; id: string; external_id: string; room_id: string; direction: string; text: string; topic_id: string | null; topic_overridden: boolean; sender: MessengerMember | null; reply_to: string | null; files: MessengerFile[]; status: string; created_at: string; is_mine: boolean; optimistic_after_id?: string | null }
+export interface MessengerInteractionAnswer { title: string; reference: string; answer: string }
+export interface MessengerMessage { interaction?: MessengerInteraction | null; interaction_answer?: MessengerInteractionAnswer | null; id: string; external_id: string; room_id: string; direction: string; text: string; topic_id: string | null; topic_overridden: boolean; sender: MessengerMember | null; reply_to: string | null; files: MessengerFile[]; status: string; created_at: string; is_mine: boolean; optimistic_after_id?: string | null }
 export type MessageTopicChangeScope = 'message' | 'following_same_topic'
 export interface MessageTopicUpdateResult { updated_messages: number }
 export interface MessageTopicChange {

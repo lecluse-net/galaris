@@ -14,6 +14,45 @@ const resolved = { ...choice, status: 'RESOLVED', selected_option_id: 'create', 
 const endpoint = '**/api/chat/rooms/room-1/interactions/choice-1'
 const options = { locale: 'fr', props: { roomId: 'room-1', interaction: choice } }
 
+for (const [locale, expected] of [
+  ['fr', 'Réponse à « Demande d’autorisation » (#FA12BC34) : Autoriser cette action'],
+  ['en', 'Answer to “Demande d’autorisation” (#FA12BC34): Autoriser cette action'],
+  ['zh', '对“Demande d’autorisation”的回复 (#FA12BC34)：Autoriser cette action'],
+]) {
+  test(`recorded answers are displayed in the interface language (${locale})`, async ({ page }) => {
+    await jsonRoute(page, '**/api/chat/rooms/*/speech/status*', { available_agent_ids: [] })
+    const message = {
+      id: 'answer-1', external_id: 'answer-external-1', room_id: 'room-1', direction: 'inbound',
+      text: 'Answer to “Demande d’autorisation” (#FA12BC34): Autoriser cette action',
+      interaction_answer: { title: 'Demande d’autorisation', reference: 'FA12BC34', answer: 'Autoriser cette action' },
+      files: [], is_mine: true, sender: { display_name: 'User', is_ai: false },
+      created_at: '2026-09-18T12:00:00Z', interaction: null,
+    }
+    const props = { roomId: 'room-1', agentId: 7, agentName: 'Alice', activity: [], liveRound: null,
+      messages: [message, { ...message, id: 'ordinary', external_id: 'ordinary-external', reply_to: message.external_id, interaction_answer: null, text: 'Message ordinaire conservé.' }],
+    }
+    await mount(page, 'app/chat/components/MessageTimeline.vue', { locale, props })
+    await expect(page.getByText(expected, { exact: true })).toBeVisible()
+    await expect(page.getByText('Message ordinaire conservé.', { exact: true })).toBeVisible()
+    await expect(page.locator('.reply-preview')).toContainText(expected)
+    await page.evaluate(async () => {
+      const { setLocale } = await import('/core/i18n/index.ts')
+      setLocale('fr')
+    })
+    await expect(page.getByText('Réponse à « Demande d’autorisation » (#FA12BC34) : Autoriser cette action', { exact: true })).toBeVisible()
+    await mount(page, 'app/chat/components/MessageTimeline.vue', { locale, props })
+    await expect(page.getByText(expected, { exact: true })).toBeVisible()
+    await page.route('**/api/chat/agents/*/avatar', route => route.fulfill({ status: 404 }))
+    await mount(page, 'app/chat/components/RoomList.vue', { locale, props: {
+      rooms: [{ id: 'room-1', label: 'Synthetic room', agent_id: 7, agent_name: 'Alice',
+        unread_count: 0, show_last_message: true, last_message: message }],
+      canCreate: false, canImpersonate: false, viewerAgentId: null, viewerAgents: [],
+      includeExternal: true, includeArchived: false, hasMore: false, loadingMore: false,
+    } })
+    await expect(page.getByText(expected, { exact: true })).toBeVisible()
+  })
+}
+
 test('the conversation displays actionable choices and preserves ordinary text messages', async ({ page }, testInfo) => {
   await page.setViewportSize({ width: 390, height: 844 })
   await jsonRoute(page, '**/api/chat/rooms/*/speech/status*', { available_agent_ids: [] })

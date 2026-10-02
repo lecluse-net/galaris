@@ -11,7 +11,7 @@ from app.connection import Connection
 from core.database import get_db
 from core.i18n import render_prompt, t
 
-from .contracts import NativeInteractionOption, NativeMessengerInteraction
+from .contracts import NativeInteractionAnswer, NativeInteractionOption, NativeMessengerInteraction
 from .events import message_journaled
 from .interactions import ChoiceOption, resolve_pending_choice
 from .models import Interaction, Message, MessengerUser, Room
@@ -65,6 +65,43 @@ async def message_interactions(
     )
     participant = f"user:{viewer_user_id}" if viewer_user_id is not None else None
     return {message_id: _snapshot(record, participant=participant) for message_id, record in rows}
+
+
+async def message_interaction_answers(
+    messages: list[Message],
+) -> dict[UUID, NativeInteractionAnswer]:
+    """Project display variables in one scoped query, including previously recorded answers."""
+
+    answers = {
+        message.id: message for message in messages
+        if message.platform == "internal"
+        and message.direction == "inbound"
+        and isinstance(message.metadata_.get("interaction_reference"), str)
+        and isinstance(message.metadata_.get("selected_option_id"), str)
+    }
+    if not answers:
+        return {}
+    rows = await get_db().execute(
+        select(Message.id, Interaction)
+        .join(Interaction, Interaction.reference == Message.metadata_["interaction_reference"].as_string())
+        .join(Connection, Connection.id == Message.connection_id)
+        .where(
+            Message.id.in_(answers),
+            Interaction.connection_id == Message.connection_id,
+            Interaction.tool_id == Message.tool_id,
+            Interaction.room_id == cast(Message.messenger_room_id, String),
+            Interaction.agent_id == Connection.agent_id,
+        )
+    )
+    result: dict[UUID, NativeInteractionAnswer] = {}
+    for message_id, record in rows:
+        selected = answers[message_id].metadata_["selected_option_id"]
+        option = next((option for option in record.options if option.get("id") == selected), None)
+        if option is not None and isinstance(option.get("label"), str):
+            result[message_id] = NativeInteractionAnswer(
+                title=record.title, reference=record.reference, answer=option["label"],
+            )
+    return result
 
 
 async def _scoped_interaction(

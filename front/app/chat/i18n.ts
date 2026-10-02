@@ -4,6 +4,7 @@ export default {
       "chat": "Le Chat est votre point de dialogue avec les agents. Décrivez le résultat que vous souhaitez obtenir : selon la demande et ses capacités, l’agent peut répondre directement, utiliser des outils ou engager un travail suivi dans les tâches. Il peut aussi échanger avec d’autres agents pour mobiliser leurs compétences. Le panneau de la conversation rassemble les tâches, processus et documents liés à cet échange, afin de suivre les actions derrière la réponse. Pour un contenu à conserver et à retravailler, demandez un document : vous pourrez le faire évoluer avec l’agent tout en poursuivant la discussion."
     },
     chatInteraction: {
+      answer: "Réponse à « {title} » (#{reference}) : {answer}",
       processing: "Réponse enregistrée, traitement en cours…",
       resolved: "Réponse enregistrée.",
       expired: "Cette demande a expiré.",
@@ -340,6 +341,7 @@ export default {
       "chat": "Chat is where you talk with agents. Describe the result you want: depending on the request and its capabilities, an agent can reply directly, use tools or start work tracked as tasks. It can also exchange with other agents to draw on their skills. The conversation panel brings together related tasks, processes and documents so you can follow the actions behind the response. For content to keep and refine, ask for a document: you can develop it with the agent while continuing the discussion."
     },
     chatInteraction: {
+      answer: "Answer to “{title}” (#{reference}): {answer}",
       processing: "Response recorded, processing…",
       resolved: "Response recorded.",
       expired: "This request has expired.",
@@ -674,6 +676,7 @@ export default {
       "chat": "聊天是您与智能体交流的入口。请描述希望获得的结果：根据请求和自身能力，智能体可以直接回答、使用工具，或启动通过任务跟踪的工作。它也可以与其他智能体交流以借助其技能。对话面板汇集相关任务、流程和文档，让您了解回答背后的操作。对于需要保存和反复完善的内容，请要求生成文档；您可以在继续讨论的同时与智能体共同修改它。"
     },
     chatInteraction: {
+      answer: "对“{title}”的回复 (#{reference})：{answer}",
       processing: "回复已记录，正在处理…",
       resolved: "回复已记录。",
       expired: "此请求已过期。",

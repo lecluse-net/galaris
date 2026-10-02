@@ -36,6 +36,7 @@ from ._observations import (
 )
 from .contracts import (
     ChatViewerAgent,
+    NativeInteractionAnswer,
     NativeMessengerAgent,
     NativeMessengerConnection,
     NativeMessengerFile,
@@ -65,7 +66,7 @@ from .models import (
 )
 from .resource_reference import attachment_resource_uri
 from .user_service import enrich_messenger_users, resolve_messenger_user
-from .native_interactions import message_interactions
+from .native_interactions import message_interaction_answers, message_interactions
 from .facade import get_messenger, get_spec, is_kind_enabled, kind_for_tool
 from .ingest import fetch_bytes
 
@@ -725,6 +726,7 @@ async def _message_dto(
     viewer_agent_id: int | None = None,
     memberships: dict[tuple[UUID, UUID], RoomUser] | None = None,
     interaction: NativeMessengerInteraction | None = None,
+    interaction_answer: NativeInteractionAnswer | None = None,
 ) -> NativeMessengerMessage:
     if message.messenger_room_id is None:
         raise ValueError("A native Messenger message must belong to a canonical room.")
@@ -806,6 +808,7 @@ async def _message_dto(
         created_at=message.created_at,
         is_mine=is_mine,
         interaction=interaction,
+        interaction_answer=interaction_answer,
     )
 
 
@@ -841,9 +844,12 @@ async def _room_list_projection(room_ids: list[UUID]) -> _RoomListProjection:
         (membership.room_id, membership.user_id): membership
         for membership in sender_memberships
     }
+    answers = await message_interaction_answers(messages)
     for message in messages:
         if message.messenger_room_id is not None:
-            projection.last_messages[message.messenger_room_id] = await _message_dto(message, memberships=memberships)
+            projection.last_messages[message.messenger_room_id] = await _message_dto(
+                message, memberships=memberships, interaction_answer=answers.get(message.id),
+            )
     unread_rows = await db.execute(
         select(RoomUser.room_id, RoomUser.user_id, func.count(Message.id))
         .join(Message, Message.messenger_room_id == RoomUser.room_id)
@@ -1363,6 +1369,7 @@ async def list_chat_messages(
     choices = await message_interactions(
         hydrated, viewer_user_id=user_id if agent_id is None else None,
     )
+    answers = await message_interaction_answers(hydrated)
     return NativeMessengerMessagePage(
         items=[
             await _message_dto(
@@ -1383,6 +1390,7 @@ async def list_chat_messages(
                 viewer_galaris_user_id=(user_id if agent_id is None else None),
                 viewer_agent_id=agent_id,
                 interaction=choices.get(message.id),
+                interaction_answer=answers.get(message.id),
             )
             for message in hydrated
         ],
@@ -1477,6 +1485,7 @@ async def get_chat_message(
     choices = await message_interactions(
         [message], viewer_user_id=user_id if agent_id is None else None,
     )
+    answers = await message_interaction_answers([message])
     return await _message_dto(
         message,
         human_avatar_url=avatar_url,
@@ -1495,6 +1504,7 @@ async def get_chat_message(
         viewer_galaris_user_id=(user_id if agent_id is None else None),
         viewer_agent_id=agent_id,
         interaction=choices.get(message.id),
+        interaction_answer=answers.get(message.id),
     )
 
 
@@ -1660,6 +1670,7 @@ async def list_internal_messages(
     hydrated = await journal.hydrate_messages(rows)
     actor = await get_db().get(User, user_id)
     human_avatar_url = _user_avatar_url(actor)
+    answers = await message_interaction_answers(hydrated)
     return NativeMessengerMessagePage(
         items=[
             await _message_dto(
@@ -1667,6 +1678,7 @@ async def list_internal_messages(
                 human_avatar_url=human_avatar_url,
                 human_external_id=human_external_id(user_id),
                 viewer_galaris_user_id=user_id,
+                interaction_answer=answers.get(message.id),
             )
             for message in hydrated
         ],

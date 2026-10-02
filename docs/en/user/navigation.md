@@ -138,6 +138,9 @@ that function on this agent's connection, with any arguments in future calls. Ot
 keep their policies. Set the function back to **Ask** in the connection's permissions to
 require confirmation again. Requests use the manager's language (French, English, or Chinese),
 falling back to the instance's default language when their profile has none.
+In internal Chat, the “Answer to…” sentence for button responses follows the interface
+language, including after reopening or changing languages. The request title and selected
+option label retain the wording of the original request.
 
 For browser access, open the agent's **Browser** connection. Local networking is blocked by
 default; enable `allow_local_network` to allow a permission request. Destination filters stay
