@@ -113,6 +113,18 @@ passée à `file_info`, `file_read`, `file_copy` ou à un outil spécialisé. `f
 l'URI exacte la supprime. La lecture suit le droit de lecture du document parent, les mutations
 exigent son droit d'écriture, et ni l'ajout ni la suppression ne créent de révision du contenu.
 
+Les documents HTML de profil `document` affichent aussi les sons et vidéos avec un lecteur
+intégré, en lecture comme en édition. Via MCP, réutiliser une PJ ou copier le média avec
+`file_copy(source, "document://<uuid>/attachments/")`, puis insérer une carte dans le corps avec
+`file_append` ou `file_edit` et la révision lue. Le HTML est
+`<blockquote class="galaris-link-card galaris-media-audio"><p><a href="URI_RENDUE">Libellé</a></p></blockquote>` ;
+remplacer `galaris-media-audio` par `galaris-media-video` pour une vidéo et échapper le libellé.
+Joindre le fichier seul n'insère pas le lecteur. Conserver l'URI canonique retournée ; les
+lecteurs et URL `blob:` sont ajoutés au rendu, pas enregistrés dans le contenu.
+Ce parcours n'exige ni modèle Multimedia ni transcription pour un fichier existant, et ne
+s'applique pas aux corps Dataset ni aux profils `rich-text`. Maintenir cette procédure dans
+le skill runtime `back/app/skill/system_skills/galaris/SKILL.md`.
+
 Toute fonction métier qui reçoit ou rend un fichier échange une URI canonique de `app.file_share`,
 jamais un chemin hôte ni un chemin implicitement propre à son domaine. Lorsqu'un outil spécialisé
 doit donner les octets à une bibliothèque locale (`image_read`, génération avec pièces jointes,

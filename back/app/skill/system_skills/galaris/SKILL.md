@@ -1,6 +1,6 @@
 ---
 name: galaris
-description: Guide to the Galaris MCP tools available to platform-connected agents. Use it for persistent SSH console execution, Git repositories, Python and shell scripts, large-file workflows, file sharing, memory, collaborative working documents, messaging, mail, calendar scheduling, images, audio/video transcription, YouTube caption retrieval and summarization, voice calls, delegated tasks, durable Goal and skill management, personal business-process execution, restricted process administration, task and LLM-call inspection, interactive web browsing, and web search, including typed signatures, return values, and safe workflow examples.
+description: Guide to the Galaris MCP tools available to platform-connected agents. Use it for persistent SSH console execution, Git repositories, Python and shell scripts, large-file workflows, file sharing, memory, collaborative working documents with embedded images and audio/video players, messaging, mail, calendar scheduling, images, audio/video transcription, YouTube caption retrieval and summarization, voice calls, delegated tasks, durable Goal and skill management, personal business-process execution, restricted process administration, task and LLM-call inspection, interactive web browsing, and web search, including typed signatures, return values, and safe workflow examples.
 ---
 
 # Galaris tools
@@ -195,9 +195,10 @@ before putting it inside HTML; write a fragment, not a complete HTML page.
 
 Read the returned `media_type`, `content_profile`, `content_profile_version` and `revision`.
 The `rich-text` profile supports static editorial markup; the `document` profile also
-supports document attachment images and ordinary HTML forms, CSS and JavaScript in an isolated
-viewer. Goal documents and other `rich-text` fields still reject executable HTML.
-Create or copy attachments first and use the exact canonical URI returned by the tools.
+supports document attachment images, inline audio/video players, and ordinary HTML forms, CSS
+and JavaScript in an isolated viewer. Goal documents and other `rich-text` fields still reject
+executable HTML. Create or copy attachments first and use the exact canonical URI returned by
+the tools; see “Insert images, audio and video in a working document” below.
 
 For HTML `document://` content, `file_read` numbers **top-level HTML blocks**, starting at 1
 (`offset_unit: "block"`), and returns the next offset for pagination. The legacy names
@@ -1033,6 +1034,46 @@ For collaboration on a document:
 4. Each agent reads only the relevant passage, then calls `file_edit` or `file_append`.
 5. Keep conclusions in the document. Use `memory_remember` separately only for the rare cases
    described below; finishing a collaboration does not itself warrant a memory write.
+
+### Insert images, audio and video in a working document
+
+**Audio and video can play directly inside an HTML working document**, in both editing and
+reading views. The MCP workflow uses the same file tools as image insertion. Inserting an
+existing media file does not require a Multimedia model, generation or transcription.
+This workflow requires `document_type="html"`, `content_profile="document"` and edit access;
+it does not apply to Dataset bodies or Goal documents with the `rich-text` profile.
+
+1. Read the target with `file_read(DOCUMENT_URI)` and retain its current `revision` and profile.
+2. Reuse an existing attachment URI returned by `file_list(DOCUMENT_URI + "/attachments/")`,
+   or call `file_copy(SOURCE_URI, DOCUMENT_URI + "/attachments/")`. Retain the returned `uri`;
+   do not invent attachment UUIDs or read media bytes into the conversation. `file_create`
+   with `name` and the appropriate encoding is also available when supplying a new attachment.
+3. Insert the appropriate HTML below with `file_append(DOCUMENT_URI, content=HTML,
+   expected_revision=REVISION_FROM_READ)`, or use `file_edit` for a specific block. Substitute
+   the exact returned attachment URI for `ATTACHMENT_URI` and escape the visible label.
+   On a revision conflict, read again and reconcile the insertion with the current content.
+
+```html
+<figure class="image"><img src="ATTACHMENT_URI" alt="Illustration"></figure>
+<blockquote class="galaris-link-card galaris-media-audio">
+  <p><a href="ATTACHMENT_URI">Audio recording</a></p>
+</blockquote>
+<blockquote class="galaris-link-card galaris-media-video">
+  <p><a href="ATTACHMENT_URI">Video recording</a></p>
+</blockquote>
+```
+
+Choose the fragment matching the attachment; each URI has the form
+`document://<document-uuid>/attachments/<attachment-uuid>`. The explicit `galaris-media-audio`
+or `galaris-media-video` class selects the player even when the link label has no extension.
+The application resolves the attachment with the reader's permissions and adds playback
+controls at render time. Save the card and canonical URI, rather than runtime `<audio>`,
+`<video>`, `<iframe>` or `blob:` URLs. Playback depends on the browser's supported media codecs.
+
+Adding a file to the attachment collection alone does **not** insert a player in the body.
+Removing the card leaves the attachment available. Print/PDF output keeps the static card
+and link; playback belongs to the application. Share the parent document normally to grant
+access to its attachments.
 
 ### When to search
 
