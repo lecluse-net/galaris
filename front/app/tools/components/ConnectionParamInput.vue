@@ -4,7 +4,8 @@
     v-model="value"
     :options="choices"
     :label="label"
-    emit-value map-options clearable dense outlined
+    :clearable="name !== 'tools.fileindexing'"
+    emit-value map-options dense outlined
   />
   <q-select
     v-else-if="definition.type === 'user'"
