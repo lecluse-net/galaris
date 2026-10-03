@@ -241,6 +241,7 @@ class MemoryItem(HistoryMixin, Base):
         String(1_024), nullable=True
     )
     content_hash: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    file_sha256: Mapped[str | None] = mapped_column(String(64), nullable=True)
     semantic_fingerprint: Mapped[str] = mapped_column(
         String(64), nullable=False, default="", server_default="", index=True
     )
@@ -389,6 +390,8 @@ class MemoryItem(HistoryMixin, Base):
             name="uq_memory_items_managed_source",
         ),
         Index("ix_memory_items_owner_hash", "owner_agent_id", "content_hash"),
+        UniqueConstraint("owner_agent_id", "file_sha256", name="uq_memory_items_agent_file_sha256"),
+        CheckConstraint("file_sha256 IS NULL OR (node_kind = 'file' AND file_sha256 ~ '^[0-9a-f]{64}$')", name="ck_memory_items_file_sha256"),
         Index("ix_memory_items_user_owner_hash", "owner_user_id", "content_hash"),
         Index("ix_memory_items_activity", "activity_at"),
         Index("ix_memory_items_temporal", "id", postgresql_where=sql_text("temporal IS NOT NULL")),

@@ -493,6 +493,8 @@
             <div v-if="store.currentItem.node_kind === 'attachment'" class="q-px-sm q-pb-sm">
               <MemoryAttachmentButton :item-id="store.currentItem.id" :agent-id="store.selectedAgentId" />
             </div>
+            <MemoryFileResources v-if="store.currentItem.node_kind === 'file'" :key="`${store.selectedAgentId}:${store.currentItem.id}`"
+              :item-id="store.currentItem.id" :agent-id="store.selectedAgentId" class="q-px-sm q-pb-sm" />
             <q-card-section class="q-px-sm q-pt-none q-pb-sm">
               <div class="q-mt-sm">
                 <div class="row items-center justify-between q-mb-xs">
@@ -606,6 +608,7 @@
 <script setup lang="ts">
 import DocumentIcon from '../components/DocumentIcon.vue'
 import MemoryAttachmentButton from '../components/MemoryAttachmentButton.vue'
+import MemoryFileResources from '../components/MemoryFileResources.vue'
 import { showConfirmationDialog } from '@/core/util'
 import { navigationIcon } from '@/core/navigation'
 import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, useTemplateRef, watch } from 'vue'

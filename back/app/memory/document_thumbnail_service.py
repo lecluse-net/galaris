@@ -153,6 +153,32 @@ async def _office_thumbnail(path: Path, attachment: DocumentAttachmentPublic) ->
         return await asyncio.to_thread(thumbnails.from_image, image) if image is not None else None
 
 
+async def render_file_thumbnail(path: Path, name: str, media_type: str) -> bytes | None:
+    """Reuse bounded attachment renderers for an authorized catalogue source."""
+    async with _document_capture_slots:
+        if Path(name).suffix.casefold() in OFFICE_EXTENSIONS:
+            with TemporaryDirectory(prefix="file-thumbnail-") as temporary:
+                directory = Path(temporary)
+                prepared = await prepare_document(path, name, media_type, directory, preview_only=True)
+                image = prepared.image_path(prepared.pages[0], directory) if prepared.pages else None
+                return await asyncio.to_thread(thumbnails.from_image, image) if image is not None else None
+        if media_type.startswith("image/"):
+            return await asyncio.to_thread(thumbnails.from_image, path)
+        if media_type.startswith("video/"):
+            return await asyncio.to_thread(_video_thumbnail, path)
+        if media_type == "application/pdf" or name.casefold().endswith(".pdf"):
+            return await asyncio.to_thread(_pdf_thumbnail, path)
+        if media_type == "text/html":
+            content = await asyncio.to_thread(_read_html, path)
+            if content is not None:
+                pdf = await render_html_pdf(content.decode("utf-8"), first_page_only=True)
+                return await asyncio.to_thread(_printed_document_thumbnail, pdf)
+            return None
+        if media_type.startswith("text/"):
+            return await asyncio.to_thread(_text_thumbnail, path)
+        return None
+
+
 def _video_thumbnail(path: Path) -> bytes | None:
     """Decode one early representative video frame without scanning the whole file."""
 

@@ -68,19 +68,25 @@ async def test_console_catalogue_over_real_ssh_sftp(db, agents, memory_storage, 
 
 
 @pytest.mark.asyncio
-async def test_nextcloud_catalogue_pagination_recovery_and_permission_revocation(db, agents, memory_storage, monkeypatch):
+@pytest.mark.parametrize("response_encoding", [None, "gzip", "deflate"])
+async def test_nextcloud_catalogue_pagination_recovery_and_permission_revocation(db, agents, memory_storage, monkeypatch, response_encoding):
     owner, peer = agents
     server = DavServer()
+    server.response_encoding = response_encoding
     for index in range(503):
         server.put(f'item-{index:04d}.txt', b'Synthetic DAV data')
     adapter = NextcloudFileClient('https://cloud.example.test/cloud', 'synthetic', 'synthetic')
     monkeypatch.setattr(adapter, '_client', lambda: httpx.AsyncClient(transport=httpx.MockTransport(server.handle)))
+    resolutions = 0
     async def resolve(*_args, **_kwargs):
+        nonlocal resolutions
+        resolutions += 1
         return adapter, 'nextcloud'
     monkeypatch.setattr(resource_service, 'resolve_resource_transport_with_service', resolve)
     monkeypatch.setattr(file_share_service, 'resolve_resource_transport_with_service', resolve)
     monkeypatch.setattr(catalogue, 'resolve_resource_transport_with_service', resolve)
     tool = ToolModel(code='dav-proof', label='Synthetic DAV', file_share_config={'service': 'nextcloud', 'base_url': 'https://cloud.example.test/cloud'},
+        messenger_config={'service': 'nextcloud_talk'},
         global_params={'tools.fileindexing': {'value': 'recursive', 'forced': False}})
     db.add(tool)
     await db.flush()
@@ -105,6 +111,65 @@ async def test_nextcloud_catalogue_pagination_recovery_and_permission_revocation
     assert run.status == 'success' and run.scanned == 503
     assert len(await hits(owner.id, 'item-0000')) == 1
     assert await hits(peer.id, 'item-0000') == []
+    from app.memory import service
+    from app.memory.schemas import MemoryGraphRootsRequest
+    request = MemoryGraphRootsRequest(agent_id=owner.id, limit=100)
+    resolutions = 0
+    page = await service.list_graph_roots(request)
+    assert len(page.nodes) == 100 and page.has_more
+    assert resolutions <= 2
+    assert not (await service.list_graph_roots(MemoryGraphRootsRequest(agent_id=peer.id))).nodes
     server.forced_status = 403
     assert await hits(owner.id, 'item-0000') == []
+    assert not (await service.list_graph_roots(request)).nodes
     assert all(entry.present for entry in await db.scalars(select(FileCatalogEntry)))
+
+
+@pytest.mark.asyncio
+async def test_hybrid_graph_keeps_room_authorization_separate_from_file_batches(db, agents, memory_storage, monkeypatch):
+    from app.file_share.resource_contracts import ResourceDescriptor
+    from app.messenger import messenger_known_room_locators
+    from app.messenger.models import Room
+    owner, peer = agents
+    tool = ToolModel(code='hybrid-proof', label='Synthetic hybrid',
+        file_share_config={'service': 'nextcloud', 'base_url': 'https://cloud.example.test/cloud'},
+        messenger_config={'service': 'nextcloud_talk'})
+    db.add(tool)
+    await db.flush()
+    connection = Connection(agent_id=owner.id, tool_id=tool.id)
+    other = Connection(agent_id=peer.id, tool_id=tool.id)
+    db.add_all([connection, other])
+    await db.flush()
+    db.add_all([
+        Room(connection_id=connection.id, external_id='talk-token', label='Synthetic room', conversation_type='text'),
+        Room(connection_id=other.id, external_id='files', label='Other synthetic room', conversation_type='text'),
+        Room(connection_id=connection.id, external_id='removed-room', label='Removed synthetic room',
+            conversation_type='text', deleted_at=datetime.now(timezone.utc)),
+    ])
+    await db.commit()
+    assert await messenger_known_room_locators(connection.id, [' talk-token ', 'files', 'removed-room', '']) == {'talk-token'}
+    assert await messenger_known_room_locators(other.id, ['talk-token', 'files']) == {'files'}
+    server = DavServer()
+    paths = ['files/a.txt', 'files/b.txt', 'talk-token/a.txt', 'talk-token/b.txt', 'talk-token /c.txt']
+    for path in paths:
+        server.put(path, b'Synthetic bytes')
+    adapter = NextcloudFileClient('https://cloud.example.test/cloud', 'synthetic', 'synthetic')
+    monkeypatch.setattr(adapter, '_client', lambda: httpx.AsyncClient(transport=httpx.MockTransport(server.handle)))
+    checked = []
+    class DeniedRoom:
+        async def resource_info(self, path, **_kwargs):
+            checked.append(path)
+            raise PermissionError('Synthetic room access revoked')
+    async def resolve(_agent, _scheme, locator, **_kwargs):
+        return (DeniedRoom(), 'messenger') if locator.split('/', 1)[0].strip() == 'talk-token' else (adapter, 'nextcloud')
+    monkeypatch.setattr(catalogue, 'resolve_resource_transport_with_service', resolve)
+    monkeypatch.setattr(resource_service, 'resolve_resource_transport_with_service', resolve)
+    ctx = ResourceContext(agent_id=owner.id, runtime='internal')
+    scope = await catalogue.observation_scope(ctx, 'hybrid-proof://files/a.txt')
+    assert scope is not None
+    await catalogue.observe_descriptors(scope, [ResourceDescriptor(uri=f'hybrid-proof://{path}', name=path.rsplit('/', 1)[-1]) for path in paths])
+    await db.commit()
+    entries = list(await db.scalars(select(FileCatalogEntry)))
+    readable = await catalogue.catalogue_sources_readable([entry.memory_item_id for entry in entries], owner.id)
+    assert readable == {entry.memory_item_id for entry in entries if entry.uri.startswith('hybrid-proof://files/')}
+    assert set(checked) == {'talk-token/a.txt', 'talk-token/b.txt', 'talk-token /c.txt'}

@@ -9,7 +9,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 from core.util import DEFAULT_DOWNLOAD_BYTES
-from typing import Any
+from typing import Any, Callable, Awaitable, cast
 from uuid import UUID
 import hashlib
 
@@ -62,6 +62,9 @@ class MessengerFileTransport:
         """Find an attachment by identifier or name in recent room history."""
         if not room_id:
             raise ValueError(self._message("room_required"))
+        resolver = getattr(self._messenger, "stored_attachment_resource", None)
+        if callable(resolver) and (resource := await cast(Callable[[str, str], Awaitable[tuple[Any, str] | None]], resolver)(room_id, ref)) is not None:
+            return resource[0]
         seen: dict[str, Any] = {}
         for message in await self._messenger.history(room_id, _HISTORY_LOOKBACK):
             for att in message.files:
@@ -82,6 +85,9 @@ class MessengerFileTransport:
     ) -> MessengerAttachmentResource:
         """Resolve one attachment together with the room UUID used in its URI."""
 
+        resolver = getattr(self._messenger, "stored_attachment_resource", None)
+        if callable(resolver) and (resource := await cast(Callable[[str, str], Awaitable[tuple[Any, str] | None]], resolver)(room_id, ref)) is not None:
+            return MessengerAttachmentResource(room_locator=resource[1], attachment=resource[0])
         for message in await self._messenger.history(room_id, _HISTORY_LOOKBACK):
             for attachment in message.files:
                 if ref not in (str(attachment.id), attachment.name):

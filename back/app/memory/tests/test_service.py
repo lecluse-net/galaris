@@ -119,12 +119,17 @@ def test_manual_link_rejects_free_form_relation_type() -> None:
 
 
 def test_graph_requests_enforce_bounded_pages_and_known_nodes() -> None:
+    request = MemoryGraphRootsRequest(agent_id=1, limit=500, edge_limit=2500,
+        known_item_ids=[uuid4() for _index in range(3000)])
+    assert request.limit == 500 and len(request.known_item_ids) == 3000
     with pytest.raises(ValidationError):
-        MemoryGraphRootsRequest(agent_id=1, limit=101)
+        MemoryGraphRootsRequest(agent_id=1, limit=501)
+    with pytest.raises(ValidationError):
+        MemoryGraphRootsRequest(agent_id=1, edge_limit=2501)
     with pytest.raises(ValidationError):
         MemoryGraphRootsRequest(
             agent_id=1,
-            known_item_ids=[uuid4() for _index in range(501)],
+            known_item_ids=[uuid4() for _index in range(3001)],
         )
     with pytest.raises(ValidationError):
         MemoryGraphExpandRequest(agent_id=1, item_id=uuid4(), limit=101)

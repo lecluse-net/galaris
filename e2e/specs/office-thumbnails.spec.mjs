@@ -5,6 +5,8 @@ import { collectPageErrors } from '../page-errors.mjs'
 for (const width of [1440, 390]) {
   test(`Office thumbnails use real conversions and preserve downloads at ${width}px`, async ({ page, request }, testInfo) => {
     await page.setViewportSize({ width, height: 900 })
+    await page.addLocatorHandler(page.getByRole('button', { name: 'Plus tard', exact: true }),
+      postpone => postpone.click())
     const errors = collectPageErrors(page)
     const fixture = await (await request.post('/api/__test/seed')).json()
     const refresh = page.waitForResponse(response => response.url().endsWith('/api/auth/refresh'))
@@ -34,7 +36,7 @@ for (const width of [1440, 390]) {
     }
     await errors.settle()
     await page.goto(`/memory/documents?document_id=${document.id}`)
-    if (width < 1024) await page.addLocatorHandler(page.locator('.q-drawer__backdrop'), backdrop => backdrop.click({ position: { x: 380, y: 150 } }), { times: 1 })
+    if (width < 1024) await expect(page.getByRole('dialog')).toBeVisible()
     for (const attachment of attachments) {
       const card = page.locator('.document-attachments .resource-preview-card').filter({ has: page.getByText(attachment.name, { exact: true }) })
       await card.scrollIntoViewIfNeeded()
@@ -53,7 +55,9 @@ for (const width of [1440, 390]) {
     await errors.settle()
     await page.reload()
     for (const attachment of attachments) {
-      const image = page.getByRole('img', { name: attachment.name, exact: true })
+      const card = page.locator('.document-attachments .resource-preview-card').filter({ has: page.getByText(attachment.name, { exact: true }) })
+      await card.scrollIntoViewIfNeeded()
+      const image = card.getByRole('img', { name: attachment.name, exact: true })
       await expect(image).toBeVisible()
       await expect.poll(() => image.evaluate(element => element.naturalWidth)).toBeGreaterThan(0)
     }

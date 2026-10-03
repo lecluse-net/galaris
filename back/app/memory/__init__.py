@@ -2,6 +2,8 @@
 
 from .temporal import MemoryTemporalAnchor
 from .catalogue_projection import project_catalogue_entry, link_catalogue_entries, catalogue_projection_write, detach_catalogue_parent_links
+from .catalogue_projection import identify_catalogue_file as identify_catalogue_file, update_catalogue_file_locations as update_catalogue_file_locations, catalogue_file_summary as catalogue_file_summary
+from .document_thumbnail_service import render_file_thumbnail as render_file_thumbnail
 from .source_access import register_source_access
 
 from .contracts import (

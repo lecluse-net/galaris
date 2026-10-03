@@ -601,7 +601,12 @@ dans les tables canoniques.
 - Interface : sous `/memory`, l’onglet **Liste** conserve la recherche, le propriétaire, le
   contenu, les révisions, la provenance, les accès directs et les liens. L’onglet **Graphe**
   charge un sous-graphe léger par curseurs, puis les voisins à la demande ; il ne charge jamais
-  tout le corpus ni les payloads en mémoire. L'agent sélectionné détermine déjà le périmètre ACL et
+  tout le corpus ni les payloads en mémoire. L'ouverture utilise des pages de 500 nœuds au plus,
+  avec 2 500 liens par page et un plafond de 3 000 nœuds affichés. Les requêtes ne lisent que les
+  colonnes nécessaires au graphe. Les sources sont contrôlées à chaque chargement : les connexions
+  sont résolues par lot, et Nextcloud mutualise les métadonnées des fichiers d'un même dossier,
+  avec repli sur chaque fichier si la liste est refusée ou incomplète. Aucun résultat d'accès
+  n'est conservé entre requêtes. L'agent sélectionné détermine déjà le périmètre ACL et
   reste donc implicite : sa projection n'est pas affichée. Un Topic public n'entre dans ce graphe
   que s'il contient un souvenir possédé par l'agent ou un item qui lui est directement partagé ;
   les dossiers des autres agents ne sont pas affichés par le seul effet de leur visibilité publique.

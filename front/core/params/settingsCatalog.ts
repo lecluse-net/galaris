@@ -445,6 +445,17 @@ export const dreamFields: SettingField[] = [
         advanced: true,
     },
     {
+        name: 'DREAM_FILE_RESCAN_SCHEDULE',
+        labelKey: 'dreamSettings.fields.fileRescanSchedule',
+        descriptionKey: 'dreamSettings.fields.fileRescanScheduleHint',
+        input: 'select',
+        options: [
+            { labelKey: 'dreamSettings.fileRescanSchedules.off', value: 'off' },
+            { labelKey: 'dreamSettings.fileRescanSchedules.daily', value: 'daily_midnight' },
+            { labelKey: 'dreamSettings.fileRescanSchedules.weekly', value: 'weekly_midnight' },
+        ],
+    },
+    {
         name: 'DREAM_POLL_SECONDS',
         labelKey: 'dreamSettings.fields.poll',
         descriptionKey: 'dreamSettings.fields.pollHint',

@@ -103,7 +103,7 @@
         </template>
       </ResourcePreviewBlock>
     </div>
-    <div v-else class="text-body2 text-grey-7 q-py-sm">{{ t('documents.noAttachments') }}</div>
+    <div v-else class="text-body2 text-grey-7 q-py-sm">{{ t(resourceSource ? 'memory.noFileLocations' : 'documents.noAttachments') }}</div>
   </section>
   </Teleport>
 
@@ -220,7 +220,11 @@ import type { BrowserResourceKind, Model3dSource } from '@/core/util'
 import { memoryService } from '../services/memoryService'
 import type { DocumentAttachment } from '../types'
 
-const { documentId, agentId, attachments, editable = false, loading = false, content = '', managerMode = false, previewOnly = false } = defineProps<{
+const { documentId, agentId, attachments, editable = false, loading = false, content = '', managerMode = false, previewOnly = false, resourceSource } = defineProps<{
+  resourceSource?: {
+    content: (attachment: DocumentAttachment, preview: boolean) => Promise<Blob>
+    thumbnail: (attachment: DocumentAttachment) => Promise<Blob>
+  }
   previewOnly?: boolean
   managerMode?: boolean
   documentId: string
@@ -238,9 +242,8 @@ const emit = defineEmits<{
 const { t, locale } = useI18n()
 const $q = useQuasar()
 const managerOpen = ref(false)
-const attachmentsTitle = computed(() => t(
-  managerMode && !managerOpen.value ? 'documents.unembeddedAttachments' : 'documents.attachments',
-))
+const attachmentsTitle = computed(() => t(resourceSource ? 'memory.fileLocations'
+  : managerMode && !managerOpen.value ? 'documents.unembeddedAttachments' : 'documents.attachments'))
 const embeddedAttachmentIds = computed(() => {
   const html = new DOMParser().parseFromString(content, 'text/html')
   const embedded = new Set<string>()
@@ -278,7 +281,8 @@ let generation = 0
 let previewObserver: IntersectionObserver | null = null
 
 const attachmentKind = (attachment: DocumentAttachment): BrowserResourceKind | null => (
-  browserResourceKind(attachment.media_type, attachment.name)
+  resourceSource && /\.(doc|docx|odt|rtf|odg|odp|ppt|pptx|xls|xlsx|ods)$/i.test(attachment.name)
+    ? 'pdf' : browserResourceKind(attachment.media_type, attachment.name)
 )
 const canPreview = (attachment: DocumentAttachment): boolean => (
   attachmentKind(attachment) !== null
@@ -318,7 +322,7 @@ function modelSource(attachment: DocumentAttachment): Model3dSource {
     name: attachment.name,
     mediaType: attachment.media_type,
     size: attachment.size_bytes,
-    load: () => memoryService.documentAttachmentBlob(currentDocumentId, attachment.id, currentAgentId),
+    load: () => resourceSource ? resourceSource.content(attachment, true) : memoryService.documentAttachmentBlob(currentDocumentId, attachment.id, currentAgentId),
   }
 }
 
@@ -335,7 +339,7 @@ async function loadPreviewContent(attachment: DocumentAttachment): Promise<strin
   if (objectUrls[attachment.id]) return objectUrls[attachment.id] ?? null
   try {
     const currentGeneration = generation
-    const blob = await memoryService.documentAttachmentBlob(documentId, attachment.id, agentId)
+    const blob = resourceSource ? await resourceSource.content(attachment, true) : await memoryService.documentAttachmentBlob(documentId, attachment.id, agentId)
     const text = ['markdown', 'text'].includes(attachmentKind(attachment) ?? '') ? await blob.text() : undefined
     if (currentGeneration !== generation) return null
     const url = await isolatedBrowserResourceUrl(blob, attachment.media_type, attachment.name)
@@ -357,7 +361,7 @@ async function loadThumbnail(attachment: DocumentAttachment, currentGeneration: 
       if (delay) await new Promise(resolve => window.setTimeout(resolve, delay))
       if (currentGeneration !== generation) return
       try {
-        const blob = await memoryService.documentAttachmentThumbnailBlob(
+        const blob = resourceSource ? await resourceSource.thumbnail(attachment) : await memoryService.documentAttachmentThumbnailBlob(
           documentId,
           attachment.id,
           agentId,
@@ -436,7 +440,7 @@ function attachmentAction(attachment: DocumentAttachment): void {
 
 async function download(attachment: DocumentAttachment): Promise<void> {
   try {
-    const blob = await memoryService.documentAttachmentBlob(documentId, attachment.id, agentId)
+    const blob = resourceSource ? await resourceSource.content(attachment, false) : await memoryService.documentAttachmentBlob(documentId, attachment.id, agentId)
     saveBlobAsResource(blob, attachment.name)
   } catch (error) {
     $q.notify({ type: 'negative', message: apiErrorDetail(error) ?? t('documents.attachmentError') })

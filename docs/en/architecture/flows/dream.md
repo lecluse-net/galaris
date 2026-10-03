@@ -2,7 +2,7 @@
 
 # Dream Flow
 
-`app.dream` runs enrichments that can wait for a period of inactivity. It does not create
+`app.dream` runs work that can wait for a period of inactivity. It does not create
 agentic Tasks and never goes through a driver.
 
 ```text
@@ -106,6 +106,33 @@ mechanical work is intentionally excluded from Dream gauges. Aging marks a memor
 deleting it from RAG.
 
 ## Operational monitoring
+
+The existing `memory.file_catalogue` mechanism also handles file discovery. For each connection
+in recursive mode, initial work lists the scheme root. Each discovered subdirectory joins the
+durable File Share frontier and becomes a Dream subject on a later turn. One operation processes
+one direct page, bounded to 500 entries; it uses no LLM, agentic Task or additional worker.
+`file_directory` receipts use the usual leases, retries, interruptions and gauges. The Memory
+projection, traversal advancement and result checkpoint commit atomically; replay cannot duplicate effects.
+
+`DREAM_FILE_RESCAN_SCHEDULE` defaults to `weekly_midnight` (Monday at midnight), with
+`daily_midnight`/`off` alternatives. The calendar follows the application time zone. At the
+next idle period after a due boundary, eligible roots not yet covered become pending work.
+An active traversal or one already started for that boundary is not duplicated. Initial
+traversal remains automatic even when rescanning is disabled. Complete listings remove absent
+children from Memory search while preserving personal notes; incomplete pages and errors
+prove no deletion. Versioned file enrichment remains in the same mechanism and depends on
+the existing media options.
+
+`file_fingerprint` subjects read complete encountered file bytes and compute SHA-256 without
+an LLM, including known-URI mode and Messenger attachments. The 32 MiB analysis limit does
+not apply to hashing: temporary materialization uses the declared size, or 64 GiB when
+unknown, with the 120-second transfer deadline. Errors use the usual Dream retry budget
+and publish no identity. Version metadata is checked before and after reading and before
+applying the result. SQL uniqueness on `(owner_agent_id, file_sha256)` and a transaction
+lock per hash serialize location binding to a shared entry. Notes and relationships survive;
+old entries and revisions remain retained for history. Summaries are acquired per agent
+and hash, then shared by current copies. A source change detaches only that location;
+revocation invalidates application.
 
 The read-only routes `/api/dream/overview` and `/api/dream/receipts` expose the scheduler state,
 coverage, and paginated receipt history. The HTTP contract, filters, and

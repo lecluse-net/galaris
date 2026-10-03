@@ -566,7 +566,11 @@ their source identity, creates new items, and then puts their UUIDs back into th
   `memory_remember`, `memory_forget`, `memory_summarize`, and `document_share`.
 - Interface: under `/memory`, the **List** tab retains search, owner, content, revisions,
   provenance, direct access, and links. The **Graph** tab loads a lightweight subgraph by cursors,
-  then neighbors on demand; it never loads the entire corpus or payloads into memory. The selected
+  then neighbors on demand; it never loads the entire corpus or payloads into memory. Opening uses
+  pages of at most 500 nodes and 2,500 edges, with a limit of 3,000 displayed nodes. Queries read
+  only graph columns. Sources are checked on every load: connections are resolved in batches,
+  and Nextcloud shares metadata reads for files in the same directory, falling back to individual
+  files when the listing is denied or incomplete. No access result survives between requests. The selected
   agent already determines the ACL scope and therefore remains implicit: its projection is not
   displayed. A public Topic enters this graph only if it contains a memory owned by the agent or
   an item directly shared with it; other agents' folders are not displayed merely because of their

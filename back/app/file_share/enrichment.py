@@ -3,7 +3,7 @@
 from pathlib import Path
 from datetime import datetime, timezone
 from uuid import UUID
-from sqlalchemy import select, Select, or_, func
+from sqlalchemy import select, Select, or_, func, update
 from core.database import get_db
 from app.memory import catalogue_projection_write
 from .catalogue import project_entry, descriptor_version
@@ -41,6 +41,15 @@ async def apply_enrichment(identity: UUID, version: str, description: str) -> bo
         return False
     if entry.enrichment_version == version:
         return False
+    if entry.file_sha256 is not None and entry.memory_item_id is not None:
+        from app.memory import catalogue_file_summary
+        async with catalogue_projection_write():
+            changed = await catalogue_file_summary(entry.memory_item_id, entry.file_sha256, description)
+        await get_db().execute(update(FileCatalogEntry).where(
+            FileCatalogEntry.memory_item_id == entry.memory_item_id,
+            FileCatalogEntry.file_sha256 == entry.file_sha256,
+        ).values(enrichment_version=FileCatalogEntry.source_version, enrichment_text=description[:50000]))
+        return changed
     entry.enrichment_version = version
     entry.enrichment_text = description[:50000]
     async with catalogue_projection_write():
@@ -50,6 +59,40 @@ async def apply_enrichment(identity: UUID, version: str, description: str) -> bo
 
 
 class FileCatalogueEnrichmentPort:
+    async def fingerprints(self) -> list[dict[str, object]]:
+        from .catalogue import current_binding, ObservationScope
+        entries = await get_db().scalars(select(FileCatalogEntry).where(
+            FileCatalogEntry.present.is_(True), FileCatalogEntry.memory_item_id.is_not(None),
+            FileCatalogEntry.descriptor["is_collection"].as_boolean().is_(False),
+            or_(FileCatalogEntry.fingerprint_version.is_(None), FileCatalogEntry.fingerprint_version != FileCatalogEntry.source_version),
+        ).order_by(func.coalesce(FileCatalogEntry.enrichment_attempted_at, FileCatalogEntry.last_seen_at), FileCatalogEntry.id).limit(500))
+        result: list[dict[str, object]] = []
+        for entry in entries:
+            if entry.connection_id is not None and await current_binding(ObservationScope(entry.connection_id, entry.agent_id, entry.binding_stamp, entry.runtime, entry.operation_started_at)):
+                result.append({"identity": str(entry.id), "uri": entry.uri, "agent_id": entry.agent_id,
+                    "runtime": entry.runtime, "version": entry.source_version})
+        return result
+
+    async def fingerprint(self, source: dict[str, object]) -> str | None:
+        from .fingerprinting import fingerprint
+        return await fingerprint(source)
+
+    async def identify(self, identity: str, version: str, sha256: str) -> bool:
+        from .fingerprinting import apply_fingerprint
+        return await apply_fingerprint(identity, version, sha256)
+
+    async def discovery_pending(self, claimed: list[dict[str, str]]) -> int:
+        from .indexing import discovery_pending
+        return await discovery_pending(claimed)
+
+    async def discovery_subjects(self, unavailable: list[dict[str, str]]) -> list[dict[str, str]]:
+        from .indexing import discovery_subjects
+        return await discovery_subjects(unavailable)
+
+    async def discover(self, subject: dict[str, str], *, attempt: int, max_attempts: int) -> int:
+        from .indexing import discover_directory
+        return await discover_directory(subject, attempt=attempt, max_attempts=max_attempts)
+
     async def candidates(self) -> list[dict[str, object]]:
         from .catalogue import current_binding, ObservationScope
         entries = await get_db().scalars(pending_enrichments().order_by(func.coalesce(FileCatalogEntry.enrichment_attempted_at, FileCatalogEntry.last_seen_at), FileCatalogEntry.id).limit(500))
@@ -61,7 +104,8 @@ class FileCatalogueEnrichmentPort:
                 entry.runtime, entry.operation_started_at)):
                 continue
             result.append({"identity": str(entry.id), "uri": entry.uri, "agent_id": entry.agent_id,
-                "runtime": entry.runtime, "version": descriptor_version(entry.descriptor), "descriptor": entry.descriptor})
+                "runtime": entry.runtime, "version": descriptor_version(entry.descriptor), "descriptor": entry.descriptor,
+                "file_sha256": entry.file_sha256, "memory_item_id": str(entry.memory_item_id)})
         return result
 
     async def claimed(self, identity: str) -> None:

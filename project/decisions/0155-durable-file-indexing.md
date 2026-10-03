@@ -6,9 +6,12 @@ Statut : accepté. Date : 2026-10-01.
 
 File Share possède les runs de découverte et les journaux de réparation de ses projections.
 Un run conserve agent, connexion, empreinte de configuration, runtime, racine, budget,
-frontière et curseur. Le scheduler existant traite une page de 500 entrées au maximum par
-itération, dans sa session isolée. Les runs alternent par date de dernier traitement ; les
-échecs ont un backoff borné et deviennent terminaux après cinq tentatives. Les modifications
+frontière et curseur. Dream traite une page directe de 500 entrées au maximum par
+tour du mécanisme existant `memory.file_catalogue`, sans nouveau worker ni méta-tâche.
+Les sous-répertoires trouvés attendent leurs tours dans la frontière durable. Les runs alternent
+par date de dernier traitement ; les reçus Dream portent leases, backoff et budget de tentatives.
+L'avancement, la projection et le checkpoint du résultat sont atomiques et idempotents.
+Les modifications
 interactives restent prioritaires ; les contrôles Memory ne déclenchent aucun modèle.
 
 Cette maintenance structurelle n'est pas un workflow métier externe : son état reste dans
@@ -16,7 +19,11 @@ File Share, sans créer de définition Process Galaris supplémentaire. L'API Me
 lancer et suivre un run durable et de l'annuler. Les mutations et les lectures de diagnostic
 vérifient les privilèges Memory et le périmètre humain de gestion de l'agent.
 
-Le parcours automatique des racines admissibles se renouvelle après six heures. Seuls les
+Le paramètre `DREAM_FILE_RESCAN_SCHEDULE` renouvelle les racines admissibles chaque lundi
+à minuit par défaut, dans le fuseau horaire de l'application ; `daily_midnight` et `off` sont
+également proposés. Les passages manqués sont rattrapés au prochain tour Dream disponible.
+Un parcours actif ou déjà lancé pour l'échéance empêche les doublons. Une nouvelle connexion
+admissible bénéficie toujours du premier parcours. Seuls les
 providers annonçant le mode récursif sont parcourus ; Console et les autres providers en
 mode URI connues bénéficient d'une vérification des URI déjà rencontrées, sans exploration.
 Une page tronquée sans curseur ou une profondeur/budget épuisé produit une couverture
@@ -34,14 +41,30 @@ le résultat externe reste réussi avec `indexing_status=failed` ; aucune durabi
 n'est annoncée pour une preuve que la base n'a pas pu enregistrer.
 
 Dream reçoit un port de catalogue lié à la composition, sans dépendance métier inverse.
-Il enrichit une version de fichier par tour et conserve ses reçus/checkpoints habituels,
+Le même mécanisme découvre un répertoire ou enrichit une version de fichier par tour,
+avec les reçus/checkpoints habituels et la jauge existante,
 sa rotation et sa préemption Task/Voice. Les options de médias existantes gouvernent les
 analyses textuelles, documentaires extractibles, images et audio/vidéo. La matérialisation
 est temporaire et bornée à 32 MiB. Une modification source ou une révocation invalide
 l'application du résultat ; une révision déjà acquise ne provoque pas une nouvelle analyse.
 Les champs Memory édités manuellement restent préservés.
 
-Les diagnostics terminaux sont conservés 30 jours. Les fiches et leurs contenus personnels
+Les fichiers portent une identité SHA-256 des octets complets, distincte du `content_hash`
+de leur fiche. L'unicité est limitée à l'agent : `(owner_agent_id, file_sha256)`.
+Les entrées File Share restent individuelles par emplacement et plusieurs entrées peuvent
+référencer la même fiche Memory. Les pièces jointes Messenger rejoignent cette projection
+à l'ingestion du journal ; leur UUID local reste résoluble au-delà de l'historique récent.
+Les échecs de projection conservent une réparation de métadonnées dans la transaction du
+journal. Le hachage est un sujet sans LLM du mécanisme Dream existant et précède l'analyse ;
+le résumé acquis par agent et empreinte sert à toutes ses copies. Les notes, titres personnels,
+sources, relations et révisions sont préservés au regroupement. Un changement de contenu
+détache son emplacement de l'ancienne identité ; la suppression d'une copie conserve les autres.
+Les aperçus et miniatures passent par File Share et les convertisseurs existants, avec
+contrôles d'accès et de version avant publication, puis nettoyage des temporaires.
+
+Les diagnostics terminaux sont conservés 30 jours, avec maintien du dernier marqueur de
+parcours pour chaque racine courante : le nettoyage ne relance pas une première découverte
+quand les reparcours sont désactivés. Les fiches et leurs contenus personnels
 restent indépendants de cette rétention. Les performances sont qualifiées sur des données
 synthétiques ; aucune cible de latence n'est revendiquée sans mesure conforme.
 

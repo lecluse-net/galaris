@@ -13,6 +13,7 @@ import hashlib
 import json
 import re
 import time
+from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from typing import Any, List, Optional, Tuple, cast
@@ -879,6 +880,20 @@ async def messenger_room_locator_known(
             )
         )
     ) is not None
+
+
+async def messenger_known_room_locators(
+    connection_id: int,
+    room_locators: Sequence[str],
+) -> set[str]:
+    """Classify locators in bulk within one exact connection, without granting access."""
+    normalized = {locator.strip() for locator in room_locators if locator.strip()}
+    if not normalized:
+        return set()
+    return set(await get_db().scalars(select(Room.external_id).where(
+        Room.connection_id == connection_id,
+        Room.external_id.in_(normalized),
+    )))
 
 
 async def messenger_for_agent_kind(

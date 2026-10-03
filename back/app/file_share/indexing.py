@@ -1,14 +1,21 @@
 """Durable file discovery and projection repair, one bounded page per turn."""
 
 from datetime import datetime, timedelta, timezone
+import hashlib
+import json
 from uuid import UUID
+from zoneinfo import ZoneInfo
 
 from sqlalchemy import select, delete, or_, func, exists, update
+from sqlalchemy.sql.selectable import Exists
+from sqlalchemy.orm import aliased
 
 from app.connection import Connection
 from app.tools import ToolModel
 from app.memory import catalogue_projection_write
 from core.database import get_db
+from core.params import runtime_settings
+from core.util import local_timezone_name
 
 from .catalogue import ObservationScope, current_binding, lock_binding, observation_scope, observe_descriptors, observe_deletion, observe_membership, indexing_mode_expression, binding_stamp
 from .models import FileCatalogEntry, FileIndexRun, FileObservationRepair
@@ -154,6 +161,7 @@ async def process_index_page(run: FileIndexRun) -> None:
         if listing.next_cursor == cursor:
             raise ValueError("Provider cursor did not advance")
         frame["cursor"] = listing.next_cursor
+        frame.pop("_dream_identity", None)
     else:
         await _reconcile_directory(scope, uri, run.started_at)
         frontier.pop(0)
@@ -165,12 +173,34 @@ async def process_index_page(run: FileIndexRun) -> None:
     run.next_attempt_at = now()
 
 
-async def schedule_automatic_runs() -> None:
-    recent = exists(select(FileIndexRun.id).where(
+def rescan_boundary(reference: datetime | None = None) -> datetime | None:
+    """Latest due calendar boundary; missed schedules catch up at the next idle turn."""
+    schedule = runtime_settings.DREAM_FILE_RESCAN_SCHEDULE
+    if schedule == "off":
+        return None
+    local = (reference or now()).astimezone(ZoneInfo(local_timezone_name()))
+    boundary = local.replace(hour=0, minute=0, second=0, microsecond=0)
+    if schedule == "weekly_midnight":
+        boundary -= timedelta(days=local.weekday())
+    return boundary.astimezone(timezone.utc)
+
+
+def _covered_root() -> Exists:
+    boundary = rescan_boundary()
+    covered = FileIndexRun.status.in_(("queued", "running", "retry"))
+    if boundary is not None:
+        covered = or_(covered, FileIndexRun.started_at >= boundary)
+    else:
+        covered = FileIndexRun.id.is_not(None)
+    return exists(select(FileIndexRun.id).where(
         FileIndexRun.connection_id == Connection.id, FileIndexRun.binding_stamp == binding_stamp(),
         FileIndexRun.runtime == "internal", FileIndexRun.root_uri == ToolModel.code + "://",
-        or_(FileIndexRun.status.in_(("queued", "running", "retry")), FileIndexRun.updated_at > now() - timedelta(hours=6)),
+        covered,
     ).correlate(Connection, ToolModel))
+
+
+async def schedule_automatic_runs() -> None:
+    recent = _covered_root()
     rows = (await get_db().execute(select(Connection.agent_id, ToolModel.code).join(
         ToolModel, ToolModel.id == Connection.tool_id).where(Connection.active.is_(True),
         indexing_mode_expression() == "recursive", ~recent).order_by(Connection.id).limit(20))).all()
@@ -184,7 +214,7 @@ async def schedule_automatic_runs() -> None:
 
 
 async def indexing_tick() -> None:
-    """Scheduler callback: isolated session is supplied by the scheduler."""
+    """Advance one page explicitly; production discovery is owned by Dream."""
     db = get_db()
     await schedule_automatic_runs()
     await db.commit()
@@ -193,21 +223,103 @@ async def indexing_tick() -> None:
         .limit(1).with_for_update(skip_locked=True))
     if run is None:
         return
+    await _advance_index_run(run)
+
+
+async def _advance_index_run(run: FileIndexRun, *, dream_attempt: int | None = None, max_attempts: int = 5) -> int:
+    db = get_db()
+    before = run.scanned
+    subject_identity = _discovery_subject(run)["identity"].split(":", 1)[1]
     try:
         async with catalogue_projection_write():
             async with db.begin_nested():
                 await process_index_page(run)
     except Exception as error:
         await db.refresh(run)
-        run.attempts += 1
+        run.attempts = dream_attempt if dream_attempt is not None else run.attempts + 1
         run.error_type = type(error).__name__
-        run.status = "error" if run.attempts >= 5 else "retry"
+        run.status = "error" if run.attempts >= max_attempts else "retry"
         run.updated_at = now()
-        run.next_attempt_at = now() + timedelta(seconds=min(3600, 30 * 2 ** run.attempts))
+        run.next_attempt_at = now() if dream_attempt is not None else now() + timedelta(seconds=min(3600, 30 * 2 ** run.attempts))
         # A revision conflict invalidates the old cursor, never the source.
         if type(error).__name__ == "ResourceRevisionConflict" and run.frontier:
-            run.frontier = [{**run.frontier[0], "cursor": None}, *run.frontier[1:]]
-    await db.commit()
+            run.frontier = [{**run.frontier[0], "cursor": None,
+                "_dream_identity": subject_identity}, *run.frontier[1:]]
+        await db.commit()
+        if dream_attempt is not None:
+            raise
+        return 0
+    if dream_attempt is None:
+        await db.commit()
+    return max(0, run.scanned - before)
+
+
+def _discovery_subject(run: FileIndexRun) -> dict[str, str]:
+    frame = run.frontier[0] if run.frontier else {"uri": run.root_uri, "cursor": None}
+    state = json.dumps([frame, run.scanned], sort_keys=True)
+    identity = frame.get("_dream_identity") or hashlib.sha256(state.encode()).hexdigest()
+    return {"identity": f"{run.id}:{identity}",
+        "run_id": str(run.id), "uri": str(frame["uri"]),
+        "cursor": str(frame.get("cursor") or ""), "scanned": str(run.scanned)}
+
+
+async def discovery_subjects(unavailable: list[dict[str, str]]) -> list[dict[str, str]]:
+    """Seed roots and expose the durable directory queue to the Dream owner."""
+    await schedule_automatic_runs()
+    blocked: set[UUID] = set()
+    if unavailable:
+        receipts = {subject["identity"]: subject for subject in unavailable}
+        runs = await get_db().scalars(select(FileIndexRun).where(
+            FileIndexRun.status.in_(("queued", "running", "retry")),
+            FileIndexRun.id.in_([UUID(subject["run_id"]) for subject in unavailable]),
+        ).with_for_update(skip_locked=True))
+        for run in runs:
+            subject = receipts.get(_discovery_subject(run)["identity"])
+            if subject is None:
+                continue
+            blocked.add(run.id)
+            if subject.get("status") == "error":
+                run.status = "error"
+                run.error_type = "DreamAttemptsExhausted"
+                run.updated_at = now()
+    runs = await get_db().scalars(select(FileIndexRun).where(
+        FileIndexRun.status.in_(("queued", "running", "retry")), FileIndexRun.next_attempt_at <= now(),
+        FileIndexRun.id.not_in(blocked),
+    ).order_by(FileIndexRun.updated_at, FileIndexRun.id).limit(20).with_for_update(skip_locked=True))
+    return [_discovery_subject(run) for run in runs]
+
+
+async def discovery_pending(claimed: list[dict[str, str]]) -> int:
+    """Read queue coverage, including eligible roots not yet seeded, without crawling."""
+    active = FileIndexRun.status.in_(("queued", "running", "retry"))
+    count = int(await get_db().scalar(select(func.coalesce(func.sum(
+        func.greatest(1, func.jsonb_array_length(FileIndexRun.frontier))), 0)).where(active)) or 0)
+    recent = _covered_root()
+    count += int(await get_db().scalar(select(func.count()).select_from(Connection).join(
+        ToolModel, ToolModel.id == Connection.tool_id).where(Connection.active.is_(True),
+        indexing_mode_expression() == "recursive", ~recent)) or 0)
+    claimed_by_identity = {subject["identity"]: subject for subject in claimed}
+    if claimed:
+        runs = await get_db().scalars(select(FileIndexRun).where(active,
+            FileIndexRun.id.in_([UUID(subject["run_id"]) for subject in claimed])))
+        for run in runs:
+            subject = claimed_by_identity.get(_discovery_subject(run)["identity"])
+            if subject is not None:
+                count -= max(1, len(run.frontier)) if subject.get("status") == "error" else 1
+    return max(0, count)
+
+
+async def discover_directory(subject: dict[str, str], *, attempt: int, max_attempts: int) -> int:
+    """Apply one Dream subject; a repeated or cancelled page cannot replay effects."""
+    run = await get_db().scalar(select(FileIndexRun).where(
+        FileIndexRun.id == UUID(subject["run_id"])).with_for_update())
+    if run is None or run.status not in {"queued", "running", "retry", "error"}:
+        return 0
+    if _discovery_subject(run)["identity"] != subject["identity"]:
+        return 0
+    if run.status == "error":
+        raise RuntimeError("File discovery exhausted its attempt budget")
+    return await _advance_index_run(run, dream_attempt=attempt, max_attempts=max_attempts)
 
 
 async def repair_tick() -> None:
@@ -259,7 +371,24 @@ async def prune_index_history() -> None:
     """Retain diagnostics for 30 days without retaining file contents."""
     cutoff = now() - timedelta(days=30)
     await get_db().execute(delete(FileObservationRepair).where(FileObservationRepair.status != "pending", FileObservationRepair.started_at < cutoff))
-    await get_db().execute(delete(FileIndexRun).where(FileIndexRun.status.not_in(("queued", "running", "retry")), FileIndexRun.updated_at < cutoff))
+    newer = aliased(FileIndexRun)
+    superseded = exists(select(newer.id).where(
+        newer.connection_id == FileIndexRun.connection_id,
+        newer.binding_stamp == FileIndexRun.binding_stamp,
+        newer.runtime == FileIndexRun.runtime, newer.root_uri == FileIndexRun.root_uri,
+        newer.started_at > FileIndexRun.started_at,
+    ))
+    current_root = exists(select(Connection.id).join(ToolModel).where(
+        Connection.id == FileIndexRun.connection_id, Connection.active.is_(True),
+        FileIndexRun.binding_stamp == binding_stamp(), FileIndexRun.runtime == "internal",
+        FileIndexRun.root_uri == ToolModel.code + "://",
+    ))
+    # Retain the latest current root marker even with periodic rescanning off.
+    # Pruning diagnostics must not turn it into a new initial traversal.
+    await get_db().execute(delete(FileIndexRun).where(
+        FileIndexRun.status.not_in(("queued", "running", "retry")), FileIndexRun.updated_at < cutoff,
+        or_(superseded, ~current_root),
+    ))
     await get_db().commit()
 
 

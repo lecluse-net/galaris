@@ -127,6 +127,20 @@ When an agent avatar is saved, the image is converted to JPEG and reduced to at 
 | Connections | Configure connections associated with agents | `/tools?tab=connections` |
 | Authorizations | Administer access rules for tools and functions | `/tools?tab=authorizations` |
 
+For compatible file providers and the SSH Console, **File indexing** defaults to
+**Only files already known**. Files and directories returned by `file_share` listings and
+searches become private Memory entries; Dream can later enrich supported files.
+**Discovery and indexing** also delegates traversal to Dream: one directory per work item,
+without an LLM, while Galaris is idle. **Preferences > Dream > File rescanning** controls
+periodic refresh, every Monday at midnight by default.
+Existing settings, including explicit disabling, are preserved. See the
+[indexing journey](../admin/tool-administration.md).
+
+Dream groups identical file copies **per agent**, using SHA-256 over their complete bytes.
+The shared entry retains its locations and one common summary. In an entry or the graph's
+file inspector, **File locations** provides thumbnails, fullscreen previews and original
+downloads. Each source's permissions still apply; changing one copy does not replace the others.
+
 In a custom Tool definition, each connection parameter can have a label, description and
 default value. For text or integers, **Add a fixed choice** defines allowed values and their
 display labels: the form then shows a dropdown. The technical code stays visible below the

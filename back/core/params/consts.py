@@ -213,6 +213,7 @@ class Params:
     DREAM_EXPERIENCE_MAX_ITEMS = "DREAM_EXPERIENCE_MAX_ITEMS"
     DREAM_EXPERIENCE_MAX_CHARS = "DREAM_EXPERIENCE_MAX_CHARS"
     DREAM_POLL_SECONDS = "DREAM_POLL_SECONDS"
+    DREAM_FILE_RESCAN_SCHEDULE = "DREAM_FILE_RESCAN_SCHEDULE"
     DREAM_LEASE_SECONDS = "DREAM_LEASE_SECONDS"
     DREAM_CLAIM_TIMEOUT_SECONDS = "DREAM_CLAIM_TIMEOUT_SECONDS"
     DREAM_MAX_ATTEMPTS = "DREAM_MAX_ATTEMPTS"
@@ -693,6 +694,10 @@ DEFAULT_PARAMS: dict[str, ParamConfig] = {
     },
     Params.DREAM_POLL_SECONDS: {
         "value": "60", "runtime_field": "DREAM_POLL_SECONDS", "kind": "float"
+    },
+    Params.DREAM_FILE_RESCAN_SCHEDULE: {
+        "value": "weekly_midnight", "runtime_field": "DREAM_FILE_RESCAN_SCHEDULE", "kind": "string",
+        "choices": ("off", "daily_midnight", "weekly_midnight"),
     },
     Params.DREAM_LEASE_SECONDS: {
         "value": "600", "runtime_field": "DREAM_LEASE_SECONDS", "kind": "integer"

@@ -17,7 +17,7 @@ tests restent l’autorité sur le comportement.
 - 26 paires de domaines directement bidirectionnelles ;
 - 1 composantes fortement connexes ;
 - 7 paires frontend directement bidirectionnelles ;
-- 606 handlers HTTP/WebSocket détectés ;
+- 609 handlers HTTP/WebSocket détectés ;
 - 135 tables SQLAlchemy détectées ;
 - 244 outils MCP natifs détectés ;
 - 40 pages Vue détectées.
@@ -256,27 +256,27 @@ tests restent l’autorité sur le comportement.
 | `app.dream` | `core.user` | `back/app/dream/events.py` |
 | `app.dream` | `core.util` | `back/app/dream/contracts.py` |
 | `app.file_share` | `app.agent` | `back/app/file_share/galaris_provider.py`, `back/app/file_share/messenger_transport.py`, `back/app/file_share/planner_adapter.py`, `back/app/file_share/resource_contracts.py`, `back/app/file_share/router.py` |
-| `app.file_share` | `app.connection` | `back/app/file_share/catalogue.py`, `back/app/file_share/file_share_service.py`, `back/app/file_share/indexing.py` |
-| `app.file_share` | `app.console` | `back/app/file_share/file_share_service.py`, `back/app/file_share/resource_service.py` |
+| `app.file_share` | `app.connection` | `back/app/file_share/catalogue.py`, `back/app/file_share/catalogue_resources.py`, `back/app/file_share/file_share_service.py`, `back/app/file_share/indexing.py`, `back/app/file_share/resource_observation.py` |
+| `app.file_share` | `app.console` | `back/app/file_share/catalogue.py`, `back/app/file_share/file_share_service.py`, `back/app/file_share/resource_service.py` |
 | `app.file_share` | `app.conversation` | `back/app/file_share/galaris_provider.py` |
 | `app.file_share` | `app.documentation` | `back/app/file_share/documentation_provider.py` |
 | `app.file_share` | `app.goal` | `back/app/file_share/galaris_provider.py` |
 | `app.file_share` | `app.image` | `back/app/file_share/file_share_service.py` |
-| `app.file_share` | `app.memory` | `back/app/file_share/__init__.py`, `back/app/file_share/catalogue.py`, `back/app/file_share/enrichment.py`, `back/app/file_share/indexing.py`, `back/app/file_share/resource_description.py`, `back/app/file_share/resource_observation.py`, `back/app/file_share/resource_service.py` |
-| `app.file_share` | `app.messenger` | `back/app/file_share/file_share_service.py` |
+| `app.file_share` | `app.memory` | `back/app/file_share/__init__.py`, `back/app/file_share/catalogue.py`, `back/app/file_share/catalogue_resources.py`, `back/app/file_share/enrichment.py`, `back/app/file_share/fingerprinting.py`, `back/app/file_share/indexing.py`, `back/app/file_share/resource_description.py`, `back/app/file_share/resource_observation.py`, `back/app/file_share/resource_service.py` |
+| `app.file_share` | `app.messenger` | `back/app/file_share/catalogue.py`, `back/app/file_share/file_share_service.py` |
 | `app.file_share` | `app.process` | `back/app/file_share/galaris_provider.py` |
 | `app.file_share` | `app.skill` | `back/app/file_share/galaris_provider.py`, `back/app/file_share/mcp.py` |
 | `app.file_share` | `app.task` | `back/app/file_share/galaris_provider.py`, `back/app/file_share/messenger_transport.py` |
-| `app.file_share` | `app.tools` | `back/app/file_share/bridges.py`, `back/app/file_share/catalogue.py`, `back/app/file_share/documentation_provider.py`, `back/app/file_share/file_share_service.py`, `back/app/file_share/galaris_provider.py`, `back/app/file_share/indexing.py`, `back/app/file_share/mcp.py`, `back/app/file_share/resource_contracts.py`, `back/app/file_share/transport.py` |
+| `app.file_share` | `app.tools` | `back/app/file_share/bridges.py`, `back/app/file_share/catalogue.py`, `back/app/file_share/catalogue_resources.py`, `back/app/file_share/documentation_provider.py`, `back/app/file_share/file_share_service.py`, `back/app/file_share/galaris_provider.py`, `back/app/file_share/indexing.py`, `back/app/file_share/mcp.py`, `back/app/file_share/resource_contracts.py`, `back/app/file_share/resource_observation.py`, `back/app/file_share/transport.py` |
 | `app.file_share` | `bridge.affine` | `back/app/file_share/bridges.py` |
 | `app.file_share` | `bridge.grav` | `back/app/file_share/bridges.py` |
 | `app.file_share` | `core.authorize` | `back/app/file_share/router.py` |
-| `app.file_share` | `core.database` | `back/app/file_share/catalogue.py`, `back/app/file_share/enrichment.py`, `back/app/file_share/indexing.py`, `back/app/file_share/models.py`, `back/app/file_share/resource_description.py`, `back/app/file_share/resource_observation.py`, `back/app/file_share/router.py` |
+| `app.file_share` | `core.database` | `back/app/file_share/catalogue.py`, `back/app/file_share/catalogue_resources.py`, `back/app/file_share/enrichment.py`, `back/app/file_share/fingerprinting.py`, `back/app/file_share/indexing.py`, `back/app/file_share/models.py`, `back/app/file_share/resource_description.py`, `back/app/file_share/resource_observation.py`, `back/app/file_share/router.py` |
 | `app.file_share` | `core.document` | `back/app/file_share/document_facade.py` |
 | `app.file_share` | `core.i18n` | `back/app/file_share/bridges.py`, `back/app/file_share/file_share_service.py`, `back/app/file_share/messenger_transport.py` |
-| `app.file_share` | `core.params` | `back/app/file_share/resource_delivery.py` |
-| `app.file_share` | `core.preview` | `back/app/file_share/__init__.py`, `back/app/file_share/web_preview.py` |
-| `app.file_share` | `core.util` | `back/app/file_share/messenger_transport.py`, `back/app/file_share/resource_service.py`, `back/app/file_share/transport.py`, `back/app/file_share/web_transport.py` |
+| `app.file_share` | `core.params` | `back/app/file_share/indexing.py`, `back/app/file_share/resource_delivery.py` |
+| `app.file_share` | `core.preview` | `back/app/file_share/__init__.py`, `back/app/file_share/catalogue_resources.py`, `back/app/file_share/web_preview.py` |
+| `app.file_share` | `core.util` | `back/app/file_share/fingerprinting.py`, `back/app/file_share/indexing.py`, `back/app/file_share/messenger_transport.py`, `back/app/file_share/resource_service.py`, `back/app/file_share/transport.py`, `back/app/file_share/web_transport.py` |
 | `app.goal` | `app.agent` | `back/app/goal/events.py`, `back/app/goal/goal_service.py`, `back/app/goal/models.py`, `back/app/goal/router.py`, `back/app/goal/runner.py` |
 | `app.goal` | `app.connection` | `back/app/goal/mcp.py`, `back/app/goal/models.py`, `back/app/goal/resource_facade.py` |
 | `app.goal` | `app.llm` | `back/app/goal/goal_service.py`, `back/app/goal/models.py`, `back/app/goal/runner.py` |
@@ -384,9 +384,9 @@ tests restent l’autorité sur le comportement.
 | `app.memory` | `core.user` | `back/app/memory/access.py`, `back/app/memory/bootstrap.py`, `back/app/memory/document_attachment_service.py`, `back/app/memory/document_export.py`, `back/app/memory/document_image_import.py`, `back/app/memory/document_links.py`, `back/app/memory/document_sharing.py`, `back/app/memory/document_thumbnail_service.py`, `back/app/memory/events.py`, `back/app/memory/goal_document_adapter.py`, `back/app/memory/goal_folders.py`, `back/app/memory/item_sharing.py`, `back/app/memory/library_queries.py`, `back/app/memory/maintenance.py`, `back/app/memory/router.py`, `back/app/memory/service.py` |
 | `app.memory` | `core.util` | `back/app/memory/acquisition_service.py`, `back/app/memory/attachment_analysis.py`, `back/app/memory/attachment_description.py`, `back/app/memory/catalogue_projection.py`, `back/app/memory/document_links.py`, `back/app/memory/document_service.py`, `back/app/memory/file_facade.py`, `back/app/memory/html_migration.py`, `back/app/memory/models.py`, `back/app/memory/passages.py`, `back/app/memory/router.py`, `back/app/memory/service.py`, `back/app/memory/source_projection.py`, `back/app/memory/storage.py`, `back/app/memory/storage_reconciliation.py`, `back/app/memory/temporal.py` |
 | `app.messenger` | `app.agent` | `back/app/messenger/contact_access.py`, `back/app/messenger/native_facade.py`, `back/app/messenger/permission_router.py`, `back/app/messenger/permissions.py`, `back/app/messenger/router.py`, `back/app/messenger/schemas.py`, `back/app/messenger/service.py`, `back/app/messenger/session.py` |
-| `app.messenger` | `app.connection` | `back/app/messenger/configuration.py`, `back/app/messenger/contact_access.py`, `back/app/messenger/contact_memory.py`, `back/app/messenger/directory.py`, `back/app/messenger/ingest.py`, `back/app/messenger/native_facade.py`, `back/app/messenger/native_interactions.py`, `back/app/messenger/service.py`, `back/app/messenger/session.py` |
+| `app.messenger` | `app.connection` | `back/app/messenger/configuration.py`, `back/app/messenger/contact_access.py`, `back/app/messenger/contact_memory.py`, `back/app/messenger/directory.py`, `back/app/messenger/ingest.py`, `back/app/messenger/journal.py`, `back/app/messenger/native_facade.py`, `back/app/messenger/native_interactions.py`, `back/app/messenger/service.py`, `back/app/messenger/session.py` |
 | `app.messenger` | `app.conversation` | `back/app/messenger/contact_memory.py`, `back/app/messenger/service.py` |
-| `app.messenger` | `app.file_share` | `back/app/messenger/link_preview.py`, `back/app/messenger/mcp.py` |
+| `app.messenger` | `app.file_share` | `back/app/messenger/journal.py`, `back/app/messenger/link_preview.py`, `back/app/messenger/mcp.py` |
 | `app.messenger` | `app.llm` | `back/app/messenger/ingest.py`, `back/app/messenger/mcp.py` |
 | `app.messenger` | `app.memory` | `back/app/messenger/contact_memory.py`, `back/app/messenger/service.py` |
 | `app.messenger` | `app.task` | `back/app/messenger/contact_memory.py`, `back/app/messenger/mcp.py`, `back/app/messenger/service.py` |
@@ -785,7 +785,7 @@ tests restent l’autorité sur le comportement.
 | `app/llm` | `core/util` | `front/app/llm/components/ConfiguredLlmManager.vue`, `front/app/llm/components/LlmActivityPanel.vue`, `front/app/llm/components/LlmCall.vue`, `front/app/llm/components/LlmCallDetails.vue`, `front/app/llm/components/LlmCallStopButton.vue`, `front/app/llm/components/LlmCallTaskDetail.vue`, `front/app/llm/components/LlmCalls.vue`, `front/app/llm/components/LlmUsageManager.vue`, `front/app/llm/components/ProviderQuotaPanel.vue`, `front/app/llm/pages/index.vue`, `front/app/llm/useEditorVoice.ts` |
 | `app/llm` | `core/websocket` | `front/app/llm/components/LlmActivityPanel.vue`, `front/app/llm/components/LlmCalls.vue` |
 | `app/memory` | `app/agent` | `front/app/memory/components/DocumentEditor.vue`, `front/app/memory/components/DocumentHistoryDialog.vue`, `front/app/memory/components/DocumentLibraryPage.vue`, `front/app/memory/components/MemorySharingPanel.vue`, `front/app/memory/pages/contacts.vue`, `front/app/memory/pages/index.vue` |
-| `app/memory` | `core/api` | `front/app/memory/components/DocumentAttachments.vue`, `front/app/memory/components/DocumentLibraryNavigation.vue`, `front/app/memory/components/DocumentThumbnail.vue`, `front/app/memory/pages/contacts.vue`, `front/app/memory/pages/index.vue`, `front/app/memory/richContent.ts`, `front/app/memory/services/contactService.ts`, `front/app/memory/services/fileIndexService.ts`, `front/app/memory/services/memoryService.ts`, `front/app/memory/stores/documentIcons.ts` |
+| `app/memory` | `core/api` | `front/app/memory/components/DocumentAttachments.vue`, `front/app/memory/components/DocumentLibraryNavigation.vue`, `front/app/memory/components/DocumentThumbnail.vue`, `front/app/memory/components/MemoryFileResources.vue`, `front/app/memory/pages/contacts.vue`, `front/app/memory/pages/index.vue`, `front/app/memory/richContent.ts`, `front/app/memory/services/contactService.ts`, `front/app/memory/services/fileIndexService.ts`, `front/app/memory/services/memoryService.ts`, `front/app/memory/stores/documentIcons.ts` |
 | `app/memory` | `core/authorize` | `front/app/memory/components/DocumentEditor.vue`, `front/app/memory/navigation.ts`, `front/app/memory/pages/contacts.vue`, `front/app/memory/pages/index.vue` |
 | `app/memory` | `core/navigation` | `front/app/memory/components/DocumentLibraryPage.vue`, `front/app/memory/navigation.ts`, `front/app/memory/pages/contacts.vue`, `front/app/memory/pages/index.vue` |
 | `app/memory` | `core/util` | `front/app/memory/components/DocumentApplication.vue`, `front/app/memory/components/DocumentApplicationBlock.vue`, `front/app/memory/components/DocumentAttachments.vue`, `front/app/memory/components/DocumentEditor.vue`, `front/app/memory/components/DocumentFolderSelect.vue`, `front/app/memory/components/DocumentHistoryDialog.vue`, `front/app/memory/components/DocumentLibraryPage.vue`, `front/app/memory/components/DocumentTagIcon.vue`, `front/app/memory/components/DocumentTagIconPicker.vue`, `front/app/memory/components/DocumentThumbnail.vue`, `front/app/memory/components/MemoryAttachmentButton.vue`, `front/app/memory/components/MemoryGraph.vue`, `front/app/memory/components/MemoryItemForm.vue`, `front/app/memory/components/MemoryItemHistory.vue`, `front/app/memory/components/MemorySharingPanel.vue`, `front/app/memory/documentEditor.ts`, `front/app/memory/documentFolders.ts`, `front/app/memory/pages/contacts.vue`, `front/app/memory/pages/index.vue`, `front/app/memory/richContent.ts`, `front/app/memory/services/memoryService.ts` |
@@ -1353,11 +1353,14 @@ tests restent l’autorité sur le comportement.
 | POST | `/evaluation/{mechanism}/runs/{run_id}/human-review` | `app.lab` | `submit_human_review` | oui | `back/app/lab/router.py:142` |
 | POST | `/evaluation/{mechanism}/runs/{run_id}/rejudge` | `app.lab` | `rejudge_benchmark` | oui | `back/app/lab/router.py:168` |
 | POST | `/evaluation/{mechanism}/runs/{run_id}/resume` | `app.lab` | `resume_benchmark` | oui | `back/app/lab/router.py:181` |
-| GET | `/file-share/bridges` | `app.file_share` | `list_bridges` | oui | `back/app/file_share/router.py:20` |
-| GET | `/file-share/indexing` | `app.file_share` | `read_indexing` | oui | `back/app/file_share/router.py:32` |
-| POST | `/file-share/indexing` | `app.file_share` | `create_indexing` | oui | `back/app/file_share/router.py:39` |
-| POST | `/file-share/indexing/repairs/retry` | `app.file_share` | `retry_index_repairs` | oui | `back/app/file_share/router.py:64` |
-| POST | `/file-share/indexing/{run_id}/cancel` | `app.file_share` | `cancel_indexing` | oui | `back/app/file_share/router.py:54` |
+| GET | `/file-share/bridges` | `app.file_share` | `list_bridges` | oui | `back/app/file_share/router.py:24` |
+| GET | `/file-share/indexing` | `app.file_share` | `read_indexing` | oui | `back/app/file_share/router.py:76` |
+| POST | `/file-share/indexing` | `app.file_share` | `create_indexing` | oui | `back/app/file_share/router.py:83` |
+| POST | `/file-share/indexing/repairs/retry` | `app.file_share` | `retry_index_repairs` | oui | `back/app/file_share/router.py:108` |
+| POST | `/file-share/indexing/{run_id}/cancel` | `app.file_share` | `cancel_indexing` | oui | `back/app/file_share/router.py:98` |
+| GET | `/file-share/items/{item_id}/resources` | `app.file_share` | `read_item_resources` | oui | `back/app/file_share/router.py:36` |
+| GET | `/file-share/items/{item_id}/resources/{entry_id}/content` | `app.file_share` | `read_item_resource_content` | oui | `back/app/file_share/router.py:56` |
+| GET | `/file-share/items/{item_id}/resources/{entry_id}/thumbnail` | `app.file_share` | `read_item_resource_thumbnail` | oui | `back/app/file_share/router.py:43` |
 | GET | `/goals` | `app.goal` | `read_goals` | oui | `back/app/goal/router.py:83` |
 | POST | `/goals` | `app.goal` | `create_goal` | oui | `back/app/goal/router.py:181` |
 | GET | `/goals/referrers/messenger` | `app.goal` | `search_messenger_referrers` | oui | `back/app/goal/router.py:103` |
@@ -1741,16 +1744,16 @@ tests restent l’autorité sur le comportement.
 | `document_tag_assignments` | `DocumentTagAssignment` | `app.memory` | non | `document_tags.id`, `memory_items.id` | `back/app/memory/models.py:73` |
 | `document_tag_icons` | `DocumentTagIcon` | `app.memory` | oui | `users.id` | `back/app/memory/models.py:62` |
 | `document_tags` | `DocumentTag` | `app.memory` | oui | `document_tags.id`, `goals.id`, `memory_items.id`, `users.id` | `back/app/memory/models.py:35` |
-| `document_team_grants` | `DocumentTeamGrant` | `app.memory` | non | `agent_groups.id`, `memory_items.id` | `back/app/memory/models.py:443` |
-| `document_user_grants` | `DocumentUserGrant` | `app.memory` | non | `memory_items.id`, `users.id` | `back/app/memory/models.py:432` |
+| `document_team_grants` | `DocumentTeamGrant` | `app.memory` | non | `agent_groups.id`, `memory_items.id` | `back/app/memory/models.py:446` |
+| `document_user_grants` | `DocumentUserGrant` | `app.memory` | non | `memory_items.id`, `users.id` | `back/app/memory/models.py:435` |
 | `documentation_passages` | `DocumentationPassage` | `app.documentation` | non | — | `back/app/documentation/models.py:12` |
 | `dream_receipts` | `DreamReceipt` | `app.dream` | non | — | `back/app/dream/models.py:26` |
 | `failure_incident_traces` | `FailureIncidentTrace` | `app.incident` | non | `failure_incidents.id` | `back/app/incident/models.py:172` |
 | `failure_incidents` | `FailureIncident` | `app.incident` | non | `agents.id`, `conversation_rounds.id`, `failure_incidents.id`, `failure_patterns.id`, `llm_calls.id`, `process_runs.id`, `task_attempts.id`, `tasks.id` | `back/app/incident/models.py:81` |
 | `failure_patterns` | `FailurePattern` | `app.incident` | non | — | `back/app/incident/models.py:27` |
 | `file_catalog_entries` | `FileCatalogEntry` | `app.file_share` | non | `agents.id`, `connections.id`, `memory_items.id` | `back/app/file_share/models.py:14` |
-| `file_index_runs` | `FileIndexRun` | `app.file_share` | non | `agents.id`, `connections.id` | `back/app/file_share/models.py:45` |
-| `file_observation_repairs` | `FileObservationRepair` | `app.file_share` | non | `agents.id`, `connections.id` | `back/app/file_share/models.py:72` |
+| `file_index_runs` | `FileIndexRun` | `app.file_share` | non | `agents.id`, `connections.id` | `back/app/file_share/models.py:47` |
+| `file_observation_repairs` | `FileObservationRepair` | `app.file_share` | non | `agents.id`, `connections.id` | `back/app/file_share/models.py:74` |
 | `goal_cycle_triggers` | `GoalCycleTrigger` | `app.goal` | non | `goal_cycles.id`, `goals.id` | `back/app/goal/models.py:358` |
 | `goal_cycles` | `GoalCycle` | `app.goal` | non | `goal_cycles.id`, `goals.id`, `llms.id`, `memory_items.id`, `tasks.id` | `back/app/goal/models.py:234` |
 | `goals` | `Goal` | `app.goal` | oui | `agents.id`, `connections.id`, `goals.id`, `memory_items.id`, `users.id` | `back/app/goal/models.py:75` |
@@ -1782,24 +1785,24 @@ tests restent l’autorité sur le comportement.
 | `llm_providers` | `LLMProvider` | `app.llm` | oui | `users.id` | `back/app/llm/provider_models.py:9` |
 | `llms` | `LLM` | `app.llm` | oui | `llm_providers.id` | `back/app/llm/provider_models.py:110` |
 | `mail_outbound_deliveries` | `MailOutboundDelivery` | `bridge.mail` | non | `agents.id`, `connections.id`, `users.id` | `back/bridge/mail/models.py:28` |
-| `memory_associations` | `MemoryAssociation` | `app.memory` | non | `memory_items.id` | `back/app/memory/models.py:974` |
-| `memory_automation_jobs` | `MemoryAutomationJob` | `app.memory` | non | — | `back/app/memory/models.py:1156` |
-| `memory_candidates` | `MemoryAcquisition` | `app.memory` | oui | `agents.id`, `memory_items.id`, `users.id` | `back/app/memory/models.py:888` |
-| `memory_contact_identities` | `MemoryContactIdentity` | `app.memory` | non | `agents.id`, `memory_items.id`, `users.id` | `back/app/memory/models.py:694` |
-| `memory_contact_items` | `MemoryContactItem` | `app.memory` | non | `agents.id`, `memory_items.id` | `back/app/memory/models.py:656` |
-| `memory_context_edges` | `MemoryContextEdge` | `app.memory` | non | `memory_context_nodes.id`, `memory_items.id` | `back/app/memory/models.py:619` |
-| `memory_context_nodes` | `MemoryContextNode` | `app.memory` | non | `agents.id` | `back/app/memory/models.py:564` |
-| `memory_embedding_chunks` | `MemoryEmbeddingChunk` | `app.memory` | non | `memory_items.id` | `back/app/memory/models.py:1031` |
-| `memory_embedding_manifests` | `MemoryEmbeddingManifest` | `app.memory` | non | `memory_items.id` | `back/app/memory/models.py:1008` |
-| `memory_findings` | `MemoryFinding` | `app.memory` | non | `memory_items.id`, `users.id` | `back/app/memory/models.py:1085` |
-| `memory_item_grants` | `MemoryItemGrant` | `app.memory` | non | `agents.id`, `memory_items.id` | `back/app/memory/models.py:408` |
+| `memory_associations` | `MemoryAssociation` | `app.memory` | non | `memory_items.id` | `back/app/memory/models.py:977` |
+| `memory_automation_jobs` | `MemoryAutomationJob` | `app.memory` | non | — | `back/app/memory/models.py:1159` |
+| `memory_candidates` | `MemoryAcquisition` | `app.memory` | oui | `agents.id`, `memory_items.id`, `users.id` | `back/app/memory/models.py:891` |
+| `memory_contact_identities` | `MemoryContactIdentity` | `app.memory` | non | `agents.id`, `memory_items.id`, `users.id` | `back/app/memory/models.py:697` |
+| `memory_contact_items` | `MemoryContactItem` | `app.memory` | non | `agents.id`, `memory_items.id` | `back/app/memory/models.py:659` |
+| `memory_context_edges` | `MemoryContextEdge` | `app.memory` | non | `memory_context_nodes.id`, `memory_items.id` | `back/app/memory/models.py:622` |
+| `memory_context_nodes` | `MemoryContextNode` | `app.memory` | non | `agents.id` | `back/app/memory/models.py:567` |
+| `memory_embedding_chunks` | `MemoryEmbeddingChunk` | `app.memory` | non | `memory_items.id` | `back/app/memory/models.py:1034` |
+| `memory_embedding_manifests` | `MemoryEmbeddingManifest` | `app.memory` | non | `memory_items.id` | `back/app/memory/models.py:1011` |
+| `memory_findings` | `MemoryFinding` | `app.memory` | non | `memory_items.id`, `users.id` | `back/app/memory/models.py:1088` |
+| `memory_item_grants` | `MemoryItemGrant` | `app.memory` | non | `agents.id`, `memory_items.id` | `back/app/memory/models.py:411` |
 | `memory_items` | `MemoryItem` | `app.memory` | oui | `agents.id`, `topics.id`, `users.id` | `back/app/memory/models.py:153` |
-| `memory_links` | `MemoryLink` | `app.memory` | oui | `agents.id`, `memory_items.id` | `back/app/memory/models.py:512` |
-| `memory_revisions` | `MemoryRevision` | `app.memory` | non | `agents.id`, `memory_items.id`, `tasks.id` | `back/app/memory/models.py:454` |
-| `memory_sources` | `MemorySource` | `app.memory` | non | `conversation_rounds.id`, `memory_items.id`, `tasks.id` | `back/app/memory/models.py:838` |
-| `memory_topic_contact_items` | `MemoryTopicContactItem` | `app.memory` | non | `memory_items.id`, `memory_topic_contact_scopes.id` | `back/app/memory/models.py:799` |
-| `memory_topic_contact_scopes` | `MemoryTopicContactScope` | `app.memory` | non | `agents.id`, `memory_items.id` | `back/app/memory/models.py:758` |
-| `memory_usages` | `MemoryUsage` | `app.memory` | non | `agents.id`, `memory_items.id` | `back/app/memory/models.py:941` |
+| `memory_links` | `MemoryLink` | `app.memory` | oui | `agents.id`, `memory_items.id` | `back/app/memory/models.py:515` |
+| `memory_revisions` | `MemoryRevision` | `app.memory` | non | `agents.id`, `memory_items.id`, `tasks.id` | `back/app/memory/models.py:457` |
+| `memory_sources` | `MemorySource` | `app.memory` | non | `conversation_rounds.id`, `memory_items.id`, `tasks.id` | `back/app/memory/models.py:841` |
+| `memory_topic_contact_items` | `MemoryTopicContactItem` | `app.memory` | non | `memory_items.id`, `memory_topic_contact_scopes.id` | `back/app/memory/models.py:802` |
+| `memory_topic_contact_scopes` | `MemoryTopicContactScope` | `app.memory` | non | `agents.id`, `memory_items.id` | `back/app/memory/models.py:761` |
+| `memory_usages` | `MemoryUsage` | `app.memory` | non | `agents.id`, `memory_items.id` | `back/app/memory/models.py:944` |
 | `messenger_files` | `File` | `app.messenger` | oui | `connections.id` | `back/app/messenger/models.py:428` |
 | `messenger_interactions` | `Interaction` | `app.messenger` | non | `connections.id` | `back/app/messenger/models.py:192` |
 | `messenger_listener_state` | `ListenerState` | `app.messenger` | non | `connections.id` | `back/app/messenger/models.py:484` |

@@ -275,6 +275,22 @@ class MessengerFacade:
             raise ValueError(f"Messenger room {local_id} is unknown for this connection.")
         return external_id
 
+    async def stored_attachment_resource(self, room_id: str, ref: str) -> tuple[File, str] | None:
+        """Resolve an immutable local file UUID without a recent-history cutoff."""
+        from sqlalchemy import select
+        from core.database import get_db
+        from .models import Attachment
+        try:
+            identity = UUID(ref)
+        except ValueError:
+            return None
+        locator = await self._external_room_id(room_id)
+        row = (await get_db().execute(select(File, Room.external_id).join(Attachment, Attachment.file_id == File.id)
+            .join(Message, Message.id == Attachment.message_id).join(Room, Room.id == Message.messenger_room_id)
+            .where(File.id == identity, File.connection_id == self._connection_id,
+                Room.connection_id == self._connection_id, Room.external_id == locator).limit(1))).one_or_none()
+        return None if row is None else (row[0], row[1])
+
     async def _external_user_id(self, user_id: UUID | str) -> str:
         from sqlalchemy import select
 

@@ -36,6 +36,7 @@ def item_to_public(item: MemoryItem, access: MemoryAccess) -> MemoryItemPublic:
             "managed_source_kind": item.managed_source_kind,
             "managed_source_ref": item.managed_source_ref,
             "content_hash": item.content_hash,
+            "file_sha256": item.file_sha256,
             "size_bytes": item.size_bytes,
             "last_accessed_at": item.last_accessed_at,
             "access_count": item.access_count,

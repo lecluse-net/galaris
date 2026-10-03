@@ -511,9 +511,25 @@ Coverage: `mobile-editor-toolbar.spec.mjs`, `document-voice.spec.mjs`,
 isolation, editable personal fields, tombstones and late responses, durable repair without
 replaying external effects, resumable pages exceeding 500 entries, budgets/cancellation,
 versioned enrichment, external changes and RBAC.
+It also verifies SHA-256 identity per agent, grouping across storage and Messenger,
+personal notes and titles, revisioned shared summaries, changed copies, directory rebinding
+after a move, and preview denial after revocation or byte changes. `memory.spec.mjs` exercises
+thumbnails and fullscreen from the graph inspector, errors/retries and late responses after
+an agent change. `e2e/specs/file-indexing.spec.mjs` checks real-API thumbnails, previews,
+original downloads and reopening on desktop and mobile with a synthetic provider.
+It also exercises the real Dream scheduler: one directory per idle turn, receipts and gauges,
+no LLM calls, atomic replayable checkpoints, revision-conflict recovery, duplicate-free weekly
+rescanning, additions/removals, and local midnight across daylight-saving changes.
 `back/app/memory/tests/test_file_catalogue_scale.py` qualifies synthetic catalogues of
 1,000, 10,000 and 100,000 entries and compares writes with and without observation. These
 are local measurements with a synthetic provider, not a remote latency guarantee.
 `front/browser-tests/file-indexing.spec.mjs` covers progress, start/cancel, error/retry and
 late response rejection after an agent switch on desktop/mobile.
+`front/browser-tests/memory.spec.mjs` compares actual file and directory graph colors with
+their legend after filtering and theme changes, on desktop and mobile.
+It also checks opening and zooming synthetic 500- and 3,000-node graphs without losing nodes
+during pagination. WebDAV tests verify that metadata reads scale with the number of directories
+for 300 and 3,000 files, including individual fallback and fresh checks after revocation.
+The provider scenario also verifies grouped file resolution for a Tool combining File Share
+and Messenger.
 `e2e/specs/file-indexing.spec.mjs` exercises the assembled application and its real API.

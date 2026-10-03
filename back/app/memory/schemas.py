@@ -249,6 +249,7 @@ class MemoryItemPublic(BaseModel):
     managed_source_kind: str | None
     managed_source_ref: str | None
     content_hash: str
+    file_sha256: str | None = None
     size_bytes: int
     last_accessed_at: datetime | None
     access_count: int
@@ -833,12 +834,12 @@ class MemoryGraphRootsRequest(BaseModel):
     memory_types: list[MemoryType] = Field(default_factory=_empty_memory_types)
     topic_item_id: UUID | None = None
     contact_item_id: UUID | None = None
-    limit: int = Field(default=60, ge=1, le=100)
-    edge_limit: int = Field(default=300, ge=1, le=500)
+    limit: int = Field(default=60, ge=1, le=500)
+    edge_limit: int = Field(default=300, ge=1, le=2500)
     cursor: MemoryGraphCursor | None = None
     known_item_ids: list[UUID] = Field(
         default_factory=_empty_memory_ids,
-        max_length=500,
+        max_length=3_000,
     )
 
 

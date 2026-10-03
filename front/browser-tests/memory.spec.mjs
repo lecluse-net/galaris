@@ -13,6 +13,7 @@ async function memoryItemFixtures(page) {
   await jsonRoute(page, '**/api/memory/findings?*', [])
   await jsonRoute(page, '**/api/memory/graph/roots', { nodes: [], edges: [], has_more: false })
   await jsonRoute(page, '**/api/memory/items/doc-a/links?*', [])
+  await jsonRoute(page, '**/api/file-share/items/*/resources?*', [])
   await jsonRoute(page, '**/api/memory/items/doc-a/revisions?*', versions)
   await jsonRoute(page, '**/api/memory/items/doc-a/sharing', { lock_version: 3, can_manage: true, grants: [], options: [],
     level: 'private', can_write: false, owner: { kind: 'agent', id: 7, label: 'Alice', can_write: true }, owner_groups: [] })
@@ -53,6 +54,155 @@ for (const nodeKind of ['file', 'directory']) {
     await expect(dialog.locator('.ck-editor__editable')).toHaveText('Personal catalogue content')
   })
 }
+
+for (const width of [1440, 390]) test(`file graph details show all locations, thumbnails and fullscreen previews at ${width}px`, async ({ page }, testInfo) => {
+  await page.setViewportSize({ width, height: 900 })
+  const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aZ1kAAAAASUVORK5CYII=', 'base64')
+  const resources = [
+    { id: 'copy-a', uri: 'console://synthetic/image.png', name: 'image.png', media_type: 'image/png', size_bytes: png.length },
+    { id: 'copy-b', uri: 'synthetic-talk://room/image-copy.png', name: 'image-copy.png', media_type: 'image/png', size_bytes: png.length },
+  ]
+  await jsonRoute(page, '**/api/file-share/items/doc-a/resources?*', resources)
+  await page.route('**/api/file-share/items/doc-a/resources/*/thumbnail?*', route => route.fulfill({ contentType: 'image/png', body: png }))
+  await page.route('**/api/file-share/items/doc-a/resources/*/content?*', route => {
+    expect(new URL(route.request().url()).searchParams.get('agent_id')).toBe('7')
+    return route.fulfill({ contentType: 'image/png', body: png })
+  })
+  await mount(page, 'app/memory/components/MemoryGraphNodeDetail.vue', { props: {
+    agentId: 7, node: { ...document, node_kind: 'file', title: 'Synthetic shared file' }, relations: [],
+    color: '#00B8C6', icon: 'insert_drive_file', roleLabel: 'File',
+  } })
+  for (const resource of resources) {
+    await expect(page.getByText(resource.uri, { exact: true })).toBeVisible()
+    const card = page.locator('.resource-preview-card').filter({ has: page.getByText(resource.name, { exact: true }) })
+    const image = card.getByRole('img', { name: resource.name, exact: true })
+    await expect(image).toBeVisible()
+    await expect.poll(() => image.evaluate(element => element.naturalWidth)).toBeGreaterThan(0)
+    await card.getByRole('button', { name: `Open preview of ${resource.name}`, exact: true }).first().click()
+    const viewer = page.getByRole('dialog', { name: `Open preview of ${resource.name}`, exact: true })
+    await expect(viewer.getByRole('img', { name: resource.name, exact: true })).toBeVisible()
+    await viewer.getByRole('button', { name: 'Enter fullscreen', exact: true }).click()
+    await expect.poll(() => page.evaluate(() => document.fullscreenElement !== null)).toBe(true)
+    await viewer.getByRole('button', { name: 'Exit fullscreen', exact: true }).click()
+    await viewer.getByRole('button', { name: 'Close', exact: true }).click()
+    await expect(viewer).toBeHidden()
+  }
+  await page.screenshot({ path: testInfo.outputPath('file-locations.png') })
+})
+
+test('file previews retry denied reads, reopen, and discard late content after an agent change', async ({ page }) => {
+  const resource = { id: 'copy-a', uri: 'console://synthetic/readme.md', name: 'readme.md', media_type: 'text/markdown', size_bytes: 30 }
+  let reads = 0, waiting = false, release
+  await jsonRoute(page, '**/api/file-share/items/doc-a/resources?*', [resource])
+  await page.route('**/api/file-share/items/doc-a/resources/*/thumbnail?*', route => route.fulfill({ status: 404 }))
+  await page.route('**/api/file-share/items/doc-a/resources/*/content?*', async route => {
+    reads++
+    if (reads === 1) return route.fulfill({ status: 403 })
+    if (reads === 2) {
+      waiting = true
+      await new Promise(resolve => { release = resolve })
+    }
+    return route.fulfill({ contentType: 'text/markdown', body: '# Synthetic preview\n\nOriginal file bytes.' })
+  })
+  await mount(page, 'app/memory/components/MemoryFileResources.vue', { props: { itemId: 'doc-a', agentId: 7 } })
+  const open = page.getByRole('button', { name: 'Open preview of readme.md', exact: true }).first()
+  await open.click()
+  await expect(page.getByText('The attachment operation failed.', { exact: true })).toBeVisible()
+  await open.click()
+  await expect.poll(() => waiting).toBe(true)
+  await page.evaluate(() => window.testApp.setProps({ agentId: null }))
+  release()
+  await expect(page.getByRole('dialog')).toHaveCount(0)
+  await page.evaluate(() => window.testApp.setProps({ agentId: 8 }))
+  await open.click()
+  await expect(page.getByRole('heading', { name: 'Synthetic preview' })).toBeVisible()
+  await page.getByRole('dialog').getByRole('button', { name: 'Close', exact: true }).click()
+  await open.click()
+  await expect(page.getByText('Original file bytes.', { exact: true })).toBeVisible()
+})
+
+for (const width of [1440, 390]) test(`file and directory graph markers agree with their legend through filtering and theme changes at ${width}px`, async ({ page }, testInfo) => {
+  await page.setViewportSize({ width, height: 900 })
+  const kinds = ['file', 'directory', 'attachment', 'folder']
+  const timestamp = new Date().toISOString()
+  const nodes = kinds.map(kind => ({
+    id: `catalogue-${kind}`, node_kind: kind, entity_kind: kind,
+    title: `Synthetic ${kind}`, owner_agent_id: 7, memory_type: 'working',
+    visibility: 'private', source_managed: true, access_count: 0,
+    last_accessed_at: null, created_at: timestamp, updated_at: timestamp,
+    activity_at: timestamp, has_relations: false, relation_count: 0,
+  }))
+  await jsonRoute(page, '**/api/memory/graph/roots', {
+    nodes, edges: [], has_more: false, next_cursor: null, edges_truncated: false,
+  })
+  await mount(page, 'app/memory/components/MemoryGraph.vue', { props: {
+    agentId: 7, query: '', memoryTypes: [], topicItemId: null,
+    contactItemId: null, timeRangeMilliseconds: null,
+  } })
+  const graphColors = async () => page.evaluate(async () => {
+    const moduleUrl = performance.getEntriesByType('resource')
+      .map(entry => entry.name).find(name => /\/echarts(?:\/core|_core)\.js/.test(name))
+    if (!moduleUrl) throw new Error('The real graph renderer was not loaded')
+    const echarts = await import(moduleUrl)
+    const chart = echarts.getInstanceByDom(document.querySelector('.memory-graph__chart'))
+    if (!chart) return []
+    const series = chart.getModel().getSeries()[0]
+    if (!series) return []
+    const data = series.getData()
+    const context = document.createElement('canvas').getContext('2d')
+    const normalize = color => { context.fillStyle = color; return context.fillStyle }
+    return chart.getOption().series[0].data.map((node, index) => {
+      const kind = node.id.replace('catalogue-', '')
+      const legend = document.querySelector(`.memory-graph__role-symbol--${kind}`)
+      return { kind, color: normalize(data.getItemVisual(index, 'style').fill),
+        legend: normalize(getComputedStyle(legend).backgroundColor) }
+    })
+  })
+  for (const dark of [false, true]) {
+    await page.evaluate(dark => window.testApp.dark(dark), dark)
+    await expect.poll(async () => (await graphColors()).map(row => row.kind).sort()).toEqual([...kinds].sort())
+    for (const row of await graphColors()) expect(row.color, `${row.kind} must match its legend`).toBe(row.legend)
+    const files = page.getByRole('button', { name: 'Hide “File” nodes and their relationships', exact: true })
+    await files.click()
+    await expect.poll(async () => (await graphColors()).map(row => row.kind).sort()).toEqual(kinds.filter(kind => kind !== 'file').sort())
+    await page.getByRole('button', { name: 'Show “File” nodes and their relationships', exact: true }).click()
+    await expect.poll(async () => (await graphColors()).length).toBe(kinds.length)
+    await page.screenshot({ path: testInfo.outputPath(`graph-${dark ? 'dark' : 'light'}.png`), animations: 'disabled' })
+  }
+})
+
+for (const count of [500, 3000]) test(`a ${count}-node graph becomes usable and keeps every paginated node`, async ({ page }, testInfo) => {
+  test.setTimeout(60_000)
+  const timestamp = new Date().toISOString()
+  const nodes = Array.from({ length: count }, (_, index) => ({
+    id: `synthetic-${index}`, title: `Synthetic memory ${index}`, node_kind: 'memory', entity_kind: 'memory',
+    owner_agent_id: 7, memory_type: 'semantic', visibility: 'private', source_managed: false,
+    access_count: 0, last_accessed_at: null, created_at: timestamp, updated_at: timestamp,
+    activity_at: timestamp, has_relations: index > 0, relation_count: index > 0 ? 1 : count - 1,
+  }))
+  const requests = []
+  await page.route('**/api/memory/graph/roots', async route => {
+    const body = route.request().postDataJSON()
+    requests.push(body)
+    const offset = body.cursor ? Number(body.cursor.id) : 0
+    const end = Math.min(count, offset + body.limit)
+    await route.fulfill({ json: { nodes: nodes.slice(offset, end),
+      edges: nodes.slice(Math.max(1, offset), end).map(node => ({ id: `edge-${node.id}`,
+        source_item_id: nodes[0].id, target_item_id: node.id, relation_type: 'related_to', confidence: 1, suggested: false })),
+      has_more: end < count, next_cursor: end < count ? { id: String(end), activity_at: timestamp } : null,
+      edges_truncated: false } })
+  })
+  const start = Date.now()
+  await mount(page, 'app/memory/components/MemoryGraph.vue', { props: {
+    agentId: 7, query: '', memoryTypes: [], topicItemId: null, contactItemId: null, timeRangeMilliseconds: null,
+  } })
+  await expect(page.locator('.memory-graph__chart--loading')).toHaveCount(0, { timeout: 20_000 })
+  await expect(page.locator('.memory-graph__chart canvas')).toBeVisible()
+  await expect(page.getByText(`${count} node(s)`, { exact: true })).toBeVisible()
+  await page.getByRole('button', { name: 'Zoom in', exact: true }).click()
+  await testInfo.attach('graph-loading.json', { body: JSON.stringify({ nodes: count,
+    milliseconds: Date.now() - start, requests: requests.length }), contentType: 'application/json' })
+})
 
 test('opening memory selects an agent and loads its results and filters only once', async ({ page }) => {
   const { item } = await memoryItemFixtures(page)

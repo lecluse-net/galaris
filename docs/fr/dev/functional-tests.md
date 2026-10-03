@@ -553,9 +553,26 @@ Garanties : `mobile-editor-toolbar.spec.mjs`, `document-voice.spec.mjs`,
 agents et bindings, les champs personnels éditables, les tombes et réponses tardives,
 la réparation durable sans rejouer les effets, la reprise de pages de plus de 500 entrées,
 les budgets/annulations, l'enrichissement versionné, les modifications externes et le RBAC.
+Elle vérifie aussi l'identité SHA-256 par agent, le regroupement entre stockage et Messenger,
+les notes et titres personnels, le résumé partagé historisé, les changements de copie,
+le déplacement avec rattachement au nouveau répertoire et le refus d'un aperçu après
+révocation ou modification des octets. `memory.spec.mjs` exerce miniatures et plein écran
+depuis le détail du graphe, erreurs/reprises et réponses tardives lors d'un changement d'agent.
+`e2e/specs/file-indexing.spec.mjs` vérifie avec les API réelles les miniatures, aperçus,
+téléchargements originaux et réouvertures sur desktop et mobile, avec un provider synthétique.
+Elle exerce aussi le scheduler Dream réel : un répertoire par tour inactif, reçus et jauges,
+absence d'appel LLM, checkpoint atomique et rejouable, reprise après conflit de révision,
+reparcours hebdomadaire sans doublon, ajouts/retraits et minuit local avec changement d'heure.
 `back/app/memory/tests/test_file_catalogue_scale.py` qualifie des catalogues synthétiques de
 1 000, 10 000 et 100 000 entrées et compare les écritures avec/sans observation. Les résultats
 sont des mesures locales avec provider synthétique, sans promesse de latence distante.
 `front/browser-tests/file-indexing.spec.mjs` couvre le suivi, le lancement et l'annulation,
 l'erreur/retry et le rejet de réponses tardives après changement d'agent sur desktop/mobile.
+`front/browser-tests/memory.spec.mjs` compare les couleurs réellement rendues des fichiers et
+répertoires à leur légende, après filtrage et changement de thème, sur desktop et mobile.
+Elle vérifie également l'ouverture et le zoom de graphes synthétiques de 500 et 3 000 nœuds,
+sans perte de nœuds lors de la pagination. Les tests WebDAV vérifient que les lectures de
+métadonnées suivent le nombre de dossiers pour 300 et 3 000 fichiers, avec repli individuel
+et nouveaux contrôles après révocation. Le scénario fournisseur vérifie aussi la résolution
+groupée des fichiers d'un Tool combinant File Share et Messenger.
 `e2e/specs/file-indexing.spec.mjs` exerce l'application assemblée et son API réelle.

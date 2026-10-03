@@ -75,8 +75,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
             "documentation-index", refresh_documentation_index, interval=30.0, timeout=90.0,
         )
         register_scheduler_jobs()
-        from app.file_share import indexing_tick, repair_tick, prune_index_history, refresh_known_tick
-        task_scheduler.register_periodic_job("file-index-discovery", indexing_tick, interval=2.0, timeout=90.0)
+        from app.file_share import repair_tick, prune_index_history, refresh_known_tick
         task_scheduler.register_periodic_job("file-index-repair", repair_tick, interval=2.0, timeout=90.0)
         task_scheduler.register_periodic_job("file-index-history", prune_index_history, interval=3600.0)
         task_scheduler.register_periodic_job("file-index-known", refresh_known_tick, interval=2.0, timeout=90.0)

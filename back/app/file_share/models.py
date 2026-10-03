@@ -32,7 +32,9 @@ class FileCatalogEntry(Base):
     operation_started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     last_seen_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     checked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), index=True)
-    memory_item_id: Mapped[UUID | None] = mapped_column(ForeignKey("memory_items.id"), unique=True)
+    memory_item_id: Mapped[UUID | None] = mapped_column(ForeignKey("memory_items.id"), index=True)
+    file_sha256: Mapped[str | None] = mapped_column(String(64))
+    fingerprint_version: Mapped[str | None] = mapped_column(String(64))
 
     __table_args__ = (Index(
         "ix_file_catalog_tombstone_binding", "connection_id", "binding_stamp", "runtime",

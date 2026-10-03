@@ -13,7 +13,7 @@ import hashlib
 import json
 import mimetypes
 import tempfile
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Sequence
 from pathlib import Path
 from core.util import DEFAULT_DOWNLOAD_BYTES, complete_io, copy_download
 from typing import Any, Literal
@@ -151,9 +151,13 @@ class NextcloudFileClient:
         headers: dict[str, str] | None = None,
         content: str | None = None,
         data: dict[str, str] | None = None,
+        http: httpx.AsyncClient | None = None,
     ) -> httpx.Response:
         """Bound both the time and bytes of DAV control responses."""
-        async with asyncio.timeout(_REQUEST_SECONDS), self._client() as http:
+        if http is None:
+            async with self._client() as client:
+                return await self._request(method, url, headers=headers, content=content, data=data, http=client)
+        async with asyncio.timeout(_REQUEST_SECONDS):
             async with http.stream(
                 method, url, headers=headers, content=content, data=data
             ) as response:
@@ -164,8 +168,13 @@ class NextcloudFileClient:
                             "Nextcloud metadata exceeds the bounded response limit; use a smaller folder."
                         )
                     received.extend(chunk)
+                # aiter_bytes() has already decompressed the wire response.
+                # Reconstructing it with Content-Encoding would decode it twice.
+                decoded_headers = response.headers.copy()
+                decoded_headers.pop("content-encoding", None)
+                decoded_headers.pop("content-length", None)
                 return httpx.Response(
-                    response.status_code, headers=response.headers, content=bytes(received)
+                    response.status_code, headers=decoded_headers, content=bytes(received)
                 )
 
     async def _ensure_dirs(self, http: httpx.AsyncClient, remote_dir: str) -> None:
@@ -347,7 +356,7 @@ class NextcloudFileClient:
         logger.info("Nextcloud: created share for {}", remote)
         return url
 
-    async def _propfind(self, remote: str, *, depth: str) -> list[FileEntry]:
+    async def _propfind(self, remote: str, *, depth: str, http: httpx.AsyncClient | None = None) -> list[FileEntry]:
         """Return bounded WebDAV metadata without exposing credentials."""
 
         headers = {
@@ -358,7 +367,7 @@ class NextcloudFileClient:
 <d:propfind xmlns:d="DAV:"><d:prop><d:resourcetype/><d:getcontentlength/>
 <d:getlastmodified/><d:getcontenttype/><d:getetag/></d:prop></d:propfind>"""
         response = await self._request(
-            "PROPFIND", self._webdav_url(remote.strip("/")), headers=headers, content=body
+            "PROPFIND", self._webdav_url(remote.strip("/")), headers=headers, content=body, http=http
         )
         _check_status(response, {207}, remote)
         if b"<!DOCTYPE" in response.content.upper() or b"<!ENTITY" in response.content.upper():
@@ -419,6 +428,62 @@ class NextcloudFileClient:
                 )
             )
         return entries
+
+    async def resource_infos(self, paths: Sequence[str]) -> dict[str, FileEntry]:
+        """Check siblings in one bounded DAV response, falling back to exact reads.
+
+        Only successful per-resource properties authorize a requested path. A
+        denied, oversized or incomplete listing falls back to Depth: 0, so an
+        unreadable parent never hides a directly readable child.
+        """
+        requested = dict.fromkeys(paths)
+        folders: dict[str, list[str]] = {}
+        for path in requested:
+            normalized = path.strip("/")
+            folders.setdefault(normalized.rpartition("/")[0], []).append(path)
+        pending: asyncio.Queue[tuple[str, list[str]] | None] = asyncio.Queue()
+        for folder, children in folders.items():
+            pending.put_nowait((folder, children))
+        readable: dict[str, FileEntry] = {}
+        async with self._client() as http:
+            async def worker() -> None:
+                while True:
+                    job = await pending.get()
+                    try:
+                        if job is None:
+                            return
+                        folder, children = job
+                        if len(children) == 1:
+                            path = children[0]
+                            try:
+                                entries = await self._propfind(path, depth="0", http=http)
+                            except Exception:
+                                continue
+                            if len(entries) == 1:
+                                readable[path] = entries[0]
+                            continue
+                        entries_by_path: dict[str, FileEntry] = {}
+                        try:
+                            entries = await self._propfind(folder, depth="1", http=http)
+                            entries_by_path = {entry.path.strip("/") if entry.path != "." else "": entry for entry in entries}
+                        except Exception:
+                            pass
+                        for path in children:
+                            entry = entries_by_path.get(path.strip("/"))
+                            if entry is None:
+                                pending.put_nowait((path, [path]))
+                            else:
+                                readable[path] = entry
+                    finally:
+                        pending.task_done()
+            async with asyncio.TaskGroup() as group:
+                workers = min(8, len(requested))
+                for _ in range(workers):
+                    group.create_task(worker())
+                await pending.join()
+                for _ in range(workers):
+                    pending.put_nowait(None)
+        return readable
 
     async def resource_info(self, path: str, *, include_sha256: bool = False) -> FileEntry:
         """Return WebDAV metadata for one resource."""

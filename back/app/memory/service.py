@@ -16,7 +16,7 @@ from uuid import UUID
 from loguru import logger
 from sqlalchemy import and_, case, delete, exists, func, or_, select, union_all, update
 from sqlalchemy.dialects.postgresql import insert as pg_insert
-from sqlalchemy.orm import aliased, raiseload, selectinload
+from sqlalchemy.orm import Load, aliased, raiseload, selectinload
 from sqlalchemy.orm.attributes import set_committed_value
 from sqlalchemy.orm.exc import StaleDataError
 from sqlalchemy.sql.elements import ColumnElement
@@ -408,6 +408,17 @@ def _exact_scope_filters(
         )
         filters.append(or_(direct_membership, scoped_membership))
     return filters
+
+
+def _graph_item_options() -> Load:
+    """Keep full text and search vectors out of graph reads, including neighbors."""
+    return Load(MemoryItem).load_only(
+        MemoryItem.id, MemoryItem.node_kind, MemoryItem.managed_source_kind,
+        MemoryItem.owner_agent_id, MemoryItem.title, MemoryItem.memory_type,
+        MemoryItem.visibility, MemoryItem.source_managed, MemoryItem.access_count,
+        MemoryItem.last_accessed_at, MemoryItem.created_at, MemoryItem.updated_at,
+        MemoryItem.activity_at, MemoryItem.metadata_, raiseload=True,
+    )
 
 
 def _graph_node(item: MemoryItem, *, relation_count: int) -> MemoryGraphNode:
@@ -2996,7 +3007,7 @@ async def list_graph_roots(request: MemoryGraphRootsRequest) -> MemoryGraphPage:
     db = get_db()
     now = datetime.now(timezone.utc)
     filters = _graph_item_filters(request, now=now)
-    query = select(MemoryItem).where(*filters)
+    query = select(MemoryItem).options(_graph_item_options()).where(*filters)
     if request.cursor is not None:
         query = query.where(
             or_(
@@ -3153,7 +3164,7 @@ async def expand_graph_node(request: MemoryGraphExpandRequest) -> MemoryGraphPag
         if context_node is None:
             raise MemoryNotFoundError("Memory graph node not found.")
         context_query = (
-            select(MemoryContextEdge, MemoryItem)
+            select(MemoryContextEdge, MemoryItem).options(_graph_item_options())
             .join(
                 MemoryItem,
                 MemoryItem.id == MemoryContextEdge.item_id,
@@ -3223,7 +3234,7 @@ async def expand_graph_node(request: MemoryGraphExpandRequest) -> MemoryGraphPag
         else_=MemoryLink.source_item_id,
     )
     query = (
-        select(MemoryLink, MemoryItem)
+        select(MemoryLink, MemoryItem).options(_graph_item_options())
         .join(MemoryItem, MemoryItem.id == neighbor_id)
         .where(
             or_(

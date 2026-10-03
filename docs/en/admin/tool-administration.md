@@ -34,18 +34,29 @@ supports it. The latter discovers content accessible through the connection; the
 mode does not traverse the provider.
 Under **Tools → Global parameters**, set the value inherited by the Tool's connections;
 under **Connections**, retain inheritance or override the value for an agent.
-An imposed global value prevents local overrides, as with other parameters. Disabled is the
-default. Console also exposes this parameter for its embedded target. Existing preferences
+An imposed global value prevents local overrides, as with other parameters. **Only files already
+known** is the default for compatible providers. Console also exposes this parameter for its
+embedded target. Existing preferences
 are carried over during synchronization and preserved through upgrades. Each agent's source
 permissions remain enforced, and the integrated definition remains protected.
 
 Console, AFFiNE and Grav currently support only files already known; Nextcloud also offers
-discovery and indexing of all available content. Mail remains excluded, as do messaging attachments belonging
-to mixed Tools. Operations on encountered files now create private `file`/`directory`
+discovery and indexing of all available content. Mail remains excluded. Messenger attachments,
+including those belonging to mixed Tools, enter the catalogue on receipt or history import.
+Listings create an entry for the requested directory and each returned file
+or directory; searches create entries for their results. These observations are journaled
+with canonical URIs, then immediately projected into private `file`/`directory`
 Memory entries, searchable by name, URI and metadata without waiting for Dream. Disabling
 or reconfiguring a connection removes its old entries from search; access to the source
-file is also checked. Automatic traversal processes authorized roots in pages, resumes
-after interruption and renews after six hours. Known URIs are checked periodically without
+file is also checked. Dream performs automatic traversal while idle: one work item lists
+one direct directory page (at most 500 entries), then subdirectories wait for later turns.
+The **File indexing and enrichment** mechanism shows pending work, processed directories
+and retries; discovery makes no LLM calls.
+In **Preferences > Dream**, **File rescanning** renews each eligible scheme every Monday
+at midnight by default, in the application time zone. The other choices are every day at
+midnight and disabled. A missed schedule catches up at the next available turn; an active
+traversal or one already started for that schedule is not duplicated.
+Known URIs are checked periodically without
 traversing the provider. Only complete listings and proven deletions retire catalogue
 entries; an unavailable source remains distinct from a deleted source.
 
@@ -54,6 +65,19 @@ Manually edited fields are preserved during subsequent file observations.
 Editing updates the Memory entry; the catalogue continues to update source references
 and the file bytes remain with their provider.
 
+Dream computes **SHA-256 over the complete file bytes**, without an LLM and independently
+of the 32 MiB analysis limit. Identical files owned by the same agent then share one Memory
+entry, one summary and multiple URIs, including across storage and messaging providers.
+Other agents retain their own entry. Personal notes, titles, sources and relationships
+survive grouping. A changed copy moves to another entry; a missing copy retires only its location.
+
+In a Memory entry or the graph's file inspector, **File locations** shows available URIs
+and thumbnails. Clicking a card opens its preview with fullscreen and original-download
+actions. Images, PDF, text, HTML, audio, video and 3D models use the existing viewers;
+Office files are converted to PDF for preview. Formats without a viewer remain downloadable.
+Each access rechecks the connection and source resource; no file bytes are added to Memory.
+Previews are bounded to 512 MiB, and converter-specific limits still apply.
+
 In **Memory**, select the agent and open **File indexing**. Enter an eligible root, such as
 `nextcloud://`, and choose **Index now**. The table shows encountered entries, complete
 directories and errors; active runs can be cancelled. Partial coverage indicates a volume,
@@ -61,6 +85,8 @@ depth or pagination limit. Terminal diagnostics are retained for 30 days. Observ
 failures are repaired with backoff without replaying external effects; **Retry repairs**
 explicitly restarts terminal failures. Existing Dream
 media options enable versioned enrichment while preserving personally curated content.
+Dream then analyzes supported files to enrich their descriptions; directories remain
+catalogue entries without automatic summaries.
 
 ### Create the Tool
 

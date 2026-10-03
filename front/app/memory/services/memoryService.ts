@@ -3,6 +3,7 @@ import type { AppDatasetRequest, AppDatasetResult, AppGrant, AppPermissions } fr
 import type {
   DocumentSharing, DocumentSharingUpdate,
   DocumentAttachment,
+  CatalogueResource,
   DocumentCreate,
   DocumentContentDiff,
   DocumentContentRevisionDetail,
@@ -37,6 +38,15 @@ import type {
 } from '../types'
 
 export const memoryService = {
+  async fileResources(itemId: string, agentId: number, signal?: AbortSignal): Promise<CatalogueResource[]> {
+    return (await api.get<CatalogueResource[]>(`/file-share/items/${itemId}/resources`, { params: { agent_id: agentId }, signal })).data
+  },
+  async fileResourceBlob(itemId: string, entryId: string, agentId: number, preview = true): Promise<Blob> {
+    return (await api.get<Blob>(`/file-share/items/${itemId}/resources/${entryId}/content`, { params: { agent_id: agentId, preview }, responseType: 'blob' })).data
+  },
+  async fileResourceThumbnail(itemId: string, entryId: string, agentId: number): Promise<Blob> {
+    return (await api.get<Blob>(`/file-share/items/${itemId}/resources/${entryId}/thumbnail`, { params: { agent_id: agentId }, responseType: 'blob' })).data
+  },
   async temporalDefaults(): Promise<{ timezone: string; lookahead_hours: number }> {
     return (await api.get<{ timezone: string; lookahead_hours: number }>('/memory/temporal/defaults')).data
   },

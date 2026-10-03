@@ -100,7 +100,9 @@ test('reopening another agent ignores a late harness selection and retries a fai
     await edit('Lyra Example').click()
     await expect(dialog.getByLabel('First name *', { exact: true })).toHaveValue('Lyra')
     await expect(page.getByText('Unable to load Harnesses.', { exact: true })).toBeVisible()
-    await dialog.getByText('Harness', { exact: true }).click({ force: true })
+    // A disabled Quasar select exposes its state on the field rather than an input.
+    await expect(dialog.locator('label').filter({ has: page.getByText('Harness', { exact: true }) }))
+      .toHaveAttribute('aria-disabled', 'true')
     await expect(page.getByRole('option')).toHaveCount(0)
     await page.keyboard.press('Escape')
     await expect(dialog).toHaveCount(0)

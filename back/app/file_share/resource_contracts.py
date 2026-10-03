@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import dataclass
 from typing import Any, Literal, Protocol, runtime_checkable
 from uuid import UUID
@@ -181,6 +182,13 @@ class ResourceMetadataTransport(Protocol):
 
 
 @runtime_checkable
+class ResourceBatchMetadataTransport(Protocol):
+    """Live metadata, omitting inaccessible paths and propagating cancellation."""
+
+    async def resource_infos(self, paths: Sequence[str]) -> dict[str, FileEntry]: ...
+
+
+@runtime_checkable
 class ResourceListingTransport(Protocol):
     async def resource_list(
         self, path: str, *, recursive: bool, limit: int
@@ -230,6 +238,7 @@ __all__ = [
     "ResourceListingTransport",
     "ResourcePaginatedListingTransport",
     "ResourceMetadataTransport",
+    "ResourceBatchMetadataTransport",
     "ResourceRelocationTransport",
     "ResourceSchemeDescription",
     "ResourceSearchHit",

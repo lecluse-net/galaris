@@ -1,11 +1,11 @@
 <template>
-  <q-btn :outline="!iconOnly" :flat="iconOnly" :round="iconOnly" dense no-caps icon="open_in_full" color="primary"
+  <q-btn v-if="!showThumbnail" :outline="!iconOnly" :flat="iconOnly" :round="iconOnly" dense no-caps icon="open_in_full" color="primary"
     :label="iconOnly ? undefined : t('memory.viewLinkedContent')" :aria-label="t('memory.viewLinkedContent')"
     :loading="loading" :disable="agentId === null"
     @click.stop="open">
     <q-tooltip>{{ t('memory.viewLinkedContent') }}</q-tooltip>
   </q-btn>
-  <DocumentAttachments v-if="documentId && attachment" ref="viewer" preview-only
+  <DocumentAttachments v-if="documentId && attachment" ref="viewer" :preview-only="!showThumbnail"
     :document-id="documentId" :agent-id="agentId" :attachments="[attachment]" />
 </template>
 
@@ -18,7 +18,7 @@ import { memoryService } from '../services/memoryService'
 import type { DocumentAttachment } from '../types'
 import DocumentAttachments from './DocumentAttachments.vue'
 
-const { itemId, agentId, iconOnly = false } = defineProps<{ itemId: string; agentId: number | null; iconOnly?: boolean }>()
+const { itemId, agentId, iconOnly = false, showThumbnail = false } = defineProps<{ itemId: string; agentId: number | null; iconOnly?: boolean; showThumbnail?: boolean }>()
 const { t } = useI18n()
 const $q = useQuasar()
 const viewer = useTemplateRef<InstanceType<typeof DocumentAttachments>>('viewer')
@@ -35,6 +35,10 @@ function reset(): void {
 }
 
 async function open(): Promise<void> {
+  await load(true)
+}
+
+async function load(openViewer: boolean): Promise<void> {
   if (agentId === null) return
   reset()
   const request = generation
@@ -50,7 +54,7 @@ async function open(): Promise<void> {
     attachment.value = info
     documentId.value = reference[0]
     await nextTick()
-    if (request === generation) await viewer.value?.openById(reference[1])
+    if (request === generation && openViewer) await viewer.value?.openById(reference[1])
   } catch {
     if (request === generation) $q.notify({ type: 'negative', message: t('documents.attachmentError') })
   } finally {
@@ -58,6 +62,6 @@ async function open(): Promise<void> {
   }
 }
 
-watch(() => [itemId, agentId], reset)
+watch(() => [itemId, agentId, showThumbnail], () => { reset(); if (showThumbnail) void load(false) }, { immediate: true })
 onBeforeUnmount(reset)
 </script>

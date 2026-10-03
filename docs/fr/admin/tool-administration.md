@@ -36,19 +36,29 @@ contenus accessibles via la connexion ; le mode des fichiers déjà connus ne pa
 Dans **Outils → Paramètres globaux**, définir la valeur héritée par les connexions du Tool ;
 dans **Connexions**, conserver cet héritage ou personnaliser la valeur pour un agent.
 Une valeur globale imposée empêche les surcharges locales, comme pour les autres paramètres.
-Le défaut est désactivé. Console expose ce paramètre aussi avec sa cible embarquée.
+Le défaut est **Uniquement les fichiers déjà connus** pour les providers compatibles.
+Console expose ce paramètre aussi avec sa cible embarquée.
 Les réglages existants sont repris lors de la synchronisation et restent conservés aux mises
 à jour. Les droits de chaque agent restent applicables ; la définition intégrée reste protégée.
 
 Console, AFFiNE et Grav proposent actuellement uniquement les fichiers déjà connus ;
 Nextcloud propose aussi la découverte et l'indexation de tous les contenus disponibles.
-Mail reste exclu, comme les PJ de messagerie d'un
-Tool mixte. Les opérations sur les fichiers rencontrés créent maintenant des fiches
+Mail reste exclu. Les pièces jointes Messenger, y compris celles d'un Tool mixte,
+rejoignent le catalogue lors de leur réception ou de l'import d'historique. Les listes créent une fiche pour le répertoire consulté et chaque fichier ou
+répertoire retourné ; les recherches créent des fiches pour leurs résultats. Ces observations
+sont journalisées avec les URI canoniques, puis projetées immédiatement en fiches
 privées `file`/`directory` dans Memory, recherchables par nom, URI et métadonnées sans
 attendre Dream. Une désactivation ou un changement de configuration de connexion retire
 les anciennes fiches des recherches ; l'accès au fichier source est également vérifié.
-Le parcours automatique traite les racines autorisées par pages, avec reprise après
-interruption et renouvellement après six heures. Les URI connues sont vérifiées périodiquement
+Dream traite le parcours automatique pendant l'inactivité : un travail liste une page directe
+d'un répertoire (500 entrées au maximum), puis les sous-répertoires attendent leurs tours.
+Le mécanisme **Indexation et enrichissement des fichiers** affiche les travaux en attente,
+les répertoires traités et les nouvelles tentatives, sans appel LLM pour la découverte.
+Dans **Préférences > Dream**, **Reparcours des fichiers** renouvelle chaque schéma admissible
+par défaut chaque lundi à minuit, dans le fuseau horaire de l'application. Les autres choix
+sont chaque jour à minuit et désactivé. Un passage manqué est rattrapé au prochain tour
+disponible ; un parcours actif ou déjà lancé pour cette échéance n'est pas dupliqué.
+Les URI connues sont vérifiées périodiquement
 sans parcourir le provider. Seules les listes complètes et les suppressions prouvées retirent
 des fichiers du catalogue ; une source inaccessible reste distincte d'une source supprimée.
 
@@ -56,6 +66,21 @@ Ouvrir une fiche dans **Memory**, modifier son titre ou son contenu, puis enregi
 Les champs modifiés manuellement sont conservés lors des observations suivantes du fichier.
 L'édition porte sur la fiche Memory ; les références source continuent à être actualisées
 par le catalogue et les octets du fichier restent chez leur provider.
+
+Dream calcule une empreinte **SHA-256 des octets complets**, sans LLM et indépendamment
+de la limite de 32 Mio de l'analyse. Deux fichiers identiques du même agent partagent alors
+une seule fiche Memory, un résumé et plusieurs URI, même entre stockage et messagerie.
+Les autres agents conservent leur propre fiche. Les notes, titres personnels, sources et
+relations sont conservés lors du regroupement. Une copie modifiée rejoint une autre fiche ;
+la disparition d'une copie retire seulement son emplacement.
+
+Dans la fiche Memory ou le détail d'un nœud fichier du graphe, **Emplacements du fichier**
+affiche les URI et miniatures disponibles. Cliquer sur une carte ouvre l'aperçu et permet
+le plein écran ou le téléchargement original. Images, PDF, texte, HTML, audio, vidéo et
+modèles 3D utilisent les lecteurs existants ; Office est converti en PDF pour l'aperçu.
+Les formats sans lecteur restent téléchargeables. Chaque accès revérifie la connexion et
+la ressource source ; aucun octet n'est ajouté à la fiche Memory. Les aperçus sont bornés
+à 512 Mio ; les limites propres aux convertisseurs continuent de s'appliquer.
 
 Dans **Memory**, sélectionner l'agent puis ouvrir **Indexation des fichiers**. Saisir la
 racine admissible, par exemple `nextcloud://`, et choisir **Indexer maintenant**. Le tableau
@@ -65,6 +90,8 @@ pagination. Les diagnostics terminaux sont conservés 30 jours. Les erreurs d'ob
 sont réparées avec backoff sans rejouer l'opération externe ; **Relancer les réparations**
 permet de relancer explicitement celles qui restent en échec. Les options de médias Dream
 existantes activent les enrichissements versionnés, qui préservent les contenus personnels.
+Dream analyse ensuite les fichiers pris en charge pour enrichir leur description ; les
+répertoires restent des fiches de catalogue sans résumé automatique.
 
 ### Créer le Tool
 

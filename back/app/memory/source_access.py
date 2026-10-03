@@ -3,7 +3,7 @@
 Registration belongs to application composition. Memory never resolves transports.
 """
 
-from collections.abc import Awaitable, Callable
+from collections.abc import Awaitable, Callable, Sequence
 from functools import wraps
 from typing import TypeVar
 from uuid import UUID
@@ -18,11 +18,20 @@ from .schemas import MemoryGraphPage, MemoryGraphRootsRequest, MemoryGraphExpand
 
 SourceClause = Callable[[InstrumentedAttribute[UUID]], ColumnElement[bool]]
 SourceReader = Callable[[UUID, int], Awaitable[bool]]
+SourceBatchReader = Callable[[Sequence[UUID], int], Awaitable[set[UUID]]]
 _checks: dict[str, tuple[SourceClause, SourceReader]] = {}
+_batch_readers: dict[str, SourceBatchReader] = {}
 
 
-def register_source_access(kind: str, clause: SourceClause, reader: SourceReader) -> None:
+def register_source_access(
+    kind: str, clause: SourceClause, reader: SourceReader,
+    *, batch_reader: SourceBatchReader | None = None,
+) -> None:
     _checks[kind] = clause, reader
+    if batch_reader is None:
+        _batch_readers.pop(kind, None)
+    else:
+        _batch_readers[kind] = batch_reader
 
 
 def source_access_clause() -> ColumnElement[bool]:
@@ -55,8 +64,19 @@ def source_checked_graph(function: Callable[[GraphRequest], Awaitable[MemoryGrap
             sources = list((await get_db().execute(select(MemoryItem.id, MemoryItem.managed_source_kind).where(
                 MemoryItem.id.in_(endpoints), MemoryItem.managed_source_kind.in_(_checks),
             ))).tuples().all())
-        denied = {identity for identity, kind in sources
-                  if not await source_is_readable(identity, kind, request.agent_id)}
+        denied: set[UUID] = set()
+        groups: dict[str, list[UUID]] = {}
+        for identity, kind in sources:
+            if kind is not None:
+                groups.setdefault(kind, []).append(identity)
+        for kind, identities in groups.items():
+            batch_reader = _batch_readers.get(kind)
+            if batch_reader is None:
+                denied.update([identity for identity in identities
+                               if not await source_is_readable(identity, kind, request.agent_id)])
+            else:
+                readable = await batch_reader(identities, request.agent_id)
+                denied.update(set(identities) - readable)
         if sources:
             visible = set(await get_db().scalars(select(MemoryItem.id).where(
                 MemoryItem.id.in_([identity for identity, _kind in sources]), source_access_clause(),

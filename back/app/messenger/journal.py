@@ -288,7 +288,8 @@ async def record(
     )
     inserted_id = (await get_db().execute(statement)).scalar_one_or_none()
     if inserted_id is not None:
-        await _synchronize_files(inserted_id, connection_id, message.attachments)
+        files = await _synchronize_files(inserted_id, connection_id, message.attachments)
+        await observe_file_catalogue(connection_id, room_id, files)
         return True
     existing = (
         await get_db().execute(
@@ -332,8 +333,32 @@ async def record(
             deleted_by=None,
         )
     )
-    await _synchronize_files(existing_id, connection_id, message.attachments)
+    files = await _synchronize_files(existing_id, connection_id, message.attachments)
+    await observe_file_catalogue(connection_id, room_id, files)
     return False
+
+
+async def observe_file_catalogue(connection_id: int, room_locator: str | None, files: list[File]) -> None:
+    """Forward provider URIs and safe metadata, including passive history imports."""
+    if not room_locator or not files:
+        return
+    from app.connection import Connection
+    from app.tools import ToolModel
+    from app.file_share import observe_received_resources, ResourceDescriptor
+    from .resource_reference import attachment_resource_uri
+    from loguru import logger
+    code = await get_db().scalar(select(ToolModel.code).join(Connection, Connection.tool_id == ToolModel.id)
+        .where(Connection.id == connection_id))
+    if not code:
+        return
+    try:
+        async with get_db().begin_nested():
+            await observe_received_resources(connection_id, [ResourceDescriptor(
+                uri=attachment_resource_uri(code, room_locator, file.id), name=file.name,
+                media_type=file.mime_type or "application/octet-stream", size=file.size_bytes,
+            ) for file in files])
+    except Exception as error:
+        logger.warning("Attachment catalogue observation failed: {}", type(error).__name__)
 
 
 async def persist_inbound(

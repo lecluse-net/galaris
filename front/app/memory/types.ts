@@ -86,9 +86,14 @@ export interface DocumentAttachment {
   created_at: string
 }
 
+export interface CatalogueResource extends DocumentAttachment {
+  uri: string
+}
+
 export type DocumentType = 'html' | 'dataset'
 
 export interface MemoryItem {
+  file_sha256?: string | null
   temporal?: MemoryTemporalAnchor | null
   document_type: DocumentType
   content_profile?: 'rich-text' | 'document'

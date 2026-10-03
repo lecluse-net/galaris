@@ -1,6 +1,6 @@
 # Catalogue de fichiers par agent, indexation Memory et entretien Dream
 
-Statut : `partial` — proposition du 29 septembre 2026, précisée le 1er octobre 2026.
+Statut : `partial` — proposition du 29 septembre 2026, précisée le 3 octobre 2026.
 
 Socle implémenté : préférence par Tool ; catalogue privé par agent, connexion, empreinte
 de configuration et runtime ; observations de la façade publique ; fiches Memory
@@ -10,6 +10,16 @@ réponses antérieures ; revalidation de connexion et d'accès source à la lect
 Le renommage prouvé dans le même binding conserve l'identité et les notes ; une copie ou
 une réapparition après suppression crée une nouvelle identité. Une panne d'indexation
 n'annule pas l'opération externe réussie (`indexing_status=failed`).
+
+Évolution du 3 octobre : SHA-256 des octets complets, unique par agent, regroupe les copies
+File Share et Messenger dans une fiche commune avec plusieurs emplacements et un résumé.
+La fiche initiale est provisoire jusqu'à l'acquisition de cette empreinte. Les notes, titres
+personnels, sources, relations et révisions sont préservés. Memory et le détail du graphe
+présentent miniatures, aperçu plein écran et téléchargement original sous contrôle source.
+Les pièces jointes reçues ou importées rejoignent le catalogue sans inventaire global des
+messages. Le parcours récursif est désormais exécuté par Dream, répertoire par répertoire,
+avec reparcours hebdomadaire par défaut (décision 0155). Les propositions détaillées ci-dessous
+restent historiques lorsqu'elles décrivent un parcours indépendant de Dream.
 
 Implémentés également : parcours périodique par pages avec frontière/curseur durables,
 budgets, reprise/backoff et annulation ; réconciliation des listes directes complètes ;
@@ -54,8 +64,8 @@ un pair WebDAV synthétique couvre 503 entrées, pagination, reprise 503 et rév
 Ce dernier scénario ne vaut pas qualification d'une installation Nextcloud réelle ; celle-ci
 exige une connexion et un répertoire de test dédiés.
 
-Périmètre resserré le 1er octobre 2026 : Console et ressources des Tools portant la capacité
-`file_share`, hors Mail. Les autres accès de la façade ne sont pas des sources de ce catalogue.
+Périmètre courant : Console et ressources des Tools portant file-share ou des fichiers
+Messenger, hors Mail. Les autres accès de la façade ne sont pas des sources de ce catalogue.
 
 ## 1. Résultat attendu et périmètre de l'analyse
 
@@ -70,7 +80,7 @@ worker Memory ou mécanisme Dream ne sélectionne directement un service externe
 est un exemple de provider, pas un lot de réalisation ni une branche du pipeline.
 
 L'admission est positive : Console active ou transport de fichiers d'un Tool connecté doté
-de `file_share`, hors Mail. La façade fournit directement les périmètres admissibles au
+de `file_share` ou des fichiers Messenger, hors Mail. La façade fournit directement les périmètres admissibles au
 scanner ; celui-ci n'énumère pas tous les schémas pour appliquer sa propre liste d'exclusions.
 
 | Source | Décision de périmètre |
@@ -82,11 +92,11 @@ scanner ; celui-ci n'énumère pas tous les schémas pour appliquer sa propre li
 | `galaris://`, toutes collections | Exclu : aucune indexation ou fédération métier, documentation ou skills dans ce plan. |
 | `https://` et `http://` | Exclus : les informations Web retenues passent par les documents et les conversations. |
 | Mail, quel que soit le code du Tool | Différé : un futur chantier portera sur les mails eux-mêmes, pas seulement leurs PJ ; aucune acquisition ici. |
-| Transports Messenger, quel que soit le code du Tool | Exclus : Dream produit déjà les souvenirs conversationnels ; aucun inventaire exhaustif des messages ou PJ ici. |
+| Transports Messenger, quel que soit le code du Tool | Pièces jointes connues incluses à la réception ou à l'import d'historique ; aucun inventaire exhaustif des messages ici. |
 
 Un Tool peut porter à la fois `file_share` et Messenger. L'admission s'applique au transport
-effectivement résolu pour la ressource : les fichiers Nextcloud sont admissibles, ses PJ Talk
-ne le sont pas. Le schéma ou le seul booléen `has_file_share` ne suffit donc pas à admettre
+effectivement résolu pour la ressource : les fichiers Nextcloud et ses PJ Talk sont
+admissibles, mais seuls les premiers peuvent être parcourus récursivement. Le schéma ou le seul booléen `has_file_share` ne suffit donc pas à admettre
 toutes les URI de ce Tool. Ces gardes valent pour scans, observations et enrichissements.
 
 Pour les schémas admissibles et énumérables, un parcours récursif régulier inventorie tous

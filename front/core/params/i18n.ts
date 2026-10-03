@@ -213,6 +213,7 @@ export default {
       },
     },
     dreamSettings: {
+      fileRescanSchedules: { off: 'Désactivé', daily: 'Chaque jour à minuit', weekly: 'Chaque lundi à minuit' },
       title: 'Dream',
       subtitle: 'Exécute séquentiellement des travaux d’entretien lorsque Galaris est inactif.',
       attachments: {
@@ -276,6 +277,8 @@ export default {
       },
       fields: {
         enabled: 'Activer Dream',
+        fileRescanSchedule: 'Reparcours des fichiers',
+        fileRescanScheduleHint: 'Reparcourt les schémas en mode découverte dans le fuseau horaire de l’application. Dream traite un répertoire par travail, quand Galaris est disponible. Un passage manqué est rattrapé ; le premier parcours reste automatique.',
         enabledHint: 'Autorise les mécanismes d’arrière-plan. Les mécanismes déterministes, comme la maintenance Memory, fonctionnent sans modèle ; seuls les mécanismes génératifs exigent un modèle Dream.',
         topicCreationMode: 'Création des sujets',
         topicCreationModeHint: 'Interdire réutilise uniquement les sujets existants ; Demander une autorisation sollicite l’utilisateur d’origine ; Créer automatiquement ajoute immédiatement un sujet seulement après l’échec des contrôles renforcés de réemploi.',
@@ -619,6 +622,7 @@ export default {
       },
     },
     dreamSettings: {
+      fileRescanSchedules: { off: 'Disabled', daily: 'Every day at midnight', weekly: 'Every Monday at midnight' },
       title: 'Dream',
       subtitle: 'Runs maintenance mechanisms sequentially while Galaris is idle.',
       attachments: {
@@ -682,6 +686,8 @@ export default {
       },
       fields: {
         enabled: 'Enable Dream',
+        fileRescanSchedule: 'File rescanning',
+        fileRescanScheduleHint: 'Rescans schemes in discovery mode in the application time zone. Dream processes one directory per work item while Galaris is idle. Missed schedules catch up; the first traversal remains automatic.',
         enabledHint: 'Allows background mechanisms to run. Deterministic mechanisms such as Memory maintenance need no model; only generative mechanisms require a Dream model.',
         topicCreationMode: 'Thematic dossier creation',
         topicCreationModeHint: 'Forbid only reuses existing dossiers; Request approval asks the originating user; Create automatically adds a dossier immediately only after the strengthened reuse checks fail.',
@@ -909,6 +915,7 @@ export default {
       },
     },
     dreamSettings: {
+      fileRescanSchedules: { off: '禁用', daily: '每天午夜', weekly: '每周一午夜' },
       title: '梦境', subtitle: 'Galaris 空闲时按顺序运行维护机制。', priorityHint: '有活动任务或语音对话时，梦境不会开始工作。语音对话开始后会立即中断当前后台工作。',
       attachments: {
         title: '分析记忆中的附件',
@@ -931,6 +938,7 @@ export default {
       },
       fields: {
         enabled: '启用梦境', enabledHint: '允许运行后台机制。记忆维护等确定性机制无需模型；仅生成式机制需要梦境模型。', topicCreationMode: '主题档案创建',
+        fileRescanSchedule: '文件重新扫描', fileRescanScheduleHint: '按应用时区重新扫描发现模式下的 URI 方案。梦境在 Galaris 空闲时每次处理一个目录；补执行错过的计划，首次遍历仍自动启动。',
         topicCreationModeHint: '“禁止”仅复用现有档案；“请求批准”会询问来源用户；“自动创建”仅在增强复用检查失败后立即添加档案。',
         topicContinuitySystemPrompt: '系统提示词 — 主题档案延续', topicContinuitySystemPromptHint: '决定指定消息是否保留当前主题档案的完整提示词。清空内容可恢复标准提示词。',
         topicResolutionSystemPrompt: '系统提示词 — 主题档案解析', topicResolutionSystemPromptHint: '中断或初始化后复用现有主题档案或建议新档案的完整提示词。清空内容可恢复标准提示词。',

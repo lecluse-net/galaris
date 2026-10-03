@@ -44,8 +44,10 @@
       </q-item>
     </q-list>
 
+    <MemoryFileResources v-if="node.node_kind === 'file'" :key="`${agentId}:${node.id}`" :item-id="node.id" :agent-id="agentId" />
+    <DocumentThumbnail v-else-if="node.node_kind === 'document'" :document-id="node.id" :agent-id="agentId" />
     <div class="row q-gutter-sm q-mt-md">
-      <MemoryAttachmentButton v-if="node.node_kind === 'attachment'" :item-id="node.id" :agent-id="agentId" />
+      <MemoryAttachmentButton v-if="node.node_kind === 'attachment'" :item-id="node.id" :agent-id="agentId" show-thumbnail />
       <q-btn
         v-if="node.node_kind !== 'conversation' && node.node_kind !== 'folder'"
         color="primary"
@@ -83,6 +85,8 @@
 <script setup lang="ts">
 import DocumentIcon from './DocumentIcon.vue'
 import MemoryAttachmentButton from './MemoryAttachmentButton.vue'
+import MemoryFileResources from './MemoryFileResources.vue'
+import DocumentThumbnail from './DocumentThumbnail.vue'
 import { useI18n } from 'vue-i18n'
 import type { MemoryGraphEdge, MemoryGraphNode } from '../types'
 

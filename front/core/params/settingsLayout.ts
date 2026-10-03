@@ -5,7 +5,9 @@ import {
 } from './settingsCatalog'
 
 // Presentation only: retain the field definitions and their saving contracts.
-export const dreamActivityFields = dreamFields.filter(field => field.name === 'DREAM_ENABLED')
+export const dreamActivityFields = dreamFields.filter(field =>
+    ['DREAM_ENABLED', 'DREAM_FILE_RESCAN_SCHEDULE'].includes(field.name),
+)
 export const dreamTopicFields = dreamFields.filter(field => (
     field.name === 'DREAM_TOPIC_CREATION_MODE' || field.input === 'prompt'
 ))

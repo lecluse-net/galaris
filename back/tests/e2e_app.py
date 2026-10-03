@@ -12,6 +12,8 @@ import json
 import time
 from contextlib import ExitStack, asynccontextmanager
 from dataclasses import replace
+from pathlib import Path
+from tempfile import TemporaryDirectory
 from unittest.mock import patch
 from uuid import UUID, uuid4
 
@@ -141,6 +143,20 @@ async def lifespan(_app: FastAPI):
         await original_emit(subject, action, data, room=room)
 
     with ExitStack() as patches:
+        from tests.e2e_file_catalogue import BrowserFileTransport
+        file_root = Path(patches.enter_context(TemporaryDirectory(prefix='e2e-catalogue-')))
+        async def console_transport(ctx):
+            return BrowserFileTransport(file_root / str(ctx.agent_id))
+        patches.enter_context(patch('app.file_share.resource_service._console_transport', console_transport))
+        from app.console import ConsoleRunResource
+        from app.console.contracts import SshConnectionConfig
+        async def console_resource(agent_id):
+            resource = ConsoleRunResource(SshConnectionConfig(connection_id=1, host='synthetic.invalid',
+                username='synthetic', private_key='synthetic', known_host_key='synthetic'))
+            resource.files = BrowserFileTransport(file_root / str(agent_id))
+            return resource
+        patches.enter_context(patch('app.console.build_run_resource', console_resource))
+        _app.state.file_catalogue_root = file_root
         from tests.e2e_agent_admin import portrait_provider
         # Exercise the real lock/lease recovery without spending 30 seconds on
         # each room-lock collision. Production keeps its own recovery cadence.
@@ -267,7 +283,7 @@ async def elevenlabs_voices():
 
 @app.post("/api/__test/seed")
 async def seed(mode: str = "normal", mfa: bool = False):
-    if mode not in {"normal", "tools", "error", "task", "missing-terminal", "interruptible", "mail"}:
+    if mode not in {"normal", "tools", "error", "task", "missing-terminal", "interruptible", "mail", "file-catalogue"}:
         raise HTTPException(400, "Unknown scenario")
     suffix = uuid4().hex[:12]
     async with get_db_session() as db:
@@ -305,6 +321,9 @@ async def seed(mode: str = "normal", mfa: bool = False):
             rooms.append(str(room.id))
         fixture = {"email": owner.email, "password": "Browser-test-password-42!", "rooms": rooms,
                    "agent_id": agent.id}
+        if mode == 'file-catalogue':
+            from tests.e2e_file_catalogue import seed_catalogue
+            fixture.update(await seed_catalogue(agent.id, app.state.file_catalogue_root))
         if mode == "mail":
             from app.connection.models import ConnectionParam
             from bridge.mail.connection_service import resolve_connection

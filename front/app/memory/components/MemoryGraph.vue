@@ -261,7 +261,7 @@
             :agent-id="agentId"
             :node="selectedNode"
             :relations="selectedRelations"
-            :color="nodeColor(selectedNode.memory_type)"
+            :color="RESOURCE_ROLE_ACCENTS[selectedNode.entity_kind] ? roleColor(selectedNode.entity_kind) : nodeColor(selectedNode.memory_type)"
             :icon="nodeIcon(selectedNode)"
             :role-label="nodeRoleLabel(selectedNode)"
             @close="closeInspector"
@@ -348,7 +348,7 @@ const emit = defineEmits<{
   open: [id: string]
 }>()
 
-const ROOT_PAGE_SIZE = 100
+const ROOT_PAGE_SIZE = 500
 const MAX_VISIBLE_NODES = 3000
 const MAX_VISIBLE_EDGES = 8000
 const AUTO_REFRESH_INTERVAL = 30_000
@@ -376,6 +376,12 @@ const GRAPH_ROLE_LEGEND: readonly MemoryGraphEntityKind[] = [
   'directory',
   'conversation',
 ]
+const RESOURCE_ROLE_ACCENTS: Partial<Record<MemoryGraphEntityKind, 'cyan' | 'yellow'>> = {
+  attachment: 'cyan',
+  file: 'cyan',
+  folder: 'yellow',
+  directory: 'yellow',
+}
 const NODE_COLORS_LIGHT: Record<MemoryType, string> = {
   core: '#7e57c2',
   working: '#fb8c00',
@@ -522,11 +528,9 @@ function nodeColor(type: MemoryType): string {
 }
 
 function roleColor(role: MemoryGraphEntityKind): string {
+  const accent = RESOURCE_ROLE_ACCENTS[role]
+  if (accent) return solaireCss[accent].accent
   switch (role) {
-    case 'attachment': return solaireCss.cyan.accent
-    case 'folder': return solaireCss.yellow.accent
-    case 'file': return solaireCss.cyan.accent
-    case 'directory': return solaireCss.yellow.accent
     case 'contact': return nodeColor('social')
     case 'document': return nodeColor('working')
     case 'conversation': return nodeColor('episodic')
@@ -803,6 +807,7 @@ function graphOption(options: {
   viewState?: GraphViewState | null
 } = {}): MemoryGraphOption {
   const dark = $q.dark.isActive
+  const palette = getComputedStyle(document.documentElement)
   const curvatures = parallelEdgeCurvatures()
   const degrees = graphDegrees()
   const hubIds = new Set(
@@ -845,6 +850,10 @@ function graphOption(options: {
         const freshnessScore = freshness(node)
         const selected = selectedNodeId.value === node.id
         const degree = degrees.get(node.id) ?? 0
+        const accent = RESOURCE_ROLE_ACCENTS[node.entity_kind]
+        const color = accent
+          ? palette.getPropertyValue(`--solaire-${accent}-accent`).trim()
+          : nodeColor(node.memory_type)
         return {
           id: node.id,
           name: node.title,
@@ -853,9 +862,7 @@ function graphOption(options: {
           symbolSize: radiusFor(node) * 2,
           selected,
           itemStyle: {
-            color: node.entity_kind === 'attachment' || node.entity_kind === 'folder'
-              ? getComputedStyle(document.documentElement).getPropertyValue(`--solaire-${node.entity_kind === 'attachment' ? 'cyan' : 'yellow'}-accent`).trim()
-              : nodeColor(node.memory_type),
+            color,
             opacity: 1,
             borderColor: selected
               ? (dark ? '#ffffff' : '#263238')
@@ -865,7 +872,7 @@ function graphOption(options: {
                   ? '#90caf9'
                   : 'rgba(255, 255, 255, 0.9)',
             borderWidth: selected ? 4 : isStructuralNode(node) ? 3 : node.source_managed ? 2 : 1.5,
-            shadowColor: nodeColor(node.memory_type),
+            shadowColor: color,
             shadowBlur: freshnessScore * 18 + (isStructuralNode(node) ? 8 : 0),
           },
           label: {
@@ -1039,9 +1046,9 @@ async function loadInitial(options: { preserveView?: boolean } = {}): Promise<vo
         topicItemId,
         contactItemId,
         limit: ROOT_PAGE_SIZE,
-        edgeLimit: 500,
+        edgeLimit: 2500,
         cursor,
-        knownItemIds: [...nodes.value.keys()].slice(-500),
+        knownItemIds: [...nodes.value.keys()].slice(-MAX_VISIBLE_NODES),
       })
       if (generation !== loadGeneration) return
       mergeRootPage(pageWithinTimeRange(page, cutoffTimestamp))
@@ -1108,8 +1115,8 @@ async function refreshLatestRoots(): Promise<void> {
       topicItemId,
       contactItemId,
       limit: ROOT_PAGE_SIZE,
-      edgeLimit: 500,
-      knownItemIds: [...nodes.value.keys()].slice(-500),
+      edgeLimit: 2500,
+      knownItemIds: [...nodes.value.keys()].slice(-MAX_VISIBLE_NODES),
     })
     if (generation !== loadGeneration) return
     rangeEndTimestamp.value = refreshedAt

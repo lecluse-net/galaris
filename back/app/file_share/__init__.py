@@ -8,10 +8,12 @@ services are registered bridges and Messenger attachments keep their provider id
 from . import file_share_service
 from .models import FileCatalogEntry, FileIndexRun, FileObservationRepair
 from .indexing import indexing_tick, repair_tick, start_index_run, cancel_index_run, prune_index_history, refresh_known_tick
-from .catalogue import annotate_catalogue_entry, catalogue_access_clause, catalogue_source_readable
+from .catalogue import annotate_catalogue_entry, catalogue_access_clause, catalogue_source_readable, catalogue_sources_readable
+from .resource_observation import observe_received_resources as observe_received_resources
 from app.memory import register_source_access
 
-register_source_access("file_catalogue", catalogue_access_clause, catalogue_source_readable)
+register_source_access("file_catalogue", catalogue_access_clause, catalogue_source_readable,
+                       batch_reader=catalogue_sources_readable)
 from .bridges import (
     FileShareBridge,
     FileShareBridgeInfo,

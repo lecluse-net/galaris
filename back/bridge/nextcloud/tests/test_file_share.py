@@ -1,5 +1,8 @@
 """Exercise the real URI facade and Nextcloud adapter at the HTTP boundary."""
 
+import gzip
+import asyncio
+import zlib
 from urllib.parse import quote, unquote, urlsplit
 from xml.sax.saxutils import escape
 
@@ -29,6 +32,7 @@ class DavServer:
             }
         }
         self.forced_status = None
+        self.response_encoding = None
 
     def put(self, path, content):
         self.files[path] = content
@@ -82,9 +86,15 @@ class DavServer:
                     if name and name.rpartition("/")[0] == path
                 )
                 body += "".join(self.entry(name, name in dirs) for name in children)
-            return httpx.Response(
-                207, content='<d:multistatus xmlns:d="DAV:">' + body + "</d:multistatus>"
-            )
+            content = ('<d:multistatus xmlns:d="DAV:">' + body + "</d:multistatus>").encode()
+            if self.response_encoding:
+                encoded = gzip.compress(content) if self.response_encoding == "gzip" else zlib.compress(content)
+                return httpx.Response(207, stream=httpx.ByteStream(encoded), headers={
+                    "Content-Encoding": self.response_encoding,
+                    "Content-Length": str(len(encoded)),
+                    "Content-Type": "application/xml",
+                })
+            return httpx.Response(207, content=content)
         if request.method == "GET":
             if path not in self.files:
                 return httpx.Response(404)
@@ -142,6 +152,84 @@ def dav(monkeypatch):
 
     monkeypatch.setattr(files, "resolve_resource_transport_with_service", resolve)
     return server, adapter, ResourceContext(agent_id=1, runtime="internal")
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("cancel", [False, True])
+@pytest.mark.parametrize("folder_denied", [False, True])
+async def test_live_metadata_batch_bounds_concurrency_closes_pool_and_rechecks_rights(dav, monkeypatch, cancel, folder_denied):
+    server, adapter, _ctx = dav
+    paths = [f"{'shared' if folder_denied else f'folder-{index}'}/file-{index}.txt" for index in range(20)] + ["missing.txt"]
+    for path in paths[:-1]:
+        server.put(path, b"Synthetic data")
+    started, release = asyncio.Event(), asyncio.Event()
+    active, maximum = 0, 0
+    clients = []
+    async def handle(request):
+        nonlocal active, maximum
+        if request.headers.get('Depth') == '1' and folder_denied:
+            return httpx.Response(403)
+        active += 1
+        maximum = max(maximum, active)
+        if active == 8:
+            started.set()
+        try:
+            await release.wait()
+            if request.url.path.endswith("/file-3.txt"):
+                return httpx.Response(403)
+            return await server.handle(request)
+        finally:
+            active -= 1
+    def client():
+        http = httpx.AsyncClient(transport=httpx.MockTransport(handle))
+        clients.append(http)
+        return http
+    monkeypatch.setattr(adapter, "_client", client)
+    pending = asyncio.create_task(adapter.resource_infos(paths))
+    try:
+        await asyncio.wait_for(started.wait(), timeout=2)
+    except TimeoutError:
+        pending.cancel()
+        with pytest.raises(asyncio.CancelledError):
+            await pending
+        raise
+    assert maximum == 8 and len(clients) == 1
+    if cancel:
+        pending.cancel()
+        with pytest.raises(asyncio.CancelledError):
+            await pending
+    else:
+        release.set()
+        metadata = await pending
+        assert set(metadata) == set(paths) - {paths[3], "missing.txt"}
+        server.forced_status = 403
+        assert await adapter.resource_infos(paths) == {}
+    assert active == 0
+    assert all(http.is_closed for http in clients)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("count", [300, 3000])
+async def test_live_metadata_reads_scale_with_folders_and_preserve_exact_fallbacks(dav, monkeypatch, count):
+    server, adapter, _ctx = dav
+    paths = [f"folder-{index % 10}/synthetic-{index}.txt" for index in range(count)]
+    for path in paths:
+        server.put(path, b"Synthetic metadata")
+    metadata = await adapter.resource_infos(paths)
+    assert set(metadata) == set(paths)
+    assert len(server.requests) == 10
+    assert all(request.headers['Depth'] == '1' for request in server.requests)
+    # Permissions are read anew, including a parent that cannot be listed while
+    # its exact file remains accessible. A missing child is never admitted.
+    async def partial(request):
+        if request.headers.get('Depth') == '1':
+            return httpx.Response(403)
+        return await server.handle(request)
+    monkeypatch.setattr(adapter, '_client', lambda: httpx.AsyncClient(transport=httpx.MockTransport(partial)))
+    requested = [paths[0], paths[10], 'folder-0/missing.txt']
+    assert set(await adapter.resource_infos(requested)) == set(requested) - {'folder-0/missing.txt'}
+    server.forced_status = 403
+    assert await adapter.resource_infos(requested) == {}
 
 
 @pytest.mark.asyncio

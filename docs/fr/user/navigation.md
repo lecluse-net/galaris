@@ -137,6 +137,22 @@ Voir le [contrat AgentAdmin](../dev/agent-admin.md) pour les connexions, équipe
 | Connexions | Configurer les connexions associées aux agents | `/tools?tab=connections` |
 | Autorisations | Administrer les règles d’accès aux outils et fonctions | `/tools?tab=authorizations` |
 
+Pour les providers de fichiers compatibles et la Console SSH, **Indexation des fichiers**
+utilise par défaut **Uniquement les fichiers déjà connus**. Les fichiers et répertoires
+retournés par les listes et recherches `file_share` deviennent des fiches privées dans
+Memory ; Dream peut ensuite enrichir les fichiers pris en charge. Le mode
+**Découverte et indexation** confie aussi le parcours à Dream : un répertoire
+par travail, sans LLM, quand Galaris est disponible. **Préférences > Dream > Reparcours des
+fichiers** règle l'actualisation périodique, chaque lundi à minuit par défaut.
+Les réglages existants, y compris une désactivation explicite, restent conservés. Voir le
+[parcours d’indexation](../admin/tool-administration.md).
+
+Dream regroupe les copies identiques d'un fichier **par agent**, grâce au SHA-256 de ses
+octets complets. La fiche commune conserve les différents emplacements et un résumé partagé.
+Dans une fiche ou le détail d'un fichier du graphe, **Emplacements du fichier** donne accès
+aux miniatures, à l'aperçu plein écran et au téléchargement de l'original. Les droits de
+chaque source restent applicables ; une copie modifiée ne remplace pas les autres.
+
 Dans la définition d’un Tool personnalisé, chaque paramètre de connexion peut recevoir un
 libellé, une description et une valeur par défaut. Pour un texte ou un entier, **Ajouter un
 choix fixe** permet de définir les valeurs proposées et leurs libellés : le formulaire affiche

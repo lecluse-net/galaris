@@ -308,9 +308,14 @@ def test_spreadsheet_preserves_hidden_sheets_formulas_formats_merges_and_comment
 
 
 @pytest.mark.asyncio
-async def test_multi_frame_image_inventory_includes_last_frame(tmp_path):
+@pytest.mark.parametrize('execution', ['isolated', 'worker'])
+async def test_multi_frame_image_inventory_includes_last_frame(tmp_path, execution):
     from PIL import Image
+    from core.document import PreparedDocument
     path = tmp_path / 'synthetic.tiff'
     Image.new('RGB', (20, 20), 'white').save(path, save_all=True, append_images=[Image.new('RGB', (20, 20), 'black')])
-    result = await prepare_document(path, path.name, 'image/tiff', tmp_path / 'prepared')
+    if execution == 'worker':
+        result = PreparedDocument.model_validate(prepare(path, path.name, 'image/tiff', tmp_path / 'prepared'))
+    else:
+        result = await prepare_document(path, path.name, 'image/tiff', tmp_path / 'prepared')
     assert len(result.pages) == 2 and result.image_path(result.pages[-1], tmp_path / 'prepared').is_file()

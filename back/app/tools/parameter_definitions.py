@@ -26,7 +26,8 @@ def with_standard_params(
     modes = file_indexing_modes(code, file_share_config)
     if len(modes) > 1:
         params[FILE_INDEXING_PARAM] = {
-            "type": "string", "required": False, "default": "excluded", "builtin": True,
+            "type": "string", "required": False,
+            "default": "known_uris" if "known_uris" in modes else "excluded", "builtin": True,
             "label": "tools.connectionParamLabels.fileindexing",
             "description": "tools.connectionParamDescriptions.fileindexing",
             "options": [{"value": mode, "label": f"tools.connectionParamOptions.fileindexing.{mode}"}

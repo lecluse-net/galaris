@@ -35,6 +35,34 @@ def suspend_observations() -> Generator[None]:
         _suspended.reset(token)
 
 
+async def observe_received_resources(connection_id: int, descriptors: list[ResourceDescriptor]) -> None:
+    """Journal admission observes attachment metadata without downloading bytes."""
+    from sqlalchemy import select
+    from app.connection import Connection
+    from app.tools import ToolModel
+    from .catalogue import binding_stamp, indexing_mode_expression
+    db = get_db()
+    row = (await db.execute(select(Connection.agent_id, binding_stamp(), indexing_mode_expression()).join(
+        ToolModel, ToolModel.id == Connection.tool_id,
+    ).where(Connection.id == connection_id, Connection.active.is_(True)))).one_or_none()
+    if row is None or row[2] == "excluded":
+        return
+    scope = ObservationScope(connection_id, int(row[0]), str(row[1]), "internal", datetime.now(timezone.utc))
+    repairs: list[FileObservationRepair] = []
+    for descriptor in descriptors:
+        repairs.extend(await stage_repairs({parse_resource_uri(descriptor.uri).scheme: scope}, descriptor, recursive=False))
+    # The Messenger journal owns commit. Keep its metadata repair durable even
+    # when the immediate projection fails, without rejecting an incoming message.
+    try:
+        async with catalogue_projection_write():
+            async with db.begin_nested():
+                await observe_descriptors(scope, descriptors)
+                for repair in repairs:
+                    repair.status = "success"
+    except Exception as error:
+        logger.warning("Attachment metadata retained for catalogue repair: {}", type(error).__name__)
+
+
 def observe_operation(function: Callable[P, Awaitable[T]]) -> Callable[P, Awaitable[T]]:
     @wraps(function)
     async def observed(*args: P.args, **kwargs: P.kwargs) -> T:

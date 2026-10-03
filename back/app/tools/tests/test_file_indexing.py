@@ -19,7 +19,7 @@ def setting(value, forced=False):
 @pytest.mark.asyncio
 async def test_console_indexing_preference_survives_integrated_sync(db):
     console = await db.scalar(select(Tool).where(Tool.code == "console"))
-    assert to_public(console).global_params[FILE_INDEXING_PARAM].value == "excluded"
+    assert to_public(console).global_params[FILE_INDEXING_PARAM].value == "known_uris"
     original_config = dict(console.file_share_config)
     changed = await tool_service.update_global_params(console.id, setting("known_uris"))
     assert to_public(changed).global_params[FILE_INDEXING_PARAM].value == "known_uris"
@@ -32,6 +32,10 @@ async def test_console_indexing_preference_survives_integrated_sync(db):
     assert to_public(console).global_params[FILE_INDEXING_PARAM].value == "known_uris"
     assert console.file_share_config == original_config
     await tool_service.update_global_params(console.id, setting("excluded"))
+    for dataset in datasets():
+        await reconcile_dataset(db, dataset)
+    await _reconcile_standard_params(db)
+    await db.refresh(console)
     assert to_public(console).global_params[FILE_INDEXING_PARAM].value == "excluded"
 
 
@@ -50,6 +54,8 @@ async def test_provider_limits_apply_to_custom_tool_codes(db, config, allowed):
     await db.flush()
     definition = to_public(tool).connection_schema.params.get(FILE_INDEXING_PARAM)
     assert ([option.value for option in definition.options] if definition else []) == allowed
+    if definition:
+        assert definition.default == "known_uris"
     for mode in ("known_uris", "recursive"):
         if mode in allowed:
             await tool_service.update_global_params(tool.id, setting(mode))
@@ -119,7 +125,6 @@ async def test_standard_indexing_local_global_forced_and_default_resolution(db):
     async def values():
         return dict((await db.execute(select(Connection.id, expression).join(Tool).where(Connection.tool_id == tool.id))).all())
 
-    await tool_service.update_global_params(tool.id, setting("known_uris"))
     await connection_service.set_params_bulk(local.id, {FILE_INDEXING_PARAM: "excluded"})
     assert await values() == {local.id: "excluded", inherited.id: "known_uris"}
     assert (await connection_service.get_params_as_dict(local))[1][FILE_INDEXING_PARAM] == "excluded"
@@ -141,7 +146,7 @@ async def test_standard_indexing_local_global_forced_and_default_resolution(db):
         await connection_service.set_params_bulk(local.id, {FILE_INDEXING_PARAM: "excluded"})
     await tool_service.update_global_params(tool.id, ToolGlobalParamsUpdate.model_validate({"params": {FILE_INDEXING_PARAM: {"clear": True}}}))
     await connection_service.set_params_bulk(local.id, {FILE_INDEXING_PARAM: None})
-    assert set((await values()).values()) == {"excluded"}
+    assert set((await values()).values()) == {"known_uris"}
 
 
 @pytest.mark.asyncio

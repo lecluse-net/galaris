@@ -2,7 +2,7 @@
 
 # Flux Dream
 
-`app.dream` exécute les enrichissements qui peuvent attendre une période d'inactivité. Il ne crée
+`app.dream` exécute les travaux qui peuvent attendre une période d'inactivité. Il ne crée
 pas de Task agentique et ne passe jamais par un driver.
 
 ```text
@@ -106,6 +106,35 @@ mécanique à haut volume est volontairement exclu des jauges Dream. Le vieillis
 souvenir comme ancien sans le supprimer du RAG.
 
 ## Suivi opérationnel
+
+Le mécanisme existant `memory.file_catalogue` prend aussi en charge la découverte de fichiers.
+Pour chaque connexion en mode récursif, un premier travail liste la racine du schéma. Chaque
+sous-répertoire trouvé rejoint la frontière durable File Share et devient un sujet Dream lors
+d'un tour ultérieur. Une opération traite une seule page directe, bornée à 500 entrées ; elle
+n'utilise ni LLM, ni Task agentique, ni worker supplémentaire. Les reçus `file_directory`
+utilisent les leases, tentatives, interruptions et jauges habituels. La projection Memory,
+l'avancement et le checkpoint du résultat sont atomiques ; une reprise n'en double pas les effets.
+
+`DREAM_FILE_RESCAN_SCHEDULE` vaut `weekly_midnight` par défaut (lundi à minuit), ou
+`daily_midnight`/`off`. Le calendrier suit le fuseau horaire de l'application. À la prochaine
+période d'inactivité après l'échéance, les racines admissibles non encore couvertes deviennent
+des travaux à traiter. Aucun parcours actif ou déjà lancé pour cette échéance n'est dupliqué.
+Le premier parcours reste automatique, même si les reparcours sont désactivés. Une liste
+complète retire les enfants absents des recherches Memory, sans effacer leurs notes personnelles ;
+les pages incomplètes et les erreurs ne prouvent aucune suppression. L'enrichissement versionné
+des fichiers reste dans le même mécanisme et dépend des options de médias existantes.
+
+Les sujets `file_fingerprint` lisent les octets complets de chaque fichier rencontré et
+calculent SHA-256 sans LLM, y compris en mode URI connues et pour les pièces jointes Messenger.
+La limite de 32 Mio de l'analyse ne s'applique pas au hachage : la matérialisation temporaire
+utilise la taille annoncée, ou 64 Gio si elle est inconnue, avec le délai de transfert de
+120 secondes. Une erreur utilise les tentatives Dream habituelles et ne publie aucune identité.
+Les métadonnées de version sont vérifiées avant et après la lecture et avant l'application.
+L'unicité SQL `(owner_agent_id, file_sha256)` et un verrou transactionnel par empreinte
+sérialisent le rattachement des emplacements à une fiche commune. Notes et relations sont
+préservées ; les anciennes fiches et révisions restent retenues pour l'historique.
+Le résumé est acquis par agent et empreinte, puis partagé par ses copies courantes. Une
+modification source détache seulement son emplacement ; une révocation invalide l'application.
 
 Les routes en lecture seule `/api/dream/overview` et `/api/dream/receipts` exposent l'état du
 scheduler, la couverture et l'historique paginé des reçus. Le contrat HTTP, les filtres et la page
