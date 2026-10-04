@@ -87,6 +87,13 @@ test('Chromium crash exits with failure and a fresh executor serves new sessions
     assert.equal(model.status, 200);
     assert.equal(model.headers.get('content-type'), 'image/png');
     assert.ok((await model.arrayBuffer()).byteLength > 1000);
+    const svg = await post('/v1/render-svg-thumbnail', {
+      data: Buffer.from('<svg xmlns="http://www.w3.org/2000/svg" width="80" height="40"><rect width="40" height="40" fill="red"/></svg>').toString('base64'),
+    });
+    assert.equal(svg.status, 200);
+    assert.equal(svg.headers.get('content-type'), 'image/png');
+    const svgPng = Buffer.from(await svg.arrayBuffer());
+    assert.deepEqual([svgPng.readUInt32BE(16), svgPng.readUInt32BE(20)], [80, 40]);
     const html = Buffer.from('<body style="margin:0;height:1600px"><p>' + 'Readable text '.repeat(300) + '</p></body>').toString('base64');
     const captures = await Promise.all([500, 1000].map(height => post('/v1/render-html', {
       owner: { agent_id: 1 }, html_base64: html,

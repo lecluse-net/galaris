@@ -18,6 +18,7 @@ test('media cards detect legacy filenames while honoring audio and video MIME ty
   assert.equal(browserResourceKind('application/octet-stream', 'recording.wav'), 'audio')
   assert.equal(browserResourceKind('video/ogg', 'recording.ogg'), 'video')
   assert.equal(browserResourceKind('audio/webm', 'recording.webm'), 'audio')
+  assert.equal(browserResourceKind('application/octet-stream', 'drawing.SVG'), 'image')
 })
 
 test('Markdown attachments are previewable by MIME type or filename', () => {

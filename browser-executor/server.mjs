@@ -10,6 +10,7 @@ import { SessionPool } from "./sessions.mjs";
 import { BrowserLifecycle } from "./browser-lifecycle.mjs";
 import { PDF_HTML_MAX_BYTES, renderStaticPdf } from "./pdf.mjs";
 import { MODEL_MAX_BYTES, renderModelThumbnail } from './model-thumbnail.mjs';
+import { SVG_MAX_BYTES, renderSvgThumbnail } from './svg-thumbnail.mjs';
 
 import {
   BrowserRequestError,
@@ -444,20 +445,23 @@ async function route(request, response) {
     throw new BrowserRequestError("not_found", "Not found.", 404);
   }
   const body = await readBody(request, request.url === '/v1/render-model-thumbnail' ? 2 * MODEL_MAX_BYTES
+    : request.url === '/v1/render-svg-thumbnail' ? 2 * SVG_MAX_BYTES
     : request.url === '/v1/render-pdf' ? 2 * PDF_HTML_MAX_BYTES : 1_048_576);
   body.settings = operationSettings(body.settings);
   if (request.url === "/v1/open") {
     sendJson(response, 200, await open(body));
   } else if (request.url === "/v1/render-html") {
     sendJson(response, 200, await renderHtml(body));
-  } else if (request.url === '/v1/render-pdf' || request.url === '/v1/render-model-thumbnail') {
+  } else if (['/v1/render-pdf', '/v1/render-model-thumbnail', '/v1/render-svg-thumbnail'].includes(request.url)) {
     if (pdfJobs >= 2) throw new BrowserRequestError('capacity_reached', 'PDF capacity has been reached.', 503);
     pdfJobs += 1;
     try {
       const model = request.url === '/v1/render-model-thumbnail';
-      const result = model ? await renderModelThumbnail(await browsers.get(), body)
+      const svg = request.url === '/v1/render-svg-thumbnail';
+      const result = svg ? await renderSvgThumbnail(await browsers.get(), body)
+        : model ? await renderModelThumbnail(await browsers.get(), body)
         : await renderStaticPdf(await browsers.get(), body.html, { firstPageOnly: body.first_page_only === true });
-      response.writeHead(200, { 'content-type': model ? 'image/png' : 'application/pdf', 'content-length': result.length, 'cache-control': 'no-store' });
+      response.writeHead(200, { 'content-type': model || svg ? 'image/png' : 'application/pdf', 'content-length': result.length, 'cache-control': 'no-store' });
       response.end(result);
     } finally {
       pdfJobs -= 1;

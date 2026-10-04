@@ -9,6 +9,26 @@ test.beforeEach(async ({ page }) => {
 
 const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+a5AAAAABJRU5ErkJggg==', 'base64')
 
+for (const mime of ['image/svg+xml', 'application/octet-stream']) test(`SVG thumbnails and original previews render for ${mime}`, async ({ page }, testInfo) => {
+  await page.setViewportSize({ width: 390, height: 844 })
+  const attachment = { id: 'svg-1', name: 'Drawing.SVG', media_type: mime, size_bytes: 100 }
+  const original = '<svg xmlns="http://www.w3.org/2000/svg" width="80" height="40"><rect width="40" height="40" fill="red"/></svg>'
+  await page.route('**/api/memory/documents/doc-a/attachments/svg-1/thumbnail?*', route => route.fulfill({ contentType: 'image/png', body: png }))
+  await page.route('**/api/memory/documents/doc-a/attachments/svg-1?*', route => route.fulfill({ contentType: 'image/svg+xml', body: original }))
+  await mount(page, 'app/memory/components/DocumentAttachments.vue', { props: { documentId: 'doc-a', agentId: 7, attachments: [attachment] } })
+  const card = page.getByRole('article')
+  await expect(card.getByRole('img', { name: attachment.name, exact: true })).toHaveJSProperty('naturalWidth', 1)
+  await card.screenshot({ path: testInfo.outputPath('svg-thumbnail-card.png') })
+  await card.getByRole('button', { name: 'Open preview of Drawing.SVG', exact: true }).first().click()
+  await expect(page.getByRole('dialog').getByRole('img', { name: attachment.name, exact: true })).toHaveJSProperty('naturalWidth', 80)
+  await page.keyboard.press('Escape')
+  const downloaded = page.waitForEvent('download')
+  await card.getByRole('button', { name: 'Download Drawing.SVG', exact: true }).click()
+  const chunks = []
+  for await (const chunk of await (await downloaded).createReadStream()) chunks.push(chunk)
+  expect(Buffer.concat(chunks).toString()).toBe(original)
+})
+
 for (const width of [1440, 390]) test(`Office attachments show thumbnails and keep their original download at ${width}px`, async ({ page }) => {
   await page.setViewportSize({ width, height: 900 })
   const attachments = ['Report.docx', 'Notes.odt', 'Budget.XLSX', 'Forecast.ods'].map((name, index) => ({

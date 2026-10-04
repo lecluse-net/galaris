@@ -5057,7 +5057,8 @@
       {
         "files": [
           "back/core/preview/model3d.py",
-          "back/core/preview/pdf.py"
+          "back/core/preview/pdf.py",
+          "back/core/preview/svg.py"
         ],
         "source": "core.preview",
         "target": "core.secrets"
@@ -5066,6 +5067,7 @@
         "files": [
           "back/core/preview/model3d.py",
           "back/core/preview/pdf.py",
+          "back/core/preview/svg.py",
           "back/core/preview/thumbnails.py"
         ],
         "source": "core.preview",
@@ -5081,7 +5083,8 @@
       {
         "files": [
           "back/core/preview/model3d.py",
-          "back/core/preview/pdf.py"
+          "back/core/preview/pdf.py",
+          "back/core/preview/svg.py"
         ],
         "source": "core.preview",
         "target": "core.util"

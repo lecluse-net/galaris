@@ -21,7 +21,7 @@ export function browserResourceKind(mediaType: string, name = ''): BrowserResour
   const normalized = normalizedMediaType(mediaType)
   const filename = name.trim().toLowerCase()
   if (model3dFormat(normalized, filename)) return 'model3d'
-  if (normalized.startsWith('image/')) return 'image'
+  if (normalized.startsWith('image/') || filename.endsWith('.svg')) return 'image'
   if (normalized === 'text/html' || normalized === 'application/xhtml+xml' || /\.x?html?$/.test(filename)) return 'html'
   if (normalized === 'application/pdf' || filename.endsWith('.pdf')) return 'pdf'
   if (normalized.startsWith('audio/')) return 'audio'

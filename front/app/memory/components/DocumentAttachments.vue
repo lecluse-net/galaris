@@ -49,12 +49,16 @@
         :subtitle="formatSize(attachment.size_bytes)"
         :image="thumbnailUrls[attachment.id]"
         :icon="attachmentIcon(attachment)"
+        :disabled="attachmentKind(attachment) === 'audio'"
         :open-label="t(canPreview(attachment) ? 'documents.openAttachment' : 'documents.downloadAttachment', { name: attachment.name })"
         @open="attachmentAction(attachment)"
       >
         <template v-if="attachmentKind(attachment) === 'model3d' || thumbnailLoading.has(attachment.id)" #preview>
           <Model3dThumbnail v-if="attachmentKind(attachment) === 'model3d'" :source="modelSource(attachment)" />
           <q-spinner v-else color="primary" size="30px" />
+        </template>
+        <template v-if="attachmentKind(attachment) === 'audio'" #player>
+          <AudioResourcePlayer :source="audioSource(attachment)" />
         </template>
         <template #actions>
             <q-btn
@@ -172,14 +176,20 @@
         class="document-attachments__fullscreen-frame"
         :class="{ 'document-attachments__fullscreen-frame--fit': fit }"
       />
-      <audio
-        v-else-if="previewKind === 'audio'"
-        :src="objectUrls[previewAttachment.id]"
-        controls
-        class="document-attachments__fullscreen-audio"
-      />
     </template>
   </FullscreenPreview>
+
+  <q-dialog v-model="audioOpen">
+    <q-card v-if="previewAttachment" class="document-attachments__audio-dialog galaris-dialog-card">
+      <q-card-section class="galaris-dialog-title row items-center no-wrap">
+        <div class="text-h6 ellipsis">{{ previewAttachment.name }}</div>
+        <q-space />
+        <q-btn flat round dense icon="download" :aria-label="t('documents.downloadAttachment', { name: previewAttachment.name })" @click="download(previewAttachment)" />
+        <q-btn v-close-popup flat round dense icon="close" :aria-label="t('common.close')" />
+      </q-card-section>
+      <AudioResourcePlayer :source="audioSource(previewAttachment)" />
+    </q-card>
+  </q-dialog>
 
   <q-dialog v-model="removeOpen">
     <q-card class="document-attachments__confirm galaris-dialog-card">
@@ -210,6 +220,7 @@ import {
   attachmentReference,
   FullscreenPreview,
   ResourcePreviewBlock,
+  AudioResourcePlayer,
   Model3dThumbnail,
   Model3dViewer,
   TextResourcePreview,
@@ -273,6 +284,7 @@ const removalInUse = computed(() => Boolean(removalAttachment.value && content.i
 const uploadDone = ref(0)
 const uploadTotal = ref(0)
 const previewOpen = ref(false)
+const audioOpen = ref(false)
 const previewAttachment = ref<DocumentAttachment | null>(null)
 const removeOpen = ref(false)
 const removalAttachment = ref<DocumentAttachment | null>(null)
@@ -285,7 +297,7 @@ const attachmentKind = (attachment: DocumentAttachment): BrowserResourceKind | n
     ? 'pdf' : browserResourceKind(attachment.media_type, attachment.name)
 )
 const canPreview = (attachment: DocumentAttachment): boolean => (
-  attachmentKind(attachment) !== null
+  attachmentKind(attachment) !== null && attachmentKind(attachment) !== 'audio'
 )
 const canThumbnail = (attachment: DocumentAttachment): boolean => {
   if (attachmentKind(attachment) === 'model3d') return false
@@ -297,6 +309,7 @@ const canThumbnail = (attachment: DocumentAttachment): boolean => {
     || mediaType.startsWith('text/')
     || mediaType === 'application/pdf'
     || name.endsWith('.pdf')
+    || name.endsWith('.svg')
     || name.endsWith('.url')
     || /\.(doc|docx|odt|rtf|odg|odp|ppt|pptx|xls|xlsx|ods)$/.test(name)
 }
@@ -340,6 +353,19 @@ function modelSource(attachment: DocumentAttachment): Model3dSource {
       }
       throw new Error('Thumbnail unavailable')
     },
+  }
+}
+
+function audioSource(attachment: DocumentAttachment) {
+  const currentDocumentId = documentId
+  const currentAgentId = agentId
+  const currentResourceSource = resourceSource
+  return {
+    key: `${currentDocumentId}:${currentAgentId}:${attachment.id}:${attachment.media_type}`,
+    name: attachment.name,
+    load: (signal: AbortSignal) => currentResourceSource
+      ? currentResourceSource.content(attachment, true)
+      : memoryService.documentAttachmentBlob(currentDocumentId, attachment.id, currentAgentId, signal),
   }
 }
 
@@ -426,6 +452,7 @@ function refreshPreviews(): void {
   }
   if (previewAttachment.value && !visibleIds.has(previewAttachment.value.id)) {
     previewOpen.value = false
+    audioOpen.value = false
     previewAttachment.value = null
   }
   for (const [id, element] of previewElements) {
@@ -439,7 +466,15 @@ function formatSize(bytes: number): string {
 }
 
 async function openPreview(attachment: DocumentAttachment): Promise<void> {
+  if (attachmentKind(attachment) === 'audio') {
+    previewGeneration++
+    previewOpen.value = false
+    previewAttachment.value = attachment
+    audioOpen.value = true
+    return
+  }
   if (!canPreview(attachment)) return
+  audioOpen.value = false
   const request = ++previewGeneration
   previewAttachment.value = attachment
   previewLoading.value = attachmentKind(attachment) !== 'model3d'
@@ -451,6 +486,7 @@ async function openPreview(attachment: DocumentAttachment): Promise<void> {
 }
 
 function attachmentAction(attachment: DocumentAttachment): void {
+  if (attachmentKind(attachment) === 'audio') return
   if (canPreview(attachment)) void openPreview(attachment)
   else void download(attachment)
 }
@@ -544,14 +580,14 @@ onMounted(() => {
   }, { rootMargin: '160px' })
   for (const element of previewElements.values()) previewObserver.observe(element)
 })
-watch(() => [documentId, agentId], () => { managerOpen.value = false; uploadController?.abort(); previewGeneration++; previewOpen.value = false; clearObjectUrls() })
+watch(() => [documentId, agentId], () => { managerOpen.value = false; audioOpen.value = false; uploadController?.abort(); previewGeneration++; previewOpen.value = false; clearObjectUrls() })
 watch(previewOpen, value => { if (!value) previewGeneration++ })
 async function openById(id: string): Promise<void> {
   const sourceDocument = documentId, sourceAgent = agentId
   try {
     const attachment = attachments.find(value => value.id === id) ?? await memoryService.documentAttachmentInfo(sourceDocument, id, sourceAgent)
     if (sourceDocument === documentId && sourceAgent === agentId) {
-      if (canPreview(attachment)) await openPreview(attachment)
+      if (attachmentKind(attachment) === 'audio' || canPreview(attachment)) await openPreview(attachment)
       else await download(attachment)
     }
   } catch { $q.notify({ type: 'negative', message: t('documents.attachmentError') }) }
@@ -572,6 +608,6 @@ onBeforeUnmount(() => {
 .document-attachments__fullscreen-media--fit { max-width: 100vw; max-height: var(--galaris-preview-height, 100dvh); }
 .document-attachments__fullscreen-frame { display: block; width: 1280px; height: 800px; background: #fff; border: 0; }
 .document-attachments__fullscreen-frame--fit { width: 100vw; height: var(--galaris-preview-height, 100dvh); min-height: var(--galaris-preview-height, 100dvh); }
-.document-attachments__fullscreen-audio { display: block; width: min(100%, 720px); margin: 28px auto; }
+.document-attachments__audio-dialog { width: min(520px, 92vw); }
 .document-attachments__confirm { width: min(520px, 92vw); }
 </style>

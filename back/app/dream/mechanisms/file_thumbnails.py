@@ -39,7 +39,7 @@ class FileThumbnailsMechanism:
             or_(document.owner_agent_id.is_not(None), document.owner_user_id.is_not(None)),
             or_(media.startswith("image/"), media.startswith("video/"), media.startswith("text/"),
                 media.in_({"application/pdf", "application/json", "application/xml", "application/javascript"} | MODEL_TYPES),
-                *[name.endswith(suffix) for suffix in OFFICE_EXTENSIONS | MODEL_EXTENSIONS | {".pdf", ".url"}]),
+                *[name.endswith(suffix) for suffix in OFFICE_EXTENSIONS | MODEL_EXTENSIONS | {".pdf", ".url", ".svg"}]),
             ~exists(select(DreamReceipt.id).where(DreamReceipt.mechanism_key == self.key,
                                                  DreamReceipt.subject_id == identity)),
         )

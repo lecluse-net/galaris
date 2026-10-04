@@ -285,6 +285,45 @@ async def test_catalogue_preview_rechecks_source_after_thumbnail_render(console_
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize('generic_mime', [False, True])
+async def test_svg_catalogue_retries_legacy_missing_thumbnail_once(console_catalogue, db, tmp_path, monkeypatch, generic_mime):
+    from hashlib import sha256
+    from unittest.mock import AsyncMock
+    from PIL import Image
+    from app.dream.mechanisms.file_thumbnails import file_thumbnails_mechanism as mechanism
+    from app.dream.service import create_running_receipt, mark_success
+    from app.dream import interface
+    from app.file_share import FileCatalogueEnrichmentPort
+    from app.file_share import catalogue_resources
+    from core.preview import svg, thumbnails
+
+    ctx, _transport, _connection, _peer = console_catalogue
+    monkeypatch.setattr(interface, '_file_catalogue', FileCatalogueEnrichmentPort())
+    monkeypatch.setattr(type(thumbnails.settings), 'GALARIS_THUMBNAIL_ROOT', str(tmp_path / 'cache'))
+    original = '<svg xmlns="http://www.w3.org/2000/svg" width="80" height="40"><rect width="40" height="40" fill="red"/></svg>'
+    await resource_service.resource_write_text(ctx, 'console://drawing.svg', original)
+    await acquire_fingerprints(db)
+    entry = await db.scalar(select(FileCatalogEntry).where(FileCatalogEntry.uri == 'console://drawing.svg'))
+    if generic_mime:
+        entry.descriptor = {**entry.descriptor, 'media_type': 'application/octet-stream'}
+        await db.flush()
+    legacy_version = sha256(f"{entry.source_version or ''}:{entry.binding_stamp}:{entry.file_sha256 or ''}".encode()).hexdigest()
+    legacy = create_running_receipt(mechanism_key=mechanism.key, subject_kind='file_thumbnail', subject_id=f'file:{entry.id}:{legacy_version}', prepared_payload={})
+    await db.flush()
+    await mark_success(legacy, result_count=0)
+    claim = await mechanism.claim_one()
+    assert claim is not None
+    transport = AsyncMock(return_value=thumbnails.encode(Image.new('RGBA', (80, 40), (255, 0, 0, 0))))
+    monkeypatch.setattr(svg, 'post_buffered', transport)
+    assert await mechanism.apply(claim, claim.prepared_payload) == 1
+    await mark_success(claim, result_count=1)
+    assert await mechanism.claim_one() is None
+    assert await catalogue_resources.thumbnail(entry.memory_item_id, ctx.agent_id, entry.id, cached_only=True)
+    transport.assert_awaited_once()
+    assert _transport.resolve_path('drawing.svg').read_text() == original
+
+
+@pytest.mark.asyncio
 async def test_dream_catalogue_thumbnail_is_reused_and_changes_with_source(console_catalogue, db, tmp_path, monkeypatch):
     from unittest.mock import AsyncMock
     from app.dream.mechanisms.file_thumbnails import file_thumbnails_mechanism as mechanism

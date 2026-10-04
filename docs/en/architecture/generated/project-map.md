@@ -675,10 +675,10 @@ tests remain authoritative for behavior.
 | `core.params` | `core.secrets` | `back/core/params/internal_secrets.py`, `back/core/params/params_service.py` |
 | `core.params` | `core.settings` | `back/core/params/middleware.py`, `back/core/params/runtime_settings.py` |
 | `core.params` | `core.util` | `back/core/params/dbadmin.py`, `back/core/params/params_service.py` |
-| `core.preview` | `core.secrets` | `back/core/preview/model3d.py`, `back/core/preview/pdf.py` |
-| `core.preview` | `core.settings` | `back/core/preview/model3d.py`, `back/core/preview/pdf.py`, `back/core/preview/thumbnails.py` |
+| `core.preview` | `core.secrets` | `back/core/preview/model3d.py`, `back/core/preview/pdf.py`, `back/core/preview/svg.py` |
+| `core.preview` | `core.settings` | `back/core/preview/model3d.py`, `back/core/preview/pdf.py`, `back/core/preview/svg.py`, `back/core/preview/thumbnails.py` |
 | `core.preview` | `core.user` | `back/core/preview/web.py` |
-| `core.preview` | `core.util` | `back/core/preview/model3d.py`, `back/core/preview/pdf.py` |
+| `core.preview` | `core.util` | `back/core/preview/model3d.py`, `back/core/preview/pdf.py`, `back/core/preview/svg.py` |
 | `core.rate_limit` | `core.params` | `back/core/rate_limit.py` |
 | `core.team` | `core.authorize` | `back/core/team/router.py` |
 | `core.team` | `core.database` | `back/core/team/models.py`, `back/core/team/router.py`, `back/core/team/service.py` |

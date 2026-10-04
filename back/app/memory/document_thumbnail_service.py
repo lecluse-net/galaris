@@ -20,6 +20,7 @@ from core.document import OFFICE_EXTENSIONS, prepare_document
 
 from core.preview import render_html_pdf, thumbnails
 from core.preview import render_model_thumbnail, supports_model
+from core.preview import render_svg_thumbnail
 from core.params import runtime_settings
 
 from . import document_attachment_service, document_thumbnail_cache, service
@@ -154,6 +155,8 @@ async def render_file_thumbnail(path: Path, name: str, media_type: str) -> bytes
                 prepared = await prepare_document(path, name, media_type, directory, preview_only=True)
                 image = prepared.image_path(prepared.pages[0], directory) if prepared.pages else None
                 return await asyncio.to_thread(thumbnails.from_image, image) if image is not None else None
+        if media_type == "image/svg+xml" or name.casefold().endswith(".svg"):
+            return await render_svg_thumbnail(path)
         if media_type.startswith("image/"):
             return await asyncio.to_thread(thumbnails.from_image, path)
         if media_type.startswith("video/"):

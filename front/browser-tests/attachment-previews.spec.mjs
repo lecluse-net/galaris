@@ -21,6 +21,97 @@ async function setup(page, surface, { name = 'NOTES.MD', mime = 'application/oct
   return { open, dialog: page.getByRole('dialog'), props }
 }
 
+function silentAudio() {
+  const samples = 16000
+  const wav = Buffer.alloc(44 + samples * 2)
+  wav.write('RIFF', 0); wav.writeUInt32LE(36 + samples * 2, 4); wav.write('WAVEfmt ', 8)
+  wav.writeUInt32LE(16, 16); wav.writeUInt16LE(1, 20); wav.writeUInt16LE(1, 22)
+  wav.writeUInt32LE(8000, 24); wav.writeUInt32LE(16000, 28)
+  wav.writeUInt16LE(2, 32); wav.writeUInt16LE(16, 34)
+  wav.write('data', 36); wav.writeUInt32LE(samples * 2, 40)
+  return wav
+}
+
+for (const surface of ['document', 'resource']) {
+  test(`${surface} audio plays in its card without a fullscreen viewer`, async ({ page }, testInfo) => {
+    await page.setViewportSize({ width: 390, height: 844 })
+    const wav = silentAudio()
+    await setup(page, surface, { name: 'recording.wav', mime: 'audio/wav', respond: route => route.fulfill({ contentType: 'audio/wav', body: wav }) })
+    const audio = page.locator('audio')
+    await expect(audio).toBeVisible()
+    await expect(audio).toHaveAttribute('controls', '')
+    await expect.poll(() => audio.evaluate(element => element.readyState)).toBeGreaterThanOrEqual(2)
+    await audio.focus()
+    await audio.press('Space')
+    await expect.poll(() => audio.evaluate(element => element.currentTime)).toBeGreaterThan(0)
+    await audio.evaluate(element => element.pause())
+    await expect(page.getByRole('dialog')).toHaveCount(0)
+    await expect(page.getByRole('button', { name: /fullscreen|(?:Open|Show) preview of/ })).toHaveCount(0)
+    const downloaded = page.waitForEvent('download')
+    await page.getByRole('button', { name: /Download/ }).click()
+    expect((await downloaded).suggestedFilename()).toBe('recording.wav')
+    await page.screenshot({ path: testInfo.outputPath('audio-card-mobile.png') })
+    await page.setViewportSize({ width: 1440, height: 1000 })
+    await expect(audio).toBeVisible()
+    await page.screenshot({ path: testInfo.outputPath('audio-card-desktop.png') })
+  })
+
+  test(`${surface} audio retries failed loading and discards an old context response`, async ({ page }) => {
+    let reads = 0
+    let release
+    let released = false
+    await setup(page, surface, {
+      name: 'recording.wav', mime: 'audio/wav',
+      respond: async route => {
+        reads++
+        if (reads === 1) return route.fulfill({ status: 503 })
+        if (reads === 2) {
+          await new Promise(resolve => { release = resolve })
+          await route.fulfill({ contentType: 'audio/wav', body: 'obsolete audio' }).catch(() => {})
+          released = true
+          return
+        }
+        return route.fulfill({ contentType: 'audio/wav', body: silentAudio() })
+      },
+    })
+    await page.getByRole('button', { name: 'Could not load the media. Retry', exact: true }).click()
+    await expect.poll(() => Boolean(release)).toBe(true)
+    await page.evaluate(surface => window.testApp.setProps(surface === 'document' ? { documentId: 'document-2' } : { roomId: 'room-2' }), surface)
+    const audio = page.locator('audio')
+    await expect.poll(() => audio.evaluate(element => element.readyState)).toBeGreaterThanOrEqual(2)
+    const currentUrl = await audio.getAttribute('src')
+    release()
+    await expect.poll(() => released).toBe(true)
+    await expect(audio).toHaveAttribute('src', currentUrl)
+    await expect.poll(() => audio.evaluate(element => element.error)).toBeNull()
+    await expect(page.getByRole('dialog')).toHaveCount(0)
+  })
+}
+
+test('an audio attachment opened from Memory uses a dismissible player and reopens', async ({ page }) => {
+  const documentId = '00000000-0000-0000-0000-000000000001'
+  const attachmentId = '00000000-0000-0000-0000-000000000002'
+  await jsonRoute(page, '**/api/memory/items/memory-1?*', { metadata: { resource_uri: `document://${documentId}/attachments/${attachmentId}` } })
+  await jsonRoute(page, `**/api/memory/documents/${documentId}/attachments/${attachmentId}/info?*`, { id: attachmentId, name: 'recording.wav', media_type: 'audio/wav', size_bytes: silentAudio().length })
+  await page.route(`**/api/memory/documents/${documentId}/attachments/${attachmentId}?*`, route => route.fulfill({ contentType: 'audio/wav', body: silentAudio() }))
+  await mount(page, 'app/memory/components/MemoryAttachmentButton.vue', { props: { itemId: 'memory-1', agentId: 7 } })
+  for (const dismiss of ['backdrop', 'escape']) {
+    await page.getByRole('button', { name: 'Preview', exact: true }).click()
+    const dialog = page.getByRole('dialog')
+    const audio = dialog.locator('audio')
+    await expect(audio).toBeVisible()
+    await expect.poll(() => audio.evaluate(element => element.readyState)).toBeGreaterThanOrEqual(2)
+    await expect(dialog.getByRole('button', { name: /fullscreen|Zoom|Fit to screen/ })).toHaveCount(0)
+    const downloaded = page.waitForEvent('download')
+    await dialog.getByRole('button', { name: 'Download recording.wav', exact: true }).click()
+    expect((await downloaded).suggestedFilename()).toBe('recording.wav')
+    if (dismiss === 'backdrop') await page.locator('.q-dialog__backdrop').click({ position: { x: 5, y: 5 } })
+    else await page.keyboard.press('Escape')
+    await expect(dialog).toHaveCount(0)
+    await expect(page.locator('audio')).toHaveCount(0)
+  }
+})
+
 for (const surface of ['document', 'message', 'resource']) {
   for (const source of ['extension', 'mime']) {
     test(`${surface} Markdown attachment renders, downloads and reopens by ${source}`, async ({ page }) => {

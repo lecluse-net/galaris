@@ -9,7 +9,7 @@
         :key="preview.uri"
         placement="below-page"
         :title="preview.title || (preview.deleted ? t('chat.resourcePreview.kinds.document') : '')"
-        :disabled="preview.deleted"
+        :disabled="preview.deleted || resourceKind(preview) === 'audio'"
         :description="preview.kind === 'document' ? '' : preview.description"
         :subtitle="preview.deleted ? t('chat.resourcePreview.documentDeleted') : [kindLabel(preview.kind), preview.subtitle].filter(Boolean).join(' · ')"
         :uri="preview.uri"
@@ -38,6 +38,9 @@
         </template>
         <template v-if="documentId(preview) && !preview.deleted" #title-icon>
           <DocumentIcon :document-id="documentId(preview)!" :title="preview.title" />
+        </template>
+        <template v-if="!preview.deleted && resourceKind(preview) === 'audio'" #player>
+          <AudioResourcePlayer :source="audioSource(preview)" />
         </template>
         <template v-if="!preview.deleted" #actions>
           <q-btn
@@ -85,7 +88,7 @@
             <q-tooltip>{{ t('chat.resourcePreview.download') }}</q-tooltip>
           </q-btn>
           <q-btn
-            v-if="preview.open_mode !== 'external'"
+            v-if="preview.open_mode !== 'external' && resourceKind(preview) !== 'audio'"
             flat
             round
             dense
@@ -205,12 +208,6 @@
             class="resource-preview-file-frame"
             :class="{ 'resource-preview-content--fit': fit }"
           />
-          <audio
-            v-else-if="resourceUrl && inlineResourceKind === 'audio'"
-            :src="resourceUrl"
-            controls
-            class="resource-preview-file-audio"
-          />
           <video
             v-else-if="resourceUrl && inlineResourceKind === 'video'"
             :src="resourceUrl"
@@ -289,6 +286,7 @@ import {
   browserResourceKind,
   CodeEditor,
   FullscreenPreview,
+  AudioResourcePlayer,
   ResourcePreviewBlock,
   Model3dThumbnail,
   Model3dViewer,
@@ -405,6 +403,15 @@ function modelSource(preview: MessageResourcePreview): Model3dSource {
 
 function isInlineImagePreview(preview: MessageResourcePreview): boolean {
   return resourceKind(preview) === 'image'
+}
+
+function audioSource(preview: MessageResourcePreview) {
+  const { roomId, messageId, viewerAgentId } = props
+  return {
+    key: `${roomId}:${messageId}:${viewerAgentId ?? 'user'}:${preview.uri}:${String(preview.metadata.revision ?? '')}`,
+    name: preview.title,
+    load: (signal: AbortSignal) => chatService.messagePreviewContentBlob(roomId, messageId, preview.uri, viewerAgentId, signal),
+  }
 }
 
 const inlineResourceKind = computed(() => resourceKind(selected.value))
@@ -575,7 +582,7 @@ function handlePreviewClick(event: MouseEvent, preview: MessageResourcePreview):
 }
 
 function openPreview(preview: MessageResourcePreview): void {
-  if (preview.deleted) return
+  if (preview.deleted || resourceKind(preview) === 'audio') return
   resetResource()
   selected.value = preview
   if (preview.kind === 'document') {
@@ -590,6 +597,7 @@ function openPreview(preview: MessageResourcePreview): void {
 }
 
 function canOpenStandalone(preview: MessageResourcePreview): boolean {
+  if (resourceKind(preview) === 'audio') return false
   return Boolean(
     preview.external_url
     || (preview.download_available && !['markdown', 'text'].includes(resourceKind(preview) ?? '') && resourceKind(preview)),
@@ -835,7 +843,6 @@ onBeforeUnmount(() => {
 .resource-preview-file-error { margin-top: 12px; color: var(--chat-text-muted, #667184); background: var(--chat-surface-soft, #e9edf3); }
 .resource-preview-file-frame { display: block; width: 1280px; height: 800px; background: #fff; border: 0; }
 .resource-preview-file-frame.resource-preview-content--fit { width: 100vw; height: var(--galaris-preview-height, 100dvh); min-height: var(--galaris-preview-height, 100dvh); }
-.resource-preview-file-audio { display: block; width: min(100%, 720px); margin: 28px auto; }
 .resource-preview-file-video { display: block; width: auto; max-width: none; max-height: none; margin: 0 auto; background: #000; }
 .resource-preview-file-video.resource-preview-content--fit { max-width: 100vw; max-height: var(--galaris-preview-height, 100dvh); }
 .resource-preview-document,.resource-preview-text,.resource-preview-json,.resource-preview-dialog-description { box-sizing: border-box; width: 960px; min-height: var(--galaris-preview-height, 100dvh); margin: 0; padding: 72px 22px 68px; color: var(--chat-text, #20242c); background: var(--chat-surface-raised, #fff); border: 0; border-radius: 0; }

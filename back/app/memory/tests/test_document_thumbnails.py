@@ -260,6 +260,25 @@ def test_transparent_image_thumbnail_keeps_alpha_and_its_dimensions(tmp_path: Pa
         assert thumbnail.getpixel((0, 0)) == (255, 0, 0, 0)
 
 
+@pytest.mark.asyncio
+@pytest.mark.parametrize("name, media_type", [
+    ("drawing.svg", "image/svg+xml; charset=utf-8"),
+    ("drawing.SVG", "application/octet-stream"),
+    ("source", "image/svg+xml"),
+])
+async def test_svg_thumbnail_uses_vector_rendering_and_preserves_source(tmp_path, monkeypatch, name, media_type):
+    source = tmp_path / "source"
+    original = b'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 40"><rect width="40" height="40" fill="red"/></svg>'
+    source.write_bytes(original)
+    png = thumbnails.encode(Image.new("RGBA", (80, 40), (255, 0, 0, 0)))
+    renderer = AsyncMock(return_value=png)
+    monkeypatch.setattr(document_thumbnail_service, "render_svg_thumbnail", renderer)
+    result = await document_thumbnail_service.render_file_thumbnail(source, name, media_type)
+    assert result == png
+    renderer.assert_awaited_once_with(source)
+    assert source.read_bytes() == original
+
+
 @pytest.mark.parametrize("size, expected", [((600, 900), (213, 320)), ((1200, 600), (520, 260)), ((900, 900), (320, 320)), ((24, 16), (24, 16))])
 def test_thumbnail_fits_bounds_without_white_padding_or_cropping(tmp_path: Path, size: tuple[int, int], expected: tuple[int, int]) -> None:
     source = tmp_path / "image.png"
@@ -300,13 +319,17 @@ def test_palette_transparency_is_preserved(tmp_path: Path) -> None:
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("suffix", [".png", ".odt", ".docx", ".ods", ".xlsx"])
+@pytest.mark.parametrize("suffix", [".png", ".svg", ".odt", ".docx", ".ods", ".xlsx"])
 async def test_document_thumbnail_is_shared_with_browser_after_authorization(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, suffix: str) -> None:
     document_id = uuid4()
     attachment = _attachment(f"source{suffix}", "image/png" if suffix == ".png" else "application/octet-stream")
     source = tmp_path / attachment.name
     if suffix == ".png":
         Image.new("RGB", (600, 900), "blue").save(source)
+    elif suffix == ".svg":
+        from core.preview import svg
+        source.write_text('<svg xmlns="http://www.w3.org/2000/svg" width="80" height="40"><rect width="40" height="40" fill="red"/></svg>')
+        monkeypatch.setattr(svg, "post_buffered", AsyncMock(return_value=thumbnails.encode(Image.new("RGBA", (80, 40), (255, 0, 0, 0)))))
     else:
         _office_source(source)
     original = source.read_bytes()
