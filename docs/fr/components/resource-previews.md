@@ -40,12 +40,16 @@ constituent pas des mesures de fabrication.
 
 ## Miniatures et chargement
 
-Les miniatures PNG sont générées dans le navigateur lorsque la pièce jointe devient
-visible, avec une marge de préchargement. La génération est séquentielle pour limiter
-les contextes graphiques simultanés. Après capture, les géométries, matériaux,
-textures et le contexte WebGL sont libérés ; seule la miniature reste en mémoire
-pendant l’affichage de la pièce jointe. Il n’y a pas de cache de miniatures côté
-serveur : elles sont régénérées après rechargement de la page.
+Dans Memory et les pièces jointes documentaires, les miniatures PNG sont conservées
+sur le stockage durable du serveur. Dream les prépare en période disponible ; une
+première ouverture peut également déclencher leur préparation. Le navigateur isolé
+capture les modèles 3D sans accès réseau, puis ferme son contexte. La réouverture du
+graphe ou le rechargement de la page relit l'image enregistrée sans télécharger ni
+recalculer le modèle. Chaque lecture vérifie encore les droits sur la source.
+Les fichiers du catalogue utilisent leur version et leur empreinte de contenu ;
+les pièces jointes documentaires sont immuables. Une nouvelle version reçoit sa
+propre miniature. Les aperçus 3D des discussions sans dérivé serveur conservent la
+génération locale à la demande et libèrent leur contexte après capture.
 
 Le moteur Three.js est importé à la demande. La vue interactive dessine à l’ouverture,
 au redimensionnement et lors des interactions, sans boucle de rendu permanente.

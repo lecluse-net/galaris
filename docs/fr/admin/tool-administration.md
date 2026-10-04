@@ -93,6 +93,13 @@ existantes activent les enrichissements versionnés, qui préservent les contenu
 Dream analyse ensuite les fichiers pris en charge pour enrichir leur description ; les
 répertoires restent des fiches de catalogue sans résumé automatique.
 
+Dream prépare également les miniatures des fichiers identifiés et des pièces jointes
+documentaires, sans appel IA et indépendamment des options d'analyse des médias.
+Les images, vidéos, PDF, Office, HTML, textes et modèles 3D autonomes pris en charge
+conservent leur PNG sur le stockage durable. Ouvrir puis rouvrir une ressource dans
+le graphe relit ce PNG ; une version modifiée reçoit un nouveau dérivé. Le cache
+ne contourne jamais les droits ni une connexion désactivée.
+
 ### Créer le Tool
 
 1. Examiner le catalogue avec `tool_admin_list` et lire une éventuelle définition existante

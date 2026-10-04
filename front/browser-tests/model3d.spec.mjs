@@ -7,6 +7,15 @@ const file = { id: 'model-1', uri: 'chat://room/model-1', name: 'cube.obj', mime
 
 for (const surface of ['document', 'message', 'resource']) {
   test(`${surface} 3D preview renders geometry, supports camera navigation and cleans up`, async ({ page }) => {
+    if (surface === 'document') await page.route('**/api/memory/documents/document-1/attachments/model-1/thumbnail?*', async route => {
+      const data = await page.evaluate(async cube => {
+        const { createModelThumbnail } = await import('/core/util/model3dRuntime.ts')
+        const image = await createModelThumbnail({ key: 'server-fixture', name: 'cube.obj', mediaType: 'model/obj', load: async () => new Blob([cube]) }, new AbortController().signal)
+        const bytes = new Uint8Array(await image.arrayBuffer())
+        return btoa(String.fromCharCode(...bytes))
+      }, cube)
+      await route.fulfill({ contentType: 'image/png', body: Buffer.from(data, 'base64') })
+    })
     await page.route('**/api/memory/documents/document-1/attachments/model-1?*', route => route.fulfill({ contentType: 'model/obj', body: cube }))
     await page.route('**/api/chat/rooms/room-1/files/model-1*', route => route.fulfill({ contentType: 'model/obj', body: cube }))
     await page.route('**/api/chat/rooms/room-1/messages/message-1/previews/content?*', route => route.fulfill({ contentType: 'model/obj', body: cube }))
@@ -81,3 +90,21 @@ for (const surface of ['document', 'message', 'resource']) {
     await expect.poll(() => page.evaluate(() => document.body.style.overflow)).toBe('')
   })
 }
+
+test('Memory 3D thumbnails reopen from the server without downloading or rendering the model', async ({ page }) => {
+  let reads = 0
+  const image = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aX9sAAAAASUVORK5CYII=', 'base64')
+  await page.route('**/api/memory/documents/document-1/attachments/model-1/thumbnail?*', async route => {
+    reads++
+    await route.fulfill({ contentType: 'image/png', body: image })
+  })
+  const component = 'app/memory/components/DocumentAttachments.vue'
+  const props = { documentId: 'document-1', agentId: 1, attachments: [file] }
+  await mount(page, component, { props })
+  await expect(page.locator('.model3d-thumbnail img')).toBeVisible()
+  await page.evaluate(() => window.testApp.unmount())
+  await page.evaluate(async args => { await window.testApp.mount(args) }, { component, props })
+  await expect(page.locator('.model3d-thumbnail img')).toBeVisible()
+  expect(reads).toBe(2)
+  // The fixture deliberately supplies no source-byte endpoint. A recalculation would fail.
+})

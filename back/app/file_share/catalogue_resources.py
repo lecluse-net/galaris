@@ -93,13 +93,25 @@ async def thumbnail(item_id: UUID, agent_id: int, entry_id: UUID) -> bytes | Non
         raise PermissionError("Resource is no longer available")
     key = f"memory-file:v1:{agent_id}:{entry.binding_stamp}:{info.uri}:{entry.file_sha256}:{descriptor_version(info.model_dump())}"
     path = thumbnails.cache_path(key)
+
+    async def assert_current() -> None:
+        _ctx, current = await authorized_resource(item_id, agent_id, entry_id)
+        current_key = f"memory-file:v1:{agent_id}:{entry.binding_stamp}:{current.uri}:{entry.file_sha256}:{descriptor_version(current.model_dump())}"
+        if current_key != key:
+            raise PermissionError("Resource changed while preparing its thumbnail")
+
     cached = await asyncio.to_thread(thumbnails.read, path)
     if cached is not None:
-        await authorized_resource(item_id, agent_id, entry_id)
+        await assert_current()
         return cached
-    async with content(item_id, agent_id, entry_id, preview=False) as source:
-        image = await render_file_thumbnail(source.path, source.name, source.media_type)
-        await authorized_resource(item_id, agent_id, entry_id)
-        if image is not None:
-            await asyncio.to_thread(thumbnails.write, path, image)
-        return image
+    async with thumbnails.generation(key):
+        await assert_current()
+        cached = await asyncio.to_thread(thumbnails.read, path)
+        if cached is not None:
+            return cached
+        async with content(item_id, agent_id, entry_id, preview=False) as source:
+            image = await render_file_thumbnail(source.path, source.name, source.media_type)
+            await assert_current()
+            if image is not None:
+                await asyncio.to_thread(thumbnails.write, path, image)
+            return image

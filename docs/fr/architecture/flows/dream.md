@@ -19,12 +19,21 @@ mécanismes ordonnés, un par un
        ├─► extraction Memory des Tasks, rounds textuels et tours Voice
        ├─► apprentissage fondé sur les résultats observables des Tasks
        ├─► projection déterministe des Process
+       ├─► préparation des miniatures persistantes des fichiers
        ├─► détection et maintenance déterministes pilotées par Memory
        ├─► déclenchement de la réconciliation des liens Memory
        └─► aucun oubli destructif fondé sur l'inactivité
 ```
 
 ## Cycle
+
+`memory.file_thumbnails` prépare les aperçus des fichiers du catalogue identifiés par
+SHA-256 et des pièces jointes documentaires actives : images, vidéos, PDF, Office,
+HTML, textes et modèles 3D autonomes (GLB, glTF, OBJ, STL, PLY). Aucun LLM n'est appelé.
+Les rendus sont bornés et enregistrés atomiquement dans le stockage des miniatures.
+Le reçu couvre une version de source ; les échecs suivent les leases et reprises Dream.
+Le graphe et les documents relisent le même dérivé après vérification de la source.
+Les formats sans rendu disponible conservent leur téléchargement et leur icône.
 
 Un réveil appelle les mécanismes dans l'ordre de leur enregistrement. Chacun réclame au maximum un
 sujet. Un mécanisme sans sujet ne produit aucun appel LLM. Une nouvelle activité prioritaire arrête

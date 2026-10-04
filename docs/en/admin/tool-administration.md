@@ -88,6 +88,12 @@ media options enable versioned enrichment while preserving personally curated co
 Dream then analyzes supported files to enrich their descriptions; directories remain
 catalogue entries without automatic summaries.
 
+Dream also prepares thumbnails of identified files and document attachments, without
+AI calls and independently of media-analysis options. Supported images, videos, PDF,
+Office, HTML, text and self-contained 3D models retain their PNG in durable storage.
+Opening and reopening a graph resource reads that PNG; a changed version receives a
+new derivative. The cache never bypasses permissions or a disabled connection.
+
 ### Create the Tool
 
 1. Inspect `tool_admin_list` and read any existing definition with `tool_admin_get` to avoid duplicates.

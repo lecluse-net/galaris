@@ -223,7 +223,7 @@ import type { DocumentAttachment } from '../types'
 const { documentId, agentId, attachments, editable = false, loading = false, content = '', managerMode = false, previewOnly = false, resourceSource } = defineProps<{
   resourceSource?: {
     content: (attachment: DocumentAttachment, preview: boolean) => Promise<Blob>
-    thumbnail: (attachment: DocumentAttachment) => Promise<Blob>
+    thumbnail: (attachment: DocumentAttachment, signal?: AbortSignal) => Promise<Blob>
   }
   previewOnly?: boolean
   managerMode?: boolean
@@ -292,6 +292,7 @@ const canThumbnail = (attachment: DocumentAttachment): boolean => {
   const mediaType = attachment.media_type.split(';', 1)[0]?.trim().toLowerCase() ?? ''
   const name = attachment.name.toLowerCase()
   return mediaType.startsWith('image/')
+    || ['application/json', 'application/xml', 'application/javascript'].includes(mediaType)
     || mediaType.startsWith('video/')
     || mediaType.startsWith('text/')
     || mediaType === 'application/pdf'
@@ -315,6 +316,7 @@ function attachmentIcon(attachment: DocumentAttachment): string {
 }
 
 function modelSource(attachment: DocumentAttachment): Model3dSource {
+  const currentResourceSource = resourceSource
   const currentDocumentId = documentId
   const currentAgentId = agentId
   return {
@@ -323,6 +325,21 @@ function modelSource(attachment: DocumentAttachment): Model3dSource {
     mediaType: attachment.media_type,
     size: attachment.size_bytes,
     load: () => resourceSource ? resourceSource.content(attachment, true) : memoryService.documentAttachmentBlob(currentDocumentId, attachment.id, currentAgentId),
+    thumbnail: async signal => {
+      for (const delay of [0, 750, 1_500, 3_000, 6_000]) {
+        signal.throwIfAborted()
+        if (delay) await new Promise(resolve => window.setTimeout(resolve, delay))
+        signal.throwIfAborted()
+        try {
+          return await (currentResourceSource ? currentResourceSource.thumbnail(attachment, signal)
+            : memoryService.documentAttachmentThumbnailBlob(currentDocumentId, attachment.id, currentAgentId, signal))
+        } catch (cause) {
+          signal.throwIfAborted()
+          if (delay === 6_000) throw cause
+        }
+      }
+      throw new Error('Thumbnail unavailable')
+    },
   }
 }
 

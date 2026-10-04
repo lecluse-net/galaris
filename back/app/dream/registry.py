@@ -26,6 +26,7 @@ def mechanisms() -> tuple[DreamMechanism, ...]:
 
 def register_default_mechanisms() -> None:
     from .mechanisms.file_catalogue import file_catalogue_mechanism
+    from .mechanisms.file_thumbnails import file_thumbnails_mechanism
     from .mechanisms.attachment_memory import attachment_memory_mechanisms
     from .mechanisms.document_structure import document_structure_mechanism
     from .mechanisms.sequential_topic_classification import (
@@ -49,6 +50,7 @@ def register_default_mechanisms() -> None:
     register_mechanism(memory_maintenance_mechanism)
     register_mechanism(document_structure_mechanism)
     register_mechanism(file_catalogue_mechanism)
+    register_mechanism(file_thumbnails_mechanism)
     for mechanism in attachment_memory_mechanisms:
         register_mechanism(mechanism)
 

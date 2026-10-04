@@ -44,8 +44,8 @@ export const memoryService = {
   async fileResourceBlob(itemId: string, entryId: string, agentId: number, preview = true): Promise<Blob> {
     return (await api.get<Blob>(`/file-share/items/${itemId}/resources/${entryId}/content`, { params: { agent_id: agentId, preview }, responseType: 'blob' })).data
   },
-  async fileResourceThumbnail(itemId: string, entryId: string, agentId: number): Promise<Blob> {
-    return (await api.get<Blob>(`/file-share/items/${itemId}/resources/${entryId}/thumbnail`, { params: { agent_id: agentId }, responseType: 'blob' })).data
+  async fileResourceThumbnail(itemId: string, entryId: string, agentId: number, signal?: AbortSignal): Promise<Blob> {
+    return (await api.get<Blob>(`/file-share/items/${itemId}/resources/${entryId}/thumbnail`, { params: { agent_id: agentId }, responseType: 'blob', signal })).data
   },
   async temporalDefaults(): Promise<{ timezone: string; lookahead_hours: number }> {
     return (await api.get<{ timezone: string; lookahead_hours: number }>('/memory/temporal/defaults')).data
@@ -337,10 +337,10 @@ export const memoryService = {
     return response.data
   },
 
-  async documentAttachmentThumbnailBlob(id: string, attachmentId: string, agentId: number | null): Promise<Blob> {
+  async documentAttachmentThumbnailBlob(id: string, attachmentId: string, agentId: number | null, signal?: AbortSignal): Promise<Blob> {
     const response = await api.get<Blob>(
       `/memory/documents/${id}/attachments/${attachmentId}/thumbnail`,
-      { params: { agent_id: agentId }, responseType: 'blob' },
+      { params: { agent_id: agentId }, responseType: 'blob', signal },
     )
     return response.data
   },

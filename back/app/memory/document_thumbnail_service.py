@@ -19,6 +19,7 @@ from core.user import HumanActor
 from core.document import OFFICE_EXTENSIONS, prepare_document
 
 from core.preview import render_html_pdf, thumbnails
+from core.preview import render_model_thumbnail, supports_model
 from core.params import runtime_settings
 
 from . import document_attachment_service, document_thumbnail_cache, service
@@ -141,21 +142,12 @@ def _pdf_thumbnail(path: Path) -> bytes | None:
         return None
 
 
-async def _office_thumbnail(path: Path, attachment: DocumentAttachmentPublic) -> bytes | None:
-    with TemporaryDirectory(prefix="office-thumbnail-") as temporary:
-        directory = Path(temporary)
-        prepared = await prepare_document(
-            path, attachment.name, attachment.media_type, directory, preview_only=True,
-        )
-        if not prepared.pages:
-            return None
-        image = prepared.image_path(prepared.pages[0], directory)
-        return await asyncio.to_thread(thumbnails.from_image, image) if image is not None else None
-
-
 async def render_file_thumbnail(path: Path, name: str, media_type: str) -> bytes | None:
     """Reuse bounded attachment renderers for an authorized catalogue source."""
     async with _document_capture_slots:
+        media_type = media_type.split(";", 1)[0].strip().casefold()
+        if supports_model(media_type, name):
+            return await render_model_thumbnail(path, name, media_type)
         if Path(name).suffix.casefold() in OFFICE_EXTENSIONS:
             with TemporaryDirectory(prefix="file-thumbnail-") as temporary:
                 directory = Path(temporary)
@@ -174,7 +166,7 @@ async def render_file_thumbnail(path: Path, name: str, media_type: str) -> bytes
                 pdf = await render_html_pdf(content.decode("utf-8"), first_page_only=True)
                 return await asyncio.to_thread(_printed_document_thumbnail, pdf)
             return None
-        if media_type.startswith("text/"):
+        if media_type.startswith("text/") or media_type in {"application/json", "application/xml", "application/javascript"}:
             return await asyncio.to_thread(_text_thumbnail, path)
         return None
 
@@ -219,7 +211,8 @@ def _video_thumbnail(path: Path) -> bytes | None:
 
 def _text_thumbnail(path: Path) -> bytes | None:
     try:
-        text = path.read_text(encoding="utf-8")[:4_000]
+        with path.open(encoding="utf-8") as source:
+            text = source.read(4_000)
     except (OSError, UnicodeError):
         return None
     image = Image.new("RGB", thumbnails.MAX_SIZE, "white")
@@ -264,7 +257,7 @@ async def _generate(
     attachment: DocumentAttachmentPublic,
     path: Path,
     actor_agent_id: int | HumanActor,
-) -> None:
+) -> bytes | None:
     try:
         media_type = attachment.media_type.split(";", 1)[0].strip().casefold()
         web_url = await asyncio.to_thread(_web_url, path, attachment)
@@ -272,33 +265,58 @@ async def _generate(
             if _web_thumbnail_capture is not None:
                 # The browser writes under the target URL. Never duplicate this
                 # image under the attachment URI or delete it with the shortcut.
-                await _web_thumbnail_capture(actor_agent_id, web_url)
-            return
+                result = await _web_thumbnail_capture(actor_agent_id, web_url)
+                return result[0] if result else None
+            return None
         if media_type == "text/html" or attachment.name.casefold().endswith((".html", ".htm")):
             if _html_thumbnail_capture is not None:
                 content = await asyncio.to_thread(_read_html, path)
                 if content is not None:
-                    await _html_thumbnail_capture(actor_agent_id, reference, content)
-            return
-        if media_type.startswith("image/"):
-            content = await asyncio.to_thread(thumbnails.from_image, path)
-        elif media_type.startswith("video/"):
-            content = await asyncio.to_thread(_video_thumbnail, path)
-        elif media_type == "application/pdf" or attachment.name.casefold().endswith(".pdf"):
-            content = await asyncio.to_thread(_pdf_thumbnail, path)
-        elif Path(attachment.name).suffix.casefold() in OFFICE_EXTENSIONS:
-            content = await _office_thumbnail(path, attachment)
-        elif media_type.startswith("text/"):
-            content = await asyncio.to_thread(_text_thumbnail, path)
-        else:
-            content = None
+                    result = await _html_thumbnail_capture(actor_agent_id, reference, content)
+                    return result[0] if result else None
+        content = await render_file_thumbnail(path, attachment.name, media_type)
         if content is not None and len(content) <= thumbnails.MAX_BYTES:
+            # Removal while a renderer is running must not recreate its derivative.
+            await document_attachment_service.document_attachment_path(
+                attachment_document_id(reference), attachment.id, actor_agent_id=actor_agent_id,
+            )
             await asyncio.to_thread(thumbnails.write, thumbnails.cache_path(reference), content)
+        return content
     except Exception as exc:
         logger.debug(
             "Document attachment thumbnail generation failed (error_type={})",
             type(exc).__name__,
         )
+        raise
+
+
+def attachment_document_id(reference: str) -> UUID:
+    return UUID(reference.split("/")[2])
+
+
+async def generate_document_attachment_thumbnail(
+    document_id: UUID, attachment_id: UUID, *, actor_agent_id: int | HumanActor,
+) -> bytes | None:
+    """Await and reuse the same persistent derivative from Dream or HTTP."""
+    reference = _reference(document_id, attachment_id)
+    async with thumbnails.generation(reference):
+        attachment, path = await document_attachment_service.document_attachment_path(
+            document_id, attachment_id, actor_agent_id=actor_agent_id,
+        )
+        web_url = await asyncio.to_thread(_web_url, path, attachment)
+        cached = await asyncio.to_thread(thumbnails.read, thumbnails.cache_path(web_url or reference))
+        if cached is not None:
+            return cached
+        return await _generate(reference=reference, attachment=attachment, path=path, actor_agent_id=actor_agent_id)
+
+
+async def _generate_background(document_id: UUID, attachment_id: UUID, actor: int | HumanActor) -> None:
+    from core.database import get_db_session
+    try:
+        async with get_db_session():
+            await generate_document_attachment_thumbnail(document_id, attachment_id, actor_agent_id=actor)
+    except Exception as exc:
+        logger.debug("Attachment thumbnail failed (error_type={})", type(exc).__name__)
 
 
 async def read_or_schedule_document_attachment_thumbnail(
@@ -322,12 +340,7 @@ async def read_or_schedule_document_attachment_thumbnail(
         return cached
     if reference not in _tasks:
         task = asyncio.create_task(
-            _generate(
-                reference=reference,
-                attachment=attachment,
-                path=path,
-                actor_agent_id=actor_agent_id,
-            ),
+            _generate_background(document_id, attachment_id, actor_agent_id),
             name="document-attachment-thumbnail",
             context=Context(),
         )

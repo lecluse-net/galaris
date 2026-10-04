@@ -38,11 +38,15 @@ are not manufacturing measurements.
 
 ## Thumbnails and loading
 
-PNG thumbnails are generated in the browser when an attachment approaches the
-viewport. Generation is sequential to limit simultaneous graphics contexts.
-After capture, geometry, materials, textures and the WebGL context are released;
-only the thumbnail remains in memory while the attachment is displayed. There is
-no server thumbnail cache: thumbnails are regenerated after a page reload.
+In Memory and document attachments, PNG thumbnails remain in durable server
+storage. Dream prepares them during available periods; opening a file can also
+trigger preparation. The isolated browser captures 3D models without network access
+and then closes its context. Reopening the graph or reloading the page reads the
+saved image without downloading or rendering the model again. Every read still
+checks source permissions. Catalogue files use their version and content fingerprint;
+document attachments are immutable. A new version receives its own thumbnail.
+Discussion previews without a server derivative retain local generation on demand
+and release their graphics context after capture.
 
 Three.js is imported on demand. Interactive views render on opening, resizing and
 interaction, without a permanent render loop. Preview limits are 32 MiB per file

@@ -47,6 +47,7 @@ export type DreamMechanismKey =
   | 'memory.attachment_text'
   | 'memory.attachment_document'
   | 'memory.file_catalogue'
+  | 'memory.file_thumbnails'
   | 'memory.attachment_image'
   | 'memory.attachment_video'
   | 'memory.extract_conversation_round'

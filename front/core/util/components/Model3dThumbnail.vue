@@ -42,9 +42,9 @@ async function generate(): Promise<void> {
   const currentSource = source
   loading.value = true
   try {
-    const { createModelThumbnail } = await import('../model3dRuntime')
-    current.signal.throwIfAborted()
-    const blob = await createModelThumbnail(currentSource, current.signal)
+    const blob = currentSource.thumbnail
+      ? await currentSource.thumbnail(current.signal)
+      : await (await import('../model3dRuntime')).createModelThumbnail(currentSource, current.signal)
     if (!current.signal.aborted) url.value = URL.createObjectURL(blob)
   } catch (cause) {
     if (!current.signal.aborted) error.value = cause instanceof Model3dError ? cause.code : 'invalid'

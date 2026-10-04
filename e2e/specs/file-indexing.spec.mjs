@@ -1,6 +1,40 @@
 import { test, expect } from '@playwright/test'
 import { collectPageErrors } from '../page-errors.mjs'
 
+test('Memory 3D attachment thumbnail persists across document reopening in the assembled app', async ({ page, request }) => {
+  const errors = collectPageErrors(page)
+  const fixture = await (await request.post('/api/__test/seed?mode=file-catalogue')).json()
+  const refresh = page.waitForResponse(response => response.url().endsWith('/api/auth/refresh'))
+  await page.goto('/user/login')
+  await refresh
+  await page.locator('input[type=email]').fill(fixture.email)
+  await page.locator('input[type=password]').fill(fixture.password)
+  await page.locator('button[type=submit]').click()
+  await expect(page.locator('input[type=password]')).toHaveCount(0)
+  let downloads = 0
+  page.on('request', request => {
+    if (new URL(request.url()).pathname === `/api/memory/documents/${fixture.model_document_id}/attachments/${fixture.model_attachment_id}`) downloads++
+  })
+  const path = `/memory/documents?document_id=${fixture.model_document_id}`
+  await page.goto(path)
+  const image = page.locator('.model3d-thumbnail img')
+  await page.locator('.model3d-thumbnail').scrollIntoViewIfNeeded()
+  await expect(image).toBeVisible()
+  await expect.poll(() => image.evaluate(element => element.naturalWidth)).toBeGreaterThan(0)
+  const first = await image.evaluate(async element => Array.from(new Uint8Array(await (await fetch(element.src)).arrayBuffer())))
+  await errors.settle()
+  await page.goto('/memory')
+  await expect(image).toHaveCount(0)
+  await page.goto(path)
+  await page.locator('.model3d-thumbnail').scrollIntoViewIfNeeded()
+  await expect(image).toBeVisible()
+  const second = await image.evaluate(async element => Array.from(new Uint8Array(await (await fetch(element.src)).arrayBuffer())))
+  expect(second).toEqual(first)
+  expect(downloads).toBe(0)
+  await errors.settle()
+  expect(errors()).toEqual([])
+})
+
 for (const width of [1440, 390]) {
   test(`Memory file locations use real thumbnails, downloads and previews at ${width}px`, async ({ page, request }, testInfo) => {
     await page.setViewportSize({ width, height: 900 })

@@ -3,6 +3,7 @@
 from pathlib import Path
 from datetime import datetime, timezone
 from uuid import UUID
+from typing import Any
 from sqlalchemy import select, Select, or_, func, update
 from core.database import get_db
 from app.memory import catalogue_projection_write
@@ -59,6 +60,18 @@ async def apply_enrichment(identity: UUID, version: str, description: str) -> bo
 
 
 class FileCatalogueEnrichmentPort:
+    async def thumbnail_pending(self, handled: Select[tuple[str]]) -> int:
+        from .thumbnail_service import count_pending
+        return await count_pending(handled)
+
+    async def thumbnail_source(self, handled: Select[tuple[str]]) -> dict[str, Any] | None:
+        from .thumbnail_service import next_source
+        return await next_source(handled)
+
+    async def thumbnail_generate(self, source: dict[str, Any]) -> bool:
+        from .thumbnail_service import generate
+        return await generate(source)
+
     async def fingerprints(self) -> list[dict[str, object]]:
         from .catalogue import current_binding, ObservationScope
         entries = await get_db().scalars(select(FileCatalogEntry).where(

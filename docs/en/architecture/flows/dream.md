@@ -26,6 +26,13 @@ ordered mechanisms, one at a time
 
 ## Cycle
 
+`memory.file_thumbnails` prepares previews of SHA-256-identified catalogue files and
+active document attachments: images, videos, PDF, Office, HTML, text and self-contained
+3D models (GLB, glTF, OBJ, STL, PLY). It calls no LLM. Bounded renders are atomically
+saved in thumbnail storage. Each receipt covers a source version; failures follow
+Dream leases and retries. The graph and documents read the same derivative after
+checking the source. Formats without a renderer retain downloads and fallback icons.
+
 A wake-up calls the mechanisms in registration order. Each claims at most one
 subject. A mechanism without a subject makes no LLM call. New priority activity stops
 the sequence. The start of a Voice conversation also cancels the current subtask.

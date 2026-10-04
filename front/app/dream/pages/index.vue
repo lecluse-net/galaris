@@ -585,6 +585,7 @@ let realtimeRefreshTimer: ReturnType<typeof setTimeout> | null = null
 const mechanismTranslationKeys = {
   'memory.attachment_text': 'dream.mechanisms.attachmentText',
   'memory.file_catalogue': 'dream.mechanisms.fileCatalogue',
+  'memory.file_thumbnails': 'dream.mechanisms.fileThumbnails',
   'memory.attachment_document': 'dream.mechanisms.attachmentDocument',
   'memory.attachment_image': 'dream.mechanisms.attachmentImage',
   'memory.attachment_video': 'dream.mechanisms.attachmentVideo',

@@ -29,6 +29,7 @@ ALLOWED_DATABASE_SESSION_BOUNDARIES = {
     "app/dream/mechanisms/conversation_memory.py",
     "app/dream/mechanisms/document_structure.py",  # Autonomous reconciliation claims and applies separately.
     "app/dream/mechanisms/file_catalogue.py",  # Scheduler-owned claims, materialization and application use short sessions.
+    "app/dream/mechanisms/file_thumbnails.py",  # Autonomous thumbnail claims and publication own their transactions.
     "app/dream/mechanisms/memory_maintenance.py",
     "app/dream/mechanisms/process_memory.py",
     "app/dream/mechanisms/sequential_topic_classification.py",
@@ -46,6 +47,7 @@ ALLOWED_DATABASE_SESSION_BOUNDARIES = {
     "app/llm/inference_execution.py",  # Independent admission, heartbeat and inference execution roots.
     "app/mcp/router.py",
     "app/memory/automation.py",
+    "app/memory/document_thumbnail_service.py",  # Detached thumbnail worker starts without the HTTP session.
     "app/memory/html_migration.py",  # Read-only CLI audit under the __main__ guard.
     "app/memory/semantic_index.py",
     "app/messenger/journal.py",

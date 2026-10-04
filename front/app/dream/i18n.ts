@@ -103,6 +103,7 @@ export default {
         messageTopicClassification: 'Classement des messages par sujet',
         attachmentText: 'Résumé des pièces jointes textuelles',
         fileCatalogue: 'Indexation et enrichissement des fichiers',
+        fileThumbnails: 'Préparation des miniatures des fichiers',
         attachmentDocument: 'Description des documents sans texte extractible',
         attachmentImage: 'Description des images',
         attachmentVideo: 'Résumé audio des vidéos',
@@ -258,6 +259,7 @@ export default {
         messageTopicClassification: 'Message thematic classification',
         attachmentText: 'Text attachment summaries',
         fileCatalogue: 'File indexing and enrichment',
+        fileThumbnails: 'File thumbnail preparation',
         attachmentDocument: 'Descriptions of documents without extractable text',
         attachmentImage: 'Image descriptions',
         attachmentVideo: 'Video audio summaries',
@@ -346,6 +348,7 @@ export default {
       statuses: { running: '运行中', retry: '重试', success: '成功', error: '错误' },
       mechanisms: {
         messageTopicClassification: '消息主题分类', voiceTurnTopicClassification: '语音轮次主题分类', taskTopicClassification: '任务主题分类',
+        fileThumbnails: '准备文件缩略图',
         attachmentText: '文本附件摘要', attachmentDocument: '不可提取文本的文档描述', attachmentImage: '图片描述', attachmentVideo: '视频音频摘要', fileCatalogue: '文件索引和丰富',
         voiceTopicClassification: '语音对话主题分类', taskMemory: '任务记忆提取', conversationMemory: '文字对话记忆提取', taskOutcomeReflection: '任务后学习',
         learnedSkills: '已学习技能的创建与强化', voiceMemory: '语音轮次记忆提取', topicMemoryLinks: '将记忆投射到主题档案', processMemory: '流程记忆投射',

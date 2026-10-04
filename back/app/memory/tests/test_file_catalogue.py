@@ -258,21 +258,72 @@ async def test_shared_summary_has_a_revision_and_survives_a_hashed_file_move(con
 
 
 @pytest.mark.asyncio
-async def test_catalogue_preview_rechecks_revocation_after_thumbnail_render(console_catalogue, db, monkeypatch):
+@pytest.mark.parametrize('change', ['revoke', 'replace'])
+async def test_catalogue_preview_rechecks_source_after_thumbnail_render(console_catalogue, db, monkeypatch, tmp_path, change):
     from app.file_share import catalogue_resources
+    from core.preview import thumbnails
 
     ctx, _transport, connection, _peer = console_catalogue
+    monkeypatch.setattr(type(thumbnails.settings), 'GALARIS_THUMBNAIL_ROOT', str(tmp_path / 'cache'))
     await resource_service.resource_write_text(ctx, 'console://preview.txt', 'Synthetic preview bytes')
     await acquire_fingerprints(db)
     entry = await db.scalar(select(FileCatalogEntry).where(FileCatalogEntry.uri == 'console://preview.txt'))
     async def revoke(_path, _name, _media_type):
-        connection.active = False
-        await db.flush()
+        if change == 'revoke':
+            connection.active = False
+            await db.flush()
+        else:
+            await resource_service.resource_write_text(ctx, 'console://preview.txt', 'Synthetic replacement bytes', overwrite=True)
+            await acquire_fingerprints(db)
         return b'Synthetic thumbnail that must not be served'
     monkeypatch.setattr(catalogue_resources, 'render_file_thumbnail', revoke)
     with pytest.raises(PermissionError):
         await catalogue_resources.thumbnail(entry.memory_item_id, ctx.agent_id, entry.id)
-    assert await catalogue_resources.resources(entry.memory_item_id, ctx.agent_id) == []
+    assert not list((tmp_path / 'cache').glob('*.png'))
+    if change == 'revoke':
+        assert await catalogue_resources.resources(entry.memory_item_id, ctx.agent_id) == []
+
+
+@pytest.mark.asyncio
+async def test_dream_catalogue_thumbnail_is_reused_and_changes_with_source(console_catalogue, db, tmp_path, monkeypatch):
+    from unittest.mock import AsyncMock
+    from app.dream.mechanisms.file_thumbnails import file_thumbnails_mechanism as mechanism
+    from app.dream.service import mark_success
+    from app.dream import interface
+    from app.file_share import FileCatalogueEnrichmentPort
+    from app.file_share import catalogue_resources
+    from core.preview import thumbnails
+
+    ctx, _transport, connection, _peer = console_catalogue
+    monkeypatch.setattr(interface, '_file_catalogue', FileCatalogueEnrichmentPort())
+    monkeypatch.setattr(type(thumbnails.settings), 'GALARIS_THUMBNAIL_ROOT', str(tmp_path / 'cache'))
+    await resource_service.resource_write_text(ctx, 'console://preview.txt', 'Synthetic first version')
+    await acquire_fingerprints(db)
+    render = AsyncMock(wraps=catalogue_resources.render_file_thumbnail)
+    monkeypatch.setattr(catalogue_resources, 'render_file_thumbnail', render)
+    claim = await mechanism.claim_one()
+    assert claim is not None and claim.subject_kind == 'file_thumbnail'
+    assert await mechanism.apply(claim, claim.prepared_payload) == 1
+    await mark_success(claim, result_count=1)
+    entry = await db.scalar(select(FileCatalogEntry).where(FileCatalogEntry.uri == 'console://preview.txt'))
+    first = await catalogue_resources.thumbnail(entry.memory_item_id, ctx.agent_id, entry.id)
+    assert first
+    assert await mechanism.claim_one() is None
+    render.assert_awaited_once()
+
+    await resource_service.resource_write_text(ctx, 'console://preview.txt', 'Synthetic second version', overwrite=True)
+    await acquire_fingerprints(db)
+    second_claim = await mechanism.claim_one()
+    assert second_claim is not None and second_claim.subject_id != claim.subject_id
+    assert await mechanism.apply(second_claim, second_claim.prepared_payload) == 1
+    await db.refresh(entry)
+    second = await catalogue_resources.thumbnail(entry.memory_item_id, ctx.agent_id, entry.id)
+    assert second and second != first
+    assert render.await_count == 2
+    connection.active = False
+    await db.flush()
+    with pytest.raises(PermissionError):
+        await catalogue_resources.thumbnail(entry.memory_item_id, ctx.agent_id, entry.id)
 
 
 @pytest.mark.asyncio

@@ -331,7 +331,8 @@ async def test_document_thumbnail_is_shared_with_browser_after_authorization(tmp
         else:
             assert any(low < 200 for low, _high in thumbnail.convert("RGB").getextrema())
     assert source.read_bytes() == original
-    assert authorized_path.await_count == 2
+    # Each read and the final publication recheck the source authorization.
+    assert authorized_path.await_count >= 2
     from app.browser import read_cached_thumbnail
     assert await read_cached_thumbnail(reference=reference) == (content, "image/png")
     assert list(cache_root.iterdir()) == [thumbnails.cache_path(reference)]
@@ -407,6 +408,36 @@ async def test_deleting_office_attachment_cancels_thumbnail_and_removes_temporar
     assert reference not in document_thumbnail_service._tasks
     assert not thumbnails.cache_path(reference).exists()
     assert all(not directory.exists() for directory in directories)
+
+
+@pytest.mark.asyncio
+async def test_background_and_dream_generation_share_one_derivative_when_a_waiter_is_cancelled(tmp_path, monkeypatch):
+    document_id = uuid4()
+    attachment = _attachment('synthetic.png', 'image/png')
+    source = tmp_path / attachment.name
+    Image.new('RGB', (80, 60), 'blue').save(source)
+    monkeypatch.setattr(type(thumbnails.settings), 'GALARIS_THUMBNAIL_ROOT', str(tmp_path / 'cache'))
+    monkeypatch.setattr(document_thumbnail_service.document_attachment_service, 'document_attachment_path', AsyncMock(return_value=(attachment, source)))
+    render = document_thumbnail_service.render_file_thumbnail
+    started, release = asyncio.Event(), asyncio.Event()
+    async def delayed_render(path, name, media_type):
+        started.set()
+        await release.wait()
+        return await render(path, name, media_type)
+    renderer = AsyncMock(side_effect=delayed_render)
+    monkeypatch.setattr(document_thumbnail_service, 'render_file_thumbnail', renderer)
+    generate = document_thumbnail_service.generate_document_attachment_thumbnail
+    producer = asyncio.create_task(generate(document_id, attachment.id, actor_agent_id=7))
+    await started.wait()
+    waiter = asyncio.create_task(generate(document_id, attachment.id, actor_agent_id=7))
+    await asyncio.sleep(0)
+    waiter.cancel()
+    await asyncio.gather(waiter, return_exceptions=True)
+    release.set()
+    result = await producer
+    assert result
+    assert await generate(document_id, attachment.id, actor_agent_id=7) == result
+    renderer.assert_awaited_once()
 
 
 def test_text_thumbnail_is_bounded_png(tmp_path: Path) -> None:

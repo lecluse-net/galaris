@@ -34,7 +34,7 @@ const resourceSource = computed(() => {
   const id = itemId, agent = agentId
   return {
     content: (attachment: { id: string }, preview: boolean) => memoryService.fileResourceBlob(id, attachment.id, agent!, preview),
-    thumbnail: (attachment: { id: string }) => memoryService.fileResourceThumbnail(id, attachment.id, agent!),
+    thumbnail: (attachment: { id: string }, signal?: AbortSignal) => memoryService.fileResourceThumbnail(id, attachment.id, agent!, signal),
   }
 })
 

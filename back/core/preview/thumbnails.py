@@ -7,7 +7,10 @@ use the same bounded PNG representation; page metadata shares the resource key.
 from __future__ import annotations
 
 import hashlib
+import asyncio
 import os
+from collections.abc import AsyncGenerator
+from contextlib import asynccontextmanager
 from io import BytesIO
 from pathlib import Path
 from tempfile import NamedTemporaryFile
@@ -18,6 +21,23 @@ from core.settings import settings
 
 MAX_SIZE = (520, 320)
 MAX_BYTES = 5 * 1_048_576
+_generations: dict[str, tuple[asyncio.Lock, int]] = {}
+
+
+@asynccontextmanager
+async def generation(reference: str) -> AsyncGenerator[None]:
+    """Serialize active producers of a derivative, without retaining idle keys."""
+    lock, users = _generations.get(reference, (asyncio.Lock(), 0))
+    _generations[reference] = lock, users + 1
+    try:
+        async with lock:
+            yield
+    finally:
+        _, users = _generations[reference]
+        if users == 1:
+            del _generations[reference]
+        else:
+            _generations[reference] = lock, users - 1
 
 
 def cache_path(reference: str) -> Path:

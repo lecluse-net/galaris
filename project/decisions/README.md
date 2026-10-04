@@ -1,5 +1,7 @@
 # Décisions d’architecture
 
+- [0156 — Miniatures persistantes préparées par Dream](0156-persistent-file-thumbnails.md)
+
 - [0155 — Parcours de fichiers durables et enrichissement versionné](0155-durable-file-indexing.md)
 
 - [0153 — Autorisation commune par action pour MCP et runtimes](0153-common-action-authorizations.md)

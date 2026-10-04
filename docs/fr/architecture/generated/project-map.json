@@ -942,6 +942,7 @@
           "back/app/dream/mechanisms/attachment_memory.py",
           "back/app/dream/mechanisms/conversation_memory.py",
           "back/app/dream/mechanisms/document_structure.py",
+          "back/app/dream/mechanisms/file_thumbnails.py",
           "back/app/dream/mechanisms/memory_extraction.py",
           "back/app/dream/mechanisms/memory_maintenance.py",
           "back/app/dream/mechanisms/process_memory.py",
@@ -1031,6 +1032,7 @@
           "back/app/dream/mechanisms/conversation_memory.py",
           "back/app/dream/mechanisms/document_structure.py",
           "back/app/dream/mechanisms/file_catalogue.py",
+          "back/app/dream/mechanisms/file_thumbnails.py",
           "back/app/dream/mechanisms/memory_maintenance.py",
           "back/app/dream/mechanisms/process_memory.py",
           "back/app/dream/mechanisms/sequential_topic_classification.py",
@@ -1055,7 +1057,8 @@
       },
       {
         "files": [
-          "back/app/dream/attachment_processing.py"
+          "back/app/dream/attachment_processing.py",
+          "back/app/dream/mechanisms/file_thumbnails.py"
         ],
         "source": "app.dream",
         "target": "core.document"
@@ -1091,7 +1094,15 @@
       },
       {
         "files": [
-          "back/app/dream/events.py"
+          "back/app/dream/mechanisms/file_thumbnails.py"
+        ],
+        "source": "app.dream",
+        "target": "core.preview"
+      },
+      {
+        "files": [
+          "back/app/dream/events.py",
+          "back/app/dream/mechanisms/file_thumbnails.py"
         ],
         "source": "app.dream",
         "target": "core.user"
@@ -1120,7 +1131,8 @@
           "back/app/file_share/catalogue_resources.py",
           "back/app/file_share/file_share_service.py",
           "back/app/file_share/indexing.py",
-          "back/app/file_share/resource_observation.py"
+          "back/app/file_share/resource_observation.py",
+          "back/app/file_share/thumbnail_service.py"
         ],
         "source": "app.file_share",
         "target": "app.connection"
@@ -1220,6 +1232,7 @@
           "back/app/file_share/mcp.py",
           "back/app/file_share/resource_contracts.py",
           "back/app/file_share/resource_observation.py",
+          "back/app/file_share/thumbnail_service.py",
           "back/app/file_share/transport.py"
         ],
         "source": "app.file_share",
@@ -1256,14 +1269,16 @@
           "back/app/file_share/models.py",
           "back/app/file_share/resource_description.py",
           "back/app/file_share/resource_observation.py",
-          "back/app/file_share/router.py"
+          "back/app/file_share/router.py",
+          "back/app/file_share/thumbnail_service.py"
         ],
         "source": "app.file_share",
         "target": "core.database"
       },
       {
         "files": [
-          "back/app/file_share/document_facade.py"
+          "back/app/file_share/document_facade.py",
+          "back/app/file_share/thumbnail_service.py"
         ],
         "source": "app.file_share",
         "target": "core.document"
@@ -1289,6 +1304,7 @@
         "files": [
           "back/app/file_share/__init__.py",
           "back/app/file_share/catalogue_resources.py",
+          "back/app/file_share/thumbnail_service.py",
           "back/app/file_share/web_preview.py"
         ],
         "source": "app.file_share",
@@ -2316,6 +2332,7 @@
           "back/app/memory/document_service.py",
           "back/app/memory/document_structure.py",
           "back/app/memory/document_tags.py",
+          "back/app/memory/document_thumbnail_service.py",
           "back/app/memory/events.py",
           "back/app/memory/facade.py",
           "back/app/memory/goal_document_adapter.py",
@@ -5039,6 +5056,7 @@
       },
       {
         "files": [
+          "back/core/preview/model3d.py",
           "back/core/preview/pdf.py"
         ],
         "source": "core.preview",
@@ -5046,6 +5064,7 @@
       },
       {
         "files": [
+          "back/core/preview/model3d.py",
           "back/core/preview/pdf.py",
           "back/core/preview/thumbnails.py"
         ],
@@ -5061,6 +5080,7 @@
       },
       {
         "files": [
+          "back/core/preview/model3d.py",
           "back/core/preview/pdf.py"
         ],
         "source": "core.preview",

@@ -8,6 +8,8 @@ export interface Model3dSource {
   mediaType: string
   size?: number | null
   load: () => Promise<Blob>
+  /** Authorized server derivative, persisted independently of this component. */
+  thumbnail?: (signal: AbortSignal) => Promise<Blob>
 }
 
 const mimeFormats: Record<string, Model3dFormat> = {

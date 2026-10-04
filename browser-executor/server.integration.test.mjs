@@ -80,6 +80,13 @@ test('Chromium crash exits with failure and a fresh executor serves new sessions
       method: 'POST', headers: { 'content-type': 'application/json', 'x-galaris-browser-token': healthy.token },
       body: JSON.stringify(body), signal: AbortSignal.timeout(10_000),
     });
+    const model = await post('/v1/render-model-thumbnail', {
+      name: 'triangle.obj', media_type: 'model/obj',
+      data: Buffer.from('v -1 -1 0\nv 1 -1 0\nv 0 1 0\nf 1 2 3\n').toString('base64'),
+    });
+    assert.equal(model.status, 200);
+    assert.equal(model.headers.get('content-type'), 'image/png');
+    assert.ok((await model.arrayBuffer()).byteLength > 1000);
     const html = Buffer.from('<body style="margin:0;height:1600px"><p>' + 'Readable text '.repeat(300) + '</p></body>').toString('base64');
     const captures = await Promise.all([500, 1000].map(height => post('/v1/render-html', {
       owner: { agent_id: 1 }, html_base64: html,

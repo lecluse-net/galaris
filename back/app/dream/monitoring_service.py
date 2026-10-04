@@ -902,7 +902,7 @@ def _receipt_summary(
     effective_preview = subject_preview
     if task_detail is not None:
         effective_preview = task_detail[1] or task_detail[0]
-    elif receipt.subject_kind in {"file_directory", "file_fingerprint"}:
+    elif receipt.subject_kind in {"file_directory", "file_fingerprint", "file_thumbnail", "attachment_thumbnail"}:
         uri = (receipt.prepared_payload or {}).get("uri")
         effective_preview = uri[:_SUBJECT_PREVIEW_MAX_CHARS] if isinstance(uri, str) else None
     elif receipt.subject_kind == "attachment":
