@@ -29,12 +29,12 @@ class CatalogueResource(BaseModel):
     size_bytes: int
 
 
-async def resources(item_id: UUID, agent_id: int) -> list[CatalogueResource]:
+async def resources(item_id: UUID, agent_id: int, *, limit: int = 500) -> list[CatalogueResource]:
     entries = await get_db().scalars(select(FileCatalogEntry).join(Connection, Connection.id == FileCatalogEntry.connection_id)
         .join(ToolModel, ToolModel.id == Connection.tool_id).where(
             FileCatalogEntry.memory_item_id == item_id, FileCatalogEntry.agent_id == agent_id,
             FileCatalogEntry.present.is_(True), live_catalogue_binding(),
-        ).order_by(FileCatalogEntry.uri).limit(500))
+        ).order_by(FileCatalogEntry.uri).limit(limit))
     result: list[CatalogueResource] = []
     for entry in entries:
         info = ResourceDescriptor.model_validate(entry.descriptor)
@@ -86,7 +86,7 @@ async def content(item_id: UUID, agent_id: int, entry_id: UUID, *, preview: bool
             yield source
 
 
-async def thumbnail(item_id: UUID, agent_id: int, entry_id: UUID) -> bytes | None:
+async def thumbnail(item_id: UUID, agent_id: int, entry_id: UUID, *, cached_only: bool = False) -> bytes | None:
     _ctx, info = await authorized_resource(item_id, agent_id, entry_id)
     entry = await get_db().get(FileCatalogEntry, entry_id)
     if entry is None:
@@ -104,6 +104,8 @@ async def thumbnail(item_id: UUID, agent_id: int, entry_id: UUID) -> bytes | Non
     if cached is not None:
         await assert_current()
         return cached
+    if cached_only:
+        return None
     async with thumbnails.generation(key):
         await assert_current()
         cached = await asyncio.to_thread(thumbnails.read, path)

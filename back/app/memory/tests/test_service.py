@@ -1303,10 +1303,12 @@ async def test_memory_updated_at_tracks_only_payload_or_keyword_changes(
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize('suggested_neighbor', [False, True])
 async def test_graph_roots_use_activity_keysets_and_hide_inaccessible_edges(
     db: AsyncSession,
     agents: tuple[Agent, Agent],
     memory_storage: Path,
+    suggested_neighbor: bool,
 ) -> None:
     del memory_storage
     owner, peer = agents
@@ -1348,6 +1350,7 @@ async def test_graph_roots_use_activity_keysets_and_hide_inaccessible_edges(
             source_item_id=middle.id,
             target_item_id=oldest.id,
             relation_type="precedes",
+            suggested=suggested_neighbor,
         ),
         actor_agent_id=owner.id,
     )

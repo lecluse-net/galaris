@@ -1352,6 +1352,7 @@ async def read_document_attachment_thumbnail(
     document_id: UUID,
     attachment_id: UUID,
     agent_id: int | None = Query(default=None, gt=0),
+    cached_only: bool = False,
 ) -> Response:
     """Return a small cached preview without transferring the full attachment."""
 
@@ -1361,6 +1362,7 @@ async def read_document_attachment_thumbnail(
             document_id,
             attachment_id,
             actor_agent_id=actor,
+            cached_only=cached_only,
         )
         if content is None:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Thumbnail pending")

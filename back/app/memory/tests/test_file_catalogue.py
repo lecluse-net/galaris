@@ -303,16 +303,22 @@ async def test_dream_catalogue_thumbnail_is_reused_and_changes_with_source(conso
     monkeypatch.setattr(catalogue_resources, 'render_file_thumbnail', render)
     claim = await mechanism.claim_one()
     assert claim is not None and claim.subject_kind == 'file_thumbnail'
+    entry = await db.scalar(select(FileCatalogEntry).where(FileCatalogEntry.uri == 'console://preview.txt'))
+    assert await catalogue_resources.thumbnail(entry.memory_item_id, ctx.agent_id, entry.id, cached_only=True) is None
+    render.assert_not_awaited()
     assert await mechanism.apply(claim, claim.prepared_payload) == 1
     await mark_success(claim, result_count=1)
     entry = await db.scalar(select(FileCatalogEntry).where(FileCatalogEntry.uri == 'console://preview.txt'))
-    first = await catalogue_resources.thumbnail(entry.memory_item_id, ctx.agent_id, entry.id)
+    first = await catalogue_resources.thumbnail(entry.memory_item_id, ctx.agent_id, entry.id, cached_only=True)
     assert first
     assert await mechanism.claim_one() is None
     render.assert_awaited_once()
 
     await resource_service.resource_write_text(ctx, 'console://preview.txt', 'Synthetic second version', overwrite=True)
     await acquire_fingerprints(db)
+    await db.refresh(entry)
+    assert await catalogue_resources.thumbnail(entry.memory_item_id, ctx.agent_id, entry.id, cached_only=True) is None
+    render.assert_awaited_once()
     second_claim = await mechanism.claim_one()
     assert second_claim is not None and second_claim.subject_id != claim.subject_id
     assert await mechanism.apply(second_claim, second_claim.prepared_payload) == 1
@@ -323,7 +329,7 @@ async def test_dream_catalogue_thumbnail_is_reused_and_changes_with_source(conso
     connection.active = False
     await db.flush()
     with pytest.raises(PermissionError):
-        await catalogue_resources.thumbnail(entry.memory_item_id, ctx.agent_id, entry.id)
+        await catalogue_resources.thumbnail(entry.memory_item_id, ctx.agent_id, entry.id, cached_only=True)
 
 
 @pytest.mark.asyncio

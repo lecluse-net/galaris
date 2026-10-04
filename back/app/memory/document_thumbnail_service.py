@@ -324,6 +324,7 @@ async def read_or_schedule_document_attachment_thumbnail(
     attachment_id: UUID,
     *,
     actor_agent_id: int | HumanActor,
+    cached_only: bool = False,
 ) -> bytes | None:
     """Read a cached thumbnail or start one bounded background generation."""
 
@@ -336,7 +337,7 @@ async def read_or_schedule_document_attachment_thumbnail(
     web_url = await asyncio.to_thread(_web_url, path, attachment)
     cache_path = thumbnails.cache_path(web_url or reference)
     cached = await asyncio.to_thread(thumbnails.read, cache_path)
-    if cached is not None:
+    if cached is not None or cached_only:
         return cached
     if reference not in _tasks:
         task = asyncio.create_task(

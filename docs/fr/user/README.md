@@ -428,6 +428,29 @@ Un message invite à affiner la recherche si cette sélection est tronquée et s
 sur les mots recherchés si la recherche sémantique est indisponible. Sans texte, la liste
 parcourt tous les souvenirs sans date correspondant aux filtres, plus les correspondances temporelles.
 
+En zoomant suffisamment, les fichiers, pièces jointes et documents HTML visibles affichent leur miniature,
+plus grande, à la place du carré turquoise. Les aperçus déjà prêts s'affichent en priorité ;
+les aperçus manquants sont calculés progressivement. Le nombre d'images s'adapte
+aux capacités du client ; les images éloignées sont masquées et conservées en cache pour
+le retour à proximité. Une miniature indisponible conserve le carré. Un aperçu obtenu dans
+le détail apparaît aussi dans le graphe. Leur chargement ne déplace pas les nœuds.
+Les fichiers audio portent une note de musique dans leur carré turquoise. Les Datasets
+conservent leur symbole documentaire.
+
+Dans **Graphe**, les branches d'au moins huit éléments reliés exclusivement à la même ancre
+sont représentées par cette ancre agrandie et un compteur. Zoomez ou cliquez sur le groupe
+pour voir ses éléments ; **Détails des branches** permet aussi de les afficher au clavier.
+Le dézoom et **Ajuster le graphe à la fenêtre** replient les branches. Jusqu'à 600 items chargés,
+le placement initial se stabilise naturellement et se rééquilibre doucement après modification du graphe
+pendant au plus 0,7 seconde. Le zoom, le dépliage et la fermeture du détail conservent les positions ; au-delà, les positions
+restent fixes pour limiter le calcul. Un clic sur le groupe cadre son ancre.
+Les nouveaux nœuds apparaissent progressivement sur place ; cet effet est désactivé
+sur les vues denses et lorsque la réduction des animations est demandée.
+En vue éloignée, les liens de détail et certains titres s'effacent ; zoomez pour les retrouver. Les nœuds partagés restent
+visibles. Les titres sont limités pour éviter les superpositions et se retrouvent au survol
+ou à la sélection. La fenêtre reste limitée à 3 000 nœuds ; affinez les filtres pour explorer
+d'autres éléments. Le chargement par zone reste prévu.
+
 Un document manipulé avec le même agent reste candidat au rappel même après de nombreux
 échanges ordinaires. L'agent retrouve sa référence, son titre et sa révision actuels, sous
 réserve des droits courants. Les documents supprimés ou devenus privés sont exclus. Ce

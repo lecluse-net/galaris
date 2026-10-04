@@ -1,6 +1,6 @@
 # Plan — Graphe mémoire à plusieurs niveaux de détail
 
-> **Statut :** `design` — conception proposée ; implémentation non engagée.
+> **Statut :** `partial` — premier repli de feuilles, positions stables et miniatures de fichiers/documents dans la fenêtre chargée ; hiérarchie, chargement spatial et miniatures de liste à réaliser.
 > **Date de création :** 2 octobre 2026.
 > **Demande :** rendre les grandes mémoires lisibles en regroupant les branches, révéler leurs
 > détails au zoom et charger progressivement les régions explorées.
@@ -38,6 +38,70 @@ propriétaires ou droits canoniques. Ce chantier porte sur une carte 2D ; la
 [piste 3D](cible.md#piste-optionnelle--visualisation-3d-de-la-mémoire) reste distincte.
 
 ## 2. Faits établis et limites de l'inspection
+
+### Premier lot du 4 octobre 2026
+
+Le graphe replie désormais les branches d'au moins huit feuilles exclusivement reliées à
+une ancre. Le compteur de voisins global déjà fourni par le serveur interdit de déduire
+l'exclusivité d'une page partielle. Le zoom, le clic sur l'ancre et **Détails des branches**
+ouvrent leurs membres ; le dézoom et l'ajustement de la vue les replient. Les positions de
+la fenêtre sont animées par le moteur ECharts antérieur jusqu'à 600 items chargés, avec
+placement initial à convergence naturelle et rééquilibrage doux de 0,7 seconde lors d'une modification du graphe.
+Le zoom, le dépliage et la fermeture du détail conservent les positions, les feuilles étant déjà placées. Au-delà, le placement borné conserve les
+coordonnées. Le dézoom masque les liens de détail et certains titres sans modifier les
+relations ; le zoom les restitue. Les liens transversaux restent accessibles et les titres
+ont un budget avec masquage des collisions. Voir la [décision 0157](../decisions/0157-stable-memory-leaf-branches.md).
+
+Le zoom et le dépliage révèlent les nouveaux nœuds par un fondu et une légère croissance
+sur place, sur une courte vague. L'effet est désactivé au-delà de 500 symboles visibles
+ou avec la préférence de réduction des animations ; il ne relance pas la physique.
+
+Ce premier lot adapte le lot 1 : le contrat existant suffit au repli de feuilles, sans
+nouvelle projection persistante serveur. Le plafond de 3 000 nœuds, les pages HTTP et la
+limite de 8 000 liens restent en place. En vue proche, les fichiers et pièces jointes
+visibles peuvent remplacer leur carré par un dérivé déjà préparé. Le seuil de zoom possède
+une hystérésis (activation à 1,8, retrait à 1,5). La petite taille d'un ancien carré
+ne limite plus l'éligibilité de sa miniature. Les miniatures remplacent les carrés et sont
+plus grandes (facteur 1,75, avec un minimum de 40 pixels avant application du zoom).
+Le budget desktop est de 256 images, ou 512 à partir de huit cœurs annoncés ; une indication
+explicite de faible mémoire (au plus 2 Gio) ou deux cœurs limite ce budget à 64. Le mobile
+conserve un budget de 96 images (32 sur un client limité). La RAM annoncée par le navigateur
+étant approximative et plafonnée, son absence ne classe plus le client comme limité.
+La surface d'écran n'impose plus un second plafond de capacité. Les captures indisponibles
+libèrent leur place ; la recherche de remplaçants examine au plus deux fois le budget,
+avec 12 lectures simultanées sur desktop standard/puissant, huit pour un budget d'au moins
+96 images et quatre sur les clients limités. La génération dispose d'une file séparée de
+deux demandes, afin que les dérivés prêts passent sans attendre les conversions lentes.
+Le cache local conserve deux fois ce budget, avec un plafond
+d'octets proportionnel (128 Kio par entrée, minimum 8 Mio), et réduit les images à
+160 pixels de côté. Les captures chargées restent en cache quand le zoom ou le cadrage
+les masque ; seule une éviction, une version nouvelle ou un changement de contexte
+nécessite leur remplacement. Une marge de 100 pixels et une priorité de conservation
+évitent les oscillations lors de petits déplacements. La sélection puis la proximité du centre déterminent
+la priorité. Les demandes devenues inutiles sont annulées ; un changement de contexte
+révoque les URL et ignore les réponses tardives. Les lectures `cached_only` autorisées
+servent d'abord les dérivés prêts. Une absence déclenche ensuite la génération par les
+endpoints autorisés existants ; les pièces jointes asynchrones sont relues avec attente
+progressive pendant une minute au plus, sans quitter leur place dans la file de génération.
+Un échec conserve le carré et libère sa place dans le budget d'images ; une nouvelle lecture
+est programmée après cinq minutes, même sans déplacer la caméra. Pour les fichiers du catalogue,
+la résolution demande un seul emplacement actuel dans l'ordre déterministe des URI,
+puis mémorise cet identifiant dans le contexte de la vue et de la version de l'item.
+Les aperçus obtenus dans une popover sont transmis au graphe et invalident une absence
+mémorisée. Les petites images évitent le réencodage ; les grandes sont réduites en WebP
+à 160 pixels. Les mises à jour visuelles sont regroupées sur 80 ms.
+Les documents HTML partagent ce budget et ce cache. Leur snapshot portable de la révision
+enregistrée passe par la file lente de deux demandes, en réutilisant l'endpoint autorisé
+existant et son cache serveur ; aucun script du document n'est exécuté. Les Datasets gardent
+leur symbole documentaire. Les fichiers et PJ audio conservent un carré cyan avec une
+note de musique, reconnu par MIME ou extension via la classification partagée des lecteurs.
+Une source de catalogue résolue enrichit cette détection quand le titre est ambigu.
+Ces marqueurs vectoriels ne consomment pas le budget de miniatures et ne déclenchent pas
+de conversion audio.
+L'arrivée d'une image conserve la caméra et les positions. Aucun chargement spatial
+serveur ou affichage de miniatures dans la liste n'est ajouté. La subdivision des grosses branches et l'optimisation
+des liens entre régions restent ouvertes. Les constats ci-dessous décrivent la référence
+antérieure ; ils ne constituent plus tous la description du rendu actuel.
 
 Inspection du checkout au 2 octobre 2026, incluant les modifications déjà présentes. Les constats
 ci-dessous viennent du code et des tests lus ; aucune mesure de performance ni recette navigateur
@@ -261,7 +325,7 @@ déplacer les nœuds ni modifier la caméra ou la sélection.
 | Lot | Travail et livrable | Critère de passage |
 |---|---|---|
 | 0 — Cadrage et référence | Inventorier les consommateurs ; caractériser feuilles, hubs, cycles et groupes existants ; mesurer le parcours actuel sur données synthétiques ; fixer filtres, isolation, budgets et algorithme initial ; qualifier lecture des dérivés, taille et budgets des miniatures. | Hypothèses vérifiées ; contrats et protocole de mesure écrits ; objectifs chiffrés acceptés avant l'optimisation, avec référence sans miniatures et caches froid/chaud. |
-| 1 — Branches exclusives | Ajouter une projection serveur minimale de repli ; compteur, taille et expansion au zoom ; placement local stable et maintien des liens transversaux. | Un hub avec beaucoup de feuilles devient lisible et explorable ; aucune exclusivité déduite d'une page incomplète. Ce lot ne prétend pas supprimer le plafond global. |
+| 1 — Branches exclusives | Premier repli réalisé avec les comptes globaux existants : compteur, expansion au zoom et explicite, relaxation animée jusqu'à 600 items, placement borné au-delà et vue éloignée allégée. Projection serveur persistante reportée au lot 2. | Un hub avec des feuilles devient explorable ; aucune exclusivité déduite d'une page incomplète. Le plafond global reste en place ; les très grosses branches attendent leur subdivision. |
 | 2 — Hiérarchie et carte | Étendre aux sous-groupes, cycles, communautés denses et isolés ; construire positions/emprises et générations reprenables ; qualifier l'isolation par périmètre. | Descente déterministe jusqu'à chaque item ; positions stables ; reconstruction/interruption sans carte incohérente ni fuite d'accès. |
 | 3 — Chargement spatial | Introduire le contrat viewport ; cache borné, préchargement, éviction, annulation et localisation ; traiter les arêtes traversantes ; activer les miniatures selon le détail et réutiliser leur chargement borné dans la liste. | Parcours de bout en bout au-delà de 3 000 nœuds sans chargement exhaustif initial ; images chargées selon la vue, sans relancer le placement. Retirer le plafond global seulement après cette preuve. |
 | 4 — Actualisation | Invalidation par région/révision, mutations locales, reprise et reconnexion ; gestion prioritaire des révocations et changements de contexte. | Carte et compteurs convergent après mutations ; réponses obsolètes et pertes d'événements couvertes ; retour dans une zone fiable. |
@@ -293,6 +357,51 @@ Renforcer les scénarios existants avant d'en ajouter, selon le
 | Les commandes restent utilisables sur mobile et au clavier. | Application assemblée sous/au-dessus de 1024 CSS px ; pincement, zoom explicite, focus, plein écran, ouverture du détail et fermeture par backdrop. |
 
 ## 7. Mesures avant/après
+
+Première comparaison locale du 4 octobre, sur étoiles synthétiques dans le composant réel
+Chromium, avec réponses HTTP simulées, un worker et un contexte navigateur neuf par test.
+Le chronomètre couvre montage/imports, pages, premier rendu utilisable et premier clic Zoomer.
+Une passe avant/après, sans estimation p50/p95 ni qualification des caches de providers.
+Ces premières valeurs portent sur la grille ensuite abandonnée après une régression de forme
+sur un graphe mixte ; elles ne mesurent pas le placement organique corrigé :
+
+| Items | Référence avec forces | Premier rendu replié | Pages HTTP avant/après | Symboles dessinés après repli |
+|---|---|---|---|---|
+| 500 | 2 746 ms | 1 159 ms | 1 / 1 | 1 ancre, 499 feuilles regroupées |
+| 3 000 | 3 165 ms | 1 371 ms | 6 / 6 | 1 ancre, 2 999 feuilles regroupées |
+
+Dans une passe distincte, l'affichage explicite de tous les membres a pris 197 ms pour
+500 items et 661 ms pour 3 000, sans requête supplémentaire ni changement des coordonnées.
+Ces mesures incluent le pilotage Playwright et la lecture du rendu ; elles ne sont pas des
+latences de frame. Elles montrent un rendu initial allégé sur cette topologie, sans gain
+réseau ni preuve de lisibilité de tous les membres d'une branche de 3 000 items. Cycles,
+communautés denses, longues explorations, mémoire décodée et fournisseurs réels restent à mesurer.
+
+Une reprise pendant des travaux concurrents a mesuré 4 965/3 790 ms au chargement et
+611/1 669 ms au dépliage pour 500/3 000 items. La charge de la machine n'est pas isolée :
+le nombre de symboles dessinés est vérifié, mais un gain de latence reproductible ne peut
+pas être conclu de ces passes. Refaire la comparaison répétée sur une machine disponible
+avant de fixer des budgets interactifs ou annoncer un facteur d'accélération.
+
+La correction du carré utilisait les liens pour placer le squelette, mais son placement figé
+restait trop tassé et supprimait la relaxation visible du graphe antérieur. Le moteur ECharts
+animé est donc rétabli jusqu'à 600 items chargés, avec fixation de la sélection et positions
+conservées à la fermeture du détail. Le placement borné reste utilisé au-delà. Une vue d'ensemble au dézoom
+allège symboles, ombres, titres et liens de détail ; elle n'ajoute pas de hiérarchie serveur.
+Une topologie synthétique de 178 nœuds et 303 liens, avec huit sujets, deux contacts,
+des documents/items partagés, des feuilles exclusives et des isolés, vérifie la proximité des
+communautés, la convergence naturelle, la caméra et les positions conservées au zoom et les niveaux de détail sur desktop/mobile ;
+ses captures sont inspectées. Un contact est transversal à tous les sujets. Le test pur de proximité
+échoue avant cette correction et passe ensuite. Le parcours de volume comprend désormais
+3 000 nœuds non repliables avec 6 000 liens, en plus des étoiles.
+
+Sur ce graphe non repliable, trois calculs locaux Node dans Docker mesurent 379 à 582 ms pour
+le placement final, puis 0 à 2 ms pour sa réutilisation. Le premier essai du solveur, avant
+réduction du coût géométrique et du nombre d'itérations sur gros squelette, prenait 3 244 à
+3 450 ms avec le même protocole. Ces mesures isolent le calcul, sans réseau ni rendu Canvas,
+sur une machine à charge variable. Le calcul initial reste synchrone dans le navigateur ;
+dans ce mode de grande fenêtre, le repli, le dépliage, les filtres et le thème ne le relancent pas. Elles ne qualifient pas
+les téléphones lents, les graphes supérieurs au plafond ni une latence p95.
 
 Utiliser le même protocole, les mêmes filtres, droits, matériels et données pour comparer
 l'affichage actuel et les lots. Étudier au moins 1 000, 10 000 et 100 000 items, dont un hub
@@ -344,5 +453,5 @@ consommateurs. Mettre à jour les parcours FR/EN, le catalogue des tests et les 
 préparer les cartes générées avec `make docs-prepare`. Avant publication sans CI, exécuter
 `make validate`, lire ses résultats complets, puis terminer par `git diff --check`.
 
-Ce document constitue uniquement le plan demandé. Il ne démontre ni une implémentation,
-ni un gain mesuré, ni une validation système ou un déploiement.
+Ce document conserve la cible et les étapes restantes. Le premier lot ne vaut pas qualification
+des grands volumes, validation système complète ou déploiement.

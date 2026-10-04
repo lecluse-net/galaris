@@ -600,10 +600,22 @@ dans les tables canoniques.
   `memory_remember`, `memory_forget`, `memory_summarize` et `document_share`.
 - Interface : sous `/memory`, l’onglet **Liste** conserve la recherche, le propriétaire, le
   contenu, les révisions, la provenance, les accès directs et les liens. L’onglet **Graphe**
-  charge un sous-graphe léger par curseurs, puis les voisins à la demande ; il ne charge jamais
-  tout le corpus ni les payloads en mémoire. L'ouverture utilise des pages de 500 nœuds au plus,
+  charge un sous-graphe léger par curseurs, sans les payloads. L'API fournit aussi une expansion
+  de voisins, mais le zoom frontend déplie seulement des membres déjà chargés. L'ouverture utilise des pages de 500 nœuds au plus,
   avec 2 500 liens par page et un plafond de 3 000 nœuds affichés. Les requêtes ne lisent que les
-  colonnes nécessaires au graphe. Les sources sont contrôlées à chaque chargement : les connexions
+  colonnes nécessaires au graphe. Le repli de feuilles utilise le compte distinct global des
+  voisins admissibles, suggestions comprises, et exige un lien confirmé. À partir de huit feuilles,
+  l'ancre porte un compteur ; le zoom et une commande explicite les révèlent. Le frontend conserve
+  le moteur ECharts animé jusqu'à 600 items chargés, avec fixation de la sélection et
+  placement initial à convergence naturelle et rééquilibrage doux de 0,7 seconde après modification du graphe.
+  La fermeture du détail conserve les positions et le cadrage.
+  Les feuilles masquées gardent leur placement ; le zoom et le dépliage ne relancent pas la physique.
+  Au-delà, le placement borné conserve les coordonnées et
+  réserve l'emprise des membres masqués. Le dézoom allège les symboles, titres et liens de détail,
+  sans retirer les relations de la simulation. Le frontend
+  limite les titres avec masquage des collisions. Cette projection ne constitue pas encore une
+  hiérarchie serveur ou un chargement spatial ; voir la [décision 0157](../../../../project/decisions/0157-stable-memory-leaf-branches.md).
+  Les sources sont contrôlées à chaque chargement : les connexions
   sont résolues par lot, et Nextcloud mutualise les métadonnées des fichiers d'un même dossier,
   avec repli sur chaque fichier si la liste est refusée ou incomplète. Aucun résultat d'accès
   n'est conservé entre requêtes. L'agent sélectionné détermine déjà le périmètre ACL et

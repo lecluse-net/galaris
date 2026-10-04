@@ -440,6 +440,7 @@ def _graph_node(item: MemoryItem, *, relation_count: int) -> MemoryGraphNode:
     return MemoryGraphNode(
         id=item.id,
         resource_media_type=item.metadata_.get("resource_media_type") if item.node_kind == "attachment" else None,
+        resource_uri=item.metadata_.get("resource_uri") if item.node_kind == "attachment" else None,
         node_kind=cast(Any, item.node_kind),
         entity_kind=entity_kind,
         owner_agent_id=item.owner_agent_id,

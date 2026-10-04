@@ -571,7 +571,25 @@ l'erreur/retry et le rejet de réponses tardives après changement d'agent sur d
 `front/browser-tests/memory.spec.mjs` compare les couleurs réellement rendues des fichiers et
 répertoires à leur légende, après filtrage et changement de thème, sur desktop et mobile.
 Elle vérifie également l'ouverture et le zoom de graphes synthétiques de 500 et 3 000 nœuds,
-sans perte de nœuds lors de la pagination. Les tests WebDAV vérifient que les lectures de
+sans perte de nœuds lors de la pagination, puis leur dépliage complet sans nouvelle requête.
+Le cas de volume inclut 3 000 nœuds non repliables et 6 000 liens. Une topologie mixte de
+sujets, contacts transversaux, documents/items partagés et isolés vérifie le mouvement réel
+des positions, la convergence naturelle, la proximité des communautés, les positions conservées
+au zoom et au dépliage, le cadrage conservé et les niveaux de détail
+au dézoom ; les captures desktop/mobile sont inspectées.
+Les branches exclusives sont exercées sur desktop/mobile : compteur, zoom avec hystérésis,
+commande clavier, ouverture d'un enfant, cadrage au dépliage et positions conservées à la fermeture
+du détail par son bouton ou un clic dans le fond du graphe.
+Le rendu réel vérifie le fondu intermédiaire des nouveaux symboles au zoom, puis leur
+visibilité complète, ainsi que l'apparition immédiate avec réduction des animations.
+La stabilité des coordonnées est vérifiée dans le mode de grande fenêtre de 3 000 items.
+Les erreurs/reprises et une réponse retardée après changement d'agent sont couvertes.
+`front/app/memory/graphBranches.test.mjs` couvre les règles d'exclusivité, doublons, cycles,
+isolés, positions survivantes et placement selon les liens ; ce dernier scénario échoue avec
+la grille qui ignorait les relations. Le test DB de pagination vérifie le voisin supplémentaire
+hors page, confirmé ou suggéré, et les liens inaccessibles. `e2e/specs/memory-graph.spec.mjs`
+exerce repli/dépliage, clavier, zoom, ouverture du contenu et retour au graphe dans l'application
+assemblée, avec API réelle et base synthétique isolée. Les tests WebDAV vérifient que les lectures de
 métadonnées suivent le nombre de dossiers pour 300 et 3 000 fichiers, avec repli individuel
 et nouveaux contrôles après révocation. Le scénario fournisseur vérifie aussi la résolution
 groupée des fichiers d'un Tool combinant File Share et Messenger.

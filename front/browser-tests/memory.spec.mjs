@@ -151,11 +151,13 @@ for (const width of [1440, 390]) test(`file and directory graph markers agree wi
     const data = series.getData()
     const context = document.createElement('canvas').getContext('2d')
     const normalize = color => { context.fillStyle = color; return context.fillStyle }
-    return chart.getOption().series[0].data.map((node, index) => {
+    return chart.getOption().series[0].data.flatMap((node, index) => {
+      // Invisible placeholders reserve the map bounds; only actual markers belong to the legend.
+      if (node.symbol === 'none') return []
       const kind = node.id.replace('catalogue-', '')
       const legend = document.querySelector(`.memory-graph__role-symbol--${kind}`)
-      return { kind, color: normalize(data.getItemVisual(index, 'style').fill),
-        legend: normalize(getComputedStyle(legend).backgroundColor) }
+      return [{ kind, color: normalize(data.getItemVisual(index, 'style').fill),
+        legend: normalize(getComputedStyle(legend).backgroundColor) }]
     })
   })
   for (const dark of [false, true]) {
@@ -171,24 +173,31 @@ for (const width of [1440, 390]) test(`file and directory graph markers agree wi
   }
 })
 
-for (const count of [500, 3000]) test(`a ${count}-node graph becomes usable and keeps every paginated node`, async ({ page }, testInfo) => {
+for (const [count, interconnected] of [[500, false], [3000, false], [3000, true]]) test(`a ${count}-node ${interconnected ? 'interconnected ' : ''}graph becomes usable and keeps every paginated node`, async ({ page }, testInfo) => {
   test.setTimeout(60_000)
   const timestamp = new Date().toISOString()
   const nodes = Array.from({ length: count }, (_, index) => ({
     id: `synthetic-${index}`, title: `Synthetic memory ${index}`, node_kind: 'memory', entity_kind: 'memory',
     owner_agent_id: 7, memory_type: 'semantic', visibility: 'private', source_managed: false,
     access_count: 0, last_accessed_at: null, created_at: timestamp, updated_at: timestamp,
-    activity_at: timestamp, has_relations: index > 0, relation_count: index > 0 ? 1 : count - 1,
+    activity_at: timestamp, has_relations: true, relation_count: interconnected ? 4 : index > 0 ? 1 : count - 1,
   }))
   const requests = []
+  const connections = interconnected ? nodes.flatMap((node, index) => [1, 7].map(step => ({ id: `edge-${node.id}-${step}`,
+    source_item_id: node.id, target_item_id: nodes[(index + step) % count].id,
+    relation_type: 'related_to', confidence: 1, suggested: false }))) : []
   await page.route('**/api/memory/graph/roots', async route => {
     const body = route.request().postDataJSON()
     requests.push(body)
     const offset = body.cursor ? Number(body.cursor.id) : 0
     const end = Math.min(count, offset + body.limit)
+    const pageIds = new Set(nodes.slice(offset, end).map(node => node.id))
+    const knownIds = new Set([...body.known_item_ids, ...pageIds])
     await route.fulfill({ json: { nodes: nodes.slice(offset, end),
-      edges: nodes.slice(Math.max(1, offset), end).map(node => ({ id: `edge-${node.id}`,
-        source_item_id: nodes[0].id, target_item_id: node.id, relation_type: 'related_to', confidence: 1, suggested: false })),
+      edges: interconnected ? connections.filter(edge => knownIds.has(edge.source_item_id) && knownIds.has(edge.target_item_id)
+        && (pageIds.has(edge.source_item_id) || pageIds.has(edge.target_item_id)))
+        : nodes.slice(Math.max(1, offset), end).map(node => ({ id: `edge-${node.id}`,
+          source_item_id: nodes[0].id, target_item_id: node.id, relation_type: 'related_to', confidence: 1, suggested: false })),
       has_more: end < count, next_cursor: end < count ? { id: String(end), activity_at: timestamp } : null,
       edges_truncated: false } })
   })
@@ -199,9 +208,336 @@ for (const count of [500, 3000]) test(`a ${count}-node graph becomes usable and 
   await expect(page.locator('.memory-graph__chart--loading')).toHaveCount(0, { timeout: 20_000 })
   await expect(page.locator('.memory-graph__chart canvas')).toBeVisible()
   await expect(page.getByText(`${count} node(s)`, { exact: true })).toBeVisible()
+  const represented = await graphSnapshot(page)
   await page.getByRole('button', { name: 'Zoom in', exact: true }).click()
   await testInfo.attach('graph-loading.json', { body: JSON.stringify({ nodes: count,
-    milliseconds: Date.now() - start, requests: requests.length }), contentType: 'application/json' })
+    milliseconds: Date.now() - start, requests: requests.length,
+    rendered: represented.nodes.filter(node => node.symbol !== 'none').length }), contentType: 'application/json' })
+  if (interconnected) {
+    expect(represented.nodes.filter(node => node.symbol !== 'none')).toHaveLength(count)
+    expect(represented.edges).toHaveLength(count * 2)
+    await page.getByRole('button', { name: 'Fit graph to viewport', exact: true }).click()
+    expect((await graphSnapshot(page)).nodes).toEqual(represented.nodes)
+    return
+  }
+  const expansionStart = Date.now()
+  await page.getByRole('switch', { name: 'Branch details', exact: true }).click()
+  await expect(page.getByText(`${count - 1} grouped node(s)`, { exact: true })).toHaveCount(0)
+  const detailed = await graphSnapshot(page)
+  expect(detailed.nodes.filter(node => node.symbol !== 'none')).toHaveLength(count)
+  if (count > 600) expect(detailed.nodes.map(({ id, x, y }) => ({ id, x, y }))).toEqual(represented.nodes.map(({ id, x, y }) => ({ id, x, y })))
+  else expect(detailed.layout).toBe('force')
+  await testInfo.attach('graph-expansion.json', { body: JSON.stringify({ nodes: count,
+    milliseconds: Date.now() - expansionStart, requests: requests.length }), contentType: 'application/json' })
+})
+
+async function graphSnapshot(page) {
+  return page.evaluate(async () => {
+    const moduleUrl = performance.getEntriesByType('resource')
+      .map(entry => entry.name).find(name => /\/echarts(?:\/core|_core)\.js/.test(name))
+    const echarts = await import(moduleUrl)
+    const chart = echarts.getInstanceByDom(document.querySelector('.memory-graph__chart'))
+    const series = chart.getOption().series[0]
+    // Test-only observation of the live renderer: production uses public chart actions.
+    const data = chart.getModel().getSeries()[0].getData()
+    const nodes = series.data.map((node, index) => {
+      const point = series.layout === 'force' ? data.getItemLayout(index) : [node.x, node.y]
+      return { id: node.id, symbol: node.symbol, x: point[0], y: point[1] }
+    })
+    return { layout: series.layout, nodes,
+      edges: series.links, center: series.center, zoom: series.zoom,
+      points: nodes.map(node => ({ id: node.id, point: chart.convertToPixel({ seriesId: series.id }, [node.x, node.y]) })) }
+  })
+}
+
+async function settledGraph(page, timeout = 20_000) {
+  let previous = await graphSnapshot(page)
+  let sampled = false
+  await expect.poll(async () => {
+    const current = await graphSnapshot(page)
+    const moved = Math.max(...current.nodes.map((node, index) => Math.hypot(node.x - previous.nodes[index]?.x,
+      node.y - previous.nodes[index]?.y)))
+    previous = current
+    if (!sampled) { sampled = true; return Infinity }
+    return moved
+  }, { timeout, intervals: [400] }).toBe(0)
+  return previous
+}
+
+async function recordGraphReveal(page, ids) {
+  return page.evaluate(async memberIds => {
+    const moduleUrl = performance.getEntriesByType('resource')
+      .map(entry => entry.name).find(name => /\/echarts(?:\/core|_core)\.js/.test(name))
+    const echarts = await import(moduleUrl)
+    const chart = echarts.getInstanceByDom(document.querySelector('.memory-graph__chart'))
+    const wanted = new Set(memberIds), frames = [], start = performance.now()
+    return new Promise(resolve => {
+      const sample = () => {
+        const data = chart.getModel().getSeries()[0].getData()
+        const opacity = []
+        for (let index = 0; index < data.count(); index++) {
+          if (!wanted.has(data.getId(index))) continue
+          const symbol = data.getItemGraphicEl(index)?.childAt(0)
+          if (symbol) opacity.push(symbol.style.opacity)
+        }
+        frames.push(opacity)
+        if ((opacity.length === wanted.size && opacity.every(value => value === 1)) || performance.now() - start > 4000) {
+          resolve(frames)
+        } else requestAnimationFrame(sample)
+      }
+      requestAnimationFrame(sample)
+    })
+  }, ids)
+}
+
+for (const width of [1440, 750, 390]) test(`mixed graph keeps linked subjects together through branch expansion at ${width}px`, async ({ page }, testInfo) => {
+  test.setTimeout(90_000)
+  await page.setViewportSize({ width, height: 1000 })
+  const timestamp = new Date().toISOString()
+  const nodes = [], edges = []
+  const addNode = (id, entity_kind = 'memory') => nodes.push({ id, title: `Synthetic ${id}`, entity_kind,
+    node_kind: entity_kind === 'topic' || entity_kind === 'contact' ? 'memory' : entity_kind,
+    owner_agent_id: 7, memory_type: entity_kind === 'contact' ? 'social' : 'semantic', visibility: 'private',
+    source_managed: false, access_count: 0, last_accessed_at: null, created_at: timestamp,
+    updated_at: timestamp, activity_at: timestamp, has_relations: true, relation_count: 0 })
+  const addEdge = (source, target, relation_type = 'topic_contains') => edges.push({ id: `link-${edges.length}`,
+    source_item_id: source, target_item_id: target, relation_type, confidence: 1, suggested: false })
+  for (let group = 0; group < 8; group++) addNode(`subject-${group}`, 'topic')
+  for (let contact = 0; contact < 2; contact++) addNode(`contact-${contact}`, 'contact')
+  for (let i = 0; i < 96; i++) {
+    addNode(`leaf-${i}`, i % 3 === 0 ? 'file' : 'memory')
+    addEdge(`subject-${i % 8}`, `leaf-${i}`)
+  }
+  for (let i = 0; i < 64; i++) {
+    addNode(`shared-${i}`, i % 4 === 0 ? 'document' : 'memory')
+    addEdge(`subject-${i % 8}`, `shared-${i}`)
+    addEdge(`shared-${i}`, `shared-${(i + 8) % 64}`, 'related_to')
+    addEdge('contact-0', `shared-${i}`, 'contact_contains')
+    if (i % 8 === 1) addEdge('contact-1', `shared-${i}`, 'contact_contains')
+  }
+  for (let group = 0; group < 7; group++) addEdge(`subject-${group}`, `subject-${group + 1}`, 'related_to')
+  for (let i = 0; i < 8; i++) addNode(`isolated-${i}`)
+  for (const node of nodes) {
+    node.relation_count = new Set(edges.flatMap(edge => edge.source_item_id === node.id ? [edge.target_item_id]
+      : edge.target_item_id === node.id ? [edge.source_item_id] : [])).size
+    node.has_relations = node.relation_count > 0
+  }
+  await jsonRoute(page, '**/api/memory/graph/roots', { nodes, edges, has_more: false, next_cursor: null, edges_truncated: false })
+  const start = Date.now()
+  await mount(page, 'app/memory/components/MemoryGraph.vue', { props: {
+    agentId: 7, query: '', memoryTypes: [], topicItemId: null, contactItemId: null, timeRangeMilliseconds: null,
+  } })
+  await expect(page.getByText('96 grouped node(s)', { exact: true })).toBeVisible()
+  await expect(page.locator('.memory-graph__chart--loading')).toHaveCount(0)
+  const moving = await graphSnapshot(page)
+  expect(moving.layout).toBe('force')
+  await expect.poll(async () => (await graphSnapshot(page)).nodes).not.toEqual(moving.nodes)
+  const settlingStart = Date.now()
+  const initial = await settledGraph(page)
+  const settlingMilliseconds = Date.now() - settlingStart
+  const positions = new Map(initial.nodes.map(node => [node.id, node]))
+  const distance = (a, b) => Math.hypot(a.x - b.x, a.y - b.y)
+  let local = 0, remote = 0
+  for (let i = 0; i < 64; i++) {
+    local += distance(positions.get(`shared-${i}`), positions.get(`subject-${i % 8}`))
+    remote += distance(positions.get(`shared-${i}`), positions.get(`subject-${(i + 4) % 8}`))
+  }
+  expect(local).toBeLessThan(remote)
+  await testInfo.attach('mixed-layout.json', { body: JSON.stringify({ nodes: nodes.length, edges: edges.length,
+    milliseconds: Date.now() - start, settlingMilliseconds, meanLocalDistance: local / 64, meanRemoteDistance: remote / 64 }),
+    contentType: 'application/json' })
+  await page.screenshot({ path: testInfo.outputPath('mixed-graph-collapsed.png') })
+  await page.getByRole('switch', { name: 'Branch details', exact: true }).click()
+  await expect(page.getByText('96 grouped node(s)', { exact: true })).toHaveCount(0)
+  const expanded = await settledGraph(page, 2500)
+  expect(expanded.nodes).toHaveLength(nodes.length)
+  for (const node of expanded.nodes) {
+    const previous = initial.nodes.find(candidate => candidate.id === node.id)
+    if (previous) expect({ x: node.x, y: node.y }).toEqual({ x: previous.x, y: previous.y })
+  }
+  expect(expanded.center).toEqual(initial.center)
+  expect(expanded.zoom).toBe(initial.zoom)
+  await page.screenshot({ path: testInfo.outputPath('mixed-graph-expanded.png') })
+  const linksShown = graph => graph.edges.filter(edge => edge.lineStyle.opacity > 0).length
+  for (let i = 0; i < 3; i++) await page.getByRole('button', { name: 'Zoom out', exact: true }).click()
+  const far = await graphSnapshot(page)
+  expect(linksShown(far)).toBeLessThan(linksShown(initial))
+  const expandedPositions = new Map(expanded.nodes.map(node => [node.id, { x: node.x, y: node.y }]))
+  for (const node of far.nodes) expect({ x: node.x, y: node.y }).toEqual(expandedPositions.get(node.id))
+  await page.screenshot({ path: testInfo.outputPath('mixed-graph-overview.png') })
+  for (let i = 0; i < 3; i++) await page.getByRole('button', { name: 'Zoom in', exact: true }).click()
+  const zoomedBack = await settledGraph(page, 2500)
+  expect(linksShown(zoomedBack)).toBe(linksShown(initial))
+  for (const node of zoomedBack.nodes) expect({ x: node.x, y: node.y }).toEqual(expandedPositions.get(node.id))
+})
+
+for (const width of [1440, 390]) test(`exclusive branches reveal on zoom while keeping shared nodes accessible at ${width}px`, async ({ page }, testInfo) => {
+  test.setTimeout(90_000)
+  await page.setViewportSize({ width, height: 1000 })
+  const timestamp = new Date().toISOString()
+  const makeNode = (id, relation_count) => ({ id, title: `Synthetic ${id}`, node_kind: 'memory', entity_kind: 'memory',
+    owner_agent_id: 7, memory_type: 'semantic', visibility: 'private', source_managed: false, access_count: 0,
+    last_accessed_at: null, created_at: timestamp, updated_at: timestamp, activity_at: timestamp,
+    has_relations: relation_count > 0, relation_count })
+  const nodes = [makeNode('anchor', 31), ...Array.from({ length: 30 }, (_, i) => makeNode(`leaf-${i}`, 1)),
+    makeNode('shared', 2)]
+  const edges = nodes.slice(1).map(node => ({ id: `edge-${node.id}`, source_item_id: 'anchor',
+    target_item_id: node.id, relation_type: 'related_to', confidence: 1, suggested: false }))
+  await jsonRoute(page, '**/api/memory/graph/roots', { nodes, edges, has_more: false, next_cursor: null, edges_truncated: false })
+  await mount(page, 'app/memory/components/MemoryGraph.vue', { props: {
+    agentId: 7, query: '', memoryTypes: [], topicItemId: null, contactItemId: null, timeRangeMilliseconds: null,
+  } })
+  await expect(page.getByText('30 grouped node(s)', { exact: true })).toBeVisible()
+  const initial = await settledGraph(page)
+  expect(initial.nodes.filter(node => node.symbol !== 'none').map(node => node.id).sort()).toEqual(['anchor', 'shared'])
+  await page.screenshot({ path: testInfo.outputPath('branches-collapsed.png') })
+  // The explicit switch gives keyboard/touch users the same access as zoom.
+  const details = page.getByRole('switch', { name: 'Branch details', exact: true })
+  await details.focus()
+  await page.keyboard.press('Space')
+  await expect(page.getByText('30 grouped node(s)', { exact: true })).toHaveCount(0)
+  const expanded = await settledGraph(page)
+  expect(expanded.nodes.every(node => node.symbol !== 'none')).toBe(true)
+  expect(expanded.center).toEqual(initial.center)
+  expect(expanded.zoom).toBe(initial.zoom)
+  await page.screenshot({ path: testInfo.outputPath('branches-expanded.png') })
+  await details.click()
+  await expect(page.getByText('30 grouped node(s)', { exact: true })).toBeVisible()
+  const reveal = recordGraphReveal(page, nodes.filter(node => node.id.startsWith('leaf-')).map(node => node.id))
+  for (let i = 0; i < 3; i++) await page.getByRole('button', { name: 'Zoom in', exact: true }).click()
+  await expect(page.getByText('30 grouped node(s)', { exact: true })).toHaveCount(0)
+  await expect(page.locator('.memory-graph__chart--loading')).toHaveCount(0)
+  const frames = await reveal
+  expect(frames.some(opacity => opacity.some(value => value > 0 && value < 1))).toBe(true)
+  expect(frames.some(opacity => new Set(opacity).size > 1)).toBe(true)
+  expect(frames.at(-1)).toEqual(Array(30).fill(1))
+  const near = await settledGraph(page)
+  const box = await page.locator('.memory-graph__chart').boundingBox()
+  // Dense leaves can overlap on mobile. Click an actually exposed symbol,
+  // rather than assuming the first model coordinate is the topmost target.
+  const hittable = await page.evaluate(async () => {
+    const moduleUrl = performance.getEntriesByType('resource').map(entry => entry.name).find(name => /\/echarts(?:\/core|_core)\.js/.test(name))
+    const chart = (await import(moduleUrl)).getInstanceByDom(document.querySelector('.memory-graph__chart'))
+    const data = chart.getModel().getSeries()[0].getData(), ids = []
+    for (let index = 0; index < data.count(); index++) {
+      if (!data.getId(index).startsWith('leaf-')) continue
+      const point = chart.convertToPixel({ seriesId: chart.getOption().series[0].id }, data.getItemLayout(index))
+      if (chart.getZr().findHover(point[0], point[1]).target === data.getItemGraphicEl(index)?.childAt(0)) ids.push(data.getId(index))
+    }
+    return ids
+  })
+  const leaf = near.points.find(node => hittable.includes(node.id) && node.point[0] > 10 && node.point[0] < box.width - 10
+    && node.point[1] > 10 && node.point[1] < box.height - 10)
+  expect(leaf).toBeTruthy()
+  const leafId = leaf.id, leafTitle = `Synthetic ${leafId}`
+  expect(leaf.point[0]).toBeGreaterThan(0)
+  expect(leaf.point[0]).toBeLessThan(box.width)
+  expect(leaf.point[1]).toBeGreaterThan(0)
+  expect(leaf.point[1]).toBeLessThan(box.height)
+  await page.locator('.memory-graph__chart').click({ position: { x: leaf.point[0], y: leaf.point[1] } })
+  if (width < 1024) {
+    await expect.poll(() => page.evaluate(() => window.testApp.events.filter(event => event.name === 'open').map(event => event.value))).toEqual([leafId])
+  } else {
+    await expect(page.locator('.memory-graph__inspector').getByText(leafTitle, { exact: true })).toBeVisible()
+    await page.getByRole('button', { name: 'View', exact: true }).click()
+    expect(await page.evaluate(() => window.testApp.events.filter(event => event.name === 'open').map(event => event.value))).toEqual([leafId])
+    const pinned = await graphSnapshot(page)
+    const blank = [{ x: 6, y: 6 }, { x: box.width - 6, y: 6 }, { x: 6, y: box.height - 6 }]
+      .find(point => pinned.points.every(node => Math.hypot(node.point[0] - point.x, node.point[1] - point.y) > 60))
+    expect(blank).toBeTruthy()
+    await page.locator('.memory-graph__chart').click({ position: blank })
+    await expect(page.locator('.memory-graph__inspector')).toHaveCount(0)
+    const dismissed = await settledGraph(page, 2500)
+    expect(dismissed.nodes).toEqual(pinned.nodes)
+    expect(dismissed.points).toEqual(pinned.points)
+    expect(dismissed.center).toEqual(pinned.center)
+    expect(dismissed.zoom).toBe(pinned.zoom)
+    await page.locator('.memory-graph__chart').click({ position: { x: leaf.point[0], y: leaf.point[1] } })
+    await expect(page.locator('.memory-graph__inspector').getByText(leafTitle, { exact: true })).toBeVisible()
+    await page.getByRole('button', { name: 'Zoom out', exact: true }).click()
+    await expect(page.locator('.memory-graph__inspector')).toHaveCount(0)
+    const unpinnedByZoom = await settledGraph(page, 2500)
+    for (const node of unpinnedByZoom.nodes) {
+      const previous = pinned.nodes.find(candidate => candidate.id === node.id)
+      expect({ x: node.x, y: node.y }).toEqual({ x: previous.x, y: previous.y })
+    }
+    const point = unpinnedByZoom.points.find(node => node.id === leafId).point
+    await page.locator('.memory-graph__chart').click({ position: { x: point[0], y: point[1] } })
+    await expect(page.locator('.memory-graph__inspector').getByText(leafTitle, { exact: true })).toBeVisible()
+    await details.click()
+    await expect(page.getByText('29 grouped node(s)', { exact: true })).toBeVisible()
+    expect((await graphSnapshot(page)).nodes.find(node => node.id === leafId).symbol).not.toBe('none')
+    await page.locator('.memory-graph__inspector').getByText('Synthetic anchor', { exact: true }).click()
+    await expect(page.getByText('30 grouped node(s)', { exact: true })).toBeVisible()
+    await page.locator('.memory-graph__inspector').getByText(leafTitle, { exact: true }).click()
+    await expect(page.getByText('29 grouped node(s)', { exact: true })).toBeVisible()
+    expect((await graphSnapshot(page)).nodes.find(node => node.id === leafId).symbol).not.toBe('none')
+    const beforeRelease = await graphSnapshot(page)
+    await page.getByRole('button', { name: 'Close details', exact: true }).click()
+    await expect(page.getByText('30 grouped node(s)', { exact: true })).toBeVisible()
+    await expect(page.locator('.memory-graph__inspector')).toHaveCount(0)
+    const released = await settledGraph(page, 2500)
+    for (const node of released.nodes) {
+      const previous = beforeRelease.nodes.find(candidate => candidate.id === node.id)
+      expect({ x: node.x, y: node.y }).toEqual({ x: previous.x, y: previous.y })
+    }
+    expect(released.center).toEqual(beforeRelease.center)
+    expect(released.zoom).toBe(beforeRelease.zoom)
+    expect(released.points).toEqual(beforeRelease.points)
+    await details.click()
+  }
+  await page.screenshot({ path: testInfo.outputPath('branches-near.png') })
+  for (let i = 0; i < 2; i++) await page.getByRole('button', { name: 'Zoom out', exact: true }).click()
+  await expect(page.getByText('30 grouped node(s)', { exact: true })).toBeVisible()
+  const back = await graphSnapshot(page)
+  expect(back.layout).toBe('force')
+  expect(back.nodes.find(node => node.id === 'shared').symbol).not.toBe('none')
+  await page.getByRole('button', { name: 'Fit graph to viewport', exact: true }).click()
+  const fitted = await settledGraph(page)
+  const anchor = fitted.points.find(node => node.id === 'anchor')
+  await page.emulateMedia({ reducedMotion: 'reduce' })
+  const immediate = recordGraphReveal(page, nodes.filter(node => node.id.startsWith('leaf-')).map(node => node.id))
+  await page.locator('.memory-graph__chart').click({ position: { x: anchor.point[0], y: anchor.point[1] } })
+  await expect(page.getByText('30 grouped node(s)', { exact: true })).toHaveCount(0)
+  expect((await graphSnapshot(page)).zoom).toBeGreaterThanOrEqual(1.8)
+  expect((await immediate).every(opacity => opacity.every(value => value === 1))).toBe(true)
+})
+
+test('graph errors can be retried and late branches cannot cross an agent change', async ({ page }) => {
+  const timestamp = new Date().toISOString()
+  const node = { id: 'recovered', title: 'Synthetic recovered memory', node_kind: 'memory', entity_kind: 'memory',
+    owner_agent_id: 7, memory_type: 'semantic', visibility: 'private', source_managed: false, access_count: 0,
+    last_accessed_at: null, created_at: timestamp, updated_at: timestamp, activity_at: timestamp,
+    has_relations: false, relation_count: 0 }
+  const empty = { nodes: [], edges: [], has_more: false, next_cursor: null, edges_truncated: false }
+  let reads = 0, release, waiting = false
+  const pending = new Promise(resolve => { release = resolve })
+  await page.route('**/api/memory/graph/roots', async route => {
+    reads++
+    if (reads === 1) return route.fulfill({ status: 503, json: { detail: 'Synthetic temporary failure' } })
+    if (reads === 3) { waiting = true; await pending }
+    return route.fulfill({ json: { ...empty, nodes: route.request().postDataJSON().agent_id === 7 ? [node] : [] } })
+  })
+  await mount(page, 'app/memory/components/MemoryGraph.vue', { props: {
+    agentId: 7, query: '', memoryTypes: [], topicItemId: null, contactItemId: null, timeRangeMilliseconds: null,
+  } })
+  await expect(page.getByText('The memory graph could not be loaded.', { exact: true })).toBeVisible()
+  await page.getByRole('button', { name: 'Retry', exact: true }).click()
+  await expect(page.getByText('1 node(s)', { exact: true })).toBeVisible()
+  await page.getByRole('button', { name: 'Reload graph', exact: true }).click()
+  await expect.poll(() => waiting).toBe(true)
+  await page.evaluate(() => window.testApp.setProps({ agentId: 8 }))
+  await expect(page.getByText('No memory matches the active filters.', { exact: true })).toBeVisible()
+  const late = page.waitForResponse(response => response.url().endsWith('/api/memory/graph/roots') && response.request().postDataJSON().agent_id === 7)
+  release()
+  await late
+  expect((await graphSnapshot(page)).nodes).toEqual([])
+  await page.evaluate(() => window.testApp.setProps({ agentId: 7 }))
+  await expect(page.getByText('1 node(s)', { exact: true })).toBeVisible()
+  await page.evaluate(() => window.testApp.emitSocket('memory.invalidate', { data: {} }))
+  await expect.poll(() => reads).toBe(6)
+  await expect(page.locator('.memory-graph__chart--loading')).toHaveCount(0)
+  expect((await graphSnapshot(page)).nodes.map(node => node.id)).toEqual(['recovered'])
 })
 
 test('opening memory selects an agent and loads its results and filters only once', async ({ page }) => {

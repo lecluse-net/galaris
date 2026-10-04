@@ -15087,7 +15087,7 @@
         "declared_path": "/memory/documents/{document_id}/attachments/{attachment_id}",
         "file": "back/app/memory/router.py",
         "handler": "delete_document_attachment",
-        "line": 1433,
+        "line": 1435,
         "method": "DELETE",
         "module": "app.memory"
       },
@@ -15096,7 +15096,7 @@
         "declared_path": "/memory/documents/{document_id}/attachments/{attachment_id}",
         "file": "back/app/memory/router.py",
         "handler": "read_document_attachment",
-        "line": 1402,
+        "line": 1404,
         "method": "GET",
         "module": "app.memory"
       },
@@ -15105,7 +15105,7 @@
         "declared_path": "/memory/documents/{document_id}/attachments/{attachment_id}/info",
         "file": "back/app/memory/router.py",
         "handler": "read_document_attachment_info",
-        "line": 1384,
+        "line": 1386,
         "method": "GET",
         "module": "app.memory"
       },
@@ -15213,7 +15213,7 @@
         "declared_path": "/memory/documents/{document_id}/grants/{agent_id}",
         "file": "back/app/memory/router.py",
         "handler": "remove_document_grant",
-        "line": 1492,
+        "line": 1494,
         "method": "DELETE",
         "module": "app.memory"
       },
@@ -15222,7 +15222,7 @@
         "declared_path": "/memory/documents/{document_id}/grants/{agent_id}",
         "file": "back/app/memory/router.py",
         "handler": "set_document_grant",
-        "line": 1459,
+        "line": 1461,
         "method": "PUT",
         "module": "app.memory"
       },
@@ -15438,7 +15438,7 @@
         "declared_path": "/memory/items/{item_id}/grants/{agent_id}",
         "file": "back/app/memory/router.py",
         "handler": "remove_memory_item_grant",
-        "line": 1536,
+        "line": 1538,
         "method": "DELETE",
         "module": "app.memory"
       },
@@ -15447,7 +15447,7 @@
         "declared_path": "/memory/items/{item_id}/grants/{agent_id}",
         "file": "back/app/memory/router.py",
         "handler": "set_memory_item_grant",
-        "line": 1521,
+        "line": 1523,
         "method": "PUT",
         "module": "app.memory"
       },
@@ -15456,7 +15456,7 @@
         "declared_path": "/memory/items/{item_id}/links",
         "file": "back/app/memory/router.py",
         "handler": "list_memory_links",
-        "line": 1571,
+        "line": 1573,
         "method": "GET",
         "module": "app.memory"
       },
@@ -15510,7 +15510,7 @@
         "declared_path": "/memory/links",
         "file": "back/app/memory/router.py",
         "handler": "create_memory_link",
-        "line": 1553,
+        "line": 1555,
         "method": "POST",
         "module": "app.memory"
       },

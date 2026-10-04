@@ -33,17 +33,17 @@ async def _index_access(agent_id: int) -> None:
 
 @router.get("/items/{item_id}/resources", response_model=list[catalogue_resources.CatalogueResource])
 @authorize(privileges=Privileges.MEMORY_ACCESS)
-async def read_item_resources(item_id: UUID, agent_id: int) -> list[catalogue_resources.CatalogueResource]:
+async def read_item_resources(item_id: UUID, agent_id: int, limit: int = Query(default=500, ge=1, le=500)) -> list[catalogue_resources.CatalogueResource]:
     await _index_access(agent_id)
-    return await catalogue_resources.resources(item_id, agent_id)
+    return await catalogue_resources.resources(item_id, agent_id, limit=limit)
 
 
 @router.get("/items/{item_id}/resources/{entry_id}/thumbnail", response_class=Response)
 @authorize(privileges=Privileges.MEMORY_ACCESS)
-async def read_item_resource_thumbnail(item_id: UUID, entry_id: UUID, agent_id: int) -> Response:
+async def read_item_resource_thumbnail(item_id: UUID, entry_id: UUID, agent_id: int, cached_only: bool = False) -> Response:
     await _index_access(agent_id)
     try:
-        data = await catalogue_resources.thumbnail(item_id, agent_id, entry_id)
+        data = await catalogue_resources.thumbnail(item_id, agent_id, entry_id, cached_only=cached_only)
         if data is None:
             raise HTTPException(status_code=404, detail="Thumbnail unavailable")
         return Response(data, media_type="image/png", headers={"Cache-Control": "private, no-store"})

@@ -19,6 +19,16 @@
         <q-chip dense outline icon="timeline">
           {{ t('memory.graph.edgeCount', { count: visibleEdges.length }) }}
         </q-chip>
+        <q-toggle
+          v-if="branches.length"
+          :model-value="expandedBranches.size > 0"
+          :label="t('memory.graph.branchDetails')"
+          :aria-label="t('memory.graph.branchDetails')"
+          @update:model-value="toggleBranchDetails"
+        />
+        <q-chip v-if="collapsedMemberIds.size" dense outline icon="account_tree" role="status">
+          {{ t('memory.graph.groupedCount', { count: collapsedMemberIds.size }) }}
+        </q-chip>
         <div class="memory-graph__refresh-controls row items-center no-wrap">
           <q-toggle
             v-model="liveRefresh"
@@ -288,17 +298,23 @@ import {
 } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { websocket } from '@/core/websocket'
-import { solaireCss } from '@/core/util'
+import { browserResourceKind, solaire, solaireCss, type SolaireColor } from '@/core/util'
 import { useInterval, useQuasar, useTimeout } from 'quasar'
 import * as echarts from 'echarts/core'
 import { GraphChart } from 'echarts/charts'
 import { AriaComponent } from 'echarts/components'
 import { CanvasRenderer } from 'echarts/renderers'
+import { LabelLayout } from 'echarts/features'
 import type { ECElementEvent, ECharts, EChartsCoreOption, ElementEvent } from 'echarts/core'
 import type { GraphSeriesOption } from 'echarts/charts'
 import MemoryGraphNodeDetail from './MemoryGraphNodeDetail.vue'
 import { memoryService } from '../services/memoryService'
+import { graphBranches, GraphBranchLayout, BRANCH_OPEN_ZOOM, BRANCH_CLOSE_ZOOM } from '../graphBranches'
+import { GraphThumbnails, type GraphThumbnailCandidate } from '../graphThumbnails'
+import { onThumbnailReady } from '../thumbnailEvents'
+import { graphViewportData } from '../graphViewport'
 import type {
+  CatalogueResource,
   MemoryGraphCursor,
   MemoryGraphEdge,
   MemoryGraphEntityKind,
@@ -326,7 +342,7 @@ type MemoryGraphOption = EChartsCoreOption & {
   series: GraphSeriesOption[]
 }
 
-echarts.use([GraphChart, AriaComponent, CanvasRenderer])
+echarts.use([GraphChart, AriaComponent, CanvasRenderer, LabelLayout])
 
 const {
   agentId,
@@ -358,6 +374,10 @@ const MOBILE_GRAPH_MEDIA_QUERY = '(max-width: 1023px)'
 const MOBILE_PINCH_ZOOM_SENSITIVITY = 0.35
 const MOBILE_DETAIL_OPEN_DELAY = 50
 const GRAPH_SERIES_ID = 'memory-graph'
+const LAYOUT_REBALANCE_MILLISECONDS = 700
+const REVEAL_DURATION_MILLISECONDS = 320
+const REVEAL_SPREAD_MILLISECONDS = 120
+const MAX_ANIMATED_VISIBLE_NODES = 500
 const MEMORY_TYPE_LEGEND: readonly MemoryType[] = [
   'core',
   'working',
@@ -382,46 +402,26 @@ const RESOURCE_ROLE_ACCENTS: Partial<Record<MemoryGraphEntityKind, 'cyan' | 'yel
   folder: 'yellow',
   directory: 'yellow',
 }
-const NODE_COLORS_LIGHT: Record<MemoryType, string> = {
-  core: '#7e57c2',
-  working: '#fb8c00',
-  episodic: '#1e88e5',
-  semantic: '#00897b',
-  procedural: '#3949ab',
-  social: '#d81b60',
+const NODE_ACCENTS: Record<MemoryType, SolaireColor> = {
+  core: 'violet', working: 'orange', episodic: 'blue',
+  semantic: 'green', procedural: 'iris', social: 'fuchsia',
 }
-
-const NODE_COLORS_DARK: Record<MemoryType, string> = {
-  core: '#b39ddb',
-  working: '#ffb74d',
-  episodic: '#64b5f6',
-  semantic: '#4db6ac',
-  procedural: '#7986cb',
-  social: '#f06292',
-}
-
-const EDGE_COLORS_LIGHT = {
-  topic: '#00897b',
-  contact: '#d81b60',
-  topicContact: '#8e24aa',
-  default: '#607d8b',
-} as const
-
-const EDGE_COLORS_DARK = {
-  topic: '#4db6ac',
-  contact: '#f06292',
-  topicContact: '#ce93d8',
-  default: '#b0bec5',
-} as const
 
 const { t } = useI18n()
 const $q = useQuasar()
 const { registerInterval, removeInterval } = useInterval()
 const { registerTimeout: registerMobileDetailTimeout } = useTimeout()
+const { registerTimeout: registerLayoutTimeout, removeTimeout: removeLayoutTimeout } = useTimeout()
+const { registerTimeout: registerThumbnailTimeout, removeTimeout: removeThumbnailTimeout } = useTimeout()
 const viewport = useTemplateRef<HTMLDivElement>('viewport')
 const chartElement = useTemplateRef<HTMLDivElement>('chartElement')
 const nodes = shallowRef(new Map<string, MemoryGraphNode>())
 const edges = shallowRef(new Map<string, MemoryGraphEdge>())
+const expandedBranches = shallowRef(new Set<string>())
+const branchLayout = new GraphBranchLayout()
+// Keep the original animated physics for ordinary graphs; larger windows use the bounded layout.
+const dynamicLayout = computed(() => nodes.value.size <= 600)
+const overview = ref(false)
 const hiddenMemoryTypes = shallowRef(new Set<MemoryType>())
 const hiddenEntityKinds = shallowRef(new Set<MemoryGraphEntityKind>())
 const selectedNodeId = ref<string | null>(null)
@@ -444,6 +444,35 @@ let chart: ECharts | null = null
 let previousBodyOverflow: string | null = null
 let loadGeneration = 0
 let layoutGeneration = 0
+let renderFrame: number | null = null
+let hasLayoutStarted = false
+let layoutRelaxationEnabled = false
+let lastRenderedIds = new Set<string>()
+let thumbnailsNear = false
+let thumbnailFrame: number | null = null
+let thumbnailPaintTimer: ReturnType<typeof setTimeout> | null = null
+const thumbnailBudget = clientThumbnailBudget()
+const thumbnailKeys = new Map<string, string>()
+const thumbnailResources = new Map<string, CatalogueResource>()
+const thumbnails = new GraphThumbnails(
+  (node, signal, generate) => agentId === null ? Promise.resolve(null)
+    : memoryService.graphFileThumbnail(node, agentId, signal, generate, thumbnailResources),
+  missing => {
+    scheduleThumbnailPaint()
+    if (missing) scheduleThumbnails()
+  },
+  thumbnailBudget * 2,
+  thumbnailBudget >= 256 ? 12 : thumbnailBudget >= 96 ? 8 : 4,
+)
+const unsubscribeThumbnailReady = onThumbnailReady(ready => {
+  if (ready.agentId !== agentId) return
+  for (const node of nodes.value.values()) {
+    if (((node.node_kind === 'file' || node.node_kind === 'document') && node.id === ready.itemId)
+      || (node.node_kind === 'attachment' && node.resource_uri === ready.resourceUri)) {
+      thumbnails.accept({ node, key: thumbnailKey(node) }, ready.blob)
+    }
+  }
+})
 
 const visibleNodes = computed(() => (
   [...nodes.value.values()].filter(isNodeVisible)
@@ -455,6 +484,15 @@ const visibleEdges = computed(() => (
     && visibleNodeIds.value.has(edge.target_item_id)
   ))
 ))
+const branches = computed(() => graphBranches(visibleNodes.value, visibleEdges.value))
+const branchByAnchor = computed(() => new Map(branches.value.map(branch => [branch.anchorId, branch])))
+const collapsedMemberIds = computed(() => new Set(branches.value
+  .filter(branch => !expandedBranches.value.has(branch.anchorId))
+  .flatMap(branch => branch.memberIds.filter(id => id !== selectedNodeId.value))))
+const renderedNodes = computed(() => visibleNodes.value.filter(node => !collapsedMemberIds.value.has(node.id)))
+const renderedEdges = computed(() => visibleEdges.value.filter(edge => (
+  !collapsedMemberIds.value.has(edge.source_item_id) && !collapsedMemberIds.value.has(edge.target_item_id)
+)))
 const selectedNode = computed(() => {
   if (selectedNodeId.value === null) return null
   const node = nodes.value.get(selectedNodeId.value)
@@ -524,7 +562,7 @@ const selectedRelations = computed<SelectedRelation[]>(() => {
 })
 
 function nodeColor(type: MemoryType): string {
-  return ($q.dark.isActive ? NODE_COLORS_DARK : NODE_COLORS_LIGHT)[type]
+  return solaireCss[NODE_ACCENTS[type]].accent
 }
 
 function roleColor(role: MemoryGraphEntityKind): string {
@@ -582,6 +620,7 @@ function toggleEntityKind(kind: MemoryGraphEntityKind): void {
 }
 
 function nodeIcon(node: MemoryGraphNode): string {
+  if (isAudioNode(node)) return 'audio_file'
   switch (node.entity_kind) {
     case 'topic': return 'topic'
     case 'contact': return 'person'
@@ -604,7 +643,26 @@ function nodeRoleLabel(node: MemoryGraphNode): string {
   return t(`memory.graph.roles.${node.entity_kind}`)
 }
 
-function nodeSymbol(node: MemoryGraphNode): 'circle' | 'diamond' | 'rect' | 'roundRect' {
+function isAudioNode(node: MemoryGraphNode): boolean {
+  const resource = thumbnailResources.get(`${node.id}:${node.updated_at ?? node.activity_at}`)
+  return (node.node_kind === 'file' || node.node_kind === 'attachment')
+    && browserResourceKind(resource?.media_type ?? node.resource_media_type ?? '', resource?.name ?? node.title) === 'audio'
+}
+
+// A shared vector marker, independent of thumbnail loading and client image budgets.
+const audioSymbol = `image://data:image/svg+xml;charset=utf-8,${encodeURIComponent(
+  `<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32"><rect width="32" height="32" fill="${solaire.cyan.accent}"/><path d="M13 22V9l12-3v13M13 13l12-3" fill="none" stroke="white" stroke-width="3" stroke-linejoin="round"/><ellipse cx="9" cy="23" rx="5" ry="3.5" fill="white"/><ellipse cx="21" cy="20" rx="5" ry="3.5" fill="white"/></svg>`,
+)}`
+
+function nodeThumbnailUrl(node: MemoryGraphNode): string | null {
+  const key = thumbnailKeys.get(node.id)
+  return key ? thumbnails.url(key) : null
+}
+
+function nodeSymbol(node: MemoryGraphNode): string {
+  if (isAudioNode(node)) return audioSymbol
+  const url = nodeThumbnailUrl(node)
+  if (url) return `image://${url}`
   switch (node.entity_kind) {
     case 'topic': return 'diamond'
     case 'contact': return 'roundRect'
@@ -618,16 +676,47 @@ function nodeSymbol(node: MemoryGraphNode): 'circle' | 'diamond' | 'rect' | 'rou
   }
 }
 
+function nodeBaseSymbolSize(node: MemoryGraphNode, groupedCount = 0): number {
+  const scale = dynamicLayout.value ? Math.min(1, Math.max(0.35, Math.min(viewportSize.width, viewportSize.height) / 650)) : 1
+  const size = (radiusFor(node) * 2 + Math.min(44, Math.log2(groupedCount + 1) * 5)) * scale
+    * (overview.value && selectedNodeId.value !== node.id ? isStructuralNode(node) || groupedCount ? 0.8 : 0.45 : 1)
+  return size
+}
+
+function nodeSymbolSize(node: MemoryGraphNode, groupedCount = 0): number | [number, number] {
+  const size = nodeBaseSymbolSize(node, groupedCount)
+  if (!nodeThumbnailUrl(node)) return isAudioNode(node) && !overview.value ? Math.max(22, size) : size
+  const key = thumbnailKeys.get(node.id)
+  const aspect = key ? thumbnails.aspect(key) : 1
+  const longest = Math.max(40, size * 1.75)
+  // Explicit dimensions preserve proportions on both first paint and cache reuse.
+  return aspect >= 1 ? [longest, longest / aspect] : [longest * aspect, longest]
+}
+
+function clientThumbnailBudget(): number {
+  const memory: unknown = Reflect.get(navigator, 'deviceMemory')
+  // This is an approximate, possibly capped hint; absence does not imply low RAM.
+  const gigabytes = typeof memory === 'number' && memory > 0 ? memory : null
+  const cores = navigator.hardwareConcurrency || 4
+  const limited = (gigabytes !== null && gigabytes <= 2) || cores <= 2
+  if (window.innerWidth < 1024) return limited ? 32 : 96
+  if (limited) return 64
+  return cores >= 8 ? 512 : 256
+}
+
 function isStructuralNode(node: MemoryGraphNode): boolean {
   return node.entity_kind === 'topic' || node.entity_kind === 'contact'
 }
 
 function edgeColor(relationType: string): string {
-  const palette = $q.dark.isActive ? EDGE_COLORS_DARK : EDGE_COLORS_LIGHT
-  if (relationType === 'topic_involves_contact') return palette.topicContact
-  if (relationType === 'contact_contains') return palette.contact
-  if (relationType === 'topic_contains' || relationType.startsWith('topic_')) return palette.topic
-  return palette.default
+  return solaireCss[edgeAccent(relationType)].accent
+}
+
+function edgeAccent(relationType: string): SolaireColor {
+  if (relationType === 'topic_involves_contact') return 'violet'
+  if (relationType === 'contact_contains') return 'fuchsia'
+  if (relationType === 'topic_contains' || relationType.startsWith('topic_')) return 'green'
+  return 'gray'
 }
 
 function isStructuralEdge(relationType: string): boolean {
@@ -660,6 +749,152 @@ function radiusFor(node: MemoryGraphNode): number {
         ? 2
         : 0
   return 8 + freshness(node) * 8 + roleBoost + (selectedNodeId.value === node.id ? 3 : 0)
+}
+
+function toggleBranchDetails(value: boolean): void {
+  expandedBranches.value = new Set(value ? branches.value.map(branch => branch.anchorId) : [])
+  renderGraph({ viewState: captureGraphView(), preserveSelection: true, relax: false })
+}
+
+function revealBranch(id: string, anchor?: ScreenPoint): void {
+  expandedBranches.value = new Set([...expandedBranches.value, id])
+  const clicked: unknown = dynamicLayout.value && anchor
+    ? chart?.convertFromPixel({ seriesId: GRAPH_SERIES_ID }, [anchor.x, anchor.y]) : null
+  const point = Array.isArray(clicked) && typeof clicked[0] === 'number' && typeof clicked[1] === 'number'
+    ? { x: clicked[0], y: clicked[1] } : branchLayout.positions.get(id)
+  const view = captureGraphView()
+  renderGraph({
+    viewState: { center: point ? [point.x, point.y] : view?.center, zoom: Math.max(BRANCH_OPEN_ZOOM, view?.zoom ?? 1) },
+    preserveSelection: true,
+    relax: false,
+  })
+}
+
+function onGraphRoam(): void {
+  const previousSelection = selectedNodeId.value
+  closeInspector(false)
+  const view = captureGraphView()
+  const zoom = view?.zoom ?? 1
+  const previousOverview = overview.value
+  if (zoom <= 0.75) overview.value = true
+  else if (zoom >= 0.95) overview.value = false
+  let next: Set<string> | null = null
+  if (zoom <= BRANCH_CLOSE_ZOOM && expandedBranches.value.size) next = new Set()
+  else if (zoom >= BRANCH_OPEN_ZOOM) {
+    next = new Set(expandedBranches.value)
+    for (const branch of branches.value) {
+      // Small windows reveal their pre-positioned branches together; larger
+      // static windows reveal only viewport anchors.
+      if (dynamicLayout.value) { next.add(branch.anchorId); continue }
+      const point = branchLayout.positions.get(branch.anchorId)
+      if (!point || !chart) continue
+      const screen: unknown = chart.convertToPixel({ seriesId: GRAPH_SERIES_ID }, [point.x, point.y])
+      if (Array.isArray(screen) && typeof screen[0] === 'number' && typeof screen[1] === 'number'
+        && screen[0] >= 0 && screen[0] <= viewportSize.width && screen[1] >= 0 && screen[1] <= viewportSize.height) {
+        next.add(branch.anchorId)
+      }
+    }
+  }
+  const branchesChanged = next && (next.size !== expandedBranches.value.size || [...next].some(id => !expandedBranches.value.has(id)))
+  if (branchesChanged && next) {
+    expandedBranches.value = next
+  }
+  if (branchesChanged || previousOverview !== overview.value || (previousSelection !== null
+    && (dynamicLayout.value || overview.value || collapsedMemberIds.value.has(previousSelection)))) {
+    renderGraph({ viewState: view, preserveSelection: true, relax: false })
+  } else {
+    stopGraphLayout()
+  }
+  scheduleThumbnails()
+}
+
+function thumbnailKey(node: MemoryGraphNode): string {
+  return `${agentId}:${node.id}:${node.updated_at ?? node.activity_at}:${node.resource_uri ?? ''}`
+}
+
+function scheduleThumbnails(): void {
+  registerThumbnailTimeout(updateThumbnails, 120)
+}
+
+function updateThumbnails(): void {
+  const instance = chart
+  if (!instance || agentId === null) return
+  const zoom = captureGraphView()?.zoom ?? 1
+  if (zoom >= 1.8) thumbnailsNear = true
+  else if (zoom <= 1.5) thumbnailsNear = false
+  const candidates: (GraphThumbnailCandidate & { distance: number })[] = []
+  if (thumbnailsNear && !overview.value) {
+    // Read the typed data model only; never mutate positions or renderer internals.
+    const data = graphViewportData(instance)
+    if (data) for (let index = 0; index < data.count(); index++) {
+      const id = data.getId(index)
+      const node = nodes.value.get(id)
+      if (!node || !visibleNodeIds.value.has(id) || collapsedMemberIds.value.has(id)
+        || isAudioNode(node)
+        || (node.node_kind !== 'file' && node.node_kind !== 'attachment' && node.node_kind !== 'document')) continue
+      const position: unknown = data.getItemLayout(index)
+      if (!Array.isArray(position)) continue
+      const screen: unknown = instance.convertToPixel({ seriesId: GRAPH_SERIES_ID }, position)
+      const retained = thumbnailKeys.has(id)
+      // Keep a small margin for already displayed images so slight pans do not
+      // repeatedly hide/reveal them. New reads remain inside the viewport.
+      const margin = retained ? 100 : 0
+      if (!Array.isArray(screen) || typeof screen[0] !== 'number' || typeof screen[1] !== 'number'
+        || screen[0] < -margin || screen[0] > viewportSize.width + margin
+        || screen[1] < -margin || screen[1] > viewportSize.height + margin) continue
+      // Near-view thumbnails have their own readable minimum size. An old/small
+      // role square must not prevent the file from receiving its larger preview.
+      candidates.push({ node, key: thumbnailKey(node), distance: selectedNodeId.value === id ? -1
+        : Math.hypot(screen[0] - viewportSize.width / 2, screen[1] - viewportSize.height / 2) - (retained ? 80 : 0) })
+    }
+  }
+  thumbnailKeys.clear()
+  // Missing derivatives do not occupy display slots. Bound the search for
+  // replacements as well, rather than scanning every file in a dense window.
+  const wanted = candidates.sort((a, b) => a.distance - b.distance)
+    .slice(0, thumbnailBudget * 2)
+    .filter(candidate => !thumbnails.unavailable(candidate.key))
+    .slice(0, thumbnailBudget)
+  for (const candidate of wanted) thumbnailKeys.set(candidate.node.id, candidate.key)
+  thumbnails.update(wanted)
+  scheduleThumbnailPaint()
+}
+
+function scheduleThumbnailPaint(): void {
+  if (thumbnailFrame !== null || thumbnailPaintTimer !== null) return
+  thumbnailPaintTimer = setTimeout(() => {
+    thumbnailPaintTimer = null
+    thumbnailFrame = requestAnimationFrame(paintThumbnails)
+  }, 80)
+}
+
+function paintThumbnails(): void {
+  thumbnailFrame = null
+  const instance = chart
+  if (!instance) return
+  const option = instance.getOption() as unknown as MemoryGraphOption
+  const series = option.series.find(series => series.id === GRAPH_SERIES_ID)
+  if (!series?.data) return
+  let changed = false
+  const data = series.data.map(entry => {
+    if (typeof entry !== 'object' || entry === null || !('id' in entry) || !('symbol' in entry)
+      || entry.symbol === 'none') return entry
+    const node = nodes.value.get(String(entry.id))
+    if (!node) return entry
+    const symbol = nodeSymbol(node)
+    if (symbol === entry.symbol) return entry
+    changed = true
+    const style = 'itemStyle' in entry && typeof entry.itemStyle === 'object' && entry.itemStyle !== null
+      ? entry.itemStyle : {}
+    return { ...entry, symbol, symbolKeepAspect: true, symbolSize: nodeSymbolSize(node),
+      itemStyle: { ...style, shadowBlur: symbol.startsWith('image://') ? 3
+        : overview.value || renderedNodes.value.length > 500 ? 0 : freshness(node) * 18 } }
+  })
+  if (changed) {
+    // A symbol replacement preserves the camera, selection and native force cache.
+    stopGraphLayout()
+    instance.setOption({ series: [{ id: GRAPH_SERIES_ID, animation: false, data }] })
+  }
 }
 
 function mergeNodes(incoming: MemoryGraphNode[]): string[] {
@@ -805,17 +1040,33 @@ function isLayoutHub(node: MemoryGraphNode, degree: number): boolean {
 
 function graphOption(options: {
   viewState?: GraphViewState | null
+  forceFriction?: number
+  revealedIds?: ReadonlyMap<string, number>
 } = {}): MemoryGraphOption {
   const dark = $q.dark.isActive
   const palette = getComputedStyle(document.documentElement)
   const curvatures = parallelEdgeCurvatures()
   const degrees = graphDegrees()
+  const loadedBranches = graphBranches([...nodes.value.values()], [...edges.value.values()])
+  const anchors = new Set(loadedBranches.map(branch => branch.anchorId))
+  if ([...expandedBranches.value].some(id => !anchors.has(id))) {
+    expandedBranches.value = new Set([...expandedBranches.value].filter(id => anchors.has(id)))
+  }
+  if (!dynamicLayout.value) branchLayout.update([...nodes.value.values()], loadedBranches, [...edges.value.values()])
   const hubIds = new Set(
     visibleNodes.value
       .filter(node => isLayoutHub(node, degrees.get(node.id) ?? 0))
       .map(node => node.id),
   )
-  const layoutAnimation = visibleNodes.value.length > 180
+  const labelBudget = Math.max(4, Math.min(80, Math.floor(viewportSize.width * viewportSize.height / 20_000)))
+  const labelIds = new Set([...renderedNodes.value].sort((left, right) => (
+    Number(hubIds.has(right.id)) - Number(hubIds.has(left.id)) || activityTimestamp(right) - activityTimestamp(left)
+  )).slice(0, labelBudget).map(node => node.id))
+  // Force distances use map units: adapt to the canvas so ordinary windows do not
+  // inherit distances tuned for a large fullscreen view.
+  const forceScale = Math.min(1, Math.max(0.04, (Math.min(viewportSize.width, viewportSize.height) / 1400) ** 2))
+  const seriesNodes = dynamicLayout.value ? visibleNodes.value : [...nodes.value.values()]
+  const revealed = options.revealedIds
   return {
     animation: false,
     aria: {
@@ -824,7 +1075,20 @@ function graphOption(options: {
     series: [{
       id: GRAPH_SERIES_ID,
       type: 'graph',
-      layout: 'force',
+      // Native symbol transitions change opacity and size, never graph coordinates.
+      animation: Boolean(revealed?.size),
+      animationThreshold: MAX_VISIBLE_NODES + 1,
+      animationDuration: index => revealed?.has(seriesNodes[index]?.id ?? '') ? REVEAL_DURATION_MILLISECONDS : 0,
+      animationDelay: index => {
+        const rank = revealed?.get(seriesNodes[index]?.id ?? '')
+        return rank === undefined ? 0 : rank * REVEAL_SPREAD_MILLISECONDS / Math.max(1, (revealed?.size ?? 1) - 1)
+      },
+      animationEasing: 'cubicOut',
+      animationDurationUpdate: 0,
+      layout: dynamicLayout.value ? 'force' : 'none',
+      preserveAspect: true,
+      nodeScaleRatio: dynamicLayout.value ? 0.6 : 0.1,
+      labelLayout: { hideOverlap: true },
       roam: true,
       roamTrigger: 'global',
       draggable: false,
@@ -840,30 +1104,35 @@ function graphOption(options: {
         max: MAX_ZOOM,
       },
       force: {
-        repulsion: [500, 1400],
-        gravity: 0.045,
-        friction: 0.6,
-        edgeLength: [50, 200],
-        layoutAnimation,
+        repulsion: [500 * forceScale, 1400 * forceScale], gravity: 0.045, friction: options.forceFriction ?? 0,
+        edgeLength: [50 * Math.sqrt(forceScale), 200 * Math.sqrt(forceScale)],
+        layoutAnimation: (options.forceFriction ?? 0) > 0,
       },
-      data: visibleNodes.value.map(node => {
+      // Small graphs keep folded leaves in the bounded simulation, so unveiling
+      // them never changes the forces or scatters newcomers across the canvas.
+      data: seriesNodes.map(node => {
         const freshnessScore = freshness(node)
         const selected = selectedNodeId.value === node.id
+        const hidden = !visibleNodeIds.value.has(node.id) || collapsedMemberIds.value.has(node.id)
+        const branch = branchByAnchor.value.get(node.id)
+        const groupedCount = branch && !expandedBranches.value.has(node.id)
+          ? branch.memberIds.filter(id => collapsedMemberIds.value.has(id)).length : 0
         const degree = degrees.get(node.id) ?? 0
         const accent = RESOURCE_ROLE_ACCENTS[node.entity_kind]
-        const color = accent
-          ? palette.getPropertyValue(`--solaire-${accent}-accent`).trim()
-          : nodeColor(node.memory_type)
+        const color = palette.getPropertyValue(`--solaire-${accent ?? NODE_ACCENTS[node.memory_type]}-accent`).trim()
         return {
           id: node.id,
           name: node.title,
           value: Math.sqrt(degree + 1),
-          symbol: nodeSymbol(node),
-          symbolSize: radiusFor(node) * 2,
+          ...(!dynamicLayout.value ? branchLayout.positions.get(node.id) : {}),
+          fixed: dynamicLayout.value && selected,
+          symbol: hidden ? 'none' : nodeSymbol(node),
+          symbolKeepAspect: true,
+          symbolSize: nodeSymbolSize(node, groupedCount),
           selected,
           itemStyle: {
             color,
-            opacity: 1,
+            opacity: hidden ? 0 : 1,
             borderColor: selected
               ? (dark ? '#ffffff' : '#263238')
               : isStructuralNode(node)
@@ -873,21 +1142,23 @@ function graphOption(options: {
                   : 'rgba(255, 255, 255, 0.9)',
             borderWidth: selected ? 4 : isStructuralNode(node) ? 3 : node.source_managed ? 2 : 1.5,
             shadowColor: color,
-            shadowBlur: freshnessScore * 18 + (isStructuralNode(node) ? 8 : 0),
+            shadowBlur: nodeSymbol(node).startsWith('image://') ? 3
+              : overview.value || renderedNodes.value.length > 500 ? 0 : freshnessScore * 18 + (isStructuralNode(node) ? 8 : 0),
           },
           label: {
-            show: true,
+            show: !hidden && (selected || (labelIds.has(node.id) && (!overview.value || hubIds.has(node.id)))),
             position: 'bottom',
             distance: 5,
             color: dark ? '#f5f5f5' : '#263238',
             opacity: Math.max(0.65, freshnessScore),
             fontSize: selected ? 12 : 11,
             fontWeight: selected ? 600 : 400,
-            formatter: nodeLabel(node),
+            formatter: groupedCount ? `${nodeLabel(node)}\n${t('memory.graph.branchCount', { count: groupedCount })}` : nodeLabel(node),
           },
           emphasis: {
             focus: 'adjacency',
             scale: 1.22,
+            label: { show: !hidden },
             itemStyle: {
               opacity: 1,
               borderColor: dark ? '#ffffff' : '#263238',
@@ -895,6 +1166,7 @@ function graphOption(options: {
             },
           },
           select: {
+            label: { show: !hidden },
             itemStyle: {
               borderColor: dark ? '#ffffff' : '#263238',
               borderWidth: 4,
@@ -902,20 +1174,22 @@ function graphOption(options: {
           },
         }
       }),
-      links: visibleEdges.value.map(edge => {
+      links: (dynamicLayout.value ? visibleEdges.value : renderedEdges.value).map(edge => {
         const structural = isStructuralEdge(edge.relation_type)
+        const betweenHubs = hubIds.has(edge.source_item_id) && hubIds.has(edge.target_item_id)
+        const adjacent = edge.source_item_id === selectedNodeId.value || edge.target_item_id === selectedNodeId.value
+        const hidden = collapsedMemberIds.value.has(edge.source_item_id) || collapsedMemberIds.value.has(edge.target_item_id)
+          || (overview.value && !betweenHubs && !adjacent)
         return {
           id: edge.id,
           source: edge.source_item_id,
           target: edge.target_item_id,
           value: edge.confidence,
-          ignoreForceLayout: !edge.suggested
-            && hubIds.has(edge.source_item_id)
-            && hubIds.has(edge.target_item_id),
+          ignoreForceLayout: !edge.suggested && betweenHubs,
           lineStyle: {
-            color: edgeColor(edge.relation_type),
-            opacity: edge.suggested ? 0.38 : structural ? 0.86 : 0.62,
-            width: edge.suggested
+            color: palette.getPropertyValue(`--solaire-${edgeAccent(edge.relation_type)}-accent`).trim(),
+            opacity: hidden ? 0 : overview.value ? 0.4 : edge.suggested ? 0.38 : structural ? 0.86 : 0.62,
+            width: hidden ? 0 : overview.value ? 1 : edge.suggested
               ? 0.8 + edge.confidence
               : structural
                 ? 2 + edge.confidence * 1.8
@@ -925,14 +1199,15 @@ function graphOption(options: {
           },
           emphasis: {
             lineStyle: {
-              opacity: 1,
-              width: structural ? 3.2 + edge.confidence * 2 : 1.8 + edge.confidence * 1.5,
+              opacity: hidden ? 0 : 1,
+              width: hidden ? 0 : structural ? 3.2 + edge.confidence * 2 : 1.8 + edge.confidence * 1.5,
             },
           },
+          blur: { lineStyle: { opacity: hidden ? 0 : 0.16 } },
         }
       }),
       lineStyle: {
-        color: dark ? EDGE_COLORS_DARK.default : EDGE_COLORS_LIGHT.default,
+        color: palette.getPropertyValue('--solaire-gray-accent').trim(),
         curveness: 0.22,
       },
       emphasis: {
@@ -984,37 +1259,73 @@ function captureGraphView(): GraphViewState | null {
   return null
 }
 
+function stopGraphLayout(): void {
+  removeLayoutTimeout()
+  const wasEnabled = layoutRelaxationEnabled
+  layoutRelaxationEnabled = false
+  if (wasEnabled && dynamicLayout.value && nodes.value.size) {
+    chart?.setOption({ series: [{ id: GRAPH_SERIES_ID, force: { friction: 0, layoutAnimation: false } }] })
+  }
+}
+
 function renderGraph(options: {
   viewState?: GraphViewState | null
   preserveSelection?: boolean
+  relax?: boolean
 } = {}): void {
   const instance = chart
   if (!instance) return
   const generation = ++layoutGeneration
-  layoutPending.value = visibleNodes.value.length > 0
-  chartReady.value = visibleNodes.value.length === 0
-  if (!options.preserveSelection) closeInspector()
-  instance.clear()
-  const onFinished = (): void => {
-    instance.off('finished', onFinished)
-    finishLayout(generation)
-  }
-  instance.on('finished', onFinished)
+  removeLayoutTimeout()
+  layoutRelaxationEnabled = false
+  layoutPending.value = visibleNodes.value.length > 0 && (loading.value || !chartReady.value)
+  if (visibleNodes.value.length === 0) chartReady.value = true
+  if (!options.preserveSelection) closeInspector(false)
+  const animate = dynamicLayout.value && renderedNodes.value.length > 0 && options.relax !== false
+  const rebalancing = hasLayoutStarted
+  const renderedIds = new Set(renderedNodes.value.map(node => node.id))
+  const reveal = options.relax === false && lastRenderedIds.size > 0
+    && renderedIds.size <= MAX_ANIMATED_VISIBLE_NODES
+    && !window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    ? new Map([...renderedIds].filter(id => !lastRenderedIds.has(id) && id !== selectedNodeId.value)
+      .map((id, rank) => [id, rank])) : undefined
   instance.setOption(graphOption({
     viewState: options.viewState,
+    forceFriction: animate ? hasLayoutStarted ? 0.12 : 0.35 : 0,
+    revealedIds: reveal,
   }), {
-    notMerge: true,
+    notMerge: false,
   })
-  if (visibleNodes.value.length <= 180) {
-    requestAnimationFrame(() => finishLayout(generation))
+  lastRenderedIds = renderedIds
+  if (animate) {
+    hasLayoutStarted = true
+    layoutRelaxationEnabled = true
+    // Initial placement converges naturally. Only actual graph updates use a
+    // short rebalance; presentation changes always keep the reached positions.
+    if (rebalancing) registerLayoutTimeout(() => {
+      if (chart !== instance || generation !== layoutGeneration) return
+      stopGraphLayout()
+    }, LAYOUT_REBALANCE_MILLISECONDS)
   }
+  if (renderFrame !== null) cancelAnimationFrame(renderFrame)
+  renderFrame = requestAnimationFrame(() => {
+    renderFrame = null
+    finishLayout(generation)
+    scheduleThumbnails()
+  })
 }
 
 async function loadInitial(options: { preserveView?: boolean } = {}): Promise<void> {
   const preserveView = options.preserveView === true
   const preservedSelection = preserveView ? selectedNodeId.value : null
   const generation = ++loadGeneration
+  thumbnails.clear()
+  thumbnailResources.clear()
+  thumbnailKeys.clear()
+  removeThumbnailTimeout()
+  if (!preserveView) thumbnailsNear = false
   layoutGeneration += 1
+  stopGraphLayout()
   nodes.value = new Map()
   edges.value = new Map()
   selectedNodeId.value = preservedSelection
@@ -1022,6 +1333,13 @@ async function loadInitial(options: { preserveView?: boolean } = {}): Promise<vo
   capacityReached.value = false
   error.value = null
   if (!preserveView) chartReady.value = agentId === null
+  if (!preserveView) {
+    hasLayoutStarted = false
+    lastRenderedIds = new Set()
+    branchLayout.clear()
+    expandedBranches.value = new Set()
+    overview.value = false
+  }
   layoutPending.value = false
   if (!preserveView) chart?.clear()
   if (agentId === null) {
@@ -1124,7 +1442,7 @@ async function refreshLatestRoots(): Promise<void> {
     const pageChanged = graphPageHasChanges(visiblePage)
     const pruned = pruneOutsideTimeRange(cutoffTimestamp)
     const changed = pageChanged || pruned
-    if (!changed) return
+    if (!changed) { scheduleThumbnails(); return }
     mergeNodes(visiblePage.nodes)
     mergeEdges(visiblePage.edges)
     edgesTruncated.value = edgesTruncated.value || visiblePage.edges_truncated
@@ -1141,9 +1459,11 @@ async function refreshLatestRoots(): Promise<void> {
 
 function selectNode(id: string, anchor?: ScreenPoint): void {
   if (!nodes.value.has(id)) return
+  const wasCollapsed = collapsedMemberIds.value.has(id)
   selectedNodeId.value = id
   inspectorAnchor.x = anchor?.x ?? viewportSize.width / 2
   inspectorAnchor.y = anchor?.y ?? viewportSize.height / 2
+  if (wasCollapsed || dynamicLayout.value) renderGraph({ viewState: captureGraphView(), preserveSelection: true, relax: false })
   chart?.dispatchAction({
     type: 'select',
     seriesId: GRAPH_SERIES_ID,
@@ -1151,13 +1471,17 @@ function selectNode(id: string, anchor?: ScreenPoint): void {
   })
 }
 
-function closeInspector(): void {
+function closeInspector(render = true): void {
   if (selectedNodeId.value === null) return
+  const selectedId = selectedNodeId.value
   selectedNodeId.value = null
   chart?.dispatchAction({
     type: 'unselect',
     seriesId: GRAPH_SERIES_ID,
   })
+  if (render && (dynamicLayout.value || overview.value || collapsedMemberIds.value.has(selectedId))) {
+    renderGraph({ viewState: captureGraphView(), preserveSelection: true, relax: false })
+  }
 }
 
 function openNodeDetail(id: string): void {
@@ -1183,6 +1507,10 @@ function eventAnchor(event: ECElementEvent): ScreenPoint {
 function onGraphClick(event: ECElementEvent): void {
   const id = eventNodeId(event)
   if (!id) return
+  if (branchByAnchor.value.has(id) && !expandedBranches.value.has(id)) {
+    revealBranch(id, eventAnchor(event))
+    return
+  }
   const node = nodes.value.get(id)
   if ($q.screen.lt.md && node && node.node_kind !== 'conversation' && node.node_kind !== 'folder') {
     const zrEvent = event.event
@@ -1203,26 +1531,28 @@ function resizeChart(): void {
   const container = viewport.value
   if (!container) return
   const rect = container.getBoundingClientRect()
+  const changed = viewportSize.width !== Math.floor(rect.width) || viewportSize.height !== Math.floor(rect.height)
   viewportSize.width = Math.max(1, Math.floor(rect.width))
   viewportSize.height = Math.max(1, Math.floor(rect.height))
   chart?.resize()
+  scheduleThumbnails()
+  // A toolbar wrapping during zoom may resize the canvas. Continue enabled
+  // physics, but never restart a layout frozen by a presentation change.
+  if (changed && chart && dynamicLayout.value && nodes.value.size && !layoutRelaxationEnabled) {
+    renderGraph({ viewState: captureGraphView(), preserveSelection: true, relax: false })
+  }
 }
 
 function fitGraph(): void {
   if (!chart || !visibleNodes.value.length) return
-  closeInspector()
-  chart.setOption({
-    series: [{
-      id: GRAPH_SERIES_ID,
-      center: null,
-      zoom: 1,
-    }],
-  })
+  closeInspector(false)
+  expandedBranches.value = new Set()
+  overview.value = false
+  renderGraph({ viewState: { center: ['50%', '50%'], zoom: 1 }, preserveSelection: true, relax: false })
 }
 
 function zoomBy(scaleFactor: number): void {
   if (!chart) return
-  closeInspector()
   chart.dispatchAction({
     type: 'graphRoam',
     seriesId: GRAPH_SERIES_ID,
@@ -1242,7 +1572,6 @@ function onGraphPinch(event: ElementEvent): void {
     return
   }
 
-  closeInspector()
   chart.dispatchAction({
     type: 'graphRoam',
     seriesId: GRAPH_SERIES_ID,
@@ -1260,7 +1589,7 @@ function initializeChart(): void {
     devicePixelRatio: Math.min(window.devicePixelRatio || 1, 2),
   })
   chart.on('click', onGraphClick)
-  chart.on('graphRoam', closeInspector)
+  chart.on('graphRoam', onGraphRoam)
   chart.getZr().on('pinch', onGraphPinch)
   chart.getZr().on('click', event => {
     if (!event.target) closeInspector()
@@ -1337,7 +1666,7 @@ watch(
 
 watch(
   () => $q.dark.isActive,
-  () => renderGraph(),
+  () => renderGraph({ viewState: captureGraphView(), preserveSelection: true, relax: false }),
 )
 
 onMounted(() => {
@@ -1355,6 +1684,11 @@ onMounted(() => {
 })
 
 onUnmounted(() => {
+  unsubscribeThumbnailReady()
+  thumbnails.clear()
+  thumbnailResources.clear()
+  if (thumbnailPaintTimer !== null) clearTimeout(thumbnailPaintTimer)
+  if (thumbnailFrame !== null) cancelAnimationFrame(thumbnailFrame)
   websocket.offEvent('memory', 'invalidate', invalidateAccess)
   websocket.offConnect(invalidateAccess)
   loadGeneration += 1
@@ -1372,6 +1706,7 @@ onUnmounted(() => {
   }
   chart?.getZr().off('pinch', onGraphPinch)
   chart?.dispose()
+  if (renderFrame !== null) cancelAnimationFrame(renderFrame)
   chart = null
 })
 </script>

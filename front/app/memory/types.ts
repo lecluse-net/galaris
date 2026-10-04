@@ -332,6 +332,7 @@ export interface MemoryGraphCursor {
 
 export interface MemoryGraphNode {
   resource_media_type?: string | null
+  resource_uri?: string | null
   id: string
   node_kind: MemoryNodeKind | 'conversation'
   entity_kind: MemoryGraphEntityKind

@@ -528,7 +528,24 @@ late response rejection after an agent switch on desktop/mobile.
 `front/browser-tests/memory.spec.mjs` compares actual file and directory graph colors with
 their legend after filtering and theme changes, on desktop and mobile.
 It also checks opening and zooming synthetic 500- and 3,000-node graphs without losing nodes
-during pagination. WebDAV tests verify that metadata reads scale with the number of directories
+during pagination, then unfolding all members without another request. Volume coverage includes
+3,000 nodes without foldable branches and 6,000 links. A mixed topology of subjects, contacts,
+shared documents/items and isolated nodes checks real position movement, natural convergence,
+community proximity, position preservation during zoom and unfolding,
+camera preservation and overview/detail levels; desktop/mobile captures are inspected. Exclusive branches are
+exercised on desktop/mobile: count, zoom hysteresis, keyboard control, child opening and preservation
+of the camera during explicit unfolding and unchanged positions when closing node details
+with the close button or a click on the graph background.
+The actual renderer checks intermediate opacity of new symbols during zoom, complete
+visibility at the end, and immediate appearance with reduced motion.
+Coordinate stability is checked in the large-window mode with 3,000 items. Error/retry and a delayed response after an
+agent change are covered. `front/app/memory/graphBranches.test.mjs` covers exclusivity rules,
+duplicates, cycles, isolated nodes, surviving positions and placement based on relationships;
+the latter scenario fails with the grid that ignored links. The existing DB pagination test covers
+an additional neighbor beyond the page, confirmed or suggested, and inaccessible links.
+`e2e/specs/memory-graph.spec.mjs` exercises folding, keyboard controls, zoom, opening content and
+returning to the graph in the assembled application, using the real API and an isolated synthetic
+database. WebDAV tests verify that metadata reads scale with the number of directories
 for 300 and 3,000 files, including individual fallback and fresh checks after revocation.
 The provider scenario also verifies grouped file resolution for a Tool combining File Share
 and Messenger.

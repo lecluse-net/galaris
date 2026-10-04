@@ -1,0 +1,61 @@
+import { test, expect } from '@playwright/test'
+import { collectPageErrors } from '../page-errors.mjs'
+
+for (const width of [1440, 390]) test(`exclusive memory branches remain accessible after zoom and reopening at ${width}px`, async ({ page, request }, testInfo) => {
+  await page.setViewportSize({ width, height: 1000 })
+  const errors = collectPageErrors(page)
+  const seeded = await request.post('/api/__test/seed')
+  expect(seeded.ok(), await seeded.text()).toBeTruthy()
+  const fixture = await seeded.json()
+  const refresh = page.waitForResponse(response => response.url().endsWith('/api/auth/refresh'))
+  await page.goto('/user/login')
+  await refresh
+  await page.locator('input[type=email]').fill(fixture.email)
+  await page.locator('input[type=password]').fill(fixture.password)
+  const authentication = page.waitForResponse(response => response.url().endsWith('/api/auth/login-json'))
+  await page.locator('button[type=submit]').click()
+  const session = await (await authentication).json()
+  await expect(page.locator('input[type=password]')).toHaveCount(0)
+  const headers = { Authorization: `Bearer ${session.access_token}`, 'X-Editorial-Profile-Version': '1' }
+  const items = []
+  for (let index = 0; index < 9; index++) {
+    const response = await request.post('/api/memory/items', { headers, data: {
+      owner_agent_id: fixture.agent_id, title: `Synthetic branch ${index}`,
+      payload: { text: `Synthetic preserved content ${index}` },
+    } })
+    expect(response.ok(), await response.text()).toBeTruthy()
+    items.push(await response.json())
+  }
+  for (const leaf of items.slice(1)) {
+    const linked = await request.post(`/api/memory/links?actor_agent_id=${fixture.agent_id}`, { headers,
+      data: { source_item_id: items[0].id, target_item_id: leaf.id, relation_type: 'related_to' } })
+    expect(linked.ok(), await linked.text()).toBeTruthy()
+  }
+  await errors.settle()
+  await page.goto(`/memory?agent=${fixture.agent_id}`)
+  if (width < 1024) await page.addLocatorHandler(page.locator('.q-drawer__backdrop'), backdrop => backdrop.click({ position: { x: 380, y: 150 } }), { times: 1 })
+  await page.getByRole('tab', { name: 'Graphe', exact: true }).click()
+  const grouped = page.getByText('8 nœud(s) regroupé(s)', { exact: true })
+  await expect(grouped).toBeVisible()
+  await expect(page.locator('.memory-graph__chart--loading')).toHaveCount(0)
+  await page.locator('.memory-graph').screenshot({ path: testInfo.outputPath('graph-overview.png') })
+  const details = page.getByRole('switch', { name: 'Détails des branches', exact: true })
+  await details.focus()
+  await page.keyboard.press('Space')
+  await expect(grouped).toHaveCount(0)
+  await details.click()
+  await expect(grouped).toBeVisible()
+  for (let index = 0; index < 3; index++) await page.getByRole('button', { name: 'Zoomer', exact: true }).click()
+  await expect(grouped).toHaveCount(0)
+  await page.locator('.memory-graph').screenshot({ path: testInfo.outputPath('graph-detail.png') })
+  await page.getByRole('button', { name: 'Ajuster le graphe à la fenêtre', exact: true }).click()
+  await expect(grouped).toBeVisible()
+  await page.getByRole('tab', { name: 'Liste', exact: true }).click()
+  await page.getByText(items[1].title, { exact: true }).click()
+  await expect(page.getByText('Synthetic preserved content 1', { exact: true })).toBeVisible()
+  await page.getByRole('dialog').getByRole('button', { name: 'Fermer', exact: true }).click()
+  await page.getByRole('tab', { name: 'Graphe', exact: true }).click()
+  await expect(grouped).toBeVisible()
+  await errors.settle()
+  expect(errors()).toEqual([])
+})

@@ -313,6 +313,29 @@ to refine the search when this selection is truncated and indicates fallback to 
 when semantic search is unavailable. With no text, the list browses all undated memories matching
 the filters, plus calendar matches.
 
+At a close zoom, visible files, attachments and HTML documents show their thumbnail instead of
+the turquoise square, at a larger size. Ready previews load first; missing previews are
+generated progressively. Image counts adapt to client capabilities;
+distant images are hidden and cached for reuse when returning nearby. Unavailable previews
+keep the square. A preview obtained in the details also appears in the graph.
+Loading thumbnails preserves node positions.
+Audio files display a musical note inside their turquoise square. Datasets keep their
+document symbol.
+
+In **Graph**, branches with at least eight items exclusively linked to the same anchor are
+represented by a larger anchor and a count. Zoom in or click the group to see its items;
+**Branch details** also provides keyboard access. Zooming out and **Fit graph to viewport**
+fold the branches. Up to 600 loaded items, the initial placement settles naturally,
+with gentle rebalancing for at most 0.7 seconds after the graph changes. Zooming, unfolding and closing node details
+preserve positions; larger windows retain fixed positions to bound computation.
+New nodes fade into their existing positions; dense views and reduced-motion preferences
+disable this effect.
+Clicking a group frames its anchor. Zooming out hides detailed links and some titles; zoom
+back in to restore them.
+Shared nodes remain visible. Titles are limited to avoid overlaps and remain available on
+hover or selection. The window is still limited to 3,000 nodes; refine filters to explore
+other items. Loading by visible region remains planned.
+
 A document used with the same Agent remains a recall candidate after many ordinary exchanges.
 The Agent recovers its reference, current title and revision, subject to current access rights.
 Deleted or newly private documents are excluded. Recall remains bounded: provide an exact URI

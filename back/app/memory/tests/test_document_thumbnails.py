@@ -317,9 +317,13 @@ async def test_document_thumbnail_is_shared_with_browser_after_authorization(tmp
     authorized_path = AsyncMock(return_value=(attachment, source))
     monkeypatch.setattr(document_thumbnail_service.document_attachment_service, "document_attachment_path", authorized_path)
 
+    assert await document_thumbnail_service.read_or_schedule_document_attachment_thumbnail(
+        document_id, attachment.id, actor_agent_id=7, cached_only=True,
+    ) is None
+    assert reference not in document_thumbnail_service._tasks
     assert await document_thumbnail_service.read_or_schedule_document_attachment_thumbnail(document_id, attachment.id, actor_agent_id=7) is None
     await document_thumbnail_service._tasks[reference]
-    content = await document_thumbnail_service.read_or_schedule_document_attachment_thumbnail(document_id, attachment.id, actor_agent_id=7)
+    content = await document_thumbnail_service.read_or_schedule_document_attachment_thumbnail(document_id, attachment.id, actor_agent_id=7, cached_only=True)
     assert content is not None
     with Image.open(BytesIO(content)) as thumbnail:
         assert thumbnail.format == "PNG"
@@ -339,7 +343,7 @@ async def test_document_thumbnail_is_shared_with_browser_after_authorization(tmp
     authorized_path.side_effect = PermissionError("denied")
     with pytest.raises(PermissionError):
         await document_thumbnail_service.read_or_schedule_document_attachment_thumbnail(
-            document_id, attachment.id, actor_agent_id=8,
+            document_id, attachment.id, actor_agent_id=8, cached_only=True,
         )
 
 

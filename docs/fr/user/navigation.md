@@ -274,9 +274,14 @@ et **Graphe** : ouvrez la page puis choisissez l’onglet, sans supposer un para
 Les contacts sont dans `/memory/contacts` ; les regroupements thématiques dans
 **Connaissances → Sujets** (`/topic`). Le partage d’un lien ne donne pas accès au contenu.
 
-Une exploration du graphe par regroupements, révélés au zoom et chargés par zone, est décrite
-dans le [plan de graphe mémoire à plusieurs niveaux de détail](../../../project/plans/graphe-memoire-multiechelle.md).
-Cette évolution est au statut `design` ; ce parcours n'est pas encore disponible dans l'application.
+Le graphe replie les branches d'au moins huit feuilles exclusives avec un compteur. Zoomez,
+cliquez sur le groupe ou activez **Détails des branches** pour voir les éléments, puis dézoomez
+pour les replier. Les nœuds partagés restent visibles. Jusqu'à 600 items chargés, le placement
+initial se stabilise naturellement, avec un rééquilibrage doux de 0,7 seconde après modification du graphe.
+Le zoom, le dépliage et la fermeture du détail conservent les positions. Le dézoom allège
+aussi les liens et les titres. La fenêtre conserve sa limite de 3 000 nœuds. Le chargement spatial, les sous-groupes
+et les miniatures dans la liste sont les étapes restantes du
+[plan de graphe mémoire à plusieurs niveaux de détail](../../../project/plans/graphe-memoire-multiechelle.md), au statut `partial`.
 
 Dans **Documents**, les rafraîchissements courants mettent à jour les lignes concernées
 sans vider l’arborescence ni la liste. Les dossiers ouverts et les filtres restent en place,

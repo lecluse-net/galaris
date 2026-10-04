@@ -565,10 +565,23 @@ their source identity, creates new items, and then puts their UUIDs back into th
   `file_append`, `file_edit` facade over `memory://` and `document://`; business commands
   `memory_remember`, `memory_forget`, `memory_summarize`, and `document_share`.
 - Interface: under `/memory`, the **List** tab retains search, owner, content, revisions,
-  provenance, direct access, and links. The **Graph** tab loads a lightweight subgraph by cursors,
-  then neighbors on demand; it never loads the entire corpus or payloads into memory. Opening uses
+  provenance, direct access, and links. The **Graph** tab loads a lightweight subgraph by cursors
+  without payloads. The API also provides neighbor expansion, but frontend zoom only unfolds
+  already loaded members. Opening uses
   pages of at most 500 nodes and 2,500 edges, with a limit of 3,000 displayed nodes. Queries read
-  only graph columns. Sources are checked on every load: connections are resolved in batches,
+  only graph columns. Leaf folding uses the global count of distinct admissible neighbors,
+  including suggestions, and requires a confirmed link. From eight leaves, the anchor carries
+  a count; zoom and an explicit control reveal them. The frontend retains the animated ECharts
+  engine up to 600 loaded items, fixing the selected item, with initial placement converging
+  naturally and gentle rebalancing for 0.7 seconds after the graph changes. Closing node details
+  preserves positions and the camera. Hidden leaves retain
+  their placement; zooming and unfolding do not restart physics.
+  Larger windows use bounded placement with stable coordinates and reserved bounds for hidden
+  members. Zooming out simplifies symbols, titles and detailed links without removing their
+  relationships from the simulation. The frontend budgets titles with collision
+  hiding. This projection does not yet provide a server hierarchy or spatial loading; see
+  [decision 0157](../../../../project/decisions/0157-stable-memory-leaf-branches.md) (in French).
+  Sources are checked on every load: connections are resolved in batches,
   and Nextcloud shares metadata reads for files in the same directory, falling back to individual
   files when the listing is denied or incomplete. No access result survives between requests. The selected
   agent already determines the ACL scope and therefore remains implicit: its projection is not

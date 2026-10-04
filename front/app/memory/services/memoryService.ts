@@ -1,4 +1,6 @@
 import { api } from '@/core/api'
+import { attachmentReference, browserResourceKind } from '@/core/util'
+import { thumbnailReady } from '../thumbnailEvents'
 import type { AppDatasetRequest, AppDatasetResult, AppGrant, AppPermissions } from '../documentApps'
 import type {
   DocumentSharing, DocumentSharingUpdate,
@@ -26,6 +28,7 @@ import type {
   MemoryGraphCursor,
   MemoryFinding,
   MemoryGraphPage,
+  MemoryGraphNode,
   MemoryFilterOptions,
   MemoryLink,
   MemoryNodeKind,
@@ -38,14 +41,39 @@ import type {
 } from '../types'
 
 export const memoryService = {
-  async fileResources(itemId: string, agentId: number, signal?: AbortSignal): Promise<CatalogueResource[]> {
-    return (await api.get<CatalogueResource[]>(`/file-share/items/${itemId}/resources`, { params: { agent_id: agentId }, signal })).data
+  async graphFileThumbnail(node: MemoryGraphNode, agentId: number, signal: AbortSignal, generate = false,
+    resourceCache?: Map<string, CatalogueResource>): Promise<Blob | null> {
+    if (node.node_kind === 'document') return generate ? this.documentThumbnail(node.id, agentId, signal) : null
+    if (node.node_kind === 'attachment') {
+      const reference = attachmentReference(node.resource_uri ?? '')
+      return reference ? this.documentAttachmentThumbnailBlob(reference[0], reference[1], agentId, signal, !generate) : null
+    }
+    if (node.node_kind !== 'file') return null
+    const resourceKey = `${node.id}:${node.updated_at ?? node.activity_at}`
+    let resource = resourceCache?.get(resourceKey)
+    if (!resource) {
+      resource = (await this.fileResources(node.id, agentId, signal, 1))[0]
+      if (resource && !signal.aborted && resourceCache) {
+        if (resourceCache.size >= 3000) {
+          const oldest = resourceCache.keys().next().value
+          if (oldest !== undefined) resourceCache.delete(oldest)
+        }
+        resourceCache.set(resourceKey, resource)
+      }
+    }
+    if (!resource || browserResourceKind(resource.media_type, resource.name) === 'audio') return null
+    return this.fileResourceThumbnail(node.id, resource.id, agentId, signal, !generate)
+  },
+  async fileResources(itemId: string, agentId: number, signal?: AbortSignal, limit = 500): Promise<CatalogueResource[]> {
+    return (await api.get<CatalogueResource[]>(`/file-share/items/${itemId}/resources`, { params: { agent_id: agentId, limit }, signal })).data
   },
   async fileResourceBlob(itemId: string, entryId: string, agentId: number, preview = true): Promise<Blob> {
     return (await api.get<Blob>(`/file-share/items/${itemId}/resources/${entryId}/content`, { params: { agent_id: agentId, preview }, responseType: 'blob' })).data
   },
-  async fileResourceThumbnail(itemId: string, entryId: string, agentId: number, signal?: AbortSignal): Promise<Blob> {
-    return (await api.get<Blob>(`/file-share/items/${itemId}/resources/${entryId}/thumbnail`, { params: { agent_id: agentId }, responseType: 'blob', signal })).data
+  async fileResourceThumbnail(itemId: string, entryId: string, agentId: number, signal?: AbortSignal, cachedOnly = false): Promise<Blob> {
+    const blob = (await api.get<Blob>(`/file-share/items/${itemId}/resources/${entryId}/thumbnail`, { params: { agent_id: agentId, cached_only: cachedOnly }, responseType: 'blob', signal })).data
+    if (!cachedOnly && !signal?.aborted) thumbnailReady({ agentId, itemId, blob })
+    return blob
   },
   async temporalDefaults(): Promise<{ timezone: string; lookahead_hours: number }> {
     return (await api.get<{ timezone: string; lookahead_hours: number }>('/memory/temporal/defaults')).data
@@ -76,7 +104,9 @@ export const memoryService = {
     }, {
       params: { agent_id: agentId }, responseType: 'blob', signal,
     })
-    return response.status === 200 && response.data.type === 'image/png' ? response.data : null
+    const blob = response.status === 200 && response.data.type === 'image/png' ? response.data : null
+    if (blob && !signal.aborted) thumbnailReady({ agentId, itemId: id, blob })
+    return blob
   },
   async itemSharing(id: string): Promise<DocumentSharing> { return (await api.get<DocumentSharing>(`/memory/items/${id}/sharing`)).data },
   async updateItemSharing(id: string, data: import('../types').DocumentSharingLevelUpdate): Promise<DocumentSharing> { return (await api.put<DocumentSharing>(`/memory/items/${id}/sharing`, data)).data },
@@ -337,11 +367,13 @@ export const memoryService = {
     return response.data
   },
 
-  async documentAttachmentThumbnailBlob(id: string, attachmentId: string, agentId: number | null, signal?: AbortSignal): Promise<Blob> {
+  async documentAttachmentThumbnailBlob(id: string, attachmentId: string, agentId: number | null, signal?: AbortSignal, cachedOnly = false): Promise<Blob> {
     const response = await api.get<Blob>(
       `/memory/documents/${id}/attachments/${attachmentId}/thumbnail`,
-      { params: { agent_id: agentId }, responseType: 'blob', signal },
+      { params: { agent_id: agentId, cached_only: cachedOnly }, responseType: 'blob', signal },
     )
+    if (!cachedOnly && !signal?.aborted) thumbnailReady({ agentId,
+      resourceUri: `document://${id}/attachments/${attachmentId}`, blob: response.data })
     return response.data
   },
 

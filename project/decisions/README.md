@@ -1,5 +1,7 @@
 # Décisions d’architecture
 
+- [0157 — Branches mémoire exclusives et placement adapté au volume](0157-stable-memory-leaf-branches.md)
+
 - [0156 — Miniatures persistantes préparées par Dream](0156-persistent-file-thumbnails.md)
 
 - [0155 — Parcours de fichiers durables et enrichissement versionné](0155-durable-file-indexing.md)

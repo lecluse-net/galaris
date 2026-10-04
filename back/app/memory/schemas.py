@@ -865,6 +865,7 @@ class MemoryGraphNode(BaseModel):
 
     id: UUID
     resource_media_type: str | None = None
+    resource_uri: str | None = None
     node_kind: Literal["memory", "document", "attachment", "folder", "file", "directory", "conversation"] = "memory"
     entity_kind: Literal["memory", "document", "attachment", "folder", "file", "directory", "topic", "contact", "conversation"]
     owner_agent_id: int | None
