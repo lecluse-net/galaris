@@ -4,6 +4,8 @@
 > **Date de création :** 2 octobre 2026.
 > **Demande :** rendre les grandes mémoires lisibles en regroupant les branches, révéler leurs
 > détails au zoom et charger progressivement les régions explorées.
+> **Complément du 4 octobre 2026 :** distinguer les fichiers et documents par leurs miniatures
+> dans le graphe et les items mémoire, avec un coût borné lié au niveau de détail affiché.
 
 ## 1. Résultat attendu
 
@@ -22,7 +24,14 @@ doit être principalement déterminé par la zone et le niveau de détail demand
 |---|---|
 | Vue d'ensemble | Grands groupes, nœuds structurants, compteurs et relations agrégées. |
 | Vue intermédiaire | Branches et sous-groupes de la région explorée. |
-| Vue proche | Mémoires individuelles, titres lisibles et relations détaillées pertinentes. |
+| Vue proche | Mémoires individuelles, titres lisibles, miniatures de fichiers/documents et relations détaillées pertinentes, dans leurs budgets respectifs. |
+
+Dans la liste des items mémoire, une miniature accompagne le titre des fichiers et documents
+lorsque la ligne entre dans la zone visible. Dans le graphe, elle apparaît seulement lorsque
+l'item individuel est suffisamment lisible à l'écran. Une icône de type sert de remplacement
+pendant la préparation, en cas d'échec ou lorsque le budget d'images est atteint ; le nœud
+reste représenté, sélectionnable et ouvrable. Les groupes repliés gardent leurs compteurs et
+leur identité structurelle, sans charger les aperçus de tous leurs membres.
 
 La hiérarchie est une projection d'affichage, sans modification des liens, contenus, Topics,
 propriétaires ou droits canoniques. Ce chantier porte sur une carte 2D ; la
@@ -47,6 +56,19 @@ Hypothèse à vérifier en premier : quelle part de la densité provient réelle
 exclusives, et quelle part provient de zones fortement interconnectées ? Le seul regroupement
 des feuilles pourrait apporter un premier gain sans résoudre l'ensemble du problème.
 
+Lecture complémentaire du checkout au 4 octobre 2026, sans mesure ni nouvelle qualification :
+la bibliothèque utilise [DocumentThumbnail.vue](../../front/app/memory/components/DocumentThumbnail.vue)
+avec observation de visibilité et la [file de previews](../../front/core/util/previewQueue.ts)
+limite ses chargements à deux opérations simultanées. L'inspecteur affiche déjà des aperçus
+via [MemoryGraphNodeDetail.vue](../../front/app/memory/components/MemoryGraphNodeDetail.vue) et
+[MemoryFileResources.vue](../../front/app/memory/components/MemoryFileResources.vue).
+La [décision 0156](../decisions/0156-persistent-file-thumbnails.md) décrit les miniatures
+persistantes de fichiers et pièces jointes préparées par Dream ; ce socle est à réutiliser.
+Les documents HTML suivent encore un parcours différent : `documentThumbnail` lit le contenu,
+prépare un snapshot portable puis demande sa capture. Les Datasets n'ont pas de capture HTML.
+Le rafraîchissement complet du graphe efface et reconstruit actuellement le rendu ; l'arrivée
+d'une miniature ne doit pas emprunter ce parcours et relancer le placement.
+
 ## 3. Périmètre et consommateurs
 
 Les consommateurs directs sont l'onglet Graphe, son inspecteur, les ouvertures de détail,
@@ -58,6 +80,11 @@ les projections de sources et le catalogue de fichiers. Le
 [plan Memory](amelioration-globale-memoire.md) possède les évolutions du rappel et de l'organisation
 canonique ; le [catalogue File Sharing](indexation-file-share-memory.md) possède l'indexation.
 Le présent plan consomme leurs nœuds accessibles sans réimplémenter ces mécanismes.
+
+Le complément miniatures concerne aussi la liste des items mémoire, sur desktop et mobile,
+et les nœuds de fichiers, pièces jointes et documents du graphe. Réutiliser les dérivés des
+domaines propriétaires et préserver les visionneuses existantes. L'indexation, la génération
+des aperçus et leur conservation ne deviennent pas des responsabilités de la projection spatiale.
 
 Conserver les filtres existants, la période d'activité, les rôles graphiques, la distinction
 entre liens confirmés et suggérés, l'ouverture des documents/dossiers et la sélection de l'agent.
@@ -187,14 +214,56 @@ Les révisions empêchent les anciennes réponses de ressusciter des items suppr
 une resynchronisation bornée et un rafraîchissement de secours ; fermer la vue nettoie requêtes,
 abonnements et timers. Une erreur récupérable conserve la carte autorisée et permet de réessayer.
 
+### 4.7 Miniatures liées au niveau de détail
+
+Intégrer les miniatures au budget de détail décrit en 4.5. L'éligibilité dépend de la taille
+projetée en pixels, du cadrage et de la densité locale, avec hystérésis ; le nombre total
+d'items ne décide pas seul de leur affichage. À distance, conserver les symboles structurels
+et des icônes distinctives par type de fichier. À proximité, privilégier l'item sélectionné,
+puis les items visibles pertinents. Les titres et états de sélection restent lisibles avec
+ou sans image ; conserver un repère de rôle suivant Solaire. Ne pas introduire de mosaïque
+de groupe dans le premier lot : elle ajouterait des lectures et un choix de représentativité.
+
+Réutiliser les captures existantes : image réduite, première page PDF/Office, aperçu vidéo
+ou 3D, capture du haut d'un document HTML. Les Datasets et formats sans aperçu gardent une
+icône spécifique. Pour un fichier possédant plusieurs emplacements, résoudre côté domaine
+une source actuelle autorisée de manière déterministe ; ne pas charger toute la liste des
+emplacements pour choisir une image, ni créer plusieurs nœuds pour ce seul besoin.
+
+La réponse spatiale peut annoncer une référence opaque, une version et la disponibilité
+du dérivé, sans image embarquée, base64, contenu documentaire ou fichier original. Prévoir
+une lecture autorisée légère des captures préparées, notamment pour éviter le parcours
+contenu/snapshot de chaque document. Une capture manquante ne bloque ni la réponse spatiale
+ni la première carte utilisable. Sa préparation reste différée, dédupliquée et bornée par
+les mécanismes du domaine ; l'ouverture du graphe ne lance pas la génération de toute la mémoire.
+Une miniature documentaire reste un dérivé inerte de la révision enregistrée, sans exécuter
+le document ni ouvrir sa visionneuse dans un nœud.
+
+Prévoir une variante réellement réduite pour le graphe ; 96 ou 128 pixels de côté sont des
+candidats à mesurer, pas des seuils acceptés. Les captures actuelles peuvent atteindre
+520 × 320 : réduire seulement leur taille à l'écran conserve le coût des pixels décodés.
+Fixer au lot 0 des budgets séparés de nombre d'images, d'octets transférés et décodés, de
+concurrence et de génération serveur. Les chargements suivent le viewport après stabilisation
+des gestes, avec une marge bornée et annulation des demandes obsolètes. Pour la liste, appliquer
+la même logique aux lignes visibles, y compris avec une page de 500 items.
+
+Le cache d'images comprend le contexte d'accès et la version du dérivé ; chaque lecture
+serveur conserve les contrôles de droits actuels. Modification, suppression, révocation,
+changement d'agent ou de session invalident les aperçus concernés et empêchent l'application
+d'une réponse tardive. Borner les images réellement retenues par le moteur et libérer les
+références/URL temporaires après éviction et fermeture, sans compter uniquement sur le cache
+interne d'ECharts. Une indisponibilité utilise l'icône de remplacement et une politique de
+réessai bornée. Appliquer l'arrivée des images par mises à jour locales regroupées, sans
+déplacer les nœuds ni modifier la caméra ou la sélection.
+
 ## 5. Lots et portes de passage
 
 | Lot | Travail et livrable | Critère de passage |
 |---|---|---|
-| 0 — Cadrage et référence | Inventorier les consommateurs ; caractériser feuilles, hubs, cycles et groupes existants ; mesurer le parcours actuel sur données synthétiques ; fixer filtres, isolation, budgets et algorithme initial. | Hypothèses vérifiées ; contrats et protocole de mesure écrits ; objectifs chiffrés acceptés avant l'optimisation. |
+| 0 — Cadrage et référence | Inventorier les consommateurs ; caractériser feuilles, hubs, cycles et groupes existants ; mesurer le parcours actuel sur données synthétiques ; fixer filtres, isolation, budgets et algorithme initial ; qualifier lecture des dérivés, taille et budgets des miniatures. | Hypothèses vérifiées ; contrats et protocole de mesure écrits ; objectifs chiffrés acceptés avant l'optimisation, avec référence sans miniatures et caches froid/chaud. |
 | 1 — Branches exclusives | Ajouter une projection serveur minimale de repli ; compteur, taille et expansion au zoom ; placement local stable et maintien des liens transversaux. | Un hub avec beaucoup de feuilles devient lisible et explorable ; aucune exclusivité déduite d'une page incomplète. Ce lot ne prétend pas supprimer le plafond global. |
 | 2 — Hiérarchie et carte | Étendre aux sous-groupes, cycles, communautés denses et isolés ; construire positions/emprises et générations reprenables ; qualifier l'isolation par périmètre. | Descente déterministe jusqu'à chaque item ; positions stables ; reconstruction/interruption sans carte incohérente ni fuite d'accès. |
-| 3 — Chargement spatial | Introduire le contrat viewport ; cache borné, préchargement, éviction, annulation et localisation ; traiter les arêtes traversantes. | Parcours de bout en bout au-delà de 3 000 nœuds sans chargement exhaustif initial. Retirer le plafond global seulement après cette preuve. |
+| 3 — Chargement spatial | Introduire le contrat viewport ; cache borné, préchargement, éviction, annulation et localisation ; traiter les arêtes traversantes ; activer les miniatures selon le détail et réutiliser leur chargement borné dans la liste. | Parcours de bout en bout au-delà de 3 000 nœuds sans chargement exhaustif initial ; images chargées selon la vue, sans relancer le placement. Retirer le plafond global seulement après cette preuve. |
 | 4 — Actualisation | Invalidation par région/révision, mutations locales, reprise et reconnexion ; gestion prioritaire des révocations et changements de contexte. | Carte et compteurs convergent après mutations ; réponses obsolètes et pertes d'événements couvertes ; retour dans une zone fiable. |
 | 5 — Qualification et livraison | Comparer les mesures ; recette assemblée desktop/mobile ; choisir le moteur sur résultats ; documenter architecture et parcours, puis valider l'ensemble. | Matrice de réception passée, risques restants explicités et mécanisme de retour à la vue précédente vérifié. |
 
@@ -216,6 +285,9 @@ Renforcer les scénarios existants avant d'en ajouter, selon le
 | Une mémoire ancienne reste atteignable au-delà du plafond historique. | DB et E2E : localisation puis navigation vers un item hors des premières pages, avec plus de 3 000 items. |
 | Agent, rôle, ACL, source et filtres bornent aussi groupes, compteurs et caches. | Intégration des droits/filtres existants ; comparer les vues avec/sans données cachées ; révocation pendant une requête et changement d'agent. |
 | Le réseau et la mémoire navigateur restent bornés après une longue exploration. | Mesurer déplacements/retours ; contrôler éviction, nombre de requêtes et absence de parcours global implicite. |
+| Les fichiers et documents se distinguent par leurs aperçus en vue proche et dans les lignes visibles, sans perdre titre, sélection ou ouverture. | Composants réels et navigateur : fichiers image/PDF/Office/vidéo/3D, document HTML, Dataset, format sans aperçu et fichier à plusieurs emplacements ; zoom/repli et liste desktop/mobile. |
+| Une miniature absente, lente ou en échec ne bloque pas la carte ; son arrivée ne déplace aucun nœud. | Parcours navigateur : cache vide, réponses retardées/hors ordre, erreur et réessai borné ; caméra/sélection conservées et aucun téléchargement original pour un dérivé déjà préparé. |
+| Le coût des images reste borné indépendamment de la taille totale de mémoire. | Mesures à froid/chaud : nœuds hors zone préchargée et groupes repliés sans chargement de leurs aperçus ; éviction réelle après déplacements/retours, réouverture et page de 500 items ; révocation et changement d'agent/session pendant un chargement. |
 | Une réponse ancienne ou une reconstruction interrompue ne remplace pas la génération valide. | Intégration : publication concurrente, mutation pendant calcul, suppression, reprise idempotente et génération expirée. |
 | La vue se rétablit après erreur ou reconnexion sans perdre ses repères autorisés. | E2E : erreur/retry, notifications perdues/dupliquées/hors ordre, fermeture/réouverture et reconnexion. |
 | Les commandes restent utilisables sur mobile et au clavier. | Application assemblée sous/au-dessus de 1024 CSS px ; pincement, zoom explicite, focus, plein écran, ouverture du détail et fermeture par backdrop. |
@@ -238,6 +310,13 @@ est qu'une navigation comparable ne charge pas une quantité proportionnelle à 
 Les budgets de rendu et de requête doivent être respectés même dans une région exceptionnellement
 dense, en augmentant l'agrégation plutôt qu'en omettant arbitrairement des nœuds.
 
+Pour les miniatures, comparer les mêmes parcours avec et sans images, sur desktop et mobile,
+avec captures présentes puis absentes. Mesurer nombre d'images chargées/retenues, octets
+compressés et mémoire décodée, coût des contrôles de source, captures/conversions déclenchées,
+temps de frame et première carte utilisable. Augmenter le nombre total de fichiers à cadrage
+et niveau de détail comparables ne doit pas entraîner un chargement proportionnel d'images.
+En cas de saturation, réduire les miniatures et conserver les représentants autorisés.
+
 Conserver diagnostics et résultats détaillés sous `artifacts/`. Les preuves versionnées ne
 contiennent que corpus synthétiques, mesures agrégées et conclusions techniques.
 
@@ -248,6 +327,11 @@ périmètres sans fuite d'informations ; coût des filtres et de la recherche ; 
 regroupement dense ; stabilité lors d'une nouvelle génération ; index spatial ; readiness au
 premier accès ; budgets chiffrés et seuils de détail. Le choix éventuel d'un autre moteur suit
 la qualification, avec parité des interactions et de la présentation.
+
+Pour les miniatures : format et résolution des variantes, lecture du cache documentaire sans
+snapshot complet, priorité des images visibles, seuils d'apparition/disparition, éviction
+effective du moteur et politique de réessai. La décision 0156 fournit le socle de fichiers/PJ,
+sans démontrer à elle seule le coût d'une utilisation dans un graphe multiechelle.
 
 L'introduction est progressive, avec possibilité de retrouver la vue précédente pendant la
 qualification. Les projections ajoutées restent supprimables/reconstructibles sans perte
