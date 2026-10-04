@@ -374,6 +374,7 @@ const MOBILE_GRAPH_MEDIA_QUERY = '(max-width: 1023px)'
 const MOBILE_PINCH_ZOOM_SENSITIVITY = 0.35
 const MOBILE_DETAIL_OPEN_DELAY = 50
 const GRAPH_SERIES_ID = 'memory-graph'
+const LINK_WIDTH_SCALE = 0.8
 const LAYOUT_REBALANCE_MILLISECONDS = 700
 const REVEAL_DURATION_MILLISECONDS = 320
 const REVEAL_SPREAD_MILLISECONDS = 120
@@ -776,8 +777,8 @@ function onGraphRoam(): void {
   const view = captureGraphView()
   const zoom = view?.zoom ?? 1
   const previousOverview = overview.value
-  if (zoom <= 0.75) overview.value = true
-  else if (zoom >= 0.95) overview.value = false
+  if (zoom <= 0.55) overview.value = true
+  else if (zoom >= 0.7) overview.value = false
   let next: Set<string> | null = null
   if (zoom <= BRANCH_CLOSE_ZOOM && expandedBranches.value.size) next = new Set()
   else if (zoom >= BRANCH_OPEN_ZOOM) {
@@ -1105,7 +1106,7 @@ function graphOption(options: {
       },
       force: {
         repulsion: [500 * forceScale, 1400 * forceScale], gravity: 0.045, friction: options.forceFriction ?? 0,
-        edgeLength: [50 * Math.sqrt(forceScale), 200 * Math.sqrt(forceScale)],
+        edgeLength: [45 * Math.sqrt(forceScale), 180 * Math.sqrt(forceScale)],
         layoutAnimation: (options.forceFriction ?? 0) > 0,
       },
       // Small graphs keep folded leaves in the bounded simulation, so unveiling
@@ -1177,9 +1178,7 @@ function graphOption(options: {
       links: (dynamicLayout.value ? visibleEdges.value : renderedEdges.value).map(edge => {
         const structural = isStructuralEdge(edge.relation_type)
         const betweenHubs = hubIds.has(edge.source_item_id) && hubIds.has(edge.target_item_id)
-        const adjacent = edge.source_item_id === selectedNodeId.value || edge.target_item_id === selectedNodeId.value
         const hidden = collapsedMemberIds.value.has(edge.source_item_id) || collapsedMemberIds.value.has(edge.target_item_id)
-          || (overview.value && !betweenHubs && !adjacent)
         return {
           id: edge.id,
           source: edge.source_item_id,
@@ -1188,19 +1187,19 @@ function graphOption(options: {
           ignoreForceLayout: !edge.suggested && betweenHubs,
           lineStyle: {
             color: palette.getPropertyValue(`--solaire-${edgeAccent(edge.relation_type)}-accent`).trim(),
-            opacity: hidden ? 0 : overview.value ? 0.4 : edge.suggested ? 0.38 : structural ? 0.86 : 0.62,
-            width: hidden ? 0 : overview.value ? 1 : edge.suggested
+            opacity: hidden ? 0 : overview.value ? 0.75 : edge.suggested ? 0.38 : structural ? 0.86 : 0.62,
+            width: (hidden ? 0 : overview.value ? 0.5 : edge.suggested
               ? 0.8 + edge.confidence
               : structural
                 ? 2 + edge.confidence * 1.8
-                : 0.9 + edge.confidence * 1.4,
+                : 0.9 + edge.confidence * 1.4) * LINK_WIDTH_SCALE,
             curveness: curvatures.get(edge.id) ?? 0.22,
             type: edge.suggested ? 'dashed' : 'solid',
           },
           emphasis: {
             lineStyle: {
               opacity: hidden ? 0 : 1,
-              width: hidden ? 0 : structural ? 3.2 + edge.confidence * 2 : 1.8 + edge.confidence * 1.5,
+              width: (hidden ? 0 : overview.value ? 1 : structural ? 3.2 + edge.confidence * 2 : 1.8 + edge.confidence * 1.5) * LINK_WIDTH_SCALE,
             },
           },
           blur: { lineStyle: { opacity: hidden ? 0 : 0.16 } },

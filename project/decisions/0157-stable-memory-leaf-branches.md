@@ -86,11 +86,13 @@ Le zoom ouvre seulement les ancres présentes dans le viewport ; repli/dépliage
 thème ne recalculent pas ce placement. Les plafonds existants restent en place.
 Un changement de périmètre ou une invalidation des accès invalide les réponses anciennes.
 
-À un zoom inférieur ou égal à 0,75, la vue d'ensemble réduit les symboles, retire les ombres,
-limite les titres aux hubs et masque les liens de détail, sauf ceux de la sélection.
-Le zoom supérieur ou égal à 0,95 restitue ces liens et titres. Les liens masqués restent
-dans les données et la simulation : le niveau de détail ne change pas la topologie ni les
-relations canoniques. Ce sont des niveaux de rendu, pas encore une hiérarchie de communautés.
+À un zoom inférieur ou égal à 0,55, la vue d'ensemble réduit les symboles, retire les ombres,
+limite les titres aux hubs et conserve les liens entre nœuds affichés avec un trait de
+0,4 pixel et une opacité de 75 %. Le survol les souligne sans dépasser un trait de 0,8 pixel.
+Le zoom supérieur ou égal à 0,7 restitue les styles détaillés des liens et les titres.
+Les liens des feuilles repliées restent dans les données et la simulation : le niveau
+de détail ne change pas la topologie ni les relations canoniques. Ce sont des niveaux
+de rendu, pas encore une hiérarchie de communautés.
 
 Les titres ont un budget lié à la surface du viewport, plafonné à 80, avec priorité aux
 ancres et aux items récents ; ECharts masque les collisions. Le survol et la sélection
