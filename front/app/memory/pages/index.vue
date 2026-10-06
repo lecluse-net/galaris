@@ -179,45 +179,50 @@
         >
           <template #body-cell-title="props">
             <q-td :props="props">
-              <div class="row items-center q-gutter-xs">
-                <DocumentIcon v-if="props.row.item.node_kind === 'document'" :document-id="props.row.item.id" :title="props.row.item.title" />
-                <span class="text-weight-medium">{{ props.row.item.title }}</span>
-                <q-chip
-                  v-if="props.row.item.node_kind === 'document'"
-                  dense
-                  color="orange-1"
-                  text-color="orange-10"
-                  icon="description"
-                >
-                  {{ t('memory.kinds.document') }}
-                </q-chip>
-                <q-chip v-if="props.row.item.source_managed" dense color="blue-1" text-color="primary" icon="sync_lock">
-                  {{ t('memory.generated') }}
-                </q-chip>
-                <q-chip v-else-if="props.row.item.deletion_protected" dense color="purple-1" text-color="purple-10" icon="lock">
-                  {{ t('memory.protected') }}
-                </q-chip>
-                <q-chip v-if="props.row.item.old_at" dense color="grey-4" text-color="grey-9" icon="history">
-                  {{ t('memory.findings.old') }}
-                </q-chip>
-                <q-chip
-                  v-for="finding in store.findingsFor(props.row.item.id)"
-                  :key="finding.id"
-                  clickable
-                  dense
-                  :color="findingColor(finding.kind)"
-                  text-color="white"
-                  :icon="findingIcon(finding.kind)"
-                  @click.stop="openFinding(finding)"
-                >
-                  {{ findingLabel(finding) }}
-                </q-chip>
-              </div>
-              <div class="memory-excerpt text-caption text-grey-7 ellipsis-2-lines">
-                {{ props.row.excerpt }}
-              </div>
-              <div v-if="props.row.temporal_match_at" class="text-caption">
-                {{ t('memory.temporalSearch.match', { date: formatTemporalDate(props.row.temporal_match_at) }) }}
+              <div class="row items-start no-wrap q-gutter-sm">
+                <MemoryItemThumbnail :key="props.row.item.id + ':' + props.row.item.node_kind" :item="props.row.item" :agent-id="store.selectedAgentId" />
+                <div class="col memory-list-copy">
+                  <div class="row items-center q-gutter-xs">
+                    <DocumentIcon v-if="props.row.item.node_kind === 'document'" :document-id="props.row.item.id" :title="props.row.item.title" />
+                    <span class="text-weight-medium">{{ props.row.item.title }}</span>
+                    <q-chip
+                      v-if="props.row.item.node_kind === 'document'"
+                      dense
+                      color="orange-1"
+                      text-color="orange-10"
+                      icon="description"
+                    >
+                      {{ t('memory.kinds.document') }}
+                    </q-chip>
+                    <q-chip v-if="props.row.item.source_managed" dense color="blue-1" text-color="primary" icon="sync_lock">
+                      {{ t('memory.generated') }}
+                    </q-chip>
+                    <q-chip v-else-if="props.row.item.deletion_protected" dense color="purple-1" text-color="purple-10" icon="lock">
+                      {{ t('memory.protected') }}
+                    </q-chip>
+                    <q-chip v-if="props.row.item.old_at" dense color="grey-4" text-color="grey-9" icon="history">
+                      {{ t('memory.findings.old') }}
+                    </q-chip>
+                    <q-chip
+                      v-for="finding in store.findingsFor(props.row.item.id)"
+                      :key="finding.id"
+                      clickable
+                      dense
+                      :color="findingColor(finding.kind)"
+                      text-color="white"
+                      :icon="findingIcon(finding.kind)"
+                      @click.stop="openFinding(finding)"
+                    >
+                      {{ findingLabel(finding) }}
+                    </q-chip>
+                  </div>
+                  <div class="memory-excerpt text-caption text-grey-7 ellipsis-2-lines">
+                    {{ props.row.excerpt }}
+                  </div>
+                  <div v-if="props.row.temporal_match_at" class="text-caption">
+                    {{ t('memory.temporalSearch.match', { date: formatTemporalDate(props.row.temporal_match_at) }) }}
+                  </div>
+                </div>
               </div>
             </q-td>
           </template>
@@ -254,18 +259,6 @@
             <q-td :props="props" class="q-gutter-xs">
               <MemoryAttachmentButton v-if="props.row.item.node_kind === 'attachment'"
                 :item-id="props.row.item.id" :agent-id="store.selectedAgentId" icon-only />
-              <q-btn
-                v-if="props.row.item.node_kind !== 'folder' && canEdit && props.row.item.access.can_write"
-                flat
-                round
-                dense
-                icon="edit"
-                color="primary"
-                :aria-label="t('memory.edit')"
-                @click.stop="openEdit(props.row.item.id)"
-              >
-                <q-tooltip>{{ t('memory.edit') }}</q-tooltip>
-              </q-btn>
             </q-td>
           </template>
           <template #item="props">
@@ -285,26 +278,15 @@
                     {{ t('memory.temporalSearch.match', { date: formatTemporalDate(props.row.temporal_match_at) }) }}
                   </div>
                   <div class="row items-start no-wrap q-gutter-sm">
+                    <MemoryItemThumbnail :key="props.row.item.id + ':' + props.row.item.node_kind" :item="props.row.item" :agent-id="store.selectedAgentId" />
                     <div class="col memory-mobile-copy">
                       <div class="text-subtitle1 text-weight-medium memory-mobile-title">
                         <DocumentIcon v-if="props.row.item.node_kind === 'document'" :document-id="props.row.item.id" :title="props.row.item.title" class="q-mr-sm" />
                         {{ props.row.item.title }}
                       </div>
                     </div>
-                    <div v-if="props.row.item.node_kind !== 'folder'" class="row no-wrap">
-                      <MemoryAttachmentButton v-if="props.row.item.node_kind === 'attachment'"
-                        :item-id="props.row.item.id" :agent-id="store.selectedAgentId" icon-only />
-                      <q-btn
-                        v-if="canEdit && props.row.item.access.can_write"
-                        flat
-                        round
-                        dense
-                        icon="edit"
-                        color="primary"
-                        :aria-label="t('memory.edit')"
-                        @click.stop="openEdit(props.row.item.id)"
-                      />
-                    </div>
+                    <MemoryAttachmentButton v-if="props.row.item.node_kind === 'attachment'"
+                      :item-id="props.row.item.id" :agent-id="store.selectedAgentId" icon-only />
                   </div>
 
                   <div class="row items-center q-gutter-xs memory-mobile-badges">
@@ -607,6 +589,7 @@
 
 <script setup lang="ts">
 import DocumentIcon from '../components/DocumentIcon.vue'
+import MemoryItemThumbnail from '../components/MemoryItemThumbnail.vue'
 import MemoryAttachmentButton from '../components/MemoryAttachmentButton.vue'
 import MemoryFileResources from '../components/MemoryFileResources.vue'
 import { showConfirmationDialog } from '@/core/util'
@@ -1016,10 +999,6 @@ function openCreate(): void {
   editorDialog.value = true
 }
 
-async function openEdit(id: string): Promise<void> {
-  await openDetail(id)
-}
-
 function prepareEditor(item: MemoryItemDetail): void {
   editingId.value = item.id
   Object.assign(editor, {
@@ -1285,6 +1264,7 @@ watch(() => [route.query.item_id, agentStore.agents.length] as const, async ([va
   overflow-wrap: anywhere;
 }
 .memory-mobile-card,
+.memory-list-copy,
 .memory-mobile-copy,
 .memory-mobile-field {
   min-width: 0;

@@ -251,12 +251,16 @@ page and select the tab without assuming a URL parameter. Contacts are at
 `/memory/contacts`; thematic groupings are under **Knowledge → Thematic dossiers** (`/topic`).
 Sharing a link does not grant access to its content.
 
+In **List**, documents, attachments and indexed files display their thumbnail when
+available. Click the row or card to open its details; write permissions determine
+whether its content can be edited.
+
 The graph folds branches with at least eight exclusive leaves into an anchor and a count.
 Zoom in, click the group or enable **Branch details** to see its items, then zoom out to fold
 them. Shared nodes remain visible. Up to 600 loaded items, initial placement settles naturally,
 with gentle rebalancing for 0.7 seconds after the graph changes.
 Zooming, unfolding and closing node details preserve positions. Zooming out also simplifies links and titles. The window
-retains its 3,000-node limit. Spatial loading, subgroups and list thumbnails remain the next steps
+retains its 3,000-node limit. Spatial loading and subgroups remain the next steps
 in the [multi-level memory graph plan](../../../project/plans/graphe-memoire-multiechelle.md) (in French), with `partial` status.
 
 In **Documents**, ordinary refreshes update affected rows without clearing the tree or list.

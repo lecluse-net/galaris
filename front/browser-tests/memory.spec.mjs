@@ -21,6 +21,84 @@ async function memoryItemFixtures(page) {
   return { item, versions }
 }
 
+for (const width of [1440, 390]) test(`memory list displays available thumbnails and keeps items openable at ${width}px`, async ({ page }, testInfo) => {
+  await page.setViewportSize({ width, height: 1000 })
+  const { item } = await memoryItemFixtures(page)
+  const png = Buffer.from(await page.evaluate(() => {
+    const canvas = document.createElement('canvas')
+    canvas.width = 176
+    canvas.height = 124
+    const context = canvas.getContext('2d')
+    context.fillStyle = '#e2f6ff'
+    context.fillRect(0, 0, 176, 124)
+    context.fillStyle = '#03a9f4'
+    context.fillRect(16, 16, 144, 20)
+    context.fillStyle = '#6baf32'
+    context.fillRect(16, 48, 88, 60)
+    return canvas.toDataURL('image/png').split(',')[1]
+  }), 'base64')
+  const items = [
+    { ...item, id: 'doc-a', node_kind: 'file', title: 'Indexed illustration' },
+    { ...item, id: 'attachment-a', node_kind: 'attachment', title: 'Attached illustration', primary_url: 'document://00000000-0000-0000-0000-000000000001/attachments/00000000-0000-0000-0000-000000000002' },
+    { ...item, id: 'document-a', node_kind: 'document', title: 'Rendered document' },
+    { ...item, id: 'unavailable-a', node_kind: 'file', title: 'Unavailable thumbnail' },
+    { ...item, id: 'memory-a', node_kind: 'memory', title: 'Plain memory' },
+  ]
+  if (width < 1024) {
+    items[1].metadata = { resource_uri: items[1].primary_url }
+    delete items[1].primary_url
+  }
+  await jsonRoute(page, '**/api/memory/browse', { hits: items.map(item => ({ item, score: 1, excerpt: 'Preserved excerpt' })), total: items.length, has_more: false })
+  for (const item of items) await jsonRoute(page, `**/api/memory/items/${item.id}?*`, item)
+  const resource = { id: 'image-a', name: 'Illustration.png', media_type: 'image/png', size_bytes: 100, uri: 'file://synthetic/illustration.png' }
+  await jsonRoute(page, '**/api/file-share/items/doc-a/resources?*', [resource])
+  await jsonRoute(page, '**/api/file-share/items/unavailable-a/resources?*', [resource])
+  await page.route('**/api/file-share/items/doc-a/resources/image-a/thumbnail?*', route => route.fulfill({ contentType: 'image/png', body: png }))
+  await page.route('**/api/file-share/items/unavailable-a/resources/image-a/thumbnail?*', route => route.fulfill({ status: 404 }))
+  await page.route('**/api/memory/documents/00000000-0000-0000-0000-000000000001/attachments/00000000-0000-0000-0000-000000000002/thumbnail?*', route => route.fulfill({ contentType: 'image/png', body: png }))
+  await page.route('**/api/memory/documents/document-a/thumbnail?*', route => route.fulfill({ contentType: 'image/png', body: png }))
+  await mount(page, 'app/memory/pages/index.vue', { route: '/memory?agent=7' })
+  const rows = page.locator(width >= 1024 ? '.memory-list-table tbody tr' : '.memory-mobile-card')
+  for (const item of items) {
+    const row = rows.filter({ hasText: item.title })
+    await row.scrollIntoViewIfNeeded()
+    if (['doc-a', 'attachment-a', 'document-a'].includes(item.id)) {
+      await expect(row.locator('img')).toHaveJSProperty('naturalWidth', 176)
+    } else {
+      await expect(row.locator('img')).toHaveCount(0)
+    }
+    await expect(row.getByText('Preserved excerpt', { exact: true })).toBeVisible()
+  }
+  await page.screenshot({ path: testInfo.outputPath('memory-list-thumbnails.png'), fullPage: true })
+  await rows.filter({ has: page.getByText('Indexed illustration', { exact: true }) }).locator('img').click()
+  await expect(page.getByRole('dialog').getByLabel('Title', { exact: true })).toHaveValue('Indexed illustration')
+})
+
+test('memory item thumbnails discard late responses after agent changes and clear on logout', async ({ page }) => {
+  const item = { ...document, node_kind: 'file' }
+  const resource = { id: 'image-a', name: 'Image.png', media_type: 'image/png', size_bytes: 100 }
+  const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+a5AAAAABJRU5ErkJggg==', 'base64')
+  await jsonRoute(page, '**/api/file-share/items/doc-a/resources?*', [resource])
+  let release, lateFinished = false
+  await page.route('**/api/file-share/items/doc-a/resources/image-a/thumbnail?*', async route => {
+    const delayed = new URL(route.request().url()).searchParams.get('agent_id') === '7'
+    if (delayed) await new Promise(resolve => { release = resolve })
+    await route.fulfill({ contentType: 'image/png', body: png })
+    if (delayed) lateFinished = true
+  })
+  await mount(page, 'app/memory/components/MemoryItemThumbnail.vue', { props: { item, agentId: 7 } })
+  await expect.poll(() => Boolean(release)).toBe(true)
+  await page.evaluate(() => window.testApp.setProps({ agentId: 8 }))
+  const image = page.locator('img')
+  await expect(image).toHaveJSProperty('naturalWidth', 1)
+  const latest = await image.getAttribute('src')
+  release()
+  await expect.poll(() => lateFinished).toBe(true)
+  await expect(image).toHaveAttribute('src', latest)
+  await page.evaluate(() => window.dispatchEvent(new CustomEvent('galaris:auth-token-changed', { detail: null })))
+  await expect(image).toHaveCount(0)
+})
+
 for (const nodeKind of ['file', 'directory']) {
   test(`catalogue ${nodeKind} title and content can be saved and reopened`, async ({ page }) => {
     const { item } = await memoryItemFixtures(page)
@@ -697,6 +775,8 @@ for (const width of [1440, 390]) {
     await jsonRoute(page, '**/api/memory/documents/*/attachments/*/info?*', {
       id: '22222222-2222-2222-2222-222222222222', name: 'Original.md', media_type: 'text/markdown', size_bytes: 30,
     })
+    // This text attachment has no generated thumbnail; its original remains openable.
+    await page.route('**/api/memory/documents/11111111-1111-1111-1111-111111111111/attachments/22222222-2222-2222-2222-222222222222/thumbnail?*', route => route.fulfill({ status: 404 }))
     await page.route('**/api/memory/documents/*/attachments/22222222-2222-2222-2222-222222222222?*', route => {
       expect(new URL(route.request().url()).searchParams.get('agent_id')).toBe('7')
       return route.fulfill({ contentType: 'text/markdown', body: '# Original attachment\n\nFull file content.' })
