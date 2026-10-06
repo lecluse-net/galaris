@@ -183,13 +183,15 @@ async def test_list_and_graph_filter_by_topic_and_interlocutor(
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize('global_zone', ['UTC', 'Europe/Paris', 'America/Toronto'])
 async def test_hybrid_list_unites_semantic_matches_with_calendar_and_paginated_sort(
-    db, agents, memory_storage, monkeypatch,
+    db, agents, memory_storage, monkeypatch, global_zone,
 ) -> None:
     from datetime import datetime
     from app.memory.tests.embedding_fixtures import published_chunk
     from app.memory.temporal import next_match
 
+    monkeypatch.setenv('TZ', global_zone)
     owner, peer = agents
     model = EmbeddingModel(key="calendar-model", code="calendar-model", model_name="calendar-model",
                            base_url="http://embedding.invalid/v1", api_key=None)
@@ -201,13 +203,13 @@ async def test_hybrid_list_unites_semantic_matches_with_calendar_and_paginated_s
     monkeypatch.setattr(retrieval, "embed_query", fake_query)
     anchors = [
         None,
-        MemoryTemporalAnchor(month=9, day=27, timezone="UTC"),
-        MemoryTemporalAnchor(year=2027, month=9, day=27, hour=9, minute=30, timezone="America/Toronto"),
-        MemoryTemporalAnchor(weekday=1, hour=15, minute=30, timezone="Europe/Paris"),
-        MemoryTemporalAnchor(month=9, day=28, timezone="UTC"),
-        MemoryTemporalAnchor(month=2, day=29, timezone="UTC"),
-        MemoryTemporalAnchor(hour=1, minute=30, timezone="America/Toronto"),
-        MemoryTemporalAnchor(hour=2, minute=30, timezone="America/Toronto"),
+        MemoryTemporalAnchor(month=9, day=27),
+        MemoryTemporalAnchor(year=2027, month=9, day=27, hour=9, minute=30),
+        MemoryTemporalAnchor(weekday=1, hour=15, minute=30),
+        MemoryTemporalAnchor(month=9, day=28),
+        MemoryTemporalAnchor(month=2, day=29),
+        MemoryTemporalAnchor(hour=1, minute=30),
+        MemoryTemporalAnchor(hour=2, minute=30),
     ]
     items = []
     for index, anchor in enumerate(anchors):
@@ -268,11 +270,11 @@ async def test_calendar_browse_unites_ordinary_search_and_forced_matches(agents,
     monkeypatch.setattr(retrieval, 'resolve_embedding_model', missing_model)
     definitions = [
         ('A ordinary', owner.id, 'semantic', None),
-        ('B scheduled', owner.id, 'working', MemoryTemporalAnchor(month=9, day=27, timezone='UTC')),
-        ('C future', owner.id, 'semantic', MemoryTemporalAnchor(year=2028, month=9, day=27, timezone='UTC')),
+        ('B scheduled', owner.id, 'working', MemoryTemporalAnchor(month=9, day=27)),
+        ('C future', owner.id, 'semantic', MemoryTemporalAnchor(year=2028, month=9, day=27)),
         ('D other words', owner.id, 'working', None),
-        ('E private', peer.id, 'semantic', MemoryTemporalAnchor(month=9, day=27, timezone='UTC')),
-        ('F expired', owner.id, 'semantic', MemoryTemporalAnchor(month=9, day=27, timezone='UTC')),
+        ('E private', peer.id, 'semantic', MemoryTemporalAnchor(month=9, day=27)),
+        ('F expired', owner.id, 'semantic', MemoryTemporalAnchor(month=9, day=27)),
     ]
     for title, agent_id, memory_type, anchor in definitions:
         await service.create_item(MemoryItemCreate(owner_agent_id=agent_id, title=title,

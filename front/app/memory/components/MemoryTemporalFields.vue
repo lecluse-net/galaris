@@ -15,11 +15,6 @@
           :options="weekdays" emit-value map-options dense outlined :label="t('memory.temporal.weekday')"
           @update:model-value="change('weekday', $event)" />
       </div>
-      <div class="col-12">
-        <q-input :model-value="modelValue?.timezone ?? defaultTimezone" :readonly="readonly" dense outlined
-          :label="t('memory.temporal.timezone')" :hint="timezoneError ? t('memory.temporal.timezoneError') : undefined"
-          @update:model-value="changeTimezone(String($event ?? ''))" />
-      </div>
     </div>
     <div class="text-caption q-mt-sm" role="status">{{ interpretation }}</div>
     <q-btn v-if="modelValue && !readonly" flat dense no-caps icon="clear"
@@ -28,17 +23,14 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { memoryService } from '../services/memoryService'
 import type { MemoryTemporalAnchor } from '../types'
 
 const { modelValue, readonly = false } = defineProps<{ modelValue: MemoryTemporalAnchor | null; readonly?: boolean }>()
 const emit = defineEmits<{ 'update:modelValue': [value: MemoryTemporalAnchor | null] }>()
 const { t } = useI18n()
-const defaultTimezone = ref('')
-const timezoneError = ref(false)
-type NumericField = Exclude<keyof MemoryTemporalAnchor, 'timezone'>
+type NumericField = keyof MemoryTemporalAnchor
 const fields: { key: NumericField; min: number; max: number }[] = [
   { key: 'day', min: 1, max: 31 }, { key: 'month', min: 1, max: 12 },
   { key: 'year', min: 1, max: 9999 }, { key: 'hour', min: 0, max: 23 },
@@ -65,22 +57,7 @@ function validNumber(value: unknown, min: number, max: number): true | string {
 function change(key: NumericField, value: string | number | null): void {
   if (readonly) return
   const anchor: MemoryTemporalAnchor = { ...modelValue, [key]: value === '' || value === null ? null : Number(value) }
-  if (!anchor.timezone && defaultTimezone.value) anchor.timezone = defaultTimezone.value
   emit('update:modelValue', [...fields.map(field => field.key), 'weekday' as const]
     .some(field => anchor[field] != null) ? anchor : null)
 }
-function changeTimezone(value: string): void {
-  if (readonly) return
-  defaultTimezone.value = value
-  if (modelValue) emit('update:modelValue', { ...modelValue, timezone: value })
-}
-onMounted(async () => {
-  if (readonly || modelValue?.timezone) return
-  try {
-    const defaults = await memoryService.temporalDefaults()
-    if (!defaultTimezone.value) defaultTimezone.value = defaults.timezone
-  } catch {
-    timezoneError.value = true
-  }
-})
 </script>

@@ -2,9 +2,9 @@
 
 from calendar import monthrange
 from datetime import date, datetime, time, timedelta, timezone
-from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
+from zoneinfo import ZoneInfo
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from core.util import local_timezone_name
 
@@ -20,16 +20,6 @@ class MemoryTemporalAnchor(BaseModel):
     weekday: int | None = Field(default=None, ge=1, le=7, strict=True)
     hour: int | None = Field(default=None, ge=0, le=23, strict=True)
     minute: int | None = Field(default=None, ge=0, le=59, strict=True)
-    timezone: str = Field(default_factory=local_timezone_name, max_length=100)
-
-    @field_validator("timezone")
-    @classmethod
-    def valid_timezone(cls, value: str) -> str:
-        try:
-            ZoneInfo(value)
-        except (ZoneInfoNotFoundError, ValueError) as exc:
-            raise ValueError("Use an IANA timezone such as Europe/Paris.") from exc
-        return value
 
     @model_validator(mode="after")
     def possible_calendar(self) -> "MemoryTemporalAnchor":
@@ -64,19 +54,17 @@ class MemoryTemporalFilter(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     target_at: datetime | None = None
-    timezone: str = Field(default_factory=local_timezone_name, max_length=100)
     lookahead_hours: int | None = Field(default=None, ge=0, le=744, strict=True)
 
     @model_validator(mode="after")
     def resolve_target(self) -> "MemoryTemporalFilter":
-        MemoryTemporalAnchor.valid_timezone(self.timezone)
         if self.target_at is None:
             return self
         target = self.target_at
         if not 2 <= target.year <= 9998:
             raise ValueError("Use a target year between 2 and 9998.")
         if target.utcoffset() is None:
-            zone = ZoneInfo(self.timezone)
+            zone = ZoneInfo(local_timezone_name())
             candidates: set[datetime] = set()
             for fold in (0, 1):
                 instant = target.replace(tzinfo=zone, fold=fold).astimezone(timezone.utc)
@@ -91,7 +79,7 @@ class MemoryTemporalFilter(BaseModel):
     def window(self, *, now: datetime, default_hours: int) -> MemoryTemporalWindow:
         start = self.target_at or now
         hours = default_hours if self.lookahead_hours is None else self.lookahead_hours
-        return MemoryTemporalWindow(start=start, end=start + timedelta(hours=hours), timezone=self.timezone)
+        return MemoryTemporalWindow(start=start, end=start + timedelta(hours=hours), timezone=local_timezone_name())
 
 
 def next_match(anchor: MemoryTemporalAnchor, start: datetime, end: datetime) -> datetime | None:
@@ -104,7 +92,7 @@ def next_match(anchor: MemoryTemporalAnchor, start: datetime, end: datetime) -> 
         raise ValueError("Use an ordered, timezone-aware interval.")
     start = start.astimezone(timezone.utc)
     end = end.astimezone(timezone.utc)
-    zone = ZoneInfo(anchor.timezone)
+    zone = ZoneInfo(local_timezone_name())
     local_start = start.astimezone(zone)
     if all(expected is None or actual == expected for actual, expected in (
         (local_start.year, anchor.year), (local_start.month, anchor.month),

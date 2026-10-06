@@ -20,7 +20,8 @@ conservation `retention_reason` de Dream reste appliqué.
 ## Lecture avant une exécution
 
 Les items peuvent porter un objet `temporal` facultatif (année, mois, jour, jour ISO de semaine,
-heure, minute et fuseau IANA). Les valeurs absentes sont libres et les contraintes présentes se
+heure et minute). Toutes les composantes utilisent le fuseau global de Galaris (`TZ`), sans
+fuseau stocké par souvenir. Les valeurs absentes sont libres et les contraintes présentes se
 combinent. La préparation du contexte réserve le rappel ordinaire aux souvenirs sans ancrage
 et sélectionne séparément les correspondances actuelles et celles
 de la fenêtre `MEMORY_TEMPORAL_LOOKAHEAD_HOURS`, sans condition de similarité avec la requête.
@@ -35,8 +36,10 @@ et ne déclenche ni notification ni expiration. Voir la décision
 
 La liste d'administration réutilise `next_match` via le filtre `temporal` de `/memory/browse`.
 L'IHM applique toujours le filtre, dès la première recherche, sans possibilité de désactivation.
-Elle préremplit un unique champ date/heure avec le temps local du navigateur, convertit la cible
-en UTC explicite et transmet une anticipation nulle. Les filtres texte/type/sujet/interlocuteur
+Elle préremplit un unique champ date/heure dans le fuseau global de Galaris. Le serveur résout
+les cibles locales saisies dans ce même fuseau ; la cible initiale conserve son instant UTC,
+y compris pendant une heure répétée. L'anticipation reste nulle et les résultats sont affichés
+dans le fuseau global, indépendamment de celui du navigateur. Les filtres texte/type/sujet/interlocuteur
 sélectionnent les souvenirs sans ancrage. La branche temporelle sélectionne indépendamment les
 ancrages correspondants, même sans pertinence lexicale ou sémantique. L'union est comptée, triée
 et paginée en SQL avant hydratation ; les correspondances temporelles précèdent par défaut les
@@ -543,6 +546,21 @@ bornée et déterministe décrite ci-dessus.
 
 ## Stockage et oubli
 
+Les URL d'un nœud sont associées uniquement par `memory_urls(id, memory_node_id, url)`.
+`memory_items.primary_url` est une colonne texte nullable qui désigne la source de
+visualisation privilégiée. Le catalogue de transport référence une ligne d'URL par
+`memory_url_id`, sans FK directe vers le nœud ; les métadonnées et `MemorySource`
+ne dupliquent plus ces emplacements. La colonne `file_sha256` du nœud conserve le
+SHA-256 des octets complets, quel que soit le format, y compris pour les pièces jointes.
+`file_media_type` et `file_size_bytes` sont des colonnes nullables pour le MIME et
+la taille du fichier original, distinctes du format et de la taille de sa fiche.
+Une contrainte unique protège chaque paire nœud/URL ; une FK différée vérifie
+que l'URL principale appartient aux emplacements du nœud. Les usages référencent
+les Tasks par une vraie FK nullable, sans supprimer l'audit si une Task est effacée.
+Une nouvelle copie conserve l'URL principale ; un déplacement la suit et une suppression
+choisit un emplacement restant, sinon `NULL`. L'action DbAdmin transfère les liens
+existants avant contraction. Voir la [décision 0159](../../../../project/decisions/0159-memory-url-associations.md).
+
 `MemoryItem.id` est l'identité logique stable. Chaque révision pointe vers un couple
 `(provider_code, resource_id)` opaque. Le provider `native` écrit atomiquement dans le répertoire
 fixe `/data/memory` ; la base ne déduit jamais un chemin de `resource_id`.
@@ -559,7 +577,11 @@ politiques et les `MemoryFinding` de type `duplicate`, `contradiction` ou `aging
 l'inactivité. Memory pilote, Dream exécute. Chaque politique possède les modes `off`, `manual` et
 `automatic`; l'automatique appelle exactement le même service que l'action manuelle de l'IHM.
 Ce mécanisme n'utilise aucun LLM génératif et reste exclu des jauges Dream. Les doublons lisent
-l'index d'embeddings courant et appliquent le même
+l'index d'embeddings courant ou les SHA de fichiers. Un SHA identique donne un
+match à 100 % sans embeddings ; l'acquisition du SHA ne fusionne rien. Dream
+effectue la fusion selon sa politique, en conservant URL, notes, provenance et
+usages. Les propriétaires et les droits restent compatibles ; les pièces jointes
+ne fusionnent qu'à l'intérieur du même document. Les autres doublons appliquent le même
 `MEMORY_DUPLICATE_SIMILARITY_THRESHOLD` que l'acquisition et le rappel. Les contradictions exigent
 en plus un marqueur textuel explicable.
 
@@ -591,7 +613,7 @@ dans les tables canoniques.
   `/memory/search` viennent des Params courants; `/memory/recall` reste un alias déprécié.
   `/memory/metrics` expose le miroir local sans contenu des
   compteurs/histogrammes, `/memory/retention/preview` estime une politique avant activation et
-  `/memory/duplicates/preview` liste sans mutation les paires ordinaires au-dessus du seuil global
+  `/memory/duplicates/preview` liste sans mutation les fichiers de SHA identique et les paires ordinaires au-dessus du seuil global
   de fusion cosinus, éventuellement pour un agent, et retourne cette valeur dans sa réponse.
   `/memory/findings` expose les détections persistantes et
   ses actions `apply`/`dismiss` avec les mêmes contrôles de révision que le mode automatique.

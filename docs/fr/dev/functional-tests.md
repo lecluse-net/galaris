@@ -335,7 +335,7 @@ explicite. Les fichiers `*.spec.mjs` se trouvent sous `front/browser-tests/`.
 | `voice` | Démarrer/annuler un appel, traiter le tour dans le bon canal, fermer les médias | `test_session.py`, `test_multichannel_routing.py`, `test_realtime_engine.py`, `voice.spec.mjs` |
 | `memory` | Rechercher, créer, partager et restaurer sans perte de contenu, de révision ni de droits | `test_document_library.py`, `test_document_grants.py`, `test_editorial_html.py`, `test_semantic_search.py`, `memory.spec.mjs` |
 | Recherche mémoire unifiée | Liste réunit souvenirs sans date filtrés par pertinence et correspondances temporelles indépendantes ; les souvenirs datés hors période ne passent pas par le rappel ordinaire ; pagination et tri après filtrage ; ouverture et oubli des résultats, repli lexical explicite | `test_browse_filters.py`, `test_semantic_search.py`, `front/browser-tests/memory.spec.mjs` |
-| Temporalité mémoire | Dates partielles, fuseaux et changements d'heure ; acquisition, correction, historique, droits et portée contact ; contexte sans requête, pagination et budget ; recherche à date cible combinée aux filtres, parcours HTTP et refus d'accès ; filtre obligatoire dès la première recherche, initialisé à l'heure du navigateur, correction de la cible et reprise après erreur sur mobile/bureau | `back/app/memory/tests/test_temporal.py`, `back/app/memory/tests/test_browse_filters.py`, `front/browser-tests/memory.spec.mjs` |
+| Temporalité mémoire | Dates partielles dans le fuseau global Galaris et changements d'heure ; nettoyage des anciens fuseaux sans perte de dates, d'historique ni d'acquisition ; correction, droits et portée contact ; contexte sans requête, pagination et budget ; recherche à date cible combinée aux filtres, parcours HTTP et refus d'accès ; filtre obligatoire dès la première recherche, saisie et affichage indépendants du fuseau du navigateur, reprise après erreur sur mobile/bureau | `back/app/memory/tests/test_temporal.py`, `back/app/memory/tests/test_browse_filters.py`, `front/browser-tests/memory.spec.mjs`, `e2e/specs/memory-temporal.spec.mjs` |
 | Miniatures des documents | Réutiliser l’instantané d’impression et ses images pour le début de la première page ; conserver la révision miniaturisée ; renouveler le cache après modification ; revérifier les droits sans relire le contenu ni l’historique ; différer les aperçus hors écran, borner les chargements et annuler les travaux obsolètes sans empêcher l’ouverture du document | `back/app/memory/tests/test_document_thumbnails.py`, `front/browser-tests/document-thumbnails.spec.mjs`, `front/core/util/previewQueue.test.mjs`, `browser-executor/pdf.test.mjs` |
 | Miniatures Office et tableurs | Convertir la première page des fichiers Office et la première page imprimée des tableurs ; éviter OCR et extraction analytique ; séparer les checkpoints de l’analyse complète ; préserver l’original, les droits et le cache partagé ; reprendre après échec et nettoyer les temporaires après annulation ; afficher et télécharger sur desktop et mobile, y compris après réouverture | `back/app/memory/tests/test_document_thumbnails.py`, `front/browser-tests/document-thumbnails.spec.mjs`, `e2e/specs/office-thumbnails.spec.mjs` |
 | `contact` | Retrouver le bon interlocuteur sans exposer les contacts d’un autre périmètre | `test_service.py`, `test_router.py` |
@@ -548,6 +548,11 @@ Garanties : `mobile-editor-toolbar.spec.mjs`, `document-voice.spec.mjs`,
 `rich-text.spec.mjs` et `document-print.spec.mjs` dans `front/browser-tests/`.
 
 ## Catalogue privé de fichiers et maintenance
+
+`back/app/memory/tests/test_memory_urls.py` vérifie l'unique table de rattachement
+des URL, le SHA-256 des octets texte et binaires sur le nœud, la colonne nullable
+d'URL principale, sa stabilité et les déplacements/suppressions. La transition
+PostgreSQL couvre rollback, rejeu et retrait de l'ancienne colonne du catalogue.
 
 `back/app/memory/tests/test_file_catalogue.py` vérifie les observations, la séparation des
 agents et bindings, les champs personnels éditables, les tombes et réponses tardives,

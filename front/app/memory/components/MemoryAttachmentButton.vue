@@ -46,7 +46,7 @@ async function load(openViewer: boolean): Promise<void> {
   try {
     const item = await memoryService.getItem(itemId, agentId)
     if (request !== generation) return
-    const uri = item.metadata.resource_uri
+    const uri = item.primary_url
     const reference = typeof uri === 'string' ? attachmentReference(uri) : null
     if (!reference) throw new Error('Missing document attachment reference')
     const info = await memoryService.documentAttachmentInfo(reference[0], reference[1], agentId)

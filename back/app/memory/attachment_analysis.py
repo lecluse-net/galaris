@@ -10,7 +10,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from uuid import UUID
 
-from sqlalchemy import Select, select
+from sqlalchemy import Select, select, exists
 from sqlalchemy.orm import aliased
 
 from core.database import get_db
@@ -38,12 +38,13 @@ class AttachmentAnalysisSource:
 def empty_attachment_items() -> Select[tuple[MemoryItem]]:
     """Live, empty companions only; the manifest is rechecked before every effect."""
     document = aliased(MemoryItem)
-    return select(MemoryItem).join(
-        DocumentAttachment, DocumentAttachment.memory_item_id == MemoryItem.id,
-    ).join(document, document.id == DocumentAttachment.document_id).where(
+    live_source = exists(select(DocumentAttachment.id).join(
+        document, document.id == DocumentAttachment.document_id,
+    ).where(DocumentAttachment.memory_item_id == MemoryItem.id,
+            DocumentAttachment.active.is_(True), document.deleted_at.is_(None)))
+    return select(MemoryItem).where(
         MemoryItem.node_kind == "attachment", MemoryItem.size_bytes == 0,
-        MemoryItem.deleted_at.is_(None), DocumentAttachment.active.is_(True),
-        document.deleted_at.is_(None),
+        MemoryItem.deleted_at.is_(None), live_source,
     )
 
 

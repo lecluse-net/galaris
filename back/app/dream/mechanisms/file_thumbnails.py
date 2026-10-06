@@ -30,7 +30,7 @@ class FileThumbnailsMechanism:
     def _attachments(self) -> Select[tuple[DocumentAttachment, MemoryItem]]:
         document = aliased(MemoryItem)
         identity = func.concat("attachment:", DocumentAttachment.id)
-        media = func.lower(MemoryItem.metadata_["resource_media_type"].as_string())
+        media = func.lower(MemoryItem.file_media_type)
         name = func.lower(MemoryItem.title)
         return select(DocumentAttachment, document).join(
             MemoryItem, MemoryItem.id == DocumentAttachment.memory_item_id,

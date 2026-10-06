@@ -56,10 +56,10 @@ Do not store transient status, secrets, raw transcripts, provisional drafts or n
 already owned by an authoritative domain.
 
 Temporal anchors are optional. Supply year/month/day/weekday (ISO Monday=1), hour/minute
-and an IANA timezone only when the fact explicitly warrants temporal recall. Unset components
+only when the fact explicitly warrants temporal recall. Unset components
 are wildcards: month=9/day=27 means every September 27; hour=9 without minute means the whole
 9 o'clock hour. Never default to today's date. Resolve relative dates from the source message's
-timestamp and timezone; ask when ambiguous. Upcoming memories convey information, not an
+timestamp in Galaris's configured timezone; ask when ambiguous. Upcoming memories convey information, not an
 instruction to notify anyone. Use memory_upcoming to inspect further matches when truncated.
 An anchor is a recall rule: outside its period the memory is excluded from automatic context;
 when it matches it is added with priority independently of ordinary search criteria. Unanchored
@@ -338,8 +338,10 @@ async def build_memory_brief(
             match_at = getattr(hit, "temporal_match_at", None)
             if isinstance(match_at, datetime) and hit.item.temporal is not None:
                 from zoneinfo import ZoneInfo
-                local_match = match_at.astimezone(ZoneInfo(hit.item.temporal.timezone))
-                temporal_text = f"temporal_match={local_match.isoformat(timespec='minutes')} ({hit.item.temporal.timezone})\n"
+                from core.util import local_timezone_name
+                zone_name = local_timezone_name()
+                local_match = match_at.astimezone(ZoneInfo(zone_name))
+                temporal_text = f"temporal_match={local_match.isoformat(timespec='minutes')} ({zone_name})\n"
             if experience:
                 metadata = hit.item.metadata
                 experience_text = (

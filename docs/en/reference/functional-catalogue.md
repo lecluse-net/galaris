@@ -1078,7 +1078,8 @@ rewriting or deleting the existing record. Without this specialisation, existing
 ### Partial temporal anchors and upcoming recall
 
 A memory may carry an **optional temporal anchor**: year, month, day of month, weekday, hour,
-minute and IANA timezone. Supplied components combine; missing components remain unrestricted.
+and minute, interpreted in Galaris's global timezone (`TZ`). Memories store no timezone override.
+Supplied components combine; missing components remain unrestricted.
 Day 27 and month 9 mean every 27 September; a date without a time covers the day. The form explains
 the interpretation and can remove the anchor without removing content. Creation, revisions,
 `memory_remember` and Dream extraction preserve it; different anchors are not merged. Existing

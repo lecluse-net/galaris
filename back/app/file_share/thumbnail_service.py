@@ -28,7 +28,7 @@ def pending_thumbnails(handled: Select[tuple[str]]) -> Select[tuple[FileCatalogE
     return select(FileCatalogEntry).join(Connection, Connection.id == FileCatalogEntry.connection_id).join(
         ToolModel, ToolModel.id == Connection.tool_id,
     ).where(
-        FileCatalogEntry.present.is_(True), FileCatalogEntry.memory_item_id.is_not(None),
+        FileCatalogEntry.present.is_(True), FileCatalogEntry.memory_node_id.is_not(None),
         FileCatalogEntry.file_sha256.is_not(None),
         FileCatalogEntry.descriptor["is_collection"].as_boolean().is_(False), live_catalogue_binding(),
         or_(media.startswith("image/"), media.startswith("video/"), media.startswith("text/"),
@@ -49,7 +49,7 @@ async def next_source(handled: Select[tuple[str]]) -> dict[str, Any] | None:
     descriptor = ResourceDescriptor.model_validate(entry.descriptor)
     renderer = ":svg-v1" if descriptor.media_type.split(";", 1)[0].strip().casefold() == "image/svg+xml" or descriptor.name.casefold().endswith(".svg") else ""
     version = sha256(f"{entry.source_version or ''}:{entry.binding_stamp}:{entry.file_sha256 or ''}{renderer}".encode()).hexdigest()
-    return {"item_id": str(entry.memory_item_id), "entry_id": str(entry.id), "agent_id": entry.agent_id,
+    return {"item_id": str(entry.memory_node_id), "entry_id": str(entry.id), "agent_id": entry.agent_id,
             "uri": entry.uri,
             "version": entry.source_version, "binding_stamp": entry.binding_stamp, "sha256": entry.file_sha256,
             "identity": f"file:{entry.id}:{version}"}

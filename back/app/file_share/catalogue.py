@@ -8,7 +8,7 @@ import json
 from typing import cast
 from uuid import UUID
 
-from sqlalchemy import Text, and_, exists, func, or_, select, literal
+from sqlalchemy import Text, and_, exists, func, or_, select, literal, update, delete
 from sqlalchemy.orm import InstrumentedAttribute
 from sqlalchemy.sql.elements import ColumnElement
 
@@ -17,7 +17,7 @@ from app.connection.facade import effective_param_value_expression
 from app.tools import ToolModel
 from app.tools.contracts import FILE_INDEXING_PARAM, FileIndexingMode
 from app.memory import project_catalogue_entry, link_catalogue_entries, catalogue_projection_write, detach_catalogue_parent_links
-from app.memory import update_catalogue_file_locations
+from app.memory import update_catalogue_file_locations, associate_memory_url, MemoryURL, MemoryItem
 from core.database import get_db
 
 from .bridges import get_bridge
@@ -70,7 +70,7 @@ def catalogue_access_clause(item_id: InstrumentedAttribute[UUID | None]) -> Colu
     return exists(select(FileCatalogEntry.id).join(
         bindings, bindings.c.id == FileCatalogEntry.connection_id,
     ).where(
-        FileCatalogEntry.memory_item_id == item_id,
+        FileCatalogEntry.memory_node_id == item_id,
         FileCatalogEntry.present.is_(True), FileCatalogEntry.agent_id == bindings.c.agent_id,
         FileCatalogEntry.binding_stamp == bindings.c.stamp,
     ))
@@ -146,37 +146,44 @@ async def project_entry(entry: FileCatalogEntry) -> None:
     descriptor = ResourceDescriptor.model_validate(entry.descriptor)
     if entry.file_sha256 and entry.fingerprint_version != entry.source_version:
         # Keep the old content's shared summary immutable when this location changes.
-        previous = entry.memory_item_id
+        previous = entry.memory_node_id
         await detach_entry_parents(entry)
         entry.file_sha256 = None
         entry.fingerprint_version = None
-        entry.memory_item_id = None
+        entry.memory_url = None
         entry.generation += 1
         await get_db().flush()
         if previous is not None:
             await refresh_file_locations(previous)
-    if entry.file_sha256 and entry.memory_item_id is not None:
-        await refresh_file_locations(entry.memory_item_id)
+    if entry.file_sha256 and entry.memory_node_id is not None:
+        await refresh_file_locations(entry.memory_node_id)
         await _link_entry_parent(entry, descriptor)
         return
-    entry.memory_item_id = await project_catalogue_entry(
-        identity=entry.id, agent_id=entry.agent_id, item_id=entry.memory_item_id,
+    node_id = await project_catalogue_entry(
+        identity=entry.id, agent_id=entry.agent_id, item_id=entry.memory_node_id,
         title=descriptor.name or entry.uri, uri=entry.uri, directory=descriptor.is_collection,
         description="", notes="\n\n".join(part for part in (entry.notes, entry.enrichment_text) if part),
         source_ref=str(entry.id) if entry.generation == 1 else f"{entry.id}:generation:{entry.generation}",
+        file_media_type=descriptor.media_type, file_size_bytes=descriptor.size,
     )
+    old_node_id = entry.memory_node_id
+    entry.memory_url = await associate_memory_url(node_id, entry.uri)
+    await get_db().flush()
+    await refresh_file_locations(node_id)
+    if old_node_id is not None and old_node_id != node_id:
+        await refresh_file_locations(old_node_id)
     await _link_entry_parent(entry, descriptor)
 
 
 async def _link_entry_parent(entry: FileCatalogEntry, descriptor: ResourceDescriptor) -> None:
     if not descriptor.is_collection:
         parent_uri = entry.uri.rsplit('/', 1)[0] + '/'
-        parent = await get_db().scalar(select(FileCatalogEntry.memory_item_id).where(
+        parent = await get_db().scalar(select(FileCatalogEntry.memory_node_id).where(
             FileCatalogEntry.connection_id == entry.connection_id, FileCatalogEntry.binding_stamp == entry.binding_stamp,
             FileCatalogEntry.runtime == entry.runtime, FileCatalogEntry.uri == parent_uri,
             FileCatalogEntry.present.is_(True),
         ))
-        child_id = entry.memory_item_id
+        child_id = entry.memory_node_id
         if parent is not None and child_id is not None:
             await link_catalogue_entries(parent, [child_id], agent_id=entry.agent_id)
 
@@ -234,34 +241,53 @@ async def observe_descriptors(scope: ObservationScope, descriptors: list[Resourc
 
 async def refresh_file_locations(item_id: UUID) -> None:
     uris = list(await get_db().scalars(select(FileCatalogEntry.uri).where(
-        FileCatalogEntry.memory_item_id == item_id, FileCatalogEntry.present.is_(True),
+        FileCatalogEntry.memory_node_id == item_id, FileCatalogEntry.present.is_(True),
     )))
     await update_catalogue_file_locations(item_id, uris)
+    obsolete = list(await get_db().scalars(select(MemoryURL.id).where(
+        MemoryURL.memory_node_id == item_id, MemoryURL.url.not_in(uris),
+    )))
+    if obsolete:
+        # Retained observation records are transport tombstones, not locations.
+        await get_db().execute(update(FileCatalogEntry).where(
+            FileCatalogEntry.memory_url_id.in_(obsolete),
+        ).values(memory_url_id=None))
+        await get_db().execute(delete(MemoryURL).where(MemoryURL.id.in_(obsolete)))
+        node = await get_db().get(MemoryItem, item_id)
+        if node is not None:
+            await get_db().refresh(node, ["url_relations"])
+
+
+async def merge_catalogue_url_references(duplicate_id: UUID, canonical_id: UUID) -> None:
+    """Retain observed transports when Memory coalesces an identical URL."""
+    await get_db().execute(update(FileCatalogEntry).where(
+        FileCatalogEntry.memory_url_id == duplicate_id,
+    ).values(memory_url_id=canonical_id))
 
 
 async def detach_entry_parents(entry: FileCatalogEntry) -> None:
-    if entry.memory_item_id is None:
+    if entry.memory_node_id is None:
         return
     if not entry.file_sha256:
-        await detach_catalogue_parent_links(entry.memory_item_id)
+        await detach_catalogue_parent_links(entry.memory_node_id)
         return
     parent_uri = entry.uri.rstrip('/').rsplit('/', 1)[0] + '/'
     db = get_db()
     another = await db.scalar(select(FileCatalogEntry.id).where(
         FileCatalogEntry.id != entry.id, FileCatalogEntry.present.is_(True),
-        FileCatalogEntry.memory_item_id == entry.memory_item_id,
+        FileCatalogEntry.memory_node_id == entry.memory_node_id,
         FileCatalogEntry.connection_id == entry.connection_id, FileCatalogEntry.binding_stamp == entry.binding_stamp,
         FileCatalogEntry.runtime == entry.runtime, FileCatalogEntry.uri.startswith(parent_uri, autoescape=True),
         func.strpos(func.substr(FileCatalogEntry.uri, len(parent_uri) + 1), '/') == 0,
     ).limit(1))
     if another is not None:
         return
-    parents = list(await db.scalars(select(FileCatalogEntry.memory_item_id).where(
+    parents = list(await db.scalars(select(FileCatalogEntry.memory_node_id).where(
         FileCatalogEntry.connection_id == entry.connection_id, FileCatalogEntry.binding_stamp == entry.binding_stamp,
         FileCatalogEntry.runtime == entry.runtime, FileCatalogEntry.uri == parent_uri,
-        FileCatalogEntry.memory_item_id.is_not(None),
+        FileCatalogEntry.memory_node_id.is_not(None),
     )))
-    await detach_catalogue_parent_links(entry.memory_item_id, parent_ids=[identity for identity in parents if identity is not None])
+    await detach_catalogue_parent_links(entry.memory_node_id, parent_ids=[identity for identity in parents if identity is not None])
 
 
 async def observe_deletion(scope: ObservationScope, uri: str) -> None:
@@ -283,8 +309,8 @@ async def observe_deletion(scope: ObservationScope, uri: str) -> None:
             await detach_entry_parents(entry)
             entry.present = False
             entry.operation_started_at = scope.started_at
-            if entry.memory_item_id is not None:
-                await refresh_file_locations(entry.memory_item_id)
+            if entry.memory_node_id is not None:
+                await refresh_file_locations(entry.memory_node_id)
     if not known:
         db.add(FileCatalogEntry(
             agent_id=scope.agent_id, connection_id=scope.connection_id, binding_stamp=scope.stamp,
@@ -302,9 +328,9 @@ async def observe_membership(scope: ObservationScope, parent_uri: str, child_uri
         FileCatalogEntry.present.is_(True), FileCatalogEntry.uri.in_([parent_uri, *child_uris]),
     )))
     parent = next((entry for entry in entries if entry.uri == parent_uri), None)
-    if parent is not None and parent.memory_item_id is not None:
-        await link_catalogue_entries(parent.memory_item_id, [entry.memory_item_id for entry in entries
-            if entry.uri in child_uris and entry.memory_item_id is not None], agent_id=scope.agent_id)
+    if parent is not None and parent.memory_node_id is not None:
+        await link_catalogue_entries(parent.memory_node_id, [entry.memory_node_id for entry in entries
+            if entry.uri in child_uris and entry.memory_node_id is not None], agent_id=scope.agent_id)
 
 
 async def observe_move(scope: ObservationScope, source_uri: str, destination: ResourceDescriptor) -> None:
@@ -340,10 +366,16 @@ async def observe_move(scope: ObservationScope, source_uri: str, destination: Re
     ))) if destination.is_collection else []
     for moving in [source, *descendants]:
         old_uri, old_key = moving.uri, moving.uri_key
+        node_id = moving.memory_node_id
         moving.uri = destination.uri if moving is source else destination.uri.rstrip("/") + "/" + old_uri[len(source_uri.rstrip("/") + "/"):]
         moving.uri_key = hashlib.sha256(moving.uri.encode()).hexdigest()
         moving.operation_started_at = scope.started_at
         moving.descriptor = {**moving.descriptor, "uri": moving.uri}
+        if node_id is not None:
+            moving.memory_url = await associate_memory_url(node_id, moving.uri)
+            node = await db.get(MemoryItem, node_id)
+            if node is not None and node.primary_url == old_uri:
+                node.primary_url = moving.uri
         # Reserve the former name with a tombstone before a late response arrives.
         await db.flush()
         db.add(FileCatalogEntry(
@@ -354,6 +386,8 @@ async def observe_move(scope: ObservationScope, source_uri: str, destination: Re
         ))
         if moving is not source:
             await project_entry(moving)
+        if node_id is not None:
+            await refresh_file_locations(node_id)
     await db.flush()
 
 
@@ -362,7 +396,7 @@ async def catalogue_source_readable(item_id: UUID, agent_id: int) -> bool:
     entries = await db.scalars(select(FileCatalogEntry).join(
         Connection, Connection.id == FileCatalogEntry.connection_id,
     ).join(ToolModel, ToolModel.id == Connection.tool_id).where(
-        FileCatalogEntry.memory_item_id == item_id, FileCatalogEntry.agent_id == agent_id,
+        FileCatalogEntry.memory_node_id == item_id, FileCatalogEntry.agent_id == agent_id,
         FileCatalogEntry.present.is_(True), live_catalogue_binding(),
     ))
     from .resource_service import resource_info
@@ -396,7 +430,7 @@ async def catalogue_sources_readable(item_ids: Sequence[UUID], agent_id: int) ->
     rows = list((await get_db().execute(select(FileCatalogEntry, ToolModel.messenger_config).join(
         Connection, Connection.id == FileCatalogEntry.connection_id,
     ).join(ToolModel, ToolModel.id == Connection.tool_id).where(
-        FileCatalogEntry.memory_item_id.in_(item_ids), FileCatalogEntry.agent_id == agent_id,
+        FileCatalogEntry.memory_node_id.in_(item_ids), FileCatalogEntry.agent_id == agent_id,
         FileCatalogEntry.present.is_(True), live_catalogue_binding(),
     ))).all())
     console_entries: dict[tuple[int, str, str], list[FileCatalogEntry]] = {}
@@ -439,13 +473,13 @@ async def catalogue_sources_readable(item_ids: Sequence[UUID], agent_id: int) ->
                         if scope is None or scope.connection_id != connection_id or scope.stamp != stamp:
                             continue
                         for entry in group:
-                            if entry.memory_item_id is None or entry.memory_item_id in readable:
+                            if entry.memory_node_id is None or entry.memory_node_id in readable:
                                 continue
                             try:
                                 await resource_info(ctx, entry.uri)
                             except Exception:
                                 continue
-                            readable.add(entry.memory_item_id)
+                            readable.add(entry.memory_node_id)
             finally:
                 await resource.close()
     batches: dict[tuple[int, str, str, str], tuple[ResourceBatchMetadataTransport, list[FileCatalogEntry]]] = {}
@@ -459,7 +493,7 @@ async def catalogue_sources_readable(item_ids: Sequence[UUID], agent_id: int) ->
                     continue
                 transport, _service = await resolve_resource_transport_with_service(agent_id, first.scheme, first.decoded_locator)
                 if not isinstance(transport, ResourceBatchMetadataTransport):
-                    other_ids.update(entry.memory_item_id for entry in group if entry.memory_item_id is not None)
+                    other_ids.update(entry.memory_node_id for entry in group if entry.memory_node_id is not None)
                     continue
                 key = (connection_id, stamp, runtime, scheme)
                 if key not in batches:
@@ -473,7 +507,7 @@ async def catalogue_sources_readable(item_ids: Sequence[UUID], agent_id: int) ->
             metadata = await transport.resource_infos(list(paths.values()))
         except Exception:
             continue
-        readable.update(entry.memory_item_id for entry in group if entry.memory_item_id is not None and paths[entry.id] in metadata)
+        readable.update(entry.memory_node_id for entry in group if entry.memory_node_id is not None and paths[entry.id] in metadata)
     for identity in other_ids - readable:
         if await catalogue_source_readable(identity, agent_id):
             readable.add(identity)
@@ -502,7 +536,7 @@ async def annotate_catalogue_entry(ctx: ResourceContext, uri: object, notes: str
                 raise PermissionError("Resource binding changed")
             entry.notes = notes
             await project_entry(entry)
-            assert entry.memory_item_id is not None
-            item_id = entry.memory_item_id
+            assert entry.memory_node_id is not None
+            item_id = entry.memory_node_id
         await db.commit()
     return item_id

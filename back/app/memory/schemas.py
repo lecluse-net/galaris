@@ -250,6 +250,10 @@ class MemoryItemPublic(BaseModel):
     managed_source_ref: str | None
     content_hash: str
     file_sha256: str | None = None
+    file_media_type: str | None = None
+    file_size_bytes: int | None = None
+    primary_url: str | None = None
+    urls: list[str] = Field(default_factory=list)
     size_bytes: int
     last_accessed_at: datetime | None
     access_count: int

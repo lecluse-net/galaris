@@ -34,7 +34,7 @@
             />
           </div>
           <div v-if="activeTab === 'list'" class="memory-filter-block__field">
-            <MemoryTemporalFilter ref="temporalFilter" v-model="store.temporal" @update:model-value="() => searchSafely(true)" />
+            <MemoryTemporalFilter ref="temporalFilter" v-model="store.temporal" :timezone="store.temporalTimezone" @update:model-value="() => searchSafely(true)" />
           </div>
           <div v-if="activeTab === 'graph'" class="memory-filter-block__timeline">
             <div class="memory-filter-block__slider">
@@ -628,7 +628,7 @@ import type {
 const { t, te, locale } = useI18n()
 function formatTemporalDate(value: string): string {
   return new Intl.DateTimeFormat(locale.value, {
-    dateStyle: 'medium', timeStyle: 'short',
+    dateStyle: 'medium', timeStyle: 'short', timeZone: store.temporalTimezone ?? 'UTC',
   }).format(new Date(value))
 }
 const route = useRoute()

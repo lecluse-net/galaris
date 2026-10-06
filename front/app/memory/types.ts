@@ -94,6 +94,10 @@ export type DocumentType = 'html' | 'dataset'
 
 export interface MemoryItem {
   file_sha256?: string | null
+  file_media_type?: string | null
+  file_size_bytes?: number | null
+  primary_url?: string | null
+  urls?: string[]
   temporal?: MemoryTemporalAnchor | null
   document_type: DocumentType
   content_profile?: 'rich-text' | 'document'
@@ -281,7 +285,6 @@ export interface MemoryTemporalAnchor {
   weekday?: number | null
   hour?: number | null
   minute?: number | null
-  timezone?: string
 }
 
 export interface MemorySearchPage {
@@ -296,7 +299,6 @@ export interface MemorySearchPage {
 
 export interface MemoryTemporalFilter {
   target_at: string | null
-  timezone: string
   lookahead_hours: number | null
 }
 

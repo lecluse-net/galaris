@@ -9,9 +9,10 @@ from typing import cast
 from uuid import UUID
 
 from loguru import logger
-from sqlalchemy import Float, and_, cast as sql_cast, exists, func, or_, select
+from sqlalchemy import Float, and_, cast as sql_cast, exists, func, or_, select, literal
 from sqlalchemy.orm import aliased
 from sqlalchemy.sql.elements import ColumnElement
+from sqlalchemy.sql.selectable import Subquery
 
 from core.database import get_db
 from core.params import runtime_settings
@@ -293,26 +294,18 @@ async def preview_duplicate_pairs(
     limit: int,
     agent_id: int | None = None,
 ) -> MemoryDuplicatePreview:
-    """List current ordinary-memory pairs above a cosine threshold."""
+    """Exact file identity scores 100%, including without an embedding provider."""
 
     try:
         model = await resolve_embedding_model()
     except MemoryEmbeddingNotConfiguredError:
-        return MemoryDuplicatePreview(
-            threshold=threshold,
-            total_pairs=0,
-            degraded=True,
-            degradation_reason="embedding_not_configured",
-        )
+        return await _pair_preview(_sha_pairs(agent_id), threshold=threshold, limit=limit,
+                                   degradation_reason="embedding_not_configured")
     except Exception:
         logger.exception("Memory duplicate preview model resolution failed")
         await get_db().rollback()
-        return MemoryDuplicatePreview(
-            threshold=threshold,
-            total_pairs=0,
-            degraded=True,
-            degradation_reason="embedding_unavailable",
-        )
+        return await _pair_preview(_sha_pairs(agent_id), threshold=threshold, limit=limit,
+                                   degradation_reason="embedding_unavailable")
 
     first_chunk = aliased(MemoryEmbeddingChunk)
     second_chunk = aliased(MemoryEmbeddingChunk)
@@ -393,6 +386,28 @@ async def preview_duplicate_pairs(
         )
         .subquery()
     )
+    combined = select(item_pairs).union_all(select(_sha_pairs(agent_id))).subquery()
+    return await _pair_preview(combined, threshold=threshold, limit=limit)
+
+
+def _sha_pairs(agent_id: int | None) -> Subquery:
+    first, second = aliased(MemoryItem), aliased(MemoryItem)
+    query = select(
+        first.owner_agent_id.label("owner_agent_id"),
+        first.id.label("first_memory_id"), second.id.label("second_memory_id"),
+        literal(1.0).label("similarity"),
+    ).join(second, and_(first.id < second.id, first.file_sha256 == second.file_sha256,
+                       first.owner_agent_id == second.owner_agent_id)).where(
+        first.file_sha256.is_not(None), first.node_kind.in_(("file", "attachment")),
+        second.node_kind.in_(("file", "attachment")),
+    )
+    if agent_id is not None:
+        query = query.where(first.owner_agent_id == agent_id)
+    return query.subquery()
+
+
+async def _pair_preview(item_pairs: Subquery, *, threshold: float, limit: int,
+                        degradation_reason: str | None = None) -> MemoryDuplicatePreview:
     matching = (
         select(item_pairs)
         .where(item_pairs.c.similarity >= threshold)
@@ -453,6 +468,8 @@ async def preview_duplicate_pairs(
         total_pairs=total_pairs,
         pairs=pairs,
         has_more=total_pairs > len(pairs),
+        degraded=degradation_reason is not None,
+        degradation_reason=degradation_reason,
     )
 
 

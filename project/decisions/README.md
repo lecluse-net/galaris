@@ -196,3 +196,4 @@ nouvelle décision plutôt que réécrite silencieusement si le choix change.
 - [0141 — Permissions réseau du navigateur et décisions humaines mémorisées](0141-browser-remembered-permissions.md)
 - [0152 — Indexation par les paramètres standards des Tools](0152-tool-file-indexing-preference.md)
 - [0154 — Catalogue privé des ressources rencontrées](0154-file-catalogue-observations.md)
+- [0159 — URL des nœuds mémoire et source principale](0159-memory-url-associations.md)

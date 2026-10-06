@@ -32,6 +32,8 @@ from .models import (
     MemoryLink,
     MemorySource,
     MemoryTopicContactItem,
+    DocumentAttachment,
+    MemoryUsage,
 )
 from .schemas import MemoryFindingPublic
 
@@ -104,6 +106,38 @@ def _fingerprint(
 
 def _meaningful_at(item: MemoryItem) -> datetime:
     return item.updated_at or item.created_at
+
+
+async def file_pair_compatible(first: MemoryItem, second: MemoryItem) -> bool:
+    """Byte identity cannot widen ownership or a document's live ACL boundary."""
+    if (first.owner_agent_id, first.owner_user_id, first.node_kind, first.visibility,
+        first.global_access, first.group_access, first.valid_from, first.valid_until) != (
+        second.owner_agent_id, second.owner_user_id, second.node_kind, second.visibility,
+        second.global_access, second.group_access, second.valid_from, second.valid_until):
+        return False
+    db = get_db()
+    if first.node_kind == "attachment":
+        parents = [set(await db.scalars(select(DocumentAttachment.document_id).where(
+            DocumentAttachment.memory_item_id == item.id,
+        ))) for item in (first, second)]
+        if not parents[0] or parents[0] != parents[1]:
+            return False
+    grants = [set((await db.execute(select(MemoryItemGrant.agent_id, MemoryItemGrant.can_write).where(
+        MemoryItemGrant.item_id == item.id,
+    ))).all()) for item in (first, second)]
+    return grants[0] == grants[1]
+
+
+async def _file_candidates(item: MemoryItem) -> list[tuple[MemoryItem, float]]:
+    rows = await get_db().scalars(select(MemoryItem).where(
+        MemoryItem.id != item.id,
+        MemoryItem.file_sha256 == item.file_sha256,
+        MemoryItem.node_kind == item.node_kind,
+        MemoryItem.owner_agent_id.is_not_distinct_from(item.owner_agent_id),
+        MemoryItem.owner_user_id.is_not_distinct_from(item.owner_user_id),
+    ).order_by(MemoryItem.id).limit(100))
+    return [(candidate, 1.0) for candidate in rows
+            if await file_pair_compatible(item, candidate)]
 
 
 def _normalized_text(item: MemoryItem) -> str:
@@ -268,16 +302,16 @@ async def detect_for_item(item_id: UUID) -> list[UUID]:
     if (
         item is None
         or item.deleted_at is not None
-        or item.owner_agent_id is None
-        or item.node_kind != "memory"
-        or item.source_managed
+        or not ((item.node_kind == "memory" and not item.source_managed and item.owner_agent_id is not None)
+                or (item.node_kind in ("file", "attachment") and item.file_sha256 is not None))
     ):
         return []
     actionable: list[MemoryFinding] = []
     aging_mode = runtime_settings.MEMORY_AGING_MODE
     aging_days = runtime_settings.MEMORY_AGING_AFTER_DAYS
     if (
-        aging_mode != "off"
+        item.node_kind == "memory"
+        and aging_mode != "off"
         and item.old_at is None
         and _meaningful_at(item)
         <= datetime.now(timezone.utc) - timedelta(days=aging_days)
@@ -307,16 +341,16 @@ async def detect_for_item(item_id: UUID) -> list[UUID]:
             else 1.0,
         )
         item_scope = await _scope_signature(item.id)
-        for candidate, similarity in await _indexed_candidates(
-            item, minimum_similarity=minimum
-        ):
-            if str(candidate.id) < str(item.id):
+        candidates = (await _file_candidates(item) if item.file_sha256 is not None
+                      else await _indexed_candidates(item, minimum_similarity=minimum))
+        for candidate, similarity in candidates:
+            if item.file_sha256 is None and str(candidate.id) < str(item.id):
                 continue
             if await _scope_signature(candidate.id) != item_scope:
                 continue
             if candidate.temporal != item.temporal:
                 continue
-            signal = _contradiction_signal(item, candidate)
+            signal = None if item.file_sha256 is not None else _contradiction_signal(item, candidate)
             if (
                 contradiction_mode != "off"
                 and signal is not None
@@ -349,7 +383,7 @@ async def detect_for_item(item_id: UUID) -> list[UUID]:
                 duplicate_mode != "off"
                 and similarity >= runtime_settings.MEMORY_DUPLICATE_SIMILARITY_THRESHOLD
             ):
-                canonical = min((item, candidate), key=_meaningful_at)
+                canonical = min((item, candidate), key=(lambda node: (node.created_at, str(node.id))) if item.file_sha256 else _meaningful_at)
                 finding = await _store_finding(
                     kind="duplicate",
                     primary=item,
@@ -357,7 +391,8 @@ async def detect_for_item(item_id: UUID) -> list[UUID]:
                     score=similarity,
                     threshold=runtime_settings.MEMORY_DUPLICATE_SIMILARITY_THRESHOLD,
                     proposed_action="merge_keep_oldest",
-                    details={"proposed_canonical_item_id": str(canonical.id)},
+                    details={"proposed_canonical_item_id": str(canonical.id),
+                             **({"file_sha256": item.file_sha256} if item.file_sha256 else {})},
                     reuse_pending=duplicate_mode == "automatic",
                 )
             else:
@@ -539,6 +574,10 @@ async def _merge_items(canonical: MemoryItem, duplicate: MemoryItem, finding_id:
         raise service.MemoryConflictError("A memory cannot be merged into itself.")
     if canonical.owner_agent_id != duplicate.owner_agent_id:
         raise service.MemoryConflictError("Memories owned by different agents cannot be merged.")
+    file_merge = canonical.file_sha256 is not None or duplicate.file_sha256 is not None
+    if file_merge and (canonical.file_sha256 != duplicate.file_sha256
+                       or not await file_pair_compatible(canonical, duplicate)):
+        raise service.MemoryConflictError("File identities or access scopes changed before merging.")
     if canonical.temporal != duplicate.temporal:
         raise service.MemoryConflictError("Memories with different temporal anchors cannot be merged.")
     if await _scope_signature(canonical.id) != await _scope_signature(duplicate.id):
@@ -583,6 +622,32 @@ async def _merge_items(canonical: MemoryItem, duplicate: MemoryItem, finding_id:
     await db.execute(
         delete(MemoryTopicContactItem).where(MemoryTopicContactItem.item_id == duplicate.id)
     )
+    for usage in await db.scalars(select(MemoryUsage).where(MemoryUsage.item_id == duplicate.id)):
+        repeated = None if usage.task_id is None else await db.scalar(select(MemoryUsage.id).where(
+            MemoryUsage.item_id == canonical.id, MemoryUsage.agent_id == usage.agent_id,
+            MemoryUsage.task_id == usage.task_id, MemoryUsage.access_kind == usage.access_kind,
+        ))
+        if repeated is not None:
+            await db.delete(usage)
+        else:
+            usage.item_id = canonical.id
+    canonical.access_count += duplicate.access_count
+    accessed = [value for value in (canonical.last_accessed_at, duplicate.last_accessed_at) if value is not None]
+    canonical.last_accessed_at = max(accessed) if accessed else None
+    if file_merge:
+        from .catalogue_projection import merge_file_nodes
+        from .semantic_index import stage_embedding_refresh, delete_item_embeddings
+
+        await db.execute(update(DocumentAttachment).where(
+            DocumentAttachment.memory_item_id == duplicate.id,
+        ).values(memory_item_id=canonical.id))
+        await merge_file_nodes(canonical, duplicate)
+        stage_embedding_refresh(canonical)
+        await delete_item_embeddings(duplicate.id)
+        await _invalidate_item_findings(duplicate.id, except_id=finding_id)
+        await _invalidate_item_findings(canonical.id, except_id=finding_id)
+        await db.flush()
+        return
     links = (
         await db.scalars(
             select(MemoryLink).where(
@@ -630,12 +695,14 @@ async def apply_finding(
         raise service.MemoryNotFoundError("Memory finding not found.")
     if finding.status != "pending":
         raise service.MemoryConflictError("This finding is no longer pending.")
-    primary = await get_db().get(MemoryItem, finding.primary_item_id)
-    related = (
-        await get_db().get(MemoryItem, finding.related_item_id)
-        if finding.related_item_id is not None
-        else None
-    )
+    identities = [finding.primary_item_id]
+    if finding.related_item_id is not None:
+        identities.append(finding.related_item_id)
+    locked = {item.id: item for item in await get_db().scalars(select(MemoryItem).where(
+        MemoryItem.id.in_(identities),
+    ).order_by(MemoryItem.id).with_for_update().execution_options(populate_existing=True))}
+    primary = locked.get(finding.primary_item_id)
+    related = locked.get(finding.related_item_id) if finding.related_item_id is not None else None
     if (
         primary is None
         or primary.revision != finding.primary_revision
@@ -650,23 +717,26 @@ async def apply_finding(
         finding.resolved_at = datetime.now(timezone.utc)
         await get_db().commit()
         return _finding_public(finding)
-    if finding.kind == "aging":
-        primary.old_at = datetime.now(timezone.utc)
-        primary.old_reason = f"age:{int(finding.threshold)}d"
-    else:
-        assert related is not None
-        proposed_raw = finding.details.get("proposed_canonical_item_id")
-        proposed_id = UUID(str(proposed_raw)) if proposed_raw else primary.id
-        selected_id = canonical_item_id or proposed_id
-        if selected_id not in {primary.id, related.id}:
-            raise service.MemoryConflictError("The canonical memory must belong to the finding.")
-        canonical = primary if selected_id == primary.id else related
-        duplicate = related if selected_id == primary.id else primary
-        await _merge_items(canonical, duplicate, finding.id)
-    finding.status = "applied"
-    finding.resolved_at = datetime.now(timezone.utc)
-    finding.resolved_by = user_service.get_current_user_id()
-    await get_db().commit()
+    from .catalogue_projection import catalogue_projection_write
+
+    async with catalogue_projection_write():
+        if finding.kind == "aging":
+            primary.old_at = datetime.now(timezone.utc)
+            primary.old_reason = f"age:{int(finding.threshold)}d"
+        else:
+            assert related is not None
+            proposed_raw = finding.details.get("proposed_canonical_item_id")
+            proposed_id = UUID(str(proposed_raw)) if proposed_raw else primary.id
+            selected_id = canonical_item_id or proposed_id
+            if selected_id not in {primary.id, related.id}:
+                raise service.MemoryConflictError("The canonical memory must belong to the finding.")
+            canonical = primary if selected_id == primary.id else related
+            duplicate = related if selected_id == primary.id else primary
+            await _merge_items(canonical, duplicate, finding.id)
+        finding.status = "applied"
+        finding.resolved_at = datetime.now(timezone.utc)
+        finding.resolved_by = user_service.get_current_user_id()
+        await get_db().commit()
     return _finding_public(finding)
 
 

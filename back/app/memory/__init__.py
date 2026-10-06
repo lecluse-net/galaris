@@ -36,7 +36,8 @@ from .contact_directory import (
     list_messenger_contacts,
     merge_messenger_contacts,
 )
-from .models import DocumentTag, MemoryEmbeddingChunk, MemoryFinding, MemoryItem, MemorySource
+from .models import DocumentTag, MemoryEmbeddingChunk, MemoryFinding, MemoryItem, MemorySource, MemoryURL
+from .urls import associate_memory_url, memory_urls, register_url_reference_merger
 from .maintenance import detect_for_item as detect_memory_findings
 from .storage import get_storage, register_storage
 from .bootstrap import register_memory
@@ -117,6 +118,8 @@ __all__ = [
     "MemorySearchHit",
     "MemorySimilarityCandidate",
     "MemoryItem",
+    "MemoryURL", "associate_memory_url", "memory_urls",
+    "register_url_reference_merger",
     "MemoryEmbeddingChunk",
     "MemoryFinding",
     "MemorySource",

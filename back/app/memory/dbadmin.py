@@ -18,6 +18,22 @@ from .models import MemoryItem
 from .catalogue_projection import reconcile_catalogue_descriptions
 
 
+async def _reconcile_temporal_timezone(session: AsyncSession) -> None:
+    """Keep calendar components while retiring per-memory timezone overrides."""
+    for table in ("memory_items", "memory_revisions"):
+        await session.execute(text(
+            f"UPDATE {table} SET temporal = temporal - 'timezone' "
+            "WHERE temporal ? 'timezone'"
+        ))
+    for table in ("memory_items", "memory_revisions", "memory_candidates", "memory_sources"):
+        await session.execute(text(
+            f"UPDATE {table} SET metadata = jsonb_set(metadata, '{{temporal}}', "
+            "(metadata -> 'temporal') - 'timezone') "
+            "WHERE jsonb_typeof(metadata -> 'temporal') = 'object' "
+            "AND (metadata -> 'temporal') ? 'timezone'"
+        ))
+
+
 async def _reconcile_catalogue_editability(session: AsyncSession) -> None:
     """Upgrade old generated fiches once; later explicit read-only choices survive."""
     await session.execute(update(MemoryItem).where(
@@ -96,6 +112,13 @@ async def _enqueue_goal_folders(_session: AsyncSession) -> None:
 
 
 def register_dbadmin(registry: DbAdminRegistry) -> None:
+    from .file_attributes_migration import register_file_attributes
+    register_file_attributes(registry)
+    registry.register_reconciler(DbAdminReconciler(
+        key="app.memory.temporal_timezone", handler=_reconcile_temporal_timezone,
+    ))
+    from .url_migration import register_url_backfill
+    register_url_backfill(registry)
     registry.register_reconciler(DbAdminReconciler(
         key="app.memory.catalogue_descriptions", handler=_reconcile_catalogue_descriptions,
         depends_on=("app.memory.editorial_text",),
@@ -134,7 +157,7 @@ def register_dbadmin(registry: DbAdminRegistry) -> None:
         DbAdminReconciler(
             key="app.memory.source_projections",
             handler=_reconcile_source_projections,
-            depends_on=("app.llm.current_profile",),
+            depends_on=("app.llm.current_profile", "app.memory.temporal_timezone"),
         )
     )
     registry.register_reconciler(

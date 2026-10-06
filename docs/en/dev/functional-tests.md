@@ -303,7 +303,7 @@ are in `front/browser-tests/`.
 | `voice` | Call setup/cancellation, correct channel and media cleanup | `test_session.py`, `test_multichannel_routing.py`, `test_realtime_engine.py`, `voice.spec.mjs` |
 | `memory` | Search, creation, sharing and restoration without losing content, revision or rights | `test_document_library.py`, `test_document_grants.py`, `test_editorial_html.py`, `test_semantic_search.py`, `memory.spec.mjs` |
 | Unified memory search | List unites undated relevance matches and independent calendar matches; out-of-period dated memories cannot enter through ordinary recall; pagination and sorting after filtering; opening and forgetting results, explicit lexical fallback | `test_browse_filters.py`, `test_semantic_search.py`, `front/browser-tests/memory.spec.mjs` |
-| Memory temporality | Partial dates, timezones and daylight saving changes; acquisition, correction, history, permissions and contact scope; query-free context, pagination and budgets; editing and removal without content loss | `back/app/memory/tests/test_temporal.py`, `front/browser-tests/memory.spec.mjs` |
+| Memory temporality | Partial dates in Galaris's global timezone and daylight saving changes; cleanup of legacy zones preserves dates, history and acquisitions; correction, permissions and contact scope; query-free context, pagination and budgets; target-date filtering, HTTP authorization; required initial filter, input and display independent of browser timezone, desktop/mobile error recovery | `back/app/memory/tests/test_temporal.py`, `back/app/memory/tests/test_browse_filters.py`, `front/browser-tests/memory.spec.mjs`, `e2e/specs/memory-temporal.spec.mjs` |
 | Document thumbnails | Reuse the print snapshot and its images for the beginning of the first page; persist the captured revision; renew the cache after edits; recheck permissions without rereading content or history; defer offscreen previews, bound concurrent loads and cancel stale work while keeping documents accessible | `back/app/memory/tests/test_document_thumbnails.py`, `front/browser-tests/document-thumbnails.spec.mjs`, `front/core/util/previewQueue.test.mjs`, `browser-executor/pdf.test.mjs` |
 | Office and spreadsheet thumbnails | Convert the first Office page and first printed spreadsheet page; skip OCR and analytical extraction; separate checkpoints from full analysis; preserve originals, access checks and the shared cache; retry failures and clean temporaries after cancellation; display and download on desktop and mobile, including after reopening | `back/app/memory/tests/test_document_thumbnails.py`, `front/browser-tests/document-thumbnails.spec.mjs`, `e2e/specs/office-thumbnails.spec.mjs` |
 | `contact` | Correct interlocutor and scope isolation | `test_service.py`, `test_router.py` |
@@ -506,6 +506,11 @@ Coverage: `mobile-editor-toolbar.spec.mjs`, `document-voice.spec.mjs`,
 `rich-text.spec.mjs` and `document-print.spec.mjs` in `front/browser-tests/`.
 
 ## Private file catalogue and maintenance
+
+`back/app/memory/tests/test_memory_urls.py` checks the sole URL association table,
+text and binary byte SHA-256 on the node, the nullable primary URL column, stability,
+moves and deletions. Its PostgreSQL transition covers rollback, replay and removal
+of the legacy catalogue column.
 
 `back/app/memory/tests/test_file_catalogue.py` verifies encounters, agent and binding
 isolation, editable personal fields, tombstones and late responses, durable repair without

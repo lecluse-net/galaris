@@ -130,6 +130,7 @@ test('memory filter options ignore failures from the previously selected agent',
   let release
   const pending = new Promise(resolve => { release = resolve })
   let requested = false
+  await jsonRoute(page, '**/api/memory/temporal/defaults', { timezone: 'Europe/Paris', lookahead_hours: 24 })
   await jsonRoute(page, '**/api/agents?*', [agent, { ...agent, id: 8, first_name: 'Bob' }])
   await jsonRoute(page, '**/api/agents/selection?*', [
     { id: 7, label: 'Alice Example', has_avatar: false }, { id: 8, label: 'Bob Example', has_avatar: false },

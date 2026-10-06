@@ -70,6 +70,7 @@ from .models import (
     MemoryLink,
     MemoryRevision,
     MemorySource,
+    MemoryURL,
     MemoryTopicContactItem,
     MemoryTopicContactScope,
     MemoryUsage,
@@ -417,7 +418,7 @@ def _graph_item_options() -> Load:
         MemoryItem.owner_agent_id, MemoryItem.title, MemoryItem.memory_type,
         MemoryItem.visibility, MemoryItem.source_managed, MemoryItem.access_count,
         MemoryItem.last_accessed_at, MemoryItem.created_at, MemoryItem.updated_at,
-        MemoryItem.activity_at, MemoryItem.metadata_, raiseload=True,
+        MemoryItem.activity_at, MemoryItem.metadata_, MemoryItem.primary_url, MemoryItem.file_media_type, raiseload=True,
     )
 
 
@@ -439,8 +440,8 @@ def _graph_node(item: MemoryItem, *, relation_count: int) -> MemoryGraphNode:
         entity_kind = "contact"
     return MemoryGraphNode(
         id=item.id,
-        resource_media_type=item.metadata_.get("resource_media_type") if item.node_kind == "attachment" else None,
-        resource_uri=item.metadata_.get("resource_uri") if item.node_kind == "attachment" else None,
+        resource_media_type=item.file_media_type if item.node_kind == "attachment" else None,
+        resource_uri=item.primary_url if item.node_kind == "attachment" else None,
         node_kind=cast(Any, item.node_kind),
         entity_kind=entity_kind,
         owner_agent_id=item.owner_agent_id,
@@ -1220,7 +1221,11 @@ async def source_refs(item_id: UUID) -> list[str]:
         .where(MemorySource.item_id == item_id)
         .order_by(MemorySource.created_at)
     )
-    return list(result.scalars().all())
+    references = list(result.scalars().all())
+    references.extend(await get_db().scalars(select(MemoryURL.url).where(
+        MemoryURL.memory_node_id == item_id,
+    ).order_by(MemoryURL.url)))
+    return list(dict.fromkeys(references))
 
 
 async def _source_refs_by_item(item_ids: list[UUID]) -> dict[UUID, list[str]]:
@@ -1233,6 +1238,11 @@ async def _source_refs_by_item(item_ids: list[UUID]) -> dict[UUID, list[str]]:
     )
     refs: dict[UUID, list[str]] = {}
     for item_id, reference in rows:
+        refs.setdefault(item_id, []).append(reference)
+    locations = await get_db().execute(select(MemoryURL.memory_node_id, MemoryURL.url).where(
+        MemoryURL.memory_node_id.in_(item_ids),
+    ).order_by(MemoryURL.url))
+    for item_id, reference in locations:
         refs.setdefault(item_id, []).append(reference)
     return refs
 
@@ -1699,7 +1709,7 @@ async def update_item(
     if item.managed_source_kind == "file_catalogue":
         # Source identity and manual ownership survive generic metadata writes.
         metadata = dict(item.metadata_)
-        for key in ("resource_uri", "catalogue_ref", "catalogue_editable", "catalogue_manual_content", "catalogue_manual_title"):
+        for key in ("catalogue_ref", "catalogue_editable", "catalogue_manual_content", "catalogue_manual_title"):
             if key in previous_metadata:
                 metadata[key] = previous_metadata[key]
             else:
@@ -1873,6 +1883,7 @@ async def _forget_item_record(
             await delete_item_embeddings(companion.id)
             for model in (MemoryRevision, MemorySource, MemoryItemGrant, MemoryUsage):
                 await get_db().execute(delete(model).where(model.item_id == companion.id))
+            await get_db().execute(delete(MemoryURL).where(MemoryURL.memory_node_id == companion.id))
             await get_db().execute(delete(MemoryLink).where(or_(
                 MemoryLink.source_item_id == companion.id, MemoryLink.target_item_id == companion.id,
             )))
@@ -1881,6 +1892,11 @@ async def _forget_item_record(
             )))
             set_committed_value(companion, "revisions", [])
             set_committed_value(companion, "grants", [])
+            set_committed_value(companion, "url_relations", [])
+            companion.primary_url = None
+            companion.file_sha256 = None
+            companion.file_media_type = None
+            companion.file_size_bytes = None
             companion.search_text = ""
             companion.title = "Forgotten attachment"
             companion.keywords = []
@@ -1906,6 +1922,10 @@ async def _forget_item_record(
         item.title = "Forgotten memory"
     item.keywords = []
     item.metadata_ = {}
+    item.primary_url = None
+    item.file_sha256 = None
+    item.file_media_type = None
+    item.file_size_bytes = None
     item.content_hash = _content_hash(b"")
     item.semantic_fingerprint = ""
     item.size_bytes = 0
@@ -1927,10 +1947,12 @@ async def _forget_item_record(
     await delete_item_embeddings(item_id)
     for model in (MemoryRevision, MemorySource, MemoryItemGrant, MemoryUsage):
         await db.execute(delete(model).where(model.item_id == item_id))
+    await db.execute(delete(MemoryURL).where(MemoryURL.memory_node_id == item_id))
     # Bulk DELETE bypasses relationship collections. Forgetting and then physically
     # deleting the same item must not cascade a second DELETE from stale loaded rows.
     set_committed_value(item, "revisions", [])
     set_committed_value(item, "grants", [])
+    set_committed_value(item, "url_relations", [])
     await db.execute(
         delete(MemoryLink).where(
             or_(
@@ -2469,7 +2491,9 @@ async def record_llm_retrieval(
 
 def temporal_match_clause(target: datetime) -> ColumnElement[bool]:
     """Match an anchored item at one instant, including partial dates and DST folds."""
-    local = func.timezone(MemoryItem.temporal["timezone"].as_string(), target)
+    from core.util import local_timezone_name
+
+    local = func.timezone(local_timezone_name(), target)
     constraints: list[ColumnElement[bool]] = [MemoryItem.temporal.is_not(None)]
     for component, part in (("year", "year"), ("month", "month"), ("day", "day"),
                             ("weekday", "isodow"), ("hour", "hour"), ("minute", "minute")):

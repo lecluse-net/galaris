@@ -137,7 +137,9 @@ Existing settings, including explicit disabling, are preserved. See the
 [indexing journey](../admin/tool-administration.md).
 
 Dream groups identical file copies **per agent**, using SHA-256 over their complete bytes.
-The shared entry retains its locations and one common summary. In an entry or the graph's
+The shared entry retains its locations and one common summary. Its primary preview URL
+stays stable when a copy is discovered and follows a moved or deleted source.
+In an entry or the graph's
 file inspector, **File locations** provides thumbnails, fullscreen previews and original
 downloads. Each source's permissions still apply; changing one copy does not replace the others.
 
@@ -254,6 +256,10 @@ Sharing a link does not grant access to its content.
 In **List**, documents, attachments and indexed files display their thumbnail when
 available. Click the row or card to open its details; write permissions determine
 whether its content can be edited.
+
+In **List**, edit **Target date and time**, then apply the filter to find memories matching
+that date. Input and matches use Galaris's configured global timezone (`TZ`), even when
+your browser uses another timezone. A memory's calendar fields have no timezone selector.
 
 The graph folds branches with at least eight exclusive leaves into an anchor and a count.
 Zoom in, click the group or enable **Branch details** to see its items, then zoom out to fold

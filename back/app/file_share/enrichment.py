@@ -15,7 +15,7 @@ from .resource_observation import suspend_observations
 
 def pending_enrichments() -> Select[tuple[FileCatalogEntry]]:
     return select(FileCatalogEntry).where(FileCatalogEntry.present.is_(True),
-        FileCatalogEntry.memory_item_id.is_not(None),
+        FileCatalogEntry.memory_node_id.is_not(None),
         or_(FileCatalogEntry.enrichment_version.is_(None), FileCatalogEntry.source_version.is_(None),
             FileCatalogEntry.enrichment_version != FileCatalogEntry.source_version),
         FileCatalogEntry.descriptor["is_collection"].as_boolean().is_(False))
@@ -42,12 +42,12 @@ async def apply_enrichment(identity: UUID, version: str, description: str) -> bo
         return False
     if entry.enrichment_version == version:
         return False
-    if entry.file_sha256 is not None and entry.memory_item_id is not None:
+    if entry.file_sha256 is not None and entry.memory_node_id is not None:
         from app.memory import catalogue_file_summary
         async with catalogue_projection_write():
-            changed = await catalogue_file_summary(entry.memory_item_id, entry.file_sha256, description)
+            changed = await catalogue_file_summary(entry.memory_node_id, entry.file_sha256, description)
         await get_db().execute(update(FileCatalogEntry).where(
-            FileCatalogEntry.memory_item_id == entry.memory_item_id,
+            FileCatalogEntry.memory_node_id == entry.memory_node_id,
             FileCatalogEntry.file_sha256 == entry.file_sha256,
         ).values(enrichment_version=FileCatalogEntry.source_version, enrichment_text=description[:50000]))
         return changed
@@ -75,7 +75,7 @@ class FileCatalogueEnrichmentPort:
     async def fingerprints(self) -> list[dict[str, object]]:
         from .catalogue import current_binding, ObservationScope
         entries = await get_db().scalars(select(FileCatalogEntry).where(
-            FileCatalogEntry.present.is_(True), FileCatalogEntry.memory_item_id.is_not(None),
+            FileCatalogEntry.present.is_(True), FileCatalogEntry.memory_node_id.is_not(None),
             FileCatalogEntry.descriptor["is_collection"].as_boolean().is_(False),
             or_(FileCatalogEntry.fingerprint_version.is_(None), FileCatalogEntry.fingerprint_version != FileCatalogEntry.source_version),
         ).order_by(func.coalesce(FileCatalogEntry.enrichment_attempted_at, FileCatalogEntry.last_seen_at), FileCatalogEntry.id).limit(500))
@@ -118,7 +118,7 @@ class FileCatalogueEnrichmentPort:
                 continue
             result.append({"identity": str(entry.id), "uri": entry.uri, "agent_id": entry.agent_id,
                 "runtime": entry.runtime, "version": descriptor_version(entry.descriptor), "descriptor": entry.descriptor,
-                "file_sha256": entry.file_sha256, "memory_item_id": str(entry.memory_item_id)})
+                "file_sha256": entry.file_sha256, "memory_item_id": str(entry.memory_node_id)})
         return result
 
     async def claimed(self, identity: str) -> None:

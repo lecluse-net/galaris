@@ -14,6 +14,7 @@ from sqlalchemy import (
     DateTime,
     Float,
     ForeignKey,
+    ForeignKeyConstraint,
     Index,
     Integer,
     String,
@@ -136,7 +137,7 @@ class DocumentListPosition(Base):
 
 
 class DocumentAttachment(Base):
-    """One durable attachment identity and its exclusive textual Memory companion.
+    """One durable attachment identity and its textual Memory companion.
 
     The document attachment manifest remains authoritative for membership. Retained
     attachments keep their identity and description but are absent from live recall.
@@ -146,7 +147,7 @@ class DocumentAttachment(Base):
 
     id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), primary_key=True)
     document_id: Mapped[UUID] = mapped_column(ForeignKey("memory_items.id"), index=True)
-    memory_item_id: Mapped[UUID] = mapped_column(ForeignKey("memory_items.id"), unique=True)
+    memory_item_id: Mapped[UUID] = mapped_column(ForeignKey("memory_items.id"), index=True)
     active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True, server_default="true")
 
 
@@ -242,6 +243,13 @@ class MemoryItem(HistoryMixin, Base):
     )
     content_hash: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
     file_sha256: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    file_media_type: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    file_size_bytes: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
+    primary_url: Mapped[str | None] = mapped_column(Text, nullable=True)
+    url_relations: Mapped[list[MemoryURL]] = relationship(
+        lazy="selectin", cascade="all, delete-orphan", passive_deletes=True,
+        foreign_keys="MemoryURL.memory_node_id",
+    )
     semantic_fingerprint: Mapped[str] = mapped_column(
         String(64), nullable=False, default="", server_default="", index=True
     )
@@ -301,6 +309,11 @@ class MemoryItem(HistoryMixin, Base):
     )
 
     __table_args__ = (
+        ForeignKeyConstraint(
+            ["id", "primary_url"], ["memory_urls.memory_node_id", "memory_urls.url"],
+            name="fk_memory_items_primary_url", use_alter=True,
+            deferrable=True, initially="DEFERRED",
+        ),
         CheckConstraint(
             "memory_type IN ('core', 'working', 'episodic', 'semantic', 'procedural', 'social')",
             name="ck_memory_items_type",
@@ -390,8 +403,10 @@ class MemoryItem(HistoryMixin, Base):
             name="uq_memory_items_managed_source",
         ),
         Index("ix_memory_items_owner_hash", "owner_agent_id", "content_hash"),
-        UniqueConstraint("owner_agent_id", "file_sha256", name="uq_memory_items_agent_file_sha256"),
-        CheckConstraint("file_sha256 IS NULL OR (node_kind = 'file' AND file_sha256 ~ '^[0-9a-f]{64}$')", name="ck_memory_items_file_sha256"),
+        Index("ix_memory_items_agent_file_sha256", "owner_agent_id", "file_sha256",
+              postgresql_where=sql_text("file_sha256 IS NOT NULL")),
+        CheckConstraint("file_size_bytes IS NULL OR file_size_bytes >= 0", name="ck_memory_items_file_size"),
+        CheckConstraint("file_sha256 IS NULL OR file_sha256 ~ '^[0-9a-f]{64}$'", name="ck_memory_items_file_sha256"),
         Index("ix_memory_items_user_owner_hash", "owner_user_id", "content_hash"),
         Index("ix_memory_items_activity", "activity_at"),
         Index("ix_memory_items_temporal", "id", postgresql_where=sql_text("temporal IS NOT NULL")),
@@ -509,6 +524,24 @@ class MemoryRevision(Base):
 
     __table_args__ = (
         UniqueConstraint("item_id", "revision", name="uq_memory_item_revision"),
+    )
+
+
+class MemoryURL(Base):
+    """The sole durable association between a Memory node and a resource URL."""
+
+    __tablename__ = "memory_urls"
+
+    id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), primary_key=True, default=uuid4)
+    memory_node_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True), ForeignKey("memory_items.id", ondelete="CASCADE"),
+        nullable=False, index=True,
+    )
+    url: Mapped[str] = mapped_column(Text, nullable=False)
+
+    __table_args__ = (
+        Index("uq_memory_urls_node_url", "memory_node_id", "url", unique=True),
+        CheckConstraint("length(btrim(url)) > 0", name="ck_memory_urls_nonempty"),
     )
 
 
@@ -958,7 +991,9 @@ class MemoryUsage(Base):
     agent_id: Mapped[int] = mapped_column(
         ForeignKey("agents.id", ondelete="CASCADE"), nullable=False, index=True
     )
-    task_id: Mapped[UUID | None] = mapped_column(PGUUID(as_uuid=True), nullable=True, index=True)
+    task_id: Mapped[UUID | None] = mapped_column(
+        PGUUID(as_uuid=True), ForeignKey("tasks.id", ondelete="SET NULL"), nullable=True, index=True,
+    )
     access_kind: Mapped[str] = mapped_column(String(40), nullable=False, index=True)
     query: Mapped[str] = mapped_column(Text, nullable=False, default="", server_default="")
     rank: Mapped[int | None] = mapped_column(Integer, nullable=True)

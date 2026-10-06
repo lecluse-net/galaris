@@ -637,7 +637,7 @@ test('opening memory selects an agent and loads its results and filters only onc
   expect(requests).toEqual({ filters: 2, results: 2 })
 })
 
-test.describe('browser local calendar', () => {
+test.describe('Galaris global calendar with a different browser timezone', () => {
   test.use({ timezoneId: 'America/Toronto' })
 for (const width of [1440, 390]) {
   test(`memory calendar filter is always applied and combines criteria at ${width}px`, async ({ page }) => {
@@ -653,32 +653,36 @@ for (const width of [1440, 390]) {
       if (fail) return route.fulfill({ status: 422, json: { detail: 'Invalid target time' } })
       const scheduled = request.temporal.target_at.startsWith('2027-09-27') ? [{
         item: { ...item, id: 'scheduled-memory', title: 'Scheduled reminder', memory_type: 'working',
-          temporal: { month: 9, day: 27, timezone: 'America/Toronto' } },
-        score: 1, temporal_match_at: request.temporal.target_at,
+          temporal: { month: 9, day: 27 } },
+        score: 1, temporal_match_at: '2027-09-27T07:30:00Z',
       }] : []
       return route.fulfill({ json: {
         hits: [...scheduled, { item, score: 1, temporal_match_at: null }],
         total: 1 + scheduled.length, has_more: false,
-        temporal_window: request.temporal ? { start: request.temporal.target_at, end: request.temporal.target_at, timezone: request.temporal.timezone } : null,
+        temporal_window: request.temporal ? { start: request.temporal.target_at, end: request.temporal.target_at, timezone: 'Europe/Paris' } : null,
       } })
     })
     await mount(page, 'app/memory/pages/index.vue', { route: '/memory?agent=7' })
     await expect(page.getByText('Current memory', { exact: true })).toBeVisible()
     await expect(page.getByRole('switch')).toHaveCount(0)
     expect(requests).toHaveLength(1)
-    await expect(page.getByLabel('Target date and time', { exact: true })).toHaveValue('2026-09-27T12:12')
-    await expect.poll(() => requests.at(-1)?.temporal).toEqual({ target_at: '2026-09-27T16:12:00.000Z', timezone: 'America/Toronto', lookahead_hours: 0 })
+    await expect(page.getByLabel('Target date and time', { exact: true })).toHaveValue('2026-09-27T18:12')
+    await expect.poll(() => requests.at(-1)?.temporal).toEqual({ target_at: '2026-09-27T16:12:00.000Z', lookahead_hours: 0 })
     await expect(page.getByLabel('Look ahead (hours)', { exact: true })).toHaveCount(0)
     await expect(page.getByLabel('Timezone', { exact: true })).toHaveCount(0)
     await page.getByLabel('Target date and time', { exact: true }).fill('2027-09-27T09:30')
     await page.getByRole('button', { name: 'Apply', exact: true }).click()
-    await expect.poll(() => requests.at(-1)?.temporal).toEqual({ target_at: '2027-09-27T13:30:00.000Z', timezone: 'America/Toronto', lookahead_hours: 0 })
+    await expect.poll(() => requests.at(-1)?.temporal).toEqual({ target_at: '2027-09-27T09:30', lookahead_hours: 0 })
     await expect(page.getByText(/^Match:/)).toBeVisible()
+    const expectedMatch = await page.evaluate(() => new Intl.DateTimeFormat('en', {
+      timeZone: 'Europe/Paris', dateStyle: 'medium', timeStyle: 'short',
+    }).format(new Date('2027-09-27T07:30:00Z')))
+    await expect(page.getByText(/^Match:/)).toContainText(expectedMatch)
     await expect(page.getByText('Scheduled reminder', { exact: true })).toBeVisible()
     await expect(page.getByText('Current memory', { exact: true })).toBeVisible()
     await page.getByPlaceholder('Search titles, keywords, and content').fill('calendar')
     await expect.poll(() => requests.at(-1)?.query).toBe('calendar')
-    expect(requests.at(-1).temporal.target_at).toBe('2027-09-27T13:30:00.000Z')
+    expect(requests.at(-1).temporal.target_at).toBe('2027-09-27T09:30')
     await page.getByText('Current memory', { exact: true }).click()
     await expect(page.getByRole('dialog')).toBeVisible()
     await page.keyboard.press('Escape')
@@ -699,14 +703,14 @@ for (const width of [1440, 390]) {
     await page.getByRole('button', { name: 'Retry', exact: true }).click()
     await expect(page.getByText('Current memory', { exact: true })).toBeVisible()
     await expect(page.getByText('Scheduled reminder', { exact: true })).toHaveCount(0)
-    expect(requests.at(-1).temporal.target_at).toBe('2027-09-28T13:30:00.000Z')
+    expect(requests.at(-1).temporal.target_at).toBe('2027-09-28T09:30')
     expect(requests.at(-1).query).toBe('calendar')
     expect(requests.every(request => request.temporal?.target_at && request.temporal.lookahead_hours === 0)).toBe(true)
   })
 }
 
-test('calendar default keeps the current instant during a repeated browser hour', async ({ page }) => {
-  await page.clock.setFixedTime(new Date('2026-11-01T06:30:45Z'))
+test('calendar default keeps the current instant during a repeated global hour', async ({ page }) => {
+  await page.clock.setFixedTime(new Date('2026-10-25T01:30:45Z'))
   const { item } = await memoryItemFixtures(page)
   const requests = []
   await page.route('**/api/memory/browse', route => {
@@ -715,12 +719,36 @@ test('calendar default keeps the current instant during a repeated browser hour'
   })
   await mount(page, 'app/memory/pages/index.vue', { route: '/memory?agent=7' })
   await expect(page.getByText('Current memory', { exact: true })).toBeVisible()
-  await expect(page.getByLabel('Target date and time', { exact: true })).toHaveValue('2026-11-01T01:30')
+  await expect(page.getByLabel('Target date and time', { exact: true })).toHaveValue('2026-10-25T02:30')
   await page.getByRole('button', { name: 'Apply', exact: true }).click()
   await expect.poll(() => requests.length).toBe(2)
   expect(requests.at(-1).temporal).toEqual({
-    target_at: '2026-11-01T06:30:00.000Z', timezone: 'America/Toronto', lookahead_hours: 0,
+    target_at: '2026-10-25T01:30:00.000Z', lookahead_hours: 0,
   })
+})
+
+test('calendar waits for the global timezone and recovers its loading failure', async ({ page }) => {
+  await page.clock.setFixedTime(new Date('2026-09-27T16:12:45Z'))
+  await memoryItemFixtures(page)
+  let fail = true
+  await page.route('**/api/memory/temporal/defaults', route => route.fulfill(fail
+    ? { status: 503, json: { detail: 'Synthetic settings failure' } }
+    : { json: { timezone: 'Europe/Paris', lookahead_hours: 24 } }))
+  const requests = []
+  await page.route('**/api/memory/browse', route => {
+    requests.push(route.request().postDataJSON())
+    return route.fulfill({ json: { hits: [], total: 0, has_more: false } })
+  })
+  await mount(page, 'app/memory/pages/index.vue', { route: '/memory?agent=7' })
+  await expect(page.getByRole('button', { name: 'Retry', exact: true })).toBeVisible()
+  await expect(page.getByLabel('Target date and time', { exact: true })).toBeDisabled()
+  expect(requests).toEqual([])
+  fail = false
+  await page.getByRole('button', { name: 'Retry', exact: true }).click()
+  await expect(page.getByLabel('Target date and time', { exact: true })).toHaveValue('2026-09-27T18:12')
+  await expect.poll(() => requests.length).toBe(1)
+  await expect(page.getByRole('button', { name: 'Retry', exact: true })).toHaveCount(0)
+  expect(requests[0].temporal).not.toHaveProperty('timezone')
 })
 })
 
@@ -767,8 +795,7 @@ for (const width of [1440, 390]) {
   test(`attachment memory keeps its description and opens the original file at ${width}px`, async ({ page }) => {
     await page.setViewportSize({ width, height: 900 })
     const { item } = await memoryItemFixtures(page)
-    Object.assign(item, { node_kind: 'attachment', metadata: {
-      resource_uri: 'document://11111111-1111-1111-1111-111111111111/attachments/22222222-2222-2222-2222-222222222222',
+    Object.assign(item, { node_kind: 'attachment', primary_url: 'document://11111111-1111-1111-1111-111111111111/attachments/22222222-2222-2222-2222-222222222222', metadata: {
       resource_media_type: 'text/markdown',
     } })
     await jsonRoute(page, '**/api/memory/items/doc-a?*', item)
@@ -832,9 +859,7 @@ for (const delayedStage of ['memory', 'info', 'content']) {
     const documentId = '11111111-1111-1111-1111-111111111111'
     let reads = 0, waiting = false, release
     const sources = [
-      ['memory', '**/api/memory/items/doc-a?*', { json: { ...document, node_kind: 'attachment', metadata: {
-        resource_uri: `document://${documentId}/attachments/${attachmentId}`,
-      } } }],
+      ['memory', '**/api/memory/items/doc-a?*', { json: { ...document, node_kind: 'attachment', primary_url: `document://${documentId}/attachments/${attachmentId}`, metadata: {} } }],
       ['info', '**/api/memory/documents/*/attachments/*/info?*', { json: {
         id: attachmentId, name: 'Original.md', media_type: 'text/markdown', size_bytes: 30,
       } }],
@@ -958,7 +983,8 @@ for (const width of [1440, 390]) {
     expect(writes[0]).toMatchObject({ title: 'My current draft', expected_revision: 3, keywords: ['current', 'release, notes'], payload: { text: '<p>Current body</p>' } })
     expect(writes[0]).not.toHaveProperty('summary')
     expect(writes[0]).not.toHaveProperty('reason')
-    expect(writes[0].temporal).toMatchObject({ day: 27, month: 9, hour: 0, minute: 0, timezone: 'Europe/Paris' })
+    expect(writes[0].temporal).toMatchObject({ day: 27, month: 9, hour: 0, minute: 0 })
+    expect(writes[0].temporal).not.toHaveProperty('timezone')
     await expect(dialog.getByRole('tab', { name: 'Memory', exact: true })).toHaveAttribute('aria-selected', 'true')
     await expect(dialog.getByText('Current body', { exact: true })).toBeVisible()
     await dialog.getByLabel('Title', { exact: true }).fill('Second saved title')

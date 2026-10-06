@@ -471,7 +471,7 @@ async def memory_share(
         "confirmed fact worth retaining immediately. Leave routine extraction and duplicate checking "
         "to Dream; skip equivalent known memories. Storage is immediate and auditable. Keywords may be "
         "an array of strings or a JSON-encoded array string. Optional temporal contains partial "
-        "year/month/day/weekday (Monday=1..Sunday=7)/hour/minute and an IANA timezone. "
+        "year/month/day/weekday (Monday=1..Sunday=7)/hour/minute in Galaris's configured timezone. "
         "Unset components are wildcards. An anchor excludes automatic recall outside its period "
         "and forces priority inclusion when it matches, subject to access and context budgets. "
         "Use it for intended reminders, not historical timestamps or ordinary facts; never default to today."

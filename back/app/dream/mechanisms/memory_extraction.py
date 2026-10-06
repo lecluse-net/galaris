@@ -74,7 +74,8 @@ birthday or recurring habit can qualify as stable_personal_fact or recurring_con
 Optionally set temporal ONLY when the fact warrants date/time recall. Its year, month, day,
 weekday (ISO Monday=1..Sunday=7), hour and minute are independent optional constraints; null
 means any value. September 27 every year is month=9/day=27 without a year. All-day dates have
-no hour or minute. Use the supplied IANA timezone unless the source specifies another one.
+no hour or minute. Interpret all components in Galaris's supplied global timezone; do not
+include a timezone in temporal. Convert a source's explicit timezone to that global timezone.
 Never fill unspecified components with today's values. Resolve relative dates using the
 supporting message's occurred_at (or source_at), never the extraction time. If the source
 date or intended date is ambiguous, leave temporal null. Keep temporal null for ordinary facts.

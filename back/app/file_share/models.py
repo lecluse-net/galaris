@@ -1,12 +1,16 @@
 """Private resource identities, retained independently of source availability."""
 
 from datetime import datetime
-from typing import Any
+from typing import Any, cast
 from uuid import UUID, uuid4
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, Text, UniqueConstraint, CheckConstraint, Index
+from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, Text, UniqueConstraint, CheckConstraint, Index, select
 from sqlalchemy.dialects.postgresql import JSONB
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy.ext.hybrid import hybrid_property
+from sqlalchemy.sql.elements import ColumnElement
+
+from app.memory import MemoryURL
 
 from core.database import Base
 
@@ -32,9 +36,22 @@ class FileCatalogEntry(Base):
     operation_started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     last_seen_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     checked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), index=True)
-    memory_item_id: Mapped[UUID | None] = mapped_column(ForeignKey("memory_items.id"), index=True)
+    memory_url_id: Mapped[UUID | None] = mapped_column(ForeignKey("memory_urls.id", ondelete="SET NULL"), index=True)
+    memory_url: Mapped[MemoryURL | None] = relationship(lazy="selectin")
     file_sha256: Mapped[str | None] = mapped_column(String(64))
     fingerprint_version: Mapped[str | None] = mapped_column(String(64))
+
+    @hybrid_property
+    def memory_node_id(self) -> UUID | None:
+        """Derived through the URL relation; never a second persisted association."""
+        return self.memory_url.memory_node_id if self.memory_url is not None else None
+
+    @memory_node_id.inplace.expression
+    @classmethod
+    def _memory_node_expression(cls) -> ColumnElement[UUID | None]:
+        return cast(ColumnElement[UUID | None], select(MemoryURL.memory_node_id).where(
+            MemoryURL.id == cls.memory_url_id,
+        ).correlate(cls).scalar_subquery())
 
     __table_args__ = (Index(
         "ix_file_catalog_tombstone_binding", "connection_id", "binding_stamp", "runtime",

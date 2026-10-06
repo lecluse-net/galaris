@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import hashlib
 from html.parser import HTMLParser
+from pathlib import Path
 from typing import Literal
 from urllib.parse import parse_qs, urlsplit
 from uuid import UUID, uuid4
@@ -16,11 +17,13 @@ from uuid import UUID, uuid4
 from sqlalchemy import func, select
 
 from core.database import get_db
+from core.util import complete_io
 
 from .document_attachment_service import attachments_from_item
-from .models import DocumentAttachment, DocumentTag, DocumentTagAssignment, MemoryItem, MemoryLink, MemorySource
+from .models import DocumentAttachment, DocumentTag, DocumentTagAssignment, MemoryItem, MemoryLink
+from .urls import associate_memory_url
 from .semantic_index import stage_embedding_refresh
-from .storage import get_storage
+from .storage import get_storage, NativeFileStorage
 
 
 PROJECTION = "memory.document_structure"
@@ -108,11 +111,6 @@ async def _node(
         item.metadata_ = metadata
     stage_embedding_refresh(item)
     await db.flush()
-    uri = metadata.get("resource_uri")
-    if isinstance(uri, str) and not await db.scalar(select(MemorySource.id).where(
-        MemorySource.item_id == item.id, MemorySource.source_kind == kind, MemorySource.source_ref == uri,
-    )):
-        db.add(MemorySource(item_id=item.id, source_kind=kind, source_ref=uri))
     return item
 
 
@@ -163,7 +161,8 @@ async def sync_document_structure(document: MemoryItem, content: bytes | None = 
             node = await db.get(MemoryItem, record.memory_item_id)
             if node is None:
                 raise ValueError("Attachment companion is missing")
-            node.title = attachment.name
+            if node.managed_source_ref == str(attachment.id):
+                node.title = attachment.name
             node.owner_agent_id = document.owner_agent_id
             node.owner_user_id = document.owner_user_id
             stage_embedding_refresh(node)
@@ -171,19 +170,44 @@ async def sync_document_structure(document: MemoryItem, content: bytes | None = 
             node = await _node(
                 kind="attachment", source_id=attachment.id, title=attachment.name,
                 owner_agent_id=document.owner_agent_id, owner_user_id=document.owner_user_id,
-                metadata={"resource_uri": f"document://{document.id}/attachments/{attachment.id}",
-                          "resource_media_type": attachment.media_type,
-                          "resource_size_bytes": attachment.size_bytes},
+                metadata={},
             )
             record = DocumentAttachment(id=attachment.id, document_id=document.id,
                                         memory_item_id=node.id, active=attachment.id in active_ids)
             db.add(record)
             records[attachment.id] = record
+        if node.managed_source_ref == str(attachment.id):
+            node.file_media_type = attachment.media_type
+            node.file_size_bytes = attachment.size_bytes
+        node.metadata_ = {key: value for key, value in node.metadata_.items()
+                          if key not in ("resource_media_type", "resource_size_bytes")}
+        await associate_memory_url(node.id, f"document://{document.id}/attachments/{attachment.id}")
+        if node.file_sha256 is None:
+            storage = get_storage("native")
+            if not isinstance(storage, NativeFileStorage):
+                raise ValueError("Attachment fingerprints require native storage")
+            path = await storage.path_for_read(str(attachment.id))
+            def digest(source_path: Path) -> str:
+                with source_path.open("rb") as source:
+                    return hashlib.file_digest(source, "sha256").hexdigest()
+            node.file_sha256 = await complete_io(digest, path)
         record.active = attachment.id in active_ids
         if record.active:
             desired.add((node.id, "has_attachment"))
     for identity, record in records.items():
         record.active = identity in active_ids
+    active_urls: dict[UUID, list[str]] = {}
+    for record in records.values():
+        if record.active:
+            active_urls.setdefault(record.memory_item_id, []).append(
+                f"document://{document.id}/attachments/{record.id}"
+            )
+    for node_id in {record.memory_item_id for record in records.values()}:
+        companion = await db.get(MemoryItem, node_id)
+        if companion is not None:
+            locations = active_urls.get(node_id, [])
+            if companion.primary_url not in locations:
+                companion.primary_url = sorted(locations)[0] if locations else None
     await db.flush()
     if document.deleted_at is None:
         payload = content if content is not None else await get_storage(document.provider_code).read(document.resource_id)

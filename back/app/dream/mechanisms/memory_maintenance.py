@@ -7,7 +7,7 @@ from datetime import datetime, timezone
 from typing import Any
 from uuid import UUID
 
-from sqlalchemy import String, case, cast, exists, func, literal, select
+from sqlalchemy import String, case, cast, exists, func, literal, select, and_, or_
 
 from app.memory import (
     MemoryEmbeddingChunk,
@@ -42,7 +42,7 @@ class MemoryMaintenanceMechanism:
     @staticmethod
     def _policy_token() -> str:
         policy = (
-            "automatic-backlog-v2:"
+            "file-sha-backlog-v3:"
             f"{runtime_settings.MEMORY_DUPLICATE_MODE}:"
             f"{runtime_settings.MEMORY_DUPLICATE_SIMILARITY_THRESHOLD}:"
             f"{runtime_settings.MEMORY_CONTRADICTION_MODE}:"
@@ -76,6 +76,7 @@ class MemoryMaintenanceMechanism:
             datetime.now(timezone.utc).strftime("%Y%m%d"),
             ":",
             indexed,
+            case((MemoryItem.file_sha256.is_not(None), func.concat(":sha:", MemoryItem.file_sha256)), else_=""),
         )
 
     @staticmethod
@@ -92,10 +93,13 @@ class MemoryMaintenanceMechanism:
     @staticmethod
     def _eligible_item() -> Any:
         return (
-            MemoryItem.owner_agent_id.is_not(None)
-            & (MemoryItem.deleted_at.is_(None))
-            & (MemoryItem.node_kind == "memory")
-            & (MemoryItem.source_managed.is_(False))
+            MemoryItem.deleted_at.is_(None)
+            & or_(
+                and_(MemoryItem.owner_agent_id.is_not(None), MemoryItem.node_kind == "memory",
+                     MemoryItem.source_managed.is_(False)),
+                and_(MemoryItem.node_kind.in_(("file", "attachment")), MemoryItem.file_sha256.is_not(None),
+                     literal(runtime_settings.MEMORY_DUPLICATE_MODE != "off")),
+            )
         )
 
     async def is_available(self) -> bool:

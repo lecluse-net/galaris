@@ -36,6 +36,7 @@ from app.memory.schemas import (
     MemorySourceCreate,
 )
 from app.memory.storage import get_storage
+from .conftest import create_memory_task
 from app.topic import TopicClassification, service as topic_service
 
 
@@ -1079,7 +1080,7 @@ async def test_only_explicit_llm_reads_update_memory_usage(
     assert content_updated.last_accessed_at is None
     assert content_updated.updated_at == content_updated_at
 
-    task_id = uuid4()
+    task_id = await create_memory_task(db, owner.id)
     llm_read, _content, _access, _content_type, _media_type = (
         await service.get_item(
             item.id,
@@ -1137,7 +1138,7 @@ async def test_llm_read_usage_stays_in_the_callers_transaction(
         item_id,
         agent_id=owner.id,
         record_llm_access=True,
-        task_id=uuid4(),
+        task_id=await create_memory_task(db, owner.id),
     )
     await db.rollback()
 
@@ -1168,7 +1169,7 @@ async def test_repeated_task_read_records_one_usage_without_conflict(
             payload=MemoryPayload(text="Durable content."),
         )
     )
-    task_id = uuid4()
+    task_id = await create_memory_task(db, owner.id)
 
     for _index in range(2):
         await service.get_item(
@@ -1218,7 +1219,7 @@ async def test_llm_retrieval_does_not_learn_from_co_injection(
         agent_id=owner.id,
         item_scores=((first.id, 0.9), (second.id, 0.8)),
         query="shared retrieval",
-        task_id=uuid4(),
+        task_id=await create_memory_task(db, owner.id),
     )
 
     association_count = await db.scalar(select(func.count(MemoryAssociation.id)))

@@ -149,6 +149,8 @@ Les réglages existants, y compris une désactivation explicite, restent conserv
 
 Dream regroupe les copies identiques d'un fichier **par agent**, grâce au SHA-256 de ses
 octets complets. La fiche commune conserve les différents emplacements et un résumé partagé.
+Elle conserve aussi une URL principale de visualisation, stable lors de la découverte
+d'une copie et actualisée si la source est déplacée ou supprimée.
 Dans une fiche ou le détail d'un fichier du graphe, **Emplacements du fichier** donne accès
 aux miniatures, à l'aperçu plein écran et au téléchargement de l'original. Les droits de
 chaque source restent applicables ; une copie modifiée ne remplace pas les autres.
@@ -277,6 +279,11 @@ Les contacts sont dans `/memory/contacts` ; les regroupements thématiques dans
 Dans **Liste**, les documents, pièces jointes et fichiers indexés affichent leur miniature
 lorsqu'elle est disponible. Un clic sur la ligne ou la carte ouvre la fiche ; les droits
 d'écriture déterminent si son contenu peut être modifié.
+
+Dans **Liste**, modifiez **Date et heure cibles** puis appliquez le filtre pour consulter
+les souvenirs correspondant à cette date. La saisie et les correspondances utilisent le
+fuseau global configuré dans Galaris (`TZ`), même si votre navigateur utilise un autre fuseau.
+Les champs temporels d'un souvenir n'ont aucun sélecteur de fuseau.
 
 Le graphe replie les branches d'au moins huit feuilles exclusives avec un compteur. Zoomez,
 cliquez sur le groupe ou activez **Détails des branches** pour voir les éléments, puis dézoomez

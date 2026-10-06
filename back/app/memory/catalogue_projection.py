@@ -5,6 +5,7 @@ import json
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 from contextvars import ContextVar
+from datetime import datetime, timezone
 from html import escape, unescape
 from typing import cast
 from uuid import UUID
@@ -13,7 +14,8 @@ from core.database import get_db
 from core.util import visible_text
 from sqlalchemy import select, func, or_
 
-from .models import MemoryItem, MemoryLink, MemoryRevision, MemorySource, MemoryContextEdge
+from .models import MemoryItem, MemoryLink, MemoryRevision, MemoryContextEdge
+from .urls import memory_urls
 from .safety import assert_safe_text
 from .storage import get_storage
 
@@ -39,6 +41,7 @@ async def project_catalogue_entry(
     *, identity: UUID, agent_id: int, item_id: UUID | None, title: str,
     uri: str, directory: bool, description: str, notes: str,
     source_ref: str | None = None,
+    file_media_type: str | None = None, file_size_bytes: int | None = None,
 ) -> UUID:
     """Stage one projection in the caller's transaction, preserving personal notes.
 
@@ -56,9 +59,12 @@ async def project_catalogue_entry(
         raise ValueError("A catalogue entry cannot replace another managed source")
     if item is not None and item.metadata_.get("catalogue_manual_title"):
         title = item.title
+    if item is not None:
+        item.file_media_type = None if directory else file_media_type
+        item.file_size_bytes = None if directory else file_size_bytes
     metadata: dict[str, object] = {
         **(dict(item.metadata_) if item is not None else {}),
-        "resource_uri": uri, "catalogue_ref": str(identity), "catalogue_editable": True,
+        "catalogue_ref": str(identity), "catalogue_editable": True,
     }
     manual_content = item is not None and bool(item.metadata_.get("catalogue_manual_content"))
     search_text = "\n".join(part for part in (visible_text(content.decode()), uri) if part)
@@ -81,11 +87,15 @@ async def project_catalogue_entry(
             visibility="private", source_managed=True, read_only=False, deletion_protected=True,
             managed_source_kind="file_catalogue", managed_source_ref=source_ref,
             content_hash=digest, size_bytes=len(content), search_text=search_text,
+            file_media_type=None if directory else file_media_type,
+            file_size_bytes=None if directory else file_size_bytes,
+            # PostgreSQL now() shares one timestamp across a discovery batch.
+            # Preserve discovery order when Dream chooses the oldest identity.
+            created_at=datetime.now(timezone.utc),
             metadata_=metadata, keywords=[],
         )
         db.add(item)
         await db.flush()
-        db.add(MemorySource(item_id=item.id, source_kind="resource", source_ref=uri[:1024]))
     else:
         if not item.metadata_.get("catalogue_editable"):
             item.read_only = False
@@ -98,9 +108,6 @@ async def project_catalogue_entry(
         item.metadata_ = metadata
         item.node_kind = "directory" if directory else "file"
         item.revision += 1
-        sources = await db.scalars(select(MemorySource).where(MemorySource.item_id == item.id))
-        for source in sources:
-            source.source_ref = uri[:1024]
     _record_revision(item)
     await db.flush()
     return item.id
@@ -148,7 +155,7 @@ async def reconcile_catalogue_descriptions() -> None:
                     created.append(item.resource_id)
                 item.content_hash = hashlib.sha256(content).hexdigest()
                 item.size_bytes = len(content)
-                locations = item.metadata_.get("resource_uris") or [item.metadata_.get("resource_uri", "")]
+                locations = await memory_urls(item.id)
                 item.search_text = "\n".join(part for part in (
                     visible_text(content.decode()), *locations,
                 ) if part)
@@ -212,11 +219,7 @@ async def detach_catalogue_parent_links(item_id: UUID, *, parent_ids: list[UUID]
 
 
 async def identify_catalogue_file(item_id: UUID, agent_id: int, sha256: str) -> UUID:
-    """Serialize content identity per agent and preserve duplicate fiche evidence.
-
-    Catalogue bindings are repointed by the caller in the same transaction. Old
-    revisions remain available for audit; the duplicate is a retained tombstone.
-    """
+    """Record complete byte identity; Dream owns duplicate detection and merging."""
     if len(sha256) != 64 or any(char not in "0123456789abcdef" for char in sha256):
         raise ValueError("Invalid file SHA-256")
     db = get_db()
@@ -225,25 +228,27 @@ async def identify_catalogue_file(item_id: UUID, agent_id: int, sha256: str) -> 
     item = await db.scalar(select(MemoryItem).where(MemoryItem.id == item_id).with_for_update())
     if item is None or item.owner_agent_id != agent_id or item.node_kind != "file":
         raise ValueError("File identity requires an agent-owned catalogue fiche")
-    canonical = await db.scalar(select(MemoryItem).where(
-        MemoryItem.owner_agent_id == agent_id, MemoryItem.file_sha256 == sha256,
-    ).with_for_update().execution_options(include_historized=True))
-    if canonical is None:
-        if item.file_sha256 not in (None, sha256):
-            raise ValueError("A file identity cannot change its content hash")
-        item.file_sha256 = sha256
-        await db.flush()
-        return item.id
-    canonical.deleted_at = None
-    if canonical.id == item.id:
-        return item.id
+    if item.file_sha256 not in (None, sha256):
+        raise ValueError("A file identity cannot change its content hash")
+    item.file_sha256 = sha256
+    await db.flush()
+    return item.id
+
+
+async def merge_file_nodes(canonical: MemoryItem, item: MemoryItem) -> None:
+    """Keep editorial evidence and locations; caller validates scope and commits."""
+    from .urls import transfer_memory_urls
+
+    db = get_db()
+    if canonical.primary_url is None:
+        canonical.primary_url = item.primary_url
     canonical.keywords = sorted(set(canonical.keywords) | set(item.keywords))
     changed = False
     if item.metadata_.get("catalogue_manual_title") and not canonical.metadata_.get("catalogue_manual_title"):
         canonical.title = item.title
         canonical.metadata_ = {**canonical.metadata_, "catalogue_manual_title": True}
         changed = True
-    if item.metadata_.get("catalogue_manual_content"):
+    if item.metadata_.get("catalogue_manual_content") or (item.node_kind == "attachment" and item.size_bytes):
         old = await get_storage(canonical.provider_code).read(canonical.resource_id)
         extra = await get_storage(item.provider_code).read(item.resource_id)
         if extra not in old:
@@ -257,19 +262,15 @@ async def identify_catalogue_file(item_id: UUID, agent_id: int, sha256: str) -> 
             canonical.search_text = visible_text(content.decode())
             canonical.metadata_ = {**canonical.metadata_, "catalogue_manual_content": True}
             changed = True
+    if canonical.file_media_type is None:
+        canonical.file_media_type = item.file_media_type
+    if canonical.file_size_bytes is None:
+        canonical.file_size_bytes = item.file_size_bytes
     if changed:
         canonical.revision += 1
         _record_revision(canonical)
-    sources = list(await db.scalars(select(MemorySource).where(MemorySource.item_id.in_((canonical.id, item.id)))))
-    known = {(row.source_kind, row.source_ref) for row in sources if row.item_id == canonical.id}
-    for row in sources:
-        if row.item_id != item.id:
-            continue
-        if (row.source_kind, row.source_ref) in known:
-            await db.delete(row)
-        else:
-            row.item_id = canonical.id
-            known.add((row.source_kind, row.source_ref))
+    await transfer_memory_urls(item, canonical)
+    await update_catalogue_file_locations(canonical.id, await memory_urls(canonical.id))
     for link in await db.scalars(select(MemoryLink).where(or_(MemoryLink.source_item_id == item.id, MemoryLink.target_item_id == item.id))):
         source = canonical.id if link.source_item_id == item.id else link.source_item_id
         target = canonical.id if link.target_item_id == item.id else link.target_item_id
@@ -293,26 +294,51 @@ async def identify_catalogue_file(item_id: UUID, agent_id: int, sha256: str) -> 
         else:
             edge.item_id = canonical.id
     item.metadata_ = {**item.metadata_, "merged_into": str(canonical.id)}
+    if item.node_kind == "attachment":
+        # Attachment erasure belongs to its parent document. Keep every payload
+        # in the surviving companion's history so forgetting that parent erases
+        # descriptions from all merged attachment identities as well.
+        archives = list(await db.scalars(select(MemoryRevision).where(
+            MemoryRevision.item_id == item.id,
+        ).order_by(MemoryRevision.revision)))
+        for archive in archives:
+            canonical.revision += 1
+            archive.item_id = canonical.id
+            archive.revision = canonical.revision
+        if not any(archive.resource_id == item.resource_id for archive in archives):
+            canonical.revision += 1
+            db.add(MemoryRevision(
+                item_id=canonical.id, revision=canonical.revision,
+                provider_code=item.provider_code, resource_id=item.resource_id,
+                content_hash=item.content_hash, content_type=item.content_type,
+                media_type=item.media_type, content_profile_version=item.content_profile_version,
+                title=item.title, filename=item.filename, keywords=list(item.keywords),
+                metadata_=dict(item.metadata_),
+            ))
+        canonical.revision += 1
+        _record_revision(canonical)
+        item.resource_id = "merged"
+        item.content_hash = hashlib.sha256(b"").hexdigest()
+        item.size_bytes = 0
+        item.search_text = ""
+        item.metadata_ = {"merged_into": str(canonical.id)}
     item.file_sha256 = None
+    item.primary_url = None
     item.soft_delete()
     await db.flush()
-    return canonical.id
 
 
 async def update_catalogue_file_locations(item_id: UUID, uris: list[str]) -> None:
     item = await get_db().get(MemoryItem, item_id)
     if item is None:
         return
-    old_uris = set(item.metadata_.get("resource_uris", []))
+    old_uris = set(await memory_urls(item_id))
     # Keep the editable body intact; retire only the location lines we added.
     lines = [line for line in item.search_text.splitlines() if line not in old_uris]
     locations = sorted(set(uris))
     item.search_text = "\n".join(lines + [uri for uri in locations if uri not in lines])
-    item.metadata_ = {**item.metadata_, "resource_uris": locations}
-    if uris:
-        item.metadata_ = {**item.metadata_, "resource_uri": locations[0]}
-    else:
-        item.metadata_ = {key: value for key, value in item.metadata_.items() if key != "resource_uri"}
+    if item.primary_url not in locations:
+        item.primary_url = locations[0] if locations else None
     await get_db().flush()
 
 
@@ -329,7 +355,7 @@ async def catalogue_file_summary(item_id: UUID, sha256: str, description: str) -
             created.append(item.resource_id)
         item.content_hash = hashlib.sha256(content).hexdigest()
         item.size_bytes = len(content)
-        item.search_text = visible_text(content.decode()) + "\n" + "\n".join(item.metadata_.get("resource_uris", []))
+        item.search_text = visible_text(content.decode()) + "\n" + "\n".join(await memory_urls(item.id))
         item.revision += 1
         _record_revision(item)
     await db.flush()

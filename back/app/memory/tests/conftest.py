@@ -11,6 +11,15 @@ from app.agent.models import Agent, Title
 from app.memory.storage import NativeFileStorage, register_storage, reset_storage_registry
 
 
+async def create_memory_task(db: AsyncSession, agent_id: int):
+    from app.task.models import Task
+
+    task = Task(label="Synthetic memory retrieval", agent_id=agent_id)
+    db.add(task)
+    await db.flush()
+    return task.id
+
+
 @pytest_asyncio.fixture
 async def agents(db: AsyncSession) -> tuple[Agent, Agent]:
     suffix = uuid4().hex[:10]

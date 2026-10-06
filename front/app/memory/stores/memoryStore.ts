@@ -40,10 +40,10 @@ export const useMemoryStore = defineStore('memory', () => {
   const query = ref('')
   const temporal = ref<MemoryTemporalFilter>({
     target_at: new Date(Math.floor(Date.now() / 60_000) * 60_000).toISOString(),
-    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
     lookahead_hours: 0,
   })
   const temporalWindow = ref<MemoryTemporalWindow | null>(null)
+  const temporalTimezone = ref<string | null>(null)
   const recallTruncated = ref(false)
   const degradationReason = ref<string | null>(null)
   const loading = ref(false)
@@ -94,6 +94,11 @@ export const useMemoryStore = defineStore('memory', () => {
     recallTruncated.value = false
     degradationReason.value = null
     try {
+      if (temporalTimezone.value === null) {
+        const defaults = await memoryService.temporalDefaults()
+        if (request !== searchRequest || agentId !== selectedAgentId.value) return
+        temporalTimezone.value = defaults.timezone
+      }
       let result = await memoryService.browse({
         hybrid: true,
         temporal: temporal.value,
@@ -346,6 +351,7 @@ export const useMemoryStore = defineStore('memory', () => {
     query,
     temporal,
     temporalWindow,
+    temporalTimezone,
     recallTruncated,
     degradationReason,
     loading,

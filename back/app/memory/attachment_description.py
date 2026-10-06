@@ -20,6 +20,7 @@ from .models import DocumentAttachment, MemoryItem, MemoryRevision
 from .safety import assert_safe_text
 from .semantic_index import stage_embedding_refresh
 from .storage import get_storage
+from .urls import associate_memory_url
 
 
 async def record_attachment_description(
@@ -46,9 +47,11 @@ async def record_attachment_description(
             source_kind="image_description", source_ref=identity,
             owner_agent_id=agent_id, memory_item_id=None,
             title=filename[:500], memory_type="working", content=description,
-            filename="", keywords=(), metadata={"resource_uri": uri,
+            filename="", keywords=(), metadata={
                 "task_ref": str(task_id) if task_id is not None else None},
         ))
+        await associate_memory_url(item.id, uri)
+        await get_db().commit()
         return item.id
     document_id, attachment_id = reference
     db = get_db()
@@ -70,7 +73,7 @@ async def record_attachment_description(
     item = await db.scalar(select(MemoryItem).where(MemoryItem.id == record.memory_item_id).with_for_update())
     if item is None:
         raise service.MemoryNotFoundError("Attachment memory not found")
-    if not str(item.metadata_.get("resource_media_type", "")).startswith("image/"):
+    if not (item.file_media_type or "").startswith("image/"):
         raise ValueError("Only image attachments accept an image description")
     return await write_attachment_description(item, description, agent_id=agent_id, task_id=task_id)
 

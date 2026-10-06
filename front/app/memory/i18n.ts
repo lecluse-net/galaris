@@ -25,10 +25,10 @@ export default {
       agent: 'Agent',
       temporal: {
         title: 'Temporalité (facultative)', hint: 'Réservez une date aux souvenirs à rappeler à ce moment-là : ils remontent lorsqu’elle correspond et sont exclus du rappel automatique hors période. Sans date, le souvenir reste soumis à la recherche habituelle. Un champ vide accepte toutes les valeurs ; les champs renseignés doivent correspondre ensemble.',
-        day: 'Jour du mois', month: 'Mois', year: 'Année', hour: 'Heure', minute: 'Minute', weekday: 'Jour de la semaine', timezone: 'Fuseau horaire',
+        day: 'Jour du mois', month: 'Mois', year: 'Année', hour: 'Heure', minute: 'Minute', weekday: 'Jour de la semaine',
         any: 'Toutes les valeurs', none: 'Aucune temporalité.', remove: 'Retirer la temporalité',
         constraint: '{field} : {value}', interpretation: 'Correspond lorsque : {constraints}. Les autres champs restent libres.',
-        invalidNumber: 'Entier entre {min} et {max}', timezoneError: 'Fuseau par défaut indisponible. Vous pouvez saisir un fuseau, par exemple Europe/Paris.',
+        invalidNumber: 'Entier entre {min} et {max}',
         weekdays: { 1: 'Lundi', 2: 'Mardi', 3: 'Mercredi', 4: 'Jeudi', 5: 'Vendredi', 6: 'Samedi', 7: 'Dimanche' },
       },
       temporalSearch: {
@@ -503,10 +503,10 @@ export default {
       agent: 'Agent',
       temporal: {
         title: 'Temporality (optional)', hint: 'Set a date only for memories to recall at that time: matching memories are included and excluded from automatic recall outside that period. Undated memories use ordinary search. Empty fields accept any value; all entered fields must match together.',
-        day: 'Day of month', month: 'Month', year: 'Year', hour: 'Hour', minute: 'Minute', weekday: 'Weekday', timezone: 'Timezone',
+        day: 'Day of month', month: 'Month', year: 'Year', hour: 'Hour', minute: 'Minute', weekday: 'Weekday',
         any: 'Any value', none: 'No temporality.', remove: 'Remove temporality',
         constraint: '{field}: {value}', interpretation: 'Matches when: {constraints}. Other fields remain unrestricted.',
-        invalidNumber: 'Integer between {min} and {max}', timezoneError: 'Default timezone unavailable. You can enter a timezone, such as Europe/Paris.',
+        invalidNumber: 'Integer between {min} and {max}',
         weekdays: { 1: 'Monday', 2: 'Tuesday', 3: 'Wednesday', 4: 'Thursday', 5: 'Friday', 6: 'Saturday', 7: 'Sunday' },
       },
       temporalSearch: {
@@ -979,10 +979,10 @@ export default {
       },
       temporal: {
         title: '时间（可选）', hint: '仅为需要在指定时间提醒的记忆设置日期：匹配时自动加入，其他时间不进入自动召回。未设置日期的记忆按普通搜索返回。空字段接受任何值；所有已填写字段必须同时匹配。',
-        day: '日期', month: '月份', year: '年份', hour: '小时', minute: '分钟', weekday: '星期', timezone: '时区',
+        day: '日期', month: '月份', year: '年份', hour: '小时', minute: '分钟', weekday: '星期',
         any: '任意值', none: '无时间条件。', remove: '移除时间条件',
         constraint: '{field}：{value}', interpretation: '匹配条件：{constraints}。其他字段不限。',
-        invalidNumber: '{min} 到 {max} 之间的整数', timezoneError: '默认时区不可用。可以输入时区，例如 Europe/Paris。',
+        invalidNumber: '{min} 到 {max} 之间的整数',
         weekdays: { 1: '星期一', 2: '星期二', 3: '星期三', 4: '星期四', 5: '星期五', 6: '星期六', 7: '星期日' },
       },
       recall: {

@@ -170,6 +170,6 @@ async def test_hybrid_graph_keeps_room_authorization_separate_from_file_batches(
     await catalogue.observe_descriptors(scope, [ResourceDescriptor(uri=f'hybrid-proof://{path}', name=path.rsplit('/', 1)[-1]) for path in paths])
     await db.commit()
     entries = list(await db.scalars(select(FileCatalogEntry)))
-    readable = await catalogue.catalogue_sources_readable([entry.memory_item_id for entry in entries], owner.id)
-    assert readable == {entry.memory_item_id for entry in entries if entry.uri.startswith('hybrid-proof://files/')}
+    readable = await catalogue.catalogue_sources_readable([entry.memory_node_id for entry in entries], owner.id)
+    assert readable == {entry.memory_node_id for entry in entries if entry.uri.startswith('hybrid-proof://files/')}
     assert set(checked) == {'talk-token/a.txt', 'talk-token/b.txt', 'talk-token /c.txt'}

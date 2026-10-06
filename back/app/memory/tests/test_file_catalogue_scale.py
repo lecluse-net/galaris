@@ -14,7 +14,7 @@ from app.file_share import resource_service
 from app.file_share import catalogue, resource_observation
 from app.file_share.models import FileCatalogEntry
 from app.memory import service
-from app.memory.models import MemoryItem
+from app.memory.models import MemoryItem, MemoryURL
 from app.memory.schemas import MemorySearchRequest
 from app.memory.storage import get_storage
 from .test_file_catalogue import console_catalogue as console_catalogue
@@ -37,9 +37,9 @@ async def test_private_catalogue_search_at_1000_10000_100000_entries(console_cat
     results = []
     for total in (1000, 10000, 100000):
         for offset in range(previous, total, 500):
-            memories, resources = [], []
+            memories, resources, urls = [], [], []
             for index in range(offset, min(offset + 500, total)):
-                item_id, identity = uuid4(), uuid4()
+                item_id, identity, url_id = uuid4(), uuid4(), uuid4()
                 uri = f'console://synthetic-{index}.txt'
                 title = f'Synthetic catalogue entry {index}'
                 if index == total - 1:
@@ -51,12 +51,14 @@ async def test_private_catalogue_search_at_1000_10000_100000_entries(console_cat
                     source_managed=True, deletion_protected=True, managed_source_kind='file_catalogue',
                     managed_source_ref=str(identity), content_hash=hashlib.sha256(body).hexdigest(),
                     size_bytes=len(body), search_text=title,
-                    metadata={'resource_uri': uri, 'catalogue_ref': str(identity), 'catalogue_editable': True}))
+                    metadata={'catalogue_ref': str(identity), 'catalogue_editable': True}))
+                urls.append(dict(id=url_id, memory_node_id=item_id, url=uri))
                 resources.append(dict(id=identity, agent_id=ctx.agent_id, connection_id=connection.id,
                     binding_stamp=scope.stamp, runtime=scope.runtime, uri=uri, uri_key=hashlib.sha256(uri.encode()).hexdigest(),
                     descriptor={'uri': uri, 'name': title, 'is_collection': False},
-                    memory_item_id=item_id, operation_started_at=scope.started_at, last_seen_at=scope.started_at))
+                    memory_url_id=url_id, operation_started_at=scope.started_at, last_seen_at=scope.started_at))
             await db.execute(insert(MemoryItem.__table__), memories)
+            await db.execute(insert(MemoryURL.__table__), urls)
             await db.execute(insert(FileCatalogEntry.__table__), resources)
         await db.commit()
         await db.execute(text('ANALYZE memory_items'))

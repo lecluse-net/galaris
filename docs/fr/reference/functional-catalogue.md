@@ -1469,7 +1469,8 @@ Sources : [acquisition Memory](../../../back/app/memory/acquisition_service.py),
 ### Temporalité partielle et rappels à venir
 
 Un souvenir peut recevoir une **temporalité facultative** : année, mois, jour du mois, jour de
-semaine, heure, minute et fuseau IANA. Les composantes renseignées se combinent ; les autres restent
+semaine, heure et minute, interprétés dans le fuseau global de Galaris (`TZ`). Aucun fuseau
+n'est stocké par souvenir. Les composantes renseignées se combinent ; les autres restent
 libres. Jour 27 et mois 9 correspondent à chaque 27 septembre ; une date sans heure couvre la
 journée. Le formulaire explique l’interprétation et permet de retirer l’ancrage sans perdre le
 contenu. Création, révisions, `memory_remember` et extraction Dream conservent cette information ;

@@ -4,7 +4,7 @@ import hashlib
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from uuid import UUID
-from sqlalchemy import select, update
+from sqlalchemy import select
 from core.database import get_db
 from core.util import complete_io
 from app.memory import identify_catalogue_file, catalogue_projection_write, MemoryItem
@@ -45,7 +45,7 @@ async def apply_fingerprint(identity: str, version: str, sha256: str) -> bool:
         return False
     await lock_binding(scope)
     entry = await db.scalar(select(FileCatalogEntry).where(FileCatalogEntry.id == entry.id).with_for_update().execution_options(populate_existing=True))
-    if entry is None or not entry.present or entry.source_version != version or entry.memory_item_id is None:
+    if entry is None or not entry.present or entry.source_version != version or entry.memory_node_id is None:
         return False
     if entry.fingerprint_version == version and entry.file_sha256 == sha256:
         return False
@@ -55,10 +55,9 @@ async def apply_fingerprint(identity: str, version: str, sha256: str) -> bool:
     if descriptor_version(current.model_dump(exclude={"metadata", "capabilities", "indexing_status"})) != version:
         return False
     async with catalogue_projection_write():
-        previous = entry.memory_item_id
+        previous = entry.memory_node_id
         canonical = await identify_catalogue_file(previous, entry.agent_id, sha256)
-        await db.execute(update(FileCatalogEntry).where(FileCatalogEntry.memory_item_id == previous).values(memory_item_id=canonical))
-        entry.memory_item_id = canonical
+        # Byte identity is evidence; Memory maintenance will merge duplicates.
         entry.file_sha256 = sha256
         entry.fingerprint_version = version
         fiche = await db.get(MemoryItem, canonical)

@@ -47,7 +47,7 @@ class AttachmentMemoryMechanism:
         return bool(getattr(runtime_settings, f"DREAM_ATTACHMENT_{self.kind.upper()}_ENABLED"))
 
     def _pending(self) -> Select[tuple[MemoryItem]]:
-        media = func.lower(MemoryItem.metadata_["resource_media_type"].as_string())
+        media = func.lower(MemoryItem.file_media_type)
         plain = or_(media.startswith("text/"), media.in_(TEXT_TYPES))
         convertible = or_(media == "application/pdf", *[
             func.lower(MemoryItem.title).endswith(suffix) for suffix in OFFICE_SUFFIXES | {".pdf"}

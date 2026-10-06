@@ -32,10 +32,10 @@ async def record_resource_description(context: ResourceContext, uri: str, descri
                     FileCatalogEntry.runtime == scope.runtime,
                     FileCatalogEntry.uri_key == hashlib.sha256(descriptor.uri.encode()).hexdigest(),
                 ))
-                if entry is None or entry.memory_item_id is None:
+                if entry is None or entry.memory_node_id is None:
                     raise PermissionError("Resource binding changed")
                 await apply_enrichment(entry.id, descriptor_version(entry.descriptor), description)
-                item_id = entry.memory_item_id
+                item_id = entry.memory_node_id
             await db.commit()
         return item_id
     return await record_attachment_description(

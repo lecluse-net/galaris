@@ -21,7 +21,8 @@ from app.file_share.models import FileCatalogEntry
 from app.file_share.resource_contracts import ResourceContext
 from app.file_share.tests.local_file_transport import TemporaryFileTransport
 from app.memory import service
-from app.memory.models import MemoryItem, MemoryLink
+from app.memory.models import MemoryItem, MemoryLink, MemoryURL
+from app.memory import memory_urls, associate_memory_url
 from app.memory.schemas import MemorySearchRequest, MemoryGraphRootsRequest, MemoryItemUpdate, MemoryPayload
 
 
@@ -76,7 +77,7 @@ async def hits(agent_id, query):
     return (await service.search_items(MemorySearchRequest(agent_id=agent_id, query=query))).hits
 
 
-async def acquire_fingerprints(db):
+async def acquire_fingerprints(db, *, maintain=True):
     from app.file_share import FileCatalogueEnrichmentPort
     port = FileCatalogueEnrichmentPort()
     for source in await port.fingerprints():
@@ -84,7 +85,27 @@ async def acquire_fingerprints(db):
         assert digest is not None
         assert await port.identify(source['identity'], source['version'], digest)
         await db.commit()
+    if maintain:
+        await maintain_file_duplicates(db)
     return port
+
+
+async def maintain_file_duplicates(db):
+    """Exercise Dream's automatic policy separately from byte acquisition."""
+    from app.dream.mechanisms.memory_maintenance import memory_maintenance_mechanism
+    from app.dream.service import mark_success
+    from core.params import runtime_settings
+
+    with pytest.MonkeyPatch.context() as patch:
+        patch.setattr(runtime_settings, "MEMORY_DUPLICATE_MODE", "automatic")
+        patch.setattr(runtime_settings, "MEMORY_CONTRADICTION_MODE", "off")
+        patch.setattr(runtime_settings, "MEMORY_AGING_MODE", "off")
+        while (claim := await memory_maintenance_mechanism.claim_one()) is not None:
+            prepared = await memory_maintenance_mechanism.prepare(claim)
+            count = await memory_maintenance_mechanism.apply(claim, prepared.payload)
+            await mark_success(claim, result_count=count)
+    await db.execute(select(FileCatalogEntry).execution_options(populate_existing=True))
+    await db.execute(select(MemoryItem).execution_options(populate_existing=True))
 
 
 @pytest.mark.asyncio
@@ -182,19 +203,20 @@ async def test_content_identity_unifies_locations_summary_and_graph_per_agent(co
     await resource_service.resource_list(ctx, 'console://first/')
     await resource_service.resource_list(ctx, 'mirror-test://second/')
     before = list(await db.scalars(select(FileCatalogEntry).where(FileCatalogEntry.descriptor['is_collection'].as_boolean().is_(False))))
-    duplicate_item = before[1].memory_item_id
+    duplicate_item = before[1].memory_node_id
     await service.update_item(duplicate_item, MemoryItemUpdate(title='Synthetic personal title', payload=MemoryPayload(text='<p>Synthetic personal note</p>')),
         actor_agent_id=ctx.agent_id)
     await acquire_fingerprints(db)
     entries = list(await db.scalars(select(FileCatalogEntry).where(FileCatalogEntry.descriptor['is_collection'].as_boolean().is_(False)).execution_options(populate_existing=True)))
-    assert len({entry.memory_item_id for entry in entries}) == 1
-    canonical = await db.get(MemoryItem, entries[0].memory_item_id)
+    assert len({entry.memory_node_id for entry in entries}) == 1
+    canonical = await db.get(MemoryItem, entries[0].memory_node_id)
     await db.refresh(canonical)
     assert canonical.file_sha256 == hashlib.sha256(data.encode()).hexdigest()
     assert canonical.title == 'Synthetic personal title'
     assert len(list(await db.scalars(select(MemoryItem).where(MemoryItem.node_kind == 'file')))) == 1
     assert len(list(await db.scalars(select(MemoryLink).where(MemoryLink.target_item_id == canonical.id)))) == 2
-    assert {row.source_ref for row in await db.scalars(select(MemorySource).where(MemorySource.item_id == canonical.id))} == {entry.uri for entry in entries}
+    assert set(await memory_urls(canonical.id)) == {entry.uri for entry in entries}
+    assert not await db.scalar(select(MemorySource.id).where(MemorySource.item_id == canonical.id, MemorySource.source_kind == "resource"))
     assert (await service.get_item(canonical.id, agent_id=ctx.agent_id))[1].find(b'Synthetic personal note') >= 0
     assert await apply_enrichment(entries[0].id, entries[0].source_version, 'One shared synthetic summary')
     await db.commit()
@@ -214,17 +236,17 @@ async def test_content_identity_unifies_locations_summary_and_graph_per_agent(co
     await resource_service.resource_info(ResourceContext(agent_id=peer.id, runtime='internal'), 'console://first/report.txt')
     await acquire_fingerprints(db)
     peer_entry = await db.scalar(select(FileCatalogEntry).where(FileCatalogEntry.agent_id == peer.id))
-    assert peer_entry.memory_item_id != canonical.id
-    assert (await db.get(MemoryItem, peer_entry.memory_item_id)).file_sha256 == canonical.file_sha256
+    assert peer_entry.memory_node_id != canonical.id
+    assert (await db.get(MemoryItem, peer_entry.memory_node_id)).file_sha256 == canonical.file_sha256
     await resource_service.resource_write_text(ctx, entries[0].uri, 'Changed only this location', overwrite=True)
     await acquire_fingerprints(db)
     await db.refresh(entries[0])
     await db.refresh(entries[1])
-    assert entries[0].memory_item_id != entries[1].memory_item_id
-    assert entries[1].memory_item_id == canonical.id
+    assert entries[0].memory_node_id != entries[1].memory_node_id
+    assert entries[1].memory_node_id == canonical.id
     await db.refresh(canonical)
     assert canonical.metadata_['file_summary'] == 'One shared synthetic summary'
-    assert canonical.metadata_['resource_uris'] == [entries[1].uri]
+    assert await memory_urls(canonical.id) == [entries[1].uri]
     assert entries[0].uri not in canonical.search_text.splitlines()
     await resource_service.resource_delete(ctx, entries[0].uri)
     assert len(await resources(canonical.id, ctx.agent_id)) == 1
@@ -243,7 +265,7 @@ async def test_shared_summary_has_a_revision_and_survives_a_hashed_file_move(con
     await resource_service.resource_info(ctx, 'console://after/')
     await acquire_fingerprints(db)
     entry = await db.scalar(select(FileCatalogEntry).where(FileCatalogEntry.uri == 'console://before/file.txt'))
-    identity = entry.memory_item_id
+    identity = entry.memory_node_id
     assert await apply_enrichment(entry.id, entry.source_version, 'Synthetic shared summary')
     await db.commit()
     item = await db.get(MemoryItem, identity)
@@ -251,10 +273,10 @@ async def test_shared_summary_has_a_revision_and_survives_a_hashed_file_move(con
     assert revision is not None and revision.resource_id == item.resource_id
     await resource_service.resource_move(ctx, entry.uri, 'console://after/file.txt')
     await db.refresh(entry)
-    assert entry.memory_item_id == identity
+    assert entry.memory_node_id == identity
     links = list(await db.scalars(select(MemoryLink).where(MemoryLink.target_item_id == identity, MemoryLink.relation_type == 'parent_of')))
     parent = await db.scalar(select(FileCatalogEntry).where(FileCatalogEntry.uri == 'console://after/'))
-    assert [link.source_item_id for link in links] == [parent.memory_item_id]
+    assert [link.source_item_id for link in links] == [parent.memory_node_id]
     async with content(identity, ctx.agent_id, entry.id, preview=False) as source:
         assert source.path.read_text() == 'Synthetic original bytes'
 
@@ -280,10 +302,10 @@ async def test_catalogue_preview_rechecks_source_after_thumbnail_render(console_
         return b'Synthetic thumbnail that must not be served'
     monkeypatch.setattr(catalogue_resources, 'render_file_thumbnail', revoke)
     with pytest.raises(PermissionError):
-        await catalogue_resources.thumbnail(entry.memory_item_id, ctx.agent_id, entry.id)
+        await catalogue_resources.thumbnail(entry.memory_node_id, ctx.agent_id, entry.id)
     assert not list((tmp_path / 'cache').glob('*.png'))
     if change == 'revoke':
-        assert await catalogue_resources.resources(entry.memory_item_id, ctx.agent_id) == []
+        assert await catalogue_resources.resources(entry.memory_node_id, ctx.agent_id) == []
 
 
 @pytest.mark.asyncio
@@ -320,7 +342,7 @@ async def test_svg_catalogue_retries_legacy_missing_thumbnail_once(console_catal
     assert await mechanism.apply(claim, claim.prepared_payload) == 1
     await mark_success(claim, result_count=1)
     assert await mechanism.claim_one() is None
-    assert await catalogue_resources.thumbnail(entry.memory_item_id, ctx.agent_id, entry.id, cached_only=True)
+    assert await catalogue_resources.thumbnail(entry.memory_node_id, ctx.agent_id, entry.id, cached_only=True)
     transport.assert_awaited_once()
     assert _transport.resolve_path('drawing.svg').read_text() == original
 
@@ -345,12 +367,12 @@ async def test_dream_catalogue_thumbnail_is_reused_and_changes_with_source(conso
     claim = await mechanism.claim_one()
     assert claim is not None and claim.subject_kind == 'file_thumbnail'
     entry = await db.scalar(select(FileCatalogEntry).where(FileCatalogEntry.uri == 'console://preview.txt'))
-    assert await catalogue_resources.thumbnail(entry.memory_item_id, ctx.agent_id, entry.id, cached_only=True) is None
+    assert await catalogue_resources.thumbnail(entry.memory_node_id, ctx.agent_id, entry.id, cached_only=True) is None
     render.assert_not_awaited()
     assert await mechanism.apply(claim, claim.prepared_payload) == 1
     await mark_success(claim, result_count=1)
     entry = await db.scalar(select(FileCatalogEntry).where(FileCatalogEntry.uri == 'console://preview.txt'))
-    first = await catalogue_resources.thumbnail(entry.memory_item_id, ctx.agent_id, entry.id, cached_only=True)
+    first = await catalogue_resources.thumbnail(entry.memory_node_id, ctx.agent_id, entry.id, cached_only=True)
     assert first
     assert await mechanism.claim_one() is None
     render.assert_awaited_once()
@@ -358,19 +380,19 @@ async def test_dream_catalogue_thumbnail_is_reused_and_changes_with_source(conso
     await resource_service.resource_write_text(ctx, 'console://preview.txt', 'Synthetic second version', overwrite=True)
     await acquire_fingerprints(db)
     await db.refresh(entry)
-    assert await catalogue_resources.thumbnail(entry.memory_item_id, ctx.agent_id, entry.id, cached_only=True) is None
+    assert await catalogue_resources.thumbnail(entry.memory_node_id, ctx.agent_id, entry.id, cached_only=True) is None
     render.assert_awaited_once()
     second_claim = await mechanism.claim_one()
     assert second_claim is not None and second_claim.subject_id != claim.subject_id
     assert await mechanism.apply(second_claim, second_claim.prepared_payload) == 1
     await db.refresh(entry)
-    second = await catalogue_resources.thumbnail(entry.memory_item_id, ctx.agent_id, entry.id)
+    second = await catalogue_resources.thumbnail(entry.memory_node_id, ctx.agent_id, entry.id)
     assert second and second != first
     assert render.await_count == 2
     connection.active = False
     await db.flush()
     with pytest.raises(PermissionError):
-        await catalogue_resources.thumbnail(entry.memory_item_id, ctx.agent_id, entry.id, cached_only=True)
+        await catalogue_resources.thumbnail(entry.memory_node_id, ctx.agent_id, entry.id, cached_only=True)
 
 
 @pytest.mark.asyncio
@@ -387,7 +409,7 @@ async def test_preview_rejects_changed_bytes_even_with_unchanged_metadata(consol
     path.write_text('Replaced bytes')
     os.utime(path, ns=(timestamp.st_atime_ns, timestamp.st_mtime_ns))
     with pytest.raises(PermissionError):
-        async with content(entry.memory_item_id, ctx.agent_id, entry.id, preview=False):
+        async with content(entry.memory_node_id, ctx.agent_id, entry.id, preview=False):
             pass
 
 
@@ -459,7 +481,7 @@ async def test_received_messenger_copy_unifies_with_file_provider_and_repairs_me
     monkeypatch.setattr('app.messenger.messenger_for_agent_connection', resolve)
     await acquire_fingerprints(db)
     entries = list(await db.scalars(select(FileCatalogEntry).where(FileCatalogEntry.descriptor['is_collection'].as_boolean().is_(False)).execution_options(populate_existing=True)))
-    assert len(entries) == 2 and len({entry.memory_item_id for entry in entries}) == 1
+    assert len(entries) == 2 and len({entry.memory_node_id for entry in entries}) == 1
     assert {entry.uri for entry in entries} == {'console://shared.txt', f'synthetic-talk://synthetic-room/{stored.id}'}
 
 
@@ -476,7 +498,7 @@ async def test_discovery_creates_memory_by_default(console_catalogue, db, operat
     else:
         await resource_service.resource_search(ctx, "console://", "discovered")
     found = await hits(ctx.agent_id, "discovered")
-    assert {(hit.item.node_kind, hit.item.metadata["resource_uri"]) for hit in found} == {
+    assert {(hit.item.node_kind, hit.item.urls[0]) for hit in found} == {
         ("directory", "console://discovered/"),
         ("file", "console://discovered/reports.txt"),
     }
@@ -511,7 +533,7 @@ async def test_catalogue_content_is_editable_and_manual_changes_survive_observat
     assert access.can_write and item.title == "Personal title"
     assert b"Personally curated content" in content
     assert item.keywords == ["curated"] and item.metadata_["custom"] == "kept"
-    assert item.metadata_["resource_uri"] == "console://renamed.txt"
+    assert await memory_urls(item.id) == ["console://renamed.txt"]
     with pytest.raises(service.MemoryPermissionError):
         await service.update_item(item.id, MemoryItemUpdate(visibility="public"), actor_agent_id=ctx.agent_id)
 
@@ -567,11 +589,11 @@ async def test_catalogue_descriptor_cleanup_preserves_useful_content_and_history
         uri=uri, directory=directory, description=descriptor, notes=notes,
     )
     item = await db.get(MemoryItem, identity)
+    await associate_memory_url(identity, uri)
     if manual:
         item.metadata_ = {**item.metadata_, "catalogue_manual_content": True}
     if not directory:
         item.file_sha256 = "a" * 64
-        item.metadata_ = {**item.metadata_, "resource_uris": [uri]}
     await db.flush()
     original = await db.scalar(select(MemoryRevision).where(MemoryRevision.item_id == identity))
     resource_id, revision = item.resource_id, item.revision
@@ -596,9 +618,9 @@ async def test_catalogue_descriptor_cleanup_preserves_useful_content_and_history
             assert body == original_body and item.revision == revision
         assert original.resource_id == resource_id
         assert await get_storage("native").read(resource_id) == original_body
-        assert item.metadata_["resource_uri"] == uri
+        assert await memory_urls(item.id) == [uri]
         if not directory:
-            assert item.metadata_["resource_uris"] == [uri] and item.file_sha256 == "a" * 64
+            assert item.file_sha256 == "a" * 64
 
 
 @pytest.mark.asyncio
@@ -630,7 +652,7 @@ async def test_encounters_are_lexical_private_idempotent_and_notes_survive(conso
     assert moved.indexing_status == "indexed"
     found = await hits(ctx.agent_id, "planning")
     assert found[0].item.id == identity
-    assert found[0].item.metadata["resource_uri"] == moved.uri
+    assert found[0].item.urls == [moved.uri]
     await resource_service.resource_delete(ctx, moved.uri)
     assert await hits(ctx.agent_id, "planning") == []
     retained = await db.scalar(select(MemoryItem).where(MemoryItem.id == identity))
@@ -725,7 +747,7 @@ async def test_keyword_create_and_directory_move_preserve_notes_on_children(cons
     assert moved.indexing_status == "indexed"
     found = await hits(ctx.agent_id, "Child note")
     assert found[0].item.id == identity
-    assert found[0].item.metadata["resource_uri"] == "console://renamed/child.txt"
+    assert found[0].item.urls == ["console://renamed/child.txt"]
 
 
 @pytest.mark.asyncio
@@ -752,7 +774,7 @@ async def test_new_providers_use_common_facade_without_named_service_branches(db
         result = await resource_service.resource_info(ctx, f"{code}://specification.txt")
         assert result.indexing_status == "indexed"
     found = await hits(owner.id, "specification")
-    assert {hit.item.metadata["resource_uri"] for hit in found} == {"share-a://specification.txt", "share-b://specification.txt"}
+    assert {hit.item.urls[0] for hit in found} == {"share-a://specification.txt", "share-b://specification.txt"}
     assert await hits(peer.id, "specification") == []
     async def now_messenger(*args, **kwargs):
         return object(), "messenger"
@@ -924,7 +946,7 @@ async def test_explicit_resource_acquisition_reuses_catalogue_fiche(console_cata
     await resource_service.resource_write_text(ctx, 'console://acquired.txt', 'Synthetic source')
     entry = await db.scalar(select(FileCatalogEntry).where(FileCatalogEntry.uri == 'console://acquired.txt'))
     item_id = await record_resource_description(ctx, entry.uri, 'Synthetic acquired description')
-    assert item_id == entry.memory_item_id
+    assert item_id == entry.memory_node_id
     _, body, _, _, _ = await service.get_item(item_id, agent_id=ctx.agent_id)
     assert b'Synthetic acquired description' in body
     assert not await FileCatalogueEnrichmentPort().candidates()
@@ -940,7 +962,7 @@ async def test_versioned_enrichment_does_not_overwrite_personal_content(console_
     version = descriptor_version(entry.descriptor)
     assert await apply_enrichment(entry.id, version, 'Synthetic generated conclusion')
     assert not await apply_enrichment(entry.id, version, 'Duplicate inference')
-    item, body, access, _, _ = await service.get_item(entry.memory_item_id, agent_id=ctx.agent_id)
+    item, body, access, _, _ = await service.get_item(entry.memory_node_id, agent_id=ctx.agent_id)
     assert b'Synthetic generated conclusion' in body
     await service.update_item(item.id, MemoryItemUpdate(payload=MemoryPayload(text='<p>Personal text</p>')), actor_agent_id=ctx.agent_id)
     await resource_service.resource_write_text(ctx, 'console://analysis.txt', 'Source version two with a different size', overwrite=True)
@@ -1207,7 +1229,7 @@ async def test_dream_rescan_catches_up_once_and_reconciles_changed_tree(catalogu
     for _ in range(2):
         assert await scheduler.run_cycle() == 1
     old = await db.scalar(select(FileCatalogEntry).where(FileCatalogEntry.uri == 'scan-test://removed/old.txt'))
-    original_id = old.memory_item_id
+    original_id = old.memory_node_id
     shutil.rmtree(transport.resolve_path('removed'))
     await transport.file_write_text('added/new.txt', 'synthetic new', overwrite=False)
     clock = datetime(2026, 10, 12, 10, tzinfo=timezone.utc)
@@ -1218,7 +1240,8 @@ async def test_dream_rescan_catches_up_once_and_reconciles_changed_tree(catalogu
     assert await scheduler.run_cycle() == 1
     assert await scheduler.run_cycle() == 0
     await db.refresh(old)
-    assert not old.present and old.memory_item_id == original_id
+    assert not old.present and old.memory_url_id is None
+    assert await db.get(MemoryItem, original_id) is not None
     assert await hits(ctx.agent_id, 'old') == []
     assert len(await hits(ctx.agent_id, 'new')) == 1
     assert len(list(await db.scalars(select(FileIndexRun)))) == 2

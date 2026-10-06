@@ -8,10 +8,10 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 from uuid import UUID
 from pydantic import BaseModel
-from sqlalchemy import select
+from sqlalchemy import select, case
 from app.connection import Connection
 from app.tools import ToolModel
-from app.memory import render_file_thumbnail
+from app.memory import render_file_thumbnail, MemoryItem
 from core.database import get_db
 from core.preview import PreviewFile, prepare_preview, thumbnails
 from .catalogue import live_catalogue_binding, descriptor_version
@@ -32,9 +32,11 @@ class CatalogueResource(BaseModel):
 async def resources(item_id: UUID, agent_id: int, *, limit: int = 500) -> list[CatalogueResource]:
     entries = await get_db().scalars(select(FileCatalogEntry).join(Connection, Connection.id == FileCatalogEntry.connection_id)
         .join(ToolModel, ToolModel.id == Connection.tool_id).where(
-            FileCatalogEntry.memory_item_id == item_id, FileCatalogEntry.agent_id == agent_id,
+            FileCatalogEntry.memory_node_id == item_id, FileCatalogEntry.agent_id == agent_id,
             FileCatalogEntry.present.is_(True), live_catalogue_binding(),
-        ).order_by(FileCatalogEntry.uri).limit(limit))
+        ).order_by(case((FileCatalogEntry.uri == select(MemoryItem.primary_url).where(
+            MemoryItem.id == item_id,
+        ).scalar_subquery(), 0), else_=1), FileCatalogEntry.uri).limit(limit))
     result: list[CatalogueResource] = []
     for entry in entries:
         info = ResourceDescriptor.model_validate(entry.descriptor)
@@ -47,7 +49,7 @@ async def resources(item_id: UUID, agent_id: int, *, limit: int = 500) -> list[C
 async def authorized_resource(item_id: UUID, agent_id: int, entry_id: UUID) -> tuple[ResourceContext, ResourceDescriptor]:
     entry = await get_db().scalar(select(FileCatalogEntry).join(Connection, Connection.id == FileCatalogEntry.connection_id)
         .join(ToolModel, ToolModel.id == Connection.tool_id).where(
-            FileCatalogEntry.id == entry_id, FileCatalogEntry.memory_item_id == item_id,
+            FileCatalogEntry.id == entry_id, FileCatalogEntry.memory_node_id == item_id,
             FileCatalogEntry.agent_id == agent_id, FileCatalogEntry.present.is_(True), live_catalogue_binding(),
         ).execution_options(populate_existing=True))
     if entry is None:

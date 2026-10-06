@@ -279,7 +279,7 @@ def _search_request(
         keyword=request.keyword,
         filter_topic_item_id=request.filter_topic_item_id,
         filter_contact_item_id=request.filter_contact_item_id,
-        temporal=MemoryTemporalFilter(target_at=request.target_at, timezone="UTC", lookahead_hours=0)
+        temporal=MemoryTemporalFilter(target_at=request.target_at, lookahead_hours=0)
         if request.target_at is not None else None,
         recall_query=request.query,
         # Recall is a candidate-ranking operation, not an exact search. Requiring

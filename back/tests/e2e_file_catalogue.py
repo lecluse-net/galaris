@@ -2,6 +2,7 @@
 
 from dataclasses import replace
 from pathlib import Path
+from unittest.mock import patch
 
 from PIL import Image
 from sqlalchemy import select
@@ -12,9 +13,10 @@ from app.file_share.models import FileCatalogEntry
 from app.file_share.resource_contracts import ResourceContext
 from app.file_share.tests.local_file_transport import TemporaryFileTransport
 from app.tools import ToolModel
-from app.memory import service, document_attachment_service
+from app.memory import service, document_attachment_service, detect_memory_findings, maintenance
 from app.memory.schemas import MemoryItemCreate, MemoryPayload
 from core.database import get_db
+from core.params import runtime_settings
 
 
 class BrowserFileTransport(TemporaryFileTransport):
@@ -50,7 +52,13 @@ async def seed_catalogue(agent_id: int, root: Path) -> dict[str, object]:
     entries = list(await db.scalars(select(FileCatalogEntry).where(
         FileCatalogEntry.agent_id == agent_id, FileCatalogEntry.file_sha256.is_not(None),
     ).execution_options(populate_existing=True)))
-    assert len(entries) == 2 and entries[0].memory_item_id == entries[1].memory_item_id
+    assert len(entries) == 2 and entries[0].memory_node_id is not None
+    with patch.object(runtime_settings, 'MEMORY_DUPLICATE_MODE', 'manual'):
+        for finding_id in await detect_memory_findings(entries[0].memory_node_id):
+            await maintenance.apply_finding(finding_id, canonical_item_id=None)
+    for entry in entries:
+        await db.refresh(entry)
+    assert entries[0].memory_node_id == entries[1].memory_node_id
     document, _ = await service.create_item(MemoryItemCreate(
         owner_agent_id=agent_id, title='Synthetic 3D document', memory_type='working',
         node_kind='document', media_type='text/html', payload=MemoryPayload(text='<p>Synthetic geometry</p>'),
@@ -59,5 +67,5 @@ async def seed_catalogue(agent_id: int, root: Path) -> dict[str, object]:
         document.id, actor_agent_id=agent_id, name='triangle.obj', media_type='model/obj',
         content=b'v -1 -1 0\nv 1 -1 0\nv 0 1 0\nf 1 2 3\n',
     )
-    return {'file_item_id': str(entries[0].memory_item_id), 'file_uris': [entry.uri for entry in entries],
+    return {'file_item_id': str(entries[0].memory_node_id), 'file_uris': [entry.uri for entry in entries],
             'model_document_id': str(document.id), 'model_attachment_id': str(attachment.id)}

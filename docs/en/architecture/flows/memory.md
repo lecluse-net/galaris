@@ -19,8 +19,9 @@ criterion remains enforced.
 
 ## Read Before an Execution
 
-Items may carry an optional `temporal` object (year, month, day, ISO weekday, hour, minute
-and IANA timezone). Missing components are unrestricted; supplied constraints are combined.
+Items may carry an optional `temporal` object (year, month, day, ISO weekday, hour and minute).
+All components use Galaris's global timezone (`TZ`); memories store no timezone override.
+Missing components are unrestricted; supplied constraints are combined.
 Context preparation restricts ordinary recall to unanchored memories and separately selects current matches and those within
 `MEMORY_TEMPORAL_LOOKAHEAD_HOURS`, without a query-similarity requirement. This path preserves
 ACLs, contact scope and final admission, deduplicates UUIDs and respects the shared budget,
@@ -33,8 +34,10 @@ nor expiration. See decision [0144](../../../../project/decisions/0144-partial-m
 
 The administration list reuses `next_match` through the `temporal` filter on `/memory/browse`.
 The UI always applies the filter from the first search, with no option to disable it.
-It prefills a single date/time field with browser local time, converts the target to explicit
-UTC and submits zero lookahead. Text/type/topic/interlocutor filters select unanchored memories.
+It prefills a single date/time field in Galaris's global timezone. The server resolves edited
+local targets in that same timezone; the initial target preserves its UTC instant, including
+within repeated hours. Lookahead remains zero and matches display in the global timezone,
+independently of the browser timezone. Text/type/topic/interlocutor filters select unanchored memories.
 The calendar branch independently selects matching anchors without requiring lexical or semantic
 relevance. Their union is counted, sorted and paginated in SQL before hydration; calendar matches
 come first by default. The text recall cap does not truncate calendar results. Responses
@@ -512,6 +515,20 @@ Dream. Process is the other bounded and deterministic exception described above.
 
 ## Storage and Forgetting
 
+Node URLs are associated exclusively through `memory_urls(id, memory_node_id, url)`.
+`memory_items.primary_url` is a nullable text column identifying the preferred preview
+source. Transport catalogue observations reference a URL row through `memory_url_id`,
+without a direct node FK; metadata and `MemorySource` no longer duplicate locations.
+The node's `file_sha256` stores the SHA-256 of complete bytes for every file format,
+including attachments. A new copy preserves the primary URL; moves update it and
+deletion selects a remaining location, or `NULL`. A DbAdmin action transfers existing
+associations before contraction. See [decision 0159](../../../../project/decisions/0159-memory-url-associations.md).
+
+Nullable `file_media_type` and `file_size_bytes` describe the original file,
+separately from the editorial record's format and size. A unique index protects
+each node/URL pair, and a deferred FK enforces primary URL membership. Usage
+records reference Tasks through a nullable FK that preserves the audit on deletion.
+
 `MemoryItem.id` is the stable logical identity. Each revision points to an opaque
 `(provider_code, resource_id)` pair. The `native` provider writes atomically to the fixed
 `/data/memory` directory; the database never derives a path from `resource_id`.
@@ -527,7 +544,11 @@ policies and `MemoryFinding`s of type `duplicate`, `contradiction`, or `aging`; 
 inactivity. Memory drives; Dream executes. Each policy has `off`, `manual`, and `automatic` modes;
 automatic mode calls exactly the same service as the UI's manual action. This mechanism uses no
 generative LLM and remains excluded from Dream gauges. Duplicates read the current embedding index
-and apply the same `MEMORY_DUPLICATE_SIMILARITY_THRESHOLD` as acquisition and recall.
+or file SHA values. Identical SHA values score 100% without embeddings; fingerprint
+acquisition performs no merge. Dream applies its duplicate policy while retaining
+URLs, notes, provenance and usage. Ownership and access must remain compatible;
+attachments only merge within the same document. Other duplicates apply the same
+`MEMORY_DUPLICATE_SIMILARITY_THRESHOLD` as acquisition and recall.
 Contradictions additionally require an explainable textual marker.
 
 Applied aging sets `old_at`/`old_reason`. It does not delete the item or remove it from RAG. The
@@ -557,7 +578,7 @@ their source identity, creates new items, and then puts their UUIDs back into th
   `/memory/search` come from the current Params; `/memory/recall` remains a deprecated alias.
   `/memory/metrics` exposes the contentless local mirror of counters/histograms,
   `/memory/retention/preview` estimates a policy before activation, and
-  `/memory/duplicates/preview` lists, without mutation, ordinary pairs above the global cosine
+  `/memory/duplicates/preview` lists, without mutation, files with identical SHA and ordinary pairs above the global cosine
   merge threshold, optionally for an agent, and returns this value in its response.
   `/memory/findings` exposes persistent detections and its `apply`/`dismiss` actions with the same
   revision controls as automatic mode.
