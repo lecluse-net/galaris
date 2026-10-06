@@ -28,6 +28,11 @@ h1 {
     background-color: inherit;
 }
 
+/* Keep toast actions as readable as their message, including warning toasts. */
+.q-notification__actions {
+    color: inherit;
+}
+
 /* Dialog chrome never belongs to the content's scroll viewport. */
 .q-dialog__inner > .galaris-dialog-card {
     display: flex;

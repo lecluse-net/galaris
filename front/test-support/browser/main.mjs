@@ -2,6 +2,7 @@ import { createApp, h, nextTick, shallowRef } from 'vue'
 import { createPinia, disposePinia } from 'pinia'
 import { createMemoryHistory, createRouter } from 'vue-router'
 import { Quasar, QLayout, QPageContainer, Dialog, Notify, Loading } from 'quasar'
+import quasarUserOptions from '/quasar-user-options.ts'
 import { i18n, setLocale } from '/core/i18n/index.ts'
 import { useAuthStore } from '/core/user/stores/authStore.ts'
 import { useHelpStore } from '/core/user/stores/helpStore.ts'
@@ -57,11 +58,16 @@ window.testApp = {
       ]))))),
     })
     app.config.errorHandler = error => errors.push(String(error.stack ?? error))
-    app.use(pinia).use(router).use(i18n).use(Quasar, { plugins: { Dialog, Notify, Loading }, config: { dark } })
+    app.use(pinia).use(router).use(i18n).use(Quasar, {
+      ...quasarUserOptions,
+      plugins: { Dialog, Notify, Loading },
+      config: { ...quasarUserOptions.config, dark },
+    })
     app.provide(contextHelpKey, useHelpStore(pinia))
     app.mount('#app')
     Object.assign(this, {
       pinia, router, auth, privileges, events,
+      notify(options) { app.config.globalProperties.$q.notify(options) },
       async setProps(values) { currentProps.value = { ...currentProps.value, ...values }; await nextTick() },
       async navigate(value) { await router.push(value); await nextTick() },
       async dark(value) { app.config.globalProperties.$q.dark.set(value); await nextTick() },

@@ -317,7 +317,6 @@ function report(reason: unknown) {
     group: false,
     message: t('evaluation.contract.error', { message: apiErrorDetail(reason) ?? String(reason) }),
     attrs: { role: 'alert' },
-    actions: [{ icon: 'close', color: 'white', 'aria-label': t('common.close') }],
   })
 }
 async function action(work: () => Promise<void>) {
