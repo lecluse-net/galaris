@@ -52,10 +52,55 @@ for (const width of [1440, 390]) test(`exclusive memory branches remain accessib
   await expect(grouped).toBeVisible()
   await page.getByRole('tab', { name: 'Liste', exact: true }).click()
   await page.getByText(items[1].title, { exact: true }).click()
-  await expect(page.getByText('Synthetic preserved content 1', { exact: true })).toBeVisible()
+  await expect(page.getByRole('dialog').getByText('Synthetic preserved content 1', { exact: true })).toBeVisible()
+  const checkMemories = page.getByRole('dialog').getByRole('button', { name: 'Vérifier les souvenirs', exact: true })
+  await expect(checkMemories).toBeEnabled()
+  const actionResponse = page.waitForResponse(response => response.url().includes(`/dream/memory/${items[1].id}/actions/findings`)
+    && response.request().method() === 'POST')
+  await checkMemories.click()
+  const result = await actionResponse
+  expect(result.ok(), await result.text()).toBeTruthy()
+  expect((await result.json()).receipt_id).toBeTruthy()
+  await expect(page.getByRole('dialog').getByText('Synthetic preserved content 1', { exact: true })).toBeVisible()
+  await expect(checkMemories).toBeEnabled()
   await page.getByRole('dialog').getByRole('button', { name: 'Fermer', exact: true }).click()
   await page.getByRole('tab', { name: 'Graphe', exact: true }).click()
   await expect(grouped).toBeVisible()
+
+  const documentResponse = await request.post('/api/memory/items', { headers, data: {
+    owner_agent_id: fixture.agent_id, title: 'Synthetic thumbnail report', node_kind: 'document', memory_type: 'working',
+    media_type: 'text/html', payload: { text: '<h1>Synthetic report</h1><p>Preserved document content.</p>' },
+  } })
+  expect(documentResponse.ok(), await documentResponse.text()).toBeTruthy()
+  const document = await documentResponse.json()
+  await page.goto(`/memory?agent=${fixture.agent_id}`)
+  const documentRow = page.locator(width >= 1024 ? '.memory-list-table tbody tr' : '.memory-mobile-card')
+    .filter({ hasText: document.title })
+  await documentRow.locator('img').click()
+  const dialog = page.getByRole('dialog')
+  const regenerate = dialog.getByRole('button', { name: 'Régénérer la miniature', exact: true })
+  const receipts = []
+  for (let index = 0; index < 2; index++) {
+    await expect(regenerate).toBeEnabled()
+    const response = page.waitForResponse(response => response.url().includes(`/dream/memory/${document.id}/actions/thumbnail`)
+      && response.request().method() === 'POST')
+    await regenerate.focus()
+    await page.keyboard.press('Enter')
+    const result = await response
+    expect(result.ok(), await result.text()).toBeTruthy()
+    const action = await result.json()
+    expect(action.result_count).toBe(1)
+    receipts.push(action.receipt_id)
+    await expect(regenerate).toBeEnabled()
+    await expect(dialog.locator('.ck-editor__editable')).toContainText('Preserved document content.')
+  }
+  expect(new Set(receipts).size).toBe(2)
+  await dialog.evaluate(async element => {
+    await Promise.all(element.getAnimations({ subtree: true }).filter(animation => animation.effect?.getTiming().iterations !== Infinity)
+      .map(animation => animation.finished.catch(() => {})))
+  })
+  await page.screenshot({ path: testInfo.outputPath('dream-document-thumbnail.png'), animations: 'disabled' })
+  await dialog.getByRole('button', { name: 'Fermer', exact: true }).click()
   await errors.settle()
   expect(errors()).toEqual([])
 })

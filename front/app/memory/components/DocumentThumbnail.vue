@@ -12,6 +12,7 @@ import { AUTH_TOKEN_CHANGED_EVENT } from '@/core/api'
 import { queuePreview } from '@/core/util'
 import { websocket } from '@/core/websocket'
 import { memoryService } from '../services/memoryService'
+import { onThumbnailReady } from '../thumbnailEvents'
 
 const props = defineProps<{
   documentId: string
@@ -67,6 +68,12 @@ function invalidate(): void {
   if (visible) refreshTimer = setTimeout(() => { void load() }, 180)
 }
 
+const unsubscribeThumbnailReady = onThumbnailReady(ready => {
+  if (ready.itemId !== props.documentId || ready.agentId !== (props.agentId ?? null)) return
+  resetSession()
+  if (visible && sessionAvailable) url.value = URL.createObjectURL(ready.blob)
+})
+
 function onDocumentUpdate(event: { data?: { id?: string } }): void {
   if (event.data?.id === props.documentId) invalidate()
 }
@@ -96,6 +103,7 @@ onMounted(() => {
   if (container.value) observer.observe(container.value)
 })
 onBeforeUnmount(() => {
+  unsubscribeThumbnailReady()
   websocket.offEvent('memory', 'update', onDocumentUpdate)
   websocket.offEvent('memory', 'delete', onDocumentDelete)
   websocket.offConnect(invalidate)

@@ -43,6 +43,7 @@
         </q-item-section>
       </q-item>
     </q-list>
+    <MemoryDreamActions :item-id="node.id" :agent-id="agentId" :node-kind="node.node_kind" />
 
     <MemoryFileResources v-if="node.node_kind === 'file'" :key="`${agentId}:${node.id}`" :item-id="node.id" :agent-id="agentId" />
     <DocumentThumbnail v-else-if="node.node_kind === 'document'" :document-id="node.id" :agent-id="agentId" />
@@ -84,6 +85,7 @@
 
 <script setup lang="ts">
 import DocumentIcon from './DocumentIcon.vue'
+import MemoryDreamActions from './MemoryDreamActions.vue'
 import MemoryAttachmentButton from './MemoryAttachmentButton.vue'
 import MemoryFileResources from './MemoryFileResources.vue'
 import DocumentThumbnail from './DocumentThumbnail.vue'

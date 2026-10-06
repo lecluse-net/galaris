@@ -882,6 +882,7 @@
       {
         "files": [
           "back/app/dream/events.py",
+          "back/app/dream/manual.py",
           "back/app/dream/router.py"
         ],
         "source": "app.dream",
@@ -920,6 +921,7 @@
           "back/app/dream/attachment_processing.py",
           "back/app/dream/evaluation.py",
           "back/app/dream/live_topics.py",
+          "back/app/dream/manual.py",
           "back/app/dream/mechanisms/attachment_memory.py",
           "back/app/dream/mechanisms/conversation_memory.py",
           "back/app/dream/mechanisms/memory_decisions.py",
@@ -939,6 +941,7 @@
       {
         "files": [
           "back/app/dream/contracts.py",
+          "back/app/dream/manual.py",
           "back/app/dream/mechanisms/attachment_memory.py",
           "back/app/dream/mechanisms/conversation_memory.py",
           "back/app/dream/mechanisms/document_structure.py",
@@ -950,6 +953,7 @@
           "back/app/dream/mechanisms/task_memory.py",
           "back/app/dream/mechanisms/task_outcome_reflection.py",
           "back/app/dream/outcome_evidence.py",
+          "back/app/dream/router.py",
           "back/app/dream/scheduler.py"
         ],
         "source": "app.dream",
@@ -1028,6 +1032,7 @@
         "files": [
           "back/app/dream/attachment_processing.py",
           "back/app/dream/events.py",
+          "back/app/dream/manual.py",
           "back/app/dream/mechanisms/attachment_memory.py",
           "back/app/dream/mechanisms/conversation_memory.py",
           "back/app/dream/mechanisms/document_structure.py",
@@ -1058,6 +1063,7 @@
       {
         "files": [
           "back/app/dream/attachment_processing.py",
+          "back/app/dream/manual.py",
           "back/app/dream/mechanisms/file_thumbnails.py"
         ],
         "source": "app.dream",
@@ -1094,6 +1100,7 @@
       },
       {
         "files": [
+          "back/app/dream/manual.py",
           "back/app/dream/mechanisms/file_thumbnails.py"
         ],
         "source": "app.dream",
@@ -1102,6 +1109,7 @@
       {
         "files": [
           "back/app/dream/events.py",
+          "back/app/dream/manual.py",
           "back/app/dream/mechanisms/file_thumbnails.py"
         ],
         "source": "app.dream",
@@ -2217,6 +2225,7 @@
           "back/app/memory/document_service.py",
           "back/app/memory/document_sharing.py",
           "back/app/memory/document_tags.py",
+          "back/app/memory/dream_actions.py",
           "back/app/memory/events.py",
           "back/app/memory/goal_document_adapter.py",
           "back/app/memory/goal_folders.py",
@@ -2334,6 +2343,7 @@
           "back/app/memory/document_structure.py",
           "back/app/memory/document_tags.py",
           "back/app/memory/document_thumbnail_service.py",
+          "back/app/memory/dream_actions.py",
           "back/app/memory/events.py",
           "back/app/memory/facade.py",
           "back/app/memory/goal_document_adapter.py",
@@ -13098,10 +13108,28 @@
       },
       {
         "authorized": true,
+        "declared_path": "/dream/memory/{item_id}/actions",
+        "file": "back/app/dream/router.py",
+        "handler": "read_memory_dream_actions",
+        "line": 48,
+        "method": "GET",
+        "module": "app.dream"
+      },
+      {
+        "authorized": true,
+        "declared_path": "/dream/memory/{item_id}/actions/{action}",
+        "file": "back/app/dream/router.py",
+        "handler": "run_memory_dream_action",
+        "line": 57,
+        "method": "POST",
+        "module": "app.dream"
+      },
+      {
+        "authorized": true,
         "declared_path": "/dream/overview",
         "file": "back/app/dream/router.py",
         "handler": "read_dream_overview",
-        "line": 46,
+        "line": 81,
         "method": "GET",
         "module": "app.dream"
       },
@@ -13110,7 +13138,7 @@
         "declared_path": "/dream/receipts",
         "file": "back/app/dream/router.py",
         "handler": "read_dream_receipts",
-        "line": 53,
+        "line": 88,
         "method": "GET",
         "module": "app.dream"
       },
@@ -13119,7 +13147,7 @@
         "declared_path": "/dream/receipts/{receipt_id}",
         "file": "back/app/dream/router.py",
         "handler": "read_dream_receipt",
-        "line": 109,
+        "line": 144,
         "method": "GET",
         "module": "app.dream"
       },
@@ -13128,7 +13156,7 @@
         "declared_path": "/dream/runtime",
         "file": "back/app/dream/router.py",
         "handler": "read_dream_runtime",
-        "line": 39,
+        "line": 74,
         "method": "GET",
         "module": "app.dream"
       },
@@ -13137,7 +13165,7 @@
         "declared_path": "/dream/topic-assignment",
         "file": "back/app/dream/router.py",
         "handler": "read_topic_assignment",
-        "line": 85,
+        "line": 120,
         "method": "GET",
         "module": "app.dream"
       },
@@ -17752,6 +17780,7 @@
       {
         "files": [
           "front/app/memory/components/DocumentEditor.vue",
+          "front/app/memory/components/MemoryDreamActions.vue",
           "front/app/memory/navigation.ts",
           "front/app/memory/pages/contacts.vue",
           "front/app/memory/pages/index.vue"

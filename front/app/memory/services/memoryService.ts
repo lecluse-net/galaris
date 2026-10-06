@@ -1,4 +1,7 @@
 import { api } from '@/core/api'
+
+export type MemoryDreamAction = 'describe' | 'read_document' | 'thumbnail' | 'findings' | 'structure'
+export interface MemoryDreamActionResult { receipt_id: string; result_count: number }
 import { attachmentReference, browserResourceKind } from '@/core/util'
 import { thumbnailReady } from '../thumbnailEvents'
 import type { AppDatasetRequest, AppDatasetResult, AppGrant, AppPermissions } from '../documentApps'
@@ -41,6 +44,42 @@ import type {
 } from '../types'
 
 export const memoryService = {
+  async dreamActions(id: string, agentId: number): Promise<MemoryDreamAction[]> {
+    const response = await api.get<{ actions: MemoryDreamAction[] }>(
+      `/dream/memory/${encodeURIComponent(id)}/actions`, { params: { agent_id: agentId } },
+    )
+    return response.data.actions
+  },
+
+  async runDreamAction(id: string, agentId: number, action: MemoryDreamAction, nodeKind?: MemoryNodeKind | 'conversation'): Promise<MemoryDreamActionResult> {
+    const snapshot = action === 'thumbnail' && nodeKind === 'document'
+      ? await this.documentThumbnailSnapshot(id, agentId, new AbortController().signal) : null
+    const response = await api.post<MemoryDreamActionResult>(
+      `/dream/memory/${encodeURIComponent(id)}/actions/${action}`, snapshot,
+      { params: { agent_id: agentId }, timeout: 600_000 },
+    )
+    if (action === 'thumbnail' && response.data.result_count > 0) {
+      const signal = new AbortController().signal
+      try {
+        if (nodeKind === 'document') await this.documentThumbnail(id, agentId, signal)
+        else if (nodeKind === 'file') {
+          const resource = (await this.fileResources(id, agentId, signal, 1))[0]
+          const blob = resource ? await this.fileResourceThumbnail(id, resource.id, agentId, signal, true) : null
+          if (blob?.size) thumbnailReady({ agentId, itemId: id, blob })
+        } else if (nodeKind === 'attachment') {
+          const item = await this.getItem(id, agentId)
+          const uri = item.primary_url ?? item.metadata.resource_uri
+          const reference = typeof uri === 'string' ? attachmentReference(uri) : null
+          const blob = reference ? await this.documentAttachmentThumbnailBlob(reference[0], reference[1], agentId, signal, true) : null
+          if (blob?.size) thumbnailReady({ agentId, itemId: id, resourceUri: typeof uri === 'string' ? uri : undefined, blob })
+        }
+      } catch {
+        // The action already succeeded; a preview read can be retried on reopening.
+      }
+    }
+    return response.data
+  },
+
   async graphFileThumbnail(node: MemoryGraphNode, agentId: number, signal: AbortSignal, generate = false,
     resourceCache?: Map<string, CatalogueResource>): Promise<Blob | null> {
     if (node.node_kind === 'document') return generate ? this.documentThumbnail(node.id, agentId, signal) : null
@@ -91,7 +130,7 @@ export const memoryService = {
       ...data, document_revision: revision,
     }, { signal })).data
   },
-  async documentThumbnail(id: string, agentId: number | null, signal: AbortSignal): Promise<Blob | null> {
+  async documentThumbnailSnapshot(id: string, agentId: number | null, signal: AbortSignal): Promise<{ html: string; revision: number; lock_version: number } | null> {
     const item = agentId === null
       ? (await api.get<ManagedDocumentDetail>(`/memory/documents/${id}`, { signal })).data.item
       : (await api.get<MemoryItemDetail>(`/memory/items/${id}`, { params: { agent_id: agentId }, signal })).data
@@ -99,9 +138,12 @@ export const memoryService = {
     const { preparePortableDocumentSnapshot } = await import('@/core/util/facade')
     const html = await preparePortableDocumentSnapshot(item.payload.text ?? '', item.title, signal,
       (documentId, attachmentId) => memoryService.documentAttachmentBlob(documentId, attachmentId, agentId, signal))
-    const response = await api.post<Blob>(`/memory/documents/${id}/thumbnail`, {
-      html, revision: item.revision, lock_version: item.lock_version,
-    }, {
+    return { html, revision: item.revision, lock_version: item.lock_version }
+  },
+  async documentThumbnail(id: string, agentId: number | null, signal: AbortSignal): Promise<Blob | null> {
+    const snapshot = await this.documentThumbnailSnapshot(id, agentId, signal)
+    if (!snapshot) return null
+    const response = await api.post<Blob>(`/memory/documents/${id}/thumbnail`, snapshot, {
       params: { agent_id: agentId }, responseType: 'blob', signal,
     })
     const blob = response.status === 200 && response.data.type === 'image/png' ? response.data : null

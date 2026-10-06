@@ -373,9 +373,10 @@ async def capture_html_page_thumbnail(
     agent_id: int | HumanActor,
     reference: str,
     content: bytes,
+    refresh: bool = False,
 ) -> tuple[bytes, str] | None:
     """Render authorized private HTML using the same capture in every surface."""
-    return await _capture_thumbnail(agent_id=agent_id, reference=reference, content=content)
+    return await _capture_thumbnail(agent_id=agent_id, reference=reference, content=content, refresh=refresh)
 
 
 async def _capture_thumbnail(

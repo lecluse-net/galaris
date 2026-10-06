@@ -261,6 +261,18 @@ In **List**, edit **Target date and time**, then apply the filter to find memori
 that date. Input and matches use Galaris's configured global timezone (`TZ`), even when
 your browser uses another timezone. A memory's calendar fields have no timezone selector.
 
+The modal offers buttons for Dream treatments compatible with the node: generate its
+description, **Regenerate thumbnail** for a file, attachment or HTML document, analyze PDF
+or Office content with the document model, check
+memories, or **Synchronize graph links**. For a document, this last action updates its
+attachments, references and folder links. For a folder, it updates folders and their
+parent-child links across your entire folder tree. These buttons require Memory editing rights and
+resource ownership. They run immediately, even when automatic Dream is disabled or waiting.
+A new analysis replaces the generated description; personal catalogue file notes and
+revision history remain preserved. Save your edits before running an action. Failures can
+be retried, and concurrent edits take precedence over the analysis. Regenerating a thumbnail
+reruns rendering even when an image is already cached; failures preserve the previous image.
+
 The graph folds branches with at least eight exclusive leaves into an anchor and a count.
 Zoom in, click the group or enable **Branch details** to see its items, then zoom out to fold
 them. Shared nodes remain visible. Up to 600 loaded items, initial placement settles naturally,

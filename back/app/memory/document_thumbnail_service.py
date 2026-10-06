@@ -5,11 +5,10 @@ from __future__ import annotations
 import asyncio
 import json
 from hashlib import sha256
-from collections.abc import Awaitable, Callable
 from contextvars import Context
 from pathlib import Path
 from tempfile import TemporaryDirectory
-from typing import Any, cast
+from typing import Any, Protocol, cast
 from uuid import UUID
 
 from loguru import logger
@@ -28,15 +27,21 @@ from .schemas import DocumentAttachmentPublic, DocumentThumbnailRender
 
 
 _tasks: dict[str, asyncio.Task[None]] = {}
-WebThumbnailCapture = Callable[[int | HumanActor, str], Awaitable[tuple[bytes, str] | None]]
+class WebThumbnailCapture(Protocol):
+    async def __call__(self, actor_agent_id: int | HumanActor, url: str, /, *, refresh: bool = False) -> tuple[bytes, str] | None: ...
+
+
+class HtmlThumbnailCapture(Protocol):
+    async def __call__(self, actor_agent_id: int | HumanActor, reference: str, content: bytes, /, *, refresh: bool = False) -> tuple[bytes, str] | None: ...
+
+
 _web_thumbnail_capture: WebThumbnailCapture | None = None
-HtmlThumbnailCapture = Callable[[int | HumanActor, str, bytes], Awaitable[tuple[bytes, str] | None]]
 _html_thumbnail_capture: HtmlThumbnailCapture | None = None
 _document_capture_slots = asyncio.Semaphore(2)
 
 
 async def read_document_thumbnail(
-    document_id: UUID, snapshot: DocumentThumbnailRender, *, actor_agent_id: int | HumanActor,
+    document_id: UUID, snapshot: DocumentThumbnailRender, *, actor_agent_id: int | HumanActor, force: bool = False,
 ) -> bytes | None:
     """Capture the saved HTML revision after checking the current reader's access."""
     item = await service.item_record(document_id, revisions=False)
@@ -65,11 +70,11 @@ async def read_document_thumbnail(
         return await asyncio.to_thread(thumbnails.read, cache_path)
 
     cached = await read_current()
-    if cached is not None:
+    if cached is not None and not force:
         return cached
-    async with _document_capture_slots:
+    async with thumbnails.generation(reference), _document_capture_slots:
         cached = await read_current()
-        if cached is not None:
+        if cached is not None and not force:
             return cached
         try:
             pdf = await render_html_pdf(snapshot.html, first_page_only=True)
@@ -260,6 +265,7 @@ async def _generate(
     attachment: DocumentAttachmentPublic,
     path: Path,
     actor_agent_id: int | HumanActor,
+    force: bool = False,
 ) -> bytes | None:
     try:
         media_type = attachment.media_type.split(";", 1)[0].strip().casefold()
@@ -268,14 +274,14 @@ async def _generate(
             if _web_thumbnail_capture is not None:
                 # The browser writes under the target URL. Never duplicate this
                 # image under the attachment URI or delete it with the shortcut.
-                result = await _web_thumbnail_capture(actor_agent_id, web_url)
+                result = await _web_thumbnail_capture(actor_agent_id, web_url, refresh=True) if force else await _web_thumbnail_capture(actor_agent_id, web_url)
                 return result[0] if result else None
             return None
         if media_type == "text/html" or attachment.name.casefold().endswith((".html", ".htm")):
             if _html_thumbnail_capture is not None:
                 content = await asyncio.to_thread(_read_html, path)
                 if content is not None:
-                    result = await _html_thumbnail_capture(actor_agent_id, reference, content)
+                    result = await _html_thumbnail_capture(actor_agent_id, reference, content, refresh=True) if force else await _html_thumbnail_capture(actor_agent_id, reference, content)
                     return result[0] if result else None
         content = await render_file_thumbnail(path, attachment.name, media_type)
         if content is not None and len(content) <= thumbnails.MAX_BYTES:
@@ -298,7 +304,7 @@ def attachment_document_id(reference: str) -> UUID:
 
 
 async def generate_document_attachment_thumbnail(
-    document_id: UUID, attachment_id: UUID, *, actor_agent_id: int | HumanActor,
+    document_id: UUID, attachment_id: UUID, *, actor_agent_id: int | HumanActor, force: bool = False,
 ) -> bytes | None:
     """Await and reuse the same persistent derivative from Dream or HTTP."""
     reference = _reference(document_id, attachment_id)
@@ -308,9 +314,9 @@ async def generate_document_attachment_thumbnail(
         )
         web_url = await asyncio.to_thread(_web_url, path, attachment)
         cached = await asyncio.to_thread(thumbnails.read, thumbnails.cache_path(web_url or reference))
-        if cached is not None:
+        if cached is not None and not force:
             return cached
-        return await _generate(reference=reference, attachment=attachment, path=path, actor_agent_id=actor_agent_id)
+        return await _generate(reference=reference, attachment=attachment, path=path, actor_agent_id=actor_agent_id, force=force)
 
 
 async def _generate_background(document_id: UUID, attachment_id: UUID, actor: int | HumanActor) -> None:

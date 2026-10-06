@@ -55,14 +55,14 @@ async def next_source(handled: Select[tuple[str]]) -> dict[str, Any] | None:
             "identity": f"file:{entry.id}:{version}"}
 
 
-async def generate(source: dict[str, Any]) -> bool:
+async def generate(source: dict[str, Any], *, force: bool = False) -> bool:
     entry = await get_db().get(FileCatalogEntry, UUID(source["entry_id"]))
     if entry is None or (entry.source_version, entry.binding_stamp, entry.file_sha256) != (
         source["version"], source["binding_stamp"], source["sha256"],
     ):
         return False
     try:
-        result = await thumbnail(UUID(source["item_id"]), int(source["agent_id"]), entry.id)
+        result = await thumbnail(UUID(source["item_id"]), int(source["agent_id"]), entry.id, force=force)
     except (PermissionError, FileNotFoundError):
         return False
     return result is not None

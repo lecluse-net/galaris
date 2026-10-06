@@ -5,6 +5,8 @@ from .catalogue_projection import project_catalogue_entry, link_catalogue_entrie
 from .catalogue_projection import identify_catalogue_file as identify_catalogue_file, update_catalogue_file_locations as update_catalogue_file_locations, catalogue_file_summary as catalogue_file_summary
 from .document_thumbnail_service import render_file_thumbnail as render_file_thumbnail
 from .document_thumbnail_service import generate_document_attachment_thumbnail as generate_document_attachment_thumbnail
+from .document_thumbnail_service import read_document_thumbnail as read_document_thumbnail
+from .schemas import DocumentThumbnailRender as DocumentThumbnailRender
 from .models import DocumentAttachment as DocumentAttachment
 from .source_access import register_source_access
 
@@ -56,6 +58,7 @@ from .topic_maintenance import (
 from .service import (
     MemoryConflictError,
     MemoryNotFoundError,
+    MemoryPermissionError as MemoryPermissionError,
     ensure_contact_memory_scope,
     ensure_topic_contact_memory_scope,
     ensure_topic_memory_link,

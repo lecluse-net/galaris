@@ -377,6 +377,23 @@ async def test_dream_catalogue_thumbnail_is_reused_and_changes_with_source(conso
     assert await mechanism.claim_one() is None
     render.assert_awaited_once()
 
+    from app.agent import AgentManagementScope
+    from app.dream import manual
+    from PIL import Image
+    refreshed = thumbnails.encode(Image.new('RGB', (80, 60), 'purple'))
+    refresh_render = AsyncMock(return_value=refreshed)
+    with monkeypatch.context() as refresh_patch:
+        refresh_patch.setattr(catalogue_resources, 'render_file_thumbnail', refresh_render)
+        result = await manual.run_action(entry.memory_node_id, ctx.agent_id, 'thumbnail', AgentManagementScope(123, None))
+        assert result.result_count == 1
+        refresh_render.assert_awaited_once()
+        assert await catalogue_resources.thumbnail(entry.memory_node_id, ctx.agent_id, entry.id, cached_only=True) == refreshed
+        refresh_render.side_effect = RuntimeError('Synthetic renderer failure')
+        with pytest.raises(RuntimeError):
+            await manual.run_action(entry.memory_node_id, ctx.agent_id, 'thumbnail', AgentManagementScope(123, None))
+        await db.refresh(entry)
+        assert await catalogue_resources.thumbnail(entry.memory_node_id, ctx.agent_id, entry.id, cached_only=True) == refreshed
+
     await resource_service.resource_write_text(ctx, 'console://preview.txt', 'Synthetic second version', overwrite=True)
     await acquire_fingerprints(db)
     await db.refresh(entry)
@@ -972,6 +989,19 @@ async def test_versioned_enrichment_does_not_overwrite_personal_content(console_
     assert await apply_enrichment(entry.id, current['version'], 'Updated generated conclusion')
     _, body, _, _, _ = await service.get_item(item.id, agent_id=ctx.agent_id)
     assert b'Personal text' in body and b'Updated generated conclusion' not in body
+    # An explicit Dream rerun updates the derived summary while preserving notes.
+    from app.agent import AgentManagementScope
+    from app.dream import manual
+    from unittest.mock import AsyncMock, patch
+    from app.dream.interface import register_file_catalogue
+    register_file_catalogue(FileCatalogueEnrichmentPort())
+    with patch.object(manual, 'analyze_attachment', AsyncMock(return_value='Explicit synthetic conclusion')):
+        result = await manual.run_action(item.id, ctx.agent_id, 'describe', AgentManagementScope(123, None))
+    assert result.result_count == 1
+    item, body, _, _, _ = await service.get_item(item.id, agent_id=ctx.agent_id)
+    assert b'Personal text' in body
+    await db.refresh(entry)
+    assert entry.enrichment_text == 'Explicit synthetic conclusion'
     tool = await db.get(ToolModel, connection.tool_id)
     tool.global_params = {**tool.global_params, 'tools.fileindexing': {'value': 'excluded', 'forced': False}}
     await db.commit()

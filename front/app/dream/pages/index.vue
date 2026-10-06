@@ -606,6 +606,11 @@ let refreshRequested = false
 let realtimeRefreshTimer: ReturnType<typeof setTimeout> | null = null
 
 const mechanismTranslationKeys = {
+  'manual.memory.describe': 'dream.mechanisms.manualDescription',
+  'manual.memory.read_document': 'dream.mechanisms.manualDocument',
+  'manual.memory.thumbnail': 'dream.mechanisms.manualThumbnail',
+  'manual.memory.findings': 'dream.mechanisms.manualFindings',
+  'manual.memory.structure': 'dream.mechanisms.manualStructure',
   'memory.attachment_text': 'dream.mechanisms.attachmentText',
   'memory.file_catalogue': 'dream.mechanisms.fileCatalogue',
   'memory.file_thumbnails': 'dream.mechanisms.fileThumbnails',

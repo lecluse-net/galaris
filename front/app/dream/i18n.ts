@@ -111,6 +111,9 @@ export default {
         error: 'Erreur',
       },
       mechanisms: {
+        manualDescription: 'Description à la demande', manualDocument: 'Analyse documentaire à la demande',
+        manualThumbnail: 'Régénération de miniature à la demande', manualFindings: 'Vérification des souvenirs à la demande',
+        manualStructure: 'Synchronisation des liens du graphe à la demande',
         messageTopicClassification: 'Classement des messages par sujet',
         attachmentText: 'Résumé des pièces jointes textuelles',
         fileCatalogue: 'Indexation et enrichissement des fichiers',
@@ -278,6 +281,9 @@ export default {
         error: 'Error',
       },
       mechanisms: {
+        manualDescription: 'Description on demand', manualDocument: 'Document analysis on demand',
+        manualThumbnail: 'Thumbnail regeneration on demand', manualFindings: 'Memory checks on demand',
+        manualStructure: 'Graph link synchronization on demand',
         messageTopicClassification: 'Message thematic classification',
         attachmentText: 'Text attachment summaries',
         fileCatalogue: 'File indexing and enrichment',
@@ -380,6 +386,9 @@ export default {
       },
       statuses: { running: '运行中', retry: '重试', success: '成功', error: '错误' },
       mechanisms: {
+        manualDescription: '按需生成描述', manualDocument: '按需分析文档',
+        manualThumbnail: '按需重新生成缩略图', manualFindings: '按需检查记忆',
+        manualStructure: '按需同步图谱链接',
         messageTopicClassification: '消息主题分类', voiceTurnTopicClassification: '语音轮次主题分类', taskTopicClassification: '任务主题分类',
         fileThumbnails: '准备文件缩略图',
         attachmentText: '文本附件摘要', attachmentDocument: '不可提取文本的文档描述', attachmentImage: '图片描述', attachmentVideo: '视频音频摘要', fileCatalogue: '文件索引和丰富',

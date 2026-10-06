@@ -88,7 +88,7 @@ async def content(item_id: UUID, agent_id: int, entry_id: UUID, *, preview: bool
             yield source
 
 
-async def thumbnail(item_id: UUID, agent_id: int, entry_id: UUID, *, cached_only: bool = False) -> bytes | None:
+async def thumbnail(item_id: UUID, agent_id: int, entry_id: UUID, *, cached_only: bool = False, force: bool = False) -> bytes | None:
     _ctx, info = await authorized_resource(item_id, agent_id, entry_id)
     entry = await get_db().get(FileCatalogEntry, entry_id)
     if entry is None:
@@ -103,7 +103,7 @@ async def thumbnail(item_id: UUID, agent_id: int, entry_id: UUID, *, cached_only
             raise PermissionError("Resource changed while preparing its thumbnail")
 
     cached = await asyncio.to_thread(thumbnails.read, path)
-    if cached is not None:
+    if cached is not None and not force:
         await assert_current()
         return cached
     if cached_only:
@@ -111,7 +111,7 @@ async def thumbnail(item_id: UUID, agent_id: int, entry_id: UUID, *, cached_only
     async with thumbnails.generation(key):
         await assert_current()
         cached = await asyncio.to_thread(thumbnails.read, path)
-        if cached is not None:
+        if cached is not None and not force:
             return cached
         async with content(item_id, agent_id, entry_id, preview=False) as source:
             image = await render_file_thumbnail(source.path, source.name, source.media_type)

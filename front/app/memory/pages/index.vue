@@ -425,6 +425,10 @@
         <q-separator />
         <q-tab-panels v-if="store.currentItem" v-model="detailTab" class="col memory-detail-panels galaris-dialog-body">
           <q-tab-panel name="memory" class="q-pa-none">
+            <MemoryDreamActions :key="`${store.selectedAgentId}:${store.currentItem.id}`"
+              :item-id="store.currentItem.id" :agent-id="store.selectedAgentId"
+              :node-kind="store.currentItem.node_kind"
+              :disabled="editorSaving || dreamDraftChanged || dreamRefreshing" @busy="dreamBusy = $event" @completed="onDreamCompleted" />
             <div v-if="store.currentItem.old_at || store.findingsFor(store.currentItem.id).length || store.currentItem.source_managed || store.currentItem.deletion_protected" class="q-px-sm q-pt-sm">
               <div v-if="store.currentItem.old_at || store.findingsFor(store.currentItem.id).length" class="row items-center q-gutter-xs q-mb-sm">
                 <span class="memory-section-title">{{ t('memory.detailStatus') }}</span>
@@ -467,14 +471,15 @@
 
             </div>
             <MemoryItemForm :draft="editor" :editing-id="store.currentItem.id" :lock-version="store.currentItem.lock_version"
-              :readonly="!canModifyCurrent || editorSaving" :text-available="store.currentItem.payload.text != null"
+              :readonly="!canModifyCurrent || editorSaving || dreamBusy || dreamRefreshing" :text-available="store.currentItem.payload.text != null"
               :owner-label="agentLabel(store.currentItem.owner_agent_id)" :sources="displayedSources" :can-view-tasks="canViewTasks"
               :keyword-options="memoryKeywordOptions"
               :sharing-editable="canEdit || canAdminister" @update:draft="Object.assign(editor, $event)" @sharing-changed="onSharingChanged" />
             <div v-if="store.currentItem.node_kind === 'attachment'" class="q-px-sm q-pb-sm">
-              <MemoryAttachmentButton :item-id="store.currentItem.id" :agent-id="store.selectedAgentId" />
+              <MemoryAttachmentButton :key="`${store.currentItem.id}:${dreamMediaRevision}`"
+                :item-id="store.currentItem.id" :agent-id="store.selectedAgentId" />
             </div>
-            <MemoryFileResources v-if="store.currentItem.node_kind === 'file'" :key="`${store.selectedAgentId}:${store.currentItem.id}`"
+            <MemoryFileResources v-if="store.currentItem.node_kind === 'file'" :key="`${store.selectedAgentId}:${store.currentItem.id}:${dreamMediaRevision}`"
               :item-id="store.currentItem.id" :agent-id="store.selectedAgentId" class="q-px-sm q-pb-sm" />
             <q-card-section class="q-px-sm q-pt-none q-pb-sm">
               <div class="q-mt-sm">
@@ -528,12 +533,13 @@
             color="negative"
             icon="delete_forever"
             :label="t('memory.forget')"
+            :disable="dreamBusy || dreamRefreshing"
             @click="confirmForget(store.currentItem)"
           />
           <q-space />
           <q-btn flat :label="t(canModifyCurrent ? 'memory.cancel' : 'memory.close')" @click="cancelEdit" />
           <q-btn v-if="canModifyCurrent" color="primary" icon="save" :label="t('memory.save')" :loading="editorSaving"
-            :disable="!editor.title.trim() || !editor.content.trim()" @click="saveEditor" />
+            :disable="dreamBusy || dreamRefreshing || !editor.title.trim() || !editor.content.trim()" @click="saveEditor" />
         </q-card-actions>
       </q-card>
     </q-dialog>
@@ -604,6 +610,7 @@ import { usePrivilegeStore } from '@/core/authorize/stores/privilegeStore'
 import { useAgentStore } from '@/app/agent/stores/agentStore'
 import { AgentSelect } from '@/app/agent'
 import MemoryGraph from '../components/MemoryGraph.vue'
+import MemoryDreamActions from '../components/MemoryDreamActions.vue'
 import MemoryFindingDialog from '../components/MemoryFindingDialog.vue'
 import MemoryLinkDialog from '../components/MemoryLinkDialog.vue'
 import MemoryTemporalFilter from '../components/MemoryTemporalFilter.vue'
@@ -645,6 +652,9 @@ const canModifyCurrent = computed(() => canEdit.value && Boolean(store.currentIt
   && store.currentItem?.payload.text != null)
 const editorDialog = ref(false)
 const editorSaving = ref(false)
+const dreamBusy = ref(false)
+const dreamRefreshing = ref(false)
+const dreamMediaRevision = ref(0)
 const memoryKeywordOptions = computed(() => [...new Set(store.hits.flatMap(hit => hit.item.keywords))])
 const editingId = ref<string | null>(null)
 const linkDialog = ref(false)
@@ -785,6 +795,33 @@ const editor = reactive({
   revision: null as number | null,
   mediaType: 'text/html', contentType: 'text',
 })
+
+const dreamDraftChanged = computed(() => {
+  const item = store.currentItem
+  return Boolean(item && (editor.title !== item.title || editor.content !== (item.payload.text ?? '')
+    || editor.memoryType !== item.memory_type
+    || editor.readOnly !== item.read_only
+    || JSON.stringify(editor.keywords) !== JSON.stringify(item.keywords)
+    || JSON.stringify(editor.temporal) !== JSON.stringify(item.temporal ?? null)))
+})
+
+async function onDreamCompleted(id: string): Promise<void> {
+  if (!detailDialog.value || store.currentItem?.id !== id || dreamDraftChanged.value) return
+  const agentId = store.selectedAgentId
+  dreamRefreshing.value = true
+  try {
+    const item = await store.openItem(id)
+    if (detailDialog.value && store.currentItem?.id === id && store.selectedAgentId === agentId) {
+      prepareEditor(item)
+      dreamMediaRevision.value++
+    }
+    if (agentId !== null) {
+      const findings = await memoryService.listFindings(agentId)
+      if (store.selectedAgentId === agentId) store.findings = findings
+    }
+  } catch (error) { notifyError(error) }
+  finally { dreamRefreshing.value = false }
+}
 
 function relationLabel(relation: string): string {
   const key = `memory.relationTypes.${relation}`
@@ -1019,7 +1056,7 @@ function cancelEdit(): void {
 }
 
 async function saveEditor(): Promise<void> {
-  if (editorSaving.value) return
+  if (editorSaving.value || dreamBusy.value || dreamRefreshing.value) return
   if (!editor.title.trim() || !editor.content.trim() || store.selectedAgentId === null) return
   if (detailDialog.value && !canModifyCurrent.value) return
   const keywords = [...new Set(editor.keywords.map(value => value.trim()).filter(Boolean))]

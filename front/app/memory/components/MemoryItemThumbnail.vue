@@ -15,6 +15,7 @@ import { attachmentReference, browserResourceKind, queuePreview } from '@/core/u
 import { memoryService } from '../services/memoryService'
 import type { MemoryItem } from '../types'
 import DocumentThumbnail from './DocumentThumbnail.vue'
+import { onThumbnailReady } from '../thumbnailEvents'
 
 const props = defineProps<{ item: MemoryItem & { primary_url?: string | null }; agentId: number | null }>()
 const container = useTemplateRef<HTMLElement>('container')
@@ -38,6 +39,14 @@ function imageFailed(): void {
   reset()
   unavailable.value = true
 }
+
+const unsubscribeThumbnailReady = onThumbnailReady(ready => {
+  if (ready.agentId !== props.agentId || props.item.node_kind === 'document') return
+  const uri = props.item.primary_url ?? props.item.metadata.resource_uri
+  if (ready.itemId !== props.item.id && (!ready.resourceUri || ready.resourceUri !== uri)) return
+  reset()
+  if (visible && sessionAvailable) url.value = URL.createObjectURL(ready.blob)
+})
 
 async function load(): Promise<void> {
   if (!visible || !sessionAvailable || props.agentId === null || loading.value || url.value || unavailable.value) return
@@ -91,6 +100,7 @@ onMounted(() => {
   observer.observe(container.value)
 })
 onBeforeUnmount(() => {
+  unsubscribeThumbnailReady()
   observer?.disconnect()
   reset()
   window.removeEventListener(AUTH_TOKEN_CHANGED_EVENT, onSessionChanged)

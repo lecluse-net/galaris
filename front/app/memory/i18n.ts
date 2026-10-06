@@ -13,6 +13,17 @@ export default {
       contacts_desc: 'Réunir les identités multicanales et leurs souvenirs',
     },
     memory: {
+      dream: {
+        title: 'Actions Dream', hint: 'Déclencher maintenant, même si le traitement automatique est désactivé. Une nouvelle analyse remplace la description générée.',
+        actions: { describe: 'Générer la description', read_document: 'Analyser avec le modèle documentaire',
+          thumbnail: 'Régénérer la miniature', findings: 'Vérifier les souvenirs', structure: 'Synchroniser les liens du graphe' },
+        structureDocumentHint: 'Actualise dans le graphe les pièces jointes du document, les références qu’il contient et les dossiers auxquels il est rattaché.',
+        structureFolderHint: 'Actualise dans le graphe les dossiers et leurs liens parent-enfant pour toute votre arborescence.',
+        done: 'Action terminée.', noChange: 'Action terminée sans modification.', retry: 'Réessayer',
+        saveFirst: 'Enregistrez vos modifications avant de lancer une action Dream.',
+        loadError: 'Les actions Dream n’ont pas pu être chargées.',
+        runError: 'L’action Dream a échoué. Vérifiez la source et les modèles configurés, puis réessayez.',
+      },
       agent: 'Agent',
       temporal: {
         title: 'Temporalité (facultative)', hint: 'Réservez une date aux souvenirs à rappeler à ce moment-là : ils remontent lorsqu’elle correspond et sont exclus du rappel automatique hors période. Sans date, le souvenir reste soumis à la recherche habituelle. Un champ vide accepte toutes les valeurs ; les champs renseignés doivent correspondre ensemble.',
@@ -482,6 +493,17 @@ export default {
       contacts_desc: 'Unify multichannel identities and their memories',
     },
     memory: {
+      dream: {
+        title: 'Dream actions', hint: 'Run now, even when automatic processing is disabled. A new analysis replaces the generated description.',
+        actions: { describe: 'Generate description', read_document: 'Analyze with the document model',
+          thumbnail: 'Regenerate thumbnail', findings: 'Check memories', structure: 'Synchronize graph links' },
+        structureDocumentHint: 'Updates the document’s attachments, its references and its folder links in the graph.',
+        structureFolderHint: 'Updates folders and their parent-child links in the graph across your entire folder tree.',
+        done: 'Action completed.', noChange: 'Action completed without changes.', retry: 'Retry',
+        saveFirst: 'Save your changes before running a Dream action.',
+        loadError: 'Could not load Dream actions.',
+        runError: 'The Dream action failed. Check the source and configured models, then retry.',
+      },
       agent: 'Agent',
       temporal: {
         title: 'Temporality (optional)', hint: 'Set a date only for memories to recall at that time: matching memories are included and excluded from automatic recall outside that period. Undated memories use ordinary search. Empty fields accept any value; all entered fields must match together.',
@@ -944,6 +966,17 @@ export default {
     },
     nav: { memory: '记忆', memory_desc: '存储、检索并管理智能体的长期记忆', documents: '文档', documents_desc: '查找并整理您可访问的文档', contacts: '联系人', contacts_desc: '统一多渠道身份及其记忆' },
     memory: {
+      dream: {
+        title: 'Dream 操作', hint: '立即执行，即使自动处理已关闭。重新分析会替换生成的描述。',
+        actions: { describe: '生成描述', read_document: '使用文档模型分析',
+          thumbnail: '重新生成缩略图', findings: '检查记忆', structure: '同步图谱链接' },
+        structureDocumentHint: '更新图谱中文档的附件、文档内的引用及其所属文件夹的链接。',
+        structureFolderHint: '更新整个文件夹树在图谱中的文件夹节点及父子链接。',
+        done: '操作已完成。', noChange: '操作已完成，无更改。', retry: '重试',
+        saveFirst: '请先保存更改，再执行 Dream 操作。',
+        loadError: '无法加载 Dream 操作。',
+        runError: 'Dream 操作失败。请检查来源和配置的模型，然后重试。',
+      },
       agent: '智能体', agentHint: '搜索会显示此智能体拥有的记忆以及直接与其共享的记忆。', tabs: { list: '列表', graph: '图谱' },
       temporalSearch: {
         target: '目标日期和时间',

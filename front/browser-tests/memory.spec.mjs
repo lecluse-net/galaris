@@ -21,6 +21,181 @@ async function memoryItemFixtures(page) {
   return { item, versions }
 }
 
+for (const width of [1440, 390]) test(`Dream actions refresh the node, preserve drafts and allow retry at ${width}px`, async ({ page }, testInfo) => {
+  await page.setViewportSize({ width, height: 1000 })
+  const { item } = await memoryItemFixtures(page)
+  Object.assign(item, { node_kind: 'file', source_managed: true, managed_source_kind: 'file_catalogue',
+    access: { can_read: true, can_write: true } })
+  await jsonRoute(page, '**/api/memory/items/doc-a?*', item)
+  await jsonRoute(page, '**/api/dream/memory/doc-a/actions?*', { actions: ['describe', 'thumbnail'] })
+  let calls = 0
+  let release
+  let releaseRefresh
+  await page.route('**/api/dream/memory/doc-a/actions/describe?*', async route => {
+    calls++
+    expect(route.request().method()).toBe('POST')
+    expect(new URL(route.request().url()).searchParams.get('agent_id')).toBe('7')
+    if (calls === 1) return route.fulfill({ status: 502, json: { detail: 'Synthetic model failure' } })
+    await new Promise(resolve => { release = resolve })
+    item.payload.text = '<p>New synthetic description</p>'
+    item.revision++
+    let gateRefresh = true
+    await page.route('**/api/memory/items/doc-a?*', async itemRoute => {
+      if (gateRefresh) {
+        gateRefresh = false
+        await new Promise(resolve => { releaseRefresh = resolve })
+      }
+      await itemRoute.fulfill({ json: item })
+    })
+    await route.fulfill({ json: { receipt_id: 'synthetic-receipt', result_count: 1 } })
+  })
+  await mount(page, 'app/memory/pages/index.vue', { privileges: ['MEMORY_EDIT'], route: '/memory?agent=7' })
+  await page.getByText('Current memory', { exact: true }).click()
+  const dialog = page.getByRole('dialog')
+  const generate = dialog.getByRole('button', { name: 'Generate description', exact: true })
+  await expect(generate).toBeEnabled()
+  await dialog.evaluate(async element => {
+    await Promise.all(element.getAnimations({ subtree: true })
+      .filter(animation => animation.effect?.getTiming().iterations !== Infinity)
+      .map(animation => animation.finished.catch(() => {})))
+  })
+  await page.screenshot({ path: testInfo.outputPath('dream-node-actions.png'), animations: 'disabled' })
+  await generate.click()
+  await expect(page.locator('.q-notification').filter({ hasText: 'The Dream action failed' })).toBeVisible()
+  await expect(dialog.getByText('The Dream action failed', { exact: false })).toHaveCount(0)
+  await expect(dialog.locator('.ck-editor__editable')).toHaveText('Current body')
+  await generate.click()
+  await expect.poll(() => calls).toBe(2)
+  await expect(dialog.getByRole('button', { name: 'Regenerate thumbnail', exact: true })).toBeDisabled()
+  release()
+  await expect.poll(() => typeof releaseRefresh).toBe('function')
+  await expect(dialog.locator('.ck-editor__editable')).toHaveAttribute('contenteditable', 'false')
+  await expect(dialog.getByRole('button', { name: 'Regenerate thumbnail', exact: true })).toBeDisabled()
+  releaseRefresh()
+  await expect(dialog.locator('.ck-editor__editable')).toHaveText('New synthetic description')
+  await expect(page.locator('.q-notification').filter({ hasText: 'Action completed.' })).toBeVisible()
+  await expect(dialog.getByText('Action completed.', { exact: true })).toHaveCount(0)
+  await page.screenshot({ path: testInfo.outputPath('dream-action-toast.png'), animations: 'disabled' })
+  await dialog.locator('.ck-editor__editable').fill('Unsaved synthetic draft')
+  await expect(generate).toBeDisabled()
+  await expect(dialog.locator('.ck-editor__editable')).toHaveText('Unsaved synthetic draft')
+  await dialog.getByRole('button', { name: 'Close', exact: true }).click()
+  await expect(dialog).toHaveCount(0)
+  await page.getByText('Current memory', { exact: true }).click()
+  await expect(generate).toBeEnabled()
+  await expect(dialog.locator('.ck-editor__editable')).toHaveText('New synthetic description')
+})
+
+for (const width of [1440, 390]) for (const nodeKind of ['document', 'file']) {
+  test(`Dream thumbnail regeneration updates an existing ${nodeKind} preview at ${width}px`, async ({ page }, testInfo) => {
+    await page.setViewportSize({ width, height: 1000 })
+    const { item } = await memoryItemFixtures(page)
+    Object.assign(item, { node_kind: nodeKind, document_type: 'html', media_type: 'text/html',
+      access: { can_read: true, can_write: true } })
+    const images = await page.evaluate(() => [80, 120, 160].map(width => {
+      const canvas = document.createElement('canvas')
+      canvas.width = width
+      canvas.height = 60
+      const context = canvas.getContext('2d')
+      context.fillStyle = width === 80 ? 'blue' : width === 120 ? 'red' : 'green'
+      context.fillRect(0, 0, width, 60)
+      return canvas.toDataURL('image/png').split(',')[1]
+    }))
+    let calls = 0
+    await jsonRoute(page, '**/api/memory/items/doc-a?*', item)
+    await jsonRoute(page, '**/api/dream/memory/doc-a/actions?*', { actions: ['thumbnail'] })
+    const resource = { id: 'image-a', name: 'Synthetic.png', media_type: 'image/png', size_bytes: 100, uri: 'file://synthetic/image.png' }
+    await jsonRoute(page, '**/api/file-share/items/doc-a/resources?*', [resource])
+    const thumbnailRoute = nodeKind === 'document' ? '**/api/memory/documents/doc-a/thumbnail?*'
+      : '**/api/file-share/items/doc-a/resources/image-a/thumbnail?*'
+    await page.route(thumbnailRoute, route => route.fulfill({ contentType: 'image/png', body: Buffer.from(images[calls], 'base64') }))
+    await page.route('**/api/dream/memory/doc-a/actions/thumbnail?*', route => {
+      expect(route.request().method()).toBe('POST')
+      if (nodeKind === 'document') {
+        const snapshot = route.request().postDataJSON()
+        expect(snapshot.html).toContain('Current body')
+        expect(snapshot.revision).toBe(item.revision)
+        expect(snapshot.lock_version).toBe(item.lock_version)
+      }
+      calls++
+      return route.fulfill({ json: { receipt_id: `synthetic-thumbnail-${calls}`, result_count: 1 } })
+    })
+    await mount(page, 'app/memory/pages/index.vue', { privileges: ['MEMORY_EDIT'], route: '/memory?agent=7' })
+    const row = page.locator(width >= 1024 ? '.memory-list-table tbody tr' : '.memory-mobile-card').filter({ hasText: 'Current memory' })
+    await expect(row.locator('img')).toHaveJSProperty('naturalWidth', 80)
+    await row.locator('img').click()
+    const dialog = page.getByRole('dialog')
+    const regenerate = dialog.getByRole('button', { name: 'Regenerate thumbnail', exact: true })
+    for (const expectedWidth of [120, 160]) {
+      await regenerate.click()
+      await expect(regenerate).toBeEnabled()
+      await expect(row.locator('img')).toHaveJSProperty('naturalWidth', expectedWidth)
+    }
+    await expect(dialog.locator('.ck-editor__editable')).toHaveText('Current body')
+    await dialog.evaluate(async element => {
+      await Promise.all(element.getAnimations({ subtree: true }).filter(animation => animation.effect?.getTiming().iterations !== Infinity)
+        .map(animation => animation.finished.catch(() => {})))
+    })
+    await page.screenshot({ path: testInfo.outputPath('dream-regenerated-thumbnail.png'), animations: 'disabled' })
+    await dialog.getByRole('button', { name: 'Close', exact: true }).click()
+    await row.locator('img').click()
+    await expect(regenerate).toBeEnabled()
+    await expect(row.locator('img')).toHaveJSProperty('naturalWidth', 160)
+    expect(calls).toBe(2)
+  })
+}
+
+test('Dream action responses cannot affect another node or expose actions without edit rights', async ({ page }) => {
+  let release
+  await jsonRoute(page, '**/api/dream/memory/doc-a/actions?*', { actions: ['describe'] })
+  await jsonRoute(page, '**/api/dream/memory/doc-b/actions?*', { actions: ['thumbnail'] })
+  await page.route('**/api/dream/memory/doc-a/actions/describe?*', async route => {
+    await new Promise(resolve => { release = resolve })
+    await route.fulfill({ json: { receipt_id: 'synthetic-receipt', result_count: 1 } })
+  })
+  await mount(page, 'app/memory/components/MemoryDreamActions.vue', {
+    privileges: ['MEMORY_EDIT'], props: { itemId: 'doc-a', agentId: 7 },
+  })
+  await page.getByRole('button', { name: 'Generate description', exact: true }).click()
+  await expect.poll(() => typeof release).toBe('function')
+  await page.evaluate(() => window.testApp.setProps({ itemId: 'doc-b', agentId: 7 }))
+  await expect(page.getByRole('button', { name: 'Regenerate thumbnail', exact: true })).toBeVisible()
+  const lateResponse = page.waitForResponse('**/api/dream/memory/doc-a/actions/describe?*')
+  release()
+  await (await lateResponse).finished()
+  await page.evaluate(() => new Promise(resolve => requestAnimationFrame(resolve)))
+  await expect(page.locator('.q-notification')).toHaveCount(0)
+  await mount(page, 'app/memory/components/MemoryDreamActions.vue', {
+    privileges: ['MEMORY_ACCESS'], props: { itemId: 'doc-a', agentId: 7 },
+  })
+  await expect(page.getByRole('button', { name: 'Generate description', exact: true })).toHaveCount(0)
+})
+
+test('Dream actions report loading failures and unchanged results in toasts', async ({ page }) => {
+  let loads = 0
+  await page.route('**/api/dream/memory/doc-a/actions?*', route => {
+    loads++
+    return loads === 1
+      ? route.fulfill({ status: 502, json: { detail: 'Synthetic loading failure' } })
+      : route.fulfill({ json: { actions: ['describe'] } })
+  })
+  await jsonRoute(page, '**/api/dream/memory/doc-a/actions/describe?*', {
+    receipt_id: 'synthetic-receipt', result_count: 0,
+  })
+  await mount(page, 'app/memory/components/MemoryDreamActions.vue', {
+    privileges: ['MEMORY_EDIT'], props: { itemId: 'doc-a', agentId: 7 },
+  })
+  await expect(page.locator('.q-notification').filter({ hasText: 'Could not load Dream actions.' })).toBeVisible()
+  await expect(page.getByRole('region', { name: 'Dream actions' })).not.toContainText('Could not load Dream actions.')
+  await page.getByRole('button', { name: 'Retry', exact: true }).click()
+  const generate = page.getByRole('button', { name: 'Generate description', exact: true })
+  await generate.click()
+  await expect(page.locator('.q-notification').filter({ hasText: 'Action completed without changes.' })).toBeVisible()
+  await expect(page.getByRole('region', { name: 'Dream actions' })).not.toContainText('Action completed without changes.')
+  await expect(generate).toBeEnabled()
+  await expect(page.getByRole('button', { name: 'Retry', exact: true })).toHaveCount(0)
+})
+
 for (const width of [1440, 390]) test(`memory list displays available thumbnails and keeps items openable at ${width}px`, async ({ page }, testInfo) => {
   await page.setViewportSize({ width, height: 1000 })
   const { item } = await memoryItemFixtures(page)

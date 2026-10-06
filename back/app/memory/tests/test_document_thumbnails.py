@@ -542,11 +542,11 @@ async def test_document_and_chat_share_one_capture_and_deletion_scope(tmp_path, 
     monkeypatch.setattr(browser_service.browser_executor, "render_html", capture)
     monkeypatch.setattr(browser_service.browser_executor, "close", AsyncMock())
 
-    async def capture_web(agent_id, url):
-        return await browser_service.capture_public_page_thumbnail(agent_id=agent_id, url=url)
+    async def capture_web(agent_id, url, *, refresh=False):
+        return await browser_service.capture_public_page_thumbnail(agent_id=agent_id, url=url, refresh=refresh)
 
-    async def capture_html(agent_id, reference, content):
-        return await browser_service.capture_html_page_thumbnail(agent_id=agent_id, reference=reference, content=content)
+    async def capture_html(agent_id, reference, content, *, refresh=False):
+        return await browser_service.capture_html_page_thumbnail(agent_id=agent_id, reference=reference, content=content, refresh=refresh)
 
     monkeypatch.setattr(document_thumbnail_service, "_web_thumbnail_capture", capture_web)
     monkeypatch.setattr(document_thumbnail_service, "_html_thumbnail_capture", capture_html)
@@ -567,6 +567,16 @@ async def test_document_and_chat_share_one_capture_and_deletion_scope(tmp_path, 
         # Another shortcut to the same URL neither copies nor regenerates it.
         await document_thumbnail_service.read_or_schedule_document_attachment_thumbnail(uuid4(), attachment.id, actor_agent_id=7)
         capture.assert_awaited_once()
+    refreshed = thumbnails.encode(Image.new("RGB", (520, 320), "red"))
+    screenshot.parts[0].data = base64.b64encode(refreshed).decode()
+    content = await document_thumbnail_service.generate_document_attachment_thumbnail(document_id, attachment.id, actor_agent_id=7, force=True)
+    assert content == refreshed
+    assert capture.await_count == 2
+    assert await browser_service.read_cached_thumbnail(reference=cache_reference) == (refreshed, "image/png")
+    capture.side_effect = RuntimeError("Synthetic browser capture failure")
+    with pytest.raises(RuntimeError):
+        await document_thumbnail_service.generate_document_attachment_thumbnail(document_id, attachment.id, actor_agent_id=7, force=True)
+    assert await browser_service.read_cached_thumbnail(reference=cache_reference) == (refreshed, "image/png")
     await document_thumbnail_service.delete_document_attachment_thumbnail(document_id, attachment.id)
     remaining = await browser_service.read_cached_thumbnail(reference=cache_reference)
     assert remaining is None if html else remaining == (content, "image/png")

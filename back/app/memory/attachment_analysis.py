@@ -48,10 +48,10 @@ def empty_attachment_items() -> Select[tuple[MemoryItem]]:
     )
 
 
-async def attachment_analysis_source(item_id: UUID) -> AttachmentAnalysisSource | None:
+async def attachment_analysis_source(item_id: UUID, *, allow_existing: bool = False) -> AttachmentAnalysisSource | None:
     db = get_db()
     item = await db.get(MemoryItem, item_id, populate_existing=True)
-    if item is None or item.deleted_at is not None or item.node_kind != "attachment" or item.size_bytes != 0:
+    if item is None or item.deleted_at is not None or item.node_kind != "attachment" or (item.size_bytes != 0 and not allow_existing):
         return None
     record = await db.scalar(select(DocumentAttachment).where(
         DocumentAttachment.memory_item_id == item_id, DocumentAttachment.active.is_(True),
@@ -70,9 +70,9 @@ async def attachment_analysis_source(item_id: UUID) -> AttachmentAnalysisSource 
     )
 
 
-async def attachment_analysis_path(source: AttachmentAnalysisSource, *, max_bytes: int) -> Path:
+async def attachment_analysis_path(source: AttachmentAnalysisSource, *, max_bytes: int, allow_existing: bool = False) -> Path:
     """Resolve only the validated native attachment, never a caller-supplied path."""
-    if await attachment_analysis_source(source.item_id) != source:
+    if await attachment_analysis_source(source.item_id, allow_existing=allow_existing) != source:
         raise ValueError("Attachment is no longer eligible for analysis")
     storage = get_storage("native")
     if not isinstance(storage, NativeFileStorage):
@@ -83,7 +83,7 @@ async def attachment_analysis_path(source: AttachmentAnalysisSource, *, max_byte
     return path
 
 
-async def fill_attachment_description(source: AttachmentAnalysisSource, description: str) -> bool:
+async def fill_attachment_description(source: AttachmentAnalysisSource, description: str, *, replace_existing: bool = False) -> bool:
     """Compare and fill atomically; removal, ownership changes and prior text win."""
     db = get_db()
     document = await db.scalar(select(MemoryItem).where(
@@ -94,10 +94,10 @@ async def fill_attachment_description(source: AttachmentAnalysisSource, descript
     item = await db.scalar(select(MemoryItem).where(
         MemoryItem.id == source.item_id,
     ).with_for_update().execution_options(populate_existing=True))
-    if item is None or await attachment_analysis_source(source.item_id) != source:
+    if item is None or await attachment_analysis_source(source.item_id, allow_existing=replace_existing) != source:
         return False
     content = await get_storage(item.provider_code).read(item.resource_id)
-    if content.strip() or not visible_text(description).strip():
+    if (content.strip() and not replace_existing) or not visible_text(description).strip():
         return False
     await write_attachment_description(item, description, agent_id=None)
     return True

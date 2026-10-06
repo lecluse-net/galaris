@@ -1,4 +1,4 @@
-"""Read-only HTTP contracts for Dream monitoring."""
+"""HTTP contracts for Dream monitoring and explicit Memory maintenance."""
 
 from __future__ import annotations
 
@@ -11,6 +11,17 @@ from pydantic import BaseModel, Field
 from app.llm.schemas import LLMCallRead
 
 from .contracts import DreamRuntimePhase, DreamRuntimeReason, DreamRuntimeStatus
+
+MemoryDreamAction = Literal["describe", "read_document", "thumbnail", "findings", "structure"]
+
+
+class MemoryDreamActions(BaseModel):
+    actions: list[MemoryDreamAction]
+
+
+class MemoryDreamActionResult(BaseModel):
+    receipt_id: UUID
+    result_count: int
 
 
 class DreamRuntimeView(BaseModel):

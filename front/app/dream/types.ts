@@ -39,6 +39,11 @@ export type DreamRuntimeReason =
 export type DreamReceiptStatus = 'running' | 'retry' | 'success' | 'error'
 
 export type DreamMechanismKey =
+  | 'manual.memory.describe'
+  | 'manual.memory.read_document'
+  | 'manual.memory.thumbnail'
+  | 'manual.memory.findings'
+  | 'manual.memory.structure'
   | 'topic.classify_message'
   | 'topic.classify_voice_turn'
   | 'topic.classify_task'

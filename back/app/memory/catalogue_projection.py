@@ -342,10 +342,10 @@ async def update_catalogue_file_locations(item_id: UUID, uris: list[str]) -> Non
     await get_db().flush()
 
 
-async def catalogue_file_summary(item_id: UUID, sha256: str, description: str) -> bool:
+async def catalogue_file_summary(item_id: UUID, sha256: str, description: str, *, force: bool = False) -> bool:
     db = get_db()
     item = await db.scalar(select(MemoryItem).where(MemoryItem.id == item_id).with_for_update())
-    if item is None or item.file_sha256 != sha256 or item.metadata_.get("file_summary_sha256") == sha256:
+    if item is None or item.file_sha256 != sha256 or (item.metadata_.get("file_summary_sha256") == sha256 and not force):
         return False
     item.metadata_ = {**item.metadata_, "file_summary_sha256": sha256, "file_summary": description[:50000]}
     if not item.metadata_.get("catalogue_manual_content"):

@@ -17,6 +17,8 @@ export const test = base.extend({
     await page.route('**/api/memory/documents/*/sharing', route => route.fulfill({ json: { lock_version: 1, can_manage: true, grants: [], options: [], level: 'private', can_write: false, owner: { kind: 'agent', id: 7, label: 'Alice', can_write: true }, owner_groups: [] } }))
     // Most documents use the standard icon. Icon scenarios override this explicit default.
     await page.route('**/api/memory/documents/icons/resolve', route => route.fulfill({ json: {} }))
+    // Foreground Dream actions require explicit eligible-source fixtures.
+    await page.route('**/api/dream/memory/*/actions?*', route => route.fulfill({ json: { actions: [] } }))
     // Optional document captures are unavailable unless the scenario supplies a rendered image.
     await page.route('**/api/memory/documents/*/thumbnail*', route => route.fulfill({ status: 204 }))
     await use(page)

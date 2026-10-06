@@ -295,7 +295,7 @@ async def _store_finding(
     return finding
 
 
-async def detect_for_item(item_id: UUID) -> list[UUID]:
+async def detect_for_item(item_id: UUID, *, manual: bool = False) -> list[UUID]:
     """Detect current findings for one item without invoking a generative model."""
 
     item = await get_db().get(MemoryItem, item_id)
@@ -307,7 +307,7 @@ async def detect_for_item(item_id: UUID) -> list[UUID]:
     ):
         return []
     actionable: list[MemoryFinding] = []
-    aging_mode = runtime_settings.MEMORY_AGING_MODE
+    aging_mode = "manual" if manual else runtime_settings.MEMORY_AGING_MODE
     aging_days = runtime_settings.MEMORY_AGING_AFTER_DAYS
     if (
         item.node_kind == "memory"
@@ -329,8 +329,8 @@ async def detect_for_item(item_id: UUID) -> list[UUID]:
         if finding is not None:
             actionable.append(finding)
 
-    duplicate_mode = runtime_settings.MEMORY_DUPLICATE_MODE
-    contradiction_mode = runtime_settings.MEMORY_CONTRADICTION_MODE
+    duplicate_mode = "manual" if manual else runtime_settings.MEMORY_DUPLICATE_MODE
+    contradiction_mode = "manual" if manual else runtime_settings.MEMORY_CONTRADICTION_MODE
     if duplicate_mode != "off" or contradiction_mode != "off":
         minimum = min(
             runtime_settings.MEMORY_DUPLICATE_SIMILARITY_THRESHOLD

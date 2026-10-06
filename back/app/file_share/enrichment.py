@@ -21,7 +21,10 @@ def pending_enrichments() -> Select[tuple[FileCatalogEntry]]:
         FileCatalogEntry.descriptor["is_collection"].as_boolean().is_(False))
 
 
-async def apply_enrichment(identity: UUID, version: str, description: str) -> bool:
+async def apply_enrichment(
+    identity: UUID, version: str, description: str, *, force: bool = False,
+    expected_item: tuple[UUID, int, int] | None = None,
+) -> bool:
     from .resource_service import resource_info
     entry = await get_db().scalar(select(FileCatalogEntry).where(FileCatalogEntry.id == identity))
     if entry is None or not entry.present or descriptor_version(entry.descriptor) != version:
@@ -35,17 +38,28 @@ async def apply_enrichment(identity: UUID, version: str, description: str) -> bo
     entry = await get_db().scalar(select(FileCatalogEntry).where(FileCatalogEntry.id == identity).with_for_update().execution_options(populate_existing=True))
     if entry is None or not entry.present or descriptor_version(entry.descriptor) != version:
         return False
+    if expected_item is not None:
+        from app.memory import MemoryItem
+        item_id, revision, agent_id = expected_item
+        if entry.memory_node_id != item_id or entry.agent_id != agent_id:
+            return False
+        # Preserve the automatic path's binding -> entry -> Memory lock order.
+        item = await get_db().scalar(select(MemoryItem).where(
+            MemoryItem.id == item_id, MemoryItem.deleted_at.is_(None),
+        ).with_for_update().execution_options(populate_existing=True))
+        if item is None or item.revision != revision or item.owner_agent_id != agent_id:
+            return False
     with suspend_observations():
         current = await resource_info(ctx, entry.uri)
     safe = current.model_dump(exclude={"metadata", "capabilities", "indexing_status"})
     if descriptor_version(safe) != version:
         return False
-    if entry.enrichment_version == version:
+    if entry.enrichment_version == version and not force:
         return False
     if entry.file_sha256 is not None and entry.memory_node_id is not None:
         from app.memory import catalogue_file_summary
         async with catalogue_projection_write():
-            changed = await catalogue_file_summary(entry.memory_node_id, entry.file_sha256, description)
+            changed = await catalogue_file_summary(entry.memory_node_id, entry.file_sha256, description, force=force)
         await get_db().execute(update(FileCatalogEntry).where(
             FileCatalogEntry.memory_node_id == entry.memory_node_id,
             FileCatalogEntry.file_sha256 == entry.file_sha256,
@@ -60,6 +74,27 @@ async def apply_enrichment(identity: UUID, version: str, description: str) -> bo
 
 
 class FileCatalogueEnrichmentPort:
+    async def source_for_item(self, item_id: UUID, agent_id: int) -> dict[str, Any] | None:
+        from .catalogue_resources import authorized_resource
+        entries = await get_db().scalars(select(FileCatalogEntry).where(
+            FileCatalogEntry.memory_node_id == item_id, FileCatalogEntry.agent_id == agent_id,
+            FileCatalogEntry.present.is_(True),
+        ).order_by(FileCatalogEntry.id).limit(500))
+        for entry in entries:
+            try:
+                await authorized_resource(item_id, agent_id, entry.id)
+            except (PermissionError, FileNotFoundError, IsADirectoryError):
+                continue
+            return {"identity": str(entry.id), "uri": entry.uri, "agent_id": agent_id,
+                "runtime": entry.runtime, "version": descriptor_version(entry.descriptor),
+                "descriptor": dict(entry.descriptor), "file_sha256": entry.file_sha256,
+                "binding_stamp": entry.binding_stamp}
+        return None
+
+    async def apply_manual(self, source: dict[str, Any], description: str) -> bool:
+        return await apply_enrichment(UUID(source["identity"]), str(source["version"]), description,
+            force=True, expected_item=(UUID(source["item_id"]), int(source["memory_revision"]), int(source["agent_id"])))
+
     async def thumbnail_pending(self, handled: Select[tuple[str]]) -> int:
         from .thumbnail_service import count_pending
         return await count_pending(handled)
@@ -68,9 +103,9 @@ class FileCatalogueEnrichmentPort:
         from .thumbnail_service import next_source
         return await next_source(handled)
 
-    async def thumbnail_generate(self, source: dict[str, Any]) -> bool:
+    async def thumbnail_generate(self, source: dict[str, Any], *, force: bool = False) -> bool:
         from .thumbnail_service import generate
-        return await generate(source)
+        return await generate(source, force=force)
 
     async def fingerprints(self) -> list[dict[str, object]]:
         from .catalogue import current_binding, ObservationScope

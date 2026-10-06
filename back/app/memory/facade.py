@@ -176,6 +176,7 @@ async def search_memory_detailed(
 
 
 from .attachment_description import record_attachment_description
+from .dream_actions import dream_action_item, dream_structure_identity
 from .attachment_analysis import (
     AttachmentAnalysisSource,
     attachment_analysis_path,
@@ -217,6 +218,6 @@ async def enqueue_goal_folder_reconciliation(
     return await enqueue(user_id=user_id, goal_id=goal_id)
 
 
-__all__ = ["search_memory", "search_memory_detailed", "record_attachment_description", "reconcile_structure_subject", "enqueue_goal_folder_reconciliation",
+__all__ = ["dream_action_item", "dream_structure_identity", "search_memory", "search_memory_detailed", "record_attachment_description", "reconcile_structure_subject", "enqueue_goal_folder_reconciliation",
            "AttachmentAnalysisSource", "attachment_analysis_path", "attachment_analysis_source",
            "empty_attachment_items", "fill_attachment_description"]

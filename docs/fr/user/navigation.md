@@ -285,6 +285,21 @@ les souvenirs correspondant à cette date. La saisie et les correspondances util
 fuseau global configuré dans Galaris (`TZ`), même si votre navigateur utilise un autre fuseau.
 Les champs temporels d'un souvenir n'ont aucun sélecteur de fuseau.
 
+La modale propose des boutons pour les traitements Dream compatibles avec le nœud :
+générer sa description, **Régénérer la miniature** d'un fichier, d'une pièce jointe ou d'un
+document HTML, analyser un PDF ou document Office avec le modèle
+documentaire, vérifier les souvenirs ou **Synchroniser les liens du graphe**. Pour un
+document, cette dernière action actualise ses pièces jointes, ses références et ses liens
+vers les dossiers. Pour un dossier, elle actualise les dossiers et leurs liens parent-enfant
+dans toute votre arborescence. Ces boutons
+exigent un droit d'édition Mémoire et la propriété de la ressource. Ils déclenchent le
+traitement immédiatement, même lorsque Dream automatique est désactivé ou en attente.
+Une nouvelle analyse remplace la description générée ; les notes personnelles des fichiers
+du catalogue et l'historique restent conservés. La régénération d'une miniature relance
+le rendu même si une image existe déjà ; un échec conserve l'image précédente.
+Enregistrez vos modifications avant de lancer
+une action. Un échec peut être retenté et une modification concurrente prévaut sur l'analyse.
+
 Le graphe replie les branches d'au moins huit feuilles exclusives avec un compteur. Zoomez,
 cliquez sur le groupe ou activez **Détails des branches** pour voir les éléments, puis dézoomez
 pour les replier. Les nœuds partagés restent visibles. Jusqu'à 600 items chargés, le placement

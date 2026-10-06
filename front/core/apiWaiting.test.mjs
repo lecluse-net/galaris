@@ -2,6 +2,7 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 import axios from 'axios'
 import { deferred, loadTypescript } from '../test-support/load-typescript.mjs'
+import * as thumbnailEvents from '../app/memory/thumbnailEvents.ts'
 
 function setup() {
   const entered = deferred()
@@ -35,7 +36,14 @@ function setup() {
     window: { dispatchEvent() {}, location: { pathname: '/' } },
     CustomEvent: class {},
   })
-  const dependencies = { '@/core/api': { __esModule: true, default: loaded.api, api: loaded.api } }
+  // These HTTP-wait scenarios never render a resource preview. Fail explicitly
+  // if that boundary is accidentally invoked rather than hiding it with a no-op.
+  const unexpectedPreview = () => assert.fail('Resource preview invoked during an HTTP-wait scenario')
+  const dependencies = {
+    '@/core/api': { __esModule: true, default: loaded.api, api: loaded.api },
+    '@/core/util': { attachmentReference: unexpectedPreview, browserResourceKind: unexpectedPreview },
+    '../thumbnailEvents': thumbnailEvents,
+  }
   return {
     ...loaded, entered, response,
     workbench: loadTypescript(new URL('../app/lab/services/labWorkbenchService.ts', import.meta.url), dependencies).labWorkbenchService,

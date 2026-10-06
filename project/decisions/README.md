@@ -1,5 +1,7 @@
 # Décisions d’architecture
 
+- [0160 — Actions Dream explicites dans les nœuds mémoire](0160-foreground-dream-memory-actions.md)
+
 - [0157 — Branches mémoire exclusives et placement adapté au volume](0157-stable-memory-leaf-branches.md)
 
 - [0156 — Miniatures persistantes préparées par Dream](0156-persistent-file-thumbnails.md)

@@ -1,4 +1,4 @@
-"""Authenticated read-only monitoring routes for Dream."""
+"""Authenticated Dream monitoring and explicit Memory maintenance routes."""
 
 from __future__ import annotations
 
@@ -6,12 +6,15 @@ from datetime import date
 from typing import Literal
 from uuid import UUID
 
-from fastapi import APIRouter, HTTPException, Query, status
+from fastapi import APIRouter, Body, HTTPException, Query, status
 
 from core.authorize import Privileges, authorize
 from app.agent import current_management_scope
 
 from . import monitoring_service
+from . import manual
+from app.memory import MemoryNotFoundError, MemoryPermissionError, MemoryConflictError, DocumentThumbnailRender
+from loguru import logger
 from .schemas import (
     DreamOverview,
     DreamReceiptDetail,
@@ -19,11 +22,43 @@ from .schemas import (
     DreamRuntimeView,
     DreamTopicAssignmentAudit,
     TopicAssignmentSubjectKind,
+    MemoryDreamAction, MemoryDreamActions, MemoryDreamActionResult,
 )
 
 
 router = APIRouter(prefix="/dream", tags=["dream"])
 ReceiptStatus = Literal["running", "retry", "success", "error"]
+
+
+def _action_error(exc: Exception) -> HTTPException:
+    if isinstance(exc, MemoryNotFoundError):
+        return HTTPException(status_code=404, detail=str(exc))
+    if isinstance(exc, MemoryPermissionError):
+        return HTTPException(status_code=403, detail=str(exc))
+    if isinstance(exc, MemoryConflictError):
+        return HTTPException(status_code=409, detail=str(exc))
+    if isinstance(exc, ValueError):
+        return HTTPException(status_code=422, detail=str(exc))
+    logger.exception("Manual Dream action failed")
+    return HTTPException(status_code=502, detail="Dream action failed")
+
+
+@router.get("/memory/{item_id}/actions", response_model=MemoryDreamActions)
+@authorize(privileges=[Privileges.MEMORY_EDIT, Privileges.MEMORY_ADMIN])
+async def read_memory_dream_actions(item_id: UUID, agent_id: int = Query(gt=0)) -> MemoryDreamActions:
+    try:
+        return await manual.available_actions(item_id, agent_id, await current_management_scope())
+    except Exception as exc:
+        raise _action_error(exc) from exc
+
+
+@router.post("/memory/{item_id}/actions/{action}", response_model=MemoryDreamActionResult)
+@authorize(privileges=[Privileges.MEMORY_EDIT, Privileges.MEMORY_ADMIN])
+async def run_memory_dream_action(item_id: UUID, action: MemoryDreamAction, agent_id: int = Query(gt=0), snapshot: DocumentThumbnailRender | None = Body(default=None)) -> MemoryDreamActionResult:
+    try:
+        return await manual.run_action(item_id, agent_id, action, await current_management_scope(), snapshot=snapshot)
+    except Exception as exc:
+        raise _action_error(exc) from exc
 
 
 async def _require_global_scope() -> None:

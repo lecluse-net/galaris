@@ -308,17 +308,19 @@ from core.user import HumanActor
 async def capture_document_web_thumbnail(
     agent_id: int | HumanActor,
     url: str,
+    *, refresh: bool = False,
 ) -> tuple[bytes, str] | None:
-    return await capture_public_page_thumbnail(agent_id=agent_id, url=url)
+    return await capture_public_page_thumbnail(agent_id=agent_id, url=url, refresh=refresh)
 
 
 async def capture_document_html_thumbnail(
     agent_id: int | HumanActor,
     reference: str,
     content: bytes,
+    *, refresh: bool = False,
 ) -> tuple[bytes, str] | None:
     return await capture_html_page_thumbnail(
-        agent_id=agent_id, reference=reference, content=content,
+        agent_id=agent_id, reference=reference, content=content, refresh=refresh,
     )
 
 
