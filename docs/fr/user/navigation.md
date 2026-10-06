@@ -313,6 +313,9 @@ Quelques distinctions utiles :
 
 - **Superviser → Dream** (`/dream`) montre l’activité ; **Préférences → Dream**
   (`/params/dream`) règle son fonctionnement.
+  La page Dream ouvre **Suivi** par défaut, avec les indicateurs et la progression des actions.
+  **Historique** regroupe les opérations et leurs filtres ; **Indexation** permet
+  de choisir un agent, consulter ses parcours, lancer une indexation, l'annuler ou relancer les réparations.
 - **Superviser → Journal des échecs** (`/incident`) sert au diagnostic ;
   **Préférences → Journaux** (`/params/logs`) configure la conservation et les purges.
 - **Administrer → Laboratoire** (`/lab`) regroupe l’analyse de tâches et les évaluations

@@ -17292,6 +17292,13 @@
       },
       {
         "files": [
+          "front/app/dream/components/FileIndexTab.vue"
+        ],
+        "source": "app/dream",
+        "target": "app/agent"
+      },
+      {
+        "files": [
           "front/app/dream/pages/index.vue",
           "front/app/dream/types.ts"
         ],
@@ -17300,14 +17307,17 @@
       },
       {
         "files": [
-          "front/app/dream/services/dreamService.ts"
+          "front/app/dream/services/dreamService.ts",
+          "front/app/dream/services/fileIndexService.ts"
         ],
         "source": "app/dream",
         "target": "core/api"
       },
       {
         "files": [
-          "front/app/dream/navigation.ts"
+          "front/app/dream/components/FileIndexTab.vue",
+          "front/app/dream/navigation.ts",
+          "front/app/dream/pages/index.vue"
         ],
         "source": "app/dream",
         "target": "core/authorize"
@@ -17733,7 +17743,6 @@
           "front/app/memory/pages/index.vue",
           "front/app/memory/richContent.ts",
           "front/app/memory/services/contactService.ts",
-          "front/app/memory/services/fileIndexService.ts",
           "front/app/memory/services/memoryService.ts",
           "front/app/memory/stores/documentIcons.ts"
         ],
@@ -18640,15 +18649,16 @@
           "app/voice"
         ]
       ],
-      "domain_edges": 44,
+      "domain_edges": 45,
       "fan_in": [
         {
-          "count": 12,
+          "count": 13,
           "module": "app/agent",
           "modules": [
             "app/chat",
             "app/connection",
             "app/conversation",
+            "app/dream",
             "app/goal",
             "app/index",
             "app/llm",
@@ -18847,6 +18857,14 @@
         },
         {
           "count": 2,
+          "module": "app/dream",
+          "modules": [
+            "app/agent",
+            "app/llm"
+          ]
+        },
+        {
+          "count": 2,
           "module": "app/llm",
           "modules": [
             "app/agent",
@@ -18866,13 +18884,6 @@
           "module": "app/browser",
           "modules": [
             "app/connection"
-          ]
-        },
-        {
-          "count": 1,
-          "module": "app/dream",
-          "modules": [
-            "app/llm"
           ]
         },
         {
@@ -19329,6 +19340,7 @@
       },
       {
         "capabilities": [
+          "components",
           "i18n.ts",
           "navigation.ts",
           "pages",

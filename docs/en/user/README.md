@@ -59,7 +59,7 @@ The sidebar shows only the screens authorized by your role:
 | Goals | track long-running missions, their cycles, evidence, and results |
 | Topics | find global topics and related knowledge across multiple channels |
 | Memory | search, read, correct, share, or forget an Agent’s authorized memories |
-| Dream | view the filing, extraction, and learning operations executed in the background |
+| Dream | track background work, inspect its history, and manage file indexing per agent |
 | AI Lab | analyze a Task and measure AI mechanisms on reproducible case sets |
 | Processes | launch and track an external workflow, such as n8n |
 | Tools | view authorized capabilities and connections; primarily intended for administrators |

@@ -9,329 +9,346 @@
       </template>
     </PageHeader>
 
-    <q-banner v-if="error" rounded class="bg-red-1 text-negative q-mb-md">
+    <q-tabs v-model="activeTab" class="dream-tabs text-primary" active-color="primary" indicator-color="primary" align="left">
+      <q-tab name="tracking" icon="bedtime" :label="t('dream.tabs.tracking')" />
+      <q-tab name="history" icon="history" :label="t('dream.tabs.history')" />
+      <q-tab v-if="canViewIndexing" name="indexing" icon="folder_open" :label="t('dream.tabs.indexing')" />
+    </q-tabs>
+    <q-separator class="q-mb-md" />
+
+    <q-banner v-if="error && activeTab !== 'indexing'" rounded class="bg-red-1 text-negative q-mb-md">
       <template #avatar><q-icon name="error" /></template>
       {{ error }}
     </q-banner>
 
-    <div v-if="overview" class="row q-col-gutter-md q-mb-lg">
-      <div v-for="metric in metrics" :key="metric.key" class="col-12 col-sm-6 col-md-3">
-        <q-card
-          flat
-          bordered
-          class="dream-metric full-height"
-          :class="{
-            'dream-metric--interactive': metric.key === 'errors',
-            'dream-metric--active': metric.key === 'errors' && statusFilter === 'error',
-          }"
-          :role="metric.key === 'errors' ? 'button' : undefined"
-          :tabindex="metric.key === 'errors' ? 0 : undefined"
-          :aria-pressed="metric.key === 'errors' ? statusFilter === 'error' : undefined"
-          @click="metric.key === 'errors' && toggleErrors()"
-          @keydown.enter.prevent="metric.key === 'errors' && toggleErrors()"
-          @keydown.space.prevent="metric.key === 'errors' && toggleErrors()"
-        >
-          <q-card-section class="row items-center no-wrap">
-            <q-avatar :color="metric.color" text-color="white" :icon="metric.icon" />
-            <div class="col q-ml-md" style="min-width: 0">
-              <div class="text-caption text-grey-7 ellipsis">{{ metric.label }}</div>
-              <div class="text-h5 text-weight-medium">{{ metric.value }}</div>
-            </div>
-          </q-card-section>
-        </q-card>
-      </div>
-    </div>
-
-    <q-card
-      v-if="overview"
-      flat
-      bordered
-      class="q-mb-lg dream-runtime"
-      :class="`dream-runtime--${overview.runtime.status}`"
-    >
-      <q-card-section class="row items-center no-wrap">
-        <q-avatar :color="runtimeVisual.color" text-color="white" :icon="runtimeVisual.icon" />
-        <div class="col q-ml-md" style="min-width: 0">
-          <div class="row items-center q-gutter-sm">
-            <div class="text-weight-medium">{{ t(`dream.runtime.${overview.runtime.status}`) }}</div>
-            <q-badge outline :color="runtimeVisual.color">
-              {{ t(`dream.runtime.phases.${overview.runtime.phase}`) }}
-            </q-badge>
-          </div>
-          <div class="text-body2 text-grey-7">
-            {{ t(`dream.runtime.reasons.${overview.runtime.reason}`) }}
-          </div>
-          <div
-            v-if="overview.runtime.current_mechanism && overview.runtime.current_subject_id"
-            class="text-caption ellipsis"
-          >
-            {{
-              t('dream.runtime.current', {
-                mechanism: mechanismLabel(overview.runtime.current_mechanism),
-                subject: overview.runtime.current_subject_id,
-              })
-            }}
-          </div>
-          <div class="row items-center q-gutter-xs q-mt-xs dream-runtime-meta">
-            <q-chip dense size="sm" icon="history">
-              {{
-                overview.runtime.last_cycle_at
-                  ? t('dream.runtime.lastCycle', { date: formatDate(overview.runtime.last_cycle_at) })
-                  : t('dream.runtime.noCycle')
-              }}
-            </q-chip>
-            <q-chip v-if="overview.runtime.next_cycle_at" dense size="sm" icon="schedule">
-              {{ t('dream.runtime.nextCycle', { date: formatDate(overview.runtime.next_cycle_at) }) }}
-            </q-chip>
-            <q-chip dense size="sm" icon="repeat">
-              {{ t('dream.runtime.cycleCount', { count: overview.runtime.cycle_count }) }}
-            </q-chip>
-            <q-chip
-              v-if="overview.runtime.last_error_type"
-              dense
-              size="sm"
-              color="negative"
-              text-color="white"
-              icon="error"
-            >
-              {{ t('dream.runtime.lastError', { type: overview.runtime.last_error_type }) }}
-            </q-chip>
-          </div>
-        </div>
-      </q-card-section>
-      <q-separator />
-      <q-card-section class="q-pt-md">
-        <div class="text-subtitle2">{{ t('dream.overview.progressByAction') }}</div>
-        <div class="text-caption text-grey-7 q-mb-md">
-          {{ t('dream.overview.progressByActionHint') }}
-        </div>
-
-        <div class="dream-action-progress-list">
-          <div
-            v-for="action in actionProgress"
-            :key="action.mechanismKey"
-            class="dream-action-progress"
-            :class="{ 'dream-action-progress--current': action.current }"
-          >
-            <div class="row items-center no-wrap q-gutter-xs dream-action-label">
-              <q-icon
-                :name="action.current ? 'play_circle' : action.remaining === 0 && action.total > 0 ? 'check_circle' : 'pending_actions'"
-                :color="action.color"
-                size="18px"
-              />
-              <span class="text-body2 text-weight-medium ellipsis">
-                {{ mechanismLabel(action.mechanismKey) }}
-              </span>
-              <q-tooltip v-if="action.current">
-                {{ t('dream.overview.currentAction') }}
-              </q-tooltip>
-            </div>
-
-            <q-linear-progress
-              rounded
-              size="8px"
-              class="dream-action-bar"
-              :color="action.color"
-              track-color="grey-3"
-              :value="action.percent / 100"
-              :aria-label="
-                action.total
-                  ? t('dream.overview.actionProgress', {
-                      done: action.completed,
-                      remaining: action.remaining,
-                      total: action.total,
-                    })
-                  : t('dream.overview.noActionWork')
-              "
-            />
-
-            <div class="text-caption text-no-wrap dream-action-progress-value">
-              <span class="text-weight-medium">{{ action.displayedPercent }} %</span>
-              <span class="text-grey-7"> · {{ action.completed }}/{{ action.total }}</span>
-              <q-tooltip>
-                {{
-                  action.total
-                    ? t('dream.overview.actionProgress', {
-                        done: action.completed,
-                        remaining: action.remaining,
-                        total: action.total,
-                      })
-                    : t('dream.overview.noActionWork')
-                }}
-              </q-tooltip>
-            </div>
-
-            <div class="row items-center justify-end no-wrap q-gutter-sm dream-action-states">
-              <span v-if="action.running" class="dream-action-state text-primary">
-                <q-icon name="play_arrow" size="15px" />{{ action.running }}
-                <q-tooltip>{{ t('dream.overview.runningCount', { count: action.running }) }}</q-tooltip>
-              </span>
-              <span v-if="action.retry" class="dream-action-state text-warning">
-                <q-icon name="replay" size="15px" />{{ action.retry }}
-                <q-tooltip>{{ t('dream.overview.retryCount', { count: action.retry }) }}</q-tooltip>
-              </span>
-              <span v-if="action.error" class="dream-action-state text-negative">
-                <q-icon name="error_outline" size="15px" />{{ action.error }}
-                <q-tooltip>{{ t('dream.overview.errorCount', { count: action.error }) }}</q-tooltip>
-              </span>
-            </div>
-          </div>
-        </div>
-      </q-card-section>
-    </q-card>
-
-    <q-card flat bordered class="dream-history-card">
-      <q-card-section class="dream-history-header">
-        <div class="row items-center justify-between no-wrap dream-history-header-row">
-          <div class="row items-center no-wrap dream-history-title">
-            <q-icon name="history" size="sm" class="q-mr-sm" />
-            <span class="text-subtitle1">
-              {{ t('executionMonitoring.history', { count: pagination.rowsNumber }) }}
-            </span>
-          </div>
-          <div class="row items-center dream-history-filters">
-            <q-input
-              v-model="search"
-              outlined
-              dense
-              clearable
-              debounce="300"
-              :label="t('dream.history.search')"
-              class="dream-search-filter"
-              @update:model-value="filtersChanged"
-            >
-              <template #prepend><q-icon name="search" /></template>
-            </q-input>
-            <q-select
-              v-model="statusFilter"
-              outlined
-              dense
-              emit-value
-              map-options
-              :label="t('dream.history.status')"
-              :options="statusOptions"
-              class="dream-select-filter"
-              @update:model-value="filtersChanged"
-            />
-            <q-select
-              v-model="mechanismFilter"
-              outlined
-              dense
-              emit-value
-              map-options
-              :label="t('dream.history.mechanism')"
-              :options="mechanismOptions"
-              class="dream-select-filter"
-              @update:model-value="filtersChanged"
-            />
-            <ExecutionDateFilters
-              v-model:date-from="dateFrom"
-              v-model:date-to="dateTo"
-              @change="filtersChanged"
-            />
-          </div>
-        </div>
-        <q-separator class="q-mt-sm" />
-      </q-card-section>
-
-      <q-table
-        v-model:pagination="pagination"
-        flat
-        class="dream-history-table"
-        row-key="id"
-        :rows="receipts"
-        :columns="columns"
-        :loading="loading"
-        :grid="$q.screen.lt.md"
-        :rows-per-page-options="[10, 20, 50, 100, 500]"
-        :no-data-label="t('dream.history.noRows')"
-        @request="onRequest"
-        @row-click="openReceipt"
-      >
-        <template #body-cell-updated_at="props">
-          <q-td :props="props">{{ formatDate(props.row.updated_at) }}</q-td>
-        </template>
-        <template #body-cell-mechanism="props">
-          <q-td :props="props">
-            <div class="dream-mechanism-label">
-              {{ mechanismLabel(props.row.mechanism_key) }}
-            </div>
-          </q-td>
-        </template>
-        <template #body-cell-subject="props">
-          <q-td :props="props">
-            <div class="text-weight-medium dream-subject-preview">
-              {{ receiptSubjectPreview(props.row) }}
-              <q-tooltip>{{ receiptSubjectPreview(props.row) }}</q-tooltip>
-            </div>
-          </q-td>
-        </template>
-        <template #body-cell-status="props">
-          <q-td :props="props">
-            <q-badge
-              rounded
-              :color="receiptStatusVisual(props.row.status).color"
-              :label="t(`dream.statuses.${props.row.status}`)"
-            />
-          </q-td>
-        </template>
-        <template #body-cell-result_count="props">
-          <q-td :props="props">
-            {{ receiptResultLabel(props.row) }}
-          </q-td>
-        </template>
-        <template #body-cell-cost="props">
-          <q-td :props="props">{{ formatCost(props.row.cost) }}</q-td>
-        </template>
-        <template #item="props">
-          <div class="col-12 col-md-6 q-pa-xs">
+    <q-tab-panels v-model="activeTab" animated class="bg-transparent">
+      <q-tab-panel name="tracking" class="q-pa-none">
+        <div v-if="overview" class="row q-col-gutter-md q-mb-lg">
+          <div v-for="metric in metrics" :key="metric.key" class="col-12 col-sm-6 col-md-3">
             <q-card
               flat
               bordered
-              class="dream-history-item"
-              role="button"
-              tabindex="0"
-              :aria-label="receiptSubjectPreview(props.row)"
-              @click="openReceiptRow(props.row)"
-              @keydown.enter.prevent="openReceiptRow(props.row)"
-              @keydown.space.prevent="openReceiptRow(props.row)"
+              class="dream-metric full-height"
+              :class="{
+                'dream-metric--interactive': metric.key === 'errors',
+                'dream-metric--active': metric.key === 'errors' && statusFilter === 'error',
+              }"
+              :role="metric.key === 'errors' ? 'button' : undefined"
+              :tabindex="metric.key === 'errors' ? 0 : undefined"
+              :aria-pressed="metric.key === 'errors' ? statusFilter === 'error' : undefined"
+              @click="metric.key === 'errors' && toggleErrors()"
+              @keydown.enter.prevent="metric.key === 'errors' && toggleErrors()"
+              @keydown.space.prevent="metric.key === 'errors' && toggleErrors()"
             >
-              <q-card-section class="q-pa-sm">
-                <div class="row items-start justify-between no-wrap q-gutter-sm">
-                  <div class="col" style="min-width: 0">
-                    <div class="text-caption text-grey-7">
-                      {{ formatDate(props.row.updated_at) }}
-                    </div>
-                    <div class="text-body2 text-weight-medium dream-mechanism-label">
-                      {{ mechanismLabel(props.row.mechanism_key) }}
-                    </div>
-                  </div>
-                  <q-badge
-                    rounded
-                    :color="receiptStatusVisual(props.row.status).color"
-                    :label="t(`dream.statuses.${props.row.status}`)"
-                  />
-                </div>
-
-                <div class="dream-history-item-subject q-mt-sm">
-                  {{ receiptSubjectPreview(props.row) }}
-                </div>
-
-                <div class="row items-center q-col-gutter-sm q-mt-sm text-caption text-grey-7">
-                  <div>
-                    {{ t('dream.history.attempts') }} : {{ props.row.attempts }}
-                  </div>
-                  <div class="col dream-history-item-result">
-                    {{ receiptResultLabel(props.row) }}
-                  </div>
-                  <div>{{ formatCost(props.row.cost) }}</div>
+              <q-card-section class="row items-center no-wrap">
+                <q-avatar :color="metric.color" text-color="white" :icon="metric.icon" />
+                <div class="col q-ml-md" style="min-width: 0">
+                  <div class="text-caption text-grey-7 ellipsis">{{ metric.label }}</div>
+                  <div class="text-h5 text-weight-medium">{{ metric.value }}</div>
                 </div>
               </q-card-section>
             </q-card>
           </div>
-        </template>
-      </q-table>
-    </q-card>
+        </div>
+
+        <q-card
+          v-if="overview"
+          flat
+          bordered
+          class="q-mb-lg dream-runtime"
+          :class="`dream-runtime--${overview.runtime.status}`"
+        >
+          <q-card-section class="row items-center no-wrap">
+            <q-avatar :color="runtimeVisual.color" text-color="white" :icon="runtimeVisual.icon" />
+            <div class="col q-ml-md" style="min-width: 0">
+              <div class="row items-center q-gutter-sm">
+                <div class="text-weight-medium">{{ t(`dream.runtime.${overview.runtime.status}`) }}</div>
+                <q-badge outline :color="runtimeVisual.color">
+                  {{ t(`dream.runtime.phases.${overview.runtime.phase}`) }}
+                </q-badge>
+              </div>
+              <div class="text-body2 text-grey-7">
+                {{ t(`dream.runtime.reasons.${overview.runtime.reason}`) }}
+              </div>
+              <div
+                v-if="overview.runtime.current_mechanism && overview.runtime.current_subject_id"
+                class="text-caption ellipsis"
+              >
+                {{
+                  t('dream.runtime.current', {
+                    mechanism: mechanismLabel(overview.runtime.current_mechanism),
+                    subject: overview.runtime.current_subject_id,
+                  })
+                }}
+              </div>
+              <div class="row items-center q-gutter-xs q-mt-xs dream-runtime-meta">
+                <q-chip dense size="sm" icon="history">
+                  {{
+                    overview.runtime.last_cycle_at
+                      ? t('dream.runtime.lastCycle', { date: formatDate(overview.runtime.last_cycle_at) })
+                      : t('dream.runtime.noCycle')
+                  }}
+                </q-chip>
+                <q-chip v-if="overview.runtime.next_cycle_at" dense size="sm" icon="schedule">
+                  {{ t('dream.runtime.nextCycle', { date: formatDate(overview.runtime.next_cycle_at) }) }}
+                </q-chip>
+                <q-chip dense size="sm" icon="repeat">
+                  {{ t('dream.runtime.cycleCount', { count: overview.runtime.cycle_count }) }}
+                </q-chip>
+                <q-chip
+                  v-if="overview.runtime.last_error_type"
+                  dense
+                  size="sm"
+                  color="negative"
+                  text-color="white"
+                  icon="error"
+                >
+                  {{ t('dream.runtime.lastError', { type: overview.runtime.last_error_type }) }}
+                </q-chip>
+              </div>
+            </div>
+          </q-card-section>
+          <q-separator />
+          <q-card-section class="q-pt-md">
+            <div class="text-subtitle2">{{ t('dream.overview.progressByAction') }}</div>
+            <div class="text-caption text-grey-7 q-mb-md">
+              {{ t('dream.overview.progressByActionHint') }}
+            </div>
+
+            <div class="dream-action-progress-list">
+              <div
+                v-for="action in actionProgress"
+                :key="action.mechanismKey"
+                class="dream-action-progress"
+                :class="{ 'dream-action-progress--current': action.current }"
+              >
+                <div class="row items-center no-wrap q-gutter-xs dream-action-label">
+                  <q-icon
+                    :name="action.current ? 'play_circle' : action.remaining === 0 && action.total > 0 ? 'check_circle' : 'pending_actions'"
+                    :color="action.color"
+                    size="18px"
+                  />
+                  <span class="text-body2 text-weight-medium ellipsis">
+                    {{ mechanismLabel(action.mechanismKey) }}
+                  </span>
+                  <q-tooltip v-if="action.current">
+                    {{ t('dream.overview.currentAction') }}
+                  </q-tooltip>
+                </div>
+
+                <q-linear-progress
+                  rounded
+                  size="8px"
+                  class="dream-action-bar"
+                  :color="action.color"
+                  track-color="grey-3"
+                  :value="action.percent / 100"
+                  :aria-label="
+                    action.total
+                      ? t('dream.overview.actionProgress', {
+                          done: action.completed,
+                          remaining: action.remaining,
+                          total: action.total,
+                        })
+                      : t('dream.overview.noActionWork')
+                  "
+                />
+
+                <div class="text-caption text-no-wrap dream-action-progress-value">
+                  <span class="text-weight-medium">{{ action.displayedPercent }} %</span>
+                  <span class="text-grey-7"> · {{ action.completed }}/{{ action.total }}</span>
+                  <q-tooltip>
+                    {{
+                      action.total
+                        ? t('dream.overview.actionProgress', {
+                            done: action.completed,
+                            remaining: action.remaining,
+                            total: action.total,
+                          })
+                        : t('dream.overview.noActionWork')
+                    }}
+                  </q-tooltip>
+                </div>
+
+                <div class="row items-center justify-end no-wrap q-gutter-sm dream-action-states">
+                  <span v-if="action.running" class="dream-action-state text-primary">
+                    <q-icon name="play_arrow" size="15px" />{{ action.running }}
+                    <q-tooltip>{{ t('dream.overview.runningCount', { count: action.running }) }}</q-tooltip>
+                  </span>
+                  <span v-if="action.retry" class="dream-action-state text-warning">
+                    <q-icon name="replay" size="15px" />{{ action.retry }}
+                    <q-tooltip>{{ t('dream.overview.retryCount', { count: action.retry }) }}</q-tooltip>
+                  </span>
+                  <span v-if="action.error" class="dream-action-state text-negative">
+                    <q-icon name="error_outline" size="15px" />{{ action.error }}
+                    <q-tooltip>{{ t('dream.overview.errorCount', { count: action.error }) }}</q-tooltip>
+                  </span>
+                </div>
+              </div>
+            </div>
+          </q-card-section>
+        </q-card>
+
+      </q-tab-panel>
+      <q-tab-panel name="history" class="q-pa-none">
+        <q-card flat bordered class="dream-history-card">
+          <q-card-section class="dream-history-header">
+            <div class="row items-center justify-between no-wrap dream-history-header-row">
+              <div class="row items-center no-wrap dream-history-title">
+                <q-icon name="history" size="sm" class="q-mr-sm" />
+                <span class="text-subtitle1">
+                  {{ t('executionMonitoring.history', { count: pagination.rowsNumber }) }}
+                </span>
+              </div>
+              <div class="row items-center dream-history-filters">
+                <q-input
+                  v-model="search"
+                  outlined
+                  dense
+                  clearable
+                  debounce="300"
+                  :label="t('dream.history.search')"
+                  class="dream-search-filter"
+                  @update:model-value="filtersChanged"
+                >
+                  <template #prepend><q-icon name="search" /></template>
+                </q-input>
+                <q-select
+                  v-model="statusFilter"
+                  outlined
+                  dense
+                  emit-value
+                  map-options
+                  :label="t('dream.history.status')"
+                  :options="statusOptions"
+                  class="dream-select-filter"
+                  @update:model-value="filtersChanged"
+                />
+                <q-select
+                  v-model="mechanismFilter"
+                  outlined
+                  dense
+                  emit-value
+                  map-options
+                  :label="t('dream.history.mechanism')"
+                  :options="mechanismOptions"
+                  class="dream-select-filter"
+                  @update:model-value="filtersChanged"
+                />
+                <ExecutionDateFilters
+                  v-model:date-from="dateFrom"
+                  v-model:date-to="dateTo"
+                  @change="filtersChanged"
+                />
+              </div>
+            </div>
+            <q-separator class="q-mt-sm" />
+          </q-card-section>
+
+          <q-table
+            v-model:pagination="pagination"
+            flat
+            class="dream-history-table"
+            row-key="id"
+            :rows="receipts"
+            :columns="columns"
+            :loading="loading"
+            :grid="$q.screen.lt.md"
+            :rows-per-page-options="[10, 20, 50, 100, 500]"
+            :no-data-label="t('dream.history.noRows')"
+            @request="onRequest"
+            @row-click="openReceipt"
+          >
+            <template #body-cell-updated_at="props">
+              <q-td :props="props">{{ formatDate(props.row.updated_at) }}</q-td>
+            </template>
+            <template #body-cell-mechanism="props">
+              <q-td :props="props">
+                <div class="dream-mechanism-label">
+                  {{ mechanismLabel(props.row.mechanism_key) }}
+                </div>
+              </q-td>
+            </template>
+            <template #body-cell-subject="props">
+              <q-td :props="props">
+                <div class="text-weight-medium dream-subject-preview">
+                  {{ receiptSubjectPreview(props.row) }}
+                  <q-tooltip>{{ receiptSubjectPreview(props.row) }}</q-tooltip>
+                </div>
+              </q-td>
+            </template>
+            <template #body-cell-status="props">
+              <q-td :props="props">
+                <q-badge
+                  rounded
+                  :color="receiptStatusVisual(props.row.status).color"
+                  :label="t(`dream.statuses.${props.row.status}`)"
+                />
+              </q-td>
+            </template>
+            <template #body-cell-result_count="props">
+              <q-td :props="props">
+                {{ receiptResultLabel(props.row) }}
+              </q-td>
+            </template>
+            <template #body-cell-cost="props">
+              <q-td :props="props">{{ formatCost(props.row.cost) }}</q-td>
+            </template>
+            <template #item="props">
+              <div class="col-12 col-md-6 q-pa-xs">
+                <q-card
+                  flat
+                  bordered
+                  class="dream-history-item"
+                  role="button"
+                  tabindex="0"
+                  :aria-label="receiptSubjectPreview(props.row)"
+                  @click="openReceiptRow(props.row)"
+                  @keydown.enter.prevent="openReceiptRow(props.row)"
+                  @keydown.space.prevent="openReceiptRow(props.row)"
+                >
+                  <q-card-section class="q-pa-sm">
+                    <div class="row items-start justify-between no-wrap q-gutter-sm">
+                      <div class="col" style="min-width: 0">
+                        <div class="text-caption text-grey-7">
+                          {{ formatDate(props.row.updated_at) }}
+                        </div>
+                        <div class="text-body2 text-weight-medium dream-mechanism-label">
+                          {{ mechanismLabel(props.row.mechanism_key) }}
+                        </div>
+                      </div>
+                      <q-badge
+                        rounded
+                        :color="receiptStatusVisual(props.row.status).color"
+                        :label="t(`dream.statuses.${props.row.status}`)"
+                      />
+                    </div>
+
+                    <div class="dream-history-item-subject q-mt-sm">
+                      {{ receiptSubjectPreview(props.row) }}
+                    </div>
+
+                    <div class="row items-center q-col-gutter-sm q-mt-sm text-caption text-grey-7">
+                      <div>
+                        {{ t('dream.history.attempts') }} : {{ props.row.attempts }}
+                      </div>
+                      <div class="col dream-history-item-result">
+                        {{ receiptResultLabel(props.row) }}
+                      </div>
+                      <div>{{ formatCost(props.row.cost) }}</div>
+                    </div>
+                  </q-card-section>
+                </q-card>
+              </div>
+            </template>
+          </q-table>
+        </q-card>
+
+      </q-tab-panel>
+      <q-tab-panel v-if="canViewIndexing" name="indexing" class="q-pa-none">
+        <FileIndexTab v-model="selectedIndexAgentId" />
+      </q-tab-panel>
+    </q-tab-panels>
 
     <q-dialog v-model="detailOpen">
       <q-card class="dream-detail-card galaris-dialog-card">
@@ -542,6 +559,8 @@ import type { QTableColumn, QTableProps } from 'quasar'
 import { LlmCalls } from '@/app/llm'
 import { BaseRoom, websocket } from '@/core/websocket'
 import { ExecutionDateFilters, PageHeader } from '@/core/util'
+import { privileges, usePrivilegeStore } from '@/core/authorize'
+import FileIndexTab from '../components/FileIndexTab.vue'
 import { dreamService } from '../services/dreamService'
 import type {
   DreamOverview,
@@ -566,6 +585,10 @@ class DreamRoom extends BaseRoom {
 const { t, locale } = useI18n()
 const $q = useQuasar()
 const route = useRoute()
+const privilegeStore = usePrivilegeStore()
+const canViewIndexing = computed(() => privilegeStore.hasPrivilege(privileges.MEMORY_ACCESS))
+const activeTab = ref<'tracking' | 'history' | 'indexing'>('tracking')
+const selectedIndexAgentId = ref<number | null>(null)
 const overview = ref<DreamOverview | null>(null)
 const receipts = ref<DreamReceiptSummary[]>([])
 const selectedReceipt = ref<DreamReceiptDetail | null>(null)
@@ -819,6 +842,7 @@ function filtersChanged(): void {
 
 function toggleErrors(): void {
   statusFilter.value = statusFilter.value === 'error' ? null : 'error'
+  activeTab.value = 'history'
   filtersChanged()
 }
 
@@ -933,6 +957,7 @@ watch(
   value => {
     const receiptId = Array.isArray(value) ? value[0] : value
     if (!receiptId || selectedReceipt.value?.id === receiptId) return
+    activeTab.value = 'history'
     void openReceiptId(receiptId)
   },
   { immediate: true },
@@ -956,6 +981,12 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
+@media (max-width: 1023px) {
+  .dream-tabs :deep(.q-tab) {
+    padding: 0 8px;
+  }
+}
+
 .dream-runtime {
   border: 1px solid color-mix(in srgb, var(--q-primary) 24%, transparent);
   background: color-mix(in srgb, var(--q-primary) 7%, transparent);

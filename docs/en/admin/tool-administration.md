@@ -78,7 +78,7 @@ Office files are converted to PDF for preview. Formats without a viewer remain d
 Each access rechecks the connection and source resource; no file bytes are added to Memory.
 Previews are bounded to 512 MiB, and converter-specific limits still apply.
 
-In **Memory**, select the agent and open **File indexing**. Enter an eligible root, such as
+In **Monitor → Dream → Indexing**, select the agent. Enter an eligible root, such as
 `nextcloud://`, and choose **Index now**. The table shows encountered entries, complete
 directories and errors; active runs can be cancelled. Partial coverage indicates a volume,
 depth or pagination limit. Terminal diagnostics are retained for 30 days. Observation

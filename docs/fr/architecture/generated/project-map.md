@@ -12,7 +12,7 @@ tests restent l’autorité sur le comportement.
 - 71 modules backend déclarés ;
 - 36 modules frontend déclarés ;
 - 547 arêtes de dépendance backend ;
-- 194 arêtes de dépendance frontend ;
+- 195 arêtes de dépendance frontend ;
 - 270 arêtes entre domaines `app`/`bridge` ;
 - 26 paires de domaines directement bidirectionnelles ;
 - 1 composantes fortement connexes ;
@@ -118,7 +118,7 @@ tests restent l’autorité sur le comportement.
 | `app/conversation` | oui | `components`, `i18n.ts`, `services` | 0 |
 | `app/chat` | oui | `components`, `i18n.ts`, `navigation.ts`, `pages`, `services`, `stores` | 1 |
 | `app/voice` | oui | `components`, `i18n.ts`, `services` | 0 |
-| `app/dream` | oui | `i18n.ts`, `navigation.ts`, `pages`, `services` | 1 |
+| `app/dream` | oui | `components`, `i18n.ts`, `navigation.ts`, `pages`, `services` | 1 |
 | `app/topic` | oui | `components`, `i18n.ts`, `navigation.ts`, `pages`, `services` | 2 |
 | `app/goal` | oui | `components`, `i18n.ts`, `navigation.ts`, `pages`, `services`, `stores` | 1 |
 | `app/memory` | oui | `components`, `i18n.ts`, `navigation.ts`, `pages`, `services`, `stores` | 3 |
@@ -740,9 +740,10 @@ tests restent l’autorité sur le comportement.
 | `app/conversation` | `core/api` | `front/app/conversation/components/ConversationRoundDetail.vue`, `front/app/conversation/components/DeliveryResolution.vue`, `front/app/conversation/services/conversationService.ts` |
 | `app/conversation` | `core/authorize` | `front/app/conversation/components/ConversationRoundDetail.vue` |
 | `app/conversation` | `core/util` | `front/app/conversation/components/ConversationExecutionDetails.vue`, `front/app/conversation/components/ConversationHistory.vue`, `front/app/conversation/components/ConversationRoundDetail.vue` |
+| `app/dream` | `app/agent` | `front/app/dream/components/FileIndexTab.vue` |
 | `app/dream` | `app/llm` | `front/app/dream/pages/index.vue`, `front/app/dream/types.ts` |
-| `app/dream` | `core/api` | `front/app/dream/services/dreamService.ts` |
-| `app/dream` | `core/authorize` | `front/app/dream/navigation.ts` |
+| `app/dream` | `core/api` | `front/app/dream/services/dreamService.ts`, `front/app/dream/services/fileIndexService.ts` |
+| `app/dream` | `core/authorize` | `front/app/dream/components/FileIndexTab.vue`, `front/app/dream/navigation.ts`, `front/app/dream/pages/index.vue` |
 | `app/dream` | `core/navigation` | `front/app/dream/navigation.ts`, `front/app/dream/pages/index.vue` |
 | `app/dream` | `core/util` | `front/app/dream/pages/index.vue` |
 | `app/dream` | `core/websocket` | `front/app/dream/pages/index.vue` |
@@ -786,7 +787,7 @@ tests restent l’autorité sur le comportement.
 | `app/llm` | `core/util` | `front/app/llm/components/ConfiguredLlmManager.vue`, `front/app/llm/components/LlmActivityPanel.vue`, `front/app/llm/components/LlmCall.vue`, `front/app/llm/components/LlmCallDetails.vue`, `front/app/llm/components/LlmCallStopButton.vue`, `front/app/llm/components/LlmCallTaskDetail.vue`, `front/app/llm/components/LlmCalls.vue`, `front/app/llm/components/LlmUsageManager.vue`, `front/app/llm/components/ProviderQuotaPanel.vue`, `front/app/llm/pages/index.vue`, `front/app/llm/useEditorVoice.ts` |
 | `app/llm` | `core/websocket` | `front/app/llm/components/LlmActivityPanel.vue`, `front/app/llm/components/LlmCalls.vue` |
 | `app/memory` | `app/agent` | `front/app/memory/components/DocumentEditor.vue`, `front/app/memory/components/DocumentHistoryDialog.vue`, `front/app/memory/components/DocumentLibraryPage.vue`, `front/app/memory/components/MemorySharingPanel.vue`, `front/app/memory/pages/contacts.vue`, `front/app/memory/pages/index.vue` |
-| `app/memory` | `core/api` | `front/app/memory/components/DocumentAttachments.vue`, `front/app/memory/components/DocumentLibraryNavigation.vue`, `front/app/memory/components/DocumentThumbnail.vue`, `front/app/memory/components/MemoryFileResources.vue`, `front/app/memory/components/MemoryItemThumbnail.vue`, `front/app/memory/pages/contacts.vue`, `front/app/memory/pages/index.vue`, `front/app/memory/richContent.ts`, `front/app/memory/services/contactService.ts`, `front/app/memory/services/fileIndexService.ts`, `front/app/memory/services/memoryService.ts`, `front/app/memory/stores/documentIcons.ts` |
+| `app/memory` | `core/api` | `front/app/memory/components/DocumentAttachments.vue`, `front/app/memory/components/DocumentLibraryNavigation.vue`, `front/app/memory/components/DocumentThumbnail.vue`, `front/app/memory/components/MemoryFileResources.vue`, `front/app/memory/components/MemoryItemThumbnail.vue`, `front/app/memory/pages/contacts.vue`, `front/app/memory/pages/index.vue`, `front/app/memory/richContent.ts`, `front/app/memory/services/contactService.ts`, `front/app/memory/services/memoryService.ts`, `front/app/memory/stores/documentIcons.ts` |
 | `app/memory` | `core/authorize` | `front/app/memory/components/DocumentEditor.vue`, `front/app/memory/navigation.ts`, `front/app/memory/pages/contacts.vue`, `front/app/memory/pages/index.vue` |
 | `app/memory` | `core/navigation` | `front/app/memory/components/DocumentLibraryPage.vue`, `front/app/memory/navigation.ts`, `front/app/memory/pages/contacts.vue`, `front/app/memory/pages/index.vue` |
 | `app/memory` | `core/util` | `front/app/memory/components/DocumentApplication.vue`, `front/app/memory/components/DocumentApplicationBlock.vue`, `front/app/memory/components/DocumentAttachments.vue`, `front/app/memory/components/DocumentEditor.vue`, `front/app/memory/components/DocumentFolderSelect.vue`, `front/app/memory/components/DocumentHistoryDialog.vue`, `front/app/memory/components/DocumentLibraryPage.vue`, `front/app/memory/components/DocumentTagIcon.vue`, `front/app/memory/components/DocumentTagIconPicker.vue`, `front/app/memory/components/DocumentThumbnail.vue`, `front/app/memory/components/MemoryAttachmentButton.vue`, `front/app/memory/components/MemoryGraph.vue`, `front/app/memory/components/MemoryItemForm.vue`, `front/app/memory/components/MemoryItemHistory.vue`, `front/app/memory/components/MemoryItemThumbnail.vue`, `front/app/memory/components/MemorySharingPanel.vue`, `front/app/memory/documentEditor.ts`, `front/app/memory/documentFolders.ts`, `front/app/memory/pages/contacts.vue`, `front/app/memory/pages/index.vue`, `front/app/memory/richContent.ts`, `front/app/memory/services/memoryService.ts` |
@@ -1042,10 +1043,10 @@ tests restent l’autorité sur le comportement.
 | `app/index` | 4 | `app/agent`, `app/llm`, `app/onboarding`, `app/task` |
 | `app/connection` | 3 | `app/agent`, `app/console`, `app/tools` |
 | `app/agent` | 2 | `app/harnesses`, `app/llm` |
+| `app/dream` | 2 | `app/agent`, `app/llm` |
 | `app/llm` | 2 | `app/agent`, `app/task` |
 | `app/process` | 2 | `app/agent`, `app/task` |
 | `app/browser` | 1 | `app/connection` |
-| `app/dream` | 1 | `app/llm` |
 | `app/goal` | 1 | `app/agent` |
 | `app/lab` | 1 | `app/task` |
 | `app/memory` | 1 | `app/agent` |
@@ -1058,7 +1059,7 @@ tests restent l’autorité sur le comportement.
 
 | Module | Nombre | Dépendants |
 |---|---:|---|
-| `app/agent` | 12 | `app/chat`, `app/connection`, `app/conversation`, `app/goal`, `app/index`, `app/llm`, `app/memory`, `app/process`, `app/skill`, `app/task`, `app/voice`, `bridge/hermes` |
+| `app/agent` | 13 | `app/chat`, `app/connection`, `app/conversation`, `app/dream`, `app/goal`, `app/index`, `app/llm`, `app/memory`, `app/process`, `app/skill`, `app/task`, `app/voice`, `bridge/hermes` |
 | `app/llm` | 7 | `app/agent`, `app/conversation`, `app/dream`, `app/index`, `app/task`, `app/voice`, `bridge/ollama` |
 | `app/task` | 7 | `app/chat`, `app/conversation`, `app/index`, `app/lab`, `app/llm`, `app/process`, `app/voice` |
 | `app/topic` | 4 | `app/chat`, `app/conversation`, `app/task`, `app/voice` |

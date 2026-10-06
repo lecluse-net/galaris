@@ -549,6 +549,15 @@ Garanties : `mobile-editor-toolbar.spec.mjs`, `document-voice.spec.mjs`,
 
 ## Catalogue privé de fichiers et maintenance
 
+L'indexation se pilote dans **Dream → Indexation**. **Suivi** s'ouvre par
+défaut ; **Historique** conserve les filtres et le détail des opérations. Le parcours
+assemblé `e2e/specs/file-indexing.spec.mjs` vérifie ces onglets, leur réouverture et
+l'absence du panneau d'indexation dans Mémoire, sur ordinateur et mobile.
+
+Revue de dépendance : le sélecteur d'agent de Dream utilise uniquement les exports publics
+`AgentSelect` et `useAgentStore` de `app/agent`. Le lien `app/dream → app/agent` est nécessaire
+pour choisir le propriétaire du catalogue ; il n'ajoute ni import privé ni cycle.
+
 `back/app/memory/tests/test_memory_urls.py` vérifie l'unique table de rattachement
 des URL, le SHA-256 des octets texte et binaires sur le nœud, la colonne nullable
 d'URL principale, sa stabilité et les déplacements/suppressions. La transition

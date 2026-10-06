@@ -82,7 +82,7 @@ Les formats sans lecteur restent téléchargeables. Chaque accès revérifie la 
 la ressource source ; aucun octet n'est ajouté à la fiche Memory. Les aperçus sont bornés
 à 512 Mio ; les limites propres aux convertisseurs continuent de s'appliquer.
 
-Dans **Memory**, sélectionner l'agent puis ouvrir **Indexation des fichiers**. Saisir la
+Dans **Superviser → Dream → Indexation**, sélectionner l'agent. Saisir la
 racine admissible, par exemple `nextcloud://`, et choisir **Indexer maintenant**. Le tableau
 montre le nombre d'entrées rencontrées, les répertoires complets et les erreurs ; un run actif
 peut être annulé. Une couverture partielle indique une limite de volume, profondeur ou

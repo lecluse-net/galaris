@@ -287,6 +287,9 @@ Useful distinctions:
 
 - **Monitor → Dream** (`/dream`) shows activity; **Preferences → Dream** (`/params/dream`)
   configures its behavior.
+  Dream opens **Tracking** by default, showing indicators and action progress.
+  **History** groups operations and their filters; **Indexing** lets you select an agent,
+  inspect traversals, start or cancel indexing, and retry repairs.
 - **Monitor → Failure journal** (`/incident`) supports diagnosis; **Preferences → Logs**
   (`/params/logs`) configures retention and purges.
 - **Administer → Laboratory** (`/lab`) groups task analysis and mechanism evaluations,

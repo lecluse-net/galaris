@@ -182,6 +182,10 @@
     },
     {
       "source": "app/dream",
+      "target": "app/agent"
+    },
+    {
+      "source": "app/dream",
       "target": "app/llm"
     },
     {

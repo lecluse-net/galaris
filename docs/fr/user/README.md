@@ -68,7 +68,7 @@ La barre latérale ne montre que les écrans autorisés par votre rôle :
 | Objectifs | suivre les missions de fond, leurs cycles, preuves et résultats |
 | Dossiers thématiques | retrouver les sujets globaux et les connaissances liées entre plusieurs canaux |
 | Mémoire | rechercher, lire, corriger, partager ou oublier les souvenirs autorisés d’un agent |
-| Dream | voir les opérations de classement, extraction et apprentissage exécutées en arrière-plan |
+| Dream | suivre le travail de fond, consulter son historique et gérer l’indexation des fichiers par agent |
 | Lab IA | analyser une tâche et mesurer les mécanismes IA sur des jeux de cas reproductibles |
 | Processus | lancer et suivre un workflow externe, par exemple n8n |
 | Outils | voir les capacités et connexions autorisées ; principalement destiné aux responsables |

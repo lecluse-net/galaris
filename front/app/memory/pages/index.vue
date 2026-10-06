@@ -1,7 +1,6 @@
 <template>
   <q-page class="q-pa-md">
     <PageHeader help-key="memory" :help-text="$t('contextHelpPages.memory')" :icon="navigationIcon('memory')" :title="t('nav.memory')" />
-    <FileIndexPanel v-if="store.selectedAgentId !== null" :agent-id="store.selectedAgentId" :editable="canEdit" />
 
     <q-tabs
       v-model="activeTab"
@@ -605,7 +604,6 @@ import { usePrivilegeStore } from '@/core/authorize/stores/privilegeStore'
 import { useAgentStore } from '@/app/agent/stores/agentStore'
 import { AgentSelect } from '@/app/agent'
 import MemoryGraph from '../components/MemoryGraph.vue'
-import FileIndexPanel from '../components/FileIndexPanel.vue'
 import MemoryFindingDialog from '../components/MemoryFindingDialog.vue'
 import MemoryLinkDialog from '../components/MemoryLinkDialog.vue'
 import MemoryTemporalFilter from '../components/MemoryTemporalFilter.vue'

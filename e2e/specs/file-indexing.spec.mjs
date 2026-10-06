@@ -99,7 +99,7 @@ for (const width of [1440, 390]) {
 }
 
 for (const width of [1440, 390]) {
-  test(`Memory file indexing loads real API and rejects excluded roots at ${width}px`, async ({ page, request }) => {
+  test(`Dream tabs and file indexing load real API and reject excluded roots at ${width}px`, async ({ page, request }, testInfo) => {
     await page.setViewportSize({ width, height: 900 })
     const errors = collectPageErrors(page)
     const fixture = await (await request.post('/api/__test/seed')).json()
@@ -114,10 +114,17 @@ for (const width of [1440, 390]) {
     await authentication
     await expect(page.locator('input[type=password]')).toHaveCount(0)
     await errors.settle()
-    await page.goto(`/memory?agent=${fixture.agent_id}`)
+    await page.goto(`/dream?agent=${fixture.agent_id}`)
     if (width < 1024) await page.addLocatorHandler(page.locator('.q-drawer__backdrop'), backdrop => backdrop.click({ position: { x: 380, y: 150 } }), { times: 1 })
+    await expect(page.getByRole('tab', { name: 'Suivi', exact: true })).toHaveAttribute('aria-selected', 'true')
+    await expect(page.getByLabel('Racine source (URI)')).toHaveCount(0)
+    await expect(page.locator('.dream-history-card')).toHaveCount(0)
+    await page.screenshot({ path: testInfo.outputPath('dream-tracking.png'), animations: 'disabled' })
+    await page.getByRole('tab', { name: 'Historique', exact: true }).click()
+    await expect(page.locator('.dream-history-card')).toBeVisible()
+    await page.screenshot({ path: testInfo.outputPath('dream-history.png'), animations: 'disabled' })
     const progress = page.waitForResponse(response => new URL(response.url()).pathname === '/api/file-share/indexing')
-    await page.getByText('Indexation des fichiers', { exact: true }).click()
+    await page.getByRole('tab', { name: 'Indexation', exact: true }).click()
     expect((await progress).status()).toBe(200)
     await expect(page.getByText('Aucun parcours pour cet agent.')).toBeVisible()
     await page.getByLabel('Racine source (URI)').fill('document://')
@@ -127,6 +134,12 @@ for (const width of [1440, 390]) {
     await expect(page.getByText('L’indexation n’a pas pu être chargée ou modifiée.')).toBeVisible()
     await page.getByRole('button', { name: 'Réessayer', exact: true }).click()
     await expect(page.getByText('L’indexation n’a pas pu être chargée ou modifiée.')).toHaveCount(0)
+    await page.screenshot({ path: testInfo.outputPath('dream-indexing.png'), animations: 'disabled' })
+    await page.getByRole('tab', { name: 'Suivi', exact: true }).click()
+    await page.getByRole('tab', { name: 'Indexation', exact: true }).click()
+    await expect(page.getByText('Aucun parcours pour cet agent.')).toBeVisible()
+    await page.goto(`/memory?agent=${fixture.agent_id}`)
+    await expect(page.getByText('Indexation des fichiers', { exact: true })).toHaveCount(0)
     await errors.settle()
     expect(errors()).toEqual([])
   })

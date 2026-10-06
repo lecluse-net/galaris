@@ -13,15 +13,6 @@ export default {
       contacts_desc: 'Réunir les identités multicanales et leurs souvenirs',
     },
     memory: {
-      indexing: {
-        title: 'Indexation des fichiers', root: 'Racine source (URI)', start: 'Indexer maintenant',
-        retryRepairs: 'Relancer les réparations',
-        error: 'L’indexation n’a pas pu être chargée ou modifiée.', empty: 'Aucun parcours pour cet agent.',
-        repairs: 'Réparations en attente : {pending} ; en échec : {failed}.', state: 'État',
-        scanned: 'Fichiers rencontrés', directories: 'Répertoires complets', failure: 'Erreur',
-        status: { queued: 'En attente', running: 'En cours', retry: 'Nouvelle tentative prévue', success: 'Terminé',
-          partial: 'Couverture partielle', error: 'En échec', excluded: 'Source exclue', cancelled: 'Annulé' },
-      },
       agent: 'Agent',
       temporal: {
         title: 'Temporalité (facultative)', hint: 'Réservez une date aux souvenirs à rappeler à ce moment-là : ils remontent lorsqu’elle correspond et sont exclus du rappel automatique hors période. Sans date, le souvenir reste soumis à la recherche habituelle. Un champ vide accepte toutes les valeurs ; les champs renseignés doivent correspondre ensemble.',
@@ -491,15 +482,6 @@ export default {
       contacts_desc: 'Unify multichannel identities and their memories',
     },
     memory: {
-      indexing: {
-        title: 'File indexing', root: 'Source root (URI)', start: 'Index now',
-        retryRepairs: 'Retry repairs',
-        error: 'File indexing could not be loaded or updated.', empty: 'No traversal for this agent.',
-        repairs: 'Pending repairs: {pending}; failed: {failed}.', state: 'Status',
-        scanned: 'Encountered files', directories: 'Complete directories', failure: 'Error',
-        status: { queued: 'Queued', running: 'Running', retry: 'Retry scheduled', success: 'Completed',
-          partial: 'Partial coverage', error: 'Failed', excluded: 'Excluded source', cancelled: 'Cancelled' },
-      },
       agent: 'Agent',
       temporal: {
         title: 'Temporality (optional)', hint: 'Set a date only for memories to recall at that time: matching memories are included and excluded from automatic recall outside that period. Undated memories use ordinary search. Empty fields accept any value; all entered fields must match together.',
@@ -962,15 +944,6 @@ export default {
     },
     nav: { memory: '记忆', memory_desc: '存储、检索并管理智能体的长期记忆', documents: '文档', documents_desc: '查找并整理您可访问的文档', contacts: '联系人', contacts_desc: '统一多渠道身份及其记忆' },
     memory: {
-      indexing: {
-        title: '文件索引', root: '源根目录（URI）', start: '立即索引',
-        retryRepairs: '重试修复',
-        error: '无法加载或更新文件索引。', empty: '此代理没有遍历任务。',
-        repairs: '待修复：{pending}；失败：{failed}。', state: '状态',
-        scanned: '发现的文件', directories: '完整目录', failure: '错误',
-        status: { queued: '排队中', running: '进行中', retry: '等待重试', success: '已完成',
-          partial: '部分覆盖', error: '失败', excluded: '已排除', cancelled: '已取消' },
-      },
       agent: '智能体', agentHint: '搜索会显示此智能体拥有的记忆以及直接与其共享的记忆。', tabs: { list: '列表', graph: '图谱' },
       temporalSearch: {
         target: '目标日期和时间',

@@ -8,6 +8,17 @@ export default {
       dream_desc: 'Suivi des travaux en arrière-plan',
     },
     dream: {
+      tabs: { tracking: 'Suivi', history: 'Historique', indexing: 'Indexation' },
+      indexing: {
+        agent: 'Agent', agentError: 'Les agents n’ont pas pu être chargés.',
+        title: 'Indexation des fichiers', root: 'Racine source (URI)', start: 'Indexer maintenant',
+        retryRepairs: 'Relancer les réparations',
+        error: 'L’indexation n’a pas pu être chargée ou modifiée.', empty: 'Aucun parcours pour cet agent.',
+        repairs: 'Réparations en attente : {pending} ; en échec : {failed}.', state: 'État',
+        scanned: 'Fichiers rencontrés', directories: 'Répertoires complets', failure: 'Erreur',
+        status: { queued: 'En attente', running: 'En cours', retry: 'Nouvelle tentative prévue', success: 'Terminé',
+          partial: 'Couverture partielle', error: 'En échec', excluded: 'Source exclue', cancelled: 'Annulé' },
+      },
       live: 'En direct',
       loadError: 'Le suivi Dream n’a pas pu être chargé.',
       runtime: {
@@ -164,6 +175,17 @@ export default {
       dream_desc: 'Track background work',
     },
     dream: {
+      tabs: { tracking: 'Tracking', history: 'History', indexing: 'Indexing' },
+      indexing: {
+        agent: 'Agent', agentError: 'Agents could not be loaded.',
+        title: 'File indexing', root: 'Source root (URI)', start: 'Index now',
+        retryRepairs: 'Retry repairs',
+        error: 'File indexing could not be loaded or updated.', empty: 'No traversal for this agent.',
+        repairs: 'Pending repairs: {pending}; failed: {failed}.', state: 'Status',
+        scanned: 'Encountered files', directories: 'Complete directories', failure: 'Error',
+        status: { queued: 'Queued', running: 'Running', retry: 'Retry scheduled', success: 'Completed',
+          partial: 'Partial coverage', error: 'Failed', excluded: 'Excluded source', cancelled: 'Cancelled' },
+      },
       live: 'Live',
       loadError: 'Dream monitoring could not be loaded.',
       runtime: {
@@ -317,6 +339,17 @@ export default {
     },
     nav: { dream: '梦境', dream_desc: '跟踪后台工作' },
     dream: {
+      tabs: { tracking: '跟踪', history: '历史记录', indexing: '索引' },
+      indexing: {
+        agent: '智能体', agentError: '无法加载智能体。',
+        title: '文件索引', root: '源根目录（URI）', start: '立即索引',
+        retryRepairs: '重试修复',
+        error: '无法加载或更新文件索引。', empty: '此代理没有遍历任务。',
+        repairs: '待修复：{pending}；失败：{failed}。', state: '状态',
+        scanned: '发现的文件', directories: '完整目录', failure: '错误',
+        status: { queued: '排队中', running: '进行中', retry: '等待重试', success: '已完成',
+          partial: '部分覆盖', error: '失败', excluded: '已排除', cancelled: '已取消' },
+      },
       live: '实时', loadError: '无法加载梦境监控。',
       runtime: {
         disabled: '已禁用', stopped: '已停止', starting: '正在启动', running: '分析进行中', paused_voice: '因语音对话暂停', paused_tasks: '因活动任务暂停',

@@ -507,6 +507,15 @@ Coverage: `mobile-editor-toolbar.spec.mjs`, `document-voice.spec.mjs`,
 
 ## Private file catalogue and maintenance
 
+File indexing is managed in **Dream → Indexing**. **Tracking** opens by default;
+**History** retains filters and operation details. The assembled journey in
+`e2e/specs/file-indexing.spec.mjs` verifies these tabs, reopening, and the removal of
+the indexing panel from Memory on desktop and mobile.
+
+Dependency review: Dream's agent selector uses only the public `AgentSelect` and
+`useAgentStore` exports from `app/agent`. The `app/dream → app/agent` dependency is
+needed to select the catalogue owner; it introduces no private import or cycle.
+
 `back/app/memory/tests/test_memory_urls.py` checks the sole URL association table,
 text and binary byte SHA-256 on the node, the nullable primary URL column, stability,
 moves and deletions. Its PostgreSQL transition covers rollback, replay and removal
