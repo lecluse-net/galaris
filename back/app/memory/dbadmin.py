@@ -15,6 +15,7 @@ from .goal_document_adapter import (
 from .semantic_index import reconcile_embedding_index
 from .source_projection import rebuild_source_memories
 from .models import MemoryItem
+from .catalogue_projection import reconcile_catalogue_descriptions
 
 
 async def _reconcile_catalogue_editability(session: AsyncSession) -> None:
@@ -24,6 +25,10 @@ async def _reconcile_catalogue_editability(session: AsyncSession) -> None:
         MemoryItem.node_kind.in_(("file", "directory")),
         MemoryItem.metadata_["catalogue_editable"].as_boolean().is_not(True),
     ).values(read_only=False, metadata_=MemoryItem.metadata_.op("||")(func.jsonb_build_object("catalogue_editable", True))))
+
+
+async def _reconcile_catalogue_descriptions(_session: AsyncSession) -> None:
+    await reconcile_catalogue_descriptions()
 
 
 def needs_document_append_backfill(transitions: SchemaTransitionSet) -> bool:
@@ -92,6 +97,10 @@ async def _enqueue_goal_folders(_session: AsyncSession) -> None:
 
 def register_dbadmin(registry: DbAdminRegistry) -> None:
     registry.register_reconciler(DbAdminReconciler(
+        key="app.memory.catalogue_descriptions", handler=_reconcile_catalogue_descriptions,
+        depends_on=("app.memory.editorial_text",),
+    ))
+    registry.register_reconciler(DbAdminReconciler(
         key="app.memory.catalogue_editability", handler=_reconcile_catalogue_editability,
     ))
     registry.register_reconciler(DbAdminReconciler(
@@ -132,7 +141,7 @@ def register_dbadmin(registry: DbAdminRegistry) -> None:
         DbAdminReconciler(
             key="app.memory.semantic_index",
             handler=_reconcile_semantic_index,
-            depends_on=("app.memory.source_projections", "app.memory.editorial_text"),
+            depends_on=("app.memory.source_projections", "app.memory.editorial_text", "app.memory.catalogue_descriptions"),
             required=False,
         )
     )

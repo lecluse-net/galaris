@@ -1,10 +1,12 @@
 """Transactional lexical projection of an external resource; no model invocation."""
 
 import hashlib
+import json
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 from contextvars import ContextVar
-from html import escape
+from html import escape, unescape
+from typing import cast
 from uuid import UUID
 
 from core.database import get_db
@@ -40,14 +42,14 @@ async def project_catalogue_entry(
 ) -> UUID:
     """Stage one projection in the caller's transaction, preserving personal notes.
 
-    The caller serializes the resource identity and owns commit/rollback. Source
-    metadata is escaped plain text; external bytes are never copied into Memory.
+    The caller serializes the resource identity and owns commit/rollback.
+    Descriptions and notes are escaped plain text; external bytes are never copied into Memory.
     """
     db = get_db()
     source_ref = source_ref or str(identity)
     title = title[:500] or uri[:500]
     assert_safe_text(notes)
-    content = (f"<p>{escape(description)}</p><p>{escape(notes)}</p>").encode()
+    content = "".join(f"<p>{escape(part)}</p>" for part in (description, notes) if part).encode()
     digest = hashlib.sha256(content).hexdigest()
     item = await db.scalar(select(MemoryItem).where(MemoryItem.id == item_id).with_for_update().execution_options(populate_existing=True)) if item_id else None
     if item is not None and (item.managed_source_kind != "file_catalogue" or item.managed_source_ref != source_ref):
@@ -59,6 +61,10 @@ async def project_catalogue_entry(
         "resource_uri": uri, "catalogue_ref": str(identity), "catalogue_editable": True,
     }
     manual_content = item is not None and bool(item.metadata_.get("catalogue_manual_content"))
+    search_text = "\n".join(part for part in (visible_text(content.decode()), uri) if part)
+    if not manual_content:
+        # Index the path without putting transport metadata in the editable body.
+        metadata["html_text_version"] = 1
     if manual_content and item is not None:
         digest = item.content_hash
     if item is not None and item.content_hash == digest and item.title == title and item.metadata_ == metadata:
@@ -74,7 +80,7 @@ async def project_catalogue_entry(
             resource_id=resource_id, content_type="text", media_type="text/html", content_profile_version=1,
             visibility="private", source_managed=True, read_only=False, deletion_protected=True,
             managed_source_kind="file_catalogue", managed_source_ref=source_ref,
-            content_hash=digest, size_bytes=len(content), search_text=visible_text(content.decode()),
+            content_hash=digest, size_bytes=len(content), search_text=search_text,
             metadata_=metadata, keywords=[],
         )
         db.add(item)
@@ -88,7 +94,7 @@ async def project_catalogue_entry(
         item.content_hash = digest
         if not manual_content:
             item.size_bytes = len(content)
-            item.search_text = visible_text(content.decode())
+            item.search_text = search_text
         item.metadata_ = metadata
         item.node_kind = "directory" if directory else "file"
         item.revision += 1
@@ -98,6 +104,57 @@ async def project_catalogue_entry(
     _record_revision(item)
     await db.flush()
     return item.id
+
+
+async def reconcile_catalogue_descriptions() -> None:
+    """Retire only generated descriptor paragraphs, preserving edits and history."""
+    db = get_db()
+    cursor: UUID | None = None
+    async with catalogue_projection_write():
+        while True:
+            query = select(MemoryItem).where(
+                MemoryItem.managed_source_kind == "file_catalogue",
+                MemoryItem.node_kind.in_(("file", "directory")),
+                MemoryItem.media_type == "text/html",
+                MemoryItem.metadata_["catalogue_manual_content"].as_boolean().is_not(True),
+                MemoryItem.search_text.startswith('{"uri":'),
+            )
+            if cursor is not None:
+                query = query.where(MemoryItem.id > cursor)
+            items = list(await db.scalars(query.order_by(MemoryItem.id).limit(250).with_for_update()))
+            if not items:
+                return
+            cursor = items[-1].id
+            for item in items:
+                storage = get_storage(item.provider_code)
+                body = (await storage.read(item.resource_id)).decode()
+                paragraph, separator, remainder = body.partition("</p>")
+                if not separator or not paragraph.startswith("<p>"):
+                    continue
+                try:
+                    parsed: object = json.loads(unescape(paragraph[3:]))
+                except ValueError:
+                    continue
+                if not isinstance(parsed, dict):
+                    continue
+                descriptor = cast(dict[str, object], parsed)
+                if set(descriptor) != {
+                    "uri", "name", "media_type", "size", "modified_at", "revision", "checksum", "etag",
+                } or not isinstance(descriptor.get("uri"), str):
+                    continue
+                content = remainder.encode() if visible_text(remainder).strip() else b""
+                item.resource_id = await storage.create(content)
+                if (created := _created.get()) is not None:
+                    created.append(item.resource_id)
+                item.content_hash = hashlib.sha256(content).hexdigest()
+                item.size_bytes = len(content)
+                locations = item.metadata_.get("resource_uris") or [item.metadata_.get("resource_uri", "")]
+                item.search_text = "\n".join(part for part in (
+                    visible_text(content.decode()), *locations,
+                ) if part)
+                item.revision += 1
+                _record_revision(item)
+            await db.flush()
 
 
 def _record_revision(item: MemoryItem) -> None:

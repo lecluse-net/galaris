@@ -353,6 +353,9 @@ In **Memory**, authorized accounts can:
 
 Agent profiles, Goals, and cycles are read-only projections: modify their source rather than their memory copy. Contacts from messaging systems contain only the minimum identity required and remain private to the owning Agent.
 
+File entries remain empty until they have notes or a useful description.
+Their technical metadata (URI, size, type, date, fingerprint) does not fill the description.
+
 **Topics** group knowledge around a global subject, even if it comes from different rooms, Tasks, or calls. Dream performs this classification in the background; authorized accounts can also correct an item’s assignment. Dream can consolidate memories and separately analyze Task results to strengthen Skills specific to the Agent. A self-learned Skill is added to future executions only after reaching the configured evidence and score thresholds; the **Skills → Self-learned** page lets you view its evidence and suspend it.
 
 ## Standard and High

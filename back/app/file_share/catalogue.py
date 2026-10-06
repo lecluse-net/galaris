@@ -159,16 +159,10 @@ async def project_entry(entry: FileCatalogEntry) -> None:
         await refresh_file_locations(entry.memory_item_id)
         await _link_entry_parent(entry, descriptor)
         return
-    # Explicit fields only: providers' arbitrary metadata may carry secrets.
-    description = json.dumps({
-        "uri": entry.uri, "name": descriptor.name, "media_type": descriptor.media_type,
-        "size": descriptor.size, "modified_at": descriptor.modified_at,
-        "revision": descriptor.revision, "checksum": descriptor.checksum, "etag": descriptor.etag,
-    }, ensure_ascii=False)
     entry.memory_item_id = await project_catalogue_entry(
         identity=entry.id, agent_id=entry.agent_id, item_id=entry.memory_item_id,
         title=descriptor.name or entry.uri, uri=entry.uri, directory=descriptor.is_collection,
-        description=description, notes="\n\n".join(part for part in (entry.notes, entry.enrichment_text) if part),
+        description="", notes="\n\n".join(part for part in (entry.notes, entry.enrichment_text) if part),
         source_ref=str(entry.id) if entry.generation == 1 else f"{entry.id}:generation:{entry.generation}",
     )
     await _link_entry_parent(entry, descriptor)

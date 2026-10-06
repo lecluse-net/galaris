@@ -511,6 +511,8 @@ Coverage: `mobile-editor-toolbar.spec.mjs`, `document-voice.spec.mjs`,
 isolation, editable personal fields, tombstones and late responses, durable repair without
 replaying external effects, resumable pages exceeding 500 entries, budgets/cancellation,
 versioned enrichment, external changes and RBAC.
+It verifies initially empty entries and idempotent cleanup of old technical JSON descriptions,
+preserving notes, personal content and historical revisions.
 It also verifies SHA-256 identity per agent, grouping across storage and Messenger,
 personal notes and titles, revisioned shared summaries, changed copies, directory rebinding
 after a move, and preview denial after revocation or byte changes. `memory.spec.mjs` exercises

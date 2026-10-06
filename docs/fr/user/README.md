@@ -470,6 +470,9 @@ Les fiches Agent, Goals et cycles sont des projections en lecture seule : modifi
 plutôt que leur copie mémoire. Les contacts issus des messageries ne contiennent que l’identité
 minimale nécessaire et restent privés à l’agent propriétaire.
 
+Les fiches de fichiers restent vides tant qu'elles n'ont ni notes ni description utile.
+Leurs métadonnées techniques (URI, taille, type, date, empreinte) ne remplissent pas la description.
+
 Les **Dossiers thématiques** regroupent les connaissances autour d’un sujet global, même si elles
 proviennent de salons, Tasks ou appels différents. Dream effectue ce classement en arrière-plan ;
 les comptes autorisés peuvent aussi corriger l’affectation d’un élément. Dream peut consolider des

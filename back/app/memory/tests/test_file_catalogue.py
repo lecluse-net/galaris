@@ -3,7 +3,9 @@
 from dataclasses import replace
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
+import json
 import shutil
+from uuid import uuid4
 
 import pytest
 import pytest_asyncio
@@ -537,6 +539,69 @@ async def test_existing_catalogue_fiches_become_editable_once(console_catalogue,
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("notes,manual,directory,generated", [
+    ("", False, False, True),
+    ("", False, True, True),
+    ("Synthetic useful analysis", False, False, True),
+    ("Synthetic personal notes", True, False, True),
+    ("", False, False, False),
+])
+async def test_catalogue_descriptor_cleanup_preserves_useful_content_and_history(
+    db, agents, memory_storage, notes, manual, directory, generated,
+):
+    from app.memory.catalogue_projection import project_catalogue_entry
+    from app.memory.models import MemoryRevision
+    from app.memory.storage import get_storage
+    from core.dbadmin import DbAdminRegistry
+    from core.util import visible_text
+    from modules import load_dbadmin_contributions
+
+    owner, _ = agents
+    uri = "synthetic-share://reports/" if directory else "synthetic-share://reports/image.jpg"
+    descriptor = json.dumps({
+        "uri": uri, "name": "reports" if directory else "image.jpg", "media_type": "image/jpeg",
+        "size": 123, "modified_at": None, "revision": None, "checksum": None, "etag": "synthetic-etag",
+    }) if generated else json.dumps({"uri": uri, "conclusion": "Synthetic useful JSON"})
+    identity = await project_catalogue_entry(
+        identity=uuid4(), agent_id=owner.id, item_id=None, title="Synthetic catalogue fiche",
+        uri=uri, directory=directory, description=descriptor, notes=notes,
+    )
+    item = await db.get(MemoryItem, identity)
+    if manual:
+        item.metadata_ = {**item.metadata_, "catalogue_manual_content": True}
+    if not directory:
+        item.file_sha256 = "a" * 64
+        item.metadata_ = {**item.metadata_, "resource_uris": [uri]}
+    await db.flush()
+    original = await db.scalar(select(MemoryRevision).where(MemoryRevision.item_id == identity))
+    resource_id, revision = item.resource_id, item.revision
+    original_body = await get_storage("native").read(resource_id)
+    registry = DbAdminRegistry()
+    load_dbadmin_contributions(registry)
+    reconciler = next(entry for entry in registry.reconcilers if entry.key == "app.memory.catalogue_descriptions")
+    for _ in range(2):
+        await reconciler.handler(db)
+        body = await get_storage("native").read(item.resource_id)
+        if generated and not manual:
+            assert visible_text(body.decode()) == notes
+            if not notes:
+                assert body == b""
+            assert descriptor not in item.search_text
+            assert item.revision == revision + 1
+            current = await db.scalar(select(MemoryRevision).where(
+                MemoryRevision.item_id == identity, MemoryRevision.revision == item.revision,
+            ))
+            assert current.resource_id == item.resource_id
+        else:
+            assert body == original_body and item.revision == revision
+        assert original.resource_id == resource_id
+        assert await get_storage("native").read(resource_id) == original_body
+        assert item.metadata_["resource_uri"] == uri
+        if not directory:
+            assert item.metadata_["resource_uris"] == [uri] and item.file_sha256 == "a" * 64
+
+
+@pytest.mark.asyncio
 async def test_encounters_are_lexical_private_idempotent_and_notes_survive(console_catalogue, db):
     ctx, _transport, _connection, peer = console_catalogue
     written = await resource_service.resource_write_text(ctx, "console://reports/budget.csv", "a,b\n1,2")
@@ -544,10 +609,14 @@ async def test_encounters_are_lexical_private_idempotent_and_notes_survive(conso
     found = await hits(ctx.agent_id, "budget")
     assert len(found) == 1 and found[0].item.node_kind == "file"
     identity, revision = found[0].item.id, found[0].item.revision
+    _, body, _, _, _ = await service.get_item(identity, agent_id=ctx.agent_id)
+    assert body == b""
     assert await hits(peer.id, "budget") == []
     await resource_service.resource_info(ctx, written.uri)
     assert (await hits(ctx.agent_id, "budget"))[0].item.revision == revision
     assert await annotate_catalogue_entry(ctx, written.uri, "Annual planning") == identity
+    _, body, _, _, _ = await service.get_item(identity, agent_id=ctx.agent_id)
+    assert body == b"<p>Annual planning</p>"
     db.add(Connection(agent_id=peer.id, tool_id=_connection.tool_id))
     await db.commit()
     peer_ctx = ResourceContext(agent_id=peer.id, runtime="internal", console_resource=object())

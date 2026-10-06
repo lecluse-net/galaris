@@ -553,6 +553,8 @@ Garanties : `mobile-editor-toolbar.spec.mjs`, `document-voice.spec.mjs`,
 agents et bindings, les champs personnels éditables, les tombes et réponses tardives,
 la réparation durable sans rejouer les effets, la reprise de pages de plus de 500 entrées,
 les budgets/annulations, l'enrichissement versionné, les modifications externes et le RBAC.
+Elle vérifie les fiches initialement vides et le nettoyage idempotent des anciennes descriptions
+JSON techniques, avec conservation des notes, contenus personnels et révisions historiques.
 Elle vérifie aussi l'identité SHA-256 par agent, le regroupement entre stockage et Messenger,
 les notes et titres personnels, le résumé partagé historisé, les changements de copie,
 le déplacement avec rattachement au nouveau répertoire et le refus d'un aperçu après
