@@ -646,17 +646,20 @@ function nodeSymbol(node: MemoryGraphNode): string {
 
 function nodeBaseSymbolSize(node: MemoryGraphNode, groupedCount = 0): number {
   const scale = dynamicLayout.value ? Math.min(1, Math.max(0.35, Math.min(viewportSize.width, viewportSize.height) / 650)) : 1
+  const overviewScale = node.entity_kind === 'topic' ? 0.56 : isStructuralNode(node) || groupedCount ? 0.8 : 0.45
   const size = (radiusFor(node) * 2 + Math.min(44, Math.log2(groupedCount + 1) * 5)) * scale
-    * (overview.value && selectedNodeId.value !== node.id ? isStructuralNode(node) || groupedCount ? 0.8 : 0.45 : 1)
+    * (overview.value && selectedNodeId.value !== node.id ? overviewScale : 1)
   return size
 }
 
 function nodeSymbolSize(node: MemoryGraphNode, groupedCount = 0): number | [number, number] {
   const size = nodeBaseSymbolSize(node, groupedCount)
-  if (!nodeThumbnailUrl(node)) return isAudioNode(node) && !overview.value ? Math.max(22, size) : size
+  const overviewResourceScale = overview.value
+    && (node.entity_kind === 'folder' || node.entity_kind === 'directory' || node.entity_kind === 'document') ? 1.2 : 1
+  if (!nodeThumbnailUrl(node)) return (isAudioNode(node) && !overview.value ? Math.max(22, size) : size) * overviewResourceScale
   const key = thumbnailKeys.get(node.id)
   const aspect = key ? thumbnails.aspect(key) : 1
-  const longest = Math.max(40, size * 1.75)
+  const longest = Math.max(40, size * 1.75) * overviewResourceScale
   // ECharts fits images inside a unit square before scaling to symbolSize.
   // These dimensions already preserve the ratio, so image symbols must disable that fitting.
   return aspect >= 1 ? [longest, longest / aspect] : [longest * aspect, longest]
@@ -1058,10 +1061,14 @@ function graphOption(options: {
         const groupedCount = branch && !expandedBranches.value.has(node.id)
           ? branch.memberIds.filter(id => collapsedMemberIds.value.has(id)).length : 0
         const degree = degrees.get(node.id) ?? 0
+        const geometric = node.entity_kind === 'memory' || node.entity_kind === 'topic'
+          || node.entity_kind === 'contact' || node.entity_kind === 'conversation'
+        const borderWidthScale = overview.value && geometric ? 0.5 : 1
         const hideBorder = node.entity_kind === 'folder' || node.entity_kind === 'directory'
           || node.entity_kind === 'file' || node.entity_kind === 'attachment'
         const accent = RESOURCE_ROLE_ACCENTS[node.entity_kind]
         const color = palette.getPropertyValue(`--solaire-${accent ?? roleAccent(node.entity_kind)}-accent`).trim()
+        const geometricBorderColor = palette.getPropertyValue(`--solaire-${roleAccent(node.entity_kind)}-dark`).trim()
         return {
           id: node.id,
           name: node.title,
@@ -1075,14 +1082,14 @@ function graphOption(options: {
           itemStyle: {
             color,
             opacity: hidden ? 0 : selected ? 1 : MIN_NODE_OPACITY + freshnessScore * (1 - MIN_NODE_OPACITY),
-            borderColor: selected
+            borderColor: geometric ? geometricBorderColor : selected
               ? (dark ? '#ffffff' : '#263238')
               : isStructuralNode(node)
                 ? (dark ? '#ffffff' : '#263238')
                 : node.source_managed
                   ? '#90caf9'
                   : 'rgba(255, 255, 255, 0.9)',
-            borderWidth: hideBorder ? 0 : selected ? 4 : isStructuralNode(node) ? 3 : node.source_managed ? 2 : 1.5,
+            borderWidth: (hideBorder ? 0 : selected ? 4 : geometric ? 2 : node.source_managed ? 2 : 1.5) * borderWidthScale,
             ...nodeShadowStyle.value,
           },
           label: {
@@ -1101,16 +1108,16 @@ function graphOption(options: {
             label: { show: !hidden },
             itemStyle: {
               opacity: 1,
-              borderColor: dark ? '#ffffff' : '#263238',
-              borderWidth: hideBorder ? 0 : 3,
+              borderColor: geometric ? geometricBorderColor : dark ? '#ffffff' : '#263238',
+              borderWidth: (hideBorder ? 0 : 3) * borderWidthScale,
             },
           },
           select: {
             label: { show: !hidden },
             itemStyle: {
               opacity: 1,
-              borderColor: dark ? '#ffffff' : '#263238',
-              borderWidth: hideBorder ? 0 : 4,
+              borderColor: geometric ? geometricBorderColor : dark ? '#ffffff' : '#263238',
+              borderWidth: (hideBorder ? 0 : 4) * borderWidthScale,
             },
           },
         }
