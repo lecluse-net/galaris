@@ -435,10 +435,16 @@ test('file previews retry denied reads, reopen, and discard late content after a
 for (const width of [1440, 390]) test(`graph markers agree with their legend through filtering and theme changes at ${width}px`, async ({ page }, testInfo) => {
   await page.setViewportSize({ width, height: 900 })
   const kinds = ['file', 'directory', 'attachment', 'document', 'folder', 'memory', 'topic', 'conversation']
+  const variants = [...kinds.map(kind => ({ kind, suffix: '', mediaType: null })),
+    ...['file', 'attachment'].flatMap(kind => [
+      { kind, suffix: '-audio.mp3', mediaType: 'application/octet-stream' },
+      { kind, suffix: '-image.png', mediaType: 'image/png' },
+      { kind, suffix: '-video.mp4', mediaType: 'application/octet-stream' },
+    ])]
   const timestamp = new Date().toISOString()
-  const nodes = kinds.map(kind => ({
-    id: `catalogue-${kind}`, node_kind: kind === 'topic' ? 'memory' : kind, entity_kind: kind,
-    title: `Synthetic ${kind}`, owner_agent_id: 7,
+  const nodes = variants.map(({ kind, suffix, mediaType }) => ({
+    id: `catalogue-${kind}${suffix}`, node_kind: kind === 'topic' ? 'memory' : kind, entity_kind: kind,
+    title: `Synthetic ${kind}${suffix}`, resource_media_type: mediaType, owner_agent_id: 7,
     visibility: 'private', source_managed: true, access_count: 0,
     last_accessed_at: null, created_at: timestamp, updated_at: timestamp,
     activity_at: timestamp, has_relations: false, relation_count: 0,
@@ -468,8 +474,16 @@ for (const width of [1440, 390]) test(`graph markers agree with their legend thr
     return chart.getOption().series[0].data.flatMap((node, index) => {
       // Invisible placeholders reserve the map bounds; only actual markers belong to the legend.
       if (node.symbol === 'none') return []
-      const kind = node.id.replace('catalogue-', '')
+      const kind = node.id.replace('catalogue-', '').split('-')[0]
       const legend = document.querySelector(`.memory-graph__role-symbol--${kind}`)
+      if (legend instanceof HTMLImageElement) {
+        if (!legend.complete || !legend.naturalWidth) return []
+        const marker = data.getItemGraphicEl(index)?.childAt(0)
+        const source = marker?.style.image
+        const image = typeof source === 'string' ? source : source?.src
+        if (!image) return []
+        return [{ kind, color: new URL(image, location.href).href, legend: legend.currentSrc }]
+      }
       const legendColor = legend instanceof SVGElement
         ? getComputedStyle(legend.querySelector('path')).fill : getComputedStyle(legend).backgroundColor
       return [{ kind, color: normalize(data.getItemVisual(index, 'style').fill),
@@ -478,13 +492,19 @@ for (const width of [1440, 390]) test(`graph markers agree with their legend thr
   })
   for (const dark of [false, true]) {
     await page.evaluate(dark => window.testApp.dark(dark), dark)
-    await expect.poll(async () => (await graphColors()).map(row => row.kind).sort()).toEqual([...kinds].sort())
+    await expect.poll(async () => (await graphColors()).map(row => row.kind).sort()).toEqual(nodes.map(node => node.entity_kind).sort())
     for (const row of await graphColors()) expect(row.color, `${row.kind} must match its legend`).toBe(row.legend)
+    const symbols = new Map((await graphSnapshot(page)).nodes.map(node => [node.id, node.symbol]))
+    const mediaSymbols = ['audio.mp3', 'image.png', 'video.mp4'].map(type => {
+      expect(symbols.get(`catalogue-file-${type}`)).toBe(symbols.get(`catalogue-attachment-${type}`))
+      return symbols.get(`catalogue-file-${type}`)
+    })
+    expect(new Set(mediaSymbols).size, 'Audio, image and video must have distinct glyphs').toBe(3)
     const files = page.getByRole('button', { name: 'Hide “File” nodes and their relationships', exact: true })
     await files.click()
-    await expect.poll(async () => (await graphColors()).map(row => row.kind).sort()).toEqual(kinds.filter(kind => kind !== 'file').sort())
+    await expect.poll(async () => (await graphColors()).map(row => row.kind).sort()).toEqual(nodes.filter(node => node.entity_kind !== 'file').map(node => node.entity_kind).sort())
     await page.getByRole('button', { name: 'Show “File” nodes and their relationships', exact: true }).click()
-    await expect.poll(async () => (await graphColors()).length).toBe(kinds.length)
+    await expect.poll(async () => (await graphColors()).length).toBe(nodes.length)
     const maximum = await zoomGraphToMaximum(page)
     expect(maximum.titles.sort()).toEqual(maximum.nodes.filter(node => node.symbol !== 'none').map(node => node.id).sort())
     await page.getByRole('button', { name: 'Fit graph to viewport', exact: true }).click()
@@ -661,8 +681,13 @@ async function clickGraphNode(page, id) {
       const graphic = data.getItemGraphicEl(index)
       if (!graphic) return null
       // Click the currently painted node, accounting for animation and overlap.
-      const center = graphic.transformCoordToGlobal(0, 0)
-      for (const dx of [0, -4, 4, -8, 8]) for (const dy of [0, -4, 4, -8, 8]) {
+      const centers = [graphic.transformCoordToGlobal(0, 0)]
+      const label = graphic.childAt(0)?.getTextContent()
+      if (label && !label.ignore && !label.invisible) {
+        const bounds = label.getBoundingRect()
+        centers.push(label.transformCoordToGlobal(bounds.x + bounds.width / 2, bounds.y + bounds.height / 2))
+      }
+      for (const center of centers) for (const dx of [0, -4, 4, -8, 8]) for (const dy of [0, -4, 4, -8, 8]) {
         const position = { x: center[0] + dx, y: center[1] + dy }
         let target = chart.getZr().findHover(position.x, position.y).target
         while (target && target !== graphic) target = target.__hostTarget ?? target.parent

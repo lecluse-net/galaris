@@ -109,10 +109,12 @@
             :aria-pressed="!isEntityKindHidden(role)"
             @click="toggleEntityKind(role)"
           >
-            <FolderIcon
+            <img
               v-if="role === 'folder' || role === 'directory'"
-              :tone="roleAccent(role)"
-              size="16px"
+              :src="folderImageUrl(role)"
+              width="16"
+              height="16"
+              alt=""
               :class="`memory-graph__role-symbol--${role}`"
             />
             <svg
@@ -305,9 +307,9 @@ import {
 } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { websocket } from '@/core/websocket'
-import { browserResourceKind, FolderIcon, folderArtwork, solaire, solaireCss, type SolaireColor } from '@/core/util'
+import { browserResourceKind, solaire, solaireCss, type BrowserResourceKind, type SolaireColor } from '@/core/util'
 import { useInterval, useQuasar, useTimeout } from 'quasar'
-import { matDescription } from '@quasar/extras/material-icons'
+import { matAudioFile, matDescription, matImage, matVideoFile } from '@quasar/extras/material-icons'
 import * as echarts from 'echarts/core'
 import { GraphChart } from 'echarts/charts'
 import { AriaComponent } from 'echarts/components'
@@ -392,11 +394,11 @@ const GRAPH_ROLE_LEGEND: readonly MemoryGraphEntityKind[] = [
   'directory',
   'conversation',
 ]
-const RESOURCE_ROLE_ACCENTS: Partial<Record<MemoryGraphEntityKind, 'cyan' | 'yellow' | 'orange'>> = {
-  attachment: 'cyan',
-  file: 'cyan',
+const RESOURCE_ROLE_ACCENTS: Partial<Record<MemoryGraphEntityKind, 'yellow' | 'gray'>> = {
+  attachment: 'gray',
+  file: 'gray',
   folder: 'yellow',
-  directory: 'orange',
+  directory: 'gray',
 }
 
 const { t, locale } = useI18n()
@@ -531,9 +533,10 @@ function roleAccent(role: MemoryGraphEntityKind): SolaireColor {
   const accent = RESOURCE_ROLE_ACCENTS[role]
   if (accent) return accent
   switch (role) {
-    case 'memory': return 'blue'
+    case 'memory': return 'green'
+    case 'topic': return 'blue'
     case 'contact': return 'fuchsia'
-    case 'document': return 'orange'
+    case 'document': return 'red'
     case 'conversation': return 'iris'
     default: return 'green'
   }
@@ -574,16 +577,15 @@ function toggleEntityKind(kind: MemoryGraphEntityKind): void {
 }
 
 function nodeIcon(node: MemoryGraphNode): string {
-  if (isAudioNode(node)) return 'audio_file'
+  const resourceKind = nodeResourceKind(node)
+  if (resourceKind === 'audio') return 'audio_file'
+  if (resourceKind === 'image') return 'image'
+  if (resourceKind === 'video') return 'video_file'
   switch (node.entity_kind) {
     case 'topic': return 'topic'
     case 'contact': return 'person'
     case 'document': return 'description'
-    case 'attachment':
-      if (node.resource_media_type?.startsWith('image/')) return 'image'
-      if (node.resource_media_type?.startsWith('audio/')) return 'audio_file'
-      if (node.resource_media_type?.startsWith('video/')) return 'video_file'
-      return 'attach_file'
+    case 'attachment': return 'attach_file'
     case 'folder': return 'folder'
     case 'file': return 'insert_drive_file'
     case 'directory': return 'folder_open'
@@ -596,21 +598,27 @@ function nodeRoleLabel(node: MemoryGraphNode): string {
   return t(`memory.graph.roles.${node.entity_kind}`)
 }
 
-function isAudioNode(node: MemoryGraphNode): boolean {
+function nodeResourceKind(node: MemoryGraphNode): BrowserResourceKind | null {
+  if (node.node_kind !== 'file' && node.node_kind !== 'attachment') return null
   const resource = thumbnailResources.get(`${node.id}:${node.updated_at ?? node.activity_at}`)
-  return (node.node_kind === 'file' || node.node_kind === 'attachment')
-    && browserResourceKind(resource?.media_type ?? node.resource_media_type ?? '', resource?.name ?? node.title) === 'audio'
+  return browserResourceKind(resource?.media_type ?? node.resource_media_type ?? '', resource?.name ?? node.title)
 }
 
-// A shared vector marker, independent of thumbnail loading and client image budgets.
-const audioSymbol = `image://data:image/svg+xml;charset=utf-8,${encodeURIComponent(
-  `<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32"><rect width="32" height="32" fill="${solaire.cyan.accent}"/><path d="M13 22V9l12-3v13M13 13l12-3" fill="none" stroke="white" stroke-width="3" stroke-linejoin="round"/><ellipse cx="9" cy="23" rx="5" ry="3.5" fill="white"/><ellipse cx="21" cy="20" rx="5" ry="3.5" fill="white"/></svg>`,
-)}`
+function isAudioNode(node: MemoryGraphNode): boolean {
+  return nodeResourceKind(node) === 'audio'
+}
 
-const folderSymbol = `path://${folderArtwork.folder.back} ${folderArtwork.folder.front}`
+function folderImageUrl(role: MemoryGraphEntityKind): string {
+  return `/folder-icons/gnome/${roleAccent(role)}/folder.svg`
+}
 // Material icons include a transparent viewport path before the visible artwork.
 const documentIconPath = matDescription.split('&&').at(-1) ?? ''
 const documentSymbol = `path://${documentIconPath}`
+const mediaFileSymbols = {
+  audio: `path://${matAudioFile.split('&&').at(-1) ?? ''}`,
+  image: `path://${matImage.split('&&').at(-1) ?? ''}`,
+  video: `path://${matVideoFile.split('&&').at(-1) ?? ''}`,
+}
 
 function nodeThumbnailUrl(node: MemoryGraphNode): string | null {
   const key = thumbnailKeys.get(node.id)
@@ -618,17 +626,19 @@ function nodeThumbnailUrl(node: MemoryGraphNode): string | null {
 }
 
 function nodeSymbol(node: MemoryGraphNode): string {
-  if (isAudioNode(node)) return audioSymbol
+  const resourceKind = nodeResourceKind(node)
+  if (resourceKind === 'audio') return mediaFileSymbols.audio
   const url = nodeThumbnailUrl(node)
   if (url) return `image://${url}`
+  if (resourceKind === 'image' || resourceKind === 'video') return mediaFileSymbols[resourceKind]
   switch (node.entity_kind) {
     case 'topic': return 'diamond'
     case 'contact': return 'roundRect'
     case 'document': return documentSymbol
     case 'attachment': return documentSymbol
-    case 'folder': return folderSymbol
+    case 'folder': return `image://${folderImageUrl(node.entity_kind)}`
     case 'file': return documentSymbol
-    case 'directory': return folderSymbol
+    case 'directory': return `image://${folderImageUrl(node.entity_kind)}`
     case 'conversation': return 'roundRect'
     default: return 'circle'
   }
@@ -682,6 +692,10 @@ function isStructuralEdge(relationType: string): boolean {
   return relationType === 'topic_contains'
     || relationType === 'contact_contains'
     || relationType === 'topic_involves_contact'
+}
+
+function reducedLinkWidth(width: number): number {
+  return width <= 1 ? width : Math.max(1, width * 0.8)
 }
 
 function activityTimestamp(node: MemoryGraphNode): number {
@@ -1044,6 +1058,8 @@ function graphOption(options: {
         const groupedCount = branch && !expandedBranches.value.has(node.id)
           ? branch.memberIds.filter(id => collapsedMemberIds.value.has(id)).length : 0
         const degree = degrees.get(node.id) ?? 0
+        const hideBorder = node.entity_kind === 'folder' || node.entity_kind === 'directory'
+          || node.entity_kind === 'file' || node.entity_kind === 'attachment'
         const accent = RESOURCE_ROLE_ACCENTS[node.entity_kind]
         const color = palette.getPropertyValue(`--solaire-${accent ?? roleAccent(node.entity_kind)}-accent`).trim()
         return {
@@ -1066,7 +1082,7 @@ function graphOption(options: {
                 : node.source_managed
                   ? '#90caf9'
                   : 'rgba(255, 255, 255, 0.9)',
-            borderWidth: selected ? 4 : isStructuralNode(node) ? 3 : node.source_managed ? 2 : 1.5,
+            borderWidth: hideBorder ? 0 : selected ? 4 : isStructuralNode(node) ? 3 : node.source_managed ? 2 : 1.5,
             ...nodeShadowStyle.value,
           },
           label: {
@@ -1086,7 +1102,7 @@ function graphOption(options: {
             itemStyle: {
               opacity: 1,
               borderColor: dark ? '#ffffff' : '#263238',
-              borderWidth: 3,
+              borderWidth: hideBorder ? 0 : 3,
             },
           },
           select: {
@@ -1094,7 +1110,7 @@ function graphOption(options: {
             itemStyle: {
               opacity: 1,
               borderColor: dark ? '#ffffff' : '#263238',
-              borderWidth: 4,
+              borderWidth: hideBorder ? 0 : 4,
             },
           },
         }
@@ -1112,18 +1128,18 @@ function graphOption(options: {
           lineStyle: {
             color: palette.getPropertyValue(`--solaire-${edgeAccent(edge.relation_type)}-accent`).trim(),
             opacity: hidden ? 0 : overview.value ? 0.75 : edge.suggested ? 0.38 : structural ? 0.86 : 0.62,
-            width: (hidden ? 0 : overview.value ? 0.5 : edge.suggested
+            width: reducedLinkWidth((hidden ? 0 : overview.value ? 0.5 : edge.suggested
               ? 0.8 + edge.confidence
               : structural
                 ? 2 + edge.confidence * 1.8
-                : 0.9 + edge.confidence * 1.4) * LINK_WIDTH_SCALE,
+                : 0.9 + edge.confidence * 1.4) * LINK_WIDTH_SCALE),
             curveness: curvatures.get(edge.id) ?? 0.22,
             type: edge.suggested ? 'dashed' : 'solid',
           },
           emphasis: {
             lineStyle: {
               opacity: hidden ? 0 : 1,
-              width: (hidden ? 0 : overview.value ? 1 : structural ? 3.2 + edge.confidence * 2 : 1.8 + edge.confidence * 1.5) * LINK_WIDTH_SCALE,
+              width: reducedLinkWidth((hidden ? 0 : overview.value ? 1 : structural ? 3.2 + edge.confidence * 2 : 1.8 + edge.confidence * 1.5) * LINK_WIDTH_SCALE),
             },
           },
           blur: { lineStyle: { opacity: hidden ? 0 : 0.16 } },
