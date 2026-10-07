@@ -394,11 +394,11 @@ const GRAPH_ROLE_LEGEND: readonly MemoryGraphEntityKind[] = [
   'directory',
   'conversation',
 ]
-const RESOURCE_ROLE_ACCENTS: Partial<Record<MemoryGraphEntityKind, 'yellow' | 'gray'>> = {
+const RESOURCE_ROLE_ACCENTS: Partial<Record<MemoryGraphEntityKind, 'yellow' | 'orange' | 'gray'>> = {
   attachment: 'gray',
   file: 'gray',
   folder: 'yellow',
-  directory: 'gray',
+  directory: 'orange',
 }
 
 const { t, locale } = useI18n()
@@ -695,7 +695,7 @@ function isStructuralEdge(relationType: string): boolean {
 }
 
 function reducedLinkWidth(width: number): number {
-  return width <= 1 ? width : Math.max(1, width * 0.8)
+  return width <= 1 ? width : Math.max(1, width * 0.8 * 0.7)
 }
 
 function activityTimestamp(node: MemoryGraphNode): number {
