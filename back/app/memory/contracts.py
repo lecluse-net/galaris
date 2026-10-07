@@ -52,7 +52,6 @@ class MemoryContextItem:
     title: str
     excerpt: str
     score: float
-    memory_type: str
     node_kind: str = "memory"
     source_refs: tuple[str, ...] = ()
     revision: int | None = None
@@ -75,7 +74,6 @@ class MemorySearchItem:
     id: UUID
     title: str
     excerpt: str
-    memory_type: str
     node_kind: str
     source_refs: tuple[str, ...] = ()
     uri: str = ""
@@ -189,7 +187,6 @@ class SourceMemoryDocument:
     owner_agent_id: int | None
     memory_item_id: UUID | None
     title: str
-    memory_type: str
     content: str
     filename: str
     keywords: tuple[str, ...]
@@ -206,7 +203,6 @@ class TopicLinkedMemory:
     id: UUID
     title: str
     excerpt: str
-    memory_type: str
     owner_agent_id: int | None
     visibility: str
     node_kind: str

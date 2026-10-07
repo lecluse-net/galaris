@@ -125,7 +125,6 @@ def _document(
         owner_agent_id=observation.owner_agent_id,
         memory_item_id=memory_item_id,
         title=f"Contact — {safe_name}",
-        memory_type="social",
         content=content,
         filename=f"messenger-contact-{source_ref}.md",
         keywords=tuple(keywords),

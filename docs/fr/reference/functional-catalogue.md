@@ -1405,7 +1405,7 @@ Sources : [schémas Goal](../../../back/app/goal/schemas.py), [API](../../../bac
 
 La mémoire durable se distingue de l’historique immédiat d’une conversation. Une entrée peut porter
 un savoir, un événement, un contexte social, une information centrale ou un élément de travail.
-Elle possède un titre, un contenu, des mots-clés, un type, une nature, des métadonnées,
+Elle possède un titre, un contenu, des mots-clés, une nature, des métadonnées,
 un propriétaire, des dates et des droits.
 
 La recherche utilise le contenu courant des souvenirs et documents, sans résumé indépendant.
@@ -1413,9 +1413,8 @@ Les souvenirs proposent des extraits et les cartes documentaires peuvent affiche
 de la révision enregistrée. Les modifications ne demandent pas de motif libre ;
 la traçabilité conserve le contenu des versions, les dates, les auteurs, les tâches et les sources.
 
-Les types exposés sont **Identité** (`core`), **Travail** (`working`), **Épisode** (`episodic`),
-**Connaissance** (`semantic`), **Procédure** (`procedural`) et **Relation** (`social`). La nature
-est une classification séparée : **souvenir**, **document**, **pièce jointe** ou **dossier**.
+La nature distingue **souvenir**, **document**, **pièce jointe**, **dossier**, **fichier**
+et **répertoire**.
 Un document n’est pas simplement un autre nom pour une connaissance extraite automatiquement.
 
 Les connaissances sont reliées à leurs **sources**, à leurs révisions et à des relations avec
@@ -1525,8 +1524,7 @@ souvenirs sans date répondant aux filtres. Les correspondances temporelles s’
 
 Avant certains runs, un **contexte mémoire automatique** est construit sans appel à un modèle
 génératif. L’agent peut approfondir avec `file_search` sur `memory://`. La recherche et l’injection
-utilisent le rappel canonique, complété pour le contexte automatique par la priorité temporelle ;
-la mémoire centrale sans date ne reçoit pas automatiquement une place réservée.
+utilisent le rappel canonique, complété pour le contexte automatique par la priorité temporelle.
 
 Les documents manipulés avec le même agent restent candidats au rappel au-delà des derniers
 messages. Les références inaccessibles, d’un autre agent ou sans correspondance utile sont écartées ;
@@ -1607,7 +1605,7 @@ liens et sources ; les grandes vues restent bornées.
 
 La recherche est réunie dans **Liste**, à côté de **Graphe** ; l’ancien onglet Recherche est retiré.
 Le filtre temporel obligatoire est prérempli avec la date et l’heure du navigateur. **Appliquer**
-teste cet instant sans anticipation : les souvenirs sans date suivent les filtres texte/type/sujet/
+teste cet instant sans anticipation : les souvenirs sans date suivent les filtres texte/sujet/
 interlocuteur, et les souvenirs datés correspondants s’ajoutent indépendamment de ces filtres.
 L’union est triée et paginée sans doublons, avec priorité temporelle par défaut. La limite du rappel
 textuel ne tronque pas les correspondances temporelles. La simulation utilise les droits et la
@@ -1624,7 +1622,7 @@ peut être réessayée, et un changement d’agent ferme l’aperçu et écarte 
 Les dossiers restent des collections : ils n’ouvrent pas un éditeur de souvenir ou un aperçu de
 fichier ; l’inspecteur du graphe permet de naviguer vers leurs contenus et relations.
 
-Les résultats distinguent visuellement la nature document/souvenir et le type de mémoire. Les
+Les résultats distinguent visuellement la nature document/souvenir. Les
 relations portent des libellés français ou anglais, y compris les suggestions de rattachement,
 de fusion et de scission. Les panneaux de mémoire des conversations donnent accès au contenu
 et à sa provenance sans afficher un résumé séparé.

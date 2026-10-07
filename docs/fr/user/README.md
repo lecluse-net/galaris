@@ -413,7 +413,7 @@ Dans **Mémoire → Liste**, le filtre temporel est toujours appliqué, dès la 
 Un seul champ date et heure est prérempli avec l'heure actuelle du navigateur. Modifiez-le puis
 cliquez sur **Appliquer** pour tester précisément cet instant, sans anticipation ni fuseau à saisir.
 La liste réunit deux sélections indépendantes : les souvenirs **sans date** répondant aux filtres
-texte, type, sujet et interlocuteur ; les souvenirs **datés** correspondant à la date cible,
+texte, sujet et interlocuteur ; les souvenirs **datés** correspondant à la date cible,
 même s'ils ne répondent pas aux autres filtres. Un souvenir daté hors période est exclu.
 La date cible figure dans le filtre ; la correspondance figure sur les souvenirs datés.
 Le champ est obligatoire et le filtre ne peut pas être désactivé. Cette simulation
@@ -437,9 +437,14 @@ le détail apparaît aussi dans le graphe. Leur chargement ne déplace pas les n
 Les fichiers audio portent une note de musique dans leur carré turquoise. Les Datasets
 conservent leur symbole documentaire.
 
+Un clic sur un nœud ouvre directement sa modale, avec sa nature, sa visibilité, son nombre
+d'accès et la date de dernière activité. Les liens du graphe permettent d'ouvrir un voisin ;
+les dossiers et conversations ont une modale dédiée à leurs métadonnées et relations.
+La fermeture par le bouton ou l'arrière-plan rend le graphe avec son cadrage conservé.
+
 Dans **Graphe**, les branches d'au moins huit éléments reliés exclusivement à la même ancre
 sont représentées par cette ancre agrandie et un compteur. Zoomez ou cliquez sur le groupe
-pour voir ses éléments ; **Détails des branches** permet aussi de les afficher au clavier.
+pour voir ses éléments. Les boutons **Zoomer** et **Dézoomer** sont utilisables au clavier.
 Le dézoom et **Ajuster le graphe à la fenêtre** replient les branches. Jusqu'à 600 items chargés,
 le placement initial se stabilise naturellement et se rééquilibre doucement après modification du graphe
 pendant au plus 0,7 seconde. Le zoom, le dépliage et la fermeture du détail conservent les positions ; au-delà, les positions
@@ -455,6 +460,10 @@ Un document manipulé avec le même agent reste candidat au rappel même après 
 échanges ordinaires. L'agent retrouve sa référence, son titre et sa révision actuels, sous
 réserve des droits courants. Les documents supprimés ou devenus privés sont exclus. Ce
 rappel reste borné : fournissez son URI exacte si un ancien document n'est pas retrouvé.
+
+Chaque souvenir est décrit par son titre, son contenu, ses mots-clés, ses sources et ses droits
+d'accès. La liste se filtre par texte, sujet, interlocuteur et date ; le graphe présente les
+souvenirs avec les documents, fichiers, dossiers, contacts et sujets.
 
 Dans **Mémoire**, les comptes autorisés peuvent :
 

@@ -46,7 +46,7 @@ async def test_private_catalogue_search_at_1000_10000_100000_entries(console_cat
                     title = f'Syntheticneedle{total}'
                     await transport.file_write_text(f'synthetic-{index}.txt', 'Synthetic fixture', overwrite=False)
                 memories.append(dict(id=item_id, owner_agent_id=ctx.agent_id, title=title,
-                    resource_id=blob, provider_code='native', node_kind='file', memory_type='working',
+                    resource_id=blob, provider_code='native', node_kind='file',
                     content_type='text', media_type='text/html', content_profile_version=1,
                     source_managed=True, deletion_protected=True, managed_source_kind='file_catalogue',
                     managed_source_ref=str(identity), content_hash=hashlib.sha256(body).hexdigest(),

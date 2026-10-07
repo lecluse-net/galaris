@@ -478,7 +478,6 @@ const columns = computed<QTableColumn<TopicMonthlyUsage>[]>(() => [
 const memoryColumns = computed<QTableColumn<TopicLinkedMemory>[]>(() => [
   { name: 'title', label: t('topic.title'), field: 'title', align: 'left' },
   { name: 'excerpt', label: t('topic.memoryExcerpt'), field: 'excerpt', align: 'left' },
-  { name: 'memoryType', label: t('topic.memoryType'), field: 'memory_type', align: 'left', classes: 'gt-sm', headerClasses: 'gt-sm' },
   { name: 'owner', label: t('topic.owner'), field: 'owner_agent_id', align: 'left', classes: 'gt-sm', headerClasses: 'gt-sm' },
 ])
 

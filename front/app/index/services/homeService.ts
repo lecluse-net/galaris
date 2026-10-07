@@ -49,7 +49,6 @@ interface HomeProcessPage {
 export interface HomeRecentMemory {
   id: string
   title: string
-  memory_type: string
   created_at: string
 }
 

@@ -119,7 +119,7 @@
 import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import type { AIMessage } from '../types'
-import type { MemoryItemDetail, MemoryType, MemoryNodeKind } from '@/app/memory/types'
+import type { MemoryItemDetail, MemoryNodeKind } from '@/app/memory/types'
 import { memoryService } from '@/app/memory/services/memoryService'
 import MemoryItemCard, { type MemoryItemPreview } from './MemoryItemCard.vue'
 
@@ -211,13 +211,11 @@ function searchPreviews(result: Record<string, unknown> | null): MemoryItemPrevi
     return result.memories.flatMap(rawMemory => {
         if (!rawMemory || typeof rawMemory !== 'object' || Array.isArray(rawMemory)) return []
         const memory = rawMemory as Record<string, unknown>
-        const type = stringValue(memory.type)
         const nodeKind = stringValue(memory.node_kind)
         return [{
             id: stringValue(memory.memory_id) || undefined,
             title: stringValue(memory.title) || t('task.memory.untitled'),
             content: stringValue(memory.excerpt),
-            memoryType: isMemoryType(type) ? type : undefined,
             nodeKind: isNodeKind(nodeKind) ? nodeKind : undefined,
             keywords: [],
         }]
@@ -228,12 +226,10 @@ function argumentPreview(call: MemoryCall): MemoryItemPreview | null {
     if (!['memory_remember', 'memory_index'].includes(call.operation)) return null
     const args = call.message.tool_arguments || {}
     const result = parseResult(call.message.content)
-    const memoryType = stringValue(args.memory_type)
     return {
         id: resultMemoryIds(result)[0],
         title: stringValue(args.title) || t('task.memory.untitled'),
         content: stringValue(args.content) || stringValue(args.text),
-        memoryType: isMemoryType(memoryType) ? memoryType : undefined,
         nodeKind: 'memory',
         keywords: Array.isArray(args.keywords)
             ? args.keywords.map(stringValue).filter(Boolean)
@@ -243,9 +239,6 @@ function argumentPreview(call: MemoryCall): MemoryItemPreview | null {
     }
 }
 
-function isMemoryType(value: string): value is MemoryType {
-    return ['core', 'working', 'episodic', 'semantic', 'procedural', 'social'].includes(value)
-}
 
 function isNodeKind(value: string): value is MemoryNodeKind {
     return value === 'memory' || value === 'document'

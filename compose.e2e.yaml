@@ -34,6 +34,7 @@ services:
       AUTH_SECRET_KEY: e2e-auth-secret-only-for-isolated-tests
       ENCRYPTION_MASTER_KEY: e2e-encryption-only-for-isolated-tests
       PYTHONPATH: /repo/back
+      PYTHONFAULTHANDLER: '1'
       LOGFIRE_SEND_TO_LOGFIRE: 'false'
     volumes:
       - ./back:/repo/back:ro

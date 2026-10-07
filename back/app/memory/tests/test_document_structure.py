@@ -1,6 +1,7 @@
 """Observable coverage, relation recall and attachment enrichment contracts (#168)."""
 
 from io import BytesIO
+import hashlib
 
 import pytest
 from PIL import Image
@@ -15,7 +16,7 @@ from app.memory.schemas import MemoryGraphRootsRequest, MemoryGrantUpdate, Memor
 
 async def document(agent, title, content="<p>Content</p>"):
     item, _ = await service.create_item(MemoryItemCreate(
-        owner_agent_id=agent.id, title=title, node_kind="document", memory_type="working",
+        owner_agent_id=agent.id, title=title, node_kind="document",
         media_type="text/html", payload=MemoryPayload(text=content),
     ))
     return item
@@ -260,15 +261,32 @@ async def test_all_attachment_types_and_document_forget_remove_acquired_payloads
     owner, _ = agents
     source = await document(owner, "Mixed files")
     files = []
+    expected_hashes = {}
     for name, mime, payload in (("image.png", "image/png", png()), ("audio.ogg", "audio/ogg", b"audio"), ("report.pdf", "application/pdf", b"pdf")):
         files.append(await attachments.add_document_attachment_bytes(source.id, actor_agent_id=owner.id,
             name=name, media_type=mime, content=payload))
+        expected_hashes[files[-1].id] = hashlib.sha256(payload).hexdigest()
     rows = list(await db.scalars(select(DocumentAttachment).where(DocumentAttachment.document_id == source.id)))
     assert len(rows) == 3
+    from app.memory import memory_urls
+    for row in rows:
+        node = await db.get(MemoryItem, row.memory_item_id)
+        assert node.file_sha256 == expected_hashes[row.id]
+        assert node.primary_url == f"document://{source.id}/attachments/{row.id}"
+        assert await memory_urls(node.id) == [node.primary_url]
+        assert "resource_uri" not in node.metadata_
     companion_id = await record_attachment_description(f"document://{source.id}/attachments/{files[0].id}",
         "Forget this description too", agent_id=owner.id)
     resource = (await service.item_record(companion_id)).resource_id
     await service.forget_item(source.id, actor_agent_id=owner.id)
+    from app.memory.models import MemoryURL
+    assert not await db.scalar(select(MemoryURL.id).where(
+        MemoryURL.memory_node_id.in_([row.memory_item_id for row in rows]),
+    ))
+    forgotten_nodes = list(await db.scalars(select(MemoryItem).where(
+        MemoryItem.id.in_([row.memory_item_id for row in rows]),
+    ).execution_options(include_historized=True)))
+    assert all(node.primary_url is None and node.file_sha256 is None for node in forgotten_nodes)
     assert await service.item_record(companion_id) is None
     assert not list(await db.scalars(select(MemoryRevision).where(MemoryRevision.item_id == companion_id)))
     assert not (memory_storage / resource).exists()

@@ -15,8 +15,9 @@ from uuid import UUID
 
 from loguru import logger
 from sqlalchemy import and_, case, delete, exists, func, or_, select, union_all, update
+from sqlalchemy import literal as sql_literal
 from sqlalchemy.dialects.postgresql import insert as pg_insert
-from sqlalchemy.orm import Load, aliased, raiseload, selectinload
+from sqlalchemy.orm import Load, aliased, joinedload, raiseload, selectinload
 from sqlalchemy.orm.attributes import set_committed_value
 from sqlalchemy.orm.exc import StaleDataError
 from sqlalchemy.sql.elements import ColumnElement
@@ -107,7 +108,6 @@ from .schemas import (
     MemorySearchRequest,
     MemorySortField,
     MemorySourceCreate,
-    MemoryType,
 )
 from .safety import assert_safe_text, assert_safe_value
 from .storage import get_storage
@@ -283,8 +283,6 @@ def _item_options(*, revisions: bool = True) -> tuple[Any, ...]:
 def _memory_sort_expression(sort_by: MemorySortField) -> ColumnElement[Any]:
     if sort_by == "title":
         return func.lower(MemoryItem.title)
-    if sort_by == "memory_type":
-        return cast(ColumnElement[Any], MemoryItem.memory_type)
     if sort_by == "visibility":
         return cast(ColumnElement[Any], MemoryItem.visibility)
     if sort_by == "owner":
@@ -323,8 +321,6 @@ def _graph_item_filters(
             _topic_related_to_agent_clause(request.agent_id),
         ),
     ]
-    if request.memory_types:
-        filters.append(MemoryItem.memory_type.in_(request.memory_types))
     filters.extend(
         _exact_scope_filters(
             agent_id=request.agent_id,
@@ -415,7 +411,7 @@ def _graph_item_options() -> Load:
     """Keep full text and search vectors out of graph reads, including neighbors."""
     return Load(MemoryItem).load_only(
         MemoryItem.id, MemoryItem.node_kind, MemoryItem.managed_source_kind,
-        MemoryItem.owner_agent_id, MemoryItem.title, MemoryItem.memory_type,
+        MemoryItem.owner_agent_id, MemoryItem.title,
         MemoryItem.visibility, MemoryItem.source_managed, MemoryItem.access_count,
         MemoryItem.last_accessed_at, MemoryItem.created_at, MemoryItem.updated_at,
         MemoryItem.activity_at, MemoryItem.metadata_, MemoryItem.primary_url, MemoryItem.file_media_type, raiseload=True,
@@ -441,12 +437,11 @@ def _graph_node(item: MemoryItem, *, relation_count: int) -> MemoryGraphNode:
     return MemoryGraphNode(
         id=item.id,
         resource_media_type=item.file_media_type if item.node_kind == "attachment" else None,
-        resource_uri=item.primary_url if item.node_kind == "attachment" else None,
+        resource_uri=item.primary_url if item.node_kind in ("attachment", "directory") else None,
         node_kind=cast(Any, item.node_kind),
         entity_kind=entity_kind,
         owner_agent_id=item.owner_agent_id,
-        title=item.title,
-        memory_type=cast(Any, item.memory_type),
+        title=item.primary_url if item.node_kind == "directory" and item.title == "." and item.primary_url else item.title,
         visibility=cast(Any, item.visibility),
         source_managed=item.source_managed,
         access_count=item.access_count,
@@ -470,7 +465,6 @@ def _graph_context_node(
         entity_kind="conversation",
         owner_agent_id=node.owner_agent_id,
         title=node.title,
-        memory_type="episodic",
         visibility="private",
         source_managed=True,
         access_count=0,
@@ -574,14 +568,14 @@ async def _get_item_record(
     # is immediately reflected by the in-memory ACL evaluation.
     query = (
         select(MemoryItem)
-        .options(*_item_options(revisions=revisions))
+        .options(*_item_options(revisions=revisions), joinedload(MemoryItem.url_relations))
         .where(MemoryItem.id == item_id)
         .execution_options(populate_existing=True)
     )
     if include_historized:
         query = query.execution_options(include_historized=True)
     result = await db.execute(query)
-    return result.scalar_one_or_none()
+    return result.unique().scalar_one_or_none()
 
 
 async def item_record(item_id: UUID, *, revisions: bool = True) -> MemoryItem | None:
@@ -822,7 +816,6 @@ async def create_item(
         provider_code=provider.code,
         resource_id=resource_id,
         title=data.title.strip(),
-        memory_type=data.memory_type,
         node_kind=data.node_kind,
         document_type=data.document_type,
         content_type=data.content_type,
@@ -1021,7 +1014,6 @@ async def upsert_source_managed_item(
             provider_code=provider.code,
             resource_id=resource_id,
             title=normalized_title,
-            memory_type=document.memory_type,
             content_type="text",
             media_type="text/html",
             content_profile_version=1,
@@ -1074,7 +1066,6 @@ async def upsert_source_managed_item(
                 item.owner_agent_id != document.owner_agent_id,
                 item.topic_id != document.topic_id,
                 item.title != normalized_title,
-                item.memory_type != document.memory_type,
                 item.content_type != "text",
                 item.media_type != "text/html",
                 item.filename != normalized_filename,
@@ -1098,7 +1089,6 @@ async def upsert_source_managed_item(
     item.owner_agent_id = document.owner_agent_id
     item.topic_id = document.topic_id
     item.title = normalized_title
-    item.memory_type = document.memory_type
     item.content_type = "text"
     item.media_type = "text/html"
     item.content_profile_version = 1
@@ -1215,14 +1205,14 @@ async def get_item(
     return item, content, access, content_type, media_type
 
 
-async def source_refs(item_id: UUID) -> list[str]:
+async def source_refs(item_id: UUID, *, urls: Sequence[str] | None = None) -> list[str]:
     result = await get_db().execute(
         select(MemorySource.source_ref)
         .where(MemorySource.item_id == item_id)
         .order_by(MemorySource.created_at)
     )
     references = list(result.scalars().all())
-    references.extend(await get_db().scalars(select(MemoryURL.url).where(
+    references.extend(urls if urls is not None else await get_db().scalars(select(MemoryURL.url).where(
         MemoryURL.memory_node_id == item_id,
     ).order_by(MemoryURL.url)))
     return list(dict.fromkeys(references))
@@ -1326,7 +1316,7 @@ async def item_to_detail(
             content_type=content_type or item.content_type,
             media_type=media_type or item.media_type,
         ),
-        source_refs=await source_refs(item.id),
+        source_refs=await source_refs(item.id, urls=public.urls),
     )
 
 
@@ -1551,8 +1541,6 @@ async def update_item(
                 "and cannot be changed directly."
             )
     if item.node_kind == "document":
-        if data.memory_type not in (None, "working"):
-            raise MemoryConflictError("A document must keep memory_type='working'.")
         if data.content_type not in (None, "text"):
             raise MemoryConflictError("A document must contain text.")
         if item.document_type == "dataset" and data.media_type not in (None, "application/json"):
@@ -1583,7 +1571,6 @@ async def update_item(
         name: getattr(item, name)
         for name in (
             "title",
-            "memory_type",
             "content_type",
             "media_type",
             "filename",
@@ -1674,7 +1661,6 @@ async def update_item(
 
     scalar_fields = (
         "title",
-        "memory_type",
         "content_type",
         "media_type",
         "filename",
@@ -1725,7 +1711,6 @@ async def update_item(
         & {
             "payload",
             "title",
-            "memory_type",
             "keywords",
             "metadata",
             "valid_from",
@@ -2236,42 +2221,19 @@ async def preview_retention(days: int) -> MemoryRetentionPreview:
         if days > 0
         else 0
     )
-    rows = list(
-        (
-            await db.execute(
-                select(
-                    MemoryItem.memory_type,
-                    func.count(MemoryItem.id),
-                )
-                .where(ordinary, candidate)
-                .group_by(MemoryItem.memory_type)
-            )
-        ).all()
+    total_candidates = int(
+        await db.scalar(select(func.count(MemoryItem.id)).where(ordinary, candidate)) or 0
     )
     oldest_activity_at = await db.scalar(
         select(func.min(MemoryItem.activity_at)).where(ordinary, candidate)
     )
-    allowed_types = {
-        "core",
-        "working",
-        "episodic",
-        "semantic",
-        "procedural",
-        "social",
-    }
-    by_memory_type: dict[MemoryType, int] = {}
-    for memory_type, count in rows:
-        key = str(memory_type)
-        if key in allowed_types:
-            by_memory_type[cast(MemoryType, key)] = int(count)
     return MemoryRetentionPreview(
         days=days,
         inactivity_enabled=days > 0,
         inactive_count=inactive_count,
         expired_count=expired_count,
-        total_candidates=sum(by_memory_type.values()),
+        total_candidates=total_candidates,
         oldest_activity_at=oldest_activity_at,
-        by_memory_type=by_memory_type,
     )
 
 
@@ -2619,8 +2581,6 @@ async def search_items(
     temporal_scope = query.whereclause
     if request.exclude_temporal:
         query = query.where(MemoryItem.temporal.is_(None))
-    if request.memory_types:
-        query = query.where(MemoryItem.memory_type.in_(request.memory_types))
     query = query.where(*_exact_scope_filters(
         agent_id=request.agent_id,
         topic_item_id=request.filter_topic_item_id,
@@ -2660,8 +2620,8 @@ async def search_items(
         rank_expression = case((MemoryItem.id == identity, 1.0), else_=0.0)
     elif normalized:
         prefix = relevance.prefix_query(request.recall_query) if request.recall_query is not None else ""
-        ts_query = func.to_tsquery("simple", prefix) if prefix else func.websearch_to_tsquery("simple", normalized)
-        rank_expression = func.ts_rank_cd(MemoryItem.search_vector, ts_query)
+        ts_query = func.to_tsquery("simple", prefix) if prefix else func.websearch_to_tsquery("simple", relevance.fold(normalized))
+        rank_expression = func.ts_rank_cd(MemoryItem.search_vector_folded, ts_query)
         literal = request.recall_query if request.recall_query is not None else normalized
         fallback = or_(
             MemoryItem.title.icontains(literal, autoescape=True),
@@ -2669,14 +2629,20 @@ async def search_items(
         )
         if request.recall_query is not None:
             rank_expression = case((func.lower(MemoryItem.title) == literal.lower(), 2.0), else_=rank_expression)
+            entity_prefix = relevance.entity_prefix_query(request.recall_query)
+            if entity_prefix:
+                entity_query = func.to_tsquery("simple", entity_prefix)
+                rank_expression = rank_expression + case(
+                    (MemoryItem.search_vector_folded.op("@@")(entity_query), 1.0), else_=0.0,
+                )
         matches = select(MemoryItem.id).where(
-            or_(MemoryItem.search_vector.op("@@")(ts_query), fallback),
+            or_(MemoryItem.search_vector_folded.op("@@")(ts_query), fallback),
         ).cte("lexical_matches").prefix_with("MATERIALIZED", dialect="postgresql")
         # Keep source/structural access checks on lexical candidates only. The
         # outer query still applies every ACL, validity and contextual filter.
         query = query.where(MemoryItem.id.in_(select(matches.c.id)))
     else:
-        rank_expression = case((MemoryItem.memory_type == "core", 1.0), else_=0.1)
+        rank_expression = sql_literal(0.1)
     if temporal_union and temporal_window is not None:
         assert temporal_scope is not None and query.whereclause is not None
         calendar_filter = MemoryItem.temporal.is_not(None) if scan_calendar else temporal_match_clause(temporal_window.start)
@@ -2708,7 +2674,6 @@ async def search_items(
         query = query.add_columns(rank_expression.label("rank"))
         query = query.order_by(
             rank_expression.desc(),
-            case((MemoryItem.memory_type == "core", 0), else_=1),
             func.coalesce(
                 MemoryItem.updated_at,
                 MemoryItem.created_at,
@@ -2718,7 +2683,6 @@ async def search_items(
         )
     else:
         query = query.add_columns(rank_expression.label("rank")).order_by(
-            case((MemoryItem.memory_type == "core", 0), else_=1),
             MemoryItem.last_accessed_at.desc().nullslast(),
             MemoryItem.created_at.desc(),
             MemoryItem.id,
@@ -3526,7 +3490,6 @@ async def ensure_topic_contact_memory_scope(
     if not (
         contact.source_managed
         and contact.managed_source_kind == "messenger_contact"
-        and contact.memory_type == "social"
         and contact.visibility == "private"
         and contact.owner_agent_id == owner_agent_id
     ):
@@ -3656,7 +3619,6 @@ async def ensure_contact_memory_scope(
     if not (
         contact.source_managed
         and contact.managed_source_kind == "messenger_contact"
-        and contact.memory_type == "social"
         and contact.visibility == "private"
         and contact.owner_agent_id == owner_agent_id
     ):
@@ -3735,7 +3697,6 @@ async def list_topic_linked_memories(
             id=item.id,
             title=item.title,
             excerpt=" ".join(item.search_text[:800].split()),
-            memory_type=item.memory_type,
             owner_agent_id=item.owner_agent_id,
             visibility=item.visibility,
             node_kind=item.node_kind,

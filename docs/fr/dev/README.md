@@ -431,8 +431,7 @@ items avec leur propriétaire direct, grants, révisions, sources, liens, usages
 idempotentes et jobs. Il n'existe pas d'espace mémoire intermédiaire. `ResourceStorage` manipule
 seulement des octets par identifiant opaque; le provider `native` écrit atomiquement dans le
 répertoire fixe `/data/memory`. La recherche applique propriétaire, accès directs, visibilité et validité
-dans SQL avant le classement. Le brief automatique classe les mémoires `core` avec les autres
-types au lieu de leur réserver une place inconditionnelle. Le classement exige d'abord une preuve
+dans SQL avant le classement. Le classement exige d'abord une preuve
 lexicale directe et informative — pas un simple mot conversationnel — ou une proximité sémantique
 suffisante, puis combine appartenance thématique,
 liens confirmés, provenance, fraîcheur et centralité locale avant d'écarter les quasi-doublons.
@@ -466,8 +465,8 @@ dossiers mais sont exclues du rappel factuel. Dream
 produit aussi des liens `suggested=true` de rattachement, anomalie, fusion ou scission depuis ces
 vecteurs ; aucun de ces signaux ne modifie seul un `topic_contains` canonique.
 
-Les documents de travail HTML sont des `MemoryItem` de `node_kind=document` et de type
-`working`. Ils sont le support canonique des contenus rédigés et partagés par les agents, même
+Les documents de travail HTML sont des `MemoryItem` de `node_kind=document`.
+Ils sont le support canonique des contenus rédigés et partagés par les agents, même
 pour une seule Task. Memory et File Sharing sont des services système obligatoires ; les ACL
 des ressources et les restrictions de contexte restent applicables. Voir le [contrat documentaire](editorial-html.md).
 Ils restent privés à la création, ne sont ni dédupliqués avec les souvenirs ordinaires, ni ciblés
@@ -648,7 +647,7 @@ renforcées et légendées, tandis que les suggestions restent fines et disconti
 `app.memory.source_projection` adapte les données canoniques `Agent`, `Goal` et `GoalCycle` en
 Markdown privé. Les sources conservent leur `memory_item_id`; l'item conserve en retour une identité
 de source unique. `app.memory.messenger_contact` projette séparément l'identité minimale des
-expéditeurs humains observés en mémoire `social`, avec une clé hashée fondée sur l'agent
+expéditeurs humains observés dans une fiche contact, avec une clé hashée fondée sur l'agent
 propriétaire, le code du bridge et l'identifiant natif exact. Connexion, room et contenu de message
 en sont exclus. `memory_contact_identities` rattache ensuite plusieurs adresses Messenger ou une
 identité `USER` prouvée au même item canonique. `app.contact` fournit l'administration et la fusion

@@ -41,7 +41,6 @@ from app.dream.mechanisms.conversation_memory import (
 )
 from app.dream.mechanisms.memory_extraction import existing_memories_from_hits
 from app.dream.mechanisms.task_memory import (
-    NOVELTY_MEMORY_TYPES,
     build_task_extraction_input,
 )
 from app.llm import LLM, LLMCall, LLMCallPurpose, llm_service
@@ -1251,7 +1250,6 @@ async def _memory_extraction_corpus(
         query[:4_000],
         agent_id=agent_id,
         limit=MAX_MEMORY_EXTRACTION_CANDIDATES,
-        memory_types=NOVELTY_MEMORY_TYPES,
         memory_role="ordinary",
         topic_item_id=topic_item_id,
         contact_item_id=contact_item_id,

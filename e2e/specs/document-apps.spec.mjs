@@ -12,7 +12,7 @@ test('two document applications collect into the same Dataset with isolated Java
   await expect(page.locator('input[type=password]')).toHaveCount(0)
   const headers = { Authorization: `Bearer ${session.access_token}`, 'X-Editorial-Profile-Version': '1' }
   const datasetResponse = await request.post('/api/memory/items', { headers, data: {
-    owner_agent_id: fixture.agent_id, title: 'Synthetic responses', node_kind: 'document', memory_type: 'working',
+    owner_agent_id: fixture.agent_id, title: 'Synthetic responses', node_kind: 'document',
     document_type: 'dataset', media_type: 'application/json', payload: { text: '[]' },
   } })
   expect(datasetResponse.ok(), await datasetResponse.text()).toBeTruthy()
@@ -37,7 +37,7 @@ test('two document applications collect into the same Dataset with isolated Java
   const documents = []
   for (const title of ['First form', 'Second form']) {
     const response = await request.post('/api/memory/items', { headers, data: {
-      owner_agent_id: fixture.agent_id, title, node_kind: 'document', memory_type: 'working',
+      owner_agent_id: fixture.agent_id, title, node_kind: 'document',
       media_type: 'text/html', payload: { text: documents.length ? html : '<p>Data collection</p>' },
     } })
     expect(response.ok(), await response.text()).toBeTruthy()

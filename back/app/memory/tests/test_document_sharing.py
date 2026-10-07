@@ -24,7 +24,7 @@ async def user(db):
 
 
 async def document(owner):
-    item, _ = await service.create_item(MemoryItemCreate(owner_agent_id=owner.id, title="Shared document", node_kind="document", memory_type="working", media_type="text/html", payload=MemoryPayload(text="<p>Initial</p>")))
+    item, _ = await service.create_item(MemoryItemCreate(owner_agent_id=owner.id, title="Shared document", node_kind="document",  media_type="text/html", payload=MemoryPayload(text="<p>Initial</p>")))
     return item
 
 
@@ -50,7 +50,7 @@ async def test_human_can_delete_own_document_but_not_a_shared_document(db, agent
 
     own, _ = await service.create_item(MemoryItemCreate(
         owner_agent_id=owner.id, title="Personal document", node_kind="document",
-        memory_type="working", payload=MemoryPayload(text="Personal content"),
+         payload=MemoryPayload(text="Personal content"),
     ), owner_user_id=human.id)
     await router.forget_memory_item(own.id, actor_agent_id=None)
     with pytest.raises(service.MemoryNotFoundError):
@@ -78,7 +78,6 @@ async def test_mcp_sharing_conflict_preserves_content_and_safe_retry(
     await mandatory_tools.sync_integrated_tool_connections(owner.id)
     item, _ = await service.create_item(MemoryItemCreate(
         owner_agent_id=owner.id, title="Sharing after editing", node_kind=node_kind,
-        memory_type="working" if node_kind == "document" else "semantic",
         media_type="text/html", payload=MemoryPayload(text="<p>Original</p>"),
     ))
     from app.task.models import Task
@@ -165,7 +164,6 @@ async def test_mcp_sharing_uses_live_team_membership_and_preserves_other_grants(
     item, _ = await service.create_item(MemoryItemCreate(
         owner_agent_id=owner.id, title="Team knowledge", node_kind=node_kind,
         document_type=document_type,
-        memory_type="working" if node_kind == "document" else "semantic",
         media_type="application/json" if document_type == "dataset" else "text/html", payload=MemoryPayload(text=body),
     ))
     original_revision = item.revision
@@ -385,7 +383,6 @@ async def test_atomic_sharing_preserves_content_and_enforces_each_recipient_righ
     await db.commit()
     item, _ = await service.create_item(MemoryItemCreate(
         owner_agent_id=owner.id, node_kind=node_kind,
-        memory_type="working" if node_kind == "document" else "semantic",
         title="Sharing contract", media_type="text/html", payload=MemoryPayload(text="<p>Preserved</p>"),
     ))
     scope = AgentManagementScope(user_id=manager.id, agent_ids=frozenset({owner.id}))
@@ -440,7 +437,7 @@ async def test_selected_owner_groups_are_explicit_and_memberships_remain_live(db
     await db.commit()
     item, _ = await service.create_item(MemoryItemCreate(
         owner_agent_id=owner.id, title="Selected groups", node_kind="document",
-        memory_type="working", payload=MemoryPayload(text="Content"),
+         payload=MemoryPayload(text="Content"),
     ), owner_user_id=human.id if owner_kind == "user" else None)
     scope = AgentManagementScope(user_id=human.id, agent_ids=frozenset({owner.id}) if owner_kind == "agent" else frozenset())
     state = await document_sharing.sharing(item.id, scope)
@@ -502,7 +499,6 @@ async def test_sharing_rejects_stale_invalid_and_non_owner_updates_atomically(db
     human = await user(db)
     item, _ = await service.create_item(MemoryItemCreate(
         owner_agent_id=owner.id, node_kind=node_kind, title="Atomic permissions",
-        memory_type="working" if node_kind == "document" else "semantic",
         payload=MemoryPayload(text="Unchanged"),
     ))
     manager = AgentManagementScope(user_id=human.id, agent_ids=frozenset({owner.id}))

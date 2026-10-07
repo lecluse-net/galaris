@@ -80,7 +80,6 @@ from .schemas import (
     MemoryRecallResult,
     MemorySearchHit,
     MemorySimilarityCandidate,
-    MemoryType,
 )
 from .safety import redact_secrets
 from .file_facade import (
@@ -126,7 +125,6 @@ __all__ = [
     "MemoryEmbeddingChunk",
     "MemoryFinding",
     "MemorySource",
-    "MemoryType",
     "detect_memory_findings",
     "ResourceStorage",
     "SourceMemoryDocument",

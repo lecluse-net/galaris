@@ -31,6 +31,7 @@ from core.util import ContentProfile
 
 from .vector import Vector
 from .document_types import DocumentType
+from .lexical_normalization import folded_vector_sql
 
 
 class DocumentTag(HistoryMixin, Base):
@@ -190,9 +191,6 @@ class MemoryItem(HistoryMixin, Base):
     )
     resource_id: Mapped[str] = mapped_column(String(1_024), nullable=False)
     title: Mapped[str] = mapped_column(String(500), nullable=False)
-    memory_type: Mapped[str] = mapped_column(
-        String(30), nullable=False, default="semantic", server_default="semantic", index=True
-    )
     node_kind: Mapped[str] = mapped_column(
         String(30), nullable=False, default="memory", server_default="memory", index=True
     )
@@ -269,6 +267,10 @@ class MemoryItem(HistoryMixin, Base):
     last_accessed_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True, index=True
     )
+    search_vector_folded: Mapped[str] = mapped_column(
+        TSVECTOR, Computed(folded_vector_sql(), persisted=True), nullable=False,
+        deferred=True,
+    )
     access_count: Mapped[int] = mapped_column(
         Integer, nullable=False, default=0, server_default="0"
     )
@@ -315,10 +317,6 @@ class MemoryItem(HistoryMixin, Base):
             deferrable=True, initially="DEFERRED",
         ),
         CheckConstraint(
-            "memory_type IN ('core', 'working', 'episodic', 'semantic', 'procedural', 'social')",
-            name="ck_memory_items_type",
-        ),
-        CheckConstraint(
             "document_type IN ('html', 'dataset') AND "
             "(document_type != 'dataset' OR (node_kind = 'document' AND "
             "content_type = 'text' AND media_type = 'application/json' AND "
@@ -340,7 +338,7 @@ class MemoryItem(HistoryMixin, Base):
         ),
         CheckConstraint(
             "node_kind != 'document' OR "
-            "(memory_type = 'working' AND content_type = 'text' "
+            "(content_type = 'text' "
             "AND source_managed = false AND read_only = false "
             "AND visibility != 'public')",
             name="ck_memory_items_document",
@@ -417,6 +415,7 @@ class MemoryItem(HistoryMixin, Base):
         ),
         Index("ix_memory_items_title_trgm", "title",
               postgresql_using="gin", postgresql_ops={"title": "gin_trgm_ops"}),
+        Index("ix_memory_items_search_vector_folded_gin", "search_vector_folded", postgresql_using="gin"),
         Index("ix_memory_items_search_text_trgm", "search_text",
               postgresql_using="gin", postgresql_ops={"search_text": "gin_trgm_ops"}),
     )

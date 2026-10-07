@@ -9,7 +9,6 @@ from statistics import fmean
 from typing import Sequence
 
 from .facade import search_memory_detailed
-from .schemas import MemoryType
 
 
 @dataclass(frozen=True, slots=True)
@@ -40,7 +39,6 @@ class RecallEvaluationScenario:
     agent_id: int
     query: str
     semantic_query: str | None = None
-    memory_types: tuple[MemoryType, ...] = ()
 
 
 @dataclass(frozen=True, slots=True)
@@ -176,7 +174,6 @@ async def evaluate_recall(
             agent_id=scenario.agent_id,
             semantic_query=scenario.semantic_query,
             limit=k,
-            memory_types=scenario.memory_types,
             record_llm_access=False,
             telemetry_kind="evaluation",
         )

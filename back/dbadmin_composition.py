@@ -3,7 +3,7 @@
 import json
 import re
 
-from pydantic import JsonValue
+from pydantic import JsonValue, TypeAdapter
 from sqlalchemy import func, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -23,6 +23,147 @@ from core.dbadmin import (
     DbAdminRegistry,
     SchemaTransitionSet,
 )
+
+
+_MEMORY_SNAPSHOT_FIELDS = frozenset({
+    "memory_type", "memory_types", "memoryType", "memoryTypes", "by_memory_type",
+})
+_MEMORY_SNAPSHOT_LABELS = frozenset({
+    "core", "working", "episodic", "semantic", "procedural", "social",
+})
+_JSON_VALUE = TypeAdapter(JsonValue)
+
+
+def _normalize_memory_snapshot(
+    value: JsonValue, *, record: bool = False, schema: bool = False,
+    serialized_results: bool = False,
+) -> JsonValue:
+    """Normalize known machine paths; authored JSON and strings stay opaque."""
+    if isinstance(value, dict):
+        memory_hit = record and bool({"memory_id", "memory_item_id", "excerpt"}.intersection(value))
+        cleaned: dict[str, JsonValue] = {}
+        for key, item in value.items():
+            if (record or schema) and key in _MEMORY_SNAPSHOT_FIELDS:
+                continue
+            if memory_hit and key == "type" and isinstance(item, str) and item in _MEMORY_SNAPSHOT_LABELS:
+                continue
+            if schema:
+                # JSON Schema field names and required lists are machine-owned.
+                if key in {"default", "const", "enum", "examples"}:
+                    cleaned[key] = item
+                    continue
+                if key == "required" and isinstance(item, list):
+                    item = [entry for entry in item
+                            if not (isinstance(entry, str) and entry in _MEMORY_SNAPSHOT_FIELDS)]
+                cleaned[key] = _normalize_memory_snapshot(item, schema=True)
+            elif key == "schema":
+                cleaned[key] = _normalize_memory_snapshot(item, schema=True)
+            elif key in {"operations", "memories", "existing_memories"}:
+                cleaned[key] = _normalize_memory_snapshot(item, record=True, serialized_results=serialized_results)
+            elif key in {"decision", "context", "input_data", "expected_output",
+                         "configuration", "parameters"}:
+                cleaned[key] = _normalize_memory_snapshot(item, serialized_results=serialized_results)
+            elif key == "result" and serialized_results and isinstance(item, str):
+                # Only the legacy serialized memory envelope is a JSON snapshot.
+                # An arbitrary JSON result remains an authored value.
+                try:
+                    parsed = _JSON_VALUE.validate_json(item)
+                except ValueError:
+                    cleaned[key] = item
+                    continue
+                if isinstance(parsed, dict) and {"memories", "operations"}.intersection(parsed):
+                    normalized = _normalize_memory_snapshot(parsed)
+                    cleaned[key] = json.dumps(normalized, ensure_ascii=False) if normalized != parsed else item
+                else:
+                    cleaned[key] = item
+            else:
+                cleaned[key] = item
+        return cleaned
+    if isinstance(value, list):
+        return [_normalize_memory_snapshot(item, record=record, schema=schema,
+                                           serialized_results=serialized_results) for item in value]
+    return value
+
+
+def _needs_memory_snapshot_normalization(transitions: SchemaTransitionSet) -> bool:
+    return "memory_items.memory_type" in transitions.removed_columns
+
+
+async def _memory_snapshot_columns(session: AsyncSession) -> list[tuple[str, str]]:
+    rows = await session.execute(text("""
+        SELECT table_name, column_name FROM information_schema.columns
+        WHERE table_schema = 'public' AND data_type = 'jsonb'
+          AND ((left(table_name, 7) = 'memory_' AND column_name = 'metadata')
+               OR (table_name = 'memory_automation_jobs' AND column_name = 'payload')
+               OR (table_name = 'dream_receipts' AND column_name = 'prepared_payload')
+               OR (table_name = 'lab_evaluation_datasets'
+                   AND column_name IN ('parameters', 'configuration'))
+               OR (table_name = 'lab_evaluation_cases'
+                   AND column_name IN ('input_data', 'expected_output'))
+               OR (table_name = 'lab_evaluation_runs'
+                   AND column_name IN ('configuration_snapshot', 'case_snapshots')))
+        ORDER BY table_name, column_name
+    """))
+    return [(str(table), str(column)) for table, column in rows]
+
+
+def _snapshot_identifier(value: str) -> str:
+    return '"' + value.replace('"', '""') + '"'
+
+
+def _memory_snapshot_row_filter(table: str) -> str:
+    if table == "dream_receipts":
+        return "mechanism_key IN ('memory.extract_task', 'memory.extract_conversation_round', 'memory.reflect_task_outcome')"
+    if table == "lab_evaluation_datasets":
+        return "mechanism = 'memory_extraction'"
+    if table in {"lab_evaluation_cases", "lab_evaluation_runs"}:
+        return ("dataset_id IN (SELECT id FROM public.lab_evaluation_datasets "
+                "WHERE mechanism = 'memory_extraction')")
+    return "true"
+
+
+def _normalize_memory_column(value: JsonValue, column: str) -> JsonValue:
+    if column == "metadata" and isinstance(value, dict):
+        # Only these legacy top-level fields belong to the memory contract.
+        # Nested metadata may contain an authored schema or arbitrary JSON.
+        return {key: item for key, item in value.items() if key not in _MEMORY_SNAPSHOT_FIELDS}
+    return _normalize_memory_snapshot(value, record=column == "payload",
+                                      serialized_results=column == "prepared_payload")
+
+
+async def _normalize_memory_snapshots(
+    session: AsyncSession, _transitions: SchemaTransitionSet,
+) -> None:
+    for table, column in await _memory_snapshot_columns(session):
+        table_sql, column_sql = "public." + _snapshot_identifier(table), _snapshot_identifier(column)
+        # Scope the scan by the owning contract, then update only changed rows.
+        rows = await session.stream(text(
+            f"SELECT id, {column_sql} FROM {table_sql} "
+            f"WHERE {_memory_snapshot_row_filter(table)} AND {column_sql}::text ~ :pattern"
+        ), {"pattern": 'memory_type|memoryType|by_memory_type|type'})
+        async for row in rows:
+            original = _JSON_VALUE.validate_python(row[1])
+            cleaned = _normalize_memory_column(original, column)
+            if cleaned != original:
+                await session.execute(text(
+                    f"UPDATE {table_sql} SET {column_sql} = CAST(:value AS jsonb) WHERE id = :id"
+                ), {"id": row[0], "value": json.dumps(cleaned, ensure_ascii=False)})
+
+
+async def _memory_snapshots_normalized(
+    session: AsyncSession, _transitions: SchemaTransitionSet,
+) -> bool:
+    for table, column in await _memory_snapshot_columns(session):
+        table_sql, column_sql = "public." + _snapshot_identifier(table), _snapshot_identifier(column)
+        rows = await session.stream(text(
+            f"SELECT {column_sql} FROM {table_sql} "
+            f"WHERE {_memory_snapshot_row_filter(table)} AND {column_sql}::text ~ :pattern"
+        ), {"pattern": 'memory_type|memoryType|by_memory_type|type'})
+        async for row in rows:
+            value = _JSON_VALUE.validate_python(row[0])
+            if _normalize_memory_column(value, column) != value:
+                return False
+    return True
 
 
 def _retires_execution_preparation(transitions: SchemaTransitionSet) -> bool:
@@ -457,6 +598,15 @@ async def _reconcile_hermes_session_bindings(session: AsyncSession) -> None:
 
 def register_dbadmin(registry: DbAdminRegistry) -> None:
     """Register transitional Hermès work without changing the in-progress bridge."""
+
+    registry.register_action(DbAdminAction(
+        key="app.memory.normalize_snapshots",
+        phase=DbAdminPhase.BEFORE_EXPAND,
+        checksum="content-and-provenance-v1",
+        predicate=_needs_memory_snapshot_normalization,
+        handler=_normalize_memory_snapshots,
+        postcondition=_memory_snapshots_normalized,
+    ))
 
     registry.register_enum_mapping(DbAdminEnumMapping("taskstatus", {"BRIEFING": "DISPATCH"}))
     registry.register_action(DbAdminAction(

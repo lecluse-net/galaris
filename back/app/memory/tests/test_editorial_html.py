@@ -52,17 +52,16 @@ async def test_file_mutation_diagnostics_preserve_document_content_and_revision(
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
-    "memory_type,node_kind", [(kind, "memory") for kind in ["core", "working", "episodic", "semantic", "procedural", "social"]] + [("working", "document")]
+    "node_kind", ["memory", "document"]
 )
 async def test_all_editorial_categories_normalize_and_index_visible_text(
-    agents, memory_storage, memory_type, node_kind
+    agents, memory_storage, node_kind
 ):
     owner, _ = agents
     item, _ = await service.create_item(
         MemoryItemCreate(
             owner_agent_id=owner.id,
             title="Corpus",
-            memory_type=memory_type,
             node_kind=node_kind,
             media_type="text/html",
             payload=MemoryPayload(text="<h2>Été</h2><p><u>Visible</u></p>"),
@@ -103,7 +102,7 @@ async def test_all_editorial_categories_normalize_and_index_visible_text(
 @pytest.mark.parametrize("node_kind,protected", [("document", True), ("memory", False)])
 async def test_interactive_content_remains_forbidden_outside_regular_documents(agents, memory_storage, node_kind, protected):
     owner, _ = agents
-    data = MemoryItemCreate(owner_agent_id=owner.id, title="Report", memory_type="working", node_kind=node_kind,
+    data = MemoryItemCreate(owner_agent_id=owner.id, title="Report",  node_kind=node_kind,
         media_type="text/html", payload=MemoryPayload(text='<p>Report</p><script>alert(1)</script>'))
     with pytest.raises(RichTextError):
         await service.create_item(data, deletion_protected=protected)
@@ -260,7 +259,6 @@ async def test_editorial_format_cannot_be_changed_to_bypass_image_validation(
         MemoryItemCreate(
             owner_agent_id=owner.id,
             title="Protected editorial format",
-            memory_type="semantic",
             media_type="text/html",
             payload=MemoryPayload(text="<p>Original</p>"),
         )

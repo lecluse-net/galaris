@@ -172,12 +172,6 @@ def _target_revision(metadata: dict[str, Any]) -> int | None:
 
 
 def _item_create_data(record: MemoryAcquisition) -> MemoryItemCreate:
-    # Pending acquisitions can retain these non-canonical labels. Match the
-    # capture taxonomy while preserving the original metadata for source audit.
-    memory_type = str(record.metadata_.get("memory_type") or "semantic")
-    memory_type = {"preference": "core", "decision": "semantic"}.get(
-        memory_type, memory_type
-    )
     raw_item_metadata = record.metadata_.get("item_metadata")
     item_metadata = (
         dict(cast(dict[str, Any], raw_item_metadata))
@@ -195,7 +189,6 @@ def _item_create_data(record: MemoryAcquisition) -> MemoryItemCreate:
             "title": record.title,
             "payload": MemoryPayload(text=record.content),
             "keywords": list(record.keywords),
-            "memory_type": memory_type,
             "metadata": item_metadata,
             "visibility": str(record.metadata_.get("visibility") or "private"),
             "read_only": bool(record.metadata_.get("read_only", False)),
@@ -252,7 +245,6 @@ async def _resolve_semantic_duplicate(
     groups = await find_similar_memory_candidates(
         agent_id=record.agent_id,
         texts=[visible_text(record.content) if record.metadata_.get("media_type") == "text/html" else record.content],
-        memory_types=(),
         limit=1,
         minimum_similarity=runtime_settings.MEMORY_DUPLICATE_SIMILARITY_THRESHOLD,
         memory_role=None,
@@ -327,7 +319,6 @@ async def _validate_conversation_scope(record: MemoryAcquisition) -> bool:
         contact is not None
         and contact.source_managed
         and contact.managed_source_kind == "messenger_contact"
-        and contact.memory_type == "social"
         and contact.visibility == "private"
         and contact.owner_agent_id == record.agent_id
     ):
@@ -424,17 +415,10 @@ async def _reinforce_experience(
         "evidence_count": combined_count,
         "last_evidence_fingerprint": record.metadata_.get("evidence_fingerprint"),
     }
-    promote = (
-        target.memory_type == "episodic"
-        and combined_count >= 3
-        and record.metadata_.get("lesson_kind") in {"procedure", "correction"}
-    )
     update_data: dict[str, object] = {
         "expected_revision": target.revision,
         "metadata": metadata,
     }
-    if promote:
-        update_data["memory_type"] = "procedural"
     return await update_item(
         target.id,
         MemoryItemUpdate.model_validate(update_data),
@@ -750,7 +734,6 @@ async def create_manual_item(data: MemoryItemCreate) -> MemoryItem:
 
     source = data.source
     metadata: dict[str, Any] = {
-        "memory_type": data.memory_type,
         "visibility": data.visibility,
         "read_only": data.read_only,
         "valid_from": data.valid_from.isoformat() if data.valid_from else None,

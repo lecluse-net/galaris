@@ -16,8 +16,8 @@ avoir préservé et rattaché leur contenu.
 
 ## Décision
 
-Chaque Goal possède exactement deux documents `MemoryItem` privés de nature `document` et de type
-`working` : un pour sa description et un pour son suivi. La table `goals` ne conserve plus le
+Chaque Goal possède exactement deux documents `MemoryItem` privés de nature `document` :
+un pour sa description et un pour son suivi. La table `goals` ne conserve plus le
 Markdown ; elle porte les clés étrangères UUID non nulles `description_document_id` et
 `tracking_document_id`. Les deux références sont distinctes et utilisent `RESTRICT`.
 

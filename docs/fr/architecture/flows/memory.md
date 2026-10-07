@@ -17,6 +17,12 @@ d'ajout de document sont reconnues par un marqueur interne `document_append` ; D
 convertit les anciennes révisions avant de supprimer les motifs. Le critère de
 conservation `retention_reason` de Dream reste appliqué.
 
+Les souvenirs sont décrits par leur contenu et leur provenance, sans ancien champ
+`memory_type`. Lors de son retrait, DbAdmin ne normalise que les champs système des
+métadonnées mémoire, checkpoints Dream mémoire et expériences Lab d'extraction mémoire.
+Les mots-clés, contenus JSON rédigés, valeurs testées, exemples et valeurs par défaut
+des schémas, captures de sources et journaux d'appels sont préservés.
+
 ## Lecture avant une exécution
 
 Les items peuvent porter un objet `temporal` facultatif (année, mois, jour, jour ISO de semaine,
@@ -39,7 +45,7 @@ L'IHM applique toujours le filtre, dès la première recherche, sans possibilit�
 Elle préremplit un unique champ date/heure dans le fuseau global de Galaris. Le serveur résout
 les cibles locales saisies dans ce même fuseau ; la cible initiale conserve son instant UTC,
 y compris pendant une heure répétée. L'anticipation reste nulle et les résultats sont affichés
-dans le fuseau global, indépendamment de celui du navigateur. Les filtres texte/type/sujet/interlocuteur
+dans le fuseau global, indépendamment de celui du navigateur. Les filtres texte/sujet/interlocuteur
 sélectionnent les souvenirs sans ancrage. La branche temporelle sélectionne indépendamment les
 ancrages correspondants, même sans pertinence lexicale ou sémantique. L'union est comptée, triée
 et paginée en SQL avant hydratation ; les correspondances temporelles précèdent par défaut les
@@ -59,13 +65,12 @@ Le snapshot de session est indexé par connexion et salon. Le journal est autori
 contient des lignes; `Task.messages` et l'historique d'un runtime servent uniquement de repli.
 
 Le brief durable ne déclenche aucun modèle. La requête filtre d'abord le propriétaire, les accès
-directs, la visibilité publique et les dates de validité. Les mémoires `core` passent par le même
-rappel que les autres types et par la même portée de contact ; aucune place ni score artificiel ne
-leur est réservé. La projection de la fiche Agent reste exclue du brief, puisque l'identité et la
+directs, la visibilité publique, les dates de validité et la portée du contact.
+La projection de la fiche Agent reste exclue du brief, puisque l'identité et la
 personnalité viennent déjà du profil canonique dans le prompt système, mais elle reste disponible à
-la recherche explicite. Avant le reranking, un candidat doit porter une preuve lexicale directe ou
-une similarité sémantique atteignant à la fois le plancher `0,35` et une marge de `0,20` sous le
-meilleur candidat. Le résultat peut donc être vide. Le budget final en items et caractères reste
+la recherche explicite. Les preuves lexicales et les similarités sémantiques ordonnent les
+candidats admissibles ; un score faible ne vide pas à lui seul le rappel. Le résultat peut
+être vide lorsqu'aucun candidat admissible n'est disponible. Le budget final en items et caractères reste
 strict, et chaque extrait porte l'identifiant logique ainsi que ses sources.
 
 Le Topic est un prior de classement, jamais une frontière d'accès implicite. Avec un Topic
@@ -89,6 +94,31 @@ La génération de candidats lexicaux relie les termes significatifs par `OR`, p
 couverture FTS. Lorsque le fournisseur vectoriel est indisponible, le repli peut ainsi proposer
 les meilleurs souvenirs partiellement concordants au lieu d'exiger tous les mots de la requête.
 
+La projection FTS stockée `search_vector_folded` normalise les accents et les formes
+Unicode compatibles à l'écriture. La requête est normalisée avant son découpage.
+Le rappel renforce les groupes de noms explicitement capitalisés et leur concordance
+complète, puis favorise les termes et identités encore absents.
+Ces signaux ne déclenchent pas de recherche ou de modèle
+supplémentaire et ne changent pas la priorité des ancres temporelles. Ils restent
+heuristiques : homonymes, surnoms inconnus, pronoms et dates historiques nécessitent
+des preuves supplémentaires. Voir la décision
+[0158](../../../../project/decisions/0158-indexed-memory-query-evidence.md).
+
+Pour une question sur une personne indirectement désignée, des assertions positives
+entre deux noms complets peuvent identifier la cible dans les extraits déjà accessibles.
+La catégorie de relation doit correspondre à la demande ; négations, citations et
+incertitudes ne servent pas de preuve. Une proposition affirmative complète prise
+en charge est exigée entre les noms, y compris face aux négations contractées.
+Le classement privilégie alors la cible et
+sa relation uniquement lorsqu'un nom de cible unique est identifié, plutôt que le seul
+profil de la personne nommée. Un voisin déjà obtenu
+par un lien confirmé fort peut fournir son rôle sans mot commun à la question,
+si son titre commence par le nom complet résolu. Les limites de portée restent appliquées.
+Après couverture de l'identité, les termes demandés encore absents sont prioritaires.
+Les répétitions de mots d'un même extrait sont rétrogradées sans fusion ni suppression,
+avec conservation des nombres et négations. Les traductions et paraphrases ne sont
+pas automatiquement déclarées équivalentes. Aucun canal ni appel de modèle n'est ajouté.
+
 Il n'existe aucun espace mémoire. Chaque souvenir appartient directement à un agent, qui y accède
 toujours. Un autre agent ne le voit que par un grant posé sur ce souvenir ou parce que celui-ci est
 explicitement public. Les acquisitions automatiques restent privées : le partage n'est jamais
@@ -97,7 +127,7 @@ laissé à une initiative supposée du modèle et ne se propage pas à un conten
 ### Portée des souvenirs conversationnels
 
 Un Topic possède une projection `MemoryItem` publique et globale. Chaque interlocuteur observé
-possède séparément un nœud `MemoryItem(social)` privé, déterministe pour
+possède séparément un nœud `MemoryItem` privé, déterministe pour
 `(agent, bridge, identifiant distant)`. Toute extraction automatique attend d'abord un Topic. Dès
 son extraction, un souvenir conversationnel est scellé au contact par `MemoryContactItem` et
 `MemoryTopicContactScope + MemoryTopicContactItem` enregistre l'appartenance exacte.
@@ -120,9 +150,9 @@ Une source conversationnelle sans contact prouvé reste inéligible. L'absence d
 trois extracteurs automatiques Task, round texte et tour Voice, sans modifier les écritures
 explicites par tool ni le contrat distinct d’apprentissage.
 
-Un `MemoryItem` possède aussi une nature orthogonale à son rôle cognitif : `memory` pour un
-souvenir ordinaire, `document` pour un document Markdown de travail. Un document reste de type
-`working`, privé à sa création, mutable et non dédupliqué. Il utilise les mêmes UUID, ACL,
+La nature d'un `MemoryItem` distingue `memory` pour un souvenir ordinaire et `document` pour
+un document de travail. Un document est privé à sa création, mutable et non dédupliqué.
+Il utilise les mêmes UUID, ACL,
 ressources opaques, révisions et projections de recherche que les autres nœuds, mais il est exclu
 des acquisitions Dream et de l'oubli automatique par inactivité. Seul son propriétaire peut
 l'oublier ou modifier ses collaborateurs.
@@ -130,7 +160,7 @@ l'oublier ou modifier ses collaborateurs.
 ## Documents de travail collaboratifs
 
 ```text
-file_create(path="document://") ──► MemoryItem(document, working, privé)
+file_create(path="document://") ──► MemoryItem(document, privé)
        │
        ├─► file_read(document://uuid, offset) ──► passage borné
        ├─► file_edit(start_line, end_line, content) ──► révision atomique
@@ -225,7 +255,7 @@ voie `graph_link`, pondérée à `1,1` puis modulée par la confiance du lien, n
 souvenir possédant déjà une preuve lexicale ou vectorielle directe. Le repli lexical ignore les
 formules conversationnelles sans terme informatif et exige un recouvrement direct avec plusieurs
 termes pour une requête longue. Elle repasse toujours par
-les mêmes ACL, dates, types et surtout par le même filtre de contact. Un lien, même de confiance `1,0`, ne peut donc jamais
+les mêmes ACL, dates et surtout par le même filtre de contact. Un lien, même de confiance `1,0`, ne peut donc jamais
 faire entrer un souvenir scellé à Paul dans le rappel courant de Jacques.
 
 Une proposition positive `topic_membership_candidate` ne crée pas de candidat et ne définit pas
@@ -460,10 +490,10 @@ projection dérivée et ses arêtes, conserve les souvenirs liés et remet toute
 ## Projections des données canoniques
 
 ```text
-Agent ───────────────► Markdown core ───────────────┐
-Goal ────────────────► Markdown working/episodic ──┼─► MemoryItem privé et source-managed
-GoalCycle + Task ────► compte rendu episodic ──────┤          │
-expéditeur Messenger ► fiche social ───────────────┤          ├─ UUID conservé sur Agent/Goal/Cycle
+Agent ───────────────► fiche de profil ─────────────┐
+Goal ────────────────► description et suivi ────────┼─► MemoryItem privé et source-managed
+GoalCycle + Task ────► compte rendu ────────────────┤          │
+expéditeur Messenger ► fiche contact ──────────────┤          ├─ UUID conservé sur Agent/Goal/Cycle
 Process assigné/réussi ► procédure/résultat ───────┘          │
                                                               └─ identité source hashée pour le contact
 ```
@@ -482,7 +512,7 @@ récentes sont conservées. La fenêtre est calculée par `sequence`; lorsqu'ell
 sortante est oubliée et son `goal_cycles.memory_item_id` redevient nul.
 
 Une seconde projection, volontairement plus petite, représente chaque expéditeur humain observé
-par Messenger sous la forme d'une mémoire `social`. Son adresse est exactement
+par Messenger sous la forme d'une fiche contact. Son adresse est exactement
 `(messaging_id, user_id)` : code canonique du bridge et identifiant natif sensible à la casse.
 `owner_agent_id` isole la fiche privée, sans devenir une propriété de l'humain. La clé de source est
 le SHA-256 d'un JSON canonique versionné contenant ces trois valeurs ; elle n'expose donc pas
@@ -491,8 +521,8 @@ nom affiché, la messagerie et l'identifiant, jamais la connexion, la room ou le
 Un nom non vide nouveau révise la même fiche; un nom vide ne remplace jamais un nom déjà connu.
 Une observation identique ne crée aucune révision.
 
-`memory.project_process` projette sans LLM chaque `ProcessDefinition` affectée en mémoire
-procédurale et la sortie de chaque `ProcessRun` réussi en mémoire épisodique privée. L'entrée,
+`memory.project_process` projette sans LLM chaque `ProcessDefinition` affectée et
+la sortie de chaque `ProcessRun` réussi en mémoire privée. L'entrée,
 le snapshot brut, les tokens et callbacks ne sont jamais copiés. La sortie repasse par le
 sanitizer récursif Process, puis est bornée à 12 000 caractères. Un résultat est relié à sa
 définition par `result_of`; seules les 20 dernières réussites par agent et processus sont

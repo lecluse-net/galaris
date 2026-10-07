@@ -146,7 +146,6 @@ export interface ProposedMemory {
   action?: 'CREATE'
   title: string
   content: string
-  memory_type?: string
   keywords?: string[]
 }
 

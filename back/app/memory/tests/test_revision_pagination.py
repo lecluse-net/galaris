@@ -9,7 +9,7 @@ from app.task.models import Task, TaskStatus
 
 @pytest.mark.asyncio
 async def test_large_history_only_materializes_the_requested_revision_page(db, agents, memory_storage):
-    item, _ = await service.create_item(MemoryItemCreate(owner_agent_id=agents[0].id, title="History", memory_type="working", node_kind="document", payload=MemoryPayload(text="content")))
+    item, _ = await service.create_item(MemoryItemCreate(owner_agent_id=agents[0].id, title="History",  node_kind="document", payload=MemoryPayload(text="content")))
     table = MemoryRevision.__table__
     series = func.generate_series(2, 1001).table_valued("number").render_derived()
     expressions = [func.gen_random_uuid() if column.name == "id" else series.c.number if column.name == "revision" else column
@@ -32,7 +32,7 @@ async def test_legacy_version_reads_agree_with_history_and_preserve_content(db, 
     db.add(task)
     await db.flush()
     item, _ = await service.create_item(MemoryItemCreate(
-        owner_agent_id=owner.id, title="Legacy history", memory_type="working",
+        owner_agent_id=owner.id, title="Legacy history",
         node_kind="document", media_type="text/html", payload=MemoryPayload(text="<p>Original content</p>")))
     template = dict(item_id=item.id, provider_code=item.provider_code, resource_id=item.resource_id,
                     title=item.title, content_type=item.content_type, media_type=item.media_type,

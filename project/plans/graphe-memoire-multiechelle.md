@@ -43,8 +43,8 @@ propriétaires ou droits canoniques. Ce chantier porte sur une carte 2D ; la
 
 Le graphe replie désormais les branches d'au moins huit feuilles exclusivement reliées à
 une ancre. Le compteur de voisins global déjà fourni par le serveur interdit de déduire
-l'exclusivité d'une page partielle. Le zoom, le clic sur l'ancre et **Détails des branches**
-ouvrent leurs membres ; le dézoom et l'ajustement de la vue les replient. Les positions de
+l'exclusivité d'une page partielle. Le zoom et le clic sur l'ancre ouvrent leurs membres ;
+le dézoom et l'ajustement de la vue les replient. Les positions de
 la fenêtre sont animées par le moteur ECharts antérieur jusqu'à 600 items chargés, avec
 placement initial à convergence naturelle et rééquilibrage doux de 0,7 seconde lors d'une modification du graphe.
 Le zoom, le dépliage et la fermeture du détail conservent les positions, les feuilles étant déjà placées. Au-delà, le placement borné conserve les

@@ -466,7 +466,7 @@ Le candidat reformule les prompts Task/Message pour distinguer équivalence, pro
 inclusion, conserve le réemploi d'un Topic de même portée et resserre la déduplication : un
 recouvrement lexical ne suffit pas à rabattre un projet sur un thème général.
 
-Aucun nouveau modèle, colonne, type de mémoire, type de lien, statut concret/générique,
+Aucun nouveau modèle, colonne, type de lien, statut concret/générique,
 hiérarchie obligatoire ou reclassement massif. Conserver `DREAM_TOPIC_CREATION_MODE=propose`
 pendant la qualification et le canari.
 
@@ -740,7 +740,7 @@ retirer un lien dérivé si :
 La sélection doit être déterministe à snapshot identique, y compris en cas d’égalité. Elle ne
 compare que des nœuds autorisés dans le même périmètre de propriétaire. Un souvenir scellé à un
 contact peut changer de Topic, jamais de contact. Un document de travail, une projection
-source-managed ou un type de mémoire particulier peut être exclu par politique explicite plutôt
+source-managed peut être exclu par politique explicite plutôt
 que par effet secondaire.
 
 ### 10.5 Application d’un déplacement

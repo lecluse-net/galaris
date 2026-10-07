@@ -426,8 +426,7 @@ items with their direct owner, grants, revisions, sources, links, usages, idempo
 and jobs. There is no intermediate memory space. `ResourceStorage` manipulates
 only bytes by opaque identifier; the `native` provider writes atomically under the fixed
 `/data/memory` directory. Search applies owner, access, visibility, and validity in SQL before
-ranking. The automatic brief ranks `core` memories with the other types instead of reserving
-them an unconditional place. Ranking first requires direct and informative lexical evidence—not
+ranking. Ranking first requires direct and informative lexical evidence—not
 a simple conversational word—or sufficient semantic proximity, then combines topic membership,
 confirmed links, provenance, freshness, and local centrality before discarding near-duplicates.
 The result can therefore contain zero to eight items by default, without an LLM call. The Agent
@@ -461,8 +460,8 @@ global path. Public Topic projections remain indexable for dossier preselection 
 from factual recall. Dream also produces `suggested=true` attachment, anomaly, merge, or split
 links from these vectors; none of these signals alone modifies a canonical `topic_contains`.
 
-Working HTML documents are `MemoryItem`s with `node_kind=document` and type
-`working`. They are the canonical home for content authored and shared by agents, even within
+Working HTML documents are `MemoryItem`s with `node_kind=document`.
+They are the canonical home for content authored and shared by agents, even within
 a single Task. Memory and File Sharing are mandatory system services; resource ACLs and
 context restrictions still apply. See the [document contract](editorial-html.md).
 They remain private at creation, are neither deduplicated with ordinary memories, targeted
@@ -638,7 +637,7 @@ strengthened and labeled, while suggestions remain fine-grained and discontinuou
 `app.memory.source_projection` adapts canonical `Agent`, `Goal`, and `GoalCycle` data into
 private Markdown. Sources retain their `memory_item_id`; the item in turn retains a unique source
 identity. `app.memory.messenger_contact` separately projects the minimal identity of human
-senders observed in `social` memories, with a hashed key based on the owning agent, bridge code,
+senders observed in contact records, with a hashed key based on the owning agent, bridge code,
 and exact native identifier. Connection, room, and message content are excluded.
 `memory_contact_identities` then associates multiple Messenger addresses or a proven `USER`
 identity with the same canonical item. `app.contact` provides administration and transactional

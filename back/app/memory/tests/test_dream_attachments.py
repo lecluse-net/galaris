@@ -26,7 +26,7 @@ from core.params.runtime_settings import RuntimeSettings
 async def add_attachment(db, owner, kind):
     document, _ = await service.create_item(MemoryItemCreate(
         owner_agent_id=owner.id, title="Dream source", node_kind="document",
-        memory_type="working", media_type="text/html", payload=MemoryPayload(text="<p>Source</p>"),
+         media_type="text/html", payload=MemoryPayload(text="<p>Source</p>"),
     ))
     if kind == "image":
         output = BytesIO()

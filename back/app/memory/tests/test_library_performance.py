@@ -26,7 +26,7 @@ async def test_library_page_cost_does_not_materialize_the_revision_corpus(db, ag
     revisions_per_document = 100
     for start, stop in ((0, 100), (100, 1000)):
         rows = [{"id": uuid4(), "owner_agent_id": owner_id if index % 2 == 0 else peer_id,
-                 "resource_id": resource, "title": f"Document {index:04d}", "memory_type": "working",
+                 "resource_id": resource, "title": f"Document {index:04d}",
                  "node_kind": "document", "search_text": "body " * 4000,
                  "keywords": ["visible" if index % 2 == 0 else "private"],
                  "content_hash": hashlib.sha256(str(index).encode()).hexdigest(),

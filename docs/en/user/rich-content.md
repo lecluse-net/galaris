@@ -62,7 +62,7 @@ folder picker, including when a search hides some documents.
 ## Links
 
 The **Galaris link** button opens accessible content search: enter at least two characters,
-filter by type, select a target, then adjust the link text before inserting it. Selected text
+filter by resource kind, select a target, then adjust the link text before inserting it. Selected text
 and its formatting are preserved. Clicking the backdrop also closes the dialog.
 Use the native link button to enter a URL or Galaris reference. The label belongs to your text; renaming the target does not break its reference. A link
 does not share the target: access is checked when it opens. In reading mode, click to open;

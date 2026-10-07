@@ -165,7 +165,6 @@ async def test_realtime_memory_remember_keeps_exact_round_and_contact_scope(
             {
                 "title": "Préférence de Nicolas",
                 "content": "Nicolas préfère les réponses courtes.",
-                "memory_type": "semantic",
                 "keywords": ["réponses", "préférence"],
             }
         ),

@@ -10,7 +10,7 @@ export default {
     for (const result of pages) {
       if (result.status !== 'fulfilled') continue
       const page: MemorySearchPage = result.value
-      for (const { item } of page.hits) found.set(item.id, { uri: `${item.node_kind === 'document' ? 'document' : 'memory'}://${item.id}`, title: item.title, context: `${item.memory_type} · ${item.owner_agent_id ?? item.owner_user_id ?? ''}` })
+      for (const { item } of page.hits) found.set(item.id, { uri: `${item.node_kind === 'document' ? 'document' : 'memory'}://${item.id}`, title: item.title, context: `${item.owner_agent_id ?? item.owner_user_id ?? ''}` })
     }
     try {
       const library = await memoryService.browseDocumentLibrary({ query, limit: 50 })

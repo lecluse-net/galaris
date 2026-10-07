@@ -52,7 +52,7 @@ transversaux ne font pas l'objet d'une modification ou d'une certification ici.
 | Chat | Création avec préférences, archivage/restauration, filtres indépendants, compteurs accessibles, effort de tâche transmis puis réinitialisé, détails processus/documents. |
 | Tâches et exécution | Filtres clavier/souris et paramètres HTTP, expansion locale, conservation du défilement, retour en bas, pause sans animation, trace vivante malgré un chargement retardé. |
 | Goals et calendrier | Pause/reprise avec révision, actions absentes en lecture seule, onglets et fermeture, grille réelle au clavier/pointeur et restriction aux créneaux permis. |
-| Mémoire | Recherche avec types, sélection d'un résultat, autosave avec révision, brouillon préservé lors d'une révision distante, bibliothèque en plusieurs pages, document mobile, tableaux Markdown. |
+| Mémoire | Recherche et filtres, sélection d'un résultat, autosave avec révision, brouillon préservé lors d'une révision distante, bibliothèque en plusieurs pages, document mobile, tableaux Markdown. |
 | LLM et harnais | Tokens/coûts/effort affichés, réponse normalisée, événements filtrés par propriétaire, consentement d'abonnement et révocation, disponibilité/retry et prévention du double restart. |
 | Préférences | Thème/langue persistés, diff de prompt, sauvegarde, conservation du personnalisé ou adoption du défaut, révocation des droits. |
 | Compétences | Actions à 375, 1023, 1024 et 1440 px, disposition calculée, ouverture/fermeture et aperçu réel du frontmatter. |

@@ -750,7 +750,7 @@ Un agent configuré en mode `realtime` remplace ce découpage par une session au
 Chaque commit VAD crée encore un `ConversationRound`, sans inventer de transcript ni d'objectif
 textuel : l’audio est interprété directement par le modèle fournisseur. L'historique récent de la
 room est projeté comme transcript conversationnel non fiable au démarrage de chaque nouvel appel.
-La mémoire core est injectée au démarrage, `memory_search` complète le contexte à la demande et
+La mémoire pertinente est injectée au démarrage, `memory_search` complète le contexte à la demande et
 `task_submit` crée une Task durable par le port agentique.
 
 Après la conversation, Dream peut extraire progressivement les faits durables des tours terminés

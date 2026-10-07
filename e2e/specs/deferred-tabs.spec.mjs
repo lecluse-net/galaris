@@ -17,7 +17,7 @@ test('a late document library response cannot cancel navigation to another lazy 
   const title = `Navigation race ${fixture.agent_id}`
   const created = await request.post('/api/memory/items', {
     headers: { Authorization: `Bearer ${session.access_token}`, 'X-Editorial-Profile-Version': '1' },
-    data: { owner_agent_id: fixture.agent_id, title, node_kind: 'document', memory_type: 'working',
+    data: { owner_agent_id: fixture.agent_id, title, node_kind: 'document',
       media_type: 'text/html', payload: { text: '<p>Preserved document</p>' } },
   })
   expect(created.ok(), await created.text()).toBeTruthy()

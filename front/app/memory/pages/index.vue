@@ -32,32 +32,6 @@
               :loading="agentStore.loading"
             />
           </div>
-          <div v-if="activeTab === 'list'" class="memory-filter-block__field">
-            <MemoryTemporalFilter ref="temporalFilter" v-model="store.temporal" :timezone="store.temporalTimezone" @update:model-value="() => searchSafely(true)" />
-          </div>
-          <div v-if="activeTab === 'graph'" class="memory-filter-block__timeline">
-            <div class="memory-filter-block__slider">
-              <q-slider
-                v-model="graphTimeRangeDraftIndex"
-                :min="0"
-                :max="GRAPH_TIME_RANGE_OPTIONS.length - 1"
-                :step="1"
-                markers
-                snap
-                label
-                label-always
-                :label-value="graphTimeRangeLabel"
-                :title="t('memory.graph.timeRange')"
-                :aria-label="t('memory.graph.timeRange')"
-                @change="applyGraphTimeRange"
-              />
-            </div>
-          </div>
-        </div>
-
-        <div
-          class="memory-filter-block__row memory-filter-block__row--secondary"
-        >
           <div class="memory-filter-block__field">
             <q-input
               v-model="store.query"
@@ -71,21 +45,12 @@
               <template #prepend><q-icon name="search" /></template>
             </q-input>
           </div>
-          <div class="memory-filter-block__field">
-            <q-select
-              v-model="store.selectedTypes"
-              :options="typeOptions"
-              behavior="menu"
-              outlined
-              dense
-              multiple
-              emit-value
-              map-options
-              options-dense
-              :label="t('memory.type')"
-              @update:model-value="() => searchSafely(true)"
-            />
-          </div>
+        </div>
+
+        <div
+          class="memory-filter-block__row memory-filter-block__row--secondary"
+          :class="{ 'memory-filter-block__row--list': activeTab === 'list' }"
+        >
           <div class="memory-filter-block__field">
             <q-select
               v-model="store.selectedTopicItemId"
@@ -118,9 +83,10 @@
               @update:model-value="() => searchSafely(true)"
             />
           </div>
-        </div>
-        <div v-if="activeTab === 'list'" class="memory-filter-block__actions">
-          <q-btn type="submit" color="primary" outline icon="refresh" :label="t('memory.temporalSearch.apply')" />
+          <div v-if="activeTab === 'list'" class="memory-filter-block__temporal">
+            <MemoryTemporalFilter ref="temporalFilter" v-model="store.temporal" :timezone="store.temporalTimezone" @update:model-value="() => searchSafely(true)" />
+            <q-btn type="submit" color="primary" outline icon="refresh" :label="t('memory.temporalSearch.apply')" />
+          </div>
         </div>
       </q-form>
     </q-card>
@@ -223,13 +189,6 @@
                   </div>
                 </div>
               </div>
-            </q-td>
-          </template>
-          <template #body-cell-memory_type="props">
-            <q-td :props="props">
-              <q-chip dense outline :color="typeColor(props.row.item.memory_type)">
-                {{ t(`memory.types.${props.row.item.memory_type}`) }}
-              </q-chip>
             </q-td>
           </template>
           <template #body-cell-visibility="props">
@@ -345,12 +304,6 @@
 
                   <div class="memory-mobile-fields">
                     <div class="memory-mobile-field">
-                      <div class="memory-mobile-label">{{ t('memory.type') }}</div>
-                      <q-chip dense outline :color="typeColor(props.row.item.memory_type)" class="q-ma-none q-mt-xs">
-                        {{ t(`memory.types.${props.row.item.memory_type}`) }}
-                      </q-chip>
-                    </div>
-                    <div class="memory-mobile-field">
                       <div class="memory-mobile-label">{{ t('memory.visibility') }}</div>
                       <div class="q-mt-xs">
                         <q-icon :name="visibilityIcon(props.row.item.visibility)" class="q-mr-xs" />
@@ -390,13 +343,12 @@
 
       <q-tab-panel name="graph" class="q-pa-none">
         <MemoryGraph
+          ref="memoryGraph"
           v-if="activeTab === 'graph'"
           :agent-id="store.selectedAgentId"
           :query="store.query"
-          :memory-types="store.selectedTypes"
           :topic-item-id="store.selectedTopicItemId"
           :contact-item-id="store.selectedContactItemId"
-          :time-range-milliseconds="graphTimeRangeMilliseconds"
           @open="openDetail"
         />
       </q-tab-panel>
@@ -425,6 +377,7 @@
         <q-separator />
         <q-tab-panels v-if="store.currentItem" v-model="detailTab" class="col memory-detail-panels galaris-dialog-body">
           <q-tab-panel name="memory" class="q-pa-none">
+            <MemoryNodeMetadata v-if="currentMetadata" :node="currentMetadata" :role-label="currentRoleLabel" class="q-pa-sm" />
             <MemoryDreamActions :key="`${store.selectedAgentId}:${store.currentItem.id}`"
               :item-id="store.currentItem.id" :agent-id="store.selectedAgentId"
               :node-kind="store.currentItem.node_kind"
@@ -482,6 +435,10 @@
             <MemoryFileResources v-if="store.currentItem.node_kind === 'file'" :key="`${store.selectedAgentId}:${store.currentItem.id}:${dreamMediaRevision}`"
               :item-id="store.currentItem.id" :agent-id="store.selectedAgentId" class="q-px-sm q-pb-sm" />
             <q-card-section class="q-px-sm q-pt-none q-pb-sm">
+              <div v-if="graphContext?.node.id === store.currentItem.id && graphContext.relations.length" class="q-my-sm">
+                <div class="memory-section-title q-mb-xs">{{ t('memory.graph.neighbors') }}</div>
+                <MemoryGraphRelations :relations="graphContext.relations" @select="openGraphNeighbor" />
+              </div>
               <div class="q-mt-sm">
                 <div class="row items-center justify-between q-mb-xs">
                   <div class="memory-section-title">{{ t('memory.links') }}</div>
@@ -610,7 +567,9 @@ import { usePrivilegeStore } from '@/core/authorize/stores/privilegeStore'
 import { useAgentStore } from '@/app/agent/stores/agentStore'
 import { AgentSelect } from '@/app/agent'
 import MemoryGraph from '../components/MemoryGraph.vue'
+import MemoryNodeMetadata from '../components/MemoryNodeMetadata.vue'
 import MemoryDreamActions from '../components/MemoryDreamActions.vue'
+import MemoryGraphRelations from '../components/MemoryGraphRelations.vue'
 import MemoryFindingDialog from '../components/MemoryFindingDialog.vue'
 import MemoryLinkDialog from '../components/MemoryLinkDialog.vue'
 import MemoryTemporalFilter from '../components/MemoryTemporalFilter.vue'
@@ -621,12 +580,13 @@ import { memoryService } from '../services/memoryService'
 import type {
   MemoryItem,
   MemoryItemDetail,
+  MemoryGraphNode,
+  MemoryGraphRelation,
   MemoryFinding,
   MemoryFindingKind,
   MemoryNodeKind,
   MemoryRelationType,
   MemorySortField,
-  MemoryType,
   MemoryVisibility,
 } from '../types'
 
@@ -646,6 +606,33 @@ const canAdminister = computed(() => privilegeStore.hasPrivilege(privileges.MEMO
 const canViewTasks = computed(() => privilegeStore.hasPrivilege(privileges.TASK_ACCESS))
 const activeTab = ref<'list' | 'graph'>('list')
 const detailDialog = ref(false)
+const memoryGraph = useTemplateRef<InstanceType<typeof MemoryGraph>>('memoryGraph')
+const graphContext = ref<{ node: MemoryGraphNode; relations: MemoryGraphRelation[] } | null>(null)
+const currentMetadata = computed(() => {
+  const item = store.currentItem
+  if (!item) return null
+  const activityDates = [item.created_at, item.updated_at, item.last_accessed_at]
+    .filter((value): value is string => value !== null)
+    .sort((left, right) => Date.parse(right) - Date.parse(left))
+  return {
+    visibility: item.visibility,
+    access_count: item.access_count,
+    activity_at: graphContext.value?.node.id === item.id
+      ? graphContext.value.node.activity_at : activityDates[0]!,
+  }
+})
+const currentRoleLabel = computed(() => {
+  const item = store.currentItem
+  if (!item) return ''
+  const role = graphContext.value?.node.id === item.id ? graphContext.value.node.entity_kind : item.node_kind
+  return t(`memory.graph.roles.${role}`)
+})
+watch(detailDialog, open => {
+  if (!open) {
+    graphContext.value = null
+    memoryGraph.value?.closeDetails()
+  }
+})
 const detailTab = ref<'memory' | 'history'>('memory')
 const canModifyCurrent = computed(() => canEdit.value && Boolean(store.currentItem?.access.can_write)
   && (!store.currentItem?.source_managed || store.currentItem?.managed_source_kind === 'file_catalogue')
@@ -664,58 +651,7 @@ const temporalFilter = useTemplateRef<InstanceType<typeof MemoryTemporalFilter>>
 const filterOptionsLoading = ref(false)
 const topicFilterOptions = ref<{ value: string, label: string }[]>([])
 const contactFilterOptions = ref<{ value: string, label: string }[]>([])
-const HOUR = 60 * 60 * 1000
-const DAY = 24 * HOUR
-const YEAR = 365 * DAY
-interface GraphTimeRangeOption {
-  amount: number | null
-  milliseconds: number | null
-  unit: 'hours' | 'days' | 'years' | null
-}
-
-const GRAPH_TIME_RANGE_OPTIONS: readonly GraphTimeRangeOption[] = [
-  { amount: 1, milliseconds: HOUR, unit: 'hours' },
-  { amount: 3, milliseconds: 3 * HOUR, unit: 'hours' },
-  { amount: 6, milliseconds: 6 * HOUR, unit: 'hours' },
-  { amount: 12, milliseconds: 12 * HOUR, unit: 'hours' },
-  { amount: 1, milliseconds: DAY, unit: 'days' },
-  { amount: 2, milliseconds: 2 * DAY, unit: 'days' },
-  { amount: 3, milliseconds: 3 * DAY, unit: 'days' },
-  { amount: 7, milliseconds: 7 * DAY, unit: 'days' },
-  { amount: 14, milliseconds: 14 * DAY, unit: 'days' },
-  { amount: 30, milliseconds: 30 * DAY, unit: 'days' },
-  { amount: 60, milliseconds: 60 * DAY, unit: 'days' },
-  { amount: 90, milliseconds: 90 * DAY, unit: 'days' },
-  { amount: 180, milliseconds: 180 * DAY, unit: 'days' },
-  { amount: 1, milliseconds: YEAR, unit: 'years' },
-  { amount: 2, milliseconds: 2 * YEAR, unit: 'years' },
-  { amount: 3, milliseconds: 3 * YEAR, unit: 'years' },
-  { amount: 5, milliseconds: 5 * YEAR, unit: 'years' },
-  { amount: 10, milliseconds: 10 * YEAR, unit: 'years' },
-  { amount: 20, milliseconds: 20 * YEAR, unit: 'years' },
-  { amount: null, milliseconds: null, unit: null },
-]
-const DEFAULT_GRAPH_TIME_RANGE_INDEX = GRAPH_TIME_RANGE_OPTIONS.length - 1
-const graphTimeRangeDraftIndex = ref(DEFAULT_GRAPH_TIME_RANGE_INDEX)
-const graphTimeRangeIndex = ref(DEFAULT_GRAPH_TIME_RANGE_INDEX)
-const graphTimeRangeDraft = computed<GraphTimeRangeOption>(() => (
-  GRAPH_TIME_RANGE_OPTIONS[graphTimeRangeDraftIndex.value]
-  ?? GRAPH_TIME_RANGE_OPTIONS[DEFAULT_GRAPH_TIME_RANGE_INDEX]!
-))
-const graphTimeRangeMilliseconds = computed<number | null>(() => (
-  GRAPH_TIME_RANGE_OPTIONS[graphTimeRangeIndex.value]?.milliseconds ?? null
-))
-const graphTimeRangeLabel = computed(() => {
-  const option = graphTimeRangeDraft.value
-  if (option.amount === null || option.unit === null) return t('memory.graph.allHistory')
-  const unit = option.unit === 'years' && option.amount === 1 ? 'year' : option.unit
-  return t(`memory.graph.rangeUnits.${unit}`, { count: option.amount })
-})
-
 type TableRequest = Parameters<NonNullable<QTableProps['onRequest']>>[0]
-
-const memoryTypes: MemoryType[] = ['core', 'working', 'episodic', 'semantic', 'procedural', 'social']
-const typeOptions = computed(() => memoryTypes.map(value => ({ value, label: t(`memory.types.${value}`) })))
 const agentOptions = computed(() => agentStore.agents.map(agent => ({
   value: agent.id,
   label: `${agent.first_name} ${agent.last_name}`.trim() || agent.code,
@@ -733,13 +669,6 @@ const itemColumns = computed<QTableProps['columns']>(() => [
     name: 'title',
     label: t('memory.title'),
     field: (row: { item: MemoryItem }) => row.item.title,
-    align: 'left',
-    sortable: true,
-  },
-  {
-    name: 'memory_type',
-    label: t('memory.type'),
-    field: (row: { item: MemoryItem }) => row.item.memory_type,
     align: 'left',
     sortable: true,
   },
@@ -788,7 +717,6 @@ const editor = reactive({
   temporal: null as import('../types').MemoryTemporalAnchor | null,
   title: '',
   content: '',
-  memoryType: 'semantic' as MemoryType,
   nodeKind: 'memory' as MemoryNodeKind,
   keywords: [] as string[],
   readOnly: false,
@@ -799,7 +727,6 @@ const editor = reactive({
 const dreamDraftChanged = computed(() => {
   const item = store.currentItem
   return Boolean(item && (editor.title !== item.title || editor.content !== (item.payload.text ?? '')
-    || editor.memoryType !== item.memory_type
     || editor.readOnly !== item.read_only
     || JSON.stringify(editor.keywords) !== JSON.stringify(item.keywords)
     || JSON.stringify(editor.temporal) !== JSON.stringify(item.temporal ?? null)))
@@ -833,10 +760,6 @@ function formatDate(value: string | null): string {
   return new Intl.DateTimeFormat(locale.value, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value))
 }
 
-function applyGraphTimeRange(): void {
-  graphTimeRangeIndex.value = graphTimeRangeDraftIndex.value
-}
-
 function formatNumber(value: number): string {
   return new Intl.NumberFormat(locale.value).format(value)
 }
@@ -852,9 +775,6 @@ function memoryTitle(memoryId: string): string {
     ?? memoryId
 }
 
-function typeColor(type: MemoryType): string {
-  return ({ core: 'deep-purple', working: 'orange', episodic: 'blue', semantic: 'teal', procedural: 'indigo', social: 'pink' })[type]
-}
 
 function visibilityIcon(visibility: MemoryVisibility): string {
   return ({ private: 'lock', shared: 'group', public: 'public' })[visibility]
@@ -951,7 +871,6 @@ async function loadFilterOptions(agentId: number | null): Promise<void> {
 
 function isMemorySortField(value: string | null): value is MemorySortField {
   return value === 'title'
-    || value === 'memory_type'
     || value === 'visibility'
     || value === 'owner'
     || value === 'access_count'
@@ -975,9 +894,10 @@ async function onTableRequest(request: TableRequest): Promise<void> {
   }
 }
 
-async function openDetail(id: string): Promise<void> {
+async function openDetail(id: string, node?: MemoryGraphNode, relations: MemoryGraphRelation[] = []): Promise<void> {
   if (store.hits.some(hit => hit.item.id === id && hit.item.node_kind === 'folder')) return
   editingId.value = null
+  graphContext.value = node ? { node, relations } : null
   detailTab.value = 'memory'
   detailDialog.value = true
   try {
@@ -988,6 +908,12 @@ async function openDetail(id: string): Promise<void> {
     detailDialog.value = false
     notifyError(error)
   }
+}
+
+async function openGraphNeighbor(id: string): Promise<void> {
+  detailDialog.value = false
+  await nextTick()
+  memoryGraph.value?.selectNode(id)
 }
 
 async function changeRevisionPageSize(size: number): Promise<void> {
@@ -1021,7 +947,7 @@ async function saveLink(
 function resetEditor(): void {
   Object.assign(editor, {
     temporal: null,
-    title: '', content: '', memoryType: 'semantic',
+    title: '', content: '',
     nodeKind: 'memory',
     keywords: [], readOnly: false, revision: null,
     mediaType: 'text/html', contentType: 'text',
@@ -1040,7 +966,6 @@ function prepareEditor(item: MemoryItemDetail): void {
     temporal: item.temporal ? { ...item.temporal } : null,
     title: item.title,
     content: item.payload.text ?? '',
-    memoryType: item.memory_type,
     nodeKind: item.node_kind,
     keywords: [...item.keywords],
     readOnly: item.read_only,
@@ -1070,7 +995,6 @@ async function saveEditor(): Promise<void> {
         title: editor.title.trim(),
         payload: { text: editor.content },
         media_type: editor.mediaType,
-        memory_type: editor.memoryType,
         keywords,
         read_only: editor.readOnly,
       })
@@ -1081,7 +1005,6 @@ async function saveEditor(): Promise<void> {
         title: editor.title.trim(),
         payload: { text: editor.content },
         media_type: editor.mediaType,
-        memory_type: editor.nodeKind === 'document' ? 'working' : editor.memoryType,
         node_kind: editor.nodeKind,
         visibility: 'private',
         keywords,
@@ -1134,6 +1057,8 @@ let pageDisposed = false
 onBeforeUnmount(() => { pageDisposed = true })
 watch(() => store.selectedAgentId, (agentId, previousAgentId) => {
   if (agentId !== previousAgentId) {
+    detailDialog.value = false
+    graphContext.value = null
     store.selectedTopicItemId = null
     store.selectedContactItemId = null
     topicFilterOptions.value = []
@@ -1144,11 +1069,6 @@ watch(() => store.selectedAgentId, (agentId, previousAgentId) => {
     loadFilterOptions(agentId),
     searchSafely(true),
   ]).catch(notifyError)
-})
-watch(() => editor.nodeKind, (nodeKind) => {
-  if (editingId.value === null && nodeKind === 'document') {
-    editor.memoryType = 'working'
-  }
 })
 
 onMounted(async () => {
@@ -1201,18 +1121,18 @@ watch(() => [route.query.item_id, agentStore.agents.length] as const, async ([va
 <style scoped>
 .memory-filter-block__form {
   display: grid;
-  gap: 8px;
+  gap: 12px;
   padding: 16px;
 }
 
 .memory-filter-block__row {
   display: grid;
-  gap: 8px;
+  gap: 12px;
   align-items: start;
 }
 
 .memory-filter-block__row--primary {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: minmax(0, 1fr) minmax(0, 2fr);
 }
 
 .memory-filter-block :deep(.q-field__control),
@@ -1220,9 +1140,21 @@ watch(() => [route.query.item_id, agentStore.agents.length] as const, async ([va
   min-height: 44px;
 }
 
-.memory-filter-block__actions {
+.memory-filter-block__temporal {
   display: flex;
-  justify-content: flex-end;
+  align-items: flex-start;
+  gap: 8px;
+  min-width: 0;
+}
+
+.memory-filter-block__temporal > .q-field {
+  flex: 1;
+  min-width: 0;
+}
+
+.memory-filter-block__temporal > .q-btn {
+  min-height: 44px;
+  flex: 0 0 auto;
 }
 
 .memory-agent-select :deep(.q-field__native > .row) {
@@ -1231,19 +1163,15 @@ watch(() => [route.query.item_id, agentStore.agents.length] as const, async ([va
 }
 
 .memory-filter-block__row--secondary {
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.memory-filter-block__row--list {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(300px, 1.4fr);
 }
 
 .memory-filter-block__field {
   min-width: 0;
-}
-
-.memory-filter-block__timeline {
-  min-width: 0;
-}
-
-.memory-filter-block__slider {
-  padding: 20px 0 0;
 }
 
 .memory-list-table {
@@ -1356,11 +1284,15 @@ watch(() => [route.query.item_id, agentStore.agents.length] as const, async ([va
 
 @media (max-width: 1023px) {
   .memory-filter-block__row--primary {
-    grid-template-columns: minmax(0, 1fr);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .memory-filter-block__row--secondary {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .memory-filter-block__temporal {
+    grid-column: 1 / -1;
   }
 }
 
@@ -1369,6 +1301,7 @@ watch(() => [route.query.item_id, agentStore.agents.length] as const, async ([va
     padding: 12px;
   }
 
+  .memory-filter-block__row--primary,
   .memory-filter-block__row--secondary {
     grid-template-columns: minmax(0, 1fr);
   }

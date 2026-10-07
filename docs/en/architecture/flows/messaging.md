@@ -716,7 +716,7 @@ modal can display the useful provider message without depending on logs.
 An agent configured in `realtime` mode replaces this split with a persistent audio session. Each
 VAD commit still creates a `ConversationRound`, without inventing a transcript or textual
 objective: the audio is interpreted directly by the provider model. The room’s recent history is
-projected as an unreliable conversational transcript at the start of each new call. Core memory
+projected as an unreliable conversational transcript at the start of each new call. Relevant memory
 is injected at startup, `memory_search` completes context on demand, and `task_submit` creates a
 durable Task through the agent port.
 

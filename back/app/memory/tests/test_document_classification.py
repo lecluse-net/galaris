@@ -66,7 +66,7 @@ def test_document_icon_contract_rejects_untrusted_icons_and_unbounded_batches():
 
 async def document(owner, title, document_type="html"):
     item, _ = await service.create_item(MemoryItemCreate(
-        owner_agent_id=owner.id, title=title, node_kind="document", memory_type="working",
+        owner_agent_id=owner.id, title=title, node_kind="document",
         document_type=document_type,
         media_type="application/json" if document_type == "dataset" else "text/html",
         payload=MemoryPayload(text='{"label":"Searchable report"}' if document_type == "dataset" else "<p>Searchable report</p>"),

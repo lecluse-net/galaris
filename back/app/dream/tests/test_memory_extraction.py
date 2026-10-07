@@ -206,7 +206,6 @@ async def test_every_recalled_node_is_shown_for_fact_containment(
             owner_agent_id=owner.id,
             memory_item_id=None,
             title="Fiche de poste complète",
-            memory_type="core",
             content=(
                 "L'agent pilote la fiabilité de la plateforme. "
                 "Il privilégie des changements simples et vérifiables."
@@ -221,7 +220,6 @@ async def test_every_recalled_node_is_shown_for_fact_containment(
             owner_agent_id=owner.id,
             title="Guide de livraison",
             payload=MemoryPayload(text="Les livraisons ont lieu chaque mardi."),
-            memory_type="working",
             node_kind="document",
         )
     )

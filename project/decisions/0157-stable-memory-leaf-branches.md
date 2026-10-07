@@ -15,8 +15,9 @@ ne multiplient pas les membres et un voisin supplémentaire hors page interdit l
 À partir de huit feuilles chargées et visibles, l'ancre représente la branche avec un compteur.
 Le zoom ouvre les branches à partir de 1,8 et replie à 1,35 ; ces
 seuils distincts évitent les oscillations. Un clic sur le groupe cadre son ancre et l'ouvre.
-**Détails des branches** donne aussi accès aux membres au clavier et au toucher sans changer
-le cadrage. Le compteur global conserve les items chargés, y compris les membres repliés.
+Les boutons de zoom donnent aussi accès aux membres au clavier et au toucher. Le contrôle
+distinct de dépliage global est retiré : le zoom et le clic sur le groupe pilotent le détail.
+Le compteur global conserve les items chargés, y compris les membres repliés.
 Les nœuds partagés et leurs liens demeurent individuels.
 
 Jusqu'à 600 items chargés, le frontend conserve le moteur ECharts `force` animé utilisé

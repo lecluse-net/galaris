@@ -18,7 +18,6 @@ def item_to_public(item: MemoryItem, access: MemoryAccess) -> MemoryItemPublic:
             "owner_user_id": item.owner_user_id,
             "provider_code": item.provider_code,
             "title": item.title,
-            "memory_type": item.memory_type,
             "node_kind": item.node_kind,
             "document_type": item.document_type,
             "content_type": item.content_type,

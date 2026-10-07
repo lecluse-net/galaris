@@ -1,10 +1,13 @@
 """A concurrent committed change must not resurrect a cached search result."""
 
 import asyncio
+import builtins
 from dataclasses import replace
 from uuid import uuid4
+from weakref import WeakValueDictionary
 
 import pytest
+from sqlalchemy.sql import selectable
 
 from app.agent.models import Agent, Title
 from app.memory import bootstrap, context, retrieval, semantic_index, service
@@ -17,6 +20,55 @@ from app.memory.schemas import (
 )
 from core.database import get_db, get_db_session
 from core.user import UserModel
+
+
+@pytest.mark.asyncio
+async def test_recall_preserves_access_when_sqlalchemy_reuses_anonymous_names(
+    agents, memory_storage, monkeypatch,
+):
+    owner, reader = agents
+    own, _ = await service.create_item(MemoryItemCreate(
+        owner_agent_id=reader.id, title="Synthetic evidence — owned",
+        payload=MemoryPayload(text="<p>Synthetic evidence about the workshop.</p>"),
+        media_type="text/html",
+    ))
+    shared, _ = await service.create_item(MemoryItemCreate(
+        owner_agent_id=owner.id, title="Synthetic evidence — shared",
+        payload=MemoryPayload(text="<p>Synthetic evidence about the meeting.</p>"),
+        media_type="text/html",
+    ))
+    private, _ = await service.create_item(MemoryItemCreate(
+        owner_agent_id=owner.id, title="Synthetic evidence — private",
+        payload=MemoryPayload(text="<p>Synthetic evidence reserved for its owner.</p>"),
+        media_type="text/html",
+    ))
+    await service.set_item_grant(shared.id, reader.id, MemoryGrantUpdate(), actor_agent_id=owner.id)
+
+    async def no_embedding():
+        raise MemoryEmbeddingNotConfiguredError("unset")
+    monkeypatch.setattr(retrieval, "resolve_embedding_model", no_embedding)
+    # Reuse an address only once its original CTE is released, as a real
+    # allocator can. Generative prefix_with() copies keep the old label after
+    # releasing its seed object. Live CTEs must still have distinct addresses.
+    allocated = WeakValueDictionary()
+    def recycled_id(obj):
+        if not isinstance(obj, selectable.CTE):
+            return builtins.id(obj)
+        for address, live in allocated.items():
+            if live is obj:
+                return address
+        address = 101
+        while address in allocated:
+            address += 1
+        allocated[address] = obj
+        return address
+    with monkeypatch.context() as allocator:
+        allocator.setattr(selectable, "id", recycled_id, raising=False)
+        result = await retrieval.recall_items(MemoryRecallRequest(
+            agent_id=reader.id, query="Synthetic evidence", limit=8,
+        ))
+    assert {hit.item.id for hit in result.hits} == {own.id, shared.id}
+    assert private.id not in {hit.item.id for hit in result.hits}
 
 
 @pytest.mark.asyncio

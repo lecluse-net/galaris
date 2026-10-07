@@ -299,7 +299,7 @@ when it matches. Undated memories continue through ordinary relevance search.
 In **Memory → List**, the temporal filter always applies, starting with the first search. A single
 date and time field is prefilled with the browser's current local time. Edit it and click **Apply**
 to check that exact instant, with no lookahead or timezone to enter. The list unites two independent
-selections: **undated memories** matching text, type, topic and interlocutor filters, and **dated memories**
+selections: **undated memories** matching text, topic and interlocutor filters, and **dated memories**
 matching the target time regardless of those other filters. Dated memories outside their period are excluded.
 The target date appears in the filter; dated results display their matching time in browser local time.
 The field is required and the filter cannot be disabled. The simulation
@@ -322,9 +322,14 @@ Loading thumbnails preserves node positions.
 Audio files display a musical note inside their turquoise square. Datasets keep their
 document symbol.
 
+Clicking a node opens its modal directly, showing its kind, visibility, access count and
+last activity. Graph links open neighboring nodes; folders and conversations have a modal
+for their metadata and relationships. Closing with the button or backdrop returns to the
+graph with its viewport preserved.
+
 In **Graph**, branches with at least eight items exclusively linked to the same anchor are
 represented by a larger anchor and a count. Zoom in or click the group to see its items;
-**Branch details** also provides keyboard access. Zooming out and **Fit graph to viewport**
+the **Zoom in** and **Zoom out** buttons are keyboard accessible. Zooming out and **Fit graph to viewport**
 fold the branches. Up to 600 loaded items, the initial placement settles naturally,
 with gentle rebalancing for at most 0.7 seconds after the graph changes. Zooming, unfolding and closing node details
 preserve positions; larger windows retain fixed positions to bound computation.
@@ -340,6 +345,10 @@ A document used with the same Agent remains a recall candidate after many ordina
 The Agent recovers its reference, current title and revision, subject to current access rights.
 Deleted or newly private documents are excluded. Recall remains bounded: provide an exact URI
 if an older document cannot be found.
+
+Each memory is described by its title, content, keywords, provenance and access rights.
+The list can be filtered by text, Topic, interlocutor and date; the graph shows memories
+alongside documents, files, folders, contacts and Topics.
 
 In **Memory**, authorized accounts can:
 

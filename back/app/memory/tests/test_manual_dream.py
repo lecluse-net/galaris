@@ -49,7 +49,7 @@ async def test_manual_thumbnail_replaces_existing_cache_and_preserves_it_on_fail
             scope = AgentManagementScope(human_id, frozenset({owner_id}))
         item, _ = await service.create_item(MemoryItemCreate(
             owner_agent_id=owner.id, node_kind="document", title="Synthetic illustrated document",
-            memory_type="working", media_type="text/html", payload=MemoryPayload(text="<h1>Synthetic report</h1>"),
+             media_type="text/html", payload=MemoryPayload(text="<h1>Synthetic report</h1>"),
         ), owner_user_id=human_id)
         actor = owner_id
         if human_id is not None:

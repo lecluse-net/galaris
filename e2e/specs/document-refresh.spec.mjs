@@ -23,7 +23,7 @@ test('remote document changes refresh only their folder and visible page without
   const folderName = `Reports ${fixture.agent_id}`
   for (const title of [folderTitle, rootTitle]) {
     const response = await request.post('/api/memory/items', { headers, data: {
-      owner_agent_id: fixture.agent_id, title, node_kind: 'document', memory_type: 'working',
+      owner_agent_id: fixture.agent_id, title, node_kind: 'document',
       media_type: 'text/html', payload: { text: '<p>Synthetic report</p>' },
     } })
     expect(response.ok(), await response.text()).toBeTruthy()

@@ -91,7 +91,7 @@ for (const surface of ['document', 'resource']) {
 test('an audio attachment opened from Memory uses a dismissible player and reopens', async ({ page }) => {
   const documentId = '00000000-0000-0000-0000-000000000001'
   const attachmentId = '00000000-0000-0000-0000-000000000002'
-  await jsonRoute(page, '**/api/memory/items/memory-1?*', { metadata: { resource_uri: `document://${documentId}/attachments/${attachmentId}` } })
+  await jsonRoute(page, '**/api/memory/items/memory-1?*', { primary_url: `document://${documentId}/attachments/${attachmentId}`, metadata: {} })
   await jsonRoute(page, `**/api/memory/documents/${documentId}/attachments/${attachmentId}/info?*`, { id: attachmentId, name: 'recording.wav', media_type: 'audio/wav', size_bytes: silentAudio().length })
   await page.route(`**/api/memory/documents/${documentId}/attachments/${attachmentId}?*`, route => route.fulfill({ contentType: 'audio/wav', body: silentAudio() }))
   await mount(page, 'app/memory/components/MemoryAttachmentButton.vue', { props: { itemId: 'memory-1', agentId: 7 } })

@@ -186,7 +186,6 @@ export interface MemoryExtractionExistingMemory {
   id: string
   title: string
   content: string
-  memory_type: 'core' | 'working' | 'episodic' | 'semantic' | 'procedural' | 'social'
   keywords: string[]
   score: number
 }
@@ -205,7 +204,6 @@ export type MemoryExtractionOperation =
     action: 'CREATE'
     title: string
     content: string
-    memory_type: MemoryExtractionExistingMemory['memory_type']
     keywords: string[]
     retention_reason: string
     future_utility: 'high'

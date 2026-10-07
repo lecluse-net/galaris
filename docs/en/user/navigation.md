@@ -248,10 +248,26 @@ a task with multiple calls may run for hours. Changes apply to new calls.
 ## Documents and knowledge
 
 **Knowledge → Documents** (`/memory/documents`) holds authored content and Datasets.
-**Knowledge → Memory** (`/memory`) offers **Search**, **List** and **Graph**: open the
+**Knowledge → Memory** (`/memory`) offers **List** and **Graph**: open the
 page and select the tab without assuming a URL parameter. Contacts are at
 `/memory/contacts`; thematic groupings are under **Knowledge → Thematic dossiers** (`/topic`).
 Sharing a link does not grant access to its content.
+
+Both tabs place the agent and search on the first row, followed by the thematic dossier
+and interlocutor below. In **List**, the target date and its apply button complete the
+filters. The fields rearrange on smaller screens.
+
+In **Graph**, memories load without a time range filter; the node limit still applies.
+Below the graph header, the legend groups node kinds, relationships, then age markers
+and zoom and fullscreen controls.
+Node size and opacity follow a linear scale of last activity relative to the oldest and
+most recent nodes in the loaded graph. The legend shows both dates; hiding a node kind
+does not change this scale. Older nodes remain visible and their labels retain their contrast.
+When zoomed out, titles prioritize structural nodes and those with the most connections.
+At maximum zoom, every displayed node keeps its title visible without hovering.
+Root directories keep their titles visible even when zoomed out. A title of “.” is
+replaced in the graph by the URI with its scheme, such as `nextcloud://`;
+custom titles are preserved.
 
 In **List**, documents, attachments and indexed files display their thumbnail when
 available. Click the row or card to open its details; write permissions determine
@@ -260,6 +276,10 @@ whether its content can be edited.
 In **List**, edit **Target date and time**, then apply the filter to find memories matching
 that date. Input and matches use Galaris's configured global timezone (`TZ`), even when
 your browser uses another timezone. A memory's calendar fields have no timezone selector.
+
+Clicking a node opens its modal directly. It retains graph metadata (kind, visibility,
+last activity and access count) and navigation to neighbors, including folders and
+conversations. The close button or backdrop returns to the graph.
 
 The modal offers buttons for Dream treatments compatible with the node: generate its
 description, **Regenerate thumbnail** for a file, attachment or HTML document, analyze PDF
@@ -274,7 +294,7 @@ be retried, and concurrent edits take precedence over the analysis. Regenerating
 reruns rendering even when an image is already cached; failures preserve the previous image.
 
 The graph folds branches with at least eight exclusive leaves into an anchor and a count.
-Zoom in, click the group or enable **Branch details** to see its items, then zoom out to fold
+Zoom in or click the group to see its items, then zoom out to fold
 them. Shared nodes remain visible. Up to 600 loaded items, initial placement settles naturally,
 with gentle rebalancing for 0.7 seconds after the graph changes.
 Zooming, unfolding and closing node details preserve positions. Zooming out also simplifies links and titles. The window

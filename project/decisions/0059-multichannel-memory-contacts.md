@@ -6,7 +6,7 @@
 
 ## Contexte
 
-La projection sociale historique créait un `MemoryItem` privé pour chaque couple
+La projection des contacts créait un `MemoryItem` privé pour chaque couple
 `(agent, messaging_id, user_id)`. Cette identité exacte protège le rappel contre les homonymes,
 mais elle fragmente une même personne entre Matrix, Telegram, Mail, Chat et les comptes `USER` de
 Galaris. Une simple fusion des lignes mémoire serait instable : l’observation suivante du canal
@@ -15,7 +15,7 @@ des UUID divergents.
 
 ## Décision
 
-Le contact canonique reste un `MemoryItem` social `source_managed`, privé à un agent. La table
+Le contact canonique est un `MemoryItem` `source_managed`, privé à un agent. La table
 `memory_contact_identities` lui rattache des adresses fortes : identité Messenger exacte ou
 `galaris_user_id` réel. Deux canaux qui portent le même utilisateur Galaris prouvé convergent vers
 le même contact. Aucun rapprochement n’est déduit du nom affiché.

@@ -27,6 +27,11 @@ from app.memory.schemas import MemorySearchRequest, MemoryGraphRootsRequest, Mem
 
 
 class SyntheticShare(TemporaryFileTransport):
+    async def file_info(self, path, *, include_sha256=False):
+        if path in ("", "."):
+            return replace(self._entry(self.root_path(), include_sha256=include_sha256), path='')
+        return await super().file_info(path, include_sha256=include_sha256)
+
     async def resource_info(self, path, *, include_sha256=False):
         if not path:
             return replace(self._entry(self.root_path(), include_sha256=include_sha256), path='')
@@ -109,12 +114,21 @@ async def maintain_file_duplicates(db):
 
 
 @pytest.mark.asyncio
-async def test_graph_checks_live_files_with_one_closed_console_per_page(console_catalogue, monkeypatch):
+@pytest.mark.parametrize("root_title", [".", "Personal root"])
+async def test_graph_checks_live_files_with_one_closed_console_per_page(console_catalogue, monkeypatch, root_title):
     from app.console import ConsoleRunResource
     from app.console.contracts import SshConnectionConfig
     import app.console
 
     ctx, transport, connection, peer = console_catalogue
+    from core.database import get_db
+    root_resource = await resource_service.resource_info(ctx, "console://")
+    root_item = await get_db().scalar(select(MemoryItem).where(
+        MemoryItem.owner_agent_id == ctx.agent_id, MemoryItem.primary_url == root_resource.uri,
+    ))
+    assert root_item is not None
+    root_item.title = root_title
+    await get_db().commit()
     for index in range(12):
         await resource_service.resource_write_text(ctx, f"console://graph/file-{index}.txt", f"Synthetic {index}")
     transport.resolve_path("graph/file-3.txt", create_parent=False).unlink()
@@ -135,6 +149,10 @@ async def test_graph_checks_live_files_with_one_closed_console_per_page(console_
     request = MemoryGraphRootsRequest(agent_id=ctx.agent_id, limit=100)
     for page_index in range(2):
         page = await service.list_graph_roots(request)
+        root_node = next(node for node in page.nodes if node.id == root_item.id)
+        assert root_node.title == (root_resource.uri if root_title == "." else root_title)
+        assert root_node.resource_uri == root_resource.uri
+        assert root_item.title == root_title
         titles = {node.title for node in page.nodes}
         assert "file-3.txt" not in titles
         assert all(f"file-{index}.txt" in titles for index in range(12) if index != 3)

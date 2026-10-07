@@ -1,4 +1,6 @@
-# Décisions d’architecture
+# Décisions d'architecture
+
+- [0161 — Souvenirs décrits par leur contenu et leur provenance](0161-memory-content-and-provenance.md)
 
 - [0160 — Actions Dream explicites dans les nœuds mémoire](0160-foreground-dream-memory-actions.md)
 
@@ -198,4 +200,5 @@ nouvelle décision plutôt que réécrite silencieusement si le choix change.
 - [0141 — Permissions réseau du navigateur et décisions humaines mémorisées](0141-browser-remembered-permissions.md)
 - [0152 — Indexation par les paramètres standards des Tools](0152-tool-file-indexing-preference.md)
 - [0154 — Catalogue privé des ressources rencontrées](0154-file-catalogue-observations.md)
+- [0158 — Preuves lexicales indexées et complémentarité du rappel mémoire](0158-indexed-memory-query-evidence.md)
 - [0159 — URL des nœuds mémoire et source principale](0159-memory-url-associations.md)

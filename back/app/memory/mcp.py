@@ -209,7 +209,6 @@ async def memory_search(
     ctx: McpToolContext,
     query: str,
     limit: int | None = None,
-    memory_types: list[str] | None = None,
 ) -> str:
     try:
         topic_item_id, contact_item_id = await _recall_scope(ctx)
@@ -222,7 +221,6 @@ async def memory_search(
                     if limit is not None
                     else None
                 ),
-                "memory_types": memory_types or [],
                 "task_id": ctx.task_id,
                 "topic_item_id": topic_item_id,
                 "contact_item_id": contact_item_id,
@@ -232,7 +230,6 @@ async def memory_search(
             request.query,
             agent_id=request.agent_id,
             limit=request.limit,
-            memory_types=request.memory_types,
             task_id=request.task_id,
             topic_item_id=request.topic_item_id,
             contact_item_id=request.contact_item_id,
@@ -246,7 +243,6 @@ async def memory_search(
                     {
                         "memory_id": hit.item.id,
                         "title": hit.item.title,
-                        "type": hit.item.memory_type,
                         "node_kind": hit.item.node_kind,
                         "excerpt": hit.excerpt,
                         "sources": hit.source_refs,
@@ -481,7 +477,6 @@ async def memory_remember(
     ctx: McpToolContext,
     content: str,
     title: str,
-    memory_type: str = "semantic",
     keywords: list[str] | str | None = None,
     temporal: MemoryTemporalAnchor | None = None,
 ) -> str:
@@ -500,7 +495,6 @@ async def memory_remember(
                 source_ref=source.source_ref,
                 metadata={
                     "media_type": "text/html",
-                    "memory_type": memory_type,
                     "requested_by": "agent",
                     "language": language,
                     **_scope_metadata(topic_item_id, contact_item_id),
@@ -569,7 +563,6 @@ async def memory_index(
                 source_kind=source_type or "manual",
                 source_ref=source_id or f"task:{ctx.task_id or 'manual'}",
                 metadata={
-                    "memory_type": "semantic",
                     "requested_by": "legacy_memory_index",
                     "language": language,
                     **_scope_metadata(topic_item_id, contact_item_id),

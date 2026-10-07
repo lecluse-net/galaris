@@ -13,7 +13,7 @@ from sqlalchemy import exists, or_, select, update
 from sqlalchemy.orm import selectinload
 
 from app.agent import Agent
-from app.goal import Goal, GoalCycle, GoalReferrerType, GoalStatus, goal_service
+from app.goal import Goal, GoalCycle, GoalReferrerType, goal_service
 from core.database import get_db
 
 from . import service
@@ -309,7 +309,6 @@ def agent_projection(agent: Agent) -> SourceMemoryDocument:
         owner_agent_id=agent.id,
         memory_item_id=agent.memory_item_id,
         title=f"Profil agent — {_agent_name(agent, agent.id)}",
-        memory_type="core",
         content=_editorial_projection(
             agent_to_markdown(agent), (agent.job_description, agent.personality)
         ),
@@ -339,14 +338,12 @@ def agent_projection(agent: Agent) -> SourceMemoryDocument:
 
 def goal_projection(goal: Goal, *, description: str, tracking: str) -> SourceMemoryDocument:
     status = _enum_value(goal.status).casefold()
-    memory_type = "episodic" if goal.status == GoalStatus.COMPLETED else "working"
     return SourceMemoryDocument(
         source_kind=GOAL_SOURCE_KIND,
         source_ref=f"goal:{goal.id}",
         owner_agent_id=goal.agent_id,
         memory_item_id=goal.memory_item_id,
         title=f"Objectif — {_safe_inline(goal.title)}",
-        memory_type=memory_type,
         content=_editorial_projection(
             goal_to_markdown(goal, description=description, tracking=tracking),
             (description, tracking),
@@ -398,7 +395,6 @@ def goal_cycle_projection(cycle: GoalCycle) -> SourceMemoryDocument:
         owner_agent_id=cycle.goal.agent_id,
         memory_item_id=cycle.memory_item_id,
         title=f"Cycle {cycle.sequence} — {_safe_inline(cycle.goal.title)}",
-        memory_type="episodic",
         content=_editorial_projection(
             goal_cycle_to_markdown(cycle), (cycle.task.objective if cycle.task else None,)
         ),

@@ -205,7 +205,7 @@ async function close(): Promise<void> {
 }
 
 function onFullscreenChange(): void {
-  fullscreenActive.value = document.fullscreenElement === overlay.value
+  fullscreenActive.value = overlay.value !== null && document.fullscreenElement === overlay.value
   showControls()
 }
 

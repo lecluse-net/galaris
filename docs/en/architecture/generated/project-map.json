@@ -7856,7 +7856,7 @@
       {
         "file": "back/app/memory/mcp.py",
         "handler": "document_share",
-        "line": 357,
+        "line": 353,
         "module": "app.memory",
         "name": "document_share",
         "namespace": "memory"
@@ -7864,7 +7864,7 @@
       {
         "file": "back/app/memory/mcp.py",
         "handler": "memory_forget",
-        "line": 604,
+        "line": 597,
         "module": "app.memory",
         "name": "memory_forget",
         "namespace": "memory"
@@ -7872,7 +7872,7 @@
       {
         "file": "back/app/memory/mcp.py",
         "handler": "memory_remember",
-        "line": 480,
+        "line": 476,
         "module": "app.memory",
         "name": "memory_remember",
         "namespace": "memory"
@@ -7880,7 +7880,7 @@
       {
         "file": "back/app/memory/mcp.py",
         "handler": "memory_share",
-        "line": 452,
+        "line": 448,
         "module": "app.memory",
         "name": "memory_share",
         "namespace": "memory"
@@ -7888,7 +7888,7 @@
       {
         "file": "back/app/memory/mcp.py",
         "handler": "memory_sharing",
-        "line": 424,
+        "line": 420,
         "module": "app.memory",
         "name": "memory_sharing",
         "namespace": "memory"
@@ -7896,7 +7896,7 @@
       {
         "file": "back/app/memory/mcp.py",
         "handler": "memory_summarize",
-        "line": 625,
+        "line": 618,
         "module": "app.memory",
         "name": "memory_summarize",
         "namespace": "memory"
@@ -7904,7 +7904,7 @@
       {
         "file": "back/app/memory/mcp.py",
         "handler": "memory_upcoming",
-        "line": 532,
+        "line": 526,
         "module": "app.memory",
         "name": "memory_upcoming",
         "namespace": "memory"
@@ -8707,7 +8707,7 @@
           "users.id"
         ],
         "history_mixin": true,
-        "line": 96,
+        "line": 97,
         "module": "app.memory",
         "table": "document_app_grants"
       },
@@ -8719,7 +8719,7 @@
           "users.id"
         ],
         "history_mixin": false,
-        "line": 114,
+        "line": 115,
         "module": "app.memory",
         "table": "document_app_write_budgets"
       },
@@ -8730,7 +8730,7 @@
           "memory_items.id"
         ],
         "history_mixin": false,
-        "line": 139,
+        "line": 140,
         "module": "app.memory",
         "table": "document_attachments"
       },
@@ -8742,7 +8742,7 @@
           "users.id"
         ],
         "history_mixin": false,
-        "line": 84,
+        "line": 85,
         "module": "app.memory",
         "table": "document_icons"
       },
@@ -8754,7 +8754,7 @@
           "users.id"
         ],
         "history_mixin": false,
-        "line": 127,
+        "line": 128,
         "module": "app.memory",
         "table": "document_list_positions"
       },
@@ -8766,7 +8766,7 @@
           "memory_items.id"
         ],
         "history_mixin": false,
-        "line": 74,
+        "line": 75,
         "module": "app.memory",
         "table": "document_tag_assignments"
       },
@@ -8777,7 +8777,7 @@
           "users.id"
         ],
         "history_mixin": true,
-        "line": 63,
+        "line": 64,
         "module": "app.memory",
         "table": "document_tag_icons"
       },
@@ -8791,7 +8791,7 @@
           "users.id"
         ],
         "history_mixin": true,
-        "line": 36,
+        "line": 37,
         "module": "app.memory",
         "table": "document_tags"
       },
@@ -8803,7 +8803,7 @@
           "memory_items.id"
         ],
         "history_mixin": false,
-        "line": 461,
+        "line": 460,
         "module": "app.memory",
         "table": "document_team_grants"
       },
@@ -8815,7 +8815,7 @@
           "users.id"
         ],
         "history_mixin": false,
-        "line": 450,
+        "line": 449,
         "module": "app.memory",
         "table": "document_user_grants"
       },
@@ -9289,7 +9289,7 @@
           "memory_items.id"
         ],
         "history_mixin": false,
-        "line": 1012,
+        "line": 1011,
         "module": "app.memory",
         "table": "memory_associations"
       },
@@ -9298,7 +9298,7 @@
         "file": "back/app/memory/models.py",
         "foreign_keys": [],
         "history_mixin": false,
-        "line": 1194,
+        "line": 1193,
         "module": "app.memory",
         "table": "memory_automation_jobs"
       },
@@ -9311,7 +9311,7 @@
           "users.id"
         ],
         "history_mixin": true,
-        "line": 924,
+        "line": 923,
         "module": "app.memory",
         "table": "memory_candidates"
       },
@@ -9324,7 +9324,7 @@
           "users.id"
         ],
         "history_mixin": false,
-        "line": 730,
+        "line": 729,
         "module": "app.memory",
         "table": "memory_contact_identities"
       },
@@ -9336,7 +9336,7 @@
           "memory_items.id"
         ],
         "history_mixin": false,
-        "line": 692,
+        "line": 691,
         "module": "app.memory",
         "table": "memory_contact_items"
       },
@@ -9348,7 +9348,7 @@
           "memory_items.id"
         ],
         "history_mixin": false,
-        "line": 655,
+        "line": 654,
         "module": "app.memory",
         "table": "memory_context_edges"
       },
@@ -9359,7 +9359,7 @@
           "agents.id"
         ],
         "history_mixin": false,
-        "line": 600,
+        "line": 599,
         "module": "app.memory",
         "table": "memory_context_nodes"
       },
@@ -9370,7 +9370,7 @@
           "memory_items.id"
         ],
         "history_mixin": false,
-        "line": 1069,
+        "line": 1068,
         "module": "app.memory",
         "table": "memory_embedding_chunks"
       },
@@ -9381,7 +9381,7 @@
           "memory_items.id"
         ],
         "history_mixin": false,
-        "line": 1046,
+        "line": 1045,
         "module": "app.memory",
         "table": "memory_embedding_manifests"
       },
@@ -9393,7 +9393,7 @@
           "users.id"
         ],
         "history_mixin": false,
-        "line": 1123,
+        "line": 1122,
         "module": "app.memory",
         "table": "memory_findings"
       },
@@ -9405,7 +9405,7 @@
           "memory_items.id"
         ],
         "history_mixin": false,
-        "line": 426,
+        "line": 425,
         "module": "app.memory",
         "table": "memory_item_grants"
       },
@@ -9418,7 +9418,7 @@
           "users.id"
         ],
         "history_mixin": true,
-        "line": 154,
+        "line": 155,
         "module": "app.memory",
         "table": "memory_items"
       },
@@ -9430,7 +9430,7 @@
           "memory_items.id"
         ],
         "history_mixin": true,
-        "line": 548,
+        "line": 547,
         "module": "app.memory",
         "table": "memory_links"
       },
@@ -9443,7 +9443,7 @@
           "tasks.id"
         ],
         "history_mixin": false,
-        "line": 472,
+        "line": 471,
         "module": "app.memory",
         "table": "memory_revisions"
       },
@@ -9456,7 +9456,7 @@
           "tasks.id"
         ],
         "history_mixin": false,
-        "line": 874,
+        "line": 873,
         "module": "app.memory",
         "table": "memory_sources"
       },
@@ -9468,7 +9468,7 @@
           "memory_topic_contact_scopes.id"
         ],
         "history_mixin": false,
-        "line": 835,
+        "line": 834,
         "module": "app.memory",
         "table": "memory_topic_contact_items"
       },
@@ -9480,7 +9480,7 @@
           "memory_items.id"
         ],
         "history_mixin": false,
-        "line": 794,
+        "line": 793,
         "module": "app.memory",
         "table": "memory_topic_contact_scopes"
       },
@@ -9491,7 +9491,7 @@
           "memory_items.id"
         ],
         "history_mixin": false,
-        "line": 530,
+        "line": 529,
         "module": "app.memory",
         "table": "memory_urls"
       },
@@ -9504,7 +9504,7 @@
           "tasks.id"
         ],
         "history_mixin": false,
-        "line": 977,
+        "line": 976,
         "module": "app.memory",
         "table": "memory_usages"
       },
@@ -14956,7 +14956,7 @@
         "declared_path": "/memory/documents/folders",
         "file": "back/app/memory/router.py",
         "handler": "read_document_folders",
-        "line": 804,
+        "line": 803,
         "method": "GET",
         "module": "app.memory"
       },
@@ -14965,7 +14965,7 @@
         "declared_path": "/memory/documents/icons/resolve",
         "file": "back/app/memory/router.py",
         "handler": "resolve_document_icons",
-        "line": 687,
+        "line": 686,
         "method": "POST",
         "module": "app.memory"
       },
@@ -14974,7 +14974,7 @@
         "declared_path": "/memory/documents/keywords",
         "file": "back/app/memory/router.py",
         "handler": "read_document_keywords",
-        "line": 651,
+        "line": 650,
         "method": "GET",
         "module": "app.memory"
       },
@@ -14983,7 +14983,7 @@
         "declared_path": "/memory/documents/library",
         "file": "back/app/memory/router.py",
         "handler": "browse_managed_documents",
-        "line": 670,
+        "line": 669,
         "method": "POST",
         "module": "app.memory"
       },
@@ -14992,7 +14992,7 @@
         "declared_path": "/memory/documents/order",
         "file": "back/app/memory/router.py",
         "handler": "reorder_personal_documents",
-        "line": 706,
+        "line": 705,
         "method": "PUT",
         "module": "app.memory"
       },
@@ -15001,7 +15001,7 @@
         "declared_path": "/memory/documents/order/sort",
         "file": "back/app/memory/router.py",
         "handler": "sort_personal_documents",
-        "line": 717,
+        "line": 716,
         "method": "PUT",
         "module": "app.memory"
       },
@@ -15010,7 +15010,7 @@
         "declared_path": "/memory/documents/owner-options",
         "file": "back/app/memory/router.py",
         "handler": "read_document_owner_options",
-        "line": 820,
+        "line": 819,
         "method": "GET",
         "module": "app.memory"
       },
@@ -15019,7 +15019,7 @@
         "declared_path": "/memory/documents/tag-icons",
         "file": "back/app/memory/router.py",
         "handler": "read_personal_tag_icons",
-        "line": 728,
+        "line": 727,
         "method": "GET",
         "module": "app.memory"
       },
@@ -15028,7 +15028,7 @@
         "declared_path": "/memory/documents/tag-icons",
         "file": "back/app/memory/router.py",
         "handler": "upload_personal_tag_icon",
-        "line": 734,
+        "line": 733,
         "method": "POST",
         "module": "app.memory"
       },
@@ -15037,7 +15037,7 @@
         "declared_path": "/memory/documents/tags",
         "file": "back/app/memory/router.py",
         "handler": "read_personal_document_tags",
-        "line": 752,
+        "line": 751,
         "method": "GET",
         "module": "app.memory"
       },
@@ -15046,7 +15046,7 @@
         "declared_path": "/memory/documents/tags",
         "file": "back/app/memory/router.py",
         "handler": "create_personal_document_tag",
-        "line": 759,
+        "line": 758,
         "method": "POST",
         "module": "app.memory"
       },
@@ -15055,7 +15055,7 @@
         "declared_path": "/memory/documents/tags/{tag_id}",
         "file": "back/app/memory/router.py",
         "handler": "delete_personal_document_tag",
-        "line": 777,
+        "line": 776,
         "method": "DELETE",
         "module": "app.memory"
       },
@@ -15064,7 +15064,7 @@
         "declared_path": "/memory/documents/tags/{tag_id}",
         "file": "back/app/memory/router.py",
         "handler": "update_personal_document_tag",
-        "line": 768,
+        "line": 767,
         "method": "PUT",
         "module": "app.memory"
       },
@@ -15073,7 +15073,7 @@
         "declared_path": "/memory/documents/{document_id}",
         "file": "back/app/memory/router.py",
         "handler": "read_managed_document",
-        "line": 1057,
+        "line": 1056,
         "method": "GET",
         "module": "app.memory"
       },
@@ -15082,7 +15082,7 @@
         "declared_path": "/memory/documents/{document_id}",
         "file": "back/app/memory/router.py",
         "handler": "update_human_document",
-        "line": 1074,
+        "line": 1073,
         "method": "PATCH",
         "module": "app.memory"
       },
@@ -15118,7 +15118,7 @@
         "declared_path": "/memory/documents/{document_id}/attachments",
         "file": "back/app/memory/router.py",
         "handler": "list_document_attachments",
-        "line": 1310,
+        "line": 1309,
         "method": "GET",
         "module": "app.memory"
       },
@@ -15127,7 +15127,7 @@
         "declared_path": "/memory/documents/{document_id}/attachments",
         "file": "back/app/memory/router.py",
         "handler": "add_document_attachment",
-        "line": 1330,
+        "line": 1329,
         "method": "POST",
         "module": "app.memory"
       },
@@ -15136,7 +15136,7 @@
         "declared_path": "/memory/documents/{document_id}/attachments/{attachment_id}",
         "file": "back/app/memory/router.py",
         "handler": "delete_document_attachment",
-        "line": 1435,
+        "line": 1434,
         "method": "DELETE",
         "module": "app.memory"
       },
@@ -15145,7 +15145,7 @@
         "declared_path": "/memory/documents/{document_id}/attachments/{attachment_id}",
         "file": "back/app/memory/router.py",
         "handler": "read_document_attachment",
-        "line": 1404,
+        "line": 1403,
         "method": "GET",
         "module": "app.memory"
       },
@@ -15154,7 +15154,7 @@
         "declared_path": "/memory/documents/{document_id}/attachments/{attachment_id}/info",
         "file": "back/app/memory/router.py",
         "handler": "read_document_attachment_info",
-        "line": 1386,
+        "line": 1385,
         "method": "GET",
         "module": "app.memory"
       },
@@ -15163,7 +15163,7 @@
         "declared_path": "/memory/documents/{document_id}/attachments/{attachment_id}/thumbnail",
         "file": "back/app/memory/router.py",
         "handler": "read_document_attachment_thumbnail",
-        "line": 1351,
+        "line": 1350,
         "method": "GET",
         "module": "app.memory"
       },
@@ -15172,7 +15172,7 @@
         "declared_path": "/memory/documents/{document_id}/collaborators/{agent_id}",
         "file": "back/app/memory/router.py",
         "handler": "remove_managed_document_grant",
-        "line": 1279,
+        "line": 1278,
         "method": "DELETE",
         "module": "app.memory"
       },
@@ -15181,7 +15181,7 @@
         "declared_path": "/memory/documents/{document_id}/collaborators/{agent_id}",
         "file": "back/app/memory/router.py",
         "handler": "set_managed_document_grant",
-        "line": 1245,
+        "line": 1244,
         "method": "PUT",
         "module": "app.memory"
       },
@@ -15190,7 +15190,7 @@
         "declared_path": "/memory/documents/{document_id}/content-revisions",
         "file": "back/app/memory/router.py",
         "handler": "list_managed_document_content_revisions",
-        "line": 869,
+        "line": 868,
         "method": "GET",
         "module": "app.memory"
       },
@@ -15199,7 +15199,7 @@
         "declared_path": "/memory/documents/{document_id}/content-revisions/{revision}",
         "file": "back/app/memory/router.py",
         "handler": "read_managed_document_content_revision",
-        "line": 896,
+        "line": 895,
         "method": "GET",
         "module": "app.memory"
       },
@@ -15208,7 +15208,7 @@
         "declared_path": "/memory/documents/{document_id}/content-revisions/{revision}/diff",
         "file": "back/app/memory/router.py",
         "handler": "diff_managed_document_content_revision",
-        "line": 921,
+        "line": 920,
         "method": "GET",
         "module": "app.memory"
       },
@@ -15217,7 +15217,7 @@
         "declared_path": "/memory/documents/{document_id}/content-revisions/{revision}/restore",
         "file": "back/app/memory/router.py",
         "handler": "restore_managed_document_content_revision",
-        "line": 946,
+        "line": 945,
         "method": "POST",
         "module": "app.memory"
       },
@@ -15226,7 +15226,7 @@
         "declared_path": "/memory/documents/{document_id}/export-bundle",
         "file": "back/app/memory/router.py",
         "handler": "export_document_bundle",
-        "line": 996,
+        "line": 995,
         "method": "POST",
         "module": "app.memory"
       },
@@ -15235,7 +15235,7 @@
         "declared_path": "/memory/documents/{document_id}/export-pdf",
         "file": "back/app/memory/router.py",
         "handler": "export_managed_document_pdf",
-        "line": 1010,
+        "line": 1009,
         "method": "POST",
         "module": "app.memory"
       },
@@ -15244,7 +15244,7 @@
         "declared_path": "/memory/documents/{document_id}/folder",
         "file": "back/app/memory/router.py",
         "handler": "move_managed_document",
-        "line": 1116,
+        "line": 1115,
         "method": "PATCH",
         "module": "app.memory"
       },
@@ -15253,7 +15253,7 @@
         "declared_path": "/memory/documents/{document_id}/global-access",
         "file": "back/app/memory/router.py",
         "handler": "set_managed_document_global_access",
-        "line": 1216,
+        "line": 1215,
         "method": "PATCH",
         "module": "app.memory"
       },
@@ -15262,7 +15262,7 @@
         "declared_path": "/memory/documents/{document_id}/grants/{agent_id}",
         "file": "back/app/memory/router.py",
         "handler": "remove_document_grant",
-        "line": 1494,
+        "line": 1493,
         "method": "DELETE",
         "module": "app.memory"
       },
@@ -15271,7 +15271,7 @@
         "declared_path": "/memory/documents/{document_id}/grants/{agent_id}",
         "file": "back/app/memory/router.py",
         "handler": "set_document_grant",
-        "line": 1461,
+        "line": 1460,
         "method": "PUT",
         "module": "app.memory"
       },
@@ -15280,7 +15280,7 @@
         "declared_path": "/memory/documents/{document_id}/icon",
         "file": "back/app/memory/router.py",
         "handler": "save_document_icon",
-        "line": 695,
+        "line": 694,
         "method": "PUT",
         "module": "app.memory"
       },
@@ -15289,7 +15289,7 @@
         "declared_path": "/memory/documents/{document_id}/import-image",
         "file": "back/app/memory/router.py",
         "handler": "import_document_image",
-        "line": 974,
+        "line": 973,
         "method": "POST",
         "module": "app.memory"
       },
@@ -15298,7 +15298,7 @@
         "declared_path": "/memory/documents/{document_id}/link-card",
         "file": "back/app/memory/router.py",
         "handler": "create_document_link_card",
-        "line": 985,
+        "line": 984,
         "method": "POST",
         "module": "app.memory"
       },
@@ -15307,7 +15307,7 @@
         "declared_path": "/memory/documents/{document_id}/owner",
         "file": "back/app/memory/router.py",
         "handler": "change_document_owner",
-        "line": 1153,
+        "line": 1152,
         "method": "PATCH",
         "module": "app.memory"
       },
@@ -15316,7 +15316,7 @@
         "declared_path": "/memory/documents/{document_id}/sharing",
         "file": "back/app/memory/router.py",
         "handler": "read_document_sharing",
-        "line": 1086,
+        "line": 1085,
         "method": "GET",
         "module": "app.memory"
       },
@@ -15325,7 +15325,7 @@
         "declared_path": "/memory/documents/{document_id}/sharing",
         "file": "back/app/memory/router.py",
         "handler": "update_document_sharing",
-        "line": 1095,
+        "line": 1094,
         "method": "PUT",
         "module": "app.memory"
       },
@@ -15334,7 +15334,7 @@
         "declared_path": "/memory/documents/{document_id}/sharing-level",
         "file": "back/app/memory/router.py",
         "handler": "update_document_sharing_level",
-        "line": 1104,
+        "line": 1103,
         "method": "PUT",
         "module": "app.memory"
       },
@@ -15343,7 +15343,7 @@
         "declared_path": "/memory/documents/{document_id}/tags",
         "file": "back/app/memory/router.py",
         "handler": "move_personal_document",
-        "line": 743,
+        "line": 742,
         "method": "PUT",
         "module": "app.memory"
       },
@@ -15352,7 +15352,7 @@
         "declared_path": "/memory/documents/{document_id}/tags/{tag_id}",
         "file": "back/app/memory/router.py",
         "handler": "remove_personal_document_tag",
-        "line": 795,
+        "line": 794,
         "method": "DELETE",
         "module": "app.memory"
       },
@@ -15361,7 +15361,7 @@
         "declared_path": "/memory/documents/{document_id}/tags/{tag_id}",
         "file": "back/app/memory/router.py",
         "handler": "add_personal_document_tag",
-        "line": 786,
+        "line": 785,
         "method": "PUT",
         "module": "app.memory"
       },
@@ -15370,7 +15370,7 @@
         "declared_path": "/memory/documents/{document_id}/thumbnail",
         "file": "back/app/memory/router.py",
         "handler": "read_document_thumbnail",
-        "line": 1028,
+        "line": 1027,
         "method": "POST",
         "module": "app.memory"
       },
@@ -15388,7 +15388,7 @@
         "declared_path": "/memory/filter-options",
         "file": "back/app/memory/router.py",
         "handler": "read_memory_filter_options",
-        "line": 487,
+        "line": 486,
         "method": "GET",
         "module": "app.memory"
       },
@@ -15433,7 +15433,7 @@
         "declared_path": "/memory/graph/expand",
         "file": "back/app/memory/router.py",
         "handler": "expand_memory_graph_node",
-        "line": 527,
+        "line": 526,
         "method": "POST",
         "module": "app.memory"
       },
@@ -15442,7 +15442,7 @@
         "declared_path": "/memory/graph/roots",
         "file": "back/app/memory/router.py",
         "handler": "list_memory_graph_roots",
-        "line": 515,
+        "line": 514,
         "method": "POST",
         "module": "app.memory"
       },
@@ -15460,7 +15460,7 @@
         "declared_path": "/memory/items/{item_id}",
         "file": "back/app/memory/router.py",
         "handler": "forget_memory_item",
-        "line": 634,
+        "line": 633,
         "method": "DELETE",
         "module": "app.memory"
       },
@@ -15469,7 +15469,7 @@
         "declared_path": "/memory/items/{item_id}",
         "file": "back/app/memory/router.py",
         "handler": "get_memory_item",
-        "line": 565,
+        "line": 564,
         "method": "GET",
         "module": "app.memory"
       },
@@ -15478,7 +15478,7 @@
         "declared_path": "/memory/items/{item_id}",
         "file": "back/app/memory/router.py",
         "handler": "update_memory_item",
-        "line": 611,
+        "line": 610,
         "method": "PUT",
         "module": "app.memory"
       },
@@ -15487,7 +15487,7 @@
         "declared_path": "/memory/items/{item_id}/grants/{agent_id}",
         "file": "back/app/memory/router.py",
         "handler": "remove_memory_item_grant",
-        "line": 1538,
+        "line": 1537,
         "method": "DELETE",
         "module": "app.memory"
       },
@@ -15496,7 +15496,7 @@
         "declared_path": "/memory/items/{item_id}/grants/{agent_id}",
         "file": "back/app/memory/router.py",
         "handler": "set_memory_item_grant",
-        "line": 1523,
+        "line": 1522,
         "method": "PUT",
         "module": "app.memory"
       },
@@ -15505,7 +15505,7 @@
         "declared_path": "/memory/items/{item_id}/links",
         "file": "back/app/memory/router.py",
         "handler": "list_memory_links",
-        "line": 1573,
+        "line": 1572,
         "method": "GET",
         "module": "app.memory"
       },
@@ -15514,7 +15514,7 @@
         "declared_path": "/memory/items/{item_id}/revisions",
         "file": "back/app/memory/router.py",
         "handler": "list_memory_revisions",
-        "line": 596,
+        "line": 595,
         "method": "GET",
         "module": "app.memory"
       },
@@ -15523,7 +15523,7 @@
         "declared_path": "/memory/items/{item_id}/sharing",
         "file": "back/app/memory/router.py",
         "handler": "read_item_sharing",
-        "line": 539,
+        "line": 538,
         "method": "GET",
         "module": "app.memory"
       },
@@ -15532,7 +15532,7 @@
         "declared_path": "/memory/items/{item_id}/sharing",
         "file": "back/app/memory/router.py",
         "handler": "update_item_sharing",
-        "line": 548,
+        "line": 547,
         "method": "PUT",
         "module": "app.memory"
       },
@@ -15559,7 +15559,7 @@
         "declared_path": "/memory/links",
         "file": "back/app/memory/router.py",
         "handler": "create_memory_link",
-        "line": 1555,
+        "line": 1554,
         "method": "POST",
         "module": "app.memory"
       },
@@ -15595,7 +15595,7 @@
         "declared_path": "/memory/recall",
         "file": "back/app/memory/router.py",
         "handler": "recall_memory",
-        "line": 503,
+        "line": 502,
         "method": "POST",
         "module": "app.memory"
       },
@@ -15622,7 +15622,7 @@
         "declared_path": "/memory/search",
         "file": "back/app/memory/router.py",
         "handler": "search_memory",
-        "line": 475,
+        "line": 474,
         "method": "POST",
         "module": "app.memory"
       },

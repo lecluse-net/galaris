@@ -19,13 +19,6 @@
         <q-chip dense outline icon="timeline">
           {{ t('memory.graph.edgeCount', { count: visibleEdges.length }) }}
         </q-chip>
-        <q-toggle
-          v-if="branches.length"
-          :model-value="expandedBranches.size > 0"
-          :label="t('memory.graph.branchDetails')"
-          :aria-label="t('memory.graph.branchDetails')"
-          @update:model-value="toggleBranchDetails"
-        />
         <q-chip v-if="collapsedMemberIds.size" dense outline icon="account_tree" role="status">
           {{ t('memory.graph.groupedCount', { count: collapsedMemberIds.size }) }}
         </q-chip>
@@ -100,34 +93,6 @@
       role="group"
       :aria-label="t('memory.graph.legend')"
     >
-      <section class="memory-graph__legend-group">
-        <div class="memory-graph__legend-title">{{ t('memory.graph.typeLegend') }}</div>
-        <div class="memory-graph__legend-items">
-          <q-btn
-            v-for="type in MEMORY_TYPE_LEGEND"
-            :key="type"
-            flat
-            dense
-            no-caps
-            class="memory-graph__legend-item memory-graph__type-filter"
-            :class="{ 'memory-graph__type-filter--hidden': isMemoryTypeHidden(type) }"
-            :aria-label="nodeTypeToggleLabel(t(`memory.types.${type}`), isMemoryTypeHidden(type))"
-            :aria-pressed="!isMemoryTypeHidden(type)"
-            @click="toggleMemoryType(type)"
-          >
-            <span
-              class="memory-graph__type-legend-dot"
-              :style="{ backgroundColor: nodeColor(type) }"
-              aria-hidden="true"
-            />
-            {{ t(`memory.types.${type}`) }}
-            <q-icon v-if="isMemoryTypeHidden(type)" name="visibility_off" size="12px" />
-            <q-tooltip>
-              {{ nodeTypeToggleLabel(t(`memory.types.${type}`), isMemoryTypeHidden(type)) }}
-            </q-tooltip>
-          </q-btn>
-        </div>
-      </section>
 
       <section class="memory-graph__legend-group">
         <div class="memory-graph__legend-title">{{ t('memory.graph.roleLegend') }}</div>
@@ -144,7 +109,25 @@
             :aria-pressed="!isEntityKindHidden(role)"
             @click="toggleEntityKind(role)"
           >
+            <FolderIcon
+              v-if="role === 'folder' || role === 'directory'"
+              :tone="roleAccent(role)"
+              size="16px"
+              :class="`memory-graph__role-symbol--${role}`"
+            />
+            <svg
+              v-else-if="role === 'document' || role === 'attachment' || role === 'file'"
+              viewBox="0 0 24 24"
+              width="16"
+              height="16"
+              :class="`memory-graph__role-symbol--${role}`"
+              aria-hidden="true"
+              focusable="false"
+            >
+              <path :d="documentIconPath" :fill="roleColor(role)" />
+            </svg>
             <span
+              v-else
               class="memory-graph__role-symbol"
               :class="`memory-graph__role-symbol--${role}`"
               :style="{ backgroundColor: roleColor(role) }"
@@ -199,9 +182,32 @@
 
       <section class="memory-graph__legend-group memory-graph__legend-group--view">
         <div class="memory-graph__freshness-legend">
-          <span>{{ t('memory.graph.older') }}</span>
-          <span class="memory-graph__gradient" />
-          <span>{{ t('memory.graph.recent') }}</span>
+          <span class="memory-graph__freshness-endpoint">
+            {{ t('memory.graph.older') }}
+            <time v-if="activityExtent.oldest !== null" :datetime="new Date(activityExtent.oldest).toISOString()">
+              {{ activityDateFormatter.format(activityExtent.oldest) }}
+            </time>
+          </span>
+          <span class="memory-graph__freshness-samples" aria-hidden="true">
+            <span
+              v-for="score in [0, 0.5, 1]"
+              :key="score"
+              class="memory-graph__freshness-sample"
+              :style="{
+                width: `${NODE_MIN_RADIUS + score * NODE_RADIUS_RANGE}px`,
+                height: `${NODE_MIN_RADIUS + score * NODE_RADIUS_RANGE}px`,
+                opacity: MIN_NODE_OPACITY + score * (1 - MIN_NODE_OPACITY),
+                backgroundColor: roleColor('memory'),
+              }"
+            />
+          </span>
+          <span class="memory-graph__freshness-endpoint">
+            {{ t('memory.graph.recent') }}
+            <time v-if="activityExtent.newest !== null" :datetime="new Date(activityExtent.newest).toISOString()">
+              {{ activityDateFormatter.format(activityExtent.newest) }}
+            </time>
+          </span>
+          <q-tooltip>{{ t('memory.graph.freshnessHint') }}</q-tooltip>
         </div>
         <div class="memory-graph__view-controls row items-center q-gutter-xs no-wrap">
           <q-btn outline round dense color="primary" icon="add" :aria-label="t('memory.graph.zoomIn')" @click="zoomBy(1.25)">
@@ -257,28 +263,29 @@
           <q-spinner-orbit color="primary" size="42px" />
         </q-inner-loading>
 
-        <q-card
-          v-if="selectedNode"
-          flat
-          bordered
-          class="memory-graph__inspector"
-          :style="inspectorStyle"
-          @pointerdown.stop
-          @dblclick.stop
-          @wheel.stop
-        >
-          <MemoryGraphNodeDetail
-            :agent-id="agentId"
-            :node="selectedNode"
-            :relations="selectedRelations"
-            :color="RESOURCE_ROLE_ACCENTS[selectedNode.entity_kind] ? roleColor(selectedNode.entity_kind) : nodeColor(selectedNode.memory_type)"
-            :icon="nodeIcon(selectedNode)"
-            :role-label="nodeRoleLabel(selectedNode)"
-            @close="closeInspector"
-            @open="openNodeDetail"
-            @select="selectNode"
-          />
-        </q-card>
+        <q-dialog v-model="structuralDialog" :maximized="$q.screen.lt.md">
+          <q-card v-if="selectedNode" class="memory-graph__detail galaris-dialog-card">
+            <q-toolbar class="galaris-dialog-title">
+              <q-icon :name="nodeIcon(selectedNode)" size="sm" class="q-mr-sm" />
+              <q-toolbar-title>{{ selectedNode.title }}</q-toolbar-title>
+              <q-btn flat round dense icon="close" :aria-label="t('memory.graph.closeDetails')" v-close-popup />
+            </q-toolbar>
+            <div class="galaris-dialog-body q-pa-md">
+              <MemoryGraphNodeDetail
+                :show-header="false"
+                :agent-id="agentId"
+                :node="selectedNode"
+                :relations="selectedRelations"
+                :color="roleColor(selectedNode.entity_kind)"
+                :icon="nodeIcon(selectedNode)"
+                :role-label="nodeRoleLabel(selectedNode)"
+                @close="closeInspector"
+                @open="selectNode"
+                @select="selectNode"
+              />
+            </div>
+          </q-card>
+        </q-dialog>
       </div>
     </div>
   </q-card>
@@ -298,8 +305,9 @@ import {
 } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { websocket } from '@/core/websocket'
-import { browserResourceKind, solaire, solaireCss, type SolaireColor } from '@/core/util'
+import { browserResourceKind, FolderIcon, folderArtwork, solaire, solaireCss, type SolaireColor } from '@/core/util'
 import { useInterval, useQuasar, useTimeout } from 'quasar'
+import { matDescription } from '@quasar/extras/material-icons'
 import * as echarts from 'echarts/core'
 import { GraphChart } from 'echarts/charts'
 import { AriaComponent } from 'echarts/components'
@@ -320,13 +328,8 @@ import type {
   MemoryGraphEntityKind,
   MemoryGraphNode,
   MemoryGraphPage,
-  MemoryType,
+  MemoryGraphRelation,
 } from '../types'
-
-interface SelectedRelation {
-  edge: MemoryGraphEdge
-  other: MemoryGraphNode
-}
 
 interface ScreenPoint {
   x: number
@@ -347,21 +350,17 @@ echarts.use([GraphChart, AriaComponent, CanvasRenderer, LabelLayout])
 const {
   agentId,
   query,
-  memoryTypes,
   topicItemId,
   contactItemId,
-  timeRangeMilliseconds,
 } = defineProps<{
   agentId: number | null
   query: string
-  memoryTypes: MemoryType[]
   topicItemId: string | null
   contactItemId: string | null
-  timeRangeMilliseconds: number | null
 }>()
 
 const emit = defineEmits<{
-  open: [id: string]
+  open: [id: string, node: MemoryGraphNode, relations: MemoryGraphRelation[]]
 }>()
 
 const ROOT_PAGE_SIZE = 500
@@ -379,15 +378,11 @@ const LAYOUT_REBALANCE_MILLISECONDS = 700
 const REVEAL_DURATION_MILLISECONDS = 320
 const REVEAL_SPREAD_MILLISECONDS = 120
 const MAX_ANIMATED_VISIBLE_NODES = 500
-const MEMORY_TYPE_LEGEND: readonly MemoryType[] = [
-  'core',
-  'working',
-  'episodic',
-  'semantic',
-  'procedural',
-  'social',
-]
+const NODE_MIN_RADIUS = 10
+const NODE_RADIUS_RANGE = 8
+const MIN_NODE_OPACITY = 0.4
 const GRAPH_ROLE_LEGEND: readonly MemoryGraphEntityKind[] = [
+  'memory',
   'topic',
   'contact',
   'document',
@@ -397,21 +392,17 @@ const GRAPH_ROLE_LEGEND: readonly MemoryGraphEntityKind[] = [
   'directory',
   'conversation',
 ]
-const RESOURCE_ROLE_ACCENTS: Partial<Record<MemoryGraphEntityKind, 'cyan' | 'yellow'>> = {
+const RESOURCE_ROLE_ACCENTS: Partial<Record<MemoryGraphEntityKind, 'cyan' | 'yellow' | 'orange'>> = {
   attachment: 'cyan',
   file: 'cyan',
   folder: 'yellow',
-  directory: 'yellow',
-}
-const NODE_ACCENTS: Record<MemoryType, SolaireColor> = {
-  core: 'violet', working: 'orange', episodic: 'blue',
-  semantic: 'green', procedural: 'iris', social: 'fuchsia',
+  directory: 'orange',
 }
 
-const { t } = useI18n()
+const { t, locale } = useI18n()
 const $q = useQuasar()
 const { registerInterval, removeInterval } = useInterval()
-const { registerTimeout: registerMobileDetailTimeout } = useTimeout()
+const { registerTimeout: registerMobileDetailTimeout, removeTimeout: removeMobileDetailTimeout } = useTimeout()
 const { registerTimeout: registerLayoutTimeout, removeTimeout: removeLayoutTimeout } = useTimeout()
 const { registerTimeout: registerThumbnailTimeout, removeTimeout: removeThumbnailTimeout } = useTimeout()
 const viewport = useTemplateRef<HTMLDivElement>('viewport')
@@ -423,7 +414,7 @@ const branchLayout = new GraphBranchLayout()
 // Keep the original animated physics for ordinary graphs; larger windows use the bounded layout.
 const dynamicLayout = computed(() => nodes.value.size <= 600)
 const overview = ref(false)
-const hiddenMemoryTypes = shallowRef(new Set<MemoryType>())
+const allTitles = ref(false)
 const hiddenEntityKinds = shallowRef(new Set<MemoryGraphEntityKind>())
 const selectedNodeId = ref<string | null>(null)
 const edgesTruncated = ref(false)
@@ -432,13 +423,11 @@ const loading = ref(false)
 const reloading = ref(false)
 const refreshing = ref(false)
 const liveRefresh = ref(true)
-const rangeEndTimestamp = ref(Date.now())
 const error = ref<unknown>(null)
 const isFullscreen = ref(false)
 const layoutPending = ref(false)
 const chartReady = ref(false)
 const viewportSize = reactive({ width: 0, height: 0 })
-const inspectorAnchor = reactive<ScreenPoint>({ x: 0, y: 0 })
 
 let resizeObserver: ResizeObserver | null = null
 let chart: ECharts | null = null
@@ -463,7 +452,7 @@ const thumbnails = new GraphThumbnails(
     if (missing) scheduleThumbnails()
   },
   thumbnailBudget * 2,
-  thumbnailBudget >= 256 ? 12 : thumbnailBudget >= 96 ? 8 : 4,
+  thumbnailBudget >= 1024 ? 24 : thumbnailBudget >= 256 ? 12 : thumbnailBudget >= 96 ? 8 : 4,
 )
 const unsubscribeThumbnailReady = onThumbnailReady(ready => {
   if (ready.agentId !== agentId) return
@@ -491,6 +480,12 @@ const collapsedMemberIds = computed(() => new Set(branches.value
   .filter(branch => !expandedBranches.value.has(branch.anchorId))
   .flatMap(branch => branch.memberIds.filter(id => id !== selectedNodeId.value))))
 const renderedNodes = computed(() => visibleNodes.value.filter(node => !collapsedMemberIds.value.has(node.id)))
+const nodeShadowStyle = computed(() => ({
+  shadowColor: echarts.color.modifyAlpha(solaire.gray.accent, 0.28),
+  shadowBlur: overview.value || renderedNodes.value.length > 500 ? 0 : 5,
+  shadowOffsetX: 0,
+  shadowOffsetY: 2,
+}))
 const renderedEdges = computed(() => visibleEdges.value.filter(edge => (
   !collapsedMemberIds.value.has(edge.source_item_id) && !collapsedMemberIds.value.has(edge.target_item_id)
 )))
@@ -501,56 +496,25 @@ const selectedNode = computed(() => {
 })
 
 const graphBusy = computed(() => loading.value || layoutPending.value || !chartReady.value)
-const timeRangeStartTimestamp = computed<number | null>(() => {
-  return timeRangeMilliseconds === null
-    ? null
-    : rangeEndTimestamp.value - timeRangeMilliseconds
-})
-const inspectorStyle = computed<Record<string, string | undefined>>(() => {
-  const node = selectedNode.value
-  if (!node) return {}
-  const margin = 12
-  const gap = 18
-  const width = Math.min(360, Math.max(240, viewportSize.width - margin * 2))
-  const maxHeight = Math.min(520, Math.max(180, viewportSize.height - margin * 2))
-  const point = inspectorAnchor
-  if (viewportSize.width < 600) {
-    return {
-      right: `${margin}px`,
-      bottom: `${margin}px`,
-      left: `${margin}px`,
-      maxHeight: `${Math.min(maxHeight, viewportSize.height * 0.55)}px`,
-    }
-  }
-  const radius = radiusFor(node)
-  const preferredRight = point.x + radius + gap
-  const left = preferredRight + width <= viewportSize.width - margin
-    ? preferredRight
-    : point.x - radius - gap - width
-  return {
-    left: `${Math.max(margin, Math.min(viewportSize.width - width - margin, left))}px`,
-    top: `${Math.max(
-      margin,
-      Math.min(viewportSize.height - maxHeight - margin, point.y - maxHeight / 2),
-    )}px`,
-    width: `${width}px`,
-    maxHeight: `${maxHeight}px`,
-  }
+const structuralDialog = computed({
+  get: () => selectedNode.value?.node_kind === 'folder' || selectedNode.value?.node_kind === 'conversation',
+  set: (open: boolean) => { if (!open) closeInspector() },
 })
 
 const activityExtent = computed(() => {
-  const timestamps = visibleNodes.value
-    .map(node => Date.parse(node.activity_at))
+  const timestamps = [...nodes.value.values()]
+    .map(activityTimestamp)
     .filter(Number.isFinite)
   return {
-    newest: timestamps.length ? Math.max(...timestamps) : 0,
-    oldest: timestamps.length ? Math.min(...timestamps) : 0,
+    newest: timestamps.length ? Math.max(...timestamps) : null,
+    oldest: timestamps.length ? Math.min(...timestamps) : null,
   }
 })
+const activityDateFormatter = computed(() => new Intl.DateTimeFormat(locale.value, { dateStyle: 'short' }))
 
-const selectedRelations = computed<SelectedRelation[]>(() => {
+const selectedRelations = computed<MemoryGraphRelation[]>(() => {
   if (selectedNodeId.value === null) return []
-  const relations: SelectedRelation[] = []
+  const relations: MemoryGraphRelation[] = []
   for (const edge of visibleEdges.value) {
     let otherId: string | null = null
     if (edge.source_item_id === selectedNodeId.value) otherId = edge.target_item_id
@@ -562,23 +526,22 @@ const selectedRelations = computed<SelectedRelation[]>(() => {
   return relations.sort((left, right) => left.edge.relation_type.localeCompare(right.edge.relation_type))
 })
 
-function nodeColor(type: MemoryType): string {
-  return solaireCss[NODE_ACCENTS[type]].accent
-}
 
-function roleColor(role: MemoryGraphEntityKind): string {
+function roleAccent(role: MemoryGraphEntityKind): SolaireColor {
   const accent = RESOURCE_ROLE_ACCENTS[role]
-  if (accent) return solaireCss[accent].accent
+  if (accent) return accent
   switch (role) {
-    case 'contact': return nodeColor('social')
-    case 'document': return nodeColor('working')
-    case 'conversation': return nodeColor('episodic')
-    default: return nodeColor('semantic')
+    case 'memory': return 'blue'
+    case 'contact': return 'fuchsia'
+    case 'document': return 'orange'
+    case 'conversation': return 'iris'
+    default: return 'green'
   }
 }
 
-function isMemoryTypeHidden(type: MemoryType): boolean {
-  return hiddenMemoryTypes.value.has(type)
+
+function roleColor(role: MemoryGraphEntityKind): string {
+  return solaireCss[roleAccent(role)].accent
 }
 
 function isEntityKindHidden(kind: MemoryGraphEntityKind): boolean {
@@ -586,9 +549,6 @@ function isEntityKindHidden(kind: MemoryGraphEntityKind): boolean {
 }
 
 function isNodeVisible(node: MemoryGraphNode): boolean {
-  if (node.entity_kind === 'memory') {
-    return !isMemoryTypeHidden(node.memory_type)
-  }
   return !isEntityKindHidden(node.entity_kind)
 }
 
@@ -604,13 +564,6 @@ function renderTypeFilterChange(): void {
   })
 }
 
-function toggleMemoryType(type: MemoryType): void {
-  const next = new Set(hiddenMemoryTypes.value)
-  if (next.has(type)) next.delete(type)
-  else next.add(type)
-  hiddenMemoryTypes.value = next
-  renderTypeFilterChange()
-}
 
 function toggleEntityKind(kind: MemoryGraphEntityKind): void {
   const next = new Set(hiddenEntityKinds.value)
@@ -640,7 +593,6 @@ function nodeIcon(node: MemoryGraphNode): string {
 }
 
 function nodeRoleLabel(node: MemoryGraphNode): string {
-  if (node.entity_kind === 'memory') return t(`memory.types.${node.memory_type}`)
   return t(`memory.graph.roles.${node.entity_kind}`)
 }
 
@@ -655,6 +607,11 @@ const audioSymbol = `image://data:image/svg+xml;charset=utf-8,${encodeURICompone
   `<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32"><rect width="32" height="32" fill="${solaire.cyan.accent}"/><path d="M13 22V9l12-3v13M13 13l12-3" fill="none" stroke="white" stroke-width="3" stroke-linejoin="round"/><ellipse cx="9" cy="23" rx="5" ry="3.5" fill="white"/><ellipse cx="21" cy="20" rx="5" ry="3.5" fill="white"/></svg>`,
 )}`
 
+const folderSymbol = `path://${folderArtwork.folder.back} ${folderArtwork.folder.front}`
+// Material icons include a transparent viewport path before the visible artwork.
+const documentIconPath = matDescription.split('&&').at(-1) ?? ''
+const documentSymbol = `path://${documentIconPath}`
+
 function nodeThumbnailUrl(node: MemoryGraphNode): string | null {
   const key = thumbnailKeys.get(node.id)
   return key ? thumbnails.url(key) : null
@@ -667,11 +624,11 @@ function nodeSymbol(node: MemoryGraphNode): string {
   switch (node.entity_kind) {
     case 'topic': return 'diamond'
     case 'contact': return 'roundRect'
-    case 'document': return 'rect'
-    case 'attachment': return 'rect'
-    case 'folder': return 'roundRect'
-    case 'file': return 'rect'
-    case 'directory': return 'roundRect'
+    case 'document': return documentSymbol
+    case 'attachment': return documentSymbol
+    case 'folder': return folderSymbol
+    case 'file': return documentSymbol
+    case 'directory': return folderSymbol
     case 'conversation': return 'roundRect'
     default: return 'circle'
   }
@@ -690,7 +647,8 @@ function nodeSymbolSize(node: MemoryGraphNode, groupedCount = 0): number | [numb
   const key = thumbnailKeys.get(node.id)
   const aspect = key ? thumbnails.aspect(key) : 1
   const longest = Math.max(40, size * 1.75)
-  // Explicit dimensions preserve proportions on both first paint and cache reuse.
+  // ECharts fits images inside a unit square before scaling to symbolSize.
+  // These dimensions already preserve the ratio, so image symbols must disable that fitting.
   return aspect >= 1 ? [longest, longest / aspect] : [longest * aspect, longest]
 }
 
@@ -701,8 +659,8 @@ function clientThumbnailBudget(): number {
   const cores = navigator.hardwareConcurrency || 4
   const limited = (gigabytes !== null && gigabytes <= 2) || cores <= 2
   if (window.innerWidth < 1024) return limited ? 32 : 96
-  if (limited) return 64
-  return cores >= 8 ? 512 : 256
+  // Browser memory hints can underestimate powerful desktops; they must not cap a directory at 64 images.
+  return cores >= 8 ? 1024 : 512
 }
 
 function isStructuralNode(node: MemoryGraphNode): boolean {
@@ -734,11 +692,8 @@ function activityTimestamp(node: MemoryGraphNode): number {
 function freshness(node: MemoryGraphNode): number {
   const timestamp = activityTimestamp(node)
   const { newest, oldest } = activityExtent.value
-  if (!Number.isFinite(timestamp) || newest <= oldest) return 1
-  const age = Math.max(0, newest - timestamp)
-  const range = Math.max(1, newest - oldest)
-  const relative = 1 - Math.log1p(age) / Math.log1p(range)
-  return 0.08 + Math.max(0, Math.min(1, relative)) * 0.92
+  if (!Number.isFinite(timestamp) || newest === null || oldest === null || newest <= oldest) return 1
+  return Math.max(0, Math.min(1, (timestamp - oldest) / (newest - oldest)))
 }
 
 function radiusFor(node: MemoryGraphNode): number {
@@ -749,12 +704,7 @@ function radiusFor(node: MemoryGraphNode): number {
       : node.entity_kind === 'document'
         ? 2
         : 0
-  return 8 + freshness(node) * 8 + roleBoost + (selectedNodeId.value === node.id ? 3 : 0)
-}
-
-function toggleBranchDetails(value: boolean): void {
-  expandedBranches.value = new Set(value ? branches.value.map(branch => branch.anchorId) : [])
-  renderGraph({ viewState: captureGraphView(), preserveSelection: true, relax: false })
+  return NODE_MIN_RADIUS + freshness(node) * NODE_RADIUS_RANGE + roleBoost + (selectedNodeId.value === node.id ? 3 : 0)
 }
 
 function revealBranch(id: string, anchor?: ScreenPoint): void {
@@ -777,6 +727,8 @@ function onGraphRoam(): void {
   const view = captureGraphView()
   const zoom = view?.zoom ?? 1
   const previousOverview = overview.value
+  const previousAllTitles = allTitles.value
+  allTitles.value = zoom >= MAX_ZOOM - 0.000001
   if (zoom <= 0.55) overview.value = true
   else if (zoom >= 0.7) overview.value = false
   let next: Set<string> | null = null
@@ -800,7 +752,7 @@ function onGraphRoam(): void {
   if (branchesChanged && next) {
     expandedBranches.value = next
   }
-  if (branchesChanged || previousOverview !== overview.value || (previousSelection !== null
+  if (branchesChanged || previousOverview !== overview.value || previousAllTitles !== allTitles.value || (previousSelection !== null
     && (dynamicLayout.value || overview.value || collapsedMemberIds.value.has(previousSelection)))) {
     renderGraph({ viewState: view, preserveSelection: true, relax: false })
   } else {
@@ -836,17 +788,22 @@ function updateThumbnails(): void {
       const position: unknown = data.getItemLayout(index)
       if (!Array.isArray(position)) continue
       const screen: unknown = instance.convertToPixel({ seriesId: GRAPH_SERIES_ID }, position)
-      const retained = thumbnailKeys.has(id)
-      // Keep a small margin for already displayed images so slight pans do not
-      // repeatedly hide/reveal them. New reads remain inside the viewport.
+      if (!Array.isArray(screen) || typeof screen[0] !== 'number' || typeof screen[1] !== 'number') continue
+      const key = thumbnailKey(node)
+      const retained = thumbnailKeys.get(id) === key
+      const loaded = retained && thumbnails.url(key) !== null
+      const inViewport = screen[0] >= 0 && screen[0] <= viewportSize.width
+        && screen[1] >= 0 && screen[1] <= viewportSize.height
+      // Keep loaded images outside the viewport until the display budget is full.
+      // Only pending reads use a small margin; new reads start inside the viewport.
       const margin = retained ? 100 : 0
-      if (!Array.isArray(screen) || typeof screen[0] !== 'number' || typeof screen[1] !== 'number'
-        || screen[0] < -margin || screen[0] > viewportSize.width + margin
-        || screen[1] < -margin || screen[1] > viewportSize.height + margin) continue
+      if (!loaded && (screen[0] < -margin || screen[0] > viewportSize.width + margin
+        || screen[1] < -margin || screen[1] > viewportSize.height + margin)) continue
       // Near-view thumbnails have their own readable minimum size. An old/small
       // role square must not prevent the file from receiving its larger preview.
-      candidates.push({ node, key: thumbnailKey(node), distance: selectedNodeId.value === id ? -1
-        : Math.hypot(screen[0] - viewportSize.width / 2, screen[1] - viewportSize.height / 2) - (retained ? 80 : 0) })
+      candidates.push({ node, key, distance: selectedNodeId.value === id ? -1
+        : (inViewport ? 0 : Math.hypot(viewportSize.width, viewportSize.height))
+          + Math.hypot(screen[0] - viewportSize.width / 2, screen[1] - viewportSize.height / 2) - (retained ? 80 : 0) })
     }
   }
   thumbnailKeys.clear()
@@ -887,9 +844,8 @@ function paintThumbnails(): void {
     changed = true
     const style = 'itemStyle' in entry && typeof entry.itemStyle === 'object' && entry.itemStyle !== null
       ? entry.itemStyle : {}
-    return { ...entry, symbol, symbolKeepAspect: true, symbolSize: nodeSymbolSize(node),
-      itemStyle: { ...style, shadowBlur: symbol.startsWith('image://') ? 3
-        : overview.value || renderedNodes.value.length > 500 ? 0 : freshness(node) * 18 } }
+    return { ...entry, symbol, symbolKeepAspect: !nodeThumbnailUrl(node), symbolSize: nodeSymbolSize(node),
+      itemStyle: { ...style, ...nodeShadowStyle.value } }
   })
   if (changed) {
     // A symbol replacement preserves the camera, selection and native force cache.
@@ -937,34 +893,6 @@ function mergeRootPage(page: MemoryGraphPage): void {
   edgesTruncated.value = edgesTruncated.value || page.edges_truncated
 }
 
-function pageWithinTimeRange(
-  page: MemoryGraphPage,
-  cutoffTimestamp: number | null,
-): MemoryGraphPage {
-  if (cutoffTimestamp === null) return page
-  const filteredNodes = page.nodes.filter(node => activityTimestamp(node) >= cutoffTimestamp)
-  const visibleIds = new Set([
-    ...nodes.value.keys(),
-    ...filteredNodes.map(node => node.id),
-  ])
-  return {
-    ...page,
-    nodes: filteredNodes,
-    edges: page.edges.filter(edge => (
-      visibleIds.has(edge.source_item_id) && visibleIds.has(edge.target_item_id)
-    )),
-  }
-}
-
-function pageCanContainMoreVisibleRoots(
-  page: MemoryGraphPage,
-  cutoffTimestamp: number | null,
-): boolean {
-  if (!page.has_more || page.next_cursor === null) return false
-  if (cutoffTimestamp === null) return true
-  return Date.parse(page.next_cursor.activity_at) >= cutoffTimestamp
-}
-
 function graphPageHasChanges(page: MemoryGraphPage): boolean {
   for (const node of page.nodes) {
     const existing = nodes.value.get(node.id)
@@ -975,23 +903,6 @@ function graphPageHasChanges(page: MemoryGraphPage): boolean {
     if (!existing || JSON.stringify(existing) !== JSON.stringify(edge)) return true
   }
   return false
-}
-
-function pruneOutsideTimeRange(cutoffTimestamp: number | null): boolean {
-  if (cutoffTimestamp === null) return false
-  const retainedNodes = new Map(
-    [...nodes.value.entries()].filter(([_id, node]) => (
-      activityTimestamp(node) >= cutoffTimestamp
-    )),
-  )
-  if (retainedNodes.size === nodes.value.size) return false
-  nodes.value = retainedNodes
-  edges.value = new Map(
-    [...edges.value.entries()].filter(([_id, edge]) => (
-      retainedNodes.has(edge.source_item_id) && retainedNodes.has(edge.target_item_id)
-    )),
-  )
-  return true
 }
 
 function parallelEdgeCurvatures(): Map<string, number> {
@@ -1022,7 +933,12 @@ function parallelEdgeCurvatures(): Map<string, number> {
 }
 
 function nodeLabel(node: MemoryGraphNode): string {
+  if (isRootDirectory(node) && node.title === node.resource_uri) return node.title
   return node.title.length > 28 ? `${node.title.slice(0, 27)}…` : node.title
+}
+
+function isRootDirectory(node: MemoryGraphNode): boolean {
+  return node.entity_kind === 'directory' && /^[a-z][a-z0-9+.-]*:\/\/\/?$/i.test(node.resource_uri ?? '')
 }
 
 function graphDegrees(): Map<string, number> {
@@ -1059,9 +975,15 @@ function graphOption(options: {
       .filter(node => isLayoutHub(node, degrees.get(node.id) ?? 0))
       .map(node => node.id),
   )
-  const labelBudget = Math.max(4, Math.min(80, Math.floor(viewportSize.width * viewportSize.height / 20_000)))
+  const rootDirectoryIds = new Set(visibleNodes.value.filter(isRootDirectory).map(node => node.id))
+  const labelBudget = overview.value
+    ? Math.max(4, Math.min(12, Math.floor(viewportSize.width * viewportSize.height / 80_000)))
+    : Math.max(4, Math.min(80, Math.floor(viewportSize.width * viewportSize.height / 20_000)))
   const labelIds = new Set([...renderedNodes.value].sort((left, right) => (
-    Number(hubIds.has(right.id)) - Number(hubIds.has(left.id)) || activityTimestamp(right) - activityTimestamp(left)
+    Number(rootDirectoryIds.has(right.id)) - Number(rootDirectoryIds.has(left.id))
+    || Number(hubIds.has(right.id)) - Number(hubIds.has(left.id))
+    || (degrees.get(right.id) ?? 0) - (degrees.get(left.id) ?? 0)
+    || activityTimestamp(right) - activityTimestamp(left)
   )).slice(0, labelBudget).map(node => node.id))
   // Force distances use map units: adapt to the canvas so ordinary windows do not
   // inherit distances tuned for a large fullscreen view.
@@ -1089,7 +1011,10 @@ function graphOption(options: {
       layout: dynamicLayout.value ? 'force' : 'none',
       preserveAspect: true,
       nodeScaleRatio: dynamicLayout.value ? 0.6 : 0.1,
-      labelLayout: { hideOverlap: true },
+      labelLayout: params => ({
+        hideOverlap: !allTitles.value && !rootDirectoryIds.has(seriesNodes[params.dataIndex ?? -1]?.id ?? ''),
+        moveOverlap: rootDirectoryIds.has(seriesNodes[params.dataIndex ?? -1]?.id ?? '') ? 'shiftY' : undefined,
+      }),
       roam: true,
       roamTrigger: 'global',
       draggable: false,
@@ -1120,7 +1045,7 @@ function graphOption(options: {
           ? branch.memberIds.filter(id => collapsedMemberIds.value.has(id)).length : 0
         const degree = degrees.get(node.id) ?? 0
         const accent = RESOURCE_ROLE_ACCENTS[node.entity_kind]
-        const color = palette.getPropertyValue(`--solaire-${accent ?? NODE_ACCENTS[node.memory_type]}-accent`).trim()
+        const color = palette.getPropertyValue(`--solaire-${accent ?? roleAccent(node.entity_kind)}-accent`).trim()
         return {
           id: node.id,
           name: node.title,
@@ -1128,12 +1053,12 @@ function graphOption(options: {
           ...(!dynamicLayout.value ? branchLayout.positions.get(node.id) : {}),
           fixed: dynamicLayout.value && selected,
           symbol: hidden ? 'none' : nodeSymbol(node),
-          symbolKeepAspect: true,
+          symbolKeepAspect: !nodeThumbnailUrl(node),
           symbolSize: nodeSymbolSize(node, groupedCount),
           selected,
           itemStyle: {
             color,
-            opacity: hidden ? 0 : 1,
+            opacity: hidden ? 0 : selected ? 1 : MIN_NODE_OPACITY + freshnessScore * (1 - MIN_NODE_OPACITY),
             borderColor: selected
               ? (dark ? '#ffffff' : '#263238')
               : isStructuralNode(node)
@@ -1142,18 +1067,16 @@ function graphOption(options: {
                   ? '#90caf9'
                   : 'rgba(255, 255, 255, 0.9)',
             borderWidth: selected ? 4 : isStructuralNode(node) ? 3 : node.source_managed ? 2 : 1.5,
-            shadowColor: color,
-            shadowBlur: nodeSymbol(node).startsWith('image://') ? 3
-              : overview.value || renderedNodes.value.length > 500 ? 0 : freshnessScore * 18 + (isStructuralNode(node) ? 8 : 0),
+            ...nodeShadowStyle.value,
           },
           label: {
-            show: !hidden && (selected || (labelIds.has(node.id) && (!overview.value || hubIds.has(node.id)))),
+            show: !hidden && (selected || allTitles.value || rootDirectoryIds.has(node.id) || labelIds.has(node.id)),
             position: 'bottom',
             distance: 5,
             color: dark ? '#f5f5f5' : '#263238',
-            opacity: Math.max(0.65, freshnessScore),
+            opacity: 1,
             fontSize: selected ? 12 : 11,
-            fontWeight: selected ? 600 : 400,
+            fontWeight: selected || rootDirectoryIds.has(node.id) ? 600 : 400,
             formatter: groupedCount ? `${nodeLabel(node)}\n${t('memory.graph.branchCount', { count: groupedCount })}` : nodeLabel(node),
           },
           emphasis: {
@@ -1169,6 +1092,7 @@ function graphOption(options: {
           select: {
             label: { show: !hidden },
             itemStyle: {
+              opacity: 1,
               borderColor: dark ? '#ffffff' : '#263238',
               borderWidth: 4,
             },
@@ -1338,6 +1262,7 @@ async function loadInitial(options: { preserveView?: boolean } = {}): Promise<vo
     branchLayout.clear()
     expandedBranches.value = new Set()
     overview.value = false
+    allTitles.value = false
   }
   layoutPending.value = false
   if (!preserveView) chart?.clear()
@@ -1350,8 +1275,6 @@ async function loadInitial(options: { preserveView?: boolean } = {}): Promise<vo
   } else {
     loading.value = true
   }
-  rangeEndTimestamp.value = Date.now()
-  const cutoffTimestamp = timeRangeStartTimestamp.value
   try {
     let cursor: MemoryGraphCursor | null = null
     let loadNextPage = true
@@ -1359,7 +1282,6 @@ async function loadInitial(options: { preserveView?: boolean } = {}): Promise<vo
       const page = await memoryService.listGraphRoots({
         agentId,
         query,
-        memoryTypes,
         topicItemId,
         contactItemId,
         limit: ROOT_PAGE_SIZE,
@@ -1368,8 +1290,8 @@ async function loadInitial(options: { preserveView?: boolean } = {}): Promise<vo
         knownItemIds: [...nodes.value.keys()].slice(-MAX_VISIBLE_NODES),
       })
       if (generation !== loadGeneration) return
-      mergeRootPage(pageWithinTimeRange(page, cutoffTimestamp))
-      loadNextPage = pageCanContainMoreVisibleRoots(page, cutoffTimestamp)
+      mergeRootPage(page)
+      loadNextPage = page.has_more && page.next_cursor !== null
       cursor = page.next_cursor
       if (loadNextPage && nodes.value.size >= MAX_VISIBLE_NODES) {
         capacityReached.value = true
@@ -1421,14 +1343,10 @@ async function refreshLatestRoots(): Promise<void> {
   ) return
   const generation = loadGeneration
   refreshing.value = true
-  const refreshedAt = Date.now()
-  const milliseconds = timeRangeMilliseconds
-  const cutoffTimestamp = milliseconds === null ? null : refreshedAt - milliseconds
   try {
     const page = await memoryService.listGraphRoots({
       agentId,
       query,
-      memoryTypes,
       topicItemId,
       contactItemId,
       limit: ROOT_PAGE_SIZE,
@@ -1436,15 +1354,10 @@ async function refreshLatestRoots(): Promise<void> {
       knownItemIds: [...nodes.value.keys()].slice(-MAX_VISIBLE_NODES),
     })
     if (generation !== loadGeneration) return
-    rangeEndTimestamp.value = refreshedAt
-    const visiblePage = pageWithinTimeRange(page, cutoffTimestamp)
-    const pageChanged = graphPageHasChanges(visiblePage)
-    const pruned = pruneOutsideTimeRange(cutoffTimestamp)
-    const changed = pageChanged || pruned
-    if (!changed) { scheduleThumbnails(); return }
-    mergeNodes(visiblePage.nodes)
-    mergeEdges(visiblePage.edges)
-    edgesTruncated.value = edgesTruncated.value || visiblePage.edges_truncated
+    if (!graphPageHasChanges(page)) { scheduleThumbnails(); return }
+    mergeNodes(page.nodes)
+    mergeEdges(page.edges)
+    edgesTruncated.value = edgesTruncated.value || page.edges_truncated
     renderGraph({
       viewState: captureGraphView(),
       preserveSelection: true,
@@ -1456,18 +1369,20 @@ async function refreshLatestRoots(): Promise<void> {
   }
 }
 
-function selectNode(id: string, anchor?: ScreenPoint): void {
-  if (!nodes.value.has(id)) return
+function selectNode(id: string): void {
+  const node = nodes.value.get(id)
+  if (!node || !isNodeVisible(node)) return
   const wasCollapsed = collapsedMemberIds.value.has(id)
   selectedNodeId.value = id
-  inspectorAnchor.x = anchor?.x ?? viewportSize.width / 2
-  inspectorAnchor.y = anchor?.y ?? viewportSize.height / 2
   if (wasCollapsed || dynamicLayout.value) renderGraph({ viewState: captureGraphView(), preserveSelection: true, relax: false })
   chart?.dispatchAction({
     type: 'select',
     seriesId: GRAPH_SERIES_ID,
     dataId: id,
   })
+  if (node.node_kind !== 'folder' && node.node_kind !== 'conversation') {
+    emit('open', id, node, selectedRelations.value)
+  }
 }
 
 function closeInspector(render = true): void {
@@ -1483,10 +1398,7 @@ function closeInspector(render = true): void {
   }
 }
 
-function openNodeDetail(id: string): void {
-  if ($q.screen.lt.md) closeInspector()
-  emit('open', id)
-}
+defineExpose({ selectNode, closeDetails: closeInspector })
 
 function eventNodeId(event: ECElementEvent): string | null {
   if (event.dataType !== 'node' || typeof event.data !== 'object' || event.data === null) {
@@ -1510,20 +1422,19 @@ function onGraphClick(event: ECElementEvent): void {
     revealBranch(id, eventAnchor(event))
     return
   }
-  const node = nodes.value.get(id)
-  if ($q.screen.lt.md && node && node.node_kind !== 'conversation' && node.node_kind !== 'folder') {
+  if ($q.screen.lt.md) {
     const zrEvent = event.event
     if (zrEvent?.zrByTouch) {
       zrEvent.event.preventDefault()
       zrEvent.event.stopPropagation()
     }
+    const generation = loadGeneration
     registerMobileDetailTimeout(() => {
-      const currentNode = nodes.value.get(id)
-      if (currentNode && currentNode.node_kind !== 'conversation' && currentNode.node_kind !== 'folder') emit('open', id)
+      if (generation === loadGeneration) selectNode(id)
     }, MOBILE_DETAIL_OPEN_DELAY)
     return
   }
-  selectNode(id, eventAnchor(event))
+  selectNode(id)
 }
 
 function resizeChart(): void {
@@ -1547,6 +1458,7 @@ function fitGraph(): void {
   closeInspector(false)
   expandedBranches.value = new Set()
   overview.value = false
+  allTitles.value = false
   renderGraph({ viewState: { center: ['50%', '50%'], zoom: 1 }, preserveSelection: true, relax: false })
 }
 
@@ -1652,12 +1564,11 @@ watch(
   [
     () => agentId,
     () => query,
-    () => memoryTypes.join('|'),
     () => topicItemId,
     () => contactItemId,
-    () => timeRangeMilliseconds,
   ],
   () => {
+    removeMobileDetailTimeout()
     void loadInitial()
   },
   { immediate: true },
@@ -1738,8 +1649,7 @@ onUnmounted(() => {
   aspect-ratio: auto;
 }
 
-.memory-graph--fullscreen .memory-graph__viewport,
-.memory-graph--fullscreen .memory-graph__inspector {
+.memory-graph--fullscreen .memory-graph__viewport {
   min-height: 0;
 }
 
@@ -1759,9 +1669,9 @@ onUnmounted(() => {
 }
 
 .memory-graph__legend-panel {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 7px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
   padding: 8px 10px;
   background: #fff;
   color: #455a64;
@@ -1769,6 +1679,7 @@ onUnmounted(() => {
 }
 
 .memory-graph__legend-group {
+  flex: 1 1 260px;
   min-width: 0;
   padding: 6px 8px;
   border: 1px solid rgba(69, 90, 100, 0.13);
@@ -1778,6 +1689,8 @@ onUnmounted(() => {
 
 .memory-graph__legend-group--view {
   display: flex;
+  flex-basis: 280px;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
   gap: 10px;
@@ -1933,11 +1846,26 @@ onUnmounted(() => {
   box-shadow: inset 0 0 0 3px var(--q-primary);
 }
 
-.memory-graph__gradient {
-  width: 64px;
-  height: 8px;
-  border-radius: 999px;
-  background: linear-gradient(90deg, rgba(0, 137, 123, 0.22), rgba(0, 137, 123, 1));
+.memory-graph__freshness-endpoint {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.memory-graph__freshness-endpoint time {
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+}
+
+.memory-graph__freshness-samples {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.memory-graph__freshness-sample {
+  flex-shrink: 0;
+  border-radius: 50%;
 }
 
 .memory-graph__empty {
@@ -1948,15 +1876,9 @@ onUnmounted(() => {
   transform: translate(-50%, -50%);
 }
 
-.memory-graph__inspector {
-  position: absolute;
-  z-index: 2;
-  min-width: 0;
-  padding: 20px;
-  overflow-y: auto;
-  cursor: default;
-  user-select: text;
-  box-shadow: 0 12px 36px rgba(38, 50, 56, 0.22);
+.memory-graph__detail {
+  width: min(640px, 96vw);
+  max-height: 90vh;
 }
 
 .memory-graph--dark {
@@ -2028,19 +1950,10 @@ onUnmounted(() => {
   background-size: auto, auto, 32px 32px, 32px 32px, auto;
 }
 
-.memory-graph--dark .memory-graph__gradient {
-  background: linear-gradient(90deg, rgba(144, 202, 249, 0.16), #90caf9);
-}
-
-.memory-graph--dark .memory-graph__inspector {
-  background: #1d2027;
-  border-color: rgba(255, 255, 255, 0.14);
-  box-shadow: 0 14px 42px rgba(0, 0, 0, 0.48);
-}
-
-@media (max-width: 1199px) {
+@media (min-width: 1440px) {
   .memory-graph__legend-panel {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    display: grid;
+    grid-template-columns: minmax(0, 38fr) minmax(0, 38fr) minmax(0, 24fr);
   }
 }
 
@@ -2095,12 +2008,7 @@ onUnmounted(() => {
   }
 
   .memory-graph__legend-panel {
-    grid-template-columns: minmax(0, 1fr);
     padding: 7px;
-  }
-
-  .memory-graph__legend-group--view {
-    flex-wrap: wrap;
   }
 }
 

@@ -201,6 +201,11 @@ test('ChatGPT additional credits remain distinct from subscription windows', asy
   await expect(page.locator('.user-menu-wrapper').first()).toBeVisible()
   const owner = await request.get('/api/auth/me', { headers })
   expect(owner.ok()).toBeTruthy()
+  // This journey must also run alone: the initial selection otherwise reads
+  // the unconfigured OpenRouter catalog before opening ChatGPT.
+  expect((await request.put('/api/llm-providers/catalog/openrouter', {
+    headers, data: { is_active: false },
+  })).ok()).toBeTruthy()
   const configured = await request.put('/api/llm-providers/catalog/openai-codex', {
     headers, data: { is_active: false, subscription_acknowledged: true, user_id: (await owner.json()).id },
   })
@@ -235,11 +240,11 @@ test('ChatGPT additional credits remain distinct from subscription windows', asy
     await page.keyboard.press('Enter')
     await expect(panel.getByText('Restants : 0 crédits', { exact: true })).toBeVisible()
     expect((await request.put('/api/__test/provider-usage?status=503')).ok()).toBeTruthy()
-    await reload.click()
+    await reload.press('Enter')
     await expect(panel.getByRole('alert').filter({ hasText: 'Limites indisponibles' })).toBeVisible()
     await expect(panel.getByText(/^Restants :/)).toHaveCount(0)
     expect((await request.put('/api/__test/provider-usage?codex_credits=75')).ok()).toBeTruthy()
-    await reload.click()
+    await reload.press('Enter')
     await expect(panel.getByText('Restants : 75 crédits', { exact: true })).toBeVisible()
     await page.locator('.provider-list-panel').getByText('DeepSeek', { exact: true }).click()
     await page.locator('.provider-list-panel').getByText('OpenAI — ChatGPT', { exact: true }).click()

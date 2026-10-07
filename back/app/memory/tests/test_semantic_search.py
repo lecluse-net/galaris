@@ -463,7 +463,7 @@ async def test_lexical_fallback_does_not_admit_graph_only_neighbors(
     assert anchor.id in hits
     assert strong_neighbor.id not in hits
     assert weak_neighbor.id not in hits
-    assert result.ranking_version == "memory-query-evidence/v10"
+    assert result.ranking_version == "memory-query-evidence/v12"
 
 
 @pytest.mark.asyncio
@@ -551,7 +551,7 @@ async def test_recall_infers_topic_and_fuses_thematic_with_global_ranks(
     )
 
     assert result.mode == "hybrid"
-    assert result.ranking_version == "memory-query-evidence/v10"
+    assert result.ranking_version == "memory-query-evidence/v12"
     assert [hit.item.id for hit in result.hits[:2]] == [
         thematic.id,
         transverse.id,
@@ -809,7 +809,6 @@ async def test_hybrid_recall_applies_node_kind_and_source_managed_filters(
             owner_agent_id=owner.id,
             title="Release validation document",
             payload=MemoryPayload(text="A source document about release validation."),
-            memory_type="working",
             node_kind="document",
         )
     )

@@ -206,7 +206,6 @@ def existing_memories_from_hits(
                 id=str(hit.item.id),
                 title=hit.item.title,
                 content=content[:8_000],
-                memory_type=hit.item.memory_type,
                 keywords=list(hit.item.keywords[:20]),
                 score=hit.score,
                 temporal=hit.item.temporal,
@@ -430,7 +429,6 @@ async def apply_memory_extraction(
             action = "create"
             operation_metadata.update(
                 {
-                    "memory_type": operation.memory_type,
                     "retention_reason": operation.retention_reason,
                     "future_utility": operation.future_utility,
                     "memory_extraction_action": "CREATE",

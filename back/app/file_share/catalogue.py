@@ -3,6 +3,7 @@
 from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import datetime, timezone
+from functools import lru_cache
 import hashlib
 import json
 from typing import cast
@@ -11,6 +12,7 @@ from uuid import UUID
 from sqlalchemy import Text, and_, exists, func, or_, select, literal, update, delete
 from sqlalchemy.orm import InstrumentedAttribute
 from sqlalchemy.sql.elements import ColumnElement
+from sqlalchemy.sql.selectable import CTE
 
 from app.connection import Connection, ConnectionParam
 from app.connection.facade import effective_param_value_expression
@@ -61,12 +63,21 @@ def live_catalogue_binding() -> ColumnElement[bool]:
     )
 
 
-def catalogue_access_clause(item_id: InstrumentedAttribute[UUID | None]) -> ColumnElement[bool]:
+@lru_cache(maxsize=1)
+def _catalogue_bindings() -> CTE:
     # A binding belongs to a connection, not to each of its 100k files. Compute
     # inherited policy and configuration hashes once per connection per query.
-    bindings = select(Connection.id, Connection.agent_id, binding_stamp().label("stamp")).join(
+    # Reuse the immutable SQL expression, never a result or authorization value.
+    # Independent ACLs can then share one named, top-level materialized CTE.
+    return select(Connection.id, Connection.agent_id, binding_stamp().label("stamp")).join(
         ToolModel, ToolModel.id == Connection.tool_id,
-    ).where(Connection.active.is_(True), indexing_mode_expression().in_(("known_uris", "recursive"))).cte().prefix_with("MATERIALIZED", dialect="postgresql")
+    ).where(Connection.active.is_(True), indexing_mode_expression().in_(("known_uris", "recursive"))).cte(
+        "file_catalogue_bindings",
+    ).prefix_with("MATERIALIZED", dialect="postgresql")
+
+
+def catalogue_access_clause(item_id: InstrumentedAttribute[UUID | None]) -> ColumnElement[bool]:
+    bindings = _catalogue_bindings()
     return exists(select(FileCatalogEntry.id).join(
         bindings, bindings.c.id == FileCatalogEntry.connection_id,
     ).where(

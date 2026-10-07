@@ -126,9 +126,19 @@ test('workbench saves dataset roles and item categories and submits bounded repe
   await expect.poll(() => started).toEqual({ llm_id: 1, judge_llm_id: 1, repetitions: 3, max_cost: 0.5 })
   const benchmark = page.getByRole('dialog')
   await benchmark.getByText('Synthetic benchmark case', { exact: true }).last().click()
-  await benchmark.getByText('Sources are present', { exact: true }).click({ trial: true })
+  const evidence = benchmark.getByText('Sources are present', { exact: true })
+  await evidence.click({ trial: true })
+  // Expanding the result can still move its evidence after the first scroll.
+  await evidence.evaluate(async element => {
+    const animations = []
+    for (let ancestor = element.parentElement; ancestor; ancestor = ancestor.parentElement) {
+      animations.push(...ancestor.getAnimations())
+    }
+    await Promise.all(animations.map(animation => animation.finished.catch(() => {})))
+  })
+  await evidence.scrollIntoViewIfNeeded()
   // Check reachable evidence; fractional border clipping is not a content contract.
-  await expect(benchmark.getByText('Sources are present', { exact: true })).toBeInViewport()
+  await expect(evidence).toBeInViewport()
   await expect(benchmark.getByRole('button', { name: 'Close', exact: true })).toBeInViewport({ ratio: 1 })
   await page.screenshot({ path: test.info().outputPath('lab-benchmark-scroll.png') })
   await benchmark.getByRole('button', { name: 'Close', exact: true }).click()

@@ -213,7 +213,6 @@ async def hermes_provider_remember(
             source_ref=f"task:{task_id}:hermes-memory",
             metadata={
                 **data.metadata,
-                "memory_type": "core" if data.target == "user" else "semantic",
                 "hermes_target": data.target,
                 "hermes_action": data.action,
                 "hermes_session_id": data.session_id,

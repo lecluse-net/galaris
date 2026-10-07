@@ -13,17 +13,16 @@ test('editorial HTML survives real API storage, browser editing and reload', asy
   await expect(page.locator('input[type=password]')).toHaveCount(0)
   const headers = { Authorization: `Bearer ${session.access_token}`, 'X-Editorial-Profile-Version': '1' }
   const corpus = '<h2>Été</h2><p><u>Texte souligné</u></p><table><tbody><tr><th colspan="2" colwidth="150,200"><p>En-tête</p></th></tr><tr><td><p>A</p></td><td><p>B</p></td></tr></tbody></table><pre><code>  &lt;p&gt;\n    a  b\n</code></pre>'
-  for (const memoryType of ['core', 'working', 'episodic', 'semantic', 'procedural', 'social']) {
-    const response = await request.post('/api/memory/items', { headers, data: { owner_agent_id: fixture.agent_id, title: `HTML ${memoryType}`, memory_type: memoryType, media_type: 'text/html', payload: { text: corpus + `<p>${memoryType}</p>` } } })
+  {
+    const response = await request.post('/api/memory/items', { headers, data: { owner_agent_id: fixture.agent_id, title: 'HTML memory', media_type: 'text/html', payload: { text: corpus } } })
     expect(response.ok(), await response.text()).toBeTruthy()
     const item = await response.json()
     expect(item.media_type).toBe('text/html')
     expect(item.content_profile).toBe('rich-text')
-    expect(item.memory_type).toBe(memoryType)
   }
   // Memory keeps the static rich-text contract. Executable document isolation
   // is exercised separately by document-apps.spec.mjs.
-  const documentData = { owner_agent_id: fixture.agent_id, title: 'Document HTML E2E', node_kind: 'document', memory_type: 'working', media_type: 'text/html' }
+  const documentData = { owner_agent_id: fixture.agent_id, title: 'Document HTML E2E', node_kind: 'document', media_type: 'text/html' }
   const rejected = await request.post('/api/memory/items', { headers, data: {
     ...documentData, node_kind: 'memory', title: 'Rejected scripted memory',
     payload: { text: corpus + '<script>window.editorialE2E=true</script>' },

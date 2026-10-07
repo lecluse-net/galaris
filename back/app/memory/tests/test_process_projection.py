@@ -70,7 +70,6 @@ async def test_process_projection_is_private_bounded_and_source_managed(
     assert definition_item.source_managed
     assert run_item.source_managed
     assert run_item.visibility == "private"
-    assert run_item.memory_type == "episodic"
     detail = await service.get_item(
         run_item.id,
         agent_id=owner.id,

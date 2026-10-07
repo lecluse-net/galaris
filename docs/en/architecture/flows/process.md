@@ -151,8 +151,8 @@ then list all `LLMCall` objects carrying that `process_run_id`.
 ## Projection into Memory
 
 Dream executes `memory.project_process` without an LLM and outside the execution path. An assigned
-definition becomes a private, source-managed procedural memory. Only the sanitized output of a
-`success` run becomes episodic memory: the input, raw snapshot, errors, and secrets
+definition becomes a private, source-managed memory. Only the sanitized output of a
+`success` run is retained in memory: the input, raw snapshot, errors, and secrets
 are never projected. The output is filtered again and then limited to 12,000 characters.
 
 The result carries a `result_of` link to its definition. The projection retains the 20 most recent

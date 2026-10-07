@@ -286,7 +286,7 @@ notes : distinguer la nouvelle incarnation, sauf preuve de restauration de la m�
 
 ### 4.2 Projection dans Memory
 
-Ajouter `node_kind=file` et `node_kind=directory`, généralement `memory_type=working`,
+Ajouter `node_kind=file` et `node_kind=directory`,
 gérés par source, privés et appartenant à l'agent. Conserver `folder` pour le classement
 documentaire. Une collection virtuelle peut être un `directory` avec une sous-nature explicite
 `collection` ; ne pas fabriquer un arbre en découpant des locators opaques.

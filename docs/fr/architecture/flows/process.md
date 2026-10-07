@@ -148,8 +148,8 @@ du run listent ensuite tous les `LLMCall` portant ce `process_run_id`.
 ## Projection vers Memory
 
 Dream exécute `memory.project_process` sans LLM et hors du chemin d'exécution. Une définition
-affectée devient une mémoire procédurale privée et source-managed. Seule la sortie assainie d'un
-run `success` devient une mémoire épisodique : l'entrée, le snapshot brut, les erreurs et secrets
+affectée devient une mémoire privée et source-managed. Seule la sortie assainie d'un
+run `success` est conservée en mémoire : l'entrée, le snapshot brut, les erreurs et secrets
 ne sont jamais projetés. La sortie est de nouveau filtrée puis bornée à 12 000 caractères.
 
 Le résultat porte un lien `result_of` vers sa définition. La projection conserve les 20 dernières

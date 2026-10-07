@@ -363,7 +363,6 @@ async def test_memory_brief_has_a_strict_character_budget(
             item=SimpleNamespace(
                 id=item_id,
                 title="A long deployment procedure",
-                memory_type="procedural",
             ),
             source_refs=["task:1"],
             excerpt="x" * 3_000,
@@ -419,10 +418,10 @@ async def test_memory_brief_has_a_strict_character_budget(
 
 
 @pytest.mark.asyncio
-async def test_memory_brief_ranks_core_with_other_types_and_contact_scope(
+async def test_memory_brief_ranks_relevance_and_contact_scope(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    core_id = uuid4()
+    preference_id = uuid4()
     relevant_id = uuid4()
     contact_id = uuid4()
 
@@ -430,14 +429,12 @@ async def test_memory_brief_ranks_core_with_other_types_and_contact_scope(
         item_id: UUID,
         *,
         title: str,
-        memory_type: str,
         score: float,
     ) -> SimpleNamespace:
         return SimpleNamespace(
             item=SimpleNamespace(
                 id=item_id,
                 title=title,
-                memory_type=memory_type,
             ),
             source_refs=["manual"],
             excerpt=title,
@@ -457,26 +454,16 @@ async def test_memory_brief_ranks_core_with_other_types_and_contact_scope(
         assert kwargs["contact_item_id"] == contact_id
         assert kwargs["strict_contact_scope"] is False
         assert kwargs["exclude_agent_projections"] is True
-        assert kwargs["memory_types"] == [
-            "core",
-            "working",
-            "episodic",
-            "semantic",
-            "procedural",
-            "social",
-        ]
         return SimpleNamespace(
             hits=[
                 hit(
                     relevant_id,
                     title="Deployment procedure",
-                    memory_type="procedural",
                     score=0.8,
                 ),
                 hit(
-                    core_id,
+                    preference_id,
                     title="Always address the user in French",
-                    memory_type="core",
                     score=0.7,
                 ),
             ],
@@ -517,9 +504,9 @@ async def test_memory_brief_ranks_core_with_other_types_and_contact_scope(
 
     assert [item.memory_id for item in brief.items] == [
         str(relevant_id),
-        str(core_id),
+        str(preference_id),
     ]
-    assert recorded == [(relevant_id, 0.8), (core_id, 0.7)]
+    assert recorded == [(relevant_id, 0.8), (preference_id, 0.7)]
 
 
 @pytest.mark.asyncio
@@ -568,7 +555,6 @@ async def test_active_context_reserves_experience_slots_and_usage_kind(
             item=SimpleNamespace(
                 id=item_id,
                 title=f"Memory {item_id}",
-                memory_type="procedural",
                 node_kind="memory",
                 metadata={
                     "memory_role": role,
@@ -850,7 +836,6 @@ async def test_memory_context_provider_injects_filtered_brief_without_contact(
                     title="Deployment convention",
                     excerpt="Apply Atlas first.",
                     score=0.8,
-                    memory_type="procedural",
                 ),
             ),
             rendered="## Long-term memory\n\nApply Atlas first.",

@@ -12,14 +12,6 @@ from app.memory import MemoryTemporalAnchor
 from core.util import local_timezone_name
 
 
-DreamMemoryType = Literal[
-    "core",
-    "working",
-    "episodic",
-    "semantic",
-    "procedural",
-    "social",
-]
 MAX_MEMORY_EXTRACTION_CANDIDATES = 10
 MemoryRetentionReason = Literal[
     "explicit_user_preference",
@@ -99,7 +91,6 @@ class ExtractedMemory(BaseModel):
 
     title: str = Field(min_length=1, max_length=500)
     content: str = Field(min_length=1, max_length=8_000)
-    memory_type: DreamMemoryType = "semantic"
     keywords: list[DreamKeyword] = Field(default_factory=list, max_length=20)
     retention_reason: MemoryRetentionReason = "unspecified"
     future_utility: MemoryFutureUtility = "low"
@@ -111,7 +102,6 @@ class MemoryExtractionExistingMemory(BaseModel):
     id: str = Field(min_length=1, max_length=100)
     title: str = Field(min_length=1, max_length=500)
     content: str = Field(min_length=1, max_length=8_000)
-    memory_type: DreamMemoryType = "semantic"
     keywords: list[DreamKeyword] = Field(default_factory=list, max_length=20)
     score: float = Field(default=0.0)
     temporal: MemoryTemporalAnchor | None = None
@@ -168,7 +158,6 @@ class MemoryCreateOperation(BaseModel):
     temporal: MemoryTemporalAnchor | None = None
     title: str = Field(min_length=1, max_length=500)
     content: str = Field(min_length=1, max_length=8_000)
-    memory_type: DreamMemoryType = "semantic"
     keywords: list[DreamKeyword] = Field(default_factory=list, max_length=20)
     retention_reason: MemoryRetentionReason = Field(
         default="unspecified",

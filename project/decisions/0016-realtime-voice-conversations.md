@@ -40,7 +40,7 @@ plusieurs champs de voix sur l'agent.
 ## Intégration Galaris
 
 `app.agent` prépare l’identité, le prompt commun et tous les providers de contexte enregistrés.
-La mémoire core est donc injectée comme pour un run ordinaire. La session expose en plus trois
+Les souvenirs pertinents sont donc injectés comme pour un run ordinaire. La session expose en plus trois
 fonctions locales bornées :
 
 - `memory_search`, via la façade publique et les ACL de `app.memory` ;

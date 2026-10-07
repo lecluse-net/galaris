@@ -516,9 +516,6 @@
                     </q-item-label>
                     <template v-if="operation.action !== 'LINK'">
                       <q-item-label caption>{{ operation.content }}</q-item-label>
-                      <q-item-label v-if="operation.memory_type" caption class="q-mt-xs">
-                        {{ t('dream.detail.memoryType', { type: memoryTypeLabel(operation.memory_type) }) }}
-                      </q-item-label>
                       <div v-if="operation.keywords?.length" class="row q-gutter-xs q-mt-sm">
                         <q-chip v-for="keyword in operation.keywords" :key="keyword" dense size="sm">
                           {{ keyword }}
@@ -633,14 +630,6 @@ const mechanismTranslationKeys = {
   'memory.forget_stale': 'dream.mechanisms.staleMemory',
 } satisfies Record<DreamMechanismKey, string>
 
-const memoryTypeTranslationKeys: Record<string, string> = {
-  core: 'memory.types.core',
-  working: 'memory.types.working',
-  episodic: 'memory.types.episodic',
-  semantic: 'memory.types.semantic',
-  procedural: 'memory.types.procedural',
-  social: 'memory.types.social',
-}
 
 const columns = computed<QTableColumn<DreamReceiptSummary>[]>(() => [
   { name: 'updated_at', label: t('dream.history.date'), field: 'updated_at', align: 'left', style: 'width: 150px', headerStyle: 'width: 150px' },
@@ -892,10 +881,6 @@ function mechanismLabel(key: string): string {
   return translationKey ? t(translationKey) : key
 }
 
-function memoryTypeLabel(type: string): string {
-  const translationKey = memoryTypeTranslationKeys[type]
-  return translationKey ? t(translationKey) : type
-}
 
 function receiptStatusVisual(status: DreamReceiptStatus): { color: string } {
   return {

@@ -11,7 +11,7 @@ export const result = { prompt: 'Objective', system_prompt: 'Instructions', mess
 export const document = {
   document_type: 'html',
   id: 'doc-a', revision: 3, lock_version: 3, owner_agent_id: 7, owner_user_id: null, provider_code: 'galaris', title: 'Test document',
-  memory_type: 'working', node_kind: 'document', content_type: 'text', media_type: 'text/markdown', filename: null, keywords: [], metadata: { folder: 'Reports' },
+  node_kind: 'document', content_type: 'text', media_type: 'text/markdown', filename: null, keywords: [], metadata: { folder: 'Reports' },
   visibility: 'private', global_access: 0, read_only: false, deletion_protected: false, source_managed: false, managed_source_kind: null, managed_source_ref: null,
   content_hash: 'example', size_bytes: 10, last_accessed_at: null, access_count: 0, valid_from: null, valid_until: null, old_at: null, old_reason: null,
   created_at: '2026-09-01T12:00:00Z', updated_at: null, access: { can_read: true, can_write: true }, grants: [], payload: { text: '# Report\n\nInitial body' }, source_refs: [],

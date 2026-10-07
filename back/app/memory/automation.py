@@ -110,19 +110,6 @@ def _keywords(text: str) -> list[str]:
     return [word for word, _count in counts.most_common(10)]
 
 
-def _memory_type(objective: str, result: ExecutionResult) -> str:
-    text = f"{objective}\n{result.result}".casefold()
-    if any(marker in text for marker in ("je préfère", "j'aime", "i prefer", "always use")):
-        return "core"
-    if result.tools_used or any(
-        marker in text for marker in ("procédure", "procedure", "étapes", "steps")
-    ):
-        return "procedural"
-    if any(marker in text for marker in ("a décidé", "décision", "decided", "decision")):
-        return "semantic"
-    return "episodic"
-
-
 def _is_conversational_task(task: AgentTask, data: Mapping[str, Any]) -> bool:
     """Identify Tasks whose context belongs to a Messenger session by default."""
 
@@ -506,12 +493,6 @@ async def _process_task_capture(payload: Mapping[str, Any]) -> None:
         if isinstance(tools_raw, list)
         else []
     )
-    result = ExecutionResult(
-        prompt=objective,
-        result=answer,
-        tools_used=tools,
-        success=True,
-    )
     default_title = t("memory.capture.default_title", language)
     raw_title = str(payload.get("label") or default_title).strip() or default_title
     title = _redact_secrets(raw_title)
@@ -548,7 +529,6 @@ async def _process_task_capture(payload: Mapping[str, Any]) -> None:
                 source_kind="task",
                 source_ref=f"task:{task_id}",
                 metadata={
-                    "memory_type": _memory_type(objective, result),
                     "target_revision": (
                         existing.revision if existing is not None else None
                     ),

@@ -16,10 +16,6 @@
                     :title="t('task.memory.documentKindHint')">
                     {{ t('memory.graph.roles.document') }}
                 </q-badge>
-                <q-badge v-if="displayedItem.memoryType" class="memory-type-badge q-mr-sm"
-                    :title="t(`task.memory.typeHints.${displayedItem.memoryType}`)">
-                    {{ t(`memory.types.${displayedItem.memoryType}`) }}
-                </q-badge>
                 <DocumentIcon v-if="displayedItem.nodeKind === 'document' && documentId" :document-id="documentId" :title="displayedItem.title" class="q-mr-sm" />{{ displayedItem.title }}
             </q-card-section>
 
@@ -68,13 +64,12 @@
 </template>
 
 <script lang="ts">
-import type { MemoryNodeKind, MemoryType } from '@/app/memory/types'
+import type { MemoryNodeKind } from '@/app/memory/types'
 
 export interface MemoryItemPreview {
     id?: string
     title: string
     content: string
-    memoryType?: MemoryType
     nodeKind?: MemoryNodeKind
     keywords: string[]
 }
@@ -117,7 +112,6 @@ const displayedItem = computed<MemoryItemPreview | null>(() => {
             id: props.item.id,
             title: props.item.title,
             content: props.item.payload.text || '',
-            memoryType: props.item.memory_type,
             nodeKind: props.item.node_kind,
             keywords: props.item.keywords,
         }
@@ -163,11 +157,6 @@ const isMarkdown = computed(() => {
     background: var(--solaire-blue-light);
 }
 
-.memory-type-badge {
-    color: inherit;
-    border: 1px solid var(--solaire-iris-accent);
-    background: var(--solaire-iris-light);
-}
 
 .memory-content {
     overflow-wrap: anywhere;
@@ -215,9 +204,6 @@ body.body--dark .memory-kind-badge {
     background: var(--solaire-blue-dark);
 }
 
-body.body--dark .memory-type-badge {
-    background: var(--solaire-iris-dark);
-}
 
 body.body--dark .memory-item-card :deep(.text-grey-7) {
     color: #b0bec5 !important;

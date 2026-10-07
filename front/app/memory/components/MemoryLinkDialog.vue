@@ -69,7 +69,7 @@
                   {{ item.excerpt }}
                 </q-item-label>
                 <q-item-label caption>
-                  {{ t(`memory.types.${item.memory_type}`) }} · {{ item.id }}
+                  {{ item.id }}
                 </q-item-label>
               </q-item-section>
               <q-item-section side>

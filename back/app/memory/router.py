@@ -459,7 +459,6 @@ async def _ranked_memory_search(data: MemoryRecallRequest) -> list[MemorySearchI
         filter_contact_item_id=data.filter_contact_item_id,
         semantic_query=data.semantic_query,
         limit=data.limit,
-        memory_types=data.memory_types,
         node_kinds=data.node_kinds,
         memory_role=data.memory_role,
         task_id=data.task_id,

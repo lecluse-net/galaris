@@ -48,7 +48,7 @@ test('shared settings belong to the dataset and history belongs to each item on 
   await expect(page.locator('[data-parameter="history"]')).toHaveCount(0)
   await page.getByRole('button', { name: 'Développer "Consignes et objectifs"', exact: true }).click()
   const contractParameter = page.locator('[data-parameter="result_contract"]')
-  await contractParameter.locator('.q-item').first().click()
+  await contractParameter.getByRole('button', { name: 'Développer "Contraintes du résultat"', exact: true }).press('Enter')
   await contractParameter.locator('textarea').fill('{"format":"report"}')
   const savedDataset = page.waitForResponse(response => response.request().method() === 'PATCH' && /\/datasets\//.test(response.url()))
   await page.getByRole('button', { name: 'Enregistrer', exact: true }).click()

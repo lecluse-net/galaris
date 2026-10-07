@@ -1,4 +1,3 @@
-export type MemoryType = 'core' | 'working' | 'episodic' | 'semantic' | 'procedural' | 'social'
 export type MemoryNodeKind = 'memory' | 'document' | 'attachment' | 'folder' | 'file' | 'directory'
 export type MemoryGraphEntityKind = MemoryNodeKind | 'topic' | 'contact' | 'conversation'
 export type MemoryVisibility = 'private' | 'shared' | 'public'
@@ -13,7 +12,6 @@ export type MemorySearchDegradationReason =
   | 'semantic_search_failed'
 export type MemorySortField =
   | 'title'
-  | 'memory_type'
   | 'visibility'
   | 'owner'
   | 'access_count'
@@ -109,7 +107,6 @@ export interface MemoryItem {
   owner_user_id: number | null
   provider_code: string
   title: string
-  memory_type: MemoryType
   node_kind: MemoryNodeKind
   content_type: string
   media_type: string
@@ -243,7 +240,6 @@ export interface MemoryItemCreate {
   owner_agent_id: number
   title: string
   payload: MemoryPayload
-  memory_type?: MemoryType
   node_kind?: MemoryNodeKind
   content_type?: string
   media_type?: string
@@ -260,7 +256,6 @@ export interface MemoryItemUpdate {
   expected_lock_version?: number
   title?: string
   payload?: MemoryPayload
-  memory_type?: MemoryType
   content_type?: string
   media_type?: string
   filename?: string | null
@@ -312,7 +307,6 @@ export interface MemoryRankedItem {
   id: string
   title: string
   excerpt: string
-  memory_type: MemoryType
   node_kind: MemoryNodeKind
   source_refs: string[]
 }
@@ -340,7 +334,6 @@ export interface MemoryGraphNode {
   entity_kind: MemoryGraphEntityKind
   owner_agent_id: number | null
   title: string
-  memory_type: MemoryType
   visibility: MemoryVisibility
   source_managed: boolean
   access_count: number
@@ -359,6 +352,11 @@ export interface MemoryGraphEdge {
   relation_type: string
   confidence: number
   suggested: boolean
+}
+
+export interface MemoryGraphRelation {
+  edge: MemoryGraphEdge
+  other: MemoryGraphNode
 }
 
 export interface MemoryGraphPage {

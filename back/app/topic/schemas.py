@@ -126,7 +126,6 @@ class TopicLinkedMemoryRead(BaseModel):
     id: UUID
     title: str
     excerpt: str
-    memory_type: str
     owner_agent_id: int | None
     visibility: str
 

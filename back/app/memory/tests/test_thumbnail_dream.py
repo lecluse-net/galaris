@@ -19,7 +19,7 @@ async def test_dream_attachment_thumbnail_survives_reopening_and_checks_access(a
     owner, peer = agents
     monkeypatch.setattr(type(thumbnails.settings), 'GALARIS_THUMBNAIL_ROOT', str(tmp_path / 'cache'))
     item, _ = await service.create_item(MemoryItemCreate(
-        owner_agent_id=owner.id, title='Synthetic model', memory_type='working', node_kind='document',
+        owner_agent_id=owner.id, title='Synthetic model',  node_kind='document',
         media_type='text/html', payload=MemoryPayload(text='<p>Model</p>'),
     ))
     attachment = await document_attachment_service.add_document_attachment_bytes(
@@ -54,7 +54,7 @@ async def test_dream_attachment_thumbnail_survives_reopening_and_checks_access(a
 async def test_thumbnail_source_removed_after_claim_is_skipped(agents, memory_storage, db):
     owner, _ = agents
     item, _ = await service.create_item(MemoryItemCreate(
-        owner_agent_id=owner.id, title='Synthetic source', memory_type='working', node_kind='document',
+        owner_agent_id=owner.id, title='Synthetic source',  node_kind='document',
         media_type='text/html', payload=MemoryPayload(text='<p>Attachment</p>'),
     ))
     attachment = await document_attachment_service.add_document_attachment_bytes(

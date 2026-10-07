@@ -78,7 +78,6 @@ def realtime_tools(
                 {
                     "id": str(hit.item.id),
                     "title": hit.item.title,
-                    "type": hit.item.memory_type,
                     "excerpt": hit.excerpt,
                     "source_refs": hit.source_refs,
                 }
@@ -100,17 +99,6 @@ def realtime_tools(
         title = str(arguments.get("title") or "").strip()
         if not content or not title:
             raise ValueError("content and title must not be empty")
-        memory_type = str(arguments.get("memory_type") or "semantic").strip()
-        allowed_types = {
-            "core",
-            "working",
-            "episodic",
-            "semantic",
-            "procedural",
-            "social",
-        }
-        if memory_type not in allowed_types:
-            raise ValueError(f"unsupported memory_type: {memory_type}")
         raw_keywords = arguments.get("keywords")
         keywords = (
             [str(value).strip() for value in cast(list[object], raw_keywords)]
@@ -155,7 +143,6 @@ def realtime_tools(
                     source_kind=source_kind,
                     source_ref=source_ref,
                     metadata={
-                        "memory_type": memory_type,
                         "requested_by": "agent",
                         "language": language,
                         **scope_metadata,
@@ -350,18 +337,6 @@ def realtime_tools(
                     "properties": {
                         "content": {"type": "string"},
                         "title": {"type": "string"},
-                        "memory_type": {
-                            "type": "string",
-                            "enum": [
-                                "core",
-                                "working",
-                                "episodic",
-                                "semantic",
-                                "procedural",
-                                "social",
-                            ],
-                            "default": "semantic",
-                        },
                         "keywords": {
                             "type": "array",
                             "items": {"type": "string"},

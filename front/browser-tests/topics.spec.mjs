@@ -163,6 +163,7 @@ test('a failed topic lookup explains the error and recovers on the next search',
   await mount(page, 'app/topic/components/TopicSelect.vue', { props: { modelValue: null, label: 'Topic' } })
   await page.getByRole('combobox', { name: 'Topic', exact: true }).click()
   await expect(page.getByText('Topic lookup unavailable', { exact: false })).toBeVisible()
+  await expect(page.getByRole('listbox')).toBeVisible()
   await jsonRoute(page, '**/api/topics?*', { items: [{ id: 'recovered', title: 'Recovered topic' }], total: 1 })
   await page.getByRole('combobox', { name: 'Topic', exact: true }).fill('Recovered')
   await page.getByRole('option', { name: 'Recovered topic', exact: true }).click()

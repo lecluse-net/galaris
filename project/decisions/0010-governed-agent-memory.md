@@ -48,8 +48,8 @@ sur toutes les mémoires d'un groupe.
 Le chemin quotidien utilise le full-text search PostgreSQL avec pondération du titre, des
 mots-clés et du contenu. Les ACL et dates de validité sont filtrées dans la
 requête avant le ranking. Avant une exécution, un provider de contexte commun construit un
-`MemoryBrief` déterministe : les mémoires `core` accessibles sont prioritaires, puis viennent les
-résultats hybrides pertinents, dans des limites d'items et de caractères configurables. Une panne
+`MemoryBrief` déterministe à partir des résultats hybrides pertinents,
+dans des limites d'items et de caractères configurables. Une panne
 du modèle vectoriel ou de son index replie ce rappel vers le lexical et reste fail-open.
 
 La graine lexicale du brief est courte et déterministe : titre structuré du Goal, sinon libellé de
@@ -209,8 +209,8 @@ recalculs dans le worker durable ; `make sync-db`, la réconciliation de démarr
 `make rebuild-source-memory` réparent les sources sans UUID. L'option `--recreate --provider`
 permet de repeupler un autre `ResourceStorage` à partir des données canoniques.
 
-Une exception sociale minimale s'applique aux expéditeurs humains effectivement observés par
-Messenger. Chaque agent reçoit une fiche `social`, privée, source-managed et en lecture seule,
+Une fiche contact minimale représente les expéditeurs humains effectivement observés par
+Messenger. Chaque agent reçoit une fiche privée, source-managed et en lecture seule,
 identifiée par le condensat versionné de `(owner_agent_id, messaging_id, user_id)`.
 `messaging_id` est le code canonique du bridge et `user_id` reste l'identifiant natif exact ; la
 connexion, la room et le message ne participent ni à la clé ni au contenu. Un nouveau nom affiché
@@ -220,8 +220,8 @@ interactions, avec un repli fail-open. Son journal permet un backfill idempotent
 table ni colonne. Aucune fusion cross-canal ou extraction du texte des conversations n'est
 effectuée.
 
-Les documents de travail deviennent une seconde nature de `MemoryItem`, orthogonale aux types
-cognitifs : `node_kind=document` avec `memory_type=working`. Ils conservent le modèle de
+Les documents de travail sont des `MemoryItem` de nature `node_kind=document`.
+Ils conservent le modèle de
 propriétaire, grants, ressources opaques, révisions, recherche et graphe existant, sans créer
 d'espace documentaire ni d'ACL parallèle. Ils sont privés, mutables, non dédupliqués, exclus de
 l'acquisition automatique et de la rétention par inactivité. Seul le propriétaire peut les

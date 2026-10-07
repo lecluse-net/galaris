@@ -34,7 +34,9 @@ async def test_one_call_deadline_closes_provider_and_preserves_terminal_outcome(
     from app.llm.facade import start_inference
 
     _, llm, _, _ = runtime
-    monkeypatch.setitem(runtime_settings.__dict__, "LLM_CALL_TIMEOUT_MINUTES", 0.01)
+    # The real journal and cold Responses parsing also consume the call budget.
+    # Leave room for multiple provider fragments under coverage before expiry.
+    monkeypatch.setitem(runtime_settings.__dict__, "LLM_CALL_TIMEOUT_MINUTES", 0.05)
     closed = asyncio.Event()
     chunks = []
 

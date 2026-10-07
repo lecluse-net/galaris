@@ -14,9 +14,6 @@ from pydantic import AwareDatetime, BaseModel, ConfigDict, Field, field_validato
 from .tag_icons import MAX_ICON_URI_LENGTH, SVG_PREFIX, validate_icon
 
 
-MemoryType = Literal[
-    "core", "working", "episodic", "semantic", "procedural", "social"
-]
 MemoryNodeKind = Literal["memory", "document", "attachment", "folder", "file", "directory"]
 
 
@@ -37,7 +34,6 @@ MemoryVisibility = Literal["private", "shared", "public"]
 DocumentGlobalAccess = Literal[0, 1, 2]
 MemorySortField = Literal[
     "title",
-    "memory_type",
     "visibility",
     "owner",
     "access_count",
@@ -84,8 +80,6 @@ MemoryLinkReconciliationJobStatus = Literal[
 ]
 
 
-def _empty_memory_types() -> list[MemoryType]:
-    return []
 
 
 def _empty_node_kinds() -> list[MemoryNodeKind]:
@@ -96,8 +90,6 @@ def _empty_retrieval_sources() -> list[MemoryRetrievalSource]:
     return []
 
 
-def _empty_memory_type_counts() -> dict[MemoryType, int]:
-    return {}
 
 
 class MemoryPayload(BaseModel):
@@ -126,7 +118,6 @@ class MemoryItemCreate(BaseModel):
     owner_agent_id: int = Field(gt=0)
     title: str = Field(min_length=1, max_length=500)
     payload: MemoryPayload
-    memory_type: MemoryType = "semantic"
     node_kind: Literal["memory", "document"] = "memory"
     document_type: DocumentType = "html"
     content_type: str = Field(default="text", max_length=50)
@@ -148,8 +139,6 @@ class MemoryItemCreate(BaseModel):
             if self.document_type != "html":
                 raise ValueError("Only a document can have a Dataset type.")
             return self
-        if self.memory_type != "working":
-            raise ValueError("A document must use memory_type='working'.")
         if self.document_type == "dataset" and self.media_type != "application/json":
             raise ValueError("A Dataset document must use application/json.")
         if self.content_type != "text" or (self.document_type == "html" and not self.media_type.startswith("text/")):
@@ -167,7 +156,6 @@ class MemoryItemUpdate(BaseModel):
     expected_lock_version: int | None = Field(default=None, ge=1)
     title: str | None = Field(default=None, min_length=1, max_length=500)
     payload: MemoryPayload | None = None
-    memory_type: MemoryType | None = None
     content_type: str | None = Field(default=None, max_length=50)
     media_type: str | None = Field(default=None, max_length=255)
     filename: str | None = Field(default=None, max_length=500)
@@ -234,7 +222,6 @@ class MemoryItemPublic(BaseModel):
     owner_user_id: int | None
     provider_code: str
     title: str
-    memory_type: MemoryType
     node_kind: MemoryNodeKind
     content_type: str
     media_type: str
@@ -277,7 +264,6 @@ class RecentMemoryItem(BaseModel):
 
     id: UUID
     title: str
-    memory_type: MemoryType
     created_at: datetime
 
 
@@ -383,7 +369,6 @@ class MemorySearchRequest(BaseModel):
     keyword: str | None = Field(default=None, max_length=100)
     limit: int = Field(default=8, ge=1, le=500)
     offset: int = Field(default=0, ge=0)
-    memory_types: list[MemoryType] = Field(default_factory=_empty_memory_types)
     node_kinds: list[MemoryNodeKind] = Field(default_factory=_empty_node_kinds)
     sort_by: MemorySortField | None = None
     sort_desc: bool = True
@@ -728,7 +713,6 @@ class MemoryRecallRequest(BaseModel):
     query: str = Field(default="", max_length=4_000)
     semantic_query: str | None = Field(default=None, max_length=4_000)
     limit: int | None = Field(default=None, ge=1, le=500)
-    memory_types: list[MemoryType] = Field(default_factory=_empty_memory_types)
     node_kinds: list[MemoryNodeKind] = Field(default_factory=_empty_node_kinds)
     task_id: UUID | None = None
     memory_role: MemoryRoleFilter | None = None
@@ -772,7 +756,6 @@ class MemorySimilarityCandidate(BaseModel):
     memory_id: UUID
     revision: int = Field(ge=1)
     title: str
-    memory_type: MemoryType
     excerpt: str
     similarity: float = Field(ge=-1.0, le=1.0)
 
@@ -814,9 +797,6 @@ class MemoryRetentionPreview(BaseModel):
     expired_count: int = Field(ge=0)
     total_candidates: int = Field(ge=0)
     oldest_activity_at: datetime | None = None
-    by_memory_type: dict[MemoryType, int] = Field(
-        default_factory=_empty_memory_type_counts
-    )
 
 
 class MemoryGraphCursor(BaseModel):
@@ -835,7 +815,6 @@ class MemoryGraphRootsRequest(BaseModel):
 
     agent_id: int = Field(gt=0)
     query: str = Field(default="", max_length=4_000)
-    memory_types: list[MemoryType] = Field(default_factory=_empty_memory_types)
     topic_item_id: UUID | None = None
     contact_item_id: UUID | None = None
     limit: int = Field(default=60, ge=1, le=500)
@@ -853,7 +832,6 @@ class MemoryGraphExpandRequest(BaseModel):
     agent_id: int = Field(gt=0)
     item_id: UUID
     query: str = Field(default="", max_length=4_000)
-    memory_types: list[MemoryType] = Field(default_factory=_empty_memory_types)
     topic_item_id: UUID | None = None
     contact_item_id: UUID | None = None
     limit: int = Field(default=40, ge=1, le=100)
@@ -874,7 +852,6 @@ class MemoryGraphNode(BaseModel):
     entity_kind: Literal["memory", "document", "attachment", "folder", "file", "directory", "topic", "contact", "conversation"]
     owner_agent_id: int | None
     title: str
-    memory_type: MemoryType
     visibility: MemoryVisibility
     source_managed: bool
     access_count: int

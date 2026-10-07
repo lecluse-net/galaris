@@ -46,7 +46,7 @@ async def record_attachment_description(
         item = await service.upsert_source_managed_item(SourceMemoryDocument(
             source_kind="image_description", source_ref=identity,
             owner_agent_id=agent_id, memory_item_id=None,
-            title=filename[:500], memory_type="working", content=description,
+            title=filename[:500],  content=description,
             filename="", keywords=(), metadata={
                 "task_ref": str(task_id) if task_id is not None else None},
         ))

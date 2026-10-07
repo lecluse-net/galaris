@@ -20,7 +20,7 @@ for (const width of [1440, 390]) {
     await expect(page.locator('input[type=password]')).toHaveCount(0)
     const headers = { Authorization: `Bearer ${session.access_token}`, 'X-Editorial-Profile-Version': '1' }
     const created = await request.post('/api/memory/items', { headers, data: {
-      owner_agent_id: fixture.agent_id, title: 'Synthetic Office previews', node_kind: 'document', memory_type: 'working',
+      owner_agent_id: fixture.agent_id, title: 'Synthetic Office previews', node_kind: 'document',
       media_type: 'text/html', payload: { text: '<p>Office attachments with their original downloads.</p>' },
     } })
     expect(created.ok(), await created.text()).toBeTruthy()

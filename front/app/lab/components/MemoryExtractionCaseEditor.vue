@@ -102,14 +102,13 @@
         v-for="(memory, index) in model.existing_memories"
         :key="memory.id"
         :label="memory.title || memory.id"
-        :caption="`${memory.id} · ${memory.memory_type}`"
+        :caption="memory.id"
         icon="description"
         group="existing-memories"
       >
         <q-card-section class="row q-col-gutter-md q-gutter-y-sm">
           <div class="col-12 col-md-3"><q-input v-model="memory.id" outlined dense :readonly="readonly" :label="t('evaluation.memoryEditor.localId')" /></div>
           <div class="col-12 col-md-6"><q-input v-model="memory.title" outlined dense :readonly="readonly" :label="t('evaluation.memoryEditor.memoryTitle')" /></div>
-          <div class="col-12 col-md-3"><q-select v-model="memory.memory_type" :options="memoryTypes" outlined dense :readonly="readonly" :label="t('evaluation.memoryEditor.memoryType')" /></div>
           <div class="col-12"><q-input v-model="memory.content" type="textarea" autogrow outlined :readonly="readonly" :label="t('evaluation.memoryEditor.memoryContent')" /></div>
           <div v-if="!readonly" class="col-auto"><q-btn flat round color="negative" icon="delete_outline" @click="removeMemory(index)" /></div>
         </q-card-section>
@@ -150,7 +149,6 @@
               <div class="col-12"><q-badge :color="operation.action === 'CREATE' ? 'positive' : 'primary'">{{ operation.action }}</q-badge></div>
               <template v-if="operation.action === 'CREATE'">
                 <div class="col-12 col-md-6"><q-input v-model="operation.title" outlined dense :readonly="readonly" :label="t('evaluation.memoryEditor.memoryTitle')" /></div>
-                <div class="col-12 col-md-3"><q-select v-model="operation.memory_type" :options="memoryTypes" outlined dense :readonly="readonly" :label="t('evaluation.memoryEditor.memoryType')" /></div>
                 <div class="col-12 col-md-3"><q-select v-model="operation.retention_reason" :options="retentionReasons" outlined dense :readonly="readonly" :label="t('evaluation.memoryEditor.retentionReason')" /></div>
                 <div class="col-12"><q-input v-model="operation.content" type="textarea" autogrow outlined :readonly="readonly" :label="t('evaluation.memoryEditor.memoryContent')" /></div>
               </template>
@@ -216,7 +214,6 @@ const speakerKindOptions = computed(() => [
   { label: t('evaluation.memoryEditor.human'), value: 'human' },
   { label: t('evaluation.memoryEditor.assistant'), value: 'AI' },
 ])
-const memoryTypes = ['core', 'working', 'episodic', 'semantic', 'procedural', 'social'] as const
 const retentionReasons = [
   'explicit_user_preference',
   'stable_personal_fact',
@@ -295,7 +292,6 @@ function addMemory(): void {
     id: nextMemoryId(),
     title: '',
     content: '',
-    memory_type: 'semantic',
     keywords: [],
     score: 0,
   })
@@ -314,7 +310,6 @@ function addCreate(): void {
     action: 'CREATE',
     title: '',
     content: '',
-    memory_type: 'semantic',
     keywords: [],
     retention_reason: 'explicit_user_preference',
     future_utility: 'high',

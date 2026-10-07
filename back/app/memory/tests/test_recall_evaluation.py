@@ -18,7 +18,7 @@ from app.memory.evaluation import (
     evaluate_recall,
     summarize_recall,
 )
-from app.memory.schemas import MemoryItemCreate, MemoryPayload, MemoryType
+from app.memory.schemas import MemoryItemCreate, MemoryPayload
 
 
 def test_fixed_memory_quality_baseline_reports_recall_cost_and_degradation() -> None:
@@ -164,7 +164,6 @@ async def test_real_recall_pipeline_meets_quality_and_isolation_floor(
         content: str,
         *,
         agent_id: int = owner.id,
-        memory_type: MemoryType = "semantic",
         valid_until: datetime | None = None,
     ) -> str:
         item, _created = await service.create_item(
@@ -172,7 +171,6 @@ async def test_real_recall_pipeline_meets_quality_and_isolation_floor(
                 owner_agent_id=agent_id,
                 title=title,
                 payload=MemoryPayload(text=content),
-                memory_type=memory_type,
                 valid_until=valid_until,
             )
         )
@@ -181,12 +179,10 @@ async def test_real_recall_pipeline_meets_quality_and_isolation_floor(
     preference = await create(
         "Réponses françaises",
         "Nicolas préfère les réponses techniques en français. sigpref784",
-        memory_type="core",
     )
     contact = await create(
         "Préférence Alice Matrix",
         "Alice Matrix @alice:example préfère les résumés courts. sigalice293",
-        memory_type="social",
     )
     decision = await create(
         "Décision stockage",
@@ -195,7 +191,6 @@ async def test_real_recall_pipeline_meets_quality_and_isolation_floor(
     procedure = await create(
         "Procédure livraison",
         "Avant livraison, lancer make typecheck puis architecture-check. sigproc472",
-        memory_type="procedural",
     )
     private_peer = await create(
         "Secret autre agent",

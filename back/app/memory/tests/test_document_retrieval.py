@@ -1,17 +1,19 @@
 """Documents stay findable, addressable and covered through canonical search."""
 
 import math
+from datetime import datetime, timezone
 
 import pytest
 from sqlalchemy import delete, select
 
 from app.file_share.resource_contracts import ResourceContext
 from app.file_share.resource_service import resource_search, resource_read
-from app.memory import retrieval, semantic_index, service
+from app.memory import bootstrap, retrieval, semantic_index, service
+from app.agent.contracts import AgentContextRequest, AgentSnapshot
 from app.memory.embedding import EmbeddingModel, MemoryEmbeddingNotConfiguredError
-from app.memory.models import MemoryAutomationJob, MemoryEmbeddingChunk, MemoryEmbeddingManifest
+from app.memory.models import MemoryAutomationJob, MemoryContactItem, MemoryEmbeddingChunk, MemoryEmbeddingManifest, MemoryLink
 from app.memory.passages import document_passages
-from app.memory.schemas import MemoryItemCreate, MemoryPayload, MemoryRecallRequest
+from app.memory.schemas import MemoryItemCreate, MemoryItemUpdate, MemoryLinkCreate, MemoryPayload, MemoryRecallRequest, MemorySearchRequest
 
 
 @pytest.fixture
@@ -39,7 +41,7 @@ async def test_document_search_returns_readable_passages_and_rejects_partial_ind
     filler = "<p>" + "Historique sans rapport. " * 100 + "</p>"
     html = "<h1>Compte rendu</h1>" + filler * 5 + "<h2>Restauration</h2><p>QUARTZ exige une sauvegarde vérifiée.</p>"
     document, _ = await service.create_item(MemoryItemCreate(
-        owner_agent_id=owner.id, node_kind="document", memory_type="working", title="Procédure technique",
+        owner_agent_id=owner.id, node_kind="document",  title="Procédure technique",
         media_type="text/html", payload=MemoryPayload(text=html),
     ))
     await semantic_index.process_embedding_job({"item_id": str(document.id)})
@@ -89,7 +91,7 @@ async def test_lexical_search_finds_late_document_passage_without_embeddings(age
         raise MemoryEmbeddingNotConfiguredError("unset")
     monkeypatch.setattr(retrieval, "resolve_embedding_model", missing)
     document, _ = await service.create_item(MemoryItemCreate(
-        owner_agent_id=owner.id, node_kind="document", memory_type="working", title="Documentation",
+        owner_agent_id=owner.id, node_kind="document",  title="Documentation",
         media_type="text/html", payload=MemoryPayload(text="<p>" + "Contexte général. " * 1000 +
                                                      f"</p><p>{passage}</p>"),
     ))
@@ -110,7 +112,7 @@ async def test_hybrid_search_preserves_stronger_lexical_passage(db, agents, memo
     monkeypatch.setattr(semantic_index, "embed_many", embed)
     owner, _ = agents
     document, _ = await service.create_item(MemoryItemCreate(
-        owner_agent_id=owner.id, node_kind="document", memory_type="working", title="Atelier 3D",
+        owner_agent_id=owner.id, node_kind="document",  title="Atelier 3D",
         media_type="text/html", payload=MemoryPayload(text=
             "<h1>Présentation</h1><p>Une scène de démonstration en trois dimensions.</p>"
             "<h2>Réglages</h2><p>UnrealBloomPass : strength 0,3 ; radius 0,5 ; threshold 0,1.</p>"),
@@ -203,19 +205,297 @@ async def test_recall_keeps_implicit_subjects_and_capitalized_formats(agents, me
 
 
 @pytest.mark.asyncio
-async def test_similar_documents_keep_complementary_facts(agents, memory_storage, vectors):
+@pytest.mark.parametrize("query", ["Réglages du moteur", "Quels réglages du moteur faut-il vérifier ?"])
+@pytest.mark.parametrize("facts", [
+    ("Seuil : 10.", "Seuil : 20."),
+    ("Seuil : -10.", "Seuil : 10."),
+    ("Contrôle : 2028-04-02.", "Contrôle : 2028-04-03."),
+    ("Le moteur est autorisé.", "Le moteur n'est pas autorisé."),
+    ("Le moteur est autorisé.", "Le moteur est autorisé ?"),
+    ("Référence : Cote.", "Référence : Côte."),
+])
+async def test_similar_documents_keep_complementary_facts(agents, memory_storage, vectors, facts, query):
     owner, _ = agents
     identities = set()
-    for threshold in (10, 20):
+    for fact in facts:
         item, _ = await service.create_item(MemoryItemCreate(
-            owner_agent_id=owner.id, node_kind="document", memory_type="working", title="Réglages du moteur",
+            owner_agent_id=owner.id, node_kind="document",  title="Réglages du moteur",
             payload=MemoryPayload(text="<p>Présentation commune du moteur, fonctionnement, maintenance et contrôles.</p>"
-                                 f"<p>Seuil spécifique de cette variante : {threshold}.</p>"), media_type="text/html",
+                                 f"<p>{fact}</p>"), media_type="text/html",
         ), deduplicate=False)
         identities.add(item.id)
         await semantic_index.process_embedding_job({"item_id": str(item.id)})
-    result = await retrieval.recall_items(MemoryRecallRequest(agent_id=owner.id, query="Réglages du moteur"))
+    await service.create_item(MemoryItemCreate(
+        owner_agent_id=owner.id, node_kind="document",  title="Notes du moteur",
+        payload=MemoryPayload(text="<p>Le moteur nécessite une maintenance régulière.</p>"), media_type="text/html",
+    ))
+    result = await retrieval.recall_items(MemoryRecallRequest(agent_id=owner.id, query=query, limit=2))
     assert {hit.item.id for hit in result.hits} == identities
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(("name", "query"), [
+    ("Mésange", "Mesange"), ("Mésange", "Mésange"), ("Mésange", "Me\u0301sange"),
+    ("Straße", "Strasse"), ("Σίσυφος", "σισυφοσ"), ("Ｌｉｏｒａ", "Liora"),
+])
+async def test_lexical_recall_normalizes_names_before_candidate_selection(agents, memory_storage, monkeypatch, name, query):
+    owner, peer = agents
+    async def missing():
+        raise MemoryEmbeddingNotConfiguredError("unset")
+    monkeypatch.setattr(retrieval, "resolve_embedding_model", missing)
+    expected, _ = await service.create_item(MemoryItemCreate(
+        owner_agent_id=owner.id, title=name,
+         payload=MemoryPayload(text=f"<p>{name} est le surnom de Liora Varel.</p>"),
+    ))
+    await service.create_item(MemoryItemCreate(
+        owner_agent_id=peer.id, title=f"{name} privée", payload=MemoryPayload(text=f"<p>{name} est un autre surnom privé.</p>"),
+    ))
+    result = await retrieval.recall_items(MemoryRecallRequest(agent_id=owner.id, query=query, limit=2))
+    assert result.hits and result.hits[0].item.id == expected.id
+    assert all(hit.item.owner_agent_id == owner.id for hit in result.hits)
+    assert name in result.hits[0].excerpt
+    explicit = await service.search_items(MemorySearchRequest(agent_id=owner.id, query=query))
+    assert [hit.item.id for hit in explicit.hits] == [expected.id]
+    await service.update_item(expected.id, MemoryItemUpdate(
+        title="Églantine", payload=MemoryPayload(text="<p>Églantine est le nouveau surnom.</p>"),
+    ), actor_agent_id=owner.id)
+    renamed = await service.search_items(MemorySearchRequest(agent_id=owner.id, query="Eglantine"))
+    assert [hit.item.id for hit in renamed.hits] == [expected.id]
+    stale = await service.search_items(MemorySearchRequest(agent_id=owner.id, query=query))
+    assert stale.hits == []
+
+
+@pytest.mark.asyncio
+async def test_named_person_and_complementary_event_survive_a_small_recall_budget(agents, memory_storage, monkeypatch):
+    owner, _ = agents
+    async def missing():
+        raise MemoryEmbeddingNotConfiguredError("unset")
+    monkeypatch.setattr(retrieval, "resolve_embedding_model", missing)
+    identity, _ = await service.create_item(MemoryItemCreate(
+        owner_agent_id=owner.id, title="Liora Varel",
+        payload=MemoryPayload(text="<p>Liora Varel est ma cousine et anime un atelier de dessin.</p>"),
+    ))
+    event, _ = await service.create_item(MemoryItemCreate(
+        owner_agent_id=owner.id, title="Cadeau de Liora Varel",
+        payload=MemoryPayload(text="<p>Liora Varel m'a offert un carnet le 2028-04-02.</p>"),
+    ))
+    for index in range(8):
+        await service.create_item(MemoryItemCreate(
+            owner_agent_id=owner.id, title=f"Cadeau offert hier {index}",
+            payload=MemoryPayload(text=f"<p>Liora Delis m'a offert un carnet hier, remis par Mina Varel ; dossier {index}.</p>"),
+        ))
+    result = await retrieval.recall_items(MemoryRecallRequest(
+        agent_id=owner.id, query="C'est Liora Varel qui me l'a offert hier", limit=2,
+    ))
+    assert {hit.item.id for hit in result.hits} == {identity.id, event.id}
+    monkeypatch.setattr(bootstrap.runtime_settings, "MEMORY_CONTEXT_ENABLED", True)
+    monkeypatch.setattr(bootstrap.runtime_settings, "MEMORY_CONTEXT_MAX_ITEMS", 2)
+    contribution = await bootstrap.memory_context_provider(AgentContextRequest(
+        task_id=None, objective="C'est Liora Varel qui me l'a offert hier",
+        agent=AgentSnapshot(id=owner.id, code=owner.code, first_name=owner.first_name,
+                            last_name=owner.last_name, driver_code="internal"),
+    ))
+    assert "ma cousine" in contribution.shared_context
+    assert "2028-04-02" in contribution.shared_context
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("query", [
+    "Liora Varel et Neris Delis, qui fait quoi ?",
+    "Rappelle-moi les rôles de Liora Varel et Neris Delis et leur échange.",
+])
+async def test_multiple_names_keep_distinct_roles_despite_shared_event_matches(agents, memory_storage, monkeypatch, query):
+    owner, _ = agents
+    async def missing():
+        raise MemoryEmbeddingNotConfiguredError("unset")
+    monkeypatch.setattr(retrieval, "resolve_embedding_model", missing)
+    identities = set()
+    for name, role in (("Liora Varel", "coordonne l'atelier"), ("Neris Delis", "gère les inscriptions")):
+        item, _ = await service.create_item(MemoryItemCreate(
+            owner_agent_id=owner.id, title=name,
+            payload=MemoryPayload(text=f"<p>{name} {role}.</p>"),
+        ))
+        identities.add(item.id)
+    for index in range(8):
+        await service.create_item(MemoryItemCreate(
+            owner_agent_id=owner.id, title=f"Échange {index}",
+            payload=MemoryPayload(text=f"<p>Liora Varel et Neris Delis ont échangé ; séance {index}.</p>"),
+        ))
+    result = await retrieval.recall_items(MemoryRecallRequest(
+        agent_id=owner.id, query=query, limit=3,
+    ))
+    assert identities <= {hit.item.id for hit in result.hits}
+
+
+@pytest.mark.asyncio
+async def test_complementary_event_is_not_crowded_out_by_person_profiles(agents, memory_storage, monkeypatch):
+    owner, _ = agents
+    async def missing():
+        raise MemoryEmbeddingNotConfiguredError("unset")
+    monkeypatch.setattr(retrieval, "resolve_embedding_model", missing)
+    for index in range(5):
+        await service.create_item(MemoryItemCreate(
+            owner_agent_id=owner.id, title=f"Liora Varel — repère {index}",
+            payload=MemoryPayload(text=f"<p>Liora Varel est la référente de l'atelier {index}.</p>"),
+        ))
+    event, _ = await service.create_item(MemoryItemCreate(
+        owner_agent_id=owner.id, title="Carnet reçu",
+        payload=MemoryPayload(text="<p>Liora Varel m'a offert un carnet le 2028-04-02.</p>"),
+    ))
+    result = await retrieval.recall_items(MemoryRecallRequest(
+        agent_id=owner.id, query="Liora Varel m'a offert ce carnet", limit=2,
+    ))
+    assert event.id in {hit.item.id for hit in result.hits}
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("semantic", [False, True])
+@pytest.mark.parametrize(("query", "bridge", "role"), [
+    ("Qui coordonne les échanges du collègue de Liora Varel ?",
+     "Neris Delis travaille avec Liora Varel sur les ateliers.", "Neris Delis coordonne les échanges."),
+    ("Who coordinates communication for Liora Varel's colleague?",
+     "Neris Delis works with Liora Varel on the workshops.", "Neris Delis coordinates communication."),
+    ("La personne qui travaille avec Liora Varel, elle fait quoi ?",
+     "Neris Delis travaille avec Liora Varel sur les ateliers.", "Neris Delis restaure les violons."),
+    ("Que fait la cousine de Liora Varel ?",
+     "Neris Delis est la cousine de Liora Varel.", "Neris Delis restaure les violons."),
+])
+async def test_indirect_person_query_keeps_relation_and_target_role(agents, memory_storage, vectors, monkeypatch, query, bridge, role, semantic):
+    owner, _ = agents
+    async def missing():
+        raise MemoryEmbeddingNotConfiguredError("unset")
+    if not semantic:
+        monkeypatch.setattr(retrieval, "resolve_embedding_model", missing)
+    for index in range(6):
+        await service.create_item(MemoryItemCreate(
+            owner_agent_id=owner.id, title=f"Liora Varel — profil {index}",
+            payload=MemoryPayload(text=f"<p>Liora Varel coordonne les échanges de son atelier {index}.</p>"),
+            media_type="text/html",
+        ))
+    relation, _ = await service.create_item(MemoryItemCreate(
+        owner_agent_id=owner.id, title="Collaboration",
+        payload=MemoryPayload(text=f"<p>{bridge}</p>"), media_type="text/html",
+    ))
+    target, _ = await service.create_item(MemoryItemCreate(
+        owner_agent_id=owner.id, title="Neris Delis",
+        payload=MemoryPayload(text=f"<p>{role}</p>"), media_type="text/html",
+    ))
+    # A confirmed neighbour supplies the role even when it shares no query word.
+    await service.create_link(MemoryLinkCreate(
+        source_item_id=relation.id, target_item_id=target.id, relation_type="related_to",
+    ), actor_agent_id=owner.id)
+    if semantic:
+        for item in (relation, target):
+            await semantic_index.process_embedding_job({"item_id": str(item.id)})
+    result = await retrieval.recall_items(MemoryRecallRequest(agent_id=owner.id, query=query, limit=2))
+    assert {hit.item.id for hit in result.hits} == {relation.id, target.id}
+    assert result.mode == ("hybrid" if semantic else "lexical")
+    monkeypatch.setattr(bootstrap.runtime_settings, "MEMORY_CONTEXT_ENABLED", True)
+    monkeypatch.setattr(bootstrap.runtime_settings, "MEMORY_CONTEXT_MAX_ITEMS", 2)
+    contribution = await bootstrap.memory_context_provider(AgentContextRequest(
+        task_id=None, objective=query,
+        agent=AgentSnapshot(id=owner.id, code=owner.code, first_name=owner.first_name,
+                            last_name=owner.last_name, driver_code="internal"),
+    ))
+    assert str(target.id) in contribution.shared_context
+    assert str(relation.id) in contribution.shared_context
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("boundary", ["private", "expired", "forgotten", "contact", "temporal", "negated", "quoted", "curly_quoted", "contracted", "hypothesis", "uncertain", "wrong_relation", "reversed", "ambiguous", "direct_reference", "weak", "suggested"])
+async def test_indirect_relation_never_bypasses_evidence_or_scope(db, agents, memory_storage, monkeypatch, boundary):
+    owner, peer = agents
+    async def missing():
+        raise MemoryEmbeddingNotConfiguredError("unset")
+    monkeypatch.setattr(retrieval, "resolve_embedding_model", missing)
+    statements = {
+        "negated": "Neris Delis ne travaille pas avec Liora Varel.",
+        "quoted": 'La citation est : "Neris Delis travaille avec Liora Varel".',
+        "uncertain": "Neris Delis pourrait travailler avec Liora Varel.",
+        "reversed": "Liora Varel est l'oncle de Neris Delis.",
+        "curly_quoted": "“Neris Delis works with Liora Varel”.",
+        "contracted": "Neris Delis doesn't work with Liora Varel.",
+        "hypothesis": "hypothesis: Neris Delis works with Liora Varel.",
+    }
+    bridge, _ = await service.create_item(MemoryItemCreate(
+        owner_agent_id=owner.id, title="Collaboration",
+        payload=MemoryPayload(text=f"<p>{statements.get(boundary, 'Neris Delis travaille avec Liora Varel.')}</p>"),
+        media_type="text/html",
+    ))
+    target, _ = await service.create_item(MemoryItemCreate(
+        owner_agent_id=peer.id if boundary == "private" else owner.id,
+        title="Neris Delis",
+        payload=MemoryPayload(text="<p>Neris Delis restaure les violons.</p>"), media_type="text/html",
+        valid_until=datetime(2001, 1, 1, tzinfo=timezone.utc) if boundary == "expired" else None,
+        temporal={"year": 2001, "month": 1, "day": 1} if boundary == "temporal" else None,
+    ))
+    db.add(MemoryLink(source_item_id=bridge.id, target_item_id=target.id, relation_type="related_to",
+                      confidence=0.5 if boundary == "weak" else 1.0, suggested=boundary == "suggested"))
+    contact_id = None
+    if boundary == "contact":
+        contacts = []
+        for title in ("Interlocuteur A", "Interlocuteur B"):
+            contact, _ = await service.create_item(MemoryItemCreate(
+                owner_agent_id=owner.id, title=title,
+                payload=MemoryPayload(text=f"<p>Frontière synthétique : {title}.</p>"), media_type="text/html",
+            ))
+            contacts.append(contact.id)
+        contact_id = contacts[0]
+        assert len(set(contacts)) == 2
+        for item, contact in ((bridge, contacts[0]), (target, contacts[1])):
+            db.add(MemoryContactItem(owner_agent_id=owner.id, contact_item_id=contact, item_id=item.id,
+                                    source_kind="synthetic-test", source_ref=str(item.id)))
+    await db.flush()
+    if boundary == "ambiguous":
+        await service.create_item(MemoryItemCreate(
+            owner_agent_id=owner.id, title="Autre collaboration",
+            payload=MemoryPayload(text="<p>Mina Terel travaille avec Liora Varel.</p>"), media_type="text/html",
+        ))
+    if boundary == "forgotten":
+        await service.forget_item(target.id, actor_agent_id=owner.id)
+    direct_profile = None
+    if boundary == "direct_reference":
+        direct_profile, _ = await service.create_item(MemoryItemCreate(
+            owner_agent_id=owner.id, title="Liora Varel",
+            payload=MemoryPayload(text="<p>Liora Varel anime les ateliers.</p>"), media_type="text/html",
+        ))
+    result = await retrieval.recall_items(MemoryRecallRequest(
+        agent_id=owner.id,
+        query=("Que fait la tante de Liora Varel ?" if boundary == "wrong_relation" else
+               "Que fait l'oncle de Liora Varel ?" if boundary == "reversed" else
+               "Mon collègue Liora Varel, que fait-il ?" if boundary == "direct_reference" else
+               "La personne qui travaille avec Liora Varel, elle fait quoi ?"),
+        contact_item_id=contact_id, exclude_temporal=True, limit=2,
+    ))
+    assert target.id not in {hit.item.id for hit in result.hits}
+    assert bridge.id in {hit.item.id for hit in result.hits}
+    if direct_profile is not None:
+        assert direct_profile.id in {hit.item.id for hit in result.hits}
+
+
+@pytest.mark.asyncio
+async def test_repeated_fact_does_not_displace_a_requested_complement(agents, memory_storage, monkeypatch):
+    owner, _ = agents
+    async def missing():
+        raise MemoryEmbeddingNotConfiguredError("unset")
+    monkeypatch.setattr(retrieval, "resolve_embedding_model", missing)
+    repeated = set()
+    for suffix, body in (("fiche", "<p>Liora Varel coordonne le prêt des carnets.</p>"),
+                         ("copie", "<p><strong>Liora Varel</strong> coordonne le prêt des carnets !</p>")):
+        item, _ = await service.create_item(MemoryItemCreate(
+            owner_agent_id=owner.id, title=f"Liora Varel — {suffix}",
+            payload=MemoryPayload(text=body), media_type="text/html",
+        ), deduplicate=False)
+        repeated.add(item.id)
+    event, _ = await service.create_item(MemoryItemCreate(
+        owner_agent_id=owner.id, title="Remise des carnets",
+        payload=MemoryPayload(text="<p>Liora Varel a offert les carnets le 2028-04-02.</p>"),
+    ))
+    result = await retrieval.recall_items(MemoryRecallRequest(
+        agent_id=owner.id, query="Liora Varel : prêt et cadeau des carnets", limit=2,
+    ))
+    assert event.id in {hit.item.id for hit in result.hits}, [(hit.item.title, hit.excerpt) for hit in result.hits]
+    assert len({hit.item.id for hit in result.hits} & repeated) == 1
 
 
 @pytest.mark.asyncio
@@ -254,7 +534,7 @@ def test_document_passages_preserve_sections_tables_and_code():
 async def test_long_document_tail_is_indexed_and_configuration_change_rebuilds(db, agents, memory_storage, vectors, monkeypatch):
     owner, _ = agents
     document, _ = await service.create_item(MemoryItemCreate(
-        owner_agent_id=owner.id, node_kind="document", memory_type="working", title="Archive",
+        owner_agent_id=owner.id, node_kind="document",  title="Archive",
         media_type="text/html", payload=MemoryPayload(text="<p>" + "x " * 100_000 + "QUARTZ final</p>"),
     ))
     await semantic_index.process_embedding_job({"item_id": str(document.id)})

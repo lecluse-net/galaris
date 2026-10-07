@@ -251,7 +251,6 @@ async def test_cycle_scans_exactly_one_task_and_checkpoints_memories(
                     MemoryCreateOperation(
                         title="Concise French answers",
                         content="The user prefers concise answers in French.",
-                        memory_type="core",
                         keywords=["French", "concise"],
                         retention_reason="explicit_user_preference",
                     )
@@ -305,7 +304,6 @@ async def test_cycle_scans_exactly_one_task_and_checkpoints_memories(
                 id=str(hit.item.id),
                 title=hit.item.title,
                 content=hit.excerpt,
-                memory_type="core",
             )
             for hit in hits
         ]

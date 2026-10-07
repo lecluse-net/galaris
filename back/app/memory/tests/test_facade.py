@@ -33,7 +33,6 @@ async def test_simple_search_facade_hides_scores_and_forwards_query_scope(
                     item=SimpleNamespace(
                         id=memory_id,
                         title="Release checklist",
-                        memory_type="procedural",
                         node_kind="memory",
                         revision=3,
                     ),

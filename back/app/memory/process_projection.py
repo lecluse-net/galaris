@@ -93,7 +93,6 @@ async def sync_process_definition_projection(
             owner_agent_id=definition.agent_id,
             memory_item_id=None,
             title=f"Procédure · {definition.label}"[:500],
-            memory_type="procedural",
             content=content,
             filename=f"process-definition-{definition.id}.md",
             keywords=(
@@ -203,7 +202,6 @@ async def sync_process_run_projection(run_id: UUID) -> MemoryItem | None:
             owner_agent_id=run.launcher_agent_id,
             memory_item_id=None,
             title=f"Résultat Process · {label}"[:500],
-            memory_type="episodic",
             content=content,
             filename=f"process-run-{run.id}.md",
             keywords=(

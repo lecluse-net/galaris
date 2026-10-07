@@ -4,7 +4,7 @@ import { test, expect } from '@playwright/test'
 
 test.use({ serviceWorkers: 'allow' })
 
-test('a deployed update automatically replaces the cached shell while preserving the authenticated conversation', async ({ page, request }) => {
+test('a deployed update automatically replaces the cached shell while preserving the authenticated conversation', async ({ page, request, browserName }, testInfo) => {
   const directory = '/pwa-site' // Unique Compose volume, never the source or live deployment.
   const originalHtml = await readFile(`${directory}/index.html`, 'utf8')
   const originalWorker = await readFile(`${directory}/sw.js`, 'utf8')
@@ -25,6 +25,9 @@ test('a deployed update automatically replaces the cached shell while preserving
     await writeFile(`${directory}/sw.js`, worker)
   }
   try {
+    // Capture the app's periodic update timer before any page code runs.
+    // Installing after navigation leaves existing native timers outside the clock.
+    await page.clock.install()
     await deploy('A')
     const fixture = await (await request.post('/api/__test/seed')).json()
     const initialRefresh = page.waitForResponse(r => r.url().endsWith('/api/auth/refresh'))
@@ -59,15 +62,21 @@ test('a deployed update automatically replaces the cached shell while preserving
     })
     const previousKeys = await cacheKeys()
     expect(previousKeys.length).toBeGreaterThan(0)
-    await page.clock.install()
     // Offline clients keep their working shell and session until connectivity returns.
     await page.context().setOffline(true)
     await page.clock.fastForward(60_001)
     await expect(page.locator('meta[name="e2e-build"]')).toHaveAttribute('content', 'A')
     await page.context().setOffline(false)
     // A failed deployment must not destroy the usable cache either.
+    // Chromium exposes worker network events; await the actual failed build so
+    // replacing it immediately cannot accidentally skip this recovery step.
+    const rejectedWorker = browserName === 'chromium' ? page.context().waitForEvent('response', {
+      predicate: async response => new URL(response.url()).pathname === '/sw.js'
+        && response.ok() && await response.text() === 'this is not valid JavaScript',
+    }) : null
     await writeFile(`${directory}/sw.js`, 'this is not valid JavaScript')
     await page.clock.fastForward(60_001)
+    await rejectedWorker
     await expect(page.locator('meta[name="e2e-build"]')).toHaveAttribute('content', 'A')
     const refreshes = []
     // Either tab can renew the shared session; the other reuses its token under
@@ -75,21 +84,12 @@ test('a deployed update automatically replaces the cached shell while preserving
     page.context().on('response', response => { if (response.url().endsWith('/api/auth/refresh')) refreshes.push(response.status()) })
     await deploy('B')
     // Registration and worker installation run outside the simulated page clock.
-    // Keep advancing periodic checks while those asynchronous browser jobs settle.
+    // Trigger the next periodic check, then let those browser jobs settle.
     // Never invoke update() or reload() from the test: the app must recover itself.
-    await expect.poll(async () => {
-      await page.clock.fastForward(60_001)
-      return page.evaluate(async () => {
-        const registration = await navigator.serviceWorker.getRegistration()
-        return {
-          version: document.querySelector('meta[name="e2e-build"]')?.getAttribute('content'),
-          visibility: document.visibilityState,
-          active: registration?.active?.state,
-          installing: registration?.installing?.state ?? null,
-          waiting: registration?.waiting?.state ?? null,
-        }
-      })
-    }).toEqual(expect.objectContaining({ version: 'B' }))
+    await page.clock.fastForward(60_001)
+    // Locators survive the automatic reload; evaluating the old document can
+    // lose its execution context precisely when the worker replaces the shell.
+    await expect(page.locator('meta[name="e2e-build"]')).toHaveAttribute('content', 'B')
     await expect.poll(() => refreshes).toContain(200)
     await expect(reply).toHaveCount(1)
     await expect(reply).toHaveAttribute('data-message-id', messageId)
@@ -104,6 +104,32 @@ test('a deployed update automatically replaces the cached shell while preserving
     await reopened.goto(`/chat?room=${fixture.rooms[0]}`)
     await expect(reopened.locator('meta[name="e2e-build"]')).toHaveAttribute('content', 'B')
     await expect(reopened.locator('.composer-fields textarea')).toBeVisible()
+  } catch (error) {
+    const states = await Promise.all(page.context().pages().map(tab => tab.evaluate(async () => {
+      const registration = await navigator.serviceWorker.getRegistration()
+      const shells = []
+      for (const name of await caches.keys()) {
+        const cache = await caches.open(name)
+        for (const key of await cache.keys()) {
+          if (new URL(key.url).pathname !== '/index.html') continue
+          const text = await (await cache.match(key))?.text()
+          shells.push({ key: key.url, version: text?.match(/name="e2e-build" content="([^"]+)"/)?.[1] })
+        }
+      }
+      return {
+        url: location.href,
+        version: document.querySelector('meta[name="e2e-build"]')?.getAttribute('content'),
+        visibility: document.visibilityState,
+        active: registration?.active?.state,
+        installing: registration?.installing?.state,
+        waiting: registration?.waiting?.state,
+        shells,
+      }
+    }).catch(diagnostic => ({ error: diagnostic.message }))))
+    await testInfo.attach('pwa-state', {
+      body: JSON.stringify(states, null, 2), contentType: 'application/json',
+    })
+    throw error
   } finally {
     await writeFile(`${directory}/index.html`, originalHtml)
     await writeFile(`${directory}/sw.js`, originalWorker)

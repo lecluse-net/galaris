@@ -103,7 +103,7 @@ test('leaving a loading document editor does not restore its subscription after 
   const created = await request.post('/api/memory/items', {
     headers: { Authorization: `Bearer ${token}`, 'X-Editorial-Profile-Version': '1' },
     data: { owner_agent_id: fixture.agent_id, title: `Pending editor ${fixture.agent_id}`,
-      node_kind: 'document', memory_type: 'working', media_type: 'text/html', payload: { text: '<p>Existing content</p>' } },
+      node_kind: 'document', media_type: 'text/html', payload: { text: '<p>Existing content</p>' } },
   })
   expect(created.ok(), await created.text()).toBeTruthy()
   const document = await created.json()
@@ -248,7 +248,7 @@ for (const width of [390, 1440]) {
       const title = `First load ${nodeKind} ${fixture.agent_id}`
       const created = await request.post('/api/memory/items', {
         headers: { Authorization: `Bearer ${token}`, 'X-Editorial-Profile-Version': '1' },
-        data: { owner_agent_id: fixture.agent_id, title, node_kind: nodeKind, memory_type: 'working',
+        data: { owner_agent_id: fixture.agent_id, title, node_kind: nodeKind,
           media_type: 'text/html', payload: { text: '<p>Existing content must load without reloading the page.</p>' } },
       })
       expect(created.ok(), await created.text()).toBeTruthy()

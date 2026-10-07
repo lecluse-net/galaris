@@ -126,7 +126,6 @@ async def test_memory_gate_links_without_rewriting_and_preserves_mixed_facts(
         "action": "CREATE",
         "title": "Preferred output format",
         "content": "Morgan prefers concise tables.",
-        "memory_type": "semantic",
         "retention_reason": "explicit_user_preference",
         "future_utility": "high",
     }

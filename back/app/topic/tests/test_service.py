@@ -766,7 +766,6 @@ async def test_list_page_includes_related_participants_teams_and_documents(
                 owner_agent_id=agent.id,
                 title="Renovation brief",
                 payload=MemoryPayload(text="# Renovation brief"),
-                memory_type="working",
                 node_kind="document",
                 filename="renovation-brief.md",
             )

@@ -147,8 +147,8 @@ async def preview_conversion(session: AsyncSession, *, limit: int = 500) -> dict
     """Read-only inventory and deterministic conversion sample, without model calls."""
     groups = (
         await session.execute(
-            select(MemoryItem.memory_type, MemoryItem.media_type, func.count()).group_by(
-                MemoryItem.memory_type, MemoryItem.media_type
+            select(MemoryItem.media_type, func.count()).group_by(
+                MemoryItem.media_type
             )
         )
     ).all()
@@ -177,8 +177,8 @@ async def preview_conversion(session: AsyncSession, *, limit: int = 500) -> dict
             exceptions.append({"item": str(row.id), "reason": str(exc)})
     return {
         "inventory": [
-            {"memory_type": kind, "media_type": media, "count": count}
-            for kind, media, count in groups
+            {"media_type": media, "count": count}
+            for media, count in groups
         ],
         "pending": pending,
         "sampled": len(rows),

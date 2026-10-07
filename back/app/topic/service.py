@@ -161,7 +161,6 @@ async def project_memory(topic: Topic) -> Topic:
             owner_agent_id=None,
             memory_item_id=topic.memory_item_id,
             title=topic.title,
-            memory_type="semantic",
             content=_markdown(topic),
             filename=f"topic-{topic.id}.md",
             keywords=tuple(topic.keywords),
@@ -252,7 +251,6 @@ async def list_linked_memories_in_scope(
             id=item.id,
             title=item.title,
             excerpt=item.excerpt,
-            memory_type=item.memory_type,
             owner_agent_id=item.owner_agent_id,
             visibility=item.visibility,
         )
@@ -1166,7 +1164,6 @@ async def list_items(
                         preview=_bounded_preview(item.excerpt),
                         created_at=item.created_at,
                         metadata={
-                            "memory_type": item.memory_type,
                             "owner_agent_id": item.owner_agent_id,
                             "visibility": item.visibility,
                             "filename": item.filename,
@@ -1442,7 +1439,6 @@ async def _read_attached_item(
         preview=_bounded_preview(memory.excerpt),
         created_at=memory.created_at,
         metadata={
-            "memory_type": memory.memory_type,
             "owner_agent_id": memory.owner_agent_id,
             "visibility": memory.visibility,
             "filename": memory.filename,

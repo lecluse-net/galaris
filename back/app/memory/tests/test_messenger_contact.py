@@ -55,7 +55,6 @@ async def test_contact_projection_is_private_searchable_idempotent_and_renamable
     item_id = await observe_messenger_contact(observation)
     item = await db.get(MemoryItem, item_id)
     assert item is not None
-    assert item.memory_type == "social"
     assert item.visibility == "private"
     assert item.read_only
     assert item.source_managed
@@ -139,7 +138,6 @@ async def test_contact_projection_is_private_searchable_idempotent_and_renamable
             MemorySearchRequest(
                 agent_id=owner.id,
                 query=query,
-                memory_types=["social"],
             )
         )
         assert [hit.item.id for hit in page.hits] == [item_id]

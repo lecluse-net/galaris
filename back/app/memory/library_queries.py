@@ -5,7 +5,7 @@ from datetime import datetime, timezone
 from typing import cast
 from uuid import UUID
 from sqlalchemy import case, func, or_, select
-from sqlalchemy.orm import raiseload, selectinload
+from sqlalchemy.orm import joinedload, raiseload, selectinload
 from sqlalchemy.sql.elements import ColumnElement
 from core.database import get_db
 from core.user import UserModel, get_user_record, list_user_records
@@ -22,7 +22,6 @@ from .schemas import (
     DocumentOwnerOption,
     DocumentOwnerOptions,
     DocumentTagPublic,
-    MemoryType,
     RecentMemoryItem,
 )
 from .item_projection import item_to_public
@@ -55,7 +54,6 @@ async def list_recent_memories(
         RecentMemoryItem(
             id=item.id,
             title=item.title,
-            memory_type=cast(MemoryType, item.memory_type),
             created_at=item.created_at,
         )
         for item in rows
@@ -248,7 +246,11 @@ async def browse_document_library(
         )
         .outerjoin(Agent, MemoryItem.owner_agent_id == Agent.id)
         .outerjoin(UserModel, MemoryItem.owner_user_id == UserModel.id)
-        .options(selectinload(MemoryItem.grants), raiseload(MemoryItem.revisions))
+        .options(
+            selectinload(MemoryItem.grants),
+            raiseload(MemoryItem.revisions),
+            joinedload(MemoryItem.url_relations),
+        )
         .where(*base_filters)
         .order_by(
             sort_column.desc() if request.sort_desc else sort_column.asc(),

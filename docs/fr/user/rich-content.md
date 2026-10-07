@@ -67,7 +67,7 @@ y compris lorsqu’une recherche masque une partie des documents.
 ## Liens
 
 Le bouton **Lien Galaris** ouvre une recherche de contenus accessibles : saisissez au moins
-deux caractères, filtrez par type, sélectionnez une cible, puis ajustez le texte du lien avant
+deux caractères, filtrez par nature de ressource, sélectionnez une cible, puis ajustez le texte du lien avant
 de l’insérer. La sélection de texte et sa mise en forme sont conservées. La modale se ferme
 aussi en cliquant sur l’arrière-plan.
 Utilisez le bouton de lien natif pour saisir une URL ou une référence Galaris. Le libellé appartient à votre texte ; renommer la cible ne

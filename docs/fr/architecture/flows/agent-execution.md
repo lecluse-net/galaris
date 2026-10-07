@@ -349,8 +349,7 @@ leur fin.
    courant, tout en excluant celles des autres contacts ; le Topic assigné à la Task est
    délibérément ignoré comme frontière dure, mais le rappel peut inférer un prior thématique
    additif depuis la requête. Les libellés du contact ne diluent pas la requête sémantique. Le
-   brief automatique retient
-   au plus un `core`, puis injecte directement le top-k borné déjà fusionné entre les rangs
+   brief automatique injecte directement le top-k borné déjà fusionné entre les rangs
    lexicaux, vectoriels et graphiques, sans second seuil absolu.
    Une défaillance locale
    est consignée mais ne bloque pas la Task. Le provider Working Set lit en plus le registre de la

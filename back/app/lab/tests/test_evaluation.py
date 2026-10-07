@@ -290,7 +290,6 @@ async def test_memory_extraction_import_preserves_source_corpus_with_dataset_par
             "title": "Réponses courtes",
             "content": "La personne préfère les réponses courtes.",
             "temporal": None,
-            "memory_type": "core",
             "keywords": ["concision"],
             "score": 0.0,
         }
@@ -1222,7 +1221,6 @@ async def test_generic_worker_is_isolated_from_dispatcher_and_scores_with_lab_ju
                 "action": "CREATE",
                 "title": "Preferred language",
                 "content": "The user prefers French.",
-                "memory_type": "core",
                 "keywords": ["language"],
                 "retention_reason": "explicit_user_preference",
                 "future_utility": "high",

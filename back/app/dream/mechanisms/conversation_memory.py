@@ -48,7 +48,6 @@ from .memory_extraction import (
     run_memory_extraction,
     safe_memory_text,
 )
-from .task_memory import NOVELTY_MEMORY_TYPES
 
 
 def _eligible_round_predicates() -> tuple[Any, ...]:
@@ -414,7 +413,6 @@ class ConversationMemoryMechanism:
                 query,
                 agent_id=agent_id,
                 limit=MAX_RANKED_MEMORIES,
-                memory_types=NOVELTY_MEMORY_TYPES,
                 topic_item_id=topic_item_id,
                 contact_item_id=contact_item_id,
                 telemetry_kind="dream",

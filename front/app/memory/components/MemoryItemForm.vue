@@ -3,9 +3,6 @@
     <div class="memory-editor-title">
       <q-input :model-value="draft.title" :readonly="readonly" @update:model-value="updateDraft({ title: String($event ?? '') })" dense outlined hide-bottom-space :label="t('memory.title')" :rules="readonly ? [] : [requiredRule]" />
     </div>
-    <div class="memory-editor-type">
-      <q-select :model-value="draft.memoryType" :readonly="readonly" @update:model-value="updateDraft({ memoryType: $event })" :options="typeOptions" behavior="menu" emit-value map-options dense outlined hide-bottom-space :label="t('memory.type')" />
-    </div>
     <div v-if="!editingId">
       <q-select
         :model-value="draft.nodeKind" @update:model-value="updateDraft({ nodeKind: $event })"
@@ -87,13 +84,12 @@
 </template>
 
 <script lang="ts">
-import type { MemoryNodeKind, MemoryType, MemoryTemporalAnchor } from '../types'
+import type { MemoryNodeKind, MemoryTemporalAnchor } from '../types'
 
 export interface MemoryEditorDraft {
   temporal?: MemoryTemporalAnchor | null
   title: string
   content: string
-  memoryType: MemoryType
   nodeKind: MemoryNodeKind
   mediaType: string
   contentType: string
@@ -129,8 +125,6 @@ function updateDraft(patch: Partial<MemoryEditorDraft>): void {
   emit('update:draft', { ...draft, ...patch })
 }
 const { t } = useI18n()
-const memoryTypes: MemoryType[] = ['core', 'working', 'episodic', 'semantic', 'procedural', 'social']
-const typeOptions = computed(() => memoryTypes.map(value => ({ value, label: t(`memory.types.${value}`) })))
 const nodeKindOptions = computed(() => (['memory', 'document'] as MemoryNodeKind[]).map(value => ({ value, label: t(`memory.kinds.${value}`) })))
 const requiredRule = (value: unknown): true | string => Boolean(String(value ?? '').trim()) || t('memory.required')
 const keywordQuery = ref('')
@@ -154,8 +148,7 @@ function addKeyword(value: string, done: (value?: string, mode?: 'add-unique') =
   padding: 8px;
 }
 .memory-editor-fields > div { grid-column: 1 / -1; min-width: 0; }
-.memory-editor-fields > .memory-editor-title { grid-column: 1; }
-.memory-editor-fields > .memory-editor-type { grid-column: 2; }
+.memory-editor-fields > .memory-editor-title { grid-column: 1 / -1; }
 .memory-sharing-row { display: flex; align-items: center; gap: 8px; }
 .memory-sharing-field { flex: 1; min-width: 0; }
 .memory-sharing-row > .q-toggle { flex-shrink: 0; }
@@ -167,6 +160,5 @@ function addKeyword(value: string, done: (value?: string, mode?: 'add-unique') =
 @media (max-width: 599px) {
   .memory-form-access { grid-template-columns: minmax(0, 1fr); }
   .memory-editor-fields { grid-template-columns: minmax(0, 1fr); }
-  .memory-editor-fields > .memory-editor-type { grid-column: 1; }
 }
 </style>

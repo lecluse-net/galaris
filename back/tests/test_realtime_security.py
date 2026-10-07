@@ -66,7 +66,7 @@ async def test_task_events_and_run_rooms_obey_manager_scope(db, monkeypatch, sub
     from core.authorize import role_id_ctx
     from core.user import user_service
 
-    documents = [MemoryItem(owner_agent_id=agents[0].id, resource_id=f"test/{suffix}/{i}", content_hash="0" * 64, title=f"Private {i}", memory_type="working", node_kind="document") for i in range(2)]
+    documents = [MemoryItem(owner_agent_id=agents[0].id, resource_id=f"test/{suffix}/{i}", content_hash="0" * 64, title=f"Private {i}",  node_kind="document") for i in range(2)]
     tool = Tool(code=suffix, label="Private tool")
     call = LLMCall(task_id=task.id, prompt="Private prompt")  # Visibility inherited from the Task.
     db.add_all([*documents, tool, call])

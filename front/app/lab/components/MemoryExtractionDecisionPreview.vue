@@ -73,7 +73,7 @@ const operations = computed<DecisionOperationPreview[]>(() => {
       return [{
         action: 'CREATE' as const,
         label: text(operation.title) || '—',
-        meta: text(operation.memory_type),
+        meta: '',
         reason: text(operation.reason) || text(operation.content),
         targetId: '',
       }]

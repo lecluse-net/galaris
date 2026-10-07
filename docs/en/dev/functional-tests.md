@@ -302,8 +302,11 @@ are in `front/browser-tests/`.
 | Chat and document | Open and edit in the full editor; save before sending and pass the URL to the prompt only while the document is displayed; retain selection and cursor across composer focus, send a bounded visible excerpt and invalidate stale positions in HTML, Source and Dataset; preserve the draft on failure; reserve the integrated pane for desktop (≥ 1024 px), with controls in the document title bar; open a dialog on mobile; resize both desktop layouts with a mouse, touch and keyboard without losing edits; keep side-by-side documents at least 560 px wide, automatically stacking the panes when space is insufficient; keep the right sidebar visible on desktop and preserve content and conversation across reconnect | `front/browser-tests/chat-document-workspace.spec.mjs`, `back/app/conversation/tests/test_service.py`, `back/app/chat/tests/test_native_facade.py`, `back/app/memory/tests/test_document_library.py`, `back/app/memory/tests/test_document_grants.py` |
 | `voice` | Call setup/cancellation, correct channel and media cleanup | `test_session.py`, `test_multichannel_routing.py`, `test_realtime_engine.py`, `voice.spec.mjs` |
 | `memory` | Search, creation, sharing and restoration without losing content, revision or rights | `test_document_library.py`, `test_document_grants.py`, `test_editorial_html.py`, `test_semantic_search.py`, `memory.spec.mjs` |
+| Retired memory types | Clean machine fields without changing keywords, JSON content, tested values or Lab experiments for other mechanisms; preserve rollback and idempotency | `back/tests/test_memory_snapshot_normalization.py` |
 | Dream actions on demand | Manual execution independent of the scheduler; ownership and permissions; preserved drafts and concurrent edits; regeneration of existing file, attachment and HTML document thumbnails; previous cache preserved on failure; toast results, retry and late responses on mobile/desktop | `back/app/memory/tests/test_manual_dream.py`, `test_file_catalogue.py`, `test_document_thumbnails.py`, `front/browser-tests/memory.spec.mjs`, `e2e/specs/memory-graph.spec.mjs` |
 | Unified memory search | List unites undated relevance matches and independent calendar matches; out-of-period dated memories cannot enter through ordinary recall; pagination and sorting after filtering; opening and forgetting results, explicit lexical fallback | `test_browse_filters.py`, `test_semantic_search.py`, `front/browser-tests/memory.spec.mjs` |
+| Conversational recall evidence | Names and aliases with composed/decomposed accents or compatible Unicode forms; projection refreshed on edit; complete name distinguished from words spread across several people; profiles and event fit a small budget through to prepared context; distinct roles of several people preserved; indirect target and relationship in lexical/hybrid recall without bypassing access, contact, validity or temporal scope; repeated facts downranked while preserving numbers, dates and contradictions | `test_document_retrieval.py`, `test_recall_admission.py` |
+| Robust memory admission | Forced SQLAlchemy anonymous-name collisions do not fail recall; owned and shared memories remain accessible while another agent's private memories stay excluded | `test_recall_admission.py`, `test_document_structure.py`, `test_file_catalogue.py` |
 | Memory temporality | Partial dates in Galaris's global timezone and daylight saving changes; cleanup of legacy zones preserves dates, history and acquisitions; correction, permissions and contact scope; query-free context, pagination and budgets; target-date filtering, HTTP authorization; required initial filter, input and display independent of browser timezone, desktop/mobile error recovery | `back/app/memory/tests/test_temporal.py`, `back/app/memory/tests/test_browse_filters.py`, `front/browser-tests/memory.spec.mjs`, `e2e/specs/memory-temporal.spec.mjs` |
 | Document thumbnails | Reuse the print snapshot and its images for the beginning of the first page; persist the captured revision; renew the cache after edits; recheck permissions without rereading content or history; defer offscreen previews, bound concurrent loads and cancel stale work while keeping documents accessible | `back/app/memory/tests/test_document_thumbnails.py`, `front/browser-tests/document-thumbnails.spec.mjs`, `front/core/util/previewQueue.test.mjs`, `browser-executor/pdf.test.mjs` |
 | Office and spreadsheet thumbnails | Convert the first Office page and first printed spreadsheet page; skip OCR and analytical extraction; separate checkpoints from full analysis; preserve originals, access checks and the shared cache; retry failures and clean temporaries after cancellation; display and download on desktop and mobile, including after reopening | `back/app/memory/tests/test_document_thumbnails.py`, `front/browser-tests/document-thumbnails.spec.mjs`, `e2e/specs/office-thumbnails.spec.mjs` |
@@ -379,7 +382,7 @@ and ignoring requests for a different conversation.
 | i18n / navigation / API | Consistent catalogs, authorized navigation and responses bound to the correct account/request | `make typecheck`, `front/core/api.test.mjs`, `front/browser-tests/lab-access.spec.mjs`, `e2e/specs/session-races.spec.mjs` |
 | Content / previews / files | Edit, read and print without corruption or unintended execution; adapt page width automatically to the container, including fullscreen and read-only views, while preserving content and the manual preference; release attachments | `back/core/util/tests/test_rich_text.py`, `back/core/preview/tests/test_conversion.py`, `front/browser-tests/rich-text.spec.mjs`, `document-print.spec.mjs`, `document-layout.spec.mjs`, `model3d.spec.mjs` |
 | Document shortcuts | Format and undo with the keyboard, nest lists with Tab, preserve table navigation and code indentation; protect Source and read-only content; save and reopen headings | `front/browser-tests/document-shortcuts.spec.mjs`, `e2e/specs/editorial-html.spec.mjs` |
-| PWA / release | Version updates, exact release images, backups and restoration | `e2e/specs/pwa.spec.mjs`, `back/tests/test_release_qualification.py`, `make tests-release`, `make tests-restore` |
+| PWA / release | Automatically reload tabs after a failed deployment while preserving the session and conversation; qualify exact release images, backups and restoration | `e2e/specs/pwa.spec.mjs`, `back/tests/test_release_qualification.py`, `make tests-release`, `make tests-restore` |
 | Offline documentation tooling | Generate the FR/EN maps from the current checkout without access to secrets, application volumes or the network; refuse forbidden reads, source writes and connections from executed code; publish only the expected outputs and preserve the checkout on failure | `bin/test-documentation.sh`, `bin/test-documentation-confinement.sh`, `make tests-documentation` |
 
 ## Bridges: test each protocol adaptation once
@@ -531,8 +534,8 @@ preserving notes, personal content and historical revisions.
 It also verifies SHA-256 identity per agent, grouping across storage and Messenger,
 personal notes and titles, revisioned shared summaries, changed copies, directory rebinding
 after a move, and preview denial after revocation or byte changes. `memory.spec.mjs` exercises
-thumbnails and fullscreen from the graph inspector, errors/retries and late responses after
-an agent change. `e2e/specs/file-indexing.spec.mjs` checks real-API thumbnails, previews,
+thumbnails and fullscreen from the graph details, reopening after a late fullscreen event,
+errors/retries and late responses after an agent change. `e2e/specs/file-indexing.spec.mjs` checks real-API thumbnails, previews,
 original downloads and reopening on desktop and mobile with a synthetic provider.
 It also exercises the real Dream scheduler: one directory per idle turn, receipts and gauges,
 no LLM calls, atomic replayable checkpoints, revision-conflict recovery, duplicate-free weekly
@@ -544,15 +547,33 @@ are local measurements with a synthetic provider, not a remote latency guarantee
 late response rejection after an agent switch on desktop/mobile.
 `front/browser-tests/memory.spec.mjs` compares actual file and directory graph colors with
 their legend after filtering and theme changes, on desktop and mobile.
-It also checks opening and zooming synthetic 500- and 3,000-node graphs without losing nodes
-during pagination, then unfolding all members without another request. Volume coverage includes
+`front/browser-tests/thumbnail-fit.spec.mjs` compares decoded image proportions with the
+rectangles actually painted in the graph, including renderer transforms, on desktop and
+mobile: landscape, portrait, square and panorama, on first display, after zooming out/in
+and after filtering. The scenario reproduces the ratio being applied twice before the fix;
+HTML preview checks did not cover this graph transform.
+A synthetic directory of 84 images also checks simultaneous thumbnails and their reuse
+with a reduced browser memory estimate, on desktops reporting 2 or 16 cores. Previous small
+graphs did not detect the incorrect 64-thumbnail limit or the removal of images outside the
+viewport. Loaded thumbnails remain present after panning the entire directory offscreen,
+then return without another read.
+`memory.spec.mjs` also checks opening and zooming synthetic 500- and 3,000-node graphs without losing nodes
+during pagination, then unfolding all members without another request. All titles are displayed
+without hovering at maximum zoom and filtered when zoomed out; older roots remain identifiable
+by their URI or custom title in both themes. Volume coverage includes
 3,000 nodes without foldable branches and 6,000 links. A mixed topology of subjects, contacts,
 shared documents/items and isolated nodes checks real position movement, natural convergence,
 community proximity, position preservation during zoom and unfolding,
-camera preservation and overview/detail levels; desktop/mobile captures are inspected. Exclusive branches are
-exercised on desktop/mobile: count, zoom hysteresis, keyboard control, child opening and preservation
-of the camera during explicit unfolding and unchanged positions when closing node details
-with the close button or a click on the graph background.
+camera preservation and overview/detail levels while preserving links between displayed nodes;
+desktop/mobile captures are inspected. Exclusive branches are
+exercised on desktop/mobile: count, zoom hysteresis, keyboard access through zoom buttons, child opening and preservation
+of the camera during zooming and unchanged positions when closing node details.
+Clicking directly opens the modal on desktop and mobile; coverage checks
+kind, visibility, last activity, access count, content, folder/conversation neighbors,
+backdrop or Escape dismissal and reopening. These journeys replace the old popover
+and View-button assertions.
+The removed global unfolding control is replaced by zoom journeys; manually folding
+a branch while keeping a child selected is no longer part of the interface.
 The actual renderer checks intermediate opacity of new symbols during zoom, complete
 visibility at the end, and immediate appearance with reduced motion.
 Coordinate stability is checked in the large-window mode with 3,000 items. Error/retry and a delayed response after an

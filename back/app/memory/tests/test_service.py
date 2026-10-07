@@ -73,7 +73,6 @@ async def test_conversation_document_metadata_uses_canonical_memory_title(
             owner_agent_id=owner.id,
             title="Canonical document title",
             payload=MemoryPayload(text="Document content"),
-            memory_type="working",
             node_kind="document",
         )
     )
@@ -173,7 +172,6 @@ async def test_document_writes_emit_content_free_realtime_events(
             owner_agent_id=owner.id,
             title="Live document",
             payload=MemoryPayload(text="Initial content"),
-            memory_type="working",
             node_kind="document",
         )
     )
@@ -224,7 +222,6 @@ async def test_retention_preview_counts_without_mutating_memories(
             owner_agent_id=owner.id,
             title="Ancienne note",
             payload=MemoryPayload(text="Souvenir inactif à prévisualiser."),
-            memory_type="episodic",
         )
     )
     expired, _created = await service.create_item(
@@ -232,7 +229,6 @@ async def test_retention_preview_counts_without_mutating_memories(
             owner_agent_id=owner.id,
             title="Note expirée",
             payload=MemoryPayload(text="Souvenir arrivé à échéance."),
-            memory_type="semantic",
             valid_until=datetime.now(timezone.utc) - timedelta(days=1),
         )
     )
@@ -241,7 +237,6 @@ async def test_retention_preview_counts_without_mutating_memories(
             owner_agent_id=owner.id,
             title="Document de travail",
             payload=MemoryPayload(text="Notes de travail à conserver."),
-            memory_type="working",
             node_kind="document",
         )
     )
@@ -259,7 +254,6 @@ async def test_retention_preview_counts_without_mutating_memories(
     assert preview.inactive_count == 1
     assert preview.expired_count == 1
     assert preview.total_candidates == 2
-    assert preview.by_memory_type == {"episodic": 1, "semantic": 1}
     assert preview.oldest_activity_at is not None
     assert await db.get(MemoryItem, inactive.id) is not None
     assert await db.get(MemoryItem, expired.id) is not None
@@ -293,7 +287,6 @@ async def test_acl_search_revisions_links_and_physical_forget(
             owner_agent_id=owner.id,
             title="PostgreSQL deployment rule",
             payload=MemoryPayload(text="Always apply Atlas before deploying PostgreSQL."),
-            memory_type="procedural",
             keywords=["postgresql", "atlas", "atlas"],
             source=MemorySourceCreate(
                 source_kind="test",
@@ -516,7 +509,6 @@ async def test_deletion_protection_is_distinct_from_read_only(
             owner_agent_id=owner.id,
             title="Protected working document",
             payload=MemoryPayload(text="Editable content"),
-            memory_type="working",
             node_kind="document",
         ),
         deletion_protected=True,
@@ -665,7 +657,6 @@ async def test_search_filters_documents_before_counting_and_pagination(
             owner_agent_id=owner.id,
             title="Release document",
             payload=MemoryPayload(text="# Release\n\nCurrent draft."),
-            memory_type="working",
             node_kind="document",
             keywords=["release", "draft"],
         )
@@ -683,7 +674,6 @@ async def test_search_filters_documents_before_counting_and_pagination(
             owner_agent_id=owner.id,
             title="Archived document",
             payload=MemoryPayload(text="An older working document."),
-            memory_type="working",
             node_kind="document",
             keywords=["archive"],
         )
@@ -732,7 +722,6 @@ async def test_document_folders_only_include_readable_documents(
             owner_agent_id=owner.id,
             title="Nested document",
             payload=MemoryPayload(text="content"),
-            memory_type="working",
             node_kind="document",
             metadata={"document_path": "Projects/Launch"},
         )
@@ -754,7 +743,6 @@ async def test_document_attachments_follow_document_acl_without_content_revision
             owner_agent_id=owner.id,
             title="Document with attachment",
             payload=MemoryPayload(text="content"),
-            memory_type="working",
             node_kind="document",
         )
     )
@@ -855,7 +843,6 @@ async def test_document_attachments_are_file_resources_guarded_by_document_acl(
             owner_agent_id=owner.id,
             title="Document attachments",
             payload=MemoryPayload(text="Body"),
-            memory_type="working",
             node_kind="document",
         )
     )
@@ -930,7 +917,6 @@ async def test_search_sorts_every_list_column_in_both_directions(
             owner_agent_id=peer.id,
             title="Charlie memory",
             payload=MemoryPayload(text="This memory has not been read directly."),
-            memory_type="working",
             visibility="public",
         )
     )
@@ -939,7 +925,6 @@ async def test_search_sorts_every_list_column_in_both_directions(
             owner_agent_id=owner.id,
             title="Alpha memory",
             payload=MemoryPayload(text="This memory has one direct read."),
-            memory_type="semantic",
             visibility="private",
         )
     )
@@ -948,7 +933,6 @@ async def test_search_sorts_every_list_column_in_both_directions(
             owner_agent_id=owner.id,
             title="Bravo memory",
             payload=MemoryPayload(text="This memory has two direct reads."),
-            memory_type="core",
             visibility="shared",
         )
     )
@@ -995,10 +979,6 @@ async def test_search_sorts_every_list_column_in_both_directions(
         "title": (
             [once.id, twice.id, unused.id],
             [unused.id, twice.id, once.id],
-        ),
-        "memory_type": (
-            [twice.id, once.id, unused.id],
-            [unused.id, once.id, twice.id],
         ),
         "visibility": (
             [once.id, unused.id, twice.id],
@@ -1405,7 +1385,6 @@ async def test_graph_exposes_structural_roles_but_not_agent_projection(
             owner_agent_id=owner.id,
             memory_item_id=None,
             title="Agent structurel",
-            memory_type="core",
             content="# Agent",
             filename="agent.md",
             keywords=("agent",),
@@ -1419,7 +1398,6 @@ async def test_graph_exposes_structural_roles_but_not_agent_projection(
             owner_agent_id=owner.id,
             memory_item_id=None,
             title="Contact structurel",
-            memory_type="social",
             content="# Contact",
             filename="contact.md",
             keywords=("contact",),
@@ -1435,7 +1413,6 @@ async def test_graph_exposes_structural_roles_but_not_agent_projection(
             owner_agent_id=owner.id,
             title="Document structurel",
             payload=MemoryPayload(text="Document visible dans le graphe."),
-            memory_type="working",
             node_kind="document",
         )
     )

@@ -15,7 +15,7 @@ from core.user.models import User
 from core.user.user_service import encrypt_password
 from core.authorize.models import Assignment, Role, Privilege
 from app.agent.models import Agent, Title
-from app.memory.models import MemoryItem, MemoryRevision
+from app.memory.models import MemoryItem, MemoryRevision, MemoryURL
 from app.memory.storage import NativeFileStorage, register_storage, reset_storage_registry
 from app.goal.models import Goal, GoalStatus
 
@@ -52,13 +52,16 @@ async def test_http_reads_stay_bounded_and_revocations_remain_visible(client, tm
                 item = MemoryItem(owner_agent_id=agent.id if name != 'Hidden' else None,
                     owner_user_id=outsider.id if name == 'Hidden' else None,
                     resource_id=resource, title=f'Audit {name}', node_kind='document',
-                    memory_type='working', content_type='text', media_type='text/html',
+                     content_type='text', media_type='text/html',
                     content_hash=hashlib.sha256(content).hexdigest(), size_bytes=len(content),
                     search_text='Synthetic audit content')
                 db.add(item)
                 docs.append(item)
             await db.flush()
             item = docs[0]
+            urls = ['https://example.com/audit/first', 'https://example.com/audit/second']
+            db.add_all(MemoryURL(memory_node_id=item.id, url=url) for url in urls)
+            item.primary_url = urls[0]
             revision_template = dict(item_id=item.id, provider_code='native', resource_id=resource,
                 content_hash=item.content_hash, content_type='text', media_type='text/html',
                 title=item.title, document_content_version=True)
@@ -108,9 +111,25 @@ async def test_http_reads_stay_bounded_and_revocations_remain_visible(client, tm
             await measure(f'identity_{repeat}', 'GET', '/api/auth/me')
             await measure(f'agents_{repeat}', 'GET', '/api/agents')
             await measure(f'agent_detail_{repeat}', 'GET', f'/api/agents/{agent_id}')
-            await measure(f'library_{repeat}', 'POST', '/api/memory/documents/library', body={'limit': 50})
+            library = await measure(f'library_{repeat}', 'POST', '/api/memory/documents/library', body={'limit': 50})
+            entries = library.json()['entries']
+            assert len(entries) == 3
+            assert len({entry['item']['id'] for entry in entries}) == 3
+            assert next(entry['item']['urls'] for entry in entries if entry['item']['id'] == str(doc_id)) == urls
             opened = await measure(f'document_1_revision_{repeat}', 'GET', f'/api/memory/documents/{doc_id}')
             assert opened.json()['item']['payload']['text'] == content.decode()
+            assert opened.json()['item']['urls'] == urls
+            assert opened.json()['item']['source_refs'] == urls
+        first_page = await measure('library_first_page', 'POST', '/api/memory/documents/library',
+            body={'limit': 2, 'offset': 0})
+        second_page = await measure('library_second_page', 'POST', '/api/memory/documents/library',
+            body={'limit': 2, 'offset': 2})
+        first_ids = [entry['item']['id'] for entry in first_page.json()['entries']]
+        second_ids = [entry['item']['id'] for entry in second_page.json()['entries']]
+        assert len(first_ids) == 2
+        assert len(second_ids) == 1
+        assert set(first_ids).isdisjoint(second_ids)
+        assert set(first_ids + second_ids) == {entry['item']['id'] for entry in entries}
         await measure('document_denied', 'GET', f'/api/memory/documents/{hidden_id}', expected=403)
         await measure('owner_options', 'GET', '/api/memory/documents/owner-options')
         await measure('goal_detail', 'GET', f'/api/goals/{goal_id}')

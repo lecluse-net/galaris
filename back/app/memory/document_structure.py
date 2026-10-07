@@ -93,7 +93,7 @@ async def _node(
         resource_id = await get_storage("native").create(b"")
         item = MemoryItem(
             id=uuid4(), node_kind=kind, owner_agent_id=owner_agent_id,
-            owner_user_id=owner_user_id, title=title, memory_type="working",
+            owner_user_id=owner_user_id, title=title,
             provider_code="native", resource_id=resource_id, content_type="text",
             media_type="text/html", content_profile_version=1,
             content_hash=hashlib.sha256(b"").hexdigest(), size_bytes=0,

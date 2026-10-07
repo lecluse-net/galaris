@@ -298,7 +298,6 @@ async def test_memory_mcp_index_search_get_and_store(
             ctx,
             content="The user prefers French answers.",
             title="Language preference",
-            memory_type="core",
         )
     )
     assert remembered["created"] is True

@@ -39,7 +39,7 @@ async def test_memory_acquisition_is_immediate_idempotent_and_attributable(
         content="The user prefers concise French answers.",
         source_kind="messenger",
         source_ref="message:42",
-        metadata={"memory_type": "core"},
+        metadata={},
     )
 
     first = await acquisition_service.acquire_memory(data)
@@ -54,7 +54,6 @@ async def test_memory_acquisition_is_immediate_idempotent_and_attributable(
         first.memory_id,
         agent_id=owner.id,
     )
-    assert item.memory_type == "core"
     assert item.visibility == "private"
     assert visible_text(content.decode()) == "The user prefers concise French answers."
     candidate = await acquisition_service.get_acquisition_record(first.acquisition_id)
@@ -183,7 +182,6 @@ async def test_acquisition_uses_global_threshold_to_link_instead_of_create(
                 memory_id=existing.id,
                 revision=existing.revision,
                 title=existing.title,
-                memory_type="semantic",
                 excerpt=existing.search_text,
                 similarity=0.99,
             )
@@ -248,7 +246,6 @@ async def test_manual_memory_creation_uses_the_same_global_merge_threshold(
                 memory_id=existing.id,
                 revision=existing.revision,
                 title=existing.title,
-                memory_type="semantic",
                 excerpt=existing.search_text,
                 similarity=0.99,
             )
@@ -339,7 +336,6 @@ async def test_semantic_merge_keeps_existing_content_and_adds_provenance(
             source_kind="task",
             source_ref="task:semantic-duplicate",
             metadata={
-                "memory_type": "semantic",
                 "deduplication_decision": "merge",
                 "semantic_similarity": 0.97,
             },
@@ -373,7 +369,6 @@ async def test_semantic_merge_can_link_a_source_managed_node_without_rewriting_i
             owner_agent_id=owner.id,
             memory_item_id=None,
             title="Agent profile",
-            memory_type="core",
             content=(
                 "The agent owns platform reliability and prefers small, "
                 "verifiable changes."
@@ -426,7 +421,6 @@ async def test_semantic_merge_can_link_a_document_without_rewriting_it(
             owner_agent_id=owner.id,
             title="Release guide",
             payload=MemoryPayload(text="Production releases happen every Tuesday."),
-            memory_type="working",
             node_kind="document",
         )
     )
@@ -492,21 +486,9 @@ async def test_acquisition_preserves_earliest_source_date_when_merging(
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize(
-    ("stored_type", "expected_type"),
-    [
-        (None, "semantic"),
-        ("core", "core"),
-        ("preference", "core"),
-        ("decision", "semantic"),
-        ("unknown", None),
-    ],
-)
 async def test_pending_acquisition_is_resumed_without_human_review(
     agents: tuple[Agent, Agent],
     memory_storage: Path,
-    stored_type: str | None,
-    expected_type: str | None,
 ) -> None:
     del memory_storage
     owner, _peer = agents
@@ -517,26 +499,17 @@ async def test_pending_acquisition_is_resumed_without_human_review(
             content="A durable fact left pending by an older runtime.",
             source_kind="interrupted_runtime",
             source_ref="runtime-event:99",
-            metadata={"memory_type": stored_type} if stored_type else {},
         )
     )
     assert created and candidate.status == "pending"
 
     applied, failed = await acquisition_service.resolve_pending_acquisitions()
 
-    if expected_type is None:
-        assert (applied, failed) == (0, 1)
-        assert candidate.status == "pending"
-        assert candidate.target_item_id is None
-        return
-
     assert (applied, failed) == (1, 0)
     assert candidate.status == "accepted"
     assert candidate.target_item_id is not None
     item, content, *_ = await service.get_item(candidate.target_item_id, agent_id=owner.id)
-    assert item.memory_type == expected_type
     assert visible_text(content.decode()) == "A durable fact left pending by an older runtime."
-    assert candidate.metadata_.get("memory_type") == stored_type
     assert await acquisition_service.resolve_pending_acquisitions() == (0, 0)
 
 
@@ -898,7 +871,6 @@ async def test_task_capture_never_targets_a_source_managed_title_collision(
             owner_agent_id=owner.id,
             memory_item_id=None,
             title="Operational profile",
-            memory_type="core",
             content="# Operational profile\n\nGenerated from canonical data.\n",
             filename=f"agent-test-{owner.id}.md",
             keywords=("agent", f"agent:{owner.id}"),

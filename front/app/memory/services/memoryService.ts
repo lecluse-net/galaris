@@ -40,7 +40,6 @@ import type {
   MemoryRelationType,
   MemorySearchPage,
   MemorySortField,
-  MemoryType,
 } from '../types'
 
 export const memoryService = {
@@ -322,7 +321,6 @@ export const memoryService = {
     keyword?: string | null
     limit?: number
     offset?: number
-    memoryTypes?: MemoryType[]
     nodeKinds?: MemoryNodeKind[]
     sortBy?: MemorySortField | null
     sortDescending?: boolean
@@ -337,7 +335,6 @@ export const memoryService = {
       keyword: params.keyword ?? null,
       limit: params.limit ?? 50,
       offset: params.offset ?? 0,
-      memory_types: params.memoryTypes ?? [],
       node_kinds: params.nodeKinds ?? [],
       sort_by: params.sortBy ?? null,
       sort_desc: params.sortDescending ?? true,
@@ -437,7 +434,6 @@ export const memoryService = {
     query: string
     semanticQuery?: string
     limit?: number
-    memoryTypes?: MemoryType[]
     nodeKinds?: MemoryNodeKind[]
     excludeSourceManaged?: boolean
   }): Promise<MemoryRankedItem[]> {
@@ -447,7 +443,6 @@ export const memoryService = {
     }
     if (params.semanticQuery !== undefined) payload.semantic_query = params.semanticQuery
     if (params.limit !== undefined) payload.limit = params.limit
-    if (params.memoryTypes !== undefined) payload.memory_types = params.memoryTypes
     if (params.nodeKinds !== undefined) payload.node_kinds = params.nodeKinds
     if (params.excludeSourceManaged !== undefined) {
       payload.exclude_source_managed = params.excludeSourceManaged
@@ -494,7 +489,6 @@ export const memoryService = {
   async listGraphRoots(params: {
     agentId: number
     query?: string
-    memoryTypes?: MemoryType[]
     topicItemId?: string | null
     contactItemId?: string | null
     limit?: number
@@ -505,7 +499,6 @@ export const memoryService = {
     const response = await api.post<MemoryGraphPage>('/memory/graph/roots', {
       agent_id: params.agentId,
       query: params.query ?? '',
-      memory_types: params.memoryTypes ?? [],
       topic_item_id: params.topicItemId ?? null,
       contact_item_id: params.contactItemId ?? null,
       limit: params.limit ?? 60,

@@ -271,10 +271,27 @@ Les changements s’appliquent aux nouveaux appels.
 ## Documents et connaissances
 
 **Connaissances → Documents** (`/memory/documents`) sert à retrouver les contenus rédigés
-et les Datasets. **Connaissances → Mémoire** (`/memory`) propose **Recherche**, **Liste**
+et les Datasets. **Connaissances → Mémoire** (`/memory`) propose **Liste**
 et **Graphe** : ouvrez la page puis choisissez l’onglet, sans supposer un paramètre d’URL.
 Les contacts sont dans `/memory/contacts` ; les regroupements thématiques dans
 **Connaissances → Sujets** (`/topic`). Le partage d’un lien ne donne pas accès au contenu.
+
+Les deux onglets placent l'agent et la recherche sur la première ligne, puis le sujet
+et l'interlocuteur juste dessous. Dans **Liste**, la date cible et son bouton d'application
+complètent ces filtres. Les champs se réorganisent sur les petits écrans.
+
+Dans **Graphe**, les souvenirs se chargent sans filtre de période ; la limite de nœuds reste
+appliquée. Sous l'en-tête du graphe, la légende regroupe les types de nœuds, les relations,
+puis les repères d'ancienneté et les commandes de zoom et de plein écran.
+La taille et l'opacité des nœuds suivent une échelle relative linéaire de dernière activité,
+du plus ancien au plus récent dans le graphe chargé. La légende affiche les deux dates
+extrêmes ; masquer un type de nœud ne change pas cette échelle. Les nœuds anciens restent
+visibles et leurs libellés conservent leur contraste.
+En vue éloignée, les titres privilégient les nœuds structurants et les plus connectés.
+Au zoom maximal, chaque nœud affiché garde son titre visible sans survol.
+Les répertoires racines gardent leur titre visible même en vue éloignée. Un titre « . »
+est remplacé dans le graphe par l'URI avec son schéma, par exemple `nextcloud://` ;
+les titres personnalisés sont conservés.
 
 Dans **Liste**, les documents, pièces jointes et fichiers indexés affichent leur miniature
 lorsqu'elle est disponible. Un clic sur la ligne ou la carte ouvre la fiche ; les droits
@@ -284,6 +301,10 @@ Dans **Liste**, modifiez **Date et heure cibles** puis appliquez le filtre pour 
 les souvenirs correspondant à cette date. La saisie et les correspondances utilisent le
 fuseau global configuré dans Galaris (`TZ`), même si votre navigateur utilise un autre fuseau.
 Les champs temporels d'un souvenir n'ont aucun sélecteur de fuseau.
+
+Un clic sur un nœud ouvre sa modale directement. Elle conserve les métadonnées du graphe
+(nature, visibilité, dernière activité, nombre d'accès) et la navigation vers ses voisins,
+y compris les dossiers et conversations. Le bouton de fermeture ou l'arrière-plan ramène au graphe.
 
 La modale propose des boutons pour les traitements Dream compatibles avec le nœud :
 générer sa description, **Régénérer la miniature** d'un fichier, d'une pièce jointe ou d'un
@@ -301,7 +322,7 @@ Enregistrez vos modifications avant de lancer
 une action. Un échec peut être retenté et une modification concurrente prévaut sur l'analyse.
 
 Le graphe replie les branches d'au moins huit feuilles exclusives avec un compteur. Zoomez,
-cliquez sur le groupe ou activez **Détails des branches** pour voir les éléments, puis dézoomez
+cliquez sur le groupe pour voir les éléments, puis dézoomez
 pour les replier. Les nœuds partagés restent visibles. Jusqu'à 600 items chargés, le placement
 initial se stabilise naturellement, avec un rééquilibrage doux de 0,7 seconde après modification du graphe.
 Le zoom, le dépliage et la fermeture du détail conservent les positions. Le dézoom allège

@@ -327,15 +327,7 @@ export default {
 
         viewDocument: 'Visualiser',
         documentKindHint: 'Nature de l’objet : document, consultable et modifiable selon vos droits.',
-        typeHints: {
-          core: 'Type de mémoire : identité — informations de référence sur l’agent.',
-          working: 'Type de mémoire : travail — informations et documents de travail.',
-          episodic: 'Type de mémoire : épisode — événements vécus et résultats passés.',
-          semantic: 'Type de mémoire : connaissance — faits et informations réutilisables.',
-          procedural: 'Type de mémoire : procédure — méthodes et savoir-faire.',
-          social: 'Type de mémoire : relation — informations sur les interlocuteurs et leurs relations.',
-        },
-        forgottenDuringExecution: 'Un souvenir a été supprimé pendant cette exécution.',
+                forgottenDuringExecution: 'Un souvenir a été supprimé pendant cette exécution.',
         untitled: 'Souvenir sans titre',
         noResult: 'La recherche n’a retourné aucun résultat.',
         noReturnedContent: 'Aucun contenu retourné.',
@@ -694,15 +686,7 @@ export default {
 
         viewDocument: 'View',
         documentKindHint: 'Object kind: document, viewable and editable according to your access rights.',
-        typeHints: {
-          core: 'Memory type: identity — reference information about the agent.',
-          working: 'Memory type: working — working information and documents.',
-          episodic: 'Memory type: episode — past events and outcomes.',
-          semantic: 'Memory type: knowledge — reusable facts and information.',
-          procedural: 'Memory type: procedure — methods and know-how.',
-          social: 'Memory type: relationship — information about interlocutors and their relationships.',
-        },
-        forgottenDuringExecution: 'A memory item was deleted during this execution.',
+                forgottenDuringExecution: 'A memory item was deleted during this execution.',
         untitled: 'Untitled memory',
         noResult: 'The search returned no result.',
         noReturnedContent: 'No content was returned.',
@@ -864,14 +848,6 @@ export default {
         duringExecutionHint: '执行器在工作过程中查询或更新了记忆。', truncated: '简报保持精简，仅显示实际选中的记忆。', notRequestedDetail: '此次执行无需自动回忆。',
         noMemory: '此次执行未使用任何记忆。', itemUnavailable: '此记忆已无法访问或已被删除。', contentUnavailable: '此记忆的文本内容不可用。', viewDocument: '查看',
         documentKindHint: '对象类别：文档，可根据您的权限查看和编辑。',
-        typeHints: {
-          core: '记忆类型：身份 — 关于智能体的参考信息。',
-          working: '记忆类型：工作 — 工作信息和文档。',
-          episodic: '记忆类型：经历 — 过去的事件和结果。',
-          semantic: '记忆类型：知识 — 可复用的事实和信息。',
-          procedural: '记忆类型：流程 — 方法和操作知识。',
-          social: '记忆类型：关系 — 关于对话者及其关系的信息。',
-        },
 
         forgottenDuringExecution: '一条记忆在此次执行期间被删除。', untitled: '无标题记忆', noResult: '搜索没有返回结果。', noReturnedContent: '没有返回内容。',
         timeoutDetail: '记忆未在超时时间内响应；处理已继续。', errorDetail: '访问记忆失败；处理已继续。',

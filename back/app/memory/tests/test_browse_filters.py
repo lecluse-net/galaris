@@ -269,21 +269,21 @@ async def test_calendar_browse_unites_ordinary_search_and_forced_matches(agents,
         raise MemoryEmbeddingNotConfiguredError('not configured')
     monkeypatch.setattr(retrieval, 'resolve_embedding_model', missing_model)
     definitions = [
-        ('A ordinary', owner.id, 'semantic', None),
-        ('B scheduled', owner.id, 'working', MemoryTemporalAnchor(month=9, day=27)),
-        ('C future', owner.id, 'semantic', MemoryTemporalAnchor(year=2028, month=9, day=27)),
-        ('D other words', owner.id, 'working', None),
-        ('E private', peer.id, 'semantic', MemoryTemporalAnchor(month=9, day=27)),
-        ('F expired', owner.id, 'semantic', MemoryTemporalAnchor(month=9, day=27)),
+        ('A ordinary', owner.id, None),
+        ('B scheduled', owner.id, MemoryTemporalAnchor(month=9, day=27)),
+        ('C future', owner.id, MemoryTemporalAnchor(year=2028, month=9, day=27)),
+        ('D other words', owner.id, None),
+        ('E private', peer.id, MemoryTemporalAnchor(month=9, day=27)),
+        ('F expired', owner.id, MemoryTemporalAnchor(month=9, day=27)),
     ]
-    for title, agent_id, memory_type, anchor in definitions:
+    for title, agent_id, anchor in definitions:
         await service.create_item(MemoryItemCreate(owner_agent_id=agent_id, title=title,
-            memory_type=memory_type, temporal=anchor,
+             temporal=anchor,
             payload=MemoryPayload(text='needle' if title[0] in 'ACEF' else 'unrelated birthday'),
             valid_until=datetime.now(timezone.utc)-timedelta(days=1) if title.startswith('F') else None))
     target = MemoryTemporalFilter(target_at='2027-09-27T12:00Z', lookahead_hours=0)
     request = MemorySearchRequest(agent_id=owner.id, hybrid=hybrid, query='needle',
-        memory_types=['semantic'], temporal=target, sort_by='title', sort_desc=False, limit=1)
+         temporal=target, sort_by='title', sort_desc=False, limit=1)
     first = await retrieval.browse_items(request)
     second = await retrieval.browse_items(request.model_copy(update={'offset': 1}))
     assert first.total == second.total == 2
@@ -291,7 +291,7 @@ async def test_calendar_browse_unites_ordinary_search_and_forced_matches(agents,
     assert [hit.item.title for hit in first.hits + second.hits] == ['A ordinary', 'B scheduled']
     assert first.hits[0].temporal_match_at is None
     assert second.hits[0].temporal_match_at == target.target_at
-    # Ordinary text/type/topic/contact criteria never veto a scheduled match.
+    # Ordinary text/topic/contact criteria never veto a scheduled match.
     forced = await retrieval.browse_items(request.model_copy(update={
         'query': 'nomatch', 'filter_topic_item_id': uuid4(), 'filter_contact_item_id': uuid4()}))
     assert [hit.item.title for hit in forced.hits] == ['B scheduled']
@@ -299,5 +299,5 @@ async def test_calendar_browse_unites_ordinary_search_and_forced_matches(agents,
         'temporal': MemoryTemporalFilter(target_at='2027-09-28T12:00Z', lookahead_hours=0)}))
     assert [hit.item.title for hit in other_day.hits] == ['A ordinary']
     unqueried = await retrieval.browse_items(request.model_copy(update={
-        'query': '', 'memory_types': [], 'limit': 50}))
+        'query': '',  'limit': 50}))
     assert [hit.item.title for hit in unqueried.hits] == ['A ordinary', 'B scheduled', 'D other words']

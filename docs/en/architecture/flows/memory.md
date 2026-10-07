@@ -17,6 +17,12 @@ are recognized through an internal `document_append` marker; DbAdmin converts le
 revisions before removing their reasons. Dream's `retention_reason` eligibility
 criterion remains enforced.
 
+Memories are described by their content and provenance, without the retired
+`memory_type` field. When removing it, DbAdmin normalizes only machine-owned fields in
+memory metadata, memory Dream checkpoints and memory extraction Lab experiments.
+Keywords, authored JSON content, tested values, schema examples and defaults,
+source captures and call journals are preserved.
+
 ## Read Before an Execution
 
 Items may carry an optional `temporal` object (year, month, day, ISO weekday, hour and minute).
@@ -37,7 +43,7 @@ The UI always applies the filter from the first search, with no option to disabl
 It prefills a single date/time field in Galaris's global timezone. The server resolves edited
 local targets in that same timezone; the initial target preserves its UTC instant, including
 within repeated hours. Lookahead remains zero and matches display in the global timezone,
-independently of the browser timezone. Text/type/topic/interlocutor filters select unanchored memories.
+independently of the browser timezone. Text/topic/interlocutor filters select unanchored memories.
 The calendar branch independently selects matching anchors without requiring lexical or semantic
 relevance. Their union is counted, sorted and paginated in SQL before hydration; calendar matches
 come first by default. The text recall cap does not truncate calendar results. Responses
@@ -56,13 +62,12 @@ The session snapshot is indexed by connection and room. The journal is authorita
 contains rows; `Task.messages` and a runtime's history serve only as fallbacks.
 
 The durable brief does not trigger any model. The query first filters by owner, direct access,
-public visibility, and validity dates. `core` memories go through the same recall as other types
-and the same contact scope; no artificial place or score is reserved for them. The Agent profile
+public visibility, validity dates, and contact scope. The Agent profile
 projection remains excluded from the brief, since identity and personality already come from the
-canonical profile in the system prompt, but it remains available to explicit search. Before
-reranking, a candidate must have either direct lexical evidence or semantic similarity reaching
-both the `0,35` floor and a `0,20` margin below the best candidate. The result may therefore be
-empty. The final item and character budgets remain strict, and each excerpt carries the logical
+canonical profile in the system prompt, but it remains available to explicit search. Lexical
+evidence and semantic similarity order admissible candidates; a low score alone does not empty
+recall. Results may be empty when no admissible candidate is available. The final item and
+character budgets remain strict, and each excerpt carries the logical
 identifier and its sources.
 
 The Topic is a ranking prior, never an implicit access boundary. With a current canonical Topic,
@@ -85,6 +90,29 @@ Lexical candidate generation joins significant terms with `OR`, then ranks them 
 When the vector provider is unavailable, the fallback can therefore offer the best partially
 matching memories instead of requiring every query word.
 
+The stored `search_vector_folded` FTS projection normalizes accents and compatible
+Unicode forms at write time. The query is normalized before tokenization. Recall
+strengthens explicitly capitalized name groups and their complete sequence matches,
+then rewards missing query terms and identities.
+These signals require no additional search or model call and preserve temporal
+anchor priority. They remain heuristics: homonyms, unknown aliases, pronouns and
+historical dates need further evidence. See decision
+[0158](../../../../project/decisions/0158-indexed-memory-query-evidence.md).
+
+For an indirectly named person, positive statements between two full names can
+identify the target in already readable excerpts. The relationship category must
+match the request; negated, quoted or uncertain statements provide no such evidence.
+A supported complete affirmative clause between the names is required, including
+when checking contracted negations.
+Only a uniquely identified target name receives this priority. Ranking then
+prioritizes the target and relationship rather than only the named
+reference person's profile. A neighbour already obtained through a strong confirmed
+link may supply the role without a query word when its title starts with the resolved
+full name. Scope restrictions still apply. Once the identity is covered, missing
+requested terms take priority. Repeated excerpt word sequences are downranked without
+merging or deletion, preserving numbers and negations. Translations and paraphrases
+are not automatically treated as equivalent. No search channel or model call is added.
+
 There is no memory space. Each memory belongs directly to an agent, which always has access to it.
 Another agent sees it only through a grant placed on that memory or because it is explicitly public.
 Automatic acquisitions remain private: sharing is never left to an assumed model initiative and
@@ -93,7 +121,7 @@ does not propagate to an entire container.
 ### Scope of Conversational Memories
 
 A Topic has a public and global `MemoryItem` projection. Each observed interlocutor separately has
-a private `MemoryItem(social)` node, deterministic for
+a private `MemoryItem` node, deterministic for
 `(agent, bridge, remote identifier)`. Every automatic extraction first waits for a Topic. Upon
 extraction, a conversational memory is sealed to the contact by `MemoryContactItem`, and
 `MemoryTopicContactScope + MemoryTopicContactItem` records the exact membership.
@@ -116,16 +144,16 @@ A conversational source without a proven contact remains ineligible. The absence
 the three automatic Task, text-round, and Voice-turn extractors, without changing explicit tool
 writes or the separate learning contract.
 
-A `MemoryItem` also has a nature orthogonal to its cognitive role: `memory` for an ordinary memory,
-`document` for a working Markdown document. A document remains of type `working`, private when
-created, mutable, and not deduplicated. It uses the same UUIDs, ACLs, opaque resources, revisions,
+A `MemoryItem` has a nature: `memory` for an ordinary memory and `document` for a working document.
+A document is private when created, mutable, and not deduplicated.
+It uses the same UUIDs, ACLs, opaque resources, revisions,
 and search projections as other nodes, but is excluded from Dream acquisitions and automatic
 inactivity forgetting. Only its owner can forget it or modify its collaborators.
 
 ## Collaborative Working Documents
 
 ```text
-file_create(path="document://") ──► MemoryItem(document, working, private)
+file_create(path="document://") ──► MemoryItem(document, private)
        │
        ├─► file_read(document://uuid, offset) ──► bounded passage
        ├─► file_edit(start_line, end_line, content) ──► atomic revision
@@ -216,7 +244,7 @@ confirmed `MemoryLink`s (`suggested=false`) whose confidence reaches `0,75`. Thi
 path, weighted at `1,1` and then modulated by link confidence, can rerank only a memory that already
 has direct lexical or vector evidence. The lexical fallback ignores conversational formulas
 without informative terms and requires direct overlap with multiple terms for a long query. It
-always passes through the same ACLs, dates, types, and especially the same contact filter. A link,
+always passes through the same ACLs, dates, and especially the same contact filter. A link,
 even with confidence `1,0`, can therefore never bring a memory sealed to Paul into Jacques's
 current recall.
 
@@ -437,10 +465,10 @@ derived projection and its edges, preserves linked memories, and resets all refe
 ## Canonical Data Projections
 
 ```text
-Agent ───────────────► Markdown core ───────────────┐
-Goal ────────────────► Markdown working/episodic ──┼─► private, source-managed MemoryItem
-GoalCycle + Task ────► episodic report ─────────────┤          │
-Messenger sender ────► social record ──────────────┤          ├─ UUID retained on Agent/Goal/Cycle
+Agent ───────────────► profile record ──────────────┐
+Goal ────────────────► description and progress ────┼─► private, source-managed MemoryItem
+GoalCycle + Task ────► report ──────────────────────┤          │
+Messenger sender ────► contact record ──────────────┤          ├─ UUID retained on Agent/Goal/Cycle
 assigned/successful Process ► procedure/result ─────┘          │
                                                               └─ hashed source identity for contact
 ```
@@ -457,7 +485,7 @@ archived. To ensure that a Goal with thousands of cycles never causes an unbound
 advances, the outgoing projection is forgotten and its `goal_cycles.memory_item_id` becomes null.
 
 A second, deliberately smaller projection represents each human sender observed by Messenger as a
-`social` memory. Its address is exactly `(messaging_id, user_id)`: the canonical bridge code and
+contact record. Its address is exactly `(messaging_id, user_id)`: the canonical bridge code and
 case-sensitive native identifier. `owner_agent_id` isolates the private record without becoming a
 property of the human. The source key is the SHA-256 of a versioned canonical JSON containing these
 three values; it therefore does not expose the native identifier in the constraint or technical
@@ -465,8 +493,8 @@ errors. The content retains only the display name, messaging service, and identi
 connection, room, or message text. A new non-empty name revises the same record; an empty name never
 replaces a known name. An identical observation creates no revision.
 
-`memory.project_process` projects each assigned `ProcessDefinition` into procedural memory without
-an LLM, and the output of each successful `ProcessRun` into private episodic memory. Input, raw
+`memory.project_process` projects each assigned `ProcessDefinition` and the output of each
+successful `ProcessRun` into private memory without an LLM. Input, raw
 snapshot, tokens, and callbacks are never copied. The output passes through the recursive Process
 sanitizer, then is bounded to 12,000 characters. A result is linked to its definition by
 `result_of`; only the last 20 successes per agent and process are retained. Deleting or removing
@@ -509,7 +537,7 @@ Goal MCP tools remain necessary for exact reads, commands, current states, and m
 Memory is a recall and search projection, not a replacement transactional API.
 
 Messenger messages, connections, rooms, authentication identifiers, LLM/tool configurations, and
-Lab diagnostics are never projected automatically. The minimal social record for human senders
+Lab diagnostics are never projected automatically. The minimal contact record for human senders
 contains no conversation text. Terminal Tasks and transcribed Voice turns are examined gradually by
 Dream. Process is the other bounded and deterministic exception described above.
 

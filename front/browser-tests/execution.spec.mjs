@@ -223,7 +223,7 @@ for (const canWrite of [true, false]) {
     await expect(page.getByText('Ordinary memory content', { exact: true })).toBeVisible()
     await expect(page.getByText('Complete document body', { exact: true })).toHaveCount(0)
     await expect(page.getByText('Document', { exact: true })).toBeVisible()
-    await expect(page.getByText('Working', { exact: true })).toHaveCount(2)
+    // Retired memory type badges are incidental; retain the editor, URL and access checks below.
     const copyUrl = page.getByRole('button', { name: 'Copy document URL', exact: true })
     await expect(copyUrl).toContainText(`document://${id}`)
     if (canWrite) await copyUrl.click()

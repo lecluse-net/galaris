@@ -1,10 +1,28 @@
 import { registerSW } from 'virtual:pwa-register'
 import { settings } from '../core/settings'
 
-// The virtual client reloads all open tabs after the replacement worker activates.
-// Merely injecting registerSW.js does not install that reload listener.
+// Workbox can stop observing installation events after a failed external update.
+// The native controller event still reaches every tab when a replacement claims it.
+if ('serviceWorker' in navigator && !settings.is_dev) {
+    let controller = navigator.serviceWorker.controller
+    let reloading = false
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+        const previous = controller
+        controller = navigator.serviceWorker.controller
+        if (previous && controller && previous !== controller && !reloading) {
+            reloading = true
+            window.location.reload()
+        }
+    })
+}
+
 registerSW({
     immediate: true,
+    onNeedReload() {
+        // Production reloads after control changes, including external updates.
+        // Preserve the virtual client's default development behavior.
+        if (settings.is_dev) window.location.reload()
+    },
     onRegisteredSW(_url, registration) {
         if (!registration || settings.is_dev) return
         let checking = false

@@ -34,7 +34,7 @@ ne relancent pas leurs recherches lorsqu'une capsule existe. La vue Task expose 
 sa date, son contact, sa troncature et ses provenances sous « Contexte fourni ».
 
 Une Task humaine sans contact prouvé ne reçoit ni historique de room ni rappel pertinent
-conversationnel. Les mémoires `core` propres à l'agent et les contextes sans origine humaine
+conversationnel. Les mémoires non conversationnelles de l'agent et les contextes sans origine humaine
 conservent leurs règles existantes. La propagation du contact est effectuée sur l'objet Messenger
 hydraté avant l'admission ; les messages sortants liés à un round et les enfants de Task héritent
 ensuite cette identité indépendamment de l'existence d'un Topic.

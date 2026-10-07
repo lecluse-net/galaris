@@ -335,8 +335,8 @@ automatically; they remain flagged as blockers until completion.
    boundary. For a human Task, recall combines nonconversational memories and those of the
    current contact while excluding those of other contacts; the Topic assigned to the Task is
    deliberately ignored as a hard boundary, but recall may infer an additive thematic prior from
-   the request. Contact labels do not dilute the semantic request. The automatic brief retains at
-   most one `core`, then directly injects the already merged bounded top-k from lexical, vector,
+   the request. Contact labels do not dilute the semantic request. The automatic brief
+   directly injects the already merged bounded top-k from lexical, vector,
    and graph ranks, without a second absolute threshold.
    A local failure is recorded but does not block the Task. The Working Set provider additionally
    reads the root Task registry and injects the exact references of active documents, files,

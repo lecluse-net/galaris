@@ -13,7 +13,6 @@ import type {
   MemoryRelationType,
   MemorySearchHit,
   MemorySortField,
-  MemoryType,
   MemoryTemporalFilter,
   MemoryTemporalWindow,
 } from '../types'
@@ -34,7 +33,6 @@ export const useMemoryStore = defineStore('memory', () => {
   const links = ref<MemoryLink[]>([])
   const findings = ref<MemoryFinding[]>([])
   const selectedAgentId = ref<number | null>(null)
-  const selectedTypes = ref<MemoryType[]>([])
   const selectedTopicItemId = ref<string | null>(null)
   const selectedContactItemId = ref<string | null>(null)
   const query = ref('')
@@ -104,7 +102,6 @@ export const useMemoryStore = defineStore('memory', () => {
         temporal: temporal.value,
         agentId: selectedAgentId.value,
         query: query.value,
-        memoryTypes: selectedTypes.value,
         topicItemId: selectedTopicItemId.value,
         contactItemId: selectedContactItemId.value,
         sortBy: sortBy.value,
@@ -121,7 +118,6 @@ export const useMemoryStore = defineStore('memory', () => {
           temporal: temporal.value,
           agentId: selectedAgentId.value,
           query: query.value,
-          memoryTypes: selectedTypes.value,
           topicItemId: selectedTopicItemId.value,
           contactItemId: selectedContactItemId.value,
           sortBy: sortBy.value,
@@ -345,7 +341,6 @@ export const useMemoryStore = defineStore('memory', () => {
     links,
     findings,
     selectedAgentId,
-    selectedTypes,
     selectedTopicItemId,
     selectedContactItemId,
     query,

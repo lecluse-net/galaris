@@ -36,7 +36,6 @@ from .schemas import (
     MemoryDuplicatePreview,
     MemoryDuplicatePreviewPair,
     MemorySimilarityCandidate,
-    MemoryType,
 )
 
 
@@ -56,7 +55,6 @@ async def _candidates_for_embedding(
     agent_id: int,
     embedding: list[float],
     model: EmbeddingModel,
-    memory_types: Sequence[MemoryType],
     limit: int,
     minimum_similarity: float,
     memory_role: str | None,
@@ -89,8 +87,6 @@ async def _candidates_for_embedding(
         MemoryEmbeddingChunk.source_fingerprint
         == MemoryItem.semantic_fingerprint,
     ]
-    if memory_types:
-        filters.append(MemoryItem.memory_type.in_(memory_types))
     if topic_item_id is not None and contact_item_id is not None:
         filters.append(
             exists(
@@ -218,7 +214,6 @@ async def _candidates_for_embedding(
                 memory_id=item.id,
                 revision=item.revision,
                 title=item.title,
-                memory_type=cast(MemoryType, item.memory_type),
                 excerpt=" ".join(str(raw_text).split())[:800],
                 similarity=max(-1.0, min(1.0, 1.0 - distance_value)),
             )
@@ -230,7 +225,6 @@ async def find_similar_memory_candidates(
     *,
     agent_id: int,
     texts: Sequence[str],
-    memory_types: Sequence[MemoryType] = (),
     limit: int = MAX_SIMILARITY_CANDIDATES,
     minimum_similarity: float | None = None,
     memory_role: str | None = None,
@@ -267,7 +261,6 @@ async def find_similar_memory_candidates(
                 agent_id=agent_id,
                 embedding=embedding,
                 model=model,
-                memory_types=memory_types,
                 limit=limit,
                 minimum_similarity=resolved_minimum_similarity,
                 memory_role=memory_role,

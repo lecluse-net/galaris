@@ -60,7 +60,7 @@ RRF_RANK_CONSTANT = 60
 MAX_HYBRID_CANDIDATES = 500
 MIN_GRAPH_LINK_CONFIDENCE = 0.75
 SUGGESTED_TOPIC_RELATION = "topic_membership_candidate"
-RRF_RANKING_VERSION = "memory-query-evidence/v10"
+RRF_RANKING_VERSION = "memory-query-evidence/v12"
 MIN_INFERRED_TOPIC_SIMILARITY = 0.55
 _SOURCE_WEIGHTS: dict[MemoryRetrievalSource, float] = {
     "thematic_lexical": 1.25,
@@ -232,18 +232,6 @@ def _cosine(left: Sequence[float], right: Sequence[float]) -> float:
     return max(0.0, min(1.0, dot / (left_norm * right_norm)))
 
 
-def _text_similarity(left: str, right: str) -> float:
-    left_terms = {
-        match.group(0).casefold() for match in _LEXICAL_TERM_RE.finditer(left)
-    }
-    right_terms = {
-        match.group(0).casefold() for match in _LEXICAL_TERM_RE.finditer(right)
-    }
-    if not left_terms or not right_terms:
-        return 0.0
-    return len(left_terms & right_terms) / len(left_terms | right_terms)
-
-
 def _meaningful_lexical_terms(
     value: str, *, limit: int | None = _MAX_LEXICAL_TERMS,
 ) -> tuple[str, ...]:
@@ -287,7 +275,6 @@ def _search_request(
         # precisely when the embedding provider is unavailable.
         query=_relaxed_lexical_query(request.query),
         limit=limit,
-        memory_types=request.memory_types,
         node_kinds=request.node_kinds,
         task_id=request.task_id,
         memory_role=request.memory_role,
@@ -362,8 +349,6 @@ def _item_filters(
         if request.temporal.target_at is None or request.temporal.lookahead_hours != 0:
             raise ValueError("Recall requires a resolved temporal instant.")
         filters.append(service.temporal_match_clause(request.temporal.target_at))
-    if request.memory_types:
-        filters.append(MemoryItem.memory_type.in_(request.memory_types))
     if request.topic_item_id is not None and request.contact_item_id is not None:
         filters.append(
             exists(
@@ -721,6 +706,7 @@ async def _weighted_rank(
     _rrf, sources = _fused_scores(ranked_sources)
     query = scope_request.recall_query if scope_request.recall_query is not None else scope_request.query
     evidence_text: dict[UUID, str] = {}
+    body_by_id: dict[UUID, str] = {}
     candidate_items: dict[UUID, MemoryItemPublic] = {}
     for identity in sources:
         lexical_hit = lexical_by_id.get(identity)
@@ -735,21 +721,55 @@ async def _weighted_rank(
         if lexical_hit is not None:
             fragments.extend((lexical_hit.item.title, lexical_hit.excerpt))
             candidate_items[identity] = lexical_hit.item
+            body_by_id[identity] = lexical_hit.excerpt
         if semantic_entry is not None:
             fragments.extend((semantic_entry[0].title, semantic_entry[1]))
             candidate_items[identity] = semantic_entry[0]
+            body_by_id[identity] = "\n".join(dict.fromkeys((body_by_id.get(identity, ""), semantic_entry[1])))
         evidence_text[identity] = " ".join(fragments)
     weights = relevance.term_weights(query, evidence_text.values())
-    lexical_evidence = {identity: relevance.coverage(text, weights) for identity, text in evidence_text.items()}
+    entity_groups = relevance.entity_groups(query)
+    name_terms = {word for group in entity_groups for word in group}
+    entity_evidence = {identity: relevance.matched_entities(text, entity_groups)
+                       for identity, text in evidence_text.items()}
+    # A named person may be the reference point, while their colleague is the
+    # requested subject. Resolve only explicit positive relations in scoped
+    # evidence, and reuse the already acquired one-hop graph neighbours.
+    target_groups: list[tuple[str, ...]] = []
+    relation_bridges: set[UUID] = set()
+    if relevance.indirect_relation(query):
+        for identity, body in body_by_id.items():
+            if not any(source.endswith(("_lexical", "_vector")) for source in sources[identity]):
+                continue
+            targets = relevance.relation_targets(body, entity_groups, query=query)
+            if targets:
+                relation_bridges.add(identity)
+                for target in targets:
+                    if target not in target_groups and len(target_groups) < 16:
+                        target_groups.append(target)
+        if len(target_groups) != 1:
+            # Multiple people may satisfy the relation. Keep their evidence in
+            # ordinary recall rather than arbitrarily choosing one identity.
+            target_groups.clear()
+            relation_bridges.clear()
+    target_identities = {identity: frozenset(index for index, group in enumerate(target_groups)
+                                            if relevance.terms(item.title)[:len(group)] == group)
+                         for identity, item in candidate_items.items()} if target_groups else {}
+    total_weight = sum(weights.values()) or 1.0
+    matched_query = {identity: relevance.matched_terms(text, weights) for identity, text in evidence_text.items()}
+    lexical_evidence = {identity: sum(weights[word] for word in matches) / total_weight
+                        for identity, matches in matched_query.items()}
     exact_ids = {identity for identity, item in candidate_items.items()
                  if query_identity(query) == identity or relevance.fold(query.strip()) == relevance.fold(item.title.strip())}
     # Lexical/vector scores order candidates; they must never empty the recall.
-    # Graph-only neighbours remain contextual bonuses, not standalone evidence.
+    # Graph-only neighbours need an explicitly resolved relational target;
+    # otherwise they remain contextual bonuses, not standalone evidence.
     eligible_ids = {
         identity for identity in candidate_items
         if any(source.endswith(("_lexical", "_vector")) for source in sources[identity])
     }
     structural = await _structural_candidates(scope_request, seeds=eligible_ids, limit=parameters.candidate_limit, paths=structural_paths)
+    eligible_ids.update(identity for identity, names in target_identities.items() if names)
     graph_candidates = [*graph_candidates, *structural]
     for item, text, _strength in structural:
         content = f"{item.title} {text}"
@@ -757,6 +777,9 @@ async def _weighted_rank(
             continue
         eligible_ids.add(item.id)
         evidence_text[item.id] = content
+        body_by_id[item.id] = text
+        entity_evidence[item.id] = relevance.matched_entities(content, entity_groups)
+        matched_query[item.id] = relevance.matched_terms(content, weights)
         candidate_items[item.id] = item
         lexical_evidence[item.id] = relevance.coverage(content, weights)
         item_sources = sources.setdefault(item.id, [])
@@ -919,8 +942,23 @@ async def _weighted_rank(
                                      + (1.0 - semantic_share) * lexical.get(item_id, 0.0))
         scores[item_id] = min(1.0, (primary + 0.03 * bonus) / 1.33)
 
+    covered_terms: set[str] = set()
+    covered_entities: set[int] = set()
+    covered_identities: set[int] = set()
+    covered_targets: set[int] = set()
+    covered_relation = False
+    covered_facts: set[tuple[str, ...]] = set()
+    fact_keys = {identity: relevance.fact_tokens(body_by_id.get(identity, "")) for identity in candidate_ids}
+    # A title headed by the queried name provides identity evidence. Merely
+    # mentioning the name in an event title must not cover that identity facet.
+    title_terms = {identity: relevance.terms(item.title) for identity, item in candidate_items.items()}
+    title_entities = {identity: frozenset(index for index, group in enumerate(entity_groups)
+                                          if tokens[:len(group)] == group)
+                      for identity, tokens in title_terms.items()}
     tiers = {identity: (3 if identity in exact_ids else 2 if lexical_evidence.get(identity, 0.0) >= 0.65 else 1)
              for identity in candidate_ids}
+    similarity_terms = {identity: {match[0].casefold() for match in _LEXICAL_TERM_RE.finditer(text)}
+                        for identity, text in text_by_id.items()}
 
     selected: list[tuple[UUID, float]] = []
     remaining = set(candidate_ids)
@@ -928,6 +966,7 @@ async def _weighted_rank(
     while remaining and len(selected) < parameters.limit:
         best_id: UUID | None = None
         best_adjusted = -1.0
+        best_key: tuple[bool, int, int, int, int, bool, bool, int, float, str] | None = None
         for item_id in remaining:
             maximum_similarity = 0.0
             duplicate = False
@@ -941,7 +980,9 @@ async def _weighted_rank(
                     left_embedding = embedding_by_id.get(item_id)
                     right_embedding = embedding_by_id.get(selected_id)
                     vector_similarity = _cosine(left_embedding, right_embedding) if left_embedding is not None and right_embedding is not None else 0.0
-                    text_similarity = _text_similarity(text_by_id.get(item_id, ""), text_by_id.get(selected_id, ""))
+                    left_terms, right_terms = similarity_terms.get(item_id, set()), similarity_terms.get(selected_id, set())
+                    union = left_terms | right_terms
+                    text_similarity = len(left_terms & right_terms) / len(union) if union else 0.0
                     pair_similarities[pair] = 0.75 * vector_similarity + 0.25 * text_similarity if vector_similarity > 0 else text_similarity
                 maximum_similarity = max(maximum_similarity, pair_similarities[pair])
             if duplicate:
@@ -951,14 +992,48 @@ async def _weighted_rank(
                 scores[item_id]
                 - min(0.05, parameters.diversity_lambda) * maximum_similarity,
             )
-            if best_id is None or (tiers[item_id], adjusted, str(item_id)) > (
-                tiers[best_id], best_adjusted, str(best_id),
-            ):
+            if selected:
+                # Reward coverage left missing by the selected evidence; no
+                # new database/model calls or additional context slots.
+                adjusted += 0.10 * sum(weights[word] for word in matched_query[item_id] - covered_terms) / total_weight
+                # Different titles/HTML can repeat the same visible statement.
+                # Preserve numbers, negation and wording; this is deliberately
+                # not a semantic-equivalence or cross-language merge.
+                fact = fact_keys.get(item_id, ())
+                if fact and fact in covered_facts and item_id not in exact_ids:
+                    adjusted = max(0.0, adjusted - 0.20)
+            entities = entity_evidence.get(item_id, frozenset())
+            entity_priority = 0
+            if not target_groups:
+                entity_priority = (len(entities - covered_entities)
+                                   if len(covered_entities) < len(entity_groups)
+                                   else int(bool(entities) and len(selected) < 2))
+            identity_priority = len(title_entities[item_id] - covered_identities) if not target_groups else 0
+            target_priority = len(target_identities.get(item_id, frozenset[int]()) - covered_targets)
+            bridge_priority = int(item_id in relation_bridges and not covered_relation)
+            # Once an identity is present, a requested predicate missing from
+            # the context outranks another profile repeating the same name.
+            novel_fact = bool(selected and entities and matched_query[item_id] - covered_terms - name_terms)
+            repeated_fact = bool(selected and fact_keys.get(item_id) in covered_facts and item_id not in exact_ids)
+            selection_key = (
+                item_id in exact_ids, target_priority, bridge_priority,
+                entity_priority, identity_priority, novel_fact, not repeated_fact,
+                tiers[item_id], adjusted, str(item_id),
+            )
+            if best_key is None or selection_key > best_key:
                 best_id = item_id
                 best_adjusted = adjusted
+                best_key = selection_key
         if best_id is None:
             break
-        selected.append((best_id, best_adjusted))
+        selected.append((best_id, min(1.0, best_adjusted)))
+        covered_terms.update(matched_query[best_id])
+        covered_entities.update(entity_evidence.get(best_id, ()))
+        covered_identities.update(title_entities[best_id])
+        covered_targets.update(target_identities.get(best_id, ()))
+        covered_relation = covered_relation or best_id in relation_bridges
+        if fact_keys.get(best_id):
+            covered_facts.add(fact_keys[best_id])
         remaining.remove(best_id)
     return selected, sources
 
@@ -1588,7 +1663,7 @@ async def temporal_hits(
     request = request.model_copy(update={
         "query": "", "keyword": None, "topic_item_id": None,
         "filter_topic_item_id": None, "filter_contact_item_id": None,
-        "memory_types": [], "node_kinds": [], "memory_role": None,
+         "node_kinds": [], "memory_role": None,
         "exclude_temporal": False, "target_at": None,
     })
     global_request, _ = _branch_requests(request, limit=limit)
@@ -1688,7 +1763,7 @@ async def browse_items(request: MemorySearchRequest) -> MemorySearchPage:
     recall = await recall_items(MemoryRecallRequest(
         agent_id=request.agent_id, query=request.query.strip(), limit=500,
         exclude_temporal=request.temporal is not None or request.exclude_temporal,
-        keyword=request.keyword, memory_types=request.memory_types, node_kinds=request.node_kinds,
+        keyword=request.keyword,  node_kinds=request.node_kinds,
         memory_role=request.memory_role, task_id=request.task_id,
         topic_item_id=request.topic_item_id, contact_item_id=request.contact_item_id,
         strict_contact_scope=request.strict_contact_scope,

@@ -155,7 +155,7 @@ test('memory detail and editor share the common control without overwriting a co
   const initial = privateState()
   initial.lock_version = 3
   const { state } = await sharingFixture(page, 'memory', initial)
-  let item = { ...documentFixture, title: 'Integration memory', node_kind: 'memory', memory_type: 'semantic',
+  let item = { ...documentFixture, title: 'Integration memory', node_kind: 'memory',
     media_type: 'text/html', content_profile: 'rich-text', content_profile_version: 1, payload: { text: '<p>Preserved memory</p>' } }
   const contentWrites = []
   await jsonRoute(page, '**/api/agents?*', [agent])

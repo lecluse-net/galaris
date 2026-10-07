@@ -86,7 +86,6 @@ export interface TopicLinkedMemory {
   id: string
   title: string
   excerpt: string
-  memory_type: string
   owner_agent_id: number | null
   visibility: string
 }

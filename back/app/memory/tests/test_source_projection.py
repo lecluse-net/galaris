@@ -157,18 +157,17 @@ async def test_source_projection_links_rebuilds_updates_and_deletes_with_source(
         "goal",
         "goal_cycle",
     }
-    unfiltered_core = await service.search_items(
-        MemorySearchRequest(agent_id=owner.id, memory_types=["core"])
+    unfiltered = await service.search_items(
+        MemorySearchRequest(agent_id=owner.id)
     )
-    assert agent_memory_id in {hit.item.id for hit in unfiltered_core.hits}
-    automatic_core = await service.search_items(
+    assert agent_memory_id in {hit.item.id for hit in unfiltered.hits}
+    automatic = await service.search_items(
         MemorySearchRequest(
             agent_id=owner.id,
-            memory_types=["core"],
             exclude_agent_projections=True,
         )
     )
-    assert agent_memory_id not in {hit.item.id for hit in automatic_core.hits}
+    assert agent_memory_id not in {hit.item.id for hit in automatic.hits}
     link = await db.scalar(
         select(MemoryLink).where(
             MemoryLink.source_item_id == cycle.memory_item_id,

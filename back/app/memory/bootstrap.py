@@ -158,7 +158,6 @@ async def memory_context_provider(
             base_score=max(0.0, min(1.0, item.score)),
             provenance=item.source_refs,
             metadata={
-                "memory_type": item.memory_type,
                 "node_kind": item.node_kind,
                 "uri": f"{'document' if item.node_kind == 'document' else 'memory'}://{item.memory_id}",
             },

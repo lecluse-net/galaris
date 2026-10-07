@@ -33,19 +33,15 @@ for (const width of [1440, 390]) test(`exclusive memory branches remain accessib
   }
   await errors.settle()
   await page.goto(`/memory?agent=${fixture.agent_id}`)
-  if (width < 1024) await page.addLocatorHandler(page.locator('.q-drawer__backdrop'), backdrop => backdrop.click({ position: { x: 380, y: 150 } }), { times: 1 })
+  // Each full navigation restores the mobile drawer; dismiss it before page actions.
+  if (width < 1024) await page.addLocatorHandler(page.locator('.q-drawer__backdrop'), backdrop => backdrop.click({ position: { x: 380, y: 150 } }))
   await page.getByRole('tab', { name: 'Graphe', exact: true }).click()
   const grouped = page.getByText('8 nœud(s) regroupé(s)', { exact: true })
   await expect(grouped).toBeVisible()
   await expect(page.locator('.memory-graph__chart--loading')).toHaveCount(0)
   await page.locator('.memory-graph').screenshot({ path: testInfo.outputPath('graph-overview.png') })
-  const details = page.getByRole('switch', { name: 'Détails des branches', exact: true })
-  await details.focus()
-  await page.keyboard.press('Space')
-  await expect(grouped).toHaveCount(0)
-  await details.click()
-  await expect(grouped).toBeVisible()
-  for (let index = 0; index < 3; index++) await page.getByRole('button', { name: 'Zoomer', exact: true }).click()
+  await page.getByRole('button', { name: 'Zoomer', exact: true }).focus()
+  for (let index = 0; index < 3; index++) await page.keyboard.press('Enter')
   await expect(grouped).toHaveCount(0)
   await page.locator('.memory-graph').screenshot({ path: testInfo.outputPath('graph-detail.png') })
   await page.getByRole('button', { name: 'Ajuster le graphe à la fenêtre', exact: true }).click()
@@ -53,6 +49,11 @@ for (const width of [1440, 390]) test(`exclusive memory branches remain accessib
   await page.getByRole('tab', { name: 'Liste', exact: true }).click()
   await page.getByText(items[1].title, { exact: true }).click()
   await expect(page.getByRole('dialog').getByText('Synthetic preserved content 1', { exact: true })).toBeVisible()
+  const metadata = page.getByRole('dialog').locator('dl')
+  await expect(metadata.getByText('Nature du nœud', { exact: true })).toBeVisible()
+  await expect(metadata.getByText('Visibilité', { exact: true })).toBeVisible()
+  await expect(metadata.getByText('Dernier accès ou modification', { exact: true })).toBeVisible()
+  await expect(metadata.locator('dd')).toHaveCount(4)
   const checkMemories = page.getByRole('dialog').getByRole('button', { name: 'Vérifier les souvenirs', exact: true })
   await expect(checkMemories).toBeEnabled()
   const actionResponse = page.waitForResponse(response => response.url().includes(`/dream/memory/${items[1].id}/actions/findings`)
@@ -68,7 +69,7 @@ for (const width of [1440, 390]) test(`exclusive memory branches remain accessib
   await expect(grouped).toBeVisible()
 
   const documentResponse = await request.post('/api/memory/items', { headers, data: {
-    owner_agent_id: fixture.agent_id, title: 'Synthetic thumbnail report', node_kind: 'document', memory_type: 'working',
+    owner_agent_id: fixture.agent_id, title: 'Synthetic thumbnail report', node_kind: 'document',
     media_type: 'text/html', payload: { text: '<h1>Synthetic report</h1><p>Preserved document content.</p>' },
   } })
   expect(documentResponse.ok(), await documentResponse.text()).toBeTruthy()

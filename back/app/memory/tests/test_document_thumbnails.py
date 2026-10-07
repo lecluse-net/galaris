@@ -48,7 +48,7 @@ async def test_document_capture_tracks_saved_revisions_and_rechecks_access(
     monkeypatch.setattr(document_thumbnail_service, "_printed_document_thumbnail", lambda html:
         thumbnails.encode(Image.new("RGB", (80, 60), "blue" if b"First" in html else "red")))
     item, _ = await service.create_item(MemoryItemCreate(
-        owner_agent_id=owner.id, title="Report", memory_type="working", node_kind="document", media_type="text/html",
+        owner_agent_id=owner.id, title="Report",  node_kind="document", media_type="text/html",
         payload=MemoryPayload(text="<h1>First revision</h1><table><tr><td>Result</td></tr></table>"),
     ))
     await service.set_item_grant(item.id, peer.id, MemoryGrantUpdate(can_write=False), actor_agent_id=owner.id)
@@ -106,7 +106,7 @@ async def test_document_thumbnail_isolates_snapshots_and_recovers_from_renderer_
     owner, _ = agents
     monkeypatch.setattr(type(thumbnails.settings), "GALARIS_THUMBNAIL_ROOT", str(tmp_path / "thumbnails"))
     item, _ = await service.create_item(MemoryItemCreate(
-        owner_agent_id=owner.id, title="Illustrated report", memory_type="working", node_kind="document", media_type="text/html",
+        owner_agent_id=owner.id, title="Illustrated report",  node_kind="document", media_type="text/html",
         payload=MemoryPayload(text="<p>Illustration</p>"),
     ))
     png = thumbnails.encode(Image.new("RGB", (64, 48), "green"))
@@ -145,7 +145,7 @@ async def test_document_thumbnail_endpoint_enforces_management_scope(agents, mem
 
     owner, peer = agents
     item, _ = await service.create_item(MemoryItemCreate(
-        owner_agent_id=owner.id, title="Private", memory_type="working", node_kind="document", media_type="text/html",
+        owner_agent_id=owner.id, title="Private",  node_kind="document", media_type="text/html",
         payload=MemoryPayload(text="<p>Private</p>"),
     ))
     monkeypatch.setattr(router, "current_management_scope", AsyncMock(return_value=AgentManagementScope(

@@ -12,7 +12,7 @@ from app.memory.schemas import MemoryItemCreate, MemoryPayload, MemoryGrantUpdat
 
 async def document(owner):
     item, _ = await service.create_item(MemoryItemCreate(owner_agent_id=owner.id, title="Report",
-        node_kind="document", memory_type="working", media_type="text/html", payload=MemoryPayload(text="<p>Report</p>")))
+        node_kind="document",  media_type="text/html", payload=MemoryPayload(text="<p>Report</p>")))
     return item
 
 

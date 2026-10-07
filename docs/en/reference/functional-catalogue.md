@@ -1046,12 +1046,11 @@ Additional references: [Goal schemas](../../../back/app/goal/schemas.py),
 
 ### Records and acquisition
 
-Memory records carry a title, HTML body, keywords, type/nature, metadata, owner, dates and access
+Memory records carry a title, HTML body, keywords, nature, metadata, owner, dates and access
 rights. The current content is the source of truth, without an independent summary field. Revisions
 retain dates, authors and Task sources, without an arbitrary “reason for change” field.
 
-Six memory types describe use: core, working, episodic, semantic, procedural and social. The node's
-nature separately distinguishes memory, document, attachment and folder.
+The node's nature distinguishes memory, document, attachment, folder, file and directory.
 
 `memory_remember` acquires an important, uncommon fact immediately; ordinary consolidation belongs
 to Dream. Users can view, create and edit records and keywords, save without closing, inspect
@@ -1123,7 +1122,7 @@ Temporal matches are added separately.
 
 Automatic memory context before selected runs requires no generative model call. Agents can deepen
 it through `file_search` on `memory://`. Search and injection use canonical recall, supplemented
-by temporal priority for automatic context; undated core memory does not automatically reserve space.
+by temporal priority for automatic context.
 
 Documents used with the same agent remain recall candidates beyond the recent-message window.
 Inaccessible references, another agent's documents and irrelevant matches are excluded; retrieved
@@ -1172,7 +1171,7 @@ identity merging is explicit.
 
 Search now lives in **List**, alongside **Graph**; the separate Search tab is removed. The mandatory
 temporal filter starts at the browser's current date/time. **Apply** tests that instant without
-lookahead: undated memories follow text/type/Topic/interlocutor filters, while matching dated
+lookahead: undated memories follow text/Topic/interlocutor filters, while matching dated
 memories are added independently of those filters. The union is sorted and paginated without
 duplicates, prioritising temporal matches by default. The text-recall ceiling does not truncate
 temporal matches. Simulation uses current rights and validity rather than reconstructing history.

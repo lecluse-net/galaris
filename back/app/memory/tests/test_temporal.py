@@ -253,24 +253,24 @@ async def test_browse_combines_target_date_filters_acl_and_pagination(agents, me
     contact = await observe_messenger_contact(MessengerContactObservation(owner_agent_id=owner.id,
         messaging_id='synthetic-calendar', user_id='calendar-contact', display_name='Calendar contact'))
     definitions = [
-        ('A annual', owner.id, 'semantic', {'month': 9, 'day': 27}),
-        ('B appointment', owner.id, 'semantic', {'year': 2026, 'month': 9, 'day': 27, 'hour': 10}),
-        ('C next year', owner.id, 'semantic', {'year': 2027, 'month': 9, 'day': 27}),
-        ('D other type', owner.id, 'working', {'month': 9, 'day': 27}),
-        ('E private', peer.id, 'semantic', {'month': 9, 'day': 27}),
-        ('F untimed', owner.id, 'semantic', None),
-        ('G other contact', owner.id, 'semantic', {'month': 9, 'day': 27}),
-        ('H expired', owner.id, 'semantic', {'month': 9, 'day': 27}),
+        ('A annual', owner.id, {'month': 9, 'day': 27}),
+        ('B appointment', owner.id, {'year': 2026, 'month': 9, 'day': 27, 'hour': 10}),
+        ('C next year', owner.id, {'year': 2027, 'month': 9, 'day': 27}),
+        ('D next month', owner.id, {'month': 10, 'day': 27}),
+        ('E private', peer.id, {'month': 9, 'day': 27}),
+        ('F untimed', owner.id, None),
+        ('G other contact', owner.id, {'month': 9, 'day': 27}),
+        ('H expired', owner.id, {'month': 9, 'day': 27}),
     ]
-    for title, agent_id, memory_type, parts in definitions:
+    for title, agent_id, parts in definitions:
         item, _ = await service.create_item(MemoryItemCreate(owner_agent_id=agent_id, title=title,
-            memory_type=memory_type, payload=MemoryPayload(text=f'Synthetic calendar evidence for {title}'),
+             payload=MemoryPayload(text=f'Synthetic calendar evidence for {title}'),
             valid_until=datetime.now(timezone.utc) - timedelta(days=1) if title.startswith('H') else None,
             temporal=MemoryTemporalAnchor(**parts) if parts else None))
         if title[0] in 'ABCD':
             await ensure_contact_memory_scope(owner_agent_id=owner.id, contact_item_id=contact,
                 memory_item_id=item.id, source_kind='manual', source_ref='manual:calendar-search')
-    request = MemorySearchRequest(agent_id=owner.id, query='calendar', memory_types=['semantic'],
+    request = MemorySearchRequest(agent_id=owner.id, query='calendar',
         filter_contact_item_id=contact, sort_by='title', sort_desc=False, limit=1,
         temporal=MemoryTemporalFilter(target_at='2026-09-27T09:00', lookahead_hours=1))
     first = await service.search_items(request)
@@ -289,7 +289,7 @@ async def test_browse_combines_target_date_filters_acl_and_pagination(agents, me
     assert not (await service.search_items(request.model_copy(update={'query': 'absentword'}))).hits
     # Removing the calendar filter restores ordinary memories and all dated years.
     unfiltered = await service.search_items(request.model_copy(update={'temporal': None, 'limit': 50}))
-    assert [hit.item.title for hit in unfiltered.hits] == ['A annual', 'B appointment', 'C next year']
+    assert [hit.item.title for hit in unfiltered.hits] == ['A annual', 'B appointment', 'C next year', 'D next month']
     assert unfiltered.temporal_window is None
 
 
@@ -376,17 +376,17 @@ async def test_context_separates_dated_recall_from_ordinary_relevance(agents, me
     monkeypatch.setattr(retrieval, 'resolve_embedding_model', missing_model)
     monkeypatch.setattr(context.runtime_settings, 'MEMORY_CONTEXT_MAX_ITEMS', 5)
     ids = []
-    for title, words, anchor, agent_id, memory_type in [
-        ('Ordinary preference', 'needle', None, owner.id, 'semantic'),
-        ('Unrelated appointment', 'birthday gathering', MemoryTemporalAnchor(year=now.year), owner.id, 'working'),
-        ('Out of period', 'needle', MemoryTemporalAnchor(year=now.year+2), owner.id, 'semantic'),
-        ('Private appointment', 'birthday gathering', MemoryTemporalAnchor(year=now.year), peer.id, 'working'),
+    for title, words, anchor, agent_id in [
+        ('Ordinary preference', 'needle', None, owner.id),
+        ('Unrelated appointment', 'birthday gathering', MemoryTemporalAnchor(year=now.year), owner.id),
+        ('Out of period', 'needle', MemoryTemporalAnchor(year=now.year+2), owner.id),
+        ('Private appointment', 'birthday gathering', MemoryTemporalAnchor(year=now.year), peer.id),
     ]:
         item, _ = await service.create_item(MemoryItemCreate(owner_agent_id=agent_id, title=title,
-            memory_type=memory_type, payload=MemoryPayload(text=words), temporal=anchor))
+             payload=MemoryPayload(text=words), temporal=anchor))
         ids.append(str(item.id))
     experience, _ = await service.create_item(MemoryItemCreate(owner_agent_id=owner.id,
-        title='Prior lesson', memory_type='procedural', payload=MemoryPayload(text='needle ' * 300),
+        title='Prior lesson',  payload=MemoryPayload(text='needle ' * 300),
         metadata={'memory_role': 'experience'}))
     brief = await context.build_memory_brief(agent_id=owner.id, query='needle', include_experience=include_experience)
     assert [item.memory_id for item in brief.items] == [ids[1], ids[0], *([str(experience.id)] if include_experience else [])]

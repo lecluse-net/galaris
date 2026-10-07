@@ -69,6 +69,10 @@ help: ## List available commands
 	@echo "Use 'make <command>' with one of the commands above."
 .PHONY: help
 
+memory-benchmark: ## Generate, validate or score an entirely synthetic memory recall corpus (ARGS)
+	@bash bin/memory-benchmark.sh $(ARGS)
+.PHONY: memory-benchmark
+
 
 
 

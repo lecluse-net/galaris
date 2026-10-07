@@ -81,7 +81,7 @@ async def project_catalogue_entry(
         created.append(resource_id)
     if item is None:
         item = MemoryItem(
-            owner_agent_id=agent_id, title=title[:500] or uri[:500], memory_type="working",
+            owner_agent_id=agent_id, title=title[:500] or uri[:500],
             node_kind="directory" if directory else "file", provider_code="native",
             resource_id=resource_id, content_type="text", media_type="text/html", content_profile_version=1,
             visibility="private", source_managed=True, read_only=False, deletion_protected=True,

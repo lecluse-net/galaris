@@ -13,7 +13,7 @@ from core.params import runtime_settings
 from .contracts import MemoryBrief, MemoryContextItem
 from .facade import search_memory_detailed
 from .metrics import observe_context
-from .schemas import MemorySearchHit, MemoryType
+from .schemas import MemorySearchHit
 from .service import record_llm_retrieval
 from .retrieval import admit_recall_hits, temporal_hits
 from .schemas import MemoryRecallRequest
@@ -100,14 +100,6 @@ _MEMORY_QUERY_MAX_WORDS = 18
 _MEMORY_QUERY_MAX_CHARS = 240
 _SEMANTIC_HISTORY_MAX_MESSAGES = 2
 _SEMANTIC_HISTORY_MESSAGE_MAX_CHARS = 600
-_AUTOMATIC_MEMORY_TYPES: list[MemoryType] = [
-    "core",
-    "working",
-    "episodic",
-    "semantic",
-    "procedural",
-    "social",
-]
 
 
 def memory_policy_instructions() -> str:
@@ -250,7 +242,6 @@ async def build_memory_brief(
             agent_id=agent_id,
             semantic_query=semantic_query,
             limit=limit,
-            memory_types=_AUTOMATIC_MEMORY_TYPES,
             exclude_temporal=True,
             task_id=task_id,
             memory_role="ordinary",
@@ -285,7 +276,6 @@ async def build_memory_brief(
             agent_id=agent_id,
             semantic_query=semantic_query,
             limit=min(runtime_settings.DREAM_EXPERIENCE_MAX_ITEMS, limit),
-            memory_types=["episodic", "procedural"],
             exclude_temporal=True,
             task_id=task_id,
             memory_role="experience",
@@ -351,7 +341,7 @@ async def build_memory_brief(
                 )
             prefix = (
                 f"\n\n- [{'document' if node_kind == 'document' else 'memory'}://{hit.item.id}] {hit.item.title} "
-                f"(type={hit.item.memory_type}{kind_text}{experience_text}; source={source_text})\n  "
+                f"(source={source_text}{kind_text}{experience_text})\n  "
             )
             if node_kind == "document":
                 revision = getattr(hit.item, "revision", None)
@@ -376,7 +366,6 @@ async def build_memory_brief(
                     title=hit.item.title,
                     excerpt=excerpt,
                     score=hit.score,
-                    memory_type=hit.item.memory_type,
                     node_kind=node_kind,
                     source_refs=refs,
                     revision=getattr(hit.item, "revision", None),

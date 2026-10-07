@@ -63,11 +63,11 @@ async def test_chat_keeps_only_deleted_document_title_without_restoring_access(
     owner, peer = agents
     item, _ = await service.create_item(MemoryItemCreate(
         owner_agent_id=owner.id, title="Rapport annuel", node_kind="document",
-        memory_type="working", payload=MemoryPayload(text="Confidential body"),
+         payload=MemoryPayload(text="Confidential body"),
     ))
     inaccessible, _ = await service.create_item(MemoryItemCreate(
         owner_agent_id=owner.id, title="Private live document", node_kind="document",
-        memory_type="working", payload=MemoryPayload(text="Private body"),
+         payload=MemoryPayload(text="Private body"),
     ))
     resource_id = item.resource_id
     await service.forget_item(item.id, actor_agent_id=owner.id)
@@ -114,7 +114,7 @@ async def test_folder_roles_follow_metadata_and_real_access_not_names(
             metadata["goal_document_kind"] = "description"
         item, _created = await service.create_item(MemoryItemCreate(
             owner_agent_id=agent.id, title=path, payload=MemoryPayload(text="Document"),
-            memory_type="working", node_kind="document", metadata=metadata,
+             node_kind="document", metadata=metadata,
         ))
         if shared:
             await service.set_item_grant(item.id, peer.id, MemoryGrantUpdate(can_write=False), actor_agent_id=owner.id)
@@ -172,7 +172,6 @@ async def test_library_unites_owned_and_granted_documents(
             owner_agent_id=managed.id,
             title="Owned document",
             payload=MemoryPayload(text="Owned"),
-            memory_type="working",
             node_kind="document",
         )
     )
@@ -181,7 +180,6 @@ async def test_library_unites_owned_and_granted_documents(
             owner_agent_id=peer.id,
             title="Shared document",
             payload=MemoryPayload(text="Shared"),
-            memory_type="working",
             node_kind="document",
         )
     )
@@ -241,7 +239,6 @@ async def test_recent_memories_respect_management_scope_and_hide_documents(
             owner_agent_id=managed.id,
             title="Recent document",
             payload=MemoryPayload(text="Document"),
-            memory_type="working",
             node_kind="document",
         )
     )
@@ -313,7 +310,7 @@ async def test_pdf_export_requires_read_access_and_preserves_the_saved_revision(
     del memory_storage
     owner, peer = agents
     item, _ = await service.create_item(MemoryItemCreate(
-        owner_agent_id=owner.id, title="Exportable", memory_type="working", node_kind="document",
+        owner_agent_id=owner.id, title="Exportable",  node_kind="document",
         media_type="text/html", payload=MemoryPayload(text="<p>Saved</p>"),
     ))
     revision = item.revision
@@ -458,7 +455,6 @@ async def test_document_history_tracks_all_content_and_restores_forward(
             title="Versioned document",
             media_type="text/html",
             payload=MemoryPayload(text="<p>Initial line</p>"),
-            memory_type="working",
             node_kind="document",
         )
     )
@@ -601,7 +597,6 @@ async def test_document_lock_detects_metadata_and_grant_conflicts(
             owner_agent_id=owner.id,
             title="Concurrent document",
             payload=MemoryPayload(text="Body"),
-            memory_type="working",
             node_kind="document",
         )
     )
@@ -723,7 +718,6 @@ async def test_document_owner_can_move_between_agent_and_user_without_losing_edi
             owner_agent_id=editor.id,
             title="Transferable document",
             payload=MemoryPayload(text="Body"),
-            memory_type="working",
             node_kind="document",
         )
     )
@@ -813,7 +807,6 @@ async def test_global_document_access_applies_to_current_and_future_agents(
             owner_agent_id=owner.id,
             title="Global document",
             payload=MemoryPayload(text="Shared with future agents"),
-            memory_type="working",
             node_kind="document",
         )
     )

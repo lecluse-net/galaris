@@ -4,7 +4,7 @@ Statut : Accepted
 
 L'oubli d'un document conserve désormais son dernier titre dans la ligne marquée supprimée.
 Le contenu, les versions, les fichiers et les index suivent toujours la procédure d'effacement.
-Les autres types de mémoire conservent leur titre de remplacement « Forgotten memory ».
+Les souvenirs conservent leur titre de remplacement « Forgotten memory ».
 
 Le port de métadonnées documentaires de Conversation peut résoudre les identifiants supprimés
 avec un indicateur `deleted`. Ces métadonnées servent uniquement à présenter des références

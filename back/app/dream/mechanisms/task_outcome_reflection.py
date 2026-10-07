@@ -30,7 +30,6 @@ from core.params import runtime_settings
 
 from ..contracts import (
     DreamClaim,
-    DreamMemoryType,
     DreamPrepared,
     ExperienceLesson,
     ExtractedMemory,
@@ -81,19 +80,6 @@ def _safe(value: object, limit: int) -> str:
     return (redact_secrets(text) or "[sensitive content omitted]")[:limit]
 
 
-def _lesson_memory_type(
-    lesson: ExperienceLesson, reason: SignificanceReason
-) -> DreamMemoryType:
-    if reason == "explicit_human_correction":
-        return "procedural"
-    if (
-        reason == "recovered_after_failure"
-        and lesson.outcome_kind == "recovered"
-        and lesson.confidence >= 0.7
-        and lesson.recommended_action
-    ):
-        return "procedural"
-    return "episodic"
 
 
 def _server_confidence(
@@ -167,7 +153,6 @@ def _extraction(
         ExtractedMemory(
             title=_safe(f"{title_prefix}{title_separator}{lesson.situation}", 500),
             content=_safe(_lesson_content(lesson, language=language), 8_000),
-            memory_type=_lesson_memory_type(lesson, reason),
             keywords=[lesson.lesson_kind, lesson.outcome_kind, lesson.scope],
         )
         for lesson in lessons
@@ -502,7 +487,6 @@ class TaskOutcomeReflectionMechanism:
                         f"task:{evidence.task_id}:outcome:{evidence.fingerprint}"
                     ),
                     metadata={
-                        "memory_type": memory.memory_type,
                         "memory_role": "experience",
                         "lesson_kind": lesson.lesson_kind,
                         "outcome_kind": lesson.outcome_kind,

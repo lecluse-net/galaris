@@ -11,7 +11,7 @@ from sqlalchemy import String, cast, exists, func, or_, select
 from sqlalchemy.sql.elements import ColumnElement
 
 from app.llm import llm_service
-from app.memory import MemoryType, search_memory_detailed
+from app.memory import  search_memory_detailed
 from app.task import ConversationFollowup, Task, TaskStatus, get_conversation_followup
 from app.topic import Topic, service as topic_service
 from core.database import get_db, get_db_session
@@ -50,14 +50,6 @@ from .memory_extraction import (
 _MAX_SOURCE_CHARS = 20_000
 _MAX_FOLLOWUP_CHARS = 4_000
 _MAX_CONTACT_CHARS = 1_000
-NOVELTY_MEMORY_TYPES: list[MemoryType] = [
-    "core",
-    "working",
-    "episodic",
-    "semantic",
-    "procedural",
-    "social",
-]
 
 
 def _eligible_task_predicates() -> tuple[ColumnElement[bool], ...]:
@@ -332,7 +324,6 @@ class TaskMemoryMechanism:
                 query,
                 agent_id=agent_id,
                 limit=MAX_RANKED_MEMORIES,
-                memory_types=NOVELTY_MEMORY_TYPES,
                 task_id=task_id,
                 topic_item_id=(topic_item_id if contact_item_id is not None else None),
                 contact_item_id=contact_item_id,
@@ -438,7 +429,6 @@ task_memory_mechanism = TaskMemoryMechanism()
 
 __all__ = [
     "MEMORY_EXTRACTION_SYSTEM_PROMPT",
-    "NOVELTY_MEMORY_TYPES",
     "TaskMemoryMechanism",
     "build_task_extraction_input",
     "safe_memory_text",

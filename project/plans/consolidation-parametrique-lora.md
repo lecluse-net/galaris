@@ -141,9 +141,9 @@ non caché, LoRA ne doit pas être présenté comme le remède à ce problème d
 | anti-pattern vérifié par des échecs puis une réussite | LoRA possible + Memory | amélioration de stratégie |
 | état courant d’une Task, d’un Goal ou d’un Process | source métier uniquement | donnée transactionnelle |
 | rendez-vous, statut, prix, personne ou fait susceptible de changer | Memory uniquement | fraîcheur requise |
-| souvenir épisodique isolé | Memory uniquement | généralisation prématurée |
+| événement isolé | Memory uniquement | généralisation prématurée |
 | document de travail | Memory uniquement | mutable et potentiellement volumineux |
-| mémoire sociale ou donnée personnelle | Memory uniquement | risque de mémorisation et régurgitation |
+| relation ou donnée personnelle | Memory uniquement | risque de mémorisation et régurgitation |
 | item accessible par grant ou visibilité publique | Memory uniquement | droit révocable |
 | secret, credential, prompt privé ou raisonnement interne | interdit | sécurité |
 | contradiction non résolue ou item expiré | interdit | vérité indéterminée |

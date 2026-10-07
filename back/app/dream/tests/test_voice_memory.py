@@ -222,7 +222,6 @@ async def test_audio_extraction_uses_canonical_round_and_messages(
                         MemoryCreateOperation(
                             title="Préférence vocale",
                             content="Alice préfère des réponses courtes.",
-                            memory_type="core",
                             keywords=["préférence", "courtes"],
                             retention_reason="explicit_user_preference",
                         )
