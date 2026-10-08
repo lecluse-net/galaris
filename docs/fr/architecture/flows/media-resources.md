@@ -11,8 +11,11 @@ Une URL/URI canonique donne une seule clé SHA-256 et un fichier WebP sans perte
 métadonnées de page JSON sous la même clé si disponibles. Les anciennes miniatures PNG
 à plat sont converties et déplacées lors de leur lecture, sans écraser une capture récente.
 Le rendu tient dans 320 × 320, conserve proportions et transparence, sans bandes ajoutées.
-Les captures documentaires montrent la première page entière ; leur cache est réparti
-sous `documents/<2 premiers caractères du UUID>/<2 suivants>/<UUID>/` et conserve la révision.
+Les captures documentaires montrent la première page entière. `documents.thumbnail_id`
+désigne l’unique fichier WebP courant sous
+`documents/<2 premiers caractères du UUID du document>/<2 suivants>/<UUID du document>/<thumbnail_id>.webp`.
+Aucun JSON ni historique de miniatures n’est conservé. La synchronisation DbAdmin retire
+les anciens JSON de révision et leurs captures ; la prochaine consultation les régénère.
 Les captures HTML passent par le navigateur partagé ; les raccourcis `.url` réutilisent
 directement l'aperçu de leur URL cible. Chaque domaine contrôle les droits avant d'accéder
 au cache. Supprimer un raccourci ne supprime pas l'aperçu de sa cible.
@@ -34,8 +37,11 @@ après le rendu initial. Sortir de la zone visible annule les chargements en att
 changements de contexte ou de session invalident aussi les réponses tardives. L’ouverture
 explicite d’un document ne passe pas par cette file. Pour une miniature documentaire, le
 serveur contrôle les droits et la révision sans relire le contenu ni l’historique : le client
-fournit déjà l’instantané d’impression. La clé conserve son hash, la révision et la version
-de verrouillage, et une modification invalide le cache existant.
+fournit déjà l’instantané d’impression. L’identifiant dépend de l’empreinte du contenu et
+de l’instantané, afin d’isoler les rendus fournis par différents lecteurs. Une modification
+efface le pointeur et son fichier. La publication revérifie les droits et la version sous
+verrou de ligne ; elle ne crée aucune révision du document. Une nouvelle capture remplace
+l’ancienne et les réponses tardives ne peuvent republier une version périmée.
 
 Le graphe affiche directement les octets de la miniature partagée, sans seconde réduction
 ni recompression. Son cache compte le poids compressé et une estimation RGBA des pixels

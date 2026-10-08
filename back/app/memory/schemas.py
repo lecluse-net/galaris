@@ -213,6 +213,7 @@ def _empty_grants() -> list[MemoryGrantPublic]:
 
 class MemoryItemPublic(BaseModel):
     document_id: UUID | None = None
+    thumbnail_id: UUID | None = None
     document_revision: int | None = None
     summary_document_revision: int | None = None
     summary_outdated: bool = False

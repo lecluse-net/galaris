@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import asyncio
 import base64
-import json
 from datetime import datetime, timezone
 from io import BytesIO
 from pathlib import Path
@@ -25,6 +24,7 @@ from app.memory import document_thumbnail_service
 from app.memory import service
 from app.memory.schemas import MemoryItemCreate, MemoryItemUpdate, MemoryPayload, MemoryGrantUpdate
 from core.preview import thumbnails
+from app.memory import document_thumbnail_cache
 from core.document import prepare_document
 from app.browser import service as browser_service
 from app.browser.schemas import BrowserScreenshot, BrowserScreenshotPart
@@ -53,6 +53,8 @@ async def test_document_capture_tracks_saved_revisions_and_rechecks_access(
     ))
     await service.set_item_grant(item.id, peer.id, MemoryGrantUpdate(can_write=False), actor_agent_id=owner.id)
     snapshot = DocumentThumbnailRender(html="<h1>First revision</h1><table><tr><td>Result</td></tr></table>", revision=item.revision, lock_version=item.lock_version)
+    original_revision, original_lock = item.revision, item.lock_version
+    original_document_updated_at = item.document.updated_at
     statements = []
 
     def record_sql(connection, cursor, statement, parameters, context, executemany):
@@ -74,11 +76,19 @@ async def test_document_capture_tracks_saved_revisions_and_rechecks_access(
     assert "<h1>First revision</h1>" in captured[0]
     assert "<table>" in captured[0]
     assert len(captured) == 1
+    first_id = item.document.thumbnail_id
+    assert first_id is not None
+    assert document_thumbnail_cache.cache_path(item.id, first_id).read_bytes() == first
+    assert not list(cache_root.rglob("*.json"))
+    assert (item.revision, item.lock_version) == (original_revision, original_lock)
+    assert item.document.updated_at == original_document_updated_at
+    assert service.item_to_public(item, await service.effective_access(item, owner.id)).thumbnail_id == first_id
 
     await service.update_item(item.id, MemoryItemUpdate(
         expected_revision=item.revision, payload=MemoryPayload(text="<h1>Second revision</h1>"),
     ), actor_agent_id=owner.id)
     assert not list(cache_root.rglob("*.webp"))
+    assert item.document.thumbnail_id is None
     assert not list(cache_root.rglob("*.revision.json"))
     with pytest.raises(service.MemoryConflictError):
         await document_thumbnail_service.read_document_thumbnail(item.id, snapshot, actor_agent_id=owner.id)
@@ -86,11 +96,20 @@ async def test_document_capture_tracks_saved_revisions_and_rechecks_access(
     second = await document_thumbnail_service.read_document_thumbnail(item.id, snapshot, actor_agent_id=peer.id)
     assert second is not None and second != first
     assert len(captured) == 2
-    metadata = [json.loads(path.read_text()) for path in cache_root.rglob("*.revision.json")]
-    assert {value["revision"] for value in metadata} == {item.revision}
-    assert all(value["document_id"] == str(item.id) for value in metadata)
+
+    assert not list(cache_root.rglob("*.json"))
+    second_id = item.document.thumbnail_id
+    assert second_id is not None and second_id != first_id
+    assert list(cache_root.rglob("*.webp")) == [document_thumbnail_cache.cache_path(item.id, second_id)]
     assert await document_thumbnail_service.read_document_thumbnail(item.id, snapshot, actor_agent_id=owner.id) == second
     assert len(captured) == 2
+
+    # A lost disposable file is recaptured without creating thumbnail history.
+    document_thumbnail_cache.cache_path(item.id, second_id).unlink()
+    assert await document_thumbnail_service.read_document_thumbnail(item.id, snapshot, actor_agent_id=owner.id) == second
+    assert item.document.thumbnail_id == second_id
+    assert not list(cache_root.rglob("*.json"))
+    assert len(captured) == 3
 
     await service.remove_item_grant(item.id, peer.id, actor_agent_id=owner.id)
     snapshot.lock_version = item.lock_version
@@ -131,7 +150,14 @@ async def test_document_thumbnail_isolates_snapshots_and_recovers_from_renderer_
     snapshot.html = '<p>Another client snapshot</p>'
     assert await document_thumbnail_service.read_document_thumbnail(item.id, snapshot, actor_agent_id=owner.id) == png
     assert capture.await_count == 3
-    assert len(list((tmp_path / "thumbnails").rglob("*.revision.json"))) == 2
+    assert not list(cache_root.rglob("*.json"))
+    assert len(list(cache_root.rglob("*.webp"))) == 1
+    assert not path.exists()
+    retained_id = item.document.thumbnail_id
+    capture.side_effect = RuntimeError("renderer unavailable again")
+    assert await document_thumbnail_service.read_document_thumbnail(item.id, snapshot, actor_agent_id=owner.id, force=True) is None
+    assert item.document.thumbnail_id == retained_id
+    assert await document_thumbnail_service.read_document_thumbnail(item.id, snapshot, actor_agent_id=owner.id) == png
 
     async def edit_during_capture(html, *, first_page_only):
         await service.update_item(item.id, MemoryItemUpdate(
@@ -143,6 +169,110 @@ async def test_document_thumbnail_isolates_snapshots_and_recovers_from_renderer_
     snapshot.html = '<p>Capture in flight</p>'
     assert await document_thumbnail_service.read_document_thumbnail(item.id, snapshot, actor_agent_id=owner.id) is None
     assert not list((tmp_path / "thumbnails").rglob("*.webp"))
+    assert item.document.thumbnail_id is None
+
+
+@pytest.mark.asyncio
+async def test_document_thumbnail_upgrade_removes_sidecars_and_preserves_shared_previews(db, tmp_path, monkeypatch):
+    from core.dbadmin import SchemaTransitionSet
+    from app.memory.dbadmin import (
+        needs_document_thumbnail_cleanup, document_thumbnail_cleanup_complete,
+        discard_legacy_document_thumbnails,
+    )
+    monkeypatch.setattr(type(thumbnails.settings), "GALARIS_THUMBNAIL_ROOT", str(tmp_path))
+    transitions = SchemaTransitionSet(added_columns=frozenset({"documents.thumbnail_id"}))
+    assert needs_document_thumbnail_cleanup(transitions)
+    assert needs_document_thumbnail_cleanup(SchemaTransitionSet(added_tables=frozenset({"documents"})))
+    assert not needs_document_thumbnail_cleanup(SchemaTransitionSet())
+    assert not needs_document_thumbnail_cleanup(SchemaTransitionSet(added_columns=frozenset({"documents.filename"})))
+    document_id, thumbnail_id = uuid4(), uuid4()
+    current = document_thumbnail_cache.cache_path(document_id, thumbnail_id)
+    current.parent.mkdir(parents=True)
+    current.write_bytes(b"synthetic current WebP")
+    for directory in (current.parent, tmp_path / "documents" / str(document_id)):
+        directory.mkdir(parents=True, exist_ok=True)
+        (directory / ("a" * 64 + ".webp")).write_bytes(b"synthetic old image")
+        (directory / "old.revision.json").write_text('{"revision": 1}')
+        (directory / "old.png").write_bytes(b"synthetic old PNG")
+    shared = thumbnails.cache_path("https://example.org/synthetic").with_suffix(".json")
+    shared.parent.mkdir(parents=True)
+    shared.write_text('{"title":"Synthetic shared preview"}')
+    assert not await document_thumbnail_cleanup_complete(db, transitions)
+    await discard_legacy_document_thumbnails(db, transitions)
+    await discard_legacy_document_thumbnails(db, transitions)
+    assert await document_thumbnail_cleanup_complete(db, transitions)
+    assert list((tmp_path / "documents").rglob("*.webp")) == [current]
+    assert not list((tmp_path / "documents").rglob("*.json"))
+    assert current.read_bytes() == b"synthetic current WebP" and shared.exists()
+
+
+@pytest.mark.asyncio
+async def test_concurrent_document_capture_discards_old_content_and_reuses_the_current_file(
+    committed_database, memory_storage, tmp_path, monkeypatch,
+):
+    from app.agent.models import Agent, Title
+    from core.user import UserModel
+    from core.database import get_db_session
+
+    cache_root = tmp_path / "thumbnails"
+    monkeypatch.setattr(type(thumbnails.settings), "GALARIS_THUMBNAIL_ROOT", str(cache_root))
+    async with get_db_session() as db:
+        user = UserModel(email="thumbnail@example.test", hashed_password="unused", is_active=True)
+        title = Title(label="Thumbnail", gender="X")
+        db.add_all([user, title])
+        await db.flush()
+        owner = Agent(title_id=title.id, user_id=user.id, first_name="Thumbnail", last_name="Test",
+            code="thumbnail-test", agent_driver="internal")
+        db.add(owner)
+        await db.flush()
+        item, _ = await service.create_item(MemoryItemCreate(owner_agent_id=owner.id, title="Concurrent report",
+            node_kind="document", media_type="text/html", payload=MemoryPayload(text="<p>Before</p>")))
+        document_id, owner_id = item.id, owner.id
+        old = DocumentThumbnailRender(html="<p>Before</p>", revision=item.revision, lock_version=item.lock_version)
+
+    started, release = asyncio.Event(), asyncio.Event()
+    captures = []
+
+    async def render(html, *, first_page_only):
+        captures.append(html)
+        if len(captures) == 1:
+            started.set()
+            await release.wait()
+        return html.encode()
+
+    monkeypatch.setattr(document_thumbnail_service, "render_html_pdf", render)
+    image = thumbnails.encode(Image.new("RGB", (64, 48), "green"))
+    monkeypatch.setattr(document_thumbnail_service, "_printed_document_thumbnail", lambda _: image)
+
+    async def capture(snapshot):
+        async with get_db_session():
+            return await document_thumbnail_service.read_document_thumbnail(document_id, snapshot, actor_agent_id=owner_id)
+
+    old_capture = asyncio.create_task(capture(old))
+    try:
+        await asyncio.wait_for(started.wait(), 10)
+        async with get_db_session():
+            item = await service.update_item(document_id, MemoryItemUpdate(payload=MemoryPayload(text="<p>After</p>")), actor_agent_id=owner_id)
+            current = DocumentThumbnailRender(html="<p>After</p>", revision=item.revision, lock_version=item.lock_version)
+        release.set()
+        assert await asyncio.wait_for(old_capture, 10) is None
+    finally:
+        release.set()
+        if not old_capture.done():
+            old_capture.cancel()
+            await asyncio.gather(old_capture, return_exceptions=True)
+    assert not list(cache_root.rglob("*.webp"))
+    assert await asyncio.wait_for(asyncio.gather(capture(current), capture(current)), 10) == [image, image]
+    assert len(captures) == 2
+    async with get_db_session():
+        item = await service.item_record(document_id, revisions=False)
+        assert item.document.thumbnail_id is not None
+        path = document_thumbnail_cache.cache_path(document_id, item.document.thumbnail_id)
+        assert list(cache_root.rglob("*.webp")) == [path]
+        assert path.read_bytes() == image
+        assert not list(cache_root.rglob("*.json"))
+        await service.delete_document(document_id, actor_agent_id=owner_id)
+    assert not list(cache_root.rglob("*.webp"))
 
 
 @pytest.mark.asyncio

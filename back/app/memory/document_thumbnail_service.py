@@ -3,17 +3,18 @@
 from __future__ import annotations
 
 import asyncio
-import json
 from hashlib import sha256
 from contextvars import Context
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from typing import Any, Protocol, cast
-from uuid import UUID
+from uuid import UUID, uuid5
 
 from loguru import logger
 from PIL import Image, ImageDraw, ImageFont
+from sqlalchemy import select, update
 
+from core.database import get_db
 from core.user import HumanActor
 from core.document import OFFICE_EXTENSIONS, prepare_document
 
@@ -24,6 +25,7 @@ from core.params import runtime_settings
 
 from . import document_attachment_service, document_thumbnail_cache, service
 from .schemas import DocumentAttachmentPublic, DocumentThumbnailRender
+from .models import Document, MemoryItem
 
 
 _tasks: dict[str, asyncio.Task[None]] = {}
@@ -56,42 +58,69 @@ async def read_document_thumbnail(
         raise service.MemoryConflictError("The document changed while preparing its thumbnail.")
     # Include the submitted snapshot so a reader cannot poison another reader's cache.
     digest = sha256(snapshot.html.encode("utf-8")).hexdigest()
-    reference = f"document://{document_id}/thumbnail/v4/{item.revision}/{item.lock_version}/{digest}"
-    cache_path = document_thumbnail_cache.cache_path(document_id, reference)
-    revision_path = cache_path.with_suffix(".revision.json")
-    revision_metadata = json.dumps({
-        "document_id": str(document_id), "revision": item.revision,
-        "lock_version": item.lock_version, "renderer_version": 4, "snapshot_hash": digest,
-    }, sort_keys=True).encode("utf-8")
+    thumbnail_id = uuid5(document_id, f"first-page-webp/{item.content_hash}/{digest}")
+    reference = f"document://{document_id}/thumbnail"
+    cache_path = document_thumbnail_cache.cache_path(document_id, thumbnail_id)
 
-    async def read_current() -> bytes | None:
-        if await asyncio.to_thread(thumbnails.read, revision_path, 4096) != revision_metadata:
+    async def read_current(current: MemoryItem | None) -> bytes | None:
+        if current is None or (current.revision, current.lock_version) != (snapshot.revision, snapshot.lock_version):
+            return None
+        if current.document is None or current.document.thumbnail_id != thumbnail_id:
             return None
         return await asyncio.to_thread(thumbnails.read, cache_path)
 
-    cached = await read_current()
+    cached = await read_current(item)
     if cached is not None and not force:
         return cached
     async with thumbnails.generation(reference), _document_capture_slots:
-        cached = await read_current()
+        cached = await read_current(await service.item_record(document_id, revisions=False))
         if cached is not None and not force:
             return cached
+        publishing = False
         try:
             pdf = await render_html_pdf(snapshot.html, first_page_only=True)
             result = await asyncio.to_thread(_printed_document_thumbnail, pdf)
             if result is not None:
-                # An edit during Chromium rendering must not republish the invalidated capture.
+                # Lock only at publication: editing remains possible during rendering.
+                db = get_db()
+                publishing = True
+                await db.scalar(select(MemoryItem.id).where(MemoryItem.id == document_id).with_for_update())
+                await db.scalar(select(Document.id).where(Document.id == document_id).with_for_update())
                 current = await service.item_record(document_id, revisions=False)
                 if current is None or (current.revision, current.lock_version) != (snapshot.revision, snapshot.lock_version):
+                    await db.commit()
                     return None
+                await service.assert_item_access(current, actor_agent_id)
                 await asyncio.to_thread(thumbnails.write, cache_path, result)
-                await asyncio.to_thread(thumbnails.write, revision_path, revision_metadata)
-                await asyncio.to_thread(document_thumbnail_cache.discard_legacy, document_id)
+                # This derivative changes neither the document's audit date nor its revision.
+                await db.execute(update(Document).where(Document.id == document_id).values(
+                    thumbnail_id=thumbnail_id, updated_at=Document.updated_at,
+                ))
+                await db.commit()
+                await cleanup_current_document_thumbnail(document_id)
                 return result
             return None
         except Exception as exc:
+            if publishing:
+                await get_db().rollback()
+                await cleanup_current_document_thumbnail(document_id)
             logger.debug("Document thumbnail capture failed (error_type={})", type(exc).__name__)
             return None
+
+
+async def cleanup_current_document_thumbnail(document_id: UUID) -> None:
+    """Remove obsolete files while protecting the currently published pointer."""
+    db = get_db()
+    try:
+        await db.scalar(select(MemoryItem.id).where(MemoryItem.id == document_id).with_for_update())
+        thumbnail_id = await db.scalar(select(Document.thumbnail_id).where(
+            Document.id == document_id, Document.deleted_at.is_(None),
+        ).with_for_update())
+        await asyncio.to_thread(document_thumbnail_cache.invalidate, document_id, thumbnail_id)
+        await db.commit()
+    except Exception as exc:
+        await db.rollback()
+        logger.debug("Document thumbnail cleanup failed (error_type={})", type(exc).__name__)
 
 
 def register_web_thumbnail_capture(

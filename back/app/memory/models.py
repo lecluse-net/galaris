@@ -179,6 +179,7 @@ def _document_attribute[T](name: str, memory_name: str, default: T) -> hybrid_pr
         else:
             if getattr(document, name) != value:
                 setattr(document, name, value)
+                document.thumbnail_id = None
                 # Every document mutation participates in the existing shared
                 # optimistic lock, including changes confined to its payload.
                 if inspect(item).persistent:
@@ -553,6 +554,8 @@ class Document(HistoryMixin, Base):
     media_type: Mapped[str] = mapped_column(String(255), nullable=False, default="text/html", server_default="text/html")
     content_profile_version: Mapped[int | None] = mapped_column(Integer)
     filename: Mapped[str | None] = mapped_column(String(500))
+    # UUID of a disposable WebP file in the document thumbnail cache.
+    thumbnail_id: Mapped[UUID | None] = mapped_column(PGUUID(as_uuid=True), nullable=True)
     content_hash: Mapped[str] = mapped_column(String(64), nullable=False)
     size_bytes: Mapped[int] = mapped_column(BigInteger, nullable=False, default=0, server_default="0")
     visibility: Mapped[str] = mapped_column(String(20), nullable=False, default="private", server_default="private")

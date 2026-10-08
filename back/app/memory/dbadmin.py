@@ -1,6 +1,7 @@
 """DbAdmin contributions for rebuildable memory projections."""
 
 from loguru import logger
+import asyncio
 from sqlalchemy import select, text, update, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -16,6 +17,23 @@ from .semantic_index import reconcile_embedding_index
 from .source_projection import rebuild_source_memories
 from .models import MemoryItem
 from .catalogue_projection import reconcile_catalogue_descriptions
+from . import document_thumbnail_cache
+
+
+def needs_document_thumbnail_cleanup(transitions: SchemaTransitionSet) -> bool:
+    return transitions.table_added("documents") or transitions.column_added("documents", "thumbnail_id")
+
+
+async def document_thumbnail_cleanup_complete(
+    _session: AsyncSession, _transitions: SchemaTransitionSet,
+) -> bool:
+    return await asyncio.to_thread(lambda: next(document_thumbnail_cache.legacy_files(), None) is None)
+
+
+async def discard_legacy_document_thumbnails(
+    _session: AsyncSession, _transitions: SchemaTransitionSet,
+) -> None:
+    await asyncio.to_thread(document_thumbnail_cache.discard_all_legacy)
 
 
 async def _reconcile_temporal_timezone(session: AsyncSession) -> None:
@@ -112,6 +130,14 @@ async def _enqueue_goal_folders(_session: AsyncSession) -> None:
 
 
 def register_dbadmin(registry: DbAdminRegistry) -> None:
+    registry.register_action(DbAdminAction(
+        key="app.memory.document_thumbnail_pointer",
+        phase=DbAdminPhase.AFTER_EXPAND,
+        checksum="single-document-thumbnail-without-revision-sidecars-v1",
+        predicate=needs_document_thumbnail_cleanup,
+        handler=discard_legacy_document_thumbnails,
+        postcondition=document_thumbnail_cleanup_complete,
+    ))
     from .document_migration import register_document_split
     register_document_split(registry)
     from .file_attributes_migration import register_file_attributes

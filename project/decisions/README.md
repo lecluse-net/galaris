@@ -1,5 +1,7 @@
 # Décisions d'architecture
 
+- [0163 — Une miniature courante par document](0163-single-document-thumbnail.md)
+
 - [0162 — Documents distincts et synthèses mémoire facultatives](0162-document-and-memory-synthesis.md)
 
 - [0161 — Souvenirs décrits par leur contenu et leur provenance](0161-memory-content-and-provenance.md)

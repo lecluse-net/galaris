@@ -2426,7 +2426,6 @@
           "back/app/memory/document_export.py",
           "back/app/memory/document_image_import.py",
           "back/app/memory/document_links.py",
-          "back/app/memory/document_thumbnail_cache.py",
           "back/app/memory/document_thumbnail_service.py",
           "back/app/memory/router.py"
         ],
@@ -8769,7 +8768,7 @@
           "memory_revisions.id"
         ],
         "history_mixin": false,
-        "line": 579,
+        "line": 582,
         "module": "app.memory",
         "table": "document_revisions"
       },
@@ -8818,7 +8817,7 @@
           "memory_items.id"
         ],
         "history_mixin": false,
-        "line": 644,
+        "line": 647,
         "module": "app.memory",
         "table": "document_team_grants"
       },
@@ -8830,7 +8829,7 @@
           "users.id"
         ],
         "history_mixin": false,
-        "line": 633,
+        "line": 636,
         "module": "app.memory",
         "table": "document_user_grants"
       },
@@ -8850,7 +8849,7 @@
           "memory_items.id"
         ],
         "history_mixin": true,
-        "line": 534,
+        "line": 535,
         "module": "app.memory",
         "table": "documents"
       },
@@ -9315,7 +9314,7 @@
           "memory_items.id"
         ],
         "history_mixin": false,
-        "line": 1195,
+        "line": 1198,
         "module": "app.memory",
         "table": "memory_associations"
       },
@@ -9324,7 +9323,7 @@
         "file": "back/app/memory/models.py",
         "foreign_keys": [],
         "history_mixin": false,
-        "line": 1377,
+        "line": 1380,
         "module": "app.memory",
         "table": "memory_automation_jobs"
       },
@@ -9337,7 +9336,7 @@
           "users.id"
         ],
         "history_mixin": true,
-        "line": 1107,
+        "line": 1110,
         "module": "app.memory",
         "table": "memory_candidates"
       },
@@ -9350,7 +9349,7 @@
           "users.id"
         ],
         "history_mixin": false,
-        "line": 913,
+        "line": 916,
         "module": "app.memory",
         "table": "memory_contact_identities"
       },
@@ -9362,7 +9361,7 @@
           "memory_items.id"
         ],
         "history_mixin": false,
-        "line": 875,
+        "line": 878,
         "module": "app.memory",
         "table": "memory_contact_items"
       },
@@ -9374,7 +9373,7 @@
           "memory_items.id"
         ],
         "history_mixin": false,
-        "line": 838,
+        "line": 841,
         "module": "app.memory",
         "table": "memory_context_edges"
       },
@@ -9385,7 +9384,7 @@
           "agents.id"
         ],
         "history_mixin": false,
-        "line": 783,
+        "line": 786,
         "module": "app.memory",
         "table": "memory_context_nodes"
       },
@@ -9396,7 +9395,7 @@
           "memory_items.id"
         ],
         "history_mixin": false,
-        "line": 1252,
+        "line": 1255,
         "module": "app.memory",
         "table": "memory_embedding_chunks"
       },
@@ -9407,7 +9406,7 @@
           "memory_items.id"
         ],
         "history_mixin": false,
-        "line": 1229,
+        "line": 1232,
         "module": "app.memory",
         "table": "memory_embedding_manifests"
       },
@@ -9419,7 +9418,7 @@
           "users.id"
         ],
         "history_mixin": false,
-        "line": 1306,
+        "line": 1309,
         "module": "app.memory",
         "table": "memory_findings"
       },
@@ -9431,7 +9430,7 @@
           "memory_items.id"
         ],
         "history_mixin": false,
-        "line": 609,
+        "line": 612,
         "module": "app.memory",
         "table": "memory_item_grants"
       },
@@ -9444,7 +9443,7 @@
           "users.id"
         ],
         "history_mixin": true,
-        "line": 221,
+        "line": 222,
         "module": "app.memory",
         "table": "memory_items"
       },
@@ -9456,7 +9455,7 @@
           "memory_items.id"
         ],
         "history_mixin": true,
-        "line": 731,
+        "line": 734,
         "module": "app.memory",
         "table": "memory_links"
       },
@@ -9469,7 +9468,7 @@
           "tasks.id"
         ],
         "history_mixin": false,
-        "line": 655,
+        "line": 658,
         "module": "app.memory",
         "table": "memory_revisions"
       },
@@ -9482,7 +9481,7 @@
           "tasks.id"
         ],
         "history_mixin": false,
-        "line": 1057,
+        "line": 1060,
         "module": "app.memory",
         "table": "memory_sources"
       },
@@ -9495,7 +9494,7 @@
           "tasks.id"
         ],
         "history_mixin": false,
-        "line": 590,
+        "line": 593,
         "module": "app.memory",
         "table": "memory_summary_revisions"
       },
@@ -9507,7 +9506,7 @@
           "memory_topic_contact_scopes.id"
         ],
         "history_mixin": false,
-        "line": 1018,
+        "line": 1021,
         "module": "app.memory",
         "table": "memory_topic_contact_items"
       },
@@ -9519,7 +9518,7 @@
           "memory_items.id"
         ],
         "history_mixin": false,
-        "line": 977,
+        "line": 980,
         "module": "app.memory",
         "table": "memory_topic_contact_scopes"
       },
@@ -9530,7 +9529,7 @@
           "memory_items.id"
         ],
         "history_mixin": false,
-        "line": 713,
+        "line": 716,
         "module": "app.memory",
         "table": "memory_urls"
       },
@@ -9543,7 +9542,7 @@
           "tasks.id"
         ],
         "history_mixin": false,
-        "line": 1160,
+        "line": 1163,
         "module": "app.memory",
         "table": "memory_usages"
       },

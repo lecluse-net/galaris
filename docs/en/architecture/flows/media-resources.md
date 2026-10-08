@@ -10,8 +10,11 @@ and relocated on read without overwriting a newer capture. Images fit within 320
 aspect ratio and transparency without padding. HTML uses the shared browser renderer;
 `.url` shortcuts reuse their target URL's thumbnail. Each domain checks access before
 reading the cache. Deleting a shortcut does not delete its target's preview.
-Document captures show the entire first page; their revision-aware cache is distributed
-under `documents/<first 2 UUID characters>/<next 2>/<UUID>/`.
+Document captures show the entire first page. `documents.thumbnail_id` names the single
+current WebP file under
+`documents/<first 2 document UUID characters>/<next 2>/<document UUID>/<thumbnail_id>.webp`.
+No JSON sidecar or thumbnail history is retained. DbAdmin synchronization removes legacy
+revision sidecars and captures; the next view regenerates them.
 
 Office attachments use the isolated `core.document` worker in preview mode: LibreOffice
 exports only the first page to PDF, then the worker rasterizes it without text extraction,
@@ -28,8 +31,10 @@ concurrent loads, deferred until after the initial render. Leaving the visible a
 pending loads; context and session changes also invalidate late responses. Explicitly
 opening a document bypasses this queue. For document thumbnails, the server checks access
 and revision without reading the content or history again: the client already supplies the
-print snapshot. The key retains its hash, revision and lock version, and edits invalidate
-the existing cache.
+print snapshot. The identifier incorporates the content and snapshot hashes to isolate
+snapshots submitted by different readers. Mutations clear the pointer and file. Publication
+rechecks access and the current version under row locks without creating a document revision.
+A new capture replaces the old one; late responses cannot republish an obsolete version.
 
 The graph displays the shared thumbnail bytes directly, without resizing or recompressing
 them. Its cache counts the compressed bytes and an estimated RGBA decoded surface

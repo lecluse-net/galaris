@@ -5,7 +5,6 @@ from __future__ import annotations
 from core.user import HumanActor
 
 import base64
-import asyncio
 import binascii
 import hashlib
 from collections.abc import Collection
@@ -254,10 +253,10 @@ async def _emit_memory_event(
     """Publish a content-free memory change notification after persistence."""
 
     if item.node_kind == "document" and action in {"update", "delete"}:
-        from .document_thumbnail_cache import invalidate
+        from .document_thumbnail_service import cleanup_current_document_thumbnail
 
         try:
-            await asyncio.to_thread(invalidate, item.id)
+            await cleanup_current_document_thumbnail(item.id)
         except OSError:
             logger.exception("Document thumbnail invalidation failed: document_id={}", item.id)
 
