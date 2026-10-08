@@ -99,6 +99,7 @@ case " $* " in
     *" ps -aq "*"service=turn"*) printf '%s' "${UPDATE_TEST_TURN_CONTAINER:-}" ;;
     *" compose version "*) [[ "${UPDATE_TEST_FAILURE:-}" != compose ]] ;;
     *" info "*) [[ "${UPDATE_TEST_FAILURE:-}" != daemon ]] ;;
+    *" pull "*) [[ "${UPDATE_TEST_FAILURE:-}" != pull ]] ;;
     *" build "*)
         if [[ "$1" == build ]]; then
             [[ "${UPDATE_TEST_FAILURE:-}" != tooling_build ]]
@@ -128,6 +129,7 @@ run_update() {
 # Read APP_ENV from .env, just like a plain `make update` in a dev checkout.
 printf 'APP_ENV=dev\n' > "$case_dir/.env"
 run_update
+grep -q -- '-f compose.dev.yaml pull --ignore-buildable$' "$UPDATE_TEST_LOG"
 grep -q -- '-f compose.dev.yaml build$' "$UPDATE_TEST_LOG"
 # Recreate the API (DbAdmin on every update) and its proxy (backend DNS),
 # while preserving unchanged infrastructure and waiting for service readiness.
@@ -141,7 +143,7 @@ fi
 
 for app_mode in prod preprod pp test demo custom DEV ''; do
     run_update APP_ENV="$app_mode"
-    grep -q ' pull$' "$UPDATE_TEST_LOG"
+    grep -q ' pull --ignore-buildable$' "$UPDATE_TEST_LOG"
     # Routine updates must reuse unchanged image layers while refreshing bases.
     grep -q ' build --pull$' "$UPDATE_TEST_LOG"
     test "$(sort -u "$UPDATE_TEST_LOG.env")" = "$app_mode"
@@ -174,24 +176,29 @@ for app_mode in dev prod demo pp test custom DEV ''; do
         exit 1
     fi
     awk '
+        / pull --ignore-buildable$/ { pull = NR }
         / build( --pull)?$/ { build = NR }
         / up -d --wait / { ready = NR }
         /app.documentation refresh --expected-revision/ { refresh = NR }
-        END { exit !(build && ready > build && refresh > ready) }
+        END { exit !(pull && build > pull && ready > build && refresh > ready) }
     ' "$UPDATE_TEST_LOG"
 done
 
 for app_mode in dev prod; do
-    for failure in build data_permissions reset readiness documentation documentation_revision; do
+    for failure in pull build data_permissions reset readiness documentation documentation_revision; do
         export UPDATE_TEST_FAILURE="$failure"
         if run_update APP_ENV="$app_mode"; then
             echo "FAIL: $app_mode update hid a $failure failure" >&2
             exit 1
         fi
-        if [[ "$failure" == build || "$failure" == data_permissions ]]; then
-            # A failed build must leave the currently running application alone.
+        if [[ "$failure" == pull || "$failure" == build || "$failure" == data_permissions ]]; then
+            # Failed image preparation must leave the running application alone.
             if grep -Eq ' (down|up|rm|stop)( |$)' "$UPDATE_TEST_LOG"; then
-                echo "FAIL: $app_mode update restarted after a failed build" >&2
+                echo "FAIL: $app_mode update restarted after a $failure failure" >&2
+                exit 1
+            fi
+            if [[ "$failure" == pull ]] && grep -q ' build' "$UPDATE_TEST_LOG"; then
+                echo 'FAIL: update built images after a failed pull' >&2
                 exit 1
             fi
         elif [[ "$failure" == reset ]]; then

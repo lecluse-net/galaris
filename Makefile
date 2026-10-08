@@ -235,12 +235,12 @@ ifneq ($(if $(filter 0,$(GIT_UPDATE)),,$(strip $(VERSION))),)
 else
 	@bash bin/update-secrets.sh
 	@bash bin/init-search-config.sh
+	@echo "📥 Pulling infrastructure images, including SearXNG..."
+	docker compose $(COMPOSE_FILES) pull --ignore-buildable
 ifeq ($(APP_ENV),dev)
 	@echo "🔨 Rebuilding development images with cache..."
 	docker compose $(COMPOSE_FILES) build
 else
-	@echo "📥 Pulling images..."
-	docker compose $(COMPOSE_FILES) pull
 	@echo "🔨 Rebuilding images with cache..."
 	docker compose $(COMPOSE_FILES) build --pull
 endif

@@ -1062,7 +1062,11 @@ Le chemin `RELEASE_DIR` ne fait aucune opération Git et ne se combine pas avec 
 
 Pour examiner les changements avant déploiement, récupérez-les séparément puis utilisez
 `make update`. `make update` complète les secrets
-absents, prépare SearXNG, récupère les images et reconstruit en réutilisant le cache Docker.
+absents, prépare SearXNG, récupère les images d'infrastructure (dont SearXNG) en développement
+comme en production, et reconstruit en réutilisant le cache Docker. SearXNG suit la version
+épinglée dans `compose.yaml` : une nouvelle version nécessite d'actualiser ce fichier, puis
+de lancer `make update`. Un échec de téléchargement arrête la mise à jour avant toute
+interruption des services ; une image modifiée fait recréer son conteneur par Compose.
 Après un build réussi, elle recrée le backend et le frontend, puis attend que l’entrypoint du
 backend ait synchronisé Atlas et les données de référence et que les services soient disponibles.
 Le frontend et SearXNG disposent de sondes HTTP ; PostgreSQL redémarre automatiquement avec Docker

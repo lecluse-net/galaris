@@ -87,7 +87,7 @@ services:
 
     search:
         container_name: ${APP_NAME:-galaris}-search
-        image: searxng/searxng:2026.9.19-367fb6537
+        image: searxng/searxng:2026.10.7-6671d89be
         # Required by search_web's JSON API, including on upgraded installations
         # whose operator override only adds networks or ports.
         volumes:

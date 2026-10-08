@@ -1040,7 +1040,11 @@ also keeps existing sources. The `RELEASE_DIR` path skips Git and cannot be comb
 
 To review changes before deployment, fetch them separately and use `make update`.
 `make update` completes missing secrets,
-prepares SearXNG, pulls images and rebuilds using the Docker cache. After a successful build,
+prepares SearXNG, pulls infrastructure images (including SearXNG) in both development and
+production, and rebuilds using the Docker cache. SearXNG follows the version pinned in
+`compose.yaml`: a new version requires updating that file, then running `make update`.
+A failed pull stops the update before interrupting services; Compose recreates a container
+when its image changes. After a successful build,
 it recreates the backend and frontend, then waits for the backend entrypoint to synchronize
 Atlas and reference data and for services to become ready. The frontend and SearXNG have HTTP
 healthchecks; PostgreSQL restarts automatically with Docker unless explicitly stopped.
