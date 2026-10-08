@@ -27,10 +27,12 @@
           </text>
         </g>
 
-        <g v-for="bar in bars" :key="bar.date">
+        <g v-for="(bar, barIndex) in bars" :key="bar.date">
           <rect
-            v-for="segment in bar.segments"
+            v-for="(segment, segmentIndex) in bar.segments"
             :key="segment.key"
+            :id="`${chartId}-${barIndex}-${segmentIndex}`"
+            :aria-label="segment.tooltip"
             :x="segment.x"
             :y="segment.y"
             :width="segment.width"
@@ -39,7 +41,7 @@
             rx="2"
             class="usage-chart__bar"
           >
-            <title>{{ segment.tooltip }}</title>
+            <desc>{{ segment.tooltip }}</desc>
           </rect>
           <text
             v-if="bar.showLabel"
@@ -52,6 +54,10 @@
           </text>
         </g>
       </svg>
+      <template v-for="(bar, barIndex) in bars" :key="bar.date">
+        <q-tooltip v-for="(segment, segmentIndex) in bar.segments" :key="segment.key"
+          :target="`#${chartId}-${barIndex}-${segmentIndex}`">{{ segment.tooltip }}</q-tooltip>
+      </template>
 
       <div v-if="!hasUsage" class="usage-chart__empty">
         <q-icon name="monitoring" size="40px" />
@@ -62,9 +68,11 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, useId } from 'vue'
 import { useI18n } from 'vue-i18n'
 import type { DailyLlmUsage } from '../services/dashboardService'
+
+const chartId = useId()
 
 type Metric = 'tokens' | 'cost'
 

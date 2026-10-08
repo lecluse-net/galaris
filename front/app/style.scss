@@ -33,6 +33,17 @@ h1 {
     color: inherit;
 }
 
+/* Keep application and editor tooltips readable, including lazy editor panels. */
+body .q-tooltip,
+body .ck.ck-balloon-panel.ck-tooltip .ck-tooltip__text {
+    font-size: max(10pt, 0.875rem);
+    line-height: 1.5;
+}
+
+body .q-tooltip :is(.text-caption, .text-overline, small) {
+    font-size: max(10pt, 0.875rem) !important;
+}
+
 /* Dialog chrome never belongs to the content's scroll viewport. */
 .q-dialog__inner > .galaris-dialog-card {
     display: flex;

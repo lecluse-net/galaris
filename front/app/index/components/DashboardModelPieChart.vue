@@ -7,8 +7,10 @@
       class="pie-chart__svg"
     >
       <g
-        v-for="segment in segments"
+        v-for="(segment, index) in segments"
         :key="segment.key"
+        :id="`${chartId}-${index}`"
+        :aria-label="segment.tooltip"
         class="pie-chart__segment"
         :class="{
           'pie-chart__segment--active': activeKey === segment.key,
@@ -27,23 +29,27 @@
           r="84"
           :fill="segment.color"
         >
-          <title>{{ segment.tooltip }}</title>
+          <desc>{{ segment.tooltip }}</desc>
         </circle>
         <path
           v-else
           :d="segment.path"
           :fill="segment.color"
         >
-          <title>{{ segment.tooltip }}</title>
+          <desc>{{ segment.tooltip }}</desc>
         </path>
       </g>
       <circle cx="100" cy="100" r="83" class="pie-chart__shine" aria-hidden="true" />
     </svg>
+    <q-tooltip v-for="(segment, index) in segments" :key="segment.key"
+      :target="`#${chartId}-${index}`">{{ segment.tooltip }}</q-tooltip>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, useId } from 'vue'
+
+const chartId = useId()
 
 export interface ModelPieSlice {
   key: string
