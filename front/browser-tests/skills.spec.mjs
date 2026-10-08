@@ -69,7 +69,8 @@ test('skill authorization descriptions and controls remain usable in a narrow de
   await page.setViewportSize({ width: 1024, height: 900 })
   await skillFixtures(page)
   await jsonRoute(page, '**/api/agents?*', [])
-  const row = { skill_id: 1, agent_id: 7, agent_label: 'Sample assistant', agent_code: 'sample-assistant', code: 'sample', label: 'Sample skill', description: 'Read troubleshooting instructions before proceeding with the installation.', category_id: null, category_label: null, global_state: 'disabled', category_state: 'default', agent_state: 'default', effective: false, available: true, valid: true }
+  await jsonRoute(page, '**/api/skills/categories', [{ id: 3, label: 'Procedures', skill_count: 1 }])
+  const row = { skill_id: 1, agent_id: 7, agent_label: 'Sample assistant', agent_code: 'sample-assistant', code: 'sample', label: 'Sample skill', description: 'Read troubleshooting instructions before proceeding with the installation.', category_id: 3, category_label: 'Procedures', global_state: 'enabled', category_state: 'disabled', agent_state: 'default', effective: false, available: true, valid: true }
   await jsonRoute(page, '**/api/skills/authorizations', { authorizations: [row] })
   const changes = []
   await page.route('**/api/skills/1/authorization/agents/7', route => {
@@ -82,8 +83,16 @@ test('skill authorization descriptions and controls remain usable in a narrow de
   await table.evaluate(element => { element.closest('.q-table__container').style.maxWidth = '712px' })
   const description = page.getByText(row.description, { exact: true })
   await expect(description).toBeVisible()
+  const global = table.getByRole('group', { name: 'Global (all): Sample skill' })
+  const category = table.getByRole('group', { name: 'Category: Sample skill' })
+  const agent = table.getByRole('group', { name: 'This agent: Sample skill' })
+  await expect(global.getByRole('button', { pressed: true })).toHaveCount(0)
+  await expect(category.getByRole('button', { name: 'Blocked', exact: true })).toHaveAttribute('aria-pressed', 'true')
+  await expect(agent.getByRole('button', { pressed: true })).toHaveCount(0)
   await table.getByRole('button', { name: 'Active', exact: true }).last().click()
   await expect.poll(() => changes).toEqual([{ state: 'enabled' }])
-  await expect(table.getByRole('cell').last().locator('.q-icon')).toHaveText('check_circle')
+  await expect(global.getByRole('button', { pressed: true })).toHaveCount(0)
+  await expect(category.getByRole('button', { pressed: true })).toHaveCount(0)
+  await expect(agent.getByRole('button', { name: 'Active', exact: true })).toHaveAttribute('aria-pressed', 'true')
   await page.screenshot({ path: testInfo.outputPath('authorizations-narrow-desktop.png'), fullPage: true })
 })

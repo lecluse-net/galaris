@@ -807,7 +807,7 @@ tests remain authoritative for behavior.
 | `app/skill` | `core/api` | `front/app/skill/services/skillService.ts` |
 | `app/skill` | `core/authorize` | `front/app/skill/components/LearnedSkillManager.vue`, `front/app/skill/components/SkillAuthorizationManager.vue`, `front/app/skill/navigation.ts`, `front/app/skill/pages/index.vue` |
 | `app/skill` | `core/navigation` | `front/app/skill/navigation.ts`, `front/app/skill/pages/index.vue` |
-| `app/skill` | `core/util` | `front/app/skill/components/LearnedSkillManager.vue`, `front/app/skill/pages/index.vue` |
+| `app/skill` | `core/util` | `front/app/skill/components/LearnedSkillManager.vue`, `front/app/skill/components/SkillPolicyToggle.vue`, `front/app/skill/pages/index.vue` |
 | `app/task` | `app/agent` | `front/app/task/components/ActiveTaskNode.vue`, `front/app/task/components/ActiveTasksPanel.vue`, `front/app/task/components/TaskDetail.vue`, `front/app/task/components/TaskFormDialog.vue`, `front/app/task/services/taskService.ts`, `front/app/task/stores/taskStore.ts` |
 | `app/task` | `app/conversation` | `front/app/task/pages/index.vue` |
 | `app/task` | `app/lab` | `front/app/task/components/TaskDetail.vue` |

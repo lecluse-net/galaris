@@ -37,6 +37,14 @@ for (const mobile of [false, true]) {
           ...policy, key: 'tool:external_list', name: 'external_list',
           connection_state: 'default', global_state: 'enabled',
           effective_state: 'enabled', state_source: 'tool',
+        }, {
+          ...policy, key: 'tool:external_approve', name: 'external_approve',
+          connection_state: 'default', global_state: 'ask',
+          effective_state: 'ask', state_source: 'tool',
+        }, {
+          ...policy, key: 'tool:external_blocked', name: 'external_blocked',
+          connection_state: 'disabled', global_state: 'enabled',
+          effective_state: 'disabled', effective: false, state_source: 'connection',
         }],
       } }))
       await page.route('**/api/connections/5/capabilities', async route => {
@@ -52,6 +60,23 @@ for (const mobile of [false, true]) {
         return route.fulfill({ json: { ...policy, local_override_count: policy.connection_state === 'default' ? 0 : 1 } })
       })
       await mount(page, 'app/connection/components/AuthorizationManager.vue', { locale, privileges })
+      const stateFilter = page.getByRole('group', { name: mobile ? 'Effectif' : 'Effective', exact: true })
+      const functionRows = page.locator(mobile ? '.authorization-mobile-card' : 'tbody tr')
+      for (const [label, names] of [
+        [mobile ? 'Actives' : 'Active', ['external_read', 'external_list']],
+        [mobile ? 'Inactives' : 'Inactive', ['external_blocked']],
+        [labels.ask, ['external_approve']],
+      ]) {
+        await stateFilter.getByRole('button', { name: label, exact: true }).click()
+        await expect(functionRows).toHaveCount(names.length)
+        for (const name of names) await expect(functionRows.filter({ hasText: name })).toBeVisible()
+      }
+      // Reopening keeps the request-authorization filter and its effective inherited policy.
+      await mount(page, 'app/connection/components/AuthorizationManager.vue', { locale, privileges })
+      await expect(functionRows).toHaveCount(1)
+      await expect(functionRows).toContainText('external_approve')
+      await stateFilter.getByRole('button', { name: mobile ? 'Toutes' : 'All', exact: true }).click()
+      await expect(functionRows).toHaveCount(4)
       const global = page.getByRole('group', { name: `${labels.global}: external_read`, exact: true })
       const local = page.getByRole('group', { name: `${labels.connection}: external_read`, exact: true })
       const otherGlobal = page.getByRole('group', { name: `${labels.global}: external_list`, exact: true })
@@ -118,9 +143,8 @@ for (const mobile of [false, true]) {
         for (const button of await global.getByRole('button').all()) await expect(button).toBeEnabled()
         for (const button of await otherGlobal.getByRole('button').all()) await expect(button).toBeEnabled()
         for (const button of await global.getByRole('button').all()) await expect(button).toHaveAttribute('aria-pressed', 'false')
-        await expect(mobile
-          ? row.getByText(labels[state], { exact: true })
-          : row.getByRole('cell', { name: labels[state], exact: true })).toBeVisible()
+        await expect(local.getByRole('button', { name: labels[state], exact: true })).toHaveAttribute('aria-pressed', 'true')
+        if (mobile) await expect(row.getByText(labels[state], { exact: true })).toBeVisible()
         await global.getByRole('button', { name: labels.disabled, exact: true }).click()
         await expect.poll(() => writes.at(-1)).toEqual({ function_name: 'external_read', state: 'disabled', capability_kind: 'tool', global_policy: true, inherit_connection: true })
         for (const button of await local.getByRole('button').all()) await expect(button).toHaveAttribute('aria-pressed', 'false')
@@ -128,9 +152,7 @@ for (const mobile of [false, true]) {
         await expect(global.getByRole('button', { name: labels.disabled, exact: true })).toHaveAttribute('aria-pressed', 'true')
       }
       for (const button of await local.getByRole('button').all()) await expect(button).toHaveAttribute('aria-pressed', 'false')
-      await expect(mobile
-        ? row.getByText(labels.disabled, { exact: true })
-        : row.getByRole('cell', { name: labels.disabled, exact: true })).toBeVisible()
+      if (mobile) await expect(row.getByText(labels.disabled, { exact: true })).toBeVisible()
       await expect(global).toHaveAttribute('aria-busy', 'false')
       await mount(page, 'app/connection/components/AuthorizationManager.vue', { locale, privileges })
       await expect(global.getByRole('button', { name: labels.disabled, exact: true })).toHaveAttribute('aria-pressed', 'true')
@@ -380,6 +402,7 @@ test(`System functions have editable one-action policies while their service rem
   await expect(page.getByText('This system service and its connection are mandatory.', { exact: false })).toBeVisible()
   await row.getByRole('group', { name: 'This connection: system_read' }).getByRole('button', { name: 'Ask', exact: true }).click()
   await expect.poll(() => writes).toEqual([{ function_name: 'system_read', state: 'ask', capability_kind: 'tool' }])
-  await expect(row).toContainText('Ask')
+  await expect(row.getByRole('group', { name: 'This connection: system_read' }).getByRole('button', { name: 'Ask', exact: true })).toHaveAttribute('aria-pressed', 'true')
+  if (mobile) await expect(row).toContainText('Ask')
 })
 }

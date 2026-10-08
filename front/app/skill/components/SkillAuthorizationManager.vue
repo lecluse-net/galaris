@@ -131,31 +131,19 @@
       </template>
       <template #body-cell-global="props">
         <q-td :props="props" class="text-center">
-          <q-btn-toggle
+          <SkillPolicyToggle
             v-if="canAssign && canManageAllAgents"
-            :model-value="props.row.global_state"
-            :options="globalStateOptions"
-            color="grey-4"
-            text-color="grey-8"
-            toggle-color="primary"
-            dense
-            unelevated
-            no-caps
+            :model-value="props.row.agent_state === 'default' && props.row.category_state === 'default' ? props.row.global_state : null"
+            :aria-label="t('skills.auth.colGlobal') + ': ' + props.row.label"
             @update:model-value="onGlobalState(props.row, $event)"
           />
         </q-td>
       </template>
       <template #body-cell-category="props">
         <q-td :props="props" class="text-center">
-          <q-btn-toggle
-            :model-value="props.row.category_state"
-            :options="agentStateOptions"
-            color="grey-4"
-            text-color="grey-8"
-            toggle-color="primary"
-            dense
-            unelevated
-            no-caps
+          <SkillPolicyToggle
+            :model-value="props.row.agent_state === 'default' && props.row.category_state !== 'default' ? props.row.category_state : null"
+            :aria-label="t('skills.auth.colCategory') + ': ' + props.row.label"
             :disable="!canAssign || props.row.category_id === null"
             @update:model-value="onCategoryState(props.row, $event)"
           />
@@ -163,31 +151,12 @@
       </template>
       <template #body-cell-agent="props">
         <q-td :props="props" class="text-center">
-          <q-btn-toggle
+          <SkillPolicyToggle
             v-if="canAssign"
-            :model-value="props.row.agent_state"
-            :options="agentStateOptions"
-            color="grey-4"
-            text-color="grey-8"
-            toggle-color="primary"
-            dense
-            unelevated
-            no-caps
+            :model-value="props.row.agent_state === 'default' ? null : props.row.agent_state"
+            :aria-label="t('skills.auth.colAgent') + ': ' + props.row.label"
             @update:model-value="onAgentState(props.row, $event)"
           />
-        </q-td>
-      </template>
-      <template #body-cell-effective="props">
-        <q-td :props="props" class="text-center">
-          <q-icon
-            :name="props.row.effective ? 'check_circle' : 'block'"
-            :color="props.row.effective ? 'positive' : 'grey-5'"
-            size="sm"
-          >
-            <q-tooltip>
-              {{ props.row.effective ? t('skills.auth.effectiveOn') : t('skills.auth.effectiveOff') }}
-            </q-tooltip>
-          </q-icon>
         </q-td>
       </template>
       <template #item="props">
@@ -238,35 +207,19 @@
               <div class="authorization-mobile-controls">
                 <div>
                   <div class="authorization-mobile-label q-mb-xs">{{ t('skills.auth.colGlobal') }}</div>
-                  <q-btn-toggle
+                  <SkillPolicyToggle
                     v-if="canAssign && canManageAllAgents"
-                    :model-value="props.row.global_state"
-                    :options="globalStateOptions"
-                    color="grey-4"
-                    text-color="grey-8"
-                    toggle-color="primary"
-                    dense
-                    spread
-                    unelevated
-                    no-caps
-                    class="full-width"
+                    :model-value="props.row.agent_state === 'default' && props.row.category_state === 'default' ? props.row.global_state : null"
+                    :aria-label="t('skills.auth.colGlobal') + ': ' + props.row.label"
                     @update:model-value="onGlobalState(props.row, $event)"
                   />
                 </div>
 
                 <div>
                   <div class="authorization-mobile-label q-mb-xs">{{ t('skills.auth.colCategory') }}</div>
-                  <q-btn-toggle
-                    :model-value="props.row.category_state"
-                    :options="agentStateOptions"
-                    color="grey-4"
-                    text-color="grey-8"
-                    toggle-color="primary"
-                    dense
-                    spread
-                    unelevated
-                    no-caps
-                    class="full-width"
+                  <SkillPolicyToggle
+                    :model-value="props.row.agent_state === 'default' && props.row.category_state !== 'default' ? props.row.category_state : null"
+                    :aria-label="t('skills.auth.colCategory') + ': ' + props.row.label"
                     :disable="!canAssign || props.row.category_id === null"
                     @update:model-value="onCategoryState(props.row, $event)"
                   />
@@ -274,18 +227,10 @@
 
                 <div>
                   <div class="authorization-mobile-label q-mb-xs">{{ t('skills.auth.colAgent') }}</div>
-                  <q-btn-toggle
+                  <SkillPolicyToggle
                     v-if="canAssign"
-                    :model-value="props.row.agent_state"
-                    :options="agentStateOptions"
-                    color="grey-4"
-                    text-color="grey-8"
-                    toggle-color="primary"
-                    dense
-                    spread
-                    unelevated
-                    no-caps
-                    class="full-width"
+                    :model-value="props.row.agent_state === 'default' ? null : props.row.agent_state"
+                    :aria-label="t('skills.auth.colAgent') + ': ' + props.row.label"
                     @update:model-value="onAgentState(props.row, $event)"
                   />
                 </div>
@@ -323,6 +268,7 @@ import {
   type SkillGlobalAuthorizationState,
 } from '../services/skillService'
 import { useSkillStore } from '../stores/skillStore'
+import SkillPolicyToggle from './SkillPolicyToggle.vue'
 
 type FilterState = 'active' | 'inactive' | 'all'
 interface AuthorizationGroup {
@@ -367,17 +313,6 @@ const skillOptions = computed(() =>
 const categoryOptions = computed(() =>
   store.categories.map(category => ({ label: category.label, value: category.id }))
 )
-
-const globalStateOptions = computed(() => [
-  { label: t('skills.auth.globalActive'), value: 'enabled' as SkillGlobalAuthorizationState },
-  { label: t('skills.auth.globalBlocked'), value: 'disabled' as SkillGlobalAuthorizationState },
-])
-
-const agentStateOptions = computed(() => [
-  { label: t('skills.auth.stateDefault'), value: 'default' as SkillAuthorizationState },
-  { label: t('skills.auth.stateEnabled'), value: 'enabled' as SkillAuthorizationState },
-  { label: t('skills.auth.stateDisabled'), value: 'disabled' as SkillAuthorizationState },
-])
 
 const stateFilterOptions = computed(() => [
   { label: t('skills.auth.filterActive'), value: 'active' as FilterState },
@@ -460,41 +395,30 @@ const columns = computed<QTableProps['columns']>(() => [
     label: t('skills.auth.colDescription'),
     field: 'description',
     align: 'left',
-    style: 'width: 26%;',
-    headerStyle: 'width: 26%;',
   },
   {
     name: 'global',
     label: t('skills.auth.colGlobal'),
     field: 'global_state',
     align: 'center',
-    style: 'width: 10%;',
-    headerStyle: 'width: 10%;',
+    style: 'width: 112px;',
+    headerStyle: 'width: 112px;',
   },
   {
     name: 'category',
     label: t('skills.auth.colCategory'),
     field: 'category_state',
     align: 'center',
-    style: 'width: 13%;',
-    headerStyle: 'width: 13%;',
+    style: 'width: 112px;',
+    headerStyle: 'width: 112px;',
   },
   {
     name: 'agent',
     label: t('skills.auth.colAgent'),
     field: 'agent_state',
     align: 'center',
-    style: 'width: 13%;',
-    headerStyle: 'width: 13%;',
-  },
-  {
-    name: 'effective',
-    label: t('skills.auth.colEffective'),
-    field: 'effective',
-    align: 'center',
-    sortable: true,
-    style: 'width: 8%;',
-    headerStyle: 'width: 8%;',
+    style: 'width: 112px;',
+    headerStyle: 'width: 112px;',
   },
 ])
 
@@ -740,7 +664,12 @@ onMounted(async () => {
 
 .authorization-mobile-controls {
   display: grid;
-  gap: 16px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.authorization-mobile-controls > div {
+  min-width: 0;
 }
 
 :deep(.q-table) {
@@ -755,14 +684,6 @@ onMounted(async () => {
   white-space: normal;
   word-break: break-word;
   vertical-align: top;
-}
-
-:deep(.q-table .q-btn-toggle) {
-  flex-wrap: wrap;
-}
-
-:deep(.q-table .q-btn-toggle .q-btn) {
-  flex: 1 1 auto;
 }
 
 @media (max-width: 1023px) {

@@ -18008,6 +18008,7 @@
       {
         "files": [
           "front/app/skill/components/LearnedSkillManager.vue",
+          "front/app/skill/components/SkillPolicyToggle.vue",
           "front/app/skill/pages/index.vue"
         ],
         "source": "app/skill",

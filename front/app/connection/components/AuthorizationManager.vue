@@ -130,11 +130,17 @@
         >
           <template v-slot:prepend><q-icon name="search" /></template>
         </q-input>
-        <q-select outlined emit-value map-options
+        <q-btn-toggle
           v-model="filterState"
+          role="group"
           :aria-label="$t('connection.auth.colEffective')"
           :options="stateFilterOptions"
-          dense
+          color="grey-4"
+          text-color="grey-8"
+          toggle-color="primary"
+          unelevated
+          no-caps
+          class="authorization-state-filter"
         />
       </div>
 
@@ -207,11 +213,6 @@
               @update:model-value="onConnectionState(props.row, $event)"
             />
             <span v-else>{{ policyLabel(props.row.connection_state) }}</span>
-          </q-td>
-        </template>
-        <template v-slot:body-cell-effective="props">
-          <q-td :props="props" class="text-center">
-            <span>{{ policyLabel(props.row.effective_state) }}</span>
           </q-td>
         </template>
 
@@ -307,7 +308,7 @@ const SESSION_FILTER_TOOL_KEY = 'authorization_filter_tool_id'
 const SESSION_FILTER_STATE_KEY = 'authorization_filter_state'
 const CONNECTION_PAGE_SIZE = 500
 
-type FilterState = 'active' | 'inactive' | 'all'
+type FilterState = 'active' | 'inactive' | 'ask' | 'all'
 
 const $q = useQuasar()
 const { t } = useI18n()
@@ -369,6 +370,7 @@ function localizedToolLabel(tool: { code: string; label: string; can_edit?: bool
 const stateFilterOptions = computed(() => [
   { label: t('connection.stateActive'), value: 'active' as FilterState },
   { label: t('connection.stateInactive'), value: 'inactive' as FilterState },
+  { label: t('connection.auth.stateAsk'), value: 'ask' as FilterState },
   { label: t('connection.stateAll'), value: 'all' as FilterState },
 ])
 
@@ -431,8 +433,8 @@ async function loadConnections(): Promise<void> {
 const filteredFunctions = computed(() => {
   let result = functions.value
   if (filterState.value !== 'all') {
-    const wantActive = filterState.value === 'active'
-    result = result.filter(f => f.effective === wantActive)
+    const state = filterState.value === 'active' ? 'enabled' : filterState.value === 'inactive' ? 'disabled' : 'ask'
+    result = result.filter(f => f.effective_state === state)
   }
   const q = search.value?.trim().toLowerCase() ?? ''
   if (q) {
@@ -465,25 +467,16 @@ const columns = computed<QTableProps['columns']>(() => [
     label: t('connection.auth.colGlobal'),
     field: 'global_state',
     align: 'center',
-    style: 'vertical-align: top; width: 180px;',
-    headerStyle: 'width: 180px;',
+    style: 'vertical-align: top; width: 152px;',
+    headerStyle: 'width: 152px;',
   },
   {
     name: 'connection',
     label: t('connection.auth.colConnection'),
     field: 'connection_state',
     align: 'center',
-    style: 'vertical-align: top; width: 230px;',
-    headerStyle: 'width: 230px;',
-  },
-  {
-    name: 'effective',
-    label: t('connection.auth.colEffective'),
-    field: 'effective',
-    align: 'center',
-    sortable: true,
-    style: 'vertical-align: middle; width: 90px;',
-    headerStyle: 'width: 90px;',
+    style: 'vertical-align: top; width: 152px;',
+    headerStyle: 'width: 152px;',
   },
 ])
 
@@ -626,7 +619,7 @@ function loadFiltersFromSession(): void {
     filterTool.value = Number.isFinite(parsed) && parsed > 0 ? parsed : null
   }
   const stateRaw = sessionStorage.getItem(SESSION_FILTER_STATE_KEY)
-  if (stateRaw === 'active' || stateRaw === 'inactive' || stateRaw === 'all') {
+  if (stateRaw === 'active' || stateRaw === 'inactive' || stateRaw === 'ask' || stateRaw === 'all') {
     filterState.value = stateRaw
   }
 }
@@ -722,6 +715,15 @@ onActivated(() => {
   gap: 12px;
 }
 
+.authorization-mobile-settings > div {
+  min-width: 0;
+}
+
+.authorization-state-filter :deep(.q-btn) {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
 /* Wrap long descriptions and prevent horizontal table overflow. */
 :deep(.q-table) {
   table-layout: fixed;
@@ -747,9 +749,4 @@ onActivated(() => {
   }
 }
 
-@media (max-width: 599px) {
-  .authorization-mobile-settings {
-    grid-template-columns: 1fr;
-  }
-}
 </style>
