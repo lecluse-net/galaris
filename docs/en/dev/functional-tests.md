@@ -187,6 +187,10 @@ delivery; it covers multiple readers and a commit between reading and waiting.
 `core/tests/test_commit_notifications.py` checks commits, savepoints and rollbacks.
 `tests/test_scheduler_wakeups.py` checks wakeups after durable mutations, retry deadlines
 and idle queues without scans even while periodic maintenance keeps running.
+It also checks round admission while a Chat update locks its Room, without
+periodic recovery. The serialization scenario in
+`app/conversation/tests/test_service.py` uses simultaneous claims on separate
+connections and preserves the successor's inputs.
 
 Document structure (#168) is covered by `back/app/memory/tests/test_document_structure.py`:
 one memory companion per attachment, mandatory image-description persistence, deterministic

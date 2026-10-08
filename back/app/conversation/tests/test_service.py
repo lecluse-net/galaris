@@ -15,6 +15,7 @@ import httpx2
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from core.database import get_db_session
 from app.agent.models import Agent, Title
 from app.agent.contracts import AIMessage, AIResult, WorkingResource, WorkingSet
 from app.connection.models import Connection
@@ -1460,34 +1461,53 @@ async def test_room_work_projection_starts_at_oldest_displayed_message(
 
 
 @pytest.mark.asyncio
-async def test_room_never_claims_two_rounds_concurrently(db: AsyncSession) -> None:
-    agent, connection, room = await _scope(db)
-    first = await _message(db, connection, room, 1, "version A")
-    assert await admit_message(first, agent_id=agent.id, connection_id=connection.id)
-    running = await claim_next_round("worker-1")
-    assert running is not None
+async def test_room_never_claims_two_rounds_concurrently(committed_database) -> None:
+    from core.user import UserModel
 
-    second = await _message(db, connection, room, 2, "correction B")
-    assert await admit_message(second, agent_id=agent.id, connection_id=connection.id)
-    assert await claim_next_round("worker-2") is None
-    assert not await mark_effect_if_fresh(running.id, lease_token=running.lease_token)
-    assert await complete_round(
-        running.id, ConversationOutcome(text="réponse obsolète"),
-        lease_token=running.lease_token,
-    ) == "SUPERSEDED"
+    async def claim(worker: str) -> ConversationRound | None:
+        async with get_db_session():
+            return await claim_next_round(worker)
 
-    successor = await claim_next_round("worker-2")
-    assert successor is not None
-    linked_ids = list(
-        await db.scalars(
-            select(ConversationRoundMessage.message_id)
-            .where(
-                ConversationRoundMessage.round_id == successor.id,
-                ConversationRoundMessage.role == "input",
+    async with get_db_session() as db:
+        user = UserModel(email=f"claim-{uuid4()}@example.test", hashed_password="unused")
+        db.add(user)
+        await db.flush()
+        agent, connection, room = await _scope(db, user_id=user.id)
+        first = await _message(db, connection, room, 1, "version A")
+        assert await admit_message(first, agent_id=agent.id, connection_id=connection.id)
+
+    claims = await asyncio.gather(*(claim(f"worker-{index}") for index in range(4)))
+    running_claims = [round_ for round_ in claims if round_ is not None]
+    assert len(running_claims) == 1
+    running = running_claims[0]
+
+    async with get_db_session() as db:
+        second = await _message(db, connection, room, 2, "correction B")
+        assert await admit_message(second, agent_id=agent.id, connection_id=connection.id)
+    assert all(round_ is None for round_ in await asyncio.gather(
+        *(claim(f"busy-worker-{index}") for index in range(4))
+    ))
+    async with get_db_session():
+        assert not await mark_effect_if_fresh(running.id, lease_token=running.lease_token)
+        assert await complete_round(
+            running.id, ConversationOutcome(text="réponse obsolète"),
+            lease_token=running.lease_token,
+        ) == "SUPERSEDED"
+
+    claims = await asyncio.gather(*(claim(f"successor-{index}") for index in range(4)))
+    successors = [round_ for round_ in claims if round_ is not None]
+    assert len(successors) == 1
+    async with get_db_session() as db:
+        linked_ids = list(
+            await db.scalars(
+                select(ConversationRoundMessage.message_id)
+                .where(
+                    ConversationRoundMessage.round_id == successors[0].id,
+                    ConversationRoundMessage.role == "input",
+                )
+                .order_by(ConversationRoundMessage.sequence)
             )
-            .order_by(ConversationRoundMessage.sequence)
         )
-    )
     assert linked_ids == [first.id, second.id]
 
 

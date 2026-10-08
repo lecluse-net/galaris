@@ -210,6 +210,10 @@ joindre un fichier, enregistrer une note vocale et démarrer un appel navigateur
 l'agent. Quitter une conversation retire votre accès sans effacer son historique pour les autres
 membres.
 
+Après l'admission de votre message, « Réflexion en cours » apparaît dès que le
+round en attente est reçu par l'interface, avant ses premiers fragments. Une
+réponse déjà en cours reste affichée si vous envoyez une nouvelle demande.
+
 Avant de sélectionner une conversation, l’accueil de **Discussion** affiche d’abord les
 **Conversations récentes** ayant reçu un nouveau message durant les **7 derniers jours**,
 de la plus récente à la plus ancienne. Le bouton **+** affiche toutes les conversations,

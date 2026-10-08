@@ -211,6 +211,10 @@ sur notification ; il couvre plusieurs lecteurs et un commit entre lecture et at
 `core/tests/test_commit_notifications.py` vérifie commits, savepoints et rollbacks.
 `tests/test_scheduler_wakeups.py` vérifie les réveils après mutations durables, les délais
 de retry et l'absence de scans des files au repos malgré une maintenance périodique.
+Il vérifie aussi la prise en charge d'un round pendant une actualisation Chat qui
+verrouille sa Room, sans rattrapage périodique. Le scénario de sérialisation dans
+`app/conversation/tests/test_service.py` utilise des claims simultanés sur plusieurs
+connexions et préserve les inputs du successeur.
 
 La structure documentaire de la #168 est couverte par
 `back/app/memory/tests/test_document_structure.py` : une mémoire par PJ, conservation obligatoire

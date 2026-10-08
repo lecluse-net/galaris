@@ -424,36 +424,24 @@ async def claim_next_round(worker_id: str) -> ConversationRound | None:
         return await _claim_round(expired, worker_id)
 
     processing_round = aliased(ConversationRound)
-    pending_room_id = await get_db().scalar(
-        select(Room.id)
-        .join(
-            ConversationRound,
-            ConversationRound.room_id == Room.id,
-        )
+    # Claim the work row itself. Chat can update/lock Room after admission;
+    # skipping that unrelated lock would consume the wakeup and postpone ready
+    # work until recovery. The unique FROZEN row and its lock serialize claims
+    # with admission; the processing predicate keeps its successor queued.
+    pending = await get_db().scalar(
+        select(ConversationRound)
         .where(
             ConversationRound.status == "FROZEN",
             ~exists(
                 select(processing_round.id).where(
-                    processing_round.room_id == Room.id,
+                    processing_round.room_id == ConversationRound.room_id,
                     processing_round.status.in_(PROCESSING_ROUND_STATUSES),
                 )
             ),
         )
         .order_by(ConversationRound.created_at.asc(), ConversationRound.id.asc())
         .limit(1)
-        .with_for_update(of=Room, skip_locked=True)
-    )
-    if pending_room_id is None:
-        return None
-    pending = await get_db().scalar(
-        select(ConversationRound)
-        .where(
-            ConversationRound.room_id == pending_room_id,
-            ConversationRound.status == "FROZEN",
-        )
-        .order_by(ConversationRound.created_at.asc(), ConversationRound.id.asc())
-        .limit(1)
-        .with_for_update()
+        .with_for_update(skip_locked=True)
     )
     if pending is None:
         return None

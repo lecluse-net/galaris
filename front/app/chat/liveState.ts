@@ -164,7 +164,7 @@ export function reconcileLiveRoundFromActivity(
   createRound: (roundId: string) => LiveAgentRound,
 ): LiveAgentRound | null {
   const runningRounds = activity.filter(item => (
-    ['PENDING', 'CLAIMED', 'RUNNING'].includes(item.status)
+    ['FROZEN', 'PENDING', 'CLAIMED', 'RUNNING'].includes(item.status)
   ))
   const running = runningRounds[0]
 

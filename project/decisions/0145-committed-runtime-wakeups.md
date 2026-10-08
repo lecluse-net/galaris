@@ -55,6 +55,13 @@ Les écritures externes au processus restent couvertes par ces rattrapages, pas 
 bus interprocessus. Si la topologie change, un transport tel que `LISTEN/NOTIFY` devra
 alimenter les mêmes réveils avec réconciliation après reconnexion.
 
+La prise en charge Conversation verrouille directement le round `FROZEN` avec
+`FOR UPDATE SKIP LOCKED`, sans verrouiller sa Room. Une actualisation Chat peut
+verrouiller la Room juste après l'admission ; l'ignorer lors du réveil reporterait
+le round au rattrapage de secours. L'unicité du round `FROZEN`, son verrou et
+l'exclusion des rooms ayant déjà un round en traitement préservent la sérialisation
+avec l'admission et les autres claimants. Aucun polling ni nouveau signal n'est ajouté.
+
 ## Vérification et limites
 
 `test_inference_lifecycle.py` mesure les requêtes durant un fournisseur silencieux et
@@ -64,6 +71,10 @@ indépendantes du heartbeat, reprises, rejeux, pagination d'admission et récup�
 `test_commit_notifications.py` couvre transactions, savepoints, rollback et échec d'un
 callback. `test_scheduler_wakeups.py` couvre les mutations persistées, les retries et
 l'absence de scans au repos malgré une maintenance périodique.
+Il exerce aussi le scheduler réel pendant une actualisation Chat non committée,
+avec le rattrapage éloigné pour qu'il ne masque pas un réveil manqué.
+`test_room_never_claims_two_rounds_concurrently` utilise plusieurs connexions et
+des claims simultanés, puis vérifie la conservation des inputs du successeur.
 
 Le scénario synthétique de silence relève 24 requêtes SQL en 700 ms avant correction,
 puis aucune sur la même fenêtre après correction. Ce résultat ne mesure pas la réduction

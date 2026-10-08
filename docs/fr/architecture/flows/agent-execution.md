@@ -65,6 +65,12 @@ avec réveil anticipé pour les retries persistés. Les maintenances gardent leu
 Voir [0145](../../../../project/decisions/0145-committed-runtime-wakeups.md) pour les producteurs,
 les garanties de transaction et les limites du transport local mono-worker.
 
+Conversation réclame directement le round prêt, sans verrouiller sa Room : une
+actualisation Chat concurrente ne lui fait donc pas manquer le réveil d'admission.
+Les claims concurrents restent sérialisés sur le round et aucun successeur n'est
+réclamé tant que son prédécesseur est en traitement. Le Chat reconnaît l'état
+d'attente `FROZEN` avant les premiers événements du runtime.
+
 Le harnais interne rend les erreurs d’outil au modèle sous forme structurée, y compris
 lorsque leur effet reste incertain. Le modèle décide de vérifier, corriger, poursuivre
 ou arrêter. Le checkpoint v5 conserve séparément ces erreurs acquittées et les appels

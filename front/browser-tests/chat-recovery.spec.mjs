@@ -60,6 +60,32 @@ async function settled(page, key) {
   await expect.poll(() => page.evaluate(key => window.refreshResults[key], key)).toBeTruthy()
 }
 
+test('an admitted round is visible before streaming and keeps its response through startup', async ({ page }) => {
+  await conversation(page)
+  await jsonRoute(page, '**/api/chat/rooms/room-a/activity?*', {
+    items: [{ id: 'admitted-round', status: 'FROZEN', created_at: '2026-09-01T12:01:00Z' }],
+    total: 1,
+  })
+  await page.evaluate(() => window.testApp.emitSocket('chat.activity', {
+    data: { room_id: 'room-a', round_id: 'admitted-round' },
+  }))
+  const response = page.locator('.message-bubble--live')
+  await expect(response.getByRole('button', { name: /^Thinking/ })).toBeVisible()
+  await expect(response).toHaveCount(1)
+
+  await page.evaluate(() => {
+    const emit = event => window.testApp.emitSocket('chat.runtime', {
+      data: { room_id: 'room-a', round_id: 'admitted-round', ...event },
+    })
+    emit({ kind: 'started', sequence: 0 })
+    emit({ kind: 'message', sequence: 1, message: { type: 'text', content: 'Synthetic answer' } })
+    emit({ kind: 'finished', sequence: 2, success: true })
+  })
+  await expect(response).toHaveCount(1)
+  await expect(response).toContainText('Synthetic answer')
+  await expect(page.locator('.conversation-pane')).toContainText('Content room-a')
+})
+
 for (const width of [1280, 390]) {
   test(`conversation header toggles all filters and creates a conversation at ${width}px`, async ({ page }, testInfo) => {
     await page.setViewportSize({ width, height: 900 })

@@ -110,31 +110,33 @@ test('a stale HTTP refresh cannot hide or replace a streamed round', () => {
   )
 })
 
-test('a pending round is visible before the runtime starts producing content', () => {
-  const reconciled = reconcileLiveRoundFromActivity(
-    null,
-    'room-1',
-    [activity('round-pending', 'PENDING')],
-    true,
-    roundId => liveRound({ round_id: roundId, last_sequence: -1 }),
-  )
+for (const pendingStatus of ['FROZEN', 'PENDING']) {
+  test(`${pendingStatus} is visible before the runtime starts producing content`, () => {
+    const reconciled = reconcileLiveRoundFromActivity(
+      null,
+      'room-1',
+      [activity('round-pending', pendingStatus)],
+      true,
+      roundId => liveRound({ round_id: roundId, last_sequence: -1 }),
+    )
 
-  assert.equal(reconciled?.round_id, 'round-pending')
-  assert.equal(reconciled?.active, true)
-})
+    assert.equal(reconciled?.round_id, 'round-pending')
+    assert.equal(reconciled?.active, true)
+  })
 
-test('a newer pending round cannot replace the round that is already streaming', () => {
-  const current = liveRound()
-  const reconciled = reconcileLiveRoundFromActivity(
-    current,
-    'room-1',
-    [activity('round-pending', 'PENDING'), activity('round-live', 'RUNNING')],
-    true,
-    roundId => liveRound({ round_id: roundId, last_sequence: -1 }),
-  )
+  test(`a newer ${pendingStatus} round cannot replace the round already streaming`, () => {
+    const current = liveRound()
+    const reconciled = reconcileLiveRoundFromActivity(
+      current,
+      'room-1',
+      [activity('round-pending', pendingStatus), activity('round-live', 'RUNNING')],
+      true,
+      roundId => liveRound({ round_id: roundId, last_sequence: -1 }),
+    )
 
-  assert.equal(reconciled, current)
-})
+    assert.equal(reconciled, current)
+  })
+}
 
 test('a delayed start event cannot erase streamed reflection fragments', () => {
   const progressed = liveRound({

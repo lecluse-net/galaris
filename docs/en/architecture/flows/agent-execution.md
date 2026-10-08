@@ -55,6 +55,13 @@ the transport trailer stalls. Each new call gets its own budget; total Task dura
 
 ## Task activity and provenance
 
+Conversation claims the ready round directly without locking its Room, so a
+concurrent Chat update cannot make it miss the admission wakeup. Concurrent
+claims remain serialized on the round, and a successor stays queued while its
+predecessor is processing. No polling or additional signal is introduced; the
+existing recovery interval is unchanged. Chat recognizes the queued `FROZEN`
+state before the first runtime events.
+
 An authorization request suspends the call before its effect. Internal checkpoint v5 retains
 Pydantic AI deferred requests and their identities; agreement resumes the same call without
 a new model decision. Result v2 exposes `waiting_for_authorization` and exact request UUIDs.

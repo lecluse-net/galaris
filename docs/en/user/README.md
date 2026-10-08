@@ -153,6 +153,10 @@ Permissions remain configurable, and updates preserve previously saved choices.
 
 The **Messenger** entry opens Galaris’s native messaging system when it is enabled and your role has the necessary permissions. You can create a direct conversation with an Agent, or a group containing that Agent and colleagues, search rooms, track unread messages, reply, attach a file, record a voice note, and start a browser call. The **Activity** panel shows publishable steps and the round’s Tools, never the Agent’s private reasoning. Leaving a conversation removes your access without deleting its history for the other members.
 
+After your message is admitted, “Thinking” appears as soon as the interface
+receives the queued round, before its first fragments. A response already in
+progress remains visible if you send another request.
+
 Before you select a conversation, the Chat home screen first shows **Recent conversations**
 with a new message within the **last 7 days**, from newest to oldest. The **+** button shows
 all conversations, including older and empty ones, with the usual pagination. The **−** button

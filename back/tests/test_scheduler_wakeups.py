@@ -12,7 +12,7 @@ from core.database import get_db_session
 from core.user import UserModel
 from app.conversation import scheduler as conversations
 from app.conversation.models import ConversationRound, ConversationTaskLink, ConversationProcessLink
-from app.conversation.tests.test_service import _scope
+from app.conversation.tests.test_service import _message, _scope
 from app.process import ProcessDefinition, ProcessRun
 from app.task import Task, TaskStatus, scheduler as tasks
 
@@ -164,6 +164,42 @@ async def test_idle_schedulers_do_not_query_and_maintenance_does_not_rescan_task
         event.remove(engine, "before_cursor_execute", record)
         await conversations.stop()
         await tasks.stop()
+
+
+@pytest.mark.asyncio
+async def test_conversation_admission_starts_while_chat_updates_the_room(
+    committed_database, monkeypatch,
+):
+    from app.conversation.service import admit_message
+    from app.messenger import touch_chat_room
+
+    await conversations.stop()
+    async with get_db_session() as db:
+        agent, connection, room = await scope(db)
+        message = await _message(db, connection, room, 1, "Synthetic question")
+        await admit_message(message, agent_id=agent.id, connection_id=connection.id)
+
+    claimed = asyncio.Event()
+    claims = []
+
+    async def execute(round_id, lease_token):
+        claims.append((round_id, lease_token))
+        claimed.set()
+        await asyncio.Event().wait()
+
+    # Keep the real scheduler and claim transaction; replace only execution after
+    # admission. A missed notification cannot pass through a periodic recovery.
+    monkeypatch.setattr(conversations, "_execute", execute)
+    monkeypatch.setattr(conversations, "_POLL_SECONDS", 3600.0)
+    try:
+        async with get_db_session():
+            await touch_chat_room(room.id)
+            conversations.start()
+            await asyncio.wait_for(claimed.wait(), 2)
+            assert len(claims) == 1
+            assert await conversations._claim() is None
+    finally:
+        await conversations.stop()
 
 
 @pytest.mark.asyncio
