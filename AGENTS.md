@@ -82,7 +82,8 @@ a small change does not require a separate planning document.
 ### Define success and establish the cause
 
 - Start from business behavior: first state an observable guarantee, then choose the most direct
-  test that proves it. Consult the catalog in `docs/fr/dev/functional-tests.md`.
+  verification. Add automated coverage for durable contracts, not every UI adjustment. Consult
+  the catalog in `docs/fr/dev/functional-tests.md`.
 - For a significant change, identify acceptance criteria and how each will be verified before
   coding. Include the existing behavior that must remain valid.
 - Distinguish facts supported by code or observations from hypotheses and unknowns. Check the
@@ -258,10 +259,6 @@ immutable. Consult the `galaris-process-tools` skill.
   request. Test usable actions, preserved content, permissions, and durable effects. A dimension
   is a valid assertion only when it represents a functional contract, such as no clipped content
   when printing.
-- A cosmetic-only UI change (spacing, colors, icons, wording, or visual grouping) does not
-  require a new automated test. Inspect the rendered result and reuse existing coverage.
-  Add or strengthen a test when behavior, accessibility, permissions, or data preservation
-  changes, or when the user explicitly requests one.
 - Use unit tests for pure rules, integration tests with real services/DB for workflows, real
   components for interactions, and a few E2E tests for the assembled system. Replace external
   boundaries, not internal services in the tested workflow.
@@ -276,6 +273,30 @@ immutable. Consult the `galaris-process-tools` skill.
 - Check that a test would detect the behavior it claims to protect. For a regression, its
   failure before the fix and success afterward provide that evidence; avoid assertions that
   merely mirror implementation details or mocks that hide the failure being tested.
+
+### Frontend coverage decisions
+
+- Do not add or expand automated tests for local presentation adjustments: button shape,
+  spacing, color, icon, wording, placement, or visual grouping. Inspect the rendered result
+  and run relevant existing checks. A quick request does not automatically require a test;
+  its effect on a durable contract determines the need.
+- During the first iterations of a new page, keep layout exploration and feedback out of
+  permanent assertions. Test established behavior as it is implemented: permissions,
+  validation, saving, data preservation, error recovery, and asynchronous state. Do not
+  postpone these protections until the design is finished.
+- Automate documented application-wide guidelines centrally. Modal dismissal and accessible
+  closing, shared header conventions, pagination defaults, i18n parity, and the mobile/desktop
+  boundary are reusable contracts, even when a guideline includes presentation. Prefer a
+  shared component test or a repository-wide lint/AST check for structural rules; exercise
+  actual interactions in component/browser tests. Reuse or parameterize coverage instead of
+  adding one test per page, modal, or adjustment. Add consumer coverage only for distinct risks.
+- Use unit tests for durable logic and state; do not read Vue/CSS source fragments or snapshot
+  an entire page to lock in an intermediate design. A central structural check may enforce a
+  documented shared convention, but it does not prove runtime behavior.
+- Before adding coverage, name the durable failure it detects and check existing coverage.
+  If only a local aesthetic preference would fail, use visual inspection. When revisiting
+  existing tests, remove incidental presentation assertions or consolidate duplicates while
+  recording the retired constraint and preserving functional and shared-guideline coverage.
 
 ### Validation scope
 

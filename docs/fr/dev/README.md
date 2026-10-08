@@ -1595,7 +1595,8 @@ make tests-documentation   # contrats du lanceur, puis confinement réel en cont
 ## 10. Workflow de contribution
 
 1. inspecter `git status` et préserver les changements sans rapport ;
-2. écrire ou adapter le test qui exprime le contrat ;
+2. choisir la vérification du contrat ; écrire ou adapter un test pour une garantie durable,
+   inspecter le rendu pour une retouche visuelle (voir [la politique frontend](testing.md)) ;
 3. faire une modification cohérente et limitée à la responsabilité du module ;
 4. exécuter les tests ciblés puis `make typecheck` et `make tests` ;
 5. vérifier `git diff --check` et relire les changements de schéma/configuration ;

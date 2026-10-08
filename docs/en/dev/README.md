@@ -1564,7 +1564,8 @@ make tests-documentation   # runner contracts, then real container confinement
 ## 10. Contribution Workflow
 
 1. inspect `git status` and preserve unrelated changes;
-2. write or adapt the test that expresses the contract;
+2. choose how to verify the contract; write or adapt a test for a durable guarantee,
+   inspect the rendered result for a visual adjustment (see [frontend coverage policy](testing.md));
 3. make a coherent change limited to the module's responsibility;
 4. run targeted tests, then `make typecheck` and `make tests`;
 5. check `git diff --check` and review schema/configuration changes;

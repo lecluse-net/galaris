@@ -29,6 +29,40 @@ fixtures and intentional, documented contract changes. Existing Make targets and
 collect the scenarios. Their success should be required before merging; local workflow YAML
 alone does not prove that remote branch protection is enabled.
 
+## Decide frontend coverage
+
+A permanent test protects a durable guarantee. A quick request or a new screen does not
+require a new test for every adjustment. Request duration does not determine risk: a small
+saving fix may need protection, while a series of button adjustments may need visual
+inspection only.
+
+| Kind of change | Expected verification |
+|---|---|
+| Button shape, spacing, local color, icon, wording or visual grouping | Inspect the rendered result and reuse existing checks; do not add or expand an automated test for this adjustment |
+| First draft of a page and successive layout adjustments | Inspect each iteration visually; keep provisional composition out of permanent assertions |
+| Business rule, permissions, validation, saving, draft preservation, error or late response | Strengthen existing coverage, or add a targeted scenario when the guarantee is missing |
+| Documented shared guideline: modals, pagination, i18n or the mobile/desktop boundary | Centralize reusable coverage that detects violations of the rule within its scope |
+
+Build functional protections as soon as their contract is established, even while the page
+layout evolves. Unit tests execute logic and state; they do not search for a CSS class or
+template fragment to freeze a button. Avoid full-page snapshots that turn a first draft
+into an implicit contract.
+
+For modals, start from `front/browser-tests/dialogs.spec.mjs`: backdrop dismissal, accessible
+closing, cancellation without confirmation and reopening. Extend this shared scenario if
+a guarantee is missing. Documented structural conventions, such as the shared header or
+the ban on options preventing backdrop dismissal, can use a lint/AST check covering the
+relevant components. That check does not replace the actual click proving dismissal.
+An explicit shared visual rule can be protected at the shared layer; this does not justify
+freezing every button's color or shape.
+
+Prefer shared components and parameterized variants over a test per page or modal. Add a
+consumer scenario only for a distinct risk, such as draft preservation or destructive
+confirmation. Before adding coverage, name the durable failure it detects and find existing
+coverage. When revisiting old tests, remove local aesthetic assertions and consolidate
+duplicates, recording the retired constraint and where remaining guarantees are protected.
+Do not delete a permissions or data test because it also checks a presentation detail.
+
 ## Commands
 
 Run toolchains in containers. Backend tests and E2E workflows create their own databases;

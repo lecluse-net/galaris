@@ -32,6 +32,41 @@ volontairement modifié. Les nouveaux parcours restent collectés par les comman
 existants. Leur réussite doit être requise avant fusion ; le YAML local ne prouve pas à lui seul
 que la protection de branche distante est activée.
 
+## Décider de la couverture frontend
+
+Un test permanent protège une garantie durable. Une demande rapide ou un nouvel écran
+n'impose pas un nouveau test à chaque modification. La durée de la demande ne détermine
+pas le risque : un petit correctif de sauvegarde peut exiger une protection, une série de
+retouches de boutons peut rester une vérification visuelle.
+
+| Nature du changement | Vérification attendue |
+|---|---|
+| Forme d'un bouton, marge, couleur locale, icône, libellé ou regroupement visuel | Inspecter le rendu et réutiliser les contrôles existants ; ne pas ajouter ni étendre un test automatisé pour cette retouche |
+| Premier jet d'une page et ajustements successifs de disposition | Vérifier visuellement chaque itération ; garder la composition provisoire hors des assertions permanentes |
+| Règle métier, droits, validation, sauvegarde, conservation d'un brouillon, erreur ou réponse tardive | Renforcer la couverture existante, ou ajouter un scénario ciblé si la garantie manque |
+| Guideline commune documentée : modales, pagination, i18n ou frontière mobile/desktop | Centraliser une couverture réutilisable qui détecte la violation de la règle dans son périmètre |
+
+Les protections fonctionnelles se construisent dès que leur contrat est établi, même si
+la disposition de la page évolue encore. Les unités exécutent la logique et l'état ; elles
+ne recherchent pas une classe CSS ou un fragment de template pour figer un bouton. Éviter
+les snapshots complets qui transforment le premier jet en contrat implicite.
+
+Pour les modales, partir de `front/browser-tests/dialogs.spec.mjs` : fermeture par fond,
+bouton accessible, annulation sans validation et réouverture. Étendre ce scénario commun
+si la garantie manque. Les conventions structurelles documentées, comme l'en-tête partagé
+ou l'interdiction d'options empêchant la fermeture par fond, peuvent être vérifiées par un
+contrôle lint/AST couvrant les composants concernés. Ce contrôle ne remplace pas le clic
+réel qui prouve la fermeture. Une règle visuelle commune explicite peut être protégée au
+niveau partagé ; cela ne justifie pas de figer la couleur ou la forme de chaque bouton.
+
+Préférer le composant commun et les variantes paramétrées à un test par page ou par modale.
+Ajouter un scénario consommateur seulement s'il comporte un risque distinct, comme un
+brouillon à préserver ou une confirmation destructive. Avant tout ajout, nommer la panne
+durable détectée et chercher sa couverture existante. Lors de la reprise d'anciens tests,
+retirer les assertions esthétiques locales et consolider les doublons en indiquant la
+contrainte abandonnée et où les garanties restantes sont protégées. Ne pas supprimer un
+test de droits ou de données parce qu'il vérifie aussi un détail de présentation.
+
 ## Commandes
 
 Toutes les exécutions utilisent les conteneurs. Les tests backend et les parcours E2E

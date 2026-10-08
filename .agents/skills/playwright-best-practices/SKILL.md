@@ -22,6 +22,10 @@ Read only the references relevant to the changed journey.
   fixtures and isolated users; replace external boundaries rather than internal workflow code.
 - Assert usable actions, content, permissions, and persistent effects. Use visual comparisons
   only for a relevant visual contract; do not freeze incidental colors, widths, or button order.
+- Apply `AGENTS.md`'s frontend coverage decisions before creating a scenario. Local visual
+  adjustments and early layout iterations need rendered inspection, not permanent assertions.
+  Centralize documented shared guidelines in reusable coverage; extend existing scenarios
+  for distinct consumer behavior rather than duplicating a test for every page or modal.
 - Diagnose a failure before changing locators or assertions: it can expose a product defect.
   Preserve traces and relevant console/network errors. Repeat runs when investigating flakiness
   or concurrency, not automatically after every passing change.

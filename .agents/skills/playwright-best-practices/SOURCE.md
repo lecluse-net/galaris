@@ -14,6 +14,9 @@ Local changes narrow discovery, preserve repository authorization boundaries, an
 execution through Docker/Make and the existing domain contracts. Detailed upstream
 references are retained and loaded on demand. No upstream executable was run.
 
+Frontend coverage follows Galaris's policy: inspect local visual adjustments without adding
+permanent assertions, and centralize documented shared guidelines in reusable coverage.
+
 Modified or added files: `SKILL.md`, `agents/openai.yaml`.
 
 Review upstream changes against this pinned revision before updating; preserve the

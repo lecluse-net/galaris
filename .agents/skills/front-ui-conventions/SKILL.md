@@ -84,5 +84,11 @@ l’ordre dépend de la langue.
 
 ## Validation
 
+Appliquer la section « Frontend coverage decisions » d’`AGENTS.md` avant d’ajouter un test.
+Les retouches visuelles et les allers-retours du premier jet se vérifient au rendu ; les
+comportements durables et les guidelines communes se protègent par une couverture réutilisable.
+Pour choisir la couche et centraliser ces contrôles, consulter
+`docs/fr/dev/testing.md`, section « Décider de la couverture frontend ».
+
 Lancer les contrôles ciblés, puis `make typecheck`. Si les pages, modules ou éléments de
 navigation changent, régénérer aussi la cartographie avec `make project-context`.
