@@ -327,6 +327,11 @@ historiques `standard` et `en`. La relecture restitue le même résultat validé
 appel, avec les coûts et corrélations de chaque tentative physique. Cela ne qualifie ni les
 comptes réels ni plusieurs objets concurrents dans une même réponse fournisseur.
 
+`back/app/agent/tests/test_prompt_tree.py` vérifie que la politique de révision documentaire
+atteint les exécuteurs Task, texte et voix, même avec une personnalité personnalisée et sans
+skill chargé. Cette preuve porte sur la transmission des consignes ; elle ne mesure pas la
+qualité éditoriale d'un modèle après plusieurs mises à jour du même document.
+
 Les fichiers `test_*.py` ci-dessous se trouvent sous `back/app/<module>/tests/`, sauf chemin
 explicite. Les fichiers `*.spec.mjs` se trouvent sous `front/browser-tests/`.
 

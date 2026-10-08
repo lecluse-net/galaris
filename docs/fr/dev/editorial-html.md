@@ -38,7 +38,7 @@ restent hors périmètre. Le [HTML interactif](document-apps.md) permet désorma
 aux documents HTML de contenir des formulaires et d'accéder à des datasets déclarés via un
 runtime isolé ; l'historique et les exports restent inertes.
 
-Créer ou enrichir un document lorsque le résultat demandé appelle un contenu rédigé durable
+Créer ou réviser un document lorsque le résultat demandé appelle un contenu rédigé durable
 à conserver, réviser ou partager. Une Task ne nécessite pas à elle seule un document : les réponses
 autonomes et confirmations restent dans la conversation, l'état opérationnel dans la ressource
 métier concernée. Ne pas ajouter un document uniquement pour consigner une action ou attester son
@@ -50,13 +50,24 @@ sont des services système obligatoires, comme Galaris et Conversation. Leurs co
 fonctions restent actives et non modifiables. Le catalogue effectif conserve les restrictions
 de contexte et les ACL des ressources ; les bridges optionnels peuvent toujours être désactivés.
 
-Avec les fonctions nécessaires disponibles, rechercher et enrichir le document pertinent.
+Avec les fonctions nécessaires disponibles, rechercher et réviser le document pertinent.
 Créer un nouveau document seulement si le contenu nécessite un support distinct, avec
 `file_create(path="document://", name="Titre", content="<p>Contenu HTML.</p>")`.
 Son URI reste la référence entre recherche, rédaction, revue, Tasks et
 conversations. Il conserve les sources et liens vers les documents associés ; les médias restent
 des ressources canoniques ou des pièces jointes. Les conversations portent la discussion et une
 transmission concise du résultat, sans entretenir une copie concurrente de son contenu.
+
+Pour les mises à jour de prose, respecter le périmètre demandé, intégrer les corrections et fusionner
+les répétitions. Conserver les faits utiles, les sources, les nuances, les questions ouvertes,
+les raisons des décisions et le sens des contributions. Ajouter les informations distinctes ;
+conserver la chronologie lorsqu'elle sert le document, notamment un journal, un compte rendu ou
+un audit. Les révisions gardent les versions antérieures : le corps n'a pas à recopier son
+historique d'édition. Le suivi opérationnel reste dans les Tasks ou Goals, sauf s'il fait partie
+du document demandé. Privilégier une édition ciblée avec `file_edit` ; un remplacement complet
+avec `file_write` suppose d'avoir lu tout le contenu nécessaire à sa conservation. La concision
+s'adapte à l'usage, sans réduction de longueur ni réécriture globale systématique. Cette règle
+éditoriale ne demande pas de condenser les entrées Dataset ou le code.
 
 Un nouveau document est privé. `memory_sharing` résout le destinataire humain, agent ou équipe
 et sa version de droits ; `document_share` accorde `read` ou `edit` avant transmission. Un lien

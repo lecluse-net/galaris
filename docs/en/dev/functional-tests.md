@@ -293,6 +293,11 @@ and `en` defaults. Readback returns the same validated result without another ca
 and lineage for every physical attempt. This does not qualify real accounts or multiple
 competing objects within one provider response.
 
+`back/app/agent/tests/test_prompt_tree.py` verifies that the document revision policy reaches
+Task, text and voice executors, including with a custom personality and without a loaded skill.
+This proves instruction delivery; it does not measure a model's editorial quality after
+successive updates to the same document.
+
 Unless qualified, Python files are in `back/app/<module>/tests/` and browser specifications
 are in `front/browser-tests/`.
 

@@ -36,7 +36,7 @@ PDF/HTML exports remain specific to HTML documents. Other document types remain 
 [Interactive HTML](document-apps.md) now allows forms and declared Dataset access inside
 an isolated document runtime; history and exports remain inert.
 
-Create or enrich a document when the requested outcome calls for durable authored content to
+Create or revise a document when the requested outcome calls for durable authored content to
 retain, revise or share. A Task does not in itself require a document: self-contained answers and
 completion confirmations stay in the conversation, operational state in the relevant business
 record. Do not add a document solely to record an action or demonstrate completion. Preserve the
@@ -47,13 +47,24 @@ mandatory system services, alongside Galaris and Conversation. Their connections
 The effective catalog still applies context restrictions and resource ACLs; optional bridges
 can still be disabled.
 
-With the required functions available, search for and enrich the relevant document.
+With the required functions available, search for and revise the relevant document.
 Create a new document only when the content needs a separate home, using
 `file_create(path="document://", name="Title", content="<p>HTML content.</p>")`.
 Its URI remains the reference across research, drafting, review, Tasks
 and conversations. Keep sources and links to related documents in it; media remain canonical
 resources or attachments. Conversations carry discussion and concise handoffs without maintaining
 a competing copy of the document body.
+
+For prose updates, integrate corrections into the relevant passages within the requested scope
+and merge repetition.
+Preserve useful facts, sources, qualifications, open questions, decision rationale and the
+meaning of contributions. Add distinct information; retain chronology when it serves the
+document, including journals, meeting minutes and audits. Revisions keep prior versions, so
+the body need not reproduce its edit history. Operational progress stays in Tasks or Goals
+unless it is part of the requested document. Prefer a focused `file_edit`; a complete
+replacement with `file_write` requires reading all content needed to preserve it. Adapt
+concision to the purpose without systematic shortening or full rewrites. This editorial
+guidance does not call for compacting Dataset entries or code.
 
 A new document is private. `memory_sharing` resolves the human, agent or team recipient and
 the sharing version; `document_share` grants `read` or `edit` before handoff. A link or

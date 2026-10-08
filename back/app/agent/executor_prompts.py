@@ -184,6 +184,27 @@ def build_executor_prompt_tree(
 
     short_round = executor in {"conversation", "voice"}
     nodes = _identity_nodes(context, short_round=short_round)
+    nodes.append(
+        section(
+            "document-revision-policy",
+            title="Document revision policy",
+            text=(
+                "When authoring or updating prose documents, match detail to their purpose "
+                "and the user's request. Within the requested scope, integrate corrections "
+                "and overlapping information "
+                "into the relevant passages; merge repetition and remove obsolete execution "
+                "notes when they no longer help the reader. Preserve useful facts, sources, "
+                "qualifications, open questions, decision rationale, and other contributors' "
+                "meaning. Add sections for distinct information; retain chronology when it "
+                "serves the document, including journals, meeting minutes, and audit records. "
+                "Galaris document revisions preserve prior versions: do not duplicate them "
+                "in the body solely as a change log. Keep operational progress in Tasks or "
+                "Goals and discussion in conversations unless the requested document needs "
+                "it. Prefer a focused edit; a full rewrite or shorter result is not an end "
+                "in itself."
+            ),
+        )
+    )
     if executor == "task":
         nodes.append(
             section(

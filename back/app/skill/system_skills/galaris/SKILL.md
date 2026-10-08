@@ -179,7 +179,9 @@ durable authored content, Galaris documents are its canonical home. Build on the
 across research, drafting, review, collaboration and delivery. Keep sources and related resource URIs in it, link complementary
 documents, and pass its exact `document://` URI between Tasks and conversations instead of
 maintaining competing Markdown or HTML files. Chat carries the discussion and a concise handoff;
-the document holds the evolving content. See “Working documents” for creation and sharing.
+the document holds the useful authored content. Integrate prose corrections into the relevant
+passages, preserve useful detail, and add distinct information as needed; prior versions remain
+in the document's revisions. See “Working documents” for editing, creation and sharing.
 
 If a required operation is unavailable in the current context, explain the delivery limitation
 and use only the exposed capabilities. Optional bridges retain their own activation settings;
@@ -266,7 +268,8 @@ Dataset allows 30 writes and 4,000,000 resulting bytes per minute. On `limit`, w
 and reread before a new submission; do not reload or create another document to evade limits.
 
 Example: `file_create(path="document://", name="Investigation", content="<h2>Findings</h2><p>Verified evidence.</p>")`.
-Then read its exact URI before appending `"<p>Additional evidence.</p>"` with its revision.
+For a correction, read its exact URI, then use `file_edit` on the relevant numbered blocks with
+the observed revision. Append a new finding only when it adds distinct information.
 
 Apply the same contract when delegating: `task_run(..., objective="<p>Review the evidence in
 <a href='document://DOCUMENT_UUID'>the working document</a> and report discrepancies.</p>")`.
@@ -951,8 +954,9 @@ the durable identity.
 - `file_edit("document://<uuid>", start_line, end_line, content, expected_revision=...)` replaces
   one inclusive top-level HTML block range, or actual lines for a Dataset. Read it first;
   a stale revision is never guessed.
-- `file_append("document://<uuid>", content, expected_revision=...)` adds HTML findings without
-  resending the existing document. Read its current revision first.
+- `file_append("document://<uuid>", content, expected_revision=...)` adds distinct HTML content
+  or chronological entries when appropriate. For corrections or overlapping findings, use
+  `file_edit` on the relevant blocks. Read the current revision first.
 - Every actual document-content change creates an immutable restorable content revision. Title,
   folder, ownership, sharing, keywords, and attachment changes never create content revisions.
 - `file_list("document://<uuid>/attachments/")` lists the document's attachments. Pass an exact
@@ -1021,10 +1025,22 @@ requests that format or the result requires it, such as standalone source code. 
 forms and applications backed by Datasets use ordinary HTML, CSS and JavaScript in documents.
 An HTML document's body is an editorial HTML fragment; that does not make it a standalone HTML
 page. For shared structured data, create a Dataset document containing valid JSON instead.
-Search first and enrich a relevant existing document; create a new one only when the content
+Search first and revise a relevant existing document; create a new one only when the content
 needs a separate home. Preserve its exact returned URI. Follow the current foreground/Task
 action policy for creation and editing. Use `memory_remember` for concise facts or decisions
 only when they meet the criteria in “When to index” below.
+
+For prose updates, read the relevant passages and integrate corrections within the requested
+scope. Merge repetition and remove obsolete execution notes when they no longer help the reader. Preserve useful facts,
+sources, qualifications, open questions, decision rationale, and other contributors' meaning.
+Add a section when it brings distinct information; retain chronology in journals, meeting
+minutes, audit records, or any document whose purpose needs it. Galaris keeps prior content
+versions in restorable revisions, so a working document need not reproduce its edit history.
+Keep operational progress in Tasks or Goals and discussion in conversations unless the requested
+document needs them. Prefer a focused `file_edit`. Use `file_write` for a justified complete
+revision only after reading all content needed to preserve it, following pagination as needed.
+Neither a shorter document nor a full rewrite is a goal in itself; leave useful unaffected
+content in place. This editorial guidance does not call for compacting Dataset entries or code.
 
 New documents are private. Before handing a document to an intended human, agent or team, inspect
 `memory_sharing` and grant that recipient `read` access, or `edit` for collaboration, using
@@ -1037,7 +1053,8 @@ For collaboration on a document:
 2. Inspect `memory_sharing`, then call `document_share(..., access="edit")` for the selected
    agent or team before `task_run`.
 3. Put the document URI and the requested section in the delegated Task's HTML objective.
-4. Each agent reads only the relevant passage, then calls `file_edit` or `file_append`.
+4. Each agent reads the relevant passages, then integrates corrections with `file_edit` or adds
+   distinct information with `file_append`, preserving the other contributors' useful content.
 5. Keep conclusions in the document. Use `memory_remember` separately only for the rare cases
    described below; finishing a collaboration does not itself warrant a memory write.
 

@@ -39,6 +39,15 @@ def test_every_executor_prompt_is_a_json_tree_with_the_suffix_last() -> None:
         assert tree["children"][-1]["source"] == EXECUTOR_SUFFIX_SOURCE
         assert json.loads(json.dumps(tree, ensure_ascii=False)) == tree
         rendered = render_prompt_tree(tree)
+        # The editorial policy must reach every executor even without a loaded skill
+        # and with a custom personality. This checks delivery, not model compliance.
+        revision_policies = [
+            node for node in tree["children"]
+            if node["key"] == "document-revision-policy"
+        ]
+        assert len(revision_policies) == 1
+        assert revision_policies[0]["text"]
+        assert revision_policies[0]["text"] in rendered
         assert rendered.endswith(
             "## Custom behavior\n\nAlways preserve the requested outcome."
         )

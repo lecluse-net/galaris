@@ -19,7 +19,10 @@ rewrite of that request. Together, source request and context must make the Task
   do not absorb an existing Task's independent objective just because both use the same
   document or resource. Keep relevant shared inputs and preservation constraints;
 - when modifying a shared resource, require reading its current content at execution time
-  and preserving existing contributions, including those completed after this Task was queued;
+  and preserving useful information and the meaning of existing contributions, including those
+  completed after this Task was queued. Within the assigned scope, corrections and overlapping
+  prose may be integrated rather than appended; do not discard distinct facts, requirements or
+  unresolved questions merely to shorten the document;
 - when the user requests work again after a Task failed, preserve the relevant recorded error,
   verified partial results and latest corrections. Require reassessing the failed approach and
   checking prior effects before repeating them; never invent a diagnosis or silently reuse the
