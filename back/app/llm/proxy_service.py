@@ -35,6 +35,7 @@ from .provider_facade import (
 from .resource_discovery import provider_connection
 from .generation_capacity import apply_generation_capacity
 from .call_deadline import LLMCallDeadline
+from .responses_stream import complete_function_argument_deltas
 from .responses_trace import (
     ResponsesStreamTrace,
     request_messages as responses_request_messages,
@@ -1182,7 +1183,8 @@ async def proxy_responses(
         stream_completed = False
         last_partial_update = 0.0
         try:
-            async for line in deadline.iterate(upstream.aiter_lines(), completed=lambda: stream_trace.terminal):
+            lines = deadline.iterate(upstream.aiter_lines(), completed=lambda: stream_trace.terminal)
+            async for line in complete_function_argument_deltas(lines):
                 decoded_event: dict[str, Any] | None = None
                 if line.startswith("data:"):
                     data = line[5:].strip()

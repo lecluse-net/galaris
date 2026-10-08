@@ -21,6 +21,7 @@ from app.llm.responses_trace import (
     request_messages as responses_request_messages,
     response_trace as responses_response_trace,
 )
+from app.llm.responses_stream import complete_function_argument_deltas
 from app.llm.trace import (
     StreamTrace,
     agent_run_id_from_messages,
@@ -905,15 +906,23 @@ async def test_proxy_chat_completion_rejects_taskless_managed_runtime() -> None:
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("model_name", ["gpt-5.6-terra", "gpt-6-astra"])
+@pytest.mark.parametrize("argument_delivery", ["nonstream", "done", "partial", "delta", "item_done", "added"])
 async def test_proxy_responses_uses_frozen_model_code_and_native_provider_payload(
     monkeypatch: pytest.MonkeyPatch,
     model_name: str,
+    argument_delivery: str,
 ) -> None:
     call_id = uuid4()
     task_id = uuid4()
     run_id = uuid4()
     process_run_id = uuid4()
     captured: dict[str, object] = {}
+    arguments = ['{"uri":"document://synthetic"}', '{"id":42,"include":["children"]}']
+    items = [
+        {"id": f"fc-{index}", "type": "function_call", "call_id": f"call-{index}",
+         "name": name, "arguments": args, "status": "completed"}
+        for index, (name, args) in enumerate(zip(["read_resource", "lookup_issue"], arguments))
+    ]
 
     class FakeProvider:
         id = 2
@@ -928,6 +937,32 @@ async def test_proxy_responses_uses_frozen_model_code_and_native_provider_payloa
         headers = httpx.Headers()
         is_success = True
         status_code = 200
+
+        async def aiter_lines(self):
+            events = []
+            for index, item in enumerate(items):
+                events.append({"type": "response.output_item.added", "output_index": index,
+                               "item": {**item, "arguments": item["arguments"] if argument_delivery == "added" else "",
+                                        "status": "in_progress"}})
+            for index in reversed(range(len(items))):
+                item = items[index]
+                if argument_delivery in {"partial", "delta"}:
+                    fragment = arguments[index] if argument_delivery == "delta" else arguments[index][:8]
+                    events.append({"type": "response.function_call_arguments.delta", "output_index": index,
+                                   "item_id": item["id"], "delta": fragment})
+                if argument_delivery != "item_done":
+                    events.append({"type": "response.function_call_arguments.done", "output_index": index,
+                                   "item_id": item["id"], "arguments": arguments[index]})
+                events.append({"type": "response.output_item.done", "output_index": index, "item": item})
+            events.append({"type": "response.completed", "response": {
+                "id": "resp-stream", "object": "response", "created_at": 1,
+                "model": model_name, "status": "completed", "output": items,
+                "usage": {"input_tokens": 10, "output_tokens": 2, "total_tokens": 12, "cost": 0.04},
+            }})
+            for sequence, event in enumerate(events):
+                yield f'event: {event["type"]}'
+                yield "data: " + json.dumps({"sequence_number": sequence, **event})
+                yield ""
 
         async def aread(self) -> bytes:
             return (
@@ -1009,6 +1044,7 @@ async def test_proxy_responses_uses_frozen_model_code_and_native_provider_payloa
     )
     monkeypatch.setattr(proxy_service.llm_call_service, "create_running_call", create_call)
     monkeypatch.setattr(proxy_service.llm_call_service, "finalize_call", finalize_call)
+    monkeypatch.setattr(proxy_service.llm_call_service, "update_running_call", AsyncMock())
     monkeypatch.setattr(proxy_service.httpx, "AsyncClient", FakeAsyncClient)
     monkeypatch.setattr(proxy_service, "get_db_session", lambda: FakeDbSession())
 
@@ -1017,7 +1053,7 @@ async def test_proxy_responses_uses_frozen_model_code_and_native_provider_payloa
             "model": "gpt-5.6-terra",
             "instructions": "Work carefully.",
             "input": [{"role": "user", "content": "Do it"}],
-            "stream": False,
+            "stream": argument_delivery != "nonstream",
             "temperature": 0.0,
             "top_p": 0.8,
         },
@@ -1030,6 +1066,30 @@ async def test_proxy_responses_uses_frozen_model_code_and_native_provider_payloa
     )
 
     assert response.status_code == 200
+    if argument_delivery != "nonstream":
+        import httpx2
+        from openai import AsyncOpenAI
+        from pydantic_ai.messages import ToolCallPart
+        from pydantic_ai.models import ModelRequestParameters
+        from pydantic_ai.models.openai import OpenAIResponsesModel
+        from pydantic_ai.providers.openai import OpenAIProvider
+        from app.llm.pydantic_ai_utils import _InternalByteStream
+
+        assert isinstance(response, StreamingResponse)
+        async def sdk_transport(request):
+            return httpx2.Response(200, headers=dict(response.headers),
+                                   stream=_InternalByteStream(response), request=request)
+
+        async with httpx2.AsyncClient(transport=httpx2.MockTransport(sdk_transport)) as http_client:
+            async with AsyncOpenAI(api_key="synthetic", http_client=http_client) as sdk:
+                model = OpenAIResponsesModel(model_name, provider=OpenAIProvider(openai_client=sdk))
+                async with model.request_stream([], None, ModelRequestParameters()) as stream:
+                    async for _ in stream:
+                        pass
+                    calls = [part for part in stream.get().parts if isinstance(part, ToolCallPart)]
+        assert [(part.tool_call_id, part.args_as_dict()) for part in calls] == [
+            (item["call_id"], json.loads(args)) for item, args in zip(items, arguments)
+        ]
     assert captured["resolved_model"] == "executor-terra"
     assert captured["url"] == "https://api.openai.test/v1/responses"
     assert captured["json"]["model"] == model_name  # type: ignore[index]
@@ -1041,9 +1101,7 @@ async def test_proxy_responses_uses_frozen_model_code_and_native_provider_payloa
     assert captured["call"]["reasoning_effort"] == "medium"  # type: ignore[index]
     assert captured["call"]["request_body"]["messages"][0]["role"] == "system"  # type: ignore[index]
     assert captured["finalize"]["trace"]["usage"]["cost"] == pytest.approx(0.04)  # type: ignore[index]
-    assert str(captured["finalize"]["raw_response"]).startswith(
-        '{"id":"resp-1","status":"completed"'
-    )
+    assert json.loads(captured["finalize"]["raw_response"])["status"] == "completed"
 
     compact_response = await proxy_service.proxy_responses(
         {
@@ -1065,6 +1123,44 @@ async def test_proxy_responses_uses_frozen_model_code_and_native_provider_payloa
     assert "reasoning_effort" not in captured["json"]  # type: ignore[operator]
     assert captured["stream"] is False
     assert captured["call"]["reasoning_effort"] is None  # type: ignore[index]
+
+
+@pytest.mark.asyncio
+async def test_responses_argument_completion_rejects_conflicting_final_snapshot() -> None:
+    events = [
+        {"type": "response.output_item.added", "output_index": 0, "item": {
+            "id": "fc-synthetic", "type": "function_call", "arguments": "",
+        }},
+        {"type": "response.function_call_arguments.delta", "item_id": "fc-synthetic",
+         "output_index": 0, "delta": '{"id":1'},
+        {"type": "response.function_call_arguments.done", "item_id": "fc-synthetic",
+         "output_index": 0, "arguments": '{"id":2}'},
+    ]
+
+    async def lines():
+        for event in events:
+            yield f'event: {event["type"]}'
+            yield "data: " + json.dumps(event)
+            yield ""
+
+    forwarded = []
+    with pytest.raises(RuntimeError, match="disagree"):
+        async for line in complete_function_argument_deltas(lines()):
+            forwarded.append(line)
+    assert not any("arguments.done" in line for line in forwarded)
+
+
+@pytest.mark.asyncio
+async def test_responses_argument_completion_preserves_other_sse_frames() -> None:
+    original = [": heartbeat", "", "event: response.output_text.delta",
+                'data: {"type":"response.output_text.delta",',
+                'data: "delta":"Bonjour ☀️", "sequence_number":4}', "", "data: [DONE]", ""]
+
+    async def lines():
+        for line in original:
+            yield line
+
+    assert [line async for line in complete_function_argument_deltas(lines())] == original
 
 
 @pytest.mark.asyncio

@@ -2150,6 +2150,7 @@
           "back/app/llm/personal_service.py",
           "back/app/llm/provider_quota.py",
           "back/app/llm/proxy_service.py",
+          "back/app/llm/responses_stream.py",
           "back/app/llm/responses_trace.py",
           "back/app/llm/trace.py",
           "back/app/llm/transcription_service.py",
