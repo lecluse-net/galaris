@@ -21,6 +21,74 @@ from app.task.models import Task, TaskAttempt, TaskAttemptStatus, TaskStatus
 
 
 @pytest.mark.asyncio
+async def test_authorization_wait_survives_checkpoint_and_releases_claim(committed_database):
+    """A driver's authorization UUIDs must survive real JSONB persistence."""
+    from app.agent import executor_service
+    from app.task import scheduler, task_service
+
+    token = uuid4()
+    authorization_ids = [uuid4(), uuid4()]
+    checkpoint = {"runtime_run_id": "synthetic-authorization-run", "resume_safe": True}
+    result = ExecutionResult(
+        prompt="<p>Perform the authorized action.</p>",
+        result="Waiting for approval",
+        success=False,
+        schema_version="galaris.execution-result/v2",
+        disposition="waiting_for_authorization",
+        authorization_requests=authorization_ids,
+        metadata={"runtime_run_id": checkpoint["runtime_run_id"]},
+    )
+    async with get_db_session() as db:
+        task = Task(
+            label="Synthetic authorization wait", objective=result.prompt,
+            status=TaskStatus.EXEC, cost=0.25,
+            lease_token=token,
+            lease_expires_at=datetime.now(timezone.utc) + timedelta(minutes=5),
+            data={"existing": "keep"},
+        )
+        db.add(task)
+        await db.flush()
+        attempt = TaskAttempt(
+            task_id=task.id, attempt_number=1, phase="DISPATCH",
+            status=TaskAttemptStatus.CLAIMED.value, worker_id="test-worker",
+            lease_token=token, data={"base_cost": 0.25},
+        )
+        db.add(attempt)
+        await db.flush()
+        task_id, attempt_id = task.id, attempt.id
+
+    await SqlAlchemyAgentTaskAdapter().persist_agent_run_state(
+        task_id, expected_objective=result.prompt, expected_attempt_id=attempt_id,
+        data_patch={"_agent_run_checkpoint": checkpoint}, execution_result=result,
+    )
+    async with get_db_session() as db:
+        task = await db.get(Task, task_id)
+        assert task.get_execution_result() == result
+        await executor_service._update_task_after_execution(task, result, base_cost=0.25)
+
+    await scheduler._complete_claim(task_id, TaskStatus.DISPATCH, token)
+
+    async with get_db_session() as db:
+        task = await db.get(Task, task_id)
+        attempt = await db.get(TaskAttempt, attempt_id)
+        assert task.status == TaskStatus.EXEC
+        assert task_service.is_paused_for(task, task_service.PAUSE_APPROVAL)
+        assert task.execution_result["authorization_requests"] == [str(value) for value in authorization_ids]
+        assert task.get_execution_result() == result
+        assert task.data["authorization_requests"] == [str(value) for value in authorization_ids]
+        assert task.data["_agent_run_checkpoint"] == checkpoint
+        assert task.data["existing"] == "keep"
+        assert attempt.data["agent_checkpoint"] == checkpoint
+        assert attempt.status == TaskAttemptStatus.WAITING_APPROVAL.value
+        assert attempt.finished_at is not None
+        assert attempt.error is None
+        assert task.lease_token is None
+        assert task.lease_expires_at is None
+        assert task.next_attempt_at is None
+        assert task.consecutive_failures == 0
+
+
+@pytest.mark.asyncio
 @pytest.mark.parametrize("operation", ["checkpoint", "progress", "event", "activate", "resource", "capsule"])
 async def test_run_writes_do_not_wait_for_uncommitted_llm_trace(
     committed_database, operation,

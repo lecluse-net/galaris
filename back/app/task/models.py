@@ -237,7 +237,7 @@ class Task(HistoryMixin, Base):
 
     def set_execution_result(self, result: "ExecutionResult") -> None:
         """Store ``execution_result`` from a Pydantic object."""
-        self.execution_result = result.model_dump()
+        self.execution_result = result.model_dump(mode="json")
 
 
 class TaskAmendment(Base):
