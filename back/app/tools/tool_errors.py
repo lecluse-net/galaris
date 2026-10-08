@@ -173,6 +173,7 @@ def classify_tool_failure(exc: Exception) -> ToolFailure:
     safe_domain_errors = {
         "GoalRevisionConflict",
         "MemoryConflictError",
+        "MemorySafetyError",
         "ResourceValidationError",
         "ResourceRevisionConflict",
         "ResourceUriError",

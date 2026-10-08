@@ -20,6 +20,19 @@ _SECRET_FIELD_RE = re.compile(
 )
 
 
+class MemorySafetyError(ValueError):
+    """A credential rejection with a fixed, model-safe diagnostic."""
+
+
+def _is_secret_label(text: str, start: int) -> bool:
+    """Recognize a field label at a line, HTML or configuration boundary."""
+
+    cursor = start - 1
+    while cursor >= 0 and text[cursor] not in "\r\n" and text[cursor].isspace():
+        cursor -= 1
+    return cursor < 0 or not (text[cursor].isalnum() or text[cursor] == "_")
+
+
 def redact_secrets(text: str) -> str | None:
     """Return redacted text, or ``None`` for non-salvageable key material."""
 
@@ -27,6 +40,14 @@ def redact_secrets(text: str) -> str | None:
         return None
 
     def redact_assignment(match: re.Match[str]) -> str:
+        # 'secret' is also an ordinary noun in prose. A colon is a field
+        # separator only at a label boundary; '=' remains an assignment anywhere.
+        if (
+            match.group(1).casefold() == "secret"
+            and ":" in match.group(2)
+            and not _is_secret_label(text, match.start())
+        ):
+            return match.group(0)
         value = match.group(3)
         if value.casefold() in _SAFE_PLACEHOLDERS:
             return match.group(0)
@@ -41,7 +62,7 @@ def assert_safe_text(text: str) -> None:
 
     filtered = redact_secrets(text)
     if filtered is None or filtered != text:
-        raise ValueError(
+        raise MemorySafetyError(
             "Memory content contains credential-like material; redact it before storing."
         )
 
@@ -59,7 +80,7 @@ def assert_safe_value(value: object) -> None:
             if _SECRET_FIELD_RE.fullmatch(key):
                 normalized = str(child or "").strip().casefold()
                 if normalized and normalized not in _SAFE_PLACEHOLDERS:
-                    raise ValueError(
+                    raise MemorySafetyError(
                         "Memory metadata contains credential-like material; "
                         "redact it before storing."
                     )
@@ -71,4 +92,4 @@ def assert_safe_value(value: object) -> None:
             assert_safe_value(child)
 
 
-__all__ = ["assert_safe_text", "assert_safe_value", "redact_secrets"]
+__all__ = ["MemorySafetyError", "assert_safe_text", "assert_safe_value", "redact_secrets"]

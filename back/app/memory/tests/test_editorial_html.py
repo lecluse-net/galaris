@@ -18,6 +18,50 @@ def png():
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("operation", ["create", "append", "edit", "write"])
+async def test_document_writes_preserve_prose_about_a_secret(agents, memory_storage, operation):
+    from app.file_share import ResourceContext, resource_service
+
+    owner, _ = agents
+    ctx = ResourceContext(agent_id=owner.id, runtime="internal")
+    # Entirely synthetic prose: a long valid block must not acquire an arbitrary
+    # size restriction just because a common noun precedes a colon.
+    passage = "<p>Voici notre secret : les étoiles éclairent le jardin. " + "Un nouveau détail. " * 250 + "</p>"
+    document = await create_document(owner_agent_id=owner.id, title="Synthetic story", content="<p>Original</p>", task_id=None)
+    uri = f"document://{document.id}"
+
+    if operation == "create":
+        created = await resource_service.resource_create(ctx, "document://", passage.encode(), name="Synthetic prose")
+        uri = created.uri
+    elif operation == "append":
+        await resource_service.resource_append(ctx, uri, passage, expected_revision=1)
+    elif operation == "edit":
+        await resource_service.resource_edit(ctx, uri, start_line=1, end_line=1, content=passage, expected_revision=1)
+    else:
+        await resource_service.resource_write(ctx, uri, passage.encode(), expected_revision=1)
+
+    current = await resource_service.resource_read(ctx, uri)
+    assert passage in current.content
+    assert current.revision == (1 if operation == "create" else 2)
+    if operation == "append":
+        assert "<p>Original</p>" in current.content
+
+    unsafe = "<p>secret : synthetic-credential</p>"
+    with pytest.raises(ValueError, match="credential-like"):
+        if operation == "create":
+            await resource_service.resource_create(ctx, "document://", unsafe.encode(), name="Unsafe prose")
+        elif operation == "append":
+            await resource_service.resource_append(ctx, uri, unsafe, expected_revision=current.revision)
+        elif operation == "edit":
+            await resource_service.resource_edit(ctx, uri, start_line=1, end_line=1, content=unsafe, expected_revision=current.revision)
+        else:
+            await resource_service.resource_write(ctx, uri, unsafe.encode(), expected_revision=current.revision)
+    unchanged = await resource_service.resource_read(ctx, uri)
+    assert unchanged.content == current.content
+    assert unchanged.revision == current.revision
+
+
+@pytest.mark.asyncio
 async def test_file_mutation_diagnostics_preserve_document_content_and_revision(agents, memory_storage):
     from app.file_share.resource_contracts import ResourceContext
     from app.file_share import resource_service

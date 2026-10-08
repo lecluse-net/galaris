@@ -251,7 +251,10 @@ def parse_resource_uri(
                 attachment_id = str(UUID(unquote(parts[2])))
             except ValueError as exc:
                 raise ResourceUriError(
-                    "A document attachment URI requires a valid attachment UUID."
+                    "A document attachment URI requires a valid attachment UUID. "
+                    "To add a file, copy into document://<document-uuid>/attachments/ "
+                    "without a filename, or use file_create on that collection with name. "
+                    "Use the returned attachment URI for subsequent reads and embedding."
                 ) from exc
             normalized = f"{document_id}/attachments/{attachment_id}"
         else:

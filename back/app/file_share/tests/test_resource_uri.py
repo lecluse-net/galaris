@@ -62,8 +62,14 @@ def test_memory_and_document_uris_accept_only_their_canonical_shapes() -> None:
     ) == f"document://{identifier}/attachments/{attachment_id}"
     with pytest.raises(ResourceUriError):
         parse_resource_uri("document://folder/report.md")
-    with pytest.raises(ResourceUriError):
+    with pytest.raises(ResourceUriError) as invalid_attachment:
         parse_resource_uri(f"document://{identifier}/attachments/not-a-uuid")
+    from app.tools.tool_errors import classify_tool_failure
+
+    diagnostic = classify_tool_failure(invalid_attachment.value)
+    assert diagnostic.kind == "actionable"
+    assert "attachments/" in diagnostic.detail
+    assert "without a filename" in diagnostic.detail
 
 
 @pytest.mark.parametrize(
