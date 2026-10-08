@@ -37,6 +37,23 @@ async function drop(page, files) {
   }, payload)
 }
 
+test('Insert attachment opens a file picker and inserts the uploaded file at the cursor', async ({ page }) => {
+  await setup(page)
+  const picker = page.waitForEvent('filechooser')
+  await page.getByRole('button', { name: 'Insert attachment', exact: true }).click()
+  await (await picker).setFiles(file('picked.txt'))
+  await expect(page.getByRole('dialog')).toHaveCount(0)
+  await expect(page.getByRole('status')).toContainText('picked.txt')
+  await page.evaluate(() => window.uploads[0].finish())
+  await expect(page.getByRole('status')).toHaveCount(0)
+  const content = page.locator('.ck-editor__editable')
+  await expect(content).toContainText('picked.txt')
+  const html = await content.innerHTML()
+  expect(html.indexOf('Before')).toBeLessThan(html.indexOf('picked.txt'))
+  expect(html.indexOf('picked.txt')).toBeLessThan(html.indexOf('After'))
+  expect(await page.evaluate(() => window.testApp.events.filter(event => event.name === 'update:modelValue').at(-1).value)).toContain(uri)
+})
+
 test('dropped files retain their insertion point while typing elsewhere and keep file order', async ({ page }) => {
   await setup(page)
   await drop(page, [file('first.txt'), file('second.txt')])

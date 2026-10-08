@@ -16,7 +16,7 @@ export function editorToolbarGroups(document: boolean, voice = false, hiddenGrou
       : [['undo', 'redo', 'findAndReplace'], ['selectAll', 'removeFormat']] },
     { name: 'text', rows: [['fontFamily', 'fontSize', 'bold', 'italic', 'underline'], ['strikethrough', 'subscript', 'superscript', 'code', 'fontColor', 'fontBackgroundColor', 'highlight']] },
     { name: 'paragraph', rows: [['heading', 'style'], ['bulletedList', 'numberedList', 'alignment', 'outdent', 'indent']] },
-    { name: 'insert', rows: [['link', 'galarisLink', ...(document ? ['uploadImage', 'documentAttachments'] : []), 'insertTable'], ['blockQuote', 'codeBlock', 'horizontalLine', 'specialCharacters']] },
+    { name: 'insert', rows: [['link', 'galarisLink', ...(document ? ['uploadImage', 'documentUploadFile'] : []), 'insertTable'], ['blockQuote', 'codeBlock', 'horizontalLine', 'specialCharacters']] },
   ]
     .filter(group => (document || group.name !== 'insert') && !hiddenGroups.some(name => name === group.name))
     .map(group => ({ ...group, items: group.rows.flat() }))
@@ -64,7 +64,7 @@ export function registerEditorToolbarGroups(editor: Editor, document: boolean, t
     toolbar.fillFromConfig([
       'undo', 'redo', 'bold', 'italic', 'removeFormat', 'heading', 'style', 'bulletedList', 'numberedList',
       ...(voice ? ['documentDictation', 'documentReading'] : []),
-      'link', 'galarisLink', ...(document ? ['uploadImage', 'documentAttachments'] : []),
+      'link', 'galarisLink', ...(document ? ['uploadImage', 'documentUploadFile'] : []),
       ...(document ? ['documentShare', 'accessibilityHelp'] : []),
     ].filter(command => !hiddenCommands.has(command)), editor.ui.componentFactory)
     for (const item of toolbar.items) {

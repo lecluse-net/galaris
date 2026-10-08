@@ -79,10 +79,9 @@ import type { RenderedDocumentCapture, RenderedDocumentResolver } from '../rende
 import { createDocumentPdf, exportDocumentPdf } from '../exportDocumentPdf'
 import { saveBlobAsResource } from '../resourceViewer'
 import '../ckeditorTheme.css'
-const { modelValue, mediaType = 'text/html', profile = 'rich-text', readonly = false, minHeight = '240px', maxHeight = '70vh', autoGrow = false, ariaLabel = '', documentTitle = '', documentUrl = '', exportPdf, exportBundle, uploadImage, uploadFile, importImage, resolveImage, attachments = [], createLinkCard, manageAttachments = false, hiddenToolbarGroups = [], singleRowToolbar = false } = defineProps<{
+const { modelValue, mediaType = 'text/html', profile = 'rich-text', readonly = false, minHeight = '240px', maxHeight = '70vh', autoGrow = false, ariaLabel = '', documentTitle = '', documentUrl = '', exportPdf, exportBundle, uploadImage, uploadFile, importImage, resolveImage, attachments = [], createLinkCard, hiddenToolbarGroups = [], singleRowToolbar = false } = defineProps<{
   modelValue: string; mediaType?: string; profile?: ContentProfile; readonly?: boolean; minHeight?: string; maxHeight?: string; autoGrow?: boolean; ariaLabel?: string
   attachments?: DocumentResource[]
-  manageAttachments?: boolean
   hiddenToolbarGroups?: readonly EditorToolbarGroupName[]
   singleRowToolbar?: boolean
   createLinkCard?: (url: string) => Promise<string>
@@ -95,7 +94,7 @@ const { modelValue, mediaType = 'text/html', profile = 'rich-text', readonly = f
   importImage?: (url: string, signal: AbortSignal) => Promise<string>
   resolveImage?: (documentId: string, attachmentId: string) => Promise<Blob>
 }>()
-const emit = defineEmits<{ 'manage-attachments': []; 'update:modelValue': [value: string]; 'open-attachment': [documentId: string, attachmentId: string] }>()
+const emit = defineEmits<{ 'update:modelValue': [value: string]; 'open-attachment': [documentId: string, attachmentId: string] }>()
 const { t, locale } = useI18n()
 const $q = useQuasar()
 const editor = shallowRef<ClassicEditor>()
@@ -119,7 +118,6 @@ const documentFitsFixedWidth = ref(true)
 const effectiveDocumentLayout = computed(() => documentFitsFixedWidth.value ? documentLayout.value : 'full')
 const importingHtml = ref(false)
 let importRequest: AbortController | undefined
-let resourceSelection: ModelSelection | undefined
 const linkOpen = ref(false), linkLabel = ref('')
 const pdfPreview = shallowRef<PdfPreviewSource | null>(null)
 const shareOpen = ref(false), sharePreparing = ref(false), sharing = ref(false), shareError = ref('')
@@ -247,7 +245,6 @@ class GalarisIntegration extends Plugin {
     })
     if (profile === 'document') {
       for (const [name, icon, action] of [
-        ['documentAttachments', gnomeEditorIcon('document-open'), () => { resourceSelection = current.model.createSelection(current.model.document.selection); emit('manage-attachments') }],
         ['documentExportBundle', documentArchiveIcon, () => {
           if (!exportBundle) return
           exportingBundle?.abort(); const request = new AbortController(); exportingBundle = request
@@ -257,7 +254,6 @@ class GalarisIntegration extends Plugin {
       ] as const) current.ui.componentFactory.add(name, locale => {
         const button = new ButtonView(locale)
         button.set({ label: t('richEditor.resources.' + name), icon, tooltip: true })
-        if (name === 'documentAttachments') button.isEnabled = manageAttachments
         if (name === 'documentExportBundle') button.isEnabled = Boolean(exportBundle)
         button.on('execute', () => {
           const result = action()
@@ -473,12 +469,10 @@ function ready(current: ClassicEditor): void {
 function insertResource(html: string): void {
   const current = editor.value
   if (!current || readonly) return
-  current.model.change(writer => {
-    if (resourceSelection) writer.setSelection(resourceSelection)
+  current.model.change(() => {
     const fragment = current.data.toModel(current.data.processor.toView(sanitizeRichHtml(html, profile)))
     current.model.insertContent(fragment)
   })
-  resourceSelection = undefined
   current.editing.view.focus()
 }
 async function importHtml(html: string, current: Editor): Promise<void> {
@@ -586,7 +580,7 @@ watch(() => modelValue, value => {
   exportingPdf?.abort()
   exportingBundle?.abort()
   linkOpen.value = false
-  importRequest?.abort(); resourceSelection = undefined
+  importRequest?.abort()
   linkSelection = undefined
   applyingExternal = true
   lastEmitted = value
@@ -602,7 +596,7 @@ watch([() => profile, locale, () => hiddenToolbarGroups.join(','), () => singleR
   exportingPdf?.abort()
   exportingBundle?.abort()
   linkOpen.value = false
-  importRequest?.abort(); resourceSelection = undefined
+  importRequest?.abort()
   linkSelection = undefined
   editor.value = undefined
   editorData.value = sourceHtml(modelValue)

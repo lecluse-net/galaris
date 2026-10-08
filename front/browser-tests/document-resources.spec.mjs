@@ -121,7 +121,7 @@ test('the card action is hidden for links that cannot become preview cards', asy
 })
 
 // Direct upload remains covered through paste after removal of its toolbar shortcut.
-for (const directUpload of [false, true]) test(`the document ${directUpload ? 'uploads and inserts a pasted file' : 'inserts an existing attachment from its toolbar'}`, async ({ page }) => {
+for (const directUpload of [false, true]) test(`the document ${directUpload ? 'uploads and inserts a pasted file' : 'inserts an existing attachment from the list below its content'}`, async ({ page }) => {
   const current = { ...documentFixture, id: documentId, media_type: 'text/html', content_profile: 'document', payload: { text: '<p>Report</p>' } }
   const attachment = { id: attachmentId, name: 'scene.html', media_type: 'text/html', size_bytes: 850305 }
   await jsonRoute(page, '**/api/agents?*', [agent])
@@ -158,18 +158,15 @@ for (const directUpload of [false, true]) test(`the document ${directUpload ? 'u
     })
     await expect.poll(() => uploaded).toBe(true)
   } else {
-    await page.getByRole('button', { name: 'Attachments', exact: true }).click()
-    await expect(page.getByRole('dialog')).toContainText('scene.html')
-    await page.locator('.q-dialog .document-attachments__item').hover()
+    await page.locator('.document-attachments__item').hover()
     const insert = page.getByRole('button', { name: 'Insert into document', exact: true })
     await insert.click()
   }
   await expect(page.getByRole('dialog')).toHaveCount(0)
   await expect(page.locator('.ck-editor__editable .galaris-link-card')).toContainText('scene.html')
-  await expect(page.locator('.document-attachments')).not.toBeVisible()
+  await expect(page.locator('.document-attachments')).toBeVisible()
+  await expect(page.locator('.document-attachments')).not.toContainText('scene.html')
   await expect.poll(() => current.payload.text).toContain(uri)
-  await page.getByRole('button', { name: 'Attachments', exact: true }).click()
-  await expect(page.getByRole('dialog')).toContainText('scene.html')
   await expect(page.getByRole('button', { name: 'Insert into document', exact: true })).toHaveCount(0)
 })
 
@@ -379,6 +376,54 @@ test('attachment links in the text open their viewer', async ({ page }) => {
   await expect.poll(() => page.evaluate(() => window.testApp.events.find(event => event.name === 'open-attachment')?.args)).toEqual([documentId, attachmentId])
 })
 
+test('document attachments upload below the content, retry after failure and remain available after reopening', async ({ page }, testInfo) => {
+  const current = { ...documentFixture, id: documentId, media_type: 'text/html', content_profile: 'document', payload: { text: '<p>Report content</p>' } }
+  const files = []
+  let failUpload = true
+  await jsonRoute(page, '**/api/agents?*', [agent])
+  await jsonRoute(page, '**/api/memory/documents/owner-options?*', { agents: [{ id: 7, kind: 'agent', label: 'Alice' }], users: [] })
+  await jsonRoute(page, '**/api/memory/documents/keywords?*', [])
+  await jsonRoute(page, '**/api/memory/documents/folders?*', [])
+  await page.route(`**/api/memory/documents/${documentId}/attachments?*`, route => {
+    if (route.request().method() === 'GET') return route.fulfill({ json: files })
+    if (failUpload) { failUpload = false; return route.fulfill({ status: 503, json: { detail: 'Synthetic upload failure' } }) }
+    const attachment = { id: attachmentId, name: 'report.bin', media_type: 'application/octet-stream', size_bytes: 6 }
+    files.push(attachment)
+    return route.fulfill({ json: attachment })
+  })
+  await page.route(`**/api/memory/documents/${documentId}?*`, route => route.fulfill({ json: { item: current } }))
+  const options = { props: { documentId, agentId: 7 }, privileges: ['MEMORY_EDIT'] }
+  await mount(page, 'core/util/components/WorkingDocumentEditor.vue', options)
+  const editor = page.locator('.ck-editor__editable')
+  const zone = page.getByRole('region', { name: 'Existing attachments not embedded in the document' })
+  await expect(editor).toContainText('Report content')
+  await expect(zone).toBeVisible()
+  await expect(page.getByRole('dialog')).toHaveCount(0)
+  const drop = () => zone.evaluate(root => {
+    const data = new DataTransfer()
+    data.items.add(new File(['Report'], 'report.bin', { type: 'application/octet-stream' }))
+    root.dispatchEvent(new DragEvent('drop', { dataTransfer: data, bubbles: true, cancelable: true }))
+  })
+  await drop()
+  await expect(page.getByText('Synthetic upload failure', { exact: false })).toBeVisible()
+  await expect(zone.getByRole('button', { name: 'Add', exact: true })).toBeEnabled()
+  await drop()
+  await expect(zone).toContainText('report.bin')
+  await expect(editor).toHaveText('Report content')
+  // Uploading to the list preserves the body and persists the attachment independently.
+  await mount(page, 'core/util/components/WorkingDocumentEditor.vue', options)
+  await expect(zone).toContainText('report.bin')
+  expect(await editor.evaluate(element => Boolean(element.compareDocumentPosition(document.querySelector('.document-attachments')) & Node.DOCUMENT_POSITION_FOLLOWING))).toBe(true)
+  await page.screenshot({ path: testInfo.outputPath('attachments-below-content.png'), fullPage: true })
+  await page.setViewportSize({ width: 390, height: 844 })
+  await expect(zone).toBeVisible()
+  await page.screenshot({ path: testInfo.outputPath('attachments-mobile.png'), fullPage: true })
+  await page.evaluate(() => window.testApp.dark(true))
+  await page.screenshot({ path: testInfo.outputPath('attachments-mobile-dark.png'), fullPage: true })
+  await page.setViewportSize({ width: 1440, height: 1000 })
+  await page.screenshot({ path: testInfo.outputPath('attachments-desktop-dark.png'), fullPage: true })
+})
+
 test('only attachments embedded as links or images disappear from the list below the document', async ({ page }) => {
   const secondId = '00000000-0000-0000-0000-000000000003'
   const secondUri = `document://${documentId}/attachments/${secondId}`
@@ -388,7 +433,7 @@ test('only attachments embedded as links or images disappear from the list below
   ]
   await page.route(`**/api/memory/documents/${documentId}/attachments/${secondId}?*`, route => route.fulfill({ status: 204 }))
   await mount(page, 'app/memory/components/DocumentAttachments.vue', { props: {
-    documentId, agentId: 7, editable: true, managerMode: true, attachments: files,
+    documentId, agentId: 7, editable: true, allowInsertion: true, attachments: files,
     content: `<p><a href="${uri}">Embedded</a></p><pre><code>${secondUri}</code></pre>`,
   } })
   const list = page.locator('.document-attachments')
@@ -640,7 +685,7 @@ test('dropping multiple files permits cancellation and explains removal of a use
     await new Promise(resolve => { finish = resolve })
     await route.fulfill({ json: { id: attachmentId, name: 'scene.html', media_type: 'text/html', size_bytes: 20 } }).catch(() => {})
   })
-  await mount(page, 'app/memory/components/DocumentAttachments.vue', { props: { documentId, agentId: 7, editable: true, attachments: [] } })
+  await mount(page, 'app/memory/components/DocumentAttachments.vue', { props: { documentId, agentId: 7, editable: true, allowInsertion: true, attachments: [] } })
   await page.locator('.document-attachments').evaluate(root => {
     const data = new DataTransfer()
     data.items.add(new File(['<html>Scene</html>'], 'scene.html', { type: 'text/html' }))
@@ -653,7 +698,8 @@ test('dropping multiple files permits cancellation and explains removal of a use
   finish()
   await expect(page.getByRole('button', { name: 'Cancel upload', exact: true })).toHaveCount(0)
   expect(uploads).toBe(1)
-  await page.evaluate(({ attachmentId, uri }) => window.testApp.setProps({ attachments: [{ id: attachmentId, name: 'data.bin', media_type: 'application/octet-stream', size_bytes: 20 }], content: `<p><a href="${uri}">Data</a></p>` }), { attachmentId, uri })
+  expect(await page.evaluate(() => window.testApp.events.filter(event => event.name === 'added'))).toEqual([])
+  await page.evaluate(({ attachmentId, uri }) => window.testApp.setProps({ allowInsertion: false, attachments: [{ id: attachmentId, name: 'data.bin', media_type: 'application/octet-stream', size_bytes: 20 }], content: `<p><a href="${uri}">Data</a></p>` }), { attachmentId, uri })
   await page.locator('.document-attachments__item').hover()
   await page.getByRole('button', { name: /Remove data.bin/ }).click()
   await expect(page.getByText('This file is still used in the text.', { exact: false })).toBeVisible()

@@ -12,7 +12,10 @@ async function command(page, name) {
 for (const profile of ['document', 'rich-text']) {
   test(`mobile ${profile} formatting remains usable across desktop transitions`, async ({ page }, testInfo) => {
     await page.setViewportSize({ width: profile === 'document' ? 320 : 390, height: 844 })
-    await mount(page, component, { props: { profile, manageAttachments: true, modelValue: '<p>Keep this text</p>' } })
+    await mount(page, component, { props: { profile, modelValue: '<p>Keep this text</p>' } })
+    if (profile === 'document') await page.evaluate(async component => window.testApp.mount({ component, props: {
+      profile: 'document', modelValue: '<p>Keep this text</p>', uploadFile: async () => 'document://00000000-0000-0000-0000-000000000001/attachments/00000000-0000-0000-0000-000000000002',
+    } }), component)
     const editor = page.locator('.ck-editor__editable')
     await editor.click()
     await page.keyboard.press('End')
@@ -31,8 +34,10 @@ for (const profile of ['document', 'rich-text']) {
     await page.getByRole('option', { name: 'Question', exact: true }).click()
     await expect(editor.locator('blockquote')).toContainText('Keep this text on mobile')
     if (profile === 'document') {
-      await command(page, 'Attachments')
-      await expect.poll(() => page.evaluate(() => window.testApp.events.some(event => event.name === 'manage-attachments'))).toBe(true)
+      const picker = page.waitForEvent('filechooser')
+      await command(page, 'Insert attachment')
+      await (await picker).setFiles([])
+      await expect(page.getByRole('dialog')).toHaveCount(0)
     }
     await page.screenshot({ path: testInfo.outputPath('mobile-toolbar.png') })
     await page.setViewportSize({ width: 1024, height: 900 })

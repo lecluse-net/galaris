@@ -1,9 +1,7 @@
 <template>
-  <q-dialog v-if="managerMode" v-model="managerOpen"><q-card class="galaris-dialog-card" style="width: 920px; max-width: 95vw"><q-card-section class="galaris-dialog-title row items-center"><div class="text-h6">{{ t('documents.attachments') }}</div><q-space /><q-btn v-close-popup flat round dense icon="close" :aria-label="t('common.close')" /></q-card-section><div ref="managerContent" class="q-pa-md galaris-dialog-body" /></q-card></q-dialog>
-  <Teleport :to="managerContent || 'body'" :disabled="!managerMode || !managerOpen">
-  <section v-if="!previewOnly" v-show="!managerMode || managerOpen || displayedAttachments.length" class="document-attachments" :class="{ 'document-attachments--drag': dragging }" @dragover.prevent="dragging = editable" @dragleave.self="dragging = false" @drop.prevent="dropFiles" :aria-label="attachmentsTitle">
+  <section v-if="!previewOnly" class="document-attachments" :class="{ 'document-attachments--drag': dragging }" @dragover.prevent="dragging = editable && !uploading" @dragleave="leaveDropZone" @drop.prevent="dropFiles" :aria-label="attachmentsTitle">
     <div v-if="showHeading || editable" class="row items-center q-mb-sm">
-      <div v-if="showHeading" class="text-subtitle2">{{ attachmentsTitle }}</div>
+      <div v-if="showHeading" class="text-subtitle2 text-weight-bold">{{ attachmentsTitle }}</div>
       <q-space />
       <q-btn
         v-if="editable"
@@ -34,7 +32,6 @@
       <span class="text-caption">{{ uploadName }} · {{ Math.round(uploadProgress * 100) }}% · {{ uploadDone }}/{{ uploadTotal }}</span>
       <q-btn flat dense icon="close" :label="t('documents.cancelUpload')" @click="uploadController?.abort()" />
     </div>
-    <div v-if="editable" class="text-caption text-grey-7 q-mb-sm">{{ t('documents.dropAttachments') }}</div>
     <div v-if="loading" class="document-attachments__list">
       <q-skeleton type="rect" width="260px" height="160px" />
     </div>
@@ -63,13 +60,13 @@
         </template>
         <template #actions>
             <q-btn
-              v-if="editable && managerMode && !embeddedAttachmentIds.has(attachment.id.toLowerCase())"
+              v-if="editable && allowInsertion && !embeddedAttachmentIds.has(attachment.id.toLowerCase())"
               flat
               round
               dense
               icon="post_add"
               :aria-label="t('richEditor.resources.insertAttachment')"
-              @click="emit('insert', attachment); managerOpen = false"
+              @click="emit('insert', attachment)"
             >
               <q-tooltip>{{ t('richEditor.resources.insertAttachment') }}</q-tooltip>
             </q-btn>
@@ -110,7 +107,6 @@
     </div>
     <div v-else class="text-body2 text-grey-7 q-py-sm">{{ t(resourceSource ? 'memory.noFileLocations' : 'documents.noAttachments') }}</div>
   </section>
-  </Teleport>
 
   <FullscreenPreview
     v-model="previewOpen"
@@ -232,14 +228,14 @@ import type { BrowserResourceKind, Model3dSource } from '@/core/util'
 import { memoryService } from '../services/memoryService'
 import type { DocumentAttachment } from '../types'
 
-const { documentId, agentId, attachments, editable = false, loading = false, content = '', managerMode = false, previewOnly = false, showHeading = true, resourceSource } = defineProps<{
+const { documentId, agentId, attachments, editable = false, loading = false, content = '', allowInsertion = false, previewOnly = false, showHeading = true, resourceSource } = defineProps<{
   resourceSource?: {
     content: (attachment: DocumentAttachment, preview: boolean) => Promise<Blob>
     thumbnail: (attachment: DocumentAttachment, signal?: AbortSignal) => Promise<Blob>
   }
   previewOnly?: boolean
   showHeading?: boolean
-  managerMode?: boolean
+  allowInsertion?: boolean
   documentId: string
   agentId: number | null
   attachments: (DocumentAttachment & { uri?: string })[]
@@ -254,9 +250,8 @@ const emit = defineEmits<{
 }>()
 const { t, locale } = useI18n()
 const $q = useQuasar()
-const managerOpen = ref(false)
 const attachmentsTitle = computed(() => t(resourceSource ? 'memory.fileLocations'
-  : managerMode && !managerOpen.value ? 'documents.unembeddedAttachments' : 'documents.attachments'))
+  : allowInsertion ? 'documents.unembeddedAttachments' : 'documents.attachments'))
 const embeddedAttachmentIds = computed(() => {
   const html = new DOMParser().parseFromString(content, 'text/html')
   const embedded = new Set<string>()
@@ -268,10 +263,9 @@ const embeddedAttachmentIds = computed(() => {
   return embedded
 })
 const displayedAttachments = computed(() => {
-  if (!managerMode || managerOpen.value) return attachments
+  if (!allowInsertion) return attachments
   return attachments.filter(attachment => !embeddedAttachmentIds.value.has(attachment.id.toLowerCase()))
 })
-const managerContent = ref<HTMLElement>()
 const fileInput = useTemplateRef<HTMLInputElement>('fileInput')
 const objectUrls = reactive<Record<string, string>>({})
 const thumbnailUrls = reactive<Record<string, string>>({})
@@ -511,6 +505,10 @@ function dropFiles(event: DragEvent): void {
   dragging.value = false
   if (editable) void uploadFiles([...(event.dataTransfer?.files ?? [])])
 }
+function leaveDropZone(event: DragEvent): void {
+  if (event.currentTarget instanceof HTMLElement && event.relatedTarget instanceof Node && event.currentTarget.contains(event.relatedTarget)) return
+  dragging.value = false
+}
 async function uploadFiles(files: File[]): Promise<void> {
   if (!files.length || !editable || uploading.value) return
   const currentDocumentId = documentId, currentAgentId = agentId
@@ -525,7 +523,7 @@ async function uploadFiles(files: File[]): Promise<void> {
       uploadName.value = file.name; uploadProgress.value = 0
       try {
         const attachment = await memoryService.addDocumentAttachment(currentDocumentId, currentAgentId, file, request.signal, value => { uploadProgress.value = value })
-        if (currentDocumentId === documentId && currentAgentId === agentId) emit('added', attachment)
+        if (!request.signal.aborted && editable && currentDocumentId === documentId && currentAgentId === agentId) emit('added', attachment)
       } catch (error) {
         if (!request.signal.aborted) failures.push(`${file.name}: ${apiErrorDetail(error) ?? t('documents.attachmentError')}`)
       } finally {
@@ -581,7 +579,8 @@ onMounted(() => {
   }, { rootMargin: '160px' })
   for (const element of previewElements.values()) previewObserver.observe(element)
 })
-watch(() => [documentId, agentId], () => { managerOpen.value = false; audioOpen.value = false; uploadController?.abort(); previewGeneration++; previewOpen.value = false; clearObjectUrls() })
+watch(() => [documentId, agentId], () => { dragging.value = false; audioOpen.value = false; uploadController?.abort(); previewGeneration++; previewOpen.value = false; clearObjectUrls() })
+watch(() => editable, value => { if (!value) { dragging.value = false; uploadController?.abort() } })
 watch(previewOpen, value => { if (!value) previewGeneration++ })
 async function openById(id: string): Promise<void> {
   const sourceDocument = documentId, sourceAgent = agentId
@@ -593,7 +592,7 @@ async function openById(id: string): Promise<void> {
     }
   } catch { $q.notify({ type: 'negative', message: t('documents.attachmentError') }) }
 }
-defineExpose({ openById, openManager: () => { managerOpen.value = true } })
+defineExpose({ openById })
 onBeforeUnmount(() => {
   uploadController?.abort(); previewGeneration++
   previewObserver?.disconnect()
@@ -603,7 +602,20 @@ onBeforeUnmount(() => {
 </script>
 
 <style scoped>
-.document-attachments--drag { outline: 2px dashed var(--q-primary); outline-offset: 6px; }
+.document-attachments {
+  box-sizing: border-box;
+  padding: 12px;
+  border: 1px dashed color-mix(in srgb, var(--solaire-gray-accent) 35%, transparent);
+  border-radius: 5px;
+  background: var(--solaire-gray-light);
+  transition: border-color .15s ease, background-color .15s ease;
+}
+.document-attachments--drag {
+  border-color: var(--solaire-blue-accent);
+  background: var(--solaire-blue-light);
+}
+.body--dark .document-attachments { background: var(--solaire-gray-dark); }
+.body--dark .document-attachments--drag { background: var(--solaire-blue-dark); }
 .document-attachments__input { display: none; }
 .document-attachments__fullscreen-media { display: block; width: auto; max-width: none; max-height: none; margin: 0 auto; object-fit: contain; background: #000; }
 .document-attachments__fullscreen-media--fit { max-width: 100vw; max-height: var(--galaris-preview-height, 100dvh); }

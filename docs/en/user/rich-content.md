@@ -83,13 +83,14 @@ uploading. Upload progress
 includes cancellation; images also retain CKEditor’s native upload controls.
 
 The document body remains rich text. Interactive HTML pages, 3D scenes, videos and other
-content are attachments opened with their resource viewer. The toolbar’s **Attachments** button
-opens file management: drop files into this dialog or use **Add**, then the **Insert into document**
-icon in the preview actions. Images appear in the text; audio, video and PDF files have inline
+content are attachments opened with their resource viewer. The toolbar’s **Insert attachment** button
+opens a file picker and inserts uploaded files at the cursor. The attachment area below the content
+remains available even when empty: drop files there or use **Add**, then the **Insert into document**
+icon in the preview actions to insert them into the text. Images appear in the text; audio, video and PDF files have inline
 players. Other files become clickable cards opening their viewer.
 Files absent from the content remain listed below the text with actions to open and remove them.
 Inserting an attachment hides it from this list; removing its insertion shows it again.
-The management dialog gives access to all attachments. Each upload shows progress and can be cancelled. Pasting a complete HTML page
+Each upload shows progress and can be cancelled. Pasting a complete HTML page
 into the editor or its source offers a choice: attach the intact page, extract rich text,
 or cancel. Scripts in historical versions remain readable as literal code.
 
@@ -155,7 +156,7 @@ content unchanged. On mobile, the page fits the screen width.
 
 Ordinary working documents accept local images through CKEditor's native selection, paste or
 drop controls. The contextual toolbar provides alternative text, captions and width settings.
-Uploads show progress. Images remain available through the **Attachments** button.
+Uploads show progress. Images remain document attachments and appear in the content when embedded.
 
 Images are unavailable in other memories, agent profiles, tasks and Goal descriptions/tracking,
 even when opening a Goal document through the library. Remote image URLs and SVG are unsupported.

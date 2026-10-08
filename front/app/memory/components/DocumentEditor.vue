@@ -216,8 +216,6 @@
           <RichTextEditor
             v-else-if="!isDataset && currentDocument.content_type === 'text' && currentDocument.media_type.startsWith('text/')"
             ref="richEditor"
-            manage-attachments
-            @manage-attachments="attachmentPanel?.openManager()"
             :key="documentId + ':' + agentId"
             v-model="editorContent"
             :attachments="documentResources"
@@ -244,9 +242,9 @@
             </template>
           </RichTextEditor>
         </div>
-        <div class="col-12">
+        <div class="col-12" :class="{ 'document-editor-attachments': !isDataset }">
           <DocumentAttachments
-            :manager-mode="!isDataset"
+            :allow-insertion="!isDataset"
             @insert="insertAttachment"
             ref="attachmentPanel"
             :content="isDataset ? '' : editorContent"
@@ -1298,6 +1296,7 @@ function restoreDraft(document: MemoryItemDetail): void {
 .document-editor-toolbar { min-height: 72px; }
 .document-editor-live-status { flex: 0 0 auto; padding-left: 12px; }
 .document-editor-fields { min-width: 0; }
+.document-editor-attachments { background: var(--ck-color-base-foreground); }
 .document-editor-owner-field :deep(.q-field__native) { flex-wrap: nowrap; }
 .owner-selected { min-width: 0; max-width: 100%; }
 .owner-section { min-height: 30px; background: rgba(0, 0, 0, 0.035); }

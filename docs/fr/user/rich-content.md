@@ -89,14 +89,16 @@ Pour insérer de nouveaux fichiers directement dans le texte, déposez-les à l�
 ou placez le curseur puis collez les fichiers copiés. Plusieurs fichiers peuvent être envoyés
 ensemble ; leur insertion suit l’ordre choisi et la position reste conservée pendant l’envoi.
 Une progression permet d’annuler l’envoi. Les images gardent également les commandes natives de CKEditor.
-Le bouton **Pièces jointes** de la barre d’outils ouvre la gestion des fichiers : déposez-les
-dans cette fenêtre ou utilisez **Ajouter**, puis l’icône **Insérer dans le document** dans les
-actions de l’aperçu. Cette icône apparaît uniquement pour les fichiers absents du contenu.
+Le bouton **Insérer une PJ** de la barre d’outils ouvre le sélecteur de fichiers et intègre
+les fichiers envoyés à la position du curseur. La zone de pièces jointes sous le contenu
+reste accessible même lorsqu’elle est vide : déposez-y des fichiers ou utilisez **Ajouter**,
+puis l’icône **Insérer dans le document** dans les actions de l’aperçu pour les intégrer au texte.
+Cette icône apparaît uniquement pour les fichiers absents du contenu.
 Les images s’affichent dans le texte ; les vidéos, sons et PDF disposent d’un lecteur intégré,
 en édition comme en lecture. Les autres fichiers deviennent des cartouches cliquables ouvrant
 leur visionneuse. Les fichiers absents du contenu restent listés sous le texte, avec leurs actions
 d’ouverture et de suppression. Une PJ insérée dans le contenu disparaît de cette liste et y
-revient si son insertion est retirée. La fenêtre de gestion donne accès à toutes les PJ. Chaque envoi
+revient si son insertion est retirée. Chaque envoi
 affiche sa progression et peut être annulé. Une page HTML complète collée dans l'éditeur
 ou sa source déclenche un choix : joindre la page intacte, récupérer seulement son texte
 enrichi, ou annuler. Les scripts des anciennes versions restent lisibles comme code.
@@ -165,7 +167,7 @@ le contenu enregistré. Sur mobile, la page s’adapte à la largeur de l’écr
 Les documents de travail ordinaires permettent de choisir une image locale, de la coller ou
 de la déposer avec les commandes natives de CKEditor. Sa barre contextuelle permet de renseigner
 le texte alternatif, la légende et la largeur. Le téléversement affiche sa progression.
-Les images restent des pièces jointes du document, disponibles via le bouton **Pièces jointes**.
+Les images restent des pièces jointes du document et s’affichent dans le contenu lorsqu’elles y sont intégrées.
 
 Un agent peut aussi générer une image, copier son URI vers la collection des pièces jointes du
 document, puis l'intégrer au texte. Le nom du fichier suit le format natif renvoyé par le modèle :
