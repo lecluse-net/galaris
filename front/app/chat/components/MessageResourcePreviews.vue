@@ -18,7 +18,7 @@
         :href="preview.open_mode === 'external' ? preview.external_url ?? undefined : undefined"
         :open-label="preview.open_mode === 'external'
           ? t('chat.resourcePreview.openExternal')
-          : t('chat.resourcePreview.open', { title: preview.title })"
+          : t(downloadOnly(preview) ? 'chat.resourcePreview.download' : 'chat.resourcePreview.open', { title: preview.title })"
         @open="handlePreviewClick($event, preview)"
       >
         <template v-if="preview.deleted" #preview>
@@ -88,7 +88,7 @@
             <q-tooltip>{{ t('chat.resourcePreview.download') }}</q-tooltip>
           </q-btn>
           <q-btn
-            v-if="preview.open_mode !== 'external' && resourceKind(preview) !== 'audio'"
+            v-if="preview.open_mode !== 'external' && resourceKind(preview) !== 'audio' && !downloadOnly(preview)"
             flat
             round
             dense
@@ -389,6 +389,10 @@ function resourceKind(preview: MessageResourcePreview | null): BrowserResourceKi
   return browserResourceKind(preview.media_type, preview.title)
 }
 
+function downloadOnly(preview: MessageResourcePreview): boolean {
+  return preview.download_available && resourceKind(preview) === null
+}
+
 function modelSource(preview: MessageResourcePreview): Model3dSource {
   const roomId = props.roomId
   const messageId = props.messageId
@@ -583,6 +587,10 @@ function handlePreviewClick(event: MouseEvent, preview: MessageResourcePreview):
 
 function openPreview(preview: MessageResourcePreview): void {
   if (preview.deleted || resourceKind(preview) === 'audio') return
+  if (downloadOnly(preview)) {
+    void downloadPreview(preview)
+    return
+  }
   resetResource()
   selected.value = preview
   if (preview.kind === 'document') {

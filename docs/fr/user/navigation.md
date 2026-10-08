@@ -152,7 +152,8 @@ octets complets. La fiche commune conserve les différents emplacements et un r�
 Elle conserve aussi une URL principale de visualisation, stable lors de la découverte
 d'une copie et actualisée si la source est déplacée ou supprimée.
 Dans une fiche ou le détail d'un fichier du graphe, **Emplacements du fichier** donne accès
-aux miniatures, à l'aperçu plein écran et au téléchargement de l'original. Les droits de
+aux miniatures et au téléchargement de l'original, ainsi qu'à l'aperçu plein écran pour
+les formats disposant d'un lecteur. Les droits de
 chaque source restent applicables ; une copie modifiée ne remplace pas les autres.
 
 Dans la définition d’un Tool personnalisé, chaque paramètre de connexion peut recevoir un

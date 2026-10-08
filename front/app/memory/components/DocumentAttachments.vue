@@ -293,8 +293,7 @@ let generation = 0
 let previewObserver: IntersectionObserver | null = null
 
 const attachmentKind = (attachment: DocumentAttachment): BrowserResourceKind | null => (
-  resourceSource && /\.(doc|docx|odt|rtf|odg|odp|ppt|pptx|xls|xlsx|ods)$/i.test(attachment.name)
-    ? 'pdf' : browserResourceKind(attachment.media_type, attachment.name)
+  browserResourceKind(attachment.media_type, attachment.name)
 )
 const canPreview = (attachment: DocumentAttachment): boolean => (
   attachmentKind(attachment) !== null && attachmentKind(attachment) !== 'audio'

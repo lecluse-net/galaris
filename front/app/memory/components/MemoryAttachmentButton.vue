@@ -1,5 +1,5 @@
 <template>
-  <q-btn v-if="!showThumbnail" :outline="!iconOnly" :flat="iconOnly" :round="iconOnly" dense no-caps icon="open_in_full" color="primary"
+  <q-btn v-if="!showThumbnail" :outline="!iconOnly" :flat="iconOnly" :round="iconOnly" dense no-caps icon="attach_file" color="primary"
     :label="iconOnly ? undefined : t('memory.viewLinkedContent')" :aria-label="t('memory.viewLinkedContent')"
     :loading="loading" :disable="agentId === null"
     @click.stop="open">

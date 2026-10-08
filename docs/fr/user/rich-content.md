@@ -135,7 +135,9 @@ Les fichiers Office joints (DOC, DOCX, ODT, RTF, ODG, ODP, PPT et PPTX) affichen
 miniature de leur première page. Les tableurs XLS, XLSX et ODS affichent leur première
 page imprimée, selon la mise en page du classeur. L’aperçu apparaît après sa génération ;
 si la conversion échoue, le fichier reste téléchargeable. Le clic sur ces cartes télécharge
-le fichier original, qui reste intact.
+le fichier original, qui reste intact. Cette règle s'applique aussi aux fichiers indexés et
+aux aperçus des discussions : les documents Office, tableurs et autres formats sans lecteur
+proposent uniquement le téléchargement, sans commande de plein écran.
 
 Le bouton **Imprimer** de l’éditeur ouvre la boîte d’impression du navigateur avec le contenu
 en cours, y compris les modifications non encore enregistrées. L’impression conserve les

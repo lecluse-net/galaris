@@ -20,6 +20,7 @@ export function normalizedMediaType(value: string): string {
 export function browserResourceKind(mediaType: string, name = ''): BrowserResourceKind | null {
   const normalized = normalizedMediaType(mediaType)
   const filename = name.trim().toLowerCase()
+  if (normalized === 'text/rtf' || /\.(doc|docx|odt|rtf|odg|odp|ppt|pptx|xls|xlsx|ods)$/.test(filename)) return null
   if (model3dFormat(normalized, filename)) return 'model3d'
   if (normalized.startsWith('image/') || filename.endsWith('.svg')) return 'image'
   if (normalized === 'text/html' || normalized === 'application/xhtml+xml' || /\.x?html?$/.test(filename)) return 'html'

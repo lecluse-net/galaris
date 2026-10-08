@@ -32,6 +32,59 @@ function silentAudio() {
   return wav
 }
 
+for (const surface of ['document', 'resource']) for (const width of [1440, 390]) {
+  test(`${surface} unsupported files only download at ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 900 })
+    for (const [name, mime] of [['Notes.odt', 'application/vnd.oasis.opendocument.text'], ['Letter.rtf', 'text/rtf'], ['Archive.zip', 'application/zip']]) {
+      const original = Buffer.from(`Synthetic original ${name}`)
+      const { open, dialog } = await setup(page, surface, { name, mime, respond: route => route.fulfill({ contentType: mime, body: original }) })
+      await expect(page.getByRole('button', { name: /(?:Open|Show) preview of/ })).toHaveCount(0)
+      for (const action of [open, page.getByRole('button', { name: /Download/ }).last()]) {
+        const downloaded = page.waitForEvent('download')
+        await action.click()
+        const download = await downloaded
+        expect(download.suggestedFilename()).toBe(name)
+        const chunks = []
+        for await (const chunk of await download.createReadStream()) chunks.push(chunk)
+        expect(Buffer.concat(chunks)).toEqual(original)
+        await expect(dialog).toHaveCount(0)
+      }
+    }
+  })
+}
+
+for (const showThumbnail of [false, true]) test(`a linked Office attachment downloads without a viewer with thumbnail=${showThumbnail}`, async ({ page }) => {
+  const documentId = '00000000-0000-0000-0000-000000000001'
+  const attachmentId = '00000000-0000-0000-0000-000000000002'
+  const name = 'Notes.odt'
+  const original = Buffer.from('Synthetic original ODT')
+  await jsonRoute(page, '**/api/memory/items/memory-1?*', { primary_url: `document://${documentId}/attachments/${attachmentId}`, metadata: {} })
+  await jsonRoute(page, `**/api/memory/documents/${documentId}/attachments/${attachmentId}/info?*`, {
+    id: attachmentId, name, media_type: 'application/vnd.oasis.opendocument.text', size_bytes: original.length,
+  })
+  await page.route(`**/api/memory/documents/${documentId}/attachments/${attachmentId}/thumbnail?*`, route => route.fulfill({
+    contentType: 'image/webp', body: Buffer.from('UklGRh4AAABXRUJQVlA4TBEAAAAvAAAAAAfQ//73v/+BiOh/AAA=', 'base64'),
+  }))
+  await page.route(`**/api/memory/documents/${documentId}/attachments/${attachmentId}?*`, route => route.fulfill({ contentType: 'application/octet-stream', body: original }))
+  await mount(page, 'app/memory/components/MemoryAttachmentButton.vue', { props: {
+    itemId: 'memory-1', agentId: 7, showThumbnail,
+  } })
+  if (showThumbnail) {
+    await expect(page.getByRole('img', { name, exact: true })).toHaveJSProperty('naturalWidth', 1)
+    await expect(page.getByRole('button', { name: /Open preview of/ })).toHaveCount(0)
+  }
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const downloaded = page.waitForEvent('download')
+    await page.getByRole('button', { name: showThumbnail ? `Download ${name}` : 'Preview', exact: true }).first().click()
+    const download = await downloaded
+    expect(download.suggestedFilename()).toBe(name)
+    const chunks = []
+    for await (const chunk of await download.createReadStream()) chunks.push(chunk)
+    expect(Buffer.concat(chunks)).toEqual(original)
+    await expect(page.getByRole('dialog')).toHaveCount(0)
+  }
+})
+
 for (const surface of ['document', 'resource']) {
   test(`${surface} audio plays in its card without a fullscreen viewer`, async ({ page }, testInfo) => {
     await page.setViewportSize({ width: 390, height: 844 })

@@ -54,6 +54,15 @@ test('text and source attachments select their language without treating binary 
   assert.equal(browserResourceKind('image/svg+xml', 'image.svg'), 'image')
 })
 
+test('Office documents and spreadsheets remain download-only even with a generic text MIME type', () => {
+  for (const extension of ['doc', 'docx', 'odt', 'rtf', 'odg', 'odp', 'ppt', 'pptx', 'xls', 'xlsx', 'ods']) {
+    for (const mime of ['application/octet-stream', 'text/plain']) {
+      assert.equal(browserResourceKind(mime, `Report.${extension.toUpperCase()}`), null)
+    }
+  }
+  assert.equal(browserResourceKind('text/rtf; charset=utf-8', 'Report'), null)
+})
+
 test('only an unmodified primary click opens the inline viewer', () => {
   const click = {
     button: 0,

@@ -140,8 +140,8 @@ Dream groups identical file copies **per agent**, using SHA-256 over their compl
 The shared entry retains its locations and one common summary. Its primary preview URL
 stays stable when a copy is discovered and follows a moved or deleted source.
 In an entry or the graph's
-file inspector, **File locations** provides thumbnails, fullscreen previews and original
-downloads. Each source's permissions still apply; changing one copy does not replace the others.
+file inspector, **File locations** provides thumbnails and original downloads, plus fullscreen
+previews for formats with a viewer. Each source's permissions still apply; changing one copy does not replace the others.
 
 In a custom Tool definition, each connection parameter can have a label, description and
 default value. For text or integers, **Add a fixed choice** defines allowed values and their

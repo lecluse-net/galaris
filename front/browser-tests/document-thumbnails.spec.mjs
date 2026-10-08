@@ -29,13 +29,14 @@ for (const mime of ['image/svg+xml', 'application/octet-stream']) test(`SVG thum
   expect(Buffer.concat(chunks).toString()).toBe(original)
 })
 
-for (const width of [1440, 390]) test(`Office attachments show thumbnails and keep their original download at ${width}px`, async ({ page }) => {
+for (const surface of ['attachment', 'file']) for (const width of [1440, 390]) test(`Office ${surface} cards show thumbnails and only download their originals at ${width}px`, async ({ page }) => {
   await page.setViewportSize({ width, height: 900 })
-  const attachments = ['Report.docx', 'Notes.odt', 'Budget.XLSX', 'Forecast.ods'].map((name, index) => ({
+  const attachments = ['Report.docx', 'Notes.odt', 'Budget.XLSX', 'Forecast.ods', 'Letter.doc', 'Slides.pptx'].map((name, index) => ({
     id: `office-${index}`, name, media_type: 'application/octet-stream', size_bytes: 24,
   }))
   const reads = new Map()
-  await page.route('**/api/memory/documents/doc-a/attachments/*/thumbnail?*', route => {
+  const base = surface === 'attachment' ? '**/api/memory/documents/doc-a/attachments' : '**/api/file-share/items/doc-a/resources'
+  await page.route(`${base}/*/thumbnail?*`, route => {
     const id = new URL(route.request().url()).pathname.split('/').at(-2)
     const count = (reads.get(id) ?? 0) + 1
     reads.set(id, count)
@@ -44,9 +45,13 @@ for (const width of [1440, 390]) test(`Office attachments show thumbnails and ke
       : route.fulfill({ contentType: 'image/webp', body: png })
   })
   const original = Buffer.from('Synthetic original workbook')
-  await page.route('**/api/memory/documents/doc-a/attachments/office-2?*', route => route.fulfill({ contentType: 'application/octet-stream', body: original }))
-  await mount(page, 'app/memory/components/DocumentAttachments.vue', {
-    props: { documentId: 'doc-a', agentId: 7, attachments },
+  await page.route(`${base}/office-2${surface === 'file' ? '/content' : ''}?*`, route => {
+    if (surface === 'file') expect(new URL(route.request().url()).searchParams.get('preview')).toBe('false')
+    return route.fulfill({ contentType: 'application/octet-stream', body: original })
+  })
+  if (surface === 'file') await jsonRoute(page, `${base}?*`, attachments)
+  await mount(page, `app/memory/components/${surface === 'file' ? 'MemoryFileResources' : 'DocumentAttachments'}.vue`, {
+    props: surface === 'file' ? { itemId: 'doc-a', agentId: 7 } : { documentId: 'doc-a', agentId: 7, attachments },
   })
   for (const attachment of attachments) {
     const card = page.locator('.resource-preview-card').filter({ has: page.getByText(attachment.name, { exact: true }) })
@@ -54,6 +59,7 @@ for (const width of [1440, 390]) test(`Office attachments show thumbnails and ke
     const image = card.getByRole('img', { name: attachment.name, exact: true })
     await expect(image).toHaveJSProperty('naturalWidth', 1)
     expect(reads.get(attachment.id)).toBe(2)
+    await expect(card.getByRole('button', { name: `Open preview of ${attachment.name}`, exact: true })).toHaveCount(0)
   }
   const downloaded = page.waitForEvent('download')
   // The whole card and its explicit action both download the original Office file.
@@ -63,6 +69,11 @@ for (const width of [1440, 390]) test(`Office attachments show thumbnails and ke
   const chunks = []
   for await (const chunk of await download.createReadStream()) chunks.push(chunk)
   expect(Buffer.concat(chunks)).toEqual(original)
+  await expect(page.getByRole('dialog')).toHaveCount(0)
+  const explicitDownload = page.waitForEvent('download')
+  await page.getByRole('button', { name: 'Download Budget.XLSX', exact: true }).last().click()
+  expect((await explicitDownload).suggestedFilename()).toBe('Budget.XLSX')
+  await expect(page.getByRole('dialog')).toHaveCount(0)
 })
 
 test('message previews wait until the message approaches the viewport', async ({ page }) => {

@@ -127,7 +127,9 @@ Office attachments (DOC, DOCX, ODT, RTF, ODG, ODP, PPT and PPTX) display a thumb
 of their first page. XLS, XLSX and ODS spreadsheets show their first printed page,
 according to the workbook’s page layout. The preview appears after generation; if
 conversion fails, the file remains downloadable. Clicking these cards downloads the
-original file, which remains intact.
+original file, which remains intact. The same rule applies to indexed files and chat
+previews: Office documents, spreadsheets and other formats without a viewer only offer
+downloads, with no fullscreen action.
 
 The editor’s **Print** button opens the browser print dialog with the current content,
 including unsaved changes. Printing retains images, tables and callouts on a light background,
