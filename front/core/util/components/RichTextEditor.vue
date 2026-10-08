@@ -1,6 +1,6 @@
 <template>
   <div class="ck-galaris-editor" :style="{ '--editor-min-height': minHeight, '--editor-max-height': autoGrow ? 'none' : maxHeight }">
-    <Ckeditor :key="profile + ':' + locale" :editor="ClassicEditor" :config="config" :model-value="editorData" :disabled="readonly" :disable-two-way-data-binding="true" @ready="ready" />
+    <Ckeditor :key="profile + ':' + locale + ':' + hiddenToolbarGroups.join(',') + ':' + singleRowToolbar" :editor="ClassicEditor" :config="config" :model-value="editorData" :disabled="readonly" :disable-two-way-data-binding="true" @ready="ready" />
     <Teleport v-for="target in embeddedTargets" :key="target.key" :to="target.element">
       <slot name="embedded-code" :source="target.source" :language="target.language" :register-snapshot="(capture: RenderedDocumentCapture | undefined) => registerSnapshot(target.key, capture)"><div class="q-pa-md">{{ t('richEditor.embeddedApplication') }}</div></slot>
     </Teleport>
@@ -60,7 +60,7 @@ import { GalarisSourceEditing } from '../ckeditorSourceEditing'
 import { GalarisCodeHighlight } from '../ckeditorCodeHighlight'
 import { attachCodeTools, codeBlockLanguages } from '../ckeditorCodeTools'
 import { attachDocumentShortcuts } from '../ckeditorShortcuts'
-import { attachEditorToolbarGroups, editorToolbarCommands, editorToolbarGroups, registerEditorToolbarGroups } from '../ckeditorToolbar'
+import { attachEditorToolbarGroups, editorToolbarCommands, editorToolbarGroups, registerEditorToolbarGroups, type EditorToolbarGroupName } from '../ckeditorToolbar'
 import { registerEditorVoice } from '../ckeditorVoice'
 import { editorVoiceProvider } from '../editorVoice'
 import { attachLinkCards } from '../ckeditorLinkCards'
@@ -79,10 +79,12 @@ import type { RenderedDocumentCapture, RenderedDocumentResolver } from '../rende
 import { createDocumentPdf, exportDocumentPdf } from '../exportDocumentPdf'
 import { saveBlobAsResource } from '../resourceViewer'
 import '../ckeditorTheme.css'
-const { modelValue, mediaType = 'text/html', profile = 'rich-text', readonly = false, minHeight = '240px', maxHeight = '70vh', autoGrow = false, ariaLabel = '', documentTitle = '', documentUrl = '', exportPdf, exportBundle, uploadImage, uploadFile, importImage, resolveImage, attachments = [], createLinkCard, manageAttachments = false } = defineProps<{
+const { modelValue, mediaType = 'text/html', profile = 'rich-text', readonly = false, minHeight = '240px', maxHeight = '70vh', autoGrow = false, ariaLabel = '', documentTitle = '', documentUrl = '', exportPdf, exportBundle, uploadImage, uploadFile, importImage, resolveImage, attachments = [], createLinkCard, manageAttachments = false, hiddenToolbarGroups = [], singleRowToolbar = false } = defineProps<{
   modelValue: string; mediaType?: string; profile?: ContentProfile; readonly?: boolean; minHeight?: string; maxHeight?: string; autoGrow?: boolean; ariaLabel?: string
   attachments?: DocumentResource[]
   manageAttachments?: boolean
+  hiddenToolbarGroups?: readonly EditorToolbarGroupName[]
+  singleRowToolbar?: boolean
   createLinkCard?: (url: string) => Promise<string>
   exportBundle?: (html: string, signal: AbortSignal) => Promise<Blob>
   uploadFile?: (file: File, signal: AbortSignal, progress: (value: number) => void) => Promise<string>
@@ -335,7 +337,7 @@ class GalarisIntegration extends Plugin {
       })
     }
     if (personalVoice) registerEditorVoice(current, () => personalVoice.controls.value)
-    registerEditorToolbarGroups(current, profile === 'document', t, Boolean(personalVoice))
+    registerEditorToolbarGroups(current, profile === 'document', t, Boolean(personalVoice), hiddenToolbarGroups)
   }
 }
 const config = computed<EditorConfig>(() => ({
@@ -348,7 +350,14 @@ const config = computed<EditorConfig>(() => ({
   menuBar: { isVisible: false },
   codeBlock: { languages: codeBlockLanguages(t) },
   fullscreen: { menuBar: { isVisible: false } },
-  toolbar: { items: [...editorToolbarGroups(profile === 'document', Boolean(personalVoice)).map(group => 'galarisGroup' + group.name), 'galarisMobileToolbar'], shouldNotGroupWhenFull: true },
+  toolbar: {
+    items: singleRowToolbar
+      ? editorToolbarGroups(profile === 'document', Boolean(personalVoice), hiddenToolbarGroups)
+        .flatMap((group, index) => [...(index ? ['|'] : []), ...group.items])
+        .concat(profile === 'document' || hiddenToolbarGroups.includes('insert') ? [] : ['|', 'link', 'galarisLink'])
+      : [...editorToolbarGroups(profile === 'document', Boolean(personalVoice), hiddenToolbarGroups).map(group => 'galarisGroup' + group.name), 'galarisMobileToolbar'],
+    shouldNotGroupWhenFull: !singleRowToolbar,
+  },
   style: { definitions: calloutKinds.map(kind => ({ name: t('richEditor.callouts.' + kind), element: 'blockquote', classes: ['galaris-callout', 'galaris-callout-' + kind] })) },
   heading: { options: [{ model: 'paragraph', title: 'Paragraph', class: 'ck-heading_paragraph' }, ...([1, 2, 3, 4, 5, 6] as const).map(level => ({ model: `heading${level}` as const, view: `h${level}`, title: `Heading ${level}`, class: `ck-heading_heading${level}` }))] },
   fontFamily: { options: ['default', 'Arial, Helvetica, sans-serif', 'Georgia, serif', 'Times New Roman, serif', 'Courier New, Courier, monospace'], supportAllValues: true },
@@ -587,7 +596,7 @@ watch(() => modelValue, value => {
   } else editorData.value = sourceHtml(value)
   applyingExternal = false
 })
-watch([() => profile, locale], () => {
+watch([() => profile, locale, () => hiddenToolbarGroups.join(','), () => singleRowToolbar], () => {
   personalVoice?.stop()
   printing?.abort()
   exportingPdf?.abort()

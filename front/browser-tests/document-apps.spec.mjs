@@ -94,8 +94,8 @@ for (const format of ['legacy', 'html']) test(`the normal editor preserves ${for
   await jsonRoute(page, '**/api/memory/documents/owner-options?*', { agents: [{ id: 7, kind: 'agent', label: 'Alice', subtitle: '', avatar_url: null }], users: [] })
   await jsonRoute(page, '**/api/memory/documents/keywords?*', [])
   await jsonRoute(page, '**/api/memory/documents/doc-a/attachments?*', [])
-  await page.route('**/api/memory/items/doc-a?*', route => {
-    if (route.request().method() === 'GET') return route.fulfill({ json: current })
+  await page.route(/\/api\/memory\/documents\/doc-a(?:\?.*)?$/, route => {
+    if (route.request().method() === 'GET') return route.fulfill({ json: { item: current, agent_id: 7 } })
     const body = route.request().postDataJSON(); writes.push(body)
     current = { ...current, ...body, revision: current.revision + 1 }
     return route.fulfill({ json: current })
@@ -140,7 +140,7 @@ for (const format of ['legacy', 'html']) test(`printing and PDF preserve the dis
   await jsonRoute(page, '**/api/memory/documents/owner-options?*', { agents: [{ id: 7, kind: 'agent', label: 'Alice', subtitle: '', avatar_url: null }], users: [] })
   await jsonRoute(page, '**/api/memory/documents/keywords?*', [])
   await jsonRoute(page, '**/api/memory/documents/doc-a/attachments?*', [])
-  await jsonRoute(page, '**/api/memory/items/doc-a?*', { ...document, content_profile: 'document', media_type: 'text/html', payload: { text: html } })
+  await jsonRoute(page, /\/api\/memory\/documents\/doc-a(?:\?.*)?$/, { item: { ...document, content_profile: 'document', media_type: 'text/html', payload: { text: html } }, agent_id: 7 })
   let snapshot, exports = 0
   await page.route('**/api/memory/documents/doc-a/export-pdf', route => {
     ++exports

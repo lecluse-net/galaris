@@ -67,7 +67,7 @@ La barre latérale ne montre que les écrans autorisés par votre rôle :
 | Suivi d’exécution | suivre séparément conversations texte, appels, Tasks, processus et appels LLM en temps réel |
 | Objectifs | suivre les missions de fond, leurs cycles, preuves et résultats |
 | Dossiers thématiques | retrouver les sujets globaux et les connaissances liées entre plusieurs canaux |
-| Mémoire | rechercher, lire, corriger, partager ou oublier les souvenirs autorisés d’un agent |
+| Mémoire | rechercher, lire et corriger les souvenirs privés d’un agent et les synthèses des documents autorisés ; oublier uniquement les souvenirs autonomes |
 | Dream | suivre le travail de fond, consulter son historique et gérer l’indexation des fichiers par agent |
 | Lab IA | analyser une tâche et mesurer les mécanismes IA sur des jeux de cas reproductibles |
 | Processus | lancer et suivre un workflow externe, par exemple n8n |
@@ -463,8 +463,11 @@ Un document manipulé avec le même agent reste candidat au rappel même après 
 réserve des droits courants. Les documents supprimés ou devenus privés sont exclus. Ce
 rappel reste borné : fournissez son URI exacte si un ancien document n'est pas retrouvé.
 
-Chaque souvenir est décrit par son titre, son contenu, ses mots-clés, ses sources et ses droits
-d'accès. La liste se filtre par texte, sujet, interlocuteur et date ; le graphe présente les
+Chaque souvenir autonome reste privé à son agent et affiche ses mots-clés, ses sources et
+un libellé dérivé de son contenu. Le document conserve son titre, son contenu complet et ses droits ;
+sa fiche mémoire porte une synthèse facultative avec son propre historique. **Ouvrir le document**
+permet d’éditer le contenu complet et le partage. La synthèse hérite des droits actuels du document.
+La liste se filtre par texte, sujet, interlocuteur et date ; le graphe présente les
 souvenirs avec les documents, fichiers, dossiers, contacts et sujets.
 
 Dans **Mémoire**, les comptes autorisés peuvent :
@@ -472,8 +475,8 @@ Dans **Mémoire**, les comptes autorisés peuvent :
 - rechercher les souvenirs d’un agent directement dans Liste ;
 - consulter contenu, révisions, provenance, relations et usages ;
 - corriger ou archiver un souvenir ordinaire ;
-- partager directement un élément en lecture ou édition ;
-- créer des documents Markdown de travail qui évoluent sur plusieurs Tasks ;
+- partager un document en lecture ou édition depuis son éditeur ;
+- créer des documents HTML de travail ou des Datasets JSON qui évoluent sur plusieurs Tasks ;
 - explorer le graphe sur une période donnée ;
 - oublier définitivement un élément, action irréversible réservée aux droits adéquats.
 

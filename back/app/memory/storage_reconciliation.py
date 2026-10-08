@@ -12,7 +12,8 @@ from core import settings
 from core.database import get_db
 from core.util import complete_io
 
-from .models import MemoryItem, MemoryRevision
+from .models import MemoryItem, MemoryRevision, MemorySummaryRevision
+from .document_backup import archived_resources
 
 
 @dataclass(frozen=True)
@@ -45,8 +46,10 @@ async def _referenced(ids: list[str]) -> set[str]:
     result = await get_db().scalars(union(
         select(MemoryItem.resource_id).where(MemoryItem.provider_code == "native", MemoryItem.resource_id.in_(ids)),
         select(MemoryRevision.resource_id).where(MemoryRevision.provider_code == "native", MemoryRevision.resource_id.in_(ids)),
+        select(MemoryItem.memory_resource_id).where(MemoryItem.memory_provider_code == "native", MemoryItem.memory_resource_id.in_(ids)),
+        select(MemorySummaryRevision.resource_id).where(MemorySummaryRevision.provider_code == "native", MemorySummaryRevision.resource_id.in_(ids)),
     ).execution_options(include_historized=True))
-    return set(result)
+    return set(result) | await archived_resources(get_db(), "native", ids)
 
 
 async def preview_native_orphans(*, root: Path | None = None, minimum_age: float = 86400,

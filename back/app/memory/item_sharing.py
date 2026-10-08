@@ -39,7 +39,7 @@ async def item_actor(
 
 
 async def can_manage(item: MemoryItem, scope: AgentManagementScope) -> bool:
-    if item.source_managed or item.read_only:
+    if item.node_kind != "document" or item.source_managed or item.read_only:
         return False
     return (
         item.owner_user_id == scope.user_id or scope.allows(item.owner_agent_id)
@@ -51,6 +51,8 @@ async def sharing(document_id: UUID, scope: AgentManagementScope) -> DocumentSha
     await item_actor(document_id, scope)
     item = await service.item_record(document_id)
     assert item is not None
+    if item.node_kind != "document" and not item.source_managed and item.node_kind not in {"folder", "attachment"}:
+        raise service.MemoryNotFoundError("Document not found")
     manage = await can_manage(item, scope)
     return await _sharing_state(item, manage=manage)
 
@@ -199,6 +201,8 @@ async def agent_sharing(item_id: UUID, *, agent_id: int) -> DocumentSharing:
     item = await service.item_record(item_id)
     if item is None:
         raise service.MemoryNotFoundError("Memory not found")
+    if item.node_kind != "document":
+        raise service.MemoryPermissionError("Memories are private; sharing belongs to documents")
     if item.owner_agent_id != agent_id:
         raise service.MemoryPermissionError("Only the owner can manage sharing")
     return await _sharing_state(item, manage=not item.read_only and not item.source_managed)
@@ -214,7 +218,7 @@ async def update_agent_sharing(
     item = await service.item_record(item_id)
     if item is None:
         raise service.MemoryNotFoundError("Memory not found")
-    if document_only and item.node_kind != "document":
+    if item.node_kind != "document":
         raise service.MemoryConflictError("The selected memory is not a document.")
     if item.owner_agent_id != agent_id or item.read_only or item.source_managed:
         raise service.MemoryPermissionError("Only the owner of an editable item can manage sharing")

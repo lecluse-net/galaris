@@ -116,7 +116,7 @@ class MemoryItemCreate(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     owner_agent_id: int = Field(gt=0)
-    title: str = Field(min_length=1, max_length=500)
+    title: str = Field(default="", max_length=500)
     payload: MemoryPayload
     node_kind: Literal["memory", "document"] = "memory"
     document_type: DocumentType = "html"
@@ -139,6 +139,8 @@ class MemoryItemCreate(BaseModel):
             if self.document_type != "html":
                 raise ValueError("Only a document can have a Dataset type.")
             return self
+        if not self.title.strip():
+            raise ValueError("A document title is required.")
         if self.document_type == "dataset" and self.media_type != "application/json":
             raise ValueError("A Dataset document must use application/json.")
         if self.content_type != "text" or (self.document_type == "html" and not self.media_type.startswith("text/")):
@@ -210,6 +212,10 @@ def _empty_grants() -> list[MemoryGrantPublic]:
 
 
 class MemoryItemPublic(BaseModel):
+    document_id: UUID | None = None
+    document_revision: int | None = None
+    summary_document_revision: int | None = None
+    summary_outdated: bool = False
     temporal: MemoryTemporalAnchor | None = None
     document_type: DocumentType = "html"
     semantic_fingerprint: str | None = Field(default=None, exclude=True)
@@ -401,6 +407,8 @@ class MemoryTraversalStep(BaseModel):
 
 
 class MemorySearchPassage(BaseModel):
+    content_source: Literal["document", "memory"] = "document"
+    source_revision: int | None = None
     uri: str
     revision: int
     chunk_index: int
@@ -987,7 +995,7 @@ class MemoryAcquisitionCreate(BaseModel):
     agent_id: int = Field(gt=0)
     action: AcquisitionAction = "create"
     target_item_id: UUID | None = None
-    title: str = Field(min_length=1, max_length=500)
+    title: str = Field(default="", max_length=500)
     content: str = Field(min_length=1, max_length=2_000_000)
     keywords: list[str] = Field(default_factory=list, max_length=50)
     source_kind: str = Field(default="manual", min_length=1, max_length=80)

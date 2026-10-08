@@ -111,7 +111,7 @@ test('leaving a loading document editor does not restore its subscription after 
   const gate = new Promise(resolve => { release = resolve })
   let intercepted
   const ready = new Promise(resolve => { intercepted = resolve })
-  const isDocument = url => url.pathname === `/api/memory/items/${document.id}`
+  const isDocument = url => url.pathname === `/api/memory/documents/${document.id}`
   await page.route(isDocument, async route => {
     const response = await route.fetch()
     intercepted()
@@ -252,6 +252,7 @@ for (const width of [390, 1440]) {
           media_type: 'text/html', payload: { text: '<p>Existing content must load without reloading the page.</p>' } },
       })
       expect(created.ok(), await created.text()).toBeTruthy()
+      const item = await created.json()
       let release
       const pending = new Promise(resolve => { release = resolve })
       await page.route('**/api/auth/refresh', async route => {
@@ -261,7 +262,7 @@ for (const width of [390, 1440]) {
       try {
         await page.goto(nodeKind === 'memory' ? `/memory?agent=${fixture.agent_id}` : '/memory/documents', { waitUntil: 'domcontentloaded' })
         release()
-        await expect(page.getByText(title, { exact: true }).first()).toBeVisible()
+        await expect(page.getByText(item.title, { exact: true }).first()).toBeVisible()
       } finally { release() }
     }
   })

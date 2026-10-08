@@ -1,24 +1,33 @@
 <template>
   <div class="memory-temporal">
-    <div class="text-subtitle2">{{ t('memory.temporal.title') }}</div>
-    <p class="text-caption">{{ t('memory.temporal.hint') }}</p>
-    <div class="row q-col-gutter-sm">
-      <div v-for="field in fields" :key="field.key" class="col-6 col-sm-4">
+    <div class="memory-temporal-heading">
+      <div class="memory-temporal-title"><q-icon name="schedule" />{{ t('memory.temporal.title') }}</div>
+      <div class="memory-temporal-actions">
+        <q-btn flat round dense icon="info_outline" :aria-label="t('memory.temporal.hint')">
+          <q-tooltip max-width="320px">{{ t('memory.temporal.hint') }}</q-tooltip>
+        </q-btn>
+        <q-btn v-if="modelValue && !readonly" flat round dense icon="clear"
+          :aria-label="t('memory.temporal.remove')" @click="emit('update:modelValue', null)">
+          <q-tooltip>{{ t('memory.temporal.remove') }}</q-tooltip>
+        </q-btn>
+      </div>
+    </div>
+    <div class="memory-temporal-inputs">
+      <div v-for="field in fields" :key="field.key" :class="`memory-temporal-${field.key}`">
         <q-input :model-value="modelValue?.[field.key] ?? null" :readonly="readonly"
-          type="number" :min="field.min" :max="field.max" step="1" clearable dense outlined
-          :label="t(`memory.temporal.${field.key}`)" :placeholder="t('memory.temporal.any')"
+          type="number" :min="field.min" :max="field.max" step="1" :clearable="!readonly" dense outlined stack-label hide-bottom-space
+          :label="t(`memory.temporal.${field.key === 'day' ? 'dayShort' : field.key}`)" :aria-label="t(`memory.temporal.${field.key}`)"
+          :placeholder="t('memory.temporal.anyShort')" :title="t('memory.temporal.any')"
           :rules="[value => validNumber(value, field.min, field.max)]"
           @update:model-value="change(field.key, $event)" />
       </div>
-      <div class="col-6 col-sm-4">
-        <q-select :model-value="modelValue?.weekday ?? null" :readonly="readonly" clearable
-          :options="weekdays" emit-value map-options dense outlined :label="t('memory.temporal.weekday')"
+      <div class="memory-temporal-weekday">
+        <q-select :model-value="modelValue?.weekday ?? null" :readonly="readonly" :clearable="!readonly"
+          :options="weekdays" emit-value map-options dense outlined hide-bottom-space :label="t('memory.temporal.weekday')"
           @update:model-value="change('weekday', $event)" />
       </div>
     </div>
     <div class="text-caption q-mt-sm" role="status">{{ interpretation }}</div>
-    <q-btn v-if="modelValue && !readonly" flat dense no-caps icon="clear"
-      :label="t('memory.temporal.remove')" @click="emit('update:modelValue', null)" />
   </div>
 </template>
 
@@ -61,3 +70,16 @@ function change(key: NumericField, value: string | number | null): void {
     .some(field => anchor[field] != null) ? anchor : null)
 }
 </script>
+
+<style scoped>
+.memory-temporal-heading { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 4px 12px; }
+.memory-temporal-title { display: flex; align-items: center; gap: 8px; font-size: 0.875rem; font-weight: 600; }
+.memory-temporal-title .q-icon { color: var(--solaire-blue-accent); font-size: 18px; }
+.memory-temporal-actions { display: flex; gap: 4px; }
+.memory-temporal-inputs { display: grid; grid-template-columns: 88px 88px 112px 88px 88px minmax(160px, 200px); gap: 8px; margin-top: 8px; }
+.memory-temporal-inputs > div { min-width: 0; }
+.memory-temporal-inputs :deep(input) { font-variant-numeric: tabular-nums; }
+@media (max-width: 799px) {
+  .memory-temporal-inputs { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1.5fr); }
+}
+</style>

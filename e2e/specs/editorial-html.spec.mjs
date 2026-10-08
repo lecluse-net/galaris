@@ -32,7 +32,7 @@ test('editorial HTML survives real API storage, browser editing and reload', asy
   const created = await request.post('/api/memory/items', { headers, data: { ...documentData, payload: { text: corpus + callout } } })
   expect(created.ok(), await created.text()).toBeTruthy()
   const item = await created.json()
-  const oldClient = await request.put(`/api/memory/items/${item.id}?actor_agent_id=${fixture.agent_id}`, { headers: { Authorization: headers.Authorization }, data: { expected_revision: item.revision, payload: { text: 'Old client' } } })
+  const oldClient = await request.patch(`/api/memory/documents/${item.id}?actor_agent_id=${fixture.agent_id}`, { headers: { Authorization: headers.Authorization }, data: { expected_revision: item.revision, payload: { text: 'Old client' } } })
   expect(oldClient.status()).toBe(409)
   const forbidden = await request.put(`/api/agents/${fixture.agent_id}`, { headers, data: { personality: '<img src="https://example.invalid/image.png">' } })
   expect(forbidden.status()).toBe(422)
@@ -42,15 +42,15 @@ test('editorial HTML survives real API storage, browser editing and reload', asy
   await expect(editor.locator('th')).toHaveAttribute('colspan', '2')
   await editor.locator('h2').click()
   await page.keyboard.press('End')
-  const saved = page.waitForResponse(response => response.request().method() === 'PUT'
-    && response.url().includes(`/memory/items/${item.id}`)
+  const saved = page.waitForResponse(response => response.request().method() === 'PATCH'
+    && response.url().includes(`/memory/documents/${item.id}`)
     && response.request().postDataJSON()?.payload?.text?.includes('<h3>Été!</h3>'))
   const modifier = await page.evaluate(() => /Macintosh|iPhone|iPad/.test(navigator.userAgent) ? 'Meta' : 'Control')
   await page.keyboard.press(`${modifier}+Shift+Digit3`)
   await expect(editor.locator('h3')).toHaveText('Été')
   await page.keyboard.type('!')
   expect((await saved).ok()).toBeTruthy()
-  const persisted = await (await request.get(`/api/memory/items/${item.id}?agent_id=${fixture.agent_id}`, { headers })).json()
+  const persisted = (await (await request.get(`/api/memory/documents/${item.id}?agent_id=${fixture.agent_id}`, { headers })).json()).item
   expect(persisted.media_type).toBe('text/html')
   expect(persisted.payload.text).toContain('<u>Texte souligné</u>')
   expect(persisted.payload.text).toContain('colspan="2"')

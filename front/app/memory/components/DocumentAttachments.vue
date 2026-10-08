@@ -2,8 +2,8 @@
   <q-dialog v-if="managerMode" v-model="managerOpen"><q-card class="galaris-dialog-card" style="width: 920px; max-width: 95vw"><q-card-section class="galaris-dialog-title row items-center"><div class="text-h6">{{ t('documents.attachments') }}</div><q-space /><q-btn v-close-popup flat round dense icon="close" :aria-label="t('common.close')" /></q-card-section><div ref="managerContent" class="q-pa-md galaris-dialog-body" /></q-card></q-dialog>
   <Teleport :to="managerContent || 'body'" :disabled="!managerMode || !managerOpen">
   <section v-if="!previewOnly" v-show="!managerMode || managerOpen || displayedAttachments.length" class="document-attachments" :class="{ 'document-attachments--drag': dragging }" @dragover.prevent="dragging = editable" @dragleave.self="dragging = false" @drop.prevent="dropFiles" :aria-label="attachmentsTitle">
-    <div class="row items-center q-mb-sm">
-      <div class="text-subtitle2">{{ attachmentsTitle }}</div>
+    <div v-if="showHeading || editable" class="row items-center q-mb-sm">
+      <div v-if="showHeading" class="text-subtitle2">{{ attachmentsTitle }}</div>
       <q-space />
       <q-btn
         v-if="editable"
@@ -47,6 +47,7 @@
         placement="below-page"
         :title="attachment.name"
         :subtitle="formatSize(attachment.size_bytes)"
+        :uri="attachment.uri"
         :image="thumbnailUrls[attachment.id]"
         :icon="attachmentIcon(attachment)"
         :disabled="attachmentKind(attachment) === 'audio'"
@@ -231,16 +232,17 @@ import type { BrowserResourceKind, Model3dSource } from '@/core/util'
 import { memoryService } from '../services/memoryService'
 import type { DocumentAttachment } from '../types'
 
-const { documentId, agentId, attachments, editable = false, loading = false, content = '', managerMode = false, previewOnly = false, resourceSource } = defineProps<{
+const { documentId, agentId, attachments, editable = false, loading = false, content = '', managerMode = false, previewOnly = false, showHeading = true, resourceSource } = defineProps<{
   resourceSource?: {
     content: (attachment: DocumentAttachment, preview: boolean) => Promise<Blob>
     thumbnail: (attachment: DocumentAttachment, signal?: AbortSignal) => Promise<Blob>
   }
   previewOnly?: boolean
+  showHeading?: boolean
   managerMode?: boolean
   documentId: string
   agentId: number | null
-  attachments: DocumentAttachment[]
+  attachments: (DocumentAttachment & { uri?: string })[]
   editable?: boolean
   content?: string
   loading?: boolean

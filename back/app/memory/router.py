@@ -4,7 +4,7 @@ from __future__ import annotations
 from core.util import require_editorial_client, local_timezone_name
 from fastapi import Depends
 
-from typing import Any
+from typing import Annotated, Any
 from uuid import UUID, uuid4
 
 from fastapi import APIRouter, File, HTTPException, Query, Response, UploadFile, status
@@ -575,6 +575,7 @@ async def get_memory_item(
             revision=revision,
             record_llm_access=False,
             include_revisions=False,
+            memory_content=True,
         )
         return await service.item_to_detail(
             item,
@@ -583,6 +584,7 @@ async def get_memory_item(
             content_type=content_type,
             media_type=media_type,
             revision=revision,
+            memory_content=True,
         )
     except Exception as exc:
         raise _http_error(exc) from exc
@@ -614,7 +616,7 @@ async def update_memory_item(
 ) -> MemoryItemPublic:
     try:
         actor, administrative = await _item_request_actor(actor_agent_id)
-        item = await service.update_item(
+        item = await service.update_memory_content(
             item_id,
             data,
             actor_agent_id=actor,
@@ -623,7 +625,7 @@ async def update_memory_item(
         access = await service.assert_item_access(
             item, actor, administrative=administrative
         )
-        return service.item_to_public(item, access)
+        return service.item_to_public(item, access, memory_content=True)
     except Exception as exc:
         raise _http_error(exc) from exc
 
@@ -1053,10 +1055,14 @@ async def read_document_thumbnail(
     ],
     assertion=ManagedDocumentAccessAssertion,
 )
-async def read_managed_document(document_id: UUID) -> ManagedDocumentDetail:
+async def read_managed_document(document_id: UUID, agent_id: Annotated[int | None, Query(gt=0)] = None) -> ManagedDocumentDetail:
     try:
         scope = await current_management_scope()
-        actor = await document_sharing.document_actor(document_id, scope)
+        if agent_id is not None:
+            await _require_agent_scope(agent_id)
+            actor: int | HumanActor = agent_id
+        else:
+            actor = await document_sharing.document_actor(document_id, scope)
         item, content, access, content_type, media_type = await service.get_item(
             document_id, agent_id=actor, include_revisions=False,
         )
@@ -1068,12 +1074,31 @@ async def read_managed_document(document_id: UUID) -> ManagedDocumentDetail:
         raise _http_error(exc) from exc
 
 
+@router.delete("/documents/{document_id}", response_model=MemoryForgetResult)
+@authorize(privileges=Privileges.MEMORY_EDIT)
+async def delete_managed_document(
+    document_id: UUID,
+    actor_agent_id: int | None = Query(default=None, gt=0),
+) -> MemoryForgetResult:
+    try:
+        actor, administrative = await _item_request_actor(actor_agent_id)
+        return await service.delete_document(
+            document_id, actor_agent_id=actor, administrative=administrative,
+        )
+    except Exception as exc:
+        raise _http_error(exc) from exc
+
+
 @router.patch("/documents/{document_id}", response_model=MemoryItemPublic, dependencies=[Depends(require_editorial_client)])
 @authorize(privileges=[Privileges.MEMORY_EDIT, Privileges.MEMORY_ADMIN])
-async def update_human_document(document_id: UUID, data: MemoryItemUpdate) -> MemoryItemPublic:
+async def update_human_document(document_id: UUID, data: MemoryItemUpdate, actor_agent_id: Annotated[int | None, Query(gt=0)] = None) -> MemoryItemPublic:
     try:
         scope = await current_management_scope()
-        actor = HumanActor(scope.user_id)
+        if actor_agent_id is not None:
+            await _require_agent_scope(actor_agent_id)
+            actor: int | HumanActor = actor_agent_id
+        else:
+            actor = HumanActor(scope.user_id)
         item = await service.update_item(document_id, data, actor_agent_id=actor)
         return service.item_to_public(item, await service.effective_access(item, actor))
     except Exception as exc:

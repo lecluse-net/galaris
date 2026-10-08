@@ -6,7 +6,7 @@ from typing import Any
 from uuid import UUID
 
 from sqlalchemy import select
-from sqlalchemy.orm import raiseload, selectinload
+from sqlalchemy.orm import joinedload, raiseload, selectinload
 
 from app.agent import management_scope_for
 from core.authorize import AssertionContext, BaseAssertion
@@ -36,7 +36,8 @@ class ManagedDocumentAccessAssertion(BaseAssertion):
             return False
         item = await context.db.scalar(
             select(MemoryItem)
-            .options(selectinload(MemoryItem.grants), raiseload(MemoryItem.url_relations))
+            .options(selectinload(MemoryItem.grants), raiseload(MemoryItem.url_relations),
+                     joinedload(MemoryItem.document))
             .where(
                 MemoryItem.id == document_id,
                 MemoryItem.node_kind == "document",

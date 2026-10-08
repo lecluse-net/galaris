@@ -24,7 +24,7 @@ async def test_cancelled_publication_preserves_only_committed_files(db, agents, 
     with pytest.raises(asyncio.CancelledError):
         await service.create_item(MemoryItemCreate(owner_agent_id=agents[0].id, title="Cancelled creation", payload=MemoryPayload(text="durable")))
     monkeypatch.setattr(db, "commit" if committed else "flush", original)
-    items = list(await db.scalars(select(MemoryItem).where(MemoryItem.title == "Cancelled creation")))
+    items = list(await db.scalars(select(MemoryItem).where(MemoryItem.search_text == "durable")))
     files = [path for path in memory_storage.rglob("*") if path.is_file()]
     assert len(items) == len(files) == int(committed)
     if committed:

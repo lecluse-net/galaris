@@ -1,17 +1,11 @@
 <template>
-  <div class="q-mt-md">
+  <div>
     <q-banner v-if="failed" rounded class="bg-negative text-white" role="alert">
       {{ t('documents.attachmentError') }}
       <template #action><q-btn flat :label="t('chat.resourcePreview.retryFile')" @click="load" /></template>
     </q-banner>
     <DocumentAttachments v-else-if="agentId !== null" :key="generation" :document-id="itemId" :agent-id="agentId"
-      :attachments="resources" :loading="loading" :resource-source="resourceSource" />
-    <q-list v-if="resources.length" dense class="q-mt-sm">
-      <q-item v-for="resource in resources" :key="resource.id">
-        <q-item-section avatar><q-icon name="link" color="primary" /></q-item-section>
-        <q-item-section><q-item-label class="memory-file-uri">{{ resource.uri }}</q-item-label></q-item-section>
-      </q-item>
-    </q-list>
+      :attachments="resources" :loading="loading" :resource-source="resourceSource" :show-heading="false" />
   </div>
 </template>
 
@@ -68,7 +62,3 @@ watch(() => [itemId, agentId], () => { void load() }, { immediate: true })
 onMounted(() => window.addEventListener(AUTH_TOKEN_CHANGED_EVENT, sessionChanged))
 onBeforeUnmount(() => { request?.abort(); window.removeEventListener(AUTH_TOKEN_CHANGED_EVENT, sessionChanged) })
 </script>
-
-<style scoped>
-.memory-file-uri { overflow-wrap: anywhere; font-size: 12px; }
-</style>

@@ -91,6 +91,10 @@ export interface CatalogueResource extends DocumentAttachment {
 export type DocumentType = 'html' | 'dataset'
 
 export interface MemoryItem {
+  document_id?: string | null
+  document_revision?: number | null
+  summary_document_revision?: number | null
+  summary_outdated?: boolean
   file_sha256?: string | null
   file_media_type?: string | null
   file_size_bytes?: number | null
@@ -238,7 +242,7 @@ export interface MemoryItemCreate {
   temporal?: MemoryTemporalAnchor | null
   document_type?: DocumentType
   owner_agent_id: number
-  title: string
+  title?: string
   payload: MemoryPayload
   node_kind?: MemoryNodeKind
   content_type?: string

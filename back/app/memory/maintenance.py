@@ -570,6 +570,8 @@ async def _invalidate_item_findings(item_id: UUID, *, except_id: UUID) -> None:
 
 
 async def _merge_items(canonical: MemoryItem, duplicate: MemoryItem, finding_id: UUID) -> None:
+    if canonical.node_kind == "document" or duplicate.node_kind == "document":
+        raise service.MemoryConflictError("Document memories cannot be merged independently of their documents.")
     if canonical.id == duplicate.id:
         raise service.MemoryConflictError("A memory cannot be merged into itself.")
     if canonical.owner_agent_id != duplicate.owner_agent_id:

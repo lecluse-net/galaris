@@ -15,6 +15,7 @@ async function memoryItemFixtures(page) {
   await jsonRoute(page, '**/api/memory/items/doc-a/links?*', [])
   await jsonRoute(page, '**/api/file-share/items/*/resources?*', [])
   await jsonRoute(page, '**/api/memory/items/doc-a/revisions?*', versions)
+  await page.route(/\/api\/memory\/documents\/doc-a(?:\?.*)?$/, route => route.fulfill({ json: { item, agent_id: 7 } }))
   await jsonRoute(page, '**/api/memory/items/doc-a/sharing', { lock_version: 3, can_manage: true, grants: [], options: [],
     level: 'private', can_write: false, owner: { kind: 'agent', id: 7, label: 'Alice', can_write: true }, owner_groups: [] })
   await page.route('**/api/memory/browse', route => route.fulfill({ json: { hits: [{ item, score: 1 }], total: 1, has_more: false } }))
@@ -67,6 +68,10 @@ for (const width of [1440, 390]) test(`Dream actions refresh the node, preserve 
   await generate.click()
   await expect.poll(() => calls).toBe(2)
   await expect(dialog.getByRole('button', { name: 'Regenerate thumbnail', exact: true })).toBeDisabled()
+  await dialog.getByRole('tab', { name: 'Links and relations', exact: true }).click()
+  await expect(dialog.getByRole('button', { name: 'Save', exact: true })).toBeDisabled()
+  await dialog.getByRole('tab', { name: 'Memory', exact: true }).click()
+  await expect(dialog.getByRole('button', { name: 'Regenerate thumbnail', exact: true })).toBeDisabled()
   release()
   await expect.poll(() => typeof releaseRefresh).toBe('function')
   await expect(dialog.locator('.ck-editor__editable')).toHaveAttribute('contenteditable', 'false')
@@ -102,7 +107,8 @@ for (const width of [1440, 390]) for (const nodeKind of ['document', 'file']) {
       return canvas.toDataURL('image/webp', 1).split(',')[1]
     }))
     let calls = 0
-    await jsonRoute(page, '**/api/memory/items/doc-a?*', item)
+    await jsonRoute(page, '**/api/memory/items/doc-a?*', nodeKind === 'document'
+      ? { ...item, revision: 1, payload: { text: '' } } : item)
     await jsonRoute(page, '**/api/dream/memory/doc-a/actions?*', { actions: ['thumbnail'] })
     const resource = { id: 'image-a', name: 'Synthetic.png', media_type: 'image/png', size_bytes: 100, uri: 'file://synthetic/image.png' }
     await jsonRoute(page, '**/api/file-share/items/doc-a/resources?*', [resource])
@@ -131,7 +137,7 @@ for (const width of [1440, 390]) for (const nodeKind of ['document', 'file']) {
       await expect(regenerate).toBeEnabled()
       await expect(row.locator('img')).toHaveJSProperty('naturalWidth', expectedWidth)
     }
-    await expect(dialog.locator('.ck-editor__editable')).toHaveText('Current body')
+    await expect(dialog.locator('.ck-editor__editable')).toHaveText(nodeKind === 'document' ? '' : 'Current body')
     await dialog.evaluate(async element => {
       await Promise.all(element.getAnimations({ subtree: true }).filter(animation => animation.effect?.getTiming().iterations !== Infinity)
         .map(animation => animation.finished.catch(() => {})))
@@ -224,7 +230,10 @@ for (const width of [1440, 390]) test(`memory list displays available thumbnails
     delete items[1].primary_url
   }
   await jsonRoute(page, '**/api/memory/browse', { hits: items.map(item => ({ item, score: 1, excerpt: 'Preserved excerpt' })), total: items.length, has_more: false })
-  for (const item of items) await jsonRoute(page, `**/api/memory/items/${item.id}?*`, item)
+  for (const item of items) {
+    await jsonRoute(page, `**/api/memory/items/${item.id}?*`, item)
+    if (item.node_kind === 'document') await jsonRoute(page, `**/api/memory/documents/${item.id}?*`, { item, agent_id: 7 })
+  }
   const resource = { id: 'image-a', name: 'Illustration.png', media_type: 'image/png', size_bytes: 100, uri: 'file://synthetic/illustration.png' }
   await jsonRoute(page, '**/api/file-share/items/doc-a/resources?*', [resource])
   await jsonRoute(page, '**/api/file-share/items/unavailable-a/resources?*', [resource])
@@ -246,7 +255,7 @@ for (const width of [1440, 390]) test(`memory list displays available thumbnails
   }
   await page.screenshot({ path: testInfo.outputPath('memory-list-thumbnails.png'), fullPage: true })
   await rows.filter({ has: page.getByText('Indexed illustration', { exact: true }) }).locator('img').click()
-  await expect(page.getByRole('dialog').getByLabel('Title', { exact: true })).toHaveValue('Indexed illustration')
+  await expect(page.getByRole('dialog').locator('.q-toolbar__title')).toHaveText('Memory - File')
 })
 
 test('memory item thumbnails discard late responses after agent changes and clear on logout', async ({ page }) => {
@@ -293,17 +302,17 @@ for (const width of [1920, 390]) test(`graph opens modals with metadata and pres
   await page.screenshot({ path: testInfo.outputPath('memory-graph.png'), fullPage: true })
   await clickGraphNode(page, 'doc-a')
   const dialog = page.getByRole('dialog')
-  await expect(dialog.getByLabel('Title', { exact: true })).toHaveValue(item.title)
-  const metadata = dialog.locator('dl')
-  await expect(metadata.getByText('Memory', { exact: true })).toBeVisible()
-  await expect(metadata.getByText('Private', { exact: true })).toBeVisible()
-  await expect(metadata.getByText('37', { exact: true })).toBeVisible()
+  await expect(dialog.locator('.q-toolbar__title')).toHaveText('Memory - Memory')
+  const metadata = dialog.locator('.q-toolbar')
+  await expect(metadata.getByText('Accesses: 37', { exact: true })).toBeVisible()
   const activity = await page.evaluate(() => new Intl.DateTimeFormat('en', {
     dateStyle: 'medium', timeStyle: 'short',
   }).format(new Date('2026-09-02T13:45:00Z')))
   await expect(metadata.getByText(activity, { exact: true })).toBeVisible()
   await expect(dialog.locator('.ck-editor__editable')).toHaveText('Current body')
   await page.screenshot({ path: testInfo.outputPath('graph-memory-modal.png') })
+  await dialog.getByRole('tab', { name: 'Links and relations', exact: true }).click()
+  await page.screenshot({ path: testInfo.outputPath('graph-memory-links.png') })
   await dialog.getByText('Synthetic folder', { exact: true }).click()
   await expect(dialog).toHaveCount(1)
   await expect(dialog.locator('.q-toolbar__title')).toHaveText('Synthetic folder')
@@ -315,8 +324,8 @@ for (const width of [1920, 390]) test(`graph opens modals with metadata and pres
   await page.screenshot({ path: testInfo.outputPath('graph-conversation-modal.png') })
   await dialog.getByText(item.title, { exact: true }).click()
   await expect(dialog).toHaveCount(1)
-  await expect(dialog.getByLabel('Title', { exact: true })).toHaveValue(item.title)
-  await expect(dialog.locator('dl').getByText('37', { exact: true })).toBeVisible()
+  await expect(dialog.locator('.q-toolbar__title')).toHaveText('Memory - Memory')
+  await expect(dialog.locator('.q-toolbar').getByText('Accesses: 37', { exact: true })).toBeVisible()
   if (width >= 1024) await page.locator('.q-dialog__backdrop').click({ position: { x: 10, y: 10 } })
   else await page.keyboard.press('Escape')
   await expect(dialog).toHaveCount(0)
@@ -325,12 +334,12 @@ for (const width of [1920, 390]) test(`graph opens modals with metadata and pres
   expect(closed.zoom).toBe(initial.zoom)
   expect(closed.nodes.map(({ id, x, y }) => ({ id, x, y }))).toEqual(initial.nodes.map(({ id, x, y }) => ({ id, x, y })))
   await clickGraphNode(page, 'doc-a')
-  await expect(dialog.getByLabel('Title', { exact: true })).toHaveValue(item.title)
-  await expect(dialog.locator('dl').getByText(activity, { exact: true })).toBeVisible()
+  await expect(dialog.locator('.q-toolbar__title')).toHaveText('Memory - Memory')
+  await expect(dialog.locator('.q-toolbar').getByText(activity, { exact: true })).toBeVisible()
 })
 
 for (const nodeKind of ['file', 'directory']) {
-  test(`catalogue ${nodeKind} title and content can be saved and reopened`, async ({ page }) => {
+  test(`catalogue ${nodeKind} content can be saved and reopened`, async ({ page }) => {
     const { item } = await memoryItemFixtures(page)
     Object.assign(item, { node_kind: nodeKind, source_managed: true,
       managed_source_kind: 'file_catalogue', read_only: false, deletion_protected: true,
@@ -347,18 +356,16 @@ for (const nodeKind of ['file', 'directory']) {
     await mount(page, 'app/memory/pages/index.vue', { privileges: ['MEMORY_EDIT'], route: '/memory?agent=7' })
     await page.getByText('Current memory', { exact: true }).click()
     const dialog = page.getByRole('dialog')
-    await dialog.getByLabel('Title', { exact: true }).fill('Personal catalogue title')
     const editor = dialog.locator('.ck-editor__editable')
     await expect(editor).toBeEditable()
     await editor.fill('Personal catalogue content')
     await dialog.getByRole('button', { name: 'Save', exact: true }).click()
     await expect.poll(() => writes.length).toBe(1)
-    expect(writes[0]).toMatchObject({ title: 'Personal catalogue title',
-      payload: { text: '<p>Personal catalogue content</p>' } })
+    expect(writes[0]).toMatchObject({ payload: { text: '<p>Personal catalogue content</p>' } })
+    expect(writes[0]).not.toHaveProperty('title')
     await dialog.getByRole('button', { name: 'Close', exact: true }).click()
     await expect(dialog).toBeHidden()
-    await page.getByText('Personal catalogue title', { exact: true }).click()
-    await expect(dialog.getByLabel('Title', { exact: true })).toHaveValue('Personal catalogue title')
+    await page.getByText('Current memory', { exact: true }).click()
     await expect(dialog.locator('.ck-editor__editable')).toHaveText('Personal catalogue content')
   })
 }
@@ -452,8 +459,8 @@ for (const width of [1440, 390]) test(`graph markers agree with their legend thr
   await jsonRoute(page, '**/api/memory/graph/roots', {
     nodes, edges: [], has_more: false, next_cursor: null, edges_truncated: false,
   })
-  await jsonRoute(page, '**/api/memory/items/catalogue-document?*', {
-    ...document, id: 'catalogue-document', payload: { text: '<p>Synthetic document</p>' },
+  await jsonRoute(page, '**/api/memory/documents/catalogue-document?*', {
+    item: { ...document, id: 'catalogue-document', payload: { text: '<p>Synthetic document</p>' } }, agent_id: 7,
   })
   await mount(page, 'app/memory/components/MemoryGraph.vue', { props: {
     agentId: 7, query: '', topicItemId: null,
@@ -758,8 +765,8 @@ for (const width of [1440, 750, 390]) test(`mixed graph keeps linked subjects to
       : edge.target_item_id === node.id ? [edge.source_item_id] : [])).size
     node.has_relations = node.relation_count > 0
   }
-  for (const node of nodes.filter(node => node.node_kind === 'document')) {
-    await jsonRoute(page, `**/api/memory/items/${node.id}?*`, { ...document, id: node.id, title: node.title })
+    for (const node of nodes.filter(node => node.node_kind === 'document')) {
+      await jsonRoute(page, `**/api/memory/documents/${node.id}?*`, { item: { ...document, id: node.id, title: node.title }, agent_id: 7 })
   }
   await jsonRoute(page, '**/api/memory/graph/roots', { nodes, edges, has_more: false, next_cursor: null, edges_truncated: false })
   const start = Date.now()
@@ -1129,7 +1136,7 @@ for (const locale of ['fr', 'en']) {
       }
     }
     await page.getByText(item.title, { exact: true }).click()
-    await expect(page.getByRole('dialog').getByLabel(locale === 'fr' ? 'Titre' : 'Title', { exact: true })).toHaveValue(item.title)
+    await expect(page.getByRole('dialog').locator('.q-toolbar__title')).toHaveText(locale === 'fr' ? 'Mémoire - Souvenir' : 'Memory - Memory')
   })
 }
 
@@ -1160,11 +1167,13 @@ for (const width of [1440, 390]) {
     await viewer.getByRole('button', { name: 'Exit fullscreen', exact: true }).click()
     await viewer.getByRole('button', { name: 'Close', exact: true }).click()
     await page.getByText('Current memory', { exact: true }).click()
-    const detail = page.getByRole('dialog').filter({ has: page.getByLabel('Title', { exact: true }) })
+    const detail = page.getByRole('dialog')
     await expect(detail.getByText('Current body', { exact: true })).toBeVisible()
-    await detail.getByRole('button', { name: 'Preview', exact: true }).click()
+    await detail.getByRole('button', { name: 'Open preview of Original.md', exact: true }).first().click()
     await expect(viewer.getByText('Full file content.', { exact: true })).toBeVisible()
     await viewer.getByRole('button', { name: 'Close', exact: true }).click()
+    await detail.getByRole('tab', { name: 'Links and relations', exact: true }).click()
+    await detail.getByRole('tab', { name: 'Memory', exact: true }).click()
     await expect(detail.getByText('Current body', { exact: true })).toBeVisible()
   })
 }
@@ -1241,8 +1250,9 @@ for (const delayedStage of ['memory', 'info', 'content']) {
   })
 }
 
-test('revocation clears an open memory and ignores a late browse response', async ({ page }) => {
+for (const nodeKind of ['memory', 'document']) test(`revocation clears an open ${nodeKind} memory and ignores a late browse response`, async ({ page }) => {
   const { item } = await memoryItemFixtures(page)
+  Object.assign(item, { node_kind: nodeKind })
   await jsonRoute(page, '**/api/memory/items/doc-a?*', item)
   await mount(page, 'app/memory/pages/index.vue', { route: '/memory?agent=7' })
   await page.getByText('Current memory', { exact: true }).click()
@@ -1285,12 +1295,11 @@ for (const width of [1440, 390]) {
         : item
       return route.fulfill({ json: historical })
     })
-    await mount(page, 'app/memory/pages/index.vue', { privileges: ['MEMORY_EDIT'], route: '/memory?agent=7' })
+    await mount(page, 'app/memory/pages/index.vue', { privileges: ['MEMORY_EDIT', 'TASK_ACCESS'], route: '/memory?agent=7' })
     await page.getByText('Current memory', { exact: true }).click()
     const dialog = page.getByRole('dialog')
     await expect(dialog.getByText('Current body', { exact: true })).toBeVisible()
-    await expect(dialog.getByLabel('Owner agent', { exact: true })).toHaveValue('Alice Example')
-    await expect(dialog.getByLabel('Owner agent', { exact: true })).not.toBeEditable()
+    await expect(dialog.getByLabel('Owner agent', { exact: true })).toHaveCount(0)
     expect(reads).toEqual([])
     await dialog.screenshot({ path: testInfo.outputPath('memory-view.png'), animations: 'disabled' })
     await dialog.getByRole('tab', { name: 'History', exact: true }).click()
@@ -1300,8 +1309,7 @@ for (const width of [1440, 390]) {
     await expect(dialog.getByText('Revised body', { exact: true })).toBeVisible()
     await dialog.screenshot({ path: testInfo.outputPath('memory-history.png'), animations: 'disabled' })
     await dialog.getByRole('tab', { name: 'Memory', exact: true }).click()
-    await expect(dialog.getByLabel('Title', { exact: true })).toHaveValue('Current memory')
-    await dialog.getByLabel('Title', { exact: true }).fill('My current draft')
+    await dialog.locator('.ck-editor__editable').fill('My current draft')
     const keywordField = dialog.locator('.memory-form-keywords')
     await expect(keywordField.locator('.q-chip')).toContainText('current')
     await dialog.getByRole('combobox', { name: 'Keywords', exact: true }).fill(' release, notes ')
@@ -1311,30 +1319,47 @@ for (const width of [1440, 390]) {
     await dialog.getByRole('tab', { name: 'History', exact: true }).click()
     await expect(dialog.getByText('Original body', { exact: true })).toBeVisible()
     await dialog.getByRole('tab', { name: 'Memory', exact: true }).click()
-    await expect(dialog.getByText('Current body', { exact: true })).toBeVisible()
-    await expect(dialog.getByLabel('Title', { exact: true })).toHaveValue('My current draft')
+    await expect(dialog.locator('.ck-editor__editable')).toHaveText('My current draft')
     await expect(keywordField.locator('.q-chip').last()).toContainText('release, notes')
     await dialog.getByLabel('Day of month', { exact: true }).fill('27')
     await dialog.getByLabel('Month', { exact: true }).fill('9')
     await dialog.getByLabel('Hour', { exact: true }).fill('0')
     await dialog.getByLabel('Minute', { exact: true }).fill('0')
     await expect(dialog.getByLabel('Year', { exact: true })).toHaveValue('')
+    const linksTab = dialog.getByRole('tab', { name: 'Links and relations', exact: true })
+    await linksTab.focus()
+    await page.keyboard.press('Enter')
+    await expect(linksTab).toHaveAttribute('aria-selected', 'true')
+    await expect(dialog.getByRole('link', { name: item.source_refs[0], exact: true }))
+      .toHaveAttribute('href', '/task?task_id=11111111-1111-1111-1111-111111111111')
+    await expect(dialog.getByText('No explicit relation.', { exact: true })).toBeVisible()
+    await expect(dialog.getByRole('button', { name: 'Add relation', exact: true })).toBeEnabled()
+    await dialog.screenshot({ path: testInfo.outputPath('memory-links.png'), animations: 'disabled' })
+    await dialog.getByRole('tab', { name: 'Memory', exact: true }).click()
+    await expect(dialog.locator('.ck-editor__editable')).toHaveText('My current draft')
+    await expect(dialog.getByLabel('Day of month', { exact: true })).toHaveValue('27')
+    await expect(dialog.locator('.ck-editor__editable')).toHaveText('My current draft')
+    await page.evaluate(() => window.testApp.dark(true))
+    await dialog.screenshot({ path: testInfo.outputPath('memory-view-dark.png'), animations: 'disabled' })
+    await page.evaluate(() => window.testApp.dark(false))
+    await linksTab.click()
     expect(writes).toEqual([])
     await dialog.getByRole('button', { name: 'Save', exact: true }).click()
     await expect.poll(() => writes.length).toBe(1)
-    expect(writes[0]).toMatchObject({ title: 'My current draft', expected_revision: 3, keywords: ['current', 'release, notes'], payload: { text: '<p>Current body</p>' } })
+    expect(writes[0]).toMatchObject({ expected_revision: 3, keywords: ['current', 'release, notes'], payload: { text: '<p>My current draft</p>' } })
+    expect(writes[0]).not.toHaveProperty('title')
     expect(writes[0]).not.toHaveProperty('summary')
     expect(writes[0]).not.toHaveProperty('reason')
     expect(writes[0].temporal).toMatchObject({ day: 27, month: 9, hour: 0, minute: 0 })
     expect(writes[0].temporal).not.toHaveProperty('timezone')
     await expect(dialog.getByRole('tab', { name: 'Memory', exact: true })).toHaveAttribute('aria-selected', 'true')
-    await expect(dialog.getByText('Current body', { exact: true })).toBeVisible()
-    await dialog.getByLabel('Title', { exact: true }).fill('Second saved title')
+    await expect(dialog.getByText('My current draft', { exact: true })).toBeVisible()
+    await dialog.locator('.ck-editor__editable').fill('Second saved content')
     await expect(dialog.getByLabel('Day of month', { exact: true })).toHaveValue('27')
     await dialog.getByRole('button', { name: 'Remove temporality', exact: true }).click()
     await dialog.getByRole('button', { name: 'Save', exact: true }).click()
     await expect.poll(() => writes.length).toBe(2)
-    expect(writes[1]).toMatchObject({ title: 'Second saved title', expected_revision: 4 })
+    expect(writes[1]).toMatchObject({ expected_revision: 4, payload: { text: '<p>Second saved content</p>' } })
     expect(writes[1].temporal).toBeNull()
   })
 }
@@ -1353,8 +1378,8 @@ test('memory history can be read without edit privileges and recovers a failed v
   await mount(page, 'app/memory/pages/index.vue', { route: '/memory?agent=7' })
   await page.getByText('Current memory', { exact: true }).click()
   const dialog = page.getByRole('dialog')
-  await expect(dialog.getByLabel('Title', { exact: true })).toHaveValue('Current memory')
-  await expect(dialog.getByLabel('Title', { exact: true })).not.toBeEditable()
+  await expect(dialog.locator('.ck-editor__editable')).toHaveText('Current body')
+  await expect(dialog.locator('.ck-editor__editable')).toHaveAttribute('contenteditable', 'false')
   await expect(dialog.getByRole('button', { name: 'Save', exact: true })).toHaveCount(0)
   await dialog.getByRole('tab', { name: 'History', exact: true }).click()
   await expect(dialog.getByRole('alert')).toContainText('The content history could not be loaded.')
@@ -1387,8 +1412,9 @@ test('memory history ignores a late version response after another selection', a
   await expect(page.getByText('Body of version 1', { exact: true })).toHaveCount(0)
 })
 
-for (const locale of ['fr', 'en']) {
-  test(`memory relation labels are readable in ${locale}`, async ({ page }) => {
+for (const locale of ['fr', 'en']) for (const width of [1440, 390]) {
+  test(`memory relation labels are readable in ${locale} at ${width}px`, async ({ page }, testInfo) => {
+    await page.setViewportSize({ width, height: 900 })
     const { item } = await memoryItemFixtures(page)
     const relations = [
       ['topic_contains', 'Contenu du sujet', 'Topic content'],
@@ -1411,15 +1437,20 @@ for (const locale of ['fr', 'en']) {
     await mount(page, 'app/memory/pages/index.vue', { locale, route: '/memory?agent=7' })
     await page.getByText('Current memory', { exact: true }).click()
     const dialog = page.getByRole('dialog')
+    await dialog.getByRole('tab', { name: locale === 'fr' ? 'Liens et relations' : 'Links and relations', exact: true }).click()
+    await expect(dialog.getByText(item.source_refs[0], { exact: true })).toBeVisible()
+    await expect(dialog.getByRole('link', { name: item.source_refs[0], exact: true })).toHaveCount(0)
+    await expect(dialog.getByRole('button', { name: locale === 'fr' ? 'Ajouter une relation' : 'Add relation', exact: true })).toHaveCount(0)
     for (const [, fr, en] of relations) {
       await expect(dialog.getByText(locale === 'fr' ? fr : en, { exact: true })).toBeVisible()
     }
+    await page.screenshot({ path: testInfo.outputPath('memory-relations.png') })
   })
 }
 
 export async function documentFixtures(page) {
   await jsonRoute(page, '**/api/agents?*', [agent])
-  await jsonRoute(page, '**/api/memory/items/doc-a?*', document)
+  await jsonRoute(page, /\/api\/memory\/documents\/doc-a(?:\?.*)?$/, { item: document, agent_id: 7 })
   await jsonRoute(page, '**/api/memory/documents/owner-options?*', { agents: [{ id: 7, kind: 'agent', label: 'Alice', subtitle: '', avatar_url: null }], users: [] })
   await jsonRoute(page, '**/api/memory/documents/keywords?*', [])
   await jsonRoute(page, '**/api/memory/documents/folders?*', [{ path: 'Reports', kind: 'custom', shared: false }])
@@ -1453,7 +1484,7 @@ test('memory list combines hybrid search and calendar, then opens a returned mem
   await expect(page.getByText('Results are limited. Refine your search to explore other memories.')).toBeVisible()
   await expect(page.getByText('Semantic search is unavailable. Results match the search words.')).toBeVisible()
   await page.getByText('Current memory', { exact: true }).click()
-  await expect(page.getByRole('dialog').getByLabel('Title', { exact: true })).toHaveValue(item.title)
+  await expect(page.getByRole('dialog').locator('.q-toolbar__title')).toHaveText('Memory - Memory')
   await page.getByRole('button', { name: 'Forget permanently', exact: true }).click()
   await page.getByRole('dialog').last().getByRole('button', { name: 'Forget permanently', exact: true }).click()
   await expect.poll(() => deleted).toBe(true)
@@ -1465,9 +1496,9 @@ test('memory list combines hybrid search and calendar, then opens a returned mem
 test('document editor autosaves with its revision and preserves read-only content', async ({ page }) => {
   await documentFixtures(page)
   const updates = []
-  await page.route('**/api/memory/items/doc-a?*', route => {
-    if (route.request().method() === 'GET') return route.fulfill({ json: document })
-    expect(route.request().method()).toBe('PUT')
+  await page.route(/\/api\/memory\/documents\/doc-a(?:\?.*)?$/, route => {
+    if (route.request().method() === 'GET') return route.fulfill({ json: { item: document, agent_id: 7 } })
+    expect(route.request().method()).toBe('PATCH')
     updates.push(route.request().postDataJSON())
     return route.fulfill({ json: { ...document, ...updates.at(-1), revision: 4, lock_version: 4 } })
   })
@@ -1510,12 +1541,12 @@ test('document library paginates on demand and opens a selected document on mobi
   await expect(page.getByRole('dialog')).toHaveCount(0)
 })
 
-test('a remote document revision merges untouched fields without losing the local draft', async ({ page }) => {
+for (const remoteField of ['content', 'keywords']) test(`a remote document ${remoteField} change merges untouched fields without losing the local draft`, async ({ page }) => {
   await documentFixtures(page)
   let current = { ...document }
   const updates = []
-  await page.route('**/api/memory/items/doc-a?*', route => {
-    if (route.request().method() === 'GET') return route.fulfill({ json: current })
+  await page.route(/\/api\/memory\/documents\/doc-a(?:\?.*)?$/, route => {
+    if (route.request().method() === 'GET') return route.fulfill({ json: { item: current, agent_id: 7 } })
     const body = route.request().postDataJSON()
     updates.push(body)
     current = { ...current, ...body, revision: current.revision + 1 }
@@ -1528,17 +1559,146 @@ test('a remote document revision merges untouched fields without losing the loca
   await page.clock.install({ time: clockTime })
   await page.clock.pauseAt(new Date(clockTime.getTime() + 1000))
   await title.fill('Local draft')
-  current = { ...document, revision: 4, payload: { text: '# Remote content' } }
-  await page.evaluate(() => window.testApp.emitSocket('memory.update', { data: { id: 'doc-a', node_kind: 'document', revision: 4 } }))
+  current = remoteField === 'content'
+    ? { ...document, revision: 4, payload: { text: '# Remote content' } }
+    : { ...document, lock_version: document.lock_version + 1, keywords: ['shared-classification'] }
+  await page.evaluate(({ revision, lock_version }) => window.testApp.emitSocket('memory.update', {
+    data: { id: 'doc-a', node_kind: 'document', revision, lock_version },
+  }), current)
   await page.clock.runFor(250)
-  await expect(page.locator('.document-editor-revision-button')).toContainText('4')
+  await expect(page.locator('.document-editor-revision-button')).toContainText(String(current.revision))
+  if (remoteField === 'keywords') {
+    await expect(page.locator('.document-editor-keywords-field .q-chip')).toContainText(['shared-classification'])
+  }
   await expect(title).toHaveValue('Local draft')
   await page.clock.runFor(1000)
   await expect.poll(() => updates.length).toBe(1)
-  expect(updates[0]).toMatchObject({ title: 'Local draft', expected_revision: 4 })
+  expect(updates[0]).toMatchObject({ title: 'Local draft', expected_revision: remoteField === 'content' ? 4 : document.revision })
   expect(updates[0]).not.toHaveProperty('payload')
+  expect(updates[0]).not.toHaveProperty('keywords')
   await expect(title).toHaveValue('Local draft')
-  await expect(page.locator('.document-editor-revision-button')).toContainText('5')
+  await expect(page.locator('.document-editor-revision-button')).toContainText(String(current.revision))
+})
+
+for (const width of [1440, 390]) test(`document keyword changes refresh its open memory without losing the synthesis draft at ${width}px`, async ({ page }, testInfo) => {
+  await page.setViewportSize({ width, height: 1000 })
+  const { item } = await memoryItemFixtures(page)
+  Object.assign(item, { node_kind: 'document', document_id: item.id })
+  const writes = []
+  await page.route('**/api/memory/items/doc-a?*', async route => {
+    if (route.request().method() === 'GET') return route.fulfill({ json: item })
+    const body = route.request().postDataJSON()
+    writes.push(body)
+    Object.assign(item, body, { lock_version: item.lock_version + 1 })
+    return route.fulfill({ json: item })
+  })
+  await mount(page, 'app/memory/pages/index.vue', { privileges: ['MEMORY_EDIT'], route: '/memory?agent=7' })
+  const openMemory = () => width < 1024
+    ? page.locator('.memory-mobile-title').filter({ hasText: 'Current memory' }).click()
+    : page.getByText('Current memory', { exact: true }).click()
+  await openMemory()
+  const dialog = page.getByRole('dialog')
+  const keywords = dialog.locator('.memory-form-keywords .q-chip__content')
+  await expect(dialog.getByRole('button', { name: 'Forget', exact: true })).toHaveCount(0)
+  await expect(keywords).toContainText(['current'])
+  await dialog.locator('.ck-editor__editable').fill('Local synthesis draft')
+  const expectedLock = ++item.lock_version
+  item.keywords = ['shared-classification']
+  await page.evaluate(({ revision, lock_version }) => window.testApp.emitSocket('memory.update', {
+    data: { id: 'doc-a', node_kind: 'document', revision, lock_version },
+  }), item)
+  await expect(keywords).toHaveText(['shared-classification'])
+  await expect(dialog.locator('.ck-editor__editable')).toHaveText('Local synthesis draft')
+  await dialog.getByRole('combobox', { name: 'Keywords', exact: true }).fill('memory-classification')
+  await page.keyboard.press('Enter')
+  await page.keyboard.press('Escape')
+  await dialog.getByRole('button', { name: 'Save', exact: true }).click()
+  await expect.poll(() => writes.length).toBe(1)
+  expect(writes[0]).toMatchObject({ expected_lock_version: expectedLock,
+    keywords: ['shared-classification', 'memory-classification'], payload: { text: '<p>Local synthesis draft</p>' } })
+  await expect(keywords).toHaveText(['shared-classification', 'memory-classification'])
+  await page.screenshot({ path: testInfo.outputPath('shared-document-memory-keywords.png'), animations: 'disabled' })
+  await dialog.getByRole('button', { name: 'Close', exact: true }).click()
+  await expect(dialog).toHaveCount(0)
+  await openMemory()
+  await expect(keywords).toHaveText(['shared-classification', 'memory-classification'])
+})
+
+test('conflicting shared keyword changes preserve the memory draft and its original lock', async ({ page }) => {
+  const { item } = await memoryItemFixtures(page)
+  Object.assign(item, { node_kind: 'document', document_id: item.id })
+  const originalLock = item.lock_version
+  const writes = []
+  await page.route('**/api/memory/items/doc-a?*', async route => {
+    if (route.request().method() === 'GET') return route.fulfill({ json: item })
+    writes.push(route.request().postDataJSON())
+    await route.fulfill({ status: 409, json: { detail: 'Document or synthesis changed; reload and retry' } })
+  })
+  await mount(page, 'app/memory/pages/index.vue', { privileges: ['MEMORY_EDIT'], route: '/memory?agent=7' })
+  await page.getByText('Current memory', { exact: true }).click()
+  const dialog = page.getByRole('dialog')
+  await dialog.getByRole('combobox', { name: 'Keywords', exact: true }).fill('local-keyword')
+  await page.keyboard.press('Enter')
+  await page.keyboard.press('Escape')
+  item.keywords = ['remote-keyword']
+  item.lock_version++
+  await page.evaluate(() => window.testApp.emitSocket('memory.update', {
+    data: { id: 'doc-a', node_kind: 'document', revision: 3 },
+  }))
+  await expect.poll(() => page.evaluate(() => window.testApp.pinia.state.value.memory.currentItem.keywords)).toEqual(['remote-keyword'])
+  await expect(dialog.locator('.memory-form-keywords .q-chip__content')).toHaveText(['current', 'local-keyword'])
+  await dialog.getByRole('button', { name: 'Save', exact: true }).click()
+  await expect.poll(() => writes.length).toBe(1)
+  expect(writes[0].expected_lock_version).toBe(originalLock)
+  await expect(page.locator('.q-notification')).toContainText('Document or synthesis changed')
+  await expect(dialog.locator('.memory-form-keywords .q-chip__content')).toHaveText(['current', 'local-keyword'])
+})
+
+test('document keyword refreshes recover errors and ignore late replies after reopening', async ({ page }) => {
+  const { item } = await memoryItemFixtures(page)
+  Object.assign(item, { node_kind: 'document', document_id: item.id })
+  let nextRead, release, waiting = false
+  await page.route('**/api/memory/items/doc-a?*', async route => {
+    const mode = nextRead
+    nextRead = undefined
+    if (mode === 'error') return route.fulfill({ status: 503, json: { detail: 'Synthetic refresh failure' } })
+    const snapshot = JSON.stringify(item)
+    if (mode === 'late') {
+      waiting = true
+      await new Promise(resolve => { release = resolve })
+    }
+    await route.fulfill({ contentType: 'application/json', body: snapshot })
+  })
+  const notify = () => page.evaluate(() => window.testApp.emitSocket('memory.update', {
+    data: { id: 'doc-a', node_kind: 'document', revision: 3 },
+  }))
+  await mount(page, 'app/memory/pages/index.vue', { privileges: ['MEMORY_EDIT'], route: '/memory?agent=7' })
+  await page.getByText('Current memory', { exact: true }).click()
+  const dialog = page.getByRole('dialog')
+  const keywords = dialog.locator('.memory-form-keywords .q-chip__content')
+  await dialog.locator('.ck-editor__editable').fill('Preserved local draft')
+  nextRead = 'error'
+  await notify()
+  await expect(page.locator('.q-notification')).toContainText('Synthetic refresh failure')
+  await expect(dialog.locator('.ck-editor__editable')).toHaveText('Preserved local draft')
+  item.keywords = ['recovered']
+  item.lock_version++
+  await notify()
+  await expect(keywords).toHaveText(['recovered'])
+  await expect(dialog.locator('.ck-editor__editable')).toHaveText('Preserved local draft')
+  nextRead = 'late'
+  await notify()
+  await expect.poll(() => waiting).toBe(true)
+  await dialog.getByRole('button', { name: 'Close', exact: true }).click()
+  await expect(dialog).toHaveCount(0)
+  item.keywords = ['reopened-current']
+  item.lock_version++
+  await page.getByText('Current memory', { exact: true }).click()
+  await expect(keywords).toHaveText(['reopened-current'])
+  const lateResponse = page.waitForResponse(response => response.url().includes('/api/memory/items/doc-a'))
+  release()
+  await lateResponse
+  await expect(keywords).toHaveText(['reopened-current'])
 })
 
 test('editing a Markdown table preserves its other cells and emits the changed content', async ({ page }) => {
@@ -1558,8 +1718,8 @@ test('overlapping edits keep a durable draft and require an explicit conflict ch
   await documentFixtures(page)
   let current = { ...document, media_type: 'text/html', content_profile: 'document', content_profile_version: 1, payload: { text: '<p>Original</p>' } }
   const updates = []
-  await page.route('**/api/memory/items/doc-a?*', route => {
-    if (route.request().method() === 'GET') return route.fulfill({ json: current })
+  await page.route(/\/api\/memory\/documents\/doc-a(?:\?.*)?$/, route => {
+    if (route.request().method() === 'GET') return route.fulfill({ json: { item: current, agent_id: 7 } })
     const body = route.request().postDataJSON()
     if (body.expected_revision !== current.revision) return route.fulfill({ status: 409, json: { detail: 'Revision conflict' } })
     updates.push(body)

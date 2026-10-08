@@ -141,7 +141,7 @@ async def test_equal_attachments_merge_within_parent_and_preserve_live_access(db
     with pytest.raises(service.MemoryPermissionError):
         await service.get_item(canonical_id, agent_id=owner.id)
     payloads = [path for path in memory_storage.rglob("*") if path.is_file() and path.stat().st_size]
-    await service.forget_item(parent.id, actor_agent_id=owner.id)
+    await service.delete_document(parent.id, actor_agent_id=owner.id)
     assert payloads and all(not path.exists() for path in payloads)
 
 

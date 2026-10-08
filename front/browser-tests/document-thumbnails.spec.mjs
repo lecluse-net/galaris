@@ -3,7 +3,8 @@ import { document as documentFixture } from './data.mjs'
 import { writeFile } from 'node:fs/promises'
 
 test.beforeEach(async ({ page }) => {
-  await jsonRoute(page, '**/api/memory/items/*?agent_id=*', { ...documentFixture, payload: { text: '<h1>Report</h1><p>Body</p>' } })
+  await jsonRoute(page, '**/api/memory/items/*?agent_id=*', { ...documentFixture, payload: { text: '' } })
+  await jsonRoute(page, '**/api/memory/documents/*?agent_id=*', { item: { ...documentFixture, payload: { text: '<h1>Report</h1><p>Body</p>' } } })
   await jsonRoute(page, '**/api/memory/documents/doc-a', { item: { ...documentFixture, payload: { text: '<h1>Report</h1>' } } })
 })
 
@@ -102,10 +103,10 @@ test('thumbnail congestion leaves documents usable and room changes cancel queue
   await jsonRoute(page, '**/api/chat/rooms/other/messages/message/previews', [])
   const releases = []
   let reads = 0
-  await page.route('**/api/memory/items/*?agent_id=7', async route => {
+  await page.route('**/api/memory/documents/*?agent_id=7', async route => {
     reads++
     await new Promise(resolve => releases.push(resolve))
-    await route.fulfill({ json: { ...documentFixture, payload: { text: '<p>Body</p>' } } })
+    await route.fulfill({ json: { item: { ...documentFixture, payload: { text: '<p>Body</p>' } } } })
   })
   await mount(page, 'app/chat/components/MessageResourcePreviews.vue', {
     props: { roomId: 'room', messageId: 'message', conversationAgentId: 7, canReadDocuments: true, canEditDocuments: true },
@@ -179,7 +180,7 @@ test('thumbnails use the print snapshot with embedded images for the saved revis
   const body = '<h1>Rapport de mission</h1><p>Le début du document conserve sa mise en page.</p><table><tbody><tr><th>Élément</th><th>Résultat</th></tr><tr><td>Document long</td><td>Première page</td></tr></tbody></table>'
     + `<figure class="image"><img src="document://${id}/attachments/${attachment}" alt="Illustration"></figure>`
     + '<p>Suite du document</p>'.repeat(300)
-  await jsonRoute(page, `**/api/memory/items/${id}?agent_id=7`, { ...documentFixture, revision: 12, lock_version: 17, title: 'Rapport de mission', payload: { text: body } })
+  await jsonRoute(page, `**/api/memory/documents/${id}?agent_id=7`, { item: { ...documentFixture, revision: 12, lock_version: 17, title: 'Rapport de mission', payload: { text: body } } })
   const image = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aX9sAAAAASUVORK5CYII=', 'base64')
   await page.route(`**/api/memory/documents/${id}/attachments/${attachment}?agent_id=7`, route => route.fulfill({ contentType: 'image/png', body: image }))
   let snapshot

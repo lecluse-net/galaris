@@ -1813,7 +1813,8 @@ async def _related_users(
             MemoryItem.managed_source_kind == "messenger_contact",
         )
         .distinct()
-        .order_by(references.c.topic_id, MemoryItem.title, MemoryItem.id)
+        # Contacts use their persisted label, which is also selected by DISTINCT.
+        .order_by(references.c.topic_id, MemoryItem.search_title, MemoryItem.id)
     )
     related: dict[UUID, list[TopicRelatedUser]] = {}
     seen: set[tuple[UUID, UUID]] = set()

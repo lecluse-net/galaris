@@ -548,7 +548,6 @@ async def _apply_acquisition_record(
             metadata["language"] = language
         update_data = MemoryItemUpdate(
             expected_revision=_target_revision(record.metadata_),
-            title=record.title,
             payload=MemoryPayload(text=record.content),
             keywords=list(record.keywords),
             metadata=metadata,

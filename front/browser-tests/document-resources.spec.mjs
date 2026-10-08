@@ -156,8 +156,8 @@ for (const directUpload of [false, true]) test(`the document ${directUpload ? 'u
     return route.fulfill({ json: uploaded ? [attachment] : [] })
   })
   await page.route(`**/api/memory/documents/${documentId}/attachments/${attachmentId}/thumbnail?*`, route => route.fulfill({ contentType: 'image/png', body: Buffer.from(png, 'base64') }))
-  await page.route(`**/api/memory/items/${documentId}?*`, route => {
-    if (route.request().method() === 'GET') return route.fulfill({ json: current })
+  await page.route(`**/api/memory/documents/${documentId}?*`, route => {
+    if (route.request().method() === 'GET') return route.fulfill({ json: { item: current } })
     Object.assign(current, route.request().postDataJSON(), { revision: current.revision + 1, lock_version: current.lock_version + 1 })
     return route.fulfill({ json: current })
   })
@@ -350,8 +350,8 @@ test('document link thumbnails survive saving, reopening and repeated conversion
     return route.fulfill({ contentType: 'image/png', body: Buffer.from(png, 'base64') })
   })
   await page.route(`**/api/memory/documents/${documentId}/attachments/${attachmentId}/thumbnail?*`, route => route.fulfill({ contentType: 'image/png', body: Buffer.from(png, 'base64') }))
-  await page.route(`**/api/memory/items/${documentId}?*`, route => {
-    if (route.request().method() === 'GET') return route.fulfill({ json: current })
+  await page.route(`**/api/memory/documents/${documentId}?*`, route => {
+    if (route.request().method() === 'GET') return route.fulfill({ json: { item: current } })
     Object.assign(current, route.request().postDataJSON(), { revision: current.revision + 1, lock_version: current.lock_version + 1 })
     return route.fulfill({ json: current })
   })
@@ -599,9 +599,9 @@ for (const format of ['HTML', 'Markdown']) test(`pasted ${format} document image
   })
   await page.route(`**/api/memory/documents/${documentId}/attachments/${attachmentId}?*`, route => route.fulfill({ contentType: 'image/png', body: Buffer.from(png, 'base64') }))
   await page.route(`**/api/memory/documents/${documentId}/attachments/${attachmentId}/thumbnail?*`, route => route.fulfill({ contentType: 'image/png', body: Buffer.from(png, 'base64') }))
-  await page.route(`**/api/memory/items/${documentId}?*`, route => {
+  await page.route(`**/api/memory/documents/${documentId}?*`, route => {
     if (route.request().method() !== 'GET') Object.assign(current, route.request().postDataJSON(), { revision: current.revision + 1, lock_version: current.lock_version + 1 })
-    return route.fulfill({ json: current })
+    return route.fulfill({ json: route.request().method() === 'GET' ? { item: current } : current })
   })
   const options = { props: { documentId, agentId: 7 }, privileges: ['MEMORY_EDIT'] }
   await mount(page, 'core/util/components/WorkingDocumentEditor.vue', options)

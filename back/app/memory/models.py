@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Any
+from typing import Any, cast
 from uuid import UUID, uuid4
 
 from sqlalchemy import (
@@ -17,14 +17,21 @@ from sqlalchemy import (
     ForeignKeyConstraint,
     Index,
     Integer,
+    literal,
     String,
     Text,
     UniqueConstraint,
     func,
+    case,
+    select,
+    inspect,
     text as sql_text,
 )
 from sqlalchemy.dialects.postgresql import JSONB, TSVECTOR, UUID as PGUUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy.orm.attributes import flag_modified
+from sqlalchemy.ext.hybrid import hybrid_property
+from sqlalchemy.sql.elements import ColumnElement
 
 from core.database import Base, HistoryMixin
 from core.util import ContentProfile
@@ -152,6 +159,65 @@ class DocumentAttachment(Base):
     active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True, server_default="true")
 
 
+def _document_attribute[T](name: str, memory_name: str, default: T) -> hybrid_property[T]:
+    """Resolve the document facade without redundant documentary Memory columns.
+
+    The mapped Memory columns hold the summary. Document writers target the
+    separate record; SQL readers resolve the same authoritative document value.
+    """
+    @hybrid_property
+    def attribute(item: MemoryItem) -> T:
+        document = item.__dict__.get("document") if item.node_kind == "document" else None
+        return cast(T, getattr(document if document is not None else item,
+                               name if document is not None else memory_name, default))
+
+    @attribute.inplace.setter
+    def setter(item: MemoryItem, value: T) -> None:  # pyright: ignore[reportUnusedFunction]
+        document = item.__dict__.get("document") if item.node_kind == "document" else None
+        if document is None:
+            setattr(item, memory_name, value)
+        else:
+            if getattr(document, name) != value:
+                setattr(document, name, value)
+                # Every document mutation participates in the existing shared
+                # optimistic lock, including changes confined to its payload.
+                if inspect(item).persistent:
+                    flag_modified(item, "updated_by")
+            if name == "title":
+                item.search_title = cast(str, value)
+
+    @attribute.inplace.expression
+    @classmethod
+    def expression(cls: type[MemoryItem]) -> ColumnElement[T]:  # pyright: ignore[reportUnusedFunction]
+        if memory_name == "legacy_visibility":
+            memory_value = case((
+                cls.source_managed.is_(True) & cls.owner_agent_id.is_(None) & cls.owner_user_id.is_(None),
+                "public",
+            ), else_="private")
+        elif memory_name == "memory_filename":
+            memory_value = cls.metadata_["memory_filename"].astext
+        elif memory_name in {"legacy_global_access", "legacy_group_access", "memory_document_type"}:
+            memory_value = literal(default)
+        else:
+            memory_value = getattr(cls, memory_name)
+        document_value = select(getattr(Document, name)).where(
+            Document.memory_item_id == cls.id,
+        ).correlate(cls).scalar_subquery()
+        if default is None:
+            document_exists = select(Document.id).where(
+                Document.memory_item_id == cls.id,
+            ).correlate(cls).exists()
+            resolved = case((document_exists, document_value), else_=memory_value)
+        else:
+            resolved = func.coalesce(document_value, memory_value)
+        return cast(ColumnElement[T], case(
+            (cls.node_kind == "document", resolved),
+            else_=memory_value,
+        ).label(name))
+
+    return attribute
+
+
 class MemoryItem(HistoryMixin, Base):
     """Stable logical memory whose payload lives in a resource provider."""
 
@@ -166,9 +232,10 @@ class MemoryItem(HistoryMixin, Base):
     updated_at: Mapped[datetime | None] = mapped_column(  # pyright: ignore[reportIncompatibleVariableOverride]
         DateTime(timezone=True), nullable=True
     )
-    # For documents this is the visible content revision; metadata and ACL
-    # writes remain concurrency-safe through the separate ORM lock_version.
-    revision: Mapped[int] = mapped_column(
+    # This mapped revision tracks Memory content, including documentary syntheses.
+    # The compatibility facade resolves the separate Document revision below.
+    # Metadata and ACL writes share the ORM lock_version.
+    memory_revision: Mapped[int] = mapped_column("revision",
         Integer, nullable=False, default=1, server_default="1"
     )
     lock_version: Mapped[int] = mapped_column(
@@ -186,41 +253,30 @@ class MemoryItem(HistoryMixin, Base):
         nullable=True,
         unique=True,
     )
-    provider_code: Mapped[str] = mapped_column(
+    memory_provider_code: Mapped[str] = mapped_column("provider_code",
         String(80), nullable=False, default="native", server_default="native", index=True
     )
-    resource_id: Mapped[str] = mapped_column(String(1_024), nullable=False)
-    title: Mapped[str] = mapped_column(String(500), nullable=False)
+    memory_resource_id: Mapped[str] = mapped_column("resource_id", String(1_024), nullable=False)
+    search_title: Mapped[str] = mapped_column("title", String(500), nullable=False, default="", server_default="")
     node_kind: Mapped[str] = mapped_column(
         String(30), nullable=False, default="memory", server_default="memory", index=True
     )
-    document_type: Mapped[DocumentType] = mapped_column(
-        String(30), nullable=False, default="html", server_default="html", index=True
-    )
-    content_type: Mapped[str] = mapped_column(
+    title_is_projection: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True, server_default="false")
+    summary_document_revision: Mapped[int | None] = mapped_column(Integer)
+    memory_content_type: Mapped[str] = mapped_column("content_type",
         String(50), nullable=False, default="text", server_default="text", index=True
     )
-    media_type: Mapped[str] = mapped_column(
+    memory_media_type: Mapped[str] = mapped_column("media_type",
         String(255), nullable=False, default="text/markdown", server_default="text/markdown"
     )
-    content_profile_version: Mapped[int | None] = mapped_column(Integer, nullable=True)
-    filename: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    memory_content_profile_version: Mapped[int | None] = mapped_column("content_profile_version", Integer, nullable=True)
     keywords: Mapped[list[str]] = mapped_column(
         JSONB, nullable=False, default=list, server_default=sql_text("'[]'::jsonb")
     )
     metadata_: Mapped[dict[str, Any]] = mapped_column(
         "metadata", JSONB, nullable=False, default=dict, server_default=sql_text("'{}'::jsonb")
     )
-    visibility: Mapped[str] = mapped_column(
-        String(20), nullable=False, default="private", server_default="private", index=True
-    )
-    global_access: Mapped[int] = mapped_column(
-        Integer, nullable=False, default=0, server_default="0"
-    )
-    group_access: Mapped[int] = mapped_column(
-        Integer, nullable=False, default=0, server_default="0"
-    )
-    read_only: Mapped[bool] = mapped_column(
+    memory_read_only: Mapped[bool] = mapped_column("read_only",
         Boolean, nullable=False, default=False, server_default="false"
     )
     deletion_protected: Mapped[bool] = mapped_column(
@@ -239,7 +295,7 @@ class MemoryItem(HistoryMixin, Base):
     managed_source_ref: Mapped[str | None] = mapped_column(
         String(1_024), nullable=True
     )
-    content_hash: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    memory_content_hash: Mapped[str] = mapped_column("content_hash", String(64), nullable=False, index=True)
     file_sha256: Mapped[str | None] = mapped_column(String(64), nullable=True)
     file_media_type: Mapped[str | None] = mapped_column(String(255), nullable=True)
     file_size_bytes: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
@@ -251,7 +307,7 @@ class MemoryItem(HistoryMixin, Base):
     semantic_fingerprint: Mapped[str] = mapped_column(
         String(64), nullable=False, default="", server_default="", index=True
     )
-    size_bytes: Mapped[int] = mapped_column(BigInteger, nullable=False, default=0, server_default="0")
+    memory_size_bytes: Mapped[int] = mapped_column("size_bytes", BigInteger, nullable=False, default=0, server_default="0")
     search_text: Mapped[str] = mapped_column(Text, nullable=False, default="", server_default="")
     search_vector: Mapped[str] = mapped_column(
         TSVECTOR,
@@ -295,6 +351,88 @@ class MemoryItem(HistoryMixin, Base):
     )
     old_reason: Mapped[str | None] = mapped_column(String(80), nullable=True)
 
+
+    document: Mapped[Document | None] = relationship(
+        back_populates="memory_item", uselist=False, lazy="selectin",
+        cascade="all, delete-orphan", single_parent=True,
+    )
+
+    # Transient construction inputs. Once persisted, ACLs belong exclusively to
+    # Document; structural visibility follows ownership and source provenance.
+    memory_document_type = "html"
+    legacy_global_access = 0
+    legacy_group_access = 0
+    _initial_visibility = ""
+
+    @property
+    def legacy_visibility(self) -> str:
+        return self._initial_visibility or ("public" if (
+            self.source_managed and self.owner_agent_id is None and self.owner_user_id is None
+        ) else "private")
+
+    @legacy_visibility.setter
+    def legacy_visibility(self, value: str) -> None:
+        self._initial_visibility = value
+
+    @property
+    def memory_filename(self) -> str | None:
+        return cast(str | None, (self.metadata_ or {}).get("memory_filename"))
+
+    @memory_filename.setter
+    def memory_filename(self, value: str | None) -> None:
+        metadata = dict(self.metadata_ or {})
+        if value is None:
+            metadata.pop("memory_filename", None)
+        else:
+            metadata["memory_filename"] = value
+        self.metadata_ = metadata
+
+    def __init__(self, **kwargs: Any) -> None:
+        # SQLAlchemy's constructor is a dynamic boundary. Set provenance first
+        # and metadata before filename so canonical construction is order neutral.
+        metadata = kwargs.pop("metadata_", {})
+        super().__init__(metadata_=metadata, **kwargs)
+        if self.node_kind == "document" and self.__dict__.get("document") is None:
+            self.attach_document()
+
+    def attach_document(self) -> None:
+        if self.__dict__.get("document") is not None:
+            return
+        from hashlib import sha256
+        self.id = self.id or uuid4()
+        self.document = Document(
+            id=self.id, memory_item_id=self.id, title=self.search_title or "",
+            provider_code=self.memory_provider_code or "native", resource_id=self.memory_resource_id or "",
+            revision=self.memory_revision or 1, document_type=self.memory_document_type,
+            content_type=self.memory_content_type or "text", media_type=self.memory_media_type or "text/html",
+            content_profile_version=self.memory_content_profile_version, filename=self.memory_filename,
+            content_hash=self.memory_content_hash or sha256(b"").hexdigest(), size_bytes=self.memory_size_bytes or 0,
+            visibility=self.legacy_visibility, global_access=self.legacy_global_access,
+            group_access=self.legacy_group_access, read_only=self.memory_read_only or False,
+            summary_initialized=True,
+        )
+        self.memory_provider_code, self.memory_resource_id, self.memory_revision = "native", "", 1
+        self.memory_content_type, self.memory_media_type, self.memory_content_profile_version = "text", "text/html", 1
+        self.memory_content_hash, self.memory_size_bytes = sha256(b"").hexdigest(), 0
+        self.memory_read_only = bool(self.source_managed)
+        self.memory_filename = None
+        self._initial_visibility = ""
+    revision = _document_attribute("revision", "memory_revision", 1)
+    provider_code = _document_attribute("provider_code", "memory_provider_code", "native")
+    resource_id = _document_attribute("resource_id", "memory_resource_id", "")
+    title = _document_attribute("title", "search_title", "")
+    document_type = _document_attribute("document_type", "memory_document_type", cast(DocumentType, "html"))
+    content_type = _document_attribute("content_type", "memory_content_type", "text")
+    media_type = _document_attribute("media_type", "memory_media_type", "text/html")
+    content_profile_version = _document_attribute("content_profile_version", "memory_content_profile_version", cast(int | None, None))
+    filename = _document_attribute("filename", "memory_filename", cast(str | None, None))
+    visibility = _document_attribute("visibility", "legacy_visibility", "private")
+    global_access = _document_attribute("global_access", "legacy_global_access", 0)
+    group_access = _document_attribute("group_access", "legacy_group_access", 0)
+    read_only = _document_attribute("read_only", "memory_read_only", False)
+    content_hash = _document_attribute("content_hash", "memory_content_hash", "")
+    size_bytes = _document_attribute("size_bytes", "memory_size_bytes", 0)
+
     @property
     def content_profile(self) -> ContentProfile:
         return "document" if self.node_kind == "document" and not self.deletion_protected else "rich-text"
@@ -317,14 +455,6 @@ class MemoryItem(HistoryMixin, Base):
             deferrable=True, initially="DEFERRED",
         ),
         CheckConstraint(
-            "document_type IN ('html', 'dataset') AND "
-            "(document_type != 'dataset' OR (node_kind = 'document' AND "
-            "content_type = 'text' AND media_type = 'application/json' AND "
-            "content_profile_version IS NULL)) AND "
-            "(node_kind != 'document' OR document_type != 'html' OR media_type LIKE 'text/%')",
-            name="ck_memory_items_document_type",
-        ),
-        CheckConstraint(
             "node_kind IN ('memory', 'document', 'attachment', 'folder', 'file', 'directory')",
             name="ck_memory_items_node_kind",
         ),
@@ -332,39 +462,20 @@ class MemoryItem(HistoryMixin, Base):
             "node_kind NOT IN ('file', 'directory') OR "
             "(source_managed = true AND managed_source_kind = 'file_catalogue' "
             "AND owner_agent_id IS NOT NULL AND owner_user_id IS NULL "
-            "AND visibility = 'private' AND global_access = 0 AND group_access = 0 "
             "AND deletion_protected = true)",
             name="ck_memory_items_file_catalogue",
         ),
         CheckConstraint(
             "node_kind != 'document' OR "
             "(content_type = 'text' "
-            "AND source_managed = false AND read_only = false "
-            "AND visibility != 'public')",
+            "AND source_managed = false AND read_only = false)",
             name="ck_memory_items_document",
-        ),
-        CheckConstraint(
-            "visibility IN ('private', 'shared', 'public')",
-            name="ck_memory_items_visibility",
-        ),
-        CheckConstraint(
-            "group_access IN (0, 1, 2) AND (group_access = 0 OR "
-            "(node_kind = 'document' AND global_access = 0 AND visibility = 'shared'))",
-            name="ck_memory_items_group_access",
-        ),
-        CheckConstraint(
-            "global_access IN (0, 1, 2)",
-            name="ck_memory_items_global_access",
-        ),
-        CheckConstraint(
-            "global_access = 0 OR visibility = 'shared'",
-            name="ck_memory_items_global_access_visibility",
         ),
         CheckConstraint(
             "topic_id IS NULL OR (source_managed = true "
             "AND managed_source_kind = 'topic' "
             "AND managed_source_ref = 'topic:' || topic_id::text "
-            "AND visibility = 'public' AND owner_agent_id IS NULL "
+            "AND owner_agent_id IS NULL "
             "AND owner_user_id IS NULL)",
             name="ck_memory_items_topic_projection",
         ),
@@ -390,9 +501,7 @@ class MemoryItem(HistoryMixin, Base):
             "(source_managed = true AND managed_source_kind IS NOT NULL "
             "AND managed_source_ref IS NOT NULL AND (read_only = true OR "
             "(managed_source_kind = 'file_catalogue' AND node_kind IN ('file', 'directory'))) "
-            "AND owner_user_id IS NULL "
-            "AND ((visibility = 'private' AND owner_agent_id IS NOT NULL) "
-            "OR (visibility = 'public' AND owner_agent_id IS NULL)))",
+            "AND owner_user_id IS NULL)",
             name="ck_memory_items_managed_source",
         ),
         UniqueConstraint(
@@ -420,6 +529,81 @@ class MemoryItem(HistoryMixin, Base):
               postgresql_using="gin", postgresql_ops={"search_text": "gin_trgm_ops"}),
     )
     __mapper_args__ = {"version_id_col": lock_version}
+
+
+class Document(HistoryMixin, Base):
+    """Authoritative working content, linked one-to-one to its Memory summary.
+
+    The same UUID preserves existing document URIs; the explicit FK preserves
+    the distinction between document identity and graph identity.
+    """
+
+    __tablename__ = "documents"
+
+    id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), primary_key=True, default=uuid4)
+    memory_item_id: Mapped[UUID] = mapped_column(
+        ForeignKey("memory_items.id", ondelete="CASCADE"), nullable=False, unique=True,
+    )
+    title: Mapped[str] = mapped_column(String(500), nullable=False)
+    provider_code: Mapped[str] = mapped_column(String(80), nullable=False)
+    resource_id: Mapped[str] = mapped_column(String(1_024), nullable=False)
+    revision: Mapped[int] = mapped_column(Integer, nullable=False, default=1, server_default="1")
+    document_type: Mapped[DocumentType] = mapped_column(String(30), nullable=False, default="html", server_default="html")
+    content_type: Mapped[str] = mapped_column(String(50), nullable=False, default="text", server_default="text")
+    media_type: Mapped[str] = mapped_column(String(255), nullable=False, default="text/html", server_default="text/html")
+    content_profile_version: Mapped[int | None] = mapped_column(Integer)
+    filename: Mapped[str | None] = mapped_column(String(500))
+    content_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    size_bytes: Mapped[int] = mapped_column(BigInteger, nullable=False, default=0, server_default="0")
+    visibility: Mapped[str] = mapped_column(String(20), nullable=False, default="private", server_default="private")
+    global_access: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
+    group_access: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
+    read_only: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="false")
+    summary_initialized: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True, server_default="true")
+    memory_item: Mapped[MemoryItem] = relationship(back_populates="document")
+
+    __table_args__ = (
+        CheckConstraint("id = memory_item_id", name="ck_documents_stable_identity"),
+        CheckConstraint("document_type IN ('html', 'dataset')", name="ck_documents_type"),
+        # Legacy shared memories may contain non-editorial text or binary bytes.
+        # Preserve their resource format; new document APIs enforce HTML/JSON.
+        CheckConstraint("content_type IN ('text', 'binary')", name="ck_documents_text"),
+        CheckConstraint("(document_type = 'dataset' AND content_type = 'text' AND media_type = 'application/json' AND content_profile_version IS NULL) OR document_type = 'html'", name="ck_documents_content_type"),
+        CheckConstraint("visibility IN ('private', 'shared')", name="ck_documents_visibility"),
+        CheckConstraint("global_access IN (0, 1, 2) AND group_access IN (0, 1, 2)", name="ck_documents_access"),
+        CheckConstraint("global_access = 0 OR visibility = 'shared'", name="ck_documents_global_visibility"),
+        CheckConstraint("group_access = 0 OR (global_access = 0 AND visibility = 'shared')", name="ck_documents_group_visibility"),
+    )
+
+
+class DocumentRevision(Base):
+    """Ownership of a preserved immutable resource revision by its document."""
+
+    __tablename__ = "document_revisions"
+    id: Mapped[UUID] = mapped_column(ForeignKey("memory_revisions.id", ondelete="CASCADE"), primary_key=True)
+    document_id: Mapped[UUID] = mapped_column(ForeignKey("documents.id", ondelete="CASCADE"), index=True)
+    revision: Mapped[int] = mapped_column(Integer, nullable=False)
+    resource_revision: Mapped[MemoryRevision] = relationship()
+    __table_args__ = (UniqueConstraint("document_id", "revision"),)
+
+
+class MemorySummaryRevision(Base):
+    """Independent history of a document's optional Memory synthesis."""
+
+    __tablename__ = "memory_summary_revisions"
+    id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), primary_key=True, default=uuid4)
+    item_id: Mapped[UUID] = mapped_column(ForeignKey("memory_items.id", ondelete="CASCADE"), index=True)
+    revision: Mapped[int] = mapped_column(Integer, nullable=False)
+    provider_code: Mapped[str] = mapped_column(String(80), nullable=False)
+    resource_id: Mapped[str] = mapped_column(String(1_024), nullable=False)
+    content_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    source_document_revision: Mapped[int] = mapped_column(Integer, nullable=False)
+    keywords: Mapped[list[str]] = mapped_column(JSONB, nullable=False, default=list, server_default="[]")
+    temporal: Mapped[dict[str, Any] | None] = mapped_column(JSONB(none_as_null=True))
+    author_agent_id: Mapped[int | None] = mapped_column(ForeignKey("agents.id", ondelete="SET NULL"))
+    task_id: Mapped[UUID | None] = mapped_column(ForeignKey("tasks.id", ondelete="SET NULL"))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    __table_args__ = (UniqueConstraint("item_id", "revision"),)
 
 
 class MemoryItemGrant(Base):

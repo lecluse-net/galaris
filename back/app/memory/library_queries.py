@@ -250,6 +250,7 @@ async def browse_document_library(
             selectinload(MemoryItem.grants),
             raiseload(MemoryItem.revisions),
             joinedload(MemoryItem.url_relations),
+            joinedload(MemoryItem.document),
         )
         .where(*base_filters)
         .order_by(

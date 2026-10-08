@@ -357,34 +357,42 @@
     <q-dialog v-model="detailDialog" allow-focus-outside :maximized="$q.screen.lt.md">
       <q-card class="memory-detail column no-wrap galaris-dialog-card">
         <q-toolbar class="galaris-dialog-title">
-          <DocumentIcon v-if="store.currentItem?.node_kind === 'document'" :document-id="store.currentItem.id" :title="store.currentItem.title" class="q-mr-sm" />
-          <q-icon v-else
-            name="neurology"
-            size="sm"
-            class="q-mr-sm"
-          />
-          <q-toolbar-title>{{ store.currentItem?.title }}</q-toolbar-title>
-          <q-badge v-if="store.currentItem" outline color="white" class="q-mr-sm"
-            :label="t('documents.historyVersion', { revision: store.currentItem.revision })" />
+          <div class="memory-detail-heading">
+            <q-toolbar-title>{{ t('memory.detailTitle', { kind: currentRoleLabel }) }}</q-toolbar-title>
+            <div v-if="currentMetadata" class="memory-detail-badges">
+              <q-badge outline color="white" :aria-label="t('memory.lastActivityBadge', { date: formatDate(currentMetadata.activity_at) })">
+                <span>{{ formatDate(currentMetadata.activity_at) }}</span>
+                <q-tooltip>{{ t('memory.graph.lastActivity') }}</q-tooltip>
+              </q-badge>
+              <q-badge outline color="white" :label="t('memory.accessCountBadge', { count: formatNumber(currentMetadata.access_count) })" />
+              <q-badge v-if="store.currentItem" outline color="white"
+                :label="t('documents.historyVersion', { revision: store.currentItem.revision })" />
+              <q-badge v-if="store.currentItem?.source_managed && store.currentItem.managed_source_kind !== 'file_catalogue'"
+                outline color="white" tabindex="0" :aria-label="t('memory.generatedHint')" :label="t('memory.generated')">
+                <q-tooltip max-width="400px">{{ t('memory.generatedHint') }}</q-tooltip>
+              </q-badge>
+              <q-badge v-if="store.currentItem?.deletion_protected" class="memory-protection-badge"
+                tabindex="0" :aria-label="t('memory.protectedHint')" :label="t('memory.protected')">
+                <q-tooltip>{{ t('memory.protectedHint') }}</q-tooltip>
+              </q-badge>
+            </div>
+          </div>
           <q-btn flat round dense icon="close" :aria-label="t('memory.close')" v-close-popup />
         </q-toolbar>
         <q-inner-loading :showing="store.detailLoading" />
-        <q-tabs v-if="store.currentItem" v-model="detailTab" inline-label align="left" active-color="primary"
-          indicator-color="primary" class="text-primary bg-grey-1">
+        <q-tabs v-if="store.currentItem" v-model="detailTab" inline-label no-caps dense align="left" active-color="primary"
+          indicator-color="primary" class="memory-detail-tabs">
           <q-tab name="memory" icon="edit_note" :label="t('memory.detailMemory')" />
+          <q-tab name="links" icon="account_tree" :label="t('memory.detailLinks')" />
           <q-tab name="history" icon="history" :label="t('memory.detailHistory')" />
         </q-tabs>
         <q-separator />
-        <q-tab-panels v-if="store.currentItem" v-model="detailTab" class="col memory-detail-panels galaris-dialog-body">
+        <q-tab-panels v-if="store.currentItem" :key="`${store.selectedAgentId}:${store.currentItem.id}`" v-model="detailTab" keep-alive :keep-alive-include="['memory', 'links']" class="col memory-detail-panels galaris-dialog-body">
           <q-tab-panel name="memory" class="q-pa-none">
-            <MemoryNodeMetadata v-if="currentMetadata" :node="currentMetadata" :role-label="currentRoleLabel" class="q-pa-sm" />
-            <MemoryDreamActions :key="`${store.selectedAgentId}:${store.currentItem.id}`"
-              :item-id="store.currentItem.id" :agent-id="store.selectedAgentId"
-              :node-kind="store.currentItem.node_kind"
-              :disabled="editorSaving || dreamDraftChanged || dreamRefreshing" @busy="dreamBusy = $event" @completed="onDreamCompleted" />
-            <div v-if="store.currentItem.old_at || store.findingsFor(store.currentItem.id).length || store.currentItem.source_managed || store.currentItem.deletion_protected" class="q-px-sm q-pt-sm">
+            <MemoryContentPreviews :key="`${store.selectedAgentId}:${store.currentItem.id}:${dreamMediaRevision}`"
+              :item="store.currentItem" :agent-id="store.selectedAgentId" />
+            <div v-if="store.currentItem.old_at || store.findingsFor(store.currentItem.id).length" class="q-px-md q-pt-md">
               <div v-if="store.currentItem.old_at || store.findingsFor(store.currentItem.id).length" class="row items-center q-gutter-xs q-mb-sm">
-                <span class="memory-section-title">{{ t('memory.detailStatus') }}</span>
                 <q-chip v-if="store.currentItem.old_at" dense color="grey-4" text-color="grey-9" icon="history">
                   {{ t('memory.findings.old') }}
                 </q-chip>
@@ -401,47 +409,35 @@
                   {{ findingLabel(finding) }}
                 </q-chip>
               </div>
-              <q-banner
-                v-if="store.currentItem.source_managed && store.currentItem.managed_source_kind !== 'file_catalogue'"
-                dense
-                rounded
-                class="bg-blue-1 text-primary q-mb-sm"
-              >
-                <template #avatar><q-icon name="sync_lock" /></template>
-                <div class="text-weight-medium">{{ t('memory.generated') }}</div>
-                <div class="text-body2">{{ t('memory.generatedHint') }}</div>
-              </q-banner>
-              <q-banner
-                v-else-if="store.currentItem.deletion_protected"
-                dense
-                rounded
-                class="bg-purple-1 text-purple-10 q-mb-sm"
-              >
-                <template #avatar><q-icon name="lock" /></template>
-                <div class="text-weight-medium">{{ t('memory.protected') }}</div>
-                <div class="text-body2">{{ t('memory.protectedHint') }}</div>
-              </q-banner>
-
             </div>
             <MemoryItemForm :draft="editor" :editing-id="store.currentItem.id" :lock-version="store.currentItem.lock_version"
-              :readonly="!canModifyCurrent || editorSaving || dreamBusy || dreamRefreshing" :text-available="store.currentItem.payload.text != null"
-              :owner-label="agentLabel(store.currentItem.owner_agent_id)" :sources="displayedSources" :can-view-tasks="canViewTasks"
+              :summary-outdated="store.currentItem.summary_outdated"
+              :resource-read-only="store.currentItem.read_only"
+              :readonly="!canModifyCurrent || editorSaving || dreamBusy || dreamRefreshing" :text-available="currentContentIsText"
               :keyword-options="memoryKeywordOptions"
               :sharing-editable="canEdit || canAdminister" @update:draft="Object.assign(editor, $event)" @sharing-changed="onSharingChanged" />
-            <div v-if="store.currentItem.node_kind === 'attachment'" class="q-px-sm q-pb-sm">
-              <MemoryAttachmentButton :key="`${store.currentItem.id}:${dreamMediaRevision}`"
-                :item-id="store.currentItem.id" :agent-id="store.selectedAgentId" />
-            </div>
-            <MemoryFileResources v-if="store.currentItem.node_kind === 'file'" :key="`${store.selectedAgentId}:${store.currentItem.id}:${dreamMediaRevision}`"
-              :item-id="store.currentItem.id" :agent-id="store.selectedAgentId" class="q-px-sm q-pb-sm" />
-            <q-card-section class="q-px-sm q-pt-none q-pb-sm">
-              <div v-if="graphContext?.node.id === store.currentItem.id && graphContext.relations.length" class="q-my-sm">
-                <div class="memory-section-title q-mb-xs">{{ t('memory.graph.neighbors') }}</div>
+          </q-tab-panel>
+          <q-tab-panel name="links" class="memory-detail-links">
+            <section :aria-label="t('memory.sources')" class="memory-links-section">
+              <div class="memory-section-title"><q-icon name="source" />{{ t('memory.sources') }}</div>
+              <q-list v-if="displayedSources.length" dense separator>
+                <q-item v-for="source in displayedSources" :key="source.ref">
+                  <q-item-section>
+                    <RouterLink v-if="source.taskId !== null && canViewTasks" class="text-primary"
+                      :to="{ path: '/task', query: { task_id: source.taskId } }">{{ source.ref }}</RouterLink>
+                    <span v-else>{{ source.ref }}</span>
+                  </q-item-section>
+                </q-item>
+              </q-list>
+              <div v-else class="text-caption">{{ t('memory.noSources') }}</div>
+            </section>
+            <section v-if="graphContext?.node.id === store.currentItem.id && graphContext.relations.length" class="memory-links-section" :aria-label="t('memory.graph.neighbors')">
+                <div class="memory-section-title"><q-icon name="hub" />{{ t('memory.graph.neighbors') }}</div>
                 <MemoryGraphRelations :relations="graphContext.relations" @select="openGraphNeighbor" />
-              </div>
-              <div class="q-mt-sm">
+            </section>
+            <section class="memory-links-section" :aria-label="t('memory.links')">
                 <div class="row items-center justify-between q-mb-xs">
-                  <div class="memory-section-title">{{ t('memory.links') }}</div>
+                  <div class="memory-section-title"><q-icon name="account_tree" />{{ t('memory.links') }}</div>
                   <q-btn
                     v-if="canEdit && !store.currentItem.source_managed && store.currentItem.access.can_write"
                     flat
@@ -469,10 +465,8 @@
                     <q-item-section side><q-icon name="chevron_right" /></q-item-section>
                   </q-item>
                 </q-list>
-                <div v-else class="text-caption text-grey-6">{{ t('memory.noLinks') }}</div>
-              </div>
-
-            </q-card-section>
+                <div v-else class="text-caption">{{ t('memory.noLinks') }}</div>
+            </section>
           </q-tab-panel>
           <q-tab-panel name="history" class="q-pa-sm">
             <MemoryItemHistory v-if="detailDialog && store.selectedAgentId !== null" :key="store.currentItem.id"
@@ -483,9 +477,9 @@
           </q-tab-panel>
         </q-tab-panels>
         <q-separator />
-        <q-card-actions class="galaris-dialog-actions" v-if="store.currentItem && detailTab === 'memory'" align="right">
+        <q-card-actions class="galaris-dialog-actions memory-detail-actions" v-if="store.currentItem" v-show="detailTab !== 'history'" align="right">
           <q-btn
-            v-if="canEdit && !store.currentItem.source_managed && !store.currentItem.deletion_protected && (store.currentItem.access.can_write || store.currentItem.owner_agent_id === store.selectedAgentId)"
+            v-if="canEdit && store.currentItem.node_kind !== 'document' && !store.currentItem.source_managed && !store.currentItem.deletion_protected && (store.currentItem.access.can_write || store.currentItem.owner_agent_id === store.selectedAgentId)"
             flat
             color="negative"
             icon="delete_forever"
@@ -493,10 +487,13 @@
             :disable="dreamBusy || dreamRefreshing"
             @click="confirmForget(store.currentItem)"
           />
-          <q-space />
-          <q-btn flat :label="t(canModifyCurrent ? 'memory.cancel' : 'memory.close')" @click="cancelEdit" />
-          <q-btn v-if="canModifyCurrent" color="primary" icon="save" :label="t('memory.save')" :loading="editorSaving"
-            :disable="dreamBusy || dreamRefreshing || !editor.title.trim() || !editor.content.trim()" @click="saveEditor" />
+          <MemoryDreamActions :key="`${store.selectedAgentId}:${store.currentItem.id}`"
+            class="memory-detail-dream"
+            :item-id="store.currentItem.id" :agent-id="store.selectedAgentId"
+            :node-kind="store.currentItem.node_kind"
+            :disabled="editorSaving || dreamDraftChanged || dreamRefreshing" @busy="dreamBusy = $event" @completed="onDreamCompleted" />
+          <q-btn v-if="canModifyCurrent" class="memory-detail-save" color="primary" icon="save" :label="t('memory.save')" :loading="editorSaving"
+            :disable="dreamBusy || dreamRefreshing" @click="saveEditor" />
         </q-card-actions>
       </q-card>
     </q-dialog>
@@ -510,18 +507,16 @@
         <div class="galaris-dialog-body">
           <MemoryItemForm :draft="editor" :editing-id="editingId" :lock-version="store.currentItem?.lock_version"
             :readonly="editorSaving"
-            :owner-label="agentLabel(store.selectedAgentId)" :sources="[]"
             :keyword-options="memoryKeywordOptions"
             :sharing-editable="canEdit || canAdminister" @update:draft="Object.assign(editor, $event)" @sharing-changed="onSharingChanged" />
         </div>
         <q-card-actions class="galaris-dialog-actions" align="right">
-          <q-btn flat :label="t('memory.cancel')" v-close-popup />
           <q-btn
             v-if="canEdit"
             color="primary"
             icon="save"
             :label="t('memory.save')"
-            :disable="!editor.title.trim() || !editor.content.trim() || store.selectedAgentId === null"
+            :disable="store.selectedAgentId === null"
             :loading="editorSaving"
             @click="saveEditor"
           />
@@ -553,21 +548,22 @@
 import DocumentIcon from '../components/DocumentIcon.vue'
 import MemoryItemThumbnail from '../components/MemoryItemThumbnail.vue'
 import MemoryAttachmentButton from '../components/MemoryAttachmentButton.vue'
-import MemoryFileResources from '../components/MemoryFileResources.vue'
+import MemoryContentPreviews from '../components/MemoryContentPreviews.vue'
 import { showConfirmationDialog } from '@/core/util'
 import { navigationIcon } from '@/core/navigation'
 import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, useTemplateRef, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { useRoute } from 'vue-router'
+import { RouterLink, useRoute } from 'vue-router'
 import { useQuasar, type QTableProps } from 'quasar'
 import { apiErrorDetail, isCancelledRequest } from '@/core/api'
+import { isAxiosError } from 'axios'
+import { websocket } from '@/core/websocket'
 import { PageHeader } from '@/core/util'
 import { privileges } from '@/core/authorize'
 import { usePrivilegeStore } from '@/core/authorize/stores/privilegeStore'
 import { useAgentStore } from '@/app/agent/stores/agentStore'
 import { AgentSelect } from '@/app/agent'
 import MemoryGraph from '../components/MemoryGraph.vue'
-import MemoryNodeMetadata from '../components/MemoryNodeMetadata.vue'
 import MemoryDreamActions from '../components/MemoryDreamActions.vue'
 import MemoryGraphRelations from '../components/MemoryGraphRelations.vue'
 import MemoryFindingDialog from '../components/MemoryFindingDialog.vue'
@@ -633,10 +629,12 @@ watch(detailDialog, open => {
     memoryGraph.value?.closeDetails()
   }
 })
-const detailTab = ref<'memory' | 'history'>('memory')
+const detailTab = ref<'memory' | 'links' | 'history'>('memory')
+const currentContentIsText = computed(() => store.currentItem?.content_type === 'text'
+  && store.currentItem.payload.base64 == null)
 const canModifyCurrent = computed(() => canEdit.value && Boolean(store.currentItem?.access.can_write)
   && (!store.currentItem?.source_managed || store.currentItem?.managed_source_kind === 'file_catalogue')
-  && store.currentItem?.payload.text != null)
+  && currentContentIsText.value)
 const editorDialog = ref(false)
 const editorSaving = ref(false)
 const dreamBusy = ref(false)
@@ -715,19 +713,70 @@ const itemColumns = computed<QTableProps['columns']>(() => [
 
 const editor = reactive({
   temporal: null as import('../types').MemoryTemporalAnchor | null,
-  title: '',
   content: '',
   nodeKind: 'memory' as MemoryNodeKind,
   keywords: [] as string[],
-  readOnly: false,
   revision: null as number | null,
+  lockVersion: null as number | null,
   mediaType: 'text/html', contentType: 'text',
 })
+const editorBase = ref<MemoryItemDetail | null>(null)
+let documentRefreshRequest = 0
+
+function mergeDocumentMemory(latest: MemoryItemDetail): void {
+  const base = editorBase.value
+  if (!base || base.id !== latest.id) return
+  const previous = { content: base.payload.text ?? '', keywords: base.keywords, temporal: base.temporal ?? null }
+  const remote = { content: latest.payload.text ?? '', keywords: latest.keywords, temporal: latest.temporal ?? null }
+  const same = (left: unknown, right: unknown): boolean => JSON.stringify(left) === JSON.stringify(right)
+  const fields = ['content', 'keywords', 'temporal'] as const
+  // Keep the original lock on overlapping changes: saving must report a conflict,
+  // never overwrite somebody else's keywords with a stale draft.
+  if (fields.some(field => !same(editor[field], previous[field])
+    && !same(remote[field], previous[field]) && !same(editor[field], remote[field]))) return
+  if (same(editor.content, previous.content)) editor.content = remote.content
+  if (same(editor.keywords, previous.keywords)) editor.keywords = [...remote.keywords]
+  if (same(editor.temporal, previous.temporal)) editor.temporal = remote.temporal ? { ...remote.temporal } : null
+  editor.revision = latest.revision
+  editor.lockVersion = latest.lock_version
+  editorBase.value = latest
+}
+
+async function onDocumentMemoryUpdate(response: { data: { id: string, node_kind: string } }): Promise<void> {
+  const current = store.currentItem
+  const agentId = store.selectedAgentId
+  if (!detailDialog.value || editorSaving.value || store.saving || agentId === null
+    || current?.node_kind !== 'document' || response.data.node_kind !== 'document'
+    || response.data.id !== current.id) return
+  const request = ++documentRefreshRequest
+  const stillCurrent = (): boolean => request === documentRefreshRequest && detailDialog.value
+    && store.selectedAgentId === agentId && store.currentItem?.id === current.id
+    && !editorSaving.value && !store.saving
+  try {
+    const latest = await memoryService.getItem(current.id, agentId)
+    if (!stillCurrent() || latest.lock_version < (store.currentItem?.lock_version ?? 0)) return
+    mergeDocumentMemory(latest)
+    store.currentItem = latest
+  } catch (error) {
+    if (!stillCurrent() || isCancelledRequest(error)) return
+    if (isAxiosError(error) && [403, 404].includes(error.response?.status ?? 0)) {
+      store.currentItem = null
+      detailDialog.value = false
+    }
+    notifyError(error)
+  }
+}
+
+websocket.onEvent('memory', 'update', onDocumentMemoryUpdate)
+onBeforeUnmount(() => {
+  documentRefreshRequest++
+  websocket.offEvent('memory', 'update', onDocumentMemoryUpdate)
+})
+watch([detailDialog, () => store.selectedAgentId, editingId], () => { documentRefreshRequest++ })
 
 const dreamDraftChanged = computed(() => {
   const item = store.currentItem
-  return Boolean(item && (editor.title !== item.title || editor.content !== (item.payload.text ?? '')
-    || editor.readOnly !== item.read_only
+  return Boolean(item && (editor.content !== (item.payload.text ?? '')
     || JSON.stringify(editor.keywords) !== JSON.stringify(item.keywords)
     || JSON.stringify(editor.temporal) !== JSON.stringify(item.temporal ?? null)))
 })
@@ -947,11 +996,12 @@ async function saveLink(
 function resetEditor(): void {
   Object.assign(editor, {
     temporal: null,
-    title: '', content: '',
+    content: '',
     nodeKind: 'memory',
-    keywords: [], readOnly: false, revision: null,
+    keywords: [], revision: null, lockVersion: null,
     mediaType: 'text/html', contentType: 'text',
   })
+  editorBase.value = null
 }
 
 function openCreate(): void {
@@ -964,25 +1014,19 @@ function prepareEditor(item: MemoryItemDetail): void {
   editingId.value = item.id
   Object.assign(editor, {
     temporal: item.temporal ? { ...item.temporal } : null,
-    title: item.title,
     content: item.payload.text ?? '',
     nodeKind: item.node_kind,
     keywords: [...item.keywords],
-    readOnly: item.read_only,
     revision: item.revision,
+    lockVersion: item.lock_version,
     mediaType: item.media_type, contentType: item.content_type,
   })
-}
-
-function cancelEdit(): void {
-  detailDialog.value = false
-  editingId.value = null
-  resetEditor()
+  editorBase.value = item
 }
 
 async function saveEditor(): Promise<void> {
   if (editorSaving.value || dreamBusy.value || dreamRefreshing.value) return
-  if (!editor.title.trim() || !editor.content.trim() || store.selectedAgentId === null) return
+  if (store.selectedAgentId === null) return
   if (detailDialog.value && !canModifyCurrent.value) return
   const keywords = [...new Set(editor.keywords.map(value => value.trim()).filter(Boolean))]
   const wasEditing = editingId.value !== null
@@ -991,24 +1035,20 @@ async function saveEditor(): Promise<void> {
     if (editingId.value) {
       await store.updateItem(editingId.value, {
         expected_revision: editor.revision ?? undefined,
+        expected_lock_version: editor.lockVersion ?? undefined,
         temporal: editor.temporal,
-        title: editor.title.trim(),
         payload: { text: editor.content },
         media_type: editor.mediaType,
         keywords,
-        read_only: editor.readOnly,
       })
     } else {
       const created = await store.createItem({
         owner_agent_id: store.selectedAgentId,
         temporal: editor.temporal,
-        title: editor.title.trim(),
         payload: { text: editor.content },
         media_type: editor.mediaType,
         node_kind: editor.nodeKind,
-        visibility: 'private',
         keywords,
-        read_only: editor.readOnly,
       })
       await openDetail(created.id)
     }
@@ -1276,7 +1316,26 @@ watch(() => [route.query.item_id, agentStore.agents.length] as const, async ([va
 
 .memory-detail { width: 980px; max-width: 96vw; height: min(760px, 88vh); }
 .memory-detail-panels { min-height: 0; }
-.memory-section-title { font-size: 0.75rem; font-weight: 600; color: inherit; }
+.memory-detail-tabs { background: var(--solaire-gray-light); }
+.memory-detail-links { display: grid; align-content: start; gap: 20px; padding: 16px; }
+.memory-links-section { min-width: 0; overflow-wrap: anywhere; }
+.memory-section-title { display: flex; align-items: center; gap: 8px; font-size: 0.875rem; font-weight: 600; margin-bottom: 8px; }
+.memory-section-title > .q-icon { color: var(--solaire-blue-accent); font-size: 18px; }
+.memory-detail-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; align-items: center; gap: 8px; }
+.memory-detail-actions :deep(.q-btn) { margin: 0; flex: 0 0 auto; width: auto; max-width: none; white-space: nowrap; }
+.memory-detail-actions :deep(.q-btn__content) { flex-wrap: nowrap; white-space: nowrap; }
+.memory-detail-dream { display: contents; }
+.memory-detail-dream :deep(.row.q-gutter-sm) { display: contents; }
+.memory-detail-dream :deep(.text-caption) { flex-basis: 100%; text-align: right; margin: 0; }
+.memory-detail-save { flex-shrink: 0; }
+.memory-detail-heading { display: flex; align-items: center; flex-wrap: wrap; flex: 1; min-width: 0; gap: 8px; }
+.memory-detail-heading .q-toolbar__title { padding: 0; }
+.memory-detail-badges { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+.memory-protection-badge { background: var(--solaire-orange-accent); color: #101010; }
+body.body--dark .memory-detail-tabs { background: var(--solaire-gray-dark); }
+@media (max-width: 599px) {
+  .memory-detail-heading .q-toolbar__title { flex-basis: 100%; }
+}
 .memory-editor { width: 980px; max-width: 96vw; max-height: 92vh; overflow: auto; }
 .memory-detail :deep(.q-toolbar__title),
 .memory-editor :deep(.q-toolbar__title) { font-size: 1rem; }

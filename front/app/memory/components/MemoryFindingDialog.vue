@@ -146,6 +146,12 @@ onMounted(async () => {
   height: min(760px, 92vh);
 }
 
+@media (min-width: 1024px) {
+  .finding-dialog {
+    max-width: calc(100vw - 48px);
+  }
+}
+
 .finding-content {
   margin: 0;
   max-height: 420px;

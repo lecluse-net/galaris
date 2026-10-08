@@ -784,7 +784,7 @@ async def test_capture_prefers_update_and_preserves_contradictions_as_linked_ite
         MemoryItemCreate(
             owner_agent_id=owner.id,
             title="Deployment policy",
-            payload=MemoryPayload(text="Deploy every Friday."),
+            payload=MemoryPayload(text="Deployment policy: deploy every Friday."),
         )
     )
     task_id = uuid4()

@@ -30,10 +30,10 @@ def _direct_readable_item_clause(agent_id: int) -> ColumnElement[bool]:
     )
     return or_(
         MemoryItem.owner_agent_id == agent_id,
-        MemoryItem.visibility == "public",
-        MemoryItem.global_access >= 1,
-        item_grant,
-        agent_team_grant_clause(agent_id),
+        and_(MemoryItem.source_managed.is_(True), MemoryItem.visibility == "public"),
+        and_(MemoryItem.node_kind == "document", or_(
+            MemoryItem.global_access >= 1, item_grant, agent_team_grant_clause(agent_id),
+        )),
     )
 
 
@@ -63,10 +63,11 @@ def _direct_readable_item_for_agents_clause(
     )
     return or_(
         MemoryItem.owner_agent_id.in_(normalized_ids),
-        MemoryItem.visibility == "public",
-        MemoryItem.global_access >= 1,
-        MemoryItem.id.in_(granted_item_ids),
-        agent_team_grant_clause(normalized_ids),
+        and_(MemoryItem.source_managed.is_(True), MemoryItem.visibility == "public"),
+        and_(MemoryItem.node_kind == "document", or_(
+            MemoryItem.global_access >= 1, MemoryItem.id.in_(granted_item_ids),
+            agent_team_grant_clause(normalized_ids),
+        )),
     )
 
 
@@ -128,6 +129,10 @@ async def managed_item_agent_ids(
                 visible.append(identity)
         return tuple(visible), ()
     scoped_ids = None if agent_ids is None else set(agent_ids)
+    if item.node_kind != "document" and not item.source_managed:
+        owned = item.owner_agent_id
+        owners = (owned,) if owned is not None and (scoped_ids is None or owned in scoped_ids) else ()
+        return owners, () if item.read_only else owners
     candidates = {
         grant.agent_id
         for grant in item.grants
@@ -172,6 +177,8 @@ async def effective_access(item: MemoryItem, agent_id: int | HumanActor) -> Memo
         return MemoryAccess(can_read=readable is not None, can_write=False)
     if item.owner_agent_id == agent_id:
         return MemoryAccess(can_read=True, can_write=not item.read_only)
+    if item.node_kind == "memory" and not item.source_managed:
+        return MemoryAccess(can_read=False, can_write=False)
     team_read = bool(await get_db().scalar(select(agent_team_grant_clause(agent_id, item_id=item.id))))
     team_write = bool(await get_db().scalar(select(agent_team_grant_clause(agent_id, item_id=item.id, write=True))))
     can_read = item.visibility == "public" or item.global_access >= 1
@@ -262,7 +269,9 @@ def _direct_human_item_clause(user_id: int, *, write: bool = False) -> ColumnEle
         teams = teams.where(permissions.c.can_write.is_(True))
     return and_(
         exists(select(UserModel.id).where(UserModel.id == user_id, UserModel.is_active.is_(True))),
-        or_(MemoryItem.owner_user_id == user_id, MemoryItem.global_access == 2 if write else or_(MemoryItem.global_access >= 1, MemoryItem.visibility == "public"), exists(direct), exists(teams)),
+        or_(MemoryItem.owner_user_id == user_id,
+            and_(MemoryItem.source_managed.is_(True), MemoryItem.visibility == "public") if not write else false(),
+            and_(MemoryItem.node_kind == "document", or_(MemoryItem.global_access == 2 if write else MemoryItem.global_access >= 1, exists(direct), exists(teams)))),
         ~MemoryItem.read_only if write else true(),
         ~MemoryItem.source_managed if write else true(),
     )

@@ -295,7 +295,7 @@ async def test_automatic_aging_marks_without_removing_from_rag_and_edit_clears_i
         MemoryItemCreate(
             owner_agent_id=owner.id,
             title="Ancienne règle PostgreSQL",
-            payload=MemoryPayload(text="Cette règle doit rester disponible dans le RAG."),
+            payload=MemoryPayload(text="Cette règle PostgreSQL doit rester disponible dans le RAG."),
         )
     )
     old = datetime.now(timezone.utc) - timedelta(days=500)
@@ -325,7 +325,7 @@ async def test_automatic_aging_marks_without_removing_from_rag_and_edit_clears_i
         item.id,
         MemoryItemUpdate(
             expected_revision=item.revision,
-            title="Règle PostgreSQL confirmée récemment",
+            payload=MemoryPayload(text="Règle PostgreSQL confirmée récemment."),
         ),
         actor_agent_id=owner.id,
     )

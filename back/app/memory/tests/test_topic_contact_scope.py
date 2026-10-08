@@ -54,10 +54,14 @@ async def test_contact_acquisition_checks_unloaded_target_grants(
         MemoryItemCreate(
             owner_agent_id=peer.id,
             title="Shared operational fact",
+            node_kind="document",
             payload=MemoryPayload(text="A fact confirmed by another contact."),
-            visibility="public" if access_mode == "public" else "private",
         )
     )
+    if access_mode == "public":
+        target.visibility = "shared"
+        target.global_access = 1
+        await db.commit()
     if access_mode == "grant":
         await service.set_item_grant(target.id, owner.id, MemoryGrantUpdate(can_write=False))
     target_id = target.id
@@ -254,14 +258,14 @@ async def test_contact_scope_is_effective_before_topic_classification(
         MemoryItemCreate(
             owner_agent_id=owner.id,
             title="Préférence non classée d'Alice",
-            payload=MemoryPayload(text="Alice préfère les réponses courtes."),
+            payload=MemoryPayload(text="Préférence d'Alice : les réponses courtes."),
         )
     )
     bob_memory, _ = await service.create_item(
         MemoryItemCreate(
             owner_agent_id=owner.id,
             title="Préférence non classée de Bob",
-            payload=MemoryPayload(text="Bob préfère les réponses détaillées."),
+            payload=MemoryPayload(text="Préférence de Bob : les réponses détaillées."),
         )
     )
     global_memory, _ = await service.create_item(

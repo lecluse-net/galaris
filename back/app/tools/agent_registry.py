@@ -97,7 +97,7 @@ async def build_agent_tool_advertisement(
                 "Create with "
                 "file_create(path='document://', name='Title', content='<p>...</p>'): the body "
                 "is an editorial HTML fragment inside a Galaris document, not a standalone "
-                "HTML page. Enrich the same document across research, drafting and review; "
+                "HTML page. Revise the same document across research, drafting and review; "
                 "keep source references in it and link related documents. Keep and cite the "
                 "exact returned document:// URI across Tasks and conversations instead of "
                 "maintaining competing copies. A temporary tool error is not deactivation: "
@@ -107,7 +107,7 @@ async def build_agent_tool_advertisement(
         )
         if "file_search" in tool_names:
             lines.append(
-                "When a document is needed, search document:// first and enrich a relevant "
+                "When a document is needed, search document:// first and update a relevant "
                 "existing document. Create a new one only when the content needs a separate home."
             )
         if {"memory_sharing", "document_share"} <= tool_names:

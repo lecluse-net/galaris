@@ -15,7 +15,7 @@ from core.user.models import User
 from core.user.user_service import encrypt_password
 from core.authorize.models import Assignment, Role, Privilege
 from app.agent.models import Agent, Title
-from app.memory.models import MemoryItem, MemoryRevision, MemoryURL
+from app.memory.models import Document, DocumentRevision, MemoryItem, MemoryRevision, MemoryURL
 from app.memory.storage import NativeFileStorage, register_storage, reset_storage_registry
 from app.goal.models import Goal, GoalStatus
 
@@ -66,6 +66,10 @@ async def test_http_reads_stay_bounded_and_revocations_remain_visible(client, tm
                 content_hash=item.content_hash, content_type='text', media_type='text/html',
                 title=item.title, document_content_version=True)
             await db.execute(insert(MemoryRevision), [dict(revision_template, revision=1)])
+            await db.execute(insert(DocumentRevision).from_select(
+                ["id", "document_id", "revision"], select(
+                    MemoryRevision.id, MemoryRevision.item_id, MemoryRevision.revision,
+                ).where(MemoryRevision.item_id == item.id)))
             goal = Goal(title='Synthetic audit goal', agent_id=agent.id,
                 description_document_id=docs[1].id, tracking_document_id=docs[2].id,
                 status=GoalStatus.PAUSED, cycle_delay_seconds=0)
@@ -136,10 +140,14 @@ async def test_http_reads_stay_bounded_and_revocations_remain_visible(client, tm
         await measure('goal_cycles', 'GET', f'/api/goals/{goal_id}/cycles')
         async with get_db_session() as db:
             await db.execute(insert(MemoryRevision), [dict(revision_template, revision=n) for n in range(2, 1001)])
+            await db.execute(insert(DocumentRevision).from_select(
+                ["id", "document_id", "revision"], select(
+                    MemoryRevision.id, MemoryRevision.item_id, MemoryRevision.revision,
+                ).where(MemoryRevision.item_id == doc_id, MemoryRevision.revision >= 2)))
             current_content = b'<p>Updated synthetic content.</p>'
             current_resource = await storage.create(current_content)
             current_hash = hashlib.sha256(current_content).hexdigest()
-            await db.execute(update(MemoryItem).where(MemoryItem.id == doc_id).values(
+            await db.execute(update(Document).where(Document.id == doc_id).values(
                 revision=1000, resource_id=current_resource, content_hash=current_hash, size_bytes=len(current_content)))
             await db.execute(update(MemoryRevision).where(MemoryRevision.item_id == doc_id, MemoryRevision.revision == 1000)
                              .values(resource_id=current_resource, content_hash=current_hash))

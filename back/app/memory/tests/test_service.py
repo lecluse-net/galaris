@@ -190,7 +190,7 @@ async def test_document_writes_emit_content_free_realtime_events(
         MemoryGrantUpdate(can_write=False),
         actor_agent_id=owner.id,
     )
-    await service.forget_item(document.id, actor_agent_id=owner.id)
+    await service.delete_document(document.id, actor_agent_id=owner.id)
 
     assert [event[:2] for event in events] == [
         ("memory", "create"),
@@ -284,6 +284,7 @@ async def test_acl_search_revisions_links_and_physical_forget(
     owner, peer = agents
     item, created = await service.create_item(
         MemoryItemCreate(
+            node_kind="document",
             owner_agent_id=owner.id,
             title="PostgreSQL deployment rule",
             payload=MemoryPayload(text="Always apply Atlas before deploying PostgreSQL."),
@@ -340,11 +341,11 @@ async def test_acl_search_revisions_links_and_physical_forget(
         actor_agent_id=peer.id,
     )
     updated_resource_id = updated.resource_id
-    assert updated.revision == 4  # two ACL revisions plus the content revision
-    revisions = await service.list_revisions(
-        item.id, agent_id=owner.id
-    )
-    assert [revision.revision for revision in revisions] == [1, 2, 3, 4]
+    assert updated.revision == 2  # Sharing has its own lock version.
+    revisions = (await service.list_document_content_revisions(
+        item.id, actor_agent_id=owner.id
+    )).items
+    assert [revision.revision for revision in revisions] == [2, 1]
     assert all("reason" not in revision.model_dump() for revision in revisions)
     _old_item, old_content, _access, _content_type, _media_type = await service.get_item(
         item.id,
@@ -355,6 +356,7 @@ async def test_acl_search_revisions_links_and_physical_forget(
 
     related, _ = await service.create_item(
         MemoryItemCreate(
+            node_kind="document",
             owner_agent_id=owner.id,
             title="Schema verification",
             payload=MemoryPayload(text="Run the architecture and schema checks."),
@@ -370,7 +372,7 @@ async def test_acl_search_revisions_links_and_physical_forget(
     )
     assert (await service.list_links(item.id, actor_agent_id=owner.id))[0].id == link.id
 
-    result = await service.forget_item(item.id, actor_agent_id=owner.id)
+    result = await service.delete_document(item.id, actor_agent_id=owner.id)
     assert result.resources_deleted == 2
     with pytest.raises(service.MemoryNotFoundError):
         await service.get_item(item.id, agent_id=owner.id)
@@ -388,12 +390,13 @@ async def test_acl_search_revisions_links_and_physical_forget(
         .execution_options(include_historized=True)
     )
     assert tombstone is not None
-    assert tombstone.title == "Forgotten memory"
+    assert tombstone.title == "PostgreSQL deployment rule"  # Historical Chat label only.
     assert tombstone.size_bytes == 0
 
 
 @pytest.mark.asyncio
 async def test_direct_grants_and_public_visibility_apply_before_ranking(
+    db: AsyncSession,
     agents: tuple[Agent, Agent],
     memory_storage: Path,
 ) -> None:
@@ -401,6 +404,7 @@ async def test_direct_grants_and_public_visibility_apply_before_ranking(
     owner, peer = agents
     item, _ = await service.create_item(
         MemoryItemCreate(
+            node_kind="document",
             owner_agent_id=owner.id,
             title="Shared incident record",
             payload=MemoryPayload(text="The service recovered after queue drainage."),
@@ -433,12 +437,15 @@ async def test_direct_grants_and_public_visibility_apply_before_ranking(
 
     public_item, _ = await service.create_item(
         MemoryItemCreate(
+            node_kind="document",
             owner_agent_id=owner.id,
             title="Public convention",
             payload=MemoryPayload(text="Use ISO timestamps everywhere."),
-            visibility="public",
         )
     )
+    public_item.visibility = "shared"
+    public_item.global_access = 1
+    await db.commit()
     public_page = await service.search_items(
         MemorySearchRequest(agent_id=peer.id, query="ISO timestamps")
     )
@@ -525,6 +532,9 @@ async def test_deletion_protection_is_distinct_from_read_only(
         await service.forget_item(
             item.id, actor_agent_id=None, administrative=True
         )
+    for actor, administrative in [(owner.id, False), (None, True)]:
+        with pytest.raises(service.MemoryPermissionError, match="cannot be forgotten"):
+            await service.delete_document(item.id, actor_agent_id=actor, administrative=administrative)
 
 
 @pytest.mark.asyncio
@@ -543,14 +553,14 @@ async def test_update_rejects_a_stale_revision(
     )
     updated = await service.update_item(
         item.id,
-        MemoryItemUpdate(expected_revision=1, title="First editor"),
+        MemoryItemUpdate(expected_revision=1, payload=MemoryPayload(text="First editor")),
         actor_agent_id=owner.id,
     )
     assert updated.revision == 2
     with pytest.raises(service.MemoryConflictError, match="expected 1, current revision is 2"):
         await service.update_item(
             item.id,
-            MemoryItemUpdate(expected_revision=1, title="Stale editor"),
+            MemoryItemUpdate(expected_revision=1, payload=MemoryPayload(text="Stale editor")),
             actor_agent_id=owner.id,
         )
 
@@ -564,6 +574,7 @@ async def test_full_text_ranking_prefers_title_then_keywords_then_content(
     owner, _peer = agents
     title_item, _ = await service.create_item(
         MemoryItemCreate(
+            node_kind="document",
             owner_agent_id=owner.id,
             title="Déploiement contrôlé",
             payload=MemoryPayload(text="Une note de référence sans répétition."),
@@ -571,6 +582,7 @@ async def test_full_text_ranking_prefers_title_then_keywords_then_content(
     )
     keyword_item, _ = await service.create_item(
         MemoryItemCreate(
+            node_kind="document",
             owner_agent_id=owner.id,
             title="Liste opérationnelle",
             payload=MemoryPayload(text="Une autre note de référence."),
@@ -579,6 +591,7 @@ async def test_full_text_ranking_prefers_title_then_keywords_then_content(
     )
     content_item, _ = await service.create_item(
         MemoryItemCreate(
+            node_kind="document",
             owner_agent_id=owner.id,
             title="Compte rendu",
             payload=MemoryPayload(text="Le déploiement a été vérifié."),
@@ -825,7 +838,7 @@ async def test_document_attachments_follow_document_acl_without_content_revision
             headers={"content-type": "text/plain"},
         ),
     )
-    await service.forget_item(document.id, actor_agent_id=owner.id)
+    await service.delete_document(document.id, actor_agent_id=owner.id)
     with pytest.raises(ResourceNotFoundError):
         await get_storage("native").read(str(retained.id))
 
@@ -914,14 +927,15 @@ async def test_search_sorts_every_list_column_in_both_directions(
     owner, peer = agents
     unused, _ = await service.create_item(
         MemoryItemCreate(
+            node_kind="document",
             owner_agent_id=peer.id,
             title="Charlie memory",
             payload=MemoryPayload(text="This memory has not been read directly."),
-            visibility="public",
         )
     )
     once, _ = await service.create_item(
         MemoryItemCreate(
+            node_kind="document",
             owner_agent_id=owner.id,
             title="Alpha memory",
             payload=MemoryPayload(text="This memory has one direct read."),
@@ -930,12 +944,17 @@ async def test_search_sorts_every_list_column_in_both_directions(
     )
     twice, _ = await service.create_item(
         MemoryItemCreate(
+            node_kind="document",
             owner_agent_id=owner.id,
             title="Bravo memory",
             payload=MemoryPayload(text="This memory has two direct reads."),
-            visibility="shared",
         )
     )
+
+    unused.visibility = "shared"
+    unused.global_access = 1
+    twice.visibility = "shared"
+    await db.commit()
 
     await service.get_item(
         once.id,
@@ -954,6 +973,9 @@ async def test_search_sorts_every_list_column_in_both_directions(
     )
 
     once.last_accessed_at = datetime(2026, 1, 1, tzinfo=timezone.utc)
+    unused.created_at = datetime(2025, 1, 1, tzinfo=timezone.utc)
+    once.created_at = datetime(2025, 1, 2, tzinfo=timezone.utc)
+    twice.created_at = datetime(2025, 1, 3, tzinfo=timezone.utc)
     twice.last_accessed_at = datetime(2026, 1, 2, tzinfo=timezone.utc)
     unused.last_accessed_at = None
     once.updated_at = datetime(2026, 1, 1, tzinfo=timezone.utc)
@@ -981,7 +1003,7 @@ async def test_search_sorts_every_list_column_in_both_directions(
             [unused.id, twice.id, once.id],
         ),
         "visibility": (
-            [once.id, unused.id, twice.id],
+            [once.id, twice.id, unused.id],
             [twice.id, unused.id, once.id],
         ),
         "access_count": (
@@ -1215,6 +1237,7 @@ async def test_memory_updated_at_tracks_only_payload_or_keyword_changes(
     owner, peer = agents
     item, _ = await service.create_item(
         MemoryItemCreate(
+            node_kind="document",
             owner_agent_id=owner.id,
             title="Content timestamp",
             payload=MemoryPayload(text="Initial content."),

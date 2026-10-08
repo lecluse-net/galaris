@@ -221,7 +221,7 @@ async def test_dream_create_persists_optional_calendar(agents, memory_storage):
     from core.database import get_db
     from app.memory.models import MemoryItem
     item = await get_db().scalar(select(MemoryItem).where(MemoryItem.owner_agent_id == owner.id,
-        MemoryItem.title == 'Birthday'))
+        MemoryItem.temporal == anchor.model_dump(mode='json')))
     assert item is not None and item.temporal == anchor.model_dump(mode='json')
 
 
@@ -276,20 +276,20 @@ async def test_browse_combines_target_date_filters_acl_and_pagination(agents, me
     first = await service.search_items(request)
     second = await service.search_items(request.model_copy(update={'offset': 1}))
     assert first.total == second.total == 2 and first.has_more and not second.has_more
-    assert [hit.item.title for hit in first.hits + second.hits] == ['A annual', 'B appointment']
+    assert [hit.item.title.removeprefix('Synthetic calendar evidence for ') for hit in first.hits + second.hits] == ['A annual', 'B appointment']
     assert first.hits[0].temporal_match_at == datetime(2026, 9, 27, 7, tzinfo=timezone.utc)
     assert second.hits[0].temporal_match_at == datetime(2026, 9, 27, 8, tzinfo=timezone.utc)
     assert first.temporal_window.start == request.temporal.target_at
     visible = await service.search_items(request.model_copy(update={'filter_contact_item_id': None, 'limit': 50}))
-    assert [hit.item.title for hit in visible.hits] == ['A annual', 'B appointment', 'G other contact']
+    assert [hit.item.title.removeprefix('Synthetic calendar evidence for ') for hit in visible.hits] == ['A annual', 'B appointment', 'G other contact']
     for target, titles in [('2027-09-27T09:00', ['A annual', 'C next year']), ('2026-09-28T09:00', [])]:
         page = await service.search_items(request.model_copy(update={'limit': 50,
             'temporal': MemoryTemporalFilter(target_at=target, lookahead_hours=0)}))
-        assert [hit.item.title for hit in page.hits] == titles
+        assert [hit.item.title.removeprefix('Synthetic calendar evidence for ') for hit in page.hits] == titles
     assert not (await service.search_items(request.model_copy(update={'query': 'absentword'}))).hits
     # Removing the calendar filter restores ordinary memories and all dated years.
     unfiltered = await service.search_items(request.model_copy(update={'temporal': None, 'limit': 50}))
-    assert [hit.item.title for hit in unfiltered.hits] == ['A annual', 'B appointment', 'C next year', 'D next month']
+    assert [hit.item.title.removeprefix('Synthetic calendar evidence for ') for hit in unfiltered.hits] == ['A annual', 'B appointment', 'C next year', 'D next month']
     assert unfiltered.temporal_window is None
 
 

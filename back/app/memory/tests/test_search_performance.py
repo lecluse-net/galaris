@@ -6,7 +6,7 @@ from pathlib import Path
 import time
 
 import pytest
-from sqlalchemy import event, insert, text
+from sqlalchemy import event, text
 
 from app.memory.models import MemoryItem
 from app.memory.schemas import MemorySearchRequest
@@ -26,10 +26,8 @@ async def test_multilingual_search_has_bounded_queries_and_preserves_private_sco
         "title": f"{languages[index % 3]} {index}",
         "search_text": (languages[index % 3] + " ") * 25,
         "content_hash": hashlib.sha256(str(index).encode()).hexdigest(),
-        "visibility": "private",
-        "global_access": 0,
     } for index in range(6000)]
-    await db.execute(insert(MemoryItem), rows)
+    await db.execute(MemoryItem.__table__.insert(), rows)
     await db.flush()
     await db.execute(text("ANALYZE memory_items"))
     connection = await db.connection()

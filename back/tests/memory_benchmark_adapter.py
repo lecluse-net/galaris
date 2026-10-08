@@ -102,11 +102,11 @@ async def load_world(memories: tuple[Memory, ...], queries: tuple[Query, ...], r
         for contact in sorted({q.contact_id for q in queries} | {m.contact_scope for m in memories if m.contact_scope}):
             content = b"<p>Synthetic contact boundary.</p>"
             identity = UUID(contact)
-            rows.append(dict(id=identity, owner_agent_id=ids[actor], title="Synthetic contact boundary",
-                             resource_id=contact, content_hash=hashlib.sha256(content).hexdigest(),
-                              media_type="text/html", search_text="Synthetic contact boundary",
+            rows.append(dict(id=identity, owner_agent_id=ids[actor], search_title="Synthetic contact boundary",
+                             memory_resource_id=contact, memory_content_hash=hashlib.sha256(content).hexdigest(),
+                             memory_media_type="text/html", search_text="Synthetic contact boundary",
                              source_managed=True, managed_source_kind="messenger_contact", managed_source_ref=contact,
-                             read_only=True, created_at=now, updated_at=now))
+                             memory_read_only=True, created_at=now, updated_at=now))
             resources.append((contact, content))
         for m in memories:
             content = m.content_html.encode("utf-8")
@@ -120,10 +120,10 @@ async def load_world(memories: tuple[Memory, ...], queries: tuple[Query, ...], r
                 # Source fixture zones describe an event; persisted anchors use Galaris's zone.
                 instant = datetime.fromisoformat(m.event_start).astimezone(ZoneInfo(local_timezone_name()))
                 anchor = {part: getattr(instant, part) for part in ('year', 'month', 'day', 'hour', 'minute')}
-            rows.append(dict(id=identity, owner_agent_id=owner, title=m.title,
-                             resource_id=m.id, provider_code="native",
-                             media_type="text/html", content_profile_version=1, content_hash=digest,
-                             size_bytes=len(content), search_text=visible_text(m.content_html), metadata_=metadata,
+            rows.append(dict(id=identity, owner_agent_id=owner, search_title=m.title,
+                             memory_resource_id=m.id, memory_provider_code="native",
+                             memory_media_type="text/html", memory_content_profile_version=1, memory_content_hash=digest,
+                             memory_size_bytes=len(content), search_text=visible_text(m.content_html), metadata_=metadata,
                              valid_from=datetime.fromisoformat(m.valid_from) if m.valid_from else None,
                              valid_until=datetime.fromisoformat(m.valid_until) if m.valid_until else None,
                              temporal=anchor, created_at=datetime.fromisoformat(m.recorded_at),

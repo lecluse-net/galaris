@@ -6,7 +6,9 @@ import { solaireCss as solaire } from './solaireTheme'
 const pdfEditorIcon = bootstrapPdfIcon.replaceAll('<path ', `<path style="fill: ${solaire.red.accent}" `)
 const headingIcon = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M4 4h3v6h10V4h3v16h-3v-7H7v7H4z"/></svg>'
 
-export function editorToolbarGroups(document: boolean, voice = false) {
+export type EditorToolbarGroupName = 'reading' | 'editing' | 'text' | 'paragraph' | 'insert'
+
+export function editorToolbarGroups(document: boolean, voice = false, hiddenGroups: readonly EditorToolbarGroupName[] = []) {
   return [
     { name: 'reading', rows: [...(voice ? [['documentDictation', 'documentReading']] : []), [...(document ? ['documentLayout'] : []), 'sourceEditing', 'fullscreen', ...(document ? ['accessibilityHelp'] : [])]] },
     { name: 'editing', rows: document
@@ -16,7 +18,7 @@ export function editorToolbarGroups(document: boolean, voice = false) {
     { name: 'paragraph', rows: [['heading', 'style'], ['bulletedList', 'numberedList', 'alignment', 'outdent', 'indent']] },
     { name: 'insert', rows: [['link', 'galarisLink', ...(document ? ['uploadImage', 'documentAttachments'] : []), 'insertTable'], ['blockQuote', 'codeBlock', 'horizontalLine', 'specialCharacters']] },
   ]
-    .filter(group => document || group.name !== 'insert')
+    .filter(group => (document || group.name !== 'insert') && !hiddenGroups.some(name => name === group.name))
     .map(group => ({ ...group, items: group.rows.flat() }))
 }
 
@@ -42,8 +44,10 @@ class ToolbarGroupView extends View {
   }
 }
 
-export function registerEditorToolbarGroups(editor: Editor, document: boolean, translate: (key: string) => string, voice = false): void {
-  for (const group of editorToolbarGroups(document, voice)) {
+export function registerEditorToolbarGroups(editor: Editor, document: boolean, translate: (key: string) => string, voice = false, hiddenGroups: readonly EditorToolbarGroupName[] = []): void {
+  const hiddenCommands = new Set(editorToolbarGroups(document, voice)
+    .filter(group => hiddenGroups.some(name => name === group.name)).flatMap(group => group.items))
+  for (const group of editorToolbarGroups(document, voice, hiddenGroups)) {
     editor.ui.componentFactory.add('galarisGroup' + group.name, locale => new ToolbarGroupView(
       locale, group.name, translate('richEditor.groups.' + group.name),
       group.rows.map(row => row.map(name => {
@@ -62,7 +66,7 @@ export function registerEditorToolbarGroups(editor: Editor, document: boolean, t
       ...(voice ? ['documentDictation', 'documentReading'] : []),
       'link', 'galarisLink', ...(document ? ['uploadImage', 'documentAttachments'] : []),
       ...(document ? ['documentShare', 'accessibilityHelp'] : []),
-    ], editor.ui.componentFactory)
+    ].filter(command => !hiddenCommands.has(command)), editor.ui.componentFactory)
     for (const item of toolbar.items) {
       if (!(item instanceof DropdownView)) continue
       if (item.element?.classList.contains('ck-heading-dropdown')) item.buttonView.icon = headingIcon
@@ -83,7 +87,10 @@ export function attachEditorToolbarGroups(editor: Editor): void {
   const toolbar = editor.ui.view.toolbar
   if (!toolbar) return
   toolbar.class = 'galaris-toolbar'
-  for (const item of editorToolbarCommands(editor)) {
+  // CKEditor already tracks direct commands; register only the nested group controls.
+  const nestedCommands = [...toolbar.items].flatMap(item =>
+    item instanceof ToolbarGroupView || item instanceof ToolbarView ? [...item.items] : [])
+  for (const item of nestedCommands) {
     if (item instanceof ButtonView || item instanceof DropdownView) {
       toolbar.focusables.add(item)
       toolbar.focusTracker.add(item)

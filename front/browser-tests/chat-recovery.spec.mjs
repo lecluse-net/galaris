@@ -117,7 +117,7 @@ for (const section of [
     await jsonRoute(page, `**/api/chat/rooms/room-b/${section.path}?*`, { items: [], total: 0 })
     await jsonRoute(page, '**/api/chat/recipients?*', { agents: [], total: 0 })
     await jsonRoute(page, '**/api/tasks/activity', [])
-    await jsonRoute(page, '**/api/memory/items/doc-a?*', documentFixture)
+    await jsonRoute(page, /\/api\/memory\/documents\/doc-a(?:\?.*)?$/, { item: documentFixture, agent_id: 7 })
     await conversation(page, ['CHAT_SEND', section.privilege])
     const header = page.locator('.sidebar-accordion-header').filter({ hasText: section.label })
     await expect.poll(() => reads).toBeGreaterThan(0)

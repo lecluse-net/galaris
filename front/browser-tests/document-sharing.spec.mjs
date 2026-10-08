@@ -151,7 +151,7 @@ test('failed saves preserve confirmed rights, reload recovers, and read-only acc
   await expect(page.getByRole('dialog', { name: 'Add sharing' })).toHaveCount(0)
 })
 
-test('memory detail and editor share the common control without overwriting a content draft', async ({ page }) => {
+test('private memory saves its content draft without independent sharing', async ({ page }) => {
   const initial = privateState()
   initial.lock_version = 3
   const { state } = await sharingFixture(page, 'memory', initial)
@@ -175,21 +175,15 @@ test('memory detail and editor share the common control without overwriting a co
   })
   await mount(page, 'app/memory/pages/index.vue', { privileges: ['MEMORY_EDIT'], route: '/memory?agent=7' })
   await page.getByText('Integration memory', { exact: true }).click()
-  await picker(page).click()
-  await page.getByRole('button', { name: 'Alice agent: Read', exact: true }).click()
-  await page.keyboard.press('Escape')
-  await expect(toggle(page, 'Alice agent')).toBeVisible()
-  const editor = page.getByRole('dialog').filter({ has: page.getByLabel('Title', { exact: true }) })
-  await editor.getByLabel('Title', { exact: true }).fill('Unsubmitted draft')
-  await editor.getByRole('combobox', { name: 'Sharing', exact: true }).click()
-  await page.getByRole('button', { name: 'Public: Read', exact: true }).click()
-  await page.keyboard.press('Escape')
-  await expect(editor.getByLabel('Title', { exact: true })).toHaveValue('Unsubmitted draft')
+  const editor = page.getByRole('dialog').filter({ has: page.locator('.ck-editor__editable') })
+  await editor.locator('.ck-editor__editable').fill('Unsubmitted draft')
+  await expect(picker(page)).toHaveCount(0)
+  await expect(editor.locator('.ck-editor__editable')).toHaveText('Unsubmitted draft')
   await editor.getByRole('button', { name: 'Save', exact: true }).click()
   await expect.poll(() => contentWrites.length).toBe(1)
-  expect(contentWrites[0]).toMatchObject({ title: 'Unsubmitted draft', expected_revision: 3 })
+  expect(contentWrites[0]).toMatchObject({ payload: { text: '<p>Unsubmitted draft</p>' }, expected_revision: 3 })
   expect(contentWrites[0]).not.toHaveProperty('visibility')
-  expect(state.level).toBe('public')
+  expect(state.level).toBe('private')
 })
 
 test('switching resource during a pending load ignores the obsolete response', async ({ page }) => {

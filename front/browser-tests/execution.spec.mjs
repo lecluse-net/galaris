@@ -201,9 +201,10 @@ for (const canWrite of [true, false]) {
       payload: { text: '<p>Complete document body</p>' }, access: { can_read: true, can_write: canWrite } }
     const updates = []
     await jsonRoute(page, '**/api/agents?*', [agent])
-    await page.route(`**/api/memory/items/${id}?*`, route => {
-      if (route.request().method() === 'GET') return route.fulfill({ json: current })
-      expect(route.request().method()).toBe('PUT')
+    await jsonRoute(page, `**/api/memory/items/${id}?*`, { ...current, document_id: id, payload: { text: '' } })
+    await page.route(`**/api/memory/documents/${id}?*`, route => {
+      if (route.request().method() === 'GET') return route.fulfill({ json: { item: current } })
+      expect(route.request().method()).toBe('PATCH')
       const update = route.request().postDataJSON()
       updates.push(update)
       current = { ...current, ...update, revision: current.revision + 1, lock_version: current.lock_version + 1 }

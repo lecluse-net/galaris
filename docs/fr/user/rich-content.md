@@ -243,9 +243,12 @@ La flèche à sa droite ouvre le menu **Pause** / **Arrêter la lecture**, sans 
 **Reprendre** continue au même endroit après une pause. Remplacer le contenu ou fermer l’éditeur
 arrête aussi la capture ou la lecture en cours. L’audio utilise les fournisseurs configurés dans Galaris.
 
-## Partager un document ou un item mémoire
+## Partager un document
 
-Les nouvelles ressources sont **Privées**. Cliquez sur le champ **Partage** pour ouvrir les choix :
+Les nouveaux documents sont **Privés**. Leur synthèse mémoire facultative hérite de leurs droits
+actuels. Les souvenirs autonomes restent privés à leur agent et n’ont pas de commande de partage.
+Depuis la synthèse, utilisez **Ouvrir le document**, puis cliquez sur le champ **Partage** de
+l’éditeur documentaire pour ouvrir les choix :
 
 - **Public**, en lecture ou en écriture, donne accès aux utilisateurs et agents de l’application.
 - **Groupes** ajoute les groupes actuels du propriétaire avec le droit choisi.

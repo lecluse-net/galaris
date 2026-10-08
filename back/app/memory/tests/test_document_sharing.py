@@ -47,14 +47,150 @@ async def test_human_can_delete_own_document_but_not_a_shared_document(db, agent
         await router.forget_memory_item(shared.id, actor_agent_id=None)
     assert denied.value.status_code == 403
     assert (await service.get_item(shared.id, agent_id=HumanActor(human.id)))[0].id == shared.id
+    with pytest.raises(HTTPException) as denied:
+        await router.delete_managed_document(shared.id, actor_agent_id=None)
+    assert denied.value.status_code == 403
 
     own, _ = await service.create_item(MemoryItemCreate(
         owner_agent_id=owner.id, title="Personal document", node_kind="document",
          payload=MemoryPayload(text="Personal content"),
     ), owner_user_id=human.id)
-    await router.forget_memory_item(own.id, actor_agent_id=None)
+    with pytest.raises(HTTPException) as denied:
+        await router.forget_memory_item(own.id, actor_agent_id=None)
+    assert denied.value.status_code == 403
+    assert (await service.get_item(own.id, agent_id=HumanActor(human.id), memory_content=True))[0].id == own.id
+    await router.delete_managed_document(own.id, actor_agent_id=None)
     with pytest.raises(service.MemoryNotFoundError):
         await service.get_item(own.id, agent_id=HumanActor(human.id))
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("administrative", [False, True])
+async def test_document_memory_cannot_be_forgotten_or_merged(db, agents, memory_storage, administrative):
+    from app.memory import mcp
+    from app.tools.mcp_loader import McpToolContext
+
+    owner, _ = agents
+    item = await document(owner)
+    resource_id = item.resource_id
+    summary = await service.update_memory_content(item.id, MemoryItemUpdate(
+        payload=MemoryPayload(text="<p>Preserved synthesis.</p>"),
+    ), actor_agent_id=owner.id)
+    for forget in [
+        lambda: service.forget_item(item.id, actor_agent_id=owner.id, administrative=administrative),
+        lambda: service.forget_merged_item(item.id),
+    ]:
+        with pytest.raises(service.MemoryPermissionError):
+            await forget()
+    result = json.loads(await mcp.memory_forget(McpToolContext(agent_id=owner.id, runtime="internal"), str(item.id)))
+    assert "error" in result
+    _, content, *_ = await service.get_item(item.id, agent_id=owner.id, memory_content=True)
+    assert content == b"<p>Preserved synthesis.</p>"
+    assert summary.resource_id == resource_id
+
+
+@pytest.mark.asyncio
+async def test_forgetting_a_contact_cannot_erase_its_document_or_clear_references(db, agents, memory_storage):
+    from app.memory import MessengerContactObservation, observe_messenger_contact, forget_messenger_contact
+    from app.memory.models import MemoryContactItem
+
+    owner, _ = agents
+    contact_id = await observe_messenger_contact(MessengerContactObservation(
+        owner_agent_id=owner.id, messaging_id="matrix", user_id="@synthetic-reader:example.test",
+        display_name="Synthetic reader",
+    ))
+    item = await document(owner)
+    db.add(MemoryContactItem(owner_agent_id=owner.id, contact_item_id=contact_id, item_id=item.id,
+        source_kind="synthetic-test", source_ref="synthetic-document-reference"))
+    await db.commit()
+    clear_references = AsyncMock(return_value={})
+    with pytest.raises(service.MemoryConflictError):
+        await forget_messenger_contact(contact_item_id=contact_id, clear_references=clear_references)
+    clear_references.assert_not_awaited()
+    assert (await service.get_item(item.id, agent_id=owner.id))[1] == b"<p>Initial</p>"
+    assert await service.item_record(contact_id) is not None
+
+
+@pytest.mark.asyncio
+async def test_legacy_merge_finding_cannot_transfer_or_delete_document_data(db, agents, memory_storage):
+    from app.memory import maintenance
+    from app.memory.models import MemoryFinding, MemorySource
+    from app.memory.schemas import MemorySourceCreate
+
+    owner, _ = agents
+    items = []
+    for label in ("first", "second"):
+        item, _ = await service.create_item(MemoryItemCreate(
+            owner_agent_id=owner.id, node_kind="document", title=f"Synthetic {label}",
+            media_type="text/html",
+            payload=MemoryPayload(text=f"<p>Preserved {label} document.</p>"),
+            source=MemorySourceCreate(source_kind="synthetic-test", source_ref=label),
+        ))
+        items.append(item)
+    first, second = items
+    finding = MemoryFinding(kind="duplicate", primary_item_id=first.id, related_item_id=second.id,
+        primary_revision=first.revision, related_revision=second.revision, threshold=0.9,
+        proposed_action="merge", fingerprint=uuid4().hex, details={})
+    db.add(finding)
+    await db.commit()
+    with pytest.raises(service.MemoryConflictError):
+        await maintenance.apply_finding(finding.id, canonical_item_id=first.id)
+    for item, label in zip(items, ("first", "second"), strict=True):
+        assert (await service.get_item(item.id, agent_id=owner.id))[1] == f"<p>Preserved {label} document.</p>".encode()
+        assert list(await db.scalars(select(MemorySource.source_ref).where(MemorySource.item_id == item.id))) == [label]
+    assert finding.status == "pending"
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("sharing_kind", ["agent", "team", "public"])
+async def test_document_memory_lifetime_follows_document_access(db, agents, memory_storage, sharing_kind):
+    from app.memory.schemas import MemoryGraphRootsRequest, MemorySearchRequest
+    from app.memory.models import MemorySummaryRevision
+    from app.memory.storage import get_storage
+    from app.memory.contracts import ResourceNotFoundError
+
+    owner, reader = agents
+    human = await user(db)
+    scope = AgentManagementScope(user_id=human.id, agent_ids=frozenset({owner.id}))
+    item = await document(owner)
+    await service.update_memory_content(item.id, MemoryItemUpdate(
+        payload=MemoryPayload(text="<p>Synthesis with retained history.</p>"),
+    ), actor_agent_id=owner.id)
+    summary_resource = item.memory_resource_id
+    if sharing_kind == "team":
+        team = TeamModel(name="Synthetic memory readers")
+        db.add(team)
+        await db.flush()
+        db.add(AgentTeamModel(agent_id=reader.id, team_id=team.id))
+        await db.commit()
+        grants = [{"kind": "team", "id": team.id, "can_write": False}]
+    else:
+        grants = [{"kind": "agent", "id": reader.id, "can_write": False}] if sharing_kind == "agent" else []
+    await level(item, scope, "public" if sharing_kind == "public" else "groups" if sharing_kind == "team" else "private", grants=grants)
+
+    async def visible(agent_id):
+        search = await service.search_items(MemorySearchRequest(agent_id=agent_id))
+        graph = await service.list_graph_roots(MemoryGraphRootsRequest(agent_id=agent_id))
+        assert [hit.item.id for hit in search.hits] == [node.id for node in graph.nodes]
+        return [hit.item.id for hit in search.hits]
+
+    assert await visible(reader.id) == [item.id]
+    await level(item, scope, "private")
+    assert await visible(reader.id) == []
+    with pytest.raises(service.MemoryPermissionError):
+        await service.get_item(item.id, agent_id=reader.id, memory_content=True)
+    assert await visible(owner.id) == [item.id]
+    assert (await service.get_item(item.id, agent_id=owner.id, memory_content=True))[1] == b"<p>Synthesis with retained history.</p>"
+    await level(item, scope, "private", grants=[{"kind": "agent", "id": reader.id, "can_write": False}])
+    assert await visible(reader.id) == [item.id]
+    await service.delete_document(item.id, actor_agent_id=owner.id)
+    for actor in (owner.id, reader.id):
+        assert await visible(actor) == []
+        with pytest.raises(service.MemoryNotFoundError):
+            await service.get_item(item.id, agent_id=actor, memory_content=True)
+    assert not list(await db.scalars(select(MemorySummaryRevision).where(MemorySummaryRevision.item_id == item.id)))
+    with pytest.raises(ResourceNotFoundError):
+        await get_storage().read(summary_resource)
 
 
 @pytest.mark.asyncio
@@ -77,7 +213,7 @@ async def test_mcp_sharing_conflict_preserves_content_and_safe_retry(
     owner, peer = agents
     await mandatory_tools.sync_integrated_tool_connections(owner.id)
     item, _ = await service.create_item(MemoryItemCreate(
-        owner_agent_id=owner.id, title="Sharing after editing", node_kind=node_kind,
+        owner_agent_id=owner.id, title="Sharing after editing", node_kind="document",
         media_type="text/html", payload=MemoryPayload(text="<p>Original</p>"),
     ))
     from app.task.models import Task
@@ -148,7 +284,7 @@ async def grant(item, scope, kind, identity, can_write):
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize(("node_kind", "document_type"), [("document", "html"), ("document", "dataset"), ("memory", "html")])
+@pytest.mark.parametrize(("node_kind", "document_type"), [("document", "html"), ("document", "dataset")])
 async def test_mcp_sharing_uses_live_team_membership_and_preserves_other_grants(db, agents, memory_storage, node_kind, document_type):
     from app.memory import mcp
     from app.tools.mcp_loader import McpToolContext
@@ -371,7 +507,7 @@ async def level(item, scope, value, can_write=False, grants=None):
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("node_kind", ["document", "memory"])
+@pytest.mark.parametrize("node_kind", ["document"])
 @pytest.mark.parametrize("kind", ["agent", "user", "team"])
 async def test_atomic_sharing_preserves_content_and_enforces_each_recipient_right(db, agents, memory_storage, node_kind, kind):
     owner, peer = agents
@@ -492,7 +628,7 @@ async def test_legacy_groups_become_explicit_and_survive_owner_transfer(db, agen
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("node_kind", ["document", "memory"])
+@pytest.mark.parametrize("node_kind", ["document"])
 async def test_sharing_rejects_stale_invalid_and_non_owner_updates_atomically(db, agents, memory_storage, monkeypatch, node_kind):
     from app.memory.schemas import DocumentSharingLevelUpdate
     owner, peer = agents
@@ -543,14 +679,14 @@ async def test_sharing_rejects_stale_invalid_and_non_owner_updates_atomically(db
 
 
 @pytest.mark.asyncio
-async def test_memory_routes_support_human_access_without_granting_it_to_their_agents(db, agents, memory_storage, monkeypatch):
+async def test_document_routes_support_human_access_without_granting_it_to_their_agents(db, agents, memory_storage, monkeypatch):
     from fastapi import HTTPException
     from app.memory import router
     from app.memory.schemas import DocumentSharingLevelUpdate
     owner, peer = agents
     human = await user(db)
     item, _ = await service.create_item(MemoryItemCreate(
-        owner_agent_id=owner.id, title="Human memory", payload=MemoryPayload(text="Original"),
+        owner_agent_id=owner.id, node_kind="document", title="Human document", payload=MemoryPayload(text="Original"),
     ))
     manager = AgentManagementScope(user_id=human.id, agent_ids=frozenset({owner.id}))
     reader = AgentManagementScope(user_id=human.id, agent_ids=frozenset())
@@ -576,11 +712,11 @@ async def test_memory_routes_support_human_access_without_granting_it_to_their_a
             ))
         assert denied.value.status_code == 403
         if write:
-            updated = await router.update_memory_item(item.id, MemoryItemUpdate(title="Human edited"), actor_agent_id=None)
+            updated = await router.update_human_document(item.id, MemoryItemUpdate(title="Human edited"), actor_agent_id=None)
             assert updated.title == "Human edited"
         else:
             with pytest.raises(HTTPException) as denied:
-                await router.update_memory_item(item.id, MemoryItemUpdate(title="Denied"), actor_agent_id=None)
+                await router.update_human_document(item.id, MemoryItemUpdate(title="Denied"), actor_agent_id=None)
             assert denied.value.status_code == 403
         with pytest.raises(service.MemoryPermissionError):
             await service.get_item(item.id, agent_id=peer.id)

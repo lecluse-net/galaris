@@ -5,11 +5,11 @@
 Durable memory is a governed Galaris domain. A driver or bridge never reads its storage
 directly and never decides the scope of a session on its own.
 
-Memory items and documents have no independent `summary` field.
-Search and embeddings use the title, keywords and current content.
-Dream and the Lab produce and exchange content without a parallel summary. Previews
-are computed excerpts, never a second editable version of the content. The v3 semantic
-index is rebuilt in the background after DbAdmin synchronization.
+The document retains its authoritative content; its Memory item has independent
+content that can serve as a synthesis, without an additional `summary` field. Search
+and embeddings cover both contents and keywords, plus the document title or the
+memory's derived label. Previews remain computed excerpts. The v5 semantic index
+is rebuilt in the background after DbAdmin synchronization.
 
 Updates and acquisitions carry no free-text `reason` comment.
 History retains content, versions, authors, tasks and dates. Document append retries
@@ -70,6 +70,14 @@ recall. Results may be empty when no admissible candidate is available. The fina
 character budgets remain strict, and each excerpt carries the logical
 identifier and its sources.
 
+Final admission checks each result independently within one SQL `READ COMMITTED`
+snapshot: its revision, content fingerprint, permissions, validity and graph path links
+must still match. A valid result does not readmit another obsolete occurrence of the
+same UUID, including when pages overlap. Paginated search also attaches each excerpt
+to its own revision. Changes committed after this check apply to subsequent admissions.
+Revision and path proofs are passed as bound data to a fixed-shape query:
+increasing the result count does not multiply the SQL branches to compile and plan.
+
 The Topic is a ranking prior, never an implicit access boundary. With a current canonical Topic,
 its memories receive the maximum thematic signal. Without a current Topic, the query vector
 preselects the closest public Topic among those containing a memory accessible to the agent, only
@@ -113,10 +121,10 @@ requested terms take priority. Repeated excerpt word sequences are downranked wi
 merging or deletion, preserving numbers and negations. Translations and paraphrases
 are not automatically treated as equivalent. No search channel or model call is added.
 
-There is no memory space. Each memory belongs directly to an agent, which always has access to it.
-Another agent sees it only through a grant placed on that memory or because it is explicitly public.
-Automatic acquisitions remain private: sharing is never left to an assumed model initiative and
-does not propagate to an entire container.
+There is no memory space. Each standalone memory belongs directly to an agent and remains
+private to that agent. Sharing applies to documents; their Memory synthesis inherits current
+document permissions. Structural projections retain their domain's visibility rules.
+Automatic acquisitions remain private and create no sharing grants.
 
 ### Scope of Conversational Memories
 
@@ -144,16 +152,31 @@ A conversational source without a proven contact remains ineligible. The absence
 the three automatic Task, text-round, and Voice-turn extractors, without changing explicit tool
 writes or the separate learning contract.
 
-A `MemoryItem` has a nature: `memory` for an ordinary memory and `document` for a working document.
-A document is private when created, mutable, and not deduplicated.
-It uses the same UUIDs, ACLs, opaque resources, revisions,
-and search projections as other nodes, but is excluded from Dream acquisitions and automatic
-inactivity forgetting. Only its owner can forget it or modify its collaborators.
+A `Document` owns its title, authoritative content and collaboration rights. It has
+exactly one `MemoryItem` of nature `document`, whose HTML synthesis is optional.
+Standalone memories are private to their agent, have a content-derived display label,
+and have no editable title or independent sharing. Documents are private when created,
+mutable and not deduplicated. The document and its graph node retain the same UUID and
+existing URIs. Document and synthesis revisions are independent. Lexical and vector
+search use both the full document and its synthesis, including an empty synthesis,
+and return one result per pair. Synthesis access inherits the document's live rights,
+including revocation. Documents are excluded from Dream acquisitions and automatic
+inactivity forgetting. A document memory cannot be forgotten or merged independently.
+Deletion uses `DELETE /memory/documents/{id}` and also erases the synthesis, its history
+and associated resources under the document's deletion protections and permissions.
+Revoking sharing removes the node from affected agents' lists, searches and graphs while
+preserving the shared synthesis for its owner and remaining authorized readers.
+
+The document and its synthesis share one current keyword list in `memory_items.keywords`.
+Both editing routes normalize and write that list with document permissions and the common
+optimistic lock. Keyword-only changes refresh search without creating a document or synthesis
+content revision. Historical snapshots remain immutable. Migration from documents previously
+stored in `memory_items` retains keywords in place and never resets them on replay.
 
 ## Collaborative Working Documents
 
 ```text
-file_create(path="document://") ──► MemoryItem(document, private)
+file_create(path="document://") ──► Document(private) + MemoryItem(empty synthesis)
        │
        ├─► file_read(document://uuid, offset) ──► bounded passage
        ├─► file_edit(start_line, end_line, content) ──► atomic revision
@@ -172,6 +195,24 @@ The MCP surface remains deliberately small. `file_search` provides discovery of 
 `file_edit` replaces an inclusive range of lines, numbered starting at 1.
 A missing range or concurrent revision fails without modification and requests a reread.
 Revisions retain the authoring agent and Task.
+
+The arrival of the `documents` table first triggers a DbAdmin `BEFORE_EXPAND` archive
+of legacy items, revisions and grants in `galaris_migration`. Counts and digests verify
+its integrity; the archive remains immutable and retained after migration.
+`app.memory.document_split` runs at `AFTER_EXPAND`, creates documents from this archive
+and rejects source changes between phases. Its transaction preserves resource pointers and associates immutable
+revisions before initializing the empty synthesis. Previously shared standalone
+memories become documents without losing access rights. Private memories retain
+their authored titles in their content before switching to derived display labels;
+earlier revisions remain readable. Failure rolls back the transfer, and replay
+preserves an already authored synthesis. After transfer verification, contraction in
+the same update removes `document_type`, `filename`, `visibility`, `global_access`
+and `group_access` from `memory_items`. Structural export names remain in metadata
+and historical contracts delegate to the document. Failure retains the columns and
+supports automatic retry. Already expanded databases also use this archive before
+removing the columns. Archived pointers protect resources against explicit forget
+and orphan cleanup; this SQL archive does not replace file backups. Archive removal
+requires a separate, explicitly validated administrative operation.
 
 Before delegation, the owner explicitly shares the document and then places its UUID in the child
 Task's objective. Agents keep provisional notes in the document and separately promote genuinely

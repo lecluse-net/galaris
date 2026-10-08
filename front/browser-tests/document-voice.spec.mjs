@@ -24,10 +24,10 @@ async function controls(page, props = {}, html = '<p>Document</p>', simple = fal
     await jsonRoute(page, '**/api/memory/documents/folders?*', [{ path: 'Reports', kind: 'custom', shared: false }])
     await jsonRoute(page, '**/api/memory/documents/*/attachments?*', [])
     let current = { ...testDocument, payload: { text: html } }
-    await page.route('**/api/memory/items/*?*', route => {
+    await page.route(/\/api\/memory\/documents\/doc-[ab](?:\?.*)?$/, route => {
       current.id = new URL(route.request().url()).pathname.split('/').at(-1)
       if (route.request().method() !== 'GET') current = { ...current, ...route.request().postDataJSON(), revision: current.revision + 1 }
-      return route.fulfill({ json: current })
+      return route.fulfill({ json: route.request().method() === 'GET' ? { item: current, agent_id: 7 } : current })
     })
     await mount(page, 'app/memory/components/DocumentEditor.vue', {
       props: { documentId: 'doc-a', agentId: 7, editable: true, ...props },
@@ -218,8 +218,8 @@ test('dictation enters the real editor as escaped text and autosaves without los
   await jsonRoute(page, '**/api/llm/me/transcription', { text: 'Hello <script>alert(1)</script> & goodbye.' })
   const updates = []
   const initial = { ...testDocument, payload: { text: '<p>Existing content.</p>' } }
-  await page.route('**/api/memory/items/doc-a?*', route => {
-    if (route.request().method() === 'GET') return route.fulfill({ json: initial })
+  await page.route(/\/api\/memory\/documents\/doc-a(?:\?.*)?$/, route => {
+    if (route.request().method() === 'GET') return route.fulfill({ json: { item: initial, agent_id: 7 } })
     const update = route.request().postDataJSON()
     updates.push(update)
     return route.fulfill({ json: { ...initial, ...update, revision: 4, lock_version: 4 } })

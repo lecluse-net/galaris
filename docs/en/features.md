@@ -82,7 +82,9 @@ Dream uses available time to classify and consolidate knowledge. It can extract 
 from completed work, identify duplicates/conflicts and, when enabled, describe attachments lacking
 text. Procedural learning can also derive methods from several evidence-supported experiences.
 
-Users can inspect, correct, share, review history, explore the graph and explicitly forget memory.
+Users can inspect, correct, review history, explore the graph and explicitly forget memory.
+Standalone memories remain private to their agent; documents own sharing rights and an optional
+Memory synthesis.
 Learning and optional analyses are not all enabled by default, and recall does not guarantee every
 piece of information will surface in every exchange.
 

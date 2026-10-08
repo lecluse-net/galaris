@@ -1,5 +1,7 @@
 # Décisions d'architecture
 
+- [0162 — Documents distincts et synthèses mémoire facultatives](0162-document-and-memory-synthesis.md)
+
 - [0161 — Souvenirs décrits par leur contenu et leur provenance](0161-memory-content-and-provenance.md)
 
 - [0160 — Actions Dream explicites dans les nœuds mémoire](0160-foreground-dream-memory-actions.md)

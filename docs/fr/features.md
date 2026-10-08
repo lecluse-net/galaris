@@ -92,8 +92,10 @@ extraire les éléments durables d’un travail terminé, repérer doublons ou c
 si on l’active, décrire des pièces jointes encore sans texte. L’apprentissage procédural peut
 également faire émerger des méthodes à partir de plusieurs expériences étayées.
 
-L’utilisateur conserve un regard sur cette mémoire : consultation, correction, partage, historique,
-graphe et oubli explicite. L’apprentissage et les analyses facultatives ne sont pas tous activés
+L’utilisateur conserve un regard sur cette mémoire : consultation, correction, historique,
+graphe et oubli explicite. Les souvenirs autonomes restent privés à leur agent ; les documents
+portent les droits de partage et une synthèse mémoire facultative.
+L’apprentissage et les analyses facultatives ne sont pas tous activés
 par défaut, et le rappel ne garantit pas de retrouver chaque information à chaque échange.
 
 ## Confier un objectif qui dure

@@ -9,6 +9,7 @@ from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Any, Sequence
 from uuid import UUID, uuid4
+from html import escape
 
 from loguru import logger
 from pydantic import BaseModel
@@ -29,7 +30,7 @@ from .embedding import (
 from .models import MemoryAutomationJob, MemoryEmbeddingChunk, MemoryEmbeddingManifest, MemoryItem
 
 
-SEMANTIC_INDEX_VERSION = 4
+SEMANTIC_INDEX_VERSION = 5
 CHUNK_WORDS = 360
 CHUNK_OVERLAP_WORDS = 60
 MAX_CHUNKS_PER_MEMORY = 4096
@@ -68,6 +69,7 @@ def semantic_fingerprint_values(
     keywords: Sequence[str],
     content_type: str,
     media_type: str,
+    summary_hash: str = "",
 ) -> str:
     """Hash every field that contributes to the semantic representation."""
 
@@ -79,6 +81,7 @@ def semantic_fingerprint_values(
             "keywords": [str(value).strip() for value in keywords],
             "content_type": content_type,
             "media_type": media_type,
+            "summary_hash": summary_hash,
         },
         ensure_ascii=False,
         sort_keys=True,
@@ -96,6 +99,7 @@ def semantic_fingerprint(item: MemoryItem) -> str:
         keywords=item.keywords,
         content_type=item.content_type,
         media_type=item.media_type,
+        summary_hash=item.memory_content_hash if item.document is not None else "",
     )
 
 
@@ -111,7 +115,8 @@ def _chunks(snapshot: _MemorySnapshot) -> list[_Chunk]:
             text=passage.text,
             embedding_text=f"{prefix}\nSection: {' > '.join(passage.section_path)}\n\n{passage.text}",
             locator={"block_start": passage.block_start, "block_end": passage.block_end,
-                     "section_path": list(passage.section_path)},
+                     "section_path": list(passage.section_path), "content_source": passage.content_source,
+                     "source_revision": passage.source_revision},
         ) for passage in snapshot.passages]
     words = snapshot.search_text.split()
     if not words:
@@ -276,7 +281,8 @@ async def reconcile_embedding_index(
         statement = select(
             MemoryItem.id, MemoryItem.content_hash, MemoryItem.title,
             MemoryItem.keywords, MemoryItem.content_type, MemoryItem.media_type,
-            MemoryItem.semantic_fingerprint, MemoryItem.search_text,
+            MemoryItem.semantic_fingerprint, MemoryItem.search_text, MemoryItem.node_kind,
+            MemoryItem.memory_content_hash,
         ).where(or_(MemoryItem.node_kind.not_in(("attachment", "folder")), MemoryItem.search_text != "")).order_by(MemoryItem.id).limit(250)
         if after is not None:
             statement = statement.where(MemoryItem.id > after)
@@ -293,7 +299,8 @@ async def reconcile_embedding_index(
         for row in rows:
             fingerprint = semantic_fingerprint_values(content_hash=row.content_hash,
                 title=row.title, keywords=row.keywords,
-                content_type=row.content_type, media_type=row.media_type)
+                content_type=row.content_type, media_type=row.media_type,
+                summary_hash=row.memory_content_hash if row.node_kind == "document" else "")
             if row.semantic_fingerprint != fingerprint:
                 changes.append((row.id, row.semantic_fingerprint, fingerprint))
             is_current = (row.id, fingerprint) in projections
@@ -361,6 +368,19 @@ async def _load_snapshot(
             if hashlib.sha256(content).hexdigest() != item.content_hash:
                 raise ValueError("Memory resource checksum differs from its revision")
             passages = tuple(document_passages(content.decode("utf-8"), max_words=CHUNK_WORDS))
+        if item.document is not None and item.memory_resource_id:
+            if not passages and item.content_type == "text":
+                document_content = await get_storage(item.provider_code).read(item.resource_id)
+                passages = tuple(Passage(text=passage.text) for passage in document_passages(
+                    f"<pre>{escape(document_content.decode('utf-8'))}</pre>", max_words=CHUNK_WORDS,
+                ))
+            summary = await get_storage(item.memory_provider_code).read(item.memory_resource_id)
+            if hashlib.sha256(summary).hexdigest() != item.memory_content_hash:
+                raise ValueError("Memory synthesis checksum differs from its revision")
+            synthesis_passages = tuple(document_passages(summary.decode("utf-8"), max_words=CHUNK_WORDS))
+            passages += tuple(Passage(
+                text=passage.text, content_source="memory", source_revision=item.memory_revision,
+            ) for passage in synthesis_passages)
         return (
             _MemorySnapshot(
                 item_id=item.id,

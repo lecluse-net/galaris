@@ -58,7 +58,7 @@ The sidebar shows only the screens authorized by your role:
 | Execution Tracking | separately track text conversations, calls, Tasks, Processes, and LLM calls in real time |
 | Goals | track long-running missions, their cycles, evidence, and results |
 | Topics | find global topics and related knowledge across multiple channels |
-| Memory | search, read, correct, share, or forget an Agent’s authorized memories |
+| Memory | search, read and correct an Agent’s private memories and authorised document syntheses; forget only standalone memories |
 | Dream | track background work, inspect its history, and manage file indexing per agent |
 | AI Lab | analyze a Task and measure AI mechanisms on reproducible case sets |
 | Processes | launch and track an external workflow, such as n8n |
@@ -347,7 +347,10 @@ The Agent recovers its reference, current title and revision, subject to current
 Deleted or newly private documents are excluded. Recall remains bounded: provide an exact URI
 if an older document cannot be found.
 
-Each memory is described by its title, content, keywords, provenance and access rights.
+Each standalone memory remains private to its Agent and displays keywords, provenance and a
+label derived from its content. A document retains its title, full content and access rights; its Memory
+details hold an optional synthesis with independent history. **Open document** lets you edit
+full content and sharing. The synthesis inherits current document permissions.
 The list can be filtered by text, Topic, interlocutor and date; the graph shows memories
 alongside documents, files, folders, contacts and Topics.
 
@@ -356,8 +359,8 @@ In **Memory**, authorized accounts can:
 - search an Agent’s memories directly in List;
 - view content, revisions, provenance, relationships, and uses;
 - correct or archive an ordinary memory;
-- share an item directly for reading or editing;
-- create Markdown Working Set documents that evolve across multiple Tasks;
+- share a document for reading or editing from its editor;
+- create HTML working documents or JSON Datasets that evolve across multiple Tasks;
 - explore the graph over a given period;
 - permanently forget an item, an irreversible action reserved for the appropriate permissions.
 

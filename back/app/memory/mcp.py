@@ -273,8 +273,9 @@ async def memory_get(ctx: McpToolContext, memory_id: str, revision: int | None =
             revision=revision,
             record_llm_access=True,
             task_id=ctx.task_id,
+            memory_content=True,
         )
-        if item.node_kind == "document":
+        if item.node_kind == "document" and not content:
             return _json(
                 {
                     "error": (
@@ -293,6 +294,7 @@ async def memory_get(ctx: McpToolContext, memory_id: str, revision: int | None =
             content_type=content_type,
             media_type=media_type,
             revision=revision,
+            memory_content=True,
         )
         return detail.model_dump_json(indent=2)
     except Exception as exc:
@@ -410,7 +412,7 @@ def _sharing_target(
 @mcp_tool("memory", approval="enabled", approval_reason="Governed bounded read or control without a new sensitive effect",
      name="memory_sharing",
     description=(
-        "Inspect sharing of a document or memory item you own. Pass its exact document:// or memory:// "
+        "Inspect sharing of a document you own. Standalone memories are private. Pass its exact document:// "
         "URI, or UUID. Returns grants, recipient options (agents, human users, teams/groups), "
         "owner_groups and lock_version. Use the returned IDs for document_share or memory_share. "
         "Filter recipient options by search/kind and paginate with offset/limit (50 by default, "
@@ -438,7 +440,7 @@ async def memory_sharing(
 @mcp_tool("memory", approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval",
      name="memory_share",
     description=(
-        "Share your memory item or document with one agent, human user or team (group). "
+        "Share your document with one agent, human user or team (group). Standalone memories are private. "
         "Pass its exact memory:// or document:// URI, or UUID, and exactly one of agent_id, user_id, "
         "team_id. Use memory_sharing first for IDs and lock_version. Access read/edit grants "
         "reading/writing; none removes only that direct grant. Teams include their current human "
@@ -476,7 +478,7 @@ async def memory_share(
 async def memory_remember(
     ctx: McpToolContext,
     content: str,
-    title: str,
+    title: str = "",
     keywords: list[str] | str | None = None,
     temporal: MemoryTemporalAnchor | None = None,
 ) -> str:
@@ -591,7 +593,8 @@ async def memory_index(
     name="memory_forget",
     description=(
         "Permanently forget one of your memories, including every stored revision. "
-        "Use the exact UUID returned by file_search on memory:// or document://."
+        "Use the exact UUID returned by file_search on memory://. "
+        "Document memories cannot be forgotten independently of their document."
     ),
 )
 async def memory_forget(ctx: McpToolContext, memory_id: str) -> str:

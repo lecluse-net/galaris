@@ -151,9 +151,9 @@ class MemoryGoalDocumentStore(GoalDocumentStore):
             item = records.get(document_id)
             if item is None:
                 raise service.MemoryNotFoundError("Memory not found.")
-            content = await get_storage(item.provider_code).read(item.resource_id)
             if item.node_kind != "document":
                 raise service.MemoryConflictError("A Goal Markdown reference is not a document.")
+            content = await get_storage(item.provider_code).read(item.resource_id)
             if item.content_type != "text" and not item.media_type.startswith("text/"):
                 raise service.MemoryConflictError("A Goal document must contain UTF-8 text.")
             contents[document_id] = content.decode("utf-8")

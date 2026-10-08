@@ -9,10 +9,10 @@ import tracemalloc
 from uuid import uuid4
 
 import pytest
-from sqlalchemy import event, func, insert, literal, select, text
+from sqlalchemy import event, func, literal, select, text
 
 from app.memory import service
-from app.memory.models import MemoryItem, MemoryRevision
+from app.memory.models import Document, DocumentRevision, MemoryItem, MemoryRevision
 from app.memory.schemas import DocumentLibraryRequest
 from app.memory.storage import get_storage
 
@@ -29,9 +29,13 @@ async def test_library_page_cost_does_not_materialize_the_revision_corpus(db, ag
                  "resource_id": resource, "title": f"Document {index:04d}",
                  "node_kind": "document", "search_text": "body " * 4000,
                  "keywords": ["visible" if index % 2 == 0 else "private"],
-                 "content_hash": hashlib.sha256(str(index).encode()).hexdigest(),
-                 "visibility": "private", "global_access": 0} for index in range(start, stop)]
-        await db.execute(insert(MemoryItem), rows)
+                 "content_hash": hashlib.sha256(b"").hexdigest()} for index in range(start, stop)]
+        await db.execute(MemoryItem.__table__.insert(), rows)
+        await db.execute(Document.__table__.insert(), [{
+            "id": row["id"], "memory_item_id": row["id"], "title": row["title"],
+            "provider_code": "native", "resource_id": resource,
+            "content_hash": hashlib.sha256(str(start + offset).encode()).hexdigest(),
+        } for offset, row in enumerate(rows)])
         series = func.generate_series(1, revisions_per_document).table_valued("number").render_derived()
         columns = ["id", "item_id", "revision", "provider_code", "resource_id", "content_hash", "content_type", "media_type", "title"]
         expressions = [func.gen_random_uuid(), MemoryItem.id, series.c.number,
@@ -39,6 +43,10 @@ async def test_library_page_cost_does_not_materialize_the_revision_corpus(db, ag
                       MemoryItem.content_type, MemoryItem.media_type, MemoryItem.title]
         await db.execute(MemoryRevision.__table__.insert().from_select(columns,
             select(*expressions).select_from(MemoryItem.__table__.join(series, literal(True))).where(MemoryItem.id.in_([row["id"] for row in rows]))))
+        await db.execute(DocumentRevision.__table__.insert().from_select(
+            ["id", "document_id", "revision"], select(
+                MemoryRevision.id, MemoryRevision.item_id, MemoryRevision.revision,
+            ).where(MemoryRevision.item_id.in_([row["id"] for row in rows]))))
         await db.commit()
         db.expunge_all()
         gc.collect()

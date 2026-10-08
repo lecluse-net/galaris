@@ -17,7 +17,7 @@ from core.dbadmin import DbAdminAction, DbAdminPhase, DbAdminRegistry, SchemaTra
 from core.util import RichTextError, convert_legacy_to_html, visible_text
 
 from .models import MemoryItem
-from .service import _revision_for  # pyright: ignore[reportPrivateUsage]
+from .service import _revision_for, refresh_document_search  # pyright: ignore[reportPrivateUsage]
 from .semantic_index import semantic_fingerprint
 from .storage import get_storage
 
@@ -138,6 +138,8 @@ async def rebuild_html_text(session: AsyncSession) -> None:
         for item in rows:
             body = await get_storage(item.provider_code).read(item.resource_id)
             item.search_text = visible_text(body.decode("utf-8"))
+            if item.document is not None:
+                await refresh_document_search(item)
             item.semantic_fingerprint = semantic_fingerprint(item)
             item.metadata_ = {**item.metadata_, "html_text_version": 1}
         await session.flush()

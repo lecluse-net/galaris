@@ -61,7 +61,7 @@ test('remote document changes refresh only their folder and visible page without
     await gate
     await route.continue()
   })
-  const updated = await request.put(`/api/memory/items/${documents[0].id}?actor_agent_id=${fixture.agent_id}`, {
+  const updated = await request.patch(`/api/memory/documents/${documents[0].id}?actor_agent_id=${fixture.agent_id}`, {
     headers, data: { title: updatedTitle, expected_revision: documents[0].revision },
   })
   expect(updated.ok(), await updated.text()).toBeTruthy()

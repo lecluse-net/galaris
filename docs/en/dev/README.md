@@ -469,7 +469,8 @@ by Dream, nor automatically forgotten due to inactivity. `file_create`, `file_ed
 `file_read(document://...)`, and `file_append(document://...)` maintain
 atomic revisions without exposing a complex patch protocol to the model. `document_share` creates a direct
 `read|edit|none` grant after resolving the target human, agent or team; only the owner administers these grants
-and can forget the document. `file_search` provides discovery and the brief injects only bounded
+while deletion uses the document editor and its dedicated API; `memory_forget` rejects
+document syntheses. `file_search` provides discovery and the brief injects only bounded
 excerpts. Each revision retains the agent and, when it exists, the authoring Task.
 Attachments are exposed under `document://<uuid>/attachments/`: `file_list` enumerates them,
 `file_read` and specialized tools consume them, while `file_create`, `file_copy`, and

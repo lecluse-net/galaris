@@ -58,6 +58,16 @@ async def test_document_search_returns_readable_passages_and_rejects_partial_ind
         assert hit.passages[0]["section_path"] == ["Compte rendu", "Restauration"]
         page = await resource_read(ctx, hit.resource.uri, offset=hit.passages[0]["block_start"])
         assert "QUARTZ" in page.content
+    await service.update_memory_content(document.id, MemoryItemUpdate(
+        payload=MemoryPayload(text="<p>ORCHID synthesis independent.</p>"), expected_revision=1,
+    ), actor_agent_id=owner.id)
+    await semantic_index.process_embedding_job({"item_id": str(document.id)})
+    synthesis = await retrieval.recall_items(MemoryRecallRequest(agent_id=owner.id, query="ORCHID synthesis independent"))
+    assert [hit.item.id for hit in synthesis.hits] == [document.id]
+    assert synthesis.hits[0].passages[0].content_source == "memory"
+    assert synthesis.hits[0].passages[0].source_revision == 2
+    assert synthesis.hits[0].passages[0].block_start is None
+    assert "ORCHID" in synthesis.hits[0].excerpt
     denied = await resource_search(ResourceContext(agent_id=peer.id, runtime="internal"), "memory://", "QUARTZ")
     assert denied.hits == []
     await db.execute(delete(MemoryEmbeddingChunk).where(
@@ -149,7 +159,7 @@ async def test_semantic_recall_returns_best_candidates_without_a_threshold(agent
     for index in range(20):
         title = "Facturation du fournisseur" if index == 0 else f"Modèles disponibles {index}" if index < 9 else f"Jardinage {index}"
         item, _ = await service.create_item(MemoryItemCreate(
-            owner_agent_id=owner.id, title=title,
+            owner_agent_id=owner.id, node_kind="document", title=title,
             payload=MemoryPayload(text="<p>Crédit annuel et tarif avantageux.</p>" if index == 0 else f"<p>Fiche de référence {index}.</p>"),
         ), deduplicate=False)
         await semantic_index.process_embedding_job({"item_id": str(item.id)})
@@ -257,7 +267,7 @@ async def test_lexical_recall_normalizes_names_before_candidate_selection(agents
     explicit = await service.search_items(MemorySearchRequest(agent_id=owner.id, query=query))
     assert [hit.item.id for hit in explicit.hits] == [expected.id]
     await service.update_item(expected.id, MemoryItemUpdate(
-        title="Églantine", payload=MemoryPayload(text="<p>Églantine est le nouveau surnom.</p>"),
+        payload=MemoryPayload(text="<p>Églantine est le nouveau surnom.</p>"),
     ), actor_agent_id=owner.id)
     renamed = await service.search_items(MemorySearchRequest(agent_id=owner.id, query="Eglantine"))
     assert [hit.item.id for hit in renamed.hits] == [expected.id]

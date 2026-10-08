@@ -199,8 +199,11 @@
           </q-select>
         </div>
         <div class="col-12">
+          <q-banner v-if="currentDocument.content_type !== 'text'" dense>{{ t('memory.binaryContent') }}</q-banner>
+          <q-input v-else-if="!isDataset && !currentDocument.media_type.startsWith('text/')"
+            :model-value="editorContent" type="textarea" outlined readonly autogrow :label="t('documents.content')" />
           <CodeEditor
-            v-if="isDataset"
+            v-else-if="isDataset"
             :key="documentId + ':' + agentId"
             v-model="editorContent"
             language="json"
@@ -211,7 +214,7 @@
           />
           <div v-if="isDataset && !validDataset" role="alert" class="text-negative q-mt-sm">{{ t('documents.invalidDataset') }}</div>
           <RichTextEditor
-            v-else-if="!isDataset"
+            v-else-if="!isDataset && currentDocument.content_type === 'text' && currentDocument.media_type.startsWith('text/')"
             ref="richEditor"
             manage-attachments
             @manage-attachments="attachmentPanel?.openManager()"
@@ -819,7 +822,7 @@ async function loadDocument(): Promise<void> {
   const generation = ++loadGeneration
   loading.value = true
   try {
-    const document = await memoryService.getItem(props.documentId, props.agentId)
+    const document = await memoryService.getDocument(props.documentId, props.agentId)
     if (generation !== loadGeneration) return
     if (document.node_kind !== 'document') throw new Error('The resource is not a document.')
     await loadOwnerOptions()
@@ -927,7 +930,7 @@ async function mergeLatestDocument(documentId: string): Promise<void> {
   const previousBase = lastSavedDraft.value
   if (!previousBase) return
   const local = draftFromEditor()
-  const latest = await memoryService.getItem(documentId, props.agentId)
+  const latest = await memoryService.getDocument(documentId, props.agentId)
   if (currentDocument.value?.id !== documentId) return
   const remote = draftFromDocument(latest)
   const overlapping = (Object.keys(local) as (keyof DocumentDraft)[]).some(key => !sameValue(local[key], previousBase[key]) && !sameValue(remote[key], previousBase[key]) && !sameValue(local[key], remote[key]))
@@ -999,7 +1002,7 @@ async function persistAutosave(): Promise<void> {
     const update = canEditDocument.value ? propertyUpdate(document, base, draft) : null
     if (update) {
       if (update.payload) update.media_type = isDataset.value ? 'application/json' : 'text/html'
-      const updated = await memoryService.updateItem(document.id, props.agentId, update)
+      const updated = await memoryService.updateDocument(document.id, props.agentId, update)
       applyPublicDocument(updated)
       persisted = {
         ...cloneDraft(draft),
@@ -1050,7 +1053,7 @@ async function persistAutosave(): Promise<void> {
         ownerId,
       )
       applyPublicDocument(updated)
-      const latest = await memoryService.getItem(document.id, props.agentId)
+      const latest = await memoryService.getDocument(document.id, props.agentId)
       if (currentDocument.value?.id === document.id) applyDocument(latest, 'updated')
       return
     }
@@ -1117,7 +1120,7 @@ async function deleteDocument(): Promise<void> {
   try {
     await waitForActiveSave()
     if (disposed || currentDocument.value?.id !== document.id || props.agentId !== agentId || !canDeleteDocument.value) return
-    await memoryService.forgetItem(document.id, agentId)
+    await memoryService.deleteDocument(document.id, agentId)
     try { sessionStorage.removeItem(storageKey) } catch { /* Storage may be unavailable. */ }
     if (disposed || currentDocument.value?.id !== document.id || props.agentId !== agentId) return
     loadGeneration += 1
@@ -1151,7 +1154,7 @@ async function refreshFromRealtime(): Promise<void> {
       await mergeLatestDocument(document.id)
       scheduleAutosave(150)
     } else {
-      const latest = await memoryService.getItem(document.id, props.agentId)
+      const latest = await memoryService.getDocument(document.id, props.agentId)
       if (generation === loadGeneration && currentDocument.value?.id === document.id) {
         applyDocument(latest, 'updated')
         await loadAttachments()

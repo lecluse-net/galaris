@@ -13,7 +13,7 @@ from typing import Any, cast
 from uuid import UUID, uuid4
 
 from loguru import logger
-from sqlalchemy import case, false, func, select, update
+from sqlalchemy import case, false, func, or_, select, update
 
 from app.agent.contracts import AgentTask, ExecutionResult, normalize_tool_name
 from core.database import get_db, get_db_session
@@ -505,7 +505,12 @@ async def _process_task_capture(payload: Mapping[str, Any]) -> None:
                 MemoryItem.owner_agent_id == agent_id,
                 MemoryItem.source_managed.is_(False),
                 MemoryItem.node_kind == "memory",
-                func.lower(MemoryItem.title) == title[:500].casefold(),
+                or_(
+                    func.lower(MemoryItem.title) == title[:500].casefold(),
+                    func.lower(MemoryItem.search_text).startswith(title[:500].casefold() + ":", autoescape=True),
+                    func.lower(MemoryItem.search_text).startswith(title[:500].casefold() + "\n", autoescape=True),
+                    MemoryItem.metadata_["capture_label"].as_string() == title[:500],
+                ),
             )
             .order_by(MemoryItem.updated_at.desc().nullslast(), MemoryItem.created_at.desc())
             .limit(1)
@@ -529,6 +534,7 @@ async def _process_task_capture(payload: Mapping[str, Any]) -> None:
                 source_kind="task",
                 source_ref=f"task:{task_id}",
                 metadata={
+                    "item_metadata": {"capture_label": title[:500]},
                     "target_revision": (
                         existing.revision if existing is not None else None
                     ),
@@ -550,6 +556,10 @@ async def _process_resource_cleanup(payload: Mapping[str, Any]) -> None:
     resource_id = str(payload.get("resource_id") or "").strip()
     if not provider_code or not resource_id:
         raise ValueError("Resource cleanup payload is incomplete.")
+    from .document_backup import archived_resources
+    async with get_db_session() as session:
+        if await archived_resources(session, provider_code, [resource_id]):
+            return
     await get_storage(provider_code).delete(resource_id)
 
 

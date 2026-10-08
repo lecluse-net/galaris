@@ -253,6 +253,11 @@ page and select the tab without assuming a URL parameter. Contacts are at
 `/memory/contacts`; thematic groupings are under **Knowledge → Thematic dossiers** (`/topic`).
 Sharing a link does not grant access to its content.
 
+To develop a document with an agent, ask for updates to the relevant passages. The agent
+preserves useful information and can add distinct material; prior versions remain in the
+revisions. Specify when you need a chronological journal or meeting minutes: that chronology
+then remains relevant in the document.
+
 Both tabs place the agent and search on the first row, followed by the thematic dossier
 and interlocutor below. In **List**, the target date and its apply button complete the
 filters. The fields rearrange on smaller screens.
@@ -277,7 +282,37 @@ In **List**, edit **Target date and time**, then apply the filter to find memori
 that date. Input and matches use Galaris's configured global timezone (`TZ`), even when
 your browser uses another timezone. A memory's calendar fields have no timezone selector.
 
-Clicking a node opens its modal directly. It retains graph metadata (kind, visibility,
+Item details separate **Memory**, **Links and relations** and **History**.
+In **Memory**, previews of associated content appear before keywords and content, followed
+by compact calendar fields. The title displays the memory kind, last activity, access count
+and revision. Protected deletion appears as a warning badge with an explanatory tooltip.
+Standalone memories are private to their agent, with no
+title input or sharing control. For a document, this content is an optional synthesis:
+**Open document** opens a second modal to edit its title, full content and sharing while
+preserving the memory details and draft. This memory cannot be forgotten separately:
+deleting the document from its editor also deletes its synthesis and history. Revoking
+sharing removes it from the affected agent's memories while preserving it for the owner
+and other authorized readers. Attachments and indexed files open in fullscreen
+when a viewer supports their format; audio files have a player directly in their preview.
+Office documents, spreadsheets and other formats without a viewer retain their thumbnail
+when available and only offer original downloads, with no fullscreen action. A notice indicates
+when the document has changed since the synthesis. Search always uses both full
+content and synthesis and returns one result. A locked resource displays **Read-only**
+as a status, without a lock control.
+The document and its Memory details share the same keywords. You can edit them from
+either view with document write access. Changes refresh the other open view without
+losing its content draft or creating a synthesis version. If the same keywords changed
+elsewhere during editing, saving reports a conflict and preserves your draft.
+Older versions retain their historical keywords.
+Dream actions and the other footer buttons share a row aligned to the right. Each button
+keeps its content on one line; the row can wrap according to the available width.
+Close the details with the cross
+or backdrop; there is no longer a Cancel button.
+**Links and relations** groups provenance, graph neighbors and explicit relations. You can add a relation according to
+your permissions. Switching tabs preserves the draft; **Save** remains available in
+the first two tabs.
+
+Clicking a node opens its modal directly. It retains graph metadata (kind,
 last activity and access count) and navigation to neighbors, including folders and
 conversations. The close button or backdrop returns to the graph.
 

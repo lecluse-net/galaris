@@ -78,6 +78,7 @@ async def test_contact_projection_is_private_searchable_idempotent_and_renamable
         "messaging_id": "nextcloud_talk",
         "user_id": "astertest",
         "display_name": "Aster",
+        "memory_filename": item.filename,
     }
     identities = list(
         (

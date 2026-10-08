@@ -70,7 +70,7 @@ async def test_chat_keeps_only_deleted_document_title_without_restoring_access(
          payload=MemoryPayload(text="Private body"),
     ))
     resource_id = item.resource_id
-    await service.forget_item(item.id, actor_agent_id=owner.id)
+    await service.delete_document(item.id, actor_agent_id=owner.id)
     if legacy_title:
         item.title = "Forgotten memory"
         await db.commit()
@@ -225,6 +225,7 @@ async def test_recent_memories_respect_management_scope_and_hide_documents(
             owner_agent_id=peer.id,
             title="Recent shared memory",
             payload=MemoryPayload(text="Shared"),
+            node_kind="document",
         )
     )
     hidden, _created = await service.create_item(
@@ -256,7 +257,8 @@ async def test_recent_memories_respect_management_scope_and_hide_documents(
     ids = {item.id for item in recent}
 
     assert owned.id in ids
-    assert shared.id in ids
+    # Shared knowledge is now documentary; the recent-memory list remains private.
+    assert shared.id not in ids
     assert hidden.id not in ids
     assert document.id not in ids
 

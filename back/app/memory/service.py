@@ -11,7 +11,7 @@ import hashlib
 from collections.abc import Collection
 from datetime import datetime, timedelta, timezone
 from typing import Any, Literal, Sequence, cast
-from uuid import UUID
+from uuid import UUID, uuid4
 
 from loguru import logger
 from sqlalchemy import and_, case, delete, exists, func, or_, select, union_all, update
@@ -66,6 +66,9 @@ from .models import (
     MemoryFinding,
     MemoryItem,
     MemoryItemGrant,
+    Document,
+    DocumentRevision,
+    MemorySummaryRevision,
     DocumentUserGrant,
     DocumentTeamGrant,
     MemoryLink,
@@ -78,6 +81,7 @@ from .models import (
 )
 from .provenance import MemorySourceTargets, source_targets
 from .schemas import (
+    MemoryTemporalAnchor,
     DocumentContentDiff,
     DocumentContentRevisionDetail,
     DocumentContentRevisionPage,
@@ -196,6 +200,15 @@ def _keywords(values: Sequence[str]) -> list[str]:
         normalized.append(value)
         seen.add(folded)
     return normalized[:50]
+
+
+def _set_keywords(item: MemoryItem, values: Sequence[str]) -> bool:
+    """Both document and synthesis editors write the node's shared metadata."""
+    normalized = _keywords(values)
+    if normalized == item.keywords:
+        return False
+    item.keywords = normalized
+    return True
 
 
 def _search_text(content: bytes, *, content_type: str, media_type: str) -> str:
@@ -411,8 +424,8 @@ def _graph_item_options() -> Load:
     """Keep full text and search vectors out of graph reads, including neighbors."""
     return Load(MemoryItem).load_only(
         MemoryItem.id, MemoryItem.node_kind, MemoryItem.managed_source_kind,
-        MemoryItem.owner_agent_id, MemoryItem.title,
-        MemoryItem.visibility, MemoryItem.source_managed, MemoryItem.access_count,
+        MemoryItem.owner_agent_id, MemoryItem.search_title,
+        MemoryItem.owner_user_id, MemoryItem.source_managed, MemoryItem.access_count,
         MemoryItem.last_accessed_at, MemoryItem.created_at, MemoryItem.updated_at,
         MemoryItem.activity_at, MemoryItem.metadata_, MemoryItem.primary_url, MemoryItem.file_media_type, raiseload=True,
     )
@@ -568,7 +581,8 @@ async def _get_item_record(
     # is immediately reflected by the in-memory ACL evaluation.
     query = (
         select(MemoryItem)
-        .options(*_item_options(revisions=revisions), joinedload(MemoryItem.url_relations))
+        .options(*_item_options(revisions=revisions), joinedload(MemoryItem.url_relations),
+                 joinedload(MemoryItem.document))
         .where(MemoryItem.id == item_id)
         .execution_options(populate_existing=True)
     )
@@ -706,7 +720,8 @@ def _revision_for(
     document_content_version: bool | None = None,
     document_append: bool = False,
 ) -> MemoryRevision:
-    return MemoryRevision(
+    entry = MemoryRevision(
+        id=uuid4(),
         item_id=item.id,
         revision=item.revision,
         task_id=task_id,
@@ -725,6 +740,15 @@ def _revision_for(
         temporal=item.temporal,
         author_agent_id=author_agent_id,
     )
+    document = cast(Document | None, item.__dict__.get("document"))
+    if item.node_kind == "document" and document is not None:
+        get_db().add(DocumentRevision(id=entry.id, document_id=document.id, revision=item.revision, resource_revision=entry))
+    return entry
+
+
+def _attach_document(item: MemoryItem) -> None:
+    """Move authoritative editorial fields out of a newly created Memory node."""
+    item.attach_document()
 
 
 async def create_item(
@@ -748,6 +772,8 @@ async def create_item(
     ):
         raise MemoryPermissionError("Attachment metadata is server-owned.")
     content = decode_payload(data.payload)
+    if data.node_kind == "memory" and data.visibility != "private":
+        raise MemoryPermissionError("Memories are private; create a document to share content.")
     if data.node_kind == "document" and data.document_type == "dataset":
         if deletion_protected:
             raise ValueError("Managed editorial documents cannot be datasets.")
@@ -838,10 +864,21 @@ async def create_item(
         temporal=data.temporal.model_dump(mode="json") if data.temporal else None,
         valid_until=data.valid_until,
     )
+    if data.node_kind == "document":
+        _attach_document(item)
+    else:
+        item.document = None
+        item.search_title = item.search_text[:120]
     _set_semantic_fingerprint(item)
     try:
         db.add(item)
         await db.flush()
+        if item.document is not None:
+            db.add(MemorySummaryRevision(
+                item_id=item.id, revision=1, provider_code="native", resource_id="",
+                content_hash=_content_hash(b""), source_document_revision=item.document.revision,
+                keywords=list(item.keywords), temporal=item.temporal,
+            ))
         if initial_editor_agent_id is not None:
             db.add(
                 MemoryItemGrant(
@@ -967,6 +1004,10 @@ async def upsert_source_managed_item(
     normalized_keywords = _keywords(document.keywords)
     normalized_metadata = dict(document.metadata)
     normalized_filename = document.filename.strip()[:500] or None
+    if normalized_filename is None:
+        normalized_metadata.pop("memory_filename", None)
+    else:
+        normalized_metadata["memory_filename"] = normalized_filename
     if not normalized_title:
         raise ValueError("A managed memory title is required.")
 
@@ -1092,9 +1133,9 @@ async def upsert_source_managed_item(
     item.content_type = "text"
     item.media_type = "text/html"
     item.content_profile_version = 1
-    item.filename = normalized_filename
     item.keywords = normalized_keywords
     item.metadata_ = normalized_metadata
+    item.filename = normalized_filename
     item.visibility = document.visibility
     item.read_only = True
     item.source_managed = True
@@ -1102,6 +1143,8 @@ async def upsert_source_managed_item(
     item.managed_source_ref = source_ref
     await db.execute(delete(MemoryItemGrant).where(MemoryItemGrant.item_id == item.id))
     await _upsert_managed_source(item, document, content_hash=digest)
+    if item.document is not None:
+        await refresh_document_search(item)
     _set_semantic_fingerprint(item)
     if not changed:
         await db.commit()
@@ -1145,6 +1188,7 @@ async def get_item(
     record_llm_access: bool = False,
     task_id: UUID | None = None,
     include_revisions: bool = True,
+    memory_content: bool = False,
 ) -> tuple[MemoryItem, bytes, MemoryAccess, str, str]:
     item = await _get_item_record(item_id, revisions=include_revisions)
     if item is None:
@@ -1154,7 +1198,21 @@ async def get_item(
     resource_id = item.resource_id
     content_type = item.content_type
     media_type = item.media_type
-    if revision is not None and revision != item.revision:
+    if memory_content and item.document is not None:
+        provider_code = item.memory_provider_code
+        resource_id = item.memory_resource_id
+        content_type, media_type = "text", "text/html"
+        if revision is not None and revision != item.memory_revision:
+            if revision == 1:
+                resource_id = ""
+            else:
+                summary = await get_db().scalar(select(MemorySummaryRevision).where(
+                    MemorySummaryRevision.item_id == item.id, MemorySummaryRevision.revision == revision,
+                ))
+                if summary is None:
+                    raise MemoryNotFoundError("Memory synthesis revision not found.")
+                provider_code, resource_id = summary.provider_code, summary.resource_id
+    elif revision is not None and revision != item.revision:
         snapshot = await _read_revision(item.id, revision)
         if snapshot is None:
             raise MemoryNotFoundError("Memory revision not found.")
@@ -1162,7 +1220,7 @@ async def get_item(
         resource_id = snapshot.resource_id
         content_type = snapshot.content_type
         media_type = snapshot.media_type
-    content = await get_storage(provider_code).read(resource_id)
+    content = await get_storage(provider_code).read(resource_id) if resource_id else b""
     if record_llm_access and isinstance(agent_id, int):
         db = get_db()
         accessed_at = datetime.now(timezone.utc)
@@ -1286,15 +1344,29 @@ async def item_to_detail(
     content_type: str | None = None,
     media_type: str | None = None,
     revision: int | None = None,
+    memory_content: bool = False,
 ) -> MemoryItemDetail:
-    public = item_to_public(item, access)
+    public = item_to_public(item, access, memory_content=memory_content)
     values = public.model_dump()
     values["media_type"] = media_type or item.media_type
     values["content_type"] = content_type or item.content_type
     values["content_profile_version"] = (
         item.content_profile_version if values["media_type"] == "text/html" else None
     )
-    if revision is not None and revision != item.revision:
+    if memory_content and item.document is not None:
+        values["content_profile"] = "rich-text"
+        values["content_profile_version"] = 1
+        if revision is not None:
+            values["revision"] = revision
+            values["content_hash"] = _content_hash(content)
+            values["size_bytes"] = len(content)
+            summary = await get_db().scalar(select(MemorySummaryRevision).where(
+                MemorySummaryRevision.item_id == item.id, MemorySummaryRevision.revision == revision,
+            ))
+            if summary is not None:
+                values["keywords"] = list(summary.keywords)
+                values["temporal"] = summary.temporal
+    elif revision is not None and revision != item.revision:
         selected = await _read_revision(item.id, revision)
         if selected is None:
             raise MemoryNotFoundError("Memory revision not found.")
@@ -1334,6 +1406,16 @@ async def list_revisions(
     if item is None:
         raise MemoryNotFoundError("Memory not found.")
     await assert_item_access(item, agent_id, administrative=administrative)
+    if item.document is not None:
+        summaries = await get_db().scalars(select(MemorySummaryRevision).where(
+            MemorySummaryRevision.item_id == item_id,
+        ).order_by(MemorySummaryRevision.revision).offset(offset).limit(limit))
+        return [MemoryRevisionPublic(
+            revision=entry.revision, task_id=entry.task_id, content_hash=entry.content_hash,
+            title=item.title, keywords=list(entry.keywords), temporal=MemoryTemporalAnchor.model_validate(entry.temporal) if entry.temporal else None,
+            author_agent_id=entry.author_agent_id, created_at=entry.created_at,
+            media_type="text/html", content_profile_version=1,
+        ) for entry in summaries]
     rows = await get_db().scalars(
         select(MemoryRevision)
         .where(MemoryRevision.item_id == item_id)
@@ -1463,7 +1545,15 @@ async def _delete_resource_if_unreferenced(
         )
         .limit(1)
     )
-    if current_reference is not None or revision_reference is not None:
+    memory_reference = await db.scalar(select(MemoryItem.id).where(
+        MemoryItem.memory_provider_code == provider_code, MemoryItem.memory_resource_id == resource_id,
+    ).limit(1))
+    summary_reference = await db.scalar(select(MemorySummaryRevision.id).where(
+        MemorySummaryRevision.provider_code == provider_code, MemorySummaryRevision.resource_id == resource_id,
+    ).limit(1))
+    from .document_backup import archived_resources
+    if (current_reference is not None or revision_reference is not None or memory_reference is not None
+        or summary_reference is not None or await archived_resources(db, provider_code, [resource_id])):
         return
     try:
         await get_storage(provider_code).delete(resource_id)
@@ -1474,6 +1564,102 @@ async def _delete_resource_if_unreferenced(
             resource_id,
             exc,
         )
+
+
+async def refresh_document_search(item: MemoryItem) -> None:
+    """Index the authoritative document and its optional synthesis together."""
+    document = item.document
+    if document is None:
+        return
+    content = await get_storage(document.provider_code).read(document.resource_id)
+    text = _search_text(content, content_type=document.content_type, media_type=document.media_type)
+    if item.memory_resource_id:
+        summary = await get_storage(item.memory_provider_code).read(item.memory_resource_id)
+        text += "\n" + _search_text(summary, content_type="text", media_type="text/html")
+    item.search_text = text
+
+
+async def update_memory_content(
+    item_id: UUID, data: MemoryItemUpdate, *, actor_agent_id: int | HumanActor | None,
+    administrative: bool = False,
+) -> MemoryItem:
+    """Edit an independent synthesis using the current document's live rights."""
+    item = await _get_item_record(item_id)
+    if item is None:
+        raise MemoryNotFoundError("Memory not found.")
+    if item.document is None:
+        return await update_item(item_id, data, actor_agent_id=actor_agent_id, administrative=administrative)
+    await assert_item_access(item, actor_agent_id, write=True, administrative=administrative)
+    fields = data.model_fields_set - {"expected_revision", "expected_lock_version"}
+    if fields - {"payload", "keywords", "temporal", "valid_from", "valid_until", "media_type", "content_type"}:
+        raise MemoryPermissionError("Edit document metadata and sharing through its document.")
+    if data.media_type not in (None, "text/html") or data.content_type not in (None, "text"):
+        raise MemoryConflictError("A document synthesis must use rich text.")
+    if data.expected_revision is not None and data.expected_revision != item.memory_revision:
+        raise MemoryConflictError("Memory synthesis changed; reload and retry")
+    if data.expected_lock_version is not None and data.expected_lock_version != item.lock_version:
+        raise MemoryConflictError("Document or synthesis changed; reload and retry")
+    previous_resource = item.memory_resource_id
+    provider = get_storage(item.memory_provider_code)
+    new_resource: str | None = None
+    changed = False
+    if data.payload is not None:
+        content = convert_to_html(decode_payload(data.payload).decode("utf-8"), "text/html", profile="rich-text").encode("utf-8")
+        assert_safe_text(content.decode("utf-8"))
+        digest = _content_hash(content)
+        if digest != item.memory_content_hash:
+            new_resource = await provider.create(content) if content else ""
+            item.memory_resource_id = new_resource
+            item.memory_content_hash = digest
+            item.memory_size_bytes = len(content)
+            item.summary_document_revision = item.document.revision
+            changed = True
+    keywords_changed = data.keywords is not None and _set_keywords(item, data.keywords)
+    if "temporal" in fields:
+        temporal = data.temporal.model_dump(mode="json") if data.temporal else None
+        changed = changed or temporal != item.temporal
+        item.temporal = temporal
+    for name in ("valid_from", "valid_until"):
+        if name in fields:
+            changed = changed or getattr(item, name) != getattr(data, name)
+            setattr(item, name, getattr(data, name))
+    if not changed and not keywords_changed:
+        return item
+    if changed:
+        item.memory_revision += 1
+    item.lock_version += 1
+    item.updated_at = datetime.now(timezone.utc)
+    if changed:
+        get_db().add(MemorySummaryRevision(
+            item_id=item.id, revision=item.memory_revision, provider_code=item.memory_provider_code,
+            resource_id=item.memory_resource_id, content_hash=item.memory_content_hash,
+            source_document_revision=item.summary_document_revision or item.document.revision,
+            author_agent_id=actor_agent_id if isinstance(actor_agent_id, int) else None,
+            keywords=list(item.keywords), temporal=item.temporal,
+        ))
+    try:
+        await refresh_document_search(item)
+        _set_semantic_fingerprint(item)
+        await _commit_with_conflict("Document or synthesis changed; reload and retry")
+    except BaseException:
+        async def discard_unpublished() -> None:
+            await get_db().rollback()
+            if new_resource:
+                await _delete_resource_if_unreferenced(provider.code, new_resource)
+
+        try:
+            await complete_await(discard_unpublished())
+        except Exception:
+            logger.exception("Unable to reconcile an interrupted Memory synthesis update")
+        raise
+    if new_resource is not None and previous_resource and previous_resource != new_resource:
+        await _delete_resource_if_unreferenced(item.memory_provider_code, previous_resource)
+    loaded = await _get_item_record(item_id)
+    assert loaded is not None
+    await _enqueue_semantic_projection(loaded)
+    await _emit_memory_event("update", loaded)
+    await notify_memory_item(item_id, "content")
+    return loaded
 
 
 async def update_item(
@@ -1508,6 +1694,11 @@ async def update_item(
     }
     if not fields:
         return item
+    if item.node_kind == "memory" and not item.source_managed:
+        if "title" in fields:
+            raise MemoryPermissionError("A memory has no editable title.")
+        if "visibility" in fields and data.visibility != "private":
+            raise MemoryPermissionError("Memories are private; share a document instead.")
     if item.managed_source_kind == "file_catalogue" and "visibility" in fields and data.visibility != "private":
         raise MemoryPermissionError("A file catalogue entry must remain private to its agent.")
     if "visibility" in fields and data.visibility != item.visibility:
@@ -1676,10 +1867,9 @@ async def update_item(
     if "temporal" in fields:
         item.temporal = data.temporal.model_dump(mode="json") if data.temporal else None
     if "keywords" in fields and data.keywords is not None:
-        normalized_keywords = _keywords(data.keywords)
-        keywords_changed = list(item.keywords) != normalized_keywords
-        item.keywords = normalized_keywords
+        keywords_changed = _set_keywords(item, data.keywords)
     if "metadata" in fields and data.metadata is not None:
+        filename = item.filename
         metadata = dict(data.metadata)
         if item.node_kind == "document" and preserve_document_attachments:
             for attachment_key in (
@@ -1692,6 +1882,8 @@ async def update_item(
                 else:
                     metadata.pop(attachment_key, None)
         item.metadata_ = metadata
+        if item.node_kind != "document":
+            item.filename = filename
     if item.managed_source_kind == "file_catalogue":
         # Source identity and manual ownership survive generic metadata writes.
         metadata = dict(item.metadata_)
@@ -1705,6 +1897,10 @@ async def update_item(
         if item.title != previous_values["title"]:
             metadata["catalogue_manual_title"] = True
         item.metadata_ = metadata
+    if item.node_kind == "memory" and not item.source_managed:
+        item.search_title = item.search_text[:120]
+    if item.document is not None:
+        await refresh_document_search(item)
     _set_semantic_fingerprint(item)
     meaningful_change = bool(
         fields
@@ -1851,6 +2047,11 @@ async def _forget_item_record(
         (item.provider_code, item.resource_id),
         *((entry.provider_code, entry.resource_id) for entry in item.revisions),
     }
+    resources.update((entry.provider_code, entry.resource_id) for entry in await get_db().scalars(
+        select(MemorySummaryRevision).where(MemorySummaryRevision.item_id == item.id),
+    ))
+    if item.memory_resource_id:
+        resources.add((item.memory_provider_code, item.memory_resource_id))
     if item.node_kind == "document":
         from .models import DocumentAttachment
         from .semantic_index import delete_item_embeddings
@@ -1915,6 +2116,11 @@ async def _forget_item_record(
     item.semantic_fingerprint = ""
     item.size_bytes = 0
     item.resource_id = "forgotten"
+    item.memory_resource_id = "forgotten"
+    item.memory_content_hash = _content_hash(b"")
+    item.memory_size_bytes = 0
+    if item.document is not None:
+        item.document.soft_delete()
     # Private projections can become ordinary owner-bound tombstones and release
     # their durable source identity. Public ownerless projections must retain it:
     # an ownerless, non-source-managed item would violate the governed-memory
@@ -1930,6 +2136,7 @@ async def _forget_item_record(
     from .semantic_index import delete_item_embeddings
 
     await delete_item_embeddings(item_id)
+    await db.execute(delete(MemorySummaryRevision).where(MemorySummaryRevision.item_id == item_id))
     for model in (MemoryRevision, MemorySource, MemoryItemGrant, MemoryUsage):
         await db.execute(delete(model).where(model.item_id == item_id))
     await db.execute(delete(MemoryURL).where(MemoryURL.memory_node_id == item_id))
@@ -2007,7 +2214,15 @@ async def _forget_item_record(
     await db.commit()
 
     deleted = 0
+    from .document_backup import archived_resources
+    protected: set[tuple[str, str]] = set()
+    for provider_code in {provider for provider, _resource in resources}:
+        protected.update((provider_code, resource) for resource in await archived_resources(
+            db, provider_code, [resource for provider, resource in resources if provider == provider_code],
+        ))
     for provider_code, resource_id in sorted(resources):
+        if (provider_code, resource_id) in protected:
+            continue
         try:
             if await get_storage(provider_code).delete(resource_id):
                 deleted += 1
@@ -2055,15 +2270,36 @@ async def forget_item(
         raise MemoryNotFoundError("Memory not found.")
     _assert_not_deletion_protected(item)
     _assert_not_source_managed(item)
+    if item.node_kind == "document":
+        raise MemoryPermissionError("A document memory cannot be forgotten; delete its document instead.")
     owns_item = (
         item.owner_agent_id == actor_agent_id if isinstance(actor_agent_id, int)
         else isinstance(actor_agent_id, HumanActor) and item.owner_user_id == actor_agent_id.user_id
     )
-    if (
-        item.node_kind == "document"
-        and not administrative
-        and not owns_item
-    ):
+    if not administrative and owns_item:
+        await assert_item_access(item, actor_agent_id)
+    else:
+        await assert_item_access(item, actor_agent_id, write=True, administrative=administrative)
+    return await _forget_item_record(item, forget_kind="explicit")
+
+
+async def delete_document(
+    document_id: UUID,
+    *,
+    actor_agent_id: int | HumanActor | None,
+    administrative: bool = False,
+) -> MemoryForgetResult:
+    """Delete a document together with its synthesis and dependent resources."""
+    item = await document_record(document_id)
+    if item is None:
+        raise MemoryNotFoundError("Document not found.")
+    _assert_not_deletion_protected(item)
+    _assert_not_source_managed(item)
+    owns_item = (
+        item.owner_agent_id == actor_agent_id if isinstance(actor_agent_id, int)
+        else isinstance(actor_agent_id, HumanActor) and item.owner_user_id == actor_agent_id.user_id
+    )
+    if not administrative and not owns_item:
         raise MemoryPermissionError("Only the document owner can permanently forget it.")
     if not administrative and owns_item:
         await assert_item_access(item, actor_agent_id)
@@ -2080,6 +2316,8 @@ async def forget_merged_item(item_id: UUID) -> MemoryForgetResult:
         raise MemoryNotFoundError("Memory to merge no longer exists.")
     _assert_not_deletion_protected(item)
     _assert_not_source_managed(item)
+    if item.node_kind == "document":
+        raise MemoryPermissionError("A document memory cannot be forgotten or merged independently.")
     return await _forget_item_record(item, forget_kind="retention")
 
 
@@ -2249,6 +2487,8 @@ async def set_item_grant(
     if item is None:
         raise MemoryNotFoundError("Memory not found.")
     _assert_not_source_managed(item)
+    if item.node_kind != "document":
+        raise MemoryPermissionError("Sharing belongs to documents; memories are private.")
     if data.expected_lock_version is not None and data.expected_lock_version != item.lock_version:
         raise MemoryConflictError(
             "The document changed while sharing was being edited; reload and retry."
@@ -2360,6 +2600,8 @@ async def remove_item_grant(
     if item is None:
         raise MemoryNotFoundError("Memory not found.")
     _assert_not_source_managed(item)
+    if item.node_kind != "document":
+        raise MemoryPermissionError("Sharing belongs to documents; memories are private.")
     if expected_lock_version is not None and expected_lock_version != item.lock_version:
         raise MemoryConflictError(
             "The document changed while sharing was being edited; reload and retry."
@@ -2603,7 +2845,10 @@ async def search_items(
 
     normalized = request.query.strip()
     identity = query_identity(normalized)
-    recalled = {hit.item.id: hit for hit in ranked_hits or []}
+    recalled = {
+        (hit.item.id, hit.item.revision, hit.item.lock_version, hit.item.content_hash, hit.item.semantic_fingerprint): hit
+        for hit in ranked_hits or []
+    }
     if ranked_hits is not None:
         # Never attach an old semantic excerpt to a newly edited row.
         query = query.where(or_(False, *(and_(
@@ -2734,7 +2979,7 @@ async def search_items(
                     continue
         # Search text and metadata come from the same database revision. Reading
         # the mutable storage resource here could mix two concurrent revisions.
-        recalled_hit = recalled.get(item.id)
+        recalled_hit = recalled.get((item.id, item.revision, item.lock_version, item.content_hash, item.semantic_fingerprint))
         excerpt = recalled_hit.excerpt if recalled_hit is not None else lexical_excerpt(item.search_text, request.recall_query or normalized)
         hits.append(
             MemorySearchHit(

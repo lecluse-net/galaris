@@ -927,10 +927,14 @@ remain session-only unless you explicitly call a memory tool. Use
 `file_read("memory://<uuid>")` for a bounded full read. The exact URI returned by search is
 the durable identity.
 
-- `memory_remember(content: str, title: str, keywords: list[str] | None = None) -> str`
-  accepts HTML `content` and a plain-text `title`, then immediately applies a governed
+- `memory_remember(content: str, title: str = "", keywords: list[str] | None = None) -> str`
+  accepts HTML `content`, then immediately applies a governed
   acquisition. Inspect the returned `status` (`stored`, `merged`,
   or `rejected`) and `memory_id`; no human approval step follows.
+  Standalone memories have no authored title and are private to their agent. Omit
+  the compatibility `title` argument. Documents own titles and sharing; each has
+  an optional Memory synthesis. Search includes the full document and its synthesis,
+  returns one result per pair, and applies the document's current permissions.
 - `memory_forget(memory_id: str) -> str` permanently removes an owned or otherwise forgettable
   memory, including all stored revisions. Use the exact UUID returned by `file_search`.
 - `memory_summarize(room_id: str, limit: int = 80, title: str = "Conversation summary") -> str`
@@ -962,8 +966,9 @@ the durable identity.
   create, copy, and delete require edit access. Attachment changes never create document-content
   revisions.
 - `memory_sharing(memory_id: str, search: str = "", kind: str | None = None,
-  offset: int = 0, limit: int = 50) -> str` inspects sharing of a document or memory item you
-  own. Pass its exact `document://<uuid>` or `memory://<uuid>` URI (a UUID is also accepted).
+  offset: int = 0, limit: int = 50) -> str` inspects sharing of a document you own.
+  Standalone memories cannot be shared. Pass its exact `document://<uuid>` URI
+  (a UUID or a legacy `memory://<uuid>` alias for the document is also accepted).
   `options` contains exact recipient IDs and names with `kind="agent"`, `"user"` or `"team"`;
   teams are the groups shown in the interface. `owner_groups` identifies your own groups.
   Read `grants`, `can_manage` and the current `lock_version` before changing access.
@@ -974,7 +979,8 @@ the durable identity.
   expected_lock_version: int | None = None) -> str` shares an owned working document.
 - `memory_share(memory_id: str, agent_id: int | None = None, access: str = "read",
   team_id: int | None = None, user_id: int | None = None,
-  expected_lock_version: int | None = None) -> str` shares an owned memory item or document.
+  expected_lock_version: int | None = None) -> str` is a compatibility alias for
+  sharing an owned document. Standalone memories cannot be shared.
   For either mutation, supply **exactly one** of `agent_id`, `user_id`, `team_id` from
   `memory_sharing`, and pass its `lock_version` as `expected_lock_version`. `read` allows
   reading, `edit` allows reading and editing, and `none` removes that recipient's direct grant.
@@ -985,7 +991,7 @@ Only the owner can share; being an editor or a manager of the owner does not let
 reshare another agent's item. Immutable and source-managed items cannot be reshared. Team
 access follows current **human and agent memberships**, including later additions and removals.
 Sharing with a team does not enable chatting with its agents. No team membership is required
-between the owner and recipient: document and memory ACLs are finer than dialogue permissions.
+between the owner and recipient: document ACLs are finer than dialogue permissions.
 
 Example — share with a group:
 
@@ -993,9 +999,8 @@ Example — share with a group:
    `kind="team"`, using its returned `id` rather than guessing from its name.
 2. `document_share("document://<uuid>", team_id=THE_RETURNED_ID, access="edit",
    expected_lock_version=THE_RETURNED_LOCK_VERSION)`.
-3. For a durable memory, use `memory_share("memory://<uuid>", team_id=THE_RETURNED_ID,
-   access="read", expected_lock_version=THE_RETURNED_LOCK_VERSION)` after inspecting that
-   memory's own sharing state. Use `access="none"` to remove the same group's direct grant.
+3. Use `access="none"` to remove the same group's direct grant. Keep shareable durable
+   knowledge in a document; standalone memories remain private.
 
 ### Working documents
 
@@ -1148,7 +1153,7 @@ tokens: the memory boundary rejects or redacts detectable sensitive material.
 Example — the user explicitly asks to remember the agreed report schedule, and no equivalent
 memory is already known:
 
-1. `memory_remember("<p>Decision confirmed on 2026-07-04: send the weekly report every Friday at 17:00 Europe/Paris.</p>", title="Weekly report schedule", keywords=["decision", "report"])`
+1. `memory_remember("<p>Decision confirmed on 2026-07-04: send the weekly report every Friday at 17:00 Europe/Paris.</p>", keywords=["decision", "report"])`
 2. Later, call `file_search("memory://", "When is the weekly report sent?", mode="semantic")`.
 
 ## Images

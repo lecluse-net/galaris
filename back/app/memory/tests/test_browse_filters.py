@@ -279,7 +279,7 @@ async def test_calendar_browse_unites_ordinary_search_and_forced_matches(agents,
     for title, agent_id, anchor in definitions:
         await service.create_item(MemoryItemCreate(owner_agent_id=agent_id, title=title,
              temporal=anchor,
-            payload=MemoryPayload(text='needle' if title[0] in 'ACEF' else 'unrelated birthday'),
+            payload=MemoryPayload(text=title + ': ' + ('needle' if title[0] in 'ACEF' else 'unrelated birthday')),
             valid_until=datetime.now(timezone.utc)-timedelta(days=1) if title.startswith('F') else None))
     target = MemoryTemporalFilter(target_at='2027-09-27T12:00Z', lookahead_hours=0)
     request = MemorySearchRequest(agent_id=owner.id, hybrid=hybrid, query='needle',
@@ -288,16 +288,16 @@ async def test_calendar_browse_unites_ordinary_search_and_forced_matches(agents,
     second = await retrieval.browse_items(request.model_copy(update={'offset': 1}))
     assert first.total == second.total == 2
     assert first.has_more and not second.has_more
-    assert [hit.item.title for hit in first.hits + second.hits] == ['A ordinary', 'B scheduled']
+    assert [hit.item.title for hit in first.hits + second.hits] == ['A ordinary: needle', 'B scheduled: unrelated birthday']
     assert first.hits[0].temporal_match_at is None
     assert second.hits[0].temporal_match_at == target.target_at
     # Ordinary text/topic/contact criteria never veto a scheduled match.
     forced = await retrieval.browse_items(request.model_copy(update={
         'query': 'nomatch', 'filter_topic_item_id': uuid4(), 'filter_contact_item_id': uuid4()}))
-    assert [hit.item.title for hit in forced.hits] == ['B scheduled']
+    assert [hit.item.title for hit in forced.hits] == ['B scheduled: unrelated birthday']
     other_day = await retrieval.browse_items(request.model_copy(update={
         'temporal': MemoryTemporalFilter(target_at='2027-09-28T12:00Z', lookahead_hours=0)}))
-    assert [hit.item.title for hit in other_day.hits] == ['A ordinary']
+    assert [hit.item.title for hit in other_day.hits] == ['A ordinary: needle']
     unqueried = await retrieval.browse_items(request.model_copy(update={
         'query': '',  'limit': 50}))
-    assert [hit.item.title for hit in unqueried.hits] == ['A ordinary', 'B scheduled', 'D other words']
+    assert [hit.item.title for hit in unqueried.hits] == ['A ordinary: needle', 'B scheduled: unrelated birthday', 'D other words: unrelated birthday']

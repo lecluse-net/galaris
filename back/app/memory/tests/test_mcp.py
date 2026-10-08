@@ -21,6 +21,7 @@ from app.memory.models import (
     MemoryRevision,
     MemorySource,
 )
+from app.memory.schemas import MemoryItemUpdate, MemoryPayload
 from app.messenger.models import Message, Room, MessengerUser
 from app.task.models import Task, TaskStatus
 from app.tools.mcp_loader import (
@@ -426,6 +427,14 @@ async def test_working_documents_are_bounded_mutable_and_shared_between_agents(
     assert owner_search["memories"][0]["node_kind"] == "document"
     whole_read_refused = json.loads(await mcp.memory_get(owner_ctx, document_id))
     assert "file_read" in whole_read_refused["error"]
+    await service.update_memory_content(
+        UUID(document_id), MemoryItemUpdate(expected_revision=1,
+            payload=MemoryPayload(text="<p>Independent findings synthesis.</p>")),
+        actor_agent_id=owner.id,
+    )
+    summarized = json.loads(await mcp.memory_get(owner_ctx, document_id))
+    assert summarized["payload"]["text"] == "<p>Independent findings synthesis.</p>"
+    assert summarized["revision"] == 2
 
     repeated_suffix = await resource_service.resource_append(
         ResourceContext(
@@ -538,7 +547,7 @@ async def test_working_documents_are_bounded_mutable_and_shared_between_agents(
     assert "option B" in current.content
     assert "Validated by the peer" in current.content
     peer_forget = json.loads(await mcp.memory_forget(peer_ctx, document_id))
-    assert "Only the document owner" in peer_forget["error"]
+    assert "cannot be forgotten" in peer_forget["error"]
 
     revisions = list(
         (

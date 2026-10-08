@@ -62,6 +62,15 @@ body {
 }
 .ck.ck-toolbar.galaris-toolbar > .ck-toolbar__items { justify-content: center; align-items: stretch; gap: 3px; padding: 0; }
 .ck.ck-toolbar.galaris-toolbar > .ck-toolbar__items > .galaris-toolbar-group { margin: 0; }
+/* Preserve native measurements so overflow grouping keeps the fitting commands visible. */
+.ck.ck-toolbar.galaris-toolbar.ck-toolbar_grouping { padding: 0 var(--ck-spacing-small); background-image: none; }
+.ck.ck-toolbar.galaris-toolbar.ck-toolbar_grouping > .ck-toolbar__items {
+  width: auto;
+  min-width: auto;
+  justify-content: flex-start;
+  align-items: center;
+  gap: 0;
+}
 .ck.ck-editor__top .ck-sticky-panel .ck-sticky-panel__content:has(.galaris-toolbar) { border-bottom-width: 0; }
 .ck.ck-editor:has([data-document-layout="fixed"]) > .ck-editor__top .ck-sticky-panel .ck-sticky-panel__content:has(.galaris-toolbar) { border-bottom-width: 1px; }
 .ck.ck-sticky-panel .ck-sticky-panel__content_sticky:has(.galaris-toolbar) { box-shadow: none; }

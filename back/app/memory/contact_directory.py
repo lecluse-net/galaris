@@ -471,9 +471,9 @@ async def forget_messenger_contact(
             raise service.MemoryConflictError(
                 "A linked memory is not owned by the contact's agent."
             )
-        if memory.source_managed or memory.deletion_protected:
+        if memory.source_managed or memory.deletion_protected or memory.node_kind == "document":
             raise service.MemoryConflictError(
-                "A protected or source-managed linked memory cannot be forgotten."
+                "A protected, source-managed or document-linked memory cannot be forgotten."
             )
 
     cleared = await clear_references(contact_item_id)

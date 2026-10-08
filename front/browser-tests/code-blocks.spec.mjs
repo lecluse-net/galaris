@@ -87,8 +87,8 @@ test('the actual document screen shows code colors and autosaves only authored c
   await jsonRoute(page, '**/api/memory/documents/keywords?*', [])
   await jsonRoute(page, '**/api/memory/documents/folders?*', [{ path: 'Reports', kind: 'custom', shared: false }])
   await jsonRoute(page, '**/api/memory/documents/doc-a/attachments?*', [])
-  await page.route('**/api/memory/items/doc-a?*', route => {
-    if (route.request().method() === 'GET') return route.fulfill({ json: current })
+  await page.route(/\/api\/memory\/documents\/doc-a(?:\?.*)?$/, route => {
+    if (route.request().method() === 'GET') return route.fulfill({ json: { item: current, agent_id: 7 } })
     const body = route.request().postDataJSON()
     updates.push(body)
     current = { ...current, ...body, revision: current.revision + 1 }

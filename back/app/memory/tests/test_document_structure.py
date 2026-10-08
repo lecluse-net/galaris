@@ -278,7 +278,7 @@ async def test_all_attachment_types_and_document_forget_remove_acquired_payloads
     companion_id = await record_attachment_description(f"document://{source.id}/attachments/{files[0].id}",
         "Forget this description too", agent_id=owner.id)
     resource = (await service.item_record(companion_id)).resource_id
-    await service.forget_item(source.id, actor_agent_id=owner.id)
+    await service.delete_document(source.id, actor_agent_id=owner.id)
     from app.memory.models import MemoryURL
     assert not await db.scalar(select(MemoryURL.id).where(
         MemoryURL.memory_node_id.in_([row.memory_item_id for row in rows]),

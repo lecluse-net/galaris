@@ -130,9 +130,9 @@ export const memoryService = {
     }, { signal })).data
   },
   async documentThumbnailSnapshot(id: string, agentId: number | null, signal: AbortSignal): Promise<{ html: string; revision: number; lock_version: number } | null> {
-    const item = agentId === null
-      ? (await api.get<ManagedDocumentDetail>(`/memory/documents/${id}`, { signal })).data.item
-      : (await api.get<MemoryItemDetail>(`/memory/items/${id}`, { params: { agent_id: agentId }, signal })).data
+    const item = (await api.get<ManagedDocumentDetail>(`/memory/documents/${id}`, {
+      params: { agent_id: agentId ?? undefined }, signal,
+    })).data.item
     if (item.document_type === 'dataset') return null
     const { preparePortableDocumentSnapshot } = await import('@/core/util/facade')
     const html = await preparePortableDocumentSnapshot(item.payload.text ?? '', item.title, signal,
@@ -452,14 +452,25 @@ export const memoryService = {
   },
 
   async getItem(id: string, agentId?: number | null, revision?: number): Promise<MemoryItemDetail> {
-    if (agentId === null) return (await memoryService.getManagedDocument(id)).item
     const params: { agent_id?: number; revision?: number } = {}
-    if (agentId !== undefined) params.agent_id = agentId
+    if (agentId != null) params.agent_id = agentId
     if (revision !== undefined) params.revision = revision
     const response = await api.get<MemoryItemDetail>(`/memory/items/${id}`, {
       params,
     })
     return response.data
+  },
+
+  async getDocument(id: string, agentId?: number | null): Promise<MemoryItemDetail> {
+    return (await api.get<{ item: MemoryItemDetail }>(`/memory/documents/${id}`, {
+      params: { agent_id: agentId ?? undefined },
+    })).data.item
+  },
+
+  async updateDocument(id: string, agentId: number | null, data: MemoryItemUpdate): Promise<MemoryItem> {
+    return (await api.patch<MemoryItem>(`/memory/documents/${id}`, data, {
+      headers: { 'X-Editorial-Profile-Version': '1' }, params: { actor_agent_id: agentId ?? undefined },
+    })).data
   },
 
   async listFindings(agentId: number, itemId?: string): Promise<MemoryFinding[]> {
@@ -515,7 +526,6 @@ export const memoryService = {
   },
 
   async updateItem(id: string, agentId: number | null, data: MemoryItemUpdate): Promise<MemoryItem> {
-    if (agentId === null) return (await api.patch<MemoryItem>(`/memory/documents/${id}`, data, { headers: { 'X-Editorial-Profile-Version': '1' } })).data
     const response = await api.put<MemoryItem>(`/memory/items/${id}`, data, {
       headers: { 'X-Editorial-Profile-Version': '1' },
       params: { actor_agent_id: agentId },
@@ -525,6 +535,10 @@ export const memoryService = {
 
   async forgetItem(id: string, agentId: number | null): Promise<void> {
     await api.delete(`/memory/items/${id}`, { params: { actor_agent_id: agentId } })
+  },
+
+  async deleteDocument(id: string, agentId: number | null): Promise<void> {
+    await api.delete(`/memory/documents/${id}`, { params: { actor_agent_id: agentId } })
   },
 
   async listRevisions(id: string, agentId: number, limit = 50, offset = 0): Promise<MemoryRevision[]> {

@@ -13,9 +13,9 @@ test('a document downloads its current content as a named PDF and remains editab
   await jsonRoute(page, '**/api/memory/documents/keywords?*', [])
   await jsonRoute(page, '**/api/memory/documents/folders?*', [{ path: 'Reports', kind: 'custom', shared: false }])
   await jsonRoute(page, '**/api/memory/documents/doc-a/attachments?*', [])
-  await page.route('**/api/memory/items/doc-a?*', route => {
+  await page.route(/\/api\/memory\/documents\/doc-a(?:\?.*)?$/, route => {
     if (route.request().method() !== 'GET') current = { ...current, ...route.request().postDataJSON(), revision: current.revision + 1 }
-    return route.fulfill({ json: current })
+    return route.fulfill({ json: route.request().method() === 'GET' ? { item: current, agent_id: 7 } : current })
   })
   let snapshot
   let fail = true

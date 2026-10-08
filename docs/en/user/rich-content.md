@@ -226,9 +226,11 @@ Its separate arrow opens the **Pause** / **Stop reading** menu without starting 
 **Resume** continues from the paused position. Replacing the content or closing the editor
 also cancels recording or playback. Audio uses the providers configured in Galaris.
 
-## Sharing a document or memory item
+## Sharing a document
 
-New resources are **Private**. Click the **Sharing** field to open the choices:
+New documents are **Private**. Their optional Memory synthesis inherits current document rights.
+Standalone memories remain private to their Agent and have no sharing control. From the synthesis,
+use **Open document**, then click the document editor’s **Sharing** field to open the choices:
 
 - **Public**, with read or write access, includes application users and Agents.
 - **Groups** adds the owner's current groups with the chosen permission.

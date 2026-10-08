@@ -28,17 +28,17 @@ async def test_recall_preserves_access_when_sqlalchemy_reuses_anonymous_names(
 ):
     owner, reader = agents
     own, _ = await service.create_item(MemoryItemCreate(
-        owner_agent_id=reader.id, title="Synthetic evidence — owned",
+        owner_agent_id=reader.id, node_kind="document", title="Synthetic evidence — owned",
         payload=MemoryPayload(text="<p>Synthetic evidence about the workshop.</p>"),
         media_type="text/html",
     ))
     shared, _ = await service.create_item(MemoryItemCreate(
-        owner_agent_id=owner.id, title="Synthetic evidence — shared",
+        owner_agent_id=owner.id, node_kind="document", title="Synthetic evidence — shared",
         payload=MemoryPayload(text="<p>Synthetic evidence about the meeting.</p>"),
         media_type="text/html",
     ))
     private, _ = await service.create_item(MemoryItemCreate(
-        owner_agent_id=owner.id, title="Synthetic evidence — private",
+        owner_agent_id=owner.id, node_kind="document", title="Synthetic evidence — private",
         payload=MemoryPayload(text="<p>Synthetic evidence reserved for its owner.</p>"),
         media_type="text/html",
     ))
@@ -88,8 +88,8 @@ async def test_lexical_fallback_admits_only_current_readable_content(
         await db.flush()
         owner_id, reader_id = (agent.id for agent in agents)
         item, _ = await service.create_item(MemoryItemCreate(
-            owner_agent_id=owner_id, title="Deployment secret",
-            payload=MemoryPayload(text="Deployment uses obsolete credentials."),
+            owner_agent_id=owner_id, node_kind="document", title="Deployment secret",
+            payload=MemoryPayload(text="<p>Deployment uses obsolete credentials.</p>"), media_type="text/html",
         ))
         item_id = item.id
         await service.set_item_grant(item_id, reader_id, MemoryGrantUpdate(), actor_agent_id=owner_id)
@@ -100,10 +100,10 @@ async def test_lexical_fallback_admits_only_current_readable_content(
                 await service.remove_item_grant(item_id, reader_id, actor_agent_id=owner_id)
             elif change == "correct":
                 await service.update_item(item_id, MemoryItemUpdate(
-                    payload=MemoryPayload(text="Deployment uses rotated credentials."),
+                    payload=MemoryPayload(text="<p>Deployment uses rotated credentials.</p>"),
                 ), actor_agent_id=owner_id)
             else:
-                await service.forget_item(item_id, actor_agent_id=owner_id)
+                await service.delete_document(item_id, actor_agent_id=owner_id)
 
     calls = 0
     async def unavailable_model():

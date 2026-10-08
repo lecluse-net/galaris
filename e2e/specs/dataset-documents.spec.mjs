@@ -20,18 +20,33 @@ test('Dataset documents keep their type, exact JSON and revisions through the re
   const item = await created.json()
   expect(item.document_type).toBe('dataset')
   expect(item.media_type).toBe('application/json')
-  const itemUrl = `/api/memory/items/${item.id}`
+  const itemUrl = `/api/memory/documents/${item.id}`
   await page.goto(`/memory/documents?document_id=${item.id}`)
   const editor = page.getByRole('textbox', { name: /^(Content|Contenu)$/, exact: true })
   await expect(editor).toHaveValue('{}')
   const source = '{\n  "amount": 125000,\n  "label": "<b>Literal</b>",\n  "scenarios": [12, 24]\n}\n'
-  const saved = page.waitForResponse(response => response.request().method() === 'PUT' && response.url().includes(itemUrl))
+  const saved = page.waitForResponse(response => response.request().method() === 'PATCH' && response.url().includes(itemUrl))
   await editor.fill(source)
   expect((await saved).ok()).toBeTruthy()
-  const persisted = await (await request.get(`${itemUrl}?agent_id=${fixture.agent_id}`, { headers })).json()
+  const persisted = (await (await request.get(`${itemUrl}?agent_id=${fixture.agent_id}`, { headers })).json()).item
   expect(persisted.document_type).toBe('dataset')
   expect(persisted.payload.text).toBe(source)
   expect(persisted.revision).toBe(2)
+  const memoryUrl = `/api/memory/items/${item.id}?agent_id=${fixture.agent_id}`
+  const emptySynthesis = await (await request.get(memoryUrl, { headers })).json()
+  expect(emptySynthesis.document_id).toBe(item.id)
+  expect(emptySynthesis.payload.text).toBe('')
+  expect(emptySynthesis.revision).toBe(1)
+  const summarized = await request.put(`/api/memory/items/${item.id}?actor_agent_id=${fixture.agent_id}`, {
+    headers, data: { expected_revision: 1, payload: { text: '<p>Dataset credit overview.</p>' } },
+  })
+  expect(summarized.ok(), await summarized.text()).toBeTruthy()
+  const summary = await (await request.get(memoryUrl, { headers })).json()
+  expect(summary.payload.text).toBe('<p>Dataset credit overview.</p>')
+  expect(summary.revision).toBe(2)
+  const searchable = await request.post('/api/memory/search', { headers, data: { agent_id: fixture.agent_id, query: '125000' } })
+  expect(searchable.ok(), await searchable.text()).toBeTruthy()
+  expect((await searchable.json()).map(entry => entry.id)).toEqual([item.id])
   await page.reload()
   await expect(editor).toHaveValue(source)
 
@@ -40,12 +55,12 @@ test('Dataset documents keep their type, exact JSON and revisions through the re
     { media_type: 'text/html', payload: { text: '<p>Changed</p>' } },
     { payload: { text: '{' } },
   ]) {
-    const response = await request.put(`${itemUrl}?actor_agent_id=${fixture.agent_id}`, {
+    const response = await request.patch(`${itemUrl}?actor_agent_id=${fixture.agent_id}`, {
       headers, data: { expected_revision: 2, ...data },
     })
     expect([409, 422]).toContain(response.status())
   }
-  const stable = await (await request.get(`${itemUrl}?agent_id=${fixture.agent_id}`, { headers })).json()
+  const stable = (await (await request.get(`${itemUrl}?agent_id=${fixture.agent_id}`, { headers })).json()).item
   expect(stable.payload.text).toBe(source)
   expect(stable.revision).toBe(2)
   const library = await request.post('/api/memory/documents/library', { headers, data: { document_type: 'dataset', sort_by: 'document_type' } })
@@ -56,4 +71,7 @@ test('Dataset documents keep their type, exact JSON and revisions through the re
   expect((await restored.json()).document_type).toBe('dataset')
   await page.reload()
   await expect(editor).toHaveValue('{}')
+  const retained = await (await request.get(memoryUrl, { headers })).json()
+  expect(retained.payload.text).toBe('<p>Dataset credit overview.</p>')
+  expect(retained.summary_outdated).toBe(true)
 })

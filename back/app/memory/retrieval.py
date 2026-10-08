@@ -753,7 +753,7 @@ async def _weighted_rank(
             target_groups.clear()
             relation_bridges.clear()
     target_identities = {identity: frozenset(index for index, group in enumerate(target_groups)
-                                            if relevance.terms(item.title)[:len(group)] == group)
+                                            if _identity_title_terms(item)[:len(group)] == group)
                          for identity, item in candidate_items.items()} if target_groups else {}
     total_weight = sum(weights.values()) or 1.0
     matched_query = {identity: relevance.matched_terms(text, weights) for identity, text in evidence_text.items()}
@@ -951,7 +951,7 @@ async def _weighted_rank(
     fact_keys = {identity: relevance.fact_tokens(body_by_id.get(identity, "")) for identity in candidate_ids}
     # A title headed by the queried name provides identity evidence. Merely
     # mentioning the name in an event title must not cover that identity facet.
-    title_terms = {identity: relevance.terms(item.title) for identity, item in candidate_items.items()}
+    title_terms = {identity: _identity_title_terms(item) for identity, item in candidate_items.items()}
     title_entities = {identity: frozenset(index for index, group in enumerate(entity_groups)
                                           if tokens[:len(group)] == group)
                       for identity, tokens in title_terms.items()}
@@ -1036,6 +1036,14 @@ async def _weighted_rank(
             covered_facts.add(fact_keys[best_id])
         remaining.remove(best_id)
     return selected, sources
+
+
+def _identity_title_terms(item: MemoryItemPublic) -> tuple[str, ...]:
+    """A derived label naming several people describes evidence, not one profile."""
+    if item.node_kind == "memory" and not item.source_managed:
+        if len(relevance.entity_groups(item.title, limit=8)) != 1:
+            return ()
+    return relevance.terms(item.title)
 
 
 async def _structural_candidates(

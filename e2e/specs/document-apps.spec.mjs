@@ -58,7 +58,7 @@ test('two document applications collect into the same Dataset with isolated Java
     await app.getByRole('textbox').fill('Unapproved')
     await app.getByRole('button', { name: /^(Submit|Save|Enregistrer)$/ }).click()
     await expect(app.getByRole('status')).toContainText(/Authorize|Autorisez/)
-    const unchanged = await (await request.get(`/api/memory/items/${dataset.id}?agent_id=${fixture.agent_id}`, { headers })).json()
+    const unchanged = (await (await request.get(`/api/memory/documents/${dataset.id}?agent_id=${fixture.agent_id}`, { headers })).json()).item
     expect(unchanged.revision).toBe(index + 1)
     await page.getByRole('button', { name: /^(Application permissions|Permissions des applications)$/ }).click()
     await page.getByRole('combobox', { name: /^(My permission|Mon autorisation)$/ }).click()
@@ -91,7 +91,7 @@ test('two document applications collect into the same Dataset with isolated Java
     const grants = await (await request.get(`/api/memory/documents/${documents[index].id}/app-permissions`, { headers })).json()
     expect(grants.grants[0].access).toBe('write')
   }
-  const stored = await (await request.get(`/api/memory/items/${dataset.id}?agent_id=${fixture.agent_id}`, { headers })).json()
+  const stored = (await (await request.get(`/api/memory/documents/${dataset.id}?agent_id=${fixture.agent_id}`, { headers })).json()).item
   expect(stored.document_type).toBe('dataset')
   expect(stored.revision).toBe(3)
   expect(JSON.parse(stored.payload.text)).toEqual([{ answer: 'Response 0' }, { answer: 'Response 1' }])

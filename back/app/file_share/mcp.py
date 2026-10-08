@@ -295,6 +295,8 @@ async def create_file(
         "Replace one existing complete file. Pass text with encoding='utf-8' or binary bytes "
         "as base64. document:// and galaris://skill/ files accept expected_revision from "
         "file_read (mandatory for documents); Dataset replacements must remain valid JSON. "
+        "For prose documents, read all content needed for a complete replacement first; "
+        "prefer file_edit for a focused update. Galaris document-content changes retain prior revisions. "
         "Document types cannot change. Use file_create for new resources. Skill definitions are validated and "
         "system skills remain read-only."
         " For Nextcloud, pass expected_etag from file_read to reject stale replacements."
@@ -327,6 +329,8 @@ async def write_file(
     authorization_preflight=_file_preflight,
     description=(
         "Append UTF-8 text to a resource URI when its provider supports append. HTML documents require complete valid blocks and expected_revision. "
+        "For prose documents, append distinct new content or intended chronological entries; "
+        "use file_edit to integrate corrections or overlapping information into existing passages. "
         "Dataset appends must leave the complete document valid JSON; normally use file_write or file_edit instead. Use it to "
         "extend local files, document:// resources, and authorized galaris://skill/ files "
         "without resending existing content. Nextcloud supports conditional append; pass expected_etag from file_read when known."
@@ -347,7 +351,9 @@ async def append_file(ctx: McpToolContext, uri: str, content: str, expected_revi
     description=(
         "Replace a 1-based inclusive range in an existing UTF-8 resource. For HTML documents, "
         "start_line/end_line identify complete blocks returned by file_read, content is valid HTML, "
-        "and expected_revision is mandatory. Dataset documents use actual lines and require "
+        "and expected_revision is mandatory. Use this for focused prose corrections or consolidation, "
+        "preserving useful detail and sources; Galaris document-content changes retain prior revisions. "
+        "Dataset documents use actual lines and require "
         "expected_revision; the complete result must remain valid JSON. For "
         "example start_line=10 and end_line=14 rewrites lines 10 through 14. Binary resources "
         "are rejected. Pass expected_revision for document:// or galaris://skill/ when one is "

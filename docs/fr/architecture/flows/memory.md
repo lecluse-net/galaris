@@ -5,11 +5,11 @@
 La mémoire durable est un domaine gouverné de Galaris. Un driver ou un bridge ne lit jamais
 directement son stockage et ne décide pas seul de la portée d'une session.
 
-Les objets mémoire et documents ne possèdent pas de champ `summary` indépendant.
-La recherche et les embeddings utilisent le titre, les mots-clés et le contenu courant.
-Dream et le Lab produisent et échangent le contenu sans résumé parallèle. Les aperçus
-sont des extraits calculés, jamais une seconde version éditable du contenu. L'index
-sémantique v3 est reconstruit en arrière-plan après synchronisation DbAdmin.
+Le document conserve son contenu de référence ; son item mémoire possède un contenu
+indépendant pouvant servir de synthèse, sans champ `summary` supplémentaire. La recherche
+et les embeddings couvrent les deux contenus et les mots-clés, ainsi que le titre du
+document ou le libellé dérivé du souvenir. Les aperçus restent des extraits calculés.
+L'index sémantique v5 est reconstruit en arrière-plan après synchronisation DbAdmin.
 
 Les modifications et acquisitions ne portent aucun commentaire libre `reason`.
 L'historique conserve les contenus, versions, auteurs, tâches et dates. Les relances
@@ -73,6 +73,16 @@ candidats admissibles ; un score faible ne vide pas à lui seul le rappel. Le r�
 être vide lorsqu'aucun candidat admissible n'est disponible. Le budget final en items et caractères reste
 strict, et chaque extrait porte l'identifiant logique ainsi que ses sources.
 
+L'admission finale vérifie chaque résultat individuellement dans un même snapshot SQL
+`READ COMMITTED` : sa révision, son empreinte de contenu, ses droits, sa validité et les
+liens de son chemin de graphe doivent encore correspondre. Un résultat valide ne réadmet
+pas une autre occurrence obsolète du même UUID, même lorsque plusieurs pages se recouvrent.
+La recherche paginée rattache également chaque extrait à sa propre révision. Les changements
+commis après cette vérification s'appliquent aux admissions suivantes.
+Les preuves de révision et de chemin sont transmises comme données liées à une
+requête de forme constante : augmenter le nombre de résultats ne multiplie pas
+les branches SQL à compiler et à planifier.
+
 Le Topic est un prior de classement, jamais une frontière d'accès implicite. Avec un Topic
 canonique courant, ses souvenirs reçoivent le signal thématique maximal. Sans Topic courant, le
 vecteur de la requête présélectionne le Topic public le plus proche parmi ceux qui contiennent une
@@ -119,10 +129,10 @@ Les répétitions de mots d'un même extrait sont rétrogradées sans fusion ni 
 avec conservation des nombres et négations. Les traductions et paraphrases ne sont
 pas automatiquement déclarées équivalentes. Aucun canal ni appel de modèle n'est ajouté.
 
-Il n'existe aucun espace mémoire. Chaque souvenir appartient directement à un agent, qui y accède
-toujours. Un autre agent ne le voit que par un grant posé sur ce souvenir ou parce que celui-ci est
-explicitement public. Les acquisitions automatiques restent privées : le partage n'est jamais
-laissé à une initiative supposée du modèle et ne se propage pas à un conteneur entier.
+Il n'existe aucun espace mémoire. Chaque souvenir autonome appartient directement à un agent
+et reste privé à cet agent. Le partage porte sur les documents ; leur synthèse mémoire hérite
+de leurs droits courants. Les projections structurelles conservent les règles de visibilité de
+leur domaine. Les acquisitions automatiques restent privées et ne créent aucun partage.
 
 ### Portée des souvenirs conversationnels
 
@@ -150,17 +160,33 @@ Une source conversationnelle sans contact prouvé reste inéligible. L'absence d
 trois extracteurs automatiques Task, round texte et tour Voice, sans modifier les écritures
 explicites par tool ni le contrat distinct d’apprentissage.
 
-La nature d'un `MemoryItem` distingue `memory` pour un souvenir ordinaire et `document` pour
-un document de travail. Un document est privé à sa création, mutable et non dédupliqué.
-Il utilise les mêmes UUID, ACL,
-ressources opaques, révisions et projections de recherche que les autres nœuds, mais il est exclu
-des acquisitions Dream et de l'oubli automatique par inactivité. Seul son propriétaire peut
-l'oublier ou modifier ses collaborateurs.
+Un `Document` possède un titre, un contenu de référence et des droits de collaboration.
+Il est lié exactement à un `MemoryItem` de nature `document`, dont le contenu est une
+synthèse HTML facultative. Un souvenir autonome est privé à son agent et son libellé
+d'affichage est dérivé du contenu ; il n'a ni titre éditable ni partage indépendant.
+Un document est privé à sa création, mutable et non dédupliqué. Le document et son nœud
+conservent le même UUID et leurs URI existantes. Les révisions documentaires et celles
+de la synthèse sont distinctes. La recherche lexicale et vectorielle exploite le contenu
+complet du document et sa synthèse, même vide, dans un seul résultat. Les accès à la
+synthèse héritent des droits actuels du document, y compris après révocation.
+
+Le document et sa synthèse utilisent une liste courante unique de mots-clés dans
+`memory_items.keywords`. Les deux routes d'édition normalisent et écrivent cette liste
+avec les droits du document et le verrou optimiste commun. Une modification de mots-clés
+seuls actualise la recherche, sans nouvelle révision de contenu ni de synthèse. Les snapshots
+historiques restent immuables. La migration depuis les anciens documents dans `memory_items`
+laisse les mots-clés en place et ne les réinitialise pas au rejeu.
+Le document est exclu des acquisitions Dream et de l'oubli automatique par inactivité.
+Sa mémoire ne peut être ni oubliée ni fusionnée indépendamment. La suppression passe par
+`DELETE /memory/documents/{id}` et efface également la synthèse, ses versions et les ressources
+associées, sous les protections et droits de suppression du document. Le retrait du partage
+retire le nœud des listes, recherches et graphes des agents concernés, sans détruire la
+synthèse commune accessible au propriétaire et aux lecteurs encore autorisés.
 
 ## Documents de travail collaboratifs
 
 ```text
-file_create(path="document://") ──► MemoryItem(document, privé)
+file_create(path="document://") ──► Document(privé) + MemoryItem(synthèse vide)
        │
        ├─► file_read(document://uuid, offset) ──► passage borné
        ├─► file_edit(start_line, end_line, content) ──► révision atomique
@@ -179,6 +205,25 @@ La surface MCP reste volontairement petite. `file_search` assure la découverte 
 poursuivre. `file_edit` remplace une plage inclusive de lignes, numérotées à partir de 1.
 Une plage absente ou une révision concurrente échoue sans modification et demande une relecture.
 Les révisions conservent l'agent et la Task auteurs.
+
+L'apparition de la table `documents` déclenche une sauvegarde DbAdmin `BEFORE_EXPAND`
+des anciens items, révisions et droits dans `galaris_migration`. Son manifeste et ses
+empreintes vérifient son intégrité ; elle reste immuable et conservée après la migration.
+`app.memory.document_split`, en phase `AFTER_EXPAND`, crée les documents depuis cette
+sauvegarde et refuse une modification des sources entre les phases. La transaction conserve les pointeurs et associe
+les révisions immuables avant d'initialiser la synthèse vide. Les anciens souvenirs
+partagés deviennent des documents sans perte de droits. Les titres des souvenirs
+privés sont incorporés à leur contenu avant de devenir des libellés dérivés ; leurs
+anciennes révisions restent lisibles. Une erreur annule le transfert, et son rejeu
+préserve une synthèse déjà écrite. Après vérification du transfert, la contraction de
+la même mise à jour supprime `document_type`, `filename`, `visibility`, `global_access`
+et `group_access` de `memory_items`. Les noms d'export structurels restent dans les
+métadonnées et les contrats historiques délèguent au document. Un échec conserve
+les colonnes et permet la reprise automatique. Une base déjà étendue utilise aussi
+cette sauvegarde avant de retirer les colonnes. Les pointeurs archivés protègent les
+ressources contre l'oubli applicatif et le nettoyage d'orphelins ; la sauvegarde SQL
+ne remplace pas celle des fichiers. L'archive n'est purgée que par une opération
+administrative distincte explicitement validée.
 
 Avant une délégation, le propriétaire partage explicitement le document puis place son UUID dans
 l'objectif de la Task enfant. Les agents conservent les notes provisoires dans le document et

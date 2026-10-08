@@ -10,8 +10,8 @@ async function fixture(page, { writable = true } = {}) {
   await jsonRoute(page, '**/api/memory/documents/owner-options?*', { agents: [{ id: 7, kind: 'agent', label: 'Alice', subtitle: '', avatar_url: null }], users: [] })
   await jsonRoute(page, '**/api/memory/documents/keywords?*', [])
   await jsonRoute(page, '**/api/memory/documents/doc-a/attachments?*', [])
-  await page.route('**/api/memory/items/doc-a?*', route => {
-    if (route.request().method() === 'GET') return route.fulfill({ json: current })
+  await page.route(/\/api\/memory\/documents\/doc-a(?:\?.*)?$/, route => {
+    if (route.request().method() === 'GET') return route.fulfill({ json: { item: current, agent_id: 7 } })
     const body = route.request().postDataJSON()
     writes.push(body)
     current = { ...current, ...body, revision: current.revision + 1, lock_version: current.lock_version + 1 }

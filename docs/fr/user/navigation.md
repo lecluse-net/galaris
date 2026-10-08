@@ -277,6 +277,11 @@ et **Graphe** : ouvrez la page puis choisissez l’onglet, sans supposer un para
 Les contacts sont dans `/memory/contacts` ; les regroupements thématiques dans
 **Connaissances → Sujets** (`/topic`). Le partage d’un lien ne donne pas accès au contenu.
 
+Pour faire évoluer un document avec un agent, demandez une mise à jour des passages concernés.
+L'agent conserve les informations utiles et peut ajouter des éléments distincts ; les anciennes
+versions restent dans les révisions. Précisez si le résultat attendu est un journal chronologique
+ou un compte rendu : cette chronologie reste alors pertinente dans le document.
+
 Les deux onglets placent l'agent et la recherche sur la première ligne, puis le sujet
 et l'interlocuteur juste dessous. Dans **Liste**, la date cible et son bouton d'application
 complètent ces filtres. Les champs se réorganisent sur les petits écrans.
@@ -303,8 +308,41 @@ les souvenirs correspondant à cette date. La saisie et les correspondances util
 fuseau global configuré dans Galaris (`TZ`), même si votre navigateur utilise un autre fuseau.
 Les champs temporels d'un souvenir n'ont aucun sélecteur de fuseau.
 
+La fiche d'un item sépare **Mémoire**, **Liens et relations** et **Historique**.
+Dans **Mémoire**, les aperçus des contenus associés précèdent les mots-clés et le contenu ;
+la temporalité utilise des champs compacts. Le titre affiche la nature du souvenir,
+la dernière activité, le nombre d'accès et la révision. Une suppression protégée y apparaît
+en badge d'avertissement avec son explication en infobulle.
+Les souvenirs autonomes sont privés à leur agent, sans titre à saisir ni partage.
+Pour un document, ce contenu est une synthèse facultative : **Ouvrir le document**
+ouvre une seconde modale pour modifier son titre, son contenu complet et son partage,
+en conservant la fiche mémoire et son brouillon. Cette mémoire ne peut pas être oubliée
+séparément : supprimer le document depuis son éditeur supprime aussi sa synthèse et son
+historique. Retirer le partage la retire des mémoires de l'agent concerné, tout en la
+conservant pour le propriétaire et les autres lecteurs autorisés. Les pièces jointes et fichiers indexés
+s'ouvrent en plein écran lorsqu'un lecteur prend en charge leur format ; les fichiers audio
+ont un lecteur directement dans leur aperçu. Les documents Office, tableurs et autres
+formats sans lecteur conservent leur miniature lorsqu'elle est disponible et proposent
+uniquement le téléchargement de l'original, sans plein écran. Une indication
+signale si le document a changé depuis la synthèse. La recherche utilise toujours
+le document complet et la synthèse et retourne un seul résultat.
+Une ressource verrouillée affiche **Lecture seule** comme état, sans commande de verrouillage.
+Le document et sa fiche mémoire partagent les mêmes mots-clés. Vous pouvez les modifier
+depuis les deux fiches avec les droits du document. Une modification actualise l'autre
+fiche ouverte sans perdre son brouillon de contenu et ne crée pas de version de synthèse.
+Si les mêmes mots-clés ont changé ailleurs pendant votre saisie, l'enregistrement signale
+un conflit et conserve votre brouillon. Les anciennes versions gardent leurs mots-clés historiques.
+Les actions Dream et les autres boutons partagent une rangée alignée à droite dans le pied
+de la fiche. Chaque bouton conserve son contenu sur une ligne ; la rangée peut se répartir
+sur plusieurs lignes selon la largeur disponible.
+Fermez la fiche avec la croix ou l'arrière-plan ; elle ne propose plus de bouton Annuler.
+**Liens et relations** regroupe la provenance, les voisins du graphe
+et les relations explicites. Vous pouvez y ajouter une relation selon vos droits.
+Le passage d'un onglet à l'autre conserve le brouillon ; **Enregistrer** reste disponible
+dans les deux premiers onglets.
+
 Un clic sur un nœud ouvre sa modale directement. Elle conserve les métadonnées du graphe
-(nature, visibilité, dernière activité, nombre d'accès) et la navigation vers ses voisins,
+(nature, dernière activité, nombre d'accès) et la navigation vers ses voisins,
 y compris les dossiers et conversations. Le bouton de fermeture ou l'arrière-plan ramène au graphe.
 
 La modale propose des boutons pour les traitements Dream compatibles avec le nœud :

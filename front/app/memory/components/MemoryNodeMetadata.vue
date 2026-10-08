@@ -4,7 +4,7 @@
       <dt class="text-caption text-grey-7">{{ t('memory.kind') }}</dt>
       <dd>{{ roleLabel }}</dd>
     </div>
-    <div class="col-12 col-sm-6">
+    <div v-if="showVisibility" class="col-12 col-sm-6">
       <dt class="text-caption text-grey-7">{{ t('memory.visibility') }}</dt>
       <dd>{{ t(`memory.visibilities.${node.visibility}`) }}</dd>
     </div>
@@ -24,9 +24,10 @@ import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import type { MemoryGraphNode } from '../types'
 
-const { node, roleLabel } = defineProps<{
+const { node, roleLabel, showVisibility = true } = defineProps<{
   node: Pick<MemoryGraphNode, 'visibility' | 'activity_at' | 'access_count'>
   roleLabel: string
+  showVisibility?: boolean
 }>()
 const { t, locale } = useI18n()
 const activityDate = computed(() => {

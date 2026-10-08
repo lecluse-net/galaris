@@ -5,6 +5,7 @@ from collections import Counter
 import math
 import re
 from uuid import UUID
+from typing import Literal
 
 from core.util import html_blocks, visible_text
 from . import relevance
@@ -26,6 +27,8 @@ class Passage:
     block_start: int | None = None
     block_end: int | None = None
     section_path: tuple[str, ...] = ()
+    content_source: Literal["document", "memory"] = "document"
+    source_revision: int | None = None
 
 
 def document_passages(html: str, *, max_words: int = 360) -> list[Passage]:

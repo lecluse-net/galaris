@@ -262,7 +262,7 @@ async def test_default_recall_reports_lexical_fallback_when_model_is_missing(
         MemoryItemCreate(
             owner_agent_id=owner.id,
             title="PostgreSQL convention",
-            payload=MemoryPayload(text="Use declarative schemas."),
+            payload=MemoryPayload(text="Use declarative PostgreSQL schemas."),
         )
     )
 
@@ -717,7 +717,7 @@ async def test_hybrid_recall_ranks_weak_candidates_after_stronger_evidence(
         MemoryItemCreate(
             owner_agent_id=owner.id,
             title="Quasar pagination convention",
-            payload=MemoryPayload(text="Use fifty rows per page."),
+            payload=MemoryPayload(text="Quasar pagination uses fifty rows per page."),
         )
     )
     semantic, _created = await service.create_item(
@@ -881,7 +881,7 @@ async def test_link_centrality_can_drive_ranking(
             MemoryItemCreate(
                 owner_agent_id=owner.id,
                 title=f"Release knowledge {label}",
-                payload=MemoryPayload(text=f"Distinct operational note {label}."),
+                payload=MemoryPayload(text=f"Release knowledge: distinct operational note {label}."),
             )
         )
         items.append(item)
@@ -1217,6 +1217,7 @@ async def test_index_job_hybrid_recall_acl_and_forget(
         MemoryItemCreate(
             owner_agent_id=owner.id,
             title="Release safety",
+            node_kind="document",
             payload=MemoryPayload(
                 text="Verify the generated schema before releasing."
             ),
@@ -1300,7 +1301,7 @@ async def test_index_job_hybrid_recall_acl_and_forget(
     assert peer_shared.mode == "hybrid"
     assert [hit.item.id for hit in peer_shared.hits] == [item.id]
 
-    await service.forget_item(item.id, actor_agent_id=owner.id)
+    await service.delete_document(item.id, actor_agent_id=owner.id)
     # A durable job claimed before the forget must never recreate the projection.
     await semantic_index.process_embedding_job({"item_id": str(item.id)})
     assert await db.scalar(

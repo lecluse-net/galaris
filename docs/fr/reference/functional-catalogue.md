@@ -1405,10 +1405,15 @@ Sources : [schémas Goal](../../../back/app/goal/schemas.py), [API](../../../bac
 
 La mémoire durable se distingue de l’historique immédiat d’une conversation. Une entrée peut porter
 un savoir, un événement, un contexte social, une information centrale ou un élément de travail.
-Elle possède un titre, un contenu, des mots-clés, une nature, des métadonnées,
-un propriétaire, des dates et des droits.
+Un souvenir autonome possède un contenu HTML, des mots-clés, une nature, des métadonnées,
+un propriétaire et des dates. Il reste privé à son agent et son libellé est dérivé du contenu.
+Un document possède son titre, son contenu complet et ses droits de partage ; son nœud mémoire
+porte une synthèse HTML facultative et un historique indépendant. Modifier le document ne
+réécrit pas cette synthèse ; la fiche signale si sa révision de référence est ancienne.
 
-La recherche utilise le contenu courant des souvenirs et documents, sans résumé indépendant.
+La recherche utilise le contenu courant complet des documents et leur synthèse, ainsi que les
+souvenirs autonomes. Elle renvoie un seul résultat par couple document/synthèse et applique les
+droits actuels du document aux deux contenus.
 Les souvenirs proposent des extraits et les cartes documentaires peuvent afficher une miniature
 de la révision enregistrée. Les modifications ne demandent pas de motif libre ;
 la traçabilité conserve le contenu des versions, les dates, les auteurs, les tâches et les sources.
@@ -1432,7 +1437,8 @@ objectifs, cycles et processus depuis la mémoire, tout en conservant leur sourc
   courante sans perdre le brouillon. La lecture de l’historique reste accessible sans droit
   d’édition ; un chargement échoué peut être relancé et une réponse tardive ne remplace pas la
   version sélectionnée.
-- Partager une mémoire ou un document avec un humain, un agent ou une équipe, en lecture ou écriture.
+- Partager un document avec un humain, un agent ou une équipe, en lecture ou écriture ;
+  sa synthèse hérite de ces droits. Les souvenirs autonomes ne se partagent pas.
 - Oublier explicitement une mémoire propriétaire : l’effacement porte aussi sur les révisions et
   ressources couvertes, sous réserve des protections des objets gérés par un domaine.
 
@@ -3654,10 +3660,10 @@ ordinaires restent dans le périmètre de l’agent.
 |---|---|---|
 | `memory_remember` | `memory` | Enregistrer immédiatement un fait durable rare et important en HTML, avec métadonnées, sources et temporalité facultative ; l’extraction ordinaire reste confiée à Dream. |
 | `memory_upcoming` | `memory` | Paginer les souvenirs autorisés correspondant à maintenant ou à la fenêtre d’anticipation, indépendamment de la similarité textuelle ; ne programme aucune notification. |
-| `memory_forget` | `memory` | Oublier définitivement une mémoire/document propriétaire et ses versions admissibles ; oublier le document supprime aussi les descriptions et révisions de ses pièces jointes. |
+| `memory_forget` | `memory` | Oublier définitivement un souvenir autonome et ses versions admissibles ; les mémoires documentaires ne peuvent pas être oubliées indépendamment du document. |
 | `memory_summarize` | `memory` | Synthétiser avec le modèle de l’agent faits attribués, décisions, engagements et questions ouvertes, au maximum 200 messages et 32 000 caractères, sans remplacement des souvenirs existants ni stockage après erreur modèle. |
 | `memory_sharing` | `memory` | Lire partages, destinataires possibles et version de verrouillage ; recherche/filtre/pagination des destinataires. |
-| `memory_share` | `memory` | Accorder ou retirer un accès direct lecture/édition à un agent, humain ou groupe sur une mémoire/document propriétaire. |
+| `memory_share` | `memory` | Alias de compatibilité du partage d’un document propriétaire ; les souvenirs autonomes restent privés. |
 | `document_share` | `memory` | Même partage ciblé pour un document de travail propriétaire. |
 | `skills_list` | `skill_management` | Découvrir les compétences dans le périmètre administrable/autorisé. |
 | `skill_read` | `skill_management` | Lire une compétence et ses informations ; fichiers auxiliaires accessibles via la façade de ressources. |

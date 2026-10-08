@@ -48,7 +48,7 @@ async function setup(page, { human = false, item = {}, privileges = ['MEMORY_EDI
       return route.fulfill(state.fail ? { status: 403, json: { detail: 'Access denied' } } : { json: {} })
     }
     if (request.method() !== 'GET') document = { ...document, ...request.postDataJSON(), revision: document.revision + 1 }
-    return route.fulfill({ json: human && request.method() === 'GET' ? { item: document, agent_id: null } : document })
+    return route.fulfill({ json: request.method() === 'GET' ? { item: document, agent_id: human ? null : 7 } : document })
   })
   await mount(page, 'app/memory/components/DocumentEditor.vue', {
     props: { documentId: 'doc-a', agentId: human ? null : 7, editable }, privileges,
@@ -82,6 +82,7 @@ for (const human of [false, true]) {
     await expect.poll(() => page.evaluate(() => window.testApp.events.filter(event => event.name === 'unavailable').map(event => event.value))).toEqual(['doc-a'])
     await expect(dialog).toHaveCount(0)
     expect(requests).toHaveLength(2)
+    expect(new URL(requests[1].url()).pathname).toBe('/api/memory/documents/doc-a')
     expect(new URL(requests[1].url()).searchParams.get('actor_agent_id')).toBe(human ? null : '7')
   })
 }
@@ -112,7 +113,8 @@ for (const mobile of [false, true]) {
       entries: deleted ? [] : [{ item, tags: [], agent_ids: [], writable_agent_ids: [], user_access: item.access }],
       total: deleted ? 0 : 1, has_more: false, keywords: [],
     } }))
-    await page.route('**/api/memory/items/doc-a', async route => {
+    await page.route('**/api/memory/documents/doc-a', async route => {
+      if (route.request().method() !== 'DELETE') return route.fallback()
       expect(route.request().method()).toBe('DELETE')
       deleted = true
       // The real server can notify readers before the HTTP response reaches the caller.

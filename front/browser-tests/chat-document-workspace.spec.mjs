@@ -33,7 +33,7 @@ async function workspace(page, editable = true) {
   await jsonRoute(page, '**/api/memory/documents/*/attachments*', [])
   const readDocument = route => denied ? route.fulfill({ status: 403, json: { detail: 'Forbidden' } }) : route.fulfill({ json: route.request().url().includes('/items/') ? document : { item: document, agent_id: 7 } })
   await page.route('**/api/memory/items/doc-a?*', readDocument)
-  await page.route('**/api/memory/documents/doc-a', readDocument)
+  await page.route(/\/api\/memory\/documents\/doc-a(?:\?.*)?$/, readDocument)
   await page.route('**/api/memory/documents/doc-b', route => {
     openedDocumentId = 'doc-b'
     if (route.request().method() === 'PATCH') {
@@ -346,7 +346,7 @@ for (const [width, editable, mode] of [[1440, true, undefined], [1440, true, 'sp
       }
       return route.fulfill({ json: route.request().url().includes('/items/') ? document : { item: document, agent_id: 7 } })
     }
-    await page.route(`**/api/memory/documents/${id}`, documentRoute)
+    await page.route(new RegExp(`/api/memory/documents/${id}(?:\\?.*)?$`), documentRoute)
     await page.route(`**/api/memory/items/${id}*`, documentRoute)
     await page.evaluate(({ uri, message }) => window.testApp.patchStore(
       'app/chat/stores/chat.ts', 'useChatStore', { messages: [{ ...message, text: uri }] },

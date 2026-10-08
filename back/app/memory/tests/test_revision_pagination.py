@@ -22,7 +22,9 @@ async def test_large_history_only_materializes_the_requested_revision_page(db, a
     assert [entry.revision for entry in page.items] == list(range(951, 901, -1))
     assert sum(isinstance(value, MemoryRevision) for value in db.identity_map.values()) <= 51
     generic = await service.list_revisions(item.id, agent_id=agents[0].id, limit=20, offset=50)
-    assert [entry.revision for entry in generic] == list(range(51, 71))
+    assert generic == []
+    synthesis_history = await service.list_revisions(item.id, agent_id=agents[0].id)
+    assert [entry.revision for entry in synthesis_history] == [1]
 
 
 @pytest.mark.asyncio

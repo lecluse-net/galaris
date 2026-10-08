@@ -474,7 +474,8 @@ par Dream, ni oubliés automatiquement pour inactivité. `file_create`, `file_ed
 `file_read(document://...)` et `file_append(document://...)` maintiennent des révisions
 atomiques sans exposer de protocole de patch complexe au modèle. `document_share` pose un grant direct
 `read|edit|none` après résolution de l'humain, de l'agent ou de l'équipe cible ; seul le propriétaire administre ces grants et
-peut oublier le document. `file_search` assure leur découverte et le brief n'en injecte que des
+supprime le document depuis son éditeur et l'API dédiée ; `memory_forget` refuse les
+synthèses documentaires. `file_search` assure leur découverte et le brief n'en injecte que des
 extraits bornés. Chaque révision conserve l'agent et, lorsqu'elle existe, la Task auteure.
 Les pièces jointes sont exposées sous `document://<uuid>/attachments/` : `file_list` les énumère,
 `file_read` et les outils spécialisés les consomment, tandis que `file_create`, `file_copy` et

@@ -170,7 +170,7 @@ test('conversation process states and opening details follow the loaded data', a
 })
 
 test('conversation documents hide UUID labels and respect read and edit permissions', async ({ page }) => {
-  await jsonRoute(page, '**/api/memory/items/doc-a?agent_id=7', { ...documentFixture, payload: { text: '<p>Working document</p>' } })
+  await jsonRoute(page, '**/api/memory/documents/doc-a?agent_id=7', { item: { ...documentFixture, payload: { text: '<p>Working document</p>' } }, agent_id: 7 })
   await jsonRoute(page, '**/api/chat/rooms/room-a/documents?*', { items: [{ id: 'doc-a', label: '12345678-1234-1234-8234-123456789abc', revision: 2, updated_at: null }], total: 1 })
   await mount(page, 'app/chat/components/ConversationDocumentsPanel.vue', { props: { roomId: 'room-a', fromMessageId: 'message-a', conversationAgentId: 7, canRead: true, canEdit: false } })
   await expect(page.locator('.conversation-work-list')).not.toContainText('12345678')

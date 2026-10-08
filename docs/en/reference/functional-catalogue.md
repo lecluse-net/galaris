@@ -1046,16 +1046,21 @@ Additional references: [Goal schemas](../../../back/app/goal/schemas.py),
 
 ### Records and acquisition
 
-Memory records carry a title, HTML body, keywords, nature, metadata, owner, dates and access
-rights. The current content is the source of truth, without an independent summary field. Revisions
-retain dates, authors and Task sources, without an arbitrary “reason for change” field.
+Standalone memories carry an HTML body, keywords, nature, metadata, owner and dates. They remain
+private to their agent and their display label is derived from content. Documents own their title,
+full content and sharing rights; their Memory node holds an optional HTML synthesis and independent
+history. Document edits leave the synthesis unchanged; its reference revision indicates staleness.
+Search uses full current document content and the synthesis alongside standalone memories, returns
+one result per document/synthesis pair and applies current document permissions to both contents.
+Revisions retain dates, authors and Task sources, without an arbitrary “reason for change” field.
 
 The node's nature distinguishes memory, document, attachment, folder, file and directory.
 
 `memory_remember` acquires an important, uncommon fact immediately; ordinary consolidation belongs
 to Dream. Users can view, create and edit records and keywords, save without closing, inspect
 read-only history and retry a failed save without losing the draft. Late responses are guarded.
-Sharing supports humans, agents and teams with read/write access. Forgetting owned records removes
+Document sharing supports humans, agents and teams with read/write access; the synthesis inherits
+those rights. Standalone memories cannot be shared. Forgetting owned records removes
 associated revisions/resources, subject to protected-domain restrictions. Automatically generated
 memory is private; domain projections remain read-only and their original business object remains
 authoritative.
@@ -2695,10 +2700,10 @@ management needs the specialised connection; ordinary actions stay within the ag
 |---|---|---|
 | `memory_remember` | `memory` | Immediately acquire an uncommon important durable fact as HTML with metadata, sources and optional temporal anchor; ordinary extraction belongs to Dream. |
 | `memory_upcoming` | `memory` | Paginate authorised memories matching now or the lookahead window independently of textual similarity; schedules no notification. |
-| `memory_forget` | `memory` | Permanently forget owned memory/document and eligible versions; document forgetting also removes attachment descriptions/revisions. |
+| `memory_forget` | `memory` | Permanently forget a standalone memory and eligible versions; document memories cannot be forgotten independently of the document. |
 | `memory_summarize` | `memory` | Use the agent model for attributed facts, decisions, commitments and open questions from ≤200 messages/32,000 characters, without replacing memory or saving after model failure. |
 | `memory_sharing` | `memory` | Read sharing, possible recipients and lock version, with recipient search/filter/pagination. |
-| `memory_share` | `memory` | Grant/revoke direct read/edit for agent, human or group on owned memory/documents. |
+| `memory_share` | `memory` | Compatibility alias for sharing an owned document; standalone memories remain private. |
 | `document_share` | `memory` | Equivalent targeted sharing for owned working documents. |
 | `skills_list` | `skill_management` | Discover skills within permitted/administrable scope. |
 | `skill_read` | `skill_management` | Read skill/details; support files use the resource facade. |

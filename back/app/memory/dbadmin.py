@@ -112,6 +112,8 @@ async def _enqueue_goal_folders(_session: AsyncSession) -> None:
 
 
 def register_dbadmin(registry: DbAdminRegistry) -> None:
+    from .document_migration import register_document_split
+    register_document_split(registry)
     from .file_attributes_migration import register_file_attributes
     register_file_attributes(registry)
     registry.register_reconciler(DbAdminReconciler(
