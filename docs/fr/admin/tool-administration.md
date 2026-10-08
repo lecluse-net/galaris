@@ -77,8 +77,9 @@ la disparition d'une copie retire seulement son emplacement.
 Dans la fiche Memory ou le détail d'un nœud fichier du graphe, **Emplacements du fichier**
 affiche les URI et miniatures disponibles. Cliquer sur une carte ouvre l'aperçu et permet
 le plein écran ou le téléchargement original. Images, PDF, texte, HTML, audio, vidéo et
-modèles 3D utilisent les lecteurs existants ; Office est converti en PDF pour l'aperçu.
-Les formats sans lecteur restent téléchargeables. Chaque accès revérifie la connexion et
+modèles 3D utilisent les lecteurs existants. Office et les tableurs peuvent afficher une miniature
+de leur première page imprimée ; ils proposent le téléchargement original sans lecteur plein écran.
+Les autres formats sans lecteur restent téléchargeables. Chaque accès revérifie la connexion et
 la ressource source ; aucun octet n'est ajouté à la fiche Memory. Les aperçus sont bornés
 à 512 Mio ; les limites propres aux convertisseurs continuent de s'appliquer.
 
@@ -96,8 +97,9 @@ répertoires restent des fiches de catalogue sans résumé automatique.
 Dream prépare également les miniatures des fichiers identifiés et des pièces jointes
 documentaires, sans appel IA et indépendamment des options d'analyse des médias.
 Les images, vidéos, PDF, Office, HTML, textes et modèles 3D autonomes pris en charge
-conservent leur PNG sur le stockage durable. Ouvrir puis rouvrir une ressource dans
-le graphe relit ce PNG ; une version modifiée reçoit un nouveau dérivé. Le cache
+conservent leur WebP sans perte, au plus 320 × 320 pixels avec proportions et transparence préservées,
+sur le stockage durable réparti en sous-répertoires. Rouvrir une ressource dans
+le graphe relit ce WebP ; une version modifiée reçoit un nouveau dérivé. Le cache
 ne contourne jamais les droits ni une connexion désactivée.
 
 ### Créer le Tool

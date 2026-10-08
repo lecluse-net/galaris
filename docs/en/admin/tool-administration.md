@@ -74,7 +74,8 @@ survive grouping. A changed copy moves to another entry; a missing copy retires 
 In a Memory entry or the graph's file inspector, **File locations** shows available URIs
 and thumbnails. Clicking a card opens its preview with fullscreen and original-download
 actions. Images, PDF, text, HTML, audio, video and 3D models use the existing viewers;
-Office files are converted to PDF for preview. Formats without a viewer remain downloadable.
+Office files and spreadsheets can display a first-printed-page thumbnail, with original download
+and no full-screen viewer. Other formats without a viewer remain downloadable.
 Each access rechecks the connection and source resource; no file bytes are added to Memory.
 Previews are bounded to 512 MiB, and converter-specific limits still apply.
 
@@ -90,8 +91,9 @@ catalogue entries without automatic summaries.
 
 Dream also prepares thumbnails of identified files and document attachments, without
 AI calls and independently of media-analysis options. Supported images, videos, PDF,
-Office, HTML, text and self-contained 3D models retain their PNG in durable storage.
-Opening and reopening a graph resource reads that PNG; a changed version receives a
+Office, HTML, text and self-contained 3D models retain a lossless WebP within 320 × 320 pixels,
+preserving proportions and transparency in durable sharded storage.
+Opening and reopening a graph resource reads that WebP; a changed version receives a
 new derivative. The cache never bypasses permissions or a disabled connection.
 
 ### Create the Tool

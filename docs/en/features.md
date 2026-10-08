@@ -35,6 +35,9 @@ history and voice capabilities vary by channel.
 
 Every agent has a durable identity, mission, personality, skills and tools. Specialists can join
 teams of humans and agents, with access suited to their roles.
+Optional **AgentAdmin** and **ToolAdmin** also delegate configuration: AgentAdmin respects
+the human manager's rights; ToolAdmin manages the global catalogue through granted functions.
+Secrets stay server-side and humans assign administrative delegations.
 
 While preparing a study, an agent can ask a colleague for research or review. That contribution
 becomes identifiable work: responsibilities, expected outcomes, dependencies, unanswered questions
@@ -72,6 +75,11 @@ Page rights, data rights and personal consent for the application are separate. 
 static view of the displayed result for sharing or archiving a state of the work.
 
 ## Recover context over time
+
+Files observed through Tools can enter a private catalogue with locations and thumbnails.
+Dream identifies identical copies per agent, prepares previews and traverses compatible providers
+under indexing settings. The graph folds large branches and preserves framing during exploration.
+Explicit detail actions can regenerate descriptions/thumbnails or synchronise relationships.
 
 Memory helps agents find facts, decisions and knowledge useful to the current request. Search
 combines words, meaning and resource relationships while respecting rights and validity. Contacts
@@ -112,7 +120,15 @@ Email adds message search/reading, attachment processing and reply preparation. 
 sending waits for a human to approve the exact content. Calendars add availability checks, free-slot
 search and event management.
 
+Mail approval is available in the reviewer's private chat and in the mail journal. Permanent
+consent for a Tool function can avoid later prompts on that connection; resource rights and
+versions remain checked.
+
 ## Work with multimedia
+
+Office documents and spreadsheets can display a first-page thumbnail while retaining the original
+download. Large sources can be analysed in resumable batches with explicit progress and coverage;
+an interrupted billable batch is not automatically replayed. Coverage does not certify interpretation.
 
 A meeting recording can become verbatim text and synthesis, then minutes revised with the agent.
 YouTube videos with public subtitles can feed the same work. Viewers cover PDF, images, audio,

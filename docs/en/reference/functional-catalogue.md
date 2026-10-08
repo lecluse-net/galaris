@@ -7,7 +7,7 @@ following their work over time. Conversations, tasks, goals, documents, memory, 
 integrations form a common system. An agent can converse, consult authorized information,
 produce deliverables, involve colleagues, trigger external workflows and retain useful knowledge.
 
-This catalogue describes features present in the repository as of **27 September 2026**,
+This catalogue describes features present in the repository as of **8 October 2026**,
 including agent functions, administration screens and background mechanisms. It is organized
 by use, followed by a native MCP inventory and coverage of **every declared module**. Sources
 make that coverage verifiable. This is the exhaustive reference for preparing the product website.
@@ -16,18 +16,19 @@ make that coverage verifiable. This is the exhaustive reference for preparing th
 connections, models and external accounts. This describes the software without certifying
 every provider or installation configuration.
 
-This update retains the previous catalogue and reviews **27 September 2026 commits**, through
-`ce7f6b9`, together with staged and unstaged local changes present during inspection. Behaviour
+This update retains the previous catalogue and reviews the **latest 57 commits**, from
+`02a822d` through `a6cc1f8` inclusive at the start of review, together with local changes.
+Commits `c2a720d`, `27e842f` and `cd8e8cc`, created from those changes during review, are also covered. Behaviour
 is checked against available contracts, implementation and tests; this documentary review does
 not qualify the assembled application.
 
-**Temporal memory and unified search**,
-**progress tracking during tool-argument generation** and **directory lookup in conversations**
-include local work not yet committed. They describe the inspected repository, without announcing
-publication. The committed retirement of execution briefing is reflected in routes, profiles and
-the Lab's ten mechanisms.
+The **separation of documents and optional Memory syntheses**, their **shared keywords** and
+the **single current document thumbnail** are now committed. Agent guidance changes and some
+recall hardening still include local work. They describe the inspected repository without announcing
+publication or deployment. The Lab's ten mechanisms are separate from Dream's fourteen
+registered background mechanisms.
 
-The inventory covers **184 native MCP functions, 71 backend modules and 36 frontend modules**.
+The inventory covers **244 native MCP functions, 71 backend modules and 36 frontend modules**.
 Implemented features remain distinct from intentions in the [plan register](../../../project/plans/README.md).
 Quality controls appear under [operations](#exploitation).
 
@@ -257,14 +258,42 @@ and recipient rather than silently changing executor identity. Directory results
 `galaris://agent/<id>` for authorized rereading of current job/personality. Profiles also expose
 harness state, lifecycle actions, logs, blocking Tasks and MCP URL/tokens for external clients.
 
+### Delegated administration and portraits
+
+Optional **AgentAdmin** provides 34 functions to create, update and delete agents and manage
+their teams, connections, local function permissions, harnesses and, where permitted, titles
+and shared groups. `agent_list` and `agent_get` remain in the Galaris system service.
+Every call checks the active human manager's current privileges and scope; only
+`AGENT_MANAGE_ALL` extends it globally. Agents cannot delete themselves, change their own manager
+or assign administrative connections. System services stay protected and revocation also applies
+to already mounted MCP servers.
+
+The form opens immediately while selectors load; title catalogues include subsequent pages.
+**YOLO mode** starts disabled and requires explicit human confirmation after a warning. It
+approves new requests without bypassing blocked functions, resource rights or context limits;
+changing the manager disables it. Temporary notifications can be dismissed before their expiry
+and tooltips use readable contrast.
+
+Avatars can be uploaded, read from an authorised URI or generated from the target's identity
+and personality. Generation uses the caller's image model, waits for registration and creates
+no Process. All paths store an optimised JPEG within **500 × 500 pixels**, preserving proportions
+and orientation without enlargement or EXIF metadata. Failure, revocation or a concurrent edit
+preserves the current avatar; late reads cannot replace it. Generation requires a configured
+image resource and never silently falls back to a text model.
+
+Sources: [AgentAdmin contract](../dev/agent-admin.md),
+[delegation and MCP journeys](../../../back/app/agent/tests/test_agent_admin.py),
+[permissions administration](../admin/tool-administration.md).
+
 ### The Galaris assistant offered at installation
 
 **Galaris** is offered once to help understand/configure/administer the platform. It uses the
 **internal harness**, follows the **current LLM profile** and belongs to the first active
 administrator. Fresh installs wait for registration; existing installs receive the offer at DB sync.
 
-Ordinary skills/connections are initialized. **Galaris Admin** is enabled at creation for
-product documentation and permitted execution inspections, unlike its inactive default for other
+Ordinary skills/connections are initialized. **Galaris Admin**, **AgentAdmin** and **ToolAdmin**
+are enabled at creation. Galaris Admin covers product documentation and permitted execution
+inspections, unlike its inactive default for other
 agents. The assistant individually receives `galaris-knowledge` and `galaris-lab` at creation,
 while both remain globally disabled. The Lab connection stays inactive: having its skill does
 not grant permission to execute Lab tools.
@@ -313,6 +342,9 @@ metadata; discovery is cached for five minutes and existing configurations benef
 Explicit budgets take precedence; unknown capacity keeps the provider default. Compaction and
 remote Responses histories do not receive a locally calculated budget. Physically truncated output
 does not count as successful Task completion.
+
+Provider configuration saves automatically after a successful connection test; subsequent changes
+to relevant fields save without a separate save button.
 
 ### Optional initial OpenRouter configuration
 
@@ -455,7 +487,8 @@ their units and identifies account/key scope. Balances without a ceiling have no
 values and overages remain visible. Mammouth API credits are separate from application quotas;
 OpenRouter account credits require a management key, otherwise remaining key funds are displayed.
 OpenRouter shows only this amount, without a gauge or percentage based on cumulative purchases.
-Values are read on opening and refresh, without permanent tracking or inference.
+Values are read on opening, on request and **every five minutes while the panel remains open**,
+without inference.
 Fireworks displays no balance or usage panel because the balance cannot be read with the
 API key; its monthly spending ceiling never substitutes for available funds.
 
@@ -608,6 +641,31 @@ High requires Galaris model selection/call accounting. All four managed runtimes
 gateway, without independent-subscription mode. SDK reasoning support alone does not establish
 high support. Short conversation's controller remains independent of the Task harness.
 
+### Shared document reading and resumable analysis
+
+Chat/Responses gateways, agent attachments and Dream share a bounded document preparer for
+PDF, Office formats, text, HTML, Markdown, EPUB and images as supported by converters. It supplies
+text, rendered pages and optional OCR with explicit limits. Spreadsheets retain cells, formulas
+and sheet information without recalculating formulas. Office macros are disabled; an unsupported
+or unconvertible source fails explicitly.
+
+Gateways offer automatic, direct and prepared modes. Fallback handles document refusals and
+structured reports of incomplete reading; opened streams and tool calls are not automatically
+replayed. Bounded prepared batches are consolidated. Source-unit coverage never certifies
+that the model understood every page correctly.
+
+For large sources, `document_analyze` starts a private analysis in **app.llm** and returns its
+identifier. `document_analysis_get` reads progress, answers and coverage; `document_analysis_cancel`
+requests cancellation. Completed batches reuse existing durable inferences and an interrupted
+billable batch is never automatically replayed. Reads recheck source access and version.
+The profile's document model is used with fallback to its standard text model if absent;
+`model_slot="text"` selects the latter. The same profile's vision model can provide observations
+for a text model without image input. These analyses create no business Process definition or run.
+
+Sources: [formats, budgets and qualification](../dev/document-qualification.md),
+[MCP contracts](../../../back/app/llm/mcp.py),
+[recovery, coverage and cancellation](../../../back/tests/test_document_analysis.py).
+
 ### Attachments understood directly by the model
 
 Internal chat/Task harnesses can pass **images, audio, video and PDF** from current messages and
@@ -652,6 +710,10 @@ Additional references: [DeepSeek Harness](../components/deepseek-harness.md).
 ## 7. Chat and the conversational loop
 
 ### Conversations and interactions
+
+The home page prioritises recent conversations. Saved choice replies render their introduction
+in the current interface language, including after reopening; the request title and chosen
+label retain the original request's language.
 
 Chat home offers agents to start a conversation with and recent-conversation cards showing unread
 counts, latest activity and previews under the user's privacy preference. Both lists default to
@@ -889,6 +951,10 @@ content can therefore be corrected before admission rather than failing only whe
 
 ### Plans and collaboration between agents
 
+Each leaf preserves a complete work unit. For independent targets, the full procedure repeats
+per target rather than one cross-target leaf per phase. The server owns effect and concurrency
+policies; the model does not choose them.
+
 The Planner either asks for clarification or creates a plan of real Tasks with dependencies,
 deliverables and acceptance criteria. Depth and leaf counts are bounded, without a separate
 total-node ceiling; defaults are **200 leaves** and three levels. A parent
@@ -1050,11 +1116,23 @@ Standalone memories carry an HTML body, keywords, nature, metadata, owner and da
 private to their agent and their display label is derived from content. Documents own their title,
 full content and sharing rights; their Memory node holds an optional HTML synthesis and independent
 history. Document edits leave the synthesis unchanged; its reference revision indicates staleness.
+Document and synthesis share one keyword list editable from either form under document rights.
+Changing keywords alone creates no content revision. Remote updates preserve drafts and conflicting
+edits keep user input. The synthesis cannot be independently forgotten or merged; deleting its
+document also deletes its synthesis and history.
+Migration preserves existing document URIs, versions and recipients. Previously shared memories
+become documents; private memories retain former titles within their content. A verified SQL
+backup precedes transfer and retains referenced resources; it does not replace file-storage backups.
+See the [separation decision](../../../project/decisions/0162-document-and-memory-synthesis.md) and
+[preservation guarantees](../../../back/app/memory/tests/test_document_split.py).
 Search uses full current document content and the synthesis alongside standalone memories, returns
 one result per document/synthesis pair and applies current document permissions to both contents.
 Revisions retain dates, authors and Task sources, without an arbitrary “reason for change” field.
 
 The node's nature distinguishes memory, document, attachment, folder, file and directory.
+The former cognitive categories `semantic`, `episodic`, `social`, `core` and `working` are no
+longer editable types or filters. Classification uses content, node nature and provenance;
+retiring these categories does not erase historical knowledge.
 
 `memory_remember` acquires an important, uncommon fact immediately; ordinary consolidation belongs
 to Dream. Users can view, create and edit records and keywords, save without closing, inspect
@@ -1172,21 +1250,41 @@ and a late response cannot refill a revoked view.
 Contact memory keeps exact identity scope. Topic proximity or a shared fact cannot merge people;
 identity merging is explicit.
 
+Final admission rechecks content, revision, current rights and accepted relationship paths.
+Records corrected, revoked or forgotten during search are omitted, including lexical fallback
+and resumed frozen contexts. One occurrence cannot borrow another occurrence's permission.
+See [recall admission guarantees](../../../back/app/memory/tests/test_recall_admission.py).
+
 ### Browsing and maintenance
 
 Search now lives in **List**, alongside **Graph**; the separate Search tab is removed. The mandatory
-temporal filter starts at the browser's current date/time. **Apply** tests that instant without
+temporal filter starts at the current instant in the global `TZ` timezone. **Apply** tests that instant without
 lookahead: undated memories follow text/Topic/interlocutor filters, while matching dated
 memories are added independently of those filters. The union is sorted and paginated without
 duplicates, prioritising temporal matches by default. The text-recall ceiling does not truncate
 temporal matches. Simulation uses current rights and validity rather than reconstructing history.
 
-The graph UI supports node types and relationships, expansion, centring, full screen and bounded
-periods. Memory uses a desktop table or mobile cards without horizontal overflow; titles open
+The graph UI supports node natures and relationships, expansion, centring and full screen, with
+no period filter and a **3,000-node** window. Memory uses a desktop table or mobile cards without horizontal overflow; titles open
 details and available actions respect rights and node nature. Attachments provide acquired text and
 original-file preview from lists, search, graph and detail, including full-screen viewing scoped
 to the agent. Retry, agent change, closing and late responses preserve scope. Folders open browsing,
 not the memory editor or a file preview.
+
+Graph size and opacity follow relative last activity; old nodes remain visible. Directory roots
+retain their labels and every displayed node has a title at maximum zoom. Branches with at least
+eight exclusive leaves collapse into counted groups; zooming or clicking unfolds them and zooming
+out folds them while shared nodes remain visible. Zoom and closing details preserve positions
+and framing. Spatial loading and subgroups remain planned work.
+
+Documents, indexed files and attachments display available list thumbnails. Detail separates
+**Memory**, **Links and relationships** and **History**, retaining drafts between tabs. From a
+synthesis, **Open document** opens the document editor while preserving the Memory form.
+Associated URLs also link relevant files and content without granting new access rights.
+Compatible Dream actions can describe files, regenerate thumbnails, analyse documents, check
+memories or synchronise links. They require ownership and edit rights and run immediately even
+when automatic Dream is disabled or waiting. Save drafts first; personal notes and history survive,
+concurrent changes prevail over analysis and thumbnail failures retain the previous image.
 
 The UI localises relationship labels and suggestions and offers attachment, merge and split
 operations where appropriate. Conversation memory shows content and provenance rather than an
@@ -1227,6 +1325,11 @@ Other document types, such as a standalone image type, are not available; images
 be embedded in or attached to HTML documents.
 
 ### Canonical home for authored content
+
+For prose corrections, agents reread relevant passages and integrate edits with `file_edit`,
+preserving useful facts, sources, qualifications and contributors' meaning. `file_append` adds
+distinct information or chronological entries where useful, such as journals and meeting minutes.
+Prior versions remain in history; operational state belongs in Tasks or Goals.
 
 Agents use Galaris documents for durable reports, articles, analyses, plans, notes and drafts.
 They find, create or enrich the relevant document and reuse its `document://` URI through research,
@@ -1447,13 +1550,18 @@ Sources: [HTML conversion](../../../front/core/util/pasteDocumentHtml.ts),
 [images and persistence](../../../front/browser-tests/document-resources.spec.mjs),
 [import permissions](../../../back/app/memory/tests/test_document_resources.py).
 
-### Revision-linked thumbnails
+### One current thumbnail per document
 
-HTML cards use the beginning of the first printed page, including snapshot styles/images. A
-thumbnail belongs to a saved revision; editing invalidates its cache and refreshes visible previews.
+HTML cards use the entire first printed page, including snapshot styles/images. A
+document has one current **lossless WebP** within **320 × 320 pixels**, preserving proportions.
+A capture replaces its predecessor without thumbnail history or a new document revision.
+Editing invalidates the pointer and refreshes visible previews.
 Reads recheck rights, including direct human access. Off-screen previews wait until near the viewport;
 old responses are ignored. Thumbnail failure never blocks opening. Cards do not add an independent
 summary field.
+
+A capture completed after a content change cannot publish a stale image.
+See [decision 0163](../../../project/decisions/0163-single-document-thumbnail.md).
 
 ### Saving, history and human–agent collaboration
 
@@ -1572,10 +1680,11 @@ Dream uses available time with one mechanism at a time, bounded duration and per
 rather than independent parallel workers. Priority activity, especially voice, can interrupt it.
 Settings control activation, delays, leases and attempts.
 
-The twelve registered mechanisms cover Topic classification for messages/Tasks/turns; knowledge
+The fourteen registered mechanisms cover Topic classification for messages/Tasks/turns; knowledge
 extraction from Tasks, conversation rounds and voice turns; memory projection of Process definitions
 and results; duplicate/conflict/ageing findings; deterministic repair of documents, attachments,
-folders and references; four optional attachment analyses (text, non-text-extractable documents,
+folders and references; file catalogue discovery, fingerprinting and enrichment; persistent
+thumbnail preparation without AI; four optional attachment analyses (text, non-text-extractable documents,
 images and video audio); and optional procedural learning from Task outcomes.
 
 Extractors wait for required Topics and proven contact identity for conversational knowledge.
@@ -1613,6 +1722,9 @@ descriptions without another model call; document rights govern companion access
 Dream displays mechanism, subject, phase, coverage, cost, attempts and errors. Receipts support
 search/filter, prepared-output inspection and Topic-decision inspection. They record prepared and
 applied work for recovery without unnecessary model calls; visible monitoring pages receive updates.
+**Tracking** opens by default with indicators and activity; **History** groups operations and
+filters; **Indexing** selects an agent and lets users start a file traversal, inspect coverage,
+cancel it or retry observation repairs.
 Opening the page does not wake background work. Deterministic document repair is hidden from
 inference monitoring, while attachment analyses have separate entries.
 
@@ -1704,10 +1816,10 @@ mandatory system services.
 
 **Galaris (`galaris`), Conversation (`conversation`), Memory (`memory`) and File Sharing
 (`file_sharing`)** belong to every agent. `can_disable=false` is a software property, not a user
-setting. DbAdmin creates/reactivates connections and conversational access; historical global or
-connection-level function denials are ignored for these four services. APIs/services cannot edit
-or delete their definitions, connections, parameters or permissions. The UI labels them mandatory
-and makes relevant controls read-only. This does not bypass business ACLs or harness/context limits.
+setting. DbAdmin creates/reactivates connections and conversational access. Definitions and
+connections stay protected; humans can configure functions with the same **Active**, **Blocked**,
+**On request** modes and inheritance as other Tools. Historical ignored system restrictions are
+archived during migration. Mandatory activation never bypasses business ACLs or harness/context limits.
 
 The nine admission/status/control `conversation_*` commands and `document_show` belong to Conversation.
 `conversation_round_get`, `voice_turn_get`, `llm_call` and `llm_calls` belong to optional, initially
@@ -1722,12 +1834,52 @@ or in bulk, centralise global values with per-connection overrides unless enforc
 individual functions and global function rules, refresh catalogues/connections and synchronise
 missing built-ins. Secrets are encrypted and masked. Per-agent diagnostics show native/external/mixed
 origins, availability and discovery errors.
+Function modes resolve connection override, global state, then software default; **Inherit**
+removes an override. Parameter labels, descriptions and fixed choices appear consistently in
+connections, global settings and MCP tests. Values outside a choice list are rejected and YAML
+import/export preserves this metadata.
 
 Browser, Search, Image and Multimedia connections start active. Browser and Search receive
 conversation eligibility at first initialisation. **Console SSH, Image, Mail and Multimedia**
 require explicit conversation-mode activation in the Tool catalogue; this does not disable their
 Task access. Updates preserve saved choices, restrictions and credentials. Connection activation
 and conversation permission are distinct settings. Multimedia still needs compatible profile resources.
+
+### Delegated catalogue administration
+
+**ToolAdmin** provides 23 functions to inspect/create/update/delete custom Tools, configure shared
+values and connections, set permissions and refresh catalogues. Its delegation covers the global
+catalogue, refined by granted functions, rather than AgentAdmin's human scope. Built-in Tools
+stay protected and only humans assign administrative capabilities.
+
+A human prepares an HTTP/SSE candidate with credentials in **Test connection**, then shares its
+temporary agent-bound reference. Testing discovers functions without executing them; explicit
+creation after success adopts the candidate. Secrets remain server-side and new connections start
+inactive. ToolAdmin cannot configure or execute `stdio`; existing definitions are redacted with
+read-only settings. Mutations require `expected_version`; batches are atomic and direct dependencies
+block deletion without a cascade. Conflicts require rereading and reconciliation.
+
+Catalogue refresh runs directly with a 20-second budget and no technical Process. Results for
+completed agents are retained; partial results identify connections to refresh without replaying the saved mutation.
+Incomplete catalogues never trigger pruning.
+
+Sources: [ToolAdmin journey](../admin/tool-administration.md),
+[delegation, secrets and conflicts](../../../back/app/tools/tests/test_tool_admin.py).
+
+### Authorising an action or remembering consent
+
+Sensitive functions default to **On request**. The manager inspects exact arguments in a localised
+request and authorises or refuses the action. When available, **Always allow this function** makes
+only that function Active on that connection for future arguments too; local harness commands do
+not offer this choice. Rights and resource preconditions are still checked on resumption: a changed
+source invalidates the original operation even after permanent consent.
+
+**Permissions** also handles requests without an available private channel. Expired, duplicate or
+configuration-invalidated answers do not dispatch another operation. Agent YOLO does not answer
+existing human requests or bypass a block. Unknown external outcomes require reconciliation.
+
+Sources: [requests and preconditions](../../../back/app/tools/tests/test_action_authorizations.py),
+[permissions and YOLO](../admin/tool-administration.md).
 
 ### On-demand loading
 
@@ -1746,7 +1898,7 @@ identity. The UI supplies URL/client configuration and named per-client tokens w
 revocation. Secrets appear at creation and are subsequently masked. External clients receive only
 the agent's permitted scope, not implicit global administration.
 
-Galaris Admin, Galaris Lab, Goal Management, Skill Management, Topics and Process Administration
+AgentAdmin, ToolAdmin, Galaris Admin, Galaris Lab, Goal Management, Skill Management, Topics and Process Administration
 separate specialised functions. Lab is initially inactive; its 50 functions are inventoried below.
 
 ### Installed product documentation for agents
@@ -1832,6 +1984,36 @@ that validation; application collection insertion uses the Dataset SDK. `file_cr
 and units depend on providers. Business snapshots are read-only and use business commands for
 mutation. Memory/document removal uses business forgetting, not a bypass through `file_delete`.
 
+### Private file catalogue and durable indexing
+
+**File indexing** selects Disabled, **Known files only** (the compatible-provider default), or
+recursive discovery where supported. Global values, connection overrides and enforced values follow
+ordinary Tool parameters. Nextcloud supports discovery; Console, AFFiNE and Grav use known URIs;
+Mail is excluded. Messenger attachments enter the catalogue on receipt or history import.
+
+Authorised listing and search immediately project observed files/directories as private Memory
+records searchable by name, URI and metadata. Dream discovers one direct directory page per turn,
+up to 500 entries, without an LLM, using durable traversal state, receipts and recovery. Rescans
+default to Monday midnight in `TZ`, with daily/off choices; missed schedules catch up without
+duplicating active traversals. Known URIs are checked without exploring their provider.
+
+Dream hashes **all file bytes with SHA-256**, independently of the 32 MiB analysis ceiling.
+Identical copies owned by one agent share a record, descriptions and locations across storage and
+messaging. Personal titles, notes, relationships and sources survive. A modified copy moves to
+another record; losing one location does not remove the others. Identity stays isolated by agent
+and every access checks its source. Technical metadata is separate from descriptive content.
+
+Disabling or reconfiguring a connection removes its stale search projections. Only complete lists
+and proven deletions establish removal; inaccessible sources and incomplete pages do not justify
+erasure. Observation repairs never replay the external operation. **Dream → Indexing** starts an
+eligible traversal, reports partial coverage, supports cancellation and retries repairs; terminal
+diagnostics remain for 30 days. Dream media options enrich descriptions while retaining personal
+notes; directories do not receive automatic summaries.
+
+Sources: [configuration and journey](../admin/tool-administration.md),
+[catalogue, coverage and rights](../../../back/app/memory/tests/test_file_catalogue.py),
+[copy identity](../../../back/app/memory/tests/test_file_identity.py).
+
 ### Transfers and materialisation
 
 Image, transcription and messaging tools receive source URIs directly. Galaris transfers/materialises
@@ -1856,6 +2038,11 @@ remain readable. This is not general AFFiNE page synchronisation.
 Sources: [AFFiNE transport](../../../back/app/file_share/bridges.py),
 [read/copy guarantees](../../../back/app/file_share/tests/test_affine_blobs.py).
 
+Nextcloud uses version preconditions for replacement and deletion and rejects implicit overwrites.
+A source changed during a cross-provider move is not deleted; the result reports copy-only success.
+Generic operations cannot delete or move Nextcloud directories. See
+[Nextcloud guarantees](../architecture/flows/media-resources.md).
+
 ### Previews and viewers
 
 Shared viewers cover images, PDF, audio, video, HTML, Markdown, code, text and 3D, with available
@@ -1870,6 +2057,14 @@ loads.
 full screen via mouse, keyboard or touch. Thumbnails are on demand and graphics resources are
 released after use. Limits: 32 MB and two million vertices per preview; no animation playback,
 external glTF dependencies, STEP/IFC/FBX or CAD replacement. Meshopt is supported; Draco/KTX2 are not.
+
+Office documents and spreadsheets can receive a first-printed-page thumbnail without AI analysis,
+OCR or full-content extraction. They remain **download-only with no full-screen viewer**.
+Audio has an inline player and SVG thumbnails use vector rendering. Dream prepares supported
+thumbnails and openings reuse the authorised derivative. Server thumbnails use **lossless WebP**,
+within **320 × 320 pixels**, preserving proportions and transparency in durable sharded storage.
+Indexed files retain versioned derivatives; documents keep one current thumbnail. Missing thumbnails
+never block opening or downloading.
 
 Sources: [file tools](../../../back/app/file_share/mcp.py),
 [resource flow](../architecture/flows/media-resources.md), [3D previews](../components/resource-previews.md),
@@ -1901,7 +2096,10 @@ configuration and network permissions allow access.
 request; destination/domain/port/network filters retain priority. Allowed public GETs pass directly
 by default, while POST, PUT, PATCH, DELETE and WebSocket require consent. Grants and refusals are
 remembered per agent, access type and origin (scheme/domain/port). The action must be retried after
-the answer: forms are not automatically resubmitted. **Monitor → Remembered permissions** lists
+the answer. **Always allow all websites** stores agent-wide consent for future domains, schemes,
+ports and paths, configured methods and WebSocket. Filters, explicit denials and separate local-network
+permissions retain priority. Deleting the grant restores requests; older site-only grants retain
+their original scope. Forms are not automatically resubmitted. **Monitor → Remembered permissions** lists
 questions and decisions, filters by agent/answer and deletes choices to prompt again, under
 connection privileges and the managed-agent scope.
 
@@ -2051,6 +2249,9 @@ persist before submission. Connections can require human approval: preparation s
 without contacting SMTP; the reviewer fixed at creation inspects the exact content, approves or rejects
 with an optional reason; approval sends that saved version. Only that reviewer with required rights
 can decide; later configuration changes do not reassign pending mail.
+The designated reviewer can inspect and respond in **private chat** or in the mail journal.
+Failed notifications remain visible and can be retried. Both surfaces share the same controls;
+concurrent decisions cannot submit the message to SMTP twice.
 
 Mails displays pending sends then history, with agent filtering and sender/recipient/subject/body
 search. Detail shows outcome/reviewer. Ambiguous SMTP failure becomes uncertain; reconciliation can
@@ -2593,7 +2794,14 @@ for subsequent calls without editing client files. Logs retain token name and ac
 |---|---|
 | Integrated capability | May require a privilege, active connection, credentials and compatible resource. |
 | System services | Galaris, Conversation, Memory and File Sharing are mandatory without granting new resource rights. |
-| Initial assistant | Created once with internal harness and Admin; later edits/revocation/deletion persist. A usable model is still required. |
+| Initial assistant | Created once with internal harness, Galaris Admin, AgentAdmin and ToolAdmin; later edits/revocation/deletion persist. A usable model is still required. |
+| Delegated administration | AgentAdmin follows the manager's current rights/scope; ToolAdmin delegates the global catalogue. Agents cannot assign administrative capabilities. |
+| Permanent consent | Enables one connection function without bypassing ACLs, blocks or resource preconditions. YOLO requires explicit human choice. |
+| File indexing | Private per-agent catalogue with current source access and SHA-256 copy identity; discovery depends on providers and partial traversals are not exhaustive. |
+| Memory graph | 3,000-node window and folded leaves; spatial loading and subgroups remain planned. |
+| Document analysis | Resumable app.llm batches without a Process; supplied-unit coverage is separate from answer accuracy and interrupted inference is never automatically replayed. |
+| Documents and Memory | Optional synthesis with independent history and document rights; standalone memories stay private and document/synthesis keywords are shared. |
+| Thumbnails | One current document WebP; versioned file derivatives. Office thumbnails do not provide full-screen viewing. |
 | OpenRouter defaults | New databases only, without a key or network call; nine editable references with no promise of remote availability. |
 | Profile API | Stable codes, all profiles' available usages and authorised user tokens; missing usage never borrows another profile. |
 | Specialised decisions | Optional OpenRouter adapter, governed same-profile fallback; no invented probabilities or promised universal gains. |
@@ -2644,7 +2852,7 @@ and DbAdmin contributions.
 <a id="mcp"></a>
 ## 30. Inventory of agent-accessible functions
 
-These are the **184 native functions declared with `@mcp_tool` in the reviewed code**, including
+These are the **244 native functions declared with `@mcp_tool` in the reviewed code**, including
 conversation-only and administrative functions. They are not all visible to every agent; MCP exposes
 full argument schemas. External MCP servers discover their own evolving functions at connection time,
 with descriptions/status in the effective catalogue. External-runtime capabilities and discovery
@@ -2676,6 +2884,85 @@ selects the concrete Tool.
 | `conversation_process_start` | `conversation` | Start an assigned Process linked to the conversation without awaiting completion. |
 | `document_show` | `conversation` | Request opening of a readable document in the current internal text room after rights/freshness checks; no sharing or Task invocation. |
 | `conversation_round_get` | `galaris_admin` | Full administrative round dossier: messages, attempts, created/amended Tasks, Processes, result and calls. |
+
+### Delegated agent administration
+
+These 34 functions require AgentAdmin, current function permissions and the manager's rights.
+
+| Function | Family | Action and result |
+|---|---|---|
+| `agent_create` | `agent_admin` | Create an agent with an explicit manager and internal harness. |
+| `agent_update` | `agent_admin` | Update permitted fields while retaining the permanent code. |
+| `agent_delete` | `agent_admin` | Delete a manageable agent, excluding self-deletion. |
+| `agent_options` | `agent_admin` | Discover eligible administration values and targets. |
+| `agent_avatar_set` | `agent_admin` | Register an avatar from an authorised canonical URI. |
+| `agent_avatar_delete` | `agent_admin` | Remove the authorised target's avatar. |
+| `agent_avatar_generate` | `agent_admin` | Generate with the caller's image model and await registration. |
+| `agent_team_list` | `agent_admin` | List an authorised agent's team memberships. |
+| `agent_team_set` | `agent_admin` | Explicitly replace eligible memberships. |
+| `agent_tool_list` | `agent_admin` | List available Tools for a manageable target. |
+| `agent_connection_list` | `agent_admin` | List target connections within delegated scope. |
+| `agent_connection_get` | `agent_admin` | Read a connection with masked secrets and inheritance. |
+| `agent_connection_create` | `agent_admin` | Create an eligible optional connection. |
+| `agent_connection_update` | `agent_admin` | Update a connection without changing its identity. |
+| `agent_connection_delete` | `agent_admin` | Delete an authorised optional connection. |
+| `agent_connection_params_set` | `agent_admin` | Set eligible local parameters in a batch. |
+| `agent_connection_param_delete` | `agent_admin` | Remove a local parameter value. |
+| `agent_connection_function_list` | `agent_admin` | Read connection function modes. |
+| `agent_connection_function_set` | `agent_admin` | Set a local override or restore inheritance. |
+| `agent_harness_get` | `agent_admin` | Read harness configuration and capabilities. |
+| `agent_harness_set` | `agent_admin` | Select a compatible harness subject to blockers. |
+| `agent_harness_reset` | `agent_admin` | Reset harness configuration under its contract. |
+| `agent_harness_status` | `agent_admin` | Read the target harness's current state. |
+| `agent_harness_action` | `agent_admin` | Execute a lifecycle action offered by the harness. |
+| `agent_harness_logs` | `agent_admin` | Read bounded, redacted logs. |
+| `agent_harness_blockers` | `agent_admin` | List Tasks blocking a harness operation. |
+| `agent_title_list` | `agent_admin` | List titles with pagination. |
+| `agent_title_create` | `agent_admin` | Create a title with global rights. |
+| `agent_title_update` | `agent_admin` | Update a title with global rights. |
+| `agent_title_delete` | `agent_admin` | Delete an unreferenced title with global rights. |
+| `agent_group_list` | `agent_admin` | List accessible agent groups. |
+| `agent_group_create` | `agent_admin` | Create a shared group with global rights. |
+| `agent_group_update` | `agent_admin` | Update a shared group with global rights. |
+| `agent_group_delete` | `agent_admin` | Delete a group, detaching associated links and access. |
+
+### Delegated Tool administration
+
+These 23 functions require ToolAdmin. Built-in definitions and human delegations stay protected.
+
+| Function | Family | Action and result |
+|---|---|---|
+| `tool_admin_list` | `tool_admin` | List Tools in the global catalogue. |
+| `tool_admin_get` | `tool_admin` | Read a definition, version and redacted settings. |
+| `tool_admin_create` | `tool_admin` | Create a secret-free definition or adopt a tested human candidate. |
+| `tool_admin_update` | `tool_admin` | Update a custom definition at the expected version. |
+| `tool_admin_impact` | `tool_admin` | Inspect direct dependencies before deletion. |
+| `tool_admin_delete` | `tool_admin` | Delete a dependency-free definition without an implicit cascade. |
+| `tool_admin_global_params_set` | `tool_admin` | Atomically set global values and enforcement. |
+| `tool_admin_conversation_set` | `tool_admin` | Set an optional Tool's conversational access. |
+| `tool_admin_mcp_test` | `tool_admin` | Test an HTTP/SSE candidate without saving or business calls. |
+| `tool_admin_function_list` | `tool_admin` | List functions and global state. |
+| `tool_admin_function_get` | `tool_admin` | Read a function's detailed schema and state. |
+| `tool_admin_function_set` | `tool_admin` | Set global mode and report local overrides. |
+| `tool_admin_connection_list` | `tool_admin` | List connections with pagination. |
+| `tool_admin_connection_get` | `tool_admin` | Read a connection and masked values. |
+| `tool_admin_connection_create` | `tool_admin` | Create an initially inactive connection. |
+| `tool_admin_connection_update` | `tool_admin` | Update a connection at the expected version. |
+| `tool_admin_connection_delete` | `tool_admin` | Delete an authorised optional connection. |
+| `tool_admin_connection_params_set` | `tool_admin` | Write local parameters atomically in a batch. |
+| `tool_admin_connection_param_delete` | `tool_admin` | Explicitly remove a local parameter. |
+| `tool_admin_connection_test` | `tool_admin` | Diagnose a connection, even inactive, without activating it. |
+| `tool_admin_connection_function_list` | `tool_admin` | List effective permissions and local availability. |
+| `tool_admin_connection_function_set` | `tool_admin` | Set local mode or restore inheritance. |
+| `tool_admin_catalog_refresh` | `tool_admin` | Refresh catalogues directly with partial results and targeted retry. |
+
+### Document analysis
+
+| Function | Family | Action and result |
+|---|---|---|
+| `document_analyze` | `galaris` | Start a private resumable URI analysis with an inference-call budget. |
+| `document_analysis_get` | `galaris` | Read progress, answers and coverage after source checks. |
+| `document_analysis_cancel` | `galaris` | Request cancellation while retaining completed batches. |
 
 ### Goals
 
@@ -2972,13 +3259,13 @@ All **71 declared modules** map to one or more sections; runtime activation/conf
 | `app.incident` | [Failure journal and remediation](#supervision) |
 | `app.tools` | [Catalogue, integrations, search and function restrictions](#outils) |
 | `app.documentation` | [Installed corpus, provenance, hybrid search and agent access](#outils), [shared-index refresh](#exploitation) |
-| `app.agent` | [Identity](#agents), [orchestration](#taches), [agent API/Janus](#modeles) |
+| `app.agent` | [Identity, delegated administration and portraits](#agents), [orchestration](#taches), [agent API/Janus](#modeles) |
 | `app.harness` | [Internal Pydantic AI execution](#harnais) |
 | `app.harnesses` | [Harness catalogue, selection and lifecycle](#harnais) |
 | `app.connection` | [Agent connections/settings](#outils) |
 | `app.skill` | [Library/permissions](#skills), [learning](#dream) |
 | `app.webhook` | [No active generic endpoint; dedicated integration input](#processus) |
-| `app.llm` | [Models, profiles, gateways and durable inference](#modeles), [traces/costs](#supervision) |
+| `app.llm` | [Models, profiles, gateways, credits and durable inference](#modeles), [document reading/analysis](#harnais), [traces/costs](#supervision) |
 | `app.topic` | [Topics and classification](#sujets) |
 | `app.memory` | [Knowledge, document structure and attachments](#memoire), [HTML/Datasets/apps/permissions/filing/sharing](#documents), [Goal filing](#objectifs) |
 | `app.contact` | [Contacts and cross-channel identities](#messageries) |
@@ -2995,7 +3282,7 @@ All **71 declared modules** map to one or more sections; runtime activation/conf
 | `app.audio` | [Transcription/long summaries](#medias) |
 | `app.onboarding` | [Guided initial setup](#interface) |
 | `app.voice` | [Voice conversations/turn history](#voix) |
-| `app.file_share` | [Resource facade/files/transfers](#fichiers) |
+| `app.file_share` | [Resource facade, files, private catalogue, indexing and transfers](#fichiers) |
 | `app.console` | [SSH/SFTP, terminal and durable commands](#console) |
 | `app.process` | [Definitions, runs, callbacks and recovery](#processus) |
 | `app.multimedia` | [Audio/video analysis and long generation](#medias) |
@@ -3059,10 +3346,10 @@ rather than independent applications.
 | `app/conversation` | Round history, shared execution details and delivery resolution |
 | `app/chat` | Chat/rooms, message editor, previews, adaptive document workspace, linked Tasks/documents/Processes |
 | `app/voice` | Call history/voice-turn detail |
-| `app/dream` | Background-mechanism monitoring/receipts |
+| `app/dream` | Tracking, history, file indexing and immediate Memory-node actions |
 | `app/topic` | Topic list/detail/reorganisation |
 | `app/goal` | Objectives, tree, cycles, referrers, schedules and follow-up |
-| `app/memory` | Unified list/search, temporal anchors and simulation, document graph, contacts, HTML/Dataset library, JSON CodeEditor, apps/permissions, personal folders/icons/thumbnails/sharing |
+| `app/memory` | Unified list/search, temporal simulation, graph with folded branches, file locations, contacts, separate documents/syntheses, HTML/Dataset library, apps, permissions, personal folders, WebP thumbnails and sharing |
 | `app/lab` | Task diagnosis, contextual synthetic datasets, mechanism evaluation, consistency and attributed reviews |
 | `app/incident` | Incidents, families and review |
 | `app/process` | Definitions, execution, diagnostics/administration |

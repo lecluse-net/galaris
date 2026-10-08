@@ -372,6 +372,22 @@ La normalisation réduit fortement la taille d’une vidéo, d’un WAV ou d’u
 Elle ne réduit pas nécessairement la facture du fournisseur de transcription lorsque celui-ci
 facture à la durée de l’enregistrement plutôt qu’au volume transmis.
 
+### Analyser une grande source documentaire
+
+Joignez le fichier ou indiquez son URI accessible, puis demandez une analyse avec une question
+précise et les références attendues, par exemple :
+
+> Analyse ce rapport par lots, relève les décisions et les chiffres de ses dernières pages,
+> indique les pages sources et les parties qui n’ont pas pu être lues.
+
+L’agent peut lancer une analyse documentaire durable, consulter sa progression et sa couverture,
+puis demander son arrêt. Les lots terminés sont conservés ; une inférence facturable interrompue
+n’est pas relancée automatiquement. Cette analyse appartient au service de modèles, sans apparaître
+comme processus métier. L’accès au fichier et sa version restent vérifiés ; déplacer ou modifier
+la source pendant le traitement peut invalider les résultats. La couverture indique les unités
+fournies au modèle, sans certifier la justesse des réponses. Voir les
+[formats et limites de lecture](../dev/document-qualification.md).
+
 ### Lancer un processus métier
 
 L’écran **Processus** expose les workflows que l’administrateur a associés à un agent. Ouvrez

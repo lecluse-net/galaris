@@ -267,6 +267,20 @@ The main audio and video formats recognized by PyAV are accepted; a corrupted, u
 
 Normalization greatly reduces the size of a video, WAV, or high-bitrate media. It does not necessarily reduce the transcription provider’s charge when the provider bills based on recording duration rather than transmitted volume.
 
+### Analysing a large document source
+
+Attach the file or supply an accessible URI and ask a precise question with the expected references:
+
+> Analyse this report in batches, identify decisions and figures in its last pages,
+> cite source pages and state which parts could not be read.
+
+The agent can start a durable document analysis, read progress and coverage and request cancellation.
+Completed batches are retained; interrupted billable inference is never automatically replayed.
+The analysis belongs to the model service and does not appear as a business Process. Source access
+and version remain checked; moving or modifying the file can invalidate results. Coverage describes
+units supplied to the model without certifying answer accuracy. See
+[reading formats and limits](../dev/document-qualification.md).
+
 ### Launching a Business Process
 
 The **Processes** screen exposes the workflows that the administrator has associated with an Agent. Open a definition, enter its JSON input, and then launch an execution. Its status, output, events, and related Tasks remain available in the same screen.

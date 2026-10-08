@@ -38,8 +38,9 @@ are not manufacturing measurements.
 
 ## Thumbnails and loading
 
-In Memory and document attachments, PNG thumbnails remain in durable server
-storage. Dream prepares them during available periods; opening a file can also
+In Memory and document attachments, lossless WebP thumbnails remain in durable server
+storage, distributed into subdirectories. They fit within 320 × 320 pixels while preserving
+proportions and transparency. Dream prepares them during available periods; opening a file can also
 trigger preparation. The isolated browser captures 3D models without network access
 and then closes its context. Reopening the graph or reloading the page reads the
 saved image without downloading or rendering the model again. Every read still

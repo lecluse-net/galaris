@@ -40,8 +40,9 @@ constituent pas des mesures de fabrication.
 
 ## Miniatures et chargement
 
-Dans Memory et les pièces jointes documentaires, les miniatures PNG sont conservées
-sur le stockage durable du serveur. Dream les prépare en période disponible ; une
+Dans Memory et les pièces jointes documentaires, les miniatures WebP sans perte sont conservées
+sur le stockage durable du serveur, réparti en sous-répertoires. Elles tiennent dans 320 × 320 pixels
+en conservant leurs proportions et leur transparence. Dream les prépare en période disponible ; une
 première ouverture peut également déclencher leur préparation. Le navigateur isolé
 capture les modèles 3D sans accès réseau, puis ferme son contexte. La réouverture du
 graphe ou le rechargement de la page relit l'image enregistrée sans télécharger ni

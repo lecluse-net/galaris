@@ -40,6 +40,10 @@ externes configurés. Les possibilités de fichiers, d’historique et de voix d
 Chaque agent possède une identité durable, une mission, une personnalité, des compétences et des
 moyens d’action. On peut organiser des spécialistes dans des équipes réunissant humains et agents,
 puis leur donner les accès utiles à leur rôle.
+Les outils optionnels **AgentAdmin** et **ToolAdmin** permettent aussi de déléguer leur
+configuration : AgentAdmin respecte les droits du responsable humain ; ToolAdmin administre
+le catalogue global selon les fonctions accordées. Les secrets restent côté serveur et les
+délégations administratives restent attribuées par les humains.
 
 Pour préparer une étude, un agent peut solliciter un collègue chargé d’une recherche ou d’une revue.
 La contribution devient une tâche identifiable : on voit qui travaille, ce qui est attendu,
@@ -86,6 +90,11 @@ La mémoire aide l’agent à retrouver des faits, des décisions et des connais
 demande actuelle. La recherche combine mots, sens et relations entre les ressources, en respectant
 les droits et la validité des informations. Les contacts relient les échanges à leurs interlocuteurs ;
 les sujets rassemblent une activité dispersée entre conversations, tâches et documents.
+Les fichiers rencontrés par les outils peuvent rejoindre un catalogue privé avec leurs
+emplacements et leurs miniatures. Dream identifie les copies identiques par agent, prépare
+les aperçus et parcourt les providers compatibles selon les réglages d’indexation. Le graphe
+replie les branches nombreuses et conserve le cadrage pendant l’exploration. Depuis une fiche,
+des actions explicites permettent de relancer une description, une miniature ou une synchronisation.
 
 Dream utilise les périodes disponibles pour classer et consolider les connaissances. Il peut
 extraire les éléments durables d’un travail terminé, repérer doublons ou contradictions et,
@@ -124,6 +133,9 @@ jusqu’à leur résultat.
 Le courrier complète ces moyens d’action : lire et rechercher des mails, traiter les pièces jointes,
 préparer une réponse et, si la connexion l’exige, attendre que l’humain approuve exactement ce qui
 sera envoyé. Les calendriers ajoutent disponibilités, recherche de créneaux et événements.
+L’approbation d’un mail est accessible dans le chat privé du valideur comme dans son journal.
+Pour une fonction d’outil, un accord permanent peut éviter les demandes suivantes sur cette
+connexion ; les droits des ressources et leurs versions restent vérifiés.
 
 ## Travailler avec des contenus multimédias
 
@@ -131,6 +143,10 @@ Un enregistrement de réunion peut devenir un verbatim et une synthèse, puis un
 l’on corrige avec l’agent. Une vidéo YouTube disposant de sous-titres publics peut alimenter le même
 travail. Les visionneuses permettent d’examiner PDF, images, sons, vidéos, Markdown, code et plusieurs
 formats 3D sans transformer chaque consultation en téléchargement externe.
+Les documents Office et tableurs peuvent afficher une miniature de leur première page tout
+en conservant le téléchargement original. Une grande source peut être analysée par lots
+reprenables, avec progression et couverture explicites ; un lot facturable interrompu n’est
+pas automatiquement rejoué. La couverture ne certifie pas la justesse de l’interprétation.
 
 Avec les modèles compatibles, les agents peuvent analyser des images, des sons et des vidéos,
 générer ou modifier une illustration et lancer une génération de musique, d’effets sonores ou de
