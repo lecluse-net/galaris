@@ -180,6 +180,9 @@ Les lots sont validés avant toute écriture et enregistrés dans une seule tran
 
 Les fonctions suivent **surcharge de connexion → état global → défaut logiciel**. Les modes
 sont **Actif**, **Bloqué** et **Sur demande** ; **Hériter** (`default`) retire la surcharge.
+Dans l'écran d'autorisations, **Global (tous)** propose uniquement **Activé**, **Désactivé**
+et **Sur demande** ; sans règle enregistrée, il affiche le défaut logiciel. **Hériter**
+est réservé à **Cette connexion**.
 Les fonctions natives sensibles sont Sur demande par défaut ; les capacités MCP tierces sont
 Actives par défaut. Un refus global peut donc être surchargé par une autorisation locale explicite ;
 `tool_admin_function_set` signale ces surcharges. `effective` décrit la permission résolue,

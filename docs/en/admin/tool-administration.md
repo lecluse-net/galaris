@@ -170,8 +170,11 @@ code and endpoint. A mask never replaces a secret. Entire batches validate befor
 and persist in one transaction.
 
 Functions resolve **connection override → global state → software default**. Modes are
-**Enabled**, **Disabled**, and **Ask**; **Inherit** (`default`) removes an override. Sensitive
-native functions default to Ask; third-party MCP capabilities default to Enabled.
+**Enabled**, **Disabled**, and **Ask**; **Inherit** (`default`) removes an override.
+In the authorization screen, **Global (all)** offers only **Enabled**, **Disabled** and
+**Ask**, displaying the software policy when no global rule is saved. **Inherit** is
+available only for **This connection**. Sensitive native functions default to Ask;
+third-party MCP capabilities default to Enabled.
 A global denial can therefore be overridden by an explicit local enable;
 `tool_admin_function_set` reports such overrides. `effective` describes resolved permission;
 `available` also includes activation, runtime and conversation context. Discovery under one
