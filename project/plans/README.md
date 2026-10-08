@@ -1,78 +1,68 @@
 # Plans actifs de Galaris
 
-Revue documentaire du **1er octobre 2026**, fondée sur le code, les contrats, les tests et
-les décisions du dépôt. Elle ne relance pas les qualifications et ne prouve aucun déploiement.
+Revue du **8 octobre 2026**, par comparaison des sources, contrats, tests et décisions.
+Elle prend en compte le worktree courant ; elle ne rejoue pas les campagnes et ne prouve
+ni qualification globale ni déploiement.
 
-Cet index contient uniquement les extensions, mesures et conceptions encore ouvertes.
-Les étapes réalisées appartiennent aux [décisions](../decisions/README.md), aux tests et à la
-[documentation](../../docs/fr/README.md). La présence d'un plan ne vaut ni autorisation
-d'implémentation ni nouvel ordre de priorité produit.
+Ce répertoire conserve les écarts concrets, conceptions et expériences encore ouverts.
+Les contrats réalisés appartiennent aux [décisions](../decisions/README.md),
+aux tests et à la [documentation](../../docs/fr/README.md).
+Un plan ne vaut ni ordre d'implémentation ni nouvelle priorité produit.
 
 ## Statuts
 
 | Statut | Signification |
 |---|---|
-| `design` | Conception conservée ; réalisation non engagée ou non démontrée |
-| `approved` | Périmètre accepté, implémentation non commencée ou non démontrée |
-| `in-progress` | Implémentation encore en cours |
-| `partial` | Socle réalisé ; extensions ou qualifications spécifiques ouvertes |
+| `design` | Conception conservée ; réalisation non engagée ou non démontrée. |
+| `approved` | Périmètre accepté ; implémentation non commencée ou non démontrée. |
+| `in-progress` | Implémentation en cours. |
+| `partial` | Socle réalisé ; extensions ou expériences spécifiques ouvertes. |
 
-## Travaux à terminer
+## Extensions et expériences
 
 | Plan | Statut | Reste à faire |
 |---|---|---|
-| [analyse-documentaire-unifiee.md](analyse-documentaire-unifiee.md) | `partial` | Formats non qualifiés et XLS structurel, isolation réseau des convertisseurs, contrôles sémantiques et qualification exhaustive et répétée des grandes sources. |
-| [fiabilisation-conversationnelle.md](fiabilisation-conversationnelle.md) | `partial` | Mesures de latence, dont le dispatcher ; arrêt physique des autres runtimes et effets distants réels (worker Hermès direct qualifié en environnement synthétique), remplacement coordonné Task/Goal/Process ; autres surfaces de capacités et diagnostics ; recherche dans l'environnement cible, livraison d'images, contexte utile ; objets candidats concurrents et langue/effort hors du dispatcher qualifié FR/EN ; frictions du parcours complet. |
-| [llm-calls-durables.md](llm-calls-durables.md) | `partial` | Création différée, commandes avec révision attendue, échéance cumulée des tentatives, entrées média et arbitrages de rejeu incertain justifiés par un consommateur. |
-| [convergence-pydantic-ai.md](convergence-pydantic-ai.md) | `partial` | Métadonnées OpenRouter, étude d'un transport Codex natif alternatif, projection des réglages demandés/envoyés et extensions embeddings, realtime et média. |
-| [portee-provenance-execution-agentique.md](portee-provenance-execution-agentique.md) | `partial` | Contrat générique de portée, descripteurs d'effets, plan validé, préflight et intégration de ces décisions dans l'activité existante. |
-| [lab-evaluation-mecanismes-ia.md](lab-evaluation-mecanismes-ia.md) | `partial` | Qualification des campagnes FR/EN avec fournisseurs réels, étalonnage du juge, incertitude, politiques de comparabilité élargies et tendances, gardes de promotion, portabilité et jugement renforcé. |
-| [optimisation-prompts-agentiques.md](optimisation-prompts-agentiques.md) | `partial` | Mesures sur corpus multilingue et sélection du contexte selon les résultats, sans modifier le contrat des sessions de Task. |
-| [amelioration-globale-memoire.md](amelioration-globale-memoire.md) | `partial` | Qualification et expériences Memory/Dream/Topics ; transcriptions audio et analyses de PJ vers les souvenirs, provenance et couverture explicites, évaluation du texte extrait documentaire et utilité aval. |
-| [graphe-memoire-multiechelle.md](graphe-memoire-multiechelle.md) | `partial` | Premier repli de feuilles exclusives, placement animé jusqu'à 600 items, placement borné au-delà, vue éloignée allégée, miniatures de fichiers/documents au budget client et marqueurs audio ; restent la hiérarchie serveur, le chargement spatial au-delà de 3 000 nœuds, les miniatures de liste, l'actualisation par région et la qualification des grands volumes. |
-| [outils-mcp-multimedia.md](outils-mcp-multimedia.md) | `partial` | Qualification des comptes et livraisons réels ; accès officiel Suno, références média, composition avancée et extensions locales à concevoir séparément. |
-| [modeles-decision.md](modeles-decision.md) | `partial` | Comparaisons spécialisé/texte avec répétitions et témoin, qualification Jev réelle des usages Topics et mémoire, latence de bout en bout et optimisations guidées par les mesures ; nouveaux usages et adaptateurs locaux différés. |
+| [amelioration-globale-memoire.md](amelioration-globale-memoire.md) | `partial` | Transcriptions/PJ vers les souvenirs, provenance et texte extrait ; pertinence/utilité aval sur corpus élargi ; observation détaillée, granularité et réaffectation des Topics. Qualifications particulières du catalogue File Share regroupées ici. |
+| [analyse-documentaire-unifiee.md](analyse-documentaire-unifiee.md) | `partial` | XLS structurel, formats non couverts, isolation réseau, contrôles sémantiques et qualification répétée des grandes sources. |
+| [graphe-memoire-multiechelle.md](graphe-memoire-multiechelle.md) | `partial` | Hiérarchie serveur, chargement spatial au-delà de 3 000 nœuds, miniatures de liste et invalidation régionale ; qualification des grands volumes. |
+| [fiabilisation-conversationnelle.md](fiabilisation-conversationnelle.md) | `partial` | Mesures du parcours/dispatcher et des prompts ; arrêt externe et remplacement coordonné ; autres capacités/diagnostics, contexte, langue et parcours illustré complet. |
+| [lab-evaluation-mecanismes-ia.md](lab-evaluation-mecanismes-ia.md) | `partial` | Étalonnage, incertitude, comparabilité/tendances, gardes et portabilité ; campagnes spécialisé/texte des modèles de décision regroupées ici. |
+| [llm-calls-durables.md](llm-calls-durables.md) | `partial` | Préparation différée, révision des commandes, échéance cumulée, médias et arbitrages de rejeu justifiés par un consommateur. |
+| [convergence-pydantic-ai.md](convergence-pydantic-ai.md) | `partial` | Métadonnées OpenRouter, transport Codex alternatif, projection des réglages, surfaces supplémentaires et adaptateurs de décision différés. |
+| [portee-provenance-execution-agentique.md](portee-provenance-execution-agentique.md) | `partial` | Scope/grants génériques, descripteurs d'effets, plan validé, préflight et intégration dans activité/reprise existantes. |
+| [outils-mcp-multimedia.md](outils-mcp-multimedia.md) | `partial` | Accès officiel Suno, références/composition/annulation distante et extensions locales ; recettes des comptes dans le guide. |
 
-## Conceptions conservées
+## Conceptions
 
-| Plan | Statut | Portée et dépendances |
+| Plan | Statut | Portée |
 |---|---|---|
-| [ordonnancement-llm-par-fournisseur.md](ordonnancement-llm-par-fournisseur.md) | `design` | Inventaire complet des appels et audit de leur demandeur/origine ; limite par connexion LLMProvider, priorités configurables par type avec audio en tête, administration, annulation, traces et chemins directs. |
-| [cible.md](cible.md) | `design` | Livraison publique, gouvernance des effets, releases d'agents, autonomie, interopérabilité et exploitation. |
-| [infrastructure-plugins-galaris.md](infrastructure-plugins-galaris.md) | `design` | Bundles, activation, frontend précompilé, permissions, conservation des données, compatibilité et rollback. |
-| [consolidation-parametrique-lora.md](consolidation-parametrique-lora.md) | `design` | Entraînement et service de modèles à qualifier ; dépend des campagnes, de l'étalonnage et des gardes du Lab. |
-| [indexation-file-share-memory.md](indexation-file-share-memory.md) | `partial` | Catalogue privé, fiches éditables, parcours Dream périodique/reprenable, réconciliation, réparation durable et suivi Memory implémentés. Identité SHA-256 par agent, emplacements File Share/Messenger, résumé partagé et aperçus intégrés. Qualification synthétique jusqu’à 100 000 entrées réalisée ; démarrage à froid et installations réelles encore à qualifier. Documents, Galaris, Web et Mail exclus. |
+| [ordonnancement-llm-par-fournisseur.md](ordonnancement-llm-par-fournisseur.md) | `design` | Provenance exhaustive, limite par connexion, priorités par type avec audio réservé, admission/annulation, activité et reprise. |
+| [infrastructure-plugins-galaris.md](infrastructure-plugins-galaris.md) | `design` | Bundle, SDK/TCK, activation par génération, frontend précompilé, permissions, conservation SQL, rollback et store signé. |
+| [consolidation-parametrique-lora.md](consolidation-parametrique-lora.md) | `design` | Gain à mesurer, corpus gouverné, trainer/serving à qualifier, invalidation et promotion dépendant des gardes du Lab. |
+| [cible.md](cible.md) | `design` | Distribution publique, gouvernance d'effets, releases d'agents, autonomie événementielle, collaboration, interopérabilité, flotte et écosystème ; piste 3D optionnelle. |
 
-La piste optionnelle de visualisation 3D de la mémoire reste dans la
-[cible prospective](cible.md#piste-optionnelle--visualisation-3d-de-la-mémoire).
+## Plans retirés et suivi conservé
 
-## Suivi hors plans d'implémentation
+- **Indexation File Share/Memory** : catalogue, reprise, réparation, Dream, SHA-256 et
+  emplacements Messenger réalisés ; contrats dans [0155](../decisions/0155-durable-file-indexing.md).
+  Recettes de démarrage à froid/providers et capacités avancées dans le plan mémoire.
+- **Optimisation des prompts** : composition livrée ; mesures/contexte repris dans
+  Conversation, pertinence/capture dans Mémoire, infrastructure dans le Lab.
+- **Modèles de décision** : workflows livrés ; comparaisons dans le Lab,
+  adaptateurs différés dans SDK et fournisseurs.
 
-La [matrice projet et le suivi opérationnel](../audits/2026-09-19-fiabilisation-transversale.md)
-conservent les preuves de stabilisation et le point de synchronisation des anciens droits
-de dialogue. Retirer un plan réalisé n'efface ni un blocage opérationnel ni une limite de
-qualification. Le contrat du dialogue reste la [décision 0083](../decisions/0083-shared-teams-and-dialogue-permissions.md).
-
-AgentAdmin est réalisé : sa [recette fournisseur](../../docs/fr/dev/agent-admin.md#recette-avec-un-fournisseur-réel)
-a été réalisée en développement le 2 octobre 2026 avec OpenRouter authentifié : génération,
-remplacement, réouverture et autorisations ponctuelles. Les résultats et leur périmètre sont
-conservés dans le guide de vérification, sans maintenir un plan d'implémentation terminé.
-
-Les autorisations ponctuelles MCP et des runtimes sont réalisées : leur contrat est conservé
-dans la [décision 0153](../decisions/0153-common-action-authorizations.md), les parcours dans
-le [guide d'administration](../../docs/fr/admin/tool-administration.md), et les preuves dans
-le [catalogue des tests](../../docs/fr/dev/functional-tests.md). Les qualifications synthétiques
-ne prouvent pas un déploiement. La recette AgentAdmin complète ces preuves avec un fournisseur
-image réel derrière MCP ; les modèles distants propres aux quatre SDK de harnais restent
-hors du périmètre de cette recette.
+Les preuves de stabilisation et blocages opérationnels restent dans la
+[matrice projet](../audits/2026-09-19-fiabilisation-transversale.md).
+AgentAdmin et les autorisations ponctuelles ont leurs
+[recettes](../../docs/fr/dev/agent-admin.md#recette-avec-un-fournisseur-réel),
+[contrat](../decisions/0153-common-action-authorizations.md) et
+[tests](../../docs/fr/dev/functional-tests.md), sans plan d'implémentation terminé.
 
 ## Maintenance
 
-- Chaque plan du répertoire possède exactement une entrée et un statut cohérent.
-- Garder uniquement le travail restant et ses critères de réception ; renvoyer les acquis
-  vers leurs sources canoniques, sans maintenir de journal d'implémentation dans les plans.
-- Supprimer un plan réalisé ou absorbé et corriger ses liens entrants dans le même changement.
-- Regrouper les mesures communes ; la qualification habituelle avant publication ne justifie
-  pas à elle seule de conserver chaque ancien plan d'implémentation.
-- Préserver les intentions non réalisées et les blocages explicites ; un nettoyage ne vaut
-  ni abandon produit, ni autorisation de synchronisation ou de déploiement.
+Chaque plan possède une seule entrée et un statut cohérent. Garder le manque actuel,
+ses dépendances et ses critères de réception ; retirer les acquis vers leurs sources
+canoniques, sans journal d'implémentation.
+Supprimer un plan réalisé/absorbé et corriger ses liens entrants.
+Regrouper les mesures communes ; une recette usuelle avant publication ne suffit pas
+à maintenir un ancien plan. Préserver intentions non réalisées et blocages explicites.

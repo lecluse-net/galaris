@@ -1,942 +1,207 @@
-# Plan — Qualification de la mémoire et expériences restantes
+# Mémoire — extensions et expériences restantes
 
-> **Statut :** `partial` — socle documentaire réalisé ; qualification et extensions ouvertes.
-> **Revue documentaire :** 1er octobre 2026.
+- Statut : `partial`
+- Revue des sources : 2026-10-08. Cette revue ne rejoue pas les campagnes.
 
-Le contrat réalisé appartient à la [décision 0108](../decisions/0108-memory-document-retrieval.md).
+## Socle à réutiliser
 
-Les preuves et limites restent dans les audits de
-[validité](../audits/2026-09-11-memory-multimedia-qualification.md),
-[recherche documentaire](../audits/2026-09-17-memory-document-retrieval.md),
-[classement](../audits/2026-09-17-memory-ranking-v8.md) et de
-[rappel vide](../audits/2026-09-17-memory-empty-round.md).
-Le contrat courant restitue les meilleurs candidats sans seuil de pertinence, avec droits,
-validité et révisions préservés. Une présence dans les résultats ne prouve pas une réponse.
+L'indexation documentaire, l'admission des résultats, les révisions et le repli lexical
+relèvent de l'[ADR 0108](../decisions/0108-memory-document-retrieval.md).
+Les accents, noms complets, relations indirectes FR/EN et passages complémentaires ont
+progressé avec l'[ADR 0158](../decisions/0158-indexed-memory-query-evidence.md) ;
+ces heuristiques bornées ne résolvent pas toutes les paraphrases, identités ou dates.
 
-Restent : qualification multilingue et sur d'autres corpus, paraphrases/alias, pertinence
-des passages et utilité aval, extraction nouvelle des pièces jointes, observation et
-expériences Memory/Dream/Topics ci-dessous. Les résultats locaux ne qualifient pas la production.
+Le catalogue privé de fichiers, ses observations, reprises, réparations et enrichissements
+Dream sont réalisés : [0154](../decisions/0154-file-catalogue-observations.md),
+[0155](../decisions/0155-durable-file-indexing.md) et
+[0156](../decisions/0156-persistent-file-thumbnails.md).
+Les copies File Share/Messenger partagent une fiche par SHA-256 et agent ; Documents,
+Galaris, Web et Mail gardent leurs contrats distincts. Les actions Dream explicites sont
+décrites par [0160](../decisions/0160-foreground-dream-memory-actions.md).
+Leur implémentation ne constitue plus un chantier.
 
-## 1. Objectif
+Le [benchmark conversationnel synthétique](../../back/scripts/memory_benchmark/README.md)
+possède déjà générateur, oracle, partitions, adaptateur réel, mesures de recherche/injection,
+comparaison appariée et agrégation. Réutiliser cette infrastructure et les évaluations
+existantes ; le raccordement de campagnes de rappel au Lab reste à concevoir.
+Les preuves historiques restent dans les audits de
+[qualification](../audits/2026-09-11-memory-multimedia-qualification.md) et de
+[recherche documentaire](../audits/2026-09-17-memory-document-retrieval.md).
 
-Améliorer la capacité de Galaris à retenir, organiser, retrouver, présenter, corriger et oublier
-les informations utiles, sans optimiser une étape au détriment de l’ensemble du cycle mémoire.
-Les documents sont des éléments mémoire centraux : leur contenu complet et actuel doit être
-recherchable, et les agents doivent recevoir les passages utiles avec leurs URI et leur provenance.
-Le modèle d'embeddings est exclusivement celui du paramètre configuré ; le plan ne choisit,
-ne compare et ne remplace aucun modèle.
+## MEM-018 / MEM-011 — Acquisition des pièces jointes et provenance
 
-Chaque changement doit répondre à quatre questions avant son implémentation :
+Le lecteur commun et l'analyse reprenable existent
+([0151](../decisions/0151-resumable-document-analysis.md)).
+Restent les apports sélectifs de leurs résultats à la mémoire conversationnelle et la
+recherche précise du texte extrait des PJ documentaires.
 
-1. quel défaut observable cherche-t-il à corriger ?
-2. quelle hypothèse explique qu’il améliorera la situation ?
-3. quel benchmark avant/après peut réfuter cette hypothèse ?
-4. quelles portes de non-régression et quel rollback empêchent une dégradation silencieuse ?
+Constat dans `dream/mechanisms/conversation_memory.py` : l'éligibilité SQL et la
+sérialisation utilisent encore `Message.text`. Le chemin audio seul avec transcription
+doit être reproduit dans le workflow avant correction ; cette inspection n'est pas une
+reproduction applicative. Le catalogue Messenger réalisé ne prouve pas ce raccordement.
 
-Le plan ne cherche donc pas un « meilleur système de mémoire » abstrait. Il organise une suite
-d’expériences comparables, chacune reliée à un défaut utilisateur ou opérationnel précis.
-
-## 2. Autorités et périmètre
-
-Les contrats, modèles, implémentations et tests restent autoritaires. Ce plan s’inscrit notamment
-dans les décisions suivantes sans les remplacer :
-
-- [0010 — Mémoire agentique gouvernée et commune aux drivers](../decisions/0010-governed-agent-memory.md) ;
-- [0020 — Dossiers thématiques globaux comme pivot de la mémoire](../decisions/0020-global-thematic-dossiers.md) ;
-- [0024 — Création gouvernée et réemploi prioritaire des dossiers thématiques](../decisions/0024-governed-topic-creation.md) ;
-- [0026 — Mémoire conversationnelle scellée par interlocuteur puis classée par Topic](../decisions/0026-topic-contact-conversation-memory.md) ;
-- [0027 — Extraction mémoire en une passe, conditionnée par le Topic](../decisions/0027-topic-gated-single-pass-memory-extraction.md) ;
-- [0041 — Signalements déterministes de maintenance mémoire](../decisions/0041-deterministic-memory-maintenance-findings.md) ;
-- [0104 — Documents comme pivot de l'information](../decisions/0104-documents-information-hub.md) ;
-- [0106 — Structure documentaire et mémoire des pièces jointes](../decisions/0106-document-structure-memory.md) ;
-- [0107 — Dossiers personnels des objectifs](../decisions/0107-personal-goal-folders.md).
-
-Le [plan du Lab](lab-evaluation-mecanismes-ia.md) possède l’infrastructure transversale de
-benchmark. Le présent document définit les questions et métriques propres à Memory ; il ne crée
-pas un second système d’évaluation.
-
-Le plan couvre le cycle complet :
-
-```text
-source observée
-      ↓
-éligibilité et extraction
-      ↓
-acquisition, déduplication et provenance
-      ↓
-organisation par Topics et graphe
-      ↓
-recherche, ranking et sélection bornée
-      ↓
-injection ou lecture volontaire
-      ↓
-usage réel dans une décision
-      ↓
-correction, consolidation, vieillissement et oubli
-```
-
-
-### 2.1 Expériences exploratoires
-
-Les pistes du rapport privé sont reprises dans les lots ci-dessous : observation sans
-renforcement de popularité (MEM-013), cohortes et ablations (MEM-006/009), organisation
-des Topics (MEM-010), provenance fine (MEM-011/018). Leurs prototypes et mesures ne sont
-pas réputés intégrés au dépôt ; chaque hypothèse doit être reproduite sur le moteur courant.
-
-L'activation adaptative, la dormance et les circuits de preuve restent exploratoires.
-Les identifiants MEM restent stables ; l'indexation, l'admission et la recherche commune
-réalisées relèvent de l'ADR 0108, sans lots d'implémentation dans ce plan.
-
-## 3. Invariants communs
-
-Les lots ajoutés à ce plan respectent par défaut les invariants suivants :
-
-- `app.memory` reste l’unique façade métier de la mémoire gouvernée ;
-- documents et textes acquis de PJ sont des sources de premier rang, sans bonus aveugle de nature ;
-- l'usage vectoriel du profil configuré dans `app.llm` fait autorité : aucun modèle automatique,
-  secondaire, de secours ou choisi après benchmark ; les paramètres de ranking restent globaux ;
-- un changement du modèle configuré invalide les projections incompatibles et programme leur
-  reconstruction ; aucune conversion ou comparaison implicite entre espaces vectoriels ;
-- index présent, index complet, contenu actuel et remise autorisée sont des propriétés distinctes ;
-- les données du document sont des sources à consulter, jamais des instructions capables de
-  modifier la politique d'outils, les droits ou les consignes supérieures ;
-- PostgreSQL conserve l’identité, les droits, les sources, les révisions, les liens et l’audit ;
-- les ACL et le scellement par interlocuteur sont appliqués avant ranking ou expansion du graphe ;
-- une panne des embeddings ou du provider vectoriel reste fail-open vers un chemin lexical
-  fraîchement admis, avec dégradation visible ; elle n'assouplit jamais les ACL ni l'effacement ;
-- les projections source-managed restent distinctes de leur autorité métier ;
-- aucune proximité sémantique ou graphique n’accorde un droit d’accès ;
-- provenance, oubli physique, révision et idempotence ne sont jamais sacrifiés à la qualité perçue ;
-- l’évaluation utilise des copies bornées ou des snapshots et ne modifie jamais la mémoire de
-  production ;
-- une amélioration n’est pas déduite d’un score global seul : les dimensions antagonistes restent
-  visibles séparément ;
-- le dataset de holdout n’est ni lu ni modifié pendant le réglage ;
-- les seuils d’acceptation sont écrits avant l’ouverture du holdout ;
-- un changement qui échoue à ses portes de non-régression n’est pas promu.
-
-Pour le premier lot Topic, une contrainte supplémentaire est ferme : **aucun nouveau type de
-mémoire, aucun nouveau type de lien et aucune modification du modèle de données**. Le travail doit
-rendre plus pertinent le système existant. Cette contrainte de MEM-001 n'interdit pas les schémas
-justifiés des lots d'indexation/observation distincts, à concevoir via SQLAlchemy et DbAdmin.
-
-## 4. Modèle de qualité global
-
-La qualité mémoire ne peut pas être réduite au nombre de souvenirs ni à la similarité vectorielle.
-Chaque lot doit indiquer les dimensions qu’il affecte et celles qu’il ne doit pas dégrader.
-
-| Dimension | Question | Exemples de mesures |
-|---|---|---|
-| Couverture et fraîcheur | Chaque contenu et passage éligible est-il indexé à la version attendue ? | fragments attendus/publiés, retards, lacunes explicites, erreurs par cause |
-| Fidélité de restitution | L'extrait, sa révision, ses sources et ses droits décrivent-ils le même état admis ? | mélanges de versions, réintroductions par repli, localisations erronées |
-| Sélectivité de capture | Galaris retient-il ce qui sera utile sans conserver le bruit ? | précision/rappel de `CREATE`, `LINK`, `IGNORE`, taux de faits ponctuels retenus |
-| Fidélité | Le souvenir reste-t-il soutenu par la source ? | hallucinations, couverture des preuves, contradictions introduites |
-| Déduplication | Une même connaissance garde-t-elle une identité stable ? | faux `LINK`, doublons, provenances par UUID, fusions manuelles ultérieures |
-| Organisation | Les souvenirs sont-ils regroupés selon des sujets durables et utiles ? | cohésion, séparation, fragmentation des Topics, qualité des liens existants |
-| Rappel | Les bons éléments remontent-ils avant les éléments seulement proches ? | Recall@k, MRR, nDCG, précision@k, succès lexical/vectoriel/graphe |
-| Diversité | Le contexte évite-t-il paraphrases et répétitions ? | taux de quasi-doublons dans le top-k, couverture de sous-sujets |
-| Utilité en exécution | La mémoire présentée améliore-t-elle réellement la décision ? | taux d’usage, gain aval sur la Task, faux appuis sur un souvenir |
-| Fraîcheur et autorité | Les faits valides dominent-ils les faits périmés ou faibles ? | erreurs de temporalité, contradictions non signalées, sources dominantes |
-| Gouvernance | Peut-on comprendre, corriger, partager et oublier ? | couverture de provenance, succès d’oubli, délais de correction, incidents ACL |
-| Coût opérationnel | Le gain justifie-t-il coût, latence et volume de contexte ? | coût par source, latence p50/p95, tokens injectés, taille des index |
-
-## 5. Fiche d'expérience et preuve attendue
-
-Avant de promouvoir une idée en lot, consigner son identifiant `MEM-XXX`, le défaut observable,
-la population concernée, la baseline, l'hypothèse réfutable et l'unique variable candidate.
-Préciser les dimensions à améliorer et à protéger, les datasets, les métriques déterministes,
-la rubrique sémantique éventuelle, les seuils préenregistrés, le canari et le rollback.
-
-Après l'expérience, publier dans un rapport lié les snapshots baseline/candidat, les résultats
-par sous-population, couverture, coût, durée, incertitude, régressions et signaux du canari.
-Conclure par promouvoir, poursuivre, rejeter ou rollback, avec justification. Une hypothèse
-réfutée peut être abandonnée sans implémentation ; le registre conserve ce choix.
-
-## 6. Protocole commun de benchmark
-
-Le [Lab](lab-evaluation-mecanismes-ia.md) porte l'infrastructure et ses qualifications restantes.
-Ses rôles natifs `purpose=work|validation|holdout` existent ; ils ne garantissent pas seuls
-le gel du corpus ni l'étanchéité des partitions.
-
-1. Expurger et revoir les cas importés de production ; une sortie historique n'est pas sa référence.
-2. Figer corpus, catalogue, révisions, modèle d'embeddings configuré et paramètres hors variable
-   testée ; pour les mécanismes génératifs seulement, figer aussi leur modèle configuré et le juge.
-3. Mesurer la baseline, travailler sur `work`, sélectionner sur `validation`, puis figer les
-   seuils avant l'ouverture unique du `holdout` pour la décision finale.
-4. Comparer baseline et candidat par cas, avec plusieurs répétitions si le mécanisme varie.
-   L'unité statistique reste l'épisode ou la conversation, jamais ses messages corrélés.
-5. Publier moyenne, médiane, dispersion, couverture et intervalles de confiance lorsque le volume
-   le permet. Un score global ne compense pas une régression critique.
-6. Préférer les mesures déterministes pour les décisions fermées. Réserver le juge aux dimensions
-   ouvertes ; son échec ne reçoit aucun score de remplacement.
-7. Annoter ou revoir humainement les gardes fortes, arbitrer les cas ambigus et mesurer l'accord
-   en aveugle lorsqu'il y a plusieurs annotateurs.
-
-Ce protocole s'applique à tous les lots ci-dessous ; chaque lot ne précise que ses particularités.
-
-
-## 7. Programme prioritaire — documents, indexation et pertinence du rappel
-
-Le socle documentaire est décrit par 0108. Les extensions ci-dessous le réutilisent ;
-elles ne remettent pas en chantier l'admission commune, l'indexation durable, les lecteurs
-canoniques ou les passages déjà implémentés.
-
-### 7.1 MEM-018 — Extensions de pièces jointes et provenance par passage
-
-- Raccorder les textes et localisateurs du lecteur commun de l'[ADR 0151](../decisions/0151-resumable-document-analysis.md)
-  aux compagnons Memory après évolution explicite de l'ADR 0106. La conversion et la lecture
-  des binaires pris en charge ne sont plus à créer ; leur acquisition automatique dans Memory
-  et leur provenance par passage restent à définir.
-- Pour une acquisition multimodale, définir déclenchement, budgets, modèles configurés et
-  provenance ; aucune analyse générative systématique implicite.
-- Séparer texte extrait, description interprétée et binaire. Réutiliser le compagnon Memory
-  et l'URI canonique ; retrait d'une PJ et révision du corps gardent leurs contrats distincts.
-- Compléter les ancrages par passage lorsque la source les fournit : origine, version attestée,
-  chemin de rappel et support interprétatif distincts. Ne pas attribuer toutes les sources
-  d'un item à chacune de ses phrases, ni assimiler citations copiées et corroboration indépendante.
-- Évaluer séparément représentation extractive globale et circuits de preuve ET/OU sur
-  annotations indépendantes ; ils ne deviennent pas des prérequis au rappel courant.
-
-**Preuve :** extraction partielle, PJ renommée/retirée, provenance multi-source et restauration
-du fournisseur, avec mesure de couverture et de fidélité des localisations. Préserver les
-tests existants de documents longs, de tableaux, d'ACL et d'admission.
-
-#### 7.1.1 Mémorisation sélective des PJ et transcriptions conversationnelles
-
-Complément demandé le 1er octobre 2026, à réaliser. Ce lot appartient à Memory/Dream,
-indépendamment du [catalogue File Share](indexation-file-share-memory.md), limité à Console
-et aux Tools `file_share` admissibles. Il ne crée ni catalogue Messenger ni analyse automatique
-de chaque fichier reçu. Documents et leurs PJ conservent leurs objets Memory existants.
-
-Constats de lecture du code, sans reproduction applicative :
-
-- `Message.conversation_text` expose texte et transcriptions audio durables, tandis que
-  `dream/mechanisms/conversation_memory.py` sélectionne et sérialise actuellement `Message.text`.
-  Vérifier le parcours complet d'un audio sans texte avant de corriger : une modification de
-  sérialisation seule serait insuffisante si l'éligibilité SQL exclut toujours le round.
-- Les mécanismes `memory.attachment_*` ciblent les compagnons des PJ documentaires encore
-  vides, avec quatre options désactivées par défaut. Ils ne parcourent pas les PJ Messenger.
-- L'analyse explicite d'une image documentaire enrichit son compagnon ; celle d'une ressource
-  externe peut produire une description privée `image_description`. Le raccordement de ces
-  résultats à la capture conversationnelle reste à établir, sans élargir leurs droits.
-- Le circuit documentaire Dream persiste une description/résumé. Il ne démontre pas la
-  recherche intégrale du texte extrait ; l'analyse vidéo actuelle résume uniquement l'audio.
-
-Travail demandé et garanties :
-
-1. **Transcriptions vers Dream.** Consommer la représentation conversationnelle canonique
-   et les transcriptions acquises, dans l'éligibilité comme dans les preuves transmises au
-   modèle. Un audio seul peut produire un souvenir pertinent ; une absence ou un échec de
-   transcription reste explicite. Conserver auteur, langue, message et URI audio, sans
-   fusionner une transcription automatique avec une déclaration écrite humaine.
-2. **Réutilisation des analyses de PJ.** Exposer par port public les résultats acquis et
-   autorisés, liés au message/round et à la source/version lorsqu'elles sont connues. Dream
-   les utilise comme preuves candidates selon pertinence et budget ; aucun nouveau téléchargement
-   ni appel d'analyse pour un résultat déjà acquis. Un fichier non analysé reste non analysé.
-   Une analyse acquise après un premier tour ouvre une reprise incrémentale idempotente,
-   sans recréer tous les souvenirs ni être bloquée par un ancien reçu de succès du round.
-3. **Provenance explicite.** Distinguer message écrit, transcription, extraction de PJ et
-   interprétation générative. Conserver le message/round, l'URI canonique, la version attestée
-   ou inconnue et les localisations disponibles. Le rappel permet de retrouver la preuve
-   autorisée ; ne pas attribuer une conclusion du modèle à l'auteur humain ni inventer une
-   précision temporelle/page absente. Un résumé et sa source ne sont pas deux corroborations.
-4. **Couverture d'analyse.** Porter et afficher séparément couverture extractive et nature
-   du résultat : résumé seul, extraction complète/partielle, illisible, modalité audio seule
-   pour une vidéo, limite atteinte ou erreur. Les preuves injectées dans Dream et le rappel
-   conservent ces limites. « Absent du résumé » ne signifie jamais « absent du fichier ».
-5. **Texte des PJ documentaires.** Évaluer puis raccorder la recherche des textes extraits
-   au compagnon existant, en complément de sa description ; conserver le résumé éditorial
-   et les descriptions rédigées. Comparer résumé seul et résumé + passages extraits sur PDF
-   longs et tableaux synthétiques : chiffre précis, unité, contexte et détail en fin de fichier.
-   Décider rétention, limites et représentation à partir du gain utile, coût, volume et
-   fidélité mesurés ; aucune copie binaire ni objet Memory concurrent pour la même PJ.
-
-L'admission applique les droits actuels de la conversation, de l'agent et de la source,
-y compris pour une description externe privée. Une révocation ou un retrait entre préparation
-et application bloque l'apport devenu inéligible. Préserver les autres faits indépendamment
-sourcés. Les sources restent des données non fiables ; aucun texte de PJ ne donne d'instructions
-au mécanisme. La correction ou l'oubli d'une preuve invalide ses dérivés selon leur dépendance,
-avec générations et checkpoints pour rejeter les résultats tardifs.
-
-Réception du lot, sur données entièrement synthétiques :
-
-| Garantie | Scénario et preuve attendue |
+| Travail restant | Réception sur sources synthétiques |
 |---|---|
-| Audio seul | Round sans texte avec transcription pertinente : candidat Dream puis souvenir sourcé ; audio sans transcription sans contenu inventé. Vérifier aussi historique, voix et message mêlant texte/audio. |
-| Analyse déjà acquise | PJ explicitement analysée puis Dream : preuve utilisée sans téléchargement ni nouvel appel d'analyse ; une réponse de tool non persistée ne suffit pas. |
-| Résultat tardif | Analyse acquise après extraction du round, reprise puis redelivery : ajout utile une seule fois, souvenirs antérieurs conservés. |
-| Provenance fidèle | Déclaration, transcription, extrait et interprétation sur le même sujet : origines distinguées et ouverture de la preuve autorisée ; pas de double corroboration. |
-| Couverture honnête | Extraction tronquée, illisible et vidéo audio seule : limite visible dans les résultats et le contexte ; aucune affirmation sur les parties non analysées. |
-| Recherche précise | PDF/tableau avec détail absent du résumé : détail retrouvable dans un passage localisable, résumé et description manuelle préservés. |
-| Droits et retrait | Deux agents, source révoquée/retirée pendant l'analyse : aucun résultat privé transmis, checkpoint ancien rejeté ; oubli sans réacquisition silencieuse. |
+| Transcriptions vers Dream | Audio sans texte produisant un souvenir pertinent avec message, auteur, langue et URI audio ; absence/échec de transcription explicite ; écrit humain et transcription distingués. |
+| Réutilisation des analyses acquises | Résultat persisté, autorisé et lié au message/round utilisé sans téléchargement ni nouvelle analyse ; fichier non analysé conservé comme tel. |
+| Apport tardif | Analyse après un premier reçu du round, reprise et redelivery : ajout utile une seule fois, souvenirs antérieurs conservés. |
+| Provenance par passage | Message écrit, transcription, extraction et interprétation distingués ; URI, version attestée ou inconnue et localisateurs disponibles conservés ; preuve autorisée ouvrable. |
+| Couverture | Résumé seul, extraction partielle/complète, illisible, vidéo audio seule et limite atteinte transmis au rappel ; absence du résumé jamais assimilée à absence du fichier. |
+| Texte documentaire | Comparaison résumé seul / résumé + passages sur PDF longs et tableaux : chiffre, unité et détail final retrouvables sans écraser résumé ou description manuelle ni créer un second objet Memory. |
 
-Étendre les scénarios existants de `dream/tests/test_conversation_memory.py`,
-`dream/tests/test_voice_memory.py`, `memory/tests/test_dream_attachments.py` et
-`memory/tests/test_document_structure.py`. Reproduire d'abord le manque audio au niveau du
-workflow réel, puis vérifier le même scénario après correction. Réutiliser le lecteur de
-l'ADR 0151 et les ports de provenance/indexation existants ; préciser l'ADR 0106 et les
-contrats seulement lorsque la décision d'implémentation les change.
+Définir déclenchement, budgets, rétention et modèles configurés avant toute nouvelle
+acquisition automatique. Ne pas analyser systématiquement chaque fichier reçu.
+Un résumé et sa source ne sont pas deux corroborations indépendantes.
 
-### 7.2 MEM-006/007 — Pertinence des candidats, classement et contexte utile
+Revalider conversation, agent et source avant application. Retrait, révocation, correction
+ou oubli invalident les dérivés concernés et les anciens checkpoints ; conserver les faits
+indépendamment sourcés. Étendre `test_conversation_memory.py`, `test_voice_memory.py`,
+`test_dream_attachments.py` et `test_document_structure.py`.
+Les formats et l'isolation du lecteur restent dans le
+[plan documentaire](analyse-documentaire-unifiee.md).
 
-**Garantie observable :** la recherche sélectionne les passages qui répondent à la demande,
-tout en conservant les exceptions, les sources rares et les contraintes de contexte.
+## MEM-006 / MEM-007 / MEM-009 — Pertinence et contexte utile
 
-Pipeline candidat : requête et contraintes explicites → voies lexicales/vectorielles globales et
-thématiques → fusion → expansion documentaire bornée → classement → diversité des passages →
-admission → assemblage du budget de contexte.
+Comparer au moteur courant sain, à modèle d'embeddings configuré constant :
 
-Conserver une voie globale indépendante du Topic, conformément aux contre-exemples du rapport privé.
-Un Topic/concept n'est pas une partition d'index. Ne pas filtrer tout le corpus par le seul
-centroïde le plus proche, ni ajouter un index ANN ou des bornes géométriques sans besoin de
-capacité mesuré. L'exact pgvector actuel sert d'oracle de fidélité des optimisations ; sa fidélité
-ne remplace pas les jugements de pertinence documentaire.
+- paraphrases, alias, homonymes, références implicites, dates historiques et langues non couvertes ;
+- sélection au niveau du passage, fusion lexicale/vectorielle, diversité et signaux de portée,
+  d'autorité ou de structure ; conserver une voie globale indépendante du Topic ;
+- apports propres des Topics et liens du graphe, avec ablations et placebos ; compter
+  les pertinents ajoutés et ceux chassés, notamment les sources rares et anciennes ;
+- calendrier saturé versus demandes ordinaires, historique utile et budget réellement injecté ;
+- suffisance des extraits, puis qualité de la réponse finale et utilité dans une Task.
 
-Travaux à comparer séparément, à **modèle d'embeddings configuré constant** :
-- lexical : langue, accents, variantes morphologiques, titres, sections, noms exacts, références
-  et termes courts significatifs ; préserver une voie littérale pour les identifiants techniques ;
-- passages : présélection lexicale et vectorielle au niveau du fragment ; comparer aux passages actuels, puis regrouper les passages complémentaires par document ;
-- fusion : comparer la politique actuelle à une fusion des rangs explicitement définie, en
-  évitant qu'une normalisation d'un petit lot transforme un faible signal en preuve forte ;
-- classement : pertinence directe d'abord, portée projet/Goal/contact ensuite ; autorité,
-  actualité et structure comme signaux bornés, jamais popularité ou fraîcheur comme vérité ;
-- graphe : mesurer séparément références, contenance, dossiers et liens sémantiques ; pénaliser
-  les hubs, borner profondeur/largeur/coût, garder les chemins explicables et les cycles neutres ;
-- diversité : plusieurs passages d'un document si complémentaires, un seul si redondants ;
-  ne pas confondre déduplication de résultats et fusion durable de deux documents ;
-- rappel sans seuil : restituer les meilleurs candidats disponibles dans la limite demandée ;
-  mesurer leur utilité sans confondre présence d'un souvenir et preuve d'une réponse.
+La normalisation lexicale et le corpus synthétique ne sont plus à créer.
+La recherche finale reste sans seuil de pertinence ; un résultat présent ne prouve pas
+qu'il répond. Un reclasseur ou une reformulation générative reste une expérience séparée,
+avec capacité explicitement configurée et gain hors échantillon.
 
-Ne pas diluer la requête dans tout l'historique de la tâche. Extraire le contexte pertinent depuis
-les contrats existants ; une contrainte exacte d'épisode, date ou source ne devient pas un simple
-bonus. Distinguer recherche ciblée et synthèse multi-sources. Une reformulation ou décomposition
-en sous-requêtes reste une expérience bornée, avec preuve que son gain justifie coût et latence.
+Mesurer candidats, résultats et injection séparément : rappel complet des faits nécessaires,
+Recall@k, précision, MRR/nDCG, redondance, erreurs, coût SQL, latence et volume de contexte.
+Le corpus conversationnel actuel emploie des gabarits, des mondes isolés et un calendrier
+volontairement saturé. Compléter par des labels humains revus, passages profonds, négatifs,
+instructions citées et cas documentaires ; sa latence par monde ne qualifie pas un index
+unique de 56 000 souvenirs ni les embeddings réels.
 
-Le brief remet URI, titre, section, extrait fidèle et révision. Le budget couvre l'ensemble du
-contexte ; les extraits lexicaux sont centrés sur la correspondance, pas systématiquement sur le
-début du document. Un extrait coupé doit permettre une lecture complémentaire au bon endroit.
-Conserver la politique sélective de recherche : l'agent consulte le brief, cherche si nécessaire
-et lit les sources avant d'en faire une affirmation importante.
+Pour la conversation, reprendre les questions du plan de prompts absorbé : préférences du
+contact face au profil de l'agent, capture volontaire sans sur-capture, Process pertinent
+au-delà de dix affectations, ancien document hors fenêtre récente, identité après outil
+contradictoire et capacités immédiates/de fond. Les mesures par section du prompt et le
+parcours complet restent coordonnés avec la
+[fiabilisation conversationnelle](fiabilisation-conversationnelle.md).
+Les sessions de Task conservent leur contrat propre.
 
-Le socle reste sans appel génératif pour classer. Un reclasseur spécialisé est une expérience
-ultérieure isolée, uniquement avec une capacité explicitement configurée et un gain hors
-échantillon ; aucun modèle caché ou choisi automatiquement. Il n'est pas un prérequis à la
-correction et ne change pas le modèle d'embeddings.
+Une expérience aval commence en shadow, puis A/A et canari borné : affectation stable
+des missions racines et descendants, horizon et succès préenregistrés, inconnues conservées
+au dénominateur. Publier succès, activité, échec, coût et bornes pour les inconnues.
+Pas de conclusion causale depuis les seuls accès, citations ou résultats de rappel.
 
-**Preuve :** ablations par canal et par type de lien, précision/rappel/nDCG, passages utiles
-déplacés hors du top-k, redondance, coût et utilité après lecture. Ne promouvoir aucun poids
-graphique parce qu'il augmente seulement les chemins visités.
+## MEM-013 / MEM-014 / MEM-015 — Observation et coûts
 
-### 7.3 MEM-013/014 — Observation et diagnostic sans renforcer la popularité
+Les métriques de rappel/contexte et le suivi opérationnel des fichiers existent.
+Compléter seulement les diagnostics manquants : couverture par contenu/version,
+retard, blocages et action de réparation ; puis observation détaillée de l'exécution.
 
-Commencer par un socle opérationnel léger : couverture courante par nature de contenu,
-fragments attendus/publiés, retard p50/p95/max, jobs utiles en attente, échecs par cause,
-disponibilité du fournisseur, latence et état du rappel. Réutiliser les métriques existantes.
-Le tableau d'administration montre aussi les contenus bloqués et leur action de réparation,
-sans nécessiter les traces expérimentales détaillées.
+Distinguer candidats, admission, injection après troncature, lecture, citation, correction
+et résultat de Task. Une réussite ne crédite pas tous les souvenirs injectés ; une absence
+d'exposition ne prouve pas leur inutilité. Aucun renforcement automatique de popularité.
 
-Puis instrumenter un rappel par identité d'exécution avec versions de code/politique/configuration,
-budgets, sources des candidats, contributions réellement utilisées, chemins et raisons d'exclusion
-non sensibles. Une liste servie n'est pas tout le vivier de candidats. Enregistrer l'injection
-après les coupes du brief ; une ouverture, une citation, une correction et un résultat de tâche
-sont des événements différents. Le taux d'accès reste une exposition, pas un score d'utilité.
+Borner collecte, coût et cardinalité ; panne de télémétrie sans effet sur le classement.
+Ne pas journaliser requêtes/extraits bruts ; définir pseudonymisation et rétention avant
+persistance (anciennes pistes : 90 jours de détails, 400 jours d'agrégats anonymes, à qualifier).
+L'oubli purge les références identifiantes sans FK bloquante. Tester panne, redelivery,
+fermeture concurrente, purge et non-exposition des données privées.
 
-Une réussite de tâche ne crédite pas tous les souvenirs injectés ; un échec ne les pénalise pas
-tous ; l'absence de citation ou d'exposition ne prouve aucune inutilité. Les signaux collectifs
-restent collectifs. Aucun apprentissage des forces pendant cette première instrumentation.
+Pour Dream, qualifier utilité par effet durable et coût, empreintes d'entrée, reçus vides,
+reprise sans nouvel appel et deltas d'UUID déclenchant les traitements déterministes.
+Réutiliser les budgets, checkpoints et préemption existants avant tout nouvel ordonnanceur.
 
-L'observation est indépendante du classement : panne de télémétrie sans effet sur les résultats,
-trace échouée/incomplète jamais annoncée comme complète. Coût borné et mesuré, échantillonnage
-explicite, aucun texte brut de requête ou extrait dans les traces générales. Si une corrélation
-pseudonymisée est nécessaire, HMAC versionné avec clé hors DB ; le taux de collecte n'est pas
-une propension d'action. Rétention proposée à qualifier : détails 90 jours, agrégats réellement
-anonymisés 400 jours ; cohortes Lab gouvernées séparément. Un oubli purge les références
-identifiantes et peut invalider un rapport, sans FK qui bloque l'effacement.
+## MEM-001 — Granularité des Topics
 
-**Preuve :** flags désactivés, panne d'écriture, rejouage, fermeture concurrente, non-exposition
-des attributs privés, purge et coût. Reprendre les invariants du rapport privé sans importer automatiquement
-ses tables/triggers, sa branche divergente ou ses anciennes conventions de colonnes.
+Évaluer le réemploi d'un sujet durable de portée comparable : thème général, projet et
+activité ne sont pas équivalents. Comparer politique courante et candidat sur conversations
+FR/EN successives, catalogue figé, retours A → B → A, pronoms et changements de sujet.
 
-### 7.4 MEM-006/009 — Corpus de pertinence et mesure aval dans le Lab
+Ce premier lot n'ajoute ni modèle, colonne, type de lien ni hiérarchie ; conserver
+`DREAM_TOPIC_CREATION_MODE=propose`. Corpus initial proposé : 60 conversations work,
+30 validation, 30 holdout, cinq répétitions de baseline.
 
-Créer une extension du Lab existant pour le rappel réel : fixtures et corpus isolés, aucune
-écriture de production. Les métriques de pertinence utilisent des labels revus ; elles ne doivent
-pas dépendre d'un juge génératif. Adapter explicitement le contrat de run du Lab si ce parcours
-déterministe diffère de ses mécanismes actuels à jugement LLM, sans modifier ces derniers.
+Mesurer précision/rappel/F1 des paires correctement regroupées, frontières, créations,
+réemploi, singletons, coût et durée. Cibles initiales à geler après calibration :
+gain F1 ≥ 5 points avec borne basse positive, recul précision/rappel ≤ 2 points,
+précision/rappel des créations ≥ 90 %/80 %, réemploi ≥ 95 %, singletons ≤ 5 %,
+surcoût < 15 %, aucune fuite. Canari proposé de deux à quatre semaines en mode
+`propose`, avec rollback du prompt et de son snapshot. Un prompt modifié seul ne clôture pas le lot.
 
-**Dataset initial proposé :** 200 cas répartis 100 work / 50 validation / 50 holdout,
-dimensionnement final avant confirmation. Répartir par familles de documents/provenance, tâche
-ou conversation et période ; deux fragments, paraphrases ou révisions de la même origine ne
-traversent pas les partitions. Séparer cas réalistes annotés et tests adversariaux construits.
-Tout corpus déjà exploré, dont SciFact dans le rapport privé, est un jeu de développement, pas un nouveau
-holdout. Les copies de production doivent être bornées, autorisées et expurgées.
+## MEM-010 — Organisation courante et réaffectation
 
-Chaque cas conserve : snapshot et date de coupe, requête, langue, contraintes, agent de test et
-ACL, documents/révisions/fragments pertinents avec grades 0..3, interdits, budgets et origine
-du label. Aucun résultat historique n'est automatiquement la bonne réponse. Inclure noms exacts,
-reformulations sans vocabulaire partagé, français/anglais, termes techniques courts, passage
-profond/tableau/PJ, corrections contradictoires, sources dépendantes, contact exact, recherche
-transversale, document rare/ancien, absence de réponse et fournisseur indisponible.
+`topic_maintenance.py` propose déjà rattachements, anomalies, fusions et scissions ;
+`test_topic_maintenance.py` protège l'absence de mutation des appartenances canoniques.
+La convergence automatique vers un meilleur Topic demeure à concevoir.
 
-Deux baselines distinctes :
-1. **service dégradé observé**, pour mesurer la réparation opérationnelle ;
-2. **hybride sain avec le même modèle configuré**, pour évaluer les gains d'algorithme.
-Restaurer les embeddings ne constitue pas à lui seul une preuve d'amélioration du ranking.
+Avant implémentation, arrêter une ADR séparant provenance historique, organisation
+courante, liens dérivés et décisions manuelles/épinglées. Un simple déplacement de
+`topic_contains` serait annulable par sa reconstruction depuis les sources.
 
-Bras offline minimaux : CURRENT exact, lexical seul, vectoriel seul, lexical+vectoriel,
-+Topics, +structure documentaire, +liens sémantiques. G1/G2 et normalisation du degré sont
-des variantes expérimentales, pas une réduction implicite des quatre sauts documentaires
-actuels. Placebos de graphe à degrés/types/portées compatibles et fenêtres temporelles conservées :
-un gain similaire au placebo ne valide pas l'apport sémantique du graphe. Ces ablations ne
-deviennent pas des options permettant aux agents de dégrader la stratégie canonique.
+Le candidat utilise k-NN borné, marge relative, hystérésis, stabilité sur plusieurs sweeps,
+égalité déterministe et politique versionnée. Les anciens exemples de seuils 0,65/0,10
+sont des hypothèses à calibrer, pas des constantes universelles.
+Une panne d'embeddings conserve les affectations courantes.
+Le LLM peut proposer un contenu nouveau ; le calcul et l'application des associations
+de ce lot restent déterministes, sans appel génératif.
 
-Mesurer Recall@10 des candidats, nDCG@8/MRR/Precision@8 des résultats, rappel par passage,
-taux de faux résultats sur questions sans réponse, utilité et redondance du brief. Rapporter
-aussi les pertinents ajoutés **et chassés** par chaque canal, coût SQL, p95/p99, tokens/caractères,
-lacunes d'indexation et troncatures. Un arrêt budgété ou un domaine incomplet ne signifie pas
-top-k exact ; ne jamais convertir `has_more=false` en certificat d'exhaustivité.
+Chaque mouvement revérifie empreintes et politique, respecte les pins, ne retire que les
+liens qu'il possède, conserve sources, contact, ACL, contenu et révisions, puis journalise
+assez d'information pour restaurer l'affectation. Réconciliation ciblée après delta ;
+rebuild versionné et reprenable après changement de modèle ou de politique.
 
-Comparaison appariée par cas, intervalles par grappes de provenance/tâche, pires régressions et
-résultats par strate. Aucun taux sur résultats admis sans taux d'abstention/couverture. Les
-tests synthétiques démontrent des invariants ; les labels documentaires mesurent la pertinence ;
-les tâches réelles mesurent l'utilité aval. Aucun de ces étages ne remplace les autres.
+Réception : snapshots successifs (Topic générique puis précis), item à maintenir, marge
+insuffisante, multi-source, pin, fusion/scission concurrente, suppression du Topic, panne,
+interruption et seconde exécution idempotente. Mesurer précision des mouvements/cibles,
+cohésion, churn, rappel, requêtes et écritures. Cibles initiales : précision et cible ≥ 95 %,
+churn après convergence < 1 %, recul Recall@5/précision@5 ≤ 2 points, aucune mutation
+canonique ou fuite, reprise identique à une exécution continue.
 
-**Expérimentation aval ultérieure :** shadow sans modification des réponses, puis A/A et canari
-borné après qualification. Enrôlement des missions racines avant traitement, affectation stable
-sur leurs descendants selon le port public Task, horizon H et succès métier préenregistrés,
-attestation du comportement réellement exécuté. Conserver en intention de traiter toutes les
-racines incluses ; histoire perdue = issue inconnue, pas échec ni exclusion du dénominateur.
-Publier succès à H, activité à H, échec terminal, coût et bornes pour les inconnues séparément.
-Un enfant tardif, un reparentage ou une suppression ne peut réécrire silencieusement le passé.
+Introduire simulation → shadow → suggestion → canari → généralisation après preuve.
+La hiérarchie sémantique demande davantage qu'un cosinus ; elle reste un sous-lot distinct,
+comme dormance, redirections, forces adaptatives et circuits de preuve ET/OU.
+Le rollback restaure l'organisation sans réécrire les sources.
 
-Les parcours de lignée doivent diagnostiquer cycles, limites de profondeur, largeur, lignes,
-temps et octets ; ne pas traiter un préfixe visible comme une lignée complète. Corriger les
-anciennes hypothèses du rapport privé sur parenté/racine depuis les contrats Task actuels avant portage.
-IPS/SNIPS reste hors du chemin critique et inutilisable sans vraies probabilités d'action,
-support suffisant et plan statistique préenregistré. Le logging seul ne rend rien causal.
+## Autres axes conservés
 
-### 7.5 Portes de qualification et limites des promesses
-
-| Dimension | Porte proposée avant implémentation |
+| ID | Question encore ouverte |
 |---|---|
-| Intention durable | 100 % des mutations prises en charge couvertes ; aucun succès sans intention persistée |
-| Couverture après rattrapage | 100 % des fragments éligibles pour les formats pris en charge ; chaque exclusion/erreur explicite |
-| Fraîcheur | Cible initiale : 99 % des petits documents/PJ textuelles indexés en moins de 60 s, sous charge nominale définie et fournisseur disponible |
-| Grands documents | Progression et reprise bornées ; délai cible publié après mesure du volume, jamais de fin silencieusement ignorée |
-| Cohérence et droits | Zéro mélange de versions, réintroduction invalide ou résultat refusé à l'admission dans la matrice adverse |
-| Génération de candidats | Recall@10 ≥ 95 % sur les cas positifs du corpus validé ; écart par strate publié |
-| Classement | Gain nDCG@8 proposé ≥ 5 points sur hybride sain, borne basse du gain apparié positive ; aucune strate critique en recul > 2 points |
-| Questions sans réponse | Mesurer le bruit et les réponses non étayées de l'agent ; une liste de candidats non vide est attendue avec le rappel sans seuil, pas une preuve de réponse |
-| Graphe | Gain utile supérieur aux placebos, sans hausse non maîtrisée des hubs ni perte de sources rares |
-| Coût | Surcoût p95 de l'observation ≤ 10 % proposé ; budget absolu du rappel, SQL et contexte fixé sur validation selon l'infrastructure |
-| Effacement | Purge des chunks, générations, caches et traces identifiantes ; aucun job ne ressuscite le contenu |
-| Utilité aval | Gain sur le critère métier préenregistré, à horizon et population identiques ; sans données suffisantes, aucune conclusion causale |
-
-Les seuils de qualité et de performance sont des **cibles à qualifier**, ajustables sur work et
-validation puis gelées avant holdout ; aucune précision universelle n'est promise. Une cible non
-atteinte reste un résultat négatif explicite. Les garanties d'ACL, d'effacement et de fidélité
-version/extrait ne peuvent être assouplies pour gagner un score. Le délai de 60 s ne couvre pas
-une panne fournisseur ; sa durée et le temps de rattrapage sont mesurés séparément.
-
-### 7.6 Surfaces et garanties de non-régression à reprendre
-
-| Lot | Surfaces principales du dépôt | Scénarios existants à renforcer |
-|---|---|---|
-| MEM-018 | `semantic_index.py`, `document_structure.py`, `attachment_description.py`, contrats de contenu et de source | `test_editorial_html.py`, `test_document_resources.py`, `test_document_structure.py`, `test_source_associations.py` : fidélité, couverture, PJ et provenance |
-| MEM-006/007/009 | `retrieval.py`, `context.py`, `evaluation.py`, contrats/datasets/runs du Lab | `test_recall_evaluation.py`, `test_context.py`, `test_search_performance.py`, `test_agent_correction_eval.py`, tests de publication du Lab |
-| MEM-013/014 | `metrics.py`, journal d'usage, état d'index, routes d'administration, interface Memory | `test_metrics.py`, `test_document_library.py`, tests navigateur Memory ; nouveaux scénarios d'observation seulement pour les garanties manquantes |
-
-Les fichiers non préfixés appartiennent à `back/app/memory/`, les tests à son répertoire `tests/`.
-Cette matrice désigne des points de départ, pas une liste suffisante de tests de publication.
-Tout import inter-module utilise la façade publique ; les changements Task passent par son port
-et ceux de fichiers par `app.file_share`. Les contrats/frontend changés devront être qualifiés
-sur leurs consommateurs réels, avec i18n et contrôle des droits.
-
-## 8. Lot MEM-001 — Granularité et création pertinente des Topics
-
-### 8.1 Hypothèse et périmètre
-
-La politique historique fragmentait les activités ; sa correction par réemploi peut désormais
-absorber un projet durable dans une catégorie trop large. L'hypothèse est de privilégier le
-**sujet durable à granularité comparable** : « Refonte de site web », « Site web Machin » et
-« Site web Truc » restent des Topics homogènes reliables par les relations existantes.
-« Audit du site web Machin » ou « Correction du menu mobile de Machin » restent des activités.
-
-Le candidat reformule les prompts Task/Message pour distinguer équivalence, proximité et
-inclusion, conserve le réemploi d'un Topic de même portée et resserre la déduplication : un
-recouvrement lexical ne suffit pas à rabattre un projet sur un thème général.
-
-Aucun nouveau modèle, colonne, type de lien, statut concret/générique,
-hiérarchie obligatoire ou reclassement massif. Conserver `DREAM_TOPIC_CREATION_MODE=propose`
-pendant la qualification et le canari.
-
-### 8.2 Corpus et métriques
-
-| Dataset proposé | Taille initiale | Usage |
-|---|---:|---|
-| `topics-granularite-work` | 60 conversations | Développement et erreurs |
-| `topics-granularite-validation` | 30 conversations | Sélection du candidat |
-| `topics-granularite-holdout` | 30 conversations | Décision finale aveugle |
-
-Chaque conversation comporte 5 à 20 messages, un catalogue figé et une séquence attendue.
-Couvrir projets voisins sous un thème, plusieurs activités d'un projet, détail ponctuel,
-nouveau sujet, retour A → B → A, pronoms/réponses courtes, pause longue/changement immédiat,
-français/anglais, noms propres admissibles, identités privées ou contenus sensibles interdits,
-et incidents réels transformés en non-régressions.
-
-Pour toutes les paires de messages d'une conversation :
-
-- précision de regroupement = paires regroupées à raison / paires regroupées ;
-- rappel de regroupement = paires regroupées à raison / paires attendues ensemble ;
-- F1 = moyenne harmonique de précision et rappel.
-
-Ces mesures pénalisent généralisation et fragmentation sans dépendre du nom exact des Topics.
-Ajouter ratio Topics prédits/attendus, singletons, précision/rappel des créations et des
-frontières, retours A → B → A, réemploi, créations pour 1 000 messages, coût, durée et erreurs.
-La rubrique sémantique du Lab qualifie le nom et le sujet ; elle ne remplace pas ces métriques.
-
-### 8.3 Portes proposées et déploiement
-
-Appliquer le protocole commun, avec au moins cinq répétitions de la politique courante.
-Les seuils suivants restent proposés, ajustables sur `work`/`validation` puis gelés avant holdout :
-
-| Dimension | Porte initiale |
-|---|---|
-| F1 de regroupement | Gain ≥ 5 points ; borne basse de l'IC à 95 % strictement positive |
-| Précision et rappel de regroupement | Aucune baisse > 2 points |
-| Créations justifiées | Précision ≥ 90 %, rappel ≥ 80 % |
-| Réemploi après première occurrence | ≥ 95 % |
-| Topics singleton | ≤ 5 % |
-| Confidentialité | Aucune nouvelle violation critique |
-| Score sémantique | Aucune baisse > 2 points |
-| Coût et durée | Hausse < 15 % |
-| Couverture et erreurs | Run complet, aucune hausse des erreurs candidat |
-
-Une amélioration moyenne ne compense ni fuite ni retour au « Topic par souvenir ».
-Après holdout réussi, conserver un canari en mode `propose`, comparer propositions acceptées,
-refusées, corrigées, fusions ultérieures, croissance du catalogue et qualité du rappel.
-Le suivi prévu dure deux à quatre semaines : créations pour 1 000 messages, singletons à
-30 jours, médiane d'activités par Topic, fusions/scissions/réaffectations, coût, latence,
-erreurs et couverture Dream. Les incidents revus enrichissent les non-régressions.
-
-Le rollback restaure le prompt antérieur et son snapshot. Le passage éventuel en mode `auto`
-reste une décision ultérieure fondée sur le canari ; ce plan ne l'autorise pas.
-
-Livrer corpus portables, annotations, baseline/candidat, prompts et règle de déduplication
-retenus, rapport avant/après, mesures du canari et procédure de rollback. Un prompt modifié
-seul ne clôture pas ce lot.
-
-## 9. Cible transversale — Dream crée, Memory organise et fait converger
-
-### 9.1 Frontière de responsabilité
-
-La cible globale sépare les opérations qui exigent une compréhension ou une synthèse ouverte de
-celles qui peuvent être reproduites à partir de preuves persistées :
-
-```text
-source durable
-      │
-      ├──► Dream + LLM borné ──► création ou reformulation de contenu
-      │                             Topic, souvenir, résumé, proposition structurée
-      │
-      └──► Memory déterministe ──► provenance, embeddings, déduplication,
-                                    associations, réorganisation, vieillissement,
-                                    oubli, ACL et rappel
-```
-
-Le LLM peut proposer le contenu d’un nouveau Topic ou d’un nouveau souvenir parce que cette
-opération demande une abstraction sémantique. Il ne possède jamais directement les liens du graphe
-et ne redessine pas les associations existantes. La création d’un Topic pour une source peut
-produire son premier rattachement comme effet déterministe du reçu qui a créé ce Topic ; les
-rattachements et déplacements ultérieurs reposent sur les données canoniques, les embeddings et une
-politique versionnée.
-
-Le RAG reste un chemin de rappel pour présenter du contexte à un LLM. L’entretien du graphe n’est
-pas lui-même un RAG et ne requiert aucune génération : un index vectoriel, des requêtes k-NN et un
-réconciliateur d’état désiré suffisent. Le fournisseur d'embeddings est celui qui est configuré,
-local ou distant ; ses coûts et limites sont mesurés sans en choisir un autre.
-
-### 9.2 Matrice cible des mécanismes
-
-| Opération | Signal principal | LLM autorisé | Autorité d’application |
-|---|---|---:|---|
-| Éligibilité d’une source | état, type, longueur, provenance | non | service du domaine source |
-| Extraction d’un fait durable | contenu et contexte bornés | oui, sortie structurée | `app.memory` |
-| Création ou reformulation d’un Topic | sujet durable à nommer | oui, sortie structurée | `app.topic` |
-| Rattachement initial au Topic nouvellement créé | reçu et source ayant motivé la création | non | `app.topic` puis projection Memory |
-| Détection de doublons | similarité, scope et provenance | non | `app.memory` |
-| Association et réorganisation du graphe | embeddings et structure canonique | non | réconciliateur `app.memory` |
-| Fusion ou scission suggérée | cohésion, séparation et densité | non | proposition gouvernée |
-| Contradiction sémantique | candidats vectoriels et preuves textuelles | exceptionnel et borné | maintenance gouvernée |
-| Vieillissement et oubli | dates, usage réel, autorité et politique | non | `app.memory` |
-| Rappel pour une exécution | lexical, vectoriel, graphe et ACL | non dans le socle ; reclasseur spécialisé seulement en expérience séparée | `app.memory` |
-
-Une ambiguïté ne doit pas provoquer un appel LLM automatique pour « sauver » une association.
-Elle laisse l’affectation inchangée, produit au besoin une suggestion explicable ou attend une
-correction humaine. Un LLM éventuellement employé pour qualifier une contradiction ne reçoit
-qu’une paire de candidats déjà autorisés et ne peut pas modifier directement le graphe.
-
-### 9.3 Quatre couches à ne plus confondre
-
-La cible distingue :
-
-1. **la provenance**, immuable et auditable : Task, round, tour Voice, Goal ou autre source ayant
-   produit ou confirmé un souvenir ;
-2. **le contenu durable**, révisionnel : texte, type, dates et ressources du
-   `MemoryItem` ;
-3. **l’organisation courante**, évolutive : Topic principal ou secondaire, voisins sémantiques,
-   confiance et version de politique ;
-4. **les décisions explicites**, prioritaires : lien manuel, affectation épinglée, correction,
-   partage et oubli.
-
-Le Topic porté par la Task ou le round d’origine reste une preuve historique. Il ne doit pas
-imposer à perpétuité l’emplacement courant du souvenir. Inversement, déplacer un souvenir dans un
-Topic plus précis ne réécrit pas l’activité historique qui l’a produit.
-
-Avant toute réorganisation automatique, une décision d’architecture devra donc choisir et tester
-une représentation explicite de l’organisation courante : relation distincte de la provenance ou
-override persistant que le réconciliateur canonique respecte. Modifier seulement une arête
-`topic_contains` existante est insuffisant, car sa reconstruction depuis les sources pourrait
-annuler le déplacement au sweep suivant. Cette décision devra mettre à jour les ADR 0020 et 0026.
-
-### 9.4 Propriété et durée de vie des liens
-
-Chaque arête doit avoir un propriétaire et une politique de suppression non ambigus :
-
-| Famille | Exemple | Peut être remplacée automatiquement | Priorité |
-|---|---|---:|---:|
-| Canonique | provenance, contact exact, cycle de Goal | seulement depuis sa source d’autorité | maximale |
-| Manuelle/épinglée | affectation ou relation choisie explicitement | non | maximale |
-| Organisationnelle gérée | appartenance Topic courante | oui, par sa seule politique versionnée | moyenne |
-| Sémantique dérivée | voisin, candidat de fusion ou de scission | oui, entièrement reconstructible | faible |
-
-Une projection automatique ne prend jamais possession d’un lien manuel de même triplet. Une
-association de co-présentation ou de co-rappel n’est pas une preuve métier : l’utiliser pour
-tisser des liens créerait une boucle auto-renforçante où les souvenirs déjà injectés deviennent
-artificiellement centraux.
-
-### 9.5 Entretien incrémental et borné
-
-La convergence globale ne doit pas recalculer naïvement le produit cartésien de tous les Topics
-et souvenirs :
-
-- création ou modification d’un souvenir : k-NN borné vers les Topics et voisins accessibles ;
-- création ou modification d’un Topic : k-NN inverse vers les souvenirs potentiellement mieux
-  classés ;
-- fin d’une opération Dream : réconciliation ciblée des UUID effectivement touchés ;
-- changement de modèle d’embedding ou de politique : rebuild versionné et reprenable ;
-- sweep global à faible charge : correction de la dérive et suppression des projections
-  obsolètes ;
-- recalcul d’embedding uniquement lorsque l’empreinte sémantique du nœud a changé.
-
-Les jobs restent idempotents, coalescés, observables et préemptibles par le travail interactif.
-Une panne du fournisseur vectoriel conserve les liens organisationnels courants et ne les efface
-pas sous prétexte que l’état désiré n’a pas pu être calculé.
-
-### 9.6 Dream comme producteur de deltas sémantiques
-
-L’amélioration continue ne doit pas transformer Dream en boucle générative permanente. Chaque
-mécanisme déclare séparément :
-
-- son éligibilité déterministe et les raisons fermées d’ignorer une source ;
-- l’unique étape qui exige éventuellement un LLM ;
-- l’empreinte de l’entrée qui rend un ancien résultat encore valide ;
-- la version du prompt, du schéma, du modèle et de la politique ;
-- les UUID créés, modifiés, fusionnés ou oubliés ;
-- les jobs déterministes ciblés que ce delta doit déclencher ;
-- son coût, sa durée et la preuve que son effet a réellement été appliqué.
-
-```text
-source nouvelle ou modifiée
-        │
-        ├── empreinte déjà traitée ──► aucun appel
-        └── besoin de synthèse ouvert ──► un appel structuré borné
-                                             │
-                                             └──► delta d’UUID
-                                                     ├─ indexation ciblée
-                                                     ├─ déduplication
-                                                     └─ réconciliation du graphe
-```
-
-Un résultat vide admissible conserve un reçu versionné afin que Dream ne paie pas de nouveau la
-même conclusion. Une reprise réapplique l’effet checkpointé sans réinterroger le modèle. Les
-mécanismes sont ordonnés selon leurs dépendances de preuve et leur utilité attendue, avec budgets
-par période, backpressure pendant le travail interactif et observabilité du backlog.
-
-Le coût pertinent n’est pas seulement le nombre de tokens Dream : il doit être rapporté au nombre
-de souvenirs utiles effectivement appliqués, de doublons évités, de corrections détectées et de
-gains aval mesurés. Un mécanisme qui produit beaucoup de contenu inutilisé doit pouvoir être
-ralenti, désactivé ou remplacé par une règle déterministe, même si sa sortie semble plausible.
-
-## 10. Lot MEM-010 — Réorganisation continue des Topics et du graphe
-
-### 10.1 Problème observé
-
-Les détections actuelles savent signaler une mémoire orpheline, un membre éloigné, deux Topics
-proches ou des groupes pouvant justifier une scission. Elles ne convergent pas encore vers une
-meilleure organisation des items lorsque le catalogue de Topics évolue.
-
-Cas cible : un Topic générique contient des souvenirs SQLAlchemy, FastAPI, Vue et Quasar. Deux
-Topics plus précis, « Python backend » et « Vue frontend », sont créés plus tard. Les souvenirs
-qui correspondent nettement mieux à l’un de ces Topics doivent y être déplacés sans appel LLM,
-sans perdre leur provenance et sans attendre une correction manuelle item par item.
-
-### 10.2 Hypothèse
-
-Une affectation vectorielle relative au catalogue courant, protégée par une marge, une hystérésis
-et des pins manuels, doit augmenter la cohésion des Topics et la qualité du rappel tout en évitant
-les oscillations et les déplacements plausibles mais faux.
-
-La proximité absolue ne suffit pas. Un déplacement n’est admissible que si le candidat est assez
-proche **et** sensiblement meilleur que l’affectation actuelle. Les valeurs sont évaluées avec le
-modèle configuré, sans seuil universel supposé entre modèles.
-
-Complément du rapport privé retenu : avant fusion ou subdivision, compter les origines dépendantes plutôt
-que les chunks ou replays ; une origine inconnue ne devient pas une preuve indépendante.
-Préserver les exceptions et les requêtes rares. Les propositions géométriques restent des
-candidats ; elles ne créent pas automatiquement un concept ou un nouveau type de lien. Séparer
-organisation conceptuelle, partitions techniques de l'index et chemins d'activation. Dormance,
-redirections et forces adaptatives restent des sous-lots expérimentaux, après qualification du
-rappel documentaire et de l'observation, sans effacement automatique dû à une faible exposition.
-
-### 10.3 État désiré d’une affectation
-
-Pour chaque souvenir admissible, le plan de réconciliation conserve :
-
-- le ou les Topics d’origine provenant des sources ;
-- le Topic organisationnel courant ;
-- le meilleur Topic candidat et les `k` suivants ;
-- les similarités courante et candidate ;
-- la marge observée ;
-- le modèle, l’empreinte sémantique et la version de politique ;
-- le nombre d’observations stables et la date du dernier changement ;
-- l’origine `manual`, `source_default` ou `semantic` et un éventuel pin ;
-- la raison expliquant un maintien, une proposition, un déplacement ou une suppression.
-
-Une relation candidate peut rester une projection reconstructible. L’affectation courante doit en
-revanche avoir une autorité persistante que le réconciliateur des provenances ne remplace pas.
-
-### 10.4 Politique de réaffectation candidate
-
-Les valeurs suivantes sont des points de départ à qualifier sur `work` et `validation`, pas des
-constantes acceptées :
-
-```text
-créer une proposition si :
-    similarité_cible >= 0,65
-    ET similarité_cible - similarité_actuelle >= 0,10
-
-appliquer automatiquement si :
-    la proposition reste identique pendant au moins 2 sweeps
-    OU la marge dépasse un seuil fort préenregistré
-
-conserver l’affectation courante si :
-    le candidat reste dans la bande d’hystérésis
-
-retirer un lien dérivé si :
-    il sort du top-k ou reste sous le seuil bas pendant N sweeps
-```
-
-La sélection doit être déterministe à snapshot identique, y compris en cas d’égalité. Elle ne
-compare que des nœuds autorisés dans le même périmètre de propriétaire. Un souvenir scellé à un
-contact peut changer de Topic, jamais de contact. Un document de travail, une projection
-source-managed peut être exclu par politique explicite plutôt
-que par effet secondaire.
-
-### 10.5 Application d’un déplacement
-
-Un déplacement automatique validé doit former une seule transition idempotente :
-
-1. verrouiller l’item et ses affectations organisationnelles ;
-2. revérifier les empreintes et la politique ayant produit la proposition ;
-3. créer ou mettre à jour l’affectation cible ;
-4. retirer uniquement l’ancienne affectation possédée par la même politique ;
-5. déplacer le scope Topic/contact organisationnel sans toucher au scellement du contact ;
-6. conserver toutes les `MemorySource` et les Topics historiques des activités ;
-7. journaliser source, cible, scores, politique, snapshot et cause ;
-8. relancer l’indexation ou le rappel seulement pour les nœuds affectés.
-
-Une affectation manuelle ou épinglée bloque l’étape 3 et produit un diagnostic, jamais une
-mutation. Une correction manuelle ultérieure doit pouvoir déplacer l’item et poser le pin dans la
-même transaction logique.
-
-### 10.6 Topics génériques et Topics précis
-
-Les embeddings peuvent montrer qu’un souvenir est plus proche d’un Topic précis que de son Topic
-générique. Ils ne prouvent pas à eux seuls le sens orienté « est une spécialisation de ». Deux
-stratégies devront donc être comparées :
-
-- **classement plat** : l’item quitte le Topic générique et rejoint le Topic précis ;
-- **navigation hiérarchique** : l’item appartient au Topic précis et un lien Topic→Topic permet
-  au générique de l’exposer indirectement.
-
-Une hiérarchie ne doit pas être inférée depuis le seul cosinus. Elle demanderait au minimum une
-preuve structurelle supplémentaire — ensemble de membres, cohésion, couverture et stabilité — ou
-une validation explicite. Elle constitue un sous-lot ultérieur et ne bloque pas le classement plat.
-
-### 10.7 Dataset et cas obligatoires
-
-Le benchmark de réorganisation doit rejouer des snapshots successifs, pas seulement classer des
-paires isolées. Chaque cas fournit un graphe initial, une séquence de créations ou modifications et
-le graphe final attendu.
-
-Il couvre au minimum :
-
-- un Topic générique puis deux Topics plus précis créés ultérieurement ;
-- un item qui doit rester dans le Topic générique ;
-- un candidat proche sans marge suffisante ;
-- une affectation manuelle épinglée ;
-- un souvenir issu de plusieurs sources ou Topics historiques ;
-- un souvenir conversationnel dont le contact doit rester inchangé ;
-- la modification puis la suppression d’un Topic cible ;
-- une fusion et une scission administratives concurrentes avec un sweep ;
-- un changement de modèle ou de dimension d’embedding ;
-- un fournisseur d’embeddings indisponible ;
-- un job interrompu puis repris ;
-- une seconde exécution strictement idempotente ;
-- un volume représentatif permettant de mesurer latence et amplification d’écritures.
-
-### 10.8 Métriques et portes initiales
-
-Mesures principales :
-
-- précision et rappel des items à déplacer ;
-- exactitude de la cible parmi les déplacements justifiés ;
-- cohésion intra-Topic et séparation inter-Topics avant/après ;
-- taux d’items orphelins ou maintenus dans un Topic trop générique ;
-- taux de churn des affectations par sweep et temps jusqu’à convergence ;
-- impact sur Recall@k, précision@k et diversité du brief ;
-- nombre d’embeddings recalculés et requêtes vectorielles par nœud modifié ;
-- latence p50/p95, écritures DB et durée du sweep global ;
-- nombre d’appels et coût LLM consacrés aux associations, qui doivent rester nuls.
-
-Portes proposées avant baseline :
-
-- précision des déplacements automatiques au moins égale à 95 % ;
-- exactitude de cible au moins égale à 95 % ;
-- aucun déplacement d’une affectation épinglée ;
-- aucune modification de contact, ACL, provenance, contenu ou révision d’un souvenir ;
-- zéro suppression de lien canonique ou manuel non possédé par la politique ;
-- après convergence, churn inférieur à 1 % des affectations par sweep ;
-- aucune baisse de Recall@5 ou de précision@5 supérieure à 2 points ;
-- aucune fuite inter-agent ou inter-contact sur les suites adversariales ;
-- zéro appel LLM sur le calcul et l’application des associations ;
-- exécution interrompue puis reprise donnant le même graphe final qu’une exécution continue.
-
-### 10.9 Déploiement progressif et rollback
-
-1. **simulation** : calculer les mouvements sans persister de candidats ;
-2. **shadow** : persister les propositions et leur explication sans influencer rappel ni graphe ;
-3. **suggestion** : les exposer à l’administration et mesurer acceptations/corrections ;
-4. **canari automatique** : appliquer seulement les marges fortes à une population bornée ;
-5. **généralisation** : élargir après holdout et canari positifs.
-
-Chaque mutation conserve assez d’audit pour reconstruire l’ancienne affectation. Le rollback
-désactive d’abord l’application automatique, restaure le dernier snapshot organisationnel validé
-et relance le réconciliateur en excluant la politique fautive. Il ne restaure ni ne réécrit les
-contenus, provenances ou ACL, puisqu’ils n’ont jamais été modifiés par ce lot.
-
-### 10.10 Livrables envisagés
-
-- ADR séparant provenance thématique et organisation courante ;
-- représentation et contrat public des affectations gérées et pins manuels ;
-- planificateur k-NN ciblé et sweep global reprenable ;
-- mode simulation/shadow et explications de chaque candidat ;
-- datasets temporels `work`, `validation` et `holdout` ;
-- benchmark de qualité, stabilité, coût et impact sur le rappel ;
-- tests DB de concurrence, idempotence, ACL, contacts, fusion, scission et rollback ;
-- observabilité des candidats, mouvements, refus, churn et coûts ;
-- interface de diagnostic et correction proportionnée au mode de déploiement.
-
-## 11. Registre extensible des axes d’amélioration
-
-Ce registre est l’entrée principale pour ajouter de nouvelles idées. Une ligne ne constitue ni une
-solution retenue ni une autorisation d’implémenter.
-
-| ID | Axe ou problème | Statut | Première question de benchmark |
-|---|---|---|---|
-| `MEM-001` | Granularité et création pertinente des Topics | cadré ci-dessus | Le F1 de regroupement progresse-t-il sans hausse des singletons ? |
-| `MEM-002` | Sélectivité de l’extraction automatique | à cadrer | Quels faits utiles sont ignorés et quels détails ponctuels sont retenus ? |
-| `MEM-003` | Déduplication et identité logique des faits | campagne à cadrer | Combien de doublons et de faux `LINK` apparaissent par source ? |
-| `MEM-004` | Contradictions, autorité et temporalité | campagne à cadrer | Le rappel présente-t-il le fait valide et signale-t-il les désaccords utiles ? |
-| `MEM-005` | Vieillissement, consolidation et oubli | à cadrer | Quels souvenirs périmés restent influents et lesquels sont oubliés trop tôt ? |
-| `MEM-006` | Classement par passages, canaux et ablations | cadré §7.2 et §7.4 | Recall@k et précision@k progressent-ils sous ACL et scopes réels ? |
-| `MEM-007` | Passages complémentaires, URI et budget du brief | cadré §7.2 | Chaque token injecté ajoute-t-il une information utile non redondante ? |
-| `MEM-009` | Utilité aval, horizon et cohortes gouvernées | cadré §7.4 | Une mémoire pertinente améliore-t-elle le résultat par rapport à une exécution sans rappel ? |
-| `MEM-010` | Réorganisation continue des Topics et du graphe | cadré ci-dessus | Les items convergent-ils vers le meilleur Topic sans faux déplacements, oscillations ni appel LLM ? |
-| `MEM-011` | Provenance par passage et correction opérateur | cadré avec MEM-018 §7.1 | Un humain peut-il expliquer et corriger rapidement chaque souvenir présenté ? |
-| `MEM-012` | Confidentialité, partage et oubli vérifiable | transverse à tous les lots | Les suites adversariales prouvent-elles zéro fuite et un oubli physique complet ? |
-| `MEM-013` | Santé de l'index et observation distincte de l'utilité | cadré §7.3 | Où se situent les dégradations de qualité, latence, volume et coût ? |
-| `MEM-014` | Diagnostic, couverture et réparation opérateur | cadré §7.3 | L’interface permet-elle de diagnostiquer sans exposer ni encourager de mauvaises mutations ? |
-| `MEM-015` | Orchestration, utilité marginale et budget de Dream | cadré transversalement | Quel effet durable et quel gain aval chaque appel LLM produit-il par euro, seconde et source traitée ? |
-| `MEM-018` | Extraction nouvelle des PJ et provenance fine | cadré §7.1 | Un détail nouvellement acquis reste-t-il retrouvable, localisable et fidèlement sourcé ? |
-
-Toute nouvelle observation entre dans ce registre avec sa preuve, sa question de benchmark et
-son prochain travail d'instruction. Les comptes rendus d'expériences terminées vont dans
-`project/audits/` et sont liés depuis le lot concerné.
-
-## 12. Ordonnancement, dépendances et livraison
-
-Le socle documentaire est un acquis. La baseline des expériences utilise le moteur courant,
-ses générations d'index et son admission ; elle ne reproduit pas les lots déjà livrés.
-
-| Lot restant | Contenu et dépendances | Preuve de sortie | Retour arrière |
-|---|---|---|---|
-| A — Classement mesuré | MEM-006 et campagnes Lab §7.4 ; modèle configuré constant | Holdout, ablations, gain utile et coût mesuré ; alias, langues et négatifs documentés | Politique de classement précédente, index et admission conservés |
-| B — Extensions de PJ | MEM-018/MEM-011, transcriptions vers Dream, réutilisation des analyses acquises, provenance et couverture §7.1.1 ; évaluation du texte extrait documentaire | Audio seul mémorisable, analyses réutilisées sans nouvel appel, reprise idempotente, détail précis retrouvable et limites explicites ; droits et révisions préservés | Désactiver les nouvelles acquisitions et leur sélection, conserver les résultats acquis avec leurs droits et provenance |
-| C — Observation et utilité aval | MEM-013 détaillé et MEM-009 ; shadow avant canari | Traces bornées, A/A et horizon préenregistré | Désactiver l'expérience sans changer le moteur sain |
-| D — Capture et organisation | MEM-001/002/003, MEM-010 en simulation, MEM-004/005 sur erreurs observées | Gains de capture/rappel, pins, provenance et oubli préservés | Affectations restaurables sans réécrire les sources |
-
-MEM-012 (droits/oubli), MEM-014 (diagnostic) et MEM-015 (budgets Dream) accompagnent chaque
-expérience. Une extraction nouvelle n'est pas requise pour indexer un texte déjà disponible.
-
-Avant chaque lot : inventaire des consommateurs, garantie observable, scénario reproduisant le
-défaut ou baseline, seuils, limites et rollback. Développer un premier parcours complet, puis
-étendre par groupes de consommateurs. Les modifications de schéma passent par les modèles
-SQLAlchemy et DbAdmin ; pas de DDL/Alembic recopié depuis les prototypes du rapport privé. Les choix
-structurels (générations, admission, extraction, traces) donnent lieu aux ADR concernés.
-
-Toute future publication requiert la qualification du snapshot courant par `make validate`,
-lecture de son rapport et revue des résultats. Une édition ultérieure invalide cette qualification.
-Le plan ne vaut pas autorisation d'intervenir en production.
-
-## 13. Critères de réussite et clôture
-
-Les améliorations préservent les garanties documentaires et d'admission de 0108.
-Le travail restant produit une amélioration crédible lorsque :
-
-- la pertinence documentaire progresse face à un hybride sain utilisant le même modèle configuré ;
-- les résultats du rapport privé repris sont reproduits sur le code actuel et distingués des preuves encore
-  expérimentales, sans transformer leurs nombres de tests en gains de production ;
-- chaque mécanisme Memory important possède une baseline et un holdout revu ;
-- les métriques couvrent capture, organisation, rappel, utilité aval, gouvernance et coût ;
-- Dream réserve les appels LLM aux créations et interprétations qui en ont besoin, tandis que
-  l’entretien courant des associations converge sans appel génératif ;
-- une source inchangée et déjà checkpointée ne provoque pas un nouvel appel LLM, et chaque effet
-  Dream expose les UUID touchés aux traitements déterministes ciblés ;
-- l’organisation courante peut évoluer sans réécrire les sources historiques et sans qu’un sweep
-  canonique annule silencieusement un déplacement validé ;
-- les changements promus franchissent des gates préenregistrés et restent positifs en canari ;
-- les incidents réels enrichissent les non-régressions au lieu de rester des anecdotes ;
-- une dégradation peut être attribuée à une variable, détectée rapidement et rollbackée ;
-- aucune amélioration moyenne ne masque une fuite ACL, un faux lien critique ou un oubli incomplet ;
-- le plan reste assez lisible pour accueillir de nouveaux constats sans les transformer trop tôt
-  en solutions techniques.
-
-## 14. Validation attendue pour les futures implémentations
-
-Selon le lot concerné :
-
-- tests unitaires des règles pures et métriques déterministes ;
-- tests d’intégration DB pour acquisition, provenance, liens, ACL, révision et oubli ;
-- exécution side-effect-free du vrai mécanisme dans le Lab ;
-- tests ciblés, puis `make typecheck` et `make architecture-check` ;
-- `make project-context` si les surfaces, modèles, routes, outils ou settings changent ;
-- tests de contrats fichiers, composants/UI et quelques E2E pour recherche → lecture → injection ;
-- revue des migrations déclaratives, rétention et invalidations si les schémas évoluent ;
-- `make validate` avant publication, lecture de `artifacts/validation/*/summary.txt` ;
-- `git diff --check` et revue du diff sans écraser les modifications en cours.
-
-Le remaniement documentaire seul ne réexécute pas les benchmarks, ne régénère pas la cartographie
-et ne vaut pas qualification du runtime. Sa validation porte sur les sources, les liens, la
-cohérence des statuts, l'ordonnancement et le diff.
+| MEM-002 | Sélectivité de capture : faits utiles ignorés et détails ponctuels retenus. |
+| MEM-003 | Doublons et faux LINK ; campagnes communes aux modèles de décision dans le Lab. |
+| MEM-004 | Contradictions, autorité et temporalité des faits rappelés. |
+| MEM-005 | Vieillissement, consolidation et oubli sans perte de faits utiles. |
+| MEM-012 | ACL, partage, scellement par contact et oubli physique : gardes de tous les lots. |
+
+Les identifiants MEM sont conservés pour le suivi. Une piste n'est pas une solution retenue.
+
+## Qualifications regroupées et clôture
+
+La qualification du catalogue File Share est suivie ici depuis le retrait de son plan réalisé :
+
+- démarrage à froid, statistiques SQL et grande arborescence ; les mesures synthétiques
+  à 100 000 entrées ne promettent pas une latence provider réelle ;
+- installations réelles, notamment Nextcloud : le pair WebDAV synthétique avec 503 entrées,
+  reprise et révocation qualifie l'adaptateur, pas un compte réel ;
+- capacités de découverte AFFiNE/Grav et nouveaux providers, événements/deltas fiables
+  et validation ACL groupée seulement si leurs contrats et les mesures le permettent ;
+- reprise des anciennes descriptions admissibles non vérifiées : ne pas inventer une version
+  source ; préserver notes et révisions et vérifier les capacités actuelles avant extension.
+
+Chaque expérience part d'un manque reproduit ou d'une baseline, avec une variable candidate,
+partitions par origine, métriques, seuils avant holdout et retour arrière.
+Toutes les fixtures versionnées sont entièrement synthétiques ; les diagnostics restent sous
+`artifacts/`. Réutiliser le [Lab](lab-evaluation-mecanismes-ia.md) pour étalonnage et comparaison.
+Aucun modèle d'embeddings alternatif automatique, assouplissement d'ACL, mélange de versions
+ou résurrection après oubli n'est admis pour gagner un score.
+
+Ordre : compléter les campagnes sur le moteur courant ; réaliser les acquisitions et leur
+provenance ; qualifier observation/utilité aval ; expérimenter capture et organisation.
+Retirer chaque lot lorsqu'il est démontré ou transféré, en conservant ses preuves dans les
+tests, décisions, guides ou audits. Les recettes usuelles avant publication ne constituent
+pas de nouveaux lots permanents.

@@ -1,99 +1,76 @@
-# Plan — Étalonnage, comparaison et gardes du Lab IA
+# Lab IA — étalonnage, comparaisons et gardes
 
-> **Statut :** `partial` — socle livré ; qualification empirique et capacités de décision restantes.
->
-> **Revue documentaire :** 27 septembre 2026. Cette revue ne rejoue pas les campagnes
-> et n'atteste pas la qualité des modèles distants.
+- Statut : `partial`
+- Revue des sources : 2026-10-08. Les campagnes ne sont pas rejouées par cette revue.
 
-## 1. Périmètre restant
+## Socle réalisé
 
-Rendre les évaluations comparables dans le temps et suffisamment étalonnées pour éclairer,
-puis éventuellement bloquer, une promotion de modèle ou de politique. Un score agrégé ne
-constitue pas à lui seul une preuve de qualité.
+Campagnes, snapshots, comparaisons, répétitions/budgets, revue humaine et bindings hybrides
+appartiennent à l'[architecture](../../docs/fr/architecture/ai-lab-evaluation.md),
+au [guide](../../docs/fr/user/lab-ai.md) et aux décisions
+[0078](../decisions/0078-lab-variable-and-judgment-campaigns.md),
+[0082](../decisions/0082-lab-stability-human-review.md),
+[0134](../decisions/0134-agent-lab-control.md).
+Un score, rôle holdout ou digest ne prouve pas à lui seul étanchéité, qualité ou comparabilité.
 
-Le contrat courant est maintenu dans l'[architecture du Lab](../../docs/fr/architecture/ai-lab-evaluation.md)
-et le [guide opérateur](../../docs/fr/user/lab-ai.md). Les décisions
-[0078](../decisions/0078-lab-variable-and-judgment-campaigns.md) et
-[0082](../decisions/0082-lab-stability-human-review.md) et
-[0134](../decisions/0134-agent-lab-control.md) portent les contrats des campagnes et de leur
-comparaison. Leur implémentation n'est plus un lot de ce plan.
+## Lots restants
 
-## 2. Limites des preuves existantes
+| Lot | Travail | Réception |
+|---|---|---|
+| Étalonnage humain | Corpus annotés par mécanisme, arbitrage justifié, biais/corrélation/faux passages du juge. | Erreur de passage mesurable contre référence humaine revue, juge/corpus/date versionnés ; panne/couverture faible sans bonne note fictive. |
+| Incertitude | Intervalles adaptés au volume et aux dépendances ; variance candidat distincte de variance juge. | Répétitions d'un épisode non présentées comme observations indépendantes ; insuffisance de données visible. |
+| Comparabilité/tendances | Campagnes réelles du protocole FR/EN ; politiques pour changement de rubrique/corpus/juge ; tendances dimensionnelles. | Aucun changement de référence présenté comme gain du candidat ; résultats liés aux snapshots et incertitude publiée. |
+| Gardes | Baseline approuvée/remplaçable, seuils dimensionnels/globaux/erreurs/couverture, verdict machine et export CI. | Nouvelle défaillance critique bloquante malgré une moyenne meilleure ; verdict reconstructible, rapport narratif sans pouvoir de lever la garde. |
+| Portabilité/gouvernance | Import/export versionné des datasets/résultats ; revue des références, rétention, gel/ouverture des holdouts. | Corpus/paramètres/provenance préservés, secrets et droits des sources respectés. |
+| Jugement renforcé | Juges multiples/arbitrage si besoin mesuré ; biais de position, verbosité et auto-préférence. | Risque réduit et coût connu face au juge courant ; nombre de juges sans valeur probante propre. |
 
-Les rôles de datasets ne prouvent pas à
-eux seuls l'étanchéité d'un holdout ; une revue masquée à l'ouverture ne peut pas effacer une
-exposition préalable aux réponses ; une empreinte ne remplace pas la politique de comparabilité.
+Préparer étalonnage/comparabilité, puis incertitude, avant gardes décisionnelles.
+Les datasets versionnés restent entièrement synthétiques. Une revue masquée ne supprime
+pas l'exposition passée aux réponses.
 
-## 3. Lots ouverts
+## Campagnes de modèles de décision regroupées
 
-### E — Étalonnage humain
+Le plan `modeles-decision.md` est absorbé ici : catalogue, profil, adaptateur et workflows
+sont réalisés dans
+[0127](../decisions/0127-optional-dispatcher-decision-model.md),
+[0129](../decisions/0129-shared-decision-model-workflows.md) et
+[0130](../decisions/0130-live-message-topic-decisions.md).
+Le pilote dispatcher sans témoin texte ni répétitions suffisantes ne conclut pas la comparaison.
 
-- Constituer un corpus annoté pour chaque mécanisme utilisé dans une décision de promotion.
-- Organiser l'arbitrage des désaccords entre annotateurs et conserver sa justification.
-- Compléter les écarts dimensionnels, désaccords de verdict et écarts absolus déjà visibles par
-  les mesures de biais, corrélation de rang et faux passages utiles au risque métier.
-- Évaluer le juge lui-même ; publier la version, le corpus et la date de son étalonnage.
+Comparer spécialisé/texte sur mêmes cas FR/EN, configuration figée, répétitions et holdout ;
+qualifier Jev réel séparément du transport simulé.
 
-Réception : une décision de passage erronée du juge est mesurable contre une référence humaine
-revue ; ni une panne du juge ni une faible couverture ne deviennent une bonne note.
+| Usage | Mesure spécifique |
+|---|---|
+| Dispatcher / pairs IA | Route, effort, langue, escalades inutiles et délai jusqu'au début utile. |
+| Topics messages/Tasks | Continuité, frontières, réemploi et créations pertinentes. |
+| Rétention | Aucun fait durable perdu par ignore/link, surtout mêlé, nouveau ou contradictoire. |
+| Déduplication | Équivalence complète, faux rattachements et informations distinctes préservées. |
+| Classement parallèle | Topic disponible sans ralentir l'admission ni les traitements concurrents. |
 
-### F — Incertitude
+Séparer candidat sans repli et système avec repli ; compter aussi les appels de rédaction.
+Mesurer préparation, persistance, attente, transport, inférence, validation/application,
+p50/p95, coûts et taux de repli. Inclure ambiguïté, ordre d'options, contenu adversarial,
+erreurs et arrêt avant repli ; réponses tardives/crash/relecture sans double effet.
 
-- Qualifier les agrégats existants sur des campagnes réelles.
-- Calculer des intervalles de confiance adaptés au volume et à la dépendance entre cas.
-- Séparer expérimentalement variance du candidat et variance du juge.
+Optimisations seulement après mesure : clients/connexions réutilisés, attente/concurrence
+bornée, politique d'incertitude par usage/version/langue, coupe-circuit si besoin.
+Pas de double appel spéculatif systématique ni cache sémantique de décision.
+Préserver choix texte quand sélection vide, budgets et absence de provider implicite.
 
-Réception : les répétitions d'un même épisode ne sont pas présentées comme des observations
-indépendantes ; un nombre insuffisant de cas reste signalé.
+Les adaptateurs directs/locaux différés sont conservés dans la
+[convergence SDK](convergence-pydantic-ai.md).
+Usages supplémentaires (ressources/skills/outils, Goal/planner, booléens/ordinaux)
+restent des expériences à justifier par une décision fermée évitant un travail génératif utile.
 
-### G — Comparabilité et tendances
+## Mesures communes et clôture
 
-- Exécuter et qualifier avec des fournisseurs réels le
-  [protocole FR/EN délai/coût/qualité](../../docs/fr/dev/lab-reference-corpus.md#campagne-délai-coût-et-qualité).
-  La mesure du Lab n'inclut pas le transport utilisateur ni une admission Task réelle.
-- Étendre les politiques de comparaison aux expériences portant sur la rubrique, le corpus
-  ou le juge et les qualifier sur des campagnes réelles.
-- Compléter le bilan descriptif global par des tendances dimensionnelles dans le temps,
-  avec les règles d'incertitude du lot F.
+Le [protocole délai/coût/qualité](../../docs/fr/dev/lab-reference-corpus.md#campagne-délai-coût-et-qualité)
+mesure le Lab ; son admission simulée ne qualifie pas le transport utilisateur.
+Le [plan conversationnel](fiabilisation-conversationnelle.md) possède cette mesure complète,
+et le [plan mémoire](amelioration-globale-memoire.md) les questions de rappel.
 
-Réception : une modification du corpus ou du juge ne peut pas être présentée silencieusement
-comme un gain du candidat ; les résultats restent rattachés aux snapshots d'origine.
-
-### H — Gardes de non-régression
-
-- Définir une baseline approuvée et sa politique de remplacement.
-- Calibrer les seuils globaux et dimensionnels, les seuils de couverture et les taux d'erreur.
-- Bloquer une nouvelle défaillance critique indépendamment d'une amélioration moyenne.
-- Produire un verdict machine explicable et un export utilisable en CI.
-
-Réception : la décision se reconstruit depuis les résultats persistés, sa politique et sa
-baseline ; un rapport narratif ne peut pas lever une garde.
-
-### I — Portabilité et gouvernance
-
-- Exporter/importer les datasets et résultats dans un format versionné.
-- Tracer les raisons de modification des références et organiser la revue des données importées.
-- Définir la rétention et le protocole de gel/ouverture des holdouts en réutilisant `purpose`.
-
-Réception : un export préserve le corpus, les paramètres, les références et leur provenance,
-sans exposer les secrets ni contourner les droits des sources.
-
-### J — Jugement renforcé
-
-- Étudier des juges multiples et un arbitrage explicite des désaccords.
-- Mesurer les biais de position, de verbosité et d'auto-préférence avec des cas sentinelles.
-- Séparer les modèles de référence, de jugement et d'analyse seulement si l'étalonnage le justifie.
-
-Réception : l'ensemble améliore un risque mesuré par rapport au juge courant et son coût est
-connu ; le nombre de juges ne constitue pas une preuve en soi.
-
-## 4. Ordre et clôture
-
-Préparer d'abord les corpus d'étalonnage et la comparabilité, puis qualifier l'incertitude,
-avant de rendre les gardes décisionnelles. Portabilité et jugement renforcé restent des lots
-distincts, sans nouvelle autorisation d'implémentation portée par ce ménage.
-
-Clôturer ce plan lorsque les lots retenus ont leurs preuves sur des cas réels, les limites sont
-publiées dans les documents canoniques et chaque intention restante a été livrée, abandonnée
-explicitement ou reprise par un autre plan. Les suites du socle restent celles du
+Réutiliser suites de décisions, workflows/Topics et Lab recensées dans le
 [catalogue fonctionnel](../../docs/fr/dev/functional-tests.md).
+Publier les campagnes et limites, retirer les lots démontrés ou transférés.
+Une recette fournisseur ordinaire ne justifie pas de conserver un plan d'implémentation terminé.
