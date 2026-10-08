@@ -11,15 +11,93 @@ from sqlalchemy.sql import selectable
 
 from app.agent.models import Agent, Title
 from app.memory import bootstrap, context, retrieval, semantic_index, service
+from app.memory.access import effective_access
 from app.agent.context import build_agent_run_context, register_context_provider, unregister_context_provider
 from app.agent.contracts import AgentContextRequest, AgentSnapshot
 from app.memory.embedding import EmbeddingModel, MemoryEmbeddingNotConfiguredError
 from app.memory.schemas import (
     MemoryGrantUpdate, MemoryItemCreate, MemoryItemUpdate, MemoryPayload,
-    MemoryRecallRequest,
+    MemoryRecallRequest, MemorySearchRequest, MemorySearchHit, MemoryTraversalStep, MemoryLinkCreate,
 )
 from core.database import get_db, get_db_session
 from core.user import UserModel
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("invalidated,surface", [("revision", "admission"), ("path", "admission"),
+                                               ("path_edge", "admission"), ("revision", "browse")])
+@pytest.mark.parametrize("reverse", [False, True])
+async def test_overlapping_pages_admit_each_snapshot_and_path_independently(
+    db, agents, memory_storage, invalidated, surface, reverse,
+):
+    owner, _reader = agents
+    item, _ = await service.create_item(MemoryItemCreate(
+        owner_agent_id=owner.id, title="Synthetic overlapping evidence",
+        payload=MemoryPayload(text="<p>The synthetic endpoint uses port 1111.</p>"),
+        media_type="text/html",
+    ))
+    stale = MemorySearchHit(item=service.item_to_public(item, await effective_access(item, owner.id)),
+                           excerpt="The synthetic endpoint uses port 1111.", score=1.0)
+    if invalidated == "revision":
+        current = await service.update_item(item.id, MemoryItemUpdate(
+            payload=MemoryPayload(text="<p>The synthetic endpoint uses port 2222.</p>"),
+        ), actor_agent_id=owner.id)
+        valid = MemorySearchHit(item=service.item_to_public(current, await effective_access(current, owner.id)),
+                               excerpt="The synthetic endpoint uses port 2222.", score=0.9)
+    else:
+        # The target is still readable; the formerly traversed source no longer
+        # exists. A direct result must not authorize this obsolete path.
+        source, _ = await service.create_item(MemoryItemCreate(
+            owner_agent_id=owner.id, title="Synthetic removed path source",
+            payload=MemoryPayload(text="<p>A synthetic source.</p>"), media_type="text/html",
+        ))
+        link = await service.create_link(MemoryLinkCreate(
+            source_item_id=source.id, target_item_id=item.id, relation_type="related_to",
+        ), actor_agent_id=owner.id)
+        stale.structural_path = [MemoryTraversalStep(
+            source_item_id=source.id, target_item_id=item.id, relation_type="related_to",
+        )]
+        if invalidated == "path_edge":
+            root, _ = await service.create_item(MemoryItemCreate(
+                owner_agent_id=owner.id, title="Synthetic readable path root",
+                payload=MemoryPayload(text="<p>A synthetic root.</p>"), media_type="text/html",
+            ))
+            await service.create_link(MemoryLinkCreate(
+                source_item_id=root.id, target_item_id=source.id, relation_type="related_to",
+            ), actor_agent_id=owner.id)
+            stale.structural_path.insert(0, MemoryTraversalStep(
+                source_item_id=root.id, target_item_id=source.id, relation_type="related_to",
+            ))
+        assert len(await retrieval.admit_recall_hits(MemoryRecallRequest(agent_id=owner.id), [stale])) == 1
+        if invalidated == "path_edge":
+            # The first edge and all endpoints stay readable. The second
+            # edge loses its accepted status within the same real database.
+            link.suggested = True
+            await get_db().flush()
+        else:
+            await service.forget_item(source.id, actor_agent_id=owner.id)
+        valid = stale.model_copy(update={"structural_path": []})
+    batch = [valid, stale] if reverse else [stale, valid]
+    if surface == "browse":
+        admitted = (await service.search_items(MemorySearchRequest(agent_id=owner.id, query="synthetic"),
+                                              ranked_hits=batch)).hits
+    else:
+        admitted = await retrieval.admit_recall_hits(MemoryRecallRequest(agent_id=owner.id, query="synthetic"), batch)
+    assert len(admitted) == 1
+    assert admitted[0].excerpt == valid.excerpt
+    assert admitted[0].item.revision == valid.item.revision
+    assert admitted[0].structural_path == []
+    if surface == "admission":
+        another = valid.model_copy(update={"excerpt": "A second valid occurrence.",
+                                          "item": valid.item.model_copy(update={"semantic_fingerprint": None})})
+        obsolete_fingerprint = valid.model_copy(update={
+            "item": valid.item.model_copy(update={"semantic_fingerprint": "synthetic-obsolete-fingerprint"}),
+        })
+        occurrences = ([valid, stale, obsolete_fingerprint, another] if reverse
+                       else [another, obsolete_fingerprint, stale, valid])
+        duplicates = await retrieval.admit_recall_hits(MemoryRecallRequest(agent_id=owner.id), occurrences)
+        assert [hit.excerpt for hit in duplicates] == [hit.excerpt for hit in occurrences
+                                                     if hit is valid or hit is another]
 
 
 @pytest.mark.asyncio

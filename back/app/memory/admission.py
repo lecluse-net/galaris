@@ -3,7 +3,8 @@
 from datetime import datetime, timezone
 from typing import Sequence
 
-from sqlalchemy import and_, exists, func, or_, select
+from sqlalchemy import Integer, Text, Uuid, bindparam, column, exists, func, or_, select
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.sql.elements import ColumnElement
 
 from core.database import get_db
@@ -42,31 +43,54 @@ async def admit_search_hits(
         or_(MemoryItem.valid_from.is_(None), MemoryItem.valid_from <= now),
         or_(MemoryItem.valid_until.is_(None), MemoryItem.valid_until > now),
     ).correlate(None)
-    conditions: list[ColumnElement[bool]] = []
-    for hit in hits:
-        item = hit.item
-        path_checks = [exists(select(MemoryLink.id).where(
-            MemoryLink.source_item_id == step.source_item_id,
-            MemoryLink.target_item_id == step.target_item_id,
-            MemoryLink.relation_type == step.relation_type,
+    # Overlapping pages may carry the same UUID with different revisions or
+    # paths. A valid occurrence must never authorize another occurrence.
+    # Bind the batch as data, keeping the SQL shape and its compilation cache
+    # independent of page size. A large OR/VALUES tree makes planning dominate
+    # admission even when every candidate is a direct result.
+    snapshots = [dict(ordinal=index, item_id=str(hit.item.id), revision=hit.item.revision,
+                      lock_version=hit.item.lock_version, content_hash=hit.item.content_hash,
+                      semantic_fingerprint=hit.item.semantic_fingerprint)
+                 for index, hit in enumerate(hits)]
+    candidates = func.jsonb_to_recordset(bindparam("admission_snapshots", snapshots, type_=JSONB)).table_valued(
+        column("ordinal", Integer), column("item_id", Uuid(as_uuid=True)),
+        column("revision", Integer), column("lock_version", Integer),
+        column("content_hash", Text), column("semantic_fingerprint", Text),
+    ).render_derived(name="memory_admission_candidates", with_types=True)
+    path_filters: list[ColumnElement[bool]] = []
+    paths = [dict(ordinal=index, source_item_id=str(step.source_item_id),
+                  target_item_id=str(step.target_item_id), relation_type=step.relation_type)
+             for index, hit in enumerate(hits) for step in hit.structural_path]
+    if paths:
+        steps = func.jsonb_to_recordset(bindparam("admission_paths", paths, type_=JSONB)).table_valued(
+            column("ordinal", Integer), column("source_item_id", Uuid(as_uuid=True)),
+            column("target_item_id", Uuid(as_uuid=True)), column("relation_type", Text),
+        ).render_derived(name="memory_admission_steps", with_types=True)
+        readable_edge = exists(select(MemoryLink.id).where(
+            MemoryLink.source_item_id == steps.c.source_item_id,
+            MemoryLink.target_item_id == steps.c.target_item_id,
+            MemoryLink.relation_type == steps.c.relation_type,
             MemoryLink.suggested.is_(False),
             MemoryLink.source_item_id.in_(visible),
             MemoryLink.target_item_id.in_(visible),
-        )) for step in hit.structural_path]
-        conditions.append(and_(
-            MemoryItem.id == item.id,
-            MemoryItem.revision == item.revision,
-            MemoryItem.lock_version == item.lock_version,
-            MemoryItem.content_hash == item.content_hash,
-            *([MemoryItem.semantic_fingerprint == item.semantic_fingerprint] if item.semantic_fingerprint is not None else []),
-            *path_checks,
-        ))
+        ).correlate(steps))
+        path_filters.append(~exists(select(steps.c.ordinal).where(
+            steps.c.ordinal == candidates.c.ordinal, ~readable_edge,
+        ).correlate(candidates)))
     refs = select(func.array_agg(MemorySource.source_ref)).where(
         MemorySource.item_id == MemoryItem.id,
     ).correlate(MemoryItem).scalar_subquery()
-    rows = (await db.execute(select(MemoryItem.id, refs).where(
-        MemoryItem.id.in_(visible), or_(*conditions), *scope_filters,
+    rows = (await db.execute(select(candidates.c.ordinal, refs).select_from(MemoryItem).join(
+        candidates, MemoryItem.id == candidates.c.item_id,
+    ).where(
+        MemoryItem.id.in_(visible),
+        MemoryItem.revision == candidates.c.revision,
+        MemoryItem.lock_version == candidates.c.lock_version,
+        MemoryItem.content_hash == candidates.c.content_hash,
+        or_(candidates.c.semantic_fingerprint.is_(None),
+            MemoryItem.semantic_fingerprint == candidates.c.semantic_fingerprint),
+        *path_filters, *scope_filters,
     ))).all()
     admitted = {row[0]: list(row[1] or []) for row in rows}
-    return [hit.model_copy(update={"source_refs": admitted[hit.item.id]})
-            for hit in hits if hit.item.id in admitted and hit.item.access.can_read]
+    return [hit.model_copy(update={"source_refs": admitted[index]})
+            for index, hit in enumerate(hits) if index in admitted and hit.item.access.can_read]

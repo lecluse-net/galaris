@@ -168,6 +168,20 @@ def install_adapter(monkeypatch, root: Path, reference_sources: Path | None = No
         from tests.memory_benchmark_reference import load_reference
         previous = load_reference(reference_sources, FixedClock)
         previous_rank = previous['retrieval']._weighted_rank
+        if 'admission' in previous:
+            real_admission = admission.admit_search_hits
+
+            async def admit(*args, **kwargs):
+                trace = CURRENT.get()
+                function = (previous['admission'].admit_search_hits
+                            if trace is not None and trace.variant == 'previous'
+                            else real_admission)
+                return await function(*args, **kwargs)
+
+            # Calendar and the final combined brief call the current retrieval
+            # facade. Route their admission too, so both arms are complete.
+            monkeypatch.setattr(retrieval, 'admit_search_hits', admit)
+            monkeypatch.setattr(service, 'admit_search_hits', admit)
         if 'access' in previous:
             real_structural_access = access._structural_access
 

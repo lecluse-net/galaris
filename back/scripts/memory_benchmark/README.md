@@ -16,6 +16,26 @@ d'artefacts. Les empreintes des deux versions et de l'adaptateur sont contrôlé
 avant/après la campagne. Une copie du moteur courant ne représente pas une ancienne
 version ; conserver la provenance de la référence lors de la préparation.
 
+Pour comparer l'admission finale, ajouter aussi `admission.py` à la référence figée.
+Le chargeur l'utilise pour la recherche, le calendrier et le brief final ; son empreinte
+figure dans le manifeste. Sans ce fichier, les anciennes campagnes conservent leur
+comportement et partagent l'admission courante.
+
+Le benchmark d'admission opt-in mesure les lots de 1, 8, 48, 100 et 500 résultats,
+ainsi que les chemins de graphe valides sur des lots de 8 et 48 résultats,
+sur 6 000 souvenirs synthétiques, les refus d'accès, les révisions obsolètes et les
+chemins de graphe supprimés. Il compare aussi les extraits de la recherche paginée,
+avec ordre alterné, deux échauffements par contrôle et répétitions configurables :
+
+```bash
+make tests ARGS='tests/test_memory_admission_benchmark.py -s -p tests.memory_benchmark_plugin --memory-benchmark-reference /repo/artifacts/memory-benchmark/reference-before-admission --memory-benchmark-output /repo/artifacts/memory-benchmark/admission-measurement --memory-benchmark-repeats 30'
+```
+
+`report.json` conserve p50/p95, nombres SQL, erreurs et rappel des résultats valides ;
+`measurements.jsonl` conserve chaque mesure appariée. Les cas d'invalidation sont
+volontairement provoqués : leur taux d'erreur ne mesure pas leur fréquence en production.
+Ne pas lancer une autre campagne ou un contrôle CPU intensif pendant une mesure de latence.
+
 ```bash
 make tests ARGS='tests/test_memory_benchmark_campaign.py -k campaign_on -s -p tests.memory_benchmark_plugin --memory-benchmark-corpus /repo/artifacts/memory-benchmark/corpus-v1 --memory-benchmark-output /repo/artifacts/memory-benchmark/paired-example/shard-0 --memory-benchmark-profile-sample --memory-benchmark-workers 1 --memory-benchmark-variants previous,baseline --memory-benchmark-reference /repo/artifacts/memory-benchmark/reference-v10'
 make memory-benchmark ARGS='aggregate /output/corpus-v1 /output/paired-example --output /output/paired-example-aggregate --expected-queries 5280'

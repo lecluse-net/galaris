@@ -12,3 +12,4 @@ def pytest_addoption(parser):
     group.addoption("--memory-benchmark-shards", type=int, default=1, help="Independent database partitions")
     group.addoption("--memory-benchmark-shard", type=int, default=0, help="Zero-based database partition")
     group.addoption("--memory-benchmark-variants", default="baseline,relevance_first,history,entities,time,combined")
+    group.addoption("--memory-benchmark-repeats", type=int, default=30, help="Paired admission measurements per scenario")

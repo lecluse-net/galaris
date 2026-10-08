@@ -10,6 +10,8 @@ def load_reference(root, clock):
     root.resolve().relative_to(Path('/repo/artifacts/memory-benchmark').resolve())
     modules = {}
     names = ('relevance', 'service', 'retrieval', 'facade')
+    if (root / 'admission.py').is_file():
+        names = ('admission', *names)
     if (root / 'access.py').is_file():
         names = ('access', *names)
     if (root / 'catalogue.py').is_file():
@@ -29,13 +31,20 @@ def load_reference(root, clock):
     modules['retrieval'].relevance = modules['relevance']
     modules['retrieval'].service = modules['service']
     modules['facade'].recall_items = modules['retrieval'].recall_items
-    for name in ('service', 'retrieval'):
+    if 'admission' in modules:
+        for name in ('service', 'retrieval'):
+            modules[name].admit_search_hits = modules['admission'].admit_search_hits
+    for name in ('service', 'retrieval', 'admission'):
+        if name not in modules:
+            continue
         modules[name].datetime = clock
     return modules
 
 
 def reference_fingerprints(root):
     names = ('relevance', 'service', 'retrieval', 'facade')
+    if (root / 'admission.py').is_file():
+        names = ('admission', *names)
     if (root / 'access.py').is_file():
         names = ('access', *names)
     if (root / 'catalogue.py').is_file():
