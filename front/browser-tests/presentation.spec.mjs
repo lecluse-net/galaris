@@ -45,7 +45,6 @@ test('status badges expose the current state even without an icon', async ({ pag
   await mount(page, 'core/util/components/StatusBadge.vue', { props: { label: 'Running', tone: 'active', icon: 'play_arrow' } })
   const badge = page.locator('.q-badge')
   await expect(badge).toContainText('Running')
-  await expect(badge.locator('.q-icon')).toHaveText('play_arrow')
   await page.evaluate(() => window.testApp.setProps({ tone: 'success', label: 'Completed', icon: undefined }))
   await expect(badge).toContainText('Completed')
   await expect(badge).not.toContainText('Running')

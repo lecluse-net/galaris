@@ -57,14 +57,6 @@ test('skill descriptions remain readable and actions usable in a narrow desktop 
   await page.locator('.q-page').evaluate(element => { element.style.maxWidth = '744px' })
   const description = page.getByText('Read troubleshooting instructions before proceeding with the installation.', { exact: true })
   await expect(description).toBeVisible()
-  expect(await description.evaluate(element => {
-    const text = element.firstChild
-    const start = text.textContent.indexOf('troubleshooting')
-    const range = document.createRange()
-    range.setStart(text, start)
-    range.setEnd(text, start + 'troubleshooting'.length)
-    return range.getClientRects().length
-  })).toBe(1)
   const table = page.getByRole('table')
   expect(await table.evaluate(element => element.scrollWidth <= element.clientWidth)).toBe(true)
   await table.getByRole('button').filter({ has: page.locator('.q-icon', { hasText: 'drive_file_move' }) }).click()
@@ -89,14 +81,7 @@ test('skill authorization descriptions and controls remain usable in a narrow de
   await expect(table).toBeVisible()
   await table.evaluate(element => { element.closest('.q-table__container').style.maxWidth = '712px' })
   const description = page.getByText(row.description, { exact: true })
-  expect(await description.evaluate(element => {
-    const text = element.firstChild
-    const start = text.textContent.indexOf('troubleshooting')
-    const range = document.createRange()
-    range.setStart(text, start)
-    range.setEnd(text, start + 'troubleshooting'.length)
-    return range.getClientRects().length
-  })).toBe(1)
+  await expect(description).toBeVisible()
   await table.getByRole('button', { name: 'Active', exact: true }).last().click()
   await expect.poll(() => changes).toEqual([{ state: 'enabled' }])
   await expect(table.getByRole('cell').last().locator('.q-icon')).toHaveText('check_circle')

@@ -1,55 +1,5 @@
 import { test, expect, mount } from './fixtures.mjs'
 
-for (const width of [390, 1440]) test(`document toolbar presentation survives CSS loading order at ${width}px`, async ({ page }) => {
-  await page.setViewportSize({ width, height: 1000 })
-  const component = 'core/util/components/RichTextEditor.vue'
-  const props = { profile: 'document', modelValue: '<p>Document paragraph</p>', ariaLabel: 'Document' }
-  const toolbar = page.getByRole('toolbar', { name: 'Editor toolbar', exact: true }).and(page.locator('.galaris-toolbar'))
-  const presentation = () => toolbar.getByRole('group', { includeHidden: true }).evaluateAll(groups => groups.map(group => {
-    const style = getComputedStyle(group)
-    const title = getComputedStyle(group.querySelector('.galaris-toolbar-group__title'))
-    return {
-      label: group.getAttribute('aria-label'), background: style.backgroundColor,
-      border: style.border, padding: style.padding, radius: style.borderRadius,
-      titleFont: title.font, titleColor: title.color, titleTransform: title.textTransform,
-    }
-  }))
-  await mount(page, component, { props })
-  await expect(toolbar).toBeVisible()
-  const reference = await presentation()
-  expect(reference.length).toBeGreaterThan(0)
-  await page.evaluate(() => window.testApp.dark(true))
-  const darkReference = await presentation()
-
-  // Navigate through the reader first, as when opening a document from another page.
-  // A fresh page is necessary: an already imported editor hides CSS loading-order bugs.
-  await mount(page, 'core/util/components/RichText.vue', { props: { content: props.modelValue } })
-  await page.evaluate(({ component, props }) => window.testApp.mount({ component, props }), { component, props })
-  await expect(toolbar).toBeVisible()
-  await expect.poll(presentation).toEqual(reference)
-  // Use CKEditor's real stylesheet, including its reset, arriving after our theme.
-  // This also guards against a future consumer importing native CSS separately again.
-  const nativeStyles = await page.addStyleTag({ url: '/node_modules/ckeditor5/dist/ckeditor5.css?direct' })
-  await expect.poll(presentation).toEqual(reference)
-  for (const dark of [true, false]) {
-    await page.evaluate(dark => window.testApp.dark(dark), dark)
-    const expected = dark ? darkReference : reference
-    await expect.poll(presentation).toEqual(expected)
-    if (width >= 1024) {
-      await toolbar.getByRole('button', { name: /Enter fullscreen mode/ }).click()
-      await expect.poll(presentation).toEqual(expected)
-      await toolbar.getByRole('button', { name: /Leave fullscreen mode/ }).click()
-      await expect.poll(presentation).toEqual(expected)
-    }
-  }
-  await nativeStyles.evaluate(element => element.remove())
-  // Reopening an editor reuses cached modules and must preserve the same skin.
-  await page.evaluate(({ component, props }) => window.testApp.mount({ component, props }), { component, props })
-  await expect(toolbar).toBeVisible()
-  await expect.poll(presentation).toEqual(reference)
-  await expect(page.getByRole('textbox', { name: 'Document', exact: true })).toHaveText('Document paragraph')
-})
-
 for (const profile of ['document', 'rich-text']) test(`${profile} toolbar stays pinned after clicking the background and stops at the document boundary`, async ({ page }) => {
   await mount(page, 'core/util/components/RichTextEditor.vue', {
     props: { profile, modelValue: '<p>Document paragraph</p>'.repeat(60), autoGrow: true, ariaLabel: 'Document' },

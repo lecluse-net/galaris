@@ -285,7 +285,6 @@ test('a completed voice round in the message history is presented as successful'
   } })
   await expect(page.getByText('Delivered answer', { exact: true })).toBeVisible()
   await expect(page.locator('.conversation-detail-header')).toContainText('Completed')
-  await expect(page.locator('.conversation-detail-header .q-icon').first()).toHaveText('check_circle')
   await expect(page.getByText('Obsolete attempt failure')).toHaveCount(0)
   await page.getByRole('tab', { name: 'Details', exact: true }).click()
   await expect(page.getByRole('region', { name: 'Detailed state', exact: true })).toContainText('Completed')

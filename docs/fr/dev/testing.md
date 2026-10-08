@@ -67,6 +67,21 @@ retirer les assertions esthétiques locales et consolider les doublons en indiqu
 contrainte abandonnée et où les garanties restantes sont protégées. Ne pas supprimer un
 test de droits ou de données parce qu'il vérifie aussi un détail de présentation.
 
+Le nettoyage des scénarios frontend retire cinq cas : les deux comparaisons de l'habillage
+de la barre d'édition selon l'ordre de chargement CSS, les deux contrôles du fond et du
+remplissage des cadres de miniatures HTML, et la répétition sombre du parcours carte/ZIP.
+Il abandonne aussi les couleurs locales, alignements, ratio arbitraire du lecteur PDF,
+icônes de boutons/statuts et interdictions de couper un mot de description dans les scénarios
+mixtes. Ces préférences ne sont plus des contrats automatisés.
+
+Les parcours carte/ZIP, insertion de pièces jointes, lecture média et ouverture PDF restent
+dans `document-resources.spec.mjs`. La barre flottante et la mise en forme au clavier restent
+dans `editor-toolbar.spec.mjs` et `mobile-editor-toolbar.spec.mjs`. Le décodage, les lectures
+bornées et les proportions peintes du graphe restent dans `document-thumbnails.spec.mjs`
+et `thumbnail-fit.spec.mjs` ; les tests de génération des miniatures conservent proportions
+et transparence. `dialogs.spec.mjs` conserve fermeture, annulation et réouverture. Les tests
+unitaires de logique, stores, caches et autorisations ne sont pas supprimés.
+
 ## Commandes
 
 Toutes les exécutions utilisent les conteneurs. Les tests backend et les parcours E2E

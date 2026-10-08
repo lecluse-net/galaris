@@ -25,36 +25,26 @@ test('conversation cards show the description collected with their shared thumbn
   const card = page.locator('.resource-preview-card')
   await expect(card).toContainText('Shared site description')
   await expect(card.locator('img')).toHaveJSProperty('naturalWidth', 1)
-  await expect(card).toHaveCSS('background-color', 'rgb(251, 252, 254)')
-  await expect(card).toHaveClass(/resource-preview-block--below-page/)
-  const visual = await card.locator('.resource-preview-visual').boundingBox()
-  const copy = await card.locator('.resource-preview-copy').boundingBox()
-  expect(copy.x).toBeGreaterThanOrEqual(visual.x + visual.width)
-  expect(copy.y).toBeCloseTo(visual.y, 0)
   const subtitle = card.locator('.resource-preview-subtitle')
   await expect(subtitle).not.toContainText('https://')
   await expect(card.locator('.resource-preview-uri')).toHaveText('https://example.org')
-  const subtitleBox = await subtitle.boundingBox()
-  const uriBox = await card.locator('.resource-preview-uri').boundingBox()
-  expect(uriBox.y).toBeGreaterThanOrEqual(subtitleBox.y + subtitleBox.height)
   await card.screenshot({ path: testInfo.outputPath('shared-below-page.png') })
   await page.setViewportSize({ width: 390, height: 844 })
   expect(await card.evaluate(element => element.getBoundingClientRect().right)).toBeLessThanOrEqual(390)
 })
 
-for (const dark of [false, true]) test(`static link cards roundtrip and export in ${dark ? 'dark' : 'light'} mode`, async ({ page }, testInfo) => {
+test('static link cards roundtrip and export', async ({ page }, testInfo) => {
   await page.route('https://www.youtube-nocookie.com/embed/**', route => route.fulfill({ contentType: 'text/html', body: '<button>Play</button>' }))
   await mount(page, component)
-  await page.evaluate(async ({ uri, png, dark }) => {
-    await window.testApp.mount({ component: 'core/util/components/RichTextEditor.vue', dark, props: {
+  await page.evaluate(async ({ uri, png }) => {
+    await window.testApp.mount({ component: 'core/util/components/RichTextEditor.vue', props: {
       profile: 'document', modelValue: '<p>Report</p>', documentTitle: 'Report',
       attachments: [{ uri, name: 'scene.html', size: 850305 }],
       resolveImage: async () => new Blob([Uint8Array.from(atob(png), value => value.charCodeAt(0))], { type: 'image/png' }),
       createLinkCard: async url => `<blockquote class="galaris-link-card"><figure class="image"><a href="${url}"><img src="${uri}" alt="Mont Saint-Michel" width="320"></a></figure><p><a href="${url}"><strong>Mont Saint-Michel</strong></a></p><p>A video of the island</p><p><a href="${url}">YouTube</a></p></blockquote>`,
       exportBundle: async html => { window.bundleSnapshot = html; return new Blob(['PK fixture'], { type: 'application/zip' }) },
     } })
-  }, { uri, png, dark })
-  await page.evaluate(dark => window.testApp.dark(dark), dark)
+  }, { uri, png })
   await page.locator('.ck-editor__editable').click()
   await page.keyboard.press('Control+End')
   await expect(page.getByRole('button', { name: 'Link preview or attachment', exact: true })).toHaveCount(0)
@@ -64,16 +54,9 @@ for (const dark of [false, true]) test(`static link cards roundtrip and export i
   await page.getByRole('button', { name: 'Show card', exact: true }).click()
   const card = page.locator('.ck-editor__editable .galaris-link-card')
   await expect(card).toContainText('Mont Saint-Michel')
-  await expect(card).toHaveCSS('background-color', dark ? 'rgb(36, 40, 47)' : 'rgb(251, 252, 254)')
   await expect(card.locator('img')).toHaveJSProperty('naturalWidth', 1)
   await expect(card.locator('iframe')).toHaveAttribute('src', 'https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ')
   await expect(card.locator('iframe')).toBeVisible()
-  const playerBox = await card.locator('iframe').boundingBox()
-  const descriptionBox = await card.locator('p').filter({ hasText: 'A video of the island' }).boundingBox()
-  const cardBox = await card.boundingBox()
-  expect(playerBox.y).toBeGreaterThan(descriptionBox.y + descriptionBox.height)
-  expect(playerBox.width).toBeCloseTo(cardBox.width - 26, 0)
-  expect(playerBox.width / playerBox.height).toBeCloseTo(16 / 9, 1)
   await expect(card.locator('figure.image')).not.toBeVisible()
   await page.getByRole('button', { name: 'Source', exact: true }).click()
   const source = await page.locator('.ck-source-editing-area textarea').inputValue()
@@ -82,9 +65,7 @@ for (const dark of [false, true]) test(`static link cards roundtrip and export i
   expect(source).not.toContain('blob:')
   await page.getByRole('button', { name: 'Source', exact: true }).click()
   await expect(card.locator('img')).toHaveJSProperty('naturalWidth', 1)
-  await card.screenshot({ path: testInfo.outputPath(`link-card-${dark ? 'dark' : 'light'}.png`) })
-  await expect(page.getByRole('button', { name: 'Export document and attachments (ZIP)', exact: true }).locator('.ck-button__label')).not.toBeVisible()
-  await page.getByRole('button', { name: 'Export document and attachments (ZIP)', exact: true }).screenshot({ path: testInfo.outputPath('archive-icon.png') })
+  await card.screenshot({ path: testInfo.outputPath('link-card.png') })
   const downloaded = page.waitForEvent('download')
   await page.getByRole('button', { name: 'Export document and attachments (ZIP)', exact: true }).click()
   expect((await downloaded).suggestedFilename()).toBe('Report.zip')
@@ -166,11 +147,6 @@ for (const directUpload of [false, true]) test(`the document ${directUpload ? 'u
   if (!directUpload) {
     await expect(page.locator('.document-attachments')).toContainText('scene.html')
     await expect(page.locator('.document-attachments')).toContainText('0.850305 MB')
-    const attachmentCard = page.locator('.document-attachments__item')
-    const visual = await attachmentCard.locator('.resource-preview-visual').boundingBox()
-    const copy = await attachmentCard.locator('.resource-preview-copy').boundingBox()
-    expect(copy.x).toBeGreaterThanOrEqual(visual.x + visual.width)
-    expect(copy.y).toBeCloseTo(visual.y, 0)
   }
   await page.locator('.ck-editor__editable').click()
   await page.keyboard.press('Control+End')
@@ -186,8 +162,6 @@ for (const directUpload of [false, true]) test(`the document ${directUpload ? 'u
     await expect(page.getByRole('dialog')).toContainText('scene.html')
     await page.locator('.q-dialog .document-attachments__item').hover()
     const insert = page.getByRole('button', { name: 'Insert into document', exact: true })
-    await expect(insert.locator('.q-icon')).toHaveText('post_add')
-    expect(await insert.innerText()).not.toContain('Insert into document')
     await insert.click()
   }
   await expect(page.getByRole('dialog')).toHaveCount(0)
@@ -262,16 +236,6 @@ for (const mode of ['edit', 'read']) for (const kind of ['audio', 'video', 'pdf'
     await expect.poll(() => player.evaluate(element => element.currentTime)).toBeGreaterThan(0)
   } else {
     await expect(player).toHaveAttribute('src', /#view=FitH$/)
-    const width = await player.evaluate(element => element.getBoundingClientRect().width)
-    expect(width).toBeCloseTo(await player.evaluate(element => element.parentElement.clientWidth), 0)
-    const frame = await page.locator('.galaris-pdf-frame').boundingBox()
-    expect(frame.width / frame.height).toBeCloseTo((1 + Math.sqrt(5)) / 2, 3)
-    const expand = await page.getByRole('button', { name: 'Open PDF in fullscreen', exact: true }).boundingBox()
-    const title = await page.locator('blockquote.galaris-link-card strong').boundingBox()
-    expect(expand.x).toBeGreaterThan(title.x + title.width)
-    expect(expand.y).toBeLessThan(title.y + title.height)
-    expect(expand.y + expand.height).toBeGreaterThan(title.y)
-    expect(expand.y + expand.height).toBeLessThan(frame.y)
     const before = await page.evaluate(() => window.mediaLoads.length)
     await page.getByRole('button', { name: 'Open PDF in fullscreen', exact: true }).click()
     const dialog = page.getByRole('dialog', { name: 'Recording', exact: true })

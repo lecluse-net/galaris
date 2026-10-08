@@ -63,6 +63,21 @@ coverage. When revisiting old tests, remove local aesthetic assertions and conso
 duplicates, recording the retired constraint and where remaining guarantees are protected.
 Do not delete a permissions or data test because it also checks a presentation detail.
 
+Frontend scenario cleanup removes five cases: the two editor toolbar skin comparisons
+under different CSS loading orders, the two HTML thumbnail frame background/filling checks,
+and the dark-mode repetition of the card/ZIP workflow. It also retires local colors,
+alignments, the PDF player's arbitrary aspect ratio, button/status glyphs and prohibitions
+on breaking a description word in mixed scenarios. These preferences are no longer
+automated contracts.
+
+Card/ZIP workflows, attachment insertion, media playback and PDF opening remain in
+`document-resources.spec.mjs`. Pinned toolbars and keyboard formatting remain in
+`editor-toolbar.spec.mjs` and `mobile-editor-toolbar.spec.mjs`. Decoding, bounded reads
+and painted graph proportions remain in `document-thumbnails.spec.mjs` and
+`thumbnail-fit.spec.mjs`; thumbnail generation tests retain proportions and transparency.
+`dialogs.spec.mjs` retains dismissal, cancellation and reopening. Unit tests for logic,
+stores, caches and authorization are preserved.
+
 ## Commands
 
 Run toolchains in containers. Backend tests and E2E workflows create their own databases;
