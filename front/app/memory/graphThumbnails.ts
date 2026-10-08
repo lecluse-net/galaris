@@ -5,7 +5,7 @@ export interface GraphThumbnailCandidate {
   key: string
 }
 
-const MAX_THUMBNAIL_BYTES = 512 * 1024
+const MAX_THUMBNAIL_BYTES = 5 * 1024 * 1024
 const MAX_UNAVAILABLE_ENTRIES = 3000
 const GENERATION_CONCURRENCY = 2
 const RECHECK_MILLISECONDS = 5 * 60_000
@@ -231,31 +231,20 @@ export class GraphThumbnails {
   private async store(blob: Blob, key: string, controller: AbortController, generation: number, allowHidden = false): Promise<void> {
     if (blob.size <= 0 || blob.size > MAX_THUMBNAIL_BYTES || !blob.type.startsWith('image/')) throw new Error('Invalid thumbnail')
     const bitmap = await createImageBitmap(blob)
-    let small = blob
     let aspect: number
+    let bytes: number
     try {
       aspect = bitmap.width / bitmap.height
-      // Already small derivatives need no canvas or re-encoding.
-      if (Math.max(bitmap.width, bitmap.height) > 160) {
-        const scale = 160 / Math.max(bitmap.width, bitmap.height)
-        const canvas = document.createElement('canvas')
-        canvas.width = Math.max(1, Math.round(bitmap.width * scale))
-        canvas.height = Math.max(1, Math.round(bitmap.height * scale))
-        aspect = canvas.width / canvas.height
-        const context = canvas.getContext('2d')
-        if (!context) throw new Error('Missing canvas context')
-        context.drawImage(bitmap, 0, 0, canvas.width, canvas.height)
-        const encoded = await new Promise<Blob | null>(resolve => canvas.toBlob(resolve, 'image/webp', 0.85))
-        if (!encoded) throw new Error('Thumbnail encoding failed')
-        small = encoded
-      }
+      if (bitmap.width > 320 || bitmap.height > 320) throw new Error('Thumbnail exceeds shared dimensions')
+      bytes = blob.size + bitmap.width * bitmap.height * 4
     } finally { bitmap.close() }
     if (controller.signal.aborted || generation !== this.generation || (!allowHidden && !this.desired.has(key))) return
     this.evict(key)
-    this.cache.set(key, { url: URL.createObjectURL(small), bytes: small.size, aspect })
-    this.cacheBytes += small.size
+    // Include the decoded RGBA surface, not just the compressed transfer size.
+    this.cache.set(key, { url: URL.createObjectURL(blob), bytes, aspect })
+    this.cacheBytes += bytes
     this.missing.delete(key)
-    const maxBytes = Math.max(8 * 1024 * 1024, this.maxEntries * 128 * 1024)
+    const maxBytes = Math.max(8 * 1024 * 1024, this.maxEntries * 512 * 1024)
     while (this.cache.size > this.maxEntries || this.cacheBytes > maxBytes) {
       const oldest = this.cache.keys().next().value
       if (oldest === undefined) break

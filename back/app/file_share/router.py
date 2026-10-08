@@ -46,7 +46,7 @@ async def read_item_resource_thumbnail(item_id: UUID, entry_id: UUID, agent_id: 
         data = await catalogue_resources.thumbnail(item_id, agent_id, entry_id, cached_only=cached_only)
         if data is None:
             raise HTTPException(status_code=404, detail="Thumbnail unavailable")
-        return Response(data, media_type="image/png", headers={"Cache-Control": "private, no-store"})
+        return Response(data, media_type="image/webp", headers={"Cache-Control": "private, no-store"})
     except PermissionError as error:
         raise HTTPException(status_code=404, detail="Resource unavailable") from error
 

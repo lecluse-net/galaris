@@ -12,7 +12,7 @@ test('SVG thumbnails preserve alpha and fit dimensions without running scripts o
   const browser = await chromium.launch({ headless: true });
   try {
     const url = `http://127.0.0.1:${server.address().port}`;
-    for (const [width, height, expected] of [[80, 40, [80, 40]], [1200, 600, [520, 260]], [600, 900, [213, 320]]]) {
+    for (const [width, height, expected] of [[80, 40, [80, 40]], [1200, 600, [320, 160]], [600, 900, [213, 320]]]) {
       const data = Buffer.from(`<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}"><rect width="${width / 2}" height="${height}" fill="red"/><image href="${url}/image" width="10" height="10"/><script>fetch('${url}/script'); while(true){}</script></svg>`).toString('base64');
       const png = await renderSvgThumbnail(browser, { data });
       assert.equal(png.subarray(1, 4).toString(), 'PNG');

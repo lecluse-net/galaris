@@ -1,5 +1,7 @@
 import base64
+from io import BytesIO
 from unittest.mock import AsyncMock
+from PIL import Image
 
 import pytest
 
@@ -11,12 +13,16 @@ async def test_model_transport_preserves_source_and_rejects_empty_or_oversized_i
     content = b"v -1 -1 0\nv 1 -1 0\nv 0 1 0\nf 1 2 3\n"
     source = tmp_path / "triangle.obj"
     source.write_bytes(content)
-    transport = AsyncMock(return_value=b"synthetic renderer response")
+    rendered = BytesIO()
+    Image.new("RGB", (320, 220), "blue").save(rendered, format="PNG")
+    transport = AsyncMock(return_value=rendered.getvalue())
     monkeypatch.setattr(model3d, "post_buffered", transport)
     monkeypatch.setattr(model3d, "browser_executor_token", lambda: "synthetic-browser-token")
     monkeypatch.setattr(model3d, "MAX_MODEL_BYTES", len(content))
 
-    assert await render_model_thumbnail(source, "triangle.obj", "model/obj") == transport.return_value
+    thumbnail = await render_model_thumbnail(source, "triangle.obj", "model/obj")
+    with Image.open(BytesIO(thumbnail)) as image:
+        assert image.format == "WEBP" and image.size == (320, 220)
     request = transport.call_args
     assert request.args[0].endswith("/v1/render-model-thumbnail")
     assert request.kwargs["headers"]["x-galaris-browser-token"] == "synthetic-browser-token"

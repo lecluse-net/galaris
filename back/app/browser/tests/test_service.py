@@ -319,7 +319,7 @@ async def test_page_thumbnail_is_cached_under_the_canonical_url(
     second = await capture_public_page_thumbnail(agent_id=7, url=url)
 
     generated_png = thumbnails.from_image(BytesIO(generated_jpeg))
-    assert first == (generated_png, "image/png")
+    assert first == (generated_png, "image/webp")
     assert second == first
     cached = thumbnails.cache_path(url)
     assert cached.read_bytes() == generated_png
@@ -388,7 +388,7 @@ async def test_private_html_thumbnail_is_cached_under_the_canonical_uri(
     )
 
     private_png = thumbnails.from_image(BytesIO(private_jpeg))
-    assert result == (private_png, "image/png")
+    assert result == (private_png, "image/webp")
     cached = thumbnails.cache_path(uri)
     assert cached.read_bytes() == private_png
     assert cached.stat().st_mode & 0o777 == 0o644
@@ -439,9 +439,9 @@ async def test_new_thumbnail_bytes_are_constrained_to_shared_bounds(
 
     assert result is not None
     with Image.open(BytesIO(result[0])) as image:
-        assert image.size == (512, 320)
-        assert image.format == "PNG"
-    assert result[1] == "image/png"
+        assert image.size == (320, 200)
+        assert image.format == "WEBP"
+    assert result[1] == "image/webp"
 
 
 @pytest.mark.asyncio

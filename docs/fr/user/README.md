@@ -433,7 +433,9 @@ plus grande, à la place du carré turquoise. Les aperçus déjà prêts s'affic
 les aperçus manquants sont calculés progressivement. Le nombre d'images s'adapte
 aux capacités du client ; les images éloignées sont masquées et conservées en cache pour
 le retour à proximité. Une miniature indisponible conserve le carré. Un aperçu obtenu dans
-le détail apparaît aussi dans le graphe. Leur chargement ne déplace pas les nœuds.
+le détail apparaît aussi dans le graphe. Les miniatures gardent leurs proportions dans une
+limite de 320 × 320 pixels ; le graphe affiche directement ces images sans les recompresser.
+Leur chargement ne déplace pas les nœuds.
 Les fichiers audio portent une note de musique dans leur carré turquoise. Les Datasets
 conservent leur symbole documentaire.
 

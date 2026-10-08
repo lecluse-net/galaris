@@ -56,12 +56,12 @@ async def read_document_thumbnail(
         raise service.MemoryConflictError("The document changed while preparing its thumbnail.")
     # Include the submitted snapshot so a reader cannot poison another reader's cache.
     digest = sha256(snapshot.html.encode("utf-8")).hexdigest()
-    reference = f"document://{document_id}/thumbnail/v3/{item.revision}/{item.lock_version}/{digest}"
+    reference = f"document://{document_id}/thumbnail/v4/{item.revision}/{item.lock_version}/{digest}"
     cache_path = document_thumbnail_cache.cache_path(document_id, reference)
     revision_path = cache_path.with_suffix(".revision.json")
     revision_metadata = json.dumps({
         "document_id": str(document_id), "revision": item.revision,
-        "lock_version": item.lock_version, "renderer_version": 3, "snapshot_hash": digest,
+        "lock_version": item.lock_version, "renderer_version": 4, "snapshot_hash": digest,
     }, sort_keys=True).encode("utf-8")
 
     async def read_current() -> bytes | None:
@@ -86,6 +86,7 @@ async def read_document_thumbnail(
                     return None
                 await asyncio.to_thread(thumbnails.write, cache_path, result)
                 await asyncio.to_thread(thumbnails.write, revision_path, revision_metadata)
+                await asyncio.to_thread(document_thumbnail_cache.discard_legacy, document_id)
                 return result
             return None
         except Exception as exc:
@@ -104,7 +105,7 @@ def register_web_thumbnail_capture(
 
 
 def _printed_document_thumbnail(content: bytes) -> bytes | None:
-    """Crop the top of the printed page at full page width before downsampling."""
+    """Fit the first printed page without cropping or changing its proportions."""
     import pypdfium2 as pdfium  # type: ignore
 
     with pdfium.PdfDocument(content) as document:
@@ -115,8 +116,7 @@ def _printed_document_thumbnail(content: bytes) -> bytes | None:
             bitmap = cast(Any, page).render(scale=2)
             try:
                 image = cast(Image.Image, bitmap.to_pil())
-                height = round(image.width * thumbnails.MAX_SIZE[1] / thumbnails.MAX_SIZE[0])
-                return thumbnails.encode(image.crop((0, 0, image.width, min(height, image.height))))
+                return thumbnails.encode(image)
             finally:
                 bitmap.close()
         finally:

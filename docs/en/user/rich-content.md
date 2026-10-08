@@ -119,7 +119,7 @@ appropriate, and horizontal **below-page blocks**, with the thumbnail on the lef
 on the right, and icon actions. Attachments below documents and
 conversation previews use the same component.
 When present, the URL appears on its own line below the other information.
-Thumbnails preserve the file’s proportions and transparency, fitting within 520 × 320 pixels
+Thumbnails preserve the file’s proportions and transparency, using lossless WebP within 320 × 320 pixels
 without added white bars. They fill the available height or width according to their shape
 while keeping the entire image visible.
 

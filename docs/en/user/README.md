@@ -318,7 +318,8 @@ the turquoise square, at a larger size. Ready previews load first; missing previ
 generated progressively. Image counts adapt to client capabilities;
 distant images are hidden and cached for reuse when returning nearby. Unavailable previews
 keep the square. A preview obtained in the details also appears in the graph.
-Loading thumbnails preserves node positions.
+Thumbnails retain their proportions within 320 × 320 pixels; the graph displays these
+images directly without recompressing them. Loading thumbnails preserves node positions.
 Audio files display a musical note inside their turquoise square. Datasets keep their
 document symbol.
 

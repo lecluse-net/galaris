@@ -7,13 +7,13 @@ test.beforeEach(async ({ page }) => {
   await jsonRoute(page, '**/api/memory/documents/doc-a', { item: { ...documentFixture, payload: { text: '<h1>Report</h1>' } } })
 })
 
-const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+a5AAAAABJRU5ErkJggg==', 'base64')
+const png = Buffer.from('UklGRh4AAABXRUJQVlA4TBEAAAAvAAAAAAfQ//73v/+BiOh/AAA=', 'base64')
 
 for (const mime of ['image/svg+xml', 'application/octet-stream']) test(`SVG thumbnails and original previews render for ${mime}`, async ({ page }, testInfo) => {
   await page.setViewportSize({ width: 390, height: 844 })
   const attachment = { id: 'svg-1', name: 'Drawing.SVG', media_type: mime, size_bytes: 100 }
   const original = '<svg xmlns="http://www.w3.org/2000/svg" width="80" height="40"><rect width="40" height="40" fill="red"/></svg>'
-  await page.route('**/api/memory/documents/doc-a/attachments/svg-1/thumbnail?*', route => route.fulfill({ contentType: 'image/png', body: png }))
+  await page.route('**/api/memory/documents/doc-a/attachments/svg-1/thumbnail?*', route => route.fulfill({ contentType: 'image/webp', body: png }))
   await page.route('**/api/memory/documents/doc-a/attachments/svg-1?*', route => route.fulfill({ contentType: 'image/svg+xml', body: original }))
   await mount(page, 'app/memory/components/DocumentAttachments.vue', { props: { documentId: 'doc-a', agentId: 7, attachments: [attachment] } })
   const card = page.getByRole('article')
@@ -41,7 +41,7 @@ for (const width of [1440, 390]) test(`Office attachments show thumbnails and ke
     reads.set(id, count)
     return count === 1
       ? route.fulfill({ status: 404 })
-      : route.fulfill({ contentType: 'image/png', body: png })
+      : route.fulfill({ contentType: 'image/webp', body: png })
   })
   const original = Buffer.from('Synthetic original workbook')
   await page.route('**/api/memory/documents/doc-a/attachments/office-2?*', route => route.fulfill({ contentType: 'application/octet-stream', body: original }))
@@ -125,7 +125,7 @@ test('document cards inside messages display and refresh their saved revision th
     context.fillText('Beginning of the document', 25, 45)
     context.font = '16px sans-serif'
     for (let line = 0; line < 8; line++) context.fillText(`Paragraph ${line + 1} — full page width`, 25, 85 + line * 27)
-    return canvas.toDataURL('image/png').split(',')[1]
+    return canvas.toDataURL('image/webp', 1).split(',')[1]
   }), 'base64')
   let revision = 1, captures = 0, readable = true
   await page.route('**/api/chat/rooms/room/messages/message/previews*', route => route.fulfill({ json: readable ? [{
@@ -134,7 +134,7 @@ test('document cards inside messages display and refresh their saved revision th
   }] : [] }))
   await page.route(`**/api/memory/documents/${id}/thumbnail*`, route => {
     captures += 1
-    return route.fulfill({ contentType: 'image/png', body: pagePreview })
+    return route.fulfill({ contentType: 'image/webp', body: pagePreview })
   })
   await mount(page, 'app/chat/components/MessageResourcePreviews.vue', {
     props: { roomId: 'room', messageId: 'message', conversationAgentId: 7, canReadDocuments: true, canEditDocuments: true },
@@ -174,7 +174,7 @@ test('thumbnails use the print snapshot with embedded images for the saved revis
   let snapshot
   await page.route(`**/api/memory/documents/${id}/thumbnail?agent_id=7`, route => {
     snapshot = route.request().postDataJSON()
-    return route.fulfill({ contentType: 'image/png', body: png })
+    return route.fulfill({ contentType: 'image/webp', body: png })
   })
   await mount(page, 'app/memory/components/DocumentThumbnail.vue', { props: { documentId: id, agentId: 7, revision: 12 } })
   await expect(page.locator('.document-thumbnail img')).toHaveJSProperty('naturalWidth', 1)
@@ -199,7 +199,7 @@ test('document thumbnails refresh on revisions, discard late responses and clear
     calls += 1
     const delayed = calls === 2
     if (delayed) await new Promise(resolve => { release = resolve })
-    await route.fulfill({ contentType: 'image/png', body: png })
+    await route.fulfill({ contentType: 'image/webp', body: png })
     if (delayed) lateFinished = true
   })
   await mount(page, 'app/memory/components/DocumentThumbnail.vue', { props: { documentId: 'doc-a', revision: 1, agentId: 7 } })
@@ -223,7 +223,7 @@ test('a mounted thumbnail refreshes on document changes even when its parent kee
   let captures = 0
   await page.route('**/api/memory/documents/doc-a/thumbnail*', route => {
     captures += 1
-    return route.fulfill({ contentType: 'image/png', body: png })
+    return route.fulfill({ contentType: 'image/webp', body: png })
   })
   await mount(page, 'app/memory/components/DocumentThumbnail.vue', { props: { documentId: 'doc-a', revision: 1, agentId: 7 } })
   const image = page.locator('.document-thumbnail img')
@@ -240,7 +240,7 @@ test('offscreen documents wait for visibility and failures recover on reopening'
   let calls = 0, available = false
   await page.route('**/api/memory/documents/doc-a/thumbnail*', route => {
     calls += 1
-    return available ? route.fulfill({ contentType: 'image/png', body: png }) : route.fulfill({ status: 503 })
+    return available ? route.fulfill({ contentType: 'image/webp', body: png }) : route.fulfill({ status: 503 })
   })
   await mount(page, 'app/memory/components/DocumentThumbnail.vue', {
     props: { documentId: 'doc-a', revision: 1 }, containerStyle: { marginTop: '2000px' },
@@ -256,7 +256,7 @@ test('offscreen documents wait for visibility and failures recover on reopening'
 })
 
 for (const surface of ['chat', 'library']) test(`rendered thumbnail keeps the ${surface} document accessible`, async ({ page }) => {
-  await page.route('**/api/memory/documents/doc-a/thumbnail*', route => route.fulfill({ contentType: 'image/png', body: png }))
+  await page.route('**/api/memory/documents/doc-a/thumbnail*', route => route.fulfill({ contentType: 'image/webp', body: png }))
   if (surface === 'chat') {
     await jsonRoute(page, '**/api/chat/rooms/room-a/documents?*', { items: [{ id: 'doc-a', label: 'Report', uri: 'document://doc-a', revision: 1 }], total: 1 })
     await mount(page, 'app/chat/components/ConversationDocumentsPanel.vue', {

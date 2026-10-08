@@ -6,9 +6,13 @@ Galaris sépare l'identité canonique d'une ressource, son transfert borné et l
 strictement techniques requis par certaines bibliothèques.
 
 Les miniatures des documents et des discussions partagent `core.preview.thumbnails`.
-Une URL/URI canonique donne une seule clé SHA-256 et un fichier PNG à la racine de
-`GALARIS_THUMBNAIL_ROOT`, avec des métadonnées de page JSON sous la même clé si disponibles.
-Le rendu tient dans 520 × 320, conserve proportions et transparence, sans bandes ajoutées.
+Une URL/URI canonique donne une seule clé SHA-256 et un fichier WebP sans perte sous
+`GALARIS_THUMBNAIL_ROOT/<2 premiers caractères>/<2 suivants>/<hash>.webp`, avec des
+métadonnées de page JSON sous la même clé si disponibles. Les anciennes miniatures PNG
+à plat sont converties et déplacées lors de leur lecture, sans écraser une capture récente.
+Le rendu tient dans 320 × 320, conserve proportions et transparence, sans bandes ajoutées.
+Les captures documentaires montrent la première page entière ; leur cache est réparti
+sous `documents/<2 premiers caractères du UUID>/<2 suivants>/<UUID>/` et conserve la révision.
 Les captures HTML passent par le navigateur partagé ; les raccourcis `.url` réutilisent
 directement l'aperçu de leur URL cible. Chaque domaine contrôle les droits avant d'accéder
 au cache. Supprimer un raccourci ne supprime pas l'aperçu de sa cible.
@@ -18,7 +22,7 @@ LibreOffice exporte uniquement la première page en PDF, puis le worker la raste
 extraction de texte, OCR ni appel LLM. XLS, XLSX et ODS utilisent la première page imprimée
 du classeur, sans forcer toutes les feuilles sur une page. Le fichier source reste intact.
 Les temporaires de conversion sont supprimés après génération, échec ou annulation ; seul
-le PNG rejoint le cache partagé. Ce mode limite la source à 64 Mio, la conversion à 90 secondes
+le WebP rejoint le cache partagé. Ce mode limite la source à 64 Mio, la conversion à 90 secondes
 et le worker à 120 secondes après acquisition d’un des deux emplacements partagés avec
 l’analyse documentaire. Ses checkpoints sont distincts de ceux de l’analyse complète.
 Un échec ne publie pas de cache et permet une nouvelle tentative.
@@ -32,6 +36,11 @@ explicite d’un document ne passe pas par cette file. Pour une miniature docume
 serveur contrôle les droits et la révision sans relire le contenu ni l’historique : le client
 fournit déjà l’instantané d’impression. La clé conserve son hash, la révision et la version
 de verrouillage, et une modification invalide le cache existant.
+
+Le graphe affiche directement les octets de la miniature partagée, sans seconde réduction
+ni recompression. Son cache compte le poids compressé et une estimation RGBA des pixels
+décodés (4 octets par pixel). Le budget visible est de 128 ou 256 images sur desktop et de
+32 ou 96 sur mobile, selon les capacités du client ; le cache conserve au plus deux fois ce nombre.
 
 Les services d’avatars de Discussion et d’administration conservent leurs blobs en mémoire
 pendant au plus 60 secondes de réutilisation, chacun avec un maximum de 64 entrées et 16 Mio.

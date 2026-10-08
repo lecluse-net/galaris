@@ -1,7 +1,7 @@
 import { BrowserRequestError } from './lib.mjs';
 
 export const SVG_MAX_BYTES = 5 * 1_048_576;
-const MAX_WIDTH = 520;
+const MAX_WIDTH = 320;
 const MAX_HEIGHT = 320;
 
 /** Decode SVG as an inert image in a disposable offline context. */

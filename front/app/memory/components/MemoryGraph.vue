@@ -673,7 +673,8 @@ function clientThumbnailBudget(): number {
   const limited = (gigabytes !== null && gigabytes <= 2) || cores <= 2
   if (window.innerWidth < 1024) return limited ? 32 : 96
   // Browser memory hints can underestimate powerful desktops; they must not cap a directory at 64 images.
-  return cores >= 8 ? 1024 : 512
+  // A 320px derivative has four times the pixel budget of the former 160px copy.
+  return cores >= 8 ? 256 : 128
 }
 
 function isStructuralNode(node: MemoryGraphNode): boolean {

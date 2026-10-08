@@ -8,10 +8,10 @@ for (const cores of [2, 16]) test(`an 84-file directory loads every visible thum
   }, cores)
   const png = Buffer.from(await page.evaluate(() => {
     const canvas = document.createElement('canvas')
-    canvas.width = 160; canvas.height = 100
+    canvas.width = 320; canvas.height = 200
     const context = canvas.getContext('2d')
-    context.fillStyle = '#0866ED'; context.fillRect(0, 0, 160, 100)
-    return canvas.toDataURL('image/png').split(',')[1]
+    context.fillStyle = '#0866ED'; context.fillRect(0, 0, 320, 200)
+    return canvas.toDataURL('image/webp', 1).split(',')[1]
   }), 'base64')
   const timestamp = '2026-09-01T12:00:00Z'
   const files = Array.from({ length: 84 }, (_, index) => ({
@@ -37,7 +37,7 @@ for (const cores of [2, 16]) test(`an 84-file directory loads every visible thum
   }] }))
   await page.route('**/api/file-share/items/synthetic-image-*/resources/image/thumbnail?*', route => {
     thumbnailReads++
-    return route.fulfill({ contentType: 'image/png', body: png })
+    return route.fulfill({ contentType: 'image/webp', body: png })
   })
   await mount(page, 'app/memory/components/MemoryGraph.vue', {
     props: { agentId: 7, query: '', topicItemId: null, contactItemId: null },
@@ -124,7 +124,7 @@ for (const dark of [false, true]) test(`thumbnail proportions fill the available
 
 for (const width of [1920, 390]) test(`graph thumbnails preserve decoded image proportions through zoom and reuse at ${width}px`, async ({ page }, testInfo) => {
   await page.setViewportSize({ width, height: 1000 })
-  const shapes = [['landscape', 320, 160], ['portrait', 160, 320], ['square', 160, 160], ['panorama', 640, 80]]
+  const shapes = [['landscape', 320, 160], ['portrait', 160, 320], ['square', 160, 160], ['panorama', 320, 40], ['document', 226, 320]]
   const images = await page.evaluate(shapes => shapes.map(([id, width, height]) => {
     const canvas = document.createElement('canvas')
     canvas.width = width
@@ -136,10 +136,10 @@ for (const width of [1920, 390]) test(`graph thumbnails preserve decoded image p
     context.beginPath()
     context.arc(width / 2, height / 2, Math.min(width, height) / 3, 0, Math.PI * 2)
     context.fill()
-    return { id, png: canvas.toDataURL('image/png').split(',')[1] }
+    return { id, png: canvas.toDataURL('image/webp', 1).split(',')[1] }
   }), shapes)
   const timestamp = '2026-09-01T12:00:00Z'
-  const nodes = shapes.map(([id]) => ({ id, title: `Synthetic ${id}`, node_kind: 'file', entity_kind: 'file',
+  const nodes = shapes.map(([id]) => ({ id, title: `Synthetic ${id}`, node_kind: id === 'document' ? 'document' : 'file', entity_kind: id === 'document' ? 'document' : 'file',
     owner_agent_id: 7, visibility: 'private', source_managed: true, access_count: 0, last_accessed_at: null,
     created_at: timestamp, updated_at: timestamp, activity_at: timestamp, has_relations: true, relation_count: 3 }))
   const edges = nodes.flatMap((node, index) => nodes.slice(index + 1).map(other => ({
@@ -147,11 +147,22 @@ for (const width of [1920, 390]) test(`graph thumbnails preserve decoded image p
     relation_type: 'related_to', confidence: 1, suggested: false,
   })))
   for (const { id, png } of images) {
+    if (id === 'document') {
+      const document = {
+        id, title: 'Synthetic document', document_type: 'html', revision: 1, lock_version: 1,
+        payload: { text: '<h1>Synthetic document</h1><p>First page.</p>' },
+      }
+      await jsonRoute(page, '**/api/memory/documents/document?*', { item: document, agent_id: 7 })
+      await jsonRoute(page, '**/api/memory/items/document?*', document)
+      await page.route('**/api/memory/documents/document/thumbnail?*', route =>
+        route.fulfill({ contentType: 'image/webp', body: Buffer.from(png, 'base64') }))
+      continue
+    }
     await jsonRoute(page, `**/api/file-share/items/${id}/resources?*`, [{
       id: 'image', name: `${id}.png`, media_type: 'image/png', size_bytes: 100, uri: `file://synthetic/${id}.png`,
     }])
     await page.route(`**/api/file-share/items/${id}/resources/image/thumbnail?*`, route =>
-      route.fulfill({ contentType: 'image/png', body: Buffer.from(png, 'base64') }))
+      route.fulfill({ contentType: 'image/webp', body: Buffer.from(png, 'base64') }))
   }
   await jsonRoute(page, '**/api/memory/graph/roots', { nodes, edges, has_more: false, next_cursor: null, edges_truncated: false })
   await mount(page, 'app/memory/components/MemoryGraph.vue', {
@@ -173,7 +184,8 @@ for (const width of [1920, 390]) test(`graph thumbnails preserve decoded image p
       const transform = image.getComputedTransform()
       const paintedWidth = image.getWidth() * Math.hypot(transform[0], transform[1])
       const paintedHeight = image.getHeight() * Math.hypot(transform[2], transform[3])
-      return { id: data.getId(index), error: Math.abs(paintedWidth / paintedHeight
+      return { id: data.getId(index), width: image.__image.naturalWidth, height: image.__image.naturalHeight,
+        error: Math.abs(paintedWidth / paintedHeight
         - image.__image.naturalWidth / image.__image.naturalHeight) }
     }).filter(Boolean)
   })
@@ -194,6 +206,23 @@ for (const width of [1920, 390]) test(`graph thumbnails preserve decoded image p
     for (const node of nodes) {
       await panToNode(node.id)
       await expect.poll(async () => (await proportions()).find(image => image.id === node.id)?.error).toBeLessThan(0.01)
+      const [, sourceWidth, sourceHeight] = shapes.find(([id]) => id === node.id)
+      const scale = Math.min(1, 320 / sourceWidth, 320 / sourceHeight)
+      const decoded = (await proportions()).find(image => image.id === node.id)
+      expect(decoded.width).toBe(Math.round(sourceWidth * scale))
+      expect(decoded.height).toBe(Math.round(sourceHeight * scale))
+      const rendered = await page.evaluate(async id => {
+        const moduleUrl = performance.getEntriesByType('resource').map(entry => entry.name)
+          .find(name => /\/echarts(?:\/core|_core)\.js/.test(name))
+        const chart = (await import(moduleUrl)).getInstanceByDom(document.querySelector('.memory-graph__chart'))
+        const data = chart.getModel().getSeries()[0].getData()
+        const index = Array.from({ length: data.count() }, (_, index) => index).find(index => data.getId(index) === id)
+        const source = data.getItemGraphicEl(index).childAt(0).__image.src
+        const blob = await (await fetch(source)).blob()
+        return { type: blob.type, bytes: [...new Uint8Array(await blob.arrayBuffer())] }
+      }, node.id)
+      expect(rendered.type).toBe('image/webp')
+      expect(Buffer.from(rendered.bytes)).toEqual(Buffer.from(images.find(image => image.id === node.id).png, 'base64'))
     }
   }
   for (let i = 0; i < 3; i++) await page.getByRole('button', { name: 'Zoom in', exact: true }).click()

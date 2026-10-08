@@ -3,17 +3,21 @@
 # Media and Resource Flow
 
 Document and discussion thumbnails share `core.preview.thumbnails`. Each canonical URL/URI
-maps to one SHA-256 key and a PNG file directly under `GALARIS_THUMBNAIL_ROOT`, with optional
-page metadata in a JSON file under the same key. Images fit within 520 × 320, preserving
+maps to one SHA-256 key and a lossless WebP file under
+`GALARIS_THUMBNAIL_ROOT/<first 2 characters>/<next 2>/<hash>.webp`, with optional
+page metadata in a JSON file under the same key. Legacy flat PNG thumbnails are converted
+and relocated on read without overwriting a newer capture. Images fit within 320 × 320, preserving
 aspect ratio and transparency without padding. HTML uses the shared browser renderer;
 `.url` shortcuts reuse their target URL's thumbnail. Each domain checks access before
 reading the cache. Deleting a shortcut does not delete its target's preview.
+Document captures show the entire first page; their revision-aware cache is distributed
+under `documents/<first 2 UUID characters>/<next 2>/<UUID>/`.
 
 Office attachments use the isolated `core.document` worker in preview mode: LibreOffice
 exports only the first page to PDF, then the worker rasterizes it without text extraction,
 OCR or an LLM call. XLS, XLSX and ODS use the workbook’s first printed page without forcing
 every sheet onto one page. The source stays intact. Conversion temporaries are removed
-after generation, failure or cancellation; only the PNG enters the shared cache. This mode
+after generation, failure or cancellation; only the WebP enters the shared cache. This mode
 limits input to 64 MiB, conversion to 90 seconds and the worker to 120 seconds after acquiring
 one of the two slots shared with document analysis. Its checkpoints are separate from full
 analysis checkpoints. Failures publish no cache and allow another attempt.
@@ -26,6 +30,11 @@ opening a document bypasses this queue. For document thumbnails, the server chec
 and revision without reading the content or history again: the client already supplies the
 print snapshot. The key retains its hash, revision and lock version, and edits invalidate
 the existing cache.
+
+The graph displays the shared thumbnail bytes directly, without resizing or recompressing
+them. Its cache counts the compressed bytes and an estimated RGBA decoded surface
+(4 bytes per pixel). The visible budget is 128 or 256 images on desktop and 32 or 96 on
+mobile, depending on client capabilities; the cache retains at most twice that number.
 
 Chat and management avatar services keep blobs in memory for up to 60 seconds of reuse,
 each limited to 64 entries and 16 MiB. Endpoints remain separate according to their access

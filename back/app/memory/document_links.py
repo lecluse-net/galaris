@@ -8,7 +8,7 @@ from PIL import Image
 
 from core.user import HumanActor
 
-from core.preview import preview_web_link
+from core.preview import preview_web_link, thumbnails
 from core.util import normalize_html
 
 from . import document_attachment_service, service
@@ -26,12 +26,10 @@ async def create_link_card(document_id: UUID, url: str, *, actor_agent_id: int |
             with Image.open(BytesIO(metadata.image)) as image:
                 if image.width * image.height > 40_000_000:
                     raise ValueError("Thumbnail exceeds pixel limit")
-                image.thumbnail((640, 360))
-                output = BytesIO()
-                image.convert("RGB").save(output, format="JPEG", quality=85)
+                content = metadata.image if image.format == "WEBP" and image.width <= thumbnails.MAX_SIZE[0] and image.height <= thumbnails.MAX_SIZE[1] else thumbnails.encode(image)
             attachment = await document_attachment_service.add_document_attachment_bytes(
-                document_id, actor_agent_id=actor_agent_id, name="link-preview.jpg",
-                media_type="image/jpeg", content=output.getvalue(),
+                document_id, actor_agent_id=actor_agent_id, name="link-preview.webp",
+                media_type=thumbnails.MEDIA_TYPE, content=content,
             )
         except (OSError, ValueError, TimeoutError):
             # A page without a usable thumbnail remains a useful text card.

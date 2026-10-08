@@ -78,7 +78,7 @@ async def test_document_capture_tracks_saved_revisions_and_rechecks_access(
     await service.update_item(item.id, MemoryItemUpdate(
         expected_revision=item.revision, payload=MemoryPayload(text="<h1>Second revision</h1>"),
     ), actor_agent_id=owner.id)
-    assert not list(cache_root.rglob("*.png"))
+    assert not list(cache_root.rglob("*.webp"))
     assert not list(cache_root.rglob("*.revision.json"))
     with pytest.raises(service.MemoryConflictError):
         await document_thumbnail_service.read_document_thumbnail(item.id, snapshot, actor_agent_id=owner.id)
@@ -104,21 +104,29 @@ async def test_document_thumbnail_isolates_snapshots_and_recovers_from_renderer_
     agents, memory_storage, tmp_path, monkeypatch,
 ):
     owner, _ = agents
-    monkeypatch.setattr(type(thumbnails.settings), "GALARIS_THUMBNAIL_ROOT", str(tmp_path / "thumbnails"))
+    cache_root = tmp_path / "thumbnails"
+    monkeypatch.setattr(type(thumbnails.settings), "GALARIS_THUMBNAIL_ROOT", str(cache_root))
     item, _ = await service.create_item(MemoryItemCreate(
         owner_agent_id=owner.id, title="Illustrated report",  node_kind="document", media_type="text/html",
         payload=MemoryPayload(text="<p>Illustration</p>"),
     ))
     png = thumbnails.encode(Image.new("RGB", (64, 48), "green"))
     snapshot = DocumentThumbnailRender(html='<p>Illustration</p>', revision=item.revision, lock_version=item.lock_version)
+    legacy = cache_root / "documents" / str(item.id) / "synthetic-old.png"
+    legacy.parent.mkdir(parents=True)
+    Image.new("RGB", (520, 320), "blue").save(legacy)
     capture = AsyncMock(side_effect=RuntimeError("renderer unavailable"))
     monkeypatch.setattr(document_thumbnail_service, "render_html_pdf", capture)
     monkeypatch.setattr(document_thumbnail_service, "_printed_document_thumbnail", lambda _: png)
     assert await document_thumbnail_service.read_document_thumbnail(item.id, snapshot, actor_agent_id=owner.id) is None
+    assert legacy.exists()
     assert not list((tmp_path / "thumbnails").rglob("*.revision.json"))
     capture.side_effect = None
     capture.return_value = b"pdf"
     assert await document_thumbnail_service.read_document_thumbnail(item.id, snapshot, actor_agent_id=owner.id) == png
+    assert not legacy.parent.exists()
+    path = next(cache_root.rglob("*.webp"))
+    assert len(path.relative_to(cache_root / "documents").parts) == 4
     assert capture.await_count == 2
     snapshot.html = '<p>Another client snapshot</p>'
     assert await document_thumbnail_service.read_document_thumbnail(item.id, snapshot, actor_agent_id=owner.id) == png
@@ -134,7 +142,7 @@ async def test_document_thumbnail_isolates_snapshots_and_recovers_from_renderer_
     monkeypatch.setattr(document_thumbnail_service, "render_html_pdf", edit_during_capture)
     snapshot.html = '<p>Capture in flight</p>'
     assert await document_thumbnail_service.read_document_thumbnail(item.id, snapshot, actor_agent_id=owner.id) is None
-    assert not list((tmp_path / "thumbnails").rglob("*.png"))
+    assert not list((tmp_path / "thumbnails").rglob("*.webp"))
 
 
 @pytest.mark.asyncio
@@ -254,7 +262,7 @@ def test_transparent_image_thumbnail_keeps_alpha_and_its_dimensions(tmp_path: Pa
 
     assert content is not None
     with Image.open(BytesIO(content)) as thumbnail:
-        assert thumbnail.format == "PNG"
+        assert thumbnail.format == "WEBP"
         assert thumbnail.size == (40, 20)
         assert thumbnail.mode == "RGBA"
         assert thumbnail.getpixel((0, 0)) == (255, 0, 0, 0)
@@ -279,7 +287,7 @@ async def test_svg_thumbnail_uses_vector_rendering_and_preserves_source(tmp_path
     assert source.read_bytes() == original
 
 
-@pytest.mark.parametrize("size, expected", [((600, 900), (213, 320)), ((1200, 600), (520, 260)), ((900, 900), (320, 320)), ((24, 16), (24, 16))])
+@pytest.mark.parametrize("size, expected", [((600, 900), (213, 320)), ((1200, 600), (320, 160)), ((900, 900), (320, 320)), ((24, 16), (24, 16))])
 def test_thumbnail_fits_bounds_without_white_padding_or_cropping(tmp_path: Path, size: tuple[int, int], expected: tuple[int, int]) -> None:
     source = tmp_path / "image.png"
     image = Image.new("RGB", size, "#1976d2")
@@ -290,6 +298,19 @@ def test_thumbnail_fits_bounds_without_white_padding_or_cropping(tmp_path: Path,
         assert thumbnail.size == expected
         assert thumbnail.getpixel((0, 0)) == (25, 118, 210)
         assert thumbnail.getpixel((thumbnail.width - 1, thumbnail.height - 1)) == (25, 118, 210)
+
+
+@pytest.mark.parametrize("size, expected", [((600, 900), (213, 320)), ((1200, 600), (320, 160))])
+def test_printed_document_preserves_first_page_proportions(size, expected):
+    import pypdfium2 as pdfium
+
+    output = BytesIO()
+    with pdfium.PdfDocument.new() as document:
+        document.new_page(*size).close()
+        document.save(output)
+    content = document_thumbnail_service._printed_document_thumbnail(output.getvalue())
+    with Image.open(BytesIO(content)) as image:
+        assert image.format == "WEBP" and image.size == expected
 
 
 def test_thumbnail_applies_exif_orientation_before_fitting(tmp_path: Path) -> None:
@@ -349,7 +370,7 @@ async def test_document_thumbnail_is_shared_with_browser_after_authorization(tmp
     content = await document_thumbnail_service.read_or_schedule_document_attachment_thumbnail(document_id, attachment.id, actor_agent_id=7, cached_only=True)
     assert content is not None
     with Image.open(BytesIO(content)) as thumbnail:
-        assert thumbnail.format == "PNG"
+        assert thumbnail.format == "WEBP"
         assert 0 < thumbnail.width <= thumbnails.MAX_SIZE[0]
         assert 0 < thumbnail.height <= thumbnails.MAX_SIZE[1]
         if suffix == ".png":
@@ -361,8 +382,8 @@ async def test_document_thumbnail_is_shared_with_browser_after_authorization(tmp
     # Each read and the final publication recheck the source authorization.
     assert authorized_path.await_count >= 2
     from app.browser import read_cached_thumbnail
-    assert await read_cached_thumbnail(reference=reference) == (content, "image/png")
-    assert list(cache_root.iterdir()) == [thumbnails.cache_path(reference)]
+    assert await read_cached_thumbnail(reference=reference) == (content, "image/webp")
+    assert list(cache_root.rglob("*.webp")) == [thumbnails.cache_path(reference)]
     authorized_path.side_effect = PermissionError("denied")
     with pytest.raises(PermissionError):
         await document_thumbnail_service.read_or_schedule_document_attachment_thumbnail(
@@ -467,7 +488,7 @@ async def test_background_and_dream_generation_share_one_derivative_when_a_waite
     renderer.assert_awaited_once()
 
 
-def test_text_thumbnail_is_bounded_png(tmp_path: Path) -> None:
+def test_text_thumbnail_is_bounded_webp(tmp_path: Path) -> None:
     source = tmp_path / "notes.txt"
     source.write_text("First line\nSecond line", encoding="utf-8")
 
@@ -475,8 +496,8 @@ def test_text_thumbnail_is_bounded_png(tmp_path: Path) -> None:
 
     assert content is not None
     with Image.open(BytesIO(content)) as thumbnail:
-        assert thumbnail.format == "PNG"
-        assert thumbnail.size == (520, 320)
+        assert thumbnail.format == "WEBP"
+        assert thumbnail.size == (320, 320)
 
 
 def test_video_thumbnail_extracts_an_early_frame(tmp_path: Path) -> None:
@@ -496,7 +517,7 @@ def test_video_thumbnail_extracts_an_early_frame(tmp_path: Path) -> None:
 
     assert content is not None
     with Image.open(BytesIO(content)) as thumbnail:
-        assert thumbnail.format == "PNG"
+        assert thumbnail.format == "WEBP"
         assert thumbnail.size == (64, 32)
         red, green, blue = thumbnail.getpixel((32, 16))
         assert red > 180
@@ -557,10 +578,10 @@ async def test_document_and_chat_share_one_capture_and_deletion_scope(tmp_path, 
     await asyncio.gather(document_task, chat_capture)
     content = await document_thumbnail_service.read_or_schedule_document_attachment_thumbnail(document_id, attachment.id, actor_agent_id=7)
     assert content == image
-    assert await browser_service.read_cached_thumbnail(reference=cache_reference) == (content, "image/png")
+    assert await browser_service.read_cached_thumbnail(reference=cache_reference) == (content, "image/webp")
     assert (await browser_service.read_cached_page_metadata(reference=cache_reference)).description == "Shared description"
     capture.assert_awaited_once()
-    assert list(cache_root.glob("*.png")) == [thumbnails.cache_path(cache_reference)]
+    assert list(cache_root.rglob("*.webp")) == [thumbnails.cache_path(cache_reference)]
     assert not (cache_root / "documents").exists()
 
     if not html:
@@ -572,12 +593,12 @@ async def test_document_and_chat_share_one_capture_and_deletion_scope(tmp_path, 
     content = await document_thumbnail_service.generate_document_attachment_thumbnail(document_id, attachment.id, actor_agent_id=7, force=True)
     assert content == refreshed
     assert capture.await_count == 2
-    assert await browser_service.read_cached_thumbnail(reference=cache_reference) == (refreshed, "image/png")
+    assert await browser_service.read_cached_thumbnail(reference=cache_reference) == (refreshed, "image/webp")
     capture.side_effect = RuntimeError("Synthetic browser capture failure")
     with pytest.raises(RuntimeError):
         await document_thumbnail_service.generate_document_attachment_thumbnail(document_id, attachment.id, actor_agent_id=7, force=True)
-    assert await browser_service.read_cached_thumbnail(reference=cache_reference) == (refreshed, "image/png")
+    assert await browser_service.read_cached_thumbnail(reference=cache_reference) == (refreshed, "image/webp")
     await document_thumbnail_service.delete_document_attachment_thumbnail(document_id, attachment.id)
     remaining = await browser_service.read_cached_thumbnail(reference=cache_reference)
-    assert remaining is None if html else remaining == (content, "image/png")
+    assert remaining is None if html else remaining == (content, "image/webp")
     assert thumbnails.cache_path(cache_reference).with_suffix(".json").exists() is not html

@@ -393,7 +393,7 @@ async def _capture_thumbnail(
         cache_path = thumbnails.cache_path(reference)
         cached = await asyncio.to_thread(thumbnails.read, cache_path)
         if cached is not None and not refresh:
-            return cached, "image/png"
+            return cached, thumbnails.MEDIA_TYPE
         if content is None:
             result = await browser_executor.open(
                 agent_id=agent_id,
@@ -444,7 +444,7 @@ async def _store_thumbnail_result(
                 "Browser thumbnail cache write failed (error_type={})",
                 type(exc).__name__,
             )
-        return content, "image/png"
+        return content, thumbnails.MEDIA_TYPE
     finally:
         try:
             await browser_executor.close(
@@ -463,7 +463,7 @@ async def read_cached_thumbnail(
     *,
     reference: str,
 ) -> tuple[bytes, str] | None:
-    """Read a generated PNG by its original URL or resource URI."""
+    """Read a generated WebP by its original URL or resource URI."""
 
     cache_path = thumbnails.cache_path(reference)
     content = await asyncio.to_thread(
@@ -471,7 +471,7 @@ async def read_cached_thumbnail(
         cache_path,
         thumbnails.MAX_BYTES,
     )
-    return (content, "image/png") if content is not None else None
+    return (content, thumbnails.MEDIA_TYPE) if content is not None else None
 
 
 async def read_cached_page_metadata(*, reference: str) -> BrowserPageMetadata | None:

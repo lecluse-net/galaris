@@ -145,7 +145,7 @@ export const memoryService = {
     const response = await api.post<Blob>(`/memory/documents/${id}/thumbnail`, snapshot, {
       params: { agent_id: agentId }, responseType: 'blob', signal,
     })
-    const blob = response.status === 200 && response.data.type === 'image/png' ? response.data : null
+    const blob = response.status === 200 && response.data.type === 'image/webp' ? response.data : null
     if (blob && !signal.aborted) thumbnailReady({ agentId, itemId: id, blob })
     return blob
   },

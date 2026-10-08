@@ -58,7 +58,7 @@ async def test_link_card_owns_thumbnail_and_checks_write_before_fetch(agents, me
     assert not calls
     card = await document_links.create_link_card(item.id, "https://youtu.be/dQw4w9WgXcQ", actor_agent_id=owner.id)
     assert card.attachment is not None
-    assert card.attachment.media_type == "image/jpeg"
+    assert card.attachment.media_type == "image/webp"
     assert 'class="galaris-link-card"' in card.html
     assert "A &lt;video&gt;" in card.html and "A &amp; B" in card.html
     assert "iframe" not in card.html

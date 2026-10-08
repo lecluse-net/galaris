@@ -15,7 +15,7 @@ from core.preview import WebLinkPreview, preview_web_link, thumbnails
 async def test_document_reuses_chat_thumbnail_cache_even_without_page_metadata(monkeypatch, tmp_path):
     url = "https://example.org/"
     output = BytesIO()
-    Image.new("RGB", (320, 200), "blue").save(output, "PNG")
+    Image.new("RGB", (320, 200), "blue").save(output, "WEBP", lossless=True)
     # The same cache that Chat's image endpoint reads.
     monkeypatch.setattr(type(service.settings), "GALARIS_THUMBNAIL_ROOT", str(tmp_path))
     thumbnails.write(thumbnails.cache_path(url), output.getvalue())

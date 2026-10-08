@@ -99,7 +99,7 @@ for (const width of [1440, 390]) for (const nodeKind of ['document', 'file']) {
       const context = canvas.getContext('2d')
       context.fillStyle = width === 80 ? 'blue' : width === 120 ? 'red' : 'green'
       context.fillRect(0, 0, width, 60)
-      return canvas.toDataURL('image/png').split(',')[1]
+      return canvas.toDataURL('image/webp', 1).split(',')[1]
     }))
     let calls = 0
     await jsonRoute(page, '**/api/memory/items/doc-a?*', item)
@@ -108,7 +108,7 @@ for (const width of [1440, 390]) for (const nodeKind of ['document', 'file']) {
     await jsonRoute(page, '**/api/file-share/items/doc-a/resources?*', [resource])
     const thumbnailRoute = nodeKind === 'document' ? '**/api/memory/documents/doc-a/thumbnail?*'
       : '**/api/file-share/items/doc-a/resources/image-a/thumbnail?*'
-    await page.route(thumbnailRoute, route => route.fulfill({ contentType: 'image/png', body: Buffer.from(images[calls], 'base64') }))
+    await page.route(thumbnailRoute, route => route.fulfill({ contentType: 'image/webp', body: Buffer.from(images[calls], 'base64') }))
     await page.route('**/api/dream/memory/doc-a/actions/thumbnail?*', route => {
       expect(route.request().method()).toBe('POST')
       if (nodeKind === 'document') {
@@ -231,7 +231,7 @@ for (const width of [1440, 390]) test(`memory list displays available thumbnails
   await page.route('**/api/file-share/items/doc-a/resources/image-a/thumbnail?*', route => route.fulfill({ contentType: 'image/png', body: png }))
   await page.route('**/api/file-share/items/unavailable-a/resources/image-a/thumbnail?*', route => route.fulfill({ status: 404 }))
   await page.route('**/api/memory/documents/00000000-0000-0000-0000-000000000001/attachments/00000000-0000-0000-0000-000000000002/thumbnail?*', route => route.fulfill({ contentType: 'image/png', body: png }))
-  await page.route('**/api/memory/documents/document-a/thumbnail?*', route => route.fulfill({ contentType: 'image/png', body: png }))
+  await page.route('**/api/memory/documents/document-a/thumbnail?*', route => route.fulfill({ contentType: 'image/webp', body: png }))
   await mount(page, 'app/memory/pages/index.vue', { route: '/memory?agent=7' })
   const rows = page.locator(width >= 1024 ? '.memory-list-table tbody tr' : '.memory-mobile-card')
   for (const item of items) {

@@ -2,11 +2,13 @@
 
 import asyncio
 import base64
+from io import BytesIO
 from pathlib import Path
 
 from core.settings import settings
 from core.secrets import browser_executor_token
 from core.util import post_buffered
+from . import thumbnails
 
 MAX_MODEL_BYTES = 32_000_000
 MODEL_EXTENSIONS = {".glb", ".gltf", ".obj", ".stl", ".ply"}
@@ -30,9 +32,13 @@ async def render_model_thumbnail(path: Path, name: str, media_type: str) -> byte
         return content
 
     content = await asyncio.to_thread(read)
-    return await post_buffered(
+    result = await post_buffered(
         f"{settings.BROWSER_EXECUTOR_URL}/v1/render-model-thumbnail",
         headers={"x-galaris-browser-token": browser_executor_token()},
         json={"name": name, "media_type": media_type, "data": base64.b64encode(content).decode("ascii")},
         max_bytes=5 * 1_048_576, timeout=40,
     )
+    content = await asyncio.to_thread(thumbnails.from_image, BytesIO(result))
+    if content is None:
+        raise ValueError("Invalid model thumbnail response")
+    return content

@@ -1037,7 +1037,7 @@ async def read_document_thumbnail(
         )
         if content is None:
             return Response(status_code=204, headers={"Cache-Control": "private, no-store"})
-        return Response(content, media_type="image/png", headers={
+        return Response(content, media_type="image/webp", headers={
             "Cache-Control": "private, no-store", "X-Content-Type-Options": "nosniff",
         })
     except Exception as exc:
@@ -1367,7 +1367,7 @@ async def read_document_attachment_thumbnail(
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Thumbnail pending")
         return Response(
             content=content,
-            media_type="image/png",
+            media_type="image/webp",
             headers={
                 "Cache-Control": "private, no-store",
                 "X-Content-Type-Options": "nosniff",

@@ -128,7 +128,7 @@ avec ses actions en icônes. Les blocs sous les
 documents et les aperçus des discussions utilisent le même composant.
 L’URL éventuelle apparaît sur sa propre ligne sous les autres informations.
 Les miniatures conservent les proportions et la transparence du fichier : elles sont réduites
-dans une limite de 520 × 320 pixels, sans ajout de bandes blanches. Leur affichage occupe la
+dans une limite de 320 × 320 pixels, en WebP sans perte et sans ajout de bandes blanches. Leur affichage occupe la
 hauteur ou la largeur disponible selon leur format, en gardant l’image entière.
 
 Les fichiers Office joints (DOC, DOCX, ODT, RTF, ODG, ODP, PPT et PPTX) affichent une
