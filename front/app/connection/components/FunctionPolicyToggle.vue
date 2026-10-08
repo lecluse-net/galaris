@@ -68,7 +68,7 @@ const choices: PolicyChoice[] = [
 }
 .function-policy-symbol { font-size: 18px; font-weight: 700; line-height: 1; }
 .function-policy-yellow { color: #101010; }
+.function-policy-yellow:not(.function-policy-selected) { color: var(--solaire-gray-accent); }
 .function-policy-choice:focus-visible { outline: 2px solid var(--solaire-blue-accent); outline-offset: 2px; z-index: 1; }
 body.body--dark .function-policy-choice:not(.function-policy-selected) { background: var(--policy-dark); }
-body.body--dark .function-policy-yellow:not(.function-policy-selected) { color: var(--solaire-yellow-accent); }
 </style>
