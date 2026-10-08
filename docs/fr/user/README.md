@@ -593,6 +593,19 @@ Hermès conserve ainsi ses capacités propres sans être enfermé dans un second
 
 ## Quand Galaris pose une question
 
+Dans les **Autorisations des fonctions MCP**, **Global (tous)** propose **Activé**,
+**Sur demande** ou **Désactivé** sous forme de boutons accolés : coche verte, point
+d’interrogation jaune et croix rouge. Le bouton sélectionné apparaît sur fond plein ;
+chaque bouton décrit son effet dans une infobulle. Sans règle globale enregistrée, cette colonne affiche
+la valeur définie par le logiciel lorsque la connexion en hérite. Sélectionner un bouton
+dans **Cette connexion** définit une exception : les boutons globaux de cette ligne
+apparaissent tous non cochés et restent cliquables. Cliquer sur un bouton **Global (tous)**
+enregistre cette règle et remet cette connexion en héritage ; ses boutons locaux deviennent
+tous non cochés. Les exceptions des autres connexions sont conservées.
+La sélection change immédiatement et les boutons restent cliquables pendant la sauvegarde.
+Les choix successifs d’une même capacité sont enregistrés dans l’ordre. En cas d’échec,
+un message vous prévient et Galaris recharge les règles enregistrées.
+
 Pour la navigation web, **Sites publics autorisés** est le choix initial des nouvelles installations du Navigateur,
 globalement ou pour un agent : les nouveaux sites publics ne
 déclenchent alors plus de demandes réseau par site. Les instances existantes gardent leur

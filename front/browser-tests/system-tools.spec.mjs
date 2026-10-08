@@ -1,4 +1,4 @@
-import { test, expect, mount, jsonRoute } from './fixtures.mjs'
+import { test, expect, mount, jsonRoute, setPrivileges } from './fixtures.mjs'
 
 const tools = [
   ...['galaris', 'conversation', 'memory', 'file_sharing'].map((code, index) => ({
@@ -13,6 +13,245 @@ const tools = [
 ]
 const connections = tools.slice(0, 5).map(tool => ({ id: tool.id, tool_id: tool.id, agent_id: 7, active: true }))
 const privileges = ['TOOL_ACCESS', 'TOOL_EDIT', 'CONNECTION_ACCESS', 'CONNECTION_EDIT', 'AGENT_MANAGE_ALL']
+
+for (const mobile of [false, true]) {
+  for (const defaultState of ['enabled', 'disabled', 'ask']) {
+    test(`Global function policies are explicit and connections can inherit (${mobile ? 'mobile' : 'desktop'}, ${defaultState})`, async ({ page }) => {
+      await page.setViewportSize({ width: mobile ? 390 : 1400, height: 1000 })
+      await routes(page)
+      await jsonRoute(page, '**/api/connections?*', [connections[4]])
+      const locale = mobile ? 'fr' : 'en'
+      const labels = mobile
+        ? { enabled: 'Activé', disabled: 'Désactivé', ask: 'Sur demande', inherit: 'Hériter', global: 'Global (tous)', connection: 'Cette connexion' }
+        : { enabled: 'Enabled', disabled: 'Disabled', ask: 'Ask', inherit: 'Inherit', global: 'Global (all)', connection: 'This connection' }
+      const policy = {
+        key: 'tool:external_read', name: 'external_read', description: 'Read synthetic content.', capability_kind: 'tool',
+        connection_state: 'enabled', global_state: 'default', default_state: defaultState,
+        effective_state: 'enabled', effective: true, state_source: 'connection',
+      }
+      const writes = []
+      let finishFirstWrite
+      const firstWriteReady = new Promise(resolve => { finishFirstWrite = resolve })
+      await page.route('**/api/connections/5/functions', route => route.fulfill({ json: {
+        success: true, message: '', functions: [policy, {
+          ...policy, key: 'tool:external_list', name: 'external_list',
+          connection_state: 'default', global_state: 'enabled',
+          effective_state: 'enabled', state_source: 'tool',
+        }],
+      } }))
+      await page.route('**/api/connections/5/capabilities', async route => {
+        const request = route.request().postDataJSON()
+        writes.push(request)
+        if (writes.length === 1) await firstWriteReady
+        policy[request.global_policy ? 'global_state' : 'connection_state'] = request.state
+        if (request.global_policy && request.inherit_connection) policy.connection_state = 'default'
+        const globalState = policy.global_state === 'default' ? policy.default_state : policy.global_state
+        policy.effective_state = policy.connection_state === 'default' ? globalState : policy.connection_state
+        policy.effective = policy.effective_state !== 'disabled'
+        policy.state_source = policy.connection_state === 'default' ? 'tool' : 'connection'
+        return route.fulfill({ json: { ...policy, local_override_count: policy.connection_state === 'default' ? 0 : 1 } })
+      })
+      await mount(page, 'app/connection/components/AuthorizationManager.vue', { locale, privileges })
+      const global = page.getByRole('group', { name: `${labels.global}: external_read`, exact: true })
+      const local = page.getByRole('group', { name: `${labels.connection}: external_read`, exact: true })
+      const otherGlobal = page.getByRole('group', { name: `${labels.global}: external_list`, exact: true })
+      // A local override leaves no global button selected, while both groups stay usable.
+      for (const button of await global.getByRole('button').all()) await expect(button).toHaveAttribute('aria-pressed', 'false')
+      await expect(local.getByRole('button', { name: labels.enabled, exact: true })).toHaveAttribute('aria-pressed', 'true')
+      for (const button of await global.getByRole('button').all()) await expect(button).toBeEnabled()
+      for (const button of await otherGlobal.getByRole('button').all()) await expect(button).toBeEnabled()
+      expect(writes).toEqual([])
+      const row = page.locator(mobile ? '.authorization-mobile-card' : 'tbody tr').filter({ hasText: 'external_read' })
+      await setPrivileges(page, ['CONNECTION_ACCESS'])
+      await expect(row.getByRole('group')).toHaveCount(0)
+      await expect(row.getByText(labels.inherit, { exact: true })).toHaveCount(0)
+      await expect(row.getByText(labels[defaultState], { exact: true }).first()).toBeVisible()
+      await setPrivileges(page, privileges)
+      await expect(global.getByRole('button')).toHaveCount(3)
+      await expect(global.getByRole('button', { name: labels.inherit, exact: true })).toHaveCount(0)
+      for (const state of ['enabled', 'disabled', 'ask']) {
+        await expect(global.getByRole('button', { name: labels[state], exact: true })).toBeVisible()
+        await expect(global.getByRole('button', { name: labels[state], exact: true })).toBeEnabled()
+      }
+      await expect(local.getByRole('button')).toHaveCount(3)
+      await expect(local.getByRole('button', { name: labels.inherit, exact: true })).toHaveCount(0)
+      // Clicking a global choice saves it and clears this connection's override together.
+      await global.getByRole('button', { name: labels[defaultState], exact: true }).click()
+      await expect.poll(() => writes).toEqual([
+        { function_name: 'external_read', state: defaultState, capability_kind: 'tool', global_policy: true, inherit_connection: true },
+      ])
+      for (const group of [global, local]) {
+        for (const button of await group.getByRole('button').all()) await expect(button).toBeEnabled()
+      }
+      await expect(global.getByRole('button', { name: labels[defaultState], exact: true })).toHaveAttribute('aria-pressed', 'true')
+      for (const button of await local.getByRole('button').all()) await expect(button).toHaveAttribute('aria-pressed', 'false')
+      for (const button of await otherGlobal.getByRole('button').all()) await expect(button).toBeEnabled()
+      // More choices remain usable before the first response. Global writes must
+      // still take effect even if the user's final choice is a local override.
+      await local.getByRole('button', { name: labels.ask, exact: true }).click()
+      await expect(local.getByRole('button', { name: labels.ask, exact: true })).toHaveAttribute('aria-pressed', 'true')
+      await global.getByRole('button', { name: labels.disabled, exact: true }).click()
+      await expect(global.getByRole('button', { name: labels.disabled, exact: true })).toHaveAttribute('aria-pressed', 'true')
+      await local.getByRole('button', { name: labels.enabled, exact: true }).click()
+      await expect(local.getByRole('button', { name: labels.enabled, exact: true })).toHaveAttribute('aria-pressed', 'true')
+      for (const button of await global.getByRole('button').all()) await expect(button).toHaveAttribute('aria-pressed', 'false')
+      expect(writes).toHaveLength(1)
+      finishFirstWrite()
+      await expect(local).toHaveAttribute('aria-busy', 'false')
+      expect(writes).toEqual([
+        { function_name: 'external_read', state: defaultState, capability_kind: 'tool', global_policy: true, inherit_connection: true },
+        { function_name: 'external_read', state: 'ask', capability_kind: 'tool' },
+        { function_name: 'external_read', state: 'disabled', capability_kind: 'tool', global_policy: true, inherit_connection: true },
+        { function_name: 'external_read', state: 'enabled', capability_kind: 'tool' },
+      ])
+      expect(policy.global_state).toBe('disabled')
+      expect(policy.connection_state).toBe('enabled')
+      await expect(local.getByRole('button', { name: labels.enabled, exact: true })).toHaveAttribute('aria-pressed', 'true')
+      await global.getByRole('button', { name: labels.disabled, exact: true }).focus()
+      await page.keyboard.press('Enter')
+      await expect(global).toHaveAttribute('aria-busy', 'false')
+      expect(writes).toHaveLength(5)
+      await expect(global.getByRole('button', { name: labels.disabled, exact: true })).toHaveAttribute('aria-pressed', 'true')
+      for (const state of ['enabled', 'ask', 'disabled']) {
+        await local.getByRole('button', { name: labels[state], exact: true }).click()
+        await expect.poll(() => writes.at(-1)).toEqual({ function_name: 'external_read', state, capability_kind: 'tool' })
+        for (const button of await global.getByRole('button').all()) await expect(button).toBeEnabled()
+        for (const button of await otherGlobal.getByRole('button').all()) await expect(button).toBeEnabled()
+        for (const button of await global.getByRole('button').all()) await expect(button).toHaveAttribute('aria-pressed', 'false')
+        await expect(mobile
+          ? row.getByText(labels[state], { exact: true })
+          : row.getByRole('cell', { name: labels[state], exact: true })).toBeVisible()
+        await global.getByRole('button', { name: labels.disabled, exact: true }).click()
+        await expect.poll(() => writes.at(-1)).toEqual({ function_name: 'external_read', state: 'disabled', capability_kind: 'tool', global_policy: true, inherit_connection: true })
+        for (const button of await local.getByRole('button').all()) await expect(button).toHaveAttribute('aria-pressed', 'false')
+        for (const button of await global.getByRole('button').all()) await expect(button).toBeEnabled()
+        await expect(global.getByRole('button', { name: labels.disabled, exact: true })).toHaveAttribute('aria-pressed', 'true')
+      }
+      for (const button of await local.getByRole('button').all()) await expect(button).toHaveAttribute('aria-pressed', 'false')
+      await expect(mobile
+        ? row.getByText(labels.disabled, { exact: true })
+        : row.getByRole('cell', { name: labels.disabled, exact: true })).toBeVisible()
+      await expect(global).toHaveAttribute('aria-busy', 'false')
+      await mount(page, 'app/connection/components/AuthorizationManager.vue', { locale, privileges })
+      await expect(global.getByRole('button', { name: labels.disabled, exact: true })).toHaveAttribute('aria-pressed', 'true')
+      for (const button of await local.getByRole('button').all()) await expect(button).toHaveAttribute('aria-pressed', 'false')
+      await setPrivileges(page, ['CONNECTION_ACCESS'])
+      await expect(row.getByRole('group')).toHaveCount(0)
+      await expect(row.getByText(labels.inherit, { exact: true })).toHaveCount(1)
+      await expect(row.getByText(labels.disabled, { exact: true }).first()).toBeVisible()
+    })
+  }
+}
+
+for (const mobile of [false, true]) {
+  test(`Policy saves survive failures, connection changes and reopening (${mobile ? 'mobile' : 'desktop'})`, async ({ page }) => {
+    await page.setViewportSize({ width: mobile ? 390 : 1400, height: 1000 })
+    await routes(page)
+    const second = { id: 12, tool_id: 5, agent_id: 7, active: true }
+    await jsonRoute(page, '**/api/connections?*', [connections[4], second])
+    const names = ['external_read', 'external_list']
+    const globals = Object.fromEntries(names.map(name => [name, 'enabled']))
+    const locals = { 5: { external_read: 'default', external_list: 'default' }, 12: { external_read: 'ask', external_list: 'default' } }
+    const resolve = (id, name) => ({
+      key: `tool:${name}`, name, description: 'Synthetic capability.', capability_kind: 'tool',
+      connection_state: locals[id][name], global_state: globals[name], default_state: 'enabled',
+      effective_state: locals[id][name] === 'default' ? globals[name] : locals[id][name],
+      effective: (locals[id][name] === 'default' ? globals[name] : locals[id][name]) !== 'disabled',
+      state_source: locals[id][name] === 'default' ? 'tool' : 'connection',
+    })
+    const reads = [], writes = []
+    let gate = null, outcome = 'success'
+    function holdNextWrite(result = 'success') {
+      outcome = result
+      let release
+      gate = new Promise(resolve => { release = resolve })
+      return () => release()
+    }
+    for (const id of [5, 12]) {
+      await page.route(`**/api/connections/${id}/functions`, route => {
+        reads.push(id)
+        return route.fulfill({ json: { success: true, message: '', functions: names.map(name => resolve(id, name)) } })
+      })
+      await page.route(`**/api/connections/${id}/capabilities`, async route => {
+        const request = route.request().postDataJSON()
+        const waiting = gate, result = outcome
+        gate = null; outcome = 'success'
+        writes.push({ id, ...request })
+        if (waiting) await waiting
+        if (result !== 'reject') {
+          if (request.global_policy) globals[request.function_name] = request.state
+          if (!request.global_policy || request.inherit_connection) locals[id][request.function_name] = request.global_policy ? 'default' : request.state
+        }
+        return route.fulfill(result === 'success'
+          ? { json: resolve(id, request.function_name) }
+          : { status: 500, json: { detail: 'Synthetic save failure' } })
+      })
+    }
+    await mount(page, 'app/connection/components/AuthorizationManager.vue', { privileges })
+    const selector = page.getByRole('combobox').nth(2)
+    // Equal labels are intentional: choose by option position to select each connection.
+    async function selectConnection(index) {
+      await selector.click()
+      await page.getByRole('option', { name: 'Alice Example — Optional Tool', exact: true }).nth(index).click()
+    }
+    await selectConnection(0)
+    const global = page.getByRole('group', { name: 'Global (all): external_read', exact: true })
+    const local = page.getByRole('group', { name: 'This connection: external_read', exact: true })
+    const otherLocal = page.getByRole('group', { name: 'This connection: external_list', exact: true })
+    const releaseGlobal = holdNextWrite()
+    await global.getByRole('button', { name: 'Disabled', exact: true }).click()
+    await expect.poll(() => writes.length).toBe(1)
+    await local.getByRole('button', { name: 'Ask', exact: true }).click()
+    await otherLocal.getByRole('button', { name: 'Disabled', exact: true }).click()
+    await expect(otherLocal).toHaveAttribute('aria-busy', 'false')
+    expect(writes.map(write => write.function_name)).toEqual(['external_read', 'external_list'])
+    await selectConnection(1)
+    await expect(local).toHaveCount(0)
+    expect(reads).toEqual([5])
+    releaseGlobal()
+    await expect(local.getByRole('button', { name: 'Ask', exact: true })).toHaveAttribute('aria-pressed', 'true')
+    expect(reads).toEqual([5, 12])
+    expect(locals[5].external_read).toBe('ask')
+    expect(globals.external_read).toBe('disabled')
+    expect(writes.map(write => write.id)).toEqual([5, 5, 5])
+    // A rejected older choice must not discard the newer queued choice.
+    const releaseRejected = holdNextWrite('reject')
+    await local.getByRole('button', { name: 'Disabled', exact: true }).click()
+    await expect.poll(() => writes.length).toBe(4)
+    await local.getByRole('button', { name: 'Enabled', exact: true }).click()
+    await expect(local.getByRole('button', { name: 'Enabled', exact: true })).toHaveAttribute('aria-pressed', 'true')
+    releaseRejected()
+    await expect(local).toHaveAttribute('aria-busy', 'false')
+    expect(locals[12].external_read).toBe('enabled')
+    await expect(local.getByRole('button', { name: 'Enabled', exact: true })).toHaveAttribute('aria-pressed', 'true')
+    // An error can occur after persistence. Read back the actual saved rule.
+    const releaseLost = holdNextWrite('committed_error')
+    await local.getByRole('button', { name: 'Disabled', exact: true }).click()
+    await expect.poll(() => writes.length).toBe(6)
+    releaseLost()
+    await expect.poll(() => reads).toEqual([5, 12, 12])
+    await expect(local.getByRole('button', { name: 'Disabled', exact: true })).toHaveAttribute('aria-pressed', 'true')
+    await local.getByRole('button', { name: 'Ask', exact: true }).click()
+    await expect(local).toHaveAttribute('aria-busy', 'false')
+    expect(locals[12].external_read).toBe('ask')
+    // Reopening the component retains the ordered writes and waits before reading.
+    const releaseReopened = holdNextWrite()
+    await local.getByRole('button', { name: 'Enabled', exact: true }).click()
+    await expect.poll(() => writes.length).toBe(8)
+    await local.getByRole('button', { name: 'Disabled', exact: true }).click()
+    await jsonRoute(page, '**/api/connections?*', [second])
+    await page.evaluate(async privileges => {
+      await window.testApp.mount({ component: 'app/connection/components/AuthorizationManager.vue', privileges })
+    }, privileges)
+    await expect(local).toHaveCount(0)
+    expect(reads).toEqual([5, 12, 12])
+    releaseReopened()
+    await expect(local.getByRole('button', { name: 'Disabled', exact: true })).toHaveAttribute('aria-pressed', 'true')
+    expect(locals[12].external_read).toBe('disabled')
+    expect(writes.at(-1)).toMatchObject({ id: 12, state: 'disabled' })
+    expect(locals[5].external_list).toBe('disabled')
+  })
+}
 
 for (const [locale, description, publicLabel, askChoice, allowChoice, saveLabel] of [
   ['fr', 'Permettre les demandes d’accès au réseau local (bloqué par défaut)', 'Accès aux sites publics', 'Autorisation par site', 'Sites publics autorisés', 'Modifier'],
@@ -139,8 +378,7 @@ test(`System functions have editable one-action policies while their service rem
   await expect(page.getByText('system_read', { exact: true })).toBeVisible()
   const row = page.locator(mobile ? '.authorization-mobile-card' : 'tbody tr')
   await expect(page.getByText('This system service and its connection are mandatory.', { exact: false })).toBeVisible()
-  await row.getByRole('combobox', { name: 'This connection: system_read' }).click()
-  await page.getByRole('option', { name: 'Ask', exact: true }).click()
+  await row.getByRole('group', { name: 'This connection: system_read' }).getByRole('button', { name: 'Ask', exact: true }).click()
   await expect.poll(() => writes).toEqual([{ function_name: 'system_read', state: 'ask', capability_kind: 'tool' }])
   await expect(row).toContainText('Ask')
 })

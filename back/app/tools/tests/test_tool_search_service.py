@@ -66,6 +66,18 @@ async def test_lexical_search_indexes_only_effective_catalog(
         entry.definition_fingerprint for entry in catalog.entries
     }
 
+    # A policy change needs no explicit index refresh: revoked definitions may
+    # remain in the shared index, but cannot appear in the next effective search.
+    # Newly allowed definitions become searchable on that same next request.
+    changed = _catalog(("messenger_room_export", "Export room messages"))
+    next_result = await tool_search_service.search_catalog(
+        changed, query="room messages", surface="test",
+    )
+    assert [hit.entry.name for hit in next_result.hits] == ["messenger_room_export"]
+    assert await db.scalar(select(ToolSearchDocument).where(
+        ToolSearchDocument.name == "messenger_room_history",
+    )) is not None
+
 
 @pytest.mark.asyncio
 async def test_hybrid_search_prefilters_authorized_fingerprints(

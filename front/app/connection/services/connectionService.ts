@@ -1,5 +1,5 @@
-import api from '@/core/api'
-import type { AxiosResponse } from 'axios'
+import api, { sessionGeneration, SupersededSessionError } from '@/core/api'
+import type { AxiosRequestConfig, AxiosResponse } from 'axios'
 import { CONNECTIONS_CHANGED_EVENT } from '../events'
 
 function connectionsChanged<T>(response: T): T {
@@ -103,8 +103,8 @@ export interface TestMcpToolsResponse {
 // MCP function authorization contracts by connection.
 // =============================================================================
 
-// Tri-state function status at connection or tool level. "default" means no row,
-// inheriting the active-by-default state; other values are explicit overrides.
+// "default" means no saved rule: a connection uses the global policy, and a tool
+// uses the software policy returned as default_state. Other values are explicit rules.
 export type FunctionState = 'default' | 'enabled' | 'disabled' | 'ask'
 export type EffectiveFunctionState = Exclude<FunctionState, 'default'>
 
@@ -136,6 +136,47 @@ export interface FunctionStateResolved {
     effective_state: EffectiveFunctionState
     default_state: EffectiveFunctionState
     state_source: ConnectionFunctionInfo['state_source']
+}
+
+export interface FunctionPolicyChange {
+    scope: 'connection' | 'global'
+    state: EffectiveFunctionState
+}
+
+// Global and local choices for one capability share an ordered write stream,
+// including when its connection changes or the manager is reopened.
+const functionPolicyWrites = new Map<string, Promise<AxiosResponse<FunctionStateResolved>>>()
+
+export async function waitForFunctionPolicyWrites(toolId: number): Promise<void> {
+    await Promise.allSettled([...functionPolicyWrites.entries()]
+        .filter(([key]) => key.startsWith(`${toolId}:`))
+        .map(([, pending]) => pending))
+}
+
+export function saveFunctionPolicy(
+    connection: Connection,
+    capability: Pick<ConnectionFunctionInfo, 'name' | 'capability_kind'>,
+    change: FunctionPolicyChange,
+): Promise<AxiosResponse<FunctionStateResolved>> {
+    const key = `${connection.tool_id}:${JSON.stringify([capability.capability_kind, capability.name])}`
+    const generation = sessionGeneration()
+    const config: AxiosRequestConfig & { _sessionGeneration: string } = { _sessionGeneration: generation }
+    const previous = functionPolicyWrites.get(key)
+    const write = (previous ? previous.catch(() => undefined) : Promise.resolve()).then(() => {
+        if (generation !== sessionGeneration()) throw new SupersededSessionError()
+        return api.put<FunctionStateResolved>(`/connections/${connection.id}/capabilities`, {
+            function_name: capability.name,
+            capability_kind: capability.capability_kind,
+            state: change.state,
+            ...(change.scope === 'global' ? { global_policy: true, inherit_connection: true } : {}),
+        }, config)
+    })
+    functionPolicyWrites.set(key, write)
+    const cleanup = () => {
+        if (functionPolicyWrites.get(key) === write) functionPolicyWrites.delete(key)
+    }
+    void write.then(cleanup, cleanup)
+    return write
 }
 
 // =============================================================================
@@ -246,13 +287,17 @@ export default {
         return api.put(`/connections/${connectionId}/capabilities`, { state, function_name: functionName, capability_kind: capabilityKind })
     },
 
-    // Persist a function's global state at the connection's tool level.
+    // Persist the global state, optionally returning this connection to inheritance.
     setToolFunctionState(
         connectionId: number,
         functionName: string,
         state: FunctionState,
-        capabilityKind: 'tool' | 'resource' | 'prompt' = 'tool'
+        capabilityKind: 'tool' | 'resource' | 'prompt' = 'tool',
+        inheritConnection: boolean = false
     ): Promise<AxiosResponse<FunctionStateResolved>> {
-        return api.put(`/connections/${connectionId}/capabilities`, { state, function_name: functionName, capability_kind: capabilityKind, global_policy: true })
+        return api.put(`/connections/${connectionId}/capabilities`, {
+            state, function_name: functionName, capability_kind: capabilityKind, global_policy: true,
+            inherit_connection: inheritConnection,
+        })
     }
 }

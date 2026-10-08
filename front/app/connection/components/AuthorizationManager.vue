@@ -187,25 +187,23 @@
         </template>
         <template v-slot:body-cell-global="props">
           <q-td :props="props" class="text-center">
-            <q-select outlined emit-value map-options
+            <FunctionPolicyToggle
               v-if="canEdit && canManageAllAgents"
               :aria-label="$t('connection.auth.colGlobal') + ': ' + props.row.name"
-              :model-value="props.row.global_state"
-              :options="globalStateOptions"
-              dense
+              :model-value="props.row.connection_state === 'default' ? globalPolicyState(props.row) : null"
+              :aria-busy="savingRows.has(props.row)"
               @update:model-value="onGlobalState(props.row, $event)"
             />
-            <span v-else>{{ policyLabel(props.row.global_state) }}</span>
+            <span v-else>{{ policyLabel(globalPolicyState(props.row)) }}</span>
           </q-td>
         </template>
         <template v-slot:body-cell-connection="props">
           <q-td :props="props" class="text-center">
-            <q-select outlined emit-value map-options
+            <FunctionPolicyToggle
               v-if="canEdit"
               :aria-label="$t('connection.auth.colConnection') + ': ' + props.row.name"
-              :model-value="props.row.connection_state"
-              :options="connStateOptions"
-              dense
+              :model-value="props.row.connection_state === 'default' ? null : props.row.connection_state"
+              :aria-busy="savingRows.has(props.row)"
               @update:model-value="onConnectionState(props.row, $event)"
             />
             <span v-else>{{ policyLabel(props.row.connection_state) }}</span>
@@ -214,8 +212,6 @@
         <template v-slot:body-cell-effective="props">
           <q-td :props="props" class="text-center">
             <span>{{ policyLabel(props.row.effective_state) }}</span>
-            <div class="text-caption">{{ $t(`connection.auth.source.${props.row.state_source}`) }}</div>
-            <q-tooltip>{{ $t('connection.auth.defaultPolicy', { state: policyLabel(props.row.default_state) }) }}</q-tooltip>
           </q-td>
         </template>
 
@@ -238,13 +234,12 @@
                     size="sm"
                     :aria-label="policyLabel(props.row.effective_state)"
                   >
-                    <q-tooltip>{{ policyLabel(props.row.effective_state) }} · {{ $t(`connection.auth.source.${props.row.state_source}`) }}</q-tooltip>
+                    <q-tooltip>{{ policyLabel(props.row.effective_state) }}</q-tooltip>
                   </q-icon>
                 </div>
 
                 <div class="text-caption q-mt-sm">
-                  {{ policyLabel(props.row.effective_state) }} · {{ $t(`connection.auth.source.${props.row.state_source}`) }}
-                  · {{ policyLabel(props.row.default_state) }}
+                  {{ policyLabel(props.row.effective_state) }}
                 </div>
 
                 <div class="authorization-mobile-settings q-mt-md">
@@ -252,26 +247,24 @@
                     <div class="text-caption text-grey-7 q-mb-xs">
                       {{ $t('connection.auth.colGlobal') }}
                     </div>
-                    <q-select outlined emit-value map-options
+                    <FunctionPolicyToggle
                       v-if="canEdit && canManageAllAgents"
                       :aria-label="$t('connection.auth.colGlobal') + ': ' + props.row.name"
-                      :model-value="props.row.global_state"
-                      :options="globalStateOptions"
-                      dense
+                      :model-value="props.row.connection_state === 'default' ? globalPolicyState(props.row) : null"
+                      :aria-busy="savingRows.has(props.row)"
                       @update:model-value="onGlobalState(props.row, $event)"
                     />
-                    <span v-else>{{ policyLabel(props.row.global_state) }}</span>
+                    <span v-else>{{ policyLabel(globalPolicyState(props.row)) }}</span>
                   </div>
                   <div>
                     <div class="text-caption text-grey-7 q-mb-xs">
                       {{ $t('connection.auth.colConnection') }}
                     </div>
-                    <q-select outlined emit-value map-options
+                    <FunctionPolicyToggle
                       v-if="canEdit"
                       :aria-label="$t('connection.auth.colConnection') + ': ' + props.row.name"
-                      :model-value="props.row.connection_state"
-                      :options="connStateOptions"
-                      dense
+                      :model-value="props.row.connection_state === 'default' ? null : props.row.connection_state"
+                      :aria-busy="savingRows.has(props.row)"
                       @update:model-value="onConnectionState(props.row, $event)"
                     />
                     <span v-else>{{ policyLabel(props.row.connection_state) }}</span>
@@ -287,7 +280,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onActivated, onMounted, watch } from 'vue'
+import { ref, computed, onActivated, onMounted, onUnmounted, watch } from 'vue'
 import type { QTableProps } from 'quasar'
 import { useQuasar } from 'quasar'
 import { useI18n } from 'vue-i18n'
@@ -295,14 +288,19 @@ import { toolMessageKey } from '@/app/tools/presentation'
 import { AgentSelect } from '@/app/agent'
 import { SystemToolIcon } from '@/app/tools'
 import connectionService, {
+  saveFunctionPolicy,
+  waitForFunctionPolicyWrites,
   type Connection,
   type ConnectionFunctionInfo,
+  type EffectiveFunctionState,
   type FunctionState,
   type FunctionStateResolved,
+  type FunctionPolicyChange,
 } from '../services/connectionService'
 import { useAgentStore } from '@/app/agent/stores/agentStore'
 import { useToolStore } from '@/app/tools/stores/toolStore'
 import { privileges, usePrivilegeStore } from '@/core/authorize'
+import FunctionPolicyToggle from './FunctionPolicyToggle.vue'
 
 const SESSION_FILTER_AGENT_KEY = 'authorization_filter_agent_id'
 const SESSION_FILTER_TOOL_KEY = 'authorization_filter_tool_id'
@@ -340,14 +338,19 @@ const search = ref('')
 let initialized = false
 let connectionRequestId = 0
 let functionRequestId = 0
+const savingRows = ref(new Set<ConnectionFunctionInfo>())
+const policySaves = new Map<ConnectionFunctionInfo, {
+  confirmed: FunctionStateResolved
+  pending: FunctionPolicyChange[]
+}>()
+let disposed = false
 
-const connStateOptions = computed(() => [
-  { label: t('connection.auth.stateDefault'), value: 'default' as FunctionState },
-  { label: t('connection.auth.stateEnabled'), value: 'enabled' as FunctionState },
-  { label: t('connection.auth.stateDisabled'), value: 'disabled' as FunctionState },
-  { label: t('connection.auth.stateAsk'), value: 'ask' as FunctionState },
-])
-const globalStateOptions = connStateOptions
+// Display the software policy; every button click saves an explicit rule,
+// including choosing that same policy when no global rule exists yet.
+function globalPolicyState(row: ConnectionFunctionInfo): EffectiveFunctionState {
+  return row.global_state === 'default' ? row.default_state : row.global_state
+}
+
 const policyLabel = (state: FunctionState) => t(`connection.auth.${state === 'ask' ? 'stateAsk' : state === 'disabled' ? 'stateDisabled' : state === 'enabled' ? 'stateEnabled' : 'stateDefault'}`)
 
 const agentFilterOptions = computed(() =>
@@ -479,7 +482,7 @@ const columns = computed<QTableProps['columns']>(() => [
     field: 'effective',
     align: 'center',
     sortable: true,
-    style: 'vertical-align: top; width: 90px;',
+    style: 'vertical-align: middle; width: 90px;',
     headerStyle: 'width: 90px;',
   },
 ])
@@ -495,13 +498,17 @@ async function loadFunctions(): Promise<void> {
   }
   loading.value = true
   loadError.value = null
+  functions.value = []
   try {
+    const connection = connections.value.find(item => item.id === connectionId)
+    if (connection) await waitForFunctionPolicyWrites(connection.tool_id)
+    if (disposed || requestId !== functionRequestId || selectedConnectionId.value !== connectionId) return
     const { data } = await connectionService.getConnectionFunctions(connectionId)
-    if (requestId !== functionRequestId || selectedConnectionId.value !== connectionId) return
+    if (disposed || requestId !== functionRequestId || selectedConnectionId.value !== connectionId) return
     functions.value = data.functions
     if (!data.success) loadError.value = data.message
   } catch (error) {
-    if (requestId !== functionRequestId || selectedConnectionId.value !== connectionId) return
+    if (disposed || requestId !== functionRequestId || selectedConnectionId.value !== connectionId) return
     console.error('Error loading functions:', error)
     loadError.value = t('connection.auth.loadError')
     functions.value = []
@@ -529,38 +536,83 @@ function applyResolved(row: ConnectionFunctionInfo, resolved: FunctionStateResol
   row.state_source = resolved.state_source
 }
 
-// Persist every toggle immediately.
-async function onConnectionState(row: ConnectionFunctionInfo, state: FunctionState): Promise<void> {
-  if (!canEdit.value) return
-  if (selectedConnectionId.value === null) return
-  const connectionId = selectedConnectionId.value
+function applyPendingPolicies(row: ConnectionFunctionInfo): void {
+  const save = policySaves.get(row)
+  if (!save) return
+  applyResolved(row, save.confirmed)
+  for (const change of save.pending) {
+    if (change.scope === 'global') {
+      row.global_state = change.state
+      row.connection_state = 'default'
+      row.state_source = 'tool'
+    } else {
+      row.connection_state = change.state
+      row.state_source = 'connection'
+    }
+  }
+  row.effective_state = row.connection_state === 'default' ? globalPolicyState(row) : row.connection_state
+  row.effective = row.effective_state !== 'disabled'
+}
+
+// Update the selection immediately and serialize its durable effects. A response
+// rebases the remaining choices so it never replaces a more recent click.
+async function changePolicy(row: ConnectionFunctionInfo, change: FunctionPolicyChange): Promise<void> {
+  if (!canEdit.value || (change.scope === 'global' && !canManageAllAgents.value)) return
+  if (!functions.value.includes(row)) return
+  const connection = connections.value.find(item => item.id === selectedConnectionId.value)
+  if (!connection) return
+  let save = policySaves.get(row)
+  if (!save) {
+    save = { confirmed: { ...row }, pending: [] }
+    policySaves.set(row, save)
+  }
+  save.pending.push(change)
+  savingRows.value.add(row)
+  applyPendingPolicies(row)
+  const isVisible = () => !disposed && selectedConnectionId.value === connection.id && functions.value.includes(row)
   try {
-    const { data } = await connectionService.setConnectionFunctionState(connectionId, row.name, state, row.capability_kind)
-    if (selectedConnectionId.value !== connectionId || !functions.value.includes(row)) return
-    applyResolved(row, data)
-    $q.notify({ type: 'positive', message: t('connection.auth.updated') })
+    const { data } = await saveFunctionPolicy(connection, row, change)
+    save.confirmed = data
+    save.pending.shift()
+    if (isVisible()) {
+      applyPendingPolicies(row)
+      if (save.pending.length === 0) {
+        $q.notify({ type: 'positive', message: change.scope === 'global'
+          ? t('connection.auth.globalExceptions', { count: data.local_override_count ?? 0 })
+          : t('connection.auth.updated') })
+      }
+    }
   } catch (error) {
-    console.error('Error updating connection function state:', error)
-    $q.notify({ type: 'negative', message: t('connection.auth.updateError') })
-    void loadFunctions()
+    save.pending.shift()
+    console.error('Error updating function policy:', error)
+    if (!disposed) $q.notify({ type: 'negative', message: t('connection.auth.updateError') })
+    if (isVisible()) {
+      applyPendingPolicies(row)
+      // A failed transport can hide a committed write. Reconcile once the last
+      // queued choice has finished, without interrupting newer pending choices.
+      if (save.pending.length === 0) void loadFunctions()
+    }
+  } finally {
+    if (save.pending.length === 0) {
+      policySaves.delete(row)
+      savingRows.value.delete(row)
+    }
   }
 }
 
-async function onGlobalState(row: ConnectionFunctionInfo, state: FunctionState): Promise<void> {
-  if (!canEdit.value) return
-  if (selectedConnectionId.value === null) return
-  const connectionId = selectedConnectionId.value
-  try {
-    const { data } = await connectionService.setToolFunctionState(connectionId, row.name, state, row.capability_kind)
-    if (selectedConnectionId.value !== connectionId || !functions.value.includes(row)) return
-    applyResolved(row, data)
-    $q.notify({ type: 'positive', message: t('connection.auth.globalExceptions', { count: data.local_override_count ?? 0 }) })
-  } catch (error) {
-    console.error('Error updating global function state:', error)
-    $q.notify({ type: 'negative', message: t('connection.auth.updateError') })
-    void loadFunctions()
-  }
+function onConnectionState(row: ConnectionFunctionInfo, state: EffectiveFunctionState): void {
+  void changePolicy(row, { scope: 'connection', state })
 }
+
+function onGlobalState(row: ConnectionFunctionInfo, state: EffectiveFunctionState): void {
+  void changePolicy(row, { scope: 'global', state })
+}
+
+onUnmounted(() => {
+  disposed = true
+  ++functionRequestId
+  ++connectionRequestId
+})
 
 function loadFiltersFromSession(): void {
   const agentRaw = sessionStorage.getItem(SESSION_FILTER_AGENT_KEY)
@@ -589,7 +641,7 @@ function saveFiltersToSession(): void {
 
 watch(selectedConnectionId, () => {
   void loadFunctions()
-})
+}, { flush: 'sync' })
 
 // Clear the selection when it no longer belongs to the filtered options.
 watch([filterAgent, filterTool, filterState], () => {

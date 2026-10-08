@@ -90,6 +90,59 @@ for (const width of [390, 1440]) {
     const waiting = await invoke(randomUUID(), 'Human approval restored')
     expect(waiting.meta['galaris.authorization/v1'].disposition).toBe('authorization_required')
     expect((await read()).job_title).toBe('YOLO approved synthetic mutation')
+
+    // Configure function policies through the real UI/API/DB while one response
+    // is delayed. Each click remains usable and its effects persist in order.
+    await errors.settle()
+    await page.goto('/tools')
+    if (width < 1024) {
+      await page.addLocatorHandler(page.locator('.q-drawer__backdrop'), async backdrop => {
+        await backdrop.click({ position: { x: width - 10, y: 200 } })
+      }, { times: 1 })
+    }
+    await page.getByRole('tab', { name: 'Autorisations', exact: true }).click()
+    await page.getByRole('combobox', { name: 'Filtrer par agent', exact: true }).click()
+    await page.getByRole('option').filter({ hasText: `${original.first_name} ${original.last_name}` }).click()
+    await page.getByRole('combobox', { name: 'Filtrer par outil', exact: true }).click()
+    await page.getByRole('option', { name: 'AgentAdmin', exact: true }).click()
+    await page.getByRole('textbox', { name: 'Rechercher une fonction', exact: true }).fill('agent_update')
+    const global = page.getByRole('group', { name: 'Global (tous): agent_update', exact: true })
+    const local = page.getByRole('group', { name: 'Cette connexion: agent_update', exact: true })
+    const writes = []
+    let releaseFirst, reportPersisted
+    const firstResponse = new Promise(resolve => { releaseFirst = resolve })
+    const persisted = new Promise(resolve => { reportPersisted = resolve })
+    await page.route(`**/api/connections/${setup.connection_id}/capabilities`, async route => {
+      writes.push(route.request().postDataJSON())
+      const response = await route.fetch()
+      expect(response.ok(), await response.text()).toBeTruthy()
+      if (writes.length === 1) {
+        reportPersisted()
+        await firstResponse
+      }
+      await route.fulfill({ response })
+    })
+    try {
+      await global.getByRole('button', { name: 'Désactivé', exact: true }).click()
+      await persisted
+      expect((await invoke(randomUUID(), 'Globally blocked synthetic mutation')).is_error).toBe(true)
+      for (const state of ['Sur demande', 'Désactivé', 'Activé']) {
+        await local.getByRole('button', { name: state, exact: true }).click()
+        await expect(local.getByRole('button', { name: state, exact: true })).toHaveAttribute('aria-pressed', 'true')
+      }
+      expect(writes).toHaveLength(1)
+      releaseFirst()
+      await expect(local).toHaveAttribute('aria-busy', 'false')
+      expect(writes.map(write => write.state)).toEqual(['disabled', 'ask', 'disabled', 'enabled'])
+      const functions = await (await request.get(`/api/connections/${setup.connection_id}/functions`, { headers })).json()
+      expect(functions.functions.find(item => item.name === 'agent_update')).toMatchObject({
+        connection_state: 'enabled', global_state: 'disabled', effective_state: 'enabled',
+      })
+      expect((await invoke(randomUUID(), 'UI allowed synthetic mutation')).is_error).toBe(false)
+      await page.getByRole('tab', { name: 'Outils', exact: true }).click()
+      await page.getByRole('tab', { name: 'Autorisations', exact: true }).click()
+      await expect(local.getByRole('button', { name: 'Activé', exact: true })).toHaveAttribute('aria-pressed', 'true')
+    } finally { releaseFirst() }
     expect(errors()).toEqual([])
   })
 }

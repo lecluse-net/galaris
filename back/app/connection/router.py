@@ -527,7 +527,9 @@ async def set_connection_function(connection_id: int, function_name: str, data: 
     connection = await _managed_connection(connection_id)
     await connection_service.set_connection_function_state(connection_id, function_name, data.state, capability_kind=data.capability_kind)
     resolved = await connection_service.resolve_function(connection, function_name, capability_kind=data.capability_kind)
-    await _refresh_agent_indexes([connection.agent_id])
+    # Policies are read from the database by discovery and before each call.
+    # The shared index holds definitions, not permissions, and search reconciles
+    # newly visible definitions itself. Saving a rule needs no remote discovery.
     return FunctionStateResolved(**resolved)
 
 
@@ -535,6 +537,16 @@ async def set_connection_function(connection_id: int, function_name: str, data: 
 @authorize(privileges=Privileges.CONNECTION_EDIT)
 async def set_connection_function_global(connection_id: int, function_name: str, data: FunctionStateUpdate):
     """Apply a global function state at the connection's tool level."""
+    return await _set_global_function_policy(connection_id, function_name, data)
+
+
+async def _set_global_function_policy(
+    connection_id: int,
+    function_name: str,
+    data: FunctionStateUpdate,
+    *,
+    inherit_connection: bool = False,
+) -> FunctionStateResolved:
     connection = await _managed_connection(connection_id)
     scope = await current_management_scope()
     if not scope.is_global:
@@ -542,19 +554,20 @@ async def set_connection_function_global(connection_id: int, function_name: str,
             status_code=status.HTTP_403_FORBIDDEN,
             detail=await _message("errors.not_found"),
         )
-    await connection_service.set_tool_function_state(connection.tool_id, function_name, data.state, capability_kind=data.capability_kind)
+    if inherit_connection:
+        await connection_service.set_global_function_state_and_inherit(
+            connection, function_name, data.state, capability_kind=data.capability_kind,
+        )
+    else:
+        await connection_service.set_tool_function_state(connection.tool_id, function_name, data.state, capability_kind=data.capability_kind)
     resolved = await connection_service.resolve_function(connection, function_name, capability_kind=data.capability_kind)
-    await _refresh_agent_indexes([
-        agent_id
-        for agent_id in await connection_service.get_agent_ids_by_tool(connection.tool_id)
-        if scope.allows(agent_id)
-    ])
     return FunctionStateResolved(**resolved)
 
 
 class CapabilityStateUpdate(FunctionStateUpdate):
     function_name: str = Field(min_length=1, max_length=2000)
     global_policy: bool = False
+    inherit_connection: bool = Field(default=False, description="Clear this connection's override when saving a global policy.")
 
 
 @router.put("/{connection_id}/capabilities", response_model=FunctionStateResolved, dependencies=[Depends(require_web_session)])
@@ -562,7 +575,9 @@ class CapabilityStateUpdate(FunctionStateUpdate):
 async def set_capability_policy(connection_id: int, data: CapabilityStateUpdate):
     """Exact names and URIs travel in the body, independently of their capability kind."""
     if data.global_policy:
-        result = await set_connection_function_global(connection_id, data.function_name, data)
+        result = await _set_global_function_policy(
+            connection_id, data.function_name, data, inherit_connection=data.inherit_connection,
+        )
         connection = await _managed_connection(connection_id)
         from .models import ConnectionFunctionState
         from sqlalchemy import func

@@ -122,6 +122,20 @@ Real HTTP routes reject a system runtime token without its context, accept a val
 context, reject a revoked context, and preserve independent MCP clients.
 `app/connection/tests/test_function_modes_migration.py`
 proves Boolean conversion, rollback and replay after a later human choice on PostgreSQL.
+`front/browser-tests/system-tools.spec.mjs` checks the three choices at each level:
+a connection override deselects the global group without blocking it, and a global
+choice returns this connection to inheritance, including after reopening on desktop and mobile.
+It also checks immediate choices during a delayed response, ordered persistence,
+independent rows, rejections and lost responses after commit, connection changes,
+and reopening while saving.
+`app/connection/tests/test_connections.py` verifies that this combined save is atomic,
+preserves other connections and capability kinds, rejects a limited manager, and rolls
+back both effects after a commit failure. Global API calls without the reset option
+continue to preserve local overrides.
+Saving triggers no catalog rediscovery. Effective search stays filtered and indexes
+newly visible functions on the next request (`app/tools/tests/test_tool_search_service.py`).
+The assembled journey in `e2e/specs/tool-authorizations.spec.mjs` delays a real API
+response, makes successive UI choices, reads back the policies and exercises their MCP effects.
 `app/harnesses/tests/test_runtime_control.py` checks suspended calls, lost claim replies and
 restart without re-execution. Mail and Process workflows check permits before effects and
 reconciliation after an unknown outcome.

@@ -727,7 +727,7 @@ tests restent l’autorité sur le comportement.
 | `app/connection` | `core/api` | `front/app/connection/availability.ts`, `front/app/connection/components/CalendarConnectionEditor.vue`, `front/app/connection/services/calendarService.ts`, `front/app/connection/services/connectionService.ts`, `front/app/connection/services/mailService.ts`, `front/app/connection/services/permissionService.ts` |
 | `app/connection` | `core/authorize` | `front/app/connection/components/ActionAuthorizations.vue`, `front/app/connection/components/AuthorizationManager.vue`, `front/app/connection/components/CalendarConnectionEditor.vue`, `front/app/connection/components/ConnectionForm.vue`, `front/app/connection/components/ConnectionList.vue`, `front/app/connection/navigation.ts`, `front/app/connection/pages/permissions.vue` |
 | `app/connection` | `core/navigation` | `front/app/connection/navigation.ts`, `front/app/connection/pages/mail.vue` |
-| `app/connection` | `core/util` | `front/app/connection/components/ConnectionForm.vue`, `front/app/connection/pages/mail.vue`, `front/app/connection/pages/permissions.vue` |
+| `app/connection` | `core/util` | `front/app/connection/components/ConnectionForm.vue`, `front/app/connection/components/FunctionPolicyToggle.vue`, `front/app/connection/pages/mail.vue`, `front/app/connection/pages/permissions.vue` |
 | `app/console` | `core/api` | `front/app/console/services/consoleService.ts` |
 | `app/console` | `core/authorize` | `front/app/console/navigation.ts`, `front/app/console/pages/executor.vue` |
 | `app/console` | `core/navigation` | `front/app/console/navigation.ts`, `front/app/console/pages/executor.vue` |
@@ -1252,10 +1252,10 @@ tests restent l’autorité sur le comportement.
 | DELETE | `/connections/{connection_id}` | `app.connection` | `delete_connection` | oui | `back/app/connection/router.py:295` |
 | GET | `/connections/{connection_id}` | `app.connection` | `get_connection` | oui | `back/app/connection/router.py:209` |
 | PATCH | `/connections/{connection_id}` | `app.connection` | `update_connection` | oui | `back/app/connection/router.py:247` |
-| PUT | `/connections/{connection_id}/capabilities` | `app.connection` | `set_capability_policy` | oui | `back/app/connection/router.py:562` |
+| PUT | `/connections/{connection_id}/capabilities` | `app.connection` | `set_capability_policy` | oui | `back/app/connection/router.py:575` |
 | GET | `/connections/{connection_id}/functions` | `app.connection` | `list_connection_functions` | oui | `back/app/connection/router.py:516` |
 | PUT | `/connections/{connection_id}/functions/{function_name}` | `app.connection` | `set_connection_function` | oui | `back/app/connection/router.py:525` |
-| PUT | `/connections/{connection_id}/functions/{function_name}/global` | `app.connection` | `set_connection_function_global` | oui | `back/app/connection/router.py:536` |
+| PUT | `/connections/{connection_id}/functions/{function_name}/global` | `app.connection` | `set_connection_function_global` | oui | `back/app/connection/router.py:538` |
 | GET | `/connections/{connection_id}/params` | `app.connection` | `get_connection_params` | oui | `back/app/connection/router.py:311` |
 | POST | `/connections/{connection_id}/params` | `app.connection` | `create_or_update_param` | oui | `back/app/connection/router.py:358` |
 | POST | `/connections/{connection_id}/params/bulk` | `app.connection` | `create_or_update_params_bulk` | oui | `back/app/connection/router.py:383` |

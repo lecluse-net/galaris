@@ -763,6 +763,23 @@ async def set_tool_function_state(
     await finish_write(commit=commit, db=get_db())
 
 
+async def set_global_function_state_and_inherit(
+    connection: Connection,
+    function_name: str,
+    state: FunctionState,
+    *,
+    capability_kind: CapabilityKind = "tool",
+) -> None:
+    """Save the global rule and clear only this connection's override atomically."""
+    await set_tool_function_state(
+        connection.tool_id, function_name, state, commit=False, capability_kind=capability_kind,
+    )
+    await set_connection_function_state(
+        connection.id, function_name, "default", commit=False, capability_kind=capability_kind,
+    )
+    await finish_write(commit=True, db=get_db())
+
+
 async def resolve_function(connection: Connection, function_name: str, *, capability_kind: CapabilityKind = "tool") -> Dict[str, Any]:
     """Resolve connection, tool, and effective state without querying MCP."""
     from app.tools import facade as tools

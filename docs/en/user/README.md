@@ -448,6 +448,18 @@ Hermès therefore retains its own capabilities without being confined to a secon
 
 ## When Galaris Asks a Question
 
+In **MCP function authorizations**, **Global (all)** offers **Enabled**, **Ask**
+or **Disabled** as joined buttons: a green check, a yellow question mark, and a red cross.
+The selected button has a solid background; each button describes its effect in a tooltip.
+Without a saved global rule, this column displays the software policy when the connection inherits it.
+Selecting a **This connection** button creates an override: the global buttons in that row
+appear unselected and remain clickable. Clicking a **Global (all)** button saves that rule
+and returns this connection to inheritance; its local buttons all become unselected.
+Other connections keep their overrides.
+Selections change immediately and buttons remain clickable while saving.
+Successive choices for the same capability are saved in order. If saving fails,
+a message alerts you and Galaris reloads the stored rules.
+
 For web browsing, **Public sites allowed** is the initial choice in the Browser parameters for new installations,
 globally or for one agent: new public sites then stop triggering per-site network requests.
 Existing instances keep their behaviour; **Per-site approval** remains available. Localhost and private networks remain blocked by

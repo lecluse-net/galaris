@@ -126,6 +126,21 @@ Les routes HTTP réelles refusent le jeton système d'un runtime sans son contex
 acceptent un contexte valide, refusent un contexte révoqué et conservent les clients MCP indépendants.
 `app/connection/tests/test_function_modes_migration.py` prouve sur PostgreSQL la conversion
 des anciens booléens, le rollback et le rejeu après un choix humain ultérieur.
+`front/browser-tests/system-tools.spec.mjs` vérifie les trois choix à chaque niveau :
+une exception locale décoche le groupe global sans le bloquer ; un choix global remet
+cette connexion en héritage, y compris après réouverture sur desktop et mobile.
+Il vérifie aussi les choix immédiats pendant une réponse retardée, leur sauvegarde
+ordonnée, les lignes indépendantes, les refus et les réponses perdues après commit,
+ainsi que les changements de connexion et la réouverture pendant une sauvegarde.
+`app/connection/tests/test_connections.py` vérifie l'atomicité de cette sauvegarde,
+la conservation des autres connexions et types de capacités, le refus d'un responsable
+à périmètre limité et le rollback des deux effets après un échec du commit. Les appels
+globaux sans option de remise en héritage conservent leurs exceptions locales.
+La sauvegarde ne déclenche aucune redécouverte du catalogue. La recherche effective
+reste filtrée et indexe les nouvelles fonctions visibles lors de la requête suivante
+(`app/tools/tests/test_tool_search_service.py`). Le parcours assemblé
+`e2e/specs/tool-authorizations.spec.mjs` retarde une réponse de la véritable API,
+enchaîne les choix dans l’interface, relit les règles et exerce leurs effets via MCP.
 `app/harnesses/tests/test_runtime_control.py` vérifie les appels suspendus, la réponse de claim
 perdue et le redémarrage sans réexécution. Les workflows Mail et Process vérifient les permis
 avant effet et la réconciliation après une issue inconnue.

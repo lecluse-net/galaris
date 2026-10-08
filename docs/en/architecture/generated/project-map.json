@@ -12844,7 +12844,7 @@
         "declared_path": "/connections/{connection_id}/capabilities",
         "file": "back/app/connection/router.py",
         "handler": "set_capability_policy",
-        "line": 562,
+        "line": 575,
         "method": "PUT",
         "module": "app.connection"
       },
@@ -12871,7 +12871,7 @@
         "declared_path": "/connections/{connection_id}/functions/{function_name}/global",
         "file": "back/app/connection/router.py",
         "handler": "set_connection_function_global",
-        "line": 536,
+        "line": 538,
         "method": "PUT",
         "module": "app.connection"
       },
@@ -17262,6 +17262,7 @@
       {
         "files": [
           "front/app/connection/components/ConnectionForm.vue",
+          "front/app/connection/components/FunctionPolicyToggle.vue",
           "front/app/connection/pages/mail.vue",
           "front/app/connection/pages/permissions.vue"
         ],
