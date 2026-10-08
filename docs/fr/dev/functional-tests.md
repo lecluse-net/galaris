@@ -102,7 +102,11 @@ Ces budgets SQL synthétiques ne constituent pas une mesure de latence en produc
 `app/browser/tests/test_network_permissions.py` couvre permissions durables par agent/origine,
 réponses par texte et boutons, refus, nouvelle demande après suppression ou expiration,
 concurrence entre sessions SQL, priorité de la connexion, DNS mixtes, filtres et droits HTTP
-des gestionnaires. `browser-executor/network-proxy.test.mjs` utilise Chromium et des serveurs
+des gestionnaires. Il vérifie aussi le mode public sans question, l’héritage global et la surcharge
+par agent, le retour aux demandes par site, les refus explicites et le maintien du blocage local.
+Le défaut public des installations neuves et la conservation du mode des instances existantes,
+y compris sans paramètre enregistré, sont vérifiés avec deux synchronisations successives.
+`browser-executor/network-proxy.test.mjs` utilise Chromium et des serveurs
 synthétiques pour vérifier POST, redirections, isolation, HTTPS avec validation du certificat,
 WebSocket et révocation. `front/browser-tests/permissions.spec.mjs` vérifie la liste réelle,
 ses filtres, la suppression, la fermeture par fond de modale et le réessai après erreur.

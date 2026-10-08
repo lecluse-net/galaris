@@ -535,6 +535,9 @@ def _console_connection_params() -> dict[str, dict[str, Any]]:
 
 def _browser_connection_params() -> dict[str, dict[str, Any]]:
     return {
+        "public_access_mode": _param(required=False, default="ask",
+            options=[{"value": "allow"}, {"value": "ask"}],
+            description="Allow public sites without per-site approval, or ask per site; local network restrictions and explicit denials remain active"),
         "allow_local_network": _param("boolean", required=False, default="false",
             description="Allow asking permission for local network access; otherwise block it"),
         "network_filter_mode": _param(required=False, default="block",
@@ -543,7 +546,7 @@ def _browser_connection_params() -> dict[str, dict[str, Any]]:
         "network_filter": _param(required=False,
             description="Domains, *.subdomains, IPs or CIDRs separated by commas; optional :port (IPv6 in brackets)"),
         "permission_methods": _param(required=False, default="POST PUT PATCH DELETE WEBSOCKET",
-            description="HTTP methods requiring remembered approval, separated by spaces"),
+            description="HTTP methods requiring remembered approval in per-site mode or on local networks, separated by spaces"),
         "default_output": _param(
             required=False,
             default="content",
@@ -682,6 +685,11 @@ def mandatory_tool_rows() -> list[dict[str, Any]]:
                 )
         connection_schema = with_standard_params(connection_schema, code=spec.code,
             file_share_config={"service": spec.file_share_service} if spec.file_share_service else None)
+        global_params = default_global_params(connection_schema)
+        if spec.code == "browser":
+            # Installation seed only: DbAdmin derives defaults for existing Tools
+            # from their schema, preserving the legacy per-site policy.
+            global_params["public_access_mode"] = {"value": "allow", "forced": False}
         rows.append({
             "code": spec.code,
             "can_disable": spec.code not in SYSTEM_TOOL_CODES,
@@ -708,7 +716,7 @@ def mandatory_tool_rows() -> list[dict[str, Any]]:
             ),
             "listener_config": None,
             "connection_schema": connection_schema,
-            "global_params": default_global_params(connection_schema),
+            "global_params": global_params,
             "task_config": None,
         })
     return rows

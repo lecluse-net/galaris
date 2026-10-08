@@ -145,7 +145,7 @@ export default {
         smtp_host: 'Serveur SMTP', smtp_port: 'Port SMTP', smtp_security: 'Sécurité SMTP',
         max_attachment_mb: 'Taille maximale par pièce jointe (Mo)', max_total_attachment_mb: 'Taille totale des pièces jointes (Mo)',
         approval_required: 'Approbation des envois', approver_user_id: 'Responsable des approbations',
-        allow_local_network: 'Accès au réseau local', network_filter_mode: 'Mode du filtre réseau', network_filter: 'Destinations du filtre réseau',
+        public_access_mode: 'Accès aux sites publics', allow_local_network: 'Accès au réseau local', network_filter_mode: 'Mode du filtre réseau', network_filter: 'Destinations du filtre réseau',
         permission_methods: 'Méthodes soumises à autorisation', default_output: 'Réponse par défaut',
         timezone: 'Fuseau horaire', workday_start: 'Début de journée', workday_end: 'Fin de journée', slot_step_minutes: 'Pas des créneaux (minutes)',
         user_id: 'Identifiant du compte', allowed_user_ids: 'Utilisateurs autorisés', allowed_chat_ids: 'Discussions autorisées',
@@ -156,6 +156,7 @@ export default {
       connectionParamOptions: {
         fileindexing: { excluded: 'Désactivée', known_uris: 'Uniquement les fichiers déjà connus', recursive: 'Découverte & indexation de tous les contenus disponibles' },
         browser: {
+          public_access_mode: { allow: 'Sites publics autorisés', ask: 'Autorisation par site' },
           network_filter_mode: { block: 'Bloquer les destinations listées', allow: 'Autoriser uniquement les destinations listées' },
           default_output: { content: 'Contenu de la page', screenshot: 'Capture d’écran' },
         },
@@ -309,10 +310,11 @@ export default {
         fileindexing: 'Désactiver l’indexation, indexer uniquement les fichiers déjà connus, ou découvrir et indexer tous les contenus accessibles via cette connexion. La connexion peut hériter du réglage du Tool ou le personnaliser.',
         browser: {
           default_output: 'Réponse par défaut après une action : content ou screenshot',
+          public_access_mode: 'Autoriser les sites publics sans demande par site, ou demander un accord par site. Les filtres, les refus explicites et les restrictions du réseau local restent actifs.',
           allow_local_network: 'Permettre les demandes d’accès au réseau local (bloqué par défaut)',
           network_filter_mode: 'Filtre : block pour bloquer la liste, allow pour autoriser uniquement la liste',
           network_filter: 'Domaines, *.sous-domaines, IP ou réseaux CIDR séparés par des virgules ; port facultatif :port, IPv6 entre crochets',
-          permission_methods: 'Méthodes nécessitant un accord mémorisé, séparées par des espaces : POST PUT PATCH DELETE WEBSOCKET',
+          permission_methods: 'Méthodes nécessitant un accord en mode par site ou sur le réseau local, séparées par des espaces : POST PUT PATCH DELETE WEBSOCKET',
         },
         mail: {
           email_address: 'Adresse de la boîte utilisée comme expéditeur SMTP',
@@ -534,7 +536,7 @@ export default {
         smtp_host: 'SMTP server', smtp_port: 'SMTP port', smtp_security: 'SMTP security',
         max_attachment_mb: 'Maximum attachment size (MB)', max_total_attachment_mb: 'Total attachment size (MB)',
         approval_required: 'Send approval', approver_user_id: 'Approval manager',
-        allow_local_network: 'Local network access', network_filter_mode: 'Network filter mode', network_filter: 'Network filter destinations',
+        public_access_mode: 'Public site access', allow_local_network: 'Local network access', network_filter_mode: 'Network filter mode', network_filter: 'Network filter destinations',
         permission_methods: 'Methods requiring approval', default_output: 'Default response',
         timezone: 'Time zone', workday_start: 'Workday start', workday_end: 'Workday end', slot_step_minutes: 'Slot step (minutes)',
         user_id: 'Account identifier', allowed_user_ids: 'Allowed users', allowed_chat_ids: 'Allowed chats',
@@ -545,6 +547,7 @@ export default {
       connectionParamOptions: {
         fileindexing: { excluded: 'Disabled', known_uris: 'Only files already known', recursive: 'Discover & index all available content' },
         browser: {
+          public_access_mode: { allow: 'Public sites allowed', ask: 'Per-site approval' },
           network_filter_mode: { block: 'Block listed destinations', allow: 'Allow only listed destinations' },
           default_output: { content: 'Page content', screenshot: 'Screenshot' },
         },
@@ -698,10 +701,11 @@ export default {
         fileindexing: 'Disable indexing, index only files already known, or discover and index all content accessible through this connection. The connection can inherit or override the Tool setting.',
         browser: {
           default_output: 'Default response after an action: content or screenshot',
+          public_access_mode: 'Allow public sites without per-site requests, or ask for approval per site. Filters, explicit denials and local network restrictions remain active.',
           allow_local_network: 'Allow local network permission requests (blocked by default)',
           network_filter_mode: 'Filter: block to deny the list, allow to permit only the list',
           network_filter: 'Comma-separated domains, *.subdomains, IPs or CIDRs; optional :port, IPv6 in brackets',
-          permission_methods: 'Methods requiring remembered approval, separated by spaces: POST PUT PATCH DELETE WEBSOCKET',
+          permission_methods: 'Methods requiring approval in per-site mode or on local networks, separated by spaces: POST PUT PATCH DELETE WEBSOCKET',
         },
         mail: {
           email_address: 'Mailbox address used as the SMTP sender',
@@ -826,7 +830,7 @@ export default {
         email_address: '电子邮件地址', imap_host: 'IMAP 服务器', imap_port: 'IMAP 端口', imap_security: 'IMAP 安全设置',
         smtp_host: 'SMTP 服务器', smtp_port: 'SMTP 端口', smtp_security: 'SMTP 安全设置',
         max_attachment_mb: '单个附件大小上限（MB）', max_total_attachment_mb: '附件总大小上限（MB）', approval_required: '发送审批', approver_user_id: '审批负责人',
-        allow_local_network: '本地网络访问', network_filter_mode: '网络过滤模式', network_filter: '网络过滤目标', permission_methods: '需要审批的方法', default_output: '默认回复',
+        public_access_mode: '公共网站访问', allow_local_network: '本地网络访问', network_filter_mode: '网络过滤模式', network_filter: '网络过滤目标', permission_methods: '需要审批的方法', default_output: '默认回复',
         timezone: '时区', workday_start: '工作开始时间', workday_end: '工作结束时间', slot_step_minutes: '时间段步长（分钟）',
         user_id: '账号标识符', allowed_user_ids: '允许的用户', allowed_chat_ids: '允许的聊天', allowed_room_ids: '允许的房间',
         require_group_mention: '群聊中要求提及', auto_join_invites: '接受邀请', phone_number_id: '电话号码标识符', business_account_id: '企业账号标识符',
@@ -835,6 +839,7 @@ export default {
       connectionParamOptions: {
         fileindexing: { excluded: '禁用', known_uris: '仅已知文件', recursive: '发现并索引所有可用内容' },
         browser: {
+          public_access_mode: { allow: '允许公共网站', ask: '按网站审批' },
           network_filter_mode: { block: '阻止列出的目标', allow: '仅允许列出的目标' },
           default_output: { content: '页面内容', screenshot: '屏幕截图' },
         },
@@ -977,10 +982,11 @@ export default {
       connectionParamDescriptions: {
         fileindexing: '禁用索引、仅索引已知文件，或发现并索引通过此连接可访问的所有内容。连接可以继承或覆盖工具设置。',
         browser: { default_output: '操作后的默认回复：内容或截图',
+          public_access_mode: '允许公共网站而无需逐站询问，或按网站请求批准。过滤器、明确拒绝和本地网络限制仍然有效。',
           allow_local_network: '允许请求本地网络访问权限（默认阻止）',
           network_filter_mode: '过滤：block 拒绝列表，allow 仅允许列表',
           network_filter: '逗号分隔的域名、*.子域名、IP 或 CIDR；可选 :端口，IPv6 使用方括号',
-          permission_methods: '需要记住批准的方法，以空格分隔：POST PUT PATCH DELETE WEBSOCKET',
+          permission_methods: '按网站模式或本地网络中需要批准的方法，以空格分隔：POST PUT PATCH DELETE WEBSOCKET',
         },
         mail: {
           email_address: '用作 SMTP 发件人的邮箱地址', password: 'IMAP 和 SMTP 使用的邮箱密码或应用密码', imap_host: 'IMAP 服务器 DNS 名称', imap_port: 'IMAP 服务器端口',

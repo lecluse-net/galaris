@@ -112,8 +112,10 @@ async def authorize_network(request: NetworkRequest) -> NetworkDecision:
         if not found:
             return NetworkDecision(allowed=False, code="connection_inactive")
     allow_local = str(params.get("allow_local_network", "false")).lower()
+    public_access_mode = str(params.get("public_access_mode", "ask"))
     mode = str(params.get("network_filter_mode", "block"))
-    if allow_local not in {"true", "false"} or mode not in {"allow", "block"}:
+    if (allow_local not in {"true", "false"} or mode not in {"allow", "block"}
+            or public_access_mode not in {"allow", "ask"}):
         raise ValueError("Invalid network policy")
     if local and allow_local != "true":
         return NetworkDecision(allowed=False, code="local_network_blocked")
@@ -151,6 +153,8 @@ async def authorize_network(request: NetworkRequest) -> NetworkDecision:
         recorded = await get_permission_decision(request.owner.agent_id, key)
         if recorded is not None and recorded.allowed is False:
             decisions.append(False)
+        elif not local and public_access_mode == "allow":
+            decisions.append(True)
         elif action != "local" and ((all_sites is not None and all_sites.allowed is True)
                                    or (site is not None and site.allowed is True)):
             decisions.append(True)

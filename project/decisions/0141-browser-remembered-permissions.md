@@ -71,6 +71,24 @@ Les titres, boutons et explications suivent la langue normalisée du responsable
 puis la langue de l’installation. Les catalogues d’autorisation couvrent anglais, français
 et chinois. Une autorisation ponctuelle ne porte plus un libellé promettant une mémorisation.
 
+## Extension du 2026-10-08 — Mode d’accès public configurable
+
+La connexion Browser expose `public_access_mode` dans les paramètres globaux et locaux.
+`allow`, choix initial des nouvelles installations, autorise les méthodes HTTP et WebSocket
+sur des adresses publiques sans demande par site. Cette configuration ne crée aucune décision
+humaine implicite : revenir à `ask` rétablit les demandes, sous réserve des accords mémorisés
+indépendamment. Les filtres, connexions désactivées et refus explicites restent prioritaires.
+Le réseau local reste interdit par défaut. Son activation conserve les autorisations locales
+séparées ; le mode public ne les accorde pas. Les politiques des fonctions MCP restent distinctes.
+La convergence du schéma de paramètres ajoute le choix sans changer les valeurs administrées
+ni les décisions existantes. Le jeu initial du Tool neuf initialise le paramètre global à `allow`.
+La convergence d’un Tool existant conserve sa valeur ; si la clé était absente, elle ajoute `ask`.
+Le repli du schéma et du contrôle réseau reste `ask`, également après effacement d’une valeur.
+Une mise à jour ne bascule donc aucune instance en mode public. `ask` reste disponible pour
+rétablir les demandes par site sur une nouvelle installation. Aucun changement de table ou de
+données de permission n’est requis. Les sessions humaines sans connexion agent gardent leurs
+restrictions indépendantes.
+
 ## Validation et mise en service
 
 Les parcours PostgreSQL vérifient réutilisation, refus, portée, suppression, expiration,

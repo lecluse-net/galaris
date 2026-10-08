@@ -593,6 +593,13 @@ Hermès conserve ainsi ses capacités propres sans être enfermé dans un second
 
 ## Quand Galaris pose une question
 
+Pour la navigation web, **Sites publics autorisés** est le choix initial des nouvelles installations du Navigateur,
+globalement ou pour un agent : les nouveaux sites publics ne
+déclenchent alors plus de demandes réseau par site. Les instances existantes gardent leur
+comportement ; **Autorisation par site** reste disponible.
+Localhost et les réseaux privés restent bloqués par défaut ; les filtres et refus explicites
+restent actifs. Voir [l’administration du Navigateur](../admin/tool-administration.md).
+
 Si une connexion Mail exige une validation humaine, son responsable désigné reçoit une demande
 privée dans le Chat pour chaque mail préparé. Vérifiez les destinataires, l’objet, l’aperçu du
 contenu et la liste des pièces jointes, puis choisissez **Autoriser l’envoi** ou **Refuser**.

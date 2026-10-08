@@ -448,6 +448,11 @@ Hermès therefore retains its own capabilities without being confined to a secon
 
 ## When Galaris Asks a Question
 
+For web browsing, **Public sites allowed** is the initial choice in the Browser parameters for new installations,
+globally or for one agent: new public sites then stop triggering per-site network requests.
+Existing instances keep their behaviour; **Per-site approval** remains available. Localhost and private networks remain blocked by
+default; filters and explicit denials stay active. See [Browser administration](../admin/tool-administration.md).
+
 If a Mail connection requires human approval, its designated approver receives a private Chat
 request for each prepared email. Review the recipients, subject, content preview, and attachment
 list, then choose **Allow sending** or **Reject**. The **Mail journal** shows the complete content

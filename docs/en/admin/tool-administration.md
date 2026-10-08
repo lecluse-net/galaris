@@ -177,6 +177,20 @@ A global denial can therefore be overridden by an explicit local enable;
 `available` also includes activation, runtime and conversation context. Discovery under one
 connection does not establish another agent's access.
 
+## Choose Browser access to public sites
+
+Under **Tools & connections → Tools**, open the Browser's **Global parameters**.
+**Public site access** (`public_access_mode`) offers **Public sites allowed** (`allow`, initial choice for new installations) to avoid
+per-site requests, or **Per-site approval** (`ask`).
+Existing instances keep their choices; if this parameter was absent, the upgrade adds `ask`
+to preserve their behaviour. Clearing the global value also restores the `ask` fallback.
+Agents can override the choice on their connection unless the global setting is forced.
+Destination filters and remembered denials per method still take precedence.
+Localhost, loopback and private networks remain blocked by default; **Local network access**
+only enables separate approval requests for them. Returning to per-site mode keeps no implicit
+approval from public mode. Browser function policies remain separately configurable under
+**Authorizations**.
+
 ## Answer an action request
 
 In **Permissions** (`/connection/permissions`), individual requests are separate from remembered

@@ -79,8 +79,13 @@ sends the origin, method and addresses to `POST /api/browser/network/authorize`,
 to a checked address. The callback requires the shared secret and receives no paths, query
 parameters or request bodies. An unavailable authorization service blocks the request.
 
-The `browser` connection carries four settings:
+The `browser` connection carries five network settings, configurable globally or per agent:
 
+- `public_access_mode=allow`, initialized for new installations, permits public sites without
+  per-site requests for HTTP methods and WebSockets. Explicit denials and filters still take
+  precedence; this mode permits no local address and creates no remembered approval.
+  `ask` restores per-site approval and remains the fallback without a value.
+  Existing instances missing this parameter receive `ask` on upgrade; other saved choices are preserved.
 - `allow_local_network=false` blocks private, loopback, reserved and link-local addresses,
   including IPv6. Setting it to `true` allows a local-access permission request.
 - `network_filter_mode=block` denies destinations in `network_filter`; `allow` only admits
@@ -89,7 +94,8 @@ The `browser` connection carries four settings:
   or whitespace, with an optional port. Wildcards exclude the apex domain. Every DNS address
   must match an allowlist. Domain matching never bypasses the local-network check.
 - `permission_methods` defaults to `POST PUT PATCH DELETE WEBSOCKET`. Known HTTP methods may
-  be added or removed; an empty value restores the default, and an unknown value blocks access.
+  require approval in `ask` mode and on enabled local networks. Methods may be added or removed;
+  an empty value restores the default, and an unknown value blocks access.
   Public GET requests pass without a question under the default configuration.
 
 Configuration denials always precede remembered permissions. Local access and POST require

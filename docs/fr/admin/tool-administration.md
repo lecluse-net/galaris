@@ -186,6 +186,20 @@ Actives par défaut. Un refus global peut donc être surchargé par une autorisa
 tandis que `available` tient aussi compte de l’activation, du runtime et du contexte conversationnel.
 La disponibilité d’une fonction découverte avec une connexion ne prouve pas celle d’un autre agent.
 
+## Choisir l’accès du Navigateur aux sites publics
+
+Dans **Outils & connexions → Outils**, ouvrez les **Paramètres globaux** du Navigateur.
+**Accès aux sites publics** (`public_access_mode`) propose **Sites publics autorisés** (`allow`, choix initial des nouvelles installations)
+pour éviter les demandes site par site, ou **Autorisation par site** (`ask`).
+Une instance existante conserve ses choix ; si ce paramètre était absent, la mise à jour ajoute
+`ask` pour préserver son comportement. Effacer la valeur globale rétablit aussi le repli `ask`.
+Le choix peut être personnalisé dans la connexion d’un agent, ou imposé globalement.
+Les filtres de destinations et les refus mémorisés par méthode restent prioritaires.
+Localhost, loopback et les réseaux privés restent bloqués par défaut ; **Accès au réseau local**
+permet seulement de demander leur autorisation séparée. Revenir au mode par site ne conserve
+aucun accord implicite du mode public. Les politiques des fonctions du Navigateur restent
+configurables séparément dans **Autorisations**.
+
 ## Répondre à une demande d’action
 
 Dans **Permissions** (`/connection/permissions`), les demandes ponctuelles sont séparées des

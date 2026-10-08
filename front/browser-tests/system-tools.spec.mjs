@@ -14,16 +14,20 @@ const tools = [
 const connections = tools.slice(0, 5).map(tool => ({ id: tool.id, tool_id: tool.id, agent_id: 7, active: true }))
 const privileges = ['TOOL_ACCESS', 'TOOL_EDIT', 'CONNECTION_ACCESS', 'CONNECTION_EDIT', 'AGENT_MANAGE_ALL']
 
-for (const [locale, description] of [
-  ['fr', 'Permettre les demandes d’accès au réseau local (bloqué par défaut)'],
-  ['en', 'Allow local network permission requests (blocked by default)'],
-  ['zh', '允许请求本地网络访问权限（默认阻止）'],
+for (const [locale, description, publicLabel, askChoice, allowChoice, saveLabel] of [
+  ['fr', 'Permettre les demandes d’accès au réseau local (bloqué par défaut)', 'Accès aux sites publics', 'Autorisation par site', 'Sites publics autorisés', 'Modifier'],
+  ['en', 'Allow local network permission requests (blocked by default)', 'Public site access', 'Per-site approval', 'Public sites allowed', 'Edit'],
+  ['zh', '允许请求本地网络访问权限（默认阻止）', '公共网站访问', '按网站审批', '允许公共网站', '编辑'],
 ]) {
   test(`Browser connection descriptions are translated (${locale})`, async ({ page }) => {
     await jsonRoute(page, '**/api/agents?*', [{ id: 7, first_name: 'Synthetic', last_name: 'Agent', agent_driver: 'internal' }])
     const params = Object.fromEntries(['allow_local_network', 'network_filter_mode', 'network_filter', 'permission_methods'].map(name => [name, {
       type: name === 'allow_local_network' ? 'boolean' : 'string', required: false, description: 'Server description',
     }]))
+    params.allow_local_network.default = 'false'
+    params.public_access_mode = { type: 'string', required: false, default: 'ask', description: 'Server description',
+      label: 'tools.connectionParamLabels.public_access_mode',
+      options: ['allow', 'ask'].map(value => ({ value, label: `tools.connectionParamOptions.browser.public_access_mode.${value}` })) }
     await mount(page, 'app/connection/components/ConnectionForm.vue', {
       locale, privileges,
       props: {
@@ -34,9 +38,17 @@ for (const [locale, description] of [
       },
     })
     await expect(page.getByText(description, { exact: true })).toBeVisible()
-    await expect(page.locator('.param-desc')).toHaveCount(4)
     await expect(page.locator('.param-desc').filter({ hasText: 'tools.connectionParamDescriptions' })).toHaveCount(0)
     await expect(page.getByText('Server description', { exact: true })).toHaveCount(0)
+    const access = page.getByRole('combobox', { name: publicLabel, exact: true })
+    await expect(access).toHaveValue(askChoice)
+    await access.press('ArrowDown')
+    await page.getByRole('option', { name: allowChoice, exact: true }).click()
+    await page.getByRole('button', { name: saveLabel, exact: true }).click()
+    await expect.poll(() => page.evaluate(() => {
+      const params = window.testApp.events.filter(event => event.name === 'submit').at(-1)?.value.params
+      return params && { public_access_mode: params.public_access_mode, allow_local_network: params.allow_local_network }
+    })).toEqual({ public_access_mode: 'allow', allow_local_network: 'false' })
   })
 }
 

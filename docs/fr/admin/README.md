@@ -853,11 +853,19 @@ les dimensions par défaut concernent les nouvelles fenêtres. Réduire la capac
 pas les sessions existantes : seules les nouvelles ouvertures sont limitées. Une session
 reprend le délai d’inactivité courant lors de sa prochaine action.
 
+Dans **Outils & connexions → Outils**, ouvrez les **Paramètres globaux** du Navigateur.
+**Accès aux sites publics → Sites publics autorisés** est le choix initial des nouvelles installations pour éviter les demandes
+site par site. Les instances existantes conservent leur comportement, y compris si ce paramètre
+était absent. **Autorisation par site** reste disponible. Dans **Connexions**,
+chaque agent peut personnaliser ce choix, sauf si le réglage global est imposé. Les filtres
+et les refus explicites restent actifs dans les deux modes.
+
 Dans **Outils & connexions → Connexions**, le paramètre `allow_local_network` de la connexion
 Navigateur interdit le réseau local par défaut. Activez-le pour permettre une demande de
 permission, puis répondez depuis la messagerie de l’agent. `network_filter_mode` (`block` ou
 `allow`) et `network_filter` limitent les destinations ; `permission_methods` demande par défaut
-un accord pour `POST PUT PATCH DELETE WEBSOCKET`. Un GET public passe si le filtre le permet.
+un accord pour `POST PUT PATCH DELETE WEBSOCKET` en mode par site ou sur le réseau local.
+Un GET public passe si le filtre le permet. Le mode public ne débloque jamais localhost.
 Un accord ne contourne jamais une interdiction de connexion. Voir le
 [contrat réseau du navigateur](../architecture/flows/browser.md) pour les domaines,
 ports, CIDR, HTTPS et WebSocket.

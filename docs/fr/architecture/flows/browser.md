@@ -83,8 +83,13 @@ proxy résout le DNS, transmet origine, méthode et adresses à
 exige le secret partagé ; les corps, chemins et paramètres des requêtes ne lui sont pas transmis.
 Une indisponibilité du contrôle bloque la requête.
 
-La connexion `browser` porte quatre réglages :
+La connexion `browser` porte cinq réglages réseau, configurables globalement ou par agent :
 
+- `public_access_mode=allow`, initialisé pour les nouvelles installations, autorise les sites publics
+  sans demande par site pour les méthodes HTTP et WebSocket. Les refus explicites et les filtres
+  restent prioritaires ; ce mode n’autorise aucune adresse locale et ne crée pas d’accord mémorisé.
+  `ask` réactive l’autorisation par site et reste le repli en l’absence de valeur.
+  Une instance existante sans ce paramètre reçoit `ask` à la mise à jour ; ses autres choix sont conservés.
 - `allow_local_network=false` par défaut interdit les réseaux privés, le loopback, les adresses
   réservées et link-local, y compris en IPv6. `true` permet de demander une permission locale.
 - `network_filter_mode=block` refuse les destinations de `network_filter` ; `allow` n’admet que
@@ -93,7 +98,8 @@ La connexion `browser` porte quatre réglages :
   espaces, avec port facultatif. Un joker ne couvre pas le domaine racine. En liste positive,
   toutes les adresses DNS doivent correspondre. Un domaine ne dispense jamais du contrôle local.
 - `permission_methods` contient par défaut `POST PUT PATCH DELETE WEBSOCKET`. Les méthodes
-  HTTP connues peuvent y être ajoutées ou retirées ; vide rétablit le défaut, une valeur inconnue
+  demandent un accord en mode `ask`, ainsi que sur le réseau local lorsqu’il est activé.
+  Les méthodes HTTP connues peuvent y être ajoutées ou retirées ; vide rétablit le défaut, une valeur inconnue
   bloque l’accès. Les GET publics passent sans question dans la configuration par défaut.
 
 Les interdictions de configuration précèdent toujours les permissions. Une demande locale et

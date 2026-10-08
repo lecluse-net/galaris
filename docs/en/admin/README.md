@@ -833,11 +833,18 @@ Changes apply to subsequent operations without restarting; default dimensions af
 Lowering capacity preserves existing sessions and limits new admissions. Each session adopts
 the current idle timeout on its next action.
 
+Under **Tools & connections → Tools**, open the Browser's **Global parameters**.
+**Public site access → Public sites allowed** is the initial choice for new installations to avoid
+per-site requests. Existing instances keep their behaviour, including when this parameter was absent.
+**Per-site approval** remains available. Under **Connections**, each agent can override this choice
+unless the global setting is forced. Filters and explicit denials remain active in both modes.
+
 Under **Tools & connections → Connections**, the Browser connection's `allow_local_network`
 parameter blocks local access by default. Enable it to allow a permission request, then
 answer through the agent's messaging channel. `network_filter_mode` (`block` or `allow`)
 and `network_filter` constrain destinations; `permission_methods` defaults to requiring approval
-for `POST PUT PATCH DELETE WEBSOCKET`. Public GET requests pass when the filter allows them.
+for `POST PUT PATCH DELETE WEBSOCKET` in per-site mode or on local networks.
+Public GET requests pass when the filter allows them. Public mode never unblocks localhost.
 An approval never overrides a connection denial. See the
 [browser network contract](../architecture/flows/browser.md) for domains, ports,
 CIDRs, HTTPS and WebSockets.

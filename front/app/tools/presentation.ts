@@ -35,7 +35,7 @@ const BUILT_IN_TOOL_CODES = new Set([
 ])
 
 const CONNECTION_PARAM_CODES: Record<string, ReadonlySet<string>> = {
-  browser: new Set(['default_output', 'allow_local_network', 'network_filter_mode', 'network_filter', 'permission_methods']),
+  browser: new Set(['default_output', 'public_access_mode', 'allow_local_network', 'network_filter_mode', 'network_filter', 'permission_methods']),
   mail: new Set([
     'email_address', 'password',
     'imap_host', 'imap_port', 'imap_security',

@@ -140,6 +140,62 @@ for (const mobile of [false, true]) {
     await editor.getByRole('button', { name: 'Fermer', exact: true }).click()
     expect((await request.delete(`/api/connections/${connection.id}`, { headers })).ok()).toBe(true)
     expect((await request.delete(`/api/tools/${created.id}`, { headers })).ok()).toBe(true)
+    if (!mobile) {
+      // The built-in browser uses the same global/local UI, without opening the local network.
+      const catalog = await (await request.get('/api/tools', { headers })).json()
+      const browser = catalog.find(tool => tool.code === 'browser')
+      const original = await (await request.get(`/api/tools/${browser.id}/global-params`, { headers })).json()
+      expect(original.params.public_access_mode.value).toBe('allow')
+      expect(original.params.allow_local_network.value).toBe('false')
+      const createdBrowser = await request.post('/api/connections', { headers, data: {
+        tool_id: browser.id, agent_id: fixture.agent_id, active: false,
+      } })
+      expect(createdBrowser.ok(), await createdBrowser.text()).toBe(true)
+      const browserConnection = await createdBrowser.json()
+      try {
+        await page.goto('/tools')
+        const browserRow = page.locator('tbody tr').filter({ has: page.getByText('browser', { exact: true }) })
+        await browserRow.getByRole('button', { name: 'Paramètres globaux', exact: true }).click()
+        await expect(editor.getByRole('combobox', { name: 'Accès aux sites publics', exact: true })).toHaveValue('Sites publics autorisés')
+        await selectOption(page, editor.getByRole('combobox', { name: 'Accès aux sites publics', exact: true }), 'Sites publics autorisés')
+        const savePublic = page.waitForResponse(response => response.url().endsWith(`/api/tools/${browser.id}/global-params`) && response.request().method() === 'PUT')
+        await editor.getByRole('button', { name: 'Enregistrer', exact: true }).click()
+        expect((await savePublic).ok()).toBe(true)
+        await expect(editor).toHaveCount(0)
+        await browserRow.getByRole('button', { name: 'Paramètres globaux', exact: true }).click()
+        await expect(editor.getByRole('combobox', { name: 'Accès aux sites publics', exact: true })).toHaveValue('Sites publics autorisés')
+        await editor.getByRole('button', { name: 'Fermer', exact: true }).click()
+        await page.goto('/tools?tab=connections')
+        await selectOption(page, page.getByRole('combobox', { name: 'Filtrer par agent', exact: true }), `${agent.first_name} ${agent.last_name}`)
+        await page.getByRole('button', { name: 'Inactives', exact: true }).click()
+        const browserConnectionRow = page.locator('tbody tr').filter({ has: page.getByText('Navigateur', { exact: true }) })
+        await browserConnectionRow.getByRole('button', { name: 'Modifier', exact: true }).click()
+        await editor.getByText(/Paramètres globaux hérités/).click()
+        const publicSetting = editor.locator('.q-item').filter({ hasText: 'Accès aux sites publics' })
+        await expect(publicSetting).toContainText('Sites publics autorisés')
+        await publicSetting.getByRole('button', { name: 'Personnaliser', exact: true }).click()
+        await selectOption(page, editor.getByRole('combobox', { name: 'Accès aux sites publics', exact: true }), 'Autorisation par site')
+        const saveBrowserLocal = page.waitForResponse(response => response.url().endsWith(`/api/connections/${browserConnection.id}/params/bulk`) && response.request().method() === 'POST')
+        await editor.getByRole('button', { name: 'Modifier', exact: true }).click()
+        expect((await saveBrowserLocal).ok()).toBe(true)
+        await expect(editor).toHaveCount(0)
+        await browserConnectionRow.getByRole('button', { name: 'Modifier', exact: true }).click()
+        await expect(editor.getByRole('combobox', { name: 'Accès aux sites publics', exact: true })).toHaveValue('Autorisation par site')
+        const browserParams = await (await request.get(`/api/connections/${browserConnection.id}/params`, { headers })).json()
+        expect(browserParams.params.public_access_mode).toBe('ask')
+        expect(browserParams.params).not.toHaveProperty('allow_local_network')
+        await editor.getByText(/Paramètres globaux hérités/).click()
+        await expect(editor.locator('.q-item').filter({ hasText: 'Accès au réseau local' })).toContainText('false')
+        await page.screenshot({ path: testInfo.outputPath('browser-public-access.png'), animations: 'disabled' })
+        await editor.getByRole('button', { name: 'Fermer', exact: true }).click()
+      } finally {
+        const restore = await request.put(`/api/tools/${browser.id}/global-params`, { headers, data: {
+          params: Object.fromEntries(Object.entries(original.params).map(([name, param]) => [name,
+            param.configured ? { value: param.value, forced: param.forced } : { clear: true }])) } })
+        expect(restore.ok(), await restore.text()).toBe(true)
+        expect((await request.delete(`/api/connections/${browserConnection.id}`, { headers })).ok()).toBe(true)
+      }
+    }
     expect([...errors, ...pageErrors()]).toEqual([])
   })
 }

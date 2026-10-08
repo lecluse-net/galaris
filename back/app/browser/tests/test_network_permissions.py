@@ -14,7 +14,7 @@ from core.user.models import User
 from app.browser.network import NetworkRequest, authorize_network, canonical_origin, filter_matches, is_local
 
 
-async def setup_scope(db, *, create_rooms=True):
+async def setup_scope(db, *, create_rooms=True, public_access_mode="ask"):
     suffix = uuid4().hex
     users = [User(email=f"network-{suffix}-{i}@example.test", hashed_password="unused", is_active=True, language="en") for i in range(2)]
     title = Title(label="Network tests", gender="X")
@@ -32,6 +32,10 @@ async def setup_scope(db, *, create_rooms=True):
         connections.append(connection)
         db.add_all([connection, Connection(agent_id=agent.id, tool_id=chat.id, active=True)])
     await db.flush()
+    if public_access_mode is not None:
+        db.add_all([ConnectionParam(connection_id=connection.id, param_name="public_access_mode",
+                                    param_value=public_access_mode) for connection in connections])
+        await db.flush()
     if create_rooms:
         for agent, user in zip(agents, users):
             await create_internal_room(actor_user_id=user.id, agent_id=agent.id)
@@ -101,6 +105,118 @@ async def test_configuration_precedes_saved_grants_and_public_get_needs_no_choic
     db.add(ConnectionParam(connection_id=connections[0].id, param_name="network_filter", param_value="example.com"))
     await db.commit()
     assert (await authorize_network(request)).code == "destination_blocked"
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("saved_mode", [None, "ask", "allow"])
+async def test_upgrade_preserves_existing_browser_site_policy(db, saved_mode):
+    from app.tools import mandatory_tools
+
+    agents, _, connections = await setup_scope(db, public_access_mode=None)
+    browser = await db.get(Tool, connections[0].tool_id)
+    globals_before = {name: entry for name, entry in browser.global_params.items() if name != "public_access_mode"}
+    if saved_mode is not None:
+        globals_before["public_access_mode"] = {"value": saved_mode, "forced": True}
+    browser.global_params = globals_before
+    await db.commit()
+    expected_mode = saved_mode or "ask"
+    request = NetworkRequest(owner={"agent_id": agents[0].id}, url="https://upgrade.example.test/",
+                             method="POST", addresses=["93.184.215.14"])
+    for _ in range(2):
+        await mandatory_tools.sync_mandatory_tools()
+        await db.refresh(browser)
+        assert browser.global_params["public_access_mode"] == {
+            "value": expected_mode, "forced": saved_mode is not None,
+        }
+        decision = await authorize_network(request)
+        assert decision.allowed is (expected_mode == "allow")
+        assert decision.code == ("allowed" if expected_mode == "allow" else "permission_required")
+
+
+@pytest.mark.asyncio
+async def test_public_access_mode_inherits_global_settings_and_supports_agent_override(db):
+    from app.connection import connection_service
+    from app.tools import tool_service
+    from app.tools.schemas import ToolGlobalParamsUpdate
+
+    agents, _, connections = await setup_scope(db, public_access_mode=None)
+    tool_id = connections[0].tool_id
+    request = NetworkRequest(owner={"agent_id": agents[0].id}, url="https://inherited.example.test/",
+                             method="POST", addresses=["93.184.215.14"])
+    await tool_service.update_global_params(tool_id, ToolGlobalParamsUpdate(params={
+        "public_access_mode": {"value": "allow"},
+    }))
+    assert (await authorize_network(request)).allowed
+    request.owner.agent_id = agents[1].id
+    assert (await authorize_network(request)).allowed
+    await connection_service.set_param(connections[1].id, "public_access_mode", "ask")
+    assert (await authorize_network(request)).code == "permission_required"
+    request.owner.agent_id = agents[0].id
+    assert (await authorize_network(request)).allowed
+    request.url = "http://localhost/"
+    request.addresses = ["127.0.0.1"]
+    assert (await authorize_network(request)).code == "local_network_blocked"
+    with pytest.raises(ValueError):
+        await connection_service.set_param(connections[0].id, "public_access_mode", "invalid")
+    await tool_service.update_global_params(tool_id, ToolGlobalParamsUpdate(params={
+        "public_access_mode": {"value": "allow", "forced": True},
+    }))
+    request.owner.agent_id = agents[1].id
+    request.url, request.addresses = "https://inherited.example.test/", ["93.184.215.14"]
+    assert (await authorize_network(request)).allowed
+    with pytest.raises(ValueError):
+        await connection_service.set_param(connections[1].id, "public_access_mode", "ask")
+
+
+@pytest.mark.asyncio
+async def test_public_sites_are_allowed_by_default_without_opening_local_network(db):
+    agents, users, connections = await setup_scope(db, public_access_mode=None)
+    await db.commit()
+    request = NetworkRequest(owner={"agent_id": agents[0].id}, url="https://public.example.test/", method="POST",
+                             addresses=["93.184.215.14"])
+    for origin in ("https://public.example.test/", "https://other.example.test:8443/", "wss://socket.example.test/"):
+        request.url = origin
+        for method in ("GET", "POST", "PUT", "PATCH", "DELETE", "WEBSOCKET"):
+            request.method = method
+            assert (await authorize_network(request)).allowed
+    assert await db.scalar(select(func.count()).select_from(PermissionDecision)) == 0
+    assert await db.scalar(select(func.count()).select_from(Interaction).where(Interaction.kind == "remembered_permission")) == 0
+    human_request = NetworkRequest(owner={"user_id": users[0].id}, url="https://public.example.test/", method="POST",
+                                   addresses=["93.184.215.14"])
+    assert (await authorize_network(human_request)).code == "blocked_url"
+
+    request.url = "http://localhost/"
+    for addresses in (["127.0.0.1"], ["::1"], ["192.168.10.20"], ["169.254.169.254"],
+                      ["::ffff:127.0.0.1"], ["93.184.215.14", "10.0.0.1"]):
+        request.addresses = addresses
+        assert (await authorize_network(request)).code == "local_network_blocked"
+    db.add(ConnectionParam(connection_id=connections[0].id, param_name="allow_local_network", param_value="true"))
+    await db.commit()
+    request.addresses = ["127.0.0.1"]
+    assert (await authorize_network(request)).code == "permission_required"
+
+    # Returning to per-site approval does not inherit any automatic public grant.
+    mode = ConnectionParam(connection_id=connections[0].id, param_name="public_access_mode", param_value="ask")
+    db.add(mode)
+    await db.commit()
+    request.url, request.addresses, request.method = "https://public.example.test/", ["93.184.215.14"], "POST"
+    assert (await authorize_network(request)).code == "permission_required"
+    permission = await db.scalar(select(PermissionDecision).where(
+        PermissionDecision.permission_key == "browser:v1:post:https://public.example.test:443"))
+    interaction = await db.get(Interaction, permission.interaction_id)
+    await answer_internal_interaction(users[0].id, UUID(interaction.room_id), interaction.id, option_id="deny")
+    mode.param_value = "allow"
+    await db.commit()
+    assert (await authorize_network(request)).code == "permission_denied"
+
+    request.url = "https://filtered.example.test/"
+    db.add(ConnectionParam(connection_id=connections[0].id, param_name="network_filter", param_value="filtered.example.test"))
+    await db.commit()
+    assert (await authorize_network(request)).code == "destination_blocked"
+    connections[0].active = False
+    await db.commit()
+    request.url = "https://other.example.test/"
+    assert (await authorize_network(request)).code == "connection_inactive"
 
 
 @pytest.mark.asyncio
