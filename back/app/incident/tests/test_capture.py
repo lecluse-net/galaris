@@ -20,6 +20,72 @@ from app.llm import llm_call_service
 from app.llm.models import LLMCall
 
 
+@pytest.mark.asyncio
+@pytest.mark.parametrize("state", ["success", "approval", "interrupted", "superseded", "delivery_unknown", "lease_lost", "failed", "cancelled"])
+async def test_conversation_recovery_requires_durable_success(db, monkeypatch, state):
+    import asyncio
+
+    from app.agent import ExecutionResult
+    from app.conversation import controller, scheduler
+    from app.conversation.contracts import ConversationExecutionError, ConversationLeaseLostError, ConversationOutcome
+    from app.conversation.service import admit_message, claim_next_round
+    from app.conversation.tests.test_service import _install_messenger, _message, _scope
+    from app.incident import service
+    from core import failure_journal
+
+    agent, connection, room = await _scope(db)
+    message = await _message(db, connection, room, 1, "Check a synthetic calculation")
+    await admit_message(message, agent_id=agent.id, connection_id=connection.id)
+    round_ = await claim_next_round("synthetic-recovery-worker")
+    assert round_ is not None
+    round_id, lease_token = round_.id, round_.lease_token
+    incidents = []
+    for kind, run_uuid in [("llm", round_id), ("tool", round_id), ("llm", uuid4())]:
+        incidents.append(await service.record_failure(db, failure_journal.FailureEvent(
+            idempotency_key=f"synthetic-conversation:{kind}:{run_uuid}", kind=kind,
+            run_uuid=run_uuid, error_type="SyntheticError", error_message="Temporary failure",
+        )))
+    await db.commit()
+
+    sent, transaction_states = [], []
+    _install_messenger(monkeypatch, db, connection, room, sent, transaction_states)
+    if state == "delivery_unknown":
+        monkeypatch.setattr("app.messenger.get_messenger", AsyncMock(return_value=SimpleNamespace(
+            send_to_room=AsyncMock(side_effect=RuntimeError("Synthetic delivery failure")),
+        )))
+
+    async def run(_turn):
+        result = ExecutionResult(prompt="synthetic", success=state != "failed")
+        if state == "failed":
+            raise ConversationExecutionError("Synthetic failure", execution_result=result)
+        if state == "cancelled":
+            raise asyncio.CancelledError()
+        metadata = {}
+        if state == "interrupted":
+            metadata["interrupted"] = True
+        elif state == "approval":
+            result.success = False
+            result.disposition = "waiting_for_authorization"
+            metadata["waiting_for_authorization"] = True
+        elif state == "superseded":
+            successor = await _message(db, connection, room, 2, "Use a different calculation")
+            await admit_message(successor, agent_id=agent.id, connection_id=connection.id)
+        return ConversationOutcome(text="Synthetic answer", execution_result=result, metadata=metadata)
+
+    monkeypatch.setattr(controller, "_controller", SimpleNamespace(run=run))
+    monkeypatch.setattr(failure_journal, "_mark_recovered", service.mark_run_recovered_isolated)
+    if state in {"lease_lost", "cancelled"}:
+        with pytest.raises(ConversationLeaseLostError if state == "lease_lost" else asyncio.CancelledError):
+            await scheduler._execute_action(round_id, uuid4() if state == "lease_lost" else lease_token)
+    else:
+        await scheduler._execute_action(round_id, lease_token)
+    await db.refresh(round_)
+    assert (round_.status == "SUCCEEDED") == (state == "success")
+    for index, incident in enumerate(incidents):
+        await db.refresh(incident)
+        assert (incident.recovered_at is not None) == (state == "success" and index < 2)
+
+
 async def _request(db: AsyncSession):
     from app.agent.contracts import AgentRunRequest, AgentSnapshot, ResolvedModel
     from app.agent.models import Agent, Title

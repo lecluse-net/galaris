@@ -12,6 +12,7 @@ from loguru import logger
 
 from app.agent import AIMessage
 from core.database import get_db_session, watch_committed_changes
+from core.failure_journal import mark_failure_run_recovered
 from .contracts import ConversationLeaseLostError
 
 
@@ -186,6 +187,8 @@ async def _execute_action(round_id: UUID, lease_token: UUID) -> None:
         async with get_db_session():
             status = await complete_round(round_id, outcome, lease_token=lease_token)
         completed_successfully = status == "SUCCEEDED"
+        if completed_successfully:
+            await mark_failure_run_recovered(round_id)
         await publish_round_activity(round_id)
         logger.info("Conversation round {} completed status={}", round_id, status)
     except ConversationSuperseded:
