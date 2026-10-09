@@ -165,7 +165,7 @@ for (const directUpload of [false, true]) test(`the document ${directUpload ? 'u
   await expect(page.getByRole('dialog')).toHaveCount(0)
   await expect(page.locator('.ck-editor__editable .galaris-link-card')).toContainText('scene.html')
   await expect(page.locator('.document-attachments')).toBeVisible()
-  await expect(page.locator('.document-attachments')).not.toContainText('scene.html')
+  await expect(page.locator('.document-attachments')).toContainText('scene.html')
   await expect.poll(() => current.payload.text).toContain(uri)
   await expect(page.getByRole('button', { name: 'Insert into document', exact: true })).toHaveCount(0)
 })
@@ -395,7 +395,7 @@ test('document attachments upload below the content, retry after failure and rem
   const options = { props: { documentId, agentId: 7 }, privileges: ['MEMORY_EDIT'] }
   await mount(page, 'core/util/components/WorkingDocumentEditor.vue', options)
   const editor = page.locator('.ck-editor__editable')
-  const zone = page.getByRole('region', { name: 'Existing attachments not embedded in the document' })
+  const zone = page.getByRole('region', { name: 'Attachments', exact: true })
   await expect(editor).toContainText('Report content')
   await expect(zone).toBeVisible()
   await expect(page.getByRole('dialog')).toHaveCount(0)
@@ -424,24 +424,37 @@ test('document attachments upload below the content, retry after failure and rem
   await page.screenshot({ path: testInfo.outputPath('attachments-desktop-dark.png'), fullPage: true })
 })
 
-test('only attachments embedded as links or images disappear from the list below the document', async ({ page }) => {
+for (const editable of [true, false]) for (const reference of ['link', 'image']) test(`attachments referenced by ${reference} remain listed and downloadable with editable=${editable}`, async ({ page }, testInfo) => {
   const secondId = '00000000-0000-0000-0000-000000000003'
   const secondUri = `document://${documentId}/attachments/${secondId}`
   const files = [
-    { id: attachmentId, name: 'embedded.bin', media_type: 'application/octet-stream', size_bytes: 10 },
+    { id: attachmentId, name: 'embedded.png', media_type: 'image/png', size_bytes: 10 },
     { id: secondId, name: 'remaining.bin', media_type: 'application/octet-stream', size_bytes: 20 },
   ]
+  await page.route(`**/api/memory/documents/${documentId}/attachments/${attachmentId}/thumbnail?*`, route => route.fulfill({ contentType: 'image/png', body: Buffer.from(png, 'base64') }))
+  await page.route(`**/api/memory/documents/${documentId}/attachments/${attachmentId}?*`, route => route.fulfill({ contentType: 'image/png', body: Buffer.from(png, 'base64') }))
   await page.route(`**/api/memory/documents/${documentId}/attachments/${secondId}?*`, route => route.fulfill({ status: 204 }))
   await mount(page, 'app/memory/components/DocumentAttachments.vue', { props: {
-    documentId, agentId: 7, editable: true, allowInsertion: true, attachments: files,
-    content: `<p><a href="${uri}">Embedded</a></p><pre><code>${secondUri}</code></pre>`,
+    documentId, agentId: 7, editable, allowInsertion: true, attachments: files,
+    content: (reference === 'image' ? `<p><img src="${uri}"></p>` : `<p><a href="${uri}">Embedded</a></p>`)
+      + `<pre><code>${secondUri}</code></pre>`,
   } })
   const list = page.locator('.document-attachments')
   await expect(list).toBeVisible()
   await expect(list).toContainText('remaining.bin')
-  await expect(list).not.toContainText('embedded.bin')
+  await expect(list).toContainText('embedded.png')
+  await expect(list.getByRole('button', { name: 'Insert into document', exact: true })).toHaveCount(editable ? 1 : 0)
+  await expect(list.getByRole('button', { name: /^Remove / })).toHaveCount(editable ? 2 : 0)
+  await page.setViewportSize({ width: 390, height: 844 })
+  await list.getByRole('button', { name: 'Download embedded.png', exact: true }).focus()
+  const downloaded = page.waitForEvent('download')
+  await page.keyboard.press('Enter')
+  expect((await downloaded).suggestedFilename()).toBe('embedded.png')
+  await page.screenshot({ path: testInfo.outputPath('referenced-attachments-mobile.png'), fullPage: true })
   await page.evaluate(() => window.testApp.setProps({ content: '<p>Removed the inline attachment</p>' }))
-  await expect(list).toContainText('embedded.bin')
+  await expect(list).toContainText('embedded.png')
+  await expect(list.getByRole('button', { name: 'Insert into document', exact: true })).toHaveCount(editable ? 2 : 0)
+  if (!editable) return
   await list.getByRole('button', { name: 'Remove remaining.bin', exact: true }).click({ force: true })
   await page.getByRole('button', { name: 'Remove', exact: true }).click()
   await expect.poll(() => page.evaluate(() => window.testApp.events.filter(event => event.name === 'removed').map(event => event.value))).toEqual([secondId])

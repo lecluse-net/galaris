@@ -88,8 +88,9 @@ opens a file picker and inserts uploaded files at the cursor. The attachment are
 remains available even when empty: drop files there or use **Add**, then the **Insert into document**
 icon in the preview actions to insert them into the text. Images appear in the text; audio, video and PDF files have inline
 players. Other files become clickable cards opening their viewer.
-Files absent from the content remain listed below the text with actions to open and remove them.
-Inserting an attachment hides it from this list; removing its insertion shows it again.
+All attachments remain listed below the text, including files referenced by images or links
+in the content, with actions to open, download and remove them. Removing an insertion from
+the text preserves its file and makes **Insert into document** available again.
 Each upload shows progress and can be cancelled. Pasting a complete HTML page
 into the editor or its source offers a choice: attach the intact page, extract rich text,
 or cancel. Scripts in historical versions remain readable as literal code.

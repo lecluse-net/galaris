@@ -1514,9 +1514,10 @@ these controls are not a universal guarantee against malicious code.
 ### Files, images and cards
 
 Users can select/drop/paste multiple attachments with progress/cancel; insert at the cursor;
-remove an embedding without necessarily deleting its file; and manage unembedded attachments in the
-**Unembedded attachments** area below the content, with add, drop, preview, download, insert and
-delete actions. Embedded resources remain accessible through their cards in the body. Images support captions, alt text, proportional resizing, wrapping and movement. PDF,
+remove an embedding without necessarily deleting its file; and manage all files in the
+**Attachments** area below the content, including files already referenced by images or links.
+This area offers add, drop, preview, download and delete actions; insertion is available only
+for files absent from the body. Images support captions, alt text, proportional resizing, wrapping and movement. PDF,
 video and audio render inline, with other formats in viewers. A deliberate web-link conversion
 creates a title/description/thumbnail card and can revert to a link; YouTube can display its player.
 Pasted HTML/Markdown becomes directly editable content with eligible images imported as document

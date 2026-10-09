@@ -96,9 +96,10 @@ puis l’icône **Insérer dans le document** dans les actions de l’aperçu po
 Cette icône apparaît uniquement pour les fichiers absents du contenu.
 Les images s’affichent dans le texte ; les vidéos, sons et PDF disposent d’un lecteur intégré,
 en édition comme en lecture. Les autres fichiers deviennent des cartouches cliquables ouvrant
-leur visionneuse. Les fichiers absents du contenu restent listés sous le texte, avec leurs actions
-d’ouverture et de suppression. Une PJ insérée dans le contenu disparaît de cette liste et y
-revient si son insertion est retirée. Chaque envoi
+leur visionneuse. Toutes les pièces jointes restent listées sous le texte, même lorsqu’une image
+ou un lien les référence dans le contenu, avec leurs actions d’ouverture, de téléchargement
+et de suppression. Retirer leur insertion du texte ne supprime pas le fichier et rend à nouveau
+l’action **Insérer dans le document** disponible. Chaque envoi
 affiche sa progression et peut être annulé. Une page HTML complète collée dans l'éditeur
 ou sa source déclenche un choix : joindre la page intacte, récupérer seulement son texte
 enrichi, ou annuler. Les scripts des anciennes versions restent lisibles comme code.

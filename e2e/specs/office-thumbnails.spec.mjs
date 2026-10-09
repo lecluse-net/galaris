@@ -34,6 +34,18 @@ for (const width of [1440, 390]) {
       expect(uploaded.ok(), await uploaded.text()).toBeTruthy()
       attachments.push({ ...await uploaded.json(), original })
     }
+    // A link in the body must not hide its file from the attachment list.
+    const latest = await request.get(`/api/memory/documents/${document.id}`, { headers })
+    expect(latest.ok(), await latest.text()).toBeTruthy()
+    const { item } = await latest.json()
+    const reference = `document://${document.id}/attachments/${attachments[0].id}`
+    const linked = await request.patch(`/api/memory/documents/${document.id}?actor_agent_id=${fixture.agent_id}`, {
+      headers, data: {
+        expected_revision: item.revision,
+        payload: { text: `<p>Office attachments with their original downloads.</p><p><a href="${reference}">Original report</a></p>` },
+      },
+    })
+    expect(linked.ok(), await linked.text()).toBeTruthy()
     await errors.settle()
     await page.goto(`/memory/documents?document_id=${document.id}`)
     if (width < 1024) await expect(page.getByRole('dialog')).toBeVisible()

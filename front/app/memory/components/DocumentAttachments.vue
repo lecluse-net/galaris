@@ -35,9 +35,9 @@
     <div v-if="loading" class="document-attachments__list">
       <q-skeleton type="rect" width="260px" height="160px" />
     </div>
-    <div v-else-if="displayedAttachments.length" class="document-attachments__list resource-preview-grid">
+    <div v-else-if="attachments.length" class="document-attachments__list resource-preview-grid">
       <ResourcePreviewBlock
-        v-for="attachment in displayedAttachments"
+        v-for="attachment in attachments"
         :key="attachment.id"
         :ref="element => registerPreviewElement(attachment.id, element)"
         class="document-attachments__item"
@@ -250,8 +250,7 @@ const emit = defineEmits<{
 }>()
 const { t, locale } = useI18n()
 const $q = useQuasar()
-const attachmentsTitle = computed(() => t(resourceSource ? 'memory.fileLocations'
-  : allowInsertion ? 'documents.unembeddedAttachments' : 'documents.attachments'))
+const attachmentsTitle = computed(() => t(resourceSource ? 'memory.fileLocations' : 'documents.attachments'))
 const embeddedAttachmentIds = computed(() => {
   const html = new DOMParser().parseFromString(content, 'text/html')
   const embedded = new Set<string>()
@@ -261,10 +260,6 @@ const embeddedAttachmentIds = computed(() => {
     if (reference?.[0].toLowerCase() === documentId.toLowerCase()) embedded.add(reference[1].toLowerCase())
   }
   return embedded
-})
-const displayedAttachments = computed(() => {
-  if (!allowInsertion) return attachments
-  return attachments.filter(attachment => !embeddedAttachmentIds.value.has(attachment.id.toLowerCase()))
 })
 const fileInput = useTemplateRef<HTMLInputElement>('fileInput')
 const objectUrls = reactive<Record<string, string>>({})

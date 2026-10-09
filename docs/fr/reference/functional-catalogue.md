@@ -2043,9 +2043,10 @@ code malveillant.
 
 - Ajouter plusieurs pièces jointes par sélection, dépôt ou collage, avec progression et annulation.
 - Insérer une pièce jointe au curseur, la retirer du corps sans nécessairement supprimer le fichier,
-  ou gérer les fichiers non intégrés dans la zone **Pièces jointes non intégrées** sous le contenu.
+  ou gérer tous les fichiers dans la zone **Pièces jointes** sous le contenu, même lorsqu’ils sont
+  déjà référencés par une image ou un lien dans le document.
   Cette zone permet l’ajout, le dépôt, l’aperçu, le téléchargement, l’insertion et la suppression ;
-  les ressources intégrées restent accessibles depuis leurs cartes dans le corps.
+  l’insertion est proposée uniquement pour les fichiers absents du corps.
 - Afficher les images dans le document avec légende, texte alternatif, redimensionnement
   proportionnel, habillage et déplacement.
 - Lire les PDF, vidéos et sons insérés ; ouvrir les autres formats dans leur visionneuse.
