@@ -299,6 +299,18 @@ conservent l'accord avant effet, la révocation et la rotation des credentials s
 corrigé, y compris externe. `app/harness/tests/test_execution_evidence.py` vérifie que
 l'avertissement atteint un vrai agent Pydantic AI et son checkpoint sans réexécuter l'effet.
 
+`app/harness/tests/test_runtime_cancellation.py` reprend un véritable agent Pydantic AI après
+accord ou refus en conservant les arguments et les consignes actualisées. Le compactage préserve
+les appels à réessayer et les mutations refusent les marqueurs d'omission (`test_agent_history_compaction.py`,
+`app/file_share/tests/test_resource_service.py`, `test_mcp_paths.py`). La délégation vérifie
+les droits documentaires avant création (`app/memory/tests/test_document_sharing.py`) ;
+`app/task/tests/test_collab.py` conserve l'identité des enfants de même libellé, attend leur
+résultat avant réussite et consomme une seule fois leurs résultats lors de réveils concurrents.
+Les autorisations décidées par API résolvent aussi le choix Chat, même déjà en traitement
+(`test_action_authorizations.py`), et ses réponses conservent la langue (`test_native_facade.py`).
+Les parcours documentaires exercent les photos natives dans la sandbox, le réessai après
+refus et l'annulation des chargements d'une ancienne révision (`document-apps.spec.mjs`).
+
 `app/conversation/tests/test_service.py` couvre l'arrêt conversationnel répété d'une Task
 active, réussie ou en erreur : résultat, cause et révision terminaux sont conservés, et
 la portée d'agent reste obligatoire. `app/tools/tests/test_mcp_loader.py` distingue un

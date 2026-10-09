@@ -1,4 +1,5 @@
 from datetime import datetime, timedelta, timezone
+import asyncio
 from types import SimpleNamespace
 from typing import Any
 from unittest.mock import AsyncMock
@@ -54,6 +55,83 @@ def _await_parent(**kw: Any) -> Task:
     data: dict[str, Any] = {"pause_reasons": [task_service.PAUSE_AWAIT]}
     data.update(kw.pop("data", None) or {})
     return _task(status=TaskStatus.DISPATCH, paused=True, data=data, **kw)
+
+
+def test_same_label_results_keep_their_own_task_reference() -> None:
+    parent_id = uuid4()
+    first = _delegated_child(parent_id, TaskStatus.SUCCESS, label="Shared budget", feedback="First budget")
+    second = _delegated_child(parent_id, TaskStatus.SUCCESS, label="Shared budget", feedback="Revised budget")
+    for child, other in [(first, second), (second, first)]:
+        rendered = collab._render_await_result(child)
+        assert f"galaris://task/{child.id}" in rendered
+        assert str(other.id) not in rendered
+        assert child.feedback in rendered
+
+
+@pytest.mark.asyncio
+async def test_wait_resume_and_finish_consumes_children_before_publishing_parent(db, monkeypatch):
+    from app.agent import executor_service
+    from app.agent.contracts import ExecutionResult
+    parent = _task(agent_id=None, label="Coordinate synthetic budgets", plan={"steps": []})
+    child = _delegated_child(parent.id, TaskStatus.EXEC, agent_id=None, label="Shared budget")
+    db.add(parent)
+    await db.flush()
+    db.add(child)
+    await db.commit()
+    monkeypatch.setattr("app.task.runner.go_next", lambda *_args, **_kwargs: None)
+    waiting = ExecutionResult(prompt="Coordinate", result="Waiting for the delegated budget.", success=True)
+    await executor_service._update_task_after_execution(parent, waiting, base_cost=0)
+    assert parent.status == TaskStatus.DISPATCH and parent.paused
+    child.status = TaskStatus.SUCCESS
+    child.feedback = "Synthetic budget saved."
+    await task_service.save(child)
+    original_publish = task_service.publish_updated
+    async def observe_publish(task):
+        if task.id == parent.id and not task.paused:
+            # The scheduler sees both the ready parent and its consumed result together.
+            await db.refresh(child)
+            assert child.data[collab.FANNED_IN_KEY] is True
+        await original_publish(task)
+    monkeypatch.setattr(task_service, "publish_updated", observe_publish)
+    await collab.resume_completed_await_parents()
+    await db.refresh(parent)
+    assert not parent.paused and parent.status == TaskStatus.DISPATCH
+    assert f"galaris://task/{child.id}" in collab.collab_context(parent)
+    assert "Synthetic budget saved." in collab.collab_context(parent)
+    assert collab.collab_rounds(parent) == 1
+    await collab.maybe_fan_in(parent.id)
+    assert collab.collab_rounds(parent) == 1
+    parent.status = TaskStatus.EXEC
+    await executor_service._update_task_after_execution(
+        parent, ExecutionResult(prompt="Consolidate", result="Consolidated budget saved.", success=True), base_cost=0,
+    )
+    assert parent.status == TaskStatus.SUCCESS and not parent.paused
+
+
+@pytest.mark.asyncio
+async def test_concurrent_fan_in_consumes_a_result_only_once(committed_database, monkeypatch):
+    from core.database import get_db_session
+    parent = _await_parent(agent_id=None)
+    child = _delegated_child(parent.id, TaskStatus.SUCCESS, agent_id=None, feedback="Synthetic budget")
+    parent_id, child_id = parent.id, child.id
+    scheduled = []
+    monkeypatch.setattr("app.task.runner.go_next", lambda task_id, **_: scheduled.append(task_id))
+    async with get_db_session() as db:
+        db.add(parent)
+        await db.flush()
+        db.add(child)
+    async def consume():
+        async with get_db_session():
+            await collab.maybe_fan_in(parent_id)
+    await asyncio.wait_for(asyncio.gather(consume(), consume()), timeout=10)
+    async with get_db_session() as db:
+        parent = await db.get(Task, parent_id)
+        child = await db.get(Task, child_id)
+        assert collab.collab_rounds(parent) == 1
+        assert collab.collab_context(parent).count(f"galaris://task/{child_id}") == 1
+        assert child.data[collab.FANNED_IN_KEY] is True
+        assert not parent.paused
+    assert scheduled == [parent_id]
 
 
 # Correlation.

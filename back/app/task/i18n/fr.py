@@ -27,6 +27,7 @@ default: dict[str, object] = {
             "la tâche courante au lieu d’appeler task_run sur vous-même."
         ),
         "agent_not_found": "L’agent cible ${agent_id} de la délégation n’existe pas.",
+        "document_access_required": "L’agent ${agent_id} n’a pas l’accès ${access} à ${uri}. Aucune tâche n’a été créée. Demandez à son propriétaire ou à un responsable du partage autorisé d’accorder l’accès avec document_share, puis réessayez.",
         "already_terminal": "La tâche est déjà terminée.",
         "task_not_found": "Tâche introuvable : ${task_id}",
         "selector_required": "task_get nécessite task_id ou uuid",

@@ -17,6 +17,18 @@ async def _language(_ctx: McpToolContext) -> str:
     return "en"
 
 
+@pytest.mark.asyncio
+async def test_omission_marker_is_rejected_before_requesting_authorization(monkeypatch):
+    context = AsyncMock()
+    monkeypatch.setattr(file_share_mcp, "_resource_context", context)
+    with pytest.raises(ValueError, match="omission marker"):
+        await file_share_mcp._file_preflight(McpToolContext(agent_id=7, runtime="internal"), {
+            "uri": "document://11111111-1111-4111-8111-111111111111", "expected_revision": 2,
+            "content": "[content omitted after execution: 2010 characters, sha256=0123456789abcdef]",
+        })
+    context.assert_not_awaited()
+
+
 def test_file_search_description_stays_transport_focused() -> None:
     definition = next(item for item in load_mcp_tools() if item.name == "file_search")
 

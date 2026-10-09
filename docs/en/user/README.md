@@ -121,6 +121,12 @@ free-form parameters retain them.
 
 For a Hermès Agent configured with its own LLM provider, the Task and its result remain visible, but Galaris cannot display intermediate LLM calls or their detailed cost. This does not mean the Task was lost: these calls take place directly within Hermès.
 
+When an agent delegates work, it checks the recipient's access to cited documents.
+Missing access prevents task creation and identifies the recipient and required right.
+The parent waits for child results before resuming consolidation; tasks with matching
+labels remain distinguishable by their references. An authorization answered from the
+permissions page also displays its decision in Chat.
+
 ## The Three Forms of Request
 
 ### Discuss

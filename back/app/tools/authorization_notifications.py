@@ -10,7 +10,7 @@ from loguru import logger
 
 from sqlalchemy import or_, select, update, func
 
-from app.messenger import ChoiceOption, ChoiceRequest, ChoiceResolution, PendingChoice, register_choice_handler, request_user_choice, expire_user_choice
+from app.messenger import ChoiceOption, ChoiceRequest, ChoiceResolution, PendingChoice, register_choice_handler, request_user_choice, expire_user_choice, settle_user_choice
 from core.database import get_db, get_db_session
 from core.i18n import current_language, render_prompt, t
 
@@ -22,6 +22,18 @@ from . import authorization_metrics as metrics
 KIND = "tool_action_authorization"
 
 
+async def sync_authorization_choice(row: ActionAuthorization) -> None:
+    """Project the effective decision into Chat, including decisions made through the API."""
+    key = f"authorization:{row.id}"
+    if row.decision_source == "human" and row.decided_at is not None:
+        option = "deny" if row.status == "denied" else (
+            "allow_always" if row.mode == "enabled" and row.policy_source == "connection" else "allow"
+        )
+        await settle_user_choice(agent_id=row.agent_id, kind=KIND, idempotency_key=key, option_id=option)
+    else:
+        await expire_user_choice(agent_id=row.agent_id, kind=KIND, idempotency_key=key)
+
+
 async def _answer(interaction: PendingChoice, resolution: ChoiceResolution) -> None:
     if resolution.option_id not in {"allow", "deny", "allow_always"}:
         return
@@ -31,6 +43,8 @@ async def _answer(interaction: PendingChoice, resolution: ChoiceResolution) -> N
         return
     await answer_action(identifier, user_id=row.approver_user_id, approved=resolution.option_id != "deny",
                         remember=resolution.option_id == "allow_always")
+    await get_db().refresh(row)
+    await sync_authorization_choice(row)
 
 
 register_choice_handler(KIND, _answer)
@@ -127,7 +141,8 @@ async def deliver_authorization_notifications() -> None:
             ).values(interaction_id=interaction.id, notification_due_at=None, notification_failed_at=None).returning(ActionAuthorization.id))
             await db.commit()
             if attached is None:
-                await expire_user_choice(agent_id=row.agent_id, kind=KIND, idempotency_key=f"authorization:{identifier}")
+                await db.refresh(row)
+                await sync_authorization_choice(row)
 
 
 async def reconcile_authorizations() -> None:
@@ -182,7 +197,9 @@ async def reconcile_authorizations() -> None:
             await db.commit()
             if claimed is None:
                 continue
-            await expire_user_choice(agent_id=agent_id, kind=KIND, idempotency_key=f"authorization:{identifier}")
+            row = await db.get(ActionAuthorization, identifier, populate_existing=True)
+            if row is not None:
+                await sync_authorization_choice(row)
             acknowledged = await wake_authorization_context(agent_id, context_key)
             await db.execute(update(ActionAuthorization).where(ActionAuthorization.id == identifier).values(
                 wake_due_at=None if acknowledged else now + timedelta(seconds=5),

@@ -106,6 +106,56 @@ class _CountingFunctionModel(FunctionModel):
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("approved", [True, False])
+async def test_authorization_resume_preserves_arguments_and_current_context(monkeypatch, approved):
+    import json
+    from pydantic_ai import DeferredToolRequests
+    from pydantic_ai.models.function import DeltaToolCall
+    from pydantic_ai.toolsets import FunctionToolset
+    from app.tools.facade import AuthorizationRequired
+    from app.harness import checkpoint as checkpoint_module
+
+    save = AsyncMock()
+    journal = HarnessRunCheckpoint(_request(save))
+    identifier = uuid4()
+    content = "<p>Synthetic lesson content.</p>" * 400
+    writes = []
+    waiting = True
+    tools = FunctionToolset()
+    @tools.tool_plain
+    async def write_html(content: str) -> str:
+        if waiting:
+            raise AuthorizationRequired(identifier)
+        writes.append(content)
+        return "Synthetic lesson saved"
+    async def model_stream(messages, _info):
+        if waiting:
+            yield {0: DeltaToolCall(name="write_html", json_args=json.dumps({"content": content}), tool_call_id="lesson-write")}
+        else:
+            prompts = [part.content for message in messages if isinstance(message, ModelRequest)
+                for part in message.parts if isinstance(part, UserPromptPart)]
+            assert any("Classification already resolved" in str(prompt) for prompt in prompts)
+            yield "Lesson revised." if approved else "Action denied."
+    llm = SimpleNamespace(provider=None, cost_per_input_token=0, cost_per_output_token=0, cost_per_cached_input_token=None)
+    agent = Agent(cast(LLM, llm), checkpoint=journal)
+    agent._agent = PydanticAgent(_CountingFunctionModel(stream_function=model_stream),
+        output_type=[str, DeferredToolRequests], toolsets=wrap_toolsets([tools], journal))
+    _ = [message async for message in agent.run("Revise the lesson")]
+    assert writes == []
+    assert agent.authorization_requests == [identifier]
+    resumed = HarnessRunCheckpoint(_request(AsyncMock(), resume_checkpoint=save.await_args.args[0]))
+    monkeypatch.setattr(checkpoint_module, "authorization_status", AsyncMock(return_value="approved" if approved else "denied"))
+    waiting = False
+    agent = Agent(cast(LLM, llm), checkpoint=resumed)
+    agent._agent = PydanticAgent(_CountingFunctionModel(stream_function=model_stream),
+        output_type=[str, DeferredToolRequests], toolsets=wrap_toolsets([tools], resumed))
+    _ = [message async for message in agent.run("Classification already resolved. Finish the revised lesson.")]
+    assert not agent.error
+    assert writes == ([content] if approved else [])
+    assert len(resumed.effects) == 1 and resumed.effects[0]["status"] == "completed"
+
+
+@pytest.mark.asyncio
 @pytest.mark.parametrize("external", [False, True])
 async def test_cancellation_is_checkpointed_for_resume(external: bool) -> None:
     save = AsyncMock()
@@ -210,6 +260,9 @@ async def test_resume_finishes_with_reused_ids_and_pending_native_tool() -> None
     async def model_stream(messages: list[ModelMessage], _info: AgentInfo) -> AsyncIterator[str | dict[int, DeltaToolCall]]:
         nonlocal requests
         requests += 1
+        prompts = [part.content for message in messages if isinstance(message, ModelRequest)
+            for part in message.parts if isinstance(part, UserPromptPart)]
+        assert any("New delegated result: revised budget" in str(prompt) for prompt in prompts)
         returns = [part for message in messages if isinstance(message, ModelRequest)
             for part in message.parts if isinstance(part, ToolReturnPart)]
         assert [part.content for part in returns if part.tool_name == "write_report"] == ["report saved"]
@@ -226,7 +279,7 @@ async def test_resume_finishes_with_reused_ids_and_pending_native_tool() -> None
     agent._agent = PydanticAgent(_CountingFunctionModel(stream_function=model_stream),
         toolsets=wrap_toolsets([tools], resumed))
     result = AIResult(prompt="")
-    async for message in agent.run("Write a report after reading the guide"):
+    async for message in agent.run("Write a report after reading the guide. New delegated result: revised budget"):
         result.add_message(message.model_copy(deep=True))
     assert result.success
     assert result.result == "Report complete."

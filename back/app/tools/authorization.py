@@ -656,6 +656,8 @@ async def answer_action(request_id: UUID, *, user_id: int, approved: bool, remem
     await db.commit()
     metrics.transition(row.status, "human")
     metrics.wait_seconds.record(max(0.0, (now - row.created_at).total_seconds()), {"status": row.status})
+    from .authorization_notifications import sync_authorization_choice
+    await sync_authorization_choice(row)
     return row.status in ("approved", "denied")
 
 

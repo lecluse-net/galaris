@@ -1007,3 +1007,22 @@ async def test_messenger_listing_uses_tool_code_room_locator_and_local_file_uuid
     assert [entry.uri for entry in result.entries] == [
         f"nextcloud://provider-room/{file_id}"
     ]
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("operation", ["create", "write", "append", "edit"])
+async def test_history_omission_marker_cannot_be_written(operation):
+    from app.file_share import resource_service as service
+    from app.file_share.resource_contracts import ResourceContext
+    marker = "[content omitted after execution: 2010 characters, sha256=0123456789abcdef]"
+    ctx = ResourceContext(agent_id=7, runtime="internal")
+    uri = "document://11111111-1111-4111-8111-111111111111"
+    with pytest.raises(ValueError, match="omission marker"):
+        if operation == "create":
+            await service.resource_create(ctx, "document://", marker.encode(), name="Synthetic lesson")
+        elif operation == "write":
+            await service.resource_write(ctx, uri, marker.encode(), expected_revision=2)
+        elif operation == "append":
+            await service.resource_append(ctx, uri, marker, expected_revision=2)
+        else:
+            await service.resource_edit(ctx, uri, start_line=6, end_line=7, content=marker, expected_revision=2)

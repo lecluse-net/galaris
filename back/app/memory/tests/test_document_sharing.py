@@ -507,6 +507,36 @@ async def level(item, scope, value, can_write=False, grants=None):
 
 
 @pytest.mark.asyncio
+async def test_delegation_checks_recipient_access_without_granting_it(db, agents, memory_storage):
+    from app.agent import Agent
+    from app.task import mcp as tasks
+    from app.task.models import Task
+    owner, sender = agents
+    recipient = Agent(title_id=owner.title_id, code=f"budget-{uuid4().hex}", first_name="Budget", last_name="Peer")
+    db.add(recipient)
+    await db.flush()
+    item = await document(owner)
+    human = await user(db)
+    scope = AgentManagementScope(user_id=human.id, agent_ids=frozenset({owner.id}))
+    grants = [{"kind": "agent", "id": sender.id, "can_write": True}]
+    await level(item, scope, "private", grants=grants)
+    objective = f'<p>Prepare the budget in <a href="document://{item.id}">the shared document</a>.</p>'
+    for access in ["read", "write"]:
+        with pytest.raises(ValueError, match=f"{recipient.id}.*{access}.*document://{item.id}"):
+            await tasks.create_task(sender.id, recipient.id, "Synthetic budget", objective, document_access=access)
+    assert not list((await db.scalars(select(Task).where(Task.agent_id == recipient.id))).all())
+    grants.append({"kind": "agent", "id": recipient.id, "can_write": False})
+    await level(item, scope, "private", grants=grants)
+    with pytest.raises(ValueError, match="write"):
+        await tasks.create_task(sender.id, recipient.id, "Synthetic budget", objective, document_access="write")
+    grants[-1]["can_write"] = True
+    await level(item, scope, "private", grants=grants)
+    child_id = await tasks.create_task(sender.id, recipient.id, "Synthetic budget", objective, document_access="write")
+    await db.flush()
+    assert (await db.get(Task, child_id)).agent_id == recipient.id
+
+
+@pytest.mark.asyncio
 @pytest.mark.parametrize("node_kind", ["document"])
 @pytest.mark.parametrize("kind", ["agent", "user", "team"])
 async def test_atomic_sharing_preserves_content_and_enforces_each_recipient_right(db, agents, memory_storage, node_kind, kind):

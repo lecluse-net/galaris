@@ -184,6 +184,7 @@ async def create_choice(
 
     reference = uuid4().hex[:8].upper()
     metadata = dict(request.metadata)
+    metadata["language"] = _language(request.language)
     if normalized_key:
         metadata["idempotency_key"] = normalized_key
     record = Interaction(
@@ -631,6 +632,31 @@ async def expire_user_choice(*, agent_id: int, kind: str, idempotency_key: str) 
     if record is None or record.expires_at <= datetime.now(timezone.utc):
         return
     record.expires_at = datetime.now(timezone.utc)
+    await db.commit()
+    await interaction_changed.send_async(record)
+
+
+async def settle_user_choice(*, agent_id: int, kind: str, idempotency_key: str, option_id: str) -> None:
+    """Reflect an already committed domain decision without executing its handler again."""
+    db = get_db()
+    record = await db.scalar(select(Interaction).where(
+        Interaction.agent_id == agent_id, Interaction.kind == kind,
+        Interaction.metadata_["idempotency_key"].as_string() == idempotency_key,
+        Interaction.status.in_(("PENDING", "PROCESSING")),
+    ).with_for_update().execution_options(populate_existing=True))
+    if record is None:
+        return
+    option = next((option for option in record.options if option.get("id") == option_id), None)
+    if option is None:
+        raise ValueError("The committed choice must match a persisted option.")
+    record.resolution = _resolution_payload(ChoiceResolution(
+        interaction_id=record.id, kind=record.kind, option_id=option_id,
+        metadata=dict(record.metadata_ or {}), text=option["label"],
+    ))
+    record.status = "RESOLVED"
+    record.resolved_at = datetime.now(timezone.utc)
+    record.processing_token = None
+    record.processing_expires_at = None
     await db.commit()
     await interaction_changed.send_async(record)
 

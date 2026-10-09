@@ -78,6 +78,16 @@ The result uses JSON-mode serialization before JSONB persistence, including appr
 UUIDs; reloading preserves their identities.
 See [0153](../../../../project/decisions/0153-common-action-authorizations.md).
 
+Arguments answered by a `RetryPromptPart` remain complete; only calls with a tool result
+are eligible for argument compaction. File mutations reject history omission markers.
+Resumption also passes current context, including child results and new instructions,
+without replaying completed effects. Each child result carries its own URI, including
+when labels match. Parent wake-up and result-consumption markers are committed together.
+Before delegation, explicit document references are checked for the recipient;
+`document_access="write"` also requires write access. This check never shares a document.
+Authorization decisions made through the API are reflected in the Chat interaction with
+their effective resolution.
+
 The common MCP boundary removes unknown top-level keys from a closed schema before validation
 and authorization. Results add a `galaris.tool-arguments/v1` warning without ignored values;
 the Pydantic AI projection delivers it to the model and retains it in the checkpoint.

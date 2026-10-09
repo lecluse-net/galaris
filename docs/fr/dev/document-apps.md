@@ -92,6 +92,13 @@ Le texte éditorial reste dans CKEditor ; la portion interactive est conservée 
 opaque par son modèle, puis restituée en HTML ordinaire dans Source et à la sauvegarde.
 Les régions interactives partageant des scripts sont réunies dans le même contexte isolé.
 
+Les images et médias de cette région conservent leurs références natives
+`document://…/attachments/…` dans la source. Avant le démarrage, le lecteur résout ces
+pièces jointes avec les mêmes droits que le document ouvert et transmet des URL de données
+au cadre isolé. Seuls les MIME passifs autorisés sont acceptés, dans une limite de 32 ressources
+et 12 millions d’octets encodés. Une fermeture ou un changement de contexte annule cette
+préparation ; les URL externes restent soumises à la CSP hors ligne.
+
 La CSP bloque les chargements réseau ordinaires, les soumissions HTML natives, les workers
 et les sous-cadres. Embarquer les dépendances et utiliser JavaScript pour les formulaires.
 Aucun jeton de session n'est transmis ; seul le pont borné vers les Datasets déclarés est

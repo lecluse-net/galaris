@@ -511,7 +511,7 @@ async def suspend_on_pending_children(task: Task) -> bool:
     when the last LLM call failed after creating them. Resumption synthesizes results without
     replaying tool effects.
     """
-    children = await task_service.get_children(task.id)
+    children = await task_service.get_children(task.id, refresh=True)
     fresh = [c for c in children if is_coordination_child(c) and not _is_fanned_in(c)]
     if not fresh:
         return False
@@ -535,7 +535,7 @@ async def maybe_fan_in(parent_id: Optional[UUID]) -> None:
     """
     if parent_id is None:
         return
-    parent = await task_service.get_by_id(parent_id)
+    parent = await task_service.get_by_id(parent_id, for_update=True)
     # Resume only internal awaits. A human-held or deleted parent must remain untouched.
     if (
         parent is None
@@ -550,7 +550,7 @@ async def maybe_fan_in(parent_id: Optional[UUID]) -> None:
         or task_service.is_held_by_user(parent)
     ):
         return
-    children = await task_service.get_children(parent_id)
+    children = await task_service.get_children(parent_id, refresh=True)
     coord = [c for c in children if is_coordination_child(c)]
     if not coord or any(c.status not in _TERMINAL for c in coord):
         return  # At least one coordination child is still open.
@@ -572,12 +572,11 @@ async def maybe_fan_in(parent_id: Optional[UUID]) -> None:
     transition(parent, TaskEvent.ROUTE_TO_EXECUTION)
     task_service.release(parent, task_service.PAUSE_AWAIT)  # Clear internal suspension.
     task_service.release(parent, task_service.PAUSE_CHILD)
-    await task_service.save(parent)
-
-    # Stamp folded children so a fast-child race or scheduler backstop cannot synthesize twice.
+    # Publish the parent and consumed-result markers in one transaction. A scheduler may
+    # execute the parent as soon as save publishes its new phase.
     for child in fresh:
         child.data = {**_data(child), FANNED_IN_KEY: True}
-        await task_service.save(child)
+    await task_service.save(parent)
 
     from app.task.runner import go_next
 
@@ -590,9 +589,10 @@ def _render_await_result(child: Task) -> str:
     """Render one peer result with its status for the resume context."""
     marker = await_marker(child) or {}
     who = str(marker.get("peer_display") or child.label)
+    heading = f"### {who} (galaris://task/{child.id}, {child.status.value})"
     if child.status == TaskStatus.ERROR:
-        return f"### {who}\n⚠️ {(child.feedback or _message(child, 'no_response')).strip()}"
-    return f"### {who}\n{(child.feedback or _message(child, 'empty_response')).strip()}"
+        return f"{heading}\n⚠️ {(child.feedback or _message(child, 'no_response')).strip()}"
+    return f"{heading}\n{(child.feedback or _message(child, 'empty_response')).strip()}"
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -648,13 +648,12 @@ async def resume_expired_awaits() -> None:
 async def resume_completed_await_parents() -> None:
     """Retry fan-in for suspended parents after concurrent completion races.
 
-    Scanning suspended tasks without plans is safe because ``maybe_fan_in`` is idempotent and
+    Scanning suspended tasks is safe because ``maybe_fan_in`` is idempotent and
     ignores tasks without fresh awaits or with a human hold.
     """
     db = get_db()
     query = select(Task.id).where(
         Task.paused.is_(True),
-        Task.plan.is_(None),
         Task.status == TaskStatus.DISPATCH,
     )
     rows = (await db.execute(Task.histo_filter(query))).all()

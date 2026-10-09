@@ -72,6 +72,10 @@ and remove actions.
 
 ## Callouts and attachments
 
+Attached photos remain visible when a CSS note places them in the same isolated region
+as a form or calculator. Their access remains checked, and document code receives no
+additional network access.
+
 The **Styles** menu offers Information, Warning, Question, Error, Stop, Forbidden and
 Investigate. Select one or more paragraphs and choose a style to wrap them in a card with
 an icon and theme-aware background. Choose another style to change the card, or select the

@@ -88,6 +88,13 @@ Editorial prose stays in CKEditor; its model preserves interactive content opaqu
 ordinary HTML in Source and saved content. Interactive regions sharing scripts run in the same
 isolated context.
 
+Native images and media inside an interactive region keep their
+`document://…/attachments/…` references in the saved source. Before startup, the reader
+resolves these attachments with the open document's access context and passes data URLs
+to the isolated frame. Only allowed passive MIME types are accepted, up to 32 resources
+and 12 million encoded bytes. Closing or changing context cancels preparation;
+external URLs remain subject to the offline CSP.
+
 CSP blocks ordinary network loads, native form submissions, workers and nested frames. Bundle
 dependencies and use JavaScript for forms. No session token reaches the document code; a bounded
 bridge exposes only declared Dataset operations. Generic previews, history and exports remain

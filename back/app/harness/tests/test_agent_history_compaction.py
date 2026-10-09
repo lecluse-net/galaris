@@ -10,6 +10,7 @@ from pydantic_ai.messages import (
     ModelResponse,
     ToolCallPart,
     ToolReturnPart,
+    RetryPromptPart,
 )
 
 from app.harness import runtime
@@ -21,6 +22,14 @@ from app.harness.runtime import (
     compact_stale_tool_returns,
 )
 from app.llm import LLM
+
+
+def test_rejected_tool_arguments_remain_available_for_retry() -> None:
+    content = "<p>Synthetic lesson</p>" * 500
+    call = ModelResponse(parts=[ToolCallPart("file_edit", {"content": content}, "retry-1")])
+    retry = ModelRequest(parts=[RetryPromptPart("Permission required", tool_name="file_edit", tool_call_id="retry-1")])
+    compacted = compact_completed_tool_arguments([call, retry])
+    assert compacted[0].parts[0].args["content"] == content
 
 
 def test_normalized_usage_keeps_measured_tokens_and_estimated_cost_distinct() -> None:

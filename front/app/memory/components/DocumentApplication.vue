@@ -12,8 +12,9 @@ import type { RegisterDocumentCapture } from '@/core/util'
 import { memoryService } from '../services/memoryService'
 import { appSandboxDocument } from '../documentAppSandbox'
 import type { AppDatasetRequest, DocumentApp } from '../documentApps'
+import { materializeAppResources, type AppMediaResolver } from '../documentAppResources'
 
-const { app, documentId, revision, ready = true, registerSnapshot } = defineProps<{ app: DocumentApp; documentId: string; revision: number; ready?: boolean; registerSnapshot?: RegisterDocumentCapture }>()
+const { app, documentId, revision, ready = true, registerSnapshot, resolveMedia } = defineProps<{ app: DocumentApp; documentId: string; revision: number; ready?: boolean; registerSnapshot?: RegisterDocumentCapture; resolveMedia?: AppMediaResolver }>()
 const { t } = useI18n()
 const frame = useTemplateRef('frame')
 const running = ref(false), source = ref(''), error = ref('')
@@ -53,13 +54,20 @@ function stop(): void {
   source.value = ''
   ids.clear(); pending = 0
 }
-function start(): void {
+async function start(): Promise<void> {
   if (!ready) return
   stop()
   controller = new AbortController()
   error.value = ''; requests = 0; started = Date.now()
-  source.value = appSandboxDocument(app)
-  running.value = true
+  const current = generation
+  try {
+    const materialized = await materializeAppResources(app, resolveMedia ?? ((id, attachment, signal) => memoryService.documentAttachmentBlob(id, attachment, null, signal)), controller.signal)
+    if (current !== generation) return
+    source.value = appSandboxDocument(materialized)
+    running.value = true
+  } catch {
+    if (current === generation) error.value = t('documents.apps.failed')
+  }
 }
 function connect(): void {
   if (!running.value || !frame.value?.contentWindow || channel) return
@@ -103,7 +111,7 @@ function connect(): void {
   }
   frame.value.contentWindow.postMessage('galaris-host-connect', '*', [channel.port2])
 }
-watch(() => [documentId, revision, app, ready] as const, () => { stop(); if (ready) start() })
+watch(() => [documentId, revision, app, ready, resolveMedia] as const, () => { stop(); if (ready) void start() })
 function navigated(event: MessageEvent): void {
   if (event.source !== frame.value?.contentWindow) return
   if (event.data === 'galaris-app-navigated') stop()
@@ -112,7 +120,7 @@ function navigated(event: MessageEvent): void {
 }
 onMounted(() => {
   registerSnapshot?.(capture)
-  if (ready) start()
+  if (ready) void start()
   window.addEventListener('message', navigated)
   websocket.onEvent('memory', 'invalidate', stop)
 })

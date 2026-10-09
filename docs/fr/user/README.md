@@ -155,6 +155,12 @@ Pour un agent Hermès configuré avec son propre fournisseur LLM, la tâche et s
 restent visibles, mais Galaris ne peut pas afficher les appels LLM intermédiaires ni leur coût
 détaillé. Ce n’est pas une perte de tâche : ces appels ont lieu directement dans Hermès.
 
+Quand un agent délègue une tâche, il vérifie l’accès de son collègue aux documents cités.
+Un partage manquant empêche le lancement et indique le destinataire et le droit requis.
+Le parent attend les résultats enfants avant de reprendre la consolidation ; des tâches
+de même nom restent distinguées par leurs références. Une autorisation traitée depuis
+la page des permissions affiche aussi la décision dans Chat.
+
 ## Les trois formes de demande
 
 ### Discuter

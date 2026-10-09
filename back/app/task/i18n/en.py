@@ -27,6 +27,7 @@ default: dict[str, object] = {
             "in the current task instead of calling task_run on yourself."
         ),
         "agent_not_found": "Delegation target Agent ${agent_id} does not exist.",
+        "document_access_required": "Agent ${agent_id} lacks ${access} access to ${uri}. No task was created. Ask its owner or an authorized sharing manager to grant access with document_share, then retry.",
         "already_terminal": "The task is already terminal.",
         "task_not_found": "Task not found: ${task_id}",
         "selector_required": "task_get requires task_id or uuid",

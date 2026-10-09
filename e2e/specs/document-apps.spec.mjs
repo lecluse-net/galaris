@@ -43,17 +43,25 @@ test('two document applications collect into the same Dataset with isolated Java
     expect(response.ok(), await response.text()).toBeTruthy()
     documents.push(await response.json())
   }
+  const upload = await request.post(`/api/memory/documents/${documents[0].id}/attachments?actor_agent_id=${fixture.agent_id}`, {
+    headers, multipart: { file: { name: 'synthetic-photo.png', mimeType: 'image/png',
+      buffer: Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAIAAAD91JpzAAAAFklEQVR4nGNkYPjPwMDAxMDAwMDAAAALHwEDmIWXfgAAAABJRU5ErkJggg==', 'base64') } },
+  })
+  expect(upload.ok(), await upload.text()).toBeTruthy()
+  const attachment = await upload.json()
+  const photo = `<p class="note">Synthetic photo before the form</p><img alt="Synthetic photo" src="document://${documents[0].id}/attachments/${attachment.id}">`
   for (let index = 0; index < documents.length; index++) {
     await page.goto(`/memory/documents?document_id=${documents[index].id}`)
     if (index === 0) {
       await page.getByRole('button', { name: 'Source', exact: true }).click()
-      await page.locator('.ck-source-editing-area textarea').fill('<p>Data collection</p>' + definition.html.replace('<form>', `<form data-dataset="document://${dataset.id}">`) + '<script>' + definition.javascript + '</script>')
+      await page.locator('.ck-source-editing-area textarea').fill('<p>Data collection</p>' + photo + definition.html.replace('<form>', `<form data-dataset="document://${dataset.id}">`) + '<script>' + definition.javascript + '</script>')
       await page.getByRole('button', { name: 'Source', exact: true }).click()
     }
     await expect(page.getByRole('button', { name: 'Source', exact: true })).toBeVisible()
     await expect(page.locator('.ck-editor__editable')).not.toContainText('galaris.datasets.append')
     await page.locator('.ck-galaris-editor').evaluate((element, width) => { element.style.width = width + 'px' }, index === 0 ? 320 : 980)
     const app = page.frameLocator('.document-application iframe').frameLocator('iframe')
+    if (index === 0) await expect.poll(() => app.getByRole('img', { name: 'Synthetic photo' }).evaluate(image => image.naturalWidth)).toBeGreaterThan(0)
     // Generated HTML cannot grant its own access, even for the owner of both documents.
     await app.getByRole('textbox').fill('Unapproved')
     await app.getByRole('button', { name: /^(Submit|Save|Enregistrer)$/ }).click()
@@ -88,6 +96,7 @@ test('two document applications collect into the same Dataset with isolated Java
     // A refresh preserves consent, while another document still needs its own grant.
     await page.reload()
     await expect(app.getByRole('textbox')).toBeVisible()
+    if (index === 0) await expect.poll(() => app.getByRole('img', { name: 'Synthetic photo' }).evaluate(image => image.naturalWidth)).toBeGreaterThan(0)
     const grants = await (await request.get(`/api/memory/documents/${documents[index].id}/app-permissions`, { headers })).json()
     expect(grants.grants[0].access).toBe('write')
   }

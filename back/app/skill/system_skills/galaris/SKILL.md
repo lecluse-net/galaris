@@ -520,7 +520,7 @@ mean the colleague is unknown or unreachable. Contact permissions still apply.
 - `file_list("galaris://text/")` lists your persisted text-conversation rounds and
   `file_list("galaris://voice/")` lists your persisted voice rounds. Read one with
   `file_read("galaris://text/<uuid>")` or `file_read("galaris://voice/<uuid>")`.
-- `task_run(agent_id: int, label: str, objective: str, effort: str | None = None, mode: str | None = None) -> str`
+- `task_run(agent_id: int, label: str, objective: str, effort: str | None = None, mode: str | None = None, document_access: str = "read") -> str`
   delegates work to **another** agent without inline execution. Never target your own `agent_id`;
   perform that work yourself. Write `objective` as a direct instruction to the recipient, such as
   “Analyze…”, “Choose…”, or “Produce…”. Do not ask the recipient to ask itself to perform the work.
@@ -528,6 +528,9 @@ mean the colleague is unknown or unreachable. Contact permissions still apply.
   `"plan"`. Your task automatically waits for the child task and resumes with its result in
   context. The return value is the created Task URI; pass it unchanged to `task_get` for a compact
   operational audit or to `file_read` for the complete snapshot.
+  Native document references in `objective` are checked for the recipient before creation.
+  Use `document_access="write"` when the child must change them. Share first through
+  `document_share` when authorized; a failed access check creates no Task and grants no rights.
 - `task_stop(task_id: str, reason: str | None = None) -> dict` permanently stops another active
   root task and its unfinished descendants. Prefer its full `galaris://task/<uuid>` URI; full UUIDs
   and unique prefixes remain accepted for compatibility. It rejects child tasks and the current

@@ -238,7 +238,7 @@
             :max-height="contentMaxHeight"
           >
             <template #embedded-code="{ source, language, registerSnapshot }">
-              <DocumentApplicationBlock :key="appPermissionsGeneration" :source="source" :language="language" :register-snapshot="registerSnapshot" :document-id="currentDocument.id" :revision="currentDocument.revision" :ready="!hasUnsavedChanges && !conflictDocument && (autosaveState === 'saved' || !canEditDocument)" />
+              <DocumentApplicationBlock :key="appPermissionsGeneration" :source="source" :language="language" :register-snapshot="registerSnapshot" :resolve-media="resolveInlineImage" :document-id="currentDocument.id" :revision="currentDocument.revision" :ready="!hasUnsavedChanges && !conflictDocument && (autosaveState === 'saved' || !canEditDocument)" />
             </template>
           </RichTextEditor>
         </div>
@@ -1245,8 +1245,8 @@ onBeforeUnmount(() => {
 
 defineExpose({ flush: flushAutosave })
 
-async function resolveInlineImage(documentId: string, attachmentId: string): Promise<Blob> {
-  return memoryService.documentAttachmentBlob(documentId, attachmentId, props.agentId)
+async function resolveInlineImage(documentId: string, attachmentId: string, signal?: AbortSignal): Promise<Blob> {
+  return memoryService.documentAttachmentBlob(documentId, attachmentId, props.agentId, signal)
 }
 async function exportCurrentDocumentPdf(html: string, signal: AbortSignal): Promise<Blob> {
   const document = currentDocument.value

@@ -3,7 +3,8 @@
     "dependencies": [
       {
         "files": [
-          "back/app/agent/mcp.py"
+          "back/app/agent/mcp.py",
+          "back/app/agent/resource_facade.py"
         ],
         "source": "app.agent",
         "target": "app.file_share"
@@ -7036,7 +7037,7 @@
       {
         "file": "back/app/file_share/mcp.py",
         "handler": "append_file",
-        "line": 339,
+        "line": 343,
         "module": "app.file_share",
         "name": "file_append",
         "namespace": "file_sharing"
@@ -7044,7 +7045,7 @@
       {
         "file": "back/app/file_share/mcp.py",
         "handler": "copy_file",
-        "line": 400,
+        "line": 404,
         "module": "app.file_share",
         "name": "file_copy",
         "namespace": "file_sharing"
@@ -7052,7 +7053,7 @@
       {
         "file": "back/app/file_share/mcp.py",
         "handler": "create_file",
-        "line": 269,
+        "line": 273,
         "module": "app.file_share",
         "name": "file_create",
         "namespace": "file_sharing"
@@ -7060,7 +7061,7 @@
       {
         "file": "back/app/file_share/mcp.py",
         "handler": "delete_file",
-        "line": 461,
+        "line": 465,
         "module": "app.file_share",
         "name": "file_delete",
         "namespace": "file_sharing"
@@ -7068,7 +7069,7 @@
       {
         "file": "back/app/file_share/mcp.py",
         "handler": "edit_file",
-        "line": 363,
+        "line": 367,
         "module": "app.file_share",
         "name": "file_edit",
         "namespace": "file_sharing"
@@ -7076,7 +7077,7 @@
       {
         "file": "back/app/file_share/mcp.py",
         "handler": "file_info",
-        "line": 161,
+        "line": 165,
         "module": "app.file_share",
         "name": "file_info",
         "namespace": "file_sharing"
@@ -7084,7 +7085,7 @@
       {
         "file": "back/app/file_share/mcp.py",
         "handler": "list_files",
-        "line": 133,
+        "line": 137,
         "module": "app.file_share",
         "name": "file_list",
         "namespace": "file_sharing"
@@ -7092,7 +7093,7 @@
       {
         "file": "back/app/file_share/mcp.py",
         "handler": "move_file",
-        "line": 432,
+        "line": 436,
         "module": "app.file_share",
         "name": "file_move",
         "namespace": "file_sharing"
@@ -7100,7 +7101,7 @@
       {
         "file": "back/app/file_share/mcp.py",
         "handler": "read_file",
-        "line": 232,
+        "line": 236,
         "module": "app.file_share",
         "name": "file_read",
         "namespace": "file_sharing"
@@ -7108,7 +7109,7 @@
       {
         "file": "back/app/file_share/mcp.py",
         "handler": "file_schemes",
-        "line": 112,
+        "line": 116,
         "module": "app.file_share",
         "name": "file_schemes",
         "namespace": "file_sharing"
@@ -7116,7 +7117,7 @@
       {
         "file": "back/app/file_share/mcp.py",
         "handler": "search_files",
-        "line": 191,
+        "line": 195,
         "module": "app.file_share",
         "name": "file_search",
         "namespace": "file_sharing"
@@ -7124,7 +7125,7 @@
       {
         "file": "back/app/file_share/mcp.py",
         "handler": "write_file",
-        "line": 305,
+        "line": 309,
         "module": "app.file_share",
         "name": "file_write",
         "namespace": "file_sharing"
@@ -7244,7 +7245,7 @@
       {
         "file": "back/app/task/mcp.py",
         "handler": "mcp_get_task",
-        "line": 89,
+        "line": 90,
         "module": "app.task",
         "name": "task_get",
         "namespace": "galaris"
@@ -7252,7 +7253,7 @@
       {
         "file": "back/app/task/mcp.py",
         "handler": "mcp_run_task",
-        "line": 175,
+        "line": 179,
         "module": "app.task",
         "name": "task_run",
         "namespace": "galaris"
@@ -7260,7 +7261,7 @@
       {
         "file": "back/app/task/mcp.py",
         "handler": "mcp_stop_task",
-        "line": 154,
+        "line": 155,
         "module": "app.task",
         "name": "task_stop",
         "namespace": "galaris"
@@ -17917,6 +17918,7 @@
           "front/app/memory/components/MemoryItemHistory.vue",
           "front/app/memory/components/MemoryItemThumbnail.vue",
           "front/app/memory/components/MemorySharingPanel.vue",
+          "front/app/memory/documentAppResources.ts",
           "front/app/memory/documentEditor.ts",
           "front/app/memory/documentFolders.ts",
           "front/app/memory/pages/contacts.vue",

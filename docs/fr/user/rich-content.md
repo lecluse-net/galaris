@@ -78,6 +78,10 @@ propose explicitement Ouvrir, modifier et retirer le lien.
 
 ## Encadrés et pièces jointes
 
+Les photos jointes restent visibles lorsqu’une note CSS les place dans la même région
+isolée qu’un formulaire ou un calculateur. Leur accès reste contrôlé, et le code du document
+ne reçoit aucun accès réseau supplémentaire.
+
 Le menu **Styles** propose Information, Attention, Question, Erreur, Stop, Interdit et
 À examiner. Sélectionnez un ou plusieurs paragraphes puis choisissez un style : ils forment
 un encadré avec une icône et un fond adapté au thème. Choisissez un autre style pour le

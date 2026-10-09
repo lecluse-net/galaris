@@ -1,5 +1,5 @@
 <template>
-  <DocumentApplication v-if="app" :app="app" :document-id="documentId" :revision="revision" :ready="ready" :register-snapshot="registerSnapshot" />
+  <DocumentApplication v-if="app" :app="app" :document-id="documentId" :revision="revision" :ready="ready" :register-snapshot="registerSnapshot" :resolve-media="resolveMedia" />
   <div v-else class="q-pa-md" role="alert">{{ t('documents.apps.invalid') }}</div>
 </template>
 <script setup lang="ts">
@@ -8,7 +8,8 @@ import { useI18n } from 'vue-i18n'
 import type { RegisterDocumentCapture } from '@/core/util'
 import { parseDocumentApp } from '../documentApps'
 import DocumentApplication from './DocumentApplication.vue'
-const { source, language, documentId, revision, ready, registerSnapshot } = defineProps<{ source: string; language: string; documentId: string; revision: number; ready: boolean; registerSnapshot?: RegisterDocumentCapture }>()
+import type { AppMediaResolver } from '../documentAppResources'
+const { source, language, documentId, revision, ready, registerSnapshot, resolveMedia } = defineProps<{ source: string; language: string; documentId: string; revision: number; ready: boolean; registerSnapshot?: RegisterDocumentCapture; resolveMedia?: AppMediaResolver }>()
 const { t } = useI18n()
 const app = computed(() => language === 'galaris-raw-html' ? { id: 'document-html', title: t('documents.types.html'), html: source, datasets: rawDatasets(source) } : parseDocumentApp(source))
 function rawDatasets(html: string): NonNullable<import('../documentApps').DocumentApp['datasets']> {

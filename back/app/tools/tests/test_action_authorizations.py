@@ -43,6 +43,44 @@ async def pending(action):
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("approved", [True, False])
+@pytest.mark.parametrize("processing", [False, True])
+async def test_api_decision_resolves_chat_choice_without_dispatch(action, monkeypatch, approved, processing):
+    import app.tools.authorization_notifications as outbox
+    from app.connection import Connection
+    from app.tools.models import Tool
+    from app.messenger.models import Interaction
+    async with get_db_session() as db:
+        chat = await db.scalar(select(Tool).where(Tool.code == "chat"))
+        db.add(Connection(agent_id=action.agent_id, tool_id=chat.id, active=True))
+    identifier = await pending(action)
+    await outbox.deliver_authorization_notifications()
+    async with get_db_session() as db:
+        row = await db.get(ActionAuthorization, identifier)
+        interaction_id = row.interaction_id
+        assert interaction_id is not None
+        choice = await db.get(Interaction, interaction_id)
+        if processing:
+            choice.status = "PROCESSING"
+            choice.processing_token = uuid4()
+            choice.resolution = {"option_id": "deny" if approved else "allow"}
+            await db.commit()
+        assert await answer_action(identifier, user_id=row.approver_user_id, approved=approved)
+        await db.refresh(choice)
+        assert choice.status == "RESOLVED"
+        assert choice.resolution["option_id"] == ("allow" if approved else "deny")
+    monkeypatch.setattr(outbox, "wake_authorization_context", AsyncMock(return_value=True))
+    await outbox.reconcile_authorizations()
+    async with get_db_session() as db:
+        row = await db.get(ActionAuthorization, identifier)
+        choice = await db.get(Interaction, interaction_id)
+        assert choice.status == "RESOLVED"
+        assert choice.resolution["option_id"] == ("allow" if approved else "deny")
+        assert row.status == ("approved" if approved else "denied")
+        assert row.claimed_at is None
+
+
+@pytest.mark.asyncio
 async def test_deleted_agent_cannot_answer_or_resume_but_keeps_the_audit(action):
     from app.tools.authorization_notifications import reconcile_authorizations
     identifier = await pending(action)
@@ -292,13 +330,16 @@ async def test_retention_preserves_unknown_evidence_and_accepts_late_authoritati
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("language", ["fr", "zh-CN"])
-async def test_remembered_approval_enables_only_this_connection_function_and_preserves_resume(action, language):
+@pytest.mark.parametrize("language", ["en-US", "fr", "zh-CN"])
+async def test_remembered_approval_enables_only_this_connection_function_and_preserves_resume(action, monkeypatch, language):
     from app.connection import Connection, facade as connections
     from app.messenger import answer_internal_interaction
-    from app.messenger.models import Interaction
+    from app.messenger.models import Interaction, Message
     from app.tools.authorization_notifications import deliver_authorization_notifications
     from app.tools.models import Tool
+    from core.i18n import normalize_language, render_prompt, t
+    from core.params.runtime_settings import runtime_settings
+    monkeypatch.setattr(runtime_settings, "DEFAULT_LANGUAGE", "fr" if language == "en-US" else "en")
     async with get_db_session() as db:
         tool = await db.scalar(select(Tool).where(Tool.code == "topic"))
         connection = Connection(agent_id=action.agent_id, tool_id=tool.id, active=True)
@@ -318,11 +359,27 @@ async def test_remembered_approval_enables_only_this_connection_function_and_pre
         row = await db.get(ActionAuthorization, identifier)
         assert not await answer_action(identifier, user_id=row.approver_user_id + 100000, approved=True, remember=True)
         interaction = await db.get(Interaction, row.interaction_id)
-        expected = (["Autoriser cette action", "Refuser cette action", "Toujours autoriser cette fonction"]
-                    if language == "fr" else ["允许此操作", "拒绝此操作", "始终允许此功能"])
+        expected = {
+            "en-US": ["Allow this action", "Deny this action", "Always allow this function"],
+            "fr": ["Autoriser cette action", "Refuser cette action", "Toujours autoriser cette fonction"],
+            "zh-CN": ["允许此操作", "拒绝此操作", "始终允许此功能"],
+        }[language]
+        selected_language = normalize_language(language)
+        assert interaction.title == t("permissions.title", selected_language)
         assert [option["label"] for option in interaction.options] == expected
-        assert "topic_create" in interaction.body
+        assert interaction.metadata_["language"] == selected_language
+        assert render_prompt(t("permissions.function_scope", selected_language), function="topic_create") in interaction.body
+        prompt = await db.get(Message, UUID(interaction.prompt_message_id))
+        assert interaction.title in prompt.text
+        assert t("messenger_interactions.choose", selected_language) in prompt.text
+        assert t("messenger_interactions.reference", selected_language).replace("${reference}", interaction.reference) in prompt.text
         await answer_internal_interaction(row.approver_user_id, UUID(interaction.room_id), interaction.id, option_id="allow_always")
+        response = await db.scalar(select(Message).where(
+            Message.remote_message_id == f"interaction:{interaction.id}:answer",
+            Message.connection_id == interaction.connection_id,
+        ))
+        assert response.text == render_prompt(t("messenger_interactions.answer", selected_language),
+            title=interaction.title, reference=interaction.reference, answer=expected[2])
         assert (await connections.resolve_function(connection, "topic_create"))["effective_state"] == "enabled"
         assert (await connections.resolve_function(connection, "topic_update"))["effective_state"] == "ask"
     assert await claim_action(replace(action, continuation=caught.value.continuation)) == identifier

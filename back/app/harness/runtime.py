@@ -238,7 +238,7 @@ def compact_completed_tool_arguments(
         answered: set[tuple[str | None, str]] = {
             (part.tool_name, part.tool_call_id)
             for part in following.parts
-            if isinstance(part, (_pydantic_messages.ToolReturnPart, _pydantic_messages.RetryPromptPart))
+            if isinstance(part, _pydantic_messages.ToolReturnPart)
         } if isinstance(following, _pydantic_messages.ModelRequest) else set()
         parts: list[_pydantic_messages.ModelResponsePart] = []
         changed = False
@@ -983,6 +983,8 @@ class Agent(AgentRuntime):
             (
                 "Continue the interrupted run from the supplied model history. "
                 "Do not repeat completed tool effects; use their recorded results."
+                " Historical omission markers are references, never content to write."
+                "\n\nUpdated task and conversation context:\n" + prompt
             )
             if active_checkpoint is not None and active_checkpoint.history
             else prompt
@@ -1009,7 +1011,7 @@ class Agent(AgentRuntime):
                 )
                 with self._agent.parallel_tool_call_execution_mode(execution_mode):
                     async with self._agent.run_stream_events(
-                        None if deferred_results is not None else agent_input,
+                        agent_input,
                         message_history=pydantic_history or None,
                         deferred_tool_results=deferred_results,
                         cancellation_token=self._cancellation_token,

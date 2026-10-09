@@ -3,9 +3,10 @@
 from __future__ import annotations
 
 import json
+import re
 import time
 from datetime import datetime
-from typing import Any, Optional
+from typing import Any, Literal, Optional
 from uuid import UUID, uuid4
 
 from loguru import logger
@@ -170,6 +171,9 @@ async def mcp_stop_task(
         "recipient. Your task waits and resumes automatically with the child result. Use this "
         "for delegated work; use messenger_send_message_to_user for conversation. `effort` may "
         "be auto, standard, or high. `mode` may be auto, exec, or plan."
+        " Document references in objective are checked before creation. Set document_access "
+        "to write when the recipient must edit them. Share them first using document_share; "
+        "delegation never grants access."
     ),
 )
 async def mcp_run_task(
@@ -179,6 +183,7 @@ async def mcp_run_task(
     objective: str,
     effort: str | None = None,
     mode: str | None = None,
+    document_access: Literal["read", "write"] = "read",
 ) -> str:
     """Create an AI task for an agent and return its canonical resource URI."""
     from app.task.runner import go_next
@@ -206,6 +211,7 @@ async def mcp_run_task(
         effort=effort,
         mode=mode,
         source_task_id=ctx.task_id,
+        document_access=document_access,
     )
     # Put the child in the fast queue. Its creator enters the ``child`` wait state when the
     # current run returns, and the child starts as soon as the agent slot becomes available.
@@ -1175,6 +1181,7 @@ async def run_task(
     effort: Optional[str] = None,
     mode: Optional[str] = None,
     source_task_id: Optional[UUID] = None,
+    document_access: Literal["read", "write"] = "read",
 ) -> str:
     """Create an AI task, store its requester, and return its UUID without inline execution."""
     task_id = await create_task(
@@ -1185,6 +1192,7 @@ async def run_task(
         effort=effort,
         mode=mode,
         source_task_id=source_task_id,
+        document_access=document_access,
     )
     return str(task_id)
 
@@ -1218,6 +1226,7 @@ async def create_task(
     effort: Optional[str] = None,
     mode: Optional[str] = None,
     source_task_id: Optional[UUID] = None,
+    document_access: Literal["read", "write"] = "read",
 ) -> UUID:
     """Add an AI task to the current session and return its UUID.
 
@@ -1227,6 +1236,10 @@ async def create_task(
     causal continuation and lets source lineage establish the parent.
     """
     from app.task import task_service
+
+    await _require_delegated_document_access(
+        requester_agent_id, agent_id, objective, document_access,
+    )
 
     task_id = uuid4()
     forced_effort = _parse_forced_effort(effort)
@@ -1250,3 +1263,23 @@ async def create_task(
     db.add(task)
     logger.info("MCP task create: task added to session id={}", task_id)
     return task_id
+
+
+async def _require_delegated_document_access(
+    requester_agent_id: int, agent_id: int, objective: str, access: Literal["read", "write"],
+) -> None:
+    """Fail before launching work on a native reference inaccessible to its recipient."""
+    from app.agent import require_delegated_resource_access
+    references = sorted(set(re.findall(
+        r"document://[0-9a-fA-F]{8}(?:-[0-9a-fA-F]{4}){3}-[0-9a-fA-F]{12}", objective,
+    )))
+    if not references:
+        return
+    language = await context_language(McpToolContext(agent_id=requester_agent_id, runtime="internal"))
+    for uri in references:
+        try:
+            await require_delegated_resource_access(requester_agent_id, agent_id, uri, access)
+        except PermissionError as exc:
+            raise ValueError(_message(
+                "document_access_required", language, agent_id=agent_id, uri=uri, access=access,
+            )) from exc

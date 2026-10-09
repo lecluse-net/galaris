@@ -200,7 +200,7 @@ async def get_active(
     return result.scalars().all()
 
 
-async def get_by_id(task_id: UUID) -> Optional[Task]:
+async def get_by_id(task_id: UUID, *, for_update: bool = False) -> Optional[Task]:
     """Return a task by ID."""
     db = get_db()
     query = (
@@ -209,6 +209,8 @@ async def get_by_id(task_id: UUID) -> Optional[Task]:
         .options(selectinload(Task.requester_agent).selectinload(Agent.title))
         .where(Task.id == task_id)
     )
+    if for_update:
+        query = query.with_for_update(of=Task, key_share=True).execution_options(populate_existing=True)
     result = await db.execute(query)
     return result.scalar_one_or_none()
 
@@ -221,7 +223,7 @@ async def _get_by_id_for_update(task_id: UUID) -> Optional[Task]:
     return await db.scalar(Task.histo_filter(query))
 
 
-async def get_children(parent_id: UUID) -> Sequence[Task]:
+async def get_children(parent_id: UUID, *, refresh: bool = False) -> Sequence[Task]:
     """Return a task's children in creation order."""
     db = get_db()
     query = (
@@ -230,6 +232,8 @@ async def get_children(parent_id: UUID) -> Sequence[Task]:
         .order_by(Task.created_at.asc(), Task.id.asc())
     )
     query = Task.histo_filter(query)
+    if refresh:
+        query = query.execution_options(populate_existing=True)
     result = await db.execute(query)
     return result.scalars().all()
 

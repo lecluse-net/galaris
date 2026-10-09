@@ -12,6 +12,7 @@ from app.tools.mcp_loader import McpToolContext, context_language, mcp_tool
 from .resource_contracts import ResourceContext
 from .resource_service import (
     _json_model,
+    require_complete_content,
     list_schemes,
     preferred_local_resource_uri,
     resource_append,
@@ -51,6 +52,9 @@ async def _file_preflight(ctx: McpToolContext, arguments: dict[str, Any]) -> dic
     import hashlib
     from pathlib import Path
     from tempfile import TemporaryDirectory
+    content = arguments.get("content")
+    if isinstance(content, str):
+        require_complete_content(_decode_content(content, "base64" if arguments.get("encoding") == "base64" else "utf-8"))
     context = await _resource_context(ctx)
     snapshots: dict[str, Any] = {}
     for key in ("uri", "source", "destination"):

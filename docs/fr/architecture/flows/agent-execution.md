@@ -93,6 +93,17 @@ rejeu automatique. Le résultat est sérialisé en mode JSON avant écriture JSO
 les UUIDs des demandes d’accord ; le rechargement conserve leur identité.
 Voir [0153](../../../../project/decisions/0153-common-action-authorizations.md).
 
+Les arguments ayant reçu un `RetryPromptPart` restent complets ; seuls les appels ayant un
+résultat d’outil sont éligibles au compactage des arguments. Les marqueurs d’omission de
+l’historique sont refusés dans les mutations de fichiers. Une reprise transmet aussi le
+contexte actualisé, y compris les résultats enfants et les nouvelles consignes, sans rejouer
+les effets achevés. Chaque résultat enfant porte son URI propre, même avec un libellé identique.
+Le réveil du parent et les marqueurs de consommation des résultats sont enregistrés ensemble.
+Avant une délégation, les références documentaires explicites sont vérifiées pour le
+destinataire ; `document_access="write"` demande aussi la vérification du droit d’écriture.
+Ce contrôle ne partage aucun document. Une décision d’autorisation prise par API est reflétée
+dans l’interaction Chat, avec sa résolution effective.
+
 La frontière MCP commune retire les clés inconnues de premier niveau d’un schéma fermé
 avant validation et autorisation. Le résultat ajoute un avis `galaris.tool-arguments/v1`
 sans les valeurs ignorées ; la projection Pydantic AI le transmet au modèle et le checkpoint

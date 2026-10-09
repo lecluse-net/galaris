@@ -235,6 +235,7 @@ __all__ = [
     "driver_capabilities", "negotiate_capabilities", "normalize_capabilities",
     "effective_capabilities", "effective_tool_profile",
     "read_agent_resource", "list_agent_resources",
+    "require_delegated_resource_access",
     "Agent",
     "AgentTeamModel",
     "AgentGroup",
@@ -369,6 +370,6 @@ __all__ = [
     "get_current_task",
 ]
 
-from .resource_facade import read_agent_resource, list_agent_resources
+from .resource_facade import read_agent_resource, list_agent_resources, require_delegated_resource_access
 
 from .models import AgentTeam as AgentTeamModel

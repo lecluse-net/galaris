@@ -216,10 +216,11 @@ async def test_file_tool_delivers_to_user_with_independent_journal_transactions(
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("answer_mode", ["button", "text"])
+@pytest.mark.parametrize("language", ["en", "fr"])
 @pytest.mark.parametrize("selected_option, selected_label", [("create", "Créer"), ("reject", "Refuser")])
 async def test_internal_choices_reload_and_resolve_once_in_the_exact_human_scope(
     db: AsyncSession, monkeypatch: pytest.MonkeyPatch, answer_mode: str,
-    selected_option: str, selected_label: str,
+    selected_option: str, selected_label: str, language: str,
 ) -> None:
     from app.messenger import (
         ChoiceOption, ChoiceRequest, MessengerFacade, create_choice,
@@ -245,7 +246,7 @@ async def test_internal_choices_reload_and_resolve_once_in_the_exact_human_scope
         request=ChoiceRequest(
             kind="internal-choice-test", title="Créer le dossier ?", body="Description conservée.",
             options=[ChoiceOption(id="create", label="Créer"), ChoiceOption(id="reject", label="Refuser")],
-            language="fr", metadata={"private_domain_payload": "not-for-the-client"},
+            language=language, metadata={"private_domain_payload": "not-for-the-client"},
         ),
     )
     page = await native_facade.list_chat_messages(owner.id, room.id)
@@ -293,6 +294,7 @@ async def test_internal_choices_reload_and_resolve_once_in_the_exact_human_scope
         answers = [entry for entry in history.messages if entry["role"] == "user"]
         assert len(answers) == 1
         assert selected_label in answers[0]["text"]
+        assert answers[0]["text"].startswith("Answer to" if language == "en" else "Réponse à")
         assert pending.reference in answers[0]["text"]
         assert "Créer le dossier ?" in answers[0]["text"]
         assert answers[0]["sender_external_id"] == f"user:{owner.id}"

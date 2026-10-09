@@ -1,10 +1,20 @@
 """Governed profile resources for agent runtimes; HTML remains unchanged."""
 
 from __future__ import annotations
-from typing import Any
+from typing import Any, Literal
 from sqlalchemy import select
 from core.database import get_db
 from .models import Agent
+
+
+async def require_delegated_resource_access(
+    requester_agent_id: int, agent_id: int, uri: str, access: Literal["read", "write"],
+) -> None:
+    """Require existing resource grants for both the delegator and the recipient."""
+    from app.file_share import ResourceContext, resource_accessible, resource_info
+    await resource_info(ResourceContext(agent_id=requester_agent_id, runtime="internal"), uri)
+    if not await resource_accessible(ResourceContext(agent_id=agent_id, runtime="internal"), uri, access):
+        raise PermissionError("The recipient lacks the required resource capability.")
 
 
 async def read_agent_resource(agent_id: int, *, actor_agent_id: int) -> dict[str, Any] | None:

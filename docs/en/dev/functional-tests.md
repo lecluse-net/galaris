@@ -272,6 +272,18 @@ effects, revocation and credential rotation for corrected calls, including exter
 `app/harness/tests/test_execution_evidence.py` verifies that the warning reaches a real
 Pydantic AI agent and its checkpoint without executing the effect again.
 
+`app/harness/tests/test_runtime_cancellation.py` resumes a real Pydantic AI agent after
+approval or denial while preserving arguments and updated instructions. Compaction preserves
+calls awaiting retry and mutations reject omission markers (`test_agent_history_compaction.py`,
+`app/file_share/tests/test_resource_service.py`, `test_mcp_paths.py`). Delegation checks
+document grants before creation (`app/memory/tests/test_document_sharing.py`);
+`app/task/tests/test_collab.py` preserves the identity of equally labelled children, waits
+for their results before success and consumes results once during concurrent wakeups.
+API authorization decisions also resolve Chat choices already being processed
+(`test_action_authorizations.py`), and replies preserve their language (`test_native_facade.py`).
+Document journeys exercise native photos in the sandbox, retry after denial and cancellation
+of loads from an older revision (`document-apps.spec.mjs`).
+
 `app/conversation/tests/test_service.py` covers repeated conversational stops of active,
 successful, and failed Tasks: terminal results, causes, and revisions are preserved, and
 agent scope remains mandatory. `app/tools/tests/test_mcp_loader.py` distinguishes remote

@@ -8,6 +8,7 @@ import json
 import hashlib
 import mimetypes
 import os
+import re
 import tempfile
 from pathlib import Path, PurePosixPath
 from typing import Any, Literal, cast
@@ -63,6 +64,17 @@ _TEXT_WRITE_LIMIT = 500_000
 _FILE_WRITE_LIMIT = 16_000_000
 _BINARY_READ_LIMIT = 1_048_576
 _SEARCH_SCAN_LIMIT = 500
+
+
+def require_complete_content(content: str | bytes) -> None:
+    """Reject runtime history references before a provider can mutate anything."""
+    payload = content.encode("utf-8") if isinstance(content, str) else content
+    if re.search(rb"\[content omitted after execution: \d+ characters, sha256=[0-9a-f]{16,64}\]", payload):
+        raise ResourceValidationError(
+            "Content contains a history omission marker. Read the original resource and "
+            "supply the complete intended content; no mutation was performed."
+        )
+
 
 _MUTABLE_FILE_CAPABILITIES: list[ResourceCapability] = [
     "append",
@@ -595,6 +607,15 @@ async def list_schemes(ctx: ResourceContext) -> list[ResourceSchemeDescription]:
         )
     unique = {item.scheme: item for item in schemes}
     return [unique[scheme] for scheme in sorted(unique)]
+
+
+async def resource_accessible(ctx: ResourceContext, uri: object, capability: ResourceCapability) -> bool:
+    """Check a native resource capability without leaking provider-specific ACL errors."""
+    from app.memory import MemoryNotFoundError, MemoryPermissionError
+    try:
+        return capability in (await resource_info(ctx, uri)).capabilities
+    except (PermissionError, FileNotFoundError, MemoryNotFoundError, MemoryPermissionError):
+        return False
 
 
 @observe_operation
@@ -1186,6 +1207,7 @@ async def resource_write_text(
     *,
     overwrite: bool = False,
 ) -> ResourceMutation:
+    require_complete_content(content)
     if len(content) > _TEXT_WRITE_LIMIT:
         raise ValueError(f"Text content exceeds {_TEXT_WRITE_LIMIT} characters.")
     reference = parse_resource_uri(uri)
@@ -1300,7 +1322,7 @@ async def resource_create(
     max_bytes: int = _FILE_WRITE_LIMIT,
 ) -> ResourceMutation:
     """Create a new resource and return the provider's complete canonical URI."""
-
+    require_complete_content(content)
     limit = min(max(0, max_bytes), 100_000_000)
     if len(content) > limit:
         raise ValueError(f"File content exceeds {limit} bytes.")
@@ -1472,7 +1494,7 @@ async def resource_write(
     expected_etag: str | None = None,
 ) -> ResourceMutation:
     """Replace one existing complete resource from bounded bytes."""
-
+    require_complete_content(content)
     if len(content) > _FILE_WRITE_LIMIT:
         raise ValueError(f"File content exceeds {_FILE_WRITE_LIMIT} bytes.")
     reference = parse_resource_uri(uri)
@@ -1608,6 +1630,7 @@ async def resource_append(
     expected_revision: int | None = None,
     expected_etag: str | None = None,
 ) -> ResourceMutation:
+    require_complete_content(content)
     if len(content) > _TEXT_WRITE_LIMIT:
         raise ResourceValidationError(f"Text content exceeds {_TEXT_WRITE_LIMIT} characters.")
     reference = parse_resource_uri(uri)
@@ -1809,7 +1832,7 @@ async def resource_edit(
     expected_etag: str | None = None,
 ) -> ResourceMutation:
     """Replace a 1-based inclusive line range in one UTF-8 text resource."""
-
+    require_complete_content(content)
     if start_line < 1 or end_line < start_line:
         raise ResourceValidationError("start_line and end_line must define a 1-based inclusive range.")
     if len(content) > _TEXT_WRITE_LIMIT:
@@ -2539,6 +2562,7 @@ __all__ = [
     "resource_create",
     "resource_delete",
     "resource_info",
+    "resource_accessible",
     "resource_list",
     "resource_move",
     "resource_read",

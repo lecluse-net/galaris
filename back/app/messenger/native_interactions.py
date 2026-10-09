@@ -9,7 +9,7 @@ from sqlalchemy import String, cast, select
 
 from app.connection import Connection
 from core.database import get_db
-from core.i18n import render_prompt, t
+from core.i18n import current_language, is_supported, render_prompt, t
 
 from .contracts import NativeInteractionAnswer, NativeInteractionOption, NativeMessengerInteraction
 from .events import message_journaled
@@ -180,6 +180,8 @@ async def answer_internal_interaction(
         galaris_user_id=user_id,
     )
     captured: Message | None = None
+    stored_language = str((record.metadata_ or {}).get("language") or "")
+    language = stored_language if is_supported(stored_language) else await current_language(user_id=user_id)
 
     async def capture_response() -> None:
         nonlocal captured
@@ -208,7 +210,7 @@ async def answer_internal_interaction(
             user_id=human.external_id,
             contact_memory_item_id=contact_id,
             text=render_prompt(
-                t("messenger_interactions.answer"),
+                t("messenger_interactions.answer", language),
                 title=record.title,
                 reference=record.reference,
                 answer=option.label,

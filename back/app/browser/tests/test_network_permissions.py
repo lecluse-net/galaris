@@ -332,6 +332,7 @@ def test_equivalent_origins_filters_and_mapped_local_addresses():
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("language,title,label", [(None, "Demande d’autorisation", "Toujours autoriser tous les sites"),
+                                                   ("en", "Permission request", "Always allow all sites"),
                                                    ("fr", "Demande d’autorisation", "Toujours autoriser tous les sites"),
                                                    ("zh-CN", "授权请求", "始终允许所有网站")])
 async def test_all_sites_approval_is_localized_reusable_scoped_and_revocable(db, monkeypatch, language, title, label):

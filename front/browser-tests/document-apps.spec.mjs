@@ -19,6 +19,45 @@ function content(app = definition) {
 }
 const runtimeProps = { documentId: 'doc-a', revision: 3, app: definition }
 const inner = page => page.frameLocator('iframe').frameLocator('iframe')
+const photoId = '22222222-2222-4222-8222-222222222222'
+const photoUri = `document://${datasetId}/attachments/${photoId}`
+const photoBytes = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAIAAAD91JpzAAAAFklEQVR4nGNkYPjPwMDAxMDAwMDAAAALHwEDmIWXfgAAAABJRU5ErkJggg==', 'base64')
+
+test('a failed native photo load stops the application and a new revision retries with current access', async ({ page }) => {
+  let denied = true
+  await page.route(`**/api/memory/documents/${datasetId}/attachments/${photoId}*`, route => denied
+    ? route.fulfill({ status: 403, json: { detail: 'Photo access denied' } })
+    : route.fulfill({ contentType: 'image/png', body: photoBytes }))
+  await mount(page, 'app/memory/components/DocumentApplication.vue', { props: {
+    ...runtimeProps, app: { ...definition, html: `<img src="${photoUri}" alt="Synthetic photo">` + definition.html },
+  } })
+  await expect(page.getByRole('alert')).toBeVisible()
+  await expect(page.locator('iframe')).toHaveCount(0)
+  denied = false
+  await page.evaluate(() => window.testApp.setProps({ revision: 4 }))
+  await expect.poll(() => inner(page).getByRole('img', { name: 'Synthetic photo' }).evaluate(image => image.naturalWidth)).toBeGreaterThan(0)
+  await expect(page.getByRole('alert')).toHaveCount(0)
+  await expect(inner(page).getByRole('textbox', { name: 'Answer' })).toBeVisible()
+})
+
+test('a late native photo response cannot restart an application from an older revision', async ({ page }) => {
+  let release
+  const waiting = new Promise(resolve => { release = resolve })
+  let requested = false
+  await page.route(`**/api/memory/documents/${datasetId}/attachments/${photoId}*`, async route => {
+    requested = true; await waiting
+    await route.fulfill({ contentType: 'image/png', body: photoBytes }).catch(() => {})
+  })
+  await mount(page, 'app/memory/components/DocumentApplication.vue', { props: {
+    ...runtimeProps, app: { ...definition, html: `<img src="${photoUri}" alt="Old photo">` + definition.html },
+  } })
+  await expect.poll(() => requested).toBe(true)
+  await page.evaluate(app => window.testApp.setProps({ revision: 4, app }), definition)
+  await expect(inner(page).getByRole('textbox', { name: 'Answer' })).toBeVisible()
+  release()
+  await expect(inner(page).getByRole('img')).toHaveCount(0)
+  await expect(page.getByRole('alert')).toHaveCount(0)
+})
 
 test('a form submits once with revisions and handles a conflict without losing input', async ({ page }) => {
   const requests = []
@@ -87,8 +126,15 @@ test('a new document revision stops the application and discards late Dataset re
 })
 
 for (const format of ['legacy', 'html']) test(`the normal editor preserves ${format} forms with source available only through Source`, async ({ page }) => {
-  const raw = '<p>Introduction</p>' + definition.html + '<script>' + definition.javascript + '</script><p>After the form</p>'
-  let current = { ...document, content_profile: 'document', media_type: 'text/html', payload: { text: format === 'html' ? raw : content() } }
+  const attachmentId = '22222222-2222-4222-8222-222222222222'
+  const uri = `document://${datasetId}/attachments/${attachmentId}`
+  const photo = `<img src="${uri}" alt="Synthetic photo">`
+  const raw = '<p>Introduction</p><p class="note">Photo before the calculator</p>' + photo + definition.html + '<script>' + definition.javascript + '</script><p>After the form</p>'
+  const withPhoto = { ...definition, html: '<p class="note">Photo before the calculator</p>' + photo + definition.html }
+  await page.route(`**/api/memory/documents/${datasetId}/attachments/${attachmentId}?*`, route => route.fulfill({
+    contentType: 'image/png', body: photoBytes,
+  }))
+  let current = { ...document, content_profile: 'document', media_type: 'text/html', payload: { text: format === 'html' ? raw : content(withPhoto) } }
   const writes = []
   await jsonRoute(page, '**/api/agents?*', [agent])
   await jsonRoute(page, '**/api/memory/documents/owner-options?*', { agents: [{ id: 7, kind: 'agent', label: 'Alice', subtitle: '', avatar_url: null }], users: [] })
@@ -102,6 +148,7 @@ for (const format of ['legacy', 'html']) test(`the normal editor preserves ${for
   })
   await mount(page, 'app/memory/components/DocumentEditor.vue', { props: { documentId: 'doc-a', agentId: 7 }, privileges: ['MEMORY_EDIT'] })
   await expect(inner(page).getByRole('textbox', { name: 'Answer' })).toBeVisible()
+  await expect.poll(() => inner(page).getByRole('img', { name: 'Synthetic photo' }).evaluate(image => image.naturalWidth)).toBeGreaterThan(0)
   await expect(page.getByRole('button', { name: /Edit document|Show applications|Add form/ })).toHaveCount(0)
   await expect(page.getByRole('button', { name: 'Source', exact: true })).toBeVisible()
   const editor = page.locator('.ck-editor__editable')

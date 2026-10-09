@@ -387,6 +387,29 @@ async def _message(
     return message
 
 
+@pytest.mark.asyncio
+@pytest.mark.parametrize("effect_started", [False, True])
+async def test_input_during_approval_is_admitted_and_supersedes_stale_context(db, effect_started):
+    agent, connection, room = await _scope(db)
+    initial = await _message(db, connection, room, 1, "Prepare the synthetic lesson")
+    await admit_message(initial, agent_id=agent.id, connection_id=connection.id, language="en")
+    previous = await claim_next_round("synthetic-worker")
+    assert previous is not None
+    previous.status = "WAITING_APPROVAL"
+    previous.effect_started = effect_started
+    await db.commit()
+    incoming = await _message(db, connection, room, 2, "The classification is resolved. Use the new lesson instructions.")
+    assert await admit_message(incoming, agent_id=agent.id, connection_id=connection.id, language="en")
+    assert not await admit_message(incoming, agent_id=agent.id, connection_id=connection.id, language="en")
+    await db.refresh(previous)
+    assert previous.status == "SUPERSEDED"
+    resumed = await claim_next_round("synthetic-successor")
+    assert resumed is not None and resumed.id != previous.id
+    turn = await build_turn(resumed.id, lease_token=resumed.lease_token)
+    assert "The classification is resolved" in str(turn.messages)
+    assert turn.pending_interactions == ()
+
+
 def _install_messenger(
     monkeypatch: pytest.MonkeyPatch,
     db: AsyncSession,
