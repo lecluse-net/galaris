@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto'
 import { test, expect } from '@playwright/test'
 import { collectPageErrors } from '../page-errors.mjs'
+import { selectOption } from '../select-option.mjs'
 
 for (const width of [390, 1440]) {
   test(`human approval protects the exact action and survives reopening at ${width}px`, async ({ page, request }) => {
@@ -93,16 +94,31 @@ for (const width of [390, 1440]) {
 
     // Configure function policies through the real UI/API/DB while one response
     // is delayed. Each click remains usable and its effects persist in order.
+    // Put the target beyond the initially rendered virtual options even when
+    // this spec runs alone, rather than relying on earlier tests' agents.
+    for (let index = 0; index < 45; index++) {
+      const created = await request.post('/api/agents', {
+        headers: { ...headers, 'X-Editorial-Profile-Version': '1' },
+        data: {
+          user_id: setup.user_id, title_id: setup.title_id,
+          code: `authorization-option-${fixture.agent_id}-${index}`,
+          first_name: 'Synthetic', last_name: `Option ${fixture.agent_id} ${index}`,
+        },
+      })
+      expect(created.ok(), await created.text()).toBeTruthy()
+    }
     await errors.settle()
     await page.goto('/tools')
+    await page.addLocatorHandler(page.locator('.chat-notification-prompt'), async prompt => {
+      await prompt.getByRole('button', { name: 'Plus tard', exact: true }).click()
+    })
     if (width < 1024) {
       await page.addLocatorHandler(page.locator('.q-drawer__backdrop'), async backdrop => {
         await backdrop.click({ position: { x: width - 10, y: 200 } })
       }, { times: 1 })
     }
     await page.getByRole('tab', { name: 'Autorisations', exact: true }).click()
-    await page.getByRole('combobox', { name: 'Filtrer par agent', exact: true }).click()
-    await page.getByRole('option').filter({ hasText: `${original.first_name} ${original.last_name}` }).click()
+    await selectOption(page, page.getByRole('combobox', { name: 'Filtrer par agent', exact: true }), `${original.first_name} ${original.last_name}`)
     await page.getByRole('combobox', { name: 'Filtrer par outil', exact: true }).click()
     await page.getByRole('option', { name: 'AgentAdmin', exact: true }).click()
     await page.getByRole('textbox', { name: 'Rechercher une fonction', exact: true }).fill('agent_update')
