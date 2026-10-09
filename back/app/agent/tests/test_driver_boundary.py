@@ -156,13 +156,24 @@ async def test_task_cancellation_is_propagated_and_closes_driver(boundary):
 
 
 @pytest.mark.asyncio
-async def test_non_streaming_driver_has_same_terminal_contract(boundary, monkeypatch):
+@pytest.mark.parametrize("waiting", [False, True])
+async def test_non_streaming_driver_has_same_terminal_contract(boundary, monkeypatch, waiting):
     spec = replace(boundary.driver.spec, supports_streaming=False)
     boundary.driver.spec = spec
     monkeypatch.setitem(registry._DRIVER_SPECS, spec.code, spec)
+    if waiting:
+        boundary.driver.result = ExecutionResult(
+            prompt="", result="Waiting for approval", success=False,
+            schema_version="galaris.execution-result/v2",
+            disposition="waiting_for_authorization", authorization_requests=[uuid4()],
+        )
     events = [event async for event in facade.stream(boundary.request)]
     assert [event.kind for event in events] == ["result"]
-    assert events[0].result.result == "done"
+    assert events[0].result == boundary.outcome.await_args.args[1]
+    assert events[0].result.result == boundary.driver.result.result
+    assert events[0].result.disposition == boundary.driver.result.disposition
+    assert events[0].result.authorization_requests == boundary.driver.result.authorization_requests
+    assert events[0].result.failure is None
     assert len(boundary.driver.requests) == 1
     received = boundary.driver.requests[0]
     assert received.run_id == boundary.request.run_id
@@ -195,19 +206,42 @@ async def test_consumer_can_close_stream_while_driver_is_suspended(boundary):
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("success", [True, False])
-async def test_valid_result_is_published_once_after_driver_cleanup(boundary, success):
+@pytest.mark.parametrize("entrypoint", ["run", "stream"])
+@pytest.mark.parametrize("outcome", ["success", "failure", "authorization_wait"])
+async def test_valid_result_is_published_once_after_driver_cleanup(boundary, entrypoint, outcome):
+    """Validate waits through normalization and live publication, before persistence."""
+    authorization_ids = [uuid4(), uuid4()] if outcome == "authorization_wait" else []
+    result = ExecutionResult(
+        prompt="", result="done", success=outcome == "success",
+        schema_version="galaris.execution-result/v2" if authorization_ids else "galaris.execution-result/v1",
+        disposition="waiting_for_authorization" if authorization_ids else "completed",
+        authorization_requests=authorization_ids,
+    )
     boundary.driver.steps = (
         AgentEvent.from_message(AIMessage(type="text", content="progress")),
-        AgentEvent.from_result(ExecutionResult(prompt="", result="done", success=success)),
+        AgentEvent.from_result(result),
     )
-    events = []
-    async for event in facade.stream(boundary.request):
-        if event.kind == "result":
-            assert boundary.driver.closed
-        events.append(event)
-    assert [event.kind for event in events] == ["message", "result"]
-    assert events[-1].result.success is success
+    if entrypoint == "run":
+        terminal_result = await facade.run(boundary.request)
+    else:
+        events = []
+        async for event in facade.stream(boundary.request):
+            if event.kind == "result":
+                assert boundary.driver.closed
+            events.append(event)
+        assert [event.kind for event in events] == ["message", "result"]
+        terminal_result = events[-1].result
+    assert boundary.driver.closed
+    assert terminal_result.success is (outcome == "success")
+    assert terminal_result.authorization_requests == authorization_ids
+    assert (terminal_result.failure is not None) is (outcome == "failure")
+    assert ExecutionResult.model_validate(terminal_result.model_dump(mode="json")) == terminal_result
+    assert [call.args[0].kind for call in boundary.live.await_args_list] == ["started", "message", "result"]
+    assert boundary.live.await_args.args[0].result == terminal_result
+    assert boundary.semantic.await_args.kwargs["kind"] == (
+        "run.waiting_for_authorization" if authorization_ids else
+        "run.completed" if outcome == "success" else "run.failed"
+    )
     assert boundary.outcome.await_count == 1
 
 
@@ -235,9 +269,15 @@ async def test_taskless_capability_is_available_to_any_driver(boundary, monkeypa
 
 
 @pytest.mark.asyncio
-async def test_mutated_terminal_result_is_revalidated(boundary):
+@pytest.mark.parametrize("invalid", [
+    {"success": "not-a-boolean"},
+    {"disposition": "waiting_for_authorization", "success": False, "authorization_requests": [uuid4()]},
+    {"disposition": "waiting_for_authorization", "schema_version": "galaris.execution-result/v2", "success": False},
+    {"disposition": "waiting_for_authorization", "schema_version": "galaris.execution-result/v2", "authorization_requests": [uuid4()]},
+])
+async def test_mutated_terminal_result_is_revalidated(boundary, invalid):
     event = terminal()
-    event.result.success = "not-a-boolean"
+    event.result = event.result.model_copy(update=invalid)
     boundary.driver.steps = (event,)
     with pytest.raises(ValueError):
         await facade.run(boundary.request)

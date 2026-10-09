@@ -559,6 +559,7 @@ async def test_realtime_native_effect_waits_for_the_same_human_agreement(action)
 @pytest.mark.asyncio
 @pytest.mark.parametrize("approved", [True, False])
 async def test_pydantic_deferred_call_resumes_the_same_operation_without_a_new_model_decision(action, approved):
+    """Pending human approval stops inference, including a premature runtime resume."""
     from fastmcp import FastMCP
     from pydantic_ai import Agent as PydanticAgent, DeferredToolRequests
     from pydantic_ai.messages import ModelResponse, TextPart, ToolCallPart, ToolReturnPart
@@ -568,6 +569,7 @@ async def test_pydantic_deferred_call_resumes_the_same_operation_without_a_new_m
     from app.agent import AgentSnapshot
     from app.harness.checkpoint import HarnessRunCheckpoint, wrap_toolsets
     from app.harness.mcp_toolset import ExecutionEvidenceClient
+    from app.harness.runtime import Agent as HarnessAgent
     from app.harness.tests.test_checkpoint import _request
     from app.tools.authorization import AUTHORIZATION_META_KEY
     from app.tools.contracts import current_tool_execution
@@ -576,9 +578,12 @@ async def test_pydantic_deferred_call_resumes_the_same_operation_without_a_new_m
     server = FastMCP("synthetic-deferred-effect")
     server.add_middleware(ExecutionEvidenceMiddleware({"synthetic_write"}))
     effects = []
+    dispatch_attempts = []
+    model_calls = 0
 
     @server.tool()
     async def synthetic_write(content: str) -> ToolResult:
+        dispatch_attempts.append(content)
         operation = current_tool_execution()
         assert operation is not None
         try:
@@ -591,6 +596,8 @@ async def test_pydantic_deferred_call_resumes_the_same_operation_without_a_new_m
         return ToolResult(content="written")
 
     def model(messages, _info):
+        nonlocal model_calls
+        model_calls += 1
         returns = [part for message in messages for part in message.parts if isinstance(part, ToolReturnPart)]
         if not returns:
             return ModelResponse(parts=[ToolCallPart("synthetic_write", {"content": "approved bytes"}, tool_call_id="synthetic-call")])
@@ -606,10 +613,25 @@ async def test_pydantic_deferred_call_resumes_the_same_operation_without_a_new_m
     result = await agent.run("Write the synthetic content")
     assert isinstance(result.output, DeferredToolRequests)
     assert effects == []
+    assert model_calls == 1
+    assert dispatch_attempts == ["approved bytes"]
     await journal.interrupted(result.all_messages())
     snapshot = save.await_args.args[0]
     identifier = UUID(str(snapshot.data["effects"][0]["authorization_request_id"]))
+    # A premature scheduler wake must stop before consulting the model or MCP again.
+    waiting = HarnessRunCheckpoint(replace(request, resume_checkpoint=snapshot))
+    from types import SimpleNamespace
+    runtime = HarnessAgent(SimpleNamespace(), checkpoint=waiting)
+    runtime._agent = agent
+    assert [message async for message in runtime.run("Continue the work")] == []
+    assert runtime.authorization_requests == [identifier]
+    assert runtime.error == ""
+    assert effects == []
+    assert model_calls == 1
+    assert dispatch_attempts == ["approved bytes"]
     async with get_db_session() as db:
+        assert list(await db.scalars(select(ActionAuthorization.id).where(
+            ActionAuthorization.agent_id == action.agent_id))) == [identifier]
         row = await db.get(ActionAuthorization, identifier)
         assert await answer_action(identifier, user_id=row.approver_user_id, approved=approved)
     resumed = HarnessRunCheckpoint(replace(request, resume_checkpoint=snapshot))
@@ -622,6 +644,8 @@ async def test_pydantic_deferred_call_resumes_the_same_operation_without_a_new_m
     assert final.output == "The action has been resolved"
     assert effects == (["approved bytes"] if approved else [])
     assert len(resumed.effects) == 1
+    assert model_calls == 2
+    assert dispatch_attempts == ["approved bytes"] * (2 if approved else 1)
 
 
 @pytest.mark.asyncio

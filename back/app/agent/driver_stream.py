@@ -126,7 +126,13 @@ async def validated_driver_stream(
                 raise HarnessProtocolError(f"Driver {spec.code!r} emitted an event after its terminal result.")
             # Revalidate nested payloads even when a runtime mutated an existing model.
             event = AgentEvent.model_validate(driver_payload(raw))
-            if event.result is not None and not event.result.success and event.result.failure is None:
+            # An authorization wait suspends execution; it is not a terminal failure.
+            if (
+                event.result is not None
+                and event.result.disposition == "completed"
+                and not event.result.success
+                and event.result.failure is None
+            ):
                 event.result.failure = classify_execution_error(RuntimeError("The Harness reported a failed run."))
             limit = policy.max_result_bytes if event.kind == "result" else policy.max_message_bytes
             account(event.model_dump(mode="json"), limit, source=event.kind, stream_event=True)
