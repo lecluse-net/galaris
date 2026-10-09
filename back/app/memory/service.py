@@ -314,7 +314,7 @@ def _memory_sort_expression(sort_by: MemorySortField) -> ColumnElement[Any]:
     raise ValueError(f"Unsupported memory sort field: {sort_by}")
 
 
-def _graph_item_filters(
+def graph_item_filters(
     request: MemoryGraphRootsRequest | MemoryGraphExpandRequest,
     *,
     now: datetime,
@@ -522,7 +522,7 @@ async def _graph_relation_counts(
     if not node_ids:
         return {}
     accessible_items = (
-        select(MemoryItem.id.label("id")).where(*_graph_item_filters(request, now=now)).subquery()
+        select(MemoryItem.id.label("id")).where(*graph_item_filters(request, now=now)).subquery()
     )
     neighbor_pairs = union_all(
         select(
@@ -3239,7 +3239,7 @@ async def list_graph_roots(request: MemoryGraphRootsRequest) -> MemoryGraphPage:
 
     db = get_db()
     now = datetime.now(timezone.utc)
-    filters = _graph_item_filters(request, now=now)
+    filters = graph_item_filters(request, now=now)
     query = select(MemoryItem).options(_graph_item_options()).where(*filters)
     if request.cursor is not None:
         query = query.where(
@@ -3270,6 +3270,10 @@ async def list_graph_roots(request: MemoryGraphRootsRequest) -> MemoryGraphPage:
         known_ids = list(known_result.all())
 
     visible_ids = list(dict.fromkeys([*root_ids, *known_ids]))
+    # Resolve endpoints with the same readability and browse filters, without
+    # transmitting an ever-growing UUID list. Future pages return their edges
+    # again; clients retain only edges whose endpoints are already loaded.
+    visible_query = select(MemoryItem.id).where(*filters)
     links: list[MemoryLink] = []
     edges_truncated = False
     if root_ids and visible_ids:
@@ -3279,11 +3283,11 @@ async def list_graph_roots(request: MemoryGraphRootsRequest) -> MemoryGraphPage:
                 or_(
                     and_(
                         MemoryLink.source_item_id.in_(root_ids),
-                        MemoryLink.target_item_id.in_(visible_ids),
+                        MemoryLink.target_item_id.in_(visible_query if request.include_matching_roots else visible_ids),
                     ),
                     and_(
                         MemoryLink.target_item_id.in_(root_ids),
-                        MemoryLink.source_item_id.in_(visible_ids),
+                        MemoryLink.source_item_id.in_(visible_query if request.include_matching_roots else visible_ids),
                     ),
                 )
             )
@@ -3380,7 +3384,7 @@ async def expand_graph_node(request: MemoryGraphExpandRequest) -> MemoryGraphPag
 
     db = get_db()
     now = datetime.now(timezone.utc)
-    filters = _graph_item_filters(request, now=now)
+    filters = graph_item_filters(request, now=now)
     focus_id = await db.scalar(
         select(MemoryItem.id).where(
             MemoryItem.id == request.item_id,

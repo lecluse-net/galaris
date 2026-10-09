@@ -820,6 +820,7 @@ def _empty_memory_ids() -> list[UUID]:
 
 
 class MemoryGraphRootsRequest(BaseModel):
+    include_saved_positions: bool = False
     """Bounded recent roots for progressive graph exploration."""
 
     agent_id: int = Field(gt=0)
@@ -829,6 +830,7 @@ class MemoryGraphRootsRequest(BaseModel):
     limit: int = Field(default=60, ge=1, le=500)
     edge_limit: int = Field(default=300, ge=1, le=2500)
     cursor: MemoryGraphCursor | None = None
+    include_matching_roots: bool = False
     known_item_ids: list[UUID] = Field(
         default_factory=_empty_memory_ids,
         max_length=3_000,
@@ -890,6 +892,7 @@ def _empty_graph_edges() -> list[MemoryGraphEdge]:
 
 
 class MemoryGraphPage(BaseModel):
+    positions: dict[str, tuple[float, float]] = Field(default_factory=dict)
     nodes: list[MemoryGraphNode] = Field(default_factory=_empty_graph_nodes)
     edges: list[MemoryGraphEdge] = Field(default_factory=_empty_graph_edges)
     next_cursor: MemoryGraphCursor | None = None

@@ -481,8 +481,9 @@ Les nouveaux nœuds apparaissent progressivement sur place ; cet effet est désa
 sur les vues denses et lorsque la réduction des animations est demandée.
 En vue éloignée, les liens de détail et certains titres s'effacent ; zoomez pour les retrouver. Les nœuds partagés restent
 visibles. Les titres sont limités pour éviter les superpositions et se retrouvent au survol
-ou à la sélection. La fenêtre reste limitée à 3 000 nœuds ; affinez les filtres pour explorer
-d'autres éléments. Le chargement par zone reste prévu.
+ou à la sélection. Toutes les pages correspondant aux filtres sont chargées, sans plafond
+global de nœuds ; les branches exclusives sont repliées dès l'ouverture. Les grandes cartes
+placent les éléments près de leurs ancres avant stabilisation. Le chargement par zone reste prévu.
 
 Un document manipulé avec le même agent reste candidat au rappel même après de nombreux
 échanges ordinaires. L'agent retrouve sa référence, son titre et sa révision actuels, sous

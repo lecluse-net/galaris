@@ -84,8 +84,18 @@ Au-delà de 600 items chargés, le squelette utilise le placement borné Barnes�
 60 à 180 itérations, puis des positions radiales pour les feuilles. Les positions survivantes
 sont fixées et les feuilles masquées réservent leur emprise par un symbole absent.
 Le zoom ouvre seulement les ancres présentes dans le viewport ; repli/dépliage, filtres et
-thème ne recalculent pas ce placement. Les plafonds existants restent en place.
+thème ne recalculent pas ce placement.
 Un changement de périmètre ou une invalidation des accès invalide les réponses anciennes.
+
+Révision du 2026-10-09 : les plafonds client de 3 000 nœuds et 8 000 liens sont retirés.
+Toutes les pages correspondant aux filtres sont chargées ; l'exclusivité et les seuils de repli
+restent inchangés. L'option HTTP additive `include_matching_roots` retrouve les extrémités
+admissibles par les mêmes filtres et ACL, sans transmettre une liste croissante d'identifiants.
+Les pages et les réponses de liens restent bornées, avec signalement de la troncature serveur.
+Au-delà de 600 régions, le placement initial utilise les communautés accessibles depuis les
+hubs avant le calcul Barnes–Hut borné : la spirale indépendante des liens ne pouvait pas
+rejoindre les communautés dans les 60 itérations des grandes cartes. Les positions déjà
+atteintes et le moteur des petits graphes sont conservés.
 
 À un zoom inférieur ou égal à 0,55, la vue d'ensemble réduit les symboles, retire les ombres,
 limite les titres aux hubs et conserve les liens entre nœuds affichés avec un trait de
@@ -102,7 +112,7 @@ et les ensembles de branches éliminent les références aux items disparus.
 
 ## Portée et limites
 
-Cette projection est temporaire et limitée aux 3 000 nœuds et 8 000 liens déjà chargés.
+Cette projection est temporaire et porte sur les items correspondant aux filtres chargés par pages.
 Les pages, les contenus, les liens et les ACL canoniques sont conservés sans nouveau schéma.
 Elle ne réduit pas le nombre de pages HTTP et réserve encore une position ECharts par item.
 Le réseau, le calcul et la mémoire ne deviennent donc pas indépendants du volume chargé.

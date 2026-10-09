@@ -49,6 +49,7 @@ export default {
       },
       graph: {
         title: 'Graphe de mémoire',
+        stateError: 'Les positions ou les choix d’affichage n’ont pas pu être restaurés ou enregistrés.',
         hint: 'Les branches exclusives sont regroupées avec un compteur. Zoomez ou sélectionnez le groupe pour voir leurs éléments ; sur mobile, pincez pour zoomer.',
         nodeCount: '{count} nœud(s)',
         groupedCount: '{count} nœud(s) regroupé(s)',
@@ -516,6 +517,7 @@ export default {
       },
       graph: {
         title: 'Memory graph',
+        stateError: 'Positions or display preferences could not be restored or saved.',
         hint: 'Exclusive branches are grouped with a count. Zoom in or select a group to see their items; on mobile, pinch to zoom.',
         nodeCount: '{count} node(s)',
         groupedCount: '{count} grouped node(s)',
@@ -978,6 +980,7 @@ export default {
         roles: { memory: '记忆', document: '文档', attachment: '附件', folder: '文件夹', file: '文件', directory: '目录', topic: '主题', contact: '联系人', conversation: '对话' }, linkLegend: '结构关系', topicMemoryLink: '主题 ↔ 记忆/文档',
         contactMemoryLink: '联系人 ↔ 记忆', topicContactLink: '联系人 ↔ 主题', suggestedLink: '建议', empty: '没有记忆符合当前筛选条件。', conversationNode: '结构化对话',
         lastActivity: '最近访问或更新', neighbors: '图谱关系', selectHint: '选择节点以查看其信息和关系。', loadOlder: '加载更早的记忆',
+        stateError: '无法恢复或保存节点位置或显示偏好。',
         liveRefresh: '自动刷新', liveRefreshHint: '此标签页可见时每 30 秒检查一次新记忆。',
       },
       new: '新建记忆', search: '搜索标题、关键词和内容', topicFilter: '主题档案', contactFilter: '对话者', kind: '节点类型', selectAgent: '选择智能体以查询其记忆。',

@@ -46,6 +46,29 @@ for (const width of [1440, 390]) test(`exclusive memory branches remain accessib
   await page.locator('.memory-graph').screenshot({ path: testInfo.outputPath('graph-detail.png') })
   await page.getByRole('button', { name: 'Ajuster le graphe à la fenêtre', exact: true }).click()
   await expect(grouped).toBeVisible()
+  const context = { agent_id: fixture.agent_id, query: '' }
+  const savedView = async () => {
+    const response = await request.post('/api/memory/graph/state/read', { headers, data: context })
+    expect(response.ok(), await response.text()).toBeTruthy()
+    return response.json()
+  }
+  const savedPositions = async () => {
+    const response = await request.post('/api/memory/graph/roots', { headers,
+      data: { ...context, include_saved_positions: true, limit: 500 } })
+    expect(response.ok(), await response.text()).toBeTruthy()
+    return (await response.json()).positions
+  }
+  await page.getByRole('button', { name: 'Masquer les nœuds « Contact » et leurs relations', exact: true }).click()
+  await expect.poll(async () => (await savedView()).preferences.hidden_entity_kinds).toEqual(['contact'])
+  await expect.poll(async () => Object.keys(await savedPositions()).length).toBeGreaterThanOrEqual(items.length)
+  const positions = await savedPositions()
+  expect((await savedView()).preferences).toMatchObject({ expanded_branches: [], camera: { zoom: 1 } })
+  await page.goto(`/memory?agent=${fixture.agent_id}`)
+  await page.getByRole('tab', { name: 'Graphe', exact: true }).click()
+  await expect(grouped).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Afficher les nœuds « Contact » et leurs relations', exact: true })).toBeVisible()
+  expect(await savedPositions()).toEqual(positions)
+  await page.getByRole('button', { name: 'Afficher les nœuds « Contact » et leurs relations', exact: true }).click()
   await page.getByRole('tab', { name: 'Liste', exact: true }).click()
   await page.getByText(items[1].title, { exact: true }).first().click()
   await expect(page.getByRole('dialog').locator('.ck-editor__editable')).toContainText('Synthetic preserved content 1')

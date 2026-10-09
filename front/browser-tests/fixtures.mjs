@@ -19,6 +19,15 @@ export const test = base.extend({
     await page.route('**/api/memory/documents/icons/resolve', route => route.fulfill({ json: {} }))
     // Foreground Dream actions require explicit eligible-source fixtures.
     await page.route('**/api/dream/memory/*/actions?*', route => route.fulfill({ json: { actions: [] } }))
+    // Graph persistence is empty unless a dedicated scenario supplies saved state.
+    await page.route('**/api/memory/graph/state/read', route => route.fulfill({ json: {
+      format_version: 1, revision: 0, preferences: { hidden_entity_kinds: [], expanded_branches: [], camera: null }, positions: {},
+    } }))
+    await page.route('**/api/memory/graph/state', route => {
+      const body = route.request().postDataJSON()
+      return route.fulfill({ json: { format_version: 1, revision: body.expected_revision + 1,
+        preferences: { hidden_entity_kinds: [], expanded_branches: [], camera: null, ...body.preferences }, positions: body.positions } })
+    })
     // Optional document captures are unavailable unless the scenario supplies a rendered image.
     await page.route('**/api/memory/documents/*/thumbnail*', route => route.fulfill({ status: 204 }))
     await use(page)

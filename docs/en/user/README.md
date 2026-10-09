@@ -363,8 +363,9 @@ disable this effect.
 Clicking a group frames its anchor. Zooming out hides detailed links and some titles; zoom
 back in to restore them.
 Shared nodes remain visible. Titles are limited to avoid overlaps and remain available on
-hover or selection. The window is still limited to 3,000 nodes; refine filters to explore
-other items. Loading by visible region remains planned.
+hover or selection. All pages matching the filters load without a global node cap;
+exclusive branches are folded on opening. Large maps place items near their anchors before
+settling. Loading by visible region remains planned.
 
 A document used with the same Agent remains a recall candidate after many ordinary exchanges.
 The Agent recovers its reference, current title and revision, subject to current access rights.

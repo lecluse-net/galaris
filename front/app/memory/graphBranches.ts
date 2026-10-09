@@ -67,6 +67,11 @@ export class GraphBranchLayout {
       if (!center) continue
       let slots = this.slots.get(branch.anchorId)
       if (!slots) { slots = new Map(); this.slots.set(branch.anchorId, slots) }
+      // Recover reserved spiral slots when coordinates came from a previous visit.
+      for (const id of branch.memberIds) if (!slots.has(id)) {
+        const point = this.positions.get(id)
+        if (point) slots.set(id, Math.max(0, Math.round(((Math.hypot(point.x - center.x, point.y - center.y) - 120) / 28) ** 2)))
+      }
       const occupiedLeaves = new Set(slots.values())
       let nextLeaf = 0
       for (const id of branch.memberIds) {

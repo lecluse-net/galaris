@@ -364,6 +364,7 @@ export interface MemoryGraphRelation {
 }
 
 export interface MemoryGraphPage {
+  positions?: Record<string, [number, number]>
   nodes: MemoryGraphNode[]
   edges: MemoryGraphEdge[]
   next_cursor: MemoryGraphCursor | null

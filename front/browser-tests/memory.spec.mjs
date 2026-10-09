@@ -551,7 +551,7 @@ for (const width of [1440, 390]) test(`root directory titles stay identifiable t
   }
 })
 
-for (const [count, interconnected] of [[500, false], [3000, false], [3000, true]]) test(`a ${count}-node ${interconnected ? 'interconnected ' : ''}graph becomes usable and keeps every paginated node`, async ({ page }, testInfo) => {
+for (const [count, interconnected] of [[500, false], [3000, false], [3000, true], [10001, false], [5000, true]]) test(`a ${count}-node ${interconnected ? 'interconnected ' : ''}graph becomes usable and keeps every paginated node`, async ({ page }, testInfo) => {
   test.setTimeout(60_000)
   const timestamp = new Date().toISOString()
   const nodes = Array.from({ length: count }, (_, index) => {
@@ -573,7 +573,8 @@ for (const [count, interconnected] of [[500, false], [3000, false], [3000, true]
     const offset = body.cursor ? Number(body.cursor.id) : 0
     const end = Math.min(count, offset + body.limit)
     const pageIds = new Set(nodes.slice(offset, end).map(node => node.id))
-    const knownIds = new Set([...body.known_item_ids, ...pageIds])
+    const knownIds = new Set(body.include_matching_roots
+      ? nodes.map(node => node.id) : [...body.known_item_ids, ...pageIds])
     await route.fulfill({ json: { nodes: nodes.slice(offset, end),
       edges: interconnected ? connections.filter(edge => knownIds.has(edge.source_item_id) && knownIds.has(edge.target_item_id)
         && (pageIds.has(edge.source_item_id) || pageIds.has(edge.target_item_id)))
@@ -590,6 +591,12 @@ for (const [count, interconnected] of [[500, false], [3000, false], [3000, true]
   await expect(page.locator('.memory-graph__chart canvas')).toBeVisible()
   await expect(page.getByText(`${count} node(s)`, { exact: true })).toBeVisible()
   const represented = await graphSnapshot(page)
+  if (!interconnected) {
+    await expect(page.getByText(`${count - 1} grouped node(s)`, { exact: true })).toBeVisible()
+    expect(represented.nodes.filter(node => node.symbol !== 'none')).toHaveLength(1)
+    if (count > 3000) await page.locator('.memory-graph').screenshot({ path: testInfo.outputPath('graph-collapsed.png') })
+  }
+  expect(requests).toHaveLength(Math.ceil(count / 500))
   await page.getByRole('button', { name: 'Zoom in', exact: true }).click()
   await testInfo.attach('graph-loading.json', { body: JSON.stringify({ nodes: count,
     milliseconds: Date.now() - start, requests: requests.length,
@@ -614,10 +621,11 @@ for (const [count, interconnected] of [[500, false], [3000, false], [3000, true]
   for (let i = 0; i < 2; i++) await page.getByRole('button', { name: 'Zoom in', exact: true }).click()
   await expect(page.getByText(`${count - 1} grouped node(s)`, { exact: true })).toHaveCount(0)
   const detailed = await zoomGraphToMaximum(page)
+  expect(requests).toHaveLength(Math.ceil(count / 500))
   expect(detailed.nodes.filter(node => node.symbol !== 'none')).toHaveLength(count)
   expect(detailed.titles.sort()).toEqual(detailed.nodes.filter(node => node.symbol !== 'none').map(node => node.id).sort())
   if (count > 600) expect(detailed.nodes.map(({ id, x, y }) => ({ id, x, y }))).toEqual(represented.nodes.map(({ id, x, y }) => ({ id, x, y })))
-  else expect(detailed.layout).toBe('force')
+  else expect(detailed.nodes.every(node => Number.isFinite(node.x) && Number.isFinite(node.y))).toBe(true)
   await testInfo.attach('graph-expansion.json', { body: JSON.stringify({ nodes: count,
     milliseconds: Date.now() - expansionStart, requests: requests.length }), contentType: 'application/json' })
   await page.locator('.memory-graph').screenshot({ path: testInfo.outputPath('graph-visible-titles.png') })
@@ -628,10 +636,11 @@ async function zoomGraphToMaximum(page) {
   for (let step = 0; step < 20; step++) {
     await page.getByRole('button', { name: 'Zoom in', exact: true }).click()
     const current = await graphSnapshot(page)
-    if (current.zoom === previous.zoom) return current
+    // ECharts can oscillate by machine precision around its upper scale limit.
+    if (current.zoom >= 4 - 1e-6) return current
     previous = current
   }
-  throw new Error('The graph zoom limit was not reached')
+  throw new Error(`The graph zoom limit was not reached: ${previous.zoom}`)
 }
 
 async function graphSnapshot(page) {
@@ -658,6 +667,59 @@ async function graphSnapshot(page) {
       points: nodes.map(node => ({ id: node.id, point: chart.convertToPixel({ seriesId: series.id }, [node.x, node.y]) })) }
   })
 }
+
+for (const width of [1440, 390]) test(`graph restores personal positions and hidden natures before placing newcomers at ${width}px`, async ({ page }, testInfo) => {
+  await page.setViewportSize({ width, height: 1000 })
+  const timestamp = '2026-09-01T12:00:00Z'
+  const makeNode = (id, kind) => ({ id, title: `Synthetic ${id}`, node_kind: 'memory', entity_kind: kind,
+    owner_agent_id: 7, visibility: 'private', source_managed: false, access_count: 0,
+    last_accessed_at: null, created_at: timestamp, updated_at: timestamp, activity_at: timestamp,
+    has_relations: false, relation_count: 0 })
+  const nodes = [makeNode('saved-memory', 'memory'), makeNode('saved-contact', 'contact')]
+  const stored = { format_version: 1, revision: 0, preferences: { hidden_entity_kinds: [], expanded_branches: [], camera: null }, positions: {} }
+  let failSave = false
+  await page.route('**/api/memory/graph/state/read', route => route.fulfill({ json: stored }))
+  await page.route('**/api/memory/graph/state', route => {
+    if (failSave) return route.fulfill({ status: 503, json: { detail: 'Synthetic save failure' } })
+    const patch = route.request().postDataJSON()
+    expect(patch.expected_revision).toBe(stored.revision)
+    Object.assign(stored.positions, patch.positions)
+    Object.assign(stored.preferences, patch.preferences)
+    stored.revision++
+    return route.fulfill({ json: { ...stored, positions: patch.positions } })
+  })
+  await page.route('**/api/memory/graph/roots', route => route.fulfill({ json: {
+    nodes, edges: [], has_more: false, positions: Object.fromEntries(Object.entries(stored.positions).map(([key, point]) => [key, [point.x, point.y]])),
+  } }))
+  const props = { agentId: 7, query: '', topicItemId: null, contactItemId: null }
+  await mount(page, 'app/memory/components/MemoryGraph.vue', { props })
+  await expect(page.getByText('2 node(s)', { exact: true })).toBeVisible()
+  await page.getByRole('button', { name: 'Hide “Contact” nodes and their relationships', exact: true }).click()
+  await expect.poll(() => stored.preferences.hidden_entity_kinds).toEqual(['contact'])
+  await expect.poll(() => Object.keys(stored.positions).sort()).toEqual(['saved-contact', 'saved-memory'])
+  const positions = structuredClone(stored.positions)
+  await page.evaluate(() => window.testApp.unmount())
+  nodes.push(makeNode('new-contact', 'contact'), makeNode('new-memory', 'memory'))
+  await mount(page, 'app/memory/components/MemoryGraph.vue', { props })
+  await expect(page.getByRole('button', { name: 'Show “Contact” nodes and their relationships', exact: true })).toBeVisible()
+  await expect(page.getByText('2 node(s)', { exact: true })).toBeVisible()
+  const restored = await graphSnapshot(page)
+  for (const [key, point] of Object.entries(positions)) {
+    expect(restored.nodes.find(node => node.id === key)).toMatchObject({ x: point.x, y: point.y })
+  }
+  expect(restored.nodes.filter(node => node.id.endsWith('contact')).every(node => node.symbol === 'none')).toBe(true)
+  failSave = true
+  await page.getByRole('button', { name: 'Show “Contact” nodes and their relationships', exact: true }).click()
+  await expect(page.getByText('4 node(s)', { exact: true })).toBeVisible()
+  await expect(page.getByText('Positions or display preferences could not be restored or saved.', { exact: true })).toBeVisible()
+  const shown = await graphSnapshot(page)
+  for (const [key, point] of Object.entries(positions)) expect(shown.nodes.find(node => node.id === key)).toMatchObject({ x: point.x, y: point.y })
+  failSave = false
+  await page.getByRole('button', { name: 'Retry', exact: true }).click()
+  await expect.poll(() => stored.preferences.hidden_entity_kinds).toEqual([])
+  await expect(page.getByText('Positions or display preferences could not be restored or saved.', { exact: true })).toHaveCount(0)
+  await page.screenshot({ path: testInfo.outputPath('graph-restored-personal-view.png'), animations: 'disabled' })
+})
 
 async function settledGraph(page, timeout = 20_000) {
   let previous = await graphSnapshot(page)
@@ -765,6 +827,8 @@ for (const width of [1440, 750, 390]) test(`mixed graph keeps linked subjects to
       : edge.target_item_id === node.id ? [edge.source_item_id] : [])).size
     node.has_relations = node.relation_count > 0
   }
+  // These synthetic files have no external preview resource.
+  await jsonRoute(page, '**/api/file-share/items/leaf-*/resources?*', [])
     for (const node of nodes.filter(node => node.node_kind === 'document')) {
       await jsonRoute(page, `**/api/memory/documents/${node.id}?*`, { item: { ...document, id: node.id, title: node.title }, agent_id: 7 })
   }
@@ -902,7 +966,11 @@ for (const width of [1440, 390]) test(`exclusive branches reveal on zoom while k
   for (let i = 0; i < 2; i++) await page.getByRole('button', { name: 'Zoom out', exact: true }).click()
   await expect(page.getByText('30 grouped node(s)', { exact: true })).toBeVisible()
   const back = await graphSnapshot(page)
-  expect(back.layout).toBe('force')
+  // Reclosing a branch keeps its map coordinates, independently of renderer mode.
+  for (const node of back.nodes) {
+    const previous = near.nodes.find(candidate => candidate.id === node.id)
+    expect({ x: node.x, y: node.y }).toEqual({ x: previous.x, y: previous.y })
+  }
   expect(back.nodes.find(node => node.id === 'shared').symbol).not.toBe('none')
   await page.getByRole('button', { name: 'Fit graph to viewport', exact: true }).click()
   await settledGraph(page)

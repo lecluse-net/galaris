@@ -7,6 +7,20 @@ const edge = (source, target, suggested = false) => ({ source_item_id: source, t
 const star = () => ({ nodes: [node('anchor', 30), ...Array.from({ length: 30 }, (_, i) => node(`leaf-${i}`))],
   edges: Array.from({ length: 30 }, (_, i) => edge('anchor', `leaf-${i}`)) })
 
+test('restored hidden leaf coordinates reserve their slots for later additions', () => {
+  const { nodes, edges } = star()
+  const first = new GraphBranchLayout()
+  first.update(nodes, graphBranches(nodes, edges), edges)
+  const restored = new GraphBranchLayout()
+  for (const [key, point] of first.positions) restored.positions.set(key, { ...point })
+  nodes.push(node('new-leaf'))
+  edges.push(edge('anchor', 'new-leaf'))
+  restored.update(nodes, graphBranches(nodes, edges), edges)
+  for (const [key, point] of first.positions) assert.deepEqual(restored.positions.get(key), point)
+  const added = restored.positions.get('new-leaf')
+  assert([...first.positions.values()].every(point => point.x !== added.x || point.y !== added.y))
+})
+
 test('only confirmed leaves with a globally unique admissible neighbor fold; duplicate relations count once', () => {
   const { nodes, edges } = star()
   nodes[1].relation_count = 2 // Another neighbor exists beyond the loaded page.
@@ -29,13 +43,13 @@ test('cycles and isolated nodes remain individual; filtered small branches remai
     [edge('a', 'b'), edge('b', 'c'), edge('c', 'a')]), [])
 })
 
-test('linked communities determine the map and stay closer than unrelated communities', () => {
-  const nodes = Array.from({ length: 48 }, (_, i) => node(`item-${i}`, 2))
+for (const count of [48, 4800]) test(`linked communities of ${count} items determine the map and stay closer than unrelated communities`, () => {
+  const nodes = Array.from({ length: count }, (_, i) => node(`item-${i}`, 2))
   const edges = []
   for (let group = 0; group < 4; group++) {
-    nodes.push(node(`hub-${group}`, 24, 'topic'))
-    for (let i = group; i < 48; i += 4) {
-      edges.push(edge(`hub-${group}`, `item-${i}`), edge(`item-${i}`, `item-${(i + 4) % 48}`))
+    nodes.push(node(`hub-${group}`, count / 4, 'topic'))
+    for (let i = group; i < count; i += 4) {
+      edges.push(edge(`hub-${group}`, `item-${i}`), edge(`item-${i}`, `item-${(i + 4) % count}`))
     }
   }
   edges.push(edge('hub-0', 'hub-1'), edge('hub-1', 'hub-2'), edge('hub-2', 'hub-3'))
@@ -46,13 +60,16 @@ test('linked communities determine the map and stay closer than unrelated commun
   assert.notDeepEqual(layout.positions, disconnected.positions, 'Relations must influence the layout')
   const distance = (left, right) => Math.hypot(left.x - right.x, left.y - right.y)
   let local = 0, remote = 0
-  for (let i = 0; i < 48; i++) {
+  for (let i = 0; i < count; i++) {
     const point = layout.positions.get(`item-${i}`)
     local += distance(point, layout.positions.get(`hub-${i % 4}`))
     remote += distance(point, layout.positions.get(`hub-${(i + 2) % 4}`))
   }
   assert(local < remote * 0.6, `Linked items should remain near their community (${local} / ${remote})`)
   for (const point of layout.positions.values()) assert(Number.isFinite(point.x) && Number.isFinite(point.y))
+  const previous = new Map(layout.positions)
+  layout.update(nodes, [], edges)
+  assert.deepEqual(layout.positions, previous, 'Presentation updates must not reposition communities')
 })
 
 test('opening, filtering, adding neighbors and removing items preserve the positions of surviving regions', () => {

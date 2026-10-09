@@ -5,6 +5,7 @@ export interface MemoryDreamActionResult { receipt_id: string; result_count: num
 import { attachmentReference, browserResourceKind } from '@/core/util'
 import { thumbnailReady } from '../thumbnailEvents'
 import type { AppDatasetRequest, AppDatasetResult, AppGrant, AppPermissions } from '../documentApps'
+import type { GraphContext, GraphState, GraphStatePatch } from '../graphState'
 import type {
   DocumentSharing, DocumentSharingUpdate,
   DocumentAttachment,
@@ -43,6 +44,12 @@ import type {
 } from '../types'
 
 export const memoryService = {
+  async readGraphState(context: GraphContext): Promise<GraphState> {
+    return (await api.post<GraphState>('/memory/graph/state/read', context)).data
+  },
+  async saveGraphState(context: GraphContext, patch: GraphStatePatch): Promise<GraphState> {
+    return (await api.post<GraphState>('/memory/graph/state', { ...context, ...patch })).data
+  },
   async dreamActions(id: string, agentId: number): Promise<MemoryDreamAction[]> {
     const response = await api.get<{ actions: MemoryDreamAction[] }>(
       `/dream/memory/${encodeURIComponent(id)}/actions`, { params: { agent_id: agentId } },
@@ -506,6 +513,8 @@ export const memoryService = {
     edgeLimit?: number
     cursor?: MemoryGraphCursor | null
     knownItemIds?: string[]
+    includeMatchingRoots?: boolean
+    includeSavedPositions?: boolean
   }): Promise<MemoryGraphPage> {
     const response = await api.post<MemoryGraphPage>('/memory/graph/roots', {
       agent_id: params.agentId,
@@ -516,6 +525,8 @@ export const memoryService = {
       edge_limit: params.edgeLimit ?? 300,
       cursor: params.cursor ?? null,
       known_item_ids: params.knownItemIds ?? [],
+      include_matching_roots: params.includeMatchingRoots ?? false,
+      include_saved_positions: params.includeSavedPositions ?? false,
     })
     return response.data
   },

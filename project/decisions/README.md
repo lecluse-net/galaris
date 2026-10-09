@@ -208,3 +208,4 @@ nouvelle décision plutôt que réécrite silencieusement si le choix change.
 - [0154 — Catalogue privé des ressources rencontrées](0154-file-catalogue-observations.md)
 - [0158 — Preuves lexicales indexées et complémentarité du rappel mémoire](0158-indexed-memory-query-evidence.md)
 - [0159 — URL des nœuds mémoire et source principale](0159-memory-url-associations.md)
+- [0165 — Positions et présentation personnelles du graphe mémoire](0165-personal-memory-graph-state.md)

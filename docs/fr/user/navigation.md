@@ -300,8 +300,8 @@ Les deux onglets placent l'agent et la recherche sur la première ligne, puis le
 et l'interlocuteur juste dessous. Dans **Liste**, la date cible et son bouton d'application
 complètent ces filtres. Les champs se réorganisent sur les petits écrans.
 
-Dans **Graphe**, les souvenirs se chargent sans filtre de période ; la limite de nœuds reste
-appliquée. Sous l'en-tête du graphe, la légende regroupe les types de nœuds, les relations,
+Dans **Graphe**, les souvenirs se chargent sans filtre de période ni plafond global de nœuds.
+Sous l'en-tête du graphe, la légende regroupe les types de nœuds, les relations,
 puis les repères d'ancienneté et les commandes de zoom et de plein écran.
 La taille et l'opacité des nœuds suivent une échelle relative linéaire de dernière activité,
 du plus ancien au plus récent dans le graphe chargé. La légende affiche les deux dates
@@ -376,10 +376,16 @@ une action. Un échec peut être retenté et une modification concurrente préva
 
 Le graphe replie les branches d'au moins huit feuilles exclusives avec un compteur. Zoomez,
 cliquez sur le groupe pour voir les éléments, puis dézoomez
-pour les replier. Les nœuds partagés restent visibles. Jusqu'à 600 items chargés, le placement
-initial se stabilise naturellement, avec un rééquilibrage doux de 0,7 seconde après modification du graphe.
+pour les replier. Les nœuds partagés restent visibles. Jusqu'à 600 items chargés, le premier
+placement est animé. Les positions sont ensuite enregistrées en arrière-plan, y compris
+celles des nœuds masqués ou repliés. À la réouverture, les nœuds connus retrouvent leur
+place et les nouveaux se placent autour des ancres existantes. Chaque utilisateur conserve
+ses propres positions, natures masquées, branches ouvertes et cadrage, pour chaque agent
+et contexte de recherche/Topic/contact. Les nouveaux nœuds d'une nature masquée restent
+masqués. Une erreur de restauration ou de sauvegarde permet de réessayer sans fermer le graphe.
 Le zoom, le dépliage et la fermeture du détail conservent les positions. Le dézoom allège
-aussi les liens et les titres. La fenêtre conserve sa limite de 3 000 nœuds. Le chargement spatial
+aussi les liens et les titres. Les grandes cartes placent les éléments près de leurs ancres
+avant stabilisation, en chargeant toutes les pages correspondant aux filtres. Le chargement spatial
 et les sous-groupes sont les étapes restantes du
 [plan de graphe mémoire à plusieurs niveaux de détail](../../../project/plans/graphe-memoire-multiechelle.md), au statut `partial`.
 

@@ -79,12 +79,11 @@
       {{ t('memory.graph.edgesTruncated') }}
     </q-banner>
 
-    <q-banner
-      v-if="capacityReached"
-      class="memory-graph__banner memory-graph__banner--info bg-blue-1 text-primary"
-    >
-      <template #avatar><q-icon name="account_tree" /></template>
-      {{ t('memory.graph.capacityReached', { count: MAX_VISIBLE_NODES }) }}
+    <q-banner v-if="viewStateError" class="memory-graph__banner memory-graph__banner--warning">
+      {{ t('memory.graph.stateError') }}
+      <template #action>
+        <q-btn flat :label="t('memory.retry')" @click="retryViewState" />
+      </template>
     </q-banner>
 
     <div
@@ -307,6 +306,7 @@ import {
 } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { websocket } from '@/core/websocket'
+import { AUTH_TOKEN_CHANGED_EVENT, sessionGeneration, SupersededSessionError } from '@/core/api'
 import { browserResourceKind, solaire, solaireCss, type BrowserResourceKind, type SolaireColor } from '@/core/util'
 import { useInterval, useQuasar, useTimeout } from 'quasar'
 import { matAudioFile, matDescription, matImage, matVideoFile } from '@quasar/extras/material-icons'
@@ -323,6 +323,7 @@ import { graphBranches, GraphBranchLayout, BRANCH_OPEN_ZOOM, BRANCH_CLOSE_ZOOM }
 import { GraphThumbnails, type GraphThumbnailCandidate } from '../graphThumbnails'
 import { onThumbnailReady } from '../thumbnailEvents'
 import { graphViewportData } from '../graphViewport'
+import { GraphStatePersistence, type GraphPreferences, type GraphContext } from '../graphState'
 import type {
   CatalogueResource,
   MemoryGraphCursor,
@@ -366,8 +367,6 @@ const emit = defineEmits<{
 }>()
 
 const ROOT_PAGE_SIZE = 500
-const MAX_VISIBLE_NODES = 3000
-const MAX_VISIBLE_EDGES = 8000
 const AUTO_REFRESH_INTERVAL = 30_000
 const MIN_ZOOM = 0.2
 const MAX_ZOOM = 4
@@ -407,6 +406,8 @@ const { registerInterval, removeInterval } = useInterval()
 const { registerTimeout: registerMobileDetailTimeout, removeTimeout: removeMobileDetailTimeout } = useTimeout()
 const { registerTimeout: registerLayoutTimeout, removeTimeout: removeLayoutTimeout } = useTimeout()
 const { registerTimeout: registerThumbnailTimeout, removeTimeout: removeThumbnailTimeout } = useTimeout()
+const { registerTimeout: registerSaveTimeout, removeTimeout: removeSaveTimeout } = useTimeout()
+const { registerInterval: registerPositionInterval, removeInterval: removePositionInterval } = useInterval()
 const viewport = useTemplateRef<HTMLDivElement>('viewport')
 const chartElement = useTemplateRef<HTMLDivElement>('chartElement')
 const nodes = shallowRef(new Map<string, MemoryGraphNode>())
@@ -418,9 +419,15 @@ const dynamicLayout = computed(() => nodes.value.size <= 600)
 const overview = ref(false)
 const allTitles = ref(false)
 const hiddenEntityKinds = shallowRef(new Set<MemoryGraphEntityKind>())
+const hasStoredLayout = ref(false)
+const viewStateError = ref<unknown>(null)
+let persistence: GraphStatePersistence | null = null
+let restoredCamera: GraphViewState | null = null
+let previousPositionSample = new Map<string, ScreenPoint>()
+let stablePositionSamples = 0
+let graphSession = sessionGeneration()
 const selectedNodeId = ref<string | null>(null)
 const edgesTruncated = ref(false)
-const capacityReached = ref(false)
 const loading = ref(false)
 const reloading = ref(false)
 const refreshing = ref(false)
@@ -508,8 +515,8 @@ const activityExtent = computed(() => {
     .map(activityTimestamp)
     .filter(Number.isFinite)
   return {
-    newest: timestamps.length ? Math.max(...timestamps) : null,
-    oldest: timestamps.length ? Math.min(...timestamps) : null,
+    newest: timestamps.length ? timestamps.reduce((left, right) => Math.max(left, right)) : null,
+    oldest: timestamps.length ? timestamps.reduce((left, right) => Math.min(left, right)) : null,
   }
 })
 const activityDateFormatter = computed(() => new Intl.DateTimeFormat(locale.value, { dateStyle: 'short' }))
@@ -569,10 +576,13 @@ function renderTypeFilterChange(): void {
 
 
 function toggleEntityKind(kind: MemoryGraphEntityKind): void {
+  freezePositions()
   const next = new Set(hiddenEntityKinds.value)
   if (next.has(kind)) next.delete(kind)
   else next.add(kind)
   hiddenEntityKinds.value = next
+  persistence?.stagePreferences({ hidden_entity_kinds: [...next] })
+  scheduleViewSave()
   renderTypeFilterChange()
 }
 
@@ -726,7 +736,10 @@ function radiusFor(node: MemoryGraphNode): number {
 }
 
 function revealBranch(id: string, anchor?: ScreenPoint): void {
+  freezePositions()
   expandedBranches.value = new Set([...expandedBranches.value, id])
+  persistence?.stagePreferences({ expanded_branches: [...expandedBranches.value] })
+  scheduleViewSave()
   const clicked: unknown = dynamicLayout.value && anchor
     ? chart?.convertFromPixel({ seriesId: GRAPH_SERIES_ID }, [anchor.x, anchor.y]) : null
   const point = Array.isArray(clicked) && typeof clicked[0] === 'number' && typeof clicked[1] === 'number'
@@ -737,9 +750,11 @@ function revealBranch(id: string, anchor?: ScreenPoint): void {
     preserveSelection: true,
     relax: false,
   })
+  stagePresentation()
 }
 
 function onGraphRoam(): void {
+  freezePositions()
   const previousSelection = selectedNodeId.value
   closeInspector(false)
   const view = captureGraphView()
@@ -777,6 +792,7 @@ function onGraphRoam(): void {
     stopGraphLayout()
   }
   scheduleThumbnails()
+  stagePresentation()
 }
 
 function thumbnailKey(node: MemoryGraphNode): string {
@@ -881,10 +897,6 @@ function mergeNodes(incoming: MemoryGraphNode[]): string[] {
       next.set(node.id, { ...existing, ...node })
       continue
     }
-    if (next.size >= MAX_VISIBLE_NODES) {
-      capacityReached.value = true
-      continue
-    }
     next.set(node.id, node)
     addedIds.push(node.id)
   }
@@ -896,16 +908,19 @@ function mergeEdges(incoming: MemoryGraphEdge[]): void {
   const next = new Map(edges.value)
   for (const edge of incoming) {
     if (!nodes.value.has(edge.source_item_id) || !nodes.value.has(edge.target_item_id)) continue
-    if (!next.has(edge.id) && next.size >= MAX_VISIBLE_EDGES) {
-      edgesTruncated.value = true
-      continue
-    }
     next.set(edge.id, edge)
   }
   edges.value = next
 }
 
 function mergeRootPage(page: MemoryGraphPage): void {
+  if (page.positions) {
+    for (const [key, point] of Object.entries(page.positions)) {
+      branchLayout.positions.set(key, { x: point[0], y: point[1] })
+      hasStoredLayout.value = true
+    }
+    persistence?.remember(Object.entries(page.positions).map(([key, point]) => [key, { x: point[0], y: point[1] }]))
+  }
   mergeNodes(page.nodes)
   mergeEdges(page.edges)
   edgesTruncated.value = edgesTruncated.value || page.edges_truncated
@@ -984,10 +999,10 @@ function graphOption(options: {
   const degrees = graphDegrees()
   const loadedBranches = graphBranches([...nodes.value.values()], [...edges.value.values()])
   const anchors = new Set(loadedBranches.map(branch => branch.anchorId))
-  if ([...expandedBranches.value].some(id => !anchors.has(id))) {
+  if (!loading.value && !reloading.value && [...expandedBranches.value].some(id => !anchors.has(id))) {
     expandedBranches.value = new Set([...expandedBranches.value].filter(id => anchors.has(id)))
   }
-  if (!dynamicLayout.value) branchLayout.update([...nodes.value.values()], loadedBranches, [...edges.value.values()])
+  if (!dynamicLayout.value || hasStoredLayout.value) branchLayout.update([...nodes.value.values()], loadedBranches, [...edges.value.values()])
   const hubIds = new Set(
     visibleNodes.value
       .filter(node => isLayoutHub(node, degrees.get(node.id) ?? 0))
@@ -1006,7 +1021,7 @@ function graphOption(options: {
   // Force distances use map units: adapt to the canvas so ordinary windows do not
   // inherit distances tuned for a large fullscreen view.
   const forceScale = Math.min(1, Math.max(0.04, (Math.min(viewportSize.width, viewportSize.height) / 1400) ** 2))
-  const seriesNodes = dynamicLayout.value ? visibleNodes.value : [...nodes.value.values()]
+  const seriesNodes = dynamicLayout.value && !hasStoredLayout.value ? visibleNodes.value : [...nodes.value.values()]
   const revealed = options.revealedIds
   return {
     animation: false,
@@ -1018,7 +1033,7 @@ function graphOption(options: {
       type: 'graph',
       // Native symbol transitions change opacity and size, never graph coordinates.
       animation: Boolean(revealed?.size),
-      animationThreshold: MAX_VISIBLE_NODES + 1,
+      animationThreshold: seriesNodes.length + 1,
       animationDuration: index => revealed?.has(seriesNodes[index]?.id ?? '') ? REVEAL_DURATION_MILLISECONDS : 0,
       animationDelay: index => {
         const rank = revealed?.get(seriesNodes[index]?.id ?? '')
@@ -1026,7 +1041,9 @@ function graphOption(options: {
       },
       animationEasing: 'cubicOut',
       animationDurationUpdate: 0,
-      layout: dynamicLayout.value ? 'force' : 'none',
+      // A restored map uses explicit coordinates. Native force initialization
+      // keeps its own point cache and can discard supplied fixed coordinates.
+      layout: dynamicLayout.value && !hasStoredLayout.value ? 'force' : 'none',
       preserveAspect: true,
       nodeScaleRatio: dynamicLayout.value ? 0.6 : 0.1,
       labelLayout: params => ({
@@ -1074,8 +1091,8 @@ function graphOption(options: {
           id: node.id,
           name: node.title,
           value: Math.sqrt(degree + 1),
-          ...(!dynamicLayout.value ? branchLayout.positions.get(node.id) : {}),
-          fixed: dynamicLayout.value && selected,
+          ...(!dynamicLayout.value || hasStoredLayout.value ? branchLayout.positions.get(node.id) : {}),
+          fixed: dynamicLayout.value && (selected || (hasStoredLayout.value && branchLayout.positions.has(node.id))),
           symbol: hidden ? 'none' : nodeSymbol(node),
           symbolKeepAspect: !nodeThumbnailUrl(node),
           symbolSize: nodeSymbolSize(node, groupedCount),
@@ -1206,6 +1223,90 @@ function captureGraphView(): GraphViewState | null {
   return null
 }
 
+function applyPreferences(preferences: GraphPreferences): void {
+  hiddenEntityKinds.value = new Set(preferences.hidden_entity_kinds)
+  expandedBranches.value = new Set(preferences.expanded_branches)
+  restoredCamera = preferences.camera ? {
+    center: preferences.camera.center ?? ['50%', '50%'], zoom: preferences.camera.zoom,
+  } : null
+  const zoom = preferences.camera?.zoom ?? 1
+  overview.value = zoom <= 0.55
+  allTitles.value = zoom >= MAX_ZOOM
+}
+
+function displayedPositions(): Map<string, ScreenPoint> {
+  const points = new Map(branchLayout.positions)
+  const data = chart ? graphViewportData(chart) : undefined
+  if (data) for (let index = 0; index < data.count(); index++) {
+    const key = data.getId(index)
+    if (!nodes.value.has(key)) continue
+    const point: unknown = data.getItemLayout(index)
+    if (Array.isArray(point) && typeof point[0] === 'number' && typeof point[1] === 'number'
+      && Number.isFinite(point[0]) && Number.isFinite(point[1])) points.set(key, { x: point[0], y: point[1] })
+  }
+  return points
+}
+
+function stagePositions(): void {
+  if (!persistence || !chartReady.value) return
+  persistence.stagePositions(branchLayout.positions)
+}
+
+function freezePositions(): void {
+  if (!chart || !chartReady.value || loading.value || reloading.value || !nodes.value.size) return
+  for (const [key, point] of displayedPositions()) branchLayout.positions.set(key, point)
+  branchLayout.update([...nodes.value.values()], graphBranches([...nodes.value.values()], [...edges.value.values()]), [...edges.value.values()])
+  hasStoredLayout.value = true
+  stagePositions()
+}
+
+function samplePositions(): void {
+  if (!chart || !chartReady.value || loading.value || reloading.value || hasStoredLayout.value || !nodes.value.size) return
+  const points = displayedPositions()
+  if (!points.size) return
+  const stable = points.size === previousPositionSample.size && [...points].every(([key, point]) => {
+    const previous = previousPositionSample.get(key)
+    return previous && Math.hypot(previous.x - point.x, previous.y - point.y) < 0.25
+  })
+  stablePositionSamples = stable ? stablePositionSamples + 1 : 0
+  previousPositionSample = points
+  if (stablePositionSamples < 2) return
+  freezePositions()
+  renderGraph({ viewState: captureGraphView(), preserveSelection: true, relax: false })
+}
+
+function scheduleViewSave(): void {
+  registerSaveTimeout(() => { void persistence?.flush() }, 600)
+}
+
+function stagePresentation(): void {
+  if (!persistence || !chart || loading.value || reloading.value) return
+  const view = captureGraphView()
+  if (!view) return
+  const center = view?.center
+  const camera = view?.zoom ? {
+    center: Array.isArray(center) && typeof center[0] === 'number' && typeof center[1] === 'number'
+      ? [center[0], center[1]] as [number, number] : null,
+    zoom: Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, view.zoom)),
+  } : null
+  persistence.stagePreferences({ expanded_branches: [...expandedBranches.value], camera })
+  scheduleViewSave()
+}
+
+async function retryViewState(): Promise<void> {
+  const current = persistence
+  if (!current) return
+  try {
+    const preferences = await current.load()
+    if (current !== persistence) return
+    applyPreferences(preferences)
+    renderGraph({ viewState: restoredCamera, preserveSelection: true, relax: false })
+    await current.flush()
+  } catch (failure) {
+    if (current === persistence) viewStateError.value = failure
+  }
+}
+
 function stopGraphLayout(): void {
   removeLayoutTimeout()
   const wasEnabled = layoutRelaxationEnabled
@@ -1228,7 +1329,7 @@ function renderGraph(options: {
   layoutPending.value = visibleNodes.value.length > 0 && (loading.value || !chartReady.value)
   if (visibleNodes.value.length === 0) chartReady.value = true
   if (!options.preserveSelection) closeInspector(false)
-  const animate = dynamicLayout.value && renderedNodes.value.length > 0 && options.relax !== false
+  const animate = dynamicLayout.value && !hasStoredLayout.value && renderedNodes.value.length > 0 && options.relax !== false
   const rebalancing = hasLayoutStarted
   const renderedIds = new Set(renderedNodes.value.map(node => node.id))
   const reveal = options.relax === false && lastRenderedIds.size > 0
@@ -1259,12 +1360,20 @@ function renderGraph(options: {
     renderFrame = null
     finishLayout(generation)
     scheduleThumbnails()
+    if (!animate) { stagePositions(); scheduleViewSave() }
   })
 }
 
 async function loadInitial(options: { preserveView?: boolean } = {}): Promise<void> {
   const preserveView = options.preserveView === true
   const preservedSelection = preserveView ? selectedNodeId.value : null
+  if (!preserveView) {
+    freezePositions()
+    stagePresentation()
+    void persistence?.flush()
+    removeSaveTimeout()
+    persistence = null
+  }
   const generation = ++loadGeneration
   thumbnails.clear()
   thumbnailResources.clear()
@@ -1277,13 +1386,18 @@ async function loadInitial(options: { preserveView?: boolean } = {}): Promise<vo
   edges.value = new Map()
   selectedNodeId.value = preservedSelection
   edgesTruncated.value = false
-  capacityReached.value = false
   error.value = null
   if (!preserveView) chartReady.value = agentId === null
   if (!preserveView) {
     hasLayoutStarted = false
     lastRenderedIds = new Set()
     branchLayout.clear()
+    hasStoredLayout.value = false
+    hiddenEntityKinds.value = new Set()
+    previousPositionSample = new Map()
+    stablePositionSamples = 0
+    restoredCamera = null
+    viewStateError.value = null
     expandedBranches.value = new Set()
     overview.value = false
     allTitles.value = false
@@ -1300,6 +1414,33 @@ async function loadInitial(options: { preserveView?: boolean } = {}): Promise<vo
     loading.value = true
   }
   try {
+    if (!preserveView) {
+      const context: GraphContext = { agent_id: agentId, query, topic_item_id: topicItemId, contact_item_id: contactItemId }
+      const session = sessionGeneration()
+      const transport = {
+        readGraphState: (context: GraphContext) => {
+          if (session !== sessionGeneration()) return Promise.reject(new SupersededSessionError())
+          return memoryService.readGraphState(context)
+        },
+        saveGraphState: (context: GraphContext, patch: import('../graphState').GraphStatePatch) => {
+          if (session !== sessionGeneration()) return Promise.reject(new SupersededSessionError())
+          return memoryService.saveGraphState(context, patch)
+        },
+      }
+      const current = new GraphStatePersistence(context, transport, positions => {
+        if (persistence !== current) return
+        for (const [key, point] of Object.entries(positions)) if (nodes.value.has(key)) branchLayout.positions.set(key, point)
+      }, failure => { if (persistence === current) viewStateError.value = failure })
+      persistence = current
+      try {
+        const preferences = await current.load()
+        if (generation !== loadGeneration) return
+        applyPreferences(preferences)
+      } catch (failure) {
+        if (generation !== loadGeneration) return
+        viewStateError.value = failure
+      }
+    }
     let cursor: MemoryGraphCursor | null = null
     let loadNextPage = true
     while (loadNextPage) {
@@ -1311,23 +1452,20 @@ async function loadInitial(options: { preserveView?: boolean } = {}): Promise<vo
         limit: ROOT_PAGE_SIZE,
         edgeLimit: 2500,
         cursor,
-        knownItemIds: [...nodes.value.keys()].slice(-MAX_VISIBLE_NODES),
+        includeMatchingRoots: true,
+        includeSavedPositions: true,
       })
       if (generation !== loadGeneration) return
       mergeRootPage(page)
       loadNextPage = page.has_more && page.next_cursor !== null
       cursor = page.next_cursor
-      if (loadNextPage && nodes.value.size >= MAX_VISIBLE_NODES) {
-        capacityReached.value = true
-        loadNextPage = false
-      }
     }
     if (selectedNodeId.value !== null && !nodes.value.has(selectedNodeId.value)) {
       selectedNodeId.value = null
     }
     await nextTick()
     renderGraph({
-      viewState: preserveView ? captureGraphView() : null,
+      viewState: preserveView ? captureGraphView() : restoredCamera,
       preserveSelection: preserveView,
     })
   } catch (caught) {
@@ -1349,11 +1487,23 @@ function reload(): void {
 }
 
 function invalidateAccess(): void {
+  freezePositions()
+  stagePresentation()
   nodes.value = new Map()
   edges.value = new Map()
   closeInspector()
   chart?.clear()
   void loadInitial()
+}
+
+function onGraphSessionChange(): void {
+  const session = sessionGeneration()
+  if (session === graphSession) return
+  graphSession = session
+  persistence = null
+  viewStateError.value = null
+  removeSaveTimeout()
+  invalidateAccess()
 }
 
 async function refreshLatestRoots(): Promise<void> {
@@ -1375,12 +1525,13 @@ async function refreshLatestRoots(): Promise<void> {
       contactItemId,
       limit: ROOT_PAGE_SIZE,
       edgeLimit: 2500,
-      knownItemIds: [...nodes.value.keys()].slice(-MAX_VISIBLE_NODES),
+      includeMatchingRoots: true,
+      includeSavedPositions: true,
     })
     if (generation !== loadGeneration) return
     if (!graphPageHasChanges(page)) { scheduleThumbnails(); return }
-    mergeNodes(page.nodes)
-    mergeEdges(page.edges)
+    freezePositions()
+    mergeRootPage(page)
     edgesTruncated.value = edgesTruncated.value || page.edges_truncated
     renderGraph({
       viewState: captureGraphView(),
@@ -1479,11 +1630,13 @@ function resizeChart(): void {
 
 function fitGraph(): void {
   if (!chart || !visibleNodes.value.length) return
+  freezePositions()
   closeInspector(false)
   expandedBranches.value = new Set()
   overview.value = false
   allTitles.value = false
   renderGraph({ viewState: { center: ['50%', '50%'], zoom: 1 }, preserveSelection: true, relax: false })
+  stagePresentation()
 }
 
 function zoomBy(scaleFactor: number): void {
@@ -1611,13 +1764,21 @@ onMounted(() => {
   resizeObserver = new ResizeObserver(resizeChart)
   if (viewport.value) resizeObserver.observe(viewport.value)
   window.addEventListener('keydown', onKeyDown)
+  window.addEventListener(AUTH_TOKEN_CHANGED_EVENT, onGraphSessionChange)
   document.addEventListener('fullscreenchange', onFullscreenChange)
   registerInterval(() => {
     void refreshLatestRoots()
   }, AUTO_REFRESH_INTERVAL)
+  registerPositionInterval(samplePositions, 1_000)
 })
 
 onUnmounted(() => {
+  freezePositions()
+  stagePresentation()
+  void persistence?.flush()
+  persistence = null
+  removeSaveTimeout()
+  removePositionInterval()
   unsubscribeThumbnailReady()
   thumbnails.clear()
   thumbnailResources.clear()
@@ -1630,6 +1791,7 @@ onUnmounted(() => {
   resizeObserver?.disconnect()
   removeInterval()
   window.removeEventListener('keydown', onKeyDown)
+  window.removeEventListener(AUTH_TOKEN_CHANGED_EVENT, onGraphSessionChange)
   document.removeEventListener('fullscreenchange', onFullscreenChange)
   if (isFullscreen.value && document.fullscreenElement !== null) {
     void document.exitFullscreen().catch(() => undefined)

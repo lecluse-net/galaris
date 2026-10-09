@@ -649,11 +649,14 @@ réutilisation avec une estimation de mémoire navigateur réduite, sur desktop 
 16 cœurs. Les miniatures chargées restent présentes après un déplacement complet hors champ,
 puis au retour sans nouvelle lecture. Les petits graphes précédents ne détectaient ni le
 plafond erroné de 64 miniatures ni le retrait des images hors de la zone visible.
-`memory.spec.mjs` vérifie également l'ouverture et le zoom de graphes synthétiques de 500 et 3 000 nœuds,
+`memory.spec.mjs` vérifie également l'ouverture et le zoom de graphes synthétiques de 500, 3 000 et 10 001 nœuds,
 sans perte de nœuds lors de la pagination, puis leur dépliage complet sans nouvelle requête.
 Les titres sont tous affichés sans survol au zoom maximal, puis filtrés au dézoom ; les
 racines anciennes restent identifiables par leur URI ou leur titre personnalisé dans les deux thèmes.
-Le cas de volume inclut 3 000 nœuds non repliables et 6 000 liens. Une topologie mixte de
+Le cas de volume inclut 5 000 nœuds non repliables et 10 000 liens, au-delà des anciens plafonds.
+Le test unitaire de proximité des communautés est aussi exercé sur 4 800 items : il détecte
+un placement initial indépendant des relations que la stabilisation bornée ne peut pas corriger.
+Une topologie mixte de
 sujets, contacts transversaux, documents/items partagés et isolés vérifie le mouvement réel
 des positions, la convergence naturelle, la proximité des communautés, les positions conservées
 au zoom et au dépliage, le cadrage conservé et les niveaux de détail
@@ -670,12 +673,21 @@ Le rendu réel vérifie le fondu intermédiaire des nouveaux symboles au zoom, p
 visibilité complète, ainsi que l'apparition immédiate avec réduction des animations.
 La stabilité des coordonnées est vérifiée dans le mode de grande fenêtre de 3 000 items.
 Les erreurs/reprises et une réponse retardée après changement d'agent sont couvertes.
+Les parcours desktop/mobile restaurent les coordonnées et natures masquées après
+réouverture, ajoutent des nœuds visibles et masqués sans déplacer les anciens, puis
+reprennent une sauvegarde échouée. `graphState.test.mjs` vérifie les lots incrémentaux,
+les modifications pendant une requête et les conflits de révision. Les tests DB
+`test_graph_state.py` vérifient l'isolation entre utilisateurs/contextes, les droits,
+les révocations et la conservation des coordonnées lors d'une sauvegarde partielle.
+L'ancienne assertion imposant le mode interne `force` après repli est remplacée par
+la conservation effective des coordonnées : une vue enregistrée utilise un placement explicite.
 `front/app/memory/graphBranches.test.mjs` couvre les règles d'exclusivité, doublons, cycles,
 isolés, positions survivantes et placement selon les liens ; ce dernier scénario échoue avec
 la grille qui ignorait les relations. Le test DB de pagination vérifie le voisin supplémentaire
 hors page, confirmé ou suggéré, et les liens inaccessibles. `e2e/specs/memory-graph.spec.mjs`
 exerce repli/dépliage, clavier, zoom, ouverture du contenu et retour au graphe dans l'application
-assemblée, avec API réelle et base synthétique isolée. Les tests WebDAV vérifient que les lectures de
+assemblée, avec API réelle et base synthétique isolée ; les positions, natures masquées
+et cadrage survivent aussi à une navigation complète. Les tests WebDAV vérifient que les lectures de
 métadonnées suivent le nombre de dossiers pour 300 et 3 000 fichiers, avec repli individuel
 et nouveaux contrôles après révocation. Le scénario fournisseur vérifie aussi la résolution
 groupée des fichiers d'un Tool combinant File Share et Messenger.

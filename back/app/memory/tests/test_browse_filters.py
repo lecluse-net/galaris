@@ -153,15 +153,18 @@ async def test_list_and_graph_filter_by_topic_and_interlocutor(
         contact_item_id=alice_contact,
     ) == {organisation_alice.id}
 
-    graph = await service.list_graph_roots(
-        MemoryGraphRootsRequest(
-            agent_id=owner.id,
-            topic_item_id=first_topic.memory_item_id,
-            contact_item_id=alice_contact,
-            limit=50,
+    for include_matching_roots in (False, True):
+        graph = await service.list_graph_roots(
+            MemoryGraphRootsRequest(
+                agent_id=owner.id,
+                topic_item_id=first_topic.memory_item_id,
+                contact_item_id=alice_contact,
+                limit=50,
+                include_matching_roots=include_matching_roots,
+            )
         )
-    )
-    assert {node.id for node in graph.nodes} == {organisation_alice.id}
+        assert {node.id for node in graph.nodes} == {organisation_alice.id}
+        assert not graph.edges, 'Relations must not reveal endpoints excluded by the filters'
 
     options = await service.list_filter_options(owner.id)
     assert {option.id for option in options.topics} == {
@@ -173,13 +176,14 @@ async def test_list_and_graph_filter_by_topic_and_interlocutor(
         bob_contact,
     }
 
-    unfiltered_graph = await service.list_graph_roots(
-        MemoryGraphRootsRequest(agent_id=owner.id, limit=50)
-    )
-    graph_ids = {node.id for node in unfiltered_graph.nodes}
-    assert first_topic.memory_item_id in graph_ids
-    assert second_topic.memory_item_id in graph_ids
-    assert peer_topic.memory_item_id not in graph_ids
+    for include_matching_roots in (False, True):
+        unfiltered_graph = await service.list_graph_roots(
+            MemoryGraphRootsRequest(agent_id=owner.id, limit=50, include_matching_roots=include_matching_roots)
+        )
+        graph_ids = {node.id for node in unfiltered_graph.nodes}
+        assert first_topic.memory_item_id in graph_ids
+        assert second_topic.memory_item_id in graph_ids
+        assert peer_topic.memory_item_id not in graph_ids
 
 
 @pytest.mark.asyncio

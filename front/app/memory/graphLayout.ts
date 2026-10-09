@@ -94,6 +94,43 @@ export function placeGraphRegions(
       neighbors.get(id!)!.add(other!)
     }
   }
+  const isHub = (index: number): boolean => {
+    const node = regions[index]!
+    return node.relation_count >= 8 || (['topic', 'contact', 'conversation', 'folder', 'directory'].includes(node.entity_kind)
+      && node.relation_count >= 2)
+  }
+  const initial = new Map<string, GraphPoint>()
+  if (!positions.size && regions.length > 600) {
+    // Large maps cannot travel from an unrelated spiral to their communities in
+    // the bounded settling pass. Seed neighboring items around their nearest hub.
+    const hubs = regions.filter((_, index) => isHub(index))
+    const owners = new Map(hubs.map(node => [node.id, node.id]))
+    const queue = hubs.map(node => node.id)
+    for (let cursor = 0; cursor < queue.length; cursor++) {
+      const id = queue[cursor]!
+      for (const other of neighbors.get(id) ?? []) if (!owners.has(other)) {
+        owners.set(other, owners.get(id)!)
+        queue.push(other)
+      }
+    }
+    const groups = new Map<string, string[]>()
+    for (const id of queue) {
+      const owner = owners.get(id)!
+      if (!groups.has(owner)) groups.set(owner, [])
+      groups.get(owner)!.push(id)
+    }
+    const separation = Math.sqrt([...groups.values()].reduce((max, ids) => Math.max(max, ids.length), 1)) * 180
+    let groupIndex = 0
+    for (const ids of groups.values()) {
+      const angle = groupIndex * GOLDEN_ANGLE
+      const radius = Math.sqrt(groupIndex++) * separation
+      const center = { x: Math.cos(angle) * radius, y: Math.sin(angle) * radius }
+      ids.forEach((id, slot) => initial.set(id, {
+        x: center.x + Math.cos(slot * GOLDEN_ANGLE) * Math.sqrt(slot) * 70,
+        y: center.y + Math.sin(slot * GOLDEN_ANGLE) * Math.sqrt(slot) * 70,
+      }))
+    }
+  }
   const bodies: Body[] = regions.map((node, index) => {
     const existing = positions.get(node.id)
     const radius = Math.sqrt(index + 0.5) * 100
@@ -108,27 +145,26 @@ export function placeGraphRegions(
     } : { x: 0, y: 0 }
     return {
       id: node.id,
-      x: existing?.x ?? center.x + Math.cos(angle) * (adjacent.length ? 140 : radius),
-      y: existing?.y ?? center.y + Math.sin(angle) * (adjacent.length ? 140 : radius),
+      x: existing?.x ?? initial.get(node.id)?.x ?? center.x + Math.cos(angle) * (adjacent.length ? 140 : radius),
+      y: existing?.y ?? initial.get(node.id)?.y ?? center.y + Math.sin(angle) * (adjacent.length ? 140 : radius),
       mass: Math.min(5, Math.sqrt(node.relation_count + 1)), radius: radii.get(node.id) ?? 0,
       fixed: !!existing, fx: 0, fy: 0,
     }
   })
-  const isHub = (index: number): boolean => {
-    const node = regions[index]!
-    return node.relation_count >= 8 || (['topic', 'contact', 'conversation', 'folder', 'directory'].includes(node.entity_kind)
-      && node.relation_count >= 2)
-  }
   // Match the previous graph's weak attraction between hubs, so cross-cutting contacts
   // do not pull every subject into the same ball. The links remain visible.
   const springs = links.map(link => ({ ...link,
     strength: link.suggested ? 0.012 : isHub(link.source) && isHub(link.target) ? 0.004 : 0.08,
   }))
-  // Bound initial CPU work for a dense 3,000-node backbone as well as folded stars.
+  // Bound initial CPU work for a dense backbone as well as folded stars.
   const iterations = positions.size ? 60 : Math.min(180, Math.max(60, Math.floor(90_000 / bodies.length)))
   for (let step = 0; step < iterations; step++) {
-    const left = Math.min(...bodies.map(body => body.x)), top = Math.min(...bodies.map(body => body.y))
-    const width = Math.max(1, Math.max(...bodies.map(body => body.x)) - left, Math.max(...bodies.map(body => body.y)) - top)
+    let left = Infinity, top = Infinity, right = -Infinity, bottom = -Infinity
+    for (const body of bodies) {
+      left = Math.min(left, body.x); top = Math.min(top, body.y)
+      right = Math.max(right, body.x); bottom = Math.max(bottom, body.y)
+    }
+    const width = Math.max(1, right - left, bottom - top)
     const tree = cellFor(bodies, left, top, width)
     for (const body of bodies) {
       body.fx = -body.x * 0.008

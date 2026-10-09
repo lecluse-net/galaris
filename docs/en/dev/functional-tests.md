@@ -604,11 +604,13 @@ with a reduced browser memory estimate, on desktops reporting 2 or 16 cores. Pre
 graphs did not detect the incorrect 64-thumbnail limit or the removal of images outside the
 viewport. Loaded thumbnails remain present after panning the entire directory offscreen,
 then return without another read.
-`memory.spec.mjs` also checks opening and zooming synthetic 500- and 3,000-node graphs without losing nodes
+`memory.spec.mjs` also checks opening and zooming synthetic 500-, 3,000- and 10,001-node graphs without losing nodes
 during pagination, then unfolding all members without another request. All titles are displayed
 without hovering at maximum zoom and filtered when zoomed out; older roots remain identifiable
 by their URI or custom title in both themes. Volume coverage includes
-3,000 nodes without foldable branches and 6,000 links. A mixed topology of subjects, contacts,
+5,000 nodes without foldable branches and 10,000 links, beyond the former caps.
+The unit test for community proximity also covers 4,800 items: it detects initial positions
+unrelated to the links that bounded settling cannot correct. A mixed topology of subjects, contacts,
 shared documents/items and isolated nodes checks real position movement, natural convergence,
 community proximity, position preservation during zoom and unfolding,
 camera preservation and overview/detail levels while preserving links between displayed nodes;
@@ -624,13 +626,21 @@ a branch while keeping a child selected is no longer part of the interface.
 The actual renderer checks intermediate opacity of new symbols during zoom, complete
 visibility at the end, and immediate appearance with reduced motion.
 Coordinate stability is checked in the large-window mode with 3,000 items. Error/retry and a delayed response after an
-agent change are covered. `front/app/memory/graphBranches.test.mjs` covers exclusivity rules,
+agent change are covered. Desktop/mobile journeys restore positions and hidden kinds
+after reopening, add visible and hidden newcomers without moving existing nodes, and
+retry failed saves. `graphState.test.mjs` checks incremental batches, edits during a
+request and revision conflicts. DB tests in `test_graph_state.py` check isolation between
+users/contexts, permissions, revocation and preservation during partial saves.
+The old assertion requiring internal `force` mode after folding is replaced by preserved
+coordinates: saved views use explicit placement.
+`front/app/memory/graphBranches.test.mjs` covers exclusivity rules,
 duplicates, cycles, isolated nodes, surviving positions and placement based on relationships;
 the latter scenario fails with the grid that ignored links. The existing DB pagination test covers
 an additional neighbor beyond the page, confirmed or suggested, and inaccessible links.
 `e2e/specs/memory-graph.spec.mjs` exercises folding, keyboard controls, zoom, opening content and
 returning to the graph in the assembled application, using the real API and an isolated synthetic
-database. WebDAV tests verify that metadata reads scale with the number of directories
+database; positions, hidden kinds and camera settings also survive full navigation.
+WebDAV tests verify that metadata reads scale with the number of directories
 for 300 and 3,000 files, including individual fallback and fresh checks after revocation.
 The provider scenario also verifies grouped file resolution for a Tool combining File Share
 and Messenger.

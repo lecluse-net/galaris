@@ -276,7 +276,7 @@ Both tabs place the agent and search on the first row, followed by the thematic 
 and interlocutor below. In **List**, the target date and its apply button complete the
 filters. The fields rearrange on smaller screens.
 
-In **Graph**, memories load without a time range filter; the node limit still applies.
+In **Graph**, memories load without a time range filter or a global node cap.
 Below the graph header, the legend groups node kinds, relationships, then age markers
 and zoom and fullscreen controls.
 Node size and opacity follow a linear scale of last activity relative to the oldest and
@@ -344,10 +344,15 @@ reruns rendering even when an image is already cached; failures preserve the pre
 
 The graph folds branches with at least eight exclusive leaves into an anchor and a count.
 Zoom in or click the group to see its items, then zoom out to fold
-them. Shared nodes remain visible. Up to 600 loaded items, initial placement settles naturally,
-with gentle rebalancing for 0.7 seconds after the graph changes.
-Zooming, unfolding and closing node details preserve positions. Zooming out also simplifies links and titles. The window
-retains its 3,000-node limit. Spatial loading and subgroups remain the next steps
+them. Shared nodes remain visible. Up to 600 loaded items, the first placement is animated.
+Positions are then saved in the background, including hidden and folded nodes. Reopening
+restores known nodes to their places and positions newcomers around existing anchors.
+Each user keeps their own positions, hidden kinds, open branches and camera for each
+agent and search/Topic/contact context. New nodes of a hidden kind stay hidden.
+A restore or save failure offers a retry without closing the graph.
+Zooming, unfolding and closing node details preserve positions. Zooming out also simplifies links and titles.
+Large maps place items near their anchors before settling and load all pages matching the filters.
+Spatial loading and subgroups remain the next steps
 in the [multi-level memory graph plan](../../../project/plans/graphe-memoire-multiechelle.md) (in French), with `partial` status.
 
 In **Documents**, ordinary refreshes update affected rows without clearing the tree or list.

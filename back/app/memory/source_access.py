@@ -50,6 +50,33 @@ async def source_is_readable(item_id: UUID, source_kind: str | None, agent_id: i
 GraphRequest = TypeVar("GraphRequest", MemoryGraphRootsRequest, MemoryGraphExpandRequest)
 
 
+async def readable_source_ids(endpoints: set[UUID], agent_id: int) -> set[UUID]:
+    """Recheck source-owned access in batches for graph pages and saved positions."""
+    sources: list[tuple[UUID, str | None]] = []
+    if endpoints:
+        sources = list((await get_db().execute(select(MemoryItem.id, MemoryItem.managed_source_kind).where(
+            MemoryItem.id.in_(endpoints), MemoryItem.managed_source_kind.in_(_checks),
+        ))).tuples().all())
+    denied: set[UUID] = set()
+    groups: dict[str, list[UUID]] = {}
+    for identity, kind in sources:
+        if kind is not None:
+            groups.setdefault(kind, []).append(identity)
+    for kind, identities in groups.items():
+        batch_reader = _batch_readers.get(kind)
+        if batch_reader is None:
+            denied.update([identity for identity in identities if not await source_is_readable(identity, kind, agent_id)])
+        else:
+            readable = await batch_reader(identities, agent_id)
+            denied.update(set(identities) - readable)
+    if sources:
+        visible = set(await get_db().scalars(select(MemoryItem.id).where(
+            MemoryItem.id.in_([identity for identity, _kind in sources]), source_access_clause(),
+        )))
+        denied.update(identity for identity, _kind in sources if identity not in visible)
+    return endpoints - denied
+
+
 def source_checked_graph(function: Callable[[GraphRequest], Awaitable[MemoryGraphPage]]) -> Callable[[GraphRequest], Awaitable[MemoryGraphPage]]:
     @wraps(function)
     async def checked(request: GraphRequest) -> MemoryGraphPage:
@@ -59,29 +86,7 @@ def source_checked_graph(function: Callable[[GraphRequest], Awaitable[MemoryGrap
         focus = request.item_id if isinstance(request, MemoryGraphExpandRequest) else None
         if focus is not None:
             endpoints.add(focus)
-        sources: list[tuple[UUID, str | None]] = []
-        if endpoints:
-            sources = list((await get_db().execute(select(MemoryItem.id, MemoryItem.managed_source_kind).where(
-                MemoryItem.id.in_(endpoints), MemoryItem.managed_source_kind.in_(_checks),
-            ))).tuples().all())
-        denied: set[UUID] = set()
-        groups: dict[str, list[UUID]] = {}
-        for identity, kind in sources:
-            if kind is not None:
-                groups.setdefault(kind, []).append(identity)
-        for kind, identities in groups.items():
-            batch_reader = _batch_readers.get(kind)
-            if batch_reader is None:
-                denied.update([identity for identity in identities
-                               if not await source_is_readable(identity, kind, request.agent_id)])
-            else:
-                readable = await batch_reader(identities, request.agent_id)
-                denied.update(set(identities) - readable)
-        if sources:
-            visible = set(await get_db().scalars(select(MemoryItem.id).where(
-                MemoryItem.id.in_([identity for identity, _kind in sources]), source_access_clause(),
-            )))
-            denied.update(identity for identity, _kind in sources if identity not in visible)
+        denied = endpoints - await readable_source_ids(endpoints, request.agent_id)
         if focus in denied:
             return MemoryGraphPage(nodes=[], edges=[], has_more=False)
         return page.model_copy(update={

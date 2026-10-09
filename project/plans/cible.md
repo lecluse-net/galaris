@@ -136,10 +136,12 @@ Bundle altéré/révoqué/incompatible ou permissions non acceptées refusés.
 
 ### Piste optionnelle — visualisation 3D de la mémoire
 
-Paysage navigable au-dessus du graphe gouverné, Three.js comme candidat,
-forces/projection sémantique bornée, exploration assistée/vol libre.
-Objectif utilisateur et gain à démontrer avant chantier ; conserve ACL et vue 2D,
-sans exposer les embeddings. Ne bloque pas la livraison publique.
+La conception détaillée est regroupée dans le
+[plan de carte mémoire multiechelle](graphe-memoire-multiechelle.md) : portes d'entrée par
+schémas, Topics et contacts, profondeur des arborescences, placement précalculé régulièrement
+et ajouts positionnés en direct, chargement régional et navigation 3D guidée.
+Conserve ACL et vue 2D, sans exposer les embeddings. Le vol libre reste une extension à
+qualifier après les repères et parcours guidés. Ne bloque pas la livraison publique.
 
 ## Dépendances et preuves de maturité
 

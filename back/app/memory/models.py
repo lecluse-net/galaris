@@ -41,6 +41,33 @@ from .document_types import DocumentType
 from .lexical_normalization import folded_vector_sql
 
 
+class MemoryGraphView(Base):
+    """Private, versioned presentation of one human's graph context."""
+
+    __tablename__ = "memory_graph_views"
+    id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), primary_key=True, default=uuid4)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    agent_id: Mapped[int] = mapped_column(ForeignKey("agents.id", ondelete="CASCADE"), index=True)
+    context_key: Mapped[str] = mapped_column(String(64))
+    revision: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+    preferences: Mapped[dict[str, Any]] = mapped_column(JSONB, default=dict, server_default="{}")
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    __table_args__ = (UniqueConstraint("user_id", "agent_id", "context_key"),)
+
+
+class MemoryGraphPosition(Base):
+    """Coordinates of a graph occurrence; hidden nodes keep their places."""
+
+    __tablename__ = "memory_graph_positions"
+    id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), primary_key=True, default=uuid4)
+    view_id: Mapped[UUID] = mapped_column(ForeignKey("memory_graph_views.id", ondelete="CASCADE"), index=True)
+    # A graph key can designate either a MemoryItem or a MemoryContextNode.
+    node_key: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True))
+    x: Mapped[float] = mapped_column(Float)
+    y: Mapped[float] = mapped_column(Float)
+    __table_args__ = (UniqueConstraint("view_id", "node_key"),)
+
+
 class DocumentTag(HistoryMixin, Base):
     """A human's private document classification, independent of document ownership."""
 

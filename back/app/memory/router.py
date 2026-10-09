@@ -96,6 +96,7 @@ from .schemas import (
     MemorySearchRequest,
 )
 from .link_reconciliation import reconcile_memory_links
+from . import graph_state
 from .document_apps import AppDatasetRequest, AppDatasetResult, AppGrantUpdate, AppPermissions
 from .document_app_service import app_dataset, app_permissions, set_app_permission
 from .document_app_security import AppConsentRequired, AppWriteLimitError
@@ -515,8 +516,33 @@ async def list_memory_graph_roots(
     data: MemoryGraphRootsRequest,
 ) -> MemoryGraphPage:
     try:
-        await _require_agent_scope(data.agent_id)
-        return await service.list_graph_roots(data)
+        scope = await _require_agent_scope(data.agent_id)
+        page = await service.list_graph_roots(data)
+        if data.include_saved_positions:
+            points = await graph_state.page_positions(
+                graph_state.GraphContext(**data.model_dump(include={"agent_id", "query", "topic_item_id", "contact_item_id"})),
+                scope, [node.id for node in page.nodes],
+            )
+            page.positions = {str(key): (point.x, point.y) for key, point in points.items()}
+        return page
+    except Exception as exc:
+        raise _http_error(exc) from exc
+
+
+@router.post("/graph/state/read", response_model=graph_state.GraphState)
+@authorize(privileges=[Privileges.MEMORY_ACCESS, Privileges.MEMORY_EDIT, Privileges.MEMORY_ADMIN])
+async def read_memory_graph_state(data: graph_state.GraphContext) -> graph_state.GraphState:
+    try:
+        return await graph_state.read_state(data, await _require_agent_scope(data.agent_id))
+    except Exception as exc:
+        raise _http_error(exc) from exc
+
+
+@router.post("/graph/state", response_model=graph_state.GraphState)
+@authorize(privileges=[Privileges.MEMORY_ACCESS, Privileges.MEMORY_EDIT, Privileges.MEMORY_ADMIN])
+async def write_memory_graph_state(data: graph_state.GraphStateWrite) -> graph_state.GraphState:
+    try:
+        return await graph_state.write_state(data, await _require_agent_scope(data.agent_id))
     except Exception as exc:
         raise _http_error(exc) from exc
 

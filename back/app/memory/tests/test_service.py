@@ -1308,11 +1308,13 @@ async def test_memory_updated_at_tracks_only_payload_or_keyword_changes(
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize('suggested_neighbor', [False, True])
+@pytest.mark.parametrize('include_matching_roots', [False, True])
 async def test_graph_roots_use_activity_keysets_and_hide_inaccessible_edges(
     db: AsyncSession,
     agents: tuple[Agent, Agent],
     memory_storage: Path,
     suggested_neighbor: bool,
+    include_matching_roots: bool,
 ) -> None:
     del memory_storage
     owner, peer = agents
@@ -1369,11 +1371,13 @@ async def test_graph_roots_use_activity_keysets_and_hide_inaccessible_edges(
     )
 
     first = await service.list_graph_roots(
-        MemoryGraphRootsRequest(agent_id=owner.id, limit=2)
+        MemoryGraphRootsRequest(agent_id=owner.id, limit=2, include_matching_roots=include_matching_roots)
     )
     assert [node.id for node in first.nodes] == [newest.id, middle.id]
     assert all(node.entity_kind == "memory" for node in first.nodes)
-    assert [edge.id for edge in first.edges] == [newest_middle.id]
+    assert {edge.id for edge in first.edges} == (
+        {newest_middle.id, middle_oldest.id} if include_matching_roots else {newest_middle.id}
+    )
     assert all(node.has_relations for node in first.nodes)
     assert [node.relation_count for node in first.nodes] == [1, 2]
     assert first.has_more
@@ -1384,7 +1388,8 @@ async def test_graph_roots_use_activity_keysets_and_hide_inaccessible_edges(
             agent_id=owner.id,
             limit=2,
             cursor=first.next_cursor,
-            known_item_ids=[node.id for node in first.nodes],
+            known_item_ids=[] if include_matching_roots else [node.id for node in first.nodes],
+            include_matching_roots=include_matching_roots,
         )
     )
     assert [node.id for node in second.nodes] == [oldest.id]
