@@ -162,6 +162,15 @@ The bridge checks remote access and metadata for `file_info` and rejects applica
 returned with HTTP 200 instead of a blob. HTML files explicitly served as attachments
 remain downloadable.
 
+This HTTP transport belongs to the Galaris bridge and does not depend on the external
+AFFiNE MCP server's lifecycle. Calls reuse cookies for ten minutes per AFFiNE instance
+and credentials, in a cache limited to 128 sessions. Concurrent clients share their
+login. HTTP 401 invalidates the session for the next explicit call, without replaying
+a download or upload. Other failures retain their HTTP status in the tool diagnostic
+without exposing the remote response body, so HTTP 429 remains identifiable as a rate limit.
+A rate-limited login defers new authentication according to `Retry-After` in seconds
+(60 seconds by default, at most ten minutes), without blocking waits or automatic replay.
+
 A collection destination of `file_copy` or `file_move` preserves the source name. Provider metadata makes it possible to recognize an existing directory even when the caller omits the trailing `/`. A provider space such as an AFFiNE workspace or a Messenger room is likewise completed with the source name; `/` remains necessary to unambiguously declare a collection that does not yet exist. A move rejects, before copying, any source that the generic façade cannot delete, so as never to produce a partial move presented as a failure.
 
 The preserved name is that of the source `ResourceDescriptor`, not necessarily the last segment of the locator: an attachment addressed by UUID thus retains its actual name. Specialized image, audio, and Messenger tools also receive canonical URIs. If they require a local path, they call `materialize_resource` into a bounded temporary file that they delete after the call. A `nextcloud://`, `console://`, HTTPS, Mail, or Messenger URI is therefore consumed directly. Outputs are written by `resource_create`/`resource_write`

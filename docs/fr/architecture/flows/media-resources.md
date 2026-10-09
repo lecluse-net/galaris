@@ -188,6 +188,16 @@ Le bridge vérifie l'accès et les métadonnées distantes pour `file_info`, et 
 page HTML applicative renvoyée avec HTTP 200 au lieu d'un blob. Les fichiers HTML servis
 explicitement comme pièces jointes restent téléchargeables.
 
+Ce transport HTTP appartient au bridge Galaris ; il ne dépend pas du cycle de vie du
+serveur MCP AFFiNE externe. Les appels réutilisent les cookies pendant dix minutes,
+par instance et identifiants AFFiNE, dans un cache borné à 128 sessions. Les connexions
+concurrentes mutualisent leur login. Un refus HTTP 401 invalide la session pour le
+prochain appel explicite, sans rejouer un téléchargement ni un upload. Les autres
+refus conservent leur statut HTTP dans le diagnostic d'outil, sans exposer le corps
+de réponse distant ; un HTTP 429 reste ainsi identifiable comme une limite de fréquence.
+Un login limité reporte les nouvelles connexions selon `Retry-After` en secondes
+(60 secondes par défaut, au plus dix minutes), sans attente bloquante ni rejeu automatique.
+
 Une destination collection de `file_copy` ou `file_move` conserve le nom de la source. Les
 métadonnées du provider permettent de reconnaître un répertoire existant même lorsque l'appelant
 omet le `/` final. Un espace provider tel qu'un workspace AFFiNE ou une room Messenger est lui
