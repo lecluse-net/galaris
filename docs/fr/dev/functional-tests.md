@@ -342,7 +342,13 @@ Le corpus synthétique `back/app/lab/dispatcher_boundaries_corpus.json`, importa
 `scripts/import_lab_reference.py --corpus dispatcher-boundaries --install`, oppose les lots
 reprenables séparément aux documents uniques, chapitres liés, sites cohérents et petits lots
 mécaniques. Il remplace l'ancienne assertion de formulation imposant toujours EXEC high en cas
-de doute. `test_reference_corpus.py` vérifie son import autorisé, sa persistance et ses contrats ;
+de doute. La version v2 contient 15 cas, dont des objectifs globaux sans liste ni nombre
+d'éléments : migration d'un carnet, restauration d'une bibliothèque et correction de périmètre
+d'un fonds. Le routage attendu est PLAN lorsque ces demandes impliquent des livrables distincts
+à découvrir. Les contre-exemples restent EXEC pour une synthèse unique issue de pages à découvrir
+ou un petit renommage mécanique après inventaire. L'import crée un nouveau dataset v2 sans
+écraser les campagnes v1 ; aucun prompt de dispatcher n'est modifié par ce corpus.
+`test_reference_corpus.py` vérifie son import autorisé, sa persistance et ses contrats ;
 ces tests ne mesurent pas le routage du modèle. Comparer les prompts avant/après dans le Lab avec
 le même modèle et plusieurs répétitions, en examinant séparément les PLAN manqués et les PLAN
 abusifs, notamment sur les documents uniques.

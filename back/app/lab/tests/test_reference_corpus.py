@@ -13,7 +13,7 @@ from app.lab.objective_checks import check_output
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("corpus_name, count", [
-    ("reference", 6), ("latency-fr", 4), ("latency-en", 4), ("dispatcher-boundaries", 10),
+    ("reference", 6), ("latency-fr", 4), ("latency-en", 4), ("dispatcher-boundaries", 15),
     ("planner-boundaries", 24),
 ])
 async def test_reference_import_uses_http_authorization_and_never_overwrites(client, corpus_name, count):

@@ -1,9 +1,9 @@
 {
-  "version": 1,
+  "version": 2,
   "mechanism": "dispatcher",
-  "name": "Independent deliverables and cohesive work v1",
+  "name": "Independent deliverables and cohesive work v2",
   "purpose": "validation",
-  "description": "Synthetic public routing cases. Compare baseline and candidate prompts with the same model and repeated runs. Inspect missed PLAN cases and false PLAN choices separately, especially the single-document cases. Import and contract tests do not measure model routing quality.",
+  "description": "Synthetic public routing cases, including collection-level objectives whose work items must first be discovered, without a supplied list or item count. Compare baseline and candidate prompts with the same model and repeated runs. Inspect missed PLAN cases and false PLAN choices separately, especially the single-document and mechanical discovery cases. Import and contract tests do not measure model routing quality.",
   "parameters": {"driver_code": "internal"},
   "cases": [
     {
@@ -25,6 +25,24 @@
       "expected_output": {"route": "PLAN", "effort": "high", "language": "fr"}
     },
     {
+      "name": "Workspace migration implies page-level work before inventory",
+      "categories": ["nominal", "ambiguity", "multilingual"],
+      "input_data": {"variable_value": "<p>Migre tout le carnet numérique des expéditions du musée vers la nouvelle bibliothèque documentaire. Je veux retrouver les pages complètes, avec leurs schémas, leurs tableaux et leurs liens, et pouvoir consulter chaque page dans la bibliothèque.</p>"},
+      "expected_output": {"route": "PLAN", "effort": "high", "language": "fr"}
+    },
+    {
+      "name": "Library-wide restoration implies discovering separate records",
+      "categories": ["nominal", "ambiguity"],
+      "input_data": {"variable_value": "<p>Restore the botanical station's digital specimen library after its interrupted import. Complete missing descriptions from the original field notebooks, repair the illustrations and citations, and make the specimen records ready for publication.</p>"},
+      "expected_output": {"route": "PLAN", "effort": "high", "language": "en"}
+    },
+    {
+      "name": "Scope correction still implies an unlisted collection",
+      "categories": ["incident", "ambiguity", "multilingual"],
+      "input_data": {"variable_value": "<p>Je me suis trompé de rayon : c'est le fonds des marionnettes qu'il faut remettre en état dans le catalogue du théâtre. Reprends les notices déjà transférées, complète les textes depuis les fiches originales et remets les photographies et les renvois en place. Je veux pouvoir utiliser tout ce fonds.</p>"},
+      "expected_output": {"route": "PLAN", "effort": "high", "language": "fr"}
+    },
+    {
       "name": "One report with research drafting review and delivery",
       "categories": ["nominal", "robustness"],
       "input_data": {"variable_value": "<p>Produce one report comparing several water-treatment technologies. Research their performance, reconcile conflicting studies, build the argument, write the chapters, review the calculations and deliver the final document. Revise earlier chapters whenever later findings change the recommendation; terminology, assumptions and conclusions must remain consistent throughout.</p>"},
@@ -43,6 +61,12 @@
       "expected_output": {"route": "EXEC", "effort": "high", "language": "en"}
     },
     {
+      "name": "Unlisted workspace pages are inputs to one synthesis",
+      "categories": ["ambiguity", "robustness"],
+      "input_data": {"variable_value": "<p>Explore the museum's digital expedition notebook and write one curatorial essay explaining how the expeditions changed its research priorities. Find the relevant pages yourself, reconcile contradictory accounts and build a consistent narrative. Leave the notebook unchanged.</p>"},
+      "expected_output": {"route": "EXEC", "effort": "high", "language": "en"}
+    },
+    {
       "name": "Coupled code changes with tests remain one outcome",
       "categories": ["nominal", "robustness"],
       "input_data": {"variable_value": "<p>Corrige le calcul des remises dans l'application de démonstration. Reproduis l'erreur, retrouve la règle métier, adapte le calcul et son affichage, puis vérifie les scénarios concernés. Le calcul, l'écran et les tests constituent une seule correction cohérente ; ajuste-les ensemble si l'analyse révèle un cas oublié.</p>"},
@@ -53,6 +77,12 @@
       "categories": ["nominal", "robustness"],
       "input_data": {"variable_value": "<p>Rename the three selected draft files by adding the prefix reviewed_ to each filename. The selection and prefix are confirmed. Check the final filenames and report completion.</p>"},
       "expected_output": {"route": "EXEC", "effort": "standard", "language": "en"}
+    },
+    {
+      "name": "Discovering a bounded mechanical batch stays direct",
+      "categories": ["ambiguity", "robustness", "multilingual"],
+      "input_data": {"variable_value": "<p>Ajoute le préfixe relu_ aux noms des fichiers texte directement présents dans le dossier des brouillons de la démonstration. Le dossier contient au plus cinq fichiers ; je n'ai pas leur liste. La console permet de les lister et de les renommer. Conserve leur contenu et vérifie les noms obtenus.</p>"},
+      "expected_output": {"route": "EXEC", "effort": "standard", "language": "fr"}
     },
     {
       "name": "Several output files still form one coherent website",

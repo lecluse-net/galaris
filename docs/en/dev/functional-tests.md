@@ -308,7 +308,12 @@ The synthetic `back/app/lab/dispatcher_boundaries_corpus.json` corpus, imported 
 `scripts/import_lab_reference.py --corpus dispatcher-boundaries --install`, contrasts separately
 recoverable batches with single documents, coupled chapters, coherent websites, and small
 mechanical batches. It replaces the old wording assertion that always preferred EXEC high when
-uncertain. `test_reference_corpus.py` verifies authorized import, persistence, and contracts;
+uncertain. Version v2 contains 15 cases, including collection-level objectives without an item
+list or count: notebook migration, library restoration, and a corrected archive scope. PLAN is
+expected when these requests imply distinct deliverables to discover. Counterexamples retain
+EXEC for one synthesis from discovered pages or a small mechanical rename after listing files.
+Import creates a new v2 dataset without overwriting v1 campaigns; this corpus changes no
+dispatcher prompt. `test_reference_corpus.py` verifies authorized import, persistence, and contracts;
 these tests do not measure model routing. Compare before/after prompts in the Lab with the same
 model and repeated runs, inspecting missed PLAN choices and unnecessary PLAN choices separately,
 especially for single documents.
