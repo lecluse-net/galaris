@@ -145,6 +145,12 @@ vérifier les arguments. L’agent garde ses outils pour poursuivre ; s’il ne 
 il explique les erreurs répétées et ce qui reste bloqué. Les limites globales d’exécution
 restent applicables.
 
+Si l’agent invente un paramètre de premier niveau dans un outil dont le schéma énumère
+strictement les paramètres acceptés, Galaris l’ignore et indique à l’agent les paramètres
+disponibles dans le résultat. Les objets imbriqués et les schémas composés gardent leur validation. Un paramètre obligatoire manquant ou une valeur
+invalide provoque toujours un refus ; l'agent doit corriger son appel. Les outils qui acceptent
+des paramètres libres conservent ces paramètres.
+
 Pour un agent Hermès configuré avec son propre fournisseur LLM, la tâche et son résultat
 restent visibles, mais Galaris ne peut pas afficher les appels LLM intermédiaires ni leur coût
 détaillé. Ce n’est pas une perte de tâche : ces appels ont lieu directement dans Hermès.
@@ -203,12 +209,12 @@ bloqués globalement et autorisés individuellement pour le seul agent **Galaris
 les choix déjà enregistrés.
 
 L'entrée **Messenger** ouvre la messagerie native de Galaris lorsqu'elle est activée et que votre
-rôle possède les droits nécessaires. Vous pouvez créer une conversation directe avec un agent, ou
-un groupe contenant cet agent et des collègues, rechercher les rooms, suivre les non-lus, répondre,
-joindre un fichier, enregistrer une note vocale et démarrer un appel navigateur. Le panneau
-**Activité** montre les étapes publiables et les outils du round, jamais le raisonnement privé de
-l'agent. Quitter une conversation retire votre accès sans effacer son historique pour les autres
-membres.
+rôle possède les droits nécessaires. Vous pouvez créer des conversations directes distinctes avec
+un agent, rechercher les rooms, suivre les non-lus, répondre, joindre un fichier, enregistrer une
+note vocale et démarrer un appel navigateur. Le panneau **Activité** montre les étapes et outils
+publiables du round. Archiver une conversation la retire de la liste courante sans effacer son
+historique ; vous pouvez la retrouver dans les archives. La création de groupes et la gestion
+des participants ne sont pas proposées dans la messagerie interne.
 
 Après l'admission de votre message, « Réflexion en cours » apparaît dès que le
 round en attente est reçu par l'interface, avant ses premiers fragments. Une

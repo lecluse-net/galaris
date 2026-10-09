@@ -180,9 +180,15 @@ Les lots sont validés avant toute écriture et enregistrés dans une seule tran
 
 Les fonctions suivent **surcharge de connexion → état global → défaut logiciel**. Les modes
 sont **Actif**, **Bloqué** et **Sur demande** ; **Hériter** (`default`) retire la surcharge.
-Dans l'écran d'autorisations, **Global (tous)** propose uniquement **Activé**, **Désactivé**
-et **Sur demande** ; sans règle enregistrée, il affiche le défaut logiciel. **Hériter**
-est réservé à **Cette connexion**.
+Dans la matrice **Autorisations**, les colonnes **Global (tous)** et **Cette connexion** proposent Activé,
+Désactivé et Sur demande. Seule la règle applicable est sélectionnée : une surcharge d’agent
+laisse les boutons globaux non sélectionnés, mais cliquables. Choisir un mode global
+enregistre cette règle et retire atomiquement la surcharge de la connexion sélectionnée ;
+les autres connexions conservent leurs exceptions. Sans règle globale, le défaut logiciel
+est affiché si la connexion en hérite. `default` reste la valeur d’héritage dans l’API ;
+l’interface revient à cet héritage en sélectionnant une règle globale.
+Les choix locaux successifs sont enregistrés dans l’ordre ; un échec est signalé et provoque
+une relecture des règles. Leur sauvegarde n’attend pas une découverte MCP distante.
 Les fonctions natives sensibles sont Sur demande par défaut ; les capacités MCP tierces sont
 Actives par défaut. Un refus global peut donc être surchargé par une autorisation locale explicite ;
 `tool_admin_function_set` signale ces surcharges. `effective` décrit la permission résolue,

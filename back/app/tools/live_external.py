@@ -10,6 +10,7 @@ from pydantic_ai import RunContext
 from pydantic_ai.toolsets import AbstractToolset, ToolsetTool
 from .mcp_loader import resolve_live_connection
 from .authorization import tool_authorization_configuration
+from .tool_arguments import argument_warning, normalize_tool_arguments
 
 
 class LiveConnectionToolset(AbstractToolset[Any]):
@@ -57,6 +58,8 @@ class LiveConnectionToolset(AbstractToolset[Any]):
             current_tool = tools.get(name)
             if current_tool is None:
                 raise PermissionError("External MCP function is no longer available.")
+            schema = current_tool.tool_def.parameters_json_schema
+            tool_args, ignored = normalize_tool_arguments(tool_args, schema)
             execution = current_tool_execution()
             identifier = await claim_action(AuthorizationAction(
                 agent_id=self.agent_id, runtime="internal", context_key=f"principal:internal:{self.id}",
@@ -71,4 +74,4 @@ class LiveConnectionToolset(AbstractToolset[Any]):
                 await finish_action(identifier, outcome="outcome_unknown")
                 raise
             await finish_action(identifier, receipt=result)
-            return result
+            return [result, argument_warning(name, ignored, schema)] if ignored else result

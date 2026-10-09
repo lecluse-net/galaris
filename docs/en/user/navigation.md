@@ -127,6 +127,11 @@ When an agent avatar is saved, the image is converted to JPEG and reduced to at 
 | Connections | Configure connections associated with agents | `/tools?tab=connections` |
 | Authorizations | Administer access rules for tools and functions | `/tools?tab=authorizations` |
 
+In **Authorizations**, each function has **Global (all)** and **This connection** columns offering Enabled,
+Disabled and Ask. The selected column identifies the applicable rule. Choosing a global mode
+returns this agent's connection to inheritance without removing other agents' exceptions.
+Saving follows successive choices and reports errors.
+
 For compatible file providers and the SSH Console, **File indexing** defaults to
 **Only files already known**. Files and directories returned by `file_share` listings and
 searches become private Memory entries; Dream can later enrich supported files.
@@ -167,8 +172,11 @@ In internal Chat, the “Answer to…” sentence for button responses follows t
 language, including after reopening or changing languages. The request title and selected
 option label retain the wording of the original request.
 
-For browser access, open the agent's **Browser** connection. Local networking is blocked by
-default; enable `allow_local_network` to allow a permission request. Destination filters stay
+For browser access, open the agent's **Browser** connection. **Public sites allowed** is the
+initial choice for new installations: public HTTP methods and WebSocket pass without per-site
+consent, subject to filters and explicit denials. Existing instances keep their policy; a previously
+absent parameter becomes **Per-site approval**. Local networking is blocked by default; enable
+`allow_local_network` to allow a separate permission request. Public mode permits no local access. Destination filters stay
 authoritative. Answer through messaging or the internal-chat buttons: both approvals and denials
 are remembered per agent, access type and origin (domain, protocol, port). Public GET requests
 need no question with the default settings. The third choice, **Always allow all sites**,
@@ -176,7 +184,8 @@ saves consent for all domains, protocols, ports and paths, with configured HTTP 
 WebSocket, for this agent. New web destinations no longer require site permission requests.
 Filters, explicit denials and separate local-network permissions still apply.
 **Allow and remember** and **Deny and remember** remain limited to the requested access type.
-Delete the all-sites agreement to require a choice again for those accesses. Existing
+In **Per-site approval** mode, delete the all-sites agreement to require a choice again for those
+accesses. Returning to that mode creates no implicit grant. Existing
 single-site agreements keep their original scope.
 **Monitor → Remembered permissions**
 (`/connection/permissions`) shows the original question and answer, filters by agent or decision,
@@ -190,6 +199,11 @@ A skill provides instructions; actual function access also depends on authorized
 **Configure → Skills** (`/skill`) contains **Skills** (`?tab=skills`), **Self-learning**
 (`?tab=learned`) when learning is enabled, and **Authorizations** (`?tab=authorizations`)
 with `SKILL_ASSIGN`. Skill assignments do not replace Tool permissions or human account roles.
+
+Its **Global (all)**, **Category** and **This agent** columns offer Active/Blocked and highlight
+the applicable rule. Category rules concern the selected agent. Agent skill exceptions take
+precedence over that agent's category rules, then global settings.
+Changing a global or category rule preserves more specific exceptions.
 
 The bundled **Galaris**, **Galaris Lab**, and **Connaissance de Galaris** skills belong to
 the **Galaris** category by default. Synchronization also groups existing uncategorized

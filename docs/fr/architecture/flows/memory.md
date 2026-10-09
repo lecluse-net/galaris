@@ -254,9 +254,10 @@ durable susceptible d'aider une conversation future.
 ## Rappel hybride unique à deux voies
 
 ```text
-API /memory/browse (administration) ─────► ACL/validité ──► FTS ─────────► page exhaustive
+API /memory/browse sans texte ─────────► ACL/validité ──► filtres SQL ─► page
+                 avec texte ─────────► rappel hybride borné + ancrages temporels
 
-API /memory/search + page Mémoire + MCP/voix/brief + toute recherche file_search(memory://)
+API /memory/search + MCP/voix/brief + toute recherche file_search(memory://)
        ├─► voie thématique ──► FTS + cosinus exact ─┐
        └─► voie globale ─────► FTS + cosinus exact ─┼─► classement pondéré ─► diversité ─► résultats
                  liens confirmés forts ──► reranking┤
@@ -273,14 +274,18 @@ comme extrait et indique `mode`, `degraded` et `degradation_reason`. Aucun appel
 dégrader volontairement en lexical : cette voie est exclusivement un repli automatique lorsque
 le modèle, le fournisseur ou l'index sémantique est indisponible. Pour `memory://`, le paramètre
 générique `mode` de `file_search` ne change donc pas cette stratégie. La liste
-d'administration `/memory/browse` reste lexicale et paginée. Le rappel borné n'annonce ni total exact ni pagination
-exhaustive, puisque son rôle est de rappeler quelques éléments pertinents.
+d’administration `/memory/browse` utilise le rappel hybride lorsqu’un filtre textuel est fourni,
+avec au plus 500 résultats sans date et une indication de troncature. Sans texte, elle parcourt
+les souvenirs sans date répondant aux filtres ; les correspondances temporelles s’ajoutent
+séparément. Le rappel borné n’annonce ni total exact ni pagination exhaustive.
 
-La version `memory-topic-evidence-diverse/v7` fusionne quatre signaux de présélection : FTS et pgvector
-dans le Topic courant lorsqu'il existe, puis FTS et pgvector dans la portée globale autorisée.
-Elle classe ensuite les candidats selon les Params globaux pour le sémantique, le lexical, les liens
-confirmés, le nombre de sources, la fraîcheur et la centralité. Cette dernière tient compte des
-liens accessibles autour du candidat, y compris hors du seul top-k. Les injections automatiques ne
+La version `memory-query-evidence/v12` fusionne FTS et pgvector dans le Topic courant lorsqu’il
+existe, puis dans la portée globale autorisée. Les termes informatifs de la question, leur
+rareté, les identités nommées et les titres exacts dominent le classement ; la similarité
+sémantique les complète. Topic, liens confirmés, sources, fraîcheur et centralité servent de
+bonus contextuels secondaires. La diversité favorise les termes, identités et faits encore
+absents. Aucun score lexical ou vectoriel faible ne supprime à lui seul les candidats autorisés.
+La centralité tient compte des liens accessibles autour du candidat, y compris hors du top-k. Les injections automatiques ne
 créent aucune association de co-usage : être présenté ensemble ne prouve pas une relation métier.
 Le vivier vaut 48 candidats et le résultat contient au plus huit items par défaut; le vivier,
 les poids et la diversité sont exclusivement configurés par les Params globaux de la section
@@ -296,11 +301,14 @@ conserve le rappel ACL ordinaire.
 
 Après ces rangs textuels et vectoriels, le rappel inspecte au plus un saut depuis leurs candidats
 à travers les `MemoryLink` confirmés (`suggested=false`) dont la confiance atteint `0,75`. Cette
-voie `graph_link`, pondérée à `1,1` puis modulée par la confiance du lien, ne peut reranker qu'un
-souvenir possédant déjà une preuve lexicale ou vectorielle directe. Le repli lexical ignore les
-formules conversationnelles sans terme informatif et exige un recouvrement direct avec plusieurs
-termes pour une requête longue. Elle repasse toujours par
-les mêmes ACL, dates et surtout par le même filtre de contact. Un lien, même de confiance `1,0`, ne peut donc jamais
+voie `graph_link`, pondérée à `1,1` puis modulée par la confiance du lien, enrichit le contexte des
+candidats. Un voisin sans résultat lexical ou vectoriel propre peut devenir une preuve lorsque
+les extraits accessibles identifient une cible relationnelle unique ; les ambiguïtés,
+négations et incertitudes ne sélectionnent pas arbitrairement une personne.
+Les chemins structurels confirmés peuvent aussi fournir des passages contenant les termes
+de la demande. Le repli lexical classe les concordances partielles par couverture FTS, sans
+exiger tous les mots d’une longue requête. Ces voies repassent toujours par les mêmes ACL,
+dates et filtre de contact, puis par l’admission finale de leur révision et chemin. Un lien, même de confiance `1,0`, ne peut donc jamais
 faire entrer un souvenir scellé à Paul dans le rappel courant de Jacques.
 
 Une proposition positive `topic_membership_candidate` ne crée pas de candidat et ne définit pas
@@ -378,6 +386,12 @@ producteur explicite
        ├─ contradict  → nouvel item + lien de contradiction
        └─ skip/unsafe → rejet automatique audité
 ```
+
+Les écritures directes refusent les credentials reconnus dans le contenu et les métadonnées,
+avec un diagnostic sans valeur sensible. La détection d’une affectation `secret:` exige une
+frontière de champ : le mot dans une phrase ordinaire reste accepté. Les clés privées, tokens,
+Bearer et autres affectations de credentials restent filtrés. L’extraction automatique masque
+les éléments reconnus ou écarte un résultat non récupérable avant stockage.
 
 Une acquisition admissible est appliquée immédiatement. Il n'existe ni boîte de validation ni
 question humaine dans Galaris : les interlocuteurs des canaux de messagerie ne sont généralement

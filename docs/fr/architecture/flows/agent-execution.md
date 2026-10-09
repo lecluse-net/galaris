@@ -55,6 +55,12 @@ Les appels de décision natifs respectent également cette limite et leurs déla
 Un résultat terminal déjà reçu reste terminal même si la fin du transport tarde.
 Chaque nouvel appel reçoit son propre budget ; la durée totale d’une Task n’est pas bornée.
 
+Le proxy Responses complète uniquement le suffixe manquant des arguments d’une fonction
+depuis `response.function_call_arguments.done` ou `response.output_item.done`, avant de
+transmettre cet événement au SDK. Les arguments déjà complets et les identités des appels
+restent conservés. Une valeur terminale contradictoire avec le préfixe diffusé fait échouer
+le flux avant l’outil. La trace et le modèle consomment les mêmes arguments complétés.
+
 ## Activité des tâches et provenance
 
 Les inférences et les files Task/Conversation sont réveillées après commit. Le suivi interne
@@ -83,7 +89,21 @@ modèle. Le résultat v2 expose `waiting_for_authorization` et les UUIDs exacts.
 Task libère son lease pendant l’attente ; les rounds texte et voix exposent aussi cette
 disposition. Les harnais gérés conservent leurs callbacks dans un acteur runtime et valident
 le protocole d’autorisation avant de démarrer un ancien SDK. Une issue inconnue interdit le
-rejeu automatique. Voir [0153](../../../../project/decisions/0153-common-action-authorizations.md).
+rejeu automatique. Le résultat est sérialisé en mode JSON avant écriture JSONB, y compris
+les UUIDs des demandes d’accord ; le rechargement conserve leur identité.
+Voir [0153](../../../../project/decisions/0153-common-action-authorizations.md).
+
+La frontière MCP commune retire les clés inconnues de premier niveau d’un schéma fermé
+avant validation et autorisation. Le résultat ajoute un avis `galaris.tool-arguments/v1`
+sans les valeurs ignorées ; la projection Pydantic AI le transmet au modèle et le checkpoint
+le conserve. Rejouer cette réponse ne réexécute pas l’effet. Paramètres obligatoires, valeurs,
+objets imbriqués et schémas ouverts ou composés gardent leur validation habituelle.
+Voir [0164](../../../../project/decisions/0164-tolerant-tool-arguments.md).
+
+Après persistance d’un round texte en `SUCCEEDED`, le scheduler marque les incidents LLM et
+outils de ce round comme récupérés, sans supprimer les erreurs ni résoudre le motif agrégé.
+Attente d’accord, interruption, remplacement, perte de lease, annulation, échec et livraison
+incertaine restent distincts d’une réussite durable.
 
 Le chat et la fiche tâche réhydratent `POST /tasks/activity` à l’ouverture et à la reconnexion,
 puis partagent les abonnements aux runs actifs. La projection commune expose état opérationnel,

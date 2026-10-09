@@ -8,7 +8,7 @@ les objectifs, les documents, la mémoire, les modèles IA et les intégrations 
 Un même agent peut discuter avec une personne, consulter ses informations autorisées, produire un
 livrable, solliciter un collègue, déclencher un workflow externe et conserver les connaissances utiles.
 
-Ce catalogue décrit les fonctionnalités présentes dans le dépôt au **8 octobre 2026**, y compris
+Ce catalogue décrit les fonctionnalités présentes dans le dépôt au **9 octobre 2026**, y compris
 les fonctions destinées aux agents, les écrans d’administration et les mécanismes de fond. Il est
 organisé par usages, puis complété par un inventaire des fonctions MCP et une correspondance avec
 **tous les modules déclarés**. Les sources de chaque domaine sont indiquées pour rendre la couverture
@@ -20,18 +20,12 @@ des connexions, du modèle et, pour un service externe, du compte configuré. Ce
 sur l’implémentation actuelle et ses usages accessibles. Il décrit le logiciel, sans attester la
 configuration ou la qualification de tous les fournisseurs d’une installation particulière.
 
-La présente actualisation reprend le catalogue précédent et examine les **57 derniers commits**,
-de `02a822d` à `a6cc1f8` inclus au début de la revue, ainsi que les modifications locales.
-Les commits `c2a720d`, `27e842f` et `cd8e8cc`, créés pendant la revue à partir de ces modifications,
-sont également couverts. Les comportements sont confrontés aux contrats, à l’implémentation et aux tests
-disponibles ; cette revue documentaire ne constitue pas une qualification de l’application.
-
-La **séparation du document et de sa synthèse mémoire**, leurs **mots-clés communs** et
-la **miniature documentaire courante unique** sont désormais committées. Les adaptations
-des consignes agentiques et certains renforcements du rappel incluent encore du travail local.
-Ces fonctions décrivent l’état du dépôt inspecté, sans annoncer leur publication. Les fonctions décrites
-ci-dessous ne constituent pas une preuve de déploiement ; les dix mécanismes du Lab restent distincts
-des quatorze mécanismes de fond enregistrés dans Dream.
+La revue inclut les changements du 8 octobre jusqu’à `379bd98` et les modifications non committées
+présentes lors de l’inspection, notamment la tolérance aux arguments d’outils inconnus.
+Les comportements sont confrontés aux contrats, à l’implémentation et aux tests disponibles ;
+cette revue documentaire ne constitue ni une qualification de l’application ni une preuve de
+publication ou de déploiement. Les dix mécanismes du Lab restent distincts des quatorze mécanismes
+de fond enregistrés dans Dream.
 
 Les inventaires couvrent **244 fonctions MCP natives, 71 modules backend et 36 modules frontend**.
 Les fonctionnalités réalisées restent distinctes des intentions du
@@ -428,6 +422,11 @@ métadonnées ; la découverte est conservée cinq minutes. Les modèles déjà 
 Un budget explicite reste prioritaire ; sans capacité connue, le défaut fournisseur s’applique.
 La compaction et les historiques Responses distants n’utilisent pas ce calcul local. Une sortie
 tronquée par la limite physique ne valide pas la tâche.
+
+Le proxy Responses complète les arguments d’une fonction lorsque le fournisseur n’envoie leur
+fin que dans un événement terminal d’arguments ou de fonction. Il conserve le préfixe déjà reçu
+et les appels distincts ; une contradiction provoque un échec avant l’exécution de l’outil.
+Voir les [contrats du proxy](../../../back/tests/test_llm_call_trace.py).
 
 ### Configuration initiale facultative OpenRouter
 
@@ -1069,6 +1068,11 @@ Un round vérifie s’il a été dépassé par de nouveaux messages avant de pro
 d’un même salon sont sérialisés. Les réponses obsolètes peuvent être remplacées sans rejouer les
 effets déjà commencés. Les tentatives, livraisons et réponses de secours sont persistées.
 
+Le scheduler réclame le round prêt directement : une actualisation concurrente du salon ne
+retarde pas son démarrage jusqu’au prochain rattrapage. Le Chat affiche déjà l’attente `FROZEN`
+avant les premiers événements d’exécution ; un successeur reste en file pendant le traitement
+de son prédécesseur.
+
 L’arrivée d’un nouveau message peut interrompre la génération ou la préparation d’une tâche
 devenue obsolète. Un outil déjà commencé termine son opération ; le brouillon interrompu reste
 traçable sans devenir une réponse durable. Les rattrapages du chat conservent la conversation et
@@ -1076,6 +1080,8 @@ le point de vue courants, même si une requête d’un ancien salon répond tard
 
 La libération normale d’un lease ne transforme pas une réussite en erreur. Une tentative réussie
 après reprise détermine l’état du round ; les erreurs antérieures restent dans son historique.
+Après persistance de `SUCCEEDED`, les incidents LLM et outils corrélés à ce round sont marqués
+comme récupérés. Une attente d’accord, une interruption ou une livraison incertaine ne suffit pas.
 
 Quand la Task ou le Process se termine, une notification peut revenir dans la conversation. Si la
 Task a déjà livré son résultat avec une preuve de transport, le système évite un second envoi du
@@ -1555,6 +1561,12 @@ le parcours de dédoublonnage existant reste utilisé.
 Sources : [acquisition Memory](../../../back/app/memory/acquisition_service.py),
 [équivalence et concurrence](../../../back/tests/test_decision_workflows.py).
 
+Les écritures mémoire refusent les credentials détectés dans le contenu ou les métadonnées,
+avec un diagnostic qui demande leur retrait sans les recopier. Le mot « secret » dans une phrase
+ordinaire ne suffit pas à bloquer le texte ; les affectations de secrets, tokens et clés restent
+contrôlées. L’extraction automatique masque les éléments détectés ou écarte un contenu non récupérable.
+Voir les [garanties de filtrage](../../../back/app/memory/tests/test_safety.py).
+
 ### Temporalité partielle et rappels à venir
 
 Un souvenir peut recevoir une **temporalité facultative** : année, mois, jour du mois, jour de
@@ -1598,6 +1610,9 @@ Une admission finale revérifie contenu, révision, droits et chemins de relatio
 Un résultat corrigé, révoqué ou oublié pendant la recherche est écarté, même en repli lexical
 ou à la reprise d’un contexte figé ; une ancienne occurrence n’emprunte pas l’autorisation
 d’une autre occurrence du même nœud.
+Les pages qui se recouvrent sont contrôlées occurrence par occurrence : chaque extrait et chemin
+doit correspondre à son propre instantané. Les occurrences valides répétées gardent leur ordre ;
+un lien supprimé ou redevenu suggéré n’est plus une preuve de chemin confirmé.
 Voir les [garanties d’admission du rappel](../../../back/app/memory/tests/test_recall_admission.py).
 
 Les documents sont recherchables par leur contenu complet, y compris les passages éloignés du
@@ -2028,7 +2043,9 @@ code malveillant.
 
 - Ajouter plusieurs pièces jointes par sélection, dépôt ou collage, avec progression et annulation.
 - Insérer une pièce jointe au curseur, la retirer du corps sans nécessairement supprimer le fichier,
-  ou gérer la totalité des pièces jointes dans la fenêtre dédiée.
+  ou gérer les fichiers non intégrés dans la zone **Pièces jointes non intégrées** sous le contenu.
+  Cette zone permet l’ajout, le dépôt, l’aperçu, le téléchargement, l’insertion et la suppression ;
+  les ressources intégrées restent accessibles depuis leurs cartes dans le corps.
 - Afficher les images dans le document avec légende, texte alternatif, redimensionnement
   proportionnel, habillage et déplacement.
 - Lire les PDF, vidéos et sons insérés ; ouvrir les autres formats dans leur visionneuse.
@@ -2382,6 +2399,11 @@ et opérations sur le fichier principal restent protégés selon le contrat.
 Les compétences apprises par Dream constituent une collection séparée, avec score et preuves.
 Elles s’ajoutent aux compétences ordinaires lorsque leur état le permet.
 
+La matrice présente **Global (tous)**, **Catégorie** et **Cet agent** avec des commandes Actif/Bloqué.
+Seule la règle applicable apparaît sélectionnée : la dérogation de compétence pour l’agent prévaut,
+puis sa règle de catégorie, puis le réglage global. L’absence de sélection dans une colonne signale l’héritage
+ou une règle masquée par une dérogation ; elle ne signifie pas une désactivation.
+
 ### Application des changements à la prochaine exécution
 
 Avant chaque nouvelle Task, Galaris compare les compétences autorisées et leurs fichiers à la
@@ -2481,6 +2503,13 @@ Les opérations de configuration suivantes concernent les **Tools optionnels** :
 - Consulter pour chaque agent l’origine native/externe/mixte des outils, leur disponibilité et
   les erreurs de découverte.
 
+La matrice **Autorisations** présente les modes Activé/Désactivé/Sur demande dans les colonnes
+**Global (tous)** et **Cette connexion**. Seule la règle applicable à l’agent sélectionné est mise en évidence.
+Cliquer sur un mode global enregistre la règle globale et retire atomiquement la surcharge
+de cette connexion ; les surcharges des autres agents sont conservées. La sauvegarde d’une
+règle ne dépend pas d’une nouvelle découverte MCP distante. Ces règles de fonctions s’appliquent
+aussi aux services système, dont les définitions et connexions restent protégées.
+
 **Browser, Search, Image et Multimedia** disposent de connexions intégrées actives par défaut.
 Browser et Search sont autorisés en conversation à leur première initialisation. **Console SSH,
 Image, Mail et Multimedia** demandent au contraire une activation explicite du mode conversation
@@ -2529,6 +2558,25 @@ aucun blocage. Un résultat externe incertain exige une réconciliation.
 
 Sources : [demandes et préconditions](../../../back/app/tools/tests/test_action_authorizations.py),
 [permissions et YOLO](../admin/tool-administration.md).
+
+### Arguments d’outils et aide à la correction
+
+Si un modèle ajoute une clé inconnue à un schéma d’entrée fermé, la frontière MCP la retire
+avant validation et autorisation, pour les fonctions natives et les proxies externes. Le résultat
+conserve sa sortie et ajoute un avertissement `galaris.tool-arguments/v1` donnant les noms ignorés,
+disponibles et obligatoires, sans les valeurs ignorées. Le harnais interne rend aussi cet avis
+au modèle et le conserve dans son checkpoint, pour une reprise sans nouvel effet.
+
+Cette correction concerne seulement les paramètres de premier niveau : les objets imbriqués,
+dictionnaires ouverts, clés autorisées par motif et schémas composés ou référencés gardent leur
+validation habituelle. Un paramètre obligatoire manquant ou une valeur invalide reste un rejet.
+L’accord porte sur les arguments réellement exécutés ; les droits, révocations, credentials et
+préconditions restent vérifiés.
+
+Sources : [contrat et limites](../../../project/decisions/0164-tolerant-tool-arguments.md),
+[normalisation](../../../back/app/tools/tool_arguments.py),
+[garanties de schéma](../../../back/app/tools/tests/test_tool_arguments.py),
+[avertissement et reprise](../../../back/app/harness/tests/test_execution_evidence.py).
 
 ### Chargement à la demande
 
@@ -2650,8 +2698,8 @@ contrôle l’accès** ; le nom affiché ne remplace pas son identité.
 - Exporter une projection métier en la copiant vers un provider inscriptible.
 
 Pour les documents HTML, les pages et offsets correspondent à des **blocs complets**. Une modification
-utilise la révision lue au préalable. Pour un Dataset, la lecture et l’édition utilisent les lignes
-JSON réelles et chaque mutation valide le résultat complet. `file_append` reste une concaténation
+utilise la révision lue au préalable. Pour un Dataset, la lecture pagine en caractères et
+l’édition utilise les lignes JSON réelles ; chaque mutation valide le résultat complet. `file_append` reste une concaténation
 de texte, soumise à cette validation ; l’ajout d’une entrée de collection par une application utilise
 le SDK Dataset. `file_create` accepte `document_type="dataset"` pour créer ce type dans la collection
 Documents ; le défaut reste HTML et le type d’une ressource existante est immuable.
@@ -2784,6 +2832,8 @@ réponse invalide est distingué d’une recherche réussie sans résultat. L’
 annulable et ne bloque pas les autres conversations.
 
 La configuration SearXNG est montée par la composition de base, en développement comme en production.
+La version du service est épinglée dans `compose.yaml` ; `make update` récupère les images
+d’infrastructure avant la reconstruction et le redémarrage, dans les deux environnements.
 
 ### Navigation interactive
 
@@ -2803,13 +2853,18 @@ contexte isolé et temporaire.
   connexion et les permissions réseau l’autorisent, notamment Docker, le LAN ou l’hôte.
 
 Le **réseau local est bloqué par défaut**. L’activer sur la connexion autorise une demande de
-permission ; les filtres de domaines, ports et réseaux restent prioritaires. Par défaut, les GET
-publics autorisés passent directement, tandis que POST, PUT, PATCH, DELETE et WebSocket exigent
-un accord. Accord et refus sont mémorisés par agent, type d’accès et origine (protocole/domaine/port).
+permission ; les filtres de domaines, ports et réseaux restent prioritaires. Sur une nouvelle
+installation, **Sites publics autorisés** (`public_access_mode=allow`) permet les méthodes HTTP
+et WebSocket publics sans accord par site, sans créer d’accord mémorisé ni ouvrir le réseau local.
+Les installations existantes conservent leur choix ; un paramètre précédemment absent reçoit
+`ask` à la mise à jour. En **Autorisation par site** (`ask`), les GET publics passent avec les
+réglages par défaut, tandis que POST, PUT, PATCH, DELETE et WebSocket demandent un accord.
+Accord et refus sont mémorisés par agent, type d’accès et origine (protocole/domaine/port).
 **Toujours autoriser tous les sites** mémorise un accord web pour cet agent, pour les domaines,
 protocoles, ports et chemins futurs, avec les méthodes configurées et WebSocket. Les filtres,
 refus explicites et permissions distinctes du réseau local restent prioritaires. Supprimer cet
-accord rétablit les demandes ; les anciens accords limités à un site gardent leur portée.
+accord rétablit les demandes en mode `ask` ; les anciens accords limités à un site gardent leur portée.
+Le mode `allow` ne lève pas un refus explicite ; revenir à `ask` ne crée aucun accord implicite.
 L’action doit être retentée après réponse : un formulaire n’est pas resoumis automatiquement.
 **Superviser → Permissions mémorisées** permet de consulter les questions et réponses, filtrer
 par agent/décision et supprimer un choix pour faire redemander, dans le périmètre administrable
@@ -3464,6 +3519,12 @@ droits de consultation ou d’édition des incidents, permet de :
 
 Le journal n’est pas une auto-correction de code : il constitue le dossier durable du problème.
 La reprise opérationnelle et la résolution d’un incident sont deux actions différentes.
+La réussite durable d’un round (`SUCCEEDED`) marque ses occurrences LLM et outils comme récupérées,
+sans effacer leur diagnostic ni résoudre automatiquement le motif agrégé. Les erreurs d’autres
+runs restent inchangées. Attente d’autorisation, interruption, remplacement, perte de lease,
+annulation, échec ou livraison incertaine ne constituent pas une récupération réussie.
+
+Voir les [garanties de récupération](../../../back/app/incident/tests/test_capture.py).
 
 Sources : [dashboard](../../../back/app/dashboard/schemas.py), [appels LLM](../../../back/app/llm/schemas.py),
 [API d’inspection](../../../back/app/llm/call_router.py),
@@ -3556,6 +3617,9 @@ Ces plafonds sont administrables dans les préférences concernées.
   les sources modifiées localement empêchent ce changement de version. Les réglages privés de
   l’installation sont conservés. `make update VERSIONS` liste les tags disponibles puis les branches,
   sans déployer de version.
+- Avant le build et le redémarrage, `make update` récupère les images d’infrastructure déclarées,
+  dont SearXNG, en dev comme en prod. Un échec de récupération arrête la commande en conservant
+  les services en cours ; une mise à jour depuis `RELEASE_DIR` utilise les images du paquet qualifié.
 - Le journal DbAdmin conserve le verdict et les détails bornés d’une synchronisation en échec,
   pour permettre le diagnostic et la reprise.
 - Sauvegarde et restauration de la base, des fichiers, de l’exécuteur et des éléments nécessaires au
@@ -3996,7 +4060,7 @@ ordinaires restent dans le périmètre de l’agent.
 | `file_list` | `file_sharing` | Lister une collection de fichiers, pièces jointes ou objets projetés. |
 | `file_info` | `file_sharing` | Lire les métadonnées et les capacités d’une ressource. |
 | `file_search` | `file_sharing` | Rechercher noms/contenus sous une collection ; appliquer le rappel hybride et les chemins structurels autorisés pour Memory. |
-| `file_read` | `file_sharing` | Lire une page de texte/blocs HTML, de lignes JSON pour un Dataset ou un binaire borné, avec suite de lecture et révision. |
+| `file_read` | `file_sharing` | Lire une page de texte/blocs HTML, le JSON d’un Dataset paginé en caractères ou un binaire borné, avec suite de lecture et révision. |
 | `file_create` | `file_sharing` | Créer une ressource texte/binaire, une pièce jointe ou un document HTML/Dataset ; `document_type="dataset"` choisit le JSON à la création du document. |
 | `file_write` | `file_sharing` | Remplacer le contenu selon ses préconditions et la révision attendue ; conserver le type du document et valider le JSON d’un Dataset. |
 | `file_append` | `file_sharing` | Ajouter du texte ou des blocs HTML à une ressource compatible ; le résultat complet d’un Dataset doit rester du JSON valide. |

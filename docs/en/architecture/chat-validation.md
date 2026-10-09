@@ -4,7 +4,7 @@
 
 Status: `accepted-and-implemented`
 
-Date: August 21, 2026
+Initial validation: August 21, 2026. Current-contract review: October 9, 2026.
 
 This validation describes the delivered contract; it replaces the implementation plan that has now been removed.
 
@@ -49,7 +49,8 @@ Accepted caveats: the active-call registry is local to the backend process; a mu
 
 ## Validation B — mapping of existing data
 
-No table is added and no visible content is duplicated. The nullable `messenger_users.galaris_user_id` column links a remote identity to a Galaris account; the uniqueness of `(tool_id, galaris_user_id)` guarantees a single current identity per Tool and account.
+Chat reuses the canonical Messenger tables without duplicating their visible content.
+Its own preferences, including emoji usage and push subscriptions, remain in its domain. The nullable `messenger_users.galaris_user_id` column links a remote identity to a Galaris account; the uniqueness of `(tool_id, galaris_user_id)` guarantees a single current identity per Tool and account.
 
 | Table | Columns and invariants used | Critical access |
 |---|---|---|
@@ -57,14 +58,14 @@ No table is added and no visible content is duplicated. The nullable `messenger_
 | `connections` | `tool_id`, `agent_id`, `active` | uniqueness of `(tool_id, agent_id)`, connection rechecked before admission/call |
 | `messenger_rooms` | UUID, connection, external ID, label, direct kind, type, timestamps | uniqueness of `(connection_id, external_id)`, one user-agent pair |
 | `messenger_users` | Tool, external ID, `agent_id`, `galaris_user_id`, `is_ai` | uniqueness of `(tool_id, external_id)` and `(tool_id, galaris_user_id)` |
-| `messenger_room_users` | room/user, `role`, `joined_at`, `muted`, `last_read_message_id` | exactly the human owner and the agent for the internal UI |
+| `messenger_room_users` | room/user, `role`, `joined_at`, `muted`, `archived`, `last_read_message_id`, `read_through_position` | exactly the human owner and the agent for the internal UI |
 | `messenger_messages` | room, sender, direction, external ID, response, status, dates | canonical idempotence and `(created_at,id)` pagination |
 | `messenger_files` / `messenger_attachments` | UUID, connection, untrusted name, MIME, size, order | file accessible only through a message in the room |
 | `conversation_rounds` and links | room, messages, status, redacted trace | activity filtered after HTTP membership check |
 | `voice_sessions` | conversational room and lifecycle specific to each call | access by room and correlated call |
 | `chat_emoji_usages` | user, emoji, count, and last use | uniqueness of `(user_id, emoji)`, cascading deletion with the account |
 
-The historical schema extensions on `messenger_room_users` remain unchanged: `role` identifies the human owner of the direct room, `joined_at` preserves the audit trail, `muted` carries the personal preference, and `last_read_message_id` provides a stable unread cursor. Every `_id` suffix is a real FK, and deleting the read message resets the cursor to `NULL`.
+On `messenger_room_users`, `role` identifies the human owner of a direct room, `joined_at` preserves the audit trail, and `muted` and `archived` carry personal preferences. Unread state depends on `read_through_position`, the highest journal position actually seen, which remains monotonic even when older history is imported. `last_read_message_id` remains a real FK; deleting the referenced message resets it to `NULL` without moving the read position backwards.
 
 The “My Profile” screen allows users to set or remove the mapping for each external Tool. Chat then displays only the rooms in which that identity is a member. External rooms are viewable, paginated in batches of 100 messages on scroll, and strictly read-only. The source badge distinguishes, in particular, Nextcloud Talk and Telegram. Technical Mail rooms are excluded from this projection: incoming emails remain journaled and are admitted as Tasks without creating a message-visible conversation. The `CHAT_IMPERSONATE` privilege exposes a separate selector for viewing the same projection from the canonical identity of an AI agent.
 

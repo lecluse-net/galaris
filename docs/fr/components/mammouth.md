@@ -14,9 +14,10 @@ pas de second système d'agents ni de gestion des fichiers.
 3. Tester la connexion puis importer les modèles par capacité. Ce test vérifie la clé
    par une lecture authentifiée, sans génération ; il ne garantit pas un solde suffisant.
 4. Affecter les modèles aux usages du profil LLM. Pour `audio_read` et `video_read`,
-   utiliser la section **Multimédia**, puis activer la connexion Multimedia de l'agent.
+   utiliser la section **Multimédia** et vérifier la connexion Multimedia de l’agent.
 
-Les connexions Multimedia sont créées automatiquement et désactivées par défaut.
+Les connexions Multimedia sont créées automatiquement et actives par défaut. Les désactivations
+déjà enregistrées sont conservées ; le mode conversation du Tool exige une activation explicite.
 Leurs fonctions ne sont exposées que si le profil possède une ressource compatible
 et que le fournisseur et la connexion sont actifs. Voir [Multimédia](multimedia.md).
 Les crédits API sont distincts des quotas de l'application Mammouth ; le fournisseur

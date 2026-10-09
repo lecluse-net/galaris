@@ -500,7 +500,7 @@ async def test_file_copy_approval_is_bound_to_the_observed_source_bytes(action, 
     async with get_db_session():
         server = await build_agent_galaris_fastmcp(action.agent_id, allowed_tool_names={"file_copy"},
             resources={"console": object()})
-    arguments = {"source": "console://source.txt", "destination": "console://destination.txt"}
+    arguments = {"source": "console://source.txt", "destination": "console://destination.txt", "unused": "private"}
     operation = str(uuid4())
     meta = {"galaris.execution/v1": {"operation_id": operation}}
     async with Client(server) as client:
@@ -514,6 +514,8 @@ async def test_file_copy_approval_is_bound_to_the_observed_source_bytes(action, 
             row = await db.get(ActionAuthorization, identifier)
             assert await answer_action(identifier, user_id=row.approver_user_id, approved=True, remember=remember)
         meta["galaris.authorization/v1"] = {"continuation": control["continuation"]}
+        # Approval remains bound to the effective call, not discarded arguments.
+        arguments["unused"] = "different-private-value"
         result = await client.call_tool("file_copy", arguments, meta=meta, raise_on_error=False)
         destination = transport.resolve_path("destination.txt")
         assert destination.exists() is (not changed)

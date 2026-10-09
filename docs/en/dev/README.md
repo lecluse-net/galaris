@@ -426,10 +426,11 @@ items with their direct owner, grants, revisions, sources, links, usages, idempo
 and jobs. There is no intermediate memory space. `ResourceStorage` manipulates
 only bytes by opaque identifier; the `native` provider writes atomically under the fixed
 `/data/memory` directory. Search applies owner, access, visibility, and validity in SQL before
-ranking. Ranking first requires direct and informative lexical evidence—not
-a simple conversational word—or sufficient semantic proximity, then combines topic membership,
-confirmed links, provenance, freshness, and local centrality before discarding near-duplicates.
-The result can therefore contain zero to eight items by default, without an LLM call. The Agent
+ranking. Ranking favors informative query terms, their rarity, named identities and exact
+titles, then semantic similarity. Topic membership, confirmed links, provenance, freshness
+and centrality remain secondary signals. No lexical or vector cutoff alone empties recall;
+diversity limits near-duplicates. The result contains at most eight items by default and may
+be empty when no authorized valid candidates exist, without a generative LLM call. The Agent
 profile's Memory projection is excluded from this automatic brief: its identity and personality
 already come from the canonical profile in the system prompt. It remains available through an
 explicit Memory search.
@@ -445,7 +446,9 @@ dimension, produced by the worker after commit, then replaced atomically. ACLs a
 SQL filters applied before ranking. If the current profile's Vector usage, the index, or the
 provider is unavailable, the contract reports degradation and returns the lexical result. The
 automatic brief uses the same hybrid recall;
-`/memory/browse` retains paginated lexical browsing. `/memory/recall` is a deprecated
+with a text filter, `/memory/browse` also uses hybrid recall, bounded to 500 undated results
+and reporting truncation. Without text it browses all undated memories matching the filters;
+temporal matches are added separately. `/memory/recall` is a deprecated
 HTTP alias for ranked search without a score.
 
 With a current Topic, recall separately merges FTS and pgvector within the dossier, then FTS and
@@ -530,6 +533,17 @@ this reference with the Tool, category, type, and only the code locations from t
 records neither arguments, content, nor arbitrary provider text. Only explicitly declared safe
 business errors may transmit their details to the model; the others remain scrubbed while
 retaining an actionable diagnosis.
+
+At the shared MCP boundary, undeclared top-level parameters in a closed input schema are
+removed before validation and authorization, for native tools and external proxies.
+The result retains its structured output and adds a `galaris.tool-arguments/v1` warning:
+ignored names, available and required parameters, without ignored values. The Pydantic AI
+adapter also forwards this warning to the model and checkpoint. A tool with no arguments
+therefore receives `{}` even when the model invents a key. Required parameters, types, values
+and nested business objects remain validated; open dictionaries, `patternProperties`
+and composed schemas retain permitted or ambiguous keys. Native validation rejections
+list available and required parameters. See
+[decision 0164](../../../project/decisions/0164-tolerant-tool-arguments.md).
 
 The file inputs of `process_start` and `process_admin_start` also use the `uri` key and the
 `app.file_share` facade. The run snapshot retains the source reference, and the machine endpoint
@@ -1145,10 +1159,10 @@ service request and respond as if every foreign Goal were nonexistent.
 
 The `galaris`, `conversation`, `memory` and `file_sharing` Tools carry `can_disable=false`.
 This persisted property is software-owned and absent from write contracts. Their connections are
-created for every agent and converge to active, including previously disabled connections. Their
-functions are enabled at both cascade levels; historical denials are ignored. The API rejects
-changes or deletion of the Tool, its connections, parameters and authorizations. All three UI
-tabs retain them as read-only entries with a mandatory-service icon. Optional Tools retain
+created for every agent and converge to active, including previously disabled connections. The API protects their definitions, active connections and system parameters from ordinary
+mutations. Their functions retain Enabled/Disabled/Ask modes and the global/agent cascade,
+configurable by humans. The UI displays a mandatory-service icon; the Authorizations matrix
+remains usable for their functions. Optional Tools retain
 administrator-owned activation and restrictions. Business ACLs, harness compatibility and
 context restrictions still apply.
 
@@ -1461,7 +1475,7 @@ attempt, run, agent, provider, model, and tool, as well as the available retry p
 are masked and bytes are replaced with their size and fingerprint. A global 8 MiB limit,
 reported in the record, protects the database from an accidentally unbounded payload.
 
-The **Preferences → AI Failure Log** menu displays occurrences and grouped patterns.
+The **Monitor → Failure journal** menu displays occurrences and grouped patterns.
 The maintenance routine consists of processing `new` and `regression` patterns, documenting
 the diagnosis and root cause, scheduling and referencing the fix and its test, and finally moving
 the pattern to `resolved`. A new occurrence automatically reopens it as `regression`.

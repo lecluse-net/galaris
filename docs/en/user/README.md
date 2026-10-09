@@ -113,6 +113,12 @@ prompt the agent to change approach, reread relevant skills, or check arguments.
 available so the agent can continue; if it cannot proceed, it explains the repeated errors
 and what remains blocked. Overall execution limits still apply.
 
+If the Agent invents a top-level parameter for a tool whose schema strictly lists its
+accepted parameters, Galaris ignores it and tells the Agent which parameters are available
+in the result. Nested objects and composed schemas retain their validation. A missing required parameter or an
+invalid value still rejects the call; the Agent must correct it. Tools that accept
+free-form parameters retain them.
+
 For a Hermès Agent configured with its own LLM provider, the Task and its result remain visible, but Galaris cannot display intermediate LLM calls or their detailed cost. This does not mean the Task was lost: these calls take place directly within Hermès.
 
 ## The Three Forms of Request
@@ -151,7 +157,7 @@ In the default installation, `galaris-lab` and `galaris-knowledge` are globally 
 and individually enabled only for the **Galaris** Agent created during setup.
 Permissions remain configurable, and updates preserve previously saved choices.
 
-The **Messenger** entry opens Galaris’s native messaging system when it is enabled and your role has the necessary permissions. You can create a direct conversation with an Agent, or a group containing that Agent and colleagues, search rooms, track unread messages, reply, attach a file, record a voice note, and start a browser call. The **Activity** panel shows publishable steps and the round’s Tools, never the Agent’s private reasoning. Leaving a conversation removes your access without deleting its history for the other members.
+The **Messenger** entry opens Galaris’s native messaging system when it is enabled and your role has the necessary permissions. You can create separate direct conversations with an Agent, search rooms, track unread messages, reply, attach a file, record a voice note, and start a browser call. The **Activity** panel shows publishable steps and Tools from the round. Archiving a conversation removes it from the current list without deleting its history; you can find it again in the archives. Internal messaging does not offer group creation or participant management.
 
 After your message is admitted, “Thinking” appears as soon as the interface
 receives the queued round, before its first fragments. A response already in

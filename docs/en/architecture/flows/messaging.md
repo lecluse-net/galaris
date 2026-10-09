@@ -28,8 +28,9 @@ and is not a read receipt. The client ignores other rooms and saves current edit
 the document API still enforces viewer access. The action lives in `app.conversation.mcp` with
 `task_enabled=False`: all Tasks, including those launched from Chat, and voice exclude this tool.
 Memory provides document authorization through its adapter registered at bootstrap; its connection
-is not required. The integrated datasets initialize the Conversation Tool (`conversation`) and
-its connections as enabled, then preserve administrator-owned activation settings.
+is not required. The Conversation Tool and its connections are mandatory system services: built-in datasets
+initialize or reactivate them, and activation remains protected. Humans can still configure
+their function modes.
 This descriptive context must not trigger automatic attachment redelivery; editing
 requests still go through the conversation controller.
 

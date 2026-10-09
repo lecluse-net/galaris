@@ -242,9 +242,10 @@ future conversation.
 ## Single Two-Way Hybrid Recall
 
 ```text
-API /memory/browse (administration) ─────► ACL/validity ──► FTS ─────────► exhaustive page
+API /memory/browse without text ───────► ACL/validity ──► SQL filters ─► page
+                     with text ───────► bounded hybrid recall + temporal anchors
 
-API /memory/search + Memory page + MCP/voice/brief + any file_search(memory://)
+API /memory/search + MCP/voice/brief + any file_search(memory://)
        ├─► thematic path ──► FTS + exact cosine ─┐
        └─► global path ─────► FTS + exact cosine ─┼─► weighted ranking ─► diversity ─► results
                  strong confirmed links ──► reranking┤
@@ -260,15 +261,18 @@ It merges lexical and semantic candidates, returns the most relevant semantic ch
 and indicates `mode`, `degraded`, and `degradation_reason`. No caller can deliberately degrade it
 to lexical: this path is exclusively an automatic fallback when the model, provider, or semantic
 index is unavailable. For `memory://`, the generic `mode` parameter of `file_search` therefore
-does not change this strategy. The `/memory/browse` administration list remains lexical and
-paginated. Bounded recall reports neither an exact total nor exhaustive pagination, since its role
-is to recall a few relevant elements.
+does not change this strategy. The `/memory/browse` list uses hybrid recall with a text filter, at most 500 undated
+results and a truncation indication. Without text it browses undated memories matching the
+filters; temporal matches are added separately. Bounded recall announces neither an exact
+total nor exhaustive pagination.
 
-Version `memory-topic-evidence-diverse/v7` merges four preselection signals: FTS and pgvector in
-the current Topic when one exists, followed by FTS and pgvector in the authorized global scope.
-It then ranks candidates according to the global Params for semantic similarity, lexical relevance,
-confirmed links, number of sources, freshness, and centrality. The latter accounts for accessible
-links around the candidate, including outside the top-k alone. Automatic injections create no
+Version `memory-query-evidence/v12` merges FTS and pgvector in the current Topic when present,
+then in the authorized global scope. Informative query terms, their rarity, named identities
+and exact titles dominate ranking, complemented by semantic similarity. Topic, confirmed links,
+sources, freshness and centrality supply secondary context bonuses. Diversity favors terms,
+identities and facts not yet covered. A low lexical or vector score alone does not remove
+authorized candidates. Centrality accounts for accessible links around the candidate, including
+outside the top-k. Automatic injections create no
 co-use association: being presented together does not prove a business relationship. The pool is
 48 candidates and the result contains at most eight items by default; the pool, weights, and
 diversity are configured exclusively by the global Params in the Memory section. A diversity
@@ -282,10 +286,13 @@ another interlocutor. Without a contact, the global path retains ordinary ACL re
 
 After these textual and vector ranks, recall inspects at most one hop from their candidates through
 confirmed `MemoryLink`s (`suggested=false`) whose confidence reaches `0,75`. This `graph_link`
-path, weighted at `1,1` and then modulated by link confidence, can rerank only a memory that already
-has direct lexical or vector evidence. The lexical fallback ignores conversational formulas
-without informative terms and requires direct overlap with multiple terms for a long query. It
-always passes through the same ACLs, dates, and especially the same contact filter. A link,
+path, weighted at `1,1` and modulated by link confidence, enriches candidate context. A neighbor
+without its own lexical/vector result can become evidence when accessible excerpts identify
+one unique relational target; ambiguity, negation and uncertainty never arbitrarily select a
+person. Confirmed structural paths can also supply passages matching query terms.
+Lexical fallback ranks partial matches by FTS coverage without requiring every word of a
+long query. These paths retain the same ACLs, validity and contact filters, then pass final
+revision and path admission. A link,
 even with confidence `1,0`, can therefore never bring a memory sealed to Paul into Jacques's
 current recall.
 
@@ -359,6 +366,12 @@ explicit producer
        ├─ contradict  → new item + contradiction link
        └─ skip/unsafe → audited automatic rejection
 ```
+
+Direct writes reject recognized credentials in content and metadata, with a diagnostic that
+contains no sensitive value. Detecting a `secret:` assignment requires a field boundary:
+the word in ordinary prose remains accepted. Private keys, tokens, Bearer credentials and
+other credential assignments remain filtered. Automatic extraction redacts recognized material
+or discards an unrecoverable result before storage.
 
 An admissible acquisition is applied immediately. There is neither a validation queue nor a human
 question in Galaris: messaging-channel interlocutors are generally not interface users and could

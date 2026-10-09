@@ -106,6 +106,45 @@ async def test_execute_native_tool_reuses_authorization_and_effect_projection(
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("runtime", ["internal", "hermes"])
+async def test_native_mcp_ignores_unknown_arguments_and_informs_the_model(monkeypatch, runtime):
+    import json
+    from fastmcp import Client
+    from app.tools import mcp_loader
+    from app.tools.contracts import EXECUTION_META_KEY
+
+    calls = []
+
+    async def schemes(ctx: mcp_loader.McpToolContext) -> dict[str, object]:
+        calls.append(ctx.runtime)
+        return {"schemes": ["synthetic"]}
+
+    definition = mcp_loader.McpToolDefinition(
+        tool_code="file_sharing", name="file_schemes", description="Synthetic schemes.",
+        required_capabilities=frozenset(), function=schemes,
+    )
+    monkeypatch.setattr(mcp_loader, "load_mcp_tools", lambda: (definition,))
+    monkeypatch.setattr(mcp_loader, "list_enabled_native_mcp_definitions", AsyncMock(return_value=(definition,)))
+    monkeypatch.setattr("app.agent.effective_capabilities", AsyncMock(return_value=frozenset({"execute"})))
+    monkeypatch.setattr("app.tools.resource_effects.record_tool_resources", AsyncMock())
+    server = mcp_loader.build_galaris_fastmcp(7, runtime=runtime)
+
+    async with Client(server) as client:
+        result = await client.call_tool("file_schemes", {"unused": "sensitive-value"}, raise_on_error=False)
+        assert not result.is_error
+        assert calls == [runtime]
+        assert result.structured_content == {"schemes": ["synthetic"]}
+        warning = json.loads(result.content[-1].text)
+        assert warning["ignored_parameters"] == ["unused"]
+        assert warning["available_parameters"] == []
+        assert warning["required_parameters"] == []
+        assert "sensitive-value" not in result.content[-1].text
+        assert result.meta[EXECUTION_META_KEY]["outcome"] == "returned"
+        clean = await client.call_tool("file_schemes", {})
+        assert len(clean.content) == 1
+
+
+@pytest.mark.asyncio
 async def test_native_tool_timeout_is_bounded_and_cancels_the_operation(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

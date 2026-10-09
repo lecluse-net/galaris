@@ -137,6 +137,11 @@ Voir le [contrat AgentAdmin](../dev/agent-admin.md) pour les connexions, équipe
 | Connexions | Configurer les connexions associées aux agents | `/tools?tab=connections` |
 | Autorisations | Administrer les règles d’accès aux outils et fonctions | `/tools?tab=authorizations` |
 
+Dans **Autorisations**, chaque fonction dispose des colonnes **Global (tous)** et **Cette connexion**,
+avec les choix Activé, Désactivé et Sur demande. La colonne sélectionnée indique la règle applicable.
+Choisir un mode global remet la connexion de cet agent en héritage, sans retirer les exceptions
+des autres agents. La sauvegarde suit vos choix successifs et signale les erreurs.
+
 Pour les providers de fichiers compatibles et la Console SSH, **Indexation des fichiers**
 utilise par défaut **Uniquement les fichiers déjà connus**. Les fichiers et répertoires
 retournés par les listes et recherches `file_share` deviennent des fiches privées dans
@@ -182,8 +187,12 @@ Dans le Chat interne, la phrase « Réponse à… » des réponses par bouton su
 l’interface, y compris après réouverture ou changement de langue. Le titre de la demande
 et le libellé du choix restent ceux de la demande d’origine.
 
-Pour les accès du navigateur, ouvrez la connexion **Navigateur** de l’agent. Le réseau local
-est bloqué par défaut ; activez `allow_local_network` pour permettre une demande de permission.
+Pour les accès du navigateur, ouvrez la connexion **Navigateur** de l’agent. **Sites publics
+autorisés** est le choix initial des nouvelles installations : les méthodes HTTP et WebSocket
+publics passent sans accord par site, sous réserve des filtres et refus explicites. Les instances
+existantes gardent leur politique ; un paramètre auparavant absent devient **Autorisation par site**.
+Le réseau local est bloqué par défaut ; activez `allow_local_network` pour permettre une demande
+de permission distincte. Le mode public ne donne aucun accès local.
 Le filtre de destinations reste prioritaire. Répondez à la question dans la messagerie ou avec
 les boutons du chat interne : accord et refus sont mémorisés par agent, type d’accès et origine
 (domaine, protocole, port). Les GET publics ne posent pas de question avec les réglages par défaut.
@@ -192,8 +201,8 @@ domaines, protocoles, ports et chemins, avec les méthodes HTTP configurées et 
 pour cet agent. Les nouvelles destinations web ne demandent plus d’autorisation de site.
 Les filtres, les refus explicites et les permissions distinctes du réseau local restent prioritaires.
 Les boutons **Autoriser et mémoriser** et **Refuser et mémoriser** restent limités au type
-d’accès demandé. Supprimez l’accord « tous les sites » pour que ces accès nécessitent à nouveau
-un choix. Les anciens accords limités à un seul site conservent cette portée.
+d’accès demandé. En mode **Autorisation par site**, supprimez l’accord « tous les sites » pour que
+ces accès nécessitent à nouveau un choix. Revenir à ce mode ne crée aucun accord implicite. Les anciens accords limités à un seul site conservent cette portée.
 **Superviser → Permissions mémorisées** (`/connection/permissions`) permet de retrouver la
 question et la réponse, filtrer par agent ou décision et supprimer un choix. L’agent redemandera
 à sa prochaine tentative autorisée par la configuration. Une action bloquée attend une nouvelle
@@ -209,6 +218,11 @@ des Tools et connexions autorisés.
 **Autorisations** (`?tab=authorizations`) avec le privilège `SKILL_ASSIGN`.
 Cette dernière page gère l’affectation des skills ; elle ne remplace pas les autorisations
 des Tools ni les rôles du compte humain.
+
+Ses colonnes **Global (tous)**, **Catégorie** et **Cet agent** proposent Actif/Bloqué et mettent
+en évidence la règle applicable. La règle de catégorie concerne l’agent sélectionné.
+Une exception de compétence pour cet agent prévaut sur sa règle de catégorie, puis sur le global.
+Modifier une règle globale ou de catégorie conserve les exceptions plus spécifiques.
 
 Les compétences fournies **Galaris**, **Galaris Lab** et **Connaissance de Galaris** sont
 regroupées par défaut dans la catégorie **Galaris**. La synchronisation classe aussi les

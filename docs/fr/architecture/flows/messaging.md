@@ -30,8 +30,9 @@ ignore les autres rooms et préserve les sauvegardes avant ouverture ; les droit
 restent contrôlés par l'API documentaire. L'action est implémentée dans `app.conversation.mcp`
 avec `task_enabled=False` : aucune Task, même issue du chat, ni la voix n'expose cet outil.
 Memory fournit le contrôle d'accès au document via son adaptateur enregistré au démarrage ;
-sa connexion n'est pas requise. Le Tool Conversation et ses connexions sont initialisés actifs
-par les datasets intégrés, puis leur activation reste administrable.
+sa connexion n'est pas requise. Le Tool Conversation et ses connexions sont des services système obligatoires : les datasets
+les initialisent ou les réactivent, et leur activation reste protégée. Les modes de leurs
+fonctions restent configurables par un humain.
 Ce contexte descriptif ne doit pas déclencher le renvoi automatique d'une pièce jointe ;
 une demande d'édition reste soumise au contrôleur conversationnel.
 

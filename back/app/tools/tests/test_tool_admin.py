@@ -470,7 +470,11 @@ async def test_external_mounted_server_rechecks_permissions_and_credentials(comm
     async with get_db_session():
         server = await build_agent_mcp(agent_id, runtime="internal")
     async with Client(server) as client:
-        assert not (await client.call_tool(f"{code}_lookup", {"value": "first"})).is_error
+        corrected = await client.call_tool(f"{code}_lookup", {"value": "first", "unused": "private"})
+        assert not corrected.is_error
+        warning = json.loads(corrected.content[-1].text)
+        assert warning["ignored_parameters"] == ["unused"]
+        assert warning["available_parameters"] == ["value"]
         async with get_db_session():
             await connection_service.set_connection_function_state(connection_id, "lookup", "disabled")
         assert (await client.call_tool(f"{code}_lookup", {"value": "revoked"}, raise_on_error=False)).is_error
@@ -496,7 +500,8 @@ async def test_external_mounted_server_rechecks_permissions_and_credentials(comm
     run_ctx = RunContext(deps=None, model=TestModel(), usage=RunUsage())
     tools = await mounted.get_tools(run_ctx)
     name = f"{code}_lookup"
-    await mounted.call_tool(name, {"value": "pydantic-first"}, run_ctx, tools[name])
+    corrected = await mounted.call_tool(name, {"value": "pydantic-first", "unused": "private"}, run_ctx, tools[name])
+    assert corrected[-1]["ignored_parameters"] == ["unused"]
     async with get_db_session():
         await connection_service.set_param(connection_id, "token", "synthetic-pydantic-rotation")
     await mounted.call_tool(name, {"value": "pydantic-rotation"}, run_ctx, tools[name])

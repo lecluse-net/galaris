@@ -14,9 +14,10 @@ creating another agent system or file management workflow.
 3. Test the connection and import models by capability. This test checks the key
    with an authenticated read, without generation; it does not guarantee sufficient credit.
 4. Assign models to LLM profile usages. For `audio_read` and `video_read`, use the
-   **Multimedia** section and enable the agent's Multimedia connection.
+   **Multimedia** section and check the agent's Multimedia connection.
 
-Multimedia connections are created automatically and disabled by default.
+Multimedia connections are created automatically and active by default. Previously saved
+deactivations are preserved; the Tool's conversation mode requires explicit enabling.
 Functions are exposed only when the profile has a compatible resource and both
 the provider and connection are active. See [Multimedia](multimedia.md).
 API credits are separate from Mammouth application quotas; the provider does not

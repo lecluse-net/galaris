@@ -43,9 +43,10 @@ record. Do not add a document solely to record an action or demonstrate completi
 requested resource type; explain an unavailable operation instead of substituting a document.
 
 Galaris documents are the canonical home for this durable content. Memory and File Sharing are
-mandatory system services, alongside Galaris and Conversation. Their connections and functions stay enabled and read-only.
-The effective catalog still applies context restrictions and resource ACLs; optional bridges
-can still be disabled.
+mandatory system services, alongside Galaris and Conversation. Their definitions and connections
+remain protected and active. Humans can configure Enabled, Disabled, Ask and global/local
+inheritance for their functions. The effective catalog still applies context restrictions and
+resource ACLs; optional bridges can still be disabled.
 
 With the required functions available, search for and revise the relevant document.
 Create a new document only when the content needs a separate home, using

@@ -789,9 +789,11 @@ compatibilité des anciennes connexions génériques.
 
 La recherche d'utilisateurs interroge toutes les connexions actives dont le protocole expose un
 annuaire. Les résultats indiquent séparément la plateforme, l'identifiant utilisateur et
-l'identifiant de connexion. Ils sont éphémères : Galaris ne gère, ne fusionne et ne persiste aucune
-fiche de contact. Telegram Bot et WhatsApp Cloud n'offrent pas d'annuaire arbitraire et ne peuvent
-donc pas compléter cette recherche sans un futur cache technique.
+l'identifiant de connexion. Galaris synchronise les utilisateurs observés dans son annuaire durable,
+puis les expéditeurs humains dans des contacts Memory privés par agent. Telegram Bot et WhatsApp
+Cloud n’offrent pas d’annuaire arbitraire : leur recherche porte sur les identités déjà observées.
+Le rapprochement entre canaux exige un lien utilisateur Galaris prouvé ou une fusion administrative ;
+un nom commun ne suffit pas.
 
 Les réglages communs sont stockés dans la table `params`; les identifiants propres aux agents
 restent dans leurs connexions chiffrées.
@@ -799,8 +801,10 @@ restent dans leurs connexions chiffrées.
 Pour Nextcloud Talk, configurez au minimum l’URL de base et le mode entrant (`polling` ou
 `signaling`). Les réglages généraux de voix se trouvent dans **Préférences → Voix**.
 
-Les outils intégrés sont synchronisés au démarrage du backend. Leur activation par agent et les
-fonctions désactivées sont gérées dans l’interface. Un driver n’obtient une fonction native
+Les outils intégrés sont synchronisés au démarrage du backend. Galaris, Conversation, Memory
+et File Sharing gardent leurs définitions et connexions actives protégées ; un humain peut
+configurer les modes Actif, Bloqué et Sur demande de leurs fonctions. Les connexions optionnelles
+restent activables et désactivables par agent dans l’interface. Un driver n’obtient une fonction native
 que si son profil de capacités l’autorise ; l’absence d’une capacité entraîne un refus par
 défaut. Les fonctions personnelles de processus font partie du socle `galaris`. Le package
 technique `process_admin` est réservé à l’administration globale et reste inactif par défaut.
@@ -1124,7 +1128,7 @@ Diagnostic rapide :
 | Hermès indisponible | état de l’instance de l’agent, conteneur `<code>-agent`, URL et authentification du harness manager, URL MCP vue depuis Hermès |
 | erreur pgvector | modèle d’embedding sélectionné et état de l’index sémantique Memory |
 | navigateur indisponible | santé du sidecar, token partagé, limites de sessions, destination publique et proxy de sortie |
-| action affirmée mais non faite | trace d’outils et garde « réponse sans action » |
+| action affirmée mais non faite | appels et résultats d’outils, ressources et reçus de livraison ; le texte final seul ne prouve pas un effet |
 | conversation sans réponse | état de la room et du round, messages en attente, usage Conversation du profil effectif, livraison sur la connexion d’origine |
 | boucles entre agents | garde de réponse du control plane conversationnel, fraîcheur de la requête et origine des messages |
 | appel vocal sans transcript | vérifier si la voix sélectionnée utilise une session speech-to-speech native ; ce mode peut être normal sans texte utilisateur |

@@ -431,11 +431,12 @@ items avec leur propriétaire direct, grants, révisions, sources, liens, usages
 idempotentes et jobs. Il n'existe pas d'espace mémoire intermédiaire. `ResourceStorage` manipule
 seulement des octets par identifiant opaque; le provider `native` écrit atomiquement dans le
 répertoire fixe `/data/memory`. La recherche applique propriétaire, accès directs, visibilité et validité
-dans SQL avant le classement. Le classement exige d'abord une preuve
-lexicale directe et informative — pas un simple mot conversationnel — ou une proximité sémantique
-suffisante, puis combine appartenance thématique,
-liens confirmés, provenance, fraîcheur et centralité locale avant d'écarter les quasi-doublons.
-Le résultat peut donc contenir de zéro à huit items par défaut, sans appel de LLM. La projection Memory de la fiche Agent est exclue de
+dans SQL avant le classement. Le classement favorise les termes informatifs de la requête,
+leur rareté, les identités nommées et les titres exacts, puis la similarité sémantique.
+Appartenance thématique, liens confirmés, provenance, fraîcheur et centralité restent des signaux
+secondaires. Aucun seuil lexical ou vectoriel ne vide à lui seul le rappel ; la diversité limite
+les quasi-doublons. Le résultat contient au plus huit items par défaut et peut être vide faute
+de candidats autorisés et valides, sans appel de LLM génératif. La projection Memory de la fiche Agent est exclue de
 ce brief automatique : son identité et sa personnalité proviennent déjà du profil canonique du
 prompt système. Elle reste consultable par une recherche Memory explicite.
 
@@ -449,7 +450,9 @@ exclusivement des Params globaux de la section Mémoire. Les chunks sont version
 après le commit puis remplacés atomiquement. Les ACL et dates restent des filtres SQL antérieurs au
 classement. Si l’usage Vectoriel du profil courant, l'index ou le provider n'est pas disponible, le contrat signale
 la dégradation et renvoie le résultat lexical. Le brief automatique emprunte le même rappel
-hybride ; `/memory/browse` conserve la consultation lexicale paginée. `/memory/recall` est un alias
+hybride. Avec un filtre textuel, `/memory/browse` utilise aussi le rappel hybride, borné à
+500 résultats sans date, avec indication de troncature ; sans texte, il parcourt tous les
+souvenirs sans date répondant aux filtres. Les correspondances temporelles s’ajoutent séparément. `/memory/recall` est un alias
 HTTP déprécié de la recherche classée sans score.
 
 Avec un Topic courant, le rappel fusionne séparément FTS et pgvector dans le dossier, puis FTS et
@@ -536,6 +539,17 @@ journal serveur reprend cette référence avec le Tool, la catégorie, le type e
 emplacements de code de la pile. Il n'enregistre ni arguments, ni contenu, ni texte arbitraire du
 provider. Seules les erreurs métier explicitement déclarées sûres peuvent transmettre leur détail
 au modèle ; les autres restent expurgées tout en conservant un diagnostic actionnable.
+
+À la frontière MCP commune, les paramètres de premier niveau non déclarés dans un schéma fermé
+sont retirés avant la validation et l'autorisation, pour les outils natifs et les proxies externes.
+Le résultat conserve sa sortie structurée et ajoute un avertissement `galaris.tool-arguments/v1` :
+noms ignorés, paramètres disponibles et obligatoires, sans les valeurs ignorées. L'adaptation
+Pydantic AI transmet aussi cet avertissement au modèle et au checkpoint. Un outil sans argument
+reçoit donc `{}` même si le modèle invente une clé. Les paramètres obligatoires, types, valeurs
+et objets métier imbriqués restent validés ; les dictionnaires ouverts, `patternProperties`
+et schémas composés conservent leurs clés autorisées ou ambiguës. Le rejet de validation natif
+rappelle les paramètres disponibles et obligatoires. Voir la
+[décision 0164](../../../project/decisions/0164-tolerant-tool-arguments.md).
 
 Les entrées fichier de `process_start` et `process_admin_start` utilisent elles aussi la clé `uri`
 et la façade `app.file_share`. Le snapshot du run conserve la référence source et le endpoint
@@ -1162,10 +1176,10 @@ dans la requête du service et répondent comme si tout Goal étranger était in
 Les Tools `galaris`, `conversation`, `memory` et `file_sharing` portent `can_disable=false`.
 Cette propriété persistée appartient au logiciel et n'est pas acceptée par les contrats d'écriture.
 Leurs connexions sont créées pour tous les agents et convergent vers l'état actif, y compris après
-une désactivation historique. Leurs fonctions sont toujours autorisées aux deux niveaux de la
-cascade ; les anciens refus sont ignorés. L'API refuse toute modification ou suppression du Tool,
-de sa connexion, de ses paramètres et de ses autorisations. L'interface les conserve dans les
-trois onglets, en lecture seule, avec une icône de service obligatoire. Les Tools optionnels
+une désactivation historique. L’API protège leurs définitions, connexions actives et paramètres système contre les mutations
+ordinaires. Leurs fonctions conservent les modes Actif/Bloqué/Sur demande et la cascade globale/agent,
+configurables par un humain. L’interface affiche une icône de service obligatoire ; la matrice
+Autorisations reste utilisable pour leurs fonctions. Les Tools optionnels
 conservent leurs activations et restrictions administrées. Les ACL métier, les compatibilités
 de harnais et les restrictions de contexte restent appliquées.
 
@@ -1490,7 +1504,7 @@ de retry disponible. Les secrets sont masqués et les octets sont remplacés par
 empreinte. Une limite globale de 8 Mio, signalée dans la fiche, protège la base d’un payload
 accidentellement non borné.
 
-Le menu **Préférences → Journal des échecs IA** présente les occurrences et les motifs regroupés.
+Le menu **Superviser → Journal des échecs** présente les occurrences et les motifs regroupés.
 La routine de maintenance consiste à traiter les motifs `new` et `regression`, documenter le
 diagnostic et la cause racine, planifier puis référencer le correctif et son test, et enfin passer
 le motif à `resolved`. Une nouvelle occurrence le rouvre automatiquement en `regression`.

@@ -171,9 +171,15 @@ and persist in one transaction.
 
 Functions resolve **connection override → global state → software default**. Modes are
 **Enabled**, **Disabled**, and **Ask**; **Inherit** (`default`) removes an override.
-In the authorization screen, **Global (all)** offers only **Enabled**, **Disabled** and
-**Ask**, displaying the software policy when no global rule is saved. **Inherit** is
-available only for **This connection**. Sensitive native functions default to Ask;
+In the **Authorizations** matrix, **Global (all)** and **This connection** offer Enabled, Disabled and Ask.
+Only the applicable rule is selected: an agent override leaves global buttons unselected
+but clickable. Selecting a global mode saves that rule and atomically clears the selected
+connection's override; other connections retain their exceptions. With no saved global rule,
+the software default is displayed when inherited. `default` remains the API inheritance
+value; the UI returns to inheritance by selecting a global rule.
+Successive local choices are saved in order; a failure is reported and triggers a rule reload.
+Saving policies does not wait for remote MCP discovery.
+Sensitive native functions default to Ask;
 third-party MCP capabilities default to Enabled.
 A global denial can therefore be overridden by an explicit local enable;
 `tool_admin_function_set` reports such overrides. `effective` describes resolved permission;

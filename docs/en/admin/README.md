@@ -768,10 +768,11 @@ all active accounts, and each listener is supervised independently. The historic
 compatibility with old generic connections.
 
 User search queries all active connections whose protocol exposes a directory. Results separately
-indicate the platform, user identifier, and connection identifier. They are ephemeral: Galaris
-does not manage, merge, or persist any contact record. Telegram Bot and WhatsApp Cloud do not
-provide an arbitrary directory and therefore cannot complete this search without a future
-technical cache.
+indicate the platform, user identifier, and connection identifier. Galaris synchronizes observed
+users into its durable directory, then human senders into private per-agent Memory contacts.
+Telegram Bot and WhatsApp Cloud provide no arbitrary directory: search uses identities already
+observed. Cross-channel association requires a proven Galaris user link or an administrative merge;
+a shared name is insufficient.
 
 Common settings are stored in the `params` table; Agent-specific credentials
 remain in their encrypted connections.
@@ -779,8 +780,10 @@ remain in their encrypted connections.
 For Nextcloud Talk, configure at least the base URL and incoming mode (`polling` or
 `signaling`). General voice settings are under **Preferences → Voice**.
 
-Built-in Tools are synchronized when the backend starts. Per-Agent activation and disabled
-functions are managed in the interface. A driver obtains a native function
+Built-in Tools are synchronized when the backend starts. Galaris, Conversation, Memory and File
+Sharing retain protected active definitions and connections; humans can configure Enabled,
+Disabled and Ask for their functions. Optional connections can still be enabled or disabled
+per agent in the interface. A driver obtains a native function
 only if its capability profile authorizes it; missing capability results in a default
 denial. Personal process functions are part of the `galaris` base. The
 `process_admin` technical package is reserved for global administration and remains inactive by
@@ -1098,7 +1101,7 @@ Quick diagnosis:
 | Hermes unavailable | Agent instance status, `<code>-agent` container, harness manager URL and authentication, MCP URL as seen from Hermes |
 | pgvector error | selected embedding model and Memory semantic-index status |
 | browser unavailable | sidecar health, shared token, session limits, public destination, and egress proxy |
-| action claimed but not performed | Tool trace and “response without action” guard |
+| action claimed but not performed | tool calls/results, resources and delivery receipts; final text alone does not prove an effect |
 | conversation without a response | room and round status, pending messages, effective profile's Conversation usage, delivery through the original connection |
 | loops between Agents | conversational control-plane response guard, request freshness, and message origin |
 | voice call without transcript | check whether the selected voice uses a native speech-to-speech session; this mode may normally have no user text |

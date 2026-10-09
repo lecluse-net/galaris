@@ -4,7 +4,7 @@
 
 Statut : `accepted-and-implemented`
 
-Date : 21 août 2026
+Validation initiale : 21 août 2026. Revue du contrat courant : 9 octobre 2026.
 
 Cette validation décrit le contrat livré ; elle remplace le plan d’implémentation désormais retiré.
 
@@ -81,7 +81,8 @@ l’échelle horizontale. Aucune réserve ne bloque la livraison mono-backend de
 
 ## Validation B — mapping des données existantes
 
-Aucune table n’est ajoutée et aucun contenu visible n’est dupliqué. La colonne nullable
+Chat réutilise les tables canoniques Messenger sans dupliquer leur contenu visible.
+Ses préférences propres, dont les usages d’émojis et les abonnements push, restent dans son domaine. La colonne nullable
 `messenger_users.galaris_user_id` relie une identité distante à un compte Galaris ; l’unicité
 `(tool_id, galaris_user_id)` garantit une seule identité courante par Tool et par compte.
 
@@ -91,17 +92,18 @@ Aucune table n’est ajoutée et aucun contenu visible n’est dupliqué. La col
 | `connections` | `tool_id`, `agent_id`, `active` | unicité `(tool_id, agent_id)`, connexion revérifiée avant admission/appel |
 | `messenger_rooms` | UUID, connexion, external ID, label, kind direct, type, timestamps | unicité `(connection_id, external_id)`, un couple utilisateur-agent |
 | `messenger_users` | Tool, external ID, `agent_id`, `galaris_user_id`, `is_ai` | unicités `(tool_id, external_id)` et `(tool_id, galaris_user_id)` |
-| `messenger_room_users` | room/user, `role`, `joined_at`, `muted`, `last_read_message_id` | exactement le propriétaire humain et l'agent pour l'IHM interne |
+| `messenger_room_users` | room/user, `role`, `joined_at`, `muted`, `archived`, `last_read_message_id`, `read_through_position` | exactement le propriétaire humain et l'agent pour l'IHM interne |
 | `messenger_messages` | room, expéditeur, direction, external ID, réponse, statut, dates | idempotence canonique et pagination `(created_at,id)` |
 | `messenger_files` / `messenger_attachments` | UUID, connexion, nom non fiable, MIME, taille, ordre | fichier accessible seulement via un message de la room |
 | `conversation_rounds` et liens | room, messages, statut, trace expurgée | activité filtrée après membership HTTP |
 | `voice_sessions` | room conversationnelle et cycle de vie propre à chaque appel | accès par la room et l’appel corrélé |
 | `chat_emoji_usages` | utilisateur, émoji, compteur et dernière utilisation | unicité `(user_id, emoji)`, suppression en cascade avec le compte |
 
-Les extensions de schéma historiques sur `messenger_room_users` restent inchangées : `role` identifie le propriétaire
-humain de la room directe, `joined_at` conserve l'audit, `muted` porte la préférence personnelle et
-`last_read_message_id` fournit un curseur non-lu stable. Chaque suffixe `_id` est une vraie FK et la
-suppression du message lu remet le curseur à `NULL`.
+Sur `messenger_room_users`, `role` identifie le propriétaire humain de la room directe,
+`joined_at` conserve l’audit, et `muted` et `archived` portent ses préférences personnelles.
+Le non-lu dépend de `read_through_position`, la plus haute position du journal réellement vue,
+qui reste monotone même lors d’un import d’historique ancien. `last_read_message_id` reste une
+vraie FK ; supprimer le message référencé la remet à `NULL` sans reculer la position lue.
 
 L’écran « Mon profil » permet de définir ou retirer la correspondance pour chaque Tool externe.
 Chat n’affiche ensuite que les rooms dont cette identité est membre. Les rooms externes sont

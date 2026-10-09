@@ -161,7 +161,11 @@ Journal and streaming stabilization is covered by
 `back/app/agent/tests/test_reasoning_guard.py` (irregular fragments, replayed snapshots,
 no false positive on a fragmented word) and `back/app/incident/tests/test_capture.py`
 (distinct attempts, historical keys, diagnostics after rollback, enrichment without duplicates
-or disclosure in MCP results). Retention tests prevent a late observation from restoring an
+or disclosure in MCP results). The same file's conversational recovery scenario requires
+durably persisted `SUCCEEDED` before marking the round's LLM/tool incidents as recovered.
+Other runs remain untouched; approval waits, interruption, supersession, lease loss,
+cancellation, failure and uncertain delivery do not produce this mark.
+Retention tests prevent a late observation from restoring an
 expired trace. `test_editorial_html.py` preserves content and revision after rejected mutations;
 `app/image/tests/test_image_mcp.py` keeps private URLs blocked and guides the caller to the
 canonical URI without contacting the image provider.
@@ -175,6 +179,11 @@ idempotence through the real API. `context-help.spec.mjs` covers closing, acknow
 reopening, existing preferences, errors and retries, late responses and account changes
 with real Vue/Quasar components. Domain catalogs own the text; translation changes
 never reset an acknowledgement.
+
+`tests/test_llm_call_trace.py` also covers Responses providers that finish function arguments
+only in a `done` event: a missing suffix is added once, separate calls remain separate and
+a contradictory prefix is rejected before effects. The scenario traverses the real proxy
+and Pydantic AI SDK.
 
 Task activity during tool-argument generation is covered by
 `app/harness/tests/test_message_fragments.py` and `test_executor_streaming.py`:
@@ -254,6 +263,14 @@ a foreign lease and distinguish resumption before effects from consumption after
 `app/tools/tests/test_mcp.py` distinguishes authorized functions missing from a run from
 mounted functions in EN/FR, without exposing denied functions. The aggregate server test
 in `test_mcp_loader.py` verifies that discovery observes the actual run server.
+
+`app/tools/tests/test_tool_arguments.py` preserves required-argument, type and nested-object
+validation after removing unknown keys from a closed schema. The loader's MCP tests cover
+this correction for the internal and Hermes runtimes without changing structured output or
+exposing ignored values. Authorization and ToolAdmin journeys preserve approval before
+effects, revocation and credential rotation for corrected calls, including external tools.
+`app/harness/tests/test_execution_evidence.py` verifies that the warning reaches a real
+Pydantic AI agent and its checkpoint without executing the effect again.
 
 `app/conversation/tests/test_service.py` covers repeated conversational stops of active,
 successful, and failed Tasks: terminal results, causes, and revisions are preserved, and

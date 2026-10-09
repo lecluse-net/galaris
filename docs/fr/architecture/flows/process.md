@@ -71,10 +71,11 @@ candidates proviennent exclusivement du catalogue effectif de l’agent, du runt
 Une fiche vectorielle périmée ne confère donc aucun droit. Sans modèle vectoriel ou en cas de
 panne sémantique, la recherche devient lexicale ; le manifeste exhaustif reste disponible.
 
-Les mutations de connexion, de paramètres et d’autorisation déclenchent une réconciliation
-ciblée des catalogues concernés. Cette mise à jour accélère la recherche, mais ne porte pas la
-sécurité : le catalogue effectif et ses droits sont toujours recalculés au moment de la
-planification et de l’exécution.
+Les mutations de connexion et de paramètres déclenchent une réconciliation ciblée des
+catalogues concernés. Une simple modification d’autorisation est persistée et résolue sans
+nouvelle découverte distante ; la recherche réconcilie les définitions nouvellement visibles.
+L’index conserve des définitions, pas des droits : le catalogue effectif et ses permissions
+sont recalculés à la découverte et revérifiés à l’appel.
 
 Le bouton **Actualiser les outils** de l’écran Connexions lance la réconciliation administrative
 complète. Une seule opération :
@@ -101,6 +102,12 @@ inactives et ses deux fonctions de lecture, `conversation_round_get` et `voice_t
 revérifient la connexion active côté serveur. Elles servent à analyser un tour textuel ou vocal
 complet avec son état durable, sa trace d’exécution et tous ses appels LLM, sans rendre ce jeu de
 données administratif disponible aux agents ordinaires.
+
+La frontière commune des outils retire les clés inconnues d’un schéma fermé avant validation
+et autorisation. Elle ajoute un avis `galaris.tool-arguments/v1` sans modifier la sortie métier
+ni les objets imbriqués. Les arguments obligatoires et valeurs invalides restent bloquants ;
+le consentement humain porte sur l’appel corrigé. Voir
+[0164](../../../../project/decisions/0164-tolerant-tool-arguments.md).
 
 ## Démarrage
 

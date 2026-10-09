@@ -1,5 +1,7 @@
 # Décisions d'architecture
 
+- [0164 — Paramètres inconnus tolérés à la frontière MCP](0164-tolerant-tool-arguments.md)
+
 - [0163 — Une miniature courante par document](0163-single-document-thumbnail.md)
 
 - [0162 — Documents distincts et synthèses mémoire facultatives](0162-document-and-memory-synthesis.md)

@@ -166,6 +166,11 @@ plus élevées d’abord), puis toutes les branches par ordre alphabétique. Ell
 sources locales et ne lance aucun déploiement, même avant `make install` ou avec des changements
 locaux. Un checkout Git et l’accès au dépôt distant sont nécessaires.
 
+`make update` récupère les images d’infrastructure, dont SearXNG, avant le build et le
+redémarrage, en développement comme en production. La version SearXNG suit celle épinglée
+dans `compose.yaml`, sans effacer la configuration existante. Un échec de récupération
+arrête la mise à jour en conservant les services actifs.
+
 Sans `VERSION`, aucune récupération ni sélection Git n’est effectuée : les sources présentes
 sont utilisées, y compris avec des modifications locales, un tag détaché ou sans upstream.
 Avec `VERSION`, `.git` doit exister dans l’installation (répertoire ou fichier de worktree).

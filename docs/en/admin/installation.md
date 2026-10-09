@@ -163,6 +163,10 @@ This queries the configured Git remote and lists all tags (highest versions firs
 all branches alphabetically. It does not modify local sources or start a deployment, and
 works before `make install` or with local changes. A Git checkout and remote access are required.
 
+`make update` pulls infrastructure images, including SearXNG, before build and restart, in
+development and production. SearXNG follows the version pinned in `compose.yaml`, preserving
+existing configuration. A pull failure stops the update while keeping running services.
+
 Without `VERSION`, no Git fetching or selection takes place: existing sources are used,
 including local changes, detached tags or branches without an upstream.
 With `VERSION`, `.git` must exist in the installation (directory or worktree file).

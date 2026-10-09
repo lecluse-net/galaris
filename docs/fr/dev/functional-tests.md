@@ -166,7 +166,11 @@ La stabilisation du journal et du streaming est couverte par
 `back/app/agent/tests/test_reasoning_guard.py` (fragments irréguliers, snapshots rejoués,
 absence de faux positif sur un mot découpé) et `back/app/incident/tests/test_capture.py`
 (tentatives distinctes, clés historiques, diagnostic après rollback, enrichissement sans doublon
-ni fuite dans le résultat MCP). Les tests de rétention empêchent une observation tardive de
+ni fuite dans le résultat MCP). Le scénario de récupération conversationnelle de ce même
+fichier exige `SUCCEEDED` réellement persisté avant de marquer les incidents LLM/outils du
+round comme récupérés. Il conserve ceux d’un autre run et refuse ce marquage en attente d’accord,
+après interruption, remplacement, perte de lease, annulation, échec ou livraison incertaine.
+Les tests de rétention empêchent une observation tardive de
 restaurer une trace expirée. `test_editorial_html.py` conserve le contenu et la révision après
 refus de mutation ; `app/image/tests/test_image_mcp.py` conserve le rejet des URL privées et
 le guidage vers l'URI canonique, sans contacter le fournisseur d'images.
@@ -199,6 +203,11 @@ renommage/suppression, jeton sans nom et alternance avec une session navigateur.
 `test_inference_lifecycle.py` vérifie sa transmission au worker sans hériter du
 jeton d'un autre appel. `front/browser-tests/llm-calls.spec.mjs` couvre son affichage
 et les appels historiques ou rattachés à un agent.
+
+`tests/test_llm_call_trace.py` couvre aussi les fournisseurs Responses qui terminent les
+arguments d’une fonction seulement dans un événement `done` : suffixe manquant ajouté une fois,
+appels séparés conservés et préfixe contradictoire rejeté avant effet. Le scénario traverse
+le proxy et le SDK Pydantic AI réels.
 
 Le suivi des tâches pendant la génération d'arguments d'outil est couvert par
 `app/harness/tests/test_message_fragments.py` et `test_executor_streaming.py` :
@@ -281,6 +290,14 @@ refusent un lease étranger et distinguent reprise sans effet et consommation ap
 `app/tools/tests/test_mcp.py` distingue les fonctions autorisées mais absentes du run des
 fonctions montées, en FR/EN, sans exposer les fonctions refusées. Le test du serveur agrégé
 dans `test_mcp_loader.py` vérifie que cette découverte observe bien le serveur du run.
+
+`app/tools/tests/test_tool_arguments.py` conserve la validation des arguments obligatoires,
+types et objets imbriqués après retrait des clés inconnues d'un schéma fermé. Les tests MCP
+du loader couvrent ce retrait sur les runtimes interne et Hermès, sans modifier la sortie
+structurée ni exposer les valeurs ignorées. Les parcours d'autorisation et de ToolAdmin
+conservent l'accord avant effet, la révocation et la rotation des credentials sur un appel
+corrigé, y compris externe. `app/harness/tests/test_execution_evidence.py` vérifie que
+l'avertissement atteint un vrai agent Pydantic AI et son checkpoint sans réexécuter l'effet.
 
 `app/conversation/tests/test_service.py` couvre l'arrêt conversationnel répété d'une Task
 active, réussie ou en erreur : résultat, cause et révision terminaux sont conservés, et

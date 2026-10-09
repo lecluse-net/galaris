@@ -21,7 +21,7 @@ Le `Makefile` reste la référence. Installation standard : **`make install` →
 | `restart` | Enchaîner `stop` puis `start`. |
 | `restart-service` | Redémarrer un seul service sans reconstruire ; `SERVICE` obligatoire. |
 | `status` | Afficher l'état des conteneurs ; filtrer avec `SERVICE` si nécessaire. |
-| `update` | Construire et déployer les sources présentes avec leur documentation préparée, puis actualiser l’index documentaire ; aucune génération de cartes ni contrôle documentaire statique. Seul `VERSION` déclenche la récupération d’un tag ou d’une branche Git. Accepte `RELEASE_DIR` hors dev, sans Git, avec la documentation embarquée du paquet. |
+| `update` | Récupérer les images d’infrastructure (dont SearXNG) en dev/prod avant le build et le redémarrage, puis déployer les sources avec leur documentation préparée et actualiser l’index ; aucune génération de cartes ni contrôle documentaire statique. Un échec de récupération préserve les services actifs. Seul `VERSION` déclenche la récupération d’un tag ou d’une branche Git. Accepte `RELEASE_DIR` hors dev, sans Git, avec la documentation embarquée du paquet. |
 | `update VERSIONS` | Lister tous les tags (versions les plus élevées d’abord), puis toutes les branches par ordre alphabétique, depuis le dépôt Git distant configuré, sans déploiement ni modification des sources locales. |
 | `logs` | Suivre tous les journaux. |
 | `logs-back`, `logs-front`, `logs-search` | Suivre les journaux du service désigné. |

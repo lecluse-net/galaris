@@ -72,9 +72,10 @@ Agent's effective catalog, the runtime, and the Task.
 An outdated vector record therefore grants no rights. Without a vector model or in the event of a
 semantic failure, the search becomes lexical; the exhaustive manifest remains available.
 
-Connection, parameter, and authorization mutations trigger a targeted reconciliation of the
-affected catalogs. This update accelerates search, but does not provide security: the effective
-catalog and its rights are always recalculated at planning and execution time.
+Connection and parameter mutations trigger targeted reconciliation of affected catalogs.
+A policy-only change is persisted and resolved without new remote discovery; search reconciles
+newly visible definitions. The index stores definitions, not rights: the effective catalog and
+permissions are recalculated at discovery and checked again at invocation.
 
 The **Refresh tools** button on the Connections screen launches the complete administrative
 reconciliation. A single operation:
@@ -101,6 +102,12 @@ created inactive, and its two read functions, `conversation_round_get` and `voic
 recheck the active connection on the server side. They are used to analyze a complete text or
 voice turn with its durable state, execution trace, and all its LLM calls, without making this
 administrative dataset available to ordinary Agents.
+
+The common tool boundary removes unknown keys from a closed schema before validation and
+authorization. It adds a `galaris.tool-arguments/v1` warning without changing business output
+or nested objects. Required parameters and invalid values remain enforced; human consent
+covers the corrected call. See
+[0164](../../../../project/decisions/0164-tolerant-tool-arguments.md).
 
 ## Startup
 

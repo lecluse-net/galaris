@@ -12,6 +12,57 @@ from app.harness.tests.test_checkpoint import _request
 from app.tools.execution_evidence import ExecutionEvidenceMiddleware
 from app.tools.contracts import EXECUTION_META_KEY
 from fastmcp.tools import ToolResult
+from app.tools.tool_arguments import ToolArgumentsMiddleware
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("summary_only", [False, True])
+async def test_corrected_tool_result_reaches_model_and_checkpoint_without_reexecution(summary_only):
+    import json
+    from pydantic_ai import Agent
+    from pydantic_ai.messages import TextPart, ToolReturnPart
+    from pydantic_ai.models.function import FunctionModel
+
+    server = FastMCP("argument-correction")
+    server.add_middleware(ToolArgumentsMiddleware())
+    server.add_middleware(ExecutionEvidenceMiddleware({"save"}))
+    calls = []
+    arguments = {"value": 3, "unused": "private"}
+    observed = []
+
+    @server.tool
+    def save(value: int) -> ToolResult:
+        calls.append(value)
+        return ToolResult(
+            content="Saved" if summary_only else {"saved": value},
+            structured_content={"saved": value},
+        )
+
+    def model(messages, _info):
+        returns = [part for message in messages for part in message.parts if isinstance(part, ToolReturnPart)]
+        if not returns:
+            return ModelResponse(parts=[ToolCallPart("save", arguments)])
+        receipt = returns[-1].content
+        rendered = json.dumps(receipt)
+        assert "ignored_parameters" in rendered and "available_parameters" in rendered
+        assert "private" not in rendered
+        assert receipt["result"] == {"saved": 3}
+        assert receipt["argument_warning"]["available_parameters"] == ["value"]
+        observed.append(receipt)
+        return ModelResponse(parts=[TextPart("Saved; unknown parameter ignored")])
+
+    persist = AsyncMock()
+    journal = HarnessRunCheckpoint(_request(save_checkpoint=persist))
+    agent = Agent(FunctionModel(model), retries=0, toolsets=wrap_toolsets(
+        [MCPToolset(ExecutionEvidenceClient(server))], journal,
+    ))
+    result = await agent.run("Save the synthetic value")
+    assert result.output == "Saved; unknown parameter ignored"
+    assert calls == [3]
+    resumed = HarnessRunCheckpoint(_request(resume_checkpoint=persist.await_args.args[0]))
+    await resumed.prepare_resume()
+    assert resumed.take_replay("save", arguments) == (True, observed[0])
+    assert calls == [3]
 
 
 @pytest.mark.asyncio

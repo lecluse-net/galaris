@@ -8,9 +8,10 @@ from uuid import UUID
 
 from loguru import logger
 from fastmcp import Client
+from mcp.types import TextContent
 
 from app.agent.contracts import normalize_tool_name
-from app.tools.contracts import EXECUTION_META_KEY, current_tool_execution
+from app.tools.contracts import EXECUTION_META_KEY, TOOL_ARGUMENTS_META_KEY, current_tool_execution
 from app.tools.agent_registry import (
     build_agent_galaris_fastmcp,
     build_galaris_fastmcp,
@@ -38,6 +39,18 @@ class ExecutionEvidenceClient(Client[Any]):
         kwargs["raise_on_error"] = False
         result = cast(Any, await super().call_tool(name, arguments, **kwargs))
         raw_meta: object = result.meta
+        if isinstance(raw_meta, dict) and TOOL_ARGUMENTS_META_KEY in cast(dict[str, Any], raw_meta):
+            # Pydantic AI otherwise treats all text blocks as redundant with the
+            # structured result. Enrich only this model-facing projection; preserve
+            # structured fields even when the provider's text is only a summary.
+            # Multimodal results already use the content blocks, including the warning.
+            if result.structured_content is not None and all(
+                isinstance(part, TextContent) for part in result.content
+            ):
+                result.structured_content = {
+                    "result": result.structured_content,
+                    "argument_warning": cast(dict[str, Any], raw_meta)[TOOL_ARGUMENTS_META_KEY],
+                }
         from app.tools.facade import AUTHORIZATION_META_KEY, AuthorizationRequired, AuthorizationClosed
         if isinstance(raw_meta, dict):
             control = cast(dict[str, Any], raw_meta).get(AUTHORIZATION_META_KEY)

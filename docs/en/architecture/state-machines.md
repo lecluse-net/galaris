@@ -21,6 +21,8 @@ The `tool_action_authorizations` journal has `pending`, `approved`, `denied`, `e
 
 The first valid decision wins. Reconciled outcomes stay terminal. Waiting returns
 `galaris.execution-result/v2` with `disposition=waiting_for_authorization` and exact request UUIDs.
+UUIDs are serialized as JSON strings before JSONB result persistence; their identities survive
+reloading.
 The Task attempt ends in `WAITING_APPROVAL`, releases its lease and retains its checkpoint;
 the Task phase stays unchanged, with an authorization pause reason. An independent human pause
 still takes precedence on wake. Rounds and voice retain the same disposition.
@@ -484,7 +486,10 @@ review cycle below; this status never modifies historical occurrences.
 | new occurrence | other state | state unchanged |
 
 A terminal success of the same run marks its earlier occurrences as recovered without
-deleting them or resolving their pattern. Reopening `resolved → regression` is atomic with
+deleting them or resolving their pattern. For text conversations, the scheduler applies this
+mark only after durable `SUCCEEDED`, for that round alone. Approval waits, interruption,
+supersession, lease loss, cancellation, failure and uncertain delivery do not suffice.
+Reopening `resolved → regression` is atomic with
 the addition of the occurrence. The other transitions are administrative review decisions and
 may be corrected manually.
 

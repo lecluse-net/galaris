@@ -53,6 +53,12 @@ fails while retaining its journal and costs. Native decision calls also respect 
 and their shorter deadlines. A terminal result already received remains terminal even if
 the transport trailer stalls. Each new call gets its own budget; total Task duration is unbounded.
 
+The Responses proxy completes only the missing function-argument suffix from
+`response.function_call_arguments.done` or `response.output_item.done` before passing that
+event to the SDK. Complete arguments and call identities remain intact. A final value
+contradicting the streamed prefix fails the stream before tool execution. Trace and model
+consume the same completed arguments.
+
 ## Task activity and provenance
 
 Conversation claims the ready round directly without locking its Room, so a
@@ -68,7 +74,21 @@ a new model decision. Result v2 exposes `waiting_for_authorization` and exact re
 The Task attempt releases its lease while waiting; text and voice rounds retain the same
 disposition. Managed runtimes retain callbacks in a runtime actor and verify authorization
 protocol support before starting an older SDK. Unknown outcomes prohibit automatic replay.
+The result uses JSON-mode serialization before JSONB persistence, including approval-request
+UUIDs; reloading preserves their identities.
 See [0153](../../../../project/decisions/0153-common-action-authorizations.md).
+
+The common MCP boundary removes unknown top-level keys from a closed schema before validation
+and authorization. Results add a `galaris.tool-arguments/v1` warning without ignored values;
+the Pydantic AI projection delivers it to the model and retains it in the checkpoint.
+Replaying that response does not repeat the effect. Required parameters, values, nested
+objects and open or composed schemas retain their usual validation.
+See [0164](../../../../project/decisions/0164-tolerant-tool-arguments.md).
+
+After a text round is durably `SUCCEEDED`, the scheduler marks that round's LLM/tool incidents
+as recovered, preserving errors and the aggregate pattern's review status. Approval waits,
+interruption, supersession, lease loss, cancellation, failure and uncertain delivery remain
+distinct from durable success.
 
 Inferences and the Task/Conversation queues wake after commit. Internal and Chat/Responses
 streams wait for new journal events using their cursor; pause and stop wake the executor

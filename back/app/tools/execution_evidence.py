@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from typing import Any, cast
 from uuid import UUID, uuid4
 
@@ -13,6 +14,7 @@ from pydantic import ValidationError as PydanticValidationError
 
 from .contracts import EXECUTION_META_KEY, ToolExecutionContext, tool_execution
 from .authorization import AUTHORIZATION_META_KEY, AuthorizationRequired, AuthorizationClosed
+from .tool_arguments import parameter_advice
 
 
 class ExecutionEvidenceMiddleware(Middleware):
@@ -65,8 +67,13 @@ class ExecutionEvidenceMiddleware(Middleware):
                 if execution.entered:
                     raise
                 execution.outcome = "rejected"
+                advice: dict[str, Any] = {}
+                if context.fastmcp_context is not None:
+                    tool = await context.fastmcp_context.fastmcp.get_tool(context.message.name)
+                    if tool is not None:
+                        advice = parameter_advice(tool.parameters)
                 result = ToolResult(
-                    content="Invalid tool arguments; correct the call to match its schema.",
+                    content="Invalid tool arguments; correct the call to match its schema. " + json.dumps(advice),
                     is_error=True,
                 )
             if not result.is_error:

@@ -11,7 +11,9 @@ text and images retain their existing configuration and Tools.
 1. Configure a provider and its API key in LLM preferences.
 2. Add resources from the provider's capability catalog.
 3. Select resources in the **Multimedia** section of the agent's effective LLM profile.
-4. Enable the agent's **Multimedia** connection, created automatically and disabled by default.
+4. Check the agent's **Multimedia** connection, created automatically and active by default.
+   Saved deactivations are preserved; the Tool's conversation mode requires explicit enabling.
+   Functions without a compatible resource remain absent from the MCP catalog.
 
 An agent with a custom profile uses that profile exclusively. Empty fields do not fall back
 to the global profile. MCP catalogs and execution check the current connection, capability,

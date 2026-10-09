@@ -7,7 +7,7 @@ following their work over time. Conversations, tasks, goals, documents, memory, 
 integrations form a common system. An agent can converse, consult authorized information,
 produce deliverables, involve colleagues, trigger external workflows and retain useful knowledge.
 
-This catalogue describes features present in the repository as of **8 October 2026**,
+This catalogue describes features present in the repository as of **9 October 2026**,
 including agent functions, administration screens and background mechanisms. It is organized
 by use, followed by a native MCP inventory and coverage of **every declared module**. Sources
 make that coverage verifiable. This is the exhaustive reference for preparing the product website.
@@ -16,17 +16,11 @@ make that coverage verifiable. This is the exhaustive reference for preparing th
 connections, models and external accounts. This describes the software without certifying
 every provider or installation configuration.
 
-This update retains the previous catalogue and reviews the **latest 57 commits**, from
-`02a822d` through `a6cc1f8` inclusive at the start of review, together with local changes.
-Commits `c2a720d`, `27e842f` and `cd8e8cc`, created from those changes during review, are also covered. Behaviour
-is checked against available contracts, implementation and tests; this documentary review does
-not qualify the assembled application.
-
-The **separation of documents and optional Memory syntheses**, their **shared keywords** and
-the **single current document thumbnail** are now committed. Agent guidance changes and some
-recall hardening still include local work. They describe the inspected repository without announcing
-publication or deployment. The Lab's ten mechanisms are separate from Dream's fourteen
-registered background mechanisms.
+The review includes the 8 October changes through `379bd98` and uncommitted work present
+during inspection, including tolerance of unknown tool arguments. Behaviour is checked against
+available contracts, implementation and tests; this documentary review neither qualifies the
+assembled application nor proves publication or deployment. The Lab's ten mechanisms remain
+separate from Dream's fourteen registered background mechanisms.
 
 The inventory covers **244 native MCP functions, 71 backend modules and 36 frontend modules**.
 Implemented features remain distinct from intentions in the [plan register](../../../project/plans/README.md).
@@ -342,6 +336,11 @@ metadata; discovery is cached for five minutes and existing configurations benef
 Explicit budgets take precedence; unknown capacity keeps the provider default. Compaction and
 remote Responses histories do not receive a locally calculated budget. Physically truncated output
 does not count as successful Task completion.
+
+The Responses proxy completes function arguments when the provider sends their remaining bytes
+only in an argument-done or function-done event. It preserves the streamed prefix and separate
+calls; contradictory arguments fail before tool execution.
+See the [proxy contracts](../../../back/tests/test_llm_call_trace.py).
 
 Provider configuration saves automatically after a successful connection test; subsequent changes
 to relevant fields save without a separate save button.
@@ -832,6 +831,10 @@ preparation or generation; a tool already running can finish. Internal draft tra
 messages. Late UI responses cannot replace a newer view, and a recovered success supersedes an old
 failure without erasing history.
 
+The scheduler claims the ready round directly: a concurrent room update does not postpone its
+start until periodic recovery. Chat already displays queued `FROZEN` work before runtime events;
+a successor remains queued while its predecessor is processing.
+
 A successful answer is not rejected merely because it contains no action or repeats information.
 Actual errors use scheduler budgets; a conversational attempt has a 15-minute bound and terminal
 fallbacks expose a category and useful detail while masking secrets.
@@ -1157,6 +1160,12 @@ contradiction or partial overlap remains separate. The candidate revision is rec
 model call; concurrent changes preserve the incoming knowledge. Attachment adds provenance without
 rewriting or deleting the existing record. Without this specialisation, existing deduplication applies.
 
+Memory writes reject detected credentials in content or metadata, with a diagnostic asking
+for redaction without echoing them. The word “secret” in ordinary prose does not itself block
+the text; secret assignments, tokens and keys remain checked. Automatic capture redacts detected
+material or discards content that cannot be safely retained.
+See the [filtering guarantees](../../../back/app/memory/tests/test_safety.py).
+
 ### Partial temporal anchors and upcoming recall
 
 A memory may carry an **optional temporal anchor**: year, month, day of month, weekday, hour,
@@ -1253,6 +1262,9 @@ identity merging is explicit.
 Final admission rechecks content, revision, current rights and accepted relationship paths.
 Records corrected, revoked or forgotten during search are omitted, including lexical fallback
 and resumed frozen contexts. One occurrence cannot borrow another occurrence's permission.
+Overlapping pages are checked occurrence by occurrence: each excerpt and path must match
+its own snapshot. Valid repeated occurrences retain input order; deleted or suggested links
+no longer prove a confirmed path.
 See [recall admission guarantees](../../../back/app/memory/tests/test_recall_admission.py).
 
 ### Browsing and maintenance
@@ -1502,8 +1514,9 @@ these controls are not a universal guarantee against malicious code.
 ### Files, images and cards
 
 Users can select/drop/paste multiple attachments with progress/cancel; insert at the cursor;
-remove an embedding without necessarily deleting its file; and manage all attachments in a dedicated
-dialog. Images support captions, alt text, proportional resizing, wrapping and movement. PDF,
+remove an embedding without necessarily deleting its file; and manage unembedded attachments in the
+**Unembedded attachments** area below the content, with add, drop, preview, download, insert and
+delete actions. Embedded resources remain accessible through their cards in the body. Images support captions, alt text, proportional resizing, wrapping and movement. PDF,
 video and audio render inline, with other formats in viewers. A deliberate web-link conversion
 creates a title/description/thumbnail card and can revert to a link; YouTube can display its player.
 Pasted HTML/Markdown becomes directly editable content with eligible images imported as document
@@ -1768,6 +1781,12 @@ Agents with Skill Management use `skills_list`, `skill_read`, `galaris://skill/`
 operations retain their protections. Dream-learned procedures form a separate evidence/scored
 collection and complement ordinary skills when eligible.
 
+The matrix presents **Global (all)**, **Category** and **This agent** with Active/Blocked controls.
+Only the applicable rule is selected: agent skill override, then that agent's category rule,
+then the global setting.
+No selection in a column indicates inheritance or a rule overridden at another level; it does
+not mean disabled.
+
 ### Applying changes at the next execution
 
 Before each new Task, Galaris compares authorised skills/files with the selected managed harness's
@@ -1839,6 +1858,12 @@ removes an override. Parameter labels, descriptions and fixed choices appear con
 connections, global settings and MCP tests. Values outside a choice list are rejected and YAML
 import/export preserves this metadata.
 
+The **Authorizations** matrix presents Enabled/Disabled/Ask under **Global (all)** and **This connection**.
+Only the rule applicable to the selected agent is highlighted. Selecting a global mode saves
+that rule and atomically clears this connection's override; other agents' overrides remain.
+Saving a rule requires no new remote MCP discovery. Function policies also apply to mandatory
+system services, whose definitions and connections remain protected.
+
 Browser, Search, Image and Multimedia connections start active. Browser and Search receive
 conversation eligibility at first initialisation. **Console SSH, Image, Mail and Multimedia**
 require explicit conversation-mode activation in the Tool catalogue; this does not disable their
@@ -1880,6 +1905,24 @@ existing human requests or bypass a block. Unknown external outcomes require rec
 
 Sources: [requests and preconditions](../../../back/app/tools/tests/test_action_authorizations.py),
 [permissions and YOLO](../admin/tool-administration.md).
+
+### Tool arguments and correction advice
+
+If a model adds an unknown key to a closed input schema, the MCP boundary removes it before
+validation and authorization for native functions and external proxies. The result preserves
+its output and adds a `galaris.tool-arguments/v1` warning listing ignored, available and required
+parameter names, without ignored values. The internal harness also delivers this warning to
+the model and retains it in its checkpoint, allowing replay without a new effect.
+
+Only top-level parameters are normalized. Nested objects, open dictionaries, pattern-allowed
+keys and composed or referenced schemas retain their usual validation. Missing required
+parameters and invalid values remain rejections. Consent covers the arguments actually executed;
+rights, revocation, credentials and preconditions remain checked.
+
+Sources: [contract and limits](../../../project/decisions/0164-tolerant-tool-arguments.md),
+[normalization](../../../back/app/tools/tool_arguments.py),
+[schema guarantees](../../../back/app/tools/tests/test_tool_arguments.py),
+[warning and replay](../../../back/app/harness/tests/test_execution_evidence.py).
 
 ### On-demand loading
 
@@ -1978,7 +2021,7 @@ supported, preserve source names into target collections with explicit overwrite
 attachments with edit rights, and export business projections into writable providers.
 
 HTML pages/offsets address complete blocks; edits require the previously read revision. Dataset
-reads/edits use real JSON lines and validate the whole result. `file_append` concatenates text under
+reads paginate by character; edits use real JSON lines and validate the whole result. `file_append` concatenates text under
 that validation; application collection insertion uses the Dataset SDK. `file_create` accepts
 `document_type="dataset"`; HTML remains the default and existing types are immutable. Other formats
 and units depend on providers. Business snapshots are read-only and use business commands for
@@ -2080,7 +2123,8 @@ It supplies search results rather than interactive page reading. Partial results
 an engine fails or an entry is unreadable, with degraded coverage reported. Timeout, HTTP refusal
 and invalid responses are distinct from a successful empty search. Network waits are cancellable
 and do not block other conversations. Base Compose mounts SearXNG configuration in development and
-production.
+production. The service version is pinned in `compose.yaml`; `make update` pulls infrastructure
+images before rebuilding and restarting in both environments.
 
 ### Interactive browsing
 
@@ -2093,13 +2137,18 @@ saving. Reachable development services can include Docker, LAN and the host when
 configuration and network permissions allow access.
 
 **Local networking is blocked by default**. Enabling it on a connection permits a permission
-request; destination/domain/port/network filters retain priority. Allowed public GETs pass directly
-by default, while POST, PUT, PATCH, DELETE and WebSocket require consent. Grants and refusals are
+request; destination/domain/port/network filters retain priority. New installations use **Public sites
+allowed** (`public_access_mode=allow`): public HTTP methods and WebSocket require no per-site
+consent, create no remembered grant and open no local network. Existing installations retain their
+choice; a previously absent parameter becomes `ask` on upgrade. In **Per-site approval** (`ask`),
+public GETs pass under default settings, while POST, PUT, PATCH, DELETE and WebSocket require consent.
+Grants and refusals are
 remembered per agent, access type and origin (scheme/domain/port). The action must be retried after
 the answer. **Always allow all websites** stores agent-wide consent for future domains, schemes,
 ports and paths, configured methods and WebSocket. Filters, explicit denials and separate local-network
-permissions retain priority. Deleting the grant restores requests; older site-only grants retain
-their original scope. Forms are not automatically resubmitted. **Monitor → Remembered permissions** lists
+permissions retain priority. Deleting the grant restores requests in `ask` mode; older site-only
+grants retain their original scope. Mode `allow` does not override explicit denials; returning
+to `ask` creates no implicit grant. Forms are not automatically resubmitted. **Monitor → Remembered permissions** lists
 questions and decisions, filters by agent/answer and deletes choices to prompt again, under
 connection privileges and the managed-agent scope.
 
@@ -2562,6 +2611,12 @@ diagnosis/root cause/remediation/fix commit/regression test; review states new, 
 resolved, ignored or regression; and authorised retention/cleanup. It is an evidence dossier, not
 automatic code repair; operational recovery and incident resolution are separate.
 
+Durable round success (`SUCCEEDED`) marks its LLM/tool occurrences as recovered, preserving
+diagnostics and the aggregate pattern's review status. Other runs remain unchanged. Approval waits,
+interruption, supersession, lease loss, cancellation, failure and uncertain delivery do not count
+as successful recovery.
+See the [recovery guarantees](../../../back/app/incident/tests/test_capture.py).
+
 Sources: [dashboard](../../../back/app/dashboard/schemas.py), [calls](../../../back/app/llm/schemas.py),
 [inspection](../../../back/app/llm/call_router.py), [incidents](../../../back/app/incident/schemas.py),
 [incident API](../../../back/app/incident/router.py).
@@ -2630,6 +2685,9 @@ embedded input attachments and 20 MB for internal-harness binary files, configur
   `make update VERSION=<tag-or-branch>` selects an exact tag or remote branch and refuses local source
   changes; private installation settings are preserved. `make update VERSIONS` lists available tags
   followed by branches without deploying.
+- Before build and restart, `make update` pulls declared infrastructure images, including SearXNG,
+  in development and production. A pull failure stops the command while preserving running
+  services; an update from `RELEASE_DIR` uses the qualified package's images.
 - The DbAdmin journal retains verdicts and bounded failure details. Backup/restoration covers database,
   files, executor and decryption material, with restore/upgrade rehearsal commands available.
 
@@ -3016,7 +3074,7 @@ management needs the specialised connection; ordinary actions stay within the ag
 | `file_list` | `file_sharing` | List files, attachments or projected business objects. |
 | `file_info` | `file_sharing` | Read metadata/capabilities. |
 | `file_search` | `file_sharing` | Search collection names/content; Memory uses hybrid recall and authorised structural paths. |
-| `file_read` | `file_sharing` | Read paginated text/HTML blocks, Dataset JSON lines or bounded binary, with continuation/revision. |
+| `file_read` | `file_sharing` | Read paginated text/HTML blocks, Dataset JSON by character or bounded binary, with continuation/revision. |
 | `file_create` | `file_sharing` | Create text/binary, attachment or HTML/Dataset; `document_type="dataset"` selects JSON at creation. |
 | `file_write` | `file_sharing` | Replace under preconditions/expected revision; retain type and validate Dataset JSON. |
 | `file_append` | `file_sharing` | Append text/HTML to compatible resources; complete Dataset result must remain valid JSON. |

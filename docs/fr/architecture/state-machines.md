@@ -22,6 +22,8 @@ Le journal `tool_action_authorizations` porte les états `pending`, `approved`, 
 
 La première décision valide gagne. Un état réconcilié reste terminal. L’attente produit
 `galaris.execution-result/v2` avec `disposition=waiting_for_authorization` et les UUIDs concernés.
+Les UUIDs sont sérialisés en chaînes JSON avant la persistance du résultat en JSONB ; leur
+identité reste conservée lors du rechargement.
 La tentative Task termine en `WAITING_APPROVAL`, libère son lease et conserve son checkpoint ;
 la phase de Task reste inchangée, avec une raison de pause d’autorisation. Une pause humaine
 indépendante reste prioritaire au réveil. Les rounds et la voix conservent la même disposition.
@@ -487,7 +489,10 @@ de revue ci-dessous ; ce statut ne modifie jamais les occurrences historiques.
 | nouvelle occurrence | autre état | état inchangé |
 
 Un succès terminal du même run marque ses occurrences antérieures comme récupérées sans les
-supprimer ni résoudre leur motif. La réouverture `resolved → regression` est atomique avec
+supprimer ni résoudre leur motif. Pour une conversation texte, le scheduler applique ce marquage
+après persistance de `SUCCEEDED` pour ce round uniquement. Attente d’autorisation, interruption,
+remplacement, perte de lease, annulation, échec et livraison incertaine ne suffisent pas.
+La réouverture `resolved → regression` est atomique avec
 l’ajout de l’occurrence. Les autres transitions sont des décisions de revue administratives et
 peuvent être corrigées manuellement.
 

@@ -9,6 +9,7 @@ from typing import Generator, Literal
 from uuid import UUID
 
 EXECUTION_META_KEY = "galaris.execution/v1"
+TOOL_ARGUMENTS_META_KEY = "galaris.tool-arguments/v1"
 
 FileIndexingMode = Literal["excluded", "known_uris", "recursive"]
 FILE_INDEXING_PARAM = "tools.fileindexing"

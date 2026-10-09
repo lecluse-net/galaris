@@ -13,8 +13,10 @@ et le texte restent configurés séparément.
 3. Dans le profil LLM de l'agent, sélectionner ces ressources dans **Multimédia**.
    Un agent sans profil personnalisé suit le profil courant ; un champ vide dans un profil
    personnalisé ne reprend pas la valeur du profil courant.
-4. Activer la connexion **Multimedia** de l'agent. Elle est créée automatiquement et inactive
-   par défaut. Les fonctions sans ressource compatible restent absentes du catalogue MCP.
+4. Vérifier la connexion **Multimedia** de l’agent. Elle est créée automatiquement et active
+   par défaut ; les désactivations enregistrées restent conservées. Le mode conversation du
+   Tool exige une activation explicite. Sans ressource compatible, la fonction reste absente
+   du catalogue MCP.
 
 | Fonction | Usage du profil | Fournisseurs intégrés |
 |---|---|---|

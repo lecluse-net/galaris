@@ -47,6 +47,7 @@ from core.params import runtime_settings
 
 from .contracts import ToolCallRejectedError, current_tool_execution
 from .execution_evidence import ExecutionEvidenceMiddleware
+from .tool_arguments import ToolArgumentsMiddleware
 from .schemas import Tool as ToolConfiguration
 
 ToolFunc = TypeVar("ToolFunc", bound=Callable[..., Any])
@@ -854,6 +855,7 @@ class _MediaFilteredFastMCP(FastMCP):
         self.media_agent_id = agent_id
         self.runtime = runtime
         self.native_execution_names: set[str] = set()
+        self.add_middleware(ToolArgumentsMiddleware())
         self.add_middleware(ExecutionEvidenceMiddleware(self.native_execution_names))
 
     async def list_tools(self, *, run_middleware: bool = True) -> Sequence[Tool]:
@@ -964,6 +966,7 @@ async def build_agent_mcp(
         try:
             disabled_functions = await connection_service.get_disabled_function_names(connection)
             proxy = FastMCP(tool.code)
+            proxy.add_middleware(ToolArgumentsMiddleware())
             from .external_authorization import ExternalAuthorizationMiddleware
             from .mcp_authorization import authorization_context_key
             proxy.add_middleware(ExternalAuthorizationMiddleware(
