@@ -121,6 +121,13 @@ connection, resuming the original action without replay, and subsequent executio
 It also covers concurrent claims, non-repeatable denial, expiry, quotas, context or configuration
 revocation, YOLO, and file preconditions. Permanent consent rejects changed MCP configuration,
 including changes between call preparation and creation of its question.
+Expiry scenarios compare a late answer, another invocation and reconciliation:
+each releases a real waiting task without dispatching the action. Cancellation and timeout
+after native tool dispatch preserve an unknown outcome and prevent replay.
+`app/voice/tests/test_conversation_service.py` verifies that approval or denial received
+before a turn suspends remains queued and wakes that turn once it enters its waiting state.
+`bridge/hermes/tests/test_executor_history.py` simulates a remote run disappearing at
+resumption: the wait ends in error without replay, preserving recorded effects and costs.
 A copy resumes after one-action or permanent consent only if the observed source
 is unchanged; changing the function mode does not discard its precondition.
 Real HTTP routes reject a system runtime token without its context, accept a valid

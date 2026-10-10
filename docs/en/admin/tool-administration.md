@@ -216,6 +216,13 @@ Duplicate, expired or stale-configuration answers cannot dispatch a second opera
 **Unknown outcome** requires reconciliation, never automatic redispatch. Cancelling a request
 does not undo an effect already sent.
 
+Expiry releases the task's authorization wait, including when a late answer detects it.
+A decision received before a voice turn enters its waiting state remains queued until
+the turn suspends. Interruption after dispatch leaves the action's outcome unknown;
+it does not permit automatic redispatch.
+If a Hermes run that may have produced effects disappears, it ends in error with its
+history preserved, without remaining in an authorization wait or restarting automatically.
+
 Humans can configure mandatory service functions; their connections and definitions stay
 protected. MCP resource and prompt policies are distinct from same-named tools. Update old
 binary clients: Ask does not mean Enabled.

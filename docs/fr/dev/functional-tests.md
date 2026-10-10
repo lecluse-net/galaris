@@ -123,6 +123,13 @@ avant de recueillir un accord pour tous les sites.
 connexion, la reprise sans rejeu de l’action initiale et l’exécution suivante sans question.
 Elle couvre aussi le claim concurrent, le refus non répétable, l’expiration, les quotas,
 la révocation du contexte ou de la configuration, YOLO et les préconditions des fichiers.
+Les scénarios d’expiration comparent réponse tardive, nouvel appel et réconciliation :
+ils libèrent une vraie tâche en attente sans exécuter l’action. L’annulation et le timeout
+d’un outil natif après son envoi conservent un résultat incertain et interdisent son rejeu.
+`app/voice/tests/test_conversation_service.py` vérifie qu’un accord ou un refus reçu avant
+la suspension du tour reste à traiter, puis réveille ce tour après sa mise en attente.
+`bridge/hermes/tests/test_executor_history.py` simule la disparition d’une exécution distante
+à la reprise : l’attente se termine en erreur sans rejeu, en conservant les effets et coûts tracés.
 Une copie reprend après un accord ponctuel ou permanent seulement si la source observée
 est inchangée ; le changement de mode ne retire pas sa précondition.
 Le choix permanent refuse une configuration MCP changée, y compris si le changement

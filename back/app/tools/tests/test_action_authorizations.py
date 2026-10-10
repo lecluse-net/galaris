@@ -256,6 +256,112 @@ async def test_reconciler_invalidates_a_revoked_approver_and_wakes_without_dispa
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("expiry_path", ["answer", "claim", "reconciler"])
+async def test_expired_approval_releases_waiting_task_without_dispatch(action, monkeypatch, expiry_path):
+    from datetime import datetime, timedelta, timezone
+    from unittest.mock import Mock
+    from app.task import runner, task_service
+    from app.task.models import Task, TaskStatus
+    from app.tools.authorization_notifications import reconcile_authorizations
+
+    async with get_db_session() as db:
+        task = Task(agent_id=action.agent_id, label="Synthetic expired approval",
+                    objective="<p>Review the synthetic action.</p>", status=TaskStatus.EXEC)
+        db.add(task)
+        await db.flush()
+        task_id = task.id
+    scoped = replace(action, context_key=f"task:{task_id}")
+    identifier = await pending(scoped)
+    async with get_db_session() as db:
+        row = await db.get(ActionAuthorization, identifier)
+        row.expires_at = datetime.now(timezone.utc) - timedelta(seconds=1)
+        approver = row.approver_user_id
+        task = await db.get(Task, task_id)
+        task.data = {"authorization_requests": [str(identifier)]}
+        task_service.suspend(task, task_service.PAUSE_APPROVAL)
+    schedule = Mock()
+    monkeypatch.setattr(runner, "go_next", schedule)
+    if expiry_path == "answer":
+        async with get_db_session():
+            assert not await answer_action(identifier, user_id=approver, approved=True)
+    elif expiry_path == "claim":
+        with pytest.raises(AuthorizationClosed, match="expired"):
+            await claim_action(scoped)
+    await reconcile_authorizations()
+    async with get_db_session() as db:
+        row = await db.get(ActionAuthorization, identifier)
+        assert row.status == "expired"
+        assert row.claimed_at is None and row.encrypted_arguments is None
+        assert row.finished_at is not None and row.wake_due_at is None
+        task = await db.get(Task, task_id)
+        assert not task_service.is_paused_for(task, task_service.PAUSE_APPROVAL)
+        assert task.status == TaskStatus.EXEC
+    schedule.assert_called_once_with(task_id, fast=True)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("interruption", ["cancel", "timeout"])
+async def test_interrupted_native_dispatch_preserves_unknown_outcome_without_replay(action, monkeypatch, interruption):
+    from app.browser import mcp as browser_mcp
+    from app.connection import Connection, facade as connections
+    from app.tools import mandatory_tools, mcp_loader
+    from app.tools.authorization import AUTHORIZATION_META_KEY
+    from app.tools.contracts import ToolExecutionContext, tool_execution
+    from app.tools.models import Tool
+
+    async with get_db_session() as db:
+        await mandatory_tools.sync_integrated_tool_connections(action.agent_id)
+        connection = await db.scalar(select(Connection).join(Tool).where(
+            Connection.agent_id == action.agent_id, Tool.code == "browser"))
+        await connections.set_connection_function_state(connection.id, "browser_open", "ask")
+    definition = next(item for item in mcp_loader.load_mcp_tools() if item.name == "browser_open")
+    if interruption == "timeout":
+        definition = replace(definition, timeout_seconds=0.1)
+    wrapper = mcp_loader._wrap_tool(definition, mcp_loader.McpToolContext(
+        agent_id=action.agent_id, runtime="internal", resources={"authorization_context": action.context_key}))
+    operation = uuid4()
+    entered = asyncio.Event()
+
+    async def stalled_executor(*_args, **_kwargs):
+        entered.set()
+        await asyncio.Future()
+
+    dispatch = AsyncMock(side_effect=stalled_executor)
+    monkeypatch.setattr(browser_mcp.browser_executor, "open", dispatch)
+
+    async def invoke():
+        with tool_execution(ToolExecutionContext(operation, "browser_open")):
+            return await wrapper(url="https://example.test/synthetic", output="content")
+
+    control = (await invoke()).meta[AUTHORIZATION_META_KEY]
+    identifier = UUID(control["request_id"])
+    dispatch.assert_not_awaited()
+    async with get_db_session() as db:
+        row = await db.get(ActionAuthorization, identifier)
+        assert await answer_action(identifier, user_id=row.approver_user_id, approved=True)
+    running = asyncio.create_task(invoke())
+    try:
+        await asyncio.wait_for(entered.wait(), 5)
+        if interruption == "cancel":
+            running.cancel()
+            with pytest.raises(asyncio.CancelledError):
+                await running
+        else:
+            assert (await running).is_error
+    finally:
+        if not running.done():
+            running.cancel()
+        await asyncio.gather(running, return_exceptions=True)
+    async with get_db_session() as db:
+        row = await db.get(ActionAuthorization, identifier)
+        assert row.status == "outcome_unknown"
+        assert row.finished_at is not None and row.encrypted_arguments is not None
+    replay = await invoke()
+    assert replay.is_error and replay.meta[AUTHORIZATION_META_KEY]["status"] == "outcome_unknown"
+    dispatch.assert_awaited_once()
+
+
+@pytest.mark.asyncio
 async def test_private_payload_is_encrypted_and_not_copied_into_secret_key_previews(action):
     from app.tools.authorization import redacted_action_arguments
     from core.util import get_encryption_service

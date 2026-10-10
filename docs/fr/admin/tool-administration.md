@@ -226,6 +226,13 @@ son appel pour la reprise. Une réponse dupliquée, expirée ou liée à une con
 ne lance pas une deuxième opération. **Résultat incertain** exige une réconciliation, jamais
 un nouvel envoi automatique. Annuler une demande n’annule pas un effet déjà envoyé.
 
+Une expiration libère l’attente de la tâche, même lorsqu’elle est constatée par une réponse
+tardive. Une décision reçue avant la mise en attente d’un tour vocal reste à traiter jusqu’à
+sa suspension. Une interruption après l’envoi d’une action place son résultat en état incertain ;
+elle ne permet pas de renvoyer automatiquement cette action.
+Si une exécution Hermes ayant pu produire des effets devient introuvable, elle se termine
+en erreur avec son historique conservé, sans rester en attente ni recommencer automatiquement.
+
 Les fonctions des services obligatoires restent configurables par un humain ; leurs connexions
 et définitions restent protégées. Les permissions des ressources et prompts MCP sont distinctes
 de celles d’un outil portant le même nom. Les anciennes interfaces binaires doivent être mises

@@ -493,6 +493,12 @@ def _wrap_tool(definition: McpToolDefinition, ctx: McpToolContext) -> Callable[.
             from .authorization import finish_action
             await finish_action(authorization_id, receipt=result)
             return result
+        except asyncio.CancelledError:
+            from .authorization import finish_action
+
+            # Cancellation cannot prove that a dispatched operation had no effect.
+            await asyncio.shield(finish_action(authorization_id, outcome="outcome_unknown"))
+            raise
         except Exception as exc:
             from .authorization import AuthorizationRequired, AuthorizationClosed, finish_action
             if isinstance(exc, (AuthorizationRequired, AuthorizationClosed)):

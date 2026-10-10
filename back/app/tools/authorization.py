@@ -530,6 +530,7 @@ async def claim_action(action: AuthorizationAction) -> UUID | None:
             row.encrypted_arguments = None
             row.notification_due_at = None
             row.finished_at = now
+            row.wake_due_at = now
         await db.commit()
     if pending is not None:
         token = get_encryption_service().encrypt(canonical({
@@ -644,6 +645,7 @@ async def answer_action(request_id: UUID, *, user_id: int, approved: bool, remem
     if row.expires_at <= now:
         row.status = "expired"
         row.encrypted_arguments = None
+        row.finished_at = row.wake_due_at = now
     else:
         row.status = "approved" if approved else "denied"
         row.decision_source = "human"

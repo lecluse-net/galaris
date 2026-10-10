@@ -96,6 +96,65 @@ async def _start_test_session(
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("approved", [True, False])
+async def test_early_authorization_decision_is_retried_after_voice_turn_suspends(
+    committed_database, monkeypatch: pytest.MonkeyPatch, approved: bool,
+) -> None:
+    from datetime import datetime, timedelta, timezone
+    from unittest.mock import Mock
+    from app.agent import ExecutionResult
+    from app.tools.authorization import AuthorizationAction, AuthorizationRequired, answer_action, claim_action
+    from app.tools.authorization_models import ActionAuthorization
+    from app.tools.authorization_notifications import reconcile_authorizations
+    from core.database import get_db_session
+    from core.user import UserModel
+
+    async with get_db_session() as db:
+        manager = UserModel(email=f"voice-approver-{uuid4().hex}@example.test", hashed_password="synthetic")
+        title = Title(label="Synthetic voice approval", gender="X")
+        db.add_all([manager, title])
+        await db.flush()
+        agent = Agent(user_id=manager.id, title_id=title.id, code=f"voice-approval-{uuid4().hex}",
+                      first_name="Synthetic", last_name="Voice")
+        db.add(agent)
+        await db.flush()
+        agent_id = agent.id
+        session = await _start_test_session(db, monkeypatch, agent_id=agent_id, room_id="synthetic-approval-race")
+        turn = await conversation_service.start_audio_turn(session_id=session.id, run_id=uuid4())
+        turn_id = turn.id
+        context = f"voice:{session.id}:round:{turn_id}"
+    with pytest.raises(AuthorizationRequired) as pending:
+        await claim_action(AuthorizationAction(
+            agent_id=agent_id, runtime="internal", context_key=context, source="runtime",
+            callback_key=str(uuid4()), name="synthetic_action", arguments={}, configuration={},
+        ))
+    identifier = pending.value.request_id
+    async with get_db_session() as db:
+        row = await db.get(ActionAuthorization, identifier)
+        assert await answer_action(identifier, user_id=row.approver_user_id, approved=approved)
+    wake = Mock()
+    monkeypatch.setattr("app.conversation.wake", wake)
+    await reconcile_authorizations()
+    async with get_db_session() as db:
+        row = await db.get(ActionAuthorization, identifier)
+        assert row.wake_due_at is not None
+        assert (await db.get(ConversationRound, turn_id)).status == "RUNNING"
+        result = ExecutionResult(
+            prompt="Synthetic voice approval", success=False, schema_version="galaris.execution-result/v2",
+            disposition="waiting_for_authorization", authorization_requests=[identifier],
+        )
+        await conversation_service.complete_turn(turn_id, assistant_response="", execution_result=result.model_dump(mode="json"))
+        row.wake_due_at = datetime.now(timezone.utc) - timedelta(seconds=1)
+    await reconcile_authorizations()
+    async with get_db_session() as db:
+        row = await db.get(ActionAuthorization, identifier)
+        assert row.status == ("approved" if approved else "denied")
+        assert row.claimed_at is None and row.wake_due_at is None
+        assert (await db.get(ConversationRound, turn_id)).status == "FROZEN"
+    wake.assert_called_once()
+
+
+@pytest.mark.asyncio
 @pytest.mark.parametrize("output_first", [False, True])
 async def test_voice_replies_inherit_the_human_topic_including_late_input(
     db: AsyncSession, monkeypatch: pytest.MonkeyPatch, output_first: bool,

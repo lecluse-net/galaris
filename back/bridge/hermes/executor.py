@@ -23,6 +23,7 @@ from app.agent.contracts import (
     AgentUsage,
     ExecutionResult,
     HarnessCancellationReceipt,
+    HarnessFailure,
     normalize_tool_name,
 )
 from app.agent import message_prompt
@@ -755,8 +756,14 @@ async def _stream(task: AgentRunRequest) -> AsyncIterator[AgentEvent]:
                     )
                 )
                 lost_result.success = False
+                lost_result.disposition = "completed"
+                lost_result.authorization_requests = []
                 lost_result.result = _message(
                     language, "errors.run_not_found", run_id=run_id
+                )
+                lost_result.failure = HarnessFailure(
+                    code="effect_unknown", message=lost_result.result[:4000],
+                    retry="never", effects="possible",
                 )
                 lost_message = AIMessage(
                     type="text", content=lost_result.result, success=False

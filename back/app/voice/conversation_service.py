@@ -69,6 +69,10 @@ async def _wake_authorization_context(agent_id: int, context_key: str) -> bool:
         if round_key == "None":
             return True
         round_ = await db.scalar(select(ConversationRound).where(ConversationRound.id == UUID(round_key)).with_for_update())
+        if round_ is not None and round_.status in ("CLAIMED", "RUNNING"):
+            # Human decisions can arrive before the runtime persists its suspension.
+            # Keep the outbox wake until that owner has released the turn.
+            return False
         if round_ is None or round_.status != "WAITING_APPROVAL":
             return True  # A live realtime SDK owns its callback and polls without a Task lease.
         if await authorization_context_pending(agent_id, context_key):
