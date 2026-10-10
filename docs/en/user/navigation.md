@@ -98,7 +98,8 @@ the screen. It is the default tab for authorized accounts; other accounts start 
 
 ### Create an agent
 
-The **Galaris** assistant proposed at installation uses the application logo as its avatar.
+The **Galaris** assistant proposed at installation uses a dedicated avatar: a blue and green G
+over a starry network background.
 Its [product knowledge guide](../admin/product-knowledge.md) loads automatically for text
 and turn-based voice replies and internal Tasks, subject to existing access rights.
 You can customize or remove its avatar; updates preserve your choice.

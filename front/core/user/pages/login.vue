@@ -85,12 +85,8 @@
             </div>
           </q-form>
         </q-card-section>
-        <q-card-actions v-if="registrationOpen || registrationStatusError" align="center">
-          <q-btn v-if="registrationOpen" flat to="/user/register" :label="$t('auth.registerButton')" />
-          <div v-else role="alert">
-            {{ $t('auth.registrationStatusError') }}
-            <q-btn flat :label="$t('auth.retryRegistrationStatus')" @click="checkRegistration" />
-          </div>
+        <q-card-actions v-if="registrationOpen" align="center">
+          <q-btn flat to="/user/register" :label="$t('auth.registerButton')" />
         </q-card-actions>
 
       </q-card>
@@ -119,7 +115,7 @@ const otpCode = ref('')
 const isPwd = ref(true)
 const loading = ref(false)
 const error = ref('')
-const { registrationOpen, registrationStatusError, checkRegistration } = useRegistrationStatus()
+const { registrationOpen, checkRegistration } = useRegistrationStatus()
 onMounted(() => { void checkRegistration() })
 
 function isValidEmail(email: string): boolean {

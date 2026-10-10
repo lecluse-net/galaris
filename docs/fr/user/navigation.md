@@ -107,7 +107,8 @@ autorisés ; sinon l’écran ouvre **Fournisseurs**.
 
 ### Créer un agent
 
-L'assistant **Galaris** proposé à l'installation porte le logo de l'application comme avatar.
+L'assistant **Galaris** proposé à l'installation porte un avatar dédié : un G bleu et vert
+sur un fond de réseau étoilé.
 Son [guide de connaissance produit](../admin/product-knowledge.md) est chargé automatiquement
 dans ses réponses texte et voix par tours, et ses Tasks internes, sous ses droits existants.
 Vous pouvez personnaliser ou supprimer son avatar ; les mises à jour conservent votre choix.

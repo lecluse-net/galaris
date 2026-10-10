@@ -220,7 +220,7 @@ async def test_first_signup_immediately_proposes_manageable_galaris(client, monk
     assert agent["has_avatar"] is True
     avatar = await client.get(f"/api/agents/{agent['id']}/avatar", headers=headers)
     assert avatar.status_code == 200
-    assert avatar.headers["content-type"] == "image/png"
+    assert avatar.headers["content-type"] == "image/jpeg"
     from app.agent.avatars import validate_avatar
 
     validate_avatar(avatar.content)

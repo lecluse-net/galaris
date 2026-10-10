@@ -11,6 +11,7 @@ from core.database import get_db
 from core.dbadmin import DbAdminDataset, DbAdminDatasetResult, reconcile_dataset
 from core.user import UserModel, register_user_access_observer
 
+from .avatars import normalize_avatar
 from .models import Agent, Title
 from .observers import notify_agent_profile
 
@@ -45,7 +46,7 @@ async def _rows(session: AsyncSession) -> tuple[dict[str, object], ...]:
     return ({
         "initialization_key": "galaris", "code": code,
         "first_name": "Galaris", "last_name": "",
-        "avatar": (Path(__file__).with_name("assets") / "galaris.png").read_bytes(),
+        "avatar": normalize_avatar((Path(__file__).with_name("assets") / "galaris.jpg").read_bytes()),
         "user_id": manager_id, "title_id": title_id,
         "agent_driver": "internal", "task_harness_id": None, "profile_id": None,
         "profile_media_type": "text/html",

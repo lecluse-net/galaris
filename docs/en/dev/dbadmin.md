@@ -313,7 +313,7 @@ Datasets are ordered by `depends_on`. Reconcilers then run and may also depend o
 ### Initial data subsequently owned by administrators
 
 The `app.agent.initial_galaris` dataset proposes **Galaris** once, managed by the
-first active administrator, with the application logo as its avatar, the internal Harness,
+first active administrator, with its dedicated avatar bundled in the backend, the internal Harness,
 the current default LLM profile, active `galaris_admin` (including documentation access), `tool_admin` and `agent_admin` connections, and an
 individual authorization for the `galaris-lab` and `galaris-knowledge` skills. Their global defaults remain disabled.
 If no administrator exists yet, the first signup replays the same dataset.
