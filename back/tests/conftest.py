@@ -22,6 +22,7 @@ def responses_sse():
                 initial["content"] = []
             elif item["type"] == "reasoning":
                 initial["summary"] = []
+                initial["content"] = []
                 initial.pop("encrypted_content", None)
             events.append({"type": "response.output_item.added", "output_index": index, "item": initial})
             address = {"item_id": item["id"], "output_index": index}
@@ -37,6 +38,12 @@ def responses_sse():
                     events.append({"type": "response.output_text.done", **content_address, "text": part["text"]})
                     events.append({"type": "response.content_part.done", **content_address, "part": part})
             elif item["type"] == "reasoning":
+                for content_index, part in enumerate(item.get("content", [])):
+                    content_address = {**address, "content_index": content_index}
+                    events.append({"type": "response.reasoning_text.delta", **content_address,
+                        "delta": part["text"]})
+                    events.append({"type": "response.reasoning_text.done", **content_address,
+                        "text": part["text"]})
                 for summary_index, part in enumerate(item["summary"]):
                     summary_address = {**address, "summary_index": summary_index}
                     events.append({"type": "response.reasoning_summary_part.added", **summary_address,

@@ -1,5 +1,6 @@
 import asyncio
 import json
+from contextlib import aclosing
 from uuid import UUID
 from uuid import uuid4
 from types import SimpleNamespace
@@ -15,7 +16,7 @@ from sqlalchemy import select
 from app.llm import protocol_inference
 from app.llm import LLMProvider
 from app.llm.facade import read_inference, stream_inference, control_inference, llm_call_accounting
-from app.llm.models import LLMInference, LLMCall
+from app.llm.models import LLMInference, LLMInferenceAttempt, LLMCall
 from app.llm.pydantic_ai_utils import build_model_for_llm
 from tests import test_inference_lifecycle as lifecycle
 
@@ -108,6 +109,96 @@ def provider_http(monkeypatch, handler):
         def __init__(self, **kwargs):
             super().__init__(**kwargs, transport=httpx.MockTransport(handler))
     monkeypatch.setattr(protocol_inference.proxy_service.httpx, "AsyncClient", ProviderClient)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("with_summary", [False, True])
+async def test_raw_responses_reasoning_reaches_run_guard_and_closes_provider(
+    runtime, monkeypatch, with_summary,
+):
+    """Exercise SDK, durable transport, runtime projection and the common run guard."""
+    from app.agent import facade
+    from app.agent.contracts import (
+        AgentEvent, AgentRunRequest, AgentSnapshot, ExecutionResult, ResolvedModel,
+    )
+    from app.agent.reasoning_guard import ReasoningDegenerationError
+    from app.harness.runtime import Agent as HarnessAgent
+
+    db, llm, _, _ = runtime
+    llm.provider = (await db.scalars(select(LLMProvider).where(
+        LLMProvider.catalog_code == "openrouter",
+    ))).one()
+    llm.llm_name = "synthetic/reasoning-worker"
+    await db.commit()
+    closed = asyncio.Event()
+    generated = []
+    pattern = "Review the synthetic record. Proceed. "
+
+    class RawReasoningStream(httpx.AsyncByteStream):
+        async def __aiter__(self):
+            initial = {"id": "synthetic-thought", "type": "reasoning", "summary": []}
+            events = [{"type": "response.output_item.added", "output_index": 0, "item": initial}]
+            if with_summary:
+                events.append({"type": "response.reasoning_summary_text.delta", "item_id": initial["id"],
+                    "output_index": 0, "summary_index": 0, "delta": "Reviewing a synthetic record."})
+            for event in events:
+                yield f"data: {json.dumps(event)}\n\n".encode()
+            for _ in range(40):
+                generated.append(True)
+                yield f"data: {json.dumps({'type': 'response.reasoning_text.delta', 'item_id': initial['id'], 'output_index': 0, 'content_index': 0, 'delta': pattern})}\n\n".encode()
+                await asyncio.sleep(0.01)
+            terminal = {"type": "response.completed", "response": {
+                "id": "synthetic-response", "object": "response", "created_at": 1,
+                "model": llm.llm_name, "status": "completed", "output": [{
+                    "id": "synthetic-answer", "type": "message", "role": "assistant",
+                    "status": "completed", "content": [{"type": "output_text", "text": "Finished.", "annotations": []}],
+                }],
+            }}
+            yield f"data: {json.dumps(terminal)}\n\n".encode()
+
+        async def aclose(self):
+            closed.set()
+
+    def upstream(request):
+        if request.method == "GET":
+            return httpx.Response(200, json={"data": [{"id": llm.llm_name,
+                "context_length": 131072, "top_provider": {"max_completion_tokens": 16384}}]})
+        return httpx.Response(200, stream=RawReasoningStream(), headers={"content-type": "text/event-stream"})
+
+    provider_http(monkeypatch, upstream)
+    agent = HarnessAgent(llm)
+    await agent.init()
+
+    class RuntimeDriver:
+        async def stream(self, request):
+            async with aclosing(agent.run(request.objective)) as messages:
+                async for message in messages:
+                    yield AgentEvent.from_message(message)
+            yield AgentEvent.from_result(ExecutionResult(prompt=request.objective, result="Finished."))
+
+    monkeypatch.setattr(facade, "create_driver", lambda _spec: RuntimeDriver())
+    request = AgentRunRequest(
+        run_id=uuid4(), task_id=None, driver_code="internal", effort="standard",
+        agent=AgentSnapshot(id=3, code="synthetic-agent", first_name="Alice", last_name="Martin", driver_code="internal"),
+        objective="Review a synthetic record.",
+        model=ResolvedModel(id=llm.id, code=llm.code, model_name=llm.llm_name, label="Synthetic", requested_effort="standard"),
+    )
+    with pytest.raises(ReasoningDegenerationError):
+        async with aclosing(facade.stream(request)) as events:
+            async for _ in events:
+                pass
+    await asyncio.wait_for(closed.wait(), 5)
+    assert len(generated) < 40
+    calls = list(await db.scalars(select(LLMCall).where(LLMCall.llm_id == llm.id)))
+    assert len(calls) == 1
+    assert calls[0].status == "cancelled"
+    assert pattern.strip() in calls[0].reasoning
+    attempt = await db.get(LLMInferenceAttempt, calls[0].inference_attempt_id)
+    assert attempt is not None
+    journal = await read_inference(attempt.inference_id)
+    assert journal.status == "stopped"
+    assert len(journal.attempts) == 1
+    assert any(pattern.strip() in message.content for message in journal.attempts[0].result.messages)
 
 
 @pytest.mark.asyncio
@@ -440,8 +531,10 @@ async def test_public_openai_api_returns_the_same_durable_inference(runtime, mon
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("raw_reasoning", [False, True])
+@pytest.mark.parametrize("streaming", [False, True])
 async def test_stream_keeps_two_thoughts_fifteen_tools_and_one_answer_as_eighteen_messages(
-    runtime, monkeypatch, responses_sse,
+    runtime, monkeypatch, responses_sse, raw_reasoning, streaming,
 ):
     _, llm, _, _ = runtime
     output = [{"type": "reasoning", "id": "thinking-first",
@@ -455,16 +548,23 @@ async def test_stream_keeps_two_thoughts_fifteen_tools_and_one_answer_as_eightee
         {"type": "message", "id": "answer", "role": "assistant", "status": "completed",
          "content": [{"type": "output_text", "text": "Réponse finale.", "annotations": []}]},
     ])
+    if raw_reasoning:
+        for item in output:
+            if item["type"] == "reasoning":
+                item["content"] = [{"type": "reasoning_text", "text": item["summary"][0]["text"]}]
+                item["summary"] = []
     terminal = {"id": "response-parts", "object": "response", "created_at": 1,
                 "model": "opaque", "status": "completed", "output": output}
-    provider_http(monkeypatch, lambda request: httpx.Response(
-        200, content=responses_sse(terminal), headers={"content-type": "text/event-stream"},
+    provider_http(monkeypatch, lambda request: (
+        httpx.Response(200, content=responses_sse(terminal), headers={"content-type": "text/event-stream"})
+        if streaming else httpx.Response(200, json=terminal)
     ))
     response = await protocol_inference.proxy_responses(
-        {"model": llm.code, "stream": True, "input": "Recherche puis réponds."}, task_id=None,
+        {"model": llm.code, "stream": streaming, "input": "Recherche puis réponds."}, task_id=None,
     )
-    async for _ in response.body_iterator:
-        pass
+    if streaming:
+        async for _ in response.body_iterator:
+            pass
     key = UUID(response.headers["x-galaris-inference-id"])
     events = [event async for event in stream_inference(key)]
     result = events[-1].result
@@ -474,7 +574,8 @@ async def test_stream_keeps_two_thoughts_fifteen_tools_and_one_answer_as_eightee
     assert result.messages[-2].content == "Deuxième réflexion."
     assert result.messages[-1].content == "Réponse finale."
     assert len({message.stream_id for message in result.messages}) == 18
-    assert len([event for event in events if event.kind == "message"]) > 18
+    if streaming:
+        assert len([event for event in events if event.kind == "message"]) > 18
     assert sum(event.kind == "result" for event in events) == 1
 
 

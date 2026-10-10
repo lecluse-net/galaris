@@ -40,7 +40,7 @@ from pydantic_ai.models.openai import (
     OpenAIResponsesModelSettings,
 )
 
-from app.llm import LLM, LLMCallPurpose
+from app.llm import LLM, LLMCallPurpose, thinking_content
 from app.llm.provider_facade import ReasoningEffort
 from core.i18n import render_prompt, t
 from core.params import runtime_settings
@@ -502,6 +502,7 @@ class _StreamState:
     streamed_text: bool = False
     part_stream_ids: dict[int, str] = field(default_factory=dict[int, str])
     thinking_content: dict[int, str] = field(default_factory=dict[int, str])
+    thinking_parts: dict[int, _pydantic_messages.ThinkingPart] = field(default_factory=dict[int, _pydantic_messages.ThinkingPart])
     last_text_stream_id: str | None = None
     leading_message_metadata: LeadingMessageMetadataFilter = field(
         default_factory=LeadingMessageMetadataFilter
@@ -527,6 +528,21 @@ class _StreamState:
 
     def part_stream_id(self, index: int) -> str:
         return self.part_stream_ids.setdefault(index, uuid4().hex)
+
+    def thinking_delta(self, index: int, part: _pydantic_messages.ThinkingPart) -> str:
+        """Project only new reasoning, including SDK provider-details updates."""
+        content = thinking_content(part)
+        observed = self.thinking_content.get(index, "")
+        if observed.startswith(content):
+            return ""
+        if content.startswith(observed):
+            delta = content[len(observed):]
+        else:
+            # A summary/raw switch or divergent completion starts a distinct block.
+            self.part_stream_ids[index] = uuid4().hex
+            delta = content
+        self.thinking_content[index] = content
+        return delta
 
 
 def _remember_tool_call(
@@ -1130,9 +1146,12 @@ class Agent(AgentRuntime):
                         await on_model_activity()
                     continue
                 if isinstance(event.delta, _pydantic_messages.ThinkingPartDelta):
-                    content = event.delta.content_delta
+                    part = state.thinking_parts.get(event.index, _pydantic_messages.ThinkingPart(content=""))
+                    updated = event.delta.apply(part)
+                    assert isinstance(updated, _pydantic_messages.ThinkingPart)
+                    state.thinking_parts[event.index] = updated
+                    content = state.thinking_delta(event.index, updated)
                     if content:
-                        state.thinking_content[event.index] = state.thinking_content.get(event.index, "") + content
                         msg = AIMessage(
                             type="tool", tool_name="thinking", content=content,
                             stream_id=state.part_stream_id(event.index),
@@ -1168,16 +1187,19 @@ class Agent(AgentRuntime):
                 part = event.part
                 state.part_stream_ids[event.index] = uuid4().hex
                 state.thinking_content.pop(event.index, None)
-                if isinstance(part, _pydantic_messages.ThinkingPart) and part.content:
-                    state.thinking_content[event.index] = part.content
-                    msg = AIMessage(
-                        type="tool", tool_name="thinking", content=part.content,
-                        stream_id=state.part_stream_id(event.index),
-                        stream_complete=False if task_trace else None,
-                        execution_time=state.elapsed(),
-                    )
-                    self.messages.append(msg)
-                    yield msg
+                state.thinking_parts.pop(event.index, None)
+                if isinstance(part, _pydantic_messages.ThinkingPart):
+                    state.thinking_parts[event.index] = part
+                    content = state.thinking_delta(event.index, part)
+                    if content:
+                        msg = AIMessage(
+                            type="tool", tool_name="thinking", content=content,
+                            stream_id=state.part_stream_id(event.index),
+                            stream_complete=False if task_trace else None,
+                            execution_time=state.elapsed(),
+                        )
+                        self.messages.append(msg)
+                        yield msg
                 if isinstance(part, _pydantic_messages.TextPart):
                     state.last_text_stream_id = state.part_stream_id(event.index)
                 if isinstance(part, _pydantic_messages.TextPart) and part.content:
@@ -1202,7 +1224,6 @@ class Agent(AgentRuntime):
             # PartEnd repeats cumulative content; reasoning was already emitted as deltas.
             if isinstance(event, PartEndEvent):
                 part = getattr(event, "part", None)
-                thinking_part = getattr(_pydantic_messages, "ThinkingPart", None)
                 if task_trace and isinstance(part, _pydantic_messages.TextPart):
                     # Keep deltas available to guards/checkpoints, but let Task views
                     # publish this block only once the provider has closed it.
@@ -1227,27 +1248,15 @@ class Agent(AgentRuntime):
                         self.messages.append(msg)
                         yield msg
                     continue
-                if (
-                    thinking_part is not None
-                    and part is not None
-                    and isinstance(part, thinking_part)
-                    and (part.content or "").strip()
-                ):
-                    observed = state.thinking_content.get(event.index, "")
-                    if observed.startswith(part.content):
+                if isinstance(part, _pydantic_messages.ThinkingPart) and thinking_content(part).strip():
+                    content = state.thinking_delta(event.index, part)
+                    if not content:
                         if task_trace:
                             yield AIMessage(
                                 type="tool", tool_name="thinking", content="",
                                 stream_id=state.part_stream_id(event.index), stream_complete=True,
                             )
                         continue
-                    if part.content.startswith(observed):
-                        content = part.content[len(observed):]
-                    else:
-                        # A divergent completion is a distinct block, never an
-                        # overwrite of already published reasoning.
-                        state.part_stream_ids[event.index] = uuid4().hex
-                        content = part.content
                     msg = AIMessage(
                         type="tool",
                         tool_name="thinking",
@@ -1257,7 +1266,6 @@ class Agent(AgentRuntime):
                         cost=0.0,
                     )
                     self.messages.append(msg)
-                    state.thinking_content[event.index] = part.content
                     yield msg
                 continue
 

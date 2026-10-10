@@ -27,6 +27,7 @@ from app.agent.contracts import AIMessage, AIResult
 from core.database import get_db_session
 from .call_capture import TextCallCapture
 from .inference_journal import append_events
+from .thinking import thinking_content
 
 
 class _CommittedCancellation(asyncio.CancelledError):
@@ -67,6 +68,8 @@ def message_for_part(call_id: UUID, index: int, part: object) -> AIMessage | Non
                 arguments = cast(dict[str, Any], decoded)
         except ValueError:
             pass
+    elif isinstance(part, ThinkingPart):
+        content = thinking_content(part)
     else:
         content = part.content
     return AIMessage(

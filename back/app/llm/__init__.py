@@ -7,6 +7,7 @@ from . import model_usages
 from .profile_models import LlmProfile
 from .provider_models import LLM, LLMProvider
 from .purposes import LLMCallPurpose
+from .thinking import thinking_content
 from .provider_schemas import LLMProviderCreate, LLMProviderResponse, LLMProviderUpdate
 from .provider_facade import (
     CHAT_PARAMETERS,
@@ -100,7 +101,7 @@ from .retention import register_trace_release
 
 __all__ = [
     "configured_embedding_model", "ConfiguredEmbeddingModel", "EmbeddingError",
-    "normalized_media_type", "supports_native_input",
+    "normalized_media_type", "supports_native_input", "thinking_content",
     "CHAT_PARAMETERS",
     "RESPONSES_PARAMETERS",
     "SAMPLING_PARAMETERS",

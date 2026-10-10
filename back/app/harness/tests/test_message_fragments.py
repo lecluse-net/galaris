@@ -108,6 +108,37 @@ async def test_thinking_is_live_and_each_model_part_keeps_its_identity():
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("summary", ["", "A short summary."])
+async def test_raw_thinking_is_live_without_replaying_completion_or_provider_metadata(summary):
+    result = AIResult(prompt="")
+    first = ThinkingPart(content=summary, signature="opaque-signature", provider_details={
+        "raw_content": ["Review "], "other_metadata": "opaque-metadata",
+    })
+    final = ThinkingPart(content=summary, signature="opaque-signature", provider_details={
+        "raw_content": ["Review this.", "Then verify."], "other_metadata": "opaque-metadata",
+    })
+
+    def append_raw(details):
+        return {"raw_content": [details["raw_content"][0] + "this."]}
+
+    async def events():
+        yield PartStartEvent(index=0, part=first)
+        assert result.messages[0].content == "Review "
+        yield PartDeltaEvent(index=0, delta=ThinkingPartDelta(provider_details=append_raw))
+        assert result.messages[0].content == "Review this."
+        yield PartEndEvent(index=0, part=final)
+        yield PartEndEvent(index=0, part=final)
+        yield PartStartEvent(index=0, part=ThinkingPart(content="", provider_details={"raw_content": ["New thought."]}))
+
+    agent = Agent(cast(Any, SimpleNamespace()), task_id=uuid4())
+    async for message in agent._emit_stream_messages(events(), _StreamState(), None):
+        result.add_message(message.model_copy(deep=True))
+    assert [message.content for message in result.messages] == ["Review this.\n\nThen verify.", "New thought."]
+    assert result.messages[0].stream_complete is True
+    assert first.provider_details["raw_content"] == ["Review "]
+
+
+@pytest.mark.asyncio
 async def test_reasoning_end_can_complete_but_never_repeat_or_truncate_a_message():
     async def events() -> AsyncIterator[Any]:
         yield PartStartEvent(index=0, part=ThinkingPart(content="Début"))

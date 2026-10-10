@@ -174,7 +174,7 @@ class ResponsesStreamTrace:
                 self.reasoning_parts.append(delta)
             else:
                 self.response_parts.append(delta)
-        elif event_type == "response.reasoning_summary_text.delta":
+        elif event_type in {"response.reasoning_summary_text.delta", "response.reasoning_text.delta"}:
             self.reasoning_parts.append(str(event.get("delta") or ""))
         elif event_type == "response.function_call_arguments.delta":
             self.tool_arguments[index] = (
