@@ -57,6 +57,7 @@ from .mcp_toolset import build_conversation_toolset
 from .conversation_interrupt import ConversationInterruption
 from .runtime import Agent, create_agent
 from .checkpoint import HarnessRunCheckpoint
+from .skills import build_eager_skill_capabilities
 
 
 _PENDING_INTERACTION_PROMPT_LIMIT = 6
@@ -743,6 +744,7 @@ class HarnessConversationController:
                 model=ResolvedModel(id=llm.id, code=llm.code, model_name=llm.llm_name, label=llm.label, requested_effort="standard"),
                 resume_checkpoint=turn.resume_checkpoint, control=AgentRunControl(save_checkpoint=turn.save_checkpoint),
             )) if turn.save_checkpoint is not None else None
+            capabilities = await build_eager_skill_capabilities(turn.agent_id)
             runtime = await create_agent(
                 llm=llm,
                 system_prompt=_system_prompt(
@@ -757,7 +759,10 @@ class HarnessConversationController:
                     action_policy=action_policy,
                 ),
                 mcp_servers=[toolset],
-                capabilities=[interruption.hooks] if interruption is not None else [],
+                capabilities=(
+                    [*capabilities, interruption.hooks]
+                    if interruption is not None else capabilities
+                ),
                 task_id=None,
                 agent_run_id=turn.round_id,
                 conversation_round_id=turn.round_id,
@@ -1055,6 +1060,7 @@ async def stream_voice_conversation(
             action_policy=action_policy,
         ),
         mcp_servers=[toolset],
+        capabilities=await build_eager_skill_capabilities(request.agent_id),
         task_id=None,
         agent_run_id=request.run_id,
         conversation_round_id=conversation_round_id,

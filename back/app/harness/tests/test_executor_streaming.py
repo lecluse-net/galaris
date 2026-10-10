@@ -183,12 +183,20 @@ async def test_voice_conversation_runtime_is_traced_as_audio(
         AsyncMock(return_value="Use tools for actions; answer directly otherwise."),
     )
     monkeypatch.setattr(conversation, "create_agent", fake_create_agent)
+    knowledge_capability = object()
+    knowledge_capabilities = AsyncMock(return_value=[knowledge_capability])
+    monkeypatch.setattr(
+        conversation, "build_eager_skill_capabilities",
+        knowledge_capabilities,
+    )
 
     events = [
         event async for event in conversation.stream_voice_conversation(request)
     ]
 
     assert captured["purpose"] == LLMCallPurpose.CONVERSATION_AUDIO
+    knowledge_capabilities.assert_awaited_once_with(request.agent_id)
+    assert knowledge_capability in captured["capabilities"]
     assert "task=galaris://task/voice-task" in str(captured["system_prompt"])
     tool_advertisement.assert_awaited_once_with(
         request.agent_id,

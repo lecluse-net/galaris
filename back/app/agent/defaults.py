@@ -1,5 +1,6 @@
 """A one-time, user-owned Galaris agent proposal, merged through DbAdmin."""
 
+from pathlib import Path
 from typing import cast
 
 from sqlalchemy import Table, select, text
@@ -44,6 +45,7 @@ async def _rows(session: AsyncSession) -> tuple[dict[str, object], ...]:
     return ({
         "initialization_key": "galaris", "code": code,
         "first_name": "Galaris", "last_name": "",
+        "avatar": (Path(__file__).with_name("assets") / "galaris.png").read_bytes(),
         "user_id": manager_id, "title_id": title_id,
         "agent_driver": "internal", "task_harness_id": None, "profile_id": None,
         "profile_media_type": "text/html",

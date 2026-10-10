@@ -15,8 +15,8 @@ retrieval and the **Galaris knowledge** system skill (`galaris-knowledge`).
    and `llm_calls`. These inspection functions expose sensitive execution data and are not
    required to understand the product.
 4. Enable the Tool's **conversation mode** to expose these functions in Chat.
-5. Check skill assignments: `galaris-knowledge` is globally enabled by default, while skill and
-   category overrides can disable it for an agent. Its effective projection additionally
+5. Authorize `galaris-knowledge` for the agent in skill assignments. Its global default is
+   disabled; skill and category overrides still apply. Its effective projection additionally
    requires `documentation_catalog` permission.
 
 Galaris Admin remains inactive by default. Enabling a connection preserves the usual function
@@ -26,6 +26,35 @@ The skill supplies core concepts, retrieval guidance and assistance boundaries. 
 to subsequent executions through normal skill handling in the internal harness and compatible
 external harnesses. Existing conversations or executions may retain loaded instructions; every
 new tool call still undergoes server-side authorization.
+
+## The Galaris assistant supplied at installation
+
+The Galaris assistant already receives documentation access and this skill when created.
+The internal harness loads its product guide on the first model request in text conversations,
+turn-based voice and Tasks: concepts, source retrieval, menu verification and the distinction
+between shipped features and plans. Loading still requires effective assignments and access;
+it enables no connection or function. It uses the skill configuration, independently of
+the agent's name, code or installation marker.
+
+### Skill loading policy
+
+An optional `runtime.yaml` at a skill's root configures loading in the internal harness:
+`loading: eager` loads instructions on the first request in Tasks, text conversations and
+turn-based voice. Without this file, or with `loading: deferred`, skills remain available
+on demand in Tasks; this mechanism does not add them to conversations. Invalid configuration
+preserves this default. The `SKILL.md` frontmatter remains unchanged.
+
+The system skill `galaris-knowledge` supplies `loading: eager`. Any agent effectively assigned
+this skill with documentation access therefore receives the same loading behavior. The file
+grants no rights and activates no skills; this skill's global default remains disabled.
+User skills can supply the same file through their resource editor. External harnesses
+retain their own loading mechanism.
+
+Tools remain those authorized in the current context. If search is only available in Tasks,
+`file_read` can still read a known source with documentation access; a Task can perform the
+search. Realtime voice retains its limited inventory and Task handoff. Skills without explicit
+configuration retain their usual loading policy. These instructions and retrieval do not by themselves guarantee every
+answer is correct: check cited sources and tool use in the conversation activity.
 
 ## Search and read
 

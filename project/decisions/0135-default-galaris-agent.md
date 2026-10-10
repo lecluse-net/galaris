@@ -20,11 +20,13 @@ suffixe sans modifier ni augmenter les droits de l'agent préexistant.
 `agents.initialization_key` est un marqueur interne unique, nullable pour les
 agents ordinaires, absent des contrats API éditables. La recherche inclut les
 lignes historisées : le renommage et la suppression logique ne rendent jamais
-la proposition à nouveau éligible. Aucun comportement d'exécution ne dépend de
-ce marqueur. La suppression physique hors contrat applicatif n'est pas couverte.
+la proposition à nouveau éligible. Aucun comportement d'exécution ne dépend de ce marqueur.
+La suppression physique hors contrat applicatif n'est pas couverte.
 
 Le profil reste `NULL` pour suivre le profil courant, le driver vaut `internal`,
-et aucun harnais externe n'est affecté. Les connexions et skills ordinaires sont
+et aucun harnais externe n'est affecté. L'avatar initial est le logo PNG de l'application,
+embarqué dans le backend ; les synchronisations suivantes ne le remplacent ni ne le
+rétablissent après suppression. Les connexions et skills ordinaires sont
 initialisés ; seule la création active en plus `galaris_admin`, qui autorise
 notamment la consultation de la documentation, et `tool_admin`, qui délègue
 l’administration du catalogue et des connexions selon la [décision 0150](0150-tool-administration.md),

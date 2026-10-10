@@ -44,6 +44,10 @@ def frozen_topic_scope(monkeypatch):
         return turn.topic_id, turn.contact_memory_item_id
 
     monkeypatch.setattr("app.conversation.facade.current_turn_scope", current_scope)
+    monkeypatch.setattr(
+        conversation_module, "build_eager_skill_capabilities",
+        AsyncMock(return_value=[]),
+    )
 
 
 @pytest.mark.asyncio
@@ -600,6 +604,12 @@ async def test_conversation_controller_uses_the_shared_runtime_without_token_set
     llm = SimpleNamespace(id=1, llm_name="test-model")
     captured: dict[str, Any] = {}
     progress_events: list[AIMessage] = []
+    knowledge_capability = object()
+    knowledge_capabilities = AsyncMock(return_value=[knowledge_capability])
+    monkeypatch.setattr(
+        conversation_module, "build_eager_skill_capabilities",
+        knowledge_capabilities,
+    )
     release_transaction = AsyncMock(return_value=True)
 
     @asynccontextmanager
@@ -766,6 +776,8 @@ async def test_conversation_controller_uses_the_shared_runtime_without_token_set
     outcome = await HarnessConversationController().run(turn)
 
     release_transaction.assert_awaited_once_with()
+    knowledge_capabilities.assert_awaited_once_with(turn.agent_id)
+    assert knowledge_capability in captured["capabilities"]
     assert outcome.text == "Réponse rapide."
     assert [message.content for message in progress_events] == ["Réponse rapide."]
     assert outcome.execution_result is not None

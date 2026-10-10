@@ -2,6 +2,12 @@
 
 # Agentic Execution Flow
 
+The internal harness applies `runtime.yaml` from effectively assigned skills: `loading: eager`
+loads them on the first request in Tasks, text conversations and turn-based voice; the default
+remains on demand in Tasks. `galaris-knowledge` supplies this configuration and retains its
+documentation access check. Execution depends on neither the agent's name nor its installation
+marker. See the [product knowledge workflow](../../admin/product-knowledge.md).
+
 Before each fresh execution, the facade checks the selected
 provider's skill revision. Content and authorization changes are projected before
 the driver starts, without interrupting an active Task. The receipt is invalidated

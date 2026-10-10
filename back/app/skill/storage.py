@@ -13,7 +13,7 @@ import re
 import shutil
 import stat
 import tempfile
-from typing import Any, Iterator, TypedDict, cast
+from typing import Any, Iterator, Literal, TypedDict, cast
 from uuid import uuid4
 from zipfile import ZIP_DEFLATED, BadZipFile, ZipFile, ZipInfo
 
@@ -293,6 +293,33 @@ def read_text(code: str, relative_path: str) -> str:
     if not _is_text(path):
         raise ValueError("Ce fichier est binaire et doit être téléchargé")
     return path.read_text(encoding="utf-8")
+
+
+def runtime_loading(code: str) -> Literal["eager", "deferred"]:
+    """Read an optional harness loading policy; it never changes authorizations."""
+    try:
+        path = resolve_file(code, "runtime.yaml")
+        if not path.exists():
+            return "deferred"
+        if path.stat().st_size > 4_096:
+            raise ValueError("runtime.yaml exceeds 4096 bytes")
+        data: object = yaml.safe_load(path.read_text(encoding="utf-8"))
+        if not isinstance(data, dict):
+            raise ValueError("runtime.yaml must contain only loading: eager or deferred")
+        policy = cast(dict[object, object], data)
+        if set(policy) != {"loading"}:
+            raise ValueError("runtime.yaml must contain only loading: eager or deferred")
+        loading = policy["loading"]
+        if loading == "eager":
+            return "eager"
+        if loading == "deferred":
+            return "deferred"
+        raise ValueError("Unknown runtime loading mode")
+    except (OSError, UnicodeError, ValueError, yaml.YAMLError) as exc:
+        logger.warning(
+            "Invalid skill runtime policy: code={} error_type={}", code, type(exc).__name__
+        )
+        return "deferred"
 
 
 def read_file(code: str, relative_path: str) -> SkillFileData:

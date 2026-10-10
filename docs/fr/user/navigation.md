@@ -107,6 +107,11 @@ autorisés ; sinon l’écran ouvre **Fournisseurs**.
 
 ### Créer un agent
 
+L'assistant **Galaris** proposé à l'installation porte le logo de l'application comme avatar.
+Son [guide de connaissance produit](../admin/product-knowledge.md) est chargé automatiquement
+dans ses réponses texte et voix par tours, et ses Tasks internes, sous ses droits existants.
+Vous pouvez personnaliser ou supprimer son avatar ; les mises à jour conservent votre choix.
+
 **Configurer → Agents** (`/agent`) contient les onglets **Agents**, **Équipes** et
 **Civilités**, selon les droits. Pour créer un agent, ouvrez l’onglet **Agents**, puis
 **Nouvel Agent**. Pour modifier un agent existant, ouvrez sa fiche depuis la liste.

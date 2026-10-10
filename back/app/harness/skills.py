@@ -1,4 +1,4 @@
-"""Expose centrally assigned skills as deferred Pydantic AI capabilities."""
+"""Expose authorized skills using their declared Pydantic AI loading policy."""
 
 from __future__ import annotations
 
@@ -171,7 +171,7 @@ def _capability_instructions(code: str, instructions: str, tool_name: str) -> st
     )
 
 
-def _build_capability(code: str) -> Capability[None] | None:
+def _build_capability(code: str, *, defer_loading: bool = True) -> Capability[None] | None:
     inspection = storage.inspect(code)
     if not inspection.valid or not inspection.description:
         logger.warning(
@@ -198,7 +198,7 @@ def _build_capability(code: str) -> Capability[None] | None:
         id=code,
         description=inspection.description,
         instructions=_capability_instructions(code, instructions, tool_name),
-        defer_loading=True,
+        defer_loading=defer_loading,
     )
 
     def read_file(path: str = "", section: str = "") -> str:
@@ -258,11 +258,25 @@ def _build_learned_capability(
     )
 
 
+async def build_eager_skill_capabilities(agent_id: int) -> list[Capability[None]]:
+    """Load only authorized skills explicitly configured for every conversation."""
+    capabilities: list[Capability[None]] = []
+    for code in await skill_service.get_assigned_codes(agent_id):
+        if storage.runtime_loading(code) != "eager":
+            continue
+        capability = _build_capability(code, defer_loading=False)
+        if capability is not None:
+            capabilities.append(capability)
+    return capabilities
+
+
 async def build_internal_skill_capabilities(agent_id: int) -> list[Any]:
-    """Build deferred capabilities for skills assigned to an agent using this harness."""
+    """Build authorized skills with deferred loading unless explicitly configured."""
     capabilities: list[Any] = []
     for code in await skill_service.get_assigned_codes(agent_id):
-        capability = _build_capability(code)
+        capability = _build_capability(
+            code, defer_loading=storage.runtime_loading(code) != "eager"
+        )
         if capability is not None:
             capabilities.append(capability)
     assigned_ids = {str(capability.id) for capability in capabilities}
@@ -279,4 +293,4 @@ async def build_internal_skill_capabilities(agent_id: int) -> list[Any]:
     return capabilities
 
 
-__all__ = ["build_internal_skill_capabilities"]
+__all__ = ["build_eager_skill_capabilities", "build_internal_skill_capabilities"]

@@ -15,9 +15,81 @@ from app.harness.skills import (
     _read_skill_resource,
     _section_schema_values,
     build_internal_skill_capabilities,
+    build_eager_skill_capabilities,
 )
 from app.skill import skill_service, storage
 from app.skill import learning_service
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("revocation", ["skill", "connection", "catalogue"])
+async def test_authorized_product_guide_loads_without_agent_identity_and_respects_revocations(db, revocation):
+    from sqlalchemy import select
+    from app.agent.models import Agent, Title
+    from app.connection import Connection, ConnectionFunctionState
+    from app.tools import ToolModel, initialize_admin_agent_connections
+    from core.user import UserModel
+
+    user = UserModel(email="product-guide@example.test", hashed_password="unused")
+    title = Title(label="Synthetic guide", gender="X")
+    db.add_all([user, title])
+    await db.flush()
+    # Neither name nor installation marker controls runtime loading.
+    assistant = Agent(code="renamed-guide", first_name="Custom name", last_name="",
+                      initialization_key="galaris", title_id=title.id, user_id=user.id)
+    other = Agent(code="galaris", first_name="Galaris", last_name="",
+                  title_id=title.id, user_id=user.id)
+    db.add_all([assistant, other])
+    await db.flush()
+    knowledge = await skill_service.get_by_code("galaris-knowledge")
+    for agent in (assistant, other):
+        await initialize_admin_agent_connections(agent.id)
+        await skill_service.set_agent_authorization(knowledge.id, agent.id, "enabled")
+    unassigned = Agent(code="unassigned", first_name="Galaris", last_name="",
+                       title_id=title.id, user_id=user.id)
+    db.add(unassigned)
+    await db.flush()
+    connections = (await db.scalars(select(Connection).join(ToolModel).where(
+        Connection.agent_id.in_([assistant.id, other.id]), ToolModel.code == "galaris_admin",
+    ))).all()
+    before = [(connection.id, connection.active) for connection in connections]
+
+    capabilities = await build_eager_skill_capabilities(assistant.id)
+    assert len(capabilities) == 1
+    assert capabilities[0].id == "galaris-knowledge"
+    assert capabilities[0].defer_loading is False
+    guide = storage.read_text("galaris-knowledge", "SKILL.md").strip()
+    observed: list[str] = []
+
+    def respond(_messages: list[ModelMessage], info: AgentInfo) -> ModelResponse:
+        observed.append(info.instructions or "")
+        assert "load_capability" not in {tool.name for tool in info.function_tools}
+        return ModelResponse(parts=[TextPart(content="Synthetic answer")])
+
+    await PydanticAgent(FunctionModel(respond), capabilities=capabilities).run("Where is a setting?")
+    assert len(observed) == 1 and guide in observed[0]
+    assert [skill.id for skill in await build_eager_skill_capabilities(other.id)] == ["galaris-knowledge"]
+    assert await build_eager_skill_capabilities(unassigned.id) == []
+    task_skills = await build_internal_skill_capabilities(assistant.id)
+    assert next(skill for skill in task_skills if skill.id == "galaris-knowledge").defer_loading is False
+    other_skills = await build_internal_skill_capabilities(other.id)
+    assert next(skill for skill in other_skills if skill.id == "galaris-knowledge").defer_loading is False
+    assert [(connection.id, connection.active) for connection in connections] == before
+
+    connection = next(connection for connection in connections if connection.agent_id == assistant.id)
+    if revocation == "skill":
+        await skill_service.set_agent_authorization(knowledge.id, assistant.id, "disabled")
+    elif revocation == "connection":
+        connection.active = False
+        await db.flush()
+    else:
+        db.add(ConnectionFunctionState(connection_id=connection.id,
+                                      function_name="documentation_catalog", enabled=False))
+        await db.flush()
+    assert await build_eager_skill_capabilities(assistant.id) == []
+    assert "galaris-knowledge" not in {
+        skill.id for skill in await build_internal_skill_capabilities(assistant.id)
+    }
 
 
 def _write_skill(root: Path, code: str) -> None:
@@ -29,6 +101,47 @@ def _write_skill(root: Path, code: str) -> None:
         encoding="utf-8",
     )
     (directory / "references/guide.md").write_text("Use primary sources.\n", encoding="utf-8")
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("policy, eager", [
+    (None, False), ("loading: deferred\n", False), ("loading: eager\n", True),
+    ("loading: unexpected\n", False), ("[eager]\n", False),
+    ("loading: eager\npermissions: all\n", False), ("loading: [\n", False),
+    ("#" * 4097, False),
+])
+async def test_runtime_loading_is_generic_opt_in_and_never_loads_unassigned_skills(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, policy: str | None, eager: bool,
+) -> None:
+    root = tmp_path / "skills"
+    for code in ("research", "unassigned"):
+        _write_skill(root, code)
+        if policy is not None:
+            (root / code / "runtime.yaml").write_text(policy, encoding="utf-8")
+    monkeypatch.setattr(type(storage.settings), "GALARIS_SKILLS_ROOT", str(root))
+
+    async def assigned_codes(_agent_id: int) -> list[str]:
+        return ["research"]
+
+    async def learned_skills(_agent_id: int) -> list[Any]:
+        return []
+
+    monkeypatch.setattr(skill_service, "get_assigned_codes", assigned_codes)
+    monkeypatch.setattr(learning_service, "list_injectable", learned_skills)
+    conversation_skills = await build_eager_skill_capabilities(42)
+    assert [skill.id for skill in conversation_skills] == (["research"] if eager else [])
+    task_skills = await build_internal_skill_capabilities(42)
+    assert len(task_skills) == 1
+    assert task_skills[0].id == "research"
+    assert task_skills[0].defer_loading is not eager
+    observed: list[str] = []
+
+    def respond(_messages: list[ModelMessage], info: AgentInfo) -> ModelResponse:
+        observed.append(info.instructions or "")
+        return ModelResponse(parts=[TextPart(content="Synthetic answer")])
+
+    await PydanticAgent(FunctionModel(respond), capabilities=conversation_skills).run("Help")
+    assert ("Read references/guide.md when needed." in observed[0]) is eager
 
 
 @pytest.mark.asyncio

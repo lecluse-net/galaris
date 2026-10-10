@@ -2,6 +2,12 @@
 
 # Flux d’exécution agentique
 
+Le harnais interne applique la politique `runtime.yaml` des compétences effectivement
+attribuées : `loading: eager` les charge dès la première requête en Task, conversation texte
+et voix par tours ; le défaut reste à la demande en Task. `galaris-knowledge` fournit cette
+configuration et conserve son contrôle documentaire. L'exécution ne dépend ni du nom ni du
+marqueur d'installation de l'agent. Voir le [parcours de connaissance produit](../../admin/product-knowledge.md).
+
 Avant chaque nouvelle exécution, la façade vérifie la révision des skills du
 provider sélectionné. Un changement de contenu ou d'autorisation est projeté avant
 le démarrage du driver, sans interrompre une Task en cours. Le reçu est invalidé

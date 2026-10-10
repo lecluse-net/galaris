@@ -358,8 +358,9 @@ lieu de dépendre artificiellement du tri lexical.
 ### Données initiales laissées à l’administrateur
 
 Le dataset `app.agent.initial_galaris` propose une seule fois l'agent **Galaris**,
-rattaché au premier administrateur actif, avec le harnais interne, le profil courant
-par défaut, les connexions `galaris_admin` (documentation comprise), `tool_admin` et `agent_admin` actives et les skills
+rattaché au premier administrateur actif, avec le logo de l'application comme avatar,
+le harnais interne, le profil courant par défaut, les connexions `galaris_admin`
+(documentation comprise), `tool_admin` et `agent_admin` actives et les skills
 `galaris-lab` et `galaris-knowledge` autorisés individuellement. Leur défaut global reste désactivé.
 S'il n'y a pas encore d'administrateur, la première inscription rejoue ce même dataset.
 Le marqueur interne `agents.initialization_key` est conservé après renommage et

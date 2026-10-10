@@ -50,6 +50,23 @@ Les instructions déjà chargées ne sont pas effacées rétroactivement ; les o
 soumis à leur contrôle vivant. La connaissance du produit ne prouve pas les droits humains
 ni la configuration effective d'une installation.
 
+Le chargement dépend d'une configuration de compétence, jamais de l'identité de l'agent.
+Un fichier facultatif `runtime.yaml` contenant `loading: eager` demande au harnais interne
+de charger une compétence effectivement attribuée dès la première requête en Task,
+conversation texte et voix par tours. Sans ce fichier, avec `loading: deferred`, ou avec
+une configuration invalide, les Tasks conservent le chargement à la demande et les
+conversations ne chargent pas cette compétence par ce mécanisme. Le fichier ne modifie
+aucune autorisation ni connexion. Il est borné à 4096 octets et accepte uniquement `loading`.
+
+`galaris-knowledge` fournit cette configuration ; son défaut global reste désactivé et son
+attribution exige toujours le droit documentaire. La proposition Galaris reçoit cette
+attribution à sa création ; tout autre agent explicitement autorisé peut en bénéficier.
+Les autres compétences conservent leur défaut. Les harnais externes ne sont pas modifiés.
+Les tests du SDK vérifient la présence du guide dès la première requête, ceux des contrôleurs
+sa transmission, et les tests DB l'indépendance de l'identité et les révocations. Des compétences
+synthétiques couvrent les configurations absentes, valides et invalides. Ces preuves ne
+mesurent pas la justesse sémantique d'un modèle réel.
+
 La connaissance de l’interface s’appuie sur un guide de parcours FR/EN et une carte de menus
 générée depuis les modules frontend actifs, leurs traductions et leur fusion réelle.
 `make project-context` et son contrôle de fraîcheur couvrent cette carte. Les conditions

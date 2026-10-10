@@ -16,8 +16,8 @@ une recherche hybride et le skill système **Connaissance de Galaris** (`galaris
    `llm_call` et `llm_calls`. Ces fonctions donnent accès à des données d'exécution sensibles ;
    elles ne sont pas nécessaires à la connaissance du produit.
 4. Activer le **mode conversation** du Tool pour que ses fonctions soient proposées dans le Chat.
-5. Vérifier les attributions de compétences : `galaris-knowledge` est activé globalement par
-   défaut, mais les réglages de compétence et de catégorie peuvent le désactiver pour un agent.
+5. Autoriser `galaris-knowledge` pour l'agent dans les attributions de compétences. Son
+   défaut global est désactivé ; les réglages de compétence et de catégorie restent applicables.
    Sa projection effective exige également l'autorisation `documentation_catalog`.
 
 La connexion Galaris Admin reste inactive par défaut. L'activation seule conserve la cascade
@@ -28,6 +28,37 @@ Le skill apporte les concepts fondamentaux, la méthode de recherche et les limi
 l'assistance. Il est disponible aux exécutions suivantes selon le mécanisme normal des skills,
 pour le harnais interne et les harnais externes compatibles. Une conversation ou exécution déjà
 engagée peut conserver les instructions déjà chargées ; les appels restent contrôlés côté serveur.
+
+## L'assistant Galaris fourni à l'installation
+
+L'assistant Galaris reçoit déjà l'accès documentaire et cette compétence lors de sa création.
+Le harnais interne charge son guide produit dès la première requête du modèle en conversation
+texte, en voix par tours et en Task : concepts, recherche des sources, vérification des menus
+et distinction entre fonctions livrées et projets. Ce chargement reste soumis aux attributions
+et droits effectifs ; il n'active aucune connexion ni fonction. Il repose sur la configuration
+de la compétence, sans dépendre du nom, du code ou du marqueur d'installation de l'agent.
+
+### Politique de chargement des compétences
+
+Le fichier facultatif `runtime.yaml` à la racine d'une compétence configure son chargement
+dans le harnais interne : `loading: eager` charge les instructions dès la première requête
+en Task, conversation texte et voix par tours. Sans fichier, ou avec `loading: deferred`,
+le chargement reste à la demande en Task ; ce mécanisme ne l'ajoute pas aux conversations.
+Une configuration invalide conserve ce défaut. Le frontmatter de `SKILL.md` reste inchangé.
+
+La compétence système `galaris-knowledge` fournit `loading: eager`. Tout agent auquel elle
+est effectivement attribuée avec le droit documentaire bénéficie donc du même chargement.
+Le fichier ne donne aucun droit et n'active aucune compétence ; le défaut global de cette
+compétence reste désactivé. Les compétences utilisateur peuvent fournir le même fichier
+via leur éditeur de ressources. Les harnais externes conservent leur propre mécanisme.
+
+Les outils restent ceux autorisés dans le contexte courant. Si la recherche n'est disponible
+qu'en Task, une lecture directe d'une source connue reste possible avec `file_read` et le droit
+documentaire ; la recherche peut être confiée à une Task. Le mode voix temps réel conserve son
+inventaire limité et son recours aux Tasks. Les compétences sans configuration conservent
+leur chargement habituel.
+Ces consignes et le RAG ne garantissent pas à eux seuls l'exactitude de chaque réponse : vérifier
+les sources citées et les outils employés dans l'activité de la conversation.
 
 ## Recherche et lecture
 

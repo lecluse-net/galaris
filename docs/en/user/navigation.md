@@ -98,6 +98,11 @@ the screen. It is the default tab for authorized accounts; other accounts start 
 
 ### Create an agent
 
+The **Galaris** assistant proposed at installation uses the application logo as its avatar.
+Its [product knowledge guide](../admin/product-knowledge.md) loads automatically for text
+and turn-based voice replies and internal Tasks, subject to existing access rights.
+You can customize or remove its avatar; updates preserve your choice.
+
 **Configure → Agents** (`/agent`) contains **Agents**, **Teams** and **Titles**, according
 to permissions. To create an agent, open **Agents**, then **New Agent**. Open an existing
 agent's record from the list to edit it. Tabs in that record differ from page tabs:

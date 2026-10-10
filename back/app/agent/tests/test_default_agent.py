@@ -35,7 +35,8 @@ async def _proposal(db):
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("skill_code", ["galaris-lab", "galaris-knowledge"])
-async def test_seed_waits_for_manager_then_preserves_edits_revocations_and_deletion(db, skill_code):
+@pytest.mark.parametrize("custom_avatar", [b"synthetic-custom-avatar", None])
+async def test_seed_waits_for_manager_then_preserves_edits_revocations_and_deletion(db, skill_code, custom_avatar):
     dataset = default_agent_dataset()
     assert await reconcile_dataset(db, dataset) == DbAdminDatasetResult()
     user = await _admin(db)
@@ -51,6 +52,10 @@ async def test_seed_waits_for_manager_then_preserves_edits_revocations_and_delet
     assert agent.agent_driver == "internal"
     assert agent.task_harness_id is None and agent.profile_id is None
     assert agent.profile_media_type == "text/html"
+    from app.agent.avatars import validate_avatar
+
+    assert agent.avatar is not None
+    validate_avatar(agent.avatar)
     assert await has_galaris_admin_access(agent.id)
     assert await has_documentation_access(agent.id)
     assert await has_active_tool_function(agent.id, "tool_admin", "tool_admin_list")
@@ -62,6 +67,7 @@ async def test_seed_waits_for_manager_then_preserves_edits_revocations_and_delet
     agent.first_name = "Custom assistant"
     agent.code = "custom-assistant"
     agent.job_description = "<p>Custom duties</p>"
+    agent.avatar = custom_avatar
     from app.llm.profile_models import LlmProfile
 
     custom_profile = LlmProfile(label="Custom profile", code="custom-profile")
@@ -96,6 +102,7 @@ async def test_seed_waits_for_manager_then_preserves_edits_revocations_and_delet
     ))
     assert assignment.active is False
     assert agent.profile_id == custom_profile.id and agent.agent_driver == "hermes"
+    assert agent.avatar == custom_avatar
 
     agent.soft_delete()
     await db.commit()
@@ -210,6 +217,13 @@ async def test_first_signup_immediately_proposes_manageable_galaris(client, monk
     agent = records[0]
     assert agent["first_name"] == "Galaris"
     assert agent["agent_driver"] == "internal" and agent["profile_id"] is None
+    assert agent["has_avatar"] is True
+    avatar = await client.get(f"/api/agents/{agent['id']}/avatar", headers=headers)
+    assert avatar.status_code == 200
+    assert avatar.headers["content-type"] == "image/png"
+    from app.agent.avatars import validate_avatar
+
+    validate_avatar(avatar.content)
     assert "initialization_key" not in agent
     connections = await client.get(
         "/api/connections", headers=headers, params={"agent_id": agent["id"]},

@@ -374,6 +374,7 @@ explicite. Les fichiers `*.spec.mjs` se trouvent sous `front/browser-tests/`.
 |---|---|---|
 | `agent` | Choisir un agent autorisé, appliquer sa politique, produire un résultat terminal cohérent | `test_management_scope.py`, `test_facade.py`, `test_executor_lifecycle.py`, `agents.spec.mjs` |
 | `harness` | Exécuter outils et streaming, reprendre sans répéter les effets, libérer les ressources | `test_checkpoint.py`, `test_runtime_cancellation.py`, `test_executor_streaming.py` |
+| Chargement des compétences | Charger les seules compétences autorisées selon leur configuration, indépendamment de l'identité de l'agent ; préserver le défaut à la demande, les révocations documentaires et le repli sur configuration invalide | `app/harness/tests/test_skills.py`, `app/harness/tests/test_conversation_prompt.py`, `app/harness/tests/test_executor_streaming.py` |
 | Frontière des harnais | Refuser les résultats et événements invalides avant publication, fermer les flux, respecter les capacités déclarées | `make tests-harness-contracts`, `app/agent/tests/test_driver_boundary.py` |
 | Politique des harnais | Même configuration pour tous, conflits SQL, restriction des outils à l’appel, checkpoints opaques et retry sûr | `test_execution_configuration.py`, `test_checkpoint_contract.py`, `harness-policy.spec.mjs` |
 | SDK réels des harnais | Exécuter dans les quatre images épinglées avec modèle local ; vérifier la connexion MCP DeepSeek | `make tests-harness-runtimes`, `artifacts/harness-runtimes/summary.txt` |
