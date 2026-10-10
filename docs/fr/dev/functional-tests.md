@@ -670,13 +670,26 @@ dézoom/zoom et après filtrage. Le scénario reproduit la double application du
 correction ; les contrôles des aperçus HTML ne couvraient pas cette transformation du graphe.
 Un répertoire synthétique de 84 images vérifie aussi les miniatures simultanées et leur
 réutilisation avec une estimation de mémoire navigateur réduite, sur desktop annonçant 2 ou
-16 cœurs. Les miniatures chargées restent présentes après un déplacement complet hors champ,
-puis au retour sans nouvelle lecture. Les petits graphes précédents ne détectaient ni le
-plafond erroné de 64 miniatures ni le retrait des images hors de la zone visible.
+16 cœurs. Les miniatures chargées restent en cache après un déplacement complet hors champ,
+sans être dessinées, puis reviennent sans nouvelle lecture. Les petits graphes précédents
+ne détectaient pas le plafond erroné de 64 miniatures. Les rectangles des aperçus ne se
+chevauchent pas en vue proche ; un zoom supplémentaire atteint leurs dimensions natives
+en pixels et ne les dépasse pas.
 `memory.spec.mjs` vérifie également l'ouverture et le zoom de graphes synthétiques de 500, 3 000 et 10 001 nœuds,
 sans perte de nœuds lors de la pagination, puis leur dépliage complet sans nouvelle requête.
-Les titres sont tous affichés sans survol au zoom maximal, puis filtrés au dézoom ; les
+Les titres restent filtrés pour éviter les superpositions au zoom maximal ; les
 racines anciennes restent identifiables par leur URI ou leur titre personnalisé dans les deux thèmes.
+L'ancienne assertion imposant tous les titres au zoom maximal est retirée : elle protégeait
+la superposition qui rendait les cartes denses illisibles. Les dimensions réellement dessinées
+vérifient les deux tailles fixes, éloignée/proche, et l'absence d'agrandissement au-delà du seuil proche.
+Un cas de 2 760 souvenirs liés à douze sujets et à un contact vérifie le regroupement,
+la conservation des deux connexions, l'ouverture locale, l'accès à un enfant, la réorganisation
+après masquage d'une nature et la restauration du cadrage initial,
+sur desktop/mobile. Les anciens cas de branches exclusives ne reproduisaient pas ce voisinage partagé.
+Le dézoom minimal garde tous les points dans la fenêtre et centre leur étendue ; les symboles
+conservent leur taille proche jusqu'au zoom d'un million de fois le cadrage initial.
+`graphBranches.test.mjs` reproduit l'absence de regroupement avant correction et protège les
+voisins hors page, suggestions, types/directions des relations et natures distinctes.
 Le cas de volume inclut 5 000 nœuds non repliables et 10 000 liens, au-delà des anciens plafonds.
 Le test unitaire de proximité des communautés est aussi exercé sur 4 800 items : il détecte
 un placement initial indépendant des relations que la stabilisation bornée ne peut pas corriger.

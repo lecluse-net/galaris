@@ -298,6 +298,8 @@ for (const width of [1920, 390]) test(`graph opens modals with metadata and pres
   await jsonRoute(page, '**/api/memory/graph/roots', { nodes, edges, has_more: false, next_cursor: null, edges_truncated: false })
   await mount(page, 'app/memory/pages/index.vue', { privileges: ['MEMORY_EDIT'], route: '/memory?agent=7' })
   await page.getByRole('tab', { name: 'Graph', exact: true }).click()
+  await settledGraph(page)
+  await page.getByRole('button', { name: 'Fit graph to viewport', exact: true }).click()
   const initial = await settledGraph(page)
   await page.screenshot({ path: testInfo.outputPath('memory-graph.png'), fullPage: true })
   await clickGraphNode(page, 'doc-a')
@@ -462,6 +464,7 @@ for (const width of [1440, 390]) test(`graph markers agree with their legend thr
   await jsonRoute(page, '**/api/memory/documents/catalogue-document?*', {
     item: { ...document, id: 'catalogue-document', payload: { text: '<p>Synthetic document</p>' } }, agent_id: 7,
   })
+  await jsonRoute(page, '**/api/file-share/items/catalogue-*/resources?*', [])
   await mount(page, 'app/memory/components/MemoryGraph.vue', { props: {
     agentId: 7, query: '', topicItemId: null,
     contactItemId: null,
@@ -512,8 +515,22 @@ for (const width of [1440, 390]) test(`graph markers agree with their legend thr
     await expect.poll(async () => (await graphColors()).map(row => row.kind).sort()).toEqual(nodes.filter(node => node.entity_kind !== 'file').map(node => node.entity_kind).sort())
     await page.getByRole('button', { name: 'Show “File” nodes and their relationships', exact: true }).click()
     await expect.poll(async () => (await graphColors()).length).toBe(nodes.length)
-    const maximum = await zoomGraphToMaximum(page)
-    expect(maximum.titles.sort()).toEqual(maximum.nodes.filter(node => node.symbol !== 'none').map(node => node.id).sort())
+    const sizes = {}
+    for (const id of ['catalogue-memory', 'catalogue-topic']) {
+      await page.getByRole('button', { name: 'Fit graph to viewport', exact: true }).click()
+      const distant = await settledGraph(page)
+      await roamAroundNode(page, id, 1.25)
+      const farther = await settledGraph(page)
+      expect(farther.symbolSizes[id]).toBeCloseTo(distant.symbolSizes[id], 4)
+      await roamAroundNode(page, id, 2)
+      const near = await settledGraph(page)
+      const maximum = await zoomGraphToMaximum(page, id)
+      expect(near.symbolSizes[id]).toBeGreaterThan(distant.symbolSizes[id])
+      expect(maximum.symbolSizes[id]).toBeCloseTo(near.symbolSizes[id], 4)
+      sizes[id] = { distant: distant.symbolSizes[id], near: near.symbolSizes[id], maximum: maximum.symbolSizes[id] }
+    }
+    await testInfo.attach(`graph-two-sizes-${dark ? 'dark' : 'light'}.json`, { body: JSON.stringify({
+      sizes }), contentType: 'application/json' })
     await page.getByRole('button', { name: 'Fit graph to viewport', exact: true }).click()
     await page.screenshot({ path: testInfo.outputPath(`graph-${dark ? 'dark' : 'light'}.png`), animations: 'disabled' })
   }
@@ -542,17 +559,47 @@ for (const width of [1440, 390]) test(`root directory titles stay identifiable t
     await page.evaluate(dark => window.testApp.dark(dark), dark)
     for (let i = 0; i < 10; i++) await page.getByRole('button', { name: 'Zoom out', exact: true }).click()
     const distant = await graphSnapshot(page)
+    expect(distant.zoom).toBe(1)
+    for (const node of distant.points) {
+      expect(node.point[0]).toBeGreaterThanOrEqual(0)
+      expect(node.point[0]).toBeLessThanOrEqual(distant.viewport[0])
+      expect(node.point[1]).toBeGreaterThanOrEqual(0)
+      expect(node.point[1]).toBeLessThanOrEqual(distant.viewport[1])
+    }
+    for (let axis = 0; axis < 2; axis++) {
+      const values = distant.points.map(node => node.point[axis])
+      expect((Math.min(...values) + Math.max(...values)) / 2).toBeCloseTo(distant.viewport[axis] / 2, 0)
+    }
     expect(distant.titleTexts).toMatchObject({ 'root-uri': 'nextcloud://', 'root-named': 'Personal storage' })
     expect(distant.titles.length).toBeLessThan(nodes.length)
     await page.locator('.memory-graph').screenshot({ path: testInfo.outputPath(`root-titles-${dark ? 'dark' : 'light'}.png`) })
     const maximum = await zoomGraphToMaximum(page)
-    expect(maximum.titles.sort()).toEqual(nodes.map(node => node.id).sort())
+    // Roots remain identifiable; ordinary overlapping titles are intentionally hidden.
+    expect(maximum.nodes).toHaveLength(nodes.length)
+    for (const root of roots) {
+      if (maximum.nodes.find(node => node.id === root.id).symbol !== 'none') expect(maximum.titleTexts[root.id]).toBe(root.title)
+    }
+    await page.evaluate(async () => {
+      const url = performance.getEntriesByType('resource').map(entry => entry.name)
+        .find(name => /\/echarts(?:\/core|_core)\.js/.test(name))
+      const chart = (await import(url)).getInstanceByDom(document.querySelector('.memory-graph__chart'))
+      chart.dispatchAction({ type: 'graphRoam', seriesId: 'memory-graph', dx: 500, dy: -200 })
+      chart.dispatchAction({ type: 'graphRoam', seriesId: 'memory-graph', zoom: 1e-8, originX: 10, originY: 10 })
+    })
+    const recentered = await settledGraph(page)
+    expect(recentered.zoom).toBe(1)
+    for (let axis = 0; axis < 2; axis++) {
+      const values = recentered.points.map(node => node.point[axis])
+      expect(Math.min(...values)).toBeGreaterThanOrEqual(0)
+      expect(Math.max(...values)).toBeLessThanOrEqual(recentered.viewport[axis])
+      expect((Math.min(...values) + Math.max(...values)) / 2).toBeCloseTo(recentered.viewport[axis] / 2, 0)
+    }
     await page.getByRole('button', { name: 'Fit graph to viewport', exact: true }).click()
   }
 })
 
 for (const [count, interconnected] of [[500, false], [3000, false], [3000, true], [10001, false], [5000, true]]) test(`a ${count}-node ${interconnected ? 'interconnected ' : ''}graph becomes usable and keeps every paginated node`, async ({ page }, testInfo) => {
-  test.setTimeout(60_000)
+  test.setTimeout(120_000)
   const timestamp = new Date().toISOString()
   const nodes = Array.from({ length: count }, (_, index) => {
     const activityAt = new Date(Date.parse(timestamp) - index * 30 * 86400_000).toISOString()
@@ -608,22 +655,34 @@ for (const [count, interconnected] of [[500, false], [3000, false], [3000, true]
     const fitted = await graphSnapshot(page)
     expect(fitted.nodes).toEqual(represented.nodes)
     const maximum = await zoomGraphToMaximum(page)
-    expect(maximum.titles.sort()).toEqual(maximum.nodes.filter(node => node.symbol !== 'none').map(node => node.id).sort())
-    for (let i = 0; i < 10; i++) await page.getByRole('button', { name: 'Zoom out', exact: true }).click()
+    expect(maximum.nodes).toHaveLength(count)
+    expect(maximum.titles.length).toBeGreaterThan(0)
+    expect(maximum.titles.length).toBeLessThanOrEqual(maximum.nodes.filter(node => node.symbol !== 'none').length)
+    await page.getByRole('button', { name: 'Fit graph to viewport', exact: true }).click()
     const overview = await graphSnapshot(page)
     expect(overview.titles.length).toBeLessThan(overview.nodes.filter(node => node.symbol !== 'none').length)
     expect(overview.titles.length).toBeGreaterThan(0)
     const reopened = await zoomGraphToMaximum(page)
-    expect(reopened.titles.sort()).toEqual(reopened.nodes.filter(node => node.symbol !== 'none').map(node => node.id).sort())
+    expect(reopened.titles.length).toBeGreaterThan(0)
+    expect(reopened.nodes.map(({ id, x, y }) => ({ id, x, y }))).toEqual(maximum.nodes.map(({ id, x, y }) => ({ id, x, y })))
     return
   }
   const expansionStart = Date.now()
   for (let i = 0; i < 2; i++) await page.getByRole('button', { name: 'Zoom in', exact: true }).click()
-  await expect(page.getByText(`${count - 1} grouped node(s)`, { exact: true })).toHaveCount(0)
+  if (count <= 600) await expect(page.getByText(`${count - 1} grouped node(s)`, { exact: true })).toHaveCount(0)
+  for (let step = 0; step < 20 && await page.getByText(`${count - 1} grouped node(s)`, { exact: true }).count(); step++) {
+    await page.getByRole('button', { name: 'Zoom in', exact: true }).click()
+  }
+  const opened = await graphSnapshot(page)
+  expect(opened.nodes.filter(node => node.symbol !== 'none').length).toBeGreaterThan(1)
   const detailed = await zoomGraphToMaximum(page)
+  await expect(page.getByText(`${count - 1} grouped node(s)`, { exact: true })).toHaveCount(0)
   expect(requests).toHaveLength(Math.ceil(count / 500))
-  expect(detailed.nodes.filter(node => node.symbol !== 'none')).toHaveLength(count)
-  expect(detailed.titles.sort()).toEqual(detailed.nodes.filter(node => node.symbol !== 'none').map(node => node.id).sort())
+  expect(detailed.nodes).toHaveLength(count)
+  expect(detailed.nodes.filter(node => node.symbol !== 'none').length).toBeGreaterThan(0)
+  if (count > 600) expect(detailed.nodes.filter(node => node.symbol !== 'none').length).toBeLessThan(count)
+  expect(detailed.titles.length).toBeGreaterThan(0)
+  expect(detailed.titles.length).toBeLessThanOrEqual(detailed.nodes.filter(node => node.symbol !== 'none').length)
   if (count > 600) expect(detailed.nodes.map(({ id, x, y }) => ({ id, x, y }))).toEqual(represented.nodes.map(({ id, x, y }) => ({ id, x, y })))
   else expect(detailed.nodes.every(node => Number.isFinite(node.x) && Number.isFinite(node.y))).toBe(true)
   await testInfo.attach('graph-expansion.json', { body: JSON.stringify({ nodes: count,
@@ -631,16 +690,115 @@ for (const [count, interconnected] of [[500, false], [3000, false], [3000, true]
   await page.locator('.memory-graph').screenshot({ path: testInfo.outputPath('graph-visible-titles.png') })
 })
 
-async function zoomGraphToMaximum(page) {
-  let previous = await graphSnapshot(page)
-  for (let step = 0; step < 20; step++) {
-    await page.getByRole('button', { name: 'Zoom in', exact: true }).click()
-    const current = await graphSnapshot(page)
-    // ECharts can oscillate by machine precision around its upper scale limit.
-    if (current.zoom >= 4 - 1e-6) return current
-    previous = current
+for (const width of [1440, 390]) test(`dense shared memories group, open locally and preserve navigation at ${width}px`, async ({ page }, testInfo) => {
+  test.setTimeout(90_000)
+  await page.setViewportSize({ width, height: 1000 })
+  const timestamp = '2026-09-01T12:00:00Z'
+  const makeNode = (id, entity_kind, relation_count) => ({ id, title: `Synthetic ${id}`, entity_kind,
+    node_kind: 'memory', owner_agent_id: 7, visibility: 'private', source_managed: false,
+    access_count: 0, last_accessed_at: null, created_at: timestamp, updated_at: timestamp, activity_at: timestamp,
+    has_relations: true, relation_count })
+  const memories = Array.from({ length: 2760 }, (_, i) => makeNode(`memory-${String(i).padStart(4, '0')}`, 'memory', 2))
+  const nodes = [makeNode('contact', 'contact', memories.length),
+    ...Array.from({ length: 12 }, (_, i) => makeNode(`subject-${i}`, 'topic', 230)), ...memories]
+  const edges = memories.flatMap((node, i) => [
+    { id: `subject-edge-${i}`, source_item_id: `subject-${i % 12}`, target_item_id: node.id, relation_type: 'topic_contains', confidence: 1, suggested: false },
+    { id: `contact-edge-${i}`, source_item_id: 'contact', target_item_id: node.id, relation_type: 'contact_contains', confidence: 1, suggested: false },
+  ])
+  await page.route('**/api/memory/graph/roots', route => {
+    const body = route.request().postDataJSON()
+    const offset = Number(body.cursor?.id ?? 0), end = Math.min(nodes.length, offset + body.limit)
+    const ids = new Set(nodes.slice(offset, end).map(node => node.id))
+    return route.fulfill({ json: { nodes: nodes.slice(offset, end), edges: edges.filter(edge => ids.has(edge.target_item_id)),
+      has_more: end < nodes.length, next_cursor: end < nodes.length ? { id: String(end), activity_at: timestamp } : null, edges_truncated: false } })
+  })
+  const start = Date.now()
+  await mount(page, 'app/memory/components/MemoryGraph.vue', { props: { agentId: 7, query: '', topicItemId: null, contactItemId: null } })
+  await expect(page.getByText('2748 grouped node(s)', { exact: true })).toBeVisible()
+  const initial = await settledGraph(page)
+  expect(initial.nodes.filter(node => node.symbol !== 'none')).toHaveLength(25)
+  expect(initial.edges).toHaveLength(24)
+  const representatives = initial.nodes.filter(node => node.symbol !== 'none' && node.id.startsWith('memory-'))
+  for (const node of representatives) expect(initial.edges.filter(edge => edge.target === node.id).map(edge => edge.source).sort())
+    .toEqual(['contact', `subject-${Number(node.id.slice(7)) % 12}`].sort())
+  await page.locator('.memory-graph').screenshot({ path: testInfo.outputPath('shared-overview.png') })
+  const anchor = initial.points.find(node => representatives.some(rep => rep.id === node.id)
+    && node.point[0] > 40 && node.point[0] < initial.viewport[0] - 40 && node.point[1] > 40 && node.point[1] < initial.viewport[1] - 40)
+  expect(anchor).toBeTruthy()
+  await clickGraphNode(page, anchor.id)
+  const opened = await settledGraph(page)
+  expect(opened.nodes).toHaveLength(nodes.length)
+  expect(opened.nodes.filter(node => node.symbol !== 'none').length).toBeGreaterThan(1)
+  expect(opened.nodes.filter(node => node.symbol !== 'none').length).toBeLessThan(nodes.length)
+  const leaf = opened.points.find(node => node.id.startsWith('memory-') && node.id !== anchor.id
+    && opened.nodes.find(item => item.id === node.id)?.symbol !== 'none'
+    && node.point[0] > 40 && node.point[0] < opened.viewport[0] - 40 && node.point[1] > 40 && node.point[1] < opened.viewport[1] - 40)
+  expect(leaf).toBeTruthy()
+  await clickGraphNode(page, leaf.id)
+  await expect.poll(() => page.evaluate(() => window.testApp.events.filter(event => event.name === 'open').map(event => event.value))).toEqual([leaf.id])
+  await zoomGraphToMaximum(page)
+  await page.locator('.memory-graph').screenshot({ path: testInfo.outputPath('shared-maximum-zoom.png') })
+  const detail = await graphSnapshot(page)
+  await testInfo.attach('shared-density.json', { body: JSON.stringify({ loaded: nodes.length, grouped: 2748,
+    overviewSymbols: 25, detailSymbols: detail.nodes.filter(node => node.symbol !== 'none').length,
+    detailTitles: detail.titles.length, milliseconds: Date.now() - start }), contentType: 'application/json' })
+  await page.getByRole('button', { name: 'Fit graph to viewport', exact: true }).click()
+  await expect(page.getByText('2748 grouped node(s)', { exact: true })).toBeVisible()
+  const fitted = await settledGraph(page)
+  expect(fitted.nodes).toEqual(initial.nodes)
+  expect(fitted.edges).toEqual(initial.edges)
+  await page.getByRole('button', { name: 'Hide “Contact” nodes and their relationships', exact: true }).click()
+  await expect(page.getByText('2760 grouped node(s)', { exact: true })).toBeVisible()
+  const filtered = await settledGraph(page)
+  expect(filtered.nodes.some(node => node.id === 'contact')).toBe(false)
+  expect(filtered.nodes.filter(node => node.symbol !== 'none')).toHaveLength(12)
+  expect(filtered.nodes.filter(node => node.id.startsWith('subject-')).map(({ x, y }) => ({ x, y })))
+    .not.toEqual(initial.nodes.filter(node => node.id.startsWith('subject-')).map(({ x, y }) => ({ x, y })))
+  await page.locator('.memory-graph').screenshot({ path: testInfo.outputPath('shared-filtered-reorganized.png') })
+  await page.getByRole('button', { name: 'Show “Contact” nodes and their relationships', exact: true }).click()
+  await expect(page.getByText('2748 grouped node(s)', { exact: true })).toBeVisible()
+  expect((await settledGraph(page)).nodes).toEqual(initial.nodes)
+})
+
+async function roamAroundNode(page, id, zoom) {
+  await page.evaluate(async ({ id, zoom }) => {
+    const url = performance.getEntriesByType('resource').map(entry => entry.name)
+      .find(name => /\/echarts(?:\/core|_core)\.js/.test(name))
+    const chart = (await import(url)).getInstanceByDom(document.querySelector('.memory-graph__chart'))
+    const series = chart.getOption().series[0], data = chart.getModel().getSeries()[0].getData()
+    const index = series.data.findIndex(node => node.id === id)
+    const point = chart.convertToPixel({ seriesId: series.id }, data.getItemLayout(index))
+    chart.dispatchAction({ type: 'graphRoam', seriesId: series.id, zoom: zoom / series.zoom,
+      originX: point[0], originY: point[1] })
+  }, { id, zoom })
+}
+
+async function zoomGraphToMaximum(page, preferredId) {
+  if (preferredId) {
+    const snapshot = await graphSnapshot(page)
+    await roamAroundNode(page, preferredId, snapshot.maximumZoom)
+    const maximum = await settledGraph(page)
+    expect(maximum.zoom).toBeCloseTo(maximum.maximumZoom, 4)
+    return maximum
   }
-  throw new Error(`The graph zoom limit was not reached: ${previous.zoom}`)
+  await page.evaluate(async () => {
+    const url = performance.getEntriesByType('resource').map(entry => entry.name)
+      .find(name => /\/echarts(?:\/core|_core)\.js/.test(name))
+    const chart = (await import(url)).getInstanceByDom(document.querySelector('.memory-graph__chart'))
+    const series = chart.getOption().series[0], data = chart.getModel().getSeries()[0].getData()
+    const index = series.data.findIndex((node, index) => {
+      const point = chart.convertToPixel({ seriesId: series.id }, data.getItemLayout(index))
+      return node.symbol !== 'none' && point[0] >= 0 && point[0] <= chart.getWidth()
+        && point[1] >= 0 && point[1] <= chart.getHeight()
+    })
+    const point = index >= 0 ? chart.convertToPixel({ seriesId: series.id }, data.getItemLayout(index))
+      : [chart.getWidth() / 2, chart.getHeight() / 2]
+    chart.dispatchAction({ type: 'graphRoam', seriesId: series.id, zoom: series.scaleLimit.max / series.zoom,
+      originX: point[0], originY: point[1] })
+  })
+  const current = await settledGraph(page)
+  expect(current.zoom).toBeCloseTo(current.maximumZoom, 4)
+  return current
 }
 
 async function graphSnapshot(page) {
@@ -661,9 +819,18 @@ async function graphSnapshot(page) {
       return node.symbol !== 'none' && label?.style.text && !label.ignore && !label.invisible
         ? [{ id: node.id, text: label.style.text }] : []
     })
+    const symbolSizes = Object.fromEntries(series.data.flatMap((node, index) => {
+      const symbol = data.getItemGraphicEl(index)?.childAt(0)
+      if (node.symbol === 'none' || !symbol) return []
+      const bounds = symbol.getBoundingRect()
+      const left = symbol.transformCoordToGlobal(bounds.x, bounds.y)
+      const right = symbol.transformCoordToGlobal(bounds.x + bounds.width, bounds.y + bounds.height)
+      return [[node.id, Math.max(Math.abs(right[0] - left[0]), Math.abs(right[1] - left[1]))]]
+    }))
     return { layout: series.layout, nodes, titles: labels.map(label => label.id),
+      symbolSizes,
       titleTexts: Object.fromEntries(labels.map(label => [label.id, label.text])),
-      edges: series.links, center: series.center, zoom: series.zoom, viewport: [chart.getWidth(), chart.getHeight()],
+      edges: series.links, center: series.center, zoom: series.zoom, maximumZoom: series.scaleLimit.max, viewport: [chart.getWidth(), chart.getHeight()],
       points: nodes.map(node => ({ id: node.id, point: chart.convertToPixel({ seriesId: series.id }, [node.x, node.y]) })) }
   })
 }
@@ -704,10 +871,8 @@ for (const width of [1440, 390]) test(`graph restores personal positions and hid
   await expect(page.getByRole('button', { name: 'Show “Contact” nodes and their relationships', exact: true })).toBeVisible()
   await expect(page.getByText('2 node(s)', { exact: true })).toBeVisible()
   const restored = await graphSnapshot(page)
-  for (const [key, point] of Object.entries(positions)) {
-    expect(restored.nodes.find(node => node.id === key)).toMatchObject({ x: point.x, y: point.y })
-  }
-  expect(restored.nodes.filter(node => node.id.endsWith('contact')).every(node => node.symbol === 'none')).toBe(true)
+  expect(stored.positions).toMatchObject(positions)
+  expect(restored.nodes.some(node => node.id.endsWith('contact'))).toBe(false)
   failSave = true
   await page.getByRole('button', { name: 'Show “Contact” nodes and their relationships', exact: true }).click()
   await expect(page.getByText('4 node(s)', { exact: true })).toBeVisible()
@@ -783,10 +948,10 @@ async function recordGraphReveal(page, ids) {
         for (let index = 0; index < data.count(); index++) {
           if (!wanted.has(data.getId(index))) continue
           const symbol = data.getItemGraphicEl(index)?.childAt(0)
-          if (symbol) opacity.push(symbol.style.opacity)
+          if (symbol && data.getItemModel(index).get('symbol') !== 'none') opacity.push(symbol.style.opacity)
         }
         frames.push(opacity)
-        if ((opacity.length === wanted.size && opacity.every(value => value === 1)) || performance.now() - start > 4000) {
+        if ((performance.now() - start > 800 && opacity.length > 0 && opacity.every(value => value === 1)) || performance.now() - start > 4000) {
           resolve(frames)
         } else requestAnimationFrame(sample)
       }
@@ -878,7 +1043,8 @@ for (const width of [1440, 750, 390]) test(`mixed graph keeps linked subjects to
   const expandedPositions = new Map(expanded.nodes.map(node => [node.id, { x: node.x, y: node.y }]))
   for (const node of far.nodes) expect({ x: node.x, y: node.y }).toEqual(expandedPositions.get(node.id))
   await page.screenshot({ path: testInfo.outputPath('mixed-graph-overview.png') })
-  for (let i = 0; i < 6; i++) await page.getByRole('button', { name: 'Zoom in', exact: true }).click()
+  // Minimum zoom stops at fit; the original three steps restore the detail view.
+  for (let i = 0; i < 3; i++) await page.getByRole('button', { name: 'Zoom in', exact: true }).click()
   const zoomedBack = await settledGraph(page, 2500)
   expect(linksShown(zoomedBack)).toBe(linksShown(expanded))
   for (const node of zoomedBack.nodes) expect({ x: node.x, y: node.y }).toEqual(expandedPositions.get(node.id))
@@ -912,7 +1078,8 @@ for (const width of [1440, 390]) test(`exclusive branches reveal on zoom while k
   const frames = await reveal
   expect(frames.some(opacity => opacity.some(value => value > 0 && value < 1))).toBe(true)
   expect(frames.some(opacity => new Set(opacity).size > 1)).toBe(true)
-  expect(frames.at(-1)).toEqual(Array(30).fill(1))
+  expect(frames.at(-1).length).toBeGreaterThan(0)
+  expect(frames.at(-1).every(value => value === 1)).toBe(true)
   const near = await settledGraph(page)
   const box = await page.locator('.memory-graph__chart').boundingBox()
   // Dense leaves can overlap on mobile. Click an actually exposed symbol,

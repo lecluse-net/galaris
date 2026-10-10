@@ -50,7 +50,7 @@ export default {
       graph: {
         title: 'Graphe de mémoire',
         stateError: 'Les positions ou les choix d’affichage n’ont pas pu être restaurés ou enregistrés.',
-        hint: 'Les branches exclusives sont regroupées avec un compteur. Zoomez ou sélectionnez le groupe pour voir leurs éléments ; sur mobile, pincez pour zoomer.',
+        hint: 'Les branches exclusives et les souvenirs partageant les mêmes relations sont regroupés avec un compteur. Zoomez ou sélectionnez le groupe pour voir ses éléments ; sur mobile, pincez pour zoomer.',
         nodeCount: '{count} nœud(s)',
         groupedCount: '{count} nœud(s) regroupé(s)',
         branchCount: '+ {count} élément(s)',
@@ -518,7 +518,7 @@ export default {
       graph: {
         title: 'Memory graph',
         stateError: 'Positions or display preferences could not be restored or saved.',
-        hint: 'Exclusive branches are grouped with a count. Zoom in or select a group to see their items; on mobile, pinch to zoom.',
+        hint: 'Exclusive branches and memories sharing the same relationships are grouped with a count. Zoom in or select a group to see its items; on mobile, pinch to zoom.',
         nodeCount: '{count} node(s)',
         groupedCount: '{count} grouped node(s)',
         branchCount: '+ {count} item(s)',
@@ -972,7 +972,7 @@ export default {
         degraded: '语义搜索不可用。结果按搜索词匹配。',
       },
       graph: {
-        title: '记忆图谱', hint: '独占分支按数量分组。放大或选择分组以查看其项目；移动设备上可双指缩放。', nodeCount: '{count} 个节点', edgeCount: '{count} 条关系', reload: '重新加载图谱',
+        title: '记忆图谱', hint: '独占分支和具有相同关系的记忆按数量分组。放大或选择分组以查看其项目；移动设备上可双指缩放。', nodeCount: '{count} 个节点', edgeCount: '{count} 条关系', reload: '重新加载图谱',
         groupedCount: '{count} 个已分组节点', branchCount: '+ {count} 个项目',
         fullscreen: '全屏查看图谱', exitFullscreen: '退出全屏', closeDetails: '关闭详情', loadError: '无法加载记忆图谱。', edgesTruncated: '图谱超出安全限制，部分关系未显示。',
         capacityReached: '为保证性能，本地窗口限制为 {count} 个节点。', canvasLabel: '交互式记忆图谱', zoomIn: '放大', zoomOut: '缩小', fit: '使图谱适应视口',

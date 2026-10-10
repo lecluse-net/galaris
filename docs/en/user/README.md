@@ -374,10 +374,17 @@ New nodes fade into their existing positions; dense views and reduced-motion pre
 disable this effect.
 Clicking a group frames its anchor. Zooming out hides detailed links and some titles; zoom
 back in to restore them.
-Shared nodes remain visible. Titles are limited to avoid overlaps and remain available on
+Memories sharing exactly the same relationships to structural anchors are also grouped;
+each group retains connections to every anchor. Symbols have two fixed display sizes,
+distant and near: further zoom beyond the near threshold spreads their positions without
+enlarging them. Previews grow later, depending on the space between neighbors, up to the
+thumbnail's actual pixel dimensions, never beyond them. Titles remain limited even at maximum zoom to avoid overlaps and remain available on
 hover or selection. All pages matching the filters load without a global node cap;
 exclusive branches are folded on opening. Large maps place items near their anchors before
-settling. Loading by visible region remains planned.
+settling. The minimum zoom always fits and centers the entire graph, including after panning.
+Zoom can then reach one million times this framing. Only nodes in the visible region are
+drawn. Hiding a kind reorganizes and frames the remaining items; showing all kinds restores
+the saved positions. All pages still load; network loading by visible region remains planned.
 
 A document used with the same Agent remains a recall candidate after many ordinary exchanges.
 The Agent recovers its reference, current title and revision, subject to current access rights.

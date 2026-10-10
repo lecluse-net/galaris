@@ -298,7 +298,15 @@ Node size and opacity follow a linear scale of last activity relative to the old
 most recent nodes in the loaded graph. The legend shows both dates; hiding a node kind
 does not change this scale. Older nodes remain visible and their labels retain their contrast.
 When zoomed out, titles prioritize structural nodes and those with the most connections.
-At maximum zoom, every displayed node keeps its title visible without hovering.
+Symbols have two fixed display sizes: distant and near. Beyond the near zoom threshold,
+further zoom spreads their positions without enlarging them. Titles remain filtered to
+avoid overlaps, including at maximum zoom; hovering or selecting reveals them.
+Memories with exactly the same relationships to topics, contacts or other structural
+anchors are grouped with a count. Only visible nodes are drawn. Minimum zoom fits the entire
+graph to the window and always centers it after panning; zoom can reach one million times
+this framing. Previews grow later, depending on neighbor spacing, up to their actual pixel
+dimensions. Hiding a kind reorganizes and frames the remaining items; showing all kinds
+restores the saved positions.
 Root directories keep their titles visible even when zoomed out. A title of “.” is
 replaced in the graph by the URI with its scheme, such as `nextcloud://`;
 custom titles are preserved.

@@ -22,6 +22,8 @@ for (const cores of [2, 16]) test(`an 84-file directory loads every visible thum
   }))
   const directory = { ...files[0], id: 'synthetic-directory', title: 'Synthetic directory',
     node_kind: 'directory', entity_kind: 'directory', relation_count: files.length }
+  const bounds = ['top', 'bottom'].map(id => ({ ...directory, id: `synthetic-bounds-${id}`,
+    title: `Synthetic bounds ${id}`, node_kind: 'memory', entity_kind: 'memory', relation_count: 0 }))
   const edges = files.flatMap((file, index) => [
     { id: `location-${index}`, source_item_id: directory.id, target_item_id: file.id,
       relation_type: 'related_to', confidence: 1, suggested: false },
@@ -29,7 +31,11 @@ for (const cores of [2, 16]) test(`an 84-file directory loads every visible thum
       relation_type: 'related_to', confidence: 1, suggested: false },
   ])
   await jsonRoute(page, '**/api/memory/graph/roots', {
-    nodes: [directory, ...files], edges, has_more: false, next_cursor: null, edges_truncated: false,
+    nodes: [directory, ...files, ...bounds], edges, has_more: false, next_cursor: null, edges_truncated: false,
+    // This scenario exercises simultaneous images and cache reuse, independently
+    // of the force layout. Reserve a compact, entirely synthetic directory.
+    positions: Object.fromEntries([[directory.id, [0, -240]], [bounds[0].id, [-1200, -800]], [bounds[1].id, [1200, 800]],
+      ...files.map((file, i) => [file.id, [(i % 12 - 5.5) * 70, (Math.floor(i / 12) - 3) * 70]])]),
   })
   let thumbnailReads = 0
   await page.route('**/api/file-share/items/synthetic-image-*/resources?*', route => route.fulfill({ json: [{
@@ -88,7 +94,7 @@ for (const cores of [2, 16]) test(`an 84-file directory loads every visible thum
   await pan(1)
   await page.clock.runFor(500)
   expect((await snapshot()).files.filter(file => file.visible)).toHaveLength(0)
-  expect((await snapshot()).files.filter(file => file.thumbnail)).toHaveLength(84)
+  expect((await snapshot()).files.filter(file => file.thumbnail)).toHaveLength(0)
   await pan(-1)
   await page.clock.runFor(500)
   expect((await snapshot()).files.filter(file => file.thumbnail)).toHaveLength(84)
@@ -158,6 +164,7 @@ for (const width of [1920, 390]) test(`graph thumbnails preserve decoded image p
       const paintedWidth = image.getWidth() * Math.hypot(transform[0], transform[1])
       const paintedHeight = image.getHeight() * Math.hypot(transform[2], transform[3])
       return { id: data.getId(index), width: image.__image.naturalWidth, height: image.__image.naturalHeight,
+        paintedWidth, paintedHeight, point: chart.convertToPixel({ seriesId: chart.getOption().series[0].id }, data.getItemLayout(index)),
         error: Math.abs(paintedWidth / paintedHeight
         - image.__image.naturalWidth / image.__image.naturalHeight) }
     }).filter(Boolean)
@@ -200,6 +207,16 @@ for (const width of [1920, 390]) test(`graph thumbnails preserve decoded image p
   }
   for (let i = 0; i < 3; i++) await page.getByRole('button', { name: 'Zoom in', exact: true }).click()
   await assertProportions()
+  const near = await proportions()
+  for (const image of near) {
+    expect(image.paintedWidth).toBeLessThanOrEqual(image.width + 0.01)
+    expect(image.paintedHeight).toBeLessThanOrEqual(image.height + 0.01)
+    for (const other of near.filter(other => other.id !== image.id)) {
+      const separated = Math.abs(image.point[0] - other.point[0]) >= (image.paintedWidth + other.paintedWidth) / 2
+        || Math.abs(image.point[1] - other.point[1]) >= (image.paintedHeight + other.paintedHeight) / 2
+      expect(separated, `${image.id} and ${other.id} previews must not overlap`).toBe(true)
+    }
+  }
   await page.locator('.memory-graph').screenshot({ path: testInfo.outputPath('graph-thumbnail-proportions.png') })
   for (let i = 0; i < 3; i++) await page.getByRole('button', { name: 'Zoom out', exact: true }).click()
   await expect.poll(proportions).toEqual([])
@@ -207,5 +224,31 @@ for (const width of [1920, 390]) test(`graph thumbnails preserve decoded image p
   await assertProportions()
   await page.getByRole('button', { name: 'Hide “File” nodes and their relationships', exact: true }).click()
   await page.getByRole('button', { name: 'Show “File” nodes and their relationships', exact: true }).click()
+  // Changing natures fits the graph again; enter the detailed view explicitly.
+  for (let i = 0; i < 3; i++) await page.getByRole('button', { name: 'Zoom in', exact: true }).click()
   await assertProportions()
+  const zoomAtNode = (id, zoom) => page.evaluate(async ({ id, zoom }) => {
+    const url = performance.getEntriesByType('resource').map(entry => entry.name)
+      .find(name => /\/echarts(?:\/core|_core)\.js/.test(name))
+    const chart = (await import(url)).getInstanceByDom(document.querySelector('.memory-graph__chart'))
+    const series = chart.getOption().series[0], data = chart.getModel().getSeries()[0].getData()
+    const index = series.data.findIndex(node => node.id === id)
+    const point = chart.convertToPixel({ seriesId: series.id }, data.getItemLayout(index))
+    chart.dispatchAction({ type: 'graphRoam', seriesId: series.id, zoom: zoom / series.zoom,
+      originX: point[0], originY: point[1] })
+  }, { id, zoom })
+  for (const node of nodes) {
+    await panToNode(node.id)
+    await zoomAtNode(node.id, 128)
+    await panToNode(node.id)
+    await expect.poll(async () => {
+      const image = (await proportions()).find(image => image.id === node.id)
+      return image ? Math.max(Math.abs(image.paintedWidth - image.width), Math.abs(image.paintedHeight - image.height)) : Infinity
+    }).toBeLessThan(0.01)
+    await zoomAtNode(node.id, 1024)
+    await expect.poll(async () => {
+      const image = (await proportions()).find(image => image.id === node.id)
+      return image ? Math.max(Math.abs(image.paintedWidth - image.width), Math.abs(image.paintedHeight - image.height)) : Infinity
+    }).toBeLessThan(0.01)
+  }
 })

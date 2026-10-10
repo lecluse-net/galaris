@@ -492,11 +492,22 @@ pendant au plus 0,7 seconde. Le zoom, le dépliage et la fermeture du détail co
 restent fixes pour limiter le calcul. Un clic sur le groupe cadre son ancre.
 Les nouveaux nœuds apparaissent progressivement sur place ; cet effet est désactivé
 sur les vues denses et lorsque la réduction des animations est demandée.
-En vue éloignée, les liens de détail et certains titres s'effacent ; zoomez pour les retrouver. Les nœuds partagés restent
-visibles. Les titres sont limités pour éviter les superpositions et se retrouvent au survol
+En vue éloignée, les liens de détail et certains titres s'effacent ; zoomez pour les retrouver.
+Les souvenirs partageant exactement les mêmes relations avec des ancres structurantes
+sont également regroupés ; chaque groupe conserve ses connexions à toutes ses ancres.
+Les symboles ont deux tailles fixes, éloignée et proche : zoomer au-delà du seuil proche
+écarte leurs positions sans les agrandir. Les aperçus grandissent plus tard, selon l'espace
+disponible entre voisins, jusqu'à la taille réelle en pixels de la miniature, sans la dépasser.
+Les titres restent limités même au zoom maximal
+pour éviter les superpositions et se retrouvent au survol
 ou à la sélection. Toutes les pages correspondant aux filtres sont chargées, sans plafond
 global de nœuds ; les branches exclusives sont repliées dès l'ouverture. Les grandes cartes
-placent les éléments près de leurs ancres avant stabilisation. Le chargement par zone reste prévu.
+placent les éléments près de leurs ancres avant stabilisation. Le dézoom minimal ajuste
+toujours le graphe entier à la fenêtre et le recentre, même après déplacement. Le zoom
+peut ensuite atteindre un million de fois ce cadrage. Seuls les nœuds dans la zone visible
+sont dessinés. Masquer une nature réorganise et recadre les éléments restants ; réafficher
+toutes les natures restaure les positions enregistrées. Toutes les pages restent chargées ;
+le chargement réseau par zone reste prévu.
 
 Un document manipulé avec le même agent reste candidat au rappel même après de nombreux
 échanges ordinaires. L'agent retrouve sa référence, son titre et sa révision actuels, sous

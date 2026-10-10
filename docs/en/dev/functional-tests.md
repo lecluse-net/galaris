@@ -624,14 +624,26 @@ and after filtering. The scenario reproduces the ratio being applied twice befor
 HTML preview checks did not cover this graph transform.
 A synthetic directory of 84 images also checks simultaneous thumbnails and their reuse
 with a reduced browser memory estimate, on desktops reporting 2 or 16 cores. Previous small
-graphs did not detect the incorrect 64-thumbnail limit or the removal of images outside the
-viewport. Loaded thumbnails remain present after panning the entire directory offscreen,
-then return without another read.
+graphs did not detect the incorrect 64-thumbnail limit. Loaded thumbnails remain cached,
+without being drawn, after panning the entire directory offscreen, then return without another
+read. Preview rectangles do not overlap in the near view; further zoom reaches their native
+pixel dimensions without exceeding them.
 `memory.spec.mjs` also checks opening and zooming synthetic 500-, 3,000- and 10,001-node graphs without losing nodes
-during pagination, then unfolding all members without another request. All titles are displayed
-without hovering at maximum zoom and filtered when zoomed out; older roots remain identifiable
+during pagination, then unfolding all members without another request. Titles remain filtered
+to avoid overlaps at maximum zoom; older roots remain identifiable
 by their URI or custom title in both themes. Volume coverage includes
 5,000 nodes without foldable branches and 10,000 links, beyond the former caps.
+The former assertion requiring every title at maximum zoom is retired: it protected the
+overlap that made dense maps unreadable. Actual painted dimensions verify the two fixed
+distant/near sizes and no further growth beyond the near threshold.
+A case with 2,760 memories linked to twelve topics and one contact checks grouping,
+preservation of both connections, local expansion, child access, reorganization after hiding
+a kind and returning to the initial
+camera on desktop/mobile. Previous exclusive-branch cases did not reproduce this shared neighborhood.
+Minimum zoom keeps every point inside the window and centers their extent; symbols retain
+their near size up to a zoom of one million times the initial framing.
+`graphBranches.test.mjs` reproduces the missing grouping before correction and protects
+off-page neighbors, suggestions, relation kinds/directions and distinct entity natures.
 The unit test for community proximity also covers 4,800 items: it detects initial positions
 unrelated to the links that bounded settling cannot correct. A mixed topology of subjects, contacts,
 shared documents/items and isolated nodes checks real position movement, natural convergence,

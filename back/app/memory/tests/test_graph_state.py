@@ -52,7 +52,8 @@ async def test_graph_state_is_private_persistent_and_restores_hidden_node_positi
 
 
 @pytest.mark.asyncio
-async def test_incremental_save_preserves_other_nodes_and_conflicts_do_not_overwrite(db, agents, memory_storage):
+@pytest.mark.parametrize("zoom", [2, 1_000_000])
+async def test_incremental_save_preserves_other_nodes_and_conflicts_do_not_overwrite(db, agents, memory_storage, zoom):
     owner, _, scopes, item, _ = await setup(db, agents)
     context = graph_state.GraphContext(agent_id=owner.id)
     first = await graph_state.write_state(graph_state.GraphStateWrite(
@@ -66,9 +67,10 @@ async def test_incremental_save_preserves_other_nodes_and_conflicts_do_not_overw
         ), scopes[0])
     second = await graph_state.write_state(graph_state.GraphStateWrite(
         agent_id=owner.id, expected_revision=first.revision,
-        preferences=graph_state.GraphPreferencesPatch(camera=graph_state.GraphCamera(center=(30, 40), zoom=2)),
+        preferences=graph_state.GraphPreferencesPatch(camera=graph_state.GraphCamera(center=(30, 40), zoom=zoom)),
     ), scopes[0])
     assert second.preferences.hidden_entity_kinds == ["contact"]
+    assert (await graph_state.read_state(context, scopes[0])).preferences.camera == graph_state.GraphCamera(center=(30, 40), zoom=zoom)
     assert await graph_state.page_positions(context, scopes[0], [item.id]) == {item.id: graph_state.GraphPoint(x=1, y=2)}
     # An independently calculated cold tab must not move the saved anchors.
     third = await graph_state.write_state(graph_state.GraphStateWrite(

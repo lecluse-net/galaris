@@ -15,6 +15,7 @@ interface CachedThumbnail {
   url: string
   bytes: number
   aspect: number
+  longestSide: number
 }
 
 function absent(error: unknown): boolean {
@@ -63,6 +64,8 @@ export class GraphThumbnails {
   }
 
   aspect(key: string): number { return this.cache.get(key)?.aspect ?? 1 }
+
+  longestSide(key: string): number { return this.cache.get(key)?.longestSide ?? 320 }
 
   unavailable(key: string): boolean {
     const expires = this.missing.get(key)
@@ -233,15 +236,17 @@ export class GraphThumbnails {
     const bitmap = await createImageBitmap(blob)
     let aspect: number
     let bytes: number
+    let longestSide: number
     try {
       aspect = bitmap.width / bitmap.height
+      longestSide = Math.max(bitmap.width, bitmap.height)
       if (bitmap.width > 320 || bitmap.height > 320) throw new Error('Thumbnail exceeds shared dimensions')
       bytes = blob.size + bitmap.width * bitmap.height * 4
     } finally { bitmap.close() }
     if (controller.signal.aborted || generation !== this.generation || (!allowHidden && !this.desired.has(key))) return
     this.evict(key)
     // Include the decoded RGBA surface, not just the compressed transfer size.
-    this.cache.set(key, { url: URL.createObjectURL(blob), bytes, aspect })
+    this.cache.set(key, { url: URL.createObjectURL(blob), bytes, aspect, longestSide })
     this.cacheBytes += bytes
     this.missing.delete(key)
     const maxBytes = Math.max(8 * 1024 * 1024, this.maxEntries * 512 * 1024)

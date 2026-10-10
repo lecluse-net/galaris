@@ -43,6 +43,41 @@ test('cycles and isolated nodes remain individual; filtered small branches remai
     [edge('a', 'b'), edge('b', 'c'), edge('c', 'a')]), [])
 })
 
+test('memories with the same complete topic/contact relations fold without losing either connection', () => {
+  const nodes = [node('subject', 30, 'topic'), node('person', 30, 'contact'),
+    ...Array.from({ length: 30 }, (_, i) => node(`shared-${i}`, 2))]
+  const edges = nodes.slice(2).flatMap(item => [edge('subject', item.id), edge('person', item.id)])
+  nodes[2].relation_count = 3 // A third neighbor is outside the loaded window.
+  edges[2].suggested = true // A suggestion cannot establish shared membership.
+  const branches = graphBranches(nodes, edges)
+  assert.equal(branches.length, 1)
+  const [branch] = branches
+  assert.equal(branch.memberIds.length, 27)
+  assert.deepEqual(branch.neighborIds, ['person', 'subject'])
+  assert(![branch.anchorId, ...branch.memberIds].includes('shared-0'))
+  assert(![branch.anchorId, ...branch.memberIds].includes('shared-1'))
+  assert.deepEqual(edges.filter(item => item.target_item_id === branch.anchorId).map(item => item.source_item_id).sort(),
+    ['person', 'subject'])
+  const allIds = [branch.anchorId, ...branch.memberIds]
+  assert.equal(new Set(allIds).size, allIds.length)
+  assert.deepEqual(graphBranches([...nodes].reverse(), [...edges].reverse()), branches)
+})
+
+test('shared grouping preserves relation kinds, direction and entity nature', () => {
+  const nodes = [node('topic', 40, 'topic'), node('contact', 40, 'contact'),
+    ...Array.from({ length: 12 }, (_, i) => node(`same-${i}`, 2)),
+    node('different-kind', 2), node('reversed', 2), node('document', 2, 'document')]
+  const edges = nodes.slice(2).flatMap(item => [
+    { ...edge('topic', item.id), relation_type: 'topic_contains' },
+    { ...edge('contact', item.id), relation_type: 'contact_contains' },
+  ])
+  edges.find(item => item.target_item_id === 'different-kind').relation_type = 'related_to'
+  const reversed = edges.find(item => item.target_item_id === 'reversed')
+  ;[reversed.source_item_id, reversed.target_item_id] = [reversed.target_item_id, reversed.source_item_id]
+  const [branch] = graphBranches(nodes, edges)
+  assert.deepEqual([branch.anchorId, ...branch.memberIds].sort(), nodes.filter(item => item.id.startsWith('same-')).map(item => item.id).sort())
+})
+
 for (const count of [48, 4800]) test(`linked communities of ${count} items determine the map and stay closer than unrelated communities`, () => {
   const nodes = Array.from({ length: count }, (_, i) => node(`item-${i}`, 2))
   const edges = []

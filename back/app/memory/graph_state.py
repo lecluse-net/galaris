@@ -34,7 +34,7 @@ class GraphPoint(BaseModel):
 class GraphCamera(BaseModel):
     model_config = ConfigDict(extra="forbid", allow_inf_nan=False)
     center: tuple[float, float] | None = None
-    zoom: float = Field(ge=0.2, le=4)
+    zoom: float = Field(ge=0.2, le=1_000_000)
 
 
 class GraphPreferences(BaseModel):

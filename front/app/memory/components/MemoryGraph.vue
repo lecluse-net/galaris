@@ -368,8 +368,8 @@ const emit = defineEmits<{
 
 const ROOT_PAGE_SIZE = 500
 const AUTO_REFRESH_INTERVAL = 30_000
-const MIN_ZOOM = 0.2
-const MAX_ZOOM = 4
+const MIN_ZOOM = 1
+const MAX_ZOOM = 1_000_000
 const MOBILE_GRAPH_MEDIA_QUERY = '(max-width: 1023px)'
 const MOBILE_PINCH_ZOOM_SENSITIVITY = 0.35
 const MOBILE_DETAIL_OPEN_DELAY = 50
@@ -381,6 +381,7 @@ const REVEAL_SPREAD_MILLISECONDS = 120
 const MAX_ANIMATED_VISIBLE_NODES = 500
 const NODE_MIN_RADIUS = 10
 const NODE_RADIUS_RANGE = 8
+const NODE_SCALE_RATIO = 0.000001
 const MIN_NODE_OPACITY = 0.4
 const GRAPH_ROLE_LEGEND: readonly MemoryGraphEntityKind[] = [
   'memory',
@@ -414,10 +415,13 @@ const nodes = shallowRef(new Map<string, MemoryGraphNode>())
 const edges = shallowRef(new Map<string, MemoryGraphEdge>())
 const expandedBranches = shallowRef(new Set<string>())
 const branchLayout = new GraphBranchLayout()
+const filteredLayout = new GraphBranchLayout()
 // Keep the original animated physics for ordinary graphs; larger windows use the bounded layout.
 const dynamicLayout = computed(() => nodes.value.size <= 600)
 const overview = ref(false)
 const allTitles = ref(false)
+let symbolZoom = 1
+const previewClearance = new Map<string, number>()
 const hiddenEntityKinds = shallowRef(new Set<MemoryGraphEntityKind>())
 const hasStoredLayout = ref(false)
 const viewStateError = ref<unknown>(null)
@@ -483,7 +487,21 @@ const visibleEdges = computed(() => (
     && visibleNodeIds.value.has(edge.target_item_id)
   ))
 ))
-const branches = computed(() => graphBranches(visibleNodes.value, visibleEdges.value))
+const branches = computed(() => {
+  // Subtract only known, hidden neighbors. Unknown off-page neighbors must
+  // still prevent grouping, while hiding contacts can reveal topic branches.
+  const hiddenNeighbors = new Map<string, Set<string>>()
+  for (const edge of edges.value.values()) {
+    for (const [id, other] of [[edge.source_item_id, edge.target_item_id], [edge.target_item_id, edge.source_item_id]]) {
+      if (!id || !other || !visibleNodeIds.value.has(id) || !nodes.value.has(other) || visibleNodeIds.value.has(other)) continue
+      if (!hiddenNeighbors.has(id)) hiddenNeighbors.set(id, new Set())
+      hiddenNeighbors.get(id)!.add(other)
+    }
+  }
+  return graphBranches(visibleNodes.value.map(node => ({ ...node,
+    relation_count: node.relation_count - (hiddenNeighbors.get(node.id)?.size ?? 0),
+  })), visibleEdges.value)
+})
 const branchByAnchor = computed(() => new Map(branches.value.map(branch => [branch.anchorId, branch])))
 const collapsedMemberIds = computed(() => new Set(branches.value
   .filter(branch => !expandedBranches.value.has(branch.anchorId))
@@ -568,9 +586,11 @@ function nodeTypeToggleLabel(label: string, hidden: boolean): string {
 
 function renderTypeFilterChange(): void {
   if (selectedNodeId.value !== null && selectedNode.value === null) closeInspector()
+  filteredLayout.clear()
   renderGraph({
-    viewState: captureGraphView(),
+    viewState: { center: ['50%', '50%'], zoom: 1 },
     preserveSelection: true,
+    relax: false,
   })
 }
 
@@ -656,20 +676,25 @@ function nodeSymbol(node: MemoryGraphNode): string {
 
 function nodeBaseSymbolSize(node: MemoryGraphNode, groupedCount = 0): number {
   const scale = dynamicLayout.value ? Math.min(1, Math.max(0.35, Math.min(viewportSize.width, viewportSize.height) / 650)) : 1
-  const overviewScale = node.entity_kind === 'topic' ? 0.56 : isStructuralNode(node) || groupedCount ? 0.8 : 0.45
   const size = (radiusFor(node) * 2 + Math.min(44, Math.log2(groupedCount + 1) * 5)) * scale
-    * (overview.value && selectedNodeId.value !== node.id ? overviewScale : 1)
   return size
 }
 
 function nodeSymbolSize(node: MemoryGraphNode, groupedCount = 0): number | [number, number] {
-  const size = nodeBaseSymbolSize(node, groupedCount)
-  const overviewResourceScale = overview.value
-    && (node.entity_kind === 'folder' || node.entity_kind === 'directory' || node.entity_kind === 'document') ? 1.2 : 1
-  if (!nodeThumbnailUrl(node)) return (isAudioNode(node) && !overview.value ? Math.max(22, size) : size) * overviewResourceScale
+  // Exactly two screen sizes: distant and near. Further zoom only spreads the
+  // coordinates. Compensate even ECharts' tiny residual scale (zero means one).
+  const near = symbolZoom >= BRANCH_OPEN_ZOOM
+  const compensation = 1 / (1 + (symbolZoom - 1) * NODE_SCALE_RATIO)
+  const size = Math.min(groupedCount ? 56 : 48, nodeBaseSymbolSize(node, groupedCount)) * (near ? 1.1 : 0.28)
+  if (!nodeThumbnailUrl(node)) return (isAudioNode(node) && near ? Math.max(22, size) : size) * compensation
   const key = thumbnailKeys.get(node.id)
   const aspect = key ? thumbnails.aspect(key) : 1
-  const longest = Math.max(40, size * 1.75) * overviewResourceScale
+  const nativeSize = key ? thumbnails.longestSide(key) : 320
+  const distantSize = size * 1.75
+  // Delay preview growth until zoom 3, then follow the camera up to one
+  // decoded image pixel per CSS pixel. Neighbor clearance can delay it further.
+  const desired = near ? Math.min(112, Math.max(40, size * 1.75)) * Math.max(1, symbolZoom / 3) : distantSize
+  const longest = Math.min(nativeSize, desired, previewClearance.get(node.id) ?? nativeSize) * compensation
   // ECharts fits images inside a unit square before scaling to symbolSize.
   // These dimensions already preserve the ratio, so image symbols must disable that fitting.
   return aspect >= 1 ? [longest, longest / aspect] : [longest * aspect, longest]
@@ -743,10 +768,18 @@ function revealBranch(id: string, anchor?: ScreenPoint): void {
   const clicked: unknown = dynamicLayout.value && anchor
     ? chart?.convertFromPixel({ seriesId: GRAPH_SERIES_ID }, [anchor.x, anchor.y]) : null
   const point = Array.isArray(clicked) && typeof clicked[0] === 'number' && typeof clicked[1] === 'number'
-    ? { x: clicked[0], y: clicked[1] } : branchLayout.positions.get(id)
+    ? { x: clicked[0], y: clicked[1] } : (hiddenEntityKinds.value.size ? filteredLayout : branchLayout).positions.get(id)
   const view = captureGraphView()
+  let zoom = Math.max(BRANCH_OPEN_ZOOM, view?.zoom ?? 1)
+  if (!dynamicLayout.value && point && chart) {
+    const center: unknown = chart.convertToPixel({ seriesId: GRAPH_SERIES_ID }, [point.x, point.y])
+    const nearby: unknown = chart.convertToPixel({ seriesId: GRAPH_SERIES_ID }, [point.x + 56, point.y])
+    if (Array.isArray(center) && Array.isArray(nearby)) {
+      zoom = Math.min(MAX_ZOOM, Math.max(zoom, (view?.zoom ?? 1) * 48 / Math.max(1, Math.abs(nearby[0] - center[0]))))
+    }
+  }
   renderGraph({
-    viewState: { center: point ? [point.x, point.y] : view?.center, zoom: Math.max(BRANCH_OPEN_ZOOM, view?.zoom ?? 1) },
+    viewState: { center: point ? [point.x, point.y] : view?.center, zoom },
     preserveSelection: true,
     relax: false,
   })
@@ -755,15 +788,17 @@ function revealBranch(id: string, anchor?: ScreenPoint): void {
 
 function onGraphRoam(): void {
   freezePositions()
-  const previousSelection = selectedNodeId.value
   closeInspector(false)
   const view = captureGraphView()
   const zoom = view?.zoom ?? 1
-  const previousOverview = overview.value
-  const previousAllTitles = allTitles.value
-  allTitles.value = zoom >= MAX_ZOOM - 0.000001
-  if (zoom <= 0.55) overview.value = true
-  else if (zoom >= 0.7) overview.value = false
+  if (zoom <= MIN_ZOOM + 0.000001) {
+    fitGraph()
+    scheduleThumbnails()
+    return
+  }
+  allTitles.value = zoom >= BRANCH_OPEN_ZOOM
+  if (zoom <= 1.2) overview.value = true
+  else if (zoom >= 1.5) overview.value = false
   let next: Set<string> | null = null
   if (zoom <= BRANCH_CLOSE_ZOOM && expandedBranches.value.size) next = new Set()
   else if (zoom >= BRANCH_OPEN_ZOOM) {
@@ -772,8 +807,13 @@ function onGraphRoam(): void {
       // Small windows reveal their pre-positioned branches together; larger
       // static windows reveal only viewport anchors.
       if (dynamicLayout.value) { next.add(branch.anchorId); continue }
-      const point = branchLayout.positions.get(branch.anchorId)
+      const point = (hiddenEntityKinds.value.size ? filteredLayout : branchLayout).positions.get(branch.anchorId)
       if (!point || !chart) continue
+      if (branch.memberIds.length >= 8) {
+        const center: unknown = chart.convertToPixel({ seriesId: GRAPH_SERIES_ID }, [point.x, point.y])
+        const nearby: unknown = chart.convertToPixel({ seriesId: GRAPH_SERIES_ID }, [point.x + 56, point.y])
+        if (!Array.isArray(center) || !Array.isArray(nearby) || Math.abs(nearby[0] - center[0]) < 40) continue
+      }
       const screen: unknown = chart.convertToPixel({ seriesId: GRAPH_SERIES_ID }, [point.x, point.y])
       if (Array.isArray(screen) && typeof screen[0] === 'number' && typeof screen[1] === 'number'
         && screen[0] >= 0 && screen[0] <= viewportSize.width && screen[1] >= 0 && screen[1] <= viewportSize.height) {
@@ -785,12 +825,9 @@ function onGraphRoam(): void {
   if (branchesChanged && next) {
     expandedBranches.value = next
   }
-  if (branchesChanged || previousOverview !== overview.value || previousAllTitles !== allTitles.value || (previousSelection !== null
-    && (dynamicLayout.value || overview.value || collapsedMemberIds.value.has(previousSelection)))) {
-    renderGraph({ viewState: view, preserveSelection: true, relax: false })
-  } else {
-    stopGraphLayout()
-  }
+  // Refresh screen sizes, visible labels and the large-map window on every
+  // camera change, including panning after a branch has already been opened.
+  renderGraph({ viewState: view, preserveSelection: true, relax: false })
   scheduleThumbnails()
   stagePresentation()
 }
@@ -840,6 +877,7 @@ function updateThumbnails(): void {
           + Math.hypot(screen[0] - viewportSize.width / 2, screen[1] - viewportSize.height / 2) - (retained ? 80 : 0) })
     }
   }
+  const previousKeys = new Map(thumbnailKeys)
   thumbnailKeys.clear()
   // Missing derivatives do not occupy display slots. Bound the search for
   // replacements as well, rather than scanning every file in a dense window.
@@ -849,6 +887,9 @@ function updateThumbnails(): void {
     .slice(0, thumbnailBudget)
   for (const candidate of wanted) thumbnailKeys.set(candidate.node.id, candidate.key)
   thumbnails.update(wanted)
+  if (previousKeys.size !== thumbnailKeys.size || [...thumbnailKeys].some(([id, key]) => previousKeys.get(id) !== key)) {
+    renderGraph({ viewState: captureGraphView(), preserveSelection: true, relax: false })
+  }
   scheduleThumbnailPaint()
 }
 
@@ -994,15 +1035,86 @@ function graphOption(options: {
   revealedIds?: ReadonlyMap<string, number>
 } = {}): MemoryGraphOption {
   const dark = $q.dark.isActive
+  const currentView = captureGraphView()
+  symbolZoom = options.viewState?.zoom ?? currentView?.zoom ?? 1
+  allTitles.value = symbolZoom >= BRANCH_OPEN_ZOOM
   const palette = getComputedStyle(document.documentElement)
   const curvatures = parallelEdgeCurvatures()
   const degrees = graphDegrees()
   const loadedBranches = graphBranches([...nodes.value.values()], [...edges.value.values()])
-  const anchors = new Set(loadedBranches.map(branch => branch.anchorId))
+  const filtered = hiddenEntityKinds.value.size > 0
+  const anchors = new Set((filtered ? branches.value : loadedBranches).map(branch => branch.anchorId))
   if (!loading.value && !reloading.value && [...expandedBranches.value].some(id => !anchors.has(id))) {
     expandedBranches.value = new Set([...expandedBranches.value].filter(id => anchors.has(id)))
   }
-  if (!dynamicLayout.value || hasStoredLayout.value) branchLayout.update([...nodes.value.values()], loadedBranches, [...edges.value.values()])
+  if (!dynamicLayout.value || hasStoredLayout.value || filtered) {
+    branchLayout.update([...nodes.value.values()], loadedBranches, [...edges.value.values()])
+    if (filtered && branchLayout.positions.size) hasStoredLayout.value = true
+  }
+  if (filtered) filteredLayout.update(visibleNodes.value, branches.value, visibleEdges.value)
+  const activePositions = filtered ? filteredLayout.positions : branchLayout.positions
+  previewClearance.clear()
+  if (chart && activePositions.size) {
+    // Local pixel buckets bound the neighbor search even with thousands of
+    // loaded nodes. Only nearby centers can constrain a 320px thumbnail.
+    const buckets = new Map<string, { id: string; x: number; y: number }[]>()
+    const points: { id: string; x: number; y: number }[] = []
+    for (const node of renderedNodes.value) {
+      const point = activePositions.get(node.id)
+      if (!point) continue
+      const screen: unknown = chart.convertToPixel({ seriesId: GRAPH_SERIES_ID }, [point.x, point.y])
+      if (!Array.isArray(screen) || !Number.isFinite(screen[0]) || !Number.isFinite(screen[1])) continue
+      const projected = { id: node.id, x: screen[0] as number, y: screen[1] as number }
+      points.push(projected)
+      const key = `${Math.floor(projected.x / 80)},${Math.floor(projected.y / 80)}`
+      if (!buckets.has(key)) buckets.set(key, [])
+      buckets.get(key)!.push(projected)
+    }
+    for (const point of points) {
+      const node = nodes.value.get(point.id)!
+      if (!thumbnailKeys.has(node.id)) continue
+      if (point.x < -320 || point.x > viewportSize.width + 320
+        || point.y < -320 || point.y > viewportSize.height + 320) continue
+      let available = 320
+      for (let x = Math.floor((point.x - 332) / 80); x <= Math.floor((point.x + 332) / 80); x++) {
+        for (let y = Math.floor((point.y - 332) / 80); y <= Math.floor((point.y + 332) / 80); y++) {
+          for (const neighbor of buckets.get(`${x},${y}`) ?? []) {
+            if (neighbor.id !== point.id) available = Math.min(available,
+              Math.max(1, Math.max(Math.abs(point.x - neighbor.x), Math.abs(point.y - neighbor.y)) - 12))
+          }
+        }
+      }
+      previewClearance.set(point.id, available)
+    }
+  }
+  // Use a data-space center: percentage centers have legacy canvas semantics
+  // in ECharts and can frame outside a map with negative coordinates.
+  const requestedView = options.viewState ?? currentView
+  const fitting = !requestedView?.center || (requestedView.zoom ?? 1) <= MIN_ZOOM
+    || requestedView.center.some(value => typeof value === 'string') && requestedView.zoom === MIN_ZOOM
+  let center = requestedView?.center
+  if (fitting && activePositions.size) {
+    const points = [...activePositions.values()]
+    center = [(Math.min(...points.map(point => point.x)) + Math.max(...points.map(point => point.x))) / 2,
+      (Math.min(...points.map(point => point.y)) + Math.max(...points.map(point => point.y))) / 2]
+  }
+  const windowIds = new Set(visibleNodeIds.value)
+  if (chart
+    && Math.abs((currentView?.zoom ?? 1) - symbolZoom) < 0.000001
+    && JSON.stringify(center) === JSON.stringify(currentView?.center)) {
+    for (const node of visibleNodes.value) {
+      const point = activePositions.get(node.id)
+      if (!point) continue
+      const screen: unknown = chart.convertToPixel({ seriesId: GRAPH_SERIES_ID }, [point.x, point.y])
+      const branch = branchByAnchor.value.get(node.id)
+      const size = nodeSymbolSize(node, branch && !expandedBranches.value.has(node.id) ? branch.memberIds.length : 0)
+      const dimensions = Array.isArray(size) ? size : [size, size]
+      const screenScale = 1 + (symbolZoom - 1) * NODE_SCALE_RATIO
+      const halfWidth = dimensions[0]! * screenScale / 2 + 4, halfHeight = dimensions[1]! * screenScale / 2 + 4
+      if (Array.isArray(screen) && (screen[0] + halfWidth < 0 || screen[0] - halfWidth > viewportSize.width
+        || screen[1] + halfHeight < 0 || screen[1] - halfHeight > viewportSize.height)) windowIds.delete(node.id)
+    }
+  }
   const hubIds = new Set(
     visibleNodes.value
       .filter(node => isLayoutHub(node, degrees.get(node.id) ?? 0))
@@ -1012,7 +1124,7 @@ function graphOption(options: {
   const labelBudget = overview.value
     ? Math.max(4, Math.min(12, Math.floor(viewportSize.width * viewportSize.height / 80_000)))
     : Math.max(4, Math.min(80, Math.floor(viewportSize.width * viewportSize.height / 20_000)))
-  const labelIds = new Set([...renderedNodes.value].sort((left, right) => (
+  const labelIds = new Set(renderedNodes.value.filter(node => windowIds.has(node.id)).sort((left, right) => (
     Number(rootDirectoryIds.has(right.id)) - Number(rootDirectoryIds.has(left.id))
     || Number(hubIds.has(right.id)) - Number(hubIds.has(left.id))
     || (degrees.get(right.id) ?? 0) - (degrees.get(left.id) ?? 0)
@@ -1021,7 +1133,13 @@ function graphOption(options: {
   // Force distances use map units: adapt to the canvas so ordinary windows do not
   // inherit distances tuned for a large fullscreen view.
   const forceScale = Math.min(1, Math.max(0.04, (Math.min(viewportSize.width, viewportSize.height) / 1400) ** 2))
-  const seriesNodes = dynamicLayout.value && !hasStoredLayout.value ? visibleNodes.value : [...nodes.value.values()]
+  const seriesNodes = filtered || (dynamicLayout.value && !hasStoredLayout.value) ? visibleNodes.value : [...nodes.value.values()]
+  const seriesEdges = (dynamicLayout.value && !hasStoredLayout.value && !filtered ? visibleEdges.value : renderedEdges.value)
+    .filter(edge => (!dynamicLayout.value || hasStoredLayout.value)
+      ? windowIds.has(edge.source_item_id) || windowIds.has(edge.target_item_id) : true)
+  const edgeOpacityScale = Math.min(1, Math.sqrt(200 / Math.max(1, seriesEdges.filter(edge => (
+    !collapsedMemberIds.value.has(edge.source_item_id) && !collapsedMemberIds.value.has(edge.target_item_id)
+  )).length)))
   const revealed = options.revealedIds
   return {
     animation: false,
@@ -1043,11 +1161,13 @@ function graphOption(options: {
       animationDurationUpdate: 0,
       // A restored map uses explicit coordinates. Native force initialization
       // keeps its own point cache and can discard supplied fixed coordinates.
-      layout: dynamicLayout.value && !hasStoredLayout.value ? 'force' : 'none',
+      layout: dynamicLayout.value && !hasStoredLayout.value && !filtered ? 'force' : 'none',
       preserveAspect: true,
-      nodeScaleRatio: dynamicLayout.value ? 0.6 : 0.1,
+      // ECharts treats zero as the default ratio of one. A tiny positive ratio
+      // compensates the camera scale; nodeSymbolSize supplies the two sizes.
+      nodeScaleRatio: NODE_SCALE_RATIO,
       labelLayout: params => ({
-        hideOverlap: !allTitles.value && !rootDirectoryIds.has(seriesNodes[params.dataIndex ?? -1]?.id ?? ''),
+        hideOverlap: !rootDirectoryIds.has(seriesNodes[params.dataIndex ?? -1]?.id ?? ''),
         moveOverlap: rootDirectoryIds.has(seriesNodes[params.dataIndex ?? -1]?.id ?? '') ? 'shiftY' : undefined,
       }),
       roam: true,
@@ -1058,8 +1178,8 @@ function graphOption(options: {
       right: 36,
       top: 44,
       bottom: 44,
-      center: options.viewState?.center,
-      zoom: options.viewState?.zoom,
+      center,
+      zoom: Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, symbolZoom)),
       scaleLimit: {
         min: MIN_ZOOM,
         max: MAX_ZOOM,
@@ -1074,14 +1194,13 @@ function graphOption(options: {
       data: seriesNodes.map(node => {
         const freshnessScore = freshness(node)
         const selected = selectedNodeId.value === node.id
-        const hidden = !visibleNodeIds.value.has(node.id) || collapsedMemberIds.value.has(node.id)
+        const hidden = !windowIds.has(node.id) || collapsedMemberIds.value.has(node.id)
         const branch = branchByAnchor.value.get(node.id)
         const groupedCount = branch && !expandedBranches.value.has(node.id)
           ? branch.memberIds.filter(id => collapsedMemberIds.value.has(id)).length : 0
         const degree = degrees.get(node.id) ?? 0
         const geometric = node.entity_kind === 'memory' || node.entity_kind === 'topic'
           || node.entity_kind === 'contact' || node.entity_kind === 'conversation'
-        const borderWidthScale = overview.value && geometric ? 0.5 : 1
         const hideBorder = node.entity_kind === 'folder' || node.entity_kind === 'directory'
           || node.entity_kind === 'file' || node.entity_kind === 'attachment'
         const accent = RESOURCE_ROLE_ACCENTS[node.entity_kind]
@@ -1091,7 +1210,7 @@ function graphOption(options: {
           id: node.id,
           name: node.title,
           value: Math.sqrt(degree + 1),
-          ...(!dynamicLayout.value || hasStoredLayout.value ? branchLayout.positions.get(node.id) : {}),
+          ...(!dynamicLayout.value || hasStoredLayout.value || filtered ? activePositions.get(node.id) : {}),
           fixed: dynamicLayout.value && (selected || (hasStoredLayout.value && branchLayout.positions.has(node.id))),
           symbol: hidden ? 'none' : nodeSymbol(node),
           symbolKeepAspect: !nodeThumbnailUrl(node),
@@ -1107,7 +1226,7 @@ function graphOption(options: {
                 : node.source_managed
                   ? '#90caf9'
                   : 'rgba(255, 255, 255, 0.9)',
-            borderWidth: (hideBorder ? 0 : selected ? 4 : geometric ? 2 : node.source_managed ? 2 : 1.5) * borderWidthScale,
+            borderWidth: hideBorder ? 0 : selected ? 4 : geometric ? 2 : node.source_managed ? 2 : 1.5,
             ...nodeShadowStyle.value,
           },
           label: {
@@ -1118,7 +1237,7 @@ function graphOption(options: {
             opacity: 1,
             fontSize: selected ? 12 : 11,
             fontWeight: selected || rootDirectoryIds.has(node.id) ? 600 : 400,
-            formatter: groupedCount ? `${nodeLabel(node)}\n${t('memory.graph.branchCount', { count: groupedCount })}` : nodeLabel(node),
+            formatter: groupedCount ? `${branch?.neighborIds?.map(id => nodeLabel(nodes.value.get(id)!)).join(' · ') ?? nodeLabel(node)}\n${t('memory.graph.branchCount', { count: groupedCount })}` : nodeLabel(node),
           },
           emphasis: {
             focus: 'adjacency',
@@ -1127,7 +1246,7 @@ function graphOption(options: {
             itemStyle: {
               opacity: 1,
               borderColor: geometric ? geometricBorderColor : dark ? '#ffffff' : '#263238',
-              borderWidth: (hideBorder ? 0 : 3) * borderWidthScale,
+              borderWidth: hideBorder ? 0 : 3,
             },
           },
           select: {
@@ -1135,12 +1254,12 @@ function graphOption(options: {
             itemStyle: {
               opacity: 1,
               borderColor: geometric ? geometricBorderColor : dark ? '#ffffff' : '#263238',
-              borderWidth: (hideBorder ? 0 : 4) * borderWidthScale,
+              borderWidth: hideBorder ? 0 : 4,
             },
           },
         }
       }),
-      links: (dynamicLayout.value ? visibleEdges.value : renderedEdges.value).map(edge => {
+      links: seriesEdges.map(edge => {
         const structural = isStructuralEdge(edge.relation_type)
         const betweenHubs = hubIds.has(edge.source_item_id) && hubIds.has(edge.target_item_id)
         const hidden = collapsedMemberIds.value.has(edge.source_item_id) || collapsedMemberIds.value.has(edge.target_item_id)
@@ -1152,7 +1271,7 @@ function graphOption(options: {
           ignoreForceLayout: !edge.suggested && betweenHubs,
           lineStyle: {
             color: palette.getPropertyValue(`--solaire-${edgeAccent(edge.relation_type)}-accent`).trim(),
-            opacity: hidden ? 0 : overview.value ? 0.75 : edge.suggested ? 0.38 : structural ? 0.86 : 0.62,
+            opacity: hidden ? 0 : (overview.value ? 0.5 : edge.suggested ? 0.38 : structural ? 0.86 : 0.62) * edgeOpacityScale,
             width: reducedLinkWidth((hidden ? 0 : overview.value ? 0.5 : edge.suggested
               ? 0.8 + edge.confidence
               : structural
@@ -1206,6 +1325,7 @@ function captureGraphView(): GraphViewState | null {
   const instance = chart
   if (!instance) return null
   const option = instance.getOption()
+  if (typeof option !== 'object' || option === null) return null
   const series = Reflect.get(option, 'series')
   if (!Array.isArray(series)) return null
   for (const candidate of series as unknown[]) {
@@ -1227,11 +1347,11 @@ function applyPreferences(preferences: GraphPreferences): void {
   hiddenEntityKinds.value = new Set(preferences.hidden_entity_kinds)
   expandedBranches.value = new Set(preferences.expanded_branches)
   restoredCamera = preferences.camera ? {
-    center: preferences.camera.center ?? ['50%', '50%'], zoom: preferences.camera.zoom,
+    center: preferences.camera.center ?? ['50%', '50%'], zoom: Math.max(MIN_ZOOM, preferences.camera.zoom),
   } : null
   const zoom = preferences.camera?.zoom ?? 1
-  overview.value = zoom <= 0.55
-  allTitles.value = zoom >= MAX_ZOOM
+  overview.value = zoom <= 1.2
+  allTitles.value = zoom >= BRANCH_OPEN_ZOOM
 }
 
 function displayedPositions(): Map<string, ScreenPoint> {
@@ -1254,6 +1374,9 @@ function stagePositions(): void {
 
 function freezePositions(): void {
   if (!chart || !chartReady.value || loading.value || reloading.value || !nodes.value.size) return
+  // Type filters have their own compact layout. Never replace the saved full
+  // map with coordinates from a temporary filtered view.
+  if (hiddenEntityKinds.value.size) return
   for (const [key, point] of displayedPositions()) branchLayout.positions.set(key, point)
   branchLayout.update([...nodes.value.values()], graphBranches([...nodes.value.values()], [...edges.value.values()]), [...edges.value.values()])
   hasStoredLayout.value = true
@@ -1261,7 +1384,8 @@ function freezePositions(): void {
 }
 
 function samplePositions(): void {
-  if (!chart || !chartReady.value || loading.value || reloading.value || hasStoredLayout.value || !nodes.value.size) return
+  if (!chart || !chartReady.value || loading.value || reloading.value || hasStoredLayout.value
+    || hiddenEntityKinds.value.size || !nodes.value.size) return
   const points = displayedPositions()
   if (!points.size) return
   const stable = points.size === previousPositionSample.size && [...points].every(([key, point]) => {
@@ -1323,13 +1447,15 @@ function renderGraph(options: {
 } = {}): void {
   const instance = chart
   if (!instance) return
+  const previousView = captureGraphView()
   const generation = ++layoutGeneration
   removeLayoutTimeout()
   layoutRelaxationEnabled = false
   layoutPending.value = visibleNodes.value.length > 0 && (loading.value || !chartReady.value)
   if (visibleNodes.value.length === 0) chartReady.value = true
   if (!options.preserveSelection) closeInspector(false)
-  const animate = dynamicLayout.value && !hasStoredLayout.value && renderedNodes.value.length > 0 && options.relax !== false
+  const animate = dynamicLayout.value && !hasStoredLayout.value && !hiddenEntityKinds.value.size
+    && renderedNodes.value.length > 0 && options.relax !== false
   const rebalancing = hasLayoutStarted
   const renderedIds = new Set(renderedNodes.value.map(node => node.id))
   const reveal = options.relax === false && lastRenderedIds.size > 0
@@ -1344,6 +1470,13 @@ function renderGraph(options: {
   }), {
     notMerge: false,
   })
+  // A direct group click or restored camera changes the transform during the
+  // update. Apply its viewport window only after that transform exists.
+  if ((!dynamicLayout.value || hasStoredLayout.value || hiddenEntityKinds.value.size)
+    && (options.viewState?.zoom !== previousView?.zoom
+      || JSON.stringify(options.viewState?.center) !== JSON.stringify(previousView?.center))) {
+    instance.setOption(graphOption({ viewState: captureGraphView(), forceFriction: 0 }), { notMerge: false })
+  }
   lastRenderedIds = renderedIds
   if (animate) {
     hasLayoutStarted = true
@@ -1392,6 +1525,7 @@ async function loadInitial(options: { preserveView?: boolean } = {}): Promise<vo
     hasLayoutStarted = false
     lastRenderedIds = new Set()
     branchLayout.clear()
+    filteredLayout.clear()
     hasStoredLayout.value = false
     hiddenEntityKinds.value = new Set()
     previousPositionSample = new Map()
@@ -1623,7 +1757,7 @@ function resizeChart(): void {
   scheduleThumbnails()
   // A toolbar wrapping during zoom may resize the canvas. Continue enabled
   // physics, but never restart a layout frozen by a presentation change.
-  if (changed && chart && dynamicLayout.value && nodes.value.size && !layoutRelaxationEnabled) {
+  if (changed && chart && nodes.value.size && !layoutRelaxationEnabled) {
     renderGraph({ viewState: captureGraphView(), preserveSelection: true, relax: false })
   }
 }
@@ -1633,7 +1767,7 @@ function fitGraph(): void {
   freezePositions()
   closeInspector(false)
   expandedBranches.value = new Set()
-  overview.value = false
+  overview.value = true
   allTitles.value = false
   renderGraph({ viewState: { center: ['50%', '50%'], zoom: 1 }, preserveSelection: true, relax: false })
   stagePresentation()

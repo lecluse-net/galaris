@@ -324,7 +324,16 @@ du plus ancien au plus récent dans le graphe chargé. La légende affiche les d
 extrêmes ; masquer un type de nœud ne change pas cette échelle. Les nœuds anciens restent
 visibles et leurs libellés conservent leur contraste.
 En vue éloignée, les titres privilégient les nœuds structurants et les plus connectés.
-Au zoom maximal, chaque nœud affiché garde son titre visible sans survol.
+Les symboles ont deux tailles d'affichage fixes : éloignée et proche. À partir du zoom proche,
+zoomer davantage écarte leurs positions sans les agrandir. Les titres restent filtrés pour
+éviter les superpositions, y compris au zoom maximal ; le survol ou la sélection les révèle.
+Les souvenirs ayant exactement les mêmes relations avec des sujets, contacts ou autres
+ancres structurantes sont regroupés avec un compteur. Seuls les nœuds visibles sont dessinés.
+Le dézoom minimal correspond au graphe entier ajusté à la fenêtre, toujours centré après
+déplacement ; le zoom peut atteindre un million de fois ce cadrage. Les aperçus grandissent
+plus tard, selon l'espace entre voisins, jusqu'à la taille réelle en pixels de la miniature.
+Masquer une nature réorganise et recadre les éléments restants ; réafficher toutes les natures
+restaure les positions enregistrées.
 Les répertoires racines gardent leur titre visible même en vue éloignée. Un titre « . »
 est remplacé dans le graphe par l'URI avec son schéma, par exemple `nextcloud://` ;
 les titres personnalisés sont conservés.

@@ -2,7 +2,7 @@ import type { MemoryGraphEdge, MemoryGraphNode } from './types'
 import { placeGraphRegions } from './graphLayout.ts'
 
 export interface GraphPoint { x: number; y: number }
-export interface GraphBranch { anchorId: string; memberIds: string[] }
+export interface GraphBranch { anchorId: string; memberIds: string[]; neighborIds?: string[] }
 
 export const MIN_BRANCH_SIZE = 8
 export const BRANCH_OPEN_ZOOM = 1.8
@@ -14,12 +14,17 @@ export function graphBranches(nodes: readonly MemoryGraphNode[], edges: readonly
   const byId = new Map(nodes.map(node => [node.id, node]))
   const neighbors = new Map<string, Set<string>>()
   const confirmed = new Map<string, Set<string>>()
+  const signatures = new Map<string, Set<string>>()
+  const suggestedIds = new Set<string>()
   for (const edge of edges) {
     if (edge.source_item_id === edge.target_item_id) continue
     for (const [id, other] of [[edge.source_item_id, edge.target_item_id], [edge.target_item_id, edge.source_item_id]]) {
       if (!id || !other || !byId.has(id) || !byId.has(other)) continue
       if (!neighbors.has(id)) neighbors.set(id, new Set())
       neighbors.get(id)!.add(other)
+      if (!signatures.has(id)) signatures.set(id, new Set())
+      signatures.get(id)!.add(JSON.stringify([other, edge.relation_type, edge.source_item_id === id, edge.suggested]))
+      if (edge.suggested) suggestedIds.add(id)
       if (!edge.suggested) {
         if (!confirmed.has(id)) confirmed.set(id, new Set())
         confirmed.get(id)!.add(other)
@@ -38,9 +43,30 @@ export function graphBranches(nodes: readonly MemoryGraphNode[], edges: readonly
     if (!members.has(anchorId)) members.set(anchorId, [])
     members.get(anchorId)!.push(node.id)
   }
-  return [...members].filter(([, ids]) => ids.length >= MIN_BRANCH_SIZE)
+  const branches: GraphBranch[] = [...members].filter(([, ids]) => ids.length >= MIN_BRANCH_SIZE)
     .sort(([left], [right]) => left.localeCompare(right))
     .map(([anchorId, memberIds]) => ({ anchorId, memberIds: memberIds.sort() }))
+  // A memory can belong to a topic AND a contact. Group identical, complete
+  // neighborhoods using one real member as representative: its edges preserve
+  // every connection, rather than falsely assigning the group to a single hub.
+  const shared = new Map<string, string[]>()
+  for (const node of nodes) {
+    const adjacent = neighbors.get(node.id)
+    if (node.entity_kind !== 'memory' || !adjacent || adjacent.size < 2
+      || adjacent.size !== node.relation_count || confirmed.get(node.id)?.size !== adjacent.size
+      || [...adjacent].some(id => !['topic', 'contact', 'conversation', 'folder', 'directory'].includes(byId.get(id)!.entity_kind))
+      || suggestedIds.has(node.id)) continue
+    const signature = JSON.stringify([...(signatures.get(node.id) ?? [])].sort())
+    if (!shared.has(signature)) shared.set(signature, [])
+    shared.get(signature)!.push(node.id)
+  }
+  for (const ids of shared.values()) {
+    if (ids.length <= MIN_BRANCH_SIZE) continue
+    ids.sort()
+    const anchorId = ids[0]!
+    branches.push({ anchorId, memberIds: ids.slice(1), neighborIds: [...neighbors.get(anchorId)!].sort() })
+  }
+  return branches.sort((left, right) => left.anchorId.localeCompare(right.anchorId))
 }
 
 /** Stable positions for one loaded window. Hidden leaves retain their reserved space.
