@@ -343,6 +343,7 @@
 
       <q-tab-panel name="graph" class="q-pa-none">
         <MemoryGraph
+          renderer="3d"
           ref="memoryGraph"
           v-if="activeTab === 'graph'"
           :agent-id="store.selectedAgentId"

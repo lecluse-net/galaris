@@ -13,14 +13,18 @@
         <div class="text-subtitle1 text-weight-medium">{{ t('memory.graph.title') }}</div>
       </div>
       <div class="memory-graph__header-actions row items-center q-gutter-sm">
+        <q-btn-group outline>
+          <q-btn :color="viewMode === '3d' ? 'primary' : undefined" :label="t('memory.graph.view3d')" :aria-pressed="viewMode === '3d'" @click="changeViewMode('3d')" />
+          <q-btn :color="viewMode === '2d' ? 'primary' : undefined" :label="t('memory.graph.view2d')" :aria-pressed="viewMode === '2d'" @click="changeViewMode('2d')" />
+        </q-btn-group>
         <q-chip dense outline icon="hub">
           {{ t('memory.graph.nodeCount', { count: visibleNodes.length }) }}
         </q-chip>
         <q-chip dense outline icon="timeline">
           {{ t('memory.graph.edgeCount', { count: visibleEdges.length }) }}
         </q-chip>
-        <q-chip v-if="collapsedMemberIds.size" dense outline icon="account_tree" role="status">
-          {{ t('memory.graph.groupedCount', { count: collapsedMemberIds.size }) }}
+        <q-chip v-if="groupedNodeCount" dense outline icon="account_tree" role="status">
+          {{ t('memory.graph.groupedCount', { count: groupedNodeCount }) }}
         </q-chip>
         <div class="memory-graph__refresh-controls row items-center no-wrap">
           <q-toggle
@@ -77,6 +81,10 @@
     >
       <template #avatar><q-icon name="filter_alt" /></template>
       {{ t('memory.graph.edgesTruncated') }}
+    </q-banner>
+
+    <q-banner v-if="threeUnavailable" class="memory-graph__banner memory-graph__banner--warning" role="status">
+      {{ t('memory.graph.webglUnavailable') }}
     </q-banner>
 
     <q-banner v-if="viewStateError" class="memory-graph__banner memory-graph__banner--warning">
@@ -247,6 +255,7 @@
         class="memory-graph__viewport"
       >
         <div
+          v-show="viewMode === '2d'"
           ref="chartElement"
           class="memory-graph__chart"
           :class="{ 'memory-graph__chart--loading': graphBusy }"
@@ -254,6 +263,19 @@
           tabindex="0"
           :aria-label="t('memory.graph.canvasLabel')"
         />
+        <div
+          v-show="viewMode === '3d'"
+          ref="threeElement"
+          class="memory-graph__chart--3d"
+          :class="{ 'memory-graph__chart--loading': graphBusy }"
+          role="application"
+          tabindex="0"
+          :aria-label="t('memory.graph.canvas3dLabel')"
+          :aria-description="t('memory.graph.navigation3d')"
+        />
+        <div v-if="viewMode === '3d' && !graphBusy" class="memory-graph__navigation-hint">
+          {{ t('memory.graph.navigation3d') }}
+        </div>
 
         <div v-if="!graphBusy && visibleNodes.length === 0" class="memory-graph__empty">
           <q-icon name="hub" size="48px" color="grey-5" />
@@ -324,6 +346,8 @@ import { GraphThumbnails, type GraphThumbnailCandidate } from '../graphThumbnail
 import { onThumbnailReady } from '../thumbnailEvents'
 import { graphViewportData } from '../graphViewport'
 import { GraphStatePersistence, type GraphPreferences, type GraphContext } from '../graphState'
+import type { MemoryGraphScene, Graph3dCamera, Graph3dPreview } from '../graph3dScene'
+import type { Graph3dLayoutResult, GraphPoint3d } from '../graph3dLayout'
 import type {
   CatalogueResource,
   MemoryGraphCursor,
@@ -355,11 +379,13 @@ const {
   query,
   topicItemId,
   contactItemId,
+  renderer = '2d',
 } = defineProps<{
   agentId: number | null
   query: string
   topicItemId: string | null
   contactItemId: string | null
+  renderer?: '2d' | '3d'
 }>()
 
 const emit = defineEmits<{
@@ -411,6 +437,21 @@ const { registerTimeout: registerSaveTimeout, removeTimeout: removeSaveTimeout }
 const { registerInterval: registerPositionInterval, removeInterval: removePositionInterval } = useInterval()
 const viewport = useTemplateRef<HTMLDivElement>('viewport')
 const chartElement = useTemplateRef<HTMLDivElement>('chartElement')
+const threeElement = useTemplateRef<HTMLDivElement>('threeElement')
+const viewMode = ref<'2d' | '3d'>(renderer)
+const spatialGroupedCount = ref(0)
+const threeUnavailable = ref(false)
+let threeScene: MemoryGraphScene | null = null
+let threeCamera: Graph3dCamera | null = null
+let threeInitializing: Promise<void> | null = null
+let threeWorker: Worker | null = null
+let cancelThreeLayout: (() => void) | null = null
+let threeLayout: Promise<Graph3dLayoutResult | null> | null = null
+let threeLayoutKey: unknown[] = []
+let threePoints = new Map<string, GraphPoint3d>()
+let threeRenderGeneration = 0
+let threeDisposed = false
+let threeHasMap = false
 const nodes = shallowRef(new Map<string, MemoryGraphNode>())
 const edges = shallowRef(new Map<string, MemoryGraphEdge>())
 const expandedBranches = shallowRef(new Set<string>())
@@ -446,6 +487,7 @@ let resizeObserver: ResizeObserver | null = null
 let chart: ECharts | null = null
 let previousBodyOverflow: string | null = null
 let loadGeneration = 0
+let rootController: AbortController | null = null
 let layoutGeneration = 0
 let renderFrame: number | null = null
 let hasLayoutStarted = false
@@ -506,6 +548,7 @@ const branchByAnchor = computed(() => new Map(branches.value.map(branch => [bran
 const collapsedMemberIds = computed(() => new Set(branches.value
   .filter(branch => !expandedBranches.value.has(branch.anchorId))
   .flatMap(branch => branch.memberIds.filter(id => id !== selectedNodeId.value))))
+const groupedNodeCount = computed(() => collapsedMemberIds.value.size + (viewMode.value === '3d' ? spatialGroupedCount.value : 0))
 const renderedNodes = computed(() => visibleNodes.value.filter(node => !collapsedMemberIds.value.has(node.id)))
 const nodeShadowStyle = computed(() => ({
   shadowColor: echarts.color.modifyAlpha(solaire.gray.accent, 0.28),
@@ -587,6 +630,11 @@ function nodeTypeToggleLabel(label: string, hidden: boolean): string {
 function renderTypeFilterChange(): void {
   if (selectedNodeId.value !== null && selectedNode.value === null) closeInspector()
   filteredLayout.clear()
+  if (viewMode.value === '3d') {
+    expandedBranches.value = new Set()
+    void renderGraph3d(true)
+    return
+  }
   renderGraph({
     viewState: { center: ['50%', '50%'], zoom: 1 },
     preserveSelection: true,
@@ -655,10 +703,10 @@ function nodeThumbnailUrl(node: MemoryGraphNode): string | null {
   return key ? thumbnails.url(key) : null
 }
 
-function nodeSymbol(node: MemoryGraphNode): string {
+function nodeSymbol(node: MemoryGraphNode, withThumbnail = true): string {
   const resourceKind = nodeResourceKind(node)
   if (resourceKind === 'audio') return mediaFileSymbols.audio
-  const url = nodeThumbnailUrl(node)
+  const url = withThumbnail ? nodeThumbnailUrl(node) : null
   if (url) return `image://${url}`
   if (resourceKind === 'image' || resourceKind === 'video') return mediaFileSymbols[resourceKind]
   switch (node.entity_kind) {
@@ -685,7 +733,7 @@ function nodeSymbolSize(node: MemoryGraphNode, groupedCount = 0): number | [numb
   // coordinates. Compensate even ECharts' tiny residual scale (zero means one).
   const near = symbolZoom >= BRANCH_OPEN_ZOOM
   const compensation = 1 / (1 + (symbolZoom - 1) * NODE_SCALE_RATIO)
-  const size = Math.min(groupedCount ? 56 : 48, nodeBaseSymbolSize(node, groupedCount)) * (near ? 1.1 : 0.28)
+  const size = Math.min(groupedCount ? 56 : 48, nodeBaseSymbolSize(node, groupedCount)) * (near ? 1.1 : 0.56)
   if (!nodeThumbnailUrl(node)) return (isAudioNode(node) && near ? Math.max(22, size) : size) * compensation
   const key = thumbnailKeys.get(node.id)
   const aspect = key ? thumbnails.aspect(key) : 1
@@ -737,6 +785,29 @@ function reducedLinkWidth(width: number): number {
   return width <= 1 ? width : Math.max(1, width * 0.8 * 0.7)
 }
 
+function nodePaintStyle(node: MemoryGraphNode, selected: boolean, palette: CSSStyleDeclaration) {
+  const geometric = ['memory', 'topic', 'contact', 'conversation'].includes(node.entity_kind)
+  const hideBorder = ['folder', 'directory', 'file', 'attachment'].includes(node.entity_kind)
+  return {
+    color: palette.getPropertyValue(`--solaire-${roleAccent(node.entity_kind)}-accent`).trim(),
+    opacity: selected ? 1 : MIN_NODE_OPACITY + freshness(node) * (1 - MIN_NODE_OPACITY),
+    borderColor: geometric ? palette.getPropertyValue(`--solaire-${roleAccent(node.entity_kind)}-dark`).trim()
+      : selected || isStructuralNode(node) ? ($q.dark.isActive ? '#ffffff' : '#263238')
+        : node.source_managed ? '#90caf9' : 'rgba(255, 255, 255, 0.9)',
+    borderWidth: hideBorder ? 0 : selected ? 4 : geometric ? 2 : node.source_managed ? 2 : 1.5,
+  }
+}
+
+function edgePaintStyle(edge: MemoryGraphEdge, overviewMode: boolean, opacityScale: number, palette: CSSStyleDeclaration) {
+  return {
+    color: palette.getPropertyValue(`--solaire-${edgeAccent(edge.relation_type)}-accent`).trim(),
+    opacity: (overviewMode ? 0.5 : edge.suggested ? 0.38 : isStructuralEdge(edge.relation_type) ? 0.86 : 0.62) * opacityScale,
+    width: reducedLinkWidth((overviewMode ? 0.5 : edge.suggested ? 0.8 + edge.confidence
+      : isStructuralEdge(edge.relation_type) ? 2 + edge.confidence * 1.8 : 0.9 + edge.confidence * 1.4) * LINK_WIDTH_SCALE),
+    type: edge.suggested ? 'dashed' as const : 'solid' as const,
+  }
+}
+
 function activityTimestamp(node: MemoryGraphNode): number {
   const timestamp = Date.parse(node.activity_at)
   return Number.isFinite(timestamp) ? timestamp : Date.parse(node.created_at)
@@ -765,6 +836,10 @@ function revealBranch(id: string, anchor?: ScreenPoint): void {
   expandedBranches.value = new Set([...expandedBranches.value, id])
   persistence?.stagePreferences({ expanded_branches: [...expandedBranches.value] })
   scheduleViewSave()
+  if (viewMode.value === '3d') {
+    void renderGraph3d().then(() => threeScene?.focus(id))
+    return
+  }
   const clicked: unknown = dynamicLayout.value && anchor
     ? chart?.convertFromPixel({ seriesId: GRAPH_SERIES_ID }, [anchor.x, anchor.y]) : null
   const point = Array.isArray(clicked) && typeof clicked[0] === 'number' && typeof clicked[1] === 'number'
@@ -841,6 +916,10 @@ function scheduleThumbnails(): void {
 }
 
 function updateThumbnails(): void {
+  if (viewMode.value === '3d') {
+    updateThreeThumbnails()
+    return
+  }
   const instance = chart
   if (!instance || agentId === null) return
   const zoom = captureGraphView()?.zoom ?? 1
@@ -903,6 +982,7 @@ function scheduleThumbnailPaint(): void {
 
 function paintThumbnails(): void {
   thumbnailFrame = null
+  if (viewMode.value === '3d') { paintThreeThumbnails(); return }
   const instance = chart
   if (!instance) return
   const option = instance.getOption() as unknown as MemoryGraphOption
@@ -1192,7 +1272,6 @@ function graphOption(options: {
       // Small graphs keep folded leaves in the bounded simulation, so unveiling
       // them never changes the forces or scatters newcomers across the canvas.
       data: seriesNodes.map(node => {
-        const freshnessScore = freshness(node)
         const selected = selectedNodeId.value === node.id
         const hidden = !windowIds.has(node.id) || collapsedMemberIds.value.has(node.id)
         const branch = branchByAnchor.value.get(node.id)
@@ -1203,8 +1282,6 @@ function graphOption(options: {
           || node.entity_kind === 'contact' || node.entity_kind === 'conversation'
         const hideBorder = node.entity_kind === 'folder' || node.entity_kind === 'directory'
           || node.entity_kind === 'file' || node.entity_kind === 'attachment'
-        const accent = RESOURCE_ROLE_ACCENTS[node.entity_kind]
-        const color = palette.getPropertyValue(`--solaire-${accent ?? roleAccent(node.entity_kind)}-accent`).trim()
         const geometricBorderColor = palette.getPropertyValue(`--solaire-${roleAccent(node.entity_kind)}-dark`).trim()
         return {
           id: node.id,
@@ -1217,16 +1294,8 @@ function graphOption(options: {
           symbolSize: nodeSymbolSize(node, groupedCount),
           selected,
           itemStyle: {
-            color,
-            opacity: hidden ? 0 : selected ? 1 : MIN_NODE_OPACITY + freshnessScore * (1 - MIN_NODE_OPACITY),
-            borderColor: geometric ? geometricBorderColor : selected
-              ? (dark ? '#ffffff' : '#263238')
-              : isStructuralNode(node)
-                ? (dark ? '#ffffff' : '#263238')
-                : node.source_managed
-                  ? '#90caf9'
-                  : 'rgba(255, 255, 255, 0.9)',
-            borderWidth: hideBorder ? 0 : selected ? 4 : geometric ? 2 : node.source_managed ? 2 : 1.5,
+            ...nodePaintStyle(node, selected, palette),
+            ...(hidden ? { opacity: 0 } : {}),
             ...nodeShadowStyle.value,
           },
           label: {
@@ -1270,15 +1339,9 @@ function graphOption(options: {
           value: edge.confidence,
           ignoreForceLayout: !edge.suggested && betweenHubs,
           lineStyle: {
-            color: palette.getPropertyValue(`--solaire-${edgeAccent(edge.relation_type)}-accent`).trim(),
-            opacity: hidden ? 0 : (overview.value ? 0.5 : edge.suggested ? 0.38 : structural ? 0.86 : 0.62) * edgeOpacityScale,
-            width: reducedLinkWidth((hidden ? 0 : overview.value ? 0.5 : edge.suggested
-              ? 0.8 + edge.confidence
-              : structural
-                ? 2 + edge.confidence * 1.8
-                : 0.9 + edge.confidence * 1.4) * LINK_WIDTH_SCALE),
+            ...edgePaintStyle(edge, overview.value, edgeOpacityScale, palette),
+            ...(hidden ? { opacity: 0, width: 0 } : {}),
             curveness: curvatures.get(edge.id) ?? 0.22,
-            type: edge.suggested ? 'dashed' : 'solid',
           },
           emphasis: {
             lineStyle: {
@@ -1346,6 +1409,7 @@ function captureGraphView(): GraphViewState | null {
 function applyPreferences(preferences: GraphPreferences): void {
   hiddenEntityKinds.value = new Set(preferences.hidden_entity_kinds)
   expandedBranches.value = new Set(preferences.expanded_branches)
+  threeCamera = preferences.camera_3d ?? null
   restoredCamera = preferences.camera ? {
     center: preferences.camera.center ?? ['50%', '50%'], zoom: Math.max(MIN_ZOOM, preferences.camera.zoom),
   } : null
@@ -1373,6 +1437,7 @@ function stagePositions(): void {
 }
 
 function freezePositions(): void {
+  if (viewMode.value === '3d') return
   if (!chart || !chartReady.value || loading.value || reloading.value || !nodes.value.size) return
   // Type filters have their own compact layout. Never replace the saved full
   // map with coordinates from a temporary filtered view.
@@ -1404,6 +1469,14 @@ function scheduleViewSave(): void {
 }
 
 function stagePresentation(): void {
+  if (viewMode.value === '3d') {
+    if (persistence && threeScene && threeHasMap && !loading.value && !reloading.value) {
+      threeCamera = threeScene.view
+      persistence.stagePreferences({ expanded_branches: [...expandedBranches.value], camera_3d: threeCamera })
+      scheduleViewSave()
+    }
+    return
+  }
   if (!persistence || !chart || loading.value || reloading.value) return
   const view = captureGraphView()
   if (!view) return
@@ -1445,6 +1518,7 @@ function renderGraph(options: {
   preserveSelection?: boolean
   relax?: boolean
 } = {}): void {
+  if (viewMode.value === '3d') { void renderGraph3d(); return }
   const instance = chart
   if (!instance) return
   const previousView = captureGraphView()
@@ -1500,6 +1574,7 @@ function renderGraph(options: {
 async function loadInitial(options: { preserveView?: boolean } = {}): Promise<void> {
   const preserveView = options.preserveView === true
   const preservedSelection = preserveView ? selectedNodeId.value : null
+  if (preserveView && threeScene && threeHasMap) threeCamera = threeScene.view
   if (!preserveView) {
     freezePositions()
     stagePresentation()
@@ -1508,7 +1583,19 @@ async function loadInitial(options: { preserveView?: boolean } = {}): Promise<vo
     persistence = null
   }
   const generation = ++loadGeneration
+  rootController?.abort()
+  const controller = new AbortController()
+  rootController = controller
   thumbnails.clear()
+  threeScene?.setPreviews(new Map())
+  threeScene?.setData([], [], [], false)
+  cancelThreeLayout?.()
+  threeLayout = null
+  threeLayoutKey = []
+  threePoints.clear()
+  spatialGroupedCount.value = 0
+  threeHasMap = false
+  threeRenderGeneration++
   thumbnailResources.clear()
   thumbnailKeys.clear()
   removeThumbnailTimeout()
@@ -1531,6 +1618,7 @@ async function loadInitial(options: { preserveView?: boolean } = {}): Promise<vo
     previousPositionSample = new Map()
     stablePositionSamples = 0
     restoredCamera = null
+    threeCamera = null
     viewStateError.value = null
     expandedBranches.value = new Set()
     overview.value = false
@@ -1539,6 +1627,12 @@ async function loadInitial(options: { preserveView?: boolean } = {}): Promise<vo
   layoutPending.value = false
   if (!preserveView) chart?.clear()
   if (agentId === null) {
+    threeScene?.dispose()
+    threeScene = null
+    chart?.dispose()
+    chart = null
+    loading.value = false
+    reloading.value = false
     return
   }
 
@@ -1588,6 +1682,7 @@ async function loadInitial(options: { preserveView?: boolean } = {}): Promise<vo
         cursor,
         includeMatchingRoots: true,
         includeSavedPositions: true,
+        signal: controller.signal,
       })
       if (generation !== loadGeneration) return
       mergeRootPage(page)
@@ -1598,6 +1693,7 @@ async function loadInitial(options: { preserveView?: boolean } = {}): Promise<vo
       selectedNodeId.value = null
     }
     await nextTick()
+    await initializeRenderer()
     renderGraph({
       viewState: preserveView ? captureGraphView() : restoredCamera,
       preserveSelection: preserveView,
@@ -1661,6 +1757,7 @@ async function refreshLatestRoots(): Promise<void> {
       edgeLimit: 2500,
       includeMatchingRoots: true,
       includeSavedPositions: true,
+      signal: rootController?.signal,
     })
     if (generation !== loadGeneration) return
     if (!graphPageHasChanges(page)) { scheduleThumbnails(); return }
@@ -1683,6 +1780,10 @@ function selectNode(id: string): void {
   if (!node || !isNodeVisible(node)) return
   const wasCollapsed = collapsedMemberIds.value.has(id)
   selectedNodeId.value = id
+  if (viewMode.value === '3d') {
+    threeScene?.setSelected(id)
+    void renderGraph3d().then(() => threeScene?.focus(id))
+  }
   if (wasCollapsed || dynamicLayout.value) renderGraph({ viewState: captureGraphView(), preserveSelection: true, relax: false })
   chart?.dispatchAction({
     type: 'select',
@@ -1698,6 +1799,7 @@ function closeInspector(render = true): void {
   if (selectedNodeId.value === null) return
   const selectedId = selectedNodeId.value
   selectedNodeId.value = null
+  threeScene?.setSelected(null)
   chart?.dispatchAction({
     type: 'unselect',
     seriesId: GRAPH_SERIES_ID,
@@ -1753,6 +1855,7 @@ function resizeChart(): void {
   const changed = viewportSize.width !== Math.floor(rect.width) || viewportSize.height !== Math.floor(rect.height)
   viewportSize.width = Math.max(1, Math.floor(rect.width))
   viewportSize.height = Math.max(1, Math.floor(rect.height))
+  if (viewMode.value === '3d') { threeScene?.resize(); scheduleThumbnails(); return }
   chart?.resize()
   scheduleThumbnails()
   // A toolbar wrapping during zoom may resize the canvas. Continue enabled
@@ -1763,6 +1866,12 @@ function resizeChart(): void {
 }
 
 function fitGraph(): void {
+  if (viewMode.value === '3d') {
+    expandedBranches.value = new Set()
+    closeInspector(false)
+    void renderGraph3d().then(() => threeScene?.fit())
+    return
+  }
   if (!chart || !visibleNodes.value.length) return
   freezePositions()
   closeInspector(false)
@@ -1774,6 +1883,7 @@ function fitGraph(): void {
 }
 
 function zoomBy(scaleFactor: number): void {
+  if (viewMode.value === '3d') { threeScene?.zoomBy(scaleFactor); return }
   if (!chart) return
   chart.dispatchAction({
     type: 'graphRoam',
@@ -1810,6 +1920,9 @@ function initializeChart(): void {
     renderer: 'canvas',
     devicePixelRatio: Math.min(window.devicePixelRatio || 1, 2),
   })
+  // Switching from 3D already has positions. Establish the public coordinate
+  // system before graphOption projects them through the new ECharts instance.
+  chart.setOption({ series: [{ id: GRAPH_SERIES_ID, type: 'graph', layout: 'none', data: [], links: [] }] })
   chart.on('click', onGraphClick)
   chart.on('graphRoam', onGraphRoam)
   chart.getZr().on('pinch', onGraphPinch)
@@ -1818,6 +1931,190 @@ function initializeChart(): void {
   })
   resizeChart()
   renderGraph()
+}
+
+async function initializeRenderer(): Promise<void> {
+  if (threeDisposed || agentId === null) return
+  resizeObserver?.disconnect()
+  if (viewport.value) resizeObserver?.observe(viewport.value)
+  if (viewMode.value === '2d') { initializeChart(); return }
+  if (threeScene) return
+  if (threeInitializing) return threeInitializing
+  threeInitializing = (async () => {
+    try {
+      const { MemoryGraphScene } = await import('../graph3dScene')
+      if (threeDisposed || viewMode.value !== '3d' || !threeElement.value) return
+      threeScene = new MemoryGraphScene(threeElement.value, {
+        groupTitle: count => t('memory.graph.spatialGroup', { count }),
+        camera: onThreeCamera,
+        select: id => {
+          if (branchByAnchor.value.has(id) && !expandedBranches.value.has(id)) revealBranch(id)
+          else selectNode(id)
+        },
+        failure: () => {
+          threeUnavailable.value = true
+          threeScene?.dispose()
+          threeScene = null
+          void changeViewMode('2d')
+        },
+      })
+      threeUnavailable.value = false
+      await renderGraph3d()
+    } catch {
+      threeUnavailable.value = true
+      await changeViewMode('2d')
+    }
+  })().finally(() => { threeInitializing = null })
+  return threeInitializing
+}
+
+async function changeViewMode(mode: '2d' | '3d'): Promise<void> {
+  if (mode === viewMode.value && (mode === '3d' ? threeScene : chart)) return
+  freezePositions()
+  stagePresentation()
+  viewMode.value = mode
+  threeScene?.suspend(mode === '2d')
+  if (mode === '3d') stopGraphLayout()
+  await nextTick()
+  await initializeRenderer()
+  resizeChart()
+  renderGraph({ viewState: mode === '2d' ? captureGraphView() ?? restoredCamera : undefined, preserveSelection: true, relax: false })
+  scheduleThumbnails()
+}
+
+async function renderGraph3d(fit = false): Promise<void> {
+  const instance = threeScene
+  if (!instance || viewMode.value !== '3d') return
+  const generation = ++threeRenderGeneration
+  const key = [nodes.value, edges.value, hiddenEntityKinds.value]
+  if (key.some((value, index) => value !== threeLayoutKey[index])) {
+    cancelThreeLayout?.()
+    threeLayoutKey = key
+    layoutPending.value = visibleNodes.value.length > 0
+    const layout = hiddenEntityKinds.value.size ? filteredLayout : branchLayout
+    threeLayout = new Promise<Graph3dLayoutResult | null>(resolve => {
+      const worker = new Worker(new URL('../graph3d.worker.ts', import.meta.url), { type: 'module' })
+      threeWorker = worker
+      const finish = (result: Graph3dLayoutResult | null): void => {
+        worker.terminate()
+        if (threeWorker === worker) { threeWorker = null; cancelThreeLayout = null }
+        resolve(result)
+      }
+      cancelThreeLayout = () => finish(null)
+      worker.onmessage = (event: MessageEvent<Graph3dLayoutResult>) => finish(event.data)
+      worker.onerror = () => {
+        finish(null)
+        if (threeScene === instance && !threeDisposed) {
+          threeUnavailable.value = true
+          void changeViewMode('2d')
+        }
+      }
+      worker.postMessage({ generation, nodes: visibleNodes.value, edges: visibleEdges.value,
+        branches: branches.value, positions: [...layout.positions],
+        depths: [...threePoints].map(([id, point]) => [id, point.z]) })
+    })
+  }
+  let result: Graph3dLayoutResult | null
+  try {
+    result = await threeLayout
+  } catch {
+    if (generation !== threeRenderGeneration || threeDisposed) return
+    layoutPending.value = false
+    threeUnavailable.value = true
+    await changeViewMode('2d')
+    return
+  }
+  if (!result || generation !== threeRenderGeneration || threeScene !== instance || viewMode.value !== '3d') return
+  const layout = hiddenEntityKinds.value.size ? filteredLayout : branchLayout
+  for (const [id, point] of result.positions) layout.positions.set(id, point)
+  threePoints = new Map(result.points)
+  const members = new Map(branches.value.filter(branch => !expandedBranches.value.has(branch.anchorId))
+    .map(branch => [branch.anchorId, branch.memberIds.length]))
+  const palette = getComputedStyle(threeElement.value!)
+  const markers = renderedNodes.value.flatMap(node => {
+    const point = threePoints.get(node.id)
+    if (!point) return []
+    const grouped = members.get(node.id) ?? 0
+    const paint = nodePaintStyle(node, false, palette)
+    return [{ id: node.id, title: grouped ? `${node.title} (${t('memory.graph.branchCount', { count: grouped })})` : node.title, point, grouped,
+      ...paint, selectedBorderColor: nodePaintStyle(node, true, palette).borderColor,
+      symbol: nodeSymbol(node, false), size: nodeBaseSymbolSize(node, grouped),
+      shape: node.entity_kind === 'memory' ? 0 : node.entity_kind === 'topic' ? 1 : 2,
+      priority: node.id === selectedNodeId.value ? 100 : grouped ? 30 : isStructuralNode(node) || isRootDirectory(node) ? 10 : 0 }]
+  })
+  instance.setTheme($q.dark.isActive ? solaire.gray.dark : solaire.gray.light,
+    $q.dark.isActive ? solaire.gray.light : solaire.gray.dark)
+  const edgeOpacityScale = Math.min(1, Math.sqrt(200 / Math.max(1, renderedEdges.value.length)))
+  const curvatures = parallelEdgeCurvatures()
+  instance.setData(markers, renderedEdges.value.map(edge => {
+    const detail = edgePaintStyle(edge, false, edgeOpacityScale, palette)
+    const overview = edgePaintStyle(edge, true, edgeOpacityScale, palette)
+    return { source: edge.source_item_id, target: edge.target_item_id, ...detail, type: edge.relation_type,
+      width: detail.width * 1.25, curvature: curvatures.get(edge.id) ?? 0.22,
+      overviewStyle: { width: overview.width * 2.25, opacity: overview.opacity }, suggested: edge.suggested }
+  }),
+  markers.map(marker => marker.point), fit || !threeHasMap)
+  if (!threeHasMap && threeCamera && !fit) instance.restore(threeCamera)
+  threeHasMap = markers.length > 0
+  instance.setSelected(selectedNodeId.value)
+  layoutPending.value = false
+  chartReady.value = true
+  if (!hiddenEntityKinds.value.size) {
+    hasStoredLayout.value = true
+    stagePositions()
+    scheduleViewSave()
+  }
+  scheduleThumbnails()
+}
+
+function onThreeCamera(): void {
+  const instance = threeScene
+  if (!instance || !threeHasMap || viewMode.value !== '3d' || loading.value || reloading.value) return
+  spatialGroupedCount.value = instance.groupedCount
+  const next = instance.zoom <= BRANCH_CLOSE_ZOOM ? new Set<string>() : new Set(expandedBranches.value)
+  if (instance.zoom >= BRANCH_OPEN_ZOOM) for (const branch of branches.value) {
+    if (instance.visible.has(branch.anchorId) && instance.spacingAt(branch.anchorId, 56) >= 40) next.add(branch.anchorId)
+  }
+  const changed = next.size !== expandedBranches.value.size || [...next].some(id => !expandedBranches.value.has(id))
+  if (changed) {
+    expandedBranches.value = next
+    void renderGraph3d()
+  }
+  scheduleThumbnails()
+  stagePresentation()
+}
+
+function updateThreeThumbnails(): void {
+  const instance = threeScene
+  if (!instance || agentId === null || viewMode.value !== '3d') return
+  const candidates: (GraphThumbnailCandidate & { distance: number })[] = []
+  for (const [id, point] of instance.visible) {
+    const node = nodes.value.get(id)
+    if (!point.near || !node || isAudioNode(node)
+      || (node.node_kind !== 'file' && node.node_kind !== 'attachment' && node.node_kind !== 'document')) continue
+    if (point.x < 0 || point.x > viewportSize.width || point.y < 0 || point.y > viewportSize.height) continue
+    const key = thumbnailKey(node)
+    if (thumbnails.unavailable(key)) continue
+    candidates.push({ node, key, distance: selectedNodeId.value === id ? -1
+      : Math.hypot(point.x - viewportSize.width / 2, point.y - viewportSize.height / 2) })
+  }
+  thumbnailKeys.clear()
+  const wanted = candidates.sort((a, b) => a.distance - b.distance).slice(0, thumbnailBudget)
+  for (const candidate of wanted) thumbnailKeys.set(candidate.node.id, candidate.key)
+  thumbnails.update(wanted)
+  paintThreeThumbnails()
+}
+
+function paintThreeThumbnails(): void {
+  // Resource metadata may resolve after placement; replace its glyph without
+  // changing positions, the camera, node sizes or the thumbnail lifecycle.
+  threeScene?.setSymbols(new Map(renderedNodes.value.map(node => [node.id, nodeSymbol(node, false)])))
+  const previews = new Map<string, Graph3dPreview>()
+  for (const [id, key] of thumbnailKeys) {
+    const url = thumbnails.url(key)
+    if (url) previews.set(id, { url, aspect: thumbnails.aspect(key), nativeSize: thumbnails.longestSide(key) })
+  }
+  threeScene?.setPreviews(previews)
 }
 
 function setFullscreen(value: boolean): void {
@@ -1894,7 +2191,7 @@ onMounted(() => {
   websocket.createWebsocket()
   websocket.onEvent('memory', 'invalidate', invalidateAccess)
   websocket.onConnect(invalidateAccess)
-  initializeChart()
+  void initializeRenderer()
   resizeObserver = new ResizeObserver(resizeChart)
   if (viewport.value) resizeObserver.observe(viewport.value)
   window.addEventListener('keydown', onKeyDown)
@@ -1911,6 +2208,12 @@ onUnmounted(() => {
   stagePresentation()
   void persistence?.flush()
   persistence = null
+  threeDisposed = true
+  threeRenderGeneration++
+  cancelThreeLayout?.()
+  threeWorker?.terminate()
+  threeScene?.dispose()
+  threeScene = null
   removeSaveTimeout()
   removePositionInterval()
   unsubscribeThumbnailReady()
@@ -1921,6 +2224,7 @@ onUnmounted(() => {
   websocket.offEvent('memory', 'invalidate', invalidateAccess)
   websocket.offConnect(invalidateAccess)
   loadGeneration += 1
+  rootController?.abort()
   layoutGeneration += 1
   resizeObserver?.disconnect()
   removeInterval()
@@ -2150,7 +2454,8 @@ onUnmounted(() => {
   cursor: grabbing;
 }
 
-.memory-graph__chart {
+.memory-graph__chart,
+.memory-graph__chart--3d {
   display: block;
   width: 100%;
   height: 100%;
@@ -2162,7 +2467,22 @@ onUnmounted(() => {
   opacity: 0;
 }
 
-.memory-graph__chart:focus-visible {
+.memory-graph__chart--3d {
+  position: relative;
+}
+
+.memory-graph__navigation-hint {
+  position: absolute;
+  bottom: 8px;
+  left: 12px;
+  right: 12px;
+  pointer-events: none;
+  font-size: 11px;
+  color: var(--solaire-gray-accent);
+}
+
+.memory-graph__chart:focus-visible,
+.memory-graph__chart--3d:focus-visible {
   box-shadow: inset 0 0 0 3px var(--q-primary);
 }
 

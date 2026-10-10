@@ -370,14 +370,34 @@ last activity. Graph links open neighboring nodes; folders and conversations hav
 for their metadata and relationships. Closing with the button or backdrop returns to the
 graph with its viewport preserved.
 
+The **Graph** tab opens **3D view**; **2D view** retains the previous graph.
+Both views use the same folder SVGs, file and media glyphs, borders, relation colors
+curves and relative widths. In 3D, links are thicker for visibility, and long links use
+more segments to preserve their curve. Labels have no background.
+In both views, distant nodes are roughly half the size of nearby nodes.
+In 3D, a left click without movement opens the node. Hold the left button and drag to
+orbit the pointed node without centering it on screen. If the press starts on the background,
+dragging pans the graph until release without rotating. Releasing after moving never opens a modal, even when returning
+to the starting point. Right-drag pans. The wheel moves the camera toward the pointer:
+the aimed point stays under the cursor while approaching or backing away, without rotation.
+Pinch and zoom buttons move along the central viewing axis. You can pass a node and keep travelling through the graph. Moving
+back to the overview shows the entire graph centered. 3D framing fills the available
+space according to width, height and depth, with a margin to keep glyphs fully visible.
+Arrow keys select a visible node, **Enter** opens its details, and **Home** centers the
+whole graph. The 3D camera is saved independently of the 2D camera. If WebGL is
+unavailable, the graph falls back to 2D.
+Dense areas can also show a **Group of N items**, even without a shared Topic.
+Click its marker to approach and reveal the members; moving back groups them again.
+These display groups do not change memories or their relationships.
+
 In **Graph**, branches with at least eight items exclusively linked to the same anchor are
 represented by a larger anchor and a count. Zoom in or click the group to see its items;
 the **Zoom in** and **Zoom out** buttons are keyboard accessible. Zooming out and **Fit graph to viewport**
-fold the branches. Up to 600 loaded items, the initial placement settles naturally,
+fold the branches. In 2D, up to 600 loaded items, the initial placement settles naturally,
 with gentle rebalancing for at most 0.7 seconds after the graph changes. Zooming, unfolding and closing node details
 preserve positions; larger windows retain fixed positions to bound computation.
 New nodes fade into their existing positions; dense views and reduced-motion preferences
-disable this effect.
+disable this effect. In 3D, a worker prepares placement; orbiting and zooming start no simulation.
 Clicking a group frames its anchor. Zooming out hides detailed links and some titles; zoom
 back in to restore them.
 Memories sharing exactly the same relationships to structural anchors are also grouped;

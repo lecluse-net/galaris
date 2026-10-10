@@ -67,7 +67,8 @@ async def test_incremental_save_preserves_other_nodes_and_conflicts_do_not_overw
         ), scopes[0])
     second = await graph_state.write_state(graph_state.GraphStateWrite(
         agent_id=owner.id, expected_revision=first.revision,
-        preferences=graph_state.GraphPreferencesPatch(camera=graph_state.GraphCamera(center=(30, 40), zoom=zoom)),
+        preferences=graph_state.GraphPreferencesPatch(camera=graph_state.GraphCamera(center=(30, 40), zoom=zoom),
+            camera_3d=graph_state.GraphCamera3d(position=(300, 400, 500), target=(10, 20, 30))),
     ), scopes[0])
     assert second.preferences.hidden_entity_kinds == ["contact"]
     assert (await graph_state.read_state(context, scopes[0])).preferences.camera == graph_state.GraphCamera(center=(30, 40), zoom=zoom)
@@ -78,6 +79,13 @@ async def test_incremental_save_preserves_other_nodes_and_conflicts_do_not_overw
         positions={item.id: graph_state.GraphPoint(x=999, y=999)},
     ), scopes[0])
     assert third.positions[item.id] == graph_state.GraphPoint(x=1, y=2)
+    assert third.preferences.camera_3d == second.preferences.camera_3d
+    cleared = await graph_state.write_state(graph_state.GraphStateWrite(
+        agent_id=owner.id, expected_revision=third.revision,
+        preferences=graph_state.GraphPreferencesPatch(camera_3d=None),
+    ), scopes[0])
+    assert cleared.preferences.camera_3d is None
+    assert cleared.preferences.camera == second.preferences.camera
 
 
 @pytest.mark.asyncio
@@ -98,6 +106,14 @@ async def test_revoked_nodes_and_expansions_are_not_restored(db, agents, memory_
 def test_invalid_coordinates_are_rejected(payload):
     with pytest.raises(ValidationError):
         graph_state.GraphPoint.model_validate(payload)
+
+
+@pytest.mark.parametrize("field", ["position", "target"])
+@pytest.mark.parametrize("invalid", [float("nan"), float("inf"), 1e308])
+def test_invalid_3d_cameras_are_rejected(field, invalid):
+    payload = {"position": (1, 2, 3), "target": (0, 0, 0), field: (invalid, 0, 0)}
+    with pytest.raises(ValidationError):
+        graph_state.GraphCamera3d.model_validate(payload)
 
 
 @pytest.mark.asyncio

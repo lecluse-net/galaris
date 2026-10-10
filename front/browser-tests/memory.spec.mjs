@@ -298,6 +298,7 @@ for (const width of [1920, 390]) test(`graph opens modals with metadata and pres
   await jsonRoute(page, '**/api/memory/graph/roots', { nodes, edges, has_more: false, next_cursor: null, edges_truncated: false })
   await mount(page, 'app/memory/pages/index.vue', { privileges: ['MEMORY_EDIT'], route: '/memory?agent=7' })
   await page.getByRole('tab', { name: 'Graph', exact: true }).click()
+  await page.getByRole('button', { name: '2D view', exact: true }).click()
   await settledGraph(page)
   await page.getByRole('button', { name: 'Fit graph to viewport', exact: true }).click()
   const initial = await settledGraph(page)

@@ -515,6 +515,7 @@ export const memoryService = {
     knownItemIds?: string[]
     includeMatchingRoots?: boolean
     includeSavedPositions?: boolean
+    signal?: AbortSignal
   }): Promise<MemoryGraphPage> {
     const response = await api.post<MemoryGraphPage>('/memory/graph/roots', {
       agent_id: params.agentId,
@@ -527,7 +528,7 @@ export const memoryService = {
       known_item_ids: params.knownItemIds ?? [],
       include_matching_roots: params.includeMatchingRoots ?? false,
       include_saved_positions: params.includeSavedPositions ?? false,
-    })
+    }, { signal: params.signal })
     return response.data
   },
 

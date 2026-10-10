@@ -713,11 +713,11 @@ dans les tables canoniques.
   contenu, les révisions, la provenance, les accès directs et les liens. L’onglet **Graphe**
   charge un sous-graphe léger par curseurs, sans les payloads. L'API fournit aussi une expansion
   de voisins, mais le zoom frontend déplie seulement des membres déjà chargés. L'ouverture utilise des pages de 500 nœuds au plus,
-  avec 2 500 liens par page et un plafond de 3 000 nœuds affichés. Les requêtes ne lisent que les
+  avec 2 500 liens par page, sans plafond global de nœuds. Les requêtes ne lisent que les
   colonnes nécessaires au graphe. Le repli de feuilles utilise le compte distinct global des
   voisins admissibles, suggestions comprises, et exige un lien confirmé. À partir de huit feuilles,
   l'ancre porte un compteur ; le zoom et une commande explicite les révèlent. Le frontend conserve
-  le moteur ECharts animé jusqu'à 600 items chargés, avec fixation de la sélection et
+  en 2D le moteur ECharts animé jusqu'à 600 items chargés, avec fixation de la sélection et
   placement initial à convergence naturelle et rééquilibrage doux de 0,7 seconde après modification du graphe.
   La fermeture du détail conserve les positions et le cadrage.
   Les feuilles masquées gardent leur placement ; le zoom et le dépliage ne relancent pas la physique.
@@ -739,6 +739,38 @@ dans les tables canoniques.
   récence combine dernier accès et dernière modification dans une colonne calculée indexée. Les
   réglages restent sous **Préférences → Mémoire**. L’interface sert à auditer, corriger ou oublier,
   pas à accepter ou rejeter des acquisitions.
+
+La page ouvre par défaut le renderer 3D Three.js ; le moteur ECharts reste sélectionnable.
+Le même contrat de pages, les mêmes identités et les mêmes détails sont réutilisés.
+Un worker calcule le placement à partir des positions personnelles ; les relations
+`parent_of` accessibles étagent les ressources. Le rendu instancie les marqueurs visibles
+et regroupe les segments, avec index de cellules pour le frustum et index écran pour la
+sélection. Les styles de nœuds et relations sont partagés avec la 2D. Un atlas borné
+réutilise les SVG de dossiers et chemins Material publics ; les liens sont des rubans
+instanciés pour respecter leurs épaisseurs en pixels CSS. Les shaders reprennent les
+courbures 2D. Le nombre de segments dépend de la longueur à l'écran et de la courbure,
+par tronçons instanciés de quatre segments, jusqu'à 64 par lien. Le CPU écarte les
+enveloppes hors champ et modifie les buffers uniquement si le découpage change ; les
+shaders calculent les points et normales dans un seul appel de dessin pour les liens.
+Les épaisseurs 3D sont multipliées par 2,25 au loin, 1,25 de près. La taille éloignée 3D vaut
+56 % de la base plafonnée, la taille proche 110 %. Les labels n'ont pas de fond.
+Le glissement gauche tourne caméra et cible du regard autour du nœud pressé,
+sans recentrer son image à l'écran. Un geste commencé sur le fond utilise le déplacement
+latéral d'OrbitControls jusqu'au relâchement, y compris depuis la vue d'ensemble.
+Un glissement ne devient jamais un clic
+après déplacement. La molette déplace caméra et cible ensemble le long du rayon sous le
+pointeur, en conservant l'orientation et le point visé à l'écran. La profondeur du nœud
+visé détermine le pas ; le fond utilise la profondeur visible ou une vitesse en espace vide.
+Le pincement et les boutons conservent l'axe central. Le pas permet de dépasser un nœud
+et de continuer en espace vide ; le recul maximal retrouve la vue d'ensemble centrée et stable.
+Le cadrage tient compte des marqueurs rendus, du viewport et de la profondeur dans
+l'orientation du regard ; il remplit la dimension limitante avec une marge pour les
+glyphes et centre les limites projetées. Son résultat est mis en cache entre changements
+de données, de dimensions ou d'orientation, et réutilisé au recul maximal et au redimensionnement.
+Les labels et miniatures ont des budgets bornés. Il n'y a pas de boucle au repos.
+La caméra `camera_3d` est enregistrée indépendamment de `camera`, sans migration de schéma.
+La perte de WebGL revient en 2D. Ce renderer local ne réalise pas le précalcul serveur ni
+la lecture régionale du plan : [ADR 0166](../../../../project/decisions/0166-batched-memory-3d-renderer.md).
 
 Les métriques Logfire et le miroir local mesurent le nombre, le mode, la dégradation, la latence,
 le nombre de résultats et les caractères réellement injectés. Les labels sont bornés et ne

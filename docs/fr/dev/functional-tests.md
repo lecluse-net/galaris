@@ -74,6 +74,30 @@ est une décision à part entière : aucun quota de tests nouveaux par module.
 
 ## Parcours traversant plusieurs domaines
 
+Le parcours `front/browser-tests/memory-3d.spec.mjs` compare les renderers sur les mêmes
+5 000 nœuds et 10 000 relations synthétiques. Il vérifie la couverture des groupes spatiaux,
+leur ouverture vers un item canonique, les filtres, le clavier, le repli WebGL vers la 2D,
+le changement d'agent et les miniatures retardées jusqu'à leur taille native. Les cas de
+huit feuilles retiennent la première page jusqu'après l'initialisation d'une scène vide :
+ils protègent le cadrage d'ensemble à l'arrivée des données et le maintien du groupe ouvert.
+Le premier pixel de glissement et la rotation conservent la position à l'écran d'un
+nœud décentré ; l'aller-retour restitue la pose caméra initiale. Le geste avec le clic gauche reste une rotation autour de l'objet pressé,
+sans ouverture ; seul le clic immobile ouvre. Un glissement gauche commencé sur le fond
+translate le graphe avec le pointeur sans modifier l'orientation, depuis la vue d'ensemble
+ou une vue tournée ; l'aller-retour restaure le cadrage et le déplacement s'arrête au relâchement.
+La navigation traverse un nœud puis
+continue en espace vide, avec boutons, molette et pincement. Le zoom à la molette conserve
+le centre d'une miniature décentrée sous le pointeur à l'approche et au recul, sans rotation,
+se dirige aussi vers un fond vide et retrouve une vue d'ensemble stable au recul maximal.
+La taille native des
+aperçus est vérifiée avant de dépasser leur plan ; leur présence après dépassement
+n'est plus une contrainte de zoom. Le compteur de frames confirme l'arrêt du rendu au repos. Le parcours HTTP réel
+`e2e/specs/memory-graph.spec.mjs` conserve positions et filtres après réouverture en 2D/3D.
+`app/memory/tests/test_graph_state.py` protège les caméras indépendantes et les valeurs invalides.
+`front/app/memory/graph3dCamera.test.mjs` vérifie avec une projection Three.js que les
+graphes larges, hauts et profonds sont entiers, centrés et utilisent le viewport desktop/mobile,
+y compris avec de grandes coordonnées ; les graphes vides et à un seul nœud gardent une pose finie.
+
 `front/browser-tests/async-views.spec.mjs` couvre l'ouverture différée d'un vrai éditeur,
 la saisie dans le reste de la page pendant l'attente, la fermeture avant la réponse,
 la réouverture et le réessai du chargeur sans perdre le brouillon, sur mobile et desktop.

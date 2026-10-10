@@ -8,10 +8,12 @@ export interface GraphContext {
   contact_item_id: string | null
 }
 export interface GraphCamera { center: [number, number] | null; zoom: number }
+export interface GraphCamera3d { position: [number, number, number]; target: [number, number, number] }
 export interface GraphPreferences {
   hidden_entity_kinds: MemoryGraphEntityKind[]
   expanded_branches: string[]
   camera: GraphCamera | null
+  camera_3d?: GraphCamera3d | null
 }
 export interface GraphState {
   format_version: 1

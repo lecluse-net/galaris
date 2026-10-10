@@ -7,7 +7,7 @@ and writes check canonical and live source access before admitting coordinates.
 from datetime import datetime, timezone
 from hashlib import sha256
 import json
-from typing import Literal
+from typing import Annotated, Literal
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -23,6 +23,7 @@ from .service import MemoryConflictError, MemoryPermissionError, graph_item_filt
 from .source_access import readable_source_ids
 
 GraphKind = Literal["memory", "document", "attachment", "folder", "file", "directory", "topic", "contact", "conversation"]
+GraphCoordinate3d = Annotated[float, Field(ge=-1e15, le=1e15)]
 
 
 class GraphPoint(BaseModel):
@@ -37,11 +38,18 @@ class GraphCamera(BaseModel):
     zoom: float = Field(ge=0.2, le=1_000_000)
 
 
+class GraphCamera3d(BaseModel):
+    model_config = ConfigDict(extra="forbid", allow_inf_nan=False)
+    position: tuple[GraphCoordinate3d, GraphCoordinate3d, GraphCoordinate3d]
+    target: tuple[GraphCoordinate3d, GraphCoordinate3d, GraphCoordinate3d]
+
+
 class GraphPreferences(BaseModel):
     model_config = ConfigDict(extra="forbid")
     hidden_entity_kinds: list[GraphKind] = Field(default_factory=lambda: list[GraphKind](), max_length=9)
     expanded_branches: list[UUID] = Field(default_factory=lambda: list[UUID](), max_length=10_000)
     camera: GraphCamera | None = None
+    camera_3d: GraphCamera3d | None = None
 
 
 class GraphPreferencesPatch(BaseModel):
@@ -49,6 +57,7 @@ class GraphPreferencesPatch(BaseModel):
     hidden_entity_kinds: list[GraphKind] | None = Field(default=None, max_length=9)
     expanded_branches: list[UUID] | None = Field(default=None, max_length=10_000)
     camera: GraphCamera | None = None
+    camera_3d: GraphCamera3d | None = None
 
 
 class GraphContext(BaseModel):
@@ -150,6 +159,8 @@ async def write_state(request: GraphStateWrite, scope: AgentManagementScope) -> 
     changes = request.preferences.model_dump(mode="json", exclude_unset=True, exclude_none=True)
     if "camera" in request.preferences.model_fields_set:
         changes["camera"] = request.preferences.camera.model_dump(mode="json") if request.preferences.camera else None
+    if "camera_3d" in request.preferences.model_fields_set:
+        changes["camera_3d"] = request.preferences.camera_3d.model_dump(mode="json") if request.preferences.camera_3d else None
     keys = set(request.positions)
     if request.preferences.expanded_branches is not None:
         keys.update(request.preferences.expanded_branches)

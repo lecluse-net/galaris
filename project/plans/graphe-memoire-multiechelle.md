@@ -1,9 +1,64 @@
 # Carte mémoire 3D — navigation multiechelle et placement précalculé
 
-- Statut : `partial` pour le socle 2D existant ; cible 3D en conception.
+- Statut : `partial` — socle 2D conservé et rendu 3D local implémenté ; carte serveur régionale encore à construire.
 - Revue des sources et conception : 2026-10-09.
 - Propriétaire du chantier : `app.memory`, avec les contrats publics de File Share.
-- Cette demande porte sur le plan. Elle n'engage ni implémentation, ni commit, ni déploiement.
+- Mise en œuvre du rendu 3D demandée le 2026-10-10 ; aucun commit ni déploiement engagé par cette demande.
+
+## Livraison du rendu local — 2026-10-10
+
+La page ouvre désormais une vue Three.js avec retour explicite en 2D. Le même contrat
+de chargement, les mêmes droits, regroupements, filtres, détails et positions personnelles
+restent utilisés. `graph3d.worker.ts` calcule le placement hors du thread principal ;
+`graph3dScene.ts` regroupe les marqueurs visibles dans un dessin instancié et les relations
+dans un dessin de segments. Un index de cellules élimine les régions hors champ avant
+projection et sélection. La caméra et les coordonnées GPU relatives permettent le zoom
+profond sans agrandir les symboles au-delà des deux tailles éloignée/proche.
+Les cellules denses sans ancres communes se replient également en groupes spatiaux
+d'affichage, avec seuil lié à la densité et hystérésis. Le clic approche et révèle
+les membres ; les liens de même type, direction et statut sont agrégés visuellement.
+Les identités et relations canoniques sont conservées. Ce regroupement local ne constitue
+pas encore la hiérarchie serveur de L2.
+
+Le rendu reprend les SVG/glyphes, bordures et styles de relations de la 2D, avec un atlas
+public borné et des rubans instanciés pour les épaisseurs de liens. Les courbes reprennent
+les courbures 2D et adaptent le nombre de segments à leur longueur projetée et à leur
+courbure, par tronçons instanciés de quatre segments, jusqu'à 64 par lien sans ajouter
+d'appel de dessin. Leurs épaisseurs 3D sont renforcées d'un facteur de 2,25 au loin et
+de 1,25 de près. La taille éloignée 2D/3D a été doublée à 56 % de la base plafonnée ; la taille
+proche reste à 110 %. Les libellés n'ont pas de fond ; les positions et gestes de
+navigation restent inchangés.
+Le cadrage 3D adapte la distance et le centre aux limites projetées des marqueurs
+rendus, au viewport et à la profondeur, plutôt qu'à une sphère conservatrice. Il s'applique
+aussi au recul maximal et au redimensionnement, avec une marge pour les glyphes.
+
+Le rendu n'a pas de boucle permanente. Les titres et aperçus constituent des couches DOM
+bornées ; ils ne créent pas un élément DOM pour chaque item. Le cache de miniatures et ses
+contrôles d'accès sont réutilisés, avec croissance différée jusqu'au pixel natif. La caméra
+3D est persistée séparément de la caméra 2D, dans les préférences personnelles existantes.
+Le clic immobile ouvre un détail ; le glissement gauche tourne autour du nœud pressé,
+sans le recentrer à l'écran et sans ouverture même après un aller-retour du pointeur.
+Un geste gauche commencé sur le fond translate le graphe jusqu'au relâchement, sans rotation.
+La molette déplace caméra et cible ensemble vers le pointeur sans rotation ; le pincement
+et les boutons conservent l'axe central. Ils peuvent traverser le plan d'un nœud,
+puis continuer en espace vide. Le recul maximal retrouve une vue d'ensemble centrée et stable.
+Le masquage d'une nature réorganise la vue temporaire sans réécrire la carte complète.
+La perte de WebGL revient en 2D. Voir [ADR 0166](../decisions/0166-batched-memory-3d-renderer.md).
+
+Cette étape couvre le rendu et une partie des interactions de L5/L6, avec un benchmark L0
+comparant les deux moteurs sur les mêmes 5 000 nœuds et 10 000 relations synthétiques.
+Elle conserve le chargement exhaustif par pages de 500 et la borne serveur de 2 500 liens
+par page. Elle ne réalise pas L1–L4 : générations préparées, journal rejouable, occurrences
+de fichiers et API régionale. La profondeur suit les liens `parent_of` déjà accessibles ;
+elle ne remplace pas le futur arbre d'emplacements. Les budgets d'ouverture indépendante
+du volume global et la qualification à 100 000/million d'items restent des objectifs.
+
+Les parcours `front/browser-tests/memory-3d.spec.mjs` vérifient le rendu WebGL réel,
+le culling au zoom, les groupes, le clavier, les filtres, le repli 2D, le changement
+d'agent, les gestes clic/glissement, le passage de la caméra au-delà d'un nœud et la
+taille native des aperçus. `e2e/specs/memory-graph.spec.mjs` traverse
+les API réelles dans les deux vues. Les preuves de performance détaillées restent dans
+`artifacts/front-components/`, hors du corpus versionné.
 
 ## 1. Résultat attendu et périmètre
 

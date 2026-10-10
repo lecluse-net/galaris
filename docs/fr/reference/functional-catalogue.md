@@ -1710,10 +1710,16 @@ périmètres. La fusion de contacts est une opération explicite.
 ### Explorer et entretenir
 
 La page Mémoire propose recherche, filtres et **graphe interactif** : natures de nœuds, relations,
-développement progressif, recentrage et plein écran. Le graphe charge sans filtre de période,
-dans une fenêtre bornée à **3 000 nœuds**. La dernière activité détermine l’échelle relative
-de taille et d’opacité ; les éléments anciens restent visibles. Les racines de répertoires
-gardent leur libellé, et les titres de tous les nœuds affichés apparaissent au zoom maximal.
+développement progressif, recentrage et plein écran. La vue **3D** Three.js est proposée
+par défaut, avec retour en **2D**. Le graphe charge toutes les pages correspondant aux
+filtres, sans plafond global de nœuds ni filtre de période. La dernière activité module
+les deux tailles fixes éloignée/proche et l’opacité ; les éléments anciens restent visibles.
+Seuls les marqueurs visibles sont dessinés, avec un budget de titres évitant les collisions.
+La 3D partage ses buffers GPU, prépare le placement dans un worker et ne tourne pas au repos.
+Les cellules denses se replient en groupes d'affichage explorables, avec relations agrégées
+par type, direction et statut ; les identités et liens canoniques sont conservés.
+Les aperçus autorisés grandissent tardivement jusqu'à leur taille native ; les caméras 2D/3D
+sont enregistrées séparément. Le chargement réseau régional et la carte serveur restent prévus.
 
 Les branches d’au moins huit feuilles exclusives se replient en groupes avec compteur.
 Le zoom ou un clic les déplie ; le dézoom les replie sans masquer les nœuds partagés.
@@ -3834,7 +3840,7 @@ nom du jeton utilisé et conserve le fournisseur et le modèle réellement solli
 | Administration déléguée | AgentAdmin suit les droits et le périmètre actuels du responsable ; ToolAdmin délègue le catalogue global. L’agent ne peut attribuer des capacités administratives. |
 | Autorisation permanente | Active une seule fonction sur une connexion, sans lever les ACL, blocages ou préconditions de la ressource. YOLO exige un choix humain explicite. |
 | Indexation des fichiers | Catalogue privé par agent, accès source actuel, regroupement des copies par SHA-256 ; découverte dépendante du provider, sans garantie de couverture exhaustive d’un parcours partiel. |
-| Graphe mémoire | Fenêtre de 3 000 nœuds et repli de feuilles ; chargement spatial et sous-groupes encore planifiés. |
+| Graphe mémoire | Rendu 3D par lots et repli de branches, retour 2D ; chargement spatial et carte serveur encore planifiés. |
 | Analyse documentaire | Lots reprenables dans app.llm, sans Process ; couverture des unités fournie distincte de la justesse des réponses et aucun rejeu automatique d’une inférence interrompue. |
 | Document et mémoire | Synthèse facultative avec historique indépendant et droits du document ; souvenirs autonomes privés et mots-clés communs au document et à sa synthèse. |
 | Miniatures | WebP courant unique pour un document ; dérivés par version pour les fichiers. Une miniature Office ne constitue pas une visionneuse plein écran. |

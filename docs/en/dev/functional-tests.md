@@ -72,6 +72,30 @@ contracts and tests, then select the least expensive layer that proves the obser
 
 ## Cross-domain workflows
 
+`front/browser-tests/memory-3d.spec.mjs` compares both renderers on the same synthetic
+5,000 nodes and 10,000 relationships. It checks spatial group coverage, opening a group
+into a canonical item, filters, keyboard interaction, WebGL fallback to 2D, agent changes,
+and delayed thumbnails capped at native pixel dimensions. Eight-leaf cases hold the first
+page until an empty scene has initialized, protecting fit on data arrival and keeping
+opened groups open. The first pixel of movement and the orbit preserve an off-center
+node's screen position; returning restores the initial camera pose. A left-button round-trip drag remains an orbit around the pressed
+object without opening it; only a stationary click opens. A left drag starting on the
+background translates the graph with the pointer without changing orientation, from
+the fitted overview or a rotated view; returning restores framing and release stops movement.
+Navigation passes a node and
+continues through empty space with buttons, wheel and pinch. Wheel zoom keeps an off-center
+thumbnail's center under the pointer when approaching and retreating without rotating,
+also follows the pointer over empty background and restores a stable overview at maximum retreat.
+Native preview size is
+checked before passing its plane; remaining visible after passing is no longer a zoom
+constraint. The frame counter verifies rendering stops at rest. The real HTTP
+journey `e2e/specs/memory-graph.spec.mjs` preserves positions and filters after reopening
+in 2D/3D. `app/memory/tests/test_graph_state.py` protects independent cameras and rejects
+invalid coordinates.
+`front/app/memory/graph3dCamera.test.mjs` uses a Three.js projection to check that wide,
+tall and deep graphs remain fully visible, centered and fill desktop/mobile viewports,
+including at large coordinates; empty and single-node graphs keep a finite camera pose.
+
 `front/browser-tests/async-views.spec.mjs` covers deferred loading of a real editor,
 typing elsewhere while waiting, closing before the response, reopening and retrying
 the loader without losing the draft, on mobile and desktop. A failed module download

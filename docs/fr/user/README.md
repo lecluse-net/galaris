@@ -489,15 +489,39 @@ d'accès et la date de dernière activité. Les liens du graphe permettent d'ouv
 les dossiers et conversations ont une modale dédiée à leurs métadonnées et relations.
 La fermeture par le bouton ou l'arrière-plan rend le graphe avec son cadrage conservé.
 
+L'onglet **Graphe** ouvre la **Vue 3D** ; **Vue 2D** conserve le graphe précédent.
+Les deux vues utilisent les mêmes SVG de dossiers, glyphes de fichiers et médias,
+bordures, couleurs, courbures et différences d'épaisseur des relations. En 3D, les
+liens sont épaissis pour mieux les voir et les longs liens utilisent davantage de segments
+pour conserver leur courbe. Les libellés n'ont pas de fond.
+Dans les deux vues, les nœuds éloignés sont environ deux fois plus petits que les nœuds proches.
+En 3D, un clic gauche sans déplacement ouvre le nœud. Maintenez le bouton gauche et
+glissez pour tourner autour du nœud visé, sans le recentrer à l'écran. Si le clic commence
+sur le fond, le glissement déplace le graphe jusqu'au relâchement, sans rotation.
+Relâcher après un déplacement n'ouvre aucune
+modale, même si vous revenez au point de départ. Utilisez le clic droit pour déplacer la
+carte. La molette déplace la caméra dans la direction du pointeur : le point visé reste
+sous la souris pendant l'approche ou le recul, sans rotation. Le pincement et les boutons
+de zoom déplacent la caméra dans l'axe central. Vous pouvez dépasser un nœud et continuer à traverser le graphe. Le recul
+maximal retrouve le graphe entier centré. Le cadrage 3D remplit l'espace disponible selon
+la largeur, la hauteur et la profondeur, avec une marge pour garder les symboles entiers.
+Les flèches sélectionnent un nœud visible, **Entrée** ouvre
+ses détails et **Début** recentre tout. La caméra 3D est enregistrée indépendamment de la
+caméra 2D. Si WebGL est indisponible, la vue 2D prend le relais.
+Les zones denses peuvent aussi afficher un **Groupe de N éléments**, même sans sujet commun.
+Cliquez sur son symbole pour approcher et voir ses membres ; reculer les regroupe à nouveau.
+Ce regroupement d'affichage ne modifie pas les souvenirs ni leurs relations.
+
 Dans **Graphe**, les branches d'au moins huit éléments reliés exclusivement à la même ancre
 sont représentées par cette ancre agrandie et un compteur. Zoomez ou cliquez sur le groupe
 pour voir ses éléments. Les boutons **Zoomer** et **Dézoomer** sont utilisables au clavier.
-Le dézoom et **Ajuster le graphe à la fenêtre** replient les branches. Jusqu'à 600 items chargés,
+Le dézoom et **Ajuster le graphe à la fenêtre** replient les branches. En 2D, jusqu'à 600 items chargés,
 le placement initial se stabilise naturellement et se rééquilibre doucement après modification du graphe
 pendant au plus 0,7 seconde. Le zoom, le dépliage et la fermeture du détail conservent les positions ; au-delà, les positions
 restent fixes pour limiter le calcul. Un clic sur le groupe cadre son ancre.
 Les nouveaux nœuds apparaissent progressivement sur place ; cet effet est désactivé
-sur les vues denses et lorsque la réduction des animations est demandée.
+sur les vues denses et lorsque la réduction des animations est demandée. En 3D, le placement
+est préparé dans un worker ; tourner ou zoomer ne relance aucune simulation.
 En vue éloignée, les liens de détail et certains titres s'effacent ; zoomez pour les retrouver.
 Les souvenirs partageant exactement les mêmes relations avec des ancres structurantes
 sont également regroupés ; chaque groupe conserve ses connexions à toutes ses ancres.

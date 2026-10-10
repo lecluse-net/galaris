@@ -1276,15 +1276,22 @@ memories are added independently of those filters. The union is sorted and pagin
 duplicates, prioritising temporal matches by default. The text-recall ceiling does not truncate
 temporal matches. Simulation uses current rights and validity rather than reconstructing history.
 
-The graph UI supports node natures and relationships, expansion, centring and full screen, with
-no period filter and a **3,000-node** window. Memory uses a desktop table or mobile cards without horizontal overflow; titles open
+The graph UI supports node natures and relationships, expansion, centring and full screen.
+It opens the batched Three.js **3D** view, with a **2D** option retaining the previous graph.
+All matching pages load without a global node cap or period filter. Visible markers share GPU
+buffers, placement runs in a worker, and rendering stops at rest.
+Dense cells fold into explorable display groups with relationships aggregated by type,
+direction and status; canonical identities and links are preserved. The two fixed distant/near
+symbol sizes preserve readability during deep zoom; authorized previews grow later up to their
+native pixel dimensions. The 2D and 3D cameras are saved independently. Regional network
+loading and a prepared server map remain planned. Memory uses a desktop table or mobile cards without horizontal overflow; titles open
 details and available actions respect rights and node nature. Attachments provide acquired text and
 original-file preview from lists, search, graph and detail, including full-screen viewing scoped
 to the agent. Retry, agent change, closing and late responses preserve scope. Folders open browsing,
 not the memory editor or a file preview.
 
 Graph size and opacity follow relative last activity; old nodes remain visible. Directory roots
-retain their labels and every displayed node has a title at maximum zoom. Branches with at least
+retain their labels and a collision budget limits visible titles at every zoom. Branches with at least
 eight exclusive leaves collapse into counted groups; zooming or clicking unfolds them and zooming
 out folds them while shared nodes remain visible. Zoom and closing details preserve positions
 and framing. Spatial loading and subgroups remain planned work.
@@ -2857,7 +2864,7 @@ for subsequent calls without editing client files. Logs retain token name and ac
 | Delegated administration | AgentAdmin follows the manager's current rights/scope; ToolAdmin delegates the global catalogue. Agents cannot assign administrative capabilities. |
 | Permanent consent | Enables one connection function without bypassing ACLs, blocks or resource preconditions. YOLO requires explicit human choice. |
 | File indexing | Private per-agent catalogue with current source access and SHA-256 copy identity; discovery depends on providers and partial traversals are not exhaustive. |
-| Memory graph | 3,000-node window and folded leaves; spatial loading and subgroups remain planned. |
+| Memory graph | Batched 3D rendering and folded branches, with 2D fallback; spatial loading and a server map remain planned. |
 | Document analysis | Resumable app.llm batches without a Process; supplied-unit coverage is separate from answer accuracy and interrupted inference is never automatically replayed. |
 | Documents and Memory | Optional synthesis with independent history and document rights; standalone memories stay private and document/synthesis keywords are shared. |
 | Thumbnails | One current document WebP; versioned file derivatives. Office thumbnails do not provide full-screen viewing. |

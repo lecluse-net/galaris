@@ -671,11 +671,11 @@ their source identity, creates new items, and then puts their UUIDs back into th
   provenance, direct access, and links. The **Graph** tab loads a lightweight subgraph by cursors
   without payloads. The API also provides neighbor expansion, but frontend zoom only unfolds
   already loaded members. Opening uses
-  pages of at most 500 nodes and 2,500 edges, with a limit of 3,000 displayed nodes. Queries read
+  pages of at most 500 nodes and 2,500 edges, with no global node cap. Queries read
   only graph columns. Leaf folding uses the global count of distinct admissible neighbors,
   including suggestions, and requires a confirmed link. From eight leaves, the anchor carries
   a count; zoom and an explicit control reveal them. The frontend retains the animated ECharts
-  engine up to 600 loaded items, fixing the selected item, with initial placement converging
+  engine in 2D up to 600 loaded items, fixing the selected item, with initial placement converging
   naturally and gentle rebalancing for 0.7 seconds after the graph changes. Closing node details
   preserves positions and the camera. Hidden leaves retain
   their placement; zooming and unfolding do not restart physics.
@@ -695,6 +695,36 @@ their source identity, creates new items, and then puts their UUIDs back into th
   suggestions remain fine and discontinuous. Recency combines last access and last modification in
   an indexed calculated column. Settings remain under **Preferences → Memory**. The interface is
   for auditing, correcting, or forgetting, not for accepting or rejecting acquisitions.
+
+The page opens the Three.js 3D renderer by default; ECharts remains selectable.
+Both views reuse the same page contract, canonical identities and details. A worker prepares
+placement from personal positions; accessible `parent_of` relations stage resources in depth.
+Visible markers share instanced geometry and links share segment buffers. Cell bounds are
+tested against the frustum and a screen index handles selection. Node and relation styles
+are shared with 2D. A bounded atlas reuses public folder SVGs and Material paths;
+links use instanced ribbons to preserve CSS pixel widths. Shaders reuse 2D curvatures.
+Segment counts depend on projected length and curvature, using instanced chunks of four
+segments, up to 64 per link. The CPU culls offscreen envelopes and updates buffers only
+when subdivision changes; shaders calculate points and normals in one draw call for
+links. 3D widths are multiplied by 2.25 at a distance and 1.25 nearby. Distant 3D markers use 56 % of
+the capped base size, nearby markers 110 %. Labels have no background.
+Left dragging rotates
+camera and viewing target around the pressed node without centering it on screen,
+while dragging from the background uses OrbitControls panning until release, including
+from the fitted overview. A drag never becomes a click after movement. Wheel navigation
+translates camera and target along the ray under the pointer, preserving orientation
+and the aimed screen point. The pointed node's depth sets the step; background uses
+visible depth or a steady speed in empty space. Pinch and buttons retain the central
+axis. Navigation can pass nodes and continue through empty space; maximum retreat
+returns to a stable, centered overview.
+Framing uses rendered markers, viewport dimensions and depth in the viewing direction;
+it fills the limiting dimension with a glyph margin and centers projected bounds.
+The result is cached between data, viewport and direction changes, and reused at maximum
+zoom-out and on resize.
+Labels and thumbnails have
+bounded budgets, and rendering stops at rest. `camera_3d` is saved independently of `camera`
+without a schema migration. WebGL loss falls back to 2D. This local renderer does not implement
+the planned prepared server map or regional API: [ADR 0166](../../../../project/decisions/0166-batched-memory-3d-renderer.md) (in French).
 
 Logfire metrics and the local mirror measure count, mode, degradation, latency, result count, and
 characters actually injected. Labels are bounded and never contain a query, text, memory UUID,
