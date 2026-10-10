@@ -21,7 +21,7 @@ const welcomeTest = test.extend({
 })
 
 welcomeTest('welcome persists the default language and opens configuration pages in the assembled app', async ({ page, request, languageSetting }, testInfo) => {
-  const seeded = await request.post('/api/__test/seed')
+  const seeded = await request.post('/api/__test/seed?llm_configured=false')
   expect(seeded.ok()).toBeTruthy()
   const pageErrors = collectPageErrors(page)
   const fixture = await seeded.json()
@@ -42,10 +42,30 @@ welcomeTest('welcome persists the default language and opens configuration pages
   expect(overview.ok()).toBeTruthy()
   expect(await overview.json()).toMatchObject({
     language_configured: false,
-    llm_provider: { has_data: true },
+    llm_provider: { has_data: false },
     agents: { has_data: true },
   })
   // The profile is already French; missing instance language must still open Welcome.
+  await pageErrors.settle()
+  await page.goto('/')
+
+  // Default OpenRouter activation alone must lead to provider setup.
+  await page.getByRole('button', { name: /Configurer un LLM/ }).click()
+  const llmStep = page.getByRole('article', { name: 'Configurer un LLM', exact: true })
+  await expect(llmStep.getByText('À configurer', { exact: true })).toBeVisible()
+  await llmStep.screenshot({ path: testInfo.outputPath('llm-missing-key.png') })
+  await llmStep.getByRole('link').click()
+  await expect(page).toHaveURL(/\/llm\?tab=providers$/)
+  const configured = await request.put('/api/llm-providers/catalog/openrouter', {
+    headers: { Authorization: `Bearer ${session.access_token}` },
+    data: { api_key: 'synthetic-e2e-inference-key', is_active: true },
+  })
+  expect(configured.ok(), await configured.text()).toBeTruthy()
+  const ready = await request.get('/api/onboarding/overview', {
+    headers: { Authorization: `Bearer ${session.access_token}` },
+  })
+  expect(ready.ok()).toBeTruthy()
+  expect(await ready.json()).toMatchObject({ llm_provider: { has_data: true } })
   await pageErrors.settle()
   await page.goto('/')
 

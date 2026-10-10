@@ -282,11 +282,27 @@ async def elevenlabs_voices():
 
 
 @app.post("/api/__test/seed")
-async def seed(mode: str = "normal", mfa: bool = False):
+async def seed(mode: str = "normal", mfa: bool = False, llm_configured: bool = True):
     if mode not in {"normal", "tools", "error", "task", "missing-terminal", "interruptible", "mail", "file-catalogue"}:
         raise HTTPException(400, "Unknown scenario")
     suffix = uuid4().hex[:12]
     async with get_db_session() as db:
+        from app.llm import LLMProvider
+        from app.llm.facade import resolve_provider_profile
+        from core.util.encryption import get_encryption_service
+
+        # Ready journeys need credentials as well as the installation's models.
+        # Keep this provider on the synthetic loopback service in every scenario.
+        provider = await db.scalar(select(LLMProvider).where(LLMProvider.catalog_code == "openrouter"))
+        assert provider is not None
+        profile = resolve_provider_profile(catalog_code=provider.catalog_code, base_url=provider.base_url)
+        assert profile is not None
+        provider.base_url = profile.base_url
+        provider.is_active = True
+        provider.api_key = (
+            get_encryption_service().encrypt("synthetic-e2e-inference-key")
+            if llm_configured else None
+        )
         owner = User(
             email=f"e2e-{suffix}@example.com", display_name="Browser Tester",
             hashed_password=encrypt_password("Browser-test-password-42!"),

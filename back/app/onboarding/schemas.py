@@ -22,7 +22,8 @@ class OnboardingOverviewResponse(BaseModel):
 
     ``llm_provider`` is kept as the stable API field name. Its ``has_data``
     flag means that at least one configured chat-capable LLM is backed by an
-    active provider, not merely that a provider row exists.
+    active provider with its required credentials configured, not merely that
+    a provider row exists. This does not verify credentials with the provider.
 
     ``connections`` is likewise stable and specifically represents an active
     connection owned by an enabled messaging bridge.

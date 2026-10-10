@@ -58,6 +58,53 @@ async def test_llm_status_requires_a_configured_model(unconfigured_llm_db) -> No
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("catalog_code", ["openrouter", "openai-codex", None])
+async def test_llm_status_requires_provider_credentials_when_needed(
+    unconfigured_llm_db, catalog_code: str | None,
+) -> None:
+    db = unconfigured_llm_db
+    provider = (
+        (await db.execute(select(LLMProvider).where(LLMProvider.catalog_code == catalog_code)))
+        .scalar_one_or_none()
+        if catalog_code is not None else None
+    )
+    if provider is None:
+        provider = LLMProvider(
+            name="Welcome authentication provider",
+            catalog_code=catalog_code,
+            provider_type="ollama" if catalog_code is None else "openai_compatible",
+            base_url="http://local-model.example.test:11434",
+        )
+        db.add(provider)
+    provider.is_active = True
+    provider.api_key = None
+    provider.oauth_credentials = None
+    await db.flush()
+    db.add(LLM(
+        llm_provider_id=provider.id,
+        code="welcome-authentication-model",
+        llm_name="example/welcome-authentication-model",
+        label="Welcome authentication model",
+    ))
+    await db.flush()
+
+    # A local Ollama endpoint works without credentials; cloud profiles do not.
+    assert await check_llm_status() is (catalog_code is None)
+
+    if catalog_code == "openai-codex":
+        provider.oauth_credentials = "synthetic-oauth-credentials"
+    elif catalog_code == "openrouter":
+        provider.api_key = "synthetic-api-key"
+    await db.flush()
+    assert await check_llm_status() is True
+
+    provider.api_key = ""
+    provider.oauth_credentials = ""
+    await db.flush()
+    assert await check_llm_status() is (catalog_code is None)
+
+
+@pytest.mark.asyncio
 async def test_llm_status_ignores_models_from_inactive_providers(unconfigured_llm_db) -> None:
     db = unconfigured_llm_db
     provider = LLMProvider(

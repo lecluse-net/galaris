@@ -10,6 +10,7 @@ from sqlalchemy import func, select
 from core.database import get_db
 
 from app.llm import LLM, LLMProvider
+from app.llm.facade import resolve_provider_profile
 from app.agent.models import Agent
 from app.connection.models import Connection
 from app.messenger import enabled_specs, kind_for_tool
@@ -24,24 +25,34 @@ async def check_llm_status() -> bool:
 
     Returns:
         Whether a non-deleted chat-capable LLM belongs to an active,
-        non-deleted provider.
+        non-deleted provider with its required credentials configured.
     """
     db = get_db()
 
     query = (
-        select(func.count())
+        select(LLMProvider)
         .select_from(LLM)
         .join(LLMProvider, LLM.llm_provider_id == LLMProvider.id)
         .where(
             LLMProvider.is_active.is_(True),
             LLM.service_capabilities.contains(["chat"]),
         )
+        .distinct()
     )
     query = LLM.histo_filter(query)
     query = LLMProvider.histo_filter(query)
-    result = await db.execute(query)
-    count = result.scalar() or 0
-    return count > 0
+    providers = (await db.execute(query)).scalars().all()
+    for provider in providers:
+        profile = resolve_provider_profile(
+            catalog_code=provider.catalog_code, base_url=provider.base_url,
+        )
+        if profile is not None:
+            if profile.api_key_required and not provider.api_key_configured:
+                continue
+            if profile.auth_type == "oauth_device" and not provider.oauth_connected:
+                continue
+        return True
+    return False
 
 
 async def check_agent_status(

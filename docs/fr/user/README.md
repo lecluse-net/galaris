@@ -49,6 +49,13 @@ ou un agent manque, même si la langue de votre profil est déjà renseignée. S
 configuration, le parcours indique les permissions nécessaires. Une fois la langue enregistrée,
 l’accueil normal revient si les autres éléments requis sont configurés ; `/welcome` reste accessible.
 
+L’étape LLM ouvre **Fournisseurs & modèles**. Elle n’est franchie que lorsqu’un modèle
+conversationnel est associé à un fournisseur actif dont les identifiants requis sont renseignés.
+OpenRouter est activé par défaut, mais sa clé API doit être renseignée. Un fournisseur local
+qui n’exige pas de clé peut valider l’étape sans clé ; un fournisseur OAuth doit être connecté.
+Cette vérification porte sur la configuration enregistrée ; testez la connexion pour vérifier
+que les identifiants sont valides.
+
 Le parcours de bienvenue présente sept étapes dans une timeline qui revient à la ligne selon
 la largeur disponible, sans défilement horizontal. Sélectionnez une étape pour
 afficher son contenu en dessous, ou utilisez **Étape précédente** et **Étape suivante**.

@@ -41,6 +41,12 @@ is missing, even if your profile already has a language. Without configuration p
 journey explains the required access. Saving the language restores the normal home page when
 the other required items are configured; `/welcome` remains accessible.
 
+The LLM step opens **Providers & models**. It is complete only when a conversational model
+belongs to an active provider with its required credentials configured. OpenRouter is enabled
+by default, but its API key must be entered. A local provider that does not require a key can
+complete the step without one; an OAuth provider must be connected. This check uses the saved
+configuration; test the connection to verify that the credentials are valid.
+
 The welcome journey presents seven steps in a timeline that wraps to fit the available width,
 without horizontal scrolling. Select a step to display its content
 below, or use **Previous step** and **Next step**. The first step, **Default language**, uses the
