@@ -8,7 +8,7 @@
     </div>
     <div class="resource-preview-copy">
       <div class="resource-preview-title"><span v-if="$slots['title-icon']" class="resource-preview-title-icon"><slot name="title-icon" /></span>{{ title }}</div>
-      <div v-if="description" class="resource-preview-description">{{ description }}</div>
+      <div v-if="plainDescription" class="resource-preview-description">{{ plainDescription }}</div>
       <div v-if="subtitle" class="resource-preview-subtitle">{{ subtitle }}</div>
       <div v-if="uri" class="resource-preview-uri">{{ uri }}</div>
     </div>
@@ -28,9 +28,12 @@
   </article>
 </template>
 <script setup lang="ts">
+import { computed } from 'vue'
+import DOMPurify from 'dompurify'
+import { marked } from 'marked'
 import '../resourcePreviewCard.css'
 
-const { placement = 'below-page', icon = 'insert_drive_file' } = defineProps<{
+const { placement = 'below-page', icon = 'insert_drive_file', description = '' } = defineProps<{
   placement?: 'in-page' | 'below-page'
   title: string
   description?: string
@@ -42,6 +45,15 @@ const { placement = 'below-page', icon = 'insert_drive_file' } = defineProps<{
   openLabel: string
   disabled?: boolean
 }>()
+const plainDescription = computed(() => {
+  const content = DOMPurify.sanitize(marked.parse(description, { async: false }), {
+    RETURN_DOM_FRAGMENT: true,
+    ALLOWED_TAGS: ['p', 'div', 'br', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'blockquote', 'ul', 'ol', 'li', 'table', 'tr', 'th', 'td', 'pre', 'code', 'a', 'strong', 'em', 'span'],
+    ALLOWED_ATTR: [],
+  })
+  for (const block of content.querySelectorAll('p,div,br,h1,h2,h3,h4,h5,h6,blockquote,li,tr,th,td,pre')) block.append(' ')
+  return content.textContent?.replace(/\s+/g, ' ').trim() ?? ''
+})
 const emit = defineEmits<{ open: [event: MouseEvent] }>()
 </script>
 <style scoped>

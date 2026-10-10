@@ -1,5 +1,28 @@
 import { test, expect, mount, jsonRoute } from './fixtures.mjs'
 import { agent, document as documentFixture } from './data.mjs'
+
+test('resource card descriptions preserve readable text from HTML, Markdown and plain text', async ({ page }, testInfo) => {
+  await mount(page, 'core/util/components/ResourcePreviewBlock.vue', {
+    props: { title: 'Synthetic guide', openLabel: 'Open guide' },
+  })
+  const examples = [
+    ['<p align="right"><strong>Français</strong> · <a href="guide.md">English</a></p>\n\n# Guide\n\n**Lire** le `manuel`.', 'Français · English Guide Lire le manuel.'],
+    ['## Guide\n\n[Lire](https://example.invalid/guide) le **manuel**.\n\n- Première étape\n- Deuxième étape', 'Guide Lire le manuel. Première étape Deuxième étape'],
+    ['<h4>Guide</h4><p>Lire<br>le <em>manuel</em> &amp; agir.</p><script>window.previewExecuted = true</script><style>p { color: red }</style>', 'Guide Lire le manuel & agir.'],
+    ['2 < 3 ; fichier_name ; C++ & café.', '2 < 3 ; fichier_name ; C++ & café.'],
+  ]
+  for (const [description, expected] of examples) {
+    await page.evaluate(description => window.testApp.setProps({ description }), description)
+    await expect(page.locator('.resource-preview-description')).toHaveText(expected)
+  }
+  expect(await page.evaluate(() => window.previewExecuted)).toBeUndefined()
+  await page.getByRole('button', { name: 'Open guide', exact: true }).click()
+  expect(await page.evaluate(() => window.testApp.events.at(-1)?.name)).toBe('open')
+  await page.evaluate(description => window.testApp.setProps({ description }), examples[0][0])
+  await page.locator('.resource-preview-card').screenshot({ path: testInfo.outputPath('plain-description.png') })
+  await page.evaluate(() => window.testApp.setProps({ description: '' }))
+  await expect(page.locator('.resource-preview-description')).toHaveCount(0)
+})
 const documentId = '00000000-0000-0000-0000-000000000001'
 const attachmentId = '00000000-0000-0000-0000-000000000002'
 const uri = `document://${documentId}/attachments/${attachmentId}`
