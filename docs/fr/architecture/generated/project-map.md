@@ -17,7 +17,7 @@ tests restent l’autorité sur le comportement.
 - 26 paires de domaines directement bidirectionnelles ;
 - 1 composantes fortement connexes ;
 - 7 paires frontend directement bidirectionnelles ;
-- 614 handlers HTTP/WebSocket détectés ;
+- 616 handlers HTTP/WebSocket détectés ;
 - 141 tables SQLAlchemy détectées ;
 - 244 outils MCP natifs détectés ;
 - 40 pages Vue détectées.
@@ -145,19 +145,19 @@ tests restent l’autorité sur le comportement.
 |---|---|---|
 | `app.agent` | `app.file_share` | `back/app/agent/mcp.py`, `back/app/agent/resource_facade.py` |
 | `app.agent` | `app.image` | `back/app/agent/avatar_generation.py` |
-| `app.agent` | `app.llm` | `back/app/agent/admin_service.py`, `back/app/agent/agent_service.py`, `back/app/agent/avatar_generation.py`, `back/app/agent/dispatcher.py`, `back/app/agent/facade.py`, `back/app/agent/janus.py`, `back/app/agent/model_resolver.py`, `back/app/agent/models.py`, `back/app/agent/openai_router.py`, `back/app/agent/planner_service.py`, `back/app/agent/realtime.py`, `back/app/agent/tools.py` |
+| `app.agent` | `app.llm` | `back/app/agent/admin_service.py`, `back/app/agent/agent_service.py`, `back/app/agent/avatar_generation.py`, `back/app/agent/dispatcher.py`, `back/app/agent/facade.py`, `back/app/agent/janus.py`, `back/app/agent/model_resolver.py`, `back/app/agent/models.py`, `back/app/agent/openai_router.py`, `back/app/agent/planner_service.py`, `back/app/agent/realtime.py`, `back/app/agent/router.py`, `back/app/agent/tools.py` |
 | `app.agent` | `app.messenger` | `back/app/agent/planner_service.py` |
 | `app.agent` | `app.process` | `back/app/agent/janus.py`, `back/app/agent/openai_router.py`, `back/app/agent/realtime.py` |
 | `app.agent` | `app.skill` | `back/app/agent/__init__.py`, `back/app/agent/agent_service.py`, `back/app/agent/defaults.py`, `back/app/agent/facade.py`, `back/app/agent/models.py` |
 | `app.agent` | `app.tools` | `back/app/agent/admin_authorization.py`, `back/app/agent/agent_service.py`, `back/app/agent/defaults.py`, `back/app/agent/executor_service.py`, `back/app/agent/facade.py`, `back/app/agent/mcp.py`, `back/app/agent/planner_service.py` |
-| `app.agent` | `core.authorize` | `back/app/agent/admin_authorization.py`, `back/app/agent/agent_service.py`, `back/app/agent/assertions.py`, `back/app/agent/defaults.py`, `back/app/agent/dialogue_service.py`, `back/app/agent/management_scope.py`, `back/app/agent/openai_router.py`, `back/app/agent/openai_service.py`, `back/app/agent/router.py`, `back/app/agent/team_router.py` |
+| `app.agent` | `core.authorize` | `back/app/agent/admin_authorization.py`, `back/app/agent/agent_service.py`, `back/app/agent/assertions.py`, `back/app/agent/avatar_generation.py`, `back/app/agent/defaults.py`, `back/app/agent/dialogue_service.py`, `back/app/agent/management_scope.py`, `back/app/agent/openai_router.py`, `back/app/agent/openai_service.py`, `back/app/agent/router.py`, `back/app/agent/team_router.py` |
 | `app.agent` | `core.database` | `back/app/agent/admin_authorization.py`, `back/app/agent/admin_service.py`, `back/app/agent/agent_group_service.py`, `back/app/agent/agent_service.py`, `back/app/agent/authorization.py`, `back/app/agent/avatar_generation.py`, `back/app/agent/avatars.py`, `back/app/agent/defaults.py`, `back/app/agent/dialogue_service.py`, `back/app/agent/janus.py`, `back/app/agent/management_scope.py`, `back/app/agent/models.py`, `back/app/agent/openai_service.py`, `back/app/agent/resource_facade.py`, `back/app/agent/router.py`, `back/app/agent/team_router.py`, `back/app/agent/title_service.py` |
 | `app.agent` | `core.dbadmin` | `back/app/agent/dbadmin.py`, `back/app/agent/defaults.py`, `back/app/agent/html_migration.py` |
 | `app.agent` | `core.failure_journal` | `back/app/agent/facade.py` |
 | `app.agent` | `core.i18n` | `back/app/agent/agent_service.py`, `back/app/agent/contracts.py`, `back/app/agent/dispatcher.py`, `back/app/agent/dispatcher_service.py`, `back/app/agent/executor_service.py`, `back/app/agent/janus.py`, `back/app/agent/model_resolver.py`, `back/app/agent/openai_router.py`, `back/app/agent/openai_schemas.py`, `back/app/agent/openai_service.py`, `back/app/agent/planner_service.py`, `back/app/agent/router.py`, `back/app/agent/tools.py` |
 | `app.agent` | `core.params` | `back/app/agent/dispatcher.py`, `back/app/agent/executor_service.py`, `back/app/agent/facade.py`, `back/app/agent/janus.py`, `back/app/agent/planner_collection.py`, `back/app/agent/planner_contracts.py`, `back/app/agent/planner_service.py`, `back/app/agent/realtime.py`, `back/app/agent/registry.py` |
 | `app.agent` | `core.team` | `back/app/agent/admin_service.py`, `back/app/agent/agent_group_service.py`, `back/app/agent/agent_service.py`, `back/app/agent/dialogue_service.py`, `back/app/agent/mcp.py`, `back/app/agent/models.py`, `back/app/agent/team_router.py` |
-| `app.agent` | `core.user` | `back/app/agent/admin_authorization.py`, `back/app/agent/admin_service.py`, `back/app/agent/agent_service.py`, `back/app/agent/authorization.py`, `back/app/agent/dbadmin.py`, `back/app/agent/defaults.py`, `back/app/agent/dialogue_service.py`, `back/app/agent/janus.py`, `back/app/agent/management_scope.py`, `back/app/agent/models.py`, `back/app/agent/openai_service.py`, `back/app/agent/router.py` |
+| `app.agent` | `core.user` | `back/app/agent/admin_authorization.py`, `back/app/agent/admin_service.py`, `back/app/agent/agent_service.py`, `back/app/agent/authorization.py`, `back/app/agent/avatar_generation.py`, `back/app/agent/dbadmin.py`, `back/app/agent/defaults.py`, `back/app/agent/dialogue_service.py`, `back/app/agent/janus.py`, `back/app/agent/management_scope.py`, `back/app/agent/models.py`, `back/app/agent/openai_service.py`, `back/app/agent/router.py` |
 | `app.agent` | `core.util` | `back/app/agent/avatar_generation.py`, `back/app/agent/html_migration.py`, `back/app/agent/models.py`, `back/app/agent/planner_service.py`, `back/app/agent/router.py`, `back/app/agent/schemas.py` |
 | `app.audio` | `app.file_share` | `back/app/audio/mcp.py` |
 | `app.audio` | `app.llm` | `back/app/audio/mcp.py`, `back/app/audio/summary_service.py` |
@@ -1104,7 +1104,8 @@ tests restent l’autorité sur le comportement.
 | POST | `/agent/openai/chat/completions` | `app.agent` | `agent_chat_completions` | oui | `back/app/agent/openai_router.py:77` |
 | GET | `/agent/openai/models` | `app.agent` | `get_agent_models` | oui | `back/app/agent/openai_router.py:66` |
 | GET | `/agents` | `app.agent` | `read_agents` | oui | `back/app/agent/router.py:223` |
-| POST | `/agents` | `app.agent` | `create_agent` | oui | `back/app/agent/router.py:274` |
+| POST | `/agents` | `app.agent` | `create_agent` | oui | `back/app/agent/router.py:282` |
+| GET | `/agents/avatar-generation` | `app.agent` | `read_avatar_generation_availability` | oui | `back/app/agent/router.py:262` |
 | GET | `/agents/drivers` | `app.agent` | `read_executor_drivers` | oui | `back/app/agent/router.py:193` |
 | GET | `/agents/groups` | `app.agent` | `read_groups` | oui | `back/app/agent/router.py:136` |
 | POST | `/agents/groups` | `app.agent` | `create_group` | oui | `back/app/agent/router.py:156` |
@@ -1124,12 +1125,13 @@ tests restent l’autorité sur le comportement.
 | POST | `/agents/{agent_id}/mcp-tokens` | `app.mcp` | `create_agent_mcp_token` | oui | `back/app/mcp/router.py:92` |
 | DELETE | `/agents/{agent_id}/mcp-tokens/{token_id}` | `app.mcp` | `delete_agent_mcp_token` | oui | `back/app/mcp/router.py:146` |
 | PUT | `/agents/{agent_id}/mcp-tokens/{token_id}` | `app.mcp` | `update_agent_mcp_token` | oui | `back/app/mcp/router.py:120` |
-| DELETE | `/agents/{id}` | `app.agent` | `delete_agent` | oui | `back/app/agent/router.py:329` |
-| GET | `/agents/{id}` | `app.agent` | `read_agent` | oui | `back/app/agent/router.py:262` |
-| PUT | `/agents/{id}` | `app.agent` | `update_agent` | oui | `back/app/agent/router.py:302` |
-| DELETE | `/agents/{id}/avatar` | `app.agent` | `delete_avatar` | oui | `back/app/agent/router.py:415` |
-| GET | `/agents/{id}/avatar` | `app.agent` | `download_avatar` | oui | `back/app/agent/router.py:381` |
-| POST | `/agents/{id}/avatar` | `app.agent` | `upload_avatar` | oui | `back/app/agent/router.py:343` |
+| DELETE | `/agents/{id}` | `app.agent` | `delete_agent` | oui | `back/app/agent/router.py:337` |
+| GET | `/agents/{id}` | `app.agent` | `read_agent` | oui | `back/app/agent/router.py:270` |
+| PUT | `/agents/{id}` | `app.agent` | `update_agent` | oui | `back/app/agent/router.py:310` |
+| DELETE | `/agents/{id}/avatar` | `app.agent` | `delete_avatar` | oui | `back/app/agent/router.py:449` |
+| GET | `/agents/{id}/avatar` | `app.agent` | `download_avatar` | oui | `back/app/agent/router.py:415` |
+| POST | `/agents/{id}/avatar` | `app.agent` | `upload_avatar` | oui | `back/app/agent/router.py:377` |
+| POST | `/agents/{id}/avatar/generate` | `app.agent` | `generate_agent_avatar` | oui | `back/app/agent/router.py:351` |
 | PUT | `/agents/{id}/yolo` | `app.agent` | `update_agent_yolo` | oui | `back/app/agent/router.py:39` |
 | GET | `/api/docs` | `core.api` | `public_swagger_ui_html` | non | `back/core/api.py:235` |
 | GET | `/api/health` | `core.api` | `health_check` | non | `back/core/api.py:266` |

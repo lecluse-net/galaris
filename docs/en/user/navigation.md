@@ -122,6 +122,15 @@ to be confirmed, then reopen the target’s record. See the
 When an agent avatar is saved, the image is converted to JPEG and reduced to at most
 500 × 500 pixels, preserving its proportions without enlarging small images.
 
+In a saved agent's record, **General → Generate avatar** creates an avatar from its names,
+the gender specified by its title, personality and job description. Its form and artistic
+style are unrestricted, with a visually identifiable AI nature. The canvas remains square,
+without a circular mask or crop. The button appears only
+when the **default LLM profile** has an active, configured image model. Save profile changes
+before generation. The existing image service requests 1024 × 1024 and adapts the dimensions
+to the model, then saves the result like any other avatar. An error preserves the previous
+avatar; profile or avatar changes during generation prevent its replacement.
+
 ## Tools, connections and skills
 
 **Configure → Tools & connections** (`/tools`) separates three needs:

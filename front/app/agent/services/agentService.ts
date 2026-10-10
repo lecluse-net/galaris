@@ -180,6 +180,16 @@ export const agentGroupService = {
 
 // Agent service
 export const agentService = {
+    getAvatarGenerationAvailability(): Promise<AxiosResponse<{ available: boolean }>> {
+        return api.get('/agents/avatar-generation')
+    },
+    async generateAvatar(id: number): Promise<AxiosResponse<{ avatar_revision: number }>> {
+        const response = await api.post<{ avatar_revision: number }>(`/agents/${id}/avatar/generate`)
+        invalidateSessionReads('agent-avatar')
+        invalidateSessionReads('agent-selection')
+        invalidateSessionReads('agent-catalogue')
+        return response
+    },
     async setYolo(id: number, enabled: boolean, expectedVersion: number, acknowledged = false) {
         const response = await api.put<{ yolo: boolean; authorization_version: number }>(`/agents/${id}/yolo`, { enabled, acknowledged, expected_version: expectedVersion })
         invalidateSessionReads('agent-catalogue')

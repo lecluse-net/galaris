@@ -22,6 +22,11 @@ AgentAdmin is documented in [agent-admin.md](agent-admin.md).
 proportions, no enlargement, EXIF orientation and transparency.
 Its HTTP journey replaces a synthetic PNG over 8 MiB with a compact JPEG,
 then verifies that an invalid replacement preserves the avatar and its revision.
+`back/app/agent/tests/test_avatar_generation.py` checks human generation through the default
+LLM profile, management permissions, unavailable models, and preservation of avatars after
+errors or concurrent changes. The button journey in `e2e/specs/agent-admin.spec.mjs` checks
+display and reopening with a synthetic provider; `front/browser-tests/agents.spec.mjs`
+checks retry and late responses.
 `back/app/agent/tests/test_agent_admin.py` protects CRUD without an HTTP human context,
 manager scope, system services, human-only delegation, the exact 34 functions and live
 revocation on a mounted MCP server. Direct calls without Processes cover valid images, uncertain provider

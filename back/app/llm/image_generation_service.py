@@ -9,7 +9,7 @@ import httpx
 from PIL import Image
 
 from . import llm_call_service, llm_provider_service, llm_service
-from .provider_facade import image_generation_provider_for
+from .provider_facade import ImageGenerationProviderError, image_generation_provider_for
 from .purposes import LLMCallPurpose
 from .resource_discovery import provider_connection
 from .subscription_policy import enforce_subscription_access
@@ -77,10 +77,7 @@ async def generate_image_native(
         if response.headers.get("content-type", "").startswith("application/json"):
             raw_response = response.text
         if not response.is_success:
-            raise ValueError(
-                f"Image provider rejected native size {selected_label} for {llm.llm_name} "
-                f"(HTTP {response.status_code}): {response.text[:500]}"
-            )
+            raise ImageGenerationProviderError(llm.llm_name, response.status_code, response.text[:500])
         result = adapter.read_response(response)
         trace = {
             "usage": result.usage,

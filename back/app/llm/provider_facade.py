@@ -198,6 +198,15 @@ class ImageDimensionsError(ValueError):
     """Model-safe explanation of unsupported or mismatched native image dimensions."""
 
 
+class ImageGenerationProviderError(ValueError):
+    """Upstream HTTP failure with safe fields for application error messages."""
+
+    def __init__(self, model: str, status_code: int, detail: str) -> None:
+        self.model = model
+        self.status_code = status_code
+        super().__init__(f"Image provider failed for {model} (HTTP {status_code}): {detail}")
+
+
 @dataclass(frozen=True, slots=True)
 class NativeImageSize:
     """Selected native pixels and their provider request options."""
@@ -867,6 +876,7 @@ __all__ = [
     "NativeImageSize",
     "nearest_image_size",
     "ImageDimensionsError",
+    "ImageGenerationProviderError",
     "register_image_size_resolver",
     "resolve_image_size",
     "ImageGenerationProvider",

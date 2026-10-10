@@ -16,6 +16,10 @@ MAX_AVATAR_PIXELS = 16_000_000
 MAX_STORED_AVATAR_SIDE = 500
 
 
+class AvatarConflictError(ValueError):
+    """The saved portrait inputs changed while generation was running."""
+
+
 def validate_avatar(content: bytes) -> None:
     if not content or len(content) > MAX_AVATAR_BYTES:
         raise ValueError("Avatar must contain between 1 byte and 15 MiB")
@@ -64,14 +68,16 @@ async def portrait_snapshot(agent: Agent, *, lock_title: bool = False) -> dict[s
 async def apply_generated_avatar(target_id: int, content: bytes, snapshot: dict[str, object]) -> dict[str, object]:
     """Register a valid JPEG while preserving concurrent profile/avatar changes."""
     content = normalize_avatar(content)
-    agent = await get_db().scalar(select(Agent).where(Agent.id == target_id).with_for_update()
-                                  .execution_options(populate_existing=True))
+    agent = await get_db().scalar(Agent.histo_filter(
+        select(Agent).where(Agent.id == target_id).with_for_update()
+        .execution_options(populate_existing=True)
+    ))
     if agent is None:
         raise LookupError("Agent not found")
     current = await portrait_snapshot(agent, lock_title=True)
     if (current["fingerprint"] != snapshot["fingerprint"]
             or current["avatar_revision"] != snapshot["avatar_revision"]):
-        raise ValueError("Avatar conflict: the target profile or avatar changed after admission")
+        raise AvatarConflictError("Avatar conflict: the target profile or avatar changed after admission")
     agent.avatar = content
     agent.avatar_revision += 1
     await get_db().flush()

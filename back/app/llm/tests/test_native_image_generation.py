@@ -14,7 +14,7 @@ from app.llm.provider_facade import ProviderConnection, image_generation_provide
 from bridge.google.image import native_image_config
 from bridge.google.image import GeminiImageGeneration
 from bridge.fireworks.image import FireworksImageGeneration
-from app.llm import nearest_image_size
+from app.llm import ImageGenerationProviderError, nearest_image_size
 from bridge.openai.image import OpenAIImageGeneration
 from bridge.openrouter.image import OpenRouterImageGeneration
 
@@ -178,9 +178,15 @@ async def test_different_native_dimensions_are_accepted_without_transform_or_ret
 async def test_provider_errors_are_recorded(monkeypatch, model_context, status, payload):
     _, _, finalize = model_context
     mock_http(monkeypatch, lambda request: httpx.Response(status, json=payload))
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError) as failure:
         await service.generate_image_native("selected", "Image", [], width=1024, height=1024)
     assert finalize.call_args.kwargs["status"] == "error"
+    if status >= 400:
+        assert isinstance(failure.value, ImageGenerationProviderError)
+        assert failure.value.model == "gpt-image-1"
+        assert failure.value.status_code == status
+        assert finalize.call_args.kwargs["raw_response"] == json.dumps(payload, separators=(",", ":"))
+        assert "rejected native size" not in finalize.call_args.kwargs["error"]
 
 
 @pytest.mark.asyncio

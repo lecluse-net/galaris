@@ -29,6 +29,7 @@
           "back/app/agent/openai_router.py",
           "back/app/agent/planner_service.py",
           "back/app/agent/realtime.py",
+          "back/app/agent/router.py",
           "back/app/agent/tools.py"
         ],
         "source": "app.agent",
@@ -79,6 +80,7 @@
           "back/app/agent/admin_authorization.py",
           "back/app/agent/agent_service.py",
           "back/app/agent/assertions.py",
+          "back/app/agent/avatar_generation.py",
           "back/app/agent/defaults.py",
           "back/app/agent/dialogue_service.py",
           "back/app/agent/management_scope.py",
@@ -182,6 +184,7 @@
           "back/app/agent/admin_service.py",
           "back/app/agent/agent_service.py",
           "back/app/agent/authorization.py",
+          "back/app/agent/avatar_generation.py",
           "back/app/agent/dbadmin.py",
           "back/app/agent/defaults.py",
           "back/app/agent/dialogue_service.py",
@@ -11536,8 +11539,17 @@
         "declared_path": "/agents",
         "file": "back/app/agent/router.py",
         "handler": "create_agent",
-        "line": 274,
+        "line": 282,
         "method": "POST",
+        "module": "app.agent"
+      },
+      {
+        "authorized": true,
+        "declared_path": "/agents/avatar-generation",
+        "file": "back/app/agent/router.py",
+        "handler": "read_avatar_generation_availability",
+        "line": 262,
+        "method": "GET",
         "module": "app.agent"
       },
       {
@@ -11716,7 +11728,7 @@
         "declared_path": "/agents/{id}",
         "file": "back/app/agent/router.py",
         "handler": "delete_agent",
-        "line": 329,
+        "line": 337,
         "method": "DELETE",
         "module": "app.agent"
       },
@@ -11725,7 +11737,7 @@
         "declared_path": "/agents/{id}",
         "file": "back/app/agent/router.py",
         "handler": "read_agent",
-        "line": 262,
+        "line": 270,
         "method": "GET",
         "module": "app.agent"
       },
@@ -11734,7 +11746,7 @@
         "declared_path": "/agents/{id}",
         "file": "back/app/agent/router.py",
         "handler": "update_agent",
-        "line": 302,
+        "line": 310,
         "method": "PUT",
         "module": "app.agent"
       },
@@ -11743,7 +11755,7 @@
         "declared_path": "/agents/{id}/avatar",
         "file": "back/app/agent/router.py",
         "handler": "delete_avatar",
-        "line": 415,
+        "line": 449,
         "method": "DELETE",
         "module": "app.agent"
       },
@@ -11752,7 +11764,7 @@
         "declared_path": "/agents/{id}/avatar",
         "file": "back/app/agent/router.py",
         "handler": "download_avatar",
-        "line": 381,
+        "line": 415,
         "method": "GET",
         "module": "app.agent"
       },
@@ -11761,7 +11773,16 @@
         "declared_path": "/agents/{id}/avatar",
         "file": "back/app/agent/router.py",
         "handler": "upload_avatar",
-        "line": 343,
+        "line": 377,
+        "method": "POST",
+        "module": "app.agent"
+      },
+      {
+        "authorized": true,
+        "declared_path": "/agents/{id}/avatar/generate",
+        "file": "back/app/agent/router.py",
+        "handler": "generate_agent_avatar",
+        "line": 351,
         "method": "POST",
         "module": "app.agent"
       },

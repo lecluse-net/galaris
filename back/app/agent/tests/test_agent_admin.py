@@ -173,9 +173,13 @@ async def test_avatar_publication_detects_aba_and_profile_changes(db, admin_fixt
 
 
 def test_portrait_data_and_decoding_guarantees():
-    prompt = portrait_prompt({"first_name": "Lyra", "gender": "F", "personality": "<p>Careful <b>observer</b></p>"}, "neutral background")
+    prompt = portrait_prompt({"first_name": "Lyra", "last_name": "Synthetic", "gender": "F", "personality": "<p>Careful <b>observer</b></p>", "job_title": "Astronomer", "job_description": "<p>Study distant galaxies.</p>"}, "neutral background")
     assert "Careful observer" in prompt and "<p>" not in prompt
     assert "neutral background" in prompt
+    assert "background extending to all four corners" in prompt
+    assert "Do not apply a circular crop" in prompt
+    profile = json.loads(prompt.split("\n")[1])
+    assert profile == {"first_name": "Lyra", "last_name": "Synthetic", "gender": "F", "personality": "Careful observer", "job_title": "Astronomer", "job_description": "Study distant galaxies."}
     validate_avatar(image_bytes())
     with pytest.raises(ValueError):
         validate_avatar(b"not an image")
@@ -411,6 +415,8 @@ async def test_avatar_generation_registers_directly_without_creating_processes(d
 
     caller = admin_fixture[0]
     caller.personality = "<p>Patient synthetic astronomer</p>"
+    caller.job_title = "Astronomer"
+    caller.job_description = "<p>Observe distant galaxies.</p>"
     await db.commit()
     definitions = await db.scalar(select(func.count()).select_from(ProcessDefinition))
     runs = await db.scalar(select(func.count()).select_from(ProcessRun))
@@ -423,7 +429,8 @@ async def test_avatar_generation_registers_directly_without_creating_processes(d
     prompt = provider.await_args.args[0]
     profile = json.loads(prompt.split("\n")[1])
     assert profile == {"first_name": "Admin", "last_name": "Synthetic", "gender": "F",
-                       "personality": "Patient synthetic astronomer"}
+                       "personality": "Patient synthetic astronomer", "job_title": "Astronomer",
+                       "job_description": "Observe distant galaxies."}
     with Image.open(io.BytesIO(await agent_service.get_avatar(caller.id))) as avatar:
         assert avatar.format == "JPEG" and avatar.size == (500, 333)
     assert await db.scalar(select(func.count()).select_from(ProcessDefinition)) == definitions

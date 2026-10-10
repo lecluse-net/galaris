@@ -257,6 +257,14 @@ async def read_agent_managers() -> List[AgentManagerInfo]:
     ]
 
 
+@crud_router.get("/avatar-generation", dependencies=[Depends(require_web_session)])
+@authorize(privileges=Privileges.AGENT_EDIT)
+async def read_avatar_generation_availability() -> dict[str, bool]:
+    from .avatar_generation import avatar_generation_available
+
+    return {"available": await avatar_generation_available()}
+
+
 @crud_router.get("/{id}", response_model=AgentSchema)
 @authorize(privileges=[Privileges.AGENT_ACCESS, Privileges.AGENT_EDIT])
 async def read_agent(
@@ -336,6 +344,32 @@ async def delete_agent(
 
 
 # ==================== AVATAR ENDPOINTS ====================
+
+
+@crud_router.post("/{id}/avatar/generate", dependencies=[Depends(require_web_session)])
+@authorize(privileges=Privileges.AGENT_EDIT, assertion=AgentOwnerAssertion)
+async def generate_agent_avatar(id: int) -> dict[str, object]:
+    from app.llm import ImageGenerationProviderError
+    from .avatar_generation import AvatarGenerationUnavailable, generate_managed_avatar
+    from .avatars import AvatarConflictError
+
+    try:
+        return await generate_managed_avatar(id)
+    except AvatarGenerationUnavailable as exc:
+        raise HTTPException(409, await _detail("avatar_generation_unavailable")) from exc
+    except AvatarConflictError as exc:
+        raise HTTPException(409, await _detail("avatar_generation_conflict")) from exc
+    except AgentScopeDeniedError as exc:
+        raise HTTPException(403, await _detail("avatar_generation_denied")) from exc
+    except LookupError as exc:
+        raise HTTPException(404, await _detail("agent_not_found")) from exc
+    except ImageGenerationProviderError as exc:
+        raise HTTPException(502, render_prompt(
+            await _detail("avatar_generation_provider_failed"), model=exc.model, status=exc.status_code,
+        )) from exc
+    except Exception as exc:
+        logger.error("Avatar generation failed for agent {} ({})", id, type(exc).__name__)
+        raise HTTPException(502, await _detail("avatar_generation_failed")) from exc
 
 
 @crud_router.post("/{id}/avatar", status_code=status.HTTP_204_NO_CONTENT)

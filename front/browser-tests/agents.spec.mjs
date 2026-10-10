@@ -2,11 +2,83 @@ import { test, expect, mount, jsonRoute } from './fixtures.mjs'
 import { agent } from './data.mjs'
 
 async function agentFixtures(page) {
+  await jsonRoute(page, '**/api/agents/avatar-generation', { available: false })
   await jsonRoute(page, '**/api/agents?*', [{ ...agent, agent_driver: 'hermes', is_owner: true }])
   await jsonRoute(page, '**/api/agents/titles?*', [])
   await jsonRoute(page, '**/api/agents/groups?*', [])
   await jsonRoute(page, '**/api/agents/drivers', [{ name: 'hermes', label: 'Hermes', manages_runtime: true }])
   await jsonRoute(page, '**/api/harnesses/agents/7', { containerized: true })
+}
+
+for (const width of [390, 1440]) {
+  test(`avatar generation recovers from errors and keeps late results with their agent (${width}px)`, async ({ page }, testInfo) => {
+    await page.setViewportSize({ width, height: 1000 })
+    await agentFixtures(page)
+    let available = false
+    await page.route('**/api/agents/avatar-generation', route => route.fulfill({ json: { available } }))
+    const first = { ...agent, agent_driver: 'internal', avatar_revision: 0 }
+    const second = { ...first, id: 8, code: 'lyra', first_name: 'Lyra' }
+    await page.route('**/api/agents?*', route => route.fulfill({ json: [first, second] }))
+    await jsonRoute(page, '**/api/agents/drivers', [{ name: 'internal', manages_runtime: false }])
+    await jsonRoute(page, '**/api/agents/managers', [agent.user])
+    await jsonRoute(page, '**/api/agents/titles?*', [{ id: 1, label: 'agent_titles.ms', gender: 'F' }])
+    await jsonRoute(page, '**/api/harnesses/catalog?*', [])
+    await jsonRoute(page, '**/api/harnesses/agents/*', { harness_id: null })
+    const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+a5AAAAABJRU5ErkJggg==', 'base64')
+    await page.route('**/api/agents/7/avatar?*', route => route.fulfill({ contentType: 'image/png', body: png }))
+    let calls = 0, release
+    const pending = new Promise(resolve => { release = resolve })
+    await page.route('**/api/agents/7/avatar/generate', async route => {
+      calls++
+      if (calls === 1) return route.fulfill({ status: 502, json: { detail: 'Synthetic generation failure' } })
+      await pending
+      first.has_avatar = true
+      first.avatar_revision = 1
+      return route.fulfill({ json: { avatar_revision: 1 } })
+    })
+    await mount(page, 'app/agent/pages/index.vue', { privileges: ['AGENT_EDIT'] })
+    const dialog = page.getByRole('dialog')
+    const close = async () => {
+      await dialog.getByRole('button', { name: 'Close', exact: true }).click()
+      await expect(dialog).toHaveCount(0)
+    }
+    const edit = name => page.locator('.agent-card').filter({ has: page.getByText(name, { exact: true }) }).getByRole('button', { name: 'Edit agent', exact: true })
+    const generate = dialog.getByRole('button', { name: 'Generate avatar', exact: true })
+    await edit('Alice Example').click()
+    await expect(generate).toHaveCount(0)
+    await close()
+    available = true
+    await edit('Alice Example').click()
+    await expect(generate).toBeEnabled()
+    await dialog.getByLabel('First name *', { exact: true }).fill('Draft')
+    await expect(generate).toBeDisabled()
+    await dialog.getByLabel('First name *', { exact: true }).fill('Alice')
+    await generate.click()
+    await expect(page.getByText(/Synthetic generation failure/)).toBeVisible()
+    await expect(generate).toBeEnabled()
+    try {
+      await generate.click()
+      await expect.poll(() => calls).toBe(2)
+      await expect(generate).toBeDisabled()
+      await close()
+      await edit('Alice Example').click()
+      await expect(generate).toBeDisabled()
+      if (width === 390) {
+        await close()
+        await edit('Lyra Example').click()
+      }
+      release()
+      await expect(page.getByText('Avatar generated successfully', { exact: true })).toBeVisible()
+      await expect(dialog.getByLabel('First name *', { exact: true })).toHaveValue(width === 390 ? 'Lyra' : 'Alice')
+      if (width === 390) await expect(dialog.locator('.agent-dialog-avatar img')).toHaveCount(0)
+      else await expect(dialog.locator('.agent-dialog-avatar img')).toHaveJSProperty('naturalWidth', 1)
+      await close()
+      await edit('Alice Example').click()
+      await expect(dialog.locator('.agent-dialog-avatar img')).toHaveJSProperty('naturalWidth', 1)
+      await dialog.evaluate(element => Promise.all(element.getAnimations({ subtree: true }).map(animation => animation.finished)))
+      await testInfo.attach('generated-avatar', { body: await dialog.screenshot(), contentType: 'image/png' })
+    } finally { release() }
+  })
 }
 
 for (const [mode, width] of [['create', 1440], ['edit', 390]]) {

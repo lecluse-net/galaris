@@ -428,12 +428,25 @@
                       accept="image/*"
                       @update:model-value="onAvatarSelected"
                       :loading="uploadingAvatar"
-                      :disable="!canManageCurrentAgent"
+                      :disable="!canManageCurrentAgent || generatingCurrentAvatar"
                     >
                       <template v-slot:prepend>
                         <q-icon name="cloud_upload" />
                       </template>
                     </q-file>
+                    <q-btn
+                      v-if="canManageCurrentAgent && avatarGenerationAvailable"
+                      class="agent-avatar-action"
+                      outline
+                      color="primary"
+                      icon="auto_awesome"
+                      :label="$t('agent.generateAvatar')"
+                      :loading="generatingCurrentAvatar"
+                      :disable="uploadingAvatar || avatarProfileUnsaved || generatingCurrentAvatar"
+                      @click="generateAvatar"
+                    >
+                      <q-tooltip>{{ $t(avatarProfileUnsaved ? 'agent.avatarSaveFirst' : 'agent.generateAvatarHelp') }}</q-tooltip>
+                    </q-btn>
                     <q-btn
                       v-if="canManageCurrentAgent && agentForm.has_avatar"
                       class="agent-avatar-action"
@@ -443,6 +456,7 @@
                       :label="$t('agent.deleteAvatar')"
                       @click="confirmDeleteAvatar"
                       :loading="uploadingAvatar"
+                      :disable="generatingCurrentAvatar"
                     />
                   </div>
                 </div>
@@ -1065,6 +1079,15 @@ const deleteType = ref<'agent' | 'title' | 'group'>('agent') // 'agent', 'title'
 // Avatar state
 const avatarFile = ref<File | null>(null)
 const uploadingAvatar = ref(false)
+const avatarGenerationAvailable = ref(false)
+const generatingAvatarIds = reactive(new Set<number>())
+const generatingCurrentAvatar = computed(() => agentForm.id !== null && generatingAvatarIds.has(agentForm.id))
+const avatarProfileUnsaved = computed(() => {
+  const saved = agentStore.agents.find(agent => agent.id === agentForm.id)
+  return !saved || saved.title_id !== agentForm.title_id
+    || saved.first_name !== agentForm.first_name || saved.last_name !== agentForm.last_name
+    || (saved.job_title ?? '') !== agentForm.job_title
+})
 const avatarUrls = reactive<Record<number, string>>({})
 const avatarRevisions: Record<number, number> = {}
 let avatarLoadGeneration = 0
@@ -1713,10 +1736,12 @@ const openAgentDialog = (agent: Agent | null = null) => {
     isAgentEdit.value = false
   }
   avatarFile.value = null
+  avatarGenerationAvailable.value = false
   showAgentDialog.value = true
   // Existing portraits already load with the catalogue; no request blocks opening.
   void fetchManagers(generation)
   if (agent) void loadHarnessSelection(agent, generation)
+  if (agent && canManageAgent(agent)) void loadAvatarGenerationAvailability(generation)
 }
 
 const openRichTextDialog = (agent: Agent, field: 'personality' | 'job_description') => {
@@ -1975,8 +2000,40 @@ const truncateText = (text: string | null, maxLength: number) => {
 }
 
 // Avatar functions
+const loadAvatarGenerationAvailability = async (generation: number) => {
+  try {
+    const response = await agentService.getAvatarGenerationAvailability()
+    if (!pageDisposed && generation === agentDialogGeneration) {
+      avatarGenerationAvailable.value = response.data.available
+    }
+  } catch {
+    if (!pageDisposed && generation === agentDialogGeneration) avatarGenerationAvailable.value = false
+  }
+}
+
+const generateAvatar = async () => {
+  const id = agentForm.id
+  if (id === null || !canManageCurrentAgent.value || !avatarGenerationAvailable.value
+    || generatingAvatarIds.has(id) || uploadingAvatar.value || avatarProfileUnsaved.value) return
+  const generation = agentDialogGeneration
+  generatingAvatarIds.add(id)
+  try {
+    await agentService.generateAvatar(id)
+    if (pageDisposed) return
+    if (showAgentDialog.value && agentForm.id === id) agentForm.has_avatar = true
+    await agentStore.fetchAgents()
+    $q.notify({ type: 'positive', message: t('agent.notify.avatarGenerated') })
+  } catch (error) {
+    if (pageDisposed) return
+    $q.notify({ type: 'negative', message: apiErrorDetail(error) || t('agent.notify.avatarGenerationError') })
+    if (generation === agentDialogGeneration) void loadAvatarGenerationAvailability(generation)
+  } finally {
+    generatingAvatarIds.delete(id)
+  }
+}
+
 const onAvatarSelected = async (file: File | null) => {
-  if (!canManageCurrentAgent.value || !file || !agentForm.id) return
+  if (!canManageCurrentAgent.value || !file || !agentForm.id || generatingCurrentAvatar.value) return
 
   uploadingAvatar.value = true
   try {
@@ -2001,7 +2058,7 @@ const onAvatarSelected = async (file: File | null) => {
 }
 
 const confirmDeleteAvatar = async () => {
-  if (!canManageCurrentAgent.value) return
+  if (!canManageCurrentAgent.value || generatingCurrentAvatar.value) return
   if (!agentForm.id) return
 
   showConfirmationDialog({

@@ -52,7 +52,7 @@ async def setup(caller_id: int) -> dict[str, int]:
         await db.flush()
         caller.profile_id = profile.id
         await db.commit()
-        return {"user_id": caller.user_id, "title_id": caller.title_id, "connection_id": connection.id}
+        return {"user_id": caller.user_id, "title_id": caller.title_id, "connection_id": connection.id, "profile_id": profile.id}
 
 
 @router.post("/{caller_id}/call/{function}")

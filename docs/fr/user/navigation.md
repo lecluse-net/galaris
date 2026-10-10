@@ -132,6 +132,16 @@ Voir le [contrat AgentAdmin](../dev/agent-admin.md) pour les connexions, équipe
 À l’enregistrement d’un avatar d’agent, l’image est convertie en JPEG et réduite à
 500 × 500 pixels au maximum, en conservant ses proportions, sans agrandir les petites images.
 
+Dans la fiche d’un agent enregistré, **Général → Générer un avatar** crée un avatar à partir
+de ses noms, du sexe renseigné dans sa civilité, de sa personnalité et de sa fiche de poste.
+La forme et le style sont libres, avec une nature d’agent IA visuellement identifiable.
+Le canevas reste carré, sans masque ni recadrage circulaire.
+Le bouton apparaît uniquement si le **profil LLM par défaut** dispose d’un modèle image
+actif et configuré. Enregistrez les modifications de la fiche avant la génération.
+L’avatar est demandé en 1024 × 1024, avec les dimensions adaptées au modèle par le service
+image existant, puis enregistré comme les autres avatars. Une erreur conserve l’avatar
+précédent ; une fiche ou un avatar modifiés pendant la génération empêchent son remplacement.
+
 ## Outils, connexions et compétences
 
 **Configurer → Outils & connexions** (`/tools`) sépare trois besoins :
