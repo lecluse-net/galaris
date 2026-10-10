@@ -1046,7 +1046,13 @@ for (const width of [1440, 750, 390]) test(`mixed graph keeps linked subjects to
   // Minimum zoom stops at fit; the original three steps restore the detail view.
   for (let i = 0; i < 3; i++) await page.getByRole('button', { name: 'Zoom in', exact: true }).click()
   const zoomedBack = await settledGraph(page, 2500)
-  expect(linksShown(zoomedBack)).toBe(linksShown(expanded))
+  // Fit recenters the map, so viewport culling can change the visible links.
+  // Every relationship touching a displayed node must remain accessible.
+  const displayed = new Set(zoomedBack.nodes.filter(node => node.symbol !== 'none').map(node => node.id))
+  const expectedLinks = edges.filter(edge => displayed.has(edge.source_item_id) || displayed.has(edge.target_item_id))
+  const shownLinks = zoomedBack.edges.filter(edge => edge.lineStyle.opacity > 0)
+  expect(shownLinks.length).toBeGreaterThan(0)
+  expect(shownLinks.map(edge => edge.id).sort()).toEqual(expectedLinks.map(edge => edge.id).sort())
   for (const node of zoomedBack.nodes) expect({ x: node.x, y: node.y }).toEqual(expandedPositions.get(node.id))
 })
 

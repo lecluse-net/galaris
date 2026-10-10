@@ -266,7 +266,7 @@ test('creating a private human-owned document opens it using the human identity'
     return route.fulfill({ json: document })
   })
   await mount(page, 'app/memory/components/DocumentLibraryPage.vue', { privileges: ['MEMORY_EDIT'] })
-  await page.getByRole('button', { name: 'Create document', exact: true }).first().click()
+  await page.getByRole('button', { name: 'Create document', exact: true }).first().press('Enter')
   await page.getByRole('dialog').getByLabel('Title', { exact: true }).fill('Personal notes')
   await page.getByRole('dialog').getByRole('button', { name: 'Create', exact: true }).click()
   await expect(page.getByRole('dialog')).toHaveCount(0)

@@ -164,11 +164,23 @@ test('a failed topic lookup explains the error and recovers on the next search',
   await page.getByRole('combobox', { name: 'Topic', exact: true }).click()
   await expect(page.getByText('Topic lookup unavailable', { exact: false })).toBeVisible()
   await expect(page.getByRole('listbox')).toBeVisible()
-  await jsonRoute(page, '**/api/topics?*', { items: [{ id: 'recovered', title: 'Recovered topic' }], total: 1 })
+  let release
+  const pending = new Promise(resolve => { release = resolve })
+  await page.route('**/api/topics?*', async route => {
+    await pending
+    await route.fulfill({ json: { items: [{ id: 'recovered', title: 'Recovered topic' }], total: 1 } })
+  })
+  const retry = page.waitForRequest(request => new URL(request.url()).searchParams.get('q') === 'Recovered')
   await page.getByRole('combobox', { name: 'Topic', exact: true }).fill('Recovered')
-  await page.getByRole('option', { name: 'Recovered topic', exact: true }).click()
-  await expect.poll(() => selected(page)).toBe('recovered')
-  await expect(page.getByText('Topic lookup unavailable', { exact: false })).toHaveCount(0)
+  try {
+    await retry
+    // Quasar hides the previous choices while the replacement search is pending.
+    await expect(page.getByRole('listbox')).toHaveCount(0)
+    release()
+    await page.getByRole('option', { name: 'Recovered topic', exact: true }).click()
+    await expect.poll(() => selected(page)).toBe('recovered')
+    await expect(page.getByText('Topic lookup unavailable', { exact: false })).toHaveCount(0)
+  } finally { release() }
 })
 
 test('late topic searches cannot replace a newer result or its selection', async ({ page }) => {

@@ -18,7 +18,9 @@
     input-debounce="300"
     @filter="filterOptions"
     @filter-abort="invalidate"
-    @popup-hide="invalidate"
+    @popup-hide="onPopupHide"
+    @blur="invalidate"
+    @keydown.esc="invalidate"
     @virtual-scroll="onVirtualScroll"
     @update:model-value="emitValue"
   >
@@ -186,6 +188,12 @@ function filterOptions(
 function invalidate(): void {
   requestVersion += 1
   loading.value = false
+}
+
+function onPopupHide(event?: Event): void {
+  // Quasar also hides the menu without an event while a filter is pending.
+  // Only an explicit dismissal should invalidate that replacement search.
+  if (event) invalidate()
 }
 
 function onVirtualScroll({ to }: { to: number }): void {

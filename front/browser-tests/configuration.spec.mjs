@@ -104,6 +104,10 @@ test('Harness Manager saves a new key, preserves it on reopen and exports only s
   const textLimit = page.getByLabel('Encrypted text file limit (MB)', { exact: true })
   await expect(textLimit).toHaveValue('1')
   await textLimit.fill('2')
+  // Quasar starts its slide transition after a delay, so a briefly stable
+  // download button can still move between pointer down and pointer up.
+  await expect.poll(() => page.getByRole('dialog').locator('.q-expansion-item__content')
+    .evaluate(element => element.style.transition)).toBe('')
   const secondDownload = page.waitForEvent('download')
   await page.getByRole('button', { name: 'Download ready-to-install ZIP' }).click()
   await secondDownload
