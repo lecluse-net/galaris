@@ -42,7 +42,7 @@ test('the incident journal searches occurrences and returns to preferences', asy
 
 test('message import selects its participants and invalidates the preview when the agent changes', async ({ page }) => {
   await jsonRoute(page, '**/api/evaluation/topic-classification/message-agents', [
-    { id: 7, label: 'Alice', message_count: 1 }, { id: 8, label: 'Bob', message_count: 1 },
+    { id: 8, label: 'Bob', message_count: 1 }, { id: 7, label: 'Alice', message_count: 1 },
   ])
   const peopleRequests = []
   await page.route('**/api/evaluation/topic-classification/message-people?*', route => {
@@ -63,6 +63,8 @@ test('message import selects its participants and invalidates the preview when t
   const importExchange = page.getByRole('button', { name: 'Import this exchange', exact: true })
   await expect(preview).toBeDisabled()
   await agent.click()
+  await expect(page.getByRole('option').nth(0)).toHaveAccessibleName(/Alice/)
+  await expect(page.getByRole('option').nth(1)).toHaveAccessibleName(/Bob/)
   await page.getByRole('option', { name: /Alice/ }).click()
   await person.click()
   await page.getByRole('option', { name: /Reviewer/ }).click()

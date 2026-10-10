@@ -23,13 +23,14 @@
 import { computed, onMounted, onBeforeUnmount } from 'vue'
 import { useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
-import { AgentSelect, useAgentStore } from '@/app/agent'
+import { AgentSelect, useAgentStore, useAgentSelectionStore } from '@/app/agent'
 import { privileges, usePrivilegeStore } from '@/core/authorize'
 import FileIndexPanel from './FileIndexPanel.vue'
 
 const { t } = useI18n()
 const route = useRoute()
 const agentStore = useAgentStore()
+const agentSelectionStore = useAgentSelectionStore()
 const privilegeStore = usePrivilegeStore()
 const selectedAgentId = defineModel<number | null>({ required: true })
 const canEdit = computed(() => privilegeStore.hasPrivilege(privileges.MEMORY_EDIT))
@@ -47,7 +48,7 @@ async function loadAgents(): Promise<void> {
   const raw = Array.isArray(route.query.agent) ? route.query.agent[0] : route.query.agent
   const requested = raw ? Number(raw) : null
   selectedAgentId.value = agentStore.agents.some(agent => agent.id === requested)
-    ? requested : agentStore.agents[0]?.id ?? null
+    ? requested : agentSelectionStore.defaultAgentId(agentStore.agents)
 }
 
 onMounted(() => { void loadAgents() })

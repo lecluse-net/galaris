@@ -278,13 +278,14 @@ import { useQuasar, type QTableProps } from 'quasar'
 import { apiErrorDetail } from '@/core/api'
 import { privileges, usePrivilegeStore } from '@/core/authorize'
 import { PageHeader } from '@/core/util'
-import { AgentSelect, useAgentStore } from '@/app/agent'
+import { AgentSelect, useAgentStore, useAgentSelectionStore } from '@/app/agent'
 import { contactService } from '../services/contactService'
 import type { Contact, ContactIdentity } from '../types'
 
 const { t, locale } = useI18n()
 const $q = useQuasar()
 const agentStore = useAgentStore()
+const agentSelectionStore = useAgentSelectionStore()
 const privilegeStore = usePrivilegeStore()
 const canEdit = computed(() => privilegeStore.hasPrivilege(privileges.MEMORY_EDIT))
 const contacts = ref<Contact[]>([])
@@ -460,7 +461,7 @@ watch(selectedAgentId, reloadFromStart)
 
 onMounted(async () => {
   await agentStore.fetchAgents()
-  selectedAgentId.value = agentStore.agents[0]?.id ?? null
+  selectedAgentId.value = agentSelectionStore.defaultAgentId(agentStore.agents)
 })
 </script>
 

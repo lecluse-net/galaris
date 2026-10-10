@@ -77,7 +77,10 @@ test('agent selectors share reads by scope, survive one cancelled reader and ret
   const reads = []
   await page.route('**/api/agents/selection?scope=*', route => {
     reads.push(new URL(route.request().url()).searchParams.get('scope'))
-    return route.fulfill({ json: [{ id: 7, label: 'Test Agent', has_avatar: false }] })
+    return route.fulfill({ json: [
+      { id: 7, label: 'Émile Exemple', has_avatar: false },
+      { id: 8, label: 'Zoé Exemple', has_avatar: false },
+    ] })
   })
   await mount(page, harness, { props: { showManagement: false } })
   reads.length = 0
@@ -93,8 +96,8 @@ test('agent selectors share reads by scope, survive one cancelled reader and ret
     const [first, second, teams] = await selections
     first[0].label = 'Locally edited'
     await getAgentSelection('management')
-    return { labels: [second[0].label, teams[0].label], cancelled: await cancelled }
+    return { labels: [second[0].label, teams[0].label], ids: second.map(agent => agent.id), cancelled: await cancelled }
   })
-  expect(result).toEqual({ labels: ['Test Agent', 'Test Agent'], cancelled: 'AbortError' })
+  expect(result).toEqual({ labels: ['Émile Exemple', 'Émile Exemple'], ids: [7, 8], cancelled: 'AbortError' })
   expect(reads.sort()).toEqual(['management', 'management', 'teams'])
 })

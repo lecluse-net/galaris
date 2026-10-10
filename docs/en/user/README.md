@@ -315,6 +315,12 @@ A local cancellation does not always guarantee that the external engine will sto
 
 ## Memory, Documents, and Topics
 
+Agent selectors follow alphabetical order by first name, then last name. The last selected
+agent is kept in frontend memory and offered when moving to another page, including between
+**Memory** and **Contacts**, provided it remains available and authorized. An empty choice
+or **All agents** does not replace the remembered agent. An explicit selection, including
+one in a link, takes precedence. A full reload or logout clears this choice.
+
 Recent conversation memory is reconstructed automatically. For durable context, Galaris can inject a bounded reminder of relevant memories before execution. If semantic search is unavailable, the interface indicates the fallback to lexical search.
 
 A memory's details include **Temporality (optional)**. Enter only meaningful components:

@@ -562,7 +562,7 @@ import { PageHeader } from '@/core/util'
 import { privileges } from '@/core/authorize'
 import { usePrivilegeStore } from '@/core/authorize/stores/privilegeStore'
 import { useAgentStore } from '@/app/agent/stores/agentStore'
-import { AgentSelect } from '@/app/agent'
+import { AgentSelect, useAgentSelectionStore } from '@/app/agent'
 import MemoryGraph from '../components/MemoryGraph.vue'
 import MemoryDreamActions from '../components/MemoryDreamActions.vue'
 import MemoryGraphRelations from '../components/MemoryGraphRelations.vue'
@@ -1093,6 +1093,7 @@ async function onSharingChanged(): Promise<void> {
 }
 
 let initializingAgent = true
+const agentSelectionStore = useAgentSelectionStore()
 let pageDisposed = false
 onBeforeUnmount(() => { pageDisposed = true })
 watch(() => store.selectedAgentId, (agentId, previousAgentId) => {
@@ -1123,8 +1124,10 @@ onMounted(async () => {
       ? requestedAgentId
       : null
     const nextAgentId = routeAgentId
-      ?? store.selectedAgentId
-      ?? agentStore.agents[0]?.id
+      ?? (agentStore.agents.some(agent => agent.id === agentSelectionStore.selectedAgentId)
+        ? agentSelectionStore.selectedAgentId : null)
+      ?? (agentStore.agents.some(agent => agent.id === store.selectedAgentId) ? store.selectedAgentId : null)
+      ?? agentSelectionStore.defaultAgentId(agentStore.agents)
       ?? null
     if (store.selectedAgentId !== nextAgentId) {
       store.selectedAgentId = nextAgentId

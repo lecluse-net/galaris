@@ -427,6 +427,12 @@ relancer le processus.
 
 ## Mémoire, documents et dossiers thématiques
 
+Les sélecteurs d’agents suivent l’ordre alphabétique du prénom puis du nom. Le dernier agent
+sélectionné est conservé en mémoire frontend et proposé lors du passage à une autre page,
+y compris entre **Mémoire** et **Contacts**, s’il reste disponible et autorisé. Un choix vide
+ou **Tous les agents** ne remplace pas cet agent mémorisé. Une sélection explicite, notamment
+dans un lien, reste prioritaire. Un rechargement complet ou une déconnexion efface ce choix.
+
 La mémoire récente d’une conversation est reconstruite automatiquement. Pour le contexte durable,
 Galaris peut injecter avant l’exécution un rappel borné des souvenirs pertinents. Si la recherche
 sémantique est indisponible, l’interface indique le repli vers la recherche lexicale.

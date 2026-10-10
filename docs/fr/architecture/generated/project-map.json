@@ -17044,6 +17044,7 @@
           "front/app/agent/services/agentService.ts",
           "front/app/agent/services/mcpTokenService.ts",
           "front/app/agent/services/teamService.ts",
+          "front/app/agent/stores/agentSelectionStore.ts",
           "front/app/agent/stores/agentStore.ts"
         ],
         "source": "app/agent",

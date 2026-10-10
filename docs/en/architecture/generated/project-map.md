@@ -698,7 +698,7 @@ tests remain authoritative for behavior.
 |---|---|---|
 | `app/agent` | `app/harnesses` | `front/app/agent/pages/index.vue` |
 | `app/agent` | `app/llm` | `front/app/agent/pages/index.vue` |
-| `app/agent` | `core/api` | `front/app/agent/components/AgentAvatar.vue`, `front/app/agent/components/AgentSelect.vue`, `front/app/agent/composables/useHarnessLogs.ts`, `front/app/agent/pages/index.vue`, `front/app/agent/richContent.ts`, `front/app/agent/services/agentSelectionService.ts`, `front/app/agent/services/agentService.ts`, `front/app/agent/services/mcpTokenService.ts`, `front/app/agent/services/teamService.ts`, `front/app/agent/stores/agentStore.ts` |
+| `app/agent` | `core/api` | `front/app/agent/components/AgentAvatar.vue`, `front/app/agent/components/AgentSelect.vue`, `front/app/agent/composables/useHarnessLogs.ts`, `front/app/agent/pages/index.vue`, `front/app/agent/richContent.ts`, `front/app/agent/services/agentSelectionService.ts`, `front/app/agent/services/agentService.ts`, `front/app/agent/services/mcpTokenService.ts`, `front/app/agent/services/teamService.ts`, `front/app/agent/stores/agentSelectionStore.ts`, `front/app/agent/stores/agentStore.ts` |
 | `app/agent` | `core/authorize` | `front/app/agent/components/AgentSelect.vue`, `front/app/agent/navigation.ts`, `front/app/agent/pages/index.vue` |
 | `app/agent` | `core/navigation` | `front/app/agent/navigation.ts`, `front/app/agent/pages/index.vue` |
 | `app/agent` | `core/params` | `front/app/agent/pages/index.vue` |

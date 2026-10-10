@@ -1290,7 +1290,7 @@ import { apiErrorDetail, isCancelledRequest } from '@/core/api'
 import { privileges, usePrivilegeStore } from '@/core/authorize'
 import { useAuthStore } from '@/core/user'
 import { useAgentStore } from '@/app/agent/stores/agentStore'
-import { AgentSelect } from '@/app/agent'
+import { AgentSelect, useAgentSelectionStore } from '@/app/agent'
 import GoalScheduleEditor from '../components/GoalScheduleEditor.vue'
 import { goalService } from '../services/goalService'
 import {
@@ -1345,6 +1345,7 @@ const route = useRoute()
 
 const store = useGoalStore()
 const agentStore = useAgentStore()
+const agentSelectionStore = useAgentSelectionStore()
 const privilegeStore = usePrivilegeStore()
 const authStore = useAuthStore()
 const canEdit = computed(() => privilegeStore.hasPrivilege(privileges.GOAL_EDIT))
@@ -1708,7 +1709,7 @@ function resetForm(): void {
   Object.assign(form, {
     title: '',
     description: '',
-    agentId: agentOptions.value[0]?.value ?? null,
+    agentId: agentSelectionStore.defaultAgentId(agentStore.agents),
     messengerReferrer: null,
     referrerMaxReminders: 1,
     triggerMode: 'TEMPORAL_DEFAULT' as GoalTriggerMode,

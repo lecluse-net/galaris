@@ -2,7 +2,7 @@ from collections.abc import Collection
 from typing import Any, Sequence, Optional
 import re
 import secrets
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import defer, joinedload, selectinload
 from loguru import logger
@@ -168,7 +168,11 @@ async def get_all(
         query = query.where(Agent.agent_driver == agent_driver)
     if agent_ids is not None:
         query = query.where(Agent.id.in_(agent_ids))
-    query = query.order_by(Agent.code, Agent.id).offset(skip).limit(limit)
+    query = query.order_by(
+        func.lower(Agent.first_name).collate("und-x-icu"),
+        func.lower(Agent.last_name).collate("und-x-icu"),
+        Agent.id,
+    ).offset(skip).limit(limit)
     query = Agent.histo_filter(query)
     result = await db.execute(query)
     rows = result.all()

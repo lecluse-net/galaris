@@ -1,5 +1,5 @@
 """Contact access derived exclusively from teams and agent management."""
-from sqlalchemy import delete, select
+from sqlalchemy import delete, func, select
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -16,7 +16,14 @@ from .management_scope import AgentManagementScope, AgentScopeDeniedError
 async def policy_snapshot(db: AsyncSession | None = None) -> DialoguePolicy:
     session = db if db is not None else get_db()
     team_ids = set((await session.scalars(select(TeamModel.id))).all())
-    agents = (await session.execute(select(Agent.id, Agent.first_name, Agent.last_name, Agent.code, Agent.user_id, Agent.group_id, Agent.avatar.is_not(None)))).all()
+    agents = (await session.execute(
+        select(Agent.id, Agent.first_name, Agent.last_name, Agent.code, Agent.user_id, Agent.group_id, Agent.avatar.is_not(None))
+        .order_by(
+            func.lower(Agent.first_name).collate("und-x-icu"),
+            func.lower(Agent.last_name).collate("und-x-icu"),
+            Agent.id,
+        )
+    )).all()
     memberships: dict[int, set[int]] = {}
     for agent_id, team_id in await session.execute(select(AgentTeam.agent_id, AgentTeam.team_id)):
         if team_id in team_ids:

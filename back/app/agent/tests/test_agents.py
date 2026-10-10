@@ -469,7 +469,7 @@ async def test_create_internal_harness_materializes_skill_assignments(
 
 
 @pytest.mark.asyncio
-async def test_agent_list_batches_teams_and_reopens_avatar_flags(db, monkeypatch):
+async def test_agent_list_orders_names_batches_teams_and_reopens_avatar_flags(db, monkeypatch):
     from datetime import datetime, timezone
     from sqlalchemy import delete, event, inspect, update
     from app.agent.models import AgentGroup, AgentTeam, Title
@@ -479,9 +479,11 @@ async def test_agent_list_batches_teams_and_reopens_avatar_flags(db, monkeypatch
     teams = [AgentGroup(name=f"Synthetic list team {index}") for index in range(3)]
     db.add_all([title, *teams])
     await db.flush()
-    agents = [Agent(title_id=title.id, code=f"batch-agent-{index}", first_name="Synthetic",
-                    last_name=str(index), group_id=teams[0].id, avatar=b"synthetic-avatar" if index == 0 else None)
-              for index in range(8)]
+    names = [("alice", "Arbre"), ("Alice", "Zèbre"), ("Émile", "Arbre"), ("Émile", "Zèbre"),
+             ("Zoé", "Exemple"), ("Zoé", "Exemple"), ("Zoé", "Horizon"), ("Zoé", "Zèbre")]
+    agents = [Agent(title_id=title.id, code=f"batch-agent-{7 - index}", first_name=first,
+                    last_name=last, group_id=teams[0].id, avatar=b"synthetic-avatar" if index == 0 else None)
+              for index, (first, last) in enumerate(names)]
     db.add_all(agents)
     await db.flush()
     for agent in agents:

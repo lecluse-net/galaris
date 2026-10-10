@@ -14,6 +14,45 @@ const choices = {
   },
 }
 
+for (const width of [390, 1440]) {
+  test(`agent choices sort by first and last name and preserve selection on reopening (${width}px)`, async ({ page }, testInfo) => {
+    await page.setViewportSize({ width, height: 900 })
+    const agents = [
+      { id: 6, label: 'alice Exemple', has_avatar: false },
+      { id: 7, label: 'Émile Arbre', has_avatar: false },
+      { id: 8, label: 'Émile Zèbre', has_avatar: false },
+      { id: 9, label: 'Zoé Exemple', has_avatar: false },
+    ]
+    await page.route('**/api/agents/selection?*', route => route.fulfill({ json: agents }))
+    const options = [
+      { value: 9, label: 'Ms Zoé Exemple (aaa)' },
+      { value: null, label: 'All agents' },
+      { value: 8, label: 'Mr Émile Zèbre (bbb)' },
+      { value: 7, label: 'Ms Émile Arbre (ccc)' },
+      { value: 6, label: 'Ms alice Exemple (zzz)' },
+      { value: 5, label: 'Unauthorized agent' },
+    ]
+    await mount(page, choices.agent.component, { props: {
+      options, loadAgents: false, modelValue: 9, label: 'Choice',
+    } })
+    const input = page.getByRole('combobox', { name: 'Choice', exact: true })
+    await expect(page.getByText(options[0].label, { exact: true })).toBeVisible()
+    await input.click()
+    const expected = [options[1].label, options[4].label, options[3].label, options[2].label, options[0].label]
+    const optionLabels = () => page.getByRole('option').evaluateAll(elements => elements.map(element => element.getAttribute('aria-label')))
+    await expect.poll(optionLabels).toEqual(expected)
+    await testInfo.attach('sorted-agent-choices', { body: await page.screenshot(), contentType: 'image/png' })
+    expect(await page.evaluate(() => window.testApp.events)).toEqual([])
+    await page.getByRole('option', { name: options[3].label, exact: true }).click()
+    await expect.poll(() => page.evaluate(() => window.testApp.events.at(-1)?.value)).toBe(7)
+    await input.click()
+    await expect.poll(optionLabels).toEqual(expected)
+    await page.keyboard.press('Escape')
+    await expect(page.getByRole('listbox')).toHaveCount(0)
+    await expect(page.getByText(options[3].label, { exact: true })).toBeVisible()
+  })
+}
+
 for (const [kind, contract] of Object.entries(choices)) {
   for (const width of [390, 1440]) {
     for (const failure of [false, true]) {

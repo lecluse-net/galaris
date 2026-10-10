@@ -160,10 +160,12 @@ const peopleLoading = ref(false)
 const previewLoading = ref(false)
 const importing = ref(false)
 
-const agentOptions = computed(() => agents.value.map((agent) => ({
-  label: `${agent.label} · ${t('evaluation.topicImport.messageCount', { count: agent.message_count })}`,
-  value: agent.id,
-})))
+const agentOptions = computed(() => [...agents.value]
+  .sort((left, right) => left.label.localeCompare(right.label, locale.value, { sensitivity: 'base' }) || left.id - right.id)
+  .map((agent) => ({
+    label: `${agent.label} · ${t('evaluation.topicImport.messageCount', { count: agent.message_count })}`,
+    value: agent.id,
+  })))
 const selectedAgent = computed(() => (
   agents.value.find(agent => agent.id === agentId.value) ?? null
 ))

@@ -38,9 +38,9 @@ async def test_selection_scopes_and_task_management_follow_authenticated_authori
         db.add_all([role, title, team])
         await db.flush()
         db.add(Assignment(user_id=user_id, role_id=role.id, is_default=True))
-        own = Agent(user_id=user_id, title_id=title.id, code='selection-own', first_name='Own', last_name='Agent')
-        peer = Agent(user_id=admin_id, title_id=title.id, code='selection-peer', first_name='Peer', last_name='Agent')
-        outside = Agent(user_id=admin_id, title_id=title.id, code='selection-outside', first_name='Outside', last_name='Agent')
+        own = Agent(user_id=user_id, title_id=title.id, code='selection-a', first_name='Zoé', last_name='Exemple')
+        peer = Agent(user_id=admin_id, title_id=title.id, code='selection-b', first_name='Émile', last_name='Exemple')
+        outside = Agent(user_id=admin_id, title_id=title.id, code='selection-c', first_name='alice', last_name='Exemple')
         db.add_all([own, peer, outside])
         await db.flush()
         await set_human_membership(team.id, user_id, True)
@@ -62,6 +62,8 @@ async def test_selection_scopes_and_task_management_follow_authenticated_authori
         response = await client.get('/api/agents/selection', params={'scope': scope}, headers=human)
         assert response.status_code == 200
         assert {item['id'] for item in response.json()} == set(expected)
+        ordered_ids = [item['id'] for item in response.json() if item['id'] in ids]
+        assert ordered_ids == [agent_id for agent_id in reversed(ids) if agent_id in expected]
         assert all(set(item) == {'id', 'label', 'has_avatar'} for item in response.json())
     assert (await client.get('/api/agents/selection', headers=admin)).status_code == 200
     for task_id in task_ids[1:]:

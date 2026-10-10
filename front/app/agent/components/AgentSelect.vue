@@ -72,6 +72,7 @@ import { useI18n } from 'vue-i18n'
 import { isAxiosError } from 'axios'
 import AgentAvatar from './AgentAvatar.vue'
 import { useAgentStore } from '../stores/agentStore'
+import { useAgentSelectionStore } from '../stores/agentSelectionStore'
 import { AUTH_TOKEN_CHANGED_EVENT, apiErrorDetail, isCancelledRequest } from '@/core/api'
 import { usePrivilegeStore } from '@/core/authorize'
 import { getAgentSelection, type AgentSelectionScope, type AgentSelectionOption as AuthorizedAgent } from '../services/agentSelectionService'
@@ -94,6 +95,7 @@ const { options, label, loadAgents = true, scope = 'management' } = defineProps<
 }>()
 const model = defineModel<number | null>({ required: true })
 const agentStore = useAgentStore()
+const selectionStore = useAgentSelectionStore()
 const privileges = usePrivilegeStore()
 const authorized = ref<AuthorizedAgent[]>([])
 const loading = ref(false)
@@ -102,16 +104,43 @@ const failureDetail = ref('')
 let request = 0
 let selectionController: AbortController | undefined
 let popupOpen = false
+let defaultPending = model.value === null
 const { t } = useI18n()
 const allowedIds = computed(() => new Set(authorized.value.map(agent => agent.id)))
-const allowedOptions = computed(() => options.filter(option => option.value === null || allowedIds.value.has(option.value)))
+const allowedOptions = computed(() => {
+  const positions = new Map(authorized.value.map((agent, index) => [agent.id, index]))
+  return options
+    .filter(option => option.value === null || allowedIds.value.has(option.value))
+    .sort((left, right) => {
+      if (left.value === null) return right.value === null ? 0 : -1
+      if (right.value === null) return 1
+      return (positions.get(left.value) ?? 0) - (positions.get(right.value) ?? 0)
+    })
+})
 const selectedOption = computed(
   () => allowedOptions.value.find(option => option.value === model.value) ?? null,
 )
 
 function select(value: number | null): void {
   if (value === null || allowedOptions.value.some(option => option.value === value && !option.disable)) {
+    defaultPending = false
+    selectionStore.remember(value)
     model.value = value
+  }
+}
+
+function applyDefault(): void {
+  if (model.value !== null) {
+    defaultPending = false
+    return
+  }
+  if (!defaultPending || selectionStore.selectedAgentId === null) return
+  const preferred = allowedOptions.value.find(option => (
+    option.value === selectionStore.selectedAgentId && !option.disable
+  ))
+  if (preferred) {
+    defaultPending = false
+    model.value = preferred.value
   }
 }
 
@@ -132,6 +161,7 @@ async function refresh(): Promise<void> {
     }
     authorized.value = result
     if (model.value !== null && !allowedIds.value.has(model.value)) model.value = null
+    applyDefault()
   } catch (error) {
     if (current !== request || isCancelledRequest(error)) return
     authorized.value = []
@@ -159,7 +189,7 @@ function invalidate(): void {
   cancelRefresh()
   authorized.value = []
   failed.value = false
-  if (popupOpen || model.value !== null) void refresh()
+  if (popupOpen || model.value !== null || (defaultPending && selectionStore.selectedAgentId !== null)) void refresh()
 }
 function open(): void {
   popupOpen = true
@@ -171,8 +201,10 @@ function close(): void {
 }
 watch(() => [scope, privileges.privileges], invalidate, { immediate: true, deep: true })
 watch(model, value => {
+  applyDefault()
   if (value !== null && !allowedIds.value.has(value) && !loading.value) void refresh()
 })
+watch(allowedOptions, applyDefault)
 onBeforeUnmount(() => {
   cancelRefresh()
   window.removeEventListener(AUTH_TOKEN_CHANGED_EVENT, invalidate)
