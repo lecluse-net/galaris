@@ -371,6 +371,11 @@ for their metadata and relationships. Closing with the button or backdrop return
 graph with its viewport preserved.
 
 The **Graph** tab opens **3D view**; **2D view** retains the previous graph.
+3D displays pages as they arrive, starting with File Share roots, topics and contacts,
+then folders/directories, documents and details. Approach a directory to progressively
+load its known children; visited branches return when reopening. Their depth follows
+local distances rather than distant fixed levels. A link disappears when either node
+passes behind the camera. Returning to 2D loads the complete catalogue matching the filters.
 Both views use the same folder SVGs, file and media glyphs, borders, relation colors
 curves and relative widths. In 3D, links are thicker for visibility, and long links use
 more segments to preserve their curve. Labels have no background.

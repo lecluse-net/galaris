@@ -490,6 +490,12 @@ les dossiers et conversations ont une modale dédiée à leurs métadonnées et 
 La fermeture par le bouton ou l'arrière-plan rend le graphe avec son cadrage conservé.
 
 L'onglet **Graphe** ouvre la **Vue 3D** ; **Vue 2D** conserve le graphe précédent.
+La 3D affiche les pages à mesure qu'elles arrivent, en commençant par les racines
+File Share, sujets et contacts, puis dossiers/répertoires, documents et détails.
+Approchez un répertoire pour charger progressivement ses enfants connus ; les branches
+visitées sont retrouvées à la réouverture. Leur profondeur suit les distances locales,
+sans grands étages fixes. Un lien disparaît si l'un de ses nœuds passe derrière la caméra.
+Le retour en 2D charge le catalogue complet correspondant aux filtres.
 Les deux vues utilisent les mêmes SVG de dossiers, glyphes de fichiers et médias,
 bordures, couleurs, courbures et différences d'épaisseur des relations. En 3D, les
 liens sont épaissis pour mieux les voir et les longs liens utilisent davantage de segments

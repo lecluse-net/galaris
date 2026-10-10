@@ -24,6 +24,7 @@ from .source_access import readable_source_ids
 
 GraphKind = Literal["memory", "document", "attachment", "folder", "file", "directory", "topic", "contact", "conversation"]
 GraphCoordinate3d = Annotated[float, Field(ge=-1e15, le=1e15)]
+GraphRegionPages = Annotated[int, Field(ge=1, le=10_000)]
 
 
 class GraphPoint(BaseModel):
@@ -42,6 +43,7 @@ class GraphCamera3d(BaseModel):
     model_config = ConfigDict(extra="forbid", allow_inf_nan=False)
     position: tuple[GraphCoordinate3d, GraphCoordinate3d, GraphCoordinate3d]
     target: tuple[GraphCoordinate3d, GraphCoordinate3d, GraphCoordinate3d]
+    layout_version: int = Field(default=1, ge=1, le=2)
 
 
 class GraphPreferences(BaseModel):
@@ -50,6 +52,7 @@ class GraphPreferences(BaseModel):
     expanded_branches: list[UUID] = Field(default_factory=lambda: list[UUID](), max_length=10_000)
     camera: GraphCamera | None = None
     camera_3d: GraphCamera3d | None = None
+    resource_branches: dict[UUID, GraphRegionPages] = Field(default_factory=lambda: dict[UUID, GraphRegionPages](), max_length=10_000)
 
 
 class GraphPreferencesPatch(BaseModel):
@@ -58,6 +61,7 @@ class GraphPreferencesPatch(BaseModel):
     expanded_branches: list[UUID] | None = Field(default=None, max_length=10_000)
     camera: GraphCamera | None = None
     camera_3d: GraphCamera3d | None = None
+    resource_branches: dict[UUID, GraphRegionPages] | None = Field(default=None, max_length=10_000)
 
 
 class GraphContext(BaseModel):
@@ -108,8 +112,9 @@ async def read_state(context: GraphContext, scope: AgentManagementScope) -> Grap
         return GraphState()
     preferences = GraphPreferences.model_validate(view.preferences)
     # A stale expansion must not expose the identity of a revoked node.
-    allowed = await _admissible(context, set(preferences.expanded_branches))
+    allowed = await _admissible(context, set(preferences.expanded_branches) | set(preferences.resource_branches))
     preferences.expanded_branches = [key for key in preferences.expanded_branches if key in allowed]
+    preferences.resource_branches = {key: pages for key, pages in preferences.resource_branches.items() if key in allowed}
     return GraphState(revision=view.revision, preferences=preferences)
 
 
@@ -164,9 +169,13 @@ async def write_state(request: GraphStateWrite, scope: AgentManagementScope) -> 
     keys = set(request.positions)
     if request.preferences.expanded_branches is not None:
         keys.update(request.preferences.expanded_branches)
+    if request.preferences.resource_branches is not None:
+        keys.update(request.preferences.resource_branches)
     allowed = await _admissible(request, keys)
     if request.preferences.expanded_branches is not None:
         changes["expanded_branches"] = [str(key) for key in request.preferences.expanded_branches if key in allowed]
+    if request.preferences.resource_branches is not None:
+        changes["resource_branches"] = {str(key): pages for key, pages in request.preferences.resource_branches.items() if key in allowed}
     await db.execute(insert(MemoryGraphView).values(
         user_id=scope.user_id, agent_id=request.agent_id, context_key=request.cache_key(),
     ).on_conflict_do_nothing(index_elements=["user_id", "agent_id", "context_key"]))

@@ -28,7 +28,7 @@ export interface Graph3dLink {
   source: string; target: string; type: string; color: string; suggested: boolean
   width: number; opacity: number; curvature: number; overviewStyle: { width: number; opacity: number }
 }
-export interface Graph3dCamera { position: [number, number, number]; target: [number, number, number] }
+export interface Graph3dCamera { position: [number, number, number]; target: [number, number, number]; layout_version?: number }
 export interface Graph3dProjection { id: string; x: number; y: number; depth: number; size: number; near: boolean }
 export interface Graph3dPreview { url: string; aspect: number; nativeSize: number }
 interface SpatialCell {
@@ -141,7 +141,9 @@ export class MemoryGraphScene {
     this.onSelect = callbacks.select
     this.onFailure = callbacks.failure
     this.groupTitle = callbacks.groupTitle
-    this.renderer = new WebGLRenderer({ antialias: false, alpha: false, powerPreference: 'high-performance' })
+    this.renderer = new WebGLRenderer({ antialias: false, alpha: true, powerPreference: 'high-performance' })
+    // Both renderers reveal the same viewport gradients and grid underneath.
+    this.renderer.setClearAlpha(0)
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, window.innerWidth < 1024 ? 1.5 : 2))
     this.renderer.domElement.setAttribute('aria-hidden', 'true')
     host.append(this.renderer.domElement)
@@ -198,7 +200,7 @@ export class MemoryGraphScene {
     return Math.max(1, this.fitDistance / Math.max(this.camera.near, this.navigationDepth ?? this.camera.position.distanceTo(this.controls.target)))
   }
   get view(): Graph3dCamera {
-    return { position: this.camera.position.toArray(), target: this.controls.target.toArray() }
+    return { position: this.camera.position.toArray(), target: this.controls.target.toArray(), layout_version: 2 }
   }
   get visible(): ReadonlyMap<string, Graph3dProjection> { return this.projections }
   get groupedCount(): number { return this.spatialGrouped }
@@ -252,9 +254,8 @@ export class MemoryGraphScene {
     else this.schedule()
   }
 
-  setTheme(background: string, ink: string): void {
+  setTheme(ink: string): void {
     this.ink = ink
-    this.renderer.setClearColor(background)
     this.schedule()
   }
   setSelected(id: string | null): void { this.selected = id; this.schedule() }
@@ -268,6 +269,7 @@ export class MemoryGraphScene {
     if (changed) { this.frontierDirty = true; this.schedule() }
   }
   restore(view: Graph3dCamera): void {
+    if (view.layout_version !== 2) { this.fit(); return }
     this.overview = false
     this.camera.position.fromArray(view.position); this.controls.target.fromArray(view.target)
     const direction = this.camera.position.clone().sub(this.controls.target).normalize()
@@ -454,7 +456,7 @@ export class MemoryGraphScene {
     this.paintLinks()
     this.paintOverlay()
     this.renderer.render(this.scene, this.camera)
-    // Aggregate renderer evidence only, available to the existing browser harness.
+    // Renderer evidence, available to the existing browser harness.
     this.host.dataset.graph3dNodes = String(count)
     this.host.dataset.graph3dLinks = String(this.visibleLinks)
     this.host.dataset.graph3dLinkSegments = String(this.linkGeometry.instanceCount * 4)
@@ -464,6 +466,7 @@ export class MemoryGraphScene {
     this.host.dataset.graph3dGrouped = String(this.spatialGrouped)
     this.host.dataset.graph3dRepresented = String(represented)
     this.host.dataset.graph3dSourceLinks = String(this.sourceLinks.length)
+    this.host.dataset.graph3dCamera = JSON.stringify(this.view)
   }
 
   private markerPaint(marker: Graph3dMarker): MarkerPaint {
@@ -567,15 +570,9 @@ export class MemoryGraphScene {
       let by = matrix[1]! * tx + matrix[5]! * ty + matrix[9]! * tz
       let bz = matrix[2]! * tx + matrix[6]! * ty + matrix[10]! * tz
       let chunks = 0, visibleMask = 0
-      if (az < -near || bz < -near) {
-        // Match the shader's near-plane clipping before estimating screen size.
-        if (az > -near) {
-          const fraction = (-near - az) / (bz - az)
-          ax += (bx - ax) * fraction; ay += (by - ay) * fraction; az = -near
-        } else if (bz > -near) {
-          const fraction = (-near - bz) / (az - bz)
-          bx += (ax - bx) * fraction; by += (ay - by) * fraction; bz = -near
-        }
+      // A relation disappears as soon as either endpoint passes behind the
+      // camera. Clipping a half-link onto the near plane creates giant streaks.
+      if (az < -near && bz < -near) {
         ax *= scale / -az; ay *= scale / -az
         bx *= scale / -bz; by *= scale / -bz
         const length = Math.max(Math.hypot(bx - ax, by - ay), 0.0001)
@@ -660,7 +657,7 @@ export class MemoryGraphScene {
       Math.abs(rect.x - x) < (rect.w + w) / 2 + 4 && Math.abs(rect.y - y) < (rect.h + h) / 2 + 4)
     const ordered = [...this.projections.values()].filter(point => {
       const marker = this.displayById.get(point.id)!
-      return point.near || this.previews.has(point.id) || marker.priority >= 10 || marker.grouped || point.id === this.selected
+      return point.near || this.previews.has(point.id) || marker.priority >= 8 || marker.grouped || point.id === this.selected
     }).sort((a, b) =>
       (a.id === this.selected ? -100 : -this.displayById.get(a.id)!.priority)
       - (b.id === this.selected ? -100 : -this.displayById.get(b.id)!.priority))
@@ -696,7 +693,7 @@ export class MemoryGraphScene {
         } else imageSize = 0
       }
       if (aliveLabels.size >= (this.zoom < 1.8 ? 12 : 80)) continue
-      if (!point.near && marker.priority < 10 && !marker.grouped && marker.id !== this.selected) continue
+      if (!point.near && marker.priority < 8 && !marker.grouped && marker.id !== this.selected) continue
       const title = marker.title
       const w = Math.min(180, title.length * 7 + 8), h = 20
       const y = point.y + Math.max(point.size, imageSize) / 2 + h / 2 + 4

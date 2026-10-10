@@ -1278,13 +1278,17 @@ temporal matches. Simulation uses current rights and validity rather than recons
 
 The graph UI supports node natures and relationships, expansion, centring and full screen.
 It opens the batched Three.js **3D** view, with a **2D** option retaining the previous graph.
-All matching pages load without a global node cap or period filter. Visible markers share GPU
+Pages appear progressively without a global node cap or period filter. 3D starts with
+File Share roots, topics and contacts; known children of accessible directories load
+when approaching, in pages of 100. Depth follows local spacing rather than rigid levels.
+A link is hidden if either endpoint is behind the camera. Visible markers share GPU
 buffers, placement runs in a worker, and rendering stops at rest.
 Dense cells fold into explorable display groups with relationships aggregated by type,
 direction and status; canonical identities and links are preserved. The two fixed distant/near
 symbol sizes preserve readability during deep zoom; authorized previews grow later up to their
-native pixel dimensions. The 2D and 3D cameras are saved independently. Regional network
-loading and a prepared server map remain planned. Memory uses a desktop table or mobile cards without horizontal overflow; titles open
+native pixel dimensions. The 2D and 3D cameras are saved independently, restoring visited
+resource branches. Returning to 2D reloads all pages. A prepared regional server map remains
+planned. Memory uses a desktop table or mobile cards without horizontal overflow; titles open
 details and available actions respect rights and node nature. Attachments provide acquired text and
 original-file preview from lists, search, graph and detail, including full-screen viewing scoped
 to the agent. Retry, agent change, closing and late responses preserve scope. Folders open browsing,

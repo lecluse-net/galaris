@@ -7,6 +7,7 @@ from core.user import HumanActor
 import base64
 import binascii
 import hashlib
+import re
 from collections.abc import Collection
 from datetime import datetime, timedelta, timezone
 from typing import Any, Literal, Sequence, cast
@@ -430,7 +431,24 @@ def _graph_item_options() -> Load:
     )
 
 
-def _graph_node(item: MemoryItem, *, relation_count: int) -> MemoryGraphNode:
+def _graph_role_rank(item: MemoryItem) -> int:
+    if item.managed_source_kind in ("topic", "messenger_contact") or (
+        item.node_kind == "directory" and re.fullmatch(r"[a-z][a-z0-9+.-]*:///?", item.primary_url or "", re.IGNORECASE)
+    ):
+        return 0
+    return 1 if item.node_kind in ("folder", "directory") else 2 if item.node_kind == "document" else 3
+
+
+def _graph_role_order() -> ColumnElement[int]:
+    return case(
+        (or_(MemoryItem.managed_source_kind.in_(("topic", "messenger_contact")),
+            and_(MemoryItem.node_kind == "directory", MemoryItem.primary_url.op("~*")(r"^[a-z][a-z0-9+.-]*:///?$"))), 0),
+        (MemoryItem.node_kind.in_(("folder", "directory")), 1),
+        (MemoryItem.node_kind == "document", 2), else_=3,
+    )
+
+
+def _graph_node(item: MemoryItem, *, relation_count: int, children_count: int = 0) -> MemoryGraphNode:
     entity_kind: Literal["memory", "document", "attachment", "folder", "file", "directory", "topic", "contact"] = "memory"
     if item.node_kind == "document":
         entity_kind = "document"
@@ -463,6 +481,7 @@ def _graph_node(item: MemoryItem, *, relation_count: int) -> MemoryGraphNode:
         activity_at=item.activity_at,
         has_relations=relation_count > 0,
         relation_count=relation_count,
+        children_count=children_count,
     )
 
 
@@ -569,6 +588,18 @@ async def _graph_relation_counts(
         item_id = cast(UUID, row[0])
         counts[item_id] = counts.get(item_id, 0) + int(row[1])
     return counts
+
+
+async def _graph_child_counts(node_ids: Sequence[UUID], request: MemoryGraphRootsRequest | MemoryGraphExpandRequest,
+    *, now: datetime) -> dict[UUID, int]:
+    if not node_ids:
+        return {}
+    rows = await get_db().execute(select(MemoryLink.source_item_id, func.count(func.distinct(MemoryLink.target_item_id)))
+        .join(MemoryItem, MemoryItem.id == MemoryLink.target_item_id)
+        .where(MemoryLink.source_item_id.in_(node_ids), MemoryLink.relation_type == "parent_of",
+            MemoryLink.suggested.is_(False), *graph_item_filters(request, now=now))
+        .group_by(MemoryLink.source_item_id))
+    return {cast(UUID, row[0]): int(row[1]) for row in rows}
 
 
 async def _get_item_record(
@@ -3241,18 +3272,39 @@ async def list_graph_roots(request: MemoryGraphRootsRequest) -> MemoryGraphPage:
     now = datetime.now(timezone.utc)
     filters = graph_item_filters(request, now=now)
     query = select(MemoryItem).options(_graph_item_options()).where(*filters)
+    rank = _graph_role_order()
+    hierarchy = request.order_by == "hierarchy"
+    deferred: ColumnElement[bool] | None = None
+    if request.defer_resource_children:
+        parent = aliased(MemoryItem)
+        accessible = select(MemoryItem.id).where(*filters).correlate(None)
+        # Defer only real path descendants of a readable directory. Cycles,
+        # unrelated links and children of hidden parents retain an entry point.
+        deferred = exists(select(MemoryLink.id).join(parent, parent.id == MemoryLink.source_item_id).where(
+            MemoryLink.target_item_id == MemoryItem.id,
+            MemoryLink.relation_type == "parent_of", MemoryLink.suggested.is_(False),
+            parent.id.in_(accessible), parent.node_kind == "directory",
+            func.length(parent.primary_url) < func.length(MemoryItem.primary_url),
+            func.starts_with(MemoryItem.primary_url, func.concat(func.rtrim(parent.primary_url, "/"), "/")),
+        ))
+        query = query.where(~deferred)
     if request.cursor is not None:
-        query = query.where(
-            or_(
-                MemoryItem.activity_at < request.cursor.activity_at,
-                and_(
-                    MemoryItem.activity_at == request.cursor.activity_at,
-                    MemoryItem.id > request.cursor.id,
-                ),
+        after_activity = or_(
+            MemoryItem.activity_at < request.cursor.activity_at,
+            and_(
+                MemoryItem.activity_at == request.cursor.activity_at,
+                MemoryItem.id > request.cursor.id,
             )
         )
+        if hierarchy:
+            assert request.cursor.role_rank is not None  # Validated by MemoryGraphRootsRequest.
+            query = query.where(or_(rank > request.cursor.role_rank,
+                and_(rank == request.cursor.role_rank, after_activity)))
+        else:
+            query = query.where(after_activity)
+    ordering = [MemoryItem.activity_at.desc(), MemoryItem.id]
     result = await db.scalars(
-        query.order_by(MemoryItem.activity_at.desc(), MemoryItem.id).limit(request.limit + 1)
+        query.order_by(*([rank, *ordering] if hierarchy else ordering)).limit(request.limit + 1)
     )
     roots = list(result.all())
     has_more = len(roots) > request.limit
@@ -3274,6 +3326,10 @@ async def list_graph_roots(request: MemoryGraphRootsRequest) -> MemoryGraphPage:
     # transmitting an ever-growing UUID list. Future pages return their edges
     # again; clients retain only edges whose endpoints are already loaded.
     visible_query = select(MemoryItem.id).where(*filters)
+    if deferred is not None:
+        # Deferred children return their relations during expansion. Checking
+        # their live sources here would eagerly read the entire hidden tree.
+        visible_query = visible_query.where(~deferred)
     links: list[MemoryLink] = []
     edges_truncated = False
     if root_ids and visible_ids:
@@ -3303,6 +3359,7 @@ async def list_graph_roots(request: MemoryGraphRootsRequest) -> MemoryGraphPage:
         request,
         now=now,
     )
+    child_counts = await _graph_child_counts(root_ids, request, now=now) if request.defer_resource_children else {}
     context_rows = list(
         (
             await db.execute(
@@ -3350,6 +3407,7 @@ async def list_graph_roots(request: MemoryGraphRootsRequest) -> MemoryGraphPage:
         next_cursor = MemoryGraphCursor(
             activity_at=last.activity_at,
             id=last.id,
+            role_rank=_graph_role_rank(last) if hierarchy else None,
         )
     return MemoryGraphPage(
         nodes=[
@@ -3357,6 +3415,7 @@ async def list_graph_roots(request: MemoryGraphRootsRequest) -> MemoryGraphPage:
                 _graph_node(
                     item,
                     relation_count=relation_counts.get(item.id, 0),
+                    children_count=child_counts.get(item.id, 0),
                 )
                 for item in roots
             ],
@@ -3400,6 +3459,8 @@ async def expand_graph_node(request: MemoryGraphExpandRequest) -> MemoryGraphPag
         )
         if context_node is None:
             raise MemoryNotFoundError("Memory graph node not found.")
+        if request.children_only:
+            return MemoryGraphPage()
         context_query = (
             select(MemoryContextEdge, MemoryItem).options(_graph_item_options())
             .join(
@@ -3481,20 +3542,23 @@ async def expand_graph_node(request: MemoryGraphExpandRequest) -> MemoryGraphPag
             *filters,
         )
     )
+    if request.children_only:
+        query = query.where(MemoryLink.source_item_id == request.item_id,
+            MemoryLink.relation_type == "parent_of", MemoryLink.suggested.is_(False))
     if request.known_item_ids:
         query = query.where(neighbor_id.not_in(request.known_item_ids))
     if request.cursor is not None:
-        query = query.where(
-            or_(
-                MemoryItem.activity_at < request.cursor.activity_at,
-                and_(
-                    MemoryItem.activity_at == request.cursor.activity_at,
-                    MemoryLink.id > request.cursor.id,
-                ),
-            )
-        )
+        after_activity = or_(MemoryItem.activity_at < request.cursor.activity_at,
+            and_(MemoryItem.activity_at == request.cursor.activity_at, MemoryLink.id > request.cursor.id))
+        if request.children_only:
+            assert request.cursor.role_rank is not None
+            query = query.where(or_(_graph_role_order() > request.cursor.role_rank,
+                and_(_graph_role_order() == request.cursor.role_rank, after_activity)))
+        else:
+            query = query.where(after_activity)
     result = await db.execute(
-        query.order_by(MemoryItem.activity_at.desc(), MemoryLink.id).limit(request.limit + 1)
+        query.order_by(*([_graph_role_order()] if request.children_only else []),
+            MemoryItem.activity_at.desc(), MemoryLink.id).limit(request.limit + 1)
     )
     rows = list(result.all())
     has_more = len(rows) > request.limit
@@ -3507,12 +3571,16 @@ async def expand_graph_node(request: MemoryGraphExpandRequest) -> MemoryGraphPag
         neighbor = cast(MemoryItem, row[1])
         links.append(link)
         neighbors.setdefault(neighbor.id, neighbor)
+    counted_ids = [*neighbors, *([request.item_id] if request.children_only else [])]
     relation_counts = await _graph_relation_counts(
-        list(neighbors),
+        counted_ids,
         request,
         now=now,
     )
-    context_rows = list(
+    child_counts = await _graph_child_counts(counted_ids, request, now=now) if request.children_only else {}
+    focus_item = await db.scalar(select(MemoryItem).options(_graph_item_options())
+        .where(MemoryItem.id == request.item_id, *filters)) if request.children_only else None
+    context_rows = [] if request.children_only else list(
         (
             await db.execute(
                 select(MemoryContextEdge, MemoryContextNode)
@@ -3539,13 +3607,17 @@ async def expand_graph_node(request: MemoryGraphExpandRequest) -> MemoryGraphPag
         next_cursor = MemoryGraphCursor(
             activity_at=last_neighbor.activity_at,
             id=last_link.id,
+            role_rank=_graph_role_rank(last_neighbor) if request.children_only else None,
         )
     return MemoryGraphPage(
         nodes=[
+            *([_graph_node(focus_item, relation_count=relation_counts.get(focus_item.id, 0),
+                children_count=child_counts.get(focus_item.id, 0))] if focus_item is not None else []),
             *[
                 _graph_node(
                     item,
                     relation_count=relation_counts.get(item.id, 0),
+                    children_count=child_counts.get(item.id, 0),
                 )
                 for item in neighbors.values()
             ],

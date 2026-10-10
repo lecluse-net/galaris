@@ -348,6 +348,8 @@ import { graphViewportData } from '../graphViewport'
 import { GraphStatePersistence, type GraphPreferences, type GraphContext } from '../graphState'
 import type { MemoryGraphScene, Graph3dCamera, Graph3dPreview } from '../graph3dScene'
 import type { Graph3dLayoutResult, GraphPoint3d } from '../graph3dLayout'
+import { graphNodeLevel } from '../graph3dHierarchy'
+import { Graph3dChildren } from '../graph3dChildren'
 import type {
   CatalogueResource,
   MemoryGraphCursor,
@@ -451,7 +453,10 @@ let threeLayoutKey: unknown[] = []
 let threePoints = new Map<string, GraphPoint3d>()
 let threeRenderGeneration = 0
 let threeDisposed = false
-let threeHasMap = false
+const threeHasMap = ref(false)
+let threeChildren: Graph3dChildren | null = null
+let resourceBranches: Record<string, number> = {}
+let resourceChildrenDeferred = false
 const nodes = shallowRef(new Map<string, MemoryGraphNode>())
 const edges = shallowRef(new Map<string, MemoryGraphEdge>())
 const expandedBranches = shallowRef(new Set<string>())
@@ -565,7 +570,8 @@ const selectedNode = computed(() => {
   return node && isNodeVisible(node) ? node : null
 })
 
-const graphBusy = computed(() => loading.value || layoutPending.value || !chartReady.value)
+const graphBusy = computed(() => viewMode.value === '3d' && threeHasMap.value
+  ? false : loading.value || layoutPending.value || !chartReady.value)
 const structuralDialog = computed({
   get: () => selectedNode.value?.node_kind === 'folder' || selectedNode.value?.node_kind === 'conversation',
   set: (open: boolean) => { if (!open) closeInspector() },
@@ -1410,6 +1416,7 @@ function applyPreferences(preferences: GraphPreferences): void {
   hiddenEntityKinds.value = new Set(preferences.hidden_entity_kinds)
   expandedBranches.value = new Set(preferences.expanded_branches)
   threeCamera = preferences.camera_3d ?? null
+  resourceBranches = { ...preferences.resource_branches }
   restoredCamera = preferences.camera ? {
     center: preferences.camera.center ?? ['50%', '50%'], zoom: Math.max(MIN_ZOOM, preferences.camera.zoom),
   } : null
@@ -1470,9 +1477,10 @@ function scheduleViewSave(): void {
 
 function stagePresentation(): void {
   if (viewMode.value === '3d') {
-    if (persistence && threeScene && threeHasMap && !loading.value && !reloading.value) {
+    if (persistence && threeScene && threeHasMap.value && !loading.value && !reloading.value) {
       threeCamera = threeScene.view
-      persistence.stagePreferences({ expanded_branches: [...expandedBranches.value], camera_3d: threeCamera })
+      persistence.stagePreferences({ expanded_branches: [...expandedBranches.value], camera_3d: threeCamera,
+        resource_branches: { ...resourceBranches } })
       scheduleViewSave()
     }
     return
@@ -1574,7 +1582,7 @@ function renderGraph(options: {
 async function loadInitial(options: { preserveView?: boolean } = {}): Promise<void> {
   const preserveView = options.preserveView === true
   const preservedSelection = preserveView ? selectedNodeId.value : null
-  if (preserveView && threeScene && threeHasMap) threeCamera = threeScene.view
+  if (preserveView && threeScene && threeHasMap.value) threeCamera = threeScene.view
   if (!preserveView) {
     freezePositions()
     stagePresentation()
@@ -1584,6 +1592,8 @@ async function loadInitial(options: { preserveView?: boolean } = {}): Promise<vo
   }
   const generation = ++loadGeneration
   rootController?.abort()
+  threeChildren?.dispose()
+  threeChildren = null
   const controller = new AbortController()
   rootController = controller
   thumbnails.clear()
@@ -1594,7 +1604,7 @@ async function loadInitial(options: { preserveView?: boolean } = {}): Promise<vo
   threeLayoutKey = []
   threePoints.clear()
   spatialGroupedCount.value = 0
-  threeHasMap = false
+  threeHasMap.value = false
   threeRenderGeneration++
   thumbnailResources.clear()
   thumbnailKeys.clear()
@@ -1621,6 +1631,7 @@ async function loadInitial(options: { preserveView?: boolean } = {}): Promise<vo
     threeCamera = null
     viewStateError.value = null
     expandedBranches.value = new Set()
+    resourceBranches = {}
     overview.value = false
     allTitles.value = false
   }
@@ -1671,14 +1682,32 @@ async function loadInitial(options: { preserveView?: boolean } = {}): Promise<vo
     }
     let cursor: MemoryGraphCursor | null = null
     let loadNextPage = true
+    // Keep one ordering for the entire keyset traversal, even if the user
+    // switches renderer while pages are arriving.
+    const spatial = viewMode.value === '3d'
+    resourceChildrenDeferred = spatial
+    const restoredResources = Object.entries(resourceBranches)
+    const savedThreeCamera = restoredResources.length ? threeCamera : null
+    if (savedThreeCamera) threeCamera = null
+    const context = { agentId, query, topicItemId, contactItemId }
+    const regions = new Graph3dChildren(
+      (itemId, cursor, signal) => memoryService.expandGraphNode({ ...context, itemId, cursor, signal, childrenOnly: true }),
+      async page => {
+        if (generation !== loadGeneration || threeDisposed) return
+        mergeRootPage(page)
+        resourceBranches = regions.expanded
+        await renderGraph3d()
+      },
+      caught => { if (generation === loadGeneration) error.value = caught },
+    )
+    threeChildren = regions
     while (loadNextPage) {
       const page = await memoryService.listGraphRoots({
-        agentId,
-        query,
-        topicItemId,
-        contactItemId,
+        ...context,
         limit: ROOT_PAGE_SIZE,
-        edgeLimit: 2500,
+        edgeLimit: spatial ? 10_000 : 2500,
+        orderBy: spatial ? 'hierarchy' : 'activity',
+        deferResourceChildren: spatial,
         cursor,
         includeMatchingRoots: true,
         includeSavedPositions: true,
@@ -1688,6 +1717,26 @@ async function loadInitial(options: { preserveView?: boolean } = {}): Promise<vo
       mergeRootPage(page)
       loadNextPage = page.has_more && page.next_cursor !== null
       cursor = page.next_cursor
+      if (viewMode.value === '3d') {
+        await nextTick()
+        await initializeRenderer()
+        if (generation !== loadGeneration) return
+        await renderGraph3d()
+        if (generation !== loadGeneration) return
+        // Yield for the first visible frame before fetching the next page.
+        // Only one placement worker runs at a time; retain reached positions.
+        await new Promise<void>(resolve => requestAnimationFrame(() => resolve()))
+      }
+    }
+    if (spatial) for (const [id, pages] of restoredResources) {
+      for (let page = 0; page < pages; page++) {
+        if (generation !== loadGeneration || error.value) return
+        await regions.load(id, `restore-${page}`)
+      }
+    }
+    if (savedThreeCamera && generation === loadGeneration && viewMode.value === '3d') {
+      threeCamera = savedThreeCamera
+      threeScene?.restore(savedThreeCamera)
     }
     if (selectedNodeId.value !== null && !nodes.value.has(selectedNodeId.value)) {
       selectedNodeId.value = null
@@ -1708,6 +1757,8 @@ async function loadInitial(options: { preserveView?: boolean } = {}): Promise<vo
     if (generation === loadGeneration) {
       loading.value = false
       reloading.value = false
+      stagePresentation()
+      onThreeCamera()
     }
   }
 }
@@ -1754,7 +1805,8 @@ async function refreshLatestRoots(): Promise<void> {
       topicItemId,
       contactItemId,
       limit: ROOT_PAGE_SIZE,
-      edgeLimit: 2500,
+      edgeLimit: viewMode.value === '3d' ? 10_000 : 2500,
+      deferResourceChildren: viewMode.value === '3d',
       includeMatchingRoots: true,
       includeSavedPositions: true,
       signal: rootController?.signal,
@@ -1977,6 +2029,10 @@ async function changeViewMode(mode: '2d' | '3d'): Promise<void> {
   if (mode === '3d') stopGraphLayout()
   await nextTick()
   await initializeRenderer()
+  if (resourceChildrenDeferred !== (viewMode.value === '3d')) {
+    await loadInitial({ preserveView: true })
+    return
+  }
   resizeChart()
   renderGraph({ viewState: mode === '2d' ? captureGraphView() ?? restoredCamera : undefined, preserveSelection: true, relax: false })
   scheduleThumbnails()
@@ -1988,6 +2044,7 @@ async function renderGraph3d(fit = false): Promise<void> {
   const generation = ++threeRenderGeneration
   const key = [nodes.value, edges.value, hiddenEntityKinds.value]
   if (key.some((value, index) => value !== threeLayoutKey[index])) {
+    const reorganize = key[2] !== threeLayoutKey[2]
     cancelThreeLayout?.()
     threeLayoutKey = key
     layoutPending.value = visibleNodes.value.length > 0
@@ -2011,7 +2068,7 @@ async function renderGraph3d(fit = false): Promise<void> {
       }
       worker.postMessage({ generation, nodes: visibleNodes.value, edges: visibleEdges.value,
         branches: branches.value, positions: [...layout.positions],
-        depths: [...threePoints].map(([id, point]) => [id, point.z]) })
+        points: reorganize ? [] : [...threePoints] })
     })
   }
   let result: Graph3dLayoutResult | null
@@ -2040,10 +2097,10 @@ async function renderGraph3d(fit = false): Promise<void> {
       ...paint, selectedBorderColor: nodePaintStyle(node, true, palette).borderColor,
       symbol: nodeSymbol(node, false), size: nodeBaseSymbolSize(node, grouped),
       shape: node.entity_kind === 'memory' ? 0 : node.entity_kind === 'topic' ? 1 : 2,
-      priority: node.id === selectedNodeId.value ? 100 : grouped ? 30 : isStructuralNode(node) || isRootDirectory(node) ? 10 : 0 }]
+      priority: node.id === selectedNodeId.value ? 100 : grouped ? 30 : graphNodeLevel(node) === 0 ? 40
+        : isStructuralNode(node) ? 10 : graphNodeLevel(node) === 1 ? 8 : 0 }]
   })
-  instance.setTheme($q.dark.isActive ? solaire.gray.dark : solaire.gray.light,
-    $q.dark.isActive ? solaire.gray.light : solaire.gray.dark)
+  instance.setTheme($q.dark.isActive ? solaire.gray.light : solaire.gray.dark)
   const edgeOpacityScale = Math.min(1, Math.sqrt(200 / Math.max(1, renderedEdges.value.length)))
   const curvatures = parallelEdgeCurvatures()
   instance.setData(markers, renderedEdges.value.map(edge => {
@@ -2053,9 +2110,9 @@ async function renderGraph3d(fit = false): Promise<void> {
       width: detail.width * 1.25, curvature: curvatures.get(edge.id) ?? 0.22,
       overviewStyle: { width: overview.width * 2.25, opacity: overview.opacity }, suggested: edge.suggested }
   }),
-  markers.map(marker => marker.point), fit || !threeHasMap)
-  if (!threeHasMap && threeCamera && !fit) instance.restore(threeCamera)
-  threeHasMap = markers.length > 0
+  markers.map(marker => marker.point), fit || !threeHasMap.value)
+  if (!threeHasMap.value && threeCamera && !fit) instance.restore(threeCamera)
+  threeHasMap.value = markers.length > 0
   instance.setSelected(selectedNodeId.value)
   layoutPending.value = false
   chartReady.value = true
@@ -2069,7 +2126,7 @@ async function renderGraph3d(fit = false): Promise<void> {
 
 function onThreeCamera(): void {
   const instance = threeScene
-  if (!instance || !threeHasMap || viewMode.value !== '3d' || loading.value || reloading.value) return
+  if (!instance || !threeHasMap.value || viewMode.value !== '3d') return
   spatialGroupedCount.value = instance.groupedCount
   const next = instance.zoom <= BRANCH_CLOSE_ZOOM ? new Set<string>() : new Set(expandedBranches.value)
   if (instance.zoom >= BRANCH_OPEN_ZOOM) for (const branch of branches.value) {
@@ -2082,6 +2139,13 @@ function onThreeCamera(): void {
   }
   scheduleThumbnails()
   stagePresentation()
+  if (!loading.value && !reloading.value && !error.value && instance.zoom >= BRANCH_OPEN_ZOOM) {
+    const candidates = [...instance.visible.values()].filter(point => point.near
+      && nodes.value.get(point.id)?.entity_kind === 'directory'
+      && (nodes.value.get(point.id)?.children_count ?? 0) > 0)
+      .sort((a, b) => b.depth - a.depth)
+    threeChildren?.update(candidates.map(point => point.id), JSON.stringify(instance.view))
+  }
 }
 
 function updateThreeThumbnails(): void {
@@ -2209,6 +2273,7 @@ onUnmounted(() => {
   void persistence?.flush()
   persistence = null
   threeDisposed = true
+  threeChildren?.dispose()
   threeRenderGeneration++
   cancelThreeLayout?.()
   threeWorker?.terminate()

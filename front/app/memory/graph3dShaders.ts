@@ -100,18 +100,15 @@ export const linkVertexShader = `
   void main() {
     vec3 a = mat3(viewMatrix) * ((startHigh - originHigh) + (startLow - originLow));
     vec3 b = mat3(viewMatrix) * ((endHigh - originHigh) + (endLow - originLow));
-    float hidden = step(-cameraNear, a.z) * step(-cameraNear, b.z);
-    // Clip before perspective division: crossing the camera cannot create an
-    // enormous quad or hide a visible half of a relation.
-    if (a.z > -cameraNear && b.z < -cameraNear) a = mix(a, b, (-cameraNear - a.z) / (b.z - a.z));
-    if (b.z > -cameraNear && a.z <= -cameraNear) b = mix(b, a, (-cameraNear - b.z) / (a.z - b.z));
+    // A relation is visible only while both nodes are in front of the camera.
+    float hidden = max(step(-cameraNear, a.z), step(-cameraNear, b.z));
     vec4 ac = projectionMatrix * vec4(a, 1.0);
     vec4 bc = projectionMatrix * vec4(b, 1.0);
     vec2 delta = (bc.xy / max(bc.w, cameraNear) - ac.xy / max(ac.w, cameraNear)) * viewport * 0.5;
     float lengthPx = max(length(delta), 0.0001);
     vec2 normal = vec2(-delta.y, delta.x) / lengthPx;
     // Match the 2D quadratic control point in screen space. Bound its offset
-    // when an endpoint crosses the camera plane or lies far outside the view.
+    // when an endpoint lies far outside the view.
     float limit = max(viewport.x, viewport.y) * 2.0;
     float bend = clamp(curvature * lengthPx, -limit, limit);
     float t = curveRange.x + position.x * curveRange.y;

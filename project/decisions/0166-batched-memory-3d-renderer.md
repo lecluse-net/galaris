@@ -8,9 +8,13 @@ Les deux moteurs utilisent le même chargement autorisé, les regroupements et d
 existants. La sélection continue d'émettre l'identité canonique et les relations.
 Il n'y a pas de nouveau modèle métier ni de dépendance supplémentaire.
 
-Le placement 2D personnel reste la référence. Un Web Worker réserve les positions
-manquantes et ajoute une profondeur déterministe ; les relations `parent_of` confirmées
-étagent les ressources. Les cycles restent représentables. Les natures masquées ont
+Le placement 2D personnel est conservé séparément. Un Web Worker réserve les positions
+manquantes. La 3D donne la priorité aux racines de schémas File Share, sujets et contacts,
+puis aux dossiers/répertoires, documents et autres détails. Les relations `parent_of`
+confirmées conservent la répartition latérale précédente des fichiers et ajoutent de la
+profondeur ; l'écart suit la longueur latérale du lien avec une variation déterministe,
+sans grands plans rigides ni nouvelle disposition en spirale.
+Les cycles restent représentables. Les natures masquées ont
 une carte temporaire recalculée, sans modifier les positions canoniques enregistrées.
 La profondeur courante des survivants est conservée lors des ajouts.
 
@@ -22,11 +26,12 @@ valeurs de la 2D, y compris les relations parallèles. Chaque instance dessine u
 de quatre segments ; les liens longs à l'écran utilisent davantage de tronçons, jusqu'à
 64 segments par lien. Le nombre dépend de la longueur projetée et de la courbure, pour
 viser une erreur de corde inférieure au pixel sans suréchantillonner les liens presque
-droits, avec des paliers et une hystérésis. Le CPU estime l'étendue après découpe au plan proche,
+droits, avec des paliers et une hystérésis. Le CPU masque entièrement une relation dès
+qu'une extrémité passe derrière le plan proche de la caméra, puis estime son étendue,
 écarte les enveloppes hors champ et actualise les buffers uniquement lors d'un changement
 de tronçons ou de regroupement. Les shaders calculent les points et normales ; les
 liens restent dans un seul appel de dessin. Le décalage de courbure est borné pour les
-extrémités hors champ ou qui traversent la caméra. Les cellules 3D sont
+extrémités hors champ. Les cellules 3D sont
 testées contre le frustum avant projection ; un index écran sert au picking, aux titres
 et à la place des aperçus. Les cellules denses de marqueurs de même couleur/forme
 représentent aussi les éléments non structurés par des groupes d'affichage. Le seuil
@@ -93,11 +98,31 @@ Les boutons ajustement/plein écran restent communs ; les flèches sélectionnen
 visibles, Entrée ouvre leur contenu et Début recentre tout le graphe.
 `camera_3d` est un champ JSONB personnel additionnel, sans changement de schéma ; une
 écriture 3D ne remplace pas `camera` 2D. Les contrôles de révision et de périmètre existants
-restent obligatoires. Le démontage annule les workers et libère buffers, listeners et
-contexte WebGL. Une perte de contexte revient à la vue 2D.
+restent obligatoires. Sa version de placement vaut désormais 2 : une caméra du précédent
+placement plat est réajustée à l'ouverture. Les branches de ressources visitées et leur
+nombre de pages sont enregistrés dans les mêmes préférences privées, filtrés par les accès
+à la lecture comme à l'écriture. Le démontage annule workers et requêtes de branches, puis
+libère buffers, listeners et contexte WebGL. Une perte de contexte revient à la vue 2D,
+avec rechargement de son catalogue complet.
 
-Le contrat réseau reste celui du graphe paginé existant. Le rendu de milliers de nœuds
-ne prouve pas une ouverture indépendante du volume total : la carte serveur préparée,
-la lecture régionale et les occurrences du catalogue restent dans le plan multiechelle.
-Les tests utilisent des données synthétiques et comparent 2D/3D dans le même navigateur ;
+Les API existantes sont étendues sans changer leurs valeurs par défaut. La 3D demande
+des pages de 500 nœuds, classées par rôle puis activité, avec jusqu'à 10 000 relations
+par page ; la 2D conserve son ordre par activité et ses 2 500 relations par page.
+Chaque page 3D est placée et affichée avant de poursuivre, sans réinitialiser une caméra
+déjà déplacée. Il n'y a pas de plafond global de nœuds.
+Les descendants de répertoires accessibles, identifiés par leur chemin et un `parent_of`
+confirmé, sont différés à l'ouverture. À l'approche d'un répertoire visible, l'expansion
+charge uniquement ses enfants, par pages de 100, répertoires avant fichiers, avec au plus
+deux demandes simultanées. Une nouvelle page nécessite un déplacement de caméra ; le
+repos ne draine pas l'arbre. Les pages de branches précédemment visitées sont restaurées
+avant la caméra sauvegardée. Un changement d'agent ou de filtres annule les demandes
+obsolètes ; les erreurs gardent la carte partielle visible avec le réessai existant.
+Chaque page conserve les contrôles d'accès canoniques et les vérifications de source
+vivante, sans parcours récursif du provider. Les liens vers des enfants différés ne sont
+pas renvoyés avec les racines : leurs vérifications de source sont différées avec eux.
+Les pages de racines et d'enfants reprennent les coordonnées 2D privées déjà enregistrées.
+
+Cette lecture progressive du catalogue connu ne prouve pas une ouverture indépendante
+du volume total : carte serveur préparée, générations et occurrences du catalogue restent
+dans le plan multiechelle. Les tests utilisent des données synthétiques dans le même navigateur ;
 les mesures d'actions ne sont pas présentées comme des mesures de FPS sur GPU physique.

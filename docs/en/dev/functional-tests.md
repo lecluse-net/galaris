@@ -72,8 +72,9 @@ contracts and tests, then select the least expensive layer that proves the obser
 
 ## Cross-domain workflows
 
-`front/browser-tests/memory-3d.spec.mjs` compares both renderers on the same synthetic
-5,000 nodes and 10,000 relationships. It checks spatial group coverage, opening a group
+`front/browser-tests/memory-3d.spec.mjs` exercises 10,000 synthetic nodes and 20,000
+relationships in 3D, 5,000 and 10,000 in 2D; these different loads do not directly compare
+their speeds. It checks spatial group coverage, opening a group
 into a canonical item, filters, keyboard interaction, WebGL fallback to 2D, agent changes,
 and delayed thumbnails capped at native pixel dimensions. Eight-leaf cases hold the first
 page until an empty scene has initialized, protecting fit on data arrival and keeping
@@ -95,6 +96,13 @@ invalid coordinates.
 `front/app/memory/graph3dCamera.test.mjs` uses a Three.js projection to check that wide,
 tall and deep graphs remain fully visible, centered and fill desktop/mobile viewports,
 including at large coordinates; empty and single-node graphs keep a finite camera pose.
+Desktop/mobile cases protect the first page appearing while the next one is pending,
+preserved navigation, retry after an error, loading directory children when approaching,
+reopening them and the complete catalogue on returning to 2D. A link with an endpoint
+behind the camera stays absent until fit. `graph3dChildren.test.mjs` checks bounded
+concurrency, cursors, no draining at rest and discarded stale responses. The catalogue's
+`graph_hierarchy` test uses the actual resource services, child pagination, filters and
+sources that disappear or lose access.
 
 `front/browser-tests/async-views.spec.mjs` covers deferred loading of a real editor,
 typing elsewhere while waiting, closing before the response, reopening and retrying

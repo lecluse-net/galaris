@@ -813,6 +813,7 @@ class MemoryGraphCursor(BaseModel):
 
     activity_at: datetime
     id: UUID
+    role_rank: int | None = Field(default=None, ge=0, le=3)
 
 
 def _empty_memory_ids() -> list[UUID]:
@@ -828,7 +829,9 @@ class MemoryGraphRootsRequest(BaseModel):
     topic_item_id: UUID | None = None
     contact_item_id: UUID | None = None
     limit: int = Field(default=60, ge=1, le=500)
-    edge_limit: int = Field(default=300, ge=1, le=2500)
+    edge_limit: int = Field(default=300, ge=1, le=10_000)
+    order_by: Literal["activity", "hierarchy"] = "activity"
+    defer_resource_children: bool = False
     cursor: MemoryGraphCursor | None = None
     include_matching_roots: bool = False
     known_item_ids: list[UUID] = Field(
@@ -836,12 +839,20 @@ class MemoryGraphRootsRequest(BaseModel):
         max_length=3_000,
     )
 
+    @model_validator(mode="after")
+    def validate_order_cursor(self) -> MemoryGraphRootsRequest:
+        if self.order_by == "hierarchy" and self.cursor is not None and self.cursor.role_rank is None:
+            raise ValueError("Hierarchy-ordered graph pages require a role rank in the cursor.")
+        return self
+
 
 class MemoryGraphExpandRequest(BaseModel):
     """One keyset page of relations adjacent to a visible memory item."""
 
     agent_id: int = Field(gt=0)
     item_id: UUID
+    children_only: bool = False
+    include_saved_positions: bool = False
     query: str = Field(default="", max_length=4_000)
     topic_item_id: UUID | None = None
     contact_item_id: UUID | None = None
@@ -851,6 +862,12 @@ class MemoryGraphExpandRequest(BaseModel):
         default_factory=_empty_memory_ids,
         max_length=3_000,
     )
+
+    @model_validator(mode="after")
+    def validate_child_cursor(self) -> MemoryGraphExpandRequest:
+        if self.children_only and self.cursor is not None and self.cursor.role_rank is None:
+            raise ValueError("Child pages require a role rank in the cursor.")
+        return self
 
 
 class MemoryGraphNode(BaseModel):
@@ -872,6 +889,7 @@ class MemoryGraphNode(BaseModel):
     activity_at: datetime
     has_relations: bool
     relation_count: int = Field(ge=0)
+    children_count: int = Field(default=0, ge=0)
 
 
 class MemoryGraphEdge(BaseModel):

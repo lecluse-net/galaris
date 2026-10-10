@@ -167,6 +167,73 @@ async def test_graph_checks_live_files_with_one_closed_console_per_page(console_
 
 
 @pytest.mark.asyncio
+async def test_graph_hierarchy_defers_known_directory_descendants_and_pages_readable_children(console_catalogue, db):
+    from datetime import timezone
+    from app.memory.schemas import MemoryGraphExpandRequest, MemoryItemCreate
+
+    ctx, transport, connection, peer = console_catalogue
+    await resource_service.resource_write_text(ctx, 'console://branch/nested/detail.txt', 'Synthetic detail')
+    await resource_service.resource_write_text(ctx, 'console://root-file.txt', 'Synthetic root file')
+    for uri in ['console://', 'console://branch/', 'console://branch/nested/']:
+        await resource_service.resource_list(ctx, uri)
+    items = {item.primary_url.rstrip('/'): item for item in await db.scalars(
+        select(MemoryItem).where(MemoryItem.owner_agent_id == ctx.agent_id))}
+    root, child, grandchild = (items[uri.rstrip('/')] for uri in
+        ['console://', 'console://branch', 'console://branch/nested'])
+    file = items['console://root-file.txt']
+    document, _ = await service.create_item(MemoryItemCreate(owner_agent_id=ctx.agent_id,
+        title='Synthetic document', node_kind='document', payload=MemoryPayload(text='Synthetic document body')))
+    memory, _ = await service.create_item(MemoryItemCreate(owner_agent_id=ctx.agent_id,
+        title='Synthetic memory', payload=MemoryPayload(text='Synthetic memory body')))
+    root.updated_at = datetime(2020, 1, 1, tzinfo=timezone.utc)
+    await db.commit()
+    collected, cursor = [], None
+    while True:
+        page = await service.list_graph_roots(MemoryGraphRootsRequest(agent_id=ctx.agent_id, limit=1,
+            order_by='hierarchy', defer_resource_children=True, include_matching_roots=True,
+            edge_limit=1, cursor=cursor))
+        assert not page.edges and not page.edges_truncated
+        collected.extend(page.nodes)
+        if not page.has_more:
+            break
+        cursor = page.next_cursor
+        assert cursor is not None
+    assert [node.id for node in collected] == [root.id, document.id, memory.id]
+    assert collected[0].children_count == 2
+    first = await service.expand_graph_node(MemoryGraphExpandRequest(agent_id=ctx.agent_id,
+        item_id=root.id, children_only=True, limit=1))
+    assert [node.id for node in first.nodes] == [root.id, child.id]
+    assert first.nodes[1].children_count == 1
+    assert first.has_more and first.next_cursor is not None
+    second = await service.expand_graph_node(MemoryGraphExpandRequest(agent_id=ctx.agent_id,
+        item_id=root.id, children_only=True, limit=1, cursor=first.next_cursor))
+    assert [node.id for node in second.nodes] == [root.id, file.id]
+    assert not second.has_more
+    nested = await service.expand_graph_node(MemoryGraphExpandRequest(agent_id=ctx.agent_id,
+        item_id=child.id, children_only=True))
+    assert [node.id for node in nested.nodes] == [child.id, grandchild.id]
+    assert all(edge.source_item_id == child.id for edge in nested.edges)
+    # Matching descendants remain entry points when the browse filter hides
+    # their parent. The eager 2D catalogue is still complete.
+    filtered = await service.list_graph_roots(MemoryGraphRootsRequest(agent_id=ctx.agent_id,
+        query='detail.txt', order_by='hierarchy', defer_resource_children=True))
+    assert any(node.title == 'detail.txt' for node in filtered.nodes)
+    eager = await service.list_graph_roots(MemoryGraphRootsRequest(agent_id=ctx.agent_id))
+    assert {node.id for node in eager.nodes} == {item.id for item in items.values()} | {document.id, memory.id}
+    assert not (await service.list_graph_roots(MemoryGraphRootsRequest(agent_id=peer.id,
+        order_by='hierarchy', defer_resource_children=True))).nodes
+    transport.resolve_path('root-file.txt', create_parent=False).unlink()
+    missing = await service.expand_graph_node(MemoryGraphExpandRequest(agent_id=ctx.agent_id,
+        item_id=root.id, children_only=True))
+    assert all(node.id != file.id for node in missing.nodes)
+    connection.active = False
+    await db.commit()
+    with pytest.raises(service.MemoryNotFoundError):
+        await service.expand_graph_node(MemoryGraphExpandRequest(agent_id=ctx.agent_id,
+            item_id=root.id, children_only=True))
+
+
+@pytest.mark.asyncio
 @pytest.mark.parametrize("interruption", ["cancel", "revoke", "rebind"])
 async def test_graph_closes_console_and_hides_changed_bindings(console_catalogue, db, monkeypatch, interruption):
     import asyncio

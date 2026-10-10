@@ -553,8 +553,15 @@ async def expand_memory_graph_node(
     data: MemoryGraphExpandRequest,
 ) -> MemoryGraphPage:
     try:
-        await _require_agent_scope(data.agent_id)
-        return await service.expand_graph_node(data)
+        scope = await _require_agent_scope(data.agent_id)
+        page = await service.expand_graph_node(data)
+        if data.include_saved_positions:
+            points = await graph_state.page_positions(
+                graph_state.GraphContext(**data.model_dump(include={"agent_id", "query", "topic_item_id", "contact_item_id"})),
+                scope, [node.id for node in page.nodes],
+            )
+            page.positions = {str(key): (point.x, point.y) for key, point in points.items()}
+        return page
     except Exception as exc:
         raise _http_error(exc) from exc
 

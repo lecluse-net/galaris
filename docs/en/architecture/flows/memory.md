@@ -669,9 +669,10 @@ their source identity, creates new items, and then puts their UUIDs back into th
   `memory_remember`, `memory_forget`, `memory_summarize`, and `document_share`.
 - Interface: under `/memory`, the **List** tab retains search, owner, content, revisions,
   provenance, direct access, and links. The **Graph** tab loads a lightweight subgraph by cursors
-  without payloads. The API also provides neighbor expansion, but frontend zoom only unfolds
-  already loaded members. Opening uses
-  pages of at most 500 nodes and 2,500 edges, with no global node cap. Queries read
+  without payloads. The API provides neighbor expansion and directory-child expansion.
+  3D displays each page as it arrives and loads children when approaching a directory,
+  in pages of 100; 2D loads all pages. Opening uses pages of at most 500 nodes, with
+  10,000 edges per page in 3D and 2,500 in 2D, with no global node cap. Queries read
   only graph columns. Leaf folding uses the global count of distinct admissible neighbors,
   including suggestions, and requires a confirmed link. From eight leaves, the anchor carries
   a count; zoom and an explicit control reveal them. The frontend retains the animated ECharts
@@ -698,13 +699,21 @@ their source identity, creates new items, and then puts their UUIDs back into th
 
 The page opens the Three.js 3D renderer by default; ECharts remains selectable.
 Both views reuse the same page contract, canonical identities and details. A worker prepares
-placement from personal positions; accessible `parent_of` relations stage resources in depth.
+placement while retaining the personal 2D positions separately. File Share roots, topics and
+contacts precede folders/directories, documents and details. Known `parent_of` children are
+kept in their previous lateral distribution, with depth based on local link length rather
+than distant fixed levels or a new spiral. Child pages also restore their saved private
+2D positions.
+They load when approaching a visible directory, with at most two concurrent requests and
+another page per camera movement, without recursively crawling the provider.
+Links to deferred children also wait for expansion.
 Visible markers share instanced geometry and links share segment buffers. Cell bounds are
 tested against the frustum and a screen index handles selection. Node and relation styles
 are shared with 2D. A bounded atlas reuses public folder SVGs and Material paths;
 links use instanced ribbons to preserve CSS pixel widths. Shaders reuse 2D curvatures.
 Segment counts depend on projected length and curvature, using instanced chunks of four
-segments, up to 64 per link. The CPU culls offscreen envelopes and updates buffers only
+segments, up to 64 per link. The CPU culls offscreen envelopes and hides a whole link when
+either endpoint is behind the camera. It updates buffers only
 when subdivision changes; shaders calculate points and normals in one draw call for
 links. 3D widths are multiplied by 2.25 at a distance and 1.25 nearby. Distant 3D markers use 56 % of
 the capped base size, nearby markers 110 %. Labels have no background.
@@ -722,9 +731,12 @@ it fills the limiting dimension with a glyph margin and centers projected bounds
 The result is cached between data, viewport and direction changes, and reused at maximum
 zoom-out and on resize.
 Labels and thumbnails have
-bounded budgets, and rendering stops at rest. `camera_3d` is saved independently of `camera`
-without a schema migration. WebGL loss falls back to 2D. This local renderer does not implement
-the planned prepared server map or regional API: [ADR 0166](../../../../project/decisions/0166-batched-memory-3d-renderer.md) (in French).
+bounded budgets, and rendering stops at rest. Version 2 of `camera_3d` and the pages of visited
+branches are saved independently of `camera`, without a schema migration. A camera from the
+previous flat placement is fitted again. WebGL loss falls back to 2D and reloads its complete
+catalogue. Responses from an old context are discarded; errors retain the partial map with
+retry. This renderer does not implement the planned prepared regional server map:
+[ADR 0166](../../../../project/decisions/0166-batched-memory-3d-renderer.md) (in French).
 
 Logfire metrics and the local mirror measure count, mode, degradation, latency, result count, and
 characters actually injected. Labels are bounded and never contain a query, text, memory UUID,

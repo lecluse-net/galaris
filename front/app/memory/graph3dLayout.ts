@@ -1,6 +1,7 @@
 import { GraphBranchLayout, type GraphPoint } from './graphBranches.ts'
 import type { GraphBranch } from './graphBranches.ts'
 import type { MemoryGraphEdge, MemoryGraphNode } from './types'
+import { graphNodeLevel, GRAPH_DEPTH_STEP } from './graph3dHierarchy.ts'
 
 export interface GraphPoint3d extends GraphPoint { z: number }
 export interface Graph3dLayoutRequest {
@@ -10,6 +11,7 @@ export interface Graph3dLayoutRequest {
   branches: GraphBranch[]
   positions: [string, GraphPoint][]
   depths?: [string, number][]
+  points?: [string, GraphPoint3d][]
 }
 export interface Graph3dLayoutResult {
   generation: number
@@ -23,41 +25,55 @@ function depthSeed(id: string): number {
   return (hash >>> 0) / 0xffffffff - 0.5
 }
 
-/** The saved 2D map remains intact. Depth adds stable space between communities
- * and their leaves without a global force simulation running during navigation. */
+/** Retain the established lateral map and give the 3D display its own depth.
+ * Entry points face the camera; real children and knowledge details follow. */
 export function layoutGraph3d(request: Graph3dLayoutRequest): Graph3dLayoutResult {
   const layout = new GraphBranchLayout()
   for (const [id, point] of request.positions) layout.positions.set(id, point)
   layout.update(request.nodes, request.branches, request.edges)
   const retainedDepths = new Map(request.depths)
-  const depths = new Map<string, number>()
-  for (const node of request.nodes) depths.set(node.id, depthSeed(node.id) * 700)
-  for (const branch of request.branches) {
-    const center = depths.get(branch.anchorId) ?? 0
-    branch.memberIds.forEach(id => {
-      depths.set(id, center + depthSeed(id) * 480)
-    })
+  const byId = new Map(request.nodes.map(node => [node.id, node]))
+  const points = new Map<string, GraphPoint3d>()
+  const retained = new Map(request.points)
+  for (const node of request.nodes) {
+    const point = layout.positions.get(node.id)!
+    points.set(node.id, retained.get(node.id) ?? { x: point.x, y: -point.y,
+      z: retainedDepths.get(node.id) ?? -graphNodeLevel(node) * GRAPH_DEPTH_STEP
+        + depthSeed(node.id) * (100 + graphNodeLevel(node) * 50) })
   }
   // Follow confirmed resource parentage without treating the whole graph as a
   // tree. Cycles and multiple parents are resolved deterministically for display.
   const children = new Map<string, string[]>()
-  const parents = new Set<string>()
-  for (const edge of [...request.edges].sort((a, b) => a.source_item_id.localeCompare(b.source_item_id))) {
-    if (edge.suggested || edge.relation_type !== 'parent_of' || edge.source_item_id === edge.target_item_id) continue
+  const parents = new Map<string, string>()
+  const candidates = [...request.edges].filter(edge => !edge.suggested && edge.source_item_id !== edge.target_item_id
+    && byId.has(edge.source_item_id) && byId.has(edge.target_item_id))
+    .sort((a, b) => Number(b.relation_type === 'parent_of') - Number(a.relation_type === 'parent_of')
+      || graphNodeLevel(byId.get(a.source_item_id)!) - graphNodeLevel(byId.get(b.source_item_id)!)
+      || a.source_item_id.localeCompare(b.source_item_id))
+  for (const edge of candidates) {
+    const source = byId.get(edge.source_item_id)!, target = byId.get(edge.target_item_id)!
+    if (parents.has(target.id) || edge.relation_type !== 'parent_of' && graphNodeLevel(source) >= graphNodeLevel(target)) continue
     if (!children.has(edge.source_item_id)) children.set(edge.source_item_id, [])
     children.get(edge.source_item_id)!.push(edge.target_item_id)
-    parents.add(edge.target_item_id)
+    parents.set(edge.target_item_id, edge.source_item_id)
   }
-  const queue = [...children.keys()].filter(id => !parents.has(id)).sort()
+  const queue = request.nodes.filter(node => !parents.has(node.id)).map(node => node.id).sort()
   const placed = new Set(queue)
   for (let index = 0; index < queue.length; index++) {
     const id = queue[index]!
     for (const child of children.get(id) ?? []) if (!placed.has(child)) {
       placed.add(child); queue.push(child)
-      depths.set(child, (depths.get(id) ?? 0) - 240)
+      if (retained.has(child)) continue
+      const parent = points.get(id)!, source = byId.get(id)!, node = byId.get(child)!
+      const point = points.get(child)!, seed = depthSeed(child)
+      const distance = Math.hypot(point.x - parent.x, point.y - parent.y)
+      // Keep the previous file distribution. Only depth changes, following the
+      // actual link's lateral length, rather than a spiral or fixed planes.
+      const gap = Math.max(180, Math.min(560, distance * 0.7))
+        * (1 + Math.max(0, graphNodeLevel(node) - graphNodeLevel(source) - 1) * 0.15)
+      points.set(child, { ...point, z: retainedDepths.get(child) ?? parent.z - gap * (1 + seed * 0.2) })
     }
   }
-  for (const [id, depth] of retainedDepths) if (depths.has(id)) depths.set(id, depth)
   return { generation: request.generation, positions: [...layout.positions],
-    points: [...layout.positions].map(([id, point]) => [id, { ...point, y: -point.y, z: depths.get(id) ?? 0 }]) }
+    points: [...points] }
 }

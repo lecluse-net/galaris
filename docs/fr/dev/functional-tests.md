@@ -74,8 +74,9 @@ est une décision à part entière : aucun quota de tests nouveaux par module.
 
 ## Parcours traversant plusieurs domaines
 
-Le parcours `front/browser-tests/memory-3d.spec.mjs` compare les renderers sur les mêmes
-5 000 nœuds et 10 000 relations synthétiques. Il vérifie la couverture des groupes spatiaux,
+Le parcours `front/browser-tests/memory-3d.spec.mjs` exerce 10 000 nœuds et 20 000 relations
+synthétiques en 3D, 5 000 et 10 000 en 2D ; ces charges différentes ne comparent pas directement
+leurs vitesses. Il vérifie la couverture des groupes spatiaux,
 leur ouverture vers un item canonique, les filtres, le clavier, le repli WebGL vers la 2D,
 le changement d'agent et les miniatures retardées jusqu'à leur taille native. Les cas de
 huit feuilles retiennent la première page jusqu'après l'initialisation d'une scène vide :
@@ -97,6 +98,13 @@ n'est plus une contrainte de zoom. Le compteur de frames confirme l'arrêt du re
 `front/app/memory/graph3dCamera.test.mjs` vérifie avec une projection Three.js que les
 graphes larges, hauts et profonds sont entiers, centrés et utilisent le viewport desktop/mobile,
 y compris avec de grandes coordonnées ; les graphes vides et à un seul nœud gardent une pose finie.
+Les cas desktop/mobile protègent l'affichage d'une première page pendant l'attente de la
+suivante, la navigation conservée, le réessai après erreur et l'expansion des répertoires
+à l'approche, leur réouverture et le catalogue complet au retour en 2D. Un lien dont une
+extrémité est derrière la caméra reste absent jusqu'au recentrage. `graph3dChildren.test.mjs`
+vérifie concurrence bornée, curseurs, absence de drainage au repos et rejet des réponses
+obsolètes. Le test `graph_hierarchy` du catalogue traverse les vrais services de ressources,
+la pagination des enfants, les filtres et les sources disparues ou révoquées.
 
 `front/browser-tests/async-views.spec.mjs` couvre l'ouverture différée d'un vrai éditeur,
 la saisie dans le reste de la page pendant l'attente, la fermeture avant la réponse,

@@ -26,8 +26,42 @@ test('confirmed resource parentage gives successive depth without looping on a c
     .map(([source_item_id, target_item_id]) => ({ source_item_id, target_item_id, relation_type: 'parent_of', suggested: false }))
   const result = layoutGraph3d({ generation: 1, nodes, edges, branches: [], positions: [] })
   const points = new Map(result.points)
+  for (const [id, point] of result.positions) {
+    assert.equal(points.get(id).x, point.x, 'lateral coordinates keep the established map')
+    assert.equal(points.get(id).y, -point.y)
+  }
   assert(points.get('root').z > points.get('child').z)
   assert(points.get('child').z > points.get('file').z)
   assert.equal(points.size, nodes.length)
   assert([...points.values()].every(point => Number.isFinite(point.z)))
+})
+
+test('entry points precede directories, documents and details, and deep directory traversal preserves reached 3D positions', () => {
+  const nodes = [
+    { id: 'scheme', entity_kind: 'directory', resource_uri: 'synthetic://', relation_count: 1 },
+    { id: 'topic', entity_kind: 'topic', relation_count: 1 },
+    { id: 'contact', entity_kind: 'contact', relation_count: 1 },
+    { id: 'folder', entity_kind: 'folder', relation_count: 1 },
+    { id: 'document', entity_kind: 'document', relation_count: 1 },
+    { id: 'memory', entity_kind: 'memory', relation_count: 1 },
+  ]
+  const first = layoutGraph3d({ generation: 1, nodes, edges: [], branches: [], positions: [] })
+  const points = new Map(first.points)
+  const foreground = Math.min(...['scheme', 'topic', 'contact'].map(id => points.get(id).z))
+  assert(foreground > points.get('folder').z)
+  assert(points.get('folder').z > points.get('document').z)
+  assert(points.get('document').z > points.get('memory').z)
+  const directories = Array.from({ length: 1000 }, (_, i) => ({ id: `dir-${i}`, entity_kind: 'directory', relation_count: 2 }))
+  const edges = directories.map((node, i) => ({ source_item_id: i ? directories[i - 1].id : 'scheme',
+    target_item_id: node.id, relation_type: 'parent_of', suggested: false }))
+  const next = layoutGraph3d({ generation: 2, nodes: [...nodes, ...directories], edges, branches: [],
+    positions: first.positions, points: first.points })
+  const nextPoints = new Map(next.points)
+  for (const [id, point] of first.points) assert.deepEqual(nextPoints.get(id), point)
+  let depth = points.get('scheme').z
+  for (const directory of directories) {
+    assert(nextPoints.get(directory.id).z < depth)
+    depth = nextPoints.get(directory.id).z
+  }
+  assert(next.points.every(([, point]) => Object.values(point).every(Number.isFinite)))
 })

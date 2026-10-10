@@ -328,6 +328,7 @@ export interface MemoryFilterOptions {
 export interface MemoryGraphCursor {
   activity_at: string
   id: string
+  role_rank?: number | null
 }
 
 export interface MemoryGraphNode {
@@ -347,6 +348,7 @@ export interface MemoryGraphNode {
   activity_at: string
   has_relations: boolean
   relation_count: number
+  children_count?: number
 }
 
 export interface MemoryGraphEdge {

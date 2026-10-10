@@ -712,8 +712,10 @@ dans les tables canoniques.
 - Interface : sous `/memory`, l’onglet **Liste** conserve la recherche, le propriétaire, le
   contenu, les révisions, la provenance, les accès directs et les liens. L’onglet **Graphe**
   charge un sous-graphe léger par curseurs, sans les payloads. L'API fournit aussi une expansion
-  de voisins, mais le zoom frontend déplie seulement des membres déjà chargés. L'ouverture utilise des pages de 500 nœuds au plus,
-  avec 2 500 liens par page, sans plafond global de nœuds. Les requêtes ne lisent que les
+  de voisins et une expansion des enfants d'un répertoire. La 3D affiche chaque page à son
+  arrivée et charge ces enfants à l'approche, par pages de 100 ; la 2D charge toutes les pages.
+  L'ouverture utilise des pages de 500 nœuds au plus, avec 10 000 liens par page en 3D et
+  2 500 en 2D, sans plafond global de nœuds. Les requêtes ne lisent que les
   colonnes nécessaires au graphe. Le repli de feuilles utilise le compte distinct global des
   voisins admissibles, suggestions comprises, et exige un lien confirmé. À partir de huit feuilles,
   l'ancre porte un compteur ; le zoom et une commande explicite les révèlent. Le frontend conserve
@@ -742,15 +744,24 @@ dans les tables canoniques.
 
 La page ouvre par défaut le renderer 3D Three.js ; le moteur ECharts reste sélectionnable.
 Le même contrat de pages, les mêmes identités et les mêmes détails sont réutilisés.
-Un worker calcule le placement à partir des positions personnelles ; les relations
-`parent_of` accessibles étagent les ressources. Le rendu instancie les marqueurs visibles
+Un worker conserve les positions personnelles 2D et prépare un placement 3D distinct.
+Les racines File Share, sujets et contacts précèdent dossiers/répertoires, documents et
+détails. Les enfants connus conservent leur répartition latérale précédente, avec une
+profondeur `parent_of` liée à la longueur locale du lien, sans grands niveaux fixes ni
+nouvelle disposition en spirale. Les pages d'enfants retrouvent aussi leurs positions
+2D privées enregistrées. Leur chargement est
+différé jusqu'à l'approche du répertoire visible, avec au plus deux requêtes simultanées
+et une nouvelle page par déplacement, sans parcourir récursivement le provider.
+Les liens vers les enfants différés attendent aussi leur expansion.
+Le rendu instancie les marqueurs visibles
 et regroupe les segments, avec index de cellules pour le frustum et index écran pour la
 sélection. Les styles de nœuds et relations sont partagés avec la 2D. Un atlas borné
 réutilise les SVG de dossiers et chemins Material publics ; les liens sont des rubans
 instanciés pour respecter leurs épaisseurs en pixels CSS. Les shaders reprennent les
 courbures 2D. Le nombre de segments dépend de la longueur à l'écran et de la courbure,
 par tronçons instanciés de quatre segments, jusqu'à 64 par lien. Le CPU écarte les
-enveloppes hors champ et modifie les buffers uniquement si le découpage change ; les
+enveloppes hors champ et masque un lien dès qu'une de ses extrémités est derrière la caméra.
+Il modifie les buffers uniquement si le découpage change ; les
 shaders calculent les points et normales dans un seul appel de dessin pour les liens.
 Les épaisseurs 3D sont multipliées par 2,25 au loin, 1,25 de près. La taille éloignée 3D vaut
 56 % de la base plafonnée, la taille proche 110 %. Les labels n'ont pas de fond.
@@ -768,9 +779,12 @@ l'orientation du regard ; il remplit la dimension limitante avec une marge pour 
 glyphes et centre les limites projetées. Son résultat est mis en cache entre changements
 de données, de dimensions ou d'orientation, et réutilisé au recul maximal et au redimensionnement.
 Les labels et miniatures ont des budgets bornés. Il n'y a pas de boucle au repos.
-La caméra `camera_3d` est enregistrée indépendamment de `camera`, sans migration de schéma.
-La perte de WebGL revient en 2D. Ce renderer local ne réalise pas le précalcul serveur ni
-la lecture régionale du plan : [ADR 0166](../../../../project/decisions/0166-batched-memory-3d-renderer.md).
+La caméra `camera_3d` version 2 et les pages des branches visitées sont enregistrées
+indépendamment de `camera`, sans migration de schéma. Une ancienne caméra du placement
+plat est réajustée. La perte de WebGL revient en 2D et recharge son catalogue complet.
+Les réponses d'un ancien contexte sont écartées. Une erreur conserve la carte partielle
+avec réessai. Ce renderer ne réalise pas la carte régionale serveur précalculée du plan :
+[ADR 0166](../../../../project/decisions/0166-batched-memory-3d-renderer.md).
 
 Les métriques Logfire et le miroir local mesurent le nombre, le mode, la dégradation, la latence,
 le nombre de résultats et les caractères réellement injectés. Les labels sont bornés et ne

@@ -9,7 +9,7 @@ from sqlalchemy import true
 from app.agent import AgentManagementScope
 from app.memory import graph_state, router, service, source_access
 from app.memory.models import MemoryContextEdge, MemoryContextNode
-from app.memory.schemas import MemoryGraphRootsRequest, MemoryItemCreate, MemoryPayload
+from app.memory.schemas import MemoryGraphExpandRequest, MemoryGraphRootsRequest, MemoryItemCreate, MemoryPayload
 from core.user import UserModel
 
 
@@ -29,7 +29,8 @@ async def setup(db, agents):
 
 
 @pytest.mark.asyncio
-async def test_graph_state_is_private_persistent_and_restores_hidden_node_positions(db, agents, memory_storage, monkeypatch):
+@pytest.mark.parametrize("entrypoint", ["roots", "children"])
+async def test_graph_state_is_private_persistent_and_restores_hidden_node_positions(db, agents, memory_storage, monkeypatch, entrypoint):
     owner, peer, scopes, item, other = await setup(db, agents)
     context = graph_state.GraphContext(agent_id=owner.id)
     state = await graph_state.write_state(graph_state.GraphStateWrite(
@@ -41,11 +42,16 @@ async def test_graph_state_is_private_persistent_and_restores_hidden_node_positi
     assert (await graph_state.read_state(context, scopes[0])).preferences.hidden_entity_kinds == ["memory"]
     assert (await graph_state.read_state(context, scopes[1])).revision == 0
     assert (await graph_state.read_state(graph_state.GraphContext(agent_id=owner.id, query="Anchor"), scopes[0])).revision == 0
+    async def read_page():
+        if entrypoint == "roots":
+            return await router.list_memory_graph_roots(MemoryGraphRootsRequest(agent_id=owner.id, include_saved_positions=True))
+        return await router.expand_memory_graph_node(MemoryGraphExpandRequest(agent_id=owner.id,
+            item_id=item.id, children_only=True, include_saved_positions=True))
     monkeypatch.setattr(router, "current_management_scope", AsyncMock(return_value=scopes[0]))
-    page = await router.list_memory_graph_roots(MemoryGraphRootsRequest(agent_id=owner.id, include_saved_positions=True))
+    page = await read_page()
     assert page.positions == {str(item.id): (123, -456)}
     monkeypatch.setattr(router, "current_management_scope", AsyncMock(return_value=scopes[1]))
-    assert not (await router.list_memory_graph_roots(MemoryGraphRootsRequest(agent_id=owner.id, include_saved_positions=True))).positions
+    assert not (await read_page()).positions
     with pytest.raises(HTTPException) as denied:
         await router.read_memory_graph_state(graph_state.GraphContext(agent_id=peer.id))
     assert denied.value.status_code == 404
@@ -68,7 +74,8 @@ async def test_incremental_save_preserves_other_nodes_and_conflicts_do_not_overw
     second = await graph_state.write_state(graph_state.GraphStateWrite(
         agent_id=owner.id, expected_revision=first.revision,
         preferences=graph_state.GraphPreferencesPatch(camera=graph_state.GraphCamera(center=(30, 40), zoom=zoom),
-            camera_3d=graph_state.GraphCamera3d(position=(300, 400, 500), target=(10, 20, 30))),
+            camera_3d=graph_state.GraphCamera3d(position=(300, 400, 500), target=(10, 20, 30), layout_version=2),
+            resource_branches={item.id: 2}),
     ), scopes[0])
     assert second.preferences.hidden_entity_kinds == ["contact"]
     assert (await graph_state.read_state(context, scopes[0])).preferences.camera == graph_state.GraphCamera(center=(30, 40), zoom=zoom)
@@ -80,6 +87,7 @@ async def test_incremental_save_preserves_other_nodes_and_conflicts_do_not_overw
     ), scopes[0])
     assert third.positions[item.id] == graph_state.GraphPoint(x=1, y=2)
     assert third.preferences.camera_3d == second.preferences.camera_3d
+    assert third.preferences.resource_branches == {item.id: 2}
     cleared = await graph_state.write_state(graph_state.GraphStateWrite(
         agent_id=owner.id, expected_revision=third.revision,
         preferences=graph_state.GraphPreferencesPatch(camera_3d=None),
@@ -93,11 +101,12 @@ async def test_revoked_nodes_and_expansions_are_not_restored(db, agents, memory_
     owner, _, scopes, item, _ = await setup(db, agents)
     await graph_state.write_state(graph_state.GraphStateWrite(
         agent_id=owner.id, expected_revision=0, positions={item.id: graph_state.GraphPoint(x=1, y=2)},
-        preferences=graph_state.GraphPreferencesPatch(expanded_branches=[item.id]),
+        preferences=graph_state.GraphPreferencesPatch(expanded_branches=[item.id], resource_branches={item.id: 1}),
     ), scopes[0])
     item.soft_delete()
     await db.commit()
     assert not (await graph_state.read_state(graph_state.GraphContext(agent_id=owner.id), scopes[0])).preferences.expanded_branches
+    assert not (await graph_state.read_state(graph_state.GraphContext(agent_id=owner.id), scopes[0])).preferences.resource_branches
     monkeypatch.setattr(router, "current_management_scope", AsyncMock(return_value=scopes[0]))
     assert not (await router.list_memory_graph_roots(MemoryGraphRootsRequest(agent_id=owner.id, include_saved_positions=True))).positions
 

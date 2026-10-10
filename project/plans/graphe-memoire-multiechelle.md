@@ -45,12 +45,19 @@ puis continuer en espace vide. Le recul maximal retrouve une vue d'ensemble cent
 Le masquage d'une nature réorganise la vue temporaire sans réécrire la carte complète.
 La perte de WebGL revient en 2D. Voir [ADR 0166](../decisions/0166-batched-memory-3d-renderer.md).
 
-Cette étape couvre le rendu et une partie des interactions de L5/L6, avec un benchmark L0
-comparant les deux moteurs sur les mêmes 5 000 nœuds et 10 000 relations synthétiques.
-Elle conserve le chargement exhaustif par pages de 500 et la borne serveur de 2 500 liens
-par page. Elle ne réalise pas L1–L4 : générations préparées, journal rejouable, occurrences
-de fichiers et API régionale. La profondeur suit les liens `parent_of` déjà accessibles ;
-elle ne remplace pas le futur arbre d'emplacements. Les budgets d'ouverture indépendante
+Cette étape couvre le rendu et une partie des interactions de L5/L6. Le scénario de volume
+exerce 10 000 nœuds et 20 000 relations en 3D, 5 000 et 10 000 en 2D ; ces charges différentes
+ne constituent pas une comparaison directe de vitesse. Les pages de 500 s'affichent
+progressivement, avec 10 000 liens par page en 3D et 2 500 en 2D, sans plafond global.
+La 3D commence par les racines File Share, sujets et contacts, puis dossiers/répertoires,
+documents et détails. Elle diffère les descendants connus d'un répertoire accessible et
+lit ses enfants à l'approche, par pages de 100 et au plus deux demandes simultanées.
+Les branches déjà visitées sont restaurées ; les demandes d'un ancien contexte sont annulées.
+Le retour 2D recharge son catalogue complet. La profondeur suit l'espacement local des
+branches `parent_of`, sans plans rigides ; les liens dont une extrémité est derrière la
+caméra sont masqués. Cette extension des API actuelles ne réalise pas L1–L4 : générations
+préparées, journal rejouable, occurrences de fichiers et carte régionale préparée.
+Elle ne remplace pas le futur arbre d'emplacements. Les budgets d'ouverture indépendante
 du volume global et la qualification à 100 000/million d'items restent des objectifs.
 
 Les parcours `front/browser-tests/memory-3d.spec.mjs` vérifient le rendu WebGL réel,

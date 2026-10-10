@@ -1711,15 +1711,19 @@ périmètres. La fusion de contacts est une opération explicite.
 
 La page Mémoire propose recherche, filtres et **graphe interactif** : natures de nœuds, relations,
 développement progressif, recentrage et plein écran. La vue **3D** Three.js est proposée
-par défaut, avec retour en **2D**. Le graphe charge toutes les pages correspondant aux
-filtres, sans plafond global de nœuds ni filtre de période. La dernière activité module
+par défaut, avec retour en **2D**. Les pages s'affichent progressivement, sans plafond
+global de nœuds ni filtre de période. En 3D, les racines File Share, sujets et contacts
+arrivent en premier ; les enfants connus des répertoires accessibles sont chargés à
+l'approche, par pages de 100. Leur profondeur suit l'espacement local, sans étages rigides.
+Un lien est masqué si une extrémité passe derrière la caméra. La dernière activité module
 les deux tailles fixes éloignée/proche et l’opacité ; les éléments anciens restent visibles.
 Seuls les marqueurs visibles sont dessinés, avec un budget de titres évitant les collisions.
 La 3D partage ses buffers GPU, prépare le placement dans un worker et ne tourne pas au repos.
 Les cellules denses se replient en groupes d'affichage explorables, avec relations agrégées
 par type, direction et statut ; les identités et liens canoniques sont conservés.
 Les aperçus autorisés grandissent tardivement jusqu'à leur taille native ; les caméras 2D/3D
-sont enregistrées séparément. Le chargement réseau régional et la carte serveur restent prévus.
+sont enregistrées séparément, avec restauration des branches de ressources visitées.
+Le retour en 2D recharge toutes les pages. La carte régionale serveur précalculée reste prévue.
 
 Les branches d’au moins huit feuilles exclusives se replient en groupes avec compteur.
 Le zoom ou un clic les déplie ; le dézoom les replie sans masquer les nœuds partagés.

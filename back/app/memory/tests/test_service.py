@@ -25,6 +25,7 @@ from app.memory.models import MemoryAssociation, MemoryItem, MemoryRevision, Mem
 from app.memory.schemas import (
     MemoryGrantUpdate,
     MemoryGraphExpandRequest,
+    MemoryGraphCursor,
     MemoryGraphRootsRequest,
     MemoryItemCreate,
     MemoryItemUpdate,
@@ -119,13 +120,16 @@ def test_manual_link_rejects_free_form_relation_type() -> None:
 
 
 def test_graph_requests_enforce_bounded_pages_and_known_nodes() -> None:
-    request = MemoryGraphRootsRequest(agent_id=1, limit=500, edge_limit=2500,
+    request = MemoryGraphRootsRequest(agent_id=1, limit=500, edge_limit=10_000,
         known_item_ids=[uuid4() for _index in range(3000)])
     assert request.limit == 500 and len(request.known_item_ids) == 3000
     with pytest.raises(ValidationError):
         MemoryGraphRootsRequest(agent_id=1, limit=501)
     with pytest.raises(ValidationError):
-        MemoryGraphRootsRequest(agent_id=1, edge_limit=2501)
+        MemoryGraphRootsRequest(agent_id=1, edge_limit=10_001)
+    with pytest.raises(ValidationError):
+        MemoryGraphRootsRequest(agent_id=1, order_by="hierarchy",
+            cursor=MemoryGraphCursor(activity_at=datetime.now(timezone.utc), id=uuid4()))
     with pytest.raises(ValidationError):
         MemoryGraphRootsRequest(
             agent_id=1,
@@ -1309,12 +1313,14 @@ async def test_memory_updated_at_tracks_only_payload_or_keyword_changes(
 @pytest.mark.asyncio
 @pytest.mark.parametrize('suggested_neighbor', [False, True])
 @pytest.mark.parametrize('include_matching_roots', [False, True])
+@pytest.mark.parametrize("order_by", ["activity", "hierarchy"])
 async def test_graph_roots_use_activity_keysets_and_hide_inaccessible_edges(
     db: AsyncSession,
     agents: tuple[Agent, Agent],
     memory_storage: Path,
     suggested_neighbor: bool,
     include_matching_roots: bool,
+    order_by: str,
 ) -> None:
     del memory_storage
     owner, peer = agents
@@ -1371,7 +1377,8 @@ async def test_graph_roots_use_activity_keysets_and_hide_inaccessible_edges(
     )
 
     first = await service.list_graph_roots(
-        MemoryGraphRootsRequest(agent_id=owner.id, limit=2, include_matching_roots=include_matching_roots)
+        MemoryGraphRootsRequest(agent_id=owner.id, limit=2, include_matching_roots=include_matching_roots,
+            order_by=order_by)
     )
     assert [node.id for node in first.nodes] == [newest.id, middle.id]
     assert all(node.entity_kind == "memory" for node in first.nodes)
@@ -1390,6 +1397,7 @@ async def test_graph_roots_use_activity_keysets_and_hide_inaccessible_edges(
             cursor=first.next_cursor,
             known_item_ids=[] if include_matching_roots else [node.id for node in first.nodes],
             include_matching_roots=include_matching_roots,
+            order_by=order_by,
         )
     )
     assert [node.id for node in second.nodes] == [oldest.id]
@@ -1450,7 +1458,7 @@ async def test_graph_exposes_structural_roles_but_not_agent_projection(
     )
 
     page = await service.list_graph_roots(
-        MemoryGraphRootsRequest(agent_id=owner.id, limit=100)
+        MemoryGraphRootsRequest(agent_id=owner.id, limit=100, order_by="hierarchy")
     )
     by_id = {node.id: node.entity_kind for node in page.nodes}
 
@@ -1458,6 +1466,8 @@ async def test_graph_exposes_structural_roles_but_not_agent_projection(
     assert by_id[contact_item.id] == "contact"
     assert by_id[topic.memory_item_id] == "topic"
     assert by_id[document.id] == "document"
+    assert {node.entity_kind for node in page.nodes[:2]} == {"topic", "contact"}
+    assert page.nodes[-1].entity_kind == "document"
 
 
 @pytest.mark.asyncio
