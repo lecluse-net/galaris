@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import json
 import re
 from collections.abc import Mapping, Sequence
@@ -50,6 +51,8 @@ TERMINAL_ROUND_STATUSES = ("SUCCEEDED", "SUPERSEDED", "ERROR_RESOLVED", "CANCELL
 CONTEXT_SOFT_MAX_CHARS = 16_000
 CONTEXT_SOFT_OVERFLOW_CHARS = 2_000
 LEASE_SECONDS = 45
+# Leave time in the notification lease for the required text dispatch.
+TASK_NOTIFICATION_ARTIFACT_TIMEOUT_SECONDS = 15
 MAX_ATTEMPTS = 2
 LINKED_WORK_OBJECTIVE_MAX_CHARS = 250
 LINKED_WORK_PAUSED_MAX_AGE = timedelta(hours=24)
@@ -1463,39 +1466,34 @@ async def claim_next_task_notification() -> UUID | None:
         task_attempt_count = task.attempt_count
         execution_result = task.get_execution_result()
         if task.status == TaskStatus.SUCCESS and execution_result is not None:
-            from app.task import parse_working_set
-            from .artifact_delivery import presented_artifacts, was_delivered_to_room
-
-            artifacts = presented_artifacts(
-                parse_working_set(task),
-                str(execution_result.result or "").strip(),
-            )
             room_ids = (str(room.id), str(room.external_id))
-            pending_artifacts = any(
-                not was_delivered_to_room(
-                    parse_working_set(task),
-                    artifact,
-                    room.connection_id,
-                    room_ids,
-                )
-                for artifact in artifacts
-            )
-            if (
-                _terminal_text_was_delivered_to_room(
-                    execution_result,
-                    room_ids,
-                )
-                and not pending_artifacts
-            ):
-                link.notification_state = "SKIPPED"
-                link.notification_task_attempt_count = task_attempt_count
-                link.notification_message_id = None
-                link.notification_error = None
-                link.notification_lease_token = None
-                link.notification_lease_expires_at = None
-                await get_db().commit()
-                expired = None
-                continue
+            if _terminal_text_was_delivered_to_room(execution_result, room_ids):
+                from app.task import parse_working_set
+                from .artifact_delivery import presented_artifacts, was_delivered_to_room
+
+                try:
+                    working_set = parse_working_set(task)
+                    artifacts = presented_artifacts(working_set, str(execution_result.result or "").strip())
+                    pending_artifacts = any(
+                        not was_delivered_to_room(working_set, artifact, room.connection_id, room_ids)
+                        for artifact in artifacts
+                    )
+                except Exception as exc:
+                    logger.warning(
+                        "Conversation Task {} has unavailable optional attachments: {}",
+                        task.id, type(exc).__name__,
+                    )
+                    pending_artifacts = False
+                if not pending_artifacts:
+                    link.notification_state = "SKIPPED"
+                    link.notification_task_attempt_count = task_attempt_count
+                    link.notification_message_id = None
+                    link.notification_error = None
+                    link.notification_lease_token = None
+                    link.notification_lease_expires_at = None
+                    await get_db().commit()
+                    expired = None
+                    continue
 
         link.notification_state = "SENDING"
         link.notification_attempt_count += 1
@@ -1592,9 +1590,15 @@ async def deliver_task_notification(link_id: UUID) -> None:
         return
     lease_token = link.notification_lease_token
     room_id = room.id
+    room_ids = (str(room.id), str(room.external_id))
     connection_id = room.connection_id
+    task_id = task.id
     execution_result = task.get_execution_result()
-    working_set = parse_working_set(task)
+    text_already_delivered = (
+        task.status == TaskStatus.SUCCESS
+        and execution_result is not None
+        and _terminal_text_was_delivered_to_room(execution_result, room_ids)
+    )
     if task.status == TaskStatus.SUCCESS:
         text = (
             str(execution_result.result or "").strip()
@@ -1634,71 +1638,69 @@ async def deliver_task_notification(link_id: UUID) -> None:
         )
 
         messenger = await get_messenger(connection_id)
-        dispatch = task.get_dispatch_result()
-        runtime = dispatch.driver_code if dispatch is not None else "internal"
-        resource_ctx = ResourceContext(
-            agent_id=task.agent_id,
-            runtime=runtime or "internal",
-            task_id=task.id,
-            language=round_.language,
-        )
-        artifacts = await resolve_presented_artifacts(resource_ctx, working_set, text)
         delivered_artifacts: list[PresentedArtifact] = []
-        room_ids = (str(room.id), str(room.external_id))
-        for artifact in artifacts:
-            if was_delivered_to_room(
-                working_set,
-                artifact,
-                connection_id,
-                room_ids,
-            ):
-                delivered_artifacts.append(artifact)
-                continue
-            try:
-                delivered = await deliver_resource_to_messenger(
-                    resource_ctx,
-                    messenger,
-                    room_id,
-                    artifact.source_uri,
+        try:
+            async with asyncio.timeout(TASK_NOTIFICATION_ARTIFACT_TIMEOUT_SECONDS):
+                working_set = parse_working_set(task)
+                dispatch = task.get_dispatch_result()
+                runtime = dispatch.driver_code if dispatch is not None else "internal"
+                resource_ctx = ResourceContext(
+                    agent_id=task.agent_id,
+                    runtime=runtime or "internal",
+                    task_id=task_id,
+                    language=round_.language,
                 )
-            except (OSError, RuntimeError, ValueError) as exc:
-                logger.warning(
-                    "Conversation Task {} could not attach {} to room {}: {}",
-                    task.id,
-                    artifact.source_uri,
-                    room_id,
-                    exc,
-                )
-                continue
-            await upsert_working_resource(
-                task.id,
-                WorkingResource(
-                    resource_type="delivery_receipt",
-                    role=delivery_receipt_role(
-                        artifact.source_uri,
-                        connection_id,
-                        room.id,
-                    ),
-                    reference=delivered.uri,
-                    label=delivered.name,
-                    producer_task_id=task.id,
-                    metadata={
-                        "tool": AUTO_DELIVERY_TOOL,
-                        "source": artifact.source_uri,
-                        "destination": str(room.external_id),
-                        "destination_room_id": str(room.id),
-                        "connection_id": connection_id,
-                        "uri": delivered.uri,
-                        "size": delivered.size,
-                        "media_type": delivered.media_type,
-                        "delivered": True,
-                    },
-                ),
+                artifacts = await resolve_presented_artifacts(resource_ctx, working_set, text)
+                for artifact in artifacts:
+                    if was_delivered_to_room(working_set, artifact, connection_id, room_ids):
+                        delivered_artifacts.append(artifact)
+                        continue
+                    try:
+                        delivered = await deliver_resource_to_messenger(
+                            resource_ctx, messenger, room_id, artifact.source_uri,
+                        )
+                        await upsert_working_resource(
+                            task_id,
+                            WorkingResource(
+                                resource_type="delivery_receipt",
+                                role=delivery_receipt_role(artifact.source_uri, connection_id, room_id),
+                                reference=delivered.uri,
+                                label=delivered.name,
+                                producer_task_id=task_id,
+                                metadata={
+                                    "tool": AUTO_DELIVERY_TOOL,
+                                    "source": artifact.source_uri,
+                                    "destination": room_ids[1],
+                                    "destination_room_id": room_ids[0],
+                                    "connection_id": connection_id,
+                                    "uri": delivered.uri,
+                                    "size": delivered.size,
+                                    "media_type": delivered.media_type,
+                                    "delivered": True,
+                                },
+                            ),
+                        )
+                        await get_db().commit()
+                        delivered_artifacts.append(artifact)
+                    except Exception as exc:
+                        await get_db().rollback()
+                        logger.warning(
+                            "Conversation Task {} could not attach an optional file: {}",
+                            task_id, type(exc).__name__,
+                        )
+                text = clean_artifact_references(text, tuple(delivered_artifacts))
+                # Discovery can open a read transaction or leave it failed.
+                # End it before the canonical journal dispatches independently.
+                await get_db().commit()
+        except Exception as exc:
+            await get_db().rollback()
+            logger.warning(
+                "Conversation Task {} is publishing its text despite optional attachment failure: {}",
+                task_id, type(exc).__name__,
             )
-            await get_db().commit()
-            delivered_artifacts.append(artifact)
-        text = clean_artifact_references(text, tuple(delivered_artifacts))
-        sent = await messenger.send_to_room(room_id, text)
+        sent_message_id = None
+        if not text_already_delivered:
+            sent_message_id = (await messenger.send_to_room(room_id, text)).id
     except Exception as exc:
         await get_db().rollback()
         current = await get_db().scalar(
@@ -1732,8 +1734,8 @@ async def deliver_task_notification(link_id: UUID) -> None:
         raise RuntimeError(
             f"Conversation Task notification lease was lost after dispatch for {link_id}."
         )
-    current.notification_state = "DELIVERED"
-    current.notification_message_id = sent.id
+    current.notification_state = "SKIPPED" if text_already_delivered else "DELIVERED"
+    current.notification_message_id = sent_message_id
     current.notification_error = None
     current.notification_lease_token = None
     current.notification_lease_expires_at = None

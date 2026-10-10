@@ -1,5 +1,6 @@
 from unittest.mock import AsyncMock
 
+import httpx
 import pytest
 
 from app.agent.contracts import WorkingResource, WorkingSet
@@ -162,3 +163,30 @@ async def test_exact_provider_uri_is_resolved_without_a_console(
         (uri, "index.html")
     ]
     info.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_unavailable_reference_does_not_hide_other_presented_files(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from app.conversation import artifact_delivery
+
+    unavailable = "affine-test://synthetic-workspace/missing-blob"
+    available = "nextcloud://Shared/illustration.png"
+    failure = httpx.HTTPStatusError(
+        "AFFiNE download failed (HTTP 403).",
+        request=httpx.Request("GET", "https://files.example.test/image"),
+        response=httpx.Response(403),
+    )
+    info = AsyncMock(side_effect=[failure, ResourceDescriptor(
+        uri=available, name="illustration.png", media_type="image/png", size=12,
+    )])
+    monkeypatch.setattr(artifact_delivery, "resource_info", info)
+
+    artifacts = await resolve_presented_artifacts(
+        ResourceContext(agent_id=7, runtime="internal"), WorkingSet(),
+        f"Source indisponible : {unavailable}. Illustration : {available}",
+    )
+
+    assert [(item.source_uri, item.name) for item in artifacts] == [(available, "illustration.png")]
+    assert info.await_count == 2

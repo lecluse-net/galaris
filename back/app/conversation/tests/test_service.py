@@ -12,7 +12,7 @@ from uuid import NAMESPACE_URL, UUID, uuid4, uuid5
 import pytest
 import httpx
 import httpx2
-from sqlalchemy import select
+from sqlalchemy import select, text as sql_text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.database import get_db_session
@@ -419,6 +419,11 @@ def _install_messenger(
     transaction_states: list[bool] | None = None,
     publish_events: list[bool] | None = None,
 ) -> None:
+    connection_id = connection.id
+    tool_id = connection.tool_id
+    canonical_room_id = room.id
+    external_room_id = room.external_id
+
     class LocalMessenger:
         async def send_to_room(
             self,
@@ -435,13 +440,13 @@ def _install_messenger(
             sent.append((room_id, text))
             message = Message(
                 id=uuid4(),
-                connection_id=connection.id,
-                tool_id=connection.tool_id,
+                connection_id=connection_id,
+                tool_id=tool_id,
                 platform="telegram",
                 remote_message_id=f"outbound-{uuid4()}",
                 direction="outbound",
-                messenger_room_id=room.id,
-                room_id=room.external_id,
+                messenger_room_id=canonical_room_id,
+                room_id=external_room_id,
                 text=text,
                 metadata_=dict(journal_metadata or {}),
             )
@@ -449,8 +454,8 @@ def _install_messenger(
             await db.flush()
             return message
 
-    async def get_messenger(connection_id: int) -> LocalMessenger:
-        assert connection_id == connection.id
+    async def get_messenger(requested_connection_id: int) -> LocalMessenger:
+        assert requested_connection_id == connection_id
         return LocalMessenger()
 
     import app.messenger as messenger_package
@@ -2214,9 +2219,11 @@ async def test_terminal_task_failure_creates_message_with_redacted_cause(
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("attachment_failure", [None, "metadata", "metadata_database", "transfer", "receipt", "projection", "timeout", "working_set"])
 async def test_terminal_task_success_delivers_its_result_once(
     db: AsyncSession,
     monkeypatch: pytest.MonkeyPatch,
+    attachment_failure: str | None,
 ) -> None:
     agent, connection, room = await _scope(db)
     message = await _message(db, connection, room, 1, "calcule")
@@ -2225,6 +2232,44 @@ async def test_terminal_task_success_delivers_its_result_once(
     )
     round_ = await claim_next_round("successful-task-worker")
     assert round_ is not None
+    result_text = "4 + 3 = 7."
+    working_set = WorkingSet()
+    if attachment_failure is not None:
+        source_uri = "affine-test://synthetic-workspace/synthetic-image"
+        result_text += f" Illustration : {source_uri}"
+        if attachment_failure not in {"metadata", "metadata_database", "timeout"}:
+            working_set.resources.append(WorkingResource(
+                resource_type="artifact", role="final_artifact", reference=source_uri,
+                label="illustration.png", metadata={"produced": True},
+            ))
+        failure = httpx.HTTPStatusError(
+            "AFFiNE download failed (HTTP 403).",
+            request=httpx.Request("GET", "https://files.example.test/image"),
+            response=httpx.Response(403),
+        )
+        monkeypatch.setattr("app.conversation.artifact_delivery.resource_info", AsyncMock(side_effect=failure))
+        transfer = AsyncMock(return_value=DeliveredResource(
+            source_uri=source_uri, uri="chat-test://room/illustration", name="illustration.png",
+            media_type="image/png", size=12,
+        ))
+        if attachment_failure == "transfer":
+            transfer.side_effect = failure
+        monkeypatch.setattr("app.file_share.deliver_resource_to_messenger", transfer)
+        if attachment_failure == "receipt":
+            monkeypatch.setattr("app.task.upsert_working_resource", AsyncMock(side_effect=RuntimeError("Receipt unavailable")))
+        if attachment_failure == "projection":
+            monkeypatch.setattr("app.conversation.artifact_delivery.resolve_presented_artifacts", AsyncMock(side_effect=LookupError("Optional projection failed")))
+        if attachment_failure == "timeout":
+            async def slow_metadata(*_args):
+                await asyncio.Event().wait()
+
+            monkeypatch.setattr("app.conversation.artifact_delivery.resource_info", slow_metadata)
+            monkeypatch.setattr(conversation_service, "TASK_NOTIFICATION_ARTIFACT_TIMEOUT_SECONDS", 0.01)
+        if attachment_failure == "metadata_database":
+            async def failed_metadata(*_args):
+                await db.execute(sql_text("SELECT 1 / 0"))
+
+            monkeypatch.setattr("app.conversation.artifact_delivery.resource_info", failed_metadata)
     task = Task(
         label="Calcul",
         objective="Calcule 4 + 3.",
@@ -2234,14 +2279,17 @@ async def test_terminal_task_success_delivers_its_result_once(
         message_platform="telegram",
         message_group_id=room.external_id,
         attempt_count=1,
-        feedback="4 + 3 = 7.",
+        feedback=result_text,
+        data={"working_set": working_set.model_dump(mode="json")},
         execution_result={
             "prompt": "Calcule 4 + 3.",
-            "result": "4 + 3 = 7.",
+            "result": result_text,
             "success": True,
             "cost": 0.0,
         },
     )
+    if attachment_failure == "working_set":
+        task.data = {"working_set": {"resources": [{"resource_type": "invalid"}]}}
     db.add(task)
     await db.flush()
     db.add_all(
@@ -2279,24 +2327,32 @@ async def test_terminal_task_success_delivers_its_result_once(
         select(ConversationTaskLink).where(ConversationTaskLink.task_id == task.id)
     )
     assert link is not None
+    link_id = link.id
+    room_id = room.id
     assert await claim_next_task_notification() == link.id
-    await deliver_task_notification(link.id)
+    await deliver_task_notification(link_id)
     await db.refresh(link)
 
-    assert sent == [(room.id, "4 + 3 = 7.")]
+    assert sent == [(room_id, result_text)]
     assert transaction_states == [False]
     assert link.notification_state == "DELIVERED"
     assert link.notification_message_id is not None
     assert link.notification_task_attempt_count == 1
     assert await claim_next_task_notification() is None
+    await deliver_task_notification(link.id)
+    assert len(sent) == 1
 
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("already_uploaded", [False, True])
+@pytest.mark.parametrize("text_already_delivered", [False, True])
+@pytest.mark.parametrize("attachment_unavailable", [False, True])
 async def test_terminal_task_copies_presented_provider_file_to_origin_room(
     db: AsyncSession,
     monkeypatch: pytest.MonkeyPatch,
     already_uploaded: bool,
+    text_already_delivered: bool,
+    attachment_unavailable: bool,
 ) -> None:
     agent, connection, room = await _scope(db)
     message = await _message(db, connection, room, 1, "crée une page")
@@ -2406,6 +2462,16 @@ async def test_terminal_task_copies_presented_provider_file_to_origin_room(
 
     sent: list[tuple[UUID | str, str]] = []
     _install_messenger(monkeypatch, db, connection, room, sent)
+    if text_already_delivered:
+        task.execution_result = {
+            **task.execution_result,
+            "messages": [{
+                "type": "tool", "tool_name": "messenger_room_send_message",
+                "tool_arguments": {"room_id": room.external_id, "message": task.execution_result["result"]},
+                "success": True, "content": "Delivered.",
+            }],
+        }
+        await db.commit()
     delivery = AsyncMock(
         return_value=DeliveredResource(
             source_uri=source_uri,
@@ -2415,6 +2481,8 @@ async def test_terminal_task_copies_presented_provider_file_to_origin_room(
             size=42,
         )
     )
+    if attachment_unavailable:
+        delivery.side_effect = httpx.ReadTimeout("Attachment provider unavailable")
     import app.file_share as file_share_package
 
     monkeypatch.setattr(
@@ -2423,12 +2491,17 @@ async def test_terminal_task_copies_presented_provider_file_to_origin_room(
         delivery,
     )
 
-    assert await claim_next_task_notification() == link.id
-    await deliver_task_notification(link.id)
+    claimed = await claim_next_task_notification()
+    if text_already_delivered and already_uploaded:
+        assert claimed is None
+    else:
+        assert claimed == link.id
+        await deliver_task_notification(link.id)
     await db.refresh(task)
     await db.refresh(link)
 
-    assert sent == [(room.id, "Votre fichier : index.html")]
+    expected_text = f"Votre fichier : {source_uri}" if attachment_unavailable and not already_uploaded else "Votre fichier : index.html"
+    assert sent == ([] if text_already_delivered else [(room.id, expected_text)])
     assert delivery.await_count == (0 if already_uploaded else 1)
     if not already_uploaded:
         resource_ctx, _messenger, target_room, delivered_source = delivery.await_args.args
@@ -2441,15 +2514,16 @@ async def test_terminal_task_copies_presented_provider_file_to_origin_room(
         if item.resource_type == "delivery_receipt"
         and item.metadata.get("tool") == "conversation_task_notification"
     ]
-    assert len(receipts) == (0 if already_uploaded else 1)
+    assert len(receipts) == (0 if already_uploaded or attachment_unavailable else 1)
     if receipts:
         assert receipts[0].metadata["destination_room_id"] == str(room.id)
         assert receipts[0].metadata["connection_id"] == connection.id
-    assert link.notification_state == "DELIVERED"
+    assert link.notification_state == ("SKIPPED" if text_already_delivered else "DELIVERED")
+    assert await claim_next_task_notification() is None
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("delivered_text", ["résultat", "progression"])
+@pytest.mark.parametrize("delivered_text", ["résultat", "progression", "failed", "another_room"])
 async def test_terminal_task_success_skips_only_an_already_delivered_result(
     db: AsyncSession,
     delivered_text: str,
@@ -2462,7 +2536,7 @@ async def test_terminal_task_success_skips_only_an_already_delivered_result(
     round_ = await claim_next_round(f"delivery-proof-{delivered_text}")
     assert round_ is not None
     result_text = "Travail terminé."
-    sent_text = result_text if delivered_text == "résultat" else "Je commence."
+    sent_text = "Je commence." if delivered_text == "progression" else result_text
     task = Task(
         label="Travail",
         status=TaskStatus.SUCCESS,
@@ -2478,11 +2552,11 @@ async def test_terminal_task_success_skips_only_an_already_delivered_result(
                     "type": "tool",
                     "tool_name": "messenger_room_send_message",
                     "tool_arguments": {
-                        "room_id": room.external_id,
+                        "room_id": "another-room" if delivered_text == "another_room" else room.external_id,
                         "message": sent_text,
                     },
                     "content": "Message envoyé.",
-                    "success": True,
+                    "success": delivered_text != "failed",
                 }
             ],
         },

@@ -486,6 +486,13 @@ automatically; they remain flagged as blockers until completion.
    opportunistic `app.dream` scanner and does not run on this path.
 10. The scheduler closes the attempt, releases the lease, and optionally schedules the next step.
 
+The terminal notification separates required text from optional attachments. Discovery, transfer,
+and receipt persistence can fail without blocking the text; attachment preparation has a 15-second
+deadline to preserve the notification lease. References to unconfirmed attachments remain in the
+text. An exact result already delivered to the room is never sent again, even when attachments are
+still missing. A text transport error remains an `UNKNOWN` delivery without automatic replay to
+prevent duplicates; ancillary errors alone do not produce this state.
+
 ## Run Identity, Envelope, and Timeline
 
 `AgentRunIdentityV1` distinguishes four levels that must not be merged: the durable Task, its

@@ -505,6 +505,14 @@ leur fin.
    pas sur ce chemin.
 10. Le scheduler clôt la tentative, libère le lease et programme éventuellement la suite.
 
+La notification terminale sépare le texte requis des pièces jointes facultatives. La découverte,
+le transfert et l'enregistrement de leurs reçus peuvent échouer sans bloquer le texte ; leur
+préparation est bornée à 15 secondes pour préserver le bail de notification. Les références
+d'une pièce jointe non confirmée restent dans le texte. Un résultat exact déjà livré à la room
+n'est jamais renvoyé, même si des pièces jointes manquent encore. Une erreur du transport du texte
+reste une livraison `UNKNOWN` sans rejeu automatique, afin de préserver la protection contre les
+doublons ; les erreurs annexes seules ne produisent pas cet état.
+
 ## Identité, enveloppe et timeline du run
 
 `AgentRunIdentityV1` distingue quatre niveaux qui ne doivent pas être fusionnés : la Task durable,

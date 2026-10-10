@@ -435,6 +435,10 @@ by itself require a plan.
 
 In native Chat, placing `@task` anywhere in the message immediately creates a durable Task with the remaining text as its objective, without calling the conversational LLM. For the internal Galaris harness, `@plan` is also sufficient to create the Task and force its planning, without adding `@task`. These directives can be combined, in any order, with `@standard` and `@high`. `@approve` grants no agreement. Sensitive actions use [authorization requests and YOLO](../admin/tool-administration.md). Chat retains the round and immediately publishes a deterministic confirmation in the room; the Task result will be published there when it terminates. The composer’s `@` button displays only the directives compatible with the selected Agent’s driver.
 
+The result automatically returns to the discussion even if a tool or attachment failed. If the
+Agent already sent that exact result to this discussion, Galaris does not send it again. An
+unavailable attachment does not prevent the text from being published.
+
 ## What Happens After Submission
 
 1. The request created on this screen becomes a durable Task.

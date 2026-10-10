@@ -580,6 +580,10 @@ conserve le round et publie aussitôt une confirmation déterministe
 dans la room ; le résultat de la Task y sera publié à sa terminaison. Le bouton `@` du composeur
 affiche uniquement les directives compatibles avec le driver de l’agent sélectionné.
 
+Le résultat revient automatiquement dans la discussion, même si un outil ou une pièce jointe
+a échoué. Si l’agent a déjà envoyé ce même résultat dans cette discussion, Galaris ne le renvoie
+pas. Une pièce jointe indisponible n’empêche pas la publication du texte.
+
 ## Ce qui se passe après l’envoi
 
 1. La demande créée dans cet écran devient une Task durable.

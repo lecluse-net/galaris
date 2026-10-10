@@ -8,6 +8,9 @@ from dataclasses import dataclass
 from pathlib import PurePosixPath
 from urllib.parse import unquote
 
+from loguru import logger
+from sqlalchemy.exc import SQLAlchemyError
+
 from app.agent.contracts import WorkingResource, WorkingSet
 from app.file_share import (
     ResourceContext,
@@ -191,7 +194,18 @@ async def resolve_presented_artifacts(
                 break
             try:
                 descriptor = await resource_info(ctx, uri)
-            except (OSError, RuntimeError, ValueError):
+            except SQLAlchemyError:
+                # Stop optional discovery so its owner rolls back the failed
+                # transaction before dispatching the required text.
+                raise
+            except Exception as exc:
+                # Metadata discovery is optional. A provider failure must not
+                # suppress the terminal text or other available attachments.
+                logger.warning(
+                    "Conversation Task {} could not inspect an optional attachment: {}",
+                    ctx.task_id,
+                    type(exc).__name__,
+                )
                 continue
             if descriptor.is_collection:
                 continue
