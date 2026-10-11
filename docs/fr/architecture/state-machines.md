@@ -96,6 +96,7 @@ la phase de reprise.
 | `RECOVER_EXECUTION` | EXEC | DISPATCH |
 | `RETRY` | ERROR | DISPATCH |
 | `RETRY_PLAN` | ERROR | PLAN |
+| `RETRY_CLOSING_ACTION` | SUCCESS | DISPATCH |
 | `RETRY_DELIVERY` | SUCCESS, ERROR | DISPATCH |
 | `RETRY_ROUTING` | ERROR | CREATE |
 | `REVISE` | DISPATCH | CREATE |
@@ -114,6 +115,12 @@ puis ses éléments traversent `DISPATCH → EXEC → SUCCESS/ERROR`. Une nouvel
 persistée avant activation. Réessayer un plan entièrement terminal applique `RETRY_PLAN`
 aux groupes en erreur et `RETRY` aux feuilles en erreur, puis réactive uniquement le chemin
 du curseur. Les succès, inventaires figés et journaux d'effets ne sont pas effacés.
+
+Une clôture finale `run_after_failure=true` peut s'exécuter après un échec sans reprendre
+les étapes dépendantes. Le parent reste en `PLAN` pendant cette clôture, conserve sa cause
+dans `plan.failure_task_id`, puis termine en `ERROR`. Seule une reprise manuelle réarme
+une clôture déjà réussie via `RETRY_CLOSING_ACTION` : le nouveau bilan lit l'état courant,
+sans réutiliser le run terminé. Les autres succès et leurs preuves restent conservés.
 
 Pour une exécution interne, le checkpoint d’effet suit `absent → started → completed`.
 `completed` autorise la reprise et la restitution du résultat journalisé sans réexécuter l’outil.

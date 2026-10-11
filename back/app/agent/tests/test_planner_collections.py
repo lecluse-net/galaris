@@ -115,6 +115,79 @@ async def complete(task, *, success=True, result="Verified item", cost=0.1):
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("blocked", [False, True])
+async def test_closing_report_survives_restart_and_refreshes_on_explicit_retry(db, agents, monkeypatch, blocked):
+    worker, _ = agents
+    monkeypatch.setattr(planner_service, "go_next", MagicMock())
+    monkeypatch.setattr(task_service.websocket, "emit", AsyncMock())
+    monkeypatch.setattr(planner_service, "_synthesize", AsyncMock(return_value=("Partial result; retry?", 0.0)))
+    monkeypatch.setattr(planner_service, "_try_recover_blocked_plan", AsyncMock(return_value=False))
+    plan = Plan(steps=[
+        PlanStep(label="Completed item", objective="<p>Process first item.</p>"),
+        PlanStep(label="Failed item", objective="<p>Process second item.</p>"),
+        PlanStep(label="Dependent item", objective="<p>Process dependent item.</p>"),
+        PlanStep(label="Closing report", objective="<p>Save observed failures to the requested report.</p>",
+                 run_after_failure=True),
+    ])
+    root = Task(label="Synthetic batch", objective="<p>Process items and save a report even on failure.</p>",
+                agent_id=worker.id, status=TaskStatus.PLAN, cost=0.0)
+    db.add(root)
+    await db.commit()
+    root_id = root.id
+    monkeypatch.setattr(planner_service, "_build_plan", AsyncMock(return_value=(plan, 0.0, "")))
+    await planner_service.advance(root)
+    done, failed, dependent, report = sorted(await task_service.get_children(root.id), key=lambda t: t.data["plan_step"])
+    await complete(done)
+    await planner_service.advance(root)
+    await complete(failed, success=blocked, result="BLOCKED: missing source" if blocked else "Synthetic provider failure")
+    await planner_service.advance(root)
+    assert root.status == TaskStatus.PLAN
+    assert report.status == TaskStatus.DISPATCH and not report.paused
+    assert dependent.data["plan_skipped"] is True
+    assert failed.feedback in report.data["plan_context"]
+    ids = [child.id for child in (done, failed, dependent, report)]
+    await db.commit()
+    db.expunge_all()
+    root = await task_service.get_by_id(root_id)
+    report = await task_service.get_by_id(ids[-1])
+    await planner_service.advance(root)
+    assert len(await task_service.get_children(root.id)) == 4
+    await complete(report, result="Failure report persisted; ask before retry")
+    await planner_service.advance(root)
+    assert root.status == TaskStatus.ERROR
+    assert root.get_execution_result().success is False
+    assert "retry?" in root.feedback
+    # No automatic wake-up may reopen a terminal root.
+    await planner_service.advance(root)
+    assert root.status == TaskStatus.ERROR
+    await db.commit()
+    db.expunge_all()
+    root = await task_service.get_by_id(root_id)
+    await task_service.retry(root.id, root.revision)
+    await planner_service.advance(root)
+    children = [await task_service.get_by_id(identity) for identity in ids]
+    done, failed, dependent, report = children
+    assert done.status == TaskStatus.SUCCESS
+    if blocked:
+        # An explicit retry cannot silently treat a successful BLOCKED result as work done.
+        assert failed.status == TaskStatus.SUCCESS
+        assert dependent.data["plan_skipped"] is True
+        assert report.status == TaskStatus.DISPATCH and not report.paused
+        await complete(report, result="Source still unavailable; no dependent work executed")
+        await planner_service.advance(root)
+        assert root.status == TaskStatus.ERROR
+        return
+    assert failed.status == TaskStatus.DISPATCH and not failed.paused
+    assert report.status == TaskStatus.DISPATCH and report.paused
+    assert not root.plan.get("failure_task_id")
+    for child in (failed, dependent, report):
+        await complete(child, result="Verified after explicit retry")
+        await planner_service.advance(root)
+    assert root.status == TaskStatus.SUCCESS
+    assert [child.id for child in sorted(await task_service.get_children(root.id), key=lambda t: t.data["plan_step"])] == ids
+
+
+@pytest.mark.asyncio
 @pytest.mark.parametrize("objective,count,work,effort", [
     ("<p>Rename the three listed documents.</p>", 3, "mechanical", "standard"),
     ("<p>Build one interactive geometry tutorial: research the construction, implement "

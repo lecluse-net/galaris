@@ -1,5 +1,7 @@
 # Décisions d'architecture
 
+- [0172 — Clôtures demandées après un échec](0172-requested-closing-actions-after-failure.md)
+
 - [0170 — Portée d'exécution et commandes durables](0170-execution-scope-and-durable-controls.md)
 
 - [0169 — Preuves acquises pour la mémoire conversationnelle](0169-conversation-memory-acquired-evidence.md)

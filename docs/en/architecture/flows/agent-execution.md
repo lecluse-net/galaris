@@ -580,6 +580,15 @@ durable conversation link, or directly for legacy Messenger Tasks that do not ha
 
 ## Working Set and Deliverable Postconditions
 
+An explicitly requested independent closing action, such as updating a durable report even
+after failure, uses a trailing `run_after_failure=true` leaf. Other dependent steps are skipped;
+only closing actions execute, with failure diagnostics in their context. `plan.failure_task_id`
+retains failure across closing actions and restarts. A successful report does not make the plan
+successful: synthesis communicates the partial result, cause and requested decision, and the
+parent ends in `ERROR`. Failed work is never retried automatically. A manual retry rearms closing
+actions to update their reports, preserves other successful work and resumes at the first
+unfinished step.
+
 The Working Set is a versioned registry stored in `Task.data["working_set"]` on the plan root. A
 typed entry carries at least a stable role, a resource type, an exact reference, a state
 (`active`, `superseded`, `stale`, or `failed`), and the producing Task. It copies neither a

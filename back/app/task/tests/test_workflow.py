@@ -25,7 +25,8 @@ def test_generated_event_sequences_preserve_terminal_and_rejection_invariants(se
     import random
 
     explicit_retries = {TaskEvent.RETRY, TaskEvent.RETRY_PLAN,
-                        TaskEvent.RETRY_DELIVERY, TaskEvent.RETRY_ROUTING}
+                        TaskEvent.RETRY_DELIVERY, TaskEvent.RETRY_ROUTING,
+                        TaskEvent.RETRY_CLOSING_ACTION}
     random_source = random.Random(seed)
     for _ in range(100):
         task = _task(random_source.choice(list(TaskStatus)))

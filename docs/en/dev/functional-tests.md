@@ -75,6 +75,12 @@ bounded waves, Dataset inventory validation with access rights, rejection of inc
 ambiguous lists, progress and recovery after reload without replaying successful items.
 The PostgreSQL journey preserves the frozen inventory even if its Dataset changes later.
 
+These scenarios also cover requested durable closing actions after error or blockage:
+report execution without resuming dependencies, retained overall failure, reloads,
+idempotent wake-ups and an updated report after manual retry. `test_planner_service.py`
+covers a closing action that itself fails. `test_document_retrieval.py` verifies document
+name discovery without semantic recall or body passages, including pagination and ACL denials.
+
 Start with business behavior and module responsibility. The suites below are entry points,
 not exhaustive certification or proof that a live external account works. The
 [September 10 review](../../../project/audits/2026-09-10-functional-tests.md) records replacements

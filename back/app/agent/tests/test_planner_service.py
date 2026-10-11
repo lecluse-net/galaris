@@ -119,6 +119,19 @@ def test_plan_accepts_provider_stringified_brief() -> None:
     assert plan.steps[0].tools == ["search_web"]
 
 
+@pytest.mark.parametrize("nested", [False, True])
+def test_closing_actions_cannot_precede_dependent_work(nested):
+    closing = PlanStep(label="Closing", objective="Save failure report", run_after_failure=True)
+    normal = PlanStep(label="Work", objective="Process item")
+    with pytest.raises(ValidationError, match="trailing steps"):
+        if nested:
+            PlanStep(label="Group", objective="Group", steps=[closing, normal])
+        else:
+            Plan(steps=[closing, normal])
+    with pytest.raises(ValidationError, match="must be a leaf"):
+        PlanStep(label="Closing group", objective="Group", run_after_failure=True, steps=[normal])
+
+
 def test_plan_derives_intermediate_and_final_delivery_policies() -> None:
     # The model chooses tools; only the server supplies effect policies. Keep
     # those values in persisted/API output without asking the model to invent them.
@@ -1149,6 +1162,70 @@ async def test_finalize_rejects_file_objective_when_plan_produced_nothing(
 
     assert parent.status == TaskStatus.ERROR
     assert "required a produced file" in (parent.feedback or "")
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("report_succeeds", [True, False])
+@pytest.mark.parametrize("synthesis_fails", [False, True])
+async def test_failure_runs_requested_report_without_resuming_work(mocks, monkeypatch, report_succeeds, synthesis_fails):
+    parent = _task(plan={"steps": [
+        {"label": "Work", "objective": "Process items"},
+        {"label": "Dependent work", "objective": "Reconcile items"},
+        {"label": "Report", "objective": "Update the requested report even after failure",
+         "run_after_failure": True},
+    ], "cursor": 0})
+    failed = _task(parent_id=parent.id, label="Work", status=TaskStatus.ERROR,
+                   data={"plan_step": 0}, feedback="Synthetic model repetition")
+    dependent = _task(parent_id=parent.id, label="Dependent work", status=TaskStatus.DISPATCH,
+                      data={"plan_step": 1, "pause_reasons": ["plan"]}, paused=True)
+    report = _task(parent_id=parent.id, label="Report", status=TaskStatus.DISPATCH,
+                  data={"plan_step": 2, "pause_reasons": ["plan"]}, paused=True)
+    children = [failed, dependent, report]
+    mocks["get_children"].side_effect = lambda identity: children if identity == parent.id else []
+    activate = AsyncMock()
+    monkeypatch.setattr(planner_service, "_activate_step", activate)
+    synthesis = AsyncMock(side_effect=RuntimeError("Synthetic synthesis failure") if synthesis_fails else None,
+                          return_value=("Synthetic model repetition; Report saved", 0.0))
+    monkeypatch.setattr(planner_service, "_synthesize", synthesis)
+
+    await advance(parent)
+
+    assert parent.status == TaskStatus.PLAN
+    assert parent.plan["cursor"] == 2
+    assert dependent.data["plan_skipped"] is True
+    assert report.status == TaskStatus.DISPATCH
+    activate.assert_awaited_once_with(parent, 2, children)
+    context = planner_service._shared_results(parent, children, 2)
+    assert "Synthetic model repetition" in context
+    assert f"galaris://task/{failed.id}" in context
+
+    report.status = TaskStatus.SUCCESS if report_succeeds else TaskStatus.ERROR
+    report.feedback = "Report saved" if report_succeeds else "Report write failed"
+    await advance(parent)
+    assert parent.status == TaskStatus.ERROR
+    assert "Synthetic model repetition" in parent.feedback
+    assert report.feedback in parent.get_execution_result().result
+    assert synthesis.await_count == int(report_succeeds)
+    if report_succeeds:
+        assert "Report saved" in synthesis.await_args.args[1]
+    # Replayed parent wake-ups do not execute the report a second time.
+    await advance(parent)
+    assert activate.await_count == 1
+
+
+def test_large_failure_context_keeps_closing_report_in_bounded_synthesis():
+    failed = _task(label="Failed work", status=TaskStatus.ERROR, data={"plan_step": 0},
+                   feedback="Synthetic failure cause. " + "Earlier diagnostic. " * 3000)
+    previous = _task(label="Earlier output", status=TaskStatus.SUCCESS, data={"plan_step": 1},
+                     feedback="Earlier completed work. " * 3000)
+    report = _task(label="Closing report", status=TaskStatus.SUCCESS, data={"plan_step": 2},
+                   feedback="Report saved at document://" + str(uuid4()) + "; ask whether to retry.")
+    parent = _task(plan={"steps": [{}, {}, {"run_after_failure": True}], "failure_task_id": str(failed.id)})
+    result = planner_service._closing_results_for_synthesis(parent, [failed, previous, report], max_chars=4000)
+    assert len(result) <= 4000
+    assert "Synthetic failure cause" in result
+    assert report.feedback in result
+    assert f"galaris://task/{failed.id}" in result
 
 
 @pytest.mark.asyncio

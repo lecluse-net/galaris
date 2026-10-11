@@ -35,6 +35,7 @@ class TaskEvent(str, Enum):
     RECOVER_EXECUTION = "recover_execution"
     RETRY = "retry"
     RETRY_PLAN = "retry_plan"
+    RETRY_CLOSING_ACTION = "retry_closing_action"
     RETRY_DELIVERY = "retry_delivery"
     RETRY_ROUTING = "retry_routing"
     REVISE = "revise"
@@ -108,6 +109,9 @@ TRANSITIONS: Final[dict[TaskEvent, TransitionRule]] = {
     ),
     TaskEvent.RETRY_PLAN: TransitionRule(
         frozenset({TaskStatus.ERROR}), TaskStatus.PLAN
+    ),
+    TaskEvent.RETRY_CLOSING_ACTION: TransitionRule(
+        frozenset({TaskStatus.SUCCESS}), TaskStatus.DISPATCH
     ),
     TaskEvent.RETRY_DELIVERY: TransitionRule(
         frozenset({TaskStatus.SUCCESS, TaskStatus.ERROR}), TaskStatus.DISPATCH

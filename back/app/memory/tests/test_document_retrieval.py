@@ -36,6 +36,40 @@ def vectors(monkeypatch):
 
 
 @pytest.mark.asyncio
+async def test_document_name_search_excludes_body_matches_and_paginates(agents, memory_storage, monkeypatch):
+    owner, peer = agents
+    from app.memory import facade
+    from unittest.mock import AsyncMock
+
+    semantic = AsyncMock(side_effect=AssertionError("Name discovery must not use semantic recall"))
+    monkeypatch.setattr(facade, "search_memory_detailed", semantic)
+    documents = []
+    for title, body in (("Quartz index A", "Unrelated content. " * 2000),
+                        ("Quartz index B", "Other content."),
+                        ("Unrelated title", "Quartz index appears only in the body.")):
+        item, _ = await service.create_item(MemoryItemCreate(
+            owner_agent_id=owner.id, node_kind="document", title=title,
+            media_type="text/html", payload=MemoryPayload(text=f"<p>{body}</p>"),
+        ))
+        documents.append(item)
+    ctx = ResourceContext(agent_id=owner.id, runtime="internal")
+    first = await resource_search(ctx, "document://", "quartz index", mode="name", max_results=1)
+    assert len(first.hits) == 1 and first.truncated and first.next_cursor
+    second = await resource_search(ctx, "document://", "quartz index", mode="name",
+                                   max_results=1, cursor=first.next_cursor)
+    assert len(second.hits) == 1 and not second.truncated
+    assert {hit.resource.uri for hit in [*first.hits, *second.hits]} == {
+        f"document://{item.id}" for item in documents[:2]
+    }
+    assert all(not hit.excerpt and not hit.passages for hit in [*first.hits, *second.hits])
+    assert len(first.model_dump_json()) < 2000
+    denied = await resource_search(ResourceContext(agent_id=peer.id, runtime="internal"),
+                                   "document://", "quartz index", mode="name")
+    assert denied.hits == []
+    semantic.assert_not_awaited()
+
+
+@pytest.mark.asyncio
 async def test_document_search_returns_readable_passages_and_rejects_partial_index(db, agents, memory_storage, vectors):
     owner, peer = agents
     filler = "<p>" + "Historique sans rapport. " * 100 + "</p>"

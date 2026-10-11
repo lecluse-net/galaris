@@ -268,7 +268,8 @@ async def search_file_resources(
 ) -> dict[str, object]:
     """Search authorized memories and return stable identifiers and excerpts."""
 
-    ranked = bool(query.strip())
+    name_only = expected_kind == "document" and mode == "name"
+    ranked = bool(query.strip()) and not name_only
     diagnostics: dict[str, object] = {}
     if ranked:
         page_limit = limit if limit is not None else 50
@@ -307,6 +308,7 @@ async def search_file_resources(
                 task_id=task_id,
             ),
             record_llm_access=True,
+            name_only=name_only,
         )
         hits = browse_page.hits
         total = browse_page.total
@@ -332,11 +334,11 @@ async def search_file_resources(
                 "score": hit.score,
                 "excerpt": hit.excerpt,
                 "can_write": hit.item.access.can_write,
-                "metadata": {**hit.item.metadata, "document_type": hit.item.document_type,
+                "metadata": {**({} if name_only else hit.item.metadata), "document_type": hit.item.document_type,
                              "temporal": hit.item.temporal.model_dump(mode="json") if hit.item.temporal else None},
                 "retrieval_sources": hit.retrieval_sources,
                 "source_refs": hit.source_refs,
-                "passages": [passage.model_dump() for passage in hit.passages],
+                "passages": [] if name_only else [passage.model_dump() for passage in hit.passages],
             }
             for hit in hits
         ],

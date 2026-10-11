@@ -94,6 +94,7 @@ the resume phase.
 | `RECOVER_EXECUTION` | EXEC | DISPATCH |
 | `RETRY` | ERROR | DISPATCH |
 | `RETRY_PLAN` | ERROR | PLAN |
+| `RETRY_CLOSING_ACTION` | SUCCESS | DISPATCH |
 | `RETRY_DELIVERY` | SUCCESS, ERROR | DISPATCH |
 | `RETRY_ROUTING` | ERROR | CREATE |
 | `REVISE` | DISPATCH | CREATE |
@@ -112,6 +113,12 @@ follow `DISPATCH → EXEC → SUCCESS/ERROR`. Each new wave is persisted before 
 Retrying a fully terminal plan applies `RETRY_PLAN` to failed groups and `RETRY` to failed
 leaves, then activates only the cursor path. Successful items, frozen inventories and effect
 journals are retained.
+
+A trailing `run_after_failure=true` closing action may execute after failure without
+resuming dependent work. Its parent stays in `PLAN`, retains the cause in
+`plan.failure_task_id`, then ends in `ERROR`. Only a manual retry rearms an already
+successful closing action through `RETRY_CLOSING_ACTION`: the new report reads current
+state without reusing the completed run. Other successful outputs and evidence remain intact.
 
 For an internal execution, the effect checkpoint follows `absent → started → completed`.
 `completed` authorizes resumption and the return of the logged result without re-executing the tool.

@@ -608,6 +608,15 @@ Les étapes non exécutées sont marquées comme ignorées dans leurs métadonn�
 synthèse ; l'échec terminal reste communiqué par le lien de conversation durable, ou directement
 pour les anciennes Tasks Messenger qui ne possèdent pas ce lien.
 
+Une action de clôture indépendante explicitement demandée, telle que la mise à jour d'un rapport
+durable même en cas d'échec, utilise une feuille finale `run_after_failure=true`. Les autres
+étapes dépendantes sont ignorées ; seules ces clôtures s'exécutent, avec les causes d'échec dans
+leur contexte. `plan.failure_task_id` conserve l'échec pendant la clôture et après redémarrage.
+La réussite du rapport ne transforme pas le plan en succès : la synthèse restitue le résultat
+partiel, la cause et la décision attendue, puis le parent termine en `ERROR`. Aucune relance
+des travaux échoués n'est automatique. Une reprise manuelle réarme les clôtures pour actualiser
+leur bilan, préserve les autres travaux réussis et reprend au premier travail inachevé.
+
 ## Working Set et postconditions de livrable
 
 Le Working Set est un registre versionné stocké dans `Task.data["working_set"]` sur la racine du

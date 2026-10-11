@@ -133,6 +133,12 @@ updates. Separate any cross-item link reconciliation after the collection. A doc
 conversion and verification remain together. Do not invent missing identifiers or redo an
 existing inventory: let discovery read it. If authorized inventory tools are unavailable,
 report that limitation; never disguise the collection as a single executable task.
+
+For an explicitly requested independent closing action that must also happen after failure
+(such as updating an existing migration report with failures), use a trailing leaf with
+run_after_failure=true. Keep its scope limited to recording and reconciling observed results;
+never retry item work, launch recovery or assume missing outputs. Normal steps stop on failure.
+Final text synthesis remains automatic and must not become a closing leaf.
 """.strip()
 
 
@@ -936,7 +942,7 @@ async def _advance_plan(task: Task) -> None:
             _mark_plan_waiting(task)
             await task_service.save(task)
             return
-        await _finalize(task, children, success=True)
+        await _finalize(task, children, success=not bool(plan.get("failure_task_id")))
         return
     current = child_for_step(children, cursor)
 
@@ -955,19 +961,17 @@ async def _advance_plan(task: Task) -> None:
             await task_service.save(task)
             return
         # A failed step aborts the remaining plan.
-        logger.info("Planner: step {} of {} is ERROR; aborting", cursor, task.id)
+        logger.info("Planner: step {} of {} is ERROR; closing dependent work", cursor, task.id)
         await _record_delivery_recovery(task, current, steps[cursor])
-        await _close_unfinished_children(task, children, current)
-        await _finalize(task, children, success=False)
+        await _continue_after_failure(task, children, current)
         return
 
     if current.status == TaskStatus.SUCCESS and _blocked_reason(current) is not None:
         # Give the planner one bounded chance to insert a materially different action.
-        if not (plan.get("collection") and cursor == 0) and await _try_recover_blocked_plan(task, current, children, steps, cursor):
+        if not plan.get("failure_task_id") and not (plan.get("collection") and cursor == 0) and await _try_recover_blocked_plan(task, current, children, steps, cursor):
             return
         logger.info("Planner: step {} of {} is BLOCKED; aborting", cursor, task.id)
-        await _close_unfinished_children(task, children, current)
-        await _finalize(task, children, success=False)
+        await _continue_after_failure(task, children, current)
         return
 
     if current.status != TaskStatus.SUCCESS:
@@ -999,7 +1003,34 @@ async def _advance_plan(task: Task) -> None:
         _mark_plan_waiting(task)
         await task_service.save(task)
     else:
-        await _finalize(task, children, success=True)
+        await _finalize(task, children, success=not bool(plan.get("failure_task_id")))
+
+
+async def _continue_after_failure(
+    task: Task, children: Sequence[Task], failed: Task,
+) -> None:
+    """Skip dependent work, execute requested closing leaves, retain the failure."""
+    plan = dict(task.plan or {})
+    steps = as_list(plan.get("steps"))
+    cursor = int(plan.get("cursor", 0) or 0)
+    closing_indexes = [index for index in range(cursor + 1, len(steps))
+                       if as_dict(steps[index]).get("run_after_failure") is True]
+    closing_ids = {child.id for child in children if _step_of(child) in closing_indexes}
+    await _close_unfinished_children(
+        task, [child for child in children if child.id not in closing_ids], failed,
+    )
+    plan.setdefault("failure_task_id", str(failed.id))
+    if not closing_indexes:
+        task.plan = plan
+        await _finalize(task, children, success=False)
+        return
+    plan["cursor"] = closing_indexes[0]
+    task.plan = plan
+    await task_service.save(task)
+    children = await _ensure_children(task)
+    await _activate_step(task, closing_indexes[0], children)
+    _mark_plan_waiting(task)
+    await task_service.save(task)
 
 
 async def _try_recover_blocked_plan(
@@ -1221,6 +1252,26 @@ def _aggregate_child_results(task: Task, children: Sequence[Task]) -> str:
     return "\n\n".join(parts)
 
 
+def _closing_results_for_synthesis(
+    task: Task, children: Sequence[Task], *, max_chars: int = _SYNTHESIS_MAX_INPUT_CHARS,
+) -> str:
+    """Keep both failure evidence and closing reports within the synthesis budget."""
+    steps = as_list((task.plan or {}).get("steps"))
+    failures: list[str] = []
+    reports: list[str] = []
+    for child in sorted(children, key=_step_of):
+        index = _step_of(child)
+        if _task_data_flag(child, _PLAN_SKIPPED_DATA_KEY):
+            continue
+        text = f"### {child.label} (galaris://task/{child.id}; {child.status.value})\n{_result_of(child)[:_PLAN_RESULT_MAX_CHARS_PER_STEP]}"
+        if 0 <= index < len(steps) and as_dict(steps[index]).get("run_after_failure") is True:
+            reports.append(text)
+        elif child.status == TaskStatus.ERROR or _blocked_reason(child) is not None:
+            failures.append(text)
+    budget = max_chars // 2 - 2
+    return "\n\n".join(("\n\n".join(failures)[:budget], "\n\n".join(reports)[-budget:]))
+
+
 def _delivery_receipt_matches(resource: WorkingResource, filename: str) -> bool:
     return resource.is_delivery_receipt and filename in {
         str(resource.metadata.get("filename") or "").strip(),
@@ -1329,12 +1380,20 @@ async def _finalize(
 
     final_text = aggregated
     synth_cost = 0.0
-    if success and aggregated.strip():
+    closing_completed = bool((task.plan or {}).get("failure_task_id")) and any(
+        child.status == TaskStatus.SUCCESS
+        and as_dict(as_list((task.plan or {}).get("steps"))[_step_of(child)]).get("run_after_failure") is True
+        for child in children
+        if 0 <= _step_of(child) < len(as_list((task.plan or {}).get("steps")))
+    )
+    if (success or closing_completed) and aggregated.strip():
         try:
-            final_text, synth_cost = await _synthesize(task, aggregated)
+            synthesis_input = _closing_results_for_synthesis(task, children) if closing_completed else aggregated
+            final_text, synth_cost = await _synthesize(task, synthesis_input)
         except Exception:
             logger.exception("Planner: LLM synthesis failed; using concatenated results")
-            final_text = aggregated
+            final_text = (_closing_results_for_synthesis(task, children, max_chars=_FEEDBACK_MAX_CHARS)
+                          if closing_completed else aggregated)
     cost_plan = dict(task.plan or {})
     previously_accounted = float(cost_plan.get("accounted_child_cost", 0.0))
     task.cost += max(0.0, total_child_cost - previously_accounted) + synth_cost
@@ -1782,7 +1841,7 @@ def _shared_results(parent: Task, children: Sequence[Task], step_index: int) -> 
     inherited = str(parent_data.get("plan_results") or "").strip()
     parts = [inherited] if inherited else []
     for sibling in sorted(children, key=_step_of):
-        if _step_of(sibling) >= step_index or sibling.status != TaskStatus.SUCCESS:
+        if _step_of(sibling) >= step_index or sibling.status not in (TaskStatus.SUCCESS, TaskStatus.ERROR):
             continue
         result = _result_of(sibling)
         if not result:
@@ -1793,7 +1852,7 @@ def _shared_results(parent: Task, children: Sequence[Task], step_index: int) -> 
                 total=len(result),
             )
             result = f"{result[:_PLAN_RESULT_MAX_CHARS_PER_STEP].rstrip()}\n{marker}"
-        parts.append(f"### {sibling.label}\n{result}")
+        parts.append(f"### {sibling.label} (galaris://task/{sibling.id}; {sibling.status.value})\n{result}")
     if not parts:
         return ""
     body = "\n\n".join(parts)
@@ -2123,6 +2182,10 @@ async def _synthesize(task: Task, steps_block: str) -> tuple[str, float]:
     prompt = (
         f"Language: {_task_language(task)}\n"
         "Write the final answer in this language.\n\n"
+        + ("The plan failed. Preserve the exact failure cause, distinguish completed and skipped work, "
+           "include the closing report and any requested question about retrying. Do not claim overall success.\n\n"
+           if (task.plan or {}).get("failure_task_id") else "")
+        +
         f"Objective:\n{objective}\n\n"
         f"{criteria_block}"
         f"Step results:\n{steps_block[:_SYNTHESIS_MAX_INPUT_CHARS]}"

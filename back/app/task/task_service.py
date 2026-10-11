@@ -613,10 +613,31 @@ async def retry(task_id: UUID, expected_revision: int) -> Optional[Task]:
         )).all())
         if any(node.status not in _TERMINAL_STATUSES or node.lease_token is not None for node in locked):
             raise TaskEditConflict(await tr("task_api.errors.action_running"))
+        closing_ids: set[UUID] = set()
         for node in locked:
-            if node.status == TaskStatus.SUCCESS:
+            if node.plan is None or not node.plan.get("failure_task_id"):
+                continue
+            node_plan = dict(node.plan)
+            failed_id = str(node_plan.pop("failure_task_id"))
+            steps = type_cast(list[dict[str, Any]], node_plan.get("steps", []))
+            siblings = [child for child in locked if child.parent_id == node.id]
+            closing_ids.update(child.id for child in siblings
+                if 0 <= (index := int((child.data or {}).get("plan_step", -1))) < len(steps)
+                and steps[index].get("run_after_failure") is True)
+            unfinished = [int((child.data or {}).get("plan_step", 0)) for child in siblings
+                          if child.status != TaskStatus.SUCCESS or child.id in closing_ids
+                          or str(child.id) == failed_id]
+            node_plan["cursor"] = min(unfinished) if unfinished else len(steps)
+            node.plan = node_plan
+        for node in locked:
+            retry_closing = node.status == TaskStatus.SUCCESS and node.id in closing_ids
+            if node.status == TaskStatus.SUCCESS and not retry_closing:
                 continue
             node_data = dict(node.data or {})
+            if retry_closing:
+                # A successful closing report described the previous failure. Its next
+                # execution must read current state rather than replay that completed run.
+                node_data.pop(_AGENT_RUN_CHECKPOINT_DATA_KEY, None)
             checkpoint = node_data.get(_AGENT_RUN_CHECKPOINT_DATA_KEY)
             if isinstance(checkpoint, dict):
                 node_data[_AGENT_RUN_CHECKPOINT_DATA_KEY] = {
@@ -625,7 +646,8 @@ async def retry(task_id: UUID, expected_revision: int) -> Optional[Task]:
             node_data.pop("plan_skipped", None)
             node_data.pop("plan_skipped_after_task_id", None)
             node.data = node_data
-            transition(node, TaskEvent.RETRY_PLAN if node.plan is not None else TaskEvent.RETRY)
+            transition(node, TaskEvent.RETRY_CLOSING_ACTION if retry_closing
+                       else TaskEvent.RETRY_PLAN if node.plan is not None else TaskEvent.RETRY)
             clear_pauses(node)
             if node.id != task.id:
                 suspend(node, PAUSE_PLAN)

@@ -31,6 +31,7 @@ For prose updates, integrate corrections within the requested scope and merge re
 Memory and File Sharing are active by default, but the effective tool inventory takes precedence. If this workflow is disabled or unavailable, use only the remaining authorized capabilities; never reactivate or bypass a disabled function. A temporary failure is not deactivation and must not silently turn a document deliverable into a standalone file.
 
 Tree structure:
+- An explicitly requested independent closing action, such as updating an existing durable report with failures, may use a trailing leaf with `run_after_failure=true`. It runs even when earlier work fails, records observed results and preserves the failure. Never use it to retry failed work, resume migration, assume missing outputs, or create a final-text answer step. Closing leaves must follow all dependent work.
 - A step without substeps is a leaf executed directly.
 - A step with substeps is a group whose children execute sequentially.
 - Several targets alone do not justify decomposition. Keep a small known batch of trivial deterministic operations in one leaf with `item_work="mechanical"` and its exact `item_count`, within the server's mechanical batch limit. For example, applying three supplied document names and checking them is one task; do not add discovery or one task per rename. Use `item_work="substantial"` when each item needs reading and transformation, judgment, or substantial validation, even with standard effort.

@@ -270,6 +270,10 @@ There is no separate sidebar menu for Tasks or conversation histories: these are
 inside **Activity**. **Chat** is for interaction; **Activity** is for monitoring executions.
 Access to the screen does not grant access to every conversation or agent.
 
+When you request a saved report even if work fails, the plan can retain that closing action.
+The task remains in error with its cause and report; failed work waits for your retry decision.
+A manual retry also updates the report.
+
 In **LLM activity** and task details, **Stop this LLM call** interrupts a running
 inference with `TASK_EDIT`, within your managed agents. Confirm the request, then wait
 for its terminal state: acceptance does not yet confirm that the provider has stopped.

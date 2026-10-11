@@ -62,6 +62,12 @@ par élément de collection, vagues bornées, inventaire Dataset vérifié avec 
 incomplètes ou ambiguës, progression et reprise après rechargement sans rejouer les succès.
 Le parcours PostgreSQL conserve l'inventaire figé même si le Dataset est modifié ensuite.
 
+Ces scénarios couvrent aussi les clôtures durables demandées après erreur ou blocage :
+rapport exécuté sans reprendre les dépendances, échec global conservé, rechargement,
+réveils idempotents et bilan actualisé après reprise manuelle. `test_planner_service.py`
+couvre une clôture elle-même en erreur. `test_document_retrieval.py` vérifie la recherche
+documentaire par nom sans rappel sémantique ni passages du corps, avec pagination et refus ACL.
+
 Le corpus synthétique `back/app/lab/planner_boundaries_corpus.json` contient 24 cas de
 granularité : collections ordonnées, reprise partielle, volumes inconnus, petits lots,
 tâches uniques complexes, PLAN forcé, plan écrit explicitement demandé et clarification.

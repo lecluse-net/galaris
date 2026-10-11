@@ -122,6 +122,15 @@ class PlanStep(BaseModel):
         description="Semantic HTML fragment (paragraphs, lists, links; no images) with precise step instructions describing what must be done or produced."
     )
     label: str = Field(description="Short step title.")
+    run_after_failure: bool = Field(
+        default=False,
+        description=(
+            "True only for an explicitly requested independent closing action, such as updating "
+            "a durable failure report. It runs after earlier failure without retrying item work. "
+            "Closing actions must be trailing leaves; normal steps remain dependent on success. "
+            "Final text synthesis is automatic and never needs a closing leaf."
+        ),
+    )
     effort: Literal["standard", "high"] = Field(
         default="standard",
         description=(
@@ -200,6 +209,13 @@ class PlanStep(BaseModel):
 
         if self.collection is not None and self.steps:
             raise ValueError("A collection cannot also contain static substeps")
+        if self.run_after_failure and (self.collection is not None or self.steps):
+            raise ValueError("An action that runs after failure must be a leaf")
+        closing_seen = False
+        for child in self.steps:
+            closing_seen = closing_seen or child.run_after_failure
+            if closing_seen and not child.run_after_failure:
+                raise ValueError("Actions that run after failure must be trailing steps")
         small_mechanical_batch = (
             self.item_work == "mechanical"
             and self.item_count is not None
@@ -278,6 +294,11 @@ class Plan(BaseModel):
         """Reject a tree that could materialize an unreasonable number of tasks."""
         if self.clarification_questions:
             return self
+        closing_seen = False
+        for step in self.steps:
+            closing_seen = closing_seen or step.run_after_failure
+            if closing_seen and not step.run_after_failure:
+                raise ValueError("Actions that run after failure must be trailing steps")
 
         def count_leaves(steps: list[PlanStep], depth: int = 1) -> int:
             leaves = 0

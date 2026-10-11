@@ -293,6 +293,10 @@ Ne cherchez pas un menu latéral « Conversations » ou « Tâches » séparé :
 d’**Activité**. **Discussion** sert à échanger ; **Activité** sert à suivre les exécutions.
 L’accès à cet écran ne donne pas accès à toutes les conversations ni à tous les agents.
 
+Si vous demandez un bilan enregistré même lorsque le travail échoue, le plan peut conserver
+cette action de clôture. La tâche reste en erreur avec sa cause et son bilan ; les travaux
+échoués attendent votre décision de reprise. Une reprise manuelle actualise aussi le bilan.
+
 Dans **Activité LLM** et le détail d’une tâche, **Arrêter cet appel LLM** interrompt une
 inférence en cours avec le droit `TASK_EDIT`, dans le périmètre des agents gérés.
 Confirmez la demande puis attendez son état terminal : l’accusé de réception ne signifie

@@ -2722,6 +2722,7 @@ async def search_items(
     request: MemorySearchRequest, *, record_llm_access: bool = False,
     ranked_hits: Sequence[MemorySearchHit] | None = None,
     temporal_union: bool = False,
+    name_only: bool = False,
 ) -> MemorySearchPage:
     """Apply ACL/validity first, then deterministic full-text ranking."""
 
@@ -2873,6 +2874,12 @@ async def search_items(
             {hit.item.id: float(len(ranked_hits) - index) for index, hit in enumerate(ranked_hits)},
             value=MemoryItem.id, else_=0.0,
         ) if ranked_hits else case((MemoryItem.id.is_(None), 0.0), else_=0.0)
+    elif name_only and normalized:
+        query = query.where(or_(
+            MemoryItem.title.icontains(normalized, autoescape=True),
+            MemoryItem.filename.icontains(normalized, autoescape=True),
+        ))
+        rank_expression = case((func.lower(MemoryItem.title) == normalized.lower(), 2.0), else_=1.0)
     elif identity is not None:
         query = query.where(MemoryItem.id == identity)
         rank_expression = case((MemoryItem.id == identity, 1.0), else_=0.0)
@@ -2994,7 +3001,10 @@ async def search_items(
         # Search text and metadata come from the same database revision. Reading
         # the mutable storage resource here could mix two concurrent revisions.
         recalled_hit = recalled.get((item.id, item.revision, item.lock_version, item.content_hash, item.semantic_fingerprint))
-        excerpt = recalled_hit.excerpt if recalled_hit is not None else lexical_excerpt(item.search_text, request.recall_query or normalized)
+        excerpt = "" if name_only else (
+            recalled_hit.excerpt if recalled_hit is not None
+            else lexical_excerpt(item.search_text, request.recall_query or normalized)
+        )
         hits.append(
             MemorySearchHit(
                 item=item_to_public(item, access),
