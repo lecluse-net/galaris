@@ -11,6 +11,36 @@ the agent’s connection to that Tool and encrypted as `password` parameters. In
 values are stored in the Tool’s Messenger tab. The Tool code is unrestricted and does not determine
 the bridge.
 
+## Testing from a local instance
+
+A local Galaris instance or one on a private network is sufficient for several bridges. Whether
+a public URL is needed depends on the direction of the connection, not on the messenger being external.
+
+| Bridge | Public Galaris URL required? | Required access |
+|---|---|---|
+| Telegram | No | Galaris calls Telegram through long polling; outbound Internet access and a BotFather token. |
+| Matrix | No for messages | Galaris calls the homeserver through `/sync`; a reachable homeserver and an unencrypted room. |
+| Nextcloud Talk | No for messages | Galaris connects to Nextcloud through polling or to the HPB through an outbound WebSocket. |
+| WhatsApp Business Cloud | Yes for reception | Meta must reach the Galaris webhook over HTTPS with a valid certificate. |
+| OneBot 11 | Depends on the adapter location | The adapter must reach the Galaris WebSocket; a local network or VPN is sufficient if it allows that connection. |
+
+For WhatsApp, Galaris can stay on the development machine: a public HTTPS tunnel to
+`/api/whatsapp/webhook/<tool_id>` is sufficient, without exposing the entire interface.
+Configure this public URL and its verify token in Meta. This bridge exclusively uses the
+official WhatsApp Business Cloud API; it does not connect a personal WhatsApp account.
+
+In **Preferences → Messaging** and a Tool’s **Messaging** tab, a notice explains the bridge’s
+network requirement. WhatsApp warns when the browser address is local, private or lacks HTTPS;
+OneBot warns for a local or private address without requiring public exposure. Detection recognizes
+`localhost`, short hostnames, common local suffixes, and private, loopback and link-local IPv4/IPv6
+addresses. It does not resolve DNS or test certificates or reachability from the provider.
+An ordinary domain that resolves to a private IP may therefore go undetected. If Galaris is opened
+through a private address but already has a separate public endpoint or tunnel, use that endpoint
+in Meta. The warning does not block configuration or saving.
+
+These notices apply to messages and attachments. Matrix and Nextcloud Talk real-time calls
+also need suitable WebRTC connectivity, potentially through TURN.
+
 ## Telegram Bot API
 
 ### 1. Create and configure the bot

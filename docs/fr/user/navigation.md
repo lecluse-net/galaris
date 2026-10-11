@@ -429,6 +429,14 @@ Système, Langue, Messagerie, Mémoire, Dream, Voix, Audio, Processus, Tâches e
 Harnais, Recherche, Navigateur, Janus, Instructions et Journaux. La
 [carte générée](../architecture/generated/navigation.md) donne la route de chaque rubrique.
 
+Dans **Préférences → Messagerie** et l’onglet **Messagerie** d’un Tool, les indications réseau
+permettent de préparer les [tests des passerelles depuis une instance locale](../bridges/telegram-whatsapp.md).
+Telegram, Matrix et Nextcloud Talk n’exigent pas d’URL publique Galaris pour les messages.
+WhatsApp nécessite un webhook HTTPS public ; son avertissement apparaît avec une adresse locale,
+privée ou sans HTTPS. OneBot demande une adresse joignable depuis l’adaptateur, y compris via
+un réseau local ou un VPN. Ces avertissements se basent sur l’adresse du navigateur et ne bloquent
+pas l’enregistrement.
+
 Dans **Tâches et exécution → Planner**, la planification se règle avec la profondeur maximale et
 le nombre maximal de feuilles. Il n’y a pas de plafond distinct sur le nombre total d’étapes.
 

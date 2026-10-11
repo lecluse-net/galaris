@@ -2,6 +2,7 @@ export default {
     fr: {
         messagingProviders: {
             nextcloudTalk: {
+                networkHint: "Aucune URL publique Galaris requise pour les messages : Galaris se connecte à Nextcloud par polling ou au serveur de signalisation HPB. Ces serveurs doivent être joignables depuis Galaris.",
                 guide: 'Galaris se connecte comme un utilisateur Nextcloud dédié et surveille les conversations Talk auxquelles ce compte participe.',
                 steps: [
                     'Configurez l’outil Nextcloud avec son URL WebDAV et ses paramètres de connexion.',
@@ -21,6 +22,7 @@ export default {
     en: {
         messagingProviders: {
             nextcloudTalk: {
+                networkHint: "No public Galaris URL is required for messages: Galaris connects to Nextcloud through polling or to the HPB signaling server. These servers must be reachable from Galaris.",
                 guide: 'Galaris connects as a dedicated Nextcloud user and watches the Talk conversations joined by that account.',
                 steps: [
                     'Configure the Nextcloud tool with its WebDAV URL and connection parameters.',
@@ -40,6 +42,7 @@ export default {
     zh: {
         messagingProviders: {
             nextcloudTalk: {
+                networkHint: "消息功能无需公开的 Galaris URL：Galaris 通过轮询连接 Nextcloud，或连接 HPB 信令服务器。这些服务器必须能够从 Galaris 访问。",
                 guide: 'Galaris 以专用 Nextcloud 用户身份连接，并监控该账户加入的 Talk 对话。',
                 steps: ['使用 WebDAV URL 和连接参数配置 Nextcloud 工具。', '为每个智能体创建专用 Nextcloud 账户，并加入相关 Talk 对话。', '在“工具 → Nextcloud”中输入凭据；同一连接同时用于 Talk 和文件共享。'],
                 fields: { inbound: '接收模式', hpbUrl: '信令服务器 URL（HPB）', discoveryInterval: '对话发现间隔（秒）', longpollTimeout: '长轮询超时（秒）' },

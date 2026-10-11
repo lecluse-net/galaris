@@ -392,6 +392,13 @@ Language, Messaging, Memory, Dream, Voice, Audio, Processes, Tasks and execution
 Harnesses, Search, Browser, Janus, Instructions and Logs. The
 [generated map](../architecture/generated/navigation.md) provides each route.
 
+In **Preferences → Messaging** and a Tool’s **Messaging** tab, network notices help prepare
+[bridge tests from a local instance](../bridges/telegram-whatsapp.md).
+Telegram, Matrix and Nextcloud Talk do not require a public Galaris URL for messages.
+WhatsApp requires a public HTTPS webhook; its warning appears for a local or private address
+or one without HTTPS. OneBot needs an address reachable from the adapter, including through
+a local network or VPN. These warnings use the browser address and do not block saving.
+
 Under **Tasks and execution → Planner**, planning is bounded by maximum depth and maximum leaves.
 There is no separate limit on the total number of steps.
 

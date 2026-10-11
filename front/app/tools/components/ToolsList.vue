@@ -537,6 +537,7 @@
                     />
 
                     <template v-if="currentMessengerBridge">
+                      <NetworkAccessNotice :kind="currentMessengerBridge.service" />
                       <div v-if="currentMessengerBridge.settings.length" class="q-gutter-y-sm">
                         <div class="text-caption text-grey-6">{{ $t('tools.messengerServerSettings') }}</div>
                         <q-input
@@ -745,7 +746,7 @@
 
 <script setup lang="ts">
 import { ref, computed, watch, onMounted } from 'vue'
-import { Markdown } from '@/core/util'
+import { Markdown, NetworkAccessNotice } from '@/core/util'
 import SystemToolIcon from './SystemToolIcon.vue'
 import ConnectionParamInput from './ConnectionParamInput.vue'
 import { McpCandidateAgent } from '@/app/connection'

@@ -76,6 +76,8 @@
                 <div class="text-body2 q-mt-xs">{{ t(selectedBridge.guideKey) }}</div>
             </q-banner>
 
+            <NetworkAccessNotice :kind="selectedBridge.kind" class="q-mb-lg" />
+
             <SettingsBlock v-if="selectedBridge.fields.length" :title="selectedBridge.label" :icon="selectedBridge.icon">
                 <SettingsFields :key="selectedBridge.kind" :fields="selectedBridge.fields" :columns="2" />
             </SettingsBlock>
@@ -176,6 +178,7 @@ import { useParamsStore } from '../stores/paramsStore'
 import { configurationService, type MessengerConfigurationCheck } from '../services/configurationService'
 import SettingsFields from './SettingsFields.vue'
 import SettingsBlock from './SettingsBlock.vue'
+import { NetworkAccessNotice } from '@/core/util'
 import { privileges, usePrivilegeStore } from '@/core/authorize'
 
 const { t, tm } = useI18n()

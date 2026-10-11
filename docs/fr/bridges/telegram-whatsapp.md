@@ -11,6 +11,37 @@ sont enregistrés dans sa connexion à ce Tool et chiffrés comme paramètres `p
 serveur invariantes sont enregistrées dans l’onglet Messenger du Tool. Le code du Tool est libre et
 ne détermine pas le bridge.
 
+## Tester depuis une instance locale
+
+Une instance Galaris locale ou sur un réseau privé suffit pour plusieurs passerelles. Le besoin
+d’une URL publique dépend du sens de la connexion, pas du fait que la messagerie est externe.
+
+| Passerelle | URL publique pour Galaris ? | Accès nécessaire |
+|---|---|---|
+| Telegram | Non | Galaris appelle Telegram par long polling ; accès Internet sortant et token BotFather. |
+| Matrix | Non pour les messages | Galaris appelle le homeserver via `/sync` ; homeserver joignable et room non chiffrée. |
+| Nextcloud Talk | Non pour les messages | Galaris se connecte à Nextcloud par polling ou au HPB par WebSocket sortant. |
+| WhatsApp Business Cloud | Oui pour la réception | Meta doit joindre le webhook Galaris en HTTPS avec un certificat valide. |
+| OneBot 11 | Selon l’emplacement de l’adaptateur | L’adaptateur doit joindre le WebSocket Galaris ; réseau local ou VPN suffisant s’il permet cette connexion. |
+
+Pour WhatsApp, Galaris peut rester sur la machine de développement : un tunnel HTTPS public
+vers `/api/whatsapp/webhook/<tool_id>` suffit, sans rendre toute l’interface publique.
+Configurer cette URL publique et son verify token dans Meta. Ce bridge utilise uniquement
+l’API officielle WhatsApp Business Cloud ; il ne connecte pas un compte WhatsApp personnel.
+
+Dans **Préférences → Messagerie** et dans l’onglet **Messagerie** d’un Tool, une indication
+précise le besoin réseau de la passerelle. WhatsApp affiche un avertissement si l’adresse du
+navigateur est locale, privée ou sans HTTPS ; OneBot avertit pour une adresse locale ou privée,
+sans exiger une exposition publique. La détection reconnaît notamment `localhost`, les noms
+courts, les suffixes locaux usuels, les IP privées, de loopback et de lien local IPv4/IPv6.
+Elle ne résout pas le DNS et ne teste ni le certificat ni la joignabilité depuis le fournisseur.
+Un domaine ordinaire qui résout vers une IP privée peut donc ne pas être détecté. Si Galaris est
+ouvert via une adresse privée mais possède déjà un autre endpoint public ou un tunnel, utiliser
+ce dernier dans Meta. L’avertissement ne bloque ni la configuration ni son enregistrement.
+
+Ces indications concernent les messages et pièces jointes. Les appels temps réel Matrix et
+Nextcloud Talk nécessitent aussi une connectivité WebRTC adaptée, éventuellement via TURN.
+
 ## Telegram Bot API
 
 ### 1. Créer et configurer le bot

@@ -107,6 +107,7 @@
           "back/app/agent/management_scope.py",
           "back/app/agent/models.py",
           "back/app/agent/openai_service.py",
+          "back/app/agent/planner_service.py",
           "back/app/agent/resource_facade.py",
           "back/app/agent/router.py",
           "back/app/agent/team_router.py",
@@ -18663,6 +18664,7 @@
       },
       {
         "files": [
+          "front/core/params/components/MessagingSettingsPanel.vue",
           "front/core/params/components/PreferencesMenuGrid.vue",
           "front/core/params/components/PreferencesSectionPage.vue",
           "front/core/params/components/PromptSettingEditor.vue",
