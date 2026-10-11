@@ -236,6 +236,10 @@ before continuing. Search may continue across several pages; content search repo
 could not examine. Generic deletion only removes individual files, never an entire folder.
 An active connection with incomplete configuration remains unusable.
 
+Samba and Windows shares are also available through the **Samba / SMB 2–3** bridge.
+See the [Samba setup and usage journey](samba.md) to connect a share and manipulate
+its files through the same File sharing functions.
+
 The Agent interprets a resend request and selects the file and destination before sending.
 A document open beside the chat provides context; its words never trigger automatic redelivery.
 Attaching an image to a document and sending it back in the chat are separate requests.

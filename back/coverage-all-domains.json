@@ -440,6 +440,13 @@
     "line_min": 84,
     "branch_min": 30
   },
+  "bridge/samba/": {
+    "prefixes": [
+      "bridge/samba/"
+    ],
+    "line_min": 42,
+    "branch_min": 21
+  },
   "bridge/sunoapi/": {
     "prefixes": [
       "bridge/sunoapi/"

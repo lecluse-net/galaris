@@ -50,6 +50,8 @@ dependencies = [
     "pywebpush~=2.4",               # standards-based encrypted PWA Web Push
     # Persistent remote execution and SFTP workspaces
     "asyncssh~=2.24",
+    # SMB 2/3 file shares (Samba and Windows servers)
+    "smbprotocol~=1.17",
     # MCP — FastMCP servers exposed by Galaris
     "fastmcp>=3.4.2",
     # Media — PDF documents

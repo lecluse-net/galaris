@@ -64,6 +64,17 @@ async def build_agent_tool_advertisement(
             lines.append(f"- `{tool_code}`: {rendered_names}")
 
     tool_names = frozenset(definition.name for definition in definitions)
+    if "file_list" in tool_names:
+        lines.extend([
+            "",
+            "Connected file shares are resource providers accessed through the available "
+            "file_* functions. Use the exact connected Tool code as the URI scheme: "
+            "file_list(uri='<tool-code>://') lists its root, then follow the returned URIs "
+            "to browse folders and files. The server URL and credentials are resolved "
+            "internally; never replace this URI with an SMB server URL. Task-only "
+            "restrictions below concern functions owned by those Tools, not file resources "
+            "accessed through the available file_* functions.",
+        ])
     if "document_show" in tool_names:
         lines.append(
             "Use document_show(document=...) to present a relevant working document directly "
@@ -177,11 +188,18 @@ async def _task_only_tools(agent_id: int) -> tuple[dict[str, str], ...]:
 
     from app.connection import facade as connection_service
     from app.tools import tool_service
+    from . import mcp_loader
 
     inventory: dict[str, dict[str, str]] = {}
+    native_codes = set(mcp_loader.mcp_tools_by_tool_code())
     for connection in await connection_service.get_connections_by_agent(agent_id):
         tool = await tool_service.get_tool_by_id(connection.tool_id)
         if tool is None or tool.conversation_enabled:
+            continue
+        if (tool.file_share is not None and tool.mcp is None
+            and not (mcp_loader.native_tool_codes_for_tool(tool) & native_codes)):
+            # A file-only bridge owns no callable functions. Its files belong to
+            # the generic file_sharing surface, including in conversations.
             continue
         code = " ".join(str(tool.code or "").split())
         label = " ".join(str(tool.label or code).split())

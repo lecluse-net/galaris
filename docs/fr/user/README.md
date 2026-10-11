@@ -307,6 +307,10 @@ La recherche peut continuer sur plusieurs pages ; une recherche de contenu signa
 qu’elle n’a pas pu examiner. La suppression générique porte uniquement sur des fichiers,
 jamais sur un dossier entier. Une connexion active mais incomplètement configurée reste inutilisable.
 
+Les partages Samba et Windows sont aussi accessibles avec le bridge **Samba / SMB 2–3**.
+Consultez le [parcours de configuration et d'utilisation Samba](samba.md) pour connecter
+un partage et manipuler ses fichiers avec les mêmes fonctions de Partage de fichiers.
+
 L’agent interprète la demande de renvoi et choisit le fichier et sa destination avant l’envoi.
 Le contenu d’un document ouvert à côté du chat sert de contexte ; ses mots ne déclenchent
 aucun renvoi automatique. Joindre une image à un document et la renvoyer dans le chat sont

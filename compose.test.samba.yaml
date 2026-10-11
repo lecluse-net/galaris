@@ -1,0 +1,14 @@
+# Optional SMB peer for make tests-samba; no host ports or durable volumes.
+services:
+  samba-test:
+    build: ./back/bridge/samba/tests/server
+    tmpfs:
+      - /shares
+    healthcheck:
+      test: ["CMD-SHELL", "smbclient //localhost/synthetic -U 'writer%synthetic-writer-password' -c ls >/dev/null"]
+      interval: 2s
+      timeout: 5s
+      retries: 30
+  backend:
+    environment:
+      SAMBA_TEST_SERVER: samba-test

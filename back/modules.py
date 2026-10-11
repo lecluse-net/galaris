@@ -89,6 +89,7 @@ MODULES = [
     "bridge.one_bot",
     "bridge.matrix",
     "bridge.nextcloud",
+    "bridge.samba",
     "bridge.telegram",
     "bridge.whatsapp",
     *LLM_PROVIDER_MODULES,

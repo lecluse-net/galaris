@@ -352,7 +352,7 @@
               <div class="text-subtitle2 text-grey-7 q-mb-xs">{{ $t('tools.mainFields') }}</div>
               <div class="row q-gutter-md tool-main-fields-row">
                 <q-input v-model="form.code" :label="$t('tools.technicalName')" :readonly="!!editingTool" :disable="!!editingTool"
-                  :hint="$t('tools.technicalNameHint')" dense outlined class="col tool-main-field" :rules="[v => !!v || $t('tools.required')]" />
+                  :hint="$t(hasFileShare || hasMessenger ? 'tools.resourceTechnicalNameHint' : 'tools.technicalNameHint')" dense outlined class="col tool-main-field" :rules="[v => !!v || $t('tools.required')]" />
                 <q-input v-model="form.label" :label="$t('tools.label')" dense outlined class="col tool-main-field" :rules="[v => !!v || $t('tools.required')]" />
               </div>
               <q-input v-model="form.description" :label="$t('tools.descriptionMarkdown')" type="textarea" dense outlined autogrow />
@@ -497,8 +497,9 @@
                         emit-value map-options :label="$t('tools.fileShareServiceLabel')"
                         dense outlined class="col-auto" style="min-width: 200px"
                         @update:model-value="onFileShareServiceChange" />
-                      <q-input v-model="form.file_share_config.base_url" label="base_url *" dense outlined class="col"
-                        placeholder="https://cloud.example.com" />
+                      <q-input v-model="form.file_share_config.base_url" :label="$t('tools.fileShareBaseUrlLabel')" dense outlined class="col"
+                        :hint="$t('tools.fileShareBaseUrlHint')"
+                        :placeholder="$t(form.file_share_config.service === 'samba' ? 'tools.fileShareSambaUrlPlaceholder' : 'tools.fileShareUrlPlaceholder')" />
                     </div>
 
                     <template v-if="currentFileShareBridge">

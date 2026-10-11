@@ -399,6 +399,10 @@ tests: ## Run backend tests in an isolated, ephemeral PostgreSQL environment
 	@bash bin/test-back.sh $(TEST_ARGS_BACK) $(ARGS)
 .PHONY: tests
 
+tests-samba: ## Verify the SMB bridge against an isolated Samba server and PostgreSQL
+	@BACKEND_TEST_SAMBA=1 bash bin/test-back.sh bridge/samba/tests app/file_share/tests
+.PHONY: tests-samba
+
 tests-recovery: ## Verify durable tool receipts, SSH crash recovery, retries and attempt ownership
 	@$(MAKE) tests TEST_ARGS_BACK= ARGS='app/harness/tests app/console/tests app/task/tests/test_agent_run_trace.py app/task/tests/test_task_service.py app/task/tests/test_scheduler.py app/agent/tests/test_facade.py app/agent/tests/test_action_guard.py app/tools/tests'
 .PHONY: tests-recovery

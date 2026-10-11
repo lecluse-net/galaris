@@ -196,6 +196,7 @@ async def test_conversation_advertisement_lists_only_task_only_application_tools
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     from app.tools import agent_registry, mcp_loader
+    from app.tools.schemas import Tool, FileShareConfig, McpConfig
 
     async def noop() -> None:
         return None
@@ -208,6 +209,10 @@ async def test_conversation_advertisement_lists_only_task_only_application_tools
             required_capabilities=frozenset(),
             function=noop,
             conversation_policy="short",
+        ),
+        mcp_loader.McpToolDefinition(
+            tool_code="file_sharing", name="file_list", description="List provider folders.",
+            required_capabilities=frozenset(), function=noop, conversation_policy="short",
         ),
     )
     monkeypatch.setattr(
@@ -222,25 +227,32 @@ async def test_conversation_advertisement_lists_only_task_only_application_tools
                 SimpleNamespace(tool_id=1),
                 SimpleNamespace(tool_id=2),
                 SimpleNamespace(tool_id=3),
+                SimpleNamespace(tool_id=4),
+                SimpleNamespace(tool_id=5),
             ]
         ),
     )
     tools = {
-        1: SimpleNamespace(
+        1: Tool(
             code="gitlab",
             label="GitLab",
             conversation_enabled=False,
         ),
-        2: SimpleNamespace(
+        2: Tool(
             code="search",
             label="Web search",
             conversation_enabled=True,
         ),
-        3: SimpleNamespace(
+        3: Tool(
             code="audio",
             label="Audio",
             conversation_enabled=False,
         ),
+        4: Tool(code="team-share", label="Synthetic file provider", conversation_enabled=False,
+                file_share_config=FileShareConfig(service="samba", base_url="smb://files.example.test")),
+        5: Tool(code="mixed-share", label="Synthetic MCP and file provider", conversation_enabled=False,
+                file_share_config=FileShareConfig(service="samba", base_url="smb://files.example.test"),
+                mcp_config=McpConfig(type="http", url="https://tools.example.test/mcp")),
     }
     monkeypatch.setattr(
         "app.tools.tool_service.get_tool_by_id",
@@ -254,11 +266,14 @@ async def test_conversation_advertisement_lists_only_task_only_application_tools
         include_task_only_tools=True,
     )
 
-    assert advertisement.tool_names == frozenset({"search_web"})
+    assert advertisement.tool_names == frozenset({"search_web", "file_list"})
     assert "## Task-only Tools" in advertisement.text
     assert '{"code": "audio", "label": "Audio"}' in advertisement.text
     assert '{"code": "gitlab", "label": "GitLab"}' in advertisement.text
     assert '{"code": "search", "label": "Web search"}' not in advertisement.text
+    assert '"code": "team-share"' not in advertisement.text
+    assert '"code": "mixed-share"' in advertisement.text
+    assert "file_list(uri='<tool-code>://')" in advertisement.text
     assert "launching a Task with `conversation_task_submit` is mandatory" in advertisement.text
     assert "Never claim that the agent lacks access" in advertisement.text
 

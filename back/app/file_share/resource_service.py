@@ -150,7 +150,7 @@ _MAIL_CAPABILITIES: list[ResourceCapability] = ["copy", "info", "list", "read"]
 def _transport_capabilities(service: str, entry: FileEntry) -> list[ResourceCapability]:
     if service == "mail":
         return _MAIL_CAPABILITIES
-    if service == "nextcloud":
+    if service in {"nextcloud", "samba"}:
         if entry.is_dir:
             return ["create", "info", "list", "search"]
         return ["append", "copy", "delete", "edit", "info", "move", "read", "write"]
@@ -571,7 +571,7 @@ async def list_schemes(ctx: ResourceContext) -> list[ResourceSchemeDescription]:
                 if target["service"] == "mail"
                 else (
                     _NEXTCLOUD_CAPABILITIES
-                    if target["service"] == "nextcloud"
+                    if target["service"] in {"nextcloud", "samba"}
                     else _TRANSPORT_CAPABILITIES
                 )
             )

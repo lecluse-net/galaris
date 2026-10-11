@@ -15,7 +15,7 @@ from bridge.nextcloud import NextcloudFileClient
 
 def test_available_bridges_lists_builtin():
     services = {b.service for b in available_bridges()}
-    assert services == {"nextcloud", "affine"}
+    assert services == {"nextcloud", "affine", "samba"}
     nc = next(b for b in available_bridges() if b.service == "nextcloud")
     assert nc.supports_share is True
     assert {p.key for p in nc.params} == {"login", "password"}

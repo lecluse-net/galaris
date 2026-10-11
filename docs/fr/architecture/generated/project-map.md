@@ -9,11 +9,11 @@ tests restent l’autorité sur le comportement.
 
 ## Résumé
 
-- 71 modules backend déclarés ;
+- 72 modules backend déclarés ;
 - 36 modules frontend déclarés ;
-- 545 arêtes de dépendance backend ;
+- 547 arêtes de dépendance backend ;
 - 195 arêtes de dépendance frontend ;
-- 269 arêtes entre domaines `app`/`bridge` ;
+- 270 arêtes entre domaines `app`/`bridge` ;
 - 26 paires de domaines directement bidirectionnelles ;
 - 1 composantes fortement connexes ;
 - 7 paires frontend directement bidirectionnelles ;
@@ -73,6 +73,7 @@ tests restent l’autorité sur le comportement.
 | `bridge.one_bot` | bridge | non | oui | `router.py`, `tests/` |
 | `bridge.matrix` | bridge | non | oui | `router.py`, `schemas.py`, `tests/` |
 | `bridge.nextcloud` | bridge | non | oui | `router.py`, `tests/` |
+| `bridge.samba` | bridge | non | oui | `tests/` |
 | `bridge.telegram` | bridge | non | oui | `router.py`, `schemas.py`, `tests/` |
 | `bridge.whatsapp` | bridge | non | oui | `router.py`, `schemas.py`, `tests/` |
 | `bridge.openrouter` | bridge | oui | oui | — |
@@ -630,6 +631,8 @@ tests restent l’autorité sur le comportement.
 | `bridge.openrouter` | `core.i18n` | `back/bridge/openrouter/resources.py` |
 | `bridge.openrouter` | `core.util` | `back/bridge/openrouter/decisions.py`, `back/bridge/openrouter/image.py`, `back/bridge/openrouter/multimedia.py`, `back/bridge/openrouter/quota.py`, `back/bridge/openrouter/resources.py`, `back/bridge/openrouter/transcription.py`, `back/bridge/openrouter/usage.py` |
 | `bridge.perplexity` | `app.llm` | `back/bridge/perplexity/__init__.py` |
+| `bridge.samba` | `app.file_share` | `back/bridge/samba/__init__.py`, `back/bridge/samba/file_share.py` |
+| `bridge.samba` | `core.util` | `back/bridge/samba/file_share.py` |
 | `bridge.sunoapi` | `app.llm` | `back/bridge/sunoapi/__init__.py`, `back/bridge/sunoapi/media.py`, `back/bridge/sunoapi/quota.py` |
 | `bridge.sunoapi` | `core.i18n` | `back/bridge/sunoapi/quota.py` |
 | `bridge.sunoapi` | `core.util` | `back/bridge/sunoapi/media.py` |
@@ -957,6 +960,7 @@ tests restent l’autorité sur le comportement.
 | `bridge.openai` | 1 | `app.llm` |
 | `bridge.openrouter` | 1 | `app.llm` |
 | `bridge.perplexity` | 1 | `app.llm` |
+| `bridge.samba` | 1 | `app.file_share` |
 | `bridge.sunoapi` | 1 | `app.llm` |
 | `bridge.telegram` | 1 | `app.messenger` |
 | `bridge.together` | 1 | `app.llm` |
@@ -971,7 +975,7 @@ tests restent l’autorité sur le comportement.
 | `app.tools` | 30 | `app.agent`, `app.audio`, `app.browser`, `app.connection`, `app.console`, `app.conversation`, `app.file_share`, `app.goal`, `app.harness`, `app.harnesses`, `app.image`, `app.lab`, `app.llm`, `app.mcp`, `app.memory`, `app.messenger`, `app.multimedia`, `app.onboarding`, `app.process`, `app.skill`, `app.task`, `app.topic`, `app.voice`, `app.webhook`, `bridge.calendar`, `bridge.hermes`, `bridge.mail`, `bridge.matrix`, `bridge.nextcloud`, `bridge.whatsapp` |
 | `app.messenger` | 24 | `app.agent`, `app.audio`, `app.browser`, `app.chat`, `app.contact`, `app.conversation`, `app.dream`, `app.file_share`, `app.goal`, `app.harness`, `app.lab`, `app.llm`, `app.onboarding`, `app.task`, `app.tools`, `app.topic`, `app.voice`, `bridge.hermes`, `bridge.mail`, `bridge.matrix`, `bridge.nextcloud`, `bridge.one_bot`, `bridge.telegram`, `bridge.whatsapp` |
 | `app.connection` | 22 | `app.browser`, `app.console`, `app.conversation`, `app.dream`, `app.file_share`, `app.goal`, `app.lab`, `app.llm`, `app.messenger`, `app.onboarding`, `app.skill`, `app.tools`, `app.topic`, `app.voice`, `app.webhook`, `bridge.calendar`, `bridge.hermes`, `bridge.mail`, `bridge.matrix`, `bridge.nextcloud`, `bridge.one_bot`, `bridge.whatsapp` |
-| `app.file_share` | 16 | `app.agent`, `app.audio`, `app.browser`, `app.console`, `app.conversation`, `app.harness`, `app.image`, `app.llm`, `app.messenger`, `app.multimedia`, `app.process`, `app.tools`, `bridge.calendar`, `bridge.hermes`, `bridge.mail`, `bridge.nextcloud` |
+| `app.file_share` | 17 | `app.agent`, `app.audio`, `app.browser`, `app.console`, `app.conversation`, `app.harness`, `app.image`, `app.llm`, `app.messenger`, `app.multimedia`, `app.process`, `app.tools`, `bridge.calendar`, `bridge.hermes`, `bridge.mail`, `bridge.nextcloud`, `bridge.samba` |
 | `app.task` | 16 | `app.audio`, `app.contact`, `app.conversation`, `app.dashboard`, `app.dream`, `app.file_share`, `app.goal`, `app.lab`, `app.llm`, `app.memory`, `app.messenger`, `app.process`, `app.tools`, `app.topic`, `app.voice`, `app.webhook` |
 | `app.process` | 15 | `app.agent`, `app.conversation`, `app.dream`, `app.file_share`, `app.harness`, `app.lab`, `app.llm`, `app.memory`, `app.multimedia`, `app.onboarding`, `app.topic`, `app.voice`, `bridge.calendar`, `bridge.hermes`, `bridge.n8n` |
 | `app.conversation` | 11 | `app.chat`, `app.contact`, `app.dream`, `app.file_share`, `app.harness`, `app.lab`, `app.llm`, `app.memory`, `app.messenger`, `app.topic`, `app.voice` |

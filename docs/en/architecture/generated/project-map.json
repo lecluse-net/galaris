@@ -4726,6 +4726,21 @@
       },
       {
         "files": [
+          "back/bridge/samba/__init__.py",
+          "back/bridge/samba/file_share.py"
+        ],
+        "source": "bridge.samba",
+        "target": "app.file_share"
+      },
+      {
+        "files": [
+          "back/bridge/samba/file_share.py"
+        ],
+        "source": "bridge.samba",
+        "target": "core.util"
+      },
+      {
+        "files": [
           "back/bridge/sunoapi/__init__.py",
           "back/bridge/sunoapi/media.py",
           "back/bridge/sunoapi/quota.py"
@@ -5306,7 +5321,7 @@
           "app.tools"
         ]
       ],
-      "domain_edges": 269,
+      "domain_edges": 270,
       "fan_in": [
         {
           "count": 43,
@@ -5491,7 +5506,7 @@
           ]
         },
         {
-          "count": 16,
+          "count": 17,
           "module": "app.file_share",
           "modules": [
             "app.agent",
@@ -5509,7 +5524,8 @@
             "bridge.calendar",
             "bridge.hermes",
             "bridge.mail",
-            "bridge.nextcloud"
+            "bridge.nextcloud",
+            "bridge.samba"
           ]
         },
         {
@@ -6346,6 +6362,13 @@
           "module": "bridge.perplexity",
           "modules": [
             "app.llm"
+          ]
+        },
+        {
+          "count": 1,
+          "module": "bridge.samba",
+          "modules": [
+            "app.file_share"
           ]
         },
         {
@@ -10695,6 +10718,16 @@
         "layer": "bridge",
         "name": "bridge.nextcloud",
         "path": "back/bridge/nextcloud"
+      },
+      {
+        "capabilities": [
+          "tests/"
+        ],
+        "conditional": false,
+        "exists": true,
+        "layer": "bridge",
+        "name": "bridge.samba",
+        "path": "back/bridge/samba"
       },
       {
         "capabilities": [

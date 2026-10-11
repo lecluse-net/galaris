@@ -204,6 +204,10 @@ max_domain_fan_out = 5
 allowed_dependencies = ["app.agent", "app.connection", "app.file_share", "app.messenger", "app.tools", "app.voice"]
 max_domain_fan_out = 6
 
+[module."bridge.samba"]
+allowed_dependencies = ["app.file_share"]
+max_domain_fan_out = 1
+
 [module."bridge.telegram"]
 allowed_dependencies = ["app.messenger"]
 max_domain_fan_out = 1
