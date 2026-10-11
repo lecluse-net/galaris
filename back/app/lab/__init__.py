@@ -18,16 +18,14 @@ from . import (
     mechanism_evaluation_service,
 )
 
-from app.process import registry
-from .engine import LabEngine
-
-registry.register(LabEngine())
-
 
 def register_scheduler_jobs() -> None:
     """Register durable Lab work in the task scheduler composition root."""
 
     from app.task import scheduler
+    from .operation_worker import tick
+
+    scheduler.register_periodic_job("lab-operations", tick, interval=1.0, timeout=720.0)
 
     scheduler.register_periodic_job(
         "lab-mechanism-evaluations",

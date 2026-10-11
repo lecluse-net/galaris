@@ -9,7 +9,7 @@ from sqlalchemy.dialects.postgresql import insert
 from app.file_share import read_public_https_bytes
 from app.llm import MediaResult
 from app.llm.facade import finish_media_call
-from app.process.interface import engine_checkpoint
+from .generation_store import generation_checkpoint
 from core.database import get_db
 from core.util import as_dict
 
@@ -18,7 +18,7 @@ from .models import MediaOutputReceipt
 
 
 async def receive_result(run_id: UUID, result: MediaResult) -> None:
-    checkpoint = await engine_checkpoint(run_id, "multimedia")
+    checkpoint = await generation_checkpoint(run_id)
     MultimediaCheckpoint.model_validate(checkpoint["metadata"])
     if checkpoint["terminal"]:
         return
@@ -29,9 +29,8 @@ async def receive_result(run_id: UUID, result: MediaResult) -> None:
         }
         if result.external_id:
             observation.update(external_id=result.external_id, submission="accepted")
-        accepted = await engine_checkpoint(
+        accepted = await generation_checkpoint(
             run_id,
-            "multimedia",
             observation,
             preserve_if={"provider_outcome": "success", "provider_state": "success"},
         )
@@ -42,9 +41,8 @@ async def receive_result(run_id: UUID, result: MediaResult) -> None:
         return
     if not result.artifacts or len(result.artifacts) > 4:
         raise ValueError("The provider returned no usable media outputs.")
-    accepted = await engine_checkpoint(
+    accepted = await generation_checkpoint(
         run_id,
-        "multimedia",
         {
             "multimedia_version": 1,
             "provider_outcome": "success",
@@ -76,7 +74,7 @@ async def receive_result(run_id: UUID, result: MediaResult) -> None:
     for ordinal, artifact in enumerate(result.artifacts):
         existing = await get_db().scalar(
             select(MediaOutputReceipt.id).where(
-                MediaOutputReceipt.run_id == run_id,
+                MediaOutputReceipt.generation_id == run_id,
                 MediaOutputReceipt.ordinal == ordinal,
             )
         )
@@ -98,20 +96,19 @@ async def receive_result(run_id: UUID, result: MediaResult) -> None:
         await get_db().execute(
             insert(MediaOutputReceipt)
             .values(
-                run_id=run_id,
+                generation_id=run_id,
                 ordinal=ordinal,
                 external_id=artifact.external_id,
                 media_type=artifact.media_type,
                 content=content,
             )
             .on_conflict_do_nothing(
-                index_elements=[MediaOutputReceipt.run_id, MediaOutputReceipt.ordinal]
+                index_elements=[MediaOutputReceipt.generation_id, MediaOutputReceipt.ordinal]
             )
         )
         await get_db().commit()
-    await engine_checkpoint(
+    await generation_checkpoint(
         run_id,
-        "multimedia",
         {
             "submission": "accepted",
             "provider_state": "success",

@@ -968,6 +968,7 @@ async def create_running_call(
     stream: bool,
     request_body: dict[str, Any],
     process_run_id: Optional[UUID] = None,
+    media_generation_id: UUID | None = None,
     requester_user_id: int | None = None,
     is_subscription: bool = False,
 ) -> LLMCall:
@@ -1069,6 +1070,7 @@ async def create_running_call(
         agent_run_id=agent_run_id,
         conversation_round_id=conversation_round_id,
         process_run_id=process_run_id,
+        media_generation_id=media_generation_id,
         requester_user_id=requester_user_id,
         api_token_label=api_token_label,
         correlation_ref=current_llm_correlation_ref(),

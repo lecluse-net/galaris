@@ -12,7 +12,7 @@ décrit la séparation des deux passes. Les contrats et tests du dépôt font fo
 Le transport agentique est le Tool natif `lab`, avec cinquante fonctions `lab_*` et le
 skill système facultatif `galaris-lab`. Il réutilise les services et objets du Workbench.
 Les commandes courtes ont un reçu idempotent et une transaction unique ; les traitements
-longs hors benchmarks passent par un moteur intégré de `app.process`. Les avis d'agents
+longs hors benchmarks sont suivis par `LabOperation` et le worker du Lab. Les avis d'agents
 sont attribués et stockés séparément des revues humaines. L'accès aux sources réelles
 nécessite également les fonctions d'inspection de `galaris_admin`.
 L'[ADR 0134](../../../project/decisions/0134-agent-lab-control.md) décrit les autorisations,

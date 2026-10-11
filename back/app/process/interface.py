@@ -1,25 +1,13 @@
-"""Durable checkpoints and technical definitions for integrated process engines."""
+"""Durable checkpoints for business-process engines."""
 
 from typing import Any
 from uuid import UUID
 
 from sqlalchemy import select
-from sqlalchemy.dialects.postgresql import insert
 
 from core.database import get_db
 from . import process_service
-from .models import ProcessDefinition, ProcessRun
-
-
-async def ensure_integrated_definition(agent_id: int, tool_code: str, operation: str) -> str:
-    tool = await process_service.get_process_tool_by_code(tool_code)
-    workflow_id = f"{tool_code}:{agent_id}:{operation}"
-    await get_db().execute(insert(ProcessDefinition).values(
-        agent_id=agent_id, tool_id=tool.id, engine_process_id=workflow_id,
-        label=operation, description=f"Integrated {tool_code} operation",
-    ).on_conflict_do_nothing())
-    await get_db().commit()
-    return workflow_id
+from .models import ProcessRun
 
 
 async def engine_checkpoint(

@@ -2536,7 +2536,7 @@ promising interruption of an already sent provider call.
 
 Generation, reference proposals and long analysis return durable operations to inspect/cancel.
 Results are reread without new model calls; uncertain interrupted effects may remain unknown without
-blind repetition. Lab technical operations do not clutter personal Process catalogues. Required models/
+blind repetition. Required models/
 revisions are frozen; generation/analysis costs are separate from benchmark budgets.
 
 Lists use 50 by default and 10/20/50/100/500 choices. MCP outputs cap at 1 MB; summaries and
@@ -3147,9 +3147,10 @@ application–Dataset consent is managed in the human UI, not exposed through MC
 | `audio_transcribe` | `audio` | Transcribe audio/video or fetch YouTube subtitles, retain verbatim and synthesise long content. |
 | `audio_read` | `multimedia` | Analyse sounds/music/audible events against a question. |
 | `video_read` | `multimedia` | Analyse with a specialised video model. |
-| `sound_generate` | `multimedia` | Start sound-effect generation tracked as a Process. |
-| `music_generate` | `multimedia` | Start music generation tracked as a Process. |
-| `video_generate` | `multimedia` | Start video generation tracked as a Process. |
+| `sound_generate` | `multimedia` | Start sound-effect generation. |
+| `music_generate` | `multimedia` | Start music generation. |
+| `video_generate` | `multimedia` | Start video generation. |
+| `multimedia_get_run` | `multimedia` | Read generation status and final file URIs. |
 
 ### Mail
 

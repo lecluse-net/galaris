@@ -82,6 +82,8 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         task_scheduler.register_periodic_job("file-index-known", refresh_known_tick, interval=2.0, timeout=90.0)
         register_goal_jobs()
         register_lab_jobs()
+        from app.multimedia import generation_tick
+        task_scheduler.register_periodic_job("multimedia-generations", generation_tick, interval=1.0, timeout=720.0)
         register_chat_jobs(task_scheduler.register_periodic_job)
         task_scheduler.register_periodic_job(
             "mail-approval-notifications", retry_approval_notifications, interval=30.0, timeout=450.0,

@@ -25,6 +25,13 @@ section MCP du guide `docs/fr/dev/README.md` avant de changer l’exposition d�
 Ne pas faire dépendre le catalogue d’outils d’un client concret. Un bridge externe traduit
 vers `app.process` et les façades métier au lieu de posséder un second état canonique.
 
+Un processus métier porte un workflow défini indépendamment des fonctions qui exécutent
+ses activités. Les workflows existants sont exécutés par n8n. Le projet de processus natifs
+Galaris vise des processus BPMN exécutables complets.
+Ne jamais envelopper une fonction, un tool MCP ou une opération technique dans une
+`ProcessDefinition` ou un `ProcessRun`. Leur durée, leurs callbacks, leurs retries ou leur
+besoin de suivi durable ne changent pas leur nature : leur domaine possède cet état.
+
 ## Ajouter ou modifier un outil MCP
 
 1. Définir un nom stable, une description actionnable et un schéma d’entrée borné.
@@ -32,13 +39,11 @@ vers `app.process` et les façades métier au lieu de posséder un second état 
 3. Résoudre les connexions et secrets côté serveur ; ne jamais les exposer au modèle.
 4. Retourner une sortie structurée et concise, avec identifiants corrélables.
 5. Pour une opération longue, conserver un état durable dans son domaine propriétaire.
-   Créer un `Process` lorsqu'il s'agit effectivement d'un processus métier à exposer dans
-   ce catalogue. La durée seule ne justifie pas une définition technique : l'analyse
-   documentaire appartient à `app.llm` et utilise ses inférences durables.
+   Le rattachement à `app.process` exige un véritable workflow métier défini et exécutable.
 6. Ajouter des tests du schéma, des autorisations, des erreurs et du résultat.
 7. Régénérer la cartographie pour inventorier le nouvel outil.
 
-## Gérer une exécution longue
+## Gérer l'exécution d'un processus métier
 
 - Appliquer uniquement les transitions autorisées de `app.process.process_service`.
 - Considérer `success`, `error` et `cancelled` comme terminaux.

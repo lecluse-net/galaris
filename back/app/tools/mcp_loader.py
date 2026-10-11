@@ -707,7 +707,7 @@ async def get_disabled_internal_function_names(agent_id: int) -> set[str]:
     from app.llm import available_media_functions
 
     media_names = {definition.name for definition in load_mcp_tools() if definition.tool_code == "multimedia"}
-    names |= media_names - await available_media_functions(agent_id)
+    names |= media_names - await available_media_functions(agent_id) - {"multimedia_get_run"}
     return names
 
 
@@ -1148,7 +1148,8 @@ async def list_agent_mcp_tools(agent_id: int) -> list[dict[str, Any]]:
         error = ""
         if has_native:
             for definition in native_definitions:
-                if getattr(definition, "tool_code", None) == "multimedia" and definition.name not in media_functions:
+                if (getattr(definition, "tool_code", None) == "multimedia"
+                        and definition.name not in media_functions and definition.name != "multimedia_get_run"):
                     continue
                 if getattr(definition, "tool_code", None) == "agent_admin" and definition.available_when is not None and not await definition.available_when(admin_context):
                     continue

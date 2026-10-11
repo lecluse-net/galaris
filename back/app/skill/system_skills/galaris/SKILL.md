@@ -1244,10 +1244,10 @@ Use canonical file URIs as inputs; keep media bytes out of the conversation cont
 - `video_generate(prompt, destination, duration=None, resolution=None, aspect_ratio=None,
   invocation_key=None)` generates video with the selected specialist.
 
-Generation returns a durable Process, not the finished media. Supply a writable collection URI
-as `destination`, then use `process_get_run` for progress and final file URIs. Reuse an
+Generation returns a durable generation ID. Supply a writable collection URI
+as `destination`, then use `multimedia_get_run` for progress and final file URIs. Reuse an
 `invocation_key` only to retry the same invocation; a new creative request needs a new key.
-Do not report the media as available until the Process has successfully produced its files.
+Do not report the media as available until the generation has successfully produced its files.
 
 ## Audio transcription
 

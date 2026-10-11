@@ -6,6 +6,8 @@ from datetime import datetime
 from typing import Any, Literal
 from uuid import UUID, uuid4
 
+from .operation_models import LabOperation as LabOperation
+
 from sqlalchemy import (
     Boolean,
     DateTime,
@@ -438,9 +440,9 @@ class LabAgentReview(HistoryMixin, Base):
 
 
 class LabOperationResult(HistoryMixin, Base):
-    """Full result published atomically with the effects of an integrated Process."""
+    """Full result published atomically with the effects of a Lab operation."""
 
     __tablename__ = "lab_operation_results"
     id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), primary_key=True, default=uuid4)
-    process_run_id: Mapped[UUID] = mapped_column(ForeignKey("process_runs.id", ondelete="CASCADE"), unique=True)
+    operation_id: Mapped[UUID] = mapped_column(ForeignKey("lab_operations.id", ondelete="CASCADE"), unique=True)
     payload: Mapped[dict[str, Any]] = mapped_column(JSONB)

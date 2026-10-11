@@ -9,17 +9,17 @@ from app.tools.resource_effects import record_tool_resources
 
 
 @pytest.mark.asyncio
-async def test_multimedia_process_promotes_only_completed_canonical_outputs(monkeypatch):
+async def test_multimedia_generation_promotes_only_completed_canonical_outputs(monkeypatch):
     from app.tools import resource_effects
     recorded = AsyncMock()
     monkeypatch.setattr(resource_effects.task_port, "upsert_working_resource", recorded)
     ctx = McpToolContext(agent_id=1, runtime="internal", task_id=uuid4())
-    payload = {"id": str(uuid4()), "tool_code": "multimedia", "status": "running",
+    payload = {"generation_id": str(uuid4()), "status": "running",
                "output": {"files": [{"uri": "console:///tmp/music.wav", "media_type": "audio/wav"}]}}
-    await record_tool_resources(ctx, "process_get_run", {}, payload)
+    await record_tool_resources(ctx, "multimedia_get_run", {}, payload)
     recorded.assert_not_awaited()
     payload["status"] = "success"
-    await record_tool_resources(ctx, "process_get_run", {}, payload)
+    await record_tool_resources(ctx, "multimedia_get_run", {}, payload)
     assert recorded.await_args.args[1].reference == "console://tmp/music.wav"
 
 

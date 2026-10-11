@@ -75,7 +75,6 @@ corps HTTP sensibles ou fichiers binaires. Les codes d'erreur doivent rester sta
 
 Le contrat optionnel `IntegratedProcessEngine` ajoute `prepare_input(agent_id,
 workflow_id, input_data)`, `start_timeout_seconds` et `refresh_timeout_seconds`.
-Il est utilisé par Multimedia et Lab pour préparer des opérations intégrées.
 Ce n'est pas une interface dédiée à n8n ni une obligation pour un bridge externe.
 Son activation change aussi la déduplication et le traitement des autorisations différées ;
 ne pas l'implémenter uniquement pour changer un timeout. Pour les moteurs ordinaires,
@@ -490,8 +489,6 @@ de développement ; le déploiement normal `make update` indexe les sources pré
 
 Références concrètes :
 [adaptateur n8n](../../../back/bridge/n8n/engine.py),
-[moteur Multimedia](../../../back/app/multimedia/engine.py),
-[moteur Lab](../../../back/app/lab/engine.py),
 [workers](../../../back/app/process/workers.py),
 [service Process](../../../back/app/process/process_service.py),
 [tests de reprise](../../../back/app/process/tests/test_recovery.py) et

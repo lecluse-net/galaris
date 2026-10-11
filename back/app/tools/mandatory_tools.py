@@ -116,7 +116,7 @@ INTEGRATED_TOOL_SPECS: tuple[IntegratedToolSpec, ...] = (
     IntegratedToolSpec(
         code="multimedia", label="Multimedia",
         description=DESCRIPTIONS["multimedia"],
-        mcp_tools=("audio_read", "video_read", "sound_generate", "music_generate", "video_generate"),
+        mcp_tools=("audio_read", "video_read", "sound_generate", "music_generate", "video_generate", "multimedia_get_run"),
         default_active=True,
     ),
     IntegratedToolSpec(

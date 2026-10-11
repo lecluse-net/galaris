@@ -21,10 +21,14 @@ Les ressources peuvent être des modèles ou des services : `sound:V5` distingue
 de bruitages SunoAPI de son moteur musical `V5`, comme les voix ElevenLabs sont distinctes
 de leur moteur de synthèse. Aucun endpoint officiel Suno n'est supposé.
 
-La génération utilise `app.process`, sans workflow n8n. Le Process fige le modèle, le fournisseur,
+La génération appartient à `app.multimedia`.
+`MediaGeneration` fige le modèle, le fournisseur,
 l'opération et la destination. Une clé d'invocation explicite déduplique les retries ; deux
 commandes identiques sans cette clé produisent deux générations. Une réclamation persistante
 et atomique précède toute soumission facturable : une réponse perdue ne provoque pas de resoumission.
+
+Les tools MCP Multimedia lancent ces opérations et `multimedia_get_run` expose leur suivi.
+Un worker du domaine porte les autorisations différées et les leases.
 
 Le callback SunoAPI accuse réception avec un secret propre au run. Il ne consomme ni le statut
 ni les URL reçus : le polling authentifié fait autorité. Les refus explicites et les résultats
@@ -33,10 +37,10 @@ inconnus restent distincts. Un fournisseur dont le modèle ou la connexion a cha
 
 Les sorties transitent par des reçus privés PostgreSQL, bornés à quatre fichiers de 100 Mo.
 Ces octets ne constituent pas un nouveau stockage adressable par les agents. Ils sont effacés
-après création du fichier dans sa destination canonique via `app.file_share`. Le Process devient
+après création du fichier dans sa destination canonique via `app.file_share`. La génération devient
 `success` après réception des URI finales. Une interruption pendant une création distante laisse
 un état `unknown` à vérifier, sans création répétée aveuglément. Les reçus suivent la rétention
-du Process par clé étrangère avec suppression en cascade.
+de la génération par clé étrangère avec suppression en cascade.
 
 Les analyses matérialisent temporairement les URI, avec une limite de 32 Mo et 20 minutes.
 FFprobe vérifie le type de piste et la durée ; les données binaires et URL temporaires ne sont

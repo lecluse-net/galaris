@@ -75,7 +75,6 @@ sensitive HTTP bodies or binary files into it. Error codes must remain stable.
 
 The optional `IntegratedProcessEngine` contract adds `prepare_input(agent_id,
 workflow_id, input_data)`, `start_timeout_seconds` and `refresh_timeout_seconds`.
-Multimedia and Lab use it to prepare integrated operations.
 It is neither specific to n8n nor required for an external bridge.
 Implementing it also changes deduplication and deferred authorization handling;
 do not implement it solely to change a timeout. Ordinary engines use
@@ -488,8 +487,6 @@ search; the normal `make update` deployment indexes prepared sources.
 
 Concrete references:
 [n8n adapter](../../../back/bridge/n8n/engine.py),
-[Multimedia engine](../../../back/app/multimedia/engine.py),
-[Lab engine](../../../back/app/lab/engine.py),
 [workers](../../../back/app/process/workers.py),
 [Process service](../../../back/app/process/process_service.py),
 [recovery tests](../../../back/app/process/tests/test_recovery.py) and

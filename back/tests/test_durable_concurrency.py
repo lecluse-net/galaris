@@ -12,8 +12,9 @@ from core.user.models import User
 from app.agent.models import Agent, Title
 from app.tools.models import Tool
 from app.process.models import ProcessDefinition, ProcessRun
+from app.multimedia.models import MediaGeneration
 
-async def seed_run():
+async def seed_run(*, media=False):
     async with get_db_session() as db:
         code = uuid4().hex
         user = User(email=f"{code}@example.test", hashed_password="unused", is_active=True)
@@ -22,22 +23,23 @@ async def seed_run():
         db.add_all([user, title, tool]); await db.flush()
         agent = Agent(user_id=user.id, title_id=title.id, code=code, first_name="Concurrent", last_name="Test")
         db.add(agent); await db.flush()
-        definition = ProcessDefinition(agent_id=agent.id, tool_id=tool.id, engine_process_id=code, label=code)
-        db.add(definition); await db.flush()
-        run = ProcessRun(process_id=definition.id, launcher_agent_id=agent.id, engine_code="multimedia",
-            correlation_id=code, callback_token="unused", status="running", input={})
+        if media:
+            run = MediaGeneration(agent_id=agent.id, callback_token="unused", status="running", input={})
+        else:
+            definition = ProcessDefinition(agent_id=agent.id, tool_id=tool.id, engine_process_id=code, label=code)
+            db.add(definition); await db.flush()
+            run = ProcessRun(process_id=definition.id, launcher_agent_id=agent.id, engine_code="fake",
+                correlation_id=code, callback_token="unused", status="running", input={})
         db.add(run); await db.flush()
         return agent.id, run.id
 
 @pytest.mark.asyncio
-async def test_concurrent_media_receipts_are_unique_and_protected_until_delivered(committed_database, monkeypatch):
+async def test_concurrent_media_receipts_are_unique_and_preserve_content_until_delivered(committed_database, monkeypatch):
     from app.llm import MediaArtifact, MediaResult
-    from app.multimedia import engine as module
+    from app.multimedia import generation_execution as module
     from app.multimedia import provider_results
     from app.multimedia.models import MediaOutputReceipt
-    from app.process import retention
-    from core.params import runtime_settings
-    _, run_id = await seed_run()
+    _, run_id = await seed_run(media=True)
     waiting = 0
     both = asyncio.Event()
     async def download(*_a, **_k):
@@ -51,23 +53,14 @@ async def test_concurrent_media_receipts_are_unique_and_protected_until_delivere
     result = MediaResult(state="success", artifacts=[MediaArtifact(external_id="output-1", media_type="audio/mpeg", url="https://example.test/output")])
     async def receive(value):
         async with get_db_session():
-            await module.MultimediaEngine()._receive(run_id, value)
+            await module.MediaGenerationExecutor()._receive(run_id, value)
     await asyncio.gather(receive(result), receive(result))
     async with get_db_session() as db:
-        receipts = list(await db.scalars(select(MediaOutputReceipt).where(MediaOutputReceipt.run_id == run_id)))
+        receipts = list(await db.scalars(select(MediaOutputReceipt).where(MediaOutputReceipt.generation_id == run_id)))
         assert len(receipts) == 1 and receipts[0].content == b"ID3same-output"
     changed = MediaResult(state="success", artifacts=[MediaArtifact(external_id="other", media_type="audio/mpeg", content=b"ID3different")])
     with pytest.raises(ValueError, match="cannot change"):
         await receive(changed)
-    monkeypatch.setattr(retention, "_guards", {"receipt": lambda: select(MediaOutputReceipt.run_id).where(MediaOutputReceipt.content.is_not(None))})
-    monkeypatch.setattr(runtime_settings, "PROCESS_RETENTION_RUN_DAYS", 1)
-    async with get_db_session() as db:
-        run = await db.get(ProcessRun, run_id)
-        run.status = "success"
-        run.finished_at = datetime.now(timezone.utc) - timedelta(days=400)
-    async with get_db_session() as db:
-        await retention.purge_retention()
-        assert await db.get(ProcessRun, run_id) is not None
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("item_count", [601, 10_001])
@@ -240,7 +233,7 @@ async def test_progress_age_includes_unobserved_runs_without_using_old_creation_
         unobserved.created_at = now - timedelta(seconds=100)
         unobserved.status = "unknown"
     values = {}
-    monkeypatch.setattr(progress.registry, "codes", lambda: ["multimedia"])
+    monkeypatch.setattr(progress.registry, "codes", lambda: ["fake"])
     for name in ("_queue_age", "_pending", "_unknown", "_observation_age"):
         monkeypatch.setattr(progress, name, SimpleNamespace(set=lambda value, labels=None, name=name: values.update({name: value})))
     async with get_db_session():

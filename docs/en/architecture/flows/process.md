@@ -19,7 +19,6 @@ Agent runtime
    → app.process (definition + run + event + startup job)
    → engine registry
       ├── bridge.n8n
-      ├── integrated Multimedia and Lab engines
       └── test fake engine
    → callback or periodic refresh
    → durable transition + sanitized output/error

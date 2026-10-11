@@ -4,7 +4,7 @@ import asyncio
 import json
 from pathlib import Path
 from tempfile import TemporaryDirectory
-from typing import Any
+from typing import Any, Literal
 
 from app.file_share import ResourceContext, materialize_resource, parse_resource_uri, resource_info
 from app.llm import MediaOperation, MediaRequest, MediaResult, resolve_media_resource
@@ -13,7 +13,7 @@ from app.tools import McpToolContext, list_enabled_native_mcp_definitions
 from core.util import buffered_io_budget
 
 
-async def authorize(agent_id: int, operation: MediaOperation) -> None:
+async def authorize(agent_id: int, operation: MediaOperation | Literal["multimedia_get_run"]) -> None:
     definitions = await list_enabled_native_mcp_definitions(agent_id, runtime="internal")
     if not any(item.name == operation for item in definitions):
         raise PermissionError(f"Multimedia function {operation} is not enabled for this agent.")

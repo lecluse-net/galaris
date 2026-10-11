@@ -11,15 +11,15 @@ tests remain authoritative for behavior.
 
 - 72 declared backend modules;
 - 36 declared frontend modules;
-- 548 backend dependency edges;
+- 547 backend dependency edges;
 - 195 frontend dependency edges;
-- 270 edges between `app`/`bridge` domains;
+- 269 edges between `app`/`bridge` domains;
 - 26 directly bidirectional domain pairs;
 - 1 strongly connected components;
 - 7 directly bidirectional frontend pairs;
 - 616 detected HTTP/WebSocket handlers;
-- 141 detected SQLAlchemy tables;
-- 244 detected native MCP tools;
+- 143 detected SQLAlchemy tables;
+- 245 detected native MCP tools;
 - 40 detected Vue pages.
 
 ## Backend Modules
@@ -322,25 +322,25 @@ tests remain authoritative for behavior.
 | `app.incident` | `core.database` | `back/app/incident/models.py`, `back/app/incident/retention.py`, `back/app/incident/service.py` |
 | `app.incident` | `core.failure_journal` | `back/app/incident/__init__.py`, `back/app/incident/contracts.py` |
 | `app.incident` | `core.params` | `back/app/incident/retention.py` |
-| `app.lab` | `app.agent` | `back/app/lab/contracts.py`, `back/app/lab/dispatcher_evaluation_service.py`, `back/app/lab/engine.py`, `back/app/lab/evidence_service.py`, `back/app/lab/executor_prompt_service.py`, `back/app/lab/mechanism_evaluation_service.py`, `back/app/lab/mechanism_registry.py`, `back/app/lab/objective_checks.py`, `back/app/lab/operations.py`, `back/app/lab/router.py`, `back/app/lab/schemas.py` |
+| `app.lab` | `app.agent` | `back/app/lab/contracts.py`, `back/app/lab/dispatcher_evaluation_service.py`, `back/app/lab/evidence_service.py`, `back/app/lab/executor_prompt_service.py`, `back/app/lab/mechanism_evaluation_service.py`, `back/app/lab/mechanism_registry.py`, `back/app/lab/objective_checks.py`, `back/app/lab/operation_execution.py`, `back/app/lab/operations.py`, `back/app/lab/router.py`, `back/app/lab/schemas.py` |
 | `app.lab` | `app.connection` | `back/app/lab/mcp_access.py`, `back/app/lab/mechanism_evaluation_service.py`, `back/app/lab/operations.py` |
 | `app.lab` | `app.conversation` | `back/app/lab/mechanism_evaluation_service.py`, `back/app/lab/operations.py` |
 | `app.lab` | `app.dream` | `back/app/lab/contracts.py`, `back/app/lab/mechanism_evaluation_service.py`, `back/app/lab/mechanism_registry.py`, `back/app/lab/run_inference.py`, `back/app/lab/schemas.py`, `back/app/lab/synthetic_service.py` |
 | `app.lab` | `app.goal` | `back/app/lab/mechanism_registry.py` |
-| `app.lab` | `app.llm` | `back/app/lab/analysis_service.py`, `back/app/lab/dispatcher_evaluation_service.py`, `back/app/lab/engine.py`, `back/app/lab/evaluation_service.py`, `back/app/lab/evidence_service.py`, `back/app/lab/inference_profile.py`, `back/app/lab/judgment_service.py`, `back/app/lab/mechanism_evaluation_service.py`, `back/app/lab/mechanism_registry.py`, `back/app/lab/operations.py`, `back/app/lab/run_inference.py`, `back/app/lab/synthetic_service.py` |
+| `app.lab` | `app.llm` | `back/app/lab/analysis_service.py`, `back/app/lab/dispatcher_evaluation_service.py`, `back/app/lab/evaluation_service.py`, `back/app/lab/evidence_service.py`, `back/app/lab/inference_profile.py`, `back/app/lab/judgment_service.py`, `back/app/lab/mechanism_evaluation_service.py`, `back/app/lab/mechanism_registry.py`, `back/app/lab/operation_execution.py`, `back/app/lab/operation_worker.py`, `back/app/lab/operations.py`, `back/app/lab/run_inference.py`, `back/app/lab/synthetic_service.py` |
 | `app.lab` | `app.memory` | `back/app/lab/mechanism_evaluation_service.py` |
 | `app.lab` | `app.messenger` | `back/app/lab/mechanism_evaluation_service.py`, `back/app/lab/operations.py` |
-| `app.lab` | `app.process` | `back/app/lab/__init__.py`, `back/app/lab/engine.py`, `back/app/lab/evidence_service.py`, `back/app/lab/mechanism_evaluation_service.py`, `back/app/lab/operations.py` |
+| `app.lab` | `app.process` | `back/app/lab/evidence_service.py`, `back/app/lab/mechanism_evaluation_service.py` |
 | `app.lab` | `app.skill` | `back/app/lab/evidence_service.py` |
 | `app.lab` | `app.task` | `back/app/lab/__init__.py`, `back/app/lab/dispatcher_evaluation_service.py`, `back/app/lab/evaluation_service.py`, `back/app/lab/evidence_service.py`, `back/app/lab/judgment_service.py`, `back/app/lab/mechanism_evaluation_service.py`, `back/app/lab/operations.py` |
-| `app.lab` | `app.tools` | `back/app/lab/engine.py`, `back/app/lab/evidence_service.py`, `back/app/lab/mcp.py`, `back/app/lab/mcp_access.py`, `back/app/lab/mcp_service.py`, `back/app/lab/operations.py`, `back/app/lab/run_claims.py` |
+| `app.lab` | `app.tools` | `back/app/lab/evidence_service.py`, `back/app/lab/mcp.py`, `back/app/lab/mcp_access.py`, `back/app/lab/mcp_service.py`, `back/app/lab/operation_execution.py`, `back/app/lab/operation_worker.py`, `back/app/lab/operations.py`, `back/app/lab/run_claims.py` |
 | `app.lab` | `app.topic` | `back/app/lab/contracts.py`, `back/app/lab/mechanism_evaluation_service.py`, `back/app/lab/mechanism_registry.py`, `back/app/lab/schemas.py`, `back/app/lab/synthetic_service.py` |
 | `app.lab` | `app.voice` | `back/app/lab/mechanism_evaluation_service.py` |
 | `app.lab` | `core.authorize` | `back/app/lab/access.py`, `back/app/lab/assertions.py`, `back/app/lab/router.py` |
-| `app.lab` | `core.database` | `back/app/lab/agent_review_service.py`, `back/app/lab/capture_service.py`, `back/app/lab/comparison_evidence.py`, `back/app/lab/comparison_service.py`, `back/app/lab/comparison_summary.py`, `back/app/lab/diagnosis_service.py`, `back/app/lab/dispatcher_evaluation_service.py`, `back/app/lab/engine.py`, `back/app/lab/evaluation_service.py`, `back/app/lab/evidence_service.py`, `back/app/lab/human_review_service.py`, `back/app/lab/judgment_service.py`, `back/app/lab/mcp_access.py`, `back/app/lab/mcp_service.py`, `back/app/lab/mechanism_evaluation_service.py`, `back/app/lab/models.py`, `back/app/lab/operations.py`, `back/app/lab/run_claims.py`, `back/app/lab/run_lease.py`, `back/app/lab/run_publication.py`, `back/app/lab/synthetic_service.py`, `back/app/lab/transactions.py` |
+| `app.lab` | `core.database` | `back/app/lab/agent_review_service.py`, `back/app/lab/capture_service.py`, `back/app/lab/comparison_evidence.py`, `back/app/lab/comparison_service.py`, `back/app/lab/comparison_summary.py`, `back/app/lab/diagnosis_service.py`, `back/app/lab/dispatcher_evaluation_service.py`, `back/app/lab/evaluation_service.py`, `back/app/lab/evidence_service.py`, `back/app/lab/human_review_service.py`, `back/app/lab/judgment_service.py`, `back/app/lab/mcp_access.py`, `back/app/lab/mcp_service.py`, `back/app/lab/mechanism_evaluation_service.py`, `back/app/lab/models.py`, `back/app/lab/operation_execution.py`, `back/app/lab/operation_models.py`, `back/app/lab/operation_store.py`, `back/app/lab/operation_worker.py`, `back/app/lab/operations.py`, `back/app/lab/run_claims.py`, `back/app/lab/run_lease.py`, `back/app/lab/run_publication.py`, `back/app/lab/synthetic_service.py`, `back/app/lab/transactions.py` |
 | `app.lab` | `core.i18n` | `back/app/lab/analysis_service.py`, `back/app/lab/diagnosis_service.py`, `back/app/lab/dispatcher_evaluation_service.py`, `back/app/lab/evaluation_service.py`, `back/app/lab/human_review_service.py`, `back/app/lab/judgment_service.py`, `back/app/lab/mechanism_evaluation_service.py`, `back/app/lab/router.py`, `back/app/lab/synthetic_service.py` |
 | `app.lab` | `core.params` | `back/app/lab/evidence_service.py`, `back/app/lab/executor_prompt_service.py` |
-| `app.lab` | `core.user` | `back/app/lab/human_review_service.py` |
+| `app.lab` | `core.user` | `back/app/lab/human_review_service.py`, `back/app/lab/operations.py` |
 | `app.llm` | `app.agent` | `back/app/llm/anthropic_router.py`, `back/app/llm/call_router.py`, `back/app/llm/contracts.py`, `back/app/llm/decision_service.py`, `back/app/llm/events.py`, `back/app/llm/facade.py`, `back/app/llm/inference_execution.py`, `back/app/llm/inference_facade.py`, `back/app/llm/inference_journal.py`, `back/app/llm/inference_store.py`, `back/app/llm/llm_call_service.py`, `back/app/llm/llm_service.py`, `back/app/llm/mcp.py`, `back/app/llm/protocol_inference.py`, `back/app/llm/runtime_correlation.py`, `back/app/llm/text_inference.py`, `back/app/llm/tts_service.py` |
 | `app.llm` | `app.connection` | `back/app/llm/events.py`, `back/app/llm/llm_call_service.py` |
 | `app.llm` | `app.conversation` | `back/app/llm/events.py`, `back/app/llm/facade.py`, `back/app/llm/llm_call_service.py`, `back/app/llm/subscription_policy.py` |
@@ -402,15 +402,14 @@ tests remain authoritative for behavior.
 | `app.messenger` | `core.params` | `back/app/messenger/configuration.py`, `back/app/messenger/facade.py`, `back/app/messenger/ingest.py`, `back/app/messenger/link_preview.py`, `back/app/messenger/mcp.py`, `back/app/messenger/service.py`, `back/app/messenger/session.py` |
 | `app.messenger` | `core.user` | `back/app/messenger/native_facade.py`, `back/app/messenger/permissions.py` |
 | `app.messenger` | `core.util` | `back/app/messenger/link_preview.py` |
-| `app.multimedia` | `app.agent` | `back/app/multimedia/engine.py`, `back/app/multimedia/router.py` |
-| `app.multimedia` | `app.file_share` | `back/app/multimedia/delivery.py`, `back/app/multimedia/engine.py`, `back/app/multimedia/provider_results.py`, `back/app/multimedia/service.py` |
-| `app.multimedia` | `app.llm` | `back/app/multimedia/engine.py`, `back/app/multimedia/mcp.py`, `back/app/multimedia/provider_results.py`, `back/app/multimedia/service.py` |
-| `app.multimedia` | `app.process` | `back/app/multimedia/__init__.py`, `back/app/multimedia/delivery.py`, `back/app/multimedia/engine.py`, `back/app/multimedia/mcp.py`, `back/app/multimedia/provider_results.py`, `back/app/multimedia/router.py` |
-| `app.multimedia` | `app.tools` | `back/app/multimedia/mcp.py`, `back/app/multimedia/service.py` |
+| `app.multimedia` | `app.agent` | `back/app/multimedia/generation_execution.py`, `back/app/multimedia/router.py` |
+| `app.multimedia` | `app.file_share` | `back/app/multimedia/delivery.py`, `back/app/multimedia/generation_execution.py`, `back/app/multimedia/provider_results.py`, `back/app/multimedia/service.py` |
+| `app.multimedia` | `app.llm` | `back/app/multimedia/generation_execution.py`, `back/app/multimedia/generation_service.py`, `back/app/multimedia/generation_worker.py`, `back/app/multimedia/mcp.py`, `back/app/multimedia/provider_results.py`, `back/app/multimedia/service.py` |
+| `app.multimedia` | `app.tools` | `back/app/multimedia/generation_service.py`, `back/app/multimedia/generation_worker.py`, `back/app/multimedia/mcp.py`, `back/app/multimedia/service.py` |
 | `app.multimedia` | `core.authorize` | `back/app/multimedia/router.py` |
-| `app.multimedia` | `core.database` | `back/app/multimedia/delivery.py`, `back/app/multimedia/engine.py`, `back/app/multimedia/models.py`, `back/app/multimedia/provider_results.py`, `back/app/multimedia/router.py` |
-| `app.multimedia` | `core.params` | `back/app/multimedia/engine.py` |
-| `app.multimedia` | `core.util` | `back/app/multimedia/engine.py`, `back/app/multimedia/provider_results.py`, `back/app/multimedia/service.py` |
+| `app.multimedia` | `core.database` | `back/app/multimedia/delivery.py`, `back/app/multimedia/generation_execution.py`, `back/app/multimedia/generation_service.py`, `back/app/multimedia/generation_store.py`, `back/app/multimedia/generation_worker.py`, `back/app/multimedia/models.py`, `back/app/multimedia/provider_results.py`, `back/app/multimedia/router.py` |
+| `app.multimedia` | `core.user` | `back/app/multimedia/generation_service.py` |
+| `app.multimedia` | `core.util` | `back/app/multimedia/generation_execution.py`, `back/app/multimedia/provider_results.py`, `back/app/multimedia/service.py` |
 | `app.onboarding` | `app.agent` | `back/app/onboarding/router.py`, `back/app/onboarding/services.py` |
 | `app.onboarding` | `app.connection` | `back/app/onboarding/services.py` |
 | `app.onboarding` | `app.llm` | `back/app/onboarding/services.py` |
@@ -924,7 +923,6 @@ tests remain authoritative for behavior.
 | `bridge.deepseek_harness` | 6 | `app.agent`, `app.harnesses`, `app.llm`, `app.mcp`, `app.skill`, `bridge.harness` |
 | `bridge.nextcloud` | 6 | `app.agent`, `app.connection`, `app.file_share`, `app.messenger`, `app.tools`, `app.voice` |
 | `app.contact` | 5 | `app.agent`, `app.conversation`, `app.memory`, `app.messenger`, `app.task` |
-| `app.multimedia` | 5 | `app.agent`, `app.file_share`, `app.llm`, `app.process`, `app.tools` |
 | `app.task` | 5 | `app.agent`, `app.goal`, `app.llm`, `app.messenger`, `app.tools` |
 | `bridge.calendar` | 5 | `app.agent`, `app.connection`, `app.file_share`, `app.process`, `app.tools` |
 | `bridge.claude_agent` | 5 | `app.agent`, `app.harnesses`, `app.mcp`, `app.skill`, `bridge.harness` |
@@ -932,6 +930,7 @@ tests remain authoritative for behavior.
 | `bridge.matrix` | 5 | `app.agent`, `app.connection`, `app.messenger`, `app.tools`, `app.voice` |
 | `app.browser` | 4 | `app.connection`, `app.file_share`, `app.messenger`, `app.tools` |
 | `app.console` | 4 | `app.agent`, `app.connection`, `app.file_share`, `app.tools` |
+| `app.multimedia` | 4 | `app.agent`, `app.file_share`, `app.llm`, `app.tools` |
 | `app.webhook` | 4 | `app.agent`, `app.connection`, `app.task`, `app.tools` |
 | `app.dashboard` | 3 | `app.agent`, `app.llm`, `app.task` |
 | `app.image` | 3 | `app.file_share`, `app.llm`, `app.tools` |
@@ -978,7 +977,7 @@ tests remain authoritative for behavior.
 | `app.connection` | 22 | `app.browser`, `app.console`, `app.conversation`, `app.dream`, `app.file_share`, `app.goal`, `app.lab`, `app.llm`, `app.messenger`, `app.onboarding`, `app.skill`, `app.tools`, `app.topic`, `app.voice`, `app.webhook`, `bridge.calendar`, `bridge.hermes`, `bridge.mail`, `bridge.matrix`, `bridge.nextcloud`, `bridge.one_bot`, `bridge.whatsapp` |
 | `app.file_share` | 17 | `app.agent`, `app.audio`, `app.browser`, `app.console`, `app.conversation`, `app.harness`, `app.image`, `app.llm`, `app.messenger`, `app.multimedia`, `app.process`, `app.tools`, `bridge.calendar`, `bridge.hermes`, `bridge.mail`, `bridge.nextcloud`, `bridge.samba` |
 | `app.task` | 16 | `app.audio`, `app.contact`, `app.conversation`, `app.dashboard`, `app.dream`, `app.file_share`, `app.goal`, `app.lab`, `app.llm`, `app.memory`, `app.messenger`, `app.process`, `app.tools`, `app.topic`, `app.voice`, `app.webhook` |
-| `app.process` | 15 | `app.agent`, `app.conversation`, `app.dream`, `app.file_share`, `app.harness`, `app.lab`, `app.llm`, `app.memory`, `app.multimedia`, `app.onboarding`, `app.topic`, `app.voice`, `bridge.calendar`, `bridge.hermes`, `bridge.n8n` |
+| `app.process` | 14 | `app.agent`, `app.conversation`, `app.dream`, `app.file_share`, `app.harness`, `app.lab`, `app.llm`, `app.memory`, `app.onboarding`, `app.topic`, `app.voice`, `bridge.calendar`, `bridge.hermes`, `bridge.n8n` |
 | `app.conversation` | 11 | `app.chat`, `app.contact`, `app.dream`, `app.file_share`, `app.harness`, `app.lab`, `app.llm`, `app.memory`, `app.messenger`, `app.topic`, `app.voice` |
 | `app.skill` | 10 | `app.agent`, `app.dream`, `app.file_share`, `app.harness`, `app.lab`, `app.onboarding`, `bridge.claude_agent`, `bridge.codex`, `bridge.deepseek_harness`, `bridge.hermes` |
 | `app.memory` | 8 | `app.contact`, `app.dream`, `app.file_share`, `app.lab`, `app.messenger`, `app.topic`, `app.voice`, `bridge.hermes` |
@@ -1579,9 +1578,9 @@ tests remain authoritative for behavior.
 | POST | `/messenger/configuration/test` | `app.messenger` | `test_messenger_configuration` | yes | `back/app/messenger/router.py:34` |
 | GET | `/messenger/users` | `app.messenger` | `search_messenger_users` | yes | `back/app/messenger/router.py:44` |
 | GET | `/metrics` | `app.process` | `read_metrics` | yes | `back/app/process/router.py:431` |
-| POST | `/multimedia/callback/{run_id}/{token}` | `app.multimedia` | `acknowledge_callback` | no | `back/app/multimedia/router.py:54` |
-| GET | `/multimedia/runs/{run_id}/deliveries` | `app.multimedia` | `list_deliveries` | yes | `back/app/multimedia/router.py:29` |
-| POST | `/multimedia/runs/{run_id}/deliveries/{receipt_id}/resolve` | `app.multimedia` | `resolve_delivery` | yes | `back/app/multimedia/router.py:41` |
+| POST | `/multimedia/callback/{run_id}/{token}` | `app.multimedia` | `acknowledge_callback` | no | `back/app/multimedia/router.py:57` |
+| GET | `/multimedia/runs/{run_id}/deliveries` | `app.multimedia` | `list_deliveries` | yes | `back/app/multimedia/router.py:32` |
+| POST | `/multimedia/runs/{run_id}/deliveries/{receipt_id}/resolve` | `app.multimedia` | `resolve_delivery` | yes | `back/app/multimedia/router.py:44` |
 | GET | `/n8n/settings` | `bridge.n8n` | `read_settings` | yes | `back/bridge/n8n/router.py:14` |
 | POST | `/n8n/test` | `bridge.n8n` | `check_connection` | yes | `back/bridge/n8n/router.py:20` |
 | GET | `/onboarding/overview` | `app.onboarding` | `get_onboarding_overview` | yes | `back/app/onboarding/router.py:26` |
@@ -1774,22 +1773,23 @@ tests remain authoritative for behavior.
 | `harnesses` | `Harness` | `app.harnesses` | yes | — | `back/app/harnesses/models.py:29` |
 | `hermes_agent_configs` | `HermesAgentConfig` | `bridge.hermes` | no | `agents.id` | `back/bridge/hermes/models.py:14` |
 | `hermes_session_bindings` | `HermesSessionBinding` | `bridge.hermes` | no | `agents.id` | `back/bridge/hermes/models.py:73` |
-| `lab_agent_reviews` | `LabAgentReview` | `app.lab` | yes | `agents.id`, `lab_evaluation_run_cases.id`, `lab_judgment_campaigns.id`, `tasks.id` | `back/app/lab/models.py:425` |
-| `lab_commands` | `LabCommand` | `app.lab` | yes | `agents.id`, `tasks.id` | `back/app/lab/models.py:411` |
-| `lab_evaluation_cases` | `LabEvaluationCase` | `app.lab` | yes | `lab_evaluation_cases.id`, `lab_evaluation_datasets.id` | `back/app/lab/models.py:130` |
-| `lab_evaluation_datasets` | `LabEvaluationDataset` | `app.lab` | yes | — | `back/app/lab/models.py:89` |
-| `lab_evaluation_run_cases` | `LabEvaluationRunCase` | `app.lab` | yes | `lab_evaluation_cases.id`, `lab_evaluation_runs.id` | `back/app/lab/models.py:289` |
-| `lab_evaluation_runs` | `LabEvaluationRun` | `app.lab` | yes | `agents.id`, `lab_evaluation_datasets.id`, `llms.id`, `tasks.id` | `back/app/lab/models.py:191` |
-| `lab_human_reviews` | `LabHumanReview` | `app.lab` | yes | `lab_evaluation_run_cases.id`, `lab_judgment_campaigns.id`, `users.id` | `back/app/lab/models.py:389` |
-| `lab_judgment_campaigns` | `LabJudgmentCampaign` | `app.lab` | yes | `lab_evaluation_runs.id`, `llms.id` | `back/app/lab/models.py:337` |
-| `lab_judgment_results` | `LabJudgmentResult` | `app.lab` | yes | `lab_evaluation_run_cases.id`, `lab_judgment_campaigns.id` | `back/app/lab/models.py:364` |
-| `lab_operation_results` | `LabOperationResult` | `app.lab` | yes | `process_runs.id` | `back/app/lab/models.py:440` |
-| `lab_task_diagnoses` | `LabTaskDiagnosis` | `app.lab` | yes | `tasks.id` | `back/app/lab/models.py:43` |
-| `lab_tasks` | `LabTask` | `app.lab` | no | `tasks.id` | `back/app/lab/models.py:27` |
+| `lab_agent_reviews` | `LabAgentReview` | `app.lab` | yes | `agents.id`, `lab_evaluation_run_cases.id`, `lab_judgment_campaigns.id`, `tasks.id` | `back/app/lab/models.py:427` |
+| `lab_commands` | `LabCommand` | `app.lab` | yes | `agents.id`, `tasks.id` | `back/app/lab/models.py:413` |
+| `lab_evaluation_cases` | `LabEvaluationCase` | `app.lab` | yes | `lab_evaluation_cases.id`, `lab_evaluation_datasets.id` | `back/app/lab/models.py:132` |
+| `lab_evaluation_datasets` | `LabEvaluationDataset` | `app.lab` | yes | — | `back/app/lab/models.py:91` |
+| `lab_evaluation_run_cases` | `LabEvaluationRunCase` | `app.lab` | yes | `lab_evaluation_cases.id`, `lab_evaluation_runs.id` | `back/app/lab/models.py:291` |
+| `lab_evaluation_runs` | `LabEvaluationRun` | `app.lab` | yes | `agents.id`, `lab_evaluation_datasets.id`, `llms.id`, `tasks.id` | `back/app/lab/models.py:193` |
+| `lab_human_reviews` | `LabHumanReview` | `app.lab` | yes | `lab_evaluation_run_cases.id`, `lab_judgment_campaigns.id`, `users.id` | `back/app/lab/models.py:391` |
+| `lab_judgment_campaigns` | `LabJudgmentCampaign` | `app.lab` | yes | `lab_evaluation_runs.id`, `llms.id` | `back/app/lab/models.py:339` |
+| `lab_judgment_results` | `LabJudgmentResult` | `app.lab` | yes | `lab_evaluation_run_cases.id`, `lab_judgment_campaigns.id` | `back/app/lab/models.py:366` |
+| `lab_operation_results` | `LabOperationResult` | `app.lab` | yes | `lab_operations.id` | `back/app/lab/models.py:442` |
+| `lab_operations` | `LabOperation` | `app.lab` | no | `agents.id`, `tasks.id` | `back/app/lab/operation_models.py:10` |
+| `lab_task_diagnoses` | `LabTaskDiagnosis` | `app.lab` | yes | `tasks.id` | `back/app/lab/models.py:45` |
+| `lab_tasks` | `LabTask` | `app.lab` | no | `tasks.id` | `back/app/lab/models.py:29` |
 | `learned_skill_evidences` | `LearnedSkillEvidence` | `app.skill` | no | `learned_skills.id` | `back/app/skill/models.py:204` |
 | `learned_skills` | `LearnedSkill` | `app.skill` | yes | `agents.id` | `back/app/skill/models.py:145` |
 | `llm_call_events` | `LLMCallEvent` | `app.llm` | no | `llm_calls.id`, `llm_inferences.id` | `back/app/llm/models.py:85` |
-| `llm_calls` | `LLMCall` | `app.llm` | no | `agents.id`, `conversation_rounds.id`, `llm_inference_attempts.id`, `llms.id`, `process_runs.id`, `task_attempts.id`, `tasks.id`, `users.id` | `back/app/llm/models.py:104` |
+| `llm_calls` | `LLMCall` | `app.llm` | no | `agents.id`, `conversation_rounds.id`, `llm_inference_attempts.id`, `llms.id`, `multimedia_generations.id`, `process_runs.id`, `task_attempts.id`, `tasks.id`, `users.id` | `back/app/llm/models.py:104` |
 | `llm_document_analyses` | `LLMDocumentAnalysis` | `app.llm` | no | `agents.id`, `tasks.id` | `back/app/llm/models.py:16` |
 | `llm_inference_attempts` | `LLMInferenceAttempt` | `app.llm` | no | `llm_inferences.id` | `back/app/llm/models.py:56` |
 | `llm_inference_commands` | `LLMInferenceCommand` | `app.llm` | no | `llm_inference_attempts.id`, `llm_inferences.id` | `back/app/llm/models.py:72` |
@@ -1828,8 +1828,9 @@ tests remain authoritative for behavior.
 | `messenger_room_users` | `RoomUser` | `app.messenger` | no | `messenger_messages.id`, `messenger_rooms.id`, `messenger_users.id` | `back/app/messenger/models.py:139` |
 | `messenger_rooms` | `Room` | `app.messenger` | yes | `connections.id`, `topics.id` | `back/app/messenger/models.py:63` |
 | `messenger_users` | `MessengerUser` | `app.messenger` | yes | `agents.id`, `tools.id`, `users.id` | `back/app/messenger/models.py:96` |
-| `multimedia_delivery_resolutions` | `MediaDeliveryResolution` | `app.multimedia` | no | `multimedia_output_receipts.id`, `users.id` | `back/app/multimedia/models.py:31` |
-| `multimedia_output_receipts` | `MediaOutputReceipt` | `app.multimedia` | no | `process_runs.id` | `back/app/multimedia/models.py:13` |
+| `multimedia_delivery_resolutions` | `MediaDeliveryResolution` | `app.multimedia` | no | `multimedia_output_receipts.id`, `users.id` | `back/app/multimedia/models.py:58` |
+| `multimedia_generations` | `MediaGeneration` | `app.multimedia` | no | `agents.id`, `tasks.id` | `back/app/multimedia/models.py:15` |
+| `multimedia_output_receipts` | `MediaOutputReceipt` | `app.multimedia` | no | `multimedia_generations.id` | `back/app/multimedia/models.py:40` |
 | `params` | `Param` | `core.params` | no | — | `back/core/params/models.py:7` |
 | `permission_decisions` | `PermissionDecision` | `app.messenger` | yes | `agents.id`, `messenger_interactions.id`, `users.id` | `back/app/messenger/models.py:234` |
 | `privilege_lists` | `PrivilegeList` | `core.authorize` | no | — | `back/core/authorize/models.py:41` |
@@ -2061,9 +2062,10 @@ tests remain authoritative for behavior.
 | `messenger_send_file_to_user` | `messenger` | `app.messenger` | `mcp_send_file_to_user` | `back/app/messenger/mcp.py:838` |
 | `messenger_send_message_to_user` | `messenger` | `app.messenger` | `mcp_send_message_to_user` | `back/app/messenger/mcp.py:314` |
 | `audio_read` | `multimedia` | `app.multimedia` | `audio_read` | `back/app/multimedia/mcp.py:13` |
-| `music_generate` | `multimedia` | `app.multimedia` | `music_generate` | `back/app/multimedia/mcp.py:40` |
-| `sound_generate` | `multimedia` | `app.multimedia` | `sound_generate` | `back/app/multimedia/mcp.py:33` |
-| `video_generate` | `multimedia` | `app.multimedia` | `video_generate` | `back/app/multimedia/mcp.py:48` |
+| `multimedia_get_run` | `multimedia` | `app.multimedia` | `multimedia_get_run` | `back/app/multimedia/mcp.py:51` |
+| `music_generate` | `multimedia` | `app.multimedia` | `music_generate` | `back/app/multimedia/mcp.py:35` |
+| `sound_generate` | `multimedia` | `app.multimedia` | `sound_generate` | `back/app/multimedia/mcp.py:28` |
+| `video_generate` | `multimedia` | `app.multimedia` | `video_generate` | `back/app/multimedia/mcp.py:43` |
 | `video_read` | `multimedia` | `app.multimedia` | `video_read` | `back/app/multimedia/mcp.py:18` |
 | `process_admin_analyze_run` | `process_admin` | `app.process` | `process_admin_analyze_run` | `back/app/process/mcp.py:471` |
 | `process_admin_cancel_run` | `process_admin` | `app.process` | `process_admin_cancel_run` | `back/app/process/mcp.py:443` |

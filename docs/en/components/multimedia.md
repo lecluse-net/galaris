@@ -28,7 +28,7 @@ provider and selected resource.
 | Video generation | OpenRouter video models, Seedance through BytePlus LAS |
 
 SunoAPI.org is a third-party provider, separate from Suno Platform. Configure its own key
-and a public HTTPS Galaris callback base (`PROCESS_GALARIS_BASE_URL`, otherwise `APP_HOST`).
+and a public HTTPS Galaris callback base (`APP_HOST`).
 Callbacks only acknowledge receipt; authenticated provider polling controls task state.
 
 ## Agent workflow
@@ -37,7 +37,7 @@ Analysis accepts a canonical file `uri` and a `prompt`. Files remain in their or
 temporary materialization is limited to 32 MB and 20 minutes, validated by FFprobe.
 
 Generation accepts a `prompt` and a writable binary-file collection `destination` ending in `/`.
-It returns a durable Process `run_id`. Poll `process_get_run`; completed files appear in
+It returns a durable `generation_id` and `run_id`. Poll `multimedia_get_run`; completed files appear in
 `output.files[].uri` and the Task working set. A run only succeeds after canonical file creation.
 Up to four files of 100 MB each are supported.
 

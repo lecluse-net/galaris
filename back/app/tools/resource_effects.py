@@ -75,7 +75,7 @@ async def record_tool_resources(
     if payload.get("error"):
         raise RuntimeError(str(payload["error"]))
 
-    if tool_name == "process_get_run" and payload.get("status") == "success" and payload.get("tool_code") == "multimedia":
+    if tool_name == "multimedia_get_run" and payload.get("status") == "success":
         output = _result_mapping(payload.get("output"))
         files = output.get("files")
         if isinstance(files, list):
@@ -86,7 +86,7 @@ async def record_tool_resources(
                     await _record(ctx, WorkingResource(
                         resource_type="artifact", role=_file_role(uri), reference=uri,
                         label=PurePosixPath(uri).name, producer_task_id=ctx.task_id,
-                        metadata={"tool": "multimedia", "process_run_id": payload.get("id"),
+                        metadata={"tool": "multimedia", "generation_id": payload.get("generation_id"),
                                   "media_type": file.get("media_type")},
                     ))
         return

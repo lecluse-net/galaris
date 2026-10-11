@@ -227,26 +227,11 @@ La purge des runs est désactivée par défaut, ce qui limite actuellement l’e
 **Acceptation.** Résultat terminal non consommé protégé, résultat consommé purgeable ; une reprise
 après arrêt prolongé réussit même si la rétention et la réconciliation démarrent simultanément.
 
-### R10 — P1 — Un appel multimédia lent retarde tous les Process de sa file
-
-**Établi par lecture.** `process_start_jobs`, ligne 1533, traite dix jobs séquentiellement ;
-`refresh_active_runs`, ligne 1163, fait de même pour cent runs. Le moteur multimédia autorise
-660 secondes par opération. Les jobs périodiques, enregistrés dans `app/process/__init__.py:50`,
-ont 900 secondes au minimum avec les valeurs par défaut. Deux générations synchrones lentes
-peuvent donc retarder les autres moteurs et faire expirer le lot au milieu d’une soumission.
-
-**Proposition.** Petite concurrence bornée avec une session DB par branche, équité entre moteurs
-et propriétaires, leases de jobs adaptés à la durée réelle et délais globaux cohérents. Garder
-la réservation durable avant toute requête facturable.
-
-**Acceptation.** Une génération lente ne bloque pas le démarrage d’un Process court indépendant ;
-expiration/restart du worker sans double soumission. Mesurer la latence de file par moteur.
-
 ### R11 — P1 — Une panne de consultation peut être confondue avec l’échec définitif du travail distant
 
 **Établi par lecture.** `process_service.py:1213` transforme un run en `error` après
 `PROCESS_REFRESH_MAX_FAILURES` erreurs, dix par défaut. Les terminaux sont ensuite exclus du
-polling. Un fournisseur multimédia ayant accepté un travail peut finir pendant une panne réseau ;
+polling. Un moteur externe ayant accepté un travail peut finir pendant une panne réseau ;
 Galaris cessera pourtant de rechercher son résultat et aura échoué les tâches en attente.
 
 **Proposition.** Distinguer résultat métier terminal et incapacité d’observation. Conserver
@@ -259,7 +244,7 @@ résultat récupérable et aucun nouvel appel de génération.
 
 ### R12 — P2 — Le multimédia évite la duplication mais manque d’un chemin complet de réparation
 
-**Établi par lecture et tests existants.** `app/multimedia/engine.py` mémorise une soumission,
+**Établi par lecture et tests existants.** `app/multimedia/generation_execution.py` mémorise une soumission,
 puis des reçus de sortie. `delivery_started=True` sans URI retourne durablement
 `delivery_unknown` ; les octets sont conservés en base. Il n’existe pas ici de commande dédiée
 permettant de rattacher une destination vérifiée ou de reprendre une livraison dont l’absence a

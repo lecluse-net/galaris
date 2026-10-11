@@ -208,9 +208,15 @@ materialization is neither durable nor addressable by the agent. Consult the
 
 ### Tools and processes
 
-MCP tools, connections, files, and long-running executions use the contracts of `app.tools`,
-`app.mcp`, `app.connection`, `app.file_share`, and `app.process`. n8n remains an external
-bridge. Callbacks and process transitions must be idempotent, and terminal states must be
+MCP tools, connections, and files use the contracts of `app.tools`, `app.mcp`,
+`app.connection`, and `app.file_share`. Business workflows use `app.process`; existing
+workflows execute through the external n8n bridge. The proposed native Galaris workflow
+feature means complete executable BPMN processes.
+
+Never create a process definition, run, or engine adapter to wrap a standalone function,
+MCP tool, or technical operation. Duration, callbacks, retries, and durable tracking do
+not make an operation a business workflow; its owning domain retains that state.
+Callbacks and process transitions must be idempotent, and terminal states must be
 immutable. Consult the `galaris-process-tools` skill.
 
 ## Code conventions

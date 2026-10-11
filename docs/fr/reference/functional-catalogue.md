@@ -3401,7 +3401,7 @@ une connexion ou une fonction bloque la suite, sans garantir l’arrêt d’un a
 Les générations, propositions d’attendus et analyses longues renvoient une **opération durable**
 à consulter ou annuler. Leur résultat se relit sans relancer le modèle. Une interruption dont les
 effets sont incertains peut laisser un état inconnu, sans répétition aveugle. Les opérations
-techniques du Lab ne polluent pas le catalogue des processus personnels. Elles figent les modèles
+figent les modèles
 et révisions nécessaires ; leurs coûts de génération ou d’analyse sont séparés du budget de benchmark.
 
 Les listes sont paginées, avec 50 éléments par défaut et 10, 20, 50, 100 ou 500 au choix.
@@ -4133,9 +4133,10 @@ l’interface humaine et ne sont pas exposés comme fonctions MCP.
 | `audio_transcribe` | `audio` | Transcrire audio/vidéo ou récupérer les sous-titres YouTube, conserver le verbatim et synthétiser les contenus longs. |
 | `audio_read` | `multimedia` | Analyser sons, musique et événements audibles selon une question. |
 | `video_read` | `multimedia` | Analyser une vidéo avec le modèle spécialisé. |
-| `sound_generate` | `multimedia` | Lancer une génération de bruitages suivie comme Process. |
-| `music_generate` | `multimedia` | Lancer une génération musicale suivie comme Process. |
-| `video_generate` | `multimedia` | Lancer une génération vidéo suivie comme Process. |
+| `sound_generate` | `multimedia` | Lancer une génération de bruitages. |
+| `music_generate` | `multimedia` | Lancer une génération musicale. |
+| `video_generate` | `multimedia` | Lancer une génération vidéo. |
+| `multimedia_get_run` | `multimedia` | Lire l'état d'une génération et les URI des fichiers finaux. |
 
 ### Mail
 

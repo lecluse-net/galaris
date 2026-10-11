@@ -10,14 +10,12 @@ from app.multimedia import router
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("case", ["valid", "wrong-token", "wrong-engine", "missing"])
+@pytest.mark.parametrize("case", ["valid", "wrong-token", "missing"])
 async def test_callback_requires_the_matching_multimedia_run_token(client, monkeypatch, case):
     run_id = uuid4()
     run = SimpleNamespace(engine_code="multimedia", callback_token="per-run-secret", status="running")
-    if case == "wrong-engine":
-        run.engine_code = "n8n"
     lookup = AsyncMock(return_value=None if case == "missing" else run)
-    monkeypatch.setattr(router.process_service, "get_run", lookup)
+    monkeypatch.setattr(router, "get_generation", lookup)
     token = "incorrect" if case == "wrong-token" else "per-run-secret"
     response = await client.post(
         f"/api/multimedia/callback/{run_id}/{token}",
@@ -54,7 +52,7 @@ async def test_delivery_repair_cannot_cross_managed_agent_scope(monkeypatch):
     from app.agent import AgentManagementScope
     from app.multimedia.delivery import DeliveryRepair
     monkeypatch.setattr(router, "current_management_scope", AsyncMock(return_value=AgentManagementScope(1, frozenset({7}))))
-    monkeypatch.setattr(router.process_service, "get_run", AsyncMock(return_value=SimpleNamespace(engine_code="multimedia", launcher_agent_id=8)))
+    monkeypatch.setattr(router, "get_generation", AsyncMock(return_value=SimpleNamespace(agent_id=8)))
     repair = AsyncMock()
     monkeypatch.setattr(router, "repair_delivery", repair)
     with pytest.raises(HTTPException) as error:

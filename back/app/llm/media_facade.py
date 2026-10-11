@@ -67,13 +67,13 @@ async def available_media_functions(agent_id: int) -> frozenset[str]:
 
 async def start_media_call(
     selected: SelectedMediaResource, request: MediaRequest, *, agent_id: int,
-    task_id: UUID | None = None, process_run_id: UUID | None = None,
+    task_id: UUID | None = None, media_generation_id: UUID | None = None,
 ) -> UUID:
     from . import llm_call_service
 
     call = await llm_call_service.create_running_call(
         purpose=f"multimedia.{request.operation}", agent_id=agent_id, task_id=task_id,
-        agent_run_id=None, process_run_id=process_run_id, llm_id=selected.llm_id,
+        agent_run_id=None, media_generation_id=media_generation_id, llm_id=selected.llm_id,
         provider_name=selected.connection.name, provider_code=selected.connection.catalog_code,
         requested_model=selected.model, effective_model=selected.model, stream=False,
         request_body=request.model_dump(mode="json"),

@@ -141,8 +141,8 @@ allowed_dependencies = ["app.agent", "app.console", "app.file_share", "app.llm",
 max_domain_fan_out = 6
 
 [module."app.multimedia"]
-allowed_dependencies = ["app.agent", "app.file_share", "app.llm", "app.process", "app.tools"]
-max_domain_fan_out = 5
+allowed_dependencies = ["app.agent", "app.file_share", "app.llm", "app.tools"]
+max_domain_fan_out = 4
 
 [module."bridge.sunoapi"]
 allowed_dependencies = ["app.llm"]

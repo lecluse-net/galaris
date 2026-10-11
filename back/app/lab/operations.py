@@ -1,4 +1,4 @@
-"""Lab source discovery and admission of durable integrated processes."""
+"""Lab source discovery and admission of durable Lab operations."""
 
 import json
 from typing import Any, Literal
@@ -12,8 +12,15 @@ from app.connection import Connection
 from app.conversation import ConversationRound
 from app.llm import LLMCall
 from app.messenger import Message
-from app.process import ProcessRun, process_service
-from app.process.interface import ensure_integrated_definition
+from dataclasses import asdict
+from sqlalchemy.dialects.postgresql import insert
+from uuid import uuid4
+from app.llm import LLMExecutionAuthority, current_execution_authority
+from app.tools.facade import register_deferred_dispatch, finish_action
+from core.user import get_current_user_id
+from .operation_models import LabOperation
+from .operation_worker import advance as advance, settle_authorization
+from .operation_store import publish
 from app.task import Task
 from app.tools import McpToolContext
 from core.database import get_db
@@ -374,42 +381,44 @@ async def start(
     if not invocation_key.strip() or len(invocation_key) > 200:
         raise ValueError("Provide an invocation_key of 1–200 characters.")
     digest = fingerprint({"action": action, "mechanism": mechanism, "request": request})
-    workflow = await ensure_integrated_definition(ctx.agent_id, "lab", action)
-    # Check before resolving mutable defaults: a response-lost retry keeps its original model.
-    existing = await get_db().scalar(
-        select(ProcessRun).where(
-            ProcessRun.launcher_agent_id == ctx.agent_id,
-            ProcessRun.engine_code == "lab",
-            ProcessRun.idempotency_key == f"{action}:{invocation_key}",
-        )
-    )
+    key = f"{action}:{invocation_key}"
+    db = get_db()
+    existing = await db.scalar(select(LabOperation).where(
+        LabOperation.agent_id == ctx.agent_id, LabOperation.idempotency_key == key))
     if existing is not None:
         if existing.input.get("request_fingerprint") != digest:
             raise ValueError("The invocation_key belongs to different arguments.")
         return {"operation_id": str(existing.id), "status": existing.status}
-    result = await process_service.start_process(
-        agent_id=ctx.agent_id,
-        workflow_id=workflow,
-        input_data={
-            "action": action,
-            "mechanism": mechanism,
-            "request": request,
-            "runtime": ctx.runtime,
-            "request_fingerprint": digest,
-        },
-        idempotency_key=f"{action}:{invocation_key}",
-        task_id=ctx.task_id,
-        runtime=ctx.runtime,
-    )
-    saved = await process_service.get_run(result.run_id)
-    if saved is None or saved.input.get("request_fingerprint") != digest:
-        raise ValueError("The invocation_key belongs to different arguments.")
-    return {"operation_id": str(result.run_id), "status": result.status}
+    from .operation_execution import LabOperationExecutor
+    payload = await LabOperationExecutor().prepare_input(ctx.agent_id, {
+        "action": action, "mechanism": mechanism, "request": request,
+        "runtime": ctx.runtime, "request_fingerprint": digest})
+    authority = current_execution_authority() or LLMExecutionAuthority(requester_user_id=get_current_user_id())
+    dispatch: dict[str, Any] = {"input": payload}
+    await db.commit()
+    permit = await register_deferred_dispatch(dispatch)
+    if permit:
+        dispatch["authorization_permit"] = str(permit)
+    identifier = uuid4()
+    added = await db.scalar(insert(LabOperation).values(
+        id=identifier, agent_id=ctx.agent_id, task_id=ctx.task_id, input=payload,
+        idempotency_key=key, authority=asdict(authority), dispatch=dispatch,
+    ).on_conflict_do_nothing().returning(LabOperation.id))
+    await db.commit()
+    if added is None:
+        existing = await db.scalar(select(LabOperation).where(
+            LabOperation.agent_id == ctx.agent_id, LabOperation.idempotency_key == key))
+        if existing is None or existing.input.get("request_fingerprint") != digest:
+            await finish_action(permit, outcome="failed", deferred=True)
+            raise ValueError("The invocation_key belongs to different arguments.")
+        await finish_action(permit, receipt={"operation_id": str(existing.id)}, deferred=True)
+        return {"operation_id": str(existing.id), "status": existing.status}
+    return {"operation_id": str(identifier), "status": "queued"}
 
 
-async def operation(ctx: McpToolContext, identifier: UUID) -> ProcessRun:
-    row = await process_service.get_run(identifier)
-    if row is None or row.engine_code != "lab":
+async def operation(ctx: McpToolContext, identifier: UUID) -> LabOperation:
+    row = await get_db().get(LabOperation, identifier, populate_existing=True)
+    if row is None:
         raise LookupError("Lab operation not found.")
     # Lab administrators can inspect all Lab operations; real-source results require the additional grant.
     if row.input.get("action") == "lab_task_analyze":
@@ -422,15 +431,15 @@ async def get(ctx: McpToolContext, identifier: UUID, offset: int, length: int) -
     if offset < 0 or not 1 <= length <= 100000:
         raise ValueError("Use offset >= 0 and length between 1 and 100000.")
     saved = await get_db().scalar(
-        select(LabOperationResult).where(LabOperationResult.process_run_id == identifier)
+        select(LabOperationResult).where(LabOperationResult.operation_id == identifier)
     )
     serialized = json.dumps(saved.payload, ensure_ascii=False, sort_keys=True) if saved else ""
     return {
         "operation_id": str(row.id),
         "status": row.status,
-        "agent_id": row.launcher_agent_id,
+        "agent_id": row.agent_id,
         "action": row.input.get("action"),
-        "error": row.error_message,
+        "error": row.error.get("message") if row.error else None,
         "output": row.output,
         "result": saved.payload if saved and len(serialized) <= length and offset == 0 else None,
         "content": serialized[offset : offset + length],
@@ -442,5 +451,9 @@ async def get(ctx: McpToolContext, identifier: UUID, offset: int, length: int) -
 
 async def cancel(ctx: McpToolContext, identifier: UUID) -> dict[str, Any]:
     await operation(ctx, identifier)
-    row = await process_service.cancel_run(identifier)
-    return {"operation_id": str(row.id), "status": row.status}
+    from .operation_execution import LabOperationExecutor
+    result = await LabOperationExecutor().cancel(identifier)
+    row = await publish(identifier, result)
+    if row.status in {"success", "error", "cancelled"}:
+        await settle_authorization(identifier, row)
+    return {"operation_id": str(identifier), "status": row.status}

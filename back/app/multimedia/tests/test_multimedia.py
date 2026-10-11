@@ -1,6 +1,6 @@
 from types import SimpleNamespace
 from unittest.mock import AsyncMock
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 import pytest
 import pytest_asyncio
@@ -14,11 +14,11 @@ from app.connection.models import Connection
 from app.llm import MediaArtifact, MediaRequest, MediaResult, available_media_functions
 from app.llm.profile_models import LlmProfile
 from app.llm.provider_models import LLM, LLMProvider
-from app.multimedia.engine import MultimediaEngine
-from app.multimedia.models import MediaOutputReceipt
-from app.process.interface import engine_checkpoint, ensure_integrated_definition
+from app.multimedia.generation_execution import MediaGenerationExecutor
+from app.multimedia.models import MediaGeneration, MediaOutputReceipt
+from app.process import process_service
+from app.multimedia.generation_store import generation_checkpoint
 from app.process.models import ProcessDefinition, ProcessRun
-from app.process.schemas import EngineRunReference, ProcessStartPayload
 from app.tools import mandatory_tools, mcp_loader
 from app.tools.models import Tool
 
@@ -49,10 +49,10 @@ async def media_agent(db: AsyncSession):
 
 @pytest.mark.asyncio
 async def test_live_mcp_catalog_and_execution_follow_profile_and_connection(db, media_agent, monkeypatch):
-    from app.multimedia import engine as module
+    from app.multimedia import generation_execution as module
 
     execute = AsyncMock(side_effect=AssertionError("An unavailable tool reached execution"))
-    monkeypatch.setattr(module.MultimediaEngine, "start_run", execute)
+    monkeypatch.setattr(module.MediaGenerationExecutor, "submit", execute)
     item = media_agent
     # Exercise an explicit operator restriction independently of installation defaults.
     item.connection.active = False
@@ -93,7 +93,7 @@ async def test_resource_capability_and_provider_are_required(db, media_agent):
 
 @pytest.mark.asyncio
 async def test_new_invocations_are_distinct_but_explicit_retry_is_deduplicated(db, media_agent, monkeypatch):
-    from app.multimedia import engine as module
+    from app.multimedia import generation_execution as module
     from app.multimedia.mcp import music_generate
     item = media_agent
     item.connection.active = True
@@ -104,7 +104,6 @@ async def test_new_invocations_are_distinct_but_explicit_retry_is_deduplicated(d
     retry = await music_generate(ctx, "Piano", "console:///tmp/", invocation_key="one-invocation")
     separate = await music_generate(ctx, "Piano", "console:///tmp/")
     assert retry["run_id"] == first["run_id"]
-    assert retry["deduplicated"] is True
     assert separate["run_id"] != first["run_id"]
     item.profile.music_generation_llm_id = None
     await db.commit()
@@ -112,24 +111,63 @@ async def test_new_invocations_are_distinct_but_explicit_retry_is_deduplicated(d
         await music_generate(ctx, "Piano", "console:///tmp/")
 
 
+@pytest.mark.asyncio
+async def test_media_generations_are_tools_not_business_processes(db, media_agent, monkeypatch):
+    from app.multimedia import generation_execution as module
+    from app.multimedia.mcp import music_generate
+
+    item = media_agent
+    item.connection.active = True
+    await db.commit()
+    monkeypatch.setattr(module, "validate_destination", AsyncMock(return_value="console:///tmp/"))
+    ctx = mcp_loader.McpToolContext(agent_id=item.agent.id, runtime="internal")
+    started = await music_generate(ctx, "Piano", "console:///tmp/", invocation_key="media-tool")
+    run = await db.get(MediaGeneration, UUID(started["run_id"]))
+    assert run is not None and run.status == "queued"
+    assert "multimedia" not in {tool.code for tool in await process_service.list_process_tools()}
+    assert await process_service.list_definitions(agent_id=item.agent.id) == []
+    assert await db.scalar(select(ProcessRun.id).where(ProcessRun.launcher_agent_id == item.agent.id)) is None
+    assert await db.scalar(select(ProcessDefinition.id).where(ProcessDefinition.agent_id == item.agent.id)) is None
+    retry = await music_generate(ctx, "Piano", "console:///tmp/", invocation_key="media-tool")
+    assert retry["run_id"] == started["run_id"]
+    from app.multimedia.generation_worker import tick
+    from app.multimedia.mcp import multimedia_get_run
+    from app.llm import resolve_media_resource
+    selected = await resolve_media_resource(item.agent.id, "music_generate")
+    submit = AsyncMock(return_value=MediaResult("success", artifacts=(
+        MediaArtifact("track", "audio/mpeg", content=b"ID3synthetic"),
+    )))
+    monkeypatch.setattr(type(selected.provider), "submit", submit)
+    create = AsyncMock(return_value=SimpleNamespace(uri="console:///tmp/song.mp3"))
+    monkeypatch.setattr(module, "resource_create", create)
+    await tick()
+    await tick()
+    result = await multimedia_get_run(ctx, run.id)
+    assert result["status"] == "success" and result["output"]["files"][0]["uri"] == "console:///tmp/song.mp3"
+    submit.assert_awaited_once()
+    create.assert_awaited_once()
+    server = await mcp_loader.build_agent_mcp(item.agent.id, allowed_tool_names={"multimedia_get_run"})
+    async with Client(server) as client:
+        assert {tool.name for tool in await client.list_tools()} == {"multimedia_get_run"}
+
+
+
 async def _run(db, item):
-    workflow = await ensure_integrated_definition(item.agent.id, "multimedia", "music_generate")
-    definition = (await db.scalars(select(ProcessDefinition).where(ProcessDefinition.engine_process_id == workflow))).one()
-    run = ProcessRun(process_id=definition.id, launcher_agent_id=item.agent.id, engine_code="multimedia",
-                     correlation_id=str(uuid4()), callback_token="token", status="running",
-                     input={"request": MediaRequest(operation="music_generate", model="music_v1", prompt="Piano").model_dump(),
-                            "runtime": "internal", "destination": "console:///tmp/"})
+    run = MediaGeneration(agent_id=item.agent.id, callback_token="token", status="running",
+        input={"request": MediaRequest(operation="music_generate", model="music_v1", prompt="Piano").model_dump(),
+               "runtime": "internal", "destination": "console:///tmp/"})
     db.add(run)
     await db.commit()
-    return run, EngineRunReference(id=run.id, correlation_id=run.correlation_id, callback_token="token")
+    return run, run.id
+
 
 
 @pytest.mark.asyncio
 async def test_durable_provider_success_survives_late_error_and_delivery_budget(db, media_agent, monkeypatch):
-    from app.multimedia import engine as module
+    from app.multimedia import generation_execution as module
     from core.util import buffered_io_budget
     run, reference = await _run(db, media_agent)
-    engine = MultimediaEngine()
+    engine = MediaGenerationExecutor()
     await engine._receive(run.id, MediaResult("success", artifacts=(MediaArtifact("track", "audio/mpeg", content=b"ID3audio"),)))
     await engine._receive(run.id, MediaResult("error", error="stale poll"))
 
@@ -139,7 +177,7 @@ async def test_durable_provider_success_survives_late_error_and_delivery_budget(
             return SimpleNamespace(uri="messenger://room/output")
 
     monkeypatch.setattr(module, "resource_create", upload)
-    assert (await engine.get_run(reference)).status == "success"
+    assert (await engine.advance(reference)).status == "success"
     assert buffered_io_budget.used == 0
 
 
@@ -195,9 +233,9 @@ async def test_100mb_delivery_traverses_resource_messenger_and_whatsapp_budgets(
     monkeypatch.setattr(bridge, "_inside_service_window", AsyncMock(return_value=True))
     transport = MessengerFileTransport(MessengerFacade(bridge, media_agent.connection.id))
     monkeypatch.setattr(resource_service, "_connected_transport", AsyncMock(return_value=(transport, "messenger", "", "")))
-    engine = MultimediaEngine()
+    engine = MediaGenerationExecutor()
     await engine._receive(run.id, MediaResult("success", artifacts=(MediaArtifact("large-track", "audio/mpeg", content=b"ID3" + b"a" * 99_999_997),)))
-    result = await asyncio.wait_for(engine.get_run(reference), 10)
+    result = await asyncio.wait_for(engine.advance(reference), 10)
     assert result.status == "success" and sent_sizes == [100_000_000]
     assert buffered_io_budget.used == 0
 
@@ -205,30 +243,30 @@ async def test_100mb_delivery_traverses_resource_messenger_and_whatsapp_budgets(
 @pytest.mark.asyncio
 async def test_checkpoint_claim_is_single_use_and_terminal_is_immutable(db, media_agent):
     run, _ = await _run(db, media_agent)
-    assert (await engine_checkpoint(run.id, "multimedia", claim="submission"))["claimed"] is True
-    assert (await engine_checkpoint(run.id, "multimedia", claim="submission"))["claimed"] is False
+    assert (await generation_checkpoint(run.id, claim="submission"))["claimed"] is True
+    assert (await generation_checkpoint(run.id, claim="submission"))["claimed"] is False
     run.status = "success"
     await db.commit()
-    data = await engine_checkpoint(run.id, "multimedia", {"submission": "changed"}, claim="another")
+    data = await generation_checkpoint(run.id, {"submission": "changed"}, claim="another")
     assert data["metadata"]["submission"] == "started"
     assert data["claimed"] is False
 
 
 @pytest.mark.asyncio
 async def test_lost_submission_response_is_not_submitted_twice(db, media_agent, monkeypatch):
-    from app.multimedia import engine as module
+    from app.multimedia import generation_execution as module
     run, reference = await _run(db, media_agent)
     provider = SimpleNamespace(validate=lambda _: None, submit=AsyncMock(side_effect=TimeoutError))
     selected = SimpleNamespace(provider=provider, connection=object())
-    engine = MultimediaEngine()
+    engine = MediaGenerationExecutor()
     monkeypatch.setattr(engine, "_selected", AsyncMock(return_value=selected))
     monkeypatch.setattr(module, "authorize", AsyncMock())
     monkeypatch.setattr(module, "start_media_call", AsyncMock(return_value=uuid4()))
     monkeypatch.setattr(module, "finish_media_call", AsyncMock())
-    await engine.start_run("workflow", reference, ProcessStartPayload())
-    await engine.start_run("workflow", reference, ProcessStartPayload())
+    await engine.submit(reference)
+    await engine.submit(reference)
     assert provider.submit.await_count == 1
-    assert (await engine.get_run(reference)).status == "unknown"
+    assert (await engine.advance(reference)).status == "unknown"
 
 
 @pytest.mark.asyncio
@@ -251,20 +289,20 @@ async def test_provider_submission_records_outcome_and_never_rebills_on_replay(d
         cost=0.25 if outcome == "success" else None)
     submit = AsyncMock(side_effect=MediaRequestRejected(result.error)) if outcome == "rejected" else AsyncMock(return_value=result)
     monkeypatch.setattr(type(selected.provider), "submit", submit)
-    engine = MultimediaEngine()
+    engine = MediaGenerationExecutor()
     for _ in range(2):
-        assert (await engine.start_run("workflow", reference, ProcessStartPayload())).accepted
+        await engine.submit(reference)
     submit.assert_awaited_once()
-    calls = list(await db.scalars(select(LLMCall).where(LLMCall.process_run_id == run.id)))
+    calls = list(await db.scalars(select(LLMCall).where(LLMCall.media_generation_id == run.id)))
     assert len(calls) == 1 and calls[0].llm_id == selected.llm_id
     assert calls[0].status == ("completed" if outcome == "success" else "running" if outcome == "waiting" else "error")
-    data = await engine_checkpoint(run.id, "multimedia")
+    data = await generation_checkpoint(run.id)
     assert data["metadata"]["provider_state"] == ("error" if outcome == "rejected" else outcome)
     if outcome == "success":
-        receipt = (await db.scalars(select(MediaOutputReceipt).where(MediaOutputReceipt.run_id == run.id))).one()
+        receipt = (await db.scalars(select(MediaOutputReceipt).where(MediaOutputReceipt.generation_id == run.id))).one()
         assert receipt.content == b"ID3audio" and data["metadata"]["cost"] == 0.25
     if outcome in {"error", "rejected"}:
-        assert (await engine.get_run(reference)).error.message == "Provider refused this request"
+        assert (await engine.advance(reference)).error.message == "Provider refused this request"
 
 
 @pytest.mark.asyncio
@@ -274,41 +312,41 @@ async def test_late_provider_result_cannot_change_terminal_run_or_create_media(d
     run.status = terminal
     run.output = {"receipt": "original"}
     await db.commit()
-    await MultimediaEngine()._receive(run.id, MediaResult("success", artifacts=(MediaArtifact("late", "audio/mpeg", content=b"ID3late"),)))
+    await MediaGenerationExecutor()._receive(run.id, MediaResult("success", artifacts=(MediaArtifact("late", "audio/mpeg", content=b"ID3late"),)))
     await db.refresh(run)
     assert run.status == terminal and run.output == {"receipt": "original"}
-    assert await db.scalar(select(MediaOutputReceipt.id).where(MediaOutputReceipt.run_id == run.id)) is None
+    assert await db.scalar(select(MediaOutputReceipt.id).where(MediaOutputReceipt.generation_id == run.id)) is None
 
 
 @pytest.mark.asyncio
 async def test_success_requires_canonical_files_and_delivery_is_not_repeated(db, media_agent, monkeypatch):
-    from app.multimedia import engine as module
+    from app.multimedia import generation_execution as module
     run, reference = await _run(db, media_agent)
-    engine = MultimediaEngine()
+    engine = MediaGenerationExecutor()
     result = MediaResult("success", artifacts=(MediaArtifact("track", "audio/mpeg", content=b"ID3audio"),))
     await engine._receive(run.id, result)
     create = AsyncMock(return_value=SimpleNamespace(uri="console:///tmp/song.mp3"))
     monkeypatch.setattr(module, "resource_create", create)
-    first = await engine.get_run(reference)
-    second = await engine.get_run(reference)
+    first = await engine.advance(reference)
+    second = await engine.advance(reference)
     assert first.status == second.status == "success"
     assert first.output["files"][0]["uri"] == "console:///tmp/song.mp3"
     assert create.await_count == 1
-    receipt = (await db.scalars(select(MediaOutputReceipt).where(MediaOutputReceipt.run_id == run.id))).one()
+    receipt = (await db.scalars(select(MediaOutputReceipt).where(MediaOutputReceipt.generation_id == run.id))).one()
     assert receipt.content is None
 
 
 @pytest.mark.asyncio
 async def test_interrupted_file_creation_never_repeats_blindly(db, media_agent, monkeypatch):
-    from app.multimedia import engine as module
+    from app.multimedia import generation_execution as module
     run, reference = await _run(db, media_agent)
-    engine = MultimediaEngine()
+    engine = MediaGenerationExecutor()
     await engine._receive(run.id, MediaResult("success", artifacts=(MediaArtifact("track", "audio/mpeg", content=b"ID3audio"),)))
     create = AsyncMock(side_effect=TimeoutError)
     monkeypatch.setattr(module, "resource_create", create)
     with pytest.raises(TimeoutError):
-        await engine.get_run(reference)
-    assert (await engine.get_run(reference)).status == "unknown"
+        await engine.advance(reference)
+    assert (await engine.advance(reference)).status == "unknown"
     assert create.await_count == 1
 
 
@@ -316,7 +354,7 @@ async def test_interrupted_file_creation_never_repeats_blindly(db, media_agent, 
 async def test_provider_error_page_cannot_become_a_successful_audio_file(db, media_agent):
     run, _ = await _run(db, media_agent)
     with pytest.raises(ValueError, match="container"):
-        await MultimediaEngine()._receive(run.id, MediaResult("success", artifacts=(
+        await MediaGenerationExecutor()._receive(run.id, MediaResult("success", artifacts=(
             MediaArtifact("track", "audio/mpeg", content=b"<html>upstream failure</html>"),
         )))
 
@@ -353,16 +391,16 @@ async def test_analysis_probes_real_audio_and_rejects_it_as_video(monkeypatch):
 @pytest.mark.parametrize("decision", ["attach", "retry_absent"])
 async def test_delivery_repair_requires_expired_lease_and_preserves_generation(db, media_agent, monkeypatch, decision):
     from datetime import datetime, timedelta, timezone
-    from app.multimedia import engine as module, delivery
+    from app.multimedia import generation_execution as module, delivery
     from app.multimedia.models import MediaDeliveryResolution
     run, reference = await _run(db, media_agent)
-    engine = MultimediaEngine()
+    engine = MediaGenerationExecutor()
     await engine._receive(run.id, MediaResult("success", artifacts=(MediaArtifact("track", "audio/mpeg", content=b"ID3audio"),)))
     create = AsyncMock(side_effect=TimeoutError)
     monkeypatch.setattr(module, "resource_create", create)
     with pytest.raises(TimeoutError):
-        await engine.get_run(reference)
-    receipt = (await db.scalars(select(MediaOutputReceipt).where(MediaOutputReceipt.run_id == run.id))).one()
+        await engine.advance(reference)
+    receipt = (await db.scalars(select(MediaOutputReceipt).where(MediaOutputReceipt.generation_id == run.id))).one()
     request = delivery.DeliveryRepair(attempt_number=1, decision=decision,
         evidence="Destination checked by the operator", uri="console:///tmp/recovered.mp3" if decision == "attach" else None)
     with pytest.raises(ValueError, match="lease"):
@@ -376,7 +414,7 @@ async def test_delivery_repair_requires_expired_lease_and_preserves_generation(d
     await delivery.repair_delivery(run.id, receipt.id, request, actor_user_id=None)
     create.side_effect = None
     create.return_value = SimpleNamespace(uri="console:///tmp/recovered.mp3")
-    result = await engine.get_run(reference)
+    result = await engine.advance(reference)
     assert result.status == "success"
     assert create.await_count == (1 if decision == "attach" else 2)
     assert len(list(await db.scalars(select(MediaDeliveryResolution).where(MediaDeliveryResolution.receipt_id == receipt.id)))) == 1
@@ -386,13 +424,13 @@ async def test_delivery_repair_requires_expired_lease_and_preserves_generation(d
 @pytest.mark.asyncio
 async def test_unknown_checkpoint_version_cannot_submit(db, media_agent, monkeypatch):
     run, reference = await _run(db, media_agent)
-    run.engine_metadata = {"multimedia_version": 2}
+    run.checkpoint = {"multimedia_version": 2}
     await db.commit()
-    engine = MultimediaEngine()
+    engine = MediaGenerationExecutor()
     selected = AsyncMock()
     monkeypatch.setattr(engine, "_selected", selected)
     with pytest.raises(ValueError):
-        await engine.start_run("workflow", reference, ProcessStartPayload())
+        await engine.submit(reference)
     selected.assert_not_called()
 
 
@@ -406,18 +444,18 @@ async def test_invalid_provider_outputs_never_produce_delivered_success(db, medi
         "empty": (MediaArtifact("track", "audio/mpeg", content=b""),),
         "wrong_container": (MediaArtifact("track", "video/mp4", content=b"ID3audio"),),
     }[fault]
-    engine = MultimediaEngine()
+    engine = MediaGenerationExecutor()
     with pytest.raises(ValueError):
         await engine._receive(run.id, MediaResult("success", artifacts=artifacts))
-    assert await db.scalar(select(MediaOutputReceipt.id).where(MediaOutputReceipt.run_id == run.id)) is None
-    checkpoint = await engine_checkpoint(run.id, "multimedia")
+    assert await db.scalar(select(MediaOutputReceipt.id).where(MediaOutputReceipt.generation_id == run.id)) is None
+    checkpoint = await generation_checkpoint(run.id)
     assert checkpoint["metadata"].get("provider_state") != "success"
-    assert (await engine.get_run(reference)).status == "unknown"
+    assert (await engine.advance(reference)).status == "unknown"
 
 
 @pytest.mark.asyncio
 async def test_remote_output_recovery_resumes_downloads_without_duplicating_saved_receipts(db, media_agent, monkeypatch):
-    from app.multimedia import provider_results, engine as module
+    from app.multimedia import provider_results, generation_execution as module
     run, reference = await _run(db, media_agent)
     calls = []
     failed = True
@@ -432,17 +470,17 @@ async def test_remote_output_recovery_resumes_downloads_without_duplicating_save
         MediaArtifact("one", "audio/mpeg", url="https://media.test/one"),
         MediaArtifact("two", "audio/mpeg", url="https://media.test/two"),
     ))
-    engine = MultimediaEngine()
+    engine = MediaGenerationExecutor()
     with pytest.raises(TimeoutError):
         await engine._receive(run.id, result)
-    assert len(list(await db.scalars(select(MediaOutputReceipt).where(MediaOutputReceipt.run_id == run.id)))) == 1
+    assert len(list(await db.scalars(select(MediaOutputReceipt).where(MediaOutputReceipt.generation_id == run.id)))) == 1
     failed = False
     await engine._receive(run.id, result)
     await engine._receive(run.id, result)
     assert calls == ["https://media.test/one", "https://media.test/two", "https://media.test/two"]
     create = AsyncMock(side_effect=[SimpleNamespace(uri="console://one.mp3"), SimpleNamespace(uri="console://two.mp3")])
     monkeypatch.setattr(module, "resource_create", create)
-    delivered = await engine.get_run(reference)
+    delivered = await engine.advance(reference)
     assert delivered.status == "success"
     assert delivered.output["cost"] == 0.25 and delivered.output["cost_quality"] == "exact"
     assert [item["external_id"] for item in delivered.output["files"]] == ["one", "two"]
@@ -458,16 +496,16 @@ async def test_provider_poll_updates_durable_observation_without_new_submission(
     run.input = {**run.input, "llm_id": selected.llm_id, "provider_id": selected.connection.id,
                  "provider_code": selected.connection.catalog_code, "provider_base_url": selected.connection.base_url}
     await db.commit()
-    await engine_checkpoint(run.id, "multimedia", {"external_id": "remote", "provider_state": "running"})
+    await generation_checkpoint(run.id, {"external_id": "remote", "provider_state": "running"})
     poll = AsyncMock(return_value=MediaResult(state, external_id="remote", error="remote failed" if state == "error" else None))
     monkeypatch.setattr(type(selected.provider), "poll", poll)
-    snapshot = await MultimediaEngine().get_run(reference)
+    snapshot = await MediaGenerationExecutor().advance(reference)
     assert snapshot.status == state
-    assert (await engine_checkpoint(run.id, "multimedia"))["metadata"]["provider_state"] == state
+    assert (await generation_checkpoint(run.id))["metadata"]["provider_state"] == state
     poll.assert_awaited_once()
     if state == "error":
         assert snapshot.error.message == "remote failed"
-        again = await MultimediaEngine().get_run(reference)
+        again = await MediaGenerationExecutor().advance(reference)
         assert again.status == "error"
         poll.assert_awaited_once()
 
@@ -486,9 +524,9 @@ async def test_admitted_media_resource_cannot_silently_switch_provider_or_model(
         frozen[changed] = "changed"
     run.input = frozen
     await db.commit()
-    await engine_checkpoint(run.id, "multimedia", {"external_id": "remote", "provider_state": "running"})
+    await generation_checkpoint(run.id, {"external_id": "remote", "provider_state": "running"})
     with pytest.raises(ValueError, match="substitution"):
-        await MultimediaEngine().get_run(reference)
+        await MediaGenerationExecutor().advance(reference)
 
 
 @pytest.mark.asyncio
@@ -497,8 +535,8 @@ async def test_delivery_repair_refuses_unproven_or_wrong_attempt_without_changin
     from app.multimedia import delivery
     from app.multimedia.models import MediaDeliveryResolution
     run, _ = await _run(db, media_agent)
-    await MultimediaEngine()._receive(run.id, MediaResult("success", artifacts=(MediaArtifact("track", "audio/mpeg", content=b"ID3audio"),)))
-    receipt = (await db.scalars(select(MediaOutputReceipt).where(MediaOutputReceipt.run_id == run.id))).one()
+    await MediaGenerationExecutor()._receive(run.id, MediaResult("success", artifacts=(MediaArtifact("track", "audio/mpeg", content=b"ID3audio"),)))
+    receipt = (await db.scalars(select(MediaOutputReceipt).where(MediaOutputReceipt.generation_id == run.id))).one()
     receipt.delivery_started, receipt.delivery_attempts = True, 1
     if fault == "terminal":
         run.status = "success"
@@ -525,11 +563,8 @@ async def test_delivery_repair_refuses_unproven_or_wrong_attempt_without_changin
 
 @pytest.mark.asyncio
 async def test_media_cancellation_never_claims_provider_stopped(db, media_agent):
-    from app.process import process_service, ProcessEngineError
     run, reference = await _run(db, media_agent)
-    with pytest.raises(ProcessEngineError, match="cancel"):
-        await process_service.cancel_run(run.id)
+    with pytest.raises(ValueError, match="cancel"):
+        await MediaGenerationExecutor().cancel(reference)
     await db.refresh(run)
     assert run.status == "running"
-    with pytest.raises(ProcessEngineError, match="cancel"):
-        await MultimediaEngine().cancel_run(reference)

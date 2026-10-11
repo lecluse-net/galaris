@@ -11,8 +11,9 @@ Repository contracts and tests remain authoritative.
 
 The native `lab` Tool exposes fifty `lab_*` functions, guided by the optional `galaris-lab`
 system skill. It reuses Workbench services and records. Short commands have atomic,
-idempotent receipts; long operations outside benchmarks use an integrated `app.process`
-engine. Agent assessments retain their identity separately from human reviews. Real-source
+idempotent receipts; long operations outside benchmarks use `LabOperation` and the Lab
+worker. Agent assessments retain their
+identity separately from human reviews. Real-source
 access also requires the execution-inspection functions of `galaris_admin`.
 [ADR 0134](../../../project/decisions/0134-agent-lab-control.md) documents authorization,
 durable publication, pagination and comparison limits.

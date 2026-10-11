@@ -137,6 +137,12 @@ class LLMCall(Base):
         nullable=True,
         index=True,
     )
+    media_generation_id: Mapped[Optional[UUID]] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("multimedia_generations.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
     requester_user_id: Mapped[Optional[int]] = mapped_column(
         Integer,
         ForeignKey("users.id", ondelete="SET NULL"),

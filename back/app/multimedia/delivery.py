@@ -12,7 +12,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy import select
 
 from app.file_share import ResourceContext, materialize_resource, parse_resource_uri
-from app.process.interface import engine_checkpoint
+from .generation_store import generation_checkpoint
 from core.database import get_db
 from .models import MediaDeliveryResolution, MediaOutputReceipt
 from .checkpoints import MultimediaCheckpoint
@@ -28,7 +28,7 @@ class DeliveryRepair(BaseModel):
 async def repair_delivery(
     run_id: UUID, receipt_id: UUID, request: DeliveryRepair, *, actor_user_id: int | None
 ) -> None:
-    data = await engine_checkpoint(run_id, "multimedia")
+    data = await generation_checkpoint(run_id)
     MultimediaCheckpoint.model_validate(data["metadata"])
     if data["terminal"]:
         raise ValueError("A terminal result cannot be changed")
@@ -37,7 +37,7 @@ async def repair_delivery(
         select(MediaOutputReceipt)
         .where(
             MediaOutputReceipt.id == receipt_id,
-            MediaOutputReceipt.run_id == run_id,
+            MediaOutputReceipt.generation_id == run_id,
         )
         .with_for_update()
         .execution_options(populate_existing=True)

@@ -32,11 +32,11 @@ captures conservent leur protocole de confirmation lié aux paramètres observé
 
 Les benchmarks restent exécutés par le worker Lab, avec leurs snapshots, leases et deux
 passes existantes. L'auteur agent et la Task d'origine sont conservés sur le run.
-La génération synthétique, la proposition d'attendus et les analyses utilisent un moteur
-intégré `lab` de `app.process`. L'admission fige le modèle, son empreinte, l'effort et les
+La génération synthétique, la proposition d'attendus et les analyses sont des opérations
+techniques du Lab, suivies dans `LabOperation` par son propre worker.
+L'admission fige le modèle, son empreinte, l'effort et les
 révisions pertinentes. `LabOperationResult` publie le résultat dans la transaction de
-l'effet métier. Les définitions techniques de ces opérations sont exclues du catalogue
-des processus personnels. Une opération interrompue après son début n'est pas relancée
+l'effet métier. Une opération interrompue après son début n'est pas relancée
 aveuglément : son statut peut devenir `unknown`.
 
 Les évaluations d'agents sont conservées dans `LabAgentReview`, liées à l'agent, à la

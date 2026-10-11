@@ -50,7 +50,7 @@ from .llm_service import (
 from .correlation import llm_correlation_scope
 from .native_media import normalized_media_type, supports_native_input
 from .runtime_correlation import resolve_runtime_process_run_id
-from .subscription_policy import llm_execution_scope
+from .subscription_policy import LLMExecutionAuthority, current_execution_authority, llm_execution_scope
 from .facade import (
     AgentRunUsage,
     aggregate_agent_run_usage,
@@ -101,6 +101,7 @@ from .media_facade import available_media_functions, resolve_media_resource
 from .retention import register_trace_release
 
 __all__ = [
+    "LLMExecutionAuthority", "current_execution_authority",
     "configured_embedding_model", "ConfiguredEmbeddingModel", "EmbeddingError",
     "normalized_media_type", "supports_native_input", "thinking_content",
     "CHAT_PARAMETERS",

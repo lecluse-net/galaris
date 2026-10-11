@@ -75,14 +75,14 @@ sont des preuves historiques distinctes, non réexécutées ni présentées comm
 ### A01 — P1 — Les budgets de génération et de livraison peuvent se bloquer mutuellement
 
 **Reproduit sur le contrat de réservation ; chaîne d'appel vérifiée.**
-`MultimediaEngine.get_run` réserve 800 000 000 octets jusqu'à la fin de la livraison.
+`MediaGenerationExecutor.advance` réserve 800 000 000 octets jusqu'à la fin de la livraison.
 La livraison Messenger appelle `upload_file_path`, puis Telegram/WhatsApp réservent trois
 fois la taille du fichier dans le même budget global de 1 073 741 824 octets. Pour 100 Mo,
 le cumul atteint 1,1 milliard : la réservation interne expire tandis que la réservation
 externe ne peut être libérée. Le seuil de cette combinaison est d'environ **91,25 Mo**,
 inférieur à la limite de sortie multimédia de 100 Mo.
 
-Sources : `back/app/multimedia/engine.py:158`, `back/core/util/byte_budget.py:18`,
+Sources : `back/app/multimedia/generation_execution.py:158`, `back/core/util/byte_budget.py:18`,
 `back/app/file_share/messenger_transport.py:153`, `back/bridge/telegram/messenger.py:352`
 et `back/bridge/whatsapp/messenger.py:341`. La sonde n'envoie pas de fichier : elle reprend
 exactement les montants et démontre l'impossibilité de composer ces réservations.
@@ -98,8 +98,8 @@ file saturée reste en attente et ne consomme pas de tentative fournisseur.
 
 ### A02 — P1 — Le succès fournisseur n'est pas protégé jusqu'à la livraison finale
 
-**Reproduit au niveau du moteur.** `MultimediaEngine._receive`, à partir de
-`back/app/multimedia/engine.py:109`, protège les Process déjà terminaux. En revanche,
+**Reproduit au niveau du moteur.** `MediaGenerationExecutor._receive`, à partir de
+`back/app/multimedia/generation_execution.py:109`, protège les générations déjà terminées. En revanche,
 un Process encore actif ayant reçu et persisté son fichier peut voir `provider_state=success`
 remplacé par `error` lors d'une observation tardive. La sonde sauvegarde un reçu audio,
 applique une erreur tardive puis obtient une vue Process en erreur malgré le reçu présent.
@@ -292,7 +292,7 @@ Conserver le chargement sans rebuild et le chemin de restauration coordonnée d�
 
 **Amélioration des contrôles.** Les dix sondes passent entre les suites actuelles. La couverture
 ciblée de `back/coverage-critical.ini` inclut checkpoints et réparation multimédia, mais pas
-`app.multimedia.engine`, le stockage natif Memory, le superviseur ni le worker Lab. Le pourcentage
+`app.multimedia.generation_execution`, le stockage natif Memory, le superviseur ni le worker Lab. Le pourcentage
 global du sous-ensemble ne garantit pas chaque contrat. Par ailleurs, Make formate 24 modules,
 alors que l'étape de formatage de `.github/workflows/quality.yml` n'en liste que six.
 

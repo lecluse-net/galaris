@@ -1725,12 +1725,12 @@
         "files": [
           "back/app/lab/contracts.py",
           "back/app/lab/dispatcher_evaluation_service.py",
-          "back/app/lab/engine.py",
           "back/app/lab/evidence_service.py",
           "back/app/lab/executor_prompt_service.py",
           "back/app/lab/mechanism_evaluation_service.py",
           "back/app/lab/mechanism_registry.py",
           "back/app/lab/objective_checks.py",
+          "back/app/lab/operation_execution.py",
           "back/app/lab/operations.py",
           "back/app/lab/router.py",
           "back/app/lab/schemas.py"
@@ -1778,13 +1778,14 @@
         "files": [
           "back/app/lab/analysis_service.py",
           "back/app/lab/dispatcher_evaluation_service.py",
-          "back/app/lab/engine.py",
           "back/app/lab/evaluation_service.py",
           "back/app/lab/evidence_service.py",
           "back/app/lab/inference_profile.py",
           "back/app/lab/judgment_service.py",
           "back/app/lab/mechanism_evaluation_service.py",
           "back/app/lab/mechanism_registry.py",
+          "back/app/lab/operation_execution.py",
+          "back/app/lab/operation_worker.py",
           "back/app/lab/operations.py",
           "back/app/lab/run_inference.py",
           "back/app/lab/synthetic_service.py"
@@ -1809,11 +1810,8 @@
       },
       {
         "files": [
-          "back/app/lab/__init__.py",
-          "back/app/lab/engine.py",
           "back/app/lab/evidence_service.py",
-          "back/app/lab/mechanism_evaluation_service.py",
-          "back/app/lab/operations.py"
+          "back/app/lab/mechanism_evaluation_service.py"
         ],
         "source": "app.lab",
         "target": "app.process"
@@ -1840,11 +1838,12 @@
       },
       {
         "files": [
-          "back/app/lab/engine.py",
           "back/app/lab/evidence_service.py",
           "back/app/lab/mcp.py",
           "back/app/lab/mcp_access.py",
           "back/app/lab/mcp_service.py",
+          "back/app/lab/operation_execution.py",
+          "back/app/lab/operation_worker.py",
           "back/app/lab/operations.py",
           "back/app/lab/run_claims.py"
         ],
@@ -1887,7 +1886,6 @@
           "back/app/lab/comparison_summary.py",
           "back/app/lab/diagnosis_service.py",
           "back/app/lab/dispatcher_evaluation_service.py",
-          "back/app/lab/engine.py",
           "back/app/lab/evaluation_service.py",
           "back/app/lab/evidence_service.py",
           "back/app/lab/human_review_service.py",
@@ -1896,6 +1894,10 @@
           "back/app/lab/mcp_service.py",
           "back/app/lab/mechanism_evaluation_service.py",
           "back/app/lab/models.py",
+          "back/app/lab/operation_execution.py",
+          "back/app/lab/operation_models.py",
+          "back/app/lab/operation_store.py",
+          "back/app/lab/operation_worker.py",
           "back/app/lab/operations.py",
           "back/app/lab/run_claims.py",
           "back/app/lab/run_lease.py",
@@ -1931,7 +1933,8 @@
       },
       {
         "files": [
-          "back/app/lab/human_review_service.py"
+          "back/app/lab/human_review_service.py",
+          "back/app/lab/operations.py"
         ],
         "source": "app.lab",
         "target": "core.user"
@@ -2694,7 +2697,7 @@
       },
       {
         "files": [
-          "back/app/multimedia/engine.py",
+          "back/app/multimedia/generation_execution.py",
           "back/app/multimedia/router.py"
         ],
         "source": "app.multimedia",
@@ -2703,7 +2706,7 @@
       {
         "files": [
           "back/app/multimedia/delivery.py",
-          "back/app/multimedia/engine.py",
+          "back/app/multimedia/generation_execution.py",
           "back/app/multimedia/provider_results.py",
           "back/app/multimedia/service.py"
         ],
@@ -2712,7 +2715,9 @@
       },
       {
         "files": [
-          "back/app/multimedia/engine.py",
+          "back/app/multimedia/generation_execution.py",
+          "back/app/multimedia/generation_service.py",
+          "back/app/multimedia/generation_worker.py",
           "back/app/multimedia/mcp.py",
           "back/app/multimedia/provider_results.py",
           "back/app/multimedia/service.py"
@@ -2722,18 +2727,8 @@
       },
       {
         "files": [
-          "back/app/multimedia/__init__.py",
-          "back/app/multimedia/delivery.py",
-          "back/app/multimedia/engine.py",
-          "back/app/multimedia/mcp.py",
-          "back/app/multimedia/provider_results.py",
-          "back/app/multimedia/router.py"
-        ],
-        "source": "app.multimedia",
-        "target": "app.process"
-      },
-      {
-        "files": [
+          "back/app/multimedia/generation_service.py",
+          "back/app/multimedia/generation_worker.py",
           "back/app/multimedia/mcp.py",
           "back/app/multimedia/service.py"
         ],
@@ -2750,7 +2745,10 @@
       {
         "files": [
           "back/app/multimedia/delivery.py",
-          "back/app/multimedia/engine.py",
+          "back/app/multimedia/generation_execution.py",
+          "back/app/multimedia/generation_service.py",
+          "back/app/multimedia/generation_store.py",
+          "back/app/multimedia/generation_worker.py",
           "back/app/multimedia/models.py",
           "back/app/multimedia/provider_results.py",
           "back/app/multimedia/router.py"
@@ -2760,14 +2758,14 @@
       },
       {
         "files": [
-          "back/app/multimedia/engine.py"
+          "back/app/multimedia/generation_service.py"
         ],
         "source": "app.multimedia",
-        "target": "core.params"
+        "target": "core.user"
       },
       {
         "files": [
-          "back/app/multimedia/engine.py",
+          "back/app/multimedia/generation_execution.py",
           "back/app/multimedia/provider_results.py",
           "back/app/multimedia/service.py"
         ],
@@ -5345,7 +5343,7 @@
           "app.tools"
         ]
       ],
-      "domain_edges": 270,
+      "domain_edges": 269,
       "fan_in": [
         {
           "count": 43,
@@ -5575,7 +5573,7 @@
           ]
         },
         {
-          "count": 15,
+          "count": 14,
           "module": "app.process",
           "modules": [
             "app.agent",
@@ -5586,7 +5584,6 @@
             "app.lab",
             "app.llm",
             "app.memory",
-            "app.multimedia",
             "app.onboarding",
             "app.topic",
             "app.voice",
@@ -6086,17 +6083,6 @@
         },
         {
           "count": 5,
-          "module": "app.multimedia",
-          "modules": [
-            "app.agent",
-            "app.file_share",
-            "app.llm",
-            "app.process",
-            "app.tools"
-          ]
-        },
-        {
-          "count": 5,
           "module": "app.task",
           "modules": [
             "app.agent",
@@ -6167,6 +6153,16 @@
             "app.agent",
             "app.connection",
             "app.file_share",
+            "app.tools"
+          ]
+        },
+        {
+          "count": 4,
+          "module": "app.multimedia",
+          "modules": [
+            "app.agent",
+            "app.file_share",
+            "app.llm",
             "app.tools"
           ]
         },
@@ -8017,8 +8013,16 @@
       },
       {
         "file": "back/app/multimedia/mcp.py",
+        "handler": "multimedia_get_run",
+        "line": 51,
+        "module": "app.multimedia",
+        "name": "multimedia_get_run",
+        "namespace": "multimedia"
+      },
+      {
+        "file": "back/app/multimedia/mcp.py",
         "handler": "music_generate",
-        "line": 40,
+        "line": 35,
         "module": "app.multimedia",
         "name": "music_generate",
         "namespace": "multimedia"
@@ -8026,7 +8030,7 @@
       {
         "file": "back/app/multimedia/mcp.py",
         "handler": "sound_generate",
-        "line": 33,
+        "line": 28,
         "module": "app.multimedia",
         "name": "sound_generate",
         "namespace": "multimedia"
@@ -8034,7 +8038,7 @@
       {
         "file": "back/app/multimedia/mcp.py",
         "handler": "video_generate",
-        "line": 48,
+        "line": 43,
         "module": "app.multimedia",
         "name": "video_generate",
         "namespace": "multimedia"
@@ -9061,7 +9065,7 @@
           "tasks.id"
         ],
         "history_mixin": true,
-        "line": 425,
+        "line": 427,
         "module": "app.lab",
         "table": "lab_agent_reviews"
       },
@@ -9073,7 +9077,7 @@
           "tasks.id"
         ],
         "history_mixin": true,
-        "line": 411,
+        "line": 413,
         "module": "app.lab",
         "table": "lab_commands"
       },
@@ -9085,7 +9089,7 @@
           "lab_evaluation_datasets.id"
         ],
         "history_mixin": true,
-        "line": 130,
+        "line": 132,
         "module": "app.lab",
         "table": "lab_evaluation_cases"
       },
@@ -9094,7 +9098,7 @@
         "file": "back/app/lab/models.py",
         "foreign_keys": [],
         "history_mixin": true,
-        "line": 89,
+        "line": 91,
         "module": "app.lab",
         "table": "lab_evaluation_datasets"
       },
@@ -9106,7 +9110,7 @@
           "lab_evaluation_runs.id"
         ],
         "history_mixin": true,
-        "line": 289,
+        "line": 291,
         "module": "app.lab",
         "table": "lab_evaluation_run_cases"
       },
@@ -9120,7 +9124,7 @@
           "tasks.id"
         ],
         "history_mixin": true,
-        "line": 191,
+        "line": 193,
         "module": "app.lab",
         "table": "lab_evaluation_runs"
       },
@@ -9133,7 +9137,7 @@
           "users.id"
         ],
         "history_mixin": true,
-        "line": 389,
+        "line": 391,
         "module": "app.lab",
         "table": "lab_human_reviews"
       },
@@ -9145,7 +9149,7 @@
           "llms.id"
         ],
         "history_mixin": true,
-        "line": 337,
+        "line": 339,
         "module": "app.lab",
         "table": "lab_judgment_campaigns"
       },
@@ -9157,7 +9161,7 @@
           "lab_judgment_campaigns.id"
         ],
         "history_mixin": true,
-        "line": 364,
+        "line": 366,
         "module": "app.lab",
         "table": "lab_judgment_results"
       },
@@ -9165,12 +9169,24 @@
         "class_name": "LabOperationResult",
         "file": "back/app/lab/models.py",
         "foreign_keys": [
-          "process_runs.id"
+          "lab_operations.id"
         ],
         "history_mixin": true,
-        "line": 440,
+        "line": 442,
         "module": "app.lab",
         "table": "lab_operation_results"
+      },
+      {
+        "class_name": "LabOperation",
+        "file": "back/app/lab/operation_models.py",
+        "foreign_keys": [
+          "agents.id",
+          "tasks.id"
+        ],
+        "history_mixin": false,
+        "line": 10,
+        "module": "app.lab",
+        "table": "lab_operations"
       },
       {
         "class_name": "LabTaskDiagnosis",
@@ -9179,7 +9195,7 @@
           "tasks.id"
         ],
         "history_mixin": true,
-        "line": 43,
+        "line": 45,
         "module": "app.lab",
         "table": "lab_task_diagnoses"
       },
@@ -9190,7 +9206,7 @@
           "tasks.id"
         ],
         "history_mixin": false,
-        "line": 27,
+        "line": 29,
         "module": "app.lab",
         "table": "lab_tasks"
       },
@@ -9236,6 +9252,7 @@
           "conversation_rounds.id",
           "llm_inference_attempts.id",
           "llms.id",
+          "multimedia_generations.id",
           "process_runs.id",
           "task_attempts.id",
           "tasks.id",
@@ -9708,18 +9725,30 @@
           "users.id"
         ],
         "history_mixin": false,
-        "line": 31,
+        "line": 58,
         "module": "app.multimedia",
         "table": "multimedia_delivery_resolutions"
+      },
+      {
+        "class_name": "MediaGeneration",
+        "file": "back/app/multimedia/models.py",
+        "foreign_keys": [
+          "agents.id",
+          "tasks.id"
+        ],
+        "history_mixin": false,
+        "line": 15,
+        "module": "app.multimedia",
+        "table": "multimedia_generations"
       },
       {
         "class_name": "MediaOutputReceipt",
         "file": "back/app/multimedia/models.py",
         "foreign_keys": [
-          "process_runs.id"
+          "multimedia_generations.id"
         ],
         "history_mixin": false,
-        "line": 13,
+        "line": 40,
         "module": "app.multimedia",
         "table": "multimedia_output_receipts"
       },
@@ -15833,7 +15862,7 @@
         "declared_path": "/multimedia/callback/{run_id}/{token}",
         "file": "back/app/multimedia/router.py",
         "handler": "acknowledge_callback",
-        "line": 54,
+        "line": 57,
         "method": "POST",
         "module": "app.multimedia"
       },
@@ -15842,7 +15871,7 @@
         "declared_path": "/multimedia/runs/{run_id}/deliveries",
         "file": "back/app/multimedia/router.py",
         "handler": "list_deliveries",
-        "line": 29,
+        "line": 32,
         "method": "GET",
         "module": "app.multimedia"
       },
@@ -15851,7 +15880,7 @@
         "declared_path": "/multimedia/runs/{run_id}/deliveries/{receipt_id}/resolve",
         "file": "back/app/multimedia/router.py",
         "handler": "resolve_delivery",
-        "line": 41,
+        "line": 44,
         "method": "POST",
         "module": "app.multimedia"
       },

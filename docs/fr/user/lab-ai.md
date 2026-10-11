@@ -56,7 +56,7 @@ nécessitent ce même accès supplémentaire.
 
 Les jeux et résultats sont ceux du Lab habituel. Les générations synthétiques restent
 des brouillons à vérifier. Les opérations longues renvoient une référence durable ;
-l'agent peut en consulter le résultat sans les relancer. Les évaluations d'agents sont
+l'agent consulte leur résultat avec `lab_operation_get` sans les relancer. Les évaluations d'agents sont
 identifiées par leur auteur et leur campagne, séparément des revues humaines et du juge.
 
 Donnez à l'agent une question expérimentale, un budget et une condition d'arrêt.

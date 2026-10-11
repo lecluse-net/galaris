@@ -28,7 +28,7 @@ et le texte restent configurés séparément.
 
 SunoAPI.org est un fournisseur tiers. Sa clé est distincte d'un abonnement Suno et de l'accès
 Suno Platform. Cette intégration utilise `https://api.sunoapi.org/api/v1`. Le callback exige
-une URL publique HTTPS de Galaris (`PROCESS_GALARIS_BASE_URL`, sinon `APP_HOST`). Son payload
+une URL publique HTTPS de Galaris (`APP_HOST`). Son payload
 ne modifie pas les runs : Galaris récupère l'état auprès du fournisseur avec sa clé.
 
 ## Utilisation par les agents
@@ -41,9 +41,9 @@ accessible en écriture, terminée par `/`, par exemple une collection renvoyée
 La racine `document://` ne convient pas ; une collection de pièces jointes de document convient.
 Une console n'est utilisable que si sa connexion est active.
 
-Le résultat initial fournit un `run_id`. Utiliser `process_get_run` jusqu'au résultat terminal.
+Le résultat initial fournit un `generation_id` et un `run_id`. Utiliser `multimedia_get_run` jusqu'au résultat terminal.
 Les fichiers finaux figurent dans `output.files[].uri`, et sont ajoutés aux ressources de la Task.
-Le Process devient réussi après écriture dans la destination. Maximum : quatre fichiers de 100 Mo.
+La génération devient réussie après écriture dans la destination. Maximum : quatre fichiers de 100 Mo.
 
 `invocation_key` identifie une seule demande : la réutiliser pour retenter cette demande,
 utiliser une nouvelle clé pour produire une autre variation. Sans clé, chaque invocation est distincte.

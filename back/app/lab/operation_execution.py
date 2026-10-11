@@ -1,4 +1,4 @@
-"""Integrated Process adapter for costly Lab operations, with atomic result receipts."""
+"""Execute costly Lab operations with atomic domain-owned result receipts."""
 
 from datetime import datetime, timedelta, timezone
 from typing import Any, cast
@@ -9,17 +9,9 @@ from sqlalchemy import select
 
 from app.agent import validate_agent_driver
 from app.llm import llm_service, model_usages, reasoning_effort_scope, ReasoningEffort
-from app.process import (
-    EngineError,
-    EngineProcessDefinition,
-    EngineRunReference,
-    EngineRunSnapshot,
-    EngineStartResult,
-    ProcessEngineHealth,
-    ProcessStartPayload,
-    ProcessRun,
-)
-from app.process.interface import engine_checkpoint
+from .operation_contracts import LabOperationError, LabOperationSnapshot
+from .operation_store import operation_checkpoint, snapshot
+from .operation_models import LabOperation
 from app.tools import McpToolContext
 from core.database import get_db
 
@@ -44,30 +36,11 @@ from .synthetic_schemas import SyntheticDatasetRequest
 from .transactions import atomic_command
 
 
-class LabEngine:
-    code = "lab"
-    supports_cancel = True
-    cancel_mode = "best_effort"
-    start_timeout_seconds = 30.0
+class LabOperationExecutor:
     refresh_timeout_seconds = 660.0
 
-    async def health(self) -> ProcessEngineHealth:
-        return ProcessEngineHealth(
-            tool_code=self.code,
-            status="healthy",
-            reachable=True,
-            authenticated=True,
-            supports_cancel=True,
-            cancel_mode="best_effort",
-            message="Integrated Lab operations",
-            checked_at=datetime.now(timezone.utc),
-        )
-
-    async def sync_definitions(self) -> list[EngineProcessDefinition]:
-        return []
-
     async def prepare_input(
-        self, agent_id: int, workflow_id: str, input_data: dict[str, Any]
+        self, agent_id: int, input_data: dict[str, Any]
     ) -> dict[str, Any]:
         action = TypeAdapter[operations.Operation](operations.Operation).validate_python(
             input_data.get("action")
@@ -76,8 +49,6 @@ class LabEngine:
             input_data.get("mechanism")
         )
         runtime = validate_agent_driver(input_data.get("runtime"), require_available=False)
-        if workflow_id != f"lab:{agent_id}:{action}":
-            raise PermissionError("Lab workflow identity does not match the operation and agent.")
         await authorize(
             McpToolContext(agent_id, runtime), action, sources=action == "lab_task_analyze"
         )
@@ -154,11 +125,6 @@ class LabEngine:
             "request_fingerprint": input_data.get("request_fingerprint"),
         }
 
-    async def start_run(
-        self, engine_process_id: str, run: EngineRunReference, payload: ProcessStartPayload
-    ) -> EngineStartResult:
-        return EngineStartResult(accepted=True, engine_run_id=str(run.id))
-
     async def _check_revisions(self, frozen: dict[str, Any]) -> None:
         revisions = frozen["revisions"]
         mechanism = cast(EvaluationMechanism, frozen["mechanism"])
@@ -219,35 +185,37 @@ class LabEngine:
             )
         )
 
-    async def get_run(self, run: EngineRunReference) -> EngineRunSnapshot:
-        data = await engine_checkpoint(run.id, self.code)
+    async def advance(self, operation_id: UUID) -> LabOperationSnapshot:
+        data = await operation_checkpoint(operation_id)
         saved = await get_db().scalar(
-            select(LabOperationResult).where(LabOperationResult.process_run_id == run.id)
+            select(LabOperationResult).where(LabOperationResult.operation_id == operation_id)
         )
         if saved is not None:
-            return EngineRunSnapshot(
-                status="success", output={"result_id": str(saved.id), "operation_id": str(run.id)}
+            return LabOperationSnapshot(
+                status="success", output={"result_id": str(saved.id), "operation_id": str(operation_id)}
             )
         metadata = data["metadata"]
         if metadata.get("failure"):
-            return EngineRunSnapshot(
+            return LabOperationSnapshot(
                 status="error",
-                error=EngineError(code="lab_operation_failed", message=metadata["failure"]),
+                error=LabOperationError(code="lab_operation_failed", message=metadata["failure"]),
             )
         deadline = (
             datetime.fromisoformat(metadata["deadline"]) if metadata.get("deadline") else None
         )
         active = deadline is not None and deadline > datetime.now(timezone.utc)
         if metadata.get("cancel_requested"):
-            return EngineRunSnapshot(status="cancelling" if active else "cancelled")
+            return LabOperationSnapshot(status="cancelling" if active else "cancelled")
         if data["terminal"]:
-            return EngineRunSnapshot(status="cancelled")
+            row = await get_db().get(LabOperation, operation_id)
+            assert row is not None
+            return snapshot(row)
         if metadata.get("execution"):
-            return EngineRunSnapshot(
+            return LabOperationSnapshot(
                 status="running" if active else "unknown",
                 error=None
                 if active
-                else EngineError(
+                else LabOperationError(
                     code="lab_execution_uncertain",
                     message="Worker interrupted; no automatic repeat of a potentially billed inference. Inspect before starting a new operation.",
                 ),
@@ -258,9 +226,8 @@ class LabEngine:
             validate_agent_driver(frozen["runtime"], require_available=False),
             data.get("task_id"),
         )
-        claimed = await engine_checkpoint(
-            run.id,
-            self.code,
+        claimed = await operation_checkpoint(
+            operation_id,
             {
                 "deadline": (
                     datetime.now(timezone.utc)
@@ -271,7 +238,7 @@ class LabEngine:
             preserve_if={"execution": "started", "cancel_requested": True},
         )
         if not claimed["claimed"]:
-            return EngineRunSnapshot(
+            return LabOperationSnapshot(
                 status="cancelled" if claimed["metadata"].get("cancel_requested") else "running"
             )
         try:
@@ -289,52 +256,50 @@ class LabEngine:
                     payload = await self._execute(frozen)
                 # Serialize final publication against cancellation, then recheck the live grant.
                 current = await get_db().scalar(
-                    select(ProcessRun)
-                    .where(ProcessRun.id == run.id)
+                    select(LabOperation)
+                    .where(LabOperation.id == operation_id)
                     .with_for_update()
                     .execution_options(populate_existing=True)
                 )
                 if (
                     current is None
                     or current.status in {"cancelled", "cancelling", "error", "success"}
-                    or current.engine_metadata.get("cancel_requested")
+                    or current.checkpoint.get("cancel_requested")
                 ):
                     await get_db().rollback()
-                    await engine_checkpoint(
-                        run.id,
-                        self.code,
+                    await operation_checkpoint(
+                        operation_id,
                         {
                             "deadline": datetime.now(timezone.utc).isoformat(),
                             "cancel_requested": True,
                         },
                     )
-                    return EngineRunSnapshot(status="cancelled")
+                    return LabOperationSnapshot(status="cancelled")
                 await authorize(
                     ctx, frozen["action"], sources=frozen["action"] == "lab_task_analyze"
                 )
                 if frozen["action"] != "lab_run_analyze":
                     await self._check_revisions(frozen)
-                saved = LabOperationResult(process_run_id=run.id, payload=payload)
+                saved = LabOperationResult(operation_id=operation_id, payload=payload)
                 get_db().add(saved)
                 await get_db().flush()
                 identifier = saved.id
             await get_db().commit()
-            return EngineRunSnapshot(
-                status="success", output={"result_id": str(identifier), "operation_id": str(run.id)}
+            return LabOperationSnapshot(
+                status="success", output={"result_id": str(identifier), "operation_id": str(operation_id)}
             )
         except Exception as exc:
             await get_db().rollback()
             # Store a bounded diagnostic, without serializing arbitrary provider payloads or credentials.
             message = f"Lab operation failed ({type(exc).__name__}); inspect the correlated inference or start a corrected operation."
-            await engine_checkpoint(
-                run.id,
-                self.code,
+            await operation_checkpoint(
+                operation_id,
                 {"failure": message, "deadline": datetime.now(timezone.utc).isoformat()},
             )
-            return EngineRunSnapshot(
-                status="error", error=EngineError(code="lab_operation_failed", message=message)
+            return LabOperationSnapshot(
+                status="error", error=LabOperationError(code="lab_operation_failed", message=message)
             )
 
-    async def cancel_run(self, run: EngineRunReference) -> EngineRunSnapshot:
-        await engine_checkpoint(run.id, self.code, {"cancel_requested": True})
-        return await self.get_run(run)
+    async def cancel(self, operation_id: UUID) -> LabOperationSnapshot:
+        await operation_checkpoint(operation_id, {"cancel_requested": True})
+        return await self.advance(operation_id)

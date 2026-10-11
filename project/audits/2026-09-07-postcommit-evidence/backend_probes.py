@@ -6,10 +6,10 @@ import pytest
 from sqlalchemy import select
 
 from app.multimedia.tests.test_multimedia import media_agent, _run
-from app.multimedia.engine import MultimediaEngine
+from app.multimedia.generation_execution import MediaGenerationExecutor
 from app.multimedia.models import MediaOutputReceipt
 from app.llm import MediaArtifact, MediaResult
-from app.process.interface import engine_checkpoint
+from app.multimedia.generation_store import generation_checkpoint
 from app.memory.storage import NativeFileStorage
 from core.util.byte_budget import ByteBudget
 from core.runtime import RuntimeComponent, RuntimeSupervisor
@@ -28,15 +28,15 @@ async def test_media_delivery_budget_cannot_compose():
 @pytest.mark.asyncio
 async def test_late_provider_error_overwrites_saved_success(db, media_agent):
     run, reference = await _run(db, media_agent)
-    engine = MultimediaEngine()
+    engine = MediaGenerationExecutor()
     await engine._receive(run.id, MediaResult("success", artifacts=(
         MediaArtifact("track", "audio/mpeg", content=b"ID3audio"),
     )))
     await engine._receive(run.id, MediaResult("error", error="stale provider response"))
-    state = await engine_checkpoint(run.id, "multimedia")
+    state = await generation_checkpoint(run.id)
     assert state["metadata"]["provider_state"] == "error"
-    assert await db.scalar(select(MediaOutputReceipt.id).where(MediaOutputReceipt.run_id == run.id))
-    result = await engine.get_run(reference)
+    assert await db.scalar(select(MediaOutputReceipt.id).where(MediaOutputReceipt.generation_id == run.id))
+    result = await engine.advance(reference)
     assert result.status == "error"
 
 

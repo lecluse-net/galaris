@@ -9,6 +9,8 @@ import pytest_asyncio
 from sqlalchemy import func, select
 
 from app.agent import Agent
+from app.lab import operations
+from app.lab.operation_models import LabOperation
 from app.task import TaskStatus
 from app.agent.models import Title
 from app.connection import Connection
@@ -340,7 +342,7 @@ async def test_async_generation_is_durable_and_never_rebills_on_retry(
     from app.lab import synthetic_service
     from app.lab.models import LabOperationResult
     from app.lab.synthetic_schemas import SyntheticDatasetRequest
-    from app.process import ProcessRun, process_service
+    from app.process import ProcessRun
 
     ctx, connection_id = actor
     _, llm, _ = benchmark
@@ -358,6 +360,10 @@ async def test_async_generation_is_durable_and_never_rebills_on_retry(
     inference = AsyncMock(side_effect=infer)
     monkeypatch.setattr(synthetic_service, "run_structured", inference)
     first = await mcp.lab_dataset_generate(ctx, "planner", request, "generation")
+    from app.process import ProcessDefinition, registry
+    assert "lab" not in registry.codes()
+    assert await db.scalar(select(ProcessRun.id).where(ProcessRun.id == UUID(first["operation_id"]))) is None
+    assert await db.scalar(select(ProcessDefinition.id).where(ProcessDefinition.agent_id == ctx.agent_id)) is None
     repeat = await mcp.lab_dataset_generate(ctx, "planner", request, "generation")
     assert first["operation_id"] == repeat["operation_id"]
     identifier = UUID(first["operation_id"])
@@ -367,9 +373,10 @@ async def test_async_generation_is_durable_and_never_rebills_on_retry(
         await db.commit()
     if outcome == "cancelled":
         await mcp.lab_operation_cancel(ctx, identifier)
-    await process_service.refresh_run(identifier)
-    await process_service.refresh_run(identifier)
-    saved = await db.get(ProcessRun, identifier)
+    from app.lab.operation_worker import tick
+    await tick()
+    await operations.advance(identifier)
+    saved = await db.get(LabOperation, identifier)
     assert saved.status == (
         "success" if outcome == "success" else "cancelled" if outcome == "cancelled" else "error"
     )
@@ -378,7 +385,7 @@ async def test_async_generation_is_durable_and_never_rebills_on_retry(
         select(LabEvaluationDataset).where(LabEvaluationDataset.name == name)
     )
     receipt = await db.scalar(
-        select(LabOperationResult).where(LabOperationResult.process_run_id == identifier)
+        select(LabOperationResult).where(LabOperationResult.operation_id == identifier)
     )
     if outcome == "success":
         assert generated is not None and receipt is not None
@@ -587,7 +594,6 @@ async def test_async_reference_and_analysis_keep_results_canonical(db, actor, be
     from unittest.mock import AsyncMock
     from app.lab import mechanism_evaluation_service as evaluations, mechanism_registry
     from app.lab.schemas import MechanismExpectedGenerate, EvaluationRunAnalysisRequest, BenchmarkAnalysisContent
-    from app.process import process_service
     ctx, _ = actor
     dataset, llm, _ = benchmark
     monkeypatch.setattr(evaluations.llm_service, "get_profile_llm_for_agent_id", AsyncMock(return_value=llm))
@@ -596,7 +602,7 @@ async def test_async_reference_and_analysis_keep_results_canonical(db, actor, be
     monkeypatch.setattr(mechanism_registry, "run_structured", infer)
     case = (await mcp.lab_case_list(ctx, "planner", dataset.id, Page()))["items"][0]
     operation = await mcp.lab_expected_generate(ctx, "planner", UUID(case["id"]), case["revision"], MechanismExpectedGenerate(), "reference")
-    await process_service.refresh_run(UUID(operation["operation_id"]))
+    await operations.advance(UUID(operation["operation_id"]))
     proposal = await mcp.lab_operation_get(ctx, UUID(operation["operation_id"]))
     assert proposal["status"] == "success", proposal
     assert proposal["result"]["cost"] == 0.01
@@ -608,7 +614,7 @@ async def test_async_reference_and_analysis_keep_results_canonical(db, actor, be
     monkeypatch.setattr(evaluations, "run_structured", AsyncMock(return_value=SimpleNamespace(output=BenchmarkAnalysisContent(
         summary="Evidence supports the result.", case_analyses=[{"case_name": "Report", "assessment": "Supported"}], conclusion="Retain the baseline."), cost=0.02)))
     analysis = await mcp.lab_run_analyze(ctx, "planner", UUID(started["id"]), EvaluationRunAnalysisRequest(language="en"), "analysis")
-    await process_service.refresh_run(UUID(analysis["operation_id"]))
+    await operations.advance(UUID(analysis["operation_id"]))
     result = await mcp.lab_operation_get(ctx, UUID(analysis["operation_id"]))
     assert result["status"] == "success", result
     displayed = await evaluations.get_run("planner", UUID(started["id"]))
@@ -622,7 +628,6 @@ async def test_async_task_diagnosis_uses_real_evidence_and_persisted_diagnosis(d
     from app.lab import analysis_service
     from app.lab.schemas import TaskAnalysisRequest, TaskAnalysisContent
     from app.task import Task
-    from app.process import process_service
     ctx, _ = actor
     _, llm, _ = benchmark
     monkeypatch.setattr(analysis_service.llm_service, "get_profile_llm_for_agent_id", AsyncMock(return_value=llm))
@@ -644,7 +649,7 @@ async def test_async_task_diagnosis_uses_real_evidence_and_persisted_diagnosis(d
     monkeypatch.setattr(analysis_service, "build_model_for_llm", AsyncMock(return_value=object()))
     monkeypatch.setattr(analysis_service, "estimate_cost_from_usage", lambda *args: 0.02)
     operation = await mcp.lab_task_analyze(ctx, task.id, TaskAnalysisRequest(language="en", user_context="Check the available evidence."), "diagnosis")
-    await process_service.refresh_run(UUID(operation["operation_id"]))
+    await operations.advance(UUID(operation["operation_id"]))
     result = await mcp.lab_operation_get(ctx, UUID(operation["operation_id"]))
     assert result["status"] == "success", result
     diagnoses = await mcp.lab_task_diagnoses(ctx, task.id, Page())

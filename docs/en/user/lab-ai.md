@@ -54,7 +54,7 @@ does not grant this permission. Real Task diagnoses require the same additional 
 
 The agent operates the same datasets and results as the Workbench. Synthetic datasets
 remain drafts to review. Long operations return durable references whose results can
-be retrieved without repeating the operation. Agent assessments display their author
+be retrieved through `lab_operation_get` without repeating the operation. Agent assessments display their author
 and campaign separately from human reviews and automatic judgments.
 
 Provide an experimental question, a budget and a stopping condition. Changes affect

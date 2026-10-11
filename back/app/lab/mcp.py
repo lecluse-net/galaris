@@ -673,7 +673,7 @@ async def lab_task_analyze(
 @mcp_tool("lab", approval="enabled", approval_reason="Governed bounded read or control without a new sensitive effect",
 
     name="lab_operation_get",
-    description="Poll an asynchronous Lab Process and read its complete durable result by character pages.",
+    description="Read an asynchronous Lab operation and its complete durable result by character pages.",
     effect_policy="read",
 )
 @lab_call(mutation=False, sources=False)
