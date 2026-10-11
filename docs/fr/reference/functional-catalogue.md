@@ -8,7 +8,7 @@ les objectifs, les documents, la mémoire, les modèles IA et les intégrations 
 Un même agent peut discuter avec une personne, consulter ses informations autorisées, produire un
 livrable, solliciter un collègue, déclencher un workflow externe et conserver les connaissances utiles.
 
-Ce catalogue décrit les fonctionnalités présentes dans le dépôt au **9 octobre 2026**, y compris
+Ce catalogue décrit les fonctionnalités présentes dans le dépôt au **11 octobre 2026**, y compris
 les fonctions destinées aux agents, les écrans d’administration et les mécanismes de fond. Il est
 organisé par usages, puis complété par un inventaire des fonctions MCP et une correspondance avec
 **tous les modules déclarés**. Les sources de chaque domaine sont indiquées pour rendre la couverture
@@ -20,14 +20,14 @@ des connexions, du modèle et, pour un service externe, du compte configuré. Ce
 sur l’implémentation actuelle et ses usages accessibles. Il décrit le logiciel, sans attester la
 configuration ou la qualification de tous les fournisseurs d’une installation particulière.
 
-La revue inclut les changements du 8 octobre jusqu’à `379bd98` et les modifications non committées
-présentes lors de l’inspection, notamment la tolérance aux arguments d’outils inconnus.
+La revue inclut les **21 commits du 11 octobre**, jusqu’à `733c3b4`, ainsi que les fonctionnalités
+déjà inventoriées. Le dépôt était sans modification locale au début de cette inspection.
 Les comportements sont confrontés aux contrats, à l’implémentation et aux tests disponibles ;
 cette revue documentaire ne constitue ni une qualification de l’application ni une preuve de
 publication ou de déploiement. Les dix mécanismes du Lab restent distincts des quatorze mécanismes
 de fond enregistrés dans Dream.
 
-Les inventaires couvrent **244 fonctions MCP natives, 71 modules backend et 36 modules frontend**.
+Les inventaires couvrent **246 fonctions MCP natives, 72 modules backend et 36 modules frontend**.
 Les fonctionnalités réalisées restent distinctes des intentions du
 [registre des plans](../../../project/plans/README.md) ; les contrôles de
 qualité figurent dans [l’exploitation](#exploitation).
@@ -679,6 +679,7 @@ de validation ; un contrat inconnu ou incompatible est refusé.
 | Action | Comportement observable |
 |---|---|
 | Créer | Admettre et persister la requête avant le travail du worker ; réutiliser une identité d’admission exige la même requête et la même autorité. |
+| Préparer puis démarrer | Enregistrer la requête, l’autorité et la configuration sans appel fournisseur ; démarrer ensuite cette même identité. Modifier la requête exige une nouvelle inférence. |
 | Lire | Retrouver requête, état, tentatives, résultat et coûts sans relancer le modèle. |
 | S’abonner | Relire les messages persistés et suivre la tentative jusqu’à son unique résultat terminal ; reprendre depuis un curseur après déconnexion. |
 | Mettre en pause | Interrompre la tentative, y compris si le fournisseur ne produit aucun fragment. |
@@ -703,12 +704,21 @@ préparation. Cette garantie de concurrence est couverte par les
 [tests du cycle d’inférence](../../../back/tests/test_inference_lifecycle.py).
 
 La reprise soumet de nouveau la requête et peut être facturée : elle ne reprend pas le calcul
-interne du fournisseur token par token. Cette couche n’exécute pas d’effets d’outils. La création
-différée, une échéance globale et la généralisation de ce cycle de vie aux médias ne sont pas
-annoncées comme réalisées.
+interne du fournisseur token par token. Cette couche n’exécute pas d’effets d’outils ; les générations
+Multimedia conservent leur cycle de vie propre.
+
+`POST /api/llm/openai/inferences?prepared=true` prépare une inférence ; la commande `start` la
+met en file. Les lectures exposent sa révision et son échéance. Les commandes peuvent fournir
+`expected_revision` : une révision périmée est refusée, tandis qu’une répétition du même identifiant
+de commande retrouve son reçu. Une échéance globale optionnelle, `deadline_seconds`, court dès
+l’admission et inclut préparation, file, pauses et reprises ; reprendre ne la repousse pas.
+Son expiration conserve les sorties partielles et les coûts, et arrête le transport local sans
+prouver l’arrêt physique du fournisseur. Un rejeu explicite crée une autre inférence et peut
+entraîner une nouvelle facturation.
 
 Sources : [contrats d’inférence](../../../back/app/llm/contracts.py),
 [façade](../../../back/app/llm/facade.py),
+[contrôles durables](../../../project/decisions/0170-execution-scope-and-durable-controls.md),
 [décision sur le cycle de vie durable](../../../project/decisions/0097-durable-inference-lifecycle.md).
 
 ### Appeler un agent depuis un client compatible et utiliser Janus
@@ -1035,8 +1045,11 @@ concurrent ne doit pas créer un second travail ou arrêter un travail sans rapp
 Un **remplacement explicite** relie une nouvelle tâche à celle qu’elle remplace et demande l’arrêt
 de cette dernière. Le successeur reste suspendu jusqu’à la libération de l’exécution précédente
 et à une preuve d’arrêt ; une demande d’annulation acceptée ou une expiration de lease ne suffit
-pas. Ce parcours concerne les tâches racines sans enfant actif, Goal ni attente externe en cours.
-Les pauses humaines et les travaux indépendants sont conservés.
+pas. Le remplacement coordonne désormais l’arbre des descendants et ses runs Process : chaque
+exécution doit être arrêtée et les leases libérés. Un processus terminé logiquement mais dont
+l’exécution distante peut continuer bloque encore le successeur. Une modification de l’arbre,
+un nouveau run ou un propriétaire externe inconnu provoque un conflit ; les Goals et attentes
+non prises en charge sont refusés. Les pauses humaines et les travaux indépendants sont conservés.
 
 La conversation permet aussi de demander l’état réel d’une tâche, de la mettre en pause, reprendre,
 réessayer ou arrêter, et d’interpréter une réponse humaine à une interaction en attente. Un
@@ -1055,6 +1068,9 @@ Les directives `@task`, `@plan` ou `@effort` déclenchent l’admission durable 
 conversationnelle ; la confirmation suit la création de la Task. Dans le chat natif, les contrôles
 sont conservés dans les métadonnées plutôt que dans le message visible. Les autres demandes
 laissent l’exécuteur choisir les outils et l’admission d’un travail de fond.
+
+Les avis du Planner conservent leur formatage HTML dans la conversation, avec les contrôles
+habituels de rendu des messages.
 
 Une réponse réussie n’est pas rejugée pour absence d’action, d’admission ou nouveauté de formulation.
 L’absence d’outil ou une phrase répétée ne déclenche donc pas une nouvelle exécution. Une erreur
@@ -1118,6 +1134,17 @@ Les bridges adaptent les protocoles externes ; plusieurs canaux peuvent cohabite
 
 Les capacités d’un bridge ne sont pas toutes des boutons ou fonctions MCP universels. Le contrat
 commun et le catalogue effectif déterminent les opérations utilisables sur chaque connexion.
+
+### Préparer l’accès réseau
+
+**Préférences → Messagerie** et l’onglet **Messagerie** d’un Tool affichent les prérequis de chaque
+bridge. Telegram par polling, Matrix et Nextcloud Talk n’exigent pas d’URL publique Galaris pour
+les messages. WhatsApp exige un webhook HTTPS public ; une adresse locale, privée ou sans HTTPS
+déclenche un avertissement. OneBot exige une adresse joignable depuis l’adaptateur, éventuellement
+par LAN ou VPN. Ces indications utilisent l’adresse du navigateur et ne bloquent pas la sauvegarde ;
+les appels et médias conservent leurs prérequis propres.
+
+Source : [tests des passerelles depuis une instance locale](../bridges/telegram-whatsapp.md).
 
 ### Routage, recherche et envoi
 
@@ -1236,6 +1263,49 @@ Les objectifs de Task rédigés par un modèle sont validés comme HTML éditori
 de sortie structurée. Une sortie invalide peut ainsi être corrigée avant l’admission de la tâche,
 sans attendre un échec lors de son enregistrement.
 
+### Adapter la méthode à la mission
+
+Le Dispatcher choisit aussi l’organisation du travail, dans sa même décision de routage :
+**directe**, **suivie par jalons** ou **à clarifier**. Une action simple reste directe. Une mission
+longue ou complexe peut conserver une méthode, jusqu’à vingt jalons avec critères d’acceptation,
+observations et URI de ressources, ainsi qu’une prochaine action. Ce suivi ne fragmente pas un
+livrable cohérent en tâches artificielles ; les sorties indépendantes restent coordonnées par le
+Planner, qui transmet l’organisation aux feuilles.
+
+`task_get` restitue le suivi et sa révision ; `task_work_update` enregistre les jalons de la Task
+courante, uniquement pour son exécuteur et pendant une phase active non suspendue. Les écritures
+contrôlent la révision et préservent les checkpoints. Modifier un jalon déjà terminé exige une
+raison explicite. Le progrès déclaré ne remplace ni la vérification des ressources ni le résultat
+terminal de la tâche.
+
+Si l’intention, le périmètre ou la profondeur attendue est ambigu, une question durable suspend
+le travail. La réponse relance le routage avec cette précision. Une question impossible à livrer
+ou expirée sans réponse produit une erreur sans démarrer l’exécution ; une inconnue technique
+que l’agent peut inspecter ne nécessite pas à elle seule une question humaine.
+
+Sources : [organisation adaptative](../../../project/decisions/0171-adaptive-task-organization.md),
+[contrat des jalons](../../../back/app/agent/work_contracts.py),
+[persistance et concurrence](../../../back/app/task/tests/test_work_tracking.py).
+
+### Conserver le périmètre demandé
+
+Les nouvelles Tasks conservent un périmètre sourcé : demande originale, exigences, références
+exactes autorisées, amendements et réponses de clarification. Les enfants héritent du périmètre
+parent ; le texte d’une étape, un profil ou un souvenir ne crée pas une autorisation supplémentaire.
+Le plan doit déclarer les exigences couvertes et ses cibles : une exigence omise ou une cible
+sans source est refusée. Une clarification peut rester sur la même Task.
+
+Les fonctions qui déclarent leurs effets enregistrent une décision avant l’action et revérifient
+le périmètre après l’autorisation native. Lire une ressource n’autorise pas sa modification ;
+une ressource créée et vérifiée pour ce travail peut être actualisée. Une révision périmée,
+une Task arrêtée ou une cible divergente empêche l’effet. Les fonctions sans description d’effet
+conservent leurs contrôles existants et signalent cette limite. Les ACL métier restent applicables.
+L’activité restitue un résumé du périmètre et les décisions ; les anciennes Tasks sans périmètre
+conservent leur parcours. Le suivi d’un Goal ne crée pas de nouvelles autorisations.
+
+Sources : [portée et provenance](../../../project/decisions/0170-execution-scope-and-durable-controls.md),
+[garanties des effets](../../../back/app/task/tests/test_execution_scope.py).
+
 ### Planifier et déléguer
 
 Le Planner peut produire un plan ou demander un cadrage. Un plan comporte des étapes, des
@@ -1270,6 +1340,19 @@ Un agent peut déléguer à un collègue autorisé, conserver le lien parent/enf
 Les attentes de collaboration ont une corrélation, une échéance et des limites de tours. Le parent
 peut être suspendu puis repris lorsque les contributions attendues sont revenues. Les pauses
 humaines restent prioritaires sur une nouvelle délégation.
+
+Un échec de tentative encore soumis à la décision de retry du scheduler ne clôt pas prématurément
+le plan ou l’attente d’un collègue. La synthèse conserve les diagnostics des étapes échouées,
+même lorsque les résultats réussis sont longs.
+
+Une **action de clôture explicitement demandée**, comme enregistrer un bilan même en cas d’échec,
+peut s’exécuter après une étape en erreur ou bloquée. Les autres étapes dépendantes sont écartées ;
+la clôture reçoit les diagnostics. Un bilan réussi ne transforme pas le plan en succès : le parent
+reste en erreur et expose la cause, le résultat partiel et la décision attendue. Un retry manuel
+préserve les réussites, reprend le travail inachevé et réarme la clôture pour actualiser le bilan.
+
+Sources : [clôture après échec](../../../project/decisions/0172-requested-closing-actions-after-failure.md),
+[reprise et bilans](../../../back/app/agent/tests/test_planner_service.py).
 
 ### Clarification et approbation
 
@@ -1362,6 +1445,15 @@ pas alimenté le Working Set. Un nouvel envoi explicitement demandé reste possi
 porte la ressource, le message, la connexion et le salon observés ; il ne rend pas atomiques
 le réseau et la base. Un texte de commande Git ou shell ne constitue pas une preuve de livraison.
 
+La validation finale d’un plan rapproche l’artefact actif, sa Task productrice, l’URI source et
+la destination enregistrée de son reçu natif. Le reçu d’un autre fichier, d’une autre destination
+ou d’une autre Task ne suffit pas ; un artefact périmé ou en échec ne prouve pas un résultat disponible.
+Une mise à jour sur place doit viser l’URI complète demandée. La récupération d’une exécution
+échouée par une réponse modèle vide exige elle aussi cette correspondance ; une réussite directe
+déjà déclarée par le driver conserve son contrat de résultat terminal.
+
+Source : [correspondance des preuves](../../../back/app/agent/delivery_evidence.py).
+
 ### Temps observés et coûts conservés
 
 Les détails de Task et de conversation distinguent l’attente, la préparation et la première
@@ -1421,6 +1513,9 @@ par passages successifs.
 Un cycle crée une Task ordinaire, qui passe par l’orchestration commune. À sa fin, le mécanisme de
 suivi examine le résultat, les preuves et le suivi antérieur, puis décide de poursuivre ou de
 conclure. Les décisions, leur justification et les coûts restent consultables.
+
+Un fournisseur peut renvoyer la progression comme objet ou comme chaîne JSON : le suivi décode
+cette dernière puis valide le même contrat, sans appel modèle supplémentaire pour ce seul écart.
 
 La description et le suivi sont portés par des **documents protégés** appartenant au domaine Goal.
 Ils sont consultables dans la bibliothèque et modifiables selon leur contrat, sans perdre leur
@@ -1709,26 +1804,41 @@ périmètres. La fusion de contacts est une opération explicite.
 
 ### Explorer et entretenir
 
-La page Mémoire propose recherche, filtres et **graphe interactif** : natures de nœuds, relations,
-développement progressif, recentrage et plein écran. La vue **3D** Three.js est proposée
-par défaut, avec retour en **2D**. Les pages s'affichent progressivement, sans plafond
-global de nœuds ni filtre de période. En 3D, les racines File Share, sujets et contacts
-arrivent en premier ; les enfants connus des répertoires accessibles sont chargés à
-l'approche, par pages de 100. Leur profondeur suit l'espacement local, sans étages rigides.
+La page Mémoire propose recherche, filtres et **graphe interactif 3D** Three.js : natures de nœuds,
+relations, développement progressif, recentrage et plein écran. Le rendu 2D a été retiré ; si WebGL
+est indisponible, un message permet de réessayer la 3D. Les pages s’affichent progressivement,
+sans plafond global de nœuds ni filtre de période. Tous les répertoires connus sont chargés dès
+l’ouverture, avec les racines File Share, sujets et contacts. Leurs fichiers se chargent à
+l’approche par pages de 100 ; les cartes denses regroupent les répertoires de chaque partage.
+Leur profondeur suit l’espacement local, sans étages rigides.
 Un lien est masqué si une extrémité passe derrière la caméra. La dernière activité module
-les deux tailles fixes éloignée/proche et l’opacité ; les éléments anciens restent visibles.
+les deux tailles de base éloignée/proche et l’opacité ; les éléments anciens restent visibles.
 Seuls les marqueurs visibles sont dessinés, avec un budget de titres évitant les collisions.
 La 3D partage ses buffers GPU, prépare le placement dans un worker et ne tourne pas au repos.
 Les cellules denses se replient en groupes d'affichage explorables, avec relations agrégées
 par type, direction et statut ; les identités et liens canoniques sont conservés.
-Les aperçus autorisés grandissent tardivement jusqu'à leur taille native ; les caméras 2D/3D
-sont enregistrées séparément, avec restauration des branches de ressources visitées.
-Le retour en 2D recharge toutes les pages. La carte régionale serveur précalculée reste prévue.
+Les aperçus autorisés grandissent tardivement jusqu’à leur taille native. Chaque utilisateur
+conserve positions, caméra, filtres et branches ouvertes par agent et contexte. Un état enregistré
+incompatible est reconstruit automatiquement sans changer les données Memory. Les erreurs réseau
+permettent de réessayer ; une sauvegarde reprise ne restaure pas un ancien cadrage.
+
+Les éléments masqués par filtre, repli ou cadrage agrandissent leurs représentants visibles,
+jusqu’à quatre fois leur diamètre normal. Leur poids remonte les parents masqués et inclut les
+enfants connus non chargés ; leur retour retire ce poids sans déplacement. Le compteur inclut aussi
+les éléments sans représentant. Les titres de ces représentants restent toujours visibles.
+Les racines utilisent le libellé du Tool enregistré en Memory, ou son schéma à défaut ; les anciens
+titres « . » et « / » sont corrigés à la synchronisation, en préservant les titres personnalisés.
+
+Toutes les trente secondes lorsque l’onglet est visible, l’actualisation applique les ajouts,
+changements et suppressions en arrière-plan, y compris dans les dossiers chargés. Elle conserve
+caméra, positions, filtres et branches, aussi après reconnexion. Une panne temporaire laisse
+la carte utilisable ; les changements de session ou de droits retirent les données protégées.
 
 Les branches d’au moins huit feuilles exclusives se replient en groupes avec compteur.
 Le zoom ou un clic les déplie ; le dézoom les replie sans masquer les nœuds partagés.
 Les positions et le cadrage sont conservés lors du zoom et de la fermeture d’un détail.
-Le chargement spatial et les sous-groupes restent des étapes du plan, sans être annoncés comme réalisés.
+Le chargement spatial côté client et les sous-groupes sont disponibles ; la carte régionale
+précalculée côté serveur reste prévue.
 
 La recherche est réunie dans **Liste**, à côté de **Graphe** ; l’ancien onglet Recherche est retiré.
 Le filtre temporel obligatoire est prérempli avec l’instant courant dans le fuseau global `TZ`. **Appliquer**
@@ -1777,6 +1887,7 @@ est une estimation sans suppression. L’oubli explicite permet de supprimer une
 
 Sources : [API Memory](../../../back/app/memory/router.py), [schémas](../../../back/app/memory/schemas.py),
 [parcours de consultation et d’aperçu](../../../front/browser-tests/memory.spec.mjs),
+[navigation 3D et actualisation](../../../front/browser-tests/memory-3d.spec.mjs),
 [partage](../../../back/app/memory/item_sharing.py), [rappel et maintenance](../architecture/flows/memory.md),
 [garanties de recherche documentaire](../../../back/app/memory/tests/test_document_retrieval.py).
 
@@ -1974,6 +2085,13 @@ avec la révision attendue. La lecture et l’édition paginées portent sur les
 sans conversion en HTML. Le type ne peut pas être changé par une écriture, une copie vers le
 document existant ou une restauration. Une copie de ressource `application/json` vers la collection
 Documents crée un Dataset ; une cible existante conserve son type et valide le contenu reçu.
+
+Pour des données structurées réutilisées entre documents, calculs ou Tasks, les agents peuvent
+rechercher un Dataset pertinent avant d’en créer un et réutiliser son URI. Ils relisent les données
+courantes et conservent unités, dates, sources et incertitudes. Cette politique reste un choix
+adapté au besoin : une réponse autonome ou un fait isolé n’impose pas un Dataset. Une référence
+ne rafraîchit pas automatiquement les textes existants ; les registres métier restent leur source
+d’autorité et les droits de la conversation ou de la Task continuent de s’appliquer.
 
 ### Formulaires, simulateurs et applications dans la page
 
@@ -2316,6 +2434,25 @@ spécialisés et les appels nécessaires pendant l’acquisition restent rattach
 coûts, y compris si l’application échoue. Le classement déclenché dès l’admission des messages
 réutilise ces mêmes reçus ; Dream assure le rattrapage des messages restant à traiter.
 
+### Réutiliser les preuves déjà acquises
+
+L’extraction des rounds réutilise les transcriptions persistées et les analyses documentaires
+réussies des Tasks directement liées à la conversation, pour le même agent et l’URI exacte de la
+pièce jointe. Un message audio sans texte peut donc fournir un fait durable sans nouvelle acquisition.
+Messages écrits, verbatim, texte extrait et interprétations restent distingués, avec leur couverture,
+leurs repères de source et une version attestée ou inconnue. Une pièce jointe non analysée ne suffit
+pas à établir un fait.
+
+Une preuve arrivée plus tard ouvre un nouveau reçu idempotent. L’application revérifie les sources ;
+les nouveaux faits dérivés sont retirés de la lecture, du rappel et du graphe si aucune provenance
+indépendante valide ne subsiste après retrait de la source, correction ou révocation de l’accès.
+Ajouter une provenance ne rend pas un souvenir manuel ou un document préexistant dépendant de
+cette seule preuve conversationnelle. Un fait explicitement oublié n’est pas réacquis à l’identique
+depuis une révision tardive du même round.
+
+Sources : [preuves acquises](../../../project/decisions/0169-conversation-memory-acquired-evidence.md),
+[extraction et revalidation](../../../back/app/dream/tests/test_conversation_memory.py).
+
 ### Analyser les pièces jointes encore sans description
 
 Dans **Préférences → Dream**, quatre options indépendantes, **désactivées par défaut**, permettent
@@ -2464,6 +2601,9 @@ listener. Il contient un schéma de paramètres et peut définir un modèle de t
 variables d’un événement entrant.
 
 - Consulter les outils intégrés et les outils ajoutés ; rechercher leurs fonctions et descriptions.
+- Filtrer aussi le catalogue par texte sur le nom traduit, le code et la description, sans tenir
+  compte de la casse ni des accents ; effacer la recherche rétablit la liste et un message signale
+  l’absence de correspondance.
 - Ouvrir depuis la liste une fiche descriptive détaillée : rôle, possibilités, exemples d’usage
   et limites. Les Tools livrés possèdent une description métier ; aucun lien vide n’est proposé.
 - Créer, modifier, supprimer, **importer et exporter** une définition d’outil lorsque son statut le permet.
@@ -2691,7 +2831,7 @@ contrôle l’accès** ; le nom affiché ne remplace pas son identité.
 | `galaris://skill/` | Fichiers des skills administrées, uniquement avec la connexion spécialisée active. |
 | `galaris://agent/<id>` | Profil courant d’un agent accessible, dont les champs éditoriaux d’identité et de mission ; l’identifiant entier est fourni par l’annuaire. |
 | `galaris://documentation/` | Corpus officiel installé, en lecture seule, soumis à la connexion Galaris Admin et à `documentation_catalog`. |
-| URI d’un Tool de fichiers connecté | Fichiers et collections du provider, par exemple Nextcloud. Le code exact du Tool constitue le schéma. |
+| URI d’un Tool de fichiers connecté | Fichiers et collections du provider, par exemple Nextcloud ou Samba / SMB 2–3. Le code exact du Tool constitue le schéma. |
 | URI d’une pièce jointe Messenger | Fichier conservant le Tool et le salon d’origine ; lecture selon l’accès à la conversation. |
 | `mail://` | Pièces jointes identifiées par message/partie MIME ; lecture et copie, sans mutation générique. |
 | HTTPS public | Lecture/transfert web borné selon les contrôles du provider web. |
@@ -2718,6 +2858,39 @@ Pour les autres fichiers, le format et les unités sont ceux du
 provider. Les snapshots métier sont en lecture seule ; leur modification passe par les commandes
 métier. La suppression d’une mémoire ou d’un document utilise l’oubli métier, pas un `file_delete`
 qui contournerait les protections.
+
+Sur `document://`, `file_search(mode="name")` recherche titres et noms de fichiers avec
+pagination et ACL, en retournant des métadonnées compactes sans extraits du corps ni chargement
+du modèle d’embeddings. Les modes texte et sémantique conservent la recherche de contenu ;
+`memory://` conserve son rappel hybride dans tous les modes.
+
+### Partages Samba et Windows
+
+Le bridge **Samba / SMB 2–3** expose les fichiers d’un serveur, d’un partage ou d’un sous-dossier
+sans montage de disque. Un Tool de partage de fichiers configure `base_url` sous forme
+`smb://serveur[/partage[/dossier]]` ; la connexion porte le login, le mot de passe et l’option
+de chiffrement SMB 3. Le backend doit joindre le serveur, généralement sur TCP 445.
+L’agent utilise les URI du code exact du Tool et les fonctions génériques `file_*`, sans recevoir
+l’adresse SMB ni les identifiants. La signature est exigée ; les droits du compte distant restent
+appliqués à chaque accès.
+
+Une racine serveur énumère les partages disque accessibles par SRVSVC authentifié ; si ce service
+manque, une racine de partage explicite est nécessaire. Le bridge propose listes paginées,
+recherche par nom ou petits textes UTF-8, lectures bornées, création, remplacement, ajout, édition,
+copie, déplacement et suppression de fichiers. L’indexation standard peut être exclue, limitée aux
+URI connues ou récursive. Les éditions vérifient l’`etag` sous verrou ; un conflit exige une relecture.
+Un transfert entre partages copie puis supprime sous précondition de version, en signalant une
+suppression refusée. Une coupure pendant un remplacement peut laisser un contenu partiel ;
+les mutations ne sont pas rejouées automatiquement.
+
+Les partages et dossiers ne sont ni déplacés ni supprimés par ce bridge. DFS, points de reparse,
+SMB 1, accès invités, Kerberos et liens publics ne sont pas proposés. Les listes sont bornées à
+500 résultats par page et 10 000 entrées par dossier. Grav a été retiré des services proposés ;
+les anciennes configurations Grav sont refusées comme service inconnu.
+
+Sources : [parcours Samba](../user/samba.md),
+[contrats du bridge](../../../back/bridge/samba/file_share.py),
+[garanties d’accès et de version](../../../back/bridge/samba/tests/test_file_share.py).
 
 ### Catalogue privé et indexation durable des fichiers
 
@@ -3024,8 +3197,9 @@ Chaque appel reçoit une consigne et une destination collection inscriptible. Le
 charge dépendent du provider : durée, paroles, style, ratio ou résolution selon le cas. Les options
 non supportées sont refusées.
 
-Le lancement renvoie un **run de Process** : on peut continuer la conversation et suivre la
-génération. Le résultat n’est réussi qu’après écriture des fichiers dans la destination. Les fichiers
+Le lancement renvoie une **génération média durable** suivie avec `multimedia_get_run`, indépendamment
+des processus métier : on peut continuer la conversation pendant son exécution. Le résultat
+n’est réussi qu’après écriture des fichiers dans la destination. Les fichiers
 finaux et leurs URI sont reliés à la Task. Les callbacks sont authentifiés ; pour les providers
 concernés, l’état est revérifié auprès de leur API.
 
@@ -3145,6 +3319,13 @@ Sources : [calendrier](../architecture/flows/calendar.md), [API](../../../back/b
 
 ### Définitions et affectations
 
+Un processus métier porte un workflow défini indépendamment des fonctions de ses activités.
+Les workflows existants s’exécutent via n8n ; une fonction MCP, une génération média ou une opération
+Lab, même longue et récupérable, conserve son état dans son domaine sans créer de définition ou
+run Process. Le registre permet plusieurs moteurs simultanés, choisis par le Tool de chaque
+définition. Un autre logiciel exige un bridge installé conforme au contrat commun ; le
+[guide des moteurs externes](../dev/process-engines.md) décrit cette intégration.
+
 Un Process décrit un traitement exécuté par un moteur externe. Il possède une définition, un outil
 moteur, un identifiant de workflow, un libellé, une description et une affectation à un agent.
 
@@ -3175,6 +3356,11 @@ L’agent ou l’utilisateur peut :
 
 La page distingue l’attente de départ, le traitement, l’annulation en cours et les états terminaux.
 L’annulation peut être pleinement supportée, au mieux ou indisponible selon le moteur.
+
+Lors d’un remplacement de Task, l’arrêt des runs associés est coordonné. Un état terminal logique
+avec possibilité de poursuite distante bloque le successeur ; une observation ultérieure peut
+confirmer l’arrêt du run exact sans modifier sa sortie ni rejouer l’effet. Une erreur réseau ou
+une référence distante absente conserve cette incertitude.
 
 ### n8n et reprise fiable
 
@@ -3401,8 +3587,10 @@ une connexion ou une fonction bloque la suite, sans garantir l’arrêt d’un a
 Les générations, propositions d’attendus et analyses longues renvoient une **opération durable**
 à consulter ou annuler. Leur résultat se relit sans relancer le modèle. Une interruption dont les
 effets sont incertains peut laisser un état inconnu, sans répétition aveugle. Les opérations
-figent les modèles
-et révisions nécessaires ; leurs coûts de génération ou d’analyse sont séparés du budget de benchmark.
+figent les modèles et révisions nécessaires ; leurs coûts de génération ou d’analyse sont séparés
+du budget de benchmark. Leur état et leur worker appartiennent au Lab ; elles ne créent pas de
+run Process. `lab_operation_get` restitue progression et résultat, `lab_operation_cancel` demande
+l’arrêt sans garantir celui d’un appel fournisseur déjà parti.
 
 Les listes sont paginées, avec 50 éléments par défaut et 10, 20, 50, 100 ou 500 au choix.
 Les sorties MCP sont bornées à **1 Mo** ; les résumés et `lab_content_read` permettent de lire les
@@ -3844,7 +4032,7 @@ nom du jeton utilisé et conserve le fournisseur et le modèle réellement solli
 | Administration déléguée | AgentAdmin suit les droits et le périmètre actuels du responsable ; ToolAdmin délègue le catalogue global. L’agent ne peut attribuer des capacités administratives. |
 | Autorisation permanente | Active une seule fonction sur une connexion, sans lever les ACL, blocages ou préconditions de la ressource. YOLO exige un choix humain explicite. |
 | Indexation des fichiers | Catalogue privé par agent, accès source actuel, regroupement des copies par SHA-256 ; découverte dépendante du provider, sans garantie de couverture exhaustive d’un parcours partiel. |
-| Graphe mémoire | Rendu 3D par lots et repli de branches, retour 2D ; chargement spatial et carte serveur encore planifiés. |
+| Graphe mémoire | 3D uniquement, chargement spatial client, représentants des éléments masqués et actualisation préservant la navigation ; WebGL requis. Carte serveur encore prévue. |
 | Analyse documentaire | Lots reprenables dans app.llm, sans Process ; couverture des unités fournie distincte de la justesse des réponses et aucun rejeu automatique d’une inférence interrompue. |
 | Document et mémoire | Synthèse facultative avec historique indépendant et droits du document ; souvenirs autonomes privés et mots-clés communs au document et à sa synthèse. |
 | Miniatures | WebP courant unique pour un document ; dérivés par version pour les fichiers. Une miniature Office ne constitue pas une visionneuse plein écran. |
@@ -3855,7 +4043,7 @@ nom du jeton utilisé et conserve le fournisseur et le modèle réellement solli
 | Harnais gérés | Standard/high via la passerelle Galaris ; un run simultané par instance externe ; le transport générique reste standard. |
 | Synchronisation des skills | Appliquée avant une nouvelle exécution, sans interrompre une Task ; une continuation distante conserve son contexte antérieur et un échec de projection bloque le démarrage. |
 | Routage | Seuls les couples EXEC/PLAN et effort déclarés par le harnais sont disponibles. |
-| Inférence durable | Reconnexion au flux sans nouvelle génération ; reprise explicite par nouvelle tentative potentiellement facturée, sans continuation interne du calcul fournisseur. |
+| Inférence durable | Préparation sans appel fournisseur, démarrage, commandes avec révision et échéance globale optionnelle ; reconnexion au flux sans génération, reprise explicite potentiellement facturée. |
 | Chat natif | Humain–agent ; les salons de groupe de transports externes ne constituent pas une messagerie native universelle entre humains. |
 | Apprentissage de skills | Off par défaut ; observation et apprentissage explicites avec preuves et seuils. |
 | Collaboration documentaire | Sauvegarde, révisions, conflits et partage ; pas une promesse de coédition simultanée caractère par caractère. |
@@ -3875,7 +4063,7 @@ nom du jeton utilisé et conserve le fournisseur et le modèle réellement solli
 | Providers IA et messagerie | Capacités variables ; un bridge ne donne pas automatiquement toute l’API de son fournisseur. |
 | Budget | Limite d’admission basée sur consommation/réservations ; pas un plafond garanti de facture. |
 | Reprise | Dépend de l’état et des preuves d’effets ; une action externe ambiguë peut exiger une résolution explicite. |
-| Remplacement de tâche | Décision explicite ; le successeur attend une preuve d’arrêt. Les racines avec enfants actifs, Goal ou attente externe ne relèvent pas de ce parcours. |
+| Remplacement de tâche | Décision explicite ; coordination des descendants et runs Process, avec preuve d’arrêt de chacun. Goals et attentes non prises en charge sont refusés ; l’arrêt distant incertain bloque le successeur. |
 | Demande et travaux indépendants | La demande source d’une Task reste distincte de son complément de contexte ; un travail indépendant ou un amendement refusé ne remplace pas silencieusement les tâches existantes. |
 | Erreur d’outil | Une erreur observée revient à l’agent pour décision ; une interruption sans réponse demeure soumise à réconciliation. Les budgets globaux restent applicables. |
 | Stockage local | Disponible pour l’agent seulement si une console est configurée et active. |
@@ -3891,6 +4079,13 @@ nom du jeton utilisé et conserve le fournisseur et le modèle réellement solli
 | Notes et revues du Lab | Une note absente ne vaut pas zéro ; avis agents, revues humaines et juge restent distincts. Les comparaisons descriptives ne prouvent pas une supériorité statistique. |
 | Webhook générique | Aucun endpoint actif ; les callbacks et entrées des intégrations dédiées gardent leurs contrats propres. |
 | Traces | Restitution de ce que le provider/runtime expose, avec limites et expurgation. |
+| Organisation du travail | Actions directes, suivi durable par jalons ou clarification avant exécution ; progrès déclaré distinct des preuves de réussite. |
+| Portée d’exécution | Exigences et cibles sourcées pour les nouvelles Tasks ; contrôles d’effets pour les fonctions qui les déclarent, sans remplacer ACL et autorisations natives. |
+| Bilan après échec | Clôture indépendante explicitement demandée ; conserve l’échec du parent et s’actualise après retry manuel. |
+| Preuve de livraison | Artefact actif et reçu concordants pour la validation du plan ; un autre fichier livré ne valide pas le résultat demandé. |
+| Samba | SMB 2–3 signé, chiffrement SMB 3 optionnel, compte distant et TCP 445 joignable ; aucun montage ni lien public. |
+| Réseau messagerie | WhatsApp exige HTTPS public ; OneBot une adresse joignable. Les avertissements de l’interface ne certifient pas la connectivité. |
+| Évolutions encore prévues | VNC, éditeur Git conversationnel, programmes documentaires JSON exécutables, processus BPMN natifs et recherche sur la supervision LLM restent des plans, sans fonction active correspondante. |
 
 Le logiciel fournit des contrats d’extension pour les providers de fichiers, les convertisseurs
 d’aperçu, les bridges, les harnais, les mécanismes Dream et les contributions DbAdmin.
@@ -3898,7 +4093,7 @@ d’aperçu, les bridges, les harnais, les mécanismes Dream et les contribution
 <a id="mcp"></a>
 ## 30. Inventaire des fonctions accessibles aux agents
 
-Cet inventaire reprend les **244 fonctions natives déclarées par `@mcp_tool` dans le code inspecté**.
+Cet inventaire reprend les **246 fonctions natives déclarées par `@mcp_tool` dans le code inspecté**.
 Il couvre aussi les fonctions réservées aux contrôleurs conversationnels ou à l’administration.
 Toutes ne sont donc pas visibles simultanément par chaque agent. Les schémas d’arguments complets
 sont exposés par MCP ; leurs sources sont reliées aux sections métier ci-dessus.
@@ -3925,7 +4120,8 @@ fonctions explicitement. Pour Messenger, la connexion de transport détermine le
 | `agent_list` | `galaris` | Lister les agents disponibles avec une fiche abrégée et l’URI de leur profil courant. |
 | `agent_get` | `galaris` | Lire l’identité, la personnalité et la fiche de poste complètes d’un agent, avec son URI relisible via `file_read`. |
 | `task_run` | `galaris` | Créer une tâche enfant déléguée à un collègue autorisé et renvoyer son URI canonique ; l’agent ne peut pas se cibler lui-même. |
-| `task_get` | `galaris` | Lire l’état opérationnel compact, la progression, les attentes et le résultat disponible. |
+| `task_get` | `galaris` | Lire l’état opérationnel compact, la révision, la progression, les jalons, la prochaine action, les attentes et le résultat disponible. |
+| `task_work_update` | `galaris` | Enregistrer le suivi par jalons de la Task courante avec contrôle de propriétaire, phase et révision ; préserver les checkpoints et justifier la révision d’un jalon terminé. |
 | `task_stop` | `galaris` | Arrêter définitivement une autre tâche racine active et ses descendants inachevés ; refuse la tâche courante, ses ancêtres et une sous-tâche comme cible. |
 | `conversation_task_submit` | `conversation` | Créer, amender ou remplacer explicitement une Task avec contrôle de portée et de révision ; un conflit d’amendement ne crée rien et un remplacement attend une preuve d’arrêt. |
 | `conversation_task_list` | `conversation` | Lister les tâches récentes du périmètre de conversation. |
@@ -4309,7 +4505,7 @@ les [garanties fonctionnelles testées](../dev/functional-tests.md) et les sourc
 
 ### Modules backend déclarés
 
-Les **71 modules déclarés** sont tous rattachés à une ou plusieurs sections. Les conditions
+Les **72 modules déclarés** sont tous rattachés à une ou plusieurs sections. Les conditions
 d’activation et de configuration restent celles du runtime.
 
 | Module | Fonction couverte / section |
@@ -4322,7 +4518,7 @@ d’activation et de configuration restent celles du runtime.
 | `app.incident` | [Journal de défaillances et suivi des correctifs](#supervision) |
 | `app.tools` | [Catalogue, intégrations, recherche et restrictions de fonctions](#outils) |
 | `app.documentation` | [Corpus produit installé, provenance, recherche hybride et accès agentique](#outils), [actualisation de l’index partagé](#exploitation) |
-| `app.agent` | [Identité, administration déléguée et portraits](#agents), [orchestration](#taches), [API agents et Janus](#modeles) |
+| `app.agent` | [Identité, administration déléguée et portraits](#agents), [organisation adaptative, portée, plans et preuves de livraison](#taches), [API agents et Janus](#modeles) |
 | `app.harness` | [Exécution interne Pydantic AI](#harnais) |
 | `app.harnesses` | [Catalogue, sélection et cycle de vie des harnais](#harnais) |
 | `app.connection` | [Connexions par agent et paramètres](#outils) |
@@ -4332,8 +4528,8 @@ d’activation et de configuration restent celles du runtime.
 | `app.topic` | [Dossiers thématiques et classement](#sujets) |
 | `app.memory` | [Connaissances, structure documentaire et pièces jointes](#memoire), [documents HTML, Datasets, applications, autorisations, classement et partage](#documents), [classement des Goals](#objectifs) |
 | `app.contact` | [Contacts et identités multicanaux](#messageries) |
-| `app.dream` | [Extraction, classement et entretien de fond](#dream) |
-| `app.task` | [Travail durable, scheduler, tentatives, commandes et budgets](#taches) |
+| `app.dream` | [Extraction, réutilisation des preuves acquises, classement et entretien de fond](#dream) |
+| `app.task` | [Travail durable, jalons, portée, remplacement coordonné, scheduler, tentatives, commandes et budgets](#taches) |
 | `app.goal` | [Objectifs, cycles, référents et suivi](#objectifs) |
 | `app.dashboard` | [Indicateurs mensuels et répartition de charge](#supervision) |
 | `app.lab` | [Jeux synthétiques contextualisés, benchmarks texte/décision, jugements, revues humaines et agents, pilotage MCP](#lab) |
@@ -4348,7 +4544,7 @@ d’activation et de configuration restent celles du runtime.
 | `app.file_share` | [Façade des ressources, fichiers, catalogue privé, indexation et transferts](#fichiers) |
 | `app.console` | [SSH, SFTP, terminal et commandes durables](#console) |
 | `app.process` | [Définitions, runs, callbacks et reprise](#processus) |
-| `app.multimedia` | [Analyse audio/vidéo et générations longues](#medias) |
+| `app.multimedia` | [Analyse audio/vidéo et générations durables propres au domaine](#medias) |
 | `app.mcp` | [Serveur unifié et tokens par agent](#outils) |
 | `bridge.harness` | [Accès au manager, diagnostics et infrastructure des harnais](#harnais) |
 | `bridge.claude_agent` | [Runtime Claude Agent](#harnais) |
@@ -4361,6 +4557,7 @@ d’activation et de configuration restent celles du runtime.
 | `bridge.one_bot` | [Adaptateur OneBot v11](#messageries) |
 | `bridge.matrix` | [Messages Matrix](#messageries), [appels](#voix) |
 | `bridge.nextcloud` | [Talk](#messageries), [fichiers](#fichiers), [appels](#voix) |
+| `bridge.samba` | [Partages réseau Samba / SMB 2–3 via les fonctions génériques de fichiers](#fichiers) |
 | `bridge.telegram` | [Bot Telegram et médias](#messageries) |
 | `bridge.whatsapp` | [WhatsApp Business et webhooks](#messageries) |
 | `bridge.openrouter` | [Fournisseur multi-modèles](#modeles), [médias](#medias) |

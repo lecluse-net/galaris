@@ -7,7 +7,7 @@ following their work over time. Conversations, tasks, goals, documents, memory, 
 integrations form a common system. An agent can converse, consult authorized information,
 produce deliverables, involve colleagues, trigger external workflows and retain useful knowledge.
 
-This catalogue describes features present in the repository as of **9 October 2026**,
+This catalogue describes features present in the repository as of **11 October 2026**,
 including agent functions, administration screens and background mechanisms. It is organized
 by use, followed by a native MCP inventory and coverage of **every declared module**. Sources
 make that coverage verifiable. This is the exhaustive reference for preparing the product website.
@@ -16,13 +16,13 @@ make that coverage verifiable. This is the exhaustive reference for preparing th
 connections, models and external accounts. This describes the software without certifying
 every provider or installation configuration.
 
-The review includes the 8 October changes through `379bd98` and uncommitted work present
-during inspection, including tolerance of unknown tool arguments. Behaviour is checked against
+The review includes **all 21 commits of 11 October**, through `733c3b4`, alongside previously
+catalogued features. The checkout had no local changes when inspection began. Behaviour is checked against
 available contracts, implementation and tests; this documentary review neither qualifies the
 assembled application nor proves publication or deployment. The Lab's ten mechanisms remain
 separate from Dream's fourteen registered background mechanisms.
 
-The inventory covers **244 native MCP functions, 71 backend modules and 36 frontend modules**.
+The inventory covers **246 native MCP functions, 72 backend modules and 36 frontend modules**.
 Implemented features remain distinct from intentions in the [plan register](../../../project/plans/README.md).
 Quality controls appear under [operations](#exploitation).
 
@@ -548,6 +548,7 @@ incompatible contracts fail.
 | Action | Behavior |
 |---|---|
 | Create | Persist before worker execution; reused admission identity requires identical request/authority |
+| Prepare then start | Store the frozen request, authority and configuration without calling a provider; start the same identity later. A changed request requires a new inference |
 | Read | Retrieve request, state, attempts, result and costs without recalling the model |
 | Subscribe | Replay recorded messages through one terminal result; reconnect from a cursor |
 | Pause | Interrupt even when the provider emits no fragment |
@@ -564,10 +565,17 @@ Large-trace preparation does not hold finalization locks; journaling/lease renew
 covered by [lifecycle tests](../../../back/tests/test_inference_lifecycle.py).
 
 Resume resubmits and may be billed; it does not resume provider computation token by token.
-This layer executes no tool effects. Deferred creation, a global deadline and extending this
-lifecycle to all media are not advertised as implemented.
+This layer executes no tool effects; Multimedia generations retain their own lifecycle.
+
+`POST /api/llm/openai/inferences?prepared=true` prepares an inference; `start` queues it.
+Reads expose revision and deadline. Commands can supply `expected_revision`: stale commands fail,
+while repeated command identifiers retrieve their receipt. An optional global `deadline_seconds`
+starts at admission and includes preparation, queuing, pauses and resumes; resuming cannot extend
+it. Expiry retains partial output and costs and stops local transport without proving physical
+provider termination. Explicit replay creates another inference and may incur another charge.
 
 Sources: [contracts](../../../back/app/llm/contracts.py), [facade](../../../back/app/llm/facade.py),
+[durable controls](../../../project/decisions/0170-execution-scope-and-durable-controls.md),
 [lifecycle ADR](../../../project/decisions/0097-durable-inference-lifecycle.md).
 
 ### Calling agents from compatible clients and using Janus
@@ -813,12 +821,17 @@ acceptance criteria. Definition revisions are checked; unrelated technical progr
 invalidate an amendment. A conflict does not create an extra Task. Independent work preserves the
 previous Task. Explicit replacement creates a successor which waits for release of the previous
 lease **and evidence that execution stopped**: accepting cancellation or lease expiry alone is not
-proof. Replacement is restricted to eligible root work, without child Tasks, Goal ownership or an
-external wait. Existing human pauses remain effective.
+proof. Replacement coordinates the descendant tree and its Process runs: every execution must
+stop and release its leases. A logically terminal Process that may continue remotely still blocks
+the successor. Tree changes, new runs or unknown external owners conflict; Goals and unsupported
+waits are refused. Existing human pauses and independent work remain preserved.
 
 Users can request pause, resume, retry, stop or status. Deterministic `@task`, `@plan` and `@effort`
 commands persist the Task before invoking the controller and confirm only after creation; native
 controls provide equivalent metadata. Other requests use automatic admission.
+
+Planner notices retain their HTML formatting in the conversation under the normal message-rendering
+controls.
 
 A similar request must not systematically retry a failed Task. Instructions call for inspecting
 the error and prior effects: an explicit retry request or a corrected cause can justify retrying;
@@ -870,6 +883,16 @@ Additional references: [Chat schemas](../../../back/app/chat/schemas.py),
 | Telegram | Polling, files, voice notes, a durable incoming journal, album grouping and recovery. |
 | WhatsApp | Cloud API, signed webhooks, files and voice, available history, templates and messaging-window restrictions. |
 | Mail | IMAP messages admitted as Tasks, with SMTP replies and optional human approval. |
+
+### Preparing network access
+
+**Preferences → Messaging** and a Tool's **Messaging** tab show each bridge's network requirements.
+Telegram polling, Matrix and Nextcloud Talk do not require a public Galaris URL for messages.
+WhatsApp requires a public HTTPS webhook; local, private or non-HTTPS addresses trigger a warning.
+OneBot needs an address reachable by its adapter, including through a LAN or VPN. These notices
+use the browser address and do not block saving; calls and media retain their own requirements.
+
+Source: [testing bridges from a local instance](../bridges/telegram-whatsapp.md).
 
 ### Routing, search and sending
 
@@ -952,6 +975,44 @@ catalogues.
 Model-authored Task objectives validate editorial HTML during structured-output retries. Invalid
 content can therefore be corrected before admission rather than failing only when the Task is saved.
 
+### Adapting the method to the mission
+
+The Dispatcher also selects work organization in its existing routing decision: **direct**,
+**tracked through milestones** or **clarify first**. Simple actions remain direct. Long or complex
+work can retain a method, up to twenty milestones with acceptance criteria, observations and resource
+URIs, plus its next action. Tracking does not split one coherent deliverable into artificial Tasks;
+independent outputs still use the Planner, which passes organization to leaves.
+
+`task_get` exposes tracking and revision; `task_work_update` records the current Task's milestones
+only for its executor during an active, unpaused phase. Writes check revision and preserve
+checkpoints. Changing completed milestones requires an explicit reason. Declared progress does
+not replace resource verification or the Task's terminal result.
+
+Ambiguous intent, scope or expected depth triggers a durable question and suspension. The answer
+restarts routing with that clarification. An undeliverable question or an unanswered expiry fails
+without starting execution; inspectable technical unknowns do not alone require a human question.
+
+Sources: [adaptive organization](../../../project/decisions/0171-adaptive-task-organization.md),
+[milestone contract](../../../back/app/agent/work_contracts.py),
+[persistence and concurrency](../../../back/app/task/tests/test_work_tracking.py).
+
+### Preserving the requested scope
+
+New Tasks retain a sourced scope: original request, requirements, exact authorized references,
+amendments and clarification answers. Children inherit their parent's scope; step prose, profiles
+and memories cannot create additional grants. Plans declare requirement coverage and targets;
+missing requirements and unsourced targets fail. Clarification can stay on the same Task.
+
+Functions declaring their effects record a decision before acting and recheck scope after native
+authorization. Reading does not authorize modification; an artifact created and verified for this
+work can be updated. Stale revisions, stopped Tasks and divergent targets prevent the effect.
+Functions without effect descriptors retain existing controls and record that limitation. Domain
+ACLs still apply. Activity exposes a scope summary and decisions; historical Tasks without scopes
+retain their existing path. Goal tracking creates no new grants.
+
+Sources: [scope and provenance](../../../project/decisions/0170-execution-scope-and-durable-controls.md),
+[effect guarantees](../../../back/app/task/tests/test_execution_scope.py).
+
 ### Plans and collaboration between agents
 
 Each leaf preserves a complete work unit. For independent targets, the full procedure repeats
@@ -981,6 +1042,19 @@ Sources: [planner contracts](../../../back/app/agent/planner_contracts.py),
 
 An agent can delegate to peers, creating correlated parent/child work with deadlines and turn
 limits. Waiting suspends work and a reply resumes it, while human pauses retain priority.
+
+A failed attempt still awaiting the scheduler's retry decision does not prematurely close its
+plan or a peer wait. Synthesis retains failed-step diagnostics even alongside long successful outputs.
+
+An **explicitly requested closing action**, such as recording a report even on failure, can run
+after a failed or blocked step. Other dependent steps are skipped; closing receives diagnostics.
+A successful report does not make the plan successful: the parent retains its error, partial result
+and requested decision. Manual retry preserves successes, resumes unfinished work and rearms
+closing actions to update the report.
+
+Sources: [closing after failure](../../../project/decisions/0172-requested-closing-actions-after-failure.md),
+[recovery and reports](../../../back/app/agent/tests/test_planner_service.py).
+
 ### Clarification and approval
 
 Clarification and approval requests are correlated to the intended interaction: ambiguous answers
@@ -1031,6 +1105,14 @@ that prevent duplicates even when the resource is absent from the WorkingSet; ex
 remains possible. This does not promise atomicity between the database and a remote network, and
 Git output or shell text is not delivery evidence.
 
+Final plan validation correlates the active artifact, producing Task, source URI and recorded
+destination with the native receipt. Another file, destination or Task's receipt cannot prove the
+deliverable; stale or failed artifacts do not prove an available output. In-place updates require
+the whole requested URI. Recovery of failed execution through an empty model response requires
+the same correspondence; direct success already reported by a driver retains its terminal contract.
+
+Source: [evidence matching](../../../back/app/agent/delivery_evidence.py).
+
 ### Observed time and retained costs
 
 Task and conversation details distinguish waiting, preparation and first observable output,
@@ -1076,6 +1158,9 @@ Each cycle creates an ordinary Task, then judges its result against evidence and
 to continue or stop. Description and follow-up are protected documents managed by the Goal domain.
 History includes paginated cycles, Tasks, verdicts, costs and calls. An ended Goal can resume without
 losing history. Scheduling waits for a busy agent and respects configured windows.
+
+A provider may return progress as an object or a JSON-encoded string: follow-up decodes the latter
+and validates the same contract without another model call solely for that encoding difference.
 
 “Run now” remains pending until a Task is actually created. It bypasses time windows, but not a
 global pause. A failed judgement can be recovered as CONTINUE, permitting an immediate cycle, or
@@ -1277,18 +1362,32 @@ duplicates, prioritising temporal matches by default. The text-recall ceiling do
 temporal matches. Simulation uses current rights and validity rather than reconstructing history.
 
 The graph UI supports node natures and relationships, expansion, centring and full screen.
-It opens the batched Three.js **3D** view, with a **2D** option retaining the previous graph.
-Pages appear progressively without a global node cap or period filter. 3D starts with
-File Share roots, topics and contacts; known children of accessible directories load
-when approaching, in pages of 100. Depth follows local spacing rather than rigid levels.
+It uses the batched Three.js **3D** view exclusively; the 2D renderer has been removed.
+Unavailable WebGL shows a message with a 3D retry action. Pages appear progressively without a
+global node cap or period filter. All known directories load on opening alongside File Share roots,
+topics and contacts; their files load when approaching, in pages of 100. Dense maps spatially group
+each share's directories. Depth follows local spacing rather than rigid levels.
 A link is hidden if either endpoint is behind the camera. Visible markers share GPU
 buffers, placement runs in a worker, and rendering stops at rest.
 Dense cells fold into explorable display groups with relationships aggregated by type,
-direction and status; canonical identities and links are preserved. The two fixed distant/near
+direction and status; canonical identities and links are preserved. The two base distant/near
 symbol sizes preserve readability during deep zoom; authorized previews grow later up to their
-native pixel dimensions. The 2D and 3D cameras are saved independently, restoring visited
-resource branches. Returning to 2D reloads all pages. A prepared regional server map remains
-planned. Memory uses a desktop table or mobile cards without horizontal overflow; titles open
+native pixel dimensions. Positions, camera, filters and open branches are private to each user,
+agent and context. Incompatible saved states rebuild automatically without changing Memory data;
+network errors allow retry, and a retried save does not restore an obsolete camera pose.
+
+Items hidden by filters, folding or framing enlarge their visible representatives up to four
+times their normal diameter. Weight propagates through hidden parents and includes known unloaded
+children; reappearance removes it without moving nodes. The counter also includes items without
+representatives. Representative captions remain visible. Roots use the Tool label stored in Memory,
+or its scheme; synchronization corrects old “.” and “/” titles while preserving custom titles.
+
+Every thirty seconds while the tab is visible, background updates apply additions, changes and
+removals, including loaded directories. Camera, positions, filters and branches survive refresh
+and reconnection. Temporary failures leave the map usable; session or rights changes remove
+protected data. The prepared regional server map remains planned.
+
+Memory uses a desktop table or mobile cards without horizontal overflow; titles open
 details and available actions respect rights and node nature. Attachments provide acquired text and
 original-file preview from lists, search, graph and detail, including full-screen viewing scoped
 to the agent. Retry, agent change, closing and late responses preserve scope. Folders open browsing,
@@ -1298,7 +1397,7 @@ Graph size and opacity follow relative last activity; old nodes remain visible. 
 retain their labels and a collision budget limits visible titles at every zoom. Branches with at least
 eight exclusive leaves collapse into counted groups; zooming or clicking unfolds them and zooming
 out folds them while shared nodes remain visible. Zoom and closing details preserve positions
-and framing. Spatial loading and subgroups remain planned work.
+and framing. Client spatial loading and subgroups are available; the precomputed server map remains planned.
 
 Documents, indexed files and attachments display available list thumbnails. Detail separates
 **Memory**, **Links and relationships** and **History**, retaining drafts between tabs. From a
@@ -1320,6 +1419,7 @@ which requires an explicit forgetting operation.
 
 
 Additional references: [Memory acquisition](../../../back/app/memory/acquisition_service.py),
+[3D navigation and refresh](../../../front/browser-tests/memory-3d.spec.mjs),
 [Decision workflow tests](../../../back/tests/test_decision_workflows.py),
 [Dream mechanisms](#dream),
 [Document structure contract](../../../project/decisions/0106-document-structure-memory.md),
@@ -1470,6 +1570,12 @@ content="[]")`, then read/edit through file operations using the expected revisi
 edits address actual JSON lines, not HTML. Writes, copies into an existing document and restoration
 cannot change its type. Copying `application/json` into the Documents collection creates a Dataset;
 an existing target keeps its type and validates incoming content.
+
+Agents may reuse a relevant Dataset for structured data shared across documents, calculations or
+Tasks, searching before creating a new one and retaining its URI. They read current data and
+preserve units, dates, sources and uncertainty. This remains a judgment call: self-contained answers
+and isolated facts do not require a Dataset. References do not automatically refresh existing prose;
+business records remain authoritative and conversation/Task permissions still apply.
 
 ### Forms, simulators and applications in a page
 
@@ -1723,6 +1829,23 @@ with complete input. Rights and eligible targets are checked before writing. Spe
 acquisition calls/costs remain tied to the receipt even if application fails. Admission-time
 classification uses the same receipts; Dream catches up remaining messages.
 
+### Reusing acquired evidence
+
+Round extraction reuses persisted transcripts and successful document analyses from directly
+linked Tasks, for the same agent and exact attachment URI. Audio-only messages can therefore yield
+durable facts without new acquisition. Written messages, verbatim transcripts, extracted text and
+interpretations remain distinct, with coverage, source locators and an attested or unknown version.
+An unanalyzed attachment alone cannot establish a fact.
+
+Late evidence opens a new idempotent receipt. Application revalidates sources; new derived facts
+leave reads, recall and the graph when no independent valid provenance remains after source removal,
+correction or access revocation. Adding provenance does not make a manual memory or existing document
+depend solely on this conversational evidence. A forgotten fact is not identically reacquired from
+a late revision of the same round.
+
+Sources: [acquired evidence](../../../project/decisions/0169-conversation-memory-acquired-evidence.md),
+[extraction and revalidation](../../../back/app/dream/tests/test_conversation_memory.py).
+
 ### Describing attachments with empty memory
 
 Four independent **off-by-default** options in Preferences → Dream fill empty Memory companions
@@ -1842,6 +1965,9 @@ command, arguments, environment, headers, timeout and bearer/custom-header/basic
 according to transport. Pre-save testing reports DNS, TCP, TLS, authentication, protocol, discovery
 and detected functions. Conversation eligibility adds to agent connections/permissions, except
 mandatory system services.
+
+Text search also filters the catalogue by localized name, code and description, ignoring case
+and accents. Clearing the search restores the list; an empty match has a dedicated message.
 
 ### Four mandatory system services
 
@@ -2019,7 +2145,7 @@ controlling access; a display name is not its identity.
 | `galaris://skill/` | Managed skill files with the specialised connection active. |
 | `galaris://agent/<id>` | Permitted current agent profile, including editorial identity/mission; directory supplies the integer ID. |
 | `galaris://documentation/` | Installed read-only corpus under Admin and `documentation_catalog`. |
-| Connected file Tool URI | Provider files/collections, such as Nextcloud; the exact Tool code is the scheme. |
+| Connected file Tool URI | Provider files/collections, such as Nextcloud or Samba / SMB 2–3; the exact Tool code is the scheme. |
 | Messenger attachment URI | Original Tool/room retained; conversation access governs reads. |
 | `mail://` | Message/MIME-part attachments; read/copy without generic mutation. |
 | Public HTTPS | Bounded web reads/transfers under provider controls. |
@@ -2038,6 +2164,34 @@ that validation; application collection insertion uses the Dataset SDK. `file_cr
 `document_type="dataset"`; HTML remains the default and existing types are immutable. Other formats
 and units depend on providers. Business snapshots are read-only and use business commands for
 mutation. Memory/document removal uses business forgetting, not a bypass through `file_delete`.
+
+On `document://`, `file_search(mode="name")` searches titles and filenames with pagination and ACLs,
+returning compact metadata without body passages or loading the embedding model. Text and semantic
+modes retain content search; `memory://` retains hybrid recall in every mode.
+
+### Samba and Windows shares
+
+The **Samba / SMB 2–3** bridge exposes a server, share or subdirectory without mounting a disk.
+A file-sharing Tool sets `base_url` to `smb://server[/share[/directory]]`; its connection holds
+login, password and optional SMB 3 encryption. The backend must reach the server, usually on TCP 445.
+Agents use the Tool's exact scheme and generic `file_*` functions without receiving the SMB address
+or credentials. Signing is required; the remote account's permissions apply to every access.
+
+A server root enumerates accessible disk shares through authenticated SRVSVC; servers without it
+need an explicit share root. The bridge provides paginated lists, name/small UTF-8 text search,
+bounded reads, file creation, replacement, append, editing, copy, move and deletion. Standard
+indexing can be excluded, limited to known URIs or recursive. Edits check `etag` under a lock;
+conflicts require rereading. Cross-share moves copy then delete with a version precondition,
+reporting refused deletion. Interrupted replacement may leave partial content; mutations are never
+automatically replayed.
+
+Shares and directories cannot be moved or deleted through this bridge. DFS, reparse points, SMB 1,
+guest access, Kerberos and public links are unsupported. Lists allow 500 results per page and
+10,000 entries per directory. Grav has been removed from available services; old Grav configurations
+are rejected as unknown services.
+
+Sources: [Samba journey](../user/samba.md), [bridge contracts](../../../back/bridge/samba/file_share.py),
+[access and version guarantees](../../../back/bridge/samba/tests/test_file_share.py).
 
 ### Private file catalogue and durable indexing
 
@@ -2266,8 +2420,9 @@ transcription and unsupported native formats.
 | `video_generate` | Video | OpenRouter, Seedance through BytePlus LAS |
 
 Each accepts instructions and a writable destination collection. Duration, lyrics, style, ratio or
-resolution depend on the provider; unsupported options are rejected. Submission returns a Process
-run so conversation can continue. Success requires files actually written to the destination;
+resolution depend on the provider; unsupported options are rejected. Submission returns a durable
+media generation, followed with `multimedia_get_run` independently of business processes, so
+conversation can continue. Success requires files actually written to the destination;
 final URIs link to the Task. Callbacks are authenticated and relevant provider APIs recheck status.
 Invocation keys distinguish repeated requests from new variations; uncertain submissions are not
 automatically repeated. Publication is currently bounded to four files of 100 MB each. Unknown
@@ -2347,6 +2502,13 @@ Sources: [calendar flow](../architecture/flows/calendar.md), [API](../../../back
 
 ### Definitions and assignments
 
+A business process carries a workflow defined independently of the functions performing its
+activities. Existing workflows execute through n8n; a standalone MCP function, media generation
+or Lab operation retains its own domain state without a Process definition or run, even when long
+and recoverable. Multiple engines can coexist; each definition selects its engine through its Tool.
+Other software requires an installed bridge conforming to the shared contract; the
+[external engine guide](../dev/process-engines.md) explains that integration.
+
 A Process describes an external-engine treatment with definition, engine Tool, workflow identifier,
 label, description and agent assignment. Users list/test engines for connectivity, authentication
 and cancellation support; synchronise workflows; create definitions and edit/delete assignments.
@@ -2363,6 +2525,11 @@ refresh or attach a known external execution, request retained analysis, cancel/
 allowed, export the run dossier, view operating metrics and trace originating Tasks and workflow
 model/agent calls. UI states distinguish pending submission, running, cancelling and terminal outcomes.
 Cancellation may be fully supported, best-effort or unavailable.
+
+Task replacement coordinates associated runs. A logical terminal state with possible remote
+continuation blocks the successor; a later observation can confirm the exact remote run stopped
+without changing its output or replaying the effect. Network errors or missing remote references
+retain uncertainty.
 
 ### n8n and durable recovery
 
@@ -2536,8 +2703,10 @@ promising interruption of an already sent provider call.
 
 Generation, reference proposals and long analysis return durable operations to inspect/cancel.
 Results are reread without new model calls; uncertain interrupted effects may remain unknown without
-blind repetition. Required models/
-revisions are frozen; generation/analysis costs are separate from benchmark budgets.
+blind repetition. Required models/revisions are frozen; generation/analysis costs are separate from
+benchmark budgets. Operation state and workers belong to the Lab without Process runs.
+`lab_operation_get` reads progress/results; `lab_operation_cancel` requests stopping without
+guaranteeing termination of a provider call already sent.
 
 Lists use 50 by default and 10/20/50/100/500 choices. MCP outputs cap at 1 MB; summaries and
 `lab_content_read` page large content by characters with fingerprint checks. Operation results also
@@ -2868,7 +3037,7 @@ for subsequent calls without editing client files. Logs retain token name and ac
 | Delegated administration | AgentAdmin follows the manager's current rights/scope; ToolAdmin delegates the global catalogue. Agents cannot assign administrative capabilities. |
 | Permanent consent | Enables one connection function without bypassing ACLs, blocks or resource preconditions. YOLO requires explicit human choice. |
 | File indexing | Private per-agent catalogue with current source access and SHA-256 copy identity; discovery depends on providers and partial traversals are not exhaustive. |
-| Memory graph | Batched 3D rendering and folded branches, with 2D fallback; spatial loading and a server map remain planned. |
+| Memory graph | 3D only, client spatial loading, hidden-item representatives and updates preserving navigation; WebGL required. Server map remains planned. |
 | Document analysis | Resumable app.llm batches without a Process; supplied-unit coverage is separate from answer accuracy and interrupted inference is never automatically replayed. |
 | Documents and Memory | Optional synthesis with independent history and document rights; standalone memories stay private and document/synthesis keywords are shared. |
 | Thumbnails | One current document WebP; versioned file derivatives. Office thumbnails do not provide full-screen viewing. |
@@ -2879,7 +3048,7 @@ for subsequent calls without editing client files. Logs retain token name and ac
 | Managed harnesses | Standard/high through Galaris; one simultaneous run per external instance; generic transport remains standard. |
 | Skill synchronisation | Before new execution without interrupting active work; remote continuations retain context and projection failure blocks startup. |
 | Routing | Only the declared EXEC/PLAN and effort pairs. |
-| Durable inference | Stream reconnection avoids generation; explicit retry may incur another charge, not continue provider internals. |
+| Durable inference | Prepare without a provider call, start, revision-checked commands and optional global deadline; stream reconnection avoids generation, explicit retry may incur another charge. |
 | Native chat | Human–agent; external group rooms do not imply universal native human messaging. |
 | Learned skills | Off by default; explicit observation/learning with thresholds and evidence. |
 | Document collaboration | Saves, revisions, conflicts and sharing, not keystroke-level concurrent editing. |
@@ -2899,7 +3068,7 @@ for subsequent calls without editing client files. Logs retain token name and ac
 | Providers/bridges | Capabilities vary; integration is not the provider's entire API. |
 | Budgets | Consumption/reservation-based admission, not guaranteed billing caps. |
 | Recovery | Requires valid state/effect evidence; ambiguous external action may need explicit resolution. |
-| Task replacement | Explicit, waits for stop evidence; roots with active children, Goals or external waits are excluded. |
+| Task replacement | Explicit; coordinates descendants and Process runs with stop evidence for each. Goals and unsupported waits are refused; uncertain remote termination blocks the successor. |
 | Independent work | Original request and context remain separate; independent work/refused amendments do not silently replace Tasks. |
 | Tool errors | Observed errors return for agent decisions; interrupted unknown outcomes require reconciliation; global budgets still apply. |
 | Local storage | Agent-local files require an active configured console. |
@@ -2915,6 +3084,13 @@ for subsequent calls without editing client files. Logs retain token name and ac
 | Lab assessments | Missing scores are not zero; agent/human/judge reviews separate; descriptive comparison is not statistical superiority. |
 | Generic webhook | No active endpoint; dedicated integrations retain their own contracts. |
 | Traces | Only provider/runtime-exposed data, with limits and redaction. |
+| Work organization | Direct actions, durable milestones or clarification before execution; declared progress remains distinct from proof of success. |
+| Execution scope | Sourced requirements/targets for new Tasks; checks for functions declaring effects, preserving ACLs and native authorization. |
+| Report after failure | Explicit independent closing action retains the parent's failure and updates on manual retry. |
+| Delivery evidence | Matching active artifact and receipt for plan validation; another delivered file cannot validate the requested result. |
+| Samba | Signed SMB 2–3, optional SMB 3 encryption, remote account and reachable TCP 445; no mount or public link. |
+| Messaging network | WhatsApp needs public HTTPS; OneBot a reachable address. UI warnings do not certify connectivity. |
+| Planned developments | VNC, conversational Git editor, executable JSON document programs, native BPMN processes and LLM supervision research remain plans without corresponding active features. |
 
 Extension contracts cover file providers, preview converters, bridges, harnesses, Dream mechanisms
 and DbAdmin contributions.
@@ -2922,7 +3098,7 @@ and DbAdmin contributions.
 <a id="mcp"></a>
 ## 30. Inventory of agent-accessible functions
 
-These are the **244 native functions declared with `@mcp_tool` in the reviewed code**, including
+These are the **246 native functions declared with `@mcp_tool` in the reviewed code**, including
 conversation-only and administrative functions. They are not all visible to every agent; MCP exposes
 full argument schemas. External MCP servers discover their own evolving functions at connection time,
 with descriptions/status in the effective catalogue. External-runtime capabilities and discovery
@@ -2941,7 +3117,8 @@ selects the concrete Tool.
 | `agent_list` | `galaris` | List available agents with short profiles and current-profile URIs. |
 | `agent_get` | `galaris` | Read full identity, personality and job description, with a `file_read`-readable URI. |
 | `task_run` | `galaris` | Delegate a child Task to an authorised colleague and return its canonical URI; self-targeting is forbidden. |
-| `task_get` | `galaris` | Read compact operational state, progress, waits and available result. |
+| `task_get` | `galaris` | Read compact operational state, revision, progress, milestones, next action, waits and available result. |
+| `task_work_update` | `galaris` | Record current Task milestones with owner, phase and revision checks; preserve checkpoints and justify changes to completed milestones. |
 | `task_stop` | `galaris` | Permanently stop another active root and unfinished descendants; reject current Task, ancestors and child targets. |
 | `conversation_task_submit` | `conversation` | Create/amend/explicitly replace with scope/revision checks; amendment conflict creates nothing and replacement waits for stop evidence. |
 | `conversation_task_list` | `conversation` | List recent conversation-scoped Tasks. |
@@ -3318,7 +3495,7 @@ behavioural review. Technical evidence remains in the [generated map](../archite
 
 ### Declared backend modules
 
-All **71 declared modules** map to one or more sections; runtime activation/configuration still applies.
+All **72 declared modules** map to one or more sections; runtime activation/configuration still applies.
 
 | Module | Capability/section |
 |---|---|
@@ -3330,7 +3507,7 @@ All **71 declared modules** map to one or more sections; runtime activation/conf
 | `app.incident` | [Failure journal and remediation](#supervision) |
 | `app.tools` | [Catalogue, integrations, search and function restrictions](#outils) |
 | `app.documentation` | [Installed corpus, provenance, hybrid search and agent access](#outils), [shared-index refresh](#exploitation) |
-| `app.agent` | [Identity, delegated administration and portraits](#agents), [orchestration](#taches), [agent API/Janus](#modeles) |
+| `app.agent` | [Identity, delegated administration and portraits](#agents), [adaptive organization, scope, plans and delivery evidence](#taches), [agent API/Janus](#modeles) |
 | `app.harness` | [Internal Pydantic AI execution](#harnais) |
 | `app.harnesses` | [Harness catalogue, selection and lifecycle](#harnais) |
 | `app.connection` | [Agent connections/settings](#outils) |
@@ -3340,8 +3517,8 @@ All **71 declared modules** map to one or more sections; runtime activation/conf
 | `app.topic` | [Topics and classification](#sujets) |
 | `app.memory` | [Knowledge, document structure and attachments](#memoire), [HTML/Datasets/apps/permissions/filing/sharing](#documents), [Goal filing](#objectifs) |
 | `app.contact` | [Contacts and cross-channel identities](#messageries) |
-| `app.dream` | [Extraction, classification and maintenance](#dream) |
-| `app.task` | [Durable work, scheduler, attempts, controls and budgets](#taches) |
+| `app.dream` | [Extraction, reuse of acquired evidence, classification and maintenance](#dream) |
+| `app.task` | [Durable work, milestones, scope, coordinated replacement, scheduler, attempts, controls and budgets](#taches) |
 | `app.goal` | [Objectives, cycles, referrers and follow-up](#objectifs) |
 | `app.dashboard` | [Monthly indicators/workload](#supervision) |
 | `app.lab` | [Contextual synthetic cases, text/Decision benchmarks, judgements, human/agent reviews and MCP](#lab) |
@@ -3356,7 +3533,7 @@ All **71 declared modules** map to one or more sections; runtime activation/conf
 | `app.file_share` | [Resource facade, files, private catalogue, indexing and transfers](#fichiers) |
 | `app.console` | [SSH/SFTP, terminal and durable commands](#console) |
 | `app.process` | [Definitions, runs, callbacks and recovery](#processus) |
-| `app.multimedia` | [Audio/video analysis and long generation](#medias) |
+| `app.multimedia` | [Audio/video analysis and domain-owned durable generation](#medias) |
 | `app.mcp` | [Unified server and per-agent tokens](#outils) |
 | `bridge.harness` | [Manager access, diagnostics and infrastructure](#harnais) |
 | `bridge.claude_agent` | [Claude Agent runtime](#harnais) |
@@ -3369,6 +3546,7 @@ All **71 declared modules** map to one or more sections; runtime activation/conf
 | `bridge.one_bot` | [OneBot v11 adapter](#messageries) |
 | `bridge.matrix` | [Matrix messages](#messageries), [calls](#voix) |
 | `bridge.nextcloud` | [Talk](#messageries), [files](#fichiers), [calls](#voix) |
+| `bridge.samba` | [Samba / SMB 2–3 network shares through generic file functions](#fichiers) |
 | `bridge.telegram` | [Telegram bot/media](#messageries) |
 | `bridge.whatsapp` | [WhatsApp Business/webhooks](#messageries) |
 | `bridge.openrouter` | [Multi-model provider](#modeles), [media](#medias) |
