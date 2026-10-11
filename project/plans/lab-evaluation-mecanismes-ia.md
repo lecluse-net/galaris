@@ -2,6 +2,7 @@
 
 - Statut : `partial`
 - Revue des sources : 2026-10-08. Les campagnes ne sont pas rejouées par cette revue.
+- Extension demandée le 2026-10-11 : tests, données synthétiques et benchmarks Process sur le socle interne ; mocks d'applications explicitement reportés à une seconde phase. Conception à réaliser, distincte du socle existant.
 
 ## Socle réalisé
 
@@ -23,10 +24,40 @@ Un score, rôle holdout ou digest ne prouve pas à lui seul étanchéité, quali
 | Gardes | Baseline approuvée/remplaçable, seuils dimensionnels/globaux/erreurs/couverture, verdict machine et export CI. | Nouvelle défaillance critique bloquante malgré une moyenne meilleure ; verdict reconstructible, rapport narratif sans pouvoir de lever la garde. |
 | Portabilité/gouvernance | Import/export versionné des datasets/résultats ; revue des références, rétention, gel/ouverture des holdouts. | Corpus/paramètres/provenance préservés, secrets et droits des sources respectés. |
 | Jugement renforcé | Juges multiples/arbitrage si besoin mesuré ; biais de position, verbosité et auto-préférence. | Risque réduit et coût connu face au juge courant ; nombre de juges sans valeur probante propre. |
+| Processus internes — socle | Intégration progressive du moteur Process, cas/PJ synthétiques, résultats et benchmarks simples sur contenu courant. | Résultats/métriques accessibles sous droits Lab/Process ; référence du contenu exécuté conservée, aucun choix de version ni mock d'application requis en v1. |
+| Mocks Process — seconde phase | Création de mocks d'applications externes, simulation et campagnes hybrides, après l'infrastructure Process. | Mocks et configuration conservés, isolation des cas et absence de repli réel ; conformité aux vrais contrats et interprétation des mesures à qualifier à ce stade. |
 
 Préparer étalonnage/comparabilité, puis incertitude, avant gardes décisionnelles.
 Les datasets versionnés restent entièrement synthétiques. Une revue masquée ne supprime
 pas l'exposition passée aux réponses.
+
+## Extension Process : infrastructure puis mocks
+
+Le [plan des processus internes](processus-metier-internes-bpmn.md) confie au Lab la
+génération synthétique, les tests et benchmarks des processus, sans deuxième moteur.
+La v1 met d'abord en place les accès publics, données/résultats et métriques Process ;
+les premières campagnes simples pourront s'appuyer sur la génération et les services Lab
+existants. L'admission Process actuellement simulée ne prouve pas l'exécution d'un graphe
+complet, et les tests de droits, DB et reprise restent nécessaires au fil de l'implémentation.
+
+Chaque lancement Lab utilise la dernière sauvegarde courante, comme les autres appelants.
+Conserver avec les résultats les cas JSON/PJ synthétiques, paramètres, harnais et références
+Document des contenus réellement démarrés. Comparer les campagnes enregistrées ; aucun
+pinning de dépendance ni paramètre de version Process à exécuter. Une restauration de
+l'historique remet un contenu en courant avant son nouveau lancement. Les Datasets des
+runs restent distincts des datasets de test du Lab.
+
+Les mocks d'applications sont une seconde phase, sans conditionner la livraison du socle.
+Ils pourront simuler état, réponses/fichiers, délais, erreurs et callbacks aux frontières
+Tools/Process, avec journal d'effets et bindings isolés sous droits Lab. Pas de repli
+implicite vers une application réelle ni de secrets métier dans les fixtures. Qualifier
+leur conformité aux vrais contrats et distinguer simulation, intégration et agents réels
+quand cette extension sera réalisée ; un coût synthétique ne prouve pas une dépense réelle.
+
+Les capacités Lab sont étendues progressivement sous droits Lab et Process. Les budgets
+de campagnes déjà configurables
+restent des contrats du Lab ; ils ne deviennent pas des budgets d'exécution des processus
+métier, explicitement absents de la v1.
 
 ## Campagnes de modèles de décision regroupées
 
