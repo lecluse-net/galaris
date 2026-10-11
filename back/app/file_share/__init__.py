@@ -9,6 +9,7 @@ from . import file_share_service
 from .models import FileCatalogEntry, FileIndexRun, FileObservationRepair
 from .indexing import indexing_tick, repair_tick, start_index_run, cancel_index_run, prune_index_history, refresh_known_tick
 from .catalogue import annotate_catalogue_entry, catalogue_access_clause, catalogue_source_readable, catalogue_sources_readable
+from .catalogue import reconcile_catalogue_root_titles as reconcile_catalogue_root_titles
 from .resource_observation import observe_received_resources as observe_received_resources
 from app.memory import register_source_access, register_url_reference_merger
 from .catalogue import merge_catalogue_url_references
@@ -93,7 +94,7 @@ from .file_contracts import (
 from .web_transport import PublicHttpsContent, read_public_https_bytes
 
 __all__ = [
-    "FileCatalogEntry", "annotate_catalogue_entry",
+    "FileCatalogEntry", "annotate_catalogue_entry", "reconcile_catalogue_root_titles",
     "record_resource_description",
     "WebMetadata", "web_metadata",
     "file_share_service",

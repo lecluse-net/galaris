@@ -96,13 +96,59 @@ for (const width of [1440, 390]) {
     await page.getByRole('tab', { name: 'Graphe', exact: true }).click()
     const graph = await graphResponse
     expect(graph.ok()).toBeTruthy()
-    expect((await graph.json()).nodes.map(node => node.id)).toContain(fixture.file_item_id)
+    const roots = await graph.json()
+    const directory = roots.nodes.find(node => node.node_kind === 'directory'
+      && fixture.file_uris.some(uri => uri.startsWith(node.resource_uri)))
+    expect(directory).toBeDefined()
     await expect(page.locator('.memory-graph__chart--loading')).toHaveCount(0)
-    await expect(page.locator('.memory-graph__chart canvas')).toBeVisible()
+    await expect(page.locator('.memory-graph__chart--3d canvas')).toBeVisible()
+    await page.getByRole('button', { name: 'Afficher le graphe en plein écran', exact: true }).click()
+    const chart = page.locator('.memory-graph__chart--3d')
+    await chart.scrollIntoViewIfNeeded()
+    let expanded = false
+    page.on('response', async response => {
+      if (new URL(response.url()).pathname === '/api/memory/graph/expand' && response.ok()) {
+        expanded ||= (await response.json()).nodes.some(node => node.id === fixture.file_item_id)
+      }
+    })
+    // Opening a directory focuses its near view and fetches its files;
+    // the initial overview only needs the known directories.
+    await chart.focus()
+    for (let index = 0; index < roots.nodes.length; index++) {
+      await page.keyboard.press('ArrowRight')
+      if ((await chart.getAttribute('aria-description') ?? '').startsWith(directory.title)) break
+    }
+    expect((await chart.getAttribute('aria-description') ?? '').startsWith(directory.title)).toBe(true)
+    await page.keyboard.press('Enter')
+    await expect.poll(() => expanded).toBe(true)
+    await detail.getByRole('button', { name: 'Fermer', exact: true }).click()
+    await expect(detail).toHaveCount(0)
+    const selectFile = async () => {
+      await chart.focus()
+      await page.keyboard.press('Home')
+      await expect.poll(async () => {
+        await chart.focus()
+        for (let index = 0; index < 10; index++) {
+          await page.keyboard.press('ArrowRight')
+          if (/^synthetic\.png(?: |$)/.test(await chart.getAttribute('aria-description') ?? '')) return true
+        }
+        return false
+      }).toBe(true)
+      await chart.focus()
+      await page.keyboard.press('Enter')
+      await expect(detail.getByRole('img', { name: 'synthetic.png', exact: true })).toBeVisible()
+      await detail.getByRole('button', { name: 'Fermer', exact: true }).click()
+      await expect(detail).toHaveCount(0)
+    }
+    await selectFile()
+    await page.getByRole('button', { name: 'Quitter le plein écran', exact: true }).click()
     const reloaded = page.waitForResponse('**/api/memory/graph/roots')
     await page.getByRole('button', { name: 'Recharger le graphe', exact: true }).click()
-    expect((await (await reloaded).json()).nodes.map(node => node.id)).toContain(fixture.file_item_id)
+    expect((await reloaded).ok()).toBeTruthy()
     await expect(page.locator('.memory-graph__chart--loading')).toHaveCount(0)
+    await page.getByRole('button', { name: 'Afficher le graphe en plein écran', exact: true }).click()
+    await selectFile()
+    await page.getByRole('button', { name: 'Quitter le plein écran', exact: true }).click()
     await errors.settle()
     expect(errors()).toEqual([])
   })

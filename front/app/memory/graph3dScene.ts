@@ -6,6 +6,8 @@ import {
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js'
 import type { GraphPoint3d } from './graph3dLayout'
 import { fitGraph3d } from './graph3dCamera'
+import { graphHiddenDiameter, graphHiddenItems, type GraphHiddenItems } from './graphVisibility'
+import type { MemoryGraphNode, MemoryGraphEdge } from './types'
 import { Graph3dGlyphs } from './graph3dGlyphs'
 import { markerVertexShader, markerFragmentShader, linkVertexShader, linkFragmentShader } from './graph3dShaders'
 
@@ -23,6 +25,7 @@ export interface Graph3dMarker {
   opacity: number
   priority: number
   grouped: number
+  hiddenMass: number
 }
 export interface Graph3dLink {
   source: string; target: string; type: string; color: string; suggested: boolean
@@ -37,6 +40,11 @@ interface SpatialCell {
   markers: Graph3dMarker[]
   displayed: Graph3dMarker[]
   groups: Graph3dMarker[][]
+}
+interface Graph3dRepresentation {
+  nodes: readonly MemoryGraphNode[]
+  edges: readonly MemoryGraphEdge[]
+  representatives: ReadonlyMap<string, string>
 }
 interface OrbitGesture {
   x: number
@@ -133,14 +141,25 @@ export class MemoryGraphScene {
   private readonly onSelect: (id: string) => void
   private readonly onFailure: () => void
   private readonly groupTitle: (count: number) => string
+  private readonly hiddenTitle: (title: string, count: number, compact?: boolean) => string
+  private representation: Graph3dRepresentation = { nodes: [], edges: [], representatives: new Map() }
+  private representatives = new Map<string, string>()
+  private virtualNodes: { id: string; virtual: boolean }[] = []
+  private hiddenItems: GraphHiddenItems = { mass: new Map(), count: new Map(), hiddenCount: 0, unloadedCount: 0 }
+  private visibilityDirty = true
+  private displayedIds = new Set<string>()
+  private representationEdges: readonly MemoryGraphEdge[] = []
+  private readonly massTransitions = new Map<string, { from: number; to: number; start: number }>()
 
   constructor(private readonly host: HTMLElement, callbacks: {
     camera: () => void; select: (id: string) => void; failure: () => void; groupTitle: (count: number) => string
+    hiddenTitle: (title: string, count: number, compact?: boolean) => string
   }) {
     this.onCamera = callbacks.camera
     this.onSelect = callbacks.select
     this.onFailure = callbacks.failure
     this.groupTitle = callbacks.groupTitle
+    this.hiddenTitle = callbacks.hiddenTitle
     this.renderer = new WebGLRenderer({ antialias: false, alpha: true, powerPreference: 'high-performance' })
     // Both renderers reveal the same viewport gradients and grid underneath.
     this.renderer.setClearAlpha(0)
@@ -204,13 +223,17 @@ export class MemoryGraphScene {
   }
   get visible(): ReadonlyMap<string, Graph3dProjection> { return this.projections }
   get groupedCount(): number { return this.spatialGrouped }
+  get hiddenCount(): number { return this.hiddenItems.hiddenCount }
   spacingAt(id: string, distance: number): number {
     const point = this.projections.get(id)
     return point ? distance * this.height / (2 * Math.tan(this.camera.fov * Math.PI / 360) * Math.max(this.camera.near, -point.depth)) : 0
   }
 
-  setData(markers: Graph3dMarker[], links: Graph3dLink[], bounds: Iterable<GraphPoint3d>, fit: boolean): void {
+  setData(markers: Graph3dMarker[], links: Graph3dLink[], bounds: Iterable<GraphPoint3d>, fit: boolean, representation: Graph3dRepresentation, preserveView = false): void {
     this.cameraChanged = true
+    this.renderer.domElement.title = ''
+    this.representation = representation
+    this.visibilityDirty = true
     this.markers = [...markers].sort((a, b) => b.priority - a.priority || a.id.localeCompare(b.id))
     this.byId = new Map(markers.map(marker => [marker.id, marker]))
     this.sourceLinks = links
@@ -223,8 +246,22 @@ export class MemoryGraphScene {
       this.renderer.clear()
     }
     const cells = new Map<string, SpatialCell>()
+    const directories = new Map(representation.nodes.filter(node => node.entity_kind === 'directory')
+      .map(node => [node.id, node.resource_uri?.split('://')[0] ?? '']))
+    const directoryBounds = new Box3()
+    let directoryCount = 0
+    for (const marker of this.markers) if (directories.has(marker.id) && marker.priority < 10) {
+      directoryBounds.expandByPoint(this.projected.set(marker.point.x, marker.point.y, marker.point.z))
+      directoryCount++
+    }
+    const extent = directoryBounds.getSize(new Vector3())
+    // Dense directory maps need an overview at the scale of each share. Their
+    // nodes are already loaded; approaching these groups only changes rendering.
+    const directoryCellSize = directoryCount >= 80 ? Math.max(500, extent.x / 2, extent.y / 2, extent.z / 2) : 500
     for (const marker of this.markers) {
-      const p = marker.point, key = `${Math.floor(p.x / 500)},${Math.floor(p.y / 500)},${Math.floor(p.z / 500)}`
+      const directory = directories.has(marker.id) && marker.priority < 10
+      const size = directory ? directoryCellSize : 500
+      const p = marker.point, key = `${directory ? `directory:${directories.get(marker.id)}:` : ''}${Math.floor(p.x / size)},${Math.floor(p.y / size)},${Math.floor(p.z / size)}`
       let cell = cells.get(key)
       if (!cell) { cell = { key, bounds: new Box3(), markers: [], displayed: [], groups: [] }; cells.set(key, cell) }
       cell.markers.push(marker)
@@ -238,7 +275,8 @@ export class MemoryGraphScene {
         if (!groups.has(key)) groups.set(key, [])
         groups.get(key)!.push(marker)
       }
-      cell.groups = [...groups.values()].filter(group => group.length >= 8)
+      cell.groups = [...groups.values()].filter(group => group.length >= (
+        directoryCount >= 80 && cell.key.startsWith('directory:') ? 2 : 8))
     }
     if (markers.length > this.capacity) {
       this.capacity = 2 ** Math.ceil(Math.log2(Math.max(16, markers.length)))
@@ -248,8 +286,14 @@ export class MemoryGraphScene {
     }
     this.fitPoints = [...bounds]
     this.fitDirty = true
+    const navigationScale = this.fitDistance
     const direction = fit ? new Vector3(0, 0.15, 1).normalize() : this.camera.position.clone().sub(this.controls.target).normalize()
     this.updateFit(direction)
+    if (preserveView && !fit) {
+      this.overview = false
+      this.fitDistance = navigationScale
+      this.fitDirty = true
+    }
     if (fit || this.overview) this.frameFit(direction)
     else this.schedule()
   }
@@ -289,7 +333,14 @@ export class MemoryGraphScene {
   private updateFit(direction: Vector3): void {
     if (direction.lengthSq() < 1e-12) direction.set(0, 0.15, 1).normalize()
     if (!this.fitDirty && direction.distanceToSquared(this.fitDirection) < 1e-12) return
-    const result = fitGraph3d(this.fitPoints, this.width, this.height, direction)
+    let diameter = 0
+    for (const marker of this.markers) diameter = Math.max(diameter, graphHiddenDiameter(marker.size, marker.hiddenMass))
+    for (const cell of this.cells) for (const group of cell.groups) {
+      const base = group.reduce((sum, marker) => sum + marker.size, 0) / group.length
+      const mass = group.length + group.reduce((sum, marker) => sum + marker.hiddenMass, 0)
+      diameter = Math.max(diameter, graphHiddenDiameter(base, mass))
+    }
+    const result = fitGraph3d(this.fitPoints, this.width, this.height, direction, diameter * 1.1 * 1.12 / 2 + 4)
     this.center.set(result.center.x, result.center.y, result.center.z)
     this.boundsCenter.set(result.boundsCenter.x, result.boundsCenter.y, result.boundsCenter.z)
     this.fitDistance = result.distance
@@ -396,8 +447,8 @@ export class MemoryGraphScene {
   private paint(): void {
     this.camera.updateMatrixWorld()
     this.clipMatrix.copy(this.camera.projectionMatrix)
-    this.clipMatrix.elements[0]! *= this.width / (this.width + 80)
-    this.clipMatrix.elements[5]! *= this.height / (this.height + 80)
+    this.clipMatrix.elements[0]! *= this.width / (this.width + 160)
+    this.clipMatrix.elements[5]! *= this.height / (this.height + 160)
     this.frustum.setFromProjectionMatrix(this.clipMatrix.multiply(this.camera.matrixWorldInverse))
     this.updateFrontier()
     this.projections.clear(); this.buckets.clear()
@@ -418,13 +469,13 @@ export class MemoryGraphScene {
         this.projected.set(p.x, p.y, p.z).project(this.camera)
         if (this.projected.z < -1 || this.projected.z > 1) continue
         const x = (this.projected.x + 1) * this.width / 2, y = (1 - this.projected.y) * this.height / 2
-        if (x < -40 || x > this.width + 40 || y < -40 || y > this.height + 40) continue
+        if (x < -80 || x > this.width + 80 || y < -80 || y > this.height + 80) continue
         // Local depth determines the two sizes; orbiting does not grow all nodes.
         const matrix = this.camera.matrixWorldInverse.elements
         const depth = matrix[2]! * p.x + matrix[6]! * p.y + matrix[10]! * p.z + matrix[14]!
         closestDepth = Math.min(closestDepth, -depth)
         const near = this.fitDistance / Math.max(this.camera.near, -depth) >= 1.8
-        const size = Math.min(marker.grouped ? 56 : 48, marker.size) * (near ? 1.1 : 0.56)
+        const size = marker.size * (near ? 1.1 : 0.56)
         const projection = { id: marker.id, x, y, depth, size, near }
         this.projections.set(marker.id, projection)
         const key = `${Math.floor(x / 80)},${Math.floor(y / 80)}`
@@ -444,6 +495,30 @@ export class MemoryGraphScene {
         represented += 1 + (this.proxyCells.has(marker.id) ? marker.grouped : 0)
       }
     }
+    if (this.visibilityDirty || this.projections.size !== this.displayedIds.size
+      || [...this.projections.keys()].some(id => !this.displayedIds.has(id))) {
+      const displayed = new Set(this.projections.keys())
+      const hidden = graphHiddenItems([...this.representation.nodes, ...this.virtualNodes],
+        this.representationEdges, displayed, this.representatives)
+      const now = performance.now()
+      const animate = !window.matchMedia('(prefers-reduced-motion: reduce)').matches && displayed.size <= 500
+      for (const id of this.massTransitions.keys()) if (!displayed.has(id) || !animate) this.massTransitions.delete(id)
+      if (animate) for (const id of displayed) {
+        const mass = hidden.mass.get(id) ?? 0
+        if (this.displayedIds.has(id) && mass !== (this.hiddenItems.mass.get(id) ?? 0)) {
+          this.massTransitions.set(id, { from: this.massAt(id, now), to: mass, start: now })
+        }
+      }
+      this.displayedIds = displayed
+      this.hiddenItems = hidden
+      this.visibilityDirty = false
+      this.cameraChanged = true
+    }
+    let index = 0
+    for (const point of this.projections.values()) {
+      point.size = graphHiddenDiameter(point.size, this.massAt(point.id, performance.now()))
+      appearances?.setX(index++, point.size * (point.id === this.selected ? 1.12 : 1))
+    }
     this.geometry.instanceCount = count
     this.navigationDepth = Number.isFinite(closestDepth) ? Math.max(this.camera.near, closestDepth) : null
     for (const attribute of [centers, tints, appearances, borders, glyphs, borderWidths]) if (attribute) {
@@ -456,6 +531,7 @@ export class MemoryGraphScene {
     this.paintLinks()
     this.paintOverlay()
     this.renderer.render(this.scene, this.camera)
+    if (this.massTransitions.size) this.schedule()
     // Renderer evidence, available to the existing browser harness.
     this.host.dataset.graph3dNodes = String(count)
     this.host.dataset.graph3dLinks = String(this.visibleLinks)
@@ -484,6 +560,19 @@ export class MemoryGraphScene {
     return paint
   }
 
+  private markerTitle(marker: Graph3dMarker, compact = false): string {
+    const count = this.hiddenItems.count.get(marker.id) ?? 0
+    return count && !this.proxyCells.has(marker.id) ? this.hiddenTitle(marker.title, count, compact) : marker.title
+  }
+
+  private massAt(id: string, now: number): number {
+    const transition = this.massTransitions.get(id)
+    if (!transition) return this.hiddenItems.mass.get(id) ?? 0
+    const progress = Math.min(1, (now - transition.start) / 320)
+    if (progress >= 1) this.massTransitions.delete(id)
+    return transition.from + (transition.to - transition.from) * (1 - (1 - progress) ** 3)
+  }
+
   private updateFrontier(): void {
     const folded = new Set<string>()
     const matrix = this.camera.matrixWorldInverse.elements
@@ -503,6 +592,10 @@ export class MemoryGraphScene {
     this.cameraChanged = true
     this.foldedCells = folded
     this.displayById = new Map(this.byId)
+    this.representatives = new Map(this.representation.representatives)
+    this.representationEdges = this.representation.edges
+    this.virtualNodes = []
+    this.visibilityDirty = true
     this.proxyCells.clear()
     this.spatialGrouped = 0
     const representatives = new Map<string, string>()
@@ -514,16 +607,34 @@ export class MemoryGraphScene {
         const first = group[0]!, id = `@cell:${cell.key}:${first.shape}:${first.color}`
         const point = { x: 0, y: 0, z: 0 }
         for (const member of group) {
-          hidden.add(member.id); representatives.set(member.id, id)
+          hidden.add(member.id); representatives.set(member.id, id); this.representatives.set(member.id, id)
           point.x += member.point.x; point.y += member.point.y; point.z += member.point.z
         }
         point.x /= group.length; point.y /= group.length; point.z /= group.length
-        const marker = { ...first, id, point, title: this.groupTitle(group.length), grouped: group.length - 1, priority: 30, size: 48 }
+        const marker = { ...first, id, point, title: this.groupTitle(group.length), grouped: group.length - 1, priority: 30,
+          size: group.reduce((sum, member) => sum + member.size, 0) / group.length }
+        this.virtualNodes.push({ id, virtual: true })
         this.displayById.set(id, marker); this.proxyCells.set(id, cell.key)
         cell.displayed.push(marker)
         this.spatialGrouped += group.length - 1
       }
       cell.displayed = cell.displayed.filter(marker => !hidden.has(marker.id))
+    }
+    if (this.virtualNodes.length) {
+      const virtual = new Set(this.virtualNodes.map(node => node.id))
+      const representativeFor = (id: string): string => {
+        const seen = new Set<string>()
+        while (this.representatives.has(id) && !seen.has(id)) {
+          seen.add(id); id = this.representatives.get(id)!
+        }
+        return id
+      }
+      const virtualEdges = this.representation.edges.flatMap(edge => {
+        const source = representativeFor(edge.source_item_id), target = representativeFor(edge.target_item_id)
+        return source !== target && (virtual.has(source) || virtual.has(target))
+          ? [{ ...edge, source_item_id: source, target_item_id: target }] : []
+      })
+      this.representationEdges = [...this.representation.edges, ...virtualEdges]
     }
     this.rebuildLinks(representatives)
   }
@@ -655,9 +766,11 @@ export class MemoryGraphScene {
     const occupied: { x: number; y: number; w: number; h: number }[] = []
     const intersects = (x: number, y: number, w: number, h: number): boolean => occupied.some(rect =>
       Math.abs(rect.x - x) < (rect.w + w) / 2 + 4 && Math.abs(rect.y - y) < (rect.h + h) / 2 + 4)
+    const representsHidden = (id: string): boolean => (this.hiddenItems.count.get(id) ?? 0) > 0
+    let ordinaryLabels = 0
     const ordered = [...this.projections.values()].filter(point => {
       const marker = this.displayById.get(point.id)!
-      return point.near || this.previews.has(point.id) || marker.priority >= 8 || marker.grouped || point.id === this.selected
+      return representsHidden(point.id) || point.near || this.previews.has(point.id) || marker.priority >= 8 || marker.grouped || point.id === this.selected
     }).sort((a, b) =>
       (a.id === this.selected ? -100 : -this.displayById.get(a.id)!.priority)
       - (b.id === this.selected ? -100 : -this.displayById.get(b.id)!.priority))
@@ -676,7 +789,7 @@ export class MemoryGraphScene {
           }
         }
         const localZoom = this.fitDistance / Math.max(this.camera.near, -point.depth)
-        imageSize = Math.min(preview.nativeSize, 56 * Math.max(1, localZoom / 3), clearance)
+        imageSize = Math.min(preview.nativeSize, graphHiddenDiameter(56, this.massAt(marker.id, performance.now())) * Math.max(1, localZoom / 3), clearance)
         const w = preview.aspect >= 1 ? imageSize : imageSize * preview.aspect
         const h = preview.aspect >= 1 ? imageSize / preview.aspect : imageSize
         if (imageSize >= 24 && !intersects(point.x, point.y, w, h)) {
@@ -692,12 +805,16 @@ export class MemoryGraphScene {
           this.imageBounds.set(marker.id, { w, h })
         } else imageSize = 0
       }
-      if (aliveLabels.size >= (this.zoom < 1.8 ? 12 : 80)) continue
-      if (!point.near && marker.priority < 8 && !marker.grouped && marker.id !== this.selected) continue
+      const alwaysLabel = representsHidden(point.id)
+      if (!alwaysLabel && ordinaryLabels >= (this.zoom < 1.8 ? 12 : 80)) continue
+      if (!alwaysLabel && !point.near && marker.priority < 8 && !marker.grouped && marker.id !== this.selected) continue
       const title = marker.title
-      const w = Math.min(180, title.length * 7 + 8), h = 20
-      const y = point.y + Math.max(point.size, imageSize) / 2 + h / 2 + 4
-      if (point.x - w / 2 < 0 || point.x + w / 2 > this.width || y + h / 2 > this.height || intersects(point.x, y, w, h)) continue
+      const w = Math.min(180, this.width - 8, title.length * 7 + 8), h = 20
+      const x = Math.max(w / 2 + 4, Math.min(this.width - w / 2 - 4, point.x))
+      const offset = Math.max(point.size, imageSize) / 2 + h / 2 + 4
+      const desiredY = point.y + offset + h / 2 <= this.height ? point.y + offset : point.y - offset
+      const y = alwaysLabel ? Math.max(h / 2, Math.min(this.height - h / 2, desiredY)) : desiredY
+      if (y - h / 2 < 0 || y + h / 2 > this.height || !alwaysLabel && intersects(x, y, w, h)) continue
       let label = this.elements.get(marker.id)
       if (!label) {
         label = document.createElement('div')
@@ -706,8 +823,13 @@ export class MemoryGraphScene {
         this.elements.set(marker.id, label); this.overlay.append(label)
       }
       label.textContent = title
-      Object.assign(label.style, { left: `${point.x}px`, top: `${y}px`, maxWidth: `${w}px`, color: this.ink })
-      occupied.push({ x: point.x, y, w, h }); aliveLabels.add(marker.id)
+      label.dataset.nodeId = marker.id
+      label.dataset.nodeX = String(point.x)
+      label.dataset.nodeY = String(point.y)
+      label.title = this.markerTitle(marker)
+      Object.assign(label.style, { left: `${x}px`, top: `${y}px`, maxWidth: `${w}px`, color: this.ink })
+      occupied.push({ x, y, w, h }); aliveLabels.add(marker.id)
+      if (!alwaysLabel) ordinaryLabels++
     }
     for (const [id, label] of this.elements) if (!aliveLabels.has(id)) { label.remove(); this.elements.delete(id) }
     for (const [id, img] of this.images) if (!aliveImages.has(id)) { img.remove(); this.images.delete(id) }
@@ -739,6 +861,10 @@ export class MemoryGraphScene {
       if (previous > 0 && next > 0) this.zoomBy(next / previous)
     }
     const pointer = this.pointer
+    if (!pointer && event.pointerType === 'mouse') {
+      const id = this.pick(event.clientX, event.clientY)
+      this.renderer.domElement.title = id ? this.markerTitle(this.displayById.get(id)!) : ''
+    }
     if (!pointer || pointer.pointerId !== event.pointerId) return
     pointer.lastX = event.clientX; pointer.lastY = event.clientY
     const threshold = event.pointerType === 'touch' ? 5 : 0
@@ -826,7 +952,8 @@ export class MemoryGraphScene {
       const index = this.selected ? ids.indexOf(this.selected) : -1
       const step = event.key === 'ArrowLeft' || event.key === 'ArrowUp' ? -1 : 1
       this.selected = ids[(index + step + ids.length) % ids.length]!
-      this.host.setAttribute('aria-description', this.displayById.get(this.selected)?.title ?? '')
+      const marker = this.displayById.get(this.selected)
+      this.host.setAttribute('aria-description', marker ? this.markerTitle(marker) : '')
       this.schedule()
     }
   }

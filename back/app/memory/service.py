@@ -471,7 +471,7 @@ def _graph_node(item: MemoryItem, *, relation_count: int, children_count: int = 
         node_kind=cast(Any, item.node_kind),
         entity_kind=entity_kind,
         owner_agent_id=item.owner_agent_id,
-        title=item.primary_url if item.node_kind == "directory" and item.title == "." and item.primary_url else item.title,
+        title=item.title,
         visibility=cast(Any, item.visibility),
         source_managed=item.source_managed,
         access_count=item.access_count,
@@ -3275,7 +3275,7 @@ async def list_graph_roots(request: MemoryGraphRootsRequest) -> MemoryGraphPage:
     rank = _graph_role_order()
     hierarchy = request.order_by == "hierarchy"
     deferred: ColumnElement[bool] | None = None
-    if request.defer_resource_children:
+    if request.defer_resource_children or request.defer_resource_files:
         parent = aliased(MemoryItem)
         accessible = select(MemoryItem.id).where(*filters).correlate(None)
         # Defer only real path descendants of a readable directory. Cycles,
@@ -3287,6 +3287,8 @@ async def list_graph_roots(request: MemoryGraphRootsRequest) -> MemoryGraphPage:
             func.length(parent.primary_url) < func.length(MemoryItem.primary_url),
             func.starts_with(MemoryItem.primary_url, func.concat(func.rtrim(parent.primary_url, "/"), "/")),
         ))
+        if not request.defer_resource_children:
+            deferred = and_(MemoryItem.node_kind != "directory", deferred)
         query = query.where(~deferred)
     if request.cursor is not None:
         after_activity = or_(
@@ -3359,7 +3361,9 @@ async def list_graph_roots(request: MemoryGraphRootsRequest) -> MemoryGraphPage:
         request,
         now=now,
     )
-    child_counts = await _graph_child_counts(root_ids, request, now=now) if request.defer_resource_children else {}
+    child_counts = await _graph_child_counts(root_ids, request, now=now) if (
+        request.defer_resource_children or request.defer_resource_files
+    ) else {}
     context_rows = list(
         (
             await db.execute(

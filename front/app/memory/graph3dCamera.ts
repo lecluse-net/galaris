@@ -3,7 +3,7 @@ import type { GraphPoint3d } from './graph3dLayout'
 /** Fit the actual perspective footprint, rather than a sphere which wastes
  * horizontal space on wide screens. The target also centers the projected
  * bounds when nodes have unequal depths. Only framing operations call this. */
-export function fitGraph3d(points: readonly GraphPoint3d[], width: number, height: number, direction: GraphPoint3d): {
+export function fitGraph3d(points: readonly GraphPoint3d[], width: number, height: number, direction: GraphPoint3d, markerRadius = 0): {
   center: GraphPoint3d; boundsCenter: GraphPoint3d; distance: number
 } {
   const length = Math.hypot(direction.x, direction.y, direction.z)
@@ -19,7 +19,8 @@ export function fitGraph3d(points: readonly GraphPoint3d[], width: number, heigh
     minZ = Math.min(minZ, point.z); maxZ = Math.max(maxZ, point.z)
   }
   const boundsCenter = points.length ? { x: (minX + maxX) / 2, y: (minY + maxY) / 2, z: (minZ + maxZ) / 2 } : { x: 0, y: 0, z: 0 }
-  const padding = Math.min(Math.min(width, height) * 0.2, 36 + Math.min(width, height) * 0.02)
+  const padding = Math.min(Math.min(width, height) * 0.4,
+    Math.max(markerRadius, Math.min(Math.min(width, height) * 0.2, 36 + Math.min(width, height) * 0.02)))
   const tangent = Math.tan(Math.PI / 8)
   const tanX = tangent * Math.max(1, width - padding * 2) / Math.max(1, height)
   const tanY = tangent * Math.max(1, height - padding * 2) / Math.max(1, height)

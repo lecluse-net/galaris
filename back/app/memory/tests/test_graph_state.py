@@ -8,7 +8,7 @@ from sqlalchemy import true
 
 from app.agent import AgentManagementScope
 from app.memory import graph_state, router, service, source_access
-from app.memory.models import MemoryContextEdge, MemoryContextNode
+from app.memory.models import MemoryContextEdge, MemoryContextNode, MemoryGraphPosition, MemoryGraphView
 from app.memory.schemas import MemoryGraphExpandRequest, MemoryGraphRootsRequest, MemoryItemCreate, MemoryPayload
 from core.user import UserModel
 
@@ -109,6 +109,75 @@ async def test_revoked_nodes_and_expansions_are_not_restored(db, agents, memory_
     assert not (await graph_state.read_state(graph_state.GraphContext(agent_id=owner.id), scopes[0])).preferences.resource_branches
     monkeypatch.setattr(router, "current_management_scope", AsyncMock(return_value=scopes[0]))
     assert not (await router.list_memory_graph_roots(MemoryGraphRootsRequest(agent_id=owner.id, include_saved_positions=True))).positions
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("invalid", [
+    {"resource_branches": None}, {"camera_3d": {"position": "obsolete"}},
+    {"hidden_entity_kinds": ["obsolete-kind"]}, {"future_format": 3},
+])
+async def test_invalid_saved_view_rebuilds_positions_and_can_be_saved(db, agents, memory_storage, invalid):
+    owner, _, scopes, item, _ = await setup(db, agents)
+    context = graph_state.GraphContext(agent_id=owner.id)
+    camera = graph_state.GraphCamera3d(position=(300, 400, 500), target=(10, 20, 30), layout_version=2)
+    view = MemoryGraphView(
+        user_id=scopes[0].user_id, agent_id=owner.id, context_key=context.cache_key(), revision=8,
+        preferences={"hidden_entity_kinds": ["contact"], "expanded_branches": [str(item.id)],
+                     "camera_3d": camera.model_dump(mode="json"), **invalid},
+    )
+    db.add(view)
+    await db.flush()
+    db.add(MemoryGraphPosition(view_id=view.id, node_key=item.id, x=100, y=200))
+    await db.commit()
+    restored = await graph_state.read_state(context, scopes[0])
+    assert restored.revision == 9
+    assert restored.preferences == graph_state.GraphPreferences()
+    assert not await graph_state.page_positions(context, scopes[0], [item.id])
+    assert (await graph_state.read_state(context, scopes[0])).revision == restored.revision
+    saved = await graph_state.write_state(graph_state.GraphStateWrite(
+        agent_id=owner.id, expected_revision=restored.revision,
+        positions={item.id: graph_state.GraphPoint(x=12, y=34)},
+    ), scopes[0])
+    assert saved.revision == 10
+    assert saved.positions == {item.id: graph_state.GraphPoint(x=12, y=34)}
+    assert (await graph_state.read_state(context, scopes[0])).preferences == restored.preferences
+
+
+@pytest.mark.asyncio
+async def test_explicit_rebuild_replaces_anchors_only_in_the_private_view(db, agents, memory_storage):
+    owner, _, scopes, item, _ = await setup(db, agents)
+    context = graph_state.GraphContext(agent_id=owner.id)
+    for scope in scopes:
+        await graph_state.write_state(graph_state.GraphStateWrite(
+            agent_id=owner.id, expected_revision=0, positions={item.id: graph_state.GraphPoint(x=100, y=200)},
+        ), scope)
+    rebuilt = await graph_state.write_state(graph_state.GraphStateWrite(
+        agent_id=owner.id, expected_revision=1, reset_layout=True,
+        positions={item.id: graph_state.GraphPoint(x=12, y=34)},
+        preferences=graph_state.GraphPreferencesPatch(hidden_entity_kinds=["contact"]),
+    ), scopes[0])
+    assert rebuilt.positions == {item.id: graph_state.GraphPoint(x=12, y=34)}
+    assert rebuilt.preferences.hidden_entity_kinds == ["contact"]
+    assert await graph_state.page_positions(context, scopes[1], [item.id]) == {item.id: graph_state.GraphPoint(x=100, y=200)}
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("entrypoint", ["state", "page"])
+async def test_invalid_saved_coordinates_rebuild_instead_of_blocking_graph_pages(db, agents, memory_storage, entrypoint):
+    owner, _, scopes, item, _ = await setup(db, agents)
+    context = graph_state.GraphContext(agent_id=owner.id)
+    view = MemoryGraphView(user_id=scopes[0].user_id, agent_id=owner.id, context_key=context.cache_key())
+    db.add(view)
+    await db.flush()
+    db.add(MemoryGraphPosition(view_id=view.id, node_key=item.id, x=float('nan'), y=200))
+    await db.commit()
+    if entrypoint == "state":
+        assert (await graph_state.read_state(context, scopes[0])).revision == 1
+    assert not await graph_state.page_positions(context, scopes[0], [item.id])
+    saved = await graph_state.write_state(graph_state.GraphStateWrite(
+        agent_id=owner.id, expected_revision=1, positions={item.id: graph_state.GraphPoint(x=12, y=34)},
+    ), scopes[0])
+    assert saved.positions == {item.id: graph_state.GraphPoint(x=12, y=34)}
 
 
 @pytest.mark.parametrize("payload", [{"x": float("nan"), "y": 0}, {"x": 0, "y": float("inf")}])

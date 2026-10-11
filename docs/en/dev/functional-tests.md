@@ -73,9 +73,8 @@ contracts and tests, then select the least expensive layer that proves the obser
 ## Cross-domain workflows
 
 `front/browser-tests/memory-3d.spec.mjs` exercises 10,000 synthetic nodes and 20,000
-relationships in 3D, 5,000 and 10,000 in 2D; these different loads do not directly compare
-their speeds. It checks spatial group coverage, opening a group
-into a canonical item, filters, keyboard interaction, WebGL fallback to 2D, agent changes,
+relationships in 3D. It checks spatial group coverage, opening a group
+into a canonical item, filters, keyboard interaction, 3D retry after WebGL context loss, agent changes,
 and delayed thumbnails capped at native pixel dimensions. Eight-leaf cases hold the first
 page until an empty scene has initialized, protecting fit on data arrival and keeping
 opened groups open. The first pixel of movement and the orbit preserve an off-center
@@ -91,18 +90,25 @@ Native preview size is
 checked before passing its plane; remaining visible after passing is no longer a zoom
 constraint. The frame counter verifies rendering stops at rest. The real HTTP
 journey `e2e/specs/memory-graph.spec.mjs` preserves positions and filters after reopening
-in 2D/3D. `app/memory/tests/test_graph_state.py` protects independent cameras and rejects
+in 3D. `app/memory/tests/test_graph_state.py` protects independent cameras and rejects
 invalid coordinates.
 `front/app/memory/graph3dCamera.test.mjs` uses a Three.js projection to check that wide,
 tall and deep graphs remain fully visible, centered and fill desktop/mobile viewports,
 including at large coordinates; empty and single-node graphs keep a finite camera pose.
 Desktop/mobile cases protect the first page appearing while the next one is pending,
-preserved navigation, retry after an error, loading directory children when approaching,
-reopening them and the complete catalogue on returning to 2D. A link with an endpoint
+preserved navigation, retry after an error, known directories on opening, loading their
+files when approaching and reopening them. A link with an endpoint
 behind the camera stays absent until fit. `graph3dChildren.test.mjs` checks bounded
-concurrency, cursors, no draining at rest and discarded stale responses. The catalogue's
-`graph_hierarchy` test uses the actual resource services, child pagination, filters and
+concurrency, cursors, complete pagination of nearby directories, stopping subsequent pages
+outside the view and discarded stale responses. `graphRefresh.test.mjs` protects merging
+differences, unchanged records, concurrent responses and confirmed deletions. Desktop/mobile
+journeys check periodic refreshes and reconnections without clearing the scene, preserved
+cameras, title changes without new placement, temporary failures and removal on access denial.
+A directory of 501 files exercises two pages, retry, reopening and background file additions
+and deletions. The catalogue's `graph_hierarchy` test uses the actual resource services, child pagination, filters and
 sources that disappear or lose access.
+Catalogue tests also verify root titles persisted from the Tool label, the scheme fallback,
+repair of old titles and preservation of custom names.
 
 `front/browser-tests/async-views.spec.mjs` covers deferred loading of a real editor,
 typing elsewhere while waiting, closing before the response, reopening and retrying
@@ -659,10 +665,11 @@ late response rejection after an agent switch on desktop/mobile.
 `front/browser-tests/memory.spec.mjs` compares actual file and directory graph colors with
 their legend after filtering and theme changes, on desktop and mobile.
 `front/browser-tests/thumbnail-fit.spec.mjs` compares decoded image proportions with the
-rectangles actually painted in the graph, including renderer transforms, on desktop and
-mobile: landscape, portrait, square and panorama, on first display, after zooming out/in
-and after filtering. The scenario reproduces the ratio being applied twice before the fix;
-HTML preview checks did not cover this graph transform.
+preview rectangles actually displayed in 3D on desktop and mobile: landscape, portrait,
+square, panorama and document, on first display, after zooming out/in and after filtering.
+It also verifies original thumbnail bytes and the native pixel limit. The former ECharts
+transform assertions are retired with the 2D renderer; these 3D journeys preserve the
+image proportions and cache reuse guarantees.
 A synthetic directory of 84 images also checks simultaneous thumbnails and their reuse
 with a reduced browser memory estimate, on desktops reporting 2 or 16 cores. Previous small
 graphs did not detect the incorrect 64-thumbnail limit. Loaded thumbnails remain cached,
@@ -702,16 +709,31 @@ a branch while keeping a child selected is no longer part of the interface.
 The actual renderer checks intermediate opacity of new symbols during zoom, complete
 visibility at the end, and immediate appearance with reduced motion.
 Coordinate stability is checked in the large-window mode with 3,000 items. Error/retry and a delayed response after an
-agent change are covered. Desktop/mobile journeys restore positions and hidden kinds
+agent change are covered. The delayed-response scenario waits for the simulated server to
+finish and checks request cancellation; it no longer waits for a network response event
+after the request has been cancelled. Desktop/mobile journeys restore positions and hidden kinds
 after reopening, add visible and hidden newcomers without moving existing nodes, and
 retry failed saves. `graphState.test.mjs` checks incremental batches, edits during a
-request and revision conflicts. DB tests in `test_graph_state.py` check isolation between
-users/contexts, permissions, revocation and preservation during partial saves.
+request, revision conflicts, incompatible-state reconstruction and automatic recovery after
+restoration failures. 3D journeys also verify that retrying preserves the current camera.
+DB tests in `test_graph_state.py` check isolation between users/contexts, permissions,
+revocation and preservation during partial saves, plus reconstruction of invalid state or
+coordinates within the affected private view.
 The old assertion requiring internal `force` mode after folding is replaced by preserved
 coordinates: saved views use explicit placement.
 `front/app/memory/graphBranches.test.mjs` covers exclusivity rules,
 duplicates, cycles, isolated nodes, surviving positions and placement based on relationships;
-the latter scenario fails with the grid that ignored links. The existing DB pagination test covers
+the latter scenario fails with the grid that ignored links.
+`front/app/memory/graphVisibility.test.mjs` covers hidden-item mass conservation and sharing,
+successive parents and representatives, duplicates, cycles, suggestions, unloaded children
+and the four-times-diameter limit. The `memory.spec.mjs` journeys check hiding and restoring
+items in 3D on desktop/mobile; `memory-3d.spec.mjs` checks deferred-child and offscreen-item
+counts, the actual rendered pixel widths of folders with 84 unloaded children and captions
+remaining visible beyond the ordinary budget and despite overlaps. ECharts simulation, camera
+and 2D fallback scenarios are retired with that renderer. Navigation, content, pagination,
+filters and reopening remain covered by these 3D and real-HTTP scenarios; modal navigation
+remains in `memory.spec.mjs`. `graph3dCamera.test.mjs` protects framing of enlarged representatives on small screens.
+The existing DB pagination test covers
 an additional neighbor beyond the page, confirmed or suggested, and inaccessible links.
 `e2e/specs/memory-graph.spec.mjs` exercises folding, keyboard controls, zoom, opening content and
 returning to the graph in the assembled application, using the real API and an isolated synthetic

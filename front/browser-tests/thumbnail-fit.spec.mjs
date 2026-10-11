@@ -1,254 +1,141 @@
 import { test, expect, mount, jsonRoute } from './fixtures.mjs'
 
+const props = { agentId: 7, query: '', topicItemId: null, contactItemId: null }
+const node = (id, kind = 'file') => ({ id, title: `Synthetic ${id}`, node_kind: kind, entity_kind: kind,
+  owner_agent_id: 7, visibility: 'private', source_managed: true, access_count: 0, last_accessed_at: null,
+  created_at: '2026-09-01T12:00:00Z', updated_at: '2026-09-01T12:00:00Z', activity_at: '2026-09-01T12:00:00Z',
+  has_relations: false, relation_count: 0 })
+const chart = page => page.locator('.memory-graph__chart--3d')
+const images = page => chart(page).locator('img')
+async function png(page, width, height) {
+  return Buffer.from(await page.evaluate(({ width, height }) => {
+    const canvas = document.createElement('canvas')
+    canvas.width = width; canvas.height = height
+    const context = canvas.getContext('2d')
+    context.fillStyle = '#FFFFFF'; context.fillRect(0, 0, width, height)
+    context.fillStyle = '#0866ED'; context.fillRect(width / 4, height / 4, width / 2, height / 2)
+    return canvas.toDataURL('image/webp', 1).split(',')[1]
+  }, { width, height }), 'base64')
+}
+
 for (const cores of [2, 16]) test(`an 84-file directory loads every visible thumbnail with ${cores} reported desktop cores and a capped memory estimate`, async ({ page }, testInfo) => {
   await page.setViewportSize({ width: 1920, height: 1080 })
   await page.addInitScript(cores => {
     Object.defineProperty(navigator, 'hardwareConcurrency', { get: () => cores })
     Object.defineProperty(navigator, 'deviceMemory', { get: () => 2 })
   }, cores)
-  const png = Buffer.from(await page.evaluate(() => {
-    const canvas = document.createElement('canvas')
-    canvas.width = 320; canvas.height = 200
-    const context = canvas.getContext('2d')
-    context.fillStyle = '#0866ED'; context.fillRect(0, 0, 320, 200)
-    return canvas.toDataURL('image/webp', 1).split(',')[1]
-  }), 'base64')
-  const timestamp = '2026-09-01T12:00:00Z'
-  const files = Array.from({ length: 84 }, (_, index) => ({
-    id: `synthetic-image-${index}`, title: `Synthetic image ${index}`, node_kind: 'file', entity_kind: 'file',
-    owner_agent_id: 7, visibility: 'private', source_managed: true, access_count: 0,
-    last_accessed_at: null, created_at: timestamp, updated_at: timestamp, activity_at: timestamp,
-    has_relations: true, relation_count: 3,
-  }))
-  const directory = { ...files[0], id: 'synthetic-directory', title: 'Synthetic directory',
-    node_kind: 'directory', entity_kind: 'directory', relation_count: files.length }
-  const bounds = ['top', 'bottom'].map(id => ({ ...directory, id: `synthetic-bounds-${id}`,
-    title: `Synthetic bounds ${id}`, node_kind: 'memory', entity_kind: 'memory', relation_count: 0 }))
-  const edges = files.flatMap((file, index) => [
-    { id: `location-${index}`, source_item_id: directory.id, target_item_id: file.id,
-      relation_type: 'related_to', confidence: 1, suggested: false },
-    { id: `neighbor-${index}`, source_item_id: file.id, target_item_id: files[(index + 1) % files.length].id,
-      relation_type: 'related_to', confidence: 1, suggested: false },
-  ])
+  const bytes = await png(page, 320, 200)
+  const files = Array.from({ length: 84 }, (_, index) => node(`synthetic-image-${index}`))
+  const directory = node('synthetic-directory', 'directory')
+  const bounds = [node('synthetic-top', 'memory'), node('synthetic-bottom', 'memory')]
   await jsonRoute(page, '**/api/memory/graph/roots', {
-    nodes: [directory, ...files, ...bounds], edges, has_more: false, next_cursor: null, edges_truncated: false,
-    // This scenario exercises simultaneous images and cache reuse, independently
-    // of the force layout. Reserve a compact, entirely synthetic directory.
-    positions: Object.fromEntries([[directory.id, [0, -240]], [bounds[0].id, [-1200, -800]], [bounds[1].id, [1200, 800]],
-      ...files.map((file, i) => [file.id, [(i % 12 - 5.5) * 70, (Math.floor(i / 12) - 3) * 70]])]),
+    nodes: [directory, ...files, ...bounds], edges: [], has_more: false, next_cursor: null, edges_truncated: false,
+    positions: Object.fromEntries([[directory.id, [0, -280]], [bounds[0].id, [-1400, -900]], [bounds[1].id, [1400, 900]],
+      ...files.map((file, i) => [file.id, [(i % 12 - 5.5) * 80, (Math.floor(i / 12) - 3) * 80]])]),
   })
-  let thumbnailReads = 0
+  // Exercise the thumbnail budget independently of navigation by restoring a
+  // near view with the entire synthetic directory inside the viewport.
+  await jsonRoute(page, '**/api/memory/graph/state/read', {
+    format_version: 1, revision: 0, positions: {}, preferences: {
+      hidden_entity_kinds: [], expanded_branches: [], camera: null,
+      camera_3d: { layout_version: 2, position: [0, 0, 0], target: [0, 0, -960] },
+    },
+  })
+  let reads = 0
   await page.route('**/api/file-share/items/synthetic-image-*/resources?*', route => route.fulfill({ json: [{
-    id: 'image', name: 'synthetic.png', media_type: 'image/png', size_bytes: png.length, uri: 'file://synthetic/image.png',
+    id: 'image', name: 'synthetic.png', media_type: 'image/png', size_bytes: bytes.length, uri: 'file://synthetic/image.png',
   }] }))
   await page.route('**/api/file-share/items/synthetic-image-*/resources/image/thumbnail?*', route => {
-    thumbnailReads++
-    return route.fulfill({ contentType: 'image/webp', body: png })
+    reads++
+    return route.fulfill({ contentType: 'image/webp', body: bytes })
   })
-  await mount(page, 'app/memory/components/MemoryGraph.vue', {
-    props: { agentId: 7, query: '', topicItemId: null, contactItemId: null },
-  })
-  await expect(page.locator('.memory-graph__chart--loading')).toHaveCount(0)
-  const rendererUrl = await page.evaluate(() => performance.getEntriesByType('resource').map(entry => entry.name)
-    .find(name => /\/echarts(?:\/core|_core)\.js/.test(name)))
-  for (let i = 0; i < 3; i++) await page.getByRole('button', { name: 'Zoom in', exact: true }).click()
-  await page.evaluate(async url => {
-    const chart = (await import(url)).getInstanceByDom(document.querySelector('.memory-graph__chart'))
-    const data = chart.getModel().getSeries()[0].getData()
-    const points = Array.from({ length: data.count() }, (_, index) =>
-      chart.convertToPixel({ seriesId: 'memory-graph' }, data.getItemLayout(index)))
-    const xs = points.map(point => point[0]), ys = points.map(point => point[1])
-    chart.dispatchAction({ type: 'graphRoam', seriesId: 'memory-graph',
-      dx: chart.getWidth() / 2 - (Math.min(...xs) + Math.max(...xs)) / 2,
-      dy: chart.getHeight() / 2 - (Math.min(...ys) + Math.max(...ys)) / 2 })
-  }, rendererUrl)
-  const snapshot = () => page.evaluate(async url => {
-    const chart = (await import(url)).getInstanceByDom(document.querySelector('.memory-graph__chart'))
-    const data = chart.getModel().getSeries()[0].getData()
-    const files = Array.from({ length: data.count() }, (_, index) => {
-      if (!data.getId(index).startsWith('synthetic-image-')) return null
-      const point = chart.convertToPixel({ seriesId: 'memory-graph' }, data.getItemLayout(index))
-      const image = data.getItemGraphicEl(index)?.childAt(0)
-      return { id: data.getId(index), visible: point[0] >= 0 && point[0] <= chart.getWidth()
-        && point[1] >= 0 && point[1] <= chart.getHeight(),
-        thumbnail: image?.type === 'image' && Boolean(image.__image?.naturalWidth) }
-    }).filter(Boolean)
-    return { files, zoom: chart.getOption().series[0].zoom }
-  }, rendererUrl)
-  await expect.poll(async () => (await snapshot()).files.filter(file => file.thumbnail).length).toBeGreaterThan(0)
-  await page.getByRole('button', { name: 'Zoom out', exact: true }).click()
-  await expect.poll(async () => (await snapshot()).files.filter(file => file.visible).length).toBe(84)
-  await expect.poll(async () => (await snapshot()).files.filter(file => file.visible && !file.thumbnail).length).toBe(0)
-  const reads = thumbnailReads
+  await mount(page, 'app/memory/components/MemoryGraph.vue', { props })
+  await expect(images(page)).toHaveCount(84)
+  await expect.poll(() => images(page).evaluateAll(elements => elements.every(image => image.naturalWidth === 320))).toBe(true)
   expect(reads).toBe(84)
+  const rectangles = await images(page).evaluateAll(elements => elements.map(image => {
+    const rect = image.getBoundingClientRect()
+    return { x: rect.x, y: rect.y, width: rect.width, height: rect.height }
+  }))
+  for (let i = 0; i < rectangles.length; i++) for (const other of rectangles.slice(i + 1)) {
+    const image = rectangles[i]
+    expect(image.x + image.width <= other.x + 0.01 || other.x + other.width <= image.x + 0.01
+      || image.y + image.height <= other.y + 0.01 || other.y + other.height <= image.y + 0.01).toBe(true)
+  }
   await page.locator('.memory-graph').screenshot({ path: testInfo.outputPath('84-file-thumbnails.png') })
-  await page.getByRole('button', { name: 'Zoom in', exact: true }).click()
-  await page.getByRole('button', { name: 'Zoom out', exact: true }).click()
-  await expect.poll(async () => (await snapshot()).files.filter(file => file.visible && !file.thumbnail).length).toBe(0)
-  expect(thumbnailReads).toBe(reads)
-  await page.clock.install()
-  const pan = direction => page.evaluate(async ({ direction, url }) => {
-    const chart = (await import(url)).getInstanceByDom(document.querySelector('.memory-graph__chart'))
-    chart.dispatchAction({ type: 'graphRoam', seriesId: 'memory-graph', dx: direction * chart.getWidth() * 2, dy: 0 })
-  }, { direction, url: rendererUrl })
+  const pan = async direction => {
+    const rect = await chart(page).boundingBox()
+    await page.mouse.move(rect.x + 10, rect.y + 10)
+    await page.mouse.down()
+    await page.mouse.move(rect.x + 10 + direction * rect.width * 2, rect.y + 10, { steps: 5 })
+    await page.mouse.up()
+  }
   await pan(1)
-  await page.clock.runFor(500)
-  expect((await snapshot()).files.filter(file => file.visible)).toHaveLength(0)
-  expect((await snapshot()).files.filter(file => file.thumbnail)).toHaveLength(0)
+  await expect(images(page)).toHaveCount(0)
   await pan(-1)
-  await page.clock.runFor(500)
-  expect((await snapshot()).files.filter(file => file.thumbnail)).toHaveLength(84)
-  expect(thumbnailReads).toBe(reads)
+  await expect(images(page)).toHaveCount(84)
+  expect(reads).toBe(84)
 })
 
-for (const width of [1920, 390]) test(`graph thumbnails preserve decoded image proportions through zoom and reuse at ${width}px`, async ({ page }, testInfo) => {
+for (const width of [1920, 390]) for (const [shape, sourceWidth, sourceHeight] of [
+  ['landscape', 320, 160], ['portrait', 160, 320], ['square', 160, 160],
+  ['panorama', 320, 40], ['document', 226, 320],
+]) test(`3D ${shape} thumbnails preserve decoded proportions through zoom and reuse at ${width}px`, async ({ page }) => {
   await page.setViewportSize({ width, height: 1000 })
-  const shapes = [['landscape', 320, 160], ['portrait', 160, 320], ['square', 160, 160], ['panorama', 320, 40], ['document', 226, 320]]
-  const images = await page.evaluate(shapes => shapes.map(([id, width, height]) => {
-    const canvas = document.createElement('canvas')
-    canvas.width = width
-    canvas.height = height
-    const context = canvas.getContext('2d')
-    context.fillStyle = '#FFFFFF'
-    context.fillRect(0, 0, width, height)
-    context.fillStyle = '#0866ED'
-    context.beginPath()
-    context.arc(width / 2, height / 2, Math.min(width, height) / 3, 0, Math.PI * 2)
-    context.fill()
-    return { id, png: canvas.toDataURL('image/webp', 1).split(',')[1] }
-  }), shapes)
-  const timestamp = '2026-09-01T12:00:00Z'
-  const nodes = shapes.map(([id]) => ({ id, title: `Synthetic ${id}`, node_kind: id === 'document' ? 'document' : 'file', entity_kind: id === 'document' ? 'document' : 'file',
-    owner_agent_id: 7, visibility: 'private', source_managed: true, access_count: 0, last_accessed_at: null,
-    created_at: timestamp, updated_at: timestamp, activity_at: timestamp, has_relations: true, relation_count: 3 }))
-  const edges = nodes.flatMap((node, index) => nodes.slice(index + 1).map(other => ({
-    id: `${node.id}-${other.id}`, source_item_id: node.id, target_item_id: other.id,
-    relation_type: 'related_to', confidence: 1, suggested: false,
-  })))
-  for (const { id, png } of images) {
-    if (id === 'document') {
-      const document = {
-        id, title: 'Synthetic document', document_type: 'html', revision: 1, lock_version: 1,
-        payload: { text: '<h1>Synthetic document</h1><p>First page.</p>' },
-      }
-      await jsonRoute(page, '**/api/memory/documents/document?*', { item: document, agent_id: 7 })
-      await jsonRoute(page, '**/api/memory/items/document?*', document)
-      await page.route('**/api/memory/documents/document/thumbnail?*', route =>
-        route.fulfill({ contentType: 'image/webp', body: Buffer.from(png, 'base64') }))
-      continue
-    }
-    await jsonRoute(page, `**/api/file-share/items/${id}/resources?*`, [{
-      id: 'image', name: `${id}.png`, media_type: 'image/png', size_bytes: 100, uri: `file://synthetic/${id}.png`,
+  const bytes = await png(page, sourceWidth, sourceHeight)
+  const item = node(shape, shape === 'document' ? 'document' : 'file')
+  await jsonRoute(page, '**/api/memory/graph/roots', {
+    nodes: [item], edges: [], has_more: false, next_cursor: null, edges_truncated: false,
+  })
+  let reads = 0
+  if (shape === 'document') {
+    await jsonRoute(page, '**/api/memory/documents/document?*', {
+      item: { id: 'document', title: 'Synthetic document', document_type: 'html', revision: 1, lock_version: 1,
+        payload: { text: '<h1>Synthetic document</h1>' } }, agent_id: 7,
+    })
+    await page.route('**/api/memory/documents/document/thumbnail?*', route => {
+      reads++
+      return route.fulfill({ contentType: 'image/webp', body: bytes })
+    })
+  } else {
+    await jsonRoute(page, `**/api/file-share/items/${shape}/resources?*`, [{
+      id: 'image', name: `${shape}.png`, media_type: 'image/png', size_bytes: bytes.length, uri: `file://synthetic/${shape}.png`,
     }])
-    await page.route(`**/api/file-share/items/${id}/resources/image/thumbnail?*`, route =>
-      route.fulfill({ contentType: 'image/webp', body: Buffer.from(png, 'base64') }))
+    await page.route(`**/api/file-share/items/${shape}/resources/image/thumbnail?*`, route => {
+      reads++
+      return route.fulfill({ contentType: 'image/webp', body: bytes })
+    })
   }
-  await jsonRoute(page, '**/api/memory/graph/roots', { nodes, edges, has_more: false, next_cursor: null, edges_truncated: false })
-  await mount(page, 'app/memory/components/MemoryGraph.vue', {
-    props: { agentId: 7, query: '', topicItemId: null, contactItemId: null },
-  })
-  await expect(page.locator('.memory-graph__chart--loading')).toHaveCount(0)
-  const proportions = () => page.evaluate(async () => {
-    const moduleUrl = performance.getEntriesByType('resource')
-      .map(entry => entry.name).find(name => /\/echarts(?:\/core|_core)\.js/.test(name))
-    if (!moduleUrl) return []
-    const echarts = await import(moduleUrl)
-    const chart = echarts.getInstanceByDom(document.querySelector('.memory-graph__chart'))
-    const data = chart?.getModel().getSeries()[0]?.getData()
-    if (!data) return []
-    return Array.from({ length: data.count() }, (_, index) => {
-      // Observe painted geometry, including image fitting and the renderer's transforms.
-      const image = data.getItemGraphicEl(index)?.childAt(0)
-      if (image?.type !== 'image' || !image.__image?.naturalWidth) return null
-      const transform = image.getComputedTransform()
-      const paintedWidth = image.getWidth() * Math.hypot(transform[0], transform[1])
-      const paintedHeight = image.getHeight() * Math.hypot(transform[2], transform[3])
-      return { id: data.getId(index), width: image.__image.naturalWidth, height: image.__image.naturalHeight,
-        paintedWidth, paintedHeight, point: chart.convertToPixel({ seriesId: chart.getOption().series[0].id }, data.getItemLayout(index)),
-        error: Math.abs(paintedWidth / paintedHeight
-        - image.__image.naturalWidth / image.__image.naturalHeight) }
-    }).filter(Boolean)
-  })
-  const panToNode = id => page.evaluate(async id => {
-    const moduleUrl = performance.getEntriesByType('resource')
-      .map(entry => entry.name).find(name => /\/echarts(?:\/core|_core)\.js/.test(name))
-    const echarts = await import(moduleUrl)
-    const chart = echarts.getInstanceByDom(document.querySelector('.memory-graph__chart'))
-    const series = chart.getModel().getSeries()[0]
-    const data = series.getData()
-    const index = Array.from({ length: data.count() }, (_, index) => index).find(index => data.getId(index) === id)
-    const point = chart.convertToPixel({ seriesId: series.id }, data.getItemLayout(index))
-    chart.dispatchAction({ type: 'graphRoam', seriesId: series.id,
-      dx: chart.getWidth() / 2 - point[0], dy: chart.getHeight() / 2 - point[1] })
-  }, id)
+  await mount(page, 'app/memory/components/MemoryGraph.vue', { props })
+  await expect(chart(page)).toHaveAttribute('data-graph3d-nodes', '1')
+  const approach = async () => {
+    for (let i = 0; i < 18; i++) await page.getByRole('button', { name: 'Zoom in', exact: true }).click()
+  }
   const assertProportions = async () => {
-    // Zoom may move nodes outside the viewport, where thumbnails deliberately stay unloaded.
-    for (const node of nodes) {
-      await panToNode(node.id)
-      await expect.poll(async () => (await proportions()).find(image => image.id === node.id)?.error).toBeLessThan(0.01)
-      const [, sourceWidth, sourceHeight] = shapes.find(([id]) => id === node.id)
-      const scale = Math.min(1, 320 / sourceWidth, 320 / sourceHeight)
-      const decoded = (await proportions()).find(image => image.id === node.id)
-      expect(decoded.width).toBe(Math.round(sourceWidth * scale))
-      expect(decoded.height).toBe(Math.round(sourceHeight * scale))
-      const rendered = await page.evaluate(async id => {
-        const moduleUrl = performance.getEntriesByType('resource').map(entry => entry.name)
-          .find(name => /\/echarts(?:\/core|_core)\.js/.test(name))
-        const chart = (await import(moduleUrl)).getInstanceByDom(document.querySelector('.memory-graph__chart'))
-        const data = chart.getModel().getSeries()[0].getData()
-        const index = Array.from({ length: data.count() }, (_, index) => index).find(index => data.getId(index) === id)
-        const source = data.getItemGraphicEl(index).childAt(0).__image.src
-        const blob = await (await fetch(source)).blob()
-        return { type: blob.type, bytes: [...new Uint8Array(await blob.arrayBuffer())] }
-      }, node.id)
-      expect(rendered.type).toBe('image/webp')
-      expect(Buffer.from(rendered.bytes)).toEqual(Buffer.from(images.find(image => image.id === node.id).png, 'base64'))
-    }
+    await expect(images(page)).toHaveCount(1)
+    const image = images(page).first()
+    await expect(image).toHaveJSProperty('naturalWidth', sourceWidth)
+    await expect(image).toHaveJSProperty('naturalHeight', sourceHeight)
+    const rect = await image.boundingBox()
+    expect(rect.width / rect.height).toBeCloseTo(sourceWidth / sourceHeight, 2)
+    expect(rect.width).toBeLessThanOrEqual(sourceWidth + 0.01)
+    expect(rect.height).toBeLessThanOrEqual(sourceHeight + 0.01)
+    const actual = await image.evaluate(async image => [...new Uint8Array(await (await fetch(image.src)).arrayBuffer())])
+    expect(Buffer.from(actual)).toEqual(bytes)
   }
+  await approach()
+  await assertProportions()
   for (let i = 0; i < 3; i++) await page.getByRole('button', { name: 'Zoom in', exact: true }).click()
   await assertProportions()
-  const near = await proportions()
-  for (const image of near) {
-    expect(image.paintedWidth).toBeLessThanOrEqual(image.width + 0.01)
-    expect(image.paintedHeight).toBeLessThanOrEqual(image.height + 0.01)
-    for (const other of near.filter(other => other.id !== image.id)) {
-      const separated = Math.abs(image.point[0] - other.point[0]) >= (image.paintedWidth + other.paintedWidth) / 2
-        || Math.abs(image.point[1] - other.point[1]) >= (image.paintedHeight + other.paintedHeight) / 2
-      expect(separated, `${image.id} and ${other.id} previews must not overlap`).toBe(true)
-    }
-  }
-  await page.locator('.memory-graph').screenshot({ path: testInfo.outputPath('graph-thumbnail-proportions.png') })
-  for (let i = 0; i < 3; i++) await page.getByRole('button', { name: 'Zoom out', exact: true }).click()
-  await expect.poll(proportions).toEqual([])
-  for (let i = 0; i < 3; i++) await page.getByRole('button', { name: 'Zoom in', exact: true }).click()
+  await page.getByRole('button', { name: 'Fit graph to viewport', exact: true }).click()
+  await expect(images(page)).toHaveCount(0)
+  await approach()
   await assertProportions()
-  await page.getByRole('button', { name: 'Hide “File” nodes and their relationships', exact: true }).click()
-  await page.getByRole('button', { name: 'Show “File” nodes and their relationships', exact: true }).click()
-  // Changing natures fits the graph again; enter the detailed view explicitly.
-  for (let i = 0; i < 3; i++) await page.getByRole('button', { name: 'Zoom in', exact: true }).click()
+  const kind = shape === 'document' ? 'Document' : 'File'
+  await page.getByRole('button', { name: `Hide “${kind}” nodes and their relationships`, exact: true }).click()
+  await expect(images(page)).toHaveCount(0)
+  await page.getByRole('button', { name: `Show “${kind}” nodes and their relationships`, exact: true }).click()
+  await approach()
   await assertProportions()
-  const zoomAtNode = (id, zoom) => page.evaluate(async ({ id, zoom }) => {
-    const url = performance.getEntriesByType('resource').map(entry => entry.name)
-      .find(name => /\/echarts(?:\/core|_core)\.js/.test(name))
-    const chart = (await import(url)).getInstanceByDom(document.querySelector('.memory-graph__chart'))
-    const series = chart.getOption().series[0], data = chart.getModel().getSeries()[0].getData()
-    const index = series.data.findIndex(node => node.id === id)
-    const point = chart.convertToPixel({ seriesId: series.id }, data.getItemLayout(index))
-    chart.dispatchAction({ type: 'graphRoam', seriesId: series.id, zoom: zoom / series.zoom,
-      originX: point[0], originY: point[1] })
-  }, { id, zoom })
-  for (const node of nodes) {
-    await panToNode(node.id)
-    await zoomAtNode(node.id, 128)
-    await panToNode(node.id)
-    await expect.poll(async () => {
-      const image = (await proportions()).find(image => image.id === node.id)
-      return image ? Math.max(Math.abs(image.paintedWidth - image.width), Math.abs(image.paintedHeight - image.height)) : Infinity
-    }).toBeLessThan(0.01)
-    await zoomAtNode(node.id, 1024)
-    await expect.poll(async () => {
-      const image = (await proportions()).find(image => image.id === node.id)
-      return image ? Math.max(Math.abs(image.paintedWidth - image.width), Math.abs(image.paintedHeight - image.height)) : Infinity
-    }).toBeLessThan(0.01)
-  }
+  expect(reads).toBe(1)
 })

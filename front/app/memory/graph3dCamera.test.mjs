@@ -41,3 +41,18 @@ test('empty and single-node overviews have a finite camera pose', () => {
     assert(Object.values(fit.center).every(Number.isFinite))
   }
 })
+
+test('overview reserves the footprint of enlarged representatives on a small viewport', () => {
+  const points = [{ x: -400, y: 0, z: 0 }, { x: 400, y: 0, z: 0 }]
+  const radius = 84
+  const fit = fitGraph3d(points, 390, 800, { x: 0, y: 0, z: 1 }, radius)
+  const camera = new PerspectiveCamera(45, 390 / 800, 0.0001, 1e8)
+  const target = new Vector3(fit.center.x, fit.center.y, fit.center.z)
+  camera.position.copy(target).add(new Vector3(0, 0, fit.distance))
+  camera.lookAt(target); camera.updateMatrixWorld()
+  for (const point of points) {
+    const projected = new Vector3(point.x, point.y, point.z).project(camera)
+    const x = (projected.x + 1) * 390 / 2
+    assert(x >= radius - 0.01 && x <= 390 - radius + 0.01)
+  }
+})

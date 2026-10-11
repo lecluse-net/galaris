@@ -75,9 +75,8 @@ est une décision à part entière : aucun quota de tests nouveaux par module.
 ## Parcours traversant plusieurs domaines
 
 Le parcours `front/browser-tests/memory-3d.spec.mjs` exerce 10 000 nœuds et 20 000 relations
-synthétiques en 3D, 5 000 et 10 000 en 2D ; ces charges différentes ne comparent pas directement
-leurs vitesses. Il vérifie la couverture des groupes spatiaux,
-leur ouverture vers un item canonique, les filtres, le clavier, le repli WebGL vers la 2D,
+synthétiques en 3D. Il vérifie la couverture des groupes spatiaux,
+leur ouverture vers un item canonique, les filtres, le clavier, le réessai 3D après une perte WebGL,
 le changement d'agent et les miniatures retardées jusqu'à leur taille native. Les cas de
 huit feuilles retiennent la première page jusqu'après l'initialisation d'une scène vide :
 ils protègent le cadrage d'ensemble à l'arrivée des données et le maintien du groupe ouvert.
@@ -93,18 +92,26 @@ se dirige aussi vers un fond vide et retrouve une vue d'ensemble stable au recul
 La taille native des
 aperçus est vérifiée avant de dépasser leur plan ; leur présence après dépassement
 n'est plus une contrainte de zoom. Le compteur de frames confirme l'arrêt du rendu au repos. Le parcours HTTP réel
-`e2e/specs/memory-graph.spec.mjs` conserve positions et filtres après réouverture en 2D/3D.
+`e2e/specs/memory-graph.spec.mjs` conserve positions et filtres après réouverture en 3D.
 `app/memory/tests/test_graph_state.py` protège les caméras indépendantes et les valeurs invalides.
 `front/app/memory/graph3dCamera.test.mjs` vérifie avec une projection Three.js que les
 graphes larges, hauts et profonds sont entiers, centrés et utilisent le viewport desktop/mobile,
 y compris avec de grandes coordonnées ; les graphes vides et à un seul nœud gardent une pose finie.
 Les cas desktop/mobile protègent l'affichage d'une première page pendant l'attente de la
-suivante, la navigation conservée, le réessai après erreur et l'expansion des répertoires
-à l'approche, leur réouverture et le catalogue complet au retour en 2D. Un lien dont une
+suivante, la navigation conservée, le réessai après erreur, les répertoires connus dès
+l'ouverture et leurs fichiers à l'approche, puis leur réouverture. Un lien dont une
 extrémité est derrière la caméra reste absent jusqu'au recentrage. `graph3dChildren.test.mjs`
-vérifie concurrence bornée, curseurs, absence de drainage au repos et rejet des réponses
-obsolètes. Le test `graph_hierarchy` du catalogue traverse les vrais services de ressources,
+vérifie concurrence bornée, curseurs, pagination complète des dossiers proches, arrêt des pages
+suivantes hors champ et rejet des réponses obsolètes. `graphRefresh.test.mjs` protège la fusion
+des différences, les données inchangées, les réponses concurrentes et les suppressions confirmées.
+Les parcours desktop/mobile vérifient les actualisations périodiques et reconnexions sans
+effacement, le maintien de la caméra, les titres modifiés sans nouveau placement, les erreurs
+temporaires et le retrait sur refus d'accès. Un dossier de 501 fichiers traverse deux pages,
+le réessai, la réouverture puis l'ajout et la suppression de fichiers en arrière-plan.
+Le test `graph_hierarchy` du catalogue traverse les vrais services de ressources,
 la pagination des enfants, les filtres et les sources disparues ou révoquées.
+Les tests du catalogue vérifient aussi les titres de racines persistés depuis le libellé du
+Tool, le repli sur le schéma, la réparation des anciens titres et les noms personnalisés.
 
 `front/browser-tests/async-views.spec.mjs` couvre l'ouverture différée d'un vrai éditeur,
 la saisie dans le reste de la page pendant l'attente, la fermeture avant la réponse,
@@ -705,10 +712,11 @@ l'erreur/retry et le rejet de réponses tardives après changement d'agent sur d
 `front/browser-tests/memory.spec.mjs` compare les couleurs réellement rendues des fichiers et
 répertoires à leur légende, après filtrage et changement de thème, sur desktop et mobile.
 `front/browser-tests/thumbnail-fit.spec.mjs` compare les proportions des images décodées
-aux rectangles réellement peints dans le graphe, transformations du moteur incluses, sur
-desktop et mobile : paysage, portrait, carré et panorama, au premier affichage, après
-dézoom/zoom et après filtrage. Le scénario reproduit la double application du ratio avant
-correction ; les contrôles des aperçus HTML ne couvraient pas cette transformation du graphe.
+aux rectangles des aperçus réellement affichés en 3D, sur desktop et mobile : paysage,
+portrait, carré, panorama et document, au premier affichage, après dézoom/zoom et filtrage.
+Il vérifie aussi les octets originaux et la limite des dimensions natives en pixels.
+Les assertions des transformations ECharts sont retirées avec le moteur 2D ; ces parcours
+3D conservent les garanties de proportions et de réutilisation du cache.
 Un répertoire synthétique de 84 images vérifie aussi les miniatures simultanées et leur
 réutilisation avec une estimation de mémoire navigateur réduite, sur desktop annonçant 2 ou
 16 cœurs. Les miniatures chargées restent en cache après un déplacement complet hors champ,
@@ -751,17 +759,32 @@ Le rendu réel vérifie le fondu intermédiaire des nouveaux symboles au zoom, p
 visibilité complète, ainsi que l'apparition immédiate avec réduction des animations.
 La stabilité des coordonnées est vérifiée dans le mode de grande fenêtre de 3 000 items.
 Les erreurs/reprises et une réponse retardée après changement d'agent sont couvertes.
+Le scénario de réponse tardive attend la fin du serveur simulé et vérifie l'annulation de
+la requête ; il n'attend plus un événement de réponse réseau après une annulation effective.
 Les parcours desktop/mobile restaurent les coordonnées et natures masquées après
 réouverture, ajoutent des nœuds visibles et masqués sans déplacer les anciens, puis
 reprennent une sauvegarde échouée. `graphState.test.mjs` vérifie les lots incrémentaux,
-les modifications pendant une requête et les conflits de révision. Les tests DB
+les modifications pendant une requête, les conflits de révision, la reconstruction d'un
+format incompatible et la reprise automatique après échec de restauration. Les parcours
+3D vérifient aussi le réessai sans déplacement de caméra. Les tests DB
 `test_graph_state.py` vérifient l'isolation entre utilisateurs/contextes, les droits,
-les révocations et la conservation des coordonnées lors d'une sauvegarde partielle.
+les révocations et la conservation des coordonnées lors d'une sauvegarde partielle,
+ainsi que la reconstruction des états/coordonnées invalides dans la seule vue privée concernée.
 L'ancienne assertion imposant le mode interne `force` après repli est remplacée par
 la conservation effective des coordonnées : une vue enregistrée utilise un placement explicite.
 `front/app/memory/graphBranches.test.mjs` couvre les règles d'exclusivité, doublons, cycles,
 isolés, positions survivantes et placement selon les liens ; ce dernier scénario échoue avec
-la grille qui ignorait les relations. Le test DB de pagination vérifie le voisin supplémentaire
+la grille qui ignorait les relations.
+`front/app/memory/graphVisibility.test.mjs` couvre la conservation et le partage du poids des
+éléments masqués, les parents et représentants successifs, les doublons, cycles, suggestions,
+enfants non chargés et le plafond de quatre fois le diamètre. Les parcours `memory.spec.mjs`
+vérifient le masquage/réaffichage en 3D sur mobile et desktop ; `memory-3d.spec.mjs` vérifie
+les compteurs d'enfants différés et d'items hors cadrage, la taille réelle des pixels de dossiers
+avec 84 enfants non chargés et le maintien de tous leurs textes malgré le budget ordinaire et les chevauchements.
+Les scénarios ECharts de simulation, de caméra et de repli 2D sont retirés avec ce moteur.
+La navigation, le contenu, la pagination, les filtres et la réouverture restent couverts par
+les scénarios 3D et HTTP réel cités ici ; le parcours de modales reste dans `memory.spec.mjs`. `graph3dCamera.test.mjs` protège le
+cadrage des représentants agrandis sur un petit écran. Le test DB de pagination vérifie le voisin supplémentaire
 hors page, confirmé ou suggéré, et les liens inaccessibles. `e2e/specs/memory-graph.spec.mjs`
 exerce repli/dépliage, clavier, zoom, ouverture du contenu et retour au graphe dans l'application
 assemblée, avec API réelle et base synthétique isolée ; les positions, natures masquées

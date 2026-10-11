@@ -1,7 +1,8 @@
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import MagicMock
 
 import pytest
 import yaml
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.tools import ConnectionParamDef, ConnectionSchema, ToolCreate, tool_service
 from app.tools.models import Tool as ToolModel
@@ -134,17 +135,10 @@ async def test_file_share_tool_code_must_be_uri_compatible(
 
 
 @pytest.mark.asyncio
-async def test_import_overwrite_replaces_every_configuration(monkeypatch):
-    existing = _complete_tool(tool_id=42)
-    db = AsyncMock()
-    db.get.return_value = existing
-
-    async def get_existing(code: str):
-        assert code == "cloud-docs"
-        return existing
-
-    monkeypatch.setattr(tool_service, "get_db", lambda: db)
-    monkeypatch.setattr(tool_service, "get_tool_record", get_existing)
+async def test_import_overwrite_replaces_every_configuration(db: AsyncSession) -> None:
+    existing = _complete_tool()
+    db.add(existing)
+    await db.commit()
 
     content = """
 code: cloud-docs
@@ -162,6 +156,7 @@ connection_schema:
       description: AFFiNE password
 """
     record, created = await tool_service.import_from_yaml_string(content, overwrite=True)
+    await db.refresh(existing)
 
     assert created is False
     assert record is existing
@@ -177,30 +172,22 @@ connection_schema:
     assert existing.mcp_config is None
     assert existing.listener_config is None
     assert existing.task_config is None
-    db.commit.assert_awaited_once()
-    db.refresh.assert_awaited_once_with(existing)
 
 
 @pytest.mark.asyncio
 async def test_redacted_export_can_overwrite_existing_secrets_without_losing_them(
-    monkeypatch: pytest.MonkeyPatch,
+    db: AsyncSession,
 ) -> None:
-    existing = _complete_tool(tool_id=43)
-    db = AsyncMock()
-    db.get.return_value = existing
-
-    async def get_existing(code: str):
-        assert code == "cloud-docs"
-        return existing
-
-    monkeypatch.setattr(tool_service, "get_db", lambda: db)
-    monkeypatch.setattr(tool_service, "get_tool_record", get_existing)
+    existing = _complete_tool()
+    db.add(existing)
+    await db.commit()
 
     content = tool_service.serialize_to_yaml(existing)
     record, created = await tool_service.import_from_yaml_string(
         content,
         overwrite=True,
     )
+    await db.refresh(existing)
 
     assert created is False
     assert record is existing

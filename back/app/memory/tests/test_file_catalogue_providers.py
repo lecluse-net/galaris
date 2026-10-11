@@ -86,7 +86,9 @@ async def test_nextcloud_catalogue_pagination_recovery_and_permission_revocation
     monkeypatch.setattr(file_share_service, 'resolve_resource_transport_with_service', resolve)
     monkeypatch.setattr(catalogue, 'resolve_resource_transport_with_service', resolve)
     tool = ToolModel(code='dav-proof', label='Synthetic DAV', file_share_config={'service': 'nextcloud', 'base_url': 'https://cloud.example.test/cloud'},
-        messenger_config={'service': 'nextcloud_talk'},
+        messenger_config={'service': 'nextcloud_talk', 'settings': {'base_url': 'https://cloud.example.test/cloud'},
+            'param_map': {'login': 'login', 'password': 'password'}},
+        connection_schema={'params': {'login': {'type': 'string'}, 'password': {'type': 'password'}}},
         global_params={'tools.fileindexing': {'value': 'recursive', 'forced': False}})
     db.add(tool)
     await db.flush()
@@ -109,6 +111,13 @@ async def test_nextcloud_catalogue_pagination_recovery_and_permission_revocation
     await indexing_tick()
     await db.refresh(run)
     assert run.status == 'success' and run.scanned == 503
+    from app.memory.models import MemoryItem
+    from app.tools.schemas import ToolUpdate
+    from app.tools.tool_service import update_tool
+    root_item = await db.scalar(select(MemoryItem).where(MemoryItem.primary_url == 'dav-proof://'))
+    assert root_item.title == 'Synthetic DAV'
+    await update_tool(tool.id, ToolUpdate(label='Synthetic renamed DAV'))
+    assert root_item.title == 'Synthetic renamed DAV'
     assert len(await hits(owner.id, 'item-0000')) == 1
     assert await hits(peer.id, 'item-0000') == []
     from app.memory import service

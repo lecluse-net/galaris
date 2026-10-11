@@ -325,15 +325,31 @@ et l'interlocuteur juste dessous. Dans **Liste**, la date cible et son bouton d'
 complètent ces filtres. Les champs se réorganisent sur les petits écrans.
 
 Dans **Graphe**, les souvenirs se chargent sans filtre de période ni plafond global de nœuds.
+Tous les répertoires connus sont chargés dès l'ouverture, par pages. Le zoom révèle les
+fichiers de ces répertoires ; il n'est plus nécessaire de découvrir les sous-répertoires un à un.
+En vue d'ensemble, les cartes denses regroupent spatialement les répertoires de chaque
+partage. Approcher ou ouvrir un groupe révèle les répertoires déjà chargés.
 Sous l'en-tête du graphe, la légende regroupe les types de nœuds, les relations,
 puis les repères d'ancienneté et les commandes de zoom et de plein écran.
 La taille et l'opacité des nœuds suivent une échelle relative linéaire de dernière activité,
 du plus ancien au plus récent dans le graphe chargé. La légende affiche les deux dates
 extrêmes ; masquer un type de nœud ne change pas cette échelle. Les nœuds anciens restent
 visibles et leurs libellés conservent leur contraste.
+Les éléments masqués par un filtre, un repli ou le cadrage contribuent à la taille de leurs
+représentants visibles, jusqu'à quatre fois leur diamètre normal. Leur poids se partage entre
+les représentants liés les plus proches et remonte les parents masqués ; les enfants connus
+mais encore non chargés contribuent aussi. Le compteur d'éléments masqués reste visible même
+si certains n'ont aucun représentant. Leur réapparition retire ce poids sans déplacer les nœuds.
+Le graphe est uniquement en 3D. Le texte des représentants d'éléments masqués reste toujours
+visible, même de loin et en cas de chevauchement. Si WebGL est indisponible, un message permet de réessayer.
+L'actualisation automatique applique les ajouts, modifications et suppressions en arrière-plan,
+toutes les 30 secondes quand l'onglet est visible. Elle conserve la caméra, les positions,
+les filtres et les branches ouvertes, y compris après reconnexion. Les dossiers déjà chargés
+sont aussi actualisés. Une erreur temporaire laisse le graphe utilisable ; les changements
+de session ou de droits d'accès continuent à retirer les données protégées.
 En vue éloignée, les titres privilégient les nœuds structurants et les plus connectés.
-Les symboles ont deux tailles d'affichage fixes : éloignée et proche. À partir du zoom proche,
-zoomer davantage écarte leurs positions sans les agrandir. Les titres restent filtrés pour
+Les symboles ont deux tailles de base : éloignée et proche. À partir du zoom proche,
+zoomer davantage écarte leurs positions sans les agrandir. Les autres titres restent filtrés pour
 éviter les superpositions, y compris au zoom maximal ; le survol ou la sélection les révèle.
 Les souvenirs ayant exactement les mêmes relations avec des sujets, contacts ou autres
 ancres structurantes sont regroupés avec un compteur. Seuls les nœuds visibles sont dessinés.
@@ -342,9 +358,10 @@ déplacement ; le zoom peut atteindre un million de fois ce cadrage. Les aperçu
 plus tard, selon l'espace entre voisins, jusqu'à la taille réelle en pixels de la miniature.
 Masquer une nature réorganise et recadre les éléments restants ; réafficher toutes les natures
 restaure les positions enregistrées.
-Les répertoires racines gardent leur titre visible même en vue éloignée. Un titre « . »
-est remplacé dans le graphe par l'URI avec son schéma, par exemple `nextcloud://` ;
-les titres personnalisés sont conservés.
+Les répertoires racines gardent leur titre visible même en vue éloignée. La mémoire enregistre
+le libellé du Tool comme titre, ou son schéma sans libellé, par exemple `nextcloud://`.
+Les anciens titres « . » et « / » sont corrigés lors de la synchronisation ; les titres
+personnalisés valides sont conservés. Le graphe utilise ce titre enregistré.
 
 Dans **Liste**, les documents, pièces jointes et fichiers indexés affichent leur miniature
 lorsqu'elle est disponible. Un clic sur la ligne ou la carte ouvre la fiche ; les droits
@@ -415,7 +432,10 @@ celles des nœuds masqués ou repliés. À la réouverture, les nœuds connus re
 place et les nouveaux se placent autour des ancres existantes. Chaque utilisateur conserve
 ses propres positions, natures masquées, branches ouvertes et cadrage, pour chaque agent
 et contexte de recherche/Topic/contact. Les nouveaux nœuds d'une nature masquée restent
-masqués. Une erreur de restauration ou de sauvegarde permet de réessayer sans fermer le graphe.
+masqués. Un état enregistré invalide ou incompatible est automatiquement abandonné : le
+positionnement est reconstruit et enregistré, sans modifier les données Mémoire. Une erreur
+réseau permet de réessayer sans fermer ni déplacer le graphe ; les sauvegardes reprennent
+aussi lors des interactions suivantes.
 Le zoom, le dépliage et la fermeture du détail conservent les positions. Le dézoom allège
 aussi les liens et les titres. Les grandes cartes placent les éléments près de leurs ancres
 avant stabilisation, en chargeant toutes les pages correspondant aux filtres. Le chargement spatial

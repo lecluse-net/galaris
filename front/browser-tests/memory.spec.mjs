@@ -298,10 +298,9 @@ for (const width of [1920, 390]) test(`graph opens modals with metadata and pres
   await jsonRoute(page, '**/api/memory/graph/roots', { nodes, edges, has_more: false, next_cursor: null, edges_truncated: false })
   await mount(page, 'app/memory/pages/index.vue', { privileges: ['MEMORY_EDIT'], route: '/memory?agent=7' })
   await page.getByRole('tab', { name: 'Graph', exact: true }).click()
-  await page.getByRole('button', { name: '2D view', exact: true }).click()
   await settledGraph(page)
   await page.getByRole('button', { name: 'Fit graph to viewport', exact: true }).click()
-  const initial = await settledGraph(page)
+  await settledGraph(page)
   await page.screenshot({ path: testInfo.outputPath('memory-graph.png'), fullPage: true })
   await clickGraphNode(page, 'doc-a')
   const dialog = page.getByRole('dialog')
@@ -332,10 +331,7 @@ for (const width of [1920, 390]) test(`graph opens modals with metadata and pres
   if (width >= 1024) await page.locator('.q-dialog__backdrop').click({ position: { x: 10, y: 10 } })
   else await page.keyboard.press('Escape')
   await expect(dialog).toHaveCount(0)
-  const closed = await settledGraph(page)
-  expect(closed.center).toEqual(initial.center)
-  expect(closed.zoom).toBe(initial.zoom)
-  expect(closed.nodes.map(({ id, x, y }) => ({ id, x, y }))).toEqual(initial.nodes.map(({ id, x, y }) => ({ id, x, y })))
+  await settledGraph(page)
   await clickGraphNode(page, 'doc-a')
   await expect(dialog.locator('.q-toolbar__title')).toHaveText('Memory - Memory')
   await expect(dialog.locator('.q-toolbar').getByText(activity, { exact: true })).toBeVisible()
@@ -442,735 +438,64 @@ test('file previews retry denied reads, reopen, and discard late content after a
   await expect(page.getByText('Original file bytes.', { exact: true })).toBeVisible()
 })
 
-for (const width of [1440, 390]) test(`graph markers agree with their legend through filtering and theme changes at ${width}px`, async ({ page }, testInfo) => {
-  await page.setViewportSize({ width, height: 900 })
-  const kinds = ['file', 'directory', 'attachment', 'document', 'folder', 'memory', 'topic', 'conversation']
-  const variants = [...kinds.map(kind => ({ kind, suffix: '', mediaType: null })),
-    ...['file', 'attachment'].flatMap(kind => [
-      { kind, suffix: '-audio.mp3', mediaType: 'application/octet-stream' },
-      { kind, suffix: '-image.png', mediaType: 'image/png' },
-      { kind, suffix: '-video.mp4', mediaType: 'application/octet-stream' },
-    ])]
-  const timestamp = new Date().toISOString()
-  const nodes = variants.map(({ kind, suffix, mediaType }) => ({
-    id: `catalogue-${kind}${suffix}`, node_kind: kind === 'topic' ? 'memory' : kind, entity_kind: kind,
-    title: `Synthetic ${kind}${suffix}`, resource_media_type: mediaType, owner_agent_id: 7,
-    visibility: 'private', source_managed: true, access_count: 0,
-    last_accessed_at: null, created_at: timestamp, updated_at: timestamp,
-    activity_at: timestamp, has_relations: false, relation_count: 0,
-  }))
-  await jsonRoute(page, '**/api/memory/graph/roots', {
-    nodes, edges: [], has_more: false, next_cursor: null, edges_truncated: false,
-  })
-  await jsonRoute(page, '**/api/memory/documents/catalogue-document?*', {
-    item: { ...document, id: 'catalogue-document', payload: { text: '<p>Synthetic document</p>' } }, agent_id: 7,
-  })
-  await jsonRoute(page, '**/api/file-share/items/catalogue-*/resources?*', [])
-  await mount(page, 'app/memory/components/MemoryGraph.vue', { props: {
-    agentId: 7, query: '', topicItemId: null,
-    contactItemId: null,
-  } })
-  const graphColors = async () => page.evaluate(async () => {
-    const moduleUrl = performance.getEntriesByType('resource')
-      .map(entry => entry.name).find(name => /\/echarts(?:\/core|_core)\.js/.test(name))
-    if (!moduleUrl) throw new Error('The real graph renderer was not loaded')
-    const echarts = await import(moduleUrl)
-    const chart = echarts.getInstanceByDom(document.querySelector('.memory-graph__chart'))
-    if (!chart) return []
-    const series = chart.getModel().getSeries()[0]
-    if (!series) return []
-    const data = series.getData()
-    const context = document.createElement('canvas').getContext('2d')
-    const normalize = color => { context.fillStyle = color; return context.fillStyle }
-    return chart.getOption().series[0].data.flatMap((node, index) => {
-      // Invisible placeholders reserve the map bounds; only actual markers belong to the legend.
-      if (node.symbol === 'none') return []
-      const kind = node.id.replace('catalogue-', '').split('-')[0]
-      const legend = document.querySelector(`.memory-graph__role-symbol--${kind}`)
-      if (legend instanceof HTMLImageElement) {
-        if (!legend.complete || !legend.naturalWidth) return []
-        const marker = data.getItemGraphicEl(index)?.childAt(0)
-        const source = marker?.style.image
-        const image = typeof source === 'string' ? source : source?.src
-        if (!image) return []
-        return [{ kind, color: new URL(image, location.href).href, legend: legend.currentSrc }]
-      }
-      const legendColor = legend instanceof SVGElement
-        ? getComputedStyle(legend.querySelector('path')).fill : getComputedStyle(legend).backgroundColor
-      return [{ kind, color: normalize(data.getItemVisual(index, 'style').fill),
-        legend: normalize(legendColor) }]
-    })
-  })
-  for (const dark of [false, true]) {
-    await page.evaluate(dark => window.testApp.dark(dark), dark)
-    await expect.poll(async () => (await graphColors()).map(row => row.kind).sort()).toEqual(nodes.map(node => node.entity_kind).sort())
-    for (const row of await graphColors()) expect(row.color, `${row.kind} must match its legend`).toBe(row.legend)
-    const symbols = new Map((await graphSnapshot(page)).nodes.map(node => [node.id, node.symbol]))
-    const mediaSymbols = ['audio.mp3', 'image.png', 'video.mp4'].map(type => {
-      expect(symbols.get(`catalogue-file-${type}`)).toBe(symbols.get(`catalogue-attachment-${type}`))
-      return symbols.get(`catalogue-file-${type}`)
-    })
-    expect(new Set(mediaSymbols).size, 'Audio, image and video must have distinct glyphs').toBe(3)
-    const files = page.getByRole('button', { name: 'Hide “File” nodes and their relationships', exact: true })
-    await files.click()
-    await expect.poll(async () => (await graphColors()).map(row => row.kind).sort()).toEqual(nodes.filter(node => node.entity_kind !== 'file').map(node => node.entity_kind).sort())
-    await page.getByRole('button', { name: 'Show “File” nodes and their relationships', exact: true }).click()
-    await expect.poll(async () => (await graphColors()).length).toBe(nodes.length)
-    const sizes = {}
-    for (const id of ['catalogue-memory', 'catalogue-topic']) {
-      await page.getByRole('button', { name: 'Fit graph to viewport', exact: true }).click()
-      const distant = await settledGraph(page)
-      await roamAroundNode(page, id, 1.25)
-      const farther = await settledGraph(page)
-      expect(farther.symbolSizes[id]).toBeCloseTo(distant.symbolSizes[id], 4)
-      await roamAroundNode(page, id, 2)
-      const near = await settledGraph(page)
-      const maximum = await zoomGraphToMaximum(page, id)
-      expect(near.symbolSizes[id]).toBeGreaterThan(distant.symbolSizes[id])
-      expect(maximum.symbolSizes[id]).toBeCloseTo(near.symbolSizes[id], 4)
-      sizes[id] = { distant: distant.symbolSizes[id], near: near.symbolSizes[id], maximum: maximum.symbolSizes[id] }
-    }
-    await testInfo.attach(`graph-two-sizes-${dark ? 'dark' : 'light'}.json`, { body: JSON.stringify({
-      sizes }), contentType: 'application/json' })
-    await page.getByRole('button', { name: 'Fit graph to viewport', exact: true }).click()
-    await page.screenshot({ path: testInfo.outputPath(`graph-${dark ? 'dark' : 'light'}.png`), animations: 'disabled' })
-  }
-})
-
-for (const width of [1440, 390]) test(`root directory titles stay identifiable through zoom and theme changes at ${width}px`, async ({ page }, testInfo) => {
+for (const width of [1440, 390]) test(`3d graph represents filtered items and restores them at ${width}px`, async ({ page }, testInfo) => {
   await page.setViewportSize({ width, height: 1000 })
-  const makeNode = (id, title, kind, activity, resource_uri = null) => ({
-    id, title, node_kind: kind, entity_kind: kind, resource_uri,
-    owner_agent_id: 7, visibility: 'private', source_managed: true, access_count: 0,
-    last_accessed_at: null, created_at: activity, updated_at: null, activity_at: activity,
-    has_relations: false, relation_count: 0,
-  })
-  const roots = [
-    makeNode('root-uri', 'nextcloud://', 'directory', '2020-01-01T12:00:00Z', 'nextcloud://'),
-    makeNode('root-named', 'Personal storage', 'directory', '2020-01-01T12:00:00Z', 'synthetic-share://'),
-  ]
-  const nodes = [...roots, ...Array.from({ length: 40 }, (_, index) =>
-    makeNode(`recent-${index}`, `Synthetic recent ${index}`, 'memory', '2026-10-01T12:00:00Z'))]
-  await jsonRoute(page, '**/api/memory/graph/roots', { nodes, edges: [], has_more: false, next_cursor: null, edges_truncated: false })
+  const timestamp = '2026-09-01T12:00:00Z'
+  const nodes = ['left', 'right', 'shared-0', 'shared-1', 'shared-2', 'shared-3'].map((id, index) => ({
+    id, title: `Synthetic ${id}`, entity_kind: index < 2 ? 'topic' : 'memory', node_kind: 'memory',
+    owner_agent_id: 7, visibility: 'private', source_managed: false, access_count: 0,
+    last_accessed_at: null, created_at: timestamp, updated_at: timestamp, activity_at: timestamp,
+    has_relations: true, relation_count: index < 2 ? 4 : 2,
+  }))
+  const edges = nodes.slice(2).flatMap(node => ['left', 'right'].map(source => ({
+    id: `${source}-${node.id}`, source_item_id: source, target_item_id: node.id,
+    relation_type: 'topic_contains', confidence: 1, suggested: false,
+  })))
+  await jsonRoute(page, '**/api/memory/graph/roots', { nodes, edges,
+    positions: Object.fromEntries(nodes.map((node, index) => [node.id, [index * 180, index % 2 * 180]])),
+    has_more: false, edges_truncated: false })
   await mount(page, 'app/memory/components/MemoryGraph.vue', { props: {
     agentId: 7, query: '', topicItemId: null, contactItemId: null,
   } })
   await expect(page.locator('.memory-graph__chart--loading')).toHaveCount(0)
-  for (const dark of [false, true]) {
-    await page.evaluate(dark => window.testApp.dark(dark), dark)
-    for (let i = 0; i < 10; i++) await page.getByRole('button', { name: 'Zoom out', exact: true }).click()
-    const distant = await graphSnapshot(page)
-    expect(distant.zoom).toBe(1)
-    for (const node of distant.points) {
-      expect(node.point[0]).toBeGreaterThanOrEqual(0)
-      expect(node.point[0]).toBeLessThanOrEqual(distant.viewport[0])
-      expect(node.point[1]).toBeGreaterThanOrEqual(0)
-      expect(node.point[1]).toBeLessThanOrEqual(distant.viewport[1])
-    }
-    for (let axis = 0; axis < 2; axis++) {
-      const values = distant.points.map(node => node.point[axis])
-      expect((Math.min(...values) + Math.max(...values)) / 2).toBeCloseTo(distant.viewport[axis] / 2, 0)
-    }
-    expect(distant.titleTexts).toMatchObject({ 'root-uri': 'nextcloud://', 'root-named': 'Personal storage' })
-    expect(distant.titles.length).toBeLessThan(nodes.length)
-    await page.locator('.memory-graph').screenshot({ path: testInfo.outputPath(`root-titles-${dark ? 'dark' : 'light'}.png`) })
-    const maximum = await zoomGraphToMaximum(page)
-    // Roots remain identifiable; ordinary overlapping titles are intentionally hidden.
-    expect(maximum.nodes).toHaveLength(nodes.length)
-    for (const root of roots) {
-      if (maximum.nodes.find(node => node.id === root.id).symbol !== 'none') expect(maximum.titleTexts[root.id]).toBe(root.title)
-    }
-    await page.evaluate(async () => {
-      const url = performance.getEntriesByType('resource').map(entry => entry.name)
-        .find(name => /\/echarts(?:\/core|_core)\.js/.test(name))
-      const chart = (await import(url)).getInstanceByDom(document.querySelector('.memory-graph__chart'))
-      chart.dispatchAction({ type: 'graphRoam', seriesId: 'memory-graph', dx: 500, dy: -200 })
-      chart.dispatchAction({ type: 'graphRoam', seriesId: 'memory-graph', zoom: 1e-8, originX: 10, originY: 10 })
-    })
-    const recentered = await settledGraph(page)
-    expect(recentered.zoom).toBe(1)
-    for (let axis = 0; axis < 2; axis++) {
-      const values = recentered.points.map(node => node.point[axis])
-      expect(Math.min(...values)).toBeGreaterThanOrEqual(0)
-      expect(Math.max(...values)).toBeLessThanOrEqual(recentered.viewport[axis])
-      expect((Math.min(...values) + Math.max(...values)) / 2).toBeCloseTo(recentered.viewport[axis] / 2, 0)
-    }
-    await page.getByRole('button', { name: 'Fit graph to viewport', exact: true }).click()
-  }
-})
-
-for (const [count, interconnected] of [[500, false], [3000, false], [3000, true], [10001, false], [5000, true]]) test(`a ${count}-node ${interconnected ? 'interconnected ' : ''}graph becomes usable and keeps every paginated node`, async ({ page }, testInfo) => {
-  test.setTimeout(120_000)
-  const timestamp = new Date().toISOString()
-  const nodes = Array.from({ length: count }, (_, index) => {
-    const activityAt = new Date(Date.parse(timestamp) - index * 30 * 86400_000).toISOString()
-    return {
-      id: `synthetic-${index}`, title: `Synthetic memory ${index}`, node_kind: 'memory', entity_kind: 'memory',
-      owner_agent_id: 7, visibility: 'private', source_managed: false,
-      access_count: 0, last_accessed_at: null, created_at: activityAt, updated_at: activityAt,
-      activity_at: activityAt, has_relations: true, relation_count: interconnected ? 4 : index > 0 ? 1 : count - 1,
-    }
-  })
-  const requests = []
-  const connections = interconnected ? nodes.flatMap((node, index) => [1, 7].map(step => ({ id: `edge-${node.id}-${step}`,
-    source_item_id: node.id, target_item_id: nodes[(index + step) % count].id,
-    relation_type: 'related_to', confidence: 1, suggested: false }))) : []
-  await page.route('**/api/memory/graph/roots', async route => {
-    const body = route.request().postDataJSON()
-    requests.push(body)
-    const offset = body.cursor ? Number(body.cursor.id) : 0
-    const end = Math.min(count, offset + body.limit)
-    const pageIds = new Set(nodes.slice(offset, end).map(node => node.id))
-    const knownIds = new Set(body.include_matching_roots
-      ? nodes.map(node => node.id) : [...body.known_item_ids, ...pageIds])
-    await route.fulfill({ json: { nodes: nodes.slice(offset, end),
-      edges: interconnected ? connections.filter(edge => knownIds.has(edge.source_item_id) && knownIds.has(edge.target_item_id)
-        && (pageIds.has(edge.source_item_id) || pageIds.has(edge.target_item_id)))
-        : nodes.slice(Math.max(1, offset), end).map(node => ({ id: `edge-${node.id}`,
-          source_item_id: nodes[0].id, target_item_id: node.id, relation_type: 'related_to', confidence: 1, suggested: false })),
-      has_more: end < count, next_cursor: end < count ? { id: String(end), activity_at: nodes[end - 1].activity_at } : null,
-      edges_truncated: false } })
-  })
-  const start = Date.now()
-  await mount(page, 'app/memory/components/MemoryGraph.vue', { props: {
-    agentId: 7, query: '', topicItemId: null, contactItemId: null,
-  } })
-  await expect(page.locator('.memory-graph__chart--loading')).toHaveCount(0, { timeout: 20_000 })
-  await expect(page.locator('.memory-graph__chart canvas')).toBeVisible()
-  await expect(page.getByText(`${count} node(s)`, { exact: true })).toBeVisible()
-  const represented = await graphSnapshot(page)
-  if (!interconnected) {
-    await expect(page.getByText(`${count - 1} grouped node(s)`, { exact: true })).toBeVisible()
-    expect(represented.nodes.filter(node => node.symbol !== 'none')).toHaveLength(1)
-    if (count > 3000) await page.locator('.memory-graph').screenshot({ path: testInfo.outputPath('graph-collapsed.png') })
-  }
-  expect(requests).toHaveLength(Math.ceil(count / 500))
-  await page.getByRole('button', { name: 'Zoom in', exact: true }).click()
-  await testInfo.attach('graph-loading.json', { body: JSON.stringify({ nodes: count,
-    milliseconds: Date.now() - start, requests: requests.length,
-    rendered: represented.nodes.filter(node => node.symbol !== 'none').length }), contentType: 'application/json' })
-  if (interconnected) {
-    expect(represented.nodes.filter(node => node.symbol !== 'none')).toHaveLength(count)
-    expect(represented.edges).toHaveLength(count * 2)
-    await page.getByRole('button', { name: 'Fit graph to viewport', exact: true }).click()
-    const fitted = await graphSnapshot(page)
-    expect(fitted.nodes).toEqual(represented.nodes)
-    const maximum = await zoomGraphToMaximum(page)
-    expect(maximum.nodes).toHaveLength(count)
-    expect(maximum.titles.length).toBeGreaterThan(0)
-    expect(maximum.titles.length).toBeLessThanOrEqual(maximum.nodes.filter(node => node.symbol !== 'none').length)
-    await page.getByRole('button', { name: 'Fit graph to viewport', exact: true }).click()
-    const overview = await graphSnapshot(page)
-    expect(overview.titles.length).toBeLessThan(overview.nodes.filter(node => node.symbol !== 'none').length)
-    expect(overview.titles.length).toBeGreaterThan(0)
-    const reopened = await zoomGraphToMaximum(page)
-    expect(reopened.titles.length).toBeGreaterThan(0)
-    expect(reopened.nodes.map(({ id, x, y }) => ({ id, x, y }))).toEqual(maximum.nodes.map(({ id, x, y }) => ({ id, x, y })))
-    return
-  }
-  const expansionStart = Date.now()
-  for (let i = 0; i < 2; i++) await page.getByRole('button', { name: 'Zoom in', exact: true }).click()
-  if (count <= 600) await expect(page.getByText(`${count - 1} grouped node(s)`, { exact: true })).toHaveCount(0)
-  for (let step = 0; step < 20 && await page.getByText(`${count - 1} grouped node(s)`, { exact: true }).count(); step++) {
-    await page.getByRole('button', { name: 'Zoom in', exact: true }).click()
-  }
-  const opened = await graphSnapshot(page)
-  expect(opened.nodes.filter(node => node.symbol !== 'none').length).toBeGreaterThan(1)
-  const detailed = await zoomGraphToMaximum(page)
-  await expect(page.getByText(`${count - 1} grouped node(s)`, { exact: true })).toHaveCount(0)
-  expect(requests).toHaveLength(Math.ceil(count / 500))
-  expect(detailed.nodes).toHaveLength(count)
-  expect(detailed.nodes.filter(node => node.symbol !== 'none').length).toBeGreaterThan(0)
-  if (count > 600) expect(detailed.nodes.filter(node => node.symbol !== 'none').length).toBeLessThan(count)
-  expect(detailed.titles.length).toBeGreaterThan(0)
-  expect(detailed.titles.length).toBeLessThanOrEqual(detailed.nodes.filter(node => node.symbol !== 'none').length)
-  if (count > 600) expect(detailed.nodes.map(({ id, x, y }) => ({ id, x, y }))).toEqual(represented.nodes.map(({ id, x, y }) => ({ id, x, y })))
-  else expect(detailed.nodes.every(node => Number.isFinite(node.x) && Number.isFinite(node.y))).toBe(true)
-  await testInfo.attach('graph-expansion.json', { body: JSON.stringify({ nodes: count,
-    milliseconds: Date.now() - expansionStart, requests: requests.length }), contentType: 'application/json' })
-  await page.locator('.memory-graph').screenshot({ path: testInfo.outputPath('graph-visible-titles.png') })
-})
-
-for (const width of [1440, 390]) test(`dense shared memories group, open locally and preserve navigation at ${width}px`, async ({ page }, testInfo) => {
-  test.setTimeout(90_000)
-  await page.setViewportSize({ width, height: 1000 })
-  const timestamp = '2026-09-01T12:00:00Z'
-  const makeNode = (id, entity_kind, relation_count) => ({ id, title: `Synthetic ${id}`, entity_kind,
-    node_kind: 'memory', owner_agent_id: 7, visibility: 'private', source_managed: false,
-    access_count: 0, last_accessed_at: null, created_at: timestamp, updated_at: timestamp, activity_at: timestamp,
-    has_relations: true, relation_count })
-  const memories = Array.from({ length: 2760 }, (_, i) => makeNode(`memory-${String(i).padStart(4, '0')}`, 'memory', 2))
-  const nodes = [makeNode('contact', 'contact', memories.length),
-    ...Array.from({ length: 12 }, (_, i) => makeNode(`subject-${i}`, 'topic', 230)), ...memories]
-  const edges = memories.flatMap((node, i) => [
-    { id: `subject-edge-${i}`, source_item_id: `subject-${i % 12}`, target_item_id: node.id, relation_type: 'topic_contains', confidence: 1, suggested: false },
-    { id: `contact-edge-${i}`, source_item_id: 'contact', target_item_id: node.id, relation_type: 'contact_contains', confidence: 1, suggested: false },
-  ])
-  await page.route('**/api/memory/graph/roots', route => {
-    const body = route.request().postDataJSON()
-    const offset = Number(body.cursor?.id ?? 0), end = Math.min(nodes.length, offset + body.limit)
-    const ids = new Set(nodes.slice(offset, end).map(node => node.id))
-    return route.fulfill({ json: { nodes: nodes.slice(offset, end), edges: edges.filter(edge => ids.has(edge.target_item_id)),
-      has_more: end < nodes.length, next_cursor: end < nodes.length ? { id: String(end), activity_at: timestamp } : null, edges_truncated: false } })
-  })
-  const start = Date.now()
-  await mount(page, 'app/memory/components/MemoryGraph.vue', { props: { agentId: 7, query: '', topicItemId: null, contactItemId: null } })
-  await expect(page.getByText('2748 grouped node(s)', { exact: true })).toBeVisible()
-  const initial = await settledGraph(page)
-  expect(initial.nodes.filter(node => node.symbol !== 'none')).toHaveLength(25)
-  expect(initial.edges).toHaveLength(24)
-  const representatives = initial.nodes.filter(node => node.symbol !== 'none' && node.id.startsWith('memory-'))
-  for (const node of representatives) expect(initial.edges.filter(edge => edge.target === node.id).map(edge => edge.source).sort())
-    .toEqual(['contact', `subject-${Number(node.id.slice(7)) % 12}`].sort())
-  await page.locator('.memory-graph').screenshot({ path: testInfo.outputPath('shared-overview.png') })
-  const anchor = initial.points.find(node => representatives.some(rep => rep.id === node.id)
-    && node.point[0] > 40 && node.point[0] < initial.viewport[0] - 40 && node.point[1] > 40 && node.point[1] < initial.viewport[1] - 40)
-  expect(anchor).toBeTruthy()
-  await clickGraphNode(page, anchor.id)
-  const opened = await settledGraph(page)
-  expect(opened.nodes).toHaveLength(nodes.length)
-  expect(opened.nodes.filter(node => node.symbol !== 'none').length).toBeGreaterThan(1)
-  expect(opened.nodes.filter(node => node.symbol !== 'none').length).toBeLessThan(nodes.length)
-  const leaf = opened.points.find(node => node.id.startsWith('memory-') && node.id !== anchor.id
-    && opened.nodes.find(item => item.id === node.id)?.symbol !== 'none'
-    && node.point[0] > 40 && node.point[0] < opened.viewport[0] - 40 && node.point[1] > 40 && node.point[1] < opened.viewport[1] - 40)
-  expect(leaf).toBeTruthy()
-  await clickGraphNode(page, leaf.id)
-  await expect.poll(() => page.evaluate(() => window.testApp.events.filter(event => event.name === 'open').map(event => event.value))).toEqual([leaf.id])
-  await zoomGraphToMaximum(page)
-  await page.locator('.memory-graph').screenshot({ path: testInfo.outputPath('shared-maximum-zoom.png') })
-  const detail = await graphSnapshot(page)
-  await testInfo.attach('shared-density.json', { body: JSON.stringify({ loaded: nodes.length, grouped: 2748,
-    overviewSymbols: 25, detailSymbols: detail.nodes.filter(node => node.symbol !== 'none').length,
-    detailTitles: detail.titles.length, milliseconds: Date.now() - start }), contentType: 'application/json' })
   await page.getByRole('button', { name: 'Fit graph to viewport', exact: true }).click()
-  await expect(page.getByText('2748 grouped node(s)', { exact: true })).toBeVisible()
-  const fitted = await settledGraph(page)
-  expect(fitted.nodes).toEqual(initial.nodes)
-  expect(fitted.edges).toEqual(initial.edges)
-  await page.getByRole('button', { name: 'Hide “Contact” nodes and their relationships', exact: true }).click()
-  await expect(page.getByText('2760 grouped node(s)', { exact: true })).toBeVisible()
-  const filtered = await settledGraph(page)
-  expect(filtered.nodes.some(node => node.id === 'contact')).toBe(false)
-  expect(filtered.nodes.filter(node => node.symbol !== 'none')).toHaveLength(12)
-  expect(filtered.nodes.filter(node => node.id.startsWith('subject-')).map(({ x, y }) => ({ x, y })))
-    .not.toEqual(initial.nodes.filter(node => node.id.startsWith('subject-')).map(({ x, y }) => ({ x, y })))
-  await page.locator('.memory-graph').screenshot({ path: testInfo.outputPath('shared-filtered-reorganized.png') })
-  await page.getByRole('button', { name: 'Show “Contact” nodes and their relationships', exact: true }).click()
-  await expect(page.getByText('2748 grouped node(s)', { exact: true })).toBeVisible()
-  expect((await settledGraph(page)).nodes).toEqual(initial.nodes)
+  await page.getByRole('button', { name: 'Hide “Memory” nodes and their relationships', exact: true }).click()
+  await expect(page.getByText('4 hidden item(s)', { exact: true })).toBeVisible()
+  await expect(page.locator('.memory-graph__chart--3d').getByText('Synthetic left', { exact: true })).toBeVisible()
+  await page.locator('.memory-graph').screenshot({ path: testInfo.outputPath('3d-hidden-items.png') })
+  await page.getByRole('button', { name: 'Show “Memory” nodes and their relationships', exact: true }).click()
+  await expect(page.getByText('4 hidden item(s)', { exact: true })).toHaveCount(0)
+  await page.getByRole('button', { name: 'Fit graph to viewport', exact: true }).click()
+  await expect(page.locator('.memory-graph__chart--3d').getByText('Synthetic left', { exact: true })).toBeVisible()
 })
 
-async function roamAroundNode(page, id, zoom) {
-  await page.evaluate(async ({ id, zoom }) => {
-    const url = performance.getEntriesByType('resource').map(entry => entry.name)
-      .find(name => /\/echarts(?:\/core|_core)\.js/.test(name))
-    const chart = (await import(url)).getInstanceByDom(document.querySelector('.memory-graph__chart'))
-    const series = chart.getOption().series[0], data = chart.getModel().getSeries()[0].getData()
-    const index = series.data.findIndex(node => node.id === id)
-    const point = chart.convertToPixel({ seriesId: series.id }, data.getItemLayout(index))
-    chart.dispatchAction({ type: 'graphRoam', seriesId: series.id, zoom: zoom / series.zoom,
-      originX: point[0], originY: point[1] })
-  }, { id, zoom })
-}
-
-async function zoomGraphToMaximum(page, preferredId) {
-  if (preferredId) {
-    const snapshot = await graphSnapshot(page)
-    await roamAroundNode(page, preferredId, snapshot.maximumZoom)
-    const maximum = await settledGraph(page)
-    expect(maximum.zoom).toBeCloseTo(maximum.maximumZoom, 4)
-    return maximum
-  }
-  await page.evaluate(async () => {
-    const url = performance.getEntriesByType('resource').map(entry => entry.name)
-      .find(name => /\/echarts(?:\/core|_core)\.js/.test(name))
-    const chart = (await import(url)).getInstanceByDom(document.querySelector('.memory-graph__chart'))
-    const series = chart.getOption().series[0], data = chart.getModel().getSeries()[0].getData()
-    const index = series.data.findIndex((node, index) => {
-      const point = chart.convertToPixel({ seriesId: series.id }, data.getItemLayout(index))
-      return node.symbol !== 'none' && point[0] >= 0 && point[0] <= chart.getWidth()
-        && point[1] >= 0 && point[1] <= chart.getHeight()
-    })
-    const point = index >= 0 ? chart.convertToPixel({ seriesId: series.id }, data.getItemLayout(index))
-      : [chart.getWidth() / 2, chart.getHeight() / 2]
-    chart.dispatchAction({ type: 'graphRoam', seriesId: series.id, zoom: series.scaleLimit.max / series.zoom,
-      originX: point[0], originY: point[1] })
-  })
-  const current = await settledGraph(page)
-  expect(current.zoom).toBeCloseTo(current.maximumZoom, 4)
-  return current
-}
-
-async function graphSnapshot(page) {
-  return page.evaluate(async () => {
-    const moduleUrl = performance.getEntriesByType('resource')
-      .map(entry => entry.name).find(name => /\/echarts(?:\/core|_core)\.js/.test(name))
-    const echarts = await import(moduleUrl)
-    const chart = echarts.getInstanceByDom(document.querySelector('.memory-graph__chart'))
-    const series = chart.getOption().series[0]
-    // Test-only observation of the live renderer: production uses public chart actions.
-    const data = chart.getModel().getSeries()[0].getData()
-    const nodes = series.data.map((node, index) => {
-      const point = series.layout === 'force' ? data.getItemLayout(index) : [node.x, node.y]
-      return { id: node.id, symbol: node.symbol, x: point[0], y: point[1] }
-    })
-    const labels = series.data.flatMap((node, index) => {
-      const label = data.getItemGraphicEl(index)?.childAt(0)?.getTextContent()
-      return node.symbol !== 'none' && label?.style.text && !label.ignore && !label.invisible
-        ? [{ id: node.id, text: label.style.text }] : []
-    })
-    const symbolSizes = Object.fromEntries(series.data.flatMap((node, index) => {
-      const symbol = data.getItemGraphicEl(index)?.childAt(0)
-      if (node.symbol === 'none' || !symbol) return []
-      const bounds = symbol.getBoundingRect()
-      const left = symbol.transformCoordToGlobal(bounds.x, bounds.y)
-      const right = symbol.transformCoordToGlobal(bounds.x + bounds.width, bounds.y + bounds.height)
-      return [[node.id, Math.max(Math.abs(right[0] - left[0]), Math.abs(right[1] - left[1]))]]
-    }))
-    return { layout: series.layout, nodes, titles: labels.map(label => label.id),
-      symbolSizes,
-      titleTexts: Object.fromEntries(labels.map(label => [label.id, label.text])),
-      edges: series.links, center: series.center, zoom: series.zoom, maximumZoom: series.scaleLimit.max, viewport: [chart.getWidth(), chart.getHeight()],
-      points: nodes.map(node => ({ id: node.id, point: chart.convertToPixel({ seriesId: series.id }, [node.x, node.y]) })) }
-  })
-}
-
-for (const width of [1440, 390]) test(`graph restores personal positions and hidden natures before placing newcomers at ${width}px`, async ({ page }, testInfo) => {
-  await page.setViewportSize({ width, height: 1000 })
-  const timestamp = '2026-09-01T12:00:00Z'
-  const makeNode = (id, kind) => ({ id, title: `Synthetic ${id}`, node_kind: 'memory', entity_kind: kind,
-    owner_agent_id: 7, visibility: 'private', source_managed: false, access_count: 0,
-    last_accessed_at: null, created_at: timestamp, updated_at: timestamp, activity_at: timestamp,
-    has_relations: false, relation_count: 0 })
-  const nodes = [makeNode('saved-memory', 'memory'), makeNode('saved-contact', 'contact')]
-  const stored = { format_version: 1, revision: 0, preferences: { hidden_entity_kinds: [], expanded_branches: [], camera: null }, positions: {} }
-  let failSave = false
-  await page.route('**/api/memory/graph/state/read', route => route.fulfill({ json: stored }))
-  await page.route('**/api/memory/graph/state', route => {
-    if (failSave) return route.fulfill({ status: 503, json: { detail: 'Synthetic save failure' } })
-    const patch = route.request().postDataJSON()
-    expect(patch.expected_revision).toBe(stored.revision)
-    Object.assign(stored.positions, patch.positions)
-    Object.assign(stored.preferences, patch.preferences)
-    stored.revision++
-    return route.fulfill({ json: { ...stored, positions: patch.positions } })
-  })
-  await page.route('**/api/memory/graph/roots', route => route.fulfill({ json: {
-    nodes, edges: [], has_more: false, positions: Object.fromEntries(Object.entries(stored.positions).map(([key, point]) => [key, [point.x, point.y]])),
-  } }))
-  const props = { agentId: 7, query: '', topicItemId: null, contactItemId: null }
-  await mount(page, 'app/memory/components/MemoryGraph.vue', { props })
-  await expect(page.getByText('2 node(s)', { exact: true })).toBeVisible()
-  await page.getByRole('button', { name: 'Hide “Contact” nodes and their relationships', exact: true }).click()
-  await expect.poll(() => stored.preferences.hidden_entity_kinds).toEqual(['contact'])
-  await expect.poll(() => Object.keys(stored.positions).sort()).toEqual(['saved-contact', 'saved-memory'])
-  const positions = structuredClone(stored.positions)
-  await page.evaluate(() => window.testApp.unmount())
-  nodes.push(makeNode('new-contact', 'contact'), makeNode('new-memory', 'memory'))
-  await mount(page, 'app/memory/components/MemoryGraph.vue', { props })
-  await expect(page.getByRole('button', { name: 'Show “Contact” nodes and their relationships', exact: true })).toBeVisible()
-  await expect(page.getByText('2 node(s)', { exact: true })).toBeVisible()
-  const restored = await graphSnapshot(page)
-  expect(stored.positions).toMatchObject(positions)
-  expect(restored.nodes.some(node => node.id.endsWith('contact'))).toBe(false)
-  failSave = true
-  await page.getByRole('button', { name: 'Show “Contact” nodes and their relationships', exact: true }).click()
-  await expect(page.getByText('4 node(s)', { exact: true })).toBeVisible()
-  await expect(page.getByText('Positions or display preferences could not be restored or saved.', { exact: true })).toBeVisible()
-  const shown = await graphSnapshot(page)
-  for (const [key, point] of Object.entries(positions)) expect(shown.nodes.find(node => node.id === key)).toMatchObject({ x: point.x, y: point.y })
-  failSave = false
-  await page.getByRole('button', { name: 'Retry', exact: true }).click()
-  await expect.poll(() => stored.preferences.hidden_entity_kinds).toEqual([])
-  await expect(page.getByText('Positions or display preferences could not be restored or saved.', { exact: true })).toHaveCount(0)
-  await page.screenshot({ path: testInfo.outputPath('graph-restored-personal-view.png'), animations: 'disabled' })
-})
-
-async function settledGraph(page, timeout = 20_000) {
-  let previous = await graphSnapshot(page)
-  let sampled = false
-  await expect.poll(async () => {
-    const current = await graphSnapshot(page)
-    const moved = Math.max(...current.nodes.map((node, index) => Math.hypot(node.x - previous.nodes[index]?.x,
-      node.y - previous.nodes[index]?.y)))
-    previous = current
-    if (!sampled) { sampled = true; return Infinity }
-    return moved
-  }, { timeout, intervals: [400] }).toBe(0)
-  return previous
+async function settledGraph(page) {
+  const graph = page.locator('.memory-graph__chart--3d')
+  await expect(page.locator('.memory-graph__chart--loading')).toHaveCount(0)
+  await expect(graph.locator('canvas')).toBeVisible()
+  return graph.evaluate(element => ({ ...element.dataset }))
 }
 
 async function clickGraphNode(page, id) {
-  const chartElement = page.locator('.memory-graph__chart')
-  await chartElement.scrollIntoViewIfNeeded()
-  let point
+  // Keyboard selection makes low-priority captions available in dense views.
+  const graph = page.locator('.memory-graph__chart--3d')
+  await graph.focus()
   await expect.poll(async () => {
-    point = await page.evaluate(async identity => {
-      const moduleUrl = performance.getEntriesByType('resource')
-        .map(entry => entry.name).find(name => /\/echarts(?:\/core|_core)\.js/.test(name))
-      const echarts = await import(moduleUrl)
-      const chart = echarts.getInstanceByDom(document.querySelector('.memory-graph__chart'))
-      const data = chart.getModel().getSeries()[0].getData()
-      const index = chart.getOption().series[0].data.findIndex(node => node.id === identity)
-      const graphic = data.getItemGraphicEl(index)
-      if (!graphic) return null
-      // Click the currently painted node, accounting for animation and overlap.
-      const centers = [graphic.transformCoordToGlobal(0, 0)]
-      const label = graphic.childAt(0)?.getTextContent()
-      if (label && !label.ignore && !label.invisible) {
-        const bounds = label.getBoundingRect()
-        centers.push(label.transformCoordToGlobal(bounds.x + bounds.width / 2, bounds.y + bounds.height / 2))
-      }
-      for (const center of centers) for (const dx of [0, -4, 4, -8, 8]) for (const dy of [0, -4, 4, -8, 8]) {
-        const position = { x: center[0] + dx, y: center[1] + dy }
-        let target = chart.getZr().findHover(position.x, position.y).target
-        while (target && target !== graphic) target = target.__hostTarget ?? target.parent
-        if (target === graphic) return position
-      }
-      return null
-    }, id)
-    return point
-  }).not.toBeNull()
-  await chartElement.click({ position: point })
+    const count = Number(await graph.getAttribute('data-graph3d-nodes'))
+    for (let index = 0; index < count; index++) {
+      await page.keyboard.press('ArrowRight')
+      // Selection updates the description immediately, while its caption is
+      // painted on the next frame. Observe both before activating the node.
+      await graph.evaluate(() => new Promise(resolve => requestAnimationFrame(resolve)))
+      const selected = await graph.getAttribute('aria-description')
+      const title = await graph.locator('[data-node-id]').evaluateAll(
+        (elements, id) => elements.find(element => element.dataset.nodeId === id)?.title, id)
+      if (title && title === selected) return true
+    }
+    return false
+  }).toBe(true)
+  await page.keyboard.press('Enter')
 }
-
-async function recordGraphReveal(page, ids) {
-  return page.evaluate(async memberIds => {
-    const moduleUrl = performance.getEntriesByType('resource')
-      .map(entry => entry.name).find(name => /\/echarts(?:\/core|_core)\.js/.test(name))
-    const echarts = await import(moduleUrl)
-    const chart = echarts.getInstanceByDom(document.querySelector('.memory-graph__chart'))
-    const wanted = new Set(memberIds), frames = [], start = performance.now()
-    return new Promise(resolve => {
-      const sample = () => {
-        const data = chart.getModel().getSeries()[0].getData()
-        const opacity = []
-        for (let index = 0; index < data.count(); index++) {
-          if (!wanted.has(data.getId(index))) continue
-          const symbol = data.getItemGraphicEl(index)?.childAt(0)
-          if (symbol && data.getItemModel(index).get('symbol') !== 'none') opacity.push(symbol.style.opacity)
-        }
-        frames.push(opacity)
-        if ((performance.now() - start > 800 && opacity.length > 0 && opacity.every(value => value === 1)) || performance.now() - start > 4000) {
-          resolve(frames)
-        } else requestAnimationFrame(sample)
-      }
-      requestAnimationFrame(sample)
-    })
-  }, ids)
-}
-
-for (const width of [1440, 750, 390]) test(`mixed graph keeps linked subjects together through branch expansion at ${width}px`, async ({ page }, testInfo) => {
-  test.setTimeout(90_000)
-  await page.setViewportSize({ width, height: 1000 })
-  const timestamp = new Date().toISOString()
-  const nodes = [], edges = []
-  const addNode = (id, entity_kind = 'memory') => nodes.push({ id, title: `Synthetic ${id}`, entity_kind,
-    node_kind: entity_kind === 'topic' || entity_kind === 'contact' ? 'memory' : entity_kind,
-    owner_agent_id: 7, visibility: 'private',
-    source_managed: false, access_count: 0, last_accessed_at: null, created_at: timestamp,
-    updated_at: timestamp, activity_at: timestamp, has_relations: true, relation_count: 0 })
-  const addEdge = (source, target, relation_type = 'topic_contains') => edges.push({ id: `link-${edges.length}`,
-    source_item_id: source, target_item_id: target, relation_type, confidence: 1, suggested: false })
-  for (let group = 0; group < 8; group++) addNode(`subject-${group}`, 'topic')
-  for (let contact = 0; contact < 2; contact++) addNode(`contact-${contact}`, 'contact')
-  for (let i = 0; i < 96; i++) {
-    addNode(`leaf-${i}`, i % 3 === 0 ? 'file' : 'memory')
-    addEdge(`subject-${i % 8}`, `leaf-${i}`)
-  }
-  for (let i = 0; i < 64; i++) {
-    addNode(`shared-${i}`, i % 4 === 0 ? 'document' : 'memory')
-    addEdge(`subject-${i % 8}`, `shared-${i}`)
-    addEdge(`shared-${i}`, `shared-${(i + 8) % 64}`, 'related_to')
-    addEdge('contact-0', `shared-${i}`, 'contact_contains')
-    if (i % 8 === 1) addEdge('contact-1', `shared-${i}`, 'contact_contains')
-  }
-  for (let group = 0; group < 7; group++) addEdge(`subject-${group}`, `subject-${group + 1}`, 'related_to')
-  for (let i = 0; i < 8; i++) addNode(`isolated-${i}`)
-  for (const node of nodes) {
-    node.relation_count = new Set(edges.flatMap(edge => edge.source_item_id === node.id ? [edge.target_item_id]
-      : edge.target_item_id === node.id ? [edge.source_item_id] : [])).size
-    node.has_relations = node.relation_count > 0
-  }
-  // These synthetic files have no external preview resource.
-  await jsonRoute(page, '**/api/file-share/items/leaf-*/resources?*', [])
-    for (const node of nodes.filter(node => node.node_kind === 'document')) {
-      await jsonRoute(page, `**/api/memory/documents/${node.id}?*`, { item: { ...document, id: node.id, title: node.title }, agent_id: 7 })
-  }
-  await jsonRoute(page, '**/api/memory/graph/roots', { nodes, edges, has_more: false, next_cursor: null, edges_truncated: false })
-  const start = Date.now()
-  await mount(page, 'app/memory/components/MemoryGraph.vue', { props: {
-    agentId: 7, query: '', topicItemId: null, contactItemId: null,
-  } })
-  await expect(page.getByText('96 grouped node(s)', { exact: true })).toBeVisible()
-  await expect(page.locator('.memory-graph__chart--loading')).toHaveCount(0)
-  const moving = await graphSnapshot(page)
-  expect(moving.layout).toBe('force')
-  await expect.poll(async () => (await graphSnapshot(page)).nodes).not.toEqual(moving.nodes)
-  const settlingStart = Date.now()
-  const initial = await settledGraph(page)
-  const settlingMilliseconds = Date.now() - settlingStart
-  const positions = new Map(initial.nodes.map(node => [node.id, node]))
-  const distance = (a, b) => Math.hypot(a.x - b.x, a.y - b.y)
-  let local = 0, remote = 0
-  for (let i = 0; i < 64; i++) {
-    local += distance(positions.get(`shared-${i}`), positions.get(`subject-${i % 8}`))
-    remote += distance(positions.get(`shared-${i}`), positions.get(`subject-${(i + 4) % 8}`))
-  }
-  expect(local).toBeLessThan(remote)
-  await testInfo.attach('mixed-layout.json', { body: JSON.stringify({ nodes: nodes.length, edges: edges.length,
-    milliseconds: Date.now() - start, settlingMilliseconds, meanLocalDistance: local / 64, meanRemoteDistance: remote / 64 }),
-    contentType: 'application/json' })
-  await page.screenshot({ path: testInfo.outputPath('mixed-graph-collapsed.png') })
-  for (let i = 0; i < 3; i++) await page.getByRole('button', { name: 'Zoom in', exact: true }).click()
-  await expect(page.getByText('96 grouped node(s)', { exact: true })).toHaveCount(0)
-  const expanded = await settledGraph(page, 2500)
-  expect(expanded.nodes).toHaveLength(nodes.length)
-  for (const node of expanded.nodes) {
-    const previous = initial.nodes.find(candidate => candidate.id === node.id)
-    if (previous) expect({ x: node.x, y: node.y }).toEqual({ x: previous.x, y: previous.y })
-  }
-  // Zoom resolves the default center; allow subpixel drift from rounded renderer dimensions.
-  const initialCenter = initial.center ?? initial.viewport.map(size => size / 2)
-  for (let axis = 0; axis < 2; axis++) expect(Math.abs(expanded.center[axis] - initialCenter[axis])).toBeLessThan(1)
-  expect(expanded.zoom).toBeGreaterThan(initial.zoom ?? 1)
-  await page.screenshot({ path: testInfo.outputPath('mixed-graph-expanded.png') })
-  const linksShown = graph => graph.edges.filter(edge => edge.lineStyle.opacity > 0).length
-  for (let i = 0; i < 6; i++) await page.getByRole('button', { name: 'Zoom out', exact: true }).click()
-  const far = await graphSnapshot(page)
-  // Overview keeps the relationships between displayed nodes accessible.
-  expect(linksShown(far)).toBe(linksShown(initial))
-  const expandedPositions = new Map(expanded.nodes.map(node => [node.id, { x: node.x, y: node.y }]))
-  for (const node of far.nodes) expect({ x: node.x, y: node.y }).toEqual(expandedPositions.get(node.id))
-  await page.screenshot({ path: testInfo.outputPath('mixed-graph-overview.png') })
-  // Minimum zoom stops at fit; the original three steps restore the detail view.
-  for (let i = 0; i < 3; i++) await page.getByRole('button', { name: 'Zoom in', exact: true }).click()
-  const zoomedBack = await settledGraph(page, 2500)
-  // Fit recenters the map, so viewport culling can change the visible links.
-  // Every relationship touching a displayed node must remain accessible.
-  const displayed = new Set(zoomedBack.nodes.filter(node => node.symbol !== 'none').map(node => node.id))
-  const expectedLinks = edges.filter(edge => displayed.has(edge.source_item_id) || displayed.has(edge.target_item_id))
-  const shownLinks = zoomedBack.edges.filter(edge => edge.lineStyle.opacity > 0)
-  expect(shownLinks.length).toBeGreaterThan(0)
-  expect(shownLinks.map(edge => edge.id).sort()).toEqual(expectedLinks.map(edge => edge.id).sort())
-  for (const node of zoomedBack.nodes) expect({ x: node.x, y: node.y }).toEqual(expandedPositions.get(node.id))
-})
-
-for (const width of [1440, 390]) test(`exclusive branches reveal on zoom while keeping shared nodes accessible at ${width}px`, async ({ page }, testInfo) => {
-  test.setTimeout(90_000)
-  await page.setViewportSize({ width, height: 1000 })
-  const timestamp = new Date().toISOString()
-  const makeNode = (id, relation_count) => ({ id, title: `Synthetic ${id}`, node_kind: 'memory', entity_kind: 'memory',
-    owner_agent_id: 7, visibility: 'private', source_managed: false, access_count: 0,
-    last_accessed_at: null, created_at: timestamp, updated_at: timestamp, activity_at: timestamp,
-    has_relations: relation_count > 0, relation_count })
-  const nodes = [makeNode('anchor', 31), ...Array.from({ length: 30 }, (_, i) => makeNode(`leaf-${i}`, 1)),
-    makeNode('shared', 2)]
-  const edges = nodes.slice(1).map(node => ({ id: `edge-${node.id}`, source_item_id: 'anchor',
-    target_item_id: node.id, relation_type: 'related_to', confidence: 1, suggested: false }))
-  await jsonRoute(page, '**/api/memory/graph/roots', { nodes, edges, has_more: false, next_cursor: null, edges_truncated: false })
-  await mount(page, 'app/memory/components/MemoryGraph.vue', { props: {
-    agentId: 7, query: '', topicItemId: null, contactItemId: null,
-  } })
-  await expect(page.getByText('30 grouped node(s)', { exact: true })).toBeVisible()
-  const initial = await settledGraph(page)
-  expect(initial.nodes.filter(node => node.symbol !== 'none').map(node => node.id).sort()).toEqual(['anchor', 'shared'])
-  await page.screenshot({ path: testInfo.outputPath('branches-collapsed.png') })
-  const reveal = recordGraphReveal(page, nodes.filter(node => node.id.startsWith('leaf-')).map(node => node.id))
-  await page.getByRole('button', { name: 'Zoom in', exact: true }).focus()
-  for (let i = 0; i < 3; i++) await page.keyboard.press('Enter')
-  await expect(page.getByText('30 grouped node(s)', { exact: true })).toHaveCount(0)
-  await expect(page.locator('.memory-graph__chart--loading')).toHaveCount(0)
-  const frames = await reveal
-  expect(frames.some(opacity => opacity.some(value => value > 0 && value < 1))).toBe(true)
-  expect(frames.some(opacity => new Set(opacity).size > 1)).toBe(true)
-  expect(frames.at(-1).length).toBeGreaterThan(0)
-  expect(frames.at(-1).every(value => value === 1)).toBe(true)
-  const near = await settledGraph(page)
-  const box = await page.locator('.memory-graph__chart').boundingBox()
-  // Dense leaves can overlap on mobile. Click an actually exposed symbol,
-  // rather than assuming the first model coordinate is the topmost target.
-  const hittable = await page.evaluate(async () => {
-    const moduleUrl = performance.getEntriesByType('resource').map(entry => entry.name).find(name => /\/echarts(?:\/core|_core)\.js/.test(name))
-    const chart = (await import(moduleUrl)).getInstanceByDom(document.querySelector('.memory-graph__chart'))
-    const data = chart.getModel().getSeries()[0].getData(), ids = []
-    for (let index = 0; index < data.count(); index++) {
-      if (!data.getId(index).startsWith('leaf-')) continue
-      const point = chart.convertToPixel({ seriesId: chart.getOption().series[0].id }, data.getItemLayout(index))
-      if (chart.getZr().findHover(point[0], point[1]).target === data.getItemGraphicEl(index)?.childAt(0)) ids.push(data.getId(index))
-    }
-    return ids
-  })
-  const leaf = near.points.find(node => hittable.includes(node.id) && node.point[0] > 10 && node.point[0] < box.width - 10
-    && node.point[1] > 10 && node.point[1] < box.height - 10)
-  expect(leaf).toBeTruthy()
-  const leafId = leaf.id, leafTitle = `Synthetic ${leafId}`
-  expect(leaf.point[0]).toBeGreaterThan(0)
-  expect(leaf.point[0]).toBeLessThan(box.width)
-  expect(leaf.point[1]).toBeGreaterThan(0)
-  expect(leaf.point[1]).toBeLessThan(box.height)
-  await page.locator('.memory-graph__chart').click({ position: { x: leaf.point[0], y: leaf.point[1] } })
-  await expect.poll(() => page.evaluate(() => window.testApp.events.filter(event => event.name === 'open').map(event => event.value))).toEqual([leafId])
-  expect(await page.evaluate(() => window.testApp.events.filter(event => event.name === 'open')[0].args[1].title)).toBe(leafTitle)
-  if (width >= 1024) {
-    const pinned = await graphSnapshot(page)
-    const blank = [{ x: 6, y: 6 }, { x: box.width - 6, y: 6 }, { x: 6, y: box.height - 6 }]
-      .find(point => pinned.points.every(node => Math.hypot(node.point[0] - point.x, node.point[1] - point.y) > 60))
-    expect(blank).toBeTruthy()
-    await page.locator('.memory-graph__chart').click({ position: blank })
-    const dismissed = await settledGraph(page, 2500)
-    expect(dismissed.nodes).toEqual(pinned.nodes)
-    expect(dismissed.points).toEqual(pinned.points)
-    expect(dismissed.center).toEqual(pinned.center)
-    expect(dismissed.zoom).toBe(pinned.zoom)
-    await page.locator('.memory-graph__chart').click({ position: { x: leaf.point[0], y: leaf.point[1] } })
-    await expect.poll(() => page.evaluate(() => window.testApp.events.filter(event => event.name === 'open').length)).toBe(2)
-    await page.getByRole('button', { name: 'Zoom out', exact: true }).click()
-    const unpinnedByZoom = await settledGraph(page, 2500)
-    for (const node of unpinnedByZoom.nodes) {
-      const previous = pinned.nodes.find(candidate => candidate.id === node.id)
-      expect({ x: node.x, y: node.y }).toEqual({ x: previous.x, y: previous.y })
-    }
-    const point = unpinnedByZoom.points.find(node => node.id === leafId).point
-    await page.locator('.memory-graph__chart').click({ position: { x: point[0], y: point[1] } })
-    await expect.poll(() => page.evaluate(() => window.testApp.events.filter(event => event.name === 'open').length)).toBe(3)
-  }
-  await page.screenshot({ path: testInfo.outputPath('branches-near.png') })
-  for (let i = 0; i < 2; i++) await page.getByRole('button', { name: 'Zoom out', exact: true }).click()
-  await expect(page.getByText('30 grouped node(s)', { exact: true })).toBeVisible()
-  const back = await graphSnapshot(page)
-  // Reclosing a branch keeps its map coordinates, independently of renderer mode.
-  for (const node of back.nodes) {
-    const previous = near.nodes.find(candidate => candidate.id === node.id)
-    expect({ x: node.x, y: node.y }).toEqual({ x: previous.x, y: previous.y })
-  }
-  expect(back.nodes.find(node => node.id === 'shared').symbol).not.toBe('none')
-  await page.getByRole('button', { name: 'Fit graph to viewport', exact: true }).click()
-  await settledGraph(page)
-  // A neighboring label can cover the symbol's center in the small viewport.
-  // Click an exposed part of the anchor rather than that other node's label.
-  const anchorPoint = await page.evaluate(async () => {
-    const moduleUrl = performance.getEntriesByType('resource').map(entry => entry.name).find(name => /\/echarts(?:\/core|_core)\.js/.test(name))
-    const chart = (await import(moduleUrl)).getInstanceByDom(document.querySelector('.memory-graph__chart'))
-    const data = chart.getModel().getSeries()[0].getData()
-    const index = data.indexOfName('Synthetic anchor')
-    const symbol = data.getItemGraphicEl(index)?.childAt(0)
-    const center = chart.convertToPixel({ seriesId: chart.getOption().series[0].id }, data.getItemLayout(index))
-    for (const dx of [0, -4, 4, -8, 8]) for (const dy of [0, -4, 4, -8, 8]) {
-      const point = { x: center[0] + dx, y: center[1] + dy }
-      if (symbol && chart.getZr().findHover(point.x, point.y).target === symbol) return point
-    }
-    return null
-  })
-  expect(anchorPoint, 'The collapsed anchor must have an exposed, clickable symbol').toBeTruthy()
-  await page.emulateMedia({ reducedMotion: 'reduce' })
-  const immediate = recordGraphReveal(page, nodes.filter(node => node.id.startsWith('leaf-')).map(node => node.id))
-  await page.locator('.memory-graph__chart').click({ position: anchorPoint })
-  await expect(page.getByText('30 grouped node(s)', { exact: true })).toHaveCount(0)
-  expect((await graphSnapshot(page)).zoom).toBeGreaterThanOrEqual(1.8)
-  expect((await immediate).every(opacity => opacity.every(value => value === 1))).toBe(true)
-})
 
 test('graph errors can be retried and late branches cannot cross an agent change', async ({ page }) => {
   const timestamp = new Date().toISOString()
@@ -1179,13 +504,22 @@ test('graph errors can be retried and late branches cannot cross an agent change
     last_accessed_at: null, created_at: timestamp, updated_at: timestamp, activity_at: timestamp,
     has_relations: false, relation_count: 0 }
   const empty = { nodes: [], edges: [], has_more: false, next_cursor: null, edges_truncated: false }
-  let reads = 0, release, waiting = false
+  let reads = 0, release, completeLate, waiting = false
   const pending = new Promise(resolve => { release = resolve })
+  const lateCompleted = new Promise(resolve => { completeLate = resolve })
+  const aborted = []
+  page.on('requestfailed', request => {
+    if (request.url().endsWith('/api/memory/graph/roots')) aborted.push(request.failure()?.errorText)
+  })
   await page.route('**/api/memory/graph/roots', async route => {
-    reads++
-    if (reads === 1) return route.fulfill({ status: 503, json: { detail: 'Synthetic temporary failure' } })
-    if (reads === 3) { waiting = true; await pending }
-    return route.fulfill({ json: { ...empty, nodes: route.request().postDataJSON().agent_id === 7 ? [node] : [] } })
+    const attempt = ++reads
+    if (attempt === 1) return route.fulfill({ status: 503, json: { detail: 'Synthetic temporary failure' } })
+    if (attempt === 3) { waiting = true; await pending }
+    try {
+      await route.fulfill({ json: { ...empty, nodes: route.request().postDataJSON().agent_id === 7 ? [node] : [] } })
+    } finally {
+      if (attempt === 3) completeLate()
+    }
   })
   await mount(page, 'app/memory/components/MemoryGraph.vue', { props: {
     agentId: 7, query: '', topicItemId: null, contactItemId: null,
@@ -1197,16 +531,22 @@ test('graph errors can be retried and late branches cannot cross an agent change
   await expect.poll(() => waiting).toBe(true)
   await page.evaluate(() => window.testApp.setProps({ agentId: 8 }))
   await expect(page.getByText('No memory matches the active filters.', { exact: true })).toBeVisible()
-  const late = page.waitForResponse(response => response.url().endsWith('/api/memory/graph/roots') && response.request().postDataJSON().agent_id === 7)
+  // The old request is cancelled on context change, so no network response
+  // event can arrive. Wait for the controlled server work to finish instead.
+  await expect.poll(() => aborted.length).toBe(1)
   release()
-  await late
-  expect((await graphSnapshot(page)).nodes).toEqual([])
+  await lateCompleted
+  expect(Number((await settledGraph(page)).graph3dNodes)).toBe(0)
   await page.evaluate(() => window.testApp.setProps({ agentId: 7 }))
   await expect(page.getByText('1 node(s)', { exact: true })).toBeVisible()
   await page.evaluate(() => window.testApp.emitSocket('memory.invalidate', { data: {} }))
   await expect.poll(() => reads).toBe(6)
   await expect(page.locator('.memory-graph__chart--loading')).toHaveCount(0)
-  expect((await graphSnapshot(page)).nodes.map(node => node.id)).toEqual(['recovered'])
+  const graph = page.locator('.memory-graph__chart--3d')
+  await expect.poll(async () => Number((await settledGraph(page)).graph3dNodes)).toBe(1)
+  await graph.focus()
+  await page.keyboard.press('ArrowRight')
+  await expect(graph).toHaveAttribute('aria-description', 'Synthetic recovered memory')
 })
 
 test('opening memory selects an agent and loads its results and filters only once', async ({ page }) => {

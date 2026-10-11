@@ -135,8 +135,11 @@ def test_graph_requests_enforce_bounded_pages_and_known_nodes() -> None:
             agent_id=1,
             known_item_ids=[uuid4() for _index in range(3001)],
         )
+    # Expanded pages now share the 500-node API ceiling; the former
+    # 100-node rejection no longer represents the graph's admitted contract.
+    assert MemoryGraphExpandRequest(agent_id=1, item_id=uuid4(), limit=500).limit == 500
     with pytest.raises(ValidationError):
-        MemoryGraphExpandRequest(agent_id=1, item_id=uuid4(), limit=101)
+        MemoryGraphExpandRequest(agent_id=1, item_id=uuid4(), limit=501)
     assert len(
         MemoryGraphExpandRequest(
             agent_id=1,

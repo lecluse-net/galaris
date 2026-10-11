@@ -7,7 +7,7 @@ const makeNode = (id, kind = 'memory', count = 0) => ({
   last_accessed_at: null, created_at: timestamp, updated_at: timestamp,
   activity_at: timestamp, has_relations: count > 0, relation_count: count,
 })
-const props = { agentId: 7, query: '', topicItemId: null, contactItemId: null, renderer: '3d' }
+const props = { agentId: 7, query: '', topicItemId: null, contactItemId: null }
 const scene = page => page.locator('.memory-graph__chart--3d')
 const snapshot = page => scene(page).evaluate(element => ({ ...element.dataset }))
 
@@ -40,9 +40,124 @@ async function graphFixture(page, nodes, edges = [], positions = {}, defer = fal
   return requests
 }
 
-for (const renderer of ['2d', '3d']) test(`memory ${renderer} benchmark preserves ${renderer === '3d' ? 10000 : 5000} nodes and ${renderer === '3d' ? 20000 : 10000} links`, async ({ page }, testInfo) => {
+test('3D rebuilds an incompatible saved view and retries persistence without changing the current camera', async ({ page }) => {
+  const root = makeNode('10000000-0000-4000-8000-000000000001', 'topic')
+  const contact = makeNode('10000000-0000-4000-8000-000000000002', 'contact')
+  await graphFixture(page, [root, contact], [], { [root.id]: [1e9, 1e9], [contact.id]: [1e9, -1e9] })
+  let reads = 0, available = false
+  const writes = []
+  await page.route('**/api/memory/graph/state/read', route => {
+    reads++
+    return route.fulfill({ json: { format_version: 99, revision: 8,
+      preferences: { incompatible: true }, positions: {} } })
+  })
+  await page.route('**/api/memory/graph/state', route => {
+    const body = route.request().postDataJSON()
+    writes.push(body)
+    return route.fulfill(available ? { json: { format_version: 1, revision: body.expected_revision + 1,
+      preferences: body.preferences, positions: body.positions } } : { status: 503, json: { detail: 'Temporarily unavailable' } })
+  })
+  await mount(page, 'app/memory/components/MemoryGraph.vue', { props })
+  await expect(page.getByText('2 node(s)', { exact: true })).toBeVisible()
+  const warning = page.getByText('Positions or display preferences could not be restored or saved.', { exact: true })
+  await expect(warning).toBeVisible()
+  expect(writes[0].reset_layout).toBe(true)
+  expect(writes[0].expected_revision).toBe(8)
+  expect(Object.values(writes[0].positions).every(point => Math.abs(point.x) < 1e9 && Math.abs(point.y) < 1e9)).toBe(true)
+  await page.getByRole('button', { name: 'Hide “Contact” nodes and their relationships', exact: true }).click()
+  await page.getByRole('button', { name: 'Zoom in', exact: true }).click()
+  await expect.poll(async () => Number((await snapshot(page)).graph3dZoom)).toBeGreaterThan(1)
+  const before = (await snapshot(page)).graph3dCamera
+  available = true
+  await page.getByRole('button', { name: 'Retry', exact: true }).click()
+  await expect(warning).toHaveCount(0)
+  expect((await snapshot(page)).graph3dCamera).toBe(before)
+  expect(reads).toBe(1)
+  expect(writes.at(-1).preferences.hidden_entity_kinds).toEqual(['contact'])
+  await expect(page.getByRole('button', { name: 'Show “Contact” nodes and their relationships', exact: true })).toBeVisible()
+})
+
+test('3D resumes saving automatically after restoration becomes available', async ({ page }) => {
+  await graphFixture(page, [makeNode('10000000-0000-4000-8000-000000000003', 'topic')])
+  let reads = 0
+  const writes = []
+  await page.route('**/api/memory/graph/state/read', route => {
+    reads++
+    return route.fulfill(reads === 1 ? { status: 503, json: { detail: 'Temporarily unavailable' } }
+      : { json: { format_version: 1, revision: 8,
+        preferences: { hidden_entity_kinds: [], expanded_branches: [], camera: null }, positions: {} } })
+  })
+  await page.route('**/api/memory/graph/state', route => {
+    const body = route.request().postDataJSON()
+    writes.push(body)
+    return route.fulfill({ json: { format_version: 1, revision: body.expected_revision + 1,
+      preferences: body.preferences, positions: body.positions } })
+  })
+  await mount(page, 'app/memory/components/MemoryGraph.vue', { props })
+  await expect(page.getByText('1 node(s)', { exact: true })).toBeVisible()
+  await expect.poll(() => writes.length).toBeGreaterThan(0)
+  expect(reads).toBe(2)
+  expect(writes[0].expected_revision).toBe(8)
+  await expect(page.getByText('Positions or display preferences could not be restored or saved.', { exact: true })).toHaveCount(0)
+})
+
+// Measure the colored folder artwork in the actual WebGL screenshot, rather
+// than a computed size or an attribute that might never reach the GPU.
+async function folderWidths(page) {
+  const png = await scene(page).locator('canvas').screenshot()
+  return page.evaluate(async base64 => {
+    const image = new Image()
+    image.src = `data:image/png;base64,${base64}`
+    await image.decode()
+    const canvas = document.createElement('canvas')
+    canvas.width = image.width; canvas.height = image.height
+    const context = canvas.getContext('2d')
+    context.drawImage(image, 0, 0)
+    const { data } = context.getImageData(0, 0, canvas.width, canvas.height)
+    const ranges = [[Infinity, -Infinity], [Infinity, -Infinity]]
+    for (let y = 0; y < canvas.height; y++) for (let x = 0; x < canvas.width; x++) {
+      const offset = (y * canvas.width + x) * 4
+      const colors = [data[offset], data[offset + 1], data[offset + 2]]
+      if (Math.max(...colors) - Math.min(...colors) < 60) continue
+      const range = ranges[Number(x >= canvas.width / 2)]
+      range[0] = Math.min(range[0], x); range[1] = Math.max(range[1], x)
+    }
+    return ranges.map(([min, max]) => Math.max(0, max - min + 1))
+  }, png.toString('base64'))
+}
+
+for (const width of [1440, 390]) test(`3D distant directories visibly represent 84 unloaded children at ${width}px`, async ({ page }, testInfo) => {
+  await page.setViewportSize({ width, height: 1000 })
+  const full = { ...makeNode('full', 'directory', 84), children_count: 84, resource_uri: 'synthetic://full' }
+  const empty = { ...makeNode('empty', 'directory'), children_count: 0, resource_uri: 'synthetic://empty' }
+  await graphFixture(page, [full, empty], [], { full: [-300, 0], empty: [300, 0] })
+  await mount(page, 'app/memory/components/MemoryGraph.vue', { props })
+  await expect(page.getByText('84 hidden item(s)', { exact: true })).toBeVisible()
+  await expect(scene(page).getByText('Synthetic full', { exact: true })).toBeVisible()
+  await expect.poll(async () => {
+    const sizes = await folderWidths(page)
+    return sizes[0] / sizes[1]
+  }).toBeGreaterThan(3)
+  const sizes = await folderWidths(page)
+  expect(sizes[1]).toBeGreaterThan(0)
+  expect(sizes[0] / sizes[1]).toBeLessThanOrEqual(4.3) // Raster rounding of the small base icon.
+  await testInfo.attach('folder-artwork-widths', { body: JSON.stringify(sizes), contentType: 'application/json' })
+  await page.locator('.memory-graph').screenshot({ path: testInfo.outputPath(`hidden-directory-${width}.png`) })
+})
+
+test('3D keeps every hidden-population caption visible beyond the ordinary label budget and through collisions', async ({ page }) => {
+  const nodes = Array.from({ length: 16 }, (_, index) => ({
+    ...makeNode(`directory-${index}`, 'directory', 84), children_count: 84, resource_uri: `synthetic://directory-${index}`,
+  }))
+  await graphFixture(page, nodes, [], Object.fromEntries(nodes.map((node, index) => [node.id, [index % 4, Math.floor(index / 4)]])))
+  await mount(page, 'app/memory/components/MemoryGraph.vue', { props })
+  await expect(page.getByText('1344 hidden item(s)', { exact: true })).toBeVisible()
+  for (const node of nodes) await expect(scene(page).getByText(node.title, { exact: true })).toBeVisible()
+})
+
+test('memory 3d benchmark preserves 10000 nodes and 20000 links', async ({ page }, testInfo) => {
   test.setTimeout(120_000)
-  const count = renderer === '3d' ? 10000 : 5000
+  const renderer = '3d', count = 10000
   const nodes = Array.from({ length: count }, (_, i) => makeNode(`node-${i}`, 'memory', 4))
   const edges = nodes.flatMap((node, i) => [1, 37].map(step => ({ id: `edge-${i}-${step}`,
     source_item_id: node.id, target_item_id: nodes[(i + step) % count].id,
@@ -51,9 +166,10 @@ for (const renderer of ['2d', '3d']) test(`memory ${renderer} benchmark preserve
     [(i % 100 - 49.5) * 70, (Math.floor(i / 100) - 24.5) * 70]]))
   const requests = await graphFixture(page, nodes, edges, positions)
   const start = Date.now()
-  await mount(page, 'app/memory/components/MemoryGraph.vue', { props: { ...props, renderer } })
+  await mount(page, 'app/memory/components/MemoryGraph.vue', { props })
   await expect(page.locator('.memory-graph__chart--loading')).toHaveCount(0, { timeout: 40_000 })
-  await expect(page.getByText(`${count} node(s)`, { exact: true })).toBeVisible()
+  // The first page is already usable while the remaining pages load.
+  await expect(page.getByText(`${count} node(s)`, { exact: true })).toBeVisible({ timeout: 40_000 })
   await expect(page.getByText(`${edges.length} relation(s)`, { exact: true })).toBeVisible()
   if (renderer === '3d') await expect.poll(async () => Number((await snapshot(page)).graph3dRepresented)).toBe(count)
   const openedMs = Date.now() - start
@@ -103,16 +219,92 @@ for (const renderer of ['2d', '3d']) test(`memory ${renderer} benchmark preserve
   await page.locator('.memory-graph').screenshot({ path: testInfo.outputPath(`${renderer}-${count}.png`) })
 })
 
-for (const width of [1440, 390]) test(`3D approaches directories to load children, restores visited branches and preserves the complete 2D fallback at ${width}px`, async ({ page }, testInfo) => {
+for (const width of [1440, 390]) test(`3D background refresh preserves navigation and applies paged changes at ${width}px`, async ({ page }) => {
+  await page.setViewportSize({ width, height: 1000 })
+  await page.clock.install()
+  await page.addInitScript(() => {
+    const NativeWorker = window.Worker
+    window.graphPlacementRuns = 0
+    window.Worker = class extends NativeWorker {
+      constructor(url, options) {
+        super(url, options)
+        if (String(url).includes('graph3d.worker')) window.graphPlacementRuns++
+      }
+    }
+  })
+  const anchor = makeNode('anchor', 'topic'), removed = makeNode('removed', 'topic'), added = makeNode('added', 'topic')
+  let requests = 0, release, mode = 'initial'
+  const pending = new Promise(resolve => { release = resolve })
+  await page.route('**/api/memory/graph/roots', async route => {
+    requests++
+    const body = route.request().postDataJSON()
+    if (mode === 'initial') return route.fulfill({ json: { nodes: [anchor, removed], edges: [], has_more: false } })
+    if (mode === 'delay') { mode = 'changed'; await pending }
+    if (mode === 'error') return route.fulfill({ status: 503, json: { detail: 'Synthetic background failure' } })
+    if (mode === 'denied') return route.fulfill({ status: 403, json: { detail: 'Synthetic lost management access' } })
+    const nodes = body.cursor ? [added] : [{ ...anchor,
+      title: mode === 'title' ? 'Synthetic second title' : 'Synthetic renamed anchor' }]
+    return route.fulfill({ json: { nodes, edges: [], has_more: !body.cursor,
+      next_cursor: body.cursor ? null : { id: anchor.id, activity_at: timestamp, role_rank: 3 } } })
+  })
+  await mount(page, 'app/memory/components/MemoryGraph.vue', { props })
+  await expect.poll(async () => Number((await snapshot(page)).graph3dNodes)).toBe(2)
+  mode = 'delay'
+  const before = requests
+  await page.evaluate(() => window.testApp.emitSocket('connect'))
+  await expect.poll(() => requests).toBeGreaterThan(before)
+  await expect(page.getByText('2 node(s)', { exact: true })).toBeVisible()
+  await expect(scene(page)).not.toHaveClass(/memory-graph__chart--loading/)
+  const anchorBox = await scene(page).getByText('Synthetic anchor', { exact: true }).boundingBox()
+  await page.mouse.move(anchorBox.x + anchorBox.width / 2, anchorBox.y - 12)
+  await page.mouse.wheel(0, -80)
+  await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))))
+  const navigated = (await snapshot(page)).graph3dCamera
+  release()
+  await expect(scene(page).getByText('Synthetic renamed anchor', { exact: true })).toBeVisible()
+  await expect(scene(page).getByText('Synthetic removed', { exact: true })).toHaveCount(0)
+  await expect(page.getByText('2 node(s)', { exact: true })).toBeVisible()
+  expect((await snapshot(page)).graph3dCamera).toBe(navigated)
+  const placements = await page.evaluate(() => window.graphPlacementRuns)
+  mode = 'title'
+  await page.evaluate(() => window.testApp.emitSocket('connect'))
+  await expect(scene(page).getByText('Synthetic second title', { exact: true })).toBeVisible()
+  expect(await page.evaluate(() => window.graphPlacementRuns)).toBe(placements)
+  expect((await snapshot(page)).graph3dCamera).toBe(navigated)
+  const beforePoll = requests
+  await page.clock.runFor(30_001)
+  await expect.poll(() => requests).toBeGreaterThan(beforePoll)
+  await expect(page.getByRole('button', { name: 'Reload graph', exact: true })).toBeEnabled()
+  expect(await page.evaluate(() => window.graphPlacementRuns)).toBe(placements)
+  await page.getByRole('switch', { name: 'Auto refresh', exact: true }).click()
+  const pausedRequests = requests
+  await page.clock.runFor(30_001)
+  expect(requests).toBe(pausedRequests)
+  const after = requests
+  mode = 'error'
+  await page.evaluate(() => window.testApp.emitSocket('connect'))
+  await expect.poll(() => requests).toBeGreaterThan(after)
+  await expect(page.getByRole('button', { name: 'Reload graph', exact: true })).toBeEnabled()
+  await expect(page.getByText('2 node(s)', { exact: true })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Retry', exact: true })).toHaveCount(0)
+  mode = 'denied'
+  await page.evaluate(() => window.testApp.emitSocket('connect'))
+  await expect(page.getByText('0 node(s)', { exact: true })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Retry', exact: true })).toBeVisible()
+})
+
+for (const width of [1440, 390]) test(`3D shows known directories immediately, loads files on approach and restores visited branches at ${width}px`, async ({ page }, testInfo) => {
   await page.setViewportSize({ width, height: 1000 })
   const root = { ...makeNode('scheme', 'directory', 2), resource_uri: 'synthetic://', children_count: 2 }
-  const child = { ...makeNode('branch', 'directory', 2), resource_uri: 'synthetic://branch', children_count: 1 }
+  const child = { ...makeNode('branch', 'directory', 2), resource_uri: 'synthetic://branch', children_count: 501 }
   const sibling = { ...makeNode('sibling', 'directory', 1), resource_uri: 'synthetic://sibling', children_count: 0 }
-  const detail = makeNode('detail', 'memory', 1)
+  const details = Array.from({ length: 501 }, (_, index) => makeNode(`detail-${index}`, 'file', 1))
   const edge = (source, target) => ({ id: `${source.id}-${target.id}`, source_item_id: source.id,
     target_item_id: target.id, relation_type: 'parent_of', confidence: 1, suggested: false })
   let preferences = {}, revision = 0
+  let failNextPage = width === 1440
   const expansions = [], rootRequests = []
+  await jsonRoute(page, '**/api/file-share/items/*/resources?*', [])
   await page.route('**/api/memory/graph/state/read', route => route.fulfill({ json: {
     format_version: 1, revision, preferences, positions: {},
   } }))
@@ -124,30 +316,36 @@ for (const width of [1440, 390]) test(`3D approaches directories to load childre
   await page.route('**/api/memory/graph/roots', route => {
     const body = route.request().postDataJSON()
     rootRequests.push(body)
-    return route.fulfill({ json: { nodes: body.defer_resource_children ? [root] : [root, child, sibling, detail],
-      edges: body.defer_resource_children ? [] : [edge(root, child), edge(root, sibling), edge(child, detail)],
+    expect(body.defer_resource_children).toBe(false)
+    expect(body.defer_resource_files).toBe(true)
+    return route.fulfill({ json: { nodes: [root, child, sibling],
+      edges: [edge(root, child), edge(root, sibling)],
       positions: { scheme: [0, 0] }, has_more: false } })
   })
   await page.route('**/api/memory/graph/expand', route => {
     const body = route.request().postDataJSON()
     expansions.push(body)
     expect(body.children_only).toBe(true)
-    expect(body.limit).toBe(100)
-    const children = body.item_id === root.id ? [child, sibling] : [detail]
+    expect(body.limit).toBe(500)
+    const offset = body.cursor ? details.findIndex(node => node.id === body.cursor.id) + 1 : 0
+    if (offset && failNextPage) {
+      failNextPage = false
+      return route.fulfill({ status: 503, json: { detail: 'Synthetic temporary file-page failure' } })
+    }
+    const children = body.item_id === root.id ? [child, sibling] : details.slice(offset, offset + body.limit)
     const parent = body.item_id === root.id ? root : child
-    return route.fulfill({ json: { nodes: [parent, ...children], edges: children.map(node => edge(parent, node)), has_more: false } })
+    const hasMore = body.item_id === child.id && offset + children.length < details.length
+    return route.fulfill({ json: { nodes: [parent, ...children], edges: children.map(node => edge(parent, node)),
+      has_more: hasMore, next_cursor: hasMore ? { id: children.at(-1).id, activity_at: timestamp, role_rank: 1 } : null } })
   })
   await mount(page, 'app/memory/components/MemoryGraph.vue', { props })
-  await expect.poll(async () => Number((await snapshot(page)).graph3dNodes)).toBe(1)
+  await expect.poll(async () => Number((await snapshot(page)).graph3dNodes)).toBe(3)
+  await expect(page.getByText('501 hidden item(s)', { exact: true })).toBeVisible()
   await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))))
   expect(expansions).toHaveLength(0)
-  for (let i = 0; i < 4; i++) await page.getByRole('button', { name: 'Zoom in', exact: true }).click()
-  await expect.poll(() => expansions.some(body => body.item_id === root.id)).toBe(true)
   await expect(page.getByText('3 node(s)', { exact: true })).toBeVisible()
   await expect.poll(async () => Number((await snapshot(page)).graph3dSourceLinks)).toBe(2)
-  await page.getByRole('button', { name: 'Fit graph to viewport', exact: true }).click()
-  await expect.poll(async () => Number((await snapshot(page)).graph3dNodes)).toBe(3)
-  const label = scene(page).getByText('Synthetic branch', { exact: true })
+  const label = scene(page).getByText(/^Synthetic branch\b/)
   await expect(label).toBeVisible()
   for (let i = 0; i < 12 && !expansions.some(body => body.item_id === child.id); i++) {
     const box = await label.boundingBox()
@@ -157,22 +355,73 @@ for (const width of [1440, 390]) test(`3D approaches directories to load childre
     await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))))
   }
   await expect.poll(() => expansions.some(body => body.item_id === child.id)).toBe(true)
-  await expect(page.getByText('4 node(s)', { exact: true })).toBeVisible()
-  await expect.poll(() => preferences.resource_branches?.branch).toBe(1)
+  if (width === 1440) {
+    await expect(page.getByRole('button', { name: 'Retry', exact: true })).toBeVisible()
+    await expect(page.getByText('503 node(s)', { exact: true })).toBeVisible()
+    await page.getByRole('button', { name: 'Retry', exact: true }).click()
+  }
+  await expect(page.getByText('504 node(s)', { exact: true })).toBeVisible()
+  expect(expansions.filter(body => body.item_id === child.id)).toHaveLength(width === 1440 ? 4 : 2)
+  await expect.poll(() => preferences.resource_branches?.branch).toBe(2)
   const countBefore = expansions.length
   await page.evaluate(() => window.testApp.unmount())
   await page.evaluate(args => window.testApp.mount(args), { component: 'app/memory/components/MemoryGraph.vue', props })
-  await expect(page.getByText('4 node(s)', { exact: true })).toBeVisible()
-  expect(expansions.slice(countBefore).map(body => body.item_id)).toEqual([root.id, child.id])
-  await page.getByRole('button', { name: '2D view', exact: true }).click()
-  await expect(page.locator('.memory-graph__chart--loading')).toHaveCount(0)
-  await expect(page.getByText('4 node(s)', { exact: true })).toBeVisible()
-  expect(rootRequests.at(-1).defer_resource_children).toBe(false)
-  expect(rootRequests.at(-1).edge_limit).toBe(2500)
-  await page.getByRole('button', { name: '3D view', exact: true }).click()
-  await expect(page.getByText('4 node(s)', { exact: true })).toBeVisible()
+  await expect(page.getByText('504 node(s)', { exact: true })).toBeVisible()
+  expect(expansions.slice(countBefore).map(body => body.item_id)).toEqual([child.id, child.id])
   await page.getByRole('button', { name: 'Fit graph to viewport', exact: true }).click()
+  await expect(page.getByText('504 node(s)', { exact: true })).toBeVisible()
+  await expect(page.getByText('501 hidden item(s)', { exact: true })).toBeVisible()
   await page.locator('.memory-graph').screenshot({ path: testInfo.outputPath(`hierarchy-${width}.png`) })
+  const camera = (await snapshot(page)).graph3dCamera
+  details.shift()
+  details.push(makeNode('new-file-a', 'file', 1), makeNode('new-file-b', 'file', 1))
+  child.children_count = details.length
+  await page.evaluate(() => window.testApp.emitSocket('connect'))
+  await expect(page.getByText('505 node(s)', { exact: true })).toBeVisible()
+  await expect(page.getByText('502 hidden item(s)', { exact: true })).toBeVisible()
+  expect((await snapshot(page)).graph3dCamera).toBe(camera)
+})
+
+test('3D opens the complete known directory map of large shares before any zoom', async ({ page }, testInfo) => {
+  const roots = Array.from({ length: 4 }, (_, index) => ({ ...makeNode(`share-${index}`, 'directory', 249),
+    resource_uri: `synthetic-${index}://`, children_count: 249 }))
+  const directories = roots.flatMap((root, share) => Array.from({ length: 249 }, (_, index) => ({
+    ...makeNode(`directory-${share}-${index}`, 'directory', 251),
+    resource_uri: `${root.resource_uri}directory-${index}/`, children_count: 250,
+  })))
+  const edges = directories.map((node, index) => ({ id: `parent-${node.id}`,
+    source_item_id: roots[Math.floor(index / 249)].id, target_item_id: node.id,
+    relation_type: 'parent_of', confidence: 1, suggested: false }))
+  let expansions = 0
+  await page.route('**/api/memory/graph/expand', route => {
+    expansions++
+    return route.fulfill({ json: { nodes: [], edges: [], has_more: false } })
+  })
+  const requests = await graphFixture(page, [...roots, ...directories], edges)
+  await mount(page, 'app/memory/components/MemoryGraph.vue', { props })
+  await expect(page.getByText('1000 node(s)', { exact: true })).toBeVisible()
+  await expect.poll(async () => Number((await snapshot(page)).graph3dRepresented)).toBe(1000)
+  expect(requests).toHaveLength(2)
+  expect(requests.every(request => request.defer_resource_files && !request.defer_resource_children)).toBe(true)
+  expect(expansions).toBe(0)
+  await page.locator('.memory-graph').screenshot({ path: testInfo.outputPath('large-shares-overview.png') })
+  const group = scene(page).getByText(/^Group of \d+ items$/).first()
+  await expect(group).toBeVisible()
+  const bounds = await scene(page).boundingBox()
+  const groupPoint = await group.evaluate(element => ({ x: Number(element.dataset.nodeX), y: Number(element.dataset.nodeY) }))
+  await page.mouse.click(bounds.x + groupPoint.x, bounds.y + groupPoint.y)
+  await expect.poll(async () => Number((await snapshot(page)).graph3dZoom)).toBeGreaterThan(1.8)
+  const directoryPoint = await scene(page).locator('[data-node-id^="directory-"]').evaluateAll(elements => {
+    const bounds = elements[0]?.parentElement.getBoundingClientRect()
+    return elements.map(element => ({ x: Number(element.dataset.nodeX), y: Number(element.dataset.nodeY) }))
+      .filter(point => bounds && point.x >= 0 && point.x < bounds.width && point.y >= 0 && point.y < bounds.height)
+      .sort((a, b) => Math.hypot(a.x - bounds.width / 2, a.y - bounds.height / 2)
+        - Math.hypot(b.x - bounds.width / 2, b.y - bounds.height / 2))[0]
+  })
+  expect(directoryPoint).toBeDefined()
+  await page.mouse.click(bounds.x + directoryPoint.x, bounds.y + directoryPoint.y)
+  await expect.poll(() => page.evaluate(() => window.testApp.events.some(event =>
+    event.name === 'open' && event.value.startsWith('directory-')))).toBe(true)
 })
 
 test('3D cancels directory expansion on agent change and never merges its late response', async ({ page }) => {
@@ -252,7 +501,7 @@ for (const width of [1440, 390]) test(`3D renders early pages, preserves navigat
   await expect(page.getByRole('button', { name: 'Retry', exact: true })).toHaveCount(0)
 })
 
-for (const width of [1440, 390]) for (const count of [8, 30]) test(`3D ${count}-leaf groups, filters, keyboard selection and 2D fallback preserve content at ${width}px`, async ({ page }, testInfo) => {
+for (const width of [1440, 390]) for (const count of [8, 30]) test(`3D ${count}-leaf groups, filters, keyboard selection and renderer recovery preserve content at ${width}px`, async ({ page }, testInfo) => {
   await page.setViewportSize({ width, height: 1000 })
   if (count === 8) await page.addInitScript(() => {
     // Keep the actual placement worker, but delay delivery past the HTTP load
@@ -297,17 +546,16 @@ for (const width of [1440, 390]) for (const count of [8, 30]) test(`3D ${count}-
   await expect(page.getByText(`${count + 1} node(s)`, { exact: true })).toBeVisible()
   await expect.poll(async () => Number((await snapshot(page)).graph3dZoom)).toBeCloseTo(1)
   await page.locator('.memory-graph').screenshot({ path: testInfo.outputPath('3d-filtered.png') })
-  await page.getByRole('button', { name: '2D view', exact: true }).click()
-  await expect(page.locator('.memory-graph__chart:not(.memory-graph__chart--3d) canvas')).toBeVisible()
-  await expect(page.getByRole('button', { name: 'Show “Contact” nodes and their relationships', exact: true })).toBeVisible()
-  await page.getByRole('button', { name: '3D view', exact: true }).click()
-  await expect(scene(page).locator('canvas')).toBeVisible()
   await page.evaluate(() => {
     const canvas = document.querySelector('.memory-graph__chart--3d canvas')
     canvas.dispatchEvent(new Event('webglcontextlost', { cancelable: true }))
   })
-  await expect(page.getByText('3D is unavailable in this browser. The graph remains accessible in 2D.')).toBeVisible()
-  await expect(page.locator('.memory-graph__chart:not(.memory-graph__chart--3d) canvas')).toBeVisible()
+  await expect(page.getByText('The 3D graph is unavailable. Check WebGL support in your browser and try again.')).toBeVisible()
+  await expect(scene(page).locator('canvas')).toHaveCount(0)
+  await page.getByRole('button', { name: 'Retry', exact: true }).click()
+  await expect(scene(page).locator('canvas')).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Show “Contact” nodes and their relationships', exact: true })).toBeVisible()
+  await expect.poll(async () => Number((await snapshot(page)).graph3dNodes)).toBeGreaterThan(0)
 })
 
 test('3D clears the old scene on agent changes, no selection and unmounting', async ({ page }) => {
@@ -545,9 +793,11 @@ test('3D hides the whole relation when either endpoint is behind the camera and 
   await mount(page, 'app/memory/components/MemoryGraph.vue', { props })
   await expect.poll(async () => Number((await snapshot(page)).graph3dNodes)).toBe(1)
   expect(Number((await snapshot(page)).graph3dSourceLinks)).toBe(1)
+  await expect(page.getByText('1 hidden item(s)', { exact: true })).toBeVisible()
   expect(Number((await snapshot(page)).graph3dLinks)).toBe(0)
   await page.getByRole('button', { name: 'Fit graph to viewport', exact: true }).click()
   await expect.poll(async () => Number((await snapshot(page)).graph3dNodes)).toBe(2)
+  await expect(page.getByText('1 hidden item(s)', { exact: true })).toHaveCount(0)
   await expect.poll(async () => Number((await snapshot(page)).graph3dLinks)).toBe(1)
 })
 

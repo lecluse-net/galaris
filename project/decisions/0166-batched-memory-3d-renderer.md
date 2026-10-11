@@ -1,6 +1,6 @@
 # 0166 — Rendu 3D par lots du graphe mémoire
 
-- Statut : Accepted
+- Statut : Accepted — modalités 2D remplacées par [0168](0168-memory-graph-3d-only.md)
 - Date : 2026-10-10
 
 La page Mémoire ouvre une carte 3D Three.js tout en conservant le moteur 2D ECharts.

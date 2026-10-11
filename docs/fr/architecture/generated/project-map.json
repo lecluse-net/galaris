@@ -1291,6 +1291,13 @@
       },
       {
         "files": [
+          "back/app/file_share/dbadmin.py"
+        ],
+        "source": "app.file_share",
+        "target": "core.dbadmin"
+      },
+      {
+        "files": [
           "back/app/file_share/document_facade.py",
           "back/app/file_share/thumbnail_service.py"
         ],

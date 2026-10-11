@@ -64,3 +64,60 @@ test('a concurrent revision is rebased with only the edited fields', async () =>
   await controller.flush()
   assert.equal(calls, 2)
 })
+
+test('saving after a failed restoration reloads the revision and preserves current edits', async () => {
+  let reads = 0
+  const calls = [], failures = []
+  const transport = {
+    readGraphState: async () => {
+      if (++reads === 1) throw new Error('unavailable')
+      return { ...state(8), preferences: { ...state().preferences, hidden_entity_kinds: ['contact'] } }
+    },
+    saveGraphState: async (_, patch) => {
+      calls.push(structuredClone(patch))
+      return { ...state(patch.expected_revision + 1), positions: patch.positions }
+    },
+  }
+  const controller = new GraphStatePersistence(context, transport, () => {}, error => failures.push(error))
+  await assert.rejects(controller.load(), /unavailable/)
+  controller.stagePositions([['new-node', { x: 12, y: 34 }]])
+  controller.stagePreferences({ hidden_entity_kinds: ['file'] })
+  await controller.flush()
+  assert.equal(reads, 2)
+  assert.equal(calls.length, 1)
+  assert.equal(calls[0].expected_revision, 8)
+  assert.deepEqual(calls[0].positions, { 'new-node': { x: 12, y: 34 } })
+  assert.deepEqual(calls[0].preferences, { hidden_entity_kinds: ['file'] })
+  assert.equal(failures.at(-1), null)
+})
+
+for (const invalid of [
+  { format_version: 99 }, { preferences: null }, { preferences: { ...state().preferences, resource_branches: null } },
+  { preferences: { ...state().preferences, camera_3d: { position: 'obsolete' } } },
+  { positions: { old: { x: null, y: 2 } } },
+  { preferences: { ...state().preferences, future_format: 3 } },
+  { preferences: { ...state().preferences, camera: 'obsolete' } },
+]) test(`an incompatible saved view is rebuilt (${JSON.stringify(invalid)})`, async () => {
+  const calls = [], failures = []
+  const transport = {
+    readGraphState: async () => ({ ...state(8), ...invalid }),
+    saveGraphState: async (_, patch) => {
+      calls.push(structuredClone(patch))
+      return { ...state(patch.expected_revision + 1), positions: patch.positions }
+    },
+  }
+  const controller = new GraphStatePersistence(context, transport, () => {}, error => failures.push(error))
+  const preferences = await controller.load()
+  assert.deepEqual(preferences.hidden_entity_kinds, [])
+  assert.equal(controller.restoresPositions, false)
+  controller.remember([['old', { x: 100, y: 200 }]])
+  controller.stagePositions([['old', { x: 12, y: 34 }]])
+  await controller.flush()
+  assert.equal(calls[0].reset_layout, true)
+  assert.equal(calls[0].expected_revision, 8)
+  assert.deepEqual(calls[0].positions, { old: { x: 12, y: 34 } })
+  controller.stagePreferences({ hidden_entity_kinds: ['file'] })
+  await controller.flush()
+  assert.equal(calls[1].reset_layout, undefined)
+  assert(failures.every(error => error === null))
+})

@@ -832,6 +832,7 @@ class MemoryGraphRootsRequest(BaseModel):
     edge_limit: int = Field(default=300, ge=1, le=10_000)
     order_by: Literal["activity", "hierarchy"] = "activity"
     defer_resource_children: bool = False
+    defer_resource_files: bool = False
     cursor: MemoryGraphCursor | None = None
     include_matching_roots: bool = False
     known_item_ids: list[UUID] = Field(
@@ -856,7 +857,7 @@ class MemoryGraphExpandRequest(BaseModel):
     query: str = Field(default="", max_length=4_000)
     topic_item_id: UUID | None = None
     contact_item_id: UUID | None = None
-    limit: int = Field(default=40, ge=1, le=100)
+    limit: int = Field(default=40, ge=1, le=500)
     cursor: MemoryGraphCursor | None = None
     known_item_ids: list[UUID] = Field(
         default_factory=_empty_memory_ids,

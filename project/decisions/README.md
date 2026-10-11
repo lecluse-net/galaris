@@ -211,3 +211,5 @@ nouvelle décision plutôt que réécrite silencieusement si le choix change.
 - [0165 — Positions et présentation personnelles du graphe mémoire](0165-personal-memory-graph-state.md)
 - [0166 — Rendu 3D par lots du graphe mémoire](0166-batched-memory-3d-renderer.md)
 - [0167 — Samba via la façade de fichiers canonique](0167-samba-file-share.md)
+
+- [0168 — Graphe mémoire exclusivement en 3D et représentants visibles](0168-memory-graph-3d-only.md)

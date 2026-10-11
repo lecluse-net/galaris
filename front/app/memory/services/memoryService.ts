@@ -513,6 +513,7 @@ export const memoryService = {
     edgeLimit?: number
     orderBy?: 'activity' | 'hierarchy'
     deferResourceChildren?: boolean
+    deferResourceFiles?: boolean
     cursor?: MemoryGraphCursor | null
     knownItemIds?: string[]
     includeMatchingRoots?: boolean
@@ -528,6 +529,7 @@ export const memoryService = {
       edge_limit: params.edgeLimit ?? 300,
       order_by: params.orderBy ?? 'activity',
       defer_resource_children: params.deferResourceChildren ?? false,
+      defer_resource_files: params.deferResourceFiles ?? false,
       cursor: params.cursor ?? null,
       known_item_ids: params.knownItemIds ?? [],
       include_matching_roots: params.includeMatchingRoots ?? false,
@@ -538,12 +540,12 @@ export const memoryService = {
 
   async expandGraphNode(params: {
     agentId: number; itemId: string; query: string; topicItemId: string | null; contactItemId: string | null
-    cursor?: MemoryGraphCursor | null; childrenOnly?: boolean; signal?: AbortSignal
+    cursor?: MemoryGraphCursor | null; childrenOnly?: boolean; limit?: number; signal?: AbortSignal
   }): Promise<MemoryGraphPage> {
     return (await api.post<MemoryGraphPage>('/memory/graph/expand', {
       agent_id: params.agentId, item_id: params.itemId, query: params.query,
       topic_item_id: params.topicItemId, contact_item_id: params.contactItemId,
-      limit: 100, cursor: params.cursor ?? null, children_only: params.childrenOnly ?? false, include_saved_positions: true,
+      limit: params.limit ?? 100, cursor: params.cursor ?? null, children_only: params.childrenOnly ?? false, include_saved_positions: true,
     }, { signal: params.signal })).data
   },
 

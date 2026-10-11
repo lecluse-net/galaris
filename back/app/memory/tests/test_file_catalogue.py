@@ -114,7 +114,7 @@ async def maintain_file_duplicates(db):
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("root_title", [".", "Personal root"])
+@pytest.mark.parametrize("root_title", [".", "/", "Personal root"])
 async def test_graph_checks_live_files_with_one_closed_console_per_page(console_catalogue, monkeypatch, root_title):
     from app.console import ConsoleRunResource
     from app.console.contracts import SshConnectionConfig
@@ -128,7 +128,14 @@ async def test_graph_checks_live_files_with_one_closed_console_per_page(console_
     ))
     assert root_item is not None
     root_item.title = root_title
+    if root_title == "Personal root":
+        root_item.metadata_ = {**root_item.metadata_, "catalogue_manual_title": True}
     await get_db().commit()
+    from app.file_share import reconcile_catalogue_root_titles
+    await reconcile_catalogue_root_titles()
+    await get_db().commit()
+    tool = await get_db().get(ToolModel, connection.tool_id)
+    expected_title = tool.label if root_title in {".", "/"} else root_title
     for index in range(12):
         await resource_service.resource_write_text(ctx, f"console://graph/file-{index}.txt", f"Synthetic {index}")
     transport.resolve_path("graph/file-3.txt", create_parent=False).unlink()
@@ -150,9 +157,9 @@ async def test_graph_checks_live_files_with_one_closed_console_per_page(console_
     for page_index in range(2):
         page = await service.list_graph_roots(request)
         root_node = next(node for node in page.nodes if node.id == root_item.id)
-        assert root_node.title == (root_resource.uri if root_title == "." else root_title)
+        assert root_node.title == expected_title
         assert root_node.resource_uri == root_resource.uri
-        assert root_item.title == root_title
+        assert root_item.title == expected_title
         titles = {node.title for node in page.nodes}
         assert "file-3.txt" not in titles
         assert all(f"file-{index}.txt" in titles for index in range(12) if index != 3)
@@ -164,6 +171,40 @@ async def test_graph_checks_live_files_with_one_closed_console_per_page(console_
     await get_db().commit()
     assert not (await service.list_graph_roots(request)).nodes
     assert len(opened) == 2
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("operation", ["info", "list"])
+@pytest.mark.parametrize("label", ["Synthetic shared files", ""])
+async def test_catalogue_root_title_is_stored_from_tool_before_graph_reads(console_catalogue, db, operation, label):
+    ctx, transport, connection, peer = console_catalogue
+    tool = await db.get(ToolModel, connection.tool_id)
+    tool.label = label
+    await db.commit()
+    operation_fn = resource_service.resource_info if operation == "info" else resource_service.resource_list
+    await operation_fn(ctx, "console://")
+    root = await db.scalar(select(MemoryItem).where(
+        MemoryItem.owner_agent_id == ctx.agent_id, MemoryItem.primary_url == "console://",
+    ))
+    assert root.title == (label or "console://")
+    revision = root.revision
+    await operation_fn(ctx, "console://")
+    assert root.revision == revision
+    assert not await hits(peer.id, label or "console://")
+
+    from app.file_share import reconcile_catalogue_root_titles
+    tool.label = "Synthetic renamed share"
+    await db.flush()
+    await reconcile_catalogue_root_titles(tool_id=tool.id)
+    await db.commit()
+    assert root.title == tool.label
+    await reconcile_catalogue_root_titles(tool_id=tool.id)
+    assert root.revision == revision + 1
+    await service.update_item(root.id, MemoryItemUpdate(title="Personal root"), actor_agent_id=ctx.agent_id)
+    tool.label = "Another synthetic label"
+    await db.flush()
+    await reconcile_catalogue_root_titles(tool_id=tool.id)
+    assert root.title == "Personal root"
 
 
 @pytest.mark.asyncio
@@ -200,6 +241,13 @@ async def test_graph_hierarchy_defers_known_directory_descendants_and_pages_read
         assert cursor is not None
     assert [node.id for node in collected] == [root.id, document.id, memory.id]
     assert collected[0].children_count == 2
+    directory_map = await service.list_graph_roots(MemoryGraphRootsRequest(agent_id=ctx.agent_id,
+        order_by='hierarchy', defer_resource_files=True, include_matching_roots=True))
+    assert {node.id for node in directory_map.nodes} == {root.id, child.id, grandchild.id, document.id, memory.id}
+    assert {edge.source_item_id for edge in directory_map.edges} == {root.id, child.id}
+    assert {node.id: node.children_count for node in directory_map.nodes if node.entity_kind == 'directory'} == {
+        root.id: 2, child.id: 1, grandchild.id: 1,
+    }
     first = await service.expand_graph_node(MemoryGraphExpandRequest(agent_id=ctx.agent_id,
         item_id=root.id, children_only=True, limit=1))
     assert [node.id for node in first.nodes] == [root.id, child.id]
@@ -210,11 +258,11 @@ async def test_graph_hierarchy_defers_known_directory_descendants_and_pages_read
     assert [node.id for node in second.nodes] == [root.id, file.id]
     assert not second.has_more
     nested = await service.expand_graph_node(MemoryGraphExpandRequest(agent_id=ctx.agent_id,
-        item_id=child.id, children_only=True))
+        item_id=child.id, children_only=True, limit=500))
     assert [node.id for node in nested.nodes] == [child.id, grandchild.id]
     assert all(edge.source_item_id == child.id for edge in nested.edges)
     # Matching descendants remain entry points when the browse filter hides
-    # their parent. The eager 2D catalogue is still complete.
+    # their parent. An eager request still returns the complete catalogue.
     filtered = await service.list_graph_roots(MemoryGraphRootsRequest(agent_id=ctx.agent_id,
         query='detail.txt', order_by='hierarchy', defer_resource_children=True))
     assert any(node.title == 'detail.txt' for node in filtered.nodes)

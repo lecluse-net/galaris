@@ -508,6 +508,11 @@ async def update_tool(tool_id: int, data: ToolUpdate, *, commit: bool = True) ->
             record.global_params,
             record.connection_schema,
         )
+    if "label" in data.model_fields_set:
+        from app.file_share import reconcile_catalogue_root_titles
+
+        await db.flush()
+        await reconcile_catalogue_root_titles(tool_id=record.id)
     await finish_write(commit=commit, db=get_db())
     await db.refresh(record)
     return record

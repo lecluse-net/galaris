@@ -24,12 +24,40 @@ export interface GraphState {
 }
 export interface GraphStatePatch {
   expected_revision: number
+  reset_layout?: boolean
   positions: Record<string, GraphPoint>
   preferences: Partial<GraphPreferences>
 }
 interface Transport {
   readGraphState(context: GraphContext): Promise<GraphState>
   saveGraphState(context: GraphContext, patch: GraphStatePatch): Promise<GraphState>
+}
+
+const emptyPreferences = (): GraphPreferences => ({ hidden_entity_kinds: [], expanded_branches: [],
+  camera: null, camera_3d: null, resource_branches: {} })
+const kinds = new Set(['memory', 'document', 'attachment', 'folder', 'file', 'directory', 'topic', 'contact', 'conversation'])
+const record = (value: unknown): value is Record<string, unknown> => typeof value === 'object' && value !== null && !Array.isArray(value)
+const vector = (value: unknown, size: number): boolean => Array.isArray(value) && value.length === size
+  && value.every(coordinate => typeof coordinate === 'number' && Number.isFinite(coordinate) && Math.abs(coordinate) <= 1e15)
+
+/** The persisted view is a cache, never a prerequisite for displaying data. */
+function compatibleState(state: GraphState): boolean {
+  if (!record(state) || state.format_version !== 1 || !Number.isSafeInteger(state.revision) || state.revision < 0) return false
+  const preferences = state.preferences
+  if (!record(preferences) || !Array.isArray(preferences.hidden_entity_kinds)
+    || !preferences.hidden_entity_kinds.every(kind => kinds.has(kind))
+    || !Array.isArray(preferences.expanded_branches) || !preferences.expanded_branches.every(id => typeof id === 'string')) return false
+  if (Object.keys(preferences).some(key => !['hidden_entity_kinds', 'expanded_branches', 'camera', 'camera_3d', 'resource_branches'].includes(key))) return false
+  const legacyCamera = preferences.camera
+  if (legacyCamera != null && (!record(legacyCamera) || (legacyCamera.center !== null && !vector(legacyCamera.center, 2))
+    || !Number.isFinite(legacyCamera.zoom) || legacyCamera.zoom < 0.2 || legacyCamera.zoom > 1_000_000)) return false
+  if (preferences.resource_branches !== undefined && (!record(preferences.resource_branches)
+    || !Object.values(preferences.resource_branches).every(pages => Number.isSafeInteger(pages) && pages >= 1 && pages <= 10_000))) return false
+  const camera = preferences.camera_3d
+  if (camera != null && (!record(camera) || camera.layout_version !== 2 || !vector(camera.position, 3) || !vector(camera.target, 3))) return false
+  return record(state.positions) && Object.values(state.positions).every(point => record(point)
+    && typeof point.x === 'number' && typeof point.y === 'number' && Number.isFinite(point.x) && Number.isFinite(point.y)
+    && Math.abs(point.x) <= 1e15 && Math.abs(point.y) <= 1e15)
 }
 
 /** One immutable graph context, even when its component changes agent or unmounts.
@@ -41,6 +69,8 @@ export class GraphStatePersistence {
   private points = new Map<string, GraphPoint>()
   private saved = new Set<string>()
   private preferences: Partial<GraphPreferences> = {}
+  private resetLayout = false
+  private acceptSavedPositions = true
   readonly context: GraphContext
   private readonly transport: Transport
   private readonly onSaved: (positions: Record<string, GraphPoint>) => void
@@ -60,14 +90,23 @@ export class GraphStatePersistence {
 
   async load(): Promise<GraphPreferences> {
     const state = await this.transport.readGraphState(this.context)
-    if (state.format_version !== 1) throw new Error('Unsupported graph view format')
-    this.revision = state.revision
+    this.revision = Number.isSafeInteger(state?.revision) && state.revision >= 0 ? state.revision : 0
+    const compatible = compatibleState(state)
+    if (!compatible) {
+      this.resetLayout = true
+      this.acceptSavedPositions = false
+      this.saved.clear()
+      this.preferences = { ...emptyPreferences(), ...this.preferences }
+    }
     this.ready = true
     this.onError(null)
-    return { ...state.preferences, ...this.preferences }
+    return { ...(compatible ? state.preferences : emptyPreferences()), ...this.preferences }
   }
 
+  get restoresPositions(): boolean { return this.acceptSavedPositions }
+
   remember(points: Iterable<[string, GraphPoint]>): void {
+    if (!this.acceptSavedPositions) return
     for (const [key] of points) { this.saved.add(key); this.points.delete(key) }
   }
 
@@ -88,13 +127,16 @@ export class GraphStatePersistence {
   }
 
   private async drain(): Promise<void> {
-    if (!this.ready) return
-    while (this.points.size || Object.keys(this.preferences).length) {
+    if (!this.ready) {
+      try { await this.load() } catch (error) { this.onError(error); return }
+    }
+    while (this.resetLayout || this.points.size || Object.keys(this.preferences).length) {
       const batch = [...this.points].slice(0, 500)
       const preferences = this.preferences
       this.preferences = {}
       for (const [key] of batch) this.points.delete(key)
-      const patch = { expected_revision: this.revision, positions: Object.fromEntries(batch), preferences }
+      const patch: GraphStatePatch = { expected_revision: this.revision, positions: Object.fromEntries(batch), preferences,
+        ...(this.resetLayout ? { reset_layout: true } : {}) }
       try {
         let result: GraphState
         try {
@@ -108,6 +150,7 @@ export class GraphStatePersistence {
           result = await this.transport.saveGraphState(this.context, patch)
         }
         this.revision = result.revision
+        this.resetLayout = false
         for (const [key] of batch) this.saved.add(key)
         this.onSaved(result.positions)
         this.onError(null)

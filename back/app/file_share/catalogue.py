@@ -153,6 +153,48 @@ async def current_binding(scope: ObservationScope) -> bool:
     return stamp == scope.stamp
 
 
+async def _catalogue_title(entry: FileCatalogEntry, descriptor: ResourceDescriptor) -> str:
+    reference = parse_resource_uri(entry.uri, allow_empty=True)
+    if descriptor.is_collection and not reference.locator:
+        # Resolve the source label at ingestion. Graphs and other Memory readers
+        # consume the persisted title and never need to know about Tools.
+        label = await get_db().scalar(select(ToolModel.label).join(
+            Connection, Connection.tool_id == ToolModel.id,
+        ).where(Connection.id == entry.connection_id, ToolModel.code == reference.scheme)
+            .with_for_update(read=True, of=ToolModel))
+        return label.strip() if label and label.strip() not in {".", "/"} else f"{reference.scheme}://"
+    if descriptor.is_collection and descriptor.name.strip() in {"", ".", "/"}:
+        return reference.decoded_locator.rstrip("/").rsplit("/", 1)[-1] or str(reference)
+    return descriptor.name or entry.uri
+
+
+async def reconcile_catalogue_root_titles(*, tool_id: int | None = None) -> None:
+    """Repair stored root labels locally, preserving notes, custom titles and history."""
+    db = get_db()
+    cursor: UUID | None = None
+    async with catalogue_projection_write():
+        while True:
+            query = select(FileCatalogEntry).where(
+                FileCatalogEntry.uri.op("~*")(r"^[a-z][a-z0-9+.-]*:///?$"),
+                FileCatalogEntry.memory_url_id.is_not(None),
+                FileCatalogEntry.present.is_(True),
+            )
+            if tool_id is not None:
+                query = query.where(FileCatalogEntry.connection_id.in_(
+                    select(Connection.id).where(Connection.tool_id == tool_id),
+                ))
+            if cursor is not None:
+                query = query.where(FileCatalogEntry.id > cursor)
+            entries = list(await db.scalars(query.order_by(FileCatalogEntry.id).limit(100)))
+            if not entries:
+                return
+            cursor = entries[-1].id
+            for entry in entries:
+                if ResourceDescriptor.model_validate(entry.descriptor).is_collection:
+                    await project_entry(entry)
+            await db.flush()
+
+
 async def project_entry(entry: FileCatalogEntry) -> None:
     descriptor = ResourceDescriptor.model_validate(entry.descriptor)
     if entry.file_sha256 and entry.fingerprint_version != entry.source_version:
@@ -172,7 +214,7 @@ async def project_entry(entry: FileCatalogEntry) -> None:
         return
     node_id = await project_catalogue_entry(
         identity=entry.id, agent_id=entry.agent_id, item_id=entry.memory_node_id,
-        title=descriptor.name or entry.uri, uri=entry.uri, directory=descriptor.is_collection,
+        title=await _catalogue_title(entry, descriptor), uri=entry.uri, directory=descriptor.is_collection,
         description="", notes="\n\n".join(part for part in (entry.notes, entry.enrichment_text) if part),
         source_ref=str(entry.id) if entry.generation == 1 else f"{entry.id}:generation:{entry.generation}",
         file_media_type=descriptor.media_type, file_size_bytes=descriptor.size,

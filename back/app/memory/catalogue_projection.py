@@ -57,7 +57,7 @@ async def project_catalogue_entry(
     item = await db.scalar(select(MemoryItem).where(MemoryItem.id == item_id).with_for_update().execution_options(populate_existing=True)) if item_id else None
     if item is not None and (item.managed_source_kind != "file_catalogue" or item.managed_source_ref != source_ref):
         raise ValueError("A catalogue entry cannot replace another managed source")
-    if item is not None and item.metadata_.get("catalogue_manual_title"):
+    if item is not None and item.metadata_.get("catalogue_manual_title") and item.title.strip() not in {"", ".", "/"}:
         title = item.title
     if item is not None:
         item.file_media_type = None if directory else file_media_type
@@ -66,6 +66,8 @@ async def project_catalogue_entry(
         **(dict(item.metadata_) if item is not None else {}),
         "catalogue_ref": str(identity), "catalogue_editable": True,
     }
+    if item is not None and item.title.strip() in {"", ".", "/"}:
+        metadata.pop("catalogue_manual_title", None)
     manual_content = item is not None and bool(item.metadata_.get("catalogue_manual_content"))
     search_text = "\n".join(part for part in (visible_text(content.decode()), uri) if part)
     if not manual_content:

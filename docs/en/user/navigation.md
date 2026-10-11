@@ -300,14 +300,29 @@ and interlocutor below. In **List**, the target date and its apply button comple
 filters. The fields rearrange on smaller screens.
 
 In **Graph**, memories load without a time range filter or a global node cap.
+All known directories load when opening the graph, in pages. Zooming reveals their files;
+you no longer need to discover subdirectories one at a time.
+In overview, dense maps spatially group directories within each share. Approaching or
+opening a group reveals the already loaded directories.
 Below the graph header, the legend groups node kinds, relationships, then age markers
 and zoom and fullscreen controls.
 Node size and opacity follow a linear scale of last activity relative to the oldest and
 most recent nodes in the loaded graph. The legend shows both dates; hiding a node kind
 does not change this scale. Older nodes remain visible and their labels retain their contrast.
+Items hidden by a filter, folding or framing contribute to the size of their visible
+representatives, up to four times their normal diameter. Their weight is shared between the
+nearest linked representatives and follows hidden parents; known children that have not loaded
+yet also contribute. The hidden-item count remains visible even if some have no representative.
+Their reappearance removes that weight without moving nodes.
+The graph is exclusively 3D. Captions of representatives with hidden items always remain
+visible, even when distant or overlapping. If WebGL is unavailable, a message offers a retry.
+Auto refresh applies additions, updates and deletions in the background every 30 seconds
+while the tab is visible. It preserves the camera, positions, filters and open branches,
+including after reconnection. Previously loaded directories are also refreshed. A temporary
+failure leaves the graph usable; session or access changes still remove protected data.
 When zoomed out, titles prioritize structural nodes and those with the most connections.
-Symbols have two fixed display sizes: distant and near. Beyond the near zoom threshold,
-further zoom spreads their positions without enlarging them. Titles remain filtered to
+Symbols have two base display sizes: distant and near. Beyond the near zoom threshold,
+further zoom spreads their positions without enlarging them. Other titles remain filtered to
 avoid overlaps, including at maximum zoom; hovering or selecting reveals them.
 Memories with exactly the same relationships to topics, contacts or other structural
 anchors are grouped with a count. Only visible nodes are drawn. Minimum zoom fits the entire
@@ -315,9 +330,10 @@ graph to the window and always centers it after panning; zoom can reach one mill
 this framing. Previews grow later, depending on neighbor spacing, up to their actual pixel
 dimensions. Hiding a kind reorganizes and frames the remaining items; showing all kinds
 restores the saved positions.
-Root directories keep their titles visible even when zoomed out. A title of “.” is
-replaced in the graph by the URI with its scheme, such as `nextcloud://`;
-custom titles are preserved.
+Root directories keep their titles visible even when zoomed out. Memory stores the Tool's
+label as their title, falling back to its scheme, such as `nextcloud://`, when no label exists.
+Synchronization repairs old “.” and “/” titles while preserving valid custom titles.
+The graph uses this stored title.
 
 In **List**, documents, attachments and indexed files display their thumbnail when
 available. Click the row or card to open its details; write permissions determine
@@ -380,7 +396,9 @@ Positions are then saved in the background, including hidden and folded nodes. R
 restores known nodes to their places and positions newcomers around existing anchors.
 Each user keeps their own positions, hidden kinds, open branches and camera for each
 agent and search/Topic/contact context. New nodes of a hidden kind stay hidden.
-A restore or save failure offers a retry without closing the graph.
+Invalid or incompatible saved state is automatically discarded: positions are rebuilt and
+saved without changing Memory data. Network failures offer a retry without closing or
+moving the graph; subsequent interactions also resume saving.
 Zooming, unfolding and closing node details preserve positions. Zooming out also simplifies links and titles.
 Large maps place items near their anchors before settling and load all pages matching the filters.
 Spatial loading and subgroups remain the next steps

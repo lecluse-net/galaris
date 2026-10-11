@@ -10,8 +10,8 @@ import json
 from typing import Annotated, Literal
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field
-from sqlalchemy import select
+from pydantic import BaseModel, ConfigDict, Field, ValidationError
+from sqlalchemy import delete, or_, select
 from sqlalchemy.dialects.postgresql import insert
 
 from app.agent import AgentManagementScope
@@ -78,6 +78,7 @@ class GraphContext(BaseModel):
 
 class GraphStateWrite(GraphContext):
     expected_revision: int = Field(ge=0)
+    reset_layout: bool = False
     positions: dict[UUID, GraphPoint] = Field(default_factory=lambda: dict[UUID, GraphPoint](), max_length=500)
     preferences: GraphPreferencesPatch = Field(default_factory=GraphPreferencesPatch)
 
@@ -107,10 +108,31 @@ async def _view(context: GraphContext, scope: AgentManagementScope, *, lock: boo
 
 async def read_state(context: GraphContext, scope: AgentManagementScope) -> GraphState:
     _check_scope(context, scope)
-    view = await _view(context, scope)
+    view = await _view(context, scope, lock=True)
     if view is None:
         return GraphState()
-    preferences = GraphPreferences.model_validate(view.preferences)
+    try:
+        preferences = GraphPreferences.model_validate(view.preferences)
+    except ValidationError:
+        # Saved presentation is disposable. Old or malformed formats must not
+        # prevent opening the graph or keep incompatible coordinates as anchors.
+        await _reset_layout(view)
+        view.revision += 1
+        await get_db().commit()
+        preferences = GraphPreferences()
+    else:
+        invalid_point = await get_db().scalar(select(MemoryGraphPosition.id).where(
+            MemoryGraphPosition.view_id == view.id,
+            or_(MemoryGraphPosition.x < -1e15, MemoryGraphPosition.x > 1e15,
+                MemoryGraphPosition.y < -1e15, MemoryGraphPosition.y > 1e15),
+        ).limit(1))
+        if invalid_point is not None:
+            # Check before any graph page restores anchors, including pages
+            # that do not themselves contain the malformed coordinate.
+            await _reset_layout(view)
+            view.revision += 1
+            await get_db().commit()
+            preferences = GraphPreferences()
     # A stale expansion must not expose the identity of a revoked node.
     allowed = await _admissible(context, set(preferences.expanded_branches) | set(preferences.resource_branches))
     preferences.expanded_branches = [key for key in preferences.expanded_branches if key in allowed]
@@ -118,18 +140,30 @@ async def read_state(context: GraphContext, scope: AgentManagementScope) -> Grap
     return GraphState(revision=view.revision, preferences=preferences)
 
 
+async def _reset_layout(view: MemoryGraphView) -> None:
+    view.preferences = {}
+    view.updated_at = datetime.now(timezone.utc)
+    await get_db().execute(delete(MemoryGraphPosition).where(MemoryGraphPosition.view_id == view.id))
+
+
 async def page_positions(context: GraphContext, scope: AgentManagementScope, checked_keys: list[UUID]) -> dict[UUID, GraphPoint]:
     """Call only with nodes from the graph API's live-source-checked page."""
     _check_scope(context, scope)
     if not checked_keys:
         return {}
-    view = await _view(context, scope)
+    view = await _view(context, scope, lock=True)
     if view is None:
         return {}
     rows = await get_db().scalars(select(MemoryGraphPosition).where(
         MemoryGraphPosition.view_id == view.id, MemoryGraphPosition.node_key.in_(checked_keys),
     ))
-    return {row.node_key: GraphPoint(x=row.x, y=row.y) for row in rows}
+    try:
+        return {row.node_key: GraphPoint(x=row.x, y=row.y) for row in rows}
+    except ValidationError:
+        await _reset_layout(view)
+        view.revision += 1
+        await get_db().commit()
+        return {}
 
 
 async def _admissible(context: GraphContext, keys: set[UUID]) -> set[UUID]:
@@ -183,6 +217,12 @@ async def write_state(request: GraphStateWrite, scope: AgentManagementScope) -> 
     assert view is not None
     if view.revision != request.expected_revision:
         raise MemoryConflictError("Graph view changed; reload its revision before saving.")
+    try:
+        GraphPreferences.model_validate(view.preferences)
+    except ValidationError:
+        await _reset_layout(view)
+    if request.reset_layout:
+        await _reset_layout(view)
     if changes:
         view.preferences = {**view.preferences, **changes}
     values = [{"view_id": view.id, "node_key": key, "x": point.x, "y": point.y}
