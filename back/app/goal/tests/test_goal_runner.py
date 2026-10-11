@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from datetime import datetime, timedelta, timezone
 from types import SimpleNamespace
 from uuid import uuid4
@@ -388,16 +389,54 @@ async def test_completed_parent_cycle_triggers_child_cycle_once(
     assert trigger.consumed_cycle_id == child_cycle.id
 
 
-def test_goal_judgement_rejects_unknown_fields_and_stop_without_evidence() -> None:
+@pytest.mark.parametrize("encoded_progress", [False, True])
+def test_goal_judgement_rejects_unknown_fields_and_stop_without_evidence(
+    encoded_progress: bool,
+) -> None:
     payload = _judgement("STOP").model_dump()
+    if encoded_progress:
+        payload["progress"] = json.dumps(payload["progress"])
     payload["unexpected"] = True
-    with pytest.raises(ValidationError):
+    with pytest.raises(ValidationError, match="Extra inputs are not permitted"):
         GoalJudgement.model_validate(payload)
 
     payload = _judgement("STOP").model_dump()
     payload["progress"]["evidence"] = []
+    if encoded_progress:
+        payload["progress"] = json.dumps(payload["progress"])
+    with pytest.raises(ValidationError, match="STOP requires at least one observable evidence item"):
+        GoalJudgement.model_validate(payload)
+
+
+@pytest.mark.parametrize(
+    "progress",
+    [
+        "{invalid",
+        "null",
+        '"text"',
+        "[]",
+        '{"changed": true}',
+        '{"changed": true, "summary": "   "}',
+        '{"changed": true, "summary": "Milestone", "unexpected": true}',
+        json.dumps({"changed": True, "summary": "Milestone", "evidence": ["Proof"] * 21}),
+    ],
+)
+def test_goal_judgement_rejects_invalid_encoded_progress(progress: str) -> None:
+    payload = _judgement().model_dump()
+    payload["progress"] = progress
     with pytest.raises(ValidationError):
         GoalJudgement.model_validate(payload)
+
+
+@pytest.mark.parametrize("encoded_progress", [False, True])
+def test_goal_judgement_accepts_progress_without_changing_its_content(
+    encoded_progress: bool,
+) -> None:
+    expected = _judgement()
+    payload = expected.model_dump()
+    if encoded_progress:
+        payload["progress"] = json.dumps(payload["progress"])
+    assert GoalJudgement.model_validate_json(json.dumps(payload)) == expected
 
 
 @pytest.mark.asyncio

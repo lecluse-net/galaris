@@ -428,6 +428,15 @@ class GoalJudgement(BaseModel):
     progress: GoalProgress
     tracking_content: str = Field(min_length=1, max_length=120_000)
 
+    @field_validator("progress", mode="before")
+    @classmethod
+    def decode_progress(cls, value: object) -> object:
+        # Some providers encode this nested object as JSON text, even on retry.
+        # Validate the same contract rather than consuming another model call.
+        if isinstance(value, str):
+            return GoalProgress.model_validate_json(value)
+        return value
+
     @field_validator("reason")
     @classmethod
     def strip_reason(cls, value: str) -> str:

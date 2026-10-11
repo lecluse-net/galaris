@@ -80,6 +80,35 @@ async def test_typed_adapter_preserves_pydantic_aliases_and_json_fields(runtime)
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("encoded_progress", [False, True])
+async def test_goal_judgement_accepts_provider_progress_without_retry(runtime, encoded_progress):
+    from app.goal.schemas import GoalJudgement
+
+    db, llm, requests, mode = runtime
+    progress = {"changed": True, "summary": "Draft completed.", "evidence": ["Saved draft"]}
+    payload = {
+        "action": "CONTINUE",
+        "reason": "Review remains.",
+        "progress": json.dumps(progress) if encoded_progress else progress,
+        "tracking_content": "<h1>Tracking</h1><p>Draft saved; review remains.</p>",
+    }
+    key = f"tests.goal-judgement.{uuid4()}/v1"
+    register_inference_output(key, GoalJudgement)
+    mode.update(structured=True, outputs=[json.dumps(payload)])
+
+    result = await execution.run_structured(request_for(llm, key, retries=0), GoalJudgement)
+
+    assert result.output.action == "CONTINUE"
+    assert result.output.progress.model_dump() == progress
+    assert result.output.tracking_content == payload["tracking_content"]
+    inference_id = await db.scalar(select(LLMInference.id))
+    snapshot = await read_inference(inference_id)
+    assert snapshot.status == "completed"
+    assert snapshot.attempts[-1].result.structured_output["progress"] == progress
+    assert len(requests) == 1
+
+
+@pytest.mark.asyncio
 @pytest.mark.parametrize("output_mode", ["tool", "prompted"])
 @pytest.mark.parametrize("protocol", ["chat", "responses"])
 async def test_structured_validation_retries_keep_stream_transcript_and_cost(
