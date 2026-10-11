@@ -156,6 +156,11 @@ Ils constituent une **base de connaissances vivante**, avec des sources, des ré
 et des droits d’accès. La conversation reste reliée à ce travail commun ; la mémoire
 assure la continuité des échanges.
 
+L’effort et l’organisation du travail sont deux choix distincts. Une action bornée peut rester
+directe ; un livrable complexe peut conserver ses jalons dans une même Task. Les plans coordonnent
+des travaux dont les résultats sont vérifiables et reprenables séparément. Voir
+[confier et suivre une Task](docs/fr/user/tasks.md).
+
 ```mermaid
 flowchart TD
     channels["Web · PWA · API · Canaux de messagerie"] <--> conversation["Boucle conversationnelle"]
@@ -197,6 +202,7 @@ choix du fournisseur l’architecture de vos agents.
 - [Installation et exploitation](INSTALL.md)
 - [Portail documentaire](docs/fr/README.md)
 - [Guide utilisateur](docs/fr/user/README.md)
+- [Confier et suivre une Task](docs/fr/user/tasks.md)
 - [Guide administrateur](docs/fr/admin/README.md)
 - [Guide développeur et architecture](docs/fr/dev/README.md)
 - [Cartographie et flux d’architecture](docs/fr/architecture/README.md)

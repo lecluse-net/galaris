@@ -592,6 +592,10 @@ rôles volontairement centralisés :
 - juger chaque dimension sémantique d’un benchmark ;
 - produire le rapport Markdown d’un run terminal.
 
+Dans le Lab, le candidat et le juge peuvent être sélectionnés séparément. L’usage **Lab**
+fournit le juge par défaut quand l’API ne reçoit pas de `judge_llm_id` ; la sélection explicite
+du benchmark est figée dans son run. Les propositions et analyses gardent l’usage Lab configuré.
+
 Choisissez un modèle suffisamment puissant pour juger les modèles candidats. Son coût s’ajoute à
 chaque cas : un benchmark générique appelle normalement une fois le candidat et une fois le juge,
 puis une analyse facultative effectue un appel supplémentaire pour le run. Les contenus des cas
@@ -604,8 +608,9 @@ des humains. Le [guide opérateur](../user/lab-ai.md) décrit la procédure et l
 [documentation d’architecture](../architecture/ai-lab-evaluation.md) détaille les biais et
 les formules.
 
-Si le modèle du Lab est absent, les boutons de proposition, benchmark et analyse sont désactivés ou
-retournent une erreur explicite. Une panne du juge ne doit pas être interprétée comme un mauvais
+Si le modèle du Lab est absent, les propositions et analyses sont indisponibles ; un benchmark
+exige un candidat et un juge compatibles, explicites ou résolus depuis les usages nécessaires.
+Une panne du juge ne doit pas être interprétée comme un mauvais
 résultat candidat : les mécanismes sémantiques affichent alors un score absent et un run `partial`.
 
 ## 5. Drivers agentiques

@@ -576,6 +576,10 @@ centralized roles:
 - judge each semantic dimension of a benchmark;
 - produce the Markdown report for a terminal run.
 
+The Lab can select candidate and judge separately. The **Lab** usage supplies the default
+judge when the API receives no `judge_llm_id`; an explicit benchmark selection is frozen
+in its run. Reference proposals and analyses retain the configured Lab usage.
+
 Choose a model powerful enough to judge candidate models. Its cost is added to
 each case: a generic benchmark normally calls the candidate once and the judge once,
 then an optional analysis makes one additional call for the run. Case contents
@@ -588,8 +592,9 @@ human-scored outputs. The [operator guide](../user/lab-ai.md) describes the proc
 [architecture documentation](../architecture/ai-lab-evaluation.md) details the biases and
 formulas.
 
-If the Lab model is absent, the proposal, benchmark, and analysis buttons are disabled or
-return an explicit error. A judge failure must not be interpreted as a poor candidate result:
+If the Lab model is absent, proposals and analyses are unavailable; a benchmark requires
+compatible candidate and judge models, explicitly selected or resolved from the required usages.
+A judge failure must not be interpreted as a poor candidate result:
 semantic mechanisms then display a missing score and a `partial` run.
 
 ## 5. Agent Drivers

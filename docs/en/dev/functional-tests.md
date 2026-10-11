@@ -2,6 +2,17 @@
 
 # Functional guarantees catalogue
 
+Start with business behavior and module responsibility. The suites below are entry points,
+not exhaustive certification or proof that a live external account works. The
+[September 10 review](../../../project/audits/2026-09-10-functional-tests.md) records replacements
+and actual execution results. Keeping an effective test is a valid decision; there is no
+quota of new tests per module.
+
+For each change, state the affected guarantee and the guarantees to preserve, inspect their
+contracts and tests, then select the least expensive layer that proves the observable effect.
+
+## Media and acquired evidence
+
 `back/app/image/tests/test_image_mcp.py` covers image references as a URI, a list, or a
 JSON-encoded list, temporary cleanup, and filenames matching the native format without
 conversion or overwriting a neighboring file. The workflow in
@@ -30,6 +41,8 @@ Queries with CTEs are included. The planner policy preserves connection defaults
 subsequent transactions after both commit and rollback. `test_memory_extraction.py`
 checks that provenance added by LINK does not make a manual memory or an existing
 document depend on that conversation evidence.
+
+## Agent administration
 
 AgentAdmin is documented in [agent-admin.md](agent-admin.md).
 `back/app/agent/tests/test_avatars.py` checks JPEG storage within 500 × 500 pixels,
@@ -68,6 +81,8 @@ success fixtures therefore contain executable plans.
 an empty tool call: the inference and its trace remain failed for both streaming and JSON
 responses, instead of accepting the tool call as a plan.
 
+## Task organization and planning
+
 `back/app/agent/tests/test_planner_collections.py` covers repeated work: small mechanical batches
 of up to five known items in one leaf without discovery or replanning, decomposition of
 substantial work or oversized/unknown batches, one Task per collection item,
@@ -89,15 +104,6 @@ Import the synthetic `task_organization_corpus.json` with
 `scripts/import_lab_reference.py --corpus task-organization --install`. Its eight cases
 complement fifteen routing boundaries; real-model comparison measures decisions and
 latency without certifying complete mission execution.
-
-Start with business behavior and module responsibility. The suites below are entry points,
-not exhaustive certification or proof that a live external account works. The
-[September 10 review](../../../project/audits/2026-09-10-functional-tests.md) records replacements
-and actual execution results. Keeping an effective test is a valid decision; there is no
-quota of new tests per module.
-
-For each change, state the affected guarantee and the guarantees to preserve, inspect their
-contracts and tests, then select the least expensive layer that proves the observable effect.
 
 ## Cross-domain workflows
 
@@ -259,6 +265,22 @@ reopening, existing preferences, errors and retries, late responses and account 
 with real Vue/Quasar components. Domain catalogs own the text; translation changes
 never reset an acknowledgement.
 
+`front/browser-tests/client-config.spec.mjs` covers Codex/Claude Code configuration from
+user tokens: available profile selection, copying without secrets, incomplete profiles,
+permissions, empty/error states, reopening and late responses with real Quasar components
+on desktop and mobile.
+
+`back/tests/test_profile_gateway.py` keeps Task, model or run references in external-client
+tool results as content on OpenAI and Anthropic profile APIs: completed streams, preserved
+models and no correlation inferred from text. `test_anthropic_api.py` and
+`test_call_router_lineage.py` preserve managed-runtime correlation.
+
+The API token name is frozen in LLM traces. `test_profile_gateway.py` covers Messages,
+Chat Completions, Responses, embeddings and decisions, including rename/deletion, unnamed
+tokens and alternating web sessions. `test_inference_lifecycle.py` verifies worker propagation
+without inheriting another call's token. `front/browser-tests/llm-calls.spec.mjs` covers
+display and historical or agent-linked calls.
+
 `tests/test_llm_call_trace.py` also covers Responses providers that finish function arguments
 only in a `done` event: a missing suffix is added once, separate calls remain separate and
 a contradictory prefix is rejected before effects. The scenario traverses the real proxy
@@ -325,6 +347,8 @@ unavailability), using a real DB.
 | Message → task | Source request and attachments survive an incomplete summary; context supplements them without downstream history. Redelivery retrieves admitted work without duplicating or rewriting it | `back/app/messenger/tests/test_journal.py`, `back/app/conversation/tests/test_task_admission.py`, `test_task_objective.py`, `test_service.py` |
 | Dossier approval | The prompt preserves the chat language; the authorized participant can answer numerically without an LLM round, or use an interpreted choice; DbAdmin repairs legacy recipients without approving | `back/app/dream/tests/test_topic_classification.py`, `back/app/messenger/tests/test_service_incoming.py`, `front/app/chat/services/chatService.test.mjs` |
 | Task → conversation | A durable completion delivers once and survives reload | `back/app/conversation/tests/test_service.py`, `e2e/specs/chat.spec.mjs` |
+| Activity and recovery | The round's terminal result takes precedence over attempt errors; unavailable choices do not revoke selection and a new search permits recovery | `back/app/conversation/tests/test_monitoring_service.py`, `front/browser-tests/execution.spec.mjs`, `front/browser-tests/topics.spec.mjs` |
+| Choices loaded on demand | Empty agent/topic selectors load nothing before opening; cancellation, agent changes and closing do not create false errors; actual failures remain visible and a new search allows retry | `front/browser-tests/filter-loading.spec.mjs`, `front/browser-tests/goals.spec.mjs`, `front/browser-tests/topics.spec.mjs`, `front/core/api.test.mjs` |
 | Process → waiting task | An authenticated callback releases the wait; duplicates and late events preserve the outcome | `back/app/process/tests/test_recovery.py`, `test_worker_concurrency.py` |
 | Document → file → agent | Content, revision, canonical URIs and ACLs agree across readers and writers | `back/app/memory/tests/test_editorial_html.py`, `back/app/file_share/tests/test_resource_service.py`, `e2e/specs/editorial-html.spec.mjs` |
 | Dataset document | Immutable type, exact JSON source, invalid writes leave no revision, shared classification/icons/ACLs, copy/restore and conflicts; CodeEditor preserves invalid drafts | `back/app/memory/tests/test_dataset_documents.py`, `test_document_classification.py`, `test_document_library.py`, `front/browser-tests/dataset-documents.spec.mjs`, `e2e/specs/dataset-documents.spec.mjs` |
@@ -369,6 +393,12 @@ agent scope remains mandatory. `app/tools/tests/test_mcp_loader.py` distinguishe
 HTTP 403 responses from local denials in French/English diagnostics, without changing the
 effect error category or exposing provider URLs or response bodies.
 
+`app/harness/tests/test_execution_evidence.py` lets a real Pydantic AI agent continue or stop
+after MCP errors, without forced termination or repeating effects on resume.
+`test_runtime_guards.py` preserves their error visibility. SFTP writes into missing directories
+and confinement within the home are covered by `app/file_share/tests/test_path_normalization.py`.
+Observed errors return to the agent; interruptions without a response still require reconciliation.
+
 The September 16 dispatcher contract is covered by `test_dispatcher_planning.py` and
 `back/tests/test_dispatcher_inference.py`: a human round produces `EXEC standard` without an LLM
 call, AI peers retain their limits, and frozen v1 inferences remain reloadable.
@@ -411,7 +441,7 @@ Task, text and voice executors, including with a custom personality and without 
 This proves instruction delivery; it does not measure a model's editorial quality after
 successive updates to the same document.
 
-Unless qualified, Python files are in `back/app/<module>/tests/` and browser specifications
+Unless qualified, `test_*.py` files are in `back/app/<module>/tests/` and browser specifications
 are in `front/browser-tests/`.
 
 | Module | Behavior and risks | Suites to retain or strengthen |
@@ -478,13 +508,14 @@ are in `front/browser-tests/`.
 | `image` | Image generation/reading, resource identity and call trace | `test_image_mcp.py`, `test_image_service_trace.py` |
 | Native multimodal inputs | Supply images, audio, video and PDFs to compatible models; retain provenance, access checks, byte budgets and media on resume without an analysis tool prerequisite | `app/harness/tests/test_native_media.py`, `test_media_resource_policy.py`, `tests/test_pydantic_ai_internal_model.py`, `app/messenger/tests/test_ingest.py` |
 | `multimedia` | MCP tool launch and domain-owned tracking, long-running generations, authenticated callbacks and publication | `test_multimedia.py`, `test_callback_security.py`, `test_providers.py` |
-| `lab` | Dataset/item isolation, parameters, rights and two passes; resume repetitions without duplicates, stop at budget and preserve independent reviews before judge disclosure | `test_authorization.py`, `test_contracts_and_passes.py`, `test_run_publication.py`, `test_stability_and_review.py`, `lab.spec.mjs`, `lab-access.spec.mjs`, `lab-insights.spec.mjs` |
+| `lab` | Dataset/item isolation, parameters, rights and two passes; resume repetitions without duplicates, stop at budget and preserve independent reviews before judge disclosure; generate complete synthetic datasets for each contract without overwriting saved data or drafts; retain original inputs while showing plain previews, per-result percentages and a filter-independent mean that excludes absent scores and counts zero | `test_authorization.py`, `test_contracts_and_passes.py`, `test_run_publication.py`, `test_stability_and_review.py`, `test_synthetic_datasets.py`, `lab.spec.mjs`, `lab-access.spec.mjs`, `lab-insights.spec.mjs`, `lab-synthetic.spec.mjs` |
 | Lab comparison | Read two evaluations in each of the ten Labs with mechanism-specific privileges; preserve zero/absent scores, incompatibility and missing results; page-independent global counts distinguish cases/repetitions, missing judgments and errors; ambiguity across complete runs; find off-page critical and criterion regressions despite higher overall scores; paired medians and counts; navigation without stale responses | `app/lab/tests/test_comparison.py`, `app/lab/tests/test_mcp.py`, `lab-comparison.spec.mjs` |
 | Lab latency/cost/quality campaign | Import four synthetic FR/EN journeys without model calls or overwrites; execute their simulated tools; measure first text/tool output while draining the stream to completion; preserve candidate cost, duration and measurement through rejudging | `app/lab/tests/test_reference_corpus.py`, `app/llm/tests/test_structured_service.py`, `app/lab/tests/test_contracts_and_passes.py` |
 | First useful output | Ignore reasoning, internal decisions and empty text; retain initial measurements after retries; count concurrent calls once; keep missing evidence unknown and preserve agent scope | `app/llm/tests/test_timing.py`, `app/task/tests/test_activity_snapshot.py`, `app/conversation/tests/test_monitoring_service.py`, `execution.spec.mjs` |
 | Older document continuity | Recover the URI after fifty exchanges without documents, with current title/revision and provenance; exclude other contacts and forbidden, absent or deleted documents | `app/conversation/tests/test_context.py` |
 | `incident` | Group, diagnose and resolve failures with authorization and correction evidence | `test_incident_service.py`, `test_router.py`, `test_retention.py`, `lab-access.spec.mjs`, `e2e/specs/incident.spec.mjs` |
 | `dashboard` / frontend `index` | Scoped metrics with bounded aggregations; reuse visited months, refresh and invalidate the cache when access changes | `test_dashboard_service.py`, `dashboardStore.test.mjs`, `dashboard.spec.mjs`, `shell.spec.mjs`, `preferences.spec.mjs` |
+| MCP Lab | Control all ten contracts through the real catalogue; atomic effects and receipts, revisions, live authorizations and pagination; publish generation once, compare treatments, retain separate agent opinions and assign/revoke the dedicated skill | `app/lab/tests/test_mcp.py`, `app/skill/tests/test_storage.py`, `lab-insights.spec.mjs` |
 | `onboarding` | Initialize without overwriting existing configuration | `test_services.py` |
 | `webhook` | Authenticate and identify incoming deliveries without duplicate admission | `test_router.py`, `test_delivery_identity.py` |
 
@@ -552,7 +583,7 @@ denials and retries, not delivery to a real remote account.
 | `hermes` | Execution, cancellation, history, secrets and session binding | `test_executor_cancellation.py`, `test_executor_history.py`, `test_session_binding.py`, `back/tests/test_driver_conformance.py` |
 | `claude_agent`, `codex`, `deepseek_harness` | Provider and runtime adaptation contracts | Their `test_harness_provider.py`; `test_stream_trace.py` for Claude/Codex; `test_runtime_adapter.py` for DeepSeek |
 | `openai` | Resources, authentication and realtime protocol | `test_resources.py`, `test_runtime_auth.py`, `test_realtime.py` |
-| Other conditional providers | Shared catalogue registration, configuration, discovery and adaptation | `back/tests/test_provider_catalog.py` and `app.llm` / `app.multimedia` suites |
+| Other conditional providers | Shared catalogue registration, configuration, discovery and adaptation | `back/tests/test_provider_catalog.py`, `test_provider_bridges_register_profiles_and_service_facades`, and `app.llm` / `app.multimedia` suites |
 | `youtube` support | Transcript retrieval and errors | `test_transcript_service.py` |
 
 Other declared providers are `openrouter`, `mammouth`, `anthropic`, `deepseek`, `fireworks`,
@@ -562,13 +593,7 @@ The shared suite does not exhaustively qualify every operation. Add a provider-s
 when its protocol differs, not a duplicate canonical workflow. Frontend bridge configuration
 modules follow the same functional form contracts.
 
-## Maintenance rule
-
-A guarantee has a primary proof and, when useful, an E2E assembly proof. A new private function
-does not automatically need a test. A new business branch, denied operation, possible data loss
-or replayable effect needs evidence. Intentional changes explain before/after behavior;
-retired tests identify guarantees retained elsewhere and incidental constraints dropped.
-Track escaped regressions, flakiness, feedback time and relevant mutations rather than test count.
+## Documents and shared interactions
 
 ### Personal chat document opening preference
 
@@ -642,6 +667,10 @@ editors and nested dialogs.
 Dialogs and their backdrop cover the split document's toolbar, including its sticky state
 after scrolling. Closing and reopening preserve the document; formatting remains usable
 inside the dialog. Coverage: `front/browser-tests/chat-document-workspace.spec.mjs`.
+
+After scrolling, the toolbar follows the editor's width while resizing the pane, without
+another scroll or lost content. It remains within the document after focus changes.
+Coverage: `front/browser-tests/editor-toolbar.spec.mjs` and `chat-document-workspace.spec.mjs`.
 
 Below 1024 px, the shared editor places icons at their natural width and wraps them according
 to available space, without visual groups or scrolling. Actions follow their function: editing,
@@ -773,7 +802,7 @@ for 300 and 3,000 files, including individual fallback and fresh checks after re
 The provider scenario also verifies grouped file resolution for a Tool combining File Share
 and Messenger.
 `e2e/specs/file-indexing.spec.mjs` exercises the assembled application and its real API.
-### Scope and durable controls (0170)
+## Scope and durable controls
 
 `app/agent/tests/test_execution_scope.py` and `app/task/tests/test_execution_scope.py`
 check inheritance without widening, amendments through the port, unknown versions,
@@ -797,3 +826,11 @@ Graph boundary coverage accepts 500-node expansion pages and rejects 501, replac
 the former 100-node ceiling. The structured-inference Lab scenario verifies Dispatcher
 v5, default organization values, retries and costs; `test_dispatcher_planning.py` retains
 resolution of frozen v4 inferences without adding organization fields to their schemas.
+
+## Maintenance rule
+
+A guarantee has a primary proof and, when useful, an E2E assembly proof. A new private function
+does not automatically need a test. A new business branch, denied operation, possible data loss
+or replayable effect needs evidence. Intentional changes explain before/after behavior;
+retired tests identify guarantees retained elsewhere and incidental constraints dropped.
+Track escaped regressions, flakiness, feedback time and relevant mutations rather than test count.

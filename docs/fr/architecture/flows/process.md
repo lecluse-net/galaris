@@ -52,7 +52,7 @@ un autre agent. Le lancement reste exclusivement une action `process_start` ou
 Le contrôleur conversationnel utilise la même projection avec son lanceur spécialisé
 `conversation_process_start`. Le catalogue est donc injecté lorsque `process_list`, `process_get`
 et ce lanceur sont effectivement visibles. Le lanceur spécialisé force l’exécution asynchrone,
-lie le run au round et confie sa notification terminale à l’outbox conversationnelle.
+lie le run au round et confie sa notification terminale au lien durable de conversation.
 Un Process affecté qui correspond à l’action demandée a une priorité absolue sur la création ou
 l’amendement d’une Task. Lorsque plus de dix définitions sont affectées et qu’un doute subsiste sur
 la projection, le modèle consulte `process_list` et `process_get` avant d’utiliser une Task.

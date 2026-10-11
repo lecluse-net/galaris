@@ -16,6 +16,7 @@ Le runner partage l’espace réseau du frontend pour utiliser `localhost`, un
 contexte sécurisé reconnu par le navigateur, sans polyfill des API cryptographiques.
 
 Le runner Playwright est verrouillé séparément dans `e2e/package-lock.json`.
+La stack est déclarée dans `compose.e2e.yaml`.
 Les rapports, captures sur échec, traces navigateur et logs de services sont dans
 `artifacts/e2e/`, également conservés sept jours en CI. Les relances automatiques
 sont désactivées : un échec intermittent reste un échec.
@@ -87,7 +88,8 @@ testé avec redelivery d’un ancien fragment.
 ## Ajouter une protection après un incident
 
 1. Décrire le déclencheur, l’état durable, la séquence d’événements et le résultat attendu.
-2. Reproduire l’échec avant de modifier le runtime ; anonymiser toute fixture issue d’un incident.
+2. Reproduire l’échec avant de modifier le runtime avec des données entièrement synthétiques ;
+   ne pas recopier puis anonymiser des données de production.
 3. Tester la règle au niveau unité/contrat et ajouter un parcours navigateur si l’erreur était visible.
 4. Piloter les étapes par événements ou barrières ; éviter les sleeps arbitraires.
 5. Vérifier le résultat après rechargement et les effets durables, pas seulement l’émission d’un événement.

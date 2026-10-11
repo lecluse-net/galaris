@@ -27,9 +27,11 @@ Require **Quality required** and **Security required** in the main branch rules.
 These aggregate jobs also fail when required dependencies are cancelled or skipped.
 Workflow YAML defines the checks; making them mandatory is a separate GitHub setting.
 
-Before release, run `make tests`, `make typecheck`, `make architecture-check`,
-`make tests-e2e ARGS='--repeat-each=3'`, `make tests-harness-manager`,
-`make security-check` and `make tests-restore`.
+Before publication, prepare sources with `make docs-prepare`, then run `make validate`
+on an isolated worktree snapshot. `make validate-stability` adds three E2E repetitions per
+browser. Read `artifacts/validation/*/summary.txt` and its failures; later edits invalidate
+validation. `make security-check` and `make tests-restore` can also run separately for
+targeted verification.
 
 ## Repeatable restore rehearsal
 
@@ -47,8 +49,9 @@ authorized attachment download afterwards.
 
 ## Initial image inventory — 5 September 2026
 
-After updating, no available HIGH/CRITICAL fix remains unapplied. Distribution
-advisories still report these findings without a fixed package version:
+At this historical review, no HIGH/CRITICAL fix then available remained unapplied.
+Distribution advisories reported these findings without a fixed package version; these
+counts do not describe current images and must be measured again before publication:
 
 | Image | Package/advisory occurrences | Distinct advisory identifiers |
 |---|---:|---:|

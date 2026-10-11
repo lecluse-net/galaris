@@ -173,7 +173,7 @@ variables `PROCESS_RETENTION_*`, sans conserver indéfiniment des données méti
 | annulation seulement locale | endpoint d’arrêt indisponible dans cette version n8n |
 
 La configuration d’exploitation complète figure dans le
-[guide administrateur](../admin/README.md#7-messageries-outils-et-processus). Le
+[guide administrateur](../admin/README.md). Le
 contrat du moteur et les règles de contribution figurent dans le
 [guide développeur](../dev/README.md).
 

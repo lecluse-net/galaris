@@ -22,6 +22,8 @@ notamment pour préparer le site web : capacités détaillées, conditions, limi
 
 [Trouver un écran, un menu ou un onglet](user/navigation.md)
 
+[Confier et suivre une Task](user/tasks.md)
+
 Ce parcours explique avec des exemples :
 
 - ce qu’est un agent et ce que Galaris orchestre réellement ;
@@ -31,7 +33,7 @@ Ce parcours explique avec des exemples :
 - comment suivre séparément conversations texte, appels vocaux, Tasks et processus de fond ;
 - comment faire résumer une réunion ou une vidéo YouTube à partir d’un fichier ou d’une URL ;
 - comment exploiter la mémoire, les documents de travail et les dossiers thématiques ;
-- la différence entre les niveaux `standard` et `high` ;
+- la différence entre effort `standard`/`high`, suivi par jalons et plan de tâches ;
 - comment interpréter une tâche, une étape, une question ou un échec ;
 - comment obtenir un résultat fiable sans apprendre le vocabulaire technique ;
 - comment utiliser le [Lab IA](user/lab-ai.md) pour analyser une tâche, construire un dataset et
@@ -86,12 +88,12 @@ dans les [décisions du projet](../../project/decisions/README.md).
 
 En cas de divergence, l’ordre de confiance est le suivant :
 
-1. contrats et tests présents dans le dépôt ;
-2. `.env.example` et modèles de configuration ;
-3. cette documentation ;
+1. contrats, modèles, implémentation et tests présents dans le dépôt ;
+2. `.env.example`, `back/core/settings.py` et déclarations de modules ;
+3. cette documentation et décisions acceptées ;
 4. la cartographie générée, comme index statique du code ;
 5. les plans, anciens tickets, captures ou discussions.
 
-Une page qui mentionne LangGraph, Alembic, un module `employee` ou un appel direct à
+Une page qui recommande LangGraph, Alembic, un module `employee` ou un appel direct à
 `app.harness` depuis une fonctionnalité métier est obsolète : l’architecture
 actuelle n’utilise aucun de ces chemins.

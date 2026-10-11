@@ -1588,9 +1588,15 @@ make tests-documentation   # runner contracts, then real container confinement
 2. choose how to verify the contract; write or adapt a test for a durable guarantee,
    inspect the rendered result for a visual adjustment (see [frontend coverage policy](testing.md));
 3. make a coherent change limited to the module's responsibility;
-4. run targeted tests, then `make typecheck` and `make tests`;
+4. run targeted tests, then `make typecheck`, `make architecture-check` and suites proportionate to the risk;
 5. check `git diff --check` and review schema/configuration changes;
 6. document any architectural choice or new variable.
+
+For documentation or navigation changes, update the corresponding French and English journeys
+and run `make docs-prepare` in development. Before publication without CI, run `make validate`
+on the final code and read `artifacts/validation/*/summary.txt` and any failures. A partial run
+or a subsequent edit does not validate the current code. Validation neither commits nor deploys.
+Creating a commit requires an explicit user request for the current changes.
 
 The root `AGENTS.md`, `INSTALL.md`, and `CHANGELOG.md` files are written exclusively in English.
 

@@ -1809,7 +1809,7 @@ relations, développement progressif, recentrage et plein écran. Le rendu 2D a 
 est indisponible, un message permet de réessayer la 3D. Les pages s’affichent progressivement,
 sans plafond global de nœuds ni filtre de période. Tous les répertoires connus sont chargés dès
 l’ouverture, avec les racines File Share, sujets et contacts. Leurs fichiers se chargent à
-l’approche par pages de 100 ; les cartes denses regroupent les répertoires de chaque partage.
+l’approche par pages de 500 au maximum ; les cartes denses regroupent les répertoires de chaque partage.
 Leur profondeur suit l’espacement local, sans étages rigides.
 Un lien est masqué si une extrémité passe derrière la caméra. La dernière activité module
 les deux tailles de base éloignée/proche et l’opacité ; les éléments anciens restent visibles.
@@ -4634,10 +4634,10 @@ Les fonctions communes ne sont pas toutes des modules activables :
 - `front/core/util` : édition riche et mobile, portions interactives préservées dans Source,
   capture statique du rendu pour impression/PDF, liens, fichiers et visionneuses, dont Markdown,
   code et 3D ;
-- `front/core/api`, navigation, thème, i18n et WebSocket : session, transports et shell commun ;
+- `front/core/api.ts`, navigation, thème, i18n et WebSocket : session, transports et shell commun ;
 - `front/app/onboarding` : blocs d’initialisation utilisés par l’accueil ;
 - `back/core/preview` : aperçus, miniatures, PDF et point d’extension de conversion ;
-- `back/core/runtime`, API, database, observability et util : supervision, santé, stockage et
+- `back/core/runtime.py`, API, database, observability et util : supervision, santé, stockage et
   contrats communs de sécurité/ressources ;
 - `bridge.youtube` : support de sous-titres appelé par Audio, sans module autonome à activer ;
 - services `browser-executor`, `ssh-executor`, recherche SearXNG et TURN : infrastructure des

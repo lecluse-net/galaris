@@ -30,9 +30,11 @@ Activer dans les règles de la branche principale les statuts **Quality required
 quand un job requis a été annulé ou ignoré. Le dépôt fournit les jobs ; l'activation
 de leur caractère obligatoire est un réglage GitHub distinct.
 
-Avant livraison : `make tests`, `make typecheck`, `make architecture-check`,
-`make tests-e2e ARGS='--repeat-each=3'`, `make tests-harness-manager`,
-`make security-check` et `make tests-restore`.
+Avant publication, préparer les sources avec `make docs-prepare`, puis lancer `make validate`
+sur un instantané isolé du worktree. `make validate-stability` ajoute trois répétitions E2E
+par navigateur. Lire le rapport `artifacts/validation/*/summary.txt` et ses échecs ; toute
+modification ultérieure invalide la validation. Les cibles `make security-check` et
+`make tests-restore` peuvent aussi être exécutées séparément pour un contrôle ciblé.
 
 ## Restauration répétable
 
@@ -55,8 +57,9 @@ vérifier une connexion et un téléchargement de pièce jointe.
 
 ## Inventaire initial des images — 5 septembre 2026
 
-Après mise à jour, aucun correctif HIGH/CRITICAL disponible n'est laissé inappliqué.
-Les distributions signalent encore les alertes suivantes sans version corrigée :
+Lors de cette revue historique, aucun correctif HIGH/CRITICAL alors disponible ne restait
+inappliqué. Les distributions signalaient les alertes suivantes sans version corrigée ;
+ces comptages ne décrivent pas les images actuelles et doivent être remesurés avant publication :
 
 | Image | Occurrences paquet/alerte | Identifiants d'alerte distincts |
 |---|---:|---:|

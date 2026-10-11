@@ -153,6 +153,10 @@ These documents form a **living knowledge base**, with sources, revisions and ac
 The conversation stays linked to this shared work, while memory provides continuity
 across exchanges.
 
+Task effort and work organization are separate choices. A bounded action can run directly;
+a complex deliverable can keep milestones in one Task. Plans coordinate work whose results
+can be checked and resumed independently. See [assigning and tracking Tasks](docs/en/user/tasks.md).
+
 ```mermaid
 flowchart TD
     channels["Web · PWA · API · Messaging channels"] <--> conversation["Conversation loop"]
@@ -195,6 +199,7 @@ architecture of your agents.
 - [Installation and operations](INSTALL.md)
 - [Documentation portal](docs/en/README.md)
 - [User guide](docs/en/user/README.md)
+- [Assigning and tracking Tasks](docs/en/user/tasks.md)
 - [Administrator guide](docs/en/admin/README.md)
 - [Developer and architecture guide](docs/en/dev/README.md)
 - [Architecture maps and flows](docs/en/architecture/README.md)

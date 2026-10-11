@@ -19,6 +19,9 @@ An agent with a custom profile uses that profile exclusively. Empty fields do no
 to the global profile. MCP catalogs and execution check the current connection, capability,
 provider and selected resource.
 
+Durable generation belongs to `app.multimedia`, with its own worker and checkpoints;
+it creates no Process run.
+
 | Capability | Providers |
 |---|---|
 | Sound/music analysis | OpenRouter and Mammouth AI audio-input models |
@@ -27,28 +30,33 @@ provider and selected resource.
 | Music generation | Eleven Music, Lyria through OpenRouter, SunoAPI.org |
 | Video generation | OpenRouter video models, Seedance through BytePlus LAS |
 
-SunoAPI.org is a third-party provider, separate from Suno Platform. Configure its own key
-and a public HTTPS Galaris callback base (`APP_HOST`).
-Callbacks only acknowledge receipt; authenticated provider polling controls task state.
+SunoAPI.org is a third-party provider, separate from a Suno subscription and Suno Platform.
+Configure its own key and a public HTTPS Galaris callback base (`APP_HOST`). This integration
+uses `https://api.sunoapi.org/api/v1`. Callback payloads do not change generations;
+authenticated provider polling controls their state.
 
 ## Agent workflow
 
 Analysis accepts a canonical file `uri` and a `prompt`. Files remain in their original Tool;
-temporary materialization is limited to 32 MB and 20 minutes, validated by FFprobe.
+temporary materialization is limited to 32 MiB and 20 minutes, validated by FFprobe.
 
 Generation accepts a `prompt` and a writable binary-file collection `destination` ending in `/`.
+Use a collection returned by `file_list`. The `document://` root is unsuitable; a document
+attachment collection is suitable. A console requires an active connection.
 It returns a durable `generation_id` and `run_id`. Poll `multimedia_get_run`; completed files appear in
 `output.files[].uri` and the Task working set. A run only succeeds after canonical file creation.
-Up to four files of 100 MB each are supported.
+Up to four files of 100 MiB each are supported.
 
 Use the same `invocation_key` only to retry one invocation. A new invocation creates a new
 generation even with the same prompt. An ambiguous provider response never causes automatic
 resubmission. An interrupted remote file creation requires checking the destination before retrying.
 Private database delivery receipts retain bytes until canonical delivery, then erase them.
 
-Options are provider-specific. Exact lyrics are supported through SunoAPI custom mode;
-Lyria receives lyrical instructions. Unsupported options are rejected. Costs absent from provider
-responses are marked unknown. Remote cancellation is not advertised without provider confirmation.
+Options are provider-specific. ElevenLabs effects last up to 30 seconds and music starts at
+3 seconds. SunoAPI custom mode accepts lyrics, style and title; Lyria receives musical and
+lyrical instructions. Seedance validates supported durations, ratios and resolutions.
+Unsupported options are rejected. Costs absent from provider responses are marked unknown.
+Remote cancellation is not advertised without provider confirmation.
 
 ## Installation and validation
 

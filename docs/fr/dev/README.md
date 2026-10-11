@@ -14,8 +14,12 @@ et les choix structurels acceptés sont consignés dans
 contrats et tests restent l’autorité sur le comportement.
 
 Le [corpus de référence du Lab](lab-reference-corpus.md) fournit des cas reproductibles sur
-les contraintes éditoriales et les ressources. Les mesures de chargement frontend et la
-lecture des budgets sont décrites dans le [guide d'exploitation](reliability-operations.md).
+les contraintes éditoriales et les ressources. Les builds frontend affichent `frontend_build_bytes`
+via `scripts/report-build.mjs` : tailles brutes et gzip des imports statiques JS/CSS initiaux,
+distinctes du total des chunks. L’éditeur HTML est chargé à la demande ; les fontes, appels API
+et téléchargements du précache PWA sont exclus du graphe initial. L’installation hors ligne
+précache toutefois tous les assets. Les mesures et budgets sont décrits dans le
+[guide d'exploitation](reliability-operations.md).
 
 Le client HTTP frontend n'impose aucun délai maximal aux requêtes API, y compris aux
 analyses du Lab, aux transferts de documents et aux opérations de harnais. Une opération
@@ -901,6 +905,12 @@ un test `if driver == ...` dans la façade.
 
 ## 4. Dispatcher et planner
 
+`EXEC high` exige la capacité `uses_llm_calls=true` : les appels d’exécution traversent
+le routage de modèles Galaris et son journal `LLMCall`. Un runtime utilisant directement
+sa propre API ou son abonnement conserve l’exécution standard ; sans planner, son routage
+ne nécessite aucun appel LLM. Les providers managés, dont Claude Agent, imposent actuellement
+la passerelle Galaris et conservent les deux niveaux d’effort.
+
 Chaque agent référence un profil LLM personnel ou conserve `profile_id = NULL` pour suivre le
 profil courant. Les usages texte partagent quatre niveaux : `ultra-low` pour Dream ; `low` pour le
 dispatcher et la conversation rapide ; `standard` pour l’exécuteur et le suivi des
@@ -1619,9 +1629,16 @@ make tests-documentation   # contrats du lanceur, puis confinement réel en cont
 2. choisir la vérification du contrat ; écrire ou adapter un test pour une garantie durable,
    inspecter le rendu pour une retouche visuelle (voir [la politique frontend](testing.md)) ;
 3. faire une modification cohérente et limitée à la responsabilité du module ;
-4. exécuter les tests ciblés puis `make typecheck` et `make tests` ;
+4. exécuter les tests ciblés puis `make typecheck`, `make architecture-check` et des suites proportionnées au risque ;
 5. vérifier `git diff --check` et relire les changements de schéma/configuration ;
 6. documenter tout choix d’architecture ou nouvelle variable.
+
+Pour un changement documentaire ou de navigation, actualiser les parcours français et anglais
+correspondants et exécuter `make docs-prepare` en développement. Avant publication sans CI,
+exécuter `make validate` sur le code final et lire `artifacts/validation/*/summary.txt` ainsi que
+les échecs. Un passage partiel ou une modification ultérieure ne valide pas le code courant.
+La validation ne crée ni commit ni déploiement. Un commit exige une demande explicite
+de l’utilisateur pour les changements actuels.
 
 Les fichiers racine `AGENTS.md`, `INSTALL.md` et `CHANGELOG.md` sont rédigés exclusivement en anglais.
 

@@ -145,7 +145,7 @@ n8n snapshots are cleaned up and bounded before storage. Set their retention usi
 | local cancellation only | stop endpoint unavailable in this n8n version |
 
 The complete operational configuration is provided in the
-[administrator guide](../admin/README.md#7-messageries-outils-et-processus). The
+[administrator guide](../admin/README.md). The
 engine contract and contribution rules are provided in the
 [developer guide](../dev/README.md).
 

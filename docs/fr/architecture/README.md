@@ -16,7 +16,8 @@ automatiquement depuis le code.
 | Auditer le Messenger interne | [Validation architecture et données](chat-validation.md) |
 | Comprendre session, rappel et consolidation | [Mémoire](flows/memory.md) |
 | Comprendre l’entretien opportuniste en arrière-plan | [Dream](flows/dream.md) |
-| Suivre un outil ou une exécution longue | [Processus](flows/process.md) |
+| Suivre un workflow métier et son moteur | [Processus](flows/process.md) |
+| Suivre une génération média ou une opération du Lab | [Multimédia](../components/multimedia.md) et [Lab IA](ai-lab-evaluation.md) |
 | Comprendre les calendriers et leurs déclenchements | [Calendriers](flows/calendar.md) |
 | Comprendre les sessions et sorties du navigateur | [Navigateur](flows/browser.md) |
 | Comprendre les fichiers, médias et ressources | [Médias et ressources](flows/media-resources.md) |

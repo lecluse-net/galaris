@@ -667,76 +667,62 @@ their source identity, creates new items, and then puts their UUIDs back into th
 - Agent MCP: `file_search`, `file_info`, `file_read`, `file_create`, `file_write`,
   `file_append`, `file_edit` facade over `memory://` and `document://`; business commands
   `memory_remember`, `memory_forget`, `memory_summarize`, and `document_share`.
-- Interface: under `/memory`, the **List** tab retains search, owner, content, revisions,
-  provenance, direct access, and links. The **Graph** tab loads a lightweight subgraph by cursors
-  without payloads. The API provides neighbor expansion and directory-child expansion.
-  3D displays each page as it arrives and loads children when approaching a directory,
-  in pages of 100; 2D loads all pages. Opening uses pages of at most 500 nodes, with
-  10,000 edges per page in 3D and 2,500 in 2D, with no global node cap. Queries read
-  only graph columns. Leaf folding uses the global count of distinct admissible neighbors,
-  including suggestions, and requires a confirmed link. From eight leaves, the anchor carries
-  a count; zoom and an explicit control reveal them. The frontend retains the animated ECharts
-  engine in 2D up to 600 loaded items, fixing the selected item, with initial placement converging
-  naturally and gentle rebalancing for 0.7 seconds after the graph changes. Closing node details
-  preserves positions and the camera. Hidden leaves retain
-  their placement; zooming and unfolding do not restart physics.
-  Larger windows use bounded placement with stable coordinates and reserved bounds for hidden
-  members. Zooming out simplifies symbols, titles and detailed links without removing their
-  relationships from the simulation. The frontend budgets titles with collision
-  hiding. This projection does not yet provide a server hierarchy or spatial loading; see
-  [decision 0157](../../../../project/decisions/0157-stable-memory-leaf-branches.md) (in French).
-  Sources are checked on every load: connections are resolved in batches,
-  and Nextcloud shares metadata reads for files in the same directory, falling back to individual
-  files when the listing is denied or incomplete. No access result survives between requests. The selected
-  agent already determines the ACL scope and therefore remains implicit: its projection is not
-  displayed. A public Topic enters this graph only if it contains a memory owned by the agent or
-  an item directly shared with it; other agents' folders are not displayed merely because of their
-  public visibility. Topics, contacts, and documents are exposed with distinct visual roles;
-  Topic–memory/document, Contact–memory, and Contact–Topic relationships are reinforced, while
-  suggestions remain fine and discontinuous. Recency combines last access and last modification in
-  an indexed calculated column. Settings remain under **Preferences → Memory**. The interface is
-  for auditing, correcting, or forgetting, not for accepting or rejecting acquisitions.
+- Interface: under `/memory`, **List** retains search, filters, content, revisions,
+  provenance and links. **Graph** loads lightweight pages without memory payloads.
+  Sources are revalidated on every load; connections resolve in batches and Nextcloud
+  shares metadata reads per directory, with individual fallback. No access decision survives
+  between requests. Scope follows the selected agent; its own projection is not shown.
+  A public Topic requires at least one memory owned by that agent or an item directly shared
+  with it. The interface supports inspection, correction and forgetting without an
+  acquisition acceptance procedure.
 
-The page opens the Three.js 3D renderer by default; ECharts remains selectable.
-Both views reuse the same page contract, canonical identities and details. A worker prepares
-placement while retaining the personal 2D positions separately. File Share roots, topics and
-contacts precede folders/directories, documents and details. Known `parent_of` children are
-kept in their previous lateral distribution, with depth based on local link length rather
-than distant fixed levels or a new spiral. Child pages also restore their saved private
-2D positions.
-They load when approaching a visible directory, with at most two concurrent requests and
-another page per camera movement, without recursively crawling the provider.
-Links to deferred children also wait for expansion.
-Visible markers share instanced geometry and links share segment buffers. Cell bounds are
-tested against the frustum and a screen index handles selection. Node and relation styles
-are shared with 2D. A bounded atlas reuses public folder SVGs and Material paths;
-links use instanced ribbons to preserve CSS pixel widths. Shaders reuse 2D curvatures.
-Segment counts depend on projected length and curvature, using instanced chunks of four
-segments, up to 64 per link. The CPU culls offscreen envelopes and hides a whole link when
-either endpoint is behind the camera. It updates buffers only
-when subdivision changes; shaders calculate points and normals in one draw call for
-links. 3D widths are multiplied by 2.25 at a distance and 1.25 nearby. Distant 3D markers use 56 % of
-the capped base size, nearby markers 110 %. Labels have no background.
-Left dragging rotates
-camera and viewing target around the pressed node without centering it on screen,
-while dragging from the background uses OrbitControls panning until release, including
-from the fitted overview. A drag never becomes a click after movement. Wheel navigation
-translates camera and target along the ray under the pointer, preserving orientation
-and the aimed screen point. The pointed node's depth sets the step; background uses
-visible depth or a steady speed in empty space. Pinch and buttons retain the central
-axis. Navigation can pass nodes and continue through empty space; maximum retreat
-returns to a stable, centered overview.
-Framing uses rendered markers, viewport dimensions and depth in the viewing direction;
-it fills the limiting dimension with a glyph margin and centers projected bounds.
-The result is cached between data, viewport and direction changes, and reused at maximum
-zoom-out and on resize.
-Labels and thumbnails have
-bounded budgets, and rendering stops at rest. Version 2 of `camera_3d` and the pages of visited
-branches are saved independently of `camera`, without a schema migration. A camera from the
-previous flat placement is fitted again. WebGL loss falls back to 2D and reloads its complete
-catalogue. Responses from an old context are discarded; errors retain the partial map with
-retry. This renderer does not implement the planned prepared regional server map:
-[ADR 0166](../../../../project/decisions/0166-batched-memory-3d-renderer.md) (in French).
+### 3D graph, loading and recovery
+
+The graph uses Three.js exclusively. Historical 2D camera preferences remain API-compatible,
+but no ECharts renderer or 2D selector is active. WebGL context loss displays an error with
+a retry of the 3D scene, preserving current data and filters.
+
+Opening loads all known authorized directories with File Share roots, topics and contacts,
+in pages of at most 500 nodes and 10,000 edges, without a global cap. `defer_resource_files`
+defers only their files, loaded on approach in pages of at most 500 with two concurrent
+requests. Moving away stops subsequent pages; a context change cancels reads. This projection
+does not recursively traverse the provider: it reads the acquired catalogue. Links to deferred
+children wait for their loading.
+
+Layout preparation runs in a worker. Personal coordinates survive paging, zoom, unfolding
+and detail closing. The graph uses shared GPU buffers, instanced markers and ribbons,
+a spatial index and a bounded atlas. Only visible markers are drawn; a link disappears if
+either endpoint is behind the camera. Ordinary titles avoid collisions and thumbnails remain
+bounded by their native dimensions. Rendering stops at rest.
+
+Branches with at least eight exclusive leaves fold into counted groups; shared nodes stay
+visible. Dense cells form display groups with aggregated relations without changing canonical
+identities. Items hidden by filtering, folding or framing transfer weight to visible
+representatives, up to four times their diameter. Known unloaded children contribute without
+duplicates; representative titles remain visible. Reappearing items remove that weight without
+moving nodes.
+
+A left drag on a node rotates the view; on the background it pans laterally. Dragging never
+opens details. The wheel preserves the aimed point and orientation, allows travel past a node
+and restores the overview at maximum retreat. Pinching, buttons and keyboard retain the same
+navigation capabilities. Framing uses rendered markers, depth and viewport dimensions,
+including mobile viewports.
+
+Every thirty seconds while the view is visible and after reconnection, root and visited-directory
+inventories are reread in the background. Only confirmed differences are merged; pages received
+during that read remain retained. A failure leaves the partial map usable; camera, positions,
+filters and branches survive. Explicit access invalidation or a session change removes
+protected data.
+
+Personal state retains `camera_3d` and resource branches per user, agent and context. This
+is a disposable cache: incompatible formats or invalid coordinates rebuild layout with revision
+checks without changing Memory data. Network errors allow retry without restoring an old
+camera pose over a navigated view. The prepared server-side regional map remains planned.
+
+Contracts: [batched rendering](../../../../project/decisions/0166-batched-memory-3d-renderer.md),
+[exclusive 3D and recovery](../../../../project/decisions/0168-memory-graph-3d-only.md),
+`front/app/memory/components/MemoryGraph.vue`, `graph3dChildren.ts`, `graphRefresh.ts`,
+`graphVisibility.ts` and `back/app/memory/graph_state.py`.
 
 Logfire metrics and the local mirror measure count, mode, degradation, latency, result count, and
 characters actually injected. Labels are bounded and never contain a query, text, memory UUID,

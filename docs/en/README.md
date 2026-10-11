@@ -21,6 +21,8 @@ particularly for preparing the product website: detailed capabilities, condition
 
 [Find a screen, menu or tab](user/navigation.md)
 
+[Assigning and following a Task](user/tasks.md)
+
 This path explains, with examples:
 
 - what an Agent is and what Galaris actually orchestrates;
@@ -30,7 +32,7 @@ This path explains, with examples:
 - how to separately track text conversations, voice calls, Tasks, and background processes;
 - how to have a meeting or YouTube video summarized from a file or URL;
 - how to use memory, Working Set documents, and thematic folders;
-- the difference between the `standard` and `high` levels;
+- the difference between `standard`/`high` effort, milestone tracking and Task plans;
 - how to interpret a task, step, question, or failure;
 - how to obtain a reliable result without learning technical vocabulary;
 - how to use the [AI Lab](user/lab-ai.md) to analyze a task, build a dataset, and
@@ -85,12 +87,12 @@ in the [project decisions](../../project/decisions/README.md).
 
 In case of discrepancies, the order of trust is as follows:
 
-1. contracts and tests present in the repository;
-2. `.env.example` and configuration templates;
-3. this documentation;
+1. contracts, models, implementation and tests present in the repository;
+2. `.env.example`, `back/core/settings.py` and module declarations;
+3. this documentation and accepted decisions;
 4. the generated map, as a static index of the code;
 5. plans, old tickets, screenshots, or discussions.
 
-A page that mentions LangGraph, Alembic, an `employee` module, or a direct call to
+A page that recommends LangGraph, Alembic, an `employee` module, or a direct call to
 `app.harness` from a business feature is obsolete: the
 current architecture does not use any of these paths.

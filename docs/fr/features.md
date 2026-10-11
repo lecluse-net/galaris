@@ -18,7 +18,7 @@ L’application s’utilise sur ordinateur et mobile, avec une interface frança
 un thème clair ou sombre et une installation possible comme PWA. La navigation, la recherche,
 les notifications et les écrans de suivi gardent les opérations courantes accessibles.
 
-Pour les commandes d’installation et de mise à jour, suivre la [guide d’installation](admin/installation.md).
+Pour les commandes d’installation et de mise à jour, suivre le [guide d’installation](admin/installation.md).
 
 ## Discuter avec un agent qui peut poursuivre le travail
 
@@ -47,8 +47,9 @@ délégations administratives restent attribuées par les humains.
 
 Pour préparer une étude, un agent peut solliciter un collègue chargé d’une recherche ou d’une revue.
 La contribution devient une tâche identifiable : on voit qui travaille, ce qui est attendu,
-les dépendances, les questions en suspens et le résultat. Un plan peut décomposer une demande
-complexe en plusieurs sous-tâches, puis rassembler leurs conclusions.
+les dépendances, les questions en suspens et le résultat. Une mission longue peut conserver des
+jalons dans une seule Task ; un plan coordonne les résultats indépendamment vérifiables et
+reprenables. Une ambiguïté sur le périmètre peut demander une précision avant l’exécution.
 
 Les documents partagés forment le support commun de cette collaboration. Les agents ne doivent
 pas se contenter d’échanger des résumés successifs d’un livrable que personne ne peut retrouver.
@@ -92,12 +93,13 @@ les droits et la validité des informations. Les contacts relient les échanges 
 les sujets rassemblent une activité dispersée entre conversations, tâches et documents.
 Les fichiers rencontrés par les outils peuvent rejoindre un catalogue privé avec leurs
 emplacements et leurs miniatures. Dream identifie les copies identiques par agent, prépare
-les aperçus et parcourt les providers compatibles selon les réglages d’indexation. Le graphe
+les aperçus et parcourt les providers compatibles, dont Samba / SMB, selon les réglages d’indexation. Le graphe 3D
 replie les branches nombreuses et conserve le cadrage pendant l’exploration. Depuis une fiche,
 des actions explicites permettent de relancer une description, une miniature ou une synchronisation.
 
 Dream utilise les périodes disponibles pour classer et consolider les connaissances. Il peut
-extraire les éléments durables d’un travail terminé, repérer doublons ou contradictions et,
+extraire les éléments durables d’un travail terminé, réutiliser les transcriptions et analyses
+déjà acquises dans une conversation, repérer doublons ou contradictions et,
 si on l’active, décrire des pièces jointes encore sans texte. L’apprentissage procédural peut
 également faire émerger des méthodes à partir de plusieurs expériences étayées.
 
@@ -150,7 +152,7 @@ pas automatiquement rejoué. La couverture ne certifie pas la justesse de l’in
 
 Avec les modèles compatibles, les agents peuvent analyser des images, des sons et des vidéos,
 générer ou modifier une illustration et lancer une génération de musique, d’effets sonores ou de
-vidéo. Les productions longues sont suivies comme des processus ; leurs fichiers restent reliés
+vidéo. Les productions longues ont un suivi durable propre au Multimédia ; leurs fichiers restent reliés
 au travail d’origine. Chaque fournisseur conserve ses capacités et ses limites.
 
 ## Choisir les modèles et les harnais selon le travail

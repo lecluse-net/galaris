@@ -416,6 +416,28 @@ can start; the operation duration therefore never consumes this pause.
 
 Authority: `back/app/dream/models.py`, `service.py`, and `scheduler.py`.
 
+## Media generations and Lab operations
+
+These operations retain state in their own domain; they create no business process definition
+or run. Duration or recovery requirements do not change that ownership.
+
+| Durable object | Owning domain | Read and control |
+|---|---|---|
+| Media generation | `app.multimedia` | `multimedia_get_run`; final files must be written before success. |
+| Dataset generation, expected-output proposal or Lab analysis | `app.lab` | `lab_operation_get` and `lab_operation_cancel`. |
+
+Their snapshots accept `queued`, `running`, `waiting`, `cancelling`, `success`, `error`,
+`cancelled` and `unknown`. `success`, `error` and `cancelled` are terminal: late observations
+cannot replace their results. Ambiguous media submissions are not repeated; interrupted
+delivery requires checking the destination. A media callback alone proves no result:
+the provider is queried using server credentials. Lab cancellation is a durable request
+without a guarantee of stopping an already submitted call. Media generation does not
+advertise remote cancellation without provider confirmation.
+
+Authority: `back/app/multimedia/generation_contracts.py`, `generation_store.py`,
+`generation_execution.py` and `back/app/lab/operation_contracts.py`, `operation_store.py`,
+`operation_execution.py`.
+
 ## Processes
 
 Terminal states: `success`, `error`, `cancelled`.
@@ -449,9 +471,9 @@ A Lab evaluation run follows `queued → running`, then exactly one terminal sta
 the queue is cancelled immediately, while a run already in progress completes the current
 isolated call before stopping.
 
-Each run freezes the cases, the candidate LLM, the Lab analysis LLM automatically used as
-judge, and the rubric version before starting. The judge is resolved from the **Lab** usage of the current profile; there
-is no separate selection in the Lab. A case result constitutes a single durable
+Each run freezes the cases, candidate LLM, judge and rubric version before starting.
+The Lab selects candidate and judge separately. Without an explicit `judge_llm_id`,
+the API uses the **Lab** usage of the current profile. A case result constitutes a single durable
 checkpoint for the run/case pair.
 The registry covers Dispatcher, Planner, topic classification, memory extraction,
 learning, and objective tracking. Each mechanism declares the

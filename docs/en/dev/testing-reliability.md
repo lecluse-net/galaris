@@ -14,6 +14,10 @@ ports, existing data volume or `.env` credentials. Its internal network blocks
 external requests. The runner shares the frontend network namespace so it can
 use `localhost`, a browser secure context, without crypto polyfills.
 
+The Playwright runner is locked separately in `e2e/package-lock.json`. Each invocation owns
+a unique project and removes its containers afterwards. Asynchronous barriers force concurrent
+starts with bounded timeouts; browser retries remain disabled.
+
 The test-only server `back/tests/e2e_app.py` scripts the conversation controller,
 Task objective generation, model resolution and internal harness stream.
 Admission, authorization, persistence, leases, attempts and delivery are real.
@@ -70,7 +74,8 @@ including duplicate delivery, and verify reset followed by stale redelivery.
 
 ## Protecting against an observed regression
 
-1. Capture the trigger, durable state and event sequence using anonymized data.
+1. Capture the trigger, durable state and event sequence using entirely synthetic data;
+   do not copy and anonymize production data for repository fixtures.
 2. Verify the test fails before fixing the runtime.
 3. Test the affected contract and add a browser journey for visible failures.
 4. Synchronize with events/barriers, not arbitrary delays.

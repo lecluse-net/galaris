@@ -1365,7 +1365,7 @@ The graph UI supports node natures and relationships, expansion, centring and fu
 It uses the batched Three.js **3D** view exclusively; the 2D renderer has been removed.
 Unavailable WebGL shows a message with a 3D retry action. Pages appear progressively without a
 global node cap or period filter. All known directories load on opening alongside File Share roots,
-topics and contacts; their files load when approaching, in pages of 100. Dense maps spatially group
+topics and contacts; their files load when approaching, in pages of up to 500. Dense maps spatially group
 each share's directories. Depth follows local spacing rather than rigid levels.
 A link is hidden if either endpoint is behind the camera. Visible markers share GPU
 buffers, placement runs in a worker, and rendering stops at rest.
@@ -3622,10 +3622,10 @@ Not all shared functions are activatable modules:
 
 - `front/core/util`: rich/mobile editing, interactive Source preservation, static print/PDF capture,
   links, files and viewers including Markdown, code and 3D.
-- `front/core/api`, navigation, theme, i18n and WebSocket: session, transports and shared shell.
+- `front/core/api.ts`, navigation, theme, i18n and WebSocket: session, transports and shared shell.
 - `front/app/onboarding`: initialisation blocks used by Home.
 - `back/core/preview`: previews, thumbnails, PDF and converter extension points.
-- `back/core/runtime`, API, database, observability and util: supervision, health, storage and shared
+- `back/core/runtime.py`, API, database, observability and util: supervision, health, storage and shared
   security/resource contracts.
 - `bridge.youtube`: Audio subtitle support without a separately activated module.
 - `browser-executor`, `ssh-executor`, SearXNG and TURN: browser/console/search/voice infrastructure.

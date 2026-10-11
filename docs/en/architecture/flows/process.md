@@ -52,7 +52,7 @@ The conversational controller uses the same projection with its specialized laun
 `conversation_process_start`. The catalog is therefore injected when `process_list`,
 `process_get`, and this launcher are actually visible. The specialized launcher forces
 asynchronous execution, links the run to the round, and delegates its terminal notification to the
-conversation outbox.
+durable conversation link.
 An assigned Process that matches the requested action has absolute priority over creating or
 amending a Task. When more than ten definitions are assigned and uncertainty remains about the
 projection, the model consults `process_list` and `process_get` before using a Task.

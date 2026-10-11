@@ -419,6 +419,28 @@ puisse démarrer ; la durée de l'opération ne consomme donc jamais cette pause
 
 Autorité : `back/app/dream/models.py`, `service.py` et `scheduler.py`.
 
+## Générations média et opérations du Lab
+
+Ces opérations conservent leur état dans leur domaine ; elles ne créent ni définition ni run
+de processus métier. Leur durée ou leur besoin de reprise ne change pas cette responsabilité.
+
+| Objet durable | Domaine propriétaire | Lecture et contrôle |
+|---|---|---|
+| Génération média | `app.multimedia` | `multimedia_get_run` ; les fichiers finaux doivent être écrits avant le succès. |
+| Génération de dataset, proposition d’attendu ou analyse Lab | `app.lab` | `lab_operation_get` et `lab_operation_cancel`. |
+
+Leurs snapshots acceptent `queued`, `running`, `waiting`, `cancelling`, `success`, `error`,
+`cancelled` et `unknown`. `success`, `error` et `cancelled` sont terminaux : une observation
+tardive ne remplace pas leur résultat. Une soumission média ambiguë n’est pas répétée ;
+une livraison interrompue exige la vérification de la destination. Un callback média ne suffit
+pas à prouver le résultat : le fournisseur est interrogé avec les credentials serveur.
+L’annulation du Lab est une demande durable, sans garantie d’arrêt d’un appel déjà soumis.
+La génération média n’annonce pas d’annulation distante sans confirmation du fournisseur.
+
+Autorité : `back/app/multimedia/generation_contracts.py`, `generation_store.py`,
+`generation_execution.py` et `back/app/lab/operation_contracts.py`, `operation_store.py`,
+`operation_execution.py`.
+
 ## Processus
 
 États terminaux : `success`, `error`, `cancelled`.
@@ -452,9 +474,9 @@ Un run d’évaluation du Lab suit `queued → running`, puis exactement un éta
 attente est annulé immédiatement, tandis qu’un run déjà en cours termine l’appel isolé courant
 avant de s’arrêter.
 
-Chaque run fige les cas, le LLM candidat, le LLM d’analyse du Lab utilisé automatiquement comme
-juge et la version du barème avant son démarrage. Le juge est résolu depuis l’usage **Lab** du profil courant ; il
-n’existe pas de sélection distincte dans le Lab. Un résultat de cas constitue un checkpoint
+Chaque run fige les cas, le LLM candidat, le juge et la version du barème avant son démarrage.
+Le candidat et le juge se sélectionnent séparément dans le Lab. Sans `judge_llm_id` explicite,
+l’API utilise l’usage **Lab** du profil courant. Un résultat de cas constitue un checkpoint
 durable et unique pour le couple run/cas.
 Le registre couvre Dispatcher, Planner, classification thématique, extraction mémoire,
 apprentissage et suivi d’objectif. Chaque mécanisme déclare le

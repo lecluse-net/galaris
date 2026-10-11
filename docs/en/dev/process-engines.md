@@ -3,7 +3,7 @@
 # Integrating an external process engine
 
 This guide describes the current extension points for connecting third-party software to
-`app.process`: conversion, computation, export or another tracked business operation.
+`app.process` to run durable business workflows, such as validating and registering an invoice.
 It does not install an additional engine. Repository Python contracts and tests remain
 authoritative; the limitations below are part of the current integration.
 
@@ -12,13 +12,14 @@ authoritative; the limitations below are part of the current integration.
 | Need | Path |
 |---|---|
 | Call software from an existing n8n workflow | Follow the [n8n guide](../n8n/README.md); no new Galaris engine is required. |
-| Expose a software service's operations and jobs directly | Add a `bridge.<software>` implementing `ProcessEngine`. |
+| Connect an external business workflow engine directly | Add a `bridge.<software>` implementing `ProcessEngine`. |
 | Return an immediate result without durable business tracking | Expose an MCP tool in the relevant domain or bridge. |
 | Perform a technical operation already owned by a domain | Keep its state in that domain; duration alone does not justify a Process. |
 
-The software does not need to have workflows. A stable operation such as
-`example:convert` can serve as a definition. Durable integration requires recovering
-a job's outcome after interruption, through remote reads or replayable notifications.
+The definition represents a business workflow, even if the external service exposes it as
+a single job. Standalone conversion, media generation and Lab evaluation retain their state
+in their owning domains. Durable integration requires recovering a workflow's outcome after
+interruption, through remote reads or replayable notifications.
 A lost HTTP response does not prove that processing never started.
 
 ## 2. Responsibilities and identities
@@ -57,7 +58,7 @@ A `ProcessEngine` declares `code`, `supports_cancel` and `cancel_mode`
 | Method | Input / output | Responsibility |
 |---|---|---|
 | `health()` | `ProcessEngineHealth` | Check access and authentication without starting work; describe actual cancellation support. |
-| `sync_definitions()` | List of `EngineProcessDefinition` | Return discovered operations or a static catalogue with identifier, label, description and active status. |
+| `sync_definitions()` | List of `EngineProcessDefinition` | Return discovered business workflows or a static catalogue with identifier, label, description and active status. |
 | `start_run(operation, run, payload)` | `EngineStartResult` | Submit validated input and files, returning acceptance and a recoverable reference. |
 | `get_run(run)` | `EngineRunSnapshot` | Observe the exact job; normalize status, output, errors and useful diagnostics. |
 | `cancel_run(run)` | `EngineRunSnapshot` | Request a stop; distinguish a pending request from confirmed termination. |
@@ -82,6 +83,8 @@ do not implement it solely to change a timeout. Ordinary engines use
 
 ## 4. Minimal example independent of n8n
 
+The fictional workflow validates an invoice, produces its PDF and registers it. These steps belong to the remote service; the adapter translates its overall state.
+
 The following example implements an adapter for a **fictional service**. Its routes
 are not Galaris endpoints or a standard protocol third-party software must implement:
 
@@ -92,7 +95,7 @@ are not Galaris endpoints or a standard protocol third-party software must imple
 | `GET /jobs/{reference}` | Returns the job, including after a restart. |
 | `POST /jobs/{reference}/cancel` | Idempotently requests a stop and returns the observed state. |
 
-A job is an object such as `{"external_id": "job-42", "operation": "convert",
+A job is an object such as `{"external_id": "job-42", "operation": "invoice-intake",
 "state": "processing"}`. Success can add
 `"output": {"result_uri": "https://processor.example/results/report.pdf"}`.
 That URI must be durable and readable with the required permissions; a remote disk
@@ -121,14 +124,14 @@ from app.process import (
 from app.process.schemas import ProcessStatus
 
 
-class ConversionInput(BaseModel):
+class InvoiceInput(BaseModel):
     model_config = ConfigDict(extra="forbid")
     format: Literal["pdf"]
 
 
 class RemoteJob(BaseModel):
     external_id: str = Field(min_length=1)
-    operation: Literal["convert"]
+    operation: Literal["invoice-intake"]
     state: str
     output: dict[str, Any] | None = None
 
@@ -222,7 +225,7 @@ class ExampleProcessEngine:
 
     async def sync_definitions(self) -> list[EngineProcessDefinition]:
         return [EngineProcessDefinition(
-            engine_process_id="example:convert", label="Convert a file",
+            engine_process_id="example:invoice-intake", label="Validate and register an invoice",
             description="Input: format=pdf; files: one text/plain source URI. Output: result_uri.",
             active=True,
         )]
@@ -231,16 +234,16 @@ class ExampleProcessEngine:
         self, engine_process_id: str, run: EngineRunReference,
         payload: ProcessStartPayload,
     ) -> EngineStartResult:
-        if engine_process_id != "example:convert":
-            raise ProcessEngineError("invalid_operation", "Unknown conversion operation")
+        if engine_process_id != "example:invoice-intake":
+            raise ProcessEngineError("invalid_operation", "Unknown invoice workflow")
         try:
-            validated = ConversionInput.model_validate(payload.input)
+            validated = InvoiceInput.model_validate(payload.input)
         except ValidationError as exc:
             raise ProcessEngineError("invalid_input", "Expected format=pdf") from exc
         if len(payload.files) != 1 or payload.files[0].content_type != "text/plain":
             raise ProcessEngineError("invalid_files", "Expected one text/plain source file")
         body: dict[str, object] = {
-            "operation": "convert", "input": validated.model_dump(),
+            "operation": "invoice-intake", "input": validated.model_dump(),
             "files": [item.model_dump(mode="json", exclude={"uri", "runtime", "task_id"})
                 for item in payload.files],
             "callback": {
@@ -301,7 +304,7 @@ physical termination.
    “Synchronization” returns the external catalogue; it does not automatically
    create or assign a `ProcessDefinition`.
 5. Explicitly create the definition with `POST /api/processes/definitions`:
-   `{"tool_id": 123, "engine_process_id": "example:convert", "label": "Convert",
+   `{"tool_id": 123, "engine_process_id": "example:invoice-intake", "label": "Invoice intake",
    "description": "Input format; one source file; output result_uri.", "agent_id": 7}`.
    These numbers are synthetic: use the actual authorized Tool and agent.
    CRUD uses `PROCESS_ADMIN` and the management scope; global HTTP discovery
@@ -411,7 +414,7 @@ remote termination is uncertain. See [the Process flow](../architecture/flows/pr
 ## 8. Files and provenance
 
 Inputs use `files=[{"uri": "https://source.example/report.txt",
-"description": "Source to convert"}]`. A URI can also belong to an authorized
+"description": "Invoice source"}]`. A URI can also belong to an authorized
 Galaris provider; it does not itself grant access.
 The snapshot preserves the source URI and name. The bridge receives
 `ProcessFileRef` objects with name, type, size, expiry and `download_url`.

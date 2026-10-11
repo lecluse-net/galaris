@@ -709,82 +709,65 @@ dans les tables canoniques.
 - MCP agent : façade `file_search`, `file_info`, `file_read`, `file_create`, `file_write`,
   `file_append`, `file_edit` sur `memory://` et `document://`; commandes métier
   `memory_remember`, `memory_forget`, `memory_summarize` et `document_share`.
-- Interface : sous `/memory`, l’onglet **Liste** conserve la recherche, le propriétaire, le
-  contenu, les révisions, la provenance, les accès directs et les liens. L’onglet **Graphe**
-  charge un sous-graphe léger par curseurs, sans les payloads. L'API fournit aussi une expansion
-  de voisins et une expansion des enfants d'un répertoire. La 3D affiche chaque page à son
-  arrivée et charge ces enfants à l'approche, par pages de 100 ; la 2D charge toutes les pages.
-  L'ouverture utilise des pages de 500 nœuds au plus, avec 10 000 liens par page en 3D et
-  2 500 en 2D, sans plafond global de nœuds. Les requêtes ne lisent que les
-  colonnes nécessaires au graphe. Le repli de feuilles utilise le compte distinct global des
-  voisins admissibles, suggestions comprises, et exige un lien confirmé. À partir de huit feuilles,
-  l'ancre porte un compteur ; le zoom et une commande explicite les révèlent. Le frontend conserve
-  en 2D le moteur ECharts animé jusqu'à 600 items chargés, avec fixation de la sélection et
-  placement initial à convergence naturelle et rééquilibrage doux de 0,7 seconde après modification du graphe.
-  La fermeture du détail conserve les positions et le cadrage.
-  Les feuilles masquées gardent leur placement ; le zoom et le dépliage ne relancent pas la physique.
-  Au-delà, le placement borné conserve les coordonnées et
-  réserve l'emprise des membres masqués. Le dézoom allège les symboles, titres et liens de détail,
-  sans retirer les relations de la simulation. Le frontend
-  limite les titres avec masquage des collisions. Cette projection ne constitue pas encore une
-  hiérarchie serveur ou un chargement spatial ; voir la [décision 0157](../../../../project/decisions/0157-stable-memory-leaf-branches.md).
-  Les sources sont contrôlées à chaque chargement : les connexions
-  sont résolues par lot, et Nextcloud mutualise les métadonnées des fichiers d'un même dossier,
-  avec repli sur chaque fichier si la liste est refusée ou incomplète. Aucun résultat d'accès
-  n'est conservé entre requêtes. L'agent sélectionné détermine déjà le périmètre ACL et
-  reste donc implicite : sa projection n'est pas affichée. Un Topic public n'entre dans ce graphe
-  que s'il contient un souvenir possédé par l'agent ou un item qui lui est directement partagé ;
-  les dossiers des autres agents ne sont pas affichés par le seul effet de leur visibilité publique.
-  Les Topics, contacts et documents sont
-  exposés avec un rôle visuel propre ; les relations Topic–mémoire/document, Contact–mémoire et
-  Contact–Topic sont renforcées, tandis que les suggestions restent fines et discontinues. La
-  récence combine dernier accès et dernière modification dans une colonne calculée indexée. Les
-  réglages restent sous **Préférences → Mémoire**. L’interface sert à auditer, corriger ou oublier,
-  pas à accepter ou rejeter des acquisitions.
+- Interface : sous `/memory`, **Liste** conserve recherche, filtres, contenu, révisions,
+  provenance et liens. **Graphe** charge des pages légères, sans les payloads des souvenirs.
+  Les sources sont revalidées à chaque chargement ; les connexions sont résolues par lot et
+  Nextcloud mutualise les métadonnées par dossier, avec repli individuel. Aucun droit n’est
+  conservé entre requêtes. Le périmètre est celui de l’agent sélectionné ; sa propre projection
+  n’est pas affichée. Un Topic public exige au moins un souvenir possédé par cet agent ou un
+  item directement partagé. L’interface permet consultation, correction et oubli, sans procédure
+  d’acceptation des acquisitions.
 
-La page ouvre par défaut le renderer 3D Three.js ; le moteur ECharts reste sélectionnable.
-Le même contrat de pages, les mêmes identités et les mêmes détails sont réutilisés.
-Un worker conserve les positions personnelles 2D et prépare un placement 3D distinct.
-Les racines File Share, sujets et contacts précèdent dossiers/répertoires, documents et
-détails. Les enfants connus conservent leur répartition latérale précédente, avec une
-profondeur `parent_of` liée à la longueur locale du lien, sans grands niveaux fixes ni
-nouvelle disposition en spirale. Les pages d'enfants retrouvent aussi leurs positions
-2D privées enregistrées. Leur chargement est
-différé jusqu'à l'approche du répertoire visible, avec au plus deux requêtes simultanées
-et une nouvelle page par déplacement, sans parcourir récursivement le provider.
-Les liens vers les enfants différés attendent aussi leur expansion.
-Le rendu instancie les marqueurs visibles
-et regroupe les segments, avec index de cellules pour le frustum et index écran pour la
-sélection. Les styles de nœuds et relations sont partagés avec la 2D. Un atlas borné
-réutilise les SVG de dossiers et chemins Material publics ; les liens sont des rubans
-instanciés pour respecter leurs épaisseurs en pixels CSS. Les shaders reprennent les
-courbures 2D. Le nombre de segments dépend de la longueur à l'écran et de la courbure,
-par tronçons instanciés de quatre segments, jusqu'à 64 par lien. Le CPU écarte les
-enveloppes hors champ et masque un lien dès qu'une de ses extrémités est derrière la caméra.
-Il modifie les buffers uniquement si le découpage change ; les
-shaders calculent les points et normales dans un seul appel de dessin pour les liens.
-Les épaisseurs 3D sont multipliées par 2,25 au loin, 1,25 de près. La taille éloignée 3D vaut
-56 % de la base plafonnée, la taille proche 110 %. Les labels n'ont pas de fond.
-Le glissement gauche tourne caméra et cible du regard autour du nœud pressé,
-sans recentrer son image à l'écran. Un geste commencé sur le fond utilise le déplacement
-latéral d'OrbitControls jusqu'au relâchement, y compris depuis la vue d'ensemble.
-Un glissement ne devient jamais un clic
-après déplacement. La molette déplace caméra et cible ensemble le long du rayon sous le
-pointeur, en conservant l'orientation et le point visé à l'écran. La profondeur du nœud
-visé détermine le pas ; le fond utilise la profondeur visible ou une vitesse en espace vide.
-Le pincement et les boutons conservent l'axe central. Le pas permet de dépasser un nœud
-et de continuer en espace vide ; le recul maximal retrouve la vue d'ensemble centrée et stable.
-Le cadrage tient compte des marqueurs rendus, du viewport et de la profondeur dans
-l'orientation du regard ; il remplit la dimension limitante avec une marge pour les
-glyphes et centre les limites projetées. Son résultat est mis en cache entre changements
-de données, de dimensions ou d'orientation, et réutilisé au recul maximal et au redimensionnement.
-Les labels et miniatures ont des budgets bornés. Il n'y a pas de boucle au repos.
-La caméra `camera_3d` version 2 et les pages des branches visitées sont enregistrées
-indépendamment de `camera`, sans migration de schéma. Une ancienne caméra du placement
-plat est réajustée. La perte de WebGL revient en 2D et recharge son catalogue complet.
-Les réponses d'un ancien contexte sont écartées. Une erreur conserve la carte partielle
-avec réessai. Ce renderer ne réalise pas la carte régionale serveur précalculée du plan :
-[ADR 0166](../../../../project/decisions/0166-batched-memory-3d-renderer.md).
+### Graphe 3D, chargement et reprise
+
+Le graphe utilise exclusivement Three.js. Les anciennes préférences de caméra 2D restent
+compatibles avec l’API, mais aucun renderer ECharts ni sélecteur 2D n’est actif. La perte du
+contexte WebGL affiche une erreur avec réessai de la scène 3D, en conservant données et filtres.
+
+L’ouverture charge tous les répertoires connus et autorisés, avec les racines File Share,
+sujets et contacts, par pages de 500 nœuds et 10 000 liens au maximum, sans plafond global.
+`defer_resource_files` diffère seulement leurs fichiers, chargés à l’approche par pages de
+500 au maximum avec deux requêtes concurrentes. S’éloigner arrête les pages suivantes ;
+changer de contexte annule les lectures. Cette projection ne parcourt pas récursivement le
+provider : elle consulte le catalogue déjà acquis. Les liens vers des enfants différés
+attendent leur chargement.
+
+Le placement se prépare dans un worker. Les coordonnées personnelles survivent aux pages,
+au zoom, au dépliage et à la fermeture du détail. Le graphe utilise des buffers GPU partagés,
+des marqueurs et rubans instanciés, un index spatial et un atlas borné. Seuls les marqueurs
+visibles sont dessinés ; un lien disparaît si une extrémité est derrière la caméra. Les titres
+ordinaires évitent les collisions et les miniatures restent bornées par leurs dimensions natives.
+Le rendu s’arrête au repos.
+
+Les branches d’au moins huit feuilles exclusives se replient avec un compteur ; les nœuds
+partagés restent visibles. Les cellules denses forment des groupes d’affichage avec relations
+agrégées, sans changer les identités canoniques. Les éléments masqués par filtre, repli ou
+cadrage transfèrent leur poids aux représentants visibles, jusqu’à quatre fois leur diamètre.
+Les enfants connus non chargés participent sans doublon ; les titres des représentants restent
+visibles. Leur réapparition retire ce poids sans déplacer les nœuds.
+
+Le glissement gauche autour d’un nœud tourne la vue ; sur le fond, il la déplace latéralement.
+Un glissement n’ouvre jamais le détail. La molette conserve le point visé et l’orientation,
+permet de traverser un nœud et retrouve la vue d’ensemble au recul maximal. Pincement,
+boutons et clavier conservent les mêmes possibilités de navigation. Le cadrage utilise les
+marqueurs rendus, la profondeur et le viewport, y compris sur mobile.
+
+Toutes les trente secondes lorsque la vue est visible et après reconnexion, l’inventaire
+des racines et répertoires parcourus est relu en arrière-plan. Seules les différences confirmées
+sont fusionnées ; les pages arrivées pendant cette lecture restent conservées. Une panne laisse
+la carte partielle utilisable ; la caméra, les positions, les filtres et les branches survivent.
+Une invalidation explicite de droits ou un changement de session retire les données protégées.
+
+L’état personnel conserve `camera_3d` et les branches de ressources par utilisateur, agent
+et contexte. C’est un cache jetable : un format incompatible ou des coordonnées invalides
+reconstruisent le placement avec contrôle de révision, sans modifier les données Memory.
+Les erreurs réseau permettent un réessai sans restaurer un ancien cadrage sur une vue naviguée.
+La carte régionale préparée côté serveur reste planifiée.
+
+Contrats : [rendu par lots](../../../../project/decisions/0166-batched-memory-3d-renderer.md),
+[3D exclusive et reprise](../../../../project/decisions/0168-memory-graph-3d-only.md),
+`front/app/memory/components/MemoryGraph.vue`, `graph3dChildren.ts`, `graphRefresh.ts`,
+`graphVisibility.ts` et `back/app/memory/graph_state.py`.
 
 Les métriques Logfire et le miroir local mesurent le nombre, le mode, la dégradation, la latence,
 le nombre de résultats et les caractères réellement injectés. Les labels sont bornés et ne

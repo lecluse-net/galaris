@@ -41,8 +41,9 @@ Secrets stay server-side and humans assign administrative delegations.
 
 While preparing a study, an agent can ask a colleague for research or review. That contribution
 becomes identifiable work: responsibilities, expected outcomes, dependencies, unanswered questions
-and results are visible. A plan can divide a complex request into child Tasks and assemble their
-conclusions.
+and results are visible. A long mission can keep milestones within one Task; a plan coordinates
+results that can be verified and resumed independently. Ambiguous scope can require clarification
+before execution.
 
 Shared documents support this collaboration. Agents need not pass successive summaries of a
 supposed deliverable that nobody can actually retrieve.
@@ -77,8 +78,9 @@ static view of the displayed result for sharing or archiving a state of the work
 ## Recover context over time
 
 Files observed through Tools can enter a private catalogue with locations and thumbnails.
-Dream identifies identical copies per agent, prepares previews and traverses compatible providers
-under indexing settings. The graph folds large branches and preserves framing during exploration.
+Dream identifies identical copies per agent, prepares previews and traverses compatible providers,
+including Samba / SMB, under indexing settings. The 3D graph folds large branches and preserves
+framing during exploration.
 Explicit detail actions can regenerate descriptions/thumbnails or synchronise relationships.
 
 Memory helps agents find facts, decisions and knowledge useful to the current request. Search
@@ -86,7 +88,8 @@ combines words, meaning and resource relationships while respecting rights and v
 associate exchanges with people; Topics gather activity spread across conversations, Tasks and
 documents.
 
-Dream uses available time to classify and consolidate knowledge. It can extract durable information
+Dream uses available time to classify and consolidate knowledge. It can reuse transcripts and
+analyses already acquired in a conversation, extract durable information
 from completed work, identify duplicates/conflicts and, when enabled, describe attachments lacking
 text. Procedural learning can also derive methods from several evidence-supported experiences.
 
@@ -135,7 +138,7 @@ YouTube videos with public subtitles can feed the same work. Viewers cover PDF, 
 video, Markdown, code and several 3D formats without forcing an external download for each inspection.
 
 With compatible models, agents can analyse images, sound and video, create/edit illustrations and
-start music, sound-effect or video generation. Long productions are tracked as Processes and their
+start music, sound-effect or video generation. Long productions have durable Multimedia tracking and their
 files remain linked to the originating work. Each provider retains its own capabilities and limits.
 
 ## Choose models and harnesses for the work

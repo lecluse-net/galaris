@@ -140,7 +140,7 @@ transaction guarantees and the limits of this local single-worker transport.
 
 The internal harness returns structured tool errors to the model, including errors
 whose effects remain uncertain. The model decides whether to verify, correct, continue
-or stop. The v4 checkpoint distinguishes these acknowledged errors from calls interrupted
+or stop. The v5 checkpoint distinguishes these acknowledged errors from calls interrupted
 without a response; the stream still reports a tool failure without automatically failing
 the Task. See [0103](../../../../project/decisions/0103-tool-errors-return-to-agent.md).
 
@@ -545,6 +545,11 @@ without ever making a tool marked destructive replayable. Only tools whose contr
 attests to a read or idempotent operation may be retried after interruption; only those marked
 `safe` may share a bounded concurrency window. A non-idempotent call left `started` becomes
 `outcome_unknown` and requires a visible resolution rather than automatic replay.
+The console helper v2 can resolve this state using a remote receipt linked to the UUID recorded
+before execution. Reconciliation remains bounded and keeps the same SSH target. Manual retries
+preserve the journal; a replaced or expired attempt cannot write checkpoints. The latest state
+is also archived in `TaskAttempt.data.agent_checkpoint`.
+See [ADR 0093](../../../../project/decisions/0093-tool-outcome-evidence-and-console-recovery.md).
 A previous conservative classification may be repaired on resumption when the current native
 contract now explicitly declares the same tool `read` or `idempotent`; the interrupted call is
 then closed as retryable. A tool that remains unknown or non-idempotent stays blocked.
@@ -998,10 +1003,7 @@ longer been available since ADR 0058, and resumption fails explicitly.
   Historical structured validation errors can repair matching calls; text errors are insufficient.
   Resumption reinjects this history and serves already journaled results without calling the tool
   again. An effect left `started` must first be reconciled; without a receipt it remains blocked.
-  Console helper v2 retrieves receipts using the UUID persisted before dispatch on the same SSH
-  target. Manual retries retain the journal, and stale or expired attempts cannot write checkpoints.
-  Each attempt archives its latest checkpoint. Unanswered tool arguments are never compacted.
-  See [ADR 0093](../../../../project/decisions/0093-tool-outcome-evidence-and-console-recovery.md).
+  Unanswered tool arguments are never compacted.
 - Fallback Messenger delivery, executed outside MCP, follows the same protocol. After durable
   acknowledgment, resumption returns the terminal result directly without calling the model or
   resending the message.

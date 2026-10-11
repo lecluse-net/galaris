@@ -2,6 +2,17 @@
 
 # Catalogue des garanties fonctionnelles
 
+Ce catalogue part des usages et des responsabilités des modules. Les suites citées sont les
+points d’entrée vérifiables ; une ligne ne signifie ni couverture exhaustive ni qualification
+d’un service externe. Les résultats exécutés et les remplacements sont consignés dans
+[la revue du 10 septembre](../../../project/audits/2026-09-10-functional-tests.md).
+
+Pour une évolution, préciser la garantie changée et celles à préserver, lire leurs contrats
+et tests, puis choisir la couche la moins coûteuse qui prouve l’effet. Conserver un test utile
+est une décision à part entière : aucun quota de tests nouveaux par module.
+
+## Médias et preuves acquises
+
 `back/app/image/tests/test_image_mcp.py` couvre les références d'image sous forme d'URI,
 de liste ou de liste JSON encodée, le nettoyage des temporaires et le nom conforme au format
 natif sans conversion ni remplacement d'un fichier voisin. Le parcours de
@@ -31,6 +42,8 @@ paramètres de connexion des transactions suivantes, après commit comme après 
 `test_memory_extraction.py` vérifie qu'une provenance ajoutée par LINK ne rend pas un
 souvenir manuel ou un document préexistant dépendant de cette preuve conversationnelle.
 
+## Administration des agents
+
 AgentAdmin est documenté dans [agent-admin.md](agent-admin.md).
 `back/app/agent/tests/test_avatars.py` vérifie le stockage JPEG dans une limite de 500 × 500,
 les proportions, l’absence d’agrandissement, l’orientation EXIF et la transparence.
@@ -54,6 +67,8 @@ révocation, avec un fournisseur synthétique.
 `front/browser-tests/agents.spec.mjs` retarde la réponse d'un ancien catalogue puis
 vérifie qu'elle ne retire pas le portrait chargé par le catalogue courant et que son
 URL temporaire est libérée.
+
+## Organisation des Tasks et planification
 
 `back/app/agent/tests/test_planner_collections.py` couvre les traitements répétés : petits lots
 mécaniques connus d'au plus cinq éléments en une feuille sans découverte ni replanification,
@@ -91,15 +106,6 @@ tests de génération et de revue utilisent donc un vrai plan exécutable.
 `back/tests/test_protocol_inference.py` reproduit une réponse fournisseur `response.failed`
 contenant un appel d'outil vide : l'inférence et sa trace restent en échec, en flux comme
 en réponse JSON, au lieu de transformer cet appel en plan accepté.
-
-Ce catalogue part des usages et des responsabilités des modules. Les suites citées sont les
-points d’entrée vérifiables ; une ligne ne signifie ni couverture exhaustive ni qualification
-d’un service externe. Les résultats exécutés et les remplacements sont consignés dans
-[la revue du 10 septembre](../../../project/audits/2026-09-10-functional-tests.md).
-
-Pour une évolution, préciser la garantie changée et celles à préserver, lire leurs contrats
-et tests, puis choisir la couche la moins coûteuse qui prouve l’effet. Conserver un test utile
-est une décision à part entière : aucun quota de tests nouveaux par module.
 
 ## Parcours traversant plusieurs domaines
 
@@ -596,14 +602,7 @@ Les autres providers déclarés sont `openrouter`, `mammouth`, `anthropic`, `dee
 un cas spécifique lorsqu’une différence de protocole le justifie, pas une copie du workflow
 canonique. Leurs modules frontend de configuration suivent les mêmes contrats de formulaire.
 
-## Règle de maintenance
-
-Une garantie a une preuve principale et, si nécessaire, une preuve d’assemblage E2E.
-Une nouvelle fonction interne n’exige pas automatiquement un nouveau test. Une nouvelle
-branche métier, un refus, une perte de donnée possible ou un effet rejouable exige une preuve.
-Un changement volontaire indique l’avant/après ; une suppression de test indique ce qui est
-repris et ce qui ne constitue plus une exigence. Mesurer les régressions échappées, l’instabilité,
-la durée et les mutations pertinentes, pas un objectif de nombre de tests.
+## Documents et interactions communes
 
 ### Préférence personnelle d’ouverture des documents du chat
 
@@ -823,7 +822,7 @@ métadonnées suivent le nombre de dossiers pour 300 et 3 000 fichiers, avec re
 et nouveaux contrôles après révocation. Le scénario fournisseur vérifie aussi la résolution
 groupée des fichiers d'un Tool combinant File Share et Messenger.
 `e2e/specs/file-indexing.spec.mjs` exerce l'application assemblée et son API réelle.
-### Portée et commandes durables (0170)
+## Portée et commandes durables
 
 `app/agent/tests/test_execution_scope.py` et `app/task/tests/test_execution_scope.py`
 vérifient héritage sans élargissement, amendement via le port, version inconnue, couverture
@@ -849,3 +848,12 @@ en remplacement de l'ancienne limite de 100. Le scénario Lab d'inférence struc
 vérifie le contrat Dispatcher v5, ses valeurs d'organisation par défaut, ses retries
 et ses coûts ; `test_dispatcher_planning.py` conserve la résolution des inférences v4
 figées, sans leur ajouter les champs d'organisation.
+
+## Règle de maintenance
+
+Une garantie a une preuve principale et, si nécessaire, une preuve d’assemblage E2E.
+Une nouvelle fonction interne n’exige pas automatiquement un nouveau test. Une nouvelle
+branche métier, un refus, une perte de donnée possible ou un effet rejouable exige une preuve.
+Un changement volontaire indique l’avant/après ; une suppression de test indique ce qui est
+repris et ce qui ne constitue plus une exigence. Mesurer les régressions échappées, l’instabilité,
+la durée et les mutations pertinentes, pas un objectif de nombre de tests.

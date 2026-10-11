@@ -7,6 +7,9 @@ Ce guide aide à trouver une fonction dans l’application. La
 donne les libellés exacts, routes, descriptions et conditions d’accès de la version livrée.
 Les chemins ci-dessous sont relatifs à votre instance Galaris.
 
+Pour comprendre les jalons, les plans, les questions et les reprises, consulter le
+[guide des Tasks](tasks.md).
+
 Lors de la première ouverture d'un onglet ou d'un éditeur, un indicateur de chargement
 peut apparaître brièvement. Le reste de la page reste utilisable. Si le chargement échoue,
 **Réessayer** relance l'ouverture sans recharger la page ni effacer les saisies en cours.

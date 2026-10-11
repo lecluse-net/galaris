@@ -561,7 +561,8 @@ en échec rejouable.
 
 ## Checkpoints, effets et concurrence
 
-Le checkpoint interne version 3 journalise chaque appel avant son exécution, puis son résultat.
+Le checkpoint interne version 5 journalise chaque appel avant son exécution, puis son résultat,
+et conserve les appels en attente d'autorisation avec leurs identités d'origine.
 Les outils inconnus sont considérés non idempotents et exclusifs. Les annotations MCP standard
 `readOnlyHint` et `idempotentHint` d'un serveur externe complètent la politique des outils natifs,
 sans jamais rendre rejouable un outil marqué destructif. Seuls les outils dont le contrat

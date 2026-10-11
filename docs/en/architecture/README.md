@@ -15,7 +15,8 @@ knowledge: invariants explained by humans and a map automatically reconstructed 
 | Audit the internal Messenger | [Architecture and Data Validation](chat-validation.md) |
 | Understand session, recall, and consolidation | [Memory](flows/memory.md) |
 | Understand opportunistic background maintenance | [Dream](flows/dream.md) |
-| Follow a tool or a long-running execution | [Processes](flows/process.md) |
+| Follow a business workflow and its engine | [Processes](flows/process.md) |
+| Follow a media generation or a Lab operation | [Multimedia](../components/multimedia.md) and [AI Lab](ai-lab-evaluation.md) |
 | Understand calendars and their triggers | [Calendars](flows/calendar.md) |
 | Understand browser sessions and outputs | [Browser](flows/browser.md) |
 | Understand files, media, and resources | [Media and Resources](flows/media-resources.md) |

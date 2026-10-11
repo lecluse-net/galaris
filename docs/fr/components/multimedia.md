@@ -18,6 +18,10 @@ et le texte restent configurés séparément.
    Tool exige une activation explicite. Sans ressource compatible, la fonction reste absente
    du catalogue MCP.
 
+Le catalogue MCP et chaque appel revérifient connexion, capacité, fournisseur et ressource
+sélectionnée. La génération durable appartient à `app.multimedia`, avec son worker et ses
+checkpoints ; elle ne crée pas de run Process.
+
 | Fonction | Usage du profil | Fournisseurs intégrés |
 |---|---|---|
 | `audio_read` | Analyse des sons et musiques | OpenRouter et Mammouth AI, modèles avec entrée audio et sortie texte |
@@ -34,7 +38,8 @@ ne modifie pas les runs : Galaris récupère l'état auprès du fournisseur avec
 ## Utilisation par les agents
 
 Les lectures prennent `uri` et une question `prompt`. Les fichiers restent dans leur Tool
-d'origine ; l'analyse dispose d'un temporaire borné à 32 Mo et 20 minutes, sans copie durable.
+d'origine ; l'analyse dispose d'un temporaire borné à 32 Mio et 20 minutes, validé par FFprobe,
+sans copie durable.
 
 Les générations prennent un `prompt` et une `destination` désignant une collection de fichiers
 accessible en écriture, terminée par `/`, par exemple une collection renvoyée par `file_list`.
@@ -43,12 +48,14 @@ Une console n'est utilisable que si sa connexion est active.
 
 Le résultat initial fournit un `generation_id` et un `run_id`. Utiliser `multimedia_get_run` jusqu'au résultat terminal.
 Les fichiers finaux figurent dans `output.files[].uri`, et sont ajoutés aux ressources de la Task.
-La génération devient réussie après écriture dans la destination. Maximum : quatre fichiers de 100 Mo.
+La génération devient réussie après écriture dans la destination. Maximum : quatre fichiers de 100 Mio.
 
 `invocation_key` identifie une seule demande : la réutiliser pour retenter cette demande,
 utiliser une nouvelle clé pour produire une autre variation. Sans clé, chaque invocation est distincte.
 En cas de réponse perdue à la soumission, Galaris ne relance pas automatiquement la génération.
 En cas d'interruption ambiguë d'une écriture distante, vérifier la destination avant toute relance.
+Les reçus privés en base conservent les octets jusqu'à leur livraison canonique puis les effacent.
+L'annulation distante n'est pas annoncée sans confirmation du fournisseur.
 
 Les options dépendent du fournisseur : ElevenLabs produit les effets jusqu'à 30 secondes et
 la musique à partir de 3 secondes ; SunoAPI accepte les paroles en mode personnalisé avec
