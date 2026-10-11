@@ -212,6 +212,17 @@ slice an HTML tag to fit a page. Ordinary text files still use line offsets.
 
 **Dataset documents** use the same `document://` URI, title, icon, classification, sharing
 and revision lifecycle, but store valid UTF-8 JSON (`application/json`) instead of HTML.
+Consider a Dataset when structured data will be reused across documents, calculations or
+Tasks: company details including share capital and currency, product records, or comparable
+figures. Prefer it when a shared reference reduces inconsistent copies. Keep self-contained
+answers and isolated facts in the simplest suitable medium; Dataset use is a judgment call,
+not a required search, write or end-of-task step. With the required tools authorized, look
+for a relevant existing Dataset before creating one and reuse its exact URI. Read current
+data before drafting dependent prose; preserve units, dates, sources and uncertainty without
+inventing missing values. Authoritative business records remain the source of truth. Respect
+the current foreground/Task action policy and resource access rights. A reference to a Dataset
+does not automatically refresh existing prose.
+
 Create one with `file_create(path="document://", name="Scenarios", document_type="dataset",
 content='{"scenarios": []}')`. The type is immutable; omission selects `html`.
 The type parameter is only accepted for creation at the `document://` collection, not files

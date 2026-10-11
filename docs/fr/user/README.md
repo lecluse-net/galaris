@@ -567,6 +567,14 @@ Dans **Mémoire**, les comptes autorisés peuvent :
 - explorer le graphe sur une période donnée ;
 - oublier définitivement un élément, action irréversible réservée aux droits adéquats.
 
+Les agents sont invités à envisager un Dataset lorsque des données structurées peuvent
+servir dans plusieurs documents, calculs ou Tasks. Par exemple, une fiche d'entreprise peut
+regrouper son capital et sa devise pour les réutiliser dans une présentation ou un budget.
+Ils privilégient un Dataset existant, conservent les sources et incertitudes et relisent
+les données lors de la rédaction. Ce choix reste adapté au besoin : un fait isolé ou une
+réponse courte ne nécessite pas systématiquement un Dataset. Un document rédigé à partir
+de ces données ne se met pas automatiquement à jour lorsque le Dataset change.
+
 Les fiches Agent, Goals et cycles sont des projections en lecture seule : modifiez leur source
 plutôt que leur copie mémoire. Les contacts issus des messageries ne contiennent que l’identité
 minimale nécessaire et restent privés à l’agent propriétaire.

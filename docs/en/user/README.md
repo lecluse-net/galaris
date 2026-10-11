@@ -439,6 +439,13 @@ In **Memory**, authorized accounts can:
 - explore the graph over a given period;
 - permanently forget an item, an irreversible action reserved for the appropriate permissions.
 
+Agents are encouraged to consider a Dataset when structured data can serve several
+documents, calculations or Tasks. For example, a company record can hold its share capital
+and currency for reuse in a presentation or budget. Agents prefer an existing Dataset,
+preserve sources and uncertainty, and read current data when drafting. The choice remains
+suited to the need: an isolated fact or short answer does not systematically require a
+Dataset. Prose drafted from this data does not automatically update when the Dataset changes.
+
 Agent profiles, Goals, and cycles are read-only projections: modify their source rather than their memory copy. Contacts from messaging systems contain only the minimum identity required and remain private to the owning Agent.
 
 File entries remain empty until they have notes or a useful description.

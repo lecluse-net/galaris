@@ -36,6 +36,16 @@ PDF/HTML exports remain specific to HTML documents. Other document types remain 
 [Interactive HTML](document-apps.md) now allows forms and declared Dataset access inside
 an isolated document runtime; history and exports remain inert.
 
+The common Task, conversation and voice executor policy asks Agents to consider a Dataset
+for structured data reused across documents, calculations or Tasks: company details with
+share capital and currency, product catalogs, or comparable figures. Prefer a relevant
+existing Dataset and read its current data before drafting dependent content. Preserve
+units, dates, sources and uncertainty without inventing missing values or replacing an
+authoritative business record. The choice remains proportional to its use: no systematic
+search or write is required for an isolated fact or self-contained answer. Current action
+policies and access rights still apply; a Dataset link does not automatically refresh
+previously saved prose.
+
 Create or revise a document when the requested outcome calls for durable authored content to
 retain, revise or share. A Task does not in itself require a document: self-contained answers and
 completion confirmations stay in the conversation, operational state in the relevant business

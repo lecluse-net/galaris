@@ -186,6 +186,28 @@ def build_executor_prompt_tree(
     nodes = _identity_nodes(context, short_round=short_round)
     nodes.append(
         section(
+            "dataset-consideration-policy",
+            title="Consider reusable structured data",
+            text=(
+                "Consider a JSON Dataset when structured data will be reused across "
+                "documents, calculations, or Tasks: company details including share "
+                "capital and currency, product records, or comparable figures. Prefer "
+                "it when a shared reference reduces inconsistent copies. Keep "
+                "self-contained answers and isolated facts in the simplest suitable "
+                "medium. With the required tools authorized, look for a relevant "
+                "existing Dataset before creating one and reuse its document:// URI. "
+                "Read current data before drafting dependent prose; preserve units, "
+                "dates, sources, and uncertainty without inventing missing values. "
+                "Authoritative business records remain the source of truth. This is "
+                "a judgment call, not a required search, write, or end-of-task step. "
+                "Respect the current conversation/Task action policy and resource "
+                "access rights. Referencing a Dataset does not automatically refresh "
+                "existing prose."
+            ),
+        )
+    )
+    nodes.append(
+        section(
             "document-revision-policy",
             title="Document revision policy",
             text=(

@@ -38,6 +38,16 @@ restent hors périmètre. Le [HTML interactif](document-apps.md) permet désorma
 aux documents HTML de contenir des formulaires et d'accéder à des datasets déclarés via un
 runtime isolé ; l'historique et les exports restent inertes.
 
+La politique commune aux exécuteurs Task, conversation et voix invite les agents à envisager
+un Dataset pour les données structurées réutilisables entre documents, calculs ou Tasks :
+fiche d'entreprise avec capital et devise, catalogue de produits ou chiffres comparables.
+Privilégier un Dataset pertinent existant et relire ses données avant de rédiger un contenu
+qui en dépend. Conserver unités, dates, sources et incertitudes, sans inventer les valeurs
+manquantes ni remplacer une ressource métier autoritaire. Ce choix reste proportionné à
+l'usage : aucune recherche ou écriture systématique n'est exigée pour un fait isolé ou une
+réponse autonome. La politique d'action du contexte et les droits restent applicables ;
+un lien vers un Dataset n'actualise pas automatiquement la prose déjà enregistrée.
+
 Créer ou réviser un document lorsque le résultat demandé appelle un contenu rédigé durable
 à conserver, réviser ou partager. Une Task ne nécessite pas à elle seule un document : les réponses
 autonomes et confirmations restent dans la conversation, l'état opérationnel dans la ressource
