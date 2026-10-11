@@ -36,6 +36,7 @@ Un plan ne vaut ni ordre d'implémentation ni nouvelle priorité produit.
 
 | Plan | Statut | Portée |
 |---|---|---|
+| [editeur-code-conversationnel.md](editeur-code-conversationnel.md) | `design` | code-server dans le panneau documentaire du Chat, même dépôt/worktree et fonctionnement standard de VS Code ; Git humain avec la configuration et les clés SSH existantes de l'agent, présentation pendant les Tasks. Consoles interne et externe requises ; identité humaine séparée et environnement terminal complet facultatifs. Sessions, droits et consultation protégée à qualifier. |
 | [processus-metier-internes-bpmn.md](processus-metier-internes-bpmn.md) | `design` | BPMN interne : Tasks/prompts, IF/FOR/WHILE, parallélisme selon graphe/harnais, erreurs, imbrication et reprise ; aucun budget v1. Lancement du contenu courant sans choix de version, historique/restauration, WYSIWYG/débogueur, métriques, Dataset/PJ, partage Document et audit MCP ; accès humains/lecture seule/orphelins administrés, Tools/Connections/REST, coexistence n8n ; Lab progressif et mocks en seconde phase. |
 | [programmes-documentaires-json.md](programmes-documentaires-json.md) | `design` | Programmes dans les Documents, `document_exec` avec nom personnel et entrée/sortie JSON, dernier contenu sauvegardé au démarrage, moteur isolé, suivi Process et amélioration autonome. |
 | [ordonnancement-llm-par-fournisseur.md](ordonnancement-llm-par-fournisseur.md) | `design` | Provenance exhaustive, limite par connexion, priorités par type avec audio réservé, admission/annulation, activité et reprise. |
