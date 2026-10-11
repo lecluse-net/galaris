@@ -635,10 +635,15 @@ matching nor a preferred channel; only observation of an incoming human message 
 projection. Protocols without a queryable directory, such as Telegram Bot or WhatsApp Cloud,
 produce no result until a dedicated technical cache is defined.
 
-For a new send, the Task’s exact connection is used when one exists. Outside that context, or to
-change platforms, the caller explicitly provides the channel obtained through search. A missing,
-ambiguous, or incapable channel fails without cross-channel fallback. Messages, files, and voice
-notes follow the same rule; no exchange history implicitly selects a platform.
+For a new send, an explicit channel takes priority; otherwise preserve the Task's exact connection
+(including a Goal's referrer connection) or the current conversation. Without a fixed route,
+the recipient's latest inbound message with an exact identity match selects the channel. Without
+a usable exchange, internal Chat is the default, followed by the oldest available connection.
+A fixed or explicit unavailable route fails without cross-channel fallback. Resolution precedes
+authorization and freezes one connection per call, reused for its effect; concurrent calls do not
+modify shared run resources. Messages, files and voice notes follow this selection; a voice note
+requires a recent room on the selected channel.
+See [0175](../../../../project/decisions/0175-messenger-route-authorization.md).
 
 ## Media and Voice
 

@@ -189,6 +189,7 @@ from .native_facade import (
 
 # Current conversation context used by room-explicit MCP tools.
 from .mcp import (
+    bind_messenger_tool_context,
     MessagingContext,
     current_context,
     set_context,
@@ -367,6 +368,7 @@ __all__ = [
     "preview_reference",
     "preview_references",
     # Current MCP messaging context.
+    "bind_messenger_tool_context",
     "MessagingContext",
     "current_context",
     "set_context",

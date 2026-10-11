@@ -662,11 +662,15 @@ aucun rapprochement cross-canal ni canal préféré ; seule l'observation d'un m
 alimente la projection Memory. Les protocoles sans annuaire interrogeable, comme Telegram Bot ou
 WhatsApp Cloud, ne produisent pas de résultat tant qu'un cache technique dédié n'est pas défini.
 
-Pour un nouvel envoi, la connexion exacte de la Task est utilisée lorsqu'elle existe. Hors de ce
-contexte, ou pour changer de plateforme, l'appelant fournit explicitement le canal obtenu par la
-recherche. Une absence, une ambiguïté ou une incapacité du canal échoue sans repli cross-canal. Les
-messages, fichiers et notes vocales appliquent la même règle ; aucun historique d'échange ne choisit
-implicitement une plateforme.
+Pour un nouvel envoi, un canal explicitement demandé prime ; sinon la connexion exacte de la Task
+(notamment celle du référent d'un Goal) ou de la conversation est conservée. Sans route fixée,
+le dernier message entrant du destinataire identifié exactement choisit le canal ; sans échange
+utilisable, le chat interne est le défaut, puis la plus ancienne connexion disponible. Un canal
+explicitement choisi ou fixé sur une Task qui devient indisponible échoue sans repli cross-canal.
+La résolution précède l'autorisation et fige une connexion propre à chaque appel, réutilisée pour
+son effet ; les appels concurrents ne modifient pas les ressources communes du run. Messages,
+fichiers et notes vocales suivent cette sélection ; une note vocale exige une room récente sur le
+canal sélectionné. Voir [0175](../../../../project/decisions/0175-messenger-route-authorization.md).
 
 ## Médias et voix
 

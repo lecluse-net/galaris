@@ -216,6 +216,11 @@ tool. Ces capacités spécialisées ne sont accordées à aucun agent par défau
 
 ### Passer par une messagerie
 
+Les messages d'un cycle d'objectif utilisent la messagerie choisie pour son référent. Garder
+Nextcloud Talk actif ne détourne donc pas les messages d'un objectif rattaché au chat interne.
+Pour un envoi sans canal fixé, Galaris reprend le dernier échange entrant avec le destinataire,
+puis choisit le chat interne par défaut. L'agent peut demander explicitement un autre canal.
+
 Dans l’installation par défaut, les skills `galaris-lab` et `galaris-knowledge` sont
 bloqués globalement et autorisés individuellement pour le seul agent **Galaris** créé
 à l’installation. Les autorisations restent modifiables et les mises à jour conservent

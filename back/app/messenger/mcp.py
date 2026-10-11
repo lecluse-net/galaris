@@ -11,7 +11,7 @@ from app.agent import EffectDescriptorV1
 import contextvars
 import difflib
 import tempfile
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 
 from pathlib import Path
 from typing import Any, List, Optional, cast
@@ -81,6 +81,8 @@ async def _resolve_agent_messenger(
     agent_id: int,
     language: str,
     task_id: UUID | None = None,
+    *,
+    user: str = "",
 ) -> MessengerFacade:
     from .service import messenger_for_agent, messenger_for_agent_connection
 
@@ -120,6 +122,17 @@ async def _resolve_agent_messenger(
                 "cross-channel fallback is disabled."
             )
 
+    if user:
+        from .service import recent_user_room
+
+        route = await recent_user_room(agent_id, user, exact_only=True)
+        if route is not None:
+            try:
+                return await messenger_for_agent_connection(agent_id, route.connection_id)
+            except ValueError:
+                # An automatic historical preference is weaker than current availability.
+                # An explicit Task pin above still fails without rerouting.
+                pass
     messenger = await messenger_for_agent(agent_id)
     if messenger is None:
         raise NotSupported(t("messenger_mcp.no_messenger", language))
@@ -202,9 +215,50 @@ async def _resolve_context_messenger(
 ) -> MessengerFacade:
     """Resolve a Task-pinned messenger while preserving context-free tool calls."""
 
+    connection_id = ctx.resource("connection_id")
+    turn = ctx.resource("conversation_turn")
+    if connection_id is None and turn is not None:
+        connection_id = turn.messaging_context.get("connection_id")
+    if connection_id is not None:
+        from .service import messenger_for_agent_connection
+
+        return await messenger_for_agent_connection(ctx.agent_id, int(connection_id))
     if ctx.task_id is None:
         return await _resolve_agent_messenger(ctx.agent_id, language)
     return await _resolve_agent_messenger(ctx.agent_id, language, ctx.task_id)
+
+
+async def bind_messenger_tool_context(
+    ctx: McpToolContext, arguments: dict[str, Any],
+) -> McpToolContext:
+    """Freeze one transport per call for both authorization and actual dispatch.
+
+    Never mutate the run's shared resources: concurrent calls may select different channels.
+    Task pins also apply to runtimes whose MCP context only carries the task UUID.
+    """
+    from .service import messenger_for_agent_connection, messenger_for_agent_kind
+
+    source_connection = ctx.resource("source_connection_id")
+    channel = str(arguments.get("channel") or "").strip()
+    if source_connection is not None:
+        messenger = await messenger_for_agent_connection(ctx.agent_id, int(source_connection))
+        if channel and normalize_kind(channel) != messenger.kind:
+            await messenger.close()
+            raise ValueError("The requested channel does not match the Tool connection.")
+    elif channel:
+        messenger = await messenger_for_agent_kind(ctx.agent_id, channel)
+    elif ctx.resource("connection_id") is not None or ctx.resource("conversation_turn") is not None:
+        messenger = await _resolve_context_messenger(ctx, await _context_language(ctx))
+    else:
+        messenger = await _resolve_agent_messenger(
+            ctx.agent_id, await _context_language(ctx), ctx.task_id,
+            user=str(arguments.get("user") or arguments.get("user_id") or ""),
+        )
+    try:
+        return replace(ctx, resources={**ctx.resources, "connection_id": int(messenger.connection_id)})
+    finally:
+        # Selection may initialize an external client; it does not own the later transport.
+        await messenger.close()
 
 
 async def _deliver_agent_file_with_status(
@@ -304,8 +358,9 @@ async def mcp_room_send_message(ctx: McpToolContext, room_id: str, message: str)
     name="messenger_send_message_to_user",
     description=(
         "Send a message to an exact provider user ID or a display name resolved by that provider. "
-        "The current Task's exact messaging connection is used by default. Set channel "
-        "(nextcloud_talk, telegram, matrix, whatsapp, or one_bot) to select another platform; "
+        "The current Task's exact messaging connection is used by default. Without a pinned "
+        "connection, use the recipient's latest inbound channel, then internal Chat by default. Set channel "
+        "(internal, nextcloud_talk, telegram, matrix, whatsapp, or one_bot) to select another platform; "
         "an unavailable or ambiguous channel never falls back. Use messenger_search_users first "
         "when the recipient ID is unknown. Sending to another AI agent becomes a blocking peer "
         "request."
@@ -442,7 +497,11 @@ async def _resolve_user_delivery(
     """Resolve one exact transport and one provider-native user identifier."""
 
     requested_channel = channel.strip()
-    if requested_channel:
+    if ctx.resource("connection_id") is not None:
+        messenger = await _resolve_context_messenger(ctx, language)
+        if requested_channel and normalize_kind(requested_channel) != messenger.kind:
+            raise ValueError("The requested channel does not match the authorized connection.")
+    elif requested_channel:
         from .service import messenger_for_agent_kind
 
         messenger = await messenger_for_agent_kind(ctx.agent_id, requested_channel)
@@ -558,7 +617,10 @@ async def mcp_send_audio_message(
 
         requested_channel = channel.strip()
         selected_connection_id: int | None = None
-        if requested_channel:
+        bound_connection_id = ctx.resource("connection_id")
+        if bound_connection_id is not None:
+            selected_connection_id = int(bound_connection_id)
+        elif requested_channel:
             selected = await messenger_for_agent_kind(
                 ctx.agent_id, requested_channel
             )

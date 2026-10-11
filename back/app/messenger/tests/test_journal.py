@@ -737,6 +737,40 @@ async def test_recent_user_room_uses_latest_inbound_room_and_contact_id(
     assert by_contact is not None
     assert by_name.room_id == "room-latest"
     assert by_contact == by_name
+    assert await service.recent_user_room(connection.agent_id, "Nico", exact_only=True) is None
+    assert await service.recent_user_room(connection.agent_id, "Nico") is not None
+
+
+@pytest.mark.asyncio
+async def test_unpinned_message_uses_the_recipients_latest_channel(db, monkeypatch):
+    from types import SimpleNamespace
+    from app.messenger import mcp
+    from app.tools.mcp_loader import McpToolContext
+
+    older = await _connection(db)
+    tool = await db.get(Tool, older.tool_id)
+    tool.messenger_config = {"service": "nextcloud_talk"}
+    chat_tool = Tool(code=f"synthetic-chat-{uuid4().hex}", label="Synthetic Chat",
+                     messenger_config={"service": "internal"})
+    db.add(chat_tool)
+    await db.flush()
+    latest = Connection(agent_id=older.agent_id, tool_id=chat_tool.id, active=True)
+    db.add(latest)
+    await db.flush()
+    for connection, timestamp, platform in ((older, 100, "nextcloud_talk"), (latest, 300, "internal")):
+        await journal.persist_inbound(Message(id=f"inbound-{connection.id}", platform=platform,
+            tool_id=connection.tool_id, sender=User(id="human-42", display_name="Synthetic human"),
+            recipient=User(id="bot"), room=Room(id=f"room-{connection.id}"), text="Synthetic greeting",
+            time=timestamp), connection_id=connection.id, platform=platform)
+    get_messenger = AsyncMock(side_effect=lambda connection_id: SimpleNamespace(
+        connection_id=connection_id, kind="internal" if connection_id == latest.id else "nextcloud_talk",
+        supports=lambda capability: True, close=AsyncMock()))
+    monkeypatch.setattr(facade, "get_messenger", get_messenger)
+    context = McpToolContext(agent_id=older.agent_id, runtime="internal")
+    bound = await mcp.bind_messenger_tool_context(context, {"user": "Synthetic human"})
+    assert bound.resource("connection_id") == latest.id
+    assert context.resources == {}
+    get_messenger.assert_awaited_once_with(latest.id)
 
 
 @pytest.mark.asyncio

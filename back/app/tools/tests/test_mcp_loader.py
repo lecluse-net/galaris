@@ -22,6 +22,9 @@ def default_harness_configuration(monkeypatch):
     # Isolate approval persistence in these wrapper/error units. Actual pre-effect
     # authorization is exercised with real DB and MCP in test_action_authorizations.
     monkeypatch.setattr("app.tools.mcp_authorization.authorize_native_call", AsyncMock(return_value=None))
+    async def isolated_messenger_context(ctx, _arguments):
+        return ctx
+    monkeypatch.setattr("app.messenger.bind_messenger_tool_context", isolated_messenger_context)
 
 
 @pytest.mark.asyncio

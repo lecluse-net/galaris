@@ -776,26 +776,27 @@ async def send_task_progress(agent_id: int, task_id: UUID, message: str) -> bool
 
 
 async def messenger_for_agent(agent_id: int) -> Optional[facade.MessengerFacade]:
-    """Return the sole active Messenger for an agent, or ``None`` when ambiguous."""
+    """Choose Chat by default, then the oldest active available connection."""
     from app.connection import connection_service
     from app.tools import tool_service
 
-    candidates: list[Any] = []
+    candidates: list[tuple[bool, int]] = []
     for conn in await connection_service.get_connections_by_agent(agent_id):
         if not getattr(conn, "active", True):
             continue
         tool = await tool_service.get_tool_by_id(conn.tool_id)
         kind = _bridge_kind_for_tool(tool)
         if kind and facade.is_kind_enabled(kind) and facade.get_factory(kind):
-            candidates.append(conn)
-    if len(candidates) != 1:
+            candidates.append((kind != "internal", int(conn.id)))
+    if not candidates:
         return None
+    connection_id = min(candidates)[1]
     try:
-        return await facade.get_messenger(candidates[0].id)
+        return await facade.get_messenger(connection_id)
     except Exception:
         logger.exception(
             "messenger_for_agent: failed to build messenger for connection {}",
-            candidates[0].id,
+            connection_id,
         )
         return None
 
@@ -929,6 +930,7 @@ async def recent_user_room(
     user: str,
     *,
     connection_id: int | None = None,
+    exact_only: bool = False,
 ) -> RecentUserRoom | None:
     """Return the last room in which ``user`` wrote to this agent.
 
@@ -985,6 +987,8 @@ async def recent_user_room(
     exact_row = (
         await get_db().execute(query.where(or_(*exact_conditions)).limit(1))
     ).first()
+    if exact_only and exact_row is None:
+        return None
     rows = (
         [exact_row]
         if exact_row is not None

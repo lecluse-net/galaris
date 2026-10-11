@@ -110,8 +110,10 @@ async def test_task_messaging_rejects_inactive_pinned_connection(
 
 
 @pytest.mark.asyncio
-async def test_agent_messenger_does_not_choose_between_active_channels(
+@pytest.mark.parametrize("internal", [False, True])
+async def test_agent_messenger_chooses_chat_then_a_stable_available_connection(
     monkeypatch: pytest.MonkeyPatch,
+    internal: bool,
 ) -> None:
     from app.tools import tool_service
 
@@ -126,7 +128,7 @@ async def test_agent_messenger_does_not_choose_between_active_channels(
         ),
         4: SimpleNamespace(
             code="custom-matrix",
-            messenger=SimpleNamespace(service="matrix"),
+            messenger=SimpleNamespace(service="internal" if internal else "matrix"),
         ),
     }
     monkeypatch.setattr(
@@ -144,10 +146,9 @@ async def test_agent_messenger_does_not_choose_between_active_channels(
     get_messenger = AsyncMock()
     monkeypatch.setattr(service.facade, "get_messenger", get_messenger)
 
-    resolved = await service.messenger_for_agent(7)
+    await service.messenger_for_agent(7)
 
-    assert resolved is None
-    get_messenger.assert_not_awaited()
+    get_messenger.assert_awaited_once_with(29 if internal else 17)
 
 
 @pytest.mark.asyncio

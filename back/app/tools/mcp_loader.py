@@ -473,6 +473,11 @@ def _wrap_tool(definition: McpToolDefinition, ctx: McpToolContext) -> Callable[.
                     arguments = {
                         key: value for key, value in bound.arguments.items() if key not in {"ctx", "context"}
                     }
+                    call_ctx = ctx
+                    if definition.tool_code == "messenger":
+                        from app.messenger import bind_messenger_tool_context
+
+                        call_ctx = await bind_messenger_tool_context(ctx, arguments)
                     if ctx.task_id is not None:
                         from app.agent import record_scope_preflight
                         decision = await record_scope_preflight(ctx.task_id,
@@ -497,25 +502,25 @@ def _wrap_tool(definition: McpToolDefinition, ctx: McpToolContext) -> Callable[.
                     from .mcp_authorization import authorize_native_call, bind_native_action
                     if definition.authorization_boundary == "prepared":
                         from .authorization import prepared_authorization
-                        with prepared_authorization(await bind_native_action(ctx, definition, arguments)) as prepared:
+                        with prepared_authorization(await bind_native_action(call_ctx, definition, arguments)) as prepared:
                             try:
                                 await recheck_scope()
-                                result = definition.function(ctx, *args, **kwargs)
+                                result = definition.function(call_ctx, *args, **kwargs)
                                 if inspect.isawaitable(result):
                                     result = await result
                             finally:
                                 authorization_id = prepared.request_id
                     else:
-                        authorization_id = await authorize_native_call(ctx, definition, arguments)
+                        authorization_id = await authorize_native_call(call_ctx, definition, arguments)
                         from .authorization import authorized_request
                         with authorized_request(authorization_id):
                             await recheck_scope()
-                            result = definition.function(ctx, *args, **kwargs)
+                            result = definition.function(call_ctx, *args, **kwargs)
                             if inspect.isawaitable(result):
                                 result = await result
                     from .resource_effects import record_tool_resources
 
-                    await record_tool_resources(ctx, definition.name, arguments, result)
+                    await record_tool_resources(call_ctx, definition.name, arguments, result)
                 await get_db().commit()
             from .authorization import finish_action
             await finish_action(authorization_id, receipt=result)

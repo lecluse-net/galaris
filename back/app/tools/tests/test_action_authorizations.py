@@ -43,6 +43,57 @@ async def pending(action):
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("pin_storage", ["column", "data", "default"])
+@pytest.mark.parametrize("runtime", ["internal", "hermes"])
+@pytest.mark.parametrize("state", ["enabled", "disabled"])
+async def test_goal_message_authorizes_and_delivers_on_its_internal_connection(action, pin_storage, runtime, state):
+    """An enabled external Messenger cannot make a Goal's exact Chat route ambiguous."""
+    from fastmcp import Client
+    from app.connection import Connection, facade as connections
+    from app.messenger import create_internal_room
+    from app.messenger.models import Message
+    from app.task.models import Task, TaskStatus
+    from app.tools import ToolModel, build_agent_galaris_fastmcp
+
+    async with get_db_session() as db:
+        agent = await db.get(Agent, action.agent_id)
+        chat = await db.scalar(select(ToolModel).where(ToolModel.code == "chat"))
+        talk = ToolModel(code=f"synthetic-talk-{uuid4().hex}", label="Synthetic Talk",
+                         messenger_config={"service": "nextcloud_talk"})
+        db.add(talk)
+        await db.flush()
+        connection = Connection(agent_id=agent.id, tool_id=chat.id, active=True)
+        db.add_all([connection, Connection(agent_id=agent.id, tool_id=talk.id, active=True)])
+        await db.flush()
+        assert await create_internal_room(actor_user_id=agent.user_id, agent_id=agent.id) is not None
+        task = Task(label="Synthetic goal cycle", objective="<p>Send a progress update.</p>",
+                    agent_id=agent.id, status=TaskStatus.EXEC,
+                    messenger_connection_id=connection.id if pin_storage == "column" else None,
+                    data={"goal_referrer_type": "MESSENGER", "goal_referrer_platform": "internal",
+                          "goal_referrer_user_id": f"user:{agent.user_id}",
+                          "messenger_connection_id": connection.id})
+        db.add(task)
+        await db.flush()
+        task_id, chat_connection_id, user_id = task.id, connection.id, agent.user_id
+        await connections.set_connection_function_state(connection.id, "messenger_send_message_to_user", state)
+
+    async with get_db_session():
+        server = await build_agent_galaris_fastmcp(action.agent_id, runtime=runtime,
+            task_id=None if pin_storage == "default" else task_id,
+            allowed_tool_names={"messenger_send_message_to_user", "messenger_list_rooms"})
+    async with Client(server) as client:
+        rooms = await client.call_tool("messenger_list_rooms", {}, raise_on_error=False)
+        assert not rooms.is_error
+        result = await client.call_tool("messenger_send_message_to_user",
+            {"user": f"user:{user_id}", "message": "Synthetic progress update."}, raise_on_error=False)
+        assert result.is_error is (state == "disabled")
+    async with get_db_session() as db:
+        receipts = list(await db.scalars(select(Message).where(Message.direction == "outbound",
+            Message.connection_id == chat_connection_id)))
+        assert [row.text for row in receipts] == (["Synthetic progress update."] if state == "enabled" else [])
+
+
+@pytest.mark.asyncio
 @pytest.mark.parametrize("approved", [True, False])
 @pytest.mark.parametrize("processing", [False, True])
 async def test_api_decision_resolves_chat_choice_without_dispatch(action, monkeypatch, approved, processing):

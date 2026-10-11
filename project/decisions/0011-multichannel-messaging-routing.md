@@ -1,6 +1,6 @@
 # ADR 0011 — Routage et recherche multi-messageries
 
-- Statut : Superseded partiellement par ADR 0028 pour la persistance des résultats d'annuaire
+- Statut : Superseded partiellement par ADR 0028 pour la persistance des résultats d'annuaire et ADR 0175 pour la sélection sortante
 - Date : 2026-07-22
 - Révisé : 2026-07-29
 

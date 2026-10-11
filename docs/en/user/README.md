@@ -226,6 +226,11 @@ A native conversation never opens a Task, even if the message explicitly request
 
 If your organization connects Nextcloud Talk, Matrix, OneBot, Telegram, or WhatsApp Business, send your request to the Agent’s account in the designated room. Configured platforms can operate simultaneously, and the response returns through the original connection and conversation. Avoid resending a slow request multiple times: instead, open the created Task or Process, or ask for its status.
 
+Goal-cycle messages use the messaging connection selected for the Goal's referrer. Keeping
+Nextcloud Talk active therefore does not redirect messages from a Goal assigned to internal Chat.
+For an outgoing message without a fixed channel, Galaris uses the recipient's latest inbound
+exchange, then internal Chat by default. The Agent may explicitly request another channel.
+
 Attachments remain files. Specify their name and the expected action: “read,” “modify,” “compare,” “return,” or “share.” For a large file, the Agent may transfer it without loading all its content into the model.
 
 To exchange files with agents from your PC, use a Nextcloud folder accessible to the agent's

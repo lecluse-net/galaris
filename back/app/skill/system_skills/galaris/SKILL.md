@@ -870,8 +870,9 @@ group. Reuse it; never invent it. Resource URIs are stricter and always use the 
 UUID returned by history. A Task keeps its exact messaging
 connection, so room replies need no channel choice. For a new private conversation, call
 `messenger_search_users`, keep the exact `user_id` and `channel` from one result, then pass that
-channel to the send tool. Galaris does not maintain or merge contacts and never infers a preferred
-platform from prior exchanges. Supported channel values are `nextcloud_talk`, `matrix`, `telegram`,
+channel to the send tool when you want that particular platform. Without a fixed route, Galaris
+can select the recipient's last inbound channel; internal Chat is the default when no usable
+exchange exists. Supported channel values are `internal`, `nextcloud_talk`, `matrix`, `telegram`,
 `whatsapp`, and `one_bot`.
 
 - `messenger_list_rooms() -> dict` lists every room accessible through the current Task's exact
@@ -882,12 +883,13 @@ platform from prior exchanges. Supported channel values are `nextcloud_talk`, `m
   Sending identical text twice may return a duplicate-suppression confirmation. That is not an
   error; do not rephrase a message merely to force another send.
 - `messenger_send_message_to_user(user: str, message: str, channel: str = "") -> str` sends a
-  message to an exact provider ID or a display name resolved by that provider. Omit `channel` only
-  when the current Task already pins the intended messaging connection; otherwise pass the channel
-  returned by `messenger_search_users`.
+  message to an exact provider ID or a display name resolved by that provider. With no `channel`,
+  Galaris keeps the Task or conversation's exact connection. Without a fixed route, it selects the
+  recipient's latest inbound channel, then internal Chat by default. Pass `channel` to deliberately
+  choose another platform. A fixed or explicit unavailable route fails without switching channels.
 - `messenger_send_audio_message(user: str, message: str, channel: str = "", ...) -> str` generates
-  an MP3 with the TTS configured on this agent and attaches it to a direct conversation. It applies
-  the same exact-Task or explicit-channel rule as `messenger_send_message_to_user`.
+  an MP3 with the TTS configured on this agent and attaches it to the recipient's latest room on
+  the selected connection. It applies the same channel selection as `messenger_send_message_to_user`.
   Common optional
   controls are `voice`, `model`, `language`, `speed`, and `pitch`; ElevenLabs also accepts
   `stability`, `similarity_boost`, `style`, and `use_speaker_boost`. Do not call it when the agent

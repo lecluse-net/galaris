@@ -5,6 +5,8 @@ from datetime import datetime, timezone
 from typing import AsyncIterator
 from unittest.mock import AsyncMock
 from uuid import uuid4
+from types import SimpleNamespace
+import asyncio
 
 import pytest
 
@@ -18,6 +20,60 @@ from app.messenger.models import (
     MessengerUser,
 )
 from app.tools.mcp_loader import McpToolContext
+
+
+@pytest.mark.asyncio
+async def test_concurrent_messaging_calls_keep_separate_authorized_channels(monkeypatch):
+    from app.messenger import service
+
+    async def select(_agent_id, kind):
+        await asyncio.sleep(0)
+        return SimpleNamespace(kind=kind, connection_id=19 if kind == "internal" else 23, close=AsyncMock())
+    monkeypatch.setattr(service, "messenger_for_agent_kind", select)
+    context = McpToolContext(agent_id=7, runtime="internal", resources={"checkpoint": object()})
+    chat, talk = await asyncio.gather(
+        mcp.bind_messenger_tool_context(context, {"channel": "internal"}),
+        mcp.bind_messenger_tool_context(context, {"channel": "nextcloud_talk"}),
+    )
+    assert chat.resource("connection_id") == 19
+    assert talk.resource("connection_id") == 23
+    assert "connection_id" not in context.resources
+
+
+@pytest.mark.asyncio
+async def test_messaging_binding_respects_explicit_channel_and_rejects_unavailable_channel(monkeypatch):
+    from app.messenger import service
+
+    close = AsyncMock()
+    resolver = AsyncMock(return_value=SimpleNamespace(kind="telegram", connection_id=23, close=close))
+    monkeypatch.setattr(service, "messenger_for_agent_kind", resolver)
+    fallback = AsyncMock()
+    monkeypatch.setattr(mcp, "_resolve_agent_messenger", fallback)
+    context = McpToolContext(agent_id=7, runtime="internal", task_id=uuid4())
+    bound = await mcp.bind_messenger_tool_context(context, {"channel": "telegram"})
+    assert bound.resource("connection_id") == 23
+    close.assert_awaited_once()
+    resolver.side_effect = ValueError("Synthetic channel unavailable")
+    with pytest.raises(ValueError, match="unavailable"):
+        await mcp.bind_messenger_tool_context(context, {"channel": "telegram"})
+    fallback.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_delivery_reuses_the_authorized_connection_without_selecting_again(monkeypatch):
+    from app.messenger import service
+
+    messenger = SimpleNamespace(kind="telegram", connection_id=23, supports=lambda capability: True)
+    monkeypatch.setattr(service, "messenger_for_agent_connection", AsyncMock(return_value=messenger))
+    reselection = AsyncMock()
+    monkeypatch.setattr(service, "messenger_for_agent_kind", reselection)
+    monkeypatch.setattr(mcp, "_resolve_task_recipient_id", AsyncMock(return_value="human-42"))
+    resolved, user = await mcp._resolve_user_delivery(
+        McpToolContext(agent_id=7, runtime="internal", resources={"connection_id": 23}),
+        "Synthetic human", "en", channel="telegram",
+    )
+    assert resolved is messenger and user == "human-42"
+    reselection.assert_not_awaited()
 
 
 @pytest.mark.asyncio
