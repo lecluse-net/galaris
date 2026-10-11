@@ -113,3 +113,33 @@ test('Markdown compact frontmatter renders metadata and keeps the body and table
   await expect(page.locator('table.markdown-frontmatter')).toHaveCount(0)
   await expect(page.getByRole('heading', { name: 'No metadata' })).toBeVisible()
 })
+
+test('conversation plans preserve HTML structure alongside Markdown and filter active content', async ({ page }, testInfo) => {
+  await mount(page, 'app/chat/components/SafeMessageContent.vue', { props: {
+    content: '🛠️ Background plan\n\n🎯 What I understood\n'
+      + '<h2>Prepare the catalogue</h2><p>Keep <strong>existing entries</strong> and <code>revision</code>.</p>'
+      + '<ol><li>Read the source<ul><li>Check the <a href="https://example.invalid/source">reference</a>.</li></ul></li>'
+      + '<li>Update the catalogue.</li></ol><p>Preserve all links.</p>\n\n'
+      + '🧭 My approach\n\n**Verify each item.**\n\n1. Inventory\n2. Reconcile\n\n'
+      + '<script>window.planScriptExecuted = true</script><img src="data:image/png;base64," onerror="window.planScriptExecuted = true">',
+  } })
+  const content = page.locator('.safe-message-content')
+  await expect(content.getByRole('heading', { name: 'Prepare the catalogue', exact: true })).toBeVisible()
+  await expect(content.locator('p').filter({ hasText: 'Keep existing entries and revision.' })).toBeVisible()
+  await expect(content.locator('strong').filter({ hasText: 'existing entries' })).toBeVisible()
+  await expect(content.locator('code')).toHaveText('revision')
+  await expect(content.getByRole('listitem')).toHaveCount(5)
+  await expect(content.getByRole('link', { name: 'reference' })).toHaveAttribute('href', 'https://example.invalid/source')
+  await expect(content).not.toContainText('# Strong')
+  await expect(content.locator('script, [onerror]')).toHaveCount(0)
+  expect(await page.evaluate(() => window.planScriptExecuted)).toBeUndefined()
+  await page.screenshot({ path: testInfo.outputPath('conversation-plan-desktop.png'), fullPage: true })
+  await page.setViewportSize({ width: 390, height: 844 })
+  await expect(content.getByRole('link', { name: 'reference' })).toBeVisible()
+  await page.screenshot({ path: testInfo.outputPath('conversation-plan-mobile.png'), fullPage: true })
+
+  await page.evaluate(() => window.testApp.setProps({ content: '<execution_context>\nTask details\n</execution_context>\n\n<plan-shared-context>\nMission\n</plan-shared-context>\n\n```xml\n<p>Literal source</p>\n```' }))
+  await expect(content.getByRole('heading', { name: 'Execution_context', exact: true })).toBeVisible()
+  await expect(content.getByRole('heading', { name: 'Plan shared context', exact: true })).toBeVisible()
+  await expect(content.getByRole('textbox')).toHaveValue('<p>Literal source</p>')
+})

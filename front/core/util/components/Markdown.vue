@@ -161,7 +161,7 @@ const renderedMarkdown = computed(() => {
         return prefix + renderMarkdown(jsonCodeBlock)
     }
 
-    // Convert XML tags to Markdown headings while preserving fenced code blocks.
+    // Convert prompt section tags to headings, preserving HTML and fenced code blocks.
     let transformedContent = ''
     const parts = content.split(/(```[\s\S]*?```)/g)
 
@@ -173,6 +173,11 @@ const renderedMarkdown = computed(() => {
             // Convert opening tags to headings and remove closing tags.
             transformedContent += part
                 .replace(/<\/?([a-zA-Z_][a-zA-Z0-9_-]*)>/g, (match: string, tagName: string) => {
+                    // Planner briefs contain semantic HTML. Let marked render actual HTML
+                    // elements, then apply the same sanitizer as for every Markdown result.
+                    if (!tagName.includes('-') && !(document.createElement(tagName) instanceof HTMLUnknownElement)) {
+                        return match
+                    }
                     if (match.startsWith('</')) {
                         // Remove closing tags.
                         return ''
