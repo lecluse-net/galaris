@@ -1,6 +1,8 @@
 """Optional surfaces may be absent; broken active surfaces must be visible."""
 
 from types import SimpleNamespace
+import subprocess
+import sys
 from unittest.mock import Mock
 from unittest.mock import AsyncMock
 
@@ -10,6 +12,23 @@ import pytest
 from core.database import model_loader
 from core.util import router_loader
 import modules
+
+
+def test_domain_scheduler_registration_in_fresh_interpreter():
+    """Startup must not rely on MCP tests having imported operation services first."""
+    result = subprocess.run(
+        [sys.executable, "-c", (
+            "from app.lab import register_scheduler_jobs; "
+            "register_scheduler_jobs(); "
+            "from app.multimedia import generation_tick; "
+            "from app.task import scheduler; "
+            "scheduler.register_periodic_job('multimedia-generations', generation_tick, interval=1.0, timeout=720.0)"
+        )],
+        capture_output=True,
+        text=True,
+        timeout=60,
+    )
+    assert result.returncode == 0, result.stderr
 
 
 @pytest.mark.parametrize("surface", ["models", "router"])

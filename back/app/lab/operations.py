@@ -1,7 +1,7 @@
 """Lab source discovery and admission of durable Lab operations."""
 
 import json
-from typing import Any, Literal
+from typing import Any
 from uuid import UUID
 
 from sqlalchemy import exists, func, literal, or_, select, union_all
@@ -19,6 +19,7 @@ from app.llm import LLMExecutionAuthority, current_execution_authority
 from app.tools.facade import register_deferred_dispatch, finish_action
 from core.user import get_current_user_id
 from .operation_models import LabOperation
+from .operation_contracts import Operation
 from .operation_worker import advance as advance, settle_authorization
 from .operation_store import publish
 from app.task import Task
@@ -48,11 +49,6 @@ from .schemas import (
     ExecutorCaseImport,
     MechanismCaseImport,
 )
-
-Operation = Literal[
-    "lab_dataset_generate", "lab_expected_generate", "lab_run_analyze", "lab_task_analyze"
-]
-
 
 def paged(items: list[dict[str, Any]], page: Page) -> dict[str, Any]:
     return {

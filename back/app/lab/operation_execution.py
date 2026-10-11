@@ -9,14 +9,13 @@ from sqlalchemy import select
 
 from app.agent import validate_agent_driver
 from app.llm import llm_service, model_usages, reasoning_effort_scope, ReasoningEffort
-from .operation_contracts import LabOperationError, LabOperationSnapshot
+from .operation_contracts import LabOperationError, LabOperationSnapshot, Operation
 from .operation_store import operation_checkpoint, snapshot
 from .operation_models import LabOperation
 from app.tools import McpToolContext
 from core.database import get_db
 
 from . import (
-    operations,
     mcp_service as service,
     mechanism_evaluation_service as evaluations,
     synthetic_service,
@@ -42,7 +41,7 @@ class LabOperationExecutor:
     async def prepare_input(
         self, agent_id: int, input_data: dict[str, Any]
     ) -> dict[str, Any]:
-        action = TypeAdapter[operations.Operation](operations.Operation).validate_python(
+        action = TypeAdapter[Operation](Operation).validate_python(
             input_data.get("action")
         )
         mechanism = TypeAdapter[EvaluationMechanism](EvaluationMechanism).validate_python(
