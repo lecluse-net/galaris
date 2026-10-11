@@ -129,6 +129,7 @@ def append_item_wave(task: AgentTask) -> bool:
                        f"<pre>{inputs}</pre>"),
             tools=list(cast(list[str], plan["item_tools"])),
             effort="high" if plan.get("item_effort") == "high" else "standard",
+            organization="tracked" if plan.get("item_organization") == "tracked" else "direct",
         ).model_dump()
         step["collection_key"] = item.key
         steps.append(step)

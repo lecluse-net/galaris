@@ -270,6 +270,13 @@ There is no separate sidebar menu for Tasks or conversation histories: these are
 inside **Activity**. **Chat** is for interaction; **Activity** is for monitoring executions.
 Access to the screen does not grant access to every conversation or agent.
 
+For a plan that must produce and deliver a file, the agent's reported result is checked
+against recorded production and delivery. A different file already delivered cannot
+validate the plan; a stale file or unconfirmed send may leave the work in error. Check
+the cause in task details. If the final file is preserved and no send to the requested
+destination has been attempted, recovery can be limited to delivery. A send with an
+uncertain outcome must be checked before repeating it.
+
 When you request a saved report even if work fails, the plan can retain that closing action.
 The task remains in error with its cause and report; failed work waits for your retry decision.
 A manual retry also updates the report.
@@ -434,6 +441,12 @@ a local network or VPN. These warnings use the browser address and do not block 
 
 Under **Tasks and execution → Planner**, planning is bounded by maximum depth and maximum leaves.
 There is no separate limit on the total number of steps.
+
+Agents execute simple actions directly. For long or complex work, durable tracking retains
+milestones and the next action while keeping one coherent deliverable together. If the scope
+or expected depth is ambiguous, the agent asks in the conversation and waits before starting.
+An unanswered question fails at its deadline; silence does not select a course of action.
+Tracking is available through `task_get`.
 
 Useful distinctions:
 

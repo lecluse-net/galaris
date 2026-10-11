@@ -24,6 +24,7 @@ class TaskEvent(str, Enum):
     """Domain events allowed to change a task phase."""
 
     ROUTE_TO_EXECUTION = "route_to_execution"
+    REASSESS_ORGANIZATION = "reassess_organization"
     ROUTE_TO_PLAN = "route_to_plan"
     START_EXECUTION = "start_execution"
     EXECUTION_SUCCEEDED = "execution_succeeded"
@@ -75,6 +76,7 @@ _ACTIVE: Final[frozenset[TaskStatus]] = frozenset(
 )
 
 TRANSITIONS: Final[dict[TaskEvent, TransitionRule]] = {
+    TaskEvent.REASSESS_ORGANIZATION: TransitionRule(frozenset({TaskStatus.PLAN}), TaskStatus.CREATE),
     TaskEvent.ROUTE_TO_EXECUTION: TransitionRule(
         frozenset({TaskStatus.CREATE, TaskStatus.DISPATCH}), TaskStatus.DISPATCH
     ),

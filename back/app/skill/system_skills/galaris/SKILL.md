@@ -519,9 +519,23 @@ mean the colleague is unknown or unreachable. Contact permissions still apply.
   prefixes are not valid resource identities. Whenever a Task is mentioned in model-facing text,
   show its complete `galaris://task/<uuid>` URI, never a bare UUID.
 - `task_get(task_id: str) -> dict` returns a compact operational view with actors, status,
-  objective, feedback, progress, amendment eligibility, and explicit waits. Prefer the exact
+  objective, feedback, progress, revision, work tracking, amendment eligibility, and explicit waits. Prefer the exact
   `galaris://task/<uuid>` URI; full UUIDs and unique prefixes remain accepted for compatibility.
   Use `file_read` when the complete persisted snapshot is needed.
+- `task_work_update(plan: dict, expected_revision: int, revision_reason: str = "") -> dict`
+  retains bounded milestones for your current active Task. Use it when substantial preparation,
+  a long run or recovery needs continuity; complete simple actions directly with their check.
+  The plan has `milestones` (unique `key`, `label`, `acceptance`, `state`, `observation`,
+  optional canonical `resource_refs`) and `next_action`. States are `pending`, `doing`, `done`
+  or `blocked`; at most one is doing. Done and blocked require an observed result. Read the
+  current revision with `task_get`; a stale write requires rereading. Changing completed work
+  requires `revision_reason`. Updates preserve other Task data and reject paused or terminal Tasks.
+  Inspect sources before settling the method, update after meaningful progress and verify
+  actual resources before resuming an uncertain effect. Checked milestones do not prove delivery.
+  Keep one coherent deliverable together; use collection coordination for independent outputs.
+  Ask a targeted question when missing intent changes scope or depth; inspect technical unknowns
+  with authorized tools. If tracking is unavailable, report that limitation rather than inventing
+  a durable checkpoint.
 - `file_list("galaris://text/")` lists your persisted text-conversation rounds and
   `file_list("galaris://voice/")` lists your persisted voice rounds. Read one with
   `file_read("galaris://text/<uuid>")` or `file_read("galaris://voice/<uuid>")`.

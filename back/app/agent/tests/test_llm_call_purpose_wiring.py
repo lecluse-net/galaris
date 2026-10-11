@@ -75,6 +75,7 @@ async def test_planner_inference_is_task_owned_and_identified(
             agent_id=7,
             agent=object(),
             reasoning_effort_override=None,
+            data=None,
         ),
     )
     plan = planner_service.Plan(clarification_questions=["Which target should be used?"])

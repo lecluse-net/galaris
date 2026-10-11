@@ -363,6 +363,7 @@ class TaskPhase(str, Enum):
 
 
 class TaskTransition(str, Enum):
+    REASSESS_ORGANIZATION = "reassess_organization"
     ROUTE_TO_EXECUTION = "route_to_execution"
     ROUTE_TO_PLAN = "route_to_plan"
     START_EXECUTION = "start_execution"
@@ -800,6 +801,8 @@ class DispatchDecision(_DispatchDecisionFields):
     # Inferred output contracts deliberately omit it: routing does not need generated prose.
     reasoning: str = ""
     route: DispatchRoute = Field(description="Agentic routing path.")
+    organization: Literal["direct", "tracked", "clarify"] = "direct"
+    clarification_questions: list[str] = Field(default_factory=list, max_length=3)
 
 
 class ActiveDispatchDecision(_DispatchDecisionFields):
@@ -817,6 +820,20 @@ class TaskDispatchDecision(_DispatchDecisionFields):
     """Task routing constrained by the selected harness's available choices."""
 
     route: ForcedRoute = Field(description="Select one available Task execution path.")
+    organization: Literal["direct", "tracked", "clarify"] = Field(
+        default="direct",
+        description=(
+            "Separate organization from route and model effort: direct for bounded work with "
+            "straightforward checks; tracked for preparatory investigation, durable milestones "
+            "and recovery within a long or complex mission, including one cohesive outcome; "
+            "clarify when missing user intent prevents choosing the scope or organization. "
+            "Do not ask when authorized inspection can resolve a technical unknown."
+        ),
+    )
+    clarification_questions: list[str] = Field(
+        default_factory=list, max_length=3,
+        description="For clarify only: concise questions about the missing scope or expected depth, in the user's language.",
+    )
 
 
 class ConversationDispatchDecision(BaseModel):

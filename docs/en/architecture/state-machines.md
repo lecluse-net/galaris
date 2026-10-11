@@ -98,6 +98,7 @@ the resume phase.
 | `RETRY_DELIVERY` | SUCCESS, ERROR | DISPATCH |
 | `RETRY_ROUTING` | ERROR | CREATE |
 | `REVISE` | DISPATCH | CREATE |
+| `REASSESS_ORGANIZATION` | PLAN | CREATE |
 | `CANCEL` | any active phase | ERROR |
 | `FORCE_TERMINATE` | any active phase | ERROR |
 | `ACTIVATE_PLAN_STEP` | PLAN, DISPATCH | DISPATCH |
@@ -107,6 +108,10 @@ the resume phase.
 
 Scheduler actions: `CREATE → dispatch`, `DISPATCH → execute`, `PLAN → advance_plan`.
 A paused task retains its phase without being executed.
+
+An organization question suspends in `PLAN`. Its answer retains the clarification and
+applies `REASSESS_ORGANIZATION`; routing selects again with that answer. An unanswered
+deadline or unavailable question channel applies `FAIL`, ending the Task in `ERROR`.
 
 Collections use existing phases: the group stays in `PLAN`, while discovery and item Tasks
 follow `DISPATCH → EXEC → SUCCESS/ERROR`. Each new wave is persisted before activation.

@@ -68,6 +68,15 @@ réveils idempotents et bilan actualisé après reprise manuelle. `test_planner_
 couvre une clôture elle-même en erreur. `test_document_retrieval.py` vérifie la recherche
 documentaire par nom sans rappel sémantique ni passages du corps, avec pagination et refus ACL.
 
+`back/app/agent/tests/test_task_organization.py` protège le choix d'organisation dans
+l'inférence existante, l'attente sans exécution, l'expiration et la réponse tardive.
+`back/app/task/tests/test_work_tracking.py` vérifie avec PostgreSQL la reprise des jalons,
+les écritures concurrentes, la révision, les droits, les pauses, l'idempotence et la
+préservation des checkpoints. Le corpus synthétique `task_organization_corpus.json`
+s'importe avec `scripts/import_lab_reference.py --corpus task-organization --install`.
+Ses huit cas complètent les quinze frontières de routage ; une comparaison avec modèle
+réel mesure décisions et latence, sans certifier la réalisation complète des missions.
+
 Le corpus synthétique `back/app/lab/planner_boundaries_corpus.json` contient 24 cas de
 granularité : collections ordonnées, reprise partielle, volumes inconnus, petits lots,
 tâches uniques complexes, PLAN forcé, plan écrit explicitement demandé et clarification.
@@ -453,6 +462,7 @@ explicite. Les fichiers `*.spec.mjs` se trouvent sous `front/browser-tests/`.
 | `task` | Créer, suspendre, reprendre, terminer et supprimer une tâche ; préserver budget et propriété du lease | `test_task_service.py`, `test_workflow.py`, `test_active_lease.py`, `test_budget.py`, `task-panel.spec.mjs` |
 | Nouvelle demande après échec | Conserver la relance conversationnelle délibérée et manuelle ; une création indépendante préserve l'état, l'erreur et le résultat de la tâche échouée et reste idempotente. Le choix sémantique entre relance et création relève des consignes du modèle | `back/app/tools/tests/test_mcp_loader.py`, `back/app/conversation/tests/test_service.py`, `back/app/task/tests/test_task_service.py` |
 | Working Set Task | Conserver les ressources racine/enfants, checkpoints et première capsule lors de commits concurrents ; enregistrement idempotent et rollback avec l'appelant | `back/app/task/tests/test_working_set.py` (sessions PostgreSQL indépendantes) |
+| Preuves de livraison Task | Refuser les faux succès avec un autre fichier, une autre destination, une autre Task ou un fichier périmé ; préserver les reçus natifs, la livraison Conversation, l'URI exacte sur place et la reprise sans envoi en double | `back/app/agent/tests/test_planner_service.py`, `back/app/agent/tests/test_executor_lifecycle.py`, `back/app/tools/tests/test_resource_effects.py` |
 | Amendement conversationnel | Tolérer les seules révisions techniques avec une définition connue ; refuser avant interruption un checkpoint incompatible ou une exécution sans point de reprise vérifiable, même apparus après lecture ; préserver la cible et permettre une création indépendante explicite et idempotente dans le même document | `back/app/task/tests/test_amendment_service.py`, `back/app/conversation/tests/test_service.py`, `test_task_admission.py`, `back/app/agent/tests/test_checkpoint_contract.py`, `back/app/agent/tests/test_realtime.py` |
 | Remplacement explicite | Enregistrer un seul successeur texte/voix, attendre le nettoyage ou une preuve d'arrêt valide, reprendre après changement de worker, préserver les autres pauses et tâches ; bloquer sur une relance, une coordination ou un changement de contexte du prédécesseur | `back/app/task/tests/test_replacement.py`, `back/app/conversation/tests/test_service.py`, `back/app/agent/tests/test_driver_boundary.py` |
 | Propriétaires et événements tardifs | Refuser le renouvellement d'un lease expiré ; ne pas remplacer le round affiché à partir d'un événement d'un autre round, demander une réconciliation serveur | `back/app/task/tests/test_replacement.py`, `back/app/conversation/tests/test_service.py`, `front/app/chat/runtimeState.test.mjs` |
@@ -835,4 +845,7 @@ complet. Les mesures locales sous `artifacts/` sont distinctes d'une qualificati
 charge réelle ou de la latence des fournisseurs.
 
 Le test de bornes du graphe admet les pages d'expansion de 500 nœuds et refuse 501,
-en remplacement de l'ancienne limite de 100.
+en remplacement de l'ancienne limite de 100. Le scénario Lab d'inférence structurée
+vérifie le contrat Dispatcher v5, ses valeurs d'organisation par défaut, ses retries
+et ses coûts ; `test_dispatcher_planning.py` conserve la résolution des inférences v4
+figées, sans leur ajouter les champs d'organisation.

@@ -81,6 +81,15 @@ idempotent wake-ups and an updated report after manual retry. `test_planner_serv
 covers a closing action that itself fails. `test_document_retrieval.py` verifies document
 name discovery without semantic recall or body passages, including pagination and ACL denials.
 
+`back/app/agent/tests/test_task_organization.py` protects organization selection in the
+existing inference, waiting without execution, expiry and late answers.
+`back/app/task/tests/test_work_tracking.py` checks PostgreSQL milestone recovery,
+concurrent writes, revisions, ownership, pauses, idempotency and checkpoint preservation.
+Import the synthetic `task_organization_corpus.json` with
+`scripts/import_lab_reference.py --corpus task-organization --install`. Its eight cases
+complement fifteen routing boundaries; real-model comparison measures decisions and
+latency without certifying complete mission execution.
+
 Start with business behavior and module responsibility. The suites below are entry points,
 not exhaustive certification or proof that a live external account works. The
 [September 10 review](../../../project/audits/2026-09-10-functional-tests.md) records replacements
@@ -418,6 +427,7 @@ are in `front/browser-tests/`.
 | `task` | Creation, pause, resume, completion and deletion; budgets and lease ownership | `test_task_service.py`, `test_workflow.py`, `test_active_lease.py`, `test_budget.py`, `task-panel.spec.mjs` |
 | Renewed request after failure | Preserve deliberate conversation and manual retry; independent creation preserves the failed Task's state, error and result and remains idempotent. The semantic choice between retry and creation is guided by model instructions | `back/app/tools/tests/test_mcp_loader.py`, `back/app/conversation/tests/test_service.py`, `back/app/task/tests/test_task_service.py` |
 | Task Working Set | Preserve root/child resources, checkpoints and the first capsule across concurrent commits; idempotent registration and rollback with the caller | `back/app/task/tests/test_working_set.py` (independent PostgreSQL sessions) |
+| Task delivery evidence | Reject false success with a different file, destination, Task or stale file; preserve native receipts, Conversation delivery, exact in-place URIs and recovery without duplicate sends | `back/app/agent/tests/test_planner_service.py`, `back/app/agent/tests/test_executor_lifecycle.py`, `back/app/tools/tests/test_resource_effects.py` |
 | Conversation amendment | Tolerate only technical revisions with a known definition; reject incompatible checkpoints or executions without a verifiable recovery point before interruption, including concurrent starts; preserve the target and allow explicit idempotent independent creation in the same document | `back/app/task/tests/test_amendment_service.py`, `back/app/conversation/tests/test_service.py`, `test_task_admission.py`, `back/app/agent/tests/test_checkpoint_contract.py`, `back/app/agent/tests/test_realtime.py` |
 | Explicit replacement | Persist one text/voice successor, wait for cleanup or valid stop evidence, recover across workers and preserve other holds and independent Tasks; block on predecessor restart, coordination or scope changes | `back/app/task/tests/test_replacement.py`, `back/app/conversation/tests/test_service.py`, `back/app/agent/tests/test_driver_boundary.py` |
 | Late owners and events | Reject expired lease renewal; an event from another round cannot replace the displayed round and requests server reconciliation | `back/app/task/tests/test_replacement.py`, `back/app/conversation/tests/test_service.py`, `front/app/chat/runtimeState.test.mjs` |
@@ -784,4 +794,6 @@ scope summary returned on every refresh; the durable contract stays complete. Lo
 measurements under `artifacts/` are distinct from real load qualification or provider latency.
 
 Graph boundary coverage accepts 500-node expansion pages and rejects 501, replacing
-the former 100-node ceiling.
+the former 100-node ceiling. The structured-inference Lab scenario verifies Dispatcher
+v5, default organization values, retries and costs; `test_dispatcher_planning.py` retains
+resolution of frozen v4 inferences without adding organization fields to their schemas.

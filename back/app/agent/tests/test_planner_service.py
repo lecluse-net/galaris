@@ -603,6 +603,7 @@ async def test_start_plan_creates_all_children_and_activates_first(mocks: dict[s
         "plan_depth": 1,
         "plan_step": 0,
         "language": "en",
+        "organization": "direct",
         "artifact_policy": "none",
         "delivery_policy": "forbidden",
     }
@@ -754,6 +755,7 @@ async def test_advance_activates_next_child_with_previous_result(mocks: dict[str
         "plan_depth": 1,
         "plan_step": 1,
         "language": "en",
+        "organization": "direct",
         "artifact_policy": "none",
         "delivery_policy": "forbidden",
     }
@@ -896,10 +898,12 @@ async def test_finalize_requires_document_only_from_original_objective(
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("evidence", ["missing", "other_file", "other_destination", "other_task", "stale", "matching"])
 async def test_finalize_rejects_produced_file_without_delivery_receipt(
-    mocks: dict[str, Any], monkeypatch: pytest.MonkeyPatch
+    mocks: dict[str, Any], monkeypatch: pytest.MonkeyPatch, evidence: str,
 ) -> None:
     parent = _task(
+        objective="Create final.html and send it to this conversation.",
         # A delegated Task can have a parent while still owning its own result contract.
         parent_id=uuid4(),
         plan={
@@ -920,33 +924,55 @@ async def test_finalize_rejects_produced_file_without_delivery_receipt(
     mocks["get_children"].side_effect = lambda task_id: (
         [child] if task_id == parent.id else []
     )
+    produced = WorkingResource(
+        resource_type="artifact", role="file:console://final.html",
+        reference="console://final.html", producer_task_id=child.id,
+        state="stale" if evidence == "stale" else "active",
+        metadata={"produced": True},
+    )
+    resources = [produced]
+    if evidence != "missing":
+        source = "console://other.html" if evidence == "other_file" else produced.reference
+        destination = "internal://room/final.html"
+        resources.extend([
+            WorkingResource(
+                resource_type="artifact", role="final_artifact", reference=destination,
+                producer_task_id=child.id,
+                metadata={"source": source, "delivery_destination": "room-1", "delivered": True},
+            ),
+            WorkingResource(
+                resource_type="delivery_receipt", role=f"delivery_receipt:{source}",
+                reference=f"messenger_room_send_file:room-1:{source}",
+                producer_task_id=uuid4() if evidence == "other_task" else child.id,
+                metadata={"filename": source, "destination": "room-1",
+                          "uri": "internal://other/final.html" if evidence == "other_destination" else destination,
+                          "tool": "messenger_room_send_file"},
+            ),
+        ])
     monkeypatch.setattr(
         planner_service.task_port,
         "get_working_set",
         AsyncMock(
             return_value=WorkingSet(
                 version=1,
-                resources=[
-                    WorkingResource(
-                        resource_type="artifact",
-                        role="file:console://final.html",
-                        reference="console://final.html",
-                        metadata={"produced": True},
-                    )
-                ],
+                resources=resources,
             )
         ),
     )
 
     await advance(parent)
 
+    if evidence == "matching":
+        assert parent.status == TaskStatus.SUCCESS
+        return
     assert parent.status == TaskStatus.ERROR
     assert (parent.feedback or "").startswith("### Unmet delivery contract")
-    assert "no final_artifact" in (parent.feedback or "")
+    if evidence == "missing":
+        assert "no final_artifact" in (parent.feedback or "")
     result = parent.get_execution_result()
     assert result is not None
     assert result.metadata["failure_code"] == "UNMET_DELIVERY_CONTRACT"
-    assert "no final_artifact" in result.metadata["failure_reason"]
+    assert result.metadata["failure_reason"]
 
 
 @pytest.mark.asyncio
@@ -1066,11 +1092,18 @@ def test_retired_workspace_reference_is_not_a_verified_produced_file() -> None:
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("objective,expected", [
+    ("Update console://example.html in place.", True),
+    ("Update console://example.html.", True),
+    ('<p>Update <code>console://example.html</code>.</p>', True),
+    ("Update console://example.html.bak in place.", False),
+])
 async def test_completion_accepts_exact_durable_destination(
     monkeypatch: pytest.MonkeyPatch,
+    objective: str, expected: bool,
 ) -> None:
     task = _task(
-        objective="Update console://lecluse.net.html in place.",
+        objective=objective,
         message_platform="matrix",
         message_group_id="room-1",
     )
@@ -1082,8 +1115,8 @@ async def test_completion_accepts_exact_durable_destination(
                 resources=[
                     WorkingResource(
                         resource_type="artifact",
-                        role="file:console://lecluse.net.html",
-                        reference="console://lecluse.net.html",
+                        role="file:console://example.html",
+                        reference="console://example.html",
                         metadata={"produced": True},
                     )
                 ]
@@ -1091,7 +1124,8 @@ async def test_completion_accepts_exact_durable_destination(
         ),
     )
 
-    assert await planner_service._working_set_completion_error(task) is None  # pyright: ignore[reportPrivateUsage]
+    error = await planner_service._working_set_completion_error(task)  # pyright: ignore[reportPrivateUsage]
+    assert (error is None) is expected
 
 
 @pytest.mark.asyncio
@@ -1332,9 +1366,11 @@ async def test_abort_when_child_error(mocks: dict[str, Any], completed_steps: in
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("prior_destination", [None, "room-1", "other-room"])
 async def test_failed_final_step_exposes_delivery_only_recovery(
     mocks: dict[str, Any],
     monkeypatch: pytest.MonkeyPatch,
+    prior_destination: str | None,
 ) -> None:
     parent = _task(
         plan={
@@ -1380,6 +1416,23 @@ async def test_failed_final_step_exposes_delivery_only_recovery(
             )
         ],
     )
+    if prior_destination is not None:
+        producer = uuid4()
+        planner_service.task_port.get_working_set.return_value.resources.extend([
+            WorkingResource(
+                resource_type="artifact", role="final_artifact",
+                reference="internal://destination/final.html", producer_task_id=producer,
+                metadata={"source": "console://final.html", "delivered": True,
+                          "delivery_destination": prior_destination},
+            ),
+            WorkingResource(
+                resource_type="delivery_receipt", role="delivery_receipt:console://final.html",
+                reference=f"messenger_room_send_file:{prior_destination}:console://final.html",
+                producer_task_id=producer,
+                metadata={"filename": "console://final.html", "destination": prior_destination,
+                          "uri": "internal://destination/final.html", "tool": "messenger_room_send_file"},
+            ),
+        ])
     notify = AsyncMock()
     monkeypatch.setattr(planner_service, "_notify_room", notify)
 
@@ -1387,6 +1440,9 @@ async def test_failed_final_step_exposes_delivery_only_recovery(
 
     assert parent.status == TaskStatus.ERROR
     assert parent.data is not None
+    if prior_destination == "room-1":
+        assert "delivery_recovery" not in parent.data
+        return
     recovery = parent.data["delivery_recovery"]
     assert recovery == {
         "status": "ready",

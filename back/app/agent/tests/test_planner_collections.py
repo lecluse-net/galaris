@@ -19,11 +19,12 @@ from app.task.workflow import TaskEvent, transition
 from app.memory.tests.conftest import agents, memory_storage  # noqa: F401
 
 
-def collection_step() -> PlanStep:
+def collection_step(organization="direct") -> PlanStep:
     return PlanStep.model_validate({
         "label": "Workspace A",
         "objective": "<p>Convert each document faithfully, in order.</p>",
         "tools": ["file_read", "file_create"],
+        "organization": organization,
         "collection": {
             "inventory_objective": "<p>Read the existing index and identify remaining documents.</p>",
             "inventory_tools": ["file_read", "file_create"],
@@ -228,8 +229,9 @@ async def test_single_work_unit_executes_without_inventory_or_replanning(
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("organization", ["direct", "tracked"])
 async def test_collection_journey_survives_restart_and_retries_only_failed_items(
-    db, agents, memory_storage, monkeypatch,
+    db, agents, memory_storage, monkeypatch, organization,
 ) -> None:
     from app.file_share import ResourceContext, resource_create, resource_write
 
@@ -245,7 +247,7 @@ async def test_collection_journey_survives_restart_and_retries_only_failed_items
     db.add(root)
     await db.commit()
     root_id = root.id
-    plan = Plan(steps=[collection_step(), PlanStep(label="Reconcile links", objective="<p>Check cross-item links.</p>")])
+    plan = Plan(steps=[collection_step(organization), PlanStep(label="Reconcile links", objective="<p>Check cross-item links.</p>")])
     monkeypatch.setattr(planner_service, "_build_plan", AsyncMock(return_value=(plan, 0.0, "")))
     await planner_service.advance(root)
     group, final = sorted(await task_service.get_children(root.id), key=lambda t: t.data["plan_step"])
@@ -269,6 +271,8 @@ async def test_collection_journey_survives_restart_and_retries_only_failed_items
     assert len(children) == 3  # Discovery plus a bounded wave of two documents.
     assert children[1].status == TaskStatus.DISPATCH and not children[1].paused
     assert children[2].paused
+    assert children[1].data["organization"] == organization
+    assert children[2].data["organization"] == organization
     # Simulate a worker stopping after creating the wave but before activating its leaf.
     task_service.suspend(children[1], task_service.PAUSE_PLAN)
     await task_service.save(children[1])

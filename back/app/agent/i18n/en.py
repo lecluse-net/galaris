@@ -21,6 +21,8 @@ default = {
         "planner_clarification": "❓ Before I start, I need a few details — just reply to this message:",
     },
     "planner": {
+        "organization_question": "For this request, do you want a quick targeted action or complete work with preparation and tracking? Please clarify the scope and expected result.",
+        "organization_unanswered": "The scope or organization of this work requires clarification. No execution was started. Clarify the request to resume.",
         "completed": "Completed",
         "failed": "Failed",
         "failed_step": "Failed: {label}",

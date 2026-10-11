@@ -21,6 +21,8 @@ default = {
         "planner_clarification": "❓ Avant de me lancer, j'ai besoin de quelques précisions — réponds simplement à ce message :",
     },
     "planner": {
+        "organization_question": "Pour cette demande, souhaites-tu une action ciblée rapide ou un traitement complet avec préparation et suivi ? Précise le périmètre et le résultat attendu.",
+        "organization_unanswered": "Le périmètre ou l'organisation du travail nécessite une clarification. Aucune exécution n'a été lancée. Précise la demande pour pouvoir reprendre.",
         "completed": "Terminé",
         "failed": "Échec",
         "failed_step": "Échec : {label}",

@@ -221,9 +221,9 @@ def test_every_non_dispatch_mechanism_has_a_complete_versioned_semantic_rubric()
                 ":v1"
                 if rubric.mechanism == "task_analysis"
                 else ":v4"
-                if rubric.mechanism == "planner"
+                if rubric.mechanism in {"planner", "dispatcher"}
                 else ":v3"
-                if rubric.mechanism in {"topic_classification", "dispatcher"}
+                if rubric.mechanism == "topic_classification"
                 else ":v2"
             )
             assert rubric.version.endswith(expected_version)

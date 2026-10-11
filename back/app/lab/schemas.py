@@ -176,6 +176,8 @@ class DispatcherExpectedDecision(BaseModel):
     route: DispatcherRoute
     effort: DispatcherEffort
     language: str = Field(default="en", min_length=2, max_length=10)
+    organization: Literal["direct", "tracked", "clarify"] | None = None
+    clarification_questions: list[str] = Field(default_factory=list, max_length=3)
 
 
 class EvaluationDatasetCreate(BaseModel):

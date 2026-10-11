@@ -597,6 +597,12 @@ async def retry(task_id: UUID, expected_revision: int) -> Optional[Task]:
         task.execution_result = None
         task.feedback = None
         await save(child)
+    elif data.get("organization") == "clarify":
+        # Explicit retry does not answer the missing intent. Reassess the request
+        # rather than bypassing its unanswered question and invoking the executor.
+        transition(task, TaskEvent.RETRY_ROUTING)
+        task.execution_result = None
+        task.feedback = None
     elif task.plan is not None:
         if task.status != TaskStatus.ERROR:
             raise TaskEditConflict(render_prompt(

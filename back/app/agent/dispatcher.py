@@ -1,4 +1,5 @@
 import re
+import json
 
 from app.llm import LLMCallPurpose, ReasoningEffort, model_usages
 from app.llm.facade import llm_call_accounting, record_structured_inferences
@@ -9,7 +10,7 @@ from functools import lru_cache
 from typing import Any, TypeVar, cast
 from uuid import UUID, uuid4
 from openai import ContentFilterFinishReasonError
-from pydantic import create_model
+from pydantic import Field, create_model
 from loguru import logger
 from core.i18n import SUPPORTED_LANGUAGES
 from core.params import Params, params_service
@@ -46,7 +47,12 @@ DispatchOutputT = TypeVar(
 )
 
 
-# Frozen requests retain their original schemas; new Task calls use v4.
+# Frozen requests retain their original schemas; new Task calls use v5.
+_LegacyTaskDispatchDecision = create_model(
+    "TaskDispatchDecision", __base__=ActiveDispatchDecision,
+    __doc__=TaskDispatchDecision.__doc__,
+    route=(ForcedRoute, Field(description="Select one available Task execution path.")),
+)
 _LegacyActiveDispatchDecision = create_model(
     "ActiveDispatchDecision", __base__=ActiveDispatchDecision,
     __doc__=ActiveDispatchDecision.__doc__, requires_action=(bool, False),
@@ -62,7 +68,8 @@ def register_dispatcher_output_contracts() -> None:
     register_inference_output("galaris.dispatcher.active/v1", _LegacyActiveDispatchDecision)
     register_inference_output("galaris.dispatcher.conversation/v1", _LegacyConversationDispatchDecision)
     register_inference_output("galaris.dispatcher.active/v2", ActiveDispatchDecision)
-    register_inference_output("galaris.dispatcher.active/v4", TaskDispatchDecision)
+    register_inference_output("galaris.dispatcher.active/v4", _LegacyTaskDispatchDecision)
+    register_inference_output("galaris.dispatcher.active/v5", TaskDispatchDecision)
     register_inference_output("galaris.dispatcher.conversation/v2", ConversationDispatchDecision)
 
 
@@ -935,12 +942,34 @@ class Dispatcher:
                     questions={
                         "dispatch": ChoiceQuestion(
                             instructions="Choose the permitted route and effort best suited to the task, following the dispatch policy.",
-                            criteria={f"{route}:{effort}": f"Route {route}, effort {effort}"
-                                      for route, effort in decision_choices},
+                            criteria={f"{route}:{effort}": (
+                                "Several independent item outputs need separate completion, verification "
+                                "and recovery. This includes full-library migration or restoration before "
+                                "items are enumerated. A shared mission, sequential order or progress log "
+                                "does not merge those items into one executor. Tracked organization never "
+                                "replaces collection coordination. Restoring an entire collection or "
+                                "catalogue means recovering its separate records, their content, media "
+                                "and references, even when the collection is named as one outcome."
+                                if route == "PLAN" else
+                                "ONE coherent demanding outcome with coupled decisions, synthesis or "
+                                "diagnosis. Sources and components serve that same outcome. Separate "
+                                "records each requiring their own transformation and verification need PLAN."
+                                if effort == "high" else
+                                "A bounded direct operation or small known mechanical batch with simple "
+                                "checks; no substantial independent item processing or coordination."
+                            ) for route, effort in decision_choices},
                         ),
                         "language": ChoiceQuestion(
                             instructions="Choose the response language matching the user's task.",
                             criteria={language: language for language in SUPPORTED_LANGUAGES},
+                        ),
+                        "organization": ChoiceQuestion(
+                            instructions="Choose executor bookkeeping independently of route and effort. Tracked never replaces PLAN for independent outputs or a migration collection. Ask only when missing user intent prevents choosing the scope or expected depth.",
+                            criteria={
+                                "direct": "Bounded work with straightforward completion checks; avoid planning overhead.",
+                                "tracked": "Long or complex mission needing preparatory investigation, durable milestones and recovery, even for one coherent deliverable.",
+                                "clarify": "Missing scope or expected depth leaves materially different interpretations; ask the requester before work.",
+                            },
                         ),
                     },
                 ))
@@ -948,6 +977,7 @@ class Dispatcher:
                 decision = DispatchDecision.model_validate({
                     "route": route, "effort": effort,
                     "language": native.output.answers["language"].choice,
+                    "organization": native.output.answers["organization"].choice,
                 })
                 inference_cost = native.cost
                 decision_metadata = native.output.model_dump(mode="json")
@@ -1081,11 +1111,30 @@ class Dispatcher:
             system_prompt += "\n\n## AVAILABLE EXECUTION CHOICES\nChoose exactly one of these route/effort pairs:\n"
             system_prompt += "\n".join(f"- route={route}, effort={effort}" for route, effort in choices)
         system_prompt += self._forced_gate(forced_route, forced_effort)
+        system_prompt += """
+
+## WORK ORGANIZATION
+Select organization independently of route and effort. Use direct for bounded work with simple
+checks. Use tracked when a mission needs preparatory investigation, milestones, durable progress
+and recovery, including ONE coherent report, website or repair. Keep its end-to-end ownership.
+Tracked describes bookkeeping inside an executor, never a substitute for PLAN coordination.
+Full migration or restoration of independent records still requires PLAN, even before inventory.
+Use clarify if missing user intent leaves materially different scopes or depths and prevents
+choosing direct versus tracked. Ask a concise question resolving that ambiguity, not a generic
+permission request. An explicitly complete migration or a demanding report is already clear:
+organize it without asking whether the user really wants the requested work. Technical unknowns
+that authorized inspection can resolve belong in preparation, not in a question to the user.
+"""
         human_prompt = (
             self._make_objective_prompt(task)
             if (self._is_background_objective_task(task) or self._has_standalone_objective(task))
             else await self._make_human_prompt(task)
         )
+        data = task.data if isinstance(task.data, dict) else {}
+        if data.get("organization_clarification") and data.get("clarifications"):
+            human_prompt += "\nOrganization clarification from the requester:\n" + json.dumps(
+                data["clarifications"], ensure_ascii=False
+            )
         return system_prompt, human_prompt
 
     async def evaluate_input(

@@ -41,6 +41,7 @@ from .contracts import (
     WorkingResource,
 )
 from .conversation_context import conversation_context_block
+from .delivery_evidence import receipt_matches_artifact, receipt_source, references_exact_resource
 from .model_resolver import require_agent_profile_model
 from .task_port import task_port
 from .planner_contracts import (
@@ -109,6 +110,12 @@ files or saved drafts of one result are not independent work items. Non-repetiti
 may be separated only when they can each be completed, verified and resumed independently.
 Selecting PLAN changes orchestration, not the requested outcome; it does not turn an action
 request into a request to write a plan. Write a plan only when that is the requested deliverable.
+
+Choose organization independently of effort and decomposition: tracked for a long or complex
+item needing preparation, durable milestones and recovery; direct for bounded work with simple
+checks. When authorized, tracked leaves include task_get and task_work_update in their tools.
+Keep preparation and verification inside the item's complete workflow, never as separate
+coordination leaves. Each collection item's organization follows its collection step.
 
 Classify the independent items of every step in item_count (null if unknown). Sequential
 execution constrains order, not granularity. Prefer the simplest meaningful work unit.
@@ -449,7 +456,8 @@ async def get_progress(task_id: UUID) -> Optional[dict[str, Any]]:
     steps = as_list((root.plan or {}).get("steps"))
     total = _count_leaves(steps)
     if total == 0:
-        return None  # Not a planned task tree.
+        from .work_contracts import work_plan_progress
+        return work_plan_progress(task.data or {})
 
     # Plan trees are shallow, so iterative breadth-first traversal is sufficient.
     done = 0
@@ -692,6 +700,11 @@ def _can_request_clarification(task: Task) -> bool:
     return "clarifications" not in data and "clarification_questions" not in data
 
 
+async def request_organization_clarification(task: Task, questions: list[str]) -> bool:
+    """Use the durable question workflow before committing to an organization choice."""
+    return await _request_clarification(task, questions)
+
+
 async def _request_clarification(task: Task, questions: list[str]) -> bool:
     """Ask clarification questions in the room and pause until an answer arrives.
 
@@ -783,7 +796,8 @@ async def _handle_clarification_answer(
         return
 
     _record_clarification_round(task, answer)
-    transition(task, TaskEvent.ROUTE_TO_PLAN)
+    transition(task, TaskEvent.REASSESS_ORGANIZATION if (task.data or {}).get("organization_clarification")
+               else TaskEvent.ROUTE_TO_PLAN)
     task_service.release(task, task_service.PAUSE_CLARIFY)
     await task_service.save(task)
     logger.info("Planner: clarification received; replanning {}", task.id)
@@ -835,6 +849,13 @@ async def resume_expired_clarifications() -> None:
             continue
 
         _record_clarification_round(task, None)
+        if (task.data or {}).get("organization_clarification"):
+            from .dispatcher_service import fail_organization_clarification
+            await fail_organization_clarification(task)
+            await _notify_legacy_failure(task)
+            from .observers import notify_terminal_task
+            await notify_terminal_task(task)
+            continue
         transition(task, TaskEvent.ROUTE_TO_PLAN)
         task_service.release(task, task_service.PAUSE_CLARIFY)
         await task_service.save(task)
@@ -1272,13 +1293,6 @@ def _closing_results_for_synthesis(
     return "\n\n".join(("\n\n".join(failures)[:budget], "\n\n".join(reports)[-budget:]))
 
 
-def _delivery_receipt_matches(resource: WorkingResource, filename: str) -> bool:
-    return resource.is_delivery_receipt and filename in {
-        str(resource.metadata.get("filename") or "").strip(),
-        str(resource.metadata.get("source") or "").strip(),
-    }
-
-
 def _is_produced_file(resource: WorkingResource) -> bool:
     """Recognize outputs written through any concrete file_share provider."""
 
@@ -1323,8 +1337,11 @@ async def _record_delivery_recovery(
         return
     candidate = max(produced, key=lambda resource: resource.updated_at)
     if any(
-        _delivery_receipt_matches(resource, candidate.reference)
-        for resource in working_set.active()
+        receipt_source(receipt) == candidate.reference
+        and str(receipt.metadata.get("destination") or "").strip() == room_id
+        and receipt_matches_artifact(artifact, receipt)
+        for artifact in working_set.active("final_artifact")
+        for receipt in working_set.active()
     ):
         return
 
@@ -1511,7 +1528,6 @@ async def _working_set_completion_error(task: Task) -> str | None:
     """Verify root-owned artifact facts before a complete plan can claim success."""
 
     working_set = await task_port.get_working_set(task.id)
-    resources = working_set.resources
     inventory_uris: set[str] = set()
     pending_groups = [task]
     seen_groups: set[UUID] = set()
@@ -1525,7 +1541,7 @@ async def _working_set_completion_error(task: Task) -> str | None:
             inventory_uris.add(str(inventory_uri))
         if any(step.get("collection") or step.get("steps") for step in as_list(group_plan.get("steps"))):
             pending_groups.extend(child for child in await task_service.get_children(group.id) if child.plan)
-    produced_files = [resource for resource in resources if _is_produced_file(resource)]
+    produced_files = [resource for resource in working_set.active() if _is_produced_file(resource)]
     contract = _result_contract(task)
     active_documents = [
         resource
@@ -1558,7 +1574,8 @@ async def _working_set_completion_error(task: Task) -> str | None:
     explicit_destination_artifacts = [
         resource
         for resource in produced_files
-        if "://" in resource.reference and resource.reference in str(task.objective or "")
+        if "://" in resource.reference
+        and references_exact_resource(str(task.objective or ""), resource.reference)
     ]
     final_artifacts = [
         resource
@@ -1579,6 +1596,19 @@ async def _working_set_completion_error(task: Task) -> str | None:
                 "A requester conversation exists, but no durable file-delivery receipt was "
                 "recorded."
             )
+    if not explicit_destination_artifacts:
+        produced_references = {resource.reference for resource in produced_files}
+        if not any(
+            receipt_matches_artifact(artifact, receipt)
+            and (artifact.reference in produced_references
+                 or receipt_source(receipt) in produced_references)
+            for artifact in final_artifacts
+            for receipt in delivery_receipts
+        ):
+            return (
+                "No active final artifact has a matching delivery receipt for the produced "
+                "file, destination and producing task."
+            )
     return None
 
 
@@ -1595,6 +1625,7 @@ async def _create_child(parent: Task, step_index: int) -> Task:
             "collection": step["collection"],
             "item_tools": step.get("tools", []),
             "item_effort": step.get("effort", "standard"),
+            "item_organization": step.get("organization", "direct"),
         }
     elif substeps:
         child_plan = {"steps": substeps, "cursor": 0}
@@ -1610,6 +1641,7 @@ async def _create_child(parent: Task, step_index: int) -> Task:
         "delivery_policy": str(step.get("delivery_policy") or "forbidden"),
     }
     parent_data = parent.data if isinstance(parent.data, dict) else {}
+    child_data["organization"] = str(step.get("organization") or "direct")
     for metadata_key in (
         "messenger_connection_id",
         "origin",

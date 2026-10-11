@@ -32,6 +32,7 @@ from app.agent.prompt_tree import (
     system_prompt_tree,
 )
 from app.agent.task_port import task_port
+from .delivery_evidence import receipt_matches_artifact
 
 
 # Tool calls that constitute a response delivered to the user. ``messenger_reply`` is no
@@ -121,7 +122,11 @@ async def recover_after_verified_delivery(
         and resource.producer_task_id == task_id
         and resource.metadata.get("tool") in successful_tools
     ]
-    if not final_artifacts or not delivery_receipts:
+    final_artifacts = [
+        artifact for artifact in final_artifacts
+        if any(receipt_matches_artifact(artifact, receipt) for receipt in delivery_receipts)
+    ]
+    if not final_artifacts:
         return False
 
     failure_text = ai_result.result.strip()
@@ -369,6 +374,43 @@ async def build_task_prompt(task: Any, extra_context: Optional[dict[str, str]] =
         t("executor.section_shared_context", lang): shared_context,
     }
     referrer_type = str(data.get("goal_referrer_type") or "").strip()
+    raw_clarifications = data.get("clarifications")
+    if data.get("organization_clarification") and isinstance(raw_clarifications, list):
+        answered: list[dict[str, Any]] = []
+        for raw_round in cast(list[object], raw_clarifications):
+            item = _string_keyed_dict(raw_round)
+            answer = item.get("answer")
+            if isinstance(answer, str) and answer.strip():
+                answered.append(item)
+        if answered:
+            sections["requester_clarifications"] = (
+                "Apply the requester's answers to the scope and depth of this objective:\n"
+                + json.dumps(answered, ensure_ascii=False)
+            )
+    if data.get("organization") == "direct":
+        sections["organization_choice"] = (
+            "Complete bounded work directly with its completion check; no tracking is required. "
+            "If inspection reveals long or complex work, organize it with task_work_update "
+            "when available. If missing user intent changes the scope or expected depth, ask "
+            "the requester through the available question tool before those actions."
+        )
+    if data.get("organization") == "tracked" or isinstance(data.get("work_plan"), dict):
+        sections["work_organization"] = (
+            "This mission requires durable organization. Before substantive work, inspect "
+            "the authorized sources and existing results needed to establish scope and a "
+            "workable method. Use task_get for your current Task revision and task_work_update "
+            "to retain a bounded set of milestones, acceptance checks and next action. Keep "
+            "one end-to-end owner for a coherent deliverable; independent substantial items "
+            "belong in the existing collection workflow. Update tracking after meaningful "
+            "progress or a blocker, not after every tool call. Mark done only after performing "
+            "the acceptance check and record what you actually observed with canonical URIs. "
+            "On resume, inspect existing outputs and reconcile uncertain effects before "
+            "repeating work. Reopen a milestone with an explicit revision reason when new "
+            "findings require changes. Tracking alone never proves that the request is fulfilled. "
+            "If task_work_update is unavailable, state that limitation and preserve continuity "
+            "using the authorized resources; never invent a persisted checkpoint.\n"
+            + json.dumps(data.get("work_plan"), ensure_ascii=False)
+        )
     if referrer_type == "AGENT" and data.get("goal_referrer_agent_id") is not None:
         sections["goal_referrer"] = (
             "This Task advances a long-running Goal. Its referrer—the person who assigned "
@@ -404,13 +446,23 @@ async def build_task_prompt(task: Any, extra_context: Optional[dict[str, str]] =
     # Inject the previous failure so a retry does not repeat the same behavior.
     previous_error = (task.last_error or "").strip()
     if (task.consecutive_failures or 0) > 0 and previous_error:
-        sections["previous_attempt_failure"] = (
-            "The previous attempt of this task failed and nothing was delivered to the "
-            f"user.\nFailure reason: {previous_error}\n"
-            "Redo the work in this run: if an action is required, perform it NOW with "
-            "actual tool calls (never assume a past turn already did it), then deliver "
-            "your answer."
-        )
+        if data.get("organization") == "tracked" or isinstance(data.get("work_plan"), dict):
+            sections["previous_attempt_failure"] = (
+                f"The previous attempt failed. Failure reason: {previous_error}\n"
+                "Its successful effects and completed milestones may still exist. Inspect "
+                "the persisted work tracking and actual resources; reconcile uncertain "
+                "effects before retrying. Continue unfinished work and recheck earlier "
+                "results only where new findings invalidate them. Do not repeat a completed "
+                "mutation or delivery merely because the attempt failed."
+            )
+        else:
+            sections["previous_attempt_failure"] = (
+                "The previous attempt of this task failed and nothing was delivered to the "
+                f"user.\nFailure reason: {previous_error}\n"
+                "Redo the work in this run: if an action is required, perform it NOW with "
+                "actual tool calls (never assume a past turn already did it), then deliver "
+                "your answer."
+            )
     delegated = bool(data.get(task_port.DELEGATED_KEY))
     if has_request_metadata:
         delegated = delegated or bool(metadata.get("delegated"))

@@ -35,13 +35,17 @@ def test_last_sent_response_prefers_the_terminal_result_over_progress() -> None:
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("tool_name,expected", [("messenger_room_send_file", True), ("console_exec", False)])
+@pytest.mark.parametrize("evidence,expected", [
+    ("matching", True), ("legacy", False), ("other_file", False),
+    ("other_destination", False), ("other_room", False), ("other_task", False),
+])
 async def test_empty_output_is_recovered_only_after_current_task_delivery(
     monkeypatch: pytest.MonkeyPatch,
-    tool_name: str,
+    evidence: str,
     expected: bool,
 ) -> None:
     task_id = uuid4()
+    tool_name = "console_exec" if evidence == "legacy" else "messenger_room_send_file"
     result = ExecutionResult(
         prompt="Send the audio file.",
         result="UnexpectedModelBehavior: Exceeded maximum output retries (2)",
@@ -71,14 +75,18 @@ async def test_empty_output_is_recovered_only_after_current_task_delivery(
                         reference="internal://room/audio.mp3",
                         label="audio.mp3",
                         producer_task_id=task_id,
-                        metadata={"delivered": True},
+                        metadata={"delivered": True, "source": "console://audio.mp3",
+                                  "delivery_destination": "room"},
                     ),
                     WorkingResource(
                         resource_type="delivery_receipt",
                         role="delivery_receipt:audio.mp3",
                         reference="messenger_room_send_file:room:audio.mp3",
-                        producer_task_id=task_id,
-                        metadata={"tool": tool_name},
+                        producer_task_id=uuid4() if evidence == "other_task" else task_id,
+                        metadata={"tool": tool_name,
+                                  "destination": "other-room" if evidence == "other_room" else "room",
+                                  "filename": "console://other.mp3" if evidence == "other_file" else "console://audio.mp3",
+                                  "uri": "internal://other/audio.mp3" if evidence == "other_destination" else "internal://room/audio.mp3"},
                     ),
                 ]
             )

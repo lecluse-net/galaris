@@ -159,8 +159,13 @@ def test_dispatcher_contract_upgrade_preserves_frozen_inferences(kind, output_ty
             contract="galaris.dispatcher.active/v2", json_schema=schema_v2,
         ))
         spec_v4 = output_registry.for_type(TaskDispatchDecision, None, mode="tool")
-        assert spec_v4.contract == "galaris.dispatcher.active/v4"
+        assert spec_v4.contract == "galaris.dispatcher.active/v5"
         assert spec_v4.json_schema["properties"]["route"]["enum"] == ["EXEC", "PLAN"]
+        legacy_v4 = dispatcher_mod._LegacyTaskDispatchDecision  # pyright: ignore[reportPrivateUsage]
+        old_v4 = output_registry.for_type(legacy_v4, None, mode="tool")
+        assert old_v4.contract == "galaris.dispatcher.active/v4"
+        assert "organization" not in old_v4.json_schema["properties"]
+        assert output_registry.resolve(old_v4).output_type.model_validate({"route": "EXEC"}).route == "EXEC"
 
 
 @pytest.fixture(autouse=True)

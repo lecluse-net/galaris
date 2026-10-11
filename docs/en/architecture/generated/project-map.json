@@ -3047,6 +3047,7 @@
           "back/app/task/scheduler.py",
           "back/app/task/schemas.py",
           "back/app/task/task_service.py",
+          "back/app/task/work_tracking.py",
           "back/app/task/working_set.py"
         ],
         "source": "app.task",
@@ -3084,7 +3085,8 @@
         "files": [
           "back/app/task/access.py",
           "back/app/task/agent_adapter.py",
-          "back/app/task/mcp.py"
+          "back/app/task/mcp.py",
+          "back/app/task/work_tracking.py"
         ],
         "source": "app.task",
         "target": "app.tools"
@@ -3120,6 +3122,7 @@
           "back/app/task/scheduler.py",
           "back/app/task/startup_timing.py",
           "back/app/task/task_service.py",
+          "back/app/task/work_tracking.py",
           "back/app/task/working_set.py"
         ],
         "source": "app.task",
@@ -7262,7 +7265,7 @@
       {
         "file": "back/app/task/mcp.py",
         "handler": "mcp_get_task",
-        "line": 90,
+        "line": 91,
         "module": "app.task",
         "name": "task_get",
         "namespace": "galaris"
@@ -7270,7 +7273,7 @@
       {
         "file": "back/app/task/mcp.py",
         "handler": "mcp_run_task",
-        "line": 179,
+        "line": 198,
         "module": "app.task",
         "name": "task_run",
         "namespace": "galaris"
@@ -7278,9 +7281,17 @@
       {
         "file": "back/app/task/mcp.py",
         "handler": "mcp_stop_task",
-        "line": 155,
+        "line": 174,
         "module": "app.task",
         "name": "task_stop",
+        "namespace": "galaris"
+      },
+      {
+        "file": "back/app/task/mcp.py",
+        "handler": "mcp_work_update",
+        "line": 114,
+        "module": "app.task",
+        "name": "task_work_update",
         "namespace": "galaris"
       },
       {

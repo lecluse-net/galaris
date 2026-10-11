@@ -293,6 +293,13 @@ Ne cherchez pas un menu latéral « Conversations » ou « Tâches » séparé :
 d’**Activité**. **Discussion** sert à échanger ; **Activité** sert à suivre les exécutions.
 L’accès à cet écran ne donne pas accès à toutes les conversations ni à tous les agents.
 
+Pour un plan qui doit produire et livrer un fichier, le résultat annoncé par l'agent est
+rapproché de la production et de l'envoi enregistrés. Un autre fichier déjà livré ne suffit
+pas à valider le plan ; un fichier périmé ou un envoi non confirmé peut laisser le travail
+en erreur. Consultez la cause dans le détail de la tâche. Si le fichier final est conservé
+et qu'aucun envoi vers la destination demandée n'a été tenté, la reprise peut se limiter à
+sa livraison. Un envoi dont l'issue est incertaine doit être vérifié avant toute répétition.
+
 Si vous demandez un bilan enregistré même lorsque le travail échoue, le plan peut conserver
 cette action de clôture. La tâche reste en erreur avec sa cause et son bilan ; les travaux
 échoués attendent votre décision de reprise. Une reprise manuelle actualise aussi le bilan.
@@ -474,6 +481,12 @@ pas l’enregistrement.
 
 Dans **Tâches et exécution → Planner**, la planification se règle avec la profondeur maximale et
 le nombre maximal de feuilles. Il n’y a pas de plafond distinct sur le nombre total d’étapes.
+
+Les agents exécutent directement les actions simples. Pour une mission longue ou complexe,
+ils disposent d'un suivi durable avec jalons et prochaine action, sans fragmenter un livrable
+unique. Si le périmètre ou la profondeur attendue reste ambigu, l'agent pose une question dans
+la conversation et attend la réponse avant de commencer. Sans réponse à l'échéance, la tâche
+signale une erreur ; le silence ne vaut pas choix. Le suivi est consultable avec `task_get`.
 
 Quelques distinctions utiles :
 

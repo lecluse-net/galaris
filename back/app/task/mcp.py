@@ -21,6 +21,7 @@ from core.database import get_db
 from core.i18n import default_language, is_supported, render_prompt, t
 from core.util import as_dict, visible_text
 from .access import agent_task_filter, require_agent_task_access
+from app.agent import WorkPlan
 
 _OBJECTIVES_LIMIT = 4_000
 _FEEDBACK_LIMIT = 8_000
@@ -99,6 +100,24 @@ async def mcp_get_task(
         raise ValueError(_message("task_not_found", language, task_id=task_id))
     await require_agent_task_access(task, ctx.agent_id)
     return await get_task(task_id, language=language)
+
+
+@mcp_tool("galaris", name="task_work_update", approval="enabled",
+    approval_reason="Record bounded progress on the executing agent's own Task",
+    description=(
+        "Persist milestones and next action for your current long or complex Task. Read "
+        "task_get first for its revision. Keep preparation, acceptance checks, verified "
+        "observations and canonical resource references. Preserve completed milestones; "
+        "changing them requires revision_reason. This records progress without completing "
+        "the Task or executing any business action. Simple tasks need no work plan."
+    ), effect_policy="idempotent", concurrency_policy="exclusive")
+async def mcp_work_update(
+    ctx: McpToolContext, plan: WorkPlan, expected_revision: int,
+    revision_reason: str = "",
+) -> dict[str, object]:
+    from .work_tracking import update_work_plan
+    return await update_work_plan(ctx, plan, expected_revision=expected_revision,
+                                  revision_reason=revision_reason)
 
 
 async def mcp_task(ctx: McpToolContext, task_id: str) -> str:
@@ -508,6 +527,8 @@ async def get_task(
         "latest_attempt": diagnostics["latest_attempt"] or activity.latest_attempt,
         **operational,
         "activity": activity.model_dump(mode="json"),
+        "revision": resolved_task.revision,
+        "work_plan": (resolved_task.data or {}).get("work_plan"),
     }
 
 

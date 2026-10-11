@@ -55,6 +55,8 @@ async def decisions(runtime, monkeypatch):
                                 "probabilities": {"EXEC:standard": 0.25, "EXEC:high": 0.75}}}
         if "language" in calls[-1]["questions"]:
             answers["language"] = {"type": "choice", "choice": "fr"}
+        if "organization" in calls[-1]["questions"]:
+            answers["organization"] = {"type": "choice", "choice": "tracked"}
         if "selections" in mode:
             answers = {key: {"type": "choice", "choice": mode["selections"][key]}
                        for key in calls[-1]["questions"]}
@@ -158,6 +160,8 @@ async def test_task_profile_selects_decision_or_existing_text_path(decisions, ru
     assert len(text_calls) == int(not specialized)
     if specialized:
         assert set(calls[0]["questions"]["dispatch"]["criteria"]) == {"EXEC:standard", "EXEC:high"}
+        assert set(calls[0]["questions"]["organization"]["criteria"]) == {"direct", "tracked", "clarify"}
+        assert result.decision.organization == "tracked"
         assert result.decision_inference["source"] == "specialized"
         assert result.cost == pytest.approx(0.0002)
 
@@ -173,6 +177,7 @@ async def test_lab_runs_real_dispatcher_with_decision_candidate_and_no_hidden_fa
                                   "execution_efforts": ["standard", "high"], "uses_llm_calls": True}}
     result, cost = await evaluate_mechanism(get_mechanism("dispatcher"), input_data=inputs, llm=llm)
     assert (result["route"], result["effort"], result["language"]) == ("EXEC", "high", "fr")
+    assert result["organization"] == "tracked"
     assert result["decision_inference"]["model"] == "test/decision-resolved"
     assert cost == pytest.approx(0.0002)
     mode["status"] = 503

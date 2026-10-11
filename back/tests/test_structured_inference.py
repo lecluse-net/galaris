@@ -339,12 +339,12 @@ async def test_real_lab_dispatcher_preserves_decision_retries_and_accounting(run
             llm=llm,
         )
     assert output == {"route": "EXEC", "effort": "standard", "language": "fr",
-                      "reasoning": ""}
+                      "reasoning": "", "organization": "direct", "clarification_questions": []}
     assert len(requests) == 2
     key = await db.scalar(select(LLMInference.id))
     snapshot = await read_inference(key)
     assert snapshot.status == "completed"
-    assert snapshot.request.output.contract == "galaris.dispatcher.active/v4"
+    assert snapshot.request.output.contract == "galaris.dispatcher.active/v5"
     assert snapshot.request.parameters == {"temperature": 0.0, "max_tokens": 256}
     assert snapshot.request.output_retries is None
     calls = list(await db.scalars(select(LLMCall)))

@@ -2,6 +2,20 @@
 
 # Agentic Execution Flow
 
+## Work organization
+
+For a Task, the Dispatcher selects `direct`, `tracked` or `clarify` in its existing routing
+inference. Simple actions stay direct. Long or complex work prepares its method and retains
+milestones through `task_work_update`, including when one executor owns a coherent deliverable.
+Independent outputs remain coordinated by the Planner; steps pass their organization to leaves.
+
+Ambiguous intent triggers a durable question and suspension. The answer restarts routing with
+the clarification. A question that cannot be delivered, or expires unanswered, fails without
+starting work. Inspectable technical unknowns do not require human clarification. `task_get`
+exposes revision and tracking; writes check ownership, phase and revision while preserving
+checkpoints. Milestone progress is declarative: it does not replace resource verification or
+the terminal result. See [0171](../../../../project/decisions/0171-adaptive-task-organization.md).
+
 The internal harness applies `runtime.yaml` from effectively assigned skills: `loading: eager`
 loads them on the first request in Tasks, text conversations and turn-based voice; the default
 remains on demand in Tasks. `galaris-knowledge` supplies this configuration and retains its
@@ -622,11 +636,21 @@ destination provider without deleting its source.
 
 The planner cannot finish a plan announced as successful if its deliverables require a document
 without a primary document, if a produced file has no active final artifact, or if a Messenger-
-originated Task has no delivery receipt. The action guard applies the same requirement to direct
-executions that produce a file. Plan leaves retain explicit messaging tools, but their terminal
+originated Task has no delivery receipt. Recovering a failed direct execution with an empty model
+response requires a delivered artifact and its matching native receipt. A direct execution reported
+as successful retains its driver's terminal result, as specified in
+[ADR 0101](../../../../project/decisions/0101-dispatch-without-action-judgment.md).
+Plan leaves retain explicit messaging tools, but their terminal
 text is never sent automatically: only the root Task carries the automatic fallback delivery.
 A separate progress message does not qualify as delivery of the result: the fallback is removed
 only if the exact terminal text has already been successfully sent through Messenger.
+
+The terminal check correlates the artifact and its receipt through the producing Task, source URI
+and recorded destination. A receipt for a different file, destination or Task cannot validate the
+deliverable. Stale or failed resources do not prove an available output. In-place updates require
+the whole URI named by the objective, rather than a prefix of another filename. Recovery from an
+empty model response after delivery uses the same correspondence and preserves the failure when
+the evidence does not match. Conversation-owned automatic delivery retains its own path after SUCCESS.
 
 If the latest work produced a verified file but stopped before any delivery call, the root retains
 a `delivery_recovery` marker with the path, destination, and producing leaf. An explicit retry

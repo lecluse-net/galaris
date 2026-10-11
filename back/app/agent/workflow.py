@@ -30,7 +30,8 @@ async def should_execute(task: AgentTask) -> bool:
         return False
     if task.status == TaskPhase.CREATE:
         dispatch_result = await dispatcher_service.run(task)
-        if not dispatch_result.success or dispatch_result.decision.route == "PLAN":
+        if (not dispatch_result.success or dispatch_result.decision.route == "PLAN"
+            or dispatch_result.decision.organization == "clarify" or task.paused):
             return False
     return True
 

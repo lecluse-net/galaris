@@ -100,6 +100,7 @@ la phase de reprise.
 | `RETRY_DELIVERY` | SUCCESS, ERROR | DISPATCH |
 | `RETRY_ROUTING` | ERROR | CREATE |
 | `REVISE` | DISPATCH | CREATE |
+| `REASSESS_ORGANIZATION` | PLAN | CREATE |
 | `CANCEL` | toute phase active | ERROR |
 | `FORCE_TERMINATE` | toute phase active | ERROR |
 | `ACTIVATE_PLAN_STEP` | PLAN, DISPATCH | DISPATCH |
@@ -109,6 +110,10 @@ la phase de reprise.
 
 Actions du scheduler : `CREATE → dispatch`, `DISPATCH → execute`, `PLAN → advance_plan`.
 Une tâche suspendue conserve sa phase sans être exécutée.
+
+Une question d'organisation suspend en `PLAN`. Sa réponse conserve les précisions puis
+applique `REASSESS_ORGANIZATION` ; le routage choisit de nouveau avec cette réponse. Sans
+réponse à l'échéance, ou sans canal de question, `FAIL` termine la Task en `ERROR`.
 
 Les collections utilisent les phases existantes : le groupe reste en `PLAN`, sa découverte
 puis ses éléments traversent `DISPATCH → EXEC → SUCCESS/ERROR`. Une nouvelle vague est

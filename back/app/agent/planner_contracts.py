@@ -131,6 +131,15 @@ class PlanStep(BaseModel):
             "Final text synthesis is automatic and never needs a closing leaf."
         ),
     )
+    organization: Literal["direct", "tracked"] = Field(
+        default="direct",
+        description=(
+            "Use tracked for a long or complex item needing preparatory investigation and durable "
+            "milestones within this executor. Keep its coherent outcome together. Use direct for "
+            "bounded work with straightforward checks. When available, tracked leaves include "
+            "task_get and task_work_update among their tools."
+        ),
+    )
     effort: Literal["standard", "high"] = Field(
         default="standard",
         description=(

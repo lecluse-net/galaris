@@ -2,6 +2,22 @@
 
 # Flux d’exécution agentique
 
+## Organisation du travail
+
+Pour une Task, le Dispatcher choisit `direct`, `tracked` ou `clarify` dans son inférence
+de routage existante. Une action simple reste directe. Une mission longue ou complexe
+prépare sa méthode et conserve ses jalons via `task_work_update`, même lorsqu'un seul
+exécutant garde la responsabilité du livrable. Les résultats indépendants restent coordonnés
+par le Planner ; les étapes transmettent leur organisation à leurs feuilles.
+
+Une intention ambiguë entraîne une question durable et une suspension. La réponse relance
+le choix avec les précisions reçues. Une question impossible à transmettre ou expirée sans
+réponse termine en erreur, sans lancer le travail. Les inconnues techniques inspectables
+ne demandent pas de clarification humaine. `task_get` expose révision et suivi ; les écritures
+contrôlent propriétaire, phase et révision, et préservent les checkpoints. La progression
+des jalons reste déclarative : elle ne remplace pas la vérification des ressources ni le
+résultat terminal. Voir [0171](../../../../project/decisions/0171-adaptive-task-organization.md).
+
 Le harnais interne applique la politique `runtime.yaml` des compétences effectivement
 attribuées : `loading: eager` les charge dès la première requête en Task, conversation texte
 et voix par tours ; le défaut reste à la demande en Task. `galaris-knowledge` fournit cette
@@ -654,12 +670,23 @@ provider de destination sans supprimer sa source.
 
 Le planner ne peut terminer un plan annoncé comme réussi si ses livrables exigent un document sans
 document primaire, si un fichier produit n'a aucun artefact final actif, ou si une Task issue de
-Messenger n'a aucun reçu de livraison. Le garde d'action applique la même exigence aux exécutions
-directes qui produisent un fichier. Les feuilles d'un plan conservent les outils explicites de
+Messenger n'a aucun reçu de livraison. La récupération d'une exécution directe en échec avec une
+réponse modèle vide exige un artefact livré et son reçu natif concordant. Une exécution directe
+annoncée comme réussie conserve le résultat terminal de son driver, conformément à
+[ADR 0101](../../../../project/decisions/0101-dispatch-without-action-judgment.md).
+Les feuilles d'un plan conservent les outils explicites de
 messagerie, mais leur texte terminal n'est jamais envoyé automatiquement : seule la Task racine
 porte la livraison automatique de secours. Un message de progression distinct ne vaut pas livraison
 du résultat : le fallback est supprimé uniquement si le texte terminal exact a déjà été envoyé avec
 succès par Messenger.
+
+Le contrôle terminal rapproche l'artefact et son reçu par la Task productrice, l'URI source
+et la destination réellement enregistrées. Un reçu d'un autre fichier, d'une autre destination
+ou d'une autre Task ne valide pas le livrable. Les ressources périmées ou échouées ne prouvent
+pas une production disponible. La mise à jour sur place exige l'URI entière nommée par l'objectif,
+pas le préfixe d'un autre nom de fichier. La récupération d'une réponse modèle vide après livraison
+utilise cette même correspondance ; elle conserve l'échec si les preuves ne concordent pas.
+La livraison automatique appartenant à Conversation conserve son propre chemin après SUCCESS.
 
 Si le dernier travail a produit un fichier vérifié mais s'est arrêté avant tout appel de livraison,
 la racine conserve un marqueur `delivery_recovery` avec le chemin, la destination et la feuille

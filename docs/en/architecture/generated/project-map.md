@@ -19,7 +19,7 @@ tests remain authoritative for behavior.
 - 7 directly bidirectional frontend pairs;
 - 616 detected HTTP/WebSocket handlers;
 - 143 detected SQLAlchemy tables;
-- 245 detected native MCP tools;
+- 246 detected native MCP tools;
 - 40 detected Vue pages.
 
 ## Backend Modules
@@ -441,13 +441,13 @@ tests remain authoritative for behavior.
 | `app.skill` | `core.database` | `back/app/skill/learning_service.py`, `back/app/skill/models.py`, `back/app/skill/resource_facade.py`, `back/app/skill/skill_service.py` |
 | `app.skill` | `core.dbadmin` | `back/app/skill/dbadmin.py`, `back/app/skill/skill_service.py` |
 | `app.skill` | `core.params` | `back/app/skill/learning_service.py` |
-| `app.task` | `app.agent` | `back/app/task/__init__.py`, `back/app/task/activity_snapshot.py`, `back/app/task/agent_adapter.py`, `back/app/task/amendment_service.py`, `back/app/task/budget.py`, `back/app/task/execution_scope.py`, `back/app/task/live_checkpoint.py`, `back/app/task/mcp.py`, `back/app/task/models.py`, `back/app/task/operational_state.py`, `back/app/task/replacement.py`, `back/app/task/router.py`, `back/app/task/run_events.py`, `back/app/task/runner.py`, `back/app/task/scheduler.py`, `back/app/task/schemas.py`, `back/app/task/task_service.py`, `back/app/task/working_set.py` |
+| `app.task` | `app.agent` | `back/app/task/__init__.py`, `back/app/task/activity_snapshot.py`, `back/app/task/agent_adapter.py`, `back/app/task/amendment_service.py`, `back/app/task/budget.py`, `back/app/task/execution_scope.py`, `back/app/task/live_checkpoint.py`, `back/app/task/mcp.py`, `back/app/task/models.py`, `back/app/task/operational_state.py`, `back/app/task/replacement.py`, `back/app/task/router.py`, `back/app/task/run_events.py`, `back/app/task/runner.py`, `back/app/task/scheduler.py`, `back/app/task/schemas.py`, `back/app/task/task_service.py`, `back/app/task/work_tracking.py`, `back/app/task/working_set.py` |
 | `app.task` | `app.goal` | `back/app/task/models.py`, `back/app/task/router.py`, `back/app/task/task_service.py` |
 | `app.task` | `app.llm` | `back/app/task/budget.py`, `back/app/task/mcp.py`, `back/app/task/startup_timing.py`, `back/app/task/task_service.py` |
 | `app.task` | `app.messenger` | `back/app/task/collab.py`, `back/app/task/scheduler.py`, `back/app/task/task_service.py` |
-| `app.task` | `app.tools` | `back/app/task/access.py`, `back/app/task/agent_adapter.py`, `back/app/task/mcp.py` |
+| `app.task` | `app.tools` | `back/app/task/access.py`, `back/app/task/agent_adapter.py`, `back/app/task/mcp.py`, `back/app/task/work_tracking.py` |
 | `app.task` | `core.authorize` | `back/app/task/router.py`, `back/app/task/run_events.py` |
-| `app.task` | `core.database` | `back/app/task/active_lease.py`, `back/app/task/activity.py`, `back/app/task/activity_snapshot.py`, `back/app/task/agent_adapter.py`, `back/app/task/amendment_service.py`, `back/app/task/collab.py`, `back/app/task/conversation.py`, `back/app/task/execution_scope.py`, `back/app/task/live_checkpoint.py`, `back/app/task/mcp.py`, `back/app/task/models.py`, `back/app/task/outcome.py`, `back/app/task/progress.py`, `back/app/task/replacement.py`, `back/app/task/replacement_tree.py`, `back/app/task/resource_facade.py`, `back/app/task/router.py`, `back/app/task/run_events.py`, `back/app/task/scheduler.py`, `back/app/task/startup_timing.py`, `back/app/task/task_service.py`, `back/app/task/working_set.py` |
+| `app.task` | `core.database` | `back/app/task/active_lease.py`, `back/app/task/activity.py`, `back/app/task/activity_snapshot.py`, `back/app/task/agent_adapter.py`, `back/app/task/amendment_service.py`, `back/app/task/collab.py`, `back/app/task/conversation.py`, `back/app/task/execution_scope.py`, `back/app/task/live_checkpoint.py`, `back/app/task/mcp.py`, `back/app/task/models.py`, `back/app/task/outcome.py`, `back/app/task/progress.py`, `back/app/task/replacement.py`, `back/app/task/replacement_tree.py`, `back/app/task/resource_facade.py`, `back/app/task/router.py`, `back/app/task/run_events.py`, `back/app/task/scheduler.py`, `back/app/task/startup_timing.py`, `back/app/task/task_service.py`, `back/app/task/work_tracking.py`, `back/app/task/working_set.py` |
 | `app.task` | `core.dbadmin` | `back/app/task/dbadmin.py`, `back/app/task/html_migration.py` |
 | `app.task` | `core.i18n` | `back/app/task/budget.py`, `back/app/task/collab.py`, `back/app/task/mcp.py`, `back/app/task/router.py`, `back/app/task/scheduler.py`, `back/app/task/task_service.py` |
 | `app.task` | `core.params` | `back/app/task/budget.py`, `back/app/task/collab.py`, `back/app/task/mcp.py`, `back/app/task/scheduler.py`, `back/app/task/settings_service.py` |
@@ -1968,9 +1968,10 @@ tests remain authoritative for behavior.
 | `process_list` | `galaris` | `app.process` | `process_list` | `back/app/process/mcp.py:52` |
 | `process_list_runs` | `galaris` | `app.process` | `process_list_runs` | `back/app/process/mcp.py:123` |
 | `process_start` | `galaris` | `app.process` | `process_start` | `back/app/process/mcp.py:88` |
-| `task_get` | `galaris` | `app.task` | `mcp_get_task` | `back/app/task/mcp.py:90` |
-| `task_run` | `galaris` | `app.task` | `mcp_run_task` | `back/app/task/mcp.py:179` |
-| `task_stop` | `galaris` | `app.task` | `mcp_stop_task` | `back/app/task/mcp.py:155` |
+| `task_get` | `galaris` | `app.task` | `mcp_get_task` | `back/app/task/mcp.py:91` |
+| `task_run` | `galaris` | `app.task` | `mcp_run_task` | `back/app/task/mcp.py:198` |
+| `task_stop` | `galaris` | `app.task` | `mcp_stop_task` | `back/app/task/mcp.py:174` |
+| `task_work_update` | `galaris` | `app.task` | `mcp_work_update` | `back/app/task/mcp.py:114` |
 | `tools_list` | `galaris` | `app.tools` | `list_mcp_tools` | `back/app/tools/mcp.py:89` |
 | `conversation_round_get` | `galaris_admin` | `app.conversation` | `conversation_round_get` | `back/app/conversation/mcp.py:236` |
 | `documentation_catalog` | `galaris_admin` | `app.tools` | `documentation_catalog` | `back/app/tools/mcp.py:37` |

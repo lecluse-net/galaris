@@ -8,9 +8,9 @@ Usage:
     >>> await dispatcher_service.run(task)
 """
 
-from core.i18n import current_language
+from core.i18n import current_language, t
 
-from .contracts import AgentTask, DispatchResult, TaskPhase, TaskTransition
+from .contracts import AgentTask, DispatchResult, ExecutionResult, TaskPhase, TaskTransition
 from .dispatcher import get_dispatcher
 from .task_port import task_port
 
@@ -41,6 +41,22 @@ async def run(
     if not dispatch_result.success:
         return dispatch_result
 
+    data = dict(task.data or {})
+    data["organization"] = dispatch_result.decision.organization
+    task.data = data
+    if dispatch_result.decision.organization == "clarify":
+        from . import planner_service
+        data["organization_clarification"] = True
+        task.data = data
+        questions = dispatch_result.decision.clarification_questions or [
+            t("planner.organization_question", str(data.get("language") or "en"))
+        ]
+        if await planner_service.request_organization_clarification(task, questions):
+            return dispatch_result
+        await fail_organization_clarification(task)
+        dispatch_result.success = False
+        return dispatch_result
+
     if dispatch_result.decision.route == "PLAN":
         # The scheduler resumes PLAN through planner_service.advance.
         await _update_task_status(task, TaskPhase.PLAN)
@@ -51,6 +67,18 @@ async def run(
 
     return dispatch_result
 
+
+async def fail_organization_clarification(task: AgentTask) -> None:
+    """Unanswered organization questions never authorize execution."""
+    message = t("planner.organization_unanswered", str((task.data or {}).get("language") or "en"))
+    task_port.transition(task, TaskTransition.FAIL)
+    task_port.clear_pauses(task)
+    task.feedback = message
+    task.set_execution_result(ExecutionResult(
+        prompt=task.objective or "", result=message, success=False,
+        metadata={"failure_code": "ORGANIZATION_CLARIFICATION_REQUIRED"},
+    ))
+    await task_port.save(task)
 
 async def _update_task_status(task: AgentTask, status: TaskPhase) -> None:
     """Update task workflow status."""

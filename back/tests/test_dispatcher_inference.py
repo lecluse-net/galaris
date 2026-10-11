@@ -141,6 +141,8 @@ async def test_production_dispatch_preserves_protocol_fallback_and_durable_linea
     route = "END" if kind == "ai" else "EXEC"
     effort = "high" if kind == "task" else "standard"
     complete = {"route": route, "effort": effort, "language": language.upper()}
+    if kind == "task":
+        complete["organization"] = "tracked"
     outputs = [json.dumps(complete)]
     if scenario == "malformed":
         outputs = ["invalid JSON"] * 3
@@ -196,6 +198,12 @@ async def test_production_dispatch_preserves_protocol_fallback_and_durable_linea
     assert (terminal.structured_output is None) == failed
     if not failed:
         expected_output = {"route": route, "effort": expected_effort, "language": expected_language}
+        if kind == "task":
+            expected_output.update({
+                "organization": "direct" if scenario == "missing_optional" else "tracked",
+                "clarification_questions": [],
+            })
+            assert result.decision.organization == expected_output["organization"]
         assert terminal.structured_output == expected_output
         assert json.loads(terminal.result) == expected_output
     if kind == "task" and scenario == "partial_then_valid":

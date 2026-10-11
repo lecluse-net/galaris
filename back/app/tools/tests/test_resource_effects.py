@@ -4,6 +4,7 @@ from uuid import uuid4
 import pytest
 
 from app.agent.contracts import WorkingSet
+from app.agent.delivery_evidence import receipt_matches_artifact
 from app.tools.mcp_loader import McpToolContext
 from app.tools.resource_effects import record_tool_resources
 
@@ -95,6 +96,7 @@ async def test_file_delivery_records_artifact_and_receipt(
     assert "removed_after_delivery" not in resources[0].metadata
     assert resources[1].role == "final_artifact"
     assert resources[2].metadata["destination"] == "room-1"
+    assert receipt_matches_artifact(resources[1], resources[2])
 
 
 @pytest.mark.asyncio
@@ -132,6 +134,7 @@ async def test_audio_delivery_records_artifact_and_receipt(
     assert resources[0].role == "final_artifact"
     assert resources[0].metadata["delivered"] is True
     assert resources[1].metadata["destination"] == "latest-room"
+    assert receipt_matches_artifact(resources[0], resources[1])
 
 
 @pytest.mark.asyncio
@@ -163,6 +166,7 @@ async def test_cross_provider_delivery_records_exact_source_and_destination_uris
     assert resources[0].resource_type == "artifact"
     assert resources[0].reference == "console://reports/report.pdf"
     assert resources[1].reference == "nextcloud://provider-room/attachment-12"
+    assert receipt_matches_artifact(resources[1], resources[2])
     assert resources[1].metadata["source"] == "console://reports/report.pdf"
     assert resources[2].metadata["filename"] == "console://reports/report.pdf"
     assert resources[2].metadata["uri"] == "nextcloud://provider-room/attachment-12"
@@ -233,6 +237,26 @@ async def test_file_upload_records_remote_artifact_and_receipt(
     ]
     assert resources[0].reference == "nextcloud://Shared/report.html"
     assert resources[1].metadata["source"] == "console://final/report.html"
+    assert receipt_matches_artifact(resources[0], resources[1])
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("tool_name", ["file_copy", "file_move"])
+async def test_provider_transfer_has_correlated_delivery_evidence(monkeypatch, tool_name):
+    from app.tools import resource_effects
+
+    recorded = AsyncMock()
+    monkeypatch.setattr(resource_effects.task_port, "upsert_working_resource", recorded)
+    await record_tool_resources(
+        McpToolContext(agent_id=1, runtime="internal", task_id=uuid4()),
+        tool_name,
+        {"source": "console://final/report.pdf", "destination": "nextcloud://Shared/report.pdf"},
+        {"uri": "nextcloud://Shared/report.pdf", "source_uri": "console://final/report.pdf"},
+    )
+    resources = [call.args[1] for call in recorded.await_args_list]
+    artifact = next(resource for resource in resources if resource.role == "final_artifact")
+    receipt = next(resource for resource in resources if resource.is_delivery_receipt)
+    assert receipt_matches_artifact(artifact, receipt)
 
 
 @pytest.mark.asyncio

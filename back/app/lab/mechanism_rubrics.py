@@ -105,7 +105,7 @@ _RUBRICS: dict[EvaluationMechanism, MechanismRubric] = {
     ),
     "dispatcher": MechanismRubric(
         mechanism="dispatcher",
-        version="dispatcher-score:v3",
+        version="dispatcher-score:v4",
         dimensions=(
             _dimension(
                 "route",
@@ -123,10 +123,14 @@ _RUBRICS: dict[EvaluationMechanism, MechanismRubric] = {
                 "language", "Language", 5, "Respects the language of the request and context."
             ),
             _dimension(
-                "reasoning",
-                "Justification",
+                "organization",
+                "Organization",
                 15,
-                "Grounds the decision in supplied evidence and obeys forced routing constraints.",
+                "Uses direct for bounded work, tracked for long or complex missions even with one "
+                "coherent deliverable, and clarify when missing user intent prevents choosing "
+                "scope or depth. Does not ask questions resolvable through authorized inspection. "
+                "Respects explicit constraints and capabilities. Compare organization when the "
+                "reference declares it; legacy cases retain their original route requirements.",
             ),
         ),
     ),
