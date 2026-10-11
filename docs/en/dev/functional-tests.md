@@ -782,3 +782,6 @@ Tasks: read queries must remain bounded without one query per resource.
 `app/task/tests/test_activity_snapshot.py` checks that a long demand does not inflate the
 scope summary returned on every refresh; the durable contract stays complete. Local
 measurements under `artifacts/` are distinct from real load qualification or provider latency.
+
+Graph boundary coverage accepts 500-node expansion pages and rejects 501, replacing
+the former 100-node ceiling.

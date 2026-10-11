@@ -498,18 +498,18 @@ d'accès et la date de dernière activité. Les liens du graphe permettent d'ouv
 les dossiers et conversations ont une modale dédiée à leurs métadonnées et relations.
 La fermeture par le bouton ou l'arrière-plan rend le graphe avec son cadrage conservé.
 
-L'onglet **Graphe** ouvre la **Vue 3D** ; **Vue 2D** conserve le graphe précédent.
+L'onglet **Graphe** affiche uniquement la carte 3D.
 La 3D affiche les pages à mesure qu'elles arrivent, en commençant par les racines
 File Share, sujets et contacts, puis dossiers/répertoires, documents et détails.
-Approchez un répertoire pour charger progressivement ses enfants connus ; les branches
+Tous les répertoires connus se chargent dès l'ouverture. Approchez un répertoire pour
+charger ses fichiers connus, par pages de 500 au maximum ; les branches
 visitées sont retrouvées à la réouverture. Leur profondeur suit les distances locales,
 sans grands étages fixes. Un lien disparaît si l'un de ses nœuds passe derrière la caméra.
-Le retour en 2D charge le catalogue complet correspondant aux filtres.
-Les deux vues utilisent les mêmes SVG de dossiers, glyphes de fichiers et médias,
-bordures, couleurs, courbures et différences d'épaisseur des relations. En 3D, les
+La carte utilise les SVG de dossiers, glyphes de fichiers et médias, bordures,
+couleurs, courbures et différences d'épaisseur des relations. Les
 liens sont épaissis pour mieux les voir et les longs liens utilisent davantage de segments
 pour conserver leur courbe. Les libellés n'ont pas de fond.
-Dans les deux vues, les nœuds éloignés sont environ deux fois plus petits que les nœuds proches.
+Les nœuds éloignés sont environ deux fois plus petits que les nœuds proches.
 En 3D, un clic gauche sans déplacement ouvre le nœud. Maintenez le bouton gauche et
 glissez pour tourner autour du nœud visé, sans le recentrer à l'écran. Si le clic commence
 sur le fond, le glissement déplace le graphe jusqu'au relâchement, sans rotation.
@@ -521,31 +521,37 @@ de zoom déplacent la caméra dans l'axe central. Vous pouvez dépasser un nœud
 maximal retrouve le graphe entier centré. Le cadrage 3D remplit l'espace disponible selon
 la largeur, la hauteur et la profondeur, avec une marge pour garder les symboles entiers.
 Les flèches sélectionnent un nœud visible, **Entrée** ouvre
-ses détails et **Début** recentre tout. La caméra 3D est enregistrée indépendamment de la
-caméra 2D. Si WebGL est indisponible, la vue 2D prend le relais.
+ses détails et **Début** recentre tout. La caméra est enregistrée à la réouverture.
+Si le rendu 3D est indisponible, un message propose de vérifier WebGL et de réessayer.
 Les zones denses peuvent aussi afficher un **Groupe de N éléments**, même sans sujet commun.
 Cliquez sur son symbole pour approcher et voir ses membres ; reculer les regroupe à nouveau.
 Ce regroupement d'affichage ne modifie pas les souvenirs ni leurs relations.
 
+Les éléments masqués par un filtre, un repli ou le cadrage agrandissent leurs représentants
+visibles, jusqu'à **quatre fois leur diamètre normal**, avec une croissance progressivement
+atténuée. Leur poids suit les liens confirmés et remonte les parents masqués ; il se partage
+entre les représentants les plus proches lorsqu'il y en a plusieurs. Les enfants connus d'un
+répertoire encore non chargés contribuent également. Le texte des représentants ayant des
+éléments masqués reste toujours affiché, même de loin et dans une zone dense.
+Quand les éléments réapparaissent,
+leur contribution disparaît, sans modifier leurs coordonnées. Le compteur **éléments masqués**
+signale aussi ceux qui n'ont aucun représentant visible ; les libellés au survol indiquent les
+éléments masqués liés au nœud. Les ressources inaccessibles ne contribuent pas au calcul.
+
 Dans **Graphe**, les branches d'au moins huit éléments reliés exclusivement à la même ancre
 sont représentées par cette ancre agrandie et un compteur. Zoomez ou cliquez sur le groupe
 pour voir ses éléments. Les boutons **Zoomer** et **Dézoomer** sont utilisables au clavier.
-Le dézoom et **Ajuster le graphe à la fenêtre** replient les branches. En 2D, jusqu'à 600 items chargés,
-le placement initial se stabilise naturellement et se rééquilibre doucement après modification du graphe
-pendant au plus 0,7 seconde. Le zoom, le dépliage et la fermeture du détail conservent les positions ; au-delà, les positions
-restent fixes pour limiter le calcul. Un clic sur le groupe cadre son ancre.
-Les nouveaux nœuds apparaissent progressivement sur place ; cet effet est désactivé
-sur les vues denses et lorsque la réduction des animations est demandée. En 3D, le placement
-est préparé dans un worker ; tourner ou zoomer ne relance aucune simulation.
+Le dézoom et **Ajuster le graphe à la fenêtre** replient les branches. Le zoom, le dépliage
+et la fermeture du détail conservent les positions. Le placement est préparé dans un worker ;
+tourner ou zoomer ne relance aucune simulation. Un clic sur le groupe cadre son ancre.
 En vue éloignée, les liens de détail et certains titres s'effacent ; zoomez pour les retrouver.
 Les souvenirs partageant exactement les mêmes relations avec des ancres structurantes
 sont également regroupés ; chaque groupe conserve ses connexions à toutes ses ancres.
-Les symboles ont deux tailles fixes, éloignée et proche : zoomer au-delà du seuil proche
+Les symboles ont deux tailles de base, éloignée et proche : zoomer au-delà du seuil proche
 écarte leurs positions sans les agrandir. Les aperçus grandissent plus tard, selon l'espace
 disponible entre voisins, jusqu'à la taille réelle en pixels de la miniature, sans la dépasser.
-Les titres restent limités même au zoom maximal
-pour éviter les superpositions et se retrouvent au survol
-ou à la sélection. Toutes les pages correspondant aux filtres sont chargées, sans plafond
+Les titres ordinaires restent limités pour éviter les superpositions et se retrouvent au
+survol ou à la sélection ; les représentants d'éléments masqués gardent toujours leur texte. Toutes les pages correspondant aux filtres sont chargées, sans plafond
 global de nœuds ; les branches exclusives sont repliées dès l'ouverture. Les grandes cartes
 placent les éléments près de leurs ancres avant stabilisation. Le dézoom minimal ajuste
 toujours le graphe entier à la fenêtre et le recentre, même après déplacement. Le zoom

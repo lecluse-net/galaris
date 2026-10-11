@@ -833,3 +833,6 @@ ressource. `app/task/tests/test_activity_snapshot.py` vérifie qu'une longue dem
 gonfle pas le résumé de portée renvoyé à chaque actualisation ; le contrat durable reste
 complet. Les mesures locales sous `artifacts/` sont distinctes d'une qualification de
 charge réelle ou de la latence des fournisseurs.
+
+Le test de bornes du graphe admet les pages d'expansion de 500 nœuds et refuse 501,
+en remplacement de l'ancienne limite de 100.

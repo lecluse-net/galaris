@@ -379,16 +379,16 @@ last activity. Graph links open neighboring nodes; folders and conversations hav
 for their metadata and relationships. Closing with the button or backdrop returns to the
 graph with its viewport preserved.
 
-The **Graph** tab opens **3D view**; **2D view** retains the previous graph.
+The **Graph** tab displays the 3D map exclusively.
 3D displays pages as they arrive, starting with File Share roots, topics and contacts,
-then folders/directories, documents and details. Approach a directory to progressively
-load its known children; visited branches return when reopening. Their depth follows
+then folders/directories, documents and details. All known directories load on opening.
+Approach a directory to load its known files, in pages of at most 500;
+visited branches return when reopening. Their depth follows
 local distances rather than distant fixed levels. A link disappears when either node
-passes behind the camera. Returning to 2D loads the complete catalogue matching the filters.
-Both views use the same folder SVGs, file and media glyphs, borders, relation colors
-curves and relative widths. In 3D, links are thicker for visibility, and long links use
+passes behind the camera. The map uses folder SVGs, file and media glyphs, borders,
+relation colors, curves and relative widths. Links are thicker for visibility, and long links use
 more segments to preserve their curve. Labels have no background.
-In both views, distant nodes are roughly half the size of nearby nodes.
+Distant nodes are roughly half the size of nearby nodes.
 In 3D, a left click without movement opens the node. Hold the left button and drag to
 orbit the pointed node without centering it on screen. If the press starts on the background,
 dragging pans the graph until release without rotating. Releasing after moving never opens a modal, even when returning
@@ -398,28 +398,35 @@ Pinch and zoom buttons move along the central viewing axis. You can pass a node 
 back to the overview shows the entire graph centered. 3D framing fills the available
 space according to width, height and depth, with a margin to keep glyphs fully visible.
 Arrow keys select a visible node, **Enter** opens its details, and **Home** centers the
-whole graph. The 3D camera is saved independently of the 2D camera. If WebGL is
-unavailable, the graph falls back to 2D.
+whole graph. The camera is saved for reopening. If 3D rendering is unavailable,
+a message offers to check WebGL support and retry.
 Dense areas can also show a **Group of N items**, even without a shared Topic.
 Click its marker to approach and reveal the members; moving back groups them again.
 These display groups do not change memories or their relationships.
 
+Items hidden by a filter, folding or framing enlarge their visible representatives, up to
+**four times their normal diameter**, with diminishing growth. Their weight follows confirmed
+links and hidden parents; it is shared between the nearest representatives when there are
+several. Known directory children that have not loaded yet also contribute. Captions of
+representatives with hidden items always remain visible, including distant and dense views.
+As items reappear,
+their contribution disappears without changing their coordinates. The **hidden items** count
+also reports items without a visible representative; hover captions indicate the hidden items
+linked to a node. Inaccessible resources do not contribute to the calculation.
+
 In **Graph**, branches with at least eight items exclusively linked to the same anchor are
 represented by a larger anchor and a count. Zoom in or click the group to see its items;
 the **Zoom in** and **Zoom out** buttons are keyboard accessible. Zooming out and **Fit graph to viewport**
-fold the branches. In 2D, up to 600 loaded items, the initial placement settles naturally,
-with gentle rebalancing for at most 0.7 seconds after the graph changes. Zooming, unfolding and closing node details
-preserve positions; larger windows retain fixed positions to bound computation.
-New nodes fade into their existing positions; dense views and reduced-motion preferences
-disable this effect. In 3D, a worker prepares placement; orbiting and zooming start no simulation.
-Clicking a group frames its anchor. Zooming out hides detailed links and some titles; zoom
-back in to restore them.
+fold the branches. Zooming, unfolding and closing node details preserve positions.
+A worker prepares placement; orbiting and zooming start no simulation. Clicking a group
+frames its anchor. Zooming out hides detailed links and some ordinary titles; zoom back
+in to restore them.
 Memories sharing exactly the same relationships to structural anchors are also grouped;
-each group retains connections to every anchor. Symbols have two fixed display sizes,
+each group retains connections to every anchor. Symbols have two base display sizes,
 distant and near: further zoom beyond the near threshold spreads their positions without
 enlarging them. Previews grow later, depending on the space between neighbors, up to the
-thumbnail's actual pixel dimensions, never beyond them. Titles remain limited even at maximum zoom to avoid overlaps and remain available on
-hover or selection. All pages matching the filters load without a global node cap;
+thumbnail's actual pixel dimensions, never beyond them. Ordinary titles remain limited to avoid overlaps and remain available on hover or
+selection; representatives of hidden items always retain their captions. All pages matching the filters load without a global node cap;
 exclusive branches are folded on opening. Large maps place items near their anchors before
 settling. The minimum zoom always fits and centers the entire graph, including after panning.
 Zoom can then reach one million times this framing. Only nodes in the visible region are
