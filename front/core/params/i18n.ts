@@ -344,7 +344,7 @@ export default {
       },
     },
     processSettings: {
-      title: 'Processus', subtitle: 'Connectez Galaris à son moteur de processus. Un seul moteur peut être actif.', n8nLabel: 'n8n',
+      title: 'Processus', subtitle: 'Connectez n8n à Galaris pour exécuter vos processus métier.', n8nLabel: 'n8n',
       fields: {
         engine: 'Moteur actif', baseUrl: 'URL de n8n', apiToken: 'Clé API n8n', webhookBaseUrl: 'URL publique des webhooks n8n', galarisBaseUrl: 'URL de Galaris vue depuis n8n',
         webhookAuthHeader: 'En-tête d’authentification webhook', webhookAuthToken: 'Secret d’authentification webhook', callbackAuthHeader: 'En-tête d’authentification callback',
@@ -753,7 +753,7 @@ export default {
       },
     },
     processSettings: {
-      title: 'Processes', subtitle: 'Connect Galaris to its process engine. Only one engine can be active.', n8nLabel: 'n8n',
+      title: 'Processes', subtitle: 'Connect n8n to Galaris to run your business processes.', n8nLabel: 'n8n',
       fields: {
         engine: 'Active engine', baseUrl: 'n8n URL', apiToken: 'n8n API key', webhookBaseUrl: 'Public n8n webhook URL', galarisBaseUrl: 'Galaris URL as seen from n8n',
         webhookAuthHeader: 'Webhook authentication header', webhookAuthToken: 'Webhook authentication secret', callbackAuthHeader: 'Callback authentication header',

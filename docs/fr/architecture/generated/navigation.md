@@ -211,7 +211,7 @@ Le [guide de navigation](../../user/navigation.md) détaille les onglets, le men
 ## Administrer → Préférences → Processus
 
 - Route : `/params/processes`
-- Usage : Connectez Galaris à son moteur de processus. Un seul moteur peut être actif.
+- Usage : Connectez n8n à Galaris pour exécuter vos processus métier.
 - Visibilité du menu (privilèges) : (PARAMS_ACCESS) AND (PARAMS_ACCESS)
 - Conditions supplémentaires : —
 - Sources : `front/core/params/navigation.ts`

@@ -977,6 +977,14 @@ a global secret as a public file parameter. Each call also supplies an idempoten
 the run identifier, and its callback URL in headers. The complete contract and
 importable template are described in the [n8n documentation](../n8n/README.md).
 
+Third-party software can be called from an n8n workflow or integrated directly through
+an engine bridge. Direct integration requires code and server configuration;
+creating a Tool alone is insufficient. The
+[external engine guide](../dev/process-engines.md) describes that path.
+Discovery returns available operations; explicitly create their definitions and
+assignments afterward. Multiple engines can coexist, but the default engine setting
+and current connection assistant remain oriented toward n8n.
+
 ## 8. Accounts, Roles, and Privileges
 
 Galaris applies RBAC at three levels:

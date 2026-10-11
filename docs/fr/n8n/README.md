@@ -47,8 +47,10 @@ si le workflow télécharge un fichier ou envoie un callback.
 
 Utilisez **Ouvrir les processus**, puis synchronisez les workflows dans l’administration
 des processus. Aucun redémarrage n’est nécessaire. Une définition Galaris associe ensuite un
-workflow, un outil et un agent ; ces
-trois valeurs sont immuables après création.
+workflow, un outil et un agent. Ces valeurs sont modifiables depuis l'administration,
+avec validation des droits et de l'unicité ; évitez de les changer pendant une exécution.
+La synchronisation découvre les workflows : elle ne crée pas automatiquement leur
+définition ni leur affectation dans Galaris.
 
 ## 2. Importer le gabarit
 
@@ -61,6 +63,10 @@ Dans n8n :
 4. remplacez `Record invoice` par les vraies opérations métier ;
 5. conservez le nœud `Return execution ID` et sa réponse immédiate ;
 6. activez le workflow, puis relancez la synchronisation dans Galaris.
+
+Le bridge choisit le premier nœud Webhook du workflow pour construire l'URL
+`/webhook/{path}` et l'appelle en POST. Ce nœud doit donc être le point d'entrée
+prévu pour Galaris ; une autre méthode HTTP nécessite une adaptation du bridge.
 
 Le webhook du gabarit répond sous cette forme :
 
@@ -170,3 +176,7 @@ La configuration d’exploitation complète figure dans le
 [guide administrateur](../admin/README.md#7-messageries-outils-et-processus). Le
 contrat du moteur et les règles de contribution figurent dans le
 [guide développeur](../dev/README.md).
+
+Pour connecter directement un autre logiciel, consulter le
+[guide des moteurs externes](../dev/process-engines.md). Le transport webhook décrit
+ici appartient au bridge n8n ; chaque autre moteur adapte son propre protocole.

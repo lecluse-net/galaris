@@ -211,7 +211,7 @@ The [navigation guide](../../user/navigation.md) explains tabs, the account menu
 ## Administer → Preferences → Processes
 
 - Route : `/params/processes`
-- Purpose : Connect Galaris to its process engine. Only one engine can be active.
+- Purpose : Connect n8n to Galaris to run your business processes.
 - Menu visibility (privileges) : (PARAMS_ACCESS) AND (PARAMS_ACCESS)
 - Additional conditions : —
 - Sources : `front/core/params/navigation.ts`

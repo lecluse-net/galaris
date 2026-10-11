@@ -874,8 +874,8 @@
       "route": "/params/processes",
       "href": null,
       "description": {
-        "fr": "Connectez Galaris à son moteur de processus. Un seul moteur peut être actif.",
-        "en": "Connect Galaris to its process engine. Only one engine can be active."
+        "fr": "Connectez n8n à Galaris pour exécuter vos processus métier.",
+        "en": "Connect n8n to Galaris to run your business processes."
       },
       "privilege_groups": [
         [

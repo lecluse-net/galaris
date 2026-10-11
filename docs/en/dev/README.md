@@ -1308,11 +1308,16 @@ typed `load_capability` result, while retaining the call and its identifier so t
 remains active. Do not remove either protection: active instructions would otherwise be duplicated
 and re-billed on every tool turn.
 
-### Processes and n8n
+### Processes and external engines
 
 `app.process` owns definitions, runs, the outbox, callbacks, and engine registry. `bridge.n8n`
 adapts the n8n API and webhooks to the `ProcessEngine` protocol; it must not contain business
 persistence logic.
+
+The [external engine integration guide](process-engines.md) covers contracts,
+registration, configuration, assignments and a processing adapter independent of n8n,
+along with the recovery guarantees to verify. Multiple engines can coexist;
+each definition's Tool selects its engine.
 
 The six personal `process_*` functions belong to the core `galaris` package; there is
 no longer a `process` connection to activate. The definition explicitly associates a workflow
@@ -1333,9 +1338,11 @@ The canonical API is `/api/processes/...` and the frontend page is `/process`. T
 `/api/processus/...` prefix remains a hidden, deprecated alias so already deployed callbacks
 do not break. Never use this alias in new code.
 
-Delivery of starts is at least once: every integration must honor
-`Idempotency-Key`. Galaris also provides `X-Galaris-Run-Id`, `X-Galaris-Callback-Url`, and the
-configured callback authentication header. The token is specific to the run and also protects
+Start recovery can repeat a submission: every integration must pass stable correlation
+to the software and deduplicate its effects. The n8n bridge uses
+`Idempotency-Key`, `X-Galaris-Run-Id`, `X-Galaris-Callback-Url` and the configured
+callback authentication header; other bridges adapt their transport.
+The token is specific to the run and also protects
 linked files; it must not be replaced with a global secret exposed in a URL.
 The exact body, callbacks, and importable template are described in
 [`docs/en/n8n/README.md`](../n8n/README.md).

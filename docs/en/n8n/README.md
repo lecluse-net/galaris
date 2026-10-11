@@ -39,7 +39,11 @@ PROCESS_N8N_CALLBACK_AUTH_HEADER=X-Galaris-Callback-Token
 `PROCESS_N8N_BASE_URL` must be reachable from the Galaris backend.
 `PROCESS_N8N_WEBHOOK_BASE_URL` is optional: use it when the public webhook URL differs from the API URL. `PROCESS_GALARIS_BASE_URL` must be reachable from n8n if the workflow downloads a file or sends a callback.
 
-Use **Open processes**, then synchronize the workflows in process administration. No restart is required. A Galaris definition then associates a workflow, a tool, and an agent; these three values are immutable after creation.
+Use **Open processes**, then synchronize the workflows in process administration. No restart is required.
+A Galaris definition associates a workflow, a Tool and an agent. These values can be
+changed through administration with permission and uniqueness validation; avoid
+changing them during an execution. Synchronization discovers workflows; it does not
+automatically create or assign their Galaris definitions.
 
 ## 2. Import the template
 
@@ -51,6 +55,10 @@ In n8n:
 4. replace `Record invoice` with the actual business operations;
 5. keep the `Return execution ID` node and its immediate response;
 6. activate the workflow, then run synchronization again in Galaris.
+
+The bridge selects the workflow's first Webhook node to build
+`/webhook/{path}` and calls it with POST. That node must be the intended Galaris
+entry point; another HTTP method requires adapting the bridge.
 
 The template webhook responds in the following form:
 
@@ -140,3 +148,7 @@ The complete operational configuration is provided in the
 [administrator guide](../admin/README.md#7-messageries-outils-et-processus). The
 engine contract and contribution rules are provided in the
 [developer guide](../dev/README.md).
+
+To connect other software directly, see the
+[external engine guide](../dev/process-engines.md). The webhook transport described
+here belongs to the n8n bridge; each other engine adapts its own protocol.

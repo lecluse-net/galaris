@@ -421,6 +421,11 @@ L’écran **Processus** expose les workflows que l’administrateur a associés
 une définition, renseignez son entrée JSON puis lancez une exécution. Son statut, sa sortie, ses
 événements et les tâches liées restent consultables dans le même écran.
 
+Le traitement peut être exécuté par n8n ou par un autre moteur intégré à Galaris.
+La définition affectée détermine le logiciel utilisé ; les actions de lancement et de
+suivi restent les mêmes. Pour préparer une intégration, l'administrateur suit le
+[guide des moteurs externes](../dev/process-engines.md).
+
 Le rafraîchissement technique des outils ne figure pas dans cet écran. Si l’agent signale
 un catalogue partiellement actualisé, demandez-lui de relancer le rafraîchissement pour les
 agents indiqués, sans répéter la modification déjà enregistrée.

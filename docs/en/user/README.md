@@ -311,6 +311,11 @@ units supplied to the model without certifying answer accuracy. See
 
 The **Processes** screen exposes the workflows that the administrator has associated with an Agent. Open a definition, enter its JSON input, and then launch an execution. Its status, output, events, and related Tasks remain available in the same screen.
 
+Processing can run in n8n or another engine integrated with Galaris.
+The assigned definition selects the software; launch and tracking actions remain
+the same. To prepare an integration, administrators follow the
+[external engine guide](../dev/process-engines.md).
+
 Technical tool catalogue refresh does not appear on this screen. If the Agent reports a
 partially refreshed catalogue, ask it to retry refresh for the indicated agents without
 repeating the configuration change that was already saved.

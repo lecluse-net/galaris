@@ -256,6 +256,11 @@ restent accessibles depuis la demande faite à l'agent et ne créent aucune entr
 ce catalogue de workflows. Le [guide utilisateur](README.md) explique
 quand choisir une conversation, une Task ou un Goal.
 
+Les traitements de **Processus** utilisent le moteur de leur définition affectée.
+**Préférences → Processus** configure actuellement n8n ; les autres logiciels nécessitent
+un bridge installé. Le [guide des moteurs externes](../dev/process-engines.md)
+explique cette préparation à l'administrateur et au développeur.
+
 L’accueil de **Discussion** présente d’abord les conversations ayant reçu un message durant
 les 7 derniers jours, puis les agents. Le bouton **+** ouvre l’historique complet paginé ;
 **−** revient aux conversations récentes.

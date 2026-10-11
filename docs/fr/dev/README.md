@@ -1329,11 +1329,16 @@ typé `load_capability`, tout en conservant l'appel et son identifiant afin que 
 active. Ne retirez pas ces deux protections : les instructions actives sont autrement dupliquées
 et refacturées à chaque tour d'outil.
 
-### Processus et n8n
+### Processus et moteurs externes
 
 `app.process` possède les définitions, les runs, l’outbox, les callbacks et le registre des
 moteurs. `bridge.n8n` adapte l’API et les webhooks n8n au protocole `ProcessEngine` ; il ne
 doit pas contenir la logique de persistance métier.
+
+Le [guide d'intégration d'un moteur externe](process-engines.md) détaille les contrats,
+l'enregistrement, la configuration, les affectations et un adaptateur de traitement
+indépendant de n8n, ainsi que les garanties de reprise à vérifier. Plusieurs moteurs
+peuvent coexister ; le Tool de chaque définition sélectionne son moteur.
 
 Les six fonctions personnelles `process_*` appartiennent au package socle `galaris` ; il n’existe
 plus de connexion `process` à activer. La définition associe explicitement un workflow à un agent,
@@ -1355,9 +1360,11 @@ L’API canonique est `/api/processes/...` et la page frontend est `/process`. L
 `/api/processus/...` reste un alias caché et déprécié pour ne pas casser les callbacks déjà
 déployés. N’utilisez jamais cet alias dans du nouveau code.
 
-La livraison des démarrages est au moins une fois : toute intégration doit honorer
-`Idempotency-Key`. Galaris fournit aussi `X-Galaris-Run-Id`, `X-Galaris-Callback-Url` et le
-header d’authentification de callback configuré. Le jeton est propre au run et protège aussi
+Une reprise du démarrage peut répéter une soumission : toute intégration doit transmettre
+la corrélation stable au logiciel et dédupliquer ses effets. Le bridge n8n utilise
+`Idempotency-Key`, `X-Galaris-Run-Id`, `X-Galaris-Callback-Url` et le header
+d’authentification de callback configuré ; les autres bridges adaptent leur transport.
+Le jeton est propre au run et protège aussi
 les fichiers liés ; il ne doit pas être remplacé par un secret global exposé dans une URL.
 Le corps exact, les callbacks et le gabarit importable sont décrits dans
 [`docs/fr/n8n/README.md`](../n8n/README.md).

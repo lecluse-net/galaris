@@ -7,6 +7,11 @@ in n8n, use a durable `ProcessRun` so the Agent can wait, resume, cancel, and an
 without keeping a request open. Technical maintenance stays in its owning module:
 catalogue refresh uses Python functions in `app.tools` and creates no Process.
 
+To add third-party software, read the
+[external engine integration guide](../../dev/process-engines.md).
+The registry and workers support multiple engines simultaneously;
+each definition selects its engine through its Tool.
+
 ```text
 Agent runtime
    → app.tools / MCP toolset catalog
@@ -14,6 +19,7 @@ Agent runtime
    → app.process (definition + run + event + startup job)
    → engine registry
       ├── bridge.n8n
+      ├── integrated Multimedia and Lab engines
       └── test fake engine
    → callback or periodic refresh
    → durable transition + sanitized output/error
@@ -111,7 +117,8 @@ covers the corrected call. See
 
 ## Startup
 
-1. The tool validates its schema and resolves the `Connection` without exposing the secret to the model.
+1. The tool validates arguments and caller permissions; the bridge resolves engine
+   secrets server-side without exposing them to the model.
 2. `app.process` verifies the definition and builds a startup snapshot.
 3. An explicit idempotency key or content fingerprint prevents duplicates within the
    configured window.

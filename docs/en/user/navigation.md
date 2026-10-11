@@ -235,6 +235,11 @@ large-report analyses remain available through the request made to the agent and
 not create entries in this workflow catalogue. The
 [user guide](README.md) explains when to choose a conversation, Task or Goal.
 
+**Processes** use the engine selected by their assigned definition.
+**Preferences → Processes** currently configures n8n; other software requires an
+installed bridge. The [external engine guide](../dev/process-engines.md)
+explains that preparation for administrators and developers.
+
 The Chat home screen shows conversations with a message in the last 7 days first, then agents.
 The **+** button opens the full paginated history; **−** returns to recent conversations.
 

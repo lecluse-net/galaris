@@ -999,6 +999,14 @@ global comme paramètre de fichier public. Chaque appel fournit aussi une clé d
 l’identifiant du run et son URL de callback dans des headers. Le contrat complet et le
 gabarit importable sont décrits dans la [documentation n8n](../n8n/README.md).
 
+Un logiciel tiers peut être appelé depuis un workflow n8n ou intégré directement par un
+bridge de moteur. L'intégration directe nécessite du code et une configuration serveur ;
+créer seulement un Tool ne suffit pas. Le
+[guide des moteurs externes](../dev/process-engines.md) décrit ce parcours.
+La découverte retourne les opérations disponibles ; créez ensuite leur définition et
+leur affectation explicitement. Plusieurs moteurs peuvent coexister, mais le réglage
+du moteur par défaut et l'assistant de connexion actuel restent orientés n8n.
+
 ## 8. Comptes, rôles et privilèges
 
 Galaris applique un RBAC à trois niveaux :

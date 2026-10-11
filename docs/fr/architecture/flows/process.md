@@ -8,6 +8,11 @@ reprendre, annuler et analyser sans garder une requête ouverte. La maintenance 
 reste dans son module : le rafraîchissement du catalogue utilise les fonctions Python de
 `app.tools` et ne crée aucun Process.
 
+Pour ajouter un logiciel tiers, lire le
+[guide d'intégration des moteurs externes](../../dev/process-engines.md).
+Le registry et les workers acceptent plusieurs moteurs simultanément ;
+chaque définition choisit le sien via son Tool.
+
 ```text
 Agent runtime
    → catalogue app.tools / toolset MCP
@@ -15,6 +20,7 @@ Agent runtime
    → app.process (définition + run + événement + job de démarrage)
    → registry d’engine
       ├── bridge.n8n
+      ├── moteurs intégrés Multimedia et Lab
       └── fake engine de test
    → callback ou refresh périodique
    → transition durable + output/error nettoyé
@@ -111,7 +117,8 @@ le consentement humain porte sur l’appel corrigé. Voir
 
 ## Démarrage
 
-1. L’outil valide son schéma et résout la `Connection` sans rendre le secret au modèle.
+1. L’outil valide ses arguments et les droits de l’appelant ; les secrets du moteur
+   sont résolus côté serveur par le bridge, sans être rendus au modèle.
 2. `app.process` vérifie la définition et construit un snapshot de lancement.
 3. Une clé explicite d’idempotence ou une empreinte de contenu empêche les doublons dans la
    fenêtre configurée.
