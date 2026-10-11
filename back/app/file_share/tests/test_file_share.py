@@ -10,13 +10,12 @@ from app.tools.schemas import (
     Tool,
 )
 from bridge.affine import AffineFileClient
-from bridge.grav import GravFileClient
 from bridge.nextcloud import NextcloudFileClient
 
 
 def test_available_bridges_lists_builtin():
     services = {b.service for b in available_bridges()}
-    assert services == {"nextcloud", "grav", "affine"}
+    assert services == {"nextcloud", "affine"}
     nc = next(b for b in available_bridges() if b.service == "nextcloud")
     assert nc.supports_share is True
     assert {p.key for p in nc.params} == {"login", "password"}
@@ -35,38 +34,6 @@ def test_build_client_nextcloud_via_param_map():
     assert client._webdav_url("Documents/report.txt") == (  # pyright: ignore[reportPrivateUsage]
         "https://cloud.example.com/remote.php/dav/files/alice/Documents/report.txt"
     )
-
-
-def test_build_client_grav():
-    cfg = FileShareConfig(
-        service="grav", base_url="https://grav.example.com", param_map={"api_key": "k"}
-    )
-    client = file_share_service.build_client(cfg, {"k": "key123"})
-    assert isinstance(client, GravFileClient)
-    assert client.api_key == "key123"
-    assert client.upload_path == "/api/v1/pages/{page}/media"
-
-
-def test_build_client_grav_custom_upload_path():
-    cfg = FileShareConfig(
-        service="grav",
-        base_url="https://grav.example.com",
-        param_map={"api_key": "k", "upload_path": "grav_upload"},
-    )
-    client = file_share_service.build_client(cfg, {"k": "key123", "grav_upload": "galaris/media"})
-    assert isinstance(client, GravFileClient)
-    assert client.upload_path == "/galaris/media"
-
-
-def test_build_client_grav_default_page():
-    cfg = FileShareConfig(
-        service="grav",
-        base_url="https://grav.example.com",
-        param_map={"api_key": "k", "default_page": "page"},
-    )
-    client = file_share_service.build_client(cfg, {"k": "key123", "page": "acceuil"})
-    assert isinstance(client, GravFileClient)
-    assert client.default_page == "acceuil"
 
 
 def test_build_client_affine():
@@ -103,10 +70,15 @@ def test_build_client_unmapped_required_param_raises():
         file_share_service.build_client(cfg, {"l": "alice"})
 
 
-def test_build_client_unknown_service_raises():
-    cfg = FileShareConfig(service="dropbox", base_url="https://x", param_map={})
-    with pytest.raises(ValueError):
-        file_share_service.build_client(cfg, {})
+@pytest.mark.parametrize("service", ("dropbox", "grav"))
+def test_build_client_unknown_service_raises(service):
+    cfg = FileShareConfig(
+        service=service,
+        base_url="https://files.example.test",
+        param_map={"api_key": "key"},
+    )
+    with pytest.raises(ValueError, match="Unknown file-sharing bridge"):
+        file_share_service.build_client(cfg, {"key": "synthetic-key"}, language="en")
 
 
 @pytest.mark.asyncio
@@ -200,6 +172,41 @@ async def test_messenger_without_files_does_not_expose_a_resource_scheme(
             "text-only",
             "room/file-id",
         )
+
+
+@pytest.mark.asyncio
+async def test_retired_file_share_does_not_hide_other_schemes(monkeypatch):
+    from app.file_share import resource_service
+    from app.file_share.resource_contracts import ResourceContext
+
+    tools = {
+        41: Tool(code="old-media", label="Old media", file_share_config=FileShareConfig(
+            service="grav", base_url="https://media.example.test",
+        )),
+        42: Tool(code="cloud-files", label="Cloud files", file_share_config=FileShareConfig(
+            service="nextcloud", base_url="https://cloud.example.test",
+        )),
+    }
+
+    async def connections(_agent_id):
+        return [SimpleNamespace(active=True, tool_id=tool_id) for tool_id in tools]
+
+    async def get_tool(tool_id):
+        return tools[tool_id]
+
+    async def params(connection, decrypt_passwords=False):
+        assert decrypt_passwords is False
+        return connection, {"tools.fileindexing": "known_uris"}
+
+    monkeypatch.setattr(file_share_service.connection_service, "get_connections_by_agent", connections)
+    monkeypatch.setattr(file_share_service.tool_service, "get_tool_by_id", get_tool)
+    monkeypatch.setattr(file_share_service.connection_service, "get_params_as_dict", params)
+
+    schemes = await resource_service.list_schemes(ResourceContext(agent_id=7, runtime="internal"))
+    by_scheme = {scheme.scheme: scheme for scheme in schemes}
+    assert "old-media" not in by_scheme
+    assert by_scheme["cloud-files"].file_indexing_mode == "known_uris"
+    assert {"document", "memory", "galaris", "https"} <= by_scheme.keys()
 
 
 @pytest.mark.asyncio

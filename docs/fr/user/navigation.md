@@ -158,6 +158,9 @@ avec les choix Activé, Désactivé et Sur demande. La colonne sélectionnée in
 Choisir un mode global remet la connexion de cet agent en héritage, sans retirer les exceptions
 des autres agents. La sauvegarde suit vos choix successifs et signale les erreurs.
 
+Le bridge Grav a été retiré. Il n'est plus proposé dans la configuration du partage de
+fichiers ; les anciennes configurations Grav sont refusées comme service inconnu.
+
 Pour les providers de fichiers compatibles et la Console SSH, **Indexation des fichiers**
 utilise par défaut **Uniquement les fichiers déjà connus**. Les fichiers et répertoires
 retournés par les listes et recherches `file_share` deviennent des fiches privées dans

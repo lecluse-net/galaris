@@ -12,7 +12,6 @@ from typing import Any, Callable, Dict
 from pydantic import BaseModel
 
 from bridge.affine import AffineFileClient
-from bridge.grav import GravFileClient
 from core.i18n import render_prompt, t
 
 from .transport import FileTransport
@@ -109,24 +108,6 @@ def available_bridges() -> list[FileShareBridgeInfo]:
 # =============================================================================
 # Built-in bridges.
 # =============================================================================
-
-register(
-    FileShareBridge(
-        service="grav",
-        label="Grav (media)",
-        params=(
-            FileShareParamInfo(key="api_key", label="API key", type="password"),
-            FileShareParamInfo(key="upload_path", label="Upload route", type="string", required=False),
-            FileShareParamInfo(key="default_page", label="Default page", type="string", required=False),
-        ),
-        build=lambda base_url, p: GravFileClient(
-            base_url=base_url,
-            api_key=p["api_key"],
-            upload_path=p.get("upload_path") or "/api/v1/pages/{page}/media",
-            default_page=p.get("default_page") or "",
-        ),
-    )
-)
 
 register(
     FileShareBridge(

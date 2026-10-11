@@ -129,8 +129,8 @@ allowed_dependencies = ["app.agent", "app.connection", "app.conversation", "app.
 max_domain_fan_out = 9
 
 [module."app.file_share"]
-allowed_dependencies = ["app.agent", "app.connection", "app.console", "app.conversation", "app.documentation", "app.goal", "app.image", "app.memory", "app.messenger", "app.process", "app.skill", "app.task", "app.tools", "bridge.affine", "bridge.grav"]
-max_domain_fan_out = 15
+allowed_dependencies = ["app.agent", "app.connection", "app.console", "app.conversation", "app.documentation", "app.goal", "app.image", "app.memory", "app.messenger", "app.process", "app.skill", "app.task", "app.tools", "bridge.affine"]
+max_domain_fan_out = 14
 
 [module."app.console"]
 allowed_dependencies = ["app.agent", "app.connection", "app.file_share", "app.tools"]

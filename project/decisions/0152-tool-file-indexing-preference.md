@@ -26,8 +26,14 @@ hors du catalogue prévu. La préférence de fichiers d'un Tool mixte ne rend pa
 Messenger indexables. Les accès source restent vérifiés séparément pour chaque connexion.
 
 Console propose actuellement les URI connues, Nextcloud le parcours reprenable, AFFiNE
-et Grav les URI connues. Les consommateurs d'indexation doivent utiliser la valeur effective de chaque
+les URI connues. Les consommateurs d'indexation doivent utiliser la valeur effective de chaque
 connexion. Leurs règles d'admission restent fournies par File Share.
+
+Amendement du 2026-10-11 : le bridge Grav est retiré à la demande du mainteneur, car il
+n'est plus utilisé. Son transport, son enregistrement et ses métadonnées dédiées sont
+supprimés. Les anciennes configurations restent enregistrées, sans transport ni préférence
+d'indexation disponible ; elles sont refusées comme service inconnu lors d'une opération
+de fichier. Aucun accès réseau ni suppression de données ne remplace ce refus.
 
 ## Conséquences
 

@@ -30,7 +30,6 @@ const BUILT_IN_TOOL_CODES = new Set([
   "one_bot",
   "nextcloud_talk",
   "nextcloud",
-  "grav",
   "affine"
 ])
 

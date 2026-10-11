@@ -471,9 +471,6 @@ async def _existing_destination_is_collection(
     segments = destination.segments
     if service in {"affine", "image", "messenger"}:
         return len(segments) == 1
-    if service == "grav":
-        last_segment = segments[-1] if segments else ""
-        return bool(last_segment) and "." not in last_segment
     return False
 
 
@@ -510,9 +507,6 @@ def _canonical_created_locator(
     if service == "affine":
         key = unquote(urlsplit(location).path.rstrip("/").rsplit("/", 1)[-1])
         return f"{target.strip('/')}/{key}"
-    if service == "grav" and location.startswith(("http://", "https://")):
-        path = unquote(urlsplit(location).path).strip("/")
-        return path or f"{target.strip('/')}/{filename}".strip("/")
     return location.strip("/") or f"{target.strip('/')}/{filename}".strip("/")
 
 

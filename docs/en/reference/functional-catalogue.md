@@ -2043,7 +2043,7 @@ mutation. Memory/document removal uses business forgetting, not a bypass through
 
 **File indexing** selects Disabled, **Known files only** (the compatible-provider default), or
 recursive discovery where supported. Global values, connection overrides and enforced values follow
-ordinary Tool parameters. Nextcloud supports discovery; Console, AFFiNE and Grav use known URIs;
+ordinary Tool parameters. Nextcloud supports discovery; Console and AFFiNE use known URIs;
 Mail is excluded. Messenger attachments enter the catalogue on receipt or history import.
 
 Authorised listing and search immediately project observed files/directories as private Memory

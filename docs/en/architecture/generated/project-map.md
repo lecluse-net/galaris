@@ -11,9 +11,9 @@ tests remain authoritative for behavior.
 
 - 71 declared backend modules;
 - 36 declared frontend modules;
-- 548 backend dependency edges;
+- 545 backend dependency edges;
 - 195 frontend dependency edges;
-- 270 edges between `app`/`bridge` domains;
+- 269 edges between `app`/`bridge` domains;
 - 26 directly bidirectional domain pairs;
 - 1 strongly connected components;
 - 7 directly bidirectional frontend pairs;
@@ -271,7 +271,6 @@ tests remain authoritative for behavior.
 | `app.file_share` | `app.task` | `back/app/file_share/galaris_provider.py`, `back/app/file_share/messenger_transport.py` |
 | `app.file_share` | `app.tools` | `back/app/file_share/bridges.py`, `back/app/file_share/catalogue.py`, `back/app/file_share/catalogue_resources.py`, `back/app/file_share/documentation_provider.py`, `back/app/file_share/file_share_service.py`, `back/app/file_share/galaris_provider.py`, `back/app/file_share/indexing.py`, `back/app/file_share/mcp.py`, `back/app/file_share/resource_contracts.py`, `back/app/file_share/resource_observation.py`, `back/app/file_share/thumbnail_service.py`, `back/app/file_share/transport.py` |
 | `app.file_share` | `bridge.affine` | `back/app/file_share/bridges.py` |
-| `app.file_share` | `bridge.grav` | `back/app/file_share/bridges.py` |
 | `app.file_share` | `core.authorize` | `back/app/file_share/router.py` |
 | `app.file_share` | `core.database` | `back/app/file_share/catalogue.py`, `back/app/file_share/catalogue_resources.py`, `back/app/file_share/enrichment.py`, `back/app/file_share/fingerprinting.py`, `back/app/file_share/indexing.py`, `back/app/file_share/models.py`, `back/app/file_share/resource_description.py`, `back/app/file_share/resource_observation.py`, `back/app/file_share/router.py`, `back/app/file_share/thumbnail_service.py` |
 | `app.file_share` | `core.document` | `back/app/file_share/document_facade.py`, `back/app/file_share/thumbnail_service.py` |
@@ -551,8 +550,6 @@ tests remain authoritative for behavior.
 | `bridge.fireworks` | `app.llm` | `back/bridge/fireworks/__init__.py`, `back/bridge/fireworks/image.py` |
 | `bridge.google` | `app.llm` | `back/bridge/google/__init__.py`, `back/bridge/google/image.py`, `back/bridge/google/parameters.py`, `back/bridge/google/resources.py`, `back/bridge/google/speech.py` |
 | `bridge.google` | `core.util` | `back/bridge/google/image.py`, `back/bridge/google/resources.py`, `back/bridge/google/speech.py` |
-| `bridge.grav` | `core.i18n` | `back/bridge/grav/client.py` |
-| `bridge.grav` | `core.util` | `back/bridge/grav/client.py` |
 | `bridge.groq` | `app.llm` | `back/bridge/groq/__init__.py`, `back/bridge/groq/parameters.py` |
 | `bridge.harness` | `core.authorize` | `back/bridge/harness/router.py` |
 | `bridge.harness` | `core.i18n` | `back/bridge/harness/manager.py` |
@@ -901,7 +898,7 @@ tests remain authoritative for behavior.
 
 | Module | Count | Dependencies |
 |---|---:|---|
-| `app.file_share` | 15 | `app.agent`, `app.connection`, `app.console`, `app.conversation`, `app.documentation`, `app.goal`, `app.image`, `app.memory`, `app.messenger`, `app.process`, `app.skill`, `app.task`, `app.tools`, `bridge.affine`, `bridge.grav` |
+| `app.file_share` | 14 | `app.agent`, `app.connection`, `app.console`, `app.conversation`, `app.documentation`, `app.goal`, `app.image`, `app.memory`, `app.messenger`, `app.process`, `app.skill`, `app.task`, `app.tools`, `bridge.affine` |
 | `app.lab` | 14 | `app.agent`, `app.connection`, `app.conversation`, `app.dream`, `app.goal`, `app.llm`, `app.memory`, `app.messenger`, `app.process`, `app.skill`, `app.task`, `app.tools`, `app.topic`, `app.voice` |
 | `app.dream` | 12 | `app.agent`, `app.connection`, `app.conversation`, `app.goal`, `app.llm`, `app.memory`, `app.messenger`, `app.process`, `app.skill`, `app.task`, `app.topic`, `app.voice` |
 | `bridge.hermes` | 12 | `app.agent`, `app.connection`, `app.file_share`, `app.harnesses`, `app.llm`, `app.mcp`, `app.memory`, `app.messenger`, `app.process`, `app.skill`, `app.tools`, `bridge.harness` |
@@ -993,7 +990,6 @@ tests remain authoritative for behavior.
 | `app.dream` | 1 | `app.lab` |
 | `app.util` | 1 | `app.tools` |
 | `bridge.affine` | 1 | `app.file_share` |
-| `bridge.grav` | 1 | `app.file_share` |
 | `bridge.youtube` | 1 | `app.audio` |
 
 ### Direct Cycles

@@ -321,13 +321,6 @@
     "line_min": 86,
     "branch_min": 66
   },
-  "bridge/grav/": {
-    "prefixes": [
-      "bridge/grav/"
-    ],
-    "line_min": 30,
-    "branch_min": 0
-  },
   "bridge/groq/": {
     "prefixes": [
       "bridge/groq/"

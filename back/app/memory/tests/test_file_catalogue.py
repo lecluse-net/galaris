@@ -900,7 +900,7 @@ async def test_tool_exclusion_and_mail_are_preserved_but_messenger_is_observed(c
     db.add(Connection(agent_id=ctx.agent_id, tool_id=custom.id))
     await db.commit()
     assert await catalogue.observation_scope(ctx, "custom-mail://attachment/a") is None
-    custom.file_share_config = {"service": "grav", "base_url": "https://synthetic.invalid"}
+    custom.file_share_config = {"service": "affine", "base_url": "https://synthetic.invalid"}
     await db.commit()
     async def messenger(*args, **kwargs):
         return object(), "messenger"

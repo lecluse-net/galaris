@@ -41,7 +41,7 @@ Console expose ce paramètre aussi avec sa cible embarquée.
 Les réglages existants sont repris lors de la synchronisation et restent conservés aux mises
 à jour. Les droits de chaque agent restent applicables ; la définition intégrée reste protégée.
 
-Console, AFFiNE et Grav proposent actuellement uniquement les fichiers déjà connus ;
+Console et AFFiNE proposent actuellement uniquement les fichiers déjà connus ;
 Nextcloud propose aussi la découverte et l'indexation de tous les contenus disponibles.
 Mail reste exclu. Les pièces jointes Messenger, y compris celles d'un Tool mixte,
 rejoignent le catalogue lors de leur réception ou de l'import d'historique. Les listes créent une fiche pour le répertoire consulté et chaque fichier ou

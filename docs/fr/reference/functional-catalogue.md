@@ -2724,7 +2724,7 @@ qui contournerait les protections.
 Le paramètre **Indexation des fichiers** choisit Désactivée, **Uniquement les fichiers déjà connus**
 (défaut des providers compatibles), ou découverte récursive si disponible. Les valeurs globales,
 surcharges et valeurs imposées suivent les paramètres ordinaires des Tools. Nextcloud permet
-la découverte ; Console, AFFiNE et Grav se limitent aux URI connues ; Mail est exclu.
+la découverte ; Console et AFFiNE se limitent aux URI connues ; Mail est exclu.
 Les pièces jointes Messenger rejoignent le catalogue à la réception ou à l’import d’historique.
 
 Les listes et recherches autorisées projettent immédiatement fichiers et répertoires rencontrés

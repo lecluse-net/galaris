@@ -150,16 +150,16 @@ async def test_import_overwrite_replaces_every_configuration(monkeypatch):
 code: cloud-docs
 label: New file share
 file_share_config:
-  service: grav
-  base_url: https://grav.example.test
+  service: affine
+  base_url: https://affine.example.test
   param_map:
-    api_key: grav_key
+    password: affine_password
 connection_schema:
   params:
-    grav_key:
+    affine_password:
       type: password
       required: true
-      description: Grav API key
+      description: AFFiNE password
 """
     record, created = await tool_service.import_from_yaml_string(content, overwrite=True)
 
@@ -168,11 +168,11 @@ connection_schema:
     assert existing.label == "New file share"
     assert existing.description == ""
     assert existing.file_share_config == {
-        "service": "grav",
-        "base_url": "https://grav.example.test",
-        "param_map": {"api_key": "grav_key"},
+        "service": "affine",
+        "base_url": "https://affine.example.test",
+        "param_map": {"password": "affine_password"},
     }
-    assert existing.connection_schema["params"]["grav_key"]["type"] == "password"
+    assert existing.connection_schema["params"]["affine_password"]["type"] == "password"
     # Overwrite removes previous values that are absent from the YAML document.
     assert existing.mcp_config is None
     assert existing.listener_config is None

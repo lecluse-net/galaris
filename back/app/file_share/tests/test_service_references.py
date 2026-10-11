@@ -50,22 +50,6 @@ def test_messenger_references_split_room_from_attachment() -> None:
     assert (destination.target, destination.filename) == ("room-8", "report.pdf")
 
 
-def test_grav_destination_splits_page_and_filename() -> None:
-    explicit = normalize_destination_reference(
-        "grav",
-        "blog/2026/report.pdf",
-        fallback_filename="source.pdf",
-    )
-    page_only = normalize_destination_reference(
-        "grav",
-        "blog/2026/",
-        fallback_filename="source.pdf",
-    )
-
-    assert (explicit.target, explicit.filename) == ("blog/2026", "report.pdf")
-    assert (page_only.target, page_only.filename) == ("blog/2026", "source.pdf")
-
-
 def test_nextcloud_destination_preserves_directory_target() -> None:
     destination = normalize_destination_reference(
         "nextcloud",

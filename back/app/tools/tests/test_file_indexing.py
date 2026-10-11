@@ -44,7 +44,7 @@ async def test_console_indexing_preference_survives_integrated_sync(db):
     (None, []),
     ({"service": "mail", "base_url": ""}, []),
     ({"service": "affine", "base_url": ""}, ["excluded", "known_uris"]),
-    ({"service": "grav", "base_url": ""}, ["excluded", "known_uris"]),
+    ({"service": "grav", "base_url": ""}, []),
     ({"service": "nextcloud", "base_url": ""}, ["excluded", "known_uris", "recursive"]),
 ])
 async def test_provider_limits_apply_to_custom_tool_codes(db, config, allowed):

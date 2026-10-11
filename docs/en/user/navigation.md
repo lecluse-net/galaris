@@ -147,6 +147,9 @@ Disabled and Ask. The selected column identifies the applicable rule. Choosing a
 returns this agent's connection to inheritance without removing other agents' exceptions.
 Saving follows successive choices and reports errors.
 
+The Grav bridge has been removed. It is no longer offered in file-sharing configuration;
+existing Grav configurations are rejected as an unknown service.
+
 For compatible file providers and the SSH Console, **File indexing** defaults to
 **Only files already known**. Files and directories returned by `file_share` listings and
 searches become private Memory entries; Dream can later enrich supported files.

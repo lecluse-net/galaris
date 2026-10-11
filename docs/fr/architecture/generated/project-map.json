@@ -1267,13 +1267,6 @@
       },
       {
         "files": [
-          "back/app/file_share/bridges.py"
-        ],
-        "source": "app.file_share",
-        "target": "bridge.grav"
-      },
-      {
-        "files": [
           "back/app/file_share/router.py"
         ],
         "source": "app.file_share",
@@ -4015,20 +4008,6 @@
       },
       {
         "files": [
-          "back/bridge/grav/client.py"
-        ],
-        "source": "bridge.grav",
-        "target": "core.i18n"
-      },
-      {
-        "files": [
-          "back/bridge/grav/client.py"
-        ],
-        "source": "bridge.grav",
-        "target": "core.util"
-      },
-      {
-        "files": [
           "back/bridge/groq/__init__.py",
           "back/bridge/groq/parameters.py"
         ],
@@ -5327,7 +5306,7 @@
           "app.tools"
         ]
       ],
-      "domain_edges": 270,
+      "domain_edges": 269,
       "fan_in": [
         {
           "count": 43,
@@ -5743,13 +5722,6 @@
         },
         {
           "count": 1,
-          "module": "bridge.grav",
-          "modules": [
-            "app.file_share"
-          ]
-        },
-        {
-          "count": 1,
           "module": "bridge.youtube",
           "modules": [
             "app.audio"
@@ -5758,7 +5730,7 @@
       ],
       "fan_out": [
         {
-          "count": 15,
+          "count": 14,
           "module": "app.file_share",
           "modules": [
             "app.agent",
@@ -5774,8 +5746,7 @@
             "app.skill",
             "app.task",
             "app.tools",
-            "bridge.affine",
-            "bridge.grav"
+            "bridge.affine"
           ]
         },
         {

@@ -87,10 +87,6 @@ default: dict[str, object] = {
                 "AFFiNE returned an HTML page instead of a blob. Check the workspace ID and blob key; "
                 "use <tool-code>://<workspace-id>/<blob-key>."
             ),
-            "grav_target_required": (
-                "Grav upload has no target page. Use destination='page/file.ext' or configure "
-                "the optional default_page parameter."
-            ),
         },
     },
 }

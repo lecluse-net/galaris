@@ -188,7 +188,7 @@ La qualification du catalogue File Share est suivie ici depuis le retrait de son
   à 100 000 entrées ne promettent pas une latence provider réelle ;
 - installations réelles, notamment Nextcloud : le pair WebDAV synthétique avec 503 entrées,
   reprise et révocation qualifie l'adaptateur, pas un compte réel ;
-- capacités de découverte AFFiNE/Grav et nouveaux providers, événements/deltas fiables
+- capacités de découverte AFFiNE et nouveaux providers, événements/deltas fiables
   et validation ACL groupée seulement si leurs contrats et les mesures le permettent ;
 - reprise des anciennes descriptions admissibles non vérifiées : ne pas inventer une version
   source ; préserver notes et révisions et vérifier les capacités actuelles avant extension.

@@ -73,26 +73,6 @@ def normalize_source_reference(service: str, reference: object) -> SourceReferen
     return SourceReference(remote=clean)
 
 
-def _split_grav_destination(
-    reference: str,
-    fallback_filename: str,
-) -> DestinationReference:
-    trailing_slash = reference.endswith("/")
-    clean = reference.strip("/")
-    if not clean:
-        return DestinationReference(filename=fallback_filename)
-    if trailing_slash:
-        return DestinationReference(filename=fallback_filename, target=clean)
-    page, separator, name = clean.rpartition("/")
-    if separator and "." in name:
-        return DestinationReference(filename=name, target=page)
-    if separator:
-        return DestinationReference(filename=fallback_filename, target=clean)
-    if "." in clean:
-        return DestinationReference(filename=clean)
-    return DestinationReference(filename=fallback_filename, target=clean)
-
-
 def normalize_destination_reference(
     service: str,
     reference: object,
@@ -122,9 +102,6 @@ def normalize_destination_reference(
             filename=reference_filename(filename, fallback) if separator else fallback,
             target=target,
         )
-    if normalized_service == "grav":
-        return _split_grav_destination(clean, fallback)
-
     trailing_slash = clean.endswith("/")
     clean = clean.strip("/")
     if not clean:

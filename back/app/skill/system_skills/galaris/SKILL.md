@@ -369,12 +369,6 @@ resource, `file_append` to add content, and `file_edit` to replace a 1-based inc
 Never delete a `galaris://` URI: the returned error explains which owning domain must
 perform the business operation, when such an operation exists.
 
-Example — publish a Nextcloud PDF to Grav:
-
-1. Call `file_schemes()` and identify `nextcloud` and `grav`.
-2. Call `file_copy("nextcloud://Documents/report-2026.pdf", "grav://blog/report-2026.pdf")`.
-3. The file moves between services without entering the model context.
-
 Example — deliver an explicitly requested source-code file produced with console tools:
 call `file_copy("console://project/script.py", "nextcloud://Shared/script.py")`.
 For authored reports and notes, create and share the canonical `document://` resource instead.

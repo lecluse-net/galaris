@@ -15,7 +15,7 @@ from app.tools import FileShareConfig, Tool
 from app.tools.contracts import FILE_INDEXING_PARAM, FileIndexingMode
 from core.i18n import render_prompt, t
 
-from .bridges import get_bridge
+from .bridges import BRIDGES, get_bridge
 from .interface import connected_resource_transport, resource_transport_factory
 from .messenger_transport import MessengerFileTransport
 from .transport import FileTransport, ShareableFileTransport
@@ -185,20 +185,23 @@ async def describe_targets(
             # SSH-home capability matrix.
             continue
         has_messenger = _has_messenger_files(tool)
-        if tool.file_share is None and not has_messenger:
+        bridge = BRIDGES.get(tool.file_share.service) if tool.file_share else None
+        has_file_share = tool.file_share is not None and (
+            bridge is not None or tool.file_share.service == "mail"
+        )
+        if not has_file_share and not has_messenger:
             continue
         _, params = await connection_service.get_params_as_dict(connection, decrypt_passwords=False)
         indexing_mode = params.get(FILE_INDEXING_PARAM, "excluded")
         targets.append({
             "code": tool.code,
-            "service": tool.file_share.service if tool.file_share else "messenger",
+            "service": tool.file_share.service if has_file_share and tool.file_share else "messenger",
             "label": tool.label or tool.code,
             "description": tool.description or "",
-            "has_file_share": tool.file_share is not None,
+            "has_file_share": has_file_share,
             "file_indexing_mode": (
                 indexing_mode
-                if tool.file_share and tool.file_share.service != "mail"
-                and indexing_mode in get_bridge(tool.file_share.service).indexing_modes
+                if bridge is not None and indexing_mode in bridge.indexing_modes
                 else "excluded"
             ),
             "has_messenger": has_messenger,

@@ -40,7 +40,7 @@ embedded target. Existing preferences
 are carried over during synchronization and preserved through upgrades. Each agent's source
 permissions remain enforced, and the integrated definition remains protected.
 
-Console, AFFiNE and Grav currently support only files already known; Nextcloud also offers
+Console and AFFiNE currently support only files already known; Nextcloud also offers
 discovery and indexing of all available content. Mail remains excluded. Messenger attachments,
 including those belonging to mixed Tools, enter the catalogue on receipt or history import.
 Listings create an entry for the requested directory and each returned file

@@ -93,11 +93,6 @@ default: dict[str, object] = {
                 "AFFiNE a renvoyé une page HTML au lieu du fichier. Vérifiez l’identifiant du workspace "
                 "et la clé du blob ; utilisez <code-outil>://<workspace-id>/<blob-key>."
             ),
-            "grav_target_required": (
-                "Le téléversement Grav ne possède aucune page cible. Utilisez "
-                "destination='page/fichier.ext' ou configurez le paramètre facultatif "
-                "default_page."
-            ),
         },
     },
 }
