@@ -37,6 +37,7 @@ Un plan ne vaut ni ordre d'implémentation ni nouvelle priorité produit.
 | Plan | Statut | Portée |
 |---|---|---|
 | [ordonnancement-llm-par-fournisseur.md](ordonnancement-llm-par-fournisseur.md) | `design` | Provenance exhaustive, limite par connexion, priorités par type avec audio réservé, admission/annulation, activité et reprise. |
+| [supervision-execution-llm.md](supervision-execution-llm.md) | `design` | Conversation conservée, petits exécuteurs et supervision par gros modèle à comparer ; corpus synthétiques, benchmarks de tâches complètes, escalade, coût par réussite et décision par famille. |
 | [infrastructure-plugins-galaris.md](infrastructure-plugins-galaris.md) | `design` | Bundle, SDK/TCK, activation par génération, frontend précompilé, permissions, conservation SQL, rollback et store signé. |
 | [controle-distant-vnc.md](controle-distant-vnc.md) | `design` | Connexion VNC, captures MCP, simulation clavier/souris, sessions isolées et reprise humaine ; client RFB et compatibilité OS/serveurs à qualifier. |
 | [consolidation-parametrique-lora.md](consolidation-parametrique-lora.md) | `design` | Gain à mesurer, corpus gouverné, trainer/serving à qualifier, invalidation et promotion dépendant des gardes du Lab. |
