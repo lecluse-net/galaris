@@ -116,7 +116,9 @@ opened groups open. The first pixel of movement and the orbit preserve an off-ce
 node's screen position; returning restores the initial camera pose. A left-button round-trip drag remains an orbit around the pressed
 object without opening it; only a stationary click opens. A left drag starting on the
 background translates the graph with the pointer without changing orientation, from
-the fitted overview or a rotated view; returning restores framing and release stops movement.
+the fitted overview or a rotated view, including after zoom on desktop/mobile with left and right buttons.
+Screen movement follows the mouse without accelerating near nodes;
+returning restores framing and release stops movement.
 Navigation passes a node and
 continues through empty space with buttons, wheel and pinch. Wheel zoom keeps an off-center
 thumbnail's center under the pointer when approaching and retreating without rotating,

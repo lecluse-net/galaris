@@ -838,6 +838,7 @@ export class MemoryGraphScene {
   private pointerDown = (event: PointerEvent): void => {
     if (this.disposed || this.suspended) return
     this.host.focus({ preventScroll: true })
+    this.updatePanSpeed(event.clientX, event.clientY)
     if (event.pointerType === 'touch') this.touchPointers.set(event.pointerId, { x: event.clientX, y: event.clientY })
     if (this.pointer) { this.pointer.moved = true; return }
     if (!event.isPrimary || event.button !== 0) return
@@ -852,6 +853,25 @@ export class MemoryGraphScene {
     this.pointer = { pointerId: event.pointerId, x: event.clientX, y: event.clientY, lastX: event.clientX, lastY: event.clientY,
       nodeId, moved: false, orbit: marker && event.pointerType === 'mouse' && !event.ctrlKey && !event.metaKey && !event.shiftKey
         ? this.orbitGesture(pivot, event.clientX, event.clientY) : null }
+  }
+  private updatePanSpeed(clientX: number, clientY: number): void {
+    const rect = this.host.getBoundingClientRect()
+    const x = clientX - rect.left, y = clientY - rect.top
+    let nearest: Graph3dProjection | null = null, distance = Infinity
+    for (const point of this.projections.values()) {
+      const squared = (point.x - x) ** 2 + (point.y - y) ** 2
+      if (squared < distance) { nearest = point; distance = squared }
+    }
+    const marker = nearest ? this.displayById.get(nearest.id) : null
+    if (!marker) return // Keep the last usable scale when navigating empty space.
+    const offset = this.controls.target.clone().sub(this.camera.position)
+    const targetDistance = offset.length()
+    if (targetDistance <= this.camera.near) return
+    const depth = new Vector3(marker.point.x, marker.point.y, marker.point.z)
+      .sub(this.camera.position).dot(offset.divideScalar(targetDistance))
+    // Fly-through zoom preserves the camera-target distance. Native panning
+    // must instead follow the local visible plane, fixed until this drag ends.
+    this.controls.panSpeed = Math.max(this.camera.near, depth) / targetDistance
   }
   private pointerMove = (event: PointerEvent): void => {
     if (event.pointerType === 'touch' && this.touchPointers.has(event.pointerId)) {
@@ -918,6 +938,7 @@ export class MemoryGraphScene {
     event.preventDefault(); event.stopImmediatePropagation()
     const unit = event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? this.height : 1
     this.zoomBy(2 ** Math.max(-1, Math.min(1, -event.deltaY * unit * 0.0016)), { x: event.clientX, y: event.clientY })
+    this.updatePanSpeed(event.clientX, event.clientY)
     if (this.pointer?.orbit) this.pointer.orbit = this.orbitGesture(this.pointer.orbit.pivot, this.pointer.lastX, this.pointer.lastY)
   }
   private pick(clientX: number, clientY: number): string | null {

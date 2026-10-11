@@ -456,6 +456,10 @@ masqués. Un état enregistré invalide ou incompatible est automatiquement aban
 positionnement est reconstruit et enregistré, sans modifier les données Mémoire. Une erreur
 réseau permet de réessayer sans fermer ni déplacer le graphe ; les sauvegardes reprennent
 aussi lors des interactions suivantes.
+Le bouton **Réinitialiser le positionnement**, à gauche d’**Actualisation auto**, abandonne les
+positions enregistrées pour le contexte courant, recalcule le placement automatique et
+recadre la vue. Les filtres de types restent actifs ; le nouveau placement est enregistré
+pour les prochaines ouvertures.
 Le zoom, le dépliage et la fermeture du détail conservent les positions. Le dézoom allège
 aussi les liens et les titres. Les grandes cartes placent les éléments près de leurs ancres
 avant stabilisation, en chargeant toutes les pages correspondant aux filtres. Le chargement spatial

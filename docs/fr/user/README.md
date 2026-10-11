@@ -513,6 +513,8 @@ Les nœuds éloignés sont environ deux fois plus petits que les nœuds proches.
 En 3D, un clic gauche sans déplacement ouvre le nœud. Maintenez le bouton gauche et
 glissez pour tourner autour du nœud visé, sans le recentrer à l'écran. Si le clic commence
 sur le fond, le glissement déplace le graphe jusqu'au relâchement, sans rotation.
+La translation suit le mouvement de la souris près des nœuds, même après zoom ; sa vitesse
+reste stable pendant le glissement.
 Relâcher après un déplacement n'ouvre aucune
 modale, même si vous revenez au point de départ. Utilisez le clic droit pour déplacer la
 carte. La molette déplace la caméra dans la direction du pointeur : le point visé reste
@@ -541,6 +543,9 @@ signale aussi ceux qui n'ont aucun représentant visible ; les libellés au surv
 Dans **Graphe**, les branches d'au moins huit éléments reliés exclusivement à la même ancre
 sont représentées par cette ancre agrandie et un compteur. Zoomez ou cliquez sur le groupe
 pour voir ses éléments. Les boutons **Zoomer** et **Dézoomer** sont utilisables au clavier.
+**Réinitialiser le positionnement**, à gauche d’**Actualisation auto**, remplace les anciennes positions du
+contexte courant par un placement automatique et recadre la vue. Les filtres de types
+sont conservés ; les nouvelles positions sont enregistrées pour la réouverture.
 Le dézoom et **Ajuster le graphe à la fenêtre** replient les branches. Le zoom, le dépliage
 et la fermeture du détail conservent les positions. Le placement est préparé dans un worker ;
 tourner ou zoomer ne relance aucune simulation. Un clic sur le groupe cadre son ancre.

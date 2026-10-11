@@ -70,6 +70,7 @@ export class GraphStatePersistence {
   private saved = new Set<string>()
   private preferences: Partial<GraphPreferences> = {}
   private resetLayout = false
+  private layoutGeneration = 0
   private acceptSavedPositions = true
   readonly context: GraphContext
   private readonly transport: Transport
@@ -105,6 +106,15 @@ export class GraphStatePersistence {
 
   get restoresPositions(): boolean { return this.acceptSavedPositions }
 
+  resetPositions(preferences: Partial<GraphPreferences>): void {
+    this.layoutGeneration++
+    this.resetLayout = true
+    this.acceptSavedPositions = false
+    this.saved.clear()
+    this.points.clear()
+    this.preferences = { ...this.preferences, ...structuredClone(preferences), camera: null, camera_3d: null, expanded_branches: [] }
+  }
+
   remember(points: Iterable<[string, GraphPoint]>): void {
     if (!this.acceptSavedPositions) return
     for (const [key] of points) { this.saved.add(key); this.points.delete(key) }
@@ -131,6 +141,7 @@ export class GraphStatePersistence {
       try { await this.load() } catch (error) { this.onError(error); return }
     }
     while (this.resetLayout || this.points.size || Object.keys(this.preferences).length) {
+      const generation = this.layoutGeneration
       const batch = [...this.points].slice(0, 500)
       const preferences = this.preferences
       this.preferences = {}
@@ -150,11 +161,14 @@ export class GraphStatePersistence {
           result = await this.transport.saveGraphState(this.context, patch)
         }
         this.revision = result.revision
+        // An earlier save must not restore positions discarded during its request.
+        if (generation !== this.layoutGeneration) continue
         this.resetLayout = false
         for (const [key] of batch) this.saved.add(key)
         this.onSaved(result.positions)
         this.onError(null)
       } catch (error) {
+        if (generation !== this.layoutGeneration) continue
         for (const [key, point] of batch) if (!this.points.has(key)) this.points.set(key, point)
         this.preferences = { ...preferences, ...this.preferences }
         this.onError(error)

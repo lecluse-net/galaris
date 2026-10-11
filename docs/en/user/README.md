@@ -391,7 +391,8 @@ more segments to preserve their curve. Labels have no background.
 Distant nodes are roughly half the size of nearby nodes.
 In 3D, a left click without movement opens the node. Hold the left button and drag to
 orbit the pointed node without centering it on screen. If the press starts on the background,
-dragging pans the graph until release without rotating. Releasing after moving never opens a modal, even when returning
+dragging pans the graph until release without rotating. Panning follows mouse movement near
+nodes even after zoom, with a stable speed throughout the drag. Releasing after moving never opens a modal, even when returning
 to the starting point. Right-drag pans. The wheel moves the camera toward the pointer:
 the aimed point stays under the cursor while approaching or backing away, without rotation.
 Pinch and zoom buttons move along the central viewing axis. You can pass a node and keep travelling through the graph. Moving
@@ -416,7 +417,10 @@ linked to a node. Inaccessible resources do not contribute to the calculation.
 
 In **Graph**, branches with at least eight items exclusively linked to the same anchor are
 represented by a larger anchor and a count. Zoom in or click the group to see its items;
-the **Zoom in** and **Zoom out** buttons are keyboard accessible. Zooming out and **Fit graph to viewport**
+the **Zoom in** and **Zoom out** buttons are keyboard accessible.
+**Reset node positions**, to the left of **Auto refresh**, replaces saved positions for the
+current context with an automatic layout and fits the view. Node kind filters are kept;
+the new positions are saved for reopening. Zooming out and **Fit graph to viewport**
 fold the branches. Zooming, unfolding and closing node details preserve positions.
 A worker prepares placement; orbiting and zooming start no simulation. Clicking a group
 frames its anchor. Zooming out hides detailed links and some ordinary titles; zoom back

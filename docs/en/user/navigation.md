@@ -418,6 +418,9 @@ agent and search/Topic/contact context. New nodes of a hidden kind stay hidden.
 Invalid or incompatible saved state is automatically discarded: positions are rebuilt and
 saved without changing Memory data. Network failures offer a retry without closing or
 moving the graph; subsequent interactions also resume saving.
+The **Reset node positions** button to the left of **Auto refresh** discards saved positions for
+the current context, rebuilds the automatic layout and fits the view. Node kind filters
+remain active; the new layout is saved for subsequent visits.
 Zooming, unfolding and closing node details preserve positions. Zooming out also simplifies links and titles.
 Large maps place items near their anchors before settling and load all pages matching the filters.
 Spatial loading and subgroups remain the next steps

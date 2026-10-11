@@ -77,6 +77,51 @@ test('3D rebuilds an incompatible saved view and retries persistence without cha
   await expect(page.getByRole('button', { name: 'Show “Contact” nodes and their relationships', exact: true })).toBeVisible()
 })
 
+for (const width of [1440, 390]) test(`3D resets saved positions and keeps filters on reopening at ${width}px`, async ({ page }, testInfo) => {
+  await page.setViewportSize({ width, height: 1000 })
+  const root = makeNode('10000000-0000-4000-8000-000000000004', 'topic')
+  const contact = makeNode('10000000-0000-4000-8000-000000000005', 'contact')
+  const positions = { [root.id]: [1e9, 1e9], [contact.id]: [1e9, -1e9] }
+  await graphFixture(page, [root, contact], [], positions)
+  let saved = { format_version: 1, revision: 8,
+    preferences: { hidden_entity_kinds: [], expanded_branches: [], camera: null }, positions: {} }
+  const writes = []
+  await page.route('**/api/memory/graph/state/read', route => route.fulfill({ json: saved }))
+  await page.route('**/api/memory/graph/state', route => {
+    const body = route.request().postDataJSON()
+    writes.push(body)
+    if (body.reset_layout) for (const id of Object.keys(positions)) delete positions[id]
+    for (const [id, point] of Object.entries(body.positions)) positions[id] = [point.x, point.y]
+    saved = { format_version: 1, revision: body.expected_revision + 1,
+      preferences: { ...(body.reset_layout ? {} : saved.preferences), ...body.preferences }, positions: body.positions }
+    return route.fulfill({ json: saved })
+  })
+  await mount(page, 'app/memory/components/MemoryGraph.vue', { props })
+  const reset = page.getByRole('button', { name: 'Reset node positions', exact: true })
+  await expect(reset).toBeEnabled()
+  await page.getByRole('button', { name: 'Hide “Contact” nodes and their relationships', exact: true }).click()
+  await expect(reset).toBeEnabled()
+  await reset.focus()
+  await page.keyboard.press('Enter')
+  await expect.poll(() => writes.some(body => body.reset_layout)).toBe(true)
+  await expect(page.getByRole('button', { name: 'Show “Contact” nodes and their relationships', exact: true })).toBeVisible()
+  await expect.poll(async () => Number((await snapshot(page)).graph3dZoom)).toBeCloseTo(1)
+  await page.locator('.memory-graph').screenshot({ path: testInfo.outputPath('reset-positions.png') })
+  expect(saved.preferences.hidden_entity_kinds).toEqual(['contact'])
+  await mount(page, 'app/memory/components/MemoryGraph.vue', { props })
+  await expect(reset).toBeEnabled()
+  await expect(page.getByRole('button', { name: 'Show “Contact” nodes and their relationships', exact: true })).toBeVisible()
+  await page.getByRole('button', { name: 'Show “Contact” nodes and their relationships', exact: true }).click()
+  await expect.poll(() => Object.keys(positions).length).toBe(2)
+  expect(Object.values(positions).every(point => point.every(value => Math.abs(value) < 1e9))).toBe(true)
+  const rebuilt = structuredClone(positions)
+  await mount(page, 'app/memory/components/MemoryGraph.vue', { props })
+  await expect(reset).toBeEnabled()
+  await expect.poll(async () => Number((await snapshot(page)).graph3dNodes)).toBe(2)
+  expect(positions).toEqual(rebuilt)
+  expect(writes.filter(body => body.reset_layout)).toHaveLength(1)
+})
+
 test('3D resumes saving automatically after restoration becomes available', async ({ page }) => {
   await graphFixture(page, [makeNode('10000000-0000-4000-8000-000000000003', 'topic')])
   let reads = 0
@@ -637,8 +682,8 @@ test('3D left dragging orbits the pointed node and never opens it, even after re
   expect(await page.evaluate(() => window.testApp.events.find(event => event.name === 'open').value)).toBe('pivot-a')
 })
 
-test('3D left dragging empty space pans and preserves orientation until release', async ({ page }) => {
-  await page.setViewportSize({ width: 1440, height: 1000 })
+for (const width of [1440, 390]) test(`3D dragging empty space pans at pointer speed and preserves orientation at ${width}px`, async ({ page }) => {
+  await page.setViewportSize({ width, height: 1000 })
   await graphFixture(page, [makeNode('pan-a', 'topic'), makeNode('pan-b', 'topic'), makeNode('pan-c', 'topic')], [],
     { 'pan-a': [-80, 0], 'pan-b': [400, 0], 'pan-c': [-400, 0] })
   const cameras = []
@@ -658,34 +703,51 @@ test('3D left dragging empty space pans and preserves orientation until release'
     return { x: box.x + box.width / 2, y: box.y - 12 }
   }
   const frame = () => page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))))
-  // Exercise panning directly from the fitted overview, then with a rotated view.
-  for (const rotateFirst of [false, true]) {
+  // Keep pointer translation proportional in overview, rotated and zoomed views.
+  for (const { rotateFirst, zoomFirst } of [
+    { rotateFirst: false, zoomFirst: false }, { rotateFirst: true, zoomFirst: false },
+    { rotateFirst: false, zoomFirst: true }, { rotateFirst: true, zoomFirst: true },
+  ]) {
+    await page.getByRole('button', { name: 'Fit graph to viewport', exact: true }).click()
+    await frame()
     if (rotateFirst) {
-      const beforeRotate = cameras.at(-1)
+      const beforeRotate = JSON.parse((await snapshot(page)).graph3dCamera)
       const pivot = await point()
       await page.mouse.move(pivot.x, pivot.y)
       await page.mouse.down()
       await page.mouse.move(pivot.x + 45, pivot.y + 25, { steps: 5 })
       await page.mouse.up()
       await frame()
-      await expect.poll(() => Math.hypot(...cameras.at(-1).position.map((value, i) => value - beforeRotate.position[i]))).toBeGreaterThan(0.1)
+      await expect.poll(async () => Math.hypot(...JSON.parse((await snapshot(page)).graph3dCamera).position
+        .map((value, i) => value - beforeRotate.position[i]))).toBeGreaterThan(0.1)
+    }
+    if (zoomFirst) {
+      const pivot = await point()
+      await page.mouse.move(pivot.x, pivot.y)
+      for (let step = 0; step < 10; step++) {
+        await page.mouse.wheel(0, -120)
+        await frame()
+      }
+      await expect.poll(async () => Number((await snapshot(page)).graph3dZoom)).toBeGreaterThan(3)
     }
     const initial = await point()
-    const before = structuredClone(cameras.at(-1))
-    const start = { x: initial.x - 100, y: initial.y - 80 }
+    const before = JSON.parse((await snapshot(page)).graph3dCamera)
+    const dx = zoomFirst ? 30 : 100, dy = zoomFirst ? 20 : 80
+    const button = zoomFirst && rotateFirst ? 'right' : 'left'
+    const start = { x: initial.x - dx, y: initial.y - dy }
     await page.mouse.move(start.x, start.y)
-    await page.mouse.down()
+    await page.mouse.down({ button })
     await page.mouse.move(initial.x, initial.y, { steps: 5 })
     await frame()
     const moved = await point()
-    expect(moved.x - initial.x).toBeCloseTo(100, 0)
-    expect(moved.y - initial.y).toBeCloseTo(80, 0)
-    await expect.poll(() => Math.hypot(...cameras.at(-1).position.map((value, i) => value - before.position[i]))).toBeGreaterThan(0.1)
-    const after = cameras.at(-1)
+    expect(moved.x - initial.x).toBeCloseTo(dx, 0)
+    expect(moved.y - initial.y).toBeCloseTo(dy, 0)
+    const after = JSON.parse((await snapshot(page)).graph3dCamera)
+    expect(Math.hypot(...after.position.map((value, i) => value - before.position[i]))).toBeGreaterThan(0.1)
     for (let i = 0; i < 3; i++) expect(after.position[i] - after.target[i]).toBeCloseTo(before.position[i] - before.target[i], 5)
     // Return to the original camera pose without turning this gesture into a click.
     await page.mouse.move(start.x, start.y, { steps: 5 })
-    await page.mouse.up()
+    await page.mouse.up({ button })
     await frame()
     const returned = await point()
     expect(Math.hypot(returned.x - initial.x, returned.y - initial.y)).toBeLessThan(2)

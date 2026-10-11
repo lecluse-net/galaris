@@ -65,6 +65,63 @@ test('a concurrent revision is rebased with only the edited fields', async () =>
   assert.equal(calls, 2)
 })
 
+for (const fails of [false, true]) test(`reset discards an earlier in-flight save and keeps the new layout (failure=${fails})`, async () => {
+  let release
+  const calls = [], restored = [], failures = []
+  const controller = new GraphStatePersistence(context, {
+    readGraphState: async () => state(8),
+    saveGraphState: async (_, patch) => {
+      calls.push(structuredClone(patch))
+      if (calls.length === 1) await new Promise((resolve, reject) => { release = () => fails ? reject(new Error('offline')) : resolve() })
+      return { ...state(patch.expected_revision + 1), positions: patch.positions }
+    },
+  }, points => restored.push(points), error => failures.push(error))
+  await controller.load()
+  controller.remember([['existing', { x: 100, y: 200 }]])
+  controller.stagePositions([['pending', { x: 900, y: 900 }]])
+  controller.stagePreferences({ camera_3d: { position: [900, 900, 900], target: [0, 0, 0], layout_version: 2 } })
+  const running = controller.flush()
+  controller.resetPositions({ hidden_entity_kinds: ['contact'], resource_branches: { directory: 2 } })
+  controller.remember([['existing', { x: 100, y: 200 }]])
+  controller.stagePositions([['existing', { x: 12, y: 34 }]])
+  release()
+  await running
+  assert.equal(controller.restoresPositions, false)
+  assert.equal(calls[1].reset_layout, true)
+  assert.equal(calls[1].expected_revision, fails ? 8 : 9)
+  assert.deepEqual(calls[1].positions, { existing: { x: 12, y: 34 } })
+  assert.deepEqual(calls[1].preferences, { hidden_entity_kinds: ['contact'], resource_branches: { directory: 2 },
+    camera: null, camera_3d: null, expanded_branches: [] })
+  assert.deepEqual(restored, [{ existing: { x: 12, y: 34 } }])
+  assert(failures.every(error => error === null))
+  controller.stagePreferences({ hidden_entity_kinds: [] })
+  await controller.flush()
+  assert.equal(calls[2].reset_layout, undefined)
+})
+
+test('a failed reset retries the replacement coordinates and preserves newer preferences', async () => {
+  const calls = [], failures = []
+  const controller = new GraphStatePersistence(context, {
+    readGraphState: async () => state(3),
+    saveGraphState: async (_, patch) => {
+      calls.push(structuredClone(patch))
+      if (calls.length === 1) throw new Error('offline')
+      return { ...state(patch.expected_revision + 1), positions: patch.positions }
+    },
+  }, () => {}, error => failures.push(error))
+  await controller.load()
+  controller.resetPositions({ hidden_entity_kinds: ['contact'] })
+  controller.stagePositions([['existing', { x: 12, y: 34 }]])
+  await controller.flush()
+  assert.equal(failures.at(-1).message, 'offline')
+  controller.stagePreferences({ hidden_entity_kinds: ['file'] })
+  await controller.flush()
+  assert.equal(calls[1].reset_layout, true)
+  assert.deepEqual(calls[1].positions, { existing: { x: 12, y: 34 } })
+  assert.deepEqual(calls[1].preferences.hidden_entity_kinds, ['file'])
+  assert.equal(failures.at(-1), null)
+})
+
 test('saving after a failed restoration reloads the revision and preserves current edits', async () => {
   let reads = 0
   const calls = [], failures = []

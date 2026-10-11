@@ -119,7 +119,9 @@ Le premier pixel de glissement et la rotation conservent la position à l'écran
 nœud décentré ; l'aller-retour restitue la pose caméra initiale. Le geste avec le clic gauche reste une rotation autour de l'objet pressé,
 sans ouverture ; seul le clic immobile ouvre. Un glissement gauche commencé sur le fond
 translate le graphe avec le pointeur sans modifier l'orientation, depuis la vue d'ensemble
-ou une vue tournée ; l'aller-retour restaure le cadrage et le déplacement s'arrête au relâchement.
+ou une vue tournée, y compris après zoom sur desktop/mobile avec les boutons gauche et droit.
+Le déplacement à l'écran suit celui de la souris sans accélérer à l'approche des nœuds ;
+l'aller-retour restaure le cadrage et le déplacement s'arrête au relâchement.
 La navigation traverse un nœud puis
 continue en espace vide, avec boutons, molette et pincement. Le zoom à la molette conserve
 le centre d'une miniature décentrée sous le pointeur à l'approche et au recul, sans rotation,

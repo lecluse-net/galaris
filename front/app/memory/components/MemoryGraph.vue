@@ -27,6 +27,15 @@
           <q-tooltip>{{ t('memory.graph.hiddenHint') }}</q-tooltip>
         </q-chip>
         <div class="memory-graph__refresh-controls row items-center no-wrap">
+          <q-btn
+            outline round dense color="primary" icon="restart_alt"
+            :aria-label="t('memory.graph.resetPositions')"
+            :disable="loading || reloading || layoutPending || threeUnavailable || !chartReady || !nodes.size"
+            @click="resetPositions"
+          >
+            <q-tooltip>{{ t('memory.graph.resetPositions') }}</q-tooltip>
+          </q-btn>
+          <q-separator vertical inset class="q-mx-xs" />
           <q-toggle
             v-model="liveRefresh"
             dense
@@ -1220,6 +1229,25 @@ function fitGraph(): void {
   void renderGraph3d().then(() => threeScene?.fit())
 }
 
+async function resetPositions(): Promise<void> {
+  if (!persistence || !threeScene || loading.value || reloading.value || layoutPending.value) return
+  const current = persistence
+  removeSaveTimeout()
+  current.resetPositions({ hidden_entity_kinds: [...hiddenEntityKinds.value], resource_branches: { ...resourceBranches } })
+  branchLayout.clear()
+  filteredLayout.clear()
+  threePoints.clear()
+  threeLayoutKey = []
+  threeCamera = null
+  threeHasMap.value = false
+  expandedBranches.value = new Set()
+  closeInspector(false)
+  await renderGraph3d(true)
+  if (persistence !== current) return
+  stagePresentation()
+  scheduleViewSave()
+}
+
 function zoomBy(scaleFactor: number): void {
   threeScene?.zoomBy(scaleFactor)
 }
@@ -1578,7 +1606,7 @@ onUnmounted(() => {
 
 .memory-graph__refresh-controls {
   min-height: 34px;
-  padding: 2px 3px 2px 8px;
+  padding: 2px 3px 2px 2px;
   border: 1px solid rgba(25, 118, 210, 0.28);
   border-radius: 999px;
   background: rgba(25, 118, 210, 0.06);
