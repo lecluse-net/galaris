@@ -6,7 +6,7 @@ from uuid import uuid4
 
 import httpx
 import pytest
-from sqlalchemy import select
+from sqlalchemy import select, func
 
 from app.llm.document_analysis import DocumentAdmission
 from app.llm.document_service import advance_analysis, cancel_analysis
@@ -70,6 +70,100 @@ async def test_document_analysis_does_not_create_a_business_process(runtime, tmp
     assert 'galaris' not in registry.codes()
     assert not list(await db.scalars(select(ProcessDefinition).where(ProcessDefinition.agent_id == agent.id)))
     assert not list(await db.scalars(select(ProcessRun).where(ProcessRun.launcher_agent_id == agent.id)))
+
+
+@pytest.mark.asyncio
+async def test_acquired_document_evidence_is_scoped_and_read_without_repreparing(runtime, tmp_path, monkeypatch):
+    from app.file_share import resource_info
+    from app.llm.facade import acquired_document_evidence
+    from app.task import Task
+    from uuid import UUID
+
+    db, llm, requests, mode = runtime
+    agent, uri = await setup_source(db, tmp_path, monkeypatch, count=2)
+    descriptor = await resource_info(ResourceContext(agent_id=agent.id, runtime="internal"), uri)
+    task = Task(agent_id=agent.id, label="Synthetic analysis", objective="<p>Read a synthetic source.</p>")
+    db.add(task)
+    await db.flush()
+    run, reference = await setup_run(db, agent, uri, llm.id)
+    run.task_id = task.id
+    run.input = {**run.input, "source_version": descriptor.model_dump(
+        include={"revision", "etag", "checksum", "modified_at", "size"}, exclude_none=True)}
+    await db.commit()
+
+    from app.conversation import ConversationRound, ConversationRoundMessage, ConversationTaskLink
+    from app.messenger import Attachment, Message, Room
+    from app.memory import MessengerContactObservation, observe_messenger_contact
+    from app.topic import Topic
+    from app.dream.mechanisms.conversation_memory import build_conversation_extraction_input, conversation_memory_mechanism
+    from app.dream.service import mark_success
+    source_message = await db.scalar(select(Message).join(Attachment, Attachment.message_id == Message.id).where(
+        Attachment.file_id == UUID(uri.rsplit("/", 1)[-1])))
+    room = await db.get(Room, source_message.messenger_room_id)
+    contact = await observe_messenger_contact(MessengerContactObservation(owner_agent_id=agent.id,
+        messaging_id="galaris", user_id="synthetic-document-author"))
+    topic = Topic(title="Synthetic documentary preferences")
+    db.add(topic)
+    await db.flush()
+    round_ = ConversationRound(room_id=room.id, topic_id=topic.id, contact_memory_item_id=contact, status="SUCCEEDED")
+    db.add(round_)
+    await db.flush()
+    db.add_all([ConversationRoundMessage(round_id=round_.id, message_id=source_message.id, role="input", sequence=1),
+        ConversationTaskLink(round_id=round_.id, task_id=task.id, action_key="synthetic-document-analysis")])
+    await db.commit()
+    unanalysed = await build_conversation_extraction_input(round_, topic)
+    assert {part.kind for message in unanalysed.current for part in message.evidence} == {"attachment"}
+    first_claim = await conversation_memory_mechanism.claim_one()
+    assert first_claim is not None
+    assert (await conversation_memory_mechanism.prepare(first_claim)).cost == 0
+    await mark_success(first_claim, result_count=0)
+    assert await conversation_memory_mechanism.count_pending() == 0
+
+    def respond(request):
+        return httpx.Response(200, json={"id": "synthetic-evidence", "object": "chat.completion", "created": 1,
+            "model": llm.llm_name, "choices": [{"index": 0, "message": {"role": "assistant",
+                "content": "The final source page contains 1200 units."}, "finish_reason": "stop"}],
+            "usage": {"prompt_tokens": 20, "completion_tokens": 10, "total_tokens": 30}})
+    provider_http(monkeypatch, respond)
+    for _ in range(12):
+        result = await advance_analysis(reference)
+        if result.status == "success":
+            break
+        assert result.status == "running"
+        await db.refresh(run)
+        if run.checkpoint.get("pending_inference"):
+            await state(UUID(run.checkpoint["pending_inference"]), "completed")
+    else:
+        pytest.fail("Synthetic document analysis did not complete")
+
+    def no_preparation(*args, **kwargs):
+        pytest.fail("Acquired evidence must not download or convert the source again")
+    import app.file_share as file_share
+    monkeypatch.setattr(file_share, "prepared_resource", no_preparation)
+    calls_before = await db.scalar(select(func.count()).select_from(LLMCall))
+    evidence = await acquired_document_evidence(agent.id, [task.id], [uri])
+    assert len(evidence) == 1
+    assert evidence[0].analysis_id == reference
+    assert [part["locator"] for part in evidence[0].passages] == ["page:1", "page:2"]
+    assert evidence[0].coverage["complete"] is True
+    assert evidence[0].coverage["semantic_accuracy_verified"] is False
+    assert "1200 units" in evidence[0].answer
+    extraction = await build_conversation_extraction_input(round_, topic)
+    parts = [part for message in extraction.current for part in message.evidence]
+    assert {part.kind for part in parts} == {"attachment", "document_extraction", "document_interpretation"}
+    assert {part.locator for part in parts if part.kind == "document_extraction"} == {"page:1", "page:2"}
+    assert all(part.uri == uri and part.message_id == source_message.id for part in parts)
+    assert await conversation_memory_mechanism.count_pending() == 1
+    late_claim = await conversation_memory_mechanism.claim_one()
+    assert late_claim is not None and late_claim.subject_id != first_claim.subject_id
+    assert await acquired_document_evidence(agent.id, [uuid4()], [uri]) == []
+    assert await acquired_document_evidence(agent.id + 10000, [task.id], [uri]) == []
+    assert await acquired_document_evidence(agent.id, [task.id], [uri + "x"]) == []
+    assert await db.scalar(select(func.count()).select_from(LLMCall)) == calls_before
+
+    run.input = {**run.input, "source_version": {"etag": "obsolete"}}
+    await db.commit()
+    assert await acquired_document_evidence(agent.id, [task.id], [uri]) == []
 
 
 @pytest.mark.asyncio

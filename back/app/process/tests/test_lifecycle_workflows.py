@@ -34,6 +34,7 @@ async def workflow(db, monkeypatch):
     await db.flush()
     engine = SimpleNamespace(
         supports_cancel=True,
+        refresh_timeout_seconds=1,
         start_run=AsyncMock(return_value=EngineStartResult(accepted=True, engine_run_id="remote")),
         get_run=AsyncMock(return_value=EngineRunSnapshot(status="running")),
         cancel_run=AsyncMock(return_value=EngineRunSnapshot(status="cancelled")),
@@ -47,6 +48,65 @@ async def workflow(db, monkeypatch):
 
 async def start(workflow, **options):
     return await service.start_process(agent_id=workflow.owner.id, workflow_id="report", input_data={"period": "Q1"}, **options)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("remote_status", ["cancelled", "cancelling"])
+async def test_coordinated_replacement_asks_process_owner_and_waits_for_confirmation(db, workflow, monkeypatch, remote_status):
+    from app.process import replacement_blocked_task_ids, coordinate_replacement
+    from app.task import replacement, scheduler
+
+    monkeypatch.setattr(replacement, "_blockers", {})
+    monkeypatch.setattr(replacement, "_coordinators", {})
+    monkeypatch.setattr(scheduler, "wake", lambda *_: None)
+    replacement.register_replacement_blocker("process", replacement_blocked_task_ids)
+    replacement.register_replacement_coordinator("process", coordinate_replacement)
+    original = Task(id=uuid4(), label="Synthetic root", agent_id=workflow.owner.id, status=TaskStatus.CREATE)
+    db.add(original)
+    await db.commit()
+    started = await start(workflow, task_id=original.id)
+    # Exercise a submitted remote run, rather than the local queued-job fast path.
+    run = await service.get_run(started.run_id)
+    run.status = "running"
+    run.engine_run_id = "synthetic-remote-run"
+    await db.commit()
+    successor = await replacement.prepare_replacement(Task(id=uuid4(), label="Synthetic successor", agent_id=workflow.owner.id),
+        predecessor_id=original.id, expected_revision=original.revision, action_key="process-tree", coordinate_descendants=True)
+    await db.commit()
+    workflow.engine.cancel_run.return_value = EngineRunSnapshot(status=remote_status)
+    await replacement.reconcile_replacements()
+    await db.refresh(successor)
+    assert successor.paused is (remote_status != "cancelled")
+    assert workflow.engine.cancel_run.await_count == 1
+    assert replacement.replacement_state(successor)["state"] == ("confirmed" if remote_status == "cancelled" else "pending")
+    if remote_status == "cancelling":
+        workflow.engine.get_run.return_value = EngineRunSnapshot(status="cancelled")
+        await replacement.reconcile_replacements()
+        assert replacement.replacement_state(successor)["state"] == "confirmed"
+        assert workflow.engine.cancel_run.await_count == 1
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("physical_status", ["running", "success", "error", "cancelled"])
+async def test_process_owner_verifies_uncertain_logical_terminal_without_rewriting_it(db, workflow, physical_status):
+    from app.process import coordinate_replacement
+
+    root = Task(id=uuid4(), label="Synthetic root", agent_id=workflow.owner.id, status=TaskStatus.ERROR)
+    db.add(root)
+    await db.commit()
+    started = await start(workflow, task_id=root.id)
+    run = await service.get_run(started.run_id)
+    run.status = "cancelled"
+    run.engine_run_id = "synthetic-frozen-remote-run"
+    run.engine_metadata = {"remote_may_continue": True}
+    run.output = {"prior": "immutable"}
+    await db.commit()
+    workflow.engine.get_run.return_value = EngineRunSnapshot(status=physical_status, output={"later": "result"})
+    await coordinate_replacement([root.id])
+    await db.refresh(run)
+    assert run.status == "cancelled" and run.output == {"prior": "immutable"}
+    assert run.engine_metadata["remote_may_continue"] == (physical_status == "running")
+    workflow.engine.cancel_run.assert_not_awaited()
 
 
 @pytest.mark.asyncio

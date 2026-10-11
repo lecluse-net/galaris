@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from collections.abc import Collection, Sequence
 from datetime import datetime
-from typing import Any
+from typing import Any, cast
 from uuid import UUID
 
 from pydantic import BaseModel, Field
@@ -51,6 +51,24 @@ class TaskActivitySnapshot(BaseModel):
     messenger_message_id: UUID | None = None
     delivery_policy: str | None = None
     resources: list[dict[str, str | None]] = Field(default_factory=list[dict[str, str | None]])
+    execution_scope: dict[str, Any] | None = None
+    scope_preflights: list[dict[str, Any]] = Field(default_factory=list[dict[str, Any]])
+
+
+def _scope_summary(raw: object) -> dict[str, object] | None:
+    """Keep repeated activity reads independent of admitted demand size."""
+    if not isinstance(raw, dict):
+        return None
+    data = cast(dict[str, object], raw)
+    summary: dict[str, object] = {}
+    for key in ("schema_version", "revision", "source_task_id", "delivery_owner_task_id"):
+        value = data.get(key)
+        if isinstance(value, (str, int)) and len(str(value)) <= 100:
+            summary[key] = value
+    for field, count in (("requirements", "requirement_count"), ("grants", "grant_count")):
+        values = data.get(field)
+        summary[count] = len(cast(Sequence[object], values)) if isinstance(values, (list, tuple)) else 0
+    return summary
 
 
 async def readable_activity_tasks(ids: Sequence[UUID], agent_ids: Collection[int] | None) -> list[Task]:
@@ -109,6 +127,8 @@ async def activity_snapshots(tasks: Sequence[Task]) -> list[TaskActivitySnapshot
             parent_task_id=task.parent_id, source_task_id=task.source_task_id,
             messenger_message_id=task.messenger_message_id,
             delivery_policy=(task.data or {}).get("delivery_policy"),
+            execution_scope=_scope_summary((task.data or {}).get("execution_scope")),
+            scope_preflights=data.get("scope_preflights", (task.data or {}).get("scope_preflights", []))[-20:],
             resources=[{
                 "type": resource.resource_type, "reference": resource.reference,
                 "label": resource.label, "state": resource.state,

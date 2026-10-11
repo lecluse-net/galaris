@@ -378,6 +378,12 @@ la temporalité utilise des champs compacts. Le titre affiche la nature du souve
 la dernière activité, le nombre d'accès et la révision. Une suppression protégée y apparaît
 en badge d'avertissement avec son explication en infobulle.
 Les souvenirs autonomes sont privés à leur agent, sans titre à saisir ni partage.
+Dream peut aussi retenir un fait durable issu d'un message audio transcrit ou d'une pièce
+jointe déjà analysée dans une Task liée à la conversation. Il conserve les preuves et leurs
+limites de couverture ; une pièce jointe non analysée ne suffit pas à produire un fait.
+Une preuve arrivée plus tard peut compléter les souvenirs. Pour les nouveaux souvenirs issus
+de ce traitement, retrait de la source, correction de la transcription ou révocation de la
+connexion retirent le fait du rappel s'il n'a aucune autre provenance indépendante valide.
 Pour un document, ce contenu est une synthèse facultative : **Ouvrir le document**
 ouvre une seconde modale pour modifier son titre, son contenu complet et son partage,
 en conservant la fiche mémoire et son brouillon. Cette mémoire ne peut pas être oubliée
@@ -507,3 +513,9 @@ avec les libellés de votre langue, et signaler les prérequis utiles. S’il ne
 votre rôle ou votre configuration, il doit demander le libellé ou message affiché,
 plutôt que conclure qu’une fonction n’existe pas. La carte documentaire décrit les
 possibilités du logiciel ; elle ne constitue pas une observation de votre session.
+Lorsqu'un travail durable est remplacé depuis la conversation, son successeur attend
+l'arrêt confirmé des tâches et processus associés. Un arrêt distant incertain reste
+en attente ; il ne provoque pas de second lancement. Une Goal active nécessite sa propre
+coordination. Les travaux indépendants et vos pauses manuelles sont conservés.
+Si une destination ne correspond pas à la demande, l'agent peut demander une précision
+sur le même travail avant d'envoyer ou de modifier une ressource.

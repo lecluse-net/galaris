@@ -1158,12 +1158,17 @@ async def _reconcile_authorization_receipt(run: ProcessRun) -> None:
 apply_engine_snapshot = _apply_snapshot
 
 
-async def refresh_run(run_id: UUID) -> ProcessRun:
+async def refresh_run(run_id: UUID, *, confirm_terminal_stop: bool = False) -> ProcessRun:
     run = await get_run(run_id)
     if run is None:
         raise LookupError(await tr("process.errors.run_not_found"))
-    if run.status in TERMINAL_STATUSES:
+    uncertain_terminal = (run.status in TERMINAL_STATUSES and confirm_terminal_stop
+        and (run.engine_metadata or {}).get("remote_may_continue") is True)
+    if run.status in TERMINAL_STATUSES and not uncertain_terminal:
         await _resolve_await_if_terminal(run)
+        return run
+    reference = _engine_run_reference(run)
+    if uncertain_terminal and not reference.engine_run_id:
         return run
     if run.status == "queued" and run.launch_snapshot.get("authorization_permit") and run.engine_run_id is None:
         return run
@@ -1210,6 +1215,16 @@ async def refresh_run(run_id: UUID) -> ProcessRun:
     locked = await _locked_run(run.id)
     if locked is None:
         raise LookupError(await tr("process.errors.run_not_found"))
+    if uncertain_terminal:
+        # A read can establish physical termination without rewriting the logical
+        # cancellation or its immutable output. Match the exact run we polled.
+        if (snapshot.status in TERMINAL_STATUSES and _engine_run_reference(locked) == reference
+                and snapshot.engine_run_id in {None, reference.engine_run_id}):
+            locked.engine_metadata = {**(locked.engine_metadata or {}), "remote_may_continue": False,
+                "replacement_stop_evidence": {"status": snapshot.status, "observed_at": _utcnow().isoformat()}}
+            await _append_event(locked, "engine.replacement_stop.confirmed", payload={"status": snapshot.status})
+            await get_db().commit()
+        return locked
     await _apply_snapshot(locked, snapshot, "engine.refresh")
     await get_db().commit()
     await _reconcile_authorization_receipt(locked)

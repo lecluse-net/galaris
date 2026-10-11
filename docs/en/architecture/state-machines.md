@@ -31,16 +31,19 @@ See [0153](../../../project/decisions/0153-common-action-authorizations.md).
 ## LLM inferences
 
 `LLMInference` owns the request and `LLMInferenceAttempt` each attempt. Operation states are
-`queued`, `running`, `pausing`, `stopping`, `paused`, `stopped`, `completed`, `failed` and
+`prepared`, `queued`, `running`, `pausing`, `stopping`, `paused`, `stopped`, `completed`, `failed` and
 `interrupted`. The attempt remains `running` while a pause or stop is requested.
 
 | Event | Source | Target |
 |---|---|---|
 | Committed admission | absent | `queued` |
+| Committed preparation | absent | `prepared`, no worker/provider |
+| Explicit start | `prepared` | same `queued` attempt |
 | Lease claim | `queued` | `running` |
 | Result | `running` | `completed` or `failed` |
-| Pause | `queued` / `running` | `paused` / `pausing`, then `paused` |
-| Stop | `queued` / `running` / `pausing` | `stopped` / `stopping`, then `stopped` |
+| Pause | `prepared` / `queued` / `running` | `paused` / `pausing`, then `paused` |
+| Stop | `prepared` / `queued` / `running` / `pausing` | `stopped` / `stopping`, then `stopped` |
+| Global deadline exhausted | `queued` / `running` | `failed`, partial journal preserved |
 | Stop after suspension | `paused` or `interrupted` | `stopped`, previous result preserved |
 | Worker shutdown or lease expiry | `running` | `interrupted`; pending pause/stop takes precedence |
 | Explicit resume | `paused` or `interrupted` | new `queued` attempt |

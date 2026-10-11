@@ -112,6 +112,7 @@ from .configuration import (
     resolve_messenger_configuration,
 )
 from .journal import hydrate_messages
+from .models import conversation_audio_transcripts
 from .resource_reference import attachment_resource_uri
 from .contact_memory import observe_contact
 from .contracts import (
@@ -297,6 +298,7 @@ __all__ = [
     "ResolvedMessengerConfiguration",
     "resolve_messenger_configuration",
     "hydrate_messages",
+    "conversation_audio_transcripts",
     "attachment_resource_uri",
     "observe_contact",
     "kind_from_mime",

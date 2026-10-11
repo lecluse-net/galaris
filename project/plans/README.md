@@ -22,14 +22,14 @@ Un plan ne vaut ni ordre d'implémentation ni nouvelle priorité produit.
 
 | Plan | Statut | Reste à faire |
 |---|---|---|
-| [amelioration-globale-memoire.md](amelioration-globale-memoire.md) | `partial` | Transcriptions/PJ vers les souvenirs, provenance et texte extrait ; pertinence/utilité aval sur corpus élargi ; observation détaillée, granularité et réaffectation des Topics. Qualifications particulières du catalogue File Share regroupées ici. |
+| [amelioration-globale-memoire.md](amelioration-globale-memoire.md) | `partial` | Transcriptions et analyses acquises vers les souvenirs, reçus tardifs et provenance réalisés (0169). Restent analyses partielles/Tasks descendantes, index PJ précis, pertinence/utilité aval sur corpus élargi, observation et réaffectation des Topics. Qualifications particulières du catalogue File Share regroupées ici. |
 | [analyse-documentaire-unifiee.md](analyse-documentaire-unifiee.md) | `partial` | XLS structurel, formats non couverts, isolation réseau, contrôles sémantiques et qualification répétée des grandes sources. |
 | [graphe-memoire-multiechelle.md](graphe-memoire-multiechelle.md) | `partial` | Graphe exclusivement 3D (0168), répertoires connus dès l'ouverture, fichiers paginés à l'approche, représentants des éléments masqués et actualisation sans perte de cadrage. Les états incompatibles reconstruisent le placement. Générations serveur, occurrences de fichiers, carte régionale préparée et qualification très grands volumes restent planifiées. |
-| [fiabilisation-conversationnelle.md](fiabilisation-conversationnelle.md) | `partial` | Mesures du parcours/dispatcher et des prompts ; arrêt externe et remplacement coordonné ; autres capacités/diagnostics, contexte, langue et parcours illustré complet. |
+| [fiabilisation-conversationnelle.md](fiabilisation-conversationnelle.md) | `partial` | Arbre Task/Process coordonné livré (0170), preuve distante tardive sans rejeu. Restent Goal active, qualification des autres runtimes, mesures des prompts/capacités et parcours illustré complet. |
 | [lab-evaluation-mecanismes-ia.md](lab-evaluation-mecanismes-ia.md) | `partial` | Étalonnage, incertitude, comparabilité/tendances, gardes et portabilité ; campagnes spécialisé/texte des modèles de décision regroupées ici. |
-| [llm-calls-durables.md](llm-calls-durables.md) | `partial` | Préparation différée, révision des commandes, échéance cumulée, médias et arbitrages de rejeu justifiés par un consommateur. |
+| [llm-calls-durables.md](llm-calls-durables.md) | `partial` | Préparation/démarrage explicite, révision des commandes et échéance globale livrés (0170). Restent entrées médias supplémentaires et mesures du journal selon consommateur ; qualification fournisseur distincte. |
 | [convergence-pydantic-ai.md](convergence-pydantic-ai.md) | `partial` | Métadonnées OpenRouter, transport Codex alternatif, projection des réglages, surfaces supplémentaires et adaptateurs de décision différés. |
-| [portee-provenance-execution-agentique.md](portee-provenance-execution-agentique.md) | `partial` | Scope/grants génériques, descripteurs d'effets, plan validé, préflight et intégration dans activité/reprise existantes. |
+| [portee-provenance-execution-agentique.md](portee-provenance-execution-agentique.md) | `partial` | Contrat v1, admission/héritage/amendement, validation du plan, descripteurs natifs et préflight durable intégrés à l'activité (0170). Restent qualification élargie, cibles non canoniques et métadonnées des outils externes. |
 | [outils-mcp-multimedia.md](outils-mcp-multimedia.md) | `partial` | Accès officiel Suno, références/composition/annulation distante et extensions locales ; recettes des comptes dans le guide. |
 
 ## Conceptions

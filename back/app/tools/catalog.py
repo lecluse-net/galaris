@@ -10,6 +10,7 @@ from typing import Any, cast
 from uuid import UUID
 
 from app.agent.contracts import RuntimeName, normalize_tool_name
+from app.agent import EffectDescriptorV1
 from core.util import as_dict, as_list
 
 
@@ -98,6 +99,7 @@ class AgentToolCatalogEntry:
     parameters_json_schema: dict[str, Any]
     input_summary: str
     definition_fingerprint: str
+    effect_descriptor: EffectDescriptorV1 | None = None
 
     @property
     def embedding_text(self) -> str:
@@ -129,6 +131,7 @@ def catalog_entry_from_definition(
     name: object,
     description: object,
     parameters_json_schema: object,
+    effect_descriptor: EffectDescriptorV1 | None = None,
 ) -> AgentToolCatalogEntry:
     """Normalize one FastMCP or Pydantic AI definition into public metadata."""
 
@@ -145,6 +148,7 @@ def catalog_entry_from_definition(
             "name": normalized_name,
             "description": normalized_description,
             "parameters": schema,
+            **({"effect": effect_descriptor.model_dump(mode="json")} if effect_descriptor else {}),
         },
         ensure_ascii=True,
         sort_keys=True,
@@ -158,6 +162,7 @@ def catalog_entry_from_definition(
         parameters_json_schema=schema,
         input_summary=_input_summary(schema),
         definition_fingerprint=fingerprint,
+        effect_descriptor=effect_descriptor,
     )
 
 
@@ -208,7 +213,7 @@ async def build_effective_tool_catalog(
 ) -> AgentToolCatalog:
     """Build the live catalog after connection, runtime and function filtering."""
 
-    from app.tools.mcp_loader import build_agent_mcp
+    from app.tools.mcp_loader import build_agent_mcp, load_mcp_tools
 
     mcp = await build_agent_mcp(
         agent_id,
@@ -225,12 +230,14 @@ async def build_effective_tool_catalog(
         else None
     )
     entries: list[AgentToolCatalogEntry] = []
+    native_effects = {definition.name: definition.effect_descriptor for definition in load_mcp_tools()}
     for tool in tools:
         entry = catalog_entry_from_definition(
             runtime=runtime,
             name=tool.name,
             description=tool.description,
             parameters_json_schema=cast(object, getattr(tool, "parameters", {})),
+            effect_descriptor=native_effects.get(tool.name),
         )
         if allowed is None or entry.name in allowed:
             entries.append(entry)

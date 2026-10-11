@@ -149,14 +149,16 @@ def test_local_ranking_is_deterministic_and_limited() -> None:
     assert [item.id for item in ranked] == ["coffee"]
 
 
-def test_invalid_link_targets_are_dropped_server_side() -> None:
+@pytest.mark.parametrize("target,refs", [("invented", []), ("memory-001", ["invented-evidence"])])
+def test_invalid_link_targets_are_dropped_server_side(target, refs) -> None:
     decision = MemoryExtractionDecision(
-        operations=[MemoryLinkOperation(target_memory_id="invented")]
+        operations=[MemoryLinkOperation(target_memory_id=target, evidence_refs=refs)]
     )
 
     validated = validate_memory_extraction_decision(
         decision,
         allowed_memory_ids={"memory-001"},
+        allowed_evidence_refs={"source-evidence"},
     )
 
     assert validated.operations == []
@@ -398,15 +400,18 @@ def test_current_checkpoint_is_validated(legacy_summary: bool) -> None:
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("node_kind", ["memory", "document"])
 async def test_link_adds_provenance_without_rewriting_existing_memory(
     db: AsyncSession,
     memory_extraction_storage: Path,
+    node_kind: str,
 ) -> None:
     del memory_extraction_storage
     owner = await _owner(db)
     existing, _created = await memory_service.create_item(
         MemoryItemCreate(
             owner_agent_id=owner.id,
+            node_kind=node_kind,
             title="Préférence de réponse",
             payload=MemoryPayload(text="La personne préfère les réponses concises."),
         )
@@ -434,7 +439,7 @@ async def test_link_adds_provenance_without_rewriting_existing_memory(
         source_ref="task:memory-link-test",
         source_excerpt="Réponds-moi toujours de façon concise.",
         memory_created_at=datetime(2026, 8, 7, tzinfo=timezone.utc),
-        metadata={},
+        metadata={"evidence_validator": "conversation", "source_evidence": []},
         contact_item_id=None,
         topic_item_id=None,
         idempotency_prefix="dream:memory-link-test",

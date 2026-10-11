@@ -1,5 +1,9 @@
 # Décisions d'architecture
 
+- [0170 — Portée d'exécution et commandes durables](0170-execution-scope-and-durable-controls.md)
+
+- [0169 — Preuves acquises pour la mémoire conversationnelle](0169-conversation-memory-acquired-evidence.md)
+
 - [0164 — Paramètres inconnus tolérés à la frontière MCP](0164-tolerant-tool-arguments.md)
 
 - [0163 — Une miniature courante par document](0163-single-document-thumbnail.md)

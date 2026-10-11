@@ -1,20 +1,25 @@
 # Inférences durables — extensions restantes
 
 - Statut : `partial`
-- Revue des sources : 2026-10-08.
+- Revue des sources : 2026-10-11.
 - Contrats réalisés : [0097](../decisions/0097-durable-inference-lifecycle.md),
   [0095](../decisions/0095-pydantic-ai-request-ownership.md) et
   `app.llm.contracts/facade`.
 
 ## Évolutions à justifier par un consommateur
 
+Le lot [0170](../decisions/0170-execution-scope-and-durable-controls.md) réalise
+`prepare_inference`, l'admission HTTP `prepared=true`, la commande `start`, les révisions
+attendues et `deadline_seconds`. La requête est gelée dès la préparation ; une modification
+demande une nouvelle identité. L'échéance inclut attente et pauses, sans budget renouvelé
+à la reprise. Le rejeu reste une commande explicite qui conserve l'original.
+Les suites durables couvrent refus d'accès, concurrence, idempotence, expiration et journal
+partiel ; elles remplacent le fournisseur, sans qualifier un compte réel.
+
 | Extension | Garantie et réception |
 |---|---|
-| Préparation sans démarrage | Persister une requête sans appel provider, puis démarrer explicitement ; identité/configuration/idempotence conservées, modifications avant gel définies. Crash création/démarrage, départ concurrent et annulation couverts. |
-| Révision attendue des commandes | Conflit observable sans écrasement concurrent ; commande rejouée avec même reçu, compatibilité des clients. Pause/stop/resume, génération et réponse tardive couverts. |
-| Échéance globale | Budget cumulé des tentatives, pause et redémarrage définis. Deadline physique existante conservée ; expiration sans preuve fictive d'arrêt distant ni relance implicite, fragments/coûts/incertitudes préservés. |
 | Médias et autres entrées | Besoins durables embeddings/STT/realtime/génération/analyse, sérialisation et quotas/rétention ; URI et droits, historique/protocole sans perte, matière nécessaire au rejeu protégée. |
-| Rejeu actif/incertain | Arbitrage explicite avec consentement/corrélation/conséquences, original conservé ; distinguer forçage, reprise et nouvel effet. |
+| Consommateurs du rejeu actif/incertain | Le rejeu explicite crée une autre inférence et peut doubler la facturation ; qualifier l'information/consentement de chaque futur consommateur avant son exposition. Aucun effet d'outil rejoué automatiquement. |
 | Journal progressif | Mesurer fréquence/taille des blocs avant optimisation ; relecture fidèle sans transaction imposée par token. |
 
 Les noms create/start/submit sont d'anciennes propositions, pas des API à implémenter

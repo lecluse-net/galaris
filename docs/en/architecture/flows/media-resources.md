@@ -154,6 +154,11 @@ and the other `file_*` functions belong to the built-in `file_sharing` Tool, eve
 The `galaris://` provider exposes only name and text search; semantic search belongs to `memory://`. A copy from `galaris://`, `memory://`, or `document://`
 uses the file's general binary limit rather than the limit for a single text write.
 
+On `document://`, `file_search(mode="name")` filters titles and filenames under ACLs,
+with SQL pagination and compact metadata without body excerpts or passages. Modes `text`
+and `semantic` retain content search; `memory://` retains hybrid recall in every mode.
+Name discovery does not load the embedding model.
+
 AFFiNE images and attachments use `<tool-code>://<workspace-id>/<blob-key>`:
 the key comes from the block's `sourceId`, and the workspace belongs to the source document.
 The `<workspace-id>/blob/<blob-key>` and `<workspace-id>/blobs/<blob-key>` variants

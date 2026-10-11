@@ -15,7 +15,7 @@ from app.agent.models import Agent
 from app.llm import LLM, LLMCallPurpose, model_usages
 from app.llm.models import LLMCall
 from app.llm.structured_service import run_structured
-from app.task import task_service, try_lock_agent
+from app.task import task_service, try_lock_agent, initialize_scope
 from app.task.models import Task, TaskAttempt, TaskStatus
 from app.task.schemas import TaskCreate
 from core.database import get_db
@@ -779,6 +779,10 @@ async def start_due_cycle(
             if goal.referrer_type == GoalReferrerType.AGENT
             else None
         )
+        # Tracking and previous results are context, never new target authority.
+        source_goal = await goal_service.read_markdown(goal)
+        task.data = {**(task.data or {}), "_original_demand": source_goal.description or goal.title}
+        await initialize_scope(task, source_reference=f"galaris://goal/{goal.id}")
         task_service.retain(task, _GOAL_JUDGEMENT_RETENTION)
         cycle = GoalCycle(
             id=cycle_id,

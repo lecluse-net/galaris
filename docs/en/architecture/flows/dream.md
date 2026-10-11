@@ -72,8 +72,13 @@ creation policy is checkpointed before application and respects
 The mechanisms `memory.extract_task` and `memory.extract_conversation_round` wait for a Topic and,
 for text and voice conversational sources, the
 exact contact. They use a single structured decision `CREATE`, `LINK`, or `IGNORE`, without a tool or
-MCP. Each acquisition retains the receipt and the mechanism's stable key, without version
-metadata.
+MCP. Each acquisition retains the receipt and the mechanism's stable key.
+Rounds also reuse persisted transcripts and successful document analyses from directly linked
+Tasks, scoped to the agent and the exact attachment URI. This starts no additional acquisition.
+Written messages, transcripts, extracted text and interpretations remain distinct, with coverage,
+locators and an attested or unknown version. Late evidence opens a new idempotent receipt.
+Application revalidates the checkpoint; reads and recall exclude new derived facts when none of
+their supporting evidence remains available. See [0169](../../../../project/decisions/0169-conversation-memory-acquired-evidence.md).
 
 `skill.learn_task_outcome` transforms only bounded, observable evidence into reusable procedures
 specific to the agent. CREATE, REINFORCE, REVISE, and WEAKEN feed the dedicated tables

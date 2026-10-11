@@ -1257,8 +1257,11 @@ async def create_task(
     )
     await task_service.apply_source_lineage(task_data, source_task_id)
     db = get_db()
-    task = Task(id=task_id, **task_data.model_dump(exclude={"messages"}))
+    task = task_service.build(task_data)
+    task.id = task_id
     await task_service.apply_requester_lineage(task)
+    from .execution_scope import initialize_scope
+    await initialize_scope(task, db=db)
     await task_service.apply_topic_lineage(task, db=db)
     db.add(task)
     logger.info("MCP task create: task added to session id={}", task_id)

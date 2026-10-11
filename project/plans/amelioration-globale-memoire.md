@@ -1,7 +1,7 @@
 # Mémoire — extensions et expériences restantes
 
 - Statut : `partial`
-- Revue des sources : 2026-10-08. Cette revue ne rejoue pas les campagnes.
+- Revue des sources : 2026-10-11 pour l'acquisition conversationnelle ; 2026-10-08 pour les expériences. Les campagnes ne sont pas rejouées.
 
 ## Socle à réutiliser
 
@@ -31,31 +31,31 @@ Les preuves historiques restent dans les audits de
 ## MEM-018 / MEM-011 — Acquisition des pièces jointes et provenance
 
 Le lecteur commun et l'analyse reprenable existent
-([0151](../decisions/0151-resumable-document-analysis.md)).
-Restent les apports sélectifs de leurs résultats à la mémoire conversationnelle et la
-recherche précise du texte extrait des PJ documentaires.
+([0151](../decisions/0151-resumable-document-analysis.md)). Le raccordement des preuves déjà
+acquises au round est réalisé par [0169](../decisions/0169-conversation-memory-acquired-evidence.md) :
+transcriptions persistées, analyses réussies autorisées et liées à une Task directe du round,
+passages sélectionnés, provenance, reçus tardifs et revalidation. Le défaut audio seul a été
+reproduit avant correction dans le workflow PostgreSQL. Les scénarios utilisent les services
+réels et un fournisseur HTTP synthétique ; ils ne constituent pas une qualification en production.
 
-Constat dans `dream/mechanisms/conversation_memory.py` : l'éligibilité SQL et la
-sérialisation utilisent encore `Message.text`. Le chemin audio seul avec transcription
-doit être reproduit dans le workflow avant correction ; cette inspection n'est pas une
-reproduction applicative. Le catalogue Messenger réalisé ne prouve pas ce raccordement.
-
-| Travail restant | Réception sur sources synthétiques |
+| Contrat | État et réception sur sources synthétiques |
 |---|---|
-| Transcriptions vers Dream | Audio sans texte produisant un souvenir pertinent avec message, auteur, langue et URI audio ; absence/échec de transcription explicite ; écrit humain et transcription distingués. |
-| Réutilisation des analyses acquises | Résultat persisté, autorisé et lié au message/round utilisé sans téléchargement ni nouvelle analyse ; fichier non analysé conservé comme tel. |
-| Apport tardif | Analyse après un premier reçu du round, reprise et redelivery : ajout utile une seule fois, souvenirs antérieurs conservés. |
-| Provenance par passage | Message écrit, transcription, extraction et interprétation distingués ; URI, version attestée ou inconnue et localisateurs disponibles conservés ; preuve autorisée ouvrable. |
-| Couverture | Résumé seul, extraction partielle/complète, illisible, vidéo audio seule et limite atteinte transmis au rappel ; absence du résumé jamais assimilée à absence du fichier. |
-| Texte documentaire | Comparaison résumé seul / résumé + passages sur PDF longs et tableaux : chiffre, unité et détail final retrouvables sans écraser résumé ou description manuelle ni créer un second objet Memory. |
+| Transcriptions vers Dream | Réalisé : audio sans texte capturé, auteur/langue/message/URI conservés, écrit et transcription distincts ; sans texte acquis, aucun appel d'extraction. |
+| Réutilisation des analyses acquises | Réalisé pour les analyses réussies de Tasks directes : isolation agent/Task/URI, version obsolète rejetée, passages et interprétation repris sans préparation ni appel fournisseur ; fichier non analysé explicite. |
+| Apport tardif | Réalisé : nouvelle identité de reçu, application répétée idempotente, souvenirs antérieurs conservés ; analyse documentaire après un premier reçu vide. |
+| Provenance par passage | Réalisé : références citées, catégories distinctes, URI canonique, version attestée/inconnue, empreinte et localisateur ; revalidation avant application, lecture, admission et graphe. |
+| Couverture | Couverture et troncatures conservées pour les analyses réussies ; restent la propagation des analyses partielles/échouées et la qualification illisible, vidéo et limite atteinte. |
+| Texte documentaire | Sélection bornée de passages acquise ; restent la recherche précise dans l'index PJ et la comparaison résumé seul / résumé + passages sur PDF longs et tableaux, sans modifier le contenu manuel ni dupliquer la fiche. |
 
 Définir déclenchement, budgets, rétention et modèles configurés avant toute nouvelle
 acquisition automatique. Ne pas analyser systématiquement chaque fichier reçu.
 Un résumé et sa source ne sont pas deux corroborations indépendantes.
 
-Revalider conversation, agent et source avant application. Retrait, révocation, correction
-ou oubli invalident les dérivés concernés et les anciens checkpoints ; conserver les faits
-indépendamment sourcés. Étendre `test_conversation_memory.py`, `test_voice_memory.py`,
+La revalidation du round, de l'agent et de la source avant application est réalisée pour ce
+nouveau chemin. Les tests couvrent retrait, révocation, correction et conservation d'une
+provenance indépendante ; l'oubli d'un contenu bloque aussi les révisions tardives du même
+round. Les souvenirs historiques sans marqueur conservent leur contrat existant.
+Restent les Tasks descendantes et les campagnes documentaires étendues, en réutilisant
 `test_dream_attachments.py` et `test_document_structure.py`.
 Les formats et l'isolation du lecteur restent dans le
 [plan documentaire](analyse-documentaire-unifiee.md).

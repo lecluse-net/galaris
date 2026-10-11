@@ -32,16 +32,19 @@ Voir [0153](../../../project/decisions/0153-common-action-authorizations.md).
 ## Inférences LLM
 
 `LLMInference` porte la demande et `LLMInferenceAttempt` chaque tentative. Les états de
-l’opération sont `queued`, `running`, `pausing`, `stopping`, `paused`, `stopped`, `completed`,
+l’opération sont `prepared`, `queued`, `running`, `pausing`, `stopping`, `paused`, `stopped`, `completed`,
 `failed` et `interrupted`. La tentative reste `running` pendant une demande de pause ou d’arrêt.
 
 | Événement | Source | Cible |
 |---|---|---|
 | Admission committée | absent | `queued` |
+| Préparation committée | absent | `prepared`, aucun worker/provider |
+| Démarrage explicite | `prepared` | même tentative `queued` |
 | Réclamation avec lease | `queued` | `running` |
 | Résultat | `running` | `completed` ou `failed` |
-| Pause | `queued` / `running` | `paused` / `pausing`, puis `paused` |
-| Arrêt | `queued` / `running` / `pausing` | `stopped` / `stopping`, puis `stopped` |
+| Pause | `prepared` / `queued` / `running` | `paused` / `pausing`, puis `paused` |
+| Arrêt | `prepared` / `queued` / `running` / `pausing` | `stopped` / `stopping`, puis `stopped` |
+| Échéance globale épuisée | `queued` / `running` | `failed`, journal partiel conservé |
 | Arrêt après suspension | `paused` ou `interrupted` | `stopped`, résultat antérieur conservé |
 | Arrêt du worker ou expiration du lease | `running` | `interrupted` ; une pause/un arrêt demandé reste prioritaire |
 | Reprise explicite | `paused` ou `interrupted` | nouvelle tentative `queued` |

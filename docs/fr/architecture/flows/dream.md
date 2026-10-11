@@ -74,8 +74,13 @@ politique de création est checkpointée avant application et respecte le mode
 Les mécanismes `memory.extract_task` et `memory.extract_conversation_round` attendent un Topic et,
 pour les sources conversationnelles textuelles comme vocales, le contact
 exact. Ils utilisent une unique décision structurée `CREATE`, `LINK` ou `IGNORE`, sans outil ni
-MCP. Chaque acquisition conserve le reçu et la clé stable du mécanisme, sans métadonnée de
-version.
+MCP. Chaque acquisition conserve le reçu et la clé stable du mécanisme.
+Le round réutilise aussi les transcriptions persistées et les analyses documentaires réussies
+de ses Tasks directement liées, pour l'agent et l'URI exacte d'une pièce jointe. Il ne lance
+aucune acquisition supplémentaire. Écrit, transcription, extraction et interprétation restent
+distincts, avec couverture, localisateur et version attestée ou inconnue. Un apport tardif
+ouvre un nouveau reçu idempotent. L'application revalide le checkpoint ; lecture et rappel
+écartent les nouveaux dérivés dont aucune preuve n'est encore disponible. Voir [0169](../../../../project/decisions/0169-conversation-memory-acquired-evidence.md).
 
 `skill.learn_task_outcome` transforme uniquement des preuves observables et bornées en procédures
 réutilisables propres à l'agent. CREATE, REINFORCE, REVISE et WEAKEN alimentent les tables dédiées

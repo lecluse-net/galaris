@@ -9,6 +9,8 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Sequence, TypeAlias, cast
 from uuid import UUID
+from .source_access import readable_evidence_ids
+from .query_policy import prepare_memory_read
 
 from loguru import logger
 from sqlalchemy import Float, cast as sql_cast, exists, func, or_, select
@@ -558,12 +560,13 @@ async def _semantic_candidates(
         )
     )
     items = {item.id: item for item in item_result.all()}
+    evidence_ids = await readable_evidence_ids(set(items), request.agent_id)
     candidates: list[SemanticCandidate] = []
     passages_by_id: dict[UUID, list[MemorySearchPassage]] = {}
     for row in rows:
         item_id = cast(UUID, row[0])
         item = items.get(item_id)
-        if item is None or (item.revision, item.lock_version, item.semantic_fingerprint) != (row[4], row[5], row[6]):
+        if item is None or item_id not in evidence_ids or (item.revision, item.lock_version, item.semantic_fingerprint) != (row[4], row[5], row[6]):
             continue
         raw_distance = float(row[3])
         if not math.isfinite(raw_distance):
@@ -581,7 +584,7 @@ async def _semantic_candidates(
             continue
         passages_by_id[item_id] = [passage]
         candidates.append(
-            (service.item_to_public(item, await effective_access(item, request.agent_id)),
+            (service.item_to_public(item, await effective_access(item, request.agent_id, evidence_ids=evidence_ids)),
              str(row[1]), raw_distance, list(cast(Sequence[float], row[2])), passages_by_id[item_id])
         )
     return candidates
@@ -670,6 +673,7 @@ async def _graph_candidates(
         .where(MemoryItem.id.in_(evidence), *_item_filters(request))
     )
     items = {item.id: item for item in item_rows.all()}
+    evidence_ids = await readable_evidence_ids(set(items), request.agent_id)
     ranked_ids = sorted(
         items,
         key=lambda item_id: (
@@ -679,9 +683,9 @@ async def _graph_candidates(
         ),
     )[:limit]
     return [
-        (service.item_to_public(items[item_id], await effective_access(items[item_id], request.agent_id)),
+        (service.item_to_public(items[item_id], await effective_access(items[item_id], request.agent_id, evidence_ids=evidence_ids)),
          items[item_id].search_text, evidence[item_id][1])
-        for item_id in ranked_ids
+        for item_id in ranked_ids if item_id in evidence_ids
     ]
 
 
@@ -1088,11 +1092,12 @@ async def _structural_candidates(
             break
         strengths.update({identity: 1 / depth for identity in frontier})
         visited.update(frontier)
-    items = await get_db().scalars(select(MemoryItem).options(selectinload(MemoryItem.grants)).execution_options(populate_existing=True).where(
+    items = list(await get_db().scalars(select(MemoryItem).options(selectinload(MemoryItem.grants)).execution_options(populate_existing=True).where(
         MemoryItem.id.in_(strengths), *_item_filters(request),
-    ))
-    return [(service.item_to_public(item, await effective_access(item, request.agent_id)),
-             item.search_text, strengths[item.id]) for item in items]
+    )))
+    evidence_ids = await readable_evidence_ids({item.id for item in items}, request.agent_id)
+    return [(service.item_to_public(item, await effective_access(item, request.agent_id, evidence_ids=evidence_ids)),
+             item.search_text, strengths[item.id]) for item in items if item.id in evidence_ids]
 
 
 def _excerpt(text: str, *, limit: int = 800) -> str:
@@ -1702,17 +1707,18 @@ async def temporal_hits(
     items = (await get_db().scalars(select(MemoryItem).where(
         *filters, MemoryItem.id.in_(matches),
     ).options(selectinload(MemoryItem.grants)).execution_options(populate_existing=True))).all()
+    evidence_ids = await readable_evidence_ids({item.id for item in items}, request.agent_id)
     hits: list[MemorySearchHit] = []
     for item in items:
         # A concurrent edit between metadata selection and hydration can change
         # the calendar. Recompute rather than labeling it with a stale occurrence.
-        if item.temporal is None:
+        if item.id not in evidence_ids or item.temporal is None:
             continue
         match = next_match(MemoryTemporalAnchor.model_validate(item.temporal), start, end)
         if match is None:
             continue
         hits.append(MemorySearchHit(
-            item=service.item_to_public(item, await effective_access(item, request.agent_id)),
+            item=service.item_to_public(item, await effective_access(item, request.agent_id, evidence_ids=evidence_ids)),
             excerpt=_excerpt(item.search_text), score=1.0, temporal_match_at=match,
         ))
     hits.sort(key=lambda hit: (hit.temporal_match_at or start, hit.item.id))
@@ -1727,6 +1733,7 @@ async def recall_items(
 ) -> MemoryRecallResult:
     """Recall memories and publish content-free operational measurements."""
 
+    await prepare_memory_read()
     started_at = time.perf_counter()
     diagnostics = _RecallDiagnostics()
     result = await _recall_items(

@@ -1,6 +1,7 @@
 """File sharing and transfer MCP tools exposed to Galaris agents."""
 
 from __future__ import annotations
+from app.agent import EffectDescriptorV1
 
 import base64
 import binascii
@@ -187,7 +188,9 @@ async def file_info(
         "galaris:// to find tasks, conversation rounds, goals, goal cycles, and assigned "
         "processes; authorized skill files are searched below galaris://skill/. "
         "galaris:// supports name and text search, not semantic search; use memory:// for "
-        "semantic recall."
+        "semantic recall. On document://, mode='name' matches titles and filenames only and "
+        "returns compact metadata without body excerpts; use mode='text' or 'semantic' to "
+        "search document content. memory:// retains hybrid recall in every mode."
     ),
     effect_policy="read",
     concurrency_policy="safe",
@@ -224,6 +227,7 @@ async def search_files(
 @mcp_tool("file_sharing", approval="enabled", approval_reason="Governed bounded read or control without a new sensitive effect",
 
     name="file_read",
+    effect_descriptor=EffectDescriptorV1(capability="file.read", kind="read", target_arguments=("uri",), idempotence="read_only", receipt="resource"),
     description=(
         "Read any resource URI. UTF-8 text is returned in bounded pages; small binary files "
         "are returned completely as base64. Keep large binaries out of model context: pass their "
@@ -251,6 +255,7 @@ async def read_file(
 @mcp_tool("file_sharing", approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval",
 
     name="file_create",
+    effect_descriptor=EffectDescriptorV1(capability="file.create", kind="create", target_arguments=("path",), reversible=True, receipt="resource", ordinary_creation_schemes=("document", "console")),
     description=(
         "Create a new complete text or binary file and return its canonical URI. Pass an exact "
         "file path, or a collection path plus name. Use path='document://' to let Galaris assign "
@@ -294,6 +299,7 @@ async def create_file(
 @mcp_tool("file_sharing", approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval",
 
     name="file_write",
+    effect_descriptor=EffectDescriptorV1(capability="file.write", kind="mutate", target_arguments=("uri",), reversible=True, receipt="resource"),
     authorization_preflight=_file_preflight,
     description=(
         "Replace one existing complete file. Pass text with encoding='utf-8' or binary bytes "
@@ -330,6 +336,7 @@ async def write_file(
 @mcp_tool("file_sharing", approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval",
 
     name="file_append",
+    effect_descriptor=EffectDescriptorV1(capability="file.write", kind="mutate", target_arguments=("uri",), reversible=True, receipt="resource"),
     authorization_preflight=_file_preflight,
     description=(
         "Append UTF-8 text to a resource URI when its provider supports append. HTML documents require complete valid blocks and expected_revision. "
@@ -351,6 +358,7 @@ async def append_file(ctx: McpToolContext, uri: str, content: str, expected_revi
 @mcp_tool("file_sharing", approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval",
 
     name="file_edit",
+    effect_descriptor=EffectDescriptorV1(capability="file.write", kind="mutate", target_arguments=("uri",), reversible=True, receipt="resource"),
     authorization_preflight=_file_preflight,
     description=(
         "Replace a 1-based inclusive range in an existing UTF-8 resource. For HTML documents, "
@@ -454,6 +462,7 @@ async def move_file(
 @mcp_tool("file_sharing", approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval",
 
     name="file_delete",
+    effect_descriptor=EffectDescriptorV1(capability="file.delete", kind="delete", target_arguments=("uri",), receipt="resource"),
     authorization_preflight=_file_preflight,
     description=(
         "Delete one resource URI when its provider supports generic deletion. Memory, documents "

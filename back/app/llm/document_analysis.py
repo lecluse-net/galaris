@@ -63,6 +63,7 @@ class DocumentAdmission(BaseModel):
     vision_model_key: int = 0
     model_fingerprint: str = ""
     vision_fingerprint: str = ""
+    source_version: dict[str, Any] = Field(default_factory=dict)
 
 
 def model_fingerprint(llm: object) -> str:
@@ -114,7 +115,8 @@ def batches(document: PreparedDocument, directory: Path, vision: bool) -> list[l
 
 async def prepare_input(agent_id: int, input_data: dict[str, Any]) -> dict[str, Any]:
     admission = DocumentAdmission.model_validate(input_data)
-    await resource_info(ResourceContext(agent_id=agent_id, runtime=admission.runtime), admission.uri)
+    descriptor = await resource_info(ResourceContext(agent_id=agent_id, runtime=admission.runtime), admission.uri)
+    admission.source_version = descriptor.model_dump(include={"revision", "etag", "checksum", "modified_at", "size"}, exclude_none=True)
     llm = await llm_service.get_document_llm(agent_id=agent_id) if admission.model_slot == "document" else None
     llm = llm or await llm_service.get_profile_llm_for_agent_id(model_usages.TEXT_STANDARD, agent_id)
     if llm is None:
@@ -142,7 +144,11 @@ async def advance_step(analysis_id: UUID) -> DocumentAnalysisSnapshot:
     ctx = ResourceContext(agent_id=int(data["agent_id"]), runtime=admission.runtime, task_id=data.get("task_id"))
     try:
         # Access is revalidated even while an inference is pending.
-        await resource_info(ctx, admission.uri)
+        descriptor = await resource_info(ctx, admission.uri)
+        if admission.source_version and admission.source_version != descriptor.model_dump(
+            include={"revision", "etag", "checksum", "modified_at", "size"}, exclude_none=True,
+        ):
+            raise ValueError("Document changed since analysis admission")
         llm = await llm_service.get_llm(admission.model_key, fresh=True)
         if llm is None:
             raise ValueError("Admitted document model no longer exists")
@@ -168,6 +174,21 @@ async def advance_step(analysis_id: UUID) -> DocumentAnalysisSnapshot:
                 return DocumentAnalysisSnapshot(status="error", output={"complete": False, "coverage": coverage},
                     error=DocumentAnalysisError(code="document_budget", message="The document requires more calls than the admitted budget"))
             await document_checkpoint(analysis_id, immutable_values={"source_sha256": document.sha256, "batch_count": len(plan)})
+            if "source_passages" not in metadata:
+                # Reuse the material already prepared for this analysis. This never
+                # adds a download or provider call; the same source remains authoritative.
+                remaining = 500_000
+                passages: list[dict[str, Any]] = []
+                for page in document.pages:
+                    text = page.text[:remaining]
+                    if text:
+                        passages.append({"locator": f"page:{page.number}", "text": text})
+                        remaining -= len(text)
+                if document.structured_text and remaining:
+                    passages.append({"locator": "source_cells", "text": document.structured_text[:remaining]})
+                    remaining -= min(len(document.structured_text), remaining)
+                await document_checkpoint(analysis_id, {"source_passages": passages,
+                    "source_passages_truncated": remaining == 0})
             latest = await document_checkpoint(analysis_id)
             if latest["terminal"] or latest["metadata"].get("cancelled"):
                 return DocumentAnalysisSnapshot(status="cancelled", output={"complete": False, "coverage": coverage})

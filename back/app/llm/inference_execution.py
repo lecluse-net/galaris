@@ -8,6 +8,7 @@ from collections.abc import AsyncGenerator, Awaitable, Callable
 from contextlib import aclosing, suppress, nullcontext
 from contextvars import Context
 from dataclasses import replace
+from datetime import datetime, timezone
 from typing import TypeVar
 from typing import TYPE_CHECKING
 from uuid import UUID, uuid4
@@ -60,7 +61,7 @@ async def read(inference_id: UUID) -> InferenceRead:
     return await transaction(lambda: inference_store.read(inference_id))
 
 
-async def submit(request: InferenceRequest, *, inference_id: UUID | None = None) -> UUID:
+async def submit(request: InferenceRequest, *, inference_id: UUID | None = None, prepared: bool = False) -> UUID:
     # Resolve before admission; subsequent attempts use the frozen explicit effort.
     from .llm_service import get_llm
     from .structured_service import resolve_reasoning_effort
@@ -112,11 +113,12 @@ async def submit(request: InferenceRequest, *, inference_id: UUID | None = None)
                 request.model_field, request.agent_id
             )
         return await inference_store.create(
-            resolved, inference_id=inference_id, authority=authority
+            resolved, inference_id=inference_id, authority=authority, prepared=prepared,
         )
 
     key = await transaction(admit)
-    await start()
+    if not prepared:
+        await start()
     return key
 
 
@@ -190,10 +192,10 @@ async def _run(
 
 
 async def command(
-    inference_id: UUID, action: InferenceAction, command_id: UUID
+    inference_id: UUID, action: InferenceAction, command_id: UUID, *, expected_revision: int | None = None,
 ) -> InferenceCommand:
-    result = await transaction(lambda: inference_store.command(inference_id, action, command_id))
-    if action in {"resume", "replay"}:
+    result = await transaction(lambda: inference_store.command(inference_id, action, command_id, expected_revision=expected_revision))
+    if action in {"start", "resume", "replay"}:
         await start()
     return result
 
@@ -284,15 +286,18 @@ async def execute(inference_id: UUID) -> None:
                 # commit during that check, before we start waiting.
                 control.clear()
                 status = await transaction(lambda: inference_store.heartbeat(owner))
-                if status in {"pausing", "stopping"}:
+                if status in {"pausing", "stopping", "expired"}:
+                    if status == "expired":
+                        partial.metadata.update(error="Inference deadline exceeded.", deadline_exceeded=True)
                     task.cancel()
                     break
                 if task.done():
                     break
                 command_wait = asyncio.create_task(control.wait())
                 try:
+                    remaining = (snapshot.deadline_at - datetime.now(timezone.utc)).total_seconds() if snapshot.deadline_at else HEARTBEAT_SECONDS
                     await asyncio.wait(
-                        {task, command_wait}, timeout=HEARTBEAT_SECONDS,
+                        {task, command_wait}, timeout=max(0, min(HEARTBEAT_SECONDS, remaining)),
                         return_when=asyncio.FIRST_COMPLETED,
                     )
                 finally:
@@ -304,7 +309,8 @@ async def execute(inference_id: UUID) -> None:
     except asyncio.CancelledError:
         interrupted = True
         result.success = False
-        result.metadata["error"] = "Inference execution interrupted."
+        result.metadata.setdefault("error", "Inference execution interrupted.")
+        interrupted = not bool(result.metadata.get("deadline_exceeded"))
     except Exception as exc:
         result.success = False
         result.metadata["error"] = str(exc)

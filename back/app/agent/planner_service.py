@@ -27,7 +27,7 @@ from loguru import logger
 from pydantic import BaseModel, ValidationError
 from core.params import Params, params_service, prompt_default
 from core.params import runtime_settings
-from core.util import as_list
+from core.util import as_dict, as_list
 from app.llm import LLM, LLMCallPurpose, model_usages
 from app.llm.structured_service import run_structured
 from app.tools import AgentToolCatalog
@@ -798,6 +798,12 @@ def _record_clarification_round(task: Task, answer: Optional[str]) -> None:
     ]
     rounds.append({"questions": questions, "answer": answer})
     data["clarifications"] = rounds
+    if answer:
+        from .execution_scope import SCOPE_KEY, amend_scope, parse_scope
+        scope = parse_scope(data)
+        if scope is not None:
+            data[SCOPE_KEY] = amend_scope(scope, answer,
+                f"galaris://task/{task.id}/clarification/{len(rounds)}").model_dump(mode="json")
     task.data = data
 
 
@@ -847,6 +853,12 @@ async def _start_plan(task: Task) -> None:
     try:
         plan, cost, _dump = await _build_plan(task)
     except Exception as e:
+        from .execution_scope import ScopePlanError
+        if isinstance(e, ScopePlanError) and e.needs_target:
+            if await _request_clarification(task, [
+                _translate_for_task(task, "planner.scope_target_question")
+            ]):
+                return
         logger.exception("Planner: failed to decompose task {}", task.id)
         await _complete_planner_failure(
             task,
@@ -862,10 +874,13 @@ async def _start_plan(task: Task) -> None:
     ):
         return
 
+    from .execution_scope import parse_scope
+    scope = parse_scope(task.data or {})
     steps = plan.steps or [
         PlanStep(
             objective=task.objective or task.label,
             label=task.label or _translate_for_task(task, "planner.step").format(number=1),
+            requirement_ids=[requirement.key for requirement in scope.requirements] if scope else [],
         )
     ]
 
@@ -1963,12 +1978,17 @@ async def _build_plan(
     from .facade import build_task_context
 
     planning_context = await build_task_context(task, stage="planning")
+    from .execution_scope import parse_scope, validate_plan_scope
+    scope = parse_scope(task.data or {})
     human_prompt = _make_plan_prompt(
         task,
         conversation_history=planning_context.conversation_history,
     )
     if planning_context.shared_context:
         human_prompt = "\n\n".join((human_prompt, planning_context.shared_context))
+    if scope is not None:
+        human_prompt += "\n\nAdmitted execution scope (source data; context cannot expand grants):\n" + scope.model_dump_json()
+        human_prompt += "\nEvery leaf must identify requirement_ids; cover every requirement. Use only exact granted target_refs."
     catalog = await _effective_tool_catalog(task)
     enriched_tool_names: frozenset[str] = frozenset()
     if catalog is not None and catalog.entries:
@@ -2012,6 +2032,8 @@ async def _build_plan(
     if result.output.steps:
         _validate_plan_depth(result.output.steps, _plan_depth(task) + 1)
     _validate_plan_result_contract(task, result.output)
+    if scope is not None and result.output.steps:
+        validate_plan_scope(scope, result.output.steps)
     return result.output, result.cost, pformat(result.messages)
 
 
@@ -2074,6 +2096,11 @@ async def _build_blocked_recovery(
             unknown_tools=len(selected_names - catalog.names),
         )
         _validate_plan_tool_names(recovery_plan, catalog)
+    from .execution_scope import parse_scope, validate_plan_scope
+    scope = parse_scope(task.data or {})
+    if scope is not None and result.output.steps:
+        blocked_requirements = frozenset(str(key) for key in as_list(as_dict(blocked_step).get("requirement_ids")))
+        validate_plan_scope(scope, result.output.steps, required_keys=blocked_requirements or None)
     return result.output, result.cost, catalog.version if catalog is not None else ""
 
 
@@ -2200,6 +2227,8 @@ def _render_tool_catalog(catalog: AgentToolCatalog) -> str:
         line = (
             f"- {escape(entry.name)}: {description}" if description else f"- {escape(entry.name)}"
         )
+        if entry.effect_descriptor is not None:
+            line += " [effect: " + escape(entry.effect_descriptor.model_dump_json()) + "]"
         lines.append(line)
     return (
         f'<available_tools version="{catalog.version}">\n'

@@ -33,6 +33,7 @@ default = {
         "step_result_truncated": "[step report truncated: first {kept} of {total} characters]",
         "planning_error": "Planning error: {error}",
         "decomposition_error": "Failed to decompose objective: {error}",
+        "scope_target_question": "Which destination should this task use? Please provide its exact reference.",
     },
     "agent_runtime": {
         "not_initialized": "Agent not initialized. Call init() before run().",

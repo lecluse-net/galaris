@@ -478,10 +478,12 @@ async def _create_conversation_task(
         ).model_dump(mode="json"),
     }
     created = True
+    from app.task import initialize_scope
+    await initialize_scope(task)
     if replace_target is not None:
         from app.task import prepare_replacement
         prepared = await prepare_replacement(task, predecessor_id=replace_target[0],
-            expected_revision=replace_target[1], action_key=action_key)
+            expected_revision=replace_target[1], action_key=action_key, coordinate_descendants=True)
         created = prepared is task
         task = prepared
     get_db().add(task)

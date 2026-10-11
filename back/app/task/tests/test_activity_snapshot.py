@@ -72,6 +72,34 @@ async def test_activity_batch_only_contains_managed_tasks(db):
 
 
 @pytest.mark.asyncio
+async def test_activity_scope_summary_keeps_polling_payload_bounded(db):
+    import json
+    from pathlib import Path
+    from app.agent import admitted_scope, parse_scope
+
+    demand = "<p>" + "Synthetic requirement. " * 3500 + "</p>"
+    task = Task(id=uuid4(), label="Synthetic long demand", objective=demand,
+        data={"_original_demand": demand})
+    scope = admitted_scope(task.id, demand)
+    task.data = {**task.data, "execution_scope": scope.model_dump(mode="json")}
+    db.add(task)
+    await db.flush()
+    snapshot = (await activity_snapshots([task]))[0]
+    scope_bytes = len(json.dumps(snapshot.execution_scope).encode())
+    snapshot_bytes = len(snapshot.model_dump_json().encode())
+    destination = Path(__file__).resolve().parents[4] / "artifacts/scope-activity-payload.json"
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    destination.write_text(json.dumps({"demand_characters": len(demand),
+        "scope_bytes": scope_bytes, "snapshot_bytes": snapshot_bytes}, indent=2))
+    assert scope_bytes < 1000, "Polling must expose provenance summaries, not repeat the full admitted demand"
+    assert snapshot.execution_scope["revision"] == scope.revision
+    assert snapshot.execution_scope["source_task_id"] == str(task.id)
+    assert snapshot.execution_scope["requirement_count"] == len(scope.requirements)
+    assert snapshot.execution_scope["grant_count"] == len(scope.grants)
+    assert parse_scope(task.data) == scope  # The complete durable contract remains available.
+
+
+@pytest.mark.asyncio
 async def test_initial_startup_separates_preparation_from_queue_and_survives_retry(db):
     start = datetime(2026, 9, 13, 5, 44, 40, tzinfo=timezone.utc)
     def at(seconds):

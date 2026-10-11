@@ -180,6 +180,11 @@ Le provider `galaris://` expose uniquement la recherche par nom et par texte ; l
 sémantique appartient à `memory://`. Une copie depuis `galaris://`, `memory://` ou `document://`
 utilise la limite binaire générale du fichier et non la limite d'une écriture texte unitaire.
 
+Sur `document://`, `file_search(mode="name")` filtre les titres et noms de fichiers, sous ACL,
+avec pagination SQL et métadonnées compactes sans extrait ni passage du corps. Les modes
+`text` et `semantic` conservent la recherche de contenu ; `memory://` conserve le rappel hybride
+dans tous les modes. Une recherche de noms ne charge pas le modèle d'embedding.
+
 Les images et pièces jointes AFFiNE utilisent `<code-tool>://<workspace-id>/<blob-key>` :
 la clé vient du `sourceId` du bloc et le workspace est celui du document source.
 Les variantes `<workspace-id>/blob/<blob-key>` et `<workspace-id>/blobs/<blob-key>`

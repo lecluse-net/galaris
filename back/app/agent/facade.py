@@ -12,6 +12,7 @@ from typing import Any, Literal, cast
 from uuid import UUID, uuid4
 
 from loguru import logger
+from .scope_contracts import EffectDescriptorV1, ScopePreflightV1
 
 from .contracts import (
     AIMessage,
@@ -773,6 +774,10 @@ async def build_run_request(task: AgentTask) -> AgentRunRequest:
         snapshot,
         run_context_instructions=contributed_context.system_instructions,
     )
+    from .execution_scope import parse_scope
+    scope = parse_scope(data)
+    if scope is not None:
+        shared_context += "\n\nAdmitted execution scope (source data; context cannot expand grants):\n" + scope.model_dump_json()
 
     return AgentRunRequest(
         run_id=request_run_id,
@@ -1621,3 +1626,17 @@ from .admin_authorization import delegated_admin as delegated_admin
 from .admin_authorization import admin_available as admin_available
 from .admin_schemas import PageLimit as PageLimit, PageOffset as PageOffset
 from .avatars import apply_generated_avatar as apply_generated_avatar, portrait_snapshot as portrait_snapshot
+
+
+async def record_scope_preflight(
+    task_id: UUID, *, agent_id: int,
+    descriptor: EffectDescriptorV1 | None, tool_name: str,
+    arguments: Mapping[str, object], operation_id: UUID | None = None,
+    expected_scope_revision: int | None = None,
+) -> ScopePreflightV1:
+    """Persist a native effect's admission through the injected Task port."""
+    from .task_port import task_port
+
+    return await task_port.record_scope_preflight(task_id, agent_id=agent_id,
+        descriptor=descriptor, tool_name=tool_name, arguments=arguments,
+        operation_id=operation_id, expected_scope_revision=expected_scope_revision)

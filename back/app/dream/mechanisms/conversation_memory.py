@@ -4,19 +4,25 @@ from __future__ import annotations
 
 from app.llm import model_usages
 
-from typing import Any
+from typing import Any, Literal
+import hashlib
+import json
+import re
 from uuid import UUID
 
-from sqlalchemy import String, and_, cast as sql_cast, exists, func, or_, select
+from sqlalchemy import String, and_, case, cast as sql_cast, exists, func, literal, or_, select
+from sqlalchemy.dialects.postgresql import aggregate_order_by
 
 from app.conversation import (
     ConversationRound,
     ConversationRoundMessage,
+    ConversationTaskLink,
 )
 from app.connection import Connection
 from app.llm import llm_service
+from app.llm.facade import acquired_document_evidence, document_evidence_revision
 from app.memory import search_memory_detailed
-from app.messenger import Message, MessengerUser, Room
+from app.messenger import Attachment, File, Message, MessengerUser, Room, hydrate_messages, conversation_audio_transcripts, attachment_resource_uri
 from app.topic import Topic, service as topic_service
 from core.database import get_db, get_db_session
 from core.params import runtime_settings
@@ -27,6 +33,7 @@ from ..contracts import (
     MemoryExtractionDecision,
     MemoryExtractionInput,
     MemoryExtractionMessage,
+    MemoryExtractionEvidence,
     MemoryExtractionPrepared,
 )
 from ..language import language_metadata, output_language_instruction, source_language
@@ -50,17 +57,49 @@ from .memory_extraction import (
 )
 
 
+class ConversationEvidenceUnavailable(ValueError):
+    """A previously eligible source no longer has accessible evidence."""
+
+
+def _round_subject() -> Any:
+    """Media additions have their own receipt; legacy text identities stay valid."""
+    task_ids = select(ConversationTaskLink.task_id).where(ConversationTaskLink.round_id == ConversationRound.id).correlate(ConversationRound)
+    file_ids = select(Attachment.file_id).join(ConversationRoundMessage, ConversationRoundMessage.message_id == Attachment.message_id).where(
+        ConversationRoundMessage.round_id == ConversationRound.id, ConversationRoundMessage.role == "input",
+    ).correlate(ConversationRound)
+    agent_id = select(Connection.agent_id).join(Room, Room.connection_id == Connection.id).where(
+        Room.id == ConversationRound.room_id,
+    ).correlate(ConversationRound).scalar_subquery()
+    document_revision = document_evidence_revision(task_ids, file_ids, agent_id)
+    audio_revision = select(func.coalesce(func.string_agg(
+        func.concat(Message.id, ":", Message.text, ":", sql_cast(Message.metadata_["conversation_audio_transcripts"], String)), aggregate_order_by(literal("|"), Message.id)), "")).join(
+        ConversationRoundMessage, ConversationRoundMessage.message_id == Message.id,
+    ).where(ConversationRoundMessage.round_id == ConversationRound.id,
+        ConversationRoundMessage.role == "input",
+        Message.metadata_["conversation_audio_transcripts"].is_not(None),
+    ).correlate(ConversationRound).scalar_subquery()
+    identity = sql_cast(ConversationRound.id, String)
+    revision = func.concat(audio_revision, "|", document_revision)
+    return case((or_(audio_revision != "", document_revision != ""), func.concat(identity, ":",
+        func.encode(func.sha256(func.convert_to(revision, "UTF8")), "hex"))), else_=identity)
+
+
 def _eligible_round_predicates() -> tuple[Any, ...]:
+    attached = exists(select(Attachment.file_id).join(File, File.id == Attachment.file_id).where(
+        Attachment.message_id == Message.id, File.deleted_at.is_(None),
+    ))
     linked_input = exists(
         select(ConversationRoundMessage.message_id)
         .join(Message, Message.id == ConversationRoundMessage.message_id)
         .where(
             ConversationRoundMessage.round_id == ConversationRound.id,
             ConversationRoundMessage.role == "input",
-            func.length(func.trim(Message.text)) > 0,
+            or_(func.length(func.trim(Message.text)) > 0, attached),
         )
     )
     return (
+        exists(select(Room.id).join(Connection, Connection.id == Room.connection_id).where(
+            Room.id == ConversationRound.room_id, Room.deleted_at.is_(None), Connection.active.is_(True))),
         ConversationRound.status.in_(("SUCCEEDED", "ERROR_RESOLVED", "COMPLETED")),
         ConversationRound.topic_id.is_not(None),
         ConversationRound.contact_memory_item_id.is_not(None),
@@ -97,11 +136,38 @@ def _journal_message(
     *,
     sender_display_name: str | None,
     sender_external_id: str | None,
+    is_output: bool | None = None,
 ) -> MemoryExtractionMessage | None:
     text = safe_memory_text(row.text)
-    if not text:
+    text_limit = 4_000 if row.files else 8_000
+    evidence: list[MemoryExtractionEvidence] = []
+    if text:
+        evidence.append(MemoryExtractionEvidence(ref=f"{row.id}:written", kind="written", message_id=row.id,
+            text=text[:text_limit], coverage={"complete": len(text) <= text_limit},
+            version={"text_sha256": hashlib.sha256(row.text.encode()).hexdigest()}))
+    transcripts = conversation_audio_transcripts(row.metadata_)
+    sections = [text[:text_limit]] if text else []
+    remaining = 8_000 - min(len(text), text_limit)
+    for file in row.files[:20]:
+        try:
+            uri = attachment_resource_uri(row.tool_code, row.room_id or "", file.id)
+        except ValueError:
+            continue
+        transcript = safe_memory_text(transcripts.get(str(file.id), "")) if file.kind == "audio" else ""
+        evidence.append(MemoryExtractionEvidence(ref=f"{row.id}:{file.id}",
+            kind="transcription" if transcript else "attachment", message_id=row.id, uri=uri,
+            text=transcript[:remaining], coverage={"status": "acquired" if transcript else "not_analyzed",
+                "complete": bool(transcript) and len(transcript) <= remaining},
+            version={"attestation": "unknown", "text_sha256": hashlib.sha256(
+                transcripts.get(str(file.id), "").encode()).hexdigest()}))
+        if transcript:
+            sections.append(f"[Audio transcript: {file.name}]\n{transcript[:remaining]}")
+            remaining -= min(len(transcript), remaining)
+    if not sections and evidence:
+        sections.append("[Attachments available; no acquired text evidence.]")
+    if not sections:
         return None
-    is_agent = row.direction == "outbound"
+    is_agent = row.direction == "outbound" if is_output is None else is_output
     return MemoryExtractionMessage(
         speaker_name=_sender_name(
             row,
@@ -111,7 +177,8 @@ def _journal_message(
         ),
         speaker_kind="AI" if is_agent else "human",
         occurred_at=row.created_at,
-        text=text[:8_000],
+        text="\n\n".join(sections)[:8_000],
+        evidence=evidence,
     )
 
 
@@ -136,20 +203,11 @@ async def _round_messages(
             )
         )
     ).all()
-    current = [
-        MemoryExtractionMessage(
-            speaker_name=_sender_name(
-                row,
-                display_name,
-                external_id,
-                is_agent=role == "output",
-            ),
-            speaker_kind="AI" if role == "output" else "human",
-            occurred_at=row.created_at,
-            text=text[:8_000],
-        )
+    await _hydrate_attached_messages([row for _role, row, _name, _id in linked_rows])
+    current = [message
         for role, row, display_name, external_id in linked_rows
-        if (text := safe_memory_text(row.text))
+        if (message := _journal_message(row, sender_display_name=display_name,
+            sender_external_id=external_id, is_output=role == "output")) is not None
     ]
     history: list[MemoryExtractionMessage] = []
     if current:
@@ -190,20 +248,11 @@ async def _round_messages(
                         .order_by(Message.created_at, Message.id)
                     )
                 ).all()
-                history = [
-                    MemoryExtractionMessage(
-                        speaker_name=_sender_name(
-                            row,
-                            display_name,
-                            external_id,
-                            is_agent=role == "output",
-                        ),
-                        speaker_kind="AI" if role == "output" else "human",
-                        occurred_at=row.created_at,
-                        text=text[:8_000],
-                    )
+                await _hydrate_attached_messages([row for _role, row, _name, _id in previous_rows])
+                history = [message
                     for role, row, display_name, external_id in previous_rows
-                    if (text := safe_memory_text(row.text))
+                    if (message := _journal_message(row, sender_display_name=display_name,
+                        sender_external_id=external_id, is_output=role == "output")) is not None
                 ][-5:]
         else:
             inputs = [row for role, row, _name, _id in linked_rows if role == "input"]
@@ -230,13 +279,15 @@ async def _round_messages(
                                         Message.id < first.id,
                                     ),
                                 ),
-                                func.length(func.trim(Message.text)) > 0,
+                                or_(func.length(func.trim(Message.text)) > 0,
+                                    Message.metadata_["conversation_audio_transcripts"].is_not(None)),
                             )
                             .order_by(Message.created_at.desc(), Message.id.desc())
                             .limit(5)
                         )
                     ).all()
                 )
+                await _hydrate_attached_messages([row for row, _name, _id in rows_desc])
                 history = [
                     message
                     for row, display_name, external_id in reversed(rows_desc)
@@ -251,11 +302,66 @@ async def _round_messages(
     return history, current
 
 
+async def _hydrate_attached_messages(messages: list[Message]) -> None:
+    if not messages:
+        return
+    attached = set(await get_db().scalars(select(Attachment.message_id).where(
+        Attachment.message_id.in_([message.id for message in messages]),
+    )))
+    rows = [message for message in messages if message.id in attached]
+    if rows:
+        await hydrate_messages(rows)
+
+
 async def build_conversation_extraction_input(
     round_: ConversationRound,
     topic: Topic,
 ) -> MemoryExtractionInput:
     history, current = await _round_messages(round_)
+    if not current:
+        raise ConversationEvidenceUnavailable("Conversation evidence is no longer available")
+    context = await round_execution_context(round_)
+    task_ids = tuple(await get_db().scalars(select(ConversationTaskLink.task_id).where(
+        ConversationTaskLink.round_id == round_.id,
+    )))
+    uris = tuple({part.uri for message in current for part in message.evidence if part.uri})
+    acquired = await acquired_document_evidence(context[0], task_ids, uris) if context else []
+    for message in current:
+        message_uris = {part.uri for part in message.evidence}
+        terms = {term.casefold() for term in re.findall(r"\w{3,}", message.text)}
+        for analysis in acquired:
+            if analysis.uri not in message_uris:
+                continue
+            # Select from already acquired passages. Keep boundary evidence and
+            # question matches rather than silently retaining only the first page.
+            passages = analysis.passages
+            ranked = sorted(enumerate(passages), key=lambda pair: (
+                -sum(term in str(pair[1].get("text", "")).casefold() for term in terms), pair[0]))
+            selected = {index for index, _passage in ranked[:2]}
+            if passages:
+                selected.update((0, len(passages) - 1))
+            message_id = next(part.message_id for part in message.evidence if part.uri == analysis.uri)
+            new_parts: list[tuple[Literal["document_extraction", "document_interpretation"], str, str]] = [("document_extraction", str(passages[index].get("locator") or index),
+                str(passages[index].get("text") or "")) for index in sorted(selected)]
+            if analysis.answer:
+                new_parts.append(("document_interpretation", "answer", analysis.answer))
+            for kind, locator, source_text in new_parts:
+                if len(message.evidence) >= 64:
+                    break
+                remaining_evidence = 8_000 - sum(len(part.text) for part in message.evidence)
+                text = safe_memory_text(source_text)[:min(1_600, remaining_evidence)]
+                if not text:
+                    continue
+                part = MemoryExtractionEvidence(ref=f"{analysis.analysis_id}:{locator}",
+                    kind=kind, message_id=message_id, uri=analysis.uri, text=text,
+                    version=analysis.version, locator=locator,
+                    coverage={**analysis.coverage, "passage_truncated": len(source_text) > len(text),
+                        "selected_passages": len(selected), "available_passages": len(passages)})
+                message.evidence.append(part)
+                label = f"\n\n[{kind}; {locator}; {part.ref}]\n"
+                remaining = 8_000 - len(message.text) - len(label)
+                if remaining > 0:
+                    message.text += label + text[:remaining]
     return MemoryExtractionInput(
         source_kind="conversation_round",
         source_at=round_.created_at,
@@ -270,6 +376,15 @@ async def build_conversation_extraction_input(
     )
 
 
+def _source_snapshot(extraction: MemoryExtractionInput, round_: ConversationRound, agent_id: int) -> dict[str, Any]:
+    source = {"agent_id": agent_id, "topic_id": str(round_.topic_id),
+        "contact_item_id": str(round_.contact_memory_item_id), "language": round_.language,
+        "current": [message.model_dump(mode="json") for message in extraction.current]}
+    return {"fingerprint": hashlib.sha256(json.dumps(source, sort_keys=True, ensure_ascii=False).encode()).hexdigest(),
+        "agent_id": agent_id, "evidence": [part.model_dump(mode="json")
+            for message in extraction.current for part in message.evidence if part.text and part.kind != "attachment"]}
+
+
 async def round_execution_context(
     round_: ConversationRound,
 ) -> tuple[int, str] | None:
@@ -278,7 +393,7 @@ async def round_execution_context(
             select(Connection.agent_id)
             .join(Room, Room.connection_id == Connection.id)
             .where(Room.id == round_.room_id)
-            .execution_options(include_historized=True)
+            .where(Connection.active.is_(True), Room.deleted_at.is_(None))
         )
     ).one_or_none()
     if row is None:
@@ -303,14 +418,14 @@ class ConversationMemoryMechanism:
                 select(DreamReceipt.id).where(
                     DreamReceipt.mechanism_key == self.key,
                     DreamReceipt.subject_kind == "conversation_round",
-                    DreamReceipt.subject_id == sql_cast(ConversationRound.id, String),
+                    DreamReceipt.subject_id == _round_subject(),
                 )
             )
             needs_application_proof = exists(
                 select(DreamReceipt.id).where(
                     DreamReceipt.mechanism_key == self.key,
                     DreamReceipt.subject_kind == "conversation_round",
-                    DreamReceipt.subject_id == sql_cast(ConversationRound.id, String),
+                    DreamReceipt.subject_id == _round_subject(),
                     unverified_memory_application(),
                 )
             )
@@ -329,7 +444,7 @@ class ConversationMemoryMechanism:
             self.key,
             eligibility=exists(
                 select(ConversationRound.id).where(
-                    sql_cast(ConversationRound.id, String) == DreamReceipt.subject_id,
+                    _round_subject() == DreamReceipt.subject_id,
                     *_eligible_round_predicates(),
                 )
             ),
@@ -340,7 +455,7 @@ class ConversationMemoryMechanism:
             self.key,
             eligibility=exists(
                 select(ConversationRound.id).where(
-                    sql_cast(ConversationRound.id, String) == DreamReceipt.subject_id,
+                    _round_subject() == DreamReceipt.subject_id,
                     *_eligible_round_predicates(),
                 )
             ),
@@ -352,7 +467,7 @@ class ConversationMemoryMechanism:
                 select(DreamReceipt.id).where(
                     DreamReceipt.mechanism_key == self.key,
                     DreamReceipt.subject_kind == "conversation_round",
-                    DreamReceipt.subject_id == sql_cast(ConversationRound.id, String),
+                    DreamReceipt.subject_id == _round_subject(),
                 )
             )
             round_ = await get_db().scalar(
@@ -367,13 +482,13 @@ class ConversationMemoryMechanism:
             claim = create_running_receipt(
                 mechanism_key=self.key,
                 subject_kind="conversation_round",
-                subject_id=str(round_.id),
+                subject_id=str(await get_db().scalar(select(_round_subject()).where(ConversationRound.id == round_.id))),
             )
             await get_db().flush()
             return claim
 
     async def prepare(self, claim: DreamClaim) -> DreamPrepared:
-        round_id = UUID(claim.subject_id)
+        round_id = UUID(claim.subject_id.split(":", maxsplit=1)[0])
         async with get_db_session():
             round_ = await get_db().get(ConversationRound, round_id)
             if round_ is None or round_.topic_id is None:
@@ -391,13 +506,17 @@ class ConversationMemoryMechanism:
                     ).model_dump(mode="json")
                 )
             agent_id, raw_language = context
+            current_subject = await get_db().scalar(select(_round_subject()).where(ConversationRound.id == round_.id))
+            if str(current_subject) != claim.subject_id:
+                return DreamPrepared(payload=MemoryExtractionPrepared(decision=MemoryExtractionDecision()).model_dump(mode="json"))
             if topic.memory_item_id is None:
                 await topic_service.project_memory(topic)
-            extraction_input = await build_conversation_extraction_input(
-                round_, topic
-            )
+            try:
+                extraction_input = await build_conversation_extraction_input(round_, topic)
+            except ConversationEvidenceUnavailable:
+                return DreamPrepared(payload=MemoryExtractionPrepared(decision=MemoryExtractionDecision()).model_dump(mode="json"))
             current = extraction_input.current
-            if not any(message.speaker_kind == "human" for message in current):
+            if not any(message.speaker_kind == "human" and any(part.text for part in message.evidence) for message in current):
                 return DreamPrepared(
                     payload=MemoryExtractionPrepared(
                         decision=MemoryExtractionDecision()
@@ -407,6 +526,7 @@ class ConversationMemoryMechanism:
             contact_item_id = round_.contact_memory_item_id
             topic_item_id = topic.memory_item_id
             query = " ".join(message.text for message in current)[:4_000]
+            snapshot = _source_snapshot(extraction_input, round_, agent_id)
 
         async with get_db_session():
             recalled = await search_memory_detailed(
@@ -443,11 +563,12 @@ class ConversationMemoryMechanism:
                 agent_id=agent_id,
                 language_instruction=language_instruction,
             )
+            prepared = prepared.model_copy(update={"source_snapshot": snapshot})
             return DreamPrepared(payload=prepared.model_dump(mode="json"), cost=cost)
 
     async def apply(self, claim: DreamClaim, payload: dict[str, Any]) -> int:
         prepared = memory_extraction_prepared_from_payload(payload)
-        round_id = UUID(claim.subject_id)
+        round_id = UUID(claim.subject_id.split(":", maxsplit=1)[0])
         async with get_db_session():
             round_ = await get_db().get(ConversationRound, round_id)
             if round_ is None or round_.topic_id is None:
@@ -465,7 +586,14 @@ class ConversationMemoryMechanism:
             agent_id, raw_language = context
             if topic.memory_item_id is None:
                 await topic_service.project_memory(topic)
-            _history, current = await _round_messages(round_)
+            try:
+                extraction = await build_conversation_extraction_input(round_, topic)
+            except ConversationEvidenceUnavailable:
+                return memory_extraction_unavailable(prepared, reason="Conversation memory evidence is no longer available")
+            current = extraction.current
+            snapshot = _source_snapshot(extraction, round_, agent_id)
+            if prepared.source_snapshot is not None and prepared.source_snapshot["fingerprint"] != snapshot["fingerprint"]:
+                return memory_extraction_unavailable(prepared, reason="Conversation memory evidence changed after preparation")
             source_excerpt = "\n\n".join(
                 f"{message.speaker_name}: {message.text}" for message in current
             )[:8_000]
@@ -476,19 +604,21 @@ class ConversationMemoryMechanism:
                 "scope_mode": "topic_contact",
                 "contact_item_id": str(round_.contact_memory_item_id),
                 "topic_item_id": str(topic.memory_item_id),
+                "source_evidence": snapshot["evidence"],
+                "evidence_validator": "conversation",
                 **language_metadata(language),
             }
             application = await apply_memory_extraction(
                 prepared,
                 agent_id=agent_id,
                 source_kind="conversation_round",
-                source_ref=f"conversation_round:{round_.id}",
+                source_ref=f"conversation_round:{claim.subject_id}",
                 source_excerpt=source_excerpt,
                 memory_created_at=round_.finished_at or round_.created_at,
                 metadata=metadata,
                 contact_item_id=round_.contact_memory_item_id,
                 topic_item_id=topic.memory_item_id,
-                idempotency_prefix=f"dream:{self.key}:{round_.id}",
+                idempotency_prefix=f"dream:{self.key}:{claim.subject_id}",
             )
             updated = prepared.model_copy(update={"application": application})
             await replace_prepared_payload(claim, updated.model_dump(mode="json"))

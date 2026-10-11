@@ -45,6 +45,8 @@ from .decision_contracts import ChoiceQuestion, DecisionResult, DecisionUnavaila
 from .provider_facade import ProviderConnection, ProviderAuthenticationError, register_decision_provider
 from .inference_execution import run_decision
 from .profile_decisions import run_profile_decision, use_decision_models
+from .document_evidence import acquired_document_evidence, document_evidence_revision, document_evidence_access_clause
+from .document_contracts import AcquiredDocumentEvidence
 
 
 async def proxy_chat_completion(body: dict[str, Any], **options: Any) -> JSONResponse | StreamingResponse:
@@ -55,6 +57,12 @@ async def proxy_chat_completion(body: dict[str, Any], **options: Any) -> JSONRes
 async def start_inference(request: InferenceRequest, *, inference_id: UUID | None = None) -> UUID:
     from .inference_execution import submit
     return await submit(request, inference_id=inference_id)
+
+
+async def prepare_inference(request: InferenceRequest, *, inference_id: UUID | None = None) -> UUID:
+    """Admit and freeze an immutable request without scheduling a provider call."""
+    from .inference_execution import submit
+    return await submit(request, inference_id=inference_id, prepared=True)
 
 
 async def import_document_analysis(
@@ -91,9 +99,9 @@ async def read_inference(inference_id: UUID) -> InferenceRead:
     return await read(inference_id)
 
 
-async def control_inference(inference_id: UUID, action: InferenceAction, *, command_id: UUID | None = None) -> InferenceCommand:
+async def control_inference(inference_id: UUID, action: InferenceAction, *, command_id: UUID | None = None, expected_revision: int | None = None) -> InferenceCommand:
     from .inference_execution import command
-    return await command(inference_id, action, command_id or uuid4())
+    return await command(inference_id, action, command_id or uuid4(), expected_revision=expected_revision)
 
 
 async def stream_inference(inference_id: UUID, *, attempt_id: UUID | None = None,
@@ -340,6 +348,7 @@ async def get_managed_runtime_credential(
 
 
 __all__ = [
+    "acquired_document_evidence", "document_evidence_revision", "document_evidence_access_clause", "AcquiredDocumentEvidence",
     "register_provider_quota_reader",
     "amount_window", "quota_number", "quota_reset", "read_quota_payload",
     "ProviderQuota", "ProviderQuotaWindow",
@@ -347,7 +356,7 @@ __all__ = [
     "DecisionUnavailable", "ProviderDecisionResponse", "ProviderConnection",
     "ProviderAuthenticationError", "register_decision_provider",
     "register_inference_output", "inference_output_spec", "record_structured_inferences",
-    "start_inference", "read_inference", "control_inference", "stream_inference",
+    "start_inference", "prepare_inference", "read_inference", "control_inference", "stream_inference",
     "import_document_analysis",
     "start_inference_worker", "stop_inference_worker", "inference_worker_running",
     "record_text_inferences", "run_text_inference", "read_inference_events", "read_inference_result",

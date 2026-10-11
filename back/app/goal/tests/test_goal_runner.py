@@ -657,6 +657,8 @@ async def test_due_goal_creates_an_ordinary_dispatcher_owned_task(
         )
     )
 
+    await goal_service.update(created.id, GoalUpdate(expected_revision=created.revision,
+        tracking_content="<p>A previous result suggests synthetic://tracking-only-target</p>"))
     assert await runner.start_due_cycle() is True
     assert await runner.start_due_cycle() is False
 
@@ -676,6 +678,14 @@ async def test_due_goal_creates_an_ordinary_dispatcher_owned_task(
     assert "retention_reasons" in task.data
     assert f"id={referrer.id}" in (task.objective or "")
     assert "DURABLE GOAL TRACKING" in (task.objective or "")
+    from app.agent import parse_scope
+    scope = parse_scope(task.data)
+    assert scope is not None
+    assert scope.requirements[0].source_reference == f"galaris://goal/{created.id}"
+    assert "DURABLE GOAL TRACKING" not in scope.requirements[0].instruction
+    assert "synthetic://tracking-only-target" in (task.objective or "")
+    assert "synthetic://tracking-only-target" not in scope.requirements[0].instruction
+    assert scope.grants == ()
     assert created.referrer is not None
     assert created.referrer.type == GoalReferrerType.AGENT
     assert created.referrer.agent_id == referrer.id

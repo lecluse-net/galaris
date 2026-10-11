@@ -47,6 +47,8 @@ class LLMInference(Base):
     authority: Mapped[dict[str, Any]] = mapped_column(JSONB, default=dict, server_default=text("'{}'::jsonb"))
     status: Mapped[str] = mapped_column(String(20), default="queued", index=True)
     generation: Mapped[int] = mapped_column(Integer, default=1)
+    revision: Mapped[int] = mapped_column(Integer, default=1, server_default=text("1"))
+    deadline_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     event_sequence: Mapped[int] = mapped_column(Integer, default=0)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
@@ -74,6 +76,7 @@ class LLMInferenceCommand(Base):
     inference_id: Mapped[UUID] = mapped_column(ForeignKey("llm_inferences.id"), index=True)
     attempt_id: Mapped[UUID] = mapped_column(ForeignKey("llm_inference_attempts.id"), index=True)
     action: Mapped[str] = mapped_column(String(20))
+    expected_revision: Mapped[int | None] = mapped_column(Integer)
     applied_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     replay_id: Mapped[UUID | None] = mapped_column(ForeignKey("llm_inferences.id"))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))

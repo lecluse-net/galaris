@@ -114,7 +114,7 @@ async def _visible_inference(request: Request, inference_id: UUID) -> InferenceR
 @llm_api_router.post("/inferences", response_model=InferenceRead, status_code=202)
 @independent_auth(reason="User with LLM_API_ACCESS; scoped standalone inference")
 async def create_inference(
-    request: Request, body: TextInferenceRequest | StructuredInferenceRequest,
+    request: Request, body: TextInferenceRequest | StructuredInferenceRequest, prepared: bool = False,
 ) -> InferenceRead:
     agent_id = await _llm_api_auth(request)
     scope = await _llm_api_agent_ids(agent_id)
@@ -125,7 +125,7 @@ async def create_inference(
     if body.agent_id is not None and scope is not None and body.agent_id not in scope:
         raise HTTPException(status_code=404, detail=await tr("llm_api.errors.inference_agent_not_found"))
     try:
-        key = await inference_execution.submit(body)
+        key = await inference_execution.submit(body, prepared=prepared)
     except ProviderAuthenticationError as exc:
         raise HTTPException(status_code=exc.status_code, detail=str(exc)) from exc
     except LookupError as exc:
@@ -150,7 +150,7 @@ async def command_inference(
 
     await _visible_inference(request, inference_id)
     try:
-        return await inference_execution.command(inference_id, body.action, body.command_id or uuid4())
+        return await inference_execution.command(inference_id, body.action, body.command_id or uuid4(), expected_revision=body.expected_revision)
     except ValueError as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
 

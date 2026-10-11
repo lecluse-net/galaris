@@ -37,7 +37,8 @@ from .access import (
     readable_item_clause,
 )
 from .admission import admit_search_hits
-from .source_access import source_checked_graph
+from .source_access import source_checked_graph, source_evidence_admission
+from .query_policy import prepare_memory_read
 from .passages import lexical_excerpt, query_identity
 from . import relevance
 from .contracts import (
@@ -1304,25 +1305,6 @@ async def source_refs(item_id: UUID, *, urls: Sequence[str] | None = None) -> li
         MemoryURL.memory_node_id == item_id,
     ).order_by(MemoryURL.url)))
     return list(dict.fromkeys(references))
-
-
-async def _source_refs_by_item(item_ids: list[UUID]) -> dict[UUID, list[str]]:
-    if not item_ids:
-        return {}
-    rows = await get_db().execute(
-        select(MemorySource.item_id, MemorySource.source_ref)
-        .where(MemorySource.item_id.in_(item_ids))
-        .order_by(MemorySource.created_at)
-    )
-    refs: dict[UUID, list[str]] = {}
-    for item_id, reference in rows:
-        refs.setdefault(item_id, []).append(reference)
-    locations = await get_db().execute(select(MemoryURL.memory_node_id, MemoryURL.url).where(
-        MemoryURL.memory_node_id.in_(item_ids),
-    ).order_by(MemoryURL.url))
-    for item_id, reference in locations:
-        refs.setdefault(item_id, []).append(reference)
-    return refs
 
 
 async def add_item_source(
@@ -2743,6 +2725,7 @@ async def search_items(
 ) -> MemorySearchPage:
     """Apply ACL/validity first, then deterministic full-text ranking."""
 
+    await prepare_memory_read()
     db = get_db()
     now = datetime.now(timezone.utc)
     from .temporal import MemoryTemporalAnchor, next_match
@@ -2992,10 +2975,11 @@ async def search_items(
         (cast(MemoryItem, row[0]), float(row[1] or 0.0)) for row in rows
     ]
 
-    sources = await _source_refs_by_item([item.id for item, _score in ranked])
+    evidence_ids, sources = await source_evidence_admission({item.id for item, _score in ranked}, request.agent_id,
+        include_locations=True)
     hits: list[MemorySearchHit] = []
     for item, score in ranked:
-        access = await effective_access(item, request.agent_id)
+        access = await effective_access(item, request.agent_id, evidence_ids=evidence_ids)
         if not access.can_read:
             continue
         temporal_match_at: datetime | None = None

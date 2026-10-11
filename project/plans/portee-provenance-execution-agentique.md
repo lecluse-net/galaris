@@ -1,7 +1,7 @@
 # Exécution agentique — portée et provenance
 
-- Statut : `partial` — socle d'activité livré, contrôle générique de portée à concevoir.
-- Revue des sources : 2026-10-08.
+- Statut : `partial` — contrat et contrôle générique v1 livrés, qualification élargie restante.
+- Revue des sources : 2026-10-11.
 
 ## Écart à combler
 
@@ -9,7 +9,8 @@ Objectif, Working Set, reçus, activité partagée et checkpoints existent :
 [0087](../decisions/0087-task-activity-snapshots.md),
 [0143](../decisions/0143-retire-execution-briefing.md) et
 [flux d'exécution](../../docs/fr/architecture/flows/agent-execution.md).
-Ils ne constituent pas encore le contrat générique de portée proposé ici.
+Ils portent désormais le contrat générique v1 décrit par
+[0170](../decisions/0170-execution-scope-and-durable-controls.md).
 Les autorisations ponctuelles [0153](../decisions/0153-common-action-authorizations.md)
 restent distinctes de la justification d'une cible par l'intention utilisateur.
 
@@ -27,16 +28,17 @@ restent autonomes ; clarification seulement pour des effets matériellement diff
 | Plan validé | Exigences servies, cible ou règle de découverte, provenance, effet attendu, outils utiles, preuves de complétion et inconnues. |
 | Décision de préflight | `allow`, `allow_and_record`, `clarify` ou `deny`, avec identité/révision et raison bornée. |
 
-Noms et représentation sont candidats, pas des API actuelles.
-Une première persistance de scope dans `Task.data` est possible si aucun besoin SQL dédié
-n'est démontré. Les fichiers utilisent des URI canoniques ; autres ressources par référence
-publique stable, jamais par libellé interprété.
+Les contrats v1 sont publiés par `app.agent` ; la portée est persistée dans `Task.data`.
+Les décisions sont conservées dans la tentative active, avec repli dans la projection Task
+si aucun run n'est actif. Le port Task valide et persiste avant l'effet, puis revérifie
+la révision après l'autorisation native. Les fichiers utilisent des URI canoniques ;
+aucun libellé, profil ou rédaction du planner ne crée de grant.
 
 Priorité cible : demande utilisateur → scope issu de l'admission → grants/Working Set →
 reçus vérifiés → politique du domaine propriétaire → contexte pertinent → plan → mémoire/profil.
 Une source basse suggère une recherche ; elle n'accorde pas un droit ni ne contredit une source haute.
 
-## Lots restants
+## Lots réalisés et réception
 
 | Lot | Livrable et réception |
 |---|---|
@@ -45,6 +47,20 @@ Une source basse suggère une recherche ; elle n'accorde pas un droit ni ne cont
 | Planner | Sortie structurée et validateur déterministe : exigences couvertes, cibles sourcées, outils effectifs, livraison unique. Rejet sémantique distinct d'un retry de schéma ; clarification sur la même Task si nécessaire. |
 | Descripteurs et préflight | Métadonnées optionnelles du catalogue filtré, échantillon lecture/création/mutation/transport/suppression/Process, décision avant effet et validation finale par le domaine propriétaire. |
 | Activité et reprise | Scope/préflight projetés dans `TaskActivitySnapshot` existant ; reconnexion, droits, pause, leases et checkpoints préservés, sans seconde timeline. |
+
+Ces lots sont implémentés et couverts par les suites scope, planner, outils, activité et
+amendement. L'admission conserve la demande entière comme exigence `demand` ; chaque
+amendement sourcé ajoute une exigence. La validation garantit leur couverture déclarée,
+pas la compréhension sémantique de chaque phrase. Les cibles sont des références exactes.
+Les descripteurs natifs couvrent lecture, création, mutation, transport, suppression et
+Process ; les outils externes sans métadonnées restent sous leurs autorisations existantes.
+Les cycles Goal et délégations MCP passent aussi par l'admission de portée. La sélection
+du catalogue affecté Process reste autonome sans cible explicitement imposée, sous validation
+et autorisation du propriétaire ; une cible explicite divergente reste un refus.
+
+Restent la qualification sur corpus élargi et comptes réels, les cibles exprimées seulement
+par libellé, l'enrichissement des catalogues externes et les injections de pannes entre
+effet confirmé et tous les modes de livraison. Les suites synthétiques ne ferment pas ces lots.
 
 Le catalogue appartient à `app.tools`, le scope et sa validation à `app.agent`,
 la persistance à `app.task`, l'admission à `app.conversation`.

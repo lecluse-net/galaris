@@ -1,7 +1,7 @@
 # Conversation — extensions et qualification du parcours
 
 - Statut : `partial`
-- Revue des sources : 2026-10-08.
+- Revue des sources : 2026-10-11.
 
 Les corrections et contrats réalisés restent dans la
 [matrice projet](../audits/2026-09-19-fiabilisation-transversale.md),
@@ -16,11 +16,19 @@ ne sont pas une liste de défauts prouvés.
 
 ## Travaux restants
 
+Le lot [0170](../decisions/0170-execution-scope-and-durable-controls.md) coordonne
+les descendants Task et leur propriétaire Process. L'arbre est figé à l'admission et ne
+s'élargit pas au redémarrage. Chaque run et lease doit être arrêté ; l'accusé seul reste
+insuffisant. Le propriétaire Process peut confirmer tardivement l'arrêt du run exact
+sans réécrire sa cancellation logique ni rejouer le processus. Les pauses utilisateur
+et travaux indépendants restent préservés. Une Goal ou une attente inconnue est refusée
+explicitement ; sa coordination ne fait pas partie de ce lot.
+
 | Lot | Travail et réception |
 |---|---|
 | Mesures utilisateur/dispatcher | Corpus FR/EN humain/pair IA, question/action, racine/enfant et capacités variables ; admission, premier texte/outil, confirmation d'arrêt et successeur. Séparer réseau/provider, verrou, scheduler et temps local ; coûts et faux lancements, à configuration constante. |
 | Arrêt des runtimes | Étendre la qualification synthétique du worker Hermès direct aux autres runtimes et effets distants : refus, accusé sans arrêt, perte réseau, crash/reprise. Preuve physique du bon run avant successeur, distincte du terminal logique. |
-| Remplacement coordonné | Concevoir Task/Goal/Process et descendants avec leurs propriétaires : périmètre, preuves, admission unique, fin naturelle concurrente, redelivery, ancien worker et effet incertain. Préserver travaux indépendants et pauses utilisateur. |
+| Coordination des Goals | Définir l'arrêt d'une Goal avec son propriétaire et sa reprise ; le remplacement Task/Process et descendants est réalisé. Qualifier ensuite les propriétaires supplémentaires et la recette réelle. |
 | Capacités des harnais | Construction, activation/révocation et redémarrage : outil autorisé distinct d'outil monté. Capacité absente jamais promise comme immédiate ; capacités différées/skills conformes, pas d'ajout à chaud sans contrat. |
 | Diagnostics | Erreurs non HTTP, antibot et effet confirmé/rejeté/inconnu, dont panne après transfert réussi. Diagnostic FR/EN corrélable/expurgé, aucune incitation au rejeu incertain ; 403 seul sans cause antibot inventée. |
 | Recherche/livraison | Corpus make check-search dans environnement cible après configuration autorisée ; image réelle téléchargée, droits/licence/attribution et lecture par destinataire. Alternatives autorisées ou échec explicite. |

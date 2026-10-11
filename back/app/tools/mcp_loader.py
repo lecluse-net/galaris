@@ -31,6 +31,7 @@ from app.agent.contracts import (
     ToolConcurrencyPolicy,
     ToolEffectPolicy,
 )
+from app.agent import EffectDescriptorV1
 from app.tools.secrets import (
     resolve_connection_references,
     resolve_mapping_references,
@@ -161,6 +162,7 @@ class McpToolDefinition:
     approval_reason: str = "Unclassified native action"
     authorization_boundary: Literal["native", "prepared"] = "native"
     authorization_preflight: Callable[[McpToolContext, dict[str, Any]], Awaitable[dict[str, Any]]] | None = None
+    effect_descriptor: EffectDescriptorV1 | None = None
 
 
 _CONVERSATION_TOOL_POLICIES: dict[str, Literal["short", "deferred"]] = {
@@ -220,6 +222,7 @@ def mcp_tool(
     approval_reason: str = "Unclassified native action",
     authorization_boundary: Literal["native", "prepared"] = "native",
     authorization_preflight: Callable[[McpToolContext, dict[str, Any]], Awaitable[dict[str, Any]]] | None = None,
+    effect_descriptor: EffectDescriptorV1 | None = None,
 ) -> Callable[[ToolFunc], ToolFunc]:
     """Mark an ``mcp.py`` function as a native MCP tool.
 
@@ -245,6 +248,7 @@ def mcp_tool(
             approval_reason=approval_reason,
             authorization_boundary=authorization_boundary,
             authorization_preflight=authorization_preflight,
+            effect_descriptor=effect_descriptor,
             function=func,
         )
         setattr(func, "__galaris_mcp_tool__", definition)
@@ -469,11 +473,33 @@ def _wrap_tool(definition: McpToolDefinition, ctx: McpToolContext) -> Callable[.
                     arguments = {
                         key: value for key, value in bound.arguments.items() if key not in {"ctx", "context"}
                     }
+                    if ctx.task_id is not None:
+                        from app.agent import record_scope_preflight
+                        decision = await record_scope_preflight(ctx.task_id,
+                            agent_id=ctx.agent_id, descriptor=definition.effect_descriptor,
+                            tool_name=definition.name, arguments=arguments,
+                            operation_id=execution.operation_id if execution is not None else None)
+                        if decision.decision in {"deny", "clarify"}:
+                            raise ToolCallRejectedError(decision.reason)
+                    else:
+                        decision = None
+
+                    async def recheck_scope() -> None:
+                        if ctx.task_id is None or decision is None:
+                            return
+                        from app.agent import record_scope_preflight
+                        final = await record_scope_preflight(ctx.task_id, agent_id=ctx.agent_id,
+                            descriptor=definition.effect_descriptor, tool_name=definition.name, arguments=arguments,
+                            operation_id=decision.operation_id, expected_scope_revision=decision.scope_revision)
+                        if final.decision in {"deny", "clarify"}:
+                            raise ToolCallRejectedError(final.reason)
+
                     from .mcp_authorization import authorize_native_call, bind_native_action
                     if definition.authorization_boundary == "prepared":
                         from .authorization import prepared_authorization
                         with prepared_authorization(await bind_native_action(ctx, definition, arguments)) as prepared:
                             try:
+                                await recheck_scope()
                                 result = definition.function(ctx, *args, **kwargs)
                                 if inspect.isawaitable(result):
                                     result = await result
@@ -483,6 +509,7 @@ def _wrap_tool(definition: McpToolDefinition, ctx: McpToolContext) -> Callable[.
                         authorization_id = await authorize_native_call(ctx, definition, arguments)
                         from .authorization import authorized_request
                         with authorized_request(authorization_id):
+                            await recheck_scope()
                             result = definition.function(ctx, *args, **kwargs)
                             if inspect.isawaitable(result):
                                 result = await result

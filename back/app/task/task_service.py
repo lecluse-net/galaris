@@ -314,6 +314,8 @@ async def create(task_data: TaskCreate, *, idempotency_key: str | None = None) -
     if submission_id is not None:
         new_task.id = submission_id
     await apply_requester_lineage(new_task)
+    from .execution_scope import initialize_scope
+    await initialize_scope(new_task)
     await apply_topic_lineage(new_task, db=db)
     new_task.data = {
         **(new_task.data or {}),
@@ -370,6 +372,8 @@ async def create_from_messenger(
     new_task.requester_user_id = (
         message.requester_user_id if message is not None else None
     )
+    from .execution_scope import initialize_scope
+    await initialize_scope(new_task)
     await apply_topic_lineage(new_task, db=db)
     new_task.data = {
         **(new_task.data or {}),
@@ -494,6 +498,11 @@ async def update(
 
     for key, value in update_data.items():
         setattr(task, key, value)
+    if "objective" in changed_immutable:
+        # A pre-start human edit is a new admission, not a model-authored expansion.
+        task.data = {**(task.data or {}), "_original_demand": task.objective or ""}
+        from .execution_scope import initialize_scope
+        await initialize_scope(task, re_admission=True)
     return await save(task)
 
 

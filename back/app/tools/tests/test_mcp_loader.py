@@ -77,6 +77,13 @@ async def test_execute_native_tool_reuses_authorization_and_effect_projection(
         projection,
     )
     monkeypatch.setattr(resource_effects, "record_tool_resources", effects)
+    from app.agent.task_port import task_port
+    from app.agent import ScopePreflightV1
+    # This projection unit replaces persistence; real pre-effect ordering and
+    # rollback are covered in task/tests/test_execution_scope.py.
+    scope_decision = AsyncMock(return_value=ScopePreflightV1(tool_name=definition.name,
+        decision="allow_and_record", reason="Synthetic projection unit."))
+    monkeypatch.setattr(task_port, "record_scope_preflight", scope_decision)
     task_id = uuid4()
 
     result = await mcp_loader.execute_native_mcp_tool(
@@ -103,6 +110,7 @@ async def test_execute_native_tool_reuses_authorization_and_effect_projection(
         allowed_tool_names={"messenger_room_send_file"}, resources={},
     )
     effects.assert_awaited_once()
+    assert scope_decision.await_count == 2
 
 
 @pytest.mark.asyncio

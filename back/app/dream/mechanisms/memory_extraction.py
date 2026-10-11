@@ -7,7 +7,7 @@ import json
 import re
 from collections.abc import Sequence
 from datetime import datetime
-from typing import Any
+from typing import Any, cast
 from uuid import UUID
 
 from loguru import logger
@@ -114,6 +114,11 @@ source actually establishes it. Do not infer causality merely from success, and 
 claim of completion into a verified fact.
 
 Every conversational source message identifies its author with speaker_name and speaker_kind.
+When evidence is supplied, set evidence_refs to the exact supporting passage refs for each
+CREATE or LINK. Written text, an audio transcription, extracted document text and a model's
+document interpretation are different source kinds. An attachment with no acquired text
+proves only its presence. Respect incomplete coverage and unknown source versions; never
+infer unseen pages. A summary and its own source are not independent corroborations.
 Treat speaker_name as authoritative attribution metadata, not as human content proving a durable
 identity fact. In every personal or relational memory supported by the message content, name that
 person explicitly; never replace a known name with generic labels such as User, Human, Caller,
@@ -218,6 +223,7 @@ def validate_memory_extraction_decision(
     decision: MemoryExtractionDecision,
     *,
     allowed_memory_ids: set[str],
+    allowed_evidence_refs: set[str] | None = None,
 ) -> MemoryExtractionDecision:
     """Drop unsafe, duplicate, or out-of-corpus operations before checkpointing."""
 
@@ -225,6 +231,8 @@ def validate_memory_extraction_decision(
     created_contents: set[str] = set()
     linked_ids: set[str] = set()
     for operation in decision.operations:
+        if allowed_evidence_refs is not None and not set(operation.evidence_refs).issubset(allowed_evidence_refs):
+            continue
         if isinstance(operation, MemoryLinkOperation):
             if (
                 operation.target_memory_id not in allowed_memory_ids
@@ -345,6 +353,8 @@ async def run_memory_extraction(
     decision = validate_memory_extraction_decision(
         decision,
         allowed_memory_ids=allowed,
+        allowed_evidence_refs={part.ref for message in ranked_input.current for part in message.evidence
+            if part.text and part.kind != "attachment"},
     )
     candidate_ids: list[UUID] = []
     for value in allowed:
@@ -397,10 +407,22 @@ async def apply_memory_extraction(
         return prepared.application
 
     allowed = set(prepared.candidate_memory_ids)
+    evidence = metadata.get("source_evidence")
+    if isinstance(evidence, list):
+        available_refs = {part.get("ref") for part in cast(list[dict[str, Any]], evidence)}
+        if any(not set(operation.evidence_refs).issubset(available_refs) for operation in prepared.decision.operations):
+            raise MemoryExtractionApplicationError("A memory operation cites evidence outside its checkpoint")
     applied: list[MemoryExtractionAppliedOperation] = []
     for index, operation in enumerate(prepared.decision.operations):
         target_item_id: UUID | None = None
         operation_metadata = dict(metadata)
+        evidence = operation_metadata.get("source_evidence")
+        if isinstance(evidence, list) and operation.evidence_refs:
+            refs = set(operation.evidence_refs)
+            selected = [part for part in cast(list[dict[str, Any]], evidence) if part.get("ref") in refs]
+            if {part.get("ref") for part in selected} != refs:
+                raise MemoryExtractionApplicationError(f"Operation {index} cites evidence outside its checkpoint")
+            operation_metadata["source_evidence"] = selected
         if isinstance(operation, MemoryLinkOperation):
             try:
                 target_item_id = UUID(operation.target_memory_id)

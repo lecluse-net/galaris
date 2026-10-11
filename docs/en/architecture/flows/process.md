@@ -216,3 +216,14 @@ idempotency, cancellation, and terminal-state rules as the other engines.
 - Persistence and matrix: `back/app/process/models.py`, `process_service.py`.
 - Tools: `back/app/process/mcp.py` and `back/app/tools/mcp_loader.py`.
 - n8n adapter: `back/bridge/n8n/`.
+## Stop evidence for replacement
+
+The Process owner registers a blocker and coordinator with the Task owner.
+`coordinate_replacement` stops runs in the admitted scope and polls cancelling runs.
+A failure does not prevent attempts to stop the other runs. A logical terminal with
+`remote_may_continue=true` still blocks the successor. Reading
+`refresh_run(..., confirm_terminal_stop=True)` may confirm the exact remote run's physical
+terminal later, without changing its logical status or immutable output and without replaying
+the effect. Missing remote references, network errors and nonterminal responses retain
+uncertainty. Process retains the observation receipt.
+See [0170](../../../../project/decisions/0170-execution-scope-and-durable-controls.md).

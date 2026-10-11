@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
-from collections.abc import Callable
+from collections.abc import Awaitable, Callable, Sequence
 from typing import Any, cast
 from uuid import UUID, uuid4
 
@@ -20,11 +20,25 @@ REPLACEMENT_KEY = "_replacement"
 _SUCCESSOR_KEY = "_replacement_successor"
 _TERMINAL = {TaskStatus.SUCCESS, TaskStatus.ERROR}
 _blockers: dict[str, Callable[[], Select[tuple[UUID]]]] = {}
+_coordinators: dict[str, Callable[[Sequence[UUID]], Awaitable[None]]] = {}
 
 
 def register_replacement_blocker(key: str, blocked_task_ids: Callable[[], Select[tuple[UUID]]]) -> None:
     """Compose owner-provided coordination evidence without reverse domain imports."""
     _blockers[key] = blocked_task_ids
+
+
+def register_replacement_coordinator(key: str, coordinator: Callable[[Sequence[UUID]], Awaitable[None]]) -> None:
+    """Register the external owner invoked after replacement admission commits."""
+    _coordinators[key] = coordinator
+
+
+def replacement_blockers() -> dict[str, Callable[[], Select[tuple[UUID]]]]:
+    return dict(_blockers)
+
+
+def replacement_coordinators() -> dict[str, Callable[[Sequence[UUID]], Awaitable[None]]]:
+    return dict(_coordinators)
 
 
 def replacement_state(task: Task) -> dict[str, Any]:
@@ -37,7 +51,7 @@ def replacement_pending(task: Task) -> bool:
     return bool(state) and state.get("state") != "confirmed"
 
 
-def _predecessor_matches(predecessor: Task, successor: Task, state: dict[str, Any]) -> bool:
+def predecessor_matches(predecessor: Task, successor: Task, state: dict[str, Any]) -> bool:
     """A later restart or scope transfer is a new decision, not the requested stop."""
     return (
         predecessor.deleted_at is None
@@ -73,6 +87,7 @@ async def _has_coordination(task: Task) -> bool:
 
 async def prepare_replacement(
     successor: Task, *, predecessor_id: UUID, expected_revision: int, action_key: str,
+    coordinate_descendants: bool = False,
 ) -> Task:
     """Stage both Tasks in the caller's transaction; never dispatch a pending successor."""
     db = get_db()
@@ -94,7 +109,11 @@ async def prepare_replacement(
     if predecessor.revision != expected_revision:
         raise task_service.TaskRevisionConflict("Replacement target revision changed.")
     # Coordination must be resolved by its owner, never silently orphaned by a root stop.
-    if await _has_coordination(predecessor):
+    members = [predecessor]
+    if coordinate_descendants:
+        from .replacement_tree import stage
+        members = await stage(predecessor)
+    elif await _has_coordination(predecessor):
         raise task_service.TaskEditConflict("Replacement requires resolved child and external waits.")
     successor.id = successor.id or uuid4()
     successor.source_task_id = predecessor.id
@@ -105,15 +124,20 @@ async def prepare_replacement(
         "completed": predecessor.status == TaskStatus.SUCCESS,
     }
     successor.data = {**(successor.data or {}), REPLACEMENT_KEY: state}
+    if coordinate_descendants:
+        from .replacement_tree import snapshot
+        state["members"] = [snapshot(member) for member in members]
+        successor.data = {**(successor.data or {}), REPLACEMENT_KEY: state}
     task_service.suspend(successor, "replacement")
     predecessor.data = {**(predecessor.data or {}), _SUCCESSOR_KEY: str(successor.id)}
-    if predecessor.status not in _TERMINAL:
-        await task_service.request_cancellation(predecessor)
+    for member in members:
+        if member.status not in _TERMINAL:
+            await task_service.request_cancellation(member)
     db.add(successor)
     return successor
 
 
-async def _stopped(predecessor: Task, state: dict[str, Any]) -> bool:
+async def predecessor_stopped(predecessor: Task, state: dict[str, Any]) -> bool:
     if predecessor.lease_token is not None or predecessor.status not in _TERMINAL:
         return False
     run = state.get("run")
@@ -171,13 +195,17 @@ async def reconcile_replacements() -> None:
             continue
         source_id = successor.source_task_id
         state = replacement_state(successor)
+        if isinstance(state.get("members"), list):
+            from .replacement_tree import reconcile
+            await reconcile(successor, state)
+            continue
         run = state.get("run")
         run = cast(dict[str, Any], run) if isinstance(run, dict) else {}
         predecessor = await db.get(Task, source_id, populate_existing=True)
         if predecessor is None:
             continue
-        matches = _predecessor_matches(predecessor, successor, state)
-        stopped = matches and await _stopped(predecessor, state)
+        matches = predecessor_matches(predecessor, successor, state)
+        stopped = matches and await predecessor_stopped(predecessor, state)
         await db.commit()  # No database lock spans a driver control request.
         if matches and not stopped and run.get("request_run_id") and run.get("driver_code"):
             try:
@@ -200,7 +228,7 @@ async def reconcile_replacements() -> None:
             await db.commit()
             continue
         current["checked_at"] = datetime.now(timezone.utc).isoformat()
-        if not _predecessor_matches(predecessor, successor, current) or await _has_coordination(predecessor):
+        if not predecessor_matches(predecessor, successor, current) or await _has_coordination(predecessor):
             current["state"] = "conflict"
             successor.data = {**(successor.data or {}), REPLACEMENT_KEY: current}
             await db.commit()
@@ -209,7 +237,7 @@ async def reconcile_replacements() -> None:
         confirmed = isinstance(existing_receipt, dict) and cast(dict[str, Any], existing_receipt).get("state") == "confirmed"
         if "cancellation" in state and not confirmed:
             current["cancellation"] = state["cancellation"]
-        if await _stopped(predecessor, current):
+        if await predecessor_stopped(predecessor, current):
             current["state"] = "confirmed"
             task_service.release(successor, "replacement")
         successor.data = {**(successor.data or {}), REPLACEMENT_KEY: current}

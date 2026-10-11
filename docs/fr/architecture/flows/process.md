@@ -213,3 +213,14 @@ règles d'idempotence, d'annulation et d'état terminal que les autres engines.
 - Persistance et matrice : `back/app/process/models.py`, `process_service.py`.
 - Outils : `back/app/process/mcp.py` et `back/app/tools/mcp_loader.py`.
 - Adaptateur n8n : `back/bridge/n8n/`.
+## Preuve d'arrêt pour un remplacement
+
+Le propriétaire Process enregistre un bloqueur et un coordinateur auprès du propriétaire
+Task. `coordinate_replacement` demande l'arrêt des runs du périmètre admis et relit ceux
+en cours d'annulation. Un échec ne dispense pas de tenter l'arrêt des autres runs.
+Un terminal logique avec `remote_may_continue=true` bloque toujours le successeur.
+La lecture `refresh_run(..., confirm_terminal_stop=True)` peut confirmer tardivement le
+terminal physique du run exact, sans changer son état logique ni sa sortie immuable et sans
+relancer l'effet. Absence de référence distante, erreur réseau ou réponse non terminale
+conserve l'incertitude. Le reçu d'observation est conservé par Process.
+Voir [0170](../../../../project/decisions/0170-execution-scope-and-durable-controls.md).

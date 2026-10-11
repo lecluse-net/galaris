@@ -5,15 +5,16 @@ Registration belongs to application composition. Memory never resolves transport
 
 from collections.abc import Awaitable, Callable, Sequence
 from functools import wraps
-from typing import TypeVar
+from typing import TypeVar, cast
 from uuid import UUID
 
-from sqlalchemy import and_, or_, select
+from sqlalchemy import and_, or_, select, exists, false
 from core.database import get_db
 from sqlalchemy.sql.elements import ColumnElement
 from sqlalchemy.orm import InstrumentedAttribute
 
-from .models import MemoryItem
+from .models import MemoryItem, MemorySource, MemoryURL
+from .query_policy import prepare_memory_read
 from .schemas import MemoryGraphPage, MemoryGraphRootsRequest, MemoryGraphExpandRequest
 
 SourceClause = Callable[[InstrumentedAttribute[UUID]], ColumnElement[bool]]
@@ -21,6 +22,20 @@ SourceReader = Callable[[UUID, int], Awaitable[bool]]
 SourceBatchReader = Callable[[Sequence[UUID], int], Awaitable[set[UUID]]]
 _checks: dict[str, tuple[SourceClause, SourceReader]] = {}
 _batch_readers: dict[str, SourceBatchReader] = {}
+EvidenceClause = Callable[[InstrumentedAttribute[dict[str, object]]], ColumnElement[bool]]
+EvidenceReader = Callable[[dict[str, object], int], Awaitable[bool]]
+EvidenceBatchReader = Callable[[Sequence[tuple[UUID, dict[str, object]]], int], Awaitable[set[UUID]]]
+_evidence_checks: dict[str, tuple[EvidenceClause, EvidenceReader]] = {}
+_evidence_batch_readers: dict[str, EvidenceBatchReader] = {}
+
+
+def register_source_evidence_access(kind: str, clause: EvidenceClause, reader: EvidenceReader, *, batch_reader: EvidenceBatchReader | None = None) -> None:
+    """Source owners validate derived facts; an independent live source survives."""
+    _evidence_checks[kind] = clause, reader
+    if batch_reader is None:
+        _evidence_batch_readers.pop(kind, None)
+    else:
+        _evidence_batch_readers[kind] = batch_reader
 
 
 def register_source_access(
@@ -35,16 +50,74 @@ def register_source_access(
 
 
 def source_access_clause() -> ColumnElement[bool]:
-    return and_(True, *(or_(
+    sources = select(MemorySource.id).where(MemorySource.item_id == MemoryItem.id).correlate(MemoryItem)
+    evidence_kind = MemorySource.metadata_["evidence_validator"].astext
+    derived_access = or_(MemoryItem.metadata_["evidence_validator"].astext.is_(None),
+        exists(sources.where(or_(evidence_kind.is_(None), false(), *(and_(evidence_kind == kind, clause(MemorySource.metadata_))
+            for kind, (clause, _reader) in _evidence_checks.items())))))
+    return and_(derived_access, *(or_(
         MemoryItem.managed_source_kind.is_(None),
         MemoryItem.managed_source_kind != kind,
         clause(MemoryItem.id),
     ) for kind, (clause, _reader) in _checks.items()))
 
 
-async def source_is_readable(item_id: UUID, source_kind: str | None, agent_id: int) -> bool:
+async def readable_evidence_ids(identities: set[UUID], agent_id: int) -> set[UUID]:
+    readable, _refs = await source_evidence_admission(identities, agent_id)
+    return readable
+
+
+async def source_evidence_admission(identities: set[UUID], agent_id: int, *, include_locations: bool = False) -> tuple[set[UUID], dict[UUID, list[str]]]:
+    """Read provenance once for permission and source-reference projection."""
+    if not identities:
+        return set(), {}
+    # SQLAlchemy's mapped-column types do not express nulls from the outer join.
+    rows = cast(list[tuple[UUID, str | None, UUID | None, dict[str, object] | None, str | None]],
+        list((await get_db().execute(select(MemoryItem.id, MemoryItem.metadata_["evidence_validator"].astext,
+        MemorySource.id, MemorySource.metadata_, MemorySource.source_ref).outerjoin(MemorySource, MemorySource.item_id == MemoryItem.id)
+        .where(MemoryItem.id.in_(identities)).order_by(MemorySource.created_at))).tuples()))
+    refs: dict[UUID, list[str]] = {}
+    for item_id, _marker, _source_id, _metadata, source_ref in rows:
+        if source_ref is not None:
+            refs.setdefault(item_id, []).append(source_ref)
+    if include_locations:
+        locations = await get_db().execute(select(MemoryURL.memory_node_id, MemoryURL.url).where(
+            MemoryURL.memory_node_id.in_(identities)).order_by(MemoryURL.url))
+        for item_id, reference in locations:
+            refs.setdefault(item_id, []).append(reference)
+    readable: set[UUID] = {item_id for item_id, marker, _source_id, _metadata, _source_ref in rows if marker is None}
+    groups: dict[str, list[tuple[UUID, dict[str, object]]]] = {}
+    source_items: dict[UUID, UUID] = {}
+    for item_id, _marker, source_id, metadata, _source_ref in rows:
+        if item_id in readable:
+            continue
+        if source_id is None or metadata is None:
+            continue
+        if metadata.get("evidence_validator") is None:
+            readable.add(item_id)
+            continue
+        kind = str(metadata.get("evidence_validator"))
+        groups.setdefault(kind, []).append((source_id, metadata))
+        source_items[source_id] = item_id
+    for kind, records in groups.items():
+        valid_sources: set[UUID]
+        batch_reader = _evidence_batch_readers.get(kind)
+        validator = _evidence_checks.get(kind)
+        if batch_reader is not None:
+            valid_sources = await batch_reader(records, agent_id)
+        elif validator is not None:
+            valid_sources = {source_id for source_id, metadata in records if await validator[1](metadata, agent_id)}
+        else:
+            valid_sources = set[UUID]()
+        readable.update(source_items[source_id] for source_id in valid_sources if source_id in source_items)
+    return readable, refs
+
+
+async def source_is_readable(item_id: UUID, source_kind: str | None, agent_id: int, *, check_evidence: bool = True) -> bool:
     check = _checks.get(source_kind or "")
-    return True if check is None else await check[1](item_id, agent_id)
+    if check is not None and not await check[1](item_id, agent_id):
+        return False
+    return not check_evidence or item_id in await readable_evidence_ids({item_id}, agent_id)
 
 
 GraphRequest = TypeVar("GraphRequest", MemoryGraphRootsRequest, MemoryGraphExpandRequest)
@@ -74,12 +147,15 @@ async def readable_source_ids(endpoints: set[UUID], agent_id: int) -> set[UUID]:
             MemoryItem.id.in_([identity for identity, _kind in sources]), source_access_clause(),
         )))
         denied.update(identity for identity, _kind in sources if identity not in visible)
-    return endpoints - denied
+    # New derived facts also need their evidence-owner's live admission, including
+    # ordinary memories that have no managed projection kind.
+    return await readable_evidence_ids(endpoints - denied, agent_id)
 
 
 def source_checked_graph(function: Callable[[GraphRequest], Awaitable[MemoryGraphPage]]) -> Callable[[GraphRequest], Awaitable[MemoryGraphPage]]:
     @wraps(function)
     async def checked(request: GraphRequest) -> MemoryGraphPage:
+        await prepare_memory_read()
         page = await function(request)
         endpoints = {node.id for node in page.nodes} | {identity for edge in page.edges
             for identity in (edge.source_item_id, edge.target_item_id)}

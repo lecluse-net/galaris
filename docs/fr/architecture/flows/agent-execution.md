@@ -52,6 +52,17 @@ l’arrêt lors de leur annulation ; fermer un simple abonnement au journal lais
 autonome se poursuivre. Voir les [états d’inférence](../state-machines.md) et
 [0097](../../../../project/decisions/0097-durable-inference-lifecycle.md).
 
+`prepare_inference` (ou `POST /llm/openai/inferences?prepared=true`) conserve la requête,
+ses droits et sa configuration sans appel fournisseur. `start` démarre cette même identité.
+Un changement de requête demande une autre identité. `expected_revision` est optionnel pour
+les clients historiques ; une commande périmée échoue et le même UUID restitue son reçu
+avant le contrôle de la révision actuelle. La lecture expose `revision` et `deadline_at`.
+`deadline_seconds` part de l'admission et inclut préparation, file, pauses et reprises ;
+une reprise n'allonge pas ce budget. L'expiration conserve fragments et coûts et arrête
+le transport local, sans certifier l'arrêt physique du fournisseur. Le rejeu explicite
+crée une autre inférence et peut doubler la facturation, en conservant l'original.
+Voir [0170](../../../../project/decisions/0170-execution-scope-and-durable-controls.md).
+
 Chaque appel physique Chat/Responses possède en outre une échéance absolue, figée à son
 admission par `LLM_CALL_TIMEOUT_MINUTES` (30 minutes par défaut, réglable dans les
 préférences des tâches). Texte, réflexion et arguments d’outils partiels ne réarment pas
@@ -1030,3 +1041,44 @@ depuis l’ADR 0058 et la reprise échoue explicitement.
   `realtime_engine.py` et `session.py`.
 - Conversation texte : `back/app/conversation/`, `back/app/harness/conversation.py` et
   [flux Messenger](messaging.md).
+## Portée sourcée et remplacement coordonné
+
+`ExecutionScopeV1` (`galaris.execution-scope/v1`) est admis côté serveur dans
+`Task.data["execution_scope"]`. La demande initiale est l'exigence `demand` ; les amendements
+et réponses de clarification ajoutent des exigences sourcées et incrémentent sa révision.
+Les grants portent des références exactes, jamais des noms interprétés depuis le profil
+ou la mémoire. Un enfant hérite du scope parent, même si sa rédaction ou son payload propose
+d'autres grants. Une ancienne Task sans scope conserve son parcours historique.
+
+Le planner produit `requirement_ids` et `target_refs`. La validation déterministe refuse
+exigence omise, identifiant inconnu et cible non sourcée ; elle vérifie la couverture
+déclarée, sans remplacer une évaluation sémantique du résultat. Une clarification nécessaire
+utilise la même Task. Le scope est transmis aux runtimes et dans `AgentRunEnvelopeV1`.
+
+Le catalogue filtré `app.tools` expose facultativement `EffectDescriptorV1`. Ses propriétaires
+déclarent capacité, nature, cibles, visibilité, réversibilité, idempotence et reçu. Le préflight
+est persisté avant l'effet, puis la révision est revérifiée après l'autorisation native.
+Lecture et création ordinaire selon le descripteur restent autonomes. La création vérifiée
+dans le Working Set autorise la mise à jour du même artefact ; une simple lecture ne le fait pas.
+Une version inconnue, un scope périmé, une Task arrêtée ou une cible divergente empêche l'effet.
+Les outils sans descripteur restent utilisables et leur effet est enregistré comme inconnu,
+sous les contrôles existants. Les domaines gardent leurs ACL et postconditions.
+Process déclare la sélection autonome dans son catalogue affecté lorsque la demande ne
+fixe aucun workflow exact : `allow_and_record` conserve cette décision sous l'affectation
+vivante et l'autorisation native. Un workflow explicitement demandé ne peut pas être remplacé
+par un autre. Les cycles Goal sourcent leur portée dans la description, sans grant issu du suivi.
+
+Les décisions bornées sont conservées dans la tentative active, ou la projection Task sans
+tentative ; elles ne modifient pas la révision métier de la Task. `TaskActivitySnapshot` expose
+un résumé de portée (version, révision, source, propriétaire et nombres d'exigences/grants)
+et les préflights dans l'activité existante, sans seconde timeline. La portée complète reste
+dans `Task.data` et l'enveloppe du runtime ; elle n'est pas recopiée à chaque actualisation.
+Le contrôle des ressources produites charge les provenances en lot, sans relire les
+objectifs, messages et historiques de chaque tâche productrice.
+
+Le remplacement explicite fige l'arbre de descendants et invoque les propriétaires externes
+en dehors des verrous Task. Le successeur reste suspendu jusqu'à la preuve d'arrêt de chaque
+run, à la libération des leases et à la confirmation du propriétaire Process. Arbre agrandi,
+nouveau run, suppression ou propriétaire inconnu produit un conflit. Les pauses utilisateur
+et tâches indépendantes sont préservées. Une Goal ou une attente inconnue reste un refus
+explicite. Voir [0170](../../../../project/decisions/0170-execution-scope-and-durable-controls.md).

@@ -12,7 +12,7 @@ from core.database import get_db
 from .access import readable_item_clause
 from .models import MemoryItem, MemoryLink, MemorySource
 from .schemas import MemorySearchHit
-from .source_access import source_is_readable
+from .source_access import source_is_readable, readable_evidence_ids
 
 
 async def admit_search_hits(
@@ -27,8 +27,9 @@ async def admit_search_hits(
     """
     if not hits:
         return []
-    hits = [hit for hit in hits if await source_is_readable(
-        hit.item.id, hit.item.managed_source_kind, agent_id,
+    evidence_ids = await readable_evidence_ids({hit.item.id for hit in hits}, agent_id)
+    hits = [hit for hit in hits if hit.item.id in evidence_ids and await source_is_readable(
+        hit.item.id, hit.item.managed_source_kind, agent_id, check_evidence=False,
     )]
     if not hits:
         return []

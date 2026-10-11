@@ -15,6 +15,7 @@ from app.llm import inference_notifications as notifications
 from app.llm.call_capture import InferenceOwner, inference_owner
 from app.llm.facade import (
     start_inference,
+    prepare_inference,
     read_inference,
     control_inference,
     stream_inference,
@@ -45,6 +46,70 @@ async def state(key, expected):
             if snapshot.status == "failed":
                 pytest.fail(str(snapshot.attempts[-1].result))
             await asyncio.sleep(0.02)
+
+
+@pytest.mark.asyncio
+async def test_prepared_inference_starts_once_and_commands_use_expected_revision(runtime):
+    _, llm, requests, _ = runtime
+    key = uuid4()
+    request = request_for(llm)
+    assert await prepare_inference(request, inference_id=key) == key
+    assert await prepare_inference(request, inference_id=key) == key
+    prepared = await read_inference(key)
+    assert prepared.status == "prepared" and prepared.revision == 1
+    assert requests == []
+    command_id = uuid4()
+    receipts = await asyncio.gather(*(control_inference(key, "start", command_id=command_id,
+        expected_revision=prepared.revision) for _ in range(2)))
+    assert receipts[0] == receipts[1]
+    completed = await state(key, "completed")
+    assert len(requests) == 1 and len(completed.attempts) == 1
+    assert await control_inference(key, "start", command_id=command_id,
+        expected_revision=prepared.revision) == receipts[0]
+    with pytest.raises(ValueError, match="revision changed"):
+        await control_inference(key, "replay", expected_revision=prepared.revision)
+    with pytest.raises(ValueError, match="identity"):
+        await control_inference(key, "start", command_id=command_id,
+            expected_revision=completed.revision)
+    replay = await control_inference(key, "replay", expected_revision=completed.revision)
+    await state(replay.replay_id, "completed")
+    assert len(requests) == 2
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("phase", ["prepared", "running", "paused"])
+async def test_global_inference_deadline_survives_wait_and_pause(runtime, monkeypatch, phase):
+    _, llm, requests, mode = runtime
+    mode["gate"] = asyncio.Event()
+    monkeypatch.setattr(execution, "HEARTBEAT_SECONDS", 0.02)
+    request = request_for(llm).model_copy(update={"deadline_seconds": 30.0})
+    key = await prepare_inference(request) if phase == "prepared" else await start_inference(request)
+    if phase != "prepared":
+        stream = stream_inference(key)
+        await anext(stream)
+        await stream.aclose()
+    if phase == "paused":
+        await control_inference(key, "pause")
+        paused = await state(key, "paused")
+    async with get_db_session() as db:
+        operation = await db.scalar(select(LLMInference).where(LLMInference.id == key).with_for_update())
+        operation.deadline_at -= timedelta(seconds=60)
+    if phase == "paused":
+        with pytest.raises(ValueError, match="deadline expired"):
+            await control_inference(key, "resume", expected_revision=paused.revision)
+        snapshot = await read_inference(key)
+        assert snapshot.status == "paused" and snapshot.attempts == paused.attempts
+    else:
+        if phase == "prepared":
+            await control_inference(key, "start")
+        snapshot = await state(key, "failed")
+        assert snapshot.attempts[-1].result.metadata["deadline_exceeded"] is True
+        events = [event async for event in stream_inference(key)]
+        assert sum(event.kind == "result" for event in events) == 1
+        assert events[-1].result.success is False
+        if phase == "running":
+            assert snapshot.attempts[-1].result.messages[0].content == "Je réfléchis."
+    assert len(requests) == (0 if phase == "prepared" else 1)
 
 
 @pytest.mark.asyncio

@@ -107,11 +107,25 @@ class MemoryExtractionExistingMemory(BaseModel):
     temporal: MemoryTemporalAnchor | None = None
 
 
+class MemoryExtractionEvidence(BaseModel):
+    """A bounded source passage, distinct from the extractor's interpretation."""
+
+    ref: str = Field(min_length=1, max_length=200)
+    kind: Literal["written", "transcription", "document_extraction", "document_interpretation", "attachment"]
+    message_id: UUID
+    uri: str | None = Field(default=None, max_length=8192)
+    text: str = Field(default="", max_length=8_000)
+    version: dict[str, Any] = Field(default_factory=dict)
+    coverage: dict[str, Any] = Field(default_factory=dict)
+    locator: str | None = Field(default=None, max_length=200)
+
+
 class MemoryExtractionMessage(BaseModel):
     occurred_at: datetime | None = None
     speaker_name: str = Field(min_length=1, max_length=500)
     speaker_kind: Literal["human", "AI"]
     text: str = Field(min_length=1, max_length=8_000)
+    evidence: list[MemoryExtractionEvidence] = Field(default_factory=lambda: list[MemoryExtractionEvidence](), max_length=64)
 
     @model_validator(mode="before")
     @classmethod
@@ -174,6 +188,7 @@ class MemoryCreateOperation(BaseModel):
         ),
     )
     reason: str = Field(default="", max_length=500)
+    evidence_refs: list[str] = Field(default_factory=list, max_length=20)
 
 
 class MemoryLinkOperation(BaseModel):
@@ -182,6 +197,7 @@ class MemoryLinkOperation(BaseModel):
     action: Literal["LINK"] = "LINK"
     target_memory_id: str = Field(min_length=1, max_length=100)
     reason: str = Field(default="", max_length=500)
+    evidence_refs: list[str] = Field(default_factory=list, max_length=20)
 
 
 MemoryExtractionOperation = Annotated[
@@ -263,6 +279,7 @@ class MemoryExtractionPrepared(BaseModel):
         default_factory=lambda: list[UUID](), max_length=20
     )
     application: MemoryExtractionApplication | None = None
+    source_snapshot: dict[str, Any] | None = None
 
     @model_validator(mode="after")
     def validate_application_proof(self) -> MemoryExtractionPrepared:

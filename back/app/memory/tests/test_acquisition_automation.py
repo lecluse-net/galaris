@@ -64,19 +64,22 @@ async def test_memory_acquisition_is_immediate_idempotent_and_attributable(
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("conversation_revision", [False, True])
 async def test_explicit_forget_blocks_same_source_content_but_allows_correction(
     db: AsyncSession,
     agents: tuple[Agent, Agent],
     memory_storage: Path,
+    conversation_revision: bool,
 ) -> None:
     del memory_storage
     owner, _peer = agents
+    round_id = uuid4()
     original = MemoryAcquisitionCreate(
         agent_id=owner.id,
         title="Obsolete preference",
         content="The user prefers weekly reports.",
-        source_kind="task",
-        source_ref="task:forget-regression",
+        source_kind="conversation_round" if conversation_revision else "task",
+        source_ref=f"conversation_round:{round_id}" if conversation_revision else "task:forget-regression",
     )
     acquired = await acquisition_service.acquire_memory(original)
     assert acquired.memory_id is not None
@@ -95,7 +98,8 @@ async def test_explicit_forget_blocks_same_source_content_but_allows_correction(
     assert "forgotten_content_hash" in tombstone.metadata_
     relearned = await acquisition_service.acquire_memory(
         original.model_copy(
-            update={"idempotency_key": f"retry-{uuid4().hex}"}
+            update={"idempotency_key": f"retry-{uuid4().hex}", "source_ref":
+                f"conversation_round:{round_id}:late-transcription" if conversation_revision else original.source_ref}
         )
     )
     corrected = await acquisition_service.acquire_memory(

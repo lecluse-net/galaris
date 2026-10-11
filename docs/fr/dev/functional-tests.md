@@ -16,6 +16,20 @@ L'analyse documentaire relève de `app.llm` et ne crée aucune définition ni ex
 de processus métier. `back/tests/test_document_analysis.py` protège cette séparation,
 la reprise des lots de 500 pages sans double facturation, l'annulation, les droits,
 la progression par le scheduler et le transfert idempotent des anciens runs techniques.
+Le même scénario raccorde les passages acquis au round sans préparation ni nouvelle inférence,
+vérifie l'isolation agent/Task/URI, les versions obsolètes et les reçus tardifs.
+`back/app/dream/tests/test_conversation_memory.py` protège la capture d'un audio sans texte,
+l'attribution et la langue, les répétitions, la revalidation avant application et après capture
+(lecture, rappel et graphe), ainsi que la conservation d'une provenance indépendante.
+`test_acquisition_automation.py` bloque la réacquisition d'un fait oublié depuis une révision
+tardive du même round, tout en admettant une correction.
+`test_search_performance.py` vérifie aussi le budget de requêtes par page pour les nouvelles
+provenances conversationnelles sur un corpus synthétique de 6 000 souvenirs, sans cache
+persistant des droits et sans élargir la portée privée de l'agent.
+Les requêtes avec CTE sont incluses. La politique de planification ne modifie pas les
+paramètres de connexion des transactions suivantes, après commit comme après rollback.
+`test_memory_extraction.py` vérifie qu'une provenance ajoutée par LINK ne rend pas un
+souvenir manuel ou un document préexistant dépendant de cette preuve conversationnelle.
 
 AgentAdmin est documenté dans [agent-admin.md](agent-admin.md).
 `back/app/agent/tests/test_avatars.py` vérifie le stockage JPEG dans une limite de 500 × 500,
@@ -793,3 +807,23 @@ métadonnées suivent le nombre de dossiers pour 300 et 3 000 fichiers, avec re
 et nouveaux contrôles après révocation. Le scénario fournisseur vérifie aussi la résolution
 groupée des fichiers d'un Tool combinant File Share et Messenger.
 `e2e/specs/file-indexing.spec.mjs` exerce l'application assemblée et son API réelle.
+### Portée et commandes durables (0170)
+
+`app/agent/tests/test_execution_scope.py` et `app/task/tests/test_execution_scope.py`
+vérifient héritage sans élargissement, amendement via le port, version inconnue, couverture
+du plan et provenance des cibles. Le wrapper réel conserve un refus avant tout effet,
+y compris après un amendement pendant l'autorisation. La décision survit au rollback
+de l'outil et ne rend pas le checkpoint périmé ; l'activité la restitue après relecture.
+`tests/test_inference_lifecycle.py` couvre préparation sans appel, départ concurrent,
+reçu idempotent et révision périmée, échéance globale en préparation/exécution/pause et
+journal partiel. `app/task/tests/test_replacement.py` fige les descendants et préserve
+les autres travaux ; `app/process/tests/test_lifecycle_workflows.py` couvre arrêt demandé,
+confirmation tardive et terminal incertain sans réécriture ni rejeu. PostgreSQL et les
+façades sont réels, les fournisseurs et moteurs distants synthétiques.
+
+Les mêmes tests de portée mesurent les deux préflights d'un appel de modification avec
+1 et 30 tâches productrices : le nombre de lectures doit rester borné, sans requête par
+ressource. `app/task/tests/test_activity_snapshot.py` vérifie qu'une longue demande ne
+gonfle pas le résumé de portée renvoyé à chaque actualisation ; le contrat durable reste
+complet. Les mesures locales sous `artifacts/` sont distinctes d'une qualification de
+charge réelle ou de la latence des fournisseurs.

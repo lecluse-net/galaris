@@ -37,6 +37,7 @@ from pydantic import (
 )
 
 from core.i18n import is_supported
+from .scope_contracts import ExecutionScopeV1
 
 
 ExecutionEffort = Literal["standard", "high"]
@@ -1236,6 +1237,7 @@ class AgentRunEnvelopeV1(BaseModel):
     messaging_context: dict[str, str] = Field(default_factory=dict[str, str])
     resource_uris: tuple[str, ...] = ()
     tool_catalog_version: str | None = Field(default=None, max_length=200)
+    execution_scope: ExecutionScopeV1 | None = None
     approval_action: Literal["auto", "deny_agent", "ask"] = "ask"
     limits: AgentRunLimitsV1 = Field(default_factory=AgentRunLimitsV1)
     fingerprints: dict[str, str] = Field(default_factory=dict[str, str])
@@ -1599,6 +1601,8 @@ class AgentRunRequest:
             if key not in messaging_context and value not in (None, ""):
                 messaging_context[key] = str(value)
         return AgentRunEnvelopeV1(
+            execution_scope=(ExecutionScopeV1.model_validate(self.task_data["execution_scope"])
+                if self.task_data.get("execution_scope") is not None else None),
             identity=AgentRunIdentityV1(
                 task_id=self.task_id,
                 attempt_id=self.attempt_id,

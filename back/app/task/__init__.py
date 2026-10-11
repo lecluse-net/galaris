@@ -79,6 +79,8 @@ __all__ = [
     "reconcile_replacements",
     "replacement_state",
     "register_replacement_blocker",
+    "register_replacement_coordinator",
+    "initialize_scope",
 ]
 
 # Import the service separately to avoid circular dependencies.
@@ -91,7 +93,7 @@ except ImportError:
 # Register the durable port consumed by ``app.agent`` without reversing the dependency.
 from . import agent_adapter as _agent_adapter  # noqa: F401 - registers the durable port # pyright: ignore[reportUnusedImport]
 from .amendment_service import amendment_basis
-from .replacement import prepare_replacement, reconcile_replacements, replacement_state, register_replacement_blocker
+from .replacement import prepare_replacement, reconcile_replacements, replacement_state, register_replacement_blocker, register_replacement_coordinator
 from .run_events import register_events as _register_run_events
 
 _register_run_events()
@@ -101,3 +103,4 @@ try:
     __all__.extend(["go_next", "run_stream"])
 except ImportError:
     pass
+from .execution_scope import initialize_scope as initialize_scope

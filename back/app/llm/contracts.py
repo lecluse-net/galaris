@@ -27,6 +27,7 @@ class InferenceInput(BaseModel):
     agent_run_id: UUID | None = None
     conversation_round_id: UUID | None = None
     process_run_id: UUID | None = None
+    deadline_seconds: float | None = Field(default=None, gt=0, le=31_536_000, allow_inf_nan=False)
 
 
 class TextInferenceRequest(InferenceInput):
@@ -98,6 +99,7 @@ class InferenceEvent(BaseModel):
 
 
 InferenceStatus = Literal[
+    "prepared",
     "queued",
     "running",
     "pausing",
@@ -108,7 +110,7 @@ InferenceStatus = Literal[
     "failed",
     "interrupted",
 ]
-InferenceAction = Literal["pause", "stop", "resume", "replay"]
+InferenceAction = Literal["start", "pause", "stop", "resume", "replay"]
 
 
 class InferenceAttempt(BaseModel):
@@ -128,6 +130,8 @@ class InferenceRead(BaseModel):
     status: InferenceStatus
     attempts: list[InferenceAttempt]
     cost: float = 0
+    revision: int = 1
+    deadline_at: datetime | None = None
 
 
 class InferenceCommand(BaseModel):
@@ -137,11 +141,13 @@ class InferenceCommand(BaseModel):
     action: InferenceAction
     applied_at: datetime | None = None
     replay_id: UUID | None = None
+    expected_revision: int | None = None
 
 
 class InferenceControlInput(BaseModel):
     action: InferenceAction
     command_id: UUID | None = None
+    expected_revision: int | None = Field(default=None, ge=1)
 
 
 class InferenceRunEvent(BaseModel):

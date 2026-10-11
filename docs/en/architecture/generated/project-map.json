@@ -903,6 +903,7 @@
       {
         "files": [
           "back/app/dream/dbadmin.py",
+          "back/app/dream/evidence_access.py",
           "back/app/dream/mechanisms/conversation_memory.py",
           "back/app/dream/mechanisms/sequential_topic_classification.py",
           "back/app/dream/mechanisms/topic_classification.py",
@@ -932,6 +933,7 @@
         "files": [
           "back/app/dream/attachment_processing.py",
           "back/app/dream/evaluation.py",
+          "back/app/dream/evidence_access.py",
           "back/app/dream/live_topics.py",
           "back/app/dream/manual.py",
           "back/app/dream/mechanisms/attachment_memory.py",
@@ -952,6 +954,7 @@
       },
       {
         "files": [
+          "back/app/dream/__init__.py",
           "back/app/dream/contracts.py",
           "back/app/dream/manual.py",
           "back/app/dream/mechanisms/attachment_memory.py",
@@ -974,6 +977,7 @@
       {
         "files": [
           "back/app/dream/dbadmin.py",
+          "back/app/dream/evidence_access.py",
           "back/app/dream/live_topics.py",
           "back/app/dream/mechanisms/conversation_memory.py",
           "back/app/dream/mechanisms/sequential_topic_classification.py",
@@ -1044,6 +1048,7 @@
         "files": [
           "back/app/dream/attachment_processing.py",
           "back/app/dream/events.py",
+          "back/app/dream/evidence_access.py",
           "back/app/dream/manual.py",
           "back/app/dream/mechanisms/attachment_memory.py",
           "back/app/dream/mechanisms/conversation_memory.py",
@@ -1137,6 +1142,7 @@
       {
         "files": [
           "back/app/file_share/galaris_provider.py",
+          "back/app/file_share/mcp.py",
           "back/app/file_share/messenger_transport.py",
           "back/app/file_share/planner_adapter.py",
           "back/app/file_share/resource_contracts.py",
@@ -1974,6 +1980,7 @@
       {
         "files": [
           "back/app/llm/document_analysis.py",
+          "back/app/llm/document_evidence.py",
           "back/app/llm/document_service.py"
         ],
         "source": "app.llm",
@@ -2047,6 +2054,7 @@
         "files": [
           "back/app/llm/anthropic_router.py",
           "back/app/llm/call_router.py",
+          "back/app/llm/document_evidence.py",
           "back/app/llm/document_service.py",
           "back/app/llm/document_store.py",
           "back/app/llm/events.py",
@@ -2372,6 +2380,7 @@
           "back/app/memory/messenger_contact.py",
           "back/app/memory/models.py",
           "back/app/memory/process_projection.py",
+          "back/app/memory/query_policy.py",
           "back/app/memory/retrieval.py",
           "back/app/memory/revision_queries.py",
           "back/app/memory/router.py",
@@ -2513,6 +2522,7 @@
       {
         "files": [
           "back/app/messenger/contact_access.py",
+          "back/app/messenger/mcp.py",
           "back/app/messenger/native_facade.py",
           "back/app/messenger/permission_router.py",
           "back/app/messenger/permissions.py",
@@ -2846,6 +2856,7 @@
       {
         "files": [
           "back/app/process/events.py",
+          "back/app/process/mcp.py",
           "back/app/process/process_service.py",
           "back/app/process/router.py"
         ],
@@ -2911,6 +2922,7 @@
           "back/app/process/models.py",
           "back/app/process/process_service.py",
           "back/app/process/progress.py",
+          "back/app/process/replacement.py",
           "back/app/process/retention.py",
           "back/app/process/workers.py"
         ],
@@ -3023,7 +3035,9 @@
           "back/app/task/__init__.py",
           "back/app/task/activity_snapshot.py",
           "back/app/task/agent_adapter.py",
+          "back/app/task/amendment_service.py",
           "back/app/task/budget.py",
+          "back/app/task/execution_scope.py",
           "back/app/task/live_checkpoint.py",
           "back/app/task/mcp.py",
           "back/app/task/models.py",
@@ -3094,12 +3108,14 @@
           "back/app/task/amendment_service.py",
           "back/app/task/collab.py",
           "back/app/task/conversation.py",
+          "back/app/task/execution_scope.py",
           "back/app/task/live_checkpoint.py",
           "back/app/task/mcp.py",
           "back/app/task/models.py",
           "back/app/task/outcome.py",
           "back/app/task/progress.py",
           "back/app/task/replacement.py",
+          "back/app/task/replacement_tree.py",
           "back/app/task/resource_facade.py",
           "back/app/task/router.py",
           "back/app/task/run_events.py",
@@ -6962,7 +6978,7 @@
       {
         "file": "back/app/conversation/mcp.py",
         "handler": "conversation_choice_resolve",
-        "line": 852,
+        "line": 854,
         "module": "app.conversation",
         "name": "conversation_choice_resolve",
         "namespace": "conversation"
@@ -6970,7 +6986,7 @@
       {
         "file": "back/app/conversation/mcp.py",
         "handler": "conversation_process_start",
-        "line": 989,
+        "line": 991,
         "module": "app.conversation",
         "name": "conversation_process_start",
         "namespace": "conversation"
@@ -6978,7 +6994,7 @@
       {
         "file": "back/app/conversation/mcp.py",
         "handler": "conversation_task_list",
-        "line": 792,
+        "line": 794,
         "module": "app.conversation",
         "name": "conversation_task_list",
         "namespace": "conversation"
@@ -6986,7 +7002,7 @@
       {
         "file": "back/app/conversation/mcp.py",
         "handler": "conversation_task_pause",
-        "line": 931,
+        "line": 933,
         "module": "app.conversation",
         "name": "conversation_task_pause",
         "namespace": "conversation"
@@ -6994,7 +7010,7 @@
       {
         "file": "back/app/conversation/mcp.py",
         "handler": "conversation_task_resume",
-        "line": 942,
+        "line": 944,
         "module": "app.conversation",
         "name": "conversation_task_resume",
         "namespace": "conversation"
@@ -7002,7 +7018,7 @@
       {
         "file": "back/app/conversation/mcp.py",
         "handler": "conversation_task_retry",
-        "line": 962,
+        "line": 964,
         "module": "app.conversation",
         "name": "conversation_task_retry",
         "namespace": "conversation"
@@ -7010,7 +7026,7 @@
       {
         "file": "back/app/conversation/mcp.py",
         "handler": "conversation_task_status",
-        "line": 832,
+        "line": 834,
         "module": "app.conversation",
         "name": "conversation_task_status",
         "namespace": "conversation"
@@ -7018,7 +7034,7 @@
       {
         "file": "back/app/conversation/mcp.py",
         "handler": "conversation_task_stop",
-        "line": 973,
+        "line": 975,
         "module": "app.conversation",
         "name": "conversation_task_stop",
         "namespace": "conversation"
@@ -7026,7 +7042,7 @@
       {
         "file": "back/app/conversation/mcp.py",
         "handler": "conversation_task_submit",
-        "line": 548,
+        "line": 550,
         "module": "app.conversation",
         "name": "conversation_task_submit",
         "namespace": "conversation"
@@ -7042,7 +7058,7 @@
       {
         "file": "back/app/file_share/mcp.py",
         "handler": "append_file",
-        "line": 343,
+        "line": 350,
         "module": "app.file_share",
         "name": "file_append",
         "namespace": "file_sharing"
@@ -7050,7 +7066,7 @@
       {
         "file": "back/app/file_share/mcp.py",
         "handler": "copy_file",
-        "line": 404,
+        "line": 412,
         "module": "app.file_share",
         "name": "file_copy",
         "namespace": "file_sharing"
@@ -7058,7 +7074,7 @@
       {
         "file": "back/app/file_share/mcp.py",
         "handler": "create_file",
-        "line": 273,
+        "line": 278,
         "module": "app.file_share",
         "name": "file_create",
         "namespace": "file_sharing"
@@ -7066,7 +7082,7 @@
       {
         "file": "back/app/file_share/mcp.py",
         "handler": "delete_file",
-        "line": 465,
+        "line": 474,
         "module": "app.file_share",
         "name": "file_delete",
         "namespace": "file_sharing"
@@ -7074,7 +7090,7 @@
       {
         "file": "back/app/file_share/mcp.py",
         "handler": "edit_file",
-        "line": 367,
+        "line": 375,
         "module": "app.file_share",
         "name": "file_edit",
         "namespace": "file_sharing"
@@ -7082,7 +7098,7 @@
       {
         "file": "back/app/file_share/mcp.py",
         "handler": "file_info",
-        "line": 165,
+        "line": 166,
         "module": "app.file_share",
         "name": "file_info",
         "namespace": "file_sharing"
@@ -7090,7 +7106,7 @@
       {
         "file": "back/app/file_share/mcp.py",
         "handler": "list_files",
-        "line": 137,
+        "line": 138,
         "module": "app.file_share",
         "name": "file_list",
         "namespace": "file_sharing"
@@ -7098,7 +7114,7 @@
       {
         "file": "back/app/file_share/mcp.py",
         "handler": "move_file",
-        "line": 436,
+        "line": 444,
         "module": "app.file_share",
         "name": "file_move",
         "namespace": "file_sharing"
@@ -7106,7 +7122,7 @@
       {
         "file": "back/app/file_share/mcp.py",
         "handler": "read_file",
-        "line": 236,
+        "line": 240,
         "module": "app.file_share",
         "name": "file_read",
         "namespace": "file_sharing"
@@ -7114,7 +7130,7 @@
       {
         "file": "back/app/file_share/mcp.py",
         "handler": "file_schemes",
-        "line": 116,
+        "line": 117,
         "module": "app.file_share",
         "name": "file_schemes",
         "namespace": "file_sharing"
@@ -7122,7 +7138,7 @@
       {
         "file": "back/app/file_share/mcp.py",
         "handler": "search_files",
-        "line": 195,
+        "line": 198,
         "module": "app.file_share",
         "name": "file_search",
         "namespace": "file_sharing"
@@ -7130,7 +7146,7 @@
       {
         "file": "back/app/file_share/mcp.py",
         "handler": "write_file",
-        "line": 309,
+        "line": 315,
         "module": "app.file_share",
         "name": "file_write",
         "namespace": "file_sharing"
@@ -7202,7 +7218,7 @@
       {
         "file": "back/app/process/mcp.py",
         "handler": "process_analyze_run",
-        "line": 156,
+        "line": 158,
         "module": "app.process",
         "name": "process_analyze_run",
         "namespace": "galaris"
@@ -7210,7 +7226,7 @@
       {
         "file": "back/app/process/mcp.py",
         "handler": "process_get",
-        "line": 60,
+        "line": 61,
         "module": "app.process",
         "name": "process_get",
         "namespace": "galaris"
@@ -7218,7 +7234,7 @@
       {
         "file": "back/app/process/mcp.py",
         "handler": "process_get_run",
-        "line": 141,
+        "line": 143,
         "module": "app.process",
         "name": "process_get_run",
         "namespace": "galaris"
@@ -7226,7 +7242,7 @@
       {
         "file": "back/app/process/mcp.py",
         "handler": "process_list",
-        "line": 51,
+        "line": 52,
         "module": "app.process",
         "name": "process_list",
         "namespace": "galaris"
@@ -7234,7 +7250,7 @@
       {
         "file": "back/app/process/mcp.py",
         "handler": "process_list_runs",
-        "line": 121,
+        "line": 123,
         "module": "app.process",
         "name": "process_list_runs",
         "namespace": "galaris"
@@ -7242,7 +7258,7 @@
       {
         "file": "back/app/process/mcp.py",
         "handler": "process_start",
-        "line": 86,
+        "line": 88,
         "module": "app.process",
         "name": "process_start",
         "namespace": "galaris"
@@ -7930,7 +7946,7 @@
       {
         "file": "back/app/messenger/mcp.py",
         "handler": "mcp_list_rooms",
-        "line": 638,
+        "line": 640,
         "module": "app.messenger",
         "name": "messenger_list_rooms",
         "namespace": "messenger"
@@ -7938,7 +7954,7 @@
       {
         "file": "back/app/messenger/mcp.py",
         "handler": "mcp_room_history",
-        "line": 676,
+        "line": 678,
         "module": "app.messenger",
         "name": "messenger_room_history",
         "namespace": "messenger"
@@ -7946,7 +7962,7 @@
       {
         "file": "back/app/messenger/mcp.py",
         "handler": "mcp_room_send_file",
-        "line": 889,
+        "line": 892,
         "module": "app.messenger",
         "name": "messenger_room_send_file",
         "namespace": "messenger"
@@ -7954,7 +7970,7 @@
       {
         "file": "back/app/messenger/mcp.py",
         "handler": "mcp_room_send_message",
-        "line": 265,
+        "line": 267,
         "module": "app.messenger",
         "name": "messenger_room_send_message",
         "namespace": "messenger"
@@ -7962,7 +7978,7 @@
       {
         "file": "back/app/messenger/mcp.py",
         "handler": "mcp_search_users",
-        "line": 748,
+        "line": 750,
         "module": "app.messenger",
         "name": "messenger_search_users",
         "namespace": "messenger"
@@ -7970,7 +7986,7 @@
       {
         "file": "back/app/messenger/mcp.py",
         "handler": "mcp_send_audio_message",
-        "line": 530,
+        "line": 532,
         "module": "app.messenger",
         "name": "messenger_send_audio_message",
         "namespace": "messenger"
@@ -7978,7 +7994,7 @@
       {
         "file": "back/app/messenger/mcp.py",
         "handler": "mcp_send_file_to_user",
-        "line": 836,
+        "line": 838,
         "module": "app.messenger",
         "name": "messenger_send_file_to_user",
         "namespace": "messenger"
@@ -7986,7 +8002,7 @@
       {
         "file": "back/app/messenger/mcp.py",
         "handler": "mcp_send_message_to_user",
-        "line": 312,
+        "line": 314,
         "module": "app.messenger",
         "name": "messenger_send_message_to_user",
         "namespace": "messenger"
@@ -8034,7 +8050,7 @@
       {
         "file": "back/app/process/mcp.py",
         "handler": "process_admin_analyze_run",
-        "line": 469,
+        "line": 471,
         "module": "app.process",
         "name": "process_admin_analyze_run",
         "namespace": "process_admin"
@@ -8042,7 +8058,7 @@
       {
         "file": "back/app/process/mcp.py",
         "handler": "process_admin_cancel_run",
-        "line": 441,
+        "line": 443,
         "module": "app.process",
         "name": "process_admin_cancel_run",
         "namespace": "process_admin"
@@ -8050,7 +8066,7 @@
       {
         "file": "back/app/process/mcp.py",
         "handler": "process_admin_create",
-        "line": 245,
+        "line": 247,
         "module": "app.process",
         "name": "process_admin_create",
         "namespace": "process_admin"
@@ -8058,7 +8074,7 @@
       {
         "file": "back/app/process/mcp.py",
         "handler": "process_admin_delete",
-        "line": 322,
+        "line": 324,
         "module": "app.process",
         "name": "process_admin_delete",
         "namespace": "process_admin"
@@ -8066,7 +8082,7 @@
       {
         "file": "back/app/process/mcp.py",
         "handler": "process_admin_delete_run",
-        "line": 483,
+        "line": 485,
         "module": "app.process",
         "name": "process_admin_delete_run",
         "namespace": "process_admin"
@@ -8074,7 +8090,7 @@
       {
         "file": "back/app/process/mcp.py",
         "handler": "process_admin_engines",
-        "line": 168,
+        "line": 170,
         "module": "app.process",
         "name": "process_admin_engines",
         "namespace": "process_admin"
@@ -8082,7 +8098,7 @@
       {
         "file": "back/app/process/mcp.py",
         "handler": "process_admin_get",
-        "line": 226,
+        "line": 228,
         "module": "app.process",
         "name": "process_admin_get",
         "namespace": "process_admin"
@@ -8090,7 +8106,7 @@
       {
         "file": "back/app/process/mcp.py",
         "handler": "process_admin_get_run",
-        "line": 407,
+        "line": 409,
         "module": "app.process",
         "name": "process_admin_get_run",
         "namespace": "process_admin"
@@ -8098,7 +8114,7 @@
       {
         "file": "back/app/process/mcp.py",
         "handler": "process_admin_list",
-        "line": 203,
+        "line": 205,
         "module": "app.process",
         "name": "process_admin_list",
         "namespace": "process_admin"
@@ -8106,7 +8122,7 @@
       {
         "file": "back/app/process/mcp.py",
         "handler": "process_admin_list_runs",
-        "line": 378,
+        "line": 380,
         "module": "app.process",
         "name": "process_admin_list_runs",
         "namespace": "process_admin"
@@ -8114,7 +8130,7 @@
       {
         "file": "back/app/process/mcp.py",
         "handler": "process_admin_refresh_run",
-        "line": 427,
+        "line": 429,
         "module": "app.process",
         "name": "process_admin_refresh_run",
         "namespace": "process_admin"
@@ -8122,7 +8138,7 @@
       {
         "file": "back/app/process/mcp.py",
         "handler": "process_admin_retry_run",
-        "line": 455,
+        "line": 457,
         "module": "app.process",
         "name": "process_admin_retry_run",
         "namespace": "process_admin"
@@ -8130,7 +8146,7 @@
       {
         "file": "back/app/process/mcp.py",
         "handler": "process_admin_start",
-        "line": 343,
+        "line": 345,
         "module": "app.process",
         "name": "process_admin_start",
         "namespace": "process_admin"
@@ -8138,7 +8154,7 @@
       {
         "file": "back/app/process/mcp.py",
         "handler": "process_admin_sync",
-        "line": 187,
+        "line": 189,
         "module": "app.process",
         "name": "process_admin_sync",
         "namespace": "process_admin"
@@ -8146,7 +8162,7 @@
       {
         "file": "back/app/process/mcp.py",
         "handler": "process_admin_update",
-        "line": 275,
+        "line": 277,
         "module": "app.process",
         "name": "process_admin_update",
         "namespace": "process_admin"
@@ -9208,7 +9224,7 @@
           "llm_inferences.id"
         ],
         "history_mixin": false,
-        "line": 82,
+        "line": 85,
         "module": "app.llm",
         "table": "llm_call_events"
       },
@@ -9226,7 +9242,7 @@
           "users.id"
         ],
         "history_mixin": false,
-        "line": 101,
+        "line": 104,
         "module": "app.llm",
         "table": "llm_calls"
       },
@@ -9249,7 +9265,7 @@
           "llm_inferences.id"
         ],
         "history_mixin": false,
-        "line": 54,
+        "line": 56,
         "module": "app.llm",
         "table": "llm_inference_attempts"
       },
@@ -9261,7 +9277,7 @@
           "llm_inferences.id"
         ],
         "history_mixin": false,
-        "line": 70,
+        "line": 72,
         "module": "app.llm",
         "table": "llm_inference_commands"
       },

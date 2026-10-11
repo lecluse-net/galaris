@@ -33,6 +33,14 @@ RECOVERY_BATCH_SIZE = 100
 TERMINAL_ATTEMPTS = frozenset({"paused", "stopped", "completed", "failed", "interrupted"})
 
 
+class InferenceRevisionConflict(ValueError):
+    """The command was based on a state that has since changed."""
+
+
+def deadline_at(operation: LLMInference) -> datetime | None:
+    return operation.deadline_at
+
+
 async def can_access(
     inference_id: UUID, *, requester_user_id: int | None,
     agent_ids: frozenset[int] | None,
@@ -61,19 +69,23 @@ async def create(
     inference_id: UUID | None = None,
     replay_of_id: UUID | None = None,
     authority: LLMExecutionAuthority | None = None,
+    prepared: bool = False,
 ) -> UUID:
     db = get_db()
     key = inference_id or uuid4()
     payload = request.model_dump(mode="json")
+    timestamp = await now()
     added = await db.scalar(
         insert(LLMInference)
         .values(
             id=key,
             request=payload,
             replay_of_id=replay_of_id,
-            status="queued",
+            status="prepared" if prepared else "queued",
             generation=1,
             event_sequence=0,
+            created_at=timestamp,
+            deadline_at=timestamp + timedelta(seconds=request.deadline_seconds) if request.deadline_seconds else None,
             requester_user_id=authority.requester_user_id if authority else None,
             authority=asdict(authority) if authority else {},
         )
@@ -81,9 +93,10 @@ async def create(
         .returning(LLMInference.id)
     )
     if added is not None:
-        db.add(LLMInferenceAttempt(inference_id=key, number=1, status="queued"))
+        db.add(LLMInferenceAttempt(inference_id=key, number=1, status="prepared" if prepared else "queued"))
         await db.flush()
-        notify_after_commit("work")
+        if not prepared:
+            notify_after_commit("work")
         notify_after_commit("changes", key)
     else:
         existing = await db.get(LLMInference, key)
@@ -167,8 +180,15 @@ async def claim(inference_id: UUID) -> InferenceOwner | None:
     if operation.status != "queued" or attempt.status != "queued":
         return None
     timestamp = await now()
+    expiry = deadline_at(operation)
+    if expiry is not None and expiry <= timestamp:
+        result = AIResult(prompt=str(operation.request["prompt"]), success=False,
+            metadata={"error": "Inference deadline exceeded.", "deadline_exceeded": True})
+        await _finish(operation, attempt, result, "failed")
+        return None
     token = uuid4()
     operation.status = attempt.status = "running"
+    operation.revision += 1
     attempt.lease_token = token
     attempt.started_at = timestamp
     attempt.lease_expires_at = timestamp + timedelta(seconds=LEASE_SECONDS)
@@ -178,7 +198,11 @@ async def claim(inference_id: UUID) -> InferenceOwner | None:
 
 async def heartbeat(owner: InferenceOwner) -> str:
     operation, attempt = await owned(owner)
-    attempt.lease_expires_at = await now() + timedelta(seconds=LEASE_SECONDS)
+    timestamp = await now()
+    attempt.lease_expires_at = timestamp + timedelta(seconds=LEASE_SECONDS)
+    expiry = deadline_at(operation)
+    if expiry is not None and expiry <= timestamp and operation.status == "running":
+        return "expired"
     return operation.status
 
 
@@ -190,6 +214,7 @@ async def _finish(
     timestamp = await now()
     operation.event_sequence += 1
     operation.status = attempt.status = status
+    operation.revision += 1
     attempt.completed_at = timestamp
     attempt.lease_expires_at = None
     attempt.final_sequence = operation.event_sequence
@@ -219,6 +244,10 @@ async def _finish(
 async def finish(owner: InferenceOwner, result: AIResult, *, interrupted: bool = False) -> None:
     operation, attempt = await owned(owner)
     status = {"pausing": "paused", "stopping": "stopped"}.get(operation.status)
+    expiry = deadline_at(operation)
+    if status is None and expiry is not None and expiry <= await now():
+        status = "failed"
+        result.metadata.update(error="Inference deadline exceeded.", deadline_exceeded=True)
     status = status or (
         "interrupted" if interrupted else "completed" if result.success else "failed"
     )
@@ -252,17 +281,20 @@ async def finish(owner: InferenceOwner, result: AIResult, *, interrupted: bool =
 
 
 async def command(
-    inference_id: UUID, action: InferenceAction, command_id: UUID
+    inference_id: UUID, action: InferenceAction, command_id: UUID, *, expected_revision: int | None = None,
 ) -> InferenceCommand:
     db = get_db()
     operation, attempt = await locked(inference_id)
     previous = await db.get(LLMInferenceCommand, command_id)
     if previous is not None:
-        if previous.inference_id != inference_id or previous.action != action:
+        if previous.inference_id != inference_id or previous.action != action or previous.expected_revision != expected_revision:
             raise ValueError("A command identity cannot be reused for another action.")
         return InferenceCommand.model_validate(previous, from_attributes=True)
+    if expected_revision is not None and operation.revision != expected_revision:
+        raise InferenceRevisionConflict("Inference revision changed; read the current state before retrying.")
     receipt = LLMInferenceCommand(
-        id=command_id, inference_id=inference_id, attempt_id=attempt.id, action=action
+        id=command_id, inference_id=inference_id, attempt_id=attempt.id, action=action,
+        expected_revision=expected_revision,
     )
     if action == "replay":
         receipt.replay_id = await create(
@@ -270,9 +302,16 @@ async def command(
             replay_of_id=inference_id,
             authority=LLMExecutionAuthority(**operation.authority) if operation.authority else None,
         )
+    elif action == "start":
+        if operation.status != "prepared":
+            raise ValueError("Only a prepared inference can start.")
+        operation.status = attempt.status = "queued"
     elif action == "resume":
         if operation.status not in {"paused", "interrupted"}:
             raise ValueError("Only a paused or interrupted inference can resume.")
+        expiry = deadline_at(operation)
+        if expiry is not None and expiry <= await now():
+            raise ValueError("The inference deadline expired; resume cannot renew its budget.")
         operation.generation += 1
         operation.status = "queued"
         db.add(
@@ -286,7 +325,7 @@ async def command(
         if action == "pause" and operation.status == "stopping":
             raise ValueError("A stop already requested cannot become a pause.")
         operation.status = "pausing" if action == "pause" else "stopping"
-    elif attempt.status == "queued":
+    elif attempt.status in {"prepared", "queued"}:
         partial = AIResult(
             prompt=str(operation.request["prompt"]),
             system_prompt=str(operation.request.get("system_prompt", "")),
@@ -298,10 +337,12 @@ async def command(
     if operation.status not in {"pausing", "stopping"} or action == "replay":
         receipt.applied_at = await now()
     db.add(receipt)
+    if action != "replay":
+        operation.revision += 1
     await db.flush()
     notify_after_commit("changes", inference_id)
     notify_after_commit("control", inference_id)
-    if action == "resume":
+    if action in {"start", "resume"}:
         notify_after_commit("work")
     return InferenceCommand.model_validate(receipt, from_attributes=True)
 
@@ -336,6 +377,8 @@ async def read(inference_id: UUID) -> InferenceRead:
             "status": operation.status,
             "request": operation.request,
             "cost": sum(call.cost for call in calls),
+            "revision": operation.revision,
+            "deadline_at": deadline_at(operation),
             "attempts": [
                 InferenceAttempt.model_validate(
                     {

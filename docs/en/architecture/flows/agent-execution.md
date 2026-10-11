@@ -51,6 +51,16 @@ plain journal subscription leaves autonomous inference running. See the
 [inference states](../state-machines.md) and
 [0097](../../../../project/decisions/0097-durable-inference-lifecycle.md).
 
+`prepare_inference` (or `POST /llm/openai/inferences?prepared=true`) stores the frozen request,
+authority and configuration without calling a provider. `start` dispatches that identity;
+changing the request requires a new identity. `expected_revision` is optional for existing
+clients. Stale commands fail, while the same UUID returns its receipt before checking the
+current revision. Reads expose `revision` and `deadline_at`. `deadline_seconds` starts at
+admission and includes preparation, queuing, pauses and resumes; resuming cannot renew it.
+Expiry retains partial output and costs and stops local transport without claiming physical
+provider termination. Explicit replay creates another inference, preserves the original and
+may duplicate billing. See [0170](../../../../project/decisions/0170-execution-scope-and-durable-controls.md).
+
 Each physical Chat/Responses call also has an absolute deadline, fixed at admission by
 `LLM_CALL_TIMEOUT_MINUTES` (30 minutes by default, configurable in Task preferences).
 Partial text, reasoning and tool arguments do not reset this deadline. Without a terminal
@@ -989,3 +999,42 @@ longer been available since ADR 0058, and resumption fails explicitly.
   `realtime_engine.py`, and `session.py`.
 - Text conversation: `back/app/conversation/`, `back/app/harness/conversation.py`, and
   [Messenger flow](messaging.md).
+## Sourced scope and coordinated replacement
+
+Server admission stores `ExecutionScopeV1` (`galaris.execution-scope/v1`) in
+`Task.data["execution_scope"]`. The original demand becomes requirement `demand`; sourced
+amendments and clarification answers add requirements and increment its revision. Grants
+use exact references, never names interpreted from profiles or memory. Children inherit
+the parent scope even when their prose or payload supplies other grants. Historical Tasks
+without a scope preserve their existing execution path.
+
+The planner emits `requirement_ids` and `target_refs`. Deterministic validation rejects
+omitted requirements, unknown keys and unsourced targets. It checks declared coverage,
+without replacing semantic result evaluation. Necessary clarification uses the same Task.
+Runtimes and `AgentRunEnvelopeV1` receive the scope.
+
+The filtered `app.tools` catalog optionally exposes owner-defined `EffectDescriptorV1`:
+capability, kind, targets, visibility, reversibility, idempotence and receipt. Preflight
+persists before the effect and rechecks the revision after native authorization. Reads and
+descriptor-defined ordinary creation remain autonomous. Verified creation in the Working
+Set permits updating that artifact; reading a resource does not. Unknown versions, stale
+scopes, stopped Tasks and divergent targets prevent the effect. Tools without descriptors
+remain usable and record an unknown effect under existing controls. Domains retain their
+ACLs and final validation.
+Process declares autonomous selection from its assigned catalog when the request specifies
+no exact workflow: `allow_and_record` retains this decision under live assignment and native
+authorization. An explicitly requested workflow cannot be replaced with another one.
+Goal cycles source their scope from the description; tracking never creates grants.
+
+Bounded decisions live in the active attempt, or the Task projection when no attempt exists,
+without changing the Task's business revision. `TaskActivitySnapshot` exposes a scope summary
+(version, revision, source, owner and requirement/grant counts) and preflights through existing
+activity, with no second timeline. The complete scope remains in `Task.data` and the runtime
+envelope; each activity refresh does not repeat it. Produced-resource checks batch provenance
+without reloading each producer's objectives, messages and execution history.
+
+Explicit replacement freezes the descendant tree and calls external owners outside Task
+locks. The successor remains suspended until each run has stop evidence, leases are released
+and the Process owner confirms termination. Tree expansion, a new run, deletion or an unknown
+owner produces a conflict. Human holds and independent work remain preserved. Goals and
+unknown waits are explicitly refused. See [0170](../../../../project/decisions/0170-execution-scope-and-durable-controls.md).

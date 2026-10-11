@@ -1,6 +1,7 @@
 """Self-service and restricted administrative business-process MCP tools."""
 
 from __future__ import annotations
+from app.agent import EffectDescriptorV1
 
 from typing import Any, Optional
 from uuid import UUID
@@ -76,6 +77,7 @@ async def process_get(ctx: McpToolContext, workflow_id: str) -> dict[str, Any]:
 @mcp_tool("galaris", approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval",
 
     name="process_start",
+    effect_descriptor=EffectDescriptorV1(capability="process.start", kind="process", target_arguments=("workflow_id",), target_prefix="galaris://process/", visibility="external", receipt="process", domain_assigned_selection=True),
     conversation_policy="forbidden",
     description=(
         "Start a business process assigned to the current agent and return its tracking ID. "

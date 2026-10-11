@@ -24,7 +24,7 @@ from .resource_facade import list_process_resources, read_process_resource
 from .process_service import has_process_definitions, list_run_summaries_page_for_scope
 from . import process_service, registry
 from .retention import register_retention_guard
-from .replacement import replacement_blocked_task_ids
+from .replacement import replacement_blocked_task_ids, coordinate_replacement
 
 registry.register(FakeProcessEngine())
 
@@ -102,6 +102,7 @@ __all__ = [
     "register_scheduler_jobs",
     "register_retention_guard",
     "replacement_blocked_task_ids",
+    "coordinate_replacement",
     "sanitize_process_payload",
 ]
 

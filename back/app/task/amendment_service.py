@@ -186,6 +186,11 @@ async def amend_task(
     task.feedback = None
     task.last_error = None
     data: dict[str, Any] = task.data.copy() if task.data is not None else {}
+    from app.agent import SCOPE_KEY, amend_scope, parse_scope
+    scope = parse_scope(data)
+    if scope is not None:
+        data[SCOPE_KEY] = amend_scope(scope, clean_instruction,
+            f"galaris://task/{task.id}/amendment/{idempotency_key}").model_dump(mode="json")
     data["amendment_count"] = int(data.get("amendment_count", 0) or 0) + 1
     data["last_amended_at"] = datetime.now(timezone.utc).isoformat()
     task.data = data

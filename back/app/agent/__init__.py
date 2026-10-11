@@ -4,6 +4,8 @@ Concrete runtimes are loaded lazily by the registry. Keeping this package import
 without Pydantic AI or Hermes prevents cycles with task contracts.
 """
 
+from .scope_contracts import ExecutionScopeV1, EffectDescriptorV1, ScopePreflightV1
+from .execution_scope import SCOPE_KEY, PREFLIGHT_KEY, admitted_scope, amend_scope, parse_scope, preflight
 from .active_run import get_current_task
 from .planner_inventory_port import register_plan_inventory_reader as register_plan_inventory_reader
 from .defaults import register_default_agent
@@ -228,6 +230,8 @@ async def terminate_paused_agent_tasks(agent_id: int) -> AgentTaskBlockers:
 
 
 __all__ = [
+    "ExecutionScopeV1", "EffectDescriptorV1", "ScopePreflightV1", "SCOPE_KEY", "PREFLIGHT_KEY",
+    "admitted_scope", "amend_scope", "parse_scope", "preflight",
     "register_plan_inventory_reader",
     "register_default_agent",
     "HarnessExecutionError", "HarnessCheckpointError", "HarnessProtocolError", "classify_execution_error",
@@ -373,3 +377,4 @@ __all__ = [
 from .resource_facade import read_agent_resource, list_agent_resources, require_delegated_resource_access
 
 from .models import AgentTeam as AgentTeamModel
+from .facade import record_scope_preflight as record_scope_preflight

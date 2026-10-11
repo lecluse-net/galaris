@@ -109,6 +109,15 @@ class PlanCollection(BaseModel):
 class PlanStep(BaseModel):
     """One recursive plan step, represented as either a leaf or a group."""
 
+    requirement_ids: list[str] = Field(
+        default_factory=list,
+        description="Exact admitted execution scope requirement keys served by this step.",
+    )
+    target_refs: list[str] = Field(
+        default_factory=list,
+        description="Exact granted target references, or empty for ordinary discovery/production.",
+    )
+
     objective: str = Field(
         description="Semantic HTML fragment (paragraphs, lists, links; no images) with precise step instructions describing what must be done or produced."
     )

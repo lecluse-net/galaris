@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from typing import Any, Mapping, Protocol
 from uuid import UUID
+from .scope_contracts import EffectDescriptorV1, ScopePreflightV1
 
 from .contracts import (
     AgentRunEventV1,
@@ -33,6 +34,10 @@ class TaskAmendmentRevisionConflict(TaskAmendmentUnavailableError):
 
 
 class AgentTaskPort(Protocol):
+    async def record_scope_preflight(self, task_id: UUID, *, agent_id: int,
+        descriptor: EffectDescriptorV1 | None, tool_name: str,
+        arguments: Mapping[str, object], operation_id: UUID | None = None,
+        expected_scope_revision: int | None = None) -> ScopePreflightV1: ...
     async def save(self, task: AgentTask) -> AgentTask: ...
     async def refresh(self, task: AgentTask) -> AgentTask: ...
     async def create(self, draft: AgentTaskDraft) -> AgentTask: ...
@@ -194,6 +199,14 @@ class _TaskPortProxy:
 
     async def get_working_set(self, task_id: UUID) -> WorkingSet:
         return await self._require().get_working_set(task_id)
+
+    async def record_scope_preflight(self, task_id: UUID, *, agent_id: int,
+        descriptor: EffectDescriptorV1 | None, tool_name: str,
+        arguments: Mapping[str, object], operation_id: UUID | None = None,
+        expected_scope_revision: int | None = None) -> ScopePreflightV1:
+        return await self._require().record_scope_preflight(task_id, agent_id=agent_id,
+            descriptor=descriptor, tool_name=tool_name, arguments=arguments,
+            operation_id=operation_id, expected_scope_revision=expected_scope_revision)
 
     async def get_context_capsule(
         self, task: AgentTask

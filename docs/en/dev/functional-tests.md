@@ -16,6 +16,20 @@ Document analysis belongs to `app.llm` and creates no business-process definitio
 `back/tests/test_document_analysis.py` protects this separation, recovery of 500-page
 batches without duplicate billing, cancellation, access control, scheduler progression,
 and idempotent transfer of legacy technical runs.
+The same scenario connects acquired passages to a round without preparing bytes or starting
+new inference, and checks agent/Task/URI isolation, obsolete versions and late receipts.
+`back/app/dream/tests/test_conversation_memory.py` protects audio-only capture, attribution
+and language, retries, revalidation before application and after capture (reads, recall and
+graph visibility), and preservation of an independent source.
+`test_acquisition_automation.py` blocks reacquisition of a forgotten fact from a late revision
+of the same round while allowing corrected content.
+`test_search_performance.py` also checks the per-page query budget for new conversation
+provenance on 6,000 synthetic memories, without persistently caching authorization or
+expanding the agent's private scope.
+Queries with CTEs are included. The planner policy preserves connection defaults for
+subsequent transactions after both commit and rollback. `test_memory_extraction.py`
+checks that provenance added by LINK does not make a manual memory or an existing
+document depend on that conversation evidence.
 
 AgentAdmin is documented in [agent-admin.md](agent-admin.md).
 `back/app/agent/tests/test_avatars.py` checks JPEG storage within 500 × 500 pixels,
@@ -743,3 +757,22 @@ for 300 and 3,000 files, including individual fallback and fresh checks after re
 The provider scenario also verifies grouped file resolution for a Tool combining File Share
 and Messenger.
 `e2e/specs/file-indexing.spec.mjs` exercises the assembled application and its real API.
+### Scope and durable controls (0170)
+
+`app/agent/tests/test_execution_scope.py` and `app/task/tests/test_execution_scope.py`
+check inheritance without widening, amendments through the port, unknown versions,
+plan coverage and target provenance. The real wrapper persists refusal before effects,
+including an amendment during authorization. Decisions survive tool rollback, preserve
+checkpoint validity and appear in activity after rereading. `tests/test_inference_lifecycle.py`
+covers preparation without calls, concurrent start, idempotent receipts, stale revisions,
+global deadlines during preparation/execution/pause and partial output.
+`app/task/tests/test_replacement.py` freezes descendants and preserves independent work;
+`app/process/tests/test_lifecycle_workflows.py` covers requested stop, late confirmation and
+uncertain terminals without rewriting or replay. PostgreSQL and facades are real;
+providers and remote engines are synthetic.
+
+The same scope tests measure both preflights of a mutation call with 1 and 30 producer
+Tasks: read queries must remain bounded without one query per resource.
+`app/task/tests/test_activity_snapshot.py` checks that a long demand does not inflate the
+scope summary returned on every refresh; the durable contract stays complete. Local
+measurements under `artifacts/` are distinct from real load qualification or provider latency.

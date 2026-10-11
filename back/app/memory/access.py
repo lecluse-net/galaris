@@ -163,12 +163,14 @@ async def managed_item_agent_ids(
     return tuple(readable), tuple(writable)
 
 
-async def effective_access(item: MemoryItem, agent_id: int | HumanActor) -> MemoryAccess:
+async def effective_access(item: MemoryItem, agent_id: int | HumanActor, *, evidence_ids: set[UUID] | None = None) -> MemoryAccess:
     """Resolve item and space permissions without relying on lazy loading."""
 
     if isinstance(agent_id, HumanActor):
         return await human_item_access(item, agent_id.user_id)
-    if not await source_is_readable(item.id, item.managed_source_kind, agent_id):
+    if (evidence_ids is not None and item.id not in evidence_ids) or not await source_is_readable(
+        item.id, item.managed_source_kind, agent_id, check_evidence=evidence_ids is None,
+    ):
         return MemoryAccess(can_read=False, can_write=False)
     if item.node_kind in {"attachment", "folder"}:
         readable = await get_db().scalar(select(MemoryItem.id).where(

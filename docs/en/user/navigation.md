@@ -347,8 +347,14 @@ Item details separate **Memory**, **Links and relations** and **History**.
 In **Memory**, previews of associated content appear before keywords and content, followed
 by compact calendar fields. The title displays the memory kind, last activity, access count
 and revision. Protected deletion appears as a warning badge with an explanatory tooltip.
-Standalone memories are private to their agent, with no
-title input or sharing control. For a document, this content is an optional synthesis:
+Standalone memories are private to their agent, with no title input or sharing control.
+Dream can also retain a durable fact from a transcribed audio message or an attachment already
+analysed in a Task linked to the conversation. It preserves evidence and coverage limits;
+an unanalysed attachment cannot establish a fact. Late evidence can add memories.
+For new memories produced by this treatment, removing the source, correcting the transcript
+or revoking the connection removes the fact from recall unless another independent valid
+source supports it.
+For a document, this content is an optional synthesis:
 **Open document** opens a second modal to edit its title, full content and sharing while
 preserving the memory details and draft. This memory cannot be forgotten separately:
 deleting the document from its editor also deletes its synthesis and history. Revoking
@@ -464,3 +470,8 @@ your language and explaining relevant prerequisites. If it does not know your ro
 configuration, it should ask for the displayed label or message instead of concluding a
 feature does not exist. Documentation describes the software's possibilities; it is not
 an observation of your session.
+When conversation replaces durable work, its successor waits for confirmed termination
+of associated tasks and processes. Uncertain remote stop remains pending and never
+starts a duplicate. An active Goal requires its own coordination. Independent work and
+your manual holds remain preserved. If a destination differs from the request, the agent
+may ask for clarification on the same work before sending or changing a resource.

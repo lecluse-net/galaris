@@ -6,6 +6,7 @@ voice calls.
 """
 
 from __future__ import annotations
+from app.agent import EffectDescriptorV1
 
 import contextvars
 import difflib
@@ -260,6 +261,7 @@ async def _deliver_agent_file_with_status(
 @mcp_tool("messenger", approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval",
 
     name="messenger_room_send_message",
+    effect_descriptor=EffectDescriptorV1(capability="messenger.send", kind="transport", target_arguments=("room_id",), target_prefix="messenger://room/", visibility="external", receipt="message"),
     description="Send a Markdown message to a room or conversation.",
 )
 async def mcp_room_send_message(ctx: McpToolContext, room_id: str, message: str) -> str:
@@ -881,6 +883,7 @@ async def mcp_send_file_to_user(
 @mcp_tool("messenger", approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval",
 
     name="messenger_room_send_file",
+    effect_descriptor=EffectDescriptorV1(capability="messenger.send", kind="transport", target_arguments=("room_id",), target_prefix="messenger://room/", visibility="external", receipt="message"),
     description=(
         "Attach a file from any canonical resource URI to a messaging room. Galaris resolves "
         "and transfers the source transparently through file_share."

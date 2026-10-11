@@ -23,7 +23,8 @@ from app.agent.contracts import (
     WorkingSet,
 )
 from app.agent.task_port import TaskAmendmentUnavailableError, register_task_port
-from sqlalchemy import select
+from app.agent import EffectDescriptorV1, ScopePreflightV1
+from sqlalchemy import select, update as sql_update
 
 from . import collab, task_service
 from .models import Task, TaskAttempt, TaskStatus
@@ -77,6 +78,92 @@ def _bounded_agent_event(event: AgentRunEventV1) -> dict[str, object]:
 
 
 class SqlAlchemyAgentTaskAdapter:
+    async def record_scope_preflight(self, task_id: UUID, *, agent_id: int,
+        descriptor: EffectDescriptorV1 | None, tool_name: str, arguments: Mapping[str, object],
+        operation_id: UUID | None = None, expected_scope_revision: int | None = None) -> ScopePreflightV1:
+        from app.agent import PREFLIGHT_KEY, SCOPE_KEY, ScopePreflightV1, parse_scope, preflight
+        from core.database import get_db_session
+        from .working_set import get_working_set
+        from pydantic import ValidationError
+
+        # An independent transaction makes the decision durable before any effect;
+        # rollback of the tool transaction cannot erase its admission evidence.
+        async with get_db_session() as db:
+            task = await db.scalar(select(Task).where(Task.id == task_id)
+                .execution_options(populate_existing=True))
+            if task is None or task.agent_id != agent_id:
+                raise ValueError("Task is unavailable for scope preflight.")
+            data = dict(task.data or {})
+            try:
+                scope = parse_scope(data)
+                root = await db.scalar(select(Task).where(Task.id == scope.source_task_id)
+                    .with_for_update(key_share=True).execution_options(populate_existing=True)) if scope else None
+                refreshed = await db.scalar(select(Task).where(Task.id == task_id)
+                    .with_for_update(key_share=True).execution_options(populate_existing=True))
+                if refreshed is None or refreshed.agent_id != agent_id:
+                    raise ValueError("Task is unavailable for scope preflight.")
+                task = refreshed
+                data = dict(task.data or {})
+                scope = parse_scope(data)
+                current_scope = parse_scope(root.data or {}) if root is not None else scope
+                if expected_scope_revision is not None and (scope is None or scope.revision != expected_scope_revision):
+                    decision = ScopePreflightV1(tool_name=tool_name, scope_revision=scope.revision if scope else None,
+                        decision="deny", reason="Scope changed after admission; no effect was dispatched.")
+                elif scope and (root is None or current_scope is None or current_scope.source_task_id != scope.source_task_id or current_scope.revision != scope.revision):
+                    decision = ScopePreflightV1(tool_name=tool_name, scope_revision=scope.revision,
+                        decision="deny", reason="Inherited scope is stale; replan against the amended demand.")
+                elif task.cancel_requested or task.paused or task.status in {TaskStatus.SUCCESS, TaskStatus.ERROR} or (
+                    task.lease_expires_at is not None and task.lease_expires_at <= datetime.now(timezone.utc)):
+                    decision = ScopePreflightV1(tool_name=tool_name, scope_revision=scope.revision if scope else None,
+                        decision="deny", reason="Task no longer admits effects.")
+                else:
+                    produced: frozenset[str] = frozenset()
+                    if descriptor is not None and descriptor.kind == "mutate":
+                        working_set = await get_working_set(task_id)
+                        resources = [resource for resource in working_set.active()
+                            if resource.metadata.get("produced") is True and resource.producer_task_id is not None]
+                        producer_ids = {resource.producer_task_id for resource in resources if resource.producer_task_id is not None}
+                        # Only scope provenance is needed. Do not fetch every
+                        # producer's objectives, messages and execution history.
+                        producer_scopes = {
+                            producer_id: parse_scope({SCOPE_KEY: raw_scope})
+                            for producer_id, raw_scope in (await db.execute(
+                                select(Task.id, Task.data[SCOPE_KEY]).where(Task.id.in_(producer_ids))
+                            )).all()
+                        } if producer_ids else {}
+                        permitted_resources: set[str] = set()
+                        for resource in resources:
+                            if resource.producer_task_id is None:
+                                continue
+                            producer_scope = producer_scopes.get(resource.producer_task_id)
+                            if scope and producer_scope and producer_scope.source_task_id == scope.source_task_id and producer_scope.revision == scope.revision:
+                                permitted_resources.add(resource.reference)
+                        produced = frozenset(permitted_resources)
+                    decision = preflight(scope, descriptor, tool_name, arguments, produced_targets=produced)
+            except ValidationError:
+                decision = ScopePreflightV1(tool_name=tool_name, decision="deny", reason="Execution scope is invalid or its version is unsupported.")
+            if operation_id is not None:
+                decision = decision.model_copy(update={"operation_id": operation_id})
+            attempt = await db.scalar(select(TaskAttempt).where(TaskAttempt.task_id == task_id,
+                TaskAttempt.lease_token == task.lease_token).with_for_update(key_share=True)) if task.lease_token else None
+            journal = dict(attempt.data or {}) if attempt is not None else data
+            history = journal.get(PREFLIGHT_KEY)
+            entries: list[object] = list(cast(list[object], history)) if isinstance(history, list) else []
+            journal[PREFLIGHT_KEY] = [*entries, decision.model_dump(mode="json")][-100:]
+            if attempt is not None:
+                attempt.data = journal
+            else:
+                # A diagnostic projection is execution-orthogonal, like topic
+                # classification. It must not invalidate a worker's Task revision.
+                from sqlalchemy import func, cast as sql_cast
+                from sqlalchemy.dialects.postgresql import JSONB, ARRAY
+                from sqlalchemy import Text, literal
+                await db.execute(sql_update(Task).where(Task.id == task_id).values(
+                    data=func.jsonb_set(func.coalesce(Task.data, literal({}, type_=JSONB)),
+                        sql_cast([PREFLIGHT_KEY], ARRAY(Text)), sql_cast(journal[PREFLIGHT_KEY], JSONB))
+                ).execution_options(synchronize_session=False))
+        return decision
+
     def has_terminal_outcome(self, task: Any) -> bool:
         return task_service.has_terminal_outcome(task)
 
@@ -136,9 +223,11 @@ class SqlAlchemyAgentTaskAdapter:
             data=dict(draft.data) if draft.data else None,
         ))
         await task_service.apply_requester_lineage(candidate)
+        from .execution_scope import initialize_scope
+        await initialize_scope(candidate)
         try:
             task = await prepare_replacement(candidate, predecessor_id=target_task_id,
-                expected_revision=expected_revision, action_key=action_key)
+                expected_revision=expected_revision, action_key=action_key, coordinate_descendants=True)
         except task_service.TaskConflictError as exc:
             await get_db().rollback()
             raise TaskAmendmentUnavailableError(str(exc)) from exc

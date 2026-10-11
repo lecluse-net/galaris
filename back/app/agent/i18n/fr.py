@@ -33,6 +33,7 @@ default = {
         "step_result_truncated": "[compte-rendu d'étape tronqué : {kept} premiers caractères sur {total}]",
         "planning_error": "Erreur de planification : {error}",
         "decomposition_error": "Échec de la décomposition de l’objectif : {error}",
+        "scope_target_question": "Quelle destination cette tâche doit-elle utiliser ? Merci de fournir sa référence exacte.",
     },
     "agent_runtime": {
         "not_initialized": "L’agent n’est pas initialisé. Appelez init() avant run().",

@@ -52,6 +52,49 @@ async def test_queued_replacement_is_durable_idempotent_and_preserves_other_hold
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("change", ["none", "late_child", "new_run", "deleted"])
+async def test_coordinated_replacement_waits_for_every_descendant_and_freezes_tree(db, monkeypatch, change):
+    monkeypatch.setattr(scheduler, "wake", lambda *_: None)
+    run_id, lease = uuid4(), uuid4()
+    root = task(status=TaskStatus.PLAN)
+    unrelated = task()
+    db.add_all([root, unrelated])
+    await db.flush()
+    child = task(parent_id=root.id, status=TaskStatus.EXEC, lease_token=lease,
+        lease_expires_at=datetime.now(timezone.utc) + timedelta(minutes=1),
+        data={"_agent_run_identity": {"driver_code": "synthetic-remote", "request_run_id": str(run_id)}})
+    db.add(child)
+    await db.commit()
+    successor = await replacement.prepare_replacement(task(), predecessor_id=root.id,
+        expected_revision=root.revision, action_key="tree-once", coordinate_descendants=True)
+    await db.commit()
+    assert child.status == TaskStatus.ERROR and unrelated.status == TaskStatus.CREATE
+    remote = AsyncMock(return_value=HarnessCancellationReceipt(run_id=run_id, scope="remote", state="requested"))
+    monkeypatch.setattr(replacement, "cancel_agent_run", remote)
+    await replacement.reconcile_replacements()
+    assert successor.paused
+    child.lease_token = child.lease_expires_at = None
+    await db.commit()
+    await replacement.reconcile_replacements()
+    assert successor.paused  # Slot release is insufficient without the remote receipt.
+    remote.return_value = HarnessCancellationReceipt(run_id=run_id, scope="remote", state="confirmed")
+    if change == "late_child":
+        db.add(task(parent_id=root.id))
+    elif change == "new_run":
+        child.data = {"_agent_run_identity": {"driver_code": "synthetic-remote", "request_run_id": str(uuid4())}}
+    elif change == "deleted":
+        child.soft_delete()
+    await db.commit()
+    calls = remote.await_count
+    await replacement.reconcile_replacements()
+    await db.refresh(successor)
+    assert replacement.replacement_state(successor)["state"] == ("confirmed" if change == "none" else "conflict")
+    if change != "none":
+        assert successor.paused and remote.await_count == calls
+    assert unrelated.status == TaskStatus.CREATE
+
+
+@pytest.mark.asyncio
 @pytest.mark.parametrize("state", ["requested", "unknown", "confirmed"])
 async def test_remote_replacement_requires_confirmed_stop_and_released_lease(db, monkeypatch, state):
     run_id, token = uuid4(), uuid4()

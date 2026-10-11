@@ -19,6 +19,7 @@ from app.llm import LLMCallPurpose, model_usages
 from app.llm.facade import ChoiceQuestion, run_profile_decision
 
 from .deduplication import find_similar_memory_candidates
+from .provenance import source_targets
 from .models import (
     MemoryAcquisition,
     MemoryContactItem,
@@ -89,13 +90,19 @@ async def _create_acquisition_record(
     forgotten_content_hash = hashlib.sha256(
         data.content.strip().encode("utf-8")
     ).hexdigest()
+    source_match = MemoryAcquisition.source_ref == data.source_ref.strip()
+    conversation_round_id = source_targets(data.source_kind, data.source_ref).conversation_round_id
+    if conversation_round_id is not None:
+        base_ref = f"conversation_round:{conversation_round_id}"
+        source_match = or_(MemoryAcquisition.source_ref == base_ref,
+            MemoryAcquisition.source_ref.startswith(base_ref + ":", autoescape=True))
     rejected_candidates = list(
         (
             await db.scalars(
                 select(MemoryAcquisition).where(
                     MemoryAcquisition.agent_id == data.agent_id,
                     MemoryAcquisition.source_kind == data.source_kind.strip(),
-                    MemoryAcquisition.source_ref == data.source_ref.strip(),
+                    source_match,
                     MemoryAcquisition.status == "rejected",
                 )
             )
@@ -181,6 +188,10 @@ def _item_create_data(record: MemoryAcquisition) -> MemoryItemCreate:
     language = str(record.metadata_.get("language") or "").strip().lower()
     if language in {"en", "fr"}:
         item_metadata["language"] = language
+    if record.metadata_.get("evidence_validator") is not None:
+        # Only a newly acquired fact depends on this provenance. Linking evidence
+        # to an existing manual or canonical resource does not change its origin.
+        item_metadata["evidence_validator"] = record.metadata_["evidence_validator"]
     if record.metadata_.get("memory_role") == "experience":
         item_metadata.update(record.metadata_)
     return MemoryItemCreate.model_validate(
