@@ -10,6 +10,8 @@ export default {
     tools: {
       title: 'Outils MCP',
       tabTools: 'Outils',
+      searchTools: 'Rechercher un outil',
+      noSearchResults: 'Aucun outil ne correspond à votre recherche.',
       tabConnections: 'Connexions',
       tabAuthorizations: 'Autorisations',
       import: 'Importer',
@@ -401,6 +403,8 @@ export default {
     tools: {
       title: 'MCP Tools',
       tabTools: 'Tools',
+      searchTools: 'Search tools',
+      noSearchResults: 'No tools match your search.',
       tabConnections: 'Connections',
       tabAuthorizations: 'Authorizations',
       import: 'Import',
@@ -788,6 +792,8 @@ export default {
     nav: { tools: '工具与连接', tools_desc: '工具管理' },
     tools: {
       title: 'MCP 工具', tabTools: '工具', tabConnections: '连接', tabAuthorizations: '授权', import: '导入', newTool: '新建工具', exportYaml: '导出为 YAML',
+      searchTools: '搜索工具',
+      noSearchResults: '没有符合搜索条件的工具。',
       importTool: '导入工具', dropYaml: '点击或拖放 .yaml 文件', changeFile: '点击更换文件', overwriteTitle: '名为“{name}”的工具已存在。是否替换？',
       overwriteText: '现有配置（MCP、参数等）将被覆盖，智能体连接不受影响。', replace: '替换', editTool: '编辑工具', mainFields: '主要字段',
       technicalName: '技术名称 *', technicalNameHint: '唯一标识符，使用 snake_case', label: '名称 *', labelColumn: '名称', type: '类型', listener: '监听器',

@@ -335,6 +335,47 @@ async function routes(page) {
 }
 
 for (const mobile of [false, true]) {
+  test(`Tool search filters localized content across pages and can be cleared (${mobile ? 'mobile' : 'desktop'})`, async ({ page }, testInfo) => {
+    await page.setViewportSize({ width: mobile ? 390 : 1400, height: 1000 })
+    await routes(page)
+    const catalogue = [
+      ...tools,
+      ...Array.from({ length: 50 }, (_, index) => ({
+        ...tools[5], id: 100 + index, code: `synthetic_${index}`, label: `Synthetic tool ${index}`,
+      })),
+      { ...tools[5], id: 200, code: 'remote_archive', label: 'Équipe distante', description: 'Synthetic archive connector.' },
+    ]
+    await jsonRoute(page, '**/api/tools', catalogue)
+    const locale = mobile ? 'fr' : 'en'
+    await mount(page, 'app/tools/components/ToolsList.vue', { locale, privileges: ['TOOL_ACCESS'] })
+    const rows = page.locator(mobile ? '.tool-mobile-card' : 'tbody tr')
+    const search = page.getByRole('textbox', { name: mobile ? 'Rechercher un outil' : 'Search tools', exact: true })
+    await expect(rows).toHaveCount(50)
+    await expect(rows.filter({ hasText: 'Équipe distante' })).toHaveCount(0)
+    for (const query of [' REMOTE_ARCHIVE ', 'EQUIPE DISTANTE', 'archive connector']) {
+      await search.fill(query)
+      await expect(rows).toHaveCount(1)
+      await expect(rows).toContainText('Équipe distante')
+    }
+    await page.screenshot({ path: testInfo.outputPath('tool-search.png'), animations: 'disabled' })
+    await search.fill(mobile ? 'mémoire' : 'memory')
+    await expect(rows.filter({ hasText: mobile ? 'Mémoire' : 'Memory' })).toBeVisible()
+    await expect(rows.filter({ hasText: 'Équipe distante' })).toHaveCount(0)
+    await search.fill('TEAM HANDBOOK')
+    await expect(rows).toHaveCount(1)
+    await expect(rows).toContainText('Optional Tool')
+    await search.fill('no-such-synthetic-tool')
+    await expect(rows).toHaveCount(0)
+    await expect(page.locator('.q-table__bottom--nodata')).toContainText(mobile ? 'Aucun outil ne correspond à votre recherche.' : 'No tools match your search.')
+    await search.fill('   ')
+    await expect(rows).toHaveCount(50)
+    await search.fill('remote_archive')
+    await expect(rows).toHaveCount(1)
+    await page.locator('.tools-search').getByRole('button').press('Enter')
+    await expect(search).toHaveValue('')
+    await expect(rows).toHaveCount(50)
+  })
+
   test(`Tool descriptions reopen and system switches remain read-only (${mobile ? 'mobile' : 'desktop'})`, async ({ page }, testInfo) => {
     await page.setViewportSize({ width: mobile ? 390 : 1400, height: 1000 })
     await routes(page)

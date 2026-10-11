@@ -1,12 +1,23 @@
 <template>
   <div>
-    <div class="row justify-end q-gutter-sm q-mb-md tools-actions">
+    <div class="row items-center q-gutter-sm q-mb-md tools-actions">
+      <q-input
+        v-model="search"
+        :label="$t('tools.searchTools')"
+        outlined dense clearable
+        class="col tools-search"
+      >
+        <template #prepend><q-icon name="search" /></template>
+      </q-input>
       <q-btn v-if="canEdit" outline color="secondary" icon="upload" :label="$t('tools.import')" @click="openImport" />
       <q-btn v-if="canEdit" color="primary" icon="add" :label="$t('tools.newTool')" @click="openCreate" />
     </div>
 
     <q-table
       :rows="toolStore.tools"
+      :filter="search"
+      :filter-method="filterTools"
+      :no-results-label="$t('tools.noSearchResults')"
       :columns="columns"
       :grid="$q.screen.lt.md"
       row-key="id"
@@ -768,6 +779,7 @@ const { t, te } = useI18n()
 const toolStore = useToolStore()
 const privilegeStore = usePrivilegeStore()
 const canEdit = computed(() => privilegeStore.hasPrivilege(privileges.TOOL_EDIT))
+const search = ref<string | null>('')
 const conversationAccessLoading = ref<Set<number>>(new Set())
 const candidateAgentId = ref<number | null>(null)
 const candidateReference = ref('')
@@ -949,6 +961,13 @@ function localizedToolLabel(tool: Tool): string {
 // =============================================================================
 // Table
 // =============================================================================
+
+function filterTools(rows: readonly Tool[], terms: string): Tool[] {
+  const normalize = (text: string) => text.normalize('NFD').replace(/\p{M}/gu, '').toLowerCase().trim()
+  const query = normalize(terms)
+  return rows.filter(tool => [tool.code, localizedToolLabel(tool), toolDescription(tool)]
+    .some(text => normalize(text).includes(query)))
+}
 
 const columns = computed(() => [
   { name: 'code',        label: t('agent.colName'),     field: 'code',     align: 'left'   as const, sortable: true },
@@ -1704,6 +1723,10 @@ body.body--dark .import-dropzone--active {
 }
 
 @media (max-width: 1023px) {
+  .tools-search {
+    flex: 1 1 100%;
+  }
+
   .tools-actions > .q-btn {
     flex: 1 1 0;
     min-width: 0;
