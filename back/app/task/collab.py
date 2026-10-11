@@ -438,6 +438,8 @@ async def relay_late_answer(s: Task, answer_text: str, peer_display: str) -> Non
 
 async def resolve_from_peer_task(peer_task: Task) -> None:
     """Resolve an await from peer task completion and attempt parent fan-in."""
+    if not task_service.has_terminal_outcome(peer_task):
+        return
     await_id = resolves_await_id(peer_task)
     if await_id is None:
         return
@@ -552,7 +554,7 @@ async def maybe_fan_in(parent_id: Optional[UUID]) -> None:
         return
     children = await task_service.get_children(parent_id, refresh=True)
     coord = [c for c in children if is_coordination_child(c)]
-    if not coord or any(c.status not in _TERMINAL for c in coord):
+    if not coord or any(not task_service.has_terminal_outcome(c) for c in coord):
         return  # At least one coordination child is still open.
     fresh = [c for c in coord if not _is_fanned_in(c)]
     if not fresh:

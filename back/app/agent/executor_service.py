@@ -687,7 +687,7 @@ async def _update_task_after_execution(
     logger.info("Task {} updated after execution", task.id)
 
     # Only terminal tasks resolve peer waits and resume plan parents.
-    if updated_task.status in (TaskPhase.SUCCESS, TaskPhase.ERROR):
+    if task_port.has_terminal_outcome(updated_task):
         from app.agent import planner_service
 
         await task_port.resolve_from_peer_task(updated_task)

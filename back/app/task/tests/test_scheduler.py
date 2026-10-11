@@ -1,5 +1,5 @@
 import asyncio
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from contextlib import asynccontextmanager
 from types import SimpleNamespace
 from typing import Any
@@ -7,12 +7,149 @@ from unittest.mock import AsyncMock
 from uuid import UUID, uuid4
 
 import pytest
-from sqlalchemy import delete, select
+from sqlalchemy import delete, select, text
 
 from app.agent.contracts import ReasoningDegenerationError, StaleAgentRunError
 from app.agent.models import Agent, Title
 from app.task import scheduler
 from app.task.models import Task, TaskAttempt, TaskAttemptStatus, TaskStatus
+
+
+@pytest.mark.asyncio
+async def test_planner_synthesis_does_not_block_lease_renewal(
+    committed_database, monkeypatch,
+) -> None:
+    from app.agent import planner_service
+    from app.task.agent_adapter import as_agent_task
+    from app.llm.profile_models import LlmProfile
+    from app.llm.provider_models import LLM, LLMProvider
+    from core.database import get_db_session
+    from core.user.models import User
+
+    token = uuid4()
+    async with get_db_session() as db:
+        user = User(email="planner@example.test", hashed_password="synthetic",
+                    display_name="Alice Planner")
+        db.add(user)
+        await db.flush()
+        provider = LLMProvider(name="Synthetic planner", base_url="https://example.test")
+        title = Title(label="Synthetic planner", gender="X")
+        db.add_all([provider, title])
+        await db.flush()
+        llm = LLM(llm_provider_id=provider.id, code="synthetic-synthesis",
+                  llm_name="synthetic", label="Synthetic synthesis")
+        db.add(llm)
+        await db.flush()
+        profile = LlmProfile(code="synthetic-synthesis", label="Synthetic synthesis",
+                             text_high_llm_id=llm.id)
+        db.add(profile)
+        await db.flush()
+        agent = Agent(title_id=title.id, user_id=user.id, first_name="Alice",
+                      last_name="Planner", code="synthetic-planner", profile_id=profile.id)
+        db.add(agent)
+        await db.flush()
+        task = Task(label="Synthesize completed work", agent=agent, status=TaskStatus.PLAN,
+                    plan={"steps": [], "cursor": 0}, lease_token=token,
+                    lease_expires_at=datetime.now(timezone.utc) + timedelta(minutes=2))
+        db.add(task)
+        await db.commit()
+
+        async def provider_response(**kwargs):
+            # The provider boundary waits while the real scheduler uses another connection.
+            # Real profile resolution has already autoflushed the dirty plan cursor.
+            async with get_db_session() as heartbeat_db:
+                await heartbeat_db.execute(text("SET LOCAL lock_timeout = '300ms'"))
+                assert await scheduler._renew_lease(task.id, token)
+                stored = await heartbeat_db.get(Task, task.id)
+                assert stored is not None and stored.plan["cursor"] == 1
+            return SimpleNamespace(output="Verified synthesis", cost=0.02)
+
+        monkeypatch.setattr(planner_service, "run_structured", provider_response)
+        task.plan = {"steps": [], "cursor": 1}
+        result, cost = await planner_service._synthesize(as_agent_task(task), "Verified work")
+        assert result == "Verified synthesis" and cost == pytest.approx(0.02)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("final_outcome", ["success", "exhausted", "unsafe"])
+async def test_plan_waits_for_scheduler_retry_decision(
+    committed_database, monkeypatch, final_outcome,
+) -> None:
+    from app.agent import executor_service, planner_service, reconcile_plan_parent
+    from app.agent.contracts import ExecutionResult
+    from app.task import task_service
+    from app.task.agent_adapter import as_agent_task, as_agent_tasks
+    from app.task.workflow import TaskEvent, transition
+    from core.database import get_db_session
+
+    monkeypatch.setattr(task_service.websocket, "emit", AsyncMock())
+    monkeypatch.setattr(scheduler.runtime_settings, "TASK_ACTION_MAX_ATTEMPTS", 2)
+    final_success = final_outcome == "success"
+    async with get_db_session() as db:
+        parent = Task(label="Retryable plan", status=TaskStatus.PLAN, paused=True,
+                      plan={"steps": [{"label": "First", "objective": "First"},
+                                      {"label": "Next", "objective": "Next"}], "cursor": 0},
+                      data={"pause_reasons": ["plan"]})
+        db.add(parent)
+        await db.flush()
+        token = uuid4()
+        child = Task(label="First", status=TaskStatus.EXEC, parent_id=parent.id,
+                     data={"plan_step": 0}, lease_token=token,
+                     lease_expires_at=datetime.now(timezone.utc) + timedelta(minutes=2))
+        pending = Task(label="Next", status=TaskStatus.DISPATCH, parent_id=parent.id,
+                       paused=True, data={"plan_step": 1, "pause_reasons": ["plan"]})
+        db.add_all([child, pending])
+        await db.flush()
+        attempt = TaskAttempt(task_id=child.id, attempt_number=1, phase="DISPATCH",
+                              status="CLAIMED", worker_id="synthetic", lease_token=token)
+        db.add(attempt)
+        await db.commit()
+
+        failure = ExecutionResult(prompt="", result="Temporary provider failure", success=False)
+        await executor_service._update_task_after_execution(as_agent_task(child), failure, base_cost=0)
+        assert child.status == TaskStatus.ERROR
+        assert parent.paused
+        # Even a periodic reconciliation or a queued parent action must wait for settlement.
+        children = await task_service.get_children(parent.id, refresh=True)
+        assert not await reconcile_plan_parent(as_agent_task(parent), as_agent_tasks(children))
+        await planner_service.advance(as_agent_task(parent))
+        assert parent.status == TaskStatus.PLAN and parent.paused
+        assert not (pending.data or {}).get("plan_skipped")
+
+        await scheduler._complete_claim(child.id, TaskStatus.DISPATCH, token)
+        await db.refresh(child)
+        await db.refresh(attempt)
+        assert child.status == TaskStatus.DISPATCH and child.next_attempt_at is not None
+        assert attempt.status == "RETRY"
+        assert parent.paused and pending.paused
+
+        # The retry finishes, and only its settled outcome can advance or abort the plan.
+        retry_token = uuid4()
+        transition(child, TaskEvent.START_EXECUTION)
+        child.lease_token = retry_token
+        child.lease_expires_at = datetime.now(timezone.utc) + timedelta(minutes=2)
+        child.next_attempt_at = None
+        db.add(TaskAttempt(task_id=child.id, attempt_number=2, phase="DISPATCH",
+                           status="CLAIMED", worker_id="synthetic", lease_token=retry_token))
+        await db.commit()
+        final = ExecutionResult(prompt="", result="Retry outcome", success=final_success,
+                                tools_used=["remote_write"] if final_outcome == "unsafe" else [])
+        await executor_service._update_task_after_execution(as_agent_task(child), final, base_cost=0)
+        if not final_success:
+            assert parent.paused
+        await scheduler._complete_claim(child.id, TaskStatus.DISPATCH, retry_token)
+        await db.refresh(parent)
+        # Production dispatch uses a fresh session after scheduler settlement.
+        await db.refresh(child)
+        assert not parent.paused
+        await planner_service.advance(as_agent_task(parent))
+        await db.refresh(pending)
+        if final_success:
+            assert parent.status == TaskStatus.PLAN
+            assert pending.status == TaskStatus.DISPATCH and not pending.paused
+        else:
+            assert parent.status == TaskStatus.ERROR
+            assert pending.status == TaskStatus.ERROR and pending.data["plan_skipped"]
 
 
 @pytest.mark.asyncio

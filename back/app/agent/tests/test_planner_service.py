@@ -1209,28 +1209,43 @@ async def test_root_task_communicates_final_synthesis(mocks: dict[str, Any], mon
 
 
 @pytest.mark.asyncio
-async def test_abort_when_child_error(mocks: dict[str, Any]) -> None:
+@pytest.mark.parametrize("completed_steps", [0, 2])
+async def test_abort_when_child_error(mocks: dict[str, Any], completed_steps: int) -> None:
+    previous = [
+        _task(status=TaskStatus.SUCCESS, data={"plan_step": index},
+              feedback="Verified earlier work. " * 180, label=f"Completed {index}")
+        for index in range(completed_steps)
+    ]
     parent = _task(
-        plan={"steps": [{"objective": "o1", "label": "l1"}, {"objective": "o2", "label": "l2"}], "cursor": 0},
+        plan={"steps": [{"objective": "Previous work", "label": item.label} for item in previous]
+              + [{"objective": "o1", "label": "l1"}, {"objective": "o2", "label": "l2"}],
+              "cursor": completed_steps},
         data={"language": "fr"},
     )
-    child0 = _task(status=TaskStatus.ERROR, data={"plan_step": 0}, cost=0.1, feedback="boom", label="l1")
+    child0 = _task(status=TaskStatus.ERROR, data={"plan_step": completed_steps}, cost=0.1, feedback="boom", label="l1")
     child1 = _task(
         parent_id=parent.id,
         status=TaskStatus.DISPATCH,
         paused=True,
-        data={"plan_step": 1, "pause_reasons": ["plan"]},
+        data={"plan_step": completed_steps + 1, "pause_reasons": ["plan"]},
         label="l2",
     )
 
     async def children_of(task_id: UUID) -> list[Task]:
-        return [child0, child1] if task_id == parent.id else []
+        return [*previous, child0, child1] if task_id == parent.id else []
 
     mocks["get_children"].side_effect = children_of
 
     await advance(parent)
 
     assert parent.status == TaskStatus.ERROR
+    assert "boom" in parent.feedback
+    assert f"galaris://task/{child0.id}" in parent.feedback
+    result = parent.get_execution_result()
+    assert result is not None and "boom" in result.result
+    for item in previous:
+        assert item.status == TaskStatus.SUCCESS
+        assert item.feedback.strip() in result.result
     assert child1.status == TaskStatus.ERROR
     assert child1.paused is False
     assert "IGNORÉE" in (child1.feedback or "")

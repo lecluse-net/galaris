@@ -91,6 +91,13 @@ def is_held_by_user(task: Task) -> bool:
     return PAUSE_USER in pause_reasons(task)
 
 
+def has_terminal_outcome(task: Task) -> bool:
+    """An execution error remains provisional until its claim is settled."""
+    return task.status == TaskStatus.SUCCESS or (
+        task.status == TaskStatus.ERROR and task.lease_token is None
+    )
+
+
 def _write_reasons(task: Task, reasons: list[str]) -> None:
     data = dict(task.data) if isinstance(task.data, dict) else {}
     if reasons:

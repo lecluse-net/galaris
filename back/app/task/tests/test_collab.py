@@ -200,12 +200,19 @@ async def test_resolve_from_peer_task_marks_error_on_peer_failure(
 ) -> None:
     await_id = uuid4()
     await_child = _await_child(uuid4(), "lyra", TaskStatus.PAUSE, id=await_id)
-    peer_task = _task(status=TaskStatus.ERROR, data={collab.RESOLVES_KEY: str(await_id)})
+    peer_task = _task(status=TaskStatus.ERROR, lease_token=uuid4(),
+                      data={collab.RESOLVES_KEY: str(await_id)})
 
     monkeypatch.setattr(collab.task_service, "get_by_id", AsyncMock(return_value=await_child))
     monkeypatch.setattr(collab.task_service, "update", AsyncMock())
     monkeypatch.setattr(collab, "maybe_fan_in", AsyncMock())
 
+    await collab.resolve_from_peer_task(peer_task)
+    assert await_child.status == TaskStatus.DISPATCH and await_child.paused
+    assert collab.RESOLVED_BY_KEY not in (await_child.data or {})
+
+    # A failed attempt cannot answer the peer while a scheduler retry is possible.
+    peer_task.lease_token = None
     await collab.resolve_from_peer_task(peer_task)
     assert await_child.status == TaskStatus.ERROR
 
@@ -221,10 +228,14 @@ async def test_resolve_from_peer_task_noop_without_stamp(monkeypatch: pytest.Mon
 # ── Fan-in ───────────────────────────────────────────────────────────────────
 
 @pytest.mark.asyncio
-async def test_maybe_fan_in_waits_until_all_terminal(monkeypatch: pytest.MonkeyPatch) -> None:
+@pytest.mark.parametrize("pending_status", [TaskStatus.PAUSE, TaskStatus.ERROR])
+async def test_maybe_fan_in_waits_until_all_terminal(
+    monkeypatch: pytest.MonkeyPatch, pending_status: TaskStatus,
+) -> None:
     parent = _await_parent()
     done = _await_child(parent.id, "lyra", TaskStatus.SUCCESS, feedback="CR Lyra")
-    pending = _await_child(parent.id, "bob", TaskStatus.PAUSE)
+    pending = _await_child(parent.id, "bob", pending_status,
+                           lease_token=uuid4() if pending_status == TaskStatus.ERROR else None)
     monkeypatch.setattr(collab.task_service, "get_by_id", AsyncMock(return_value=parent))
     monkeypatch.setattr(collab.task_service, "get_children", AsyncMock(return_value=[done, pending]))
     update = AsyncMock()

@@ -330,7 +330,7 @@ async def advance(task: Task) -> None:
 
 async def resume_parent(task: Task) -> None:
     """Wake a parent waiting on a terminal child and propagate completion upward."""
-    if task.parent_id is None:
+    if task.parent_id is None or not task_service.has_terminal_outcome(task):
         return
     parent = await task_service.get_by_id(task.parent_id)
     if (
@@ -934,6 +934,11 @@ async def _advance_plan(task: Task) -> None:
         return
 
     if current.status == TaskStatus.ERROR:
+        if not task_service.has_terminal_outcome(current):
+            # The scheduler still owns the retry decision for this failed attempt.
+            _mark_plan_waiting(task)
+            await task_service.save(task)
+            return
         # A failed step aborts the remaining plan.
         logger.info("Planner: step {} of {} is ERROR; aborting", cursor, task.id)
         await _record_delivery_recovery(task, current, steps[cursor])
@@ -1183,14 +1188,21 @@ async def _close_unfinished_children(
 
 def _aggregate_child_results(task: Task, children: Sequence[Task]) -> str:
     parts: list[str] = []
-    for child in sorted(children, key=_step_of):
+    # The bounded feedback is also the scheduler's terminal diagnostic. Keep the
+    # failed step first so earlier successful reports cannot hide its cause,
+    # including when that report propagates through several parent plans.
+    ordered = sorted(
+        children, key=lambda child: (child.status != TaskStatus.ERROR, _step_of(child))
+    )
+    for child in ordered:
         if _task_data_flag(child, _PLAN_SKIPPED_DATA_KEY):
             continue
         result = _result_of(child)
         no_result = _translate_for_task(task, "planner.no_result")
         recovered = _task_data_flag(child, "plan_blocked_recovered")
         suffix = f" — {_translate_for_task(task, 'planner.recovered_blocker')}" if recovered else ""
-        parts.append(f"### {child.label}{suffix}\n{result or no_result}")
+        reference = f" (galaris://task/{child.id})" if child.status == TaskStatus.ERROR else ""
+        parts.append(f"### {child.label}{suffix}{reference}\n{result or no_result}")
     return "\n\n".join(parts)
 
 
@@ -2088,6 +2100,12 @@ async def _synthesize(task: Task, steps_block: str) -> tuple[str, float]:
         f"{criteria_block}"
         f"Step results:\n{steps_block[:_SYNTHESIS_MAX_INPUT_CHARS]}"
     )
+    # Profile resolution autoflushes the advanced plan cursor. Release that row
+    # lock before waiting for the provider so the independent scheduler heartbeat
+    # can renew the lease. The committed cursor also makes interruption resumable.
+    from core.database import release_db_transaction
+
+    await release_db_transaction()
     result = await run_structured(
         llm=llm,
         output_type=str,

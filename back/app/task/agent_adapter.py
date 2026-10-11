@@ -77,6 +77,9 @@ def _bounded_agent_event(event: AgentRunEventV1) -> dict[str, object]:
 
 
 class SqlAlchemyAgentTaskAdapter:
+    def has_terminal_outcome(self, task: Any) -> bool:
+        return task_service.has_terminal_outcome(task)
+
     async def save(self, task: Any) -> Any:
         return await task_service.save(task)
 

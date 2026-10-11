@@ -1031,6 +1031,7 @@ async def _complete_claim(
 ) -> None:
     """Finish an attempt as successful, waiting for children, failed, or retryable."""
     outcome_error: str | None = None
+    terminal_failure = False
     async with get_db_session() as db:
         task = await db.scalar(
             select(Task).where(Task.id == task_id).with_for_update(skip_locked=True)
@@ -1042,8 +1043,11 @@ async def _complete_claim(
         else:
             attempt = await _attempt_for_token(db, lease_token)
             _finalize_claim_outcome(task, attempt)
+            terminal_failure = task.status == TaskStatus.ERROR
     if outcome_error is not None:
         await _fail_claim(task_id, phase, lease_token, RuntimeError(outcome_error))
+    elif terminal_failure:
+        await _resume_after_terminal_failure(task_id)
 
 
 def _retry_is_safe(task: Task, phase: TaskStatus) -> bool:

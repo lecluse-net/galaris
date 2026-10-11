@@ -1585,6 +1585,8 @@ async def handle_terminal_task(task: AgentTask) -> None:
     from .planner_service import resume_parent
     from .task_port import task_port
 
+    if not task_port.has_terminal_outcome(task):
+        return
     await task_port.resolve_from_peer_task(task)
     await resume_parent(task)
     await task_port.maybe_fan_in(task.parent_id)
@@ -1596,14 +1598,14 @@ async def reconcile_plan_parent(
     children: Sequence[AgentTask],
 ) -> bool:
     """Resume a parent whose current step is already terminal."""
-    from .contracts import TaskPhase, TaskTransition
+    from .contracts import TaskTransition
     from .planner_service import child_for_step
     from .task_port import task_port
 
     plan = task.plan or {}
     cursor = int(plan.get("cursor", 0) or 0)
     current = child_for_step(children, cursor)
-    if current is None or current.status not in (TaskPhase.SUCCESS, TaskPhase.ERROR):
+    if current is None or not task_port.has_terminal_outcome(current):
         return False
     task_port.transition(task, TaskTransition.ROUTE_TO_PLAN)
     task_port.release(task, task_port.PAUSE_PLAN)
