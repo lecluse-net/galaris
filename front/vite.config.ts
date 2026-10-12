@@ -108,11 +108,11 @@ export default defineConfig({
                 start_url: '/',
                 scope: '/',
                 display: 'standalone',
-                // Android also uses this as the native window background,
-                // outside the web canvas. Keep white system buttons readable
-                // before the page can apply its active theme.
-                background_color: '#101010',
-                theme_color: '#101010',
+                // Leave native window/system bar colours to Android/Chrome.
+                // Explicitly unset the plugin's white/green defaults so these
+                // optional members are omitted from the generated manifest.
+                background_color: undefined,
+                theme_color: undefined,
                 icons: [
                     {
                         src: '/pwa/icon-192.png',

@@ -66,7 +66,8 @@ async function expectBrowserTheme(page, dark) {
   await expect(page.locator('html')).toHaveCSS('color-scheme', dark ? 'dark' : 'light')
   const background = await page.locator('body').evaluate(body => getComputedStyle(body).backgroundColor)
   await expect(page.locator('html')).toHaveCSS('background-color', background)
-  await expect(page.locator('meta[name="theme-color"]')).toHaveAttribute('content', background)
+  // The app theme paints the web canvas without overriding native system bars.
+  await expect(page.locator('meta[name="theme-color"]')).toHaveCount(0)
 }
 
 test('user preferences persist each theme and save a selected profile language', async ({ page }) => {

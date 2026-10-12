@@ -8,14 +8,13 @@ export const THEME_MODES: ThemeMode[] = ['auto', 'light', 'dark']
 
 const STORAGE_KEY = 'theme_mode'
 
-/** Keep the browser canvas and Android system chrome on the active theme. */
+/** Keep the web canvas on the app theme; native system bars use the system theme. */
 export function useBrowserTheme(): void {
     const $q = useQuasar()
     watch(() => $q.dark.isActive, dark => {
         const background = getComputedStyle(document.body).backgroundColor
         document.documentElement.style.colorScheme = dark ? 'dark' : 'light'
         document.documentElement.style.backgroundColor = background
-        document.querySelector('meta[name="theme-color"]')?.setAttribute('content', background)
     }, { immediate: true })
 }
 

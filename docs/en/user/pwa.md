@@ -72,12 +72,15 @@ Clear the site data only as a last resort: this action deletes the local session
 requires you to sign in again.
 
 The web interface and the installed Android window have separate update cycles.
-Galaris provides a dark fallback background for this window to preserve contrast for white
-system buttons before the page applies its active theme. An existing installation can retain
-its old light background after the interface reloads: Chrome must also update its manifest
+Galaris lets Android/Chrome choose system bar colours according to their theme.
+They can differ from the interface if you force a light or dark theme in Galaris.
+An existing installation can retain a previously imposed colour, including a fixed black
+background, after the interface reloads: Chrome must also update its manifest
 and installation package (WebAPK). Chrome controls this update and can defer it; reloading
 Galaris cannot force it.
 See [Chrome's Android update conditions](https://web.dev/articles/manifest-updates).
+To apply this change without waiting, uninstall Galaris in Android settings, then reinstall it
+from Chrome. Do not clear site data; conversations remain stored on the server.
 
 ## Troubleshooting
 

@@ -557,10 +557,12 @@ and ignoring requests for a different conversation.
 ## Shared infrastructure and UI
 
 For Android system bar colours, the DOM/CSS assertions in
-`front/browser-tests/presentation.spec.mjs` only verify the values supplied by the page.
+`front/browser-tests/presentation.spec.mjs` verify the web canvas theme and that the page imposes
+no colour; the manifest defines neither `theme_color` nor `background_color`.
 An emulated mobile viewport does not validate native rendering. Check the installed Android PWA
 with three-button navigation, on launch and after returning to the foreground, in light and
-dark themes; also check an existing installation after its WebAPK updates.
+dark system themes, including with an opposite Galaris theme; also check an existing installation
+after its WebAPK updates.
 
 | Domain | Guarantee | Evidence |
 |---|---|---|

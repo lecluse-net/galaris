@@ -72,12 +72,16 @@ N’effacez les données du site qu’en dernier recours : cette action supprime
 impose une nouvelle connexion.
 
 L’interface web et la fenêtre Android installée ont des cycles de mise à jour distincts.
-Galaris fournit un fond de secours sombre pour cette fenêtre, afin de conserver le contraste
-des boutons système blancs avant l’application du thème de la page. Une ancienne installation
-peut conserver son ancien fond clair après le rechargement de l’interface : Chrome doit aussi
+Galaris laisse Android/Chrome choisir les couleurs des barres système selon leur thème.
+Elles peuvent différer de l’interface si vous forcez un thème clair ou sombre dans Galaris.
+Une ancienne installation peut conserver une couleur précédemment imposée, notamment un fond
+noir fixe, après le rechargement de l’interface : Chrome doit aussi
 actualiser son manifeste et son paquet d’installation (WebAPK). Ce renouvellement est géré par
 Chrome et peut être différé ; il ne peut pas être forcé par un rechargement de Galaris.
 Voir les [conditions de mise à jour Android décrites par Chrome](https://web.dev/articles/manifest-updates).
+Pour appliquer ce changement sans attendre, désinstallez Galaris dans les paramètres Android,
+puis réinstallez-le depuis Chrome. N’effacez pas les données du site ; les conversations restent
+stockées sur le serveur.
 
 ## Dépannage
 
