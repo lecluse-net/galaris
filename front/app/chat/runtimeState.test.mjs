@@ -84,8 +84,11 @@ test('a new attempt restarts sequencing while retaining reflection and rejecting
   let round = apply(null, { kind: 'started', sequence: 0, attempt: 1 })
   round = apply(round, { kind: 'message', sequence: 1, attempt: 1,
     message: { type: 'tool', tool_name: 'thinking', stream_id: 'r1', content: 'Analyse déjà reçue' } })
-  round = apply(round, { kind: 'finished', sequence: 5, attempt: 1, success: false })
+  round = apply(round, { kind: 'finished', sequence: 5, attempt: 1, success: false,
+    result: { ...round.ai_result, metadata: { interrupted_by_new_input: true } } })
+  assert.equal(round.ai_result.metadata.interrupted_by_new_input, true)
   round = apply(round, { kind: 'started', sequence: 0, attempt: 2 })
+  assert.notEqual(round.ai_result.metadata.interrupted_by_new_input, true)
   round = apply(round, { kind: 'message', sequence: 1, attempt: 2,
     message: { type: 'text', stream_id: 't2', content: 'Réponse' } })
   assert.equal(round.attempt, 2)

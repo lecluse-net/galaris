@@ -31,7 +31,10 @@ export function applyConversationRuntimeEvent(
       success: true,
       terminal_received: false,
       last_sequence: -1,
-      ai_result: resetAIResultText(current.ai_result),
+      ai_result: {
+        ...resetAIResultText(current.ai_result),
+        metadata: { ...current.ai_result.metadata, interrupted_by_new_input: false },
+      },
     }
     if (kind === 'started') {
       return { round: { ...current, last_sequence: sequence }, finished: false }

@@ -186,6 +186,8 @@ async def _execute_action(round_id: UUID, lease_token: UUID) -> None:
         outcome = replace(outcome, execution_result=normalized_result)
         async with get_db_session():
             status = await complete_round(round_id, outcome, lease_token=lease_token)
+        if status in {"SUPERSEDED", "STALE_AFTER_EFFECT", "INTERRUPTED"}:
+            terminal_result.metadata["interrupted_by_new_input"] = True
         completed_successfully = status == "SUCCEEDED"
         if completed_successfully:
             await mark_failure_run_recovered(round_id)
@@ -195,6 +197,7 @@ async def _execute_action(round_id: UUID, lease_token: UUID) -> None:
         terminal_result = progress.snapshot() if progress else None
         if terminal_result is not None:
             terminal_result.result = ""
+            terminal_result.metadata["interrupted_by_new_input"] = True
         async with get_db_session():
             await complete_round(round_id, ConversationOutcome(
                 text="", execution_result=terminal_result, metadata={"interrupted": True},

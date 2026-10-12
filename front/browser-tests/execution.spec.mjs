@@ -135,6 +135,41 @@ test('live conversation progress survives delayed detail loading and stale snaps
   await expect(page.locator('.trace-detail p').filter({ hasText: /^Current progress, continued$/ })).toBeVisible()
 })
 
+test('a context change rewrites the response without reporting an execution failure', async ({ page }) => {
+  const liveRound = { room_id: 'room-a', round_id: 'round-a', active: true, success: true,
+    last_sequence: 1, topic_id: null, ai_result: { ...result, metadata: {} } }
+  const activity = { id: 'round-a', status: 'RUNNING', tools_used: [], cost: 0, execution_time: 1 }
+  await mount(page, 'app/chat/components/AgentExecutionTrace.vue', { props: { roomId: 'room-a', liveRound, activity } })
+  const summary = page.getByRole('button', { name: /Thinking/ })
+  await expect(summary).toBeVisible()
+  // The terminal runtime event can arrive before the durable activity projection.
+  await page.evaluate(liveRound => window.testApp.setProps({ liveRound: { ...liveRound,
+    active: false, success: false,
+    ai_result: { ...liveRound.ai_result, metadata: { interrupted_by_new_input: true } },
+  } }), liveRound)
+  await expect(page.getByRole('button', { name: /Rewriting response/ })).toBeVisible()
+  await expect(page.getByText('The execution encountered a problem')).toHaveCount(0)
+  await page.screenshot({ path: test.info().outputPath('rewriting-light.png') })
+  await page.evaluate(() => window.testApp.dark(true))
+  await page.screenshot({ path: test.info().outputPath('rewriting-dark.png') })
+  // A superseded draft may also have been interrupted before the runtime prepared metadata.
+  await page.evaluate(({ liveRound, activity }) => window.testApp.setProps({
+    liveRound: { ...liveRound, active: false, success: false },
+    activity: { ...activity, status: 'SUPERSEDED' },
+  }), { liveRound, activity })
+  await expect(page.getByRole('button', { name: /Rewriting response/ })).toBeVisible()
+  await page.evaluate(liveRound => window.testApp.setProps({
+    activity: undefined, liveRound: { ...liveRound, round_id: 'round-b' },
+  }), liveRound)
+  await expect(summary).toBeVisible()
+  // A real failure in the new response must still be reported.
+  await page.evaluate(liveRound => window.testApp.setProps({ liveRound: {
+    ...liveRound, round_id: 'round-b', active: false, success: false,
+  } }), liveRound)
+  await expect(page.getByRole('button', { name: /The execution encountered a problem/ })).toBeVisible()
+  await expect(page.getByText('Rewriting response…')).toHaveCount(0)
+})
+
 test('chat execution details ignore a late previous round and recover usage after a failed load', async ({ page }) => {
   let release
   const pending = new Promise(resolve => { release = resolve })

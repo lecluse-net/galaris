@@ -60,7 +60,10 @@ def public_ai_result(result: AIResult) -> AIResult:
             "system_prompt": "",
             "messages": [public_ai_message(message) for message in result.messages],
             "result": public_text(result.result, limit=8_000),
-            "metadata": {},
+            # The chat needs this disposition before its durable activity catches up.
+            # All other runtime metadata remains private.
+            "metadata": {"interrupted_by_new_input": True}
+            if result.metadata.get("interrupted_by_new_input") is True else {},
         }
     )
 

@@ -1,5 +1,5 @@
 <template>
-  <section v-if="visible" class="execution-trace" :class="{ 'execution-trace--error': hasError }">
+  <section v-if="visible" class="execution-trace" :class="{ 'execution-trace--error': hasError, 'execution-trace--warning': rewriting }">
     <button type="button" class="trace-summary" :aria-expanded="expanded" @click="toggleTrace">
       <q-icon :name="summaryIcon" class="summary-icon" />
       <span class="summary-label">{{ summaryLabel }}</span>
@@ -90,12 +90,17 @@ type ToolTone = 'web' | 'file' | 'task' | 'message' | 'media' | 'code' | 'calend
 interface ToolSummary { name: string; icon: string; tone: ToolTone }
 
 const visible = computed(() => Boolean(props.liveRound || props.activity))
-const hasError = computed(() => Boolean(
+const rewriting = computed(() => Boolean(
+  props.activity?.status === 'SUPERSEDED'
+  || props.liveRound?.ai_result.metadata?.interrupted_by_new_input === true,
+))
+const hasError = computed(() => !rewriting.value && Boolean(
   props.liveRound && !props.liveRound.active && !props.liveRound.success
   || props.activity && ['FAILED', 'ERROR_RESOLVED', 'CANCELLED'].includes(props.activity.status),
 ))
-const summaryIcon = computed(() => hasError.value ? 'error' : props.liveRound?.active ? 'psychology' : 'settings_suggest')
+const summaryIcon = computed(() => rewriting.value ? 'autorenew' : hasError.value ? 'error' : props.liveRound?.active ? 'psychology' : 'settings_suggest')
 const summaryLabel = computed(() => {
+  if (rewriting.value) return t('chat.rewritingResponse')
   if (hasError.value) return t('chat.executionProblem')
   if (props.liveRound?.active) return t('chat.thinking')
   return t('chat.executionDetail')
@@ -286,6 +291,9 @@ onBeforeUnmount(() => {
 .execution-trace { margin: 2px -9px 8px; overflow: hidden; color: var(--chat-text-secondary, #536071); background: var(--chat-surface-soft, #f5f7fa); border: 1px solid var(--chat-border, rgba(53, 69, 94, .1)); border-radius: 10px; }
 .execution-trace:first-child { margin-top: -6px; }
 .execution-trace--error { color: var(--q-negative); background: var(--chat-danger-soft, #fff1f1); border-color: color-mix(in srgb, var(--q-negative) 34%, transparent); }
+.execution-trace--warning { background: var(--solaire-orange-light); border-color: var(--solaire-orange-accent); }
+.execution-trace--warning .summary-icon { color: var(--solaire-orange-accent); }
+body.body--dark .execution-trace--warning { color: var(--chat-text-secondary, #EEEEF0); background: var(--solaire-orange-dark); }
 .trace-summary { display: flex; width: 100%; min-height: 34px; align-items: center; flex-wrap: wrap; gap: 5px 7px; padding: 6px 9px; color: inherit; background: transparent; border: 0; font: inherit; text-align: left; cursor: pointer; }
 .summary-icon { font-size: 18px; }
 .summary-label { font-size: .75rem; font-weight: 650; }

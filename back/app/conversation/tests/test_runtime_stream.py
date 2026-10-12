@@ -10,6 +10,34 @@ from app.conversation.runtime import room_runtime_snapshot
 
 
 @pytest.mark.asyncio
+async def test_context_interruption_reaches_chat_without_private_runtime_metadata(monkeypatch):
+    from app.chat import events
+
+    emitted = AsyncMock()
+    monkeypatch.setattr(events.websocket, "emit", emitted)
+    monkeypatch.setattr(facade, "publish_runtime_event", events._publish_runtime)
+    stream = ConversationRuntimeStream(room_id=uuid4(), round_id=uuid4())
+    await stream.start()
+    result = AIResult(prompt="Private prompt", system_prompt="Private instructions", metadata={
+        "interrupted_by_new_input": True, "private_context": "Synthetic private context",
+    })
+    await stream.finish(success=False, result=result)
+    payload = emitted.await_args.args[2]
+    assert payload["kind"] == "finished"
+    assert payload["success"] is False
+    assert payload["result"]["metadata"] == {"interrupted_by_new_input": True}
+    assert payload["result"]["prompt"] == ""
+    assert payload["result"]["system_prompt"] == ""
+    assert result.metadata["private_context"] == "Synthetic private context"
+
+
+@pytest.mark.parametrize("value", [False, "true", 1, None])
+def test_public_result_does_not_invent_an_interruption_from_non_boolean_metadata(value):
+    result = AIResult(prompt="", metadata={"interrupted_by_new_input": value})
+    assert public_ai_result(result).metadata == {}
+
+
+@pytest.mark.asyncio
 async def test_authorization_wait_keeps_its_portable_disposition_in_public_progress(monkeypatch):
     from app.agent import ExecutionResult
     publish = AsyncMock()

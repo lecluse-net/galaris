@@ -86,6 +86,54 @@ test('an admitted round is visible before streaming and keeps its response throu
   await expect(page.locator('.conversation-pane')).toContainText('Content room-a')
 })
 
+test('an intervention shows rewriting before HTTP catches up and the successor retains real errors', async ({ page }) => {
+  const state = await conversation(page)
+  const result = { prompt: '', system_prompt: '', messages: [], result: '', success: true,
+    execution_time: 0, cost: 0, tools_used: [], metadata: {} }
+  const emit = event => page.evaluate(event => window.testApp.emitSocket('chat.runtime', {
+    data: { room_id: 'room-a', ...event },
+  }), event)
+  await emit({ round_id: 'draft-round', kind: 'started', sequence: 0 })
+  await emit({ round_id: 'draft-round', kind: 'message', sequence: 1,
+    message: { type: 'text', content: 'Provisional response' } })
+  const response = page.locator('.message-bubble--live')
+  await expect(response).toContainText('Provisional response')
+
+  let release
+  const pending = new Promise(resolve => { release = resolve })
+  let submitted = false
+  await page.route('**/api/chat/rooms/room-a/messages', route => {
+    const { text } = route.request().postDataJSON()
+    state.messages['room-a'] = { ...state.messages['room-a'], id: 'context-message',
+      external_id: 'context-message', text }
+    submitted = true
+    return route.fulfill({ json: state.messages['room-a'] })
+  })
+  const successor = { round_id: 'successor-round', kind: 'snapshot', sequence: 1,
+    result: { ...result, messages: [{ type: 'text', content: 'Updated response' }] } }
+  await page.route('**/api/chat/rooms/room-a/activity?*', async route => {
+    await pending
+    await route.fulfill({ json: { items: [{ id: 'successor-round', status: 'RUNNING',
+      tools_used: [], created_at: '2026-09-01T12:01:00Z' }], total: 1, runtime: successor } })
+  })
+  try {
+    await page.locator('.composer-shell textarea').fill('Adapt to the new context')
+    await page.getByRole('button', { name: 'Post', exact: true }).click()
+    await expect.poll(() => submitted).toBe(true)
+    await emit({ round_id: 'draft-round', kind: 'finished', sequence: 2, success: false,
+      result: { ...result, success: false, metadata: { interrupted_by_new_input: true } } })
+    await expect(response.getByRole('button', { name: /^Rewriting response/ })).toBeVisible()
+    await expect(page.getByText('The execution encountered a problem')).toHaveCount(0)
+    await page.screenshot({ path: test.info().outputPath('rewriting-in-chat.png') })
+  } finally { release() }
+  await expect(response).toContainText('Updated response')
+  await expect(response.getByRole('button', { name: /^Thinking/ })).toBeVisible()
+  await emit({ round_id: 'successor-round', kind: 'finished', sequence: 2, success: false,
+    result: { ...result, success: false } })
+  await expect(response.getByRole('button', { name: /^The execution encountered a problem/ })).toBeVisible()
+  await expect(page.getByText('Rewriting response…')).toHaveCount(0)
+})
+
 for (const width of [1280, 390]) {
   test(`conversation header toggles all filters and creates a conversation at ${width}px`, async ({ page }, testInfo) => {
     await page.setViewportSize({ width, height: 900 })

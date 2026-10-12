@@ -52,11 +52,14 @@ async def test_superseded_preparation_completes_through_the_freshness_barrier(mo
     assert outcome.execution_result.messages[0].content == "source read"
     fail.assert_not_awaited()
     assert events[-1].kind == "finished" and events[-1].success is False
+    assert events[-1].result.metadata["interrupted_by_new_input"] is True
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("status", ["SUCCEEDED", "SUPERSEDED", "STALE_AFTER_EFFECT", "INTERRUPTED"])
 async def test_round_stream_starts_before_the_controller_and_finishes_in_order(
     monkeypatch: pytest.MonkeyPatch,
+    status: str,
 ) -> None:
     round_id = uuid4()
     room_id = uuid4()
@@ -99,7 +102,7 @@ async def test_round_stream_starts_before_the_controller_and_finishes_in_order(
 
     monkeypatch.setattr(scheduler, "get_db_session", fake_db_session)
     monkeypatch.setattr(service, "build_turn", build_turn)
-    monkeypatch.setattr(service, "complete_round", AsyncMock(return_value="SUCCEEDED"))
+    monkeypatch.setattr(service, "complete_round", AsyncMock(return_value=status))
     monkeypatch.setattr(service, "fail_round", AsyncMock())
     monkeypatch.setattr(facade, "publish_runtime_event", publish_runtime_event)
     monkeypatch.setattr(facade, "publish_round_activity", AsyncMock())
@@ -114,8 +117,9 @@ async def test_round_stream_starts_before_the_controller_and_finishes_in_order(
         "Bon",
         "jour",
     ]
-    assert events[-1].success is True
+    assert events[-1].success is (status == "SUCCEEDED")
     assert events[-1].result is not None
+    assert (events[-1].result.metadata.get("interrupted_by_new_input") is True) is (status != "SUCCEEDED")
     assert events[-1].result.result == "Bonjour"
     assert [message.content for message in events[-1].result.messages] == ["Bonjour"]
     completed_outcome = service.complete_round.await_args.args[1]
