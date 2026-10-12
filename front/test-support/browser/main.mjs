@@ -3,6 +3,7 @@ import { createPinia, disposePinia } from 'pinia'
 import { createMemoryHistory, createRouter } from 'vue-router'
 import { Quasar, QLayout, QPageContainer, Dialog, Notify, Loading } from 'quasar'
 import quasarUserOptions from '/quasar-user-options.ts'
+import { getThemeMode, toQuasarDark, useBrowserTheme } from '/core/theme.ts'
 import { i18n, setLocale } from '/core/i18n/index.ts'
 import { useAuthStore } from '/core/user/stores/authStore.ts'
 import { useHelpStore } from '/core/user/stores/helpStore.ts'
@@ -22,7 +23,7 @@ window.testApp = {
     this.pendingMount = this.mountComponent(options)
     return this.pendingMount
   },
-  async mountComponent({ component, props = {}, slots = {}, setProps = [], containerStyle = {}, route = '/', authenticated = true, dark = false, locale = 'en' }) {
+  async mountComponent({ component, props = {}, slots = {}, setProps = [], containerStyle = {}, route = '/', authenticated = true, dark = toQuasarDark(getThemeMode()), locale = 'en' }) {
     this.unmount?.()
     errors.length = 0
     const pinia = createPinia()
@@ -50,6 +51,7 @@ window.testApp = {
       },
     ]))
     const app = createApp({
+      setup() { useBrowserTheme() },
       render: () => h(QLayout, {}, () => h(QPageContainer, { style: containerStyle }, () => h(target, {
         ...currentProps.value,
         ...listeners,

@@ -10,7 +10,9 @@ import { useAuthStore } from './user/stores/authStore'
 import { useAuthorizeStore } from './authorize/stores/authorizeStore'
 import { usePrivilegeStore } from './authorize/stores/privilegeStore'
 import { settings } from './settings'
+import { useBrowserTheme } from './theme'
 
+useBrowserTheme()
 const authStore = useAuthStore()
 provideContextHelp()
 const authorizeStore = useAuthorizeStore()

@@ -62,7 +62,16 @@ test('login rejects an invalid email before making an authentication request', a
   await expect(page.locator('.q-field--error')).toHaveCount(1)
 })
 
+async function expectBrowserTheme(page, dark) {
+  await expect(page.locator('html')).toHaveCSS('color-scheme', dark ? 'dark' : 'light')
+  const background = await page.locator('body').evaluate(body => getComputedStyle(body).backgroundColor)
+  await expect(page.locator('html')).toHaveCSS('background-color', background)
+  await expect(page.locator('meta[name="theme-color"]')).toHaveAttribute('content', background)
+}
+
 test('user preferences persist each theme and save a selected profile language', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 })
+  await page.emulateMedia({ colorScheme: 'light' })
   const updates = []
   await page.route('**/api/auth/me', async route => {
     expect(route.request().method()).toBe('PUT')
@@ -76,7 +85,21 @@ test('user preferences persist each theme and save a selected profile language',
     await buttons.nth(index).click()
     await expect.poll(() => page.evaluate(() => localStorage.getItem('theme_mode'))).toBe(mode)
     await expect(page.locator('body')).toHaveClass(dark ? /body--dark/ : /body--light/)
+    await expectBrowserTheme(page, dark)
   }
+  await page.emulateMedia({ colorScheme: 'dark' })
+  await expectBrowserTheme(page, true)
+  await page.emulateMedia({ colorScheme: 'light' })
+  await expectBrowserTheme(page, false)
+  await buttons.nth(2).click()
+  await expectBrowserTheme(page, true)
+  await mount(page, 'core/user/components/UserMenu.vue')
+  await expectBrowserTheme(page, true)
+  await page.emulateMedia({ colorScheme: 'dark' })
+  await expectBrowserTheme(page, true)
+  await page.emulateMedia({ colorScheme: 'light' })
+  await expectBrowserTheme(page, true)
+  await page.getByRole('button', { name: 'My account', exact: true }).click()
   await page.locator('.q-item').filter({ hasText: 'Language' }).click()
   await expect(page.locator('.language-menu-list .q-item')).toHaveCount(3)
   await page.locator('.language-menu-list .q-item').filter({ hasText: 'Français' }).click()
