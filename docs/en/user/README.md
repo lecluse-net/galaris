@@ -194,7 +194,10 @@ conversations to the first page.
 The panel sections appear in this order: **Conversations, Documents, Tasks, Processes**.
 They open automatically when they contain items and collapse when empty. You can collapse them
 manually; an ordinary refresh does not reopen them.
-The **+** button in the **Working documents** header creates a document even when the section
+The search button in the **Documents** header finds accessible documents.
+The conversation bell opens a menu to enable or disable notifications on this device
+and mute or restore notifications for the conversation.
+The **+** button in the same header creates a document even when the section
 is collapsed, provided you have edit permission.
 
 On desktop, when a document is open alongside the conversation, each message also gives the

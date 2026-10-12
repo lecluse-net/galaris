@@ -259,7 +259,10 @@ sa pagination uniquement au-delà de 50 résultats, avec un choix de 10, 20, 50,
 Les rubriques du panneau sont présentées dans l’ordre **Conversations, Documents, Tâches, Processus**.
 Elles s’ouvrent automatiquement lorsqu’elles contiennent des éléments et se replient lorsqu’elles
 deviennent vides. Vous pouvez les replier manuellement ; une simple actualisation ne les rouvre pas.
-Le bouton **+** de l’en-tête **Documents de travail** permet de créer un document, même lorsque
+La loupe de l’en-tête **Documents** permet de rechercher un document accessible.
+La cloche de la conversation ouvre un menu pour activer ou désactiver les notifications
+sur cet appareil et couper ou rétablir celles de la conversation.
+Le bouton **+** du même en-tête permet de créer un document, même lorsque
 la rubrique est repliée, si vous disposez du droit de modification.
 
 Sur ordinateur, lorsqu’un document est ouvert à côté de la conversation, chaque message
