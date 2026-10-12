@@ -158,8 +158,11 @@ async def test_retry_preserves_uncertain_effects_and_durable_working_set(
                 ],
             },
             "_agent_run_checkpoint": {
+                "driver_code": "internal",
+                "runtime_run_id": "synthetic-internal-run",
                 "status": "running",
                 "data": {
+                    "version": 5,
                     "resume_safe": False,
                     "effects": [{"tool_name": "file_create", "status": "started"}],
                 },
@@ -192,6 +195,56 @@ async def test_retry_preserves_uncertain_effects_and_durable_working_set(
     assert retried.data["working_set"]["resources"][0]["reference"] == (
         "document://existing"
     )
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("planned", [False, True])
+@pytest.mark.parametrize("driver", ["internal", "hermes", "openai_messages"])
+async def test_retry_preserves_driver_recovery_and_remote_effect_receipts(db, monkeypatch, planned, driver):
+    from copy import deepcopy
+    from app.agent import has_resumable_run_checkpoint
+
+    remote = driver != "internal"
+    payload = {
+        "internal": {"version": 5, "resume_safe": True,
+                     "effects": [{"status": "completed", "tool_name": "file_create"}],
+                     "message_history": []},
+        "hermes": {"execution_strategy": "direct", "cancellation_target": {"url": "http://example.test"}},
+        "openai_messages": {"version": 1, "run_context": "synthetic-encrypted-authority",
+                            "cursor": {"messages": 2, "text": 8}},
+    }[driver]
+    checkpoint = {
+        "schema_version": 1, "driver_code": driver, "runtime_run_id": "a" * 64,
+        "status": "waiting_for_authorization" if remote else "failed", "data": payload,
+        "result": {"prompt": "<p>Synthetic objective</p>", "result": "Recorded tool receipt",
+                   "success": False, "tools_used": ["file_create"]},
+    }
+    original = deepcopy(checkpoint)
+    failed = _task(status=TaskStatus.ERROR, data={"_agent_run_checkpoint": checkpoint},
+                   execution_result={"prompt": "", "result": "Previous failure", "success": False})
+    if planned:
+        root = _task(status=TaskStatus.ERROR, plan={"steps": [{}], "cursor": 1})
+        failed.parent_id = root.id
+        failed.data = {**failed.data, "plan_step": 0}
+        db.add(root)
+    else:
+        root = failed
+    db.add(failed)
+    await db.commit()
+    monkeypatch.setattr(task_service.websocket, "emit", AsyncMock())
+
+    await task_service.retry(root.id, root.revision)
+    await db.refresh(failed)
+
+    saved = failed.data["_agent_run_checkpoint"]
+    assert has_resumable_run_checkpoint(failed)
+    assert saved["runtime_run_id"] == original["runtime_run_id"]
+    assert saved["data"] == original["data"]
+    if remote:
+        assert saved == original  # The remote actor and its effect evidence remain authoritative.
+    else:
+        assert saved["result"] is None and saved["status"] == "interrupted"
+    assert failed.execution_result is None
 
 
 @pytest.mark.asyncio

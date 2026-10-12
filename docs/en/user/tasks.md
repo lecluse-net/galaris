@@ -87,6 +87,11 @@ produce it after the failed work. Other dependent steps are skipped. A successfu
 preserves the plan's error; a manual retry resumes unfinished work and refreshes the
 report while preserving other successful results.
 
+For remote harnesses, **Retry** preserves the execution identity and its receipts;
+it checks the existing execution before continuing. If its authority is missing,
+revoked or expired, recovery remains refused with the corresponding reason.
+Creating a new Task starts another execution rather than recovering the checkpoint.
+
 A small mechanical batch of up to five known items can remain one Task, such as renaming
 three documents to supplied names. Reading, transforming and verifying each document remains
 per-document work, even for a small batch. Multiple targets alone do not trigger the planner.

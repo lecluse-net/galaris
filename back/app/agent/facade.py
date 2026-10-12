@@ -63,7 +63,7 @@ from .registry import (
 )
 from .reasoning_guard import ReasoningDegenerationError, ReasoningPatternGuard
 from .driver_stream import validated_driver_stream
-from .checkpoints import assess_checkpoint, rebase_checkpoint
+from .checkpoints import assess_checkpoint, rebase_checkpoint, prepare_retry_checkpoint
 from .capabilities import MANAGEMENT_CAPABILITIES, driver_capabilities, negotiate_capabilities
 from .execution_errors import HarnessCheckpointError, classify_execution_error
 
@@ -276,6 +276,25 @@ def has_resumable_run_checkpoint(task: Any) -> bool:
     if checkpoint is None:
         return False
     return assess_checkpoint(checkpoint).resumable
+
+
+def prepare_run_retry(data: Mapping[str, Any]) -> dict[str, Any]:
+    """Prepare driver state without converting a remote retry into a fresh run."""
+    prepared = dict(data)
+    checkpoint = _read_run_checkpoint(data)
+    if checkpoint is None:
+        return prepared
+    candidate = prepare_retry_checkpoint(checkpoint)
+    if candidate != checkpoint:
+        prepared[RUN_CHECKPOINT_DATA_KEY] = {
+            **_string_keyed_dict(data[RUN_CHECKPOINT_DATA_KEY]),
+            "driver_code": candidate.driver_code,
+            "runtime_run_id": candidate.runtime_run_id,
+            "status": candidate.status,
+            "result": candidate.result.model_dump(mode="json") if candidate.result is not None else None,
+            "data": dict(candidate.data),
+        }
+    return prepared
 
 
 def objective_amendment_blocker(

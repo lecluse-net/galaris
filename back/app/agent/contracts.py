@@ -1203,6 +1203,13 @@ class DriverCheckpointPolicy(Protocol):
     def rebase(self, checkpoint: AgentRunCheckpoint) -> AgentRunCheckpoint | None: ...
 
 
+@runtime_checkable
+class DriverCheckpointRetryPolicy(Protocol):
+    """Optional preparation of an explicit retry of the same runtime identity."""
+
+    def prepare_retry(self, checkpoint: AgentRunCheckpoint) -> AgentRunCheckpoint: ...
+
+
 ToolEffectPolicy = Literal["read", "idempotent", "non_idempotent"]
 ToolConcurrencyPolicy = Literal["safe", "exclusive"]
 

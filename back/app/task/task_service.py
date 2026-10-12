@@ -29,6 +29,7 @@ from core import websocket
 from core.database import get_db
 from core.i18n import current_language, is_supported, render_prompt, tr
 from app.agent.contracts import ReasoningEffort
+from app.agent import prepare_run_retry
 from .models import Task, TaskAttempt, TaskAttemptStatus, TaskStatus
 from .schemas import TaskUpdate, TaskCreate, Task as TaskSchema, TaskOverview
 from .workflow import TaskEvent, transition
@@ -650,11 +651,7 @@ async def retry(task_id: UUID, expected_revision: int) -> Optional[Task]:
                 # A successful closing report described the previous failure. Its next
                 # execution must read current state rather than replay that completed run.
                 node_data.pop(_AGENT_RUN_CHECKPOINT_DATA_KEY, None)
-            checkpoint = node_data.get(_AGENT_RUN_CHECKPOINT_DATA_KEY)
-            if isinstance(checkpoint, dict):
-                node_data[_AGENT_RUN_CHECKPOINT_DATA_KEY] = {
-                    **checkpoint, "result": None, "status": "interrupted",
-                }
+            node_data = prepare_run_retry(node_data)
             node_data.pop("plan_skipped", None)
             node_data.pop("plan_skipped_after_task_id", None)
             node.data = node_data
@@ -676,11 +673,7 @@ async def retry(task_id: UUID, expected_revision: int) -> Optional[Task]:
             task.execution_result or {}
         ).get("metadata", {}).get("reasoning_recovery_exhausted"):
             data["reasoning_recovery_requested"] = True
-        checkpoint = data.get(_AGENT_RUN_CHECKPOINT_DATA_KEY)
-        if isinstance(checkpoint, dict):
-            data[_AGENT_RUN_CHECKPOINT_DATA_KEY] = {
-                **checkpoint, "result": None, "status": "interrupted",
-            }
+        data = prepare_run_retry(data)
         task.data = data
         transition(task, TaskEvent.RETRY)
         transition(task, TaskEvent.ROUTE_TO_EXECUTION)

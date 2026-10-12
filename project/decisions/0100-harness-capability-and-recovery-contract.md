@@ -18,6 +18,16 @@ l’absence de contrat, une identité différente ou une enveloppe corrompue int
 redémarrage automatique. Un amendement conserve les preuves d’effets ; le driver peut
 refuser le rebasage d’un historique distant.
 
+Précision du 12 octobre 2026 : la préparation d'un réessai explicite appartient aussi
+au driver, via le contrat facultatif `DriverCheckpointRetryPolicy`. Sans ce contrat,
+le checkpoint reste inchangé. La façade interdit de changer son driver ou son identité
+runtime. L'interne conserve sa préparation historique (`interrupted`, résultat de
+tentative effacé, journal d'effets et historique conservés) ; les drivers distants
+gardent leurs états, résultats et reçus pour observer la même exécution. Les anciennes
+enveloppes réseau marquées `interrupted` sont réconciliées par observation, jamais par
+une nouvelle soumission. L'autorité d'exécution reste nécessaire : absente, révoquée ou
+expirée, elle interdit la reprise et n'est pas recréée par le réessai.
+
 Précision du 19 septembre 2026 : l'amendabilité exposée et l'admission sous verrou
 interrogent le même contrat de rebasage avant toute annulation ou modification d'objectif.
 La vérification ne modifie pas le checkpoint. Une exécution possédée par un lease, ou

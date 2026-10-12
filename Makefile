@@ -408,7 +408,7 @@ tests-recovery: ## Verify durable tool receipts, SSH crash recovery, retries and
 .PHONY: tests-recovery
 
 tests-harness-contracts: ## Qualify the Harness boundary, concrete adapters and durable Task integration
-	@$(MAKE) tests TEST_ARGS_BACK= ARGS='app/agent/tests app/harness/tests app/harnesses/tests app/tools/tests app/image/tests/test_image_mcp.py bridge/hermes/tests bridge/codex/tests bridge/claude_agent/tests bridge/deepseek_harness/tests app/task/tests/test_scheduler.py app/task/tests/test_agent_run_trace.py tests/test_harness_boundaries.py tests/test_driver_conformance.py'
+	@$(MAKE) tests TEST_ARGS_BACK= ARGS='app/agent/tests app/harness/tests app/harnesses/tests app/tools/tests app/image/tests/test_image_mcp.py bridge/hermes/tests bridge/codex/tests bridge/claude_agent/tests bridge/deepseek_harness/tests app/task/tests/test_scheduler.py app/task/tests/test_agent_run_trace.py app/task/tests/test_task_service.py tests/test_harness_boundaries.py tests/test_driver_conformance.py'
 .PHONY: tests-harness-contracts
 
 tests-harness-runtimes: ## Execute the real pinned Harness SDKs against an isolated deterministic model

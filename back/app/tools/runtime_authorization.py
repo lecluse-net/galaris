@@ -124,9 +124,15 @@ async def renew_runtime_run_grant(credential: str, request: AgentRunRequest) -> 
         from app.agent import authorization_policy
         await authorization_policy(request.agent_id, lock=True)
         row = await db.scalar(select(RuntimeRunGrant).where(RuntimeRunGrant.credential_hash == fingerprint(credential),
-            RuntimeRunGrant.agent_id == request.agent_id, RuntimeRunGrant.active.is_(True)).with_for_update())
-        if row is None or row.expires_at <= datetime.now(timezone.utc) or request.target is None:
+            RuntimeRunGrant.agent_id == request.agent_id).with_for_update())
+        if row is None:
+            raise PermissionError("The suspended runtime authority is missing; the existing run cannot be resumed")
+        if not row.active:
+            raise PermissionError("The suspended runtime authority was revoked")
+        if row.expires_at <= datetime.now(timezone.utc):
             raise PermissionError("The suspended runtime authority expired")
+        if request.target is None:
+            raise PermissionError("The suspended runtime has no frozen target")
         if row.target_ref != request.target.target_ref or row.target_revision != request.target.revision:
             raise PermissionError("The suspended runtime target changed")
         principal = await runtime_principal_port().by_key(row.token_id)

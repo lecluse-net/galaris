@@ -44,6 +44,14 @@ their driver decides whether recovery or objective amendment is safe. Cancellati
 receipts distinguish a request from a confirmed stop. See
 [0100](../../../../project/decisions/0100-harness-capability-and-recovery-contract.md).
 
+An explicit retry also preserves the opaque checkpoint. Only its driver may prepare
+that state through `DriverCheckpointRetryPolicy`, without changing the execution identity.
+The internal harness resets the attempt result while keeping its effect journal;
+remote harnesses retain receipts and observe the existing actor. Older network checkpoints
+marked `interrupted` require reconciliation without submitting another run. Missing,
+revoked or expired authority prevents recovery with a distinct diagnostic; retry never
+restores execution rights.
+
 ## Elementary inference
 
 All managed external Harness local actions can receive human **Always allow this action type** consent,

@@ -105,6 +105,11 @@ peut le produire après les travaux échoués. Les autres étapes dépendantes s
 Un bilan réussi conserve l’erreur du plan ; un réessai manuel reprend le travail inachevé
 et actualise ce bilan, en préservant les autres réussites.
 
+Pour les harnais distants, **Réessayer** conserve l'identité de l'exécution et ses reçus ;
+il vérifie l'exécution existante avant de poursuivre. Si son autorisation a disparu,
+a été révoquée ou a expiré, la reprise reste refusée avec la cause correspondante.
+Créer une nouvelle Task constitue une nouvelle exécution, pas une récupération du checkpoint.
+
 Un petit lot mécanique d'au plus cinq éléments connus peut rester une seule tâche, par
 exemple renommer trois documents avec les noms fournis. Lire, transformer et vérifier chaque
 document reste un traitement par document, même pour un petit lot. Plusieurs cibles ne

@@ -238,6 +238,20 @@ async def test_runtime_run_grant_is_scoped_renewable_and_revoked_by_assignment_c
     resumed = replace(request, run_id=uuid4(), attempt_id=uuid4(), resume_checkpoint=AgentRunCheckpoint(
         driver_code="openai_messages", runtime_run_id=grant.actor_key, status="waiting_for_authorization"))
     assert await renew_runtime_run_grant(credential, resumed) == credential
+    from datetime import datetime, timedelta, timezone
+    from app.tools.authorization_models import RuntimeRunGrant
+    async with get_db_session() as db:
+        row = await db.get(RuntimeRunGrant, grant.id)
+        original_expiry = row.expires_at
+        row.expires_at = datetime.now(timezone.utc) - timedelta(seconds=1)
+    with pytest.raises(PermissionError, match="authority expired"):
+        await renew_runtime_run_grant(credential, resumed)
+    with pytest.raises(PermissionError):
+        await resolve_runtime_run_grant(credential, principal=principal)
+    async with get_db_session() as db:
+        row = await db.get(RuntimeRunGrant, grant.id)
+        assert row.expires_at < datetime.now(timezone.utc)
+        row.expires_at = original_expiry
     with pytest.raises(PermissionError):
         await renew_runtime_run_grant(credential, replace(resumed, resume_checkpoint=None))
     from app.tools import runtime_authorization
@@ -264,6 +278,12 @@ async def test_runtime_run_grant_is_scoped_renewable_and_revoked_by_assignment_c
         await resolve_runtime_run_grant(credential, principal=principal)
     revoked = await revoke_runtime_run_grant(resumed.run_id)
     assert revoked is not None and not revoked.active
+    with pytest.raises(PermissionError, match="authority was revoked"):
+        await renew_runtime_run_grant(credential, resumed)
+    async with get_db_session() as db:
+        await db.delete(await db.get(RuntimeRunGrant, grant.id))
+    with pytest.raises(PermissionError, match="authority is missing"):
+        await renew_runtime_run_grant(credential, resumed)
 
 
 @pytest.mark.asyncio

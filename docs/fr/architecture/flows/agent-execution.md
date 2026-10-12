@@ -46,6 +46,14 @@ pour l’orchestration ; leur driver déclare si une reprise ou un amendement es
 Une réponse d’annulation distingue demande reçue et arrêt confirmé. Voir
 [0100](../../../../project/decisions/0100-harness-capability-and-recovery-contract.md).
 
+Un réessai explicite conserve aussi le checkpoint opaque. Seul le driver peut préparer
+son état via `DriverCheckpointRetryPolicy`, sans changer l'identité de l'exécution.
+L'interne réinitialise le résultat de tentative tout en conservant son journal d'effets ;
+les harnais distants conservent leurs reçus et observent l'acteur existant. Une ancienne
+enveloppe réseau marquée `interrupted` reste une demande de réconciliation, sans nouvelle
+soumission. Une autorité absente, révoquée ou expirée interdit cette reprise et conserve
+un diagnostic distinct ; le réessai ne restaure pas les droits d'exécution.
+
 ## Inférence élémentaire
 
 Les actions locales de tous les harnais externes gérés peuvent recevoir un accord humain **Toujours autoriser

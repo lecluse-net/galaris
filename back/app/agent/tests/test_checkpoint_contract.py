@@ -29,6 +29,35 @@ def test_new_driver_can_own_an_unfamiliar_checkpoint_format(monkeypatch):
     checkpoint = AgentRunCheckpoint(driver_code=spec.code, runtime_run_id="opaque:17", status="unknown", data={"cursor": [1, 2]})
     assert checkpoints.assess_checkpoint(checkpoint).execution_strategy == "custom-recover"
     assert checkpoints.rebase_checkpoint(checkpoint).data == {"cursor": [1, 2], "amended": True}
+    checkpoint = replace(checkpoint, result=ExecutionResult(prompt="", result="Recorded receipt", tools_used=["save"]))
+    original = deepcopy(checkpoint)
+    retried = checkpoints.prepare_retry_checkpoint(checkpoint)
+    assert retried == original and retried is not checkpoint
+    retried.data["cursor"].append(3)
+    assert checkpoint == original
+
+
+@pytest.mark.parametrize("change", ["driver_code", "runtime_run_id"])
+def test_retry_preparation_cannot_replace_a_runtime_identity(monkeypatch, change):
+    class Policy:
+        def prepare_retry(self, checkpoint):
+            return replace(checkpoint, **{change: "replacement"})
+
+    monkeypatch.setattr(checkpoints, "checkpoint_policy", lambda _: Policy())
+    checkpoint = AgentRunCheckpoint(driver_code="synthetic", runtime_run_id="original", status="running")
+    with pytest.raises(HarnessCheckpointError, match="runtime identity"):
+        checkpoints.prepare_retry_checkpoint(checkpoint)
+
+
+def test_retry_with_an_unavailable_driver_keeps_evidence_and_still_blocks_execution():
+    from app.agent import has_resumable_run_checkpoint, prepare_run_retry
+
+    data = {"_agent_run_checkpoint": {"driver_code": "unavailable-synthetic-driver",
+        "runtime_run_id": "previous-run", "status": "unknown",
+        "data": {"receipt": "Preserve uncertain effect"}}}
+    original = deepcopy(data)
+    assert prepare_run_retry(data) == original
+    assert not has_resumable_run_checkpoint(SimpleNamespace(data=data))
 
 
 @pytest.mark.parametrize("data,expected", [
@@ -118,6 +147,8 @@ def test_corrupt_checkpoint_never_becomes_a_fresh_run(payload):
     assert facade.checkpoint_blocks_new_effects(task)
     with pytest.raises(HarnessCheckpointError):
         facade._read_run_checkpoint(task.data)
+    with pytest.raises(HarnessCheckpointError):
+        facade.prepare_run_retry(task.data)
 
 
 @pytest.mark.parametrize("retry,checkpoint_safe,expected", [

@@ -4,6 +4,7 @@ from copy import deepcopy
 
 from .contracts import (
     AgentDriverError, AgentRunCheckpoint, CheckpointAssessment, DriverCheckpointPolicy,
+    DriverCheckpointRetryPolicy,
 )
 from .registry import resolve_checkpoint_factory, get_driver_spec
 from .execution_errors import HarnessCheckpointError
@@ -37,3 +38,20 @@ def rebase_checkpoint(checkpoint: AgentRunCheckpoint) -> AgentRunCheckpoint:
     if rebased.driver_code != checkpoint.driver_code:
         raise HarnessCheckpointError("Rebasing cannot transfer a checkpoint to another driver.")
     return rebased
+
+
+def prepare_retry_checkpoint(checkpoint: AgentRunCheckpoint) -> AgentRunCheckpoint:
+    """Preserve opaque state unless its driver explicitly prepares the same run."""
+    candidate = deepcopy(checkpoint)
+    try:
+        policy = checkpoint_policy(checkpoint.driver_code)
+    except AgentDriverError:
+        # Keep evidence even when its driver cannot currently be loaded. Admission
+        # still refuses recovery through assess_checkpoint; this is not a fresh run.
+        return candidate
+    if isinstance(policy, DriverCheckpointRetryPolicy):
+        candidate = policy.prepare_retry(candidate)
+    if (candidate.driver_code != checkpoint.driver_code
+            or candidate.runtime_run_id != checkpoint.runtime_run_id):
+        raise HarnessCheckpointError("Retry preparation cannot replace the checkpoint runtime identity.")
+    return candidate

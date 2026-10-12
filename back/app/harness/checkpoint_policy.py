@@ -67,6 +67,11 @@ class InternalCheckpointPolicy:
             return None
         return replace(checkpoint, result=None, data={**checkpoint.data, "message_history": []})
 
+    def prepare_retry(self, checkpoint: AgentRunCheckpoint) -> AgentRunCheckpoint:
+        # Preserve the effect journal and history; only the failed attempt's result
+        # is reset. Recovery still checks and reconciles uncertain effects.
+        return replace(checkpoint, result=None, status="interrupted")
+
 
 def create_policy() -> InternalCheckpointPolicy:
     return InternalCheckpointPolicy()
