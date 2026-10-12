@@ -1026,9 +1026,9 @@ async def test_conversation_executor_decides_whether_to_admit_work(
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("interrupt", [False, True])
+@pytest.mark.parametrize("interrupt", [False, True, "shutdown"])
 async def test_conversation_controller_delivers_repeated_wording_without_judgment(
-    monkeypatch: pytest.MonkeyPatch, interrupt: bool,
+    monkeypatch: pytest.MonkeyPatch, interrupt: bool | str,
 ) -> None:
     agent = SimpleNamespace(
         first_name="Lyra",
@@ -1195,11 +1195,17 @@ async def test_conversation_controller_delivers_repeated_wording_without_judgmen
             return actual
 
         monkeypatch.setattr(conversation_module, "create_agent", create_runtime)
-        turn = replace(turn, should_interrupt=should_interrupt)
+        turn = replace(turn, should_suspend=pending.is_set) if interrupt == "shutdown" else replace(turn, should_interrupt=should_interrupt)
         operation = asyncio.create_task(HarnessConversationController().run(turn))
         try:
             await asyncio.wait_for(started.wait(), 2)
             pending.set()
+            if interrupt == "shutdown":
+                from app.conversation.preparation import ConversationSuspended
+
+                with pytest.raises(ConversationSuspended):
+                    await asyncio.wait_for(operation, 2)
+                return
             outcome = await asyncio.wait_for(operation, 2)
         finally:
             operation.cancel()

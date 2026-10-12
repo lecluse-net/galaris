@@ -2,6 +2,20 @@
 
 # Flux d’exécution agentique
 
+Les rounds texte survivent aux interruptions du worker : l'arrêt propre libère le bail après
+la sauvegarde de l'historique et des reçus ; l'arrêt brutal récupère le bail expiré. Ces
+interruptions ne consomment pas les retries métier. Les outils engagés sont drainés pendant
+vingt secondes à l'arrêt ; Docker accorde quatre-vingt-dix secondes au backend. Un checkpoint
+sûr reprend après effet. Les réponses journalisées sont rattachées sans renvoi ; une livraison
+sans reçu reste `UNKNOWN`. Voir les [états de conversation](../state-machines.md)
+et [0178](../../../../project/decisions/0178-conversation-worker-recovery.md).
+
+Une fermeture du transport MCP conserve l'appel engagé en attente. Le harnais reprend
+automatiquement les lectures et appels idempotents du dernier lot avec leurs arguments
+et identités d'origine, avant une nouvelle décision du modèle. Les résultats achevés
+restent acquis ; un effet non idempotent sans reçu bloque la reprise. Les contrôles
+natifs d'autorisation et de fraîcheur restent appliqués.
+
 ## Organisation du travail
 
 Pour une Task, le Dispatcher choisit `direct`, `tracked` ou `clarify` dans son inférence

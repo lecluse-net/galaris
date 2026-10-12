@@ -251,6 +251,11 @@ Attaching an image to a document and sending it back in the chat are separate re
 
 ### Understanding Short Conversations and Background Work
 
+During an update or restart, an ongoing conversation automatically continues from its saved
+state. You do not need to resend the message. Confirmed actions are retained and interruptions
+do not consume attempts reserved for errors. If an external action or delivery remains
+uncertain, execution tracking reports it for verification before repeating it.
+
 An Agent can consult the agent directory during a conversation to identify a colleague and
 their role, without creating a Task. Asking for a colleague's contribution follows the usual
 action policy and contact permissions; reading a profile does not itself contact that Agent.

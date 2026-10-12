@@ -23,6 +23,8 @@ _MAX_CONCURRENCY = 4
 # for search results and the final answer while keeping the entire attempt bounded.
 _ACTION_TIMEOUT_SECONDS = 900.0
 _CANCEL_WAIT_SECONDS = 1.0
+_SHUTDOWN_DRAIN_SECONDS = 20.0
+_shutdown_requested = False
 _WORKER_ID = f"{socket.gethostname()}:{os.getpid()}:{uuid4().hex[:8]}"
 _scheduler_task: asyncio.Task[None] | None = None
 _wake_event: asyncio.Event | None = None
@@ -34,9 +36,10 @@ ClaimedRound = tuple[UUID, UUID]
 
 
 def start() -> None:
-    global _scheduler_task, _wake_event, _loop, _watching_changes
+    global _scheduler_task, _wake_event, _loop, _watching_changes, _shutdown_requested
     if _scheduler_task is not None and not _scheduler_task.done():
         return
+    _shutdown_requested = False
     _loop = asyncio.get_running_loop()
     _wake_event = asyncio.Event()
     if not _watching_changes:
@@ -58,7 +61,8 @@ def start() -> None:
 
 
 async def stop() -> None:
-    global _scheduler_task, _wake_event, _loop
+    global _scheduler_task, _wake_event, _loop, _shutdown_requested
+    _shutdown_requested = True
     root = _scheduler_task
     _scheduler_task = None
     _wake_event = None
@@ -67,9 +71,12 @@ async def stop() -> None:
         root.cancel()
         await asyncio.gather(root, return_exceptions=True)
     running = tuple(_running.values())
-    for task in running:
-        task.cancel()
     if running:
+        # Preparation/model calls stop promptly. A tool already running may
+        # finish and persist its receipt before we cancel the remaining work.
+        _done, pending = await asyncio.wait(running, timeout=_SHUTDOWN_DRAIN_SECONDS)
+        for task in pending:
+            task.cancel()
         await asyncio.gather(*running, return_exceptions=True)
     _running.clear()
     logger.info("Conversation scheduler stopped")
@@ -156,7 +163,7 @@ async def _execute_action(round_id: UUID, lease_token: UUID) -> None:
     terminal_result = None
     try:
         async with get_db_session():
-            turn = await build_turn(round_id, lease_token=lease_token)
+            turn = await build_turn(round_id, lease_token=lease_token, should_suspend=lambda: _shutdown_requested)
         progress = ConversationRuntimeStream(
             room_id=turn.room_id, round_id=round_id,
             topic_id=turn.topic_id, attempt=turn.attempt,
@@ -165,6 +172,7 @@ async def _execute_action(round_id: UUID, lease_token: UUID) -> None:
             turn,
             publish_progress=progress.append,
             reset_progress=progress.reset,
+            should_suspend=lambda: _shutdown_requested,
         )
         await progress.start()
         await publish_round_activity(round_id)
@@ -290,6 +298,24 @@ async def _execute(round_id: UUID, lease_token: UUID) -> None:
     except asyncio.CancelledError:
         action.cancel()
         await asyncio.gather(action, return_exceptions=True)
+        from .service import interrupt_round
+
+        # The cancelled runtime saves its history and tool receipts before its
+        # lease is released. Administrative cancellation already revoked it.
+        owner = asyncio.current_task()
+        async with get_db_session():
+            if not _shutdown_requested and owner is not None and not owner.cancelling():
+                # A transport/tool can cancel its own action while this worker
+                # remains healthy. Bound those faults by the normal retry budget.
+                from .service import fail_round
+
+                await fail_round(round_id, "Conversation execution interrupted while the worker was running.",
+                    lease_token=lease_token)
+            else:
+                await interrupt_round(round_id, lease_token=lease_token)
+        from .facade import publish_round_activity
+
+        await publish_round_activity(round_id)
         raise
     finally:
         heartbeat.cancel()

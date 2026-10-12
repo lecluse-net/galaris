@@ -37,6 +37,7 @@ from app.agent.conversation_context import (
 from app.conversation import (
     ConversationExecutionError,
     ConversationOutcome,
+    ConversationSuspended,
     ConversationTurn,
     parse_direct_task_directive,
     run_preparation,
@@ -733,9 +734,14 @@ class HarnessConversationController:
                 )
                 or ""
             )
+            async def pending_interruption() -> bool:
+                if turn.should_suspend is not None and turn.should_suspend():
+                    return True
+                return turn.should_interrupt is not None and await turn.should_interrupt()
+
             interruption = (
-                ConversationInterruption(turn.should_interrupt)
-                if turn.should_interrupt is not None else None
+                ConversationInterruption(pending_interruption)
+                if turn.should_interrupt is not None or turn.should_suspend is not None else None
             )
             checkpoint = HarnessRunCheckpoint(AgentRunRequest(
                 run_id=turn.round_id, task_id=None, driver_code="internal", effort="standard", objective=turn.objective,
@@ -878,6 +884,8 @@ class HarnessConversationController:
             finally:
                 if interruption is not None:
                     await interruption.close()
+            if turn.should_suspend is not None and turn.should_suspend():
+                raise ConversationSuspended
             text = strip_leading_message_metadata("".join(chunks)).strip()
             traced_runtime = cast(Agent, runtime)
             if not failure and traced_runtime.error:

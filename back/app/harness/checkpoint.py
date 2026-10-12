@@ -474,9 +474,21 @@ class HarnessRunCheckpoint:
             response = next((message for message in reversed(messages)
                 if isinstance(message, model_messages.ModelResponse)), None)
             previous = next((item for item in self.effects if
-                item.get("status") == "waiting_for_authorization" and item.get("tool_call_id") == tool_call_id
+                (item.get("status") == "waiting_for_authorization"
+                 or (item.get("status") == "interrupted"
+                     and item.get("effect_policy") in {"read", "idempotent"}
+                     and response is not None and item.get("response_ref") == _response_ref(response)))
+                and item.get("tool_call_id") == tool_call_id
                 and item.get("signature") == _signature(name, arguments)), None)
             if previous is not None:
+                if previous["status"] == "interrupted" and effect_policy == "non_idempotent":
+                    previous["status"] = "outcome_unknown"
+                    previous["effect_policy"] = effect_policy
+                    previous["concurrency_policy"] = concurrency_policy
+                    await self._save()
+                    raise ToolOutcomeUnknownError(
+                        f"The pending tool {name} is no longer replay-safe; it was not dispatched."
+                    )
                 previous["status"] = "started"
                 await self._save()
                 return str(previous["id"])
@@ -515,7 +527,39 @@ class HarnessRunCheckpoint:
             await self._save(status="waiting_for_authorization")
 
     async def deferred_results(self) -> DeferredToolResults | None:
+        from pydantic_ai import messages
+
         results = DeferredToolResults()
+        history = self.restored_messages()
+        response_index = next((index for index in range(len(history) - 1, -1, -1)
+            if isinstance(history[index], messages.ModelResponse)), None)
+        if response_index is not None:
+            response = history[response_index]
+            # Execute only original replay-safe calls from the pending batch.
+            # Completed siblings keep their receipts; SDK marks those as skipped.
+            for effect in self.effects:
+                if (effect.get("status") != "interrupted"
+                    or effect.get("effect_policy") not in {"read", "idempotent"}
+                    or _effect_response_index(effect, history) != response_index):
+                    continue
+                call = next((part for part in response.parts
+                    if isinstance(part, messages.ToolCallPart)
+                    and part.tool_call_id == effect.get("tool_call_id")
+                    and part.tool_name == effect.get("tool_name")
+                    and _signature(part.tool_name, part.args_as_dict()) == effect.get("signature")), None)
+                if call is None:
+                    continue
+                results.approvals[call.tool_call_id] = True
+            if results.approvals:
+                parts = [part for message in history[response_index + 1:]
+                    if isinstance(message, messages.ModelRequest) for part in message.parts
+                    if not (isinstance(part, messages.ToolReturnPart)
+                        and part.tool_call_id in results.approvals
+                        and _is_interruption(part.content))]
+                history = history[:response_index + 1]
+                if parts:
+                    history.append(messages.ModelRequest(parts=parts))
+                self.history = self._dump_messages(history)
         for effect in self.effects:
             if effect.get("status") != "waiting_for_authorization":
                 continue

@@ -118,6 +118,7 @@ class ConversationTurn:
     omitted_input_count: int = 0
     assert_fresh_before_effect: FreshnessGuard | None = None
     should_interrupt: FreshnessGuard | None = None
+    should_suspend: Callable[[], bool] | None = None
     admit_background_task: BackgroundTaskAdmission | None = None
     origin: Literal["text", "voice"] = "text"
     topic_id: UUID | None = None

@@ -27,6 +27,7 @@ from app.conversation.document_metadata import ConversationDocumentMetadata
 from app.conversation.models import (
     ConversationProcessLink,
     ConversationRound,
+    ConversationRoundAttempt,
     ConversationRoundMessage,
     ConversationTaskLink,
 )
@@ -491,7 +492,7 @@ def test_degraded_response_includes_the_llm_error_and_explains_its_nature(
     text = conversation_service._degraded_response(language="fr", error=error)
 
     assert expected_reason in text
-    assert f"Erreur renvoyée par le LLM : {error}" in text
+    assert error in text
 
 
 def test_degraded_response_redacts_credentials_from_the_llm_error() -> None:
@@ -547,7 +548,7 @@ async def test_failed_round_notification_includes_the_latest_llm_error(
     assert transaction_states == [False]
     assert "Nature du problème" in sent[0][1]
     assert (
-        "Erreur renvoyée par le LLM : HTTP 503: model backend unavailable"
+        "HTTP 503: model backend unavailable"
         in sent[0][1]
     )
 
@@ -1618,7 +1619,8 @@ async def test_interrupted_draft_is_never_delivered_without_a_successor(
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("phase", ["dispatcher", "objective", "attachment", "history"])
-async def test_preparation_interruption_preserves_inputs_and_starts_successor(committed_database, monkeypatch, phase):
+@pytest.mark.parametrize("cause", ["new_input", "shutdown"])
+async def test_preparation_interruption_preserves_inputs_and_starts_successor(committed_database, monkeypatch, phase, cause):
     from core.database import get_db_session
     from core.user.models import User
     from app.conversation import controller, scheduler, facade, mcp
@@ -1636,14 +1638,19 @@ async def test_preparation_interruption_preserves_inputs_and_starts_successor(co
     monkeypatch.setattr(controller, "run", harness.HarnessConversationController().run)
     monkeypatch.setattr(facade, "publish_round_activity", AsyncMock())
     monkeypatch.setattr(facade, "publish_runtime_event", AsyncMock())
+    monkeypatch.setattr(scheduler, "_shutdown_requested", False)
+    monkeypatch.setattr(scheduler, "_scheduler_task", None)
+    monkeypatch.setattr(scheduler, "_running", {})
     monkeypatch.setattr(harness, "build_conversation_session", AsyncMock(return_value=SimpleNamespace(messages=[])))
     resend = AsyncMock()
     monkeypatch.setattr("app.file_share.resource_copy", resend)
     if phase == "attachment":
         async def attachment_history(*args, **kwargs):
             entered.set()
-            await release.wait()
-            stopped.set()
+            try:
+                await release.wait()
+            finally:
+                stopped.set()
             return SimpleNamespace(messages=[{"attachments": [{
                 "local_id": str(uuid4()), "name": "rapport.pdf",
             }]}])
@@ -1667,26 +1674,35 @@ async def test_preparation_interruption_preserves_inputs_and_starts_successor(co
         round_ = await claim_next_round("first-worker")
         round_id, lease_token = round_.id, round_.lease_token
 
-    work = asyncio.create_task(scheduler._execute_action(round_id, lease_token))
+    execute = scheduler._execute if cause == "shutdown" else scheduler._execute_action
+    work = asyncio.create_task(execute(round_id, lease_token))
     try:
         await asyncio.wait_for(entered.wait(), 3)
-        async with get_db_session() as db:
-            correction = await _message(db, connection, room, 2, "Utilise les chiffres corrigés")
-            await admit_message(correction, agent_id=agent.id, connection_id=connection.id)
-        release.set()
-        await asyncio.wait_for(work, 3)
+        if cause == "shutdown":
+            scheduler._running[round_id] = work
+            await asyncio.wait_for(scheduler.stop(), 3)
+            assert work.cancelled()
+        else:
+            async with get_db_session() as db:
+                correction = await _message(db, connection, room, 2, "Utilise les chiffres corrigés")
+                await admit_message(correction, agent_id=agent.id, connection_id=connection.id)
+            release.set()
+            await asyncio.wait_for(work, 3)
         assert stopped.is_set()
         resend.assert_not_awaited()
         async with get_db_session() as db:
             previous = await db.get(ConversationRound, round_id)
-            assert previous.status == "SUPERSEDED"
+            assert previous.status == ("FROZEN" if cause == "shutdown" else "SUPERSEDED")
             assert previous.effect_started is False
             assert not list(await db.scalars(select(Task).where(Task.agent_id == agent.id)))
             successor = await claim_next_round("next-worker")
             assert successor is not None
             turn = await build_turn(successor.id, lease_token=successor.lease_token)
             assert initial in turn.objective
-            assert "Utilise les chiffres corrigés" in turn.objective
+            assert ("Utilise les chiffres corrigés" in turn.objective) == (cause == "new_input")
+            if cause == "shutdown":
+                assert successor.id == round_id
+                assert successor.lease_token != lease_token
     finally:
         work.cancel()
         await asyncio.gather(work, return_exceptions=True)
@@ -1705,6 +1721,232 @@ async def test_expired_round_heartbeat_cannot_resurrect_its_owner(db):
     recovered = await claim_next_round("new-worker")
     assert recovered.id == round_.id and recovered.lease_token != token
     assert not await mark_effect_if_fresh(round_.id, lease_token=token)
+
+
+@pytest.mark.asyncio
+async def test_repeated_worker_restarts_do_not_exhaust_conversation_retries(db):
+    agent, connection, room = await _scope(db)
+    message = await _message(db, connection, room, 1, "Prepare a synthetic report")
+    assert await admit_message(message, agent_id=agent.id, connection_id=connection.id)
+    round_ = await claim_next_round("first-worker")
+    assert round_ is not None
+    for index in range(4):
+        old_token = round_.lease_token
+        round_.lease_expires_at = datetime.now(timezone.utc) - timedelta(seconds=1)
+        await db.commit()
+        recovered = await claim_next_round(f"restarted-worker-{index}")
+        assert recovered is not None and recovered.id == round_.id
+        assert recovered.lease_token != old_token
+        assert not await mark_effect_if_fresh(round_.id, lease_token=old_token)
+        round_ = recovered
+
+    # Interruptions do not consume the budget, but real failures still do.
+    await fail_round(round_.id, "first provider failure", lease_token=round_.lease_token)
+    round_ = await claim_next_round("provider-retry")
+    assert round_ is not None
+    await fail_round(round_.id, "second provider failure", lease_token=round_.lease_token)
+    await db.refresh(round_)
+    assert round_.status == "ERROR_RESOLVED"
+    assert round_.last_error == "second provider failure"
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("state", ["completed", "preparing_task", "unknown", "missing", "corrupt"])
+async def test_worker_restart_preserves_receipts_and_refuses_uncertain_mutations(db, state):
+    from app.agent import AgentRunCheckpoint
+    from app.conversation.contracts import ConversationLeaseLostError
+
+    agent, connection, room = await _scope(db)
+    message = await _message(db, connection, room, 1, "Prepare a synthetic report")
+    assert await admit_message(message, agent_id=agent.id, connection_id=connection.id)
+    round_ = await claim_next_round("original-worker")
+    turn = await build_turn(round_.id, lease_token=round_.lease_token)
+    assert turn.save_checkpoint is not None
+    effect = {"tool_name": "conversation_task_submit" if state == "preparing_task" else "synthetic_write",
+              "status": "completed" if state == "completed" else "started",
+              "effect_policy": "idempotent" if state == "preparing_task" else "non_idempotent",
+              "result": "Durable synthetic receipt"}
+    checkpoint = AgentRunCheckpoint(driver_code="internal", runtime_run_id=str(round_.id),
+        status="interrupted", data={"version": 5, "resume_safe": state != "unknown", "effects": [effect]})
+    if state not in {"missing", "corrupt"}:
+        await turn.save_checkpoint(checkpoint)
+    await db.refresh(round_)
+    if state != "preparing_task":
+        assert await turn.assert_fresh_before_effect()
+    if state == "corrupt":
+        round_.encrypted_checkpoint = "invalid encrypted checkpoint"
+    round_.lease_expires_at = datetime.now(timezone.utc) - timedelta(seconds=1)
+    await db.commit()
+    recovered = await claim_next_round("replacement-worker")
+    if state in {"completed", "preparing_task"}:
+        assert recovered is not None and recovered.id == round_.id
+        resumed_turn = await build_turn(recovered.id, lease_token=recovered.lease_token)
+        assert resumed_turn.resume_checkpoint == checkpoint
+        with pytest.raises(ConversationLeaseLostError):
+            await turn.save_checkpoint(checkpoint)
+        await complete_round(recovered.id, ConversationOutcome(text=""), lease_token=recovered.lease_token)
+        await db.refresh(recovered)
+        assert recovered.status == "SUCCEEDED"
+    else:
+        assert recovered is None
+        await db.refresh(round_)
+        assert round_.status == "ERROR_RESOLVED"
+        assert "potentially started" not in round_.last_error
+        assert round_.encrypted_checkpoint is not None or state == "missing"
+
+
+@pytest.mark.asyncio
+async def test_action_cancellation_on_a_running_worker_keeps_a_bounded_failure_budget(db, monkeypatch):
+    from app.conversation import facade, scheduler
+
+    agent, connection, room = await _scope(db)
+    message = await _message(db, connection, room, 1, "Read the synthetic report")
+    assert await admit_message(message, agent_id=agent.id, connection_id=connection.id)
+
+    async def disconnect(*_args):
+        raise asyncio.CancelledError("synthetic MCP transport closed")
+
+    monkeypatch.setattr(scheduler, "_execute_action", disconnect)
+    monkeypatch.setattr(scheduler, "_shutdown_requested", False)
+    monkeypatch.setattr(facade, "publish_round_activity", AsyncMock())
+    for expected_status in ("FROZEN", "ERROR_RESOLVED"):
+        round_ = await claim_next_round("running-worker")
+        with pytest.raises(asyncio.CancelledError):
+            await asyncio.create_task(scheduler._execute(round_.id, round_.lease_token))
+        await db.refresh(round_)
+        assert round_.status == expected_status
+    attempts = list(await db.scalars(select(ConversationRoundAttempt).where(
+        ConversationRoundAttempt.round_id == round_.id)))
+    assert len(attempts) == 2 and all(attempt.status == "ERROR" for attempt in attempts)
+    assert await claim_next_round("running-worker") is None
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("phase", ["model", "effect"])
+async def test_scheduler_shutdown_releases_the_round_after_checkpoint_cleanup(db, monkeypatch, phase):
+    from app.agent import AgentRunCheckpoint
+    from app.conversation import controller, facade, scheduler
+
+    agent, connection, room = await _scope(db)
+    message = await _message(db, connection, room, 1, "Read a synthetic report")
+    assert await admit_message(message, agent_id=agent.id, connection_id=connection.id)
+    round_ = await claim_next_round("stopping-worker")
+    old_token = round_.lease_token
+    entered = asyncio.Event()
+    saved = asyncio.Event()
+    release = asyncio.Event()
+    checkpoint = AgentRunCheckpoint(driver_code="internal", runtime_run_id=str(round_.id),
+        status="interrupted", data={"version": 5, "resume_safe": True,
+            "effects": [{"tool_name": "synthetic_write", "status": "completed",
+                         "result": "Durable synthetic receipt"}] if phase == "effect" else []})
+
+    async def run(turn):
+        if phase == "effect":
+            assert await turn.assert_fresh_before_effect()
+        entered.set()
+        try:
+            if phase == "effect":
+                await release.wait()
+                from app.conversation.preparation import ConversationSuspended
+
+                raise ConversationSuspended
+            else:
+                await asyncio.Event().wait()
+        finally:
+            await turn.save_checkpoint(checkpoint)
+            saved.set()
+
+    monkeypatch.setattr(controller, "run", run)
+    monkeypatch.setattr(facade, "publish_runtime_event", AsyncMock())
+    monkeypatch.setattr(facade, "publish_round_activity", AsyncMock())
+    monkeypatch.setattr(scheduler, "_shutdown_requested", False)
+    monkeypatch.setattr(scheduler, "_scheduler_task", None)
+    monkeypatch.setattr(scheduler, "_running", {})
+    worker = asyncio.create_task(scheduler._execute(round_.id, old_token))
+    await asyncio.wait_for(entered.wait(), 2)
+    if phase == "effect":
+        scheduler._running[round_.id] = worker
+        stopping = asyncio.create_task(scheduler.stop())
+        await asyncio.sleep(0)
+        assert not worker.done() and not stopping.done()
+        release.set()
+        await asyncio.wait_for(stopping, 2)
+        assert worker.cancelled()
+    else:
+        worker.cancel()
+        with pytest.raises(asyncio.CancelledError):
+            await asyncio.wait_for(worker, 2)
+    assert saved.is_set()
+    await db.refresh(round_)
+    assert round_.status == "FROZEN" and round_.lease_token is None
+    links = list(await db.scalars(select(ConversationRoundMessage).where(
+        ConversationRoundMessage.round_id == round_.id, ConversationRoundMessage.role == "input")))
+    assert all(link.consumed_at is None for link in links)
+    attempts = list(await db.scalars(select(ConversationRoundAttempt).where(
+        ConversationRoundAttempt.round_id == round_.id)))
+    assert len(attempts) == 1 and attempts[0].status == "INTERRUPTED" and attempts[0].finished_at is not None
+    reclaimed = await claim_next_round("replacement-worker")
+    resumed = await build_turn(reclaimed.id, lease_token=reclaimed.lease_token)
+    assert resumed.resume_checkpoint == checkpoint
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("effect_started", [False, True])
+async def test_new_input_after_shutdown_preserves_the_before_after_effect_boundary(db, effect_started):
+    from app.agent import AgentRunCheckpoint
+
+    agent, connection, room = await _scope(db)
+    first = await _message(db, connection, room, 1, "Prepare the original report")
+    assert await admit_message(first, agent_id=agent.id, connection_id=connection.id)
+    previous = await claim_next_round("original-worker")
+    turn = await build_turn(previous.id, lease_token=previous.lease_token)
+    if effect_started:
+        assert await turn.assert_fresh_before_effect()
+        await turn.save_checkpoint(AgentRunCheckpoint(driver_code="internal", runtime_run_id=str(previous.id),
+            status="interrupted", data={"version": 5, "resume_safe": True,
+                                        "effects": [{"status": "completed", "result": "Saved report"}]}))
+    await conversation_service.interrupt_round(previous.id, lease_token=previous.lease_token)
+    second = await _message(db, connection, room, 2, "Use the revised figures")
+    assert await admit_message(second, agent_id=agent.id, connection_id=connection.id)
+    resumed = await claim_next_round("replacement-worker")
+    latest = await build_turn(resumed.id, lease_token=resumed.lease_token)
+    assert "Use the revised figures" in latest.objective
+    assert ("Prepare the original report" in latest.objective) is (not effect_started)
+    assert (resumed.id != previous.id) is effect_started
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("receipt_kind", ["none", "final", "other"])
+async def test_response_delivery_recovery_never_sends_twice(db, monkeypatch, receipt_kind):
+    agent, connection, room = await _scope(db)
+    message = await _message(db, connection, room, 1, "Read a synthetic report")
+    assert await admit_message(message, agent_id=agent.id, connection_id=connection.id)
+    round_ = await claim_next_round("delivery-worker")
+    await build_turn(round_.id, lease_token=round_.lease_token)
+    round_.delivery_state = "SENDING"
+    round_.effect_started = True
+    round_.lease_expires_at = datetime.now(timezone.utc) - timedelta(seconds=1)
+    receipt_saved = receipt_kind == "final"
+    if receipt_kind != "none":
+        response = await _message(db, connection, room, 2, "Synthetic response")
+        response.direction = "outbound"
+        response.status = "sent"
+        response.metadata_ = {CONVERSATION_ROUND_METADATA_KEY: str(round_.id),
+                              CONVERSATION_OUTPUT_PENDING_METADATA_KEY: receipt_saved}
+    await db.commit()
+    transport = AsyncMock()
+    monkeypatch.setattr("app.messenger.get_messenger", transport)
+    # Notification recovery must leave the active execution's lease to its owner.
+    assert await claim_next_round_notification() is None
+    assert await claim_next_round("recovery-worker") is None
+    await db.refresh(round_)
+    assert round_.status == ("SUCCEEDED" if receipt_saved else "ERROR_RESOLVED")
+    assert round_.delivery_state == ("DELIVERED" if receipt_saved else "UNKNOWN")
+    assert await claim_next_round_notification() is None
+    transport.assert_not_awaited()
+    outputs = list(await db.scalars(select(ConversationRoundMessage).where(
+        ConversationRoundMessage.round_id == round_.id, ConversationRoundMessage.role == "output")))
+    assert len(outputs) == int(receipt_saved)
 
 
 @pytest.mark.asyncio

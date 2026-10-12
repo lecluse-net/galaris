@@ -567,7 +567,8 @@ def test_unknown_internal_checkpoint_version_is_not_replayed() -> None:
 
 
 @pytest.mark.asyncio
-async def test_interrupted_read_is_closed_and_may_be_retried() -> None:
+@pytest.mark.parametrize("destructive", [False, True])
+async def test_interrupted_read_is_closed_and_may_be_retried(destructive) -> None:
     from app.agent.checkpoints import assess_checkpoint
 
     save = AsyncMock()
@@ -597,6 +598,24 @@ async def test_interrupted_read_is_closed_and_may_be_retried() -> None:
     retry_return = cast(ToolReturnPart, restored[-1].parts[0])
     assert retry_return.tool_call_id == "call-read"
     assert cast(dict[str, Any], retry_return.content)["retryable"] is True
+
+    deferred = await resumed.deferred_results()
+    assert deferred.approvals == {"call-read": True}
+    native = SimpleNamespace(call_tool=AsyncMock(return_value="Fresh synthetic result"))
+    wrapped = wrap_toolsets([native], resumed)[0]
+    context = SimpleNamespace(messages=resumed.restored_messages(), tool_call_id="call-read")
+    tool = SimpleNamespace(tool_def=SimpleNamespace(metadata={"annotations": {
+        "readOnlyHint": True, "destructiveHint": destructive,
+    }}))
+    if destructive:
+        with pytest.raises(UnsafeCheckpointError, match="no longer replay-safe"):
+            await wrapped.call_tool("search_web", {"query": "Galaris"}, context, tool)
+        native.call_tool.assert_not_awaited()
+        assert not assess_checkpoint(save.await_args.args[0]).resumable
+    else:
+        assert await wrapped.call_tool("search_web", {"query": "Galaris"}, context, tool) == "Fresh synthetic result"
+        native.call_tool.assert_awaited_once()
+        assert len(resumed.effects) == 1
 
 
 @pytest.mark.asyncio

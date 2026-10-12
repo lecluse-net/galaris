@@ -216,8 +216,21 @@ execution; loss of that token cancels the local flow before any concurrent recov
 | `RUNNING` without new input | response delivered → `SUCCEEDED` |
 | `RUNNING` with new input, without effect | final guard → `SUPERSEDED` |
 | `RUNNING` with new input, after effect | response deleted → `SUCCEEDED` |
-| active without effect, recoverable error | lease expired → new `CLAIMED` attempt |
-| active after effect or budget exhausted | degraded resolution → `ERROR_RESOLVED` |
+| active, interrupted worker, safe recovery | graceful stop → `FROZEN`; expired lease → new `CLAIMED` attempt |
+| uncertain effect or exhausted failure budget | degraded resolution → `ERROR_RESOLVED` |
+
+A worker stop finishes its attempt as `INTERRUPTED` and does not consume the budget of two
+actual execution errors. Attempt numbers remain monotonic. During shutdown, preparation and
+model calls stop; an already running tool has twenty seconds to finish and persist its receipt.
+Encrypted history allows continuation without repeating confirmed effects. Expired leases
+after abrupt stops follow the same rule. Corrupt checkpoints and unacknowledged non-idempotent
+effects block replay.
+
+Final responses enter delivery `SENDING` before transport. Recovery links an already journaled
+Messenger receipt and finishes as `SUCCEEDED`, without resending. With no receipt, delivery
+becomes `UNKNOWN` and requires reconciliation; no automatic fallback is sent. Notification
+recovery does not take the lease of an active round.
+See [0178](../../../project/decisions/0178-conversation-worker-recovery.md).
 
 `SUPERSEDED` does not consume its input links: the next round re-aggregates the same messages
 with the new ones. After an effect, the current round's links are consumed and the new message

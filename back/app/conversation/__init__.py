@@ -28,7 +28,7 @@ from .contracts import (
     public_ai_result,
 )
 from .controller import register_controller
-from .preparation import ConversationSuperseded, run_preparation
+from .preparation import ConversationSuperseded, ConversationSuspended, run_preparation
 from .document_display import (
     can_display_conversation_document,
     display_conversation_document,
@@ -79,6 +79,7 @@ from .service import linked_work_snapshot
 
 __all__ = [
     "ConversationSuperseded",
+    "ConversationSuspended",
     "run_preparation",
     "can_display_conversation_document",
     "display_conversation_document",

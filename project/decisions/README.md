@@ -1,5 +1,7 @@
 # Décisions d'architecture
 
+- [0178 — Reprise des conversations après interruption du worker](0178-conversation-worker-recovery.md)
+
 - [0177 — Accords mémorisés par type d’action des harnais](0177-runtime-action-type-consent.md)
 
 - [0176 — Récupération guidée du raisonnement répétitif](0176-guided-reasoning-recovery.md)

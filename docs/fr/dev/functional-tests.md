@@ -319,6 +319,17 @@ verrouille sa Room, sans rattrapage périodique. Le scénario de sérialisation 
 `app/conversation/tests/test_service.py` utilise des claims simultanés sur plusieurs
 connexions et préserve les inputs du successeur.
 
+Ces scénarios couvrent aussi l'arrêt propre pendant le dispatcher, l'historique, les pièces
+jointes et la préparation d'une Task, ainsi que plusieurs expirations successives sans
+épuiser le budget des véritables erreurs. Les checkpoints confirmés sont conservés ; un ancien
+token, un journal incertain ou illisible et une livraison sans reçu ne permettent aucun rejeu.
+Un reçu Messenger déjà persisté est rattaché sans renvoi. Les suites Harness de cancellation,
+checkpoints et interruption vérifient la reprise de l'historique et l'absence de double effet.
+`test_runtime_cancellation.py` utilise aussi un vrai serveur/client FastMCP : l'annulation
+avant ou après effet conserve l'appel en attente ; sa reprise idempotente précède toute
+nouvelle décision du modèle, conserve arguments et identité, sans rejouer les résultats
+achevés du lot. Une mutation non idempotente sans reçu reste bloquée.
+
 La structure documentaire de la #168 est couverte par
 `back/app/memory/tests/test_document_structure.py` : une mémoire par PJ, conservation obligatoire
 des descriptions d'images, projection sans modèle, dossiers visibles récursivement depuis les

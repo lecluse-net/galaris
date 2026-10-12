@@ -2,13 +2,16 @@
 
 from __future__ import annotations
 
+import asyncio
 from collections.abc import Collection
 from typing import Any, cast
 from uuid import UUID
 
+import anyio
 from loguru import logger
 from fastmcp import Client
-from mcp.types import TextContent
+from mcp.shared.exceptions import McpError
+from mcp.types import CONNECTION_CLOSED, TextContent
 
 from app.agent.contracts import normalize_tool_name
 from app.tools.contracts import EXECUTION_META_KEY, TOOL_ARGUMENTS_META_KEY, current_tool_execution
@@ -37,7 +40,16 @@ class ExecutionEvidenceClient(Client[Any]):
                 EXECUTION_META_KEY: {"operation_id": str(execution.operation_id)},
             }
         kwargs["raise_on_error"] = False
-        result = cast(Any, await super().call_tool(name, arguments, **kwargs))
+        try:
+            result = cast(Any, await super().call_tool(name, arguments, **kwargs))
+        except McpError as exc:
+            if exc.error.code != CONNECTION_CLOSED:
+                raise
+            # The SDK would turn this into ModelRetry, acknowledging a business
+            # failure. Keep the call pending: recovery owns replay/uncertainty.
+            raise asyncio.CancelledError("MCP transport closed during tool execution") from exc
+        except (anyio.ClosedResourceError, anyio.BrokenResourceError) as exc:
+            raise asyncio.CancelledError("MCP transport closed during tool execution") from exc
         raw_meta: object = result.meta
         if isinstance(raw_meta, dict) and TOOL_ARGUMENTS_META_KEY in cast(dict[str, Any], raw_meta):
             # Pydantic AI otherwise treats all text blocks as redundant with the

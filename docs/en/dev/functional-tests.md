@@ -310,6 +310,17 @@ periodic recovery. The serialization scenario in
 `app/conversation/tests/test_service.py` uses simultaneous claims on separate
 connections and preserves the successor's inputs.
 
+These scenarios also cover graceful shutdown during dispatch, history, attachments and Task
+preparation, and repeated lease expirations without exhausting the actual failure budget.
+Confirmed checkpoints are retained; stale tokens, uncertain or unreadable journals and delivery
+without a receipt cannot trigger replay. Persisted Messenger receipts are linked without
+resending. Harness cancellation, checkpoint and interruption suites verify history recovery
+and the absence of duplicate effects.
+`test_runtime_cancellation.py` also uses a real FastMCP server/client: cancellation before
+or after an effect keeps the call pending; idempotent recovery precedes another model
+decision, preserves arguments and identity, and skips completed results from the batch.
+A non-idempotent mutation without a receipt remains blocked.
+
 Document structure (#168) is covered by `back/app/memory/tests/test_document_structure.py`:
 one memory companion per attachment, mandatory image-description persistence, deterministic
 projection without models, recursive folder visibility derived from readable documents, and

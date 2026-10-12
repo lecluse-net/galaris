@@ -26,6 +26,7 @@ services:
             - "19998"
         container_name: ${APP_NAME:-galaris}-back
         restart: unless-stopped
+        stop_grace_period: 90s
         build:
             context: ./back
             additional_contexts:

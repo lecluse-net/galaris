@@ -198,6 +198,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
                 start=start_conversation_scheduler,
                 stop=conversation_scheduler.stop,
                 is_running=conversation_scheduler.is_running,
+                stop_timeout=30.0,
             ),
             RuntimeComponent(
                 name="messenger_listeners",

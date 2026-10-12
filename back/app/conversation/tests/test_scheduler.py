@@ -70,7 +70,7 @@ async def test_round_stream_starts_before_the_controller_and_finishes_in_order(
     async def fake_db_session() -> AsyncIterator[None]:
         yield
 
-    async def build_turn(_round_id: object, *, lease_token: object) -> ConversationTurn:
+    async def build_turn(_round_id: object, *, lease_token: object, should_suspend: object = None) -> ConversationTurn:
         return ConversationTurn(
             room_id=room_id,
             round_id=round_id,
@@ -141,7 +141,7 @@ async def test_tool_only_effect_persists_its_visible_acknowledgement(
     async def fake_db_session() -> AsyncIterator[None]:
         yield
 
-    async def build_turn(_round_id: object, *, lease_token: object) -> ConversationTurn:
+    async def build_turn(_round_id: object, *, lease_token: object, should_suspend: object = None) -> ConversationTurn:
         return ConversationTurn(
             room_id=room_id,
             round_id=round_id,

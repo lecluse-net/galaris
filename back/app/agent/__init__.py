@@ -77,6 +77,7 @@ from .observers import (
     unregister_terminal_task_observer,
 )
 from .facade import (
+    assess_checkpoint,
     aggregate_llm_run_usage,
     cancel,
     build_task_context,
@@ -284,6 +285,7 @@ __all__ = [
     "AgentContextCapsule",
     "AgentContextRequest",
     "AgentRunCheckpoint",
+    "assess_checkpoint",
     "AgentRunControl",
     "AgentRunEnvelopeV1",
     "AgentRunEventV1",

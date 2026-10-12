@@ -5,7 +5,7 @@ from __future__ import annotations
 import asyncio
 import json
 import re
-from collections.abc import Mapping, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import replace
 from datetime import datetime, timedelta, timezone
 from typing import Literal, cast
@@ -17,8 +17,8 @@ from sqlalchemy import and_, delete, exists, func, or_, select, update
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.orm import aliased
 
-from app.agent.contracts import AIResult, ReasoningEffort, TaskMessage
-from app.agent import message_prompt
+from app.agent.contracts import AIResult, AgentRunCheckpoint, ExecutionResult, ReasoningEffort, TaskMessage
+from app.agent import assess_checkpoint, message_prompt
 from app.messenger.contracts import DocumentFocus
 from app.connection import Connection
 from app.messenger import (
@@ -53,7 +53,7 @@ CONTEXT_SOFT_OVERFLOW_CHARS = 2_000
 LEASE_SECONDS = 45
 # Leave time in the notification lease for the required text dispatch.
 TASK_NOTIFICATION_ARTIFACT_TIMEOUT_SECONDS = 15
-MAX_ATTEMPTS = 2
+MAX_FAILURES = 2
 LINKED_WORK_OBJECTIVE_MAX_CHARS = 250
 LINKED_WORK_PAUSED_MAX_AGE = timedelta(hours=24)
 LINKED_WORK_TERMINAL_MAX_AGE = timedelta(hours=1)
@@ -173,7 +173,18 @@ async def admit_message(
             ConversationRound.status == "FROZEN",
         )
         .with_for_update()
+        .execution_options(populate_existing=True)
     )
+    if round_ is not None and round_.effect_started:
+        # A safely suspended run may already have completed effects. A new post
+        # must get its own round, just as it would while the old worker was live.
+        round_.status = "SUCCEEDED"
+        round_.delivery_state = "SKIPPED"
+        round_.finished_at = _now()
+        round_.encrypted_checkpoint = None
+        await _mark_round_inputs_consumed(round_.id, round_.finished_at)
+        await get_db().flush()
+        round_ = None
     if round_ is None:
         round_ = ConversationRound(
             room_id=room.id,
@@ -388,6 +399,118 @@ async def _claim_round(round_: ConversationRound, worker_id: str) -> Conversatio
     return round_
 
 
+def _read_round_checkpoint(round_: ConversationRound) -> AgentRunCheckpoint | None:
+    from core.util import get_encryption_service
+
+    if not round_.encrypted_checkpoint:
+        return None
+    payload = json.loads(get_encryption_service().decrypt(round_.encrypted_checkpoint))
+    checkpoint = AgentRunCheckpoint(
+        driver_code=payload["driver_code"], runtime_run_id=payload["runtime_run_id"],
+        status=payload["status"], data=payload["data"],
+        result=ExecutionResult.model_validate(payload["result"]) if payload.get("result") else None,
+    )
+    if checkpoint.driver_code != "internal" or checkpoint.runtime_run_id != str(round_.id):
+        raise ValueError("The conversation checkpoint belongs to another runtime.")
+    return checkpoint
+
+
+async def _failure_count(round_id: UUID) -> int:
+    """Worker interruptions are audited separately from actual execution failures."""
+    return int(await get_db().scalar(select(func.count()).select_from(
+        ConversationRoundAttempt,
+    ).where(
+        ConversationRoundAttempt.round_id == round_id,
+        ConversationRoundAttempt.status == "ERROR",
+    )) or 0)
+
+
+async def _interrupt_round(round_: ConversationRound) -> bool:
+    """Keep inputs and checkpoints when the worker stops, refusing uncertain effects."""
+    # Admission owns this room lock too. A successor must not be inserted
+    # concurrently with our transition back to the unique FROZEN round.
+    await _room_scope(round_.room_id, lock=True)
+    error: str | None = None
+    if round_.delivery_state == "SENDING":
+        # Messenger journals the provider receipt before returning to the round.
+        # Recover that committed handoff without another model or transport call.
+        sent = await get_db().scalar(select(Message).where(
+            Message.messenger_room_id == round_.room_id,
+            Message.direction == "outbound",
+            Message.status.in_(("accepted", "sent")),
+            Message.metadata_[CONVERSATION_ROUND_METADATA_KEY].as_string() == str(round_.id),
+            Message.metadata_[CONVERSATION_OUTPUT_PENDING_METADATA_KEY].as_boolean().is_(True),
+        ).order_by(Message.created_at.desc()).limit(1))
+        if sent is not None:
+            await _link_output(round_.id, sent.id)
+            round_.status = "SUCCEEDED"
+            round_.delivery_state = "DELIVERED"
+            round_.last_error = None
+            round_.encrypted_checkpoint = None
+            round_.finished_at = _now()
+            await _mark_round_inputs_consumed(round_.id, round_.finished_at)
+            await _finish_attempt(round_, "SUCCESS")
+            _clear_round_lease(round_)
+            return False
+        error = "Conversation worker stopped during response delivery; delivery must be reconciled."
+    else:
+        try:
+            checkpoint = _read_round_checkpoint(round_)
+            if checkpoint is not None:
+                assessment = assess_checkpoint(checkpoint)
+                # This controller has no Console reconciler. Only a safe history
+                # may resume; uncertain external effects must never be replayed.
+                if assessment.state != "safe":
+                    error = f"Conversation checkpoint cannot safely resume: {assessment.reason}"
+            elif round_.effect_started:
+                error = "Conversation worker stopped after an effect without a recovery checkpoint."
+        except Exception as exc:
+            # Decryption, envelope validation and driver-policy errors all fail
+            # closed at this persisted checkpoint boundary.
+            logger.warning("Conversation {} has an unreadable recovery checkpoint: {}", round_.id, type(exc).__name__)
+            error = "Conversation recovery checkpoint is unreadable; effects were not replayed."
+
+    if error is not None:
+        round_.status = "ERROR_RESOLVED"
+        round_.last_error = error
+        round_.finished_at = _now()
+        round_.delivery_state = "UNKNOWN" if round_.delivery_state == "SENDING" else "PENDING"
+        await _mark_round_inputs_consumed(round_.id, round_.finished_at)
+        await _finish_attempt(round_, "ERROR", error)
+        _clear_round_lease(round_)
+        return False
+
+    await _finish_attempt(round_, "INTERRUPTED", "Conversation worker interrupted; execution will resume.")
+    successor = await _pending_successor(round_)
+    if successor is not None:
+        # Preserve the existing before/after-effect freshness contract.
+        if not round_.effect_started:
+            await _merge_inputs(round_, successor)
+            round_.status = "SUPERSEDED"
+        else:
+            round_.status = "SUCCEEDED"
+            await _mark_round_inputs_consumed(round_.id)
+        round_.finished_at = _now()
+    else:
+        round_.status = "FROZEN"
+    round_.last_error = None
+    round_.interrupted_at = _now()
+    _clear_round_lease(round_)
+    return successor is None
+
+
+async def interrupt_round(round_id: UUID, *, lease_token: UUID) -> None:
+    """Release a stopped worker after its runtime has persisted cancellation state."""
+    round_ = await get_db().scalar(select(ConversationRound).where(
+        ConversationRound.id == round_id,
+    ).with_for_update().execution_options(populate_existing=True))
+    if (round_ is None or round_.lease_token != lease_token
+            or round_.status not in PROCESSING_ROUND_STATUSES):
+        return
+    await _interrupt_round(round_)
+    await get_db().commit()
+
+
 async def claim_next_round(worker_id: str) -> ConversationRound | None:
     """Claim the oldest pending room round, reclaiming safe expired executions first."""
 
@@ -401,27 +524,10 @@ async def claim_next_round(worker_id: str) -> ConversationRound | None:
         .order_by(ConversationRound.lease_expires_at.asc())
         .limit(1)
         .with_for_update(skip_locked=True)
+        .execution_options(populate_existing=True)
     )
     if expired is not None:
-        successor = await _pending_successor(expired)
-        if successor is not None and not expired.effect_started:
-            await _merge_inputs(expired, successor)
-            expired.status = "SUPERSEDED"
-            expired.finished_at = now
-            _clear_round_lease(expired)
-            await _finish_attempt(expired, "SUPERSEDED")
-            await get_db().commit()
-            return None
-        if expired.effect_started or expired.attempt_count >= MAX_ATTEMPTS:
-            expired.status = "ERROR_RESOLVED"
-            expired.delivery_state = "PENDING"
-            expired.last_error = (
-                "Conversation round lease expired after a potentially started effect."
-            )
-            expired.finished_at = now
-            await _mark_round_inputs_consumed(expired.id, now)
-            _clear_round_lease(expired)
-            await _finish_attempt(expired, "ERROR", expired.last_error)
+        if not await _interrupt_round(expired):
             await get_db().commit()
             return None
         return await _claim_round(expired, worker_id)
@@ -555,7 +661,9 @@ async def _locked_owned_round(round_id: UUID, lease_token: UUID) -> Conversation
     return round_
 
 
-async def build_turn(round_id: UUID, *, lease_token: UUID) -> ConversationTurn:
+async def build_turn(
+    round_id: UUID, *, lease_token: UUID, should_suspend: Callable[[], bool] | None = None,
+) -> ConversationTurn:
     round_ = await _locked_owned_round(round_id, lease_token)
     room, connection = await _room_scope(round_.room_id)
     hydrated = await _input_messages(round_.id)
@@ -628,14 +736,8 @@ async def build_turn(round_id: UUID, *, lease_token: UUID) -> ConversationTurn:
         room_id=str(room.id),
         user_id=newest.sender_external_id,
     )
-    from app.agent.contracts import AgentRunCheckpoint, ExecutionResult
     from core.util import get_encryption_service
-    resume_checkpoint = None
-    if round_.encrypted_checkpoint:
-        payload = json.loads(get_encryption_service().decrypt(round_.encrypted_checkpoint))
-        resume_checkpoint = AgentRunCheckpoint(driver_code=payload["driver_code"], runtime_run_id=payload["runtime_run_id"],
-            status=payload["status"], data=payload["data"],
-            result=ExecutionResult.model_validate(payload["result"]) if payload.get("result") else None)
+    resume_checkpoint = _read_round_checkpoint(round_)
 
     async def save_checkpoint(checkpoint: AgentRunCheckpoint) -> None:
         from app.tools.facade import canonical_authorization_snapshot
@@ -688,6 +790,7 @@ async def build_turn(round_id: UUID, *, lease_token: UUID) -> ConversationTurn:
         contact_memory_item_id=round_.contact_memory_item_id,
         assert_fresh_before_effect=lambda: mark_effect_if_fresh(round_id, lease_token=lease_token),
         should_interrupt=lambda: newer_input_pending(round_id, lease_token=lease_token),
+        should_suspend=should_suspend,
         attempt=round_.attempt_count,
         origin="voice" if round_.voice_session_id else "text",
         resume_checkpoint=resume_checkpoint, save_checkpoint=save_checkpoint,
@@ -916,6 +1019,7 @@ async def complete_round(
             # The commit releases that row lock before Messenger journals through its own session.
             round_.effect_started = True
             round_.effect_started_at = _now()
+        round_.delivery_state = "SENDING"
         await get_db().commit()
         try:
             messenger = await get_messenger(room.connection_id)
@@ -1220,7 +1324,7 @@ async def fail_round(
         round_.status = "SUPERSEDED"
         round_.finished_at = _now()
         _clear_round_lease(round_)
-    elif not round_.effect_started and round_.attempt_count < MAX_ATTEMPTS:
+    elif not round_.effect_started and await _failure_count(round_id) < MAX_FAILURES:
         round_.status = "FROZEN"
         _clear_round_lease(round_)
     else:
@@ -1240,6 +1344,7 @@ async def claim_next_round_notification() -> UUID | None:
         select(ConversationRound)
         .where(
             ConversationRound.delivery_state == "SENDING",
+            ConversationRound.status == "ERROR_RESOLVED",
             ConversationRound.lease_expires_at < now,
         )
         .limit(1)

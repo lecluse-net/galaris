@@ -2,6 +2,20 @@
 
 # Agentic Execution Flow
 
+Text rounds survive worker interruptions: graceful shutdown releases the lease after saving
+history and receipts; abrupt stops recover the expired lease. Interruptions do not consume
+execution retries. Already running tools drain for twenty seconds during shutdown; Docker
+allows ninety seconds for the backend. A safe checkpoint resumes after effects. Journaled
+responses are linked without resending; delivery without a receipt remains `UNKNOWN`.
+See [conversation states](../state-machines.md) and
+[0178](../../../../project/decisions/0178-conversation-worker-recovery.md).
+
+A closed MCP transport keeps the in-flight call pending. The harness automatically
+resumes reads and idempotent calls from the latest batch with their original arguments
+and identities, before asking the model for another decision. Completed results remain
+acknowledged; a non-idempotent effect without a receipt blocks recovery. Native
+authorization and freshness checks still apply.
+
 ## Work organization
 
 For a Task, the Dispatcher selects `direct`, `tracked` or `clarify` in its existing routing

@@ -106,6 +106,90 @@ class _CountingFunctionModel(FunctionModel):
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("effect_committed", [False, True])
+@pytest.mark.parametrize("replay_safe", [False, True])
+async def test_mcp_disconnect_resumes_pending_safe_call_before_model_decision(effect_committed, replay_safe):
+    """A real MCP cancellation must not become an acknowledged business error."""
+    import json
+    from fastmcp import FastMCP
+    from pydantic_ai.mcp import MCPToolset
+    from pydantic_ai.models.function import DeltaToolCall
+    from app.harness.mcp_toolset import ExecutionEvidenceClient
+    from app.harness.checkpoint import ToolOutcomeUnknownError
+    from fastmcp.server.dependencies import get_context
+    from app.tools.contracts import EXECUTION_META_KEY
+
+    server = FastMCP("synthetic-interrupted-admission")
+    interrupted = True
+    effects = {}
+    invocations = []
+    receipts = []
+    content = "<p>Synthetic task objective.</p>" * 100
+
+    @server.tool
+    async def save_receipt() -> str:
+        receipts.append("Receipt stored")
+        return "Receipt stored"
+
+    @server.tool(annotations={"idempotentHint": replay_safe, "destructiveHint": not replay_safe})
+    async def submit(objective: str) -> str:
+        ctx = get_context()
+        operation_id = getattr(ctx.request_context.meta, EXECUTION_META_KEY)["operation_id"]
+        invocations.append((operation_id, objective))
+        if not interrupted or effect_committed:
+            effects.setdefault(operation_id, objective)
+        if interrupted:
+            raise asyncio.CancelledError("synthetic worker shutdown")
+        return "Synthetic task admitted"
+
+    async def model_stream(messages, _info):
+        if interrupted:
+            if any(isinstance(part, ToolReturnPart) for message in messages for part in message.parts):
+                yield "Submission failed; ask the user to try again."
+            else:
+                yield {
+                    0: DeltaToolCall(name="save_receipt", json_args="{}", tool_call_id="receipt"),
+                    1: DeltaToolCall(name="submit", json_args=json.dumps({"objective": content}), tool_call_id="submit-original"),
+                }
+        else:
+            assert len(invocations) == 2, "The pending call must run before asking the model what to do"
+            returns = [part.content for message in messages for part in message.parts if isinstance(part, ToolReturnPart)]
+            assert returns == ["Receipt stored", "Synthetic task admitted"]
+            yield "Task started."
+
+    save = AsyncMock()
+    journal = HarnessRunCheckpoint(_request(save))
+    llm = SimpleNamespace(provider=None, cost_per_input_token=0, cost_per_output_token=0,
+        cost_per_cached_input_token=None)
+
+    def runtime(checkpoint):
+        agent = Agent(cast(LLM, llm), checkpoint=checkpoint)
+        agent._agent = PydanticAgent(_CountingFunctionModel(stream_function=model_stream),
+            toolsets=wrap_toolsets([MCPToolset(ExecutionEvidenceClient(server))], checkpoint))
+        return agent
+
+    with pytest.raises(asyncio.CancelledError):
+        _ = [message async for message in runtime(journal).run("Submit the synthetic task")]
+    assert len(invocations) == 1
+    assert journal.effects[1]["status"] == "started"
+    interrupted = False
+    resumed = HarnessRunCheckpoint(_request(AsyncMock(), resume_checkpoint=save.await_args.args[0]))
+    agent = runtime(resumed)
+    if not replay_safe:
+        with pytest.raises(ToolOutcomeUnknownError):
+            _ = [message async for message in agent.run("Finish submitting the synthetic task")]
+        assert len(invocations) == 1
+        assert receipts == ["Receipt stored"]
+        return
+    _ = [message async for message in agent.run("Finish submitting the synthetic task")]
+    assert not agent.error
+    assert invocations[0] == invocations[1]
+    assert list(effects.values()) == [content]
+    assert receipts == ["Receipt stored"]
+    assert len(resumed.effects) == 2 and all(effect["status"] == "completed" for effect in resumed.effects)
+
+
+@pytest.mark.asyncio
 @pytest.mark.parametrize("approved", [True, False])
 async def test_authorization_resume_preserves_arguments_and_current_context(monkeypatch, approved):
     import json

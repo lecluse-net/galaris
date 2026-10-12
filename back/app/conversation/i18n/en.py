@@ -14,7 +14,7 @@ default: dict[str, object] = {
             "message": (
                 "Sorry, I could not finish processing this message.\n\n"
                 "Nature of the problem: ${reason}\n"
-                "Error returned by the LLM: ${detail}\n\n"
+                "Error detail: ${detail}\n\n"
                 "You can retry with a new message."
             ),
             "missing_detail": "no technical detail was provided",

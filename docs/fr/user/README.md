@@ -323,6 +323,12 @@ deux demandes distinctes.
 
 ### Comprendre les conversations courtes et le travail de fond
 
+Pendant une mise à jour ou un redémarrage, une conversation en cours reprend automatiquement
+à partir de ses informations enregistrées. Vous n'avez pas à renvoyer le message. Les actions
+confirmées sont conservées et les interruptions ne consomment pas les essais réservés aux
+erreurs. Si une action externe ou une livraison reste incertaine, le suivi le signale pour
+vérification avant de la répéter.
+
 Un agent peut consulter l’annuaire des agents pendant une conversation pour identifier un
 collègue et son rôle, sans créer de Task. Demander la contribution d’un collègue suit la
 politique d’action habituelle et les droits de contact ; lire sa fiche ne le contacte pas.

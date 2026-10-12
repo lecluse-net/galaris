@@ -12,19 +12,30 @@ class ConversationSuperseded(asyncio.CancelledError):
     """A newer admitted input superseded preparation, not an operational tool error."""
 
 
+class ConversationSuspended(asyncio.CancelledError):
+    """The worker is stopping; keep this round available for recovery."""
+
+
 async def run_preparation[T](turn: ConversationTurn, operation: Callable[[], Awaitable[T]]) -> T:
     """Cancel only a read-only phase; callers keep effects outside this scope."""
 
     pending = turn.should_interrupt
-    if pending is None:
+    suspend = turn.should_suspend
+    if pending is None and suspend is None:
         return await operation()
-    if await pending():
+
+    async def check() -> bool:
+        if suspend is not None and suspend():
+            raise ConversationSuspended
+        return pending is not None and await pending()
+
+    if await check():
         raise ConversationSuperseded
 
     async def watch() -> None:
         while True:
             await asyncio.sleep(0.25)
-            if await pending():
+            if await check():
                 return
 
     async def invoke() -> T:
@@ -39,7 +50,7 @@ async def run_preparation[T](turn: ConversationTurn, operation: Callable[[], Awa
             await monitor
             raise ConversationSuperseded
         result = await work
-        if await pending():
+        if await check():
             raise ConversationSuperseded
         return result
     finally:

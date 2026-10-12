@@ -520,6 +520,7 @@ async def _create_conversation_task(
 @mcp_tool("conversation", approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval",
 
     name="conversation_task_submit",
+    effect_policy="idempotent",
     conversation_policy="deferred",
     task_enabled=False,
     description=(

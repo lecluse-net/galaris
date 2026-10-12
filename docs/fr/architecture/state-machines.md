@@ -219,8 +219,21 @@ toute l'exécution ; la perte de ce token annule le flux local avant toute récu
 | `RUNNING` sans nouvel input | réponse livrée → `SUCCEEDED` |
 | `RUNNING` avec nouvel input, sans effet | garde finale → `SUPERSEDED` |
 | `RUNNING` avec nouvel input, après effet | réponse supprimée → `SUCCEEDED` |
-| actif sans effet, erreur récupérable | lease expiré → nouvelle tentative `CLAIMED` |
-| actif après effet ou budget épuisé | résolution dégradée → `ERROR_RESOLVED` |
+| actif, worker interrompu, reprise sûre | arrêt propre → `FROZEN` ; lease expiré → nouvelle tentative `CLAIMED` |
+| effet incertain ou budget d'erreurs épuisé | résolution dégradée → `ERROR_RESOLVED` |
+
+Un arrêt de worker termine sa tentative en `INTERRUPTED` et ne consomme pas le budget de
+deux erreurs réelles. Les numéros de tentative restent monotones. Au shutdown, préparations
+et inférences s'interrompent ; un outil déjà engagé dispose de vingt secondes pour terminer
+et enregistrer son reçu. L'historique chiffré permet la reprise sans répéter les effets
+confirmés. L'expiration après un arrêt brutal utilise la même règle. Un checkpoint corrompu
+ou un effet non idempotent non acquitté bloque le rejeu.
+
+La réponse finale passe en livraison `SENDING` avant le transport. La récupération rattache
+un reçu Messenger déjà journalisé et termine en `SUCCEEDED`, sans renvoi. Sans reçu, la
+livraison devient `UNKNOWN` et nécessite réconciliation ; aucun fallback n'est envoyé.
+Le contrôle de notification ne récupère pas le bail d'un round actif.
+Voir [0178](../../../project/decisions/0178-conversation-worker-recovery.md).
 
 `SUPERSEDED` ne consomme pas ses liens d'entrée : le prochain round réagrège les mêmes messages
 avec les nouveaux. Après effet, les liens du round courant sont consommés et le nouveau message
