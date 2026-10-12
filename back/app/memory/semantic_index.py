@@ -219,12 +219,11 @@ async def _ensure_index_job(
 
 
 async def enqueue_embedding_refresh(item: MemoryItem) -> bool:
-    """Queue the current projection without invoking a model on the write path."""
+    """Stage the current projection in the caller-owned transaction, without inference."""
 
     fingerprint = semantic_fingerprint(item)
     if item.semantic_fingerprint != fingerprint:
         item.semantic_fingerprint = fingerprint
-        await get_db().commit()
     pending_intent = await get_db().scalar(select(MemoryAutomationJob.id).where(
         MemoryAutomationJob.kind == "semantic_index",
         MemoryAutomationJob.status.in_(("pending", "running")),
@@ -244,7 +243,6 @@ async def enqueue_embedding_refresh(item: MemoryItem) -> bool:
         model=model,
         requeue=False,
     )
-    await get_db().commit()
     return queued
 
 

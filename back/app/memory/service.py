@@ -230,22 +230,26 @@ def _set_semantic_fingerprint(item: MemoryItem) -> None:
 async def _enqueue_semantic_projection(item: MemoryItem) -> None:
     """Keep memory writes fail-open while scheduling their vector projection."""
 
+    item_id = item.id
+    db = get_db()
     try:
         from .semantic_index import enqueue_embedding_refresh
 
-        await enqueue_embedding_refresh(item)
+        # The content is already committed. Isolate this optional projection so a
+        # queue failure cannot expire the document and unrelated caller objects.
+        async with db.begin_nested():
+            await enqueue_embedding_refresh(item)
+        await db.commit()
     except Exception:
         logger.exception(
             "Memory semantic-index scheduling failed: memory_id={}",
-            item.id,
+            item_id,
         )
-        try:
-            await get_db().rollback()
-        except Exception:
-            logger.exception(
-                "Memory semantic-index scheduling rollback failed: memory_id={}",
-                item.id,
-            )
+        if not db.is_active:
+            await db.rollback()
+        # A savepoint rollback can expire fields changed while scheduling. Reload
+        # the complete resource asynchronously before notifications serialize it.
+        await _get_item_record(item_id)
 
 
 async def _emit_memory_event(

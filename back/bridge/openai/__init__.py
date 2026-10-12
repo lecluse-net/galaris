@@ -95,7 +95,10 @@ RESPONSES_POLICY = ProviderResponsesPolicy(
 register_responses_policy(API_PROFILE.code, RESPONSES_POLICY)
 register_responses_policy(
     CODEX_PROFILE.code,
-    replace(RESPONSES_POLICY, model_profile=openai_codex_model_profile),
+    # The subscription endpoint returns 404 for /responses/compact. Let the
+    # harness bound history locally; OpenAI API compaction remains available.
+    replace(RESPONSES_POLICY, model_profile=openai_codex_model_profile,
+            supports_compaction=False),
 )
 register_runtime_policy(
     CODEX_PROFILE.code,

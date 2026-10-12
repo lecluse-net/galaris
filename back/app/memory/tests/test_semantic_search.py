@@ -8,7 +8,7 @@ from unittest.mock import AsyncMock
 import pytest
 from httpx import AsyncClient
 from pydantic import ValidationError
-from sqlalchemy import select
+from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.agent.models import Agent
@@ -175,6 +175,58 @@ async def test_deduplication_embedding_outage_does_not_expire_outer_session(
 
     assert candidates == [[]]
     rollback.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("operation", ["create", "update"])
+@pytest.mark.parametrize("failure", ["provider", "database"])
+async def test_document_write_survives_projection_scheduling_failure(
+    db, agents, memory_storage, monkeypatch, operation, failure,
+):
+    """An optional projection outage must not invalidate a committed document or its caller."""
+    from app.memory.schemas import MemoryItemCreate, MemoryItemUpdate, MemoryPayload
+
+    owner, _ = agents
+    owner_id = owner.id
+    initial = MemoryItemCreate(
+        owner_agent_id=owner_id, title="Synthetic projection outage",
+        node_kind="document", media_type="text/html",
+        payload=MemoryPayload(text="<p>Initial content</p>"),
+    )
+    item = None
+    if operation == "update":
+        item, _ = await service.create_item(initial)
+    calls = []
+
+    async def unavailable_projection(candidate):
+        calls.append(candidate.id)
+        if failure == "database":
+            await db.execute(text("SELECT 1 / 0"))
+        raise MemoryEmbeddingError("Synthetic projection scheduling outage")
+
+    # The index queue is an optional downstream projection, outside the document write.
+    monkeypatch.setattr(semantic_index, "enqueue_embedding_refresh", unavailable_projection)
+    if operation == "create":
+        saved, _ = await service.create_item(initial)
+        expected_content = b"<p>Initial content</p>"
+        expected_revision = 1
+    else:
+        saved = await service.update_item(
+            item.id, MemoryItemUpdate(
+                expected_revision=item.revision,
+                payload=MemoryPayload(text="<p>Updated content</p>"),
+            ), actor_agent_id=owner_id,
+        )
+        expected_content = b"<p>Updated content</p>"
+        expected_revision = 2
+    assert calls == [saved.id]
+    assert owner.id == owner_id
+    assert saved.title == "Synthetic projection outage"
+    assert saved.revision == expected_revision
+    loaded, content, access, *_ = await service.get_item(saved.id, agent_id=owner_id)
+    assert content == expected_content
+    assert loaded.revision == expected_revision
+    assert access.can_write
 
 
 @pytest.mark.parametrize(

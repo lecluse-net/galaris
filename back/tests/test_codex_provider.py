@@ -27,6 +27,59 @@ def _jwt(claims: dict) -> str:
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("catalog_code", ["openai-codex", "openai-api"])
+async def test_provider_history_uses_only_supported_compaction_and_preserves_recent_evidence(monkeypatch, catalog_code):
+    from pydantic_ai.messages import (
+        ModelRequest, ModelResponse, TextPart, UserPromptPart, ToolCallPart, ToolReturnPart,
+    )
+    from app.harness import runtime
+    from app.llm.provider_models import LLM, LLMProvider
+    from app.llm.pydantic_ai_utils import InternalLLMResponsesModel
+
+    llm = LLM(id=1, code="synthetic-codex", label="Synthetic Codex",
+              llm_name="gpt-6.1-sol", llm_provider_id=2, context_length=1_000)
+    native = catalog_code == "openai-api"
+    llm.provider = LLMProvider(id=2, name="Synthetic provider", catalog_code=catalog_code,
+                              provider_type="openai_compatible" if native else "openai_codex",
+                              base_url="https://api.openai.com/v1" if native else "https://chatgpt.com/backend-api/codex",
+                              configuration={})
+    model = InternalLLMResponsesModel(llm)
+    request = AsyncMock(return_value=ModelResponse(parts=[TextPart("Synthetic completed")]))
+    compact = AsyncMock(return_value=ModelResponse(parts=[TextPart("Compacted synthetic old history")]))
+    monkeypatch.setattr(model, "request", request)
+    monkeypatch.setattr(model, "compact_messages", compact)
+    monkeypatch.setattr(runtime, "build_model_for_llm", AsyncMock(return_value=model))
+    history = []
+    for index in range(8):
+        history.extend([
+            ModelRequest(parts=[UserPromptPart(f"Synthetic old question {index}: " + "x" * 6_000)]),
+            ModelResponse(parts=[TextPart("Synthetic old answer " + "y" * 6_000)]),
+        ])
+    history.extend([
+        ModelRequest(parts=[UserPromptPart("Preserve the latest evidence.")]),
+        ModelResponse(parts=[ToolCallPart("synthetic_read", {}, "receipt-1")]),
+        ModelRequest(parts=[ToolReturnPart("synthetic_read", "Synthetic durable receipt", "receipt-1")]),
+    ])
+    agent = runtime.Agent(llm, system_prompt="Current governed instructions")
+    await agent.init()
+    result = await agent._agent.run("Current user instruction", message_history=history)
+
+    assert result.output == "Synthetic completed"
+    if native:
+        compact.assert_awaited_once()
+    else:
+        compact.assert_not_awaited()
+    outgoing = request.await_args.args[0]
+    assert len(outgoing) < len(history)
+    rendered = str(outgoing)
+    assert "Synthetic durable receipt" in rendered
+    assert "Current user instruction" in rendered
+    if native:
+        assert "Compacted synthetic old history" in rendered
+    assert sum(runtime._history_message_size(message) for message in outgoing) <= 16_000
+
+
+@pytest.mark.asyncio
 @pytest.mark.parametrize("outcome", ["completed", "failed", "truncated", "refresh", "objective", "objective_empty_terminal", "text_empty_terminal"])
 async def test_native_nonstream_responses_consumes_codex_sse(monkeypatch, outcome, responses_sse):
     import httpx

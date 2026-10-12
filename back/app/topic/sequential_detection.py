@@ -334,6 +334,11 @@ class PromptedTopicDetectionModel:
                 llm=self._llm,
                 candidates=candidates,
                 use_decision_profile=self._use_decision_profile,
+                decision_prompt=(
+                    "The existing thematic dossiers are supplied in the answer criteria.\n\n"
+                    "Ordered message window (classify the marked current message):\n"
+                    f"{rendered_window}"
+                ),
                 prompt=(
                     f"{prompt}\n\nReuse stage: choose the best existing topic_id when its "
                     "durable subject contains the marked message. Return topic_id=null only "

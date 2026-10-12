@@ -46,6 +46,8 @@ async def decisions(runtime, monkeypatch):
             async with TextClient() as client:
                 return await client.send(request, stream=True)
         calls.append(json.loads(request.content))
+        if mode.get("max_request_bytes") and len(request.content) > mode["max_request_bytes"]:
+            return httpx.Response(400, json={"error": {"message": "max_tokens_exceeded"}})
         if mode.get("before_response") is not None:
             await mode["before_response"]()
         if mode["gate"] is not None:

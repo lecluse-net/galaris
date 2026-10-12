@@ -56,17 +56,26 @@ ToolFunc = TypeVar("ToolFunc", bound=Callable[..., Any])
 
 async def resolve_live_connection(agent_id: int, connection_id: int, tool_id: int,
                                   *, function_name: str = "", conversation_only: bool = False) -> tuple[ToolConfiguration, dict[str, Any], set[str]]:
-    """The runtime gateway owns sessions for calls made outside HTTP or workers."""
-    from app.connection import facade as connections
-    from . import tool_service
+    """Read a fresh detached snapshot before external MCP discovery or execution.
+
+    Each runtime callback owns a short database branch. Borrowing the run's
+    contextual session would keep its transaction open across external I/O and
+    share an AsyncSession between parallel tool discoveries.
+    """
     from core.database import get_db_session
 
-    try:
-        get_db()
-    except RuntimeError:
+    async def read() -> tuple[ToolConfiguration, dict[str, Any], set[str]]:
         async with get_db_session():
-            return await resolve_live_connection(agent_id, connection_id, tool_id,
-                                                 function_name=function_name, conversation_only=conversation_only)
+            return await _resolve_live_connection(agent_id, connection_id, tool_id,
+                function_name=function_name, conversation_only=conversation_only)
+
+    return await asyncio.create_task(read())
+
+
+async def _resolve_live_connection(agent_id: int, connection_id: int, tool_id: int,
+                                   *, function_name: str, conversation_only: bool) -> tuple[ToolConfiguration, dict[str, Any], set[str]]:
+    from app.connection import facade as connections
+    from . import tool_service
 
     connection = await connections.get_connection(connection_id)
     if connection is None or not connection.active or connection.agent_id != agent_id or connection.tool_id != tool_id:

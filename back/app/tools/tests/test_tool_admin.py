@@ -70,6 +70,46 @@ def test_invalid_fixed_choices_are_rejected(definition):
 
 
 @pytest.mark.asyncio
+async def test_external_discovery_releases_database_connection_and_preserves_parent_writes(
+    committed_database, synthetic_mcp,
+):
+    from pydantic_ai import RunContext
+    from pydantic_ai.models.test import TestModel
+    from pydantic_ai.usage import RunUsage
+    from app.tools.live_external import LiveConnectionToolset
+
+    url, _ = synthetic_mcp
+    async with get_db_session() as db:
+        title = Title(label="Synthetic short discovery", gender="X")
+        user = User(email=f"discovery-{uuid4().hex}@example.test", hashed_password="unused")
+        db.add_all([title, user])
+        await db.flush()
+        agent = Agent(user_id=user.id, title_id=title.id, code=f"short-discovery-{uuid4().hex}",
+                      first_name="Discovery", last_name="Synthetic", agent_driver="internal")
+        tool = Tool(code=f"short_discovery_{uuid4().hex}", label="Synthetic short discovery",
+                    mcp_config={"type": "sse" if url.endswith("/sse") else "http", "url": url})
+        db.add_all([agent, tool])
+        await db.flush()
+        connection = Connection(agent_id=agent.id, tool_id=tool.id, active=True)
+        db.add(connection)
+        await db.flush()
+        identifiers = agent.id, connection.id, tool.id
+        tool_name = f"{tool.code}_lookup"
+    mounted = LiveConnectionToolset(*identifiers)
+    run_ctx = RunContext(deps=None, model=TestModel(), usage=RunUsage())
+    async with get_db_session() as parent:
+        tools = await mounted.get_tools(run_ctx)
+        assert tool_name in tools
+        assert not parent.in_transaction(), "MCP discovery must not borrow the long-running parent session"
+
+        pending = Tool(code=f"pending_{uuid4().hex}", label="Synthetic pending change")
+        parent.add(pending)
+        assert tool_name in await mounted.get_tools(run_ctx)
+        assert pending in parent.new, "Discovery must neither autoflush nor commit its caller's writes"
+        await parent.rollback()
+
+
+@pytest.mark.asyncio
 async def test_parameter_labels_choices_and_yaml_roundtrip(delegated, db):
     _, recipient, _ = delegated
     definition = {"type": "string", "label": "Service region", "default": "eu",

@@ -78,6 +78,50 @@ async def test_topic_reuse_avoids_writer_and_novel_subject_uses_writer(
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("entrypoint", ["activity", "message"])
+async def test_large_topic_catalogue_fits_native_decision_without_losing_candidates(
+    decisions, runtime, entrypoint,
+):
+    _, _, calls, text_calls, mode = decisions
+    task, _ = await profile_context(decisions, runtime, fallback=False)
+    candidates = [TopicCandidate(
+        id=uuid4(), title=f"Synthetic subject {index}",
+        description=("A synthetic subject covering imaginary examples and their context. " * 5),
+        keywords=[f"synthetic-{index}"], activity_count=index,
+    ) for index in range(100)]
+    selected = candidates[-1]
+    mode.update(selections={"topic": str(selected.id)}, max_request_bytes=75_000)
+    activity = "Synthetic completed activity with preserved evidence. " * 400
+    if entrypoint == "activity":
+        result, _ = await classifier.classify(
+            activity=activity, candidates=candidates, task_id=task.id,
+            agent_id=task.agent_id, language="en",
+        )
+    else:
+        _, text_model, _, _ = runtime
+        detector = PromptedTopicDetectionModel(
+            llm=text_model,
+            task_id=task.id, agent_id=task.agent_id, use_decision_profile=True,
+        )
+        result, _ = await detector.classify_current_message(
+            rendered_window=activity[:12_000], candidates=candidates,
+        )
+    assert result.action == "reuse"
+    assert result.topic_id == selected.id
+    assert len(calls) == 1 and not text_calls
+    assert set(calls[0]["questions"]["topic"]["criteria"]) == {
+        "new", *(str(candidate.id) for candidate in candidates),
+    }
+    criteria = calls[0]["questions"]["topic"]["criteria"]
+    assert json.loads(criteria[str(selected.id)]) == {
+        "title": selected.title, "description": selected.description,
+        "keywords": selected.keywords, "activity_count": selected.activity_count,
+    }
+    assert selected.title not in calls[0]["state"]
+    assert "Synthetic completed activity with preserved evidence." in calls[0]["state"]
+
+
+@pytest.mark.asyncio
 @pytest.mark.parametrize("choice", ["same", "different"])
 async def test_topic_continuity_uses_a_choice_without_inventing_a_probability(
     decisions, runtime, choice
