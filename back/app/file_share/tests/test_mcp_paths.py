@@ -18,13 +18,22 @@ async def _language(_ctx: McpToolContext) -> str:
 
 
 @pytest.mark.asyncio
-async def test_omission_marker_is_rejected_before_requesting_authorization(monkeypatch):
+@pytest.mark.parametrize("compacted_collection", [False, True])
+async def test_omission_marker_is_rejected_before_requesting_authorization(monkeypatch, compacted_collection):
+    import json
+    from app.harness.tool_results import compact_tool_return
+
+    content = (
+        json.dumps(compact_tool_return(list(range(10_000))))
+        if compacted_collection else
+        "[content omitted after execution: 2010 characters, sha256=0123456789abcdef]"
+    )
     context = AsyncMock()
     monkeypatch.setattr(file_share_mcp, "_resource_context", context)
     with pytest.raises(ValueError, match="omission marker"):
         await file_share_mcp._file_preflight(McpToolContext(agent_id=7, runtime="internal"), {
             "uri": "document://11111111-1111-4111-8111-111111111111", "expected_revision": 2,
-            "content": "[content omitted after execution: 2010 characters, sha256=0123456789abcdef]",
+            "content": content,
         })
     context.assert_not_awaited()
 

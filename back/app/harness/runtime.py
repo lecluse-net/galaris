@@ -63,7 +63,8 @@ from app.tools import (
 )
 
 from .media import AgentInputFile, NativeInput, message_native_parts, prepare_native_inputs
-from .checkpoint import TOOL_ERROR_SCHEMA, HarnessRunCheckpoint, wrap_toolsets
+from .checkpoint import HarnessRunCheckpoint, wrap_toolsets
+from .tool_results import compact_tool_return, decode_tool_result, reported_tool_failure
 
 _HISTORY_TOOL_ARGUMENT_MAX_CHARS = 6_000
 _HISTORY_TOOL_RETURN_MAX_CHARS = 4_000
@@ -244,6 +245,7 @@ def compact_completed_tool_arguments(
             (part.tool_name, part.tool_call_id)
             for part in following.parts
             if isinstance(part, _pydantic_messages.ToolReturnPart)
+            and reported_tool_failure(part.content) is None
         } if isinstance(following, _pydantic_messages.ModelRequest) else set()
         parts: list[_pydantic_messages.ModelResponsePart] = []
         changed = False
@@ -275,6 +277,52 @@ def compact_completed_tool_arguments(
     return compacted
 
 
+def _compact_resource_read_return(content: object) -> str | dict[str, object] | None:
+    """Keep a file read's cursor and revision when its old body leaves history."""
+    decoded = decode_tool_result(content)
+    if not isinstance(decoded, dict):
+        return None
+    resource = cast(dict[str, object], decoded)
+    body = resource.get("content")
+    if (
+        not isinstance(resource.get("uri"), str)
+        or not isinstance(body, str)
+        or len(body) <= _HISTORY_TOOL_RETURN_MAX_CHARS
+        or not all(key in resource for key in ("start", "end", "total", "next_offset"))
+    ):
+        return None
+
+    # A raw JSON prefix discards the cursor at the end of ResourceRead and can look
+    # like the tool itself cut a page short. Blocks duplicate the same body; neither
+    # representation belongs in this old history preview. Keep only read metadata.
+    summary = {
+        key: resource[key]
+        for key in (
+            "uri", "encoding", "media_type", "indexing_status", "start", "end",
+            "total", "next_offset", "revision", "etag", "offset_unit",
+            "content_profile", "content_profile_version",
+        )
+        if key in resource
+    }
+    digest = hashlib.sha256(body.encode("utf-8", errors="replace")).hexdigest()[:16]
+    summary["content"] = (
+        f"[content omitted after execution: {len(body)} characters, sha256={digest}]"
+    )
+    summary["content_preview"] = body[:_HISTORY_TOOL_RETURN_PREVIEW_CHARS]
+    summary["history_note"] = (
+        "Galaris abbreviated only this model-facing body; the original tool result "
+        "remains in the execution history. This is not a read error or a max_chars limit. "
+        "Use the preserved start/end and next_offset for pagination; null next_offset "
+        "means the read reached the end. Increasing max_chars cannot prevent history "
+        "compaction. Re-read only if specific missing content is needed, and retain "
+        "extracted facts in the task's durable working resources."
+    )
+    serialized = json.dumps(summary, ensure_ascii=False)
+    if len(serialized) > _HISTORY_TOOL_RETURN_MAX_CHARS:
+        return None
+    return serialized if isinstance(content, str) else summary
+
+
 def compact_stale_tool_returns(
     messages: list[_pydantic_messages.ModelMessage],
 ) -> list[_pydantic_messages.ModelMessage]:
@@ -283,8 +331,8 @@ def compact_stale_tool_returns(
     Every model request resends the whole history, so a few verbose tool results
     (command output, file dumps, page analyses) can consume the model context on their
     own. The most recent results stay intact; older large ones keep a short preview
-    plus size and digest so the agent can still recognize them and re-read the full
-    data from its canonical resource URI when needed.
+    plus size and digest. Resource reads retain their pagination metadata, distinguishing
+    history compaction from a read failure or an unfinished resource page.
     """
     positions: list[tuple[int, int]] = []
     for message_index, message in enumerate(messages):
@@ -308,22 +356,16 @@ def compact_stale_tool_returns(
                 part, _pydantic_messages.ToolReturnPart
             ):
                 content = part.content
-                if (
-                    isinstance(content, str)
-                    and len(content) > _HISTORY_TOOL_RETURN_MAX_CHARS
-                ):
-                    digest = hashlib.sha256(content.encode("utf-8")).hexdigest()[:16]
-                    preview = content[:_HISTORY_TOOL_RETURN_PREVIEW_CHARS].rstrip()
-                    part = replace(
-                        part,
-                        content=(
-                            f"{preview}\n[tool result truncated after use: "
-                            f"{len(content)} characters, sha256={digest}]"
-                        ),
-                    )
+                resource_preview = (
+                    _compact_resource_read_return(content)
+                    if normalize_tool_name(part.tool_name) == "file_read"
+                    else None
+                )
+                if resource_preview is not None:
+                    part = replace(part, content=resource_preview)
                     changed = True
-                elif not isinstance(content, str):
-                    compacted_content = _compact_history_value(content)
+                else:
+                    compacted_content = compact_tool_return(content, max_chars=_HISTORY_TOOL_RETURN_MAX_CHARS)
                     if compacted_content != content:
                         part = replace(part, content=compacted_content)
                         changed = True
@@ -454,7 +496,23 @@ def compact_agent_history(
     messages = compact_capability_load_returns(messages)
     messages = compact_stale_tool_returns(messages)
     if max_chars is not None:
-        messages = _bound_history_context(messages, max_chars=max(8_000, max_chars))
+        budget = max(8_000, max_chars)
+        if sum(_history_message_size(message) for message in messages) > budget:
+            # Even a single new MCP result can exceed the context window. Keep its
+            # call/return identity and an explicit preview rather than admitting an
+            # unbounded recent body or treating a huge answer as a tool failure.
+            compacted: list[_pydantic_messages.ModelMessage] = []
+            for message in messages:
+                if isinstance(message, _pydantic_messages.ModelRequest):
+                    parts = [
+                        replace(part, content=compact_tool_return(part.content, max_chars=max(4_000, budget // 8)))
+                        if isinstance(part, _pydantic_messages.ToolReturnPart) else part
+                        for part in message.parts
+                    ]
+                    message = replace(message, parts=parts)
+                compacted.append(message)
+            messages = compacted
+        messages = _bound_history_context(messages, max_chars=budget)
     return messages
 
 
@@ -621,9 +679,9 @@ def _observe_tool_result(
     outcome = result if result is not None else message.content
     if message.success and message.tool_name in mutating_repeat_guard_tools:
         outcome = "mutating_call"
-    elif not message.success and isinstance(outcome, dict):
+    elif not message.success and (failure := reported_tool_failure(outcome)) is not None:
         # Diagnostic references change on each occurrence of the same error.
-        error = cast(dict[str, object], outcome)
+        error = failure
         outcome = {
             "outcome": error.get("outcome"),
             "error": re.sub(
@@ -1822,10 +1880,7 @@ def _function_to_message(
             result=str(data)[:500],
         )
 
-    reported_error = (
-        isinstance(data, dict)
-        and cast(dict[str, object], data).get("schema") == TOOL_ERROR_SCHEMA
-    )
+    reported_error = reported_tool_failure(data) is not None
     success = type(result).__name__ != "RetryPromptPart" and not reported_error
 
     msg = AIMessage(

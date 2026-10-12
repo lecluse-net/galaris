@@ -156,7 +156,9 @@ les UUIDs des demandes d’accord ; le rechargement conserve leur identité.
 Voir [0153](../../../../project/decisions/0153-common-action-authorizations.md).
 
 Les arguments ayant reçu un `RetryPromptPart` restent complets ; seuls les appels ayant un
-résultat d’outil sont éligibles au compactage des arguments. Les marqueurs d’omission de
+résultat d’outil réussi sont éligibles au compactage des arguments. Une erreur explicite
+renvoyée comme résultat conserve également les arguments nécessaires à sa correction.
+Les marqueurs d’omission de
 l’historique sont refusés dans les mutations de fichiers. Une reprise transmet aussi le
 contexte actualisé, y compris les résultats enfants et les nouvelles consignes, sans rejouer
 les effets achevés. Chaque résultat enfant porte son URI propre, même avec un libellé identique.
@@ -622,7 +624,13 @@ paires appel/retour d'outil restent des unités atomiques et les éléments les 
 conservés dans le budget restant. Les arguments JSON d'un appel d'outil restent structurellement
 valides : la compaction borne leurs valeurs volumineuses sans supprimer les champs requis.
 L'adaptateur Chat historique résume localement les résultats
-anciens volumineux avec leur empreinte. Lorsque la politique du fournisseur le permet (OpenAI/Codex
+anciens volumineux avec leur empreinte. Le harnais interne conserve les contrôles d’issue,
+de pagination et de révision dans des aperçus JSON valides et bornés, y compris les collections
+de petites valeurs. Un retour récent trop volumineux pour le contexte reçoit également un
+aperçu explicite. Les résultats originaux et identités d’appel restent conservés ; un aperçu
+ne prouve ni une source vide ni une lecture en échec et son marqueur interdit une écriture
+accidentelle du contenu abrégé. Voir [0103](../../../../project/decisions/0103-tool-errors-return-to-agent.md).
+Lorsque la politique du fournisseur le permet (OpenAI/Codex
 et xAI), l'adaptateur Responses appelle `/responses/compact` sur le préfixe ancien, conserve les deux
 derniers blocs atomiques et réinjecte l'élément chiffré. Les autres politiques Responses utilisent le
 bornage local. Les options de stockage, de résumé, de contexte et de replay du raisonnement sont

@@ -75,3 +75,36 @@ Les tests qui exigeaient un arrêt au troisième succès sont remplacés par la 
 au même seuil et par un dialogue réel modèle/outils : après trois répétitions, le
 modèle reçoit la consigne, peut relire un skill puis exécuter une alternative, ou
 choisir un compte rendu honnête. Un autre appel du même lot doit toujours se terminer.
+
+## Complément du 12 octobre 2026 — retours externes hétérogènes
+
+Le harnais interne reconnaît les erreurs explicites renvoyées comme données, sous forme
+de JSON texte ou d’objet : le marqueur dédié `galaris.tool-error/v1`, `isError=true`, ou
+`ok=false`/`success=false` accompagné d’un diagnostic `error`. L’enveloppe d’avertissement
+sur les arguments reste transparente à cette détection. Un simple mot d’erreur, le statut
+d’une ressource consultée ou l’échec d’un élément d’une collection ne constitue pas un
+échec de l’appel entier. Les exceptions et le bit d’erreur MCP restent pris en charge.
+Quand un MCP fournit un JSON d’erreur incomplet et un texte explicatif, les deux atteignent
+le modèle. Les erreurs explicites sont journalisées comme `error_reported`, avec leurs
+données originales, sans consommation du budget de correction de schéma ni rejeu automatique.
+Seuls une preuve native vérifiée ou le contrat de lecture autorisent `rejected` ; une
+affirmation externe d’absence d’effet ne remplace pas la vérification d’une mutation.
+Les consignes d’erreur restent écrites par Galaris, même si le provider imite son schéma.
+Les arguments d’un appel ayant renvoyé une erreur restent disponibles pour sa correction,
+qu’il s’agisse d’un refus SDK ou d’une erreur reconnue dans le résultat.
+
+Le compactage de l’historique conserve en priorité les contrôles d’issue, de pagination
+et de révision de tous les outils, dans des aperçus JSON valides. Profondeur, collections
+et chaînes sont bornées ; du texte JSON mal formé reste une donnée textuelle. Les quatre
+retours les plus récents restent complets en situation normale. Si leur taille menace
+le budget de contexte, leurs corps reçoivent également un aperçu sans supprimer les
+identités appel/retour ni modifier les données enregistrées. Chaque aperçu signale ses
+omissions ; celles-ci ne prouvent ni une source vide ni un succès. Son marqueur est refusé
+avant toute écriture File Sharing. Cette protection ne fournit pas un cache de résultats
+ni une réparation des permissions ou du service distant ; le modèle garde la décision
+de vérifier, de corriger ou d’utiliser une autre méthode autorisée.
+
+La validation combine les tests de compactage et des dialogues avec un vrai agent
+Pydantic AI et un MCP synthétique : continuation ou arrêt honnête, diagnostic conservé,
+erreur visible, reprise sans double effet et refus d’écriture d’un aperçu. Les tests
+d’autorisation, de preuve native, d’annulation et de réconciliation restent applicables.

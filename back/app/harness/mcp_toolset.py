@@ -84,6 +84,13 @@ class ExecutionEvidenceClient(Client[Any]):
                 and cast(dict[str, Any], evidence).get("outcome") == "rejected"
             ):
                 execution.outcome = "rejected"
+        if result.is_error and result.structured_content is not None:
+            # Pydantic AI prefers structured error content. Some servers supply only
+            # a code (or {}) there and put the actionable cause in text blocks.
+            # Preserve both rather than hiding the diagnostic behind sparse JSON.
+            error_text = "\n".join(part.text for part in result.content if isinstance(part, TextContent))
+            if error_text:
+                result.structured_content = {"error": error_text, "details": result.structured_content}
         return result
 
 

@@ -137,8 +137,9 @@ The result uses JSON-mode serialization before JSONB persistence, including appr
 UUIDs; reloading preserves their identities.
 See [0153](../../../../project/decisions/0153-common-action-authorizations.md).
 
-Arguments answered by a `RetryPromptPart` remain complete; only calls with a tool result
-are eligible for argument compaction. File mutations reject history omission markers.
+Arguments answered by a `RetryPromptPart` remain complete; only calls with a successful
+tool result are eligible for argument compaction. Explicit errors returned as results also
+retain the arguments needed for correction. File mutations reject history omission markers.
 Resumption also passes current context, including child results and new instructions,
 without replaying completed effects. Each child result carries its own URI, including
 when labels match. Parent wake-up and result-consumption markers are committed together.
@@ -596,7 +597,13 @@ Before each model request, history is compacted according to the resolved contex
 Tool call/return pairs remain atomic units, and the most recent elements are retained within the
 remaining budget. The JSON arguments of a tool call remain structurally valid: compaction bounds
 their large values without removing required fields. The historical Chat adapter locally
-summarizes large old results with their fingerprint. When the provider policy permits it
+summarizes large old results with their fingerprint. The internal harness retains outcome,
+pagination and revision controls in valid, bounded JSON previews, including collections
+of small values. New results too large for the context also receive an explicit preview.
+Original results and call identities remain recorded; a preview proves neither an empty
+source nor a failed read, and its marker prevents accidental writes of abbreviated content.
+See [0103](../../../../project/decisions/0103-tool-errors-return-to-agent.md).
+When the provider policy permits it
 (OpenAI/Codex and xAI), the Responses adapter calls `/responses/compact` on the old prefix,
 retains the last two atomic blocks, and reinjects the encrypted element. Other Responses policies
 use local bounding. Storage, summarization, context, and reasoning replay options are likewise

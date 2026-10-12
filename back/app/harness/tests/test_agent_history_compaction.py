@@ -24,10 +24,20 @@ from app.harness.runtime import (
 from app.llm import LLM
 
 
-def test_rejected_tool_arguments_remain_available_for_retry() -> None:
+@pytest.mark.parametrize("returned_error", ["retry", "canonical", "canonical_json", "explicit", "explicit_json"])
+def test_rejected_tool_arguments_remain_available_for_retry(returned_error) -> None:
     content = "<p>Synthetic lesson</p>" * 500
     call = ModelResponse(parts=[ToolCallPart("file_edit", {"content": content}, "retry-1")])
-    retry = ModelRequest(parts=[RetryPromptPart("Permission required", tool_name="file_edit", tool_call_id="retry-1")])
+    if returned_error == "retry":
+        retry = ModelRequest(parts=[RetryPromptPart("Permission required", tool_name="file_edit", tool_call_id="retry-1")])
+    else:
+        error = (
+            {"schema": "galaris.tool-error/v1", "status": "error", "outcome": "rejected", "error": "Content requires correction"}
+            if returned_error.startswith("canonical") else
+            {"ok": False, "error": "Content requires correction"}
+        )
+        payload = json.dumps(error) if returned_error.endswith("json") else error
+        retry = ModelRequest(parts=[ToolReturnPart("file_edit", payload, "retry-1")])
     compacted = compact_completed_tool_arguments([call, retry])
     assert compacted[0].parts[0].args["content"] == content
 
@@ -220,6 +230,126 @@ def test_small_and_recent_tool_returns_are_left_untouched() -> None:
     compacted = compact_stale_tool_returns(list(messages))
 
     assert compacted == messages
+
+
+@pytest.mark.parametrize("raw", [False, True])
+@pytest.mark.parametrize("collection", [False, True])
+def test_external_result_history_keeps_outcomes_and_nested_pagination(raw, collection):
+    payload = {
+        "rows": list(range(10_000)) if collection else "record " * 5_000,
+        "ok": True,
+        "pageInfo": {"endCursor": "synthetic-next", "hasNextPage": True},
+        "revision": 7,
+    }
+    original = json.dumps(payload) if raw else payload
+    messages = [ModelResponse(parts=[ToolCallPart("external_search", {}, "search")]),
+                ModelRequest(parts=[ToolReturnPart("external_search", original, "search")])]
+    for index in range(5):
+        messages.extend(_tool_exchange(index, "ok"))
+    compacted = compact_stale_tool_returns(messages)
+    part = compacted[1].parts[0]
+    summary = json.loads(part.content) if raw else part.content
+    assert summary["ok"] is True
+    assert summary["pageInfo"] == payload["pageInfo"]
+    assert summary["revision"] == 7
+    assert "history_note" in summary
+    assert len(json.dumps(summary, ensure_ascii=False)) <= 4_000
+    assert messages[1].parts[0].content == original
+    assert compact_stale_tool_returns(compacted) == compacted
+
+
+@pytest.mark.parametrize("payload", [
+    list(range(10_000)),
+    {f"field_{index}": index for index in range(2_000)},
+    {"rows": [{"value": "\\\"\n" * 3_000}] * 40, "next_cursor": None},
+])
+def test_structured_history_budget_also_bounds_many_small_values(payload):
+    messages = [ModelRequest(parts=[ToolReturnPart("external", payload, "external")])]
+    for index in range(5):
+        messages.extend(_tool_exchange(index, "ok"))
+    compacted = compact_stale_tool_returns(messages)
+    summary = compacted[0].parts[0].content
+    assert len(json.dumps(summary, ensure_ascii=False)) <= 4_000
+    assert compact_stale_tool_returns(compacted) == compacted
+    assert messages[0].parts[0].content == payload
+
+
+def test_oversized_recent_mcp_result_is_bounded_before_it_exhausts_the_model_context():
+    original = json.dumps({"rows": list(range(100_000)), "next_cursor": "continue-here"})
+    call = ModelResponse(parts=[ToolCallPart("external_list", {"page": 1}, "list-1")])
+    returned = ModelRequest(parts=[ToolReturnPart("external_list", original, "list-1")])
+    compacted = compact_agent_history([call, returned], max_chars=20_000)
+    assert compacted[0] is call
+    summary = json.loads(compacted[1].parts[0].content)
+    assert summary["next_cursor"] == "continue-here"
+    assert "history_note" in summary
+    assert runtime._history_message_size(compacted[1]) < 20_000
+    assert compacted[1].parts[0].tool_call_id == "list-1"
+    assert returned.parts[0].content == original
+
+
+@pytest.mark.parametrize("source", ["{invalid " * 1_000, "[" * 2_500 + "0" + "]" * 2_500])
+def test_malformed_or_deep_provider_text_can_be_compacted_without_crashing(source):
+    messages = [ModelRequest(parts=[ToolReturnPart("external", source, "external")])]
+    for index in range(5):
+        messages.extend(_tool_exchange(index, "ok"))
+    compacted = compact_stale_tool_returns(messages)
+    assert len(compacted[0].parts[0].content) < len(source)
+    assert messages[0].parts[0].content == source
+
+
+@pytest.mark.parametrize("raw", [False, True])
+@pytest.mark.parametrize("offset_unit,next_offset", [("block", 8), (None, None)])
+def test_stale_resource_reads_keep_pagination_without_presenting_a_read_failure(
+    raw: bool, offset_unit: str | None, next_offset: int | None,
+) -> None:
+    body = (
+        "<p>Synthetic inventory entry</p>" * 500
+        if offset_unit == "block"
+        else json.dumps([{"entry": index} for index in range(1_000)])
+    )
+    payload = {
+        "uri": "document://00000000-0000-4000-8000-000000000001",
+        "content": body,
+        "start": 3,
+        "end": 8,
+        "total": 8 if next_offset is None else 12,
+        "next_offset": next_offset,
+        "revision": 2,
+        "media_type": "text/html" if offset_unit == "block" else "application/json",
+    }
+    if offset_unit is not None:
+        payload.update(offset_unit=offset_unit, blocks=[{"number": 4, "html": body}])
+    original = json.dumps(payload) if raw else payload
+    read_return = ModelRequest(parts=[ToolReturnPart("file_read", original, "read-1")])
+    messages: list[ModelMessage] = [
+        ModelResponse(parts=[ToolCallPart("file_read", {"uri": payload["uri"]}, "read-1")]),
+        read_return,
+    ]
+    for index in range(5):
+        messages.extend(_tool_exchange(index, "ok"))
+    recent_return = ModelRequest(parts=[ToolReturnPart("file_read", original, "read-2")])
+    messages.extend([
+        ModelResponse(parts=[ToolCallPart("file_read", {"uri": payload["uri"]}, "read-2")]),
+        recent_return,
+    ])
+
+    compacted = compact_stale_tool_returns(messages)
+    part = compacted[1].parts[0]
+    assert isinstance(part, ToolReturnPart)
+    summary = json.loads(part.content) if raw else part.content
+    for key in ("uri", "start", "end", "total", "next_offset", "revision", "media_type"):
+        assert summary[key] == payload[key]
+    assert summary.get("offset_unit") == offset_unit
+    assert "history_note" in summary
+    assert summary["content_preview"] == body[:600]
+    assert "content omitted after execution" in summary["content"]
+    assert "blocks" not in summary
+    assert len(json.dumps(summary)) < 4_000
+    assert part.tool_call_id == "read-1"
+    assert read_return.parts[0].content == original
+    assert compacted[-1] is recent_return
+    assert compact_stale_tool_returns(compacted) == compacted
 
 
 def test_capability_load_instructions_are_removed_from_model_history() -> None:

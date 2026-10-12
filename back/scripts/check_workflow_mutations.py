@@ -42,9 +42,13 @@ MUTATIONS = (
              'configured = supported - settings.disabled_capabilities', 'configured = supported',
              ("app/harnesses/tests/test_execution_configuration.py::test_capability_negotiation_cannot_invent_or_disable_guarantees",)),
     Mutation("mcp-timeout-treated-as-rejection", "app/harness/checkpoint.py",
-             '"rejected" if execution.outcome == "rejected"\n'
-             '                                    or effect_policy == "read" else "unknown"',
-             '"rejected"',
+             'if reported_tool_failure(result) is not None:\n'
+             '                                tool_error_outcome = (\n'
+             '                                    "rejected" if execution.outcome == "rejected"\n'
+             '                                    or effect_policy == "read" else "unknown"\n'
+             '                                )',
+             'if reported_tool_failure(result) is not None:\n'
+             '                                tool_error_outcome = "rejected"',
              ("app/harness/tests/test_execution_evidence.py",)),
     Mutation("provider-sdk-ignores-thinking-tool-restriction", "app/llm/pydantic_ai_utils.py",
              "openai_supports_forced_tool_choice_with_thinking=False,",

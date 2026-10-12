@@ -123,6 +123,12 @@ prompt the agent to change approach, reread relevant skills, or check arguments.
 available so the agent can continue; if it cannot proceed, it explains the repeated errors
 and what remains blocked. Overall execution limits still apply.
 
+With this harness, a tool error may remain visible while the agent continues working: it can verify the
+state, correct the call, or choose another method. A failed external response does not
+prove that a write had no effect; the agent must verify it before repeating it. Very
+long results may reach the model as explicitly partial previews, with available
+pagination information. Such a preview proves neither missing source data nor task success.
+
 If the Agent invents a top-level parameter for a tool whose schema strictly lists its
 accepted parameters, Galaris ignores it and tells the Agent which parameters are available
 in the result. Nested objects and composed schemas retain their validation. A missing required parameter or an

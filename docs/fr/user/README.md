@@ -157,6 +157,13 @@ vérifier les arguments. L’agent garde ses outils pour poursuivre ; s’il ne 
 il explique les erreurs répétées et ce qui reste bloqué. Les limites globales d’exécution
 restent applicables.
 
+Avec ce harnais, une erreur d’outil peut rester visible alors que l’agent poursuit le travail : il peut
+vérifier l’état, corriger l’appel ou choisir une autre méthode. Une réponse externe en
+erreur ne garantit pas qu’une écriture n’a eu aucun effet ; l’agent doit la vérifier avant
+de la répéter. Les résultats très longs peuvent être présentés au modèle sous forme
+d’aperçu explicitement partiel, avec les informations de pagination disponibles. Cet
+aperçu ne signifie ni disparition des données sources, ni réussite de la tâche.
+
 Si l’agent invente un paramètre de premier niveau dans un outil dont le schéma énumère
 strictement les paramètres acceptés, Galaris l’ignore et indique à l’agent les paramètres
 disponibles dans le résultat. Les objets imbriqués et les schémas composés gardent leur validation. Un paramètre obligatoire manquant ou une valeur

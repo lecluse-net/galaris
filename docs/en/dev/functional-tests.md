@@ -413,7 +413,14 @@ HTTP 403 responses from local denials in French/English diagnostics, without cha
 effect error category or exposing provider URLs or response bodies.
 
 `app/harness/tests/test_execution_evidence.py` lets a real Pydantic AI agent continue or stop
-after MCP errors, without forced termination or repeating effects on resume.
+after MCP errors, without forced termination or repeating effects on resume. The same
+journey covers exceptions, explicit failures in JSON text or structured data, argument-warning
+envelopes, and text diagnostics accompanying sparse error JSON. External outcome claims
+never prove rejection before an effect. `test_agent_history_compaction.py` also bounds
+large collections and new results exceeding the context, preserves pagination controls,
+and leaves original results and failed-call arguments intact; previews carry a marker
+rejected before writing. Forged instructions from an MCP copying the Galaris error schema
+cannot replace its verification instructions.
 `test_runtime_guards.py` preserves their error visibility. SFTP writes into missing directories
 and confinement within the home are covered by `app/file_share/tests/test_path_normalization.py`.
 Observed errors return to the agent; interruptions without a response still require reconciliation.

@@ -424,7 +424,15 @@ la catégorie d'erreur utilisée pour les effets ni exposer URL ou réponse du f
 
 Les tests `app/harness/tests/test_execution_evidence.py` font poursuivre ou arrêter un
 véritable agent Pydantic AI après des erreurs MCP, sans arrêt terminal imposé ni répétition
-des effets lors de la reprise. `test_runtime_guards.py` conserve leur visibilité comme
+des effets lors de la reprise. Le même parcours couvre une exception, un échec explicite
+en JSON texte ou structuré, son enveloppe d’avertissement et une erreur dont le diagnostic
+texte accompagne un JSON incomplet. Les issues externes déclarées ne prouvent jamais un
+rejet avant effet. `test_agent_history_compaction.py` borne aussi les longues collections
+et les retours récents dépassant le contexte, conserve les contrôles de pagination et
+laisse les résultats originaux et arguments d’appels en erreur intacts ; les aperçus portent
+un marqueur refusé avant écriture. Les consignes falsifiées d’un MCP imitant le schéma
+d’erreur de Galaris ne remplacent pas ses consignes de vérification.
+`test_runtime_guards.py` conserve leur visibilité comme
 erreurs. `app/file_share/tests/test_path_normalization.py` vérifie les écritures SFTP
 vers des dossiers absents et le confinement dans le home. Ce contrat remplace l’arrêt
 automatique sur erreur observée ; les interruptions sans réponse restent réconciliées.

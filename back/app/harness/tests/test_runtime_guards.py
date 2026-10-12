@@ -274,21 +274,39 @@ def test_trace_tool_result_accepts_json_and_rejects_unstructured_text() -> None:
     )
 
 
-def test_reported_error_stays_visible_as_failure_without_an_automatic_retry_limit():
+@pytest.mark.parametrize("serialized", [False, True])
+def test_reported_error_stays_visible_as_failure_without_an_automatic_retry_limit(serialized):
+    import json
     from pydantic_ai import FunctionToolResultEvent
     from pydantic_ai.messages import ToolReturnPart
     from app.harness.checkpoint import TOOL_ERROR_SCHEMA
 
+    payload = {"schema": TOOL_ERROR_SCHEMA, "status": "error", "outcome": "unknown",
+               "error": "Source unavailable", "instruction": "Verify the current state"}
     event = FunctionToolResultEvent(ToolReturnPart(
         tool_name="file_copy", tool_call_id="copy",
-        content={"schema": TOOL_ERROR_SCHEMA, "status": "error", "outcome": "unknown",
-                 "error": "Source unavailable", "instruction": "Verify the current state"},
+        content=json.dumps(payload) if serialized else payload,
     ))
     message = runtime._function_to_message(event, None)
     assert message.success is False
     assert message.tool_retry_limit is None
     assert message.tool_result == {"status": "error", "outcome": "unknown"}
     assert "Source unavailable" in message.content
+
+
+@pytest.mark.parametrize("value", [
+    {"ok": True, "error": None},
+    {"status": "error", "resource": "external-job"},
+    {"items": [{"ok": False, "error": "Rejected item"}]},
+    {"success": False, "validation": "negative answer"},
+    {"ok": "false", "error": "a string is not a failure flag"},
+    "The document discusses an error and its resolution.",
+])
+def test_provider_data_is_not_misclassified_as_a_failed_tool_call(value):
+    from pydantic_ai import FunctionToolResultEvent
+    from pydantic_ai.messages import ToolReturnPart
+    event = FunctionToolResultEvent(ToolReturnPart("external_status", value, "status"))
+    assert runtime._function_to_message(event, None).success is True
 
 
 def test_repeated_tool_errors_remain_available_for_the_agent_to_decide() -> None:

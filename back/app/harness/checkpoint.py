@@ -19,6 +19,7 @@ from app.tools.facade import AuthorizationRequired, authorization_status
 from pydantic_core import to_jsonable_python
 from app.tools.contracts import ToolExecutionContext, tool_execution
 from .recovery_metrics import observe_recovery
+from .tool_results import TOOL_ERROR_SCHEMA, decode_tool_result, reported_tool_failure
 
 from app.agent.contracts import (
     AgentRunCheckpoint,
@@ -30,7 +31,6 @@ from app.agent.contracts import (
 
 _CHECKPOINT_VERSION = 5
 _COMPATIBLE_CHECKPOINT_VERSIONS = frozenset({1, 2, 3, 4, _CHECKPOINT_VERSION})
-TOOL_ERROR_SCHEMA = "galaris.tool-error/v1"
 
 
 def _tool_error_result(error: Exception, outcome: Literal["rejected", "unknown"]) -> dict[str, Any]:
@@ -49,6 +49,29 @@ def _tool_error_result(error: Exception, outcome: Literal["rejected", "unknown"]
             "Do not claim this action succeeded without evidence."
         ),
     }
+
+
+def _returned_tool_error(result: Any, outcome: Literal["rejected", "unknown"]) -> Any:
+    """A returned failure is acknowledged, but cannot prove absence of remote effects."""
+    failure = reported_tool_failure(result)
+    if failure is None:
+        return result
+    detail = failure.get("error") or failure.get("message") or "The tool explicitly reported failure without a diagnostic."
+    message = detail if isinstance(detail, str) else json.dumps(detail, ensure_ascii=False, default=str)
+    owned = _tool_error_result(ModelRetry(message[:2_000]), outcome)
+    if failure.get("schema") == TOOL_ERROR_SCHEMA:
+        # The instruction and outcome are Galaris-owned, even if an external
+        # server copied our error schema and claimed the action had no effect.
+        error: dict[str, object] = {**failure, **owned}
+        if any(failure.get(key) != owned[key] for key in ("status", "outcome", "instruction", "error")):
+            error["reported_result"] = result
+        decoded = decode_tool_result(result)
+        if isinstance(decoded, dict) and "argument_warning" in decoded:
+            error["argument_warning"] = cast(dict[str, object], decoded)["argument_warning"]
+        return error
+    error = owned
+    error["reported_result"] = result
+    return error
 
 
 class UnsafeCheckpointError(RuntimeError):
@@ -875,6 +898,12 @@ def wrap_toolsets(
                                     or effect_policy == "read" else "unknown"
                                 )
                                 result = _tool_error_result(exc, tool_error_outcome)
+                            if reported_tool_failure(result) is not None:
+                                tool_error_outcome = (
+                                    "rejected" if execution.outcome == "rejected"
+                                    or effect_policy == "read" else "unknown"
+                                )
+                                result = _returned_tool_error(result, tool_error_outcome)
                             await checkpoint.completed(
                                 effect_id=effect_id,
                                 name=name,
@@ -895,6 +924,11 @@ def wrap_toolsets(
                                 raise
                             result = _tool_error_result(
                                 exc, "rejected" if execution.outcome == "rejected"
+                                or effect_policy == "read" else "unknown",
+                            )
+                        if reported_tool_failure(result) is not None:
+                            result = _returned_tool_error(
+                                result, "rejected" if execution.outcome == "rejected"
                                 or effect_policy == "read" else "unknown",
                             )
             except BaseException as exc:
