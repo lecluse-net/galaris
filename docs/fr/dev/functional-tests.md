@@ -197,6 +197,12 @@ Les accords historiques par site ne sont pas élargis ; les anciennes questions 
 avant de recueillir un accord pour tous les sites.
 `app/tools/tests/test_action_authorizations.py` vérifie l’accord permanent par fonction et
 connexion, la reprise sans rejeu de l’action initiale et l’exécution suivante sans question.
+Pour chaque fournisseur de harnais externe enregistré (Hermès, DeepSeek Harness, Codex,
+Claude Agent et OpenAI Messages configuré), elle vérifie aussi l’accord par type d’action, la séparation
+des harnais et des capacités, la reprise dans un autre contexte, la révocation et les changements
+de configuration, d’affectation, de responsable et de version de politique. Les scénarios navigateur
+`action-authorizations.spec.mjs` et `permissions.spec.mjs` couvrent le choix et sa révocation.
+Le harnais interne est explicitement exclu de ces accords de runtime.
 Elle couvre aussi le claim concurrent, le refus non répétable, l’expiration, les quotas,
 la révocation du contexte ou de la configuration, YOLO et les préconditions des fichiers.
 Les scénarios d’expiration comparent réponse tardive, nouvel appel et réconciliation :

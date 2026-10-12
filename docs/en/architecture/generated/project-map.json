@@ -3195,7 +3195,8 @@
           "back/app/tools/mcp_loader.py",
           "back/app/tools/resource_effects.py",
           "back/app/tools/router.py",
-          "back/app/tools/runtime_authorization.py"
+          "back/app/tools/runtime_authorization.py",
+          "back/app/tools/runtime_permissions.py"
         ],
         "source": "app.tools",
         "target": "app.agent"
@@ -3300,6 +3301,7 @@
           "back/app/tools/models.py",
           "back/app/tools/runtime_authorization.py",
           "back/app/tools/runtime_authorization_router.py",
+          "back/app/tools/runtime_permissions.py",
           "back/app/tools/tool_search_service.py",
           "back/app/tools/tool_service.py"
         ],
@@ -9874,6 +9876,18 @@
         "table": "roles"
       },
       {
+        "class_name": "RuntimeActionPermission",
+        "file": "back/app/tools/authorization_models.py",
+        "foreign_keys": [
+          "agents.id",
+          "users.id"
+        ],
+        "history_mixin": false,
+        "line": 64,
+        "module": "app.tools",
+        "table": "runtime_action_permissions"
+      },
+      {
         "class_name": "RuntimeRunGrant",
         "file": "back/app/tools/authorization_models.py",
         "foreign_keys": [
@@ -9881,7 +9895,7 @@
           "agents.id"
         ],
         "history_mixin": false,
-        "line": 63,
+        "line": 81,
         "module": "app.tools",
         "table": "runtime_run_grants"
       },
@@ -9982,6 +9996,7 @@
           "agents.id",
           "connections.id",
           "messenger_interactions.id",
+          "runtime_action_permissions.id",
           "runtime_run_grants.id",
           "tools.id",
           "users.id"
@@ -11544,8 +11559,26 @@
         "declared_path": "/action-authorizations",
         "file": "back/app/tools/authorization_router.py",
         "handler": "list_requests",
-        "line": 34,
+        "line": 35,
         "method": "GET",
+        "module": "app.tools"
+      },
+      {
+        "authorized": true,
+        "declared_path": "/action-authorizations/runtime-permissions",
+        "file": "back/app/tools/authorization_router.py",
+        "handler": "list_runtime_permissions",
+        "line": 56,
+        "method": "GET",
+        "module": "app.tools"
+      },
+      {
+        "authorized": true,
+        "declared_path": "/action-authorizations/runtime-permissions/{identifier}",
+        "file": "back/app/tools/authorization_router.py",
+        "handler": "delete_runtime_permission",
+        "line": 65,
+        "method": "DELETE",
         "module": "app.tools"
       },
       {
@@ -11553,7 +11586,7 @@
         "declared_path": "/action-authorizations/{identifier}",
         "file": "back/app/tools/authorization_router.py",
         "handler": "get_request",
-        "line": 55,
+        "line": 75,
         "method": "GET",
         "module": "app.tools"
       },
@@ -11562,7 +11595,7 @@
         "declared_path": "/action-authorizations/{identifier}/answer",
         "file": "back/app/tools/authorization_router.py",
         "handler": "answer_request",
-        "line": 83,
+        "line": 103,
         "method": "POST",
         "module": "app.tools"
       },
@@ -11571,7 +11604,7 @@
         "declared_path": "/action-authorizations/{identifier}/cancel",
         "file": "back/app/tools/authorization_router.py",
         "handler": "cancel_request",
-        "line": 95,
+        "line": 115,
         "method": "POST",
         "module": "app.tools"
       },
@@ -17386,6 +17419,7 @@
           "front/app/connection/components/CalendarConnectionEditor.vue",
           "front/app/connection/components/ConnectionForm.vue",
           "front/app/connection/components/ConnectionList.vue",
+          "front/app/connection/components/RuntimePermissions.vue",
           "front/app/connection/navigation.ts",
           "front/app/connection/pages/permissions.vue"
         ],

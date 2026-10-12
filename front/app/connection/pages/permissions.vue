@@ -1,7 +1,8 @@
 <template>
   <q-page class="q-pa-md">
     <PageHeader icon="verified_user" :title="t('permissions.title')" :description="t('permissions.description')" />
-    <ActionAuthorizations :agent-id="agentId" class="q-mb-lg" />
+    <ActionAuthorizations :agent-id="agentId" class="q-mb-lg" @answered="runtimePermissionsVersion++" />
+    <RuntimePermissions :key="runtimePermissionsVersion" :agent-id="agentId" />
     <h2 class="text-h6">{{ t('permissions.remembered') }}</h2>
     <div class="row q-col-gutter-md q-mb-md">
       <div class="col-12 col-md-6">
@@ -59,12 +60,14 @@ import { usePrivilegeStore, privileges } from '@/core/authorize'
 import { getAgentSelection, type AgentSelectionOption } from '@/app/agent'
 import { listPermissions, deletePermission, type RememberedPermission } from '../services/permissionService'
 import ActionAuthorizations from '../components/ActionAuthorizations.vue'
+import RuntimePermissions from '../components/RuntimePermissions.vue'
 
 const { t } = useI18n()
 const authorize = usePrivilegeStore()
 const canDelete = computed(() => authorize.hasPrivilege(privileges.CONNECTION_EDIT))
 const agents = ref<AgentSelectionOption[]>([])
 const agentId = ref<number | null>(null)
+const runtimePermissionsVersion = ref(0)
 const decision = ref<boolean | null>(null)
 const rows = ref<RememberedPermission[]>([])
 const loading = ref(false)

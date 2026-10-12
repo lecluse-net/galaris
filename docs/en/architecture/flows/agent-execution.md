@@ -46,6 +46,13 @@ receipts distinguish a request from a confirmed stop. See
 
 ## Elementary inference
 
+All managed external Harness local actions can receive human **Always allow this action type** consent,
+limited to the agent, Harness and exact action name. `app.tools` stores that consent and its
+configuration fingerprint, then claims a separate one-use authorization for each operation.
+Revocation blocks unconsumed dispatches; context, run and resource guards still apply.
+The internal Harness is excluded from this mechanism.
+See [0177](../../../../project/decisions/0177-runtime-action-type-consent.md).
+
 Chat/Responses requests without an explicit budget use the served model's published output
 capacity, within the estimated remaining context. Runtime discovery also covers existing
 configured models; missing metadata does not block the call. Explicit short-call budgets

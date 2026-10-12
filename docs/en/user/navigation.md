@@ -192,6 +192,16 @@ In internal Chat, the “Answer to…” sentence for button responses follows t
 language, including after reopening or changing languages. The request title and selected
 option label retain the wording of the original request.
 
+For a local action of any managed external Harness (Hermes, DeepSeek Harness, Codex,
+Claude Agent or a configured OpenAI Messages Harness), choose
+**Always allow this action type**. Consent applies to this agent, Harness and exact action
+name, with any arguments, including future tasks. For example, allowing `write_file` does not
+allow command execution. Other requests already pending still require a decision.
+In **Permissions**, **Allowed Harness action types** lets you revoke consent.
+A change of Harness, configuration or manager requires new consent. Revocation prevents
+future dispatches; an action that has already started may finish.
+The internal Harness is excluded from this Harness action-type consent mechanism.
+
 For browser access, open the agent's **Browser** connection. **Public sites allowed** is the
 initial choice for new installations: public HTTP methods and WebSocket pass without per-site
 consent, subject to filters and explicit denials. Existing instances keep their policy; a previously

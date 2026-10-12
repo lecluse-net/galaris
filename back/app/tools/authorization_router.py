@@ -23,6 +23,7 @@ router = APIRouter(prefix="/action-authorizations", tags=["permissions"], depend
 def projection(row: ActionAuthorization) -> dict[str, Any]:
     return {"id": str(row.id), "agent_id": row.agent_id, "approver_user_id": row.approver_user_id,
             "source": row.source, "capability_kind": row.capability_kind, "capability_name": row.capability_name,
+            "runtime": row.runtime,
             "status": row.status, "preview": row.preview, "decision_source": row.decision_source,
             "created_at": row.created_at, "expires_at": row.expires_at, "decided_at": row.decided_at,
             "claimed_at": row.claimed_at, "finished_at": row.finished_at,
@@ -48,6 +49,25 @@ async def list_requests(agent_id: int | None = None, status: str | None = None,
 
 def redacted(value: Any) -> Any:
     return redacted_action_arguments(value)
+
+
+@router.get("/runtime-permissions")
+@authorize(privileges=[Privileges.CONNECTION_ACCESS, Privileges.CONNECTION_EDIT])
+async def list_runtime_permissions(agent_id: int | None = None,
+                                  offset: int = Query(0, ge=0), limit: int = Query(50, ge=1, le=500)) -> dict[str, object]:
+    from .runtime_permissions import list_permissions
+    scope = await current_management_scope()
+    return await list_permissions(scope, agent_id=agent_id, offset=offset, limit=limit)
+
+
+@router.delete("/runtime-permissions/{identifier}")
+@authorize(privileges=Privileges.CONNECTION_EDIT)
+async def delete_runtime_permission(identifier: UUID) -> dict[str, bool]:
+    from .runtime_permissions import revoke_permission
+    scope = await current_management_scope()
+    if not await revoke_permission(identifier, user_id=scope.user_id):
+        raise HTTPException(404, "Runtime permission not found")
+    return {"revoked": True}
 
 
 @router.get("/{identifier}")

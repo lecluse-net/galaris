@@ -209,6 +209,17 @@ Dans le Chat interne, la phrase « Réponse à… » des réponses par bouton su
 l’interface, y compris après réouverture ou changement de langue. Le titre de la demande
 et le libellé du choix restent ceux de la demande d’origine.
 
+Pour une action locale de tout harnais externe géré (Hermès, DeepSeek Harness, Codex,
+Claude Agent ou un harnais OpenAI Messages configuré), choisissez
+**Toujours autoriser ce type d’action**. L’accord concerne cet agent, ce harnais et le nom exact
+de l’action, quels que soient ses paramètres, y compris dans les tâches suivantes. Par exemple,
+autoriser `write_file` n’autorise pas l’exécution de commandes. Les autres demandes déjà en
+attente restent à traiter. Dans **Permissions**, la liste **Types d’action autorisés pour les
+harnais** permet de révoquer l’accord. Un changement de harnais, de configuration ou de
+responsable exige un nouvel accord. Une révocation empêche les prochains départs ; une action
+déjà commencée peut se terminer.
+Le harnais interne est exclu de ce mécanisme d’accord par type d’action du harnais.
+
 Pour les accès du navigateur, ouvrez la connexion **Navigateur** de l’agent. **Sites publics
 autorisés** est le choix initial des nouvelles installations : les méthodes HTTP et WebSocket
 publics passent sans accord par site, sous réserve des filtres et refus explicites. Les instances

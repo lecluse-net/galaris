@@ -17,6 +17,7 @@ from core.i18n import current_language, render_prompt, t
 from .authorization import answer_action, can_remember_action, wake_authorization_context, AuthorizationAction, resolve_action_mode
 from .authorization import redacted_action_arguments
 from .authorization_models import ActionAuthorization
+from .contracts import ToolCallRejectedError
 from . import authorization_metrics as metrics
 
 KIND = "tool_action_authorization"
@@ -27,7 +28,8 @@ async def sync_authorization_choice(row: ActionAuthorization) -> None:
     key = f"authorization:{row.id}"
     if row.decision_source == "human" and row.decided_at is not None:
         option = "deny" if row.status == "denied" else (
-            "allow_always" if row.mode == "enabled" and row.policy_source == "connection" else "allow"
+            "allow_always" if row.runtime_permission_id is not None or (
+                row.mode == "enabled" and row.policy_source == "connection") else "allow"
         )
         await settle_user_choice(agent_id=row.agent_id, kind=KIND, idempotency_key=key, option_id=option)
     else:
@@ -75,6 +77,9 @@ async def _still_usable(row: ActionAuthorization) -> bool:
             return False
         if row.decision_source == "agent_yolo" and (not policy.yolo or row.policy_version != policy.version):
             return False
+        from .runtime_permissions import permission_still_valid
+        if not await permission_still_valid(row):
+            return False
         if row.runtime_grant_ref is not None and row.runtime_grant_id is None:
             return False
         mode, source = await resolve_action_mode(AuthorizationAction(agent_id=row.agent_id, runtime=row.runtime,
@@ -84,7 +89,7 @@ async def _still_usable(row: ActionAuthorization) -> bool:
             kind=cast(Literal["tool", "resource", "prompt"], row.capability_kind),
             source=cast(Literal["mcp", "runtime", "domain"], row.source)), lock=False)
         return mode == row.mode and source == row.policy_source
-    except (PermissionError, ValueError, LookupError):
+    except (PermissionError, ValueError, LookupError, ToolCallRejectedError):
         return False
 
 
@@ -124,8 +129,12 @@ async def deliver_authorization_notifications() -> None:
                 arguments = redacted_action_arguments(json.loads(get_encryption_service().decrypt(row.encrypted_arguments)))
                 body += "\n\n" + json.dumps(arguments, ensure_ascii=False)[:6000]
             if await can_remember_action(row):
-                options.append(ChoiceOption(id="allow_always", label=t("permissions.allow_function", language)))
-                body += "\n\n" + render_prompt(t("permissions.function_scope", language), function=row.capability_name)
+                runtime = row.source == "runtime"
+                options.append(ChoiceOption(id="allow_always", label=t(
+                    "permissions.allow_runtime_action" if runtime else "permissions.allow_function", language)))
+                body += "\n\n" + render_prompt(t(
+                    "permissions.runtime_scope" if runtime else "permissions.function_scope", language),
+                    function=row.capability_name, runtime=row.runtime)
             interaction = await request_user_choice(
                 agent_id=row.agent_id, user_id=row.approver_user_id,
                 request=ChoiceRequest(

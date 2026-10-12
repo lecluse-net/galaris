@@ -8,6 +8,8 @@ default: dict[str, object] = {
         "allow_once": "Allow this action",
         "deny_once": "Deny this action",
         "allow_function": "Always allow this function",
+        "allow_runtime_action": "Always allow this action type",
+        "runtime_scope": "This allows ${function} for this agent with the ${runtime} Harness, with any arguments, including future tasks. Other action types still require approval. Revoke this consent in Permissions; a change of Harness, configuration or manager requires new consent.",
         "function_scope": "This allows ${function} for this agent on this connection, with any arguments. You can revoke it in the connection's function permissions.",
         "allow_all_sites": "Always allow all sites",
     },

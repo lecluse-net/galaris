@@ -48,6 +48,13 @@ Une réponse d’annulation distingue demande reçue et arrêt confirmé. Voir
 
 ## Inférence élémentaire
 
+Les actions locales de tous les harnais externes gérés peuvent recevoir un accord humain **Toujours autoriser
+ce type d’action**, limité à l’agent, au harnais et au nom exact de l’action. `app.tools`
+conserve cet accord et son empreinte de configuration, puis réclame une autorisation unitaire
+pour chaque opération. La révocation bloque les départs non consommés ; les gardes de contexte,
+de run et de ressources restent applicables. Le harnais interne est exclu de ce mécanisme.
+Voir [0177](../../../../project/decisions/0177-runtime-action-type-consent.md).
+
 Les requêtes Chat/Responses sans budget explicite utilisent la capacité de sortie publiée
 du modèle servi, dans la place estimée restante du contexte. La découverte à l'exécution
 couvre aussi les modèles déjà configurés ; son absence ne bloque pas l'appel. Les budgets

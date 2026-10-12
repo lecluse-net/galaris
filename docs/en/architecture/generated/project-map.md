@@ -17,8 +17,8 @@ tests remain authoritative for behavior.
 - 26 directly bidirectional domain pairs;
 - 1 strongly connected components;
 - 7 directly bidirectional frontend pairs;
-- 616 detected HTTP/WebSocket handlers;
-- 143 detected SQLAlchemy tables;
+- 618 detected HTTP/WebSocket handlers;
+- 144 detected SQLAlchemy tables;
 - 246 detected native MCP tools;
 - 40 detected Vue pages.
 
@@ -453,7 +453,7 @@ tests remain authoritative for behavior.
 | `app.task` | `core.params` | `back/app/task/budget.py`, `back/app/task/collab.py`, `back/app/task/mcp.py`, `back/app/task/scheduler.py`, `back/app/task/settings_service.py` |
 | `app.task` | `core.user` | `back/app/task/mcp.py`, `back/app/task/run_events.py`, `back/app/task/task_service.py` |
 | `app.task` | `core.util` | `back/app/task/activity_snapshot.py`, `back/app/task/html_migration.py`, `back/app/task/mcp.py`, `back/app/task/models.py`, `back/app/task/operational_state.py`, `back/app/task/router.py`, `back/app/task/schemas.py` |
-| `app.tools` | `app.agent` | `back/app/tools/admin_service.py`, `back/app/tools/agent_registry.py`, `back/app/tools/authorization.py`, `back/app/tools/authorization_notifications.py`, `back/app/tools/authorization_router.py`, `back/app/tools/catalog.py`, `back/app/tools/catalog_refresh_service.py`, `back/app/tools/connection_functions.py`, `back/app/tools/dbadmin.py`, `back/app/tools/mcp_loader.py`, `back/app/tools/resource_effects.py`, `back/app/tools/router.py`, `back/app/tools/runtime_authorization.py` |
+| `app.tools` | `app.agent` | `back/app/tools/admin_service.py`, `back/app/tools/agent_registry.py`, `back/app/tools/authorization.py`, `back/app/tools/authorization_notifications.py`, `back/app/tools/authorization_router.py`, `back/app/tools/catalog.py`, `back/app/tools/catalog_refresh_service.py`, `back/app/tools/connection_functions.py`, `back/app/tools/dbadmin.py`, `back/app/tools/mcp_loader.py`, `back/app/tools/resource_effects.py`, `back/app/tools/router.py`, `back/app/tools/runtime_authorization.py`, `back/app/tools/runtime_permissions.py` |
 | `app.tools` | `app.connection` | `back/app/tools/admin_access.py`, `back/app/tools/admin_candidates.py`, `back/app/tools/admin_contracts.py`, `back/app/tools/admin_service.py`, `back/app/tools/agent_registry.py`, `back/app/tools/authorization.py`, `back/app/tools/connection_functions.py`, `back/app/tools/dbadmin.py`, `back/app/tools/documentation_service.py`, `back/app/tools/facade.py`, `back/app/tools/mandatory_tools.py`, `back/app/tools/mcp_authorization.py`, `back/app/tools/mcp_loader.py`, `back/app/tools/tool_service.py` |
 | `app.tools` | `app.console` | `back/app/tools/mcp_loader.py` |
 | `app.tools` | `app.documentation` | `back/app/tools/documentation_service.py` |
@@ -463,7 +463,7 @@ tests remain authoritative for behavior.
 | `app.tools` | `app.task` | `back/app/tools/mcp_loader.py` |
 | `app.tools` | `app.util` | `back/app/tools/search_tool.py` |
 | `app.tools` | `core.authorize` | `back/app/tools/assertions.py`, `back/app/tools/authorization_router.py`, `back/app/tools/router.py`, `back/app/tools/runtime_authorization_router.py` |
-| `app.tools` | `core.database` | `back/app/tools/admin_service.py`, `back/app/tools/administration_lock.py`, `back/app/tools/authorization.py`, `back/app/tools/authorization_models.py`, `back/app/tools/authorization_notifications.py`, `back/app/tools/authorization_router.py`, `back/app/tools/catalog_refresh_service.py`, `back/app/tools/documentation_service.py`, `back/app/tools/mandatory_tools.py`, `back/app/tools/mcp_loader.py`, `back/app/tools/models.py`, `back/app/tools/runtime_authorization.py`, `back/app/tools/runtime_authorization_router.py`, `back/app/tools/tool_search_service.py`, `back/app/tools/tool_service.py` |
+| `app.tools` | `core.database` | `back/app/tools/admin_service.py`, `back/app/tools/administration_lock.py`, `back/app/tools/authorization.py`, `back/app/tools/authorization_models.py`, `back/app/tools/authorization_notifications.py`, `back/app/tools/authorization_router.py`, `back/app/tools/catalog_refresh_service.py`, `back/app/tools/documentation_service.py`, `back/app/tools/mandatory_tools.py`, `back/app/tools/mcp_loader.py`, `back/app/tools/models.py`, `back/app/tools/runtime_authorization.py`, `back/app/tools/runtime_authorization_router.py`, `back/app/tools/runtime_permissions.py`, `back/app/tools/tool_search_service.py`, `back/app/tools/tool_service.py` |
 | `app.tools` | `core.dbadmin` | `back/app/tools/dbadmin.py`, `back/app/tools/mandatory_tools.py` |
 | `app.tools` | `core.failure_journal` | `back/app/tools/mcp_loader.py` |
 | `app.tools` | `core.i18n` | `back/app/tools/agent_registry.py`, `back/app/tools/authorization_notifications.py`, `back/app/tools/connection_functions.py`, `back/app/tools/mcp.py`, `back/app/tools/mcp_diagnostics.py`, `back/app/tools/mcp_loader.py`, `back/app/tools/router.py`, `back/app/tools/search_tool.py`, `back/app/tools/tool_errors.py`, `back/app/tools/tool_service.py` |
@@ -726,7 +726,7 @@ tests remain authoritative for behavior.
 | `app/connection` | `app/console` | `front/app/connection/components/ConnectionForm.vue` |
 | `app/connection` | `app/tools` | `front/app/connection/components/AuthorizationManager.vue`, `front/app/connection/components/ConnectionForm.vue`, `front/app/connection/components/ConnectionList.vue` |
 | `app/connection` | `core/api` | `front/app/connection/availability.ts`, `front/app/connection/components/CalendarConnectionEditor.vue`, `front/app/connection/services/calendarService.ts`, `front/app/connection/services/connectionService.ts`, `front/app/connection/services/mailService.ts`, `front/app/connection/services/permissionService.ts` |
-| `app/connection` | `core/authorize` | `front/app/connection/components/ActionAuthorizations.vue`, `front/app/connection/components/AuthorizationManager.vue`, `front/app/connection/components/CalendarConnectionEditor.vue`, `front/app/connection/components/ConnectionForm.vue`, `front/app/connection/components/ConnectionList.vue`, `front/app/connection/navigation.ts`, `front/app/connection/pages/permissions.vue` |
+| `app/connection` | `core/authorize` | `front/app/connection/components/ActionAuthorizations.vue`, `front/app/connection/components/AuthorizationManager.vue`, `front/app/connection/components/CalendarConnectionEditor.vue`, `front/app/connection/components/ConnectionForm.vue`, `front/app/connection/components/ConnectionList.vue`, `front/app/connection/components/RuntimePermissions.vue`, `front/app/connection/navigation.ts`, `front/app/connection/pages/permissions.vue` |
 | `app/connection` | `core/navigation` | `front/app/connection/navigation.ts`, `front/app/connection/pages/mail.vue` |
 | `app/connection` | `core/util` | `front/app/connection/components/ConnectionForm.vue`, `front/app/connection/components/FunctionPolicyToggle.vue`, `front/app/connection/pages/mail.vue`, `front/app/connection/pages/permissions.vue` |
 | `app/console` | `core/api` | `front/app/console/services/consoleService.ts` |
@@ -1098,10 +1098,12 @@ tests remain authoritative for behavior.
 
 | Method | Declared Path | Module | Handler | Local RBAC | Source |
 |---|---|---|---|---:|---|
-| GET | `/action-authorizations` | `app.tools` | `list_requests` | yes | `back/app/tools/authorization_router.py:34` |
-| GET | `/action-authorizations/{identifier}` | `app.tools` | `get_request` | yes | `back/app/tools/authorization_router.py:55` |
-| POST | `/action-authorizations/{identifier}/answer` | `app.tools` | `answer_request` | yes | `back/app/tools/authorization_router.py:83` |
-| POST | `/action-authorizations/{identifier}/cancel` | `app.tools` | `cancel_request` | yes | `back/app/tools/authorization_router.py:95` |
+| GET | `/action-authorizations` | `app.tools` | `list_requests` | yes | `back/app/tools/authorization_router.py:35` |
+| GET | `/action-authorizations/runtime-permissions` | `app.tools` | `list_runtime_permissions` | yes | `back/app/tools/authorization_router.py:56` |
+| DELETE | `/action-authorizations/runtime-permissions/{identifier}` | `app.tools` | `delete_runtime_permission` | yes | `back/app/tools/authorization_router.py:65` |
+| GET | `/action-authorizations/{identifier}` | `app.tools` | `get_request` | yes | `back/app/tools/authorization_router.py:75` |
+| POST | `/action-authorizations/{identifier}/answer` | `app.tools` | `answer_request` | yes | `back/app/tools/authorization_router.py:103` |
+| POST | `/action-authorizations/{identifier}/cancel` | `app.tools` | `cancel_request` | yes | `back/app/tools/authorization_router.py:115` |
 | POST | `/agent/openai/chat/completions` | `app.agent` | `agent_chat_completions` | yes | `back/app/agent/openai_router.py:77` |
 | GET | `/agent/openai/models` | `app.agent` | `get_agent_models` | yes | `back/app/agent/openai_router.py:66` |
 | GET | `/agents` | `app.agent` | `read_agents` | yes | `back/app/agent/router.py:223` |
@@ -1842,7 +1844,8 @@ tests remain authoritative for behavior.
 | `process_start_jobs` | `ProcessStartJob` | `app.process` | no | `process_runs.id` | `back/app/process/models.py:138` |
 | `role_privileges` | `RolePrivilege` | `core.authorize` | no | `privileges.id`, `roles.id` | `back/core/authorize/models.py:11` |
 | `roles` | `Role` | `core.authorize` | no | — | `back/core/authorize/models.py:53` |
-| `runtime_run_grants` | `RuntimeRunGrant` | `app.tools` | no | `agent_mcp_tokens.id`, `agents.id` | `back/app/tools/authorization_models.py:63` |
+| `runtime_action_permissions` | `RuntimeActionPermission` | `app.tools` | no | `agents.id`, `users.id` | `back/app/tools/authorization_models.py:64` |
+| `runtime_run_grants` | `RuntimeRunGrant` | `app.tools` | no | `agent_mcp_tokens.id`, `agents.id` | `back/app/tools/authorization_models.py:81` |
 | `skill_categories` | `SkillCategory` | `app.skill` | yes | — | `back/app/skill/models.py:31` |
 | `skills` | `Skill` | `app.skill` | yes | `skill_categories.id` | `back/app/skill/models.py:52` |
 | `task_amendments` | `TaskAmendment` | `app.task` | no | `tasks.id` | `back/app/task/models.py:243` |
@@ -1851,7 +1854,7 @@ tests remain authoritative for behavior.
 | `team_audit` | `TeamAudit` | `core.team` | yes | — | `back/core/team/models.py:28` |
 | `team_users` | `TeamUser` | `core.team` | no | `agent_groups.id`, `users.id` | `back/core/team/models.py:19` |
 | `titles` | `Title` | `app.agent` | no | — | `back/app/agent/models.py:41` |
-| `tool_action_authorizations` | `ActionAuthorization` | `app.tools` | no | `agents.id`, `connections.id`, `messenger_interactions.id`, `runtime_run_grants.id`, `tools.id`, `users.id` | `back/app/tools/authorization_models.py:13` |
+| `tool_action_authorizations` | `ActionAuthorization` | `app.tools` | no | `agents.id`, `connections.id`, `messenger_interactions.id`, `runtime_action_permissions.id`, `runtime_run_grants.id`, `tools.id`, `users.id` | `back/app/tools/authorization_models.py:13` |
 | `tool_function_state` | `ToolFunctionState` | `app.connection` | no | `tools.id` | `back/app/connection/models.py:80` |
 | `tool_search_documents` | `ToolSearchDocument` | `app.tools` | no | — | `back/app/tools/models.py:74` |
 | `tools` | `Tool` | `app.tools` | no | — | `back/app/tools/models.py:24` |

@@ -193,6 +193,12 @@ Historical single-site agreements are not broadened; earlier questions are repla
 collecting consent for all sites.
 `app/tools/tests/test_action_authorizations.py` checks permanent consent per function and
 connection, resuming the original action without replay, and subsequent execution without a question.
+For every registered external Harness provider (Hermes, DeepSeek Harness, Codex,
+Claude Agent and configured OpenAI Messages) it also checks action-type consent, separate runtime and capability
+scopes, reuse in another context, revocation, and changes of configuration, assignment, manager and
+policy version. Browser scenarios `action-authorizations.spec.mjs` and `permissions.spec.mjs`
+cover the choice and revocation.
+The internal Harness is explicitly excluded from these runtime consents.
 It also covers concurrent claims, non-repeatable denial, expiry, quotas, context or configuration
 revocation, YOLO, and file preconditions. Permanent consent rejects changed MCP configuration,
 including changes between call preparation and creation of its question.

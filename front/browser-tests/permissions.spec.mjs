@@ -2,6 +2,7 @@ import { test, expect, mount, jsonRoute } from './fixtures.mjs';
 
 test.beforeEach(async ({ page }) => {
   await jsonRoute(page, '**/api/tools/action-authorizations?*', { items: [], total: 0 });
+  await jsonRoute(page, '**/api/tools/action-authorizations/runtime-permissions?*', { items: [], total: 0 });
 });
 
 test('remembered approvals and denials can be filtered and removed, with retry after failure', async ({ page }) => {

@@ -35,7 +35,7 @@
           <p v-if="selected.notification_failed" role="status">{{ t('permissions.notificationFailed') }}</p>
           <div>{{ selected.decision_source === 'agent_yolo' ? t('permissions.automaticYolo') : t('permissions.approver') + ': ' + selected.approver_user_id }}</div>
           <pre v-if="selected.arguments" class="action-arguments">{{ JSON.stringify(selected.arguments, null, 2) }}</pre>
-          <p v-if="selected.can_remember">{{ t('permissions.functionScope', { function: selected.capability_name }) }}</p>
+          <p v-if="selected.can_remember">{{ t(selected.source === 'runtime' ? 'permissions.runtimeScope' : 'permissions.functionScope', { function: selected.capability_name, runtime: selected.runtime }) }}</p>
         </q-card-section>
         <q-card-section v-if="detailError" role="alert">{{ t('permissions.error') }}
           <q-btn v-if="detailId" flat :label="t('permissions.retry')" @click="open(detailId)" />
@@ -47,7 +47,7 @@
           <template v-if="selected?.can_answer && canAnswer">
             <q-btn :label="t('permissions.denyAction')" :loading="answering" @click="answer(false)" />
             <q-btn :label="t('permissions.allowAction')" :loading="answering" @click="answer(true)" />
-            <q-btn v-if="selected.can_remember" :label="t('permissions.allowFunction')" :loading="answering" @click="answer(true, true)" />
+            <q-btn v-if="selected.can_remember" :label="t(selected.source === 'runtime' ? 'permissions.allowRuntimeAction' : 'permissions.allowFunction')" :loading="answering" @click="answer(true, true)" />
           </template>
         </q-card-actions>
       </q-card>
@@ -63,6 +63,7 @@ import type { QTableColumn, QTableProps } from 'quasar'
 import { privileges, usePrivilegeStore } from '@/core/authorize'
 import { answerActionAuthorization, cancelActionAuthorization, getActionAuthorization, listActionAuthorizations, type ActionAuthorization } from '../services/permissionService'
 const { agentId = null } = defineProps<{ agentId?: number | null }>()
+const emit = defineEmits<{ answered: [] }>()
 const { t } = useI18n()
 const route = useRoute()
 const privilegeStore = usePrivilegeStore()
@@ -129,6 +130,7 @@ async function answer(approved: boolean, remember = false) {
   answering.value = true
   try {
     await answerActionAuthorization(id, approved, remember)
+    emit('answered')
     if (!disposed && detailOpen.value && selected.value?.id === id) await open(id)
     await load()
   } catch { if (selected.value?.id === id) detailError.value = true }

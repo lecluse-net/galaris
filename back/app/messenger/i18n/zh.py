@@ -8,6 +8,8 @@ default: dict[str, object] = {
         "allow_once": "允许此操作",
         "deny_once": "拒绝此操作",
         "allow_function": "始终允许此功能",
+        "allow_runtime_action": "始终允许此类操作",
+        "runtime_scope": "这将允许此代理通过 ${runtime} 执行 ${function}，适用于任何参数和后续任务。其他类型的操作仍需授权。可在权限页面撤销；更换执行框架、配置或负责人后需重新授权。",
         "function_scope": "这将允许此代理在此连接上使用 ${function}，无论参数如何。您可以在连接的功能权限中撤销此授权。",
         "allow_all_sites": "始终允许所有网站",
     },

@@ -25,11 +25,12 @@ export interface ActionAuthorization {
   agent_id: number
   approver_user_id: number
   source: 'mcp' | 'runtime' | 'domain'
+  runtime: string
   capability_kind: 'tool' | 'resource' | 'prompt'
   capability_name: string
   status: 'pending' | 'approved' | 'denied' | 'expired' | 'invalidated' | 'executing' | 'completed' | 'failed' | 'outcome_unknown'
   preview: string
-  decision_source: 'human' | 'agent_yolo' | null
+  decision_source: 'human' | 'agent_yolo' | 'runtime_policy' | null
   created_at: string
   expires_at: string
   notification_failed?: boolean
@@ -53,4 +54,22 @@ export async function answerActionAuthorization(id: string, approved: boolean, r
 
 export async function cancelActionAuthorization(id: string) {
   await api.post(`/tools/action-authorizations/${id}/cancel`)
+}
+
+export interface RuntimePermission {
+  id: string
+  agent_id: number
+  runtime: string
+  capability_name: string
+  created_at: string
+  active: boolean
+  can_revoke: boolean
+}
+
+export async function listRuntimePermissions(params: { agent_id?: number; offset: number; limit: number }, signal?: AbortSignal) {
+  return (await api.get<{ items: RuntimePermission[]; total: number }>('/tools/action-authorizations/runtime-permissions', { params, signal })).data
+}
+
+export async function revokeRuntimePermission(id: string) {
+  await api.delete(`/tools/action-authorizations/runtime-permissions/${id}`)
 }

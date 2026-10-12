@@ -382,6 +382,9 @@ async def resolve_action_mode(action: AuthorizationAction, *, lock: bool = True)
 
 async def _remember_configuration_fingerprint(action: AuthorizationAction) -> str | None:
     """A permanent choice belongs to the connection configuration that asked the question."""
+    if action.source == "runtime" and action.kind == "tool" and action.connection_id is None:
+        from .runtime_permissions import configuration_fingerprint
+        return await configuration_fingerprint(action.agent_id, action.runtime)
     if action.source != "mcp" or action.connection_id is None or action.tool_id is None:
         return None
     from app.connection import facade as connections
@@ -497,16 +500,25 @@ async def claim_action(action: AuthorizationAction) -> UUID | None:
                 decision_source="agent_yolo" if policy.yolo and action.allow_yolo else None,
                 decided_at=now if policy.yolo and action.allow_yolo else None,
             )
+            if action.source == "runtime" and action.kind == "tool" and action.connection_id is None:
+                from .runtime_permissions import matching_permission
+                permission = await matching_permission(action.agent_id, action.runtime, action.name,
+                    row.remember_configuration_fingerprint)
+                if permission is not None:
+                    row.status, row.decision_source, row.decided_at = "approved", "runtime_policy", now
+                    row.runtime_permission_id = permission.id
             db.add(row)
             await db.flush()
             metrics.transition(row.status, row.decision_source or "human_required")
         if row.status in ("pending", "approved"):
+            from .runtime_permissions import permission_still_valid
             if row.expires_at <= now:
                 row.status = "expired"
             elif (row.fingerprint != arguments_fingerprint or
                   row.configuration_fingerprint != configuration_fingerprint or
                   row.mode != mode or row.policy_source != origin or
                   row.approver_user_id != approver or
+                  not await permission_still_valid(row) or
                   (row.decision_source == "agent_yolo" and
                    (not policy.yolo or row.policy_version != policy.version))):
                 row.status = "invalidated"
@@ -576,11 +588,26 @@ async def finish_action(request_id: UUID | None, *, receipt: object = None,
 
 
 async def can_remember_action(row: ActionAuthorization) -> bool:
-    """Only a live, configurable MCP function has a reusable connection policy."""
+    """Reuse is scoped to a live connection function or a configured runtime action type."""
     if (row.status != "pending" or row.expires_at <= datetime.now(timezone.utc) or row.mode != "ask"
             or row.remember_configuration_fingerprint is None
-            or row.source != "mcp" or row.capability_kind != "tool" or row.connection_id is None or row.tool_id is None
+            or row.capability_kind != "tool"
             or (row.runtime_grant_ref is not None and row.runtime_grant_id is None)):
+        return False
+    if row.source == "runtime" and row.connection_id is None:
+        from .runtime_permissions import configuration_fingerprint
+        try:
+            policy = await authorization_policy(row.agent_id)
+            mode, source = await resolve_action_mode(AuthorizationAction(
+                agent_id=row.agent_id, runtime=row.runtime, context_key=row.context_key,
+                callback_key="remember-policy", source="runtime", name=row.capability_name,
+                arguments={}, configuration={}, runtime_grant_id=row.runtime_grant_id), lock=False)
+            return (mode == "ask" and source == row.policy_source
+                and row.approver_user_id == policy.manager_user_id and row.policy_version == policy.version
+                and await configuration_fingerprint(row.agent_id, row.runtime) == row.remember_configuration_fingerprint)
+        except (PermissionError, ValueError, LookupError, ToolCallRejectedError):
+            return False
+    if row.source != "mcp" or row.connection_id is None or row.tool_id is None:
         return False
     from app.connection import facade as connections
     from .tool_service import get_tool_by_id
@@ -599,7 +626,7 @@ async def can_remember_action(row: ActionAuthorization) -> bool:
         mode, source = await resolve_action_mode(action, lock=False)
         if await _remember_configuration_fingerprint(action) != row.remember_configuration_fingerprint:
             return False
-    except (PermissionError, ValueError, LookupError):
+    except (PermissionError, ValueError, LookupError, ToolCallRejectedError):
         return False
     return mode == "ask" and source == row.policy_source
 
@@ -630,18 +657,26 @@ async def answer_action(request_id: UUID, *, user_id: int, approved: bool, remem
     if row.status != "pending":
         return False
     if remember:
-        if not approved or row.expires_at <= now or row.tool_id is None:
+        if not approved or row.expires_at <= now:
             return False
-        from .administration_lock import lock_tools
-        from app.connection import facade as connections
-        await lock_tools([row.tool_id])
-        if not await can_remember_action(row):
-            return False
-        assert row.connection_id is not None
-        await connections.set_connection_function_state(row.connection_id, row.capability_name, "enabled", commit=False)
-        # Consume this operation once while future calls use its connection policy.
-        row.mode = "enabled"
-        row.policy_source = "connection"
+        if row.source == "runtime":
+            if not await can_remember_action(row):
+                return False
+            from .runtime_permissions import remember_permission
+            await remember_permission(row)
+        else:
+            if row.tool_id is None:
+                return False
+            from .administration_lock import lock_tools
+            from app.connection import facade as connections
+            await lock_tools([row.tool_id])
+            if not await can_remember_action(row):
+                return False
+            assert row.connection_id is not None
+            await connections.set_connection_function_state(row.connection_id, row.capability_name, "enabled", commit=False)
+            # Consume this operation once while future calls use its connection policy.
+            row.mode = "enabled"
+            row.policy_source = "connection"
     if row.expires_at <= now:
         row.status = "expired"
         row.encrypted_arguments = None

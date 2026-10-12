@@ -11,6 +11,7 @@ from sqlalchemy import select
 
 from app.agent import Agent, Title
 from app.agent.authorization import set_yolo
+from app.harnesses.registry import all_providers
 from app.tools.authorization import (
     AuthorizationAction, AuthorizationClosed, AuthorizationRequired,
     answer_action, claim_action, finish_action,
@@ -218,6 +219,8 @@ async def test_runtime_run_grant_is_scoped_renewable_and_revoked_by_assignment_c
         assert (await client.get(endpoint + f"/{identifier}", headers=headers)).json()["status"] == "pending"
         assert (await client.post(f"/api/tools/action-authorizations/{identifier}/answer", headers=headers,
             json={"approved": True})).status_code in (401, 403)
+        assert (await client.get("/api/tools/action-authorizations/runtime-permissions", headers=headers)).status_code in (401, 403)
+        assert (await client.delete(f"/api/tools/action-authorizations/runtime-permissions/{uuid4()}", headers=headers)).status_code in (401, 403)
         async with get_db_session() as db:
             row = await db.get(ActionAuthorization, identifier)
             assert await answer_action(identifier, user_id=row.approver_user_id, approved=True)
@@ -551,11 +554,193 @@ async def test_remembered_approval_enables_only_this_connection_function_and_pre
 
 @pytest.mark.asyncio
 async def test_runtime_approval_cannot_be_made_permanent(action):
+    """An unconfigured runtime cannot acquire reusable authority (retired blanket ban)."""
     identifier = await pending(action)
     async with get_db_session() as db:
         row = await db.get(ActionAuthorization, identifier)
         assert not await answer_action(identifier, user_id=row.approver_user_id, approved=True, remember=True)
         assert row.status == "pending"
+
+
+@pytest_asyncio.fixture(params=[provider.code for provider in all_providers()])
+async def runtime_action(action, request, monkeypatch):
+    from app.harnesses.models import AgentHarness, Harness
+    from app.harnesses.registry import get_provider
+    from core.params import params_service
+    runtime = request.param
+    provider = get_provider(runtime)
+    if provider.enabled_param is not None:
+        await params_service.get_all()
+        monkeypatch.setitem(params_service._params_cache, provider.enabled_param, "true")
+    async with get_db_session() as db:
+        harness_id = None
+        if runtime == "openai_messages":
+            harness = Harness(name="Synthetic consent harness", provider_code=runtime,
+                driver_code=provider.driver_code, enabled=True,
+                base_url="http://synthetic-harness.example.test/v1", model="synthetic",
+                capabilities=["execute", "stream"])
+            db.add(harness)
+            await db.flush()
+            harness_id = harness.id
+            (await db.get(Agent, action.agent_id)).task_harness_id = harness_id
+        db.add(AgentHarness(agent_id=action.agent_id, provider_code=runtime, harness_id=harness_id, lifecycle_status="ready",
+            runtime_base_url="http://synthetic-harness.example.test/v1", runtime_model="synthetic"))
+    return replace(action, runtime=runtime, name="write_file")
+
+
+@pytest.mark.asyncio
+async def test_internal_runtime_is_excluded_from_external_action_type_consent(runtime_action):
+    from app.tools.authorization import can_remember_action
+    from app.tools.runtime_permissions import configuration_fingerprint
+    internal = replace(runtime_action, runtime="internal")
+    identifier = await pending(internal)
+    async with get_db_session() as db:
+        row = await db.get(ActionAuthorization, identifier)
+        assert await configuration_fingerprint(internal.agent_id, "internal") is None
+        assert not await can_remember_action(row)
+        assert not await answer_action(identifier, user_id=row.approver_user_id, approved=True, remember=True)
+        assert row.status == "pending"
+
+
+@pytest.mark.asyncio
+async def test_runtime_type_consent_survives_new_tasks_and_is_revocable(runtime_action):
+    from app.tools.authorization import can_remember_action
+    from app.tools.authorization_notifications import deliver_authorization_notifications
+    from app.tools.runtime_permissions import revoke_permission
+    from app.connection import Connection
+    from app.messenger import answer_internal_interaction
+    from app.messenger.models import Interaction
+    from app.tools.models import Tool
+    async with get_db_session() as db:
+        chat = await db.scalar(select(Tool).where(Tool.code == "chat"))
+        db.add(Connection(agent_id=runtime_action.agent_id, tool_id=chat.id, active=True))
+    identifier = await pending(runtime_action)
+    await deliver_authorization_notifications()
+    async with get_db_session() as db:
+        row = await db.get(ActionAuthorization, identifier)
+        manager_id = row.approver_user_id
+        assert await can_remember_action(row)
+        assert not await answer_action(identifier, user_id=manager_id + 100000, approved=True, remember=True)
+        interaction = await db.get(Interaction, row.interaction_id)
+        assert "allow_always" in [option["id"] for option in interaction.options]
+        assert runtime_action.name in interaction.body and runtime_action.runtime in interaction.body
+        await answer_internal_interaction(manager_id, UUID(interaction.room_id), interaction.id, option_id="allow_always")
+        await db.refresh(row)
+        permission_id = row.runtime_permission_id
+        assert permission_id is not None
+    assert await claim_action(runtime_action) == identifier
+    await finish_action(identifier)
+    with pytest.raises(AuthorizationClosed, match="completed"):
+        await claim_action(runtime_action)
+    # New callbacks, arguments, sessions and execution contexts still produce distinct one-use claims.
+    later = replace(runtime_action, callback_key=str(uuid4()), context_key="principal:another-synthetic-task",
+        arguments={"path": "another.txt", "content": "different synthetic content"},
+        configuration={"session": "another-session"})
+    auto = await claim_action(later)
+    assert auto is not None
+    async with get_db_session() as db:
+        row = await db.get(ActionAuthorization, auto)
+        assert row.status == "executing" and row.decision_source == "runtime_policy"
+        assert row.runtime_permission_id == permission_id
+    await finish_action(auto)
+    await pending(replace(later, callback_key=str(uuid4()), name="execute_command"))
+    await pending(replace(later, callback_key=str(uuid4()), runtime="other-runtime"))
+    await pending(replace(later, callback_key=str(uuid4()), source="domain"))
+    await pending(replace(later, callback_key=str(uuid4()), kind="resource"))
+    async with get_db_session():
+        assert not await revoke_permission(permission_id, user_id=manager_id + 100000)
+        assert await revoke_permission(permission_id, user_id=manager_id)
+    await pending(replace(later, callback_key=str(uuid4())))
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("change", ["configuration", "assignment", "manager", "policy"])
+async def test_runtime_consent_rejects_changes_before_review_and_before_reuse(runtime_action, monkeypatch, change):
+    from app.harnesses.models import AgentHarness
+    from app.tools.authorization import can_remember_action
+    from app.tools import runtime_authorization
+    config = {"terminal_signature": "synthetic-original"}
+    async def snapshot(agent_id):
+        return dict(config)
+    monkeypatch.setitem(runtime_authorization._runtime_configurations, runtime_action.runtime, snapshot)
+    first = await pending(runtime_action)
+    second_action = replace(runtime_action, callback_key=str(uuid4()))
+    second = await pending(second_action)
+    async with get_db_session() as db:
+        row = await db.get(ActionAuthorization, first)
+        assert await answer_action(first, user_id=row.approver_user_id, approved=True, remember=True)
+    if change == "configuration":
+        config["terminal_signature"] = "synthetic-changed"
+    else:
+        async with get_db_session() as db:
+            agent = await db.get(Agent, runtime_action.agent_id)
+            if change == "assignment":
+                assignment = await db.scalar(select(AgentHarness).where(AgentHarness.agent_id == agent.id))
+                assignment.revision += 1
+            elif change == "policy":
+                agent.authorization_version += 1
+            else:
+                user = UserModel(email=f"new-manager-{uuid4().hex}@example.test", hashed_password="synthetic")
+                db.add(user)
+                await db.flush()
+                agent.user_id = user.id
+                agent.authorization_version += 1
+    async with get_db_session() as db:
+        row = await db.get(ActionAuthorization, second)
+        assert not await can_remember_action(row)
+        assert not await answer_action(second, user_id=row.approver_user_id, approved=True, remember=True)
+    with pytest.raises(AuthorizationClosed, match="invalidated"):
+        await claim_action(runtime_action)
+    await pending(replace(runtime_action, callback_key=str(uuid4())))
+
+
+@pytest.mark.asyncio
+async def test_human_runtime_permission_api_revokes_unconsumed_consent_and_preserves_other_questions(runtime_action, client):
+    from core.authorize.models import Assignment, Role
+    from core.user import auth_service, refresh_session_service as sessions
+    from app.tools.authorization_models import RuntimeActionPermission
+    identifier = await pending(runtime_action)
+    already_pending = replace(runtime_action, callback_key=str(uuid4()), arguments={"path": "other.txt"})
+    second = await pending(already_pending)
+    async with get_db_session() as db:
+        agent = await db.get(Agent, runtime_action.agent_id)
+        manager = await db.get(UserModel, agent.user_id)
+        other = UserModel(email=f"other-reviewer-{uuid4().hex}@example.test", hashed_password="synthetic")
+        db.add(other)
+        await db.flush()
+        admin = await db.scalar(select(Role).where(Role.code == "admin"))
+        db.add_all([Assignment(user_id=user.id, role_id=admin.id, is_default=True) for user in (manager, other)])
+        await db.commit()
+        tokens = []
+        for user in (manager, other):
+            refresh = await sessions.create_refresh_session(user.id)
+            tokens.append(await auth_service.create_access_token_for_user(user, session_family=await sessions.family_for_token(refresh)))
+    headers, other_headers = [{"Authorization": f"Bearer {token}"} for token in tokens]
+    answer = await client.post(f"/api/tools/action-authorizations/{identifier}/answer", headers=headers,
+        json={"approved": True, "remember": True})
+    assert answer.status_code == 200
+    with pytest.raises(AuthorizationRequired) as waiting:
+        await claim_action(already_pending)
+    assert waiting.value.request_id == second
+    path = "/api/tools/action-authorizations/runtime-permissions"
+    response = await client.get(path, headers=headers, params={"agent_id": runtime_action.agent_id, "limit": 500})
+    assert response.status_code == 200
+    rows = response.json()["items"]
+    assert response.json()["total"] == 1
+    assert rows[0]["runtime"] == runtime_action.runtime and rows[0]["capability_name"] == runtime_action.name
+    assert rows[0]["active"] and rows[0]["can_revoke"]
+    permission_id = rows[0]["id"]
+    assert (await client.delete(f"{path}/{permission_id}", headers=other_headers)).status_code == 404
+    assert (await client.delete(f"{path}/{permission_id}", headers=headers)).status_code == 200
+    assert (await client.delete(f"{path}/{permission_id}", headers=headers)).status_code == 200
+    assert (await client.get(path, headers=headers)).json()["items"] == []
+    async with get_db_session() as db:
+        assert (await db.get(RuntimeActionPermission, UUID(permission_id))).revoked_at is not None
+        assert (await db.get(ActionAuthorization, identifier)).status == "invalidated"
+        assert (await db.get(ActionAuthorization, second)).status == "pending"
+    with pytest.raises(AuthorizationClosed, match="invalidated"):
+        await claim_action(runtime_action)
+    await pending(replace(runtime_action, callback_key=str(uuid4())))
 
 
 @pytest.mark.asyncio

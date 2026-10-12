@@ -3,7 +3,7 @@
 from datetime import datetime
 from uuid import UUID, uuid4
 
-from sqlalchemy import Boolean, CheckConstraint, DateTime, ForeignKey, Index, Integer, String, Text, func
+from sqlalchemy import Boolean, CheckConstraint, DateTime, ForeignKey, Index, Integer, String, Text, func, text
 from sqlalchemy.dialects.postgresql import UUID as PGUUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -21,6 +21,7 @@ class ActionAuthorization(Base):
     connection_id: Mapped[int | None] = mapped_column(ForeignKey("connections.id", ondelete="SET NULL"), nullable=True)
     runtime_grant_id: Mapped[UUID | None] = mapped_column(ForeignKey("runtime_run_grants.id", ondelete="SET NULL"), nullable=True)
     runtime_grant_ref: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    runtime_permission_id: Mapped[UUID | None] = mapped_column(ForeignKey("runtime_action_permissions.id", ondelete="RESTRICT"), nullable=True)
     source: Mapped[str] = mapped_column(String(8))
     capability_kind: Mapped[str] = mapped_column(String(8))
     capability_name: Mapped[str] = mapped_column(String(2000))
@@ -58,6 +59,23 @@ class ActionAuthorization(Base):
         CheckConstraint("source IN ('mcp','runtime','domain')", name="ck_action_authorization_source"),
         Index("ix_action_authorization_agent_status", "agent_id", "status"),
     )
+
+
+class RuntimeActionPermission(Base):
+    """Human consent for one action type on one agent's configured Harness."""
+
+    __tablename__ = "runtime_action_permissions"
+    id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), primary_key=True, default=uuid4)
+    agent_id: Mapped[int] = mapped_column(ForeignKey("agents.id", ondelete="RESTRICT"), index=True)
+    approver_user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="RESTRICT"))
+    runtime: Mapped[str] = mapped_column(String(50))
+    capability_name: Mapped[str] = mapped_column(String(255))
+    configuration_fingerprint: Mapped[str] = mapped_column(String(64))
+    policy_version: Mapped[int] = mapped_column(Integer)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    __table_args__ = (Index("uq_runtime_action_permission_scope", "agent_id", "runtime", "capability_name",
+        unique=True, postgresql_where=text("revoked_at IS NULL")),)
 
 
 class RuntimeRunGrant(Base):

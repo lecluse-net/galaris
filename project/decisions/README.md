@@ -1,5 +1,7 @@
 # Décisions d'architecture
 
+- [0177 — Accords mémorisés par type d’action des harnais](0177-runtime-action-type-consent.md)
+
 - [0176 — Récupération guidée du raisonnement répétitif](0176-guided-reasoning-recovery.md)
 
 - [0175 — Même route Messenger pour l'autorisation et l'envoi](0175-messenger-route-authorization.md)

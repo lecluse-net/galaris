@@ -8,6 +8,8 @@ default: dict[str, object] = {
         "allow_once": "Autoriser cette action",
         "deny_once": "Refuser cette action",
         "allow_function": "Toujours autoriser cette fonction",
+        "allow_runtime_action": "Toujours autoriser ce type d’action",
+        "runtime_scope": "Cela autorise ${function} pour cet agent avec le harnais ${runtime}, quels que soient ses paramètres, dans les tâches futures aussi. Les autres types d’action restent soumis à autorisation. Révoquez cet accord dans Permissions ; un changement de harnais, de configuration ou de responsable exige un nouvel accord.",
         "function_scope": "Cela autorise ${function} pour cet agent sur cette connexion, quels que soient ses paramètres. Vous pouvez révoquer cet accord dans les autorisations des fonctions de la connexion.",
         "allow_all_sites": "Toujours autoriser tous les sites",
     },

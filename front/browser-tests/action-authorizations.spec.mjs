@@ -76,14 +76,16 @@ test('mobile viewers can inspect a pending action without answering for another 
   await expect(page.getByRole('button', { name: 'Deny this action' })).toHaveCount(0)
 })
 
-for (const [locale, inspect, always] of [
-  ['en', 'Review request', 'Always allow this function'],
-  ['fr', 'Examiner la demande', 'Toujours autoriser cette fonction'],
-  ['zh', '查看请求', '始终允许此功能'],
+for (const [locale, inspect, functionAlways, runtimeAlways] of [
+  ['en', 'Review request', 'Always allow this function', 'Always allow this action type'],
+  ['fr', 'Examiner la demande', 'Toujours autoriser cette fonction', 'Toujours autoriser ce type d’action'],
+  ['zh', '查看请求', '始终允许此功能', '始终允许此类操作'],
 ]) {
-  test(`a permanent function approval has explicit scope and survives an answer error (${locale})`, async ({ page }) => {
+  for (const source of ['mcp', 'runtime']) {
+  const always = source === 'runtime' ? runtimeAlways : functionAlways
+  test(`a permanent ${source} approval has explicit scope and survives an answer error (${locale})`, async ({ page }, testInfo) => {
     await page.setViewportSize({ width: 390, height: 844 })
-    const row = { id: 'topic-approval', agent_id: 7, approver_user_id: 1, source: 'mcp',
+    const row = { id: 'topic-approval', agent_id: 7, approver_user_id: 1, source, runtime: 'hermes',
       capability_kind: 'tool', capability_name: 'topic_create', status: 'pending',
       preview: 'Create a synthetic topic', can_answer: true, can_remember: true }
     const answers = []
@@ -100,6 +102,8 @@ for (const [locale, inspect, always] of [
     })
     await page.getByRole('button', { name: inspect, exact: true }).click()
     await expect(page.getByRole('dialog')).toContainText('topic_create')
+    if (source === 'runtime') await expect(page.getByRole('dialog')).toContainText('hermes')
+    await testInfo.attach(`${source}-${locale}`, { body: await page.getByRole('dialog').screenshot({ animations: 'disabled' }), contentType: 'image/png' })
     const button = page.getByRole('dialog').getByRole('button', { name: always, exact: true })
     await button.focus()
     await page.keyboard.press('Enter')
@@ -112,4 +116,33 @@ for (const [locale, inspect, always] of [
     await page.getByRole('button', { name: inspect, exact: true }).click()
     await expect(button).toHaveCount(0)
   })
+  }
 }
+
+test('remembered Harness action types can be revoked with error recovery and reopening', async ({ page }, testInfo) => {
+  const row = { id: 'synthetic-rule', agent_id: 7, runtime: 'deepseek_harness', capability_name: 'write_file', active: true, can_revoke: true }
+  let removed = false
+  const writes = []
+  await page.route('**/api/tools/action-authorizations/runtime-permissions?*', route => route.fulfill({ json: { items: removed ? [] : [row], total: removed ? 0 : 1 } }))
+  await page.route('**/api/tools/action-authorizations/runtime-permissions/synthetic-rule', route => {
+    writes.push(route.request().method())
+    if (writes.length === 1) return route.fulfill({ status: 409, json: {} })
+    removed = true
+    return route.fulfill({ json: { revoked: true } })
+  })
+  await page.setViewportSize({ width: 390, height: 844 })
+  await mount(page, 'app/connection/components/RuntimePermissions.vue', { privileges: ['CONNECTION_ACCESS', 'CONNECTION_EDIT'] })
+  await expect(page.getByText('deepseek_harness · write_file')).toBeVisible()
+  await testInfo.attach('remembered-runtime-mobile', { body: await page.screenshot({ animations: 'disabled' }), contentType: 'image/png' })
+  await page.getByRole('button', { name: 'Revoke consent', exact: true }).click()
+  await page.locator('.q-dialog__backdrop').click({ position: { x: 2, y: 2 } })
+  await expect(page.getByRole('dialog')).toHaveCount(0)
+  expect(writes).toEqual([])
+  await page.getByRole('button', { name: 'Revoke consent', exact: true }).click()
+  await page.getByRole('dialog').getByRole('button', { name: 'Revoke consent', exact: true }).click()
+  await expect(page.getByRole('dialog').getByRole('alert')).toBeVisible()
+  await page.getByRole('dialog').getByRole('button', { name: 'Revoke consent', exact: true }).click()
+  await expect(page.getByRole('dialog')).toHaveCount(0)
+  await expect(page.getByText('deepseek_harness · write_file')).toHaveCount(0)
+  expect(writes).toEqual(['DELETE', 'DELETE'])
+})
