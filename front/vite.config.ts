@@ -108,8 +108,11 @@ export default defineConfig({
                 start_url: '/',
                 scope: '/',
                 display: 'standalone',
-                background_color: '#fafafa',
-                theme_color: '#1976d2',
+                // Android also uses this as the native window background,
+                // outside the web canvas. Keep white system buttons readable
+                // before the page can apply its active theme.
+                background_color: '#101010',
+                theme_color: '#101010',
                 icons: [
                     {
                         src: '/pwa/icon-192.png',

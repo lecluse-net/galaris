@@ -549,6 +549,12 @@ and ignoring requests for a different conversation.
 
 ## Shared infrastructure and UI
 
+For Android system bar colours, the DOM/CSS assertions in
+`front/browser-tests/presentation.spec.mjs` only verify the values supplied by the page.
+An emulated mobile viewport does not validate native rendering. Check the installed Android PWA
+with three-button navigation, on launch and after returning to the foreground, in light and
+dark themes; also check an existing installation after its WebAPK updates.
+
 | Domain | Guarantee | Evidence |
 |---|---|---|
 | `core.user` | Login, MFA, concurrent refresh, revocation and last administrator | `back/core/user/tests/test_user_flow.py`, `test_refresh_concurrency.py`, `test_admin_invariants.py`, `e2e/specs/session-races.spec.mjs` |

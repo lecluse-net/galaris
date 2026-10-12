@@ -557,6 +557,12 @@ et `filter-loading.spec.mjs` dans `front/browser-tests/`.
 
 ## Infrastructure et interface commune
 
+Pour les couleurs des barres système Android, les assertions DOM/CSS de
+`front/browser-tests/presentation.spec.mjs` vérifient seulement les valeurs fournies par la page.
+Un viewport mobile émulé ne valide pas leur rendu natif. Vérifier la PWA installée sur Android
+avec navigation à trois boutons, au lancement et après retour au premier plan, dans les thèmes
+clair et sombre ; contrôler aussi une installation existante après actualisation du WebAPK.
+
 | Domaine | Garantie | Preuves |
 |---|---|---|
 | `core.user` | Connexion, MFA, renouvellement concurrent, révocation et dernier administrateur | `back/core/user/tests/test_user_flow.py`, `test_refresh_concurrency.py`, `test_admin_invariants.py`, `e2e/specs/session-races.spec.mjs` |
