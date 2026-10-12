@@ -621,6 +621,11 @@ async def _stream(
     # Surface budget exhaustion so the task trace explains a partial delivery.
     if getattr(runtime_agent, "budget_exhausted", False):
         ai_result.metadata["budget_exhausted"] = True
+    reasoning_recoveries = getattr(runtime_agent, "reasoning_recoveries", 0)
+    if reasoning_recoveries:
+        ai_result.metadata["reasoning_recoveries"] = reasoning_recoveries
+    if getattr(runtime_agent, "terminal_failure_kind", None) == "reasoning_degeneration":
+        ai_result.metadata["reasoning_recovery_exhausted"] = True
 
     terminal_output = getattr(runtime_agent, "terminal_output", None)
     if ai_result.success and isinstance(terminal_output, str):

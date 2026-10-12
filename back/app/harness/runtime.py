@@ -6,8 +6,9 @@ import hashlib
 import mimetypes
 import re
 import time
+from contextlib import aclosing
 from collections import deque
-from collections.abc import Awaitable, Callable, Mapping
+from collections.abc import AsyncGenerator, Awaitable, Callable, Mapping
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field, replace
 from datetime import datetime, timezone
@@ -34,6 +35,7 @@ from pydantic_ai.exceptions import RunCancelled, UnexpectedModelBehavior, UsageL
 from pydantic_ai import messages as _pydantic_messages
 from pydantic_ai.capabilities import Hooks, ProcessHistory, ToolSearch
 from pydantic_ai.models import ModelRequestContext
+from pydantic_ai.usage import RunUsage
 from pydantic_ai.tools import ToolDefinition
 from pydantic_ai.models.openai import (
     OpenAIChatModelSettings,
@@ -47,6 +49,8 @@ from core.params import runtime_settings
 from app.llm import pydantic_ai_utils as _llm_pydantic_ai_utils
 from app.agent.contracts import TaskMessage as Message
 from app.agent.contracts import AIMessage, AgentUsage, normalize_tool_name
+from app.agent import ReasoningPatternGuard
+from app.agent.contracts import ReasoningDegenerationError
 from app.agent.conversation_context import (
     LeadingMessageMetadataFilter,
     message_prompt,
@@ -69,6 +73,7 @@ _HISTORY_TOOL_RETURNS_KEPT_INTACT = 4
 # a distinct Task retry path; leaving tools mounted here can consume the tiny budget before
 # the actual delivery call and can make the report perform untracked extra work.
 _WRAPUP_MAX_REQUESTS = 1
+_MAX_REASONING_RECOVERIES = 2
 _REPEATED_TOOL_NO_PROGRESS_LIMIT = 3
 _REPEATED_TEXT_NO_PROGRESS_LIMIT = 3
 _TEXT_PROGRESS_WINDOW = 32
@@ -495,6 +500,30 @@ def _close_dangling_tool_calls(
     return [*messages, _pydantic_messages.ModelRequest(parts=returns)]
 
 
+def _reasoning_recovery_history(
+    messages: list[_pydantic_messages.ModelMessage],
+) -> list[_pydantic_messages.ModelMessage]:
+    """Keep observations and completed effects without replaying runaway reasoning.
+
+    A provider response ID can restore the discarded reasoning server-side. Remove
+    those IDs too, and discard the unfinished prose response rather than making it
+    look like a completed assistant answer. Tool calls/results remain paired.
+    """
+    history: list[_pydantic_messages.ModelMessage] = []
+    for index, message in enumerate(messages):
+        if not isinstance(message, _pydantic_messages.ModelResponse):
+            history.append(message)
+            continue
+        parts = [part for part in message.parts if not isinstance(part, _pydantic_messages.ThinkingPart)]
+        if index == len(messages) - 1 and not any(
+            isinstance(part, _pydantic_messages.ToolCallPart) for part in parts
+        ):
+            continue
+        if parts:
+            history.append(replace(message, parts=parts, provider_response_id=None))
+    return history
+
+
 @dataclass
 class _StreamState:
     """Mutable stream accounting shared by the main run and its wrap-up pass."""
@@ -519,6 +548,7 @@ class _StreamState:
         default_factory=lambda: deque(maxlen=_TEXT_PROGRESS_WINDOW)
     )
     last_message_time: float = field(default_factory=time.perf_counter)
+    reasoning_guard: ReasoningPatternGuard = field(default_factory=ReasoningPatternGuard)
 
     def elapsed(self) -> float:
         now = time.perf_counter()
@@ -733,6 +763,7 @@ class Agent(AgentRuntime):
         self.terminal_output: str | None = None
         self.authorization_requests: list[UUID] = []
         self._pending_tool_guidance: list[str] = []
+        self.reasoning_recoveries = 0
 
     async def init(self) -> None:
         """Initialize the Pydantic AI model and tools."""
@@ -988,6 +1019,8 @@ class Agent(AgentRuntime):
                 List[_pydantic_messages.ModelMessage],
                 active_checkpoint.restored_messages(),
             )
+            if active_checkpoint.request.data.get("reasoning_recovery_requested"):
+                pydantic_history = _reasoning_recovery_history(pydantic_history)
         elif message_history:
             pydantic_history = _convert_message_history_to_pydantic(message_history, self_id, native_inputs)
 
@@ -1014,33 +1047,64 @@ class Agent(AgentRuntime):
             input_parts.extend(_build_binary_image_parts(images))
         if input_parts:
             agent_input = [agent_input, *input_parts]
+        if active_checkpoint is not None and active_checkpoint.request.data.get("reasoning_recovery_requested"):
+            recovery_prompt = t("agent_runtime.reasoning_recovery_prompt", self._language)
+            agent_input = [*([agent_input] if isinstance(agent_input, str) else agent_input), recovery_prompt]
 
         state = _StreamState(observe_text_no_progress=self._real_time)
         captured_messages: list[_pydantic_messages.ModelMessage] = []
+        run_usage = RunUsage()
         try:
-            with capture_run_messages() as captured_messages:
-                execution_mode = (
-                    "parallel"
-                    if active_checkpoint is not None
-                    and active_checkpoint.request.limits.tool_parallelism > 1
-                    else "sequential"
-                )
-                with self._agent.parallel_tool_call_execution_mode(execution_mode):
-                    async with self._agent.run_stream_events(
-                        agent_input,
-                        message_history=pydantic_history or None,
-                        deferred_tool_results=deferred_results,
-                        cancellation_token=self._cancellation_token,
-                        usage_limits=UsageLimits(
-                            request_limit=runtime_settings.TASK_AGENT_MAX_REQUESTS,
-                            tool_calls_limit=runtime_settings.TASK_AGENT_MAX_TOOL_CALLS,
-                            count_tokens_before_request=True,
-                        ),
-                    ) as event_stream:
-                        async for message in self._emit_stream_messages(
-                            event_stream, state, output_transport, on_model_activity=on_model_activity,
-                        ):
-                            yield message
+            while True:
+                try:
+                    with capture_run_messages() as captured_messages:
+                        execution_mode = (
+                            "parallel"
+                            if active_checkpoint is not None
+                            and active_checkpoint.request.limits.tool_parallelism > 1
+                            else "sequential"
+                        )
+                        with self._agent.parallel_tool_call_execution_mode(execution_mode):
+                            async with self._agent.run_stream_events(
+                                agent_input,
+                                message_history=pydantic_history or None,
+                                deferred_tool_results=deferred_results,
+                                cancellation_token=self._cancellation_token,
+                                usage=run_usage,
+                                usage_limits=UsageLimits(
+                                    request_limit=runtime_settings.TASK_AGENT_MAX_REQUESTS,
+                                    tool_calls_limit=runtime_settings.TASK_AGENT_MAX_TOOL_CALLS,
+                                    count_tokens_before_request=True,
+                                ),
+                            ) as event_stream:
+                                async for message in self._emit_stream_messages(
+                                    event_stream, state, output_transport, on_model_activity=on_model_activity,
+                                ):
+                                    yield message
+                    break
+                except (ReasoningDegenerationError, RepeatedTextNoProgressError):
+                    # The SDK context has closed the provider stream before we resume.
+                    # Keep the journal: a reasoning interruption must never reset effects.
+                    guidance = t("agent_runtime.reasoning_recovery_prompt", self._language)
+                    pydantic_history = _reasoning_recovery_history(list(captured_messages))
+                    pydantic_history.append(_pydantic_messages.ModelRequest(parts=[
+                        _pydantic_messages.UserPromptPart(content=guidance),
+                    ]))
+                    if active_checkpoint is not None:
+                        await active_checkpoint.interrupted(pydantic_history)
+                    if self.reasoning_recoveries >= _MAX_REASONING_RECOVERIES:
+                        self.terminal_failure_kind = "reasoning_degeneration"
+                        self.error = t("agent_runtime.reasoning_recovery_exhausted", self._language)
+                        yield AIMessage(type="text", content=self.error, success=False)
+                        return
+                    self.reasoning_recoveries += 1
+                    notice = AIMessage(type="tool", tool_name="reasoning_guard", content=guidance)
+                    self.messages.append(notice)
+                    yield notice
+                    agent_input = guidance
+                    deferred_results = None
+                    state = _StreamState(observe_text_no_progress=self._real_time)
+                    self.terminal_output = None
         except asyncio.CancelledError as cancellation_error:
             cancelled_run = RunCancelled.from_cancellation(cancellation_error)
             interrupted_history = (
@@ -1075,6 +1139,22 @@ class Agent(AgentRuntime):
 
     async def _emit_stream_messages(
         self,
+        event_stream: AsyncIterator[_pydantic_messages.AgentStreamEvent | AgentRunResultEvent[Any]],
+        state: _StreamState,
+        output_transport: Any | None,
+        *,
+        on_model_activity: Callable[[], Awaitable[None]] | None = None,
+    ) -> AsyncIterator[AIMessage]:
+        """Intercept runaway generation where the model can receive feedback."""
+        async with aclosing(self._translate_stream_messages(
+            event_stream, state, output_transport, on_model_activity=on_model_activity,
+        )) as messages:
+            async for message in messages:
+                state.reasoning_guard.observe(message)
+                yield message
+
+    async def _translate_stream_messages(
+        self,
         event_stream: AsyncIterator[
             _pydantic_messages.AgentStreamEvent | AgentRunResultEvent[Any]
         ],
@@ -1082,7 +1162,7 @@ class Agent(AgentRuntime):
         output_transport: Any | None,
         *,
         on_model_activity: Callable[[], Awaitable[None]] | None = None,
-    ) -> AsyncIterator[AIMessage]:
+    ) -> AsyncGenerator[AIMessage, None]:
         """Translate one run's event stream into trace messages."""
         task_trace = self._task_id is not None and not self._real_time
         async for event in event_stream:

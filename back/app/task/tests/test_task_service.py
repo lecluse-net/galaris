@@ -88,9 +88,60 @@ async def test_retry_uses_delivery_only_recovery_for_failed_plan(
 
 
 @pytest.mark.asyncio
+async def test_retry_nested_finished_plan_reopens_failed_leaf_without_replaying_success(db, monkeypatch):
+    from app.agent import planner_service
+
+    root = _task(status=TaskStatus.ERROR, plan={"steps": [{}, {}], "cursor": 2})
+    done = _task(parent_id=root.id, status=TaskStatus.SUCCESS, data={"plan_step": 0},
+                 execution_result={"prompt": "", "result": "Saved", "success": True})
+    group = _task(parent_id=root.id, status=TaskStatus.ERROR, data={"plan_step": 1},
+                  plan={"steps": [{}], "cursor": 1})
+    leaf = _task(parent_id=group.id, status=TaskStatus.ERROR, data={"plan_step": 0},
+                 last_error="ReasoningDegenerationError: synthetic repeated reasoning", feedback="Previous failure")
+    db.add_all([root, done, group, leaf])
+    await db.commit()
+    monkeypatch.setattr(task_service.websocket, "emit", AsyncMock())
+    monkeypatch.setattr(planner_service, "go_next", lambda *_: None)
+    monkeypatch.setattr(planner_service, "_synthesize", AsyncMock(return_value=("Synthetic failure", 0.0)))
+
+    await task_service.retry(root.id, root.revision)
+    await planner_service.advance(root)
+    await planner_service.advance(group)
+
+    assert done.status == TaskStatus.SUCCESS
+    assert done.get_execution_result().result == "Saved"
+    assert root.plan["cursor"] == 1
+    assert group.plan["cursor"] == 0
+    assert leaf.status == TaskStatus.DISPATCH and not leaf.paused
+    assert leaf.last_error is None
+    assert leaf.data["reasoning_recovery_requested"] is True
+
+
+@pytest.mark.asyncio
+async def test_retry_plan_keeps_unmaterialized_work_and_completed_group_reports(db, monkeypatch):
+    root = _task(status=TaskStatus.ERROR, plan={"steps": [{}, {}], "cursor": 2})
+    done_group = _task(parent_id=root.id, status=TaskStatus.SUCCESS, data={"plan_step": 0},
+                       plan={"steps": [{"run_after_failure": True}], "cursor": 1})
+    done_report = _task(parent_id=done_group.id, status=TaskStatus.SUCCESS, data={"plan_step": 0},
+                        execution_result={"prompt": "", "result": "Saved report", "success": True})
+    db.add_all([root, done_group, done_report])
+    await db.commit()
+    monkeypatch.setattr(task_service.websocket, "emit", AsyncMock())
+
+    await task_service.retry(root.id, root.revision)
+
+    assert root.plan["cursor"] == 1  # A missing child is unfinished work.
+    assert done_group.status == TaskStatus.SUCCESS
+    assert done_report.status == TaskStatus.SUCCESS and not done_report.paused
+    assert done_report.get_execution_result().result == "Saved report"
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("failure", ["UnsafeCheckpointError", "ReasoningDegenerationError"])
 async def test_retry_preserves_uncertain_effects_and_durable_working_set(
     db: AsyncSession,
     monkeypatch: pytest.MonkeyPatch,
+    failure: str,
 ) -> None:
     task = _task(
         status=TaskStatus.ERROR,
@@ -116,7 +167,7 @@ async def test_retry_preserves_uncertain_effects_and_durable_working_set(
         },
         execution_result={"prompt": "old", "result": "failed", "success": False},
         feedback="Previous failure",
-        last_error="UnsafeCheckpointError",
+        last_error=failure,
         attempt_count=7,
     )
     db.add(task)
@@ -133,6 +184,7 @@ async def test_retry_preserves_uncertain_effects_and_durable_working_set(
     assert retried.last_error is None
     assert retried.attempt_count == 7
     assert retried.data is not None
+    assert bool(retried.data.get("reasoning_recovery_requested")) is (failure == "ReasoningDegenerationError")
     assert retried.data["_agent_run_checkpoint"]["data"]["effects"] == [
         {"tool_name": "file_create", "status": "started"}
     ]

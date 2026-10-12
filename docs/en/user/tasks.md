@@ -76,6 +76,12 @@ progress total becomes more precise as each collection is discovered. After a fa
 **Retry** on the plan resumes failed work and preserves successful items. Existing saved
 plans are not automatically decomposed again.
 
+When the internal agent repeats its reasoning without progress, Galaris interrupts that
+generation and asks it to change approach, preserving completed tool results. Recovery is
+bounded: a persistent loop leaves the Task unfinished with a diagnostic. Retrying a failed
+plan resumes its first unfinished step, including nested groups, without replaying successful
+items. A document still requiring checks or tracking updates remains in the work inventory.
+
 If you requested a saved report even after failure, an independent closing action can
 produce it after the failed work. Other dependent steps are skipped. A successful report
 preserves the plan's error; a manual retry resumes unfinished work and refreshes the

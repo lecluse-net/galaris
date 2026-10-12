@@ -38,6 +38,8 @@ default = {
         "scope_target_question": "Quelle destination cette tâche doit-elle utiliser ? Merci de fournir sa référence exacte.",
     },
     "agent_runtime": {
+        "reasoning_recovery_prompt": "AVIS SYSTÈME — un raisonnement répétitif sans progrès a été interrompu. Change d’approche maintenant : identifie l’hypothèse non résolue et vérifie-la par la plus petite action utile avec un outil autorisé. Relis le skill ou le schéma pertinent si nécessaire. Utilise les observations et résultats d’outils existants ; ne répète pas les écritures ou livraisons terminées. Si des consignes se contredisent, suis l’étape courante et rapporte le blocage précis au lieu de reconsidérer indéfiniment. Abandonne le raisonnement répété. Les outils restent disponibles dans le budget initial. N’affirme jamais avoir terminé sans preuve enregistrée.",
+        "reasoning_recovery_exhausted": "Le modèle reste bloqué après deux changements d’approche guidés. Le travail effectué et les résultats d’outils ont été conservés. La tâche reste inachevée ; examine la contrainte non résolue ou la configuration du modèle avant de relancer.",
         "not_initialized": "L’agent n’est pas initialisé. Appelez init() avant run().",
         "provider_file": "Fichier produit par le fournisseur : ${file_id}",
         "file_destination_unavailable": "Le modèle a produit un fichier sans destination de ressource writable ; utilisez un outil fichier avec une URI provider exacte.",

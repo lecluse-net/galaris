@@ -474,8 +474,12 @@ leur fin.
    `TaskAttempt`. Les deltas de tokens ne sont pas persistés. Un garde-fou commun observe les
    blocs de réflexion et le texte généré : au-delà de 30 répétitions consécutives d'un même motif
    de 128 éléments lexicaux au maximum (y compris un motif fragmenté par le transport),
-   sans activité d'outil, il ferme le stream et fait échouer le run pour dégénérescence sans
-   nouvelle tentative automatique.
+   sans activité d'outil, il ferme le stream. Le harnais interne intercepte ce motif avant
+   la façade, retire le raisonnement répété du contexte et avertit le modèle pour qu'il
+   change d'approche avec ses outils autorisés. Deux récupérations au maximum partagent
+   le budget initial et le journal d'effets ; elles ne relancent pas les écritures acquises.
+   Une boucle persistante termine avec un diagnostic d'inachèvement. Les autres drivers
+   conservent l'arrêt terminal du garde commun. Voir [0176](../../../../project/decisions/0176-guided-reasoning-recovery.md).
    Les surfaces live Conversation et Task partagent strictement le même contrat de contenu :
    chaque interaction est un `AIMessage`, leur accumulation est un `AIResult`, et le résultat
    terminal autoritaire est encore un `AIResult`. Les enveloppes WebSocket peuvent ajouter des

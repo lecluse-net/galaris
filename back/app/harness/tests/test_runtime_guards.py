@@ -19,6 +19,133 @@ from app.harness.runtime import Agent
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("persistent", [False, True])
+async def test_reasoning_loop_redirects_model_preserves_effects_and_bounds_recovery(monkeypatch, persistent):
+    from unittest.mock import AsyncMock
+    from pydantic_ai.messages import ThinkingPart, ToolReturnPart
+    from pydantic_ai.models.function import DeltaThinkingPart, DeltaToolCall
+    from pydantic_ai.toolsets import FunctionToolset
+    from app.harness.checkpoint import HarnessRunCheckpoint
+    from app.harness.tests.test_runtime_cancellation import _CountingFunctionModel, _request
+
+    writes = []
+    calls = 0
+    closed = []
+    def save_report() -> str:
+        writes.append("saved")
+        return "Synthetic report saved"
+
+    def verify_report() -> str:
+        return "Saved synthetic report verified"
+
+    async def model(messages, info):
+        nonlocal calls
+        calls += 1
+        returns = [p for m in messages for p in m.parts if isinstance(p, ToolReturnPart)]
+        if not returns:
+            yield {0: DeltaToolCall("save_report", "{}", tool_call_id="save")}
+            return
+        assert len([p for p in returns if p.tool_name == "save_report"]) == 1
+        if calls > 2:
+            assert not any(isinstance(p, ThinkingPart) for m in messages for p in m.parts)
+            prompts = [p.content for m in messages for p in m.parts if isinstance(p, UserPromptPart)]
+            assert any("Change approach" in str(p) for p in prompts)
+            assert {t.name for t in info.function_tools} >= {"save_report"}
+        if calls == 2 or persistent:
+            try:
+                for _ in range(100):
+                    yield {0: DeltaThinkingPart(content="Reconsider the same unresolved assumption. ")}
+            finally:
+                closed.append(calls)
+        elif not any(p.tool_name == "verify_report" for p in returns):
+            yield {0: DeltaToolCall("verify_report", "{}", tool_call_id="verify")}
+        else:
+            yield "Verified report completed after changing approach."
+
+    checkpoint = HarnessRunCheckpoint(_request(AsyncMock()))
+    monkeypatch.setattr(runtime, "build_model_for_llm", AsyncMock(return_value=_CountingFunctionModel(stream_function=model)))
+    monkeypatch.setattr(runtime, "estimate_cost_from_usage", lambda *_: 0.0)
+    agent = Agent(cast(Any, SimpleNamespace()), mcp_servers=[FunctionToolset([save_report, verify_report])], checkpoint=checkpoint)
+    await agent.init()
+    messages = [m async for m in agent.run("Save and verify the report")]
+
+    assert writes == ["saved"]
+    assert len(checkpoint.effects) == (1 if persistent else 2)
+    assert all(effect["status"] == "completed" for effect in checkpoint.effects)
+    assert calls == 4
+    assert len(closed) == (3 if persistent else 1)
+    assert len([m for m in messages if m.tool_name == "reasoning_guard"]) == (2 if persistent else 1)
+    assert bool(agent.error) is persistent
+    if not persistent:
+        assert agent.terminal_output == "Verified report completed after changing approach."
+        assert messages[-1].success is True
+
+
+@pytest.mark.asyncio
+async def test_explicit_retry_cleans_legacy_reasoning_preserving_tool_observations(monkeypatch):
+    from dataclasses import replace
+    from unittest.mock import AsyncMock
+    from pydantic_ai.messages import ModelRequest, ThinkingPart, ToolCallPart, ToolReturnPart
+    from app.agent.contracts import AgentRunCheckpoint
+    from app.harness.checkpoint import HarnessRunCheckpoint
+    from app.harness.tests.test_runtime_cancellation import _CountingFunctionModel, _request
+
+    history = [
+        ModelRequest(parts=[UserPromptPart(content="Check the saved report")]),
+        ModelResponse(parts=[ToolCallPart(tool_name="file_read", args={}, tool_call_id="read")],
+                      provider_response_id="old-provider-response"),
+        ModelRequest(parts=[ToolReturnPart(tool_name="file_read", content="Saved synthetic report", tool_call_id="read")]),
+        ModelResponse(parts=[ThinkingPart(content="Reconsider again. " * 100)]),
+    ]
+    resume = AgentRunCheckpoint(driver_code="internal", runtime_run_id="synthetic-run", status="interrupted",
+        data={"version": 3, "resume_safe": True,
+              "message_history": HarnessRunCheckpoint._dump_messages(history), "effects": []})
+    request = replace(_request(AsyncMock(), resume_checkpoint=resume), task_data={"reasoning_recovery_requested": True})
+    journal = HarnessRunCheckpoint(request)
+    async def model(messages, _info):
+        assert not any(isinstance(p, ThinkingPart) for m in messages for p in m.parts)
+        assert all(m.provider_response_id is None for m in messages if isinstance(m, ModelResponse))
+        assert any(isinstance(p, ToolReturnPart) and p.content == "Saved synthetic report" for m in messages for p in m.parts)
+        assert any(isinstance(p, UserPromptPart) and "Change approach" in str(p.content) for m in messages for p in m.parts)
+        yield "Verified the existing report."
+    monkeypatch.setattr(runtime, "build_model_for_llm", AsyncMock(return_value=_CountingFunctionModel(stream_function=model)))
+    monkeypatch.setattr(runtime, "estimate_cost_from_usage", lambda *_: 0.0)
+    agent = Agent(cast(Any, SimpleNamespace()), checkpoint=journal)
+    await agent.init()
+    messages = [m async for m in agent.run("Check the saved report")]
+    assert agent.error == ""
+    assert messages[-1].success is True
+    assert agent.reasoning_recoveries == 0
+
+
+@pytest.mark.asyncio
+async def test_reasoning_recovery_keeps_original_request_budget(monkeypatch):
+    from unittest.mock import AsyncMock
+    from pydantic_ai.models.function import DeltaThinkingPart
+    from app.harness.tests.test_runtime_cancellation import _CountingFunctionModel
+
+    calls = 0
+    async def model(_messages, _info):
+        nonlocal calls
+        calls += 1
+        if calls <= 2:
+            for _ in range(100):
+                yield {0: DeltaThinkingPart(content="Reconsider the same unresolved assumption. ")}
+        else:
+            yield "BLOCKED: the original request budget is exhausted."
+    monkeypatch.setattr(runtime.runtime_settings, "TASK_AGENT_MAX_REQUESTS", 2)
+    monkeypatch.setattr(runtime, "build_model_for_llm", AsyncMock(return_value=_CountingFunctionModel(stream_function=model)))
+    monkeypatch.setattr(runtime, "estimate_cost_from_usage", lambda *_: 0.0)
+    agent = Agent(cast(Any, SimpleNamespace()))
+    await agent.init()
+    messages = [m async for m in agent.run("Resolve the constraint")]
+    assert calls == 3  # Two attempts total, followed by the one tool-free budget report.
+    assert agent.budget_exhausted is True
+    assert messages[-1].success is True
+    assert agent.terminal_output.startswith("BLOCKED:")
+
+
+@pytest.mark.asyncio
 @pytest.mark.parametrize("failed", [False, True])
 @pytest.mark.parametrize("decision", ["adapt", "report"])
 @pytest.mark.parametrize("transport", ["native", "mcp"])

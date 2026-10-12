@@ -12,7 +12,7 @@ tests restent l’autorité sur le comportement.
 - 72 modules backend déclarés ;
 - 36 modules frontend déclarés ;
 - 547 arêtes de dépendance backend ;
-- 195 arêtes de dépendance frontend ;
+- 196 arêtes de dépendance frontend ;
 - 269 arêtes entre domaines `app`/`bridge` ;
 - 26 paires de domaines directement bidirectionnelles ;
 - 1 composantes fortement connexes ;
@@ -860,6 +860,7 @@ tests restent l’autorité sur le comportement.
 | `core/App` | `app/index` | `front/core/App.vue` |
 | `core/App` | `core/authorize` | `front/core/App.vue` |
 | `core/App` | `core/settings` | `front/core/App.vue` |
+| `core/App` | `core/theme` | `front/core/App.vue` |
 | `core/App` | `core/user` | `front/core/App.vue` |
 | `core/api` | `core/i18n` | `front/core/api.ts` |
 | `core/authorize` | `core/api` | `front/core/authorize/components/AssignmentManager.vue`, `front/core/authorize/services/authorize.service.ts`, `front/core/authorize/services/privilege.service.ts`, `front/core/authorize/stores/authorizeStore.ts` |

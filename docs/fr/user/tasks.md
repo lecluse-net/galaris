@@ -76,6 +76,13 @@ technique que l’agent peut résoudre par inspection autorisée relève de sa p
 
 ## Planner : décomposer un travail coordonné
 
+Si l'agent interne répète son raisonnement sans progresser, Galaris interrompt cette
+génération et lui demande de changer d'approche, en conservant les résultats d'outils acquis.
+La récupération est bornée : une boucle persistante laisse la Task inachevée avec un diagnostic.
+La relance d'un plan en échec repart de sa première étape inachevée, y compris dans les groupes
+imbriqués, sans rejouer les éléments réussis. Un document qui demande encore des contrôles ou
+une mise à jour du suivi reste dans l'inventaire de travail.
+
 Le planner découpe uniquement un objectif qui exige plusieurs blocs de travail coordonnés.
 Chaque feuille du plan est une vraie tâche. Une étape n’est pas censée « réfléchir » ou
 « rédiger la réponse finale » : elle doit produire une partie vérifiable du résultat.

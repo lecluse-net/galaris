@@ -621,18 +621,20 @@ async def retry(task_id: UUID, expected_revision: int) -> Optional[Task]:
             raise TaskEditConflict(await tr("task_api.errors.action_running"))
         closing_ids: set[UUID] = set()
         for node in locked:
-            if node.plan is None or not node.plan.get("failure_task_id"):
+            if node.plan is None:
                 continue
             node_plan = dict(node.plan)
-            failed_id = str(node_plan.pop("failure_task_id"))
+            failed_id = str(node_plan.pop("failure_task_id", ""))
             steps = type_cast(list[dict[str, Any]], node_plan.get("steps", []))
             siblings = [child for child in locked if child.parent_id == node.id]
             closing_ids.update(child.id for child in siblings
-                if 0 <= (index := int((child.data or {}).get("plan_step", -1))) < len(steps)
+                if failed_id and 0 <= (index := int((child.data or {}).get("plan_step", -1))) < len(steps)
                 and steps[index].get("run_after_failure") is True)
             unfinished = [int((child.data or {}).get("plan_step", 0)) for child in siblings
                           if child.status != TaskStatus.SUCCESS or child.id in closing_ids
                           or str(child.id) == failed_id]
+            materialized_steps = {int((child.data or {}).get("plan_step", -1)) for child in siblings}
+            unfinished.extend(index for index in range(len(steps)) if index not in materialized_steps)
             node_plan["cursor"] = min(unfinished) if unfinished else len(steps)
             node.plan = node_plan
         for node in locked:
@@ -640,6 +642,10 @@ async def retry(task_id: UUID, expected_revision: int) -> Optional[Task]:
             if node.status == TaskStatus.SUCCESS and not retry_closing:
                 continue
             node_data = dict(node.data or {})
+            if "ReasoningDegenerationError" in (node.last_error or "") or (
+                node.execution_result or {}
+            ).get("metadata", {}).get("reasoning_recovery_exhausted"):
+                node_data["reasoning_recovery_requested"] = True
             if retry_closing:
                 # A successful closing report described the previous failure. Its next
                 # execution must read current state rather than replay that completed run.
@@ -666,6 +672,10 @@ async def retry(task_id: UUID, expected_revision: int) -> Optional[Task]:
     else:
         # A retry may recover acknowledged work, but never erase proof of an
         # ambiguous effect. The driver reconciles its journal before resuming.
+        if "ReasoningDegenerationError" in (task.last_error or "") or (
+            task.execution_result or {}
+        ).get("metadata", {}).get("reasoning_recovery_exhausted"):
+            data["reasoning_recovery_requested"] = True
         checkpoint = data.get(_AGENT_RUN_CHECKPOINT_DATA_KEY)
         if isinstance(checkpoint, dict):
             data[_AGENT_RUN_CHECKPOINT_DATA_KEY] = {

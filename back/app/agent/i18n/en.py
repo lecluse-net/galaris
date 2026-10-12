@@ -38,6 +38,8 @@ default = {
         "scope_target_question": "Which destination should this task use? Please provide its exact reference.",
     },
     "agent_runtime": {
+        "reasoning_recovery_prompt": "SYSTEM NOTICE — repetitive reasoning without progress was interrupted. Change approach now: identify the unresolved assumption and resolve it with the smallest useful authorized tool action. Read the relevant skill or schema if needed. Use existing observations and completed tool results; do not repeat completed writes or deliveries. If instructions conflict, follow the current step and report the specific blocker instead of reconsidering indefinitely. Discard the repeated reasoning. Tools remain available within the original budget. Never claim completion without recorded evidence.",
+        "reasoning_recovery_exhausted": "The model remained stuck after two guided changes of approach. Completed work and tool results were preserved. The task remains unfinished; review the unresolved constraint or model configuration before retrying.",
         "not_initialized": "Agent not initialized. Call init() before run().",
         "provider_file": "File produced by provider: ${file_id}",
         "file_destination_unavailable": "The model produced a file without a writable resource destination; use a file tool with an exact provider URI.",

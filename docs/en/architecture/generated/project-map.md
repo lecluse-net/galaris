@@ -12,7 +12,7 @@ tests remain authoritative for behavior.
 - 72 declared backend modules;
 - 36 declared frontend modules;
 - 547 backend dependency edges;
-- 195 frontend dependency edges;
+- 196 frontend dependency edges;
 - 269 edges between `app`/`bridge` domains;
 - 26 directly bidirectional domain pairs;
 - 1 strongly connected components;
@@ -860,6 +860,7 @@ tests remain authoritative for behavior.
 | `core/App` | `app/index` | `front/core/App.vue` |
 | `core/App` | `core/authorize` | `front/core/App.vue` |
 | `core/App` | `core/settings` | `front/core/App.vue` |
+| `core/App` | `core/theme` | `front/core/App.vue` |
 | `core/App` | `core/user` | `front/core/App.vue` |
 | `core/api` | `core/i18n` | `front/core/api.ts` |
 | `core/authorize` | `core/api` | `front/core/authorize/components/AssignmentManager.vue`, `front/core/authorize/services/authorize.service.ts`, `front/core/authorize/services/privilege.service.ts`, `front/core/authorize/stores/authorizeStore.ts` |

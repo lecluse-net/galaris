@@ -1,5 +1,7 @@
 # Décisions d'architecture
 
+- [0176 — Récupération guidée du raisonnement répétitif](0176-guided-reasoning-recovery.md)
+
 - [0175 — Même route Messenger pour l'autorisation et l'envoi](0175-messenger-route-authorization.md)
 
 - [0172 — Clôtures demandées après un échec](0172-requested-closing-actions-after-failure.md)

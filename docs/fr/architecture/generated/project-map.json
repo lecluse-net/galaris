@@ -18572,6 +18572,13 @@
           "front/core/App.vue"
         ],
         "source": "core/App",
+        "target": "core/theme"
+      },
+      {
+        "files": [
+          "front/core/App.vue"
+        ],
+        "source": "core/App",
         "target": "core/user"
       },
       {

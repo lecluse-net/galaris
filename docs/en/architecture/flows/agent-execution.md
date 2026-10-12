@@ -455,7 +455,11 @@ automatically; they remain flagged as blockers until completion.
    deltas are not persisted. A shared safeguard observes reasoning blocks and generated text:
    beyond 30 consecutive repetitions of the same pattern (up to 128 lexical elements,
    including patterns split across transport fragments) without tool activity, it closes the
-   stream and fails the run for degeneration without an automatic retry.
+   stream. The internal harness intercepts that pattern before the facade, removes repeated
+   reasoning from model history and warns the model to change approach using authorized tools.
+   At most two recoveries share the original budget and effect journal; completed writes are
+   preserved. A persistent loop terminates with an unfinished-work diagnostic. Other drivers
+   retain the shared guard's terminal failure. See [0176](../../../../project/decisions/0176-guided-reasoning-recovery.md).
    The live Conversation and Task surfaces strictly share the same content contract: each
    interaction is an `AIMessage`, their accumulation is an `AIResult`, and the authoritative
    terminal result is also an `AIResult`. WebSocket envelopes may add ordered control signals
