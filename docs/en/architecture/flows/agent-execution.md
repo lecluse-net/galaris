@@ -992,6 +992,12 @@ longer been available since ADR 0058, and resumption fails explicitly.
 
 ## Error, Cancellation, and Resumption
 
+- DeepSeek automatically continues a turn ending with a temporary provider HTTP error
+  (408, 429, 500, 502, 503 or 504) in the same SDK instance and session before closing the actor.
+  The new turn retains history and tool results without resubmitting the original objective.
+  Existing network limits are frozen at admission. A pending authorization or receipt, an
+  unanswered tool call, cancellation or exhausted attempts prevents continuation. Partial text
+  from a failed turn is never accepted as success.
 - A retryable error schedules `next_attempt_at` and preserves the resumption phase.
 - A transport failure during the initial decomposition of a plan has produced neither a child nor
   an effect: the planner therefore lets the scheduler apply its bounded network retries. An

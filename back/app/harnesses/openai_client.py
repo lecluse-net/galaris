@@ -313,8 +313,15 @@ class OpenAIHarnessClient:
         text_offset = max(0, int(_float((cursor or {}).get("text"))))
         async with httpx.AsyncClient(timeout=_TIMEOUT, follow_redirects=False, trust_env=False, transport=self.transport) as client:
             if start:
+                from core.params import runtime_settings
+
                 created = await client.post(f"{self.base_url}/galaris/runs", headers=self._headers(envelope),
-                    json={"model": _model(envelope), "messages": _messages(envelope)})
+                    json={"model": _model(envelope), "messages": _messages(envelope),
+                        "galaris_network_retry": {
+                            "max_attempts": runtime_settings.TASK_NETWORK_MAX_ATTEMPTS,
+                            "base_seconds": runtime_settings.TASK_NETWORK_RETRY_BASE_SECONDS,
+                            "max_seconds": runtime_settings.TASK_NETWORK_RETRY_MAX_SECONDS,
+                        }})
                 created.raise_for_status()
                 if _mapping(created.json()).get("runtime_run_id") != runtime_run_id:
                     raise RuntimeError("The managed runtime returned a foreign run identity")
@@ -331,6 +338,10 @@ class OpenAIHarnessClient:
                         await on_progress(AIMessage(type="text", content=text[text_offset:], stream_id=f"runtime:{runtime_run_id}:text"))
                 message_count, text_offset = len(messages), len(text)
                 status = str(state.get("status") or "")
+                # Older runtimes allowed late approval callbacks to overwrite a terminal
+                # status. A stopped actor cannot make progress or accept an approval.
+                if state.get("stopped") is True and status in {"running", "waiting_for_authorization"}:
+                    status = "outcome_unknown"
                 if status != "running":
                     break
                 await asyncio.sleep(0.25)

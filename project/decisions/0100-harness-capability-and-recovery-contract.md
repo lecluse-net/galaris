@@ -99,6 +99,19 @@ nouveau format de patchs.
 
 ## Limites explicites
 
+### Continuation DeepSeek après erreur fournisseur — 12 octobre 2026
+
+Le SDK peut rendre un `RunResult` avec du texte partiel et une fin de tour `error`.
+L'adaptateur ne doit pas publier ce texte comme un succès. Pour une erreur HTTP temporaire,
+il conserve l'instance SDK et la session puis soumet une consigne de continuation, avec les
+limites réseau communes figées au lancement. L'historique natif reste autoritaire pour les
+résultats déjà obtenus ; l'objectif initial et les outils ne sont pas rejoués par l'adaptateur.
+Les appels sans résultat, autorisations ou reçus en attente et annulations bloquent la
+continuation. Un acteur déjà arrêté avec un statut actif reste une issue incertaine : ce
+correctif prévient la fermeture sur erreur temporaire, sans inventer une reprise après crash.
+La qualification du vrai SDK provoque un HTTP 502 après une écriture autorisée et vérifie
+la conservation du résultat d'outil dans la continuation et l'unique reçu d'écriture.
+
 Aucun test ne prouve une fiabilité absolue d’un runtime tiers, d’un réseau ou d’un modèle.
 L’interruption asyncio suppose un driver coopératif ; un arrêt matériel forcé exige
 l’isolation dans un processus. Les tests d’images prouvent la compatibilité locale avec

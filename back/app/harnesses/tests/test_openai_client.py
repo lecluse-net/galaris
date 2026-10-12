@@ -1,3 +1,4 @@
+import asyncio
 from unittest.mock import AsyncMock
 from uuid import uuid4
 
@@ -55,6 +56,37 @@ def _passthrough_envelope() -> AgentRunEnvelopeV1:
             )
         }
     )
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("status", ["running", "waiting_for_authorization"])
+async def test_stopped_runtime_with_active_status_finishes_as_unknown(status):
+    requests = []
+    authorization_id = str(uuid4())
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        requests.append(request.method)
+        return httpx.Response(200, json={
+            "status": status, "stopped": True, "success": True,
+            "result": "partial response", "messages": [],
+            "authorization_requests": [authorization_id] if status == "waiting_for_authorization" else [],
+        })
+
+    client = OpenAIHarnessClient(
+        base_url="http://harness.example.test/v1", token="synthetic",
+        run_context="synthetic-authority", transport=httpx.MockTransport(handler),
+    )
+    result = await asyncio.wait_for(
+        client.control_run(_envelope(), runtime_run_id="a" * 64, start=False),
+        timeout=1,
+    )
+
+    assert requests == ["GET"]
+    assert result.success is False
+    assert result.metadata["runtime_status"] == "outcome_unknown"
+    assert result.failure is not None
+    assert result.failure.code == "effect_unknown"
+    assert result.result == "partial response"
 
 
 def test_network_harness_receives_server_owned_messaging_context() -> None:

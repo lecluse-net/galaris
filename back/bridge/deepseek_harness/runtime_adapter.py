@@ -14,6 +14,7 @@ import importlib
 import asyncio
 import json
 import logging
+import math
 import os
 from pathlib import Path
 import queue
@@ -37,6 +38,7 @@ _LOG = logging.getLogger("galaris.deepseek_harness")
 class _RunResult(Protocol):
     final_response: str
     finish_reason: str | None
+    events: list[dict[str, Any]]
 
 
 class _Harness(Protocol):
@@ -344,6 +346,32 @@ def _harness_factory() -> Any:
     return factory
 
 
+def _turn_failure(result: _RunResult, pending_tools: set[str]) -> Mapping[str, object]:
+    failure: Mapping[str, object] = {}
+    for raw in getattr(result, "events", ()):
+        event = _mapping(raw)
+        data = _mapping(event.get("data"))
+        if event.get("type") == "tool/call":
+            pending_tools.add(str(data.get("callId") or ""))
+        elif event.get("type") == "tool/result":
+            message = _mapping(data.get("message"))
+            source = _mapping(message.get("source"))
+            call_id = source.get("callId") or message.get("toolCallId") or data.get("callId")
+            if call_id:
+                pending_tools.discard(str(call_id))
+        elif event.get("type") == "turn/end":
+            reason = _mapping(data.get("reason"))
+            failure = _mapping(reason.get("error")) if reason.get("kind") == "error" else {}
+    return failure
+
+
+def _retry_number(policy: Mapping[str, object], key: str, default: float, maximum: float) -> float:
+    value = policy.get(key, default)
+    if not isinstance(value, (int, float)) or isinstance(value, bool) or not math.isfinite(value):
+        raise ValueError("Invalid managed network retry policy")
+    return max(0.0, min(maximum, float(value)))
+
+
 def run_completion(
     body: Mapping[str, object],
     config: AdapterConfig,
@@ -352,6 +380,7 @@ def run_completion(
     on_notification: Callable[[object], None] | None = None,
     run_context: str = "",
     actor_id: str = "",
+    can_continue: Callable[[], bool] | None = None,
 ) -> Completion:
     model = str(body.get("model") or "").strip()
     if not model:
@@ -408,21 +437,52 @@ def run_completion(
     )
     if active is not None:
         active.bind(harness)
+    result: _RunResult | None = None
     try:
         with harness:
             rendered_prompt = render_prompt(messages, runtime_context)
-            result = (
-                harness.run(
-                    rendered_prompt,
-                    session_id=completion_id,
-                    on_notification=on_notification,
+            policy = _mapping(body.get("galaris_network_retry"))
+            attempts = max(1, int(_retry_number(policy, "max_attempts", 8, 30)))
+            base_delay = _retry_number(policy, "base_seconds", 30, 600)
+            max_delay = _retry_number(policy, "max_seconds", 300, 3600)
+            pending_tools: set[str] = set()
+            for attempt in range(attempts):
+                if active is not None and not active.wait_for_retry(0):
+                    raise RuntimeError("DeepSeek Harness was cancelled before automatic continuation")
+                result = (
+                    harness.run(rendered_prompt, session_id=completion_id, on_notification=on_notification)
+                    if on_notification is not None
+                    else harness.run(rendered_prompt, session_id=completion_id)
                 )
-                if on_notification is not None
-                else harness.run(rendered_prompt, session_id=completion_id)
-            )
+                failure = _turn_failure(result, pending_tools)
+                if result.finish_reason in (None, "completed", "stop"):
+                    if pending_tools:
+                        raise RuntimeError("DeepSeek Harness finished with an unresolved tool call")
+                    break
+                status = failure.get("status")
+                transient = isinstance(status, int) and status in {408, 429, 500, 502, 503, 504}
+                if (not transient or pending_tools or attempt + 1 == attempts
+                        or (can_continue is not None and not can_continue())):
+                    raise RuntimeError(f"DeepSeek Harness turn failed: {result.finish_reason}; HTTP {status}")
+                delay = min(max_delay, base_delay * 2 ** attempt)
+                if active is not None:
+                    if not active.wait_for_retry(delay):
+                        raise RuntimeError("DeepSeek Harness was cancelled before automatic continuation")
+                else:
+                    time.sleep(delay)
+                if can_continue is not None and not can_continue():
+                    raise RuntimeError("DeepSeek Harness has an unresolved action before automatic continuation")
+                _LOG.warning("Resuming interrupted SDK session after HTTP %s (attempt %s/%s)", status, attempt + 2, attempts)
+                rendered_prompt = (
+                    "Continue the current task from this session's recorded history after the temporary "
+                    "provider error. Preserve completed work. Do not repeat completed actions or actions "
+                    "with an unknown outcome; reconcile them before proceeding."
+                )
     finally:
         if active is not None:
             active.unbind(harness)
+    if result is None:
+        raise RuntimeError("DeepSeek Harness produced no turn result")
     content = result.final_response.strip()
     if not content:
         raise RuntimeError("DeepSeek Harness completed without a final assistant response.")
@@ -442,6 +502,10 @@ class ActiveRun:
         self._lock = threading.Lock()
         self._harness: _Harness | None = None
         self._cancelled = False
+        self._stop = threading.Event()
+
+    def wait_for_retry(self, seconds: float) -> bool:
+        return not self._stop.wait(seconds)
 
     def bind(self, harness: _Harness) -> None:
         with self._lock:
@@ -456,6 +520,7 @@ class ActiveRun:
                 self._harness = None
 
     def cancel(self) -> None:
+        self._stop.set()
         with self._lock:
             self._cancelled = True
             harness = self._harness
@@ -626,7 +691,8 @@ class HarnessRequestHandler(BaseHTTPRequestHandler):
                         "galaris_reasoning_effort": headers.get("X-Galaris-Reasoning-Effort")}.items() if value}}
                     active = ActiveRun()
                     worker = asyncio.create_task(asyncio.to_thread(run_completion, augmented, self.config,
-                        active=active, on_notification=notifications.put, run_context=credential, actor_id=actor.identifier))
+                        active=active, on_notification=notifications.put, run_context=credential, actor_id=actor.identifier,
+                        can_continue=lambda: not approvals.cancelled.is_set() and not approvals.permits and not approvals.waiting))
                     try:
                         while not worker.done() or not notifications.empty():
                             while not notifications.empty():

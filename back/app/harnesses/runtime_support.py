@@ -221,6 +221,8 @@ class RuntimeActor:
 
     def pending(self, identifier: str) -> None:
         with self.lock:
+            if self.state.get("stopped") is True or self.state["status"] not in ("running", "waiting_for_authorization"):
+                return
             self.state["status"] = "waiting_for_authorization"
             self.state["authorization_requests"] = sorted(self.approvals.waiting) if self.approvals else [identifier]
             self.persist()
@@ -231,6 +233,8 @@ class RuntimeActor:
 
     def running(self) -> None:
         with self.lock:
+            if self.state.get("stopped") is True or self.state["status"] not in ("running", "waiting_for_authorization"):
+                return
             if self.approvals and self.approvals.waiting:
                 self.state["authorization_requests"] = sorted(self.approvals.waiting)
                 self.state["status"] = "waiting_for_authorization"

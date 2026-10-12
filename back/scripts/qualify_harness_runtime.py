@@ -104,6 +104,18 @@ class ModelService(BaseHTTPRequestHandler):
         if "count_tokens" in self.path:
             self.send({"input_tokens": 10})
             return
+        if "/chat/completions" in self.path and gate.get("network_recovery") and gate.get("model_dispatched"):
+            if "Continue the current task from this session" not in json.dumps(body):
+                gate["provider_failures"] = gate.get("provider_failures", 0) + 1
+                encoded = json.dumps({"error": {"message": "Synthetic provider interruption", "type": "server_error"}}).encode()
+                self.send_response(502)
+                self.send_header("Content-Type", "application/json")
+                self.send_header("Content-Length", str(len(encoded)))
+                self.end_headers()
+                self.wfile.write(encoded)
+                return
+            gate["continued"] = True
+            gate["retained_tool_result"] = any(message.get("role") == "tool" for message in body.get("messages", []))
         if "/responses" in self.path:
             item: dict[str, Any] = {"id": "msg_qualification", "type": "message", "status": "completed", "role": "assistant",
                     "content": [{"type": "output_text", "text": ANSWER, "annotations": []}]}
@@ -449,6 +461,15 @@ def main() -> None:
         assert "/mcp/qualification" in calls, "The runtime did not load the Galaris MCP connection"
         assert "/chat/completions" in calls, calls
         assert not any("/messages" in path for path in calls), calls
+        gate.update(network_recovery=True, model_dispatched=True)
+        recovered = module.run_completion({
+            "model": "qualification", "messages": [{"role": "user", "content": "Reply qualification-ok after recovery"}],
+            "galaris_network_retry": {"max_attempts": 2, "base_seconds": 0, "max_seconds": 0},
+        }, module.AdapterConfig.from_environment())
+        assert recovered.content == ANSWER, recovered
+        assert gate.get("provider_failures") and gate.get("continued"), gate
+        print(json.dumps({"runtime": runtime, "automatic_provider_recovery": "passed"}))
+        gate.clear()
         config = module.AdapterConfig.from_environment()
         config.workspace.mkdir(parents=True, exist_ok=True)
         adapter_server = module.HarnessHTTPServer(("127.0.0.1", 8080), config)
@@ -459,11 +480,13 @@ def main() -> None:
             for allowed in (False, True):
                 gate.clear()
                 target = config.workspace / f"approval-{allowed}.txt"
-                gate.update(path=str(target), decision="pending", requests=[], receipts=[], authorization_response_delay=0.1)
+                gate.update(path=str(target), decision="pending", requests=[], receipts=[], authorization_response_delay=0.1,
+                    network_recovery=allowed)
                 headers = {"Content-Type": "application/json", "Authorization": "Bearer qualification-token",
                     "X-Galaris-Run-Context": f"synthetic-context-{allowed}"}
                 request = urllib.request.Request("http://127.0.0.1:8080/v1/galaris/runs", headers=headers,
-                    data=json.dumps({"model": "qualification", "messages": [{"role": "user", "content": "Perform the synthetic write, then reply qualification-ok"}]}).encode())
+                    data=json.dumps({"model": "qualification", "messages": [{"role": "user", "content": "Perform the synthetic write, then reply qualification-ok"}],
+                        "galaris_network_retry": {"max_attempts": 2, "base_seconds": 0, "max_seconds": 0}}).encode())
                 with urllib.request.urlopen(request, timeout=10) as response:
                     identifier = json.load(response)["runtime_run_id"]
                 deadline = time.monotonic() + 25
@@ -488,6 +511,7 @@ def main() -> None:
                 assert target.exists() is allowed, (allowed, status)
                 if allowed:
                     assert target.read_text() == "approved" and len(gate["receipts"]) == 1
+                    assert gate.get("provider_failures") and gate.get("continued") and gate.get("retained_tool_result"), gate
                 print(json.dumps({"runtime": runtime, "authorization": "allow" if allowed else "deny", "effect": target.exists()}))
                 gate.clear()
         finally:

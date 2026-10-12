@@ -1034,6 +1034,12 @@ depuis l’ADR 0058 et la reprise échoue explicitement.
 
 ## Erreur, annulation et reprise
 
+- DeepSeek reprend automatiquement un tour terminé sur une erreur HTTP fournisseur temporaire
+  (408, 429, 500, 502, 503 ou 504) dans la même instance SDK et la même session, avant de fermer
+  l'acteur. Le nouveau tour conserve l'historique et les résultats d'outils ; il ne resoumet pas
+  l'objectif initial. Les limites réseau existantes sont figées au lancement. Une autorisation
+  ou un reçu encore en attente, un appel sans résultat, une annulation ou l'épuisement des
+  tentatives interdit cette continuation. Un texte partiel d'un tour en erreur n'est pas un succès.
 - Une erreur retryable programme `next_attempt_at` et conserve la phase de reprise.
 - Une défaillance de transport pendant la décomposition initiale d'un plan n'a encore produit
   ni enfant ni effet : le planner laisse donc le scheduler appliquer ses retries réseau bornés.

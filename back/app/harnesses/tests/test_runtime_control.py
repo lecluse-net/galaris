@@ -130,6 +130,28 @@ def test_parallel_authorizations_keep_the_actor_waiting_for_remaining_actions(tm
     assert actor.snapshot()["authorization_requests"] == []
 
 
+@pytest.mark.parametrize("success", [True, False])
+@pytest.mark.parametrize("callback", ["running", "pending"])
+def test_late_authorization_callback_preserves_terminal_runtime(tmp_path, success, callback):
+    from app.harnesses.runtime_support import RuntimeActor
+
+    actor = RuntimeActor("synthetic", tmp_path / "actor.json", "synthetic")
+
+    async def events():
+        yield "result", {"success": success, "result": "recorded outcome"}
+
+    asyncio.run(actor.consume(events()))
+    terminal = actor.snapshot()
+    if callback == "pending":
+        actor.pending("late-authorization")
+    else:
+        actor.running()
+
+    assert actor.snapshot() == terminal
+    assert terminal["stopped"] is True
+    assert terminal["status"] == ("completed" if success else "failed")
+
+
 def test_lost_claim_reply_does_not_treat_an_existing_dispatch_as_a_new_permit(approval_server):
     url, server = approval_server
     server.update(decision="executing", lose_claim_reply=True)

@@ -98,6 +98,10 @@ The auto-approval option authorizes certain actions in advance that would normal
 
 From the list, click a Task to open its details. There you will find the current phase, subtasks, Tool calls, related Processes, known LLM costs, and final response. The pause and resume buttons act on the work tree. **Force finish** is an administrative recovery action for a genuinely blocked execution: it marks the Task as failed and releases its lease; it is not an ordinary cancellation of the external work.
 
+A temporary provider error in DeepSeek triggers automatic continuation in the same session,
+retaining recorded work. Task retry limits apply; an action whose outcome remains unknown
+requires reconciliation before continuing. Partial text after an error does not complete a Task.
+
 New executions and model messages wake their observers as soon as they are saved. For an
 internal inference, pause and stop remain responsive even when the provider stops producing
 text. Reopening monitoring reads the saved events without restarting generation; closing

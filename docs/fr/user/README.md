@@ -130,6 +130,11 @@ retour final. Les boutons de pause et de reprise agissent sur l’arbre de trava
 est une récupération administrative pour une exécution réellement bloquée : elle marque la Task
 en erreur et libère sa lease, elle ne constitue pas une annulation ordinaire du travail externe.
 
+Une erreur fournisseur temporaire dans DeepSeek déclenche une reprise automatique dans la
+même session, en conservant le travail déjà enregistré. Les limites de reprise des tâches
+s'appliquent ; une action dont le résultat reste incertain exige une réconciliation avant
+de continuer. Un texte partiel après erreur ne valide pas la tâche.
+
 Les nouvelles exécutions et les messages des modèles réveillent leur suivi dès leur
 enregistrement. Pour une inférence interne, pause et arrêt restent réactifs même si le
 fournisseur ne produit plus de texte. Rouvrir le suivi relit les événements enregistrés

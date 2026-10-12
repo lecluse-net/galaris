@@ -114,6 +114,106 @@ def test_completion_uses_one_isolated_session_and_final_response(
     assert (tmp_path / "sessions" / completion.id).is_dir()
 
 
+@pytest.mark.parametrize("status", [502, 503, 504])
+def test_transient_provider_error_continues_same_session_without_replaying_tool(tmp_path, monkeypatch, status):
+    calls = []
+    effects = []
+
+    class RecoveringHarness:
+        def __init__(self, **_options):
+            pass
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_args):
+            pass
+
+        def close(self):
+            pass
+
+        def run(self, prompt, *, session_id):
+            calls.append((prompt, session_id))
+            if len(calls) == 1:
+                effects.append("acknowledged write")
+                return SimpleNamespace(final_response="Partial response", finish_reason="error", events=[
+                    {"type": "tool/call", "data": {"callId": "write-1"}},
+                    {"type": "tool/result", "data": {"message": {
+                        "source": {"kind": "tool", "callId": "write-1"},
+                        "content": [{"type": "tool-result", "toolCallId": "write-1", "isError": False}],
+                    }}},
+                    {"type": "turn/end", "data": {"reason": {"kind": "error", "error": {"status": status}}}},
+                ])
+            return SimpleNamespace(final_response="Finished", finish_reason="completed", events=[])
+
+    monkeypatch.setattr(runtime_adapter, "_harness_factory", lambda: RecoveringHarness)
+    completion = runtime_adapter.run_completion({
+        "model": "executor-model", "messages": [{"role": "user", "content": "Do the work"}],
+        "galaris_network_retry": {"max_attempts": 3, "base_seconds": 0, "max_seconds": 0},
+    }, _config(tmp_path))
+
+    assert completion.content == "Finished"
+    assert len(calls) == 2
+    assert calls[0][1] == calls[1][1]
+    assert calls[0][0] != calls[1][0]
+    assert effects == ["acknowledged write"]
+
+
+@pytest.mark.parametrize("status,unfinished,attempts,blocked", [
+    (400, False, 1, False), (502, True, 1, False),
+    (502, False, 3, False), (502, False, 1, True),
+])
+def test_provider_error_does_not_publish_partial_success_or_replay_unknown_tool(tmp_path, monkeypatch, status, unfinished, attempts, blocked):
+    calls = []
+
+    class FailedHarness:
+        def __init__(self, **_options):
+            pass
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_args):
+            pass
+
+        def close(self):
+            pass
+
+        def run(self, prompt, *, session_id):
+            calls.append(session_id)
+            return SimpleNamespace(final_response="Partial response", finish_reason="error", events=[
+                *([{"type": "tool/call", "data": {"callId": "unconfirmed-write"}}] if unfinished else []),
+                {"type": "turn/end", "data": {"reason": {"kind": "error", "error": {"status": status}}}},
+            ])
+
+    monkeypatch.setattr(runtime_adapter, "_harness_factory", lambda: FailedHarness)
+    with pytest.raises(RuntimeError):
+        runtime_adapter.run_completion({
+            "model": "executor-model", "messages": [{"role": "user", "content": "Do the work"}],
+            "galaris_network_retry": {"max_attempts": 3, "base_seconds": 0, "max_seconds": 0},
+        }, _config(tmp_path), can_continue=lambda: not blocked)
+    assert len(calls) == attempts
+    assert len(set(calls)) == 1
+
+
+def test_cancellation_interrupts_network_retry_wait():
+    active = runtime_adapter.ActiveRun()
+    waiting = threading.Event()
+    outcome = []
+
+    def wait():
+        waiting.set()
+        outcome.append(active.wait_for_retry(60))
+
+    worker = threading.Thread(target=wait)
+    worker.start()
+    assert waiting.wait(1)
+    active.cancel()
+    worker.join(timeout=1)
+    assert not worker.is_alive()
+    assert outcome == [False]
+
+
 @pytest.mark.parametrize(
     ("configured", "expected"),
     [
