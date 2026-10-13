@@ -24,6 +24,9 @@ export interface LLMCall {
   purpose?: string | null
   agent_id?: number
   llm_id?: number
+  fallback_profile_id?: number | null
+  fallback_from_llm_id?: number | null
+  fallback_reason?: string | null
   task_label?: string
   task_status?: string
   agent_name?: string

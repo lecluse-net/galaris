@@ -114,6 +114,11 @@ class Agent(HistoryMixin, Base):
         nullable=True,
         index=True,
     )
+    fallback_profile_id: Mapped[Optional[int]] = mapped_column(
+        ForeignKey("llm_profiles.id", ondelete="SET NULL", name="fk_agents_fallback_profile_id"),
+        nullable=True,
+        index=True,
+    )
     # Exact value emitted by the single Voice/TTS picker.
     voice: Mapped[Optional[str]] = mapped_column(String(512), nullable=True)
     code: Mapped[str] = mapped_column(String(50), nullable=False, index=True, unique=True)
@@ -155,4 +160,5 @@ class Agent(HistoryMixin, Base):
         cascade="all, delete-orphan",
         passive_deletes=True,
     )
-    profile: Mapped[Optional["LlmProfile"]] = relationship("LlmProfile")
+    profile: Mapped[Optional["LlmProfile"]] = relationship("LlmProfile", foreign_keys=[profile_id])
+    fallback_profile: Mapped[Optional["LlmProfile"]] = relationship("LlmProfile", foreign_keys=[fallback_profile_id])

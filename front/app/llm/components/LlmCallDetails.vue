@@ -1,4 +1,9 @@
 <template>
+  <q-banner v-if="call.fallback_reason" dense class="q-mb-sm">
+    <template #avatar><q-icon name="swap_horiz" color="primary" /></template>
+    <div>{{ $t('llmCalls.fallbackUsed') }}</div>
+    <div class="text-caption">{{ call.fallback_reason }}</div>
+  </q-banner>
   <q-tabs
     v-model="activeTab"
     dense
@@ -233,6 +238,9 @@ const hasFinalResponse = computed(() => Boolean(
 const formattedFinalResponse = computed((): string => JSON.stringify({
   id: props.call.upstream_request_id ?? null,
   model: props.call.effective_model,
+  fallback_profile_id: props.call.fallback_profile_id ?? null,
+  fallback_from_llm_id: props.call.fallback_from_llm_id ?? null,
+  fallback_reason: props.call.fallback_reason ?? null,
   response: props.call.response_text || null,
   reasoning: props.call.reasoning || null,
   tool_calls: props.call.tool_calls,

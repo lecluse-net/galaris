@@ -9,6 +9,7 @@ from pydantic import BaseModel, Field, JsonValue, TypeAdapter, model_validator
 from app.agent.contracts import AIMessage, AIResult
 from .provider_facade import ReasoningEffort
 from .decision_contracts import ChoiceQuestion
+from .profile_fallback import ProfileFallbackRoute
 
 
 class InferenceInput(BaseModel):
@@ -28,6 +29,10 @@ class InferenceInput(BaseModel):
     conversation_round_id: UUID | None = None
     process_run_id: UUID | None = None
     deadline_seconds: float | None = Field(default=None, gt=0, le=31_536_000, allow_inf_nan=False)
+    profile_fallback: ProfileFallbackRoute | None = None
+    profile_fallback_llm_id: int | None = None
+    profile_fallback_reasoning_effort: ReasoningEffort | None = None
+    profile_fallback_resolved: bool = False
 
 
 class TextInferenceRequest(InferenceInput):

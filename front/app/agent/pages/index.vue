@@ -358,6 +358,15 @@
                     :loading="llmProfileStore.loading"
                     :hint="$t('agent.models.profileHint')"
                   />
+                  <q-select
+                    v-model="agentForm.fallback_profile_id"
+                    :options="fallbackProfileOptions"
+                    :label="$t('agent.models.fallbackProfileLabel')"
+                    filled emit-value map-options
+                    class="q-mt-md"
+                    :loading="llmProfileStore.loading"
+                    :hint="$t('agent.models.fallbackProfileHint')"
+                  />
                 </q-card-section>
               </q-card>
 
@@ -1471,7 +1480,7 @@ const displayedAgents = computed(() => {
 })
 
 // Model configuration lives in shared profiles: the agent model tab exposes a
-// single profile picker plus the dedicated voice selection below.
+// primary and optional fallback profile pickers, plus the dedicated voice selection.
 const profileOptions = computed(() =>
   [{
     label: t('agent.models.useCurrentProfile', {
@@ -1480,6 +1489,10 @@ const profileOptions = computed(() =>
     value: null,
   }, ...llmProfileStore.profiles.map(profile => ({ label: profile.label, value: profile.id }))]
 )
+const fallbackProfileOptions = computed(() => [
+  { label: t('agent.models.noFallbackProfile'), value: null },
+  ...llmProfileStore.profiles.map(profile => ({ label: profile.label, value: profile.id })),
+])
 
 type VoiceOption = {
   label: string
@@ -1560,7 +1573,7 @@ const titleColumns = computed<QTableColumn[]>(() => [
 const agentForm = reactive<{
   id: number | null; user_id: number | null; title_id: number | null; group_id: number | null;
   code: string; first_name: string; last_name: string; job_title: string; agent_driver: string;
-  has_avatar: boolean; profile_id: number | null; voice_selection: string;
+  has_avatar: boolean; profile_id: number | null; fallback_profile_id: number | null; voice_selection: string;
 }>({
   id: null,
   user_id: null,
@@ -1573,6 +1586,7 @@ const agentForm = reactive<{
   agent_driver: 'internal',
   has_avatar: false,
   profile_id: null,
+  fallback_profile_id: null,
   voice_selection: NO_VOICE,
 })
 
@@ -1695,6 +1709,7 @@ const resetAgentForm = () => {
   agentForm.agent_driver = 'internal'
   agentForm.has_avatar = false
   agentForm.profile_id = null
+  agentForm.fallback_profile_id = null
   agentForm.voice_selection = NO_VOICE
   harnessCatalog.value = []
   selectedHarnessId.value = null
@@ -1730,6 +1745,7 @@ const openAgentDialog = (agent: Agent | null = null) => {
       agent_driver: agent.agent_driver || 'internal',
       has_avatar: agent.has_avatar,
       profile_id: agent.profile_id ?? null,
+      fallback_profile_id: agent.fallback_profile_id ?? null,
       voice_selection: voiceSelectionForAgent(agent),
     })
   } else {
@@ -1896,6 +1912,7 @@ const onAgentSubmit = async () => {
       last_name: agentForm.last_name,
       job_title: agentForm.job_title === '' ? null : agentForm.job_title,
       profile_id: agentForm.profile_id,
+      fallback_profile_id: agentForm.fallback_profile_id,
       voice: agentForm.voice_selection === NO_VOICE ? null : agentForm.voice_selection,
     }
 

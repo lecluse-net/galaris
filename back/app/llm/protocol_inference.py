@@ -33,6 +33,10 @@ from .provider_facade import ProviderAuthenticationError, ReasoningEffort
 from .profile_gateway import profile_error, resolve_profile_model
 from .text_inference import RecordedTextModel, persist_events, message_for_part
 from .trace import extract_prompts
+from .profile_fallback import (
+    ProfileFallbackRoute, fallback_route_scope, profile_fallback_route,
+    provider_failure_allows_fallback,
+)
 
 
 async def _wire(capture: TextCallCapture, value: dict[str, Any]) -> None:
@@ -362,8 +366,44 @@ async def _request(
             force_reasoning_effort=force_reasoning_effort, unwrap_deferred_tools=unwrap_deferred_tools,
             request_timeout=request_timeout,
             correlation_ref=str(payload.get("model")) if profile_model else None,
+            profile_fallback=profile_fallback_route.get(),
         )
-        return await protocol_response(request)
+        # SDK model wrappers own failover once they have an explicit route.
+        # Raw gateways can retry before publishing response headers; they must
+        # never splice another provider into an already published wire stream.
+        fallback = None
+        if protocol != "compact" and request.profile_fallback is None and not profile_model:
+            fallback = await execution.transaction(lambda: llm_service.get_agent_fallback_model(
+                agent_id, llm.id, model_field=None, purpose=purpose,
+            ))
+            if fallback is not None:
+                request.profile_fallback = ProfileFallbackRoute(profile_id=fallback[0])
+        failure: Exception | None = None
+        try:
+            response = await protocol_response(request)
+            if isinstance(response, JSONResponse) and response.status_code >= 400:
+                from pydantic_ai.exceptions import ModelHTTPError
+
+                failure = ModelHTTPError(response.status_code, llm.llm_name, json.loads(bytes(response.body)))
+                if fallback is None or not provider_failure_allows_fallback(failure):
+                    return response
+            else:
+                return response
+        except Exception as exc:
+            if fallback is None or not provider_failure_allows_fallback(exc):
+                raise
+            failure = exc
+        assert fallback is not None and failure is not None
+        profile_id, secondary, secondary_effort = fallback
+        request = request.model_copy(update={
+            "llm_id": secondary.id, "reasoning_effort": secondary_effort,
+            "profile_fallback": ProfileFallbackRoute(
+                profile_id=profile_id, from_llm_id=llm.id,
+                reason=f"{type(failure).__name__}: {failure}"[:2000],
+            ),
+        }, deep=True)
+        with fallback_route_scope(request.profile_fallback):
+            return await protocol_response(request)
 
     from .document_input import has_documents, route_documents
 

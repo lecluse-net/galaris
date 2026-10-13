@@ -121,6 +121,7 @@ class RecordedTextModel(WrapperModel):
         committed_messages: dict[int, AIMessage] = {}
         last_flush = 0.0
         started = time.monotonic()
+        active_call_id: UUID | None = None
 
         async def flush() -> None:
             nonlocal last_flush, result
@@ -172,6 +173,15 @@ class RecordedTextModel(WrapperModel):
                 model_request_parameters,
             ) as stream:
                 async for event in stream:
+                    if capture.call_id != active_call_id:
+                        # A failed physical response remains in its own journal.
+                        # The secondary starts a new set of part indices/content.
+                        active_call_id = capture.call_id
+                        pending.clear()
+                        committed_content.clear()
+                        committed_messages.clear()
+                        result = AIResult(prompt=str(capture.request["prompt"]),
+                                          system_prompt=str(capture.request["system_prompt"]))
                     if not isinstance(event, (PartStartEvent, PartDeltaEvent, PartEndEvent)):
                         continue
                     if capture.call_id is None:

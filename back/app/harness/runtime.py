@@ -34,7 +34,7 @@ from pydantic_ai import (
 from pydantic_ai.exceptions import RunCancelled, UnexpectedModelBehavior, UsageLimitExceeded
 from pydantic_ai import messages as _pydantic_messages
 from pydantic_ai.capabilities import Hooks, ProcessHistory, ToolSearch
-from pydantic_ai.models import ModelRequestContext
+from pydantic_ai.models import Model, ModelRequestContext
 from pydantic_ai.usage import RunUsage
 from pydantic_ai.tools import ToolDefinition
 from pydantic_ai.models.openai import (
@@ -43,6 +43,7 @@ from pydantic_ai.models.openai import (
 )
 
 from app.llm import LLM, LLMCallPurpose, thinking_content
+from app.llm import model_usages
 from app.llm.provider_facade import ReasoningEffort
 from core.i18n import render_prompt, t
 from core.params import runtime_settings
@@ -747,6 +748,10 @@ def _result_finish_reason(result: Any) -> str | None:
 class AgentRuntime(ABC):
     """Abstract streamable AI runtime."""
 
+    @property
+    def profile_fallback_used(self) -> bool:
+        return False
+
     @abstractmethod
     def run(
         self,
@@ -816,6 +821,7 @@ class Agent(AgentRuntime):
         self._active_checkpoint: HarnessRunCheckpoint | None = None
         self.manual_call_recoveries = 0
         self._agent: PydanticAgent[Any, str | DeferredToolRequests] | None = None
+        self._model: Model | None = None
         self.prompt = ""
         self.messages: List[AIMessage] = []
         self.cost: float = 0.0
@@ -839,7 +845,12 @@ class Agent(AgentRuntime):
             agent_id=self._agent_id,
             purpose=self._purpose,
             reasoning_effort=self._reasoning_effort,
+            model_field=(model_usages.EXECUTOR_HIGH
+                         if self._checkpoint is not None
+                         and self._checkpoint.request.model.requested_effort == "high"
+                         and not self._checkpoint.request.model.fallback_used else None),
         )
+        self._model = model
 
         max_parallel_tools = (
             self._checkpoint.request.limits.tool_parallelism
@@ -1052,6 +1063,10 @@ class Agent(AgentRuntime):
                 _pydantic_messages.UserPromptPart(content=guidance),
             ]),
         ])
+
+    @property
+    def profile_fallback_used(self) -> bool:
+        return _llm_pydantic_ai_utils.model_used_profile_fallback(self._model)
 
     async def run(
         self,

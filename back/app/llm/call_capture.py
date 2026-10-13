@@ -28,6 +28,7 @@ class TextCallCapture:
     structured: bool = False
     call_limit: int | None = None
     calls_started: int = 0
+    call_ids: list[UUID] = field(default_factory=list[UUID])
 
 
 text_call_capture: ContextVar[TextCallCapture | None] = ContextVar(

@@ -404,6 +404,7 @@ export default {
     },
     llmCalls: {
       title: 'Activité LLM',
+      fallbackUsed: 'Profil secondaire utilisé après un échec du fournisseur principal',
       subtitle: 'Vue temps réel des appels qui traversent Galaris',
       live: 'En direct',
       callLabel: 'Appel LLM',
@@ -952,6 +953,7 @@ export default {
     },
     llmCalls: {
       title: 'LLM activity',
+      fallbackUsed: 'Secondary profile used after the primary provider failed',
       subtitle: 'Real-time view of calls flowing through Galaris',
       live: 'Live',
       callLabel: 'LLM call',
@@ -1271,6 +1273,7 @@ export default {
     },
     llmCalls: {
       title: 'LLM 活动', subtitle: '实时查看流经 Galaris 的调用', live: '实时', callLabel: 'LLM 调用', streaming: '正在实时接收推理和操作…', refresh: '刷新', purge: '清除',
+      fallbackUsed: '主要提供商失败后使用备用配置',
       purgeConfirm: '清除已完成的 LLM 调用？', purgeMessage: '所有已完成的 LLM 调用将被永久删除，运行中的调用会保留。', purgeIrreversible: '此操作无法撤销。',
       delete: '删除', deleteCall: '删除此 LLM 调用', deleteConfirm: '删除此 LLM 调用？', deleteMessage: '此 LLM 调用将从数据库永久删除并从列表中移除，运行中的调用也会被强制移除。',
       stopCall: '停止此 LLM 调用',

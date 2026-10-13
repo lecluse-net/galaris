@@ -647,6 +647,13 @@ async def _stream(
         **ai_result.model_dump(exclude={"execution_time"}),
         execution_time=time.time() - start_time,
     )
+    if getattr(runtime_agent, "profile_fallback_used", False) is True:
+        from app.agent import aggregate_llm_run_usage
+
+        accounting = await aggregate_llm_run_usage(task.run_id, agent_id=task.agent_id)
+        if accounting is not None:
+            result.usage, result.cost = accounting
+        result.metadata["profile_fallback_used"] = True
 
     authorization_requests = getattr(runtime_agent, "authorization_requests", [])
     if authorization_requests:

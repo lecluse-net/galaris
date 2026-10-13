@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 from collections.abc import AsyncIterator
 from typing import Any
+from unittest.mock import AsyncMock
 from uuid import uuid4
 
 import pytest
@@ -20,7 +21,7 @@ from pydantic_ai.messages import (
 from pydantic_ai.models import ModelRequestContext, ModelRequestParameters
 from pydantic_ai.profiles.openai import OpenAIModelProfile
 
-from app.llm import pydantic_ai_utils
+from app.llm import llm_service, pydantic_ai_utils
 from app.llm.provider_catalog import get_provider_profile
 from app.llm.provider_models import LLM, LLMProvider
 
@@ -126,6 +127,8 @@ async def test_internal_model_routes_pydantic_ai_requests_through_llm_call_proxy
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     captured: dict[str, Any] = {}
+    # This transport unit supplies identities without persisted agent configuration.
+    monkeypatch.setattr(llm_service, "get_agent_fallback_model", AsyncMock(return_value=None))
 
     async def fake_proxy_chat_completion(
         body: dict[str, Any],
@@ -518,6 +521,8 @@ async def test_native_responses_applies_policy_and_replays_reasoning_identity(
     responses_sse,
 ) -> None:
     captured: list[tuple[dict[str, Any], dict[str, Any]]] = []
+    # Provider history and policy are independent of persisted fallback selection.
+    monkeypatch.setattr(llm_service, "get_agent_fallback_model", AsyncMock(return_value=None))
 
     async def fake_proxy_responses(
         body: dict[str, Any],

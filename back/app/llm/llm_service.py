@@ -31,6 +31,61 @@ class MediaCaps:
     audio: bool = False
 
 
+async def get_agent_fallback_model(
+    agent_id: int | None, primary_llm_id: int, *, model_field: str | None,
+    purpose: str | None,
+) -> tuple[int, LLM, ReasoningEffort | None] | None:
+    """Resolve the same usage in the optional secondary profile, once per run.
+
+    Explicit Lab candidates and models outside the agent's primary profile retain
+    their selection. Empty secondary usages never borrow from another profile.
+    """
+    from . import profile_service
+
+    if agent_id is None or (purpose or "").startswith("lab."):
+        return None
+    agent = (await get_db().execute(
+        select(Agent.profile_id, Agent.fallback_profile_id)
+        .where(Agent.id == agent_id, Agent.deleted_at.is_(None))
+    )).one_or_none()
+    if agent is None or agent.fallback_profile_id is None:
+        return None
+    primary_id = agent.profile_id or await profile_service.get_current_profile_id()
+    if primary_id is None or primary_id == agent.fallback_profile_id:
+        return None
+    primary = await profile_service.get_profile(primary_id)
+    secondary = await profile_service.get_profile(agent.fallback_profile_id)
+    if primary is None or secondary is None:
+        return None
+    if model_field is None:
+        preferred = {
+            "conversation.text": model_usages.CONVERSATION,
+            "conversation.audio": model_usages.CONVERSATION,
+            "agent.exec": model_usages.EXECUTOR,
+            "agent.planning": model_usages.PLANNER,
+            "agent.synthesis": model_usages.PLANNER,
+            "agent.planning_recovery": model_usages.PLANNER,
+            "agent.dispatch": model_usages.DISPATCHER,
+            "conversation.task_objective": model_usages.EXECUTOR,
+            "goal.tracking": model_usages.GOAL,
+            "process.exec": model_usages.EXECUTOR,
+        }.get(purpose or "")
+        if preferred is None and (purpose or "").startswith("dream."):
+            preferred = model_usages.DREAM
+        candidates = ([preferred] if preferred else []) + list(model_usages.ALL)
+        model_field = next((field for field in candidates
+                            if getattr(primary, field) == primary_llm_id), None)
+    if model_field not in model_usages.ALL or getattr(primary, model_field) != primary_llm_id:
+        return None
+    fallback_id = getattr(secondary, model_field)
+    if fallback_id is None or fallback_id == primary_llm_id:
+        return None
+    llm = await get_llm(fallback_id)
+    if llm is None:
+        return None
+    return secondary.id, llm, await profile_service.get_profile_reasoning_effort(secondary.id, model_field)
+
+
 def caps_for_llm(llm: Optional[LLM]) -> MediaCaps:
     """Return input capabilities with a safe image-capable fallback for unknown models."""
     if llm is None:

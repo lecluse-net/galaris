@@ -24,6 +24,7 @@ from .provider_models import LLM
 from .provider_facade import (
     ChatStreamAdapter,
     ProviderAuthenticationError,
+    ProviderUnavailableError,
     ReasoningEffort,
     ResponsesOperation,
     chat_transport_for,
@@ -482,7 +483,7 @@ async def proxy_chat_completion(
             )
         provider, api_key = provider_data
         if not provider.is_active:
-            raise ValueError(
+            raise ProviderUnavailableError(
                 render_prompt(
                     await tr("llm_api.errors.provider_inactive"),
                     provider_name=provider.name,
@@ -754,6 +755,11 @@ async def proxy_chat_completion(
 
         async def track_payload(payload: dict[str, Any]) -> None:
             nonlocal first_token_at, last_partial_update
+            if payload.get("error") is not None:
+                # HTTP 200 can still end with an SSE provider error. Fail the
+                # physical call before forwarding it, so accounting and failover
+                # see the same terminal outcome as the SDK.
+                raise RuntimeError(json.dumps(payload["error"], ensure_ascii=False))
             before = (
                 len(trace.response_parts),
                 len(trace.reasoning_parts),
@@ -984,7 +990,7 @@ async def proxy_responses(
             )
         provider, api_key = provider_data
         if not provider.is_active:
-            raise ValueError(
+            raise ProviderUnavailableError(
                 render_prompt(
                     await tr("llm_api.errors.provider_inactive"),
                     provider_name=provider.name,

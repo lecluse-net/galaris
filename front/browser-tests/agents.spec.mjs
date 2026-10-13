@@ -187,7 +187,7 @@ test('reopening another agent ignores a late harness selection and retries a fai
 
 test('models load on demand without losing the saved profile, voice or identity draft', async ({ page }) => {
   await agentFixtures(page)
-  const saved = { ...agent, agent_driver: 'internal', profile_id: 4, voice: 'realtime:12:voice%3Aecho' }
+  const saved = { ...agent, agent_driver: 'internal', profile_id: 4, fallback_profile_id: 5, voice: 'realtime:12:voice%3Aecho' }
   await jsonRoute(page, '**/api/agents?*', [saved])
   await jsonRoute(page, '**/api/agents/drivers', [{ name: 'internal', manages_runtime: false }])
   await jsonRoute(page, '**/api/agents/managers', [agent.user])
@@ -195,7 +195,7 @@ test('models load on demand without losing the saved profile, voice or identity 
   await jsonRoute(page, '**/api/harnesses/catalog?*', [])
   await jsonRoute(page, '**/api/harnesses/agents/7', { harness_id: null })
   await jsonRoute(page, '**/api/params', { params: [] })
-  await jsonRoute(page, '**/api/llm-profiles', { profiles: [{ id: 4, label: 'Saved profile' }], current_profile_id: 4 })
+  await jsonRoute(page, '**/api/llm-profiles', { profiles: [{ id: 4, label: 'Saved profile' }, { id: 5, label: 'Backup profile' }], current_profile_id: 4 })
   await jsonRoute(page, '**/api/llm-providers/llms', [{ id: 12, llm_provider_id: 3, service_capabilities: ['realtime_conversation'], label: 'Realtime model', provider_name: 'Synthetic provider' }])
   let release, voiceReads = 0
   const pending = new Promise(resolve => { release = resolve })
@@ -217,7 +217,8 @@ test('models load on demand without losing the saved profile, voice or identity 
     await dialog.getByLabel('First name *', { exact: true }).fill('Lyra')
     expect(voiceReads).toBe(0)
     await dialog.getByRole('tab', { name: 'Models', exact: true }).click()
-    await expect(dialog.getByLabel('Model profile', { exact: true })).toHaveValue('Saved profile')
+    await expect(dialog.getByLabel('Primary profile', { exact: true })).toHaveValue('Saved profile')
+    await expect(dialog.getByLabel('Secondary profile (fallback)', { exact: true })).toHaveValue('Backup profile')
     await expect.poll(() => voiceReads).toBe(1)
     await dialog.getByRole('tab', { name: 'General', exact: true }).click()
     await expect(dialog.getByLabel('First name *', { exact: true })).toHaveValue('Lyra')
@@ -227,7 +228,16 @@ test('models load on demand without losing the saved profile, voice or identity 
     await expect(dialog.getByLabel('Voice / TTS', { exact: true })).toHaveValue('Echo')
     await dialog.getByRole('button', { name: 'Save', exact: true }).click()
     await expect(dialog).toHaveCount(0)
-    expect(writes).toMatchObject([{ first_name: 'Lyra', profile_id: 4, voice: saved.voice }])
+    expect(writes).toMatchObject([{ first_name: 'Lyra', profile_id: 4, fallback_profile_id: 5, voice: saved.voice }])
+    await page.getByRole('button', { name: 'Edit agent', exact: true }).click()
+    await dialog.getByRole('tab', { name: 'Models', exact: true }).click()
+    const fallback = dialog.getByLabel('Secondary profile (fallback)', { exact: true })
+    await expect(fallback).toHaveValue('Backup profile')
+    await fallback.click()
+    await page.getByRole('option', { name: 'No fallback profile', exact: true }).click()
+    await dialog.getByRole('button', { name: 'Save', exact: true }).click()
+    await expect(dialog).toHaveCount(0)
+    expect(writes[1]).toMatchObject({ profile_id: 4, fallback_profile_id: null, voice: saved.voice })
   } finally { release() }
 })
 

@@ -172,6 +172,9 @@ class LLMCall(Base):
     )
 
     provider_name: Mapped[str] = mapped_column(String(200), nullable=False, default="")
+    fallback_profile_id: Mapped[int | None] = mapped_column(ForeignKey("llm_profiles.id", ondelete="SET NULL"))
+    fallback_from_llm_id: Mapped[int | None] = mapped_column(ForeignKey("llms.id", ondelete="SET NULL"))
+    fallback_reason: Mapped[str | None] = mapped_column(Text)
     provider_code: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
     requested_model: Mapped[str] = mapped_column(String(300), nullable=False, default="")
     effective_model: Mapped[str] = mapped_column(String(300), nullable=False, default="")

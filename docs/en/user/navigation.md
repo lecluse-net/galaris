@@ -116,6 +116,17 @@ Profiles and voices refresh when **Models** opens. Administer harnesses under
 **Administer → Preferences → Harnesses** (`/params/harnesses`). Harness entries depend
 on the server catalog: use the displayed link without inventing an identifier.
 
+Under **Models**, choose the **Primary profile** and, if needed, a
+**Secondary profile (fallback)**, then save the record. An empty primary selection follows
+the current profile; **No fallback profile** disables failover. Configure the same usages
+in both profiles: an empty secondary usage provides no fallback.
+The internal Harness uses the secondary when the provider is overloaded, unavailable or
+fails access, preserving the results of tools already executed. The call details under
+**Monitor → Activity → LLM activity** show the reason for failover. An external Harness using the
+Galaris gateway benefits before its response is published; an already published stream
+keeps its provider. Models explicitly selected through the profile API and native voice
+follow their own contracts.
+
 To delegate this administration to an agent, enable its optional **AgentAdmin** connection
 under **Tools & connections**. It starts active when the **Galaris** assistant is created;
 later deactivation is preserved. Its 34 functions remain limited to its human manager’s rights

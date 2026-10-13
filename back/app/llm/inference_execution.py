@@ -98,6 +98,25 @@ async def submit(request: InferenceRequest, *, inference_id: UUID | None = None,
         if api_token_label is not None and authority is not None:
             authority = replace(authority, api_token_label=api_token_label)
         resolved = request.model_copy(deep=True)
+        if isinstance(resolved, (TextInferenceRequest, StructuredInferenceRequest)):
+            from .llm_service import get_agent_fallback_model
+            from .profile_fallback import ProfileFallbackRoute
+
+            # Routing metadata is server-owned; callers cannot enable a
+            # secondary profile that this agent has not configured.
+            resolved.profile_fallback = None
+            resolved.profile_fallback_llm_id = None
+            resolved.profile_fallback_reasoning_effort = None
+            fallback = await get_agent_fallback_model(
+                resolved.agent_id, resolved.llm_id,
+                model_field=resolved.model_field, purpose=resolved.purpose,
+            )
+            if fallback is not None:
+                profile_id, secondary, effort = fallback
+                resolved.profile_fallback = ProfileFallbackRoute(profile_id=profile_id)
+                resolved.profile_fallback_llm_id = secondary.id
+                resolved.profile_fallback_reasoning_effort = effort
+            resolved.profile_fallback_resolved = True
         if isinstance(resolved, DecisionInferenceRequest):
             from .decision_binding import model_binding
 
@@ -237,11 +256,13 @@ async def execute(inference_id: UUID) -> None:
         from .structured_service import reasoning_effort_scope
         from .reasoning import normalize_reasoning_effort
         from .subscription_policy import llm_execution_scope
+        from .profile_fallback import fallback_route_scope
 
         token = inference_owner.set(owner)
         try:
             async with get_db_session():
                 with (
+                    fallback_route_scope(snapshot.request.profile_fallback),
                     reasoning_effort_scope(
                         normalize_reasoning_effort(snapshot.request.reasoning_effort, strict=True)
                     ),

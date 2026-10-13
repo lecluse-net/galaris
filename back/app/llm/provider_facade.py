@@ -280,6 +280,10 @@ class ImageGenerationProvider(Protocol):
     def read_response(self, response: httpx.Response) -> ImageGenerationResult: ...
 
 
+class ProviderUnavailableError(ValueError):
+    """The configured provider cannot currently accept inference requests."""
+
+
 class ProviderAuthenticationError(RuntimeError):
     """Safe authentication failure exposed by a provider bridge."""
 

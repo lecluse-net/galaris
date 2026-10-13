@@ -151,6 +151,7 @@ async def run_structured(
         agent_id=agent_id,
         purpose=purpose,
         reasoning_effort=profile_reasoning_effort,
+        model_field=model_field,
     )
     if capture is not None and request is not None:
         from .text_inference import RecordedTextModel
@@ -273,6 +274,7 @@ async def run_text(
         agent_id=agent_id,
         purpose=purpose,
         reasoning_effort=profile_reasoning_effort,
+        model_field=model_field,
     )
     if capture is not None:
         from .text_inference import RecordedTextModel

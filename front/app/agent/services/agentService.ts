@@ -89,8 +89,10 @@ export interface Agent {
     agent_driver: string
     task_harness_id: string | null
     profile_id: number | null
+    fallback_profile_id: number | null
     voice: string | null
     profile?: LlmProfileInfo | null
+    fallback_profile?: LlmProfileInfo | null
     has_avatar: boolean
     avatar_revision?: number
     title?: Title
@@ -108,6 +110,7 @@ export interface AgentCreate {
     job_title?: string | null
     agent_driver?: string
     profile_id?: number | null
+    fallback_profile_id?: number | null
     voice?: string | null
 }
 

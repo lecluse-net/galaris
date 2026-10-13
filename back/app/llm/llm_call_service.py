@@ -1063,6 +1063,9 @@ async def create_running_call(
     api_token_label = authority.api_token_label if authority is not None else None
     if api_token_label is None:
         api_token_label = await get_current_token_label()
+    from .profile_fallback import profile_fallback_route
+
+    fallback_route = profile_fallback_route.get()
     call = LLMCall(
         purpose=purpose,
         task_id=task_id,
@@ -1077,6 +1080,9 @@ async def create_running_call(
         agent_id=agent_id,
         llm_id=llm_id,
         provider_name=provider_name,
+        fallback_profile_id=fallback_route.profile_id if fallback_route else None,
+        fallback_from_llm_id=fallback_route.from_llm_id if fallback_route else None,
+        fallback_reason=fallback_route.reason if fallback_route else None,
         provider_code=provider_code,
         requested_model=requested_model,
         effective_model=effective_model,
@@ -1109,6 +1115,7 @@ async def create_running_call(
     await db.refresh(call)
     if capture is not None:
         capture.call_id = call.id
+        capture.call_ids.append(call.id)
     await websocket.emit("llm_call", "create", _public(call), None)
     return call
 

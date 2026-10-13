@@ -933,6 +933,13 @@ class HarnessConversationController:
             )
             execution_result.reconcile_terminal_text(text)
             execution_result.cost = traced_runtime.cost + dispatch_result.cost
+            if getattr(traced_runtime, "profile_fallback_used", False) is True:
+                from app.agent import aggregate_llm_run_usage
+
+                accounting = await aggregate_llm_run_usage(turn.round_id, agent_id=agent.id)
+                if accounting is not None:
+                    execution_result.usage, execution_result.cost = accounting
+                execution_result.metadata["profile_fallback_used"] = True
             execution_result.success = not bool(failure or traced_runtime.error)
             pending_authorizations = getattr(traced_runtime, "authorization_requests", [])
             if pending_authorizations:
@@ -1135,6 +1142,13 @@ async def stream_voice_conversation(
     for message in traced_runtime.messages:
         result.add_message(message.model_copy(deep=True))
     result.result = strip_leading_message_metadata("".join(chunks)).strip()
+    if getattr(traced_runtime, "profile_fallback_used", False) is True:
+        from app.agent import aggregate_llm_run_usage
+
+        accounting = await aggregate_llm_run_usage(request.run_id, agent_id=request.agent_id)
+        if accounting is not None:
+            result.usage, result.cost = accounting
+        result.metadata["profile_fallback_used"] = True
     if failure:
         result.metadata["error"] = failure
     pending_authorizations = getattr(traced_runtime, "authorization_requests", [])

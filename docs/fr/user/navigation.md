@@ -127,6 +127,17 @@ Les profils et les voix sont actualisés à l’ouverture de **Modèles**. L’a
 **Administrer → Préférences → Harnais** (`/params/harnesses`). Les entrées de harnais
 dépendent du catalogue serveur : utilisez le lien affiché, sans inventer leur identifiant.
 
+Dans **Modèles**, choisissez le **Profil principal** et, si nécessaire, un
+**Profil secondaire (secours)**, puis enregistrez la fiche. Un principal vide suit le
+profil courant ; **Aucun profil de secours** désactive la bascule. Configurez les mêmes
+usages dans les deux profils : un usage absent du secondaire n'offre pas de secours.
+Le harnais interne utilise le secondaire en cas de surcharge, d'indisponibilité ou
+d'erreur d'accès du fournisseur, en conservant les résultats des outils déjà exécutés.
+La fiche de l'appel dans **Superviser → Activité → Activité LLM** indique le motif de la bascule.
+Un harnais externe passant par la gateway Galaris bénéficie du secours avant la publication
+de sa réponse ; un flux déjà transmis conserve son fournisseur. Les modèles choisis
+explicitement par l'API de profils et la voix native suivent leurs contrats propres.
+
 Pour déléguer cette administration à un agent, activez sa connexion optionnelle **AgentAdmin**
 dans **Outils & connexions**. Elle est active par défaut à la création de l’assistant **Galaris** ;
 une désactivation ultérieure est conservée. Ses 34 fonctions restent limitées aux droits et au périmètre de

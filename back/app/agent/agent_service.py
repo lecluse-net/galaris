@@ -133,6 +133,7 @@ def _agent_load_options() -> tuple[Any, ...]:
     return (
         joinedload(Agent.title),
         selectinload(Agent.profile),
+        selectinload(Agent.fallback_profile),
         joinedload(Agent.user),
     )
 
@@ -240,16 +241,14 @@ async def create(agent_data: AgentCreate, *, actor_user_id: int | None = None) -
             raise ValueError(await tr("agent_api.errors.invalid_group"))
 
     # ``None`` is meaningful: this agent follows the current profile.
-    if (
-        agent_data.profile_id is not None
-        and await profile_service.get_profile(agent_data.profile_id) is None
-    ):
-        raise ValueError(
-            render_prompt(
-                await tr("llm_api.errors.profile_not_found"),
-                profile_id=agent_data.profile_id,
+    for profile_id in (agent_data.profile_id, agent_data.fallback_profile_id):
+        if profile_id is not None and await profile_service.get_profile(profile_id) is None:
+            raise ValueError(
+                render_prompt(
+                    await tr("llm_api.errors.profile_not_found"),
+                    profile_id=profile_id,
+                )
             )
-        )
     await _validate_voice_selection(agent_data.voice)
     await _ensure_code_available(code)
 
@@ -347,9 +346,9 @@ async def update(id: int, agent_update: AgentUpdate, *, actor_user_id: int | Non
             raise ValueError(await tr("agent_api.errors.invalid_group"))
 
     # ``None`` switches the agent back to the current profile.
-    if "profile_id" in fields_set:
-        profile_id = agent_update.profile_id
-        if profile_id is not None and await profile_service.get_profile(profile_id) is None:
+    for field in ("profile_id", "fallback_profile_id"):
+        profile_id = getattr(agent_update, field)
+        if field in fields_set and profile_id is not None and await profile_service.get_profile(profile_id) is None:
             raise ValueError(
                 render_prompt(
                     await tr("llm_api.errors.profile_not_found"),

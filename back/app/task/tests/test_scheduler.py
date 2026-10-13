@@ -569,8 +569,12 @@ async def test_claimed_action_releases_superseded_run_without_failure(
     fail_claim.assert_not_awaited()
 
 
-def test_network_retry_policy_spans_long_provider_outage() -> None:
-    error = "HTTP 502: Temporary failure in name resolution"
+@pytest.mark.parametrize("error", [
+    "HTTP 502: Temporary failure in name resolution",
+    "APIError: Our servers are currently overloaded. Please try again later.",
+    "ModelHTTPError: status_code: 503, model_name: synthetic",
+])
+def test_network_retry_policy_spans_long_provider_outage(error: str) -> None:
     policies = [scheduler._retry_policy(error, attempt) for attempt in range(1, 8)]  # pyright: ignore[reportPrivateUsage]
 
     assert all(network for _max_attempts, _delay, network in policies)

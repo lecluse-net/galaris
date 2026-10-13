@@ -33,6 +33,9 @@ class LLMCallRead(BaseModel):
     purpose: Optional[str] = None
     agent_id: Optional[int] = None
     llm_id: Optional[int] = None
+    fallback_profile_id: int | None = None
+    fallback_from_llm_id: int | None = None
+    fallback_reason: str | None = None
     task_label: Optional[str] = None
     task_status: Optional[str] = None
     agent_name: Optional[str] = None

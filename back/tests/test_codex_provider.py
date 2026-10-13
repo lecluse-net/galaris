@@ -165,6 +165,7 @@ async def test_native_nonstream_responses_consumes_codex_sse(monkeypatch, outcom
         agent = SimpleNamespace(id=7, code="test", first_name="Test", last_name="Agent", agent_driver="internal")
         monkeypatch.setattr(task_objective, "get_agent_record", AsyncMock(return_value=agent))
         monkeypatch.setattr(task_objective.llm_service, "get_profile_llm", AsyncMock(return_value=llm))
+        monkeypatch.setattr(task_objective.llm_service, "get_agent_fallback_model", AsyncMock(return_value=None))
         monkeypatch.setattr(task_objective, "task_objective_system_prompt", AsyncMock(return_value="Construct the task objective."))
         monkeypatch.setattr(task_objective, "build_agent_run_context", AsyncMock(return_value=AgentRunContext()))
         turn = ConversationTurn(room_id=uuid4(), round_id=uuid4(), agent_id=7,

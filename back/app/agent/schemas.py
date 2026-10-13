@@ -67,6 +67,7 @@ class AgentBase(BaseModel):
     job_title: Optional[str] = None
     agent_driver: str = "internal"
     profile_id: Optional[int] = None
+    fallback_profile_id: Optional[int] = None
     voice: Optional[str] = Field(default=None, max_length=512)
 
     @field_validator('agent_driver', mode='before')
@@ -125,6 +126,7 @@ class AgentUpdate(HumanApprovalFields):
     job_title: Optional[str] = None
     agent_driver: Optional[str] = None
     profile_id: Optional[int] = None
+    fallback_profile_id: Optional[int] = None
     voice: Optional[str] = Field(default=None, max_length=512)
 
     @field_validator("first_name")
@@ -199,6 +201,7 @@ class Agent(AgentBase):
     avatar_revision: int = 0
     is_owner: bool = False
     profile: Optional[LlmProfileInfo] = None
+    fallback_profile: Optional[LlmProfileInfo] = None
 
     @computed_field
     @property

@@ -116,14 +116,13 @@ async def run_inference(
         text_call_capture.reset(token)
     result = AIResult(prompt=request.prompt, system_prompt=request.system_prompt)
     usage = AgentUsage()
-    call_ids: list[str] = []
+    call_ids = [str(call_id) for call_id in capture.call_ids]
     for raw in capture.results:
         call_result = AIResult.model_validate(raw)
         for message in call_result.messages:
             result.add_message(message)
         usage = usage.merged(call_result.usage)
         result.execution_time += call_result.execution_time
-        call_ids.append(str(call_result.metadata["llm_call_id"]))
     if isinstance(request, StructuredInferenceRequest):
         from pydantic import BaseModel
         from pydantic_ai.messages import ModelMessagesTypeAdapter

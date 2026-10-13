@@ -127,6 +127,13 @@ _NETWORK_ERROR_MARKERS = (
     "http 502",
     "http 503",
     "http 504",
+    "status_code: 502",
+    "status_code: 503",
+    "status_code: 504",
+    "status_code: 529",
+    "servers are currently overloaded",
+    "overloaded_error",
+    "provider_overloaded",
 )
 _RETRY_TRACE_ONLY_TOOLS = frozenset(
     {"approval", "budget_guard", "final_result", "thinking"}

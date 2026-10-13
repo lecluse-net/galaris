@@ -13,7 +13,7 @@ from fastapi.responses import StreamingResponse
 from openai import AsyncOpenAI
 from pydantic_ai import UnexpectedModelBehavior
 from pydantic_ai.exceptions import ModelHTTPError
-from pydantic_ai.models import ModelRequestParameters
+from pydantic_ai.models import Model, ModelRequestParameters
 from pydantic_ai.models.fallback import FallbackModel
 from pydantic_ai.models.openai import (
     OpenAIChatModel,
@@ -486,7 +486,7 @@ def llm_supports_native_responses(llm: LLM) -> bool:
     return _responses_policy_for_llm(llm) is not None
 
 
-async def build_model_for_llm(
+async def _build_primary_model_for_llm(
     llm: LLM,
     *,
     task_id: Optional[UUID] = None,
@@ -542,6 +542,54 @@ async def build_model_for_llm(
         reasoning_effort=reasoning_effort,
         durable=True,
     )
+
+
+async def build_model_for_llm(
+    llm: LLM, *, task_id: UUID | None = None, agent_run_id: UUID | None = None,
+    conversation_round_id: UUID | None = None, agent_id: int | None = None,
+    purpose: LLMCallPurpose | str | None = None, reasoning_effort: ReasoningEffort | None = None,
+    enable_native_media: bool = False, model_field: str | None = None,
+) -> Model:
+    from . import llm_service
+    from .profile_fallback import ProfileFallbackModel
+    from .call_capture import text_call_capture
+
+    primary = await _build_primary_model_for_llm(
+        llm, task_id=task_id, agent_run_id=agent_run_id,
+        conversation_round_id=conversation_round_id, agent_id=agent_id,
+        purpose=purpose, enable_native_media=enable_native_media, reasoning_effort=reasoning_effort,
+    )
+    capture = text_call_capture.get()
+    if capture is not None and capture.request.get("profile_fallback_resolved") and capture.request.get("schema_version") in {
+        "galaris.text-inference-request/v1", "galaris.structured-inference-request/v1",
+    }:
+        from .contracts import InferenceRequestAdapter
+
+        frozen = InferenceRequestAdapter.validate_python(capture.request)
+        secondary = (await llm_service.get_llm(frozen.profile_fallback_llm_id)
+                     if frozen.profile_fallback_llm_id is not None else None)
+        fallback = ((frozen.profile_fallback.profile_id, secondary, frozen.profile_fallback_reasoning_effort)
+                    if frozen.profile_fallback is not None and secondary is not None else None)
+    else:
+        fallback = await llm_service.get_agent_fallback_model(
+            agent_id, llm.id, model_field=model_field,
+            purpose=str(purpose) if purpose is not None else None,
+        )
+    if fallback is None:
+        return primary
+    profile_id, secondary_llm, effort = fallback
+    secondary = await _build_primary_model_for_llm(
+        secondary_llm, task_id=task_id, agent_run_id=agent_run_id,
+        conversation_round_id=conversation_round_id, agent_id=agent_id,
+        purpose=purpose, enable_native_media=enable_native_media, reasoning_effort=effort,
+    )
+    return ProfileFallbackModel(primary, secondary, profile_id=profile_id, primary_llm_id=llm.id)
+
+
+def model_used_profile_fallback(model: object) -> bool:
+    from .profile_fallback import ProfileFallbackModel
+
+    return isinstance(model, ProfileFallbackModel) and model.using_secondary
 
 
 def estimate_cost_from_usage(result: Any, llm: LLM) -> float:
