@@ -461,8 +461,9 @@ body.body--dark .conversation-detail-agent {
 }
 
 .conversation-detail-metadata-id {
-  flex: 0 0 auto;
-  white-space: nowrap;
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 .conversation-detail-metadata-room {
@@ -472,7 +473,9 @@ body.body--dark .conversation-detail-agent {
 
 .conversation-action-buttons {
   display: flex;
-  flex: 0 0 auto;
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: 100%;
   flex-wrap: wrap;
   justify-content: flex-end;
   gap: 8px;
@@ -483,7 +486,7 @@ body.body--dark .conversation-detail-agent {
   max-width: 92vw;
 }
 
-@media (max-width: 760px) {
+@media (max-width: 1023.98px) {
   .conversation-detail-header-shell {
     align-items: flex-start;
   }
@@ -497,6 +500,7 @@ body.body--dark .conversation-detail-agent {
   }
 
   .conversation-action-buttons {
+    width: 100%;
     justify-content: flex-start;
   }
 }
