@@ -35,6 +35,7 @@ INTERNAL_HARNESS = AgentDriverSpec(
         uses_llm_calls=True,
     ),
     supports_cancellation=True,
+    supports_call_recovery=True,
     max_parallel_tasks=None,
     transport="embedded",
     checkpoint_policy_path="app.harness.checkpoint_policy:create_policy",

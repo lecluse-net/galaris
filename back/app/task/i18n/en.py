@@ -65,6 +65,8 @@ default: dict[str, object] = {
     "task_api": {
         "errors": {
             "not_found": "Task not found",
+            "call_recovery_unavailable": "There is no active internal model run to interrupt on this task.",
+            "call_recovery_stale": "The run or recovery request has changed. Refresh its activity before retrying.",
             "cannot_restart": "The task cannot be started again from status ${status}.",
             "paused": "The task is paused. Use resume before starting it again.",
             "revision_conflict": "Expected revision ${expected}; current revision is ${current}.",

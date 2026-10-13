@@ -1,6 +1,142 @@
 import { test, expect, mount, jsonRoute, setPrivileges } from './fixtures.mjs'
 import { agent, call, document, result } from './data.mjs'
 
+test('task activity warns only during silence and clears as soon as motion resumes', async ({ page }) => {
+  const at = new Date()
+  await page.clock.install({ time: at })
+  const activity = { task_id: 'synthetic-silence', phase: 'EXEC', revision: 1,
+    operational: { operational_state: 'RUNNING', waits: [] }, pause_pending: false,
+    attempt_number: 1, last_activity_at: at.toISOString(), streams_ai_messages: true }
+  await mount(page, 'app/task/components/TaskActivitySummary.vue', { props: { activity } })
+  await expect(page.getByRole('alert')).toHaveCount(0)
+  await page.clock.fastForward(121_000)
+  await expect(page.getByRole('alert')).toContainText('No activity received')
+  await expect(page.getByRole('alert')).toContainText('Execution continues')
+  await page.screenshot({ path: '/artifacts/task-silence-warning.png' })
+  for (const motion of ['reasoning', 'text', 'tool arguments', 'tool result']) {
+    await page.evaluate(activity => window.testApp.setProps({ activity: {
+      ...activity, last_activity_at: new Date().toISOString(),
+    } }), activity)
+    await expect(page.getByRole('alert'), motion).toHaveCount(0)
+    await page.clock.fastForward(121_000)
+    await expect(page.getByRole('alert')).toContainText('No activity received')
+  }
+  await page.evaluate(activity => window.testApp.setProps({ activity: {
+    ...activity, operational: { operational_state: 'WAITING', waits: [] },
+  } }), activity)
+  await expect(page.getByRole('alert')).toHaveCount(0)
+  await page.evaluate(activity => window.testApp.setProps({ activity, unavailable: true }), activity)
+  await expect(page.getByRole('alert')).toHaveCount(0)
+  await expect(page.getByText('Activity unavailable; refresh on reconnect.')).toBeVisible()
+})
+
+test('silence warning allows a scoped manual recovery and explains refusals without stopping the task', async ({ page }) => {
+  const activity = { task_id: 'synthetic-recovery', run_id: 'synthetic-run', phase: 'EXEC', revision: 1,
+    operational: { operational_state: 'RUNNING', waits: [] }, pause_pending: false,
+    attempt_number: 1, latest_attempt: { id: 'synthetic-attempt' },
+    last_activity_at: new Date(Date.now() - 130_000).toISOString(), streams_ai_messages: true,
+    call_recovery_supported: true }
+  const requests = []
+  await page.route('**/api/tasks/synthetic-recovery/recover-call', async route => {
+    const command = route.request().postDataJSON()
+    requests.push(command)
+    await route.fulfill({ json: { run_id: command.run_id, request_id: command.request_id,
+      version: command.expected_control_version + 1, state: 'requested' } })
+  })
+  await mount(page, 'app/task/components/TaskActivitySummary.vue', { props: { activity }, privileges: ['TASK_EDIT'] })
+  const action = page.getByRole('button', { name: 'Interrupt call and resume' })
+  await action.focus()
+  await page.keyboard.press('Enter')
+  await expect(page.getByText('Recovery requested; the runtime is checking the current call.')).toBeVisible()
+  await expect(action).toBeDisabled()
+  expect(requests).toHaveLength(1)
+  expect(requests[0].run_id).toBe(activity.run_id)
+  expect(requests[0].expected_control_version).toBe(0)
+  expect(requests[0].request_id).toMatch(/^[a-f0-9-]{36}$/)
+  await page.evaluate(({ activity, request }) => window.testApp.setProps({ activity: { ...activity,
+    call_recovery: { run_id: activity.run_id, request_id: request.request_id, version: 1, state: 'refused' },
+  } }), { activity, request: requests[0] })
+  await expect(page.getByText(/Call was not interrupted/)).toBeVisible()
+  await expect(action).toBeEnabled()
+  await action.click()
+  await expect(action).toBeDisabled()
+  expect(requests[1].expected_control_version).toBe(1)
+  await page.evaluate(({ activity, request }) => window.testApp.setProps({ activity: { ...activity,
+    last_activity_at: new Date().toISOString(),
+    call_recovery: { run_id: activity.run_id, request_id: request.request_id, version: 2, state: 'accepted' },
+  } }), { activity, request: requests[1] })
+  await expect(page.getByRole('alert')).toHaveCount(0)
+  await expect(page.getByText('Call interruption accepted; resuming with guidance to change approach.')).toBeVisible()
+  await expect(page.getByText('Running', { exact: true })).toBeVisible()
+  await page.evaluate(activity => window.testApp.setProps({ activity }), activity)
+  await setPrivileges(page, ['TASK_ACCESS'])
+  await expect(action).toHaveCount(0)
+})
+
+for (const context of ['task', 'run', 'attempt', 'reopen']) {
+test(`manual recovery errors and late responses never affect another execution (${context})`, async ({ page }) => {
+  if (context === 'task') await page.setViewportSize({ width: 390, height: 844 })
+  const activity = { task_id: 'synthetic-recovery', run_id: 'synthetic-run', phase: 'EXEC', revision: 1,
+    operational: { operational_state: 'RUNNING', waits: [] }, pause_pending: false,
+    attempt_number: 1, latest_attempt: { id: 'synthetic-attempt' },
+    last_activity_at: new Date(Date.now() - 130_000).toISOString(),
+    streams_ai_messages: true, call_recovery_supported: true }
+  let releaseOld, releaseNew
+  const pendingOld = new Promise(resolve => { releaseOld = resolve })
+  const pendingNew = new Promise(resolve => { releaseNew = resolve })
+  const requests = []
+  let oldFinished = false
+  await page.route('**/api/tasks/*/recover-call', async route => {
+    const command = route.request().postDataJSON()
+    requests.push(command)
+    if (requests.length === 1) {
+      await route.fulfill({ status: 409, json: { detail: 'Synthetic stale execution. Refresh activity.' } })
+    } else {
+      const old = requests.length === 2
+      await (old ? pendingOld : pendingNew)
+      if (old && context === 'task') {
+        await route.fulfill({ status: 409, json: { detail: 'Synthetic old request refused.' } })
+      } else {
+        await route.fulfill({ json: { ...command, version: 1, state: 'requested' } })
+      }
+      if (old) oldFinished = true
+    }
+  })
+  await mount(page, 'app/task/components/TaskActivitySummary.vue', { props: { activity }, privileges: ['TASK_EDIT'] })
+  const action = page.getByRole('button', { name: 'Interrupt call and resume' })
+  await action.click()
+  await expect(page.getByText('Synthetic stale execution. Refresh activity.')).toBeVisible()
+  await expect(action).toBeEnabled()
+  await action.click()
+  await expect(action).toBeDisabled()
+  await expect.poll(() => requests.length).toBe(2)
+  const changed = { ...activity,
+    ...(context === 'task' ? { task_id: 'new-task' }
+      : context === 'attempt' ? { latest_attempt: { id: 'new-attempt' } }
+      : { run_id: 'new-run' }),
+  }
+  await page.evaluate(activity => window.testApp.setProps({ activity }), changed)
+  await expect(action).toBeEnabled()
+  if (context === 'reopen') {
+    await page.evaluate(activity => window.testApp.setProps({ activity }), activity)
+  }
+  await action.click()
+  await expect(action).toBeDisabled()
+  await expect.poll(() => requests.length).toBe(3)
+  releaseOld()
+  await expect.poll(() => oldFinished).toBe(true)
+  await expect(action).toBeDisabled()
+  await expect(page.getByText('Recovery requested; the runtime is checking the current call.')).toHaveCount(0)
+  await expect(page.getByText('Synthetic stale execution. Refresh activity.')).toHaveCount(0)
+  await expect(page.getByText('Synthetic old request refused.')).toHaveCount(0)
+  releaseNew()
+  await expect(page.getByText('Recovery requested; the runtime is checking the current call.')).toBeVisible()
+  await expect(action).toBeDisabled()
+  expect(requests[2].run_id).toBe(context === 'run' ? changed.run_id : activity.run_id)
+  expect(new Set(requests.map(request => request.request_id)).size).toBe(3)
+})
+}
+
 test('initial task timing recovers historical processing and preserves timing across reopening', async ({ page }) => {
   const timing = {
     task_id: 'task-timing', label: 'Generated image',

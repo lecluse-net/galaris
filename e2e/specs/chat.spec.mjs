@@ -138,6 +138,39 @@ test('conversation admission runs a real durable Task and delivers its result on
   await expect(page.locator('.message-row').filter({ hasText: 'Résultat durable de la tâche.' })).toHaveCount(1)
 })
 
+test('a silence warning interrupts a real model call and continues the same durable Task', async ({ page, request }) => {
+  test.setTimeout(90_000)
+  const fixture = await prepare(page, request, 'call-recovery')
+  await send(page)
+  await release(request, fixture.rooms[0])
+  const state = async () => (await request.get(`/api/__test/call-recovery/${fixture.agent_id}`)).json()
+  await expect.poll(async () => (await state()).calls, { timeout: 40_000 }).toBe(1)
+  const initial = await state()
+  const taskId = initial.task_id
+  await expect(page.locator('.agent-task-row')).toContainText('En cours')
+  await page.clock.install()
+  await page.clock.setSystemTime(new Date(Date.now() + 130_000))
+  await page.clock.fastForward(1_000)
+  const warning = page.getByRole('alert').filter({ hasText: /Aucune activité reçue|No activity received/ })
+  await expect(warning).toBeVisible()
+  await page.screenshot({ path: '/artifacts/call-recovery-warning.png' })
+  const command = page.waitForResponse(response => response.url().endsWith(`/api/tasks/${taskId}/recover-call`))
+  await warning.getByRole('button', { name: /Interrompre l’appel et reprendre|Interrupt call and resume/ }).click()
+  expect((await command).ok()).toBeTruthy()
+  await expect(page.getByRole('dialog')).toHaveCount(0)
+  await expect.poll(async () => {
+    const current = await state()
+    return current.status === 'SUCCESS' ? 'SUCCESS' : current
+  }, { timeout: 35_000 }).toBe('SUCCESS')
+  expect(await state()).toMatchObject({ calls: 2, closed: true, guided: true, task_id: taskId,
+    status: 'SUCCESS', attempts: initial.attempts, cancel_requested: false })
+  await page.reload()
+  const row = page.locator('.agent-task-row')
+  await row.locator('.agent-task-expansion-toggle').click()
+  await expect(row).toContainText('Synthetic guided recovery completed.')
+  await page.screenshot({ path: '/artifacts/call-recovery-completed.png' })
+})
+
 test('tool progress and final text survive persistence', async ({ page, request }) => {
   const fixture = await prepare(page, request, 'tools')
   await send(page)

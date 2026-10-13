@@ -53,6 +53,9 @@ from core import websocket
 from core.user.models import User
 from core.user.user_service import encrypt_password
 from tests.e2e_tool_admin import router as tool_admin_fixture, remote_app as tool_admin_remote
+from tests import e2e_call_recovery
+from app.harness.executor import stream as internal_task_stream
+from app.harness.runtime import build_model_for_llm as original_model_builder
 
 pydantic_ai.models.ALLOW_MODEL_REQUESTS = False
 gates: dict[UUID, asyncio.Event] = {}
@@ -85,7 +88,7 @@ class ScriptedController:
                         pass
         else:
             await asyncio.wait_for(gates[turn.room_id].wait(), timeout=45)
-        if modes.get(turn.room_id) == "task":
+        if modes.get(turn.room_id) in {"task", "call-recovery"}:
             assert turn.admit_background_task is not None
             async with get_db_session():
                 await turn.admit_background_task(
@@ -118,8 +121,18 @@ async def task_model(_agent, effort, _language, _reasoning):
 
 
 async def task_stream(request):
+    if request.agent.id in e2e_call_recovery.states:
+        async for event in internal_task_stream(request):
+            yield event
+        return
     yield AgentEvent.from_message(AIMessage(type="text", content="Résultat durable de la tâche."))
     yield AgentEvent.from_result(ExecutionResult(prompt=request.objective, result="Résultat durable de la tâche."))
+
+
+async def harness_model(llm, **kwargs):
+    if kwargs.get("agent_id") in e2e_call_recovery.states:
+        return await e2e_call_recovery.build_model(llm, **kwargs)
+    return await original_model_builder(llm, **kwargs)
 
 
 @asynccontextmanager
@@ -168,6 +181,7 @@ async def lifespan(_app: FastAPI):
         patches.enter_context(patch("app.conversation.mcp.generate_task_fields", task_fields))
         patches.enter_context(patch("app.agent.facade.resolve_execution_model", task_model))
         patches.enter_context(patch("app.harness.executor.stream", task_stream))
+        patches.enter_context(patch("app.harness.runtime.build_model_for_llm", harness_model))
         # External mail boundaries only; approval persistence, Chat and RBAC remain real.
         from bridge.mail.contracts import MailPollBatch
         patches.enter_context(patch("bridge.mail.smtp_client.SmtpClient.send", return_value=(1, 0)))
@@ -283,7 +297,7 @@ async def elevenlabs_voices():
 
 @app.post("/api/__test/seed")
 async def seed(mode: str = "normal", mfa: bool = False, llm_configured: bool = True):
-    if mode not in {"normal", "tools", "error", "task", "missing-terminal", "interruptible", "mail", "file-catalogue"}:
+    if mode not in {"normal", "tools", "error", "task", "call-recovery", "missing-terminal", "interruptible", "mail", "file-catalogue"}:
         raise HTTPException(400, "Unknown scenario")
     suffix = uuid4().hex[:12]
     async with get_db_session() as db:
@@ -337,6 +351,8 @@ async def seed(mode: str = "normal", mfa: bool = False, llm_configured: bool = T
             rooms.append(str(room.id))
         fixture = {"email": owner.email, "password": "Browser-test-password-42!", "rooms": rooms,
                    "agent_id": agent.id}
+        if mode == "call-recovery":
+            e2e_call_recovery.register(agent.id)
         if mode == 'file-catalogue':
             from tests.e2e_file_catalogue import seed_catalogue
             fixture.update(await seed_catalogue(agent.id, app.state.file_catalogue_root))
@@ -464,8 +480,28 @@ async def pending_tasks():
     return [
         {"name": task.get_name(), "stack": [f"{frame.f_code.co_name}:{frame.f_lineno}" for frame in task.get_stack()]}
         for task in asyncio.all_tasks()
-        if "conversation" in task.get_name()
+        if "conversation" in task.get_name() or task.get_name().startswith("task-")
     ]
+
+
+@app.get("/api/__test/call-recovery/{agent_id}")
+async def call_recovery_state(agent_id: int):
+    from app.task.models import Task, TaskAttempt
+    from core.params import runtime_settings
+    from app.harness.run_control import is_active
+    async with get_db_session() as db:
+        task = await db.scalar(select(Task).where(Task.agent_id == agent_id))
+        attempt = await db.scalar(select(TaskAttempt).where(TaskAttempt.task_id == task.id)
+            .order_by(TaskAttempt.attempt_number.desc()).limit(1)) if task else None
+        return {**e2e_call_recovery.states[agent_id], "task_id": str(task.id) if task else None,
+                "status": task.status.value if task else None,
+                "attempts": task.attempt_count if task else 0,
+                "cancel_requested": task.cancel_requested if task else False,
+                "debug": {"lease_seconds": runtime_settings.TASK_SCHEDULER_LEASE_SECONDS,
+                    "lease_expires_at": str(task.lease_expires_at) if task else None,
+                    "recovery": (attempt.data or {}).get("call_recovery") if attempt else None,
+                    "runtime_active": is_active(UUID(task.data["_agent_run_identity"]["request_run_id"]))
+                        if task and (task.data or {}).get("_agent_run_identity") else False}}
 
 
 @app.get("/api/__test/subscription/{room_id}")

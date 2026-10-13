@@ -728,6 +728,10 @@ async def build_run_request(task: AgentTask) -> AgentRunRequest:
             "target_revision": target.revision,
             "transport": target.transport,
             "local_interrupt": bool(target.descriptor and "local_interrupt" in target.descriptor.effective),
+            "call_recovery": bool(
+                driver_spec.supports_call_recovery and target.descriptor
+                and {"local_interrupt", "cancellation"} <= target.descriptor.effective
+            ),
             "model_id": model.id,
             "model_code": model.code,
             "reasoning_effort": model.reasoning_effort,
@@ -1537,6 +1541,13 @@ async def stream_conversation_turn(
     ):
         if event.kind == "message" and event.message is not None:
             yield AIMessage.model_validate(event.message)
+
+
+async def request_call_recovery(driver_code: str, run_id: UUID) -> bool:
+    """Ask the owner of this exact live run to interrupt only model generation."""
+    from .run_control import request_call_recovery as request
+
+    return await request(driver_code, run_id)
 
 
 async def cancel(

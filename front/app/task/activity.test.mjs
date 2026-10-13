@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { roomReferences } from './activity.ts'
+import { activitySilenceSeconds, roomReferences } from './activity.ts'
 import { applyTaskLiveRunEvent, emptyAIResult } from './aiResult.ts'
 
 test('closing details keeps chat live until its own subscription is released', () => {
@@ -10,6 +10,22 @@ test('closing details keeps chat live until its own subscription is released', (
   assert.deepEqual(events, ['join:task'])
   rooms.release('task'); rooms.release('task')
   assert.deepEqual(events, ['join:task', 'leave:task'])
+})
+
+test('silence warning follows last motion rather than total running time', () => {
+  const now = Date.UTC(2026, 0, 1, 12)
+  const activity = { operational: { operational_state: 'RUNNING', waits: [] }, pause_pending: false,
+    last_activity_at: new Date(now - 121_000).toISOString() }
+  assert.equal(activitySilenceSeconds(activity, now), 121)
+  // Reasoning, text, tool arguments and results all advance the same timestamp.
+  assert.equal(activitySilenceSeconds({ ...activity, last_activity_at: new Date(now - 1_000).toISOString() }, now), null)
+  for (const state of ['QUEUED', 'WAITING', 'PAUSED', 'TERMINAL']) {
+    assert.equal(activitySilenceSeconds({ ...activity, operational: { operational_state: state, waits: [] } }, now), null)
+  }
+  assert.equal(activitySilenceSeconds({ ...activity, pause_pending: true }, now), null)
+  assert.equal(activitySilenceSeconds({ ...activity, last_activity_at: 'unknown' }, now), null)
+  assert.equal(activitySilenceSeconds({ ...activity, last_activity_at: null }, now), null)
+  assert.equal(activitySilenceSeconds({ ...activity, last_activity_at: new Date(now + 1_000).toISOString() }, now), null)
 })
 
 test('a cumulative checkpoint includes its delta exactly once and rejects an obsolete run', () => {

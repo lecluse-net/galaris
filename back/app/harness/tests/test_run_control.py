@@ -41,6 +41,44 @@ async def test_cancel_accepts_task_id_and_releases_resources_once() -> None:
 
 
 @pytest.mark.asyncio
+async def test_call_recovery_reaches_only_the_live_owner_without_closing_its_resources():
+    from unittest.mock import Mock
+
+    run_id = uuid4()
+    resources = run_control.RunResources()
+    cleanup = AsyncMock()
+    resources.add_cleanup("synthetic-resource", cleanup)
+    callback = Mock(return_value=True)
+    ready, done = asyncio.Event(), asyncio.Event()
+
+    async def worker():
+        await run_control.register(run_id, None, resources)
+        await run_control.set_call_recovery_request(run_id, callback)
+        ready.set()
+        try:
+            await done.wait()
+        finally:
+            await run_control.set_call_recovery_request(run_id, None)
+            await run_control.unregister(run_id, None)
+            await resources.close()
+
+    execution = asyncio.create_task(worker())
+    try:
+        await ready.wait()
+        await run_control.set_call_recovery_request(run_id, lambda: False)  # Non-owner cannot replace it.
+        assert await run_control.request_call_recovery(uuid4()) is False
+        assert await run_control.request_call_recovery(run_id) is True
+        callback.assert_called_once_with()
+        assert not execution.done()
+        cleanup.assert_not_awaited()
+    finally:
+        done.set()
+        await execution
+    assert await run_control.request_call_recovery(run_id) is False
+    cleanup.assert_awaited_once_with()
+
+
+@pytest.mark.asyncio
 async def test_cancel_is_idempotent_after_run_completion() -> None:
     run_id, task_id = uuid4(), uuid4()
     resources = run_control.RunResources()

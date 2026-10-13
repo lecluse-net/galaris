@@ -957,6 +957,13 @@ class DriverCheckpointCancellationControl(Protocol):
     ) -> HarnessCancellationReceipt: ...
 
 
+@runtime_checkable
+class DriverCallRecoveryControl(Protocol):
+    """Optional manual interruption of model generation with same-run recovery."""
+
+    async def request_call_recovery(self, run_id: UUID) -> bool: ...
+
+
 class HarnessCapabilityDescriptor(BaseModel):
     """Versioned negotiation result shared by execution, configuration and presentation."""
 
@@ -1065,6 +1072,7 @@ class AgentDriverSpec:
     manages_runtime: bool = False
     supports_streaming: bool = True
     supports_cancellation: bool = False
+    supports_call_recovery: bool = False
     standard_execution_strategy: str = "direct"
     high_execution_strategy: str = "direct"
     execution_capabilities: frozenset[str] = frozenset()

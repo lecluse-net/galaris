@@ -955,6 +955,9 @@ async def _heartbeat_lease(task_id: UUID, lease_token: UUID) -> None:
         async with get_db_session():
             if not await _renew_lease(task_id, lease_token):
                 raise LeaseLostError(f"Lease lost or cancellation requested for {task_id}")
+            from .call_recovery import deliver_recovery
+
+            await deliver_recovery(task_id, lease_token)
 
 
 async def _renew_lease(task_id: UUID, lease_token: UUID) -> bool:

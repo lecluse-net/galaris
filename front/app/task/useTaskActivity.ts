@@ -19,6 +19,7 @@ export function useTaskActivity(tasks: () => readonly Task[]) {
   const live = ref<Record<string, TaskLiveRunState>>({})
   const fallback = ref<Record<string, AIResult>>({})
   const unavailable = ref(false)
+  const observedActivity = new Map<string, { runId: string; attemptId: string | null; at: string }>()
   let ids = new Set<string>()
   let joined = new Set<string>()
   let generation = 0
@@ -44,9 +45,25 @@ export function useTaskActivity(tasks: () => readonly Task[]) {
   function receive(event: TaskLiveRunEvent) {
     const task = tasks().find(item => item.id === event.task_id)
     if (!task || !streamsNative(task)) return
-    const next = applyTaskLiveRunEvent(live.value[task.id] ?? null, event, null, expectedRunId(task),
+    const current = live.value[task.id] ?? null
+    const next = applyTaskLiveRunEvent(current, event, null, expectedRunId(task),
       snapshots.value[task.id]?.latest_attempt?.id ?? null)
-    if (next) live.value[task.id] = next
+    if (next) {
+      live.value[task.id] = next
+      if (next !== current) {
+        observedActivity.set(task.id, { runId: next.runId, attemptId: next.attemptId ?? null, at: new Date().toISOString() })
+        const snapshot = snapshots.value[task.id]
+        if (snapshot) applyObservedActivity(snapshot)
+      }
+    }
+  }
+  function applyObservedActivity(snapshot: TaskActivitySnapshot) {
+    const observed = observedActivity.get(snapshot.task_id)
+    if (observed?.runId === snapshot.run_id
+      && observed.attemptId === (snapshot.latest_attempt?.id ?? null)
+      && (!snapshot.last_activity_at || Date.parse(observed.at) > Date.parse(snapshot.last_activity_at))) {
+      snapshot.last_activity_at = observed.at
+    }
   }
   function onEvent(payload: { data?: TaskLiveRunEvent }) {
     const event = payload.data
@@ -77,6 +94,7 @@ export function useTaskActivity(tasks: () => readonly Task[]) {
       buffered = null
       const next: Record<string, TaskActivitySnapshot> = {}
       for (const value of values) {
+        applyObservedActivity(value)
         next[value.task_id] = value
         // Replace before replaying events buffered across the HTTP snapshot.
         if (value.live) {
@@ -148,7 +166,7 @@ export function useTaskActivity(tasks: () => readonly Task[]) {
     const active = new Set(tasks().filter(task => !['SUCCESS', 'ERROR'].includes(task.status)).map(task => task.id))
     for (const id of joined) if (!active.has(id)) rooms.release(id)
     for (const id of active) if (!joined.has(id)) rooms.retain(id)
-    for (const id of ids) if (!next.has(id)) { delete live.value[id]; delete fallback.value[id] }
+    for (const id of ids) if (!next.has(id)) { delete live.value[id]; delete fallback.value[id]; observedActivity.delete(id) }
     joined = active
     ids = next
     schedule()

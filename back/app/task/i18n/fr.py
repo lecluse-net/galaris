@@ -65,6 +65,8 @@ default: dict[str, object] = {
     "task_api": {
         "errors": {
             "not_found": "Tâche introuvable",
+            "call_recovery_unavailable": "Cette tâche n’a pas d’exécution interne active à interrompre.",
+            "call_recovery_stale": "L’exécution ou la demande de reprise a changé. Actualise son activité avant de réessayer.",
             "cannot_restart": "La tâche ne peut pas être redémarrée depuis le statut ${status}.",
             "paused": "La tâche est en pause. Reprenez-la avant de la redémarrer.",
             "revision_conflict": "Révision ${expected} attendue ; la révision courante est ${current}.",

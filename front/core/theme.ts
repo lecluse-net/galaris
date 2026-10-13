@@ -1,5 +1,4 @@
-import { Dark, useQuasar } from 'quasar'
-import { watch } from 'vue'
+import { Dark } from 'quasar'
 
 /** Interface theme preference: follow the system, or force light/dark. */
 export type ThemeMode = 'auto' | 'light' | 'dark'
@@ -7,16 +6,6 @@ export type ThemeMode = 'auto' | 'light' | 'dark'
 export const THEME_MODES: ThemeMode[] = ['auto', 'light', 'dark']
 
 const STORAGE_KEY = 'theme_mode'
-
-/** Keep the web canvas on the app theme; native system bars use the system theme. */
-export function useBrowserTheme(): void {
-    const $q = useQuasar()
-    watch(() => $q.dark.isActive, dark => {
-        const background = getComputedStyle(document.body).backgroundColor
-        document.documentElement.style.colorScheme = dark ? 'dark' : 'light'
-        document.documentElement.style.backgroundColor = background
-    }, { immediate: true })
-}
 
 /** Read the theme preference stored on this device (defaults to 'auto'). */
 export function getThemeMode(): ThemeMode {

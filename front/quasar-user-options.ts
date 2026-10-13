@@ -1,9 +1,19 @@
 import '@quasar/extras/material-icons/material-icons.css'
 import 'quasar/src/css/index.sass'
 
-import { Notify, Dialog, Dark, type QuasarPluginOptions } from 'quasar'
+import { Notify, Dialog, Dark, useQuasar, type QuasarPluginOptions } from 'quasar'
+import { watch } from 'vue'
 import { getThemeMode, toQuasarDark } from '@/core/theme'
 import i18n from '@/core/i18n'
+
+/** Paint the web canvas with the app theme while native bars follow the system. */
+export function useBrowserTheme(): void {
+    const $q = useQuasar()
+    watch(() => $q.dark.isActive, dark => {
+        document.documentElement.style.colorScheme = dark ? 'dark' : 'light'
+        document.documentElement.style.backgroundColor = getComputedStyle(document.body).backgroundColor
+    }, { immediate: true })
+}
 
 const quasarOptions: Partial<QuasarPluginOptions> = {
     config: {

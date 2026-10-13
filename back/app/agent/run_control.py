@@ -8,7 +8,7 @@ from uuid import UUID
 
 from .contracts import (
     AgentDriver, AgentRunCheckpoint, AgentRunRequest, DriverCancellationControl,
-    DriverCheckpointCancellationControl, HarnessCancellationReceipt,
+    DriverCheckpointCancellationControl, DriverCallRecoveryControl, HarnessCancellationReceipt,
 )
 from .execution_errors import HarnessProtocolError
 
@@ -24,6 +24,17 @@ def active_driver(driver_code: str, run_id: UUID) -> AgentDriver | None:
     if active[1].driver_code != driver_code:
         raise HarnessProtocolError("The active run belongs to a different driver.")
     return active[0]
+
+
+async def request_call_recovery(driver_code: str, run_id: UUID) -> bool:
+    active = _active.get(run_id)
+    driver = active_driver(driver_code, run_id)
+    if active is None or not isinstance(driver, DriverCallRecoveryControl):
+        return False
+    descriptor = active[1].target.descriptor if active[1].target is not None else None
+    if descriptor is not None and not {"cancellation", "local_interrupt"} <= descriptor.effective:
+        return False
+    return await driver.request_call_recovery(run_id)
 
 
 @contextmanager

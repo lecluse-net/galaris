@@ -12,12 +12,12 @@ tests restent l’autorité sur le comportement.
 - 72 modules backend déclarés ;
 - 36 modules frontend déclarés ;
 - 547 arêtes de dépendance backend ;
-- 196 arêtes de dépendance frontend ;
+- 195 arêtes de dépendance frontend ;
 - 269 arêtes entre domaines `app`/`bridge` ;
 - 26 paires de domaines directement bidirectionnelles ;
 - 1 composantes fortement connexes ;
 - 7 paires frontend directement bidirectionnelles ;
-- 618 handlers HTTP/WebSocket détectés ;
+- 619 handlers HTTP/WebSocket détectés ;
 - 144 tables SQLAlchemy détectées ;
 - 246 outils MCP natifs détectés ;
 - 40 pages Vue détectées.
@@ -311,7 +311,7 @@ tests restent l’autorité sur le comportement.
 | `app.harnesses` | `core.authorize` | `back/app/harnesses/router.py` |
 | `app.harnesses` | `core.database` | `back/app/harnesses/configuration.py`, `back/app/harnesses/models.py`, `back/app/harnesses/service.py`, `back/app/harnesses/skill_sync.py` |
 | `app.harnesses` | `core.dbadmin` | `back/app/harnesses/dbadmin.py` |
-| `app.harnesses` | `core.params` | `back/app/harnesses/service.py` |
+| `app.harnesses` | `core.params` | `back/app/harnesses/openai_client.py`, `back/app/harnesses/service.py` |
 | `app.harnesses` | `core.util` | `back/app/harnesses/driver.py`, `back/app/harnesses/service.py` |
 | `app.image` | `app.file_share` | `back/app/image/mcp.py` |
 | `app.image` | `app.llm` | `back/app/image/image_service.py`, `back/app/image/mcp.py` |
@@ -441,15 +441,15 @@ tests restent l’autorité sur le comportement.
 | `app.skill` | `core.database` | `back/app/skill/learning_service.py`, `back/app/skill/models.py`, `back/app/skill/resource_facade.py`, `back/app/skill/skill_service.py` |
 | `app.skill` | `core.dbadmin` | `back/app/skill/dbadmin.py`, `back/app/skill/skill_service.py` |
 | `app.skill` | `core.params` | `back/app/skill/learning_service.py` |
-| `app.task` | `app.agent` | `back/app/task/__init__.py`, `back/app/task/activity_snapshot.py`, `back/app/task/agent_adapter.py`, `back/app/task/amendment_service.py`, `back/app/task/budget.py`, `back/app/task/execution_scope.py`, `back/app/task/live_checkpoint.py`, `back/app/task/mcp.py`, `back/app/task/models.py`, `back/app/task/operational_state.py`, `back/app/task/replacement.py`, `back/app/task/router.py`, `back/app/task/run_events.py`, `back/app/task/runner.py`, `back/app/task/scheduler.py`, `back/app/task/schemas.py`, `back/app/task/task_service.py`, `back/app/task/work_tracking.py`, `back/app/task/working_set.py` |
+| `app.task` | `app.agent` | `back/app/task/__init__.py`, `back/app/task/activity_snapshot.py`, `back/app/task/agent_adapter.py`, `back/app/task/amendment_service.py`, `back/app/task/budget.py`, `back/app/task/call_recovery.py`, `back/app/task/execution_scope.py`, `back/app/task/live_checkpoint.py`, `back/app/task/mcp.py`, `back/app/task/models.py`, `back/app/task/operational_state.py`, `back/app/task/replacement.py`, `back/app/task/router.py`, `back/app/task/run_events.py`, `back/app/task/runner.py`, `back/app/task/scheduler.py`, `back/app/task/schemas.py`, `back/app/task/task_service.py`, `back/app/task/work_tracking.py`, `back/app/task/working_set.py` |
 | `app.task` | `app.goal` | `back/app/task/models.py`, `back/app/task/router.py`, `back/app/task/task_service.py` |
 | `app.task` | `app.llm` | `back/app/task/budget.py`, `back/app/task/mcp.py`, `back/app/task/startup_timing.py`, `back/app/task/task_service.py` |
 | `app.task` | `app.messenger` | `back/app/task/collab.py`, `back/app/task/scheduler.py`, `back/app/task/task_service.py` |
 | `app.task` | `app.tools` | `back/app/task/access.py`, `back/app/task/agent_adapter.py`, `back/app/task/mcp.py`, `back/app/task/work_tracking.py` |
 | `app.task` | `core.authorize` | `back/app/task/router.py`, `back/app/task/run_events.py` |
-| `app.task` | `core.database` | `back/app/task/active_lease.py`, `back/app/task/activity.py`, `back/app/task/activity_snapshot.py`, `back/app/task/agent_adapter.py`, `back/app/task/amendment_service.py`, `back/app/task/collab.py`, `back/app/task/conversation.py`, `back/app/task/execution_scope.py`, `back/app/task/live_checkpoint.py`, `back/app/task/mcp.py`, `back/app/task/models.py`, `back/app/task/outcome.py`, `back/app/task/progress.py`, `back/app/task/replacement.py`, `back/app/task/replacement_tree.py`, `back/app/task/resource_facade.py`, `back/app/task/router.py`, `back/app/task/run_events.py`, `back/app/task/scheduler.py`, `back/app/task/startup_timing.py`, `back/app/task/task_service.py`, `back/app/task/work_tracking.py`, `back/app/task/working_set.py` |
+| `app.task` | `core.database` | `back/app/task/active_lease.py`, `back/app/task/activity.py`, `back/app/task/activity_snapshot.py`, `back/app/task/agent_adapter.py`, `back/app/task/amendment_service.py`, `back/app/task/call_recovery.py`, `back/app/task/collab.py`, `back/app/task/conversation.py`, `back/app/task/execution_scope.py`, `back/app/task/live_checkpoint.py`, `back/app/task/mcp.py`, `back/app/task/models.py`, `back/app/task/outcome.py`, `back/app/task/progress.py`, `back/app/task/replacement.py`, `back/app/task/replacement_tree.py`, `back/app/task/resource_facade.py`, `back/app/task/router.py`, `back/app/task/run_events.py`, `back/app/task/scheduler.py`, `back/app/task/startup_timing.py`, `back/app/task/task_service.py`, `back/app/task/work_tracking.py`, `back/app/task/working_set.py` |
 | `app.task` | `core.dbadmin` | `back/app/task/dbadmin.py`, `back/app/task/html_migration.py` |
-| `app.task` | `core.i18n` | `back/app/task/budget.py`, `back/app/task/collab.py`, `back/app/task/mcp.py`, `back/app/task/router.py`, `back/app/task/scheduler.py`, `back/app/task/task_service.py` |
+| `app.task` | `core.i18n` | `back/app/task/budget.py`, `back/app/task/call_recovery.py`, `back/app/task/collab.py`, `back/app/task/mcp.py`, `back/app/task/router.py`, `back/app/task/scheduler.py`, `back/app/task/task_service.py` |
 | `app.task` | `core.params` | `back/app/task/budget.py`, `back/app/task/collab.py`, `back/app/task/mcp.py`, `back/app/task/scheduler.py`, `back/app/task/settings_service.py` |
 | `app.task` | `core.user` | `back/app/task/mcp.py`, `back/app/task/run_events.py`, `back/app/task/task_service.py` |
 | `app.task` | `core.util` | `back/app/task/activity_snapshot.py`, `back/app/task/html_migration.py`, `back/app/task/mcp.py`, `back/app/task/models.py`, `back/app/task/operational_state.py`, `back/app/task/router.py`, `back/app/task/schemas.py` |
@@ -817,8 +817,8 @@ tests restent l’autorité sur le comportement.
 | `app/task` | `app/process` | `front/app/task/pages/index.vue` |
 | `app/task` | `app/topic` | `front/app/task/components/ActiveTaskNode.vue`, `front/app/task/components/ActiveTasksPanel.vue`, `front/app/task/components/TaskDetail.vue` |
 | `app/task` | `app/voice` | `front/app/task/pages/index.vue` |
-| `app/task` | `core/api` | `front/app/task/components/TaskBudget.vue`, `front/app/task/components/TaskDetail.vue`, `front/app/task/pages/index.vue`, `front/app/task/richContent.ts`, `front/app/task/services/taskService.ts` |
-| `app/task` | `core/authorize` | `front/app/task/components/TaskDetail.vue`, `front/app/task/components/TaskFormDialog.vue`, `front/app/task/navigation.ts`, `front/app/task/pages/index.vue` |
+| `app/task` | `core/api` | `front/app/task/components/TaskActivitySummary.vue`, `front/app/task/components/TaskBudget.vue`, `front/app/task/components/TaskDetail.vue`, `front/app/task/pages/index.vue`, `front/app/task/richContent.ts`, `front/app/task/services/taskService.ts` |
+| `app/task` | `core/authorize` | `front/app/task/components/TaskActivitySummary.vue`, `front/app/task/components/TaskDetail.vue`, `front/app/task/components/TaskFormDialog.vue`, `front/app/task/navigation.ts`, `front/app/task/pages/index.vue` |
 | `app/task` | `core/i18n` | `front/app/task/services/taskStatusService.ts` |
 | `app/task` | `core/navigation` | `front/app/task/navigation.ts`, `front/app/task/pages/index.vue` |
 | `app/task` | `core/user` | `front/app/task/components/TaskDetail.vue`, `front/app/task/stores/taskStore.ts` |
@@ -860,7 +860,6 @@ tests restent l’autorité sur le comportement.
 | `core/App` | `app/index` | `front/core/App.vue` |
 | `core/App` | `core/authorize` | `front/core/App.vue` |
 | `core/App` | `core/settings` | `front/core/App.vue` |
-| `core/App` | `core/theme` | `front/core/App.vue` |
 | `core/App` | `core/user` | `front/core/App.vue` |
 | `core/api` | `core/i18n` | `front/core/api.ts` |
 | `core/authorize` | `core/api` | `front/core/authorize/components/AssignmentManager.vue`, `front/core/authorize/services/authorize.service.ts`, `front/core/authorize/services/privilege.service.ts`, `front/core/authorize/stores/authorizeStore.ts` |
@@ -1644,25 +1643,26 @@ tests restent l’autorité sur le comportement.
 | GET | `/skills/{skill_id}/download` | `app.skill` | `download_skill` | oui | `back/app/skill/router.py:468` |
 | GET | `/skills/{skill_id}/file` | `app.skill` | `download_skill_file` | oui | `back/app/skill/router.py:506` |
 | GET | `/skills/{skill_id}/files` | `app.skill` | `list_skill_files` | oui | `back/app/skill/router.py:484` |
-| GET | `/tasks` | `app.task` | `read_tasks` | oui | `back/app/task/router.py:58` |
-| POST | `/tasks` | `app.task` | `create_task` | oui | `back/app/task/router.py:175` |
-| GET | `/tasks/active` | `app.task` | `read_active_tasks` | oui | `back/app/task/router.py:137` |
-| POST | `/tasks/activity` | `app.task` | `read_task_activity` | oui | `back/app/task/router.py:148` |
-| DELETE | `/tasks/cleanup` | `app.task` | `cleanup_tasks` | oui | `back/app/task/router.py:285` |
-| GET | `/tasks/recent` | `app.task` | `read_recent_tasks` | oui | `back/app/task/router.py:78` |
-| DELETE | `/tasks/{task_id}` | `app.task` | `delete_task` | oui | `back/app/task/router.py:295` |
-| GET | `/tasks/{task_id}` | `app.task` | `read_task` | oui | `back/app/task/router.py:155` |
-| PUT | `/tasks/{task_id}` | `app.task` | `update_task` | oui | `back/app/task/router.py:199` |
-| GET | `/tasks/{task_id}/budget` | `app.task` | `read_task_budget` | oui | `back/app/task/router.py:165` |
-| POST | `/tasks/{task_id}/cancel` | `app.task` | `cancel_task` | oui | `back/app/task/router.py:253` |
-| GET | `/tasks/{task_id}/children` | `app.task` | `read_task_children` | oui | `back/app/task/router.py:369` |
-| POST | `/tasks/{task_id}/force-terminate` | `app.task` | `force_terminate_task` | oui | `back/app/task/router.py:268` |
-| GET | `/tasks/{task_id}/full` | `app.task` | `read_task_full` | oui | `back/app/task/router.py:359` |
-| POST | `/tasks/{task_id}/pause` | `app.task` | `pause_task` | oui | `back/app/task/router.py:326` |
-| POST | `/tasks/{task_id}/restore` | `app.task` | `restore_task` | oui | `back/app/task/router.py:312` |
-| POST | `/tasks/{task_id}/resume` | `app.task` | `resume_task` | oui | `back/app/task/router.py:340` |
-| POST | `/tasks/{task_id}/retry` | `app.task` | `retry_task` | oui | `back/app/task/router.py:219` |
-| POST | `/tasks/{task_id}/run` | `app.task` | `run_task` | oui | `back/app/task/router.py:385` |
+| GET | `/tasks` | `app.task` | `read_tasks` | oui | `back/app/task/router.py:59` |
+| POST | `/tasks` | `app.task` | `create_task` | oui | `back/app/task/router.py:186` |
+| GET | `/tasks/active` | `app.task` | `read_active_tasks` | oui | `back/app/task/router.py:138` |
+| POST | `/tasks/activity` | `app.task` | `read_task_activity` | oui | `back/app/task/router.py:149` |
+| DELETE | `/tasks/cleanup` | `app.task` | `cleanup_tasks` | oui | `back/app/task/router.py:296` |
+| GET | `/tasks/recent` | `app.task` | `read_recent_tasks` | oui | `back/app/task/router.py:79` |
+| DELETE | `/tasks/{task_id}` | `app.task` | `delete_task` | oui | `back/app/task/router.py:306` |
+| GET | `/tasks/{task_id}` | `app.task` | `read_task` | oui | `back/app/task/router.py:156` |
+| PUT | `/tasks/{task_id}` | `app.task` | `update_task` | oui | `back/app/task/router.py:210` |
+| GET | `/tasks/{task_id}/budget` | `app.task` | `read_task_budget` | oui | `back/app/task/router.py:176` |
+| POST | `/tasks/{task_id}/cancel` | `app.task` | `cancel_task` | oui | `back/app/task/router.py:264` |
+| GET | `/tasks/{task_id}/children` | `app.task` | `read_task_children` | oui | `back/app/task/router.py:380` |
+| POST | `/tasks/{task_id}/force-terminate` | `app.task` | `force_terminate_task` | oui | `back/app/task/router.py:279` |
+| GET | `/tasks/{task_id}/full` | `app.task` | `read_task_full` | oui | `back/app/task/router.py:370` |
+| POST | `/tasks/{task_id}/pause` | `app.task` | `pause_task` | oui | `back/app/task/router.py:337` |
+| POST | `/tasks/{task_id}/recover-call` | `app.task` | `recover_task_call` | oui | `back/app/task/router.py:166` |
+| POST | `/tasks/{task_id}/restore` | `app.task` | `restore_task` | oui | `back/app/task/router.py:323` |
+| POST | `/tasks/{task_id}/resume` | `app.task` | `resume_task` | oui | `back/app/task/router.py:351` |
+| POST | `/tasks/{task_id}/retry` | `app.task` | `retry_task` | oui | `back/app/task/router.py:230` |
+| POST | `/tasks/{task_id}/run` | `app.task` | `run_task` | oui | `back/app/task/router.py:396` |
 | GET | `/teams` | `core.team` | `list_teams` | oui | `back/core/team/router.py:13` |
 | POST | `/teams` | `core.team` | `create_team` | oui | `back/core/team/router.py:25` |
 | GET | `/teams/humans` | `core.team` | `search_humans` | oui | `back/core/team/router.py:19` |

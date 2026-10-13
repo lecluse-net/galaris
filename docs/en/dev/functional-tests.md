@@ -250,6 +250,22 @@ YOLO and blocked functions in the assembled application at 390 and 1440 pixels.
 `front/browser-tests/action-authorizations.spec.mjs` covers the permanent choice with its explicit
 scope, all three languages, keyboard use, mobile layouts, and retry after an HTTP rejection.
 
+`app/task/tests/test_agent_run_trace.py` protects generated argument activity without a
+visible result, run isolation and preserved receipts. `activity.test.mjs` and the silence
+scenario in `front/browser-tests/execution.spec.mjs` verify the warning after inactivity,
+its removal when motion resumes, and its absence during declared waits or unavailable reads.
+The warning does not interrupt execution.
+
+Recovery scenarios in the same file verify the manual command, errors and refusals,
+duplicate-click prevention and late-response isolation after Task, run or attempt changes
+and reopening. `app/task/tests/test_call_recovery.py` covers the durable command, versions,
+HTTP permissions and delivery only by the current lease owner.
+`app/harness/tests/test_call_recovery.py` verifies call closure before recovery, preservation
+of completed effects and the original budget, and refusal to interrupt an active tool.
+The silence journey in `e2e/specs/chat.spec.mjs` exercises the assembled conversation,
+real PostgreSQL, scheduler and internal harness with a synthetic provider: current attempt preserved,
+the same Task, call closure followed by guided recovery and a durable result.
+
 Journal and streaming stabilization is covered by
 `back/app/agent/tests/test_reasoning_guard.py` (irregular fragments, replayed snapshots,
 no false positive on a fragmented word) and `back/app/incident/tests/test_capture.py`

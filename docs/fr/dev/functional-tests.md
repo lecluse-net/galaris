@@ -256,6 +256,22 @@ refus, la réouverture, le clavier, YOLO et les fonctions bloquées à 390 et 14
 `front/browser-tests/action-authorizations.spec.mjs` couvre le choix permanent avec sa portée
 explicite, les trois langues, le clavier, le mobile et le réessai après un refus HTTP.
 
+`app/task/tests/test_agent_run_trace.py` protège le mouvement des arguments d'outils
+sans résultat visible, son isolation par run et la préservation des reçus. `activity.test.mjs`
+et le scénario de silence de `front/browser-tests/execution.spec.mjs` vérifient l'alerte après
+inactivité, sa disparition au mouvement suivant et son absence pendant une attente déclarée
+ou une consultation indisponible. Cette alerte n'interrompt aucune exécution.
+
+Les scénarios de reprise du même fichier vérifient la commande manuelle, les erreurs et
+refus, le blocage des doubles clics et l'isolation des réponses tardives après changement de
+Task, run, tentative ou réouverture. `app/task/tests/test_call_recovery.py` couvre la commande
+durable, ses versions, les droits HTTP et sa remise au seul propriétaire du lease courant.
+`app/harness/tests/test_call_recovery.py` vérifie la fermeture de l'appel avant sa reprise,
+les effets acquis et le budget conservés, ainsi que le refus d'interrompre un outil actif.
+Le parcours de silence de `e2e/specs/chat.spec.mjs` exerce la discussion assemblée,
+PostgreSQL, le scheduler et le harnais interne réels avec un fournisseur synthétique :
+tentative courante conservée, même Task, appel fermé puis reprise guidée et résultat durable.
+
 La stabilisation du journal et du streaming est couverte par
 `back/app/agent/tests/test_reasoning_guard.py` (fragments irréguliers, snapshots rejoués,
 absence de faux positif sur un mot découpé) et `back/app/incident/tests/test_capture.py`

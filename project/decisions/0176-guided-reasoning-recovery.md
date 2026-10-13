@@ -44,3 +44,56 @@ la réception d'un avertissement par le modèle ni cette reprise de plan finalis
 
 La qualification déterministe ne garantit ni le succès métier de chaque Task ni l'absence
 de boucle chez un modèle réel. La production ne change qu'après déploiement demandé.
+
+## Complément — alerte de silence sans interruption
+
+Une longue réflexion peut rester utile. Sa durée et son volume ne constituent pas une preuve
+de boucle et ne déclenchent aucun nouveau mécanisme d'interruption. Le garde de répétition
+exacte et sa récupération guidée existants restent distincts.
+
+Le résumé d'activité partagé entre les détails de Task et le panneau de discussion signale
+deux minutes sans mouvement reçu, uniquement pendant une exécution active. Réflexion, texte,
+arguments générés et résultats d'outils actualisent cette observation. L'alerte disparaît au
+prochain mouvement ; elle ne change aucun état, budget, appel ou effet. Pauses, attentes et
+indisponibilité de la consultation sont distinguées d'un silence d'exécution.
+
+Le timestamp durable d'activité runtime appartient à la tentative et au run courant. Il
+préserve les arguments en cours comme activité sans les inventer comme outils exécutés.
+Les événements WebSocket acceptés complètent la lecture HTTP sans laisser une réponse tardive
+ou une ancienne tentative effacer une activité plus récente. Le navigateur affiche cette
+alerte dans les suivis ouverts ; elle n'est pas une notification externe persistante.
+
+La vérification combine PostgreSQL réel pour les timestamps et leur isolation, les tests
+d'activité existants et le composant Vue/Quasar réel avec une horloge de navigateur contrôlée.
+
+## Complément — interruption manuelle de l’appel avec reprise
+
+L’alerte propose une commande explicite aux utilisateurs disposant de `TASK_EDIT` dans
+le périmètre de l’agent. Seul le harnais interne expose actuellement cette capacité,
+déclarée par le descripteur du driver et figée dans l’identité du run. L’orchestration
+Task ne sélectionne aucun harnais par son nom. La commande désigne
+le run exact et porte une identité idempotente et une version attendue ; elle est enregistrée
+sur la tentative puis remise par le propriétaire du lease au runtime actif.
+
+Le runtime accepte l’interruption pendant la génération du modèle, ferme son stream et
+reprend la même Task avec une consigne de changement d’approche. Le journal d’effets et
+le budget initial sont conservés ; le raisonnement et les arguments non exécutés sont
+retirés du contexte. Un outil actif ou un effet incertain empêchent l’interruption.
+L’annulation de Task conserve sa priorité et les anciens runs ne sont jamais interrompus.
+
+Le bouton affiche la demande puis son acceptation ou son refus. Une requête en cours ne
+bloque que sa propre consultation ; changement de Task, de run ou de tentative invalide
+son retour, même après réouverture. La réponse ancienne ne termine pas le chargement
+d’une demande plus récente. Le clic reste dans le suivi de la discussion sans ouvrir les
+détails de Task par propagation au conteneur.
+
+La première validation du bouton n’exerçait pas entièrement les réponses différées ni
+l’API sous les protections actuelles de l’inscription. Les scénarios existants couvrent
+maintenant ces changements de contexte ; les comptes du test HTTP sont créés directement
+dans sa base éphémère. Un parcours assemblé traverse le scheduler et le harnais réels,
+avec seulement le fournisseur du modèle remplacé par un stream synthétique contrôlé.
+
+Ce parcours a révélé une commande acquittée mais perdue à la fermeture de la session
+HTTP : un simple flush ne constitue pas la persistance de cette commande. L’admission
+committe désormais avant l’accusé. Le test HTTP exige la commande relue par une autre
+connexion, et le parcours assemblé exige sa réception effective par le scheduler.

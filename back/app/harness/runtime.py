@@ -573,9 +573,9 @@ def _reasoning_recovery_history(
             history.append(message)
             continue
         parts = [part for part in message.parts if not isinstance(part, _pydantic_messages.ThinkingPart)]
-        if index == len(messages) - 1 and not any(
-            isinstance(part, _pydantic_messages.ToolCallPart) for part in parts
-        ):
+        # Generation may have started tool arguments without executing them.
+        # Completed calls have following tool returns; the unfinished tail does not.
+        if index == len(messages) - 1:
             continue
         if parts:
             history.append(replace(message, parts=parts, provider_response_id=None))
@@ -811,6 +811,10 @@ class Agent(AgentRuntime):
         self._checkpoint = checkpoint
         self._reasoning_effort: ReasoningEffort | None = reasoning_effort
         self._cancellation_token = CancellationToken()
+        self._manual_call_recovery_requested = False
+        self._model_generation_active = False
+        self._active_checkpoint: HarnessRunCheckpoint | None = None
+        self.manual_call_recoveries = 0
         self._agent: PydanticAgent[Any, str | DeferredToolRequests] | None = None
         self.prompt = ""
         self.messages: List[AIMessage] = []
@@ -963,6 +967,7 @@ class Agent(AgentRuntime):
                     before_model_request=self._guide_repeated_tools,
                     id="galaris-tool-progress-guidance",
                 ),
+                Hooks(before_model_request=self._observe_model_request, id="galaris-model-call-control"),
                 ToolSearch(
                     strategy=self._search_deferred_tools,
                     max_results=10,
@@ -980,7 +985,28 @@ class Agent(AgentRuntime):
     def request_cancel(self) -> None:
         """Cancel the active run through Pydantic AI's resumable path."""
 
+        self._manual_call_recovery_requested = False
         self._cancellation_token.cancel()
+
+    async def _observe_model_request(self, _ctx: Any, request: ModelRequestContext) -> ModelRequestContext:
+        self._model_generation_active = True
+        return request
+
+    def request_call_recovery(self) -> bool:
+        """A user may interrupt generation, never an executing or ambiguous effect."""
+        if self._manual_call_recovery_requested:
+            return True
+        if not self._model_generation_active or self._cancellation_token.cancelled:
+            return False
+        if self._active_checkpoint is not None and any(
+            effect.get("status") in {"started", "outcome_unknown"}
+            for effect in self._active_checkpoint.effects
+        ):
+            return False
+        self._manual_call_recovery_requested = True
+        self._model_generation_active = False
+        self._cancellation_token.cancel()
+        return True
 
     async def _search_deferred_tools(
         self,
@@ -1051,6 +1077,7 @@ class Agent(AgentRuntime):
             return
 
         active_checkpoint = checkpoint or self._checkpoint
+        self._active_checkpoint = active_checkpoint
         deferred_results = None
         pydantic_history: List[_pydantic_messages.ModelMessage] = []
         if active_checkpoint is not None:
@@ -1140,23 +1167,33 @@ class Agent(AgentRuntime):
                                 ):
                                     yield message
                     break
-                except (ReasoningDegenerationError, RepeatedTextNoProgressError):
+                except (ReasoningDegenerationError, RepeatedTextNoProgressError, RunCancelled) as interruption:
+                    manual = isinstance(interruption, RunCancelled)
+                    if manual and not self._manual_call_recovery_requested:
+                        raise
                     # The SDK context has closed the provider stream before we resume.
                     # Keep the journal: a reasoning interruption must never reset effects.
-                    guidance = t("agent_runtime.reasoning_recovery_prompt", self._language)
-                    pydantic_history = _reasoning_recovery_history(list(captured_messages))
+                    guidance = t("agent_runtime.manual_call_recovery_prompt" if manual else "agent_runtime.reasoning_recovery_prompt", self._language)
+                    pydantic_history = _reasoning_recovery_history(
+                        interruption.all_messages() if manual else list(captured_messages)
+                    )
                     pydantic_history.append(_pydantic_messages.ModelRequest(parts=[
                         _pydantic_messages.UserPromptPart(content=guidance),
                     ]))
                     if active_checkpoint is not None:
                         await active_checkpoint.interrupted(pydantic_history)
-                    if self.reasoning_recoveries >= _MAX_REASONING_RECOVERIES:
+                    if not manual and self.reasoning_recoveries >= _MAX_REASONING_RECOVERIES:
                         self.terminal_failure_kind = "reasoning_degeneration"
                         self.error = t("agent_runtime.reasoning_recovery_exhausted", self._language)
                         yield AIMessage(type="text", content=self.error, success=False)
                         return
-                    self.reasoning_recoveries += 1
-                    notice = AIMessage(type="tool", tool_name="reasoning_guard", content=guidance)
+                    if manual:
+                        self.manual_call_recoveries += 1
+                        self._manual_call_recovery_requested = False
+                        self._cancellation_token = CancellationToken()
+                    else:
+                        self.reasoning_recoveries += 1
+                    notice = AIMessage(type="tool", tool_name="call_recovery" if manual else "reasoning_guard", content=guidance)
                     self.messages.append(notice)
                     yield notice
                     agent_input = guidance
@@ -1185,6 +1222,7 @@ class Agent(AgentRuntime):
             # A disconnected websocket or SSE client is a normal stream termination.
             return
         except UsageLimitExceeded as limit_error:
+            self._model_generation_active = False
             async for message in self._wrap_up_exhausted_run(
                 limit_error,
                 list(captured_messages),
@@ -1194,6 +1232,9 @@ class Agent(AgentRuntime):
                 yield message
         except Exception as e:
             yield self._stream_failure(e, captured_messages)
+        finally:
+            self._model_generation_active = False
+            self._active_checkpoint = None
 
     async def _emit_stream_messages(
         self,
@@ -1226,6 +1267,7 @@ class Agent(AgentRuntime):
         async for event in event_stream:
             # 1. Store a tool call until its matching result arrives.
             if isinstance(event, FunctionToolCallEvent):
+                self._model_generation_active = False
                 pending = state.leading_message_metadata.finish()
                 if pending:
                     _observe_text_progress(state, pending)
@@ -1409,6 +1451,7 @@ class Agent(AgentRuntime):
 
             # 5. The final event carries exact cost accounting.
             if isinstance(event, AgentRunResultEvent):
+                self._model_generation_active = False
                 result = cast(Any, event.result)
                 if isinstance(getattr(result, "output", None), DeferredToolRequests):
                     self.authorization_requests = [UUID(str(metadata["authorization_request_id"]))

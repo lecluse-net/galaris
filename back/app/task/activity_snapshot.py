@@ -16,6 +16,7 @@ from .models import Task, TaskAttempt
 from .operational_state import TaskOperationalSnapshot, operational_snapshot
 from .working_set import parse_working_set
 from .startup_timing import TaskStartupTiming, task_startup_timings
+from .call_recovery import TaskCallRecoveryState, recovery_state, supports_call_recovery
 
 
 class TaskActivityQuery(BaseModel):
@@ -44,6 +45,8 @@ class TaskActivitySnapshot(BaseModel):
     next_attempt_at: datetime | None = None
     run_id: UUID | None = None
     streams_ai_messages: bool = True
+    call_recovery_supported: bool = False
+    call_recovery: TaskCallRecoveryState | None = None
     live: LiveActivity | None = None
     original_demand: str | None = None
     parent_task_id: UUID | None = None
@@ -102,6 +105,22 @@ async def activity_snapshots(tasks: Sequence[Task]) -> list[TaskActivitySnapshot
         if live and (str(live.run_id) != str(run_id)
                      or live.attempt_id is not None and attempt is not None and live.attempt_id != attempt.id):
             live = None
+        last_activity = live.last_activity_at if live else (
+            attempt.finished_at or attempt.started_at if attempt else None
+        )
+        # SDK argument deltas update progress without publishing a fake tool event.
+        # Only activity from this run and attempt may postpone a silence warning.
+        runtime_activity = data.get("runtime_activity")
+        recorded_activity = cast(dict[str, object], runtime_activity) if isinstance(runtime_activity, dict) else {}
+        if run_id and recorded_activity.get("run_id") == str(run_id):
+            raw_at = recorded_activity.get("at")
+            if isinstance(raw_at, str):
+                try:
+                    at = datetime.fromisoformat(raw_at)
+                    if at.tzinfo is not None and (last_activity is None or at > last_activity):
+                        last_activity = at
+                except ValueError:
+                    pass
         operational = operational_snapshot(task, [child for child in children if child.parent_id == task.id])
         result.append(TaskActivitySnapshot(
             task_id=task.id, revision=task.revision, phase=task.status.value,
@@ -116,11 +135,11 @@ async def activity_snapshots(tasks: Sequence[Task]) -> list[TaskActivitySnapshot
                 "started_at": attempt.started_at.isoformat(),
                 "finished_at": attempt.finished_at.isoformat() if attempt.finished_at else None,
             } if attempt else None,
-            last_activity_at=live.last_activity_at if live else (
-                attempt.finished_at or attempt.started_at if attempt else None
-            ),
+            last_activity_at=last_activity,
             next_attempt_at=task.next_attempt_at, run_id=run_id,
             streams_ai_messages=metadata.get("streams_ai_messages") is not False,
+            call_recovery_supported=supports_call_recovery(task),
+            call_recovery=recovery_state(task, attempt),
             live=live,
             original_demand=(visible_text(str(task.data["_original_demand"]))[:8_000]
                              if task.data and "_original_demand" in task.data else None),

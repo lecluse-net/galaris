@@ -23,6 +23,7 @@ from .schemas import (
 )
 from . import task_service
 from .activity_snapshot import TaskActivityQuery, TaskActivitySnapshot, activity_snapshots, readable_activity_tasks
+from .call_recovery import TaskCallRecoveryCommand, TaskCallRecoveryState, request_recovery
 
 from loguru import logger
 
@@ -158,6 +159,16 @@ async def read_task(
     """Get a task and its assignments by ID."""
     task, _ = await _task_scope_or_404(task_id)
     return task
+
+
+@router.post("/{task_id}/recover-call", response_model=TaskCallRecoveryState)
+@authorize(privileges=Privileges.TASK_EDIT)
+async def recover_task_call(task_id: UUID, command: TaskCallRecoveryCommand) -> TaskCallRecoveryState:
+    await _task_scope_or_404(task_id)
+    try:
+        return await request_recovery(task_id, command)
+    except task_service.TaskConflictError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
 
 
 @router.get("/{task_id}/budget", response_model=TaskBudget)

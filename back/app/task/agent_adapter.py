@@ -378,7 +378,7 @@ class SqlAlchemyAgentTaskAdapter:
         from core.database import get_db_session
 
         async with get_db_session() as db:
-            task = await db.scalar(
+            task: Task | None = await db.scalar(
                 Task.histo_filter(
                     select(Task).where(Task.id == task_id).with_for_update(key_share=True)
                 )
@@ -416,6 +416,29 @@ class SqlAlchemyAgentTaskAdapter:
                     attempt.data = {**(attempt.data or {}), "delivery_receipt": delivery}
             if execution_result is not None:
                 task.set_execution_result(execution_result)
+                if attempt is not None:
+                    task_data = cast(Mapping[str, object], task.data or {})
+                    raw_identity = task_data.get("_agent_run_identity")
+                    identity: Mapping[str, object] = (
+                        cast(Mapping[str, object], raw_identity) if isinstance(raw_identity, Mapping) else {}
+                    )
+                    now = datetime.now(timezone.utc)
+                    previous = (attempt.data or {}).get("runtime_activity")
+                    previous_data: Mapping[str, object] = cast(Mapping[str, object], previous) if isinstance(previous, Mapping) else {}
+                    previous_at = previous_data.get("at")
+                    recent = False
+                    if previous_data.get("run_id") == identity.get("request_run_id") and isinstance(previous_at, str):
+                        try:
+                            at = datetime.fromisoformat(previous_at)
+                            recent = at.tzinfo is not None and 0 <= (now - at).total_seconds() < 1
+                        except ValueError:
+                            pass
+                    # A fast token stream must not rewrite the attempt's entire
+                    # JSON journal on every fragment just to keep an alert fresh.
+                    if not recent:
+                        attempt.data = {**(attempt.data or {}), "runtime_activity": {
+                            "run_id": identity.get("request_run_id"), "at": now.isoformat(),
+                        }}
             await task_service.save(task)
 
         from . import scheduler

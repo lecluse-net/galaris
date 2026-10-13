@@ -584,6 +584,7 @@ async def _stream(
     except AttributeError:  # Test doubles and legacy local runtimes remain cancellable.
         cooperative_cancel = None
     await run_control.set_cancel_request(task.run_id, cooperative_cancel)
+    await run_control.set_call_recovery_request(task.run_id, getattr(runtime_agent, "request_call_recovery", None))
     try:
         # Make the execution panel (and its live LLM-call subscription) available
         # before the first provider request starts.
@@ -613,6 +614,7 @@ async def _stream(
             await asyncio.shield(console_resource.execution.cancel_active())
         raise
     finally:
+        await run_control.set_call_recovery_request(task.run_id, None)
         await run_control.set_cancel_request(task.run_id, None)
         console_resource = run_resources.get("console")
         if isinstance(console_resource, ConsoleRunResource):

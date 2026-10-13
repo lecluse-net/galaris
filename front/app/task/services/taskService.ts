@@ -1,5 +1,5 @@
 import { api } from '@/core/api'
-import type { TaskActivitySnapshot } from '../activity'
+import type { TaskActivitySnapshot, TaskCallRecoveryState } from '../activity'
 import type { Task, TaskCreate, TaskUpdate, TaskWithAssignments, TaskFull, TaskPage } from '../types'
 import type { Agent } from '@/app/agent/services/agentService'
 
@@ -18,6 +18,11 @@ export interface TaskBudget {
 }
 
 export class TaskService {
+  async recoverCall(id: string, runId: string, requestId: string, expectedControlVersion: number): Promise<TaskCallRecoveryState> {
+    return (await api.post<TaskCallRecoveryState>(`/tasks/${id}/recover-call`, {
+      run_id: runId, request_id: requestId, expected_control_version: expectedControlVersion,
+    })).data
+  }
   async getActivity(taskIds: string[]): Promise<TaskActivitySnapshot[]> {
     return (await api.post<TaskActivitySnapshot[]>('/tasks/activity', { task_ids: taskIds })).data
   }

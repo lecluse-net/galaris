@@ -22,6 +22,13 @@ export interface TaskStartupTiming {
   processing_intervals?: { call_id: string; purpose: string | null; started_at: string; completed_at: string | null; seconds: number }[]
 }
 
+export interface TaskCallRecoveryState {
+  run_id: string
+  request_id: string
+  version: number
+  state: 'requested' | 'accepted' | 'refused'
+}
+
 export interface TaskActivitySnapshot {
   task_id: string
   startup_timing?: TaskStartupTiming | null
@@ -40,6 +47,8 @@ export interface TaskActivitySnapshot {
   next_attempt_at: string | null
   run_id: string | null
   streams_ai_messages: boolean
+  call_recovery_supported?: boolean
+  call_recovery?: TaskCallRecoveryState | null
   calls_limited?: boolean
   live: { run_id: string; attempt_id?: string | null; sequence: number; result: AIResult } | null
   original_demand?: string | null
@@ -65,4 +74,18 @@ export function roomReferences(join: (id: string) => void, leave: (id: string) =
       else if (count) { counts.delete(id); leave(id) }
     },
   }
+}
+
+/** A live run can remain useful for hours; only missing motion warrants a warning. */
+export function activitySilenceSeconds(
+  activity: Pick<TaskActivitySnapshot, 'operational' | 'pause_pending' | 'last_activity_at'> | undefined,
+  now: number,
+  thresholdSeconds = 120,
+): number | null {
+  if (!activity || activity.operational.operational_state !== 'RUNNING' || activity.pause_pending
+    || activity.operational.waits.length || !activity.last_activity_at) return null
+  const lastActivity = Date.parse(activity.last_activity_at)
+  if (!Number.isFinite(lastActivity)) return null
+  const seconds = Math.floor((now - lastActivity) / 1_000)
+  return seconds >= thresholdSeconds ? seconds : null
 }

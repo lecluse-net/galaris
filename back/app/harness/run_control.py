@@ -11,6 +11,7 @@ from loguru import logger
 
 Cleanup = Callable[[], Awaitable[None]]
 CancelRequest = Callable[[], None]
+CallRecoveryRequest = Callable[[], bool]
 
 
 @dataclass
@@ -50,6 +51,7 @@ class _ActiveRun:
     task: asyncio.Task[object]
     resources: RunResources
     cancel_request: CancelRequest | None = None
+    call_recovery_request: CallRecoveryRequest | None = None
 
 
 _active_runs: dict[UUID, _ActiveRun] = {}
@@ -125,6 +127,22 @@ async def cancel(run_id: UUID) -> None:
         except asyncio.CancelledError:
             pass
     await active.resources.close()
+
+
+async def set_call_recovery_request(run_id: UUID, request: CallRecoveryRequest | None) -> None:
+    current = asyncio.current_task()
+    async with _registry_lock:
+        active = _active_runs.get(run_id)
+        if active is not None and active.task is current:
+            active.call_recovery_request = request
+
+
+async def request_call_recovery(run_id: UUID) -> bool:
+    async with _registry_lock:
+        active = _active_runs.get(run_id)
+        if active is None or active.task.done() or active.call_recovery_request is None:
+            return False
+        return active.call_recovery_request()
 
 
 def is_active(run_id: UUID) -> bool:

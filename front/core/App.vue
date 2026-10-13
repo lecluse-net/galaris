@@ -4,13 +4,13 @@
 
 <script setup>
 import { onMounted } from 'vue'
+import { useBrowserTheme } from '../quasar-user-options'
 import { provideContextHelp } from './user'
 import MainLayout from '@/app/index/components/MainLayout.vue'
 import { useAuthStore } from './user/stores/authStore'
 import { useAuthorizeStore } from './authorize/stores/authorizeStore'
 import { usePrivilegeStore } from './authorize/stores/privilegeStore'
 import { settings } from './settings'
-import { useBrowserTheme } from './theme'
 
 useBrowserTheme()
 const authStore = useAuthStore()

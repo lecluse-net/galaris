@@ -76,6 +76,19 @@ technique que l’agent peut résoudre par inspection autorisée relève de sa p
 
 ## Planner : décomposer un travail coordonné
 
+Dans le suivi détaillé de Task et le panneau de tâches de la discussion, une alerte apparaît
+après deux minutes sans activité reçue : réflexion, texte, génération d'arguments ou résultat
+d'outil. Elle disparaît dès que l'activité reprend et n'annule ni l'appel ni la Task. Une
+réflexion longue reste donc autorisée. Les pauses et attentes déclarées ne déclenchent pas
+cette alerte ; une connexion indisponible est signalée séparément.
+
+Pour une Task exécutée par le harnais interne, le bouton **Interrompre l’appel et reprendre**
+permet aux utilisateurs autorisés à modifier la Task de demander une reprise guidée.
+Le moteur ferme l’appel de génération courant puis poursuit la même Task avec ses résultats
+d’outils et son budget conservés. Il refuse l’interruption si un outil est en cours ou si son
+effet est incertain. La demande, son acceptation ou son refus apparaissent dans le suivi ;
+une réponse tardive après un changement de Task ou de tentative ne modifie pas le suivi courant.
+
 Si l'agent interne répète son raisonnement sans progresser, Galaris interrompt cette
 génération et lui demande de changer d'approche, en conservant les résultats d'outils acquis.
 La récupération est bornée : une boucle persistante laisse la Task inachevée avec un diagnostic.

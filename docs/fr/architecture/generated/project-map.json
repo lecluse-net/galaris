@@ -1639,6 +1639,7 @@
       },
       {
         "files": [
+          "back/app/harnesses/openai_client.py",
           "back/app/harnesses/service.py"
         ],
         "source": "app.harnesses",
@@ -3035,6 +3036,7 @@
           "back/app/task/agent_adapter.py",
           "back/app/task/amendment_service.py",
           "back/app/task/budget.py",
+          "back/app/task/call_recovery.py",
           "back/app/task/execution_scope.py",
           "back/app/task/live_checkpoint.py",
           "back/app/task/mcp.py",
@@ -3106,6 +3108,7 @@
           "back/app/task/activity_snapshot.py",
           "back/app/task/agent_adapter.py",
           "back/app/task/amendment_service.py",
+          "back/app/task/call_recovery.py",
           "back/app/task/collab.py",
           "back/app/task/conversation.py",
           "back/app/task/execution_scope.py",
@@ -3139,6 +3142,7 @@
       {
         "files": [
           "back/app/task/budget.py",
+          "back/app/task/call_recovery.py",
           "back/app/task/collab.py",
           "back/app/task/mcp.py",
           "back/app/task/router.py",
@@ -16473,7 +16477,7 @@
         "declared_path": "/tasks",
         "file": "back/app/task/router.py",
         "handler": "read_tasks",
-        "line": 58,
+        "line": 59,
         "method": "GET",
         "module": "app.task"
       },
@@ -16482,7 +16486,7 @@
         "declared_path": "/tasks",
         "file": "back/app/task/router.py",
         "handler": "create_task",
-        "line": 175,
+        "line": 186,
         "method": "POST",
         "module": "app.task"
       },
@@ -16491,7 +16495,7 @@
         "declared_path": "/tasks/active",
         "file": "back/app/task/router.py",
         "handler": "read_active_tasks",
-        "line": 137,
+        "line": 138,
         "method": "GET",
         "module": "app.task"
       },
@@ -16500,7 +16504,7 @@
         "declared_path": "/tasks/activity",
         "file": "back/app/task/router.py",
         "handler": "read_task_activity",
-        "line": 148,
+        "line": 149,
         "method": "POST",
         "module": "app.task"
       },
@@ -16509,7 +16513,7 @@
         "declared_path": "/tasks/cleanup",
         "file": "back/app/task/router.py",
         "handler": "cleanup_tasks",
-        "line": 285,
+        "line": 296,
         "method": "DELETE",
         "module": "app.task"
       },
@@ -16518,7 +16522,7 @@
         "declared_path": "/tasks/recent",
         "file": "back/app/task/router.py",
         "handler": "read_recent_tasks",
-        "line": 78,
+        "line": 79,
         "method": "GET",
         "module": "app.task"
       },
@@ -16527,7 +16531,7 @@
         "declared_path": "/tasks/{task_id}",
         "file": "back/app/task/router.py",
         "handler": "delete_task",
-        "line": 295,
+        "line": 306,
         "method": "DELETE",
         "module": "app.task"
       },
@@ -16536,7 +16540,7 @@
         "declared_path": "/tasks/{task_id}",
         "file": "back/app/task/router.py",
         "handler": "read_task",
-        "line": 155,
+        "line": 156,
         "method": "GET",
         "module": "app.task"
       },
@@ -16545,7 +16549,7 @@
         "declared_path": "/tasks/{task_id}",
         "file": "back/app/task/router.py",
         "handler": "update_task",
-        "line": 199,
+        "line": 210,
         "method": "PUT",
         "module": "app.task"
       },
@@ -16554,7 +16558,7 @@
         "declared_path": "/tasks/{task_id}/budget",
         "file": "back/app/task/router.py",
         "handler": "read_task_budget",
-        "line": 165,
+        "line": 176,
         "method": "GET",
         "module": "app.task"
       },
@@ -16563,7 +16567,7 @@
         "declared_path": "/tasks/{task_id}/cancel",
         "file": "back/app/task/router.py",
         "handler": "cancel_task",
-        "line": 253,
+        "line": 264,
         "method": "POST",
         "module": "app.task"
       },
@@ -16572,7 +16576,7 @@
         "declared_path": "/tasks/{task_id}/children",
         "file": "back/app/task/router.py",
         "handler": "read_task_children",
-        "line": 369,
+        "line": 380,
         "method": "GET",
         "module": "app.task"
       },
@@ -16581,7 +16585,7 @@
         "declared_path": "/tasks/{task_id}/force-terminate",
         "file": "back/app/task/router.py",
         "handler": "force_terminate_task",
-        "line": 268,
+        "line": 279,
         "method": "POST",
         "module": "app.task"
       },
@@ -16590,7 +16594,7 @@
         "declared_path": "/tasks/{task_id}/full",
         "file": "back/app/task/router.py",
         "handler": "read_task_full",
-        "line": 359,
+        "line": 370,
         "method": "GET",
         "module": "app.task"
       },
@@ -16599,7 +16603,16 @@
         "declared_path": "/tasks/{task_id}/pause",
         "file": "back/app/task/router.py",
         "handler": "pause_task",
-        "line": 326,
+        "line": 337,
+        "method": "POST",
+        "module": "app.task"
+      },
+      {
+        "authorized": true,
+        "declared_path": "/tasks/{task_id}/recover-call",
+        "file": "back/app/task/router.py",
+        "handler": "recover_task_call",
+        "line": 166,
         "method": "POST",
         "module": "app.task"
       },
@@ -16608,7 +16621,7 @@
         "declared_path": "/tasks/{task_id}/restore",
         "file": "back/app/task/router.py",
         "handler": "restore_task",
-        "line": 312,
+        "line": 323,
         "method": "POST",
         "module": "app.task"
       },
@@ -16617,7 +16630,7 @@
         "declared_path": "/tasks/{task_id}/resume",
         "file": "back/app/task/router.py",
         "handler": "resume_task",
-        "line": 340,
+        "line": 351,
         "method": "POST",
         "module": "app.task"
       },
@@ -16626,7 +16639,7 @@
         "declared_path": "/tasks/{task_id}/retry",
         "file": "back/app/task/router.py",
         "handler": "retry_task",
-        "line": 219,
+        "line": 230,
         "method": "POST",
         "module": "app.task"
       },
@@ -16635,7 +16648,7 @@
         "declared_path": "/tasks/{task_id}/run",
         "file": "back/app/task/router.py",
         "handler": "run_task",
-        "line": 385,
+        "line": 396,
         "method": "POST",
         "module": "app.task"
       },
@@ -18261,6 +18274,7 @@
       },
       {
         "files": [
+          "front/app/task/components/TaskActivitySummary.vue",
           "front/app/task/components/TaskBudget.vue",
           "front/app/task/components/TaskDetail.vue",
           "front/app/task/pages/index.vue",
@@ -18272,6 +18286,7 @@
       },
       {
         "files": [
+          "front/app/task/components/TaskActivitySummary.vue",
           "front/app/task/components/TaskDetail.vue",
           "front/app/task/components/TaskFormDialog.vue",
           "front/app/task/navigation.ts",
@@ -18600,13 +18615,6 @@
         ],
         "source": "core/App",
         "target": "core/settings"
-      },
-      {
-        "files": [
-          "front/core/App.vue"
-        ],
-        "source": "core/App",
-        "target": "core/theme"
       },
       {
         "files": [

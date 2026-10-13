@@ -41,6 +41,11 @@ class InternalHarness:
 
         await cancel(run_id)
 
+    async def request_call_recovery(self, run_id: UUID) -> bool:
+        from .run_control import request_call_recovery
+
+        return await request_call_recovery(run_id)
+
     async def request_cancellation(self, run_id: UUID) -> HarnessCancellationReceipt:
         from .run_control import cancel, is_active
 

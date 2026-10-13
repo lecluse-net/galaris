@@ -82,6 +82,18 @@ bounded: a persistent loop leaves the Task unfinished with a diagnostic. Retryin
 plan resumes its first unfinished step, including nested groups, without replaying successful
 items. A document still requiring checks or tracking updates remains in the work inventory.
 
+In Task details and the conversation task panel, a warning appears after two minutes without
+received activity: reasoning, text, generated tool arguments or tool results. It clears when
+activity resumes and cancels neither the call nor the Task. Long reasoning remains allowed.
+Declared pauses and waits do not trigger it; an unavailable connection is reported separately.
+
+For a Task using the internal harness, users allowed to edit the Task can select
+**Interrupt call and resume** to request guided recovery. The runtime closes the current
+generation call and continues the same Task, preserving tool results and the original budget.
+It refuses interruption while a tool is running or its effect is uncertain. The activity view
+shows whether recovery is requested, accepted or refused; late responses after changing Task
+or attempt do not affect the current view.
+
 If you requested a saved report even after failure, an independent closing action can
 produce it after the failed work. Other dependent steps are skipped. A successful report
 preserves the plan's error; a manual retry resumes unfinished work and refreshes the

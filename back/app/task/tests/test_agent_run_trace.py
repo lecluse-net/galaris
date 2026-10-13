@@ -89,6 +89,43 @@ async def test_authorization_wait_survives_checkpoint_and_releases_claim(committ
 
 
 @pytest.mark.asyncio
+async def test_model_activity_without_visible_output_refreshes_only_current_run(committed_database):
+    from app.task.activity_snapshot import activity_snapshots
+
+    lease, run_id = uuid4(), uuid4()
+    old = datetime.now(timezone.utc) - timedelta(minutes=10)
+    identity = {"request_run_id": str(run_id)}
+    async with get_db_session() as db:
+        task = Task(label="Synthetic argument generation", objective="<p>Prepare a report.</p>",
+            status=TaskStatus.EXEC, lease_token=lease,
+            lease_expires_at=datetime.now(timezone.utc) + timedelta(minutes=5),
+            data={"_agent_run_identity": identity})
+        db.add(task)
+        await db.flush()
+        attempt = TaskAttempt(task_id=task.id, attempt_number=1, phase="EXEC", status="CLAIMED",
+            worker_id="synthetic-worker", lease_token=lease, started_at=old,
+            data={"agent_run": identity, "effect_checkpoint": {"receipt": "synthetic-saved"}})
+        db.add(attempt)
+        await db.flush()
+        task_id, attempt_id, objective = task.id, attempt.id, task.objective
+
+    partial = ExecutionResult(prompt="", messages=[], result="")
+    await SqlAlchemyAgentTaskAdapter().persist_agent_run_state(task_id,
+        expected_objective=objective, expected_attempt_id=attempt_id, execution_result=partial)
+    async with get_db_session() as db:
+        task = await db.get(Task, task_id)
+        attempt = await db.get(TaskAttempt, attempt_id)
+        snapshot = (await activity_snapshots([task]))[0]
+        assert snapshot.last_activity_at > old
+        assert snapshot.live is None  # Generated arguments are not an executed tool.
+        assert task.get_execution_result() == partial
+        assert attempt.data["effect_checkpoint"] == {"receipt": "synthetic-saved"}
+        task.data = {"_agent_run_identity": {"request_run_id": str(uuid4())}}
+        await db.flush()
+        assert (await activity_snapshots([task]))[0].last_activity_at == old
+
+
+@pytest.mark.asyncio
 @pytest.mark.parametrize("operation", ["checkpoint", "progress", "event", "activate", "resource", "capsule"])
 async def test_run_writes_do_not_wait_for_uncommitted_llm_trace(
     committed_database, operation,
