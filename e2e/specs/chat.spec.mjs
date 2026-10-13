@@ -99,6 +99,57 @@ test('progress is visible before completion and survives durable handoff and rel
   await final(page)
 })
 
+test('human controls pause, resume, stop and restart a real conversation execution', async ({ page, request }) => {
+  test.setTimeout(90_000)
+  const fixture = await prepare(page, request, 'conversation-control')
+  await send(page)
+  const activeRounds = await (await request.get(`/api/__test/rounds/${fixture.rooms[0]}`)).json()
+  const roundId = activeRounds[0].id
+  const controlPath = `/api/chat/rooms/${fixture.rooms[0]}/activity/${roundId}/control`
+  expect((await request.post(controlPath, { data: { action: 'stop', expected_attempt: 1 } })).status()).toBe(401)
+  const authenticatedControl = (path, expectedAttempt) => page.evaluate(async ({ path, expectedAttempt }) => {
+    const response = await fetch(path, { method: 'POST',
+      headers: { Authorization: `Bearer ${localStorage.getItem('access_token')}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'stop', expected_attempt: expectedAttempt }),
+    })
+    return response.status
+  }, { path, expectedAttempt })
+  expect(await authenticatedControl(`/api/chat/rooms/${fixture.rooms[1]}/activity/${roundId}/control`, 1)).toBe(404)
+  expect(await authenticatedControl(controlPath, 0)).toBe(409)
+  await page.getByRole('button', { name: 'Mettre en pause', exact: true }).click()
+  await expect(page.getByText('Réponse en pause', { exact: true })).toBeVisible()
+  await page.reload()
+  await expect(page.getByText('Réponse en pause', { exact: true })).toBeVisible()
+  await page.getByRole('button', { name: 'Reprendre la réponse', exact: true }).click()
+  await expect(page.locator('.message-timeline')).toContainText('Réponse progressive')
+  await page.getByRole('button', { name: 'Arrêter la réponse', exact: true }).click()
+  await expect(page.getByText('Réponse arrêtée', { exact: true })).toBeVisible()
+  await page.reload()
+  await expect(page.getByText('Réponse arrêtée', { exact: true })).toBeVisible()
+  await release(request, fixture.rooms[0])
+  await page.getByRole('button', { name: 'Relancer la réponse', exact: true }).click()
+  await final(page)
+  await page.reload()
+  await final(page)
+  const rounds = await (await request.get(`/api/__test/rounds/${fixture.rooms[0]}`)).json()
+  expect(rounds.filter(round => round.status === 'CANCELLED')).toHaveLength(1)
+  expect(rounds.filter(round => round.status === 'SUCCEEDED')).toHaveLength(1)
+})
+
+test('reply now forces a real response with all tool access disabled', async ({ page, request }) => {
+  test.setTimeout(90_000)
+  const fixture = await prepare(page, request, 'conversation-control')
+  await send(page)
+  await page.getByRole('button', { name: 'Répondre maintenant', exact: true }).click()
+  const answer = page.locator('.message-row').filter({ hasText: 'Réponse immédiate avec les éléments disponibles.' })
+  await expect(answer).toHaveCount(1)
+  await expect(answer).toHaveAttribute('data-message-id', /.+/)
+  await page.reload()
+  await expect(answer).toHaveCount(1)
+  const rounds = await (await request.get(`/api/__test/rounds/${fixture.rooms[0]}`)).json()
+  expect(rounds.filter(round => round.status === 'SUCCEEDED')).toHaveLength(1)
+})
+
 test('a second tab opened during execution catches up without duplicate messages', async ({ page, context, request }) => {
   const fixture = await prepare(page, request)
   await send(page)

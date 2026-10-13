@@ -281,6 +281,16 @@ préserve les grands fragments Unicode et conserve l'arrêt anticipé du raisonn
 `front/browser-tests/provider-autosave.spec.mjs` vérifie sauvegarde de 0, réouverture,
 validation et préservation des autres paramètres.
 
+`app/conversation/tests/test_service.py` protège aussi les commandes humaines Pause, Stop,
+Reprendre, Relancer et Répondre maintenant : tentative exacte, inputs conservés, suppression
+du brouillon, round arrêté immuable et refus de reprendre des effets incertains.
+Les tests de harnais vérifient que Répondre maintenant contourne le dispatcher et expose
+zéro outil au modèle. `front/browser-tests/conversation-control.spec.mjs` exerce clavier,
+doubles clics, erreurs réessayables, droits et réponses tardives sur les composants réels.
+Les deux parcours de contrôle de `e2e/specs/chat.spec.mjs` utilisent Chat, PostgreSQL,
+le scheduler et le harnais réels avec un fournisseur synthétique ; ils couvrent réouverture,
+reprise, arrêt, relance et réponse immédiate persistée.
+
 La stabilisation du journal et du streaming est couverte par
 `back/app/agent/tests/test_reasoning_guard.py` (fragments irréguliers, snapshots rejoués,
 absence de faux positif sur un mot découpé) et `back/app/incident/tests/test_capture.py`

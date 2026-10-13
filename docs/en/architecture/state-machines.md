@@ -213,11 +213,25 @@ execution; loss of that token cancels the local flow before any concurrent recov
 | Round state | Transition |
 |---|---|
 | `CLAIMED` | turn construction → `RUNNING` |
+| `FROZEN`, `CLAIMED`, `RUNNING`, `WAITING_APPROVAL` | human Pause, after the running tool → `PAUSED` |
+| `PAUSED` | Resume, safe checkpoint and no pending successor → `FROZEN` |
+| active or `PAUSED` | Stop, after the running tool → `CANCELLED`, no answer delivered |
+| `CANCELLED` | Restart → new linked `FROZEN` round; old round remains terminal |
+| active or `PAUSED` | Reply now → `FROZEN` with tools disabled, then a normal attempt |
 | `RUNNING` without new input | response delivered → `SUCCEEDED` |
 | `RUNNING` with new input, without effect | final guard → `SUPERSEDED` |
 | `RUNNING` with new input, after effect | response deleted → `SUCCEEDED` |
 | active, interrupted worker, safe recovery | graceful stop → `FROZEN`; expired lease → new `CLAIMED` attempt |
 | uncertain effect or exhausted failure budget | degraded resolution → `ERROR_RESOLVED` |
+
+Human commands persist `control_action` and target the observed attempt number. Preparation
+polling and model hooks observe them between effects; the effect guard rejects any new action
+after the command. The lease remains owned until the checkpoint is saved. Human pause and stop
+finish attempts as `USER_PAUSED` and `USER_STOPPED`, without consuming the failure budget.
+Restart copies only a safe checkpoint into a new round, preserving acquired tool results.
+Reply now bypasses dispatch and removes tools, tool search and skill capabilities from the run.
+The HTTP commands require `CHAT_SEND` and access to the native room; they do not control voice
+or background work.
 
 A worker stop finishes its attempt as `INTERRUPTED` and does not consume the budget of two
 actual execution errors. Attempt numbers remain monotonic. During shutdown, preparation and

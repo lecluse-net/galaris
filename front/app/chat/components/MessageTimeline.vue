@@ -119,6 +119,8 @@
               :room-id="roomId"
               :activity="entry.activity"
               :live-round="entry.liveRound"
+              :allow-control="allowReply && viewerAgentId === null"
+              @controlled="emit('controlled')"
             />
             <InteractionChoice
               v-if="entry.message?.interaction?.options.length"
@@ -351,6 +353,7 @@ const emit = defineEmits<{
   blockRendered: []
   layoutChanged: []
   messageVisible: [messageId: string]
+  controlled: []
 }>()
 const { t, locale } = useI18n()
 const $q = useQuasar()
@@ -417,14 +420,14 @@ const timelineEntries = computed(() => conversationTimelineEntries(
     ? activityByRoundId.value.get(liveRound.round_id)
     : message
       ? activityByMessageId.value.get(message.id)
-      : undefined
+      : entry.activity
   const pendingTranscription = entry.pendingTranscription
   return {
     ...entry,
     isMine: message?.is_mine ?? pendingTranscription?.is_mine ?? false,
-    senderName: message?.sender?.display_name || pendingTranscription?.sender?.display_name || (liveRound ? props.agentName : t('chat.message')),
+    senderName: message?.sender?.display_name || pendingTranscription?.sender?.display_name || (liveRound || activity ? props.agentName : t('chat.message')),
     senderAgentId: props.showAgentAvatars
-      ? message?.sender?.agent_id ?? pendingTranscription?.sender?.agent_id ?? (liveRound ? props.agentId : null)
+      ? message?.sender?.agent_id ?? pendingTranscription?.sender?.agent_id ?? (liveRound || activity ? props.agentId : null)
       : null,
     avatarUrl: message?.sender?.avatar_url ?? pendingTranscription?.sender?.avatar_url,
     activity,

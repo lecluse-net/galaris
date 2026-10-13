@@ -257,6 +257,21 @@ def _install_messenger(
 
 
 @pytest.mark.asyncio
+async def test_paused_response_remains_visible_and_filterable_in_monitoring(db):
+    from app.conversation import control_round
+    agent, connection, room, sender = await _scope(db)
+    message = await _message(db, connection, room, sender, 1, "Synthetic paused request")
+    await admit_message(message, agent_id=agent.id, connection_id=connection.id)
+    round_ = await db.scalar(select(ConversationRound).where(ConversationRound.room_id == room.id))
+    await control_round(room.id, round_.id, "pause", expected_attempt=0)
+    page = await monitoring_service.list_messages(page=1, page_size=50, agent_id=agent.id, status="PAUSED")
+    assert page.total == 1
+    assert page.items[0].round_status == "PAUSED"
+    assert page.items[0].response_text is None
+    assert page.summary.running == 0
+
+
+@pytest.mark.asyncio
 async def test_monitoring_projects_canonical_messages_round_and_dataset(
     db: AsyncSession,
     monkeypatch: pytest.MonkeyPatch,

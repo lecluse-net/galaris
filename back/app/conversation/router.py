@@ -22,7 +22,7 @@ from .schemas import (
 
 
 router = APIRouter(prefix="/conversations", tags=["conversations"])
-ConversationStatus = Literal["IDLE", "READY", "RUNNING"]
+ConversationStatus = Literal["IDLE", "READY", "RUNNING", "WAITING_APPROVAL", "PAUSED"]
 
 
 @router.get("/messages", response_model=ConversationMessagePage)

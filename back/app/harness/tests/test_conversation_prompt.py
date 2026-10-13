@@ -586,8 +586,10 @@ def test_conversation_prompt_renders_all_selected_work_with_compact_details() ->
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("force_response", [False, True])
 async def test_conversation_controller_uses_the_shared_runtime_without_token_settings(
     monkeypatch: pytest.MonkeyPatch,
+    force_response: bool,
 ) -> None:
     current_message_local_id = uuid4()
     attachment_id = uuid4()
@@ -773,11 +775,19 @@ async def test_conversation_controller_uses_the_shared_runtime_without_token_set
     monkeypatch.setattr(conversation_module, "build_conversation_session", fake_session)
     monkeypatch.setattr(conversation_module, "dispatch_conversation", fake_dispatch)
 
+    turn = replace(turn, force_response=force_response)
     outcome = await HarnessConversationController().run(turn)
 
     release_transaction.assert_awaited_once_with()
-    knowledge_capabilities.assert_awaited_once_with(turn.agent_id)
-    assert knowledge_capability in captured["capabilities"]
+    if force_response:
+        knowledge_capabilities.assert_not_awaited()
+        assert captured["mcp_servers"] == []
+        assert captured["response_only"] is True
+        assert "Reply now" in captured["runtime_prompt"]
+        assert outcome.execution_result.metadata["dispatch_result"] == {"forced_response": True}
+    else:
+        knowledge_capabilities.assert_awaited_once_with(turn.agent_id)
+        assert knowledge_capability in captured["capabilities"]
     assert outcome.text == "Réponse rapide."
     assert [message.content for message in progress_events] == ["Réponse rapide."]
     assert outcome.execution_result is not None
@@ -827,10 +837,11 @@ async def test_conversation_controller_uses_the_shared_runtime_without_token_set
     assert "room=family-room" in outcome.execution_result.system_prompt
     assert "sender=nicolas" in outcome.execution_result.system_prompt
     assert captured["purpose"] == LLMCallPurpose.CONVERSATION_TEXT
-    dispatch_messages = cast(list[dict[str, object]], captured["dispatch_messages"])
-    assert cast(list[dict[str, object]], dispatch_messages[-1]["attachments"])[0][
-        "uri"
-    ] == attachment_uri
+    if not force_response:
+        dispatch_messages = cast(list[dict[str, object]], captured["dispatch_messages"])
+        assert cast(list[dict[str, object]], dispatch_messages[-1]["attachments"])[0][
+            "uri"
+        ] == attachment_uri
 
     async def fake_failed_create_agent(**kwargs: Any) -> object:
         class FakeFailedRuntime:

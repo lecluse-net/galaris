@@ -357,7 +357,7 @@ const agentOptions = computed(() => [
 ])
 const statusOptions = computed(() => [
   { label: t('conversation.history.allStatuses'), value: null },
-  ...(['IDLE', 'READY', 'RUNNING', 'WAITING_APPROVAL'] as ConversationStatus[]).map(status => ({
+  ...(['IDLE', 'READY', 'RUNNING', 'WAITING_APPROVAL', 'PAUSED'] as ConversationStatus[]).map(status => ({
     label: t(`conversation.history.statuses.${status}`),
     value: status,
   })),
@@ -594,7 +594,7 @@ function messageStatusTone(message: ConversationMessage): StatusBadgeTone {
   if (['SUCCEEDED', 'COMPLETED'].includes(message.round_status)) return 'success'
   if (['RUNNING', 'CLAIMED'].includes(message.round_status)) return 'active'
   if (message.round_status === 'FROZEN') return 'warning'
-  if (['SUPERSEDED', 'CANCELLED'].includes(message.round_status)) return 'neutral'
+  if (['SUPERSEDED', 'CANCELLED', 'PAUSED'].includes(message.round_status)) return 'neutral'
   if (message.round_status === 'INTERRUPTED') return 'warning'
   return 'error'
 }

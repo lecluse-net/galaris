@@ -275,6 +275,17 @@ fragments and retains early reasoning cancellation. `front/browser-tests/provide
 covers saving 0, reopening, validation and preservation of other settings.
 
 Journal and streaming stabilization is covered by
+
+`app/conversation/tests/test_service.py` also protects human Pause, Stop, Resume, Restart
+and Reply now commands: exact attempts, preserved inputs, suppressed unfinished answers,
+immutable stopped rounds and refusal to resume uncertain effects. Harness tests verify
+that Reply now bypasses dispatch and exposes no tools. The real components in
+`front/browser-tests/conversation-control.spec.mjs` cover keyboard use, duplicate clicks,
+retryable errors, permissions and late replies. The two control journeys in
+`e2e/specs/chat.spec.mjs` exercise real Chat, PostgreSQL, scheduler and harness with a
+synthetic model provider, including reopening and a durably delivered immediate answer.
+
+The journal and streaming checks include
 `back/app/agent/tests/test_reasoning_guard.py` (irregular fragments, replayed snapshots,
 no false positive on a fragmented word) and `back/app/incident/tests/test_capture.py`
 (distinct attempts, historical keys, diagnostics after rollback, enrichment without duplicates

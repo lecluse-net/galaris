@@ -1751,6 +1751,140 @@ async def test_repeated_worker_restarts_do_not_exhaust_conversation_retries(db):
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("action", ["pause", "stop", "respond"])
+@pytest.mark.parametrize("running", [False, True])
+async def test_human_control_keeps_inputs_and_suppresses_unfinished_answer(db, action, running):
+    from app.conversation import control_round, list_room_activity
+    agent, connection, room = await _scope(db)
+    message = await _message(db, connection, room, 1, "Prepare a synthetic answer")
+    await admit_message(message, agent_id=agent.id, connection_id=connection.id)
+    if running:
+        round_ = await claim_next_round("controlled-worker")
+        turn = await build_turn(round_.id, lease_token=round_.lease_token)
+    else:
+        round_ = await db.scalar(select(ConversationRound).where(ConversationRound.room_id == room.id))
+    token = round_.lease_token
+    command = await control_round(room.id, round_.id, action, expected_attempt=round_.attempt_count)
+    await db.refresh(round_)
+    if running:
+        assert command.control_action == action
+        assert round_.lease_token == token
+        assert await turn.should_interrupt()
+        assert not await turn.assert_fresh_before_effect()
+        assert await claim_next_round("competing-worker") is None
+        await complete_round(round_.id, ConversationOutcome(text="Unfinished answer"), lease_token=token)
+        await db.refresh(round_)
+    expected = {"pause": "PAUSED", "stop": "CANCELLED", "respond": "FROZEN"}[action]
+    assert round_.status == expected
+    assert round_.lease_token is None
+    assert round_.delivery_state == ("SKIPPED" if action == "stop" else "PENDING")
+    links = list(await db.scalars(select(ConversationRoundMessage).where(ConversationRoundMessage.round_id == round_.id)))
+    assert len(links) == 1 and links[0].role == "input"
+    assert (links[0].consumed_at is not None) is (action == "stop")
+    page = await list_room_activity(room.id)
+    assert page.items[0].status == expected
+    assert page.items[0].attempt == (1 if running else 0)
+    if action == "pause":
+        assert await claim_next_round("after-pause") is None
+        await control_round(room.id, round_.id, "resume", expected_attempt=round_.attempt_count)
+    elif action == "stop":
+        result = await control_round(room.id, round_.id, "restart", expected_attempt=round_.attempt_count)
+        repeated = await control_round(room.id, round_.id, "restart", expected_attempt=round_.attempt_count)
+        assert repeated.round_id == result.round_id != round_.id
+        await db.refresh(round_)
+        assert round_.status == "CANCELLED"
+    resumed = await claim_next_round("resumed-worker")
+    resumed_turn = await build_turn(resumed.id, lease_token=resumed.lease_token)
+    assert "synthetic answer" in resumed_turn.objective
+    assert resumed_turn.force_response is (action == "respond")
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("action", ["pause", "stop"])
+@pytest.mark.parametrize("safe", [False, True])
+async def test_human_resume_preserves_receipts_and_refuses_uncertain_effects(db, action, safe):
+    from app.agent import AgentRunCheckpoint
+    from app.conversation import control_round, ConversationControlConflict
+    agent, connection, room = await _scope(db)
+    message = await _message(db, connection, room, 1, "Write a synthetic report once")
+    await admit_message(message, agent_id=agent.id, connection_id=connection.id)
+    round_ = await claim_next_round("effect-worker")
+    turn = await build_turn(round_.id, lease_token=round_.lease_token)
+    assert await turn.assert_fresh_before_effect()
+    checkpoint = AgentRunCheckpoint(driver_code="internal", runtime_run_id=str(round_.id), status="interrupted",
+        data={"version": 5, "resume_safe": safe, "effects": [{"tool_name": "synthetic_write",
+            "status": "completed" if safe else "started", "effect_policy": "non_idempotent", "result": "receipt"}]})
+    await turn.save_checkpoint(checkpoint)
+    await control_round(room.id, round_.id, action, expected_attempt=1)
+    await complete_round(round_.id, ConversationOutcome(text="", effect_started=True), lease_token=round_.lease_token)
+    await db.refresh(round_)
+    command = "resume" if action == "pause" else "restart"
+    if not safe:
+        with pytest.raises(ConversationControlConflict, match="cannot safely resume"):
+            await control_round(room.id, round_.id, command, expected_attempt=1)
+        assert await claim_next_round("unsafe-replay") is None
+    else:
+        await control_round(room.id, round_.id, command, expected_attempt=1)
+        resumed = await claim_next_round("safe-resume")
+        restored = await build_turn(resumed.id, lease_token=resumed.lease_token)
+        assert restored.resume_checkpoint.data == checkpoint.data
+        assert restored.resume_checkpoint.runtime_run_id == str(resumed.id)
+        assert resumed.effect_started
+
+
+@pytest.mark.asyncio
+async def test_control_rejects_wrong_room_old_attempt_and_terminal_response(db):
+    from app.conversation import control_round, ConversationControlConflict
+    agent, connection, room = await _scope(db)
+    message = await _message(db, connection, room, 1, "Synthetic request")
+    await admit_message(message, agent_id=agent.id, connection_id=connection.id)
+    round_ = await claim_next_round("worker")
+    await build_turn(round_.id, lease_token=round_.lease_token)
+    with pytest.raises(LookupError):
+        await control_round(uuid4(), round_.id, "stop", expected_attempt=1)
+    with pytest.raises(ConversationControlConflict, match="another attempt"):
+        await control_round(room.id, round_.id, "stop", expected_attempt=0)
+    await complete_round(round_.id, ConversationOutcome(text=""), lease_token=round_.lease_token)
+    with pytest.raises(ConversationControlConflict, match="no longer available"):
+        await control_round(room.id, round_.id, "pause", expected_attempt=1)
+
+
+@pytest.mark.asyncio
+async def test_resuming_a_paused_reply_does_not_interrupt_a_newer_running_reply(db):
+    from app.conversation import control_round, ConversationControlConflict
+    agent, connection, room = await _scope(db)
+    first = await _message(db, connection, room, 1, "Original synthetic request")
+    await admit_message(first, agent_id=agent.id, connection_id=connection.id)
+    paused = await db.scalar(select(ConversationRound).where(ConversationRound.room_id == room.id))
+    await control_round(room.id, paused.id, "pause", expected_attempt=0)
+    newer = await _message(db, connection, room, 2, "Newer synthetic request")
+    await admit_message(newer, agent_id=agent.id, connection_id=connection.id)
+    current = await claim_next_round("newer-worker")
+    await build_turn(current.id, lease_token=current.lease_token)
+    with pytest.raises(ConversationControlConflict, match="newer message"):
+        await control_round(room.id, paused.id, "resume", expected_attempt=0)
+    await db.refresh(current)
+    assert current.status == "RUNNING" and current.lease_token is not None
+    await db.refresh(paused)
+    assert paused.status == "PAUSED"
+
+
+@pytest.mark.asyncio
+async def test_reply_only_mode_survives_pause_and_resume(db):
+    from app.conversation import control_round
+    agent, connection, room = await _scope(db)
+    message = await _message(db, connection, room, 1, "Synthetic immediate reply")
+    await admit_message(message, agent_id=agent.id, connection_id=connection.id)
+    round_ = await db.scalar(select(ConversationRound).where(ConversationRound.room_id == room.id))
+    await control_round(room.id, round_.id, "respond", expected_attempt=0)
+    await control_round(room.id, round_.id, "pause", expected_attempt=0)
+    await control_round(room.id, round_.id, "resume", expected_attempt=0)
+    resumed = await claim_next_round("reply-only-worker")
+    turn = await build_turn(resumed.id, lease_token=resumed.lease_token)
+    assert turn.force_response
+
+
+@pytest.mark.asyncio
 @pytest.mark.parametrize("state", ["completed", "preparing_task", "unknown", "missing", "corrupt"])
 async def test_worker_restart_preserves_receipts_and_refuses_uncertain_mutations(db, state):
     from app.agent import AgentRunCheckpoint

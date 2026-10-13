@@ -29,6 +29,24 @@ class _CountingTestModel(TestModel):
         return RequestUsage(input_tokens=1)
 
 
+def test_reply_now_closes_unexecuted_tools_and_preserves_confirmed_results() -> None:
+    from pydantic_ai.messages import ModelRequest, ModelResponse, ToolCallPart, ToolReturnPart
+    from app.harness.runtime import _response_only_history
+    response = ModelResponse(parts=[
+        ToolCallPart("read_report", "{}", tool_call_id="read"),
+        ToolCallPart("send_report", "{}", tool_call_id="send"),
+    ])
+    confirmed = ToolReturnPart("read_report", {"content": "Verified synthetic content"}, tool_call_id="read")
+    request = ModelRequest(parts=[confirmed])
+    closed = _response_only_history([response, request])
+    assert len(closed) == 2
+    assert request.parts == [confirmed]
+    returns = closed[-1].parts
+    assert returns[0] == confirmed
+    assert returns[1].tool_call_id == "send"
+    assert returns[1].content["status"] == "not_executed"
+
+
 def test_pydantic_history_keeps_file_only_message_reference() -> None:
     from pydantic_ai.messages import ModelRequest, UserPromptPart
 
@@ -145,8 +163,10 @@ def test_pydantic_history_context_uses_runtime_self_identity() -> None:
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("response_only", [False, True])
 async def test_internal_prompt_is_sent_with_existing_message_history(
     monkeypatch: pytest.MonkeyPatch,
+    response_only: bool,
 ) -> None:
     model = _CountingTestModel(call_tools=[])
 
@@ -156,9 +176,14 @@ async def test_internal_prompt_is_sent_with_existing_message_history(
     monkeypatch.setattr(runtime, "build_model_for_llm", fake_build_model)
     monkeypatch.setattr(runtime, "estimate_cost_from_usage", lambda *_args: 0.0)
 
+    def forbidden_tool() -> str:
+        raise AssertionError("Reply now must not execute tools")
+
     agent = Agent(
         cast(LLM, SimpleNamespace()),
         system_prompt="SYSTEM SENTINEL: conversation_task_submit is available.",
+        response_only=response_only,
+        tools=[forbidden_tool] if response_only else [],
     )
     await agent.init()
 
@@ -177,3 +202,5 @@ async def test_internal_prompt_is_sent_with_existing_message_history(
         "SYSTEM SENTINEL: conversation_task_submit is available."
     ]
     assert output
+    if response_only:
+        assert model.last_model_request_parameters.function_tools == []

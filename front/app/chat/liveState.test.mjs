@@ -29,6 +29,27 @@ const emptyResult = {
   success: true,
 }
 
+test('paused and stopped replies remain controllable after reopening without runtime events', () => {
+  const input = { id: 'input-1', external_id: 'input-remote', text: 'Synthetic request' }
+  for (const status of ['PAUSED', 'CANCELLED']) {
+    const item = { ...activity('round-live', status), message_ids: [input.id] }
+    const entries = conversationTimelineEntries('room-1', [input], [item], null)
+    assert.equal(entries.length, 2)
+    assert.equal(entries[1].activity.id, item.id)
+    assert.equal(entries[1].liveRound, null)
+  }
+})
+
+test('a resumed attempt replaces the previous terminal stream when HTTP arrives first', () => {
+  const previous = liveRound({ active: false, terminal_received: true, attempt: 1 })
+  const resumed = reconcileLiveRoundFromActivity(previous, 'room-1', [
+    { ...activity('round-live', 'RUNNING'), attempt: 2 },
+  ], true, id => startLiveConversationRound(null, 'room-1', id, -1))
+  assert.equal(resumed.active, true)
+  assert.equal(resumed.attempt, 2)
+  assert.equal(resumed.terminal_received, undefined)
+})
+
 function liveRound(overrides = {}) {
   return {
     room_id: 'room-1',

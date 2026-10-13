@@ -456,7 +456,7 @@ class HarnessConversationController:
 
     async def run(self, turn: ConversationTurn) -> ConversationOutcome:
         async with get_db_session():
-            stop_task_id = _stop_target(turn)
+            stop_task_id = None if turn.force_response else _stop_target(turn)
             if stop_task_id is not None:
                 from app.conversation.mcp import conversation_task_stop
 
@@ -490,7 +490,7 @@ class HarnessConversationController:
                 directive_text,
                 task_requested=turn.direct_task_requested,
             )
-            if direct_task is not None:
+            if direct_task is not None and not turn.force_response:
                 if direct_task.error is not None:
                     return _deterministic_text_outcome(
                         turn,
@@ -572,7 +572,7 @@ class HarnessConversationController:
                 except ValueError:
                     continue
             dispatch_messages.extend(turn.messages)
-            dispatch_result = await run_preparation(turn, lambda: dispatch_conversation(
+            dispatch_result = None if turn.force_response else await run_preparation(turn, lambda: dispatch_conversation(
                 round_id=turn.round_id,
                 run_id=turn.round_id,
                 agent_id=turn.agent_id,
@@ -582,10 +582,12 @@ class HarnessConversationController:
                 sender_is_ai=turn.sender_is_ai,
                 agent_loader=lambda: agent_service.get(turn.agent_id),
             ))
-            dispatch_trace = dispatch_result.model_dump(mode="json")
-            if not dispatch_result.success:
+            dispatch_trace = dispatch_result.model_dump(mode="json") if dispatch_result else {"forced_response": True}
+            dispatch_time = dispatch_result.execution_time if dispatch_result else 0.0
+            dispatch_cost = dispatch_result.cost if dispatch_result else 0.0
+            if dispatch_result is not None and not dispatch_result.success:
                 raise RuntimeError(dispatch_result.decision.reasoning)
-            if dispatch_result.decision.route == "END":
+            if dispatch_result is not None and dispatch_result.decision.route == "END":
                 return ConversationOutcome(
                     text="",
                     execution_result=ExecutionResult(
@@ -605,7 +607,7 @@ class HarnessConversationController:
                     ),
                 )
 
-            if dispatch_result.conversation_route_directive is not None:
+            if dispatch_result is not None and dispatch_result.conversation_route_directive is not None:
                 admission = turn.admit_background_task
                 if admission is None:
                     raise RuntimeError(
@@ -750,7 +752,7 @@ class HarnessConversationController:
                 model=ResolvedModel(id=llm.id, code=llm.code, model_name=llm.llm_name, label=llm.label, requested_effort="standard"),
                 resume_checkpoint=turn.resume_checkpoint, control=AgentRunControl(save_checkpoint=turn.save_checkpoint),
             )) if turn.save_checkpoint is not None else None
-            capabilities = await build_eager_skill_capabilities(turn.agent_id)
+            capabilities = [] if turn.force_response else await build_eager_skill_capabilities(turn.agent_id)
             runtime = await create_agent(
                 llm=llm,
                 system_prompt=_system_prompt(
@@ -764,7 +766,8 @@ class HarnessConversationController:
                     suffix=prompt_suffix,
                     action_policy=action_policy,
                 ),
-                mcp_servers=[toolset],
+                mcp_servers=[] if turn.force_response else [toolset],
+                response_only=turn.force_response,
                 capabilities=(
                     [*capabilities, interruption.hooks]
                     if interruption is not None else capabilities
@@ -791,6 +794,13 @@ class HarnessConversationController:
             started_at = time.monotonic()
             failure: str | None = None
             current_prompt = _current_turn_prompt(turn)
+            if turn.force_response:
+                current_prompt += (
+                    "\n\nThe user clicked Reply now. Answer the current request now using only "
+                    "the information and completed tool results already available. Do not call tools, "
+                    "start background work, or repeat completed actions. State any missing information "
+                    "briefly. A useful partial answer is preferred to silence."
+                )
 
             progress_publisher = turn.publish_progress
             text_progress = (
@@ -929,10 +939,10 @@ class HarnessConversationController:
                     )
                 )
             execution_result.execution_time = (
-                time.monotonic() - started_at + dispatch_result.execution_time
+                time.monotonic() - started_at + dispatch_time
             )
             execution_result.reconcile_terminal_text(text)
-            execution_result.cost = traced_runtime.cost + dispatch_result.cost
+            execution_result.cost = traced_runtime.cost + dispatch_cost
             if getattr(traced_runtime, "profile_fallback_used", False) is True:
                 from app.agent import aggregate_llm_run_usage
 

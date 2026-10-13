@@ -15,7 +15,7 @@ from starlette.background import BackgroundTask
 from core.authorize import authorize, check_privilege, independent_auth
 from core import websocket
 from core.database import get_db
-from core.i18n import current_language
+from core.i18n import current_language, tr
 from core.params import runtime_settings
 from core.user import user_service
 from app.agent import (
@@ -71,6 +71,7 @@ from app.messenger import (
 from app.messenger.interface import ObservedMessengerFile
 from app.messenger.contracts import DocumentFocus
 from app.conversation import (
+    control_round, ConversationControlConflict, ConversationControlResult,
     ConversationActivityDetail,
     ConversationActivityPage,
     ConversationDocumentList,
@@ -101,6 +102,7 @@ from .emoji_service import (
 )
 from .thumbnail_service import schedule_html_thumbnail
 from .schemas import (
+    ConversationControlCommand,
     InteractionAnswer,
     ActiveCall,
     ArchiveUpdate,
@@ -923,6 +925,20 @@ async def read_activity_detail(
     if detail is None:
         raise _not_found()
     return detail
+
+
+@router.post("/rooms/{room_id}/activity/{round_id}/control", response_model=ConversationControlResult)
+@authorize(privileges=SEND, assertion=InternalRoomAccessAssertion)
+async def control_response(
+    room_id: UUID, round_id: UUID, command: ConversationControlCommand,
+) -> ConversationControlResult:
+    _require_enabled()
+    try:
+        return await control_round(room_id, round_id, command.action, expected_attempt=command.expected_attempt)
+    except LookupError as exc:
+        raise _not_found() from exc
+    except ConversationControlConflict as exc:
+        raise HTTPException(status_code=409, detail=await tr(f"conversation.control.{exc.code}")) from exc
 
 
 @router.get("/rooms/{room_id}/tasks", response_model=ConversationTaskTree)

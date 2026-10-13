@@ -254,6 +254,15 @@ Après l'admission de votre message, « Réflexion en cours » apparaît dès qu
 round en attente est reçu par l'interface, avant ses premiers fragments. Une
 réponse déjà en cours reste affichée si vous envoyez une nouvelle demande.
 
+Dans une discussion native, les petits boutons à côté de « Réflexion en cours » donnent
+la main sur cette réponse : **Pause** conserve l’avancement, **Reprendre** continue depuis
+ce point, **Stop** termine la réponse et **Relancer** ouvre une nouvelle exécution avec
+les résultats sauvegardés. **Répondre maintenant** demande une réponse avec les éléments
+disponibles, sans nouveaux outils. Un outil déjà engagé termine avant l’arrêt ; les actions
+accomplies ne sont pas annulées. Une reprise dont les effets précédents sont incertains est
+refusée. Les états pause et arrêt restent visibles après réouverture. Ces commandes visent
+la réponse conversationnelle ; les tâches et processus de fond ont leurs propres commandes.
+
 Avant de sélectionner une conversation, l’accueil de **Discussion** affiche d’abord les
 **Conversations récentes** ayant reçu un nouveau message durant les **7 derniers jours**,
 de la plus récente à la plus ancienne. Le bouton **+** affiche toutes les conversations,

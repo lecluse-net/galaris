@@ -63,7 +63,7 @@ const statusTone = computed<StatusBadgeTone>(() => {
   if (!status || status === 'FROZEN') return 'warning'
   if (status === 'SUCCEEDED' || status === 'COMPLETED') return 'success'
   if (['RUNNING', 'CLAIMED'].includes(status)) return 'active'
-  if (status === 'SUPERSEDED' || status === 'CANCELLED') return 'neutral'
+  if (status === 'SUPERSEDED' || status === 'CANCELLED' || status === 'PAUSED') return 'neutral'
   if (status === 'INTERRUPTED') return 'warning'
   return 'error'
 })

@@ -559,6 +559,38 @@ def _close_dangling_tool_calls(
     return [*messages, _pydantic_messages.ModelRequest(parts=returns)]
 
 
+def _response_only_history(
+    history: list[_pydantic_messages.ModelMessage],
+) -> list[_pydantic_messages.ModelMessage]:
+    """Close unexecuted calls without approving or dispatching them during Reply now."""
+    closed: list[_pydantic_messages.ModelMessage] = []
+    skip_index: int | None = None
+    for index, message in enumerate(history):
+        if index == skip_index:
+            continue
+        closed.append(message)
+        if not isinstance(message, _pydantic_messages.ModelResponse):
+            continue
+        following = history[index + 1] if index + 1 < len(history) else None
+        answers: Sequence[_pydantic_messages.ModelRequestPart] = (
+            following.parts if isinstance(following, _pydantic_messages.ModelRequest) else []
+        )
+        answered = {part.tool_call_id for part in answers
+                    if isinstance(part, (_pydantic_messages.ToolReturnPart, _pydantic_messages.RetryPromptPart))}
+        missing = [_pydantic_messages.ToolReturnPart(
+            tool_name=part.tool_name, tool_call_id=part.tool_call_id,
+            content={"status": "not_executed", "reason": "The user requested a reply without new tools."},
+        ) for part in message.parts if isinstance(part, _pydantic_messages.ToolCallPart)
+                   and part.tool_call_id not in answered]
+        if missing:
+            if isinstance(following, _pydantic_messages.ModelRequest):
+                closed.append(replace(following, parts=[*following.parts, *missing]))
+                skip_index = index + 1
+            else:
+                closed.append(_pydantic_messages.ModelRequest(parts=missing))
+    return closed
+
+
 def _reasoning_recovery_history(
     messages: list[_pydantic_messages.ModelMessage],
 ) -> list[_pydantic_messages.ModelMessage]:
@@ -799,6 +831,7 @@ class Agent(AgentRuntime):
         purpose: LLMCallPurpose = LLMCallPurpose.AGENT_EXEC,
         checkpoint: HarnessRunCheckpoint | None = None,
         reasoning_effort: ReasoningEffort | None = None,
+        response_only: bool = False,
     ) -> None:
         self.llm: LLM = llm
         self.system_prompt = system_prompt
@@ -806,6 +839,10 @@ class Agent(AgentRuntime):
         self._tools = list(tools or [])
         self._mcp_servers = list(mcp_servers or [])
         self._capabilities = list(capabilities or [])
+        self._response_only = response_only
+        if response_only:
+            self._tools = []
+            self._mcp_servers = []
         self._task_id = task_id
         self._agent_run_id = agent_run_id
         self._conversation_round_id = conversation_round_id
@@ -979,14 +1016,14 @@ class Agent(AgentRuntime):
                     id="galaris-tool-progress-guidance",
                 ),
                 Hooks(before_model_request=self._observe_model_request, id="galaris-model-call-control"),
-                ToolSearch(
+                *([ToolSearch(
                     strategy=self._search_deferred_tools,
                     max_results=10,
                     tool_description=(
                         "Search the remaining authorized MCP tools by intent. "
                         "Use this when the eager tools do not cover the task."
                     ),
-                ),
+                )] if not self._response_only else []),
                 *self._capabilities,
             ],
             model_settings=model_settings,
@@ -1098,11 +1135,12 @@ class Agent(AgentRuntime):
         if active_checkpoint is not None:
             await active_checkpoint.prepare_resume()
             from app.tools.facade import AuthorizationRequired
-            try:
-                deferred_results = await active_checkpoint.deferred_results()
-            except AuthorizationRequired as pending:
-                self.authorization_requests = [pending.request_id]
-                return
+            if not self._response_only:
+                try:
+                    deferred_results = await active_checkpoint.deferred_results()
+                except AuthorizationRequired as pending:
+                    self.authorization_requests = [pending.request_id]
+                    return
         native_inputs: dict[str, NativeInput] = {}
         if self._agent_id is not None and not (active_checkpoint is not None and active_checkpoint.history):
             from app.file_share import ResourceContext
@@ -1121,6 +1159,8 @@ class Agent(AgentRuntime):
             )
             if active_checkpoint.request.data.get("reasoning_recovery_requested"):
                 pydantic_history = _reasoning_recovery_history(pydantic_history)
+            if self._response_only:
+                pydantic_history = _response_only_history(pydantic_history)
         elif message_history:
             pydantic_history = _convert_message_history_to_pydantic(message_history, self_id, native_inputs)
 
@@ -1778,6 +1818,7 @@ async def create_agent(
     purpose: LLMCallPurpose = LLMCallPurpose.AGENT_EXEC,
     checkpoint: HarnessRunCheckpoint | None = None,
     reasoning_effort: ReasoningEffort | None = None,
+    response_only: bool = False,
 ) -> AgentRuntime:
     """Create and initialize a Pydantic AI agent runtime."""
     agent = Agent(
@@ -1796,6 +1837,7 @@ async def create_agent(
         purpose=purpose,
         checkpoint=checkpoint,
         reasoning_effort=reasoning_effort,
+        response_only=response_only,
     )
 
     await agent.init()

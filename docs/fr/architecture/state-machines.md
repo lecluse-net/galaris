@@ -216,11 +216,26 @@ toute l'exécution ; la perte de ce token annule le flux local avant toute récu
 | État du round | Transition |
 |---|---|
 | `CLAIMED` | construction du tour → `RUNNING` |
+| `FROZEN`, `CLAIMED`, `RUNNING`, `WAITING_APPROVAL` | commande humaine Pause, après l’outil engagé → `PAUSED` |
+| `PAUSED` | Reprendre, checkpoint sûr et aucun successeur en attente → `FROZEN` |
+| actif ou `PAUSED` | Stop, après l’outil engagé → `CANCELLED`, aucune réponse livrée |
+| `CANCELLED` | Relancer → nouveau round `FROZEN` lié, ancien round inchangé |
+| actif ou `PAUSED` | Répondre maintenant → `FROZEN` en mode réponse sans outils, puis tentative normale |
 | `RUNNING` sans nouvel input | réponse livrée → `SUCCEEDED` |
 | `RUNNING` avec nouvel input, sans effet | garde finale → `SUPERSEDED` |
 | `RUNNING` avec nouvel input, après effet | réponse supprimée → `SUCCEEDED` |
 | actif, worker interrompu, reprise sûre | arrêt propre → `FROZEN` ; lease expiré → nouvelle tentative `CLAIMED` |
 | effet incertain ou budget d'erreurs épuisé | résolution dégradée → `ERROR_RESOLVED` |
+
+Les commandes humaines persistent `control_action` et visent le numéro
+de tentative observé. Le polling de préparation et les hooks du modèle les observent entre
+les effets ; la garde d’effet refuse toute nouvelle action après la commande. Le lease reste
+détenu jusqu’à la sauvegarde du checkpoint. Les pauses humaines terminent leur tentative en
+`USER_PAUSED`, les arrêts en `USER_STOPPED`, sans consommer le budget d’erreurs. Relancer
+réutilise seulement un checkpoint sûr, dans un nouveau round ; les outils et résultats déjà
+acquis restent enregistrés. Répondre maintenant contourne le dispatcher et retire outils,
+recherche d’outils et capacités de skills du run. Ces commandes HTTP exigent `CHAT_SEND`
+et l’accès à la room native ; elles ne contrôlent ni la voix ni les travaux de fond.
 
 Un arrêt de worker termine sa tentative en `INTERRUPTED` et ne consomme pas le budget de
 deux erreurs réelles. Les numéros de tentative restent monotones. Au shutdown, préparations

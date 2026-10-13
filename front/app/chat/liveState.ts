@@ -8,6 +8,7 @@ import type {
 import { currentAIResponse } from '../task/facade.ts'
 
 export interface ConversationTimelineEntry {
+  activity?: ConversationActivity
   key: string
   message: MessengerMessage | null
   liveRound: LiveAgentRound | null
@@ -167,6 +168,9 @@ export function reconcileLiveRoundFromActivity(
     ['FROZEN', 'PENDING', 'CLAIMED', 'RUNNING'].includes(item.status)
   ))
   const running = runningRounds[0]
+  const resumed = running && current?.round_id === running.id && !current.active
+    && (running.attempt ?? 0) > (current.attempt ?? 0)
+  if (resumed) return { ...createRound(running.id), attempt: running.attempt }
 
   // Runtime events are the live authority. Ordinary message/activity refreshes can lag
   // behind them and must never hide or replace an already streaming response.
@@ -254,6 +258,15 @@ export function conversationTimelineEntries(
       liveRound,
       pendingTranscription: null,
     })
+  }
+  // Paused/stopped responses remain controllable after navigation or a reload,
+  // including when the runtime never emitted any text.
+  for (const item of [...activity].reverse()) {
+    if (!['PAUSED', 'CANCELLED'].includes(item.status) || item.response_message_id
+      || entries.some(entry => entry.liveRound?.round_id === item.id)
+      || !item.message_ids?.some(id => messages.some(message => message.id === id))) continue
+    entries.push({ key: `response:${item.id}`, message: null, liveRound: null,
+      activity: item, pendingTranscription: null })
   }
   for (const pendingTranscription of pendingTranscriptions) {
     if (pendingTranscription.room_id !== roomId) continue

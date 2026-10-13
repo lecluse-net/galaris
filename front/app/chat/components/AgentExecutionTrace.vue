@@ -1,5 +1,6 @@
 <template>
   <section v-if="visible" class="execution-trace" :class="{ 'execution-trace--error': hasError, 'execution-trace--warning': rewriting }">
+    <div class="trace-header">
     <button type="button" class="trace-summary" :aria-expanded="expanded" @click="toggleTrace">
       <q-icon :name="summaryIcon" class="summary-icon" />
       <span class="summary-label">{{ summaryLabel }}</span>
@@ -21,6 +22,16 @@
         <q-icon :name="expanded ? 'expand_less' : 'expand_more'" />
       </span>
     </button>
+    <div v-if="canControl && actions.length" class="trace-controls">
+      <q-btn v-for="action in actions" :key="action" flat round dense size="sm"
+        :icon="controlIcons[action]" :aria-label="t(`chat.responseControl.${action}`)"
+        :disable="pendingAction !== null" :loading="pendingAction === action"
+        @click="control(action)">
+        <q-tooltip>{{ t(`chat.responseControl.${action}Hint`) }}</q-tooltip>
+      </q-btn>
+    </div>
+    </div>
+    <div v-if="controlError" class="trace-error" role="alert">{{ controlError }}</div>
 
     <q-slide-transition>
       <div v-show="expanded" class="trace-detail">
@@ -56,19 +67,49 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { usePrivilegeStore, privileges } from '@/core/authorize'
 import { apiErrorDetail } from '@/core/api'
 import { websocket } from '@/core/websocket'
 import { conversationService, ConversationExecutionDetails, type ConversationRoundDetail } from '@/app/conversation'
 import { ExecutionResultComponent, reconcileAIResult, type ExecutionResult } from '@/app/task'
-import type { ConversationActivity, LiveAgentRound } from '../types'
+import type { ConversationActivity, ConversationControlAction, LiveAgentRound } from '../types'
+import { chatService } from '../services/chatService'
 import { conversationRoundId } from '../liveState'
 
 const props = defineProps<{
   roomId: string
   activity?: ConversationActivity
   liveRound?: LiveAgentRound | null
+  allowControl?: boolean
 }>()
+const emit = defineEmits<{ controlled: [] }>()
 const { t } = useI18n()
+const privilegeStore = usePrivilegeStore()
+const pendingAction = ref<ConversationControlAction | null>(null)
+const controlError = ref('')
+const actions = computed(() => props.activity?.available_actions ?? [])
+const canControl = computed(() => props.allowControl && privilegeStore.hasPrivilege(privileges.CHAT_SEND))
+const controlIcons: Record<ConversationControlAction, string> = {
+  pause: 'pause', stop: 'stop', resume: 'play_arrow', restart: 'replay', respond: 'quickreply',
+}
+async function control(action: ConversationControlAction): Promise<void> {
+  const id = roundId.value
+  if (!id || pendingAction.value || !canControl.value) return
+  const roomId = props.roomId
+  pendingAction.value = action
+  controlError.value = ''
+  try {
+    await chatService.controlResponse(roomId, id, action, Math.max(props.activity?.attempt ?? 0, props.liveRound?.attempt ?? 0))
+    if (roomId !== props.roomId || id !== roundId.value) return
+    emit('controlled')
+  } catch (error) {
+    if (roomId !== props.roomId || id !== roundId.value) return
+    controlError.value = apiErrorDetail(error) ?? t('chat.responseControl.error')
+    emit('controlled')
+  } finally {
+    if (roomId === props.roomId && id === roundId.value) pendingAction.value = null
+  }
+}
 const expanded = ref(false)
 const loading = ref(false)
 const loadError = ref('')
@@ -79,6 +120,7 @@ const llmCallsLoading = ref(false)
 const llmCallsError = ref('')
 const roundId = computed(() => conversationRoundId(props.activity, props.liveRound))
 const detailStatus = computed(() => {
+  if (props.activity && ['PAUSED', 'CANCELLED'].includes(props.activity.status)) return props.activity.status
   if (props.liveRound?.active) return 'RUNNING'
   if (props.liveRound) return props.liveRound.success ? 'SUCCEEDED' : 'FAILED'
   return props.activity?.status ?? roundDetail.value?.status
@@ -90,16 +132,23 @@ type ToolTone = 'web' | 'file' | 'task' | 'message' | 'media' | 'code' | 'calend
 interface ToolSummary { name: string; icon: string; tone: ToolTone }
 
 const visible = computed(() => Boolean(props.liveRound || props.activity))
-const rewriting = computed(() => Boolean(
+const rewriting = computed(() => !props.activity?.control_action && !props.activity?.response_only
+  && !['PAUSED', 'CANCELLED'].includes(props.activity?.status ?? '') && Boolean(
   props.activity?.status === 'SUPERSEDED'
   || props.liveRound?.ai_result.metadata?.interrupted_by_new_input === true,
 ))
-const hasError = computed(() => !rewriting.value && Boolean(
+const hasError = computed(() => !['PAUSED', 'CANCELLED'].includes(props.activity?.status ?? '') && !rewriting.value && Boolean(
   props.liveRound && !props.liveRound.active && !props.liveRound.success
   || props.activity && ['FAILED', 'ERROR_RESOLVED', 'CANCELLED'].includes(props.activity.status),
 ))
-const summaryIcon = computed(() => rewriting.value ? 'autorenew' : hasError.value ? 'error' : props.liveRound?.active ? 'psychology' : 'settings_suggest')
+const summaryIcon = computed(() => props.activity?.status === 'PAUSED' ? 'pause' : props.activity?.status === 'CANCELLED' ? 'stop' : rewriting.value ? 'autorenew' : hasError.value ? 'error' : props.liveRound?.active ? 'psychology' : 'settings_suggest')
 const summaryLabel = computed(() => {
+  if (props.activity?.control_action === 'pause') return t('chat.responseControl.pausing')
+  if (props.activity?.control_action === 'stop') return t('chat.responseControl.stopping')
+  if (props.activity?.control_action === 'respond') return t('chat.responseControl.responding')
+  if (props.activity?.status === 'PAUSED') return t('chat.responseControl.paused')
+  if (props.activity?.status === 'CANCELLED') return t('chat.responseControl.stopped')
+  if (props.liveRound?.active && props.activity?.response_only) return t('chat.responseControl.responding')
   if (rewriting.value) return t('chat.rewritingResponse')
   if (hasError.value) return t('chat.executionProblem')
   if (props.liveRound?.active) return t('chat.thinking')
@@ -226,6 +275,8 @@ function formatDuration(seconds: number): string { return seconds < 1 ? `${Math.
 function formatCost(cost: number): string { return new Intl.NumberFormat(undefined, { style: 'currency', currency: 'USD', currencyDisplay: 'narrowSymbol', maximumFractionDigits: 4 }).format(cost) }
 
 watch(roundId, () => {
+  pendingAction.value = null
+  controlError.value = ''
   detailRequest += 1
   loading.value = false
   llmCallsLoading.value = false
@@ -295,6 +346,9 @@ onBeforeUnmount(() => {
 .execution-trace--warning .summary-icon { color: var(--solaire-orange-accent); }
 body.body--dark .execution-trace--warning { color: var(--chat-text-secondary, #EEEEF0); background: var(--solaire-orange-dark); }
 .trace-summary { display: flex; width: 100%; min-height: 34px; align-items: center; flex-wrap: wrap; gap: 5px 7px; padding: 6px 9px; color: inherit; background: transparent; border: 0; font: inherit; text-align: left; cursor: pointer; }
+.trace-header { display: flex; align-items: center; flex-wrap: wrap; }
+.trace-header .trace-summary { flex: 1; width: auto; min-width: 0; }
+.trace-controls { display: flex; gap: 2px; padding: 2px 6px; color: var(--solaire-blue-accent); }
 .summary-icon { font-size: 18px; }
 .summary-label { font-size: .75rem; font-weight: 650; }
 .summary-tail { display: inline-flex; flex: 0 0 auto; align-items: center; gap: 7px; margin-left: auto; }

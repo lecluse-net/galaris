@@ -8,6 +8,7 @@ from uuid import uuid4
 import pytest
 
 from app.conversation import activity_facade
+from app.conversation.models import ConversationRound
 
 
 class _Rows:
@@ -27,11 +28,15 @@ async def test_activity_summary_correlates_every_round_message(
     input_message_id = uuid4()
     output_message_id = uuid4()
     topic_id = uuid4()
-    row = SimpleNamespace(
+    row = ConversationRound(
         id=round_id,
         room_id=room_id,
         topic_id=topic_id,
         status="SUCCEEDED",
+        delivery_state="DELIVERED",
+        control_action=None,
+        response_only=False,
+        attempt_count=1,
         effect_started=False,
         execution_result={},
         created_at=datetime.now(timezone.utc),

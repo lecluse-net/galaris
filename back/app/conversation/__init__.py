@@ -28,6 +28,7 @@ from .contracts import (
     public_ai_result,
 )
 from .controller import register_controller
+from .contracts import ConversationControlAction, ConversationControlConflict, ConversationControlResult
 from .preparation import ConversationSuperseded, ConversationSuspended, run_preparation
 from .document_display import (
     can_display_conversation_document,
@@ -75,9 +76,10 @@ from .models import (
     ConversationRoundMessage,
     ConversationTaskLink,
 )
-from .service import linked_work_snapshot
+from .service import linked_work_snapshot, control_round
 
 __all__ = [
+    "control_round", "ConversationControlAction", "ConversationControlConflict", "ConversationControlResult",
     "ConversationSuperseded",
     "ConversationSuspended",
     "run_preparation",

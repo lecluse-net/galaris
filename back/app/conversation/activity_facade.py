@@ -23,6 +23,7 @@ from .models import (
 )
 from .trace_projection import public_mapping, public_number, public_text
 from .runtime import room_runtime_snapshot
+from .control_service import available_round_actions
 
 
 def _tools(result: Mapping[str, object]) -> list[str]:
@@ -164,6 +165,10 @@ async def list_room_activity(
                 message_ids=message_ids_by_round.get(row.id, []),
                 topic_id=row.topic_id,
                 status=row.status,
+                control_action=row.control_action,
+                available_actions=available_round_actions(row),
+                attempt=row.attempt_count,
+                response_only=row.response_only,
                 effect_started=row.effect_started,
                 tools_used=_tools(result),
                 execution_time=public_number(result.get("execution_time")),

@@ -54,6 +54,7 @@ from core.user.models import User
 from core.user.user_service import encrypt_password
 from tests.e2e_tool_admin import router as tool_admin_fixture, remote_app as tool_admin_remote
 from tests import e2e_call_recovery
+from tests import e2e_conversation_control
 from app.harness.executor import stream as internal_task_stream
 from app.harness.runtime import build_model_for_llm as original_model_builder
 
@@ -65,6 +66,9 @@ quota_fixture = {"used": 2500, "status": 200, "codex_credits": 125.5}
 
 class ScriptedController:
     async def run(self, turn: ConversationTurn) -> ConversationOutcome:
+        if modes.get(turn.room_id) == "conversation-control":
+            from app.harness.conversation import HarnessConversationController
+            return await HarnessConversationController().run(turn)
         assert turn.publish_progress is not None
         messages = [AIMessage(type="text", content="Réponse progressive")]
         await turn.publish_progress(messages[0])
@@ -130,6 +134,8 @@ async def task_stream(request):
 
 
 async def harness_model(llm, **kwargs):
+    if kwargs.get("agent_id") in e2e_conversation_control.states:
+        return await e2e_conversation_control.build_model(llm, **kwargs)
     if kwargs.get("agent_id") in e2e_call_recovery.states:
         return await e2e_call_recovery.build_model(llm, **kwargs)
     return await original_model_builder(llm, **kwargs)
@@ -182,6 +188,7 @@ async def lifespan(_app: FastAPI):
         patches.enter_context(patch("app.agent.facade.resolve_execution_model", task_model))
         patches.enter_context(patch("app.harness.executor.stream", task_stream))
         patches.enter_context(patch("app.harness.runtime.build_model_for_llm", harness_model))
+        patches.enter_context(patch("app.llm.structured_service.build_model_for_llm", harness_model))
         # External mail boundaries only; approval persistence, Chat and RBAC remain real.
         from bridge.mail.contracts import MailPollBatch
         patches.enter_context(patch("bridge.mail.smtp_client.SmtpClient.send", return_value=(1, 0)))
@@ -297,7 +304,7 @@ async def elevenlabs_voices():
 
 @app.post("/api/__test/seed")
 async def seed(mode: str = "normal", mfa: bool = False, llm_configured: bool = True):
-    if mode not in {"normal", "tools", "error", "task", "call-recovery", "missing-terminal", "interruptible", "mail", "file-catalogue"}:
+    if mode not in {"normal", "tools", "error", "task", "call-recovery", "conversation-control", "missing-terminal", "interruptible", "mail", "file-catalogue"}:
         raise HTTPException(400, "Unknown scenario")
     suffix = uuid4().hex[:12]
     async with get_db_session() as db:
@@ -353,6 +360,21 @@ async def seed(mode: str = "normal", mfa: bool = False, llm_configured: bool = T
                    "agent_id": agent.id}
         if mode == "call-recovery":
             e2e_call_recovery.register(agent.id)
+        if mode == "conversation-control":
+            # Other journeys can select an image-only installation profile.
+            # This real-harness scenario owns its text configuration.
+            from app.llm import LLM, LlmProfile
+            model = LLM(llm_provider_id=provider.id, code=f"control-{suffix}",
+                        llm_name=f"synthetic-control-{suffix}", label="Synthetic conversation control")
+            db.add(model)
+            await db.flush()
+            control_profile = LlmProfile(code=f"control-{suffix}", label="Synthetic conversation control",
+                                         text_low_llm_id=model.id, text_standard_llm_id=model.id)
+            db.add(control_profile)
+            await db.flush()
+            agent.profile_id = control_profile.id
+            await db.commit()
+            e2e_conversation_control.register(agent.id)
         if mode == 'file-catalogue':
             from tests.e2e_file_catalogue import seed_catalogue
             fixture.update(await seed_catalogue(agent.id, app.state.file_catalogue_root))
@@ -465,6 +487,12 @@ async def release(room_id: UUID):
     if room_id not in gates:
         raise HTTPException(404)
     gates[room_id].set()
+    async with get_db_session() as db:
+        from app.messenger import Room
+        room = await db.get(Room, room_id)
+        connection = await db.get(Connection, room.connection_id)
+        if connection.agent_id in e2e_conversation_control.states:
+            e2e_conversation_control.states[connection.agent_id]["gate"].set()
     return {"released": True}
 
 

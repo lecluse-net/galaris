@@ -100,6 +100,8 @@ class ConversationRound(Base):
         JSONB, nullable=True
     )
     encrypted_checkpoint: Mapped[str | None] = mapped_column(Text, nullable=True)
+    control_action: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    response_only: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="false")
     sequence: Mapped[int | None] = mapped_column(Integer, nullable=True)
     source_round_id: Mapped[UUID | None] = mapped_column(
         PGUUID(as_uuid=True),

@@ -19,6 +19,40 @@ from app.harness.runtime import Agent
 
 
 @pytest.mark.asyncio
+async def test_reply_now_answers_without_waiting_for_or_executing_a_pending_authorization(monkeypatch):
+    from unittest.mock import AsyncMock
+    from uuid import uuid4
+    from pydantic_ai.messages import ModelRequest, ToolCallPart, ToolReturnPart, ModelMessagesTypeAdapter
+    from app.harness.checkpoint import HarnessRunCheckpoint
+    from app.harness.tests.test_runtime_cancellation import _CountingFunctionModel, _request
+
+    checkpoint = HarnessRunCheckpoint(_request(AsyncMock()))
+    checkpoint.effects = [{"id": "pending-effect", "tool_name": "send_report", "tool_call_id": "pending",
+        "effect_policy": "non_idempotent", "status": "waiting_for_authorization", "outcome": "rejected",
+        "authorization_request_id": str(uuid4())}]
+    checkpoint.history = ModelMessagesTypeAdapter.dump_python([
+        ModelRequest(parts=[UserPromptPart("Prepare and send a synthetic report")]),
+        ModelResponse(parts=[ToolCallPart("send_report", "{}", tool_call_id="pending")]),
+    ], mode="json")
+
+    async def model(messages, info):
+        assert not info.function_tools
+        returns = [part for message in messages for part in message.parts if isinstance(part, ToolReturnPart)]
+        assert len(returns) == 1
+        assert returns[0].content["status"] == "not_executed"
+        yield "The report was prepared; sending still requires authorization."
+
+    monkeypatch.setattr(runtime, "build_model_for_llm", AsyncMock(return_value=_CountingFunctionModel(stream_function=model)))
+    monkeypatch.setattr(runtime, "estimate_cost_from_usage", lambda *_: 0.0)
+    agent = Agent(cast(Any, SimpleNamespace()), checkpoint=checkpoint, response_only=True)
+    await agent.init()
+    messages = [message async for message in agent.run("Reply now")]
+    assert "sending still requires authorization" in "".join(message.content for message in messages if message.type == "text")
+    assert not agent.authorization_requests
+    assert checkpoint.effects[0]["status"] == "waiting_for_authorization"
+
+
+@pytest.mark.asyncio
 @pytest.mark.parametrize("persistent", [False, True])
 async def test_reasoning_loop_redirects_model_preserves_effects_and_bounds_recovery(monkeypatch, persistent):
     from unittest.mock import AsyncMock

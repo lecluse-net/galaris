@@ -1,5 +1,11 @@
 default: dict[str, object] = {
     "conversation": {
+        "control": {
+            "unavailable": "Cette commande n’est plus disponible pour cette réponse. Actualisez la conversation.",
+            "attempt_changed": "L’agent a démarré une nouvelle tentative. Actualisez la conversation avant de la contrôler.",
+            "newer_input": "Une réponse plus récente est en attente ou en cours. Contrôlez cette réponse à sa place.",
+            "unsafe_resume": "L’exécution sauvegardée ne peut pas reprendre en sécurité. Vérifiez d’abord les effets des outils précédents.",
+        },
         "task_source_request": "Demande originale",
         "task_execution_context": "Contexte d’exécution",
         "delivery_resolution_conflict": "La livraison a changé ou la justification est insuffisante. Actualisez le détail avant de réessayer.",

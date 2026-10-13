@@ -55,7 +55,9 @@ export interface ChatViewerAgent { agent_id: number; code: string; display_name:
 export interface ChatIdentityMapping { tool_id: number; tool_code: string; tool_label: string; source: string; external_id: string | null; display_name: string | null }
 export interface Page<T> { items: T[]; total: number; page: number; page_size: number }
 export interface MessagePage<T> extends Page<T> { provider_history: boolean; history_has_more: boolean; history_next_cursor: string | null }
-export interface ConversationActivity { id: string; response_message_id: string | null; message_ids?: string[]; topic_id: string | null; status: string; effect_started: boolean; tools_used: string[]; execution_time: number; cost: number; process_started: boolean; created_at: string; finished_at: string | null }
+export type ConversationControlAction = 'pause' | 'stop' | 'resume' | 'restart' | 'respond'
+export interface ConversationControlResult { round_id: string; status: string; control_action: string | null }
+export interface ConversationActivity { id: string; response_message_id: string | null; message_ids?: string[]; topic_id: string | null; status: string; control_action?: string | null; response_only?: boolean; available_actions?: ConversationControlAction[]; attempt?: number; effect_started: boolean; tools_used: string[]; execution_time: number; cost: number; process_started: boolean; created_at: string; finished_at: string | null }
 export type ConversationInteractionKind = 'thinking' | 'tool_call' | 'ai_message' | 'error'
 export interface ConversationActivityInteraction { sequence: number; kind: ConversationInteractionKind; content: string; tool_name: string | null; arguments: Record<string, unknown>; result: Record<string, unknown>; success: boolean; execution_time: number; cost: number }
 export interface ConversationActivityDetail { id: string; status: string; success: boolean; execution_time: number; cost: number; result: string; tools_used: string[]; interactions: ConversationActivityInteraction[]; created_at: string; finished_at: string | null }

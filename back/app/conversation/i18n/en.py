@@ -1,5 +1,11 @@
 default: dict[str, object] = {
     "conversation": {
+        "control": {
+            "unavailable": "This command is no longer available for this response. Refresh the conversation.",
+            "attempt_changed": "The agent has started another attempt. Refresh the conversation before controlling it.",
+            "newer_input": "A newer response is waiting or running. Control that response instead.",
+            "unsafe_resume": "The saved execution cannot safely resume. Verify the previous tool effects first.",
+        },
         "task_source_request": "Original request",
         "task_execution_context": "Execution context",
         "delivery_resolution_conflict": "The delivery changed or verification evidence is insufficient. Refresh the details before trying again.",

@@ -90,6 +90,7 @@ def test_every_route_has_the_expected_privilege_and_resource_assertion() -> None
         "create_standalone_html_preview": (ACCESS, None),
         "read_activity": (ACCESS, ChatRoomAccessAssertion),
         "read_activity_detail": (ACCESS, ChatRoomAccessAssertion),
+        "control_response": (SEND, InternalRoomAccessAssertion),
         "read_room_tasks": (["TASK_ACCESS", "TASK_EDIT"], ChatRoomAccessAssertion),
         "read_room_documents": (
             ["MEMORY_ACCESS", "MEMORY_EDIT", "MEMORY_ADMIN"],
@@ -1066,6 +1067,26 @@ async def test_dictation_rejects_unsupported_audio_type(
         await transcribe_dictation(uuid4(), upload, "fr")
 
     assert raised.value.status_code == 415
+
+
+@pytest.mark.asyncio
+async def test_control_conflict_returns_a_localized_serializable_http_error(monkeypatch):
+    import json
+    from app.chat.schemas import ConversationControlCommand
+    from app.conversation import ConversationControlConflict
+
+    monkeypatch.setattr(router_module, "_require_enabled", Mock())
+    monkeypatch.setattr(router_module, "control_round", AsyncMock(
+        side_effect=ConversationControlConflict("The attempt changed", code="attempt_changed"),
+    ))
+    translate = AsyncMock(return_value="La tentative a changé.")
+    monkeypatch.setattr(router_module, "tr", translate)
+    with pytest.raises(HTTPException) as raised:
+        await router_module.control_response(uuid4(), uuid4(), ConversationControlCommand(action="stop", expected_attempt=1))
+    assert raised.value.status_code == 409
+    assert raised.value.detail == "La tentative a changé."
+    assert json.loads(json.dumps({"detail": raised.value.detail}))["detail"] == "La tentative a changé."
+    translate.assert_awaited_once_with("conversation.control.attempt_changed")
 
 
 def _context(*, room_id: object, file_id: object | None = None) -> AssertionContext:

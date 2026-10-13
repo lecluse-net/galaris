@@ -4,6 +4,8 @@
 
 - [0180 — Profil LLM secondaire par agent](0180-agent-secondary-llm-profile.md)
 
+- [0179 — Contrôle humain des réponses conversationnelles](0179-human-conversation-control.md)
+
 - [0178 — Reprise des conversations après interruption du worker](0178-conversation-worker-recovery.md)
 
 - [0177 — Accords mémorisés par type d’action des harnais](0177-runtime-action-type-consent.md)

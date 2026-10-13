@@ -19,6 +19,23 @@ from .trace_projection import public_mapping, public_text
 
 
 FreshnessGuard = Callable[[], Awaitable[bool]]
+ConversationControlAction = Literal["pause", "stop", "resume", "restart", "respond"]
+
+
+class ConversationControlConflict(ValueError):
+    """The requested command no longer applies to this exact conversation round."""
+
+    def __init__(
+        self, message: str, *, code: Literal["unavailable", "attempt_changed", "newer_input", "unsafe_resume"] = "unavailable",
+    ) -> None:
+        super().__init__(message)
+        self.code = code
+
+
+class ConversationControlResult(BaseModel):
+    round_id: UUID
+    status: str
+    control_action: str | None = None
 
 
 class ConversationLeaseLostError(RuntimeError):
@@ -130,6 +147,7 @@ class ConversationTurn:
     attempt: int = 1
     resume_checkpoint: AgentRunCheckpoint | None = None
     save_checkpoint: Callable[[AgentRunCheckpoint], Awaitable[None]] | None = None
+    force_response: bool = False
 
     @property
     def sender_is_ai(self) -> bool:
@@ -176,6 +194,10 @@ class ConversationActivity(BaseModel):
     message_ids: list[UUID] = Field(default_factory=list[UUID])
     topic_id: UUID | None = None
     status: str
+    control_action: str | None = None
+    available_actions: list[ConversationControlAction] = Field(default_factory=list[ConversationControlAction])
+    attempt: int = Field(default=0, ge=0)
+    response_only: bool = False
     effect_started: bool
     tools_used: list[str] = Field(default_factory=list)
     execution_time: float = Field(default=0.0, ge=0)

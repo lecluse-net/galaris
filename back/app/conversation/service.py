@@ -34,8 +34,13 @@ from app.messenger import (
 )
 from core.database import get_db, get_db_session
 from core.i18n import current_language, render_prompt, t
+from core.util import get_encryption_service
 
-from .contracts import ConversationLeaseLostError, ConversationOutcome, ConversationTurn
+from .contracts import (
+    ConversationLeaseLostError, ConversationOutcome, ConversationTurn,
+    ConversationControlAction, ConversationControlConflict, ConversationControlResult,
+)
+from .control_service import REQUESTED_ACTIONS, available_round_actions
 from .models import (
     ConversationProcessLink,
     ConversationRound,
@@ -45,7 +50,7 @@ from .models import (
 )
 
 
-ACTIVE_ROUND_STATUSES = ("FROZEN", "CLAIMED", "RUNNING", "WAITING_APPROVAL")
+ACTIVE_ROUND_STATUSES = ("FROZEN", "CLAIMED", "RUNNING", "WAITING_APPROVAL", "PAUSED")
 PROCESSING_ROUND_STATUSES = ("CLAIMED", "RUNNING")
 TERMINAL_ROUND_STATUSES = ("SUCCEEDED", "SUPERSEDED", "ERROR_RESOLVED", "CANCELLED", "COMPLETED", "INTERRUPTED", "FAILED")
 CONTEXT_SOFT_MAX_CHARS = 16_000
@@ -430,6 +435,8 @@ async def _interrupt_round(round_: ConversationRound) -> bool:
     # Admission owns this room lock too. A successor must not be inserted
     # concurrently with our transition back to the unique FROZEN round.
     await _room_scope(round_.room_id, lock=True)
+    if await apply_requested_control(round_):
+        return False
     error: str | None = None
     if round_.delivery_state == "SENDING":
         # Messenger journals the provider receipt before returning to the round.
@@ -794,6 +801,7 @@ async def build_turn(
         attempt=round_.attempt_count,
         origin="voice" if round_.voice_session_id else "text",
         resume_checkpoint=resume_checkpoint, save_checkpoint=save_checkpoint,
+        force_response=round_.response_only,
     )
 
     async def admit_explicit_task(
@@ -817,7 +825,7 @@ async def build_turn(
 
 
 async def newer_input_pending(round_id: UUID, *, lease_token: UUID) -> bool:
-    """Observe committed text admission across workers without claiming an effect."""
+    """Observe newer input or human control across workers without claiming an effect."""
     successor = aliased(ConversationRound)
     async with get_db_session():
         return bool(await get_db().scalar(select(exists().where(
@@ -826,10 +834,15 @@ async def newer_input_pending(round_id: UUID, *, lease_token: UUID) -> bool:
             ConversationRound.status.in_(PROCESSING_ROUND_STATUSES),
             ConversationRound.lease_token == lease_token,
             ConversationRound.lease_expires_at > _now(),
-            successor.room_id == ConversationRound.room_id,
-            successor.voice_session_id.is_(None),
-            successor.status == "FROZEN",
-            successor.id != ConversationRound.id,
+            or_(
+                ConversationRound.control_action.in_(REQUESTED_ACTIONS),
+                exists(select(successor.id).where(
+                    successor.room_id == ConversationRound.room_id,
+                    successor.voice_session_id.is_(None),
+                    successor.status == "FROZEN",
+                    successor.id != ConversationRound.id,
+                ).correlate(ConversationRound)),
+            ),
         ))))
 
 
@@ -851,7 +864,8 @@ async def _mark_effect_if_fresh(round_id: UUID, *, lease_token: UUID) -> bool:
         .where(ConversationRound.id == round_id)
         .with_for_update()
     )
-    if round_ is None or round_.status != "RUNNING" or not _owns_round(round_, lease_token):
+    if (round_ is None or round_.status != "RUNNING" or not _owns_round(round_, lease_token)
+            or round_.control_action in {"pause", "stop", "respond"}):
         return False
     await _room_scope(round_.room_id, lock=True)
     if await _pending_successor(round_) is not None:
@@ -972,6 +986,9 @@ async def complete_round(
         else None
     )
     round_.effect_started = round_.effect_started or outcome.effect_started
+    if await apply_requested_control(round_):
+        await get_db().commit()
+        return round_.status
     if outcome.metadata.get("waiting_for_authorization") is True:
         round_.status = "WAITING_APPROVAL"
         round_.last_error = None
@@ -1310,6 +1327,9 @@ async def fail_round(
         return
     await _room_scope(round_.room_id, lock=True)
     message = error[:2_000]
+    if await apply_requested_control(round_):
+        await get_db().commit()
+        return
     round_.last_error = message
     if execution_result is not None:
         round_.execution_result = _merge_failed_execution_result(
@@ -1991,4 +2011,121 @@ __all__ = [
     "fail_round",
     "linked_work_snapshot",
     "mark_effect_if_fresh",
+    "control_round",
 ]
+
+
+def _ensure_safe_checkpoint(round_: ConversationRound) -> None:
+    try:
+        checkpoint = _read_round_checkpoint(round_)
+        if checkpoint is not None:
+            if assess_checkpoint(checkpoint).state != "safe":
+                raise ValueError("Uncertain tool effects")
+        elif round_.effect_started:
+            raise ValueError("Missing effect receipts")
+    except Exception as exc:
+        raise ConversationControlConflict(
+            "The saved execution cannot safely resume; verify the previous tool effects first.",
+            code="unsafe_resume",
+        ) from exc
+
+
+async def apply_requested_control(round_: ConversationRound) -> bool:
+    """Apply after the runtime has saved its checkpoint and stopped generating."""
+    action = round_.control_action
+    if action not in REQUESTED_ACTIONS:
+        return False
+    await _finish_attempt(round_, "USER_STOPPED" if action == "stop" else "USER_PAUSED")
+    _clear_round_lease(round_)
+    round_.last_error = None
+    if action == "stop":
+        round_.status = "CANCELLED"
+        round_.delivery_state = "SKIPPED"
+        round_.finished_at = _now()
+        await _mark_round_inputs_consumed(round_.id, round_.finished_at)
+        round_.control_action = None
+    else:
+        round_.status = "PAUSED"
+        round_.control_action = None
+        if action == "respond" and await _pending_successor(round_) is None:
+            try:
+                _ensure_safe_checkpoint(round_)
+            except ConversationControlConflict as exc:
+                round_.last_error = str(exc)
+            else:
+                round_.status = "FROZEN"
+                round_.response_only = True
+    return True
+
+
+async def control_round(
+    room_id: UUID, round_id: UUID, action: ConversationControlAction, *, expected_attempt: int,
+) -> ConversationControlResult:
+    db = get_db()
+    round_ = await db.scalar(select(ConversationRound).where(
+        ConversationRound.id == round_id, ConversationRound.room_id == room_id,
+        ConversationRound.voice_session_id.is_(None),
+    ).with_for_update().execution_options(populate_existing=True))
+    if round_ is None:
+        raise LookupError("Conversation round not found.")
+    await _room_scope(room_id, lock=True)
+    if expected_attempt != round_.attempt_count:
+        raise ConversationControlConflict("The agent has started another attempt; refresh before controlling it.", code="attempt_changed")
+    if (round_.control_action == action
+            or action == "pause" and round_.status == "PAUSED"
+            or action == "stop" and round_.status == "CANCELLED"
+            or action == "resume" and round_.status == "FROZEN"
+            or action == "respond" and round_.response_only and round_.status in {"FROZEN", "CLAIMED", "RUNNING"}):
+        return ConversationControlResult(round_id=round_.id, status=round_.status, control_action=round_.control_action)
+    if action == "restart" and round_.status == "CANCELLED" and round_.resolved_by_round_id is not None:
+        successor = await db.get(ConversationRound, round_.resolved_by_round_id)
+        if successor is not None:
+            return ConversationControlResult(round_id=successor.id, status=successor.status, control_action=successor.control_action)
+    if action not in available_round_actions(round_):
+        raise ConversationControlConflict("This command is no longer available for this response.")
+    other_work_pending = bool(await db.scalar(select(exists().where(
+        ConversationRound.room_id == room_id, ConversationRound.id != round_.id,
+        ConversationRound.status.in_(("FROZEN", "CLAIMED", "RUNNING", "WAITING_APPROVAL")),
+    ))))
+    if action in {"resume", "restart", "respond"} and other_work_pending:
+        raise ConversationControlConflict("A newer message is waiting; control its response instead.", code="newer_input")
+    if action == "restart":
+        _ensure_safe_checkpoint(round_)
+        checkpoint = _read_round_checkpoint(round_)
+        successor = ConversationRound(
+            id=uuid4(), room_id=room_id, source_round_id=round_.id, status="FROZEN",
+            language=round_.language, topic_id=round_.topic_id,
+            contact_memory_item_id=round_.contact_memory_item_id,
+            requester_user_id=round_.requester_user_id,
+            effect_started=round_.effect_started, effect_started_at=round_.effect_started_at,
+            response_only=round_.response_only,
+        )
+        if checkpoint is not None:
+            from app.tools.facade import canonical_authorization_snapshot
+            successor.encrypted_checkpoint = get_encryption_service().encrypt(
+                canonical_authorization_snapshot(replace(checkpoint, runtime_run_id=str(successor.id)))
+            )
+        db.add(successor)
+        await db.flush()
+        inputs = (await db.scalars(select(ConversationRoundMessage).where(
+            ConversationRoundMessage.round_id == round_id, ConversationRoundMessage.role == "input",
+        ))).all()
+        db.add_all([ConversationRoundMessage(
+            round_id=successor.id, message_id=item.message_id, role="input", sequence=item.sequence,
+        ) for item in inputs])
+        round_.resolved_by_round_id = successor.id
+        round_ = successor
+    elif action == "resume" or action == "respond" and round_.status == "PAUSED":
+        _ensure_safe_checkpoint(round_)
+        round_.status = "FROZEN"
+        round_.control_action = None
+        round_.response_only = round_.response_only or action == "respond"
+    else:
+        round_.control_action = action
+        if round_.status not in PROCESSING_ROUND_STATUSES:
+            await apply_requested_control(round_)
+    await db.commit()
+    from .facade import publish_round_activity, wake
+    await publish_round_activity(round_.id)
+    wake()
+    return ConversationControlResult(round_id=round_.id, status=round_.status, control_action=round_.control_action)

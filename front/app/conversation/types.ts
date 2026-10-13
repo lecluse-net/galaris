@@ -2,7 +2,7 @@ import type { LLMCall } from '@/app/llm/types'
 import type { ExecutionResult } from '@/app/task/types'
 import type { TaskStartupTiming } from '@/app/task'
 
-export type ConversationStatus = 'IDLE' | 'READY' | 'RUNNING' | 'WAITING_APPROVAL'
+export type ConversationStatus = 'IDLE' | 'READY' | 'RUNNING' | 'WAITING_APPROVAL' | 'PAUSED'
 
 export interface ConversationStatusOverview {
   idle: number

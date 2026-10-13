@@ -310,6 +310,7 @@ const statusVisual = computed(() => {
     return { color: 'primary', icon: 'pending' }
   }
   if (status === 'SUPERSEDED' || status === 'CANCELLED') return { color: 'grey-7', icon: 'skip_next' }
+  if (status === 'PAUSED') return { color: 'primary', icon: 'pause' }
   if (status === 'INTERRUPTED') return { color: 'warning', icon: 'pause' }
   return { color: 'negative', icon: 'error' }
 })
@@ -318,7 +319,7 @@ const statusTone = computed<StatusBadgeTone>(() => {
   if (!status || status === 'FROZEN') return 'warning'
   if (status === 'SUCCEEDED' || status === 'COMPLETED') return 'success'
   if (['RUNNING', 'CLAIMED'].includes(status)) return 'active'
-  if (status === 'SUPERSEDED' || status === 'CANCELLED') return 'neutral'
+  if (status === 'SUPERSEDED' || status === 'CANCELLED' || status === 'PAUSED') return 'neutral'
   if (status === 'INTERRUPTED') return 'warning'
   return 'error'
 })

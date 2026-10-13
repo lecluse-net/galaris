@@ -8,6 +8,7 @@ from uuid import UUID
 from pydantic import BaseModel, ConfigDict, Field
 
 from app.agent.contracts import ReasoningEffort
+from app.conversation import ConversationControlAction
 from app.messenger.contracts import DocumentFocus
 from app.messenger import (
     ChatViewerAgent,
@@ -25,6 +26,12 @@ class ChatStatus(BaseModel):
     chat_enabled: bool
     max_attachment_bytes: int = Field(ge=1)
     page_sizes: list[int] = Field(default_factory=lambda: [10, 20, 50, 100, 500])
+
+
+class ConversationControlCommand(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    action: ConversationControlAction
+    expected_attempt: int = Field(ge=0)
 
 
 class RecipientCatalog(BaseModel):
