@@ -73,6 +73,17 @@
             <template #prepend><q-icon name="key" /></template>
           </q-input>
 
+          <q-input
+            v-model.number="form.max_concurrent_calls"
+            type="number"
+            min="0"
+            step="1"
+            outlined
+            :label="t('llm.maxConcurrentCalls')"
+            :hint="t('llm.maxConcurrentCallsHint')"
+            :rules="[value => (typeof value === 'number' && Number.isSafeInteger(value) && value >= 0) || t('llm.maxConcurrentCallsInvalid')]"
+          />
+
           <div class="provider-activation row items-center justify-between rounded-borders q-pa-md">
             <div class="col q-pr-md">
               <div class="text-weight-medium">{{ t('llm.providerEnabled') }}</div>
@@ -125,6 +136,7 @@ const form = reactive({
   base_url: '',
   api_key: null as string | null,
   is_active: true,
+  max_concurrent_calls: 1,
 })
 
 const typeOptions = computed(() => customProviderTypes.map(item => ({
@@ -146,6 +158,7 @@ function reset(): void {
   form.base_url = ''
   form.api_key = null
   form.is_active = true
+  form.max_concurrent_calls = 1
   customForm.value?.resetValidation()
 }
 
@@ -166,6 +179,7 @@ async function submit(): Promise<void> {
     base_url: form.base_url.trim(),
     api_key: form.api_key || null,
     is_active: form.is_active,
+    max_concurrent_calls: form.max_concurrent_calls,
   })
 }
 

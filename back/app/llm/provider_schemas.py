@@ -1,5 +1,5 @@
 """Schemas for provider catalog entries, connections, and configured LLMs."""
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import AliasChoices, BaseModel, ConfigDict, Field, field_validator
 from typing import Optional, List, Dict, Any, Literal
 from datetime import datetime
 
@@ -36,6 +36,7 @@ class LLMProviderCreate(BaseModel):
     is_active: bool = True
     user_id: Optional[int] = None
     subscription_acknowledged: bool = False
+    max_concurrent_calls: int | None = Field(default=None, ge=0, strict=True)
 
 
 class LLMProviderUpdate(BaseModel):
@@ -50,6 +51,14 @@ class LLMProviderUpdate(BaseModel):
     is_active: Optional[bool] = None
     user_id: Optional[int] = None
     subscription_acknowledged: bool = False
+    max_concurrent_calls: int | None = Field(default=None, ge=0, strict=True)
+
+    @field_validator("max_concurrent_calls")
+    @classmethod
+    def concurrency_must_be_an_integer(cls, value: int | None) -> int:
+        if value is None:
+            raise ValueError("Concurrency must be an integer; use 0 for unlimited.")
+        return value
 
 
 class LLMProviderResponse(BaseModel):
@@ -70,6 +79,7 @@ class LLMProviderResponse(BaseModel):
     is_active: bool
     created_at: datetime
     updated_at: Optional[datetime] = None
+    max_concurrent_calls: int = Field(default=10, validation_alias=AliasChoices("effective_max_concurrent_calls", "max_concurrent_calls"))
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -93,6 +103,7 @@ class LLMProviderDetailResponse(BaseModel):
     is_active: bool
     created_at: datetime
     updated_at: Optional[datetime] = None
+    max_concurrent_calls: int = 10
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -106,6 +117,14 @@ class ProviderCatalogConfigure(BaseModel):
     configuration: Dict[str, Any] = Field(default_factory=dict)
     user_id: Optional[int] = None
     subscription_acknowledged: bool = False
+    max_concurrent_calls: int | None = Field(default=None, ge=0, strict=True)
+
+    @field_validator("max_concurrent_calls")
+    @classmethod
+    def concurrency_must_be_an_integer(cls, value: int | None) -> int:
+        if value is None:
+            raise ValueError("Concurrency must be an integer; use 0 for unlimited.")
+        return value
 
     model_config = ConfigDict(extra="forbid")
 
@@ -144,6 +163,7 @@ class ProviderCatalogItem(BaseModel):
     management_key_url: str | None = None
     is_custom: bool
     connection: Optional[LLMProviderResponse] = None
+    default_max_concurrent_calls: int = 10
 
 
 class ProviderUserOption(BaseModel):

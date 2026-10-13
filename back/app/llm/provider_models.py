@@ -1,6 +1,6 @@
 """Database models for provider connections and configured LLMs."""
 from typing import Any, Optional, List
-from sqlalchemy import String, Boolean, Index, Integer, Text, ForeignKey, text
+from sqlalchemy import String, Boolean, CheckConstraint, Index, Integer, Text, ForeignKey, text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.dialects.postgresql import JSONB
 from core.database import Base, HistoryMixin
@@ -57,6 +57,18 @@ class LLMProvider(HistoryMixin, Base):
     # listed and invoked here instead of through ``base_url``.
     transcription_base_url: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
 
+    # NULL initializes legacy connections with their provider-specific default.
+    # The API always exposes the effective integer; 0 is unlimited.
+    max_concurrent_calls: Mapped[int | None] = mapped_column(Integer, nullable=True)
+
+    @property
+    def effective_max_concurrent_calls(self) -> int:
+        from .provider_scheduler import default_concurrency
+
+        return self.max_concurrent_calls if self.max_concurrent_calls is not None else default_concurrency(
+            self.provider_type, self.catalog_code,
+        )
+
     # Status
     is_active: Mapped[bool] = mapped_column(
         Boolean,
@@ -66,6 +78,7 @@ class LLMProvider(HistoryMixin, Base):
     )
 
     __table_args__ = (
+        CheckConstraint("max_concurrent_calls >= 0", name="ck_llm_provider_concurrency_nonnegative"),
         # Provider display names are unique.
         Index(
             "uq_llm_provider_name",

@@ -1976,6 +1976,7 @@
         "files": [
           "back/app/llm/events.py",
           "back/app/llm/facade.py",
+          "back/app/llm/inference_store.py",
           "back/app/llm/llm_call_service.py",
           "back/app/llm/subscription_policy.py"
         ],
@@ -9358,7 +9359,7 @@
           "llm_providers.id"
         ],
         "history_mixin": true,
-        "line": 110,
+        "line": 123,
         "module": "app.llm",
         "table": "llms"
       },

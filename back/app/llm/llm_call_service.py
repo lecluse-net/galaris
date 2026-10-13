@@ -6,7 +6,7 @@ import asyncio
 import math
 from collections.abc import Collection, Sequence
 from datetime import date, datetime, time, timedelta, timezone
-from typing import Any, Optional
+from typing import Any, Optional, TYPE_CHECKING
 from uuid import UUID, uuid4
 
 from loguru import logger
@@ -38,6 +38,9 @@ from .trace import (
 
 _RECONCILIATION_BATCH_SIZE = 500
 _STALE_CALL_GRACE_SECONDS = 300
+
+if TYPE_CHECKING:
+    from .call_capture import TextCallCapture
 
 
 class InferenceCallDeletionError(ValueError):
@@ -971,6 +974,7 @@ async def create_running_call(
     media_generation_id: UUID | None = None,
     requester_user_id: int | None = None,
     is_subscription: bool = False,
+    voice_dialogue: bool = False,
 ) -> LLMCall:
     from .call_capture import text_call_capture
 
@@ -997,6 +1001,7 @@ async def create_running_call(
                 process_run_id=process_run_id,
             )
         )
+    round_ = None
     if conversation_round_id is not None:
         from app.connection import Connection
         from app.conversation import ConversationRound
@@ -1094,6 +1099,61 @@ async def create_running_call(
         system_prompt=stored_system_prompt,
         is_subscription=is_subscription,
     )
+    origin = "voice" if voice_dialogue else None
+    if not voice_dialogue and conversation_round_id is not None and task_id is None and round_ is not None:
+        origin = "voice" if round_.voice_session_id is not None else "text"
+    return await _admit_running_call(call, capture, round_origin=origin)
+
+
+async def _admit_running_call(
+    call: LLMCall, capture: TextCallCapture | None, *, round_origin: str | None,
+) -> LLMCall:
+    from . import provider_scheduler
+    from .provider_models import LLM, LLMProvider
+    from .subscription_policy import enforce_subscription_access
+    from core.database import release_db_transaction
+    import anyio
+
+    db = get_db()
+    provider = await db.scalar(
+        select(LLMProvider).join(LLM, LLM.llm_provider_id == LLMProvider.id)
+        .where(LLM.id == call.llm_id).execution_options(populate_existing=True)
+    )
+    if provider is None or not provider.is_active:
+        raise LookupError("LLM provider is unavailable.")
+    provider_id, limit = provider.id, provider.effective_max_concurrent_calls
+    await release_db_transaction()
+    permit = await provider_scheduler.acquire_call(
+        provider_id, limit, provider_scheduler.call_priority(call.purpose, round_origin=round_origin),
+        owner=str(call.conversation_round_id or call.task_id or call.agent_run_id or "") or None,
+    )
+    persisted = False
+    try:
+        # A queued caller must not start after provider deactivation or after a
+        # subscription authority has been revoked while it waited.
+        await db.refresh(provider)
+        if not provider.is_active or provider.deleted_at is not None:
+            raise LookupError("LLM provider is unavailable.")
+        await enforce_subscription_access(
+            provider, task_id=call.task_id, conversation_round_id=call.conversation_round_id,
+            process_run_id=call.process_run_id,
+        )
+        await _persist_running_call(call, capture)
+        persisted = True
+        provider_scheduler.bind_call(call.id, permit)
+        await websocket.emit("llm_call", "create", _public(call), None)
+        return call
+    except BaseException:
+        if persisted:
+            with anyio.CancelScope(shield=True):
+                await finalize_call(call.id, trace={}, status="cancelled")
+        raise
+    finally:
+        if not persisted:
+            permit.release()
+
+
+async def _persist_running_call(call: LLMCall, capture: TextCallCapture | None) -> None:
     db = get_db()
     from .call_capture import inference_owner
 
@@ -1112,12 +1172,9 @@ async def create_running_call(
             "kind": "request", "request": capture.request,
         }))
     await db.commit()
-    await db.refresh(call)
     if capture is not None:
         capture.call_id = call.id
         capture.call_ids.append(call.id)
-    await websocket.emit("llm_call", "create", _public(call), None)
-    return call
 
 
 def _compact_request_trace(
@@ -1216,6 +1273,9 @@ async def finalize_call(
     effective_model: str | None = None,
 ) -> None:
     """Finalize from an independent session, including after a streaming response."""
+    from .provider_scheduler import release_call
+
+    release_call(call_id)
     # Trace preparation may wait on the thread pool or process large payloads.
     # Do not hold the call lock: journal writers need it while owning the
     # inference lock, which would also stall heartbeats and lifecycle commands.

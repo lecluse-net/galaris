@@ -832,6 +832,7 @@ class AgentVoiceEngine:
                 mime_type="audio/wav",
                 language=self._language,
                 agent_id=self._agent_id,
+                voice_dialogue=True,
             )
 
     async def _start_transcription_progress(self) -> None:

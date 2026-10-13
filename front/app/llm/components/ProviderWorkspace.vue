@@ -294,6 +294,7 @@ async function persistProvider({ item, draft, automatic }: PendingSave): Promise
         base_url: draft.base_url,
         ...(draft.api_key !== undefined ? { api_key: draft.api_key } : {}),
         is_active: draft.is_active,
+        max_concurrent_calls: draft.max_concurrent_calls,
         configuration: draft.configuration,
         user_id: draft.user_id,
         subscription_acknowledged: draft.subscription_acknowledged,
@@ -303,6 +304,7 @@ async function persistProvider({ item, draft, automatic }: PendingSave): Promise
         ...(draft.api_key !== undefined ? { api_key: draft.api_key } : {}),
         ...(draft.management_api_key !== undefined ? { management_api_key: draft.management_api_key } : {}),
         is_active: draft.is_active,
+        max_concurrent_calls: draft.max_concurrent_calls,
         configuration: draft.configuration,
         user_id: draft.user_id,
         subscription_acknowledged: draft.subscription_acknowledged,
@@ -393,6 +395,7 @@ async function ensureOauthConnection(draft: ProviderConfigurationDraft): Promise
   if (!item?.code) return null
   return store.configureCatalogProvider(item.code, {
     is_active: true,
+    max_concurrent_calls: draft.max_concurrent_calls,
     configuration: draft.configuration,
     user_id: draft.user_id,
     subscription_acknowledged: draft.subscription_acknowledged,

@@ -526,6 +526,22 @@ assignments in the administration interface.
 
 ## 4. Configure Language Models
 
+In **Providers**, **Maximum concurrent calls** limits traced LLM calls for the
+connection across all models, profiles and users. Catalog providers, including
+OpenRouter, default to 10; custom connections, including Ollama, default to 1.
+Increase Ollama to 2 only when its capacity permits it. Setting 0 removes the Galaris
+ceiling while retaining upstream quotas. Changes wake the queue immediately; lowering
+the limit lets existing calls finish.
+
+Voice rounds take priority, followed by text rounds and other calls. At three or more
+places, each dialogue class has one protected place; at two places, background calls
+use at most one place. Aging favors requests that have waited a long time. At one
+place, dialogue waits for the current call to finish. Durable inferences wait without
+an execution lease and can be stopped, paused or expire before any billable call.
+Admission shares capacity with other traced calls without retaining a SQL transaction
+while waiting. It belongs to the single worker configured by the backend, rather than
+enforcing a distributed limit across independent backend instances.
+
 Providers and models are administered in the LLM interface. A model contains the
 name expected by the provider, its cost parameters, and its potential embedding
 capability.

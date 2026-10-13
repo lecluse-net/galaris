@@ -343,7 +343,7 @@ tests remain authoritative for behavior.
 | `app.lab` | `core.user` | `back/app/lab/human_review_service.py`, `back/app/lab/operations.py` |
 | `app.llm` | `app.agent` | `back/app/llm/anthropic_router.py`, `back/app/llm/call_router.py`, `back/app/llm/contracts.py`, `back/app/llm/decision_service.py`, `back/app/llm/events.py`, `back/app/llm/facade.py`, `back/app/llm/inference_execution.py`, `back/app/llm/inference_facade.py`, `back/app/llm/inference_journal.py`, `back/app/llm/inference_store.py`, `back/app/llm/llm_call_service.py`, `back/app/llm/llm_service.py`, `back/app/llm/mcp.py`, `back/app/llm/profile_fallback.py`, `back/app/llm/protocol_inference.py`, `back/app/llm/runtime_correlation.py`, `back/app/llm/text_inference.py`, `back/app/llm/tts_service.py` |
 | `app.llm` | `app.connection` | `back/app/llm/events.py`, `back/app/llm/llm_call_service.py` |
-| `app.llm` | `app.conversation` | `back/app/llm/events.py`, `back/app/llm/facade.py`, `back/app/llm/llm_call_service.py`, `back/app/llm/subscription_policy.py` |
+| `app.llm` | `app.conversation` | `back/app/llm/events.py`, `back/app/llm/facade.py`, `back/app/llm/inference_store.py`, `back/app/llm/llm_call_service.py`, `back/app/llm/subscription_policy.py` |
 | `app.llm` | `app.file_share` | `back/app/llm/document_analysis.py`, `back/app/llm/document_evidence.py`, `back/app/llm/document_service.py` |
 | `app.llm` | `app.mcp` | `back/app/llm/anthropic_router.py`, `back/app/llm/call_router.py` |
 | `app.llm` | `app.messenger` | `back/app/llm/events.py`, `back/app/llm/llm_call_service.py`, `back/app/llm/subscription_policy.py` |
@@ -1799,7 +1799,7 @@ tests remain authoritative for behavior.
 | `llm_inferences` | `LLMInference` | `app.llm` | no | `llm_inferences.id`, `users.id` | `back/app/llm/models.py:40` |
 | `llm_profiles` | `LlmProfile` | `app.llm` | no | `llms.id` | `back/app/llm/profile_models.py:19` |
 | `llm_providers` | `LLMProvider` | `app.llm` | yes | `users.id` | `back/app/llm/provider_models.py:9` |
-| `llms` | `LLM` | `app.llm` | yes | `llm_providers.id` | `back/app/llm/provider_models.py:110` |
+| `llms` | `LLM` | `app.llm` | yes | `llm_providers.id` | `back/app/llm/provider_models.py:123` |
 | `mail_outbound_deliveries` | `MailOutboundDelivery` | `bridge.mail` | no | `agents.id`, `connections.id`, `users.id` | `back/bridge/mail/models.py:28` |
 | `memory_associations` | `MemoryAssociation` | `app.memory` | no | `memory_items.id` | `back/app/memory/models.py:1225` |
 | `memory_automation_jobs` | `MemoryAutomationJob` | `app.memory` | no | — | `back/app/memory/models.py:1407` |

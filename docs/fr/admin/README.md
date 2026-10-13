@@ -541,6 +541,23 @@ affectations dans l’administration.
 
 ## 4. Configurer les modèles de langage
 
+Dans **Fournisseurs**, le champ **Appels simultanés maximum** limite les appels LLM
+tracés de la connexion, tous modèles, profils et utilisateurs confondus. Le défaut est
+10 pour les fournisseurs du catalogue, dont OpenRouter, et 1 pour les connexions
+personnalisées, dont Ollama. Augmentez Ollama à 2 seulement si sa capacité le permet ;
+0 supprime le plafond Galaris sans supprimer les quotas du fournisseur. Une modification
+réveille la file immédiatement ; une baisse laisse les appels engagés terminer.
+
+Les rounds vocaux sont prioritaires, puis les rounds texte et les autres appels. À
+partir de trois places, une place est protégée pour chaque classe de dialogue ; à deux
+places, les traitements de fond utilisent au maximum une place. L'ancienneté favorise
+les demandes longtemps en attente. À une place, un dialogue attend la fin de l'appel
+engagé. Les inférences durables attendent sans bail d'exécution et peuvent être arrêtées,
+pausées ou expirer avant tout appel facturable. Le scheduler partage la capacité avec les
+autres appels tracés, sans conserver de transaction SQL pendant l'attente. Cette admission
+est commune au worker unique configuré par le backend ; elle ne constitue pas un plafond
+distribué entre plusieurs instances backend indépendantes.
+
 Les fournisseurs et modèles sont administrés dans l’interface LLM. Un modèle contient le
 nom attendu par le fournisseur, ses paramètres de coût et sa capacité éventuelle
 d’embedding.

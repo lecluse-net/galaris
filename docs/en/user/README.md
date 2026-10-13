@@ -70,6 +70,10 @@ The sidebar shows only the screens authorized by your role:
 | Processes | launch and track an external workflow, such as n8n |
 | Tools | view authorized capabilities and connections; primarily intended for administrators |
 
+In **Providers**, an administrator can adjust concurrent LLM calls for each connection.
+Voice conversations take priority, followed by text conversations and background work;
+with a single place, the current call must still finish before the next one starts.
+
 The LLM, settings, users, and permissions sections are administrative. Their absence from your menu is normal. In **Profile**, choose Français or English; this choice translates the interface and also becomes the reference language for your new Tasks. Your account menu lets you change your assignment if you have been assigned multiple roles. The permissions displayed change immediately with the active role.
 
 The profile also lets you enable two-factor authentication with a TOTP application. Keep the recovery codes displayed during activation in a separate, secure location: they will not be displayed again, and each one works only once. After several incorrect passwords or codes, Galaris temporarily slows down new login attempts.

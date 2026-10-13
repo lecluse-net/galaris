@@ -39,6 +39,7 @@ export interface LLMProvider {
     configuration: Record<string, unknown>
     is_custom: boolean
     is_active: boolean
+    max_concurrent_calls: number
     created_at: string
     updated_at: string | null
 }
@@ -76,6 +77,7 @@ export interface LLMProviderCreate {
     is_active?: boolean
     user_id?: number | null
     subscription_acknowledged?: boolean
+    max_concurrent_calls?: number
 }
 
 export interface LLMProviderUpdate {
@@ -89,6 +91,7 @@ export interface LLMProviderUpdate {
     is_active?: boolean
     user_id?: number | null
     subscription_acknowledged?: boolean
+    max_concurrent_calls?: number
 }
 
 export interface LLMModelInfo {
@@ -114,6 +117,7 @@ export interface ProviderCatalogConfigure {
     configuration?: Record<string, unknown>
     user_id?: number | null
     subscription_acknowledged?: boolean
+    max_concurrent_calls?: number
 }
 
 export interface ProviderUserOption {
@@ -150,6 +154,7 @@ export interface ProviderCatalogItem {
     capability: AICapability
     is_custom: boolean
     connection: LLMProvider | null
+    default_max_concurrent_calls: number
 }
 
 export interface ProviderCatalogResponse {

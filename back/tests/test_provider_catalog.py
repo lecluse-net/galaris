@@ -217,6 +217,40 @@ async def test_xai_compaction_embeds_instructions_in_the_supported_input_shape()
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("provider_type,catalog_code,expected", [
+    ("ollama", None, 1), ("openai_compatible", None, 1),
+    ("openai_compatible", "openrouter", 10),
+])
+async def test_provider_concurrency_defaults_zero_and_partial_updates(
+    db: AsyncSession, provider_type: str, catalog_code: str | None, expected: int,
+) -> None:
+    provider = await llm_provider_service.create_provider(LLMProviderCreate(
+        name="Synthetic concurrency provider", provider_type=provider_type,
+        catalog_code=catalog_code, base_url="https://provider.example/v1", is_active=False,
+    ))
+    assert LLMProviderResponse.model_validate(provider).max_concurrent_calls == expected
+    provider = await llm_provider_service.update_provider(provider.id, LLMProviderUpdate(max_concurrent_calls=0))
+    assert provider is not None
+    assert provider.effective_max_concurrent_calls == 0
+    provider = await llm_provider_service.update_provider(provider.id, LLMProviderUpdate(is_active=False))
+    assert provider is not None
+    db.expunge(provider)
+    reloaded = await llm_provider_service.get_provider(provider.id)
+    assert LLMProviderResponse.model_validate(reloaded).max_concurrent_calls == 0
+    if catalog_code:
+        configured = await llm_provider_service.configure_catalog_provider(catalog_code, ProviderCatalogConfigure(is_active=False))
+        assert configured.effective_max_concurrent_calls == 0
+
+
+@pytest.mark.parametrize("invalid", [-1, 1.5, True, None])
+def test_provider_concurrency_rejects_invalid_updates(invalid) -> None:
+    from pydantic import ValidationError
+
+    with pytest.raises(ValidationError):
+        LLMProviderUpdate(max_concurrent_calls=invalid)
+
+
+@pytest.mark.asyncio
 async def test_catalog_codes_are_unique_and_api_keys_have_acquisition_links() -> None:
     codes = [profile.code for profile in PROVIDER_CATALOG]
 

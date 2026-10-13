@@ -362,6 +362,7 @@ async def test_response_uses_configured_agent_and_tts(
     assert isinstance(input_persistence, AsyncMock)
     input_persistence.assert_awaited_once()
     assert input_persistence.await_args.args[1] == "Bonjour"
+    assert transcribe.await_args.kwargs["voice_dialogue"] is True
     output_persistence = conversation_service.record_turn_outputs
     assert isinstance(output_persistence, AsyncMock)
     output_persistence.assert_awaited_once()

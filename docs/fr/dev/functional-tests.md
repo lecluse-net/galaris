@@ -272,6 +272,15 @@ Le parcours de silence de `e2e/specs/chat.spec.mjs` exerce la discussion assembl
 PostgreSQL, le scheduler et le harnais interne réels avec un fournisseur synthétique :
 tentative courante conservée, même Task, appel fermé puis reprise guidée et résultat durable.
 
+L'admission par fournisseur est couverte par `app/llm/tests/test_provider_scheduler.py`
+et `tests/test_inference_lifecycle.py` : priorité, places protégées, partage entre modèles
+et appels natifs, changement à chaud, arrêt/pause/expiration en file, transcription vocale
+sous charge et libération après annulation d'une transcription ou image native. Le test
+de transport dans `tests/test_protocol_inference.py` compare les commits du journal,
+préserve les grands fragments Unicode et conserve l'arrêt anticipé du raisonnement.
+`front/browser-tests/provider-autosave.spec.mjs` vérifie sauvegarde de 0, réouverture,
+validation et préservation des autres paramètres.
+
 La stabilisation du journal et du streaming est couverte par
 `back/app/agent/tests/test_reasoning_guard.py` (fragments irréguliers, snapshots rejoués,
 absence de faux positif sur un mot découpé) et `back/app/incident/tests/test_capture.py`

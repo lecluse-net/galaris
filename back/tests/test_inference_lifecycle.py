@@ -49,6 +49,209 @@ async def state(key, expected):
 
 
 @pytest.mark.asyncio
+async def test_cancelled_native_image_call_frees_provider_capacity(runtime, monkeypatch):
+    import base64
+    from io import BytesIO
+    import httpx
+    from PIL import Image
+    from app.llm import LLMProvider, image_generation_service
+
+    db, llm, _, _ = runtime
+    provider = await db.get(LLMProvider, llm.llm_provider_id)
+    provider.catalog_code = "openai-api"
+    provider.max_concurrent_calls = 1
+    llm.llm_name = "gpt-image-1"
+    await db.commit()
+    output = BytesIO()
+    Image.new("RGB", (8, 8), "white").save(output, format="PNG")
+    image = output.getvalue()
+    entered = asyncio.Event()
+    finish = asyncio.Event()
+
+    async def reply(request):
+        assert request.url.path.endswith("/images/generations")
+        entered.set()
+        await finish.wait()
+        return httpx.Response(200, json={"data": [{"b64_json": base64.b64encode(image).decode()}]})
+
+    monkeypatch.setattr(httpx, "AsyncClient", lambda **kwargs: AsyncClient(
+        **kwargs, transport=httpx.MockTransport(reply),
+    ))
+
+    async def generate():
+        async with get_db_session():
+            return await image_generation_service.generate_image_native(
+                llm.code, "Synthetic white square", [], width=1024, height=1024,
+            )
+
+    first = asyncio.create_task(generate())
+    try:
+        await asyncio.wait_for(entered.wait(), 5)
+        first.cancel()
+        with pytest.raises(asyncio.CancelledError):
+            await first
+        async with get_db_session() as reader:
+            call = await reader.scalar(select(LLMCall).where(LLMCall.llm_id == llm.id))
+            assert call.status == "cancelled"
+        finish.set()
+        assert await asyncio.wait_for(generate(), 5) == (image, "image/png")
+    finally:
+        finish.set()
+        first.cancel()
+        await asyncio.gather(first, return_exceptions=True)
+
+
+@pytest.mark.asyncio
+async def test_voice_transcription_uses_reserved_capacity_and_cancellation_frees_it(runtime, monkeypatch):
+    import httpx
+    from app.llm import llm_provider_service, profile_service, transcription_service
+    from app.llm.profile_models import LlmProfile
+    from app.llm.provider_schemas import LLMProviderUpdate
+
+    db, llm, requests, mode = runtime
+    profile = await db.get(LlmProfile, await profile_service.get_current_profile_id())
+    profile.transcription_llm_id = llm.id
+    llm.service_capabilities = ["chat", "transcription"]
+    llm.input_audio = True
+    await db.commit()
+    await llm_provider_service.update_provider(llm.llm_provider_id, LLMProviderUpdate(max_concurrent_calls=3))
+    mode.update(gate=asyncio.Event(), concurrent=True)
+    first = await start_inference(request_for(llm))
+    stream = stream_inference(first)
+    await asyncio.wait_for(anext(stream), 10)
+    entered = asyncio.Event()
+    finish_audio = asyncio.Event()
+    audio_calls = 0
+
+    async def reply(request):
+        nonlocal audio_calls
+        assert request.url.path.endswith("/audio/transcriptions")
+        audio_calls += 1
+        entered.set()
+        await finish_audio.wait()
+        return httpx.Response(200, json={"text": "Synthetic transcript"})
+
+    monkeypatch.setattr(httpx, "AsyncClient", lambda **kwargs: AsyncClient(
+        **kwargs, transport=httpx.MockTransport(reply),
+    ))
+
+    async def transcribe(voice_dialogue):
+        async with get_db_session():
+            return await transcription_service.transcribe_audio(
+                b"synthetic audio bytes", voice_dialogue=voice_dialogue,
+            )
+
+    ordinary = asyncio.create_task(transcribe(False))
+    voice = asyncio.create_task(transcribe(True))
+    try:
+        # The background place is occupied; live STT must still start while a
+        # file transcription waits, even before a conversation round exists.
+        await asyncio.wait_for(entered.wait(), 5)
+        assert not ordinary.done() and audio_calls == 1
+        voice.cancel()
+        with pytest.raises(asyncio.CancelledError):
+            await voice
+        async with get_db_session() as reader:
+            call = await reader.scalar(select(LLMCall).where(LLMCall.purpose == "audio.transcription"))
+            assert call.status == "cancelled"
+        finish_audio.set()
+        assert await asyncio.wait_for(transcribe(True), 5) == "Synthetic transcript"
+        assert not ordinary.done() and audio_calls == 2
+        mode["gate"].set()
+        await state(first, "completed")
+        assert await asyncio.wait_for(ordinary, 5) == "Synthetic transcript"
+        assert audio_calls == 3 and len(requests) == 1
+    finally:
+        finish_audio.set()
+        mode["gate"].set()
+        ordinary.cancel()
+        voice.cancel()
+        await asyncio.gather(ordinary, voice, return_exceptions=True)
+        await stream.aclose()
+
+
+@pytest.mark.asyncio
+async def test_provider_limit_is_shared_by_models_and_native_calls(runtime):
+    from app.llm import LLM, llm_provider_service
+    from app.llm.provider_schemas import LLMProviderUpdate
+    from app.llm.facade import run_text_inference
+
+    db, llm, requests, mode = runtime
+    mode.update(gate=asyncio.Event(), concurrent=True)
+    await llm_provider_service.update_provider(llm.llm_provider_id, LLMProviderUpdate(max_concurrent_calls=1))
+    alternate = LLM(llm_provider_id=llm.llm_provider_id, code=f"alternate-{uuid4()}",
+                    label="Synthetic alternate model", llm_name="synthetic-alternate")
+    db.add(alternate)
+    await db.commit()
+    first = await start_inference(request_for(llm))
+    first_stream = stream_inference(first)
+    await asyncio.wait_for(anext(first_stream), 10)
+    second = await start_inference(request_for(llm).model_copy(update={"llm_id": alternate.id}))
+
+    async def native():
+        async with get_db_session():
+            return await run_text_inference(request_for(llm))
+
+    direct = asyncio.create_task(native())
+    try:
+        await asyncio.sleep(0.15)
+        waiting = await read_inference(second)
+        assert waiting.status == "queued"
+        assert waiting.attempts[0].started_at is None
+        assert waiting.attempts[0].call_ids == []
+        assert len(requests) == 1 and not direct.done()
+        # Raising the limit to unlimited wakes both paths without restarting.
+        await llm_provider_service.update_provider(llm.llm_provider_id, LLMProviderUpdate(max_concurrent_calls=0))
+        async with asyncio.timeout(10):
+            while len(requests) < 3:
+                await asyncio.sleep(0.02)
+        mode["gate"].set()
+        await state(first, "completed")
+        await state(second, "completed")
+        assert (await direct).success
+        assert len(requests) == 3
+    finally:
+        mode["gate"].set()
+        direct.cancel()
+        await asyncio.gather(direct, return_exceptions=True)
+        await first_stream.aclose()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("action", ["stop", "pause", "expire"])
+async def test_queued_inference_controls_never_start_the_provider(runtime, action):
+    from app.llm import llm_provider_service
+    from app.llm.provider_schemas import LLMProviderUpdate
+
+    _, llm, requests, mode = runtime
+    mode.update(gate=asyncio.Event(), concurrent=True)
+    await llm_provider_service.update_provider(llm.llm_provider_id, LLMProviderUpdate(max_concurrent_calls=1))
+    active = await start_inference(request_for(llm))
+    stream = stream_inference(active)
+    await asyncio.wait_for(anext(stream), 10)
+    request = request_for(llm).model_copy(update={"deadline_seconds": 0.2 if action == "expire" else None})
+    queued = await start_inference(request)
+    try:
+        if action != "expire":
+            await control_inference(queued, action)
+        expected = {"stop": "stopped", "pause": "paused", "expire": "failed"}[action]
+        saved = await state(queued, expected)
+        assert saved.attempts[-1].started_at is None
+        assert saved.attempts[-1].call_ids == []
+        events = [event async for event in stream_inference(queued)]
+        assert [event.kind for event in events] == ["result"]
+        mode["gate"].set()
+        await state(active, "completed")
+        assert len(requests) == 1
+        successor = await start_inference(request_for(llm))
+        await state(successor, "completed")
+        assert len(requests) == 2
+    finally:
+        mode["gate"].set()
+        await stream.aclose()
+
+
+@pytest.mark.asyncio
 async def test_prepared_inference_starts_once_and_commands_use_expected_revision(runtime):
     _, llm, requests, _ = runtime
     key = uuid4()
@@ -367,8 +570,14 @@ async def test_stream_catches_up_after_a_missed_notification(runtime, monkeypatc
 
 @pytest.mark.asyncio
 async def test_worker_drains_more_than_one_admission_page_without_polling(runtime):
+    from app.llm import llm_provider_service
+    from app.llm.provider_schemas import LLMProviderUpdate
+
     _, llm, requests, mode = runtime
     mode["concurrent"] = True
+    # This scenario protects pagination wakeups; provider capacity is exercised
+    # separately with slow calls and a finite limit.
+    await llm_provider_service.update_provider(llm.llm_provider_id, LLMProviderUpdate(max_concurrent_calls=0))
     # Existing committed work must be found at startup, even if its notifications
     # were emitted before any worker subscribed.
     keys = []
@@ -413,7 +622,10 @@ async def test_queued_stop_and_duplicate_admission_never_contact_provider(runtim
     _, llm, requests, _ = runtime
     request = request_for(llm)
     key = uuid4()
-    await execution.transaction(lambda: store.create(request, inference_id=key))
+    # Freeze the public request (including model/fallback resolution) before
+    # putting it in the queue without starting the worker.
+    await prepare_inference(request, inference_id=key)
+    await execution.transaction(lambda: store.command(key, "start", uuid4()))
     await control_inference(key, "stop")
     await start_inference(request, inference_id=key)
     snapshot = await state(key, "stopped")

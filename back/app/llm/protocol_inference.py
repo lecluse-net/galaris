@@ -49,23 +49,79 @@ class _WireStream(httpx2.AsyncByteStream):
     def __init__(self, response: StreamingResponse, capture: TextCallCapture) -> None:
         self.response = response
         self.capture = capture
+        self._producer: asyncio.Task[None] | None = None
 
     async def __aiter__(self) -> AsyncIterator[bytes]:
-        pending = bytearray()
-        async for part in self.response.body_iterator:
-            chunk = part.encode() if isinstance(part, str) else bytes(part)
-            pending.extend(chunk)
-            if b"\n\n" in pending or len(pending) >= 65536:
+        # One producer owns the provider iterator for its whole lifetime. Moving
+        # successive anext calls between tasks would break transport deadlines.
+        # Keep read-ahead to one fragment: recovery guards must be able to stop
+        # an upstream generation before it runs far ahead of the consumer.
+        queue: asyncio.Queue[bytes | Exception | None] = asyncio.Queue(maxsize=1)
+
+        async def produce() -> None:
+            try:
+                async for part in self.response.body_iterator:
+                    chunk = part.encode() if isinstance(part, str) else bytes(part)
+                    for offset in range(0, len(chunk), 65536):
+                        await queue.put(chunk[offset:offset + 65536])
+            except Exception as exc:
+                await queue.put(exc)
+            else:
+                await queue.put(None)
+
+        producer = asyncio.create_task(produce(), name="llm-protocol-buffer")
+        self._producer = producer
+        loop = asyncio.get_running_loop()
+        carry: bytes | None = None
+        try:
+            while True:
+                item = carry if carry is not None else await queue.get()
+                carry = None
+                if item is None:
+                    return
+                if isinstance(item, Exception):
+                    raise item
+                pending = bytearray(item)
+                flush_at = loop.time() + 0.05
+                terminal: Exception | None = None
+                finished = False
+                while len(pending) < 65536:
+                    try:
+                        async with asyncio.timeout(max(0.0, flush_at - loop.time())):
+                            item = await queue.get()
+                    except TimeoutError:
+                        break
+                    if item is None or isinstance(item, Exception):
+                        terminal = item
+                        finished = True
+                        break
+                    remaining = 65536 - len(pending)
+                    pending.extend(item[:remaining])
+                    if len(item) > remaining:
+                        carry = item[remaining:]
+                        break
                 chunk = bytes(pending)
-                pending.clear()
                 await _wire(self.capture, {"phase": "chunk", "data": base64.b64encode(chunk).decode()})
                 yield chunk
-        if pending:
-            chunk = bytes(pending)
-            await _wire(self.capture, {"phase": "chunk", "data": base64.b64encode(chunk).decode()})
-            yield chunk
+                if terminal is not None:
+                    raise terminal
+                if finished:
+                    return
+        finally:
+            producer.cancel()
+            with anyio.CancelScope(shield=True):
+                await asyncio.gather(producer, return_exceptions=True)
+            if self._producer is producer:
+                self._producer = None
 
     async def aclose(self) -> None:
+        producer = self._producer
+        if producer is not None:
+            producer.cancel()
+            with anyio.CancelScope(shield=True):
+                await asyncio.gather(producer, return_exceptions=True)
+            if self._producer is producer:
+                self._producer = None
         close = getattr(self.response.body_iterator, "aclose", None)
         if close is not None:
             await close()

@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
+import asyncio
 from io import BytesIO
 from uuid import UUID
 
 import httpx
+import anyio
 from PIL import Image
 
 from . import llm_call_service, llm_provider_service, llm_service
@@ -91,19 +93,21 @@ async def generate_image_native(
             f"Image generated natively at {actual_size[0]}x{actual_size[1]} pixels. "
             f"Preferred: {width}x{height}; selected: {selected_label}."
         )
-    except Exception as exc:
+    except BaseException as exc:
+        with anyio.CancelScope(shield=True):
+            await llm_call_service.finalize_call(
+                call.id, trace=trace, raw_response=raw_response,
+                status="cancelled" if isinstance(exc, asyncio.CancelledError) else "error", error=str(exc),
+                input_rate=llm.cost_per_input_token,
+                cached_input_rate=llm.cost_per_cached_input_token,
+                output_rate=llm.cost_per_output_token,
+            )
+        raise
+    with anyio.CancelScope(shield=True):
         await llm_call_service.finalize_call(
             call.id, trace=trace, raw_response=raw_response,
-            status="error", error=str(exc),
             input_rate=llm.cost_per_input_token,
             cached_input_rate=llm.cost_per_cached_input_token,
             output_rate=llm.cost_per_output_token,
         )
-        raise
-    await llm_call_service.finalize_call(
-        call.id, trace=trace, raw_response=raw_response,
-        input_rate=llm.cost_per_input_token,
-        cached_input_rate=llm.cost_per_cached_input_token,
-        output_rate=llm.cost_per_output_token,
-    )
     return result.content, media_type

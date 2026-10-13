@@ -2,11 +2,11 @@
 
 from datetime import datetime, timedelta
 from collections.abc import Collection
-from dataclasses import asdict
+from dataclasses import asdict, dataclass
 from typing import Any
 from uuid import UUID, uuid4
 
-from sqlalchemy import func, select
+from sqlalchemy import Integer, func, select
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import defer
 
@@ -342,8 +342,7 @@ async def command(
     await db.flush()
     notify_after_commit("changes", inference_id)
     notify_after_commit("control", inference_id)
-    if action in {"start", "resume"}:
-        notify_after_commit("work")
+    notify_after_commit("work")
     return InferenceCommand.model_validate(receipt, from_attributes=True)
 
 
@@ -473,6 +472,62 @@ async def pending(*, exclude: Collection[UUID] = ()) -> list[UUID]:
             .limit(PENDING_BATCH_SIZE)
         )
     )
+
+
+@dataclass(frozen=True)
+class PendingAdmission:
+    id: UUID
+    provider_id: int | None
+    limit: int
+    priority: int
+    owner: str | None
+    deadline_at: datetime | None
+
+
+async def pending_admissions(*, exclude: Collection[UUID] = ()) -> list[PendingAdmission]:
+    from .provider_models import LLM, LLMProvider
+    from .provider_scheduler import call_priority
+    from app.conversation import ConversationRound
+    from sqlalchemy.dialects.postgresql import UUID as PGUUID
+
+    rows = await get_db().execute(
+        select(
+            LLMInference.id, LLMInference.request["purpose"].astext,
+            LLMInference.request["conversation_round_id"].astext,
+            LLMInference.request["task_id"].astext, LLMInference.deadline_at,
+            LLMProvider, ConversationRound.voice_session_id,
+        ).select_from(LLMInference)
+        .outerjoin(LLM, LLM.id == LLMInference.request["llm_id"].astext.cast(Integer))
+        .outerjoin(LLMProvider, LLMProvider.id == LLM.llm_provider_id)
+        .outerjoin(ConversationRound, ConversationRound.id == LLMInference.request["conversation_round_id"].astext.cast(PGUUID(as_uuid=True)))
+        .where(LLMInference.status == "queued", LLMInference.id.not_in(exclude))
+        .order_by(LLMInference.created_at).limit(PENDING_BATCH_SIZE)
+    )
+    result: list[PendingAdmission] = []
+    for key, purpose, round_id, task_id, expiry, provider, voice_session_id in rows:
+        origin = ("voice" if voice_session_id is not None else "text") if round_id and not task_id else None
+        result.append(PendingAdmission(
+            id=key, provider_id=provider.id if provider is not None else None,
+            limit=provider.effective_max_concurrent_calls if provider is not None else 0,
+            priority=call_priority(purpose, round_origin=origin),
+            owner=round_id or task_id, deadline_at=expiry,
+        ))
+    return result
+
+
+async def queued_admissions(ids: Collection[UUID]) -> set[UUID]:
+    if not ids:
+        return set()
+    timestamp = await now()
+    expired = list(await get_db().scalars(select(LLMInference.id).where(
+        LLMInference.id.in_(ids), LLMInference.status == "queued",
+        LLMInference.deadline_at <= timestamp,
+    )))
+    for key in expired:
+        await claim(key)  # The existing deadline guard closes it without a provider call.
+    return set(await get_db().scalars(select(LLMInference.id).where(
+        LLMInference.id.in_(ids), LLMInference.status == "queued",
+    )))
 
 
 async def recover_expired() -> int:

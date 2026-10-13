@@ -52,6 +52,7 @@ export interface ProviderConfigurationDraft {
     management_api_key?: string | null
     configuration: Record<string, unknown>
     is_active: boolean
+    max_concurrent_calls: number
     user_id: number | null
     subscription_acknowledged: boolean
 }

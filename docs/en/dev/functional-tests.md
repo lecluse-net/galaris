@@ -266,6 +266,14 @@ The silence journey in `e2e/specs/chat.spec.mjs` exercises the assembled convers
 real PostgreSQL, scheduler and internal harness with a synthetic provider: current attempt preserved,
 the same Task, call closure followed by guided recovery and a durable result.
 
+Provider admission is covered by `app/llm/tests/test_provider_scheduler.py` and
+`tests/test_inference_lifecycle.py`: priority, protected places, shared model/native-call
+capacity, live changes, queued stop/pause/deadline, voice transcription under load and
+released capacity after cancelling native transcription or image generation. The transport
+test in `tests/test_protocol_inference.py` measures journal commits, preserves large Unicode
+fragments and retains early reasoning cancellation. `front/browser-tests/provider-autosave.spec.mjs`
+covers saving 0, reopening, validation and preservation of other settings.
+
 Journal and streaming stabilization is covered by
 `back/app/agent/tests/test_reasoning_guard.py` (irregular fragments, replayed snapshots,
 no false positive on a fragmented word) and `back/app/incident/tests/test_capture.py`

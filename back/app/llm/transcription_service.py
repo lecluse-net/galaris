@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 
+import asyncio
 from dataclasses import replace
 from pathlib import Path
 from typing import BinaryIO
 
 import httpx
+import anyio
 
 from core.util import as_dict
 
@@ -133,6 +135,7 @@ async def transcribe_audio(
     language: str = "",
     agent_id: int | None = None,
     user_id: int | None = None,
+    voice_dialogue: bool = False,
 ) -> str:
     """Transcribe one complete audio utterance with the configured STT resource."""
 
@@ -146,6 +149,7 @@ async def transcribe_audio(
         agent_id=agent_id,
         timeout=120.0,
         user_id=user_id,
+        voice_dialogue=voice_dialogue,
     )
 
 
@@ -180,6 +184,7 @@ async def _transcribe_audio_source(
     agent_id: int | None,
     timeout: float,
     user_id: int | None = None,
+    voice_dialogue: bool = False,
 ) -> str:
     if user_id is not None:
         resource, connection = await _selected_resource(agent_id, user_id=user_id)
@@ -194,6 +199,7 @@ async def _transcribe_audio_source(
     size_bytes = source.stat().st_size if isinstance(source, Path) else len(source)
     provider = resource.provider
     call = await llm_call_service.create_running_call(
+        voice_dialogue=voice_dialogue,
         purpose=LLMCallPurpose.AUDIO_TRANSCRIPTION,
         requester_user_id=user_id,
         task_id=None,
@@ -248,38 +254,36 @@ async def _transcribe_audio_source(
                 language=language,
                 timeout=timeout,
             )
-    except Exception as exc:
-        await llm_call_service.finalize_call(
-            call.id,
-            trace={},
-            raw_response=(
-                exc.raw_response
-                if isinstance(exc, ProviderTranscriptionError)
-                else None
-            ),
-            status="error",
-            error=str(exc),
-            input_rate=resource.cost_per_input_token,
-            cached_input_rate=resource.cost_per_cached_input_token,
-            output_rate=resource.cost_per_output_token,
-        )
+    except BaseException as exc:
+        with anyio.CancelScope(shield=True):
+            await llm_call_service.finalize_call(
+                call.id,
+                trace={},
+                raw_response=exc.raw_response if isinstance(exc, ProviderTranscriptionError) else None,
+                status="cancelled" if isinstance(exc, asyncio.CancelledError) else "error",
+                error=str(exc),
+                input_rate=resource.cost_per_input_token,
+                cached_input_rate=resource.cost_per_cached_input_token,
+                output_rate=resource.cost_per_output_token,
+            )
         raise
 
     usage = dict(result.usage)
     usage.setdefault("audio_bytes", size_bytes)
-    await llm_call_service.finalize_call(
-        call.id,
-        trace={
-            "response_text": result.text,
-            "finish_reason": "stop",
-            "usage": usage,
-            "upstream_request_id": result.upstream_request_id,
-        },
-        raw_response=result.raw_response,
-        input_rate=resource.cost_per_input_token,
-        cached_input_rate=resource.cost_per_cached_input_token,
-        output_rate=resource.cost_per_output_token,
-    )
+    with anyio.CancelScope(shield=True):
+        await llm_call_service.finalize_call(
+            call.id,
+            trace={
+                "response_text": result.text,
+                "finish_reason": "stop",
+                "usage": usage,
+                "upstream_request_id": result.upstream_request_id,
+            },
+            raw_response=result.raw_response,
+            input_rate=resource.cost_per_input_token,
+            cached_input_rate=resource.cost_per_cached_input_token,
+            output_rate=resource.cost_per_output_token,
+        )
     return result.text
 
 

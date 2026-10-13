@@ -80,6 +80,10 @@ La barre latérale ne montre que les écrans autorisés par votre rôle :
 | Processus | lancer et suivre un workflow externe, par exemple n8n |
 | Outils | voir les capacités et connexions autorisées ; principalement destiné aux responsables |
 
+Dans **Fournisseurs**, un administrateur peut régler le nombre d'appels LLM simultanés
+par connexion. Les conversations vocales puis textuelles ont priorité sur le travail de
+fond ; avec une seule place, un appel déjà engagé doit toutefois terminer avant le suivant.
+
 Les rubriques LLM, paramètres, utilisateurs et autorisations sont administratives. Leur
 absence dans votre menu est normale. Dans **Profil**, choisissez Français ou English ; ce
 choix traduit l’interface et devient aussi la langue de référence de vos nouvelles tâches.

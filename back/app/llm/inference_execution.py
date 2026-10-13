@@ -19,6 +19,7 @@ from app.agent.contracts import AIResult
 from core.database import get_db_session
 from core.user import get_current_token_label, get_current_user_id
 from . import inference_store, inference_notifications as notifications
+from . import provider_scheduler
 from .call_capture import inference_owner
 from .contracts import (
     InferenceAction,
@@ -40,6 +41,7 @@ if TYPE_CHECKING:
 T = TypeVar("T")
 _worker: asyncio.Task[None] | None = None
 _executions: dict[UUID, asyncio.Task[None]] = {}
+_admissions: dict[UUID, tuple[provider_scheduler.Ticket, datetime | None]] = {}
 HEARTBEAT_SECONDS = inference_store.LEASE_SECONDS / 6
 
 
@@ -243,7 +245,16 @@ async def events(
                 await notifications.wait(changed)
 
 
-async def execute(inference_id: UUID) -> None:
+async def execute(inference_id: UUID, permit: provider_scheduler.Permit | None = None) -> None:
+    try:
+        with provider_scheduler.reserved(permit):
+            await _execute_admitted(inference_id)
+    finally:
+        if permit is not None:
+            permit.release()
+
+
+async def _execute_admitted(inference_id: UUID) -> None:
     owner = await transaction(lambda: inference_store.claim(inference_id))
     if owner is None:
         return
@@ -373,8 +384,33 @@ async def _loop() -> None:
                         del _executions[key]
                 # Drain bounded pages without waiting for the reconciliation
                 # timer; exclude roots whose claim has not committed yet.
-                pending = await transaction(lambda: inference_store.pending(exclude=tuple(_executions)))
-                for key in pending:
+                queued = await transaction(lambda: inference_store.queued_admissions(tuple(_admissions)))
+                for key, (ticket, _) in list(_admissions.items()):
+                    if key not in queued:
+                        provider_scheduler.get_scheduler().cancel(ticket)
+                        del _admissions[key]
+                    elif ticket.future.done():
+                        permit = ticket.future.result()
+                        task = asyncio.create_task(execute(key, permit), name=f"inference:{key}")
+                        _executions[key] = task
+                        del _admissions[key]
+                        def admitted_done(done: asyncio.Task[None], held: provider_scheduler.Permit = permit) -> None:
+                            held.release()
+                            _execution_done(done)
+                        task.add_done_callback(admitted_done)
+                pending = await transaction(lambda: inference_store.pending_admissions(
+                    exclude=(*_executions, *_admissions),
+                ))
+                for admission in pending:
+                    key = admission.id
+                    if admission.provider_id is not None:
+                        ticket = provider_scheduler.get_scheduler().enqueue(
+                            admission.provider_id, admission.limit, admission.priority,
+                            owner=admission.owner,
+                        )
+                        ticket.future.add_done_callback(lambda _: notifications.notify("work"))
+                        _admissions[key] = ticket, admission.deadline_at
+                        continue
                     task = asyncio.create_task(
                         execute(key), name=f"inference:{key}"
                     )
@@ -382,8 +418,14 @@ async def _loop() -> None:
                     task.add_done_callback(_execution_done)
                 if len(pending) == inference_store.PENDING_BATCH_SIZE:
                     continue
-                await notifications.wait(work, timeout=max(0.0, recover_at - loop.time()))
+                delays = [max(0.0, recover_at - loop.time())]
+                now = datetime.now(timezone.utc)
+                delays.extend(max(0.0, (expiry - now).total_seconds()) for _, expiry in _admissions.values() if expiry)
+                await notifications.wait(work, timeout=min(delays))
     finally:
+        for ticket, _ in _admissions.values():
+            provider_scheduler.get_scheduler().cancel(ticket)
+        _admissions.clear()
         tasks = list(_executions.values())
         for task in tasks:
             task.cancel()

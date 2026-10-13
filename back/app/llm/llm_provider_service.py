@@ -201,7 +201,7 @@ async def create_provider(data: LLMProviderCreate) -> LLMProvider:
             is_active=data.is_active,
             configuration=data.configuration,
             user_id=data.user_id,
-            **data.model_dump(include={"subscription_acknowledged", "management_api_key"}, exclude_unset=True),
+            **data.model_dump(include={"subscription_acknowledged", "management_api_key", "max_concurrent_calls"}, exclude_unset=True),
         )
         return await configure_catalog_provider(data.catalog_code, configured)
 
@@ -220,7 +220,7 @@ async def create_provider(data: LLMProviderCreate) -> LLMProvider:
             is_active=data.is_active,
             configuration=data.configuration,
             user_id=data.user_id,
-            **data.model_dump(include={"subscription_acknowledged", "management_api_key"}, exclude_unset=True),
+            **data.model_dump(include={"subscription_acknowledged", "management_api_key", "max_concurrent_calls"}, exclude_unset=True),
         )
         return await configure_catalog_provider(registered.code, configured)
 
@@ -236,6 +236,7 @@ async def create_provider(data: LLMProviderCreate) -> LLMProvider:
         api_key=_encrypt_api_key(data.api_key),
         management_api_key=await _encrypted_management_key(data.management_api_key, None),
         configuration=dict(data.configuration),
+        max_concurrent_calls=data.max_concurrent_calls,
         is_active=data.is_active,
         subscription_acknowledged=data.subscription_acknowledged,
         user_id=await _validated_subscription_owner(
@@ -248,6 +249,7 @@ async def create_provider(data: LLMProviderCreate) -> LLMProvider:
     await db.commit()
     await db.refresh(provider)
     logger.info("Custom LLM provider created: {} ({})", provider.name, provider.provider_type)
+    _configure_admission(provider)
     return provider
 
 
@@ -318,6 +320,8 @@ async def configure_catalog_provider(
         db.add(provider)
 
     provider.provider_type = profile.provider_type
+    if "max_concurrent_calls" in data.model_fields_set:
+        provider.max_concurrent_calls = data.max_concurrent_calls
     provider.is_active = data.is_active
     previous_user_id = provider.user_id
     provider.user_id = await _validated_subscription_owner(
@@ -356,6 +360,7 @@ async def configure_catalog_provider(
     update_subscription_confirmation(provider.catalog_code, provider.subscription_acknowledged)
     await db.refresh(provider)
     logger.info("LLM catalog provider configured: {} active={}", catalog_code, data.is_active)
+    _configure_admission(provider)
     return provider
 
 
@@ -393,7 +398,7 @@ async def update_provider(
         update_data = {
             field: value
             for field, value in update_data.items()
-            if field in {"api_key", "management_api_key", "is_active", "configuration", "user_id", "subscription_acknowledged"}
+            if field in {"api_key", "management_api_key", "is_active", "configuration", "user_id", "subscription_acknowledged", "max_concurrent_calls"}
         }
         provider.provider_type = profile.provider_type
         provider.base_url = profile.base_url
@@ -424,7 +429,16 @@ async def update_provider(
     await db.commit()
     update_subscription_confirmation(provider.catalog_code, provider.subscription_acknowledged)
     await db.refresh(provider)
+    _configure_admission(provider)
     return provider
+
+
+def _configure_admission(provider: LLMProvider) -> None:
+    from .provider_scheduler import get_scheduler
+    from .inference_notifications import notify
+
+    get_scheduler().configure(provider.id, provider.effective_max_concurrent_calls)
+    notify("work")
 
 
 async def delete_provider(provider_id: int) -> bool:
@@ -495,6 +509,7 @@ def _custom_catalog_item(provider: LLMProvider) -> ProviderCatalogItem:
         provider_type=provider.provider_type,
         auth_type="optional_api_key" if manages_models else "api_key",
         default_base_url=provider.base_url,
+        default_max_concurrent_calls=provider.effective_max_concurrent_calls,
         token_url=None,
         documentation_url=None,
         icon="dns" if manages_models else "lan",

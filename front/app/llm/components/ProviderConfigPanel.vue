@@ -112,6 +112,19 @@
           </q-input>
 
           <q-input
+            v-model.number="draft.max_concurrent_calls"
+            type="number"
+            min="0"
+            step="1"
+            outlined
+            dense
+            :label="t('llm.maxConcurrentCalls')"
+            :hint="t('llm.maxConcurrentCallsHint')"
+            :rules="[concurrencyRule]"
+            :readonly="!canEdit"
+          />
+
+          <q-input
             v-for="field in item.configuration_fields"
             :key="field.key"
             v-model="configurationValues[field.key]"
@@ -373,7 +386,7 @@ const removeKeyDialog = computed({
   set: (open: boolean) => { if (!open) keyToRemove.value = null },
 })
 const loadedItemKey = ref<string | null>(null)
-const editableFields = ['name', 'provider_type', 'base_url', 'is_active', 'user_id', 'subscription_acknowledged'] as const
+const editableFields = ['name', 'provider_type', 'base_url', 'is_active', 'max_concurrent_calls', 'user_id', 'subscription_acknowledged'] as const
 const editedFields = new Set<keyof ProviderConfigurationDraft>()
 const editedConfiguration = new Set<string>()
 const draft = reactive<ProviderConfigurationDraft>({
@@ -383,6 +396,7 @@ const draft = reactive<ProviderConfigurationDraft>({
   api_key: undefined,
   configuration: {},
   is_active: false,
+  max_concurrent_calls: 10,
   user_id: null,
   subscription_acknowledged: false,
 })
@@ -429,6 +443,11 @@ function ownerRule(value: number | null): true | string {
   return value !== null || t('llm.chatGptOwnerRequired')
 }
 
+function concurrencyRule(value: unknown): true | string {
+  return (typeof value === 'number' && Number.isSafeInteger(value) && value >= 0)
+    || t('llm.maxConcurrentCallsInvalid')
+}
+
 function selectSubscriptionOwner(userId: number | null): void {
   if (draft.user_id !== userId) draft.subscription_acknowledged = false
   draft.user_id = userId
@@ -458,6 +477,7 @@ function resetDraft(): void {
     management_api_key: undefined,
     configuration: nextConfiguration,
     is_active: connection?.is_active ?? false,
+    max_concurrent_calls: connection?.max_concurrent_calls ?? item.default_max_concurrent_calls ?? (item.is_custom ? 1 : 10),
     user_id: connection?.user_id ?? null,
     subscription_acknowledged: connection?.subscription_acknowledged ?? false,
   }
@@ -503,7 +523,7 @@ function removeKey(): void {
 
 function readyToSave(): boolean {
   const item = props.item
-  if (!item || !subscriptionReady.value) return false
+  if (!item || !subscriptionReady.value || concurrencyRule(draft.max_concurrent_calls) !== true) return false
   if (item.is_custom && (!draft.name.trim() || !draft.base_url.trim())) return false
   if (apiKeyRule(draft.api_key) !== true) return false
   return item.configuration_fields.every(field => !field.required || configurationValues[field.key]?.trim())

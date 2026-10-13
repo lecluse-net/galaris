@@ -45,6 +45,31 @@ async function setup(page, overrides = {}, catalogOverrides = {}) {
   return { panel, writes, controls, read: () => provider }
 }
 
+for (const custom of [false, true]) {
+  test(`provider concurrency saves zero, survives reopening and rejects invalid input (custom: ${custom})`, async ({ page }) => {
+    const { panel, writes, read } = await setup(page, {
+      is_active: true, api_key_configured: true, max_concurrent_calls: custom ? 1 : 10,
+      configuration: { region: 'synthetic-region' },
+    }, custom ? { key: 'custom:31', code: null, is_custom: true,
+      auth_type: 'optional_api_key', api_key_required: false } : {})
+    const limit = panel.getByRole('spinbutton', { name: 'Maximum concurrent calls', exact: true })
+    await expect(limit).toHaveValue(custom ? '1' : '10')
+    await limit.fill('0')
+    await expect.poll(() => read().max_concurrent_calls).toBe(0)
+    expect(writes.at(-1).max_concurrent_calls).toBe(0)
+    await page.locator('.provider-list-panel').getByText('Other synthetic connection', { exact: true }).click()
+    await page.locator('.provider-list-panel').getByText('Synthetic connection', { exact: true }).click()
+    await expect(limit).toHaveValue('0')
+    const before = writes.length
+    await limit.fill('-1')
+    await limit.blur()
+    await expect(panel.getByText('Enter a non-negative integer.', { exact: true })).toBeVisible()
+    expect(writes).toHaveLength(before)
+    await limit.fill('2')
+    await expect.poll(() => read().max_concurrent_calls).toBe(2)
+  })
+}
+
 for (const width of [1440, 390]) {
   test(`optional management keys save, reopen, replace and clear at ${width}px`, async ({ page }) => {
     await page.setViewportSize({ width, height: 1100 })

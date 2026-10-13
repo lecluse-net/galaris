@@ -25,6 +25,76 @@ state = lifecycle.state
 
 
 @pytest.mark.asyncio
+async def test_closing_transport_stops_its_producer_before_closing_the_response(monkeypatch):
+    from starlette.responses import StreamingResponse
+    from app.llm import protocol_inference
+
+    stopped = asyncio.Event()
+    producers = []
+
+    async def body():
+        producers.append(asyncio.current_task())
+        try:
+            while True:
+                yield b"x" * 65536
+        finally:
+            stopped.set()
+
+    async def journal(*_args):
+        pass
+
+    monkeypatch.setattr(protocol_inference, "_wire", journal)
+    transport = protocol_inference._WireStream(StreamingResponse(body()), None)
+    iterator = transport.__aiter__()
+    try:
+        assert len(await anext(iterator)) == 65536
+        # HTTPX closes its stream even when its byte iterator is suspended at
+        # yield. That close must join the producer before closing the source.
+        await transport.aclose()
+        assert stopped.is_set()
+        assert len(producers) == 1 and producers[0].done()
+    finally:
+        await iterator.aclose()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("large_unicode", [False, True])
+async def test_protocol_transport_batches_journal_writes_and_preserves_response(runtime, record_property, large_unicode):
+    import base64
+    from app.llm.contracts import ProtocolInferenceRequest
+    from app.llm.facade import start_inference
+    from app.llm.models import LLMCallEvent
+
+    _, llm, requests, mode = runtime
+    mode["concurrent"] = True
+    expected = "é" * 50000 if large_unicode else "Bonjour !"
+    mode["outputs"] = [expected]
+    request = ProtocolInferenceRequest(
+        llm_id=llm.id, prompt="Synthetic greeting", purpose="lab.mechanism_run",
+        protocol="chat", body={"model": llm.code, "stream": True,
+            "messages": [{"role": "user", "content": "Synthetic greeting"}]},
+    )
+    key = await start_inference(request)
+    saved = await state(key, "completed")
+    assert saved.attempts[-1].result.result == expected
+    events = [item async for item in stream_inference(key)]
+    assert events[-1].kind == "result" and sum(item.kind == "result" for item in events) == 1
+    async with lifecycle.get_db_session() as db:
+        wire = list(await db.scalars(select(LLMCallEvent.payload).join(LLMCall).where(
+            LLMCall.inference_attempt_id == saved.attempts[-1].id,
+            LLMCallEvent.payload["kind"].astext == "wire",
+        ).order_by(LLMCallEvent.sequence)))
+    chunks = [item for item in wire if item["wire"].get("phase") == "chunk"]
+    record_property("transport_chunk_commits", len(chunks))
+    assert len(requests) == 1
+    # A byte bound is a resource contract; splitting must preserve Unicode and
+    # SSE framing even when a provider delivers a very large single fragment.
+    assert all(len(base64.b64decode(item["wire"]["data"])) <= 65536 for item in chunks)
+    if not large_unicode:
+        assert len(chunks) <= 2, f"Transport journal commits for one fast synthetic stream: {len(chunks)}"
+
+
+@pytest.mark.asyncio
 @pytest.mark.parametrize("protocol", ["chat", "responses"])
 @pytest.mark.parametrize("streaming,outcome", [(False, "busy"), (True, "busy"), (True, "silent"), (True, "terminal")])
 async def test_one_call_deadline_closes_provider_and_preserves_terminal_outcome(
