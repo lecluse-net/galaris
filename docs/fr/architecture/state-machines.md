@@ -547,3 +547,14 @@ l’ajout de l’occurrence. Les autres transitions sont des décisions de revue
 peuvent être corrigées manuellement.
 
 Autorité : `back/app/incident/models.py` et `service.py`.
+
+
+### Raccrochage forcé administratif
+
+`POST /api/voice/conversations/turns/{id}/force-hangup` exige `TASK_EDIT` et la portée de gestion de l’agent. Cette action conserve les messages canoniques, les tours, les Tasks et les exécutions de Process. Les verrous sont pris dans l’ordre session puis tours : les tours audio actifs (`FROZEN`, `CLAIMED`, `RUNNING`, `WAITING_APPROVAL`) deviennent `INTERRUPTED` ; leurs leases, checkpoints chiffrés et autorisations en attente sont révoqués. Une session ACTIVE devient CANCELLED. Une session déjà terminale conserve son statut et ses dates, mais ses tours orphelins sont interrompus. Le commit précède l’annulation locale à attente bornée. Le contrôle périodique de l’état durable de la session demande l’arrêt des moteurs classique/realtime, y compris sur un autre worker ; `audio_stopped` (et son alias historique `local_audio_stopped`) acquitte la libération des propriétaires sur tous les workers, via les verrous consultatifs PostgreSQL conservés jusqu’à la fin du nettoyage du transport. Une erreur de fermeture empêche cet acquittement. L’action est idempotente. Elle n’annule pas rétroactivement les effets déjà envoyés avant révocation.
+
+### Suppression différée des tours audio
+
+La suppression révoque d’abord durablement la session et le tour, puis enregistre une demande dans `voice_turn_deletions`. Un nettoyage encore actif ou une erreur de transport conserve le tour et rend la demande explicitement en attente (HTTP 202). Un travail périodique reprend les demandes toutes les deux secondes, y compris après redémarrage, sans dépendre du registre mémoire du worker initial. `GET /api/voice/conversations/turns/{id}/deletion` expose l’état et la dernière erreur ; l’interface suit cette demande jusqu’à son achèvement. La suppression canonique conserve les traces métier liées selon les règles de suppression des conversations.
+
+Le schéma comporte la table de demandes et le champ `voice_sessions.teardown_error` : appliquer le workflow Atlas (`make upgrade`) avant activation. La qualification automatisée couvre les propriétaires non coopératifs, un verrou PostgreSQL détenu sur une connexion distincte, la reprise du traitement sans registre local et les erreurs de fermeture. Elle ne remplace pas un essai de bout en bout avec deux processus audio et un redémarrage réel.

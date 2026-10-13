@@ -21,12 +21,18 @@ async def save_turn_checkpoint(turn_id: UUID, checkpoint: Any) -> None:
     from core.database import get_db_session
     from core.util import get_encryption_service
     from app.tools.facade import canonical_authorization_snapshot
+
     async with get_db_session() as db:
-        round_ = await db.scalar(select(ConversationRound).where(ConversationRound.id == turn_id,
-            ConversationRound.voice_session_id.is_not(None)).with_for_update())
+        round_ = await db.scalar(
+            select(ConversationRound)
+            .where(ConversationRound.id == turn_id, ConversationRound.voice_session_id.is_not(None))
+            .with_for_update()
+        )
         if round_ is None or round_.status not in ("RUNNING", "WAITING_APPROVAL"):
             raise PermissionError("The voice round is no longer owned by its runtime")
-        round_.encrypted_checkpoint = get_encryption_service().encrypt(canonical_authorization_snapshot(checkpoint))
+        round_.encrypted_checkpoint = get_encryption_service().encrypt(
+            canonical_authorization_snapshot(checkpoint)
+        )
         await db.commit()
 
 
@@ -34,23 +40,34 @@ _TERMINAL_ROUND_STATUSES = {
     VoiceTurnStatus.COMPLETED.value,
     VoiceTurnStatus.INTERRUPTED.value,
     VoiceTurnStatus.FAILED.value,
+    "CANCELLED",
 }
 
 
 async def _authorization_context_snapshot(agent_id: int, context_key: str) -> dict[str, Any] | None:
     try:
         _, session_key, _, round_key = context_key.split(":")
-        session = await get_db().get(VoiceConversationSession, UUID(session_key), populate_existing=True)
+        session = await get_db().get(
+            VoiceConversationSession, UUID(session_key), populate_existing=True
+        )
     except ValueError:
         return None
     if session is None or session.status != VoiceConversationStatus.ACTIVE.value:
         return None
-    _, owner_agent, _ = await _message_context(session)
+    _, owner_agent, _ = await message_context(session)
     if owner_agent != agent_id:
         return None
     if round_key != "None":
         round_ = await get_db().get(ConversationRound, UUID(round_key), populate_existing=True)
-        if round_ is None or round_.voice_session_id != session.id or round_.status in (_TERMINAL_ROUND_STATUSES | {"CANCELLED", "SUPERSEDED", "SUCCEEDED", "ERROR_RESOLVED"}):
+        if (
+            round_ is None
+            or round_.voice_session_id != session.id
+            or round_.status
+            in (
+                _TERMINAL_ROUND_STATUSES
+                | {"CANCELLED", "SUPERSEDED", "SUCCEEDED", "ERROR_RESOLVED"}
+            )
+        ):
             return None
     return {"session": str(session.id), "round": round_key, "sequence": session.next_sequence}
 
@@ -61,6 +78,7 @@ async def _wake_authorization_context(agent_id: int, context_key: str) -> bool:
     from app.tools.facade import authorization_context_pending, invalidate_authorization_context
     from core.database import get_db_session
     from app.conversation import wake
+
     async with get_db_session() as db:
         if await _authorization_context_snapshot(agent_id, context_key) is None:
             await invalidate_authorization_context(agent_id, context_key)
@@ -68,7 +86,11 @@ async def _wake_authorization_context(agent_id: int, context_key: str) -> bool:
         round_key = context_key.split(":")[-1]
         if round_key == "None":
             return True
-        round_ = await db.scalar(select(ConversationRound).where(ConversationRound.id == UUID(round_key)).with_for_update())
+        round_ = await db.scalar(
+            select(ConversationRound)
+            .where(ConversationRound.id == UUID(round_key))
+            .with_for_update()
+        )
         if round_ is not None and round_.status in ("CLAIMED", "RUNNING"):
             # Human decisions can arrive before the runtime persists its suspension.
             # Keep the outbox wake until that owner has released the turn.
@@ -84,6 +106,7 @@ async def _wake_authorization_context(agent_id: int, context_key: str) -> bool:
 
 
 from app.tools.facade import register_authorization_context_guard, register_authorization_waker
+
 register_authorization_context_guard("voice", _authorization_context_snapshot)
 register_authorization_waker("voice", _wake_authorization_context)
 
@@ -97,7 +120,7 @@ def _combine_objective(pending: str | None, transcript: str) -> str:
     return "\n".join(parts)
 
 
-async def _publish(
+async def publish_session(
     action: str,
     session_id: UUID,
     *,
@@ -140,9 +163,7 @@ async def start_session(
 
     agent = await get_agent_record(agent_id)
     agent_display_name = (
-        f"{agent.first_name} {agent.last_name}".strip()
-        if agent is not None
-        else ""
+        f"{agent.first_name} {agent.last_name}".strip() if agent is not None else ""
     )
     messenger_room_id = conversation_room_id
     if messenger_room_id is not None:
@@ -200,11 +221,11 @@ async def start_session(
     db.add(session)
     await db.commit()
     await db.refresh(session)
-    await _publish("create", session.id, status=session.status)
+    await publish_session("create", session.id, status=session.status)
     return session
 
 
-async def _message_context(
+async def message_context(
     session: VoiceConversationSession,
 ) -> tuple[int, int, UUID]:
     from app.connection import Connection
@@ -233,7 +254,7 @@ async def _record_message(
     sequence: int,
     occurred_at: datetime | None,
 ) -> UUID:
-    context = await _message_context(session)
+    context = await message_context(session)
     connection_id, agent_id, messenger_room_id = context
     from app.messenger import record_audio_message
 
@@ -250,9 +271,7 @@ async def _record_message(
         role="input" if role == "input" else "output",
         text=text,
         occurred_at=occurred_at,
-        contact_memory_item_id=(
-            round_.contact_memory_item_id if round_ is not None else None
-        ),
+        contact_memory_item_id=(round_.contact_memory_item_id if round_ is not None else None),
     )
     if round_ is not None:
         if role == "input" and round_.topic_id is not None:
@@ -313,17 +332,38 @@ async def record_initial_greeting(
 async def _round_and_session(
     round_id: UUID,
 ) -> tuple[ConversationRound, VoiceConversationSession]:
-    round_ = await get_db().scalar(
-        select(ConversationRound)
-        .where(ConversationRound.id == round_id)
+    db = get_db()
+    session_id = await db.scalar(
+        select(ConversationRound.voice_session_id).where(
+            ConversationRound.id == round_id,
+        )
+    )
+    if session_id is None:
+        raise LookupError(f"Voice conversation round {round_id} not found.")
+    # Use the same session -> round lock order as deletion and admission.
+    session = await db.scalar(
+        select(VoiceConversationSession)
+        .where(
+            VoiceConversationSession.id == session_id,
+        )
         .with_for_update()
         .execution_options(populate_existing=True)
     )
-    if round_ is None or round_.voice_session_id is None:
+    round_ = await db.scalar(
+        select(ConversationRound)
+        .where(
+            ConversationRound.id == round_id,
+        )
+        .with_for_update()
+        .execution_options(populate_existing=True)
+    )
+    if round_ is None or session is None:
         raise LookupError(f"Voice conversation round {round_id} not found.")
-    session = await get_db().get(VoiceConversationSession, round_.voice_session_id)
-    if session is None:
-        raise LookupError(f"Voice session {round_.voice_session_id} not found.")
+    if (
+        round_.status in _TERMINAL_ROUND_STATUSES
+        or session.status != VoiceConversationStatus.ACTIVE.value
+    ):
+        raise PermissionError("The voice round was administratively cancelled")
     return round_, session
 
 
@@ -387,21 +427,54 @@ async def finish_session(
     *,
     error: str | None = None,
 ) -> None:
-    """Close an active call without rewriting an already terminal session."""
+    """Close a call and retire orphan execution, preserving terminal session history."""
 
     db = get_db()
     session = await db.scalar(
         select(VoiceConversationSession)
         .where(VoiceConversationSession.id == session_id)
         .with_for_update()
+        .execution_options(populate_existing=True)
     )
-    if session is None or session.status != VoiceConversationStatus.ACTIVE.value:
+    if session is None:
         return
-    session.status = status.value
-    session.error = (error or "").strip()[:4000] or None
-    session.finished_at = _now()
+    if session.status == VoiceConversationStatus.ACTIVE.value:
+        session.status = status.value
+        session.error = (error or "").strip()[:4000] or None
+        session.finished_at = _now()
+    # A transport ending must not leave a direct runtime round looking active.
+    active_rounds = list(
+        (
+            await db.scalars(
+                select(ConversationRound)
+                .where(
+                    ConversationRound.voice_session_id == session_id,
+                    ConversationRound.status.in_(
+                        ("RUNNING", "CLAIMED", "WAITING_APPROVAL", "FROZEN")
+                    ),
+                )
+                .with_for_update()
+                .execution_options(populate_existing=True)
+            )
+        ).all()
+    )
+    from app.tools.facade import invalidate_authorization_context
+
+    _, owner_agent, _ = await message_context(session)
+    for active_round in active_rounds:
+        active_round.status = VoiceTurnStatus.INTERRUPTED.value
+        active_round.finished_at = session.finished_at
+        active_round.interrupted_at = session.finished_at
+        active_round.encrypted_checkpoint = None
+        active_round.lease_token = None
+        active_round.lease_owner = None
+        active_round.lease_expires_at = None
+        await invalidate_authorization_context(
+            owner_agent, f"voice:{session.id}:round:{active_round.id}"
+        )
+        await invalidate_authorization_context(owner_agent, f"round:{active_round.id}")
     await db.commit()
-    await _publish("update", session.id, status=status.value)
+    await publish_session("update", session.id, status=session.status)
 
 
 async def _pending_round(session_id: UUID) -> ConversationRound | None:
@@ -418,6 +491,7 @@ async def _pending_round(session_id: UUID) -> ConversationRound | None:
         .order_by(ConversationRound.sequence.desc())
         .limit(1)
         .with_for_update()
+        .execution_options(populate_existing=True)
     )
 
 
@@ -441,18 +515,32 @@ async def start_turn(
         select(VoiceConversationSession)
         .where(VoiceConversationSession.id == session_id)
         .with_for_update()
+        .execution_options(populate_existing=True)
     )
     if session is None:
         raise LookupError(f"Voice session {session_id} not found.")
     if session.status != VoiceConversationStatus.ACTIVE.value:
         raise RuntimeError(f"Voice session {session_id} is not active.")
 
-    waiting = list((await db.scalars(select(ConversationRound).where(
-        ConversationRound.voice_session_id == session.id, ConversationRound.status == "WAITING_APPROVAL").with_for_update())).all())
+    waiting = list(
+        (
+            await db.scalars(
+                select(ConversationRound)
+                .where(
+                    ConversationRound.voice_session_id == session.id,
+                    ConversationRound.status == "WAITING_APPROVAL",
+                )
+                .with_for_update()
+            )
+        ).all()
+    )
     from app.tools.facade import invalidate_authorization_context
+
     for previous in waiting:
-        _, owner_agent, _ = await _message_context(session)
-        await invalidate_authorization_context(owner_agent, f"voice:{session.id}:round:{previous.id}")
+        _, owner_agent, _ = await message_context(session)
+        await invalidate_authorization_context(
+            owner_agent, f"voice:{session.id}:round:{previous.id}"
+        )
         previous.status = VoiceTurnStatus.INTERRUPTED.value
         previous.encrypted_checkpoint = None
     source = await _pending_round(session.id)
@@ -481,7 +569,7 @@ async def start_turn(
 
     await db.commit()
     await db.refresh(round_)
-    await _publish("update", session.id, status=session.status)
+    await publish_session("update", session.id, status=session.status)
     await _publish_round_activity(round_.id)
     return round_
 
@@ -501,6 +589,7 @@ async def start_audio_turn(
         select(VoiceConversationSession)
         .where(VoiceConversationSession.id == session_id)
         .with_for_update()
+        .execution_options(populate_existing=True)
     )
     if session is None:
         raise LookupError(f"Voice session {session_id} not found.")
@@ -523,7 +612,7 @@ async def start_audio_turn(
     db.add(round_)
     await db.commit()
     await db.refresh(round_)
-    await _publish("update", session.id, status=session.status)
+    await publish_session("update", session.id, status=session.status)
     await _publish_round_activity(round_.id)
     return round_
 
@@ -540,7 +629,12 @@ async def complete_turn(
 
     del assistant_response
     if execution_result and execution_result.get("disposition") == "waiting_for_authorization":
-        round_ = await get_db().scalar(select(ConversationRound).where(ConversationRound.id == turn_id).with_for_update())
+        round_ = await get_db().scalar(
+            select(ConversationRound)
+            .where(ConversationRound.id == turn_id)
+            .with_for_update()
+            .execution_options(populate_existing=True)
+        )
         if round_ is not None and round_.status == "RUNNING":
             round_.status = VoiceTurnStatus.WAITING_APPROVAL.value
             round_.execution_result = execution_result
@@ -615,6 +709,7 @@ async def _finish_turn(
             ConversationRound.voice_session_id.is_not(None),
         )
         .with_for_update()
+        .execution_options(populate_existing=True)
     )
     if round_ is None or round_.status in _TERMINAL_ROUND_STATUSES:
         return
@@ -645,5 +740,5 @@ async def _finish_turn(
     session = await db.get(VoiceConversationSession, session_id)
     session_status = session.status if session is not None else None
     await db.commit()
-    await _publish("update", session_id, status=session_status)
+    await publish_session("update", session_id, status=session_status)
     await _publish_round_activity(round_.id)

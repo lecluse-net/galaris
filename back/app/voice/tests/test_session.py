@@ -58,6 +58,13 @@ async def test_agent_session_terminates_only_after_explicit_stop(
     async def db_session() -> AsyncIterator[None]:
         yield
 
+    from app.voice import runtime_control
+
+    @asynccontextmanager
+    async def ownership(_session_id: Any) -> AsyncIterator[None]:
+        yield
+
+    monkeypatch.setattr(runtime_control, "own_session", ownership)
     stop_requested = asyncio.Event()
 
     class Engine:
@@ -69,6 +76,9 @@ async def test_agent_session_terminates_only_after_explicit_stop(
                 stop_requested.set()
 
     monkeypatch.setattr(session_module, "get_db_session", db_session)
+    monkeypatch.setattr(
+        session_module, "get_db", lambda: SimpleNamespace(get=AsyncMock(return_value=None))
+    )
     monkeypatch.setattr(session_module, "AgentVoiceEngine", Engine)
     conversation_room_id = uuid4()
     start_session = AsyncMock(

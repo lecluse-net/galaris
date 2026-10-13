@@ -133,7 +133,7 @@ async def realtime_voice_available_for_agent(agent_id: int) -> bool:
 
     try:
         return await _configuration_for_agent(agent_id) is not None
-    except (RuntimeError, ValueError):
+    except RuntimeError, ValueError:
         return False
 
 
@@ -238,6 +238,12 @@ class RealtimeAgentVoiceEngine:
         )
 
     async def run(self) -> None:
+        from .runtime_control import own_session
+
+        async with own_session(self._session_id):
+            await self._run_owned()
+
+    async def _run_owned(self) -> None:
         from app.agent import build_realtime_agent_context
 
         async with get_db_session():
@@ -262,11 +268,7 @@ class RealtimeAgentVoiceEngine:
         self._provider = await self._configuration.service.create_realtime_session(
             self._configuration.connection,
             model=self._configuration.model,
-            voice=(
-                self._configuration.voice
-                if self._configuration.native_audio
-                else None
-            ),
+            voice=(self._configuration.voice if self._configuration.native_audio else None),
             instructions=context.instructions,
             tools=tuple(tool.definition for tool in self._tools),
             output_audio=self._configuration.native_audio,
@@ -321,10 +323,18 @@ class RealtimeAgentVoiceEngine:
                 task.cancel()
             await asyncio.gather(*tasks, return_exceptions=True)
             await self._cancel_tts()
-            if self._current_turn_id is not None:
-                await self._interrupt_current_turn()
-            await self._provider.close()
-            self._provider = None
+            self._generation += 1
+            self._drain_outbound()
+            try:
+                await self._transport.interrupt_output(self._handle)
+                if self._current_turn_id is not None:
+                    try:
+                        await self._interrupt_current_turn()
+                    except LookupError, PermissionError:
+                        pass  # Administrative fence won the finalization race.
+            finally:
+                await self._provider.close()
+                self._provider = None
 
     async def _send_inbound_audio(self) -> None:
         assert self._provider is not None
@@ -401,7 +411,9 @@ class RealtimeAgentVoiceEngine:
             )
             self._current_turn_id = turn.id
         self._live_stream = ConversationRuntimeStream(
-            room_id=turn.room_id, round_id=turn.id, topic_id=turn.topic_id,
+            room_id=turn.room_id,
+            round_id=turn.id,
+            topic_id=turn.topic_id,
         )
         await self._live_stream.start()
 
@@ -452,10 +464,13 @@ class RealtimeAgentVoiceEngine:
             self._first_text_at = datetime.now(timezone.utc)
         self._response_text.append(delta)
         if self._live_stream is not None:
-            await self._live_stream.append(AIMessage(
-                type="text", content=delta,
-                stream_id=f"voice:{self._current_response_id}",
-            ))
+            await self._live_stream.append(
+                AIMessage(
+                    type="text",
+                    content=delta,
+                    stream_id=f"voice:{self._current_response_id}",
+                )
+            )
 
     async def _on_function_call(
         self,
@@ -468,18 +483,26 @@ class RealtimeAgentVoiceEngine:
         assert self._provider is not None
         self._tool_response_ids.add(response_id)
         from uuid import uuid5, NAMESPACE_URL
+
         operation = uuid5(NAMESPACE_URL, f"voice:{self._session_id}:{call_id}")
         round_id = self._current_turn_id
-        output = await execute_realtime_tool(self._tools, name=name, arguments=arguments,
-            operation_id=operation, round_id=round_id)
+        output = await execute_realtime_tool(
+            self._tools, name=name, arguments=arguments, operation_id=operation, round_id=round_id
+        )
         if "authorization_required" in json.loads(output):
+
             async def resume() -> None:
                 try:
                     result = output
                     while "authorization_required" in json.loads(result):
                         await asyncio.sleep(2)
-                        result = await execute_realtime_tool(self._tools, name=name, arguments=arguments,
-                            operation_id=operation, round_id=round_id)
+                        result = await execute_realtime_tool(
+                            self._tools,
+                            name=name,
+                            arguments=arguments,
+                            operation_id=operation,
+                            round_id=round_id,
+                        )
                     if self._provider is not None:
                         await self._provider.send_function_output(call_id, result)
                         if response_id not in self._tool_response_ids:
@@ -488,6 +511,7 @@ class RealtimeAgentVoiceEngine:
                     raise
                 except Exception:
                     logger.warning("Realtime authorization continuation stopped without replay")
+
             task = asyncio.create_task(resume())
             self._authorization_tasks.add(task)
             task.add_done_callback(self._authorization_tasks.discard)
@@ -523,8 +547,11 @@ class RealtimeAgentVoiceEngine:
                 await conversation_service.complete_turn(
                     turn_id,
                     assistant_response=response,
-                    execution_result=(self._live_stream.snapshot().model_dump(mode="json")
-                                      if self._live_stream else None),
+                    execution_result=(
+                        self._live_stream.snapshot().model_dump(mode="json")
+                        if self._live_stream
+                        else None
+                    ),
                     first_text_at=self._first_text_at,
                     first_audio_at=self._first_audio_at,
                 )
@@ -577,9 +604,7 @@ class RealtimeAgentVoiceEngine:
                 tts_service.TTSOptions(language=self._language),
             )
         if stream is None:
-            raise RuntimeError(
-                "the selected external voice does not support realtime streaming"
-            )
+            raise RuntimeError("the selected external voice does not support realtime streaming")
         async for frame in pcm_audio_frames(
             stream.stream(segments()),
             sample_rate=stream.sample_rate,
@@ -635,7 +660,9 @@ class RealtimeAgentVoiceEngine:
                     await conversation_service.interrupt_turn(
                         turn_id,
                         assistant_response="".join(self._response_text).strip(),
-                        execution_result=progress.snapshot().model_dump(mode="json") if progress else None,
+                        execution_result=progress.snapshot().model_dump(mode="json")
+                        if progress
+                        else None,
                         first_text_at=self._first_text_at,
                         first_audio_at=self._first_audio_at,
                     )

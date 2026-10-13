@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 from types import SimpleNamespace
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 import pytest
 from httpx import AsyncClient
@@ -301,7 +301,15 @@ async def test_terminal_voice_turn_can_be_deleted_without_deleting_llm_audit(
 
 
 @pytest.mark.asyncio
-async def test_running_voice_turn_cannot_be_deleted(db: AsyncSession) -> None:
+@pytest.mark.parametrize(
+    "round_status", ["RUNNING", "CLAIMED", "WAITING_APPROVAL", "INTERRUPTED", "FAILED", "COMPLETED"]
+)
+@pytest.mark.parametrize("session_status", ["ACTIVE", "COMPLETED", "ERROR"])
+async def test_voice_turn_deletion_is_idempotent_in_every_state(
+    db: AsyncSession,
+    round_status: str,
+    session_status: str,
+) -> None:
     agent = await _agent(db)
     session = await _session(
         db,
@@ -315,8 +323,18 @@ async def test_running_voice_turn_cannot_be_deleted(db: AsyncSession) -> None:
         run_id=uuid4(),
     )
 
-    with pytest.raises(management_service.VoiceTurnConflictError):
-        await management_service.delete_turn(turn.id)
+    turn.status = round_status
+    session.status = session_status
+    await db.commit()
+    assert await management_service.delete_turn(turn.id)
+    assert await management_service.delete_turn(turn.id)
+    assert await monitoring_service.get_turn(turn.id) is None
+    with pytest.raises(LookupError):
+        await conversation_service.record_turn_outputs(turn.id, ("Late callback",))
+    with pytest.raises(RuntimeError):
+        await conversation_service.start_turn(
+            session_id=session.id, transcript="Late input", run_id=uuid4()
+        )
 
 
 @pytest.mark.asyncio
@@ -446,10 +464,15 @@ def test_voice_monitoring_routes_require_task_access() -> None:
 
     from app.voice.router import (
         delete_voice_conversation_turn,
+        force_hangup_voice_conversation_turn,
         update_voice_conversation_turn_topic,
     )
 
-    for endpoint in (delete_voice_conversation_turn, update_voice_conversation_turn_topic):
+    for endpoint in (
+        delete_voice_conversation_turn,
+        force_hangup_voice_conversation_turn,
+        update_voice_conversation_turn_topic,
+    ):
         assert endpoint._authorize_meta["privileges"] == [  # pyright: ignore[reportFunctionMemberAccess]
             Privileges.TASK_EDIT
         ]
@@ -461,3 +484,261 @@ async def test_voice_monitoring_rejects_unauthenticated_requests(
 ) -> None:
     response = await client.get("/api/voice/conversations")
     assert response.status_code == 401
+
+
+@pytest.mark.asyncio
+async def test_delete_pending_teardown_is_durable_and_retryable(
+    db: AsyncSession, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from app.voice import runtime_control
+
+    agent = await _agent(db)
+    session = await _session(db, agent=agent, transport_kind="matrix", room_id="pending-delete")
+    turn = await conversation_service.start_turn(
+        session_id=session.id, transcript="Stop", run_id=uuid4()
+    )
+
+    async def pending(_session_id: UUID) -> bool:
+        return False
+
+    monkeypatch.setattr(runtime_control, "session_stopped", pending)
+    with pytest.raises(management_service.VoiceTurnConflictError, match="enregistrée"):
+        await management_service.delete_turn(turn.id)
+    await db.refresh(turn)
+    await db.refresh(session)
+    assert turn.status == "CANCELLED"
+    assert session.status == "CANCELLED"
+    assert turn.lease_token is None
+    assert turn.encrypted_checkpoint is None
+    with pytest.raises(PermissionError):
+        await conversation_service.record_turn_outputs(turn.id, ("late",))
+
+    async def stopped(_session_id: UUID) -> bool:
+        return True
+
+    monkeypatch.setattr(runtime_control, "session_stopped", stopped)
+    assert await management_service.delete_turn(turn.id)
+
+
+@pytest.mark.asyncio
+async def test_session_finish_closes_orphan_running_turn(db: AsyncSession) -> None:
+    agent = await _agent(db)
+    session = await _session(db, agent=agent, transport_kind="matrix", room_id="orphan-round")
+    turn = await conversation_service.start_turn(
+        session_id=session.id, transcript="Active", run_id=uuid4()
+    )
+    await conversation_service.finish_session(session.id, VoiceConversationStatus.COMPLETED)
+    await db.refresh(turn)
+    assert turn.status == "INTERRUPTED"
+    assert turn.finished_at is not None
+    assert turn.encrypted_checkpoint is None
+    assert await management_service.delete_turn(turn.id)
+
+
+@pytest.mark.asyncio
+async def test_pending_teardown_keeps_durable_fence_and_can_be_retried(
+    db: AsyncSession,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from app.voice import runtime_control
+    from app.conversation import ConversationRound
+    from unittest.mock import AsyncMock
+
+    agent = await _agent(db)
+    session = await _session(db, agent=agent, transport_kind="matrix", room_id="pending-stop")
+    turn = await conversation_service.start_turn(
+        session_id=session.id, transcript="Hello", run_id=uuid4()
+    )
+    monkeypatch.setattr(runtime_control, "session_stopped", AsyncMock(return_value=False))
+    with pytest.raises(management_service.VoiceTurnConflictError, match="enregistrée"):
+        await management_service.delete_turn(turn.id)
+    await db.refresh(session)
+    persisted = await db.get(ConversationRound, turn.id, populate_existing=True)
+    assert persisted is not None
+    assert persisted.status == "CANCELLED"
+    assert persisted.lease_token is None
+    assert persisted.encrypted_checkpoint is None
+    assert session.status == "CANCELLED"
+    with pytest.raises(PermissionError):
+        await conversation_service.record_turn_outputs(turn.id, ("Late output",))
+    await conversation_service.complete_turn(turn.id, assistant_response="Late response")
+    await db.refresh(persisted)
+    assert persisted.status == "CANCELLED"
+    monkeypatch.setattr(runtime_control, "session_stopped", AsyncMock(return_value=True))
+    assert await management_service.delete_turn(turn.id)
+    assert await db.get(ConversationRound, turn.id, populate_existing=True) is None
+
+
+@pytest.mark.asyncio
+async def test_session_close_interrupts_running_round(db: AsyncSession) -> None:
+    agent = await _agent(db)
+    session = await _session(db, agent=agent, transport_kind="matrix", room_id="close-running")
+    turn = await conversation_service.start_turn(
+        session_id=session.id, transcript="Hello", run_id=uuid4()
+    )
+    await conversation_service.finish_session(session.id, VoiceConversationStatus.COMPLETED)
+    await db.refresh(turn)
+    assert turn.status == "INTERRUPTED"
+    assert turn.finished_at is not None
+    assert turn.encrypted_checkpoint is None
+    assert turn.lease_token is None
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("closed", [False, True])
+async def test_force_hangup_retains_history_releases_room_and_fences_late_writes(
+    db: AsyncSession,
+    closed: bool,
+) -> None:
+    from app.conversation import ConversationRound
+
+    agent = await _agent(db)
+    session = await _session(db, agent=agent, transport_kind="matrix", room_id=f"hangup-{closed}")
+    turn = await conversation_service.start_turn(
+        session_id=session.id, transcript="Hello", run_id=uuid4()
+    )
+    old_lease = uuid4()
+    turn.lease_token = old_lease
+    if closed:
+        session.status = "COMPLETED"
+        session.finished_at = datetime.now(timezone.utc)
+    await db.commit()
+    result = await management_service.force_hangup(turn.id)
+    assert result is not None and result["revoked"] is True
+    assert result["interrupted_round_ids"] == [str(turn.id)]
+    await db.refresh(turn)
+    await db.refresh(session)
+    assert turn.status == "INTERRUPTED"
+    assert turn.lease_token is None
+    assert turn.encrypted_checkpoint is None
+    assert session.status == ("COMPLETED" if closed else "CANCELLED")
+    with pytest.raises(PermissionError):
+        await conversation_service.record_turn_outputs(turn.id, ("Late",))
+    with pytest.raises(PermissionError):
+        await conversation_service.save_turn_checkpoint(turn.id, {"late": True})
+    await conversation_service.complete_turn(turn.id, assistant_response="Late")
+    await db.refresh(turn)
+    assert turn.status == "INTERRUPTED"
+    again = await management_service.force_hangup(turn.id)
+    assert again is not None and again["interrupted_round_ids"] == []
+    assert await db.get(ConversationRound, turn.id) is not None
+    # Same room accepts another processing round after restart (no local registry).
+    successor = ConversationRound(room_id=turn.room_id, status="RUNNING")
+    db.add(successor)
+    await db.commit()
+    assert successor.id != turn.id
+
+
+@pytest.mark.asyncio
+async def test_force_hangup_reports_pending_teardown_but_releases_round(
+    db: AsyncSession,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from unittest.mock import AsyncMock
+    from app.voice import runtime_control
+
+    agent = await _agent(db)
+    session = await _session(db, agent=agent, transport_kind="matrix", room_id="hangup-pending")
+    turn = await conversation_service.start_turn(
+        session_id=session.id, transcript="Hello", run_id=uuid4()
+    )
+    monkeypatch.setattr(runtime_control, "session_stopped", AsyncMock(return_value=False))
+    result = await management_service.force_hangup(turn.id)
+    assert result is not None and result["local_audio_stopped"] is False
+    await db.refresh(turn)
+    assert turn.status == "INTERRUPTED"
+    monkeypatch.setattr(runtime_control, "session_stopped", AsyncMock(return_value=True))
+    result = await management_service.force_hangup(turn.id)
+    assert result is not None and result["local_audio_stopped"] is True
+
+
+@pytest.mark.asyncio
+async def test_force_hangup_serializes_with_concurrent_finalization(
+    inference_db: AsyncSession, committed_database
+) -> None:
+    import asyncio
+    from core.database.database import db_session_ctx
+
+    db = inference_db
+    agent = await _agent(db)
+    session = await _session(db, agent=agent, transport_kind="matrix", room_id="hangup-race")
+    turn = await conversation_service.start_turn(
+        session_id=session.id, transcript="Concurrent", run_id=uuid4()
+    )
+    turn_id = turn.id
+    session_id = session.id
+    await db.commit()
+
+    async def finish() -> None:
+        async with committed_database() as worker_db:
+            token = db_session_ctx.set(worker_db)
+            try:
+                await conversation_service.complete_turn(turn_id, assistant_response="Late")
+                await worker_db.commit()
+            finally:
+                db_session_ctx.reset(token)
+
+    async def hangup() -> None:
+        async with committed_database() as worker_db:
+            token = db_session_ctx.set(worker_db)
+            try:
+                result = await management_service.force_hangup(turn_id)
+                assert result is not None and result["revoked"]
+                await worker_db.commit()
+            finally:
+                db_session_ctx.reset(token)
+
+    await asyncio.wait_for(asyncio.gather(finish(), hangup(), hangup()), timeout=10)
+    await db.refresh(turn)
+    await db.refresh(session)
+    assert session.id == session_id and session.status == "CANCELLED"
+    assert turn.status in ("COMPLETED", "INTERRUPTED")
+    assert turn.lease_token is None
+    with pytest.raises(PermissionError):
+        await conversation_service.record_turn_outputs(turn_id, ("Post-revocation",))
+
+
+@pytest.mark.asyncio
+async def test_remote_owner_blocks_deletion_then_restarted_job_completes(db: AsyncSession) -> None:
+    from core.database import engine
+    from sqlalchemy import text
+    from app.voice import runtime_control
+    from app.voice.models import VoiceTurnDeletion
+
+    agent = await _agent(db)
+    session = await _session(db, agent=agent, transport_kind="matrix", room_id="remote-owner")
+    turn = await conversation_service.start_turn(session_id=session.id, transcript="Delete", run_id=uuid4())
+    async with engine.connect() as connection:
+        await connection.execute(text("SELECT pg_advisory_lock_shared(:key)"), {"key": runtime_control._lock_key(session.id)})
+        await connection.commit()
+        try:
+            with pytest.raises(management_service.VoiceTurnConflictError):
+                await management_service.delete_turn(turn.id)
+            assert await monitoring_service.get_turn(turn.id) is not None
+            request = await db.get(VoiceTurnDeletion, turn.id)
+            assert request is not None and request.status == "PENDING"
+            assert not await runtime_control.session_stopped(session.id)
+        finally:
+            await connection.execute(text("SELECT pg_advisory_unlock_shared(:key)"), {"key": runtime_control._lock_key(session.id)})
+            await connection.commit()
+    # Independent execution context: no local owner/request state is required.
+    await management_service.process_deletions()
+    assert await monitoring_service.get_turn(turn.id) is None
+    result = await management_service.deletion_status(turn.id)
+    assert result is not None and result["status"] == "COMPLETED"
+    await management_service.process_deletions()
+    assert await management_service.delete_turn(turn.id)
+
+
+@pytest.mark.asyncio
+async def test_transport_teardown_failure_retains_pending_request(db: AsyncSession) -> None:
+    agent = await _agent(db)
+    session = await _session(db, agent=agent, transport_kind="matrix", room_id="failed-teardown")
+    turn = await conversation_service.start_turn(session_id=session.id, transcript="Delete", run_id=uuid4())
+    session.teardown_error = "bridge timeout"
+    await db.commit()
+    with pytest.raises(management_service.VoiceTurnConflictError):
+        await management_service.delete_turn(turn.id)
+    result = await management_service.deletion_status(turn.id)
+    assert result is not None and "bridge timeout" in str(result["last_error"])
+    assert await monitoring_service.get_turn(turn.id) is not None

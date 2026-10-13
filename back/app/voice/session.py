@@ -6,7 +6,7 @@ import asyncio
 from uuid import UUID
 
 from loguru import logger
-from core.database import get_db_session
+from core.database import get_db, get_db_session
 
 from .audio_devices import PulseAudioBridge, PulseAudioConfig, PulseAudioDevices
 from .interface import CallTransport
@@ -108,6 +108,9 @@ class VoiceSession:
             agent_id,
         )
         conversation: VoiceConversationSession | None = None
+        from .runtime_control import own_session
+
+        ownership = None
         try:
             if self._connection_id is None:
                 raise RuntimeError("An agent voice call requires a Messenger connection.")
@@ -152,23 +155,19 @@ class VoiceSession:
                     room_id=self._room_id,
                     language=language,
                     contact_memory_item_id=contact_memory_item_id,
-                    call_external_id=(
-                        self._transport.call_external_id(handle).strip() or None
-                    ),
+                    call_external_id=(self._transport.call_external_id(handle).strip() or None),
                     participant_external_ids=remote_user_ids,
                     conversation_room_id=self._conversation_room_id,
                 )
+                ownership = own_session(conversation.id)
+                await ownership.__aenter__()
                 from app.messenger import get_audio_room_speakers
 
                 speakers = await get_audio_room_speakers(
                     room_id=conversation.messenger_room_id,
                     agent_id=agent_id,
                 )
-                participant = (
-                    speakers.participants[0]
-                    if len(speakers.participants) == 1
-                    else None
-                )
+                participant = speakers.participants[0] if len(speakers.participants) == 1 else None
             engine = AgentVoiceEngine(
                 transport=self._transport,
                 handle=handle,
@@ -181,21 +180,11 @@ class VoiceSession:
                 conversation_room_id=conversation.messenger_room_id,
                 language=language,
                 stop_requested=stop_event,
-                agent_name=(
-                    speakers.agent.display_name
-                    if speakers.agent is not None
-                    else "Agent"
-                ),
+                agent_name=(speakers.agent.display_name if speakers.agent is not None else "Agent"),
                 caller_external_id=(
-                    participant.external_id
-                    if participant is not None
-                    else "voice-caller"
+                    participant.external_id if participant is not None else "voice-caller"
                 ),
-                caller_name=(
-                    participant.display_name
-                    if participant is not None
-                    else "Caller"
-                ),
+                caller_name=(participant.display_name if participant is not None else "Caller"),
             )
             await self._wait_relay_or_call_end(
                 handle,
@@ -225,20 +214,44 @@ class VoiceSession:
                     VoiceConversationStatus.COMPLETED,
                 )
         finally:
-            if stop_event.is_set():
-                await self._transport.terminate(handle)
-                logger.info(
-                    "Voice[{}]: terminated call ({})",
-                    self._transport.kind,
-                    self._room_id,
-                )
-            else:
-                await self._transport.leave(handle)
-                logger.info(
-                    "Voice[{}]: left call ({})",
-                    self._transport.kind,
-                    self._room_id,
-                )
+            try:
+                force_closed = False
+                if conversation is not None:
+                    async with get_db_session():
+                        persisted = await get_db().get(
+                            VoiceConversationSession,
+                            conversation.id,
+                            populate_existing=True,
+                        )
+                        force_closed = (
+                            persisted is not None
+                            and persisted.status == VoiceConversationStatus.CANCELLED.value
+                        )
+                if stop_event.is_set() or force_closed:
+                    async with asyncio.timeout(5):
+                        await self._transport.terminate(handle)
+                    logger.info(
+                        "Voice[{}]: terminated call ({})",
+                        self._transport.kind,
+                        self._room_id,
+                    )
+                else:
+                    await self._transport.leave(handle)
+                    logger.info(
+                        "Voice[{}]: left call ({})",
+                        self._transport.kind,
+                        self._room_id,
+                    )
+            except Exception as exc:
+                if conversation is not None:
+                    async with get_db_session():
+                        persisted = await get_db().get(VoiceConversationSession, conversation.id)
+                        if persisted is not None:
+                            persisted.teardown_error = str(exc) or type(exc).__name__
+                raise
+            finally:
+                if ownership is not None:
+                    await ownership.__aexit__(None, None, None)
 
     async def _wait_relay_or_call_end(
         self,
@@ -257,7 +270,9 @@ class VoiceSession:
                     exc = end_task.exception()
                     if exc is not None:
                         raise exc
-                logger.info("Voice[{}]: remote call end detected ({})", self._transport.kind, self._room_id)
+                logger.info(
+                    "Voice[{}]: remote call end detected ({})", self._transport.kind, self._room_id
+                )
                 return
             for task in done:
                 if task.cancelled():

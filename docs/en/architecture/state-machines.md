@@ -544,3 +544,14 @@ the addition of the occurrence. The other transitions are administrative review 
 may be corrected manually.
 
 Authority: `back/app/incident/models.py` and `service.py`.
+
+
+### Administrative force hangup / Raccrochage forcé administratif
+
+`POST /api/voice/conversations/turns/{id}/force-hangup` requires `TASK_EDIT` and the agent management scope. It retains canonical messages, rounds, tasks and process runs. With session-before-round locking, all active audio rounds (`FROZEN`, `CLAIMED`, `RUNNING`, `WAITING_APPROVAL`) become `INTERRUPTED`; leases, encrypted checkpoints and pending authorizations are revoked. An ACTIVE session becomes CANCELLED; an already terminal session keeps its status and timestamps but its orphan rounds are retired. Commit precedes bounded local cancellation. The durable session fence stops classic/realtime owners on other workers; `audio_stopped` (and its legacy alias `local_audio_stopped`) acknowledges owners across workers through PostgreSQL advisory locks held until transport cleanup completes. Transport teardown errors prevent acknowledgment. Repeating the action is safe. This does not undo effects dispatched before revocation.
+
+### Deferred audio round deletion
+
+Deletion first durably fences the session and round, then stores a request in `voice_turn_deletions`. Active cleanup or a transport error retains the round and returns an explicit pending response (HTTP 202). A periodic job retries requests every two seconds, including after restart, without relying on the original worker’s in-memory registry. `GET /api/voice/conversations/turns/{id}/deletion` exposes status and the last error; the UI follows the request through completion. Canonical deletion preserves related business records according to conversation deletion rules.
+
+The schema adds the request table and `voice_sessions.teardown_error`: run the Atlas workflow (`make upgrade`) before activation. Automated qualification covers non-cooperative owners, a PostgreSQL lock held by a separate connection, processing resumed without a local registry, and teardown failures. It does not replace an end-to-end test with two audio processes and an actual restart.

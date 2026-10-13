@@ -7,6 +7,7 @@ from typing import Any, Literal
 from uuid import UUID
 
 from fastapi import APIRouter, HTTPException, Query, status
+from fastapi.responses import JSONResponse
 
 from core.authorize import Privileges, authorize
 from core.i18n import tr
@@ -127,14 +128,49 @@ async def export_voice_conversation_turn(turn_id: UUID) -> dict[str, Any]:
     return dataset
 
 
-@router.delete("/turns/{turn_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.post("/turns/{turn_id}/force-hangup", response_model=dict[str, object])
 @authorize(privileges=Privileges.TASK_EDIT)
-async def delete_voice_conversation_turn(turn_id: UUID) -> None:
+async def force_hangup_voice_conversation_turn(turn_id: UUID) -> dict[str, object]:
+    """Stop an audio execution even after its call ended, retaining history."""
     await _turn_or_404(turn_id)
+    result = await management_service.force_hangup(turn_id)
+    if result is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=await tr("voice.conversation_not_found"),
+        )
+    return result
+
+
+@router.get("/turns/{turn_id}/deletion", response_model=dict[str, object])
+@authorize(privileges=Privileges.TASK_ACCESS)
+async def read_voice_turn_deletion(turn_id: UUID) -> dict[str, object]:
+    scope = await current_management_scope()
+    request = await management_service.deletion_status(turn_id)
+    if request is None or not scope.allows(int(str(request["agent_id"]))):
+        raise HTTPException(status_code=404, detail=await tr("voice.conversation_not_found"))
+    return request
+
+
+@router.delete("/turns/{turn_id}", status_code=status.HTTP_204_NO_CONTENT, response_model=None)
+@authorize(privileges=Privileges.TASK_EDIT)
+async def delete_voice_conversation_turn(turn_id: UUID) -> Any:
+    scope = await current_management_scope()
+    turn = await monitoring_service.get_turn(turn_id)
+    if turn is None:
+        request = await management_service.deletion_status(turn_id)
+        if request is not None and not scope.allows(int(str(request["agent_id"]))):
+            raise HTTPException(status_code=404, detail=await tr("voice.conversation_not_found"))
+        return
+    if not scope.allows(turn.agent_id):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail=await tr("voice.conversation_not_found")
+        )
     try:
         deleted = await management_service.delete_turn(turn_id)
     except management_service.VoiceTurnConflictError as exc:
-        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
+        request = await management_service.deletion_status(turn_id)
+        return JSONResponse(status_code=202, content={"detail": str(exc), "deletion": request})
     if not deleted:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,

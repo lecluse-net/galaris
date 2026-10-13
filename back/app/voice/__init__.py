@@ -29,10 +29,12 @@ from .models import (
     AudioFrame,
     DEFAULT_CHANNELS,
     DEFAULT_SAMPLE_RATE,
+    VoiceTurnDeletion,
     VoiceConversationSession,
     VoiceConversationStatus,
     VoiceTurnStatus,
 )
+
 # Import registers voice authorization lifecycle guards during module activation.
 from . import conversation_service as _conversation_service  # noqa: F401  # pyright: ignore[reportUnusedImport]
 from .audio_devices import PulseAudioBridge, PulseAudioConfig, PulseAudioDevices
@@ -61,12 +63,18 @@ def register_runtime_settings() -> None:
     from core.params import params_service
 
     params_service.register_change_listener(_refresh_channels)
+    from app.task import scheduler
+    from .management_service import process_deletions
+
+    scheduler.register_periodic_job("voice-turn-deletions", process_deletions, interval=2.0)
+
 
 __all__ = [
     "register_runtime_settings",
     "AudioFrame",
     "DEFAULT_CHANNELS",
     "DEFAULT_SAMPLE_RATE",
+    "VoiceTurnDeletion",
     "VoiceConversationSession",
     "VoiceConversationStatus",
     "VoiceTurnStatus",
@@ -136,6 +144,7 @@ def unregister_voice_call_ended_listener(
     listener: Callable[[VoiceCallInfo], Awaitable[None]],
 ) -> None:
     voice_call_manager.unregister_call_ended_listener(listener)
+
 
 from .events import register_events
 
