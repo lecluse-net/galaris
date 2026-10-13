@@ -228,6 +228,53 @@ async def test_compose_default_moves_once_without_overwriting_common_configurati
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("source", ["legacy", "common"])
+async def test_shared_compose_upgrade_removes_only_inherited_hermes_mounts(db, source):
+    import yaml
+    from sqlalchemy import delete, select
+    from core.dbadmin import reconcile_dataset
+    from core.params.models import Param
+
+    await db.execute(delete(Param).where(Param.name.in_([
+        "hermes.default.compose", Params.HARNESS_DEFAULT_COMPOSE,
+    ])))
+    configured = {
+        "services": {"agent": {
+            "volumes": ["hermes-bin:/opt/hermes", "./data:/opt/data"],
+            "networks": ["synthetic-net"], "cpus": 2,
+        }},
+        "networks": {"synthetic-net": {"external": True}},
+    }
+    name = "hermes.default.compose" if source == "legacy" else Params.HARNESS_DEFAULT_COMPOSE
+    db.add(Param(name=name, value=yaml.safe_dump(configured)))
+    await db.flush()
+    await reconcile_dataset(db, datasets()[0])
+    stored = await db.scalar(select(Param.value).where(Param.name == Params.HARNESS_DEFAULT_COMPOSE))
+    del configured["services"]["agent"]["volumes"]
+    assert yaml.safe_load(stored) == configured
+    await reconcile_dataset(db, datasets()[0])
+    assert await db.scalar(select(Param.value).where(Param.name == Params.HARNESS_DEFAULT_COMPOSE)) == stored
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("value", [
+    None, "{}", "not: [valid",
+    "services:\n  agent:\n    volumes: ['./custom:/opt/data']\n",
+    "services:\n  agent:\n    volumes: ['hermes-bin:/opt/hermes', './data:/opt/data']\nvolumes:\n  hermes-bin: {}\n",
+])
+async def test_shared_compose_upgrade_preserves_resets_and_custom_mounts(db, value):
+    from sqlalchemy import select
+    from core.dbadmin import reconcile_dataset
+    from core.params.models import Param
+
+    row = await db.scalar(select(Param).where(Param.name == Params.HARNESS_DEFAULT_COMPOSE))
+    row.value = value
+    await db.flush()
+    await reconcile_dataset(db, datasets()[0])
+    assert await db.scalar(select(Param.value).where(Param.name == Params.HARNESS_DEFAULT_COMPOSE)) == value
+
+
+@pytest.mark.asyncio
 @pytest.mark.parametrize('state', ['missing', 'old-default', 'custom', 'reset'])
 async def test_decimal_size_defaults_converge_without_overwriting_custom_limits(db, monkeypatch, state):
     from sqlalchemy import delete, select
@@ -291,6 +338,7 @@ async def test_prompt_default_reconciliation_advances_only_followers_and_new_bas
     scalars = Mock()
     scalars.all.return_value = [follower, customized, legacy_customized]
     session = AsyncMock()
+    session.scalar.return_value = None
     session.scalars.return_value = scalars
     refresh = AsyncMock()
     monkeypatch.setattr(params_service, "refresh", refresh)

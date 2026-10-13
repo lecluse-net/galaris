@@ -6,6 +6,7 @@ import os
 import secrets
 from typing import cast
 
+import yaml
 from sqlalchemy import Table, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -83,10 +84,59 @@ async def _declared_rows(session: AsyncSession) -> tuple[dict[str, object], ...]
     return rows
 
 
+def _without_legacy_harness_mounts(value: str | None) -> str | None:
+    """Remove the old Hermes template mounts copied into shared preferences.
+
+    The provider templates already own these mounts. Keeping them in the common
+    override replaces other providers' storage and references an undeclared volume.
+    Only the exact inherited pair is repaired; deliberate custom mounts are kept.
+    """
+    if not value:
+        return value
+    try:
+        parsed: object = yaml.safe_load(value)
+    except yaml.YAMLError:
+        return value
+    if not isinstance(parsed, dict):
+        return value
+    compose = cast(dict[str, object], parsed)
+    services = compose.get("services")
+    if not isinstance(services, dict):
+        return value
+    agent = cast(dict[str, object], services).get("agent")
+    if not isinstance(agent, dict):
+        return value
+    overrides = cast(dict[str, object], agent)
+    mounts = overrides.get("volumes")
+    if mounts not in (
+        ["hermes-bin:/opt/hermes", "./data:/opt/data"],
+        ["./data:/opt/data", "hermes-bin:/opt/hermes"],
+    ):
+        return value
+    declared_volumes = compose.get("volumes")
+    if isinstance(declared_volumes, dict) and "hermes-bin" in declared_volumes:
+        return value
+    del overrides["volumes"]
+    return str(yaml.safe_dump(compose, allow_unicode=True, sort_keys=False))
+
+
 async def _reload_runtime_params(
     session: AsyncSession,
     _result: DbAdminDatasetResult,
 ) -> None:
+    shared_compose = await session.scalar(
+        select(Param).where(Param.name == Params.HARNESS_DEFAULT_COMPOSE)
+    )
+    if shared_compose is not None:
+        previous = shared_compose.value
+        repaired = _without_legacy_harness_mounts(previous)
+        if repaired != previous:
+            await session.execute(
+                update(Param).where(
+                    Param.name == Params.HARNESS_DEFAULT_COMPOSE,
+                    Param.value == previous,
+                ).values(value=repaired)
+            )
     # Advance packaged size defaults only. Other administrator values and NULL
     # resets remain untouched; repeated synchronization is a no-op.
     for name, old_values in (
