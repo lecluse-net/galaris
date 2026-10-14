@@ -28,6 +28,21 @@ export interface McpConfig {
     timeout?: number
 }
 
+export interface RestConfig {
+    base_url: string
+    auth: {
+        type: 'none' | 'bearer' | 'header' | 'basic' | 'query'
+        param: string
+        header_name: string
+        query_name: string
+        login_param: string
+        password_param: string
+    }
+    header_params: Record<string, string>
+    timeout: number
+    max_response_bytes: number
+}
+
 export interface FileShareConfig {
     service: string
     base_url: string
@@ -132,6 +147,8 @@ export interface Tool {
     label: string
     description: string
     has_mcp: boolean
+    has_api: boolean
+    rest_config?: RestConfig | null
     has_file_share: boolean
     has_messenger: boolean
     has_listener: boolean
@@ -154,6 +171,7 @@ export interface ToolCreate {
     label: string
     description?: string
     mcp_config?: McpConfig | null
+    rest_config?: RestConfig | null
     file_share_config?: FileShareConfig | null
     messenger_config?: MessengerConfig | null
     listener_config?: ListenerConfig | null
@@ -166,6 +184,7 @@ export interface ToolUpdate {
     label?: string
     description?: string
     mcp_config?: McpConfig | null
+    rest_config?: RestConfig | null
     file_share_config?: FileShareConfig | null
     messenger_config?: MessengerConfig | null
     listener_config?: ListenerConfig | null

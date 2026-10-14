@@ -3,6 +3,7 @@
 from datetime import datetime
 from typing import Dict, List, Literal, Optional
 from pydantic import BaseModel, Field, computed_field, model_validator
+from .rest_contracts import RestConfig
 
 
 # =============================================================================
@@ -228,6 +229,7 @@ class ToolBase(BaseModel):
     label: str
     description: str = ""
     mcp_config: Optional[McpConfig] = None
+    rest_config: RestConfig | None = None
     file_share_config: Optional[FileShareConfig] = None
     messenger_config: Optional[MessengerConfig] = None
     listener_config: Optional[ListenerConfig] = None
@@ -244,6 +246,7 @@ class ToolUpdate(BaseModel):
     label: Optional[str] = None
     description: Optional[str] = None
     mcp_config: Optional[McpConfig] = None
+    rest_config: RestConfig | None = None
     file_share_config: Optional[FileShareConfig] = None
     messenger_config: Optional[MessengerConfig] = None
     listener_config: Optional[ListenerConfig] = None
@@ -257,6 +260,11 @@ class ToolRead(ToolBase):
     can_disable: bool = True
     created_at: datetime
     updated_at: datetime
+
+    @computed_field
+    @property
+    def has_api(self) -> bool:
+        return self.rest_config is not None
 
     @computed_field
     @property
@@ -295,6 +303,8 @@ class ToolPublic(BaseModel):
     label: str
     description: str = ""
     has_mcp: bool
+    has_api: bool = False
+    rest_config: RestConfig | None = None
     has_file_share: bool
     has_messenger: bool
     has_listener: bool
@@ -424,12 +434,18 @@ class Tool(BaseModel):
     label: str
     description: str = ""
     mcp: Optional[McpConfig] = Field(default=None, alias="mcp_config")
+    rest: RestConfig | None = Field(default=None, alias="rest_config")
     file_share: Optional[FileShareConfig] = Field(default=None, alias="file_share_config")
     messenger: Optional[MessengerConfig] = Field(default=None, alias="messenger_config")
     listener: Optional[ListenerConfig] = Field(default=None, alias="listener_config")
     connection: ConnectionSchema = Field(default_factory=ConnectionSchema, alias="connection_schema")
     task: Optional[TaskConfig] = Field(default=None, alias="task_config")
     conversation_enabled: bool = False
+
+    @computed_field
+    @property
+    def has_api(self) -> bool:
+        return self.rest is not None
 
     @computed_field
     @property

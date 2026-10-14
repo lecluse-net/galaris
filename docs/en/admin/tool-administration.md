@@ -24,6 +24,31 @@ Only humans can delegate or modify ToolAdmin, AgentAdmin, Galaris Admin, Process
 Goal management, Skill management and Console. A sequence of agent commands cannot grant
 administrative capabilities to its caller.
 
+## Enable a REST API
+
+In **Tools → New tool**, or when editing a configurable Tool, select **Enable API**.
+One Tool can provide both MCP and REST. The **REST API** tab configures the base URL,
+authentication (none, Bearer, header, Basic or query parameter), timeout and maximum response
+size. No operation catalogue or OpenAPI document is required.
+
+Enabling the capability proposes `api_url` (text) and `api_token` (password) parameters.
+The base URL accepts an HTTP(S) address or `${connection:api_url}`. Select connection
+parameter names for authentication and additional headers; never put a token in the URL
+or calling code. For Basic authentication, also declare a username connection parameter
+and select the secret password parameter.
+
+Enter values in **Global parameters** or **Connections → Edit**. Existing inheritance,
+overrides, imposed values, encryption and masking apply. Definitions and YAML exports
+contain parameter names only. Disabled connections and connections belonging to another
+agent cannot be used.
+
+REST endpoint permissions belong exclusively to the token in the third-party service.
+MCP **Enabled / Disabled / Ask** permissions do not filter REST calls. The application
+facade is available to future Code and Process consumers; it introduces neither a generic
+MCP tool nor a public HTTP proxy. Redirects are not followed, HTTP errors retain their
+status, and requests are never retried automatically. Remote job tracking and callbacks
+will be addressed separately.
+
 ## Test and create with a secret
 
 ### Prepare file indexing

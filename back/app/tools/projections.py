@@ -1,6 +1,7 @@
 """Shared write-only Tool projections for HTTP and delegated administration."""
 
 from .assertions import tool_can_edit
+from .rest_contracts import RestConfig
 from . import tool_service
 from .models import Tool as ToolModel
 from .schemas import (
@@ -31,6 +32,8 @@ def to_public(record: ToolModel) -> ToolPublic:
         # Legacy native packages may still contain ``{}`` until the upgrade
         # backfill runs. An empty object is not a configurable MCP server.
         has_mcp=bool(mcp_config),
+        has_api=record.rest_config is not None,
+        rest_config=RestConfig.model_validate(record.rest_config) if record.rest_config else None,
         has_file_share=record.file_share_config is not None,
         has_messenger=messenger_config is not None,
         has_listener=listener_config is not None,

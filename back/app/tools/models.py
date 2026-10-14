@@ -35,6 +35,7 @@ class Tool(Base):
     )
 
     mcp_config: Mapped[Optional[Dict[str, Any]]] = mapped_column(JSONB, nullable=True)
+    rest_config: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
     file_share_config: Mapped[Optional[Dict[str, Any]]] = mapped_column(JSONB, nullable=True)
     # Compatibility source for DbAdmin backfill only; runtime values use global_params/EAV.
     file_indexing_mode: Mapped[FileIndexingMode] = mapped_column(

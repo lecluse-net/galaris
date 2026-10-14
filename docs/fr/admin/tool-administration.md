@@ -25,6 +25,31 @@ connexions restent gérés par le logiciel. Seul un humain peut attribuer ou mod
 AgentAdmin, Galaris Admin, Process Admin, Lab, Goal management, Skill management et Console.
 Une chaîne de commandes agentiques ne permet pas de s’attribuer une capacité administrative.
 
+## Activer une API REST
+
+Dans **Outils → Nouvel outil** ou l'édition d'un Tool configurable, cocher **Activer API**.
+Un même Tool peut proposer MCP et REST. L'onglet **API REST** configure l'adresse de base,
+l'authentification (aucune, Bearer, en-tête, Basic ou paramètre de requête), le délai maximum
+et la taille maximale des réponses. Aucun catalogue d'opérations ou document OpenAPI n'est requis.
+
+L'activation propose les paramètres `api_url` (texte) et `api_token` (mot de passe).
+L'adresse peut être une valeur HTTP(S) ou `${connection:api_url}`. Choisir les noms des
+paramètres de connexion pour l'authentification et les en-têtes supplémentaires ; ne jamais
+placer un token dans l'adresse ou le code d'un appel. Pour Basic, déclarer aussi un paramètre
+de connexion pour l'identifiant et sélectionner le paramètre secret du mot de passe.
+
+Renseigner ensuite les valeurs dans **Paramètres globaux** ou **Connexions → Modifier**.
+L'héritage, les surcharges, les valeurs imposées, le chiffrement et le masquage existants
+s'appliquent. La définition et l'export YAML conservent uniquement les noms des paramètres.
+Une connexion désactivée ou appartenant à un autre agent ne peut pas être utilisée.
+
+Les droits sur les endpoints REST sont exclusivement ceux du token dans le service tiers.
+Les permissions MCP **Actif / Bloqué / Sur demande** ne filtrent pas les appels REST.
+La façade applicative est disponible pour les futurs consommateurs Code et Process ;
+elle n'ajoute ni outil MCP générique ni proxy HTTP public. Les redirections ne sont pas
+suivies, les erreurs HTTP sont retournées avec leur statut et aucun appel n'est réessayé
+automatiquement. Le suivi de jobs distants et les callbacks feront l'objet d'une évolution.
+
 ## Tester puis créer avec un secret
 
 ### Préparer l'indexation des fichiers

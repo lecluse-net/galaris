@@ -1,5 +1,7 @@
 # Décisions d'architecture
 
+- [0182 — Capacité REST des Tools et connexions](0182-tool-rest-capability.md)
+
 - [0181 — Admission prioritaire des appels LLM par fournisseur](0181-provider-llm-admission.md)
 
 - [0180 — Profil LLM secondaire par agent](0180-agent-secondary-llm-profile.md)

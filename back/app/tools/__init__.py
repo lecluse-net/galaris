@@ -1,6 +1,8 @@
 """Database-backed MCP tool management."""
 
 from .models import Tool as ToolModel, ToolSearchDocument
+from .rest_contracts import RestAuth, RestConfig, RestError, RestRequest, RestResponse
+from .rest import execute_rest_request
 from .tool_service import get_tool_codes
 from .catalog import (
     AgentToolCatalog,
@@ -84,6 +86,7 @@ from .mcp_loader import (
 from .tool_errors import RecoverableToolError, native_failure_key
 
 __all__ = [
+    "RestAuth", "RestConfig", "RestError", "RestRequest", "RestResponse", "execute_rest_request",
     "initialize_admin_agent_connections",
     "native_failure_key",
     "get_tool_codes",

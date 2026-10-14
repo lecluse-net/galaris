@@ -10,6 +10,7 @@ from core.database import get_db
 from core.i18n import render_prompt, tr
 from core.util import get_encryption_service
 from .models import Tool as ToolModel
+from .rest_contracts import RestConfig
 from .administration_lock import lock_tools, finish_write
 from .parameter_definitions import with_standard_params
 from .secrets import (
@@ -326,11 +327,33 @@ async def _protect_listener(
 # Database record to internal schema conversion.
 # =============================================================================
 
+def _validate_rest_config(config: RestConfig | None, schema: dict[str, Any]) -> None:
+    if config is None:
+        return
+    definitions = cast(dict[str, dict[str, Any]], schema.get("params") or {})
+    names = list(config.header_params.values())
+    if config.base_url.startswith("${connection:"):
+        name = config.base_url[len("${connection:"):-1]
+        names.append(name)
+        if definitions.get(name, {}).get("type") == "password":
+            raise ValueError("The REST base URL parameter cannot be secret")
+    auth = config.auth
+    secret_names = ([auth.password_param] if auth.type == "basic" else [auth.param] if auth.type != "none" else [])
+    names.extend(secret_names)
+    if auth.type == "basic":
+        names.append(auth.login_param)
+    if any(not name or name not in definitions for name in names):
+        raise ValueError("REST configuration must reference declared connection parameters")
+    if any(definitions[name].get("type") != "password" for name in secret_names):
+        raise ValueError("REST authentication parameters must use the password type")
+
+
 def _to_internal(record: ToolModel) -> Tool:
     return Tool(
         code=record.code,
         can_disable=record.can_disable,
         label=record.label,
+        rest_config=RestConfig.model_validate(record.rest_config) if record.rest_config else None,
         description=record.description or "",
         mcp_config=(
             McpConfig(**runtime_mcp_config(record.mcp_config))
@@ -381,6 +404,7 @@ async def create_tool(data: ToolCreate, *, commit: bool = True) -> ToolModel:
     connection_schema = with_standard_params(data.connection_schema.model_dump(), code=data.code,
         file_share_config=data.file_share_config.model_dump() if data.file_share_config else None)
     await _validate_connection_schema(connection_schema)
+    _validate_rest_config(data.rest_config, connection_schema)
     messenger_config = (
         data.messenger_config.model_dump() if data.messenger_config else None
     )
@@ -390,6 +414,7 @@ async def create_tool(data: ToolCreate, *, commit: bool = True) -> ToolModel:
         code=data.code,
         label=data.label,
         description=data.description,
+        rest_config=data.rest_config.model_dump() if data.rest_config else None,
         mcp_config=(
             await _protect_mcp(data.mcp_config.model_dump())
             if data.mcp_config
@@ -478,6 +503,8 @@ async def update_tool(tool_id: int, data: ToolUpdate, *, commit: bool = True) ->
             target_messenger_config,
             target_connection_schema,
         )
+    rest_config = values.get("rest_config") if "rest_config" in data.model_fields_set else record.rest_config
+    _validate_rest_config(RestConfig.model_validate(rest_config) if rest_config else None, target_connection_schema)
     for field in data.model_fields_set:
         value = values[field]
         # Preserve non-nullable text fields when a client explicitly sends null.
@@ -615,6 +642,8 @@ def _record_to_export_dict(record: ToolModel) -> Dict[str, object]:
         d["description"] = record.description
     if record.mcp_config:
         d["mcp_config"] = export_mcp_config(record.mcp_config)
+    if record.rest_config:
+        d["rest_config"] = RestConfig.model_validate(record.rest_config).model_dump()
     if record.file_share_config:
         d["file_share_config"] = record.file_share_config
     if record.messenger_config:

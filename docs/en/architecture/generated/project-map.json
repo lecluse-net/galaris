@@ -3223,6 +3223,7 @@
           "back/app/tools/mandatory_tools.py",
           "back/app/tools/mcp_authorization.py",
           "back/app/tools/mcp_loader.py",
+          "back/app/tools/rest.py",
           "back/app/tools/tool_service.py"
         ],
         "source": "app.tools",
@@ -10030,7 +10031,7 @@
         "file": "back/app/tools/models.py",
         "foreign_keys": [],
         "history_mixin": false,
-        "line": 74,
+        "line": 75,
         "module": "app.tools",
         "table": "tool_search_documents"
       },

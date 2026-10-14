@@ -2,6 +2,8 @@
 
 from typing import Any
 from .schemas import Tool
+from .rest_contracts import RestAuth, RestConfig, RestError, RestRequest, RestResponse
+from .rest import execute_rest_request
 from .runtime_principals import RuntimePrincipal, register_runtime_principal_port
 from .mcp_authorization import bind_native_action
 from .authorization import authorization_policy as agent_authorization_policy
@@ -81,6 +83,12 @@ from .authorization import (
 )
 
 __all__ = [
+    "RestAuth",
+    "RestConfig",
+    "RestError",
+    "RestRequest",
+    "RestResponse",
+    "execute_rest_request",
     "register_runtime_authorization_configuration",
     "authorization_fingerprint",
     "continued_deferred_dispatch",

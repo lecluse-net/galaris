@@ -78,7 +78,12 @@ La barre latérale ne montre que les écrans autorisés par votre rôle :
 | Dream | suivre le travail de fond, consulter son historique et gérer l’indexation des fichiers par agent |
 | Lab IA | analyser une tâche et mesurer les mécanismes IA sur des jeux de cas reproductibles |
 | Processus | lancer et suivre un workflow externe, par exemple n8n |
-| Outils | voir les capacités et connexions autorisées ; principalement destiné aux responsables |
+| Outils | voir les capacités MCP et API REST et les connexions des agents ; principalement destiné aux responsables |
+
+Pour configurer une intégration REST, un responsable active **API** sur le Tool, puis
+renseigne l'adresse et les identifiants dans ses paramètres globaux ou dans la connexion
+de l'agent. Les droits de l'API sont ceux du token chez le service tiers. Voir
+[l'administration des Tools](../admin/tool-administration.md).
 
 Dans **Fournisseurs**, un administrateur peut régler le nombre d'appels LLM simultanés
 par connexion. Les conversations vocales puis textuelles ont priorité sur le travail de

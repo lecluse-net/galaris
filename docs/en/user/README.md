@@ -68,7 +68,12 @@ The sidebar shows only the screens authorized by your role:
 | Dream | track background work, inspect its history, and manage file indexing per agent |
 | AI Lab | analyze a Task and measure AI mechanisms on reproducible case sets |
 | Processes | launch and track an external workflow, such as n8n |
-| Tools | view authorized capabilities and connections; primarily intended for administrators |
+| Tools | view MCP and REST API capabilities and agent connections; primarily intended for administrators |
+
+To configure a REST integration, an administrator enables **API** on the Tool, then
+enters its address and credentials in global parameters or the agent's connection.
+API permissions come from the token at the third-party service. See
+[Tool administration](../admin/tool-administration.md).
 
 In **Providers**, an administrator can adjust concurrent LLM calls for each connection.
 Voice conversations take priority, followed by text conversations and background work;

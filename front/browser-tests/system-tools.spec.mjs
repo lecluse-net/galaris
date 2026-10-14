@@ -14,6 +14,54 @@ const tools = [
 const connections = tools.slice(0, 5).map(tool => ({ id: tool.id, tool_id: tool.id, agent_id: 7, active: true }))
 const privileges = ['TOOL_ACCESS', 'TOOL_EDIT', 'CONNECTION_ACCESS', 'CONNECTION_EDIT', 'AGENT_MANAGE_ALL']
 
+for (const width of [390, 1400]) {
+  test(`REST configuration survives save and reopening, and can be disabled (${width})`, async ({ page }, testInfo) => {
+    await page.setViewportSize({ width, height: 1000 })
+    await routes(page)
+    const rows = []
+    const writes = []
+    await page.route('**/api/tools', async route => {
+      if (route.request().method() === 'GET') return route.fulfill({ json: rows })
+      const body = route.request().postDataJSON()
+      writes.push(body)
+      const row = { ...body, id: 91, has_api: !!body.rest_config, can_edit: true, can_disable: true, global_params: {} }
+      rows.push(row)
+      return route.fulfill({ status: 201, json: row })
+    })
+    await page.route('**/api/tools/91', async route => {
+      const body = route.request().postDataJSON()
+      writes.push(body)
+      Object.assign(rows[0], body, { has_api: !!body.rest_config })
+      return route.fulfill({ json: rows[0] })
+    })
+    await mount(page, 'app/tools/components/ToolsList.vue', { privileges })
+    await page.getByRole('button', { name: 'New tool', exact: true }).click()
+    const dialog = page.getByRole('dialog')
+    await dialog.getByLabel('Technical name', { exact: false }).fill('synthetic_rest')
+    await dialog.getByLabel('Label *', { exact: true }).fill('Synthetic REST service')
+    await dialog.getByRole('switch', { name: 'Enable API', exact: true }).click()
+    await expect(dialog.getByRole('tab', { name: 'REST API', exact: true })).toBeVisible()
+    await dialog.getByLabel('API base URL', { exact: true }).fill('https://api.example.test/v1')
+    await expect(dialog.getByText('Galaris adds no per-operation authorization.', { exact: false })).toBeVisible()
+    await page.screenshot({ path: testInfo.outputPath('rest-configuration.png'), animations: 'disabled' })
+    await dialog.getByRole('button', { name: 'Create', exact: true }).click()
+    await expect(dialog).toHaveCount(0)
+    expect(writes[0].rest_config.auth).toMatchObject({ type: 'bearer', param: 'api_token' })
+    expect(writes[0].connection_schema.params.api_token.type).toBe('password')
+    await page.getByRole('button', { name: 'Edit tool', exact: true }).click()
+    await dialog.getByRole('tab', { name: 'REST API', exact: true }).click()
+    await expect(dialog.getByLabel('API base URL', { exact: true })).toHaveValue('https://api.example.test/v1')
+    await dialog.getByRole('button', { name: 'Save', exact: true }).click()
+    await expect(dialog).toHaveCount(0)
+    expect(writes[1].rest_config).toEqual(writes[0].rest_config)
+    await page.getByRole('button', { name: 'Edit tool', exact: true }).click()
+    await dialog.getByRole('switch', { name: 'Enable API', exact: true }).click()
+    await dialog.getByRole('button', { name: 'Save', exact: true }).click()
+    await expect(dialog).toHaveCount(0)
+    expect(writes[2].rest_config).toBeNull()
+  })
+}
+
 for (const mobile of [false, true]) {
   for (const defaultState of ['enabled', 'disabled', 'ask']) {
     test(`Global function policies are explicit and connections can inherit (${mobile ? 'mobile' : 'desktop'}, ${defaultState})`, async ({ page }) => {

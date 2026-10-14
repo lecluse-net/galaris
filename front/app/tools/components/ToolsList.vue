@@ -42,6 +42,10 @@
         </q-td>
       </template>
 
+      <template #body-cell-has_api="props">
+        <q-td :props="props"><q-icon v-if="props.row.has_api" name="check" color="primary" :aria-label="$t('tools.restApi')" /><span v-else>—</span></q-td>
+      </template>
+
       <template v-slot:body-cell-has_file_share="props">
         <q-td :props="props">
           <q-chip v-if="props.row.has_file_share" dense color="deep-purple" text-color="white" icon="folder_shared" size="sm">
@@ -141,6 +145,7 @@
               </div>
 
               <div class="row items-center q-gutter-xs q-mt-sm tool-mobile-capabilities">
+                <q-chip v-if="props.row.has_api" dense icon="api">{{ $t('tools.restApi') }}</q-chip>
                 <q-chip v-if="props.row.has_mcp" dense color="positive" text-color="white" icon="check" size="sm">
                   MCP
                 </q-chip>
@@ -360,6 +365,7 @@
               <!-- Section toggles grouped below the description -->
               <div class="row q-gutter-md q-mt-sm tool-capability-toggles">
                 <q-toggle v-model="hasMcp" :label="$t('tools.enableMcp')" color="positive" dense />
+                <q-toggle v-model="hasApi" :label="$t('tools.enableApi')" color="primary" dense />
                 <q-toggle v-model="hasFileShare" :label="$t('tools.enableFileShare')" color="deep-purple" dense />
                 <q-toggle v-model="hasMessenger" :label="$t('tools.enableMessenger')" color="indigo" dense />
                 <q-toggle v-model="hasListener" :label="$t('tools.enableListener')" color="info" dense />
@@ -405,10 +411,11 @@
               </div>
             </section>
 
-            <section v-if="hasMcp || hasFileShare || hasMessenger || hasListener" class="tool-section tool-section--active">
+            <section v-if="hasMcp || hasApi || hasFileShare || hasMessenger || hasListener" class="tool-section tool-section--active">
               <q-tabs v-model="activeTab" dense align="left" class="text-grey-7"
                 active-color="primary" indicator-color="primary" narrow-indicator>
                 <q-tab v-if="hasMcp" name="mcp" label="MCP" />
+                <q-tab v-if="hasApi" name="api" :label="$t('tools.restApi')" />
                 <q-tab v-if="hasFileShare" name="file_share" :label="$t('tools.fileShare')" />
                 <q-tab v-if="hasMessenger" name="messenger" :label="$t('tools.messenger')" />
                 <q-tab v-if="hasListener" name="listener" :label="$t('tools.listener')" />
@@ -416,6 +423,9 @@
               <q-separator class="q-mb-md" />
 
               <q-tab-panels v-model="activeTab" animated>
+                <q-tab-panel name="api" class="q-pa-none">
+                  <RestConfigEditor v-model="form.rest_config" :params="connParams" class="tool-section__body" />
+                </q-tab-panel>
                 <!-- Rubrique MCP -->
                 <q-tab-panel name="mcp" class="q-pa-none">
                   <div class="tool-section__body">
@@ -749,6 +759,7 @@ import { ref, computed, watch, onMounted } from 'vue'
 import { Markdown, NetworkAccessNotice } from '@/core/util'
 import SystemToolIcon from './SystemToolIcon.vue'
 import ConnectionParamInput from './ConnectionParamInput.vue'
+import RestConfigEditor from './RestConfigEditor.vue'
 import { McpCandidateAgent } from '@/app/connection'
 import { useQuasar } from 'quasar'
 import { useToolStore } from '../stores/toolStore'
@@ -757,6 +768,7 @@ import type {
   Tool,
   McpAuth,
   McpConfig,
+  RestConfig,
   FileShareConfig,
   FileShareBridge,
   MessengerConfig,
@@ -975,6 +987,7 @@ const columns = computed(() => [
   { name: 'code',        label: t('agent.colName'),     field: 'code',     align: 'left'   as const, sortable: true },
   { name: 'label', label: t('tools.labelColumn'), field: 'label', align: 'left' as const, sortable: true },
   { name: 'has_mcp',     label: 'MCP',     field: 'has_mcp',  align: 'center' as const },
+  { name: 'has_api', label: t('tools.restApi'), field: 'has_api', align: 'center' as const },
   { name: 'has_file_share', label: t('tools.fileShare'), field: 'has_file_share', align: 'center' as const },
   { name: 'has_messenger', label: t('tools.messenger'), field: 'has_messenger', align: 'center' as const },
   { name: 'has_listener', label: t('tools.listener'), field: 'has_listener', align: 'center' as const },
@@ -1144,6 +1157,7 @@ const mcpTestResult = ref<ToolMcpTestResponse | null>(null)
 const mcpTestError = ref<string | null>(null)
 
 const hasMcp = ref(false)
+const hasApi = ref(false)
 const hasFileShare = ref(false)
 const hasMessenger = ref(false)
 const hasListener = ref(false)
@@ -1153,6 +1167,7 @@ const mcpEnvRaw = ref('')
 
 function firstEnabledTab(): string {
   if (hasMcp.value) return 'mcp'
+  if (hasApi.value) return 'api'
   if (hasFileShare.value) return 'file_share'
   if (hasMessenger.value) return 'messenger'
   if (hasListener.value) return 'listener'
@@ -1160,21 +1175,34 @@ function firstEnabledTab(): string {
 }
 
 // Focus a newly enabled section and fall back when the current tab is disabled.
-watch([hasMcp, hasFileShare, hasMessenger, hasListener], ([m, f, g, l], [pm, pf, pg, pl]) => {
+watch([hasMcp, hasFileShare, hasMessenger, hasListener, hasApi], ([m, f, g, l, a], [pm, pf, pg, pl, pa]) => {
   if (m && !pm) activeTab.value = 'mcp'
   else if (f && !pf) activeTab.value = 'file_share'
   else if (g && !pg) activeTab.value = 'messenger'
   else if (l && !pl) activeTab.value = 'listener'
+  else if (a && !pa) activeTab.value = 'api'
   const enabled = [
     m ? 'mcp' : '',
     f ? 'file_share' : '',
     g ? 'messenger' : '',
     l ? 'listener' : '',
+    a ? 'api' : '',
   ].filter(Boolean)
   if (!enabled.includes(activeTab.value)) activeTab.value = enabled[0] ?? ''
 })
 const mcpHeadersRaw = ref('')
 const connParams = ref<ConnParamRow[]>([])
+watch(hasApi, enabled => {
+  if (!enabled || editingTool.value?.rest_config) return
+  for (const [name, type, label] of [
+    ['api_url', 'string', t('tools.restBaseUrl')],
+    ['api_token', 'password', t('tools.restTokenParam')],
+  ]) {
+    if (!connParams.value.some(param => param.name === name)) {
+      connParams.value.push({ name, type, label, options: [], required: false, description: '', default: '' })
+    }
+  }
+})
 const mcpTestConnectionParams = computed(() =>
   connParams.value.filter(param => param.name.trim() !== '')
 )
@@ -1256,11 +1284,17 @@ watch(hasMessenger, (on) => {
 })
 
 const emptyListenerConfig = (): ListenerConfig => ({ connection_key: '' })
+const emptyRestConfig = (): RestConfig => ({
+  base_url: '${connection:api_url}',
+  auth: { type: 'bearer', param: 'api_token', header_name: 'X-API-Key', query_name: 'api_key', login_param: 'login', password_param: 'password' },
+  header_params: {}, timeout: 60, max_response_bytes: 2097152,
+})
 const emptyTaskConfig = (): TaskConfig => ({ label: '', objective: '' })
 
 interface FormData {
   code: string; label: string; description: string
   mcp_config: McpFormConfig
+  rest_config: RestConfig
   file_share_config: FileShareConfig
   messenger_config: MessengerConfig
   listener_config: ListenerConfig
@@ -1270,6 +1304,7 @@ interface FormData {
 const form = ref<FormData>({
   code: '', label: '', description: '',
   mcp_config: emptyMcpConfig(),
+  rest_config: emptyRestConfig(),
   file_share_config: emptyFileShareConfig(),
   messenger_config: emptyMessengerConfig(),
   listener_config: emptyListenerConfig(),
@@ -1282,12 +1317,14 @@ function resetForm() {
     label: '',
     description: '',
     mcp_config: emptyMcpConfig(),
+    rest_config: emptyRestConfig(),
     file_share_config: emptyFileShareConfig(),
     messenger_config: emptyMessengerConfig(),
     listener_config: emptyListenerConfig(),
     task_config: emptyTaskConfig(),
   }
   hasMcp.value = false
+  hasApi.value = false
   hasFileShare.value = false
   hasMessenger.value = false
   hasListener.value = false
@@ -1311,6 +1348,8 @@ function openEdit(tool: Tool) {
   form.value.code = tool.code
   form.value.label = tool.label
   form.value.description = tool.description
+  hasApi.value = !!tool.rest_config
+  form.value.rest_config = tool.rest_config ? JSON.parse(JSON.stringify(tool.rest_config)) : emptyRestConfig()
 
   hasMcp.value = !!tool.mcp_config
   if (tool.mcp_config) {
@@ -1396,6 +1435,7 @@ function buildMcpConfig(): McpConfig {
 }
 
 function buildPayload() {
+  const rest_config = hasApi.value ? { ...form.value.rest_config, auth: { ...form.value.rest_config.auth }, header_params: { ...form.value.rest_config.header_params } } : null
   const mcp_config: McpConfig | null = hasMcp.value ? buildMcpConfig() : null
   const file_share_config: FileShareConfig | null = hasFileShare.value ? {
     service: form.value.file_share_config.service,
@@ -1438,6 +1478,7 @@ function buildPayload() {
   }
   return {
     mcp_config,
+    rest_config,
     file_share_config,
     messenger_config,
     listener_config,

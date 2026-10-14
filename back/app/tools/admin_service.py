@@ -83,7 +83,7 @@ async def get(actor: AdministrationContext, tool_id: int | None = None, code: st
         for parameter in data["global_params"].values():
             parameter["value"] = None
     # Legacy URL authentication remains recognizable without disclosing its query.
-    for name in ("mcp_config", "file_share_config", "listener_config"):
+    for name in ("mcp_config", "rest_config", "file_share_config", "listener_config"):
         config = data.get(name)
         if isinstance(config, dict):
             for field in ("url", "base_url"):
@@ -120,7 +120,7 @@ async def list_tools(actor: AdministrationContext, search: str = "", kind: str =
     elif kind:
         raise AdministrationError("configuration_invalid", "Unknown Tool kind filter.")
     if capability:
-        columns = {"mcp": Tool.mcp_config, "file_share": Tool.file_share_config, "messenger": Tool.messenger_config,
+        columns = {"mcp": Tool.mcp_config, "api": Tool.rest_config, "file_share": Tool.file_share_config, "messenger": Tool.messenger_config,
                    "listener": Tool.listener_config, "task": Tool.task_config}
         if capability not in columns:
             raise AdministrationError("configuration_invalid", "Unknown capability filter.")
@@ -327,7 +327,7 @@ async def update(actor: AdministrationContext, tool_id: int, changes: dict[str, 
         if any(definition.get("type") == "password" and (name not in new or new[name].type != "password")
                for name, definition in old.items()):
             raise AdministrationError("configuration_invalid", "A secret parameter cannot be removed or made public through ToolAdmin.")
-    for field, keys in (("mcp_config", ("url",)), ("file_share_config", ("service", "base_url", "param_map")),
+    for field, keys in (("mcp_config", ("url",)), ("rest_config", ("base_url", "auth", "header_params")), ("file_share_config", ("service", "base_url", "param_map")),
                         ("listener_config", ("url", "connection_key")), ("messenger_config", ("service", "settings", "param_map"))):
         config = getattr(data, field)
         if field not in data.model_fields_set or config is None:
@@ -391,7 +391,7 @@ async def global_params_set(actor: AdministrationContext, tool_id: int, params: 
 
 
 def _protect_destination_params(tool: Tool, params: dict[str, Any]) -> None:
-    configs = (tool.mcp_config, tool.file_share_config, tool.listener_config)
+    configs = (tool.mcp_config, tool.rest_config, tool.file_share_config, tool.listener_config)
     for config in configs:
         if not config:
             continue

@@ -454,7 +454,7 @@ tests restent l’autorité sur le comportement.
 | `app.task` | `core.user` | `back/app/task/mcp.py`, `back/app/task/run_events.py`, `back/app/task/task_service.py` |
 | `app.task` | `core.util` | `back/app/task/activity_snapshot.py`, `back/app/task/html_migration.py`, `back/app/task/mcp.py`, `back/app/task/models.py`, `back/app/task/operational_state.py`, `back/app/task/router.py`, `back/app/task/schemas.py` |
 | `app.tools` | `app.agent` | `back/app/tools/admin_service.py`, `back/app/tools/agent_registry.py`, `back/app/tools/authorization.py`, `back/app/tools/authorization_notifications.py`, `back/app/tools/authorization_router.py`, `back/app/tools/catalog.py`, `back/app/tools/catalog_refresh_service.py`, `back/app/tools/connection_functions.py`, `back/app/tools/dbadmin.py`, `back/app/tools/mcp_loader.py`, `back/app/tools/resource_effects.py`, `back/app/tools/router.py`, `back/app/tools/runtime_authorization.py`, `back/app/tools/runtime_permissions.py` |
-| `app.tools` | `app.connection` | `back/app/tools/admin_access.py`, `back/app/tools/admin_candidates.py`, `back/app/tools/admin_contracts.py`, `back/app/tools/admin_service.py`, `back/app/tools/agent_registry.py`, `back/app/tools/authorization.py`, `back/app/tools/connection_functions.py`, `back/app/tools/dbadmin.py`, `back/app/tools/documentation_service.py`, `back/app/tools/facade.py`, `back/app/tools/mandatory_tools.py`, `back/app/tools/mcp_authorization.py`, `back/app/tools/mcp_loader.py`, `back/app/tools/tool_service.py` |
+| `app.tools` | `app.connection` | `back/app/tools/admin_access.py`, `back/app/tools/admin_candidates.py`, `back/app/tools/admin_contracts.py`, `back/app/tools/admin_service.py`, `back/app/tools/agent_registry.py`, `back/app/tools/authorization.py`, `back/app/tools/connection_functions.py`, `back/app/tools/dbadmin.py`, `back/app/tools/documentation_service.py`, `back/app/tools/facade.py`, `back/app/tools/mandatory_tools.py`, `back/app/tools/mcp_authorization.py`, `back/app/tools/mcp_loader.py`, `back/app/tools/rest.py`, `back/app/tools/tool_service.py` |
 | `app.tools` | `app.console` | `back/app/tools/mcp_loader.py` |
 | `app.tools` | `app.documentation` | `back/app/tools/documentation_service.py` |
 | `app.tools` | `app.file_share` | `back/app/tools/parameter_definitions.py`, `back/app/tools/resource_effects.py`, `back/app/tools/tool_service.py` |
@@ -1857,7 +1857,7 @@ tests restent l’autorité sur le comportement.
 | `titles` | `Title` | `app.agent` | non | — | `back/app/agent/models.py:41` |
 | `tool_action_authorizations` | `ActionAuthorization` | `app.tools` | non | `agents.id`, `connections.id`, `messenger_interactions.id`, `runtime_action_permissions.id`, `runtime_run_grants.id`, `tools.id`, `users.id` | `back/app/tools/authorization_models.py:13` |
 | `tool_function_state` | `ToolFunctionState` | `app.connection` | non | `tools.id` | `back/app/connection/models.py:80` |
-| `tool_search_documents` | `ToolSearchDocument` | `app.tools` | non | — | `back/app/tools/models.py:74` |
+| `tool_search_documents` | `ToolSearchDocument` | `app.tools` | non | — | `back/app/tools/models.py:75` |
 | `tools` | `Tool` | `app.tools` | non | — | `back/app/tools/models.py:24` |
 | `topics` | `Topic` | `app.topic` | oui | `memory_items.id` | `back/app/topic/models.py:15` |
 | `user_help_dismissals` | `UserHelpDismissal` | `core.user` | non | `users.id` | `back/core/user/models.py:80` |
