@@ -17,8 +17,8 @@ tests restent l’autorité sur le comportement.
 - 26 paires de domaines directement bidirectionnelles ;
 - 1 composantes fortement connexes ;
 - 7 paires frontend directement bidirectionnelles ;
-- 620 handlers HTTP/WebSocket détectés ;
-- 144 tables SQLAlchemy détectées ;
+- 622 handlers HTTP/WebSocket détectés ;
+- 145 tables SQLAlchemy détectées ;
 - 246 outils MCP natifs détectés ;
 - 40 pages Vue détectées.
 
@@ -488,14 +488,14 @@ tests restent l’autorité sur le comportement.
 | `app.voice` | `app.agent` | `back/app/voice/conversation_service.py`, `back/app/voice/engine.py`, `back/app/voice/events.py`, `back/app/voice/facade.py`, `back/app/voice/inspection_service.py`, `back/app/voice/mcp.py`, `back/app/voice/monitoring_service.py`, `back/app/voice/realtime_engine.py`, `back/app/voice/realtime_tools.py`, `back/app/voice/router.py` |
 | `app.voice` | `app.connection` | `back/app/voice/conversation_service.py`, `back/app/voice/events.py`, `back/app/voice/mcp.py`, `back/app/voice/monitoring_service.py` |
 | `app.voice` | `app.conversation` | `back/app/voice/conversation_service.py`, `back/app/voice/engine.py`, `back/app/voice/inspection_service.py`, `back/app/voice/management_service.py`, `back/app/voice/mcp.py`, `back/app/voice/monitoring_service.py`, `back/app/voice/realtime_engine.py`, `back/app/voice/realtime_tools.py` |
-| `app.voice` | `app.llm` | `back/app/voice/engine.py`, `back/app/voice/facade.py`, `back/app/voice/inspection_service.py`, `back/app/voice/monitoring_service.py`, `back/app/voice/realtime_engine.py`, `back/app/voice/realtime_tools.py` |
+| `app.voice` | `app.llm` | `back/app/voice/engine.py`, `back/app/voice/facade.py`, `back/app/voice/inspection_service.py`, `back/app/voice/management_service.py`, `back/app/voice/monitoring_service.py`, `back/app/voice/realtime_engine.py`, `back/app/voice/realtime_tools.py` |
 | `app.voice` | `app.memory` | `back/app/voice/realtime_tools.py`, `back/app/voice/session.py` |
 | `app.voice` | `app.messenger` | `back/app/voice/conversation_service.py`, `back/app/voice/events.py`, `back/app/voice/facade.py`, `back/app/voice/mcp.py`, `back/app/voice/monitoring_service.py`, `back/app/voice/session.py` |
 | `app.voice` | `app.process` | `back/app/voice/realtime_tools.py` |
-| `app.voice` | `app.task` | `back/app/voice/mcp.py` |
-| `app.voice` | `app.tools` | `back/app/voice/conversation_service.py`, `back/app/voice/mcp.py`, `back/app/voice/monitoring_service.py`, `back/app/voice/realtime_tools.py` |
+| `app.voice` | `app.task` | `back/app/voice/__init__.py`, `back/app/voice/mcp.py` |
+| `app.voice` | `app.tools` | `back/app/voice/conversation_service.py`, `back/app/voice/management_service.py`, `back/app/voice/mcp.py`, `back/app/voice/monitoring_service.py`, `back/app/voice/realtime_tools.py` |
 | `app.voice` | `core.authorize` | `back/app/voice/router.py` |
-| `app.voice` | `core.database` | `back/app/voice/conversation_service.py`, `back/app/voice/engine.py`, `back/app/voice/events.py`, `back/app/voice/inspection_service.py`, `back/app/voice/management_service.py`, `back/app/voice/models.py`, `back/app/voice/monitoring_service.py`, `back/app/voice/realtime_engine.py`, `back/app/voice/realtime_tools.py`, `back/app/voice/session.py` |
+| `app.voice` | `core.database` | `back/app/voice/conversation_service.py`, `back/app/voice/engine.py`, `back/app/voice/events.py`, `back/app/voice/inspection_service.py`, `back/app/voice/management_service.py`, `back/app/voice/models.py`, `back/app/voice/monitoring_service.py`, `back/app/voice/realtime_engine.py`, `back/app/voice/realtime_tools.py`, `back/app/voice/runtime_control.py`, `back/app/voice/session.py` |
 | `app.voice` | `core.i18n` | `back/app/voice/call_manager.py`, `back/app/voice/engine.py`, `back/app/voice/mcp.py`, `back/app/voice/realtime_engine.py`, `back/app/voice/relay.py`, `back/app/voice/router.py` |
 | `app.voice` | `core.params` | `back/app/voice/__init__.py`, `back/app/voice/audio_devices.py`, `back/app/voice/mcp.py` |
 | `app.voice` | `core.user` | `back/app/voice/events.py` |
@@ -1705,12 +1705,14 @@ tests restent l’autorité sur le comportement.
 | GET | `/v1/galaris/runs/{identifier}` | `app.harnesses` | `status` | non | `back/app/harnesses/runtime_web.py:43` |
 | POST | `/v1/galaris/runs/{identifier}/cancel` | `app.harnesses` | `cancel` | non | `back/app/harnesses/runtime_web.py:51` |
 | GET | `/v1/models` | `bridge.codex` | `models` | non | `back/bridge/codex/default-agent/server.py:194` |
-| GET | `/voice/conversations` | `app.voice` | `read_voice_conversations` | oui | `back/app/voice/router.py:30` |
-| DELETE | `/voice/conversations/turns/{turn_id}` | `app.voice` | `delete_voice_conversation_turn` | oui | `back/app/voice/router.py:132` |
-| GET | `/voice/conversations/turns/{turn_id}` | `app.voice` | `read_voice_conversation_turn` | oui | `back/app/voice/router.py:87` |
-| GET | `/voice/conversations/turns/{turn_id}/dataset` | `app.voice` | `export_voice_conversation_turn` | oui | `back/app/voice/router.py:119` |
-| PUT | `/voice/conversations/turns/{turn_id}/topic` | `app.voice` | `update_voice_conversation_turn_topic` | oui | `back/app/voice/router.py:97` |
-| GET | `/voice/conversations/{conversation_id}` | `app.voice` | `read_voice_conversation` | oui | `back/app/voice/router.py:147` |
+| GET | `/voice/conversations` | `app.voice` | `read_voice_conversations` | oui | `back/app/voice/router.py:31` |
+| DELETE | `/voice/conversations/turns/{turn_id}` | `app.voice` | `delete_voice_conversation_turn` | oui | `back/app/voice/router.py:157` |
+| GET | `/voice/conversations/turns/{turn_id}` | `app.voice` | `read_voice_conversation_turn` | oui | `back/app/voice/router.py:88` |
+| GET | `/voice/conversations/turns/{turn_id}/dataset` | `app.voice` | `export_voice_conversation_turn` | oui | `back/app/voice/router.py:120` |
+| GET | `/voice/conversations/turns/{turn_id}/deletion` | `app.voice` | `read_voice_turn_deletion` | oui | `back/app/voice/router.py:147` |
+| POST | `/voice/conversations/turns/{turn_id}/force-hangup` | `app.voice` | `force_hangup_voice_conversation_turn` | oui | `back/app/voice/router.py:133` |
+| PUT | `/voice/conversations/turns/{turn_id}/topic` | `app.voice` | `update_voice_conversation_turn_topic` | oui | `back/app/voice/router.py:98` |
+| GET | `/voice/conversations/{conversation_id}` | `app.voice` | `read_voice_conversation` | oui | `back/app/voice/router.py:183` |
 | GET | `/whatsapp/webhook` | `bridge.whatsapp` | `verify_webhook` | non | `back/bridge/whatsapp/router.py:81` |
 | POST | `/whatsapp/webhook` | `bridge.whatsapp` | `receive_webhook` | non | `back/bridge/whatsapp/router.py:253` |
 | GET | `/whatsapp/webhook/{tool_id}` | `bridge.whatsapp` | `verify_tool_webhook` | non | `back/bridge/whatsapp/router.py:100` |
@@ -1866,6 +1868,7 @@ tests restent l’autorité sur le comportement.
 | `user_tokens` | `UserToken` | `core.user` | non | `users.id` | `back/core/user/models.py:92` |
 | `users` | `User` | `core.user` | non | — | `back/core/user/models.py:13` |
 | `voice_sessions` | `VoiceConversationSession` | `app.voice` | oui | `messenger_rooms.id`, `users.id` | `back/app/voice/models.py:59` |
+| `voice_turn_deletions` | `VoiceTurnDeletion` | `app.voice` | non | `agents.id`, `voice_sessions.id` | `back/app/voice/models.py:93` |
 
 ## Outils MCP natifs
 

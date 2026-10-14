@@ -13,6 +13,14 @@ contracts and tests, then select the least expensive layer that proves the obser
 
 ## Media and acquired evidence
 
+Durable audio revocation and deferred deletion are covered by
+`app/voice/tests/test_monitoring_service.py`, `test_runtime_control.py` and `test_session.py`:
+real PostgreSQL transactions, remote ownership, late teardown errors, resumed cleanup,
+HTTP permissions and rejected late writes. `front/browser-tests/voice.spec.mjs` also
+exercises hangup confirmation, retained content during cleanup, retries and late replies
+after navigation. Audio transports and component APIs are synthetic; these scenarios
+do not certify a real two-process audio call with an actual restart.
+
 `back/app/image/tests/test_image_mcp.py` covers image references as a URI, a list, or a
 JSON-encoded list, temporary cleanup, and filenames matching the native format without
 conversion or overwriting a neighboring file. The workflow in

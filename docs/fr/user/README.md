@@ -400,6 +400,12 @@ alors dans l’onglet **Tasks** et continue après la fin de l’appel.
 
 ### Résumer un audio, une vidéo ou une vidéo YouTube
 
+Dans le détail d'un tour de l'onglet **Appels téléphoniques**, les gestionnaires disposant
+du droit de modification des Tasks peuvent **Raccrocher de force** un traitement audio.
+La confirmation conserve l'historique ; un arrêt encore en cours reste signalé.
+Lors d'une suppression, le tour reste affiché tant que le nettoyage audio n'est pas
+achevé. Le suivi reprend après réouverture et traverse les indisponibilités temporaires.
+
 Si l’agent dispose de l’outil Audio, joignez l’enregistrement puis demandez directement le
 livrable attendu, par exemple :
 

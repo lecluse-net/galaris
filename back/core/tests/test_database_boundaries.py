@@ -70,6 +70,7 @@ ALLOWED_DATABASE_SESSION_BOUNDARIES = {
     "app/voice/realtime_engine.py",
     "app/voice/realtime_tools.py",
     "app/voice/session.py",
+    "app/voice/runtime_control.py",  # Detached session fence watcher and cross-worker ownership probes.
     "bridge/hermes/manager.py",
     "bridge/hermes/skill_sync.py",
     "bridge/matrix/voice_listener.py",

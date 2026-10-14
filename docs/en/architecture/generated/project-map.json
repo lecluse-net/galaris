@@ -3544,6 +3544,7 @@
           "back/app/voice/engine.py",
           "back/app/voice/facade.py",
           "back/app/voice/inspection_service.py",
+          "back/app/voice/management_service.py",
           "back/app/voice/monitoring_service.py",
           "back/app/voice/realtime_engine.py",
           "back/app/voice/realtime_tools.py"
@@ -3580,6 +3581,7 @@
       },
       {
         "files": [
+          "back/app/voice/__init__.py",
           "back/app/voice/mcp.py"
         ],
         "source": "app.voice",
@@ -3588,6 +3590,7 @@
       {
         "files": [
           "back/app/voice/conversation_service.py",
+          "back/app/voice/management_service.py",
           "back/app/voice/mcp.py",
           "back/app/voice/monitoring_service.py",
           "back/app/voice/realtime_tools.py"
@@ -3613,6 +3616,7 @@
           "back/app/voice/monitoring_service.py",
           "back/app/voice/realtime_engine.py",
           "back/app/voice/realtime_tools.py",
+          "back/app/voice/runtime_control.py",
           "back/app/voice/session.py"
         ],
         "source": "app.voice",
@@ -10121,6 +10125,18 @@
         "line": 59,
         "module": "app.voice",
         "table": "voice_sessions"
+      },
+      {
+        "class_name": "VoiceTurnDeletion",
+        "file": "back/app/voice/models.py",
+        "foreign_keys": [
+          "agents.id",
+          "voice_sessions.id"
+        ],
+        "history_mixin": false,
+        "line": 93,
+        "module": "app.voice",
+        "table": "voice_turn_deletions"
       }
     ],
     "modules": [
@@ -17040,7 +17056,7 @@
         "declared_path": "/voice/conversations",
         "file": "back/app/voice/router.py",
         "handler": "read_voice_conversations",
-        "line": 30,
+        "line": 31,
         "method": "GET",
         "module": "app.voice"
       },
@@ -17049,7 +17065,7 @@
         "declared_path": "/voice/conversations/turns/{turn_id}",
         "file": "back/app/voice/router.py",
         "handler": "delete_voice_conversation_turn",
-        "line": 132,
+        "line": 157,
         "method": "DELETE",
         "module": "app.voice"
       },
@@ -17058,7 +17074,7 @@
         "declared_path": "/voice/conversations/turns/{turn_id}",
         "file": "back/app/voice/router.py",
         "handler": "read_voice_conversation_turn",
-        "line": 87,
+        "line": 88,
         "method": "GET",
         "module": "app.voice"
       },
@@ -17067,8 +17083,26 @@
         "declared_path": "/voice/conversations/turns/{turn_id}/dataset",
         "file": "back/app/voice/router.py",
         "handler": "export_voice_conversation_turn",
-        "line": 119,
+        "line": 120,
         "method": "GET",
+        "module": "app.voice"
+      },
+      {
+        "authorized": true,
+        "declared_path": "/voice/conversations/turns/{turn_id}/deletion",
+        "file": "back/app/voice/router.py",
+        "handler": "read_voice_turn_deletion",
+        "line": 147,
+        "method": "GET",
+        "module": "app.voice"
+      },
+      {
+        "authorized": true,
+        "declared_path": "/voice/conversations/turns/{turn_id}/force-hangup",
+        "file": "back/app/voice/router.py",
+        "handler": "force_hangup_voice_conversation_turn",
+        "line": 133,
+        "method": "POST",
         "module": "app.voice"
       },
       {
@@ -17076,7 +17110,7 @@
         "declared_path": "/voice/conversations/turns/{turn_id}/topic",
         "file": "back/app/voice/router.py",
         "handler": "update_voice_conversation_turn_topic",
-        "line": 97,
+        "line": 98,
         "method": "PUT",
         "module": "app.voice"
       },
@@ -17085,7 +17119,7 @@
         "declared_path": "/voice/conversations/{conversation_id}",
         "file": "back/app/voice/router.py",
         "handler": "read_voice_conversation",
-        "line": 147,
+        "line": 183,
         "method": "GET",
         "module": "app.voice"
       },

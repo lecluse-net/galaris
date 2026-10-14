@@ -113,9 +113,7 @@ def _requests_hangup(text: str) -> bool:
 
     normalized = unicodedata.normalize("NFKD", text.casefold())
     normalized = "".join(
-        character
-        for character in normalized
-        if not unicodedata.combining(character)
+        character for character in normalized if not unicodedata.combining(character)
     )
     normalized = " ".join(normalized.replace("’", "'").split())
 
@@ -179,10 +177,7 @@ def _merge_utterance_chunks(
 
     sample_rate = chunks[0].sample_rate
     channels = chunks[0].channels
-    if any(
-        chunk.sample_rate != sample_rate or chunk.channels != channels
-        for chunk in chunks[1:]
-    ):
+    if any(chunk.sample_rate != sample_rate or chunk.channels != channels for chunk in chunks[1:]):
         raise ValueError("speech chunks use incompatible PCM formats")
 
     return SpeechUtterance(
@@ -243,6 +238,12 @@ class AgentVoiceEngine:
         self._pending_transcription_id: UUID | None = None
 
     async def run(self) -> None:
+        from .runtime_control import own_session
+
+        async with own_session(self._session_id):
+            await self._run_owned()
+
+    async def _run_owned(self) -> None:
         from .realtime_engine import RealtimeAgentVoiceEngine
 
         realtime_engine = await RealtimeAgentVoiceEngine.create(
@@ -366,11 +367,9 @@ class AgentVoiceEngine:
         try:
             try:
                 async with get_db_session():
-                    realtime = (
-                        await transcription_service.create_realtime_transcriber(
-                            agent_id=self._agent_id,
-                            language=self._language,
-                        )
+                    realtime = await transcription_service.create_realtime_transcriber(
+                        agent_id=self._agent_id,
+                        language=self._language,
                     )
                 if realtime is not None:
                     logger.info(
@@ -420,8 +419,7 @@ class AgentVoiceEngine:
                     try:
                         transcript = await realtime.commit()
                         logger.info(
-                            "Voice agent: realtime transcript committed room={} "
-                            "latency={:.2f}s",
+                            "Voice agent: realtime transcript committed room={} latency={:.2f}s",
                             self._room_id,
                             time.monotonic() - committed_at,
                         )
@@ -551,7 +549,8 @@ class AgentVoiceEngine:
             )
             transcription_finished = True
             live_progress = ConversationRuntimeStream(
-                room_id=conversation_round.room_id, round_id=conversation_round.id,
+                room_id=conversation_round.room_id,
+                round_id=conversation_round.id,
                 topic_id=conversation_round.topic_id,
             )
             progress = live_progress
@@ -571,12 +570,14 @@ class AgentVoiceEngine:
                     async with get_db_session():
                         from app.conversation import linked_work_snapshot
 
-                        linked_work = await linked_work_snapshot(
-                            conversation_round.room_id
-                        )
+                        linked_work = await linked_work_snapshot(conversation_round.room_id)
                         from app.agent import AgentRunControl, AgentRunCheckpoint
+
                         async def save_checkpoint(checkpoint: AgentRunCheckpoint) -> None:
-                            await conversation_service.save_turn_checkpoint(conversation_round.id, checkpoint)
+                            await conversation_service.save_turn_checkpoint(
+                                conversation_round.id, checkpoint
+                            )
+
                         async for event in stream_conversation_turn_events(
                             agent_id=self._agent_id,
                             objective=objective,
@@ -603,7 +604,9 @@ class AgentVoiceEngine:
                             if generation != self._generation:
                                 return
                             if event.kind == "result" and event.result is not None:
-                                execution_result = live_progress.snapshot(event.result).model_dump(mode="json")
+                                execution_result = live_progress.snapshot(event.result).model_dump(
+                                    mode="json"
+                                )
                                 continue
                             message = event.message
                             if message is None:
@@ -667,11 +670,9 @@ class AgentVoiceEngine:
                 speech_stream = None
                 try:
                     async with get_db_session():
-                        speech_stream = (
-                            await tts_service.create_realtime_speech_stream_for_agent(
-                                self._agent_id,
-                                tts_service.TTSOptions(language=self._language),
-                            )
+                        speech_stream = await tts_service.create_realtime_speech_stream_for_agent(
+                            self._agent_id,
+                            tts_service.TTSOptions(language=self._language),
                         )
                 except tts_service.TTSStreamingUnavailable:
                     logger.opt(exception=True).warning(
@@ -751,7 +752,9 @@ class AgentVoiceEngine:
                     first_text_at=first_text_timestamp,
                     first_audio_at=first_audio_timestamp,
                 )
-            waiting_for_approval = execution_result.get("disposition") == "waiting_for_authorization"
+            waiting_for_approval = (
+                execution_result.get("disposition") == "waiting_for_authorization"
+            )
             completed_successfully = not waiting_for_approval
             if waiting_for_approval:
                 self._pending_turn_indexes.add(turn_index)
@@ -805,10 +808,14 @@ class AgentVoiceEngine:
                 self._request_graceful_stop(turn_index)
         finally:
             if progress is not None:
-                await asyncio.shield(progress.finish(
-                    success=completed_successfully,
-                    result=ExecutionResult.model_validate(execution_result) if execution_result else None,
-                ))
+                await asyncio.shield(
+                    progress.finish(
+                        success=completed_successfully,
+                        result=ExecutionResult.model_validate(execution_result)
+                        if execution_result
+                        else None,
+                    )
+                )
             if not transcription_finished:
                 await asyncio.shield(
                     self._finish_transcription_progress(
@@ -971,9 +978,7 @@ class AgentVoiceEngine:
             f"voice-user-{current_turn_index}",
         }
         return tuple(
-            message
-            for message in self._history
-            if message.external_message_id not in excluded
+            message for message in self._history if message.external_message_id not in excluded
         )
 
     async def _interrupt_voice_turn(

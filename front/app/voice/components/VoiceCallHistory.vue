@@ -355,6 +355,7 @@
         :conversation="selectedConversation"
         :turn="selectedTurn"
         @deleted="onTurnDeleted"
+        @stopped="onTurnDeleted"
         @topic-updated="onTurnTopicUpdated"
       />
     </ConversationTurnDialog>

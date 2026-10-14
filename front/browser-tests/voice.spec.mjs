@@ -1,4 +1,4 @@
-import { test, expect, mount, jsonRoute } from './fixtures.mjs'
+import { test, expect, mount, jsonRoute, setPrivileges } from './fixtures.mjs'
 
 test.use({ permissions: ['microphone'], launchOptions: { args: ['--use-fake-device-for-media-stream', '--use-fake-ui-for-media-stream'] } })
 
@@ -17,6 +17,89 @@ async function voice(page) {
   })
 }
 const stopped = page => page.evaluate(() => window.voiceTracks.length > 0 && window.voiceTracks.every(track => track.readyState === 'ended'))
+
+const audioTurn = {
+  id: 'synthetic-audio-turn', sequence: 1, status: 'RUNNING', started_at: '2026-01-01T10:00:00Z',
+  transcript: 'Synthetic audio input', assistant_response: null, effective_objective: null,
+  topic_id: null, llm_call_count: 0, execution_result: null,
+}
+const audioConversation = {
+  id: 'synthetic-audio-session', agent_id: 7, agent_name: 'Alice Example', caller_name: 'Synthetic caller',
+  status: 'ACTIVE', transport_kind: 'matrix', room_id: 'synthetic-audio-room', language: 'en',
+}
+
+async function audioAdministration(page, privileges = ['TASK_ACCESS', 'TASK_EDIT']) {
+  await jsonRoute(page, '**/api/voice/conversations/turns/*', audioTurn)
+  await page.route('**/api/voice/conversations/turns/*/deletion', route => route.fulfill({ status: 404, json: {} }))
+  await mount(page, 'app/voice/components/VoiceConversationDetail.vue', {
+    props: { conversation: audioConversation, turn: audioTurn }, privileges,
+  })
+}
+
+test('audio administration honors edit permissions and confirms force hangup with the keyboard', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 })
+  let requests = 0
+  await page.route('**/api/voice/conversations/turns/*/force-hangup', route => {
+    requests += 1
+    return route.fulfill({ json: { revoked: true, local_audio_stopped: false } })
+  })
+  await audioAdministration(page, ['TASK_ACCESS'])
+  const hangup = page.getByRole('button', { name: 'Force hangup', exact: true })
+  await expect(hangup).toHaveCount(0)
+  await setPrivileges(page, ['TASK_ACCESS', 'TASK_EDIT'])
+  await hangup.focus()
+  await page.keyboard.press('Enter')
+  await expect(page.getByRole('dialog')).toBeVisible()
+  await page.locator('.q-dialog__backdrop').click({ position: { x: 5, y: 5 } })
+  await expect(page.getByRole('dialog')).toHaveCount(0)
+  expect(requests).toBe(0)
+  await hangup.click()
+  await page.getByRole('dialog').getByRole('button', { name: 'Force hangup', exact: true }).click()
+  await expect.poll(() => requests).toBe(1)
+  await expect(page.getByText('Execution revoked; local teardown pending. You can retry.', { exact: true })).toBeVisible()
+  await expect.poll(() => page.evaluate(() => window.testApp.events.filter(event => event.name === 'stopped').length)).toBe(1)
+  await page.screenshot({ path: '/artifacts/audio-hangup-mobile.png' })
+})
+
+test('a pending audio deletion retains content and follows recovery across temporary API failures', async ({ page }) => {
+  await audioAdministration(page)
+  let polls = 0
+  await page.route('**/api/voice/conversations/turns/*/deletion', route => {
+    polls += 1
+    if (polls === 2) return route.fulfill({ status: 503, json: {} })
+    return route.fulfill({ json: { status: polls >= 3 ? 'COMPLETED' : 'PENDING', last_error: 'Synthetic transport cleanup' } })
+  })
+  await page.route('**/api/voice/conversations/turns/synthetic-audio-turn', route => {
+    expect(route.request().method()).toBe('DELETE')
+    return route.fulfill({ status: 202, json: { detail: 'Pending' } })
+  })
+  await page.getByRole('button', { name: 'Delete', exact: true }).click()
+  await page.getByRole('dialog').getByRole('button', { name: 'Delete', exact: true }).click()
+  await expect(page.getByText('Deletion requested: audio shutdown and cleanup in progress.')).toBeVisible()
+  await expect(page.getByText('Synthetic audio input', { exact: true })).toBeVisible()
+  await expect(page.getByText('Synthetic transport cleanup', { exact: true })).toBeVisible()
+  await expect.poll(() => page.evaluate(() => window.testApp.events.filter(event => event.name === 'deleted').length), { timeout: 10000 }).toBe(1)
+  expect(polls).toBe(3)
+})
+
+test('late audio deletion responses cannot remove another turn after an A-B-A navigation', async ({ page }) => {
+  await audioAdministration(page)
+  let release
+  await page.route('**/api/voice/conversations/turns/synthetic-audio-turn', async route => {
+    await new Promise(resolve => { release = resolve })
+    await route.fulfill({ status: 204 })
+  })
+  await page.getByRole('button', { name: 'Delete', exact: true }).click()
+  await page.getByRole('dialog').getByRole('button', { name: 'Delete', exact: true }).click()
+  await expect.poll(() => Boolean(release)).toBe(true)
+  await page.evaluate(turn => window.testApp.setProps({ turn: { ...turn, id: 'synthetic-other-turn' } }), audioTurn)
+  await expect(page.getByText('ID: synthetic-other-turn', { exact: true })).toBeVisible()
+  await page.evaluate(turn => window.testApp.setProps({ turn }), audioTurn)
+  await expect(page.getByText('ID: synthetic-audio-turn', { exact: true })).toBeVisible()
+  release()
+  await expect(page.getByRole('dialog').getByRole('button', { name: 'Delete', exact: true })).toBeEnabled()
+  expect(await page.evaluate(() => window.testApp.events.filter(event => event.name === 'deleted'))).toEqual([])
+})
 
 test('cancelling a connecting call releases the microphone and stops a late server call', async ({ page }) => {
   let release

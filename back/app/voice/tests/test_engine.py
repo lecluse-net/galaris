@@ -128,6 +128,14 @@ async def _db_session() -> AsyncIterator[None]:
 def _mock_voice_persistence(monkeypatch: pytest.MonkeyPatch) -> None:
     import app.conversation as conversation
     from app.voice.realtime_engine import RealtimeAgentVoiceEngine
+    from app.voice import runtime_control
+
+    @asynccontextmanager
+    async def ownership(_session_id: UUID) -> AsyncIterator[None]:
+        # These unit tests mock persistence; real admission/locks are tested separately.
+        yield
+
+    monkeypatch.setattr(runtime_control, "own_session", ownership)
 
     async def start_turn(**kwargs: Any) -> SimpleNamespace:
         return SimpleNamespace(

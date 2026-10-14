@@ -28,6 +28,7 @@ from .contracts import (
     public_ai_result,
 )
 from .controller import register_controller
+from .management_service import delete_round
 from .contracts import ConversationControlAction, ConversationControlConflict, ConversationControlResult
 from .preparation import ConversationSuperseded, ConversationSuspended, run_preparation
 from .document_display import (
@@ -79,6 +80,7 @@ from .models import (
 from .service import linked_work_snapshot, control_round
 
 __all__ = [
+    "delete_round",
     "control_round", "ConversationControlAction", "ConversationControlConflict", "ConversationControlResult",
     "ConversationSuperseded",
     "ConversationSuspended",

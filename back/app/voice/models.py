@@ -61,12 +61,8 @@ class VoiceConversationSession(HistoryMixin, Base):
 
     __tablename__ = "voice_sessions"
 
-    id: Mapped[UUID] = mapped_column(
-        PGUUID(as_uuid=True), primary_key=True, default=uuid4
-    )
-    revision: Mapped[int] = mapped_column(
-        Integer, nullable=False, default=1, server_default="1"
-    )
+    id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), primary_key=True, default=uuid4)
+    revision: Mapped[int] = mapped_column(Integer, nullable=False, default=1, server_default="1")
     messenger_room_id: Mapped[UUID] = mapped_column(
         PGUUID(as_uuid=True),
         ForeignKey("messenger_rooms.id", ondelete="RESTRICT"),
@@ -83,15 +79,28 @@ class VoiceConversationSession(HistoryMixin, Base):
         server_default=VoiceConversationStatus.ACTIVE.value,
         index=True,
     )
+    teardown_error: Mapped[str | None] = mapped_column(Text, nullable=True)
     next_sequence: Mapped[int] = mapped_column(
         Integer, nullable=False, default=1, server_default="1"
     )
     error: Mapped[str | None] = mapped_column(Text, nullable=True)
-    started_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False
-    )
-    finished_at: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True), nullable=True
-    )
+    started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     __mapper_args__ = {"version_id_col": revision}
+
+
+class VoiceTurnDeletion(Base):
+    """Idempotent administrative request, retained after physical round removal."""
+
+    __tablename__ = "voice_turn_deletions"
+
+    id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), primary_key=True)
+    session_id: Mapped[UUID] = mapped_column(
+        ForeignKey("voice_sessions.id", ondelete="RESTRICT"), nullable=False, index=True
+    )
+    agent_id: Mapped[int] = mapped_column(ForeignKey("agents.id", ondelete="RESTRICT"))
+    status: Mapped[str] = mapped_column(String(20), nullable=False, default="PENDING", index=True)
+    requested_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    last_error: Mapped[str | None] = mapped_column(Text, nullable=True)

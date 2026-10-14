@@ -309,6 +309,12 @@ When Matrix or Nextcloud Talk and a voice capability are configured, an Agent ca
 
 The **Phone Calls** tab shows active or completed calls, their turns, interruptions, responses, LLM calls, and errors. A voice turn can also create a background Task; it then appears in the **Tasks** tab and continues after the call ends.
 
+
+In a turn's detail in **Phone Calls**, agent managers with Task edit permission can
+**Force hangup** audio processing. Confirmation retains history; pending teardown
+remains explicit. Deleting a turn retains its content until audio cleanup completes.
+Reopening follows the persisted request through temporary service interruptions.
+
 ### Summarizing Audio, Video, or a YouTube Video
 
 If the Agent has the Audio Tool, attach the recording and then directly request the expected deliverable, for example:

@@ -13,6 +13,15 @@ est une décision à part entière : aucun quota de tests nouveaux par module.
 
 ## Médias et preuves acquises
 
+La révocation et la suppression différée des flux audio sont couvertes par
+`app/voice/tests/test_monitoring_service.py`, `test_runtime_control.py` et `test_session.py` :
+transactions PostgreSQL réelles, propriétaire distant, erreurs tardives de fermeture,
+reprise du nettoyage, permissions HTTP et écritures tardives refusées.
+`front/browser-tests/voice.spec.mjs` exerce aussi la confirmation du raccrochage,
+la conservation du tour pendant un nettoyage, le réessai et les réponses tardives après
+navigation. Les transports audio et API des composants sont synthétiques ; aucun appel
+réel réparti entre deux processus avec redémarrage n'est certifié par ces scénarios.
+
 `back/app/image/tests/test_image_mcp.py` couvre les références d'image sous forme d'URI,
 de liste ou de liste JSON encodée, le nettoyage des temporaires et le nom conforme au format
 natif sans conversion ni remplacement d'un fichier voisin. Le parcours de

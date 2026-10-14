@@ -1,5 +1,9 @@
 <template>
   <div>
+    <q-banner v-if="deletionPending" class="deletion-pending q-mb-sm">
+      {{ t('voice.history.detail.deletionPending') }}
+      <div v-if="deletionError">{{ deletionError }}</div>
+    </q-banner>
     <div class="conversation-detail-header">
       <div class="conversation-detail-header-shell">
         <q-spinner
@@ -85,6 +89,15 @@
                 :label="t('voice.history.detail.copyJson')"
                 :loading="copyingJson"
                 @click="copyJson"
+              />
+              <q-btn
+                v-if="canEdit && (['FROZEN', 'CLAIMED', 'RUNNING', 'WAITING_APPROVAL'].includes(turn.status) || conversation.status === 'ACTIVE')"
+                size="sm"
+                color="negative"
+                icon="call_end"
+                :label="t('voice.history.detail.forceHangup')"
+                :loading="hangingUp"
+                @click="hangupDialog = true"
               />
               <q-btn
                 v-if="canEdit"
@@ -176,6 +189,19 @@
       />
     </q-card-section>
 
+    <q-dialog v-model="hangupDialog">
+      <q-card class="galaris-dialog-card">
+        <q-card-section class="galaris-dialog-title row items-center no-wrap">
+          <div class="col">{{ t('voice.history.detail.forceHangup') }}</div>
+          <q-btn flat round dense icon="close" v-close-popup :aria-label="t('common.close')" />
+        </q-card-section>
+        <q-card-section>{{ t('voice.history.detail.forceHangupConfirm') }}</q-card-section>
+        <q-card-actions align="right">
+          <q-btn flat v-close-popup :disable="hangingUp" :label="t('common.cancel')" />
+          <q-btn color="negative" icon="call_end" :label="t('voice.history.detail.forceHangup')" :loading="hangingUp" @click="forceHangup" />
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
     <q-dialog v-model="deleteDialog">
       <q-card class="confirm-dialog galaris-dialog-card">
         <q-card-section class="galaris-dialog-title row items-center no-wrap">
@@ -195,7 +221,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { copyToClipboard, useQuasar } from 'quasar'
 import { useI18n } from 'vue-i18n'
 import { privileges, usePrivilegeStore } from '@/core/authorize'
@@ -223,6 +249,7 @@ const props = defineProps<{
 }>()
 const emit = defineEmits<{
   deleted: []
+  stopped: []
   'topic-updated': [turn: VoiceConversationTurnDetail]
 }>()
 const { t, locale } = useI18n()
@@ -241,6 +268,40 @@ const detailError = ref('')
 const copyingJson = ref(false)
 const deleteDialog = ref(false)
 const deleting = ref(false)
+const deletionPending = ref(false)
+const deletionError = ref('')
+let deletionTimer: ReturnType<typeof setTimeout> | undefined
+let disposed = false
+let detailSequence = 0
+onBeforeUnmount(() => {
+  disposed = true
+  clearTimeout(deletionTimer)
+})
+
+async function pollDeletion(turnId: string, sequence = detailSequence): Promise<void> {
+  if (disposed || props.turn.id !== turnId || sequence !== detailSequence) return
+  try {
+    const result = await voiceConversationService.deletionStatus(turnId)
+    if (disposed || props.turn.id !== turnId || sequence !== detailSequence) return
+    if (result.status === 'COMPLETED') {
+      deletionPending.value = false
+      emit('deleted')
+      return
+    }
+    deletionPending.value = true
+    deletionError.value = result.last_error || ''
+  } catch (reason) {
+    if (disposed || props.turn.id !== turnId || sequence !== detailSequence) return
+    const status = (reason as { response?: { status?: number } }).response?.status
+    if (status === 404 || status === 403 || status === 401) return
+    deletionError.value = t('voice.history.detail.deleteError')
+    // Keep following a persisted request through temporary API/network failures.
+  }
+  if (disposed || props.turn.id !== turnId || sequence !== detailSequence) return
+  deletionTimer = setTimeout(() => { void pollDeletion(turnId, sequence) }, 2000)
+}
+const hangingUp = ref(false)
+const hangupDialog = ref(false)
 const topicSaving = ref(false)
 
 const agentName = computed(() => (
@@ -278,6 +339,11 @@ watch(() => props.turn.id, loadDetails)
 
 async function loadDetails(): Promise<void> {
   const turnId = props.turn.id
+  const sequence = ++detailSequence
+  clearTimeout(deletionTimer)
+  deletionPending.value = false
+  deletionError.value = ''
+  void pollDeletion(turnId)
   turnDetail.value = null
   calls.value = []
   detailError.value = ''
@@ -293,7 +359,7 @@ async function loadDetails(): Promise<void> {
     detailPromise,
     callsPromise,
   ])
-  if (props.turn.id !== turnId) return
+  if (disposed || props.turn.id !== turnId || sequence !== detailSequence) return
 
   if (detailResult.status === 'fulfilled') {
     turnDetail.value = detailResult.value
@@ -375,15 +441,50 @@ async function saveTopic(topicId: string | null): Promise<void> {
   }
 }
 
+async function forceHangup(): Promise<void> {
+  if (hangingUp.value || !canEdit.value) return
+  const turnId = props.turn.id
+  const sequence = detailSequence
+  hangingUp.value = true
+  try {
+    const result = await voiceConversationService.forceHangup(turnId)
+    if (disposed || props.turn.id !== turnId || sequence !== detailSequence) return
+    hangupDialog.value = false
+    $q.notify({
+      color: result.local_audio_stopped ? 'positive' : 'warning',
+      icon: 'call_end',
+      message: t(result.local_audio_stopped
+        ? 'voice.history.detail.forceHangupDone'
+        : 'voice.history.detail.forceHangupPending'),
+    })
+    emit('stopped')
+  } catch {
+    if (disposed || props.turn.id !== turnId || sequence !== detailSequence) return
+    $q.notify({ color: 'negative', icon: 'error', message: t('voice.history.detail.forceHangupError') })
+  } finally {
+    hangingUp.value = false
+  }
+}
+
 async function deleteTurn(): Promise<void> {
   if (deleting.value || !canEdit.value) return
+  const turnId = props.turn.id
+  const sequence = detailSequence
   deleting.value = true
   try {
-    await voiceConversationService.deleteTurn(props.turn.id)
+    const completed = await voiceConversationService.deleteTurn(turnId)
+    if (disposed || props.turn.id !== turnId || sequence !== detailSequence) return
     deleteDialog.value = false
+    if (!completed) {
+      deletionPending.value = true
+      clearTimeout(deletionTimer)
+      void pollDeletion(turnId, sequence)
+      return
+    }
     $q.notify({ color: 'positive', icon: 'delete', message: t('voice.history.detail.deleted') })
     emit('deleted')
   } catch (reason) {
+    if (disposed || props.turn.id !== turnId || sequence !== detailSequence) return
     console.error('Failed to delete voice conversation turn:', reason)
     $q.notify({ color: 'negative', icon: 'error', message: t('voice.history.detail.deleteError') })
   } finally {
@@ -393,6 +494,14 @@ async function deleteTurn(): Promise<void> {
 </script>
 
 <style scoped>
+.deletion-pending {
+  background: var(--solaire-orange-light);
+}
+
+:global(body.body--dark) .deletion-pending {
+  background: var(--solaire-orange-dark);
+}
+
 .voice-message {
   white-space: pre-wrap;
   overflow-wrap: anywhere;

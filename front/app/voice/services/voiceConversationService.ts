@@ -67,8 +67,23 @@ export const voiceConversationService = {
     return response.data
   },
 
-  async deleteTurn(id: string): Promise<void> {
-    await api.delete(`/voice/conversations/turns/${encodeURIComponent(id)}`)
+  async forceHangup(id: string): Promise<{ revoked: boolean; local_audio_stopped: boolean }> {
+    const response = await api.post<{ revoked: boolean; local_audio_stopped: boolean }>(
+      `/voice/conversations/turns/${encodeURIComponent(id)}/force-hangup`,
+    )
+    return response.data
+  },
+
+  async deleteTurn(id: string): Promise<boolean> {
+    const response = await api.delete(`/voice/conversations/turns/${encodeURIComponent(id)}`)
+    return response.status === 204
+  },
+
+  async deletionStatus(id: string): Promise<{ status: string; last_error: string | null }> {
+    const response = await api.get<{ status: string; last_error: string | null }>(
+      `/voice/conversations/turns/${encodeURIComponent(id)}/deletion`,
+    )
+    return response.data
   },
 
   async llmCalls(voiceTurnId: string): Promise<LLMCall[]> {
